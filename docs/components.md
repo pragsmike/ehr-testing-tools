@@ -82,13 +82,17 @@ NIST's HL7 v2 conformance-validation core (JVM/Scala): validates
 messages against full conformance-profile semantics including usage,
 cardinality, conformance statements, predicates, and co-constraints —
 the constraint tiers HAPI does not enforce. Steward: NIST Systems
-Interoperability Group; license unstated — no LICENSE artifact in the
-repository (facts register [F1](../notes/facts-register.md); resolution
-pending EXP-SBOM). Underpins NIST's hosted validation tools used in US
-EHR certification.
+Interoperability Group; license unstated — no LICENSE artifact anywhere
+in the repository (root, any of its 3 sbt modules, build metadata, or a
+systematic source-header sample), confirmed by EXP-SBOM's inventory
+(facts register [F1](../notes/facts-register.md)); a clarification
+inquiry to NIST is drafted but unsent
+(`docs/experiments/EXP-SBOM-inquiry-draft.md`). Underpins NIST's hosted
+validation tools used in US EHR certification.
 
 In this repo: candidate engine for the full `gate.v2` tier; adoption
-blocked on EXP-SBOM.
+blocked pending NIST license confirmation (EXP-SBOM executed; still
+license-unstated).
 
 ## CDC `lib-hl7v2-nist-validator`
 
@@ -98,24 +102,35 @@ message processing; Apache License 2.0 (facts register
 detector reports this repository as `NOASSERTION`/"Other", but the raw
 `LICENSE` file is unambiguous standard Apache 2.0 boilerplate; the
 detector's classification, not the license, is what's wrong here). Its
-build pulls NIST artifacts from a NIST-hosted Nexus rather than Maven
-Central, with SSL verification disabled in upstream build config — a
-supply-chain caveat we will not inherit (mirroring plan: EXP-D3).
+build vendors NIST's engine as 6 jar+pom pairs checked into git and
+resolved via a local `file://` Maven repository — **not** a live pull
+from a NIST-hosted Nexus, and EXP-SBOM found no SSL-verification-
+disabling config anywhere in the build (facts register
+[F9](../notes/facts-register.md), which corrects an earlier,
+unregistered version of this claim). The 6 vendored NIST-origin
+coordinates themselves carry no license metadata and aren't on Maven
+Central under any coordinate (F9); the wrapper's other ~20 dependencies
+resolve normally from Maven Central with mostly permissive licenses,
+except one transitive LGPL-2.1 dependency (`xom`, flagged for ADR-0001
+review — facts register [F10](../notes/facts-register.md)).
 
 In this repo: candidate runtime for the full `gate.v2` tier, contingent
-on EXP-SBOM.
+on the v2 gate architecture decision (EXP-SBOM classifies; it does not
+decide — `docs/experiments/EXP-SBOM-results.md`).
 
 ## IGAMT
 
 NIST's Implementation Guide Authoring and Management Tool: the authoring
 environment for HL7 v2 implementation guides and conformance profiles,
 aligned with the HL7 v2 conformance methodology. Hosted by NIST; source
-at `usnistgov/hl7-igamt`; license unstated — no LICENSE artifact in the
-repository, the same pattern as the NIST v2-validation engine (F1); this
-is folded into EXP-SBOM's existing scope (`docs/experiments.md` already
-lists IGAMT explicitly alongside NIST v2-validation and the CDC wrapper)
-rather than given its own F-row. Exports feed NIST's validation ecosystem
-— not HAPI's classic profile format (`docs/research/` D1).
+at `usnistgov/hl7-igamt`; license unstated at the repository level — no
+root LICENSE artifact, confirmed by EXP-SBOM's inventory — but
+evidentially distinct from the v2-validation engine (F1): 2 of 12
+systematically-sampled source files carry a first-party NIST
+public-domain header (17 U.S.C. §105), though 10 of 12 do not, so this
+doesn't license the whole repository (facts register
+[F8](../notes/facts-register.md)). Exports feed NIST's validation
+ecosystem — not HAPI's classic profile format (`docs/research/` D1).
 
 In this repo: upstream authoring tool only, never embedded; its exports
 enter as artifacts of kind `:profile` per ADR-0005, pinned with export
