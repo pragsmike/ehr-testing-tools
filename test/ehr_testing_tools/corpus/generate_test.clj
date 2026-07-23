@@ -64,23 +64,56 @@
       (is (= (.getAbsolutePath config-file) (:path (:config manifest))))
       (is (string? (:sha256 (:config manifest))))
       (is (= [] (:canonicalizers-applied manifest)))
-      (is (contains? (:environment manifest) :locale))
-      (is (contains? (:environment manifest) :timezone))
+      ;; Defaults, forced -- not queried from wherever the orchestrator
+      ;; happens to be running (EXP-A4 found locale/timezone are
+      ;; genuinely load-bearing for byte-identical output, so these must
+      ;; be exactly what was passed to the subprocess, not ambient state).
+      (is (= "en-US" (:locale (:environment manifest))))
+      (is (= "UTC" (:timezone (:environment manifest))))
       (is (contains? (:environment manifest) :jvm-version)))
     ;; manifest.edn written alongside the (would-be) generated tree
     (let [written (edn/read-string (slurp (io/file out-dir "manifest.edn")))]
       (is (= (:manifest (:payload r)) written)))
     ;; invocation was constructed correctly: jar path, seed, population,
-    ;; config path, and output directory all land in the args.
+    ;; config path, output directory, and default forced locale/timezone
+    ;; (before -jar) all land in the args.
     (let [invoked @args-atom
-          arg-str (clojure.string/join " " (:args invoked))]
+          arg-list (:args invoked)
+          arg-str (clojure.string/join " " arg-list)
+          jar-index (.indexOf arg-list "-jar")]
       (is (clojure.string/includes? arg-str "/fake/synthea.jar"))
       (is (clojure.string/includes? arg-str "-s 42"))
       (is (clojure.string/includes? arg-str "-cs 999"))
       (is (clojure.string/includes? arg-str "-p 10"))
       (is (clojure.string/includes? arg-str (str "-c " (.getAbsolutePath config-file))))
       (is (clojure.string/includes? arg-str "-r 20260101"))
-      (is (clojure.string/includes? arg-str (str "--exporter.baseDirectory=" out-dir))))))
+      (is (clojure.string/includes? arg-str (str "--exporter.baseDirectory=" out-dir)))
+      (is (< (.indexOf arg-list "-Duser.language=en") jar-index))
+      (is (< (.indexOf arg-list "-Duser.country=US") jar-index))
+      (is (< (.indexOf arg-list "-Duser.timezone=UTC") jar-index)))))
+
+(deftest generate-honors-explicit-locale-and-timezone-override-test
+  (let [out-dir (temp-dir)
+        config-file (File/createTempFile "synthea" ".properties")
+        args-atom (atom nil)
+        deps (stub-deps {:lockfile-result (ok-lockfile)
+                          :resolve-result (ok-resolve)
+                          :invocation-result (ok-invocation)
+                          :invocation-args-atom args-atom})
+        r (generate/generate! (merge deps
+                                      {:config-path (.getAbsolutePath config-file)
+                                       :seed 1 :clinician-seed 2 :population 1
+                                       :reference-date "20260101"
+                                       :output-dir out-dir
+                                       :locale "fr-FR"
+                                       :timezone "Asia/Tokyo"}))]
+    (is (result/ok? r))
+    (is (= "fr-FR" (:locale (:environment (:manifest (:payload r))))))
+    (is (= "Asia/Tokyo" (:timezone (:environment (:manifest (:payload r))))))
+    (let [arg-list (:args @args-atom)]
+      (is (some #{"-Duser.language=fr"} arg-list))
+      (is (some #{"-Duser.country=FR"} arg-list))
+      (is (some #{"-Duser.timezone=Asia/Tokyo"} arg-list)))))
 
 (deftest generate-places-jvm-args-before-jar-test
   ;; JVM system properties (-Duser.language=, -Duser.timezone=, etc.) are

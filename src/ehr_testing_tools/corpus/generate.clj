@@ -7,16 +7,18 @@
   manifest v0 (pattern nursery #2/#3, EXP-A4's hypothesis) is written
   alongside the output tree as the committed provenance record."
   (:require [clojure.java.io :as io]
+            [clojure.string :as str]
             [ehr-testing-tools.artifact :as artifact]
             [ehr-testing-tools.invocation :as invocation]
             [ehr-testing-tools.digest :as digest]
             [ehr-testing-tools.corpus.manifest :as manifest]
-            [ehr-testing-tools.result :as result])
-  (:import [java.util Locale TimeZone]))
+            [ehr-testing-tools.result :as result]))
 
 (def synthea-name "synthea")
 (def synthea-version "4.0.0")
 (def default-lockfile-path "artifacts.lock.edn")
+(def default-locale "en-US")
+(def default-timezone "UTC")
 
 (defn real-java-version
   "Queries java-bin's own reported version by actually running it -- the
@@ -36,10 +38,26 @@
     (catch Exception _ "unknown")))
 
 (defn- environment-record
-  [java-bin java-version-fn]
-  {:locale (str (Locale/getDefault))
-   :timezone (str (TimeZone/getDefault))
+  "Records the locale/timezone actually forced into the generator
+  subprocess (the values used to build its -D jvm-args), not whatever
+  the orchestrating process happens to have -- EXP-A4 found locale and
+  timezone are both load-bearing for byte-identical output, so this
+  must describe the subprocess's true environment, not ambient state."
+  [java-bin java-version-fn locale timezone]
+  {:locale locale
+   :timezone timezone
    :jvm-version (java-version-fn java-bin)})
+
+(defn- locale-jvm-args
+  "en-US -> [\"-Duser.language=en\" \"-Duser.country=US\"]"
+  [locale]
+  (let [[lang country] (str/split locale #"-")]
+    (cond-> [(str "-Duser.language=" lang)]
+      (seq country) (conj (str "-Duser.country=" country)))))
+
+(defn- timezone-jvm-args
+  [timezone]
+  [(str "-Duser.timezone=" timezone)])
 
 (defn- synthea-args
   "jvm-args (e.g. -Duser.language=fr) must precede -jar -- the JVM only
@@ -78,9 +96,22 @@
                         what else is pinned.
     :output-dir      -- directory for Synthea's output tree + manifest.edn
                         (created if missing; gitignored -- not committed)
-    :jvm-args        -- JVM system properties (e.g. \"-Duser.language=fr\"),
-                        placed before -jar so the JVM actually honors them
-                        (EXP-A4's locale/timezone rounds use this)
+    :locale          -- BCP47-ish \"language-COUNTRY\" (default \"en-US\").
+                        Forced via -Duser.language/-Duser.country, placed
+                        before -jar. Required-with-a-default, not
+                        optional: EXP-A4 found locale affects at least one
+                        date-computation field (a medication packaging
+                        expiration subcomponent) -- leaving it to the
+                        host's ambient default would make output depend
+                        on which machine generated it.
+    :timezone        -- e.g. \"UTC\" (default). Forced via
+                        -Duser.timezone, placed before -jar.
+                        Required-with-a-default: EXP-A4 found every FHIR
+                        dateTime/instant field's serialized UTC-offset
+                        depends on this -- same instant, different bytes.
+    :jvm-args        -- additional JVM system properties beyond
+                        locale/timezone, placed before -jar so the JVM
+                        actually honors them
     :extra-args      -- additional Synthea CLI args (e.g. for varying
                         generate.thread_pool_size in EXP-A4 rounds),
                         appended after the standard ones
@@ -100,9 +131,11 @@
   `ehr artifact fetch` first. Returns result/ok {:manifest :output-dir},
   or the first failing step's result (lockfile read, artifact resolve,
   or invocation) unchanged."
-  [{:keys [config-path seed clinician-seed population reference-date output-dir jvm-args extra-args java-bin
+  [{:keys [config-path seed clinician-seed population reference-date output-dir
+           locale timezone jvm-args extra-args java-bin
            java-version-fn lockfile-path read-lockfile resolve-artifact run-invocation]
-    :or {jvm-args [] extra-args [] java-bin "java"
+    :or {locale default-locale timezone default-timezone
+         jvm-args [] extra-args [] java-bin "java"
          java-version-fn real-java-version
          lockfile-path default-lockfile-path
          read-lockfile artifact/read-lockfile
@@ -120,12 +153,13 @@
                 _ (.mkdirs out-dir)
                 stdout-path (.getAbsolutePath (io/file out-dir "synthea-stdout.log"))
                 stderr-path (.getAbsolutePath (io/file out-dir "synthea-stderr.log"))
+                all-jvm-args (vec (concat (locale-jvm-args locale) (timezone-jvm-args timezone) jvm-args))
                 args (synthea-args {:jar-path path :seed seed :clinician-seed clinician-seed
                                      :population population
                                      :reference-date reference-date
                                      :config-path config-path
                                      :output-dir (.getAbsolutePath out-dir)
-                                     :jvm-args jvm-args
+                                     :jvm-args all-jvm-args
                                      :extra-args extra-args})
                 invocation-result (run-invocation {:command java-bin :args args
                                                     :stdout-path stdout-path
@@ -141,6 +175,6 @@
                         :config {:path config-path :sha256 (digest/sha256-file config-path)}
                         :invocation (:payload invocation-result)
                         :canonicalizers-applied []
-                        :environment (environment-record java-bin java-version-fn)})]
+                        :environment (environment-record java-bin java-version-fn locale timezone)})]
                 (spit (io/file out-dir "manifest.edn") (pr-str m))
                 (result/ok {:manifest m :output-dir output-dir})))))))))
