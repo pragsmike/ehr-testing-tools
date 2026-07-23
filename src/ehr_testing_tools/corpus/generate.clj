@@ -166,12 +166,13 @@
                                                     :stderr-path stderr-path})]
             (if-not (result/ok? invocation-result)
               invocation-result
-              (let [m (manifest/build
+              (let [m (manifest/build-v1
                        {:generator {:name (:name artifact)
                                     :version (:version artifact)
                                     :sha256 (:sha256 artifact)}
                         :seed seed
                         :clinician-seed clinician-seed
+                        :reference-date reference-date
                         :config {:path config-path :sha256 (digest/sha256-file config-path)}
                         :invocation (:payload invocation-result)
                         :canonicalizers-applied []

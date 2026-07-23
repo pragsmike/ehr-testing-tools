@@ -55,9 +55,10 @@
                                        :output-dir out-dir}))]
     (is (result/ok? r))
     (let [manifest (:manifest (:payload r))]
-      (is (= 0 (:schema-version manifest)))
+      (is (= 1 (:schema-version manifest)))
       (is (= 42 (:seed manifest)))
       (is (= 999 (:clinician-seed manifest)))
+      (is (= "20260101" (:reference-date manifest)))
       (is (= "synthea" (:name (:generator manifest))))
       (is (= "4.0.0" (:version (:generator manifest))))
       (is (= (:sha256 synthea-artifact) (:sha256 (:generator manifest))))
