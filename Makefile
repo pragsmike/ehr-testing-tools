@@ -3,7 +3,7 @@
 SHELL := bash
 
 REPO_NAME := ehr-testing-tools
-PACK_OUTPUT := ehr-testing-tools-pack.txt
+PACK_OUTPUT := $(shell echo $$HOME)/ehr-testing-tools-pack.txt
 
 help:
 	@echo "Available targets:"
