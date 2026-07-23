@@ -1,0 +1,4 @@
+interface:
+  display_name: "WSL Windows Git Hygiene"
+  short_description: "Diagnose CRLF noise and Git worktree churn in WSL/Windows repos"
+  default_prompt: "Diagnose unexpected git status noise, line-ending churn, and local artifact pollution in a repo accessed from both Windows and WSL."

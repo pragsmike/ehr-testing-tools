@@ -1,0 +1,4 @@
+interface:
+  display_name: "Shared Skill Layout"
+  short_description: "Guide shared skill placement."
+  default_prompt: "Use this skill to diagnose where custom skills should live across Windows and WSL, and to move or verify them safely."
