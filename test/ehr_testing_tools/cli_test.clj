@@ -24,6 +24,22 @@
     (is (= "synthea" (:name opts)))
     (is (not (:json opts))))) ; nil is falsy -- --json wasn't supplied
 
+(deftest parse-keeps-numeric-looking-strings-as-strings-test
+  ;; --version and --reference-date look numeric but must never be
+  ;; auto-coerced -- "4.0.0"/"20260101" are identifiers, not numbers, and
+  ;; a coerced long breaks java.lang.ProcessBuilder's String[] args.
+  (let [{:keys [opts]} (cli/parse ["corpus" "generate" "--reference-date" "20260101"])]
+    (is (= "20260101" (:reference-date opts)))
+    (is (string? (:reference-date opts))))
+  (let [{:keys [opts]} (cli/parse ["artifact" "fetch" "--version" "4.0.0"])]
+    (is (= "4.0.0" (:version opts)))))
+
+(deftest parse-maps-config-flag-to-config-path-test
+  ;; corpus.generate's option key is :config-path; the CLI flag is
+  ;; --config-path so the two line up without a renaming layer in dispatch.
+  (let [{:keys [opts]} (cli/parse ["corpus" "generate" "--config-path" "config/synthea/synthea.properties"])]
+    (is (= "config/synthea/synthea.properties" (:config-path opts)))))
+
 ;; ---- dispatch ----
 
 (deftest dispatch-unknown-command-test

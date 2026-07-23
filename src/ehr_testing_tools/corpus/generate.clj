@@ -18,11 +18,28 @@
 (def synthea-version "4.0.0")
 (def default-lockfile-path "artifacts.lock.edn")
 
+(defn real-java-version
+  "Queries java-bin's own reported version by actually running it -- the
+  generator subprocess's JVM version can differ from the orchestrating
+  Clojure process's JVM (it does, in this environment: the CLI runs on
+  Java 11, but Synthea v4.0.0 requires Java 17+), so
+  System/getProperty \"java.version\" would silently record the wrong
+  thing. Returns \"unknown\" if java-bin can't be queried."
+  [java-bin]
+  (try
+    (let [pb (ProcessBuilder. (into-array String [java-bin "-version"]))]
+      (.redirectErrorStream pb true)
+      (let [proc (.start pb)
+            output (slurp (.getInputStream proc))]
+        (.waitFor proc)
+        (or (second (re-find #"version \"([^\"]+)\"" output)) "unknown")))
+    (catch Exception _ "unknown")))
+
 (defn- environment-record
-  []
+  [java-bin java-version-fn]
   {:locale (str (Locale/getDefault))
    :timezone (str (TimeZone/getDefault))
-   :jvm-version (System/getProperty "java.version")})
+   :jvm-version (java-version-fn java-bin)})
 
 (defn- synthea-args
   [{:keys [jar-path seed population reference-date config-path output-dir extra-args]}]
@@ -49,7 +66,13 @@
     :extra-args      -- additional Synthea CLI args (e.g. for varying
                         generate.thread_pool_size in EXP-A4 rounds),
                         appended after the standard ones
-    :java-bin        -- java executable to invoke (default \"java\")
+    :java-bin        -- java executable to invoke (default \"java\"). Must
+                        be Java 17+ for Synthea v4.0.0; this environment's
+                        default `java` is 11, so a portable JDK 17 path
+                        must be passed explicitly here.
+    :java-version-fn -- how to query :java-bin's actual version for the
+                        manifest's environment record; defaults to
+                        real-java-version (injectable for testing).
     :lockfile-path, :read-lockfile, :resolve-artifact, :run-invocation
                      -- injectable for testing; default to the real
                         artifact/invocation implementations.
@@ -60,8 +83,9 @@
   or the first failing step's result (lockfile read, artifact resolve,
   or invocation) unchanged."
   [{:keys [config-path seed population reference-date output-dir extra-args java-bin
-           lockfile-path read-lockfile resolve-artifact run-invocation]
+           java-version-fn lockfile-path read-lockfile resolve-artifact run-invocation]
     :or {extra-args [] java-bin "java"
+         java-version-fn real-java-version
          lockfile-path default-lockfile-path
          read-lockfile artifact/read-lockfile
          resolve-artifact artifact/resolve
@@ -96,6 +120,6 @@
                         :config {:path config-path :sha256 (digest/sha256-file config-path)}
                         :invocation (:payload invocation-result)
                         :canonicalizers-applied []
-                        :environment (environment-record)})]
+                        :environment (environment-record java-bin java-version-fn)})]
                 (spit (io/file out-dir "manifest.edn") (pr-str m))
                 (result/ok {:manifest m :output-dir output-dir})))))))))

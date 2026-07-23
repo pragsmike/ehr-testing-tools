@@ -12,7 +12,12 @@
 (def cli-spec
   {:seed {:coerce :long}
    :population {:coerce :long}
-   :json {:coerce :boolean}})
+   :json {:coerce :boolean}
+   ;; Digit-only strings that are identifiers, not numbers -- must not be
+   ;; auto-coerced to a long (which would break ProcessBuilder's String[]
+   ;; args downstream in corpus.generate/invocation).
+   :reference-date {:coerce :string}
+   :version {:coerce :string}})
 
 (defn parse
   "Parses raw CLI args into {:args [positional...] :opts {...}}."

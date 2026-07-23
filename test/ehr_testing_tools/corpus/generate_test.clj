@@ -79,6 +79,29 @@
       (is (clojure.string/includes? arg-str "-r 20260101"))
       (is (clojure.string/includes? arg-str (str "--exporter.baseDirectory=" out-dir))))))
 
+(deftest generate-records-actual-generator-jvm-version-not-orchestrators-test
+  ;; The manifest's :jvm-version must describe the JVM that actually ran
+  ;; Synthea (the subprocess named by :java-bin), not the Clojure
+  ;; orchestrator's own JVM -- those can differ (and did, in practice:
+  ;; this environment runs the CLI on Java 11 but Synthea v4.0.0 requires
+  ;; Java 17+, so a fixed :java-version-fn call is the only way to
+  ;; capture the truth instead of System/getProperty "java.version").
+  (let [out-dir (temp-dir)
+        config-file (File/createTempFile "synthea" ".properties")
+        deps (stub-deps {:lockfile-result (ok-lockfile)
+                          :resolve-result (ok-resolve)
+                          :invocation-result (ok-invocation)})
+        r (generate/generate!
+           (merge deps
+                  {:config-path (.getAbsolutePath config-file)
+                   :seed 1 :population 1 :reference-date "20260101"
+                   :output-dir out-dir
+                   :java-bin "/fake/jdk17/bin/java"
+                   :java-version-fn (fn [java-bin] (str "STUBBED-VERSION-FOR:" java-bin))}))]
+    (is (result/ok? r))
+    (is (= "STUBBED-VERSION-FOR:/fake/jdk17/bin/java"
+           (:jvm-version (:environment (:manifest (:payload r))))))))
+
 (deftest generate-propagates-lockfile-read-failure-test
   (let [deps (stub-deps {:lockfile-result (result/error :not-found {:path "artifacts.lock.edn"})
                           :resolve-result (ok-resolve)
