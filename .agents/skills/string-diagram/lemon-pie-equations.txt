@@ -1,0 +1,8 @@
+# Lemon Meringue Pie — Resource Equations
+# Validates the tool against the hand-drawn string diagram
+
+egg → yolk + white + egg-shells  [SeparateEgg]  {discard: egg-shells}
+lemon × butter × sugar × yolk → lemon-filling + lemon-peel + butter-wrapper  [MakeLemonFilling]  {discard: lemon-peel, butter-wrapper}
+white × sugar → meringue  [MakeMeringue]
+crust × lemon-filling → unbaked-lemon-pie  [FillCrust]
+unbaked-lemon-pie × meringue → unbaked-pie  [AddMeringue]

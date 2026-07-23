@@ -1,0 +1,38 @@
+# Decision Monad: Deliberated Choice Pipeline
+# Fan (divergent scenario generation) → Funnel (convergent committee deliberation)
+# From palgebra/duality-and-composition.md
+
+# ── Phase 0: Situation Framing ──────────────────────────────────
+raw-problem → situation  [FrameSituation]
+
+# ── Phase 1: Scenario Generation (fan — one-to-many spider) ────
+situation × scenario-roster × scenario-parameters → scenario-set  [Fan]
+  {catalytic: scenario-roster, scenario-parameters; spider: fan}
+
+# ── Phase 2: Scenario Assessment (enrichment) ──────────────────
+scenario-set × scenario-rubric → scenario-set  [AssessScenarios]
+  {catalytic: scenario-rubric}
+
+# ── Phase 3: Coverage Gate ──────────────────────────────────────
+scenario-set × coverage-criteria → adequate-set + gaps-identified  [CoverageGate]
+  {catalytic: coverage-criteria; discard: gaps-identified}
+
+# ── Bridge: charter from scenario set ───────────────────────────
+adequate-set → charter  [DraftCharter]
+
+# ── Phase 4: Committee Deliberation (funnel — many-to-one spider)
+charter × adequate-set × character-propensities × roberts-rules → transcript  [Deliberate]
+  {catalytic: character-propensities, roberts-rules; spider: funnel}
+
+# ── Phase 5: Resolution ────────────────────────────────────────
+transcript × charter → resolution  [Resolve]  {catalytic: charter}
+
+# ── Evaluation ──────────────────────────────────────────────────
+transcript × evaluation-rubrics × charter → evaluation  [Evaluate]
+  {catalytic: evaluation-rubrics, charter}
+evaluation × remediation-threshold → passed-evaluation + needs-remediation  [QualityGate]
+  {catalytic: remediation-threshold; discard: needs-remediation}
+
+# ── Human Gate ──────────────────────────────────────────────────
+passed-evaluation × resolution → accepted-resolution + rejected-resolution  [HumanGate]
+  {discard: rejected-resolution}

@@ -1,0 +1,51 @@
+# Committee Deliberation Pipeline
+# Adversarial committee workflow: charter → deliberation → evaluation → remediation loop → human gate
+# From palgebra/committee-as-palgebra.md
+
+# ── Phase 0: Charter ─────────────────────────────────────────────
+# Transformation: problem statement → structured charter
+problem-statement → charter  [DraftCharter]
+
+# ── Phase 1: Convening ───────────────────────────────────────────
+# Transformation: charter → roster + convening narrative
+# Character propensities are catalytic (comonoid: copied, not consumed)
+charter × character-propensities → roster + convening  [Convene]
+  {catalytic: character-propensities}
+
+# ── Phase 2: Deliberation ────────────────────────────────────────
+# Transformation: the heaviest morphism — generates the transcript
+# Character propensities and Robert's Rules are catalytic
+charter × roster × convening × character-propensities × roberts-rules → transcript  [Deliberate]
+  {catalytic: character-propensities, roberts-rules}
+
+# ── Phase 3: Resolution ──────────────────────────────────────────
+# Transformation: transcript → structured resolution (YAML)
+# Charter is catalytic (provides success criteria)
+transcript × charter → resolution  [Resolve]  {catalytic: charter}
+
+# ── Phase 4: Evaluation ──────────────────────────────────────────
+# Enrichment: scores the transcript without modifying it
+# Produces evaluation artifact (the Δmeta)
+transcript × evaluation-rubrics × charter → evaluation  [Evaluate]
+  {catalytic: evaluation-rubrics, charter; enriches: scores}
+
+# ── Phase 5: Quality Gate ────────────────────────────────────────
+# Coproduct: sort evaluation into passed vs. needs-remediation
+evaluation × remediation-threshold → passed-evaluation + needs-remediation  [QualityGate]
+  {catalytic: remediation-threshold}
+
+# ── Phase 5a: Remediation (conditional) ──────────────────────────
+# Transformation: evaluation gaps → amended transcript + remediation record
+needs-remediation × transcript × character-propensities → remediation + transcript  [Remediate]
+  {catalytic: character-propensities}
+
+# ── Phase 5b: Re-evaluation (feedback) ───────────────────────────
+# Bounded trace: Remediate → ReEvaluate → QualityGate (max 2 rounds)
+# Named ReEvaluate to avoid Mermaid node collision with Evaluate
+transcript × evaluation-rubrics × charter → evaluation  [ReEvaluate]
+  {catalytic: evaluation-rubrics, charter; enriches: scores; feedback: transcript→transcript}
+
+# ── Phase 6: Human Gate ──────────────────────────────────────────
+# Collapse: graded uncertainty → crisp commitment
+passed-evaluation × resolution → accepted-resolution + rejected-resolution  [HumanGate]
+  {discard: rejected-resolution}
