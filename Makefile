@@ -1,15 +1,17 @@
-.PHONY: help pack test
+.PHONY: help pack pack-push test
 
 SHELL := bash
 
 REPO_NAME := ehr-testing-tools
 PACK_OUTPUT := $(shell echo $$HOME)/ehr-testing-tools-pack.txt
+GIST_ID := 4fcd1abb4e74a5b54f9c241877edd02a
 
 help:
 	@echo "Available targets:"
-	@echo "  help  - show this message (default target)"
-	@echo "  pack  - concatenate every git-tracked file into $(PACK_OUTPUT), with a freshness header"
-	@echo "  test  - run the Clojure test suite (clojure -X:test)"
+	@echo "  help       - show this message (default target)"
+	@echo "  pack       - concatenate every git-tracked file into $(PACK_OUTPUT), with a freshness header"
+	@echo "  pack-push  - pack, then publish it to gist $(GIST_ID)"
+	@echo "  test       - run the Clojure test suite (clojure -X:test)"
 
 test:
 	clojure -X:test
@@ -41,3 +43,18 @@ pack:
 		echo ""; \
 	done >> $(PACK_OUTPUT)
 	@echo "Done! Created $(PACK_OUTPUT)"
+
+# Publishes the freshly generated pack to the author's gist, so a session
+# can point at a URL instead of re-uploading the pack by hand. Uses
+# python3's json module rather than jq: jq is not installed on this
+# machine and there is no passwordless sudo available to install it
+# non-interactively; python3 is already present and produces the same
+# {"files": {...}} payload gh api expects for a gist PATCH.
+pack-push: pack
+	@python3 -c "import json, sys; \
+	  path = sys.argv[1]; \
+	  content = open(path, encoding='utf-8').read(); \
+	  print(json.dumps({'files': {'ehr-testing-tools-pack.txt': {'content': content}}}))" \
+	  "$(PACK_OUTPUT)" \
+	  | gh api gists/$(GIST_ID) -X PATCH --input - > /dev/null
+	@echo "Pack pushed to gist $(GIST_ID)"

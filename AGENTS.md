@@ -91,14 +91,18 @@ make pack    # concatenate every git-tracked file into
 `repo-adaptation`, `committee`. Consult them for their respective
 workflows rather than reinventing the steps each time.
 
-## Prompt archive
+## Prompts
 
-`.agents/prompts/` archives the verbatim text of executed Code prompts —
-the chat-designed, agent-executed sessions that are the real provenance
-of changes to this repo — named `YYYY-MM-DD-<slug>.md`. See ADR-0003 in
-`notes/ADRs.md`. Archive the prompt you're executing as part of the
-session's commits; don't reconstruct earlier sessions' prompts
-retroactively.
+`.agents/prompts/` holds **live** prompts — written for the current or an
+upcoming session — named `YYYY-MM-DD-<slug>.md`. `.agents/prompts/archive/`
+holds **spent** prompts: executed and kept for provenance. Moving a
+prompt from `prompts/` to `archive/` is the workflow signal that the
+session it drove has completed; do that move as part of the session's
+final commit. See ADR-0003 in `notes/ADRs.md`.
+
+Don't read `.agents/prompts/archive/` unless the task at hand concerns
+session history or change provenance — it's a record, not working
+context. Don't reconstruct earlier sessions' prompts retroactively.
 
 ## Compatibility
 

@@ -27,17 +27,18 @@ can't read the filesystem directly.
 Unlike the guide's pack, this one leads with a header block — repo name,
 UTC generation timestamp, current `git rev-parse HEAD`, and
 `git status --porcelain` (or `working tree clean`) — so a stale pack is a
-one-glance check, not a diff you have to run by hand. **Regenerate the
-pack before ending a session** whenever the repo state changed during it;
-a pack whose header HEAD doesn't match the current one is stale and
-should not be trusted for context.
+one-glance check, not a diff you have to run by hand. A pack whose header
+HEAD doesn't match the current one is stale and should not be trusted for
+context.
 
-The pack is regenerated **after the final commit of a session, not
-before** — that ordering is what makes the header's clean-tree line an
-invariant rather than a hint. A pack generated mid-session, before the
-last commit, can legitimately show a dirty tree; a pack generated last
-and still showing a dirty tree is a real signal something was left
-uncommitted.
+**Sessions end with `make pack-push`, run after the final commit.** This
+subsumes the older "regenerate the pack before ending a session" rule —
+`pack-push` depends on `pack`, so it regenerates and publishes in one
+step, to the author's gist (see `Makefile`). The ordering still matters:
+run last, not mid-session, so the header's clean-tree line remains the
+invariant it's meant to be. A pack generated mid-session, before the last
+commit, can legitimately show a dirty tree; a pack pushed last and still
+showing a dirty tree is a real signal something was left uncommitted.
 
 Pack markers (`========== FILE: ... ==========`, `========== END FILE
 ==========`) are only valid matched at line start. The Makefile's own
