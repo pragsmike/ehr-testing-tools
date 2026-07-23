@@ -3,8 +3,8 @@
 This is the guide for future-you and any collaborator working on this repo.
 It exists so decisions don't have to be re-litigated every time someone
 opens it. It is a direct, scoped-down adaptation of
-[`ehr-testing-guide`](<!-- TODO: guide URL -->AUTHORS-GUIDE.md)'s own guide
-of the same name — see [`notes/ADRs.md`](notes/ADRs.md) ADR-0002 for why
+[`ehr-testing-guide`](https://github.com/pragsmike/ehr-testing-guide/blob/main/AUTHORS-GUIDE.md)'s
+own guide of the same name — see [`notes/ADRs.md`](notes/ADRs.md) ADR-0002 for why
 this repo inherits that repo's discipline rather than inventing its own.
 
 ## 1. Git operations: WSL only
