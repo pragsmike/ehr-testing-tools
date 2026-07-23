@@ -45,11 +45,19 @@ restricted.
 ## Quick start
 
 ```sh
-make help    # list available targets (default)
-make test    # clojure -X:test
-make pack    # concatenate every git-tracked file into
-             # $HOME/ehr-testing-tools-pack.txt (outside the repo), with a
-             # freshness header (repo, timestamp, HEAD, working-tree status)
+make help       # list available targets (default)
+make test       # clojure -X:test
+make coverage   # clojure -M:coverage (cloverage)
+make pack       # slim pack (excludes .agents/skills, .agents/prompts/archive)
+                # into $HOME/ehr-testing-tools-pack.txt, with a freshness
+                # header (repo, timestamp, HEAD, working-tree status, elisions)
+make pack-skills  # the elided directories, packed separately, for the
+                  # author to upload to project knowledge by hand
+make pack-push  # pack, then publish it to the author's gist
+make ehr ARGS="artifact fetch --name synthea --version 4.0.0"
+                # invoke the `ehr` CLI (ADR-0004): corpus generate,
+                # artifact fetch/resolve; EDN by default, --json for a
+                # JSON projection
 ```
 
 ## Hard rules

@@ -1,4 +1,4 @@
-.PHONY: help pack pack-skills pack-push test coverage
+.PHONY: help pack pack-skills pack-push test coverage ehr
 
 SHELL := bash
 
@@ -19,12 +19,16 @@ help:
 	@echo "  pack-push    - pack, then publish it to gist $(GIST_ID)"
 	@echo "  test         - run the Clojure test suite (clojure -X:test)"
 	@echo "  coverage     - run cloverage and report coverage (clojure -M:coverage)"
+	@echo "  ehr          - invoke the ehr CLI, e.g. make ehr ARGS=\"artifact fetch --name synthea --version 4.0.0\""
 
 test:
 	clojure -X:test
 
 coverage:
 	clojure -M:coverage
+
+ehr:
+	clojure -M -m ehr-testing-tools.cli $(ARGS)
 
 # Concatenates most git-tracked files in the repo into one pack file, for
 # pasting into a chat UI that can't read the filesystem directly. Leads
