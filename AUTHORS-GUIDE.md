@@ -19,10 +19,19 @@ it is not fine for writing to git history.
 
 ## 2. The pack ritual
 
-`make pack` concatenates every git-tracked file in the repo into
-`ehr-testing-tools-pack.txt` at the repo root (gitignored — it is session
-scaffolding, not a deliverable), for pasting into a chat session that
-can't read the filesystem directly.
+`make pack` concatenates most git-tracked files in the repo into
+`ehr-testing-tools-pack.txt` (gitignored — it is session scaffolding, not
+a deliverable), for pasting into a chat session that can't read the
+filesystem directly. It elides `.agents/skills/**` and
+`.agents/prompts/archive/**` — skill content is large and changes
+rarely, so it doesn't belong in every session's context — and the header
+records the elision. `make pack-skills` packs exactly the elided
+directories, to a separate file, for the author to upload to project
+knowledge by hand when skills actually change; nothing here pushes it
+anywhere automatically. `make pack-push`'s behavior is unchanged: it
+pushes the slim `pack` output, auto-pushed each session per the rule
+below. The skills pack is regenerated and re-uploaded by the author only
+when `.agents/skills/` or archived prompts change materially.
 
 Unlike the guide's pack, this one leads with a header block — repo name,
 UTC generation timestamp, current `git rev-parse HEAD`, and
