@@ -116,6 +116,25 @@ Don't read `.agents/prompts/archive/` unless the task at hand concerns
 session history or change provenance — it's a record, not working
 context. Don't reconstruct earlier sessions' prompts retroactively.
 
+## Session permissions allowlist
+
+`.claude/settings.json` (committed; distinct from the personal,
+gitignored `.claude/settings.local.json`) pre-approves the command
+families a routine session in this repo actually needs: `make` targets,
+`git` subcommands (the WSL-only commit rule above is enforced by the
+pre-commit hook, not by this allowlist), `clojure`/`clj`, `gh api`/`gh
+gist`, `jq`, `python3`, `wsl` invocations, in-repo file edits/creation,
+and `curl`/`WebFetch` scoped to github.com, raw.githubusercontent.com,
+and Maven Central — the hosts this repo's research and artifact-fetch
+work actually touches. It exists so sessions doing this repo's ordinary
+work (testing, packing, committing, fetching license/dependency
+evidence) don't stop for a permission prompt on every routine call.
+Curl's domain scoping is a best-effort substring match, not a hard
+boundary (Claude Code's own docs note Bash argument patterns are
+bypassable); prefer the `WebFetch(domain:...)` rules for read-only
+fetches where they suffice. Anything outside this list — including any
+`git push`, and any command family not named above — still prompts.
+
 ## Compatibility
 
 - **Claude Code** reads `CLAUDE.md`, not `AGENTS.md`, by convention.
