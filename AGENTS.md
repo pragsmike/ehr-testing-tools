@@ -70,6 +70,10 @@ make pack    # concatenate every git-tracked file into
 - **Regenerate the pack after the final commit of a session.** The pack's
   header `HEAD` and clean-tree line are only trustworthy if the pack was
   made last, not mid-session.
+- **Test-first** (ADR-0006): a failing test precedes the implementation
+  it motivates; red→green evidence goes in the session report; `make test`
+  and `make coverage` must be green/reported before any session-final
+  commit.
 
 ## Repo conventions
 

@@ -1,4 +1,4 @@
-.PHONY: help pack pack-skills pack-push test
+.PHONY: help pack pack-skills pack-push test coverage
 
 SHELL := bash
 
@@ -18,9 +18,13 @@ help:
 	@echo "  pack-skills  - concatenate only .agents/skills + .agents/prompts/archive into $(PACK_SKILLS_OUTPUT)"
 	@echo "  pack-push    - pack, then publish it to gist $(GIST_ID)"
 	@echo "  test         - run the Clojure test suite (clojure -X:test)"
+	@echo "  coverage     - run cloverage and report coverage (clojure -M:coverage)"
 
 test:
 	clojure -X:test
+
+coverage:
+	clojure -M:coverage
 
 # Concatenates most git-tracked files in the repo into one pack file, for
 # pasting into a chat UI that can't read the filesystem directly. Leads

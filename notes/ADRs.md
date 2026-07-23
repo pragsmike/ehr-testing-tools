@@ -176,3 +176,31 @@ management becomes artifact management: IGAMT exports and IG packages
 are artifacts of kind `:profile`. EXP-D3's NIST-artifact mirroring
 becomes `ehr artifact fetch` against a local mirror source.
 **Status.** Accepted (author-directed).
+
+---
+## ADR-0006 — Test-first, staged enforcement
+**Context.** Capability code starts this session; the repo's credibility
+rests on verification discipline, and its own method (the guide's) is a
+testing method — a test-shy testing-tools repo is self-refuting. Sessions
+are executed by agents that cannot see each other; discipline must be
+written and mechanical, not remembered.
+**Decision.** Test-first is a hard rule — a failing test precedes the
+implementation it motivates; sessions demonstrate red→green in their
+reports; property tests are required for law-bearing constructs
+(canonicalizer laws, hash verification, schema round-trips); coverage is
+measured (`cloverage` via a `:coverage` alias and `make coverage`) and
+regressions in coverage require justification in the session report.
+
+Enforcement is staged: **now** — convention + prompt discipline +
+coverage measurement; **enforcement wave** (planned, see
+`.agents/plans/corpus-foundations.md`) — pre-push hook running the
+suite, offline GitHub Actions, coverage threshold gating.
+**Rejected.** Full mechanical enforcement immediately — procrastination-
+by-perfectionism; blocks the first capability on CI plumbing. Coverage
+as vibes — unmeasured "good coverage" is unfalsifiable.
+**Consequence.** Every code-producing prompt carries the red→green
+reporting duty; `AGENTS.md` hard rules gain: "Test-first: a failing test
+precedes implementation; red→green evidence in session reports;
+`make test` and `make coverage` green/reported before any session-final
+commit."
+**Status.** Accepted (author-directed).

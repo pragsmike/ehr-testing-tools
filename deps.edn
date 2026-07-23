@@ -17,4 +17,9 @@
         :extra-deps {nrepl/nrepl {:mvn/version "1.3.0"}
                      cider/cider-nrepl {:mvn/version "0.50.2"}}
         :main-opts ["-m" "nrepl.cmdline" "--middleware"
-                    "[cider.nrepl/cider-middleware]"]}}}
+                    "[cider.nrepl/cider-middleware]"]}
+
+  ;; Coverage measurement (ADR-0006). `make coverage` / `clojure -M:coverage`.
+  :coverage {:extra-paths ["test"]
+             :extra-deps {cloverage/cloverage {:mvn/version "1.2.4"}}
+             :main-opts ["-m" "cloverage.coverage" "-p" "src" "-s" "test"]}}}
