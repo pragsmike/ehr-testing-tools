@@ -115,12 +115,10 @@ Until then: private, no external references, no announcements.
 Dated so staleness is visible; both resolved no later than generator
 kickoff.
 
-- **Internal repo organization** (open as of 2026-07-23). Working
-  proposal, not yet ratified: capabilities grouped as corpus construction
-  vs. gating; CLI-first with library entry points; verdicts and
-  provenance manifests treated as data, not as opaque tool output. This
-  is deliberately not decided in this bootstrap session — see "Out of
-  scope" in the session notes that produced this document.
+- **Internal repo organization** — resolved by
+  [ADR-0004](../notes/ADRs.md) (2026-07-23): one artifact, one source
+  tree, organized by capability (`corpus.*`, `gate.*`, `artifact`, `cli`),
+  not by format or tool.
 - **Distribution coordinates** (open as of 2026-07-23): Clojars vs. Maven
   Central. Decided at first release, not before — there's nothing to
   publish yet and no reason to lock in coordinates early.
