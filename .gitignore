@@ -9,6 +9,10 @@ build/*.jar
 # Emacs
 *.elc
 
+# Python (skills with helper scripts, e.g. string-diagram)
+__pycache__/
+*.pyc
+
 # OS cruft
 .DS_Store
 Thumbs.db
