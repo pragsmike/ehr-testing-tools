@@ -42,8 +42,15 @@
    :jvm-version (java-version-fn java-bin)})
 
 (defn- synthea-args
-  [{:keys [jar-path seed population reference-date config-path output-dir extra-args]}]
-  (vec (concat ["-jar" jar-path
+  "jvm-args (e.g. -Duser.language=fr) must precede -jar -- the JVM only
+  honors -D system properties given before the jar/main-class argument;
+  after it, they'd be passed as plain program arguments to Synthea
+  instead. extra-args (Synthea's own --config*=value overrides) belong
+  after, as additional program arguments."
+  [{:keys [jar-path seed population reference-date config-path output-dir
+           jvm-args extra-args]}]
+  (vec (concat jvm-args
+               ["-jar" jar-path
                 "-s" (str seed)
                 "-p" (str population)
                 "-r" reference-date
@@ -63,6 +70,9 @@
                         what else is pinned.
     :output-dir      -- directory for Synthea's output tree + manifest.edn
                         (created if missing; gitignored -- not committed)
+    :jvm-args        -- JVM system properties (e.g. \"-Duser.language=fr\"),
+                        placed before -jar so the JVM actually honors them
+                        (EXP-A4's locale/timezone rounds use this)
     :extra-args      -- additional Synthea CLI args (e.g. for varying
                         generate.thread_pool_size in EXP-A4 rounds),
                         appended after the standard ones
@@ -82,9 +92,9 @@
   `ehr artifact fetch` first. Returns result/ok {:manifest :output-dir},
   or the first failing step's result (lockfile read, artifact resolve,
   or invocation) unchanged."
-  [{:keys [config-path seed population reference-date output-dir extra-args java-bin
+  [{:keys [config-path seed population reference-date output-dir jvm-args extra-args java-bin
            java-version-fn lockfile-path read-lockfile resolve-artifact run-invocation]
-    :or {extra-args [] java-bin "java"
+    :or {jvm-args [] extra-args [] java-bin "java"
          java-version-fn real-java-version
          lockfile-path default-lockfile-path
          read-lockfile artifact/read-lockfile
@@ -106,6 +116,7 @@
                                      :reference-date reference-date
                                      :config-path config-path
                                      :output-dir (.getAbsolutePath out-dir)
+                                     :jvm-args jvm-args
                                      :extra-args extra-args})
                 invocation-result (run-invocation {:command java-bin :args args
                                                     :stdout-path stdout-path

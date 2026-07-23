@@ -79,6 +79,34 @@
       (is (clojure.string/includes? arg-str "-r 20260101"))
       (is (clojure.string/includes? arg-str (str "--exporter.baseDirectory=" out-dir))))))
 
+(deftest generate-places-jvm-args-before-jar-test
+  ;; JVM system properties (-Duser.language=, -Duser.timezone=, etc.) are
+  ;; only honored by the JVM if they appear BEFORE -jar on the command
+  ;; line -- after -jar, they'd be passed as plain program arguments to
+  ;; Synthea's main class instead. EXP-A4's locale/timezone rounds
+  ;; depend on this placement being correct.
+  (let [out-dir (temp-dir)
+        config-file (File/createTempFile "synthea" ".properties")
+        args-atom (atom nil)
+        deps (stub-deps {:lockfile-result (ok-lockfile)
+                          :resolve-result (ok-resolve)
+                          :invocation-result (ok-invocation)
+                          :invocation-args-atom args-atom})
+        r (generate/generate! (merge deps
+                                      {:config-path (.getAbsolutePath config-file)
+                                       :seed 1 :population 1 :reference-date "20260101"
+                                       :output-dir out-dir
+                                       :jvm-args ["-Duser.language=fr" "-Duser.country=FR"]}))]
+    (is (result/ok? r))
+    (let [invoked-args (:args @args-atom)
+          jar-index (.indexOf invoked-args "-jar")
+          lang-index (.indexOf invoked-args "-Duser.language=fr")
+          country-index (.indexOf invoked-args "-Duser.country=FR")]
+      (is (not= -1 jar-index))
+      (is (not= -1 lang-index))
+      (is (< lang-index jar-index) "-Duser.language must precede -jar")
+      (is (< country-index jar-index) "-Duser.country must precede -jar"))))
+
 (deftest generate-records-actual-generator-jvm-version-not-orchestrators-test
   ;; The manifest's :jvm-version must describe the JVM that actually ran
   ;; Synthea (the subprocess named by :java-bin), not the Clojure
