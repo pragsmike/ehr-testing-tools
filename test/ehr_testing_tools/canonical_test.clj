@@ -7,7 +7,17 @@
             [ehr-testing-tools.result :as result]
             [ehr-testing-tools.canonical :as canonical]))
 
-(use-fixtures :each (fn [f] (canonical/reset-registry!) (f)))
+;; Save/restore rather than wipe-and-leave-empty: other namespaces (e.g.
+;; corpus.canonicalizers) register real entries at load time, once, into
+;; this same shared registry. Wiping it to {} without restoring would
+;; permanently erase those entries the moment this namespace's tests run
+;; before the namespace that depends on them -- test order across
+;; namespaces is not something to rely on for correctness.
+(use-fixtures :each (fn [f]
+                      (let [snapshot (canonical/registry-snapshot)]
+                        (canonical/reset-registry!)
+                        (f)
+                        (canonical/reset-registry! snapshot))))
 
 (deftest register-and-lookup-test
   (let [r (canonical/register! {:id :trim-trailing-ws :version "1" :format :text
@@ -58,7 +68,7 @@
   (canonical/register! {:id :trim :version "1" :format :text
                          :fn str/trim :docstring "trims"
                          :generator gen/string-ascii})
-  (doseq [entry (canonical/entries)]
+  (doseq [entry (filter :generator (canonical/entries))]
     (let [check-result (tc/quick-check 100 (idempotent-property entry))]
       (is (:pass? check-result)
           (str "idempotence failed for " (:id entry) "@" (:version entry))))))

@@ -40,10 +40,18 @@
   []
   (vals @registry))
 
-(defn reset-registry!
-  "Test/dev support: clears the registry."
+(defn registry-snapshot
+  "Test/dev support: the full registry map, keyed by [id version] --
+  for saving and later restoring exact state (e.g. around a test that
+  needs a clean slate but must not permanently erase entries other
+  namespaces registered at load time)."
   []
-  (reset! registry {}))
+  @registry)
+
+(defn reset-registry!
+  "Test/dev support: resets the registry to snapshot (default: empty)."
+  ([] (reset-registry! {}))
+  ([snapshot] (reset! registry snapshot)))
 
 (defn apply-canonicalizers
   "Applies `steps` (an ordered vector of [id version] pairs -- composition
