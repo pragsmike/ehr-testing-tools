@@ -1,4 +1,4 @@
-.PHONY: help pack
+.PHONY: help pack test
 
 SHELL := bash
 
@@ -9,6 +9,10 @@ help:
 	@echo "Available targets:"
 	@echo "  help  - show this message (default target)"
 	@echo "  pack  - concatenate every git-tracked file into $(PACK_OUTPUT), with a freshness header"
+	@echo "  test  - run the Clojure test suite (clojure -X:test)"
+
+test:
+	clojure -X:test
 
 # Concatenates every git-tracked file in the repo into one pack file at the
 # repo root, for pasting into a chat UI that can't read the filesystem
