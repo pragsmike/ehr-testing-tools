@@ -15,6 +15,7 @@
                 [:version :string]
                 [:sha256 [:re #"^[0-9a-f]{64}$"]]]]
    [:seed :int]
+   [:clinician-seed :int]
    [:config [:map
              [:path :string]
              [:sha256 [:re #"^[0-9a-f]{64}$"]]]]
@@ -32,10 +33,11 @@
 (defn build
   "Builds a schema-v0 manifest from the given fields.
   :canonicalizers-applied defaults to [] when omitted."
-  [{:keys [generator seed config invocation canonicalizers-applied environment]}]
+  [{:keys [generator seed clinician-seed config invocation canonicalizers-applied environment]}]
   {:schema-version 0
    :generator generator
    :seed seed
+   :clinician-seed clinician-seed
    :config config
    :invocation invocation
    :canonicalizers-applied (or canonicalizers-applied [])

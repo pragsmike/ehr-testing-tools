@@ -19,8 +19,8 @@ invocation wrapper; a byte-level diff harness over output trees.
    single-threaded). Diff output trees byte-wise. Expected: identical;
    any divergence here is finding #1.
 2. Vary one factor per round, three runs each, diff against baseline:
-   thread count (`-p` parallelism), locale, timezone, JVM version if a
-   second is available.
+   thread count (`generate.thread_pool_size`), locale, timezone, JVM
+   version if a second is available.
 3. For every divergence, identify the field(s) and classify:
    - **pin it** — an input we failed to record; add it to the manifest.
    - **control it** — force a value via the invocation wrapper (e.g.
@@ -52,3 +52,16 @@ rounds is recorded as a finding and handled by canonicalization policy;
 determinism-modulo-documented-canonicalization is an acceptable landing,
 undocumented nondeterminism is not. Effort cap: one session; if exceeded,
 stop and report state.
+
+## Amendments
+
+- **2026-07-24 — parallelism control corrected.** The original procedure
+  named `-p` as Synthea's thread-count/parallelism flag. This is wrong:
+  `-p` is `populationSize` (confirmed against the v4.0.0 jar's own
+  `--help` usage text — `Options: [-s seed] [-cs clinicianSeed]
+  [-p populationSize] ...`). Synthea's actual parallelism control is the
+  `generate.thread_pool_size` property (default `-1`, meaning "match
+  `Runtime.getRuntime().availableProcessors()`"; confirmed by extracting
+  `synthea.properties` from the v4.0.0 jar), settable per-run via
+  `--generate.thread_pool_size=<n>` on the command line. The procedure
+  above and the round-2 execution use the corrected control.

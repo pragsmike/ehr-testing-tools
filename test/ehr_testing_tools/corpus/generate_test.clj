@@ -49,6 +49,7 @@
         r (generate/generate! (merge deps
                                       {:config-path (.getAbsolutePath config-file)
                                        :seed 42
+                                       :clinician-seed 999
                                        :population 10
                                        :reference-date "20260101"
                                        :output-dir out-dir}))]
@@ -56,6 +57,7 @@
     (let [manifest (:manifest (:payload r))]
       (is (= 0 (:schema-version manifest)))
       (is (= 42 (:seed manifest)))
+      (is (= 999 (:clinician-seed manifest)))
       (is (= "synthea" (:name (:generator manifest))))
       (is (= "4.0.0" (:version (:generator manifest))))
       (is (= (:sha256 synthea-artifact) (:sha256 (:generator manifest))))
@@ -74,6 +76,7 @@
           arg-str (clojure.string/join " " (:args invoked))]
       (is (clojure.string/includes? arg-str "/fake/synthea.jar"))
       (is (clojure.string/includes? arg-str "-s 42"))
+      (is (clojure.string/includes? arg-str "-cs 999"))
       (is (clojure.string/includes? arg-str "-p 10"))
       (is (clojure.string/includes? arg-str (str "-c " (.getAbsolutePath config-file))))
       (is (clojure.string/includes? arg-str "-r 20260101"))
@@ -94,7 +97,7 @@
                           :invocation-args-atom args-atom})
         r (generate/generate! (merge deps
                                       {:config-path (.getAbsolutePath config-file)
-                                       :seed 1 :population 1 :reference-date "20260101"
+                                       :seed 1 :clinician-seed 2 :population 1 :reference-date "20260101"
                                        :output-dir out-dir
                                        :jvm-args ["-Duser.language=fr" "-Duser.country=FR"]}))]
     (is (result/ok? r))

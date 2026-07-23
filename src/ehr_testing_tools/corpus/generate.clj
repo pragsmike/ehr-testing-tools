@@ -47,11 +47,12 @@
   after it, they'd be passed as plain program arguments to Synthea
   instead. extra-args (Synthea's own --config*=value overrides) belong
   after, as additional program arguments."
-  [{:keys [jar-path seed population reference-date config-path output-dir
+  [{:keys [jar-path seed clinician-seed population reference-date config-path output-dir
            jvm-args extra-args]}]
   (vec (concat jvm-args
                ["-jar" jar-path
                 "-s" (str seed)
+                "-cs" (str clinician-seed)
                 "-p" (str population)
                 "-r" reference-date
                 "-c" config-path
@@ -61,7 +62,14 @@
 (defn generate!
   "Generates a Synthea corpus. Options:
     :config-path     -- path to a repo-authored Synthea properties file
-    :seed            -- integer seed
+    :seed            -- integer seed (patient generation)
+    :clinician-seed  -- integer seed (clinician/practitioner generation).
+                        Required, not optional: EXP-A4 found that Synthea
+                        defaults this to System.currentTimeMillis() when
+                        -cs is omitted, which silently makes every
+                        practitioner assignment (and everything that
+                        references one) non-reproducible even with :seed
+                        pinned -- :seed alone does not determine output.
     :population      -- integer population size
     :reference-date  -- YYYYMMDD string. Required, not optional: Synthea
                         generates relative to wall-clock \"now\" unless
@@ -92,7 +100,7 @@
   `ehr artifact fetch` first. Returns result/ok {:manifest :output-dir},
   or the first failing step's result (lockfile read, artifact resolve,
   or invocation) unchanged."
-  [{:keys [config-path seed population reference-date output-dir jvm-args extra-args java-bin
+  [{:keys [config-path seed clinician-seed population reference-date output-dir jvm-args extra-args java-bin
            java-version-fn lockfile-path read-lockfile resolve-artifact run-invocation]
     :or {jvm-args [] extra-args [] java-bin "java"
          java-version-fn real-java-version
@@ -112,7 +120,8 @@
                 _ (.mkdirs out-dir)
                 stdout-path (.getAbsolutePath (io/file out-dir "synthea-stdout.log"))
                 stderr-path (.getAbsolutePath (io/file out-dir "synthea-stderr.log"))
-                args (synthea-args {:jar-path path :seed seed :population population
+                args (synthea-args {:jar-path path :seed seed :clinician-seed clinician-seed
+                                     :population population
                                      :reference-date reference-date
                                      :config-path config-path
                                      :output-dir (.getAbsolutePath out-dir)
@@ -128,6 +137,7 @@
                                     :version (:version artifact)
                                     :sha256 (:sha256 artifact)}
                         :seed seed
+                        :clinician-seed clinician-seed
                         :config {:path config-path :sha256 (digest/sha256-file config-path)}
                         :invocation (:payload invocation-result)
                         :canonicalizers-applied []
