@@ -100,8 +100,20 @@ make ehr ARGS="artifact fetch --name synthea --version 4.0.0"
 `.agents/skills/` holds this repo's local skills, copied and adapted from
 `ehr-testing-guide` where applicable (see `notes/ADRs.md` ADR-0003):
 `wsl-windows-git-hygiene`, `handoff`, `find-skills`, `shared-skill-layout`,
-`repo-adaptation`, `committee`. Consult them for their respective
-workflows rather than reinventing the steps each time.
+`repo-adaptation`, `committee`, `scenarios`, `probe`, `review`,
+`string-diagram`. Consult them for their respective workflows rather than
+reinventing the steps each time.
+
+The cyberneutics-derived skills (`scenarios`, `probe`, `committee`) share a
+single `.agents/cyberneutics-config.yaml` for the `situations_root` key
+that resolves where their output directories live — **2026-07-23
+divergence from upstream cyberneutics**: upstream splits this into
+`.claude/cyberneutics-config.yaml` (scenarios/probe) and
+`.agents/committee-config.yml` (committee); this repo unifies both under
+`.agents/` since all three read the same key for the same purpose.
+`scenarios` and `probe` also depend on `agent/scenario-roster.md`, copied
+verbatim from the public `pragsmike/cyberneutics` repo (see that file's
+header comment for provenance) — copied now, adapted at first real use.
 
 ## Prompts
 

@@ -32,7 +32,7 @@ blind spots.
 The skill determines where to write output using this precedence:
 
 1. **`--situation <path>`** ??" if the user provides this on invocation, use `<path>` as the situation directory directly.
-2. **Config file** ??" read `situations_root` from `.agents/committee-config.yml` (path relative to repo root), then append `<topic-slug>/`.
+2. **Config file** — read `situations_root` from `.agents/cyberneutics-config.yaml` (path relative to repo root). **2026-07-23 divergence from upstream cyberneutics**: this repo shares one `.agents/`-rooted config file across `scenarios`, `probe`, and `committee` rather than committee's own upstream `.agents/committee-config.yml` — same key (`situations_root`), same purpose, no reason for three skills to disagree on where it lives; see `AGENTS.md`. Then append `<topic-slug>/`.
 3. **Default** ??" use `~/situations/<topic-slug>/`.
 
 Once the situation directory is resolved:
