@@ -5,11 +5,10 @@
   the data it returns, never on the subprocess itself."
   (:refer-clojure :exclude [run!])
   (:require [malli.core :as m]
-            [clojure.java.io :as io]
+            [ehr-testing-tools.digest :as digest]
             [ehr-testing-tools.result :as result])
   (:import [java.io File]
            [java.lang ProcessBuilder$Redirect]
-           [java.security MessageDigest]
            [java.time Instant]))
 
 (def InvocationRecord
@@ -33,15 +32,7 @@
 (defn sha256-file
   "Hex-encoded SHA-256 digest of a file's bytes."
   [path]
-  (let [digest (MessageDigest/getInstance "SHA-256")]
-    (with-open [in (io/input-stream (io/file path))]
-      (let [buf (byte-array 8192)]
-        (loop []
-          (let [n (.read in buf)]
-            (when (pos? n)
-              (.update digest buf 0 n)
-              (recur))))))
-    (apply str (map #(format "%02x" %) (.digest digest)))))
+  (digest/sha256-file path))
 
 (defn run!
   "Executes command+args as a subprocess, redirecting stdout/stderr to the
