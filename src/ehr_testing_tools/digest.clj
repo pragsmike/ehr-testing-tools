@@ -16,3 +16,9 @@
               (.update digest buf 0 n)
               (recur))))))
     (apply str (map #(format "%02x" %) (.digest digest)))))
+
+(defn sha256-string
+  "Hex-encoded SHA-256 digest of a string's UTF-8 bytes."
+  [s]
+  (let [digest (MessageDigest/getInstance "SHA-256")]
+    (apply str (map #(format "%02x" %) (.digest digest (.getBytes ^String s "UTF-8"))))))

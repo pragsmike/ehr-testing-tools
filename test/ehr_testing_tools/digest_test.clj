@@ -18,3 +18,10 @@
            (digest/sha256-file (.getAbsolutePath f1))))
     (is (not= (digest/sha256-file (.getAbsolutePath f1))
               (digest/sha256-file (.getAbsolutePath f2))))))
+
+(deftest sha256-string-matches-sha256-file-test
+  (let [f (File/createTempFile "digest-test" ".str")]
+    (spit f "hello artifact")
+    (is (= (digest/sha256-file (.getAbsolutePath f))
+           (digest/sha256-string "hello artifact")))))
+
