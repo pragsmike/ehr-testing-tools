@@ -32,6 +32,20 @@ pack before ending a session** whenever the repo state changed during it;
 a pack whose header HEAD doesn't match the current one is stale and
 should not be trusted for context.
 
+The pack is regenerated **after the final commit of a session, not
+before** — that ordering is what makes the header's clean-tree line an
+invariant rather than a hint. A pack generated mid-session, before the
+last commit, can legitimately show a dirty tree; a pack generated last
+and still showing a dirty tree is a real signal something was left
+uncommitted.
+
+Pack markers (`========== FILE: ... ==========`, `========== END FILE
+==========`) are only valid matched at line start. The Makefile's own
+`pack` recipe legitimately contains this marker text mid-line (in the
+`echo` commands that emit it) — a naive substring search over the pack
+would misidentify those lines as marker lines. Anchor any parser to the
+start of the line.
+
 ## 3. ADR rules
 
 `notes/ADRs.md` holds every architecture/authoring decision in one file,

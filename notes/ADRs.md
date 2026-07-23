@@ -50,3 +50,26 @@ docs gets an F-row with evidence and a verification date (see F1 in
 `notes/facts-register.md`). Packs are the unit of session context; the
 pack header makes staleness a one-glance check instead of a manual diff.
 **Status.** Accepted (author-directed).
+
+---
+## ADR-0003 — Agent-facing layout and prompt archive
+**Context.** The guide repo standardized on `AGENTS.md` plus `.agents/`
+(skills, handoffs) as its agent-facing layout. Both repos are driven by
+chat-designed, Code-executed prompt sessions whose prompts are the real
+provenance of changes — which file got touched, in what order, and why —
+but those prompts currently live outside the repo, in the chat transcript
+only.
+**Decision.** This repo adopts the same standard layout: `AGENTS.md` at
+root plus `.agents/skills/`, `.agents/handoffs/`, `.agents/prompts/`.
+Executed Code prompts are archived in `.agents/prompts/` named
+`YYYY-MM-DD-<slug>.md`. `CLAUDE.md` is kept as a thin pointer shim to
+`AGENTS.md`, matching the guide's convention.
+**Rejected.** (a) `notes/prompts/` — `notes/` is for the repo's own
+knowledge (ADRs, registers); prompts are agent-facing operational
+artifacts, not reasoning-of-record, and belong under `.agents/` instead.
+(b) Not archiving prompts at all — this loses the provenance chain that,
+in the guide repo, caught real errors no other mechanism caught.
+**Consequence.** Every Code session's prompt lands in `.agents/prompts/`
+as part of that session's own commits. Handoffs go to `.agents/handoffs/`
+via the `handoff` skill.
+**Status.** Accepted (author-directed).
