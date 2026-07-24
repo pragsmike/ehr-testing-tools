@@ -14,8 +14,10 @@ FHIR). Sibling of [`ehr-testing-guide`](https://github.com/pragsmike/ehr-testing
 which teaches the testing method this repo makes runnable — see
 `README.md` and `docs/positioning.md` for how the two relate.
 **Language(s):** Clojure, Markdown (docs).
-**Status:** pre-release. Private development; nothing here is stable or
-released yet.
+**Status:** pre-release. Public since [ADR-0008](notes/ADRs.md), but
+nothing here has had a first release yet — no version tag, nothing
+published to Clojars or Maven Central, interfaces may still move. See
+`docs/positioning.md` for what publication does and doesn't mean.
 
 `AUTHORS-GUIDE.md` covers the full authoring discipline (WSL git rule,
 pack ritual, ADR rules, facts-register discipline) — read it before your
@@ -82,6 +84,20 @@ make ehr ARGS="artifact fetch --name synthea --version 4.0.0"
   it motivates; red→green evidence goes in the session report; `make test`
   and `make coverage` must be green/reported before any session-final
   commit.
+- **The test suite is hermetic — keep it that way.** `make test` must
+  pass from a cold clone with no network access beyond the initial
+  dependency fetch (verified 2026-07-24: fresh temp clone, deps primed
+  once, then `make test` run inside a network-isolated namespace,
+  166 tests/0 failures/0 errors). Every test that touches the network or
+  a real artifact/subprocess does so through an injected fake
+  (`:downloader`, `:run-invocation`, `:resolve-java-bin`, etc. — see
+  `test/ehr_testing_tools/artifact_test.clj` and
+  `corpus/generate_test.clj`), never the real thing. If a future test
+  genuinely needs the network or a real external engine, tag its
+  `deftest` with `^:integration` metadata and exclude that tag from the
+  default `:test` alias's runner — no such tag exists yet because no
+  test currently needs one. CI (`.github/workflows/ci.yml`) depends on
+  this holding.
 
 ## Repo conventions
 
