@@ -91,6 +91,36 @@
     (is (result/ok? r))
     (is (= {:input "x.json"} @called))))
 
+(deftest dispatch-routes-gate-v2-test
+  (let [called (atom nil)
+        r (cli/dispatch ["gate" "v2"] {:path "test/fixtures/v2"}
+                         {:gate-v2-fn (fn [opts] (reset! called opts) (result/ok {:totals {}}))})]
+    (is (result/ok? r))
+    (is (= {:path "test/fixtures/v2"} @called))))
+
+(deftest dispatch-routes-gate-fhir-test
+  (let [called (atom nil)
+        r (cli/dispatch ["gate" "fhir"] {:path "some-corpus/"}
+                         {:gate-fhir-fn (fn [opts] (reset! called opts) (result/ok {:totals {}}))})]
+    (is (result/ok? r))
+    (is (= {:path "some-corpus/"} @called))))
+
+(deftest dispatch-gate-accepts-a-positional-path-test
+  ;; `ehr gate v2 PATH` -- PATH is the third positional arg, not a
+  ;; --path flag, matching the CLI contract as specified.
+  (let [called (atom nil)
+        r (cli/dispatch ["gate" "v2" "test/fixtures/v2"] {}
+                         {:gate-v2-fn (fn [opts] (reset! called opts) (result/ok {:totals {}}))})]
+    (is (result/ok? r))
+    (is (= "test/fixtures/v2" (:path @called)))))
+
+(deftest dispatch-gate-explicit-path-opt-not-overridden-by-positional-test
+  (let [called (atom nil)
+        r (cli/dispatch ["gate" "v2" "positional-path"] {:path "explicit-path"}
+                         {:gate-v2-fn (fn [opts] (reset! called opts) (result/ok {:totals {}}))})]
+    (is (result/ok? r))
+    (is (= "explicit-path" (:path @called)))))
+
 (deftest dispatch-routes-corpus-intake-test
   (let [called (atom nil)
         r (cli/dispatch ["corpus" "intake"] {:source-dir "src"}
@@ -261,6 +291,64 @@
         r (cli/intake-command {:source-dir in-dir :label "acme" :out out-dir})]
     (is (result/ok? r))
     (is (= (str (java.time.LocalDate/now)) (:date (:intake-record (:payload r)))))))
+
+;; ---- gate-command / gate-v2-command (`ehr gate v2`): builds a
+;; format-agnostic gate report over a file or directory; exit-code
+;; contract via result/ok vs result/rejected, not special-cased in
+;; result->exit-code (ADR-0004's generic mapping already does the
+;; right thing once gate-command itself signals :gate-rejected). ----
+
+(deftest gate-v2-command-gates-a-single-passing-file-test
+  (let [r (cli/gate-v2-command {:path "test/fixtures/v2/adt-a01-admit.hl7"})]
+    (is (result/ok? r))
+    (is (= {:pass 1 :rejected 0 :indeterminate 0} (:totals (:payload r))))))
+
+(deftest gate-v2-command-gates-a-directory-test
+  (let [r (cli/gate-v2-command {:path "test/fixtures/v2"})]
+    (is (result/ok? r))
+    (is (= 5 (count (:files (:payload r)))))))
+
+(deftest gate-v2-command-rejects-when-any-file-is-rejected-test
+  (let [in-dir (temp-dir*)
+        _ (spit (io/file in-dir "broken.hl7") "MSH|^~&|only-encoding-chars-broken")
+        r (cli/gate-v2-command {:path in-dir})]
+    (is (result/rejected? r))
+    (is (= :gate-rejected (:category r)))
+    (is (= 1 (cli/result->exit-code r)))))
+
+(deftest gate-v2-command-writes-report-file-when-requested-test
+  (let [out-file (str (temp-dir*) "/report.edn")
+        r (cli/gate-v2-command {:path "test/fixtures/v2/adt-a01-admit.hl7" :report out-file})]
+    (is (result/ok? r))
+    (is (.exists (io/file out-file)))
+    (is (= (:payload r) (clojure.edn/read-string (slurp out-file))))))
+
+;; ---- fhir-gate-command: threads lockfile artifacts + :out-dir into
+;; gate.fhir/gate-file|gate-dir, curried to gate-command's 1-arity
+;; shape. No real subprocess exercised here (hermetic-suite discipline
+;; -- gate.fhir's own test suite already covers execute/interpret with
+;; injected fakes); this only proves the wiring propagates a real
+;; lockfile-resolution failure correctly. ----
+
+(deftest fhir-gate-command-propagates-unknown-artifact-when-validator-not-in-lockfile-test
+  (let [lockfile (temp-lockfile [])
+        r (cli/fhir-gate-command {:path "test/fixtures/v2/adt-a01-admit.hl7" :lockfile lockfile})]
+    (is (result/rejected? r))
+    (is (= :unknown-artifact (:category r)))))
+
+(deftest fhir-gate-command-propagates-lockfile-read-failure-test
+  (let [r (cli/fhir-gate-command {:path "x.json" :lockfile "/no/such/lockfile.edn"})]
+    (is (result/error? r))
+    (is (= :not-found (:category r)))))
+
+(deftest gate-v2-command-propagates-operational-error-for-a-missing-path-test
+  ;; A path that is neither an existing file nor directory: gate-file
+  ;; on it should surface as an operational error (slurp on a missing
+  ;; file throws inside execute/gate-file's own boundary today via a
+  ;; FileNotFoundException -- exercised here to confirm the CLI
+  ;; doesn't silently swallow it as a false "pass").
+  (let [r (cli/gate-v2-command {:path "/no/such/file.hl7"})]
+    (is (not (result/ok? r)))))
 
 ;; ---- main! (the real -main body, refactored to take injectable
 ;; :dispatch-fn / :println-fn / :exit-fn so its exit-code mapping and

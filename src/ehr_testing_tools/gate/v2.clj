@@ -193,11 +193,16 @@
   "Gates one v2 message file. Reads content and never writes to it --
   the Gate stage kind's own law (docs/notation.md): gating never
   modifies the datum it judges. Returns result/ok {:verdict :findings
-  :path}."
+  :path}, or result/error :file-not-found if path doesn't name a
+  readable file -- an operational condition (ADR-0004: exceptions are
+  for programmer error, not for \"the caller passed a bad path\")."
   [path]
-  (let [content (slurp (io/file path))
-        raw (execute content)]
-    (result/ok (assoc (interpret raw) :path (str path)))))
+  (let [f (io/file path)]
+    (if-not (.isFile f)
+      (result/error :file-not-found {:path (str path)})
+      (let [content (slurp f)
+            raw (execute content)]
+        (result/ok (assoc (interpret raw) :path (str path)))))))
 
 (defn- hl7-files-in
   [dir]

@@ -117,6 +117,11 @@
     ;; canonicalization finding, not a structural break.
     (is (contains? #{:pass :rejected} (:verdict (:payload r))))))
 
+(deftest gate-file-missing-path-is-an-operational-error-test
+  (let [r (gate/gate-file "/no/such/file.hl7")]
+    (is (result/error? r))
+    (is (= :file-not-found (:category r)))))
+
 ;; ---- gate-dir: batch over every *.hl7 file ----
 
 (deftest gate-dir-gates-every-hl7-file-test
