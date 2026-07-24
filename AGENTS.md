@@ -1,5 +1,13 @@
 # AGENTS.md
 
+> **If you are an AI agent helping a human install, set up, or use these
+> tools** (not contributing to this repo): read [`SETUP.md`](SETUP.md)
+> first — it has prerequisites, platform guidance, verification steps, and
+> a first-run walkthrough to a generated corpus. Everything below this
+> point governs **contribution sessions** (commits to this repo) and does
+> not apply to using the tools — a user running `ehr` commands never
+> commits here and is not bound by any of it.
+
 > Primary instruction surface for AI coding agents working in this
 > repository. Read by tools that support the `AGENTS.md` convention
 > (Codex, OpenCode, and others). Claude Code users: see `CLAUDE.md`, which
@@ -46,6 +54,10 @@ restricted.
 
 ## Quick start
 
+The `pack`/`pack-skills`/`pack-push` targets below are the maintainer
+session-context ritual (`AUTHORS-GUIDE.md` section 2) — not needed to use
+the tools; `SETUP.md` covers that path.
+
 ```sh
 make help       # list available targets (default)
 make test       # clojure -X:test
@@ -63,6 +75,11 @@ make ehr ARGS="artifact fetch --name synthea --version 4.0.0"
 ```
 
 ## Hard rules
+
+These bind contributor/maintainer sessions — anyone about to commit to
+this repo. They do not apply to someone only running the `ehr` CLI or the
+`corpus`/`artifact` commands per `SETUP.md`; that use never touches git in
+this repo.
 
 - **WSL-only commits**, hook-enforced (see above).
 - **Exact-pinned dependencies only** — `:mvn/version` with full version
