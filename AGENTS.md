@@ -51,9 +51,9 @@ make coverage   # clojure -M:coverage (cloverage)
 make pack       # slim pack (excludes .agents/skills, .agents/prompts/archive)
                 # into $HOME/ehr-testing-tools-pack.txt, with a freshness
                 # header (repo, timestamp, HEAD, working-tree status, elisions)
-make pack-skills  # the elided directories, packed separately, for the
-                  # author to upload to project knowledge by hand
-make pack-push  # pack, then publish it to the author's gist
+make pack-skills  # the elided directories, packed separately
+make pack-push  # pack + pack-skills, then publish both to the
+                # pragsmike/packs repo (~/.packs); see AUTHORS-GUIDE.md
 make ehr ARGS="artifact fetch --name synthea --version 4.0.0"
                 # invoke the `ehr` CLI (ADR-0004): corpus generate,
                 # artifact fetch/resolve; EDN by default, --json for a
@@ -134,18 +134,36 @@ context. Don't reconstruct earlier sessions' prompts retroactively.
 gitignored `.claude/settings.local.json`) pre-approves the command
 families a routine session in this repo actually needs: `make` targets,
 `git` subcommands (the WSL-only commit rule above is enforced by the
-pre-commit hook, not by this allowlist), `clojure`/`clj`, `gh api`/`gh
-gist`, `jq`, `python3`, `wsl` invocations, in-repo file edits/creation,
-and `curl`/`WebFetch` scoped to github.com, raw.githubusercontent.com,
-and Maven Central — the hosts this repo's research and artifact-fetch
-work actually touches. It exists so sessions doing this repo's ordinary
-work (testing, packing, committing, fetching license/dependency
-evidence) don't stop for a permission prompt on every routine call.
-Curl's domain scoping is a best-effort substring match, not a hard
-boundary (Claude Code's own docs note Bash argument patterns are
-bypassable); prefer the `WebFetch(domain:...)` rules for read-only
-fetches where they suffice. Anything outside this list — including any
-`git push`, and any command family not named above — still prompts.
+pre-commit hook, not by this allowlist), `clojure`/`clj`, `bash` (repo-
+local `.sh` script execution), `gh api`/`gh gist`, `jq`, `python3`, `wsl`
+invocations, the file/archive utilities a pack or artifact-verification
+step actually shells out to (`sha256sum`, `diff`, `tar`, `unzip`,
+`mkdir`, `cp`, `mv`, `find` — added 2026-07-24, per the two-strikes rule
+below), in-repo file edits/creation, and `curl`/`WebFetch` scoped to
+github.com, raw.githubusercontent.com, and Maven Central — the hosts
+this repo's research and artifact-fetch work actually touches. It exists
+so sessions doing this repo's ordinary work (testing, packing,
+committing, fetching license/dependency evidence) don't stop for a
+permission prompt on every routine call. Curl's domain scoping is a
+best-effort substring match, not a hard boundary (Claude Code's own docs
+note Bash argument patterns are bypassable); prefer the
+`WebFetch(domain:...)` rules for read-only fetches where they suffice.
+Anything outside this list — including any `git push`, and any command
+family not named above — still prompts.
+
+**Two-strikes rule for allowlist growth:** a command family earns a spot
+on this allowlist once it has been genuinely needed — and therefore
+prompted for — twice, not on the first occurrence. One-off needs stay as
+one-off prompts; a family that recurs is a signal the allowlist is
+missing something structural, not that this session happened to need
+something unusual. This keeps the list scoped to the repo's actual
+routine work instead of accreting every command a single session
+happened to run. `Write`/`Edit` are the standing exception: they stay
+scoped to this repo and are never broadened to the filesystem at large,
+regardless of how often a wider grant might be convenient — a mis-pathed
+write outside the repo was caught by a permission prompt this week,
+which is exactly the failure mode that scoping exists to catch, so it is
+not subject to the two-strikes rule or any other empirical pressure.
 
 ## Compatibility
 

@@ -5,7 +5,15 @@ SHELL := bash
 REPO_NAME := ehr-testing-tools
 PACK_OUTPUT := $(shell echo $$HOME)/ehr-testing-tools-pack.txt
 PACK_SKILLS_OUTPUT := $(shell echo $$HOME)/ehr-testing-tools-skills-pack.txt
+# Retired as a pack-transport target (2026-07-24, pack transport v2): the
+# gist API's rate-limited shared pool made design-channel fetches
+# unreliable. The gist itself is left alone -- nothing here deletes it --
+# but pack-push no longer publishes to it. Transport is now the
+# `pragsmike/packs` repo (below), fetched by the design channel via
+# raw.githubusercontent.com, which is CDN-served and doesn't share the
+# gist API's rate limit.
 GIST_ID := 4fcd1abb4e74a5b54f9c241877edd02a
+PACKS_REPO_DIR := $(shell echo $$HOME)/.packs
 
 # Files elided from the default pack (see pack-skills below) -- an ERE
 # matched against `git ls-files` output, anchored to line start.
@@ -16,7 +24,7 @@ help:
 	@echo "  help         - show this message (default target)"
 	@echo "  pack         - concatenate tracked files (except .agents/skills, .agents/prompts/archive) into $(PACK_OUTPUT)"
 	@echo "  pack-skills  - concatenate only .agents/skills + .agents/prompts/archive into $(PACK_SKILLS_OUTPUT)"
-	@echo "  pack-push    - pack, then publish it to gist $(GIST_ID)"
+	@echo "  pack-push    - pack + pack-skills, then publish both to the pragsmike/packs repo ($(PACKS_REPO_DIR))"
 	@echo "  test         - run the Clojure test suite (clojure -X:test)"
 	@echo "  coverage     - run cloverage and report coverage (clojure -M:coverage)"
 	@echo "  ehr          - invoke the ehr CLI, e.g. make ehr ARGS=\"artifact fetch --name synthea --version 4.0.0\""
@@ -106,9 +114,27 @@ pack-skills:
 	done >> $(PACK_SKILLS_OUTPUT)
 	@echo "Done! Created $(PACK_SKILLS_OUTPUT)"
 
-# Publishes the freshly generated (slim) pack to the author's gist, so a
-# session can point at a URL instead of re-uploading the pack by hand.
-pack-push: pack
-	@jq -Rs '{files:{"ehr-testing-tools-pack.txt":{content:.}}}' $(PACK_OUTPUT) \
-	  | gh api gists/$(GIST_ID) -X PATCH --input - > /dev/null
-	@echo "Pack pushed to gist $(GIST_ID)"
+# Publishes the freshly generated pack AND skills pack to the
+# pragsmike/packs repo (a local clone at $(PACKS_REPO_DIR), pushed to
+# GitHub), so a session -- or the design channel -- can fetch either one
+# by a plain raw.githubusercontent.com URL instead of re-uploading either
+# by hand. Requires $(PACKS_REPO_DIR) to already be a clone of
+# https://github.com/pragsmike/packs (clone it once by hand if absent;
+# this target does not create it).
+pack-push: pack pack-skills
+	@if [ ! -d "$(PACKS_REPO_DIR)/.git" ]; then \
+		echo "error: $(PACKS_REPO_DIR) is not a git clone of pragsmike/packs -- clone it first"; \
+		exit 1; \
+	fi
+	@cp $(PACK_OUTPUT) $(PACKS_REPO_DIR)/$(REPO_NAME)-pack.txt
+	@cp $(PACK_SKILLS_OUTPUT) $(PACKS_REPO_DIR)/$(REPO_NAME)-skills-pack.txt
+	@head="$$(git rev-parse HEAD 2>/dev/null || echo 'no commits yet')"; \
+	cd $(PACKS_REPO_DIR) && \
+	git add $(REPO_NAME)-pack.txt $(REPO_NAME)-skills-pack.txt && \
+	if git diff --cached --quiet; then \
+		echo "No pack changes to push (packs repo already up to date)"; \
+	else \
+		git commit -m "$(REPO_NAME) @ $$head" > /dev/null && \
+		git push && \
+		echo "Packs pushed to pragsmike/packs ($(REPO_NAME) @ $$head)"; \
+	fi

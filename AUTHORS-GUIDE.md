@@ -26,12 +26,8 @@ filesystem directly. It elides `.agents/skills/**` and
 `.agents/prompts/archive/**` — skill content is large and changes
 rarely, so it doesn't belong in every session's context — and the header
 records the elision. `make pack-skills` packs exactly the elided
-directories, to a separate file, for the author to upload to project
-knowledge by hand when skills actually change; nothing here pushes it
-anywhere automatically. `make pack-push`'s behavior is unchanged: it
-pushes the slim `pack` output, auto-pushed each session per the rule
-below. The skills pack is regenerated and re-uploaded by the author only
-when `.agents/skills/` or archived prompts change materially.
+directories, to a separate file. The skills pack is regenerated whenever
+`.agents/skills/` or archived prompts change materially.
 
 Unlike the guide's pack, this one leads with a header block — repo name,
 UTC generation timestamp, current `git rev-parse HEAD`, and
@@ -42,9 +38,21 @@ context.
 
 **Sessions end with `make pack-push`, run after the final commit.** This
 subsumes the older "regenerate the pack before ending a session" rule —
-`pack-push` depends on `pack`, so it regenerates and publishes in one
-step, to the author's gist (see `Makefile`). The ordering still matters:
-run last, not mid-session, so the header's clean-tree line remains the
+`pack-push` depends on both `pack` and `pack-skills`, so it regenerates
+both and publishes both in one step. **Pack transport v2 (2026-07-24):**
+`pack-push` copies both packs into a local clone of the public
+`pragsmike/packs` repo (`~/.packs`, cloned once by hand — see
+`Makefile`), commits with a message naming this repo and its HEAD, and
+pushes. The design channel then fetches either pack by a plain
+`raw.githubusercontent.com/pragsmike/packs/main/<file>` URL. This
+replaces the original transport, a PATCH to a gist
+(`4fcd1abb4e74a5b54f9c241877edd02a`, left in place but retired, not
+deleted): raw GitHub content is CDN-served and reliably fetchable by the
+design channel, where the gist API's rate-limited shared pool was not.
+With the skills pack published the same way as the slim pack, no manual
+upload step remains anywhere in the workflow — both packs regenerate and
+publish in the same `make pack-push` run. The ordering still matters: run
+last, not mid-session, so the header's clean-tree line remains the
 invariant it's meant to be. A pack generated mid-session, before the last
 commit, can legitimately show a dirty tree; a pack pushed last and still
 showing a dirty tree is a real signal something was left uncommitted.
