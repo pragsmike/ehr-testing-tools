@@ -1,9 +1,19 @@
 # Pipeline Notation
 
-The repo-local semantics for the resource-equation notation used to
-describe this repo's own pipeline (`docs/pipeline.edn`, rendered as
-`docs/pipeline.md`). General notation — equation syntax, diagram
-conventions, the monoidal-category reading — is the
+[docs/pipeline.md](pipeline.md) describes this repo's own pipeline as a
+sequence of resource equations. This document is the language that
+description is written in — read it before or alongside the pipeline
+page if the equation syntax there is unfamiliar.
+
+The notation exists in this repo for a specific reason: sessions
+working on this codebase can't see each other, so a pipeline stage
+authored by one session has to be checkable and alignable by the next
+without either session holding the other's context. Writing a stage as
+an equation — fixed inputs, fixed outputs, a named law — turns "does
+this stage still do what it's supposed to" into something a later
+session (or a reader) can verify by inspection, not something that has
+to be remembered or re-explained. General notation — equation syntax,
+diagram conventions, the monoidal-category reading — is the
 `.agents/skills/string-diagram` skill's job; this document defines
 only what's specific to *this* repo's pipeline, not the notation
 itself.
@@ -53,15 +63,12 @@ Every catalytic resource must resolve to exactly one of four targets:
 4. **In-repo code registries**, referenced by `{id, version}` — a
    versioned catalog of code this repo authors and ships as part of
    itself (the operator catalog, `corpus.operators`; the canonicalizer
-   registry, `corpus.canonicalizers`). Ratified 2026-07-24, from a gap
-   pattern nursery [#13](../.agents/memory/patterns.md) surfaced in
-   P4: Mutate's catalytic resource is code, not an acquired artifact, a
-   `deps.edn` dependency, or hashed data — its real provenance
-   mechanism is version reference into a registry this repo itself
-   defines, the same mechanism canonicalizer application already used
-   for target 3's near-neighbor. Distinguished from target 3 by kind,
-   not degree: target 3 is data this repo wrote; target 4 is code this
-   repo wrote, versioned and referenced the same way data would be.
+   registry, `corpus.canonicalizers`). Distinguished from target 3 by
+   kind, not degree: target 3 is data this repo wrote; target 4 is code
+   this repo wrote, versioned and referenced the same way data would
+   be. (This target was added to close a gap in the original three —
+   see pattern nursery [#13](../.agents/memory/patterns.md) for the
+   trial history that surfaced it.)
 
 A catalytic resource that resolves to none of the four is a gap in
 the equation, not an oversight to paper over silently.
@@ -95,3 +102,14 @@ experiment, not asserted by fiat, and an equation that depends on it
 cites the experiment that verified it (e.g. "Mutate operates on
 plain-data JSON because EXP-B2 verified its round-trip is faithful,"
 not merely "plain-data JSON is what we use").
+
+## Status
+
+This formalization is exploratory, not settled: it is on trial against
+the promotion criteria recorded in pattern nursery
+[#13](../.agents/memory/patterns.md), and its shape may still change as
+more stages move from planned to built. The equation syntax and
+diagram-rendering machinery belong to the shared
+`.agents/skills/string-diagram` skill (a general monoidal-category
+notation, not authored for this repo specifically); what's specific
+here is only the pipeline vocabulary this document defines.
