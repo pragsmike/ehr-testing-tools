@@ -85,9 +85,25 @@
     (json/write-str r)
     (pr-str r)))
 
+(defn main!
+  "The real body of -main, with every side-effecting boundary
+  injectable for testing: :dispatch-fn (default `dispatch`),
+  :println-fn (default `println`), :exit-fn (default `System/exit`).
+  Returns the exit code it computed -- mainly useful for tests; -main
+  itself ignores the return value since :exit-fn already terminated
+  the process in real use. This split is what lets -main's exit-code
+  mapping and command routing be unit-tested without a real
+  System/exit (which would kill the test JVM)."
+  ([raw-args] (main! raw-args {}))
+  ([raw-args {:keys [dispatch-fn println-fn exit-fn]
+              :or {dispatch-fn dispatch println-fn println exit-fn #(System/exit %)}}]
+   (let [{:keys [args opts]} (parse raw-args)
+         r (dispatch-fn args opts)
+         code (result->exit-code r)]
+     (println-fn (render r (:json opts)))
+     (exit-fn code)
+     code)))
+
 (defn -main
   [& raw-args]
-  (let [{:keys [args opts]} (parse raw-args)
-        r (dispatch args opts)]
-    (println (render r (:json opts)))
-    (System/exit (result->exit-code r))))
+  (main! raw-args))
