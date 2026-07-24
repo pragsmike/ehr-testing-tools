@@ -139,17 +139,26 @@
   gate.report (gate-label identifies which gate ran, in :run). Writes
   the report to :report when given (EDN, canonical -- ADR-0004).
 
+  :baseline (P6, a path to a previously-written --report EDN file)
+  switches to baseline-relative mode (ehr-testing-tools.gate.report/
+  baseline-relative-report): the written/returned payload becomes
+  {:absolute :relative} instead of a bare Report, and the exit-code
+  decision below follows :relative's totals, not :absolute's -- see
+  docs/gate-calibration.md for when to reach for this and its exact-
+  match limitation.
+
   Exit-code contract (ADR-0004's generic ok/rejected/error mapping,
   applied here rather than special-cased): result/ok when the
-  aggregate has zero rejected files -- including an indeterminate-only
-  run, which is exit 0 by this rule, but :totals in the written/
-  returned report says so loudly, exactly as README's gate section
-  documents; result/rejected :gate-rejected the moment any file was
-  rejected. `main!`'s result->exit-code needs no gate-specific
-  handling: 0 all pass (indeterminate-only included), 1 any rejected,
-  2 an operational error from the gate-file-fn/gate-dir-fn themselves."
+  aggregate (absolute, or relative in --baseline mode) has zero
+  rejected files -- including an indeterminate-only run, which is exit
+  0 by this rule, but :totals in the written/returned report says so
+  loudly, exactly as README's gate section documents; result/rejected
+  :gate-rejected the moment any file was rejected. `main!`'s
+  result->exit-code needs no gate-specific handling: 0 all pass
+  (indeterminate-only included), 1 any rejected, 2 an operational
+  error from the gate-file-fn/gate-dir-fn themselves."
   [gate-file-fn gate-dir-fn gate-label]
-  (fn [{:keys [path report]}]
+  (fn [{:keys [path report baseline]}]
     (let [f (io/file path)
           results-result (if (.isDirectory f)
                             (gate-dir-fn path)
@@ -160,11 +169,19 @@
       (if-not (result/ok? results-result)
         results-result
         (let [results (:results (:payload results-result))
-              rpt (report/build-report results {:gate gate-label :path path})]
-          (when report (spit report (pr-str rpt)))
-          (if (pos? (:rejected (:totals rpt)))
-            (result/rejected :gate-rejected rpt)
-            (result/ok rpt)))))))
+              run {:gate gate-label :path path}]
+          (if baseline
+            (let [baseline-report (edn/read-string (slurp baseline))
+                  br (report/baseline-relative-report results run baseline-report)]
+              (when report (spit report (pr-str br)))
+              (if (pos? (:rejected (:totals (:relative br))))
+                (result/rejected :gate-rejected br)
+                (result/ok br)))
+            (let [rpt (report/build-report results run)]
+              (when report (spit report (pr-str rpt)))
+              (if (pos? (:rejected (:totals rpt)))
+                (result/rejected :gate-rejected rpt)
+                (result/ok rpt)))))))))
 
 (def gate-v2-command
   (gate-command gate-v2/gate-file gate-v2/gate-dir :v2))
@@ -181,7 +198,7 @@
   `target/gate-fhir` (gitignored build scratch, like `target/` already
   is for `make pipeline`); :java-bin, when given, bypasses registry
   resolution exactly like corpus.generate's own :java-bin override."
-  [{:keys [path report lockfile out-dir java-bin]}]
+  [{:keys [path report lockfile out-dir java-bin baseline]}]
   (let [artifacts-result (default-lockfile-artifacts lockfile)]
     (if-not (result/ok? artifacts-result)
       artifacts-result
@@ -191,7 +208,7 @@
             gate-fn (gate-command #(gate-fhir/gate-file % fhir-opts)
                                   #(gate-fhir/gate-dir % fhir-opts)
                                   :fhir)]
-        (gate-fn {:path path :report report})))))
+        (gate-fn {:path path :report report :baseline baseline})))))
 
 (defn- parse-canonicalizer-steps
   "\"id@v,id2@v2\" -> [[:id \"v\"] [:id2 \"v2\"]] -- the ordered

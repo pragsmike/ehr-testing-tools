@@ -23,9 +23,9 @@
 
 (deftest build-report-lists-per-file-summaries-test
   (let [r (report/build-report sample-results {:path "corpus/"})]
-    (is (= [{:path "a.json" :verdict :pass :finding-count 0}
-            {:path "b.json" :verdict :rejected :finding-count 2}
-            {:path "c.json" :verdict :indeterminate :finding-count 1}]
+    (is (= [{:path "a.json" :verdict :pass :finding-count 0 :findings []}
+            {:path "b.json" :verdict :rejected :finding-count 2 :findings [(finding "structure") (finding "structure")]}
+            {:path "c.json" :verdict :indeterminate :finding-count 1 :findings [(finding "code-invalid")]}]
            (:files r)))))
 
 (deftest build-report-carries-run-metadata-test
@@ -83,3 +83,69 @@
     (is (= [] (:files-removed d)))
     (is (= [] (:codes-appeared d)))
     (is (= [] (:codes-disappeared d)))))
+
+;; ---- baseline-relative verdicts (P6): motivated by EXP-C5's
+;; discovery that a profile-stamped corpus carries pre-existing
+;; findings on every file -- file-level verdict alone can't
+;; discriminate a genuinely new problem from baseline noise. A finding
+;; counts toward rejection only if it isn't already present in the
+;; baseline for that file, matched by an exact {severity, code,
+;; locator-path} triple. ----
+
+(defn- loc [path] {:format :fhir :path path})
+
+(defn- f [severity code path]
+  {:severity severity :code code :locator (loc path) :message "m" :engine {:name "e" :version "1"}})
+
+(def baseline-noisy-file-findings
+  ;; A file that's already :rejected in the baseline -- pre-existing
+  ;; profile noise, nothing to do with any real regression.
+  [(f :error "structure" "meta.profile") (f :error "structure" "meta.profile")])
+
+(def baseline-report
+  (report/build-report
+   [{:path "noisy.json" :verdict :rejected :findings baseline-noisy-file-findings}
+    {:path "clean.json" :verdict :pass :findings []}]
+   {}))
+
+(deftest baseline-relative-report-a-file-whose-findings-are-all-in-the-baseline-is-relative-pass-test
+  (let [results [{:path "noisy.json" :verdict :rejected :findings baseline-noisy-file-findings}]
+        br (report/baseline-relative-report results {} baseline-report)]
+    (is (= :rejected (:verdict (first (:files (:absolute br))))))
+    (is (= :pass (:verdict (first (:files (:relative br))))))))
+
+(deftest baseline-relative-report-a-genuinely-new-finding-stays-rejected-test
+  (let [new-finding (f :error "invalid" "entry[0].resource.gender")
+        results [{:path "noisy.json" :verdict :rejected
+                   :findings (conj baseline-noisy-file-findings new-finding)}]
+        br (report/baseline-relative-report results {} baseline-report)
+        relative-file (first (:files (:relative br)))]
+    (is (= :rejected (:verdict relative-file)))
+    (is (= 1 (:finding-count relative-file))
+        "only the novel finding counts -- the two baseline-matched findings are excluded")))
+
+(deftest baseline-relative-report-a-file-not-in-the-baseline-at-all-is-fully-novel-test
+  (let [results [{:path "brand-new.json" :verdict :rejected :findings [(f :error "invalid" "x")]}]
+        br (report/baseline-relative-report results {} baseline-report)]
+    (is (= :rejected (:verdict (first (:files (:relative br))))))))
+
+(deftest baseline-relative-report-matches-on-the-exact-severity-code-locator-triple-test
+  ;; Same code and locator, but a different severity -- not a match;
+  ;; the finding still counts as novel. Exact-triple matching is a
+  ;; documented limitation (docs/gate-calibration.md), not a bug.
+  (let [different-severity (f :warning "structure" "meta.profile")
+        results [{:path "noisy.json" :verdict :rejected :findings [different-severity]}]
+        br (report/baseline-relative-report results {} baseline-report)]
+    (is (= :rejected (:verdict (first (:files (:relative br))))))))
+
+(deftest baseline-relative-report-clean-file-with-no-findings-stays-pass-test
+  (let [results [{:path "clean.json" :verdict :pass :findings []}]
+        br (report/baseline-relative-report results {} baseline-report)]
+    (is (= :pass (:verdict (first (:files (:relative br))))))))
+
+(deftest baseline-relative-report-carries-both-absolute-and-relative-sections-test
+  (let [results [{:path "noisy.json" :verdict :rejected :findings baseline-noisy-file-findings}]
+        br (report/baseline-relative-report results {:gate :fhir} baseline-report)]
+    (is (report/valid? (:absolute br)))
+    (is (report/valid? (:relative br)))
+    (is (= {:gate :fhir} (:run (:absolute br))))))

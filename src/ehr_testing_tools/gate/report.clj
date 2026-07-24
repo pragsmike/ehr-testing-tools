@@ -18,6 +18,7 @@
    [:path :string]
    [:verdict finding/Verdict]
    [:finding-count :int]
+   [:findings {:optional true} [:vector finding/Finding]]
    [:id {:optional true} :string]])
 
 (def Report
@@ -35,7 +36,11 @@
   "results is a seq of per-file gate outcomes {:path :verdict :findings
   [...] :id (optional)}. run is free-form metadata about this run
   (which gate, which path/corpus was gated, etc.) -- carried through
-  verbatim as :run."
+  verbatim as :run. Each FileEntry retains its full :findings (not
+  just :finding-count) -- P6 needs this so a persisted report can
+  later serve as a --baseline for baseline-relative-report below;
+  :finding-count stays too, for a quick scan that doesn't need to
+  walk :findings itself."
   [results run]
   (let [totals (reduce (fn [acc {:keys [verdict]}] (update acc verdict inc))
                         {:pass 0 :rejected 0 :indeterminate 0}
@@ -45,7 +50,7 @@
                         {}
                         results)
         files (mapv (fn [{:keys [path verdict findings id]}]
-                      (cond-> {:path path :verdict verdict :finding-count (count findings)}
+                      (cond-> {:path path :verdict verdict :finding-count (count findings) :findings (vec findings)}
                         id (assoc :id id)))
                     results)]
     {:run run :totals totals :by-code by-code :files files}))
@@ -76,3 +81,62 @@
      :files-removed (vec removed)
      :codes-appeared (vec (sort (set/difference b-codes a-codes)))
      :codes-disappeared (vec (sort (set/difference a-codes b-codes)))}))
+
+;; ---- baseline-relative verdicts (P6): motivated by EXP-C5's
+;; discovery that a profile-stamped corpus carries pre-existing
+;; findings on every file, so a file-level verdict alone can't
+;; discriminate a genuinely new problem from baseline noise -- see
+;; docs/gate-calibration.md for the full motivation and the exact-
+;; match limitation this deliberately accepts. ----
+
+(defn- finding-key
+  "The {severity, code, locator-path} triple baseline matching keys
+  on -- deliberately excludes :message and :native-ref, which can
+  legitimately vary run to run for the *same* underlying finding
+  (e.g. differing diagnostic text), and deliberately excludes any
+  format-specific extension field (e.g. gate.fhir's own :policy) so
+  this stays format-agnostic, matching build-report's own contract."
+  [f]
+  [(:severity f) (:code f) (get-in f [:locator :path])])
+
+(defn- baseline-finding-keys
+  "The set of finding-key triples already present in baseline's
+  FileEntry for path -- empty if the file isn't in the baseline at
+  all, or the baseline predates :findings (an older report.edn with
+  only :finding-count, gracefully treated as \"nothing known\", not an
+  error)."
+  [baseline path]
+  (let [entry (first (filter #(= path (:path %)) (:files baseline)))]
+    (set (map finding-key (:findings entry)))))
+
+(defn- relative-file-result
+  "Recomputes one file's result relative to baseline: a finding counts
+  toward rejection only if its finding-key triple is not already
+  present in baseline for that file. Verdict is binary (:pass or
+  :rejected) even against a ternary-capable gate's own absolute
+  verdict -- gate.report stays format-agnostic and has no access to
+  any format-specific per-finding classification (e.g. gate.fhir's own
+  :policy) that would be needed to preserve :indeterminate here; a
+  novel :indeterminate-worthy finding still counts as :rejected in
+  relative mode. Stated plainly (docs/gate-calibration.md), not left
+  implicit."
+  [{:keys [path findings id]} baseline]
+  (let [known (baseline-finding-keys baseline path)
+        novel (vec (remove #(contains? known (finding-key %)) findings))]
+    (cond-> {:path path :verdict (if (seq novel) :rejected :pass) :findings novel}
+      id (assoc :id id))))
+
+(defn baseline-relative-report
+  "Builds a baseline-relative report from results (the same
+  {:path :verdict :findings [...] :id (optional)} shape build-report
+  consumes) and baseline (a previously-produced Report, e.g. read back
+  from a --report file of an earlier run). Returns {:absolute <Report>
+  :relative <Report>} -- :absolute is exactly build-report's own
+  output over results, unchanged; :relative recomputes each file's
+  verdict against baseline first. Exit-code decisions belong to the
+  caller (the CLI): the relative verdict is what --baseline mode
+  promises to gate on, but the absolute findings are never hidden."
+  [results run baseline]
+  (let [absolute (build-report results run)
+        relative-results (map #(relative-file-result % baseline) results)]
+    {:absolute absolute :relative (build-report relative-results run)}))

@@ -59,3 +59,64 @@ verdict is a claim about *what was checked*, not a guarantee of
 correctness beyond that scope -- see the FHIR gate's profile-noise
 caveat above, and see `README.md`'s maturity table for the one-line
 honest summary this page backs.
+
+## Baseline-relative gating (2026-07-25, P6)
+
+The profile-noise finding above has a direct practical consequence:
+gating a real-world, profile-stamped corpus straight against `ehr gate
+fhir` gives you `:rejected` on nearly every file, most of it noise
+inherited from the file's own declared profile, not a defect a
+pipeline change introduced. File-level (or corpus-level) verdict alone
+cannot discriminate "this file has always looked like this" from
+"this file just broke."
+
+`ehr gate fhir|v2 DIR --baseline report.edn` answers a narrower,
+actually useful question: **did gating this corpus find anything NEW
+relative to a prior run?** It gates normally, then recomputes each
+file's verdict against a previously-captured baseline report (any
+report a prior `--report` write produced) -- a finding counts toward
+rejection only if its `{severity, code, locator-path}` triple isn't
+already present in the baseline for that same file. The output becomes
+`{:absolute :relative}`: `:absolute` is the ordinary, unfiltered
+report (every finding, exactly as `--report` without `--baseline`
+would write it); `:relative` is the baseline-filtered view. **The exit
+code follows `:relative`, not `:absolute`** -- a corpus that's
+identically noisy to its baseline exits 0, even though `:absolute`
+still shows every pre-existing finding, loudly, in the same payload.
+
+**When to reach for it:**
+
+- **Real-world corpora** -- an ingestion pipeline's own output,
+  already carrying whatever profile noise its declared profile
+  implies (exactly EXP-C5's scenario, now made operational rather
+  than merely diagnosed).
+- **Validator/profile upgrades** -- capture a baseline before
+  upgrading `fhir-validator-cli` or pinning a new IG version, then gate
+  the same corpus after; `:relative` isolates findings the upgrade
+  itself introduced from findings that were already there.
+- **Drift detection** -- capture a baseline periodically (see the
+  regression-baselining use case, `docs/use-cases.md`) and gate new
+  runs against the last-known-good baseline; `:relative` is the signal
+  worth alerting on, not `:absolute`'s raw noise floor.
+
+**Matching semantics, stated plainly:** matching is **exact-triple
+only** -- `{severity, code, locator-path}` must match the baseline
+finding byte-for-byte. This is a deliberate v1 limitation, not an
+oversight: no fuzzier matching (a locator-path that shifted by array
+index after an unrelated upstream field was added, a severity that
+legitimately escalated between validator versions, a code renamed
+between validator releases) is attempted. A baseline captured before
+an unrelated corpus reshuffle can therefore show more `:relative`
+noise than a human would expect, because paths that used to line up
+no longer do. Fuzzier matching (locator-path proximity, code
+synonymy) is real future work, not solved here -- see the plan file's
+P7 sketch.
+
+**Format-agnostic, not ternary-preserving:** `gate.report` (which owns
+this diffing, not either format-specific gate namespace) has no access
+to a format-specific per-finding classification like `gate.fhir`'s own
+`:policy` field, so `:relative` verdicts are binary (`:pass`/
+`:rejected`), never `:indeterminate`, even when the underlying novel
+finding would itself classify as `:indeterminate` in `:absolute` mode.
+A novel indeterminate-worthy finding still counts as `:relative`
+`:rejected` -- stated here rather than left as a surprise.

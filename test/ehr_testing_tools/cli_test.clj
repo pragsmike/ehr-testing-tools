@@ -5,6 +5,7 @@
             [clojure.string]
             [ehr-testing-tools.result :as result]
             [ehr-testing-tools.artifact :as artifact]
+            [ehr-testing-tools.gate.report :as report]
             [ehr-testing-tools.cli :as cli])
   (:import [java.io File]))
 
@@ -340,6 +341,51 @@
   (let [r (cli/fhir-gate-command {:path "x.json" :lockfile "/no/such/lockfile.edn"})]
     (is (result/error? r))
     (is (= :not-found (:category r)))))
+
+;; ---- gate --baseline (`ehr gate v2|fhir DIR --baseline report.edn`,
+;; P6): a finding counts toward rejection only if it isn't already
+;; present in the baseline for that file. ----
+
+(deftest gate-v2-command-baseline-mode-suppresses-a-known-finding-test
+  (let [in-dir (temp-dir*)
+        broken-path (io/file in-dir "broken.hl7")
+        _ (spit broken-path "MSH|^~&|only-encoding-chars-broken")
+        baseline-run (cli/gate-v2-command {:path in-dir})
+        baseline-file (str (temp-dir*) "/baseline.edn")
+        _ (spit baseline-file (pr-str (:payload baseline-run)))
+        r (cli/gate-v2-command {:path in-dir :baseline baseline-file})]
+    (is (result/rejected? baseline-run) "sanity: the file is genuinely rejected absolutely")
+    (is (result/ok? r) "every finding is already in the baseline -- nothing novel")
+    (is (report/valid? (:absolute (:payload r))))
+    (is (report/valid? (:relative (:payload r))))
+    (is (= :rejected (:verdict (first (:files (:absolute (:payload r)))))))
+    (is (= :pass (:verdict (first (:files (:relative (:payload r)))))))))
+
+(deftest gate-v2-command-baseline-mode-still-rejects-a-genuinely-new-finding-test
+  (let [in-dir (temp-dir*)
+        _ (spit (io/file in-dir "ok.hl7") (slurp "test/fixtures/v2/adt-a01-admit.hl7"))
+        baseline-run (cli/gate-v2-command {:path in-dir})
+        baseline-file (str (temp-dir*) "/baseline.edn")
+        _ (spit baseline-file (pr-str (:payload baseline-run)))
+        ;; Now break the same file -- a genuinely new finding relative
+        ;; to the passing baseline.
+        _ (spit (io/file in-dir "ok.hl7") "MSH|^~&|only-encoding-chars-broken")
+        r (cli/gate-v2-command {:path in-dir :baseline baseline-file})]
+    (is (result/ok? baseline-run))
+    (is (result/rejected? r))
+    (is (= :gate-rejected (:category r)))
+    (is (= 1 (cli/result->exit-code r)))))
+
+(deftest gate-v2-command-baseline-mode-writes-the-baseline-relative-report-when-requested-test
+  (let [in-dir (temp-dir*)
+        _ (spit (io/file in-dir "a.hl7") (slurp "test/fixtures/v2/adt-a01-admit.hl7"))
+        baseline-file (str (temp-dir*) "/baseline.edn")
+        _ (spit baseline-file (pr-str (:payload (cli/gate-v2-command {:path in-dir}))))
+        out-file (str (temp-dir*) "/relative-report.edn")
+        r (cli/gate-v2-command {:path in-dir :baseline baseline-file :report out-file})]
+    (is (result/ok? r))
+    (is (.exists (io/file out-file)))
+    (is (= (:payload r) (clojure.edn/read-string (slurp out-file))))))
 
 ;; ---- check-command (`ehr check`): reads --assertions as an EDN file,
 ;; parses --canonicalizers "id@v,..." into ordered [id version] pairs,
