@@ -98,10 +98,13 @@ is self-refuting. This repo commits to:
 
 The repo flips from private to public when **all** of the following hold:
 
-1. **Licensing is clean** — the [ADR-0001](../notes/ADRs.md) Apache-2.0
-   target is met, every dependency is verified compatible, and EXP-SBOM
-   (see `docs/experiments.md`) has resolved, including
-   [F1](../notes/facts-register.md) (NIST v2-validation licensing).
+1. **Licensing is clean** — the [ADR-0007](../notes/ADRs.md) MIT target
+   is met (ADR-0007 supersedes ADR-0001's Apache-2.0 target; EXP-SBOM's
+   compatibility findings were evaluated against "permissive
+   open-source distribution" and transfer unchanged), every dependency
+   is verified compatible, and EXP-SBOM (see `docs/experiments.md`) has
+   resolved, including [F1](../notes/facts-register.md) (NIST
+   v2-validation licensing).
 2. At least one tool has reached "usable" maturity with honest docs (no
    overclaiming what it does).
 3. CI is green and runs offline.

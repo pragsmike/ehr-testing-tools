@@ -204,3 +204,34 @@ precedes implementation; red→green evidence in session reports;
 `make test` and `make coverage` green/reported before any session-final
 commit."
 **Status.** Accepted (author-directed).
+
+---
+## ADR-0007 — License: MIT (supersedes ADR-0001)
+**Context.** ADR-0001 chose Apache 2.0 for the patent grant and ecosystem
+fit. The author's other public projects are MIT; a single license
+posture across projects reduces per-repo reasoning for humans and agents
+alike; the repo is pre-release with no external contributors or
+downstream users, making this the cheapest moment a relicense will ever
+be. All EXP-SBOM compatibility findings (see `docs/experiments/EXP-SBOM-
+results.md`) were evaluated against "permissive open-source
+distribution" and transfer unchanged — MIT and Apache 2.0 are in the
+same compatibility class for every dependency examined (EPL entries, the
+MPL election, the LGPL flag included).
+**Decision.** MIT for all original code and documentation. Attribution
+semantics are equivalent for the project's purpose (retain the notice in
+copies).
+**Rejected.** Staying on Apache 2.0 — its explicit patent grant and §5
+contribution term are real but modest for testing tooling; the trade is
+accepted knowingly. Dual licensing — complexity without a constituency.
+**Consequence.** `LICENSE` replaced with MIT (standard text, author's
+copyright line, current year). Forward-looking docs that named the
+Apache target are updated: `docs/components.md`'s framing where it said
+"against the Apache-2.0 target", `docs/positioning.md`'s go-public gate,
+and ADR-0001's own dependency-review question — "compatible with Apache
+2.0 distribution?" — is superseded by "compatible with MIT
+distribution?" (same compatibility class, same answers for every
+dependency examined to date). Historical documents — the EXP-SBOM
+protocol and results, archived prompts, and ADR-0001 itself — are dated
+records and are not edited; this record supersedes ADR-0001, it does not
+revise it.
+**Status.** Accepted (author-directed), 2026-07-24.
