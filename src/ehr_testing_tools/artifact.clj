@@ -10,11 +10,12 @@
   (:refer-clojure :exclude [resolve])
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
+            [clojure.string :as str]
             [malli.core :as m]
             [ehr-testing-tools.digest :as digest]
             [ehr-testing-tools.result :as result]))
 
-(def ArtifactKind [:enum :engine :profile :module :other])
+(def ArtifactKind [:enum :engine :profile :module :runtime :other])
 (def LicenseStatus [:enum :verified :unverified :license-blocked-indeterminate])
 
 (def Artifact
@@ -125,3 +126,79 @@
          (result/ok {:path (.getAbsolutePath (io/file dir (:sha256 artifact))) :artifact artifact})
          (result/rejected :not-cached {:name name :version version})))
      (result/rejected :unknown-artifact {:name name :version version}))))
+
+;; ---- extraction (archives, not single files -- a JVM's bin/java is
+;; unreachable until its tarball is unpacked) ----
+
+(defn extracted-dir
+  "The deterministic extraction directory for a cached archive, keyed
+  by its own sha256 -- content-addressed like the cache entry itself,
+  so extraction is a derived, idempotent side effect of a
+  hash-verified download, not new state anyone has to separately
+  trust."
+  ([sha256] (extracted-dir sha256 nil))
+  ([sha256 cache-dir-override]
+   (str (cache-dir cache-dir-override) "/extracted/" sha256)))
+
+(defn default-extractor!
+  "The real, filesystem-touching extractor: shells out to `tar -xzf`
+  -- the only function in this namespace that ever spawns a
+  subprocess. Returns result/ok {:dest dest-dir} or result/error
+  :extract-failed on a nonzero exit."
+  [archive-path dest-dir]
+  (.mkdirs (io/file dest-dir))
+  (let [pb (ProcessBuilder. (into-array String ["tar" "-xzf" archive-path "-C" dest-dir]))]
+    (.redirectErrorStream pb true)
+    (let [proc (.start pb)
+          output (slurp (.getInputStream proc))
+          exit-code (.waitFor proc)]
+      (if (zero? exit-code)
+        (result/ok {:dest dest-dir})
+        (result/error :extract-failed {:archive archive-path :dest dest-dir
+                                        :exit-code exit-code :output output})))))
+
+(defn- extracted-already?
+  "True when dest-dir exists and is non-empty -- the idempotency check
+  that lets resolve-and-extract skip re-extracting on every call."
+  [dest-dir]
+  (let [f (io/file dest-dir)]
+    (and (.exists f) (.isDirectory f) (seq (.listFiles f)))))
+
+(defn resolve-and-extract
+  "Resolves name+version like `resolve`, then ensures the cached
+  archive is unpacked under `extracted-dir` (extracting via
+  `extractor` -- default `default-extractor!` -- only when not already
+  extracted). Returns result/ok {:extracted-dir :artifact}, or
+  propagates `resolve`'s own rejections, or result/error
+  :extract-failed from the extractor."
+  ([artifacts name version] (resolve-and-extract artifacts name version {}))
+  ([artifacts name version {:keys [cache-dir-override extractor] :or {extractor default-extractor!}}]
+   (let [resolve-result (resolve artifacts name version {:cache-dir-override cache-dir-override})]
+     (if-not (result/ok? resolve-result)
+       resolve-result
+       (let [{:keys [path artifact]} (:payload resolve-result)
+             dest (extracted-dir (:sha256 artifact) cache-dir-override)]
+         (if (extracted-already? dest)
+           (result/ok {:extracted-dir dest :artifact artifact})
+           (let [extract-result (extractor path dest)]
+             (if-not (result/ok? extract-result)
+               extract-result
+               (result/ok {:extracted-dir dest :artifact artifact})))))))))
+
+(defn find-executable
+  "Finds a file at relative-path (e.g. \"bin/java\") anywhere under a
+  one-level subdirectory of root -- archives extract to a single
+  version-named top directory whose exact name this deliberately
+  doesn't hardcode. Returns result/ok {:path} or result/rejected
+  :executable-not-found."
+  [root relative-path]
+  (let [root-file (io/file root)
+        candidates (when (.isDirectory root-file)
+                     (for [child (.listFiles root-file)
+                           :when (.isDirectory child)
+                           :let [candidate (apply io/file child (str/split relative-path #"/"))]
+                           :when (.exists candidate)]
+                       candidate))]
+    (if-let [found (clojure.core/first (sort-by str candidates))]
+      (result/ok {:path (.getAbsolutePath found)})
+      (result/rejected :executable-not-found {:root root :relative-path relative-path}))))

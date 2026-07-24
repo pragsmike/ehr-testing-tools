@@ -1,9 +1,11 @@
 (ns ehr-testing-tools.artifact-test
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.java.io :as io]
+            [clojure.string]
             [clojure.test.check :as tc]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
+            [malli.core :as malli]
             [ehr-testing-tools.result :as result]
             [ehr-testing-tools.digest :as digest]
             [ehr-testing-tools.artifact :as artifact])
@@ -139,3 +141,82 @@
         r (artifact/resolve [art] "sample" "1.0.0" {:cache-dir-override dir})]
     (is (result/ok? r))
     (is (= (.getAbsolutePath (io/file dir (:sha256 art))) (:path (:payload r))))))
+
+;; ---- :runtime kind (P4: JVM as a lockfile artifact) ----
+
+(deftest runtime-is-a-valid-artifact-kind-test
+  ;; A JVM distribution is an acquired, external, binary input exactly
+  ;; like the Synthea engine jar -- it belongs in the same registry,
+  ;; under a kind that says what it is (a runtime, not an :engine).
+  (let [art (assoc (sample-artifact "jdk bytes") :kind :runtime)]
+    (is (malli.core/validate artifact/Artifact art))))
+
+;; ---- resolve-and-extract (archives, not single files, need
+;; unpacking before their contents -- e.g. a JVM's bin/java -- are
+;; reachable; extraction target is content-addressed by the archive's
+;; own sha256, so it's a derived, idempotent side effect of a
+;; verified cache hit, not new untracked state) ----
+
+(deftest extracted-dir-is-content-addressed-test
+  (is (clojure.string/ends-with? (artifact/extracted-dir "abc123" "/cache")
+                                  "/cache/extracted/abc123")))
+
+(deftest resolve-and-extract-extracts-on-first-resolve-test
+  (let [dir (temp-dir)
+        art (assoc (sample-artifact "archive bytes") :kind :runtime)
+        _ (spit (io/file dir (:sha256 art)) "archive bytes")
+        extract-calls (atom [])
+        extractor (fn [archive-path dest-dir]
+                    (swap! extract-calls conj [archive-path dest-dir])
+                    (.mkdirs (io/file dest-dir "jdk-1.0.0" "bin"))
+                    (spit (io/file dest-dir "jdk-1.0.0" "bin" "java") "#!fake")
+                    (result/ok {:dest dest-dir}))
+        r (artifact/resolve-and-extract [art] "sample" "1.0.0"
+                                         {:cache-dir-override dir :extractor extractor})]
+    (is (result/ok? r))
+    (is (= 1 (count @extract-calls)))
+    (is (clojure.string/ends-with? (:extracted-dir (:payload r)) (str "extracted/" (:sha256 art))))))
+
+(deftest resolve-and-extract-skips-extraction-when-already-extracted-test
+  (let [dir (temp-dir)
+        art (assoc (sample-artifact "archive bytes") :kind :runtime)
+        _ (spit (io/file dir (:sha256 art)) "archive bytes")
+        dest (io/file (artifact/extracted-dir (:sha256 art) dir) "jdk-1.0.0" "bin")
+        _ (.mkdirs dest)
+        _ (spit (io/file dest "java") "#!fake")
+        extract-calls (atom 0)
+        extractor (fn [_archive-path _dest-dir] (swap! extract-calls inc) (result/ok {}))
+        r (artifact/resolve-and-extract [art] "sample" "1.0.0"
+                                         {:cache-dir-override dir :extractor extractor})]
+    (is (result/ok? r))
+    (is (zero? @extract-calls) "already-extracted, non-empty dest-dir must not re-extract")))
+
+(deftest resolve-and-extract-propagates-resolve-rejection-test
+  (let [r (artifact/resolve-and-extract [] "nope" "1.0.0" {})]
+    (is (result/rejected? r))
+    (is (= :unknown-artifact (:category r)))))
+
+(deftest resolve-and-extract-propagates-extractor-failure-test
+  (let [dir (temp-dir)
+        art (assoc (sample-artifact "archive bytes") :kind :runtime)
+        _ (spit (io/file dir (:sha256 art)) "archive bytes")
+        extractor (fn [_archive-path _dest-dir] (result/error :extract-failed {:message "tar exploded"}))
+        r (artifact/resolve-and-extract [art] "sample" "1.0.0"
+                                         {:cache-dir-override dir :extractor extractor})]
+    (is (result/error? r))
+    (is (= :extract-failed (:category r)))))
+
+(deftest find-executable-locates-file-at-any-depth-test
+  (let [dir (temp-dir)
+        _ (.mkdirs (io/file dir "jdk-17.0.19+10" "bin"))
+        java-file (io/file dir "jdk-17.0.19+10" "bin" "java")
+        _ (spit java-file "#!fake")
+        r (artifact/find-executable dir "bin/java")]
+    (is (result/ok? r))
+    (is (= (.getAbsolutePath java-file) (:path (:payload r))))))
+
+(deftest find-executable-rejects-when-not-found-test
+  (let [dir (temp-dir)
+        r (artifact/find-executable dir "bin/java")]
+    (is (result/rejected? r))
+    (is (= :executable-not-found (:category r)))))

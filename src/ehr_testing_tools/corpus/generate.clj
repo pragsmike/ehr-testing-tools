@@ -16,9 +16,33 @@
 
 (def synthea-name "synthea")
 (def synthea-version "4.0.0")
+(def jdk-name "temurin-jdk")
+(def jdk-version "17.0.19+10")
+(def jdk-relative-path "bin/java")
 (def default-lockfile-path "artifacts.lock.edn")
 (def default-locale "en-US")
 (def default-timezone "UTC")
+
+(defn resolve-java-bin
+  "Resolves the pinned JVM runtime through the artifact registry
+  (P4: the JVM is a locked :runtime artifact, not something read off
+  PATH or a hardcoded home path) -- ensures the cached Temurin archive
+  is extracted, then locates bin/java inside it. Returns result/ok
+  {:path :artifact}, or propagates the first failing step's
+  rejection/error (:unknown-artifact, :not-cached, :extract-failed,
+  :executable-not-found)."
+  ([artifacts] (resolve-java-bin artifacts {}))
+  ([artifacts {:keys [resolve-and-extract find-executable]
+               :or {resolve-and-extract artifact/resolve-and-extract
+                    find-executable artifact/find-executable}}]
+   (let [extract-result (resolve-and-extract artifacts jdk-name jdk-version {})]
+     (if-not (result/ok? extract-result)
+       extract-result
+       (let [{:keys [extracted-dir artifact]} (:payload extract-result)
+             found-result (find-executable extracted-dir jdk-relative-path)]
+         (if-not (result/ok? found-result)
+           found-result
+           (result/ok {:path (:path (:payload found-result)) :artifact artifact})))))))
 
 (defn real-java-version
   "Queries java-bin's own reported version by actually running it -- the
@@ -115,13 +139,21 @@
     :extra-args      -- additional Synthea CLI args (e.g. for varying
                         generate.thread_pool_size in EXP-A4 rounds),
                         appended after the standard ones
-    :java-bin        -- java executable to invoke (default \"java\"). Must
-                        be Java 17+ for Synthea v4.0.0; this environment's
-                        default `java` is 11, so a portable JDK 17 path
-                        must be passed explicitly here.
-    :java-version-fn -- how to query :java-bin's actual version for the
-                        manifest's environment record; defaults to
-                        real-java-version (injectable for testing).
+    :java-bin        -- java executable to invoke. When omitted, resolved
+                        through the artifact registry (resolve-java-bin
+                        above) against the pinned Temurin JDK 17 :runtime
+                        artifact -- never PATH, never a hardcoded home
+                        path. Must be Java 17+ for Synthea v4.0.0.
+                        Passing :java-bin explicitly bypasses registry
+                        resolution entirely (useful for a non-default
+                        JVM, or for tests).
+    :resolve-java-bin -- injectable for testing; defaults to
+                        resolve-java-bin above. Only consulted when
+                        :java-bin is omitted.
+    :java-version-fn -- how to query the resolved java-bin's actual
+                        version for the manifest's environment record;
+                        defaults to real-java-version (injectable for
+                        testing).
     :lockfile-path, :read-lockfile, :resolve-artifact, :run-invocation
                      -- injectable for testing; default to the real
                         artifact/invocation implementations.
@@ -130,12 +162,13 @@
   from the cache, this returns the resolve failure as-is -- run
   `ehr artifact fetch` first. Returns result/ok {:manifest :output-dir},
   or the first failing step's result (lockfile read, artifact resolve,
-  or invocation) unchanged."
+  JVM resolve, or invocation) unchanged."
   [{:keys [config-path seed clinician-seed population reference-date output-dir
-           locale timezone jvm-args extra-args java-bin
+           locale timezone jvm-args extra-args java-bin resolve-java-bin
            java-version-fn lockfile-path read-lockfile resolve-artifact run-invocation]
     :or {locale default-locale timezone default-timezone
-         jvm-args [] extra-args [] java-bin "java"
+         jvm-args [] extra-args []
+         resolve-java-bin resolve-java-bin
          java-version-fn real-java-version
          lockfile-path default-lockfile-path
          read-lockfile artifact/read-lockfile
@@ -149,33 +182,39 @@
         (if-not (result/ok? resolve-result)
           resolve-result
           (let [{:keys [path artifact]} (:payload resolve-result)
-                out-dir (io/file output-dir)
-                _ (.mkdirs out-dir)
-                stdout-path (.getAbsolutePath (io/file out-dir "synthea-stdout.log"))
-                stderr-path (.getAbsolutePath (io/file out-dir "synthea-stderr.log"))
-                all-jvm-args (vec (concat (locale-jvm-args locale) (timezone-jvm-args timezone) jvm-args))
-                args (synthea-args {:jar-path path :seed seed :clinician-seed clinician-seed
-                                     :population population
-                                     :reference-date reference-date
-                                     :config-path config-path
-                                     :output-dir (.getAbsolutePath out-dir)
-                                     :jvm-args all-jvm-args
-                                     :extra-args extra-args})
-                invocation-result (run-invocation {:command java-bin :args args
-                                                    :stdout-path stdout-path
-                                                    :stderr-path stderr-path})]
-            (if-not (result/ok? invocation-result)
-              invocation-result
-              (let [m (manifest/build-v1
-                       {:generator {:name (:name artifact)
-                                    :version (:version artifact)
-                                    :sha256 (:sha256 artifact)}
-                        :seed seed
-                        :clinician-seed clinician-seed
-                        :reference-date reference-date
-                        :config {:path config-path :sha256 (digest/sha256-file config-path)}
-                        :invocation (:payload invocation-result)
-                        :canonicalizers-applied []
-                        :environment (environment-record java-bin java-version-fn locale timezone)})]
-                (spit (io/file out-dir "manifest.edn") (pr-str m))
-                (result/ok {:manifest m :output-dir output-dir})))))))))
+                java-bin-result (if java-bin
+                                   (result/ok {:path java-bin :artifact nil})
+                                   (resolve-java-bin artifacts {}))]
+            (if-not (result/ok? java-bin-result)
+              java-bin-result
+              (let [resolved-java-bin (:path (:payload java-bin-result))
+                    out-dir (io/file output-dir)
+                    _ (.mkdirs out-dir)
+                    stdout-path (.getAbsolutePath (io/file out-dir "synthea-stdout.log"))
+                    stderr-path (.getAbsolutePath (io/file out-dir "synthea-stderr.log"))
+                    all-jvm-args (vec (concat (locale-jvm-args locale) (timezone-jvm-args timezone) jvm-args))
+                    args (synthea-args {:jar-path path :seed seed :clinician-seed clinician-seed
+                                         :population population
+                                         :reference-date reference-date
+                                         :config-path config-path
+                                         :output-dir (.getAbsolutePath out-dir)
+                                         :jvm-args all-jvm-args
+                                         :extra-args extra-args})
+                    invocation-result (run-invocation {:command resolved-java-bin :args args
+                                                        :stdout-path stdout-path
+                                                        :stderr-path stderr-path})]
+                (if-not (result/ok? invocation-result)
+                  invocation-result
+                  (let [m (manifest/build-v1
+                           {:generator {:name (:name artifact)
+                                        :version (:version artifact)
+                                        :sha256 (:sha256 artifact)}
+                            :seed seed
+                            :clinician-seed clinician-seed
+                            :reference-date reference-date
+                            :config {:path config-path :sha256 (digest/sha256-file config-path)}
+                            :invocation (:payload invocation-result)
+                            :canonicalizers-applied []
+                            :environment (environment-record resolved-java-bin java-version-fn locale timezone)})]
+                    (spit (io/file out-dir "manifest.edn") (pr-str m))
+                    (result/ok {:manifest m :output-dir output-dir})))))))))))

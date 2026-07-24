@@ -19,11 +19,19 @@
    :acquired "2026-07-24" :license-status :verified})
 
 (defn- stub-deps
-  "Fake read-lockfile/resolve-artifact/run-invocation for fast, hermetic
-  tests -- no real jar, no real JVM subprocess."
+  "Fake read-lockfile/resolve-artifact/resolve-java-bin/run-invocation
+  for fast, hermetic tests -- no real jar, no real JVM archive, no real
+  subprocess. resolve-java-bin defaults to an always-ok stub so tests
+  that don't care about JVM resolution (most of them -- it's exercised
+  directly by the java-bin-specific tests below) aren't forced to stub
+  it individually."
   [{:keys [lockfile-result resolve-result invocation-result invocation-args-atom]}]
   {:read-lockfile (fn [_path] lockfile-result)
    :resolve-artifact (fn [_artifacts _name _version] resolve-result)
+   :resolve-java-bin (fn [_artifacts _opts]
+                       (result/ok {:path "/stub/jdk/bin/java"
+                                   :artifact {:name "temurin-jdk" :version "17.0.19+10"
+                                              :sha256 (apply str (repeat 64 "d"))}}))
    :run-invocation (fn [invocation-opts]
                      (when invocation-args-atom (reset! invocation-args-atom invocation-opts))
                      invocation-result)})
@@ -195,6 +203,91 @@
                                             :output-dir (temp-dir)}))]
     (is (result/error? r))
     (is (= :spawn-failed (:category r)))))
+
+;; ---- java-bin resolved via the artifact registry, not PATH (P4:
+;; the JVM is now a locked :runtime artifact) ----
+
+(deftest generate-resolves-java-bin-from-registry-when-not-given-test
+  (let [out-dir (temp-dir)
+        config-file (File/createTempFile "synthea" ".properties")
+        args-atom (atom nil)
+        resolve-java-bin-calls (atom [])
+        deps (stub-deps {:lockfile-result (ok-lockfile)
+                          :resolve-result (ok-resolve)
+                          :invocation-result (ok-invocation)
+                          :invocation-args-atom args-atom})
+        r (generate/generate!
+           (merge deps
+                  {:config-path (.getAbsolutePath config-file)
+                   :seed 1 :clinician-seed 2 :population 1 :reference-date "20260101"
+                   :output-dir out-dir
+                   :resolve-java-bin (fn [artifacts _opts]
+                                       (swap! resolve-java-bin-calls conj artifacts)
+                                       (result/ok {:path "/resolved/jdk/bin/java"
+                                                   :artifact {:name "temurin-jdk" :version "17.0.19+10"
+                                                              :sha256 (apply str (repeat 64 "d"))}}))}))]
+    (is (result/ok? r))
+    (is (= 1 (count @resolve-java-bin-calls)) "resolve-java-bin must be consulted when :java-bin isn't given")
+    (is (= "/resolved/jdk/bin/java" (:command @args-atom))
+        "the invocation must run the registry-resolved java, not PATH's \"java\"")))
+
+(deftest generate-explicit-java-bin-skips-registry-resolution-test
+  (let [out-dir (temp-dir)
+        config-file (File/createTempFile "synthea" ".properties")
+        args-atom (atom nil)
+        resolve-java-bin-calls (atom 0)
+        deps (stub-deps {:lockfile-result (ok-lockfile)
+                          :resolve-result (ok-resolve)
+                          :invocation-result (ok-invocation)
+                          :invocation-args-atom args-atom})
+        r (generate/generate!
+           (merge deps
+                  {:config-path (.getAbsolutePath config-file)
+                   :seed 1 :clinician-seed 2 :population 1 :reference-date "20260101"
+                   :output-dir out-dir
+                   :java-bin "/explicit/java"
+                   :resolve-java-bin (fn [_artifacts _opts] (swap! resolve-java-bin-calls inc) (result/ok {}))}))]
+    (is (result/ok? r))
+    (is (zero? @resolve-java-bin-calls) "an explicit :java-bin must bypass registry resolution entirely")
+    (is (= "/explicit/java" (:command @args-atom)))))
+
+(deftest generate-propagates-java-bin-resolution-failure-test
+  (let [deps (stub-deps {:lockfile-result (ok-lockfile)
+                          :resolve-result (ok-resolve)
+                          :invocation-result (ok-invocation)})
+        r (generate/generate!
+           (merge deps
+                  {:config-path "x" :seed 1 :population 1 :reference-date "20260101"
+                   :output-dir (temp-dir)
+                   :resolve-java-bin (fn [_artifacts _opts]
+                                       (result/rejected :not-cached {:name "temurin-jdk" :version "17.0.19+10"}))}))]
+    (is (result/rejected? r))
+    (is (= :not-cached (:category r)))))
+
+(deftest resolve-java-bin-composes-resolve-and-extract-and-find-executable-test
+  (let [extract-calls (atom [])
+        find-calls (atom [])
+        resolve-and-extract (fn [artifacts name version _opts]
+                              (swap! extract-calls conj [name version])
+                              (result/ok {:extracted-dir "/fake/extracted"
+                                          :artifact {:name name :version version
+                                                     :sha256 (apply str (repeat 64 "e"))}}))
+        find-executable (fn [dir relative-path]
+                          (swap! find-calls conj [dir relative-path])
+                          (result/ok {:path (str dir "/" relative-path)}))
+        r (generate/resolve-java-bin [] {:resolve-and-extract resolve-and-extract
+                                          :find-executable find-executable})]
+    (is (result/ok? r))
+    (is (= [[generate/jdk-name generate/jdk-version]] @extract-calls))
+    (is (= [["/fake/extracted" "bin/java"]] @find-calls))
+    (is (= "/fake/extracted/bin/java" (:path (:payload r))))
+    (is (= generate/jdk-name (:name (:artifact (:payload r)))))))
+
+(deftest resolve-java-bin-propagates-resolve-and-extract-failure-test
+  (let [r (generate/resolve-java-bin [] {:resolve-and-extract (fn [_ _ _ _] (result/rejected :not-cached {}))
+                                          :find-executable (fn [_ _] (throw (ex-info "must not be called" {})))})]
+    (is (result/rejected? r))
+    (is (= :not-cached (:category r)))))
 
 (deftest generate-creates-output-dir-if-missing-test
   (let [parent (temp-dir)

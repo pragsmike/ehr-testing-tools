@@ -10,4 +10,12 @@
    :source "https://github.com/synthetichealth/synthea/releases/download/v4.0.0/synthea-with-dependencies.jar"
    :acquired "2026-07-24"
    :license-status :verified
-   :license-note "Apache License 2.0; verified 2026-07-23 -- see docs/components.md (Synthea) and facts register F2."}]}
+   :license-note "Apache License 2.0; verified 2026-07-23 -- see docs/components.md (Synthea) and facts register F2."}
+  {:kind :runtime
+   :name "temurin-jdk"
+   :version "17.0.19+10"
+   :sha256 "d8afc263758141a66e0e3aafc321e783f7016696f4eaea067d340a269037d331"
+   :source "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.19%2B10/OpenJDK17U-jdk_x64_linux_hotspot_17.0.19_10.tar.gz"
+   :acquired "2026-07-24"
+   :license-status :verified
+   :license-note "GPLv2 with the Classpath Exception; verified 2026-07-24 -- see docs/components.md (Synthea) and facts register F12. Linux x64, HotSpot, jdk image type -- the platform this repo's orchestrator actually runs on."}]}
