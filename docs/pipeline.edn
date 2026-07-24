@@ -60,4 +60,22 @@
    :inputs ["pass" "rejected" "indeterminate"]
    :outputs ["report"]
    :laws ["appends provenance: which engine, which profile, which verdicts, normalized to the finding envelope (pattern nursery #6, shared by both gate formats)"
-          "diffable: gate.report/diff-reports compares two reports of the same corpus -- changed verdicts, added/removed files, appeared/disappeared codes"]}]}
+          "diffable: gate.report/diff-reports compares two reports of the same corpus -- changed verdicts, added/removed files, appeared/disappeared codes"]}]
+
+ ;; Union resources (docs/notation.md, P6, pattern nursery #13): a
+ ;; named resource declared as the union of others -- a stage consuming
+ ;; the union accepts any member. This closes the disconnected-wire gap
+ ;; P5's diagram surfaced: Gate declares :inputs ["datum"], but no
+ ;; equation produced a resource literally named "datum" -- Normalize,
+ ;; Mutate, and Intake each feed Gate a different concrete resource,
+ ;; and the notation's × only expressed product/AND, never OR, between
+ ;; them. "datum" is now the declared union of Normalize's output
+ ;; (canonical-fhir-datum), Mutate's output (mutant-fhir-datum), and
+ ;; Intake's own input (foreign-file) -- Intake is an :enrich stage
+ ;; (adds fields without altering existing ones), so the file it
+ ;; catalogs, unchanged, is what Gate actually judges for an intaken
+ ;; corpus, not one of Intake's own outputs (catalog-entry,
+ ;; intake-record), which are metadata about the file, not the file.
+ :resources
+ [{:resource "datum"
+   :union-of ["canonical-fhir-datum" "mutant-fhir-datum" "foreign-file"]}]}

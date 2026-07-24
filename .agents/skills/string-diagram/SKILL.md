@@ -68,6 +68,9 @@ A × B → C + D  [Op]  {catalytic: B; discard: D}
 # Spider topology (fan/funnel duality)
 A → B + C  [Diverge]  {spider: fan}
 A × B → C  [Converge]  {spider: funnel}
+
+# External (black-box) operation: dashed border
+A → B  [UserTransform]  {external: true}
 ```
 
 **Spider annotations**: Mark operations as `fan` (one-to-many, divergent) or
@@ -97,6 +100,7 @@ The generated Mermaid diagram follows string-diagram style:
 | Coproduct | `A + B` | Multiple wires leaving one box |
 | Fan spider | `{spider: fan}` | Trapezoid node (blue) — one-to-many topology |
 | Funnel spider | `{spider: funnel}` | Inverted trapezoid node (green) — many-to-one topology |
+| External operation | `{external: true}` | Dashed-border box — a black-box operation the diagram's own system doesn't implement |
 
 ## How to use
 

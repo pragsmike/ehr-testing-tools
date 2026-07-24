@@ -142,8 +142,9 @@ the design channel.
     already used) — not a hash at all. This is now the fourth target,
     named explicitly in `docs/notation.md` rather than left folded into
     "hashed repo-authored config."
-    Status: on trial through the Gate equations (P5) — pattern nursery
-    promotion criteria pre-committed in P4: (1) does authoring the
+    Status: validated (P6, promoted from on-trial). Trial ran through
+    the Gate equations (P5) against promotion criteria pre-committed in
+    P4: (1) does authoring the
     Mutate equation surface a design question before implementation
     that the equation itself answers or clarifies? (2) does every
     catalytic resource in the four authored equations (Generate,
@@ -199,6 +200,37 @@ the design channel.
     gaps, criterion 1 now fired at least once — promotion is a design-
     channel call from here, not updated by this session per the
     original instruction.
+
+    **Status: validated (P6, author-directed promotion).** The P5
+    disconnected-wire gap is closed this session, not merely diagnosed:
+    `docs/notation.md` now defines union resources (a named resource
+    declared as the union of others, e.g. `datum` = the union of
+    `canonical-fhir-datum`, `mutant-fhir-datum`, `foreign-file`) and
+    external stages (a black-box stage with inputs/outputs but no laws,
+    rendered dashed); `docs/pipeline.edn`'s new `:resources` key
+    declares `datum` as exactly that union, and the regenerated
+    `docs/pipeline.md` shows Gate's `datum` wire now sourced from a
+    real `UnionDatum` merge node fed by Normalize, Mutate, and Intake's
+    own input -- the P5-flagged gap, closed by notation rather than by
+    equation-fudging. Evidence for validation, gathered across the
+    pattern's full trial: (a) **P4's diagram-caught cross-stage wiring
+    mismatch** (Normalize's output shape vs. Mutate's input shape,
+    caught before either was hand-verified); (b) **P5's authoring-forced
+    design decision** (format-dispatch for Gate resolved *before*
+    `gate.fhir`/`gate.v2` existed, not after); (c) **conformance across
+    isolated sessions** -- P4, P5, and this session each authored or
+    extended equations without shared context beyond this file and
+    `docs/notation.md`, and no session's equations contradicted an
+    earlier session's; (d) **single-source held** -- `docs/pipeline.md`
+    has never been hand-edited across three sessions, only regenerated
+    from `docs/pipeline.edn` via `make pipeline`. Refinements ratified
+    across the trial: the fourth catalytic target (in-repo code
+    registries, P4); union resources and external stages (this
+    session, P6). The tier-1 lint that checks every catalytic resource
+    resolves to one of the four targets is delivered this session
+    (Step 5, `make lint-pipeline`) as a **built-now deliverable**, not
+    as a promotion criterion the pattern was waiting on -- promotion
+    itself rests on (a)-(d) above.
 
 14. **Operators carry contracts** — mutation (introducing a defect) and
     metamorphic perturbation (transforming input while preserving an

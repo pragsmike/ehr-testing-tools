@@ -13,6 +13,7 @@ a Mermaid flowchart in string-diagram style:
   - Spider annotations render fan/funnel topology with distinct shapes
   - Enrichment morphisms (metadata-only changes) render as outlined boxes
   - Gate/collapse operations (coproduct + discard) render as purple nodes
+  - External (black-box) operations render with a dashed border
 
 Input format (resource equations file):
   Lines of the form:
@@ -24,6 +25,7 @@ Input format (resource equations file):
     A → B + C  [Op] {spider: fan}    (one-to-many spider: trapezoid, blue)
     A × B → C  [Op] {spider: funnel} (many-to-one spider: inv. trapezoid, green)
     A × R → A  [Op] {enriches: ns}   (enrichment: payload unchanged, metadata updated)
+    A → B      [Op] {external: true} (black-box operation: dashed border)
 
   - Type names: hyphenated lowercase identifiers (e.g., experience-reports)
   - Cross product: × (unicode) or * (ascii fallback)
@@ -63,6 +65,7 @@ class Equation:
     feedback: dict[str, str] = field(default_factory=dict)  # output→input feedback mapping
     spider: Optional[str] = None  # 'fan' (one-to-many) or 'funnel' (many-to-one)
     enriches: Optional[str] = None  # namespace written by enrichment morphism
+    external: bool = False  # black-box operation this diagram's own system doesn't implement
 
 
 # ---------------------------------------------------------------------------
@@ -93,17 +96,18 @@ def extract_types(expr: str) -> list[str]:
     return [p for p in parts if p]
 
 
-def parse_annotations(ann_str: str) -> tuple[set[str], set[str], dict[str, str], Optional[str], Optional[str]]:
-    """Parse {catalytic: X, Y; discard: Z; feedback: W→V; spider: fan|funnel; enriches: ns}."""
+def parse_annotations(ann_str: str) -> tuple[set[str], set[str], dict[str, str], Optional[str], Optional[str], bool]:
+    """Parse {catalytic: X, Y; discard: Z; feedback: W→V; spider: fan|funnel; enriches: ns; external: true}."""
     catalytic = set()
     discard = set()
     feedback = {}
     spider = None
     enriches = None
+    external = False
 
     ann_str = ann_str.strip().strip('{}')
     if not ann_str:
-        return catalytic, discard, feedback, spider, enriches
+        return catalytic, discard, feedback, spider, enriches, external
 
     for clause in ann_str.split(';'):
         clause = clause.strip()
@@ -131,8 +135,10 @@ def parse_annotations(ann_str: str) -> tuple[set[str], set[str], dict[str, str],
                 spider = val_str
         elif key == 'enriches':
             enriches = vals[0] if vals else None
+        elif key == 'external':
+            external = (vals[0].lower() if vals else '') in ('true', 'yes', '1')
 
-    return catalytic, discard, feedback, spider, enriches
+    return catalytic, discard, feedback, spider, enriches, external
 
 
 def parse_equation(line: str, number: int) -> Optional[Equation]:
@@ -170,7 +176,7 @@ def parse_equation(line: str, number: int) -> Optional[Equation]:
     # Parse inputs
     inputs = extract_types(lhs)
     
-    catalytic, discard, feedback, spider, enriches = parse_annotations(ann_str)
+    catalytic, discard, feedback, spider, enriches, external = parse_annotations(ann_str)
 
     return Equation(
         number=number,
@@ -182,6 +188,7 @@ def parse_equation(line: str, number: int) -> Optional[Equation]:
         feedback=feedback,
         spider=spider,
         enriches=enriches,
+        external=external,
     )
 
 
@@ -357,22 +364,28 @@ def generate_mermaid(equations: list[Equation], direction: str = 'LR') -> str:
     lines.append('')
     
     # Operations: dark boxes; spiders, enrichments, gates get distinct colors
-    lines.append('    %% Operations: dark boxes (fan=blue, funnel=green, enrichment=outlined, gate=purple)')
+    lines.append('    %% Operations: dark boxes (fan=blue, funnel=green, enrichment=outlined, gate=purple, external=dashed)')
     for eq in equations:
         if eq.operation:
             slug = slugify(eq.operation)
+            dashed = ',stroke-dasharray: 5 5' if eq.external else ''
             if eq.spider == 'fan':
-                lines.append(f'    style {slug} fill:#1a3a5c,stroke:#0d47a1,color:#bbdefb,stroke-width:2px')
+                lines.append(f'    style {slug} fill:#1a3a5c,stroke:#0d47a1,color:#bbdefb,stroke-width:2px{dashed}')
             elif eq.spider == 'funnel':
-                lines.append(f'    style {slug} fill:#1b5e20,stroke:#2e7d32,color:#c8e6c9,stroke-width:2px')
+                lines.append(f'    style {slug} fill:#1b5e20,stroke:#2e7d32,color:#c8e6c9,stroke-width:2px{dashed}')
             elif eq.enriches:
                 # Enrichment morphisms: outlined box (payload unchanged, metadata updated)
-                lines.append(f'    style {slug} fill:#e8eaf6,stroke:#3949ab,color:#1a237e,stroke-width:2px')
+                lines.append(f'    style {slug} fill:#e8eaf6,stroke:#3949ab,color:#1a237e,stroke-width:2px{dashed}')
             elif eq.discard and len(eq.outputs) >= 2:
                 # Gate / collapse operators: coproduct with discard (purple)
-                lines.append(f'    style {slug} fill:#4a148c,stroke:#6a1b9a,color:#e1bee7,stroke-width:2px')
+                lines.append(f'    style {slug} fill:#4a148c,stroke:#6a1b9a,color:#e1bee7,stroke-width:2px{dashed}')
             else:
-                lines.append(f'    style {slug} fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px')
+                # External (black-box) operations this diagram's own
+                # system doesn't implement: dashed border, same fill as
+                # a normal stage box otherwise -- the P4-era styling
+                # precedent for a not-yet-built stage, reused here for
+                # a stage that will never be built by this repo at all.
+                lines.append(f'    style {slug} fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px{dashed}')
     lines.append('')
     
     # Sources: light rounded

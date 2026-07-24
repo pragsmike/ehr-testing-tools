@@ -99,3 +99,72 @@
   (let [planned (assoc sample-stage :status :planned)
         text (pipeline/pipeline->equations-text {:stages [planned]})]
     (is (clojure.string/starts-with? text "# planned:"))))
+
+;; ---- union resources (docs/notation.md, P6): a named resource
+;; declared as the union of others -- a stage consuming the union
+;; accepts any member. Closes the P5 diagram gap (pattern nursery #13):
+;; Gate's own "datum" input previously had no producing equation. ----
+
+(def sample-union-resource
+  {:resource "datum" :union-of ["canonical-fhir-datum" "mutant-fhir-datum" "foreign-file"]})
+
+(deftest valid-union-resource-passes-test
+  (is (pipeline/valid-union-resource? sample-union-resource)))
+
+(deftest union-resource-requires-resource-and-union-of-test
+  (is (not (pipeline/valid-union-resource? (dissoc sample-union-resource :resource))))
+  (is (not (pipeline/valid-union-resource? (dissoc sample-union-resource :union-of)))))
+
+(deftest union-resource-renders-as-a-funnel-equation-test
+  ;; Reuses the string-diagram skill's existing funnel/spider machinery
+  ;; (many-to-one convergence) for the union's merge node, rather than
+  ;; inventing new diagram machinery for the same shape.
+  (is (= "canonical-fhir-datum × mutant-fhir-datum × foreign-file → datum  [UnionDatum]  {spider: funnel}"
+         (pipeline/union-resource->equation-line sample-union-resource))))
+
+(deftest pipeline->equations-text-includes-union-resource-lines-test
+  (let [text (pipeline/pipeline->equations-text {:stages [sample-stage] :resources [sample-union-resource]})]
+    (is (clojure.string/includes? text "{spider: funnel}"))
+    (is (clojure.string/includes? text "[UnionDatum]"))))
+
+(deftest pipeline-schema-accepts-resources-key-test
+  (is (pipeline/valid? {:schema-version 1 :stages [sample-stage] :resources [sample-union-resource]})))
+
+(deftest pipeline-rejects-a-bad-union-resource-among-good-ones-test
+  (is (not (pipeline/valid? {:schema-version 1 :stages [sample-stage]
+                              :resources [sample-union-resource (dissoc sample-union-resource :union-of)]}))))
+
+;; ---- external stages (docs/notation.md, P6): a black-box stage the
+;; repo doesn't implement -- inputs/outputs, no laws, rendered dashed. ----
+
+(def sample-external-stage
+  {:id :transform :label "Transform" :external? true
+   :inputs ["canonical-fhir-datum"] :outputs ["transform-output"]})
+
+(deftest valid-external-stage-passes-test
+  (is (pipeline/valid-external-stage? sample-external-stage)))
+
+(deftest external-stage-requires-external-true-test
+  (is (not (pipeline/valid-external-stage? (assoc sample-external-stage :external? false)))))
+
+(deftest external-stage-renders-with-external-annotation-test
+  (is (= "canonical-fhir-datum → transform-output  [Transform]  {external: true}"
+         (pipeline/external-stage->equation-line sample-external-stage))))
+
+(deftest pipeline->equations-text-includes-external-stage-lines-test
+  (let [text (pipeline/pipeline->equations-text {:stages [sample-stage] :external-stages [sample-external-stage]})]
+    (is (clojure.string/includes? text "{external: true}"))
+    (is (clojure.string/includes? text "[Transform]"))))
+
+(deftest pipeline-schema-accepts-external-stages-key-test
+  (is (pipeline/valid? {:schema-version 1 :stages [sample-stage] :external-stages [sample-external-stage]})))
+
+;; ---- dogfooding: the committed docs/pipeline.edn closes the P5
+;; disconnected-wire gap -- Gate's "datum" input now has a producer,
+;; either a stage output or a declared union resource. ----
+
+(deftest committed-pipeline-edn-gate-input-datum-has-a-producer-test
+  (let [data (edn/read-string (slurp "docs/pipeline.edn"))
+        stage-outputs (mapcat :outputs (:stages data))
+        union-resources (map :resource (:resources data))]
+    (is (some #{"datum"} (concat stage-outputs union-resources)))))

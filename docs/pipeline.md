@@ -16,6 +16,7 @@ canonical-fhir-datum × operator-catalog → mutant-fhir-datum + lineage-record 
 foreign-file → catalog-entry + intake-record  [Intake]
 datum × validator-artifact × runtime × hapi-hl7v2-dep × profile-artifact → pass + rejected + indeterminate  [Gate]  {catalytic: validator-artifact, runtime, hapi-hl7v2-dep, profile-artifact}
 pass × rejected × indeterminate → report  [Report]
+canonical-fhir-datum × mutant-fhir-datum × foreign-file → datum  [UnionDatum]  {spider: funnel}
 ```
 
 ## Diagram
@@ -25,7 +26,6 @@ flowchart LR
 
     %% --- Source types (raw inputs, not produced by any operation) ---
     config_hash(["config-hash"])
-    datum(["datum"])
     foreign_file(["foreign-file"])
     hapi_hl7v2_dep(["hapi-hl7v2-dep"])
     jdk_runtime(["jdk-runtime"])
@@ -43,6 +43,7 @@ flowchart LR
     Intake["Intake"]
     Gate["Gate"]
     Report["Report"]
+    UnionDatum[\"UnionDatum"/]
 
     %% --- Wires (typed connections) ---
     %% Arrow 1: Generate
@@ -62,7 +63,7 @@ flowchart LR
     foreign_file -- foreign-file --> Intake
 
     %% Arrow 5: Gate
-    datum -- datum --> Gate
+    UnionDatum -- datum --> Gate
     validator_artifact -. validator-artifact .-> Gate
     runtime -. runtime .-> Gate
     hapi_hl7v2_dep -. hapi-hl7v2-dep .-> Gate
@@ -73,19 +74,24 @@ flowchart LR
     Gate -- rejected --> Report
     Gate -- indeterminate --> Report
 
+    %% Arrow 7: UnionDatum
+    Normalize -- canonical-fhir-datum --> UnionDatum
+    Mutate -- mutant-fhir-datum --> UnionDatum
+    foreign_file -- foreign-file --> UnionDatum
+
     %% --- Styling ---
 
-    %% Operations: dark boxes (fan=blue, funnel=green, enrichment=outlined, gate=purple)
+    %% Operations: dark boxes (fan=blue, funnel=green, enrichment=outlined, gate=purple, external=dashed)
     style Generate fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
     style Normalize fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
     style Mutate fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
     style Intake fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
     style Gate fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
     style Report fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style UnionDatum fill:#1b5e20,stroke:#2e7d32,color:#c8e6c9,stroke-width:2px
 
     %% Source types: light rounded
     style config_hash fill:#f5f5f5,stroke:#999,color:#333
-    style datum fill:#f5f5f5,stroke:#999,color:#333
     style foreign_file fill:#f5f5f5,stroke:#999,color:#333
     style hapi_hl7v2_dep fill:#f5f5f5,stroke:#999,color:#333
     style jdk_runtime fill:#f5f5f5,stroke:#999,color:#333

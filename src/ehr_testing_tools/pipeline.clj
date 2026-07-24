@@ -31,14 +31,49 @@
    [:laws {:optional true} [:vector :string]]
    [:contract {:optional true} :string]])
 
+(def UnionResource
+  "A named resource declared as the union of others (docs/notation.md,
+  P6) -- a stage consuming the union accepts any member. :resource and
+  :union-of members are plain strings, matching the string-typed
+  resource names Stage's own :inputs/:outputs already use, so a union
+  member name can be cross-referenced against a real stage output
+  (e.g. \"canonical-fhir-datum\") with no keyword/string adapter."
+  [:map
+   [:resource :string]
+   [:union-of [:vector :string]]])
+
+(def ExternalStage
+  "The external stage marker (docs/notation.md, P6): a black-box stage
+  this repo doesn't implement -- a user's own transform. Carries
+  inputs/outputs but no laws -- unlike Stage, there is no :kind,
+  :status, or :laws key at all, only the trivial :external? true
+  marker (asserted, not inferred, so a caller can't accidentally treat
+  a Stage map as external by omission)."
+  [:map
+   [:id :keyword]
+   [:label :string]
+   [:external? [:= true]]
+   [:inputs [:vector :string]]
+   [:outputs [:vector :string]]])
+
 (def Pipeline
   [:map
    [:schema-version [:= 1]]
-   [:stages [:vector Stage]]])
+   [:stages [:vector Stage]]
+   [:resources {:optional true} [:vector UnionResource]]
+   [:external-stages {:optional true} [:vector ExternalStage]]])
 
 (defn valid-stage?
   [stage]
   (m/validate Stage stage))
+
+(defn valid-union-resource?
+  [resource]
+  (m/validate UnionResource resource))
+
+(defn valid-external-stage?
+  [stage]
+  (m/validate ExternalStage stage))
 
 (defn valid?
   [pipeline]
@@ -62,18 +97,50 @@
       (str base "  {catalytic: " (str/join ", " catalytic) "}")
       base)))
 
+(defn- resource->union-op-label
+  "\"datum\" -> \"UnionDatum\" -- PascalCases a hyphenated resource name
+  for the synthetic merge operation's own equation label, prefixed
+  \"Union\" so it reads as generated, not an authored stage."
+  [resource]
+  (str "Union" (apply str (map str/capitalize (str/split resource #"-")))))
+
+(defn union-resource->equation-line
+  "Renders a union resource as a merge equation, reusing the
+  string-diagram skill's existing funnel/spider annotation (many-to-one
+  convergence) for the union's merge node rather than inventing new
+  diagram machinery for the same shape (docs/notation.md)."
+  [{:keys [resource union-of]}]
+  (str (str/join " × " union-of) " → " resource
+       "  [" (resource->union-op-label resource) "]  {spider: funnel}"))
+
+(defn external-stage->equation-line
+  "Renders an external (black-box) stage as a plain equation carrying
+  the {external: true} annotation, which the diagram renderer maps to
+  a dashed box (docs/notation.md) -- no :kind/:catalytic/:laws to
+  render, since ExternalStage has none of those fields."
+  [{:keys [label inputs outputs]}]
+  (str (str/join " × " inputs) " → " (str/join " + " outputs)
+       "  [" label "]  {external: true}"))
+
 (defn pipeline->equations-text
-  "Renders every stage in :stages to the skill's equation-line format,
-  one per line. A :planned stage gets a leading comment line noting
-  its status -- the skill ignores comment lines, so this is purely
-  documentary in the rendered diagram, not a distinct visual state."
-  [{:keys [stages]}]
+  "Renders every stage in :stages, then every union resource in
+  :resources, then every external stage in :external-stages, to the
+  skill's equation-line format, one per line. A :planned stage gets a
+  leading comment line noting its status -- the skill ignores comment
+  lines, so this is purely documentary in the rendered diagram, not a
+  distinct visual state. :resources and :external-stages default to
+  empty, so a plain {:stages [...]} pipeline (as every test predating
+  P6 passes) renders exactly as before."
+  [{:keys [stages resources external-stages]}]
   (str/join "\n"
-            (mapcat (fn [{:keys [status] :as stage}]
-                      (cond-> []
-                        (= status :planned) (conj (str "# planned: " (:label stage)))
-                        true (conj (stage->equation-line stage))))
-                    stages)))
+            (concat
+             (mapcat (fn [{:keys [status] :as stage}]
+                       (cond-> []
+                         (= status :planned) (conj (str "# planned: " (:label stage)))
+                         true (conj (stage->equation-line stage))))
+                     stages)
+             (map union-resource->equation-line resources)
+             (map external-stage->equation-line external-stages))))
 
 (defn render-pipeline-md
   "Pure assembly of docs/pipeline.md's content from already-rendered

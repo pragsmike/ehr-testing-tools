@@ -73,6 +73,83 @@ Every catalytic resource must resolve to exactly one of four targets:
 A catalytic resource that resolves to none of the four is a gap in
 the equation, not an oversight to paper over silently.
 
+## Union resources
+
+A resource may be declared as the **union** of others: a named
+resource whose value, at any point it's consumed, is one of a fixed
+set of member resources — not their product. This closes a gap
+pattern nursery [#13](../.agents/memory/patterns.md)'s P5 evidence
+named directly: the equation notation's `×` expresses product/AND
+between inputs, and `+` expresses coproduct/OR between *outputs*, but
+nothing expressed "downstream of any one of several alternative
+upstream stages" for an *input* — exactly Gate's own situation
+(`datum` is genuinely fed by Normalize, Mutate, *or* Intake, never
+their product).
+
+A union resource is declared:
+
+```edn
+{:resource "datum"
+ :union-of ["canonical-fhir-datum" "mutant-fhir-datum" "foreign-file"]}
+```
+
+`:resource` and each `:union-of` member are plain resource-name
+strings — the same string-typed names `Stage`'s own `:inputs`/
+`:outputs` already use, so a union member can be cross-referenced
+against a real stage output with no keyword/string adapter layer. A
+stage that consumes the union's `:resource` name accepts any member,
+unchanged; the union declares no transformation of its own.
+
+**Type-binding:** a union resource's type — soft or hard, per "Resource
+names bind to types" above — is the union (sum type) of its members'
+types: a Malli `[:or schema-a schema-b ...]` for data resources bound
+to hard schemas, or the narrative superset of the member rubrics for
+prose resources bound to soft types (pattern nursery
+[#12](../.agents/memory/patterns.md)). An equation whose union members
+don't share a format is a bug in the union's own declaration, not
+something this rule papers over.
+
+**Diagram rendering** reuses the string-diagram skill's existing
+funnel/spider annotation (`{spider: funnel}`, many-to-one convergence)
+for the union's merge node, rather than inventing new diagram
+machinery for a shape the skill can already express: a union renders
+as a synthetic operation (named `Union<Resource>`, e.g. `UnionDatum`)
+with one wire in from each member and one wire out carrying the
+union's own resource name, feeding whatever stage declares that name
+as an input. This is a deliberate reuse, not a coincidence of
+implementation convenience — a funnel *is* a merge node.
+
+## External stages
+
+An **external stage** marks a black-box operation this repo doesn't
+implement — a user's own transform, run outside this repo's own
+pipeline, that a use case's equations still need to name (e.g. "the
+team's ingestion pipeline" in the black-box-transform-surround use
+case). An external stage carries `:inputs`/`:outputs` like any other
+stage, but declares no `:kind`, no `:status`, and no `:laws` — this
+repo makes no claim about what an external stage does or guarantees,
+only that it sits at a named point in the equation with named
+resources flowing in and out:
+
+```edn
+{:id :transform :label "Transform" :external? true
+ :inputs ["canonical-fhir-datum"] :outputs ["transform-output"]}
+```
+
+**Diagram rendering:** an external stage's box is rendered **dashed**
+(`{external: true}` in the equation-line annotation) — the same visual
+device an earlier diagram used for Gate and Report while they were
+still `:planned` and not yet built (a hand-maintained distinction,
+dropped once the equation-driven generator landed and both stages
+moved to `:built`/undashed, per the commit history of this page). This
+session revives dashed rendering as generator-supported machinery
+(`{external: true}` in `resource_equations_to_mermaid.py`), reused for
+a stage that will never be built by this repo at all, not merely one
+that isn't built yet. The distinction matters for a reader scanning
+the diagram: a solid box is something this repo implements and stands
+behind; a dashed box is a named slot in the pipeline that the *use
+case's own author* fills in.
+
 ## The five stage kinds
 
 Every stage in this repo's pipeline is one of five kinds, each with a
