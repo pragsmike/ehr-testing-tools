@@ -36,8 +36,11 @@ one-glance check, not a diff you have to run by hand. A pack whose header
 HEAD doesn't match the current one is stale and should not be trusted for
 context.
 
-**Sessions end with `make pack-push`, run after the final commit.** This
-subsumes the older "regenerate the pack before ending a session" rule —
+**Sessions end with commit → `git push origin` → `make pack-push`.** The
+repo push was previously manual and commits could accumulate unpushed;
+it's now part of the ritual, run after the final commit and before
+`pack-push`. This subsumes the older "regenerate the pack before ending
+a session" rule —
 `pack-push` depends on both `pack` and `pack-skills`, so it regenerates
 both and publishes both in one step. **Pack transport v2 (2026-07-24):**
 `pack-push` copies both packs into a local clone of the public
