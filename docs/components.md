@@ -24,7 +24,16 @@ are FHIR (R4/STU3/DSTU2), bulk ndjson, C-CDA, CSV, CPCDS — not HL7 v2 and
 not OMOP (facts register F4 in the guide repo; mirrored evidence in
 `docs/research/`). Deliberately not used for: v2 messages (we project
 from its output — see EXP-A3) or profile-constrained FHIR beyond what
-filtering achieves.
+filtering achieves. Its CLI exposes two independent RNG seeds, not one
+— `-s` (patient generation) and `-cs` (clinician/practitioner
+assignment, defaulting unpinned to wall-clock time) — both of which
+`corpus.generate` requires explicitly (facts register
+[F11](../notes/facts-register.md), EXP-A4). v4.0.0 requires a Java 17+
+runtime (its release jar is class file version 61.0); the JDK it runs
+under is itself a locked `:runtime` artifact (ADR-0005) — Eclipse
+Temurin 17.0.19+10, GPLv2 with the Classpath Exception (facts register
+[F12](../notes/facts-register.md)) — resolved through the same
+artifact registry as the Synthea distribution itself, not from `PATH`.
 
 ## HAPI HL7v2
 

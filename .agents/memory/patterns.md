@@ -18,7 +18,10 @@ the design channel.
    into: mechanical execution preserving native output verbatim, and a
    pure, versioned interpreter from native output to canonical data.
    Payoff: re-interpretation without re-execution.
-   Status: in implementation (P3).
+   Status: validated. Evidence: P3's clinician-seed bug was diagnosed
+   from preserved run metadata with zero regeneration, and the
+   driver-hash fix (EXP-A4) was applied by recomputing over the
+   already-preserved native outputs, again with zero regeneration.
 
 2. **Invocation record** — one schema for "a subprocess ran": command,
    args, relevant env, artifact refs by hash, engine version, duration,
@@ -31,7 +34,12 @@ the design channel.
    explicit composition (verified confluence or registry-imposed total
    order, recorded in manifests), endomorphism (never cross-format).
    Canonical forms are fixed points; `c@v2` need not agree with `c@v1`.
-   Status: in implementation (P3).
+   Status: validated. Evidence: two real registrations
+   (`:strip-run-timestamp-suffix`, `:strip-synthea-run-metadata`, both
+   EXP-A4); the idempotence-law harness caught real cross-namespace
+   registry pollution during P3 (a test-isolation bug in
+   `canonical_test.clj` wiping entries other namespaces registered at
+   load time), fixed by the save/restore-snapshot fixture now in place.
 
 4. **Locator** — one type for "a place in a datum," per-format grammar
    (FHIRPath; v2 segment/field/component; table.column; XPath later).
@@ -74,10 +82,80 @@ the design channel.
 11. **Result vocabulary** — the result-not-throw doctrine's shared
     keywords (`:ok` / `:rejected` / `:error` + category), one
     namespace, no dialects.
-    Status: in implementation (P3).
+    Status: validated. Evidence: ubiquitous use — every capability
+    namespace landed so far (`artifact`, `invocation`,
+    `corpus.generate`, `canonical`, `cli`) returns exclusively
+    `result/ok` / `result/rejected` / `result/error`, with no
+    namespace-local dialect ever introduced.
 
 12. **Soft types for prose artifacts** — template/rubric pairs with
     scored membership for documents that can't be hard-schema'd
     (protocols, results files, capability doc pages); the prose
     complement of Malli.
     Status: first instance in P3 (EXP results files).
+
+13. **Stages as resource equations** — pipeline stages written in the
+    string-diagram skill's notation, `inputs → outputs [Stage]
+    {catalytic: …}`. Five stage kinds, each with a law: **transform**
+    appends provenance (never drops it); **normalize** is an idempotent
+    endomorphism — precisely a registered canonicalizer (pattern #3),
+    not a separate concept; **enrich** adds fields without altering
+    existing ones; **gate** splits its output into pass / rejected /
+    indeterminate and never modifies the datum it judges; **feedback**
+    carries a round bound (no unbounded loops). A stage may declare
+    laws beyond its kind's — kind laws are a floor, not a ceiling.
+    Catalytic resources (participate unconsumed) must resolve to
+    exactly one of three targets: `artifacts.lock.edn`, `deps.edn`, or
+    hashed repo-authored config — an equation with a catalytic input
+    that resolves to none of the three is malformed.
+    Status: on trial this session (P4) — pattern nursery promotion
+    criteria pre-committed: (1) does authoring the Mutate equation
+    surface a design question before implementation that the equation
+    itself answers or clarifies? (2) does every catalytic resource in
+    the four authored equations (Generate, Normalize, Mutate, and the
+    planned-status Gate/Report stubs) resolve cleanly to one of the
+    three lockfile targets? (3) does the generated diagram
+    (`docs/pipeline.md`) match hand-drawn intuition well enough that no
+    equation needed correction after seeing its diagram? A pattern that
+    meets criteria 2–3 but not 1 is still promotable — criterion 1 is
+    evidence-gathering, not a gate; the session report states plainly
+    whether it fired.
+
+14. **Operators carry contracts** — mutation (introducing a defect) and
+    metamorphic perturbation (transforming input while preserving an
+    expected output relation) are one operation shape wearing two
+    hats: both are a function from a base datum plus a locator to a
+    transformed datum, and what distinguishes them is only the
+    contract they declare. A defect operator declares `{:type
+    :violates :target <constraint>}` naming the base-spec constraint
+    it breaks; a metamorphic operator declares `{:type :preserves
+    :target <relation>}` naming the relation an oracle can check
+    without a ground-truth verdict. Same registry, same schema, same
+    catalog shape — only the `:contract` payload differs.
+    Status: tentative — the `:contract` field ships in
+    `corpus.operators`'s catalog schema this session (P4), but only
+    `:violates` entries are populated; no `:preserves` (metamorphic)
+    entry has been authored yet, so the second half of the pattern is
+    still unexercised. A strategy schema for metamorphic comparators is
+    noted here, not built.
+
+15. **Provenance is measured at the point of execution** — every field
+    that could plausibly vary by host or ambient state (locale,
+    timezone, JVM version, and by extension any future entropy source)
+    is forced into the subprocess explicitly and the *forced* value is
+    what's recorded in the manifest — never a value sampled from the
+    orchestrating process's own environment, which can silently differ
+    from what the subprocess actually saw.
+    Status: validated (three instances). Evidence: three P3/EXP-A4 bugs
+    of exactly this species, each found and fixed the same way — (a)
+    JVM version: the manifest's `:jvm-version` must describe the
+    generator subprocess's JVM (Java 17, this environment), not the
+    orchestrating Clojure process's JVM (Java 11) — `real-java-version`
+    queries `java-bin` directly rather than reading
+    `System/getProperty "java.version"`; (b) locale: forced via
+    `-Duser.language`/`-Duser.country` ahead of `-jar` and recorded from
+    the forced value, after EXP-A4 found a genuine locale-dependent
+    output divergence; (c) timezone: forced via `-Duser.timezone` ahead
+    of `-jar` and recorded from the forced value, after EXP-A4 found
+    every FHIR `dateTime`/`instant` field's serialized UTC offset
+    depends on it.
