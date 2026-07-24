@@ -104,7 +104,11 @@ The repo flips from private to public when **all** of the following hold:
    open-source distribution" and transfer unchanged), every dependency
    is verified compatible, and EXP-SBOM (see `docs/experiments.md`) has
    resolved, including [F1](../notes/facts-register.md) (NIST
-   v2-validation licensing).
+   v2-validation licensing). Artifacts this repo redistributes must be
+   fully license-verified; artifacts users fetch at their own initiative
+   from an official source ([ADR-0005](../notes/ADRs.md)'s 2026-07-24
+   amendment) clear this gate on the weaker
+   `:use-permitted--unstated--confirmation-pending` status instead.
 2. At least one tool has reached "usable" maturity with honest docs (no
    overclaiming what it does).
 3. CI is green and runs offline.

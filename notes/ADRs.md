@@ -175,6 +175,26 @@ gate's licensing condition a mechanical scan of the lockfile. Profile
 management becomes artifact management: IGAMT exports and IG packages
 are artifacts of kind `:profile`. EXP-D3's NIST-artifact mirroring
 becomes `ehr artifact fetch` against a local mirror source.
+
+**Amendment (2026-07-24, additive — not a reversal).** The NIST
+licensing deep-research (facts register
+[F14](../notes/facts-register.md)/[F15](../notes/facts-register.md))
+surfaced a distinction this ADR's original text didn't separate:
+artifacts divide into those **redistributed by this repo** (vendored
+into what this repo itself ships — must be fully license-verified
+before redistribution, no exceptions) and those **fetched by users from
+an official upstream source at their own initiative** (this repo's
+lockfile records provenance and hash; resolution/fetch happens on the
+user's machine against the artifact's official source; the repo itself
+redistributes nothing). For the latter category, `license-status`
+admits a new value, `:use-permitted--unstated--confirmation-pending` —
+the artifact's use rights are plausible (a general policy statement, a
+Mode-2 fetch-at-build path) but its formal license is unconfirmed, and
+confirmation is pending rather than blocking, since recording a
+lockfile entry is not itself a redistribution. This does not relax the
+original license-verified bar for anything this repo vendors or ships —
+it names a second, genuinely different bar for artifacts this repo
+never touches beyond a hash.
 **Status.** Accepted (author-directed).
 
 ---
