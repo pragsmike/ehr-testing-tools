@@ -3,7 +3,20 @@
  :deps {org.clojure/clojure {:mvn/version "1.12.5"}
         metosin/malli {:mvn/version "0.20.1"}
         org.babashka/cli {:mvn/version "0.12.79"}
-        org.clojure/data.json {:mvn/version "2.5.2"}}
+        org.clojure/data.json {:mvn/version "2.5.2"}
+        ;; HAPI FHIR (EXP-B2): parse-validation aid and round-trip
+        ;; comparison baseline for FHIR JSON -- current stable per
+        ;; Maven Central, verified 2026-07-24 (facts register F13).
+        ca.uhn.hapi.fhir/hapi-fhir-base {:mvn/version "8.2.0"}
+        ca.uhn.hapi.fhir/hapi-fhir-structures-r4 {:mvn/version "8.2.0"}
+        ;; HAPI HL7v2 (EXP-B2): ER7 parse/serialize round-trip fidelity
+        ;; measurement. Distinct project from HAPI FHIR -- distinct
+        ;; Maven coordinates (ca.uhn.hapi, not ca.uhn.hapi.fhir).
+        ;; Current stable per Maven Central, verified 2026-07-24
+        ;; (facts register F13); matches the v2.6.0 already recorded in
+        ;; facts register F3.
+        ca.uhn.hapi/hapi-base {:mvn/version "2.6.0"}
+        ca.uhn.hapi/hapi-structures-v24 {:mvn/version "2.6.0"}}
 
  :aliases
  {;; Test runner. Same coordinates and pin as ehr-testing-guide/companion's

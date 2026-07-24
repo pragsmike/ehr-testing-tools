@@ -1,0 +1,7 @@
+# HL7 v2 ER7 messages use \r (not \n) as their segment separator, and
+# EXP-B2's round-trip fidelity comparison depends on the committed
+# fixture bytes being exactly what a real interface would send --
+# git rewriting line endings on checkout would invalidate the
+# experiment before it even runs. -text disables any line-ending
+# normalization for these files, regardless of core.autocrlf.
+test/fixtures/v2/*.hl7 -text
