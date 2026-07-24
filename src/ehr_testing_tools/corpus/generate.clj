@@ -188,6 +188,7 @@
             (if-not (result/ok? java-bin-result)
               java-bin-result
               (let [resolved-java-bin (:path (:payload java-bin-result))
+                    jvm-artifact (:artifact (:payload java-bin-result))
                     out-dir (io/file output-dir)
                     _ (.mkdirs out-dir)
                     stdout-path (.getAbsolutePath (io/file out-dir "synthea-stdout.log"))
@@ -205,13 +206,17 @@
                                                         :stderr-path stderr-path})]
                 (if-not (result/ok? invocation-result)
                   invocation-result
-                  (let [m (manifest/build-v1
-                           {:generator {:name (:name artifact)
+                  (let [m (manifest/build-v1-1
+                           {:stage :generate
+                            :generator {:name (:name artifact)
                                         :version (:version artifact)
                                         :sha256 (:sha256 artifact)}
-                            :seed seed
-                            :clinician-seed clinician-seed
-                            :reference-date reference-date
+                            :runtime (when jvm-artifact
+                                       {:name (:name jvm-artifact)
+                                        :version (:version jvm-artifact)
+                                        :sha256 (:sha256 jvm-artifact)})
+                            :seeds {:master seed :clinician clinician-seed}
+                            :engine-params {:reference-date reference-date}
                             :config {:path config-path :sha256 (digest/sha256-file config-path)}
                             :invocation (:payload invocation-result)
                             :canonicalizers-applied []

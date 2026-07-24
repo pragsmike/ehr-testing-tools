@@ -3,7 +3,8 @@
             [clojure.java.io :as io]
             [clojure.edn :as edn]
             [ehr-testing-tools.result :as result]
-            [ehr-testing-tools.corpus.generate :as generate])
+            [ehr-testing-tools.corpus.generate :as generate]
+            [ehr-testing-tools.corpus.manifest :as manifest])
   (:import [java.io File]))
 
 (defn- temp-dir []
@@ -63,13 +64,20 @@
                                        :output-dir out-dir}))]
     (is (result/ok? r))
     (let [manifest (:manifest (:payload r))]
-      (is (= 1 (:schema-version manifest)))
-      (is (= 42 (:seed manifest)))
-      (is (= 999 (:clinician-seed manifest)))
-      (is (= "20260101" (:reference-date manifest)))
+      (is (= "1.1" (:schema-version manifest)))
+      (is (= :generate (:stage manifest)))
+      (is (= 42 (:master (:seeds manifest))))
+      (is (= 999 (:clinician (:seeds manifest))))
+      (is (= "20260101" (:reference-date (:engine-params manifest))))
       (is (= "synthea" (:name (:generator manifest))))
       (is (= "4.0.0" (:version (:generator manifest))))
       (is (= (:sha256 synthea-artifact) (:sha256 (:generator manifest))))
+      ;; :runtime -- the JVM artifact resolved through the registry
+      ;; (stub-deps' default resolve-java-bin stub), {name, version,
+      ;; sha256} like :generator.
+      (is (= "temurin-jdk" (:name (:runtime manifest))))
+      (is (= "17.0.19+10" (:version (:runtime manifest))))
+      (is (string? (:sha256 (:runtime manifest))))
       (is (= (.getAbsolutePath config-file) (:path (:config manifest))))
       (is (string? (:sha256 (:config manifest))))
       (is (= [] (:canonicalizers-applied manifest)))
@@ -249,7 +257,21 @@
                    :resolve-java-bin (fn [_artifacts _opts] (swap! resolve-java-bin-calls inc) (result/ok {}))}))]
     (is (result/ok? r))
     (is (zero? @resolve-java-bin-calls) "an explicit :java-bin must bypass registry resolution entirely")
-    (is (= "/explicit/java" (:command @args-atom)))))
+    (is (= "/explicit/java" (:command @args-atom)))
+    (is (not (contains? (:manifest (:payload r)) :runtime))
+        "no resolved JVM artifact means the manifest must not fabricate a :runtime record")))
+
+(deftest generate-manifest-validates-as-schema-v1-1-test
+  (let [out-dir (temp-dir)
+        config-file (File/createTempFile "synthea" ".properties")
+        deps (stub-deps {:lockfile-result (ok-lockfile)
+                          :resolve-result (ok-resolve)
+                          :invocation-result (ok-invocation)})
+        r (generate/generate! (merge deps {:config-path (.getAbsolutePath config-file)
+                                            :seed 1 :clinician-seed 2 :population 1
+                                            :reference-date "20260101" :output-dir out-dir}))]
+    (is (result/ok? r))
+    (is (manifest/valid-v1-1? (:manifest (:payload r))))))
 
 (deftest generate-propagates-java-bin-resolution-failure-test
   (let [deps (stub-deps {:lockfile-result (ok-lockfile)
