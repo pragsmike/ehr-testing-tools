@@ -107,7 +107,20 @@ the design channel.
     Catalytic resources (participate unconsumed) must resolve to
     exactly one of three targets: `artifacts.lock.edn`, `deps.edn`, or
     hashed repo-authored config — an equation with a catalytic input
-    that resolves to none of the three is malformed.
+    that resolves to none of the three is malformed. **Gap surfaced by
+    this session's trial:** Mutate's catalytic resource, `operator-
+    catalog`, is an in-repo *code registry* (`corpus.operators`, like
+    `corpus.canonicalizers`) — it fits none of the three targets
+    cleanly (it's not an acquired artifact, not a deps.edn dependency,
+    and "hashed repo-authored config" as originally meant data files
+    referenced by path+content-hash in manifests, not code). Its real
+    provenance mechanism turned out to be a fourth pattern: reference
+    by `{id, version}` tuple into a versioned in-repo registry (the
+    same mechanism canonicalizer application already used) — not a
+    hash at all. The three-target rule is accurate for *data* inputs;
+    code-registry catalytic resources need this fourth bucket named
+    explicitly, not silently folded into "hashed repo-authored
+    config." Not resolved here — flagged for the design channel.
     Status: on trial this session (P4) — pattern nursery promotion
     criteria pre-committed: (1) does authoring the Mutate equation
     surface a design question before implementation that the equation

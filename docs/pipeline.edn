@@ -1,0 +1,51 @@
+;; The pipeline's resource equations, as data (author-time source of
+;; truth -- docs/notation.md defines the terms; docs/pipeline.md is
+;; GENERATED from this file via `make pipeline`, never hand-edited).
+;; Validated against ehr-testing-tools.pipeline/Pipeline (Malli).
+{:schema-version 1
+ :stages
+ [{:id :generate
+   :label "Generate"
+   :kind :transform
+   :status :built
+   :inputs ["synthea-config"]
+   :outputs ["raw-corpus"]
+   :catalytic ["synthea-artifact" "jdk-runtime" "config-hash"]
+   :laws ["appends a manifest (v1.1) recording every pinned input: generator artifact, JVM runtime artifact, seeds, engine params, config hash, forced environment"]
+   :contract "byte-identical output modulo two registered canonicalizers, verified by EXP-A4"}
+
+  {:id :normalize
+   :label "Normalize"
+   :kind :normalize
+   :status :built
+   :inputs ["raw-corpus"]
+   :outputs ["canonical-fhir-datum"]
+   :laws ["is the application of a registered canonicalizer (ehr-testing-tools.canonical) -- idempotence is the canonicalizer's own property-tested law, not a separate assertion here"]}
+
+  {:id :mutate
+   :label "Mutate"
+   :kind :transform
+   :status :built
+   :inputs ["canonical-fhir-datum"]
+   :outputs ["mutant-fhir-datum" "lineage-record"]
+   :catalytic ["operator-catalog"]
+   :laws ["appends provenance: every mutant carries a lineage record, never produced without one"
+          "intended-diff-only: diff(canon(base), canon(mutant)) touches exactly the declared locator/contract target and nothing else"]
+   :contract "operates on plain-data JSON (data.json), not a HAPI-parsed tree, because EXP-B2 verified plain-data JSON's parse-serialize round-trip is faithful"}
+
+  {:id :gate
+   :label "Gate"
+   :kind :gate
+   :status :planned
+   :inputs ["fhir-datum"]
+   :outputs ["pass" "rejected" "indeterminate"]
+   :catalytic ["profile-artifact"]
+   :laws ["never modifies the datum it judges"]}
+
+  {:id :report
+   :label "Report"
+   :kind :transform
+   :status :planned
+   :inputs ["pass" "rejected" "indeterminate"]
+   :outputs ["report"]
+   :laws ["appends provenance: which engine, which profile, which verdicts, normalized to the finding envelope (pattern nursery #6)"]}]}
