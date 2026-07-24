@@ -24,7 +24,7 @@ help:
 	@echo "  help         - show this message (default target)"
 	@echo "  pack         - concatenate tracked files (except .agents/skills, .agents/prompts/archive) into $(PACK_OUTPUT)"
 	@echo "  pack-skills  - concatenate only .agents/skills + .agents/prompts/archive into $(PACK_SKILLS_OUTPUT)"
-	@echo "  pack-push    - pack + pack-skills, then publish both to the pragsmike/packs repo ($(PACKS_REPO_DIR))"
+	@echo "  pack-push    - dormant (2026-07-25, not part of the session ritual) - pack + pack-skills, then publish both to the pragsmike/packs repo ($(PACKS_REPO_DIR))"
 	@echo "  test         - run the Clojure test suite (clojure -X:test); cold-cache/no-network hermetic"
 	@echo "  coverage     - run cloverage and report coverage (clojure -M:coverage); cold-cache/no-network hermetic"
 	@echo "  integration  - run the integration test suite (clojure -X:integration); requires"
@@ -127,6 +127,12 @@ pack-skills:
 	done >> $(PACK_SKILLS_OUTPUT)
 	@echo "Done! Created $(PACK_SKILLS_OUTPUT)"
 
+# Dormant as of 2026-07-25 (AUTHORS-GUIDE.md section 2): no longer part
+# of the session-end ritual now that both this repo and pragsmike/packs
+# are public and the design channel clones directly. Left in place, not
+# deleted -- still works exactly as documented below, for the day a
+# pack-consuming (non-git) surface is needed again.
+#
 # Publishes the freshly generated pack AND skills pack to the
 # pragsmike/packs repo (a local clone at $(PACKS_REPO_DIR), pushed to
 # GitHub), so a session -- or the design channel -- can fetch either one

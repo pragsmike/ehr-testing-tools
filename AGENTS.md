@@ -54,9 +54,12 @@ restricted.
 
 ## Quick start
 
-The `pack`/`pack-skills`/`pack-push` targets below are the maintainer
-session-context ritual (`AUTHORS-GUIDE.md` section 2) — not needed to use
-the tools; `SETUP.md` covers that path.
+The `pack`/`pack-skills` targets below remain as utilities for feeding a
+non-git AI surface that can't read this filesystem directly
+(`AUTHORS-GUIDE.md` section 2) — not needed to use the tools; `SETUP.md`
+covers that path. `pack-push` is dormant (2026-07-25, not deleted): the
+repo push step (`git push origin`) is the actual end-of-session ritual
+now; see the hard rule below.
 
 ```sh
 make help       # list available targets (default)
@@ -66,8 +69,8 @@ make pack       # slim pack (excludes .agents/skills, .agents/prompts/archive)
                 # into $HOME/ehr-testing-tools-pack.txt, with a freshness
                 # header (repo, timestamp, HEAD, working-tree status, elisions)
 make pack-skills  # the elided directories, packed separately
-make pack-push  # pack + pack-skills, then publish both to the
-                # pragsmike/packs repo (~/.packs); see AUTHORS-GUIDE.md
+make pack-push  # dormant (2026-07-25) -- pack + pack-skills, then publish
+                # both to the pragsmike/packs repo (~/.packs); see AUTHORS-GUIDE.md
 make ehr ARGS="artifact fetch --name synthea --version 4.0.0"
                 # invoke the `ehr` CLI (ADR-0004): corpus generate,
                 # artifact fetch/resolve; EDN by default, --json for a
@@ -94,11 +97,13 @@ this repo.
 - **ADRs supersede, never revert.** `notes/ADRs.md` holds every
   architecture/authoring decision; an Accepted record stands until a new
   numbered record explicitly supersedes it.
-- **Sessions end with commit → `git push origin` → `make pack-push`.**
-  The repo push was previously manual and commits could accumulate
-  unpushed; it's now part of the ritual. The pack's header `HEAD` and
-  clean-tree line are only trustworthy if the pack was made last, not
-  mid-session.
+- **Sessions end with commit → `git push origin`.** The repo push was
+  previously manual and commits could accumulate unpushed; it's now
+  part of the ritual. `make pack-push` is **retired from this ritual**
+  (2026-07-25) — both this repo and the design-channel's packs repo are
+  public now, so the design channel clones directly instead of fetching
+  a pack; see `AUTHORS-GUIDE.md` section 2 for what stays and what's
+  dormant.
 - **Test-first** (ADR-0006): a failing test precedes the implementation
   it motivates; red→green evidence goes in the session report; `make test`
   and `make coverage` must be green/reported before any session-final

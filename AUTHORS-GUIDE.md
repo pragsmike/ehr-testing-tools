@@ -17,7 +17,7 @@ spurious executable-bit flips, and diffs that are 90% whitespace noise).
 Windows is fine for building, reading, and running tools once they exist;
 it is not fine for writing to git history.
 
-## 2. The pack ritual
+## 2. The pack ritual (retired from the session-end ceremony, 2026-07-25)
 
 `make pack` concatenates most git-tracked files in the repo into
 `ehr-testing-tools-pack.txt` (gitignored — it is session scaffolding, not
@@ -26,8 +26,9 @@ filesystem directly. It elides `.agents/skills/**` and
 `.agents/prompts/archive/**` — skill content is large and changes
 rarely, so it doesn't belong in every session's context — and the header
 records the elision. `make pack-skills` packs exactly the elided
-directories, to a separate file. The skills pack is regenerated whenever
-`.agents/skills/` or archived prompts change materially.
+directories, to a separate file. `pack`/`pack-skills` **remain as
+utilities**: reach for them when feeding a non-git AI surface that can't
+clone this repo directly.
 
 Unlike the guide's pack, this one leads with a header block — repo name,
 UTC generation timestamp, current `git rev-parse HEAD`, and
@@ -36,29 +37,28 @@ one-glance check, not a diff you have to run by hand. A pack whose header
 HEAD doesn't match the current one is stale and should not be trusted for
 context.
 
-**Sessions end with commit → `git push origin` → `make pack-push`.** The
-repo push was previously manual and commits could accumulate unpushed;
-it's now part of the ritual, run after the final commit and before
-`pack-push`. This subsumes the older "regenerate the pack before ending
-a session" rule —
-`pack-push` depends on both `pack` and `pack-skills`, so it regenerates
-both and publishes both in one step. **Pack transport v2 (2026-07-24):**
-`pack-push` copies both packs into a local clone of the public
-`pragsmike/packs` repo (`~/.packs`, cloned once by hand — see
-`Makefile`), commits with a message naming this repo and its HEAD, and
-pushes. The design channel then fetches either pack by a plain
+**Sessions now end with commit → `git push origin`, full stop.** Both
+this repo and the `pragsmike/packs` transport repo are public
+(`notes/ADRs.md` ADR-0008); the design channel clones either directly
+instead of fetching a pack, so publishing a pack on every session's exit
+no longer earns its keep as a ritual step. `make pack-push` is
+**dormant, not deleted** — it still works exactly as described below,
+for the day a pack-consuming surface is needed again — it is simply no
+longer part of what ends a session. **Pack transport v2 (2026-07-24,
+retained as history):** `pack-push` copies both packs into a local clone
+of the public `pragsmike/packs` repo (`~/.packs`, cloned once by hand —
+see `Makefile`), commits with a message naming this repo and its HEAD,
+and pushes; a consuming surface fetches either pack by a plain
 `raw.githubusercontent.com/pragsmike/packs/main/<file>` URL. This
-replaces the original transport, a PATCH to a gist
+replaced the original transport, a PATCH to a gist
 (`4fcd1abb4e74a5b54f9c241877edd02a`, left in place but retired, not
-deleted): raw GitHub content is CDN-served and reliably fetchable by the
-design channel, where the gist API's rate-limited shared pool was not.
-With the skills pack published the same way as the slim pack, no manual
-upload step remains anywhere in the workflow — both packs regenerate and
-publish in the same `make pack-push` run. The ordering still matters: run
-last, not mid-session, so the header's clean-tree line remains the
-invariant it's meant to be. A pack generated mid-session, before the last
-commit, can legitimately show a dirty tree; a pack pushed last and still
-showing a dirty tree is a real signal something was left uncommitted.
+deleted): raw GitHub content is CDN-served and reliably fetchable, where
+the gist API's rate-limited shared pool was not. If `pack-push` is run
+by hand, the same ordering caveat still applies: run it last, not
+mid-session, so the header's clean-tree line remains the invariant it's
+meant to be — a pack generated mid-session, before the last commit, can
+legitimately show a dirty tree; a pack pushed last and still showing a
+dirty tree is a real signal something was left uncommitted.
 
 Pack markers (`========== FILE: ... ==========`, `========== END FILE
 ==========`) are only valid matched at line start. The Makefile's own
