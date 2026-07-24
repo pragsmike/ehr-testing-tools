@@ -194,6 +194,24 @@ nursery [#15](../../.agents/memory/patterns.md)).
 | 18 raw OperationOutcome JSON results | `out/exp-c5-corpus/validator-results/` (not committed, ~2MB+ each) | -- |
 | `fhir-validator-cli` 6.9.12 lockfile entry | `artifacts.lock.edn` | sha256 `0e53ab1d1a6f1e35f505255c0b8ce10a35fcf27e6e96b503640f784cd07e5ad6` (facts register F18) |
 
+## Addendum (2026-07-24, same session, found during Step 6 contract pairing)
+
+A 16th `{severity, code}` category surfaced while testing
+`remove-required-element` against a genuinely required locator
+(`Patient.resourceType`, min-cardinality 1 -- the earlier finding
+above explains why `Patient.gender` couldn't be used for this):
+`("fatal", "invalid")`, diagnostics "Unable to find resourceType
+property". FHIR's own `IssueSeverity` ValueSet defines `fatal` as a
+fourth value alongside `error`/`warning`/`information`; this repo's
+original EXP-C5 corpus and its other four operators' mutants never
+happened to trigger it, so it wasn't in the classification table
+above. `gate.fhir`'s `rejecting-severities` set now includes both
+`"error"` and `"fatal"`, and `gate.finding/Severity` was extended to
+`:fatal`. Not a re-run of the protocol -- this is exactly the
+"classification is additive, discovered from real output" acceptance
+criterion already stated above, applied to one more real observation
+found one step later in the same session.
+
 ## Rubric self-score
 
 | Criterion | Met? | Evidence |

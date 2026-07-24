@@ -157,6 +157,7 @@
 (defn- severity->keyword
   [s]
   (case s
+    "fatal" :fatal
     "error" :error
     "warning" :warning
     "information" :information
@@ -178,15 +179,26 @@
   (let [raw (first (get issue "expression"))]
     (str/replace (or raw "") #"/\*[^*]*\*/" "")))
 
+(def ^:private rejecting-severities
+  "\"fatal\" added after a contract-pairing exercise found the
+  validator emits it (not \"error\") for a resource missing
+  resourceType entirely -- FHIR's own IssueSeverity ValueSet defines
+  both; EXP-C5's own corpus and its other four operators' mutants
+  never happened to trigger it, so it wasn't in the original
+  classification table (see docs/experiments/EXP-C5-results.md's
+  dated addendum)."
+  #{"error" "fatal"})
+
 (defn- issue->classification
-  "One of :rejected (genuine error), :indeterminate (terminology-
-  suppressed, any severity), or :pass (advisory warning/information)."
+  "One of :rejected (a genuine error or fatal issue), :indeterminate
+  (terminology-suppressed, any severity), or :pass (advisory
+  warning/information)."
   [issue]
   (let [severity (get issue "severity")
         suppressed? (terminology-suppressed? (issue-message issue))]
     (cond
       suppressed? :indeterminate
-      (= severity "error") :rejected
+      (contains? rejecting-severities severity) :rejected
       :else :pass)))
 
 (defn- issue->finding

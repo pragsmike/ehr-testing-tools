@@ -58,6 +58,13 @@
   (issue "information" "structure" "Bundle.entry[1].resource/*Encounter/u*/.subject"
          "Details for urn:uuid:u matching against profile http://hl7.org/fhir/StructureDefinition/Patient|4.0.1"))
 
+(def genuine-fatal-error
+  ;; Found via P5's Step 6 contract-pairing exercise, not the original
+  ;; EXP-C5 corpus: removing Bundle.entry[0].resource.resourceType
+  ;; produces this, at severity "fatal" (not "error") -- FHIR's own
+  ;; IssueSeverity ValueSet defines both.
+  (issue "fatal" "invalid" "Bundle.entry[0].resource" "Unable to find resourceType property"))
+
 (defn- outcome
   [& issues]
   {"resourceType" "OperationOutcome" "issue" (vec issues)})
@@ -78,6 +85,12 @@
     (is (= 1 (count (:findings o))))
     (is (finding/valid? (first (:findings o))))
     (is (= :error (:severity (first (:findings o)))))))
+
+(deftest interpret-fatal-severity-is-rejected-like-error-test
+  (let [o (gate/interpret (outcome genuine-fatal-error) sample-engine)]
+    (is (= :rejected (:verdict o)))
+    (is (= :fatal (:severity (first (:findings o)))))
+    (is (= :rejected (:policy (first (:findings o)))))))
 
 (deftest interpret-genuine-invalid-and-code-invalid-errors-are-rejected-test
   (testing "structural type/format violation"

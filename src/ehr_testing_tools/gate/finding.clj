@@ -13,7 +13,16 @@
   :rejected beats :indeterminate beats :pass."
   (:require [malli.core :as m]))
 
-(def Severity [:enum :error :warning :information])
+(def Severity
+  "The four values FHIR's own IssueSeverity ValueSet defines --
+  :fatal included (found during P5's contract-pairing exercise: the
+  official validator emits it for a resource missing resourceType
+  entirely, which neither EXP-C5's own corpus nor its five defect
+  operators' other mutants happened to trigger -- v2's HL7Exception
+  severities only ever surfaced :error in this repo's own testing, but
+  the shared envelope carries the full FHIR vocabulary since gate.fhir
+  needs it)."
+  [:enum :error :warning :information :fatal])
 
 (def Verdict [:enum :pass :rejected :indeterminate])
 
