@@ -5,7 +5,11 @@ generator, mutator, or gate engine — anything wrapping an external
 tool per ADR-0005) must answer before it's trusted enough to feed a
 committed manifest. This is a checklist, not a tutorial: each item
 names a question the wrapper's author must have a concrete answer for,
-citing the pattern or ADR that motivates it.
+citing the pattern or ADR that motivates it. Every engine this
+checklist governs is one of the components described in
+[`docs/components.md`](components.md) — that page describes what each
+engine is and how it's currently used; this one is what a *new* engine
+has to clear before it earns a section there.
 
 **Motivating case.** EXP-A4's clinician-seed finding: Synthea's own
 patient-generation seed (`:seed` / `-s`) was pinned from the start, but
