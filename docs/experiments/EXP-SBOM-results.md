@@ -40,7 +40,7 @@
 
 | Finding | Evidence | Classification | Action taken |
 |---|---|---|---|
-| No LICENSE/COPYING/NOTICE anywhere in the repo | Full recursive tree (229 entries, `truncated:false`) grepped for `(^|/)(LICENSE\|LICENCE\|COPYING\|NOTICE)`; zero matches at root or in any of the 3 sbt modules (`parser`, `profile`, `validation`) or `dependencies/`, `project/` | license-unstated | Recorded below; inquiry drafted (`EXP-SBOM-inquiry-draft.md`) |
+| No LICENSE/COPYING/NOTICE anywhere in the repo | Full recursive tree (229 entries, `truncated:false`) grepped for `(^|/)(LICENSE\|LICENCE\|COPYING\|NOTICE)`; zero matches at root or in any of the 3 sbt modules (`parser`, `profile`, `validation`) or `dependencies/`, `project/` | license-unstated | Recorded below; inquiry draft maintained privately by the author |
 | No license block in build metadata | `build.sbt` (root) has no `licenses` key; `project/Dependencies.scala`, `project/plugins.sbt` — dependency/plugin pins only; the two bundled dependency POMs under `dependencies/` (`validation-report-1.1.0.pom`, `xml-util-2.1.0.pom`) have no `<licenses>` block; no `pom.xml` exists anywhere in the tree | license-unstated | same |
 | No copyright/license text in a 10-file header sample spread across all 3 modules, Java + Scala, main + test | Sampled: `parser/.../Component.scala`, `parser/.../DefaultParser.scala`, `parser/.../EscapeSeqHandlerSpec.scala`, `profile/.../domain.scala`, `profile/.../XMLSerializer.scala`, `validation/.../Detections.java`, `validation/.../Validator.java` (Java), `validation/.../Validator.scala`, `validation/.../Evaluator.scala`, `validation/.../SimpleElementValidatorSpec.scala`. 3 of 10 carry only an `@author Salifou Sidi M. Malick` tag (authorship credit, not a license/copyright grant); the other 7 have no header content at all | license-unstated | same |
 | README has no license section, no NIST policy link, no mention of "license"/"copyright"/"public domain" | `README.md` (53 lines) — project description, two dependency mentions (both other `usnistgov` repos), build instructions only | license-unstated | same |
@@ -142,7 +142,7 @@ Per the protocol's stop condition, this line is deliberately kept separate from 
 - No NIST page found during this inventory names `v2-validation`,
   `hl7-igamt`, or the CDC-vendored NIST coordinates by name and
   declares them public domain. This is the exact gap the drafted
-  inquiry (`EXP-SBOM-inquiry-draft.md`) asks NIST to close.
+  inquiry (maintained privately by the author) asks NIST to close.
 
 ## Protocol amendments made
 
@@ -168,7 +168,7 @@ amendment, just execution.)
   across all three repos plus the CDC dependency closure (26 + 3 primary
   repos = 29 items) has an explicit classification with cited evidence
   or evidence-absence. The inquiry draft
-  (`EXP-SBOM-inquiry-draft.md`) covers both `license-unstated` primary
+  (maintained privately by the author) covers both `license-unstated` primary
   repos (`v2-validation`, `hl7-igamt`).
 - **Stop condition (quoted from protocol):** "this is inventory, not
   adjudication — where the evidence is absent, record absence; do not
@@ -186,7 +186,7 @@ amendment, just execution.)
 | Artifact | Path | Hash |
 |---|---|---|
 | Results (this file) | `docs/experiments/EXP-SBOM-results.md` | n/a — prose artifact, not hashed per repo convention |
-| Inquiry draft (unsent) | `docs/experiments/EXP-SBOM-inquiry-draft.md` | n/a |
+| Inquiry draft | maintained privately by the author | n/a |
 | Protocol | `docs/experiments/EXP-SBOM.md` | n/a |
 
 ## Rubric self-score

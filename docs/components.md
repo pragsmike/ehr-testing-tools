@@ -122,9 +122,8 @@ NIST Systems Interoperability Group; license unstated — no LICENSE
 artifact anywhere in the repository (root, any of its 3 sbt modules,
 build metadata, or a systematic source-header sample), confirmed by
 EXP-SBOM's inventory (facts register [F1](../notes/facts-register.md));
-a clarification inquiry to NIST is drafted but unsent
-(`docs/experiments/EXP-SBOM-inquiry-draft.md`). Underpins NIST's hosted
-validation tools used in US EHR certification.
+a clarification inquiry to NIST is maintained privately by the author.
+Underpins NIST's hosted validation tools used in US EHR certification.
 
 **Role in pipeline.** Candidate engine for the full `gate.v2` tier;
 adoption blocked pending NIST license confirmation (EXP-SBOM executed;
@@ -134,9 +133,8 @@ channel for this engine's build artifacts exists at `hit-nexus.nist.gov`
 fetch-at-build adoption path (Mode 2: use rights only, no
 redistribution) grounded in NIST's general software statement (facts
 register [F15](../notes/facts-register.md)) — narrower and less blocked
-than full redistribution (Mode 1). The residual inquiry to NIST
-(`docs/experiments/EXP-SBOM-inquiry-draft.md`) is narrowed accordingly
-and remains unsent.
+than full redistribution (Mode 1). The residual inquiry to NIST is
+narrowed accordingly and maintained privately by the author.
 
 **Deliberately not used for.** Anything today — not yet adopted; see
 Role in pipeline above for the blocker.
