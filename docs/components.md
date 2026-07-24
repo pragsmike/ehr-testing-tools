@@ -66,6 +66,14 @@ Apache License 2.0 (facts register F4).
 In this repo: in-process FHIR parse/serialize for `corpus.mutate`.
 Deliberately not used for: authoritative gate verdicts — the official
 validator (below) is canonical where they diverge (`docs/research/` C6).
+**Caveat (P4, EXP-B2 — facts register [F17](../notes/facts-register.md)):**
+its Bundle parse→serialize round-trip is not identity-preserving under
+default parser configuration — `resource.id` is dropped from every
+Bundle entry when `entry.fullUrl` is a `urn:uuid:` value, a known
+upstream defect distinct from the documented (and otherwise
+configurable) fullUrl-overrides-id behavior. Used in this repo as a
+parse-validation aid only, never in hash/diff paths (decided in P4; see
+`docs/experiments/EXP-B2-results.md`).
 
 ## Official FHIR validator (`validator_cli` / `org.hl7.fhir.core`)
 
@@ -101,7 +109,15 @@ validation tools used in US EHR certification.
 
 In this repo: candidate engine for the full `gate.v2` tier; adoption
 blocked pending NIST license confirmation (EXP-SBOM executed; still
-license-unstated).
+license-unstated). A live, official NIST-operated distribution channel
+for this engine's build artifacts exists at `hit-nexus.nist.gov` (facts
+register [F14](../notes/facts-register.md)), opening a fetch-at-build
+adoption path (Mode 2: use rights only, no redistribution) grounded in
+NIST's general software statement (facts register
+[F15](../notes/facts-register.md)) — narrower and less blocked than full
+redistribution (Mode 1). The residual inquiry to NIST
+(`docs/experiments/EXP-SBOM-inquiry-draft.md`) is narrowed accordingly
+and remains unsent.
 
 ## CDC `lib-hl7v2-nist-validator`
 
@@ -125,7 +141,13 @@ review — facts register [F10](../notes/facts-register.md)).
 
 In this repo: candidate runtime for the full `gate.v2` tier, contingent
 on the v2 gate architecture decision (EXP-SBOM classifies; it does not
-decide — `docs/experiments/EXP-SBOM-results.md`).
+decide — `docs/experiments/EXP-SBOM-results.md`). The same
+`hit-nexus.nist.gov` channel that serves the underlying NIST engine
+(facts register [F14](../notes/facts-register.md)) also makes a
+fetch-at-build path available for this wrapper's six vendored NIST-origin
+coordinates, rather than only the vendored-jar path EXP-SBOM inventoried
+(F9) — the same Mode-2 adoption path and the same residual inquiry as
+the NIST engine above.
 
 ## IGAMT
 
