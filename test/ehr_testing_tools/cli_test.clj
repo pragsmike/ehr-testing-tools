@@ -91,6 +91,13 @@
     (is (result/ok? r))
     (is (= {:input "x.json"} @called))))
 
+(deftest dispatch-routes-corpus-intake-test
+  (let [called (atom nil)
+        r (cli/dispatch ["corpus" "intake"] {:source-dir "src"}
+                         {:intake-fn (fn [opts] (reset! called opts) (result/ok {:catalog []}))})]
+    (is (result/ok? r))
+    (is (= {:source-dir "src"} @called))))
+
 ;; ---- render ----
 
 (deftest render-edn-by-default-test
@@ -234,6 +241,26 @@
                                 :locator-path "entry[bad]" :output-dir (temp-dir*)})]
     (is (result/rejected? r))
     (is (= :invalid-fhir-path (:category r)))))
+
+;; ---- intake-command (`ehr corpus intake`): the real wiring, not the
+;; injected-stub path dispatch-routes-corpus-intake-test exercises ----
+
+(deftest intake-command-delegates-to-corpus-intake-with-explicit-received-test
+  (let [in-dir (temp-dir*)
+        out-dir (str (temp-dir*) "/out")
+        _ (spit (io/file in-dir "patient.json") sample-bundle-json)
+        r (cli/intake-command {:source-dir in-dir :label "acme" :out out-dir :received "2026-07-24"})]
+    (is (result/ok? r))
+    (is (= 1 (:file-count (:intake-record (:payload r)))))
+    (is (= "2026-07-24" (:date (:intake-record (:payload r)))))))
+
+(deftest intake-command-defaults-received-to-today-test
+  (let [in-dir (temp-dir*)
+        out-dir (str (temp-dir*) "/out")
+        _ (spit (io/file in-dir "patient.json") sample-bundle-json)
+        r (cli/intake-command {:source-dir in-dir :label "acme" :out out-dir})]
+    (is (result/ok? r))
+    (is (= (str (java.time.LocalDate/now)) (:date (:intake-record (:payload r)))))))
 
 ;; ---- main! (the real -main body, refactored to take injectable
 ;; :dispatch-fn / :println-fn / :exit-fn so its exit-code mapping and

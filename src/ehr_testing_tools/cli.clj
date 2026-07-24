@@ -11,8 +11,10 @@
             [ehr-testing-tools.artifact :as artifact]
             [ehr-testing-tools.corpus.generate :as generate]
             [ehr-testing-tools.corpus.mutate :as mutate]
+            [ehr-testing-tools.corpus.intake :as intake]
             [ehr-testing-tools.corpus.operators :as operators]
-            [ehr-testing-tools.locator :as locator]))
+            [ehr-testing-tools.locator :as locator])
+  (:import [java.time LocalDate]))
 
 (def cli-spec
   {:seed {:coerce :long}
@@ -115,16 +117,26 @@
                       (spit (io/file output-dir "lineage" (str basename ".lineage.edn")) (pr-str lineage))
                       (recur (rest remaining) (conj processed {:file basename :lineage-id (:id lineage)})))))))))))))
 
+(defn intake-command
+  "`ehr corpus intake`: catalogs :source-dir as a foreign-corpus batch
+  labeled :label. :received defaults to today (the CLI's own impure
+  boundary -- corpus.intake/intake! itself never touches the wall
+  clock, matching corpus.generate's :reference-date discipline)."
+  [{:keys [source-dir label out received]}]
+  (intake/intake! {:source-dir source-dir :source-label label :out out
+                    :received (or received (str (LocalDate/now)))}))
+
 (defn dispatch
   "Routes [group action] positional args to the corresponding capability
-  function with opts. The three -fn keys are injectable (tests use this
+  function with opts. The -fn keys are injectable (tests use this
   to avoid real subprocesses/network); default to the real commands."
   ([args opts] (dispatch args opts {}))
-  ([args opts {:keys [fetch-fn resolve-fn generate-fn mutate-fn]
+  ([args opts {:keys [fetch-fn resolve-fn generate-fn mutate-fn intake-fn]
                :or {fetch-fn fetch-command
                     resolve-fn resolve-command
                     generate-fn generate/generate!
-                    mutate-fn mutate-command}}]
+                    mutate-fn mutate-command
+                    intake-fn intake-command}}]
    (let [[group action] args]
      (case group
        "artifact" (case action
@@ -134,6 +146,7 @@
        "corpus" (case action
                   "generate" (generate-fn opts)
                   "mutate" (mutate-fn opts)
+                  "intake" (intake-fn opts)
                   (result/error :unknown-command {:args args}))
        (result/error :unknown-command {:args args})))))
 
