@@ -67,6 +67,35 @@
       (is (result/rejected? r) (str "expected rejection for " (pr-str bad)))
       (is (= :invalid-fhir-path (:category r))))))
 
+;; ---- v2 grammar (P5): segment/index/field/component, the operational
+;; subset matching ca.uhn.hl7v2.Location's own fields ----
+
+(deftest v2-data-path-parses-a-bare-segment-field-test
+  (let [r (locator/v2-data-path "PID-3")]
+    (is (result/ok? r))
+    (is (= ["PID" 0 3 nil] (:payload r)))))
+
+(deftest v2-data-path-parses-an-explicit-segment-repetition-test
+  (let [r (locator/v2-data-path "OBX[2]-5")]
+    (is (result/ok? r))
+    (is (= ["OBX" 2 5 nil] (:payload r)))))
+
+(deftest v2-data-path-parses-a-component-test
+  (let [r (locator/v2-data-path "PID-7-1")]
+    (is (result/ok? r))
+    (is (= ["PID" 0 7 1] (:payload r)))))
+
+(deftest v2-data-path-parses-repetition-and-component-together-test
+  (let [r (locator/v2-data-path "NK1[1]-4-2")]
+    (is (result/ok? r))
+    (is (= ["NK1" 1 4 2] (:payload r)))))
+
+(deftest v2-data-path-rejects-malformed-strings-test
+  (doseq [bad ["" "PID" "PID-" "PI-3" "pid-3" "PID-3-" "PID[x]-3" "PID--3"]]
+    (let [r (locator/v2-data-path bad)]
+      (is (result/rejected? r) (str "expected rejection for " (pr-str bad)))
+      (is (= :invalid-v2-path (:category r))))))
+
 (deftest fhir-data-path-navigates-real-data-with-get-in-test
   ;; The whole point: the parsed path must actually work with
   ;; get-in/assoc-in/update-in against plain-data (data.json-shaped)

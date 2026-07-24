@@ -67,3 +67,32 @@
       (if (or (empty? segments) (some empty? segments) (some nil? parsed))
         (result/rejected :invalid-fhir-path {:path path-str})
         (result/ok (vec (mapcat identity parsed)))))))
+
+;; ---- v2 grammar (P5, first real per-format grammar beyond FHIR --
+;; pattern nursery #4): an operational SUBSET of HL7 v2's own
+;; segment/field/component addressing, matching exactly the fields
+;; ca.uhn.hl7v2.Location (HAPI's own location type, attached to every
+;; HL7Exception/ValidationException gate.v2 catches) exposes:
+;; segment name, segment repetition, field number, component. No
+;; field-repetition, no sub-component -- a genuinely fuller subset is
+;; future work; this exists because gate.v2 needs *a* way to name
+;; "this exact spot in this exact v2 message" today, mirroring why the
+;; FHIR grammar above exists.
+
+(def ^:private v2-path-re
+  #"^([A-Z][A-Z0-9]{2})(?:\[(\d+)\])?-(\d+)(?:-(\d+))?$")
+
+(defn v2-data-path
+  "Parses a v2 locator's :path string (\"PID-3\", \"PID[0]-7\",
+  \"OBX[2]-5-1\") into a [segment index field component] tuple:
+  segment (a 3-character segment id, e.g. \"PID\"), index (the
+  segment's repetition, defaulting to 0 when the [n] suffix is
+  omitted), field (the 1-based field number), component (1-based, or
+  nil when absent -- field-level, not component-level). Returns
+  result/ok [...] or result/rejected :invalid-v2-path on any string
+  outside this grammar."
+  [path-str]
+  (if-let [[_ segment index field component] (re-matches v2-path-re (or path-str ""))]
+    (result/ok [segment (if index (Long/parseLong index) 0) (Long/parseLong field)
+                (when component (Long/parseLong component))])
+    (result/rejected :invalid-v2-path {:path path-str})))
