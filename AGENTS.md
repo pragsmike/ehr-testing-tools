@@ -103,20 +103,42 @@ this repo.
   it motivates; red→green evidence goes in the session report; `make test`
   and `make coverage` must be green/reported before any session-final
   commit.
-- **The test suite is hermetic — keep it that way.** `make test` must
-  pass from a cold clone with no network access beyond the initial
-  dependency fetch (verified 2026-07-24: fresh temp clone, deps primed
-  once, then `make test` run inside a network-isolated namespace,
-  166 tests/0 failures/0 errors). Every test that touches the network or
-  a real artifact/subprocess does so through an injected fake
+- **The test suite is hermetic — keep it that way.** Both `make test`
+  and `make coverage` must pass from a cold clone with no network access
+  beyond the initial dependency fetch (verified 2026-07-25: fresh temp
+  clone, deps primed once, then both targets run inside a
+  network-isolated namespace against an empty artifact cache — see
+  `.agents/prompts/archive/2026-07-25-ci-hotfix-integration-path.md` for
+  the exact counts). Every test on the `test/` path that touches the
+  network or a real artifact/subprocess does so through an injected fake
   (`:downloader`, `:run-invocation`, `:resolve-java-bin`, etc. — see
   `test/ehr_testing_tools/artifact_test.clj` and
-  `corpus/generate_test.clj`), never the real thing. If a future test
-  genuinely needs the network or a real external engine, tag its
-  `deftest` with `^:integration` metadata and exclude that tag from the
-  default `:test` alias's runner — no such tag exists yet because no
-  test currently needs one. CI (`.github/workflows/ci.yml`) depends on
-  this holding.
+  `corpus/generate_test.clj`), never the real thing.
+
+  Hermeticity is a **path split, not a tag filter**: tests that
+  genuinely need the network, a real external engine, or a warm artifact
+  cache live under `test-integration/`, not `test/` — e.g.
+  `test-integration/ehr_testing_tools/contract_pairing_test.clj`, which
+  runs the real `validator_cli.jar` subprocess against a real generated
+  corpus. Neither the `:test` nor the `:coverage` alias in `deps.edn`
+  adds `test-integration` to its paths, so both are cold-cache/no-network
+  green *by construction* — this is deliberate, not incidental: `make
+  coverage` runs cloverage's own test runner, which does not honor
+  `clojure.test`'s `:excludes` the way `cognitect.test-runner` does, so a
+  tag-only exclusion (the original design) does not actually keep
+  integration tests out of `make coverage`. A path a test isn't on is a
+  path cloverage can't run it from, regardless of what runner it uses.
+  `^:integration` metadata stays on those tests as documentation of *why*
+  they moved, not as the enforcement mechanism.
+
+  Run the integration suite explicitly with `make integration`
+  (`clojure -X:integration`, the `:integration` alias) — it requires
+  `ehr artifact fetch` for `synthea`, `temurin-jdk`, and
+  `fhir-validator-cli` first (see `make help`). CI
+  (`.github/workflows/ci.yml`) runs only `make test` and `make coverage`,
+  never `make integration` — see the enforcement-wave plan
+  (`.agents/plans/corpus-foundations.md`) for the proposed nightly job
+  that would run it with the cache pre-primed.
 
 ## Repo conventions
 

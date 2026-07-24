@@ -1,4 +1,4 @@
-.PHONY: help pack pack-skills pack-push test coverage ehr pipeline
+.PHONY: help pack pack-skills pack-push test coverage integration ehr pipeline
 
 SHELL := bash
 
@@ -25,8 +25,13 @@ help:
 	@echo "  pack         - concatenate tracked files (except .agents/skills, .agents/prompts/archive) into $(PACK_OUTPUT)"
 	@echo "  pack-skills  - concatenate only .agents/skills + .agents/prompts/archive into $(PACK_SKILLS_OUTPUT)"
 	@echo "  pack-push    - pack + pack-skills, then publish both to the pragsmike/packs repo ($(PACKS_REPO_DIR))"
-	@echo "  test         - run the Clojure test suite (clojure -X:test)"
-	@echo "  coverage     - run cloverage and report coverage (clojure -M:coverage)"
+	@echo "  test         - run the Clojure test suite (clojure -X:test); cold-cache/no-network hermetic"
+	@echo "  coverage     - run cloverage and report coverage (clojure -M:coverage); cold-cache/no-network hermetic"
+	@echo "  integration  - run the integration test suite (clojure -X:integration); requires"
+	@echo "                 'ehr artifact fetch' for synthea, temurin-jdk, and fhir-validator-cli first, e.g.:"
+	@echo "                   make ehr ARGS=\"artifact fetch --name synthea --version 4.0.0\""
+	@echo "                   make ehr ARGS=\"artifact fetch --name temurin-jdk --version 17.0.19+10\""
+	@echo "                   make ehr ARGS=\"artifact fetch --name fhir-validator-cli --version 6.9.12\""
 	@echo "  ehr          - invoke the ehr CLI, e.g. make ehr ARGS=\"artifact fetch --name synthea --version 4.0.0\""
 	@echo "  pipeline     - regenerate docs/pipeline.md from docs/pipeline.edn"
 
@@ -35,6 +40,14 @@ test:
 
 coverage:
 	clojure -M:coverage
+
+# Runs test-integration/ (tests needing real cached artifacts, network,
+# or a warm cache -- e.g. gate.fhir's contract-pairing suite). Requires
+# the three artifacts named under `help` above to already be fetched;
+# see AGENTS.md's hermeticity policy for why these live apart from
+# `make test`/`make coverage`.
+integration:
+	clojure -X:integration
 
 ehr:
 	clojure -M -m ehr-testing-tools.cli $(ARGS)
