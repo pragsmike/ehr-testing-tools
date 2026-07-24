@@ -2,7 +2,8 @@
 
 [![CI](https://github.com/pragsmike/ehr-testing-tools/actions/workflows/ci.yml/badge.svg)](https://github.com/pragsmike/ehr-testing-tools/actions/workflows/ci.yml)
 
-Offline-first — no hosted services, no non-deterministic runs.
+**Reproducible test data for EHR integrations — generated, broken on purpose, and traceable end to end.**
+> ehr-testing-tools builds the test data layer that EHR integration projects always need and never budget for: reproducible synthetic corpora, controlled defect injection with full lineage, and — coming — conformance gates that catch what the defects break. Offline and deterministic by construction; plain FHIR JSON and EDN out the other end, so you can use the results from Python, SQL, or anything else. Clojure inside, no Clojure skills required.
 
 Testing EHR integrations well needs three things most projects don't
 have off the shelf: realistic clinical test data at volume, deliberately
