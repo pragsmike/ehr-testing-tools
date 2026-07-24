@@ -1,5 +1,13 @@
 # Experiment Backlog
 
+Experiments are how this repo verifies a pipeline stage's law
+(`docs/notation.md`) actually holds, and how it pins design decisions
+that would otherwise rest on assertion — a protocol is written and
+committed before execution, and the results file that follows is
+classification only; interpreting what a result means for the
+architecture happens in the design record (an ADR or the plan file),
+not in the results file itself.
+
 Experiments this project needs run before committing to architecture,
 adopted from the component-selection research behind
 `docs/ehr-testing-tools-problem-statement.md`. Each gates a specific
