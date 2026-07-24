@@ -2,10 +2,36 @@
 
 [![CI](https://github.com/pragsmike/ehr-testing-tools/actions/workflows/ci.yml/badge.svg)](https://github.com/pragsmike/ehr-testing-tools/actions/workflows/ci.yml)
 
-Operational tooling for testing EHR integrations: reproducible
-synthetic-corpus construction (generation, mutation, provenance) and
-conformance gating (HL7 v2 and FHIR), for JVM/Clojure teams.
 Offline-first — no hosted services, no non-deterministic runs.
+
+Testing EHR integrations well needs three things most projects don't
+have off the shelf: realistic clinical test data at volume, deliberately
+broken variants of that data to prove your validation actually catches
+problems, and conformance gates that check messages against the
+standards they claim to follow. Most teams hand-roll all three, per
+project, and the hand-rolled version is usually thin.
+
+This repo gives you reproducible synthetic patient corpora — regenerate
+the same corpus byte-for-byte from a manifest, proven in
+[EXP-A4](docs/experiments/EXP-A4-results.md) — plus controlled defect
+injection with full lineage: every mutant traces back to its base
+bundle, the operator that broke it, and the constraint it was built to
+violate. Conformance gating against HL7 v2 and FHIR profiles is planned,
+not yet built — see [the plan](.agents/plans/corpus-foundations.md).
+
+It's for the people who actually test EHR integrations day to day —
+interface analysts, QA engineers, data engineers — not necessarily
+Clojure programmers. The outputs are plain FHIR JSON and EDN manifests,
+readable from Python or anything else, and if you're comfortable working
+alongside an AI assistant, [SETUP.md](SETUP.md) has a copy-paste prompt
+that walks it through installing and running this for you.
+
+Maintained by the author of
+[`ehr-testing-guide`](https://github.com/pragsmike/ehr-testing-guide) as
+the operational companion to that book: the guide explains why these
+capabilities belong in a test plan, this repo makes them runnable. It's
+pre-release — interfaces may still move — and the maturity table below
+is the actual contract, not a formality.
 
 ## The pipeline
 
@@ -88,20 +114,11 @@ use the results.
 
 ## Relationship to ehr-testing-guide
 
-This repo is the companion to
-[`ehr-testing-guide`](https://github.com/pragsmike/ehr-testing-guide), a
-book on testing EHR integrations. The two exist for different purposes:
-**the guide's companion code exists to be read; the tools here exist to
-be run.** The guide explains the testing method and where each
-capability belongs in a test plan; this repo makes the capabilities
-runnable.
-
-If you arrived here first and want to know *why* these tools exist or
-*what to do with their output*, read the guide — it's the method this
-repo implements. See [`docs/positioning.md`](docs/positioning.md) for
-the fuller map of how the two projects relate, including why the guide
-doesn't cite this repo yet (that waits for this repo's first release,
-not merely publication).
+The two exist for different purposes: **the guide's companion code
+exists to be read; the tools here exist to be run.** See
+[`docs/positioning.md`](docs/positioning.md) for the fuller map of how
+the two projects relate, including why the guide doesn't cite this repo
+yet (that waits for this repo's first release, not merely publication).
 
 ## Scope
 
