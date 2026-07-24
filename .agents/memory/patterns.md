@@ -74,6 +74,12 @@ the design channel.
    -- found live, during P5's own contract-pairing exercise, and folded
    into the shared schema rather than left as a gate.fhir-only special
    case.
+   P6 addendum: a third, non-format consumer now shares the same
+   envelope and `gate.report` aggregation with zero refactor --
+   `ehr-testing-tools.check` (a different capability entirely, not a
+   third data format) produces findings and reuses `gate.report/
+   build-report` unchanged, confirming the shape generalizes across
+   capability boundaries, not merely across formats within Gate.
 
 7. **Corpus recipes** — one EDN value naming a corpus intent (generator
    config, population, seed policy, mutation plan), referenced by hash

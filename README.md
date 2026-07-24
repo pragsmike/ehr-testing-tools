@@ -20,9 +20,14 @@ bundle, the operator that broke it, and the constraint it was built to
 violate. Conformance gates against HL7 v2 and FHIR now exist —
 base-structural (v2, over HAPI) and base-spec (FHIR, over the official
 validator), offline verdict policy, no implementation guide pinned yet
-though the machinery to pin one is built — see
+though the machinery to pin one is built, plus baseline-relative mode
+for real-world corpora that carry pre-existing findings — see
 [`docs/gate-calibration.md`](docs/gate-calibration.md) for exactly
-which defects each tier catches and which it doesn't, and
+which defects each tier catches and which it doesn't. Check, the
+corpus's second judge alongside Gate, now exists too: golden
+equivalence against an expected corpus plus a small per-file assertion
+vocabulary. See [`docs/use-cases.md`](docs/use-cases.md) for what you
+can actually do with all of this, formally, and
 [the plan](.agents/plans/corpus-foundations.md) for what's next.
 
 It's for the people who actually test EHR integrations day to day —
@@ -53,15 +58,20 @@ in, a mutated, gate-ready corpus comes out.
 flowchart LR
     Generate --> Normalize --> Mutate --> Gate --> Report
     Intake --> Gate
+    Intake --> Check
+    Mutate --> Check
     style Generate fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
     style Normalize fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
     style Mutate fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
     style Intake fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
     style Gate fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style Check fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
     style Report fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
 ```
 
-Every stage above is built. The full version — resource
+Every stage above is built. Check is the corpus's second judge
+alongside Gate: Gate checks a datum against a standard, Check verifies
+it against a caller's own expectations. The full version — resource
 equations, catalytic inputs, the diagram mechanically derived from them
 — is [`docs/pipeline.md`](docs/pipeline.md); [`docs/notation.md`](docs/notation.md)
 is the notation it's written in.
@@ -76,7 +86,8 @@ the actual contract with readers, not a formality.
 | **Generate** (`corpus.generate`) | **Usable** | Clean-environment byte-reproducibility proven — [EXP-A4](docs/experiments/EXP-A4-results.md) |
 | **Mutate** (`corpus.mutate`) | **Experimental** | Works; days old; interfaces may still move — [EXP-B2](docs/experiments/EXP-B2-results.md) |
 | **Intake** (`corpus.intake`) | **Experimental** | Foreign-corpus cataloging; days old — same content-hash lineage as generated corpora |
-| **Gate** (`gate.fhir` / `gate.v2`) | **Experimental** | Base-spec (FHIR, official validator) / base-structural (v2, HAPI); offline verdict policy; no implementation guide pinned yet — [EXP-C5](docs/experiments/EXP-C5-results.md), [gate calibration](docs/gate-calibration.md) |
+| **Gate** (`gate.fhir` / `gate.v2`) | **Experimental** | Base-spec (FHIR, official validator) / base-structural (v2, HAPI); offline verdict policy; no implementation guide pinned yet; baseline-relative mode for real-world corpora — [EXP-C5](docs/experiments/EXP-C5-results.md), [gate calibration](docs/gate-calibration.md) |
+| **Check** (`ehr-testing-tools.check`) | **Experimental** | Dataset-vs-expectations judge alongside Gate: golden equivalence against an expected corpus (canonicalizer-aware) plus a small per-file assertion vocabulary (present/absent/value/count/schema); days old, v1 vocabulary deliberately small |
 
 **Status: pre-release.** This repo is public (as of
 [ADR-0008](notes/ADRs.md)) but has not had a first release: no version
@@ -126,6 +137,10 @@ make ehr ARGS="corpus mutate --input $PATIENT_FILE \
 make ehr ARGS="artifact fetch --name fhir-validator-cli --version 6.9.12"
 make ehr ARGS="gate v2 test/fixtures/v2"
 make ehr ARGS="gate fhir out/demo-mutants --report out/demo-mutants-report.edn"
+
+# Check a corpus against an expected corpus (golden equivalence) --
+# the corpus's second judge, alongside Gate.
+make ehr ARGS="check out/demo-corpus/fhir --expected out/demo-corpus/fhir"
 
 # Run the test suite (hermetic — see AGENTS.md). A separate suite
 # exercises the real validator/HAPI engines against real mutants
