@@ -27,7 +27,12 @@ the design channel.
    args, relevant env, artifact refs by hash, engine version, duration,
    exit code, output digests. Engine-agnostic; engine-specific fields
    are a smell.
-   Status: in implementation (P3).
+   Status: in implementation (P3); the in-process case is now handled
+   too (P5) — `gate.v2` has no subprocess (HAPI HL7v2 runs in-process),
+   yet still returns an invocation-shaped record (`{:engine {:name
+   :version} :input-sha256 ...}`, engine version read from the running
+   jar's own packaged pom.properties on the classpath, not hand-copied)
+   rather than omitting provenance because there's no PID to record.
 
 3. **Canonicalizers (registry + laws)** — named, versioned
    transformations with three laws: idempotence (property-tested),
@@ -57,7 +62,18 @@ the design channel.
    `{severity, code, locator, message, engine, native-ref}`; verdicts
    are pass / rejected / indeterminate, with indeterminate first-class
    (license-blocked checks, engine limitations).
-   Status: tentative; lands with gates.
+   Status: validated (P5). Evidence: two real, independent formats
+   (`gate.fhir`, `gate.v2`) both consume the exact same
+   `ehr-testing-tools.gate.finding` schema and `worst-of` composition
+   law, with no per-format dialect -- `gate.fhir` additionally records
+   a `:policy` key beyond the envelope's own fields (which format
+   classified as which severity), proving the shape is extensible
+   without forking it. FHIR's own `IssueSeverity` ValueSet turned out
+   to have a fourth value (`:fatal`, alongside `:error`/`:warning`/
+   `:information`) that neither format's initial test corpus surfaced
+   -- found live, during P5's own contract-pairing exercise, and folded
+   into the shared schema rather than left as a gate.fhir-only special
+   case.
 
 7. **Corpus recipes** — one EDN value naming a corpus intent (generator
    config, population, seed policy, mutation plan), referenced by hash
@@ -66,7 +82,12 @@ the design channel.
 
 8. **Corpus catalog** — an index of corpus items (id, layer, format,
    lineage ref, tags); meaning lives in data, not filenames.
-   Status: tentative.
+   Status: in implementation (P5) — `ehr-testing-tools.corpus.intake`:
+   `{:id :path :format :layer :source :received}` catalog entries plus
+   one batch intake record per source, EDN, Malli-schema'd. `:id` is
+   format-aware content hash (the same function `corpus.mutate` itself
+   uses for FHIR JSON, so an intaken file's catalog id and its eventual
+   mutant's lineage `:parent` are one hash space, no adapter).
 
 9. **Format-support matrix** — adding a format means filling a column
    of obligations (round-trip-verified parser, locator grammar,
@@ -147,6 +168,37 @@ the design channel.
     pattern #13 itself stays deferred to P5, when the Gate/Report
     equations move from stub to authored and criteria 2–3 can be
     re-evaluated against real, not planned-status, equations.
+    P5 evidence (Gate/Intake/Report move from stub/planned to
+    authored/built): criterion (1) fired positively this time, unlike
+    P4 — authoring the Gate equation forced a design decision *before*
+    `gate.fhir`/`gate.v2` were implemented: one equation for both
+    formats (`datum`, format-dispatched at call time) or two separate
+    equations. The equation's own `:laws` record the choice and the
+    reason (the notation's `×` only expresses product/AND between
+    inputs, no operator exists for OR between format alternatives) --
+    the equation authoring genuinely clarified the design question, not
+    merely anticipated it. Criterion (3) again did **not** hold, and
+    surfaced a second, distinct kind of gap from P4's: the generated
+    diagram renders `Gate`'s `datum` input as a disconnected source
+    node with no wire from `Normalize`'s, `Mutate`'s, or `Intake`'s
+    real outputs, and renders `Intake` as a dead-end with no downstream
+    consumer at all -- both true to the equations as written, and both
+    an honest reflection of a second notation gap: nothing in `×`/`+`
+    can express "downstream of any one of several alternative upstream
+    stages" (Gate genuinely accepts output from Normalize, Mutate, *or*
+    Intake, not their product). Left uncorrected in the equation
+    deliberately, per the same discipline P4 established: flag the gap
+    for the design channel rather than force a misleading product-typed
+    fix into the equation. Criterion (2) holds cleanly across all six
+    now-authored equations (Generate, Normalize, Mutate, Intake, Gate,
+    Report): every catalytic resource resolves to one of the four
+    targets, including `hapi-hl7v2-dep` (target 2, `deps.edn`) and
+    `profile-artifact` (target 1, `artifacts.lock.edn`, present but
+    unpinned this session -- the target still resolves even though no
+    entry exists yet). Net: two real sessions, two real diagram-caught
+    gaps, criterion 1 now fired at least once — promotion is a design-
+    channel call from here, not updated by this session per the
+    original instruction.
 
 14. **Operators carry contracts** — mutation (introducing a defect) and
     metamorphic perturbation (transforming input while preserving an

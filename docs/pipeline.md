@@ -13,9 +13,8 @@ The equations are the source of truth: [docs/pipeline.edn](pipeline.edn). A stag
 synthea-config × synthea-artifact × jdk-runtime × config-hash → raw-corpus  [Generate]  {catalytic: synthea-artifact, jdk-runtime, config-hash}
 raw-corpus → canonical-fhir-datum  [Normalize]
 canonical-fhir-datum × operator-catalog → mutant-fhir-datum + lineage-record  [Mutate]  {catalytic: operator-catalog}
-# planned: Gate
-fhir-datum × profile-artifact → pass + rejected + indeterminate  [Gate]  {catalytic: profile-artifact}
-# planned: Report
+foreign-file → catalog-entry + intake-record  [Intake]
+datum × validator-artifact × runtime × hapi-hl7v2-dep × profile-artifact → pass + rejected + indeterminate  [Gate]  {catalytic: validator-artifact, runtime, hapi-hl7v2-dep, profile-artifact}
 pass × rejected × indeterminate → report  [Report]
 ```
 
@@ -26,17 +25,22 @@ flowchart LR
 
     %% --- Source types (raw inputs, not produced by any operation) ---
     config_hash(["config-hash"])
-    fhir_datum(["fhir-datum"])
+    datum(["datum"])
+    foreign_file(["foreign-file"])
+    hapi_hl7v2_dep(["hapi-hl7v2-dep"])
     jdk_runtime(["jdk-runtime"])
     operator_catalog(["operator-catalog"])
     profile_artifact(["profile-artifact"])
+    runtime(["runtime"])
     synthea_artifact(["synthea-artifact"])
     synthea_config(["synthea-config"])
+    validator_artifact(["validator-artifact"])
 
     %% --- Operations (boxes; spiders use distinct shapes) ---
     Generate["Generate"]
     Normalize["Normalize"]
     Mutate["Mutate"]
+    Intake["Intake"]
     Gate["Gate"]
     Report["Report"]
 
@@ -54,11 +58,17 @@ flowchart LR
     Normalize -- canonical-fhir-datum --> Mutate
     operator_catalog -. operator-catalog .-> Mutate
 
+    %% Arrow 4: Intake
+    foreign_file -- foreign-file --> Intake
+
     %% Arrow 5: Gate
-    fhir_datum -- fhir-datum --> Gate
+    datum -- datum --> Gate
+    validator_artifact -. validator-artifact .-> Gate
+    runtime -. runtime .-> Gate
+    hapi_hl7v2_dep -. hapi-hl7v2-dep .-> Gate
     profile_artifact -. profile-artifact .-> Gate
 
-    %% Arrow 7: Report
+    %% Arrow 6: Report
     Gate -- pass --> Report
     Gate -- rejected --> Report
     Gate -- indeterminate --> Report
@@ -69,15 +79,20 @@ flowchart LR
     style Generate fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
     style Normalize fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
     style Mutate fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style Intake fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
     style Gate fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
     style Report fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
 
     %% Source types: light rounded
     style config_hash fill:#f5f5f5,stroke:#999,color:#333
-    style fhir_datum fill:#f5f5f5,stroke:#999,color:#333
+    style datum fill:#f5f5f5,stroke:#999,color:#333
+    style foreign_file fill:#f5f5f5,stroke:#999,color:#333
+    style hapi_hl7v2_dep fill:#f5f5f5,stroke:#999,color:#333
     style jdk_runtime fill:#f5f5f5,stroke:#999,color:#333
     style operator_catalog fill:#f5f5f5,stroke:#999,color:#333
     style profile_artifact fill:#f5f5f5,stroke:#999,color:#333
+    style runtime fill:#f5f5f5,stroke:#999,color:#333
     style synthea_artifact fill:#f5f5f5,stroke:#999,color:#333
     style synthea_config fill:#f5f5f5,stroke:#999,color:#333
+    style validator_artifact fill:#f5f5f5,stroke:#999,color:#333
 ```

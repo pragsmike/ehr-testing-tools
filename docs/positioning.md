@@ -57,7 +57,12 @@ moments the guide will eventually point here:
   generator and a mutator; this repo supplies them.
 - **Conformance gates** (guide ch. 25: v2 and FHIR validation as structural
   gates upstream of semantic checks) — this repo supplies the gate
-  wrappers.
+  wrappers. Motivating deployment class for this capability (P5,
+  recorded without identifying anyone): testing an ingestion pipeline
+  whose transforms emit HL7 v2 and FHIR JSON, where the consuming team
+  brings its own synthetic corpus rather than one generated here — the
+  gates and the mutation/intake layers underneath them treat a foreign
+  corpus as first-class for exactly this reason.
 - **Data sources for the guide's own experiments** — notably, the guide's
   Experiment 3 will eventually consume this repo's v2 projector output.
 

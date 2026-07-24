@@ -33,19 +33,31 @@
           "intended-diff-only: diff(canon(base), canon(mutant)) touches exactly the declared locator/contract target and nothing else"]
    :contract "operates on plain-data JSON (data.json), not a HAPI-parsed tree, because EXP-B2 verified plain-data JSON's parse-serialize round-trip is faithful"}
 
+  {:id :intake
+   :label "Intake"
+   :kind :enrich
+   :status :built
+   :inputs ["foreign-file"]
+   :outputs ["catalog-entry" "intake-record"]
+   :laws ["adds fields without altering existing ones: computes a content hash and a format sniff about a file, never touches the file's own bytes"
+          "an intaken FHIR file's catalog id is the exact value corpus.mutate independently computes as a mutant's lineage :parent -- no adapter between intake and mutate, verified by a lineage-chaining test (ehr-testing-tools.corpus.intake-test)"]}
+
   {:id :gate
    :label "Gate"
    :kind :gate
-   :status :planned
-   :inputs ["fhir-datum"]
+   :status :built
+   :inputs ["datum"]
    :outputs ["pass" "rejected" "indeterminate"]
-   :catalytic ["profile-artifact"]
-   :laws ["never modifies the datum it judges"]}
+   :catalytic ["validator-artifact" "runtime" "hapi-hl7v2-dep" "profile-artifact"]
+   :laws ["never modifies the datum it judges -- verified against the real engine, not only injected fakes (contract-pairing suite)"
+          "format dispatch: \"datum\" is FHIR JSON or v2 ER7, resolved at call time to gate.fhir or gate.v2 -- one equation for both engines, a deliberate collapsing documented here rather than duplicating the equation per format (the notation's × only expresses product/AND between inputs, not OR between format alternatives); docs/gate-calibration.md is the per-format detail this equation deliberately omits"]
+   :contract "gate.v2 never produces :indeterminate (no terminology, no profile at its base-structural tier); gate.fhir's verdict-mapping table is EXP-C5-derived and versioned (ehr-testing-tools.gate.fhir/verdict-mapping-version, cited to docs/experiments/EXP-C5-results.md) -- no IG pinned in artifacts.lock.edn this session, though -ig wiring exists"}
 
   {:id :report
    :label "Report"
    :kind :transform
-   :status :planned
+   :status :built
    :inputs ["pass" "rejected" "indeterminate"]
    :outputs ["report"]
-   :laws ["appends provenance: which engine, which profile, which verdicts, normalized to the finding envelope (pattern nursery #6)"]}]}
+   :laws ["appends provenance: which engine, which profile, which verdicts, normalized to the finding envelope (pattern nursery #6, shared by both gate formats)"
+          "diffable: gate.report/diff-reports compares two reports of the same corpus -- changed verdicts, added/removed files, appeared/disappeared codes"]}]}

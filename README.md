@@ -3,7 +3,7 @@
 [![CI](https://github.com/pragsmike/ehr-testing-tools/actions/workflows/ci.yml/badge.svg)](https://github.com/pragsmike/ehr-testing-tools/actions/workflows/ci.yml)
 
 **Reproducible test data for EHR integrations — generated, broken on purpose, and traceable end to end.**
-> ehr-testing-tools builds the test data layer that EHR integration projects always need and never budget for: reproducible synthetic corpora, controlled defect injection with full lineage, and — coming — conformance gates that catch what the defects break. Offline and deterministic by construction; plain FHIR JSON and EDN out the other end, so you can use the results from Python, SQL, or anything else. Clojure inside, no Clojure skills required.
+> ehr-testing-tools builds the test data layer that EHR integration projects always need and never budget for: reproducible synthetic corpora, controlled defect injection with full lineage, and conformance gates (HL7 v2, FHIR) that catch what the defects break — experimental, base-tier, offline. Offline and deterministic by construction; plain FHIR JSON and EDN out the other end, so you can use the results from Python, SQL, or anything else. Clojure inside, no Clojure skills required.
 
 Testing EHR integrations well needs three things most projects don't
 have off the shelf: realistic clinical test data at volume, deliberately
@@ -17,8 +17,13 @@ the same corpus byte-for-byte from a manifest, proven in
 [EXP-A4](docs/experiments/EXP-A4-results.md) — plus controlled defect
 injection with full lineage: every mutant traces back to its base
 bundle, the operator that broke it, and the constraint it was built to
-violate. Conformance gating against HL7 v2 and FHIR profiles is planned,
-not yet built — see [the plan](.agents/plans/corpus-foundations.md).
+violate. Conformance gates against HL7 v2 and FHIR now exist —
+base-structural (v2, over HAPI) and base-spec (FHIR, over the official
+validator), offline verdict policy, no implementation guide pinned yet
+though the machinery to pin one is built — see
+[`docs/gate-calibration.md`](docs/gate-calibration.md) for exactly
+which defects each tier catches and which it doesn't, and
+[the plan](.agents/plans/corpus-foundations.md) for what's next.
 
 It's for the people who actually test EHR integrations day to day —
 interface analysts, QA engineers, data engineers — not necessarily
@@ -41,14 +46,17 @@ in, a mutated, gate-ready corpus comes out.
 
 ```mermaid
 flowchart LR
-    Generate --> Normalize --> Mutate --> Gate
+    Generate --> Normalize --> Mutate --> Gate --> Report
+    Intake --> Gate
     style Generate fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
     style Normalize fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
     style Mutate fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
-    style Gate fill:#2d2d2d,stroke:#666,color:#aaa,stroke-width:2px,stroke-dasharray:5 5
+    style Intake fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style Gate fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style Report fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
 ```
 
-*Gate (dashed) is planned, not built.* The full version — resource
+Every stage above is built. The full version — resource
 equations, catalytic inputs, the diagram mechanically derived from them
 — is [`docs/pipeline.md`](docs/pipeline.md); [`docs/notation.md`](docs/notation.md)
 is the notation it's written in.
@@ -62,7 +70,8 @@ the actual contract with readers, not a formality.
 |---|---|---|
 | **Generate** (`corpus.generate`) | **Usable** | Clean-environment byte-reproducibility proven — [EXP-A4](docs/experiments/EXP-A4-results.md) |
 | **Mutate** (`corpus.mutate`) | **Experimental** | Works; days old; interfaces may still move — [EXP-B2](docs/experiments/EXP-B2-results.md) |
-| **Gate** (`gate.fhir` / `gate.v2`) | **Planned** | Designed, not built — see the [plan](.agents/plans/corpus-foundations.md) |
+| **Intake** (`corpus.intake`) | **Experimental** | Foreign-corpus cataloging; days old — same content-hash lineage as generated corpora |
+| **Gate** (`gate.fhir` / `gate.v2`) | **Experimental** | Base-spec (FHIR, official validator) / base-structural (v2, HAPI); offline verdict policy; no implementation guide pinned yet — [EXP-C5](docs/experiments/EXP-C5-results.md), [gate calibration](docs/gate-calibration.md) |
 
 **Status: pre-release.** This repo is public (as of
 [ADR-0008](notes/ADRs.md)) but has not had a first release: no version
@@ -103,7 +112,20 @@ make ehr ARGS="corpus mutate --input $PATIENT_FILE \
   --operator-id remove-required-element --locator-path entry[0].resource.gender \
   --output-dir out/demo-mutants"
 
-# Run the test suite (hermetic — see AGENTS.md).
+# Gate a file or directory against HL7 v2 (base-structural, HAPI) or
+# FHIR (base-spec, the official validator -- also fetches its own
+# pinned artifact the first time). Exit code: 0 all pass (including
+# indeterminate-only runs -- the report says so loudly), 1 any
+# rejected, 2 operational error. --report writes the corpus report;
+# --json projects it.
+make ehr ARGS="artifact fetch --name fhir-validator-cli --version 6.9.12"
+make ehr ARGS="gate v2 test/fixtures/v2"
+make ehr ARGS="gate fhir out/demo-mutants --report out/demo-mutants-report.edn"
+
+# Run the test suite (hermetic — see AGENTS.md). A separate suite
+# exercises the real validator/HAPI engines against real mutants
+# end-to-end (tagged ^:integration, excluded from make test by
+# default): `clojure -X:test :excludes '[]'`.
 make test
 ```
 

@@ -57,8 +57,10 @@ document, which cited 2.5.1/2024; 2.6.0 is the current tag as of this
 verification). Used in countless integration engines and hospital
 interfaces.
 
-**Role in pipeline.** In-process parse/serialize engine for
-`corpus.mutate` (v2) and the light `gate.v2` tier.
+**Role in pipeline.** In-process parse/serialize engine for the future
+`corpus.mutate` v2 support (P6, not yet built) and the base-structural
+`gate.v2` tier (built, P5) — `defaultValidation`-context strict
+parsing plus `DefaultValidator`, in-process, no subprocess.
 
 **Deliberately not used for.** Profile conformance beyond the classic
 HL7 Message Profile XML — its conformance module predates and does not
@@ -101,13 +103,20 @@ IG publisher); Apache License 2.0 (facts register
 [F5](../notes/facts-register.md)). Distributed as a CLI jar and as the
 library HAPI FHIR wraps.
 
-**Role in pipeline.** The engine behind `gate.fhir`, run as a pinned
-subprocess with IG packages as locked artifacts; verdicts are consumed
-as OperationOutcome data and normalized by `gate.report`. Known
-operational constraints that shape our wrapper: offline/no-terminology
-operation has open upstream bugs (locally packaged ValueSets can still
-fail; see `docs/research/` C1/C5), so verdict policy classifies rather
-than trusts raw pass/fail.
+**Role in pipeline.** The engine behind `gate.fhir` (built, P5),
+version 6.9.12 pinned in `artifacts.lock.edn` (facts register
+[F18](../notes/facts-register.md)), run as a pinned subprocess; IG
+packages resolve as locked `:profile`-kind artifacts when a caller
+supplies them (the `-ig` machinery is built; none is pinned yet).
+Verdicts are consumed as OperationOutcome data and normalized by
+`gate.report`. Known operational constraints that shape our wrapper,
+confirmed directly by EXP-C5 (`docs/experiments/EXP-C5-results.md`),
+not merely anticipated: offline/no-terminology operation has open
+upstream bugs (locally packaged ValueSets can still fail to validate a
+code), so verdict policy classifies rather than trusts raw pass/fail;
+the validator also auto-loads whatever IG a resource's own
+`meta.profile` declares (US Core, for Synthea R4 output) with no `-ig`
+flag needed — see `docs/gate-calibration.md` for the consequence.
 
 **Deliberately not used for.** Terminology validation against licensed
 vocabularies.

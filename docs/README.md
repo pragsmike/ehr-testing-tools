@@ -10,10 +10,13 @@ need — each entry names the question that document answers.
    corpus? (Everything below this point assumes you already have that
    working and want to understand what you built.)
 1. **[pipeline.md](pipeline.md)** — what does this repo actually build,
-   stage by stage? (Generate, Normalize, Mutate are built; Gate and
-   Report are planned.)
+   stage by stage? (Every stage — Generate, Normalize, Mutate, Intake,
+   Gate, Report — is built as of P5.)
 2. **[notation.md](notation.md)** — what does the resource-equation
    notation on that page mean, and why does this repo use it?
+   [gate-calibration.md](gate-calibration.md) is the companion page for
+   the Gate stage specifically: which defects each gate tier actually
+   catches, cited to EXP-C5 and the contract-pairing test suite.
 3. **[components.md](components.md)** — what external engines and
    libraries does each stage actually depend on, and what's each one's
    license, steward, and role?
@@ -30,10 +33,15 @@ need — each entry names the question that document answers.
    - **EXP-B2** ([protocol](experiments/EXP-B2.md),
      [results](experiments/EXP-B2-results.md)) — executed 2026-07-24 —
      parse→serialize round-trip fidelity; picked the mutation substrate.
-   - **EXP-A3** — not yet run — HL7 v2 generation via a Synthea
-     projector plugin.
-   - **EXP-C5** — not yet run — official FHIR validator offline
-     behavior and verdict-classification policy.
+   - **EXP-A3** — demoted to backlog (2026-07-24, P5) — HL7 v2
+     generation via a Synthea projector plugin; no longer this repo's
+     own v2-mutation blocker (see `corpus.intake`), narrowed to serving
+     the guide's own Experiment 3.
+   - **EXP-C5** ([protocol](experiments/EXP-C5.md),
+     [results](experiments/EXP-C5-results.md)) — executed 2026-07-24 —
+     official FHIR validator offline behavior and verdict-classification
+     policy; see [gate-calibration.md](gate-calibration.md) for what it
+     resolved.
    - **EXP-D3** — not yet run — CDC wrapper offline build.
 5. **[positioning.md](positioning.md)** — how does this repo relate to
    `ehr-testing-guide`, and what was the go-public gate this repo set

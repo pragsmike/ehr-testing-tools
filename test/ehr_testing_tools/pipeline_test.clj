@@ -57,14 +57,16 @@
   (let [data (edn/read-string (slurp "docs/pipeline.edn"))]
     (is (pipeline/valid? data))))
 
-(deftest committed-pipeline-edn-has-generate-normalize-mutate-and-planned-gate-report-test
+(deftest committed-pipeline-edn-has-every-stage-built-test
+  ;; P5: Intake, Gate, and Report all move from stub/planned to built.
   (let [data (edn/read-string (slurp "docs/pipeline.edn"))
         by-id (into {} (map (juxt :id identity)) (:stages data))]
     (is (= :built (:status (by-id :generate))))
     (is (= :built (:status (by-id :normalize))))
     (is (= :built (:status (by-id :mutate))))
-    (is (= :planned (:status (by-id :gate))))
-    (is (= :planned (:status (by-id :report))))))
+    (is (= :built (:status (by-id :intake))))
+    (is (= :built (:status (by-id :gate))))
+    (is (= :built (:status (by-id :report))))))
 
 ;; ---- rendering: stage -> equation-line (docs/notation.md's equation
 ;; form, the string-diagram skill's own grammar) ----
