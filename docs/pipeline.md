@@ -16,6 +16,7 @@ canonical-fhir-datum × operator-catalog → mutant-fhir-datum + lineage-record 
 foreign-file → catalog-entry + intake-record  [Intake]
 datum × validator-artifact × runtime × hapi-hl7v2-dep × profile-artifact → pass + rejected + indeterminate  [Gate]  {catalytic: validator-artifact, runtime, hapi-hl7v2-dep, profile-artifact}
 pass × rejected × indeterminate → report  [Report]
+datum × expected-corpus × assertion-set × canonicalizer-set → pass + rejected  [Check]  {catalytic: expected-corpus, assertion-set, canonicalizer-set}
 canonical-fhir-datum × mutant-fhir-datum × foreign-file → datum  [UnionDatum]  {spider: funnel}
 ```
 
@@ -25,7 +26,10 @@ canonical-fhir-datum × mutant-fhir-datum × foreign-file → datum  [UnionDatum
 flowchart LR
 
     %% --- Source types (raw inputs, not produced by any operation) ---
+    assertion_set(["assertion-set"])
+    canonicalizer_set(["canonicalizer-set"])
     config_hash(["config-hash"])
+    expected_corpus(["expected-corpus"])
     foreign_file(["foreign-file"])
     hapi_hl7v2_dep(["hapi-hl7v2-dep"])
     jdk_runtime(["jdk-runtime"])
@@ -43,6 +47,7 @@ flowchart LR
     Intake["Intake"]
     Gate["Gate"]
     Report["Report"]
+    Check["Check"]
     UnionDatum[\"UnionDatum"/]
 
     %% --- Wires (typed connections) ---
@@ -70,11 +75,17 @@ flowchart LR
     profile_artifact -. profile-artifact .-> Gate
 
     %% Arrow 6: Report
-    Gate -- pass --> Report
-    Gate -- rejected --> Report
+    Check -- pass --> Report
+    Check -- rejected --> Report
     Gate -- indeterminate --> Report
 
-    %% Arrow 7: UnionDatum
+    %% Arrow 7: Check
+    UnionDatum -- datum --> Check
+    expected_corpus -. expected-corpus .-> Check
+    assertion_set -. assertion-set .-> Check
+    canonicalizer_set -. canonicalizer-set .-> Check
+
+    %% Arrow 8: UnionDatum
     Normalize -- canonical-fhir-datum --> UnionDatum
     Mutate -- mutant-fhir-datum --> UnionDatum
     foreign_file -- foreign-file --> UnionDatum
@@ -88,10 +99,14 @@ flowchart LR
     style Intake fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
     style Gate fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
     style Report fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style Check fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
     style UnionDatum fill:#1b5e20,stroke:#2e7d32,color:#c8e6c9,stroke-width:2px
 
     %% Source types: light rounded
+    style assertion_set fill:#f5f5f5,stroke:#999,color:#333
+    style canonicalizer_set fill:#f5f5f5,stroke:#999,color:#333
     style config_hash fill:#f5f5f5,stroke:#999,color:#333
+    style expected_corpus fill:#f5f5f5,stroke:#999,color:#333
     style foreign_file fill:#f5f5f5,stroke:#999,color:#333
     style hapi_hl7v2_dep fill:#f5f5f5,stroke:#999,color:#333
     style jdk_runtime fill:#f5f5f5,stroke:#999,color:#333

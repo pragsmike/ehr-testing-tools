@@ -60,7 +60,18 @@
    :inputs ["pass" "rejected" "indeterminate"]
    :outputs ["report"]
    :laws ["appends provenance: which engine, which profile, which verdicts, normalized to the finding envelope (pattern nursery #6, shared by both gate formats)"
-          "diffable: gate.report/diff-reports compares two reports of the same corpus -- changed verdicts, added/removed files, appeared/disappeared codes"]}]
+          "diffable: gate.report/diff-reports compares two reports of the same corpus -- changed verdicts, added/removed files, appeared/disappeared codes"]}
+
+  {:id :check
+   :label "Check"
+   :kind :gate
+   :status :built
+   :inputs ["datum"]
+   :outputs ["pass" "rejected"]
+   :catalytic ["expected-corpus" "assertion-set" "canonicalizer-set"]
+   :laws ["never modifies the datum it judges -- the gate kind's own law, verified directly (ehr-testing-tools.check-test/check-does-not-modify-candidate-or-expected-files-test)"
+          "produces no :indeterminate output in v1, unlike Gate itself -- stated explicitly rather than left implicit, since :indeterminate is otherwise part of the gate kind's own floor"]
+   :contract "Check is the corpus's second judge, alongside Gate: Gate checks a datum against a standard (a spec, a profile); Check verifies a datum against a caller's own expectations. Golden equivalence (:matches-expected) is equality of canonicalized forms under a declared, ordered canonicalizer list (ehr-testing-tools.canonical) -- an empty list is literal byte/string equality. expected-corpus and assertion-set are catalytic target 3 (hashed repo-authored config, docs/notation.md) whether repo-authored directly or brought in via corpus.intake as a foreign artifact -- an intaken catalog entry's own :id is already a content hash, so an intaken expected-corpus/assertion-set is hash-referenced exactly like a repo-authored one, just with a different origin. canonicalizer-set is catalytic target 4 (in-repo code registry, ehr-testing-tools.canonical, referenced by {id, version} pairs), the same registry Normalize's own canonicalizer application already uses."}]
 
  ;; Union resources (docs/notation.md, P6, pattern nursery #13): a
  ;; named resource declared as the union of others -- a stage consuming

@@ -5,6 +5,7 @@
   projection, never the source of truth."
   (:require [babashka.cli :as cli]
             [clojure.data.json :as json]
+            [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [ehr-testing-tools.result :as result]
@@ -14,6 +15,7 @@
             [ehr-testing-tools.corpus.intake :as intake]
             [ehr-testing-tools.corpus.operators :as operators]
             [ehr-testing-tools.locator :as locator]
+            [ehr-testing-tools.check :as check]
             [ehr-testing-tools.gate.v2 :as gate-v2]
             [ehr-testing-tools.gate.fhir :as gate-fhir]
             [ehr-testing-tools.gate.report :as report])
@@ -191,29 +193,66 @@
                                   :fhir)]
         (gate-fn {:path path :report report})))))
 
+(defn- parse-canonicalizer-steps
+  "\"id@v,id2@v2\" -> [[:id \"v\"] [:id2 \"v2\"]] -- the ordered
+  [id version] pairs ehr-testing-tools.canonical/apply-canonicalizers
+  expects. Blank/nil -> []."
+  [s]
+  (if (str/blank? s)
+    []
+    (mapv (fn [pair]
+            (let [[id version] (str/split pair #"@" 2)]
+              [(keyword id) version]))
+          (str/split s #","))))
+
+(defn check-command
+  "`ehr check DIR --expected DIR --assertions FILE
+  [--canonicalizers id@v,...] [--pair-by path|hash] [--report ...]`.
+  :assertions names an EDN file holding a vector of assertion maps
+  (ehr-testing-tools.check/Assertion) -- read here, the CLI's own
+  impure boundary; omitted entirely (with :expected given) delegates
+  straight to check/check-corpus's own default
+  ([{:kind :matches-expected}]). :canonicalizers is a comma-separated
+  \"id@version\" list; :pair-by is \"path\" (default) or \"hash\"."
+  [{:keys [path expected assertions canonicalizers pair-by report]}]
+  (let [assertions-data (when assertions (edn/read-string (slurp assertions)))
+        opts (cond-> {:candidate-dir path}
+               expected (assoc :expected-dir expected)
+               assertions-data (assoc :assertions assertions-data)
+               canonicalizers (assoc :canonicalizers (parse-canonicalizer-steps canonicalizers))
+               pair-by (assoc :pair-by (keyword pair-by)))
+        r (check/check-corpus opts)]
+    (when report (spit report (pr-str (:payload r))))
+    r))
+
 (defn dispatch
   "Routes [group action] positional args to the corresponding capability
   function with opts. The -fn keys are injectable (tests use this
   to avoid real subprocesses/network); default to the real commands."
   ([args opts] (dispatch args opts {}))
-  ([args opts {:keys [fetch-fn resolve-fn generate-fn mutate-fn intake-fn gate-v2-fn gate-fhir-fn]
+  ([args opts {:keys [fetch-fn resolve-fn generate-fn mutate-fn intake-fn gate-v2-fn gate-fhir-fn check-fn]
                :or {fetch-fn fetch-command
                     resolve-fn resolve-command
                     generate-fn generate/generate!
                     mutate-fn mutate-command
                     intake-fn intake-command
                     gate-v2-fn gate-v2-command
-                    gate-fhir-fn fhir-gate-command}}]
+                    gate-fhir-fn fhir-gate-command
+                    check-fn check-command}}]
    (let [[group action path] args
          ;; `ehr gate fhir PATH|DIR` / `ehr gate v2 PATH|DIR`: PATH is
          ;; a positional third arg, not a --path flag (the CLI's other
          ;; commands are all --flag-driven, but the prompt's own gate
          ;; CLI contract is a trailing bare path -- honored here rather
-         ;; than silently reinterpreted as --path). An explicit --path
-         ;; opt, if given, is NOT overridden by a positional path.
-         opts (if (and (= group "gate") path (not (:path opts)))
-                (assoc opts :path path)
-                opts)]
+         ;; than silently reinterpreted as --path). `ehr check DIR` has
+         ;; no sub-verb, so its positional path is the *second* arg
+         ;; (bound above as `action`), not the third. An explicit
+         ;; --path opt, if given, is NOT overridden by a positional
+         ;; path in either case.
+         opts (cond
+                (and (= group "gate") path (not (:path opts))) (assoc opts :path path)
+                (and (= group "check") action (not (:path opts))) (assoc opts :path action)
+                :else opts)]
      (case group
        "artifact" (case action
                     "fetch" (fetch-fn opts)
@@ -228,6 +267,7 @@
                 "v2" (gate-v2-fn opts)
                 "fhir" (gate-fhir-fn opts)
                 (result/error :unknown-command {:args args}))
+       "check" (check-fn opts)
        (result/error :unknown-command {:args args})))))
 
 (defn render

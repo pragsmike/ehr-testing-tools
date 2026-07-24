@@ -341,6 +341,91 @@
     (is (result/error? r))
     (is (= :not-found (:category r)))))
 
+;; ---- check-command (`ehr check`): reads --assertions as an EDN file,
+;; parses --canonicalizers "id@v,..." into ordered [id version] pairs,
+;; delegates to ehr-testing-tools.check/check-corpus. ----
+
+(deftest check-command-matches-expected-happy-path-test
+  (let [cand-dir (temp-dir*) exp-dir (temp-dir*)
+        bundle "{\"resourceType\":\"Bundle\"}"
+        _ (spit (io/file cand-dir "a.json") bundle)
+        _ (spit (io/file exp-dir "a.json") bundle)
+        r (cli/check-command {:path cand-dir :expected exp-dir})]
+    (is (result/ok? r))
+    (is (= {:pass 1 :rejected 0 :indeterminate 0} (:totals (:payload r))))))
+
+(deftest check-command-rejects-when-corpora-differ-test
+  (let [cand-dir (temp-dir*) exp-dir (temp-dir*)
+        _ (spit (io/file cand-dir "a.json") "{\"resourceType\":\"Bundle\",\"x\":1}")
+        _ (spit (io/file exp-dir "a.json") "{\"resourceType\":\"Bundle\",\"x\":2}")
+        r (cli/check-command {:path cand-dir :expected exp-dir})]
+    (is (result/rejected? r))
+    (is (= :check-rejected (:category r)))
+    (is (= 1 (cli/result->exit-code r)))))
+
+(deftest check-command-reads-assertions-file-test
+  (let [cand-dir (temp-dir*)
+        _ (spit (io/file cand-dir "a.json") "{\"resourceType\":\"Bundle\"}")
+        assertions-file (str (temp-dir*) "/assertions.edn")
+        _ (spit assertions-file (pr-str [{:kind :present :locator {:format :fhir :path "resourceType"}}]))
+        r (cli/check-command {:path cand-dir :assertions assertions-file})]
+    (is (result/ok? r))))
+
+(deftest check-command-parses-canonicalizers-flag-test
+  (let [cand-dir (temp-dir*) exp-dir (temp-dir*)
+        _ (spit (io/file cand-dir "a.json") "{\"a\":1,\"b\":2}")
+        _ (spit (io/file exp-dir "a.json") "{\"a\":1,\"b\":9}")
+        r (cli/check-command {:path cand-dir :expected exp-dir
+                               :canonicalizers "strip-run-timestamp-suffix@1"})]
+    ;; strip-run-timestamp-suffix operates on filenames, not this
+    ;; content, so it doesn't make the pair equivalent -- this only
+    ;; proves the flag parses and reaches check-corpus without error
+    ;; (an unknown-canonicalizer rejection would be a different
+    ;; :category than :check-rejected).
+    (is (result/rejected? r))
+    (is (= :check-rejected (:category r)))))
+
+(deftest check-command-parses-pair-by-flag-test
+  (let [cand-dir (temp-dir*) exp-dir (temp-dir*)
+        _ (spit (io/file cand-dir "candidate-name.json") "{\"resourceType\":\"Bundle\"}")
+        _ (spit (io/file exp-dir "expected-name.json") "{\"resourceType\":\"Bundle\"}")
+        r (cli/check-command {:path cand-dir :expected exp-dir :pair-by "hash"})]
+    (is (result/ok? r))))
+
+(deftest check-command-writes-report-file-when-requested-test
+  (let [cand-dir (temp-dir*) exp-dir (temp-dir*)
+        bundle "{\"resourceType\":\"Bundle\"}"
+        _ (spit (io/file cand-dir "a.json") bundle)
+        _ (spit (io/file exp-dir "a.json") bundle)
+        out-file (str (temp-dir*) "/check-report.edn")
+        r (cli/check-command {:path cand-dir :expected exp-dir :report out-file})]
+    (is (result/ok? r))
+    (is (.exists (io/file out-file)))
+    (is (= (:payload r) (clojure.edn/read-string (slurp out-file))))))
+
+(deftest dispatch-routes-check-test
+  (let [called (atom nil)
+        r (cli/dispatch ["check"] {:path "some-corpus/"}
+                         {:check-fn (fn [opts] (reset! called opts) (result/ok {:totals {}}))})]
+    (is (result/ok? r))
+    (is (= {:path "some-corpus/"} @called))))
+
+(deftest dispatch-check-accepts-a-positional-path-test
+  ;; `ehr check DIR` -- check has no sub-verb, so the second positional
+  ;; arg IS the path, unlike gate's third-positional convention.
+  (let [called (atom nil)
+        r (cli/dispatch ["check" "some-corpus/"] {}
+                         {:check-fn (fn [opts] (reset! called opts) (result/ok {:totals {}}))})]
+    (is (result/ok? r))
+    (is (= "some-corpus/" (:path @called)))))
+
+(deftest dispatch-check-explicit-path-opt-not-overridden-by-positional-test
+  (let [called (atom nil)
+        r (cli/dispatch ["check" "positional-path"] {:path "explicit-path"}
+                         {:check-fn (fn [opts] (reset! called opts) (result/ok {:totals {}}))})]
+    (is (result/ok? r))
+    (is (= "explicit-path" (:path @called)))))
+
 (deftest gate-v2-command-propagates-operational-error-for-a-missing-path-test
   ;; A path that is neither an existing file nor directory: gate-file
   ;; on it should surface as an operational error (slurp on a missing

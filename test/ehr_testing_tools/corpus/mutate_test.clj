@@ -9,6 +9,7 @@
             [clojure.data.json :as json]
             [ehr-testing-tools.result :as result]
             [ehr-testing-tools.lineage :as lineage]
+            [ehr-testing-tools.diff :as diff]
             [ehr-testing-tools.corpus.operators :as operators]
             [ehr-testing-tools.corpus.mutate :as mutate]))
 
@@ -93,30 +94,6 @@
       {:bundle {"resourceType" "Bundle" "type" "transaction" "entry" entries}
        :idx idx})))
 
-(defn- diff-paths
-  "The minimal set of paths at which a and b differ -- if a whole
-  subtree differs (added, removed, or replaced wholesale), reports
-  that subtree's path once, not every path beneath it. Recurses into
-  both maps (by key) and vectors (by index) -- FHIR JSON nests both
-  (Bundle.entry is a vector of maps), so stopping at maps alone would
-  under-report: a single differing element deep inside an otherwise-
-  identical vector would wrongly blame the whole vector."
-  ([a b] (diff-paths a b []))
-  ([a b path]
-   (cond
-     (= a b) #{}
-     (and (map? a) (map? b))
-     (reduce (fn [acc k]
-               (into acc (diff-paths (get a k ::missing) (get b k ::missing) (conj path k))))
-             #{}
-             (into (set (keys a)) (keys b)))
-     (and (vector? a) (vector? b) (= (count a) (count b)))
-     (reduce (fn [acc i]
-               (into acc (diff-paths (nth a i) (nth b i) (conj path i))))
-             #{}
-             (range (count a)))
-     :else #{path})))
-
 (def field-targeting-operator
   {:remove-required-element "gender"
    :duplicate-element "gender"
@@ -134,7 +111,7 @@
                     r (mutate/mutate bundle (op operator-id) locator)]
                 (and (result/ok? r)
                      (= #{["entry" idx "resource" field]}
-                        (diff-paths bundle (:mutant (:payload r))))))))]
+                        (diff/diff-paths bundle (:mutant (:payload r))))))))]
       (is (:pass? check-result) (str operator-id " violated the intended-diff-only law: " (:shrunk check-result))))))
 
 ;; ---- proves the law harness actually catches a violation, not just
@@ -143,8 +120,8 @@
 (deftest mutate-law-harness-catches-a-real-violation-test
   (let [base {"a" 1 "b" 2}
         broken-mutant {"a" 1 "b" 3 "c" 4}] ; "b" changed AND "c" added -- extra collateral change
-    (is (not= #{["b"]} (diff-paths base broken-mutant)))
-    (is (= #{["b"] ["c"]} (diff-paths base broken-mutant)))))
+    (is (not= #{["b"]} (diff/diff-paths base broken-mutant)))
+    (is (= #{["b"] ["c"]} (diff/diff-paths base broken-mutant)))))
 
 ;; ---- content-hash helper ----
 

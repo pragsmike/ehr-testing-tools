@@ -59,6 +59,7 @@
 
 (deftest committed-pipeline-edn-has-every-stage-built-test
   ;; P5: Intake, Gate, and Report all move from stub/planned to built.
+  ;; P6: Check joins them, also built from the start.
   (let [data (edn/read-string (slurp "docs/pipeline.edn"))
         by-id (into {} (map (juxt :id identity)) (:stages data))]
     (is (= :built (:status (by-id :generate))))
@@ -66,7 +67,16 @@
     (is (= :built (:status (by-id :mutate))))
     (is (= :built (:status (by-id :intake))))
     (is (= :built (:status (by-id :gate))))
-    (is (= :built (:status (by-id :report))))))
+    (is (= :built (:status (by-id :report))))
+    (is (= :built (:status (by-id :check))))))
+
+(deftest committed-pipeline-edn-check-stage-consumes-datum-test
+  ;; Check is the second judge alongside Gate (docs/notation.md) --
+  ;; both consume the same union resource.
+  (let [data (edn/read-string (slurp "docs/pipeline.edn"))
+        by-id (into {} (map (juxt :id identity)) (:stages data))]
+    (is (= :gate (:kind (by-id :check))))
+    (is (some #{"datum"} (:inputs (by-id :check))))))
 
 ;; ---- rendering: stage -> equation-line (docs/notation.md's equation
 ;; form, the string-diagram skill's own grammar) ----
