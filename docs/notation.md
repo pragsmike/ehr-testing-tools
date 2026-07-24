@@ -113,3 +113,11 @@ diagram-rendering machinery belong to the shared
 `.agents/skills/string-diagram` skill (a general monoidal-category
 notation, not authored for this repo specifically); what's specific
 here is only the pipeline vocabulary this document defines.
+
+Both this notation and the `string-diagram` rendering skill originate in
+the author's [cyberneutics](https://github.com/pragsmike/cyberneutics)
+methodology — the upstream skill (name and description match the copy
+here) lives at
+[`.claude/skills/string-diagram/SKILL.md`](https://github.com/pragsmike/cyberneutics/blob/main/.claude/skills/string-diagram/SKILL.md)
+in that repo (retrieved HTTP 200, 2026-07-24). Formalization here remains
+exploratory, as above.

@@ -120,7 +120,16 @@ make ehr ARGS="artifact fetch --name synthea --version 4.0.0"
 `string-diagram`. Consult them for their respective workflows rather than
 reinventing the steps each time.
 
-The cyberneutics-derived skills (`scenarios`, `probe`, `committee`) share a
+The cyberneutics-derived set is five skills: `scenarios`, `probe`,
+`review`, `committee`, and `string-diagram` — all copied and adapted from
+the public [`pragsmike/cyberneutics`](https://github.com/pragsmike/cyberneutics)
+repo, the author's own methodology project. `string-diagram`'s upstream
+provenance is verified directly: its `SKILL.md` (name and description
+match the copy here) lives at
+`.claude/skills/string-diagram/SKILL.md` in that repo, retrieved HTTP 200
+2026-07-24 — see `docs/notation.md` for the citation.
+
+Of those five, `scenarios`, `probe`, and `committee` additionally share a
 single `.agents/cyberneutics-config.yaml` for the `situations_root` key
 that resolves where their output directories live — **2026-07-23
 divergence from upstream cyberneutics**: upstream splits this into
