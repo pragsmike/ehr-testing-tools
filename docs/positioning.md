@@ -3,7 +3,11 @@
 This document maps how `ehr-testing-tools` relates to
 [`ehr-testing-guide`](https://github.com/pragsmike/ehr-testing-guide) and
 to the people who will encounter one or the other first. It is a working
-doc, revisited as the repo's shape firms up — not a manifesto.
+doc, revisited as the repo's shape firms up — not a manifesto. It also
+holds the go-public gate this repo set for itself and the record of
+walking it: this repo has been public since [ADR-0008](../notes/ADRs.md)
+(publication is a visibility change, not a release — see "Go-public gate
+vs. first release" below).
 
 ## Audience
 
@@ -55,7 +59,9 @@ moments the guide will eventually point here:
   Experiment 3 will eventually consume this repo's v2 projector output.
 
 These become register entries and cross-references in the guide **only
-after this repo's first public release.** Nothing in the guide points
+after this repo's first release** (a version tag and published
+coordinates — see "Go-public gate vs. first release" below; this repo
+being publicly visible is not the trigger). Nothing in the guide points
 here yet, and that's deliberate — the guide should never cite tooling
 that doesn't exist yet as though it does.
 
@@ -89,14 +95,19 @@ is self-refuting. This repo commits to:
 
 - A facts register from day one (`notes/facts-register.md`, per
   [ADR-0002](../notes/ADRs.md)).
-- Reproducibility manifests for its own test fixtures, once fixtures
-  exist.
+- Reproducibility manifests for everything generated (`corpus.manifest`
+  schema v1, EXP-A4).
 - Pinned dependencies throughout.
-- CI that runs offline, once CI exists.
+- CI that runs offline (`.github/workflows/ci.yml`, verified hermetic —
+  see [ADR-0008](../notes/ADRs.md)).
 
 ## Go-public gate
 
-The repo flips from private to public when **all** of the following hold:
+The repo flipped from private to public when all four of the following
+held. [ADR-0008](../notes/ADRs.md) is the record of that decision and
+walks each condition against its evidence; this section is now a record
+of the gate as designed, not a future condition — read ADR-0008 for how
+each one was actually met.
 
 1. **Licensing is clean** — the [ADR-0007](../notes/ADRs.md) MIT target
    is met (ADR-0007 supersedes ADR-0001's Apache-2.0 target; EXP-SBOM's
@@ -115,7 +126,20 @@ The repo flips from private to public when **all** of the following hold:
 4. The referral README (the relationship section above, in shipped form)
    is in place.
 
-Until then: private, no external references, no announcements.
+## Go-public gate vs. first release
+
+Publication and release are different events, and this repo is
+deliberately public before it has released anything. Publication
+(ADR-0008) is a visibility change: the four conditions above are about
+whether the repo is honest and safe to look at, not about whether any
+capability is finished. First release is a separate, later milestone —
+a version tag, Clojars/Maven Central coordinates, and the point at which
+the guide's own register may cite this repo (see "Referral triggers:
+guide → tools" above, which still applies unchanged: nothing in the
+guide points here until *release*, not merely publication). Until first
+release: no version tag, no published artifacts, and every maturity
+label in `README.md` still means what it says — "usable" is not
+"stable," and pre-release expectations govern.
 
 ## Open decisions
 
