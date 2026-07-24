@@ -45,6 +45,10 @@ publication does and doesn't mean.
 
 ## Quickstart
 
+Prerequisites and platform setup — including Linux/WSL2 support (native
+Windows is not supported) and a copy-paste prompt for your AI assistant:
+[`SETUP.md`](SETUP.md).
+
 Requires a JDK 17+ runtime for Synthea itself — resolved through this
 repo's own artifact registry, not your `PATH` (see
 [`docs/components.md`](docs/components.md)). Fetch the pinned artifacts
@@ -78,6 +82,9 @@ make test
 
 `make help` lists every target. Output is EDN by default; every command
 accepts `--json` for a projection (EDN remains the source of truth).
+Generated corpora and mutants are plain FHIR JSON plus EDN manifests —
+consumable from Python or any language; no Clojure knowledge is needed to
+use the results.
 
 ## Relationship to ehr-testing-guide
 

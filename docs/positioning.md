@@ -21,7 +21,10 @@ Three segments arrive here with different on-ramps:
    they need to validate a bundle against a profile, and found this repo
    before the guide. They need task-oriented usage docs first, and a
    pointer to the guide second — once the task is done, the "why" behind
-   it is worth reading.
+   it is worth reading. The first trial cohort (2026-07-24) sharpens this
+   segment: EHR domain experts comfortable with Python but not Clojure,
+   working agent-assisted (ChatGPT, Codex), largely on Windows 11/WSL2 —
+   `SETUP.md` exists for exactly this cohort.
 3. **Contributors.** They need the scope fence up front: PRs that add
    method content (new properties, new correctness arguments, new test-plan
    guidance) belong in the guide, not here. This repo's contribution

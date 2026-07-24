@@ -5,6 +5,10 @@ pipeline is the map, and every other document below locates itself
 relative to it. Start at the top of this list and go as deep as you
 need — each entry names the question that document answers.
 
+0. **[../SETUP.md](../SETUP.md)** — newcomer start here: what do I need
+   to install, how do I verify it worked, how do I generate my first
+   corpus? (Everything below this point assumes you already have that
+   working and want to understand what you built.)
 1. **[pipeline.md](pipeline.md)** — what does this repo actually build,
    stage by stage? (Generate, Normalize, Mutate are built; Gate and
    Report are planned.)
