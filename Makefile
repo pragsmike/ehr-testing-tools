@@ -1,4 +1,4 @@
-.PHONY: help pack pack-skills pack-push test coverage integration ehr pipeline
+.PHONY: help pack pack-skills pack-push test coverage integration ehr pipeline use-cases
 
 SHELL := bash
 
@@ -34,6 +34,7 @@ help:
 	@echo "                   make ehr ARGS=\"artifact fetch --name fhir-validator-cli --version 6.9.12\""
 	@echo "  ehr          - invoke the ehr CLI, e.g. make ehr ARGS=\"artifact fetch --name synthea --version 4.0.0\""
 	@echo "  pipeline     - regenerate docs/pipeline.md from docs/pipeline.edn"
+	@echo "  use-cases    - regenerate docs/use-cases.md from docs/use-cases.edn"
 
 test:
 	clojure -X:test
@@ -65,6 +66,22 @@ pipeline:
 	python3 .agents/skills/string-diagram/resource_equations_to_mermaid.py target/pipeline-equations.txt -o target/pipeline-flow.mermaid
 	clojure -X ehr-testing-tools.pipeline/write-pipeline-md! :equations-txt '"target/pipeline-equations.txt"' :mermaid '"target/pipeline-flow.mermaid"' :out '"docs/pipeline.md"'
 	@echo "Regenerated docs/pipeline.md"
+
+# Regenerates docs/use-cases.md from docs/use-cases.edn (author-time
+# source of truth), same generation split as `pipeline` above: Clojure
+# writes one equations .txt per use case, the string-diagram skill's
+# python script renders each case's own small mermaid diagram, Clojure
+# assembles the full generated markdown file from both. docs/use-cases.md
+# carries its own "do not hand-edit" header; this target is the only
+# sanctioned way to update it.
+use-cases:
+	@mkdir -p target/use-cases
+	clojure -X ehr-testing-tools.usecases/write-case-equations! :use-cases-edn '"docs/use-cases.edn"' :out-dir '"target/use-cases"'
+	@for f in target/use-cases/*.txt; do \
+		python3 .agents/skills/string-diagram/resource_equations_to_mermaid.py "$$f" -o "$${f%.txt}.mermaid"; \
+	done
+	clojure -X ehr-testing-tools.usecases/write-use-cases-md! :use-cases-edn '"docs/use-cases.edn"' :cases-dir '"target/use-cases"' :out '"docs/use-cases.md"'
+	@echo "Regenerated docs/use-cases.md"
 
 # Concatenates most git-tracked files in the repo into one pack file, for
 # pasting into a chat UI that can't read the filesystem directly. Leads

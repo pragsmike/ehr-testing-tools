@@ -30,7 +30,12 @@ interface analysts, QA engineers, data engineers — not necessarily
 Clojure programmers. The outputs are plain FHIR JSON and EDN manifests,
 readable from Python or anything else, and if you're comfortable working
 alongside an AI assistant, [SETUP.md](SETUP.md) has a copy-paste prompt
-that walks it through installing and running this for you.
+that walks it through installing and running this for you. What you can
+do with this, formally: [`docs/use-cases.md`](docs/use-cases.md) —
+generating conforming or controlled-fault data, judging your own
+corpora, surrounding a black-box transform with conformance and
+equivalence evidence, drift detection, and more, each anchored to the
+actual resource equations it composes from.
 
 Maintained by the author of
 [`ehr-testing-guide`](https://github.com/pragsmike/ehr-testing-guide) as

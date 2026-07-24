@@ -1,0 +1,151 @@
+;; The use-cases catalog, as data (author-time source of truth --
+;; docs/use-cases.md is GENERATED from this file via `make use-cases`,
+;; never hand-edited). Validated against
+;; ehr-testing-tools.usecases/UseCases (Malli). Equations reuse
+;; docs/pipeline.edn's own stage names verbatim where a use case
+;; consumes this repo's built pipeline; external stages ({external:
+;; true}) name a black-box component the use case's own author fills
+;; in; union resources ({spider: funnel}) appear wherever a use case's
+;; sources genuinely vary, mirroring docs/pipeline.edn's own
+;; UnionDatum. Maturity here is a per-use-case honesty label, distinct
+;; from README.md's per-capability maturity table: :usable (the
+;; equations below are exactly what's shipped, today), :experimental
+;; (shipped, interfaces may move), :illustrative (the pattern is real
+;; and composable from shipped stages, but no example pipeline ships
+;; it end-to-end), :planned (the equation names a resource/stage this
+;; repo doesn't fully support yet -- stated honestly in :get, not
+;; smoothed over).
+{:schema-version 1
+ :cases
+ [{:id :generate-conforming-data
+   :title "Generate conforming synthetic data"
+   :audience "Teams needing realistic FHIR test data without hand-authoring it, for any downstream use they choose."
+   :bring "A Synthea configuration (population size, seed, clinician seed, reference date)."
+   :get "A byte-reproducible synthetic corpus, from a manifest that regenerates it byte-for-byte (EXP-A4)."
+   :maturity :usable
+   :equations ["synthea-config × synthea-artifact × jdk-runtime × config-hash → raw-corpus  [Generate]  {catalytic: synthea-artifact, jdk-runtime, config-hash}"
+               "raw-corpus → canonical-fhir-datum  [Normalize]"]}
+
+  {:id :generate-controlled-fault-data
+   :title "Generate controlled-fault data"
+   :audience "Teams needing deliberately broken data for any downstream use, with full traceability back to what was broken and why."
+   :bring "A base corpus (generated or intaken) plus a chosen defect operator and locator."
+   :get "A mutant with a lineage record naming the exact base-spec constraint it violates -- never produced without one."
+   :maturity :experimental
+   :equations ["canonical-fhir-datum × operator-catalog → mutant-fhir-datum + lineage-record  [Mutate]  {catalytic: operator-catalog}"]}
+
+  {:id :test-a-validator-with-contract-pairing
+   :title "Test a validator/gate with generated + mutated data"
+   :audience "Anyone standing up a new gate/validator who needs to prove it actually detects what it claims to check for, not just trust the vendor's claim."
+   :bring "Nothing beyond the pinned artifacts -- this repo generates and mutates its own test data."
+   :get "Contract pairing: for each defect operator, proof that the gate produces a new, locator-matching finding -- the exemplar is P5's own contract-pairing suite (test-integration/ehr_testing_tools/contract_pairing_test.clj) against the real official FHIR validator."
+   :maturity :usable
+   :equations ["synthea-config × synthea-artifact × jdk-runtime × config-hash → raw-corpus  [Generate]  {catalytic: synthea-artifact, jdk-runtime, config-hash}"
+               "raw-corpus → canonical-fhir-datum  [Normalize]"
+               "canonical-fhir-datum × operator-catalog → mutant-fhir-datum + lineage-record  [Mutate]  {catalytic: operator-catalog}"
+               "canonical-fhir-datum × mutant-fhir-datum × foreign-file → datum  [UnionDatum]  {spider: funnel}"
+               "datum × validator-artifact × runtime × hapi-hl7v2-dep × profile-artifact → pass + rejected + indeterminate  [Gate]  {catalytic: validator-artifact, runtime, hapi-hl7v2-dep, profile-artifact}"]}
+
+  {:id :judge-user-supplied-data
+   :title "Judge user-supplied data: intake -> gate -> report"
+   :audience "Anyone gating a corpus they didn't generate themselves -- an ingestion pipeline's own output, a partner's export, anything foreign."
+   :bring "Your own corpus (foreign files, any origin)."
+   :get "A conformance report: verdicts plus findings, normalized to the shared finding envelope. Real-world, profile-stamped corpora carry pre-existing findings (EXP-C5) -- reach for --baseline mode (docs/gate-calibration.md) when file-level verdict alone can't discriminate old noise from a new problem."
+   :maturity :usable
+   :equations ["foreign-file → catalog-entry + intake-record  [Intake]"
+               "canonical-fhir-datum × mutant-fhir-datum × foreign-file → datum  [UnionDatum]  {spider: funnel}"
+               "datum × validator-artifact × runtime × hapi-hl7v2-dep × profile-artifact → pass + rejected + indeterminate  [Gate]  {catalytic: validator-artifact, runtime, hapi-hl7v2-dep, profile-artifact}"
+               "pass × rejected × indeterminate → report  [Report]"]}
+
+  {:id :black-box-transform-surround
+   :title "Black-box transform surround"
+   :audience "Teams whose actual system under test is a transform (an ingestion/mapping/ETL step) this repo doesn't implement and shouldn't have to."
+   :bring "Your own transform, run outside this repo's own pipeline."
+   :get "Conformance evidence (Gate) and equivalence evidence (Check, against an expected corpus) surrounding a black box you never have to instrument -- only its declared inputs/outputs."
+   :maturity :illustrative
+   :equations ["synthea-config × synthea-artifact × jdk-runtime × config-hash → raw-corpus  [Generate]  {catalytic: synthea-artifact, jdk-runtime, config-hash}"
+               "raw-corpus → canonical-fhir-datum  [Normalize]"
+               "canonical-fhir-datum → transform-output  [Transform]  {external: true}"
+               "transform-output × validator-artifact × runtime × hapi-hl7v2-dep × profile-artifact → pass + rejected + indeterminate  [Gate]  {catalytic: validator-artifact, runtime, hapi-hl7v2-dep, profile-artifact}"
+               "transform-output × expected-corpus × assertion-set × canonicalizer-set → pass + rejected  [Check]  {catalytic: expected-corpus, assertion-set, canonicalizer-set}"]}
+
+  {:id :mutation-adequacy-of-your-own-checks
+   :title "Mutation-adequacy of the user's own checks"
+   :audience "Teams who already have their own validation logic and want to know how good it actually is, not just that it exists."
+   :bring "Your own validation logic (external to this repo) plus a corpus."
+   :get "An adequacy score: of the defects this repo's operators inject, how many does your own validation actually catch? A validation suite that never rejects a mutant is exactly as informative as one that always does."
+   :maturity :illustrative
+   :equations ["canonical-fhir-datum × operator-catalog → mutant-fhir-datum + lineage-record  [Mutate]  {catalytic: operator-catalog}"
+               "mutant-fhir-datum → your-validation-verdict  [YourValidation]  {external: true}"]}
+
+  {:id :regression-baselining
+   :title "Regression baselining / drift detection"
+   :audience "Teams gating the same corpus (or corpus shape) repeatedly over time -- CI runs, periodic re-validation of a stable pipeline."
+   :bring "A corpus you gate repeatedly, and the report from the last run you trusted."
+   :get "What changed: gate.report/diff-reports compares two full reports (every changed verdict, added/removed file, appeared/disappeared code); --baseline mode (docs/gate-calibration.md) answers the narrower did-anything-NEW-appear question for a single run against a captured baseline."
+   :maturity :usable
+   :equations ["datum × validator-artifact × runtime × hapi-hl7v2-dep × profile-artifact → pass + rejected + indeterminate  [Gate]  {catalytic: validator-artifact, runtime, hapi-hl7v2-dep, profile-artifact}"
+               "pass × rejected × indeterminate → report  [Report]"]}
+
+  {:id :differential-ab-of-two-transform-versions
+   :title "Differential A/B of two transform versions"
+   :audience "Teams upgrading their own transform/mapping step who need to know exactly where the new version's output diverges from the old."
+   :bring "The same input corpus, run through two versions of your own transform."
+   :get "An equivalence report from Check: the old version's output as the expected corpus, the new version's output as the candidate -- every divergence reported with a locator path."
+   :maturity :illustrative
+   :equations ["canonical-fhir-datum → old-transform-output  [OldTransform]  {external: true}"
+               "canonical-fhir-datum → new-transform-output  [NewTransform]  {external: true}"
+               "new-transform-output × old-transform-output × assertion-set × canonicalizer-set → pass + rejected  [Check]  {catalytic: old-transform-output, assertion-set, canonicalizer-set}"]}
+
+  {:id :acceptance-qa-of-vendor-corpora
+   :title "Acceptance QA of delivered/vendor corpora"
+   :audience "Teams accepting a delivered corpus from a vendor or partner before it enters their own pipeline."
+   :bring "A vendor-delivered corpus."
+   :get "Cataloging (Intake, with content-hash provenance) plus a gate verdict, before you accept delivery -- an acceptance decision backed by evidence, not a spot check."
+   :maturity :usable
+   :equations ["foreign-file → catalog-entry + intake-record  [Intake]"
+               "canonical-fhir-datum × mutant-fhir-datum × foreign-file → datum  [UnionDatum]  {spider: funnel}"
+               "datum × validator-artifact × runtime × hapi-hl7v2-dep × profile-artifact → pass + rejected + indeterminate  [Gate]  {catalytic: validator-artifact, runtime, hapi-hl7v2-dep, profile-artifact}"]}
+
+  {:id :reproduction-packages
+   :title "Reproduction packages"
+   :audience "Anyone who needs to hand someone else (a teammate, a reviewer, a future self) something that regenerates an exact corpus, not just the corpus itself."
+   :bring "Nothing beyond the pinned artifacts -- the manifest already names everything else."
+   :get "A manifest (config hash, seeds, artifact hashes, forced environment) that reproduces the exact corpus byte-for-byte, proven in EXP-A4 from a freshly emptied artifact cache."
+   :maturity :usable
+   :equations ["synthea-config × synthea-artifact × jdk-runtime × config-hash → raw-corpus  [Generate]  {catalytic: synthea-artifact, jdk-runtime, config-hash}"]}
+
+  {:id :audit-regulatory-evidence-trail
+   :title "Audit/regulatory evidence trail"
+   :audience "Teams needing to show, after the fact, exactly what test data was used, what was deliberately broken, and what a gate found -- an audit or regulatory review, not just an internal sanity check."
+   :bring "A corpus that's been through generation, mutation, and gating."
+   :get "A hash-linked, self-verifying provenance chain: lineage records (Merkle-style, correction-only-by-new-record), manifests, and reports, each independently checkable -- assembling these into one shareable evidence package is future work, not yet a single command."
+   :maturity :experimental
+   :equations ["canonical-fhir-datum × operator-catalog → mutant-fhir-datum + lineage-record  [Mutate]  {catalytic: operator-catalog}"
+               "pass × rejected × indeterminate → report  [Report]"]}
+
+  {:id :gate-tier-calibration-studies
+   :title "Gate-tier calibration studies"
+   :audience "Anyone who needs to know, precisely and with evidence, what a given gate tier actually catches before they trust a green run against it."
+   :bring "A set of defect operators and a gate tier you want characterized."
+   :get "A per-{operator, locator} classification of what that tier detects, misses, or can only partially resolve -- docs/gate-calibration.md is exactly this, the first instance, derived from EXP-C5's own method."
+   :maturity :usable
+   :equations ["canonical-fhir-datum × operator-catalog → mutant-fhir-datum + lineage-record  [Mutate]  {catalytic: operator-catalog}"
+               "datum × validator-artifact × runtime × hapi-hl7v2-dep × profile-artifact → pass + rejected + indeterminate  [Gate]  {catalytic: validator-artifact, runtime, hapi-hl7v2-dep, profile-artifact}"]}
+
+  {:id :training-material
+   :title "Training material"
+   :audience "Anyone teaching what a given defect class looks like -- onboarding, a workshop, a documentation example."
+   :bring "Nothing -- generate a small corpus and mutate it with known operators."
+   :get "Labeled before/after pairs: each lineage record names the exact base-spec constraint its mutant violates, ready to use as a worked example."
+   :maturity :illustrative
+   :equations ["canonical-fhir-datum × operator-catalog → mutant-fhir-datum + lineage-record  [Mutate]  {catalytic: operator-catalog}"]}
+
+  {:id :bring-your-own-generator-augmentation
+   :title "Bring-your-own-generator augmentation"
+   :audience "Teams with their own generator (or none at all, just a foreign corpus) who want this repo's mutation, lineage, and gating on top, without reimplementing generation."
+   :bring "A corpus from a generator this repo doesn't implement."
+   :get "This repo's own mutation/lineage/gate machinery applied to a foreign corpus -- today this requires the foreign corpus to already be canonical-fhir-datum-shaped (FHIR JSON matching corpus.mutate's own substrate); a general foreign-format adapter into Mutate is future work, stated honestly rather than implied."
+   :maturity :planned
+   :equations ["foreign-file → catalog-entry + intake-record  [Intake]"
+               "foreign-file × operator-catalog → mutant-fhir-datum + lineage-record  [Mutate]  {catalytic: operator-catalog}"]}]}
