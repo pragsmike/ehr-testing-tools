@@ -93,9 +93,9 @@
    :bring "The same input corpus, run through two versions of your own transform."
    :get "An equivalence report from Check: the old version's output as the expected corpus, the new version's output as the candidate -- every divergence reported with a locator path."
    :maturity :illustrative
-   :equations ["canonical-fhir-datum → old-transform-output  [OldTransform]  {external: true}"
+   :equations ["canonical-fhir-datum → expected-corpus  [OldTransform]  {external: true}"
                "canonical-fhir-datum → new-transform-output  [NewTransform]  {external: true}"
-               "new-transform-output × old-transform-output × assertion-set × canonicalizer-set → pass + rejected  [Check]  {catalytic: old-transform-output, assertion-set, canonicalizer-set}"]}
+               "new-transform-output × expected-corpus × assertion-set × canonicalizer-set → pass + rejected  [Check]  {catalytic: expected-corpus, assertion-set, canonicalizer-set}"]}
 
   {:id :acceptance-qa-of-vendor-corpora
    :title "Acceptance QA of delivered/vendor corpora"

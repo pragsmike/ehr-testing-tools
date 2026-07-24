@@ -1,4 +1,4 @@
-.PHONY: help pack pack-skills pack-push test coverage integration ehr pipeline use-cases
+.PHONY: help pack pack-skills pack-push test coverage integration ehr pipeline use-cases lint-pipeline
 
 SHELL := bash
 
@@ -35,6 +35,7 @@ help:
 	@echo "  ehr          - invoke the ehr CLI, e.g. make ehr ARGS=\"artifact fetch --name synthea --version 4.0.0\""
 	@echo "  pipeline     - regenerate docs/pipeline.md from docs/pipeline.edn"
 	@echo "  use-cases    - regenerate docs/use-cases.md from docs/use-cases.edn"
+	@echo "  lint-pipeline - check every catalytic resource in docs/pipeline.edn and docs/use-cases.edn resolves to one of the four catalytic targets (docs/notation.md)"
 
 test:
 	clojure -X:test
@@ -82,6 +83,18 @@ use-cases:
 	done
 	clojure -X ehr-testing-tools.usecases/write-use-cases-md! :use-cases-edn '"docs/use-cases.edn"' :cases-dir '"target/use-cases"' :out '"docs/use-cases.md"'
 	@echo "Regenerated docs/use-cases.md"
+
+# Tier-1 pipeline lint (P6, pattern nursery #13): every catalytic
+# resource named in docs/pipeline.edn and docs/use-cases.edn resolves
+# to one of the four catalytic targets docs/notation.md defines.
+# External stages ({external: true}) are exempt -- this repo makes no
+# claim about a black-box stage's own catalytic inputs. Not wired into
+# CI yet (see .agents/plans/corpus-foundations.md's enforcement-wave
+# entry) -- this target and its own unit-test suite
+# (test/ehr_testing_tools/lint_test.clj) are the tier-1 enforcement
+# itself; CI wiring is a separate, later step.
+lint-pipeline:
+	clojure -X ehr-testing-tools.lint/lint-pipeline!
 
 # Concatenates most git-tracked files in the repo into one pack file, for
 # pasting into a chat UI that can't read the filesystem directly. Leads

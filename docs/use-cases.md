@@ -459,9 +459,9 @@ flowchart LR
 **Maturity:** illustrative
 
 ```
-canonical-fhir-datum → old-transform-output  [OldTransform]  {external: true}
+canonical-fhir-datum → expected-corpus  [OldTransform]  {external: true}
 canonical-fhir-datum → new-transform-output  [NewTransform]  {external: true}
-new-transform-output × old-transform-output × assertion-set × canonicalizer-set → pass + rejected  [Check]  {catalytic: old-transform-output, assertion-set, canonicalizer-set}
+new-transform-output × expected-corpus × assertion-set × canonicalizer-set → pass + rejected  [Check]  {catalytic: expected-corpus, assertion-set, canonicalizer-set}
 ```
 
 ```mermaid
@@ -486,7 +486,7 @@ flowchart LR
 
     %% Arrow 3: Check
     NewTransform -- new-transform-output --> Check
-    OldTransform -. old-transform-output .-> Check
+    OldTransform -. expected-corpus .-> Check
     assertion_set -. assertion-set .-> Check
     canonicalizer_set -. canonicalizer-set .-> Check
 
