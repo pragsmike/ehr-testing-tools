@@ -1,6 +1,8 @@
 (ns ehr-testing-tools.cli-test
   (:require [clojure.test :refer [deftest is testing]]
+            [clojure.edn]
             [clojure.java.io :as io]
+            [clojure.string]
             [ehr-testing-tools.result :as result]
             [ehr-testing-tools.artifact :as artifact]
             [ehr-testing-tools.cli :as cli])
@@ -82,6 +84,13 @@
     (is (result/ok? r))
     (is (= {:seed 1} @called))))
 
+(deftest dispatch-routes-corpus-mutate-test
+  (let [called (atom nil)
+        r (cli/dispatch ["corpus" "mutate"] {:input "x.json"}
+                         {:mutate-fn (fn [opts] (reset! called opts) (result/ok {:count 0}))})]
+    (is (result/ok? r))
+    (is (= {:input "x.json"} @called))))
+
 ;; ---- render ----
 
 (deftest render-edn-by-default-test
@@ -139,6 +148,92 @@
   (let [r (cli/resolve-command {:name "synthea" :version "4.0.0" :lockfile "/no/such/lockfile.edn"})]
     (is (result/error? r))
     (is (= :not-found (:category r)))))
+
+;; ---- mutate-command (`ehr corpus mutate`): input file/dir, operator
+;; id, locator, output dir -> writes mutant JSON files plus lineage
+;; EDN sidecars under output-dir/lineage/ (design choice, documented
+;; on mutate-command's own docstring: a subdirectory rather than
+;; interleaved sidecars, so a downstream stage can glob output-dir for
+;; data and output-dir/lineage for provenance without filtering). ----
+
+(defn- temp-dir* []
+  (let [f (File/createTempFile "cli-mutate-test" "")]
+    (.delete f)
+    (.mkdirs f)
+    (.getAbsolutePath f)))
+
+(def sample-bundle-json
+  "{\"resourceType\":\"Bundle\",\"type\":\"transaction\",\"entry\":[{\"resource\":{\"resourceType\":\"Patient\",\"id\":\"p1\",\"gender\":\"female\"}}]}")
+
+(deftest mutate-command-happy-path-writes-mutant-and-lineage-test
+  (let [in-dir (temp-dir*)
+        out-dir (str (temp-dir*) "/out")
+        _ (spit (io/file in-dir "patient1.json") sample-bundle-json)
+        r (cli/mutate-command {:input in-dir :operator-id "remove-required-element"
+                                :locator-path "entry[0].resource.gender" :output-dir out-dir})]
+    (is (result/ok? r))
+    (is (= 1 (:count (:payload r))))
+    (let [mutant (slurp (io/file out-dir "patient1.json"))
+          lineage-file (io/file out-dir "lineage" "patient1.json.lineage.edn")]
+      (is (not (clojure.string/includes? mutant "gender")))
+      (is (.exists lineage-file))
+      (let [lineage (clojure.edn/read-string (slurp lineage-file))]
+        (is (= :remove-required-element (:id (:operator (:transformation lineage)))))))))
+
+(deftest mutate-command-processes-every-json-file-in-a-directory-test
+  (let [in-dir (temp-dir*)
+        out-dir (str (temp-dir*) "/out")
+        _ (spit (io/file in-dir "a.json") sample-bundle-json)
+        _ (spit (io/file in-dir "b.json") sample-bundle-json)
+        _ (spit (io/file in-dir "not-json.txt") "ignore me")
+        r (cli/mutate-command {:input in-dir :operator-id "duplicate-element"
+                                :locator-path "entry[0].resource.gender" :output-dir out-dir})]
+    (is (result/ok? r))
+    (is (= 2 (:count (:payload r))))
+    (is (.exists (io/file out-dir "a.json")))
+    (is (.exists (io/file out-dir "b.json")))
+    (is (not (.exists (io/file out-dir "not-json.txt"))))))
+
+(deftest mutate-command-accepts-a-single-file-as-input-test
+  (let [in-dir (temp-dir*)
+        out-dir (str (temp-dir*) "/out")
+        f (io/file in-dir "one.json")
+        _ (spit f sample-bundle-json)
+        r (cli/mutate-command {:input (.getAbsolutePath f) :operator-id "wrong-type-value"
+                                :locator-path "entry[0].resource.gender" :output-dir out-dir})]
+    (is (result/ok? r))
+    (is (= 1 (:count (:payload r))))))
+
+(deftest mutate-command-rejects-unknown-operator-test
+  (let [in-dir (temp-dir*)
+        _ (spit (io/file in-dir "a.json") sample-bundle-json)
+        r (cli/mutate-command {:input in-dir :operator-id "no-such-operator"
+                                :locator-path "entry[0].resource.gender" :output-dir (temp-dir*)})]
+    (is (result/rejected? r))
+    (is (= :unknown-operator (:category r)))))
+
+(deftest mutate-command-defaults-operator-version-to-1-test
+  (let [in-dir (temp-dir*)
+        _ (spit (io/file in-dir "a.json") sample-bundle-json)
+        r (cli/mutate-command {:input in-dir :operator-id "remove-required-element"
+                                :locator-path "entry[0].resource.gender" :output-dir (temp-dir*)})]
+    (is (result/ok? r))))
+
+(deftest mutate-command-propagates-a-locator-that-does-not-resolve-test
+  (let [in-dir (temp-dir*)
+        _ (spit (io/file in-dir "a.json") sample-bundle-json)
+        r (cli/mutate-command {:input in-dir :operator-id "remove-required-element"
+                                :locator-path "entry[0].resource.noSuchField" :output-dir (temp-dir*)})]
+    (is (result/rejected? r))
+    (is (= :locator-not-found (:category r)))))
+
+(deftest mutate-command-rejects-invalid-locator-path-syntax-test
+  (let [in-dir (temp-dir*)
+        _ (spit (io/file in-dir "a.json") sample-bundle-json)
+        r (cli/mutate-command {:input in-dir :operator-id "remove-required-element"
+                                :locator-path "entry[bad]" :output-dir (temp-dir*)})]
+    (is (result/rejected? r))
+    (is (= :invalid-fhir-path (:category r)))))
 
 ;; ---- main! (the real -main body, refactored to take injectable
 ;; :dispatch-fn / :println-fn / :exit-fn so its exit-code mapping and
