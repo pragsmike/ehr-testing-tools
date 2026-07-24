@@ -135,6 +135,6 @@ pack-push: pack pack-skills
 		echo "No pack changes to push (packs repo already up to date)"; \
 	else \
 		git commit -m "$(REPO_NAME) @ $$head" > /dev/null && \
-		git push && \
+		git push -u origin main && \
 		echo "Packs pushed to pragsmike/packs ($(REPO_NAME) @ $$head)"; \
 	fi
