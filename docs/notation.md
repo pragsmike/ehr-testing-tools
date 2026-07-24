@@ -38,11 +38,11 @@ An equation whose resource name binds to neither is malformed —
 authoring the equation is what forces this binding to be made
 explicit, before implementation.
 
-## Catalytic resources resolve to one of three targets
+## Catalytic resources resolve to one of four targets
 
 A resource marked `{catalytic: …}` participates in a stage without
 being consumed (pattern nursery [#13](../.agents/memory/patterns.md)).
-Every catalytic resource must resolve to exactly one of three targets:
+Every catalytic resource must resolve to exactly one of four targets:
 
 1. `artifacts.lock.edn` — an acquired, external, or binary input
    (ADR-0005): an engine distribution, a runtime, a profile package.
@@ -50,8 +50,20 @@ Every catalytic resource must resolve to exactly one of three targets:
 3. Hashed repo-authored config — text this repo wrote and versions
    (a properties file, a module set), referenced by path plus
    content-hash at run time.
+4. **In-repo code registries**, referenced by `{id, version}` — a
+   versioned catalog of code this repo authors and ships as part of
+   itself (the operator catalog, `corpus.operators`; the canonicalizer
+   registry, `corpus.canonicalizers`). Ratified 2026-07-24, from a gap
+   pattern nursery [#13](../.agents/memory/patterns.md) surfaced in
+   P4: Mutate's catalytic resource is code, not an acquired artifact, a
+   `deps.edn` dependency, or hashed data — its real provenance
+   mechanism is version reference into a registry this repo itself
+   defines, the same mechanism canonicalizer application already used
+   for target 3's near-neighbor. Distinguished from target 3 by kind,
+   not degree: target 3 is data this repo wrote; target 4 is code this
+   repo wrote, versioned and referenced the same way data would be.
 
-A catalytic resource that resolves to none of the three is a gap in
+A catalytic resource that resolves to none of the four is a gap in
 the equation, not an oversight to paper over silently.
 
 ## The five stage kinds

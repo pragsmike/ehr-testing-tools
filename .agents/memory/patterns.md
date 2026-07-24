@@ -105,34 +105,48 @@ the design channel.
     carries a round bound (no unbounded loops). A stage may declare
     laws beyond its kind's — kind laws are a floor, not a ceiling.
     Catalytic resources (participate unconsumed) must resolve to
-    exactly one of three targets: `artifacts.lock.edn`, `deps.edn`, or
-    hashed repo-authored config — an equation with a catalytic input
-    that resolves to none of the three is malformed. **Gap surfaced by
-    this session's trial:** Mutate's catalytic resource, `operator-
-    catalog`, is an in-repo *code registry* (`corpus.operators`, like
-    `corpus.canonicalizers`) — it fits none of the three targets
-    cleanly (it's not an acquired artifact, not a deps.edn dependency,
-    and "hashed repo-authored config" as originally meant data files
-    referenced by path+content-hash in manifests, not code). Its real
-    provenance mechanism turned out to be a fourth pattern: reference
-    by `{id, version}` tuple into a versioned in-repo registry (the
-    same mechanism canonicalizer application already used) — not a
-    hash at all. The three-target rule is accurate for *data* inputs;
-    code-registry catalytic resources need this fourth bucket named
-    explicitly, not silently folded into "hashed repo-authored
-    config." Not resolved here — flagged for the design channel.
-    Status: on trial this session (P4) — pattern nursery promotion
-    criteria pre-committed: (1) does authoring the Mutate equation
-    surface a design question before implementation that the equation
-    itself answers or clarifies? (2) does every catalytic resource in
-    the four authored equations (Generate, Normalize, Mutate, and the
-    planned-status Gate/Report stubs) resolve cleanly to one of the
-    three lockfile targets? (3) does the generated diagram
-    (`docs/pipeline.md`) match hand-drawn intuition well enough that no
-    equation needed correction after seeing its diagram? A pattern that
-    meets criteria 2–3 but not 1 is still promotable — criterion 1 is
-    evidence-gathering, not a gate; the session report states plainly
-    whether it fired.
+    exactly one of four targets: `artifacts.lock.edn`, `deps.edn`,
+    hashed repo-authored config, or an in-repo code registry referenced
+    by `{id, version}` — an equation with a catalytic input that
+    resolves to none of the four is malformed. **Gap surfaced by P4's
+    trial, now ratified (2026-07-24, `docs/notation.md`):** Mutate's
+    catalytic resource, `operator-catalog`, is an in-repo *code
+    registry* (`corpus.operators`, like `corpus.canonicalizers`) — it
+    fit none of the original three targets cleanly (it's not an
+    acquired artifact, not a deps.edn dependency, and "hashed
+    repo-authored config" as originally meant data files referenced by
+    path+content-hash in manifests, not code). Its real provenance
+    mechanism is reference by `{id, version}` tuple into a versioned
+    in-repo registry (the same mechanism canonicalizer application
+    already used) — not a hash at all. This is now the fourth target,
+    named explicitly in `docs/notation.md` rather than left folded into
+    "hashed repo-authored config."
+    Status: on trial through the Gate equations (P5) — pattern nursery
+    promotion criteria pre-committed in P4: (1) does authoring the
+    Mutate equation surface a design question before implementation
+    that the equation itself answers or clarifies? (2) does every
+    catalytic resource in the four authored equations (Generate,
+    Normalize, Mutate, and the planned-status Gate/Report stubs)
+    resolve cleanly to one of the [now four] catalytic targets? (3)
+    does the generated diagram (`docs/pipeline.md`) match hand-drawn
+    intuition well enough that no equation needed correction after
+    seeing its diagram? A pattern that meets criteria 2–3 but not 1 is
+    still promotable — criterion 1 is evidence-gathering, not a gate.
+    P4 evidence: criterion (3) did **not** hold as hoped — the
+    generated diagram caught a real cross-stage wiring mismatch
+    (Normalize's output shape vs. Mutate's input shape) that hand-drawn
+    intuition had missed, which is a stronger result for the pattern's
+    value than a clean match would have been, but not what criterion 3
+    as originally phrased asked for. Criterion (1) also did not fire as
+    hoped: equation authoring anticipated the catalytic-resource
+    question but did not itself correct the Mutate design — the gap
+    surfaced and was flagged for the design channel, not resolved
+    in-equation. The rule gap that flagging produced (this fourth
+    target) is now found and ratified, which is real value from the
+    trial, but distinct from criteria 1–3 being met; promotion of
+    pattern #13 itself stays deferred to P5, when the Gate/Report
+    equations move from stub to authored and criteria 2–3 can be
+    re-evaluated against real, not planned-status, equations.
 
 14. **Operators carry contracts** — mutation (introducing a defect) and
     metamorphic perturbation (transforming input while preserving an
