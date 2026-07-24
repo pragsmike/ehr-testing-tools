@@ -255,3 +255,81 @@ protocol and results, archived prompts, and ADR-0001 itself — are dated
 records and are not edited; this record supersedes ADR-0001, it does not
 revise it.
 **Status.** Accepted (author-directed), 2026-07-24.
+
+---
+## ADR-0008 — Publish the repository
+**Context.** `docs/positioning.md`'s go-public gate set four conditions
+before this repo could flip from private to public. The author decided
+to publish today (2026-07-24). Walking each condition against its
+evidence:
+
+1. **Licensing is clean.** MIT (ADR-0007, above).
+   Every dependency this repo actually distributes is verified
+   permissive-compatible: EXP-SBOM (`docs/experiments/EXP-SBOM-results.md`)
+   classified the CDC-wrapper dependency closure and found 19 of 26
+   coordinates license-verified-compatible, with the sole flagged
+   outlier (`xom`, LGPL-2.1, facts register
+   [F10](../notes/facts-register.md)) reachable only through a NIST-origin
+   coordinate this repo does not yet adopt. The six NIST-origin
+   coordinates themselves ([F1](../notes/facts-register.md),
+   [F9](../notes/facts-register.md)) are `license-unstated` — but this
+   repo redistributes none of them: ADR-0005's 2026-07-24 amendment
+   (above) records that class of artifact as
+   `:use-permitted--unstated--confirmation-pending`, fetched by users
+   from NIST's own official channel (`hit-nexus.nist.gov`,
+   [F14](../notes/facts-register.md)) at their own initiative, never
+   vendored or shipped by this repo (ADR-0005 is the record of that
+   distinction). The residual NIST inquiry
+   (`docs/experiments/EXP-SBOM-inquiry-draft.md`) narrows that status
+   further; it is a narrowing in progress, not a blocker — nothing this
+   repo ships depends on its answer.
+2. **At least one capability is usable, honestly labeled.** Generation
+   (`corpus.generate`) is usable: EXP-A4
+   (`docs/experiments/EXP-A4-results.md`) proved clean-environment,
+   byte-identical reproducibility from a freshly emptied artifact cache.
+   Mutation (`corpus.mutate`) ships too, labeled experimental — it works
+   (EXP-B2, `docs/experiments/EXP-B2-results.md`), but it is days old and
+   its interfaces may still move. Gates are planned, not built
+   (`docs/pipeline.edn`'s `:status :planned` stages) — no condition here
+   requires them; the maturity table just says so plainly
+   (`README.md`).
+3. **CI is green and runs offline.** Added this session:
+   `.github/workflows/ci.yml` runs `make test` and `make coverage` on
+   push/PR. The suite's hermeticity was verified directly, not assumed —
+   a fresh temporary clone, dependencies primed once, then `make test`
+   re-run inside a network-isolated namespace: 166 tests, 0 failures, 0
+   errors. No test needed `^:integration` tagging because none touches
+   the network or a real external engine; every such boundary in the
+   current suite is already an injected fake (see `AGENTS.md`'s hermetic
+   test-suite rule, added this session).
+4. **The referral README is in place.** `README.md` was rewritten this
+   session: the pipeline diagram up front, the maturity table, real
+   quickstart commands, the guide-relationship paragraph, the scope
+   fence, and the MIT license line.
+
+**Decision.** Publish the repository publicly. Publication is not a
+release: no version tag is cut, nothing is published to Clojars or
+Maven Central, and the guide's own register still waits for this
+repo's first release before citing it (`docs/positioning.md`'s
+referral-trigger contract, unchanged by this ADR).
+
+**Alternatives rejected.** Waiting for the gates capability to land
+before publishing — no go-public condition requires it, and the
+maturity table's honest "planned" label already covers the gap; holding
+publication hostage to a capability nobody asked this gate to require
+would just be scope creep on the gate itself. Waiving the CI condition
+for expedience — a verification-tools repo that waives its own
+verification gate on the day it goes public is self-refuting; the
+condition existed to be met, not talked around, so CI was built instead
+of waived.
+
+**Consequence.** Pre-release expectations govern from here: interfaces
+may move, and the maturity table in `README.md` is the actual contract
+with readers, not a formality. The NIST inquiry's eventual answer will
+update facts-register F1/F14 and may upgrade the full `gate.v2` plan
+from candidate to adopted. First release — a version tag, published
+coordinates, coverage-threshold gating landed, the notation trial
+(pattern nursery [#13](../.agents/memory/patterns.md)) concluded — is
+the next gate-shaped milestone, tracked in
+`.agents/plans/corpus-foundations.md`.
+**Status.** Accepted (author-directed), 2026-07-24.
