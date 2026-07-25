@@ -202,13 +202,16 @@
       :else :pass)))
 
 (defn- issue->finding
+  "disposition = this finding's verdict contribution per the versioned
+  mapping (`issue->classification`); `policy` is reserved for the
+  verdict->action layer (ADR-0009), one level up from a single finding."
   [engine issue]
   {:severity (severity->keyword (get issue "severity"))
    :code (get issue "code")
    :locator {:format :fhir :path (issue-locator-path issue)}
    :message (issue-message issue)
    :engine engine
-   :policy (issue->classification issue)
+   :disposition (issue->classification issue)
    :native-ref {:expression (get issue "expression")}})
 
 (defn interpret
@@ -216,14 +219,14 @@
   cited to `verdict-mapping-cited-to`). Every issue in raw-outcome's
   \"issue\" array becomes one finding, classified :rejected /
   :indeterminate / :pass by `issue->classification` (recorded on the
-  finding itself as :policy, for auditability). Overall verdict is the
-  worst-of every finding's classification (judge.finding/worst-of):
+  finding itself as :disposition, for auditability). Overall verdict is
+  the worst-of every finding's classification (judge.finding/worst-of):
   :rejected > :indeterminate > :pass. No issues at all is :pass with
   no findings."
   [raw-outcome engine]
   (let [issues (get raw-outcome "issue" [])
         findings (mapv #(issue->finding engine %) issues)
-        verdict (finding/worst-of (map :policy findings))]
+        verdict (finding/worst-of (map :disposition findings))]
     {:verdict verdict :findings findings}))
 
 ;; ---- gate: read (never mutate) -> execute -> interpret ----

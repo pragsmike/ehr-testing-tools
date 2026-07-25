@@ -111,7 +111,7 @@
     (is (= :rejected (:verdict outcome)))
     (is (seq matches) "expected a finding whose locator matches the mutation's own locator")
     (is (some #(= "invalid" (:code %)) matches))
-    (is (some #(= :rejected (:policy %)) matches))))
+    (is (some #(= :rejected (:disposition %)) matches))))
 
 (deftest ^:integration malformed-date-contract-test
   (let [{:keys [outcome]} (mutate-and-gate! :malformed-date "entry[0].resource.birthDate")
@@ -119,7 +119,7 @@
     (is (= :rejected (:verdict outcome)))
     (is (seq matches))
     (is (some #(= "invalid" (:code %)) matches))
-    (is (some #(= :rejected (:policy %)) matches))))
+    (is (some #(= :rejected (:disposition %)) matches))))
 
 (deftest ^:integration wrong-type-value-contract-test
   (let [{:keys [outcome]} (mutate-and-gate! :wrong-type-value "entry[0].resource.multipleBirthBoolean")
@@ -169,7 +169,7 @@
         "OBSERVED class (EXP-C5): detected, not indeterminate -- AdministrativeGender is base-bundled")
     (is (seq matches))
     (is (some #(#{"code-invalid" "not-found"} (:code %)) matches))
-    (is (some #(= :rejected (:policy %)) matches))))
+    (is (some #(= :rejected (:disposition %)) matches))))
 
 ;; ---- the Gate stage kind law (docs/notation.md): gating never
 ;; modifies the datum it judges -- tested here against the REAL

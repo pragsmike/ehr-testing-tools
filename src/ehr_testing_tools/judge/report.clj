@@ -94,7 +94,7 @@
   on -- deliberately excludes :message and :native-ref, which can
   legitimately vary run to run for the *same* underlying finding
   (e.g. differing diagnostic text), and deliberately excludes any
-  format-specific extension field (e.g. judge.fhir's own :policy) so
+  format-specific extension field (e.g. judge.fhir's own :disposition) so
   this stays format-agnostic, matching build-report's own contract."
   [f]
   [(:severity f) (:code f) (get-in f [:locator :path])])
@@ -116,7 +116,7 @@
   :rejected) even against a ternary-capable gate's own absolute
   verdict -- judge.report stays format-agnostic and has no access to
   any format-specific per-finding classification (e.g. judge.fhir's own
-  :policy) that would be needed to preserve :indeterminate here; a
+  :disposition) that would be needed to preserve :indeterminate here; a
   novel :indeterminate-worthy finding still counts as :rejected in
   relative mode. Stated plainly (docs/gate-calibration.md), not left
   implicit."

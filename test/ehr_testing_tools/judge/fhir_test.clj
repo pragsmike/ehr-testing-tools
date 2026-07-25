@@ -90,7 +90,7 @@
   (let [o (gate/interpret (outcome genuine-fatal-error) sample-engine)]
     (is (= :rejected (:verdict o)))
     (is (= :fatal (:severity (first (:findings o)))))
-    (is (= :rejected (:policy (first (:findings o)))))))
+    (is (= :rejected (:disposition (first (:findings o)))))))
 
 (deftest interpret-genuine-invalid-and-code-invalid-errors-are-rejected-test
   (testing "structural type/format violation"
@@ -98,7 +98,7 @@
   (testing "a code violating a base-FHIR-bundled ValueSet (AdministrativeGender) -- NOT terminology-suppressed"
     (let [o (gate/interpret (outcome genuine-code-invalid-error) sample-engine)]
       (is (= :rejected (:verdict o)))
-      (is (= :rejected (:policy (first (:findings o))) )
+      (is (= :rejected (:disposition (first (:findings o))) )
           "the finding itself should record which mapping-policy classified it, for auditability")))
   )
 
@@ -106,7 +106,7 @@
   (testing "warning-severity, 'without using server' diagnostics"
     (let [o (gate/interpret (outcome terminology-suppressed-warning) sample-engine)]
       (is (= :indeterminate (:verdict o)))
-      (is (= :indeterminate (:policy (first (:findings o)))))))
+      (is (= :indeterminate (:disposition (first (:findings o)))))))
   (testing "information-severity, 'doesn't provide any codes' diagnostics"
     (is (= :indeterminate (:verdict (gate/interpret (outcome terminology-suppressed-information) sample-engine))))))
 
