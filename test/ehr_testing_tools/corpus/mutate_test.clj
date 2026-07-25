@@ -7,9 +7,11 @@
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
             [clojure.data.json :as json]
+            [clojure.java.io :as io]
             [ehr-testing-tools.result :as result]
             [ehr-testing-tools.lineage :as lineage]
             [ehr-testing-tools.diff :as diff]
+            [ehr-testing-tools.corpus.er7 :as er7]
             [ehr-testing-tools.corpus.operators :as operators]
             [ehr-testing-tools.corpus.mutate :as mutate]))
 
@@ -128,3 +130,49 @@
 (deftest content-hash-is-deterministic-and-format-json-test
   (is (= (mutate/content-hash sample-bundle) (mutate/content-hash sample-bundle)))
   (is (re-matches #"^[0-9a-f]{64}$" (mutate/content-hash sample-bundle))))
+
+;; ---- v2 dispatch (P7): same fn, same contract shape, a different
+;; substrate underneath -- ehr-testing-tools.corpus.er7 instead of
+;; plain FHIR JSON, dispatched on operator's own :format. ----
+
+(defn- v2-op [id] (operators/lookup id "1"))
+
+(def ^:private admit-fixture "test/fixtures/v2/adt-a01-admit.hl7")
+(defn- admit-content [] (slurp (io/file admit-fixture)))
+
+(deftest mutate-v2-happy-path-returns-mutant-string-and-lineage-test
+  (let [base (admit-content)
+        r (mutate/mutate base (v2-op :blank-required-field) {:format :v2 :path "MSH-9"})]
+    (is (result/ok? r))
+    (let [{:keys [mutant lineage]} (:payload r)]
+      (is (string? mutant))
+      (is (= "" (nth (get-in (er7/parse mutant) [:segments 0]) 8))
+          "MSH-9 (split-index 8) must be blanked in the mutant")
+      (is (lineage/valid? lineage))
+      (is (lineage/valid-content-hash? lineage))
+      (is (= :mutate (:stage lineage)))
+      (is (= :blank-required-field (:id (:operator (:transformation lineage)))))
+      (is (= {:format :v2 :path "MSH-9"} (:locator (:transformation lineage)))))))
+
+(deftest mutate-v2-lineage-parent-and-produced-are-er7-content-hashes-test
+  (let [base (admit-content)
+        r (mutate/mutate base (v2-op :corrupt-encoding-characters) {:format :v2 :path "MSH-2"})
+        {:keys [mutant lineage]} (:payload r)]
+    (is (= (er7/content-hash base) (:parent lineage)))
+    (is (= (er7/content-hash mutant) (:produced lineage)))
+    (is (not= (:parent lineage) (:produced lineage)))))
+
+(deftest mutate-v2-does-not-touch-the-original-content-test
+  (let [base (admit-content)]
+    (mutate/mutate base (v2-op :malformed-datetime-value) {:format :v2 :path "PID-7"})
+    (is (= base (admit-content)) "the fixture file on disk must be untouched")))
+
+(deftest mutate-v2-rejects-a-locator-pointing-nowhere-test
+  (let [r (mutate/mutate (admit-content) (v2-op :blank-required-field) {:format :v2 :path "ZZZ-3"})]
+    (is (result/rejected? r))
+    (is (= :locator-not-found (:category r)))))
+
+(deftest mutate-v2-propagates-a-malformed-locator-path-test
+  (let [r (mutate/mutate (admit-content) (v2-op :blank-required-field) {:format :v2 :path "PID-0"})]
+    (is (result/rejected? r))
+    (is (= :invalid-v2-path (:category r)))))

@@ -84,28 +84,53 @@
       artifacts-result
       (artifact/resolve (:payload artifacts-result) name version))))
 
-(defn- json-files-in
-  "A directory -> its *.json files, sorted for deterministic
+(def ^:private format-file-extension
+  "The file extension `ehr corpus mutate` selects :input files by, and
+  reads/writes base-data/mutant through, per operator :format."
+  {:fhir "json" :v2 "hl7"})
+
+(defn- files-with-extension-in
+  "A directory -> its *.<ext> files, sorted for deterministic
   processing order; a file -> itself, as a single-element seq."
-  [path]
+  [path ext]
   (let [f (io/file path)]
     (if (.isDirectory f)
       (->> (.listFiles f)
-           (filter #(str/ends-with? (.getName %) ".json"))
+           (filter #(str/ends-with? (.getName %) (str "." ext)))
            (sort-by #(.getName %)))
       [f])))
 
+(defn- read-base-data
+  "Reads a file into the shape corpus.mutate expects for format:
+  parsed JSON data for :fhir, the raw ER7 string for :v2."
+  [format file]
+  (case format
+    :fhir (json/read-str (slurp file))
+    :v2 (slurp file)))
+
+(defn- write-mutant
+  "Writes a mutant to file in the shape it needs to land on disk:
+  JSON-serialized for :fhir (mutant is data); verbatim for :v2 (mutant
+  is already the serialized ER7 string, corpus.mutate/mutate-v2's own
+  return shape)."
+  [format file mutant]
+  (case format
+    :fhir (spit file (json/write-str mutant))
+    :v2 (spit file mutant)))
+
 (defn mutate-command
   "`ehr corpus mutate`: applies one operator, at one locator, to every
-  *.json file under :input (a file or a directory), writing each
-  mutant alongside a lineage EDN sidecar under :output-dir/lineage/
-  (a subdirectory, not interleaved sidecars -- chosen so a downstream
-  stage can glob :output-dir for data and :output-dir/lineage for
-  provenance without filtering one out of the other). Fails fast: the
-  first file whose locator doesn't resolve, or any other per-file
-  failure, is returned as-is and stops the batch -- partial output on
-  disk from files already processed before the failure is left in
-  place (not rolled back), since it's individually valid.
+  matching file under :input (a file or a directory) -- *.json for a
+  :fhir operator, *.hl7 for a :v2 one, dispatched on the looked-up
+  operator's own :format -- writing each mutant alongside a lineage EDN
+  sidecar under :output-dir/lineage/ (a subdirectory, not interleaved
+  sidecars -- chosen so a downstream stage can glob :output-dir for
+  data and :output-dir/lineage for provenance without filtering one out
+  of the other). Fails fast: the first file whose locator doesn't
+  resolve, or any other per-file failure, is returned as-is and stops
+  the batch -- partial output on disk from files already processed
+  before the failure is left in place (not rolled back), since it's
+  individually valid.
 
   Options: :input, :operator-id (a string, coerced to keyword),
   :operator-version (default \"1\"), :locator-path, :output-dir."
@@ -114,24 +139,25 @@
   (let [operator (operators/lookup (keyword operator-id) operator-version)]
     (if-not operator
       (result/rejected :unknown-operator {:id operator-id :version operator-version})
-      (let [locator-result (locator/make :fhir locator-path)]
+      (let [format (:format operator)
+            locator-result (locator/make format locator-path)]
         (if-not (result/ok? locator-result)
           locator-result
           (let [locator-envelope (:payload locator-result)
-                files (json-files-in input)]
+                files (files-with-extension-in input (format-file-extension format))]
             (.mkdirs (io/file output-dir))
             (.mkdirs (io/file output-dir "lineage"))
             (loop [remaining files processed []]
               (if (empty? remaining)
                 (result/ok {:count (count processed) :files processed})
                 (let [f (first remaining)
-                      base-data (json/read-str (slurp f))
+                      base-data (read-base-data format f)
                       mutate-result (mutate/mutate base-data operator locator-envelope)]
                   (if-not (result/ok? mutate-result)
                     mutate-result
                     (let [{:keys [mutant lineage]} (:payload mutate-result)
                           basename (.getName f)]
-                      (spit (io/file output-dir basename) (json/write-str mutant))
+                      (write-mutant format (io/file output-dir basename) mutant)
                       (spit (io/file output-dir "lineage" (str basename ".lineage.edn")) (pr-str lineage))
                       (recur (rest remaining) (conj processed {:file basename :lineage-id (:id lineage)})))))))))))))
 

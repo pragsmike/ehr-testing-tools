@@ -273,6 +273,59 @@
     (is (result/rejected? r))
     (is (= :invalid-fhir-path (:category r)))))
 
+;; ---- mutate-command, v2 dispatch (P7): same command, format dispatch
+;; by operator lookup routes *.hl7 files through the er7 substrate
+;; instead of *.json through plain FHIR data. ----
+
+(def ^:private admit-content
+  (delay (slurp (io/file "test/fixtures/v2/adt-a01-admit.hl7"))))
+
+(deftest mutate-command-v2-happy-path-writes-mutant-and-lineage-test
+  (let [in-dir (temp-dir*)
+        out-dir (str (temp-dir*) "/out")
+        _ (spit (io/file in-dir "adt.hl7") @admit-content)
+        r (cli/mutate-command {:input in-dir :operator-id "blank-required-field"
+                                :locator-path "MSH-9" :output-dir out-dir})]
+    (is (result/ok? r))
+    (is (= 1 (:count (:payload r))))
+    (let [mutant (slurp (io/file out-dir "adt.hl7"))
+          lineage-file (io/file out-dir "lineage" "adt.hl7.lineage.edn")]
+      (is (not (clojure.string/includes? mutant "ADT^A01^ADT_A01")))
+      (is (.exists lineage-file))
+      (let [lineage (clojure.edn/read-string (slurp lineage-file))]
+        (is (= :blank-required-field (:id (:operator (:transformation lineage)))))
+        (is (= {:format :v2 :path "MSH-9"} (:locator (:transformation lineage))))))))
+
+(deftest mutate-command-v2-processes-every-hl7-file-in-a-directory-test
+  (let [in-dir (temp-dir*)
+        out-dir (str (temp-dir*) "/out")
+        _ (spit (io/file in-dir "a.hl7") @admit-content)
+        _ (spit (io/file in-dir "b.hl7") @admit-content)
+        _ (spit (io/file in-dir "not-hl7.json") sample-bundle-json)
+        r (cli/mutate-command {:input in-dir :operator-id "corrupt-encoding-characters"
+                                :locator-path "MSH-2" :output-dir out-dir})]
+    (is (result/ok? r))
+    (is (= 2 (:count (:payload r))))
+    (is (.exists (io/file out-dir "a.hl7")))
+    (is (.exists (io/file out-dir "b.hl7")))
+    (is (not (.exists (io/file out-dir "not-hl7.json"))))))
+
+(deftest mutate-command-v2-propagates-a-locator-that-does-not-resolve-test
+  (let [in-dir (temp-dir*)
+        _ (spit (io/file in-dir "a.hl7") @admit-content)
+        r (cli/mutate-command {:input in-dir :operator-id "blank-required-field"
+                                :locator-path "ZZZ-3" :output-dir (temp-dir*)})]
+    (is (result/rejected? r))
+    (is (= :locator-not-found (:category r)))))
+
+(deftest mutate-command-v2-rejects-invalid-locator-path-syntax-test
+  (let [in-dir (temp-dir*)
+        _ (spit (io/file in-dir "a.hl7") @admit-content)
+        r (cli/mutate-command {:input in-dir :operator-id "blank-required-field"
+                                :locator-path "PID-0" :output-dir (temp-dir*)})]
+    (is (result/rejected? r))
+    (is (= :invalid-v2-path (:category r)))))
+
 ;; ---- intake-command (`ehr corpus intake`): the real wiring, not the
 ;; injected-stub path dispatch-routes-corpus-intake-test exercises ----
 
