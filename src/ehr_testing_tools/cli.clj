@@ -145,7 +145,10 @@
     :or {operator-version "1"}}]
   (let [operator (operators/lookup (keyword operator-id) operator-version)]
     (if-not operator
-      (result/rejected :unknown-operator {:id operator-id :version operator-version})
+      (result/rejected :unknown-operator
+                        {:id operator-id :version operator-version
+                         :valid-options (sort (map :id (operators/entries)))
+                         :hint "run: ehr corpus operators"})
       (let [format (:format operator)
             locator-result (locator/make format locator-path)]
         (if-not (result/ok? locator-result)
@@ -381,6 +384,15 @@
   []
   (result/error :cli-help {:text (help-text-for nil)}))
 
+(defn- unknown-command-error
+  "An unrecognized group or verb: :unknown-command, extended (DOC-1's
+  bounded error-message pass) with :valid-options (drawn from the help
+  spec -- one source of truth with `ehr help`'s own text, so the two
+  can't drift apart) and a fixed :hint pointing at the fuller help
+  surface."
+  [args valid-options]
+  (result/error :unknown-command {:args args :valid-options valid-options :hint "run: ehr help"}))
+
 (defn dispatch
   "Routes [group action] positional args to the corresponding capability
   function with opts. The -fn keys are injectable (tests use this
@@ -427,19 +439,19 @@
            "artifact" (case action
                         "fetch" (fetch-fn opts)
                         "resolve" (resolve-fn opts)
-                        (result/error :unknown-command {:args args}))
+                        (unknown-command-error args (help/verb-names (help/find-group help/cli-spec "artifact"))))
            "corpus" (case action
                       "generate" (generate-fn opts)
                       "mutate" (mutate-fn opts)
                       "intake" (intake-fn opts)
                       "operators" (operators-fn opts)
-                      (result/error :unknown-command {:args args}))
+                      (unknown-command-error args (help/verb-names (help/find-group help/cli-spec "corpus"))))
            "gate" (case action
                     "v2" (gate-v2-fn opts)
                     "fhir" (gate-fhir-fn opts)
-                    (result/error :unknown-command {:args args}))
+                    (unknown-command-error args (help/verb-names (help/find-group help/cli-spec "gate"))))
            "check" (check-fn opts)
-           (result/error :unknown-command {:args args})))))))
+           (unknown-command-error args (help/group-names help/cli-spec))))))))
 
 (defn render
   [r json?]

@@ -107,6 +107,9 @@ repo's own artifact registry, not your `PATH` (see
 once, then generate and mutate:
 
 ```sh
+# See every command, flag, and exit code the CLI supports.
+make ehr ARGS="help"
+
 # One-time: fetch the pinned Synthea distribution and its JDK, into the
 # local artifact cache (~/.cache/ehr-testing-tools/artifacts).
 make ehr ARGS="artifact fetch --name synthea --version 4.0.0"
@@ -122,7 +125,8 @@ make ehr ARGS="corpus generate --config-path config/synthea/synthea.properties \
 # a file or a directory of files sharing one locator's shape; the
 # corpus dir above also holds two non-patient bundles --
 # hospitalInformation*.json, practitionerInformation*.json -- so this
-# picks a patient file specifically rather than the whole directory.)
+# picks a patient file specifically rather than the whole directory.
+# See the full operator catalog: `make ehr ARGS="corpus operators"`.)
 PATIENT_FILE=$(ls out/demo-corpus/fhir/*.json | grep -v -e hospitalInformation -e practitionerInformation | head -1)
 make ehr ARGS="corpus mutate --input $PATIENT_FILE \
   --operator-id remove-required-element --locator-path entry[0].resource.gender \

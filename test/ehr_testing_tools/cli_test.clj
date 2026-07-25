@@ -64,6 +64,32 @@
     (is (result/error? r))
     (is (= :unknown-command (:category r)))))
 
+;; ---- honest errors (DOC-1 Step 4): the enumerable-options family
+;; names its valid options plus a help pointer, bounded to
+;; unknown-command (group and action) and mutate-command's own
+;; :unknown-operator -- category unchanged in every case. ----
+
+(deftest dispatch-unknown-group-names-the-valid-groups-test
+  (let [r (cli/dispatch ["bogus" "thing"] {} {})]
+    (is (= :unknown-command (:category r)) "category survives the payload extension")
+    (is (= #{"artifact" "corpus" "gate" "check"} (set (:valid-options (:payload r)))))
+    (is (= "run: ehr help" (:hint (:payload r))))))
+
+(deftest dispatch-unknown-artifact-action-names-fetch-and-resolve-test
+  (let [r (cli/dispatch ["artifact" "bogus"] {} {})]
+    (is (= :unknown-command (:category r)))
+    (is (= #{"fetch" "resolve"} (set (:valid-options (:payload r)))))))
+
+(deftest dispatch-unknown-corpus-action-names-its-verbs-test
+  (let [r (cli/dispatch ["corpus" "bogus"] {} {})]
+    (is (= :unknown-command (:category r)))
+    (is (= #{"generate" "mutate" "intake" "operators"} (set (:valid-options (:payload r)))))))
+
+(deftest dispatch-unknown-gate-action-names-v2-and-fhir-test
+  (let [r (cli/dispatch ["gate" "bogus"] {} {})]
+    (is (= :unknown-command (:category r)))
+    (is (= #{"v2" "fhir"} (set (:valid-options (:payload r)))))))
+
 ;; ---- help / --help / bare ehr (DOC-1 Step 2): a :category :cli-help
 ;; result short-circuits before any capability -fn runs. ----
 
@@ -298,6 +324,20 @@
                                 :locator-path "entry[0].resource.gender" :output-dir (temp-dir*)})]
     (is (result/rejected? r))
     (is (= :unknown-operator (:category r)))))
+
+(deftest mutate-command-unknown-operator-names-the-valid-ids-test
+  ;; DOC-1 Step 4: the enumerable-options error pass, extended to this
+  ;; site (the CLI-reachable equivalent of the prompt's named
+  ;; :invalid-operator -- see the DOC-1 close-out report). Category is
+  ;; unchanged; only the payload gains :valid-options and a hint.
+  (let [in-dir (temp-dir*)
+        _ (spit (io/file in-dir "a.json") sample-bundle-json)
+        r (cli/mutate-command {:input in-dir :operator-id "no-such-operator"
+                                :locator-path "entry[0].resource.gender" :output-dir (temp-dir*)})]
+    (is (= :unknown-operator (:category r)) "category survives the payload extension")
+    (is (contains? (set (:valid-options (:payload r))) :remove-required-element))
+    (is (= 10 (count (:valid-options (:payload r)))))
+    (is (= "run: ehr corpus operators" (:hint (:payload r))))))
 
 (deftest mutate-command-defaults-operator-version-to-1-test
   (let [in-dir (temp-dir*)

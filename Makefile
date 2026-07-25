@@ -32,7 +32,7 @@ help:
 	@echo "                   make ehr ARGS=\"artifact fetch --name synthea --version 4.0.0\""
 	@echo "                   make ehr ARGS=\"artifact fetch --name temurin-jdk --version 17.0.19+10\""
 	@echo "                   make ehr ARGS=\"artifact fetch --name fhir-validator-cli --version 6.9.12\""
-	@echo "  ehr          - invoke the ehr CLI, e.g. make ehr ARGS=\"artifact fetch --name synthea --version 4.0.0\""
+	@echo "  ehr          - invoke the ehr CLI, e.g. make ehr ARGS=\"artifact fetch --name synthea --version 4.0.0\" -- see every command with make ehr ARGS=\"help\""
 	@echo "  pipeline     - regenerate docs/pipeline.md from docs/pipeline.edn"
 	@echo "  use-cases    - regenerate docs/use-cases.md from docs/use-cases.edn"
 	@echo "  lint-pipeline - check every catalytic resource in docs/pipeline.edn and docs/use-cases.edn resolves to one of the four catalytic targets (docs/notation.md)"
