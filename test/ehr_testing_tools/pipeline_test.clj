@@ -37,7 +37,7 @@
   (is (pipeline/valid-stage? (assoc sample-stage :contract "round-trip fidelity verified by EXP-B2"))))
 
 (deftest all-five-stage-kinds-are-known-test
-  (doseq [k [:transform :normalize :enrich :gate :feedback]]
+  (doseq [k [:transform :normalize :enrich :judge :feedback]]
     (is (pipeline/valid-stage? (assoc sample-stage :kind k)))))
 
 (deftest valid-pipeline-passes-test
@@ -75,7 +75,7 @@
   ;; both consume the same union resource.
   (let [data (edn/read-string (slurp "docs/pipeline.edn"))
         by-id (into {} (map (juxt :id identity)) (:stages data))]
-    (is (= :gate (:kind (by-id :check))))
+    (is (= :judge (:kind (by-id :check))))
     (is (some #{"datum"} (:inputs (by-id :check))))))
 
 ;; ---- rendering: stage -> equation-line (docs/notation.md's equation

@@ -82,7 +82,7 @@
    :title "Regression baselining / drift detection"
    :audience "Teams gating the same corpus (or corpus shape) repeatedly over time -- CI runs, periodic re-validation of a stable pipeline."
    :bring "A corpus you gate repeatedly, and the report from the last run you trusted."
-   :get "What changed: gate.report/diff-reports compares two full reports (every changed verdict, added/removed file, appeared/disappeared code); --baseline mode (docs/gate-calibration.md) answers the narrower did-anything-NEW-appear question for a single run against a captured baseline."
+   :get "What changed: judge.report/diff-reports compares two full reports (every changed verdict, added/removed file, appeared/disappeared code); --baseline mode (docs/gate-calibration.md) answers the narrower did-anything-NEW-appear question for a single run against a captured baseline."
    :maturity :usable
    :equations ["datum × validator-artifact × runtime × hapi-hl7v2-dep × profile-artifact → pass + rejected + indeterminate  [Gate]  {catalytic: validator-artifact, runtime, hapi-hl7v2-dep, profile-artifact}"
                "pass × rejected × indeterminate → report  [Report]"]}
@@ -124,10 +124,10 @@
    :equations ["canonical-fhir-datum × operator-catalog → mutant-fhir-datum + lineage-record  [Mutate]  {catalytic: operator-catalog}"
                "pass × rejected × indeterminate → report  [Report]"]}
 
-  {:id :gate-tier-calibration-studies
-   :title "Gate-tier calibration studies"
-   :audience "Anyone who needs to know, precisely and with evidence, what a given gate tier actually catches before they trust a green run against it."
-   :bring "A set of defect operators and a gate tier you want characterized."
+  {:id :judge-tier-calibration-studies
+   :title "Judge-tier calibration studies"
+   :audience "Anyone who needs to know, precisely and with evidence, what a given judge tier actually catches before they trust a green run against it."
+   :bring "A set of defect operators and a judge tier you want characterized."
    :get "A per-{operator, locator} classification of what that tier detects, misses, or can only partially resolve -- docs/gate-calibration.md is exactly this, the first instance, derived from EXP-C5's own method."
    :maturity :usable
    :equations ["canonical-fhir-datum × operator-catalog → mutant-fhir-datum + lineage-record  [Mutate]  {catalytic: operator-catalog}"

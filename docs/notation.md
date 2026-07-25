@@ -160,7 +160,7 @@ one-line law:
 | **transform** | Appends provenance — never drops what came before. |
 | **normalize** | Is an idempotent endomorphism — precisely a registered canonicalizer (pattern [#3](../.agents/memory/patterns.md)), not a separate concept. |
 | **enrich** | Adds fields without altering existing ones. |
-| **gate** | Splits its output into pass / rejected / indeterminate and never modifies the datum it judges. |
+| **judge** | Produces a verdict plus findings over its subject; never modifies what it judges. |
 | **feedback** | Carries a round bound — no unbounded loops. |
 
 A stage may declare laws beyond its kind's own — kind laws are a
@@ -170,6 +170,18 @@ kind wouldn't otherwise guarantee (e.g. Mutate's intended-diff-only
 invariant: the canonicalized diff between base and mutant touches
 exactly the declared locator/contract target and nothing else — true
 of this particular `transform`, not of `transform` stages in general).
+
+**Judge, and the derived `gate`** (ADR-0009,
+[`docs/palgebra-design.md`](palgebra-design.md)): the kind's own law is
+the judge law above — a `judge` stage never acts on the verdict it
+produces. Gate's own three-way output split (pass / rejected /
+indeterminate) is not part of the kind's floor; it is the derived,
+policy-bearing construct `gate = judge ⨟ route-by-verdict` — a workflow
+position (the `ehr gate` CLI verb, whose exit-code mapping is the
+policy) built on top of a `judge`-kind stage, not a primitive of the
+notation itself. Full notation treatment of sum types on output wires
+(routing-in-the-algebra vs. above it) is an open question, deferred to
+a later session rather than decided on paper.
 
 ## Resource contracts
 

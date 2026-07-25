@@ -11,10 +11,11 @@
             [clojure.string :as str]
             [malli.core :as m]))
 
+;; palgebra: signature data hardcoded -- extracted Phase 2
 (def stage-kinds
   "The five stage kinds (docs/notation.md) -- every stage in this
   repo's pipeline is exactly one of these."
-  #{:transform :normalize :enrich :gate :feedback})
+  #{:transform :normalize :enrich :judge :feedback})
 
 (def stage-statuses
   #{:built :planned})

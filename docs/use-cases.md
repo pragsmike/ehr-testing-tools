@@ -398,7 +398,7 @@ flowchart LR
 
 **You bring:** A corpus you gate repeatedly, and the report from the last run you trusted.
 
-**You get:** What changed: gate.report/diff-reports compares two full reports (every changed verdict, added/removed file, appeared/disappeared code); --baseline mode (docs/gate-calibration.md) answers the narrower did-anything-NEW-appear question for a single run against a captured baseline.
+**You get:** What changed: judge.report/diff-reports compares two full reports (every changed verdict, added/removed file, appeared/disappeared code); --baseline mode (docs/gate-calibration.md) answers the narrower did-anything-NEW-appear question for a single run against a captured baseline.
 
 **Maturity:** usable
 
@@ -667,11 +667,11 @@ flowchart LR
     style rejected fill:#f5f5f5,stroke:#999,color:#333
 ```
 
-## Gate-tier calibration studies
+## Judge-tier calibration studies
 
-**Audience:** Anyone who needs to know, precisely and with evidence, what a given gate tier actually catches before they trust a green run against it.
+**Audience:** Anyone who needs to know, precisely and with evidence, what a given judge tier actually catches before they trust a green run against it.
 
-**You bring:** A set of defect operators and a gate tier you want characterized.
+**You bring:** A set of defect operators and a judge tier you want characterized.
 
 **You get:** A per-{operator, locator} classification of what that tier detects, misses, or can only partially resolve -- docs/gate-calibration.md is exactly this, the first instance, derived from EXP-C5's own method.
 
