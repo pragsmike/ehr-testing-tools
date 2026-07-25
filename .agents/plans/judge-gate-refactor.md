@@ -63,6 +63,12 @@ Isolated from the renames so mechanical commits don't camouflage the migration.
 
 ## Phase 4 — Deferred, recorded, not scheduled
 
+- `judge.report`'s `Report` has no format-version key. Phase 3 (the
+  verdict split, R3) grew its schema (`Totals` gains `:no-verdict`,
+  `FileEntry` gains `:cause`) without introducing one — a version key
+  is signature-format territory (D13), not this session's. Noted as a
+  gap, not solved; joins O1's verdict-name question at signature-format
+  v1/v2.
 - Signature format v1 as EDN (D13) beyond what Phase 2's data-extraction forces.
 - Re-expressing the full pipeline in the new notation — **this is what adjudicates O3** (routing in the algebra vs. above it); do not decide O3 on paper.
 - `lower`/`erase`/`emit`, passes, roundtrip + idempotence property tests, the fixed-point test (design §I.5 — first test *when* building begins).

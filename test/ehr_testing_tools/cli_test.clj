@@ -302,7 +302,7 @@
 (deftest gate-v2-command-gates-a-single-passing-file-test
   (let [r (cli/gate-v2-command {:path "test/fixtures/v2/adt-a01-admit.hl7"})]
     (is (result/ok? r))
-    (is (= {:pass 1 :rejected 0 :indeterminate 0} (:totals (:payload r))))))
+    (is (= {:pass 1 :rejected 0 :indeterminate 0 :no-verdict 0} (:totals (:payload r))))))
 
 (deftest gate-v2-command-gates-a-directory-test
   (let [r (cli/gate-v2-command {:path "test/fixtures/v2"})]
@@ -398,7 +398,7 @@
         _ (spit (io/file exp-dir "a.json") bundle)
         r (cli/check-command {:path cand-dir :expected exp-dir})]
     (is (result/ok? r))
-    (is (= {:pass 1 :rejected 0 :indeterminate 0} (:totals (:payload r))))))
+    (is (= {:pass 1 :rejected 0 :indeterminate 0 :no-verdict 0} (:totals (:payload r))))))
 
 (deftest check-command-rejects-when-corpora-differ-test
   (let [cand-dir (temp-dir*) exp-dir (temp-dir*)

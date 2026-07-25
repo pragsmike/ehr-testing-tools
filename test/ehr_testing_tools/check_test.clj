@@ -55,7 +55,7 @@
     (spit (io/file exp "a.json") bundle-json)
     (let [r (check/check-corpus {:candidate-dir cand :expected-dir exp})]
       (is (result/ok? r))
-      (is (= {:pass 1 :rejected 0 :indeterminate 0} (:totals (:payload r)))))))
+      (is (= {:pass 1 :rejected 0 :indeterminate 0 :no-verdict 0} (:totals (:payload r)))))))
 
 (deftest matches-expected-differing-corpora-reject-with-a-locator-path-test
   (let [cand (temp-dir*) exp (temp-dir*)]
@@ -66,7 +66,7 @@
       (is (= :check-rejected (:category r)))
       (let [rpt (:payload r)
             finding (first (:findings (first (filter #(= "a.json" (:path %)) (:files rpt)))))]
-        (is (= {:pass 0 :rejected 1 :indeterminate 0} (:totals rpt)))))))
+        (is (= {:pass 0 :rejected 1 :indeterminate 0 :no-verdict 0} (:totals rpt)))))))
 
 (deftest matches-expected-canonicalizer-makes-an-inequivalent-pair-equivalent-test
   ;; The point of the canonicalizer-list design: two files that differ

@@ -1,5 +1,6 @@
 (ns ehr-testing-tools.judge.report-test
   (:require [clojure.test :refer [deftest is testing]]
+            [clojure.edn :as edn]
             [ehr-testing-tools.judge.report :as report]))
 
 (defn- finding [code]
@@ -15,7 +16,7 @@
 
 (deftest build-report-computes-totals-test
   (let [r (report/build-report sample-results {:path "corpus/"})]
-    (is (= {:pass 1 :rejected 1 :indeterminate 1} (:totals r)))))
+    (is (= {:pass 1 :rejected 1 :indeterminate 1 :no-verdict 0} (:totals r)))))
 
 (deftest build-report-computes-by-code-counts-test
   (let [r (report/build-report sample-results {:path "corpus/"})]
@@ -39,7 +40,7 @@
 
 (deftest build-report-empty-results-is-all-zero-totals-test
   (let [r (report/build-report [] {})]
-    (is (= {:pass 0 :rejected 0 :indeterminate 0} (:totals r)))
+    (is (= {:pass 0 :rejected 0 :indeterminate 0 :no-verdict 0} (:totals r)))
     (is (= {} (:by-code r)))
     (is (= [] (:files r)))))
 
@@ -149,3 +150,83 @@
     (is (report/valid? (:absolute br)))
     (is (report/valid? (:relative br)))
     (is (= {:gate :fhir} (:run (:absolute br))))))
+
+;; ---- no-verdict flows through the report (ADR-0010): totals,
+;; per-file :cause, schema, and diff ----
+
+(defn- no-verdict-finding [code]
+  {:severity :warning :code code :locator {:format :fhir :path "x"}
+   :message "m" :engine {:name "e" :version "1"}
+   :disposition :no-verdict :cause :terminology-suppressed})
+
+(deftest build-report-totals-include-no-verdict-count-test
+  (let [results [{:path "a.json" :verdict :pass :findings []}
+                 {:path "b.json" :verdict :no-verdict :cause :terminology-suppressed
+                  :findings [(no-verdict-finding "code-invalid")]}]
+        r (report/build-report results {})]
+    (is (= {:pass 1 :rejected 0 :indeterminate 0 :no-verdict 1} (:totals r)))))
+
+(deftest build-report-file-entry-carries-cause-when-no-verdict-test
+  (let [results [{:path "b.json" :verdict :no-verdict :cause :terminology-suppressed
+                  :findings [(no-verdict-finding "code-invalid")]}]
+        r (report/build-report results {})]
+    (is (= :terminology-suppressed (:cause (first (:files r)))))))
+
+(deftest build-report-file-entry-has-no-cause-key-for-a-non-no-verdict-file-test
+  (let [results [{:path "a.json" :verdict :pass :findings []}]
+        r (report/build-report results {})]
+    (is (not (contains? (first (:files r)) :cause)))))
+
+(deftest build-report-with-no-verdict-validates-against-schema-and-round-trips-test
+  (let [results [{:path "b.json" :verdict :no-verdict :cause :terminology-suppressed
+                  :findings [(no-verdict-finding "code-invalid")]}]
+        r (report/build-report results {})]
+    (is (report/valid? r))
+    (is (= r (edn/read-string (pr-str r))) "round-trips through EDN unchanged")))
+
+(deftest diff-reports-surfaces-a-change-to-no-verdict-test
+  (let [before (report/build-report [{:path "a.json" :verdict :pass :findings []}] {})
+        after (report/build-report [{:path "a.json" :verdict :no-verdict :cause :terminology-suppressed
+                                      :findings [(no-verdict-finding "code-invalid")]}] {})
+        d (report/diff-reports before after)]
+    (is (= [{:path "a.json" :from :pass :to :no-verdict}] (:changed-verdicts d)))))
+
+(deftest diff-reports-surfaces-a-change-from-no-verdict-test
+  (let [before (report/build-report [{:path "a.json" :verdict :no-verdict :cause :terminology-suppressed
+                                       :findings [(no-verdict-finding "code-invalid")]}] {})
+        after (report/build-report [{:path "a.json" :verdict :rejected :findings [(finding "structure")]}] {})
+        d (report/diff-reports before after)]
+    (is (= [{:path "a.json" :from :no-verdict :to :rejected}] (:changed-verdicts d)))))
+
+;; ---- baseline-relative reads a pre-split (three-valued) baseline
+;; forward, without migration -- old baselines predate :no-verdict and
+;; :cause entirely (docs/judge-calibration.md, ADR-0010) ----
+
+(def pre-split-baseline
+  (edn/read-string (slurp "test/fixtures/reports/pre-split-baseline.edn")))
+
+(deftest baseline-relative-report-reads-a-pre-split-three-valued-baseline-test
+  (let [results [{:path "suppressed.json" :verdict :no-verdict :cause :terminology-suppressed
+                  :findings [{:severity :warning :code "code-invalid"
+                              :locator {:format :fhir :path "value.coding"}
+                              :message "still suppressed" :engine {:name "e" :version "1"}
+                              :disposition :no-verdict :cause :terminology-suppressed}]}]
+        br (report/baseline-relative-report results {} pre-split-baseline)]
+    (is (= :no-verdict (:verdict (first (:files (:absolute br))))))
+    (is (= :terminology-suppressed (:cause (first (:files (:absolute br))))))
+    (is (= :pass (:verdict (first (:files (:relative br)))))
+        "the finding's {severity code locator-path} triple already matches the pre-split baseline -- nothing novel")))
+
+(deftest baseline-relative-report-a-novel-no-verdict-worthy-finding-against-a-pre-split-baseline-stays-relative-rejected-test
+  (let [results [{:path "suppressed.json" :verdict :no-verdict :cause :terminology-suppressed
+                  :findings [{:severity :warning :code "code-invalid"
+                              :locator {:format :fhir :path "value.coding"}
+                              :message "still suppressed" :engine {:name "e" :version "1"}
+                              :disposition :no-verdict :cause :terminology-suppressed}
+                             {:severity :warning :code "brand-new-code"
+                              :locator {:format :fhir :path "brand.new.path"}
+                              :message "a genuinely new suppressed finding" :engine {:name "e" :version "1"}
+                              :disposition :no-verdict :cause :terminology-suppressed}]}]
+        br (report/baseline-relative-report results {} pre-split-baseline)]
+    (is (= :rejected (:verdict (first (:files (:relative br)))))
+        "a novel no-verdict-worthy finding still counts as relative :rejected -- format-agnostic, not preserved (docs/judge-calibration.md)")))
