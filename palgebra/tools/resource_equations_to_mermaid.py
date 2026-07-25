@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# palgebra's first emitter (diagram → Mermaid); Clojure port + source maps are Phase 4 debt (docs/palgebra-design.md §I.6)
 """
 resource_equations_to_mermaid.py
 

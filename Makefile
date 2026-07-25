@@ -64,7 +64,7 @@ ehr:
 pipeline:
 	@mkdir -p target
 	clojure -X ehr-testing-tools.pipeline/write-equations-txt! :out '"target/pipeline-equations.txt"'
-	python3 .agents/skills/string-diagram/resource_equations_to_mermaid.py target/pipeline-equations.txt -o target/pipeline-flow.mermaid
+	python3 palgebra/tools/resource_equations_to_mermaid.py target/pipeline-equations.txt -o target/pipeline-flow.mermaid
 	clojure -X ehr-testing-tools.pipeline/write-pipeline-md! :equations-txt '"target/pipeline-equations.txt"' :mermaid '"target/pipeline-flow.mermaid"' :out '"docs/pipeline.md"'
 	@echo "Regenerated docs/pipeline.md"
 
@@ -79,7 +79,7 @@ use-cases:
 	@mkdir -p target/use-cases
 	clojure -X ehr-testing-tools.usecases/write-case-equations! :use-cases-edn '"docs/use-cases.edn"' :out-dir '"target/use-cases"'
 	@for f in target/use-cases/*.txt; do \
-		python3 .agents/skills/string-diagram/resource_equations_to_mermaid.py "$$f" -o "$${f%.txt}.mermaid"; \
+		python3 palgebra/tools/resource_equations_to_mermaid.py "$$f" -o "$${f%.txt}.mermaid"; \
 	done
 	clojure -X ehr-testing-tools.usecases/write-use-cases-md! :use-cases-edn '"docs/use-cases.edn"' :cases-dir '"target/use-cases"' :out '"docs/use-cases.md"'
 	@echo "Regenerated docs/use-cases.md"

@@ -113,7 +113,7 @@ with the user, then proceed.
 ### Step 2: Run the converter
 
 ```bash
-python /path/to/resource_equations_to_mermaid.py equations.txt -o flow.mermaid
+python palgebra/tools/resource_equations_to_mermaid.py equations.txt -o flow.mermaid
 ```
 
 Options:
@@ -164,8 +164,13 @@ as red sink nodes.
 
 ## Files
 
+This skill's teaching material (`SKILL.md`, this file) stays here; the
+converter and example equation sets it teaches from were claimed into
+`palgebra/` (`.agents/plans/judge-gate-refactor.md` Phase 2, D9) — they
+speak only in wires/boxes/composition, not in this repo's own stages:
+
 - `SKILL.md` — this file
-- `resource_equations_to_mermaid.py` — the converter (Python 3.7+, no dependencies)
-- `ai-study-equations.txt` — the AI study pipeline equations
-- `lemon-pie-equations.txt` — the lemon meringue pie equations
-- `decision-monad-equations.txt` — the fan→funnel deliberated choice pipeline (demonstrates spider annotations)
+- `../../../palgebra/tools/resource_equations_to_mermaid.py` — the converter (Python 3.7+, no dependencies)
+- `../../../palgebra/examples/ai-study-equations.txt` — the AI study pipeline equations
+- `../../../palgebra/examples/lemon-pie-equations.txt` — the lemon meringue pie equations
+- `../../../palgebra/examples/decision-monad-equations.txt` — the fan→funnel deliberated choice pipeline (demonstrates spider annotations)
