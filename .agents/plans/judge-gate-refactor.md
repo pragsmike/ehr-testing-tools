@@ -31,7 +31,7 @@ Repo inventory (2026-07-25, shallow clone of `pragsmike/ehr-testing-tools@main`)
 
 Grep discipline: search `gate` as a *string* (EDN keywords, doc prose, law text inside `pipeline.edn` — e.g. the format-dispatch law naming `gate.fhir`/`gate.v2` verbatim), not just as a symbol.
 
-## Phase 2 — The palgebra claim sweep (D9). Claiming, not improving.
+## Phase 2 — The palgebra claim sweep (D9). Claiming, not improving. **Done (2026-07-25, R2)** — `.agents/prompts/archive/2026-07-25-r2-palgebra-claim.md`.
 
 Placement test per file: *names a sort or stage → stays `ehr-testing-tools.*`; speaks only in wires/boxes/composition/laws → `palgebra.*`.*
 
