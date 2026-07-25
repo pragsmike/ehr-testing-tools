@@ -333,3 +333,69 @@ coordinates, coverage-threshold gating landed, the notation trial
 the next gate-shaped milestone, tracked in
 `.agents/plans/corpus-foundations.md`.
 **Status.** Accepted (author-directed), 2026-07-24.
+
+---
+## ADR-0009 — Judge/gate factorization
+**Context.** `docs/palgebra-design.md` (the palgebra design record,
+landed this session) inventoried this repo's own pipeline and found a
+recurring conflation: `gate` — an act-layer word, naming a workflow
+position that acts on a verdict — had been used to name decide-layer
+components that only ever compute a verdict and never act on it. The
+`:gate` stage kind (`docs/pipeline.edn`, `docs/notation.md`) bundles two
+things that don't have to travel together: judge laws (produce a
+verdict plus findings; never modify the subject) and a routing policy
+(splitting output into pass / rejected / indeterminate). Repo evidence
+that verdict and action are already independent, not merely
+separable-in-theory: contract pairing
+(`test-integration/contract_pairing_test.clj`) treats `:rejected` as
+*success* — same judge, opposite polarity, supplied by the workflow;
+baseline-relative gating (`--baseline`, P6) applies a different action
+to identical findings depending on a policy argument, added without
+touching any judge. One level deeper, the same conflation recurs: the
+per-finding key `gate.fhir` sets is named `:policy`, but it records a
+criterion-layer datum (this issue's contribution to the verdict, per
+the versioned EXP-C5 mapping) — the same act-layer word, wearing a
+decide-layer fact.
+**Decision.** Components that decide are **judges**; `gate` is reserved
+for workflow positions that *act* on a verdict. `gate.fhir`, `gate.v2`,
+`gate.finding`, and `gate.report` are renamed to `judge.*` — libraries
+of judges and their judgment machinery, not gates. `docs/pipeline.edn`'s
+`:gate` stage kind is renamed `:judge`; the kind's law is narrowed to
+the judge law alone (never modifies its subject; produces a verdict and
+findings), and the old kind's three-way output split is documented as
+the derived, policy-bearing construct `gate = judge ⨟ route-by-verdict`
+— derivable, not primitive, which is this ADR's one-line technical
+justification for the split. The finding field `:policy` is renamed
+`:disposition` — a criterion-layer datum, not an act-layer one; `policy`
+is reserved for the verdict→action layer this factorization names. The
+CLI verb `ehr gate` **keeps its name**: it genuinely is a gate — its
+exit-code mapping is the policy, the shell is the actor, and
+`--baseline` is already an explicit policy argument passed to it. Cites
+D1, D2, D11, D12 in `docs/palgebra-design.md`.
+**Rejected.** Renaming the CLI verb — `ehr gate` is the one place in
+this repo that actually acts on a judgment (exit-code mapping), so it is
+correctly named already; renaming it would erase the one real gate to
+chase a false symmetry with the libraries being renamed away from it.
+Renaming the verdict values (`:pass`/`:rejected`) — priced and deferred
+to a later signature-format revision (`docs/palgebra-design.md` O1):
+they are act-flavored words but are serialized in committed reports and
+asserted in both integration suites, and renaming them is a separable,
+higher-blast-radius change from the structural judge/gate split this
+ADR makes. Leaving the `:gate` kind's three-way split as primitive —
+the design record's factorization is exactly that this split is
+composable from a judge plus a routing policy, and leaving it primitive
+would keep the conflation this ADR exists to remove.
+**Consequence.** `src/ehr_testing_tools/gate/` becomes
+`src/ehr_testing_tools/judge/` (and its test tree correspondingly);
+every require site, `docs/pipeline.edn`, `docs/use-cases.edn`,
+`docs/notation.md`, and `docs/gate-calibration.md` (renamed
+`docs/judge-calibration.md`) are updated to match, mechanically, with no
+behavior change — verified by the suite staying green, `make pipeline`/
+`make use-cases` regenerating cleanly, and `make lint-pipeline` passing.
+The verdict split this design record also calls for
+(`no-verdict(cause)`, `docs/palgebra-design.md` D10) is explicitly out
+of scope for the rename session this ADR accompanies — it is the one
+semantic change in `.agents/plans/judge-gate-refactor.md`, scheduled and
+isolated as its own later phase so it doesn't camouflage inside
+mechanical renames.
+**Status.** Accepted (author-directed), 2026-07-25.
