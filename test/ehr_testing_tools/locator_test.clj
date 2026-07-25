@@ -67,31 +67,66 @@
       (is (result/rejected? r) (str "expected rejection for " (pr-str bad)))
       (is (= :invalid-fhir-path (:category r))))))
 
-;; ---- v2 grammar (P5): segment/index/field/component, the operational
-;; subset matching ca.uhn.hl7v2.Location's own fields ----
+;; ---- v2 grammar (P7, arrives with mutation): segment / segment+repeat
+;; / field / field+repeat / component / subcomponent, over the
+;; delimiter-split ER7 substrate (corpus.er7) -- see locator.clj's v2
+;; section docstring for the MSH-1/MSH-2 off-by-one convention this
+;; grammar deliberately does NOT special-case (it lives in corpus.er7's
+;; field-to-split-index mapping instead). ----
 
-(deftest v2-data-path-parses-a-bare-segment-field-test
+(deftest v2-data-path-parses-a-bare-segment-test
+  (let [r (locator/v2-data-path "PID")]
+    (is (result/ok? r))
+    (is (= {:segment "PID"} (:payload r)))))
+
+(deftest v2-data-path-parses-a-segment-with-repeat-test
+  (let [r (locator/v2-data-path "OBX[2]")]
+    (is (result/ok? r))
+    (is (= {:segment "OBX" :segment-repeat 2} (:payload r)))))
+
+(deftest v2-data-path-parses-a-field-test
   (let [r (locator/v2-data-path "PID-3")]
     (is (result/ok? r))
-    (is (= ["PID" 0 3 nil] (:payload r)))))
+    (is (= {:segment "PID" :field 3} (:payload r)))))
 
-(deftest v2-data-path-parses-an-explicit-segment-repetition-test
-  (let [r (locator/v2-data-path "OBX[2]-5")]
+(deftest v2-data-path-parses-a-field-with-repeat-test
+  (let [r (locator/v2-data-path "PID-3[2]")]
     (is (result/ok? r))
-    (is (= ["OBX" 2 5 nil] (:payload r)))))
+    (is (= {:segment "PID" :field 3 :field-repeat 2} (:payload r)))))
 
 (deftest v2-data-path-parses-a-component-test
-  (let [r (locator/v2-data-path "PID-7-1")]
+  (let [r (locator/v2-data-path "PID-3.1")]
     (is (result/ok? r))
-    (is (= ["PID" 0 7 1] (:payload r)))))
+    (is (= {:segment "PID" :field 3 :component 1} (:payload r)))))
 
-(deftest v2-data-path-parses-repetition-and-component-together-test
-  (let [r (locator/v2-data-path "NK1[1]-4-2")]
+(deftest v2-data-path-parses-a-subcomponent-test
+  (let [r (locator/v2-data-path "PID-3.1.2")]
     (is (result/ok? r))
-    (is (= ["NK1" 1 4 2] (:payload r)))))
+    (is (= {:segment "PID" :field 3 :component 1 :subcomponent 2} (:payload r)))))
+
+;; ---- MSH-1/MSH-2: syntactically ordinary field locators at the
+;; grammar level -- the off-by-one convention (MSH-1 has no split-array
+;; slot; MSH-2 lands at split-index 1) is a corpus.er7 concern, not
+;; this parser's, per the module docstring. ----
+
+(deftest v2-data-path-parses-msh-1-like-any-other-field-test
+  (let [r (locator/v2-data-path "MSH-1")]
+    (is (result/ok? r))
+    (is (= {:segment "MSH" :field 1} (:payload r)))))
+
+(deftest v2-data-path-parses-msh-2-like-any-other-field-test
+  (let [r (locator/v2-data-path "MSH-2")]
+    (is (result/ok? r))
+    (is (= {:segment "MSH" :field 2} (:payload r)))))
+
+;; ---- rejects: unknown segment-name shapes, zero/negative indices
+;; (inexpressible in the grammar -- no digit class admits 0 or a sign),
+;; trailing separators (the regex is fully anchored) ----
 
 (deftest v2-data-path-rejects-malformed-strings-test
-  (doseq [bad ["" "PID" "PID-" "PI-3" "pid-3" "PID-3-" "PID[x]-3" "PID--3"]]
+  (doseq [bad ["" "PI" "PIDD" "PI-3" "pid-3" "9ID" "PID-" "PID-3-"
+               "PID-3." "PID-3.1." "PID[" "PID[2" "PID[x]" "PID[0]"
+               "PID-0" "PID-3[0]" "PID-3.0" "PID--3" "PID.1"]]
     (let [r (locator/v2-data-path bad)]
       (is (result/rejected? r) (str "expected rejection for " (pr-str bad)))
       (is (= :invalid-v2-path (:category r))))))

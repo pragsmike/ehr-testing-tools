@@ -68,31 +68,66 @@
         (result/rejected :invalid-fhir-path {:path path-str})
         (result/ok (vec (mapcat identity parsed)))))))
 
-;; ---- v2 grammar (P5, first real per-format grammar beyond FHIR --
-;; pattern nursery #4): an operational SUBSET of HL7 v2's own
-;; segment/field/component addressing, matching exactly the fields
-;; ca.uhn.hl7v2.Location (HAPI's own location type, attached to every
-;; HL7Exception/ValidationException judge.v2 catches) exposes:
-;; segment name, segment repetition, field number, component. No
-;; field-repetition, no sub-component -- a genuinely fuller subset is
-;; future work; this exists because judge.v2 needs *a* way to name
-;; "this exact spot in this exact v2 message" today, mirroring why the
-;; FHIR grammar above exists.
-
+;; ---- v2 grammar (P7, arrives with mutation as the locator envelope's
+;; docstring long promised -- pattern nursery #4): HL7 v2's own
+;; segment/field/component/subcomponent addressing, operating on the
+;; delimiter-split ER7 substrate (corpus.er7, EXP-B2's applied decision
+;; rule -- see that namespace's docstring), not a HAPI-parsed tree.
+;; Six forms, from coarsest to finest: segment (\"PID\"), segment+repeat
+;; (\"OBX[2]\"), field (\"PID-3\"), field+repeat (\"PID-3[2]\"),
+;; component (\"PID-3.1\"), subcomponent (\"PID-3.1.2\"). Segment-level
+;; locators exist because some defects (drop a segment, corrupt a
+;; segment's own name) target the segment as a whole, not one of its
+;; fields -- the earlier P5 grammar required a field always, which
+;; couldn't name those; this grammar corrects that.
+;;
+;; MSH-1/MSH-2 off-by-one convention: at the GRAMMAR level, \"MSH-1\"
+;; and \"MSH-2\" parse exactly like any other segment's field locator
+;; (field 1, field 2) -- the grammar makes no MSH exception, deliberately,
+;; so the parser stays one regex for every segment. The off-by-one
+;; itself is real but lives one layer down, in how a parsed locator maps
+;; to a position in the delimiter-split substrate (corpus.er7): MSH-1 is
+;; the field separator character itself (\"|\" canonically), which never
+;; appears as a split token -- it IS the delimiter the split consumes --
+;; so it has no split-array slot; MSH-2 (the encoding characters,
+;; \"^~\\&\") is consequently the FIRST split token after the segment
+;; name, at split-index 1, not field-index 2. Concretely: for MSH, field
+;; N (N >= 2) resolves to split-index (N - 1); for every other segment,
+;; field N resolves to split-index N (split-index 0 being the segment
+;; name itself). corpus.er7 applies this mapping when resolving a parsed
+;; locator against split message data; nothing here needs to know it.
+;;
+;; Every numeric component (segment-repeat, field, field-repeat,
+;; component, subcomponent) is constrained to a positive integer
+;; ([1-9]\\d* -- no leading zero, no zero, no sign) directly in the
+;; regex: HL7 v2 numbers fields/components from 1, so 0 and negative
+;; values are simply not expressible in this grammar rather than
+;; accepted-then-rejected by a separate check. The regex is fully
+;; anchored (^...$), so a trailing separator with nothing after it
+;; (\"PID-\", \"PID-3.\", \"PID-3-\") fails to match rather than parsing
+;; a partial path. Segment names are exactly three characters, a
+;; leading letter followed by two more letters/digits, uppercase only
+;; -- HL7's own segment-ID convention; lowercase, wrong length, or a
+;; leading digit are all unknown segment-name shapes and rejected.
 (def ^:private v2-path-re
-  #"^([A-Z][A-Z0-9]{2})(?:\[(\d+)\])?-(\d+)(?:-(\d+))?$")
+  #"^([A-Z][A-Z0-9]{2})(?:\[([1-9]\d*)\])?(?:-([1-9]\d*)(?:\[([1-9]\d*)\])?(?:\.([1-9]\d*)(?:\.([1-9]\d*))?)?)?$")
 
 (defn v2-data-path
-  "Parses a v2 locator's :path string (\"PID-3\", \"PID[0]-7\",
-  \"OBX[2]-5-1\") into a [segment index field component] tuple:
-  segment (a 3-character segment id, e.g. \"PID\"), index (the
-  segment's repetition, defaulting to 0 when the [n] suffix is
-  omitted), field (the 1-based field number), component (1-based, or
-  nil when absent -- field-level, not component-level). Returns
-  result/ok [...] or result/rejected :invalid-v2-path on any string
-  outside this grammar."
+  "Parses a v2 locator's :path string under the grammar above into a
+  structured path map -- {:segment ...} plus whichever of
+  :segment-repeat, :field, :field-repeat, :component, :subcomponent the
+  string named (absent keys, not nil values, for anything not present).
+  Returns result/ok {...} or result/rejected :invalid-v2-path on any
+  string outside the grammar. The operator fns corpus.operators
+  registers for :format :v2 consume this structured map, never the raw
+  path string."
   [path-str]
-  (if-let [[_ segment index field component] (re-matches v2-path-re (or path-str ""))]
-    (result/ok [segment (if index (Long/parseLong index) 0) (Long/parseLong field)
-                (when component (Long/parseLong component))])
+  (if-let [[_ segment seg-repeat field field-repeat component subcomponent]
+           (re-matches v2-path-re (or path-str ""))]
+    (result/ok (cond-> {:segment segment}
+                 seg-repeat (assoc :segment-repeat (Long/parseLong seg-repeat))
+                 field (assoc :field (Long/parseLong field))
+                 field-repeat (assoc :field-repeat (Long/parseLong field-repeat))
+                 component (assoc :component (Long/parseLong component))
+                 subcomponent (assoc :subcomponent (Long/parseLong subcomponent))))
     (result/rejected :invalid-v2-path {:path path-str})))
