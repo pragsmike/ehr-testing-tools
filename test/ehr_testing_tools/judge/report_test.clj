@@ -184,6 +184,52 @@
     (is (report/valid? r))
     (is (= r (edn/read-string (pr-str r))) "round-trips through EDN unchanged")))
 
+;; ---- :no-verdict-causes (post-close-out retrofit): worst-of's
+;; projection lets a :rejected finding dominate the file-level verdict
+;; over an incidental :no-verdict finding in the same file -- exactly
+;; the coverage dimension the projection discards. This per-file
+;; cause-count surfaces it back, for :rejected files too, not just
+;; :no-verdict ones. Additive: absent when no finding carries a
+;; :cause, so pre-existing fixtures and old (pre-ADR-0010) baselines
+;; are unaffected. ----
+
+(defn- rejected-finding [code]
+  {:severity :error :code code :locator {:format :fhir :path "y"}
+   :message "m" :engine {:name "e" :version "1"} :disposition :rejected})
+
+(deftest build-report-file-entry-carries-no-verdict-causes-when-no-verdict-wins-test
+  (let [results [{:path "b.json" :verdict :no-verdict :cause :terminology-suppressed
+                  :findings [(no-verdict-finding "code-invalid")]}]
+        r (report/build-report results {})]
+    (is (= {:terminology-suppressed 1} (:no-verdict-causes (first (:files r)))))))
+
+(deftest build-report-file-entry-carries-no-verdict-causes-even-when-rejected-wins-test
+  ;; The file's own :verdict is :rejected (a confirmed violation
+  ;; dominates the aggregate, per the revised worst-of ranking) -- but
+  ;; this file ALSO contains a no-verdict-worthy finding, and that
+  ;; partiality must not vanish just because :rejected won the fold.
+  (let [results [{:path "a.json" :verdict :rejected
+                  :findings [(rejected-finding "structure")
+                             (no-verdict-finding "code-invalid")
+                             (no-verdict-finding "code-invalid")]}]
+        r (report/build-report results {})]
+    (is (= :rejected (:verdict (first (:files r)))))
+    (is (= {:terminology-suppressed 2} (:no-verdict-causes (first (:files r)))))))
+
+(deftest build-report-file-entry-omits-no-verdict-causes-when-no-finding-carries-a-cause-test
+  (let [results [{:path "a.json" :verdict :pass :findings []}
+                 {:path "b.json" :verdict :rejected :findings [(rejected-finding "structure")]}]
+        r (report/build-report results {})]
+    (is (not (contains? (first (:files r)) :no-verdict-causes)))
+    (is (not (contains? (second (:files r)) :no-verdict-causes)))))
+
+(deftest build-report-with-no-verdict-causes-validates-against-schema-and-round-trips-test
+  (let [results [{:path "a.json" :verdict :rejected
+                  :findings [(rejected-finding "structure") (no-verdict-finding "code-invalid")]}]
+        r (report/build-report results {})]
+    (is (report/valid? r))
+    (is (= r (edn/read-string (pr-str r))) "round-trips through EDN unchanged")))
+
 (deftest diff-reports-surfaces-a-change-to-no-verdict-test
   (let [before (report/build-report [{:path "a.json" :verdict :pass :findings []}] {})
         after (report/build-report [{:path "a.json" :verdict :no-verdict :cause :terminology-suppressed

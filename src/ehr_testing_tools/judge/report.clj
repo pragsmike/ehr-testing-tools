@@ -26,7 +26,19 @@
    ;; the way judge.finding/VerdictOutcome enforces it for a single
    ;; finding's :disposition -- a FileEntry's own :verdict/:cause pair
    ;; is populated by build-report itself (below), not hand-authored.
-   [:cause {:optional true} finding/Cause]])
+   [:cause {:optional true} finding/Cause]
+   ;; :no-verdict-causes (post-close-out retrofit to R3): a per-cause
+   ;; count over every finding in this file that carries a :cause --
+   ;; present regardless of which verdict the file-level projection
+   ;; picked. worst-of's fold lets a :rejected finding dominate the
+   ;; aggregate over an incidental no-verdict-worthy finding in the
+   ;; SAME file (the revised ranking, ADR-0010) -- that's the coverage
+   ;; dimension the single :verdict keyword necessarily discards; this
+   ;; field is how a :rejected file still surfaces its own partiality
+   ;; instead of losing it entirely to the projection. Optional/absent
+   ;; when no finding in the file carries a :cause -- additive, so
+   ;; pre-existing reports and pre-ADR-0010 baselines are unaffected.
+   [:no-verdict-causes {:optional true} [:map-of finding/Cause :int]]])
 
 (def Report
   [:map
@@ -48,7 +60,12 @@
   :finding-count) -- P6 needs this so a persisted report can later
   serve as a --baseline for baseline-relative-report below;
   :finding-count stays too, for a quick scan that doesn't need to walk
-  :findings itself."
+  :findings itself. Each FileEntry's :no-verdict-causes is computed
+  here, not passed in: a per-cause count over every finding carrying a
+  :cause, present regardless of which verdict worst-of's projection
+  picked for the file -- the coverage dimension that projection
+  otherwise discards when :rejected wins over an incidental
+  no-verdict-worthy finding in the same file."
   [results run]
   (let [totals (reduce (fn [acc {:keys [verdict]}] (update acc verdict inc))
                         {:pass 0 :rejected 0 :indeterminate 0 :no-verdict 0}
@@ -58,9 +75,15 @@
                         {}
                         results)
         files (mapv (fn [{:keys [path verdict findings id cause]}]
-                      (cond-> {:path path :verdict verdict :finding-count (count findings) :findings (vec findings)}
-                        id (assoc :id id)
-                        cause (assoc :cause cause)))
+                      (let [causes (reduce (fn [acc f]
+                                             (if-let [c (:cause f)]
+                                               (update acc c (fnil inc 0))
+                                               acc))
+                                           {} findings)]
+                        (cond-> {:path path :verdict verdict :finding-count (count findings) :findings (vec findings)}
+                          id (assoc :id id)
+                          cause (assoc :cause cause)
+                          (seq causes) (assoc :no-verdict-causes causes))))
                     results)]
     {:run run :totals totals :by-code by-code :files files}))
 
