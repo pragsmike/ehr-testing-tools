@@ -399,3 +399,44 @@ semantic change in `.agents/plans/judge-gate-refactor.md`, scheduled and
 isolated as its own later phase so it doesn't camouflage inside
 mechanical renames.
 **Status.** Accepted (author-directed), 2026-07-25.
+
+---
+## ADR-0010 — Verdict partiality is explicit: the no-verdict arm
+**Context.** `:indeterminate` conflated two different things under one
+name: "the criterion doesn't decide this subject" and "the judge could
+not reach a verdict" (operational partiality — in practice,
+`judge.fhir`'s terminology-suppressed classification, its only
+producer). `docs/palgebra-design.md` D10 already named the split;
+O2 asked which reading `judge.fhir`'s terminology-suppression case is.
+**Decision.** The verdict type gains a fourth value: the four-value
+verdict set is `:pass`, `:rejected`, `:indeterminate` (reserved, no
+longer produced), `:no-verdict` (paired with a `:cause` keyword,
+Malli-enforced — present if and only if the verdict is `:no-verdict`).
+Abstractly the judge is total, and partiality is introduced by
+lowering (design §II.5, §III.2) — `no-verdict` is the cost layer's one
+declared leak, given a typed channel and a totality law. O2 resolved as
+designed: `judge.fhir`'s terminology-suppressed classification is
+`no-verdict(:terminology-suppressed)` — the judge failed to fully
+*apply* the criterion; the criterion didn't fail to decide.
+`worst-of` ranks `:no-verdict` above `:rejected` — a corpus that
+couldn't be fully judged is not a corpus that passed — noted as a
+policy-flavored ranking, an O3-adjacent exhibit rather than a
+neutral fact. `:indeterminate` keeps its name in v1 (same conservatism
+as O1: old baseline reports still serialize it); renaming to
+`:ambiguous` is deferred to signature-format v2, alongside O1's own
+verdict-name question.
+**Consequence.** Every consumer of verdicts must handle the fourth arm:
+`worst-of`, `judge.report`'s schema/aggregation/diff/baseline-relative
+reading (old, pre-split baselines still read forward, unmigrated), and
+the CLI. The CLI's distinct default exit code for a no-verdict outcome
+is this law surfacing at the act layer: no workflow silently inherits
+a no-verdict-handling default; `--treat-no-verdict-as pass|rejected`
+is the explicit opt-in to fold it into an existing polarity.
+**Rejected.** Folding causes into findings — policies would have to
+spelunk findings to distinguish partiality from a genuine criterion
+violation, exactly the conflation this record removes. Renaming
+`:indeterminate` now — serialization stability (old reports/baselines
+already carry the name); joins O1 at signature-format v2 instead of
+being decided piecemeal.
+**Cites.** D10, O1, O2 (`docs/palgebra-design.md`).
+**Status.** Accepted (author-directed), 2026-07-25.
