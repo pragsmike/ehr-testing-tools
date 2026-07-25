@@ -1,7 +1,12 @@
-# Minimal CI (ADR-0008 go-public gate, condition 3): runs the hermetic
-# test suite and reports coverage on every push and PR. No coverage
-# threshold gating yet -- that's the enforcement wave
-# (.agents/plans/corpus-foundations.md).
+# CI (ADR-0008 go-public gate, condition 3; enforcement wave landed here,
+# ENF-1, 2026-07-25): runs the hermetic test suite, both lints
+# (lint-pipeline, lint-deps), generated-doc freshness, and coverage with
+# a fail-threshold floor, on every push and PR. Everything here is a
+# *fast* gate (ADR-0006 staged enforcement, .agents/plans/corpus-
+# foundations.md): the integration suite (real validator/HAPI, network +
+# warm artifact cache) deliberately runs nowhere in this per-push path --
+# see .github/workflows/integration.yml (scheduled + workflow_dispatch,
+# reports but never blocks a merge).
 name: CI
 
 on:
@@ -38,6 +43,26 @@ jobs:
 
       - name: make test
         run: make test
+
+      - name: make lint-pipeline
+        run: make lint-pipeline
+
+      - name: make lint-deps
+        run: make lint-deps
+
+      # Generated-doc freshness: docs/pipeline.md and docs/use-cases.md
+      # are derived from docs/pipeline.edn / docs/use-cases.edn (Makefile
+      # comments); regenerate and diff, failing if a committed copy is
+      # stale. Needs python3 (palgebra/tools/resource_equations_to_mermaid.py)
+      # -- confirmed present on ubuntu-latest without a setup step
+      # (Ubuntu 24.04 runner image ships Python 3.12.3 as system python,
+      # per actions/runner-images' own Ubuntu2404-Readme.md), so no
+      # actions/setup-python step is added here.
+      - name: Generated-doc freshness (docs/pipeline.md, docs/use-cases.md)
+        run: |
+          make pipeline
+          make use-cases
+          git diff --exit-code docs/pipeline.md docs/use-cases.md
 
       - name: make coverage
         run: make coverage
