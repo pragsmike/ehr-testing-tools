@@ -90,7 +90,9 @@
   (let [o (gate/interpret (outcome genuine-fatal-error) sample-engine)]
     (is (= :rejected (:verdict o)))
     (is (= :fatal (:severity (first (:findings o)))))
-    (is (= :rejected (:disposition (first (:findings o)))))))
+    (is (= :rejected (:disposition (first (:findings o)))))
+    (is (not (contains? (first (:findings o)) :cause))
+        "a :rejected finding carries no :cause -- only :no-verdict does")))
 
 (deftest interpret-genuine-invalid-and-code-invalid-errors-are-rejected-test
   (testing "structural type/format violation"
@@ -102,13 +104,22 @@
           "the finding itself should record which mapping-policy classified it, for auditability")))
   )
 
-(deftest interpret-terminology-suppressed-issues-are-indeterminate-test
+(deftest interpret-terminology-suppressed-issues-are-no-verdict-test
+  ;; ADR-0010/O2: terminology-suppressed is no-verdict(:terminology-
+  ;; suppressed) -- the judge failed to fully apply the criterion; the
+  ;; criterion didn't fail to decide. Formerly :indeterminate.
   (testing "warning-severity, 'without using server' diagnostics"
     (let [o (gate/interpret (outcome terminology-suppressed-warning) sample-engine)]
-      (is (= :indeterminate (:verdict o)))
-      (is (= :indeterminate (:disposition (first (:findings o)))))))
+      (is (= :no-verdict (:verdict o)))
+      (is (= :terminology-suppressed (:cause o)))
+      (is (= :no-verdict (:disposition (first (:findings o)))))
+      (is (= :terminology-suppressed (:cause (first (:findings o)))))
+      (is (finding/valid-cause-pairing? (:disposition (first (:findings o)))
+                                         (:cause (first (:findings o)))))))
   (testing "information-severity, 'doesn't provide any codes' diagnostics"
-    (is (= :indeterminate (:verdict (gate/interpret (outcome terminology-suppressed-information) sample-engine))))))
+    (let [o (gate/interpret (outcome terminology-suppressed-information) sample-engine)]
+      (is (= :no-verdict (:verdict o)))
+      (is (= :terminology-suppressed (:cause o))))))
 
 (deftest interpret-advisory-warning-and-information-are-pass-with-findings-test
   (let [o (gate/interpret (outcome advisory-warning advisory-information) sample-engine)]
@@ -117,7 +128,8 @@
 
 (deftest interpret-worst-of-across-mixed-issues-test
   (let [o (gate/interpret (outcome advisory-warning genuine-structure-error terminology-suppressed-warning) sample-engine)]
-    (is (= :rejected (:verdict o)) "rejected beats indeterminate beats pass")
+    (is (= :no-verdict (:verdict o)) "no-verdict beats rejected beats pass (ADR-0010)")
+    (is (= :terminology-suppressed (:cause o)))
     (is (= 3 (count (:findings o))))))
 
 (deftest interpret-locator-strips-the-validator-own-type-disambiguation-test

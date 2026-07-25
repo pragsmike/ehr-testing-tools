@@ -32,11 +32,11 @@
      simplification for the base-structural tier, not a claim that
      HAPI itself always reports low severity here.
 
-  Nothing in this judge ever produces an `:indeterminate` finding: there
-  is no terminology server and no conformance profile in play at this
-  tier, so there is no check this judge can only partially resolve -- a
-  check either ran (feeding a finding) or the message failed to parse
-  at all (`:rejected`)."
+  Nothing in this judge ever produces `:indeterminate` or `:no-verdict`
+  (ADR-0010): there is no terminology server and no conformance profile
+  in play at this tier, so there is no check this judge can only
+  partially resolve -- a check either ran (feeding a finding) or the
+  message failed to parse at all (`:rejected`)."
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [ehr-testing-tools.digest :as digest]
@@ -179,8 +179,8 @@
   finding built from it. Otherwise every :validation-exceptions entry
   becomes a finding and the verdict is :pass -- see the module
   docstring for why every collected (non-parse-failure) signal is
-  :pass-with-findings at this tier, by policy. Never :indeterminate:
-  see the module docstring."
+  :pass-with-findings at this tier, by policy. Never :indeterminate or
+  :no-verdict: see the module docstring."
   [raw]
   (let [engine (:engine raw)]
     (if-let [pe (:parse-exception raw)]

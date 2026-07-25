@@ -37,8 +37,16 @@
 (def engine-name "fhir-validator-cli")
 (def default-fhir-version "4.0")
 
-(def verdict-mapping-version "v1")
+(def verdict-mapping-version "v2")
 (def verdict-mapping-cited-to "docs/experiments/EXP-C5-results.md")
+
+;; verdict-mapping-version bumped v1 -> v2 (ADR-0010, O2): the
+;; EXP-C5-derived classification logic itself did not change (the same
+;; five diagnostics-text patterns still mark terminology suppression),
+;; but the mapping's OUTPUT vocabulary did -- the terminology-
+;; suppressed case now emits :no-verdict/:terminology-suppressed
+;; instead of :indeterminate. A consumer keying off this version string
+;; (e.g. a stored baseline's provenance) sees the vocabulary change.
 
 (def ^:private terminology-suppressed-patterns
   "Diagnostics-text substrings (case-insensitive) that mark an issue as
@@ -190,44 +198,58 @@
   #{"error" "fatal"})
 
 (defn- issue->classification
-  "One of :rejected (a genuine error or fatal issue), :indeterminate
-  (terminology-suppressed, any severity), or :pass (advisory
-  warning/information)."
+  "Returns {:verdict ... :cause (only when :verdict is :no-verdict)}:
+  :no-verdict/:terminology-suppressed (the engine ran without applying
+  terminology -- the judge failed to fully apply the criterion,
+  ADR-0010/O2, not the criterion failing to decide -- formerly
+  :indeterminate), :rejected (a genuine error or fatal issue), or
+  :pass (advisory warning/information)."
   [issue]
   (let [severity (get issue "severity")
         suppressed? (terminology-suppressed? (issue-message issue))]
     (cond
-      suppressed? :indeterminate
-      (contains? rejecting-severities severity) :rejected
-      :else :pass)))
+      suppressed? {:verdict :no-verdict :cause :terminology-suppressed}
+      (contains? rejecting-severities severity) {:verdict :rejected}
+      :else {:verdict :pass})))
 
 (defn- issue->finding
   "disposition = this finding's verdict contribution per the versioned
   mapping (`issue->classification`); `policy` is reserved for the
-  verdict->action layer (ADR-0009), one level up from a single finding."
+  verdict->action layer (ADR-0009), one level up from a single finding.
+  :cause rides alongside :disposition, present iff :disposition is
+  :no-verdict (ADR-0010, judge.finding/valid-cause-pairing?)."
   [engine issue]
-  {:severity (severity->keyword (get issue "severity"))
-   :code (get issue "code")
-   :locator {:format :fhir :path (issue-locator-path issue)}
-   :message (issue-message issue)
-   :engine engine
-   :disposition (issue->classification issue)
-   :native-ref {:expression (get issue "expression")}})
+  (let [{:keys [verdict cause]} (issue->classification issue)]
+    (cond-> {:severity (severity->keyword (get issue "severity"))
+             :code (get issue "code")
+             :locator {:format :fhir :path (issue-locator-path issue)}
+             :message (issue-message issue)
+             :engine engine
+             :disposition verdict
+             :native-ref {:expression (get issue "expression")}}
+      cause (assoc :cause cause))))
 
 (defn interpret
   "Interpret half (pure, versioned -- see `verdict-mapping-version`,
   cited to `verdict-mapping-cited-to`). Every issue in raw-outcome's
   \"issue\" array becomes one finding, classified :rejected /
-  :indeterminate / :pass by `issue->classification` (recorded on the
-  finding itself as :disposition, for auditability). Overall verdict is
-  the worst-of every finding's classification (judge.finding/worst-of):
-  :rejected > :indeterminate > :pass. No issues at all is :pass with
-  no findings."
+  :no-verdict / :pass by `issue->classification` (recorded on the
+  finding itself as :disposition, for auditability, with a sibling
+  :cause when :disposition is :no-verdict). Overall verdict is the
+  worst-of every finding's classification (judge.finding/worst-of):
+  :no-verdict > :rejected > :pass -- when the overall verdict is
+  :no-verdict, :cause is taken from the first contributing finding (the
+  only cause in this taxonomy today is :terminology-suppressed, so no
+  finding ever disagrees with another in practice). No issues at all is
+  :pass with no findings."
   [raw-outcome engine]
   (let [issues (get raw-outcome "issue" [])
         findings (mapv #(issue->finding engine %) issues)
-        verdict (finding/worst-of (map :disposition findings))]
-    {:verdict verdict :findings findings}))
+        verdict (finding/worst-of (map :disposition findings))
+        cause (when (= verdict :no-verdict)
+                (:cause (first (filter #(= :no-verdict (:disposition %)) findings))))]
+    (cond-> {:verdict verdict :findings findings}
+      cause (assoc :cause cause))))
 
 ;; ---- gate: read (never mutate) -> execute -> interpret ----
 
