@@ -94,3 +94,49 @@
   hash-what-gets-persisted rationale, applied here to the v2 substrate."
   [content]
   (digest/sha256-string content))
+
+;; ---- locator resolution: a parsed ehr-testing-tools.locator/v2-data-path
+;; map -> a position in this substrate's :segments. Field granularity
+;; only (see module docstring); a locator naming a :component or
+;; :subcomponent still resolves at the field it names, ignoring the
+;; finer-grained part -- no seed operator this session needs it. ----
+
+(defn field-index
+  "field-num (a v2 locator's :field) -> the split-array index within a
+  named segment's own field vector. Honors MSH's off-by-one (module
+  docstring): for \"MSH\", field N (N >= 2) -> split-index (N - 1),
+  since MSH-1 (the field separator itself) consumes no split-array slot.
+  For every other segment, field N -> split-index N (index 0 being the
+  segment name itself)."
+  [segment-name field-num]
+  (if (and (= segment-name "MSH") (>= field-num 2))
+    (dec field-num)
+    field-num))
+
+(defn segment-occurrence-index
+  "The 0-based index into parsed's :segments of the occurrence-th
+  (1-based, defaulting to the 1st) segment named segment-name, or nil
+  if segment-name doesn't occur that many times."
+  [parsed segment-name occurrence]
+  (let [matches (keep-indexed (fn [i seg] (when (= segment-name (first seg)) i))
+                               (:segments parsed))]
+    (nth matches (dec (or occurrence 1)) nil)))
+
+(defn resolve-locator
+  "Resolves a parsed v2 locator ({:segment ... :segment-repeat ...
+  :field ...}, ehr-testing-tools.locator/v2-data-path's own output)
+  against parsed (this namespace's `parse` output) to {:segment-index
+  :field-index}, :field-index nil for a segment-only locator. Returns
+  nil if the locator doesn't resolve -- the named segment doesn't occur
+  (that often), or the named field is out of that occurrence's own
+  bounds. corpus.mutate calls this to distinguish \"doesn't resolve\"
+  from \"resolves, mutate\" before ever invoking an operator's :fn,
+  mirroring how corpus.mutate already validates a FHIR locator resolves
+  before calling in."
+  [parsed {:keys [segment segment-repeat field]}]
+  (when-let [seg-idx (segment-occurrence-index parsed segment segment-repeat)]
+    (if (nil? field)
+      {:segment-index seg-idx :field-index nil}
+      (let [fld-idx (field-index segment field)]
+        (when (< fld-idx (count (get-in parsed [:segments seg-idx])))
+          {:segment-index seg-idx :field-index fld-idx})))))
