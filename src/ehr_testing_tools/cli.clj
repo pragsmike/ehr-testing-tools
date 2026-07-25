@@ -2,7 +2,13 @@
   "The `ehr` entrypoint (ADR-0004) -- the only namespace that prints.
   A thin shell: parse, call the capability function, print, map the
   result to an exit code. EDN is canonical output; --json is a
-  projection, never the source of truth."
+  projection, never the source of truth. One deliberate exception
+  (DOC-1): `ehr help`, `ehr help <group>`, and `--help` anywhere print
+  plain human-readable usage text instead of EDN/JSON -- they're for a
+  human or an AI assistant at a shell, not a pipeline, so the EDN-out
+  convention doesn't serve them. `dispatch` marks these results
+  `:category :cli-help`; `main!` prints their `:text` payload verbatim
+  rather than passing them through `render`."
   (:require [babashka.cli :as cli]
             [clojure.data.json :as json]
             [clojure.edn :as edn]
@@ -10,6 +16,7 @@
             [clojure.string :as str]
             [ehr-testing-tools.result :as result]
             [ehr-testing-tools.artifact :as artifact]
+            [ehr-testing-tools.cli.help :as help]
             [ehr-testing-tools.corpus.generate :as generate]
             [ehr-testing-tools.corpus.mutate :as mutate]
             [ehr-testing-tools.corpus.intake :as intake]
@@ -326,10 +333,40 @@
     (when report (spit report (pr-str (:payload r))))
     r))
 
+(defn- help-text-for
+  "Group usage text for a known group name, top-level usage text
+  otherwise (nil group, or a name that isn't a real group -- e.g. a
+  bare `ehr`, or `ehr help bogus`)."
+  [group]
+  (or (and group (help/render-group help/cli-spec group))
+      (help/render-top-level help/cli-spec)))
+
+(defn- help-response
+  "An explicit help request (`ehr help`, `ehr help <group>`, `--help`
+  anywhere): result/ok (exit 0) carrying the plain-text usage under
+  :payload's :text, marked :category :cli-help so main! prints it
+  verbatim instead of through `render`."
+  [group]
+  (assoc (result/ok {:text (help-text-for group)}) :category :cli-help))
+
+(defn- bare-invocation-response
+  "Bare `ehr` (no group at all): prints the same top-level usage text
+  as `ehr help`, but stays result/error (exit 2) -- an incomplete
+  invocation is operationally an error, not a help request, even
+  though the text shown is identical."
+  []
+  (result/error :cli-help {:text (help-text-for nil)}))
+
 (defn dispatch
   "Routes [group action] positional args to the corresponding capability
   function with opts. The -fn keys are injectable (tests use this
-  to avoid real subprocesses/network); default to the real commands."
+  to avoid real subprocesses/network); default to the real commands.
+
+  `ehr help`, `ehr help <group>`, and `--help` (given anywhere --
+  `opts`'s :help true) short-circuit before any capability function
+  runs, returning a :category :cli-help result instead of routing to a
+  command -- see `help-response`/`bare-invocation-response` and the ns
+  docstring's EDN-out exception."
   ([args opts] (dispatch args opts {}))
   ([args opts {:keys [fetch-fn resolve-fn generate-fn mutate-fn intake-fn gate-v2-fn gate-fhir-fn check-fn]
                :or {fetch-fn fetch-command
@@ -340,36 +377,42 @@
                     gate-v2-fn gate-v2-command
                     gate-fhir-fn fhir-gate-command
                     check-fn check-command}}]
-   (let [[group action path] args
-         ;; `ehr gate fhir PATH|DIR` / `ehr gate v2 PATH|DIR`: PATH is
-         ;; a positional third arg, not a --path flag (the CLI's other
-         ;; commands are all --flag-driven, but the prompt's own gate
-         ;; CLI contract is a trailing bare path -- honored here rather
-         ;; than silently reinterpreted as --path). `ehr check DIR` has
-         ;; no sub-verb, so its positional path is the *second* arg
-         ;; (bound above as `action`), not the third. An explicit
-         ;; --path opt, if given, is NOT overridden by a positional
-         ;; path in either case.
-         opts (cond
-                (and (= group "gate") path (not (:path opts))) (assoc opts :path path)
-                (and (= group "check") action (not (:path opts))) (assoc opts :path action)
-                :else opts)]
-     (case group
-       "artifact" (case action
-                    "fetch" (fetch-fn opts)
-                    "resolve" (resolve-fn opts)
+   (let [[group action path] args]
+     (cond
+       (:help opts) (help-response group)
+       (= group "help") (help-response action)
+       (nil? group) (bare-invocation-response)
+
+       :else
+       (let [;; `ehr gate fhir PATH|DIR` / `ehr gate v2 PATH|DIR`: PATH is
+             ;; a positional third arg, not a --path flag (the CLI's other
+             ;; commands are all --flag-driven, but the prompt's own gate
+             ;; CLI contract is a trailing bare path -- honored here rather
+             ;; than silently reinterpreted as --path). `ehr check DIR` has
+             ;; no sub-verb, so its positional path is the *second* arg
+             ;; (bound above as `action`), not the third. An explicit
+             ;; --path opt, if given, is NOT overridden by a positional
+             ;; path in either case.
+             opts (cond
+                    (and (= group "gate") path (not (:path opts))) (assoc opts :path path)
+                    (and (= group "check") action (not (:path opts))) (assoc opts :path action)
+                    :else opts)]
+         (case group
+           "artifact" (case action
+                        "fetch" (fetch-fn opts)
+                        "resolve" (resolve-fn opts)
+                        (result/error :unknown-command {:args args}))
+           "corpus" (case action
+                      "generate" (generate-fn opts)
+                      "mutate" (mutate-fn opts)
+                      "intake" (intake-fn opts)
+                      (result/error :unknown-command {:args args}))
+           "gate" (case action
+                    "v2" (gate-v2-fn opts)
+                    "fhir" (gate-fhir-fn opts)
                     (result/error :unknown-command {:args args}))
-       "corpus" (case action
-                  "generate" (generate-fn opts)
-                  "mutate" (mutate-fn opts)
-                  "intake" (intake-fn opts)
-                  (result/error :unknown-command {:args args}))
-       "gate" (case action
-                "v2" (gate-v2-fn opts)
-                "fhir" (gate-fhir-fn opts)
-                (result/error :unknown-command {:args args}))
-       "check" (check-fn opts)
-       (result/error :unknown-command {:args args})))))
+           "check" (check-fn opts)
+           (result/error :unknown-command {:args args})))))))
 
 (defn render
   [r json?]
@@ -385,14 +428,22 @@
   itself ignores the return value since :exit-fn already terminated
   the process in real use. This split is what lets -main's exit-code
   mapping and command routing be unit-tested without a real
-  System/exit (which would kill the test JVM)."
+  System/exit (which would kill the test JVM).
+
+  A :category :cli-help result (help-response/bare-invocation-response
+  in `dispatch`) prints its :text payload verbatim via println-fn
+  instead of going through `render` -- the ns docstring's one
+  deliberate EDN-out exception; --json is ignored for these regardless
+  of what was passed, since there is no EDN form to project."
   ([raw-args] (main! raw-args {}))
   ([raw-args {:keys [dispatch-fn println-fn exit-fn]
               :or {dispatch-fn dispatch println-fn println exit-fn #(System/exit %)}}]
    (let [{:keys [args opts]} (parse raw-args)
          r (dispatch-fn args opts)
          code (result->exit-code r)]
-     (println-fn (render r (:json opts)))
+     (println-fn (if (= :cli-help (:category r))
+                   (:text (:payload r))
+                   (render r (:json opts))))
      (exit-fn code)
      code)))
 

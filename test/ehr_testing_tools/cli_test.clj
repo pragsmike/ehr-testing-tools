@@ -64,6 +64,48 @@
     (is (result/error? r))
     (is (= :unknown-command (:category r)))))
 
+;; ---- help / --help / bare ehr (DOC-1 Step 2): a :category :cli-help
+;; result short-circuits before any capability -fn runs. ----
+
+(deftest dispatch-help-verb-alone-returns-top-level-usage-test
+  (let [r (cli/dispatch ["help"] {} {})]
+    (is (result/ok? r))
+    (is (= :cli-help (:category r)))
+    (is (clojure.string/includes? (:text (:payload r)) "Usage:"))))
+
+(deftest dispatch-help-verb-with-group-returns-group-usage-test
+  (let [r (cli/dispatch ["help" "gate"] {} {})]
+    (is (result/ok? r))
+    (is (= :cli-help (:category r)))
+    (is (clojure.string/includes? (:text (:payload r)) "gate"))))
+
+(deftest dispatch-help-verb-with-unknown-group-falls-back-to-top-level-test
+  (let [r (cli/dispatch ["help" "bogus"] {} {})]
+    (is (result/ok? r))
+    (is (clojure.string/includes? (:text (:payload r)) "Usage:"))))
+
+(deftest dispatch-double-dash-help-short-circuits-before-command-runs-test
+  (let [called (atom false)
+        r (cli/dispatch ["gate" "v2"] {:help true}
+                         {:gate-v2-fn (fn [_opts] (reset! called true) (result/ok {}))})]
+    (is (not @called) "the verb's own command fn must not run when --help is given")
+    (is (result/ok? r))
+    (is (= :cli-help (:category r)))
+    (is (clojure.string/includes? (:text (:payload r)) "gate"))))
+
+(deftest dispatch-double-dash-help-with-no-group-returns-top-level-usage-test
+  (let [r (cli/dispatch [] {:help true} {})]
+    (is (result/ok? r))
+    (is (= :cli-help (:category r)))
+    (is (clojure.string/includes? (:text (:payload r)) "Usage:"))))
+
+(deftest dispatch-bare-invocation-is-an-error-with-usage-text-test
+  (let [r (cli/dispatch nil {} {})]
+    (is (result/error? r))
+    (is (= :cli-help (:category r)))
+    (is (= 2 (cli/result->exit-code r)))
+    (is (clojure.string/includes? (:text (:payload r)) "Usage:"))))
+
 (deftest dispatch-routes-artifact-fetch-test
   (let [called (atom nil)
         r (cli/dispatch ["artifact" "fetch"] {:name "synthea" :version "4.0.0"}
@@ -671,3 +713,45 @@
   ;; `dispatch`, not silently no-op, when the caller doesn't inject one.
   (let [code (cli/main! ["bogus" "thing"] {:println-fn (fn [_s] nil) :exit-fn (fn [_c] nil)})]
     (is (= 2 code))))
+
+;; ---- main! + help (DOC-1 Step 2): plain text, not EDN/JSON, exit 0
+;; for a help request, exit 2 for a bare invocation. Real `dispatch`
+;; (no :dispatch-fn override) -- these prove the wiring end to end. ----
+
+(deftest main-bang-help-prints-plain-text-not-edn-and-exits-zero-test
+  (let [printed (atom nil)
+        exit-code (atom nil)
+        code (cli/main! ["help"]
+                         {:println-fn (fn [s] (reset! printed s))
+                          :exit-fn (fn [c] (reset! exit-code c))})]
+    (is (= 0 code))
+    (is (= 0 @exit-code))
+    (is (clojure.string/includes? @printed "Usage:"))
+    (is (not (clojure.string/includes? @printed ":status")))))
+
+(deftest main-bang-help-group-prints-that-groups-usage-test
+  (let [printed (atom nil)
+        code (cli/main! ["help" "corpus"]
+                         {:println-fn (fn [s] (reset! printed s))
+                          :exit-fn (fn [_c] nil)})]
+    (is (= 0 code))
+    (is (clojure.string/includes? @printed "mutate"))))
+
+(deftest main-bang-double-dash-help-ignores-json-flag-test
+  (let [printed (atom nil)
+        code (cli/main! ["gate" "--help" "--json"]
+                         {:println-fn (fn [s] (reset! printed s))
+                          :exit-fn (fn [_c] nil)})]
+    (is (= 0 code))
+    (is (clojure.string/includes? @printed "--treat-no-verdict-as") "ehr gate --help --json still renders gate's own group usage")
+    (is (not (clojure.string/includes? @printed "{")) "plain text, never a JSON/EDN projection, regardless of --json")))
+
+(deftest main-bang-bare-invocation-prints-usage-and-exits-two-test
+  (let [printed (atom nil)
+        exit-code (atom nil)
+        code (cli/main! []
+                         {:println-fn (fn [s] (reset! printed s))
+                          :exit-fn (fn [c] (reset! exit-code c))})]
+    (is (= 2 code))
+    (is (= 2 @exit-code))
+    (is (clojure.string/includes? @printed "Usage:"))))
