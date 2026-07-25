@@ -1,5 +1,16 @@
 # Refactoring Plan: Judge/Gate Factorization + Palgebra Claim
 
+**Status (2026-07-25, P7).** Phases 0–3 executed and Done: R1
+(`.agents/prompts/archive/2026-07-25-r1-judge-gate-renames.md`), R2
+(`.agents/prompts/archive/2026-07-25-r2-palgebra-claim.md`), R3
+(`.agents/prompts/archive/2026-07-25-r3-verdict-split.md`) — see
+`.agents/plans/corpus-foundations.md`'s R/R2/R3 rows for the landed
+scope of each. Phase 4 is a parking register of deferred items, not
+scheduled work — nothing there is claimed by any open session. This plan
+is spent as an execution driver (Phases 0–3 drove three real sessions)
+and is retained from here on as record, the same role
+`corpus-foundations.md`'s completed phase rows already play.
+
 **Companion:** [`docs/palgebra-design.md`](../../docs/palgebra-design.md) (decisions D1–D13, open O1–O5). Every rename below cites a decision.
 **Operating rule:** everything from the design gets written down; **only the terminology gets built.** `lower`, `erase`, `emit`, passes, roundtrip tests are specified obligations (design §I.5–I.6), not work items here.
 **Goal served:** a workable EHR testing workflow whose vocabulary matches its architecture — not a language implementation.
