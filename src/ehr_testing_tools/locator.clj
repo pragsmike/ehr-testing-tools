@@ -72,10 +72,10 @@
 ;; pattern nursery #4): an operational SUBSET of HL7 v2's own
 ;; segment/field/component addressing, matching exactly the fields
 ;; ca.uhn.hl7v2.Location (HAPI's own location type, attached to every
-;; HL7Exception/ValidationException gate.v2 catches) exposes:
+;; HL7Exception/ValidationException judge.v2 catches) exposes:
 ;; segment name, segment repetition, field number, component. No
 ;; field-repetition, no sub-component -- a genuinely fuller subset is
-;; future work; this exists because gate.v2 needs *a* way to name
+;; future work; this exists because judge.v2 needs *a* way to name
 ;; "this exact spot in this exact v2 message" today, mirroring why the
 ;; FHIR grammar above exists.
 

@@ -62,7 +62,7 @@
    "jdk-runtime"         {:target 1 :ref {:name "temurin-jdk" :version "17.0.19+10"}}
    "runtime"             {:target 1 :ref {:name "temurin-jdk" :version "17.0.19+10"}}
    "validator-artifact"  {:target 1 :ref {:name "fhir-validator-cli" :version "6.9.12"}}
-   ;; No IG pinned in artifacts.lock.edn this session (gate.fhir's own
+   ;; No IG pinned in artifacts.lock.edn this session (judge.fhir's own
    ;; docstring; docs/pipeline.edn's Gate :contract) -- classification
    ;; only, per the established P5 reading quoted in this ns docstring.
    "profile-artifact"    {:target 1}

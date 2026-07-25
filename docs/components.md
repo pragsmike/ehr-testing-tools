@@ -59,7 +59,7 @@ interfaces.
 
 **Role in pipeline.** In-process parse/serialize engine for the future
 `corpus.mutate` v2 support (P6, not yet built) and the base-structural
-`gate.v2` tier (built, P5) — `defaultValidation`-context strict
+`judge.v2` tier (built, P5) — `defaultValidation`-context strict
 parsing plus `DefaultValidator`, in-process, no subprocess.
 
 **Deliberately not used for.** Profile conformance beyond the classic
@@ -103,13 +103,13 @@ IG publisher); Apache License 2.0 (facts register
 [F5](../notes/facts-register.md)). Distributed as a CLI jar and as the
 library HAPI FHIR wraps.
 
-**Role in pipeline.** The engine behind `gate.fhir` (built, P5),
+**Role in pipeline.** The engine behind `judge.fhir` (built, P5),
 version 6.9.12 pinned in `artifacts.lock.edn` (facts register
 [F18](../notes/facts-register.md)), run as a pinned subprocess; IG
 packages resolve as locked `:profile`-kind artifacts when a caller
 supplies them (the `-ig` machinery is built; none is pinned yet).
 Verdicts are consumed as OperationOutcome data and normalized by
-`gate.report`. Known operational constraints that shape our wrapper,
+`judge.report`. Known operational constraints that shape our wrapper,
 confirmed directly by EXP-C5 (`docs/experiments/EXP-C5-results.md`),
 not merely anticipated: offline/no-terminology operation has open
 upstream bugs (locally packaged ValueSets can still fail to validate a
@@ -134,7 +134,7 @@ EXP-SBOM's inventory (facts register [F1](../notes/facts-register.md));
 a clarification inquiry to NIST is maintained privately by the author.
 Underpins NIST's hosted validation tools used in US EHR certification.
 
-**Role in pipeline.** Candidate engine for the full `gate.v2` tier;
+**Role in pipeline.** Candidate engine for the full `judge.v2` tier;
 adoption blocked pending NIST license confirmation (EXP-SBOM executed;
 still license-unstated). A live, official NIST-operated distribution
 channel for this engine's build artifacts exists at `hit-nexus.nist.gov`
@@ -168,7 +168,7 @@ resolve normally from Maven Central with mostly permissive licenses,
 except one transitive LGPL-2.1 dependency (`xom`, flagged for ADR-0001
 review — facts register [F10](../notes/facts-register.md)).
 
-**Role in pipeline.** Candidate runtime for the full `gate.v2` tier,
+**Role in pipeline.** Candidate runtime for the full `judge.v2` tier,
 contingent on the v2 gate architecture decision (EXP-SBOM classifies; it
 does not decide — `docs/experiments/EXP-SBOM-results.md`). The same
 `hit-nexus.nist.gov` channel that serves the underlying NIST engine
@@ -212,7 +212,7 @@ HL7 community"; Apache License 2.0 (facts register
 
 **Role in pipeline.** Authoring-time only — the JVM constraint applies
 at execution, not authoring (problem statement C4). Compiled IG
-packages enter as locked artifacts consumed by `gate.fhir`.
+packages enter as locked artifacts consumed by `judge.fhir`.
 
 **Deliberately not used for.** Run time — Node.js never enters the
 execution path.

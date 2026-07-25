@@ -18,7 +18,7 @@
 (deftest native-ref-is-optional-test
   (is (finding/valid? (assoc (sample-finding :warning) :native-ref {:issue-index 0}))))
 
-;; ---- worst-of: the Gate kind's ternary composition law ----
+;; ---- worst-of: the Judge kind's ternary composition law ----
 
 (deftest worst-of-empty-is-pass-test
   (is (= :pass (finding/worst-of []))))

@@ -8,7 +8,7 @@
 
   Format sniffing is a cheap heuristic, not a validator: a file tagged
   :fhir-json here has merely been observed to parse as JSON with a
-  top-level \"resourceType\" key -- gate.fhir, not this namespace, is
+  top-level \"resourceType\" key -- judge.fhir, not this namespace, is
   what actually judges conformance. Content hashing is format-aware
   so an intaken FHIR file's catalog :id is *the same* hash
   corpus.mutate independently computes as a mutant's :parent -- no
@@ -74,7 +74,7 @@
   "Cheap, unvalidating format heuristic over a file's raw text content:
   :fhir-json (parses as JSON, top-level \"resourceType\" key present),
   :v2-er7 (starts with an MSH segment, ER7-encoded), or :unknown.
-  Recorded, not trusted -- gate.fhir/gate.v2 are the actual judges of
+  Recorded, not trusted -- judge.fhir/judge.v2 are the actual judges of
   conformance; this only routes a file to the right catalog bucket."
   [content]
   (cond

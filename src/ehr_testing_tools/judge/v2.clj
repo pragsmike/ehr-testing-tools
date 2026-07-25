@@ -1,5 +1,5 @@
 (ns ehr-testing-tools.judge.v2
-  "Base-structural HL7 v2 gate (P5): HAPI HL7v2 strict/default-validation
+  "Base-structural HL7 v2 judge (P5): HAPI HL7v2 strict/default-validation
   parsing, plus HAPI's DefaultValidator, in-process. Pattern nursery #1
   (two-step engines) applies even without a subprocess: `execute`
   captures HAPI's raw parse/validate outcome verbatim (never throws --
@@ -12,7 +12,7 @@
   actually ran, not a value hand-copied from deps.edn) and the input's
   content hash, even though there is no subprocess/PID/exit-code to record.
 
-  Two HAPI signals feed a gate result, discovered empirically against
+  Two HAPI signals feed a judge result, discovered empirically against
   this repo's own fixtures (see docs/experiments.md's P5 session report):
   1. Parse-time exceptions (`ca.uhn.hl7v2.HL7Exception` and its
      subclasses: message-structure resolution failures, encoding/
@@ -32,9 +32,9 @@
      simplification for the base-structural tier, not a claim that
      HAPI itself always reports low severity here.
 
-  Nothing in this gate ever produces an `:indeterminate` finding: there
+  Nothing in this judge ever produces an `:indeterminate` finding: there
   is no terminology server and no conformance profile in play at this
-  tier, so there is no check this gate can only partially resolve -- a
+  tier, so there is no check this judge can only partially resolve -- a
   check either ran (feeding a finding) or the message failed to parse
   at all (`:rejected`)."
   (:require [clojure.java.io :as io]
@@ -191,7 +191,7 @@
 
 (defn gate-file
   "Gates one v2 message file. Reads content and never writes to it --
-  the Gate stage kind's own law (docs/notation.md): gating never
+  the Judge stage kind's own law (docs/notation.md): gating never
   modifies the datum it judges. Returns result/ok {:verdict :findings
   :path}, or result/error :file-not-found if path doesn't name a
   readable file -- an operational condition (ADR-0004: exceptions are

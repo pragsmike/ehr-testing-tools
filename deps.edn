@@ -42,7 +42,7 @@
          :exec-args {:excludes [:integration]}}
 
   ;; Integration suite (2026-07-25 CI hotfix): tests that require real
-  ;; cached artifacts, network, or a warm cache -- e.g. gate.fhir's
+  ;; cached artifacts, network, or a warm cache -- e.g. judge.fhir's
   ;; contract-pairing suite, which runs the real validator_cli.jar
   ;; subprocess against a real generated corpus. Excluded from :test's
   ;; and :coverage's classpaths by construction (neither alias adds

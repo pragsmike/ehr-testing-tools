@@ -136,7 +136,7 @@
   gate-file/gate-dir functions (ehr-testing-tools.judge.v2, and
   eventually judge.fhir -- same shape). :path may name a single file or
   a directory; either way the result is normalized into one
-  gate.report (gate-label identifies which gate ran, in :run). Writes
+  judge.report (gate-label identifies which gate ran, in :run). Writes
   the report to :report when given (EDN, canonical -- ADR-0004).
 
   :baseline (P6, a path to a previously-written --report EDN file)
@@ -190,10 +190,10 @@
   "target/gate-fhir")
 
 (defn fhir-gate-command
-  "`ehr gate fhir`: unlike gate.v2 (fully self-contained, no options),
-  gate.fhir needs the lockfile's artifacts plus a scratch directory
+  "`ehr gate fhir`: unlike judge.v2 (fully self-contained, no options),
+  judge.fhir needs the lockfile's artifacts plus a scratch directory
   for the validator's raw OperationOutcome output and invocation logs
-  -- resolved here, then gate.fhir/gate-file and gate-dir are curried
+  -- resolved here, then judge.fhir/gate-file and gate-dir are curried
   down to the 1-arity shape gate-command expects. :out-dir defaults to
   `target/gate-fhir` (gitignored build scratch, like `target/` already
   is for `make pipeline`); :java-bin, when given, bypasses registry

@@ -237,7 +237,7 @@
 (defn- resolve-locator-value
   "Resolves locator-envelope against parsed-datum via the FHIR locator
   grammar (ehr-testing-tools.locator/fhir-data-path) -- the same
-  data-path substrate corpus.mutate and gate.fhir already operate on.
+  data-path substrate corpus.mutate and judge.fhir already operate on.
   Returns [true value] if the path resolves (including to a
   legitimate nil), or [false nil] if the locator doesn't parse or
   doesn't resolve anywhere in parsed-datum."
@@ -340,7 +340,7 @@
   rejected -- report is a ehr-testing-tools.judge.report Report, built
   from the same {:path :verdict :findings} shape Gate's own gate-dir
   functions produce. Never writes to :candidate-dir or :expected-dir
-  (the gate kind's own law: never modifies the datum it judges)."
+  (the judge kind's own law: never modifies the datum it judges)."
   [{:keys [candidate-dir expected-dir assertions pair-by canonicalizers]
     :or {pair-by :path canonicalizers []}}]
   (let [assertions (or assertions (when expected-dir default-assertions) [])]

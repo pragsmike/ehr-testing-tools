@@ -1,6 +1,6 @@
 (ns ehr-testing-tools.judge.report
   "Corpus-level aggregation for CI consumers (P5): normalizes per-file
-  gate results (either format -- judge.fhir and judge.v2 both produce the
+  judge results (either format -- judge.fhir and judge.v2 both produce the
   same {:path :verdict :findings [...]} shape) into one report:
   {:run :totals :by-code :files}. EDN is canonical (ADR-0004); the CLI's
   --json flag is a projection over this same data, not a separate code
@@ -33,7 +33,7 @@
   (m/validate Report report))
 
 (defn build-report
-  "results is a seq of per-file gate outcomes {:path :verdict :findings
+  "results is a seq of per-file judge outcomes {:path :verdict :findings
   [...] :id (optional)}. run is free-form metadata about this run
   (which gate, which path/corpus was gated, etc.) -- carried through
   verbatim as :run. Each FileEntry retains its full :findings (not
@@ -113,7 +113,7 @@
   "Recomputes one file's result relative to baseline: a finding counts
   toward rejection only if its finding-key triple is not already
   present in baseline for that file. Verdict is binary (:pass or
-  :rejected) even against a ternary-capable gate's own absolute
+  :rejected) even against a ternary-capable judge's own absolute
   verdict -- judge.report stays format-agnostic and has no access to
   any format-specific per-finding classification (e.g. judge.fhir's own
   :disposition) that would be needed to preserve :indeterminate here; a

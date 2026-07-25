@@ -1,11 +1,11 @@
 (ns ehr-testing-tools.judge.finding
   "The finding envelope (pattern nursery #6): one canonical shape for a
-  single conformance observation, shared by every gate engine
+  single conformance observation, shared by every judge engine
   regardless of format -- {severity, code, locator, message, engine,
   native-ref}. `judge.fhir` and `judge.v2` both interpret their engine's
   raw output into this shape; nothing format-specific lives here.
 
-  Verdicts are the Gate stage kind's own ternary vocabulary
+  Verdicts are the Judge stage kind's own ternary vocabulary
   (docs/notation.md): :pass / :rejected / :indeterminate, with
   :indeterminate first-class -- a legitimate outcome (a check that
   could not run, e.g. terminology-suppressed offline), not an error.
@@ -43,7 +43,7 @@
 (def ^:private rank->verdict {0 :pass 1 :indeterminate 2 :rejected})
 
 (defn worst-of
-  "The Gate kind's ternary composition law across a seq of verdicts:
+  "The Judge kind's ternary composition law across a seq of verdicts:
   :rejected > :indeterminate > :pass. An empty seq (no findings, or no
   files) is :pass by definition -- there is nothing to reject or leave
   indeterminate."

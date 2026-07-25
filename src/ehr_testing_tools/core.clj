@@ -1,5 +1,5 @@
 (ns ehr-testing-tools.core
-  "Placeholder entry point. The internal corpus/gate organization is an open
+  "Placeholder entry point. The internal corpus/judge organization is an open
   decision (docs/positioning.md, Open decisions) — this namespace exists to
   give the project a working src/test tree, not to anchor real capability
   code."

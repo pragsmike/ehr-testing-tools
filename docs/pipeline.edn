@@ -61,7 +61,7 @@
    :inputs ["pass" "rejected" "indeterminate"]
    :outputs ["report"]
    :laws ["appends provenance: which engine, which profile, which verdicts, normalized to the finding envelope (pattern nursery #6, shared by both gate formats)"
-          "diffable: gate.report/diff-reports compares two reports of the same corpus -- changed verdicts, added/removed files, appeared/disappeared codes"]}
+          "diffable: judge.report/diff-reports compares two reports of the same corpus -- changed verdicts, added/removed files, appeared/disappeared codes"]}
 
   {:id :check
    :label "Check"

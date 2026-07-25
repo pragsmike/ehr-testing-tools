@@ -1,5 +1,5 @@
 (ns ehr-testing-tools.judge.fhir
-  "FHIR conformance gate (P5): the official validator
+  "FHIR conformance judge (P5): the official validator
   (`fhir-validator-cli`, `artifacts.lock.edn` kind `:engine`), run as a
   pinned subprocess against base FHIR R4 -- no implementation guide
   pinned in the lockfile this session; `-ig` wiring exists and is
@@ -18,11 +18,11 @@
   declares US Core) even with no `-ig` flag given -- this is
   documented upstream behavior (`validator_cli.jar -help`: \"profiles
   declared in the resource... or specified on the command line\"), not
-  something this gate suppresses. Consequence, observed directly:
+  something this judge suppresses. Consequence, observed directly:
   EXP-C5's own \"valid\" baseline corpus carries hundreds of
   profile-driven `error`/`structure` issues per file (an unrecognized
   Synthea extension against the US Core profile) alongside the small
-  number of issues an actual defect operator introduces -- this gate
+  number of issues an actual defect operator introduces -- this judge
   targets whatever the validator actually checks given the input's own
   declared profile, honestly, not a sanitized base-spec-only view."
   (:require [clojure.data.json :as json]
@@ -234,7 +234,7 @@
 (defn gate-file
   "Gates one FHIR JSON file against opts (same shape execute takes,
   minus :input-path -- set here from path). Reads the file only to
-  confirm it exists; never writes to it -- the Gate stage kind's own
+  confirm it exists; never writes to it -- the Judge stage kind's own
   law (docs/notation.md). Returns result/ok {:verdict :findings
   :path}, or the first failing execute step's result unchanged."
   [path opts]

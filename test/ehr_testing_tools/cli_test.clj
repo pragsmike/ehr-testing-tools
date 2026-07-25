@@ -325,9 +325,9 @@
     (is (= (:payload r) (clojure.edn/read-string (slurp out-file))))))
 
 ;; ---- fhir-gate-command: threads lockfile artifacts + :out-dir into
-;; gate.fhir/gate-file|gate-dir, curried to gate-command's 1-arity
+;; judge.fhir/gate-file|gate-dir, curried to gate-command's 1-arity
 ;; shape. No real subprocess exercised here (hermetic-suite discipline
-;; -- gate.fhir's own test suite already covers execute/interpret with
+;; -- judge.fhir's own test suite already covers execute/interpret with
 ;; injected fakes); this only proves the wiring propagates a real
 ;; lockfile-resolution failure correctly. ----
 

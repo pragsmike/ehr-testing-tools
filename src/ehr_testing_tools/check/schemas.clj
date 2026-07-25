@@ -64,4 +64,4 @@
 (register!
  {:id :fhir-resource-shape :version "1"
   :schema [:map ["resourceType" :string]]
-  :docstring "The minimal FHIR-JSON shape: a top-level \"resourceType\" string key. Deliberately loose -- this is a corpus sanity check (does every file look like a FHIR resource at all), not a conformance gate (that's gate.fhir's job)."})
+  :docstring "The minimal FHIR-JSON shape: a top-level \"resourceType\" string key. Deliberately loose -- this is a corpus sanity check (does every file look like a FHIR resource at all), not a conformance gate (that's judge.fhir's job)."})

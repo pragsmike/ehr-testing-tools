@@ -171,9 +171,9 @@
     (is (some #(#{"code-invalid" "not-found"} (:code %)) matches))
     (is (some #(= :rejected (:disposition %)) matches))))
 
-;; ---- the Gate stage kind law (docs/notation.md): gating never
+;; ---- the Judge stage kind law (docs/notation.md): gating never
 ;; modifies the datum it judges -- tested here against the REAL
-;; engine, not just the unit-level fakes gate.fhir's own test suite
+;; engine, not just the unit-level fakes judge.fhir's own test suite
 ;; already covers this with ----
 
 (deftest ^:integration gate-fhir-never-modifies-its-input-test

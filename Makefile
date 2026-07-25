@@ -44,7 +44,7 @@ coverage:
 	clojure -M:coverage
 
 # Runs test-integration/ (tests needing real cached artifacts, network,
-# or a warm cache -- e.g. gate.fhir's contract-pairing suite). Requires
+# or a warm cache -- e.g. judge.fhir's contract-pairing suite). Requires
 # the three artifacts named under `help` above to already be fetched;
 # see AGENTS.md's hermeticity policy for why these live apart from
 # `make test`/`make coverage`.
