@@ -5,80 +5,46 @@
   EDN, and this namespace is what validates it. `docs/pipeline.md` is
   generated *from* docs/pipeline.edn via the string-diagram skill
   (`make pipeline`); this namespace has nothing to do with that
-  rendering step, only with the source data's shape."
-  (:require [clojure.edn :as edn]
-            [clojure.java.io :as io]
-            [clojure.string :as str]
-            [malli.core :as m]))
+  rendering step, only with the source data's shape.
 
-;; palgebra: signature data hardcoded -- extracted Phase 2
+  The generic signature-loading machinery -- equation-EDN loading, the
+  Stage/UnionResource/ExternalStage schema shapes, validation plumbing
+  -- lives in palgebra.signature (design D13; claimed R2,
+  `.agents/plans/judge-gate-refactor.md` Phase 2). This namespace
+  supplies the one piece of signature data that's specific to this
+  repo's pipeline: the five stage kinds, loaded from
+  docs/signature.edn rather than hardcoded -- D13 arriving,
+  instantiating the language means authoring data."
+  (:require [clojure.string :as str]
+            [palgebra.signature :as signature]))
+
+(def signature-edn-path "docs/signature.edn")
+
 (def stage-kinds
-  "The five stage kinds (docs/notation.md) -- every stage in this
-  repo's pipeline is exactly one of these."
-  #{:transform :normalize :enrich :judge :feedback})
+  "The five stage kinds (docs/notation.md, docs/signature.edn) --
+  every stage in this repo's pipeline is exactly one of these."
+  (:kinds (signature/read-signature-edn signature-edn-path)))
 
-(def stage-statuses
-  #{:built :planned})
-
-(def Stage
-  [:map
-   [:id :keyword]
-   [:label :string]
-   [:kind (into [:enum] stage-kinds)]
-   [:status (into [:enum] stage-statuses)]
-   [:inputs [:vector :string]]
-   [:outputs [:vector :string]]
-   [:catalytic {:optional true} [:vector :string]]
-   [:laws {:optional true} [:vector :string]]
-   [:contract {:optional true} :string]])
-
-(def UnionResource
-  "A named resource declared as the union of others (docs/notation.md,
-  P6) -- a stage consuming the union accepts any member. :resource and
-  :union-of members are plain strings, matching the string-typed
-  resource names Stage's own :inputs/:outputs already use, so a union
-  member name can be cross-referenced against a real stage output
-  (e.g. \"canonical-fhir-datum\") with no keyword/string adapter."
-  [:map
-   [:resource :string]
-   [:union-of [:vector :string]]])
-
-(def ExternalStage
-  "The external stage marker (docs/notation.md, P6): a black-box stage
-  this repo doesn't implement -- a user's own transform. Carries
-  inputs/outputs but no laws -- unlike Stage, there is no :kind,
-  :status, or :laws key at all, only the trivial :external? true
-  marker (asserted, not inferred, so a caller can't accidentally treat
-  a Stage map as external by omission)."
-  [:map
-   [:id :keyword]
-   [:label :string]
-   [:external? [:= true]]
-   [:inputs [:vector :string]]
-   [:outputs [:vector :string]]])
-
-(def Pipeline
-  [:map
-   [:schema-version [:= 1]]
-   [:stages [:vector Stage]]
-   [:resources {:optional true} [:vector UnionResource]]
-   [:external-stages {:optional true} [:vector ExternalStage]]])
+(def Stage (signature/stage-schema stage-kinds))
+(def UnionResource signature/UnionResource)
+(def ExternalStage signature/ExternalStage)
+(def Pipeline (signature/pipeline-schema stage-kinds))
 
 (defn valid-stage?
   [stage]
-  (m/validate Stage stage))
+  (signature/valid-stage? stage-kinds stage))
 
 (defn valid-union-resource?
   [resource]
-  (m/validate UnionResource resource))
+  (signature/valid-union-resource? resource))
 
 (defn valid-external-stage?
   [stage]
-  (m/validate ExternalStage stage))
+  (signature/valid-external-stage? stage))
 
 (defn valid?
   [pipeline]
-  (m/validate Pipeline pipeline))
+  (signature/valid? stage-kinds pipeline))
 
 ;; ---- rendering: docs/pipeline.edn -> the string-diagram skill's
 ;; equation-line grammar (docs/notation.md's equation form) ----
@@ -169,7 +135,7 @@
 
 (defn read-pipeline-edn
   [path]
-  (edn/read-string (slurp path)))
+  (signature/read-signature-edn path))
 
 (defn write-equations-txt!
   "-X-invokable: reads pipeline-edn (default docs/pipeline.edn), writes
