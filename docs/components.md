@@ -57,10 +57,14 @@ document, which cited 2.5.1/2024; 2.6.0 is the current tag as of this
 verification). Used in countless integration engines and hospital
 interfaces.
 
-**Role in pipeline.** In-process parse/serialize engine for the future
-`corpus.mutate` v2 support (P6, not yet built) and the base-structural
-`judge.v2` tier (built, P5) — `defaultValidation`-context strict
-parsing plus `DefaultValidator`, in-process, no subprocess.
+**Role in pipeline.** The base-structural `judge.v2` tier's engine
+(built, P5) — `defaultValidation`-context strict parsing plus
+`DefaultValidator`, in-process, no subprocess. **Not** the `corpus.mutate`
+v2 substrate (built, P7): EXP-B2 found `PipeParser`'s round-trip
+canonicalizes away trailing empty fields, the same class of hazard that
+disqualified HAPI FHIR as the FHIR mutation substrate (below) — v2
+mutation operates on `corpus.er7`'s own delimiter-split data instead;
+`PipeParser` remains this namespace's parser for *judging* only.
 
 **Deliberately not used for.** Profile conformance beyond the classic
 HL7 Message Profile XML — its conformance module predates and does not
