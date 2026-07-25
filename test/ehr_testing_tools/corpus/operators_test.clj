@@ -106,3 +106,63 @@
         mutated ((:fn entry) data ["entry" 0 "resource" "gender"])]
     (is (not (contains? (get-in mutated ["entry" 0 "resource"]) "gender")))
     (is (= "x" (get-in mutated ["entry" 0 "resource" "id"])))))
+
+;; ---- v2 seed catalog (P7): every entry convicts under judge.v2's
+;; base-structural tier (verified empirically -- see this suite's twin,
+;; test/ehr_testing_tools/corpus/mutate_test.clj and the v2 contract
+;; pairing suite, for the judge-facing proof; this suite covers the
+;; operator :fn's own mechanical semantics against synthetic data, same
+;; split as the FHIR section above). ----
+
+(def v2-seed-ids
+  #{:blank-required-field :corrupt-encoding-characters
+    :malformed-datetime-value :truncate-segment-fields :corrupt-segment-name})
+
+(deftest all-v2-seed-operators-registered-at-version-1-test
+  (doseq [id v2-seed-ids]
+    (is (some? (operators/lookup id "1")) (str id " must be registered"))))
+
+(deftest every-v2-seed-operator-declares-a-violates-contract-test
+  (doseq [id v2-seed-ids]
+    (let [entry (operators/lookup id "1")]
+      (is (= :violates (:type (:contract entry))) (str id " must declare :violates"))
+      (is (string? (not-empty (:target (:contract entry)))) (str id " contract :target must be non-empty"))
+      (is (= :v2 (:format entry)))
+      (is (true? (:locator-required? entry))))))
+
+;; MSH-1=field sep (no split slot), MSH-2="^~\&", MSH-9=message type at
+;; split-index 8; PID-7=birth date at split-index 7 (see corpus.er7's
+;; own field-index docstring for the MSH-vs-other-segment convention).
+(def ^:private sample-parsed
+  {:delimiters {:field "|" :component "^" :repetition "~" :escape "\\" :subcomponent "&"}
+   :segments [["MSH" "^~\\&" "SND" "FAC" "RCV" "FAC" "20260101" "" "ADT^A01^ADT_A01" "MSG1" "P" "2.4"]
+              ["PID" "1" "" "12345" "" "Doe^John" "" "19800101"]]})
+
+(deftest v2-blank-field-blanks-the-located-field-test
+  (let [entry (operators/lookup :blank-required-field "1")
+        mutated ((:fn entry) sample-parsed {:segment "MSH" :field 9})]
+    (is (= "" (get-in mutated [:segments 0 8])))
+    (is (= "MSG1" (get-in mutated [:segments 0 9])) "unrelated fields must be untouched")))
+
+(deftest v2-corrupt-encoding-characters-replaces-msh-2-test
+  (let [entry (operators/lookup :corrupt-encoding-characters "1")
+        mutated ((:fn entry) sample-parsed {:segment "MSH" :field 2})]
+    (is (= "^~&" (get-in mutated [:segments 0 1])))))
+
+(deftest v2-malformed-datetime-value-replaces-with-a-non-conformant-value-test
+  (let [entry (operators/lookup :malformed-datetime-value "1")
+        mutated ((:fn entry) sample-parsed {:segment "PID" :field 7})]
+    (is (= "notadate" (get-in mutated [:segments 1 7])))
+    (is (not= "19800101" (get-in mutated [:segments 1 7])))))
+
+(deftest v2-truncate-segment-fields-drops-the-field-and-everything-after-test
+  (let [entry (operators/lookup :truncate-segment-fields "1")
+        mutated ((:fn entry) sample-parsed {:segment "MSH" :field 9})]
+    (is (= 8 (count (get-in mutated [:segments 0]))) "MSH-9 (split-index 8) and everything after it must be gone")
+    (is (= "MSH" (get-in mutated [:segments 0 0])) "fields before the truncation point are untouched")))
+
+(deftest v2-corrupt-segment-name-corrupts-the-last-character-test
+  (let [entry (operators/lookup :corrupt-segment-name "1")
+        mutated ((:fn entry) sample-parsed {:segment "PID"})]
+    (is (= "PIX" (get-in mutated [:segments 1 0])))
+    (is (= "12345" (get-in mutated [:segments 1 3])) "unrelated fields must be untouched")))
