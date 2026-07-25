@@ -1,0 +1,5 @@
+;; A toy signature's kind set (design D9/D13): three stage kinds, no
+;; EHR vocabulary -- this is the fixture future palgebra work tests
+;; against, proving instantiation is data-authoring, not protocol
+;; implementation.
+{:kinds #{:transform :judge :normalize}}

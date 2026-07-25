@@ -39,7 +39,13 @@
          ;; mechanism; :excludes here is now redundant belt-and-braces
          ;; (harmless -- nothing on this alias's path carries the tag
          ;; any more) rather than load-bearing.
-         :exec-args {:excludes [:integration]}}
+         ;;
+         ;; :dirs is explicit (not inferred from :extra-paths above) --
+         ;; cognitect.test-runner.api/test defaults :dirs to ["test"]
+         ;; regardless of the classpath, so palgebra/test must be named
+         ;; here too or its tests silently never run (discovered R2,
+         ;; palgebra claim sweep).
+         :exec-args {:dirs ["test" "palgebra/test"] :excludes [:integration]}}
 
   ;; Integration suite (2026-07-25 CI hotfix): tests that require real
   ;; cached artifacts, network, or a warm cache -- e.g. judge.fhir's
@@ -66,8 +72,8 @@
                     "[cider.nrepl/cider-middleware]"]}
 
   ;; Coverage measurement (ADR-0006). `make coverage` / `clojure -M:coverage`.
-  :coverage {:extra-paths ["test"]
+  :coverage {:extra-paths ["test" "palgebra/test"]
              :extra-deps {cloverage/cloverage {:mvn/version "1.2.4"}
                            org.clojure/test.check {:mvn/version "1.1.3"}
                            org.slf4j/slf4j-nop {:mvn/version "2.0.17"}}
-             :main-opts ["-m" "cloverage.coverage" "-p" "src" "-s" "test"]}}}
+             :main-opts ["-m" "cloverage.coverage" "-p" "src" "-p" "palgebra/src" "-s" "test" "-s" "palgebra/test"]}}}

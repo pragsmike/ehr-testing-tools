@@ -1,4 +1,4 @@
-.PHONY: help pack pack-skills pack-push test coverage integration ehr pipeline use-cases lint-pipeline
+.PHONY: help pack pack-skills pack-push test coverage integration ehr pipeline use-cases lint-pipeline lint-deps
 
 SHELL := bash
 
@@ -36,6 +36,7 @@ help:
 	@echo "  pipeline     - regenerate docs/pipeline.md from docs/pipeline.edn"
 	@echo "  use-cases    - regenerate docs/use-cases.md from docs/use-cases.edn"
 	@echo "  lint-pipeline - check every catalytic resource in docs/pipeline.edn and docs/use-cases.edn resolves to one of the four catalytic targets (docs/notation.md)"
+	@echo "  lint-deps     - check no palgebra.* namespace requires ehr-testing-tools.* (docs/palgebra-design.md D9)"
 
 test:
 	clojure -X:test
@@ -95,6 +96,17 @@ use-cases:
 # itself; CI wiring is a separate, later step.
 lint-pipeline:
 	clojure -X ehr-testing-tools.lint/lint-pipeline!
+
+# Dependency-direction lint (D9, docs/palgebra-design.md Sec I.7): no
+# palgebra.* namespace (src or test) may require ehr-testing-tools.*.
+# Keeps palgebra extractable as its own repo without an EHR-shaped
+# dependency to untangle first. Not wired into CI yet (see
+# .agents/plans/corpus-foundations.md's enforcement-wave entry) --
+# this target and its own unit-test suite
+# (palgebra/test/palgebra/deps_lint_test.clj) are the enforcement
+# itself; CI wiring is a separate, later step.
+lint-deps:
+	clojure -X palgebra.deps-lint/lint-deps!
 
 # Concatenates most git-tracked files in the repo into one pack file, for
 # pasting into a chat UI that can't read the filesystem directly. Leads
