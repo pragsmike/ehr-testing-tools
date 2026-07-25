@@ -28,11 +28,19 @@
   claim about a black-box stage's own catalytic inputs. Not wired into
   CI yet -- see .agents/plans/corpus-foundations.md's enforcement-wave
   entry; `make lint-pipeline` and this namespace's own test suite are
-  the tier-1 enforcement itself, CI wiring is a separate, later step."
+  the tier-1 enforcement itself, CI wiring is a separate, later step.
+
+  The generic mechanism -- extracting catalytic resource names from a
+  loaded signature's stages or from raw equation-line strings, and
+  running each one through a classify/verify pair -- is claimed into
+  `palgebra.lint` (design D13; `.agents/plans/judge-gate-refactor.md`
+  Phase 2). The four concrete targets below, `catalytic-resource-targets`,
+  and everything citing `artifacts.lock.edn`/`deps.edn`/in-repo
+  registries stay here: this is the EHR-specific taxonomy the generic
+  mechanism is parameterized by, not the mechanism itself."
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.set :as set]
-            [clojure.string :as str]
             [ehr-testing-tools.canonical :as canonical]
             ;; Registration is a load-time side effect of requiring
             ;; these seed-catalog namespaces (same convention as
@@ -43,7 +51,8 @@
             ;; process happened to load first.
             [ehr-testing-tools.corpus.canonicalizers]
             [ehr-testing-tools.corpus.operators :as operators]
-            [ehr-testing-tools.check.schemas :as schemas]))
+            [ehr-testing-tools.check.schemas :as schemas]
+            [palgebra.lint :as palgebra-lint]))
 
 (def registry-lookup-fns
   "Dispatch table for target-4 (in-repo code registry) verification:
@@ -131,28 +140,18 @@
     4 (verify-target-4 classification)
     {:ok? false :note (str "unknown target kind " (pr-str target) " -- must be one of 1, 2, 3, 4")}))
 
-;; ---- extraction: catalytic resource names actually used ----
+;; ---- extraction: catalytic resource names actually used (loading is
+;; EHR-specific -- these two documents' paths; the extraction
+;; mechanism itself is palgebra.lint's) ----
 
 (defn- pipeline-catalytic-resources
   [pipeline-edn-path]
-  (let [{:keys [stages]} (edn/read-string (slurp pipeline-edn-path))]
-    (set (mapcat :catalytic stages))))
-
-(defn- line-catalytic-resources
-  "Extracts the {catalytic: a, b, c} resource names from one raw
-  equation-line string (docs/use-cases.edn's own format). A line
-  whose annotation block contains \"external: true\" contributes
-  nothing -- external stages are exempt."
-  [line]
-  (if (re-find #"\{[^}]*external:\s*true" line)
-    []
-    (when-let [m (re-find #"catalytic:\s*([^;}]+)" line)]
-      (mapv str/trim (str/split (second m) #",")))))
+  (palgebra-lint/stages-catalytic-resources (edn/read-string (slurp pipeline-edn-path))))
 
 (defn- use-cases-catalytic-resources
   [use-cases-edn-path]
   (let [{:keys [cases]} (edn/read-string (slurp use-cases-edn-path))]
-    (set (mapcat (fn [{:keys [equations]}] (mapcat line-catalytic-resources equations)) cases))))
+    (palgebra-lint/lines-catalytic-resources (mapcat :equations cases))))
 
 ;; ---- lint ----
 
@@ -164,17 +163,10 @@
   ([{:keys [pipeline-edn use-cases-edn]
      :or {pipeline-edn "docs/pipeline.edn" use-cases-edn "docs/use-cases.edn"}}]
    (let [resources (set/union (pipeline-catalytic-resources pipeline-edn)
-                               (use-cases-catalytic-resources use-cases-edn))
-         violations (reduce
-                     (fn [acc resource]
-                       (if-let [classification (get catalytic-resource-targets resource)]
-                         (let [{:keys [ok? note]} (verify-classification classification)]
-                           (if ok? acc (conj acc {:resource resource :issue :unresolved :note note})))
-                         (conj acc {:resource resource :issue :unclassified
-                                    :note "no declared target classification in ehr-testing-tools.lint/catalytic-resource-targets"})))
-                     []
-                     (sort resources))]
-     {:ok? (empty? violations) :violations violations})))
+                               (use-cases-catalytic-resources use-cases-edn))]
+     (palgebra-lint/lint {:resources resources
+                           :classify #(get catalytic-resource-targets %)
+                           :verify verify-classification}))))
 
 (defn lint-pipeline!
   "-X-invokable: runs lint over the real docs/pipeline.edn and
