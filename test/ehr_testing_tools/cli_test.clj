@@ -171,6 +171,13 @@
     (is (result/ok? r))
     (is (= {:source-dir "src"} @called))))
 
+(deftest dispatch-routes-corpus-operators-test
+  (let [called (atom nil)
+        r (cli/dispatch ["corpus" "operators"] {}
+                         {:operators-fn (fn [opts] (reset! called opts) (result/ok {:operators []}))})]
+    (is (result/ok? r))
+    (is (= {} @called))))
+
 ;; ---- render ----
 
 (deftest render-edn-by-default-test
@@ -387,6 +394,47 @@
         r (cli/intake-command {:source-dir in-dir :label "acme" :out out-dir})]
     (is (result/ok? r))
     (is (= (str (java.time.LocalDate/now)) (:date (:intake-record (:payload r)))))))
+
+;; ---- operators-command (`ehr corpus operators`): a pure read of
+;; corpus.operators' registry -- no filesystem, no subprocess, no
+;; options required. ----
+
+(deftest operators-command-lists-all-ten-registered-operators-test
+  (let [r (cli/operators-command {})]
+    (is (result/ok? r))
+    (is (= 10 (count (:operators (:payload r)))))
+    (is (= #{:remove-required-element :duplicate-element :invalid-code-value
+             :malformed-date :wrong-type-value :blank-required-field
+             :corrupt-encoding-characters :malformed-datetime-value
+             :truncate-segment-fields :corrupt-segment-name}
+           (set (map :id (:operators (:payload r))))))))
+
+(deftest operators-command-filters-by-format-test
+  (let [r (cli/operators-command {:format "v2"})]
+    (is (result/ok? r))
+    (is (= 5 (count (:operators (:payload r)))))
+    (is (every? #(= :v2 (:format %)) (:operators (:payload r))))))
+
+(deftest operators-command-sorted-by-format-then-id-test
+  (let [rows (:operators (:payload (cli/operators-command {})))]
+    (is (= rows (sort-by (juxt :format :id) rows)))))
+
+(deftest operators-command-rows-carry-contract-type-and-target-test
+  (let [rows (:operators (:payload (cli/operators-command {})))
+        remove-req (first (filter #(= :remove-required-element (:id %)) rows))]
+    (is (= :violates (:type remove-req)))
+    (is (string? (:target remove-req)))
+    (is (true? (:locator-required? remove-req)))
+    (is (= "1" (:version remove-req)))))
+
+(deftest operators-command-is-a-pure-registry-read-no-io-test
+  ;; Proven by construction: redefining io/file to throw confirms
+  ;; nothing in operators-command touches the filesystem (it only
+  ;; derefs corpus.operators' in-memory registry atom).
+  (with-redefs [io/file (fn [& _] (throw (ex-info "no filesystem access expected" {})))]
+    (let [r (cli/operators-command {})]
+      (is (result/ok? r))
+      (is (= 10 (count (:operators (:payload r))))))))
 
 ;; ---- gate-command / gate-v2-command (`ehr gate v2`): builds a
 ;; format-agnostic gate report over a file or directory; exit-code

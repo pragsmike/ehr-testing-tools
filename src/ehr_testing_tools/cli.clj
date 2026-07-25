@@ -177,6 +177,30 @@
   (intake/intake! {:source-dir source-dir :source-label label :out out
                     :received (or received (str (LocalDate/now)))}))
 
+(defn operators-command
+  "`ehr corpus operators`: lists the registered mutation operator
+  catalog (corpus.operators) -- a pure registry read, no filesystem or
+  subprocess involved, so it takes no required options. :format
+  (\"fhir\" or \"v2\", optional) narrows the listing to one format.
+  Always result/ok (there is nothing to reject or fail here), sorted by
+  format then id so the listing is diffable across runs. Dropped
+  candidates -- defects probed and found unconvictable at a gate's
+  current tier -- are docstring prose in corpus.operators, not
+  registry data, so they never appear here; see
+  docs/judge-calibration.md for those."
+  [{:keys [format]}]
+  (let [entries (operators/entries)
+        filtered (if format
+                   (filter #(= (keyword format) (:format %)) entries)
+                   entries)
+        rows (->> filtered
+                  (map (fn [{:keys [id format version locator-required? contract]}]
+                         {:id id :format format :version version
+                          :locator-required? locator-required?
+                          :type (:type contract) :target (:target contract)}))
+                  (sort-by (juxt :format :id)))]
+    (result/ok {:operators (vec rows)})))
+
 (defn- parse-treat-no-verdict-as
   "\"pass\" / \"rejected\" / nil -> result/ok :pass|:rejected|nil, or
   result/rejected :invalid-treat-no-verdict-as for anything else -- the
@@ -368,12 +392,14 @@
   command -- see `help-response`/`bare-invocation-response` and the ns
   docstring's EDN-out exception."
   ([args opts] (dispatch args opts {}))
-  ([args opts {:keys [fetch-fn resolve-fn generate-fn mutate-fn intake-fn gate-v2-fn gate-fhir-fn check-fn]
+  ([args opts {:keys [fetch-fn resolve-fn generate-fn mutate-fn intake-fn operators-fn
+                       gate-v2-fn gate-fhir-fn check-fn]
                :or {fetch-fn fetch-command
                     resolve-fn resolve-command
                     generate-fn generate/generate!
                     mutate-fn mutate-command
                     intake-fn intake-command
+                    operators-fn operators-command
                     gate-v2-fn gate-v2-command
                     gate-fhir-fn fhir-gate-command
                     check-fn check-command}}]
@@ -406,6 +432,7 @@
                       "generate" (generate-fn opts)
                       "mutate" (mutate-fn opts)
                       "intake" (intake-fn opts)
+                      "operators" (operators-fn opts)
                       (result/error :unknown-command {:args args}))
            "gate" (case action
                     "v2" (gate-v2-fn opts)

@@ -70,7 +70,9 @@
        :flags [{:flag "--source-dir" :doc "directory of files to catalog"}
                {:flag "--label" :doc "source label for the intake record"}
                {:flag "--out" :doc "catalog output path"}
-               {:flag "--received" :doc "received date, YYYY-MM-DD" :default "today"}]}]}
+               {:flag "--received" :doc "received date, YYYY-MM-DD" :default "today"}]}
+      {:verb "operators" :doc "List the registered mutation operator catalog (a pure registry read; dropped/unconvictable candidates are docstring prose -- see docs/judge-calibration.md, not this listing)."
+       :flags [{:flag "--format" :doc "\"fhir\" or \"v2\" -- narrow the listing to one format" :default "all"}]}]}
 
     {:group "gate"
      :doc "Conformance-gate a file or directory against HL7 v2 or FHIR."

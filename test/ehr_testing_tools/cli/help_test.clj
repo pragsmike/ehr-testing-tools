@@ -52,6 +52,7 @@
     ["corpus" "generate"] :generate-fn
     ["corpus" "mutate"] :mutate-fn
     ["corpus" "intake"] :intake-fn
+    ["corpus" "operators"] :operators-fn
     ["gate" "v2"] :gate-v2-fn
     ["gate" "fhir"] :gate-fhir-fn
     ["check" nil] :check-fn))
@@ -72,7 +73,7 @@
   verb added to dispatch's case without a matching spec entry (and an
   update here) is a discoverable gap rather than a silent one."
   #{["artifact" "fetch"] ["artifact" "resolve"]
-    ["corpus" "generate"] ["corpus" "mutate"] ["corpus" "intake"]
+    ["corpus" "generate"] ["corpus" "mutate"] ["corpus" "intake"] ["corpus" "operators"]
     ["gate" "v2"] ["gate" "fhir"]
     ["check" nil]})
 
