@@ -1,0 +1,37 @@
+#!/bin/sh
+# Enforce: git operations on this repo happen from WSL, not native Windows
+# (pushes are git operations too -- see .githooks/pre-commit), and the fast
+# suite (unit tests + both lints) is green before anything leaves this
+# clone. This is the "fast gates block" half of ADR-0006's staged
+# enforcement (.agents/plans/corpus-foundations.md, enforcement-wave row):
+# coverage, doc-freshness regeneration, and the integration suite are
+# deliberately NOT run here -- they're slow and belong in CI (per-push job
+# for the first two; nightly/manual workflow for integration) rather than
+# blocking every local push. Same opt-in mechanism as pre-commit: this
+# only fires once a clone has run `git config core.hooksPath .githooks`.
+
+is_wsl=0
+if [ -n "$WSL_DISTRO_NAME" ]; then
+  is_wsl=1
+elif [ -r /proc/version ] && grep -qi microsoft /proc/version 2>/dev/null; then
+  is_wsl=1
+fi
+
+if [ "$is_wsl" -ne 1 ]; then
+  echo "ERROR: git pushes from this repo must be made from WSL, not $(uname -s 2>/dev/null || echo 'this shell')." >&2
+  echo "  See AUTHORS-GUIDE.md, 'Git operations: WSL only', for why." >&2
+  echo "  Re-run this push from a WSL shell instead." >&2
+  exit 1
+fi
+
+fail() {
+  echo "ERROR: $1 failed -- push refused." >&2
+  echo "  Fix the failure, or in a genuine emergency: git push --no-verify" >&2
+  exit 1
+}
+
+make test || fail "make test"
+make lint-pipeline || fail "make lint-pipeline"
+make lint-deps || fail "make lint-deps"
+
+exit 0

@@ -52,6 +52,14 @@ Don't rely on the hook to catch a mistake for you — confirm you're in WSL
 (`make test`) are fine from either platform; only git operations are
 restricted.
 
+The same `core.hooksPath` mechanism also carries `.githooks/pre-push`
+(ENF-1, enforcement wave): the same WSL check, plus `make test`,
+`lint-pipeline`, and `lint-deps` — refusing the push on failure, with
+`git push --no-verify` as a documented emergency escape hatch. It
+deliberately does not run coverage, doc regeneration, or the integration
+suite — those are slow gates, and belong in CI, not a local push
+(ADR-0006's staged-enforcement decision).
+
 ## Quick start
 
 The `pack`/`pack-skills` targets below remain as utilities for feeding a
