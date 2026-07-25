@@ -38,19 +38,49 @@ not three -- `fatal` alongside `error`/`warning`/`information`.
 
 ## v2 judge (`judge.v2`), base-structural only
 
-No mutation operators exist for HL7 v2 yet (P6, deferred, unblocked by
-this session's intake capability plus EXP-B2's round-trip finding).
-What's calibrated today is the tier itself: HAPI's `defaultValidation`
-context wires primitive-type checking into parsing, so message-
-structure-resolution failures, encoding/delimiter failures, and
-primitive data-type violations (a malformed DTM, for instance) all
-surface as parse-time exceptions -- `:rejected`. Nothing at this tier
-checks conformance profiles, usage/cardinality beyond parse-time
-structure, predicates, or co-constraints (the NIST/CDC engine's own
-territory, EXP-D3, not adopted). Nothing here ever produces
-`:indeterminate` or `:no-verdict` (ADR-0010): there is no terminology
-and no profile at this tier, so there is no check this judge can only
-partially resolve.
+Mutation operators exist for HL7 v2 as of P7's seed catalog
+(`ehr-testing-tools.corpus.operators`, five `:v2` entries). What's
+calibrated here is the tier itself: HAPI's `defaultValidation` context
+wires primitive-type checking into parsing, so message-structure-
+resolution failures, encoding/delimiter failures, and primitive
+data-type violations (a malformed DTM, for instance) all surface as
+parse-time exceptions -- `:rejected`. Nothing at this tier checks
+conformance profiles, usage/cardinality beyond parse-time structure,
+predicates, or co-constraints (the NIST/CDC engine's own territory,
+EXP-D3, not adopted). Nothing here ever produces `:indeterminate` or
+`:no-verdict` (ADR-0010): there is no terminology and no profile at
+this tier, so there is no check this judge can only partially resolve.
+
+### Calibration: what the seed catalog convicts, and what P7 found it can't (2026-07-25, CAL-1)
+
+Every seed operator below was verified empirically against
+`test/fixtures/v2/adt-a01-admit.hl7` before being registered --
+`test/ehr_testing_tools/v2_contract_pairing_test.clj` is where that
+claim gets a regression, not just a one-off session probe.
+
+| Defect operator | Locator used | Verdict / finding | Notes |
+|---|---|---|---|
+| `blank-required-field` | `MSH-9` (message type) | `:rejected`, `hl7-exception` at `MSH` | Message-structure resolution failure -- HAPI needs MSH-9 to pick which structure to parse into |
+| `corrupt-encoding-characters` | `MSH-2` | `:rejected`, `hl7-exception` at `MSH` | Encoding/delimiter failure at parse time |
+| `truncate-segment-fields` | `MSH-9` | `:rejected`, `hl7-exception` at `MSH` | Drops the field's own positional slot, distinct from blanking it |
+| `corrupt-segment-name` | `MSH` | `:rejected`, `encoding-not-supported-exception` at `MSH` | Verified only against MSH -- see the dropped candidates below for why the same mutation against a non-header segment does not convict |
+| `malformed-datetime-value` | `PID-7` | `:rejected`, `data-type-exception` at `PID-7` | The one operator whose failure survives far enough into parsing to carry a real field-level location |
+
+A structurally clean `:pass` from this tier says nothing about segment
+presence or field requiredness -- three plausible candidates were
+probed and dropped, not shipped unconvictable
+(`corpus/operators.clj`'s own docstring records them as the
+catalog-side source of this finding):
+
+| Dropped candidate | Result (probed, and reproduced fresh 2026-07-25) | Why (facts register [F22](../notes/facts-register.md)) |
+|---|---|---|
+| Drop the PID segment entirely | `:pass`, `:validation-exceptions []` | No rule in this tier's `defaultValidation` chain checks segment presence -- confirmed directly from HAPI's own `DefaultValidationWithoutTNBuilder` source, which registers no such rule |
+| Corrupt PID's own segment-name (`PID` -> `PIX`) | `:pass`, `:validation-exceptions []` | HAPI does register a message-level `onlyAllowableSegmentsInSuperStructure()` rule, but it does not fire for this shape (empirically confirmed, not merely inferred); no other rule in the chain covers it |
+| Blank a non-header field, e.g. `PID-7` | `:pass`, `:validation-exceptions []` | Every lexical-format rule this tier registers (`DT`, `TM`, `SI`, `NM`, `TSComponentOne`/`DTM`) wraps its check in `emptyOr(...)` -- an empty value trivially satisfies all of them, unlike the malformed non-empty value `malformed-datetime-value` supplies |
+
+A consumer of `judge.v2` verdicts should read a `:pass` accordingly:
+it means the base-structural tier found nothing wrong with what it
+actually checks, not that the message is structurally complete.
 
 ## Reading this table
 

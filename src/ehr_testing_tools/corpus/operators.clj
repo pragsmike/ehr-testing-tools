@@ -32,7 +32,11 @@
   presence or field cardinality beyond primitive-type checking wired
   into parsing itself, per judge.v2's own docstring) -- they are
   recorded here as dropped, not shipped unconvictable, rather than
-  silently omitted with no trace.
+  silently omitted with no trace. See docs/judge-calibration.md's v2
+  tier calibration section (CAL-1) for the consumer-facing read of
+  this finding, the HAPI-source mechanism behind it (facts register
+  F22), and this paragraph's cross-reference back as the catalog-side
+  record.
 
   Registry and validation live together here (unlike canonicalizers,
   split across canonical.clj + corpus/canonicalizers.clj) because this
