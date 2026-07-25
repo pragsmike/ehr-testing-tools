@@ -49,7 +49,7 @@ Placement test per file: *names a sort or stage → stays `ehr-testing-tools.*`;
 
 **Explicitly out of scope:** rewriting claimed code toward the specified language (sorts, `⨟` combinators, lower/erase/emit). Claimed-but-primitive is the intended state; the design records the gap.
 
-## Phase 3 — The one semantic change: the verdict split (D10)
+## Phase 3 — The one semantic change: the verdict split (D10). **Done (2026-07-25, R3)** — `.agents/prompts/archive/2026-07-25-r3-verdict-split.md`.
 
 Isolated from the renames so mechanical commits don't camouflage the migration.
 
@@ -60,6 +60,26 @@ Isolated from the renames so mechanical commits don't camouflage the migration.
 - CLI policy surface (`--treat-no-verdict-as`) consumes it — the policy-totality law enforced by the resulting match/spec failures, which is the law working as designed.
 - Both integration suites updated; **contract-pairing suite is the polarity regression** — it must still read `:rejected` as success untouched, proving the split didn't disturb the judge/policy boundary.
 - One commit (or one tightly-scoped PR), its own spec failures, its own test delta.
+
+**Landed as (R3):** verdict carries `:cause` in a sibling field (not a
+tagged pair), Malli-enforced via `judge.finding/VerdictOutcome` +
+`valid-cause-pairing?`. `worst-of`'s rank for the fourth arm did NOT
+land as recommended above — Step 5's integration run against the real
+validator found ranking `no-verdict` above `rejected` made every real
+Synthea file's aggregate verdict `:no-verdict` regardless of an actual
+injected defect (real US-Core-profiled output always mixes
+terminology-suppressed findings with genuine violations in the same
+file, EXP-C5), overriding rather than losing to the contract-pairing
+polarity regression this bullet itself requires stay untouched. Revised
+ranking (author decision, mid-session): `:pass < :indeterminate <
+:no-verdict < :rejected` — `no-verdict` still beats
+`indeterminate`/`pass`, but a confirmed violation still dominates the
+aggregate. ADR-0010 amended in place with the reasoning. Both
+integration suites pass with zero edits, as required, after the
+revision. `judge/v2.clj`'s docstring became "never produces
+`:indeterminate` or `:no-verdict`" (this session's own author ruling
+kept `:indeterminate`'s name in v1, so `:ambiguous` never appears in
+code — only `:no-verdict` needed stating).
 
 ## Phase 4 — Deferred, recorded, not scheduled
 

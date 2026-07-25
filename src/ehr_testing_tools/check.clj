@@ -11,9 +11,16 @@
 
   Check is judge-kind (docs/notation.md, ADR-0009): it produces a
   verdict plus findings over the datum and never modifies it. Unlike
-  Gate, nothing in this v1 vocabulary maps to :indeterminate -- stated
-  plainly here rather than left implicit, since :indeterminate is
-  otherwise part of the judge kind's own floor.
+  Gate, nothing in this v1 vocabulary maps to :indeterminate (reserved,
+  no producer anywhere in this repo as of ADR-0010) or :no-verdict --
+  stated plainly here rather than left implicit, since both are
+  otherwise part of the judge kind's own floor (docs/palgebra-design.md
+  D10). Every per-file verdict Check produces is binary (:pass or
+  :rejected, `run-matches-expected`/`run-per-file-assertions` below) --
+  a deliberate total default, not an omission: Check's criterion is
+  always fully applicable (an expected corpus or an explicit assertion
+  either matches or it doesn't), so there is no partiality for a fourth
+  arm to name.
 
   Assertions are data (EDN, Malli-schema'd, versioned as
   `assertion-vocabulary-version`) -- a deliberately small v1 vocabulary:
