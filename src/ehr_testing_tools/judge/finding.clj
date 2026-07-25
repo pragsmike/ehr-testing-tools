@@ -98,8 +98,10 @@
 ;; overriding contract-pairing's and baseline-gating's polarity
 ;; regression rather than merely losing to it. This ordering remains
 ;; policy-flavored, not a neutral fact -- pre-registered as an
-;; O3-adjacent exhibit (docs/palgebra-design.md §II.5): routing
-;; decisions above the judge may reasonably rank these differently.
+;; O3-adjacent exhibit (docs/palgebra-design.md §II.5), and the exhibit
+;; DID fire during R3 itself: routing decisions above the judge may
+;; reasonably rank these differently, and this ranking is exactly that
+;; kind of decision, not a law derived from the judge's own semantics.
 (def ^:private verdict-rank {:pass 0 :indeterminate 1 :no-verdict 2 :rejected 3})
 (def ^:private rank->verdict {0 :pass 1 :indeterminate 2 :no-verdict 3 :rejected})
 
@@ -107,7 +109,28 @@
   "The Judge kind's composition law across a seq of verdicts:
   :rejected > :no-verdict > :indeterminate > :pass. An empty seq (no
   findings, or no files) is :pass by definition -- there is nothing to
-  reject, leave indeterminate, or fail to judge."
+  reject, leave indeterminate, or fail to judge.
+
+  This is a PROJECTION, not the whole story: the true per-file state is
+  the pair ⟨verdict-over-decided-findings, coverage⟩ (decided = every
+  finding the judge could actually classify; coverage = complete iff no
+  finding was classified :no-verdict). worst-of folds that pair down to
+  one keyword -- :rejected wins outright regardless of coverage; short
+  of that, incomplete coverage collapses even an all-:pass decided
+  portion into :no-verdict, deliberately: \"passed\" should mean
+  \"checked and clean,\" not \"clean on what we managed to check.\" This
+  is the SAME fold the pre-split code already computed
+  (:rejected > :indeterminate > :pass, with :no-verdict occupying
+  :indeterminate's old role) -- the old three-valued code had the right
+  projection all along; it only lacked the theory naming it and the
+  :cause channel explaining why coverage was incomplete. The dropped
+  coverage dimension is not lost data, though: `judge.report`'s
+  per-file :no-verdict-causes surfaces it back independently of which
+  keyword this function picked.
+
+  :indeterminate's rank is VESTIGIAL as of ADR-0010: nothing in this
+  repo produces it anymore, so it only ever matters when folding an old,
+  pre-split baseline's serialized findings."
   [verdicts]
   (if (empty? verdicts)
     :pass

@@ -438,6 +438,43 @@ rather than a neutral fact. `:indeterminate` keeps its name in v1 (same conserva
 as O1: old baseline reports still serialize it); renaming to
 `:ambiguous` is deferred to signature-format v2, alongside O1's own
 verdict-name question.
+
+**Projection frame (retrofit).** The file-level keyword verdict is a
+conservative *projection* of the true per-file aggregate ⟨verdict over
+decided findings, coverage⟩ — "decided" is the fold over every finding
+the judge could actually classify (rejected if any, else pass);
+"coverage" is complete iff no finding was classified `:no-verdict`.
+`worst-of` collapses that pair to one keyword: `:rejected` wins
+outright regardless of coverage; short of that, incomplete coverage
+collapses even an all-`:pass` decided portion into `:no-verdict`,
+deliberately — "passed" must mean "checked and clean," not "clean on
+what we managed to check." This is *exactly* the pre-split fold
+(`:rejected > :indeterminate > :pass`, with `:no-verdict` occupying
+`:indeterminate`'s old role) — the old three-valued code already had
+the right projection; it only lacked the theory naming it and the
+`:cause` channel explaining *why* coverage was incomplete. The
+discarded coverage dimension is not lost, though: `judge.report`'s
+per-file `:no-verdict-causes` (added in this retrofit) surfaces it back
+independently of which keyword the projection picked, so a `:rejected`
+file can still show its own partiality.
+
+This design's own text already carried the warning against the first
+draft's ranking: D10 states `no-verdict` sits "in a different type
+position than the verdicts proper" (§II.5) — i.e. it names an
+orthogonal *coverage* signal, not a fourth point commensurate with the
+pass/rejected axis. Ranking it above `:rejected` in the SAME
+totally-ordered fold `worst-of` maxes over did exactly what that
+warning cautioned against: it made `:no-verdict` commensurate with (and
+dominant over) the decided verdicts, collapsing the "different type
+position" into "same axis, top slot." Placing an *absence of decision*
+at the top of a max-based fold makes it an absorbing element: any
+single undecided finding overrides every decided one, no matter how
+much concrete evidence — rejected or otherwise — coexists with it. This
+was falsified by measurement, not merely re-argued on paper: one real
+mutant bundle carried 3062 terminology-suppressed issues out of 7736
+total, alongside its own clearly-`:rejected`-worthy injected defect —
+proof the collision is the common case for real, profile-stamped
+corpora, not a corner case.
 **Consequence.** Every consumer of verdicts must handle the fourth arm:
 `worst-of`, `judge.report`'s schema/aggregation/diff/baseline-relative
 reading (old, pre-split baselines still read forward, unmigrated), and
@@ -450,6 +487,14 @@ spelunk findings to distinguish partiality from a genuine criterion
 violation, exactly the conflation this record removes. Renaming
 `:indeterminate` now — serialization stability (old reports/baselines
 already carry the name); joins O1 at signature-format v2 instead of
-being decided piecemeal.
+being decided piecemeal. **Ranking `:no-verdict` above `:rejected`
+outright (this ADR's own first draft, retrofitted here as a formally
+rejected alternative)** — the projection-frame analysis above states
+why: it collapses `worst-of`'s "different type position" (D10) into
+"same axis, dominant slot," turning an absence-of-decision into an
+absorbing element under the max-based fold. Falsified by measurement
+(3062/7736 terminology-suppressed issues on one real mutant bundle,
+alongside its own genuine defect), not merely reasoned around after the
+fact.
 **Cites.** D10, O1, O2 (`docs/palgebra-design.md`).
 **Status.** Accepted (author-directed), 2026-07-25.

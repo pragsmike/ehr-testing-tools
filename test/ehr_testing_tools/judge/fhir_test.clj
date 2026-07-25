@@ -121,6 +121,16 @@
       (is (= :no-verdict (:verdict o)))
       (is (= :terminology-suppressed (:cause o))))))
 
+(deftest interpret-a-file-whose-findings-are-all-no-verdict-aggregates-to-no-verdict-test
+  ;; Pinning test at the judge level (not just worst-of directly): a
+  ;; real outcome whose every issue is terminology-suppressed -- no
+  ;; :pass-worthy findings at all -- must not be mistaken for the
+  ;; no-issues-at-all (empty findings, :pass) case.
+  (let [o (gate/interpret (outcome terminology-suppressed-warning terminology-suppressed-information) sample-engine)]
+    (is (= 2 (count (:findings o))))
+    (is (= :no-verdict (:verdict o)))
+    (is (= :terminology-suppressed (:cause o)))))
+
 (deftest interpret-advisory-warning-and-information-are-pass-with-findings-test
   (let [o (gate/interpret (outcome advisory-warning advisory-information) sample-engine)]
     (is (= :pass (:verdict o)))

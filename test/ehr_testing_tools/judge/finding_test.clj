@@ -57,6 +57,14 @@
 (deftest worst-of-rejected-beats-all-other-three-test
   (is (= :rejected (finding/worst-of [:pass :indeterminate :no-verdict :rejected]))))
 
+(deftest worst-of-all-no-verdict-is-no-verdict-not-the-empty-seq-pass-default-test
+  ;; Pinning test: a seq entirely of :no-verdict must resolve via the
+  ;; rank table, not be mistaken for (or refactored toward) the
+  ;; empty-seq :pass shortcut -- a non-empty seq of undecided-coverage
+  ;; findings is never the same thing as no findings at all.
+  (is (= :no-verdict (finding/worst-of [:no-verdict :no-verdict :no-verdict])))
+  (is (not= (finding/worst-of []) (finding/worst-of [:no-verdict]))))
+
 ;; ---- the no-verdict/cause pairing schema (ADR-0010, O2): a Malli
 ;; schema enforcing :cause is present if and only if verdict is
 ;; :no-verdict ----
