@@ -1,4 +1,4 @@
-{:paths ["src"]
+{:paths ["src" "palgebra/src"]
 
  :deps {org.clojure/clojure {:mvn/version "1.12.5"}
         metosin/malli {:mvn/version "0.20.1"}
@@ -23,7 +23,7 @@
   ;; :test alias, so `clojure -X:test` means the same thing in both repos.
   ;; test.check is here (not in base :deps) because generative property
   ;; tests (ADR-0006) are a test-only concern.
-  :test {:extra-paths ["test"]
+  :test {:extra-paths ["test" "palgebra/test"]
          :extra-deps {io.github.cognitect-labs/test-runner
                       {:git/tag "v0.5.1" :git/sha "dfb30dd"}
                       org.clojure/test.check {:mvn/version "1.1.3"}
