@@ -1,8 +1,8 @@
-(ns ehr-testing-tools.gate.finding
+(ns ehr-testing-tools.judge.finding
   "The finding envelope (pattern nursery #6): one canonical shape for a
   single conformance observation, shared by every gate engine
   regardless of format -- {severity, code, locator, message, engine,
-  native-ref}. `gate.fhir` and `gate.v2` both interpret their engine's
+  native-ref}. `judge.fhir` and `judge.v2` both interpret their engine's
   raw output into this shape; nothing format-specific lives here.
 
   Verdicts are the Gate stage kind's own ternary vocabulary
@@ -20,7 +20,7 @@
   entirely, which neither EXP-C5's own corpus nor its five defect
   operators' other mutants happened to trigger -- v2's HL7Exception
   severities only ever surfaced :error in this repo's own testing, but
-  the shared envelope carries the full FHIR vocabulary since gate.fhir
+  the shared envelope carries the full FHIR vocabulary since judge.fhir
   needs it)."
   [:enum :error :warning :information :fatal])
 

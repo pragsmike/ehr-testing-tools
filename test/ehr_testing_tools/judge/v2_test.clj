@@ -1,9 +1,9 @@
-(ns ehr-testing-tools.gate.v2-test
+(ns ehr-testing-tools.judge.v2-test
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.string :as str]
             [ehr-testing-tools.result :as result]
-            [ehr-testing-tools.gate.finding :as finding]
-            [ehr-testing-tools.gate.v2 :as gate]))
+            [ehr-testing-tools.judge.finding :as finding]
+            [ehr-testing-tools.judge.v2 :as gate]))
 
 (def valid-message (slurp "test/fixtures/v2/adt-a01-admit.hl7"))
 
@@ -77,10 +77,10 @@
 (deftest interpret-collected-validation-exceptions-are-pass-with-findings-test
   ;; Simulated raw payload -- a HAPI validation exception collected via
   ;; the non-throwing handler path (empty for every fixture EXP-C5/P5's
-  ;; probes exercised, per gate.v2's own docstring); this test proves
+  ;; probes exercised, per judge.v2's own docstring); this test proves
   ;; the *policy* holds even though no real fixture triggers it: at
   ;; this tier, a collected (non-parse-failure) HAPI signal is always
-  ;; :pass-with-findings, never :rejected -- gate.v2 is base-structural
+  ;; :pass-with-findings, never :rejected -- judge.v2 is base-structural
   ;; only, and nothing here ever produces :indeterminate.
   (let [raw {:engine {:name "hapi-hl7v2" :version "2.6.0"}
              :input-sha256 (apply str (repeat 64 "a"))

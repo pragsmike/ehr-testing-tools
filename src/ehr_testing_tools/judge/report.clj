@@ -1,6 +1,6 @@
-(ns ehr-testing-tools.gate.report
+(ns ehr-testing-tools.judge.report
   "Corpus-level aggregation for CI consumers (P5): normalizes per-file
-  gate results (either format -- gate.fhir and gate.v2 both produce the
+  gate results (either format -- judge.fhir and judge.v2 both produce the
   same {:path :verdict :findings [...]} shape) into one report:
   {:run :totals :by-code :files}. EDN is canonical (ADR-0004); the CLI's
   --json flag is a projection over this same data, not a separate code
@@ -8,7 +8,7 @@
   changed between two runs of the same corpus."
   (:require [clojure.set :as set]
             [malli.core :as m]
-            [ehr-testing-tools.gate.finding :as finding]))
+            [ehr-testing-tools.judge.finding :as finding]))
 
 (def Totals
   [:map [:pass :int] [:rejected :int] [:indeterminate :int]])
@@ -94,7 +94,7 @@
   on -- deliberately excludes :message and :native-ref, which can
   legitimately vary run to run for the *same* underlying finding
   (e.g. differing diagnostic text), and deliberately excludes any
-  format-specific extension field (e.g. gate.fhir's own :policy) so
+  format-specific extension field (e.g. judge.fhir's own :policy) so
   this stays format-agnostic, matching build-report's own contract."
   [f]
   [(:severity f) (:code f) (get-in f [:locator :path])])
@@ -114,8 +114,8 @@
   toward rejection only if its finding-key triple is not already
   present in baseline for that file. Verdict is binary (:pass or
   :rejected) even against a ternary-capable gate's own absolute
-  verdict -- gate.report stays format-agnostic and has no access to
-  any format-specific per-finding classification (e.g. gate.fhir's own
+  verdict -- judge.report stays format-agnostic and has no access to
+  any format-specific per-finding classification (e.g. judge.fhir's own
   :policy) that would be needed to preserve :indeterminate here; a
   novel :indeterminate-worthy finding still counts as :rejected in
   relative mode. Stated plainly (docs/gate-calibration.md), not left

@@ -1,6 +1,6 @@
-(ns ehr-testing-tools.gate.report-test
+(ns ehr-testing-tools.judge.report-test
   (:require [clojure.test :refer [deftest is testing]]
-            [ehr-testing-tools.gate.report :as report]))
+            [ehr-testing-tools.judge.report :as report]))
 
 (defn- finding [code]
   {:severity :error :code code :locator {:format :fhir :path "x"}

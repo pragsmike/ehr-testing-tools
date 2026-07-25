@@ -25,8 +25,8 @@
             [ehr-testing-tools.corpus.generate :as generate]
             [ehr-testing-tools.corpus.mutate :as mutate]
             [ehr-testing-tools.corpus.operators :as operators]
-            [ehr-testing-tools.gate.fhir :as gate]
-            [ehr-testing-tools.gate.report :as report])
+            [ehr-testing-tools.judge.fhir :as gate]
+            [ehr-testing-tools.judge.report :as report])
   (:import [java.io File]))
 
 (def ^:private work-dir "target/baseline-gating")

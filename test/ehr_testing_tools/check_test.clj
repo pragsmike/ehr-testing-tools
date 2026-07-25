@@ -4,8 +4,8 @@
             [ehr-testing-tools.result :as result]
             [ehr-testing-tools.canonical :as canonical]
             [ehr-testing-tools.check.schemas :as schemas]
-            [ehr-testing-tools.gate.finding :as finding]
-            [ehr-testing-tools.gate.report :as report]
+            [ehr-testing-tools.judge.finding :as finding]
+            [ehr-testing-tools.judge.report :as report]
             [ehr-testing-tools.check :as check])
   (:import [java.io File]))
 

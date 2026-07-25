@@ -1,4 +1,4 @@
-(ns ehr-testing-tools.gate.v2
+(ns ehr-testing-tools.judge.v2
   "Base-structural HL7 v2 gate (P5): HAPI HL7v2 strict/default-validation
   parsing, plus HAPI's DefaultValidator, in-process. Pattern nursery #1
   (two-step engines) applies even without a subprocess: `execute`
@@ -40,7 +40,7 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [ehr-testing-tools.digest :as digest]
-            [ehr-testing-tools.gate.finding :as finding]
+            [ehr-testing-tools.judge.finding :as finding]
             [ehr-testing-tools.result :as result])
   (:import [ca.uhn.hl7v2 DefaultHapiContext HL7Exception]
            [ca.uhn.hl7v2.validation ValidationExceptionHandler]

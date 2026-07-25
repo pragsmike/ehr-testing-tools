@@ -35,7 +35,7 @@
   now a second real consumer); unpaired files are reported as
   missing/extra findings.
 
-  Report: reuses ehr-testing-tools.gate.report's aggregation verbatim
+  Report: reuses ehr-testing-tools.judge.report's aggregation verbatim
   -- build-report takes a format-agnostic {:path :verdict :findings}
   seq, which Check's own per-file results already are, so no refactor
   was needed there.
@@ -56,7 +56,7 @@
             [ehr-testing-tools.check.schemas :as schemas]
             [ehr-testing-tools.diff :as diff]
             [ehr-testing-tools.digest :as digest]
-            [ehr-testing-tools.gate.report :as report]
+            [ehr-testing-tools.judge.report :as report]
             [ehr-testing-tools.locator :as locator]
             [ehr-testing-tools.result :as result])
   (:import [java.io File]))
@@ -251,7 +251,7 @@
   "Evaluates one per-file assertion (:present/:absent/:value/:count/
   :schema -- never :matches-expected, which is corpus-level, not
   per-file) against parsed-datum. Returns [] when the assertion holds,
-  or a seq of findings (ehr-testing-tools.gate.finding-shaped) when it
+  or a seq of findings (ehr-testing-tools.judge.finding-shaped) when it
   doesn't. Exposed publicly (unlike the rest of this namespace's
   per-file machinery) because it's the natural unit to test the
   finding envelope against directly, without threading through
@@ -334,7 +334,7 @@
   vector of [id version] pairs, default []) govern :matches-expected
   only. Returns result/ok {report} when every file passes, or
   result/rejected :check-rejected {report} the moment any file was
-  rejected -- report is a ehr-testing-tools.gate.report Report, built
+  rejected -- report is a ehr-testing-tools.judge.report Report, built
   from the same {:path :verdict :findings} shape Gate's own gate-dir
   functions produce. Never writes to :candidate-dir or :expected-dir
   (the gate kind's own law: never modifies the datum it judges)."

@@ -43,7 +43,7 @@
             [ehr-testing-tools.corpus.generate :as generate]
             [ehr-testing-tools.corpus.mutate :as mutate]
             [ehr-testing-tools.corpus.operators :as operators]
-            [ehr-testing-tools.gate.fhir :as gate])
+            [ehr-testing-tools.judge.fhir :as gate])
   (:import [java.io File]))
 
 (def ^:private work-dir "target/contract-pairing")

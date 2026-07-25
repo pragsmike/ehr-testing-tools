@@ -5,7 +5,7 @@
             [clojure.string]
             [ehr-testing-tools.result :as result]
             [ehr-testing-tools.artifact :as artifact]
-            [ehr-testing-tools.gate.report :as report]
+            [ehr-testing-tools.judge.report :as report]
             [ehr-testing-tools.cli :as cli])
   (:import [java.io File]))
 

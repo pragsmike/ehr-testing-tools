@@ -1,9 +1,9 @@
-(ns ehr-testing-tools.gate.fhir-test
+(ns ehr-testing-tools.judge.fhir-test
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.java.io :as io]
             [ehr-testing-tools.result :as result]
-            [ehr-testing-tools.gate.finding :as finding]
-            [ehr-testing-tools.gate.fhir :as gate])
+            [ehr-testing-tools.judge.finding :as finding]
+            [ehr-testing-tools.judge.fhir :as gate])
   (:import [java.io File]))
 
 (defn- temp-dir []

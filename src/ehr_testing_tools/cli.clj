@@ -16,9 +16,9 @@
             [ehr-testing-tools.corpus.operators :as operators]
             [ehr-testing-tools.locator :as locator]
             [ehr-testing-tools.check :as check]
-            [ehr-testing-tools.gate.v2 :as gate-v2]
-            [ehr-testing-tools.gate.fhir :as gate-fhir]
-            [ehr-testing-tools.gate.report :as report])
+            [ehr-testing-tools.judge.v2 :as gate-v2]
+            [ehr-testing-tools.judge.fhir :as gate-fhir]
+            [ehr-testing-tools.judge.report :as report])
   (:import [java.time LocalDate]))
 
 (def cli-spec
@@ -133,14 +133,14 @@
 
 (defn gate-command
   "Builds an `ehr gate <format>` command function from that format's
-  gate-file/gate-dir functions (ehr-testing-tools.gate.v2, and
-  eventually gate.fhir -- same shape). :path may name a single file or
+  gate-file/gate-dir functions (ehr-testing-tools.judge.v2, and
+  eventually judge.fhir -- same shape). :path may name a single file or
   a directory; either way the result is normalized into one
   gate.report (gate-label identifies which gate ran, in :run). Writes
   the report to :report when given (EDN, canonical -- ADR-0004).
 
   :baseline (P6, a path to a previously-written --report EDN file)
-  switches to baseline-relative mode (ehr-testing-tools.gate.report/
+  switches to baseline-relative mode (ehr-testing-tools.judge.report/
   baseline-relative-report): the written/returned payload becomes
   {:absolute :relative} instead of a bare Report, and the exit-code
   decision below follows :relative's totals, not :absolute's -- see

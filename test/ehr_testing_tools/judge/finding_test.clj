@@ -1,6 +1,6 @@
-(ns ehr-testing-tools.gate.finding-test
+(ns ehr-testing-tools.judge.finding-test
   (:require [clojure.test :refer [deftest is testing]]
-            [ehr-testing-tools.gate.finding :as finding]))
+            [ehr-testing-tools.judge.finding :as finding]))
 
 (defn- sample-finding
   [severity]

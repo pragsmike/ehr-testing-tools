@@ -1,4 +1,4 @@
-(ns ehr-testing-tools.gate.fhir
+(ns ehr-testing-tools.judge.fhir
   "FHIR conformance gate (P5): the official validator
   (`fhir-validator-cli`, `artifacts.lock.edn` kind `:engine`), run as a
   pinned subprocess against base FHIR R4 -- no implementation guide
@@ -30,7 +30,7 @@
             [clojure.string :as str]
             [ehr-testing-tools.artifact :as artifact]
             [ehr-testing-tools.invocation :as invocation]
-            [ehr-testing-tools.gate.finding :as finding]
+            [ehr-testing-tools.judge.finding :as finding]
             [ehr-testing-tools.result :as result])
   (:import [java.io File]))
 
@@ -217,7 +217,7 @@
   \"issue\" array becomes one finding, classified :rejected /
   :indeterminate / :pass by `issue->classification` (recorded on the
   finding itself as :policy, for auditability). Overall verdict is the
-  worst-of every finding's classification (gate.finding/worst-of):
+  worst-of every finding's classification (judge.finding/worst-of):
   :rejected > :indeterminate > :pass. No issues at all is :pass with
   no findings."
   [raw-outcome engine]
