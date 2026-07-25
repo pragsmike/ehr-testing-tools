@@ -36,12 +36,25 @@
   [raw-args]
   (cli/parse-args raw-args {:spec cli-spec}))
 
+(def no-verdict-exit-code
+  "Full exit-code mapping (ADR-0004, extended by ADR-0010 for the
+  fourth verdict arm): 0 ok, 1 rejected, 2 operational error, 3 a
+  gate's aggregate contains :no-verdict under the default (undecided)
+  --treat-no-verdict-as policy. Distinct from 1 so no workflow silently
+  inherits a no-verdict-handling default (the policy-totality law, D10)
+  -- `ehr gate ... --treat-no-verdict-as pass|rejected` is the explicit
+  opt-in to fold :no-verdict into an existing polarity instead."
+  3)
+
 (defn result->exit-code
   "0 = ran and passed; 1 = ran and legitimately rejected; 2 = operational
-  error. Per ADR-0004's CLI exit-code contract."
+  error; 3 = a gate's aggregate contains :no-verdict under the default
+  policy (see `no-verdict-exit-code`). Per ADR-0004's CLI exit-code
+  contract, extended by ADR-0010."
   [r]
   (cond
     (result/ok? r) 0
+    (= :gate-no-verdict (:category r)) no-verdict-exit-code
     (result/rejected? r) 1
     :else 2))
 
@@ -131,6 +144,40 @@
   (intake/intake! {:source-dir source-dir :source-label label :out out
                     :received (or received (str (LocalDate/now)))}))
 
+(defn- parse-treat-no-verdict-as
+  "\"pass\" / \"rejected\" / nil -> result/ok :pass|:rejected|nil, or
+  result/rejected :invalid-treat-no-verdict-as for anything else -- the
+  CLI's own flag-validation boundary (ADR-0004: exceptions are for
+  programmer error, not a bad CLI argument)."
+  [s]
+  (case s
+    nil (result/ok nil)
+    "pass" (result/ok :pass)
+    "rejected" (result/ok :rejected)
+    (result/rejected :invalid-treat-no-verdict-as {:value s})))
+
+(defn- gate-decision
+  "The policy-totality law (ADR-0010, D10) made total in code: :ok,
+  :rejected, or :no-verdict, given a report's totals and the resolved
+  :treat-no-verdict-as policy (nil, :pass, or :rejected). A nil policy
+  with any :no-verdict present is its own distinct outcome -- never
+  silently folded into :ok or :rejected -- which is exactly what makes
+  the CLI's default exit code for that case (`no-verdict-exit-code`)
+  honest rather than an arbitrary pick."
+  [{:keys [rejected no-verdict]} treat-no-verdict-as]
+  (cond
+    (and (pos? no-verdict) (nil? treat-no-verdict-as)) :no-verdict
+    (and (pos? no-verdict) (= treat-no-verdict-as :rejected)) :rejected
+    (pos? rejected) :rejected
+    :else :ok))
+
+(defn- decision->result
+  [decision payload]
+  (case decision
+    :ok (result/ok payload)
+    :rejected (result/rejected :gate-rejected payload)
+    :no-verdict (result/rejected :gate-no-verdict payload)))
+
 (defn gate-command
   "Builds an `ehr gate <format>` command function from that format's
   gate-file/gate-dir functions (ehr-testing-tools.judge.v2, and
@@ -145,43 +192,51 @@
   {:absolute :relative} instead of a bare Report, and the exit-code
   decision below follows :relative's totals, not :absolute's -- see
   docs/judge-calibration.md for when to reach for this and its exact-
-  match limitation.
+  match limitation. (:relative verdicts are always binary, so
+  :no-verdict never actually appears there in practice -- `gate-decision`
+  is applied uniformly anyway, for one policy-totality law rather than
+  two near-duplicate ones.)
+
+  :treat-no-verdict-as (ADR-0010, D10) is \"pass\" or \"rejected\" (a
+  string, validated by `parse-treat-no-verdict-as` before anything else
+  runs); anything else is rejected with :invalid-treat-no-verdict-as.
 
   Exit-code contract (ADR-0004's generic ok/rejected/error mapping,
-  applied here rather than special-cased): result/ok when the
-  aggregate (absolute, or relative in --baseline mode) has zero
-  rejected files -- including an indeterminate-only run, which is exit
-  0 by this rule, but :totals in the written/returned report says so
-  loudly, exactly as README's gate section documents; result/rejected
-  :gate-rejected the moment any file was rejected. `main!`'s
-  result->exit-code needs no gate-specific handling: 0 all pass
-  (indeterminate-only included), 1 any rejected, 2 an operational
-  error from the gate-file-fn/gate-dir-fn themselves."
+  extended by ADR-0010 -- see `result->exit-code`): result/ok when the
+  aggregate has zero rejected files and zero no-verdict files;
+  result/rejected :gate-rejected the moment any file was rejected (or
+  --treat-no-verdict-as rejected folds a no-verdict file in);
+  result/rejected :gate-no-verdict when the aggregate has a no-verdict
+  file and no --treat-no-verdict-as policy was given -- the CLI's own
+  distinct exit code for that case, so no workflow silently inherits a
+  no-verdict-handling default."
   [gate-file-fn gate-dir-fn gate-label]
-  (fn [{:keys [path report baseline]}]
-    (let [f (io/file path)
-          results-result (if (.isDirectory f)
-                            (gate-dir-fn path)
-                            (let [r (gate-file-fn path)]
-                              (if (result/ok? r)
-                                (result/ok {:results [(:payload r)]})
-                                r)))]
-      (if-not (result/ok? results-result)
-        results-result
-        (let [results (:results (:payload results-result))
-              run {:gate gate-label :path path}]
-          (if baseline
-            (let [baseline-report (edn/read-string (slurp baseline))
-                  br (report/baseline-relative-report results run baseline-report)]
-              (when report (spit report (pr-str br)))
-              (if (pos? (:rejected (:totals (:relative br))))
-                (result/rejected :gate-rejected br)
-                (result/ok br)))
-            (let [rpt (report/build-report results run)]
-              (when report (spit report (pr-str rpt)))
-              (if (pos? (:rejected (:totals rpt)))
-                (result/rejected :gate-rejected rpt)
-                (result/ok rpt)))))))))
+  (fn [{:keys [path report baseline treat-no-verdict-as]}]
+    (let [policy-result (parse-treat-no-verdict-as treat-no-verdict-as)]
+      (if-not (result/ok? policy-result)
+        policy-result
+        (let [policy (:payload policy-result)
+              f (io/file path)
+              results-result (if (.isDirectory f)
+                                (gate-dir-fn path)
+                                (let [r (gate-file-fn path)]
+                                  (if (result/ok? r)
+                                    (result/ok {:results [(:payload r)]})
+                                    r)))]
+          (if-not (result/ok? results-result)
+            results-result
+            (let [results (:results (:payload results-result))
+                  run {:gate gate-label :path path}]
+              (if baseline
+                (let [baseline-report (edn/read-string (slurp baseline))
+                      br (report/baseline-relative-report results run baseline-report)
+                      decision (gate-decision (:totals (:relative br)) policy)]
+                  (when report (spit report (pr-str br)))
+                  (decision->result decision br))
+                (let [rpt (report/build-report results run)
+                      decision (gate-decision (:totals rpt) policy)]
+                  (when report (spit report (pr-str rpt)))
+                  (decision->result decision rpt))))))))))
 
 (def gate-v2-command
   (gate-command gate-v2/gate-file gate-v2/gate-dir :v2))
@@ -197,8 +252,10 @@
   down to the 1-arity shape gate-command expects. :out-dir defaults to
   `target/gate-fhir` (gitignored build scratch, like `target/` already
   is for `make pipeline`); :java-bin, when given, bypasses registry
-  resolution exactly like corpus.generate's own :java-bin override."
-  [{:keys [path report lockfile out-dir java-bin baseline]}]
+  resolution exactly like corpus.generate's own :java-bin override.
+  :treat-no-verdict-as (ADR-0010) passes straight through to
+  gate-command."
+  [{:keys [path report lockfile out-dir java-bin baseline treat-no-verdict-as]}]
   (let [artifacts-result (default-lockfile-artifacts lockfile)]
     (if-not (result/ok? artifacts-result)
       artifacts-result
@@ -208,7 +265,8 @@
             gate-fn (gate-command #(gate-fhir/gate-file % fhir-opts)
                                   #(gate-fhir/gate-dir % fhir-opts)
                                   :fhir)]
-        (gate-fn {:path path :report report :baseline baseline})))))
+        (gate-fn {:path path :report report :baseline baseline
+                  :treat-no-verdict-as treat-no-verdict-as})))))
 
 (defn- parse-canonicalizer-steps
   "\"id@v,id2@v2\" -> [[:id \"v\"] [:id2 \"v2\"]] -- the ordered

@@ -29,7 +29,7 @@ appears at the mutation's own locator.
 | `wrong-type-value` | any typed field | **Yes** | `:rejected`, `error`/`invalid` ("the primitive value must be a boolean" / similar) | Clean JSON-type violation |
 | `remove-required-element` | **must be a genuinely min-cardinality-1 field** (e.g. `resourceType`, not `Patient.gender` -- gender is min 0 in base FHIR) | **Yes, if the locator is actually required** | `:rejected`, `fatal`/`invalid` ("Unable to find resourceType property") for `resourceType`; **nothing** for a locator that isn't actually required | The operator's own contract is conditional on the locator naming a required element -- verify the target's cardinality before trusting a "detected" result |
 | `invalid-code-value` | a field bound to a **base-FHIR-bundled** ValueSet (e.g. `Patient.gender` -> `AdministrativeGender`) | **Yes** | `:rejected`, `error`/`code-invalid` + `error`/`not-found` | Contrary to the a-priori assumption that this class is terminology-suppressed offline -- small, spec-bundled ValueSets are checked without a terminology server |
-| `invalid-code-value` | a field bound to a **terminology-server-dependent** code system (LOINC, SNOMED, UCUM, most `urn:oid:`-named systems) | **No, indeterminate** | `:indeterminate`, diagnostics containing "without using server" / "doesn't provide any codes" / similar | **Undetectable at this judge tier** -- catchable only with a terminology server or a locally packaged, complete ValueSet; untested directly in this session's contract-pairing suite (no such locator in the fixture), inferred from EXP-C5's own classification table |
+| `invalid-code-value` | a field bound to a **terminology-server-dependent** code system (LOINC, SNOMED, UCUM, most `urn:oid:`-named systems) | **No, no-verdict** | `:no-verdict`/`:terminology-suppressed`, diagnostics containing "without using server" / "doesn't provide any codes" / similar (formerly `:indeterminate`, ADR-0010) | **Undetectable at this judge tier** -- catchable only with a terminology server or a locally packaged, complete ValueSet; untested directly in this session's contract-pairing suite (no such locator in the fixture), inferred from EXP-C5's own classification table |
 
 **Severity note:** FHIR's `IssueSeverity` ValueSet has four values,
 not three -- `fatal` alongside `error`/`warning`/`information`.
@@ -48,17 +48,44 @@ surface as parse-time exceptions -- `:rejected`. Nothing at this tier
 checks conformance profiles, usage/cardinality beyond parse-time
 structure, predicates, or co-constraints (the NIST/CDC engine's own
 territory, EXP-D3, not adopted). Nothing here ever produces
-`:indeterminate`: there is no terminology and no profile at this tier,
-so there is no check this judge can only partially resolve.
+`:indeterminate` or `:no-verdict` (ADR-0010): there is no terminology
+and no profile at this tier, so there is no check this judge can only
+partially resolve.
 
 ## Reading this table
 
 A `:rejected` verdict from either judge is trustworthy: something the
-judge actually checked came back wrong. A `:pass` or `:indeterminate`
+judge actually checked came back wrong. A `:pass` or `:no-verdict`
 verdict is a claim about *what was checked*, not a guarantee of
 correctness beyond that scope -- see the FHIR judge's profile-noise
 caveat above, and see `README.md`'s maturity table for the one-line
 honest summary this page backs.
+
+## No-verdict, operationally (2026-07-25, ADR-0010)
+
+`:no-verdict` means the judge couldn't fully *apply* the criterion --
+today, exactly the terminology-suppressed case above: the validator ran
+offline, so a code bound to a terminology-server-dependent system was
+never actually checked. That is a different claim than "this criterion
+doesn't decide the subject" (`:indeterminate`'s old, now-reserved
+meaning) -- one is the judge falling short of the criterion, the other
+is the criterion itself having nothing to say. Policies should treat
+them differently: a criterion that doesn't decide is safe to pass
+through (nothing was claimed either way); a judge that couldn't fully
+apply its criterion is a signal to *escalate* (route to a human, or a
+tier with a terminology server) or *retry* (re-run once a terminology
+server is available), not to silently wave through.
+
+`ehr gate fhir|v2 ... --treat-no-verdict-as pass|rejected` is the
+explicit opt-in for a workflow that has already made that call: `pass`
+when the workflow accepts that terminology-suppressed findings are out
+of scope for this gate (e.g. a downstream terminology-aware check
+already covers them); `rejected` when the workflow would rather treat
+"couldn't fully judge this" as a hard stop until a terminology server
+is wired in. Omitting the flag is itself a choice -- the CLI's default
+exit code for a no-verdict aggregate is distinct from both `0` and `1`
+(see this repo's README), precisely so no workflow inherits either
+polarity by accident.
 
 ## Baseline-relative gating (2026-07-25, P6)
 
@@ -112,11 +139,15 @@ no longer do. Fuzzier matching (locator-path proximity, code
 synonymy) is real future work, not solved here -- see the plan file's
 P7 sketch.
 
-**Format-agnostic, not ternary-preserving:** `judge.report` (which owns
-this diffing, not either format-specific judge namespace) has no access
-to a format-specific per-finding classification like `judge.fhir`'s own
-`:disposition` field, so `:relative` verdicts are binary (`:pass`/
-`:rejected`), never `:indeterminate`, even when the underlying novel
-finding would itself classify as `:indeterminate` in `:absolute` mode.
-A novel indeterminate-worthy finding still counts as `:relative`
-`:rejected` -- stated here rather than left as a surprise.
+**Format-agnostic, not four-valued-preserving:** `judge.report` (which
+owns this diffing, not either format-specific judge namespace) has no
+access to a format-specific per-finding classification like
+`judge.fhir`'s own `:disposition`/`:cause` fields, so `:relative`
+verdicts are binary (`:pass`/`:rejected`), never `:indeterminate` or
+`:no-verdict`, even when the underlying novel finding would itself
+classify as `:no-verdict` in `:absolute` mode. A novel no-verdict-worthy
+finding still counts as `:relative` `:rejected` -- stated here rather
+than left as a surprise. This holds against baselines captured before
+ADR-0010 too: an old, three-valued baseline (no `:no-verdict`, no
+`:cause`) reads forward unmigrated, since baseline matching keys on
+`{severity, code, locator-path}` alone and never looks at `:cause`.

@@ -130,10 +130,15 @@ make ehr ARGS="corpus mutate --input $PATIENT_FILE \
 
 # Gate a file or directory against HL7 v2 (base-structural, HAPI) or
 # FHIR (base-spec, the official validator -- also fetches its own
-# pinned artifact the first time). Exit code: 0 all pass (including
-# indeterminate-only runs -- the report says so loudly), 1 any
-# rejected, 2 operational error. --report writes the corpus report;
-# --json projects it.
+# pinned artifact the first time). Exit code: 0 all pass, 1 any
+# rejected, 2 operational error, 3 the aggregate contains :no-verdict
+# and no --treat-no-verdict-as policy was given (a check the judge
+# couldn't fully apply, e.g. terminology-suppressed offline -- distinct
+# from a genuine rejection, so it gets its own exit code rather than
+# silently inheriting either polarity; see docs/judge-calibration.md).
+# --treat-no-verdict-as pass|rejected folds it into an existing
+# polarity when that's the right call for your workflow. --report
+# writes the corpus report; --json projects it.
 make ehr ARGS="artifact fetch --name fhir-validator-cli --version 6.9.12"
 make ehr ARGS="gate v2 test/fixtures/v2"
 make ehr ARGS="gate fhir out/demo-mutants --report out/demo-mutants-report.edn"

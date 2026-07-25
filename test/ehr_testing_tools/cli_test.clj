@@ -376,6 +376,86 @@
     (is (= :gate-rejected (:category r)))
     (is (= 1 (cli/result->exit-code r)))))
 
+;; ---- --treat-no-verdict-as (`ehr gate --treat-no-verdict-as
+;; pass|rejected`, ADR-0010): policy totality at the act layer. Tested
+;; against `gate-command` directly with an injected fake gate-file-fn --
+;; neither judge.v2 (never produces :no-verdict) nor judge.fhir
+;; (needs a real subprocess) can produce a :no-verdict outcome
+;; hermetically, matching this repo's own dependency-injection
+;; testing convention. ----
+
+(defn- fake-no-verdict-gate-file
+  [_path]
+  (result/ok {:verdict :no-verdict :cause :terminology-suppressed
+              :findings [{:severity :warning :code "code-invalid"
+                          :locator {:format :fhir :path "x"} :message "m"
+                          :engine {:name "e" :version "1"}
+                          :disposition :no-verdict :cause :terminology-suppressed}]}))
+
+(defn- fake-rejected-gate-file
+  [_path]
+  (result/ok {:verdict :rejected
+              :findings [{:severity :error :code "invalid"
+                          :locator {:format :fhir :path "x"} :message "m"
+                          :engine {:name "e" :version "1"}
+                          :disposition :rejected}]}))
+
+(deftest gate-command-default-exit-code-for-no-verdict-is-distinct-test
+  (let [gate-fn (cli/gate-command fake-no-verdict-gate-file (fn [_dir] (result/ok {:results []})) :fake)
+        r (gate-fn {:path "some-file.json"})]
+    (is (= :gate-no-verdict (:category r)))
+    (is (= cli/no-verdict-exit-code (cli/result->exit-code r)))
+    (is (not (contains? #{0 1 2} (cli/result->exit-code r)))
+        "distinct from the existing ok/rejected/error codes -- no silent default")))
+
+(deftest gate-command-treat-no-verdict-as-pass-remaps-to-ok-test
+  (let [gate-fn (cli/gate-command fake-no-verdict-gate-file (fn [_dir] (result/ok {:results []})) :fake)
+        r (gate-fn {:path "some-file.json" :treat-no-verdict-as "pass"})]
+    (is (result/ok? r))
+    (is (= 0 (cli/result->exit-code r)))))
+
+(deftest gate-command-treat-no-verdict-as-rejected-remaps-to-rejected-test
+  (let [gate-fn (cli/gate-command fake-no-verdict-gate-file (fn [_dir] (result/ok {:results []})) :fake)
+        r (gate-fn {:path "some-file.json" :treat-no-verdict-as "rejected"})]
+    (is (result/rejected? r))
+    (is (= :gate-rejected (:category r)))
+    (is (= 1 (cli/result->exit-code r)))))
+
+(deftest gate-command-treat-no-verdict-as-rejects-other-values-test
+  (let [gate-fn (cli/gate-command fake-no-verdict-gate-file (fn [_dir] (result/ok {:results []})) :fake)
+        r (gate-fn {:path "some-file.json" :treat-no-verdict-as "bogus"})]
+    (is (result/rejected? r))
+    (is (= :invalid-treat-no-verdict-as (:category r)))
+    (is (= 1 (cli/result->exit-code r)))))
+
+(deftest gate-command-treat-no-verdict-as-pass-does-not-mask-a-genuine-rejection-test
+  (let [gate-fn (cli/gate-command fake-rejected-gate-file (fn [_dir] (result/ok {:results []})) :fake)
+        r (gate-fn {:path "some-file.json" :treat-no-verdict-as "pass"})]
+    (is (result/rejected? r))
+    (is (= :gate-rejected (:category r)))))
+
+(deftest gate-command-no-flag-and-no-no-verdict-is-plain-ok-test
+  (let [gate-fn (cli/gate-command (fn [_path] (result/ok {:verdict :pass :findings []}))
+                                   (fn [_dir] (result/ok {:results []})) :fake)
+        r (gate-fn {:path "some-file.json"})]
+    (is (result/ok? r))
+    (is (= 0 (cli/result->exit-code r)))))
+
+(deftest fhir-gate-command-threads-treat-no-verdict-as-through-to-gate-command-test
+  ;; No real subprocess exercised (hermetic-suite discipline) -- an
+  ;; invalid flag value is rejected before the validator artifact is
+  ;; even resolved, which is enough to prove the option reaches
+  ;; gate-command's own opts map rather than being silently dropped.
+  (let [art {:kind :engine :name "fhir-validator-cli" :version "6.9.12"
+             :sha256 (apply str (repeat 64 "c")) :source "https://example.invalid/v.jar"
+             :acquired "2026-07-24" :license-status :verified}
+        lockfile (temp-lockfile [art])
+        r (cli/fhir-gate-command {:path "test/fixtures/v2/adt-a01-admit.hl7" :lockfile lockfile
+                                   :treat-no-verdict-as "bogus"
+                                   :java-bin "/fake/java"})]
+    (is (result/rejected? r))
+    (is (= :invalid-treat-no-verdict-as (:category r)))))
+
 (deftest gate-v2-command-baseline-mode-writes-the-baseline-relative-report-when-requested-test
   (let [in-dir (temp-dir*)
         _ (spit (io/file in-dir "a.hl7") (slurp "test/fixtures/v2/adt-a01-admit.hl7"))
