@@ -418,10 +418,23 @@ declared leak, given a typed channel and a totality law. O2 resolved as
 designed: `judge.fhir`'s terminology-suppressed classification is
 `no-verdict(:terminology-suppressed)` — the judge failed to fully
 *apply* the criterion; the criterion didn't fail to decide.
-`worst-of` ranks `:no-verdict` above `:rejected` — a corpus that
-couldn't be fully judged is not a corpus that passed — noted as a
-policy-flavored ranking, an O3-adjacent exhibit rather than a
-neutral fact. `:indeterminate` keeps its name in v1 (same conservatism
+`worst-of` ranks `:rejected` above `:no-verdict` above
+`:indeterminate` above `:pass` — revised during this same session's
+Step 5 integration run: the first draft ranked `:no-verdict` above
+`:rejected` outright, but every real, US-Core-profiled Synthea file
+mixes terminology-suppressed findings with genuine profile-driven
+violations in the same file (EXP-C5) — confirmed directly, one mutant
+bundle carried 3062 terminology-suppressed issues alongside its
+injected defect's own — so that ordering made every real file's
+aggregate verdict `:no-verdict` regardless of an actual detected
+defect, overriding rather than merely losing to contract-pairing's and
+baseline-gating's polarity regression (both integration suites failed
+on exactly this). The revised ordering still ranks `:no-verdict` above
+`:indeterminate`/`:pass` — a corpus the judge couldn't fully apply its
+criterion to is worse than one the criterion simply didn't decide — but
+a confirmed violation elsewhere in the same file still dominates the
+aggregate. Noted as a policy-flavored ranking, an O3-adjacent exhibit
+rather than a neutral fact. `:indeterminate` keeps its name in v1 (same conservatism
 as O1: old baseline reports still serialize it); renaming to
 `:ambiguous` is deferred to signature-format v2, alongside O1's own
 verdict-name question.

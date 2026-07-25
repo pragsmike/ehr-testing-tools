@@ -17,7 +17,11 @@
   carries a :cause, in a sibling field, present if and only if the
   verdict is :no-verdict (`valid-cause-pairing?`, Malli-enforced).
   `worst-of` is the composition law across a file's findings:
-  :no-verdict beats :rejected beats :indeterminate beats :pass."
+  :rejected beats :no-verdict beats :indeterminate beats :pass -- a
+  confirmed violation still dominates the aggregate over incidental
+  partiality elsewhere in the same file (see `worst-of`'s own
+  docstring for why this isn't the ranking ADR-0010 originally
+  specified)."
   (:require [malli.core :as m]))
 
 (def Severity
@@ -79,17 +83,29 @@
   [finding]
   (m/validate Finding finding))
 
-;; :no-verdict ranked above :rejected (ADR-0010): a corpus that
-;; couldn't be fully judged is not a corpus that passed. This ordering
-;; is policy-flavored, not a neutral fact -- pre-registered as an
+;; :no-verdict ranked ABOVE :indeterminate but BELOW :rejected
+;; (ADR-0010, revised during this same session's Step 5 integration
+;; run): a corpus the judge couldn't fully apply its criterion to is
+;; worse than one the criterion simply didn't decide, but a confirmed
+;; violation elsewhere in the same file still dominates the aggregate.
+;; ADR-0010's first draft ranked :no-verdict above :rejected outright
+;; ("a corpus that couldn't be fully judged is not a corpus that
+;; passed") -- reverted after `make integration` showed every real,
+;; US-Core-profiled Synthea file mixes terminology-suppressed findings
+;; with genuine profile-driven violations in the SAME file (EXP-C5);
+;; under the original ranking, EVERY real file's aggregate verdict
+;; became :no-verdict regardless of an actual injected defect,
+;; overriding contract-pairing's and baseline-gating's polarity
+;; regression rather than merely losing to it. This ordering remains
+;; policy-flavored, not a neutral fact -- pre-registered as an
 ;; O3-adjacent exhibit (docs/palgebra-design.md §II.5): routing
 ;; decisions above the judge may reasonably rank these differently.
-(def ^:private verdict-rank {:pass 0 :indeterminate 1 :rejected 2 :no-verdict 3})
-(def ^:private rank->verdict {0 :pass 1 :indeterminate 2 :rejected 3 :no-verdict})
+(def ^:private verdict-rank {:pass 0 :indeterminate 1 :no-verdict 2 :rejected 3})
+(def ^:private rank->verdict {0 :pass 1 :indeterminate 2 :no-verdict 3 :rejected})
 
 (defn worst-of
   "The Judge kind's composition law across a seq of verdicts:
-  :no-verdict > :rejected > :indeterminate > :pass. An empty seq (no
+  :rejected > :no-verdict > :indeterminate > :pass. An empty seq (no
   findings, or no files) is :pass by definition -- there is nothing to
   reject, leave indeterminate, or fail to judge."
   [verdicts]

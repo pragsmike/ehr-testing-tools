@@ -127,10 +127,21 @@
     (is (= 2 (count (:findings o))))))
 
 (deftest interpret-worst-of-across-mixed-issues-test
+  ;; :rejected still dominates the aggregate over an incidental
+  ;; terminology-suppressed finding elsewhere in the same file -- the
+  ;; revised ranking (judge/finding.clj), not the fourth arm's original
+  ;; above-:rejected draft, which made a real corpus's genuine
+  ;; violations invisible at the file level (Step 5 integration finding).
   (let [o (gate/interpret (outcome advisory-warning genuine-structure-error terminology-suppressed-warning) sample-engine)]
-    (is (= :no-verdict (:verdict o)) "no-verdict beats rejected beats pass (ADR-0010)")
-    (is (= :terminology-suppressed (:cause o)))
+    (is (= :rejected (:verdict o)) "rejected beats no-verdict beats indeterminate beats pass")
+    (is (not (contains? o :cause)))
     (is (= 3 (count (:findings o))))))
+
+(deftest interpret-worst-of-no-verdict-beats-pass-when-nothing-is-rejected-test
+  (let [o (gate/interpret (outcome advisory-warning terminology-suppressed-warning) sample-engine)]
+    (is (= :no-verdict (:verdict o)))
+    (is (= :terminology-suppressed (:cause o)))
+    (is (= 2 (count (:findings o))))))
 
 (deftest interpret-locator-strips-the-validator-own-type-disambiguation-test
   ;; The validator's own expression syntax embeds

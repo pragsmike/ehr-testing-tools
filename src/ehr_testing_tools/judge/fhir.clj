@@ -237,7 +237,7 @@
   finding itself as :disposition, for auditability, with a sibling
   :cause when :disposition is :no-verdict). Overall verdict is the
   worst-of every finding's classification (judge.finding/worst-of):
-  :no-verdict > :rejected > :pass -- when the overall verdict is
+  :rejected > :no-verdict > :pass -- when the overall verdict is
   :no-verdict, :cause is taken from the first contributing finding (the
   only cause in this taxonomy today is :terminology-suppressed, so no
   finding ever disagrees with another in practice). No issues at all is

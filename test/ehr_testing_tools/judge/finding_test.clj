@@ -19,7 +19,15 @@
   (is (finding/valid? (assoc (sample-finding :warning) :native-ref {:issue-index 0}))))
 
 ;; ---- worst-of: the Judge kind's composition law, now over four
-;; values (ADR-0010): :no-verdict > :rejected > :indeterminate > :pass ----
+;; values (ADR-0010): :rejected > :no-verdict > :indeterminate > :pass.
+;; :no-verdict ranks below :rejected -- not above it, as ADR-0010
+;; originally specified -- because a real, US-Core-profiled corpus
+;; mixes terminology-suppressed findings with genuine violations in the
+;; SAME file (EXP-C5); ranking :no-verdict above :rejected made every
+;; such file's aggregate verdict :no-verdict regardless of an actual
+;; injected defect, discovered via the Step 5 integration run against
+;; the real validator and reverted (see judge/finding.clj's own
+;; verdict-rank comment). ----
 
 (deftest worst-of-empty-is-pass-test
   (is (= :pass (finding/worst-of []))))
@@ -38,12 +46,16 @@
 (deftest worst-of-no-verdict-alone-is-no-verdict-test
   (is (= :no-verdict (finding/worst-of [:no-verdict]))))
 
-(deftest worst-of-no-verdict-beats-rejected-test
-  (is (= :no-verdict (finding/worst-of [:rejected :no-verdict]))
-      "a corpus that couldn't be fully judged is not a corpus that passed"))
+(deftest worst-of-no-verdict-beats-indeterminate-and-pass-test
+  (is (= :no-verdict (finding/worst-of [:pass :indeterminate :no-verdict]))
+      "a corpus the judge couldn't fully apply its criterion to is worse than one the criterion simply didn't decide"))
 
-(deftest worst-of-no-verdict-beats-all-other-three-test
-  (is (= :no-verdict (finding/worst-of [:pass :indeterminate :rejected :no-verdict]))))
+(deftest worst-of-rejected-beats-no-verdict-test
+  (is (= :rejected (finding/worst-of [:rejected :no-verdict]))
+      "a confirmed violation elsewhere in the same file still dominates the aggregate"))
+
+(deftest worst-of-rejected-beats-all-other-three-test
+  (is (= :rejected (finding/worst-of [:pass :indeterminate :no-verdict :rejected]))))
 
 ;; ---- the no-verdict/cause pairing schema (ADR-0010, O2): a Malli
 ;; schema enforcing :cause is present if and only if verdict is
