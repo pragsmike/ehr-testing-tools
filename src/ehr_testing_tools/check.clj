@@ -1,16 +1,19 @@
 (ns ehr-testing-tools.check
   "The Check capability (P6): dataset vs expectations -- the corpus's
-  second judge, alongside Gate. Gate checks a datum against a standard
-  (a spec, a profile); Check verifies a datum against a caller's own
-  expectations (an expected corpus, or explicit assertions), which is
-  a genuinely different question -- \"is this conformant\" vs \"is this
-  what I expected.\"
+  second judge, alongside Gate. Gate's judges are the **validator**
+  species (docs/palgebra-design.md D2): their criterion comes from an
+  institutional registry (a spec, a profile). Check is the **checker**
+  species: its criterion is supplied by the occasion -- an expected
+  corpus, or explicit assertions -- which is a genuinely different
+  question -- \"is this conformant\" vs \"is this what I expected.\"
+  Same arrow (subject × criterion -> judgment), same verdict type; the
+  species differ only in where the criterion comes from.
 
-  Check is gate-kind (docs/notation.md): it splits its output into
-  pass/rejected and never modifies the datum it judges. Unlike Gate,
-  nothing in this v1 vocabulary maps to :indeterminate -- stated
+  Check is judge-kind (docs/notation.md, ADR-0009): it produces a
+  verdict plus findings over the datum and never modifies it. Unlike
+  Gate, nothing in this v1 vocabulary maps to :indeterminate -- stated
   plainly here rather than left implicit, since :indeterminate is
-  otherwise part of the gate kind's own floor.
+  otherwise part of the judge kind's own floor.
 
   Assertions are data (EDN, Malli-schema'd, versioned as
   `assertion-vocabulary-version`) -- a deliberately small v1 vocabulary:

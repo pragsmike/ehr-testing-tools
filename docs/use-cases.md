@@ -189,7 +189,7 @@ flowchart LR
 
 **You bring:** Your own corpus (foreign files, any origin).
 
-**You get:** A conformance report: verdicts plus findings, normalized to the shared finding envelope. Real-world, profile-stamped corpora carry pre-existing findings (EXP-C5) -- reach for --baseline mode (docs/gate-calibration.md) when file-level verdict alone can't discriminate old noise from a new problem.
+**You get:** A conformance report: verdicts plus findings, normalized to the shared finding envelope. Real-world, profile-stamped corpora carry pre-existing findings (EXP-C5) -- reach for --baseline mode (docs/judge-calibration.md) when file-level verdict alone can't discriminate old noise from a new problem.
 
 **Maturity:** usable
 
@@ -398,7 +398,7 @@ flowchart LR
 
 **You bring:** A corpus you gate repeatedly, and the report from the last run you trusted.
 
-**You get:** What changed: judge.report/diff-reports compares two full reports (every changed verdict, added/removed file, appeared/disappeared code); --baseline mode (docs/gate-calibration.md) answers the narrower did-anything-NEW-appear question for a single run against a captured baseline.
+**You get:** What changed: judge.report/diff-reports compares two full reports (every changed verdict, added/removed file, appeared/disappeared code); --baseline mode (docs/judge-calibration.md) answers the narrower did-anything-NEW-appear question for a single run against a captured baseline.
 
 **Maturity:** usable
 
@@ -673,7 +673,7 @@ flowchart LR
 
 **You bring:** A set of defect operators and a judge tier you want characterized.
 
-**You get:** A per-{operator, locator} classification of what that tier detects, misses, or can only partially resolve -- docs/gate-calibration.md is exactly this, the first instance, derived from EXP-C5's own method.
+**You get:** A per-{operator, locator} classification of what that tier detects, misses, or can only partially resolve -- docs/judge-calibration.md is exactly this, the first instance, derived from EXP-C5's own method.
 
 **Maturity:** usable
 

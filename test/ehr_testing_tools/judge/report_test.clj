@@ -132,7 +132,7 @@
 (deftest baseline-relative-report-matches-on-the-exact-severity-code-locator-triple-test
   ;; Same code and locator, but a different severity -- not a match;
   ;; the finding still counts as novel. Exact-triple matching is a
-  ;; documented limitation (docs/gate-calibration.md), not a bug.
+  ;; documented limitation (docs/judge-calibration.md), not a bug.
   (let [different-severity (f :warning "structure" "meta.profile")
         results [{:path "noisy.json" :verdict :rejected :findings [different-severity]}]
         br (report/baseline-relative-report results {} baseline-report)]

@@ -1,7 +1,7 @@
 (ns ehr-testing-tools.baseline-gating-test
   "Baseline-relative gating (P6) against the real official FHIR
   validator, not simulated -- the same EXP-C5-motivated scenario
-  documented in docs/gate-calibration.md, proven end to end: a
+  documented in docs/judge-calibration.md, proven end to end: a
   Synthea-generated R4 file already carries hundreds of profile-driven
   findings before any mutation (US Core, auto-loaded from the file's
   own declared meta.profile). Absolute verdict is :rejected for that

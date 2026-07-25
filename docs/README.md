@@ -20,8 +20,8 @@ need — each entry names the question that document answers.
    Gate, Check, Report — is built as of P6.)
 3. **[notation.md](notation.md)** — what does the resource-equation
    notation on that page mean, and why does this repo use it?
-   [gate-calibration.md](gate-calibration.md) is the companion page for
-   the Gate stage specifically: which defects each gate tier actually
+   [judge-calibration.md](judge-calibration.md) is the companion page for
+   the Gate stage specifically: which defects each judge tier actually
    catches, cited to EXP-C5 and the contract-pairing test suite, plus
    baseline-relative gating for real-world corpora (P6).
 4. **[components.md](components.md)** — what external engines and
@@ -47,7 +47,7 @@ need — each entry names the question that document answers.
    - **EXP-C5** ([protocol](experiments/EXP-C5.md),
      [results](experiments/EXP-C5-results.md)) — executed 2026-07-24 —
      official FHIR validator offline behavior and verdict-classification
-     policy; see [gate-calibration.md](gate-calibration.md) for what it
+     policy; see [judge-calibration.md](judge-calibration.md) for what it
      resolved.
    - **EXP-D3** — not yet run — CDC wrapper offline build.
 6. **[positioning.md](positioning.md)** — how does this repo relate to

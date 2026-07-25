@@ -1,4 +1,4 @@
-# Gate Calibration: Which Defects Does Which Gate Tier Catch
+# Judge Calibration: Which Defects Does Which Judge Tier Catch
 
 One page, honest, cited -- exactly the question a team gating its own
 ingestion-pipeline output against this repo's gates needs answered
@@ -8,7 +8,7 @@ suite (`test/ehr_testing_tools/contract_pairing_test.clj`, tagged
 `^:integration`, run explicitly against the real official FHIR
 validator -- not simulated).
 
-## FHIR gate (`gate.fhir`), base spec + whatever profile the input itself declares
+## FHIR judge (`judge.fhir`), base spec + whatever profile the input itself declares
 
 No implementation guide is pinned in `artifacts.lock.edn` this
 session -- but the official validator auto-loads any IG a resource's
@@ -29,14 +29,14 @@ appears at the mutation's own locator.
 | `wrong-type-value` | any typed field | **Yes** | `:rejected`, `error`/`invalid` ("the primitive value must be a boolean" / similar) | Clean JSON-type violation |
 | `remove-required-element` | **must be a genuinely min-cardinality-1 field** (e.g. `resourceType`, not `Patient.gender` -- gender is min 0 in base FHIR) | **Yes, if the locator is actually required** | `:rejected`, `fatal`/`invalid` ("Unable to find resourceType property") for `resourceType`; **nothing** for a locator that isn't actually required | The operator's own contract is conditional on the locator naming a required element -- verify the target's cardinality before trusting a "detected" result |
 | `invalid-code-value` | a field bound to a **base-FHIR-bundled** ValueSet (e.g. `Patient.gender` -> `AdministrativeGender`) | **Yes** | `:rejected`, `error`/`code-invalid` + `error`/`not-found` | Contrary to the a-priori assumption that this class is terminology-suppressed offline -- small, spec-bundled ValueSets are checked without a terminology server |
-| `invalid-code-value` | a field bound to a **terminology-server-dependent** code system (LOINC, SNOMED, UCUM, most `urn:oid:`-named systems) | **No, indeterminate** | `:indeterminate`, diagnostics containing "without using server" / "doesn't provide any codes" / similar | **Undetectable at this gate tier** -- catchable only with a terminology server or a locally packaged, complete ValueSet; untested directly in this session's contract-pairing suite (no such locator in the fixture), inferred from EXP-C5's own classification table |
+| `invalid-code-value` | a field bound to a **terminology-server-dependent** code system (LOINC, SNOMED, UCUM, most `urn:oid:`-named systems) | **No, indeterminate** | `:indeterminate`, diagnostics containing "without using server" / "doesn't provide any codes" / similar | **Undetectable at this judge tier** -- catchable only with a terminology server or a locally packaged, complete ValueSet; untested directly in this session's contract-pairing suite (no such locator in the fixture), inferred from EXP-C5's own classification table |
 
 **Severity note:** FHIR's `IssueSeverity` ValueSet has four values,
 not three -- `fatal` alongside `error`/`warning`/`information`.
-`gate.fhir` treats both `fatal` and `error` as `:rejected`-eligible
-(`rejecting-severities`, `ehr-testing-tools.gate.fhir`).
+`judge.fhir` treats both `fatal` and `error` as `:rejected`-eligible
+(`rejecting-severities`, `ehr-testing-tools.judge.fhir`).
 
-## v2 gate (`gate.v2`), base-structural only
+## v2 judge (`judge.v2`), base-structural only
 
 No mutation operators exist for HL7 v2 yet (P6, deferred, unblocked by
 this session's intake capability plus EXP-B2's round-trip finding).
@@ -49,14 +49,14 @@ checks conformance profiles, usage/cardinality beyond parse-time
 structure, predicates, or co-constraints (the NIST/CDC engine's own
 territory, EXP-D3, not adopted). Nothing here ever produces
 `:indeterminate`: there is no terminology and no profile at this tier,
-so there is no check this gate can only partially resolve.
+so there is no check this judge can only partially resolve.
 
 ## Reading this table
 
-A `:rejected` verdict from either gate is trustworthy: something the
-gate actually checked came back wrong. A `:pass` or `:indeterminate`
+A `:rejected` verdict from either judge is trustworthy: something the
+judge actually checked came back wrong. A `:pass` or `:indeterminate`
 verdict is a claim about *what was checked*, not a guarantee of
-correctness beyond that scope -- see the FHIR gate's profile-noise
+correctness beyond that scope -- see the FHIR judge's profile-noise
 caveat above, and see `README.md`'s maturity table for the one-line
 honest summary this page backs.
 
@@ -112,10 +112,10 @@ no longer do. Fuzzier matching (locator-path proximity, code
 synonymy) is real future work, not solved here -- see the plan file's
 P7 sketch.
 
-**Format-agnostic, not ternary-preserving:** `gate.report` (which owns
-this diffing, not either format-specific gate namespace) has no access
-to a format-specific per-finding classification like `gate.fhir`'s own
-`:policy` field, so `:relative` verdicts are binary (`:pass`/
+**Format-agnostic, not ternary-preserving:** `judge.report` (which owns
+this diffing, not either format-specific judge namespace) has no access
+to a format-specific per-finding classification like `judge.fhir`'s own
+`:disposition` field, so `:relative` verdicts are binary (`:pass`/
 `:rejected`), never `:indeterminate`, even when the underlying novel
 finding would itself classify as `:indeterminate` in `:absolute` mode.
 A novel indeterminate-worthy finding still counts as `:relative`

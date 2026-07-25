@@ -116,7 +116,7 @@ upstream bugs (locally packaged ValueSets can still fail to validate a
 code), so verdict policy classifies rather than trusts raw pass/fail;
 the validator also auto-loads whatever IG a resource's own
 `meta.profile` declares (US Core, for Synthea R4 output) with no `-ig`
-flag needed — see `docs/gate-calibration.md` for the consequence.
+flag needed — see `docs/judge-calibration.md` for the consequence.
 
 **Deliberately not used for.** Terminology validation against licensed
 vocabularies.

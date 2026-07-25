@@ -86,7 +86,7 @@
 ;; discovery that a profile-stamped corpus carries pre-existing
 ;; findings on every file, so a file-level verdict alone can't
 ;; discriminate a genuinely new problem from baseline noise -- see
-;; docs/gate-calibration.md for the full motivation and the exact-
+;; docs/judge-calibration.md for the full motivation and the exact-
 ;; match limitation this deliberately accepts. ----
 
 (defn- finding-key
@@ -118,7 +118,7 @@
   any format-specific per-finding classification (e.g. judge.fhir's own
   :disposition) that would be needed to preserve :indeterminate here; a
   novel :indeterminate-worthy finding still counts as :rejected in
-  relative mode. Stated plainly (docs/gate-calibration.md), not left
+  relative mode. Stated plainly (docs/judge-calibration.md), not left
   implicit."
   [{:keys [path findings id]} baseline]
   (let [known (baseline-finding-keys baseline path)

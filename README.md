@@ -22,7 +22,7 @@ base-structural (v2, over HAPI) and base-spec (FHIR, over the official
 validator), offline verdict policy, no implementation guide pinned yet
 though the machinery to pin one is built, plus baseline-relative mode
 for real-world corpora that carry pre-existing findings — see
-[`docs/gate-calibration.md`](docs/gate-calibration.md) for exactly
+[`docs/judge-calibration.md`](docs/judge-calibration.md) for exactly
 which defects each tier catches and which it doesn't. Check, the
 corpus's second judge alongside Gate, now exists too: golden
 equivalence against an expected corpus plus a small per-file assertion
@@ -86,7 +86,7 @@ the actual contract with readers, not a formality.
 | **Generate** (`corpus.generate`) | **Usable** | Clean-environment byte-reproducibility proven — [EXP-A4](docs/experiments/EXP-A4-results.md) |
 | **Mutate** (`corpus.mutate`) | **Experimental** | Works; days old; interfaces may still move — [EXP-B2](docs/experiments/EXP-B2-results.md) |
 | **Intake** (`corpus.intake`) | **Experimental** | Foreign-corpus cataloging; days old — same content-hash lineage as generated corpora |
-| **Gate** (`gate.fhir` / `gate.v2`) | **Experimental** | Base-spec (FHIR, official validator) / base-structural (v2, HAPI); offline verdict policy; no implementation guide pinned yet; baseline-relative mode for real-world corpora — [EXP-C5](docs/experiments/EXP-C5-results.md), [gate calibration](docs/gate-calibration.md) |
+| **Gate** (`judge.fhir` / `judge.v2`) | **Experimental** | Base-spec (FHIR, official validator) / base-structural (v2, HAPI); offline verdict policy; no implementation guide pinned yet; baseline-relative mode for real-world corpora — [EXP-C5](docs/experiments/EXP-C5-results.md), [judge calibration](docs/judge-calibration.md) |
 | **Check** (`ehr-testing-tools.check`) | **Experimental** | Dataset-vs-expectations judge alongside Gate: golden equivalence against an expected corpus (canonicalizer-aware) plus a small per-file assertion vocabulary (present/absent/value/count/schema); days old, v1 vocabulary deliberately small |
 
 **Status: pre-release.** This repo is public (as of

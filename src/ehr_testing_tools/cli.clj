@@ -144,7 +144,7 @@
   baseline-relative-report): the written/returned payload becomes
   {:absolute :relative} instead of a bare Report, and the exit-code
   decision below follows :relative's totals, not :absolute's -- see
-  docs/gate-calibration.md for when to reach for this and its exact-
+  docs/judge-calibration.md for when to reach for this and its exact-
   match limitation.
 
   Exit-code contract (ADR-0004's generic ok/rejected/error mapping,
