@@ -1,0 +1,91 @@
+# Nightly/manual integration workflow (ENF-1, enforcement wave,
+# 2026-07-25). Runs `make integration` -- the suite under
+# test-integration/ that needs real cached artifacts, network, and a
+# warm cache (e.g. judge.fhir's contract-pairing suite against the real
+# validator_cli.jar subprocess) -- which AGENTS.md's hermeticity policy
+# deliberately keeps off the per-push `make test`/`make coverage` path
+# (.github/workflows/ci.yml). This workflow is that suite's only CI
+# home: scheduled nightly plus on-demand via workflow_dispatch, never on
+# push/PR, and its failure reports without blocking anything -- nothing
+# in this repo's branch protection or ci.yml references this workflow's
+# status, so there is no merge for it to block.
+#
+# Cold-cache fetch, what and from where: three artifacts, all GitHub
+# release assets, all license-verified in notes/facts-register.md --
+# synthea 4.0.0 (Apache-2.0, F2), temurin-jdk 17.0.19+10 (GPLv2 +
+# Classpath Exception, F12), fhir-validator-cli 6.9.12 (Apache-2.0,
+# F5/F18). None of artifacts.lock.edn's current entries are NIST-origin
+# coordinates or touch hit-nexus.nist.gov (F14) -- that dependency would
+# only arise if this repo later adopts the CDC/NIST v2-validation engine
+# (EXP-D3), still blocked on the NIST license inquiry (F1/F15), and is
+# NOT part of what this job fetches today. F14's volatility note is
+# cited here for the general principle it establishes, not a literal
+# dependency: a job's cold-cache fetch depends on a live external
+# distribution point (GitHub's release-asset hosting, in this job's
+# actual case) rather than version-controlled state, so an outage of
+# that point fails this job -- and that failure is signal about artifact
+# availability, not CI flakiness to retry around.
+name: Integration
+
+on:
+  schedule:
+    # 07:00 UTC -- outside US/EU working hours, a quiet window for a job
+    # whose failures are investigated the next morning, not paged on.
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK (Temurin 17)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Clojure CLI
+        uses: DeLaGuardo/setup-clojure@13.6.1
+        with:
+          cli: latest
+
+      - name: Cache Clojure/Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.m2/repository
+            ~/.gitlibs
+            ~/.deps.clj
+          key: ${{ runner.os }}-clojure-${{ hashFiles('deps.edn') }}
+          restore-keys: |
+            ${{ runner.os }}-clojure-
+
+      # Engine-artifact cache (ADR-0005): keyed on artifacts.lock.edn's
+      # own hash, so a version/hash bump in the lockfile invalidates it
+      # automatically. Populates ~/.cache/ehr-testing-tools/artifacts --
+      # the default cache-dir ehr-testing-tools.artifact/cache-dir
+      # resolves to when EHR_TESTING_TOOLS_CACHE is unset (src/
+      # ehr_testing_tools/artifact.clj), covering both raw downloads
+      # (keyed by sha256) and resolve-and-extract's extracted/<sha256>
+      # subdirectories (e.g. the JDK and Synthea tarballs' unpacked
+      # form). A cache hit makes `ehr artifact fetch` below a no-network
+      # no-op (artifact/fetch short-circuits once cached-and-verified?
+      # is true); a cache miss means every fetch below hits the network
+      # for real -- see the header comment above for exactly what that
+      # is and isn't.
+      - name: Cache artifact cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ehr-testing-tools/artifacts
+          key: ${{ runner.os }}-artifacts-${{ hashFiles('artifacts.lock.edn') }}
+
+      - name: Prime artifact cache (synthea, temurin-jdk, fhir-validator-cli)
+        run: |
+          make ehr ARGS="artifact fetch --name synthea --version 4.0.0"
+          make ehr ARGS="artifact fetch --name temurin-jdk --version 17.0.19+10"
+          make ehr ARGS="artifact fetch --name fhir-validator-cli --version 6.9.12"
+
+      - name: make integration
+        run: make integration

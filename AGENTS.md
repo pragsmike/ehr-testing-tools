@@ -147,11 +147,14 @@ this repo.
   Run the integration suite explicitly with `make integration`
   (`clojure -X:integration`, the `:integration` alias) — it requires
   `ehr artifact fetch` for `synthea`, `temurin-jdk`, and
-  `fhir-validator-cli` first (see `make help`). CI
-  (`.github/workflows/ci.yml`) runs only `make test` and `make coverage`,
-  never `make integration` — see the enforcement-wave plan
-  (`.agents/plans/corpus-foundations.md`) for the proposed nightly job
-  that would run it with the cache pre-primed.
+  `fhir-validator-cli` first (see `make help`). The per-push CI job
+  (`.github/workflows/ci.yml`) runs `make test`, both lints, generated-
+  doc freshness, and `make coverage` — every *fast* gate — but never
+  `make integration`; that suite runs only in
+  `.github/workflows/integration.yml`, scheduled nightly plus
+  `workflow_dispatch`, with the artifact cache pre-primed and keyed on
+  `artifacts.lock.edn` (ENF-1, enforcement wave, 2026-07-25). Its
+  failure reports; it blocks no merge.
 
 ## Repo conventions
 
