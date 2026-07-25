@@ -102,6 +102,62 @@ and this section then defers to it (status line here, not deletion).
 
 ## DOC-1 — CLI help surface (code)
 
+**Done (2026-07-25).** Landed as five commits (Step 0 inventory through
+Step 5 close-out; prompt archived at
+`.agents/prompts/archive/2026-07-25-doc1-cli-help.md`). Itemized:
+
+- `ehr-testing-tools.cli.help`: one `cli-spec` data structure (every
+  group/verb, flags with one-line docs and defaults, gate/check
+  positional conventions, the 0/1/2/3 exit-code table citing
+  ADR-0004/0010) plus pure renderers (`render-top-level`,
+  `render-group`) -- text out, no parsing change. A coverage test
+  cross-checks the spec's [group verb] pairs against `dispatch`'s own
+  routing in both directions.
+- `ehr help`, `ehr help <group>`, and `--help` anywhere print that
+  plain text (exit 0) via `main!`'s injectable `println-fn`, bypassing
+  `render`/`--json` entirely -- the one deliberate EDN-out exception,
+  documented in `cli.clj`'s ns docstring. Bare `ehr` prints the same
+  top-level text but stays exit 2 (an incomplete invocation is still
+  an operational error). `--help` short-circuits before any capability
+  function runs.
+- `ehr corpus operators`: a pure registry read (`corpus.operators`'s
+  in-memory catalog), `:id`/`:format`/`:version`/`:locator-required?`/
+  contract `:type`/`:target` per row, optional `--format` filter,
+  sorted `[format id]`, ordinary `result/ok` so `--json` works for
+  free.
+- Bounded error-message pass: dispatch's four `:unknown-command` sites
+  (unknown group; unknown action under artifact/corpus/gate) gain
+  `:valid-options` (sourced from the same `cli-spec` `ehr help`
+  renders from) and `:hint "run: ehr help"`. `mutate-command`'s
+  `:unknown-operator` gains `:valid-options` (all registered operator
+  ids) and `:hint "run: ehr corpus operators"`. Every category is
+  unchanged -- proven by tests at each site.
+- README's Quickstart gained exactly two lines (`make ehr ARGS="help"`
+  at the top; a pointer to `ehr corpus operators` by the mutate
+  example); `make help`'s `ehr` line gained a pointer to `ehr help`.
+  No other README prose touched.
+- Full suite (439 tests), both lints, and the golden check
+  (`make pipeline && make use-cases`, no diff) all green at close-out;
+  coverage 90.49% forms / 93.85% lines, above the 85% floor. The new
+  surface was run for real (`help`, `help gate`, `corpus operators`,
+  a wrong verb) and confirmed exit codes 0/0/0/2 by eye.
+
+**Report to the author -- ruling-vs-source discrepancy found at Step
+0:** the DOC-1 prompt's Step 4 ruling names `:invalid-operator` and
+"operators.clj's validation" as the site to extend with valid IDs "for
+the requested format." The actual `:invalid-operator` site
+(`corpus/operators.clj`'s `register!`) is a schema check on hardcoded
+seed-catalog entries at namespace-load time -- never reachable from a
+user's CLI invocation, and entries there already carry their own
+`:format`, so there is no "requested format" to enumerate against. The
+CLI-reachable equivalent -- "you named an operator id/version that
+doesn't exist" -- is `cli.clj`'s own `:unknown-operator`
+(`mutate-command`), which this session extended instead (see the Step
+4 commit body for the full reasoning). `operators.clj`'s
+`:invalid-operator` was left untouched. Also from Step 0: no README
+quickstart flag was found to name something the source doesn't read,
+or vice versa, beyond what this wave itself added.
+
 The one code wave, first because it makes every later doc shorter
 (reference pages can say "run `ehr help gate`" instead of duplicating
 flag tables) and because it serves audiences 1 and 4 at once.
@@ -195,7 +251,7 @@ existing green behavior, not authoring new checks.
 
 | Wave | Deliverables | Status | Prompt |
 |---|---|---|---|
-| DOC-1 | `ehr help` surface (data-first spec, plain-text render, exit codes documented), operator-listing verb, bounded error-message pass | Not started | — |
+| DOC-1 | `ehr help` surface (data-first spec, plain-text render, exit codes documented), operator-listing verb, bounded error-message pass | **Done** (2026-07-25) | `.agents/prompts/archive/2026-07-25-doc1-cli-help.md` |
 | DOC-2 | Seven-audience register canonical in `positioning.md`; `docs/README.md` per-audience entry paths | Not started | — |
 | DOC-3 | `docs/cli.md`, `docs/locators.md`, `docs/operators.md`, `docs/formats.md` | Not started | — |
 | DOC-4 | Per-use-case runnable command strips (route: `:commands` in use-cases.edn vs. cookbook — open) | Not started | — |
