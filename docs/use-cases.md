@@ -249,7 +249,28 @@ flowchart LR
 
 **Maturity:** usable
 
-**You type:** no strip -- this repo doesn't drive this use case end to end, so there is no command sequence to copy. You bring: Your own corpus (foreign files, any origin).
+**You type:**
+
+```sh
+# Point this at your own corpus. This repo vendors one you can try
+# it on: five HL7 v2 messages, plus a synthetic 1,013-message corpus
+# under simhospital/ (ADR-0011).
+YOUR_CORPUS=test/fixtures/v2
+mkdir -p out/partner
+
+# Catalog it first. Intake recurses and records EVERY file it finds
+# -- content hash, sniffed format, source label, received date -- so
+# a file it can't sniff is recorded as :unknown, never skipped.
+make ehr ARGS="corpus intake --source-dir $YOUR_CORPUS \
+  --label partner-export --out out/partner/intake"
+cat out/partner/intake/intake-record.edn
+
+# Gate it. `gate v2` reads *.hl7 in the directory you name (not
+# recursively); `gate fhir` is the same shape for FHIR JSON.
+make ehr ARGS="gate v2 $YOUR_CORPUS --report out/partner/gate-report.edn"
+```
+
+`--report` writes a file and does not create its parent directory -- hence the `mkdir -p`. What the report contains, field by field: [formats.md](formats.md#the-report); the stdout envelope and the `--report` file are deliberately different shapes. If your corpus is real-world and profile-stamped, read [judge-calibration.md](judge-calibration.md#baseline-relative-gating-2026-07-25-p6) before you trust a red verdict, and reach for `--baseline` ([Regression baselining / drift detection](#regression-baselining--drift-detection)). One caveat about the wrapper: `make ehr` reports *make's* failure status (2) for any non-zero CLI exit, so a workflow branching on the 0/1/2/3 contract ([cli.md](cli.md#exit-codes)) should call `clojure -M -m ehr-testing-tools.cli ...` directly.
 
 ```
 foreign-file → catalog-entry + intake-record  [Intake]
@@ -464,7 +485,25 @@ flowchart LR
 
 **Maturity:** usable
 
-**You type:** no strip -- this repo doesn't drive this use case end to end, so there is no command sequence to copy. You bring: A corpus you gate repeatedly, and the report from the last run you trusted.
+**You type:**
+
+```sh
+mkdir -p out/regression
+
+# The run you trust becomes the baseline. Keep this file.
+make ehr ARGS="gate v2 test/fixtures/v2 --report out/regression/baseline.edn"
+
+# ...later, the same corpus again -- but judged relative to that
+# baseline: a finding counts toward rejection only if its
+# {severity, code, locator-path} isn't already in the baseline for
+# that same file. The exit code follows the relative view, so a
+# corpus that is identically noisy to its baseline still exits 0.
+make ehr ARGS="gate v2 test/fixtures/v2 \
+  --report out/regression/today.edn \
+  --baseline out/regression/baseline.edn"
+```
+
+In `--baseline` mode the payload becomes `{:absolute :relative}` rather than a bare report -- `:absolute` still carries every finding, `:relative` is the filtered view the exit code follows ([formats.md](formats.md#baseline-mode-changes-the-payloads-shape), [judge-calibration.md](judge-calibration.md#baseline-relative-gating-2026-07-25-p6)). Baseline matching is by file path, so this answers *did anything new appear in this corpus*. The wider question -- every changed verdict, added/removed file, appeared/disappeared code between two arbitrary reports -- is `ehr-testing-tools.judge.report/diff-reports`, a library function today, not a CLI verb.
 
 ```
 datum × validator-artifact × runtime × hapi-hl7v2-dep × profile-artifact → pass + rejected + indeterminate  [Gate]  {catalytic: validator-artifact, runtime, hapi-hl7v2-dep, profile-artifact}
@@ -579,7 +618,26 @@ flowchart LR
 
 **Maturity:** usable
 
-**You type:** no strip -- this repo doesn't drive this use case end to end, so there is no command sequence to copy. You bring: A vendor-delivered corpus.
+**You type:**
+
+```sh
+# The delivered corpus, as received.
+VENDOR_CORPUS=test/fixtures/v2
+mkdir -p out/acceptance
+
+# 1. Catalog before you accept: a content hash per file, and one
+#    batch record naming the source and the date you received it.
+make ehr ARGS="corpus intake --source-dir $VENDOR_CORPUS \
+  --label acme-delivery --received 2026-07-26 \
+  --out out/acceptance/intake"
+cat out/acceptance/intake/intake-record.edn
+
+# 2. Gate it, and keep the report: that is the evidence behind the
+#    acceptance decision, rather than a spot check.
+make ehr ARGS="gate v2 $VENDOR_CORPUS --report out/acceptance/gate-report.edn"
+```
+
+The intake record's `:catalog-hash` is the sha256 of the catalog file's own bytes, so "this is the delivery I accepted" is later checkable against the record rather than against memory ([formats.md](formats.md)). The gate's exit code is the acceptance decision in machine-readable form -- 0 accept, 1 rejected, 3 the aggregate contains `:no-verdict` and you have not said how to treat it ([cli.md](cli.md#exit-codes)) -- but note that `make ehr` reports make's own failure status (2) for any non-zero CLI exit, so a gate that branches on the contract should invoke `clojure -M -m ehr-testing-tools.cli ...` directly.
 
 ```
 foreign-file → catalog-entry + intake-record  [Intake]
@@ -719,7 +777,39 @@ flowchart LR
 
 **Maturity:** experimental
 
-**You type:** no strip -- this repo doesn't drive this use case end to end, so there is no command sequence to copy. You bring: A corpus that's been through generation, mutation, and gating.
+**You type:**
+
+```sh
+# The trail is not one command: it is what the ordinary commands
+# leave behind, each artifact independently checkable.
+mkdir -p out/audit
+
+# Generate -- the manifest is the first link.
+make ehr ARGS="corpus generate --config-path config/synthea/synthea.properties \
+  --seed 100 --clinician-seed 555 --population 10 \
+  --reference-date 20260101 --output-dir out/audit/corpus"
+PATIENT_FILE=$(ls out/audit/corpus/fhir/*.json | grep -v -e hospitalInformation -e practitionerInformation | head -1)
+
+# Mutate -- the lineage record is the second: hash-linked to the
+# file it came from, corrected only by a new record, never by
+# editing this one.
+make ehr ARGS="corpus mutate --input $PATIENT_FILE \
+  --operator-id remove-required-element --locator-path entry[0].resource.resourceType \
+  --output-dir out/audit/mutants"
+
+# Gate -- the report is the third, and it is finding-level, not
+# just a verdict. The gate legitimately rejects here: that is the
+# evidence, not a failure of the run.
+make ehr ARGS="artifact fetch --name fhir-validator-cli --version 6.9.12"
+make ehr ARGS="gate fhir out/audit/mutants --report out/audit/gate-report.edn"
+
+# The three links, side by side.
+ls out/audit/corpus/manifest.edn \
+   out/audit/mutants/lineage/*.lineage.edn \
+   out/audit/gate-report.edn
+```
+
+There is no `ehr audit package` verb: assembling these three into one shareable evidence bundle is future work, as *You get* above already says. What ships is that each artifact is independently checkable -- a lineage record's `:id` is the hash of its own remaining fields, a manifest names the sha256 of every artifact that produced the corpus, and the report carries findings rather than verdicts alone ([formats.md](formats.md)). Expect the gate to reject and therefore expect a non-zero exit: `make` reports its own status (2) where the CLI itself exits 1 ([cli.md](cli.md#exit-codes)), so a pipeline that records the verdict should call `clojure -M -m ehr-testing-tools.cli gate fhir ...` directly. `gate fhir` runs the real validator as a subprocess and takes minutes, not seconds.
 
 ```
 canonical-fhir-datum × operator-catalog → mutant-fhir-datum + lineage-record  [Mutate]  {catalytic: operator-catalog}
@@ -774,7 +864,35 @@ flowchart LR
 
 **Maturity:** usable
 
-**You type:** no strip -- this repo doesn't drive this use case end to end, so there is no command sequence to copy. You bring: A set of defect operators and a judge tier you want characterized.
+**You type:**
+
+```sh
+# The tier you are characterizing (v2 here; `gate fhir` is the
+# other), and the operators you are characterizing it against.
+make ehr ARGS="corpus operators --format v2"
+mkdir -p out/calibration
+
+# Baseline: what does this tier say about the file BEFORE you
+# break it? On a real-world corpus this is not a formality.
+make ehr ARGS="gate v2 test/fixtures/v2/adt-a01-admit.hl7 \
+  --report out/calibration/before.edn"
+
+# One mutant per {operator, locator} cell you want filled in.
+make ehr ARGS="corpus mutate --input test/fixtures/v2/adt-a01-admit.hl7 \
+  --operator-id blank-required-field --locator-path MSH-9 \
+  --output-dir out/calibration/blank-required-field"
+
+# Gate the mutant at the same tier. The verdict, and the finding
+# code it carries, are that cell of the table.
+make ehr ARGS="gate v2 out/calibration/blank-required-field \
+  --report out/calibration/after.edn"
+
+# before: {:pass 1 ...} / after: {:rejected 1 ...} with
+# :by-code {"hl7-exception" 1} -- that difference is the result.
+cat out/calibration/before.edn out/calibration/after.edn
+```
+
+Three cells are worth knowing before you start: a `:rejected` verdict is trustworthy, a `:pass` is a claim about what was checked rather than about correctness, and `:no-verdict` means the judge couldn't fully apply its criterion at all -- [judge-calibration.md](judge-calibration.md#reading-this-table) is the first instance of exactly this study, run over both tiers, and [operators.md](operators.md#what-this-catalog-does-not-tell-you) explains why conviction is measured rather than declared. Locator syntax, including the MSH conventions this example depends on: [locators.md](locators.md#hl7-v2-locators).
 
 ```
 canonical-fhir-datum × operator-catalog → mutant-fhir-datum + lineage-record  [Mutate]  {catalytic: operator-catalog}
