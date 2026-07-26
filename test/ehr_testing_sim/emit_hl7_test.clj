@@ -132,6 +132,152 @@
     (testing "a non-UTC fixed offset renders its own suffix, arithmetic unaffected (no timezone database, ADR-0011)"
       (is (= "20240101013000-0500" (emit-hl7/hl7-timestamp "2024-01-01" 5400 "-05:00"))))))
 
+;; --- M2b: churn family message types --------------------------------------
+
+(def ^:private churn-facility
+  {:id :churn-test
+   :wards [{:id :ed :name "ED" :beds 0 :surge-slots 10
+            :surge-format "%s-H%02d" :class :ed}
+           {:id :renal :name "Renal" :beds 1 :surge-slots 1
+            :surge-format "%s-H%02d" :class :inpatient}]})
+
+(def ^:private churn-providers
+  [{:id "1234567893" :name {:family "Chen" :given "A"} :role :attending
+    :specialty "Nephrology" :wards [:renal :ed]}])
+
+(defn- world-of
+  [patients]
+  {:patients patients :facility churn-facility :providers churn-providers :ground-truth []})
+
+(defn- fold-events
+  [world events]
+  (-> (reduce (fn [w ev]
+                (reduce (fn [w2 {:keys [patient-id]}]
+                          (update-in w2 [:patients patient-id] engine/evolve ev))
+                        w (:participants ev)))
+              world events)
+      (update :ground-truth into events)))
+
+(defn- admit
+  [world t patient-id location]
+  (let [{:keys [events]} (engine/decide (Random. 1) t world patient-id
+                                        {:type :admission :location location})]
+    (fold-events world events)))
+
+(defn- nth-field-value
+  "Like message/get-field-first-value, but for the Nth (0-based)
+  occurrence of a repeating segment -- needed for A17's two PID/PV1
+  pairs in one message (get-field-first-value only ever sees the
+  first)."
+  [parsed segment-id field-index n]
+  (let [segment (nth (message/get-segments parsed segment-id) n)]
+    (parser/pr-field (:delimiters parsed) (message/get-segment-field-raw segment field-index))))
+
+(deftest message-type-registry-has-the-churn-family
+  (is (= {:type "ADT" :trigger "A11"} (emit-hl7/message-type-registry :cancel-admit)))
+  (is (= {:type "ADT" :trigger "A12"} (emit-hl7/message-type-registry :cancel-transfer)))
+  (is (= {:type "ADT" :trigger "A13"} (emit-hl7/message-type-registry :cancel-discharge)))
+  (is (= {:type "ADT" :trigger "A17"} (emit-hl7/message-type-registry :bed-swap)))
+  (is (= {:type "ADT" :trigger "A40"} (emit-hl7/message-type-registry :merge))))
+
+(deftest cancel-admit-round-trips-as-a11
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+        world1 (admit world0 0 "P1" "Renal")
+        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1" {:type :cancel-admit})
+        world2 (fold-events world1 events)
+        messages (emit-hl7/emit (:ground-truth world2) ref-date utc-offset churn-facility churn-providers)
+        a11 (last messages)
+        parsed (parser/parse a11)]
+    (is (= 2 (count messages)))
+    (is (= "MRN000001" (message/get-field-first-value parsed "PID" 3)))
+    (is (= "ADT^A11" (message/get-field-first-value parsed "MSH" 9)))))
+
+(deftest cancel-transfer-round-trips-as-a12-and-reinstates-location
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+        world1 (admit world0 0 "P1" "Renal")
+        pre-location (get-in world1 [:patients "P1" :location])
+        {t-events :events} (engine/decide (Random. 1) 10 world1 "P1" {:type :transfer :location "ED"})
+        world2 (fold-events world1 t-events)
+        {c-events :events} (engine/decide (Random. 1) 20 world2 "P1" {:type :cancel-transfer})
+        world3 (fold-events world2 c-events)
+        messages (emit-hl7/emit (:ground-truth world3) ref-date utc-offset churn-facility churn-providers)
+        a12 (last messages)
+        parsed (parser/parse a12)]
+    (is (= 3 (count messages)))
+    (is (= "ADT^A12" (message/get-field-first-value parsed "MSH" 9)))
+    (testing "PV1-3 shows the reinstated (current) location"
+      (is (= (str (:ward pre-location) "^^" (:bed pre-location) "^churn-test")
+             (message/get-field-first-value parsed "PV1" 3))))))
+
+(deftest cancel-discharge-round-trips-as-a13
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+        world1 (admit world0 0 "P1" "Renal")
+        {d-events :events} (engine/decide (Random. 1) 10 world1 "P1" {:type :discharge})
+        world2 (fold-events world1 d-events)
+        {c-events :events} (engine/decide (Random. 1) 20 world2 "P1" {:type :cancel-discharge})
+        world3 (fold-events world2 c-events)
+        messages (emit-hl7/emit (:ground-truth world3) ref-date utc-offset churn-facility churn-providers)
+        a13 (last messages)
+        parsed (parser/parse a13)]
+    (is (= 3 (count messages)))
+    (is (= "ADT^A13" (message/get-field-first-value parsed "MSH" 9)))))
+
+(deftest transfer-in-error-emits-two-messages-a02-then-a12-in-error
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+        world1 (admit world0 0 "P1" "Renal")
+        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1"
+                                        {:type :transfer-in-error :location "ED"})
+        world2 (fold-events world1 events)
+        messages (emit-hl7/emit (:ground-truth world2) ref-date utc-offset churn-facility churn-providers)]
+    (is (= 3 (count messages)))
+    (is (= "ADT^A02" (message/get-field-first-value (parser/parse (second messages)) "MSH" 9)))
+    (is (= "ADT^A12" (message/get-field-first-value (parser/parse (last messages)) "MSH" 9)))))
+
+(deftest bed-swap-emits-one-a17-message-carrying-both-patients
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")
+                          "P2" (engine/initial-patient "P2" "MRN000002")})
+        world1 (-> world0 (admit 0 "P1" "Renal") (admit 5 "P2" "Renal"))
+        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1" {:type :bed-swap})
+        world2 (fold-events world1 events)
+        messages (emit-hl7/emit (:ground-truth world2) ref-date utc-offset churn-facility churn-providers)
+        a17 (last messages)
+        parsed (parser/parse a17)]
+    (testing "ONE message for the two-participant event -- event id (log position), not mrn alone, is what derivability keys on"
+      (is (= 3 (count messages)))
+      (is (= "ADT^A17" (message/get-field-first-value parsed "MSH" 9))))
+    (testing "both patients' PID segments are present, each with their NEW bed"
+      (is (= #{"MRN000001" "MRN000002"}
+             (set [(nth-field-value parsed "PID" 3 0) (nth-field-value parsed "PID" 3 1)])))
+      (let [pv1-3-values (set [(nth-field-value parsed "PV1" 3 0) (nth-field-value parsed "PV1" 3 1)])]
+        (is (contains? pv1-3-values (str (get-in world1 [:patients "P1" :location :ward]) "^^"
+                                          (get-in world1 [:patients "P1" :location :bed]) "^churn-test")))
+        (is (contains? pv1-3-values (str (get-in world1 [:patients "P2" :location :ward]) "^^"
+                                          (get-in world1 [:patients "P2" :location :bed]) "^churn-test")))))))
+
+(deftest merge-emits-one-a40-message-with-mrg-and-pid
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")
+                          "P2" (engine/initial-patient "P2" "MRN000002")})
+        world1 (-> world0 (admit 0 "P1" "Renal") (admit 5 "P2" "Renal"))
+        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1" {:type :merge :with "P2"})
+        world2 (fold-events world1 events)
+        messages (emit-hl7/emit (:ground-truth world2) ref-date utc-offset churn-facility churn-providers)
+        a40 (last messages)
+        parsed (parser/parse a40)]
+    (is (= 3 (count messages)))
+    (testing "PID carries the SURVIVING mrn, MRG carries the prior (merged-away) one"
+      (is (= "ADT^A40" (message/get-field-first-value parsed "MSH" 9)))
+      (is (= "MRN000001" (message/get-field-first-value parsed "PID" 3)))
+      (is (= "MRN000002" (message/get-field-first-value parsed "MRG" 1))))))
+
+(deftest churn-family-emission-is-deterministic
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")
+                          "P2" (engine/initial-patient "P2" "MRN000002")})
+        world1 (-> world0 (admit 0 "P1" "Renal") (admit 5 "P2" "Renal"))
+        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1" {:type :bed-swap})
+        world2 (fold-events world1 events)]
+    (is (= (emit-hl7/emit (:ground-truth world2) ref-date utc-offset churn-facility churn-providers)
+           (emit-hl7/emit (:ground-truth world2) ref-date utc-offset churn-facility churn-providers)))))
+
 (defspec timestamp-anchoring-property 100
   (prop/for-all [seconds (gen/choose 0 6000000)]
     (let [ts (emit-hl7/hl7-timestamp ref-date seconds utc-offset)

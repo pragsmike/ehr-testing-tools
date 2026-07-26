@@ -214,6 +214,277 @@
       (let [final-world (:world-after (last records))]
         (is (= 2 (count final-world)))))))
 
+;; --- M2b: churn family ----------------------------------------------------
+
+(def ^:private churn-facility
+  "Two inpatient wards plus an ED with generous surge -- room for a
+  bed-swap between a licensed and a surge occupant, and for admissions
+  that never legitimately exhaust."
+  {:id :churn-test
+   :wards [{:id :ed :name "ED" :beds 0 :surge-slots 10
+            :surge-format "%s-H%02d" :class :ed}
+           {:id :renal :name "Renal" :beds 1 :surge-slots 1
+            :surge-format "%s-H%02d" :class :inpatient}]})
+
+(def ^:private churn-providers
+  [{:id "1234567893" :name {:family "Chen" :given "A"} :role :attending
+    :specialty "Nephrology" :wards [:renal :ed]}])
+
+(defn- world-of
+  [patients]
+  {:patients patients :facility churn-facility :providers churn-providers :ground-truth []})
+
+(defn- fold-events
+  "Test helper: applies `events` to `world`'s patients (every named
+  participant, ADR-0010) and appends them to `world`'s :ground-truth --
+  mirrors what engine/run's loop does each iteration, for scripted
+  multi-step tests that drive decide/evolve directly."
+  [world events]
+  (-> (reduce (fn [w ev]
+                (reduce (fn [w2 {:keys [patient-id]}]
+                          (update-in w2 [:patients patient-id] engine/evolve ev))
+                        w (:participants ev)))
+              world events)
+      (update :ground-truth into events)))
+
+(defn- admit
+  "Scripted-test helper: decides+folds an :admission for `patient-id`,
+  returning the updated world."
+  [world t patient-id location]
+  (let [{:keys [events]} (engine/decide (Random. 1) t world patient-id
+                                        {:type :admission :location location})]
+    (fold-events world events)))
+
+;; --- cancel-admit -> A11 --------------------------------------------------
+
+(deftest cancel-admit-reverts-patient-to-new
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+        world1 (admit world0 0 "P1" "Renal")
+        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1" {:type :cancel-admit})
+        world2 (fold-events world1 events)]
+    (testing "one event, referencing the admission it cancels by log position"
+      (is (= 1 (count events)))
+      (is (= :cancel-admit (:event (first events))))
+      (is (= 0 (:cancels-event-id (first events))))
+      (is (= [{:patient-id "P1" :role :subject}] (:participants (first events)))))
+    (testing "patient reverts to :new, no location/attending/class left behind"
+      (let [p (get-in world2 [:patients "P1"])]
+        (is (= :new (:status p)))
+        (is (nil? (:location p)))
+        (is (not (contains? p :class)))))))
+
+(deftest cancel-admit-on-never-admitted-patient-is-a-structured-rejection-not-a-throw
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+        outcome (engine/decide (Random. 1) 10 world0 "P1" {:type :cancel-admit})]
+    (is (empty? (:events outcome)))
+    (is (some? (:rejected outcome)))
+    (is (= "P1" (:patient-id (:rejected outcome))))))
+
+;; --- cancel-transfer -> A12: the shadow-field dissolution -----------------
+
+(deftest cancel-transfer-reinstates-prior-location-from-the-log-no-shadow-field
+  (testing "the SimHospital PriorLocationForCancelTransfer dissolution
+            (docs/patient-state-model.md, docs/event-sourcing.md):
+            cancelling a transfer reinstates the pre-transfer location by
+            QUERYING THE LOG, not by reading a shadow field the
+            accumulator carries for this purpose."
+    (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+          world1 (admit world0 0 "P1" "Renal")
+          pre-transfer-location (get-in world1 [:patients "P1" :location])
+          {transfer-events :events} (engine/decide (Random. 1) 10 world1 "P1"
+                                                    {:type :transfer :location "ED"})
+          world2 (fold-events world1 transfer-events)
+          _ (is (not= pre-transfer-location (get-in world2 [:patients "P1" :location]))
+                "sanity: the transfer actually moved the patient")
+          {cancel-events :events} (engine/decide (Random. 1) 20 world2 "P1" {:type :cancel-transfer})
+          world3 (fold-events world2 cancel-events)
+          reinstated (get-in world3 [:patients "P1"])]
+      (testing "one cancel-transfer event, referencing the transfer by log position"
+        (is (= 1 (count cancel-events)))
+        (is (= :cancel-transfer (:event (first cancel-events))))
+        (is (= 1 (:cancels-event-id (first cancel-events)))))
+      (testing "location and home-ward are reinstated exactly"
+        (is (= pre-transfer-location (:location reinstated)))
+        (is (= "Renal" (:home-ward reinstated))))
+      (testing "the accumulator holds NO prior-location shadow field -- only :location itself"
+        (is (not (contains? reinstated :prior-location)))
+        (is (not (contains? reinstated :location-before-cancel)))
+        (is (= #{:patient-id :mrns :active-mrn :status :class :home-ward :location :attending :admitted-at}
+               (set (keys reinstated))))))))
+
+(deftest cancel-transfer-on-never-transferred-patient-is-rejected
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+        world1 (admit world0 0 "P1" "Renal")
+        outcome (engine/decide (Random. 1) 10 world1 "P1" {:type :cancel-transfer})]
+    (is (empty? (:events outcome)))
+    (is (some? (:rejected outcome)))))
+
+;; --- cancel-discharge -> A13 -----------------------------------------------
+
+(deftest cancel-discharge-reinstates-admitted-state
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+        world1 (admit world0 0 "P1" "Renal")
+        pre-discharge (get-in world1 [:patients "P1"])
+        {discharge-events :events} (engine/decide (Random. 1) 10 world1 "P1" {:type :discharge})
+        world2 (fold-events world1 discharge-events)
+        {cancel-events :events} (engine/decide (Random. 1) 20 world2 "P1" {:type :cancel-discharge})
+        world3 (fold-events world2 cancel-events)
+        reinstated (get-in world3 [:patients "P1"])]
+    (is (= :discharged (:status (get-in world2 [:patients "P1"]))))
+    (is (= :admitted (:status reinstated)))
+    (is (= (:location pre-discharge) (:location reinstated)))
+    (is (= (:home-ward pre-discharge) (:home-ward reinstated)))))
+
+(deftest cancel-discharge-on-never-discharged-patient-is-rejected
+  (testing "docs/patient-state-model.md's own illegal example"
+    (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+          world1 (admit world0 0 "P1" "Renal")
+          outcome (engine/decide (Random. 1) 10 world1 "P1" {:type :cancel-discharge})]
+      (is (empty? (:events outcome)))
+      (is (some? (:rejected outcome))))))
+
+(deftest cancel-transfer-cannot-be-applied-twice-to-the-same-transfer
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+        world1 (admit world0 0 "P1" "Renal")
+        {t-events :events} (engine/decide (Random. 1) 10 world1 "P1" {:type :transfer :location "ED"})
+        world2 (fold-events world1 t-events)
+        {c1-events :events} (engine/decide (Random. 1) 20 world2 "P1" {:type :cancel-transfer})
+        world3 (fold-events world2 c1-events)
+        second-attempt (engine/decide (Random. 1) 30 world3 "P1" {:type :cancel-transfer})]
+    (is (empty? (:events second-attempt)))
+    (is (some? (:rejected second-attempt)))))
+
+;; --- transfer-in-error -----------------------------------------------------
+
+(deftest transfer-in-error-emits-a-transfer-then-its-own-cancellation-in-error
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+        world1 (admit world0 0 "P1" "Renal")
+        pre (get-in world1 [:patients "P1"])
+        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1"
+                                        {:type :transfer-in-error :location "ED"})
+        world2 (fold-events world1 events)
+        after (get-in world2 [:patients "P1"])]
+    (testing "two events, same instant: the transfer, then its A12"
+      (is (= 2 (count events)))
+      (is (= :transfer (:event (first events))))
+      (is (= :cancel-transfer (:event (second events))))
+      (is (true? (:in-error (second events))))
+      (is (= (:t (first events)) (:t (second events)))))
+    (testing "the cancel references the transfer that immediately preceded it
+              (index 1: index 0 is world1's own :admission event)"
+      (is (= 1 (:cancels-event-id (second events)))))
+    (testing "net effect: the patient ends up exactly where they started"
+      (is (= (:location pre) (:location after)))
+      (is (= (:home-ward pre) (:home-ward after))))))
+
+;; --- bed-swap -> A17: genuinely two-participant ----------------------------
+
+(deftest bed-swap-exchanges-locations-between-two-admitted-patients
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")
+                          "P2" (engine/initial-patient "P2" "MRN000002")})
+        world1 (-> world0 (admit 0 "P1" "Renal") (admit 5 "P2" "Renal"))
+        p1-before (get-in world1 [:patients "P1"])
+        p2-before (get-in world1 [:patients "P2"])
+        _ (is (not= (:location p1-before) (:location p2-before)) "sanity: different beds")
+        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1" {:type :bed-swap})
+        world2 (fold-events world1 events)]
+    (testing "one two-participant event, both roles :subject"
+      (is (= 1 (count events)))
+      (is (= :bed-swap (:event (first events))))
+      (is (= #{"P1" "P2"} (set (map :patient-id (:participants (first events))))))
+      (is (every? #(= :subject (:role %)) (:participants (first events)))))
+    (testing "locations are exchanged; both remain placed and admitted"
+      (is (= (:location p2-before) (get-in world2 [:patients "P1" :location])))
+      (is (= (:location p1-before) (get-in world2 [:patients "P2" :location])))
+      (is (= :admitted (get-in world2 [:patients "P1" :status])))
+      (is (= :admitted (get-in world2 [:patients "P2" :status]))))))
+
+(deftest bed-swap-with-no-eligible-peer-is-rejected
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+        world1 (admit world0 0 "P1" "Renal")
+        outcome (engine/decide (Random. 1) 10 world1 "P1" {:type :bed-swap})]
+    (is (empty? (:events outcome)))
+    (is (some? (:rejected outcome)))))
+
+;; --- merge -> A40: the identity payoff --------------------------------------
+
+(deftest merge-absorbs-mrns-and-terminates-the-merged-stream
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")
+                          "P2" (engine/initial-patient "P2" "MRN000002")})
+        world1 (-> world0 (admit 0 "P1" "Renal") (admit 5 "P2" "Renal"))
+        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1" {:type :merge :with "P2"})
+        world2 (fold-events world1 events)
+        survivor (get-in world2 [:patients "P1"])
+        merged (get-in world2 [:patients "P2"])]
+    (testing "one two-participant event, roles :survivor/:merged"
+      (is (= 1 (count events)))
+      (is (= :merge (:event (first events))))
+      (is (= #{[:survivor "P1"] [:merged "P2"]}
+             (set (map (juxt :role :patient-id) (:participants (first events)))))))
+    (testing "survivor absorbs the merged MRN -- inactive, retained in :mrns"
+      (is (= "MRN000001" (:active-mrn survivor)))
+      (is (= #{"MRN000001" "MRN000002"} (:mrns survivor))))
+    (testing "the merged patient-id's stream ends with a terminal merged status"
+      (is (= :merged (:status merged)))
+      (is (= #{"MRN000002"} (:mrns merged)))
+      (is (= "MRN000002" (:active-mrn merged))))))
+
+(deftest merge-into-self-is-rejected
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+        world1 (admit world0 0 "P1" "Renal")
+        outcome (engine/decide (Random. 1) 10 world1 "P1" {:type :merge :with "P1"})]
+    (is (empty? (:events outcome)))
+    (is (some? (:rejected outcome)))))
+
+(deftest merge-referencing-unknown-patient-id-is-rejected
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+        world1 (admit world0 0 "P1" "Renal")
+        outcome (engine/decide (Random. 1) 10 world1 "P1" {:type :merge :with "GHOST"})]
+    (is (empty? (:events outcome)))
+    (is (some? (:rejected outcome)))))
+
+(deftest double-merge-of-the-same-patient-id-is-rejected
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")
+                          "P2" (engine/initial-patient "P2" "MRN000002")
+                          "P3" (engine/initial-patient "P3" "MRN000003")})
+        world1 (-> world0 (admit 0 "P1" "Renal") (admit 5 "P2" "Renal") (admit 6 "P3" "ED"))
+        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1" {:type :merge :with "P2"})
+        world2 (fold-events world1 events)
+        outcome (engine/decide (Random. 1) 20 world2 "P3" {:type :merge :with "P2"})]
+    (is (empty? (:events outcome)))
+    (is (some? (:rejected outcome)))))
+
+;; --- M2b: InjectChurn wiring ------------------------------------------
+
+(def ^:private active-churn-profile
+  {:cancel-admit 0.05 :cancel-transfer 0.1 :cancel-discharge 0.05
+   :transfer-in-error 0.1 :bed-swap 0.1 :merge 0.05})
+
+(defspec every-churned-run-satisfies-the-invariant-catalog 150
+  (prop/for-all [seed gen/large-integer
+                 patients (gen/choose 2 12)]
+    (let [{:keys [ground-truth]} (engine/run {:seed seed :patients patients
+                                              :facility churn-facility :providers churn-providers
+                                              :churn-profile active-churn-profile})]
+      (result/ok? (check/check-all ground-truth churn-facility)))))
+
+(deftest absent-churn-profile-does-not-perturb-the-no-churn-path
+  (testing "byte-identical whether :churn-profile is omitted or
+            explicitly nil (opt-in: nothing about this path changed
+            unless a real profile is supplied)"
+    (is (= (engine/run {:seed 42 :patients 5})
+           (engine/run {:seed 42 :patients 5 :churn-profile nil})))))
+
+(deftest churn-profile-actually-produces-churn-events-for-some-seed
+  (testing "sanity that active-churn-profile is not accidentally inert"
+    (is (some (fn [seed]
+                (let [{:keys [ground-truth]} (engine/run {:seed seed :patients 8
+                                                          :facility churn-facility :providers churn-providers
+                                                          :churn-profile active-churn-profile})]
+                  (some #{:cancel-admit :cancel-transfer :cancel-discharge :bed-swap :merge}
+                        (map :event ground-truth))))
+              (range 1 50)))))
+
 (deftest pinned-seed-survives-decide-evolve-refactor
   (testing "the fixture pins the POST-M2a baseline (ADR-0009/ADR-0010/
             ADR-0011 -- identity/participants and the seconds clock

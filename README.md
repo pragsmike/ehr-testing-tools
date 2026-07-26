@@ -10,10 +10,12 @@ against what *should* be true, independent of message parsing. See
 problem, constraints, black-box contract, and validation program.
 
 **Status: pre-release walking skeleton.** Built: the engine, the
-invariant catalog, and HL7v2 admission/discharge/transfer emission
-(below); the facility and providers models (beds, the allocation
-ladder, boarding, bed-ready transfers, synthetic attendings —
-docs/operational-models.md).
+invariant catalog, HL7v2 ADT emission (admission/discharge/transfer
+plus the full churn family — below), the facility and providers
+models (beds, the allocation ladder, boarding, bed-ready transfers,
+synthetic attendings — docs/operational-models.md), and InjectChurn
+(cancel-admit/cancel-transfer/cancel-discharge, transfer-in-error,
+bed-swap, merge — docs/patient-state-model.md).
 
 ## Pipeline: now / next / later
 
@@ -29,8 +31,8 @@ flowchart LR
     Persona["Persona"]:::planned
     RunModules["RunModules"]:::planned
     CompileTrajectory["CompileTrajectory"]:::planned
-    InjectChurn["InjectChurn"]:::next
-    Execute["Execute"]:::built
+    InjectChurn["InjectChurn"]:::built
+    Execute["Execute"]:::next
     Check["Check"]:::built
     EmitHL7["EmitHL7"]:::built
     EmitState["EmitState"]:::planned
@@ -50,10 +52,13 @@ flowchart LR
     classDef planned fill:#37474f,stroke:#78909c,color:#cfd8dc,stroke-width:1px,stroke-dasharray: 3 3;
 ```
 
-**Now** (green): Execute, Check, EmitHL7 — property-tested and green
-(73 tests / 156 assertions). **Next** (amber): InjectChurn, growing the
-engine's step vocabulary starting with transfer. **Later** (dashed
-grey): everything else in the *want*.
+**Now** (green): Execute, Check, EmitHL7, and, as of Milestone M2b,
+InjectChurn — property-tested and green (134 tests / 318 assertions).
+**Next** (amber): Execute's own further step-vocabulary growth —
+Milestone M3's order/result step types and the ORM/ORU cycle, landed
+under Execute's existing contract the same way M2b's churn family was
+(no new stage). **Later** (dashed grey): everything else in the
+*want*.
 
 [`docs/sim-theory-diagram.md`](docs/sim-theory-diagram.md) is the full
 detail view (every resource wire, catalytic input, and the

@@ -141,6 +141,35 @@ conformance gate should see at least once.
 
 ---
 
+## ED diversion / waiting-room boarding *(stub)*
+
+**The reality.** When a facility has no bed anywhere it can legally
+place a new admission — every rung of the allocation ladder
+exhausted, including ED surge — real hospitals don't crash; they
+divert incoming ambulance traffic to another facility, or hold the
+patient in the ED waiting room (not yet a bed of any kind) until
+capacity frees up.
+
+**The wire truth.** Diversion status is typically a site-operational
+signal (bed-board systems, sometimes a Z-segment or an external
+feed), not a patient-level ADT message; a waiting-room-held patient
+generates no ADT^A01 at all until a bed is actually assigned —
+registration may still occur, but admission does not.
+
+**Our model / why testers care.** This session's ladder exhaustion
+(`ehr-testing-sim.facility/allocate`) is deliberately a **result, not
+a state**: it stops the run with a structured `:capacity-exhausted`
+outcome rather than throwing, but does not yet model a *waiting*
+patient who eventually gets placed once a bed frees up — that needs a
+real `Pending`-family status (the validity table's `:pending-*` row
+already anticipates it). Modeling the wait-then-place sequence is
+M3+; a downstream consumer whose interface silently drops or
+mishandles diversion/boarding signals is exactly the kind of
+capacity-pressure edge case this simulator should eventually be able
+to generate on purpose.
+
+---
+
 ## Observation-vs-inpatient class flips *(stub)*
 
 **The reality.** A patient's *class* changes mid-stay — outpatient/

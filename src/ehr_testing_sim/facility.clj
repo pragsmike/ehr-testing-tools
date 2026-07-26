@@ -73,11 +73,33 @@
     :else (throw (ex-info "force-placement bed is not a valid id for this ward"
                           {:ward (:name ward) :bed bed}))))
 
+(defn ward-census
+  "A snapshot of every ward's occupancy against its declared capacity
+  (licensed + surge), keyed by ward name -- the diagnostic payload
+  Task 0's capacity-exhausted outcome carries (result-not-throw:
+  ehr-testing-tools' allocate no longer throws when every ladder rung
+  is exhausted, docs/clinical-realities.md's ED-diversion stub)."
+  [facility board]
+  (into {}
+        (map (fn [ward]
+               (let [slots (into #{} (concat (licensed-bed-ids ward) (surge-slot-ids ward)))]
+                 [(:name ward)
+                  {:occupied (count (filter slots (keys board)))
+                   :capacity (+ (:beds ward) (:surge-slots ward))}])))
+        (:wards facility)))
+
 (defn allocate
   "The four-rung allocation ladder (docs/operational-models.md), seeded
   within each rung. `force-placement` (optional `{:ward :bed}`)
   overrides the ladder outright and draws no RNG. Returns
-  {:home-ward :location {:ward :bed :placement} :forced}."
+  {:home-ward :location {:ward :bed :placement} :forced}, or, when
+  every rung is legitimately exhausted, {:exhausted true :home-ward
+  home-ward-name} -- result-not-throw (Task 0): callers (engine/decide)
+  turn this into a structured outcome rather than catching an
+  exception. No RNG draw occurs on the exhausted path, same as the
+  exception it replaces -- exhaustion is discovered before any `choose`
+  call, so this change does not alter RNG consumption for any run that
+  doesn't actually exhaust the facility."
   [rng facility board home-ward-name force-placement]
   (if force-placement
     (let [{:keys [ward bed]} force-placement
@@ -117,8 +139,7 @@
                   {:home-ward home-ward-name
                    :location {:ward (:name w) :bed b :placement :surge}
                    :forced false})
-                (throw (ex-info "facility exhausted: no bed available at any ladder rung"
-                                {:home-ward home-ward-name}))))))))))
+                {:exhausted true :home-ward home-ward-name}))))))))
 
 (defn choose-attending
   "Seeded uniform sample among providers eligible for `ward-id` (a

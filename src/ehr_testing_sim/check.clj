@@ -31,7 +31,8 @@
   participant's own sequence, not just one. M2a (ADR-0011) adds the
   warm-up-mark invariant (config/check-warm-up.clj docstring companion
   below)."
-  (:require [ehr-testing-sim.config :as config]
+  (:require [clojure.set]
+            [ehr-testing-sim.config :as config]
             [ehr-testing-sim.engine :as engine]
             [ehr-testing-sim.facility :as facility]
             [ehr-testing-sim.result :as result]))
@@ -203,6 +204,85 @@
                                                   (get-in event [:location :ward]))))]
     {:invariant :surge-only-when-earlier-rungs-exhausted :patient-id patient-id :at (:t event)}))
 
+;; --- M2b: churn family (docs/patient-state-model.md's event-validity
+;; table's cancel-*/bed-swap/merge rows; ADR-0010's cross-participant
+;; coherence) -------------------------------------------------------------
+
+(def ^:private cancel-target-type
+  "Cancel event type -> the event type it must reference."
+  {:cancel-admit :admission :cancel-transfer :transfer :cancel-discharge :discharge})
+
+(defn cancel-references-existing-uncancelled-event
+  "The event-validity table's cancel-* row: the event class being
+  cancelled must exist in this patient's log, be the RIGHT class, and
+  not already be cancelled by an earlier cancel of the same kind.
+  Structural -- checks any log directly, independent of whether decide
+  itself already enforces this (docs/patient-state-model.md)."
+  [ground-truth]
+  (let [indexed (vec ground-truth)]
+    (for [[idx event] (map-indexed vector indexed)
+          :when (contains? cancel-target-type (:event event))
+          :let [target-idx (:cancels-event-id event)
+                target (get indexed target-idx)
+                expected-type (get cancel-target-type (:event event))
+                patient-id (:patient-id (first (:participants event)))
+                cancelled-earlier? (some (fn [[i2 ev2]]
+                                           (and (< i2 idx)
+                                                (= (:event event) (:event ev2))
+                                                (= target-idx (:cancels-event-id ev2))))
+                                         (map-indexed vector indexed))]
+          :when (or (nil? target)
+                    (not= expected-type (:event target))
+                    (not (some #(= patient-id (:patient-id %)) (:participants target)))
+                    cancelled-earlier?)]
+      {:invariant :cancel-references-existing-uncancelled-event :patient-id patient-id :at (:t event)})))
+
+(defn bed-swap-both-admitted-before-swap
+  "Both bed-swap participants were :admitted immediately beforehand
+  (docs/operational-models.md's own admitted-when-placed rule, extended
+  to the genuinely-two-participant case -- ADR-0010)."
+  [ground-truth]
+  (for [{:keys [event world-before]} (engine/replay ground-truth)
+        :when (= :bed-swap (:event event))
+        {:keys [patient-id]} (:participants event)
+        :let [before (get world-before patient-id)]
+        :when (not= :admitted (:status before))]
+    {:invariant :bed-swap-both-admitted-before-swap :patient-id patient-id :at (:t event)}))
+
+(defn merge-survivor-absorbs-merged-mrns
+  "docs/patient-state-model.md's identity payoff: the merge's stated
+  surviving MRN must be one the survivor already answered to (not an
+  arbitrary string); the survivor's post-merge :active-mrn is exactly
+  that; and the survivor's post-merge :mrns is a superset of what the
+  merged patient answered to beforehand (retired, not discarded)."
+  [ground-truth]
+  (for [{:keys [event world-before world-after]} (engine/replay ground-truth)
+        :when (= :merge (:event event))
+        :let [{:keys [participants surviving-mrn]} event
+              survivor-id (:patient-id (first (filter #(= :survivor (:role %)) participants)))
+              merged-id (:patient-id (first (filter #(= :merged (:role %)) participants)))
+              survivor-before (get world-before survivor-id)
+              merged-before (get world-before merged-id)
+              survivor-after (get world-after survivor-id)]
+        :when (not (and (contains? (:mrns survivor-before) surviving-mrn)
+                        (= surviving-mrn (:active-mrn survivor-after))
+                        (clojure.set/subset? (:mrns merged-before) (:mrns survivor-after))))]
+    {:invariant :merge-survivor-absorbs-merged-mrns :patient-id survivor-id :at (:t event)}))
+
+(defn no-events-after-merged-terminal
+  "The merged patient-id's stream ends with its own merge event -- no
+  later event in the log names it as a participant (docs/patient-
+  state-model.md, ADR-0010)."
+  [ground-truth]
+  (let [indexed (vec ground-truth)]
+    (for [[merge-idx event] (map-indexed vector indexed)
+          :when (= :merge (:event event))
+          :let [merged-id (:patient-id (first (filter #(= :merged (:role %)) (:participants event))))]
+          [later-idx later-event] (map-indexed vector indexed)
+          :when (and (> later-idx merge-idx)
+                    (some #(= merged-id (:patient-id %)) (:participants later-event)))]
+      {:invariant :no-events-after-merged-terminal :patient-id merged-id :at (:t later-event)})))
+
 (def catalog
   "The full invariant catalog needing only a ground-truth log, in
   reporting order."
@@ -214,7 +294,11 @@
    #'transfer-only-when-admitted
    #'transfer-from-matches-state
    #'no-double-occupancy
-   #'admitted-occupies-one-slot])
+   #'admitted-occupies-one-slot
+   #'cancel-references-existing-uncancelled-event
+   #'bed-swap-both-admitted-before-swap
+   #'merge-survivor-absorbs-merged-mrns
+   #'no-events-after-merged-terminal])
 
 (def facility-catalog
   "Invariants that need the facility config, not just the log (checked

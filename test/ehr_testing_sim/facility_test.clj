@@ -80,6 +80,23 @@
     (is (= "RENAL-H02" (get-in alloc [:location :bed])))
     (is (= :surge (get-in alloc [:location :placement])))))
 
+(deftest allocate-returns-structured-exhaustion-not-throw
+  (testing "every rung exhausted (licensed AND surge full, no ED/other
+            ward at all) -- result-not-throw, not an exception
+            (docs/clinical-realities.md's diversion stub)"
+    (let [facility {:id :t :wards [renal-ward]}
+          board (into {} (map vector (concat (facility/licensed-bed-ids renal-ward)
+                                              (facility/surge-slot-ids renal-ward))
+                                     (repeat "x")))
+          alloc (facility/allocate (Random. 1) facility board "Renal" nil)]
+      (is (true? (:exhausted alloc)))
+      (is (= "Renal" (:home-ward alloc))))))
+
+(deftest ward-census-reports-occupied-and-capacity-per-ward
+  (let [facility {:id :t :wards [renal-ward]}
+        board (into {} (map vector (facility/licensed-bed-ids renal-ward) (repeat "x")))]
+    (is (= {"Renal" {:occupied 3 :capacity 5}} (facility/ward-census facility board)))))
+
 (defspec allocate-never-returns-an-occupied-bed 100
   (prop/for-all [seed gen/large-integer]
     (let [facility {:id :t :wards [renal-ward

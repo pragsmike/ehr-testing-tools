@@ -25,6 +25,7 @@
   was actually generated with."
   (:require [ehr-testing-sim.engine :as engine]
             [ehr-testing-sim.check :as check]
+            [ehr-testing-sim.churn :as churn]
             [ehr-testing-sim.emit-hl7 :as emit-hl7]
             [ehr-testing-sim.manifest :as manifest]
             [ehr-testing-sim.result :as result]))
@@ -40,8 +41,18 @@
   its own output (a run that violates its own invariants is an :error
   -- a bug in us, not a legitimate rejection), and returns
   {:ground-truth [...] :manifest {...} :summary {...}
-   :messages [...]}} (:messages present only when :emit is \"hl7\")."
-  [{:keys [seed patients emit reference-date utc-offset warm-up-seconds] :as opts}]
+   :messages [...]}} (:messages present only when :emit is \"hl7\").
+
+  M2b: `:churn` (bare boolean, \"turn churn on with sensible defaults\"
+  -- ehr-testing-sim.churn/sample-profile) or `:churn-profile` (an
+  explicit ehr-testing-sim.churn/ChurnProfile map, merged OVER
+  churn/default-churn-profile so a caller only needs to name the rates
+  they want to change) activates InjectChurn between IR and execution
+  (ehr-testing-sim.engine/run's own :churn-profile wiring). Neither
+  key present -- the default -- means no :churn-profile reaches
+  engine/run at all, the opt-in path Task 0's pinned-fixture
+  expectation depends on."
+  [{:keys [seed patients emit reference-date utc-offset warm-up-seconds churn churn-profile] :as opts}]
   (if (nil? seed)
     (result/error :missing-required-opt
                   {:message "--seed is required (determinism is a feature, not a default)"
@@ -49,14 +60,20 @@
     (let [reference-date (or reference-date emit-hl7/default-reference-date)
           utc-offset (or utc-offset emit-hl7/default-utc-offset)
           warm-up-seconds (or warm-up-seconds 0)
+          effective-churn-profile (cond
+                                    churn-profile (merge churn/default-churn-profile churn-profile)
+                                    churn churn/sample-profile
+                                    :else nil)
           engine-params (-> (select-keys opts [:patients :arrival-gap :warm-up-seconds])
                              (assoc :reference-date reference-date :utc-offset utc-offset))
-          {:keys [ground-truth facility providers]}
-          (engine/run (merge {:seed seed}
+          {:keys [ground-truth facility providers exhausted]}
+          (engine/run (merge {:seed seed :churn-profile effective-churn-profile}
                              (select-keys opts [:patients :arrival-gap :facility :providers :warm-up-seconds])))
-          checked (check/check-all ground-truth facility warm-up-seconds)]
-      (if-not (result/ok? checked)
-        (result/error :self-check-failed (:payload checked))
+          checked (when-not exhausted (check/check-all ground-truth facility warm-up-seconds))]
+      (cond
+        exhausted (result/error :capacity-exhausted exhausted)
+        (not (result/ok? checked)) (result/error :self-check-failed (:payload checked))
+        :else
         (result/ok
          (cond-> {:ground-truth ground-truth
                   :manifest (manifest/build {:seed seed

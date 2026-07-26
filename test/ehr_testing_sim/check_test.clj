@@ -150,6 +150,82 @@
     (testing "a nonzero window actually marks at least one early event for this seed"
       (is (some :warm-up ground-truth)))))
 
+;; --- M2b: churn family invariants (co-landed with the step types) ------
+
+(deftest cancel-references-existing-uncancelled-event-detects-phantom-target
+  (let [log [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
+              :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
+             ;; :cancels-event-id 5 doesn't exist in this log at all.
+             {:event :cancel-admit :t 10 :cancels-event-id 5 :participants (subject "P1")}]]
+    (is (seq (check/cancel-references-existing-uncancelled-event log)))))
+
+(deftest cancel-references-existing-uncancelled-event-detects-wrong-type
+  (let [log [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
+              :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
+             ;; cancel-DISCHARGE pointed at an :admission event -- type mismatch.
+             {:event :cancel-discharge :t 10 :cancels-event-id 0 :participants (subject "P1")}]]
+    (is (seq (check/cancel-references-existing-uncancelled-event log)))))
+
+(deftest cancel-references-existing-uncancelled-event-detects-double-cancel
+  (let [log [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
+              :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
+             {:event :cancel-admit :t 10 :cancels-event-id 0 :participants (subject "P1")}
+             {:event :cancel-admit :t 20 :cancels-event-id 0 :participants (subject "P1")}]]
+    (is (seq (check/cancel-references-existing-uncancelled-event log)))))
+
+(deftest cancel-references-existing-uncancelled-event-holds-for-legit-cancel
+  (let [log [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
+              :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
+             {:event :cancel-admit :t 10 :cancels-event-id 0 :participants (subject "P1")}]]
+    (is (empty? (check/cancel-references-existing-uncancelled-event log)))))
+
+(deftest bed-swap-both-admitted-before-swap-detects-a-non-admitted-participant
+  (let [log [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
+              :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
+             ;; P2 was never admitted.
+             {:event :bed-swap :t 10
+              :participants [{:patient-id "P1" :role :subject} {:patient-id "P2" :role :subject}]
+              :swap {"P1" {:from {:ward "Renal" :bed "RENAL-01" :placement :licensed} :to nil}
+                     "P2" {:from nil :to {:ward "Renal" :bed "RENAL-01" :placement :licensed}}}}]]
+    (is (seq (check/bed-swap-both-admitted-before-swap log)))))
+
+(deftest bed-swap-both-admitted-before-swap-holds-for-legit-swap
+  (let [log [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
+              :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
+             {:event :admission :t 5 :home-ward "Renal" :participants (subject "P2")
+              :location {:ward "Renal" :bed "RENAL-H01" :placement :surge}}
+             {:event :bed-swap :t 10
+              :participants [{:patient-id "P1" :role :subject} {:patient-id "P2" :role :subject}]
+              :swap {"P1" {:from {:ward "Renal" :bed "RENAL-01" :placement :licensed}
+                          :to {:ward "Renal" :bed "RENAL-H01" :placement :surge}}
+                     "P2" {:from {:ward "Renal" :bed "RENAL-H01" :placement :surge}
+                          :to {:ward "Renal" :bed "RENAL-01" :placement :licensed}}}}]]
+    (is (empty? (check/bed-swap-both-admitted-before-swap log)))))
+
+(def ^:private legit-merge-log
+  [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
+    :active-mrn "MRN000001" :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
+   {:event :admission :t 5 :home-ward "Renal" :participants (subject "P2")
+    :active-mrn "MRN000002" :location {:ward "Renal" :bed "RENAL-H01" :placement :surge}}
+   {:event :merge :t 10
+    :participants [{:patient-id "P1" :role :survivor} {:patient-id "P2" :role :merged}]
+    :surviving-mrn "MRN000001" :merged-mrn "MRN000002" :merged-mrns #{"MRN000002"}}])
+
+(deftest merge-survivor-absorbs-merged-mrns-holds-for-legit-merge
+  (is (empty? (check/merge-survivor-absorbs-merged-mrns legit-merge-log))))
+
+(deftest merge-survivor-absorbs-merged-mrns-detects-wrong-active-mrn
+  (let [log (update-in legit-merge-log [2] assoc :surviving-mrn "MRN999999")]
+    (is (seq (check/merge-survivor-absorbs-merged-mrns log)))))
+
+(deftest no-events-after-merged-terminal-holds-for-legit-log
+  (is (empty? (check/no-events-after-merged-terminal legit-merge-log))))
+
+(deftest no-events-after-merged-terminal-detects-a-zombie-event
+  (let [log (conj legit-merge-log
+                  {:event :discharge :t 20 :participants (subject "P2")})]
+    (is (seq (check/no-events-after-merged-terminal log)))))
+
 ;; --- check-all: facility-aware, backward-compatible arity ---------------
 
 (deftest check-all-defaults-facility-when-omitted

@@ -72,28 +72,46 @@ tests must stay green across the rename, not just for new step types;
 `:participants` becomes a real field on every event (single-element
 vector for today's step types) with its own schema round-trip test.
 
-## M2b — Churn family
+## M2b — Churn family — **landed**
 
-Lands **InjectChurn** (currently `;; NEXT` in the theory, `:planned`):
-cancel-\*, \*-in-error, bed-swap, and merge step types, as the IR→IR
-transform the theory already names, built against M2a's
-`:patient-id`/`:participants` shape rather than the pre-M2a one. Brings
-`churn-profile` in as real config rather than a named-but-unbuilt
-resource. `docs/patient-state-model.md`'s conditional validity rows
-(status × event-class × attribute-conditions, added this session) name
-two further candidate step families for this milestone or immediately
-after, as **stretch/candidate steps, not core M2b scope**: leave-of-
-absence (A21/A22) and observation/inpatient class-flip (A06/A07), both
-from `docs/clinical-realities.md`'s stub catalog.
+Lands **InjectChurn** (`:built` in the theory; `;; NEXT` moved to
+`Execute`'s own further growth, M3): cancel-admit/cancel-transfer/
+cancel-discharge (A11/A12/A13), transfer-in-error (A02+A12, in-error
+marked), bed-swap (A17, genuinely two-participant), and merge (A40,
+the identity payoff) — 134 tests / 318 assertions green, coverage
+94.76%/97.25% (up from the M2a baseline 91.72%/94.69%). `churn-profile`
+is real config (`ehr-testing-sim.churn/ChurnProfile`) rather than a
+named-but-unbuilt resource, wired into `sim run` via `--churn` or an
+explicit `:churn-profile`. Task 0's two ratified items landed alongside:
+the durations rule (one line, `docs/patient-state-model.md`) and
+result-not-throw capacity exhaustion (`ehr-testing-sim.facility/allocate`
+no longer throws; `run-command` surfaces `:error :capacity-exhausted`),
+plus an ED-diversion/waiting-room-boarding stub entry in
+`docs/clinical-realities.md`. `docs/patient-state-model.md`'s conditional
+validity rows (status × event-class × attribute-conditions, added M2a)
+name two further candidate step families for a future milestone, as
+**stretch/candidate steps, not landed this session**: leave-of-absence
+(A21/A22) and observation/inpatient class-flip (A06/A07), both from
+`docs/clinical-realities.md`'s stub catalog.
 
-Co-landing invariants: each new step type's own catalog entries
-(e.g. a cancelled event must reference an event it cancels; a merge
-must reference patient-ids that both exist; a bed-swap preserves the
-occupancy invariants M1 established rather than bypassing them, and
-both invariants are now expressible as `:participants` cross-
-participant coherence checks per ADR-0010). The IR-endomorphism and
-clinical-steps-preserved laws already stated on `:churn` in the EDN
-become property tests here, not new claims.
+Co-landing invariants, landed: `cancel-references-existing-uncancelled-event`
+(a cancelled event must reference an event it cancels, of the right
+type, not already cancelled), `bed-swap-both-admitted-before-swap`,
+`merge-survivor-absorbs-merged-mrns`, `no-events-after-merged-terminal`
+— all expressed as `:participants` cross-participant coherence checks
+per ADR-0010. The IR-endomorphism, clinical-steps-preserved, and
+zero-probability-identity laws stated on `:churn` in the EDN are now
+property tests (`churn-test`), not just claims. One design decision
+surfaced only by property-testing InjectChurn against the full
+invariant catalog, recorded here rather than in an ADR since it's an
+internal robustness fix, not a wire/contract change: a churn-inserted
+step that is STATICALLY legal (per the applicability oracle) can still
+be REJECTED at execution time by live world state InjectChurn has no
+visibility into (e.g. a bed a cancel-discharge would reinstate into was
+reclaimed by someone else's admission in the meantime) — such a
+rejection is a no-op for that one step, not a run-halting condition,
+and InjectChurn's own state model treats `:cancel-discharge`
+conservatively (never assumes it succeeds) for exactly this reason.
 
 ## M3 — Order profiles + order/result steps
 

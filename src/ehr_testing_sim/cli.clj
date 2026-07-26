@@ -33,6 +33,7 @@
    :reference-date {:coerce :string}
    :utc-offset {:coerce :string}
    :warm-up-seconds {:coerce :long}
+   :churn {:coerce :boolean}
    :json {:coerce :boolean}
    :help {:coerce :boolean}})
 
@@ -51,7 +52,8 @@
              {:flag "--emit" :doc "render messages into the payload (\"hl7\" for ADT^A01/A03)"}
              {:flag "--reference-date" :doc "ISO date anchoring HL7 timestamps (pinned input)" :default "2024-01-01"}
              {:flag "--utc-offset" :doc "fixed ISO offset suffixed onto HL7 timestamps (pinned input, no DST)" :default "+00:00"}
-             {:flag "--warm-up-seconds" :doc "events before this mark :warm-up true (log stays complete)" :default "0"}]}
+             {:flag "--warm-up-seconds" :doc "events before this mark :warm-up true (log stays complete)" :default "0"}
+             {:flag "--churn" :doc "activate InjectChurn with a modest sample profile (cancel-*/transfer-in-error/bed-swap/merge)"}]}
     {:verb "check"
      :doc "Run the invariant catalog over a ground-truth log (EDN on stdin)."
      :flags []}]})

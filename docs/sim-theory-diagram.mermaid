@@ -42,46 +42,46 @@ flowchart LR
     %% Arrow 26: CompileTrajectory
     RunModules -- clinical-trajectory --> CompileTrajectory
 
-    %% Arrow 29: InjectChurn
+    %% Arrow 28: InjectChurn
     UnionPathwayIr -- pathway-ir --> InjectChurn
     Calibrate -- churn-profile --> InjectChurn
 
-    %% Arrow 31: Execute
+    %% Arrow 30: Execute
     InjectChurn -- operational-pathway --> Execute
     provider_pool -. provider-pool .-> Execute
     order_profiles -. order-profiles .-> Execute
 
-    %% Arrow 33: Check
+    %% Arrow 32: Check
     Execute -- ground-truth-log --> Check
     invariant_catalog -. invariant-catalog .-> Check
 
-    %% Arrow 35: EmitHL7
+    %% Arrow 34: EmitHL7
     Execute -- ground-truth-log --> EmitHL7
     hl7_parser_dep -. hl7-parser-dep .-> EmitHL7
     message_type_registry -. message-type-registry .-> EmitHL7
     snomed_icd10_map -. snomed-icd10-map .-> EmitHL7
 
-    %% Arrow 38: EmitState
+    %% Arrow 37: EmitState
     Execute -- state-history --> EmitState
 
-    %% Arrow 41: Package
+    %% Arrow 40: Package
     EmitHL7 -- hl7v2-stream --> Package
     Execute -- ground-truth-log --> Package
 
-    %% Arrow 44: Calibrate
+    %% Arrow 43: Calibrate
     Package -- sim-corpus --> Calibrate
     feed_statistics -- feed-statistics --> Calibrate
     Calibrate -- churn-profile --> Calibrate
     Calibrate -- churn-profile --> churn_profile
 
-    %% Arrow 47: UnionPathwayIr
+    %% Arrow 46: UnionPathwayIr
     CompileTrajectory -- compiled-pathway --> UnionPathwayIr
     authored_pathway -- authored-pathway --> UnionPathwayIr
 
-    %% Arrow 50: SystemUnderTest
+    %% Arrow 49: SystemUnderTest
     EmitHL7 -- hl7v2-stream --> SystemUnderTest
 
-    %% Arrow 51: ToolsCorpusIntake
+    %% Arrow 50: ToolsCorpusIntake
     Package -- sim-corpus --> ToolsCorpusIntake
 
     %% --- Styling ---

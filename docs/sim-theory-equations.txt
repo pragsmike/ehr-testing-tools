@@ -25,7 +25,6 @@ persona × gmf-module-set × gmf-interpreter → clinical-trajectory  [RunModule
 # planned: CompileTrajectory
 clinical-trajectory → compiled-pathway  [CompileTrajectory]
 
-# planned: InjectChurn
 pathway-ir × churn-profile → operational-pathway  [InjectChurn]
 
 operational-pathway × provider-pool × order-profiles → ground-truth-log + state-history  [Execute]  {catalytic: provider-pool, order-profiles}

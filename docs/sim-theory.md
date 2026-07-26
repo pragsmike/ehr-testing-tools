@@ -18,15 +18,16 @@ One file describes three systems:
 - **want** — the whole theory: every stage, law, and wire. Our best
   current guess at the envisioned system; it will change, and changes
   land as edits to the EDN with ADRs where they're structural.
-- **now** — the `:status :built` subset: **Execute**, **Check**, and
-  **EmitHL7** (each walking-skeleton or v0-slice scope, per their
-  `:contract` notes), plus the manifest component inside Package that
-  shipped ahead of its stage. Everything the *now* claims is
-  property-tested and green (20 tests / 55 assertions, 2026-07-26).
-- **next** — the single stage marked `;; NEXT` in the EDN:
-  **InjectChurn**, growing the engine's step vocabulary (transfer
-  first) under Execute's existing contract on the way to the full
-  Simulated-Hospital-derived churn family.
+- **now** — the `:status :built` subset: **Execute**, **Check**,
+  **EmitHL7**, and, as of Milestone M2b, **InjectChurn** (each
+  walking-skeleton, v1-slice, or v0-slice scope, per their `:contract`
+  notes), plus the manifest component inside Package that shipped
+  ahead of its stage. Everything the *now* claims is property-tested
+  and green (134 tests / 318 assertions, 2026-07-26).
+- **next** — the single stage marked `;; NEXT` in the EDN: **Execute**
+  itself, growing further under its own existing contract toward
+  Milestone M3's order/result step types and the ORM/ORU cycle
+  (`order-profiles`, already a declared catalytic).
 
 No schema keys were invented for this convention — it lives in
 comments and here, keeping the EDN loadable by tools' Pipeline Malli
@@ -128,7 +129,8 @@ whose name binds to nothing is malformed. Bindings, with build status:
 | `state-document` | FHIR JSON or CDA XML (format dispatch) | planned |
 | `run-manifest` | Malli, `ehr-testing-sim.manifest/MirroredManifest` (tools' ManifestV1_1 mirror) | built |
 | `sim-corpus` | directory layout + manifest, planned | planned |
-| `churn-profile`, `feed-statistics` | Malli, planned; `feed-statistics` is site-supplied summary statistics — never raw feed content (see global laws) | planned |
+| `churn-profile` | Malli, `ehr-testing-sim.churn/ChurnProfile` — step-type → per-insertion-point probability | v1 built |
+| `feed-statistics` | Malli, planned; site-supplied summary statistics — never raw feed content (see global laws) | planned |
 | `invariant-catalog` | not a wire resource — catalytic, see below | v0 built |
 
 ## Catalytic resolution

@@ -58,7 +58,32 @@
    [:transfer [:map
                [:type [:= :transfer]]
                [:location :string]
-               [:force-placement {:optional true} ForcePlacement]]]])
+               [:force-placement {:optional true} ForcePlacement]]]
+   ;; --- M2b churn family (docs/patient-state-model.md's event-validity
+   ;; table; ADR-0010's :participants). Cancel-* steps name no target
+   ;; explicitly -- decide finds the most recent uncancelled event of the
+   ;; class being cancelled in THIS patient's own log (docs/patient-
+   ;; state-model.md's deterministic-event-id section), the same way
+   ;; :discharge's bed-ready coupling already finds its target implicitly
+   ;; rather than being told.
+   [:cancel-admit [:map [:type [:= :cancel-admit]]]]
+   [:cancel-transfer [:map [:type [:= :cancel-transfer]]]]
+   [:cancel-discharge [:map [:type [:= :cancel-discharge]]]]
+   ;; A transfer immediately followed by its own A12, in-error marked
+   ;; (docs/patient-state-model.md) -- one IR step, decide emits both
+   ;; events atomically.
+   [:transfer-in-error [:map
+                        [:type [:= :transfer-in-error]]
+                        [:location :string]
+                        [:force-placement {:optional true} ForcePlacement]]]
+   ;; Genuinely two-participant (ADR-0010). `:with` is the scripted-
+   ;; authoring escape hatch (same precedent as :force-placement) naming
+   ;; the peer patient-id explicitly; omitted, decide picks a uniformly
+   ;; seeded eligible peer from `world` -- the same "decide resolves the
+   ;; target dynamically" shape the bed-ready transfer already uses, so
+   ;; InjectChurn (M2b) can insert these without knowing patient-ids.
+   [:bed-swap [:map [:type [:= :bed-swap]] [:with {:optional true} :string]]]
+   [:merge [:map [:type [:= :merge]] [:with {:optional true} :string]]]])
 
 (def Pathway
   [:map

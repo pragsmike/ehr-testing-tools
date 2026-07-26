@@ -24,3 +24,26 @@
 
 (deftest transfer-without-location-is-invalid
   (is (not (pathway/valid? {:name "t" :steps [{:type :transfer}]}))))
+
+;; --- M2b: churn family IR ------------------------------------------------
+
+(deftest cancel-family-steps-are-valid-ir
+  (doseq [step-type [:cancel-admit :cancel-transfer :cancel-discharge]]
+    (is (pathway/valid? {:name "t" :steps [{:type :admission :location "Renal"}
+                                            {:type step-type}]})
+        (str step-type " should be valid IR"))))
+
+(deftest transfer-in-error-is-valid-ir
+  (is (pathway/valid? {:name "t" :steps [{:type :admission :location "Renal"}
+                                          {:type :transfer-in-error :location "Cardiology"}]})))
+
+(deftest transfer-in-error-without-location-is-invalid
+  (is (not (pathway/valid? {:name "t" :steps [{:type :transfer-in-error}]}))))
+
+(deftest bed-swap-is-valid-ir-with-and-without-explicit-peer
+  (is (pathway/valid? {:name "t" :steps [{:type :bed-swap}]}))
+  (is (pathway/valid? {:name "t" :steps [{:type :bed-swap :with "PID-000001"}]})))
+
+(deftest merge-is-valid-ir-with-and-without-explicit-peer
+  (is (pathway/valid? {:name "t" :steps [{:type :merge}]}))
+  (is (pathway/valid? {:name "t" :steps [{:type :merge :with "PID-000001"}]})))

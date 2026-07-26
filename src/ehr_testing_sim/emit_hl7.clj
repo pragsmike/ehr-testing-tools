@@ -51,7 +51,15 @@
   consumer downstream of this stage)."
   {:admission {:type "ADT" :trigger "A01"}
    :discharge {:type "ADT" :trigger "A03"}
-   :transfer {:type "ADT" :trigger "A02"}})
+   :transfer {:type "ADT" :trigger "A02"}
+   ;; M2b churn family. :transfer-in-error has no entry of its own -- its
+   ;; decide emits ordinary :transfer + :cancel-transfer events (already
+   ;; registered), never a distinct ground-truth :event value.
+   :cancel-admit {:type "ADT" :trigger "A11"}
+   :cancel-transfer {:type "ADT" :trigger "A12"}
+   :cancel-discharge {:type "ADT" :trigger "A13"}
+   :bed-swap {:type "ADT" :trigger "A17"}
+   :merge {:type "ADT" :trigger "A40"}})
 
 (def ^:private hl7-timestamp-formatter
   (java.time.format.DateTimeFormatter/ofPattern "yyyyMMddHHmmss"))
@@ -132,6 +140,14 @@
   [providers id]
   (first (filter #(= id (:id %)) providers)))
 
+(defn- mrg-segment
+  "MRG-1: the prior (merged-away) patient identifier -- A40's own carrier
+  for 'what mrn did this patient answer to before' (docs/patient-state-
+  model.md's identity payoff). PID (built via pid-segment, same as every
+  other type) carries the SURVIVING mrn."
+  [merged-mrn]
+  (parser/create-segment "MRG" (parser/create-field [merged-mrn])))
+
 (defn- pv1-segment
   "PV1-6 (prior location) is read directly off the CURRENT event's own
   :from -- present only on :transfer events -- never a separately
@@ -149,9 +165,14 @@
    (location-field facility-name from)
    (provider-field provider)))
 
-(defn event->message
-  "Renders one ground-truth event to an ER7 string, or nil when the
-  event's :event isn't in `message-type-registry`."
+(defn- single-subject-message
+  "Renders one single-participant ground-truth event to an ER7 string,
+  or nil when the event's :event isn't in `message-type-registry`. Every
+  type this covers (:admission/:discharge/:transfer and M2b's cancel-*
+  family) carries its own :active-mrn/:location/:from/:attending
+  directly -- cancel events reinstate these AT DECIDE-TIME by querying
+  the log (docs/patient-state-model.md), so this renderer needs no
+  event-type-specific branching to show the reinstated facts."
   [reference-date utc-offset facility providers
    {:keys [event t active-mrn location from attending]}]
   (when-let [type+trigger (message-type-registry event)]
@@ -166,6 +187,63 @@
         (evn-segment (:trigger type+trigger) ts)
         (pid-segment active-mrn)
         (pv1-segment facility-name location from provider))))))
+
+(defn- bed-swap-message
+  "A17 (swap patients): ONE message per ground-truth event, carrying
+  BOTH patients' PID/PV1 pairs -- the real HL7v2 A17 shape, and why the
+  emitter-derivability law now keys on the event's own log position
+  rather than a single :active-mrn (a bed-swap message has two)."
+  [reference-date utc-offset facility providers {:keys [t participants swap]}]
+  (let [type+trigger (message-type-registry :bed-swap)
+        ts (hl7-timestamp reference-date t utc-offset)
+        facility-name (name (:id facility))
+        [p1 p2] (mapv :patient-id participants)
+        {mrn1 :active-mrn from1 :from to1 :to att1 :attending} (get swap p1)
+        {mrn2 :active-mrn from2 :from to2 :to att2 :attending} (get swap p2)
+        control-id (str mrn1 "+" mrn2 "-" (:trigger type+trigger) "-" t)]
+    (parser/str-message
+     (parser/create-message
+      parser/DEFAULT-DELIMITERS
+      (msh-segment type+trigger control-id ts)
+      (evn-segment (:trigger type+trigger) ts)
+      (pid-segment mrn1)
+      (pv1-segment facility-name to1 from1 (provider-by-id providers att1))
+      (pid-segment mrn2)
+      (pv1-segment facility-name to2 from2 (provider-by-id providers att2))))))
+
+(defn- merge-message
+  "A40 (merge patient): PID carries the SURVIVING mrn, MRG-1 carries the
+  prior (merged-away) one (docs/patient-state-model.md's identity
+  payoff) -- ONE message per merge event."
+  [reference-date utc-offset facility _providers {:keys [t surviving-mrn merged-mrn]}]
+  (let [type+trigger (message-type-registry :merge)
+        ts (hl7-timestamp reference-date t utc-offset)
+        facility-name (name (:id facility))
+        control-id (str surviving-mrn "-" (:trigger type+trigger) "-" t)]
+    (parser/str-message
+     (parser/create-message
+      parser/DEFAULT-DELIMITERS
+      (msh-segment type+trigger control-id ts)
+      (evn-segment (:trigger type+trigger) ts)
+      (pid-segment surviving-mrn)
+      (pv1-segment facility-name nil nil nil)
+      (mrg-segment merged-mrn)))))
+
+(defn event->messages
+  "Renders one ground-truth event to a vector of 0+ ER7 message strings
+  -- most types render exactly one message; M2b's genuinely two-
+  participant types (:bed-swap A17, :merge A40) still render exactly
+  ONE message (both patients' data in one message, the real HL7 shape),
+  so this is 0-or-1 for every type today, but returns a vector (not a
+  single nilable message) since a future many-messages-per-event type
+  is now a shape this stage already accommodates. Events outside
+  `message-type-registry` render an empty vector, not an error."
+  [reference-date utc-offset facility providers {:keys [event] :as ev}]
+  (cond
+    (not (message-type-registry event)) []
+    (= :bed-swap event) [(bed-swap-message reference-date utc-offset facility providers ev)]
+    (= :merge event) [(merge-message reference-date utc-offset facility providers ev)]
+    :else [(single-subject-message reference-date utc-offset facility providers ev)]))
 
 (def ^:private default-providers
   "A fixed, arbitrary reference-seed provider pool -- purely a fallback
@@ -190,4 +268,4 @@
   ([ground-truth reference-date utc-offset]
    (emit ground-truth reference-date utc-offset config/default-facility default-providers))
   ([ground-truth reference-date utc-offset facility providers]
-   (into [] (keep (partial event->message reference-date utc-offset facility providers)) ground-truth)))
+   (into [] (mapcat (partial event->messages reference-date utc-offset facility providers)) ground-truth)))

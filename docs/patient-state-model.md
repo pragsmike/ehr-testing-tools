@@ -12,6 +12,14 @@ ladder, the taxonomy, the NPI decision); this one is authoritative on
 the literal *shape* of the thing pathway generation and churn validity
 will read and write.
 
+## Durations rule (ratified)
+
+All authored durations — pathway IR (`:delay`'s `:from`/`:to`) and
+engine config (`:arrival-gap`, and any future churn-profile duration)
+alike — are minutes; the engine's own clock is seconds (ADR-0011);
+conversion happens exactly once, at the boundary where a minute-
+denominated draw becomes a clock advance (decide-time).
+
 ## Design inputs: mined from upstream
 
 Before formalizing the schema, two upstream sources were read
@@ -224,6 +232,42 @@ each other only by `:placement`.
 | 2. Home-ward surge | `:surge` | equal |
 | 3. Other-ward licensed (outlier) | `:licensed` | differ; `:location.ward` is `:inpatient`-class |
 | 4. Boarding | `:surge` | differ; `:location.ward` is `:ed`-class |
+
+## The deterministic event id (M2b)
+
+Cancel-family events (`:cancel-admit`, `:cancel-transfer`,
+`:cancel-discharge`) reference the event they cancel. Two shapes were
+on the table: a stamped `[patient-id seq-no]` tuple on every event, or
+using the event's own **ordinal position in the ground-truth log**
+(its 0-based index) as the id, computed rather than stored.
+
+**Decision: the log-position index, stamped on nothing.** The
+ground-truth log is already an immutable, append-only, totally
+ordered vector (ADR-0008) — its own index IS a deterministic, unique,
+stable identifier for every event it contains, for the lifetime of a
+run, with zero schema change to existing event types. A cancel event
+carries one new field of its own, `:cancels-event-id` (the target
+event's index into `ground-truth`); the event being cancelled is
+untouched. This was chosen over stamping an id onto every event
+specifically to keep the M2a-pinned regression fixture
+(`pinned_seed_42_patients_5.edn`) byte-identical: churn is opt-in
+(ADR roadmap M2b), so a config with no churn steps must produce
+*exactly* the same log it did before this milestone, and a global
+`:event-id` field added to every event would perturb that fixture for
+a reason that has nothing to do with churn actually running. Two-
+participant events (`:bed-swap`, `:merge`) are identified the same
+way — by their own log position — which is also what
+`docs/patient-state-model.md`'s emitter-derivability law now keys on
+for those types (a single MRN no longer uniquely identifies a
+message, since both carry two).
+
+`ehr-testing-sim.engine/decide` methods that need this (the cancel
+family, `:transfer-in-error`) read it off `world`'s new `:ground-truth`
+key — a persistent mirror of the log-so-far threaded through `world`
+specifically so `decide` can query it directly (`nth`/`filter`/
+`keep-indexed`), the same "query the log, no shadow field" move
+`:transfer-in-error`'s prior-location lookup already makes (see the
+worked example below).
 
 ## States and transitions
 

@@ -48,6 +48,22 @@
       (is (contains? flag-names "--emit"))
       (is (contains? flag-names "--reference-date")))))
 
+(deftest help-group-documents-churn
+  (testing "M2b: the run verb's flags cover --churn (InjectChurn wiring)"
+    (let [run-verb (first (filter #(= "run" (:verb %)) (:verbs cli/help-group)))
+          flag-names (set (map :flag (:flags run-verb)))]
+      (is (contains? flag-names "--churn")))))
+
+(deftest main!-with-churn-flag-runs-and-may-emit-churn-events
+  (let [printed (atom []) exited (atom nil)]
+    (cli/main! ["run" "--seed" "5" "--patients" "8" "--churn" "--emit" "hl7"]
+               {:println-fn #(swap! printed conj %)
+                :exit-fn #(reset! exited %)})
+    (is (= 0 @exited))
+    (let [payload (:payload (read-string (first @printed)))]
+      (testing "this specific seed produces at least one churn-family message (A17 bed-swap)"
+        (is (some #(string/includes? % "^A17") (:messages payload)))))))
+
 (deftest main!-emits-hl7-messages
   (let [printed (atom []) exited (atom nil)]
     (cli/main! ["run" "--seed" "42" "--patients" "2" "--emit" "hl7"]

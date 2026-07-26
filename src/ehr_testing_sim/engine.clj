@@ -61,6 +61,7 @@
   log -- events here are format-free."
   (:require [ehr-testing-sim.pathway :as pathway]
             [ehr-testing-sim.config :as config]
+            [ehr-testing-sim.churn :as churn]
             [ehr-testing-sim.facility :as facility]
             [malli.core :as m])
   (:import [java.util Random]))
@@ -80,7 +81,7 @@
    [:patient-id :string]
    [:mrns [:set :string]]
    [:active-mrn :string]
-   [:status [:enum :new :admitted :discharged]]
+   [:status [:enum :new :admitted :discharged :merged]]
    [:class {:optional true} [:enum :inpatient :emergency :outpatient
                               :preadmit :recurring :obstetrics]]
    [:home-ward {:optional true} [:maybe :string]]
@@ -162,18 +163,31 @@
   deterministic event ordering)."
   (fn [_rng _t _world _patient-id step] (:type step)))
 
+(defn- exhausted-outcome
+  "Task 0: result-not-throw for allocation-ladder exhaustion --
+  facility/allocate no longer throws, so decide translates its
+  structured {:exhausted true} into a decide-level outcome the run loop
+  halts on and run-command (ehr-testing-sim.run) surfaces as :error
+  :capacity-exhausted, payload {:patient-id :ward :census}."
+  [patient-id home-ward-name facility board]
+  {:events [] :advance 0
+   :exhausted {:patient-id patient-id :ward home-ward-name
+               :census (facility/ward-census facility board)}})
+
 (defmethod decide :admission
   [rng t world patient-id {:keys [location reason force-placement]}]
   (let [{:keys [facility providers patients]} world
         board (facility/occupancy-board patients)
-        {:keys [home-ward] :as alloc} (facility/allocate rng facility board location force-placement)
-        ward-id (:id (facility/ward-by-name facility home-ward))
-        attending (facility/choose-attending rng providers ward-id)
-        active-mrn (get-in patients [patient-id :active-mrn])]
-    {:events [(merge {:event :admission :t t :active-mrn active-mrn :reason reason :attending attending
-                      :participants [{:patient-id patient-id :role :subject}]}
-                     alloc)]
-     :advance 0}))
+        alloc (facility/allocate rng facility board location force-placement)]
+    (if (:exhausted alloc)
+      (exhausted-outcome patient-id location facility board)
+      (let [ward-id (:id (facility/ward-by-name facility (:home-ward alloc)))
+            attending (facility/choose-attending rng providers ward-id)
+            active-mrn (get-in patients [patient-id :active-mrn])]
+        {:events [(merge {:event :admission :t t :active-mrn active-mrn :reason reason :attending attending
+                          :participants [{:patient-id patient-id :role :subject}]}
+                         alloc)]
+         :advance 0}))))
 
 (defmethod decide :delay
   [rng _t _world _patient-id {:keys [from to]}]
@@ -190,11 +204,13 @@
         board (facility/occupancy-board patients)
         patient (get patients patient-id)
         alloc (facility/allocate rng facility board location force-placement)]
-    {:events [(merge {:event :transfer :t t :active-mrn (:active-mrn patient) :from (:location patient)
-                      :attending (:attending patient) :bed-ready false
-                      :participants [{:patient-id patient-id :role :subject}]}
-                     alloc)]
-     :advance 0}))
+    (if (:exhausted alloc)
+      (exhausted-outcome patient-id location facility board)
+      {:events [(merge {:event :transfer :t t :active-mrn (:active-mrn patient) :from (:location patient)
+                        :attending (:attending patient) :bed-ready false
+                        :participants [{:patient-id patient-id :role :subject}]}
+                       alloc)]
+       :advance 0})))
 
 (defmethod decide :discharge
   [_rng t world patient-id _step]
@@ -225,6 +241,131 @@
                       :participants [{:patient-id waiting-id :role :subject}]}))
      :advance 0}))
 
+;; --- M2b: churn family (docs/patient-state-model.md's event-validity
+;; table; docs/event-sourcing.md's shadow-field dissolution) ---------------
+
+(defn- last-uncancelled-index
+  "Index into `ground-truth` of the most recent `event-type` event
+  naming `patient-id` that is NOT already the target of an earlier
+  `cancel-type` event -- the applicability query the event-validity
+  table's cancel-* row asks ('the event class being cancelled must
+  exist in this patient's log and not already be cancelled'). nil when
+  no such event exists, which decide turns into a structured rejection
+  rather than a throw."
+  [ground-truth patient-id event-type cancel-type]
+  (let [already-cancelled (into #{}
+                                (comp (filter #(= cancel-type (:event %)))
+                                      (map :cancels-event-id))
+                                ground-truth)]
+    (last (keep-indexed (fn [i ev]
+                          (when (and (= event-type (:event ev))
+                                     (some #(= patient-id (:patient-id %)) (:participants ev))
+                                     (not (already-cancelled i)))
+                            i))
+                        ground-truth))))
+
+(defn- rejected-outcome
+  [reason patient-id extra]
+  {:events [] :advance 0 :rejected (merge {:reason reason :patient-id patient-id} extra)})
+
+(defmethod decide :cancel-admit
+  [_rng t world patient-id _step]
+  (let [ground-truth (:ground-truth world)
+        idx (last-uncancelled-index ground-truth patient-id :admission :cancel-admit)]
+    (if (nil? idx)
+      (rejected-outcome :illegal-cancel-admit patient-id nil)
+      (let [patient (get-in world [:patients patient-id])]
+        {:events [{:event :cancel-admit :t t :active-mrn (:active-mrn patient)
+                   :cancels-event-id idx
+                   :participants [{:patient-id patient-id :role :subject}]}]
+         :advance 0}))))
+
+(defmethod decide :transfer-in-error
+  [rng t world patient-id {:keys [location force-placement]}]
+  (let [{:keys [facility patients ground-truth]} world
+        board (facility/occupancy-board patients)
+        patient (get patients patient-id)
+        alloc (facility/allocate rng facility board location force-placement)]
+    (if (:exhausted alloc)
+      (exhausted-outcome patient-id location facility board)
+      ;; Both events are decided ATOMICALLY, in the same decide call --
+      ;; the transfer, then its own immediate correction (A12, in-error).
+      ;; The cancel's reinstated home-ward/location come straight off the
+      ;; CURRENT (pre-transfer) patient state, not a log query: there is
+      ;; no intervening event for anything to have queried yet.
+      (let [transfer-idx (count ground-truth)
+            transfer-event (merge {:event :transfer :t t :active-mrn (:active-mrn patient) :from (:location patient)
+                                    :attending (:attending patient) :bed-ready false
+                                    :participants [{:patient-id patient-id :role :subject}]}
+                                   alloc)
+            cancel-event {:event :cancel-transfer :t t :active-mrn (:active-mrn patient)
+                          :cancels-event-id transfer-idx :in-error true
+                          :home-ward (:home-ward patient) :location (:location patient)
+                          :participants [{:patient-id patient-id :role :subject}]}]
+        {:events [transfer-event cancel-event] :advance 0}))))
+
+(defn- uniform-choice
+  [^Random rng candidates]
+  (nth candidates (.nextInt rng (count candidates))))
+
+(defmethod decide :bed-swap
+  [rng t world patient-id {:keys [with]}]
+  (let [{:keys [patients]} world
+        self (get patients patient-id)
+        eligible (->> patients
+                     (remove (fn [[pid _]] (= pid patient-id)))
+                     (filter (fn [[_ p]] (and (= :admitted (:status p)) (some? (:location p)))))
+                     (mapv first))
+        peer-id (cond
+                  with with
+                  (seq eligible) (uniform-choice rng eligible)
+                  :else nil)
+        peer (get patients peer-id)]
+    (if (or (nil? peer-id) (nil? peer) (not= :admitted (:status peer)) (nil? (:location peer)))
+      (rejected-outcome :illegal-bed-swap patient-id {:with with})
+      {:events [{:event :bed-swap :t t
+                 :participants [{:patient-id patient-id :role :subject}
+                                {:patient-id peer-id :role :subject}]
+                 :swap {patient-id {:active-mrn (:active-mrn self) :from (:location self)
+                                    :to (:location peer) :attending (:attending self)}
+                        peer-id {:active-mrn (:active-mrn peer) :from (:location peer)
+                                :to (:location self) :attending (:attending peer)}}}]
+       :advance 0})))
+
+(defmethod decide :merge
+  [rng t world patient-id {:keys [with]}]
+  (let [{:keys [patients ground-truth]} world
+        survivor (get patients patient-id)
+        ;; :new (never admitted -- no :admission event exists yet for
+        ;; participant-ids-exist-in-run to find) and :merged (already
+        ;; merged away) are never legal merge targets, dynamically
+        ;; picked OR explicitly named via :with.
+        never-mergeable? (fn [p] (#{:new :merged} (:status p)))
+        eligible (->> patients
+                     (remove (fn [[pid _]] (= pid patient-id)))
+                     (remove (fn [[_ p]] (never-mergeable? p)))
+                     (mapv first))
+        merged-id (cond
+                    with with
+                    (seq eligible) (uniform-choice rng eligible)
+                    :else nil)
+        merged (get patients merged-id)
+        already-merged? (some (fn [ev]
+                                (and (= :merge (:event ev))
+                                     (some #(and (= :merged (:role %)) (= merged-id (:patient-id %)))
+                                           (:participants ev))))
+                              ground-truth)]
+    (if (or (nil? merged-id) (= patient-id merged-id) (nil? merged)
+            (never-mergeable? merged) already-merged?)
+      (rejected-outcome :illegal-merge patient-id {:with with})
+      {:events [{:event :merge :t t
+                 :participants [{:patient-id patient-id :role :survivor}
+                                {:patient-id merged-id :role :merged}]
+                 :surviving-mrn (:active-mrn survivor)
+                 :merged-mrn (:active-mrn merged)
+                 :merged-mrns (:mrns merged)}]
+       :advance 0})))
+
 (defmulti evolve
   "Folds one ground-truth event into ONE patient it names:
   (patient-state, event) -> patient-state'. Pure and total: no RNG, no
@@ -253,6 +394,31 @@
 (defmethod evolve :discharge
   [patient _event]
   (assoc patient :status :discharged :location nil))
+
+;; --- M2b: churn family evolves -------------------------------------------
+
+(defmethod evolve :cancel-admit
+  [patient _event]
+  (-> patient (assoc :status :new) (dissoc :class :home-ward :location :attending :admitted-at)))
+
+(defmethod evolve :cancel-transfer
+  [patient {:keys [home-ward location]}]
+  (assoc patient :home-ward home-ward :location location))
+
+(defmethod evolve :cancel-discharge
+  [patient {:keys [home-ward location attending]}]
+  (assoc patient :status :admitted :home-ward home-ward :location location :attending attending))
+
+(defmethod evolve :bed-swap
+  [patient {:keys [swap]}]
+  (assoc patient :location (get-in swap [(:patient-id patient) :to])))
+
+(defmethod evolve :merge
+  [patient {:keys [participants surviving-mrn merged-mrns]}]
+  (let [role (:role (first (filter #(= (:patient-id patient) (:patient-id %)) participants)))]
+    (case role
+      :survivor (-> patient (update :mrns into merged-mrns) (assoc :active-mrn surviving-mrn))
+      :merged (assoc patient :status :merged))))
 
 (defn replay
   "Replays `ground-truth` through `evolve`, returning a parallel seq of
@@ -284,6 +450,57 @@
                (conj! acc {:event event :patient-id subject-id
                            :before (get patients subject-id) :after (get patients' subject-id)
                            :world-before patients :world-after patients'}))))))
+
+;; --- M2b cancel-transfer/cancel-discharge: defined here, AFTER `replay`,
+;; because their decide methods query it directly (docs/patient-state-
+;; model.md's shadow-field dissolution: the reinstated prior state is
+;; QUERIED FROM THE LOG at decide-time, never a field the accumulator
+;; carries for this purpose alone).
+
+(defn- bed-reoccupied-by-someone-else?
+  "Whether `location`'s bed is CURRENTLY held by a patient other than
+  `patient-id` -- the reinstatement guard cancel-transfer/cancel-
+  discharge both need: the log-derived prior location was free WHEN it
+  was vacated, but time has passed since, and another patient's own
+  allocation (a later admission, a bed-ready transfer) may have
+  legitimately claimed it in the meantime. Reinstating into an
+  occupied bed would violate no-double-occupancy, so this is checked
+  against the LIVE occupancy board (world, not the log) at decide-time
+  -- the same board :admission/:transfer already consult."
+  [world patient-id location]
+  (when-let [bed (:bed location)]
+    (let [occupant (get (facility/occupancy-board (:patients world)) bed)]
+      (and (some? occupant) (not= occupant patient-id)))))
+
+(defmethod decide :cancel-transfer
+  [_rng t world patient-id _step]
+  (let [ground-truth (:ground-truth world)
+        idx (last-uncancelled-index ground-truth patient-id :transfer :cancel-transfer)]
+    (if (nil? idx)
+      (rejected-outcome :illegal-cancel-transfer patient-id nil)
+      (let [patient (get-in world [:patients patient-id])
+            {:keys [home-ward location]} (:before (nth (replay ground-truth) idx))]
+        (if (bed-reoccupied-by-someone-else? world patient-id location)
+          (rejected-outcome :illegal-cancel-transfer-bed-reoccupied patient-id {:location location})
+          {:events [{:event :cancel-transfer :t t :active-mrn (:active-mrn patient)
+                     :cancels-event-id idx :home-ward home-ward :location location
+                     :participants [{:patient-id patient-id :role :subject}]}]
+           :advance 0})))))
+
+(defmethod decide :cancel-discharge
+  [_rng t world patient-id _step]
+  (let [ground-truth (:ground-truth world)
+        idx (last-uncancelled-index ground-truth patient-id :discharge :cancel-discharge)]
+    (if (nil? idx)
+      (rejected-outcome :illegal-cancel-discharge patient-id nil)
+      (let [patient (get-in world [:patients patient-id])
+            {:keys [home-ward location attending]} (:before (nth (replay ground-truth) idx))]
+        (if (bed-reoccupied-by-someone-else? world patient-id location)
+          (rejected-outcome :illegal-cancel-discharge-bed-reoccupied patient-id {:location location})
+          {:events [{:event :cancel-discharge :t t :active-mrn (:active-mrn patient)
+                     :cancels-event-id idx :home-ward home-ward :location location :attending attending
+                     :participants [{:patient-id patient-id :role :subject}]}]
+           :advance 0})))))
 
 (defn- pop-min
   "Removes and returns the earliest queue entry. Queue is a sorted-map
@@ -321,6 +538,20 @@
     :facility         facility config (default config/default-facility)
     :providers        provider templates (default config/default-provider-templates;
                        NPIs are generated from THIS run's seed -- ADR-0007)
+    :churn-profile    ehr-testing-sim.churn/ChurnProfile map (default nil
+                       -- churn OFF). M2b: when present, InjectChurn runs
+                       ONCE PER PATIENT (in arrival-ordinal order, a fixed
+                       point in the draw sequence) against THIS run's own
+                       `rng` -- not a derived/isolated stream, same
+                       reasoning ADR-0009 gives for NPI generation --
+                       between building each patient's step queue and the
+                       main loop. Absent entirely (not merely all-zero),
+                       this stage never runs and consumes no RNG: the
+                       reason a config with no :churn-profile key
+                       reproduces byte-identical pre-M2b output (the
+                       pinned fixture; churn is opt-in, ADR-0009's
+                       accept-and-record policy doesn't even apply here
+                       since nothing about this path changed).
 
   Returns {:ground-truth [event ...] :state-history {patient-id [state
   ...]} :facility .. :providers [materialized-provider ...]}. The
@@ -338,7 +569,7 @@
   rather than assumed; the engine computes it as a byproduct of the
   loop below because decide needs live world state to make its next
   decision, not because it's a second source of truth."
-  [{:keys [seed patients pathway arrival-gap warm-up-seconds facility providers]
+  [{:keys [seed patients pathway arrival-gap warm-up-seconds facility providers churn-profile]
     :or {patients 1
          pathway pathway/sample-admission-discharge
          arrival-gap 60
@@ -360,44 +591,92 @@
                                                   #(* 60 (rand-int-in rng 0 arrival-gap)))))
         mrn-for (fn [i] (format "MRN%06d" (inc i)))
         pid-for (fn [i] (patient-id-for seed i))
+        ;; InjectChurn (M2b): ONLY when :churn-profile is actually
+        ;; present does this stage run at all -- absent, `steps-for` is
+        ;; a no-op and consumes no RNG (see the docstring's fixture note).
+        steps-for (if churn-profile
+                    (fn [_i] (:steps (churn/inject pathway churn-profile rng)))
+                    (fn [_i] (:steps pathway)))
         init-queue (into (sorted-map)
                          (map-indexed
                           (fn [i arrival-t]
                             [[arrival-t i]
-                             {:patient-id (pid-for i) :steps (:steps pathway)}])
+                             {:patient-id (pid-for i) :steps (steps-for i)}])
                           arrivals))
         init-world {:patients (into {} (map-indexed (fn [i _] [(pid-for i) (initial-patient (pid-for i) (mrn-for i))]))
                                     arrivals)
                     :facility facility
-                    :providers materialized-providers}
-        mark-warmup (fn [ev] (assoc ev :warm-up (< (:t ev) warm-up-seconds)))]
+                    :providers materialized-providers
+                    ;; Task 1 (M2b): cancel-family/transfer-in-error decide
+                    ;; methods query the log directly for the event they
+                    ;; reinstate from (docs/patient-state-model.md's
+                    ;; shadow-field dissolution) -- a PERSISTENT mirror of
+                    ;; the log-so-far, kept alongside (not instead of) the
+                    ;; transient `ground-truth` accumulator below so decide
+                    ;; can `nth`/`filter`/`keep-indexed` over it (transients
+                    ;; aren't seqable). Always a prefix of the final log.
+                    :ground-truth []}
+        mark-warmup (fn [ev] (assoc ev :warm-up (< (:t ev) warm-up-seconds)))
+        final-result (fn [ground-truth state-history extra]
+                       (merge {:ground-truth (persistent! ground-truth)
+                               :state-history state-history
+                               :facility facility
+                               :providers materialized-providers}
+                              extra))]
     (loop [queue init-queue
            seq-no patients
            world init-world
            ground-truth (transient [])
            state-history {}]
       (if (empty? queue)
-        {:ground-truth (persistent! ground-truth)
-         :state-history state-history
-         :facility facility
-         :providers materialized-providers}
+        (final-result ground-truth state-history nil)
         (let [[[t _] {:keys [patient-id steps]} queue'] (pop-min queue)
-              [step & remaining] steps
-              {:keys [events advance]} (decide rng t world patient-id step)
-              events (mapv mark-warmup events)
-              world' (reduce (fn [w ev]
-                                (reduce (fn [w2 {:keys [patient-id]}]
-                                          (update-in w2 [:patients patient-id] evolve ev))
-                                        w (:participants ev)))
-                              world events)
-              ground-truth' (reduce conj! ground-truth events)
-              state-history' (reduce (fn [sh ev]
-                                        (reduce (fn [sh2 {:keys [patient-id]}]
-                                                  (update sh2 patient-id (fnil conj [])
-                                                          (get-in world' [:patients patient-id])))
-                                                sh (:participants ev)))
-                                      state-history events)]
-          (if (seq remaining)
-            (recur (assoc queue' [(+ t advance) seq-no] {:patient-id patient-id :steps (vec remaining)})
-                   (inc seq-no) world' ground-truth' state-history')
-            (recur queue' seq-no world' ground-truth' state-history')))))))
+              [step & remaining] steps]
+          (if (= :merged (get-in world [:patients patient-id :status]))
+            ;; M2b: a merge (decided while processing a DIFFERENT
+            ;; patient's step -- the survivor's) can end this patient-
+            ;; id's stream mid-pathway, asynchronously to their own
+            ;; queue. "The merged patient-id's stream ends with a
+            ;; terminal merged-into event" (docs/patient-state-model.md)
+            ;; means exactly this: their own remaining queued steps are
+            ;; abandoned here, never decided, never emitting further
+            ;; events -- the run loop's own enforcement of
+            ;; no-events-after-merged-terminal, not just a check.clj
+            ;; invariant asserted after the fact.
+            (recur queue' seq-no world ground-truth state-history)
+            (let [{:keys [events advance exhausted]} (decide rng t world patient-id step)]
+              ;; A :rejected decide outcome (an illegal cancel/bed-swap/
+              ;; merge -- Task 1's validity-table enforcement) is NOT a
+              ;; run-halting condition, unlike :exhausted: it means THIS
+              ;; one step doesn't happen (already :events [] :advance 0),
+              ;; not that the simulation can no longer proceed at all.
+              ;; This matters for InjectChurn (M2b): a churned step can be
+              ;; legal when INSERTED (per the applicability oracle, a
+              ;; static analysis) yet collide with live world state by
+              ;; the time it actually executes (e.g. a bed a cancel-
+              ;; discharge would reinstate into has since been reclaimed
+              ;; by someone else's admission) -- that step is simply
+              ;; skipped, and the patient's OWN remaining steps proceed
+              ;; normally. check.clj remains the independent safety net
+              ;; for any log, authored or generated.
+              (cond
+                exhausted (final-result ground-truth state-history {:exhausted exhausted})
+                :else
+            (let [events (mapv mark-warmup events)
+                  world' (reduce (fn [w ev]
+                                    (reduce (fn [w2 {:keys [patient-id]}]
+                                              (update-in w2 [:patients patient-id] evolve ev))
+                                            w (:participants ev)))
+                                  world events)
+                  world'' (assoc world' :ground-truth (into (:ground-truth world) events))
+                  ground-truth' (reduce conj! ground-truth events)
+                  state-history' (reduce (fn [sh ev]
+                                            (reduce (fn [sh2 {:keys [patient-id]}]
+                                                      (update sh2 patient-id (fnil conj [])
+                                                              (get-in world' [:patients patient-id])))
+                                                    sh (:participants ev)))
+                                          state-history events)]
+              (if (seq remaining)
+                (recur (assoc queue' [(+ t advance) seq-no] {:patient-id patient-id :steps (vec remaining)})
+                       (inc seq-no) world'' ground-truth' state-history')
+                (recur queue' seq-no world'' ground-truth' state-history')))))))))))
