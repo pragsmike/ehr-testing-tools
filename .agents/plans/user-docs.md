@@ -35,6 +35,11 @@ session time, not taken from this plan.
 
 ## Audience register (provisional home)
 
+**Status (2026-07-25, DOC-2):** canonical in `docs/positioning.md`
+§Audience as of DOC-2; this list is the adoption-time snapshot the
+plan was drafted against, not the source of truth going forward — read
+positioning.md for the current register.
+
 Seven audiences. `docs/positioning.md` §Audience owns three of them
 today; DOC-2 makes positioning.md the canonical home for all seven
 and this section then defers to it (status line here, not deletion).
@@ -102,7 +107,7 @@ and this section then defers to it (status line here, not deletion).
 
 ## DOC-1 — CLI help surface (code)
 
-**Done (2026-07-25).** Landed as five commits (Step 0 inventory through
+**Done (2026-07-25).** Landed as six commits (Step 0 inventory through
 Step 5 close-out; prompt archived at
 `.agents/prompts/archive/2026-07-25-doc1-cli-help.md`). Itemized:
 
@@ -190,6 +195,44 @@ first. This plan's audience register gains a status line deferring to
 positioning.md. Cheap, orients everything after; no code, golden
 check must show no generated-doc drift.
 
+**Done (2026-07-25).** Landed as four commits (prompt archived at
+`.agents/prompts/archive/2026-07-25-doc2-audience-respine.md`).
+Itemized:
+
+- `docs/positioning.md` §Audience: three segments become seven,
+  keeping the original three's text substantively intact. Added: the
+  AI assistant as reader (cites DOC-1's help surface and
+  enumerable-options error family as its first deliberate serving),
+  the downstream data consumer (`--json`, judge-calibration's
+  No-verdict/Reading-this-table sections, the formats gap named with
+  a pointer to this plan's DOC-3 wave rather than left dead), the
+  Clojure library consumer (cross-linked to the existing
+  Go-public-gate-vs-first-release section rather than restated), and
+  the evaluator/decision-maker (named against README's maturity
+  table, Scope section, and the problem statement). One sentence
+  states the section's new role as the canonical register.
+- `docs/README.md`: reshaped from the single reading-order spine into
+  one entry path per audience that arrives at docs at all (task-first
+  practitioner, method-first guide reader, AI assistant, downstream
+  data consumer, contributor, evaluator; the Clojure library consumer
+  gets one line pointing at positioning.md instead of a path — nothing
+  to walk yet). The original eight-step spine (0 through 8) survives
+  verbatim, retitled "The deep walk: pipeline-first reading order" —
+  the method-first path's second and final step. Every relative link
+  and heading anchor in both edited files was mechanically checked
+  against the files on disk (a small Python script run under WSL,
+  since Windows had no working `python3`) — all resolved; nothing
+  found to name a document that isn't there.
+- `AUTHORS-GUIDE.md` gained one short section (§6, after the existing
+  placeholder §5): the same three agent-legibility preferences
+  restated as authoring guidance for future doc sessions.
+- **Record repair riding along:** DOC-1's "Landed as five commits" was
+  wrong — `git log` shows six (`230344f` inventory through `01371c1`
+  close-out); corrected above.
+- Golden check (`make pipeline && make use-cases`, no diff), full
+  suite, and both lints all green — this session touched no generated
+  doc and no code, confirmed rather than assumed.
+
 ## DOC-3 — Reference docs
 
 - `docs/cli.md` — command reference. Thin if DOC-1's help-spec is
@@ -252,7 +295,7 @@ existing green behavior, not authoring new checks.
 | Wave | Deliverables | Status | Prompt |
 |---|---|---|---|
 | DOC-1 | `ehr help` surface (data-first spec, plain-text render, exit codes documented), operator-listing verb, bounded error-message pass | **Done** (2026-07-25) | `.agents/prompts/archive/2026-07-25-doc1-cli-help.md` |
-| DOC-2 | Seven-audience register canonical in `positioning.md`; `docs/README.md` per-audience entry paths | Not started | — |
+| DOC-2 | Seven-audience register canonical in `positioning.md`; `docs/README.md` per-audience entry paths | **Done** (2026-07-25) | `.agents/prompts/archive/2026-07-25-doc2-audience-respine.md` |
 | DOC-3 | `docs/cli.md`, `docs/locators.md`, `docs/operators.md`, `docs/formats.md` | Not started | — |
 | DOC-4 | Per-use-case runnable command strips (route: `:commands` in use-cases.edn vs. cookbook — open) | Not started | — |
 | DOC-5 | Quickstart-as-script, nightly-wired; README freshness link | Not started | — |
