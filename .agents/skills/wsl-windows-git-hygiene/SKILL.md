@@ -105,6 +105,7 @@ Recommended response:
 
 ## Watch-Outs
 
+- `error: bad fsmonitor version 2` printed by WSL Git before ordinary output (`git status`, `git pull`, `git push`, etc.) is a version mismatch, not a real error: the on-disk index carries an FSMN (fsmonitor) extension written by the newer Windows-side Git, and an older WSL Git doesn't understand that extension's version — it warns and continues correctly regardless. Confirm with `git --version` on both sides (Windows Git commonly runs well ahead of a WSL distro's packaged Git) and `git config --show-origin --get-regexp fsmonitor` in the WSL checkout; the warning can persist even with `core.fsmonitor false` set, since the stale extension lives in the index, not the config. Treat it as noise to ignore unless it's accompanied by an actual failure; the durable fix is bringing WSL's Git close enough in version to the Windows one that both understand the same extension format.
 - Windows-mounted repos under `/mnt/c`, `/mnt/d`, and similar can show locking or permission quirks.
 - A strict `.gitattributes` file does not retroactively clean old index content; dirty status can still appear until normalization happens.
 - Do not assume tracked `.gitignore` is the right home for local editor noise.
