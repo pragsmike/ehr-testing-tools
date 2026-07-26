@@ -273,7 +273,6 @@ flowchart LR
 # it on: five HL7 v2 messages, plus a synthetic 1,013-message corpus
 # under simhospital/ (ADR-0011).
 YOUR_CORPUS=test/fixtures/v2
-mkdir -p out/partner
 
 # Catalog it first. Intake recurses and records EVERY file it finds
 # -- content hash, sniffed format, source label, received date -- so
@@ -287,7 +286,7 @@ cat out/partner/intake/intake-record.edn
 make ehr ARGS="gate v2 $YOUR_CORPUS --report out/partner/gate-report.edn"
 ```
 
-`--report` writes a file and does not create its parent directory -- hence the `mkdir -p`. What the report contains, field by field: [formats.md](formats.md#the-report); the stdout envelope and the `--report` file are deliberately different shapes. If your corpus is real-world and profile-stamped, read [judge-calibration.md](judge-calibration.md#baseline-relative-gating-2026-07-25-p6) before you trust a red verdict, and reach for `--baseline` ([Regression baselining / drift detection](#regression-baselining--drift-detection)). One caveat about the wrapper: `make ehr` reports *make's* failure status (2) for any non-zero CLI exit, so a workflow branching on the 0/1/2/3 contract ([cli.md](cli.md#exit-codes)) should call `clojure -M -m ehr-testing-tools.cli ...` directly.
+What the report contains, field by field: [formats.md](formats.md#the-report); the stdout envelope and the `--report` file are deliberately different shapes. If your corpus is real-world and profile-stamped, read [judge-calibration.md](judge-calibration.md#baseline-relative-gating-2026-07-25-p6) before you trust a red verdict, and reach for `--baseline` ([Regression baselining / drift detection](#regression-baselining--drift-detection)). One caveat about the wrapper: `make ehr` reports *make's* failure status (2) for any non-zero CLI exit, so a workflow branching on the 0/1/2/3 contract ([cli.md](cli.md#exit-codes)) should call `clojure -M -m ehr-testing-tools.cli ...` directly.
 
 ```
 foreign-file → catalog-entry + intake-record  [Intake]
@@ -505,8 +504,6 @@ flowchart LR
 **You type:**
 
 ```sh
-mkdir -p out/regression
-
 # The run you trust becomes the baseline. Keep this file.
 make ehr ARGS="gate v2 test/fixtures/v2 --report out/regression/baseline.edn"
 
@@ -640,7 +637,6 @@ flowchart LR
 ```sh
 # The delivered corpus, as received.
 VENDOR_CORPUS=test/fixtures/v2
-mkdir -p out/acceptance
 
 # 1. Catalog before you accept: a content hash per file, and one
 #    batch record naming the source and the date you received it.
@@ -799,7 +795,6 @@ flowchart LR
 ```sh
 # The trail is not one command: it is what the ordinary commands
 # leave behind, each artifact independently checkable.
-mkdir -p out/audit
 
 # Generate -- the manifest is the first link.
 make ehr ARGS="corpus generate --config-path config/synthea/synthea.properties \
@@ -887,7 +882,6 @@ flowchart LR
 # The tier you are characterizing (v2 here; `gate fhir` is the
 # other), and the operators you are characterizing it against.
 make ehr ARGS="corpus operators --format v2"
-mkdir -p out/calibration
 
 # Baseline: what does this tier say about the file BEFORE you
 # break it? On a real-world corpus this is not a formality.
