@@ -1,4 +1,4 @@
-.PHONY: help pack pack-skills pack-push test coverage integration ehr pipeline use-cases operators-doc cli-doc lint-pipeline lint-deps
+.PHONY: help pack pack-skills pack-push test coverage integration ehr pipeline use-cases operators-doc cli-doc lint-pipeline lint-deps quickstart-demo
 
 SHELL := bash
 
@@ -42,6 +42,9 @@ help:
 	@echo "                   bin/ehr artifact fetch --name fhir-validator-cli --version 6.9.12"
 	@echo "  ehr          - compatibility spelling for the CLI; bin/ehr is the entry point (it carries the 0/1/2/3 exit contract, where make reports its own status 2 for any non-zero exit)"
 	@echo "                 e.g. bin/ehr artifact fetch --name synthea --version 4.0.0 -- see every command with bin/ehr help"
+	@echo "  quickstart-demo - run README.md's Quickstart commands verbatim (bin/quickstart-demo), asserting each"
+	@echo "                 one's exit code and a clean tree afterward; fetches real artifacts and runs the real"
+	@echo "                 FHIR validator -- integration-tier, not hermetic (DOC-5)"
 	@echo "  pipeline     - regenerate docs/pipeline.md from docs/pipeline.edn"
 	@echo "  use-cases    - regenerate docs/use-cases.md from docs/use-cases.edn"
 	@echo "  operators-doc - regenerate docs/operators.md from the mutation-operator registry"
@@ -62,6 +65,17 @@ coverage:
 # `make test`/`make coverage`.
 integration:
 	clojure -X:integration
+
+# Runs README.md's Quickstart commands verbatim, under per-step exit-code
+# assertions, via bin/quickstart-demo (DOC-5, .agents/plans/user-docs.md).
+# Not hermetic -- fetches the same three artifacts.lock.edn artifacts as
+# `integration` above and runs the real FHIR validator; belongs in the
+# nightly tier (.github/workflows/integration.yml), never per-push.
+# `make quickstart-fresh` is the fast, per-push sibling: it only proves
+# this script and the README's fence teach the same commands, without
+# running either.
+quickstart-demo:
+	bin/quickstart-demo
 
 # Compatibility spelling, kept working and unchanged (CLI-2, 2026-07-26).
 # `bin/ehr` is the taught entry point: this target cannot carry the CLI's
