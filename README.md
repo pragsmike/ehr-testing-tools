@@ -103,22 +103,30 @@ Windows is not supported) and a copy-paste prompt for your AI assistant:
 
 Requires a JDK 17+ runtime for Synthea itself — resolved through this
 repo's own artifact registry, not your `PATH` (see
-[`docs/components.md`](docs/components.md)). Fetch the pinned artifacts
-once, then generate and mutate:
+[`docs/components.md`](docs/components.md)).
+
+Commands run through `bin/ehr`, from the repo root. It `exec`s straight
+into the CLI, so the exit code you see is the CLI's own 0/1/2/3 contract
+— and your arguments are plain shell arguments, with none of the nested
+quoting `ARGS="..."` needs. `make ehr ARGS="..."` still works as a
+compatibility spelling, but make reports its own status (2) for any
+non-zero exit, which collapses the contract.
+
+Fetch the pinned artifacts once, then generate and mutate:
 
 ```sh
 # See every command, flag, and exit code the CLI supports.
-make ehr ARGS="help"
+bin/ehr help
 
 # One-time: fetch the pinned Synthea distribution and its JDK, into the
 # local artifact cache (~/.cache/ehr-testing-tools/artifacts).
-make ehr ARGS="artifact fetch --name synthea --version 4.0.0"
-make ehr ARGS="artifact fetch --name temurin-jdk --version 17.0.19+10"
+bin/ehr artifact fetch --name synthea --version 4.0.0
+bin/ehr artifact fetch --name temurin-jdk --version 17.0.19+10
 
 # Generate a small deterministic corpus (EXP-A4's pinned settings).
-make ehr ARGS="corpus generate --config-path config/synthea/synthea.properties \
+bin/ehr corpus generate --config-path config/synthea/synthea.properties \
   --seed 100 --clinician-seed 555 --population 10 \
-  --reference-date 20260101 --output-dir out/demo-corpus"
+  --reference-date 20260101 --output-dir out/demo-corpus
 
 # Mutate one patient bundle: drop a required element at a named
 # locator, with a lineage record for the mutant. (mutate --input takes
@@ -126,11 +134,11 @@ make ehr ARGS="corpus generate --config-path config/synthea/synthea.properties \
 # corpus dir above also holds two non-patient bundles --
 # hospitalInformation*.json, practitionerInformation*.json -- so this
 # picks a patient file specifically rather than the whole directory.
-# See the full operator catalog: `make ehr ARGS="corpus operators"`.)
+# See the full operator catalog: `bin/ehr corpus operators`.)
 PATIENT_FILE=$(ls out/demo-corpus/fhir/*.json | grep -v -e hospitalInformation -e practitionerInformation | head -1)
-make ehr ARGS="corpus mutate --input $PATIENT_FILE \
+bin/ehr corpus mutate --input $PATIENT_FILE \
   --operator-id remove-required-element --locator-path entry[0].resource.gender \
-  --output-dir out/demo-mutants"
+  --output-dir out/demo-mutants
 
 # Gate a file or directory against HL7 v2 (base-structural, HAPI) or
 # FHIR (base-spec, the official validator -- also fetches its own
@@ -143,13 +151,13 @@ make ehr ARGS="corpus mutate --input $PATIENT_FILE \
 # --treat-no-verdict-as pass|rejected folds it into an existing
 # polarity when that's the right call for your workflow. --report
 # writes the corpus report; --json projects it.
-make ehr ARGS="artifact fetch --name fhir-validator-cli --version 6.9.12"
-make ehr ARGS="gate v2 test/fixtures/v2"
-make ehr ARGS="gate fhir out/demo-mutants --report out/demo-mutants-report.edn"
+bin/ehr artifact fetch --name fhir-validator-cli --version 6.9.12
+bin/ehr gate v2 test/fixtures/v2
+bin/ehr gate fhir out/demo-mutants --report out/demo-mutants-report.edn
 
 # Check a corpus against an expected corpus (golden equivalence) --
 # the corpus's second judge, alongside Gate.
-make ehr ARGS="check out/demo-corpus/fhir --expected out/demo-corpus/fhir"
+bin/ehr check out/demo-corpus/fhir --expected out/demo-corpus/fhir
 
 # Run the test suite (hermetic — see AGENTS.md). A separate suite
 # exercises the real validator/HAPI engines against real mutants

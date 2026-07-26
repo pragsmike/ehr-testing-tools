@@ -38,7 +38,7 @@
 (def sample-case-with-strip
   (assoc sample-case
          :commands {:lines ["# a comment a paste survives"
-                            "make ehr ARGS=\"corpus operators --format v2\""]
+                            "bin/ehr corpus operators --format v2"]
                     :note "Operator ids: [operators.md](operators.md)."}))
 
 (deftest use-case-accepts-a-commands-strip-test
@@ -46,7 +46,7 @@
 
 (deftest use-case-accepts-a-strip-without-a-note-test
   (is (usecases/valid-use-case?
-       (assoc sample-case :commands {:lines ["make ehr ARGS=\"help\""]}))))
+       (assoc sample-case :commands {:lines ["bin/ehr help"]}))))
 
 (deftest use-case-accepts-a-no-commands-stub-test
   (is (usecases/valid-use-case?
@@ -102,7 +102,7 @@
 (deftest commands-block-renders-the-strip-in-one-fence-test
   (let [block (usecases/case->commands-block sample-case-with-strip)]
     (is (str/includes? block "**You type:**"))
-    (is (str/includes? block "```sh\n# a comment a paste survives\nmake ehr ARGS=\"corpus operators --format v2\"\n```"))
+    (is (str/includes? block "```sh\n# a comment a paste survives\nbin/ehr corpus operators --format v2\n```"))
     (is (str/includes? block "[operators.md](operators.md)"))
     (is (= 2 (count (re-seq #"(?m)^```" block)))
         "exactly one fence: a note is prose below it, never inside")))
@@ -114,7 +114,7 @@
     (is (str/includes? block "A thing.") "the stub is derived from :bring")
     (is (str/includes? block "Its Transform stage is {external: true}."))
     (is (not (str/includes? block "```")) "a stub never fences anything")
-    (is (not (str/includes? block "make ehr")) "a stub never invents an invocation")))
+    (is (not (str/includes? block "bin/ehr")) "a stub never invents an invocation")))
 
 (deftest commands-block-stub-needs-no-reason-key-test
   (let [block (usecases/case->commands-block sample-case)]

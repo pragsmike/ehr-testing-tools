@@ -79,10 +79,14 @@ make pack       # slim pack (excludes .agents/skills, .agents/prompts/archive)
 make pack-skills  # the elided directories, packed separately
 make pack-push  # dormant (2026-07-25) -- pack + pack-skills, then publish
                 # both to the pragsmike/packs repo (~/.packs); see AUTHORS-GUIDE.md
-make ehr ARGS="artifact fetch --name synthea --version 4.0.0"
-                # invoke the `ehr` CLI (ADR-0004): corpus generate,
-                # artifact fetch/resolve; EDN by default, --json for a
-                # JSON projection
+
+bin/ehr artifact fetch --name synthea --version 4.0.0
+                # invoke the `ehr` CLI (ADR-0004) -- not a make target:
+                # corpus generate, artifact fetch/resolve; EDN by
+                # default, --json for a JSON projection. bin/ehr is the
+                # entry point because it carries the CLI's 0/1/2/3 exit
+                # contract; `make ehr ARGS="..."` still works but
+                # reports make's own status (2) for any non-zero exit
 ```
 
 ## Hard rules

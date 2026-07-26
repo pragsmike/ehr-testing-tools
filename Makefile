@@ -29,10 +29,11 @@ help:
 	@echo "  coverage     - run cloverage and report coverage (clojure -M:coverage); cold-cache/no-network hermetic"
 	@echo "  integration  - run the integration test suite (clojure -X:integration); requires"
 	@echo "                 'ehr artifact fetch' for synthea, temurin-jdk, and fhir-validator-cli first, e.g.:"
-	@echo "                   make ehr ARGS=\"artifact fetch --name synthea --version 4.0.0\""
-	@echo "                   make ehr ARGS=\"artifact fetch --name temurin-jdk --version 17.0.19+10\""
-	@echo "                   make ehr ARGS=\"artifact fetch --name fhir-validator-cli --version 6.9.12\""
-	@echo "  ehr          - invoke the ehr CLI, e.g. make ehr ARGS=\"artifact fetch --name synthea --version 4.0.0\" -- see every command with make ehr ARGS=\"help\""
+	@echo "                   bin/ehr artifact fetch --name synthea --version 4.0.0"
+	@echo "                   bin/ehr artifact fetch --name temurin-jdk --version 17.0.19+10"
+	@echo "                   bin/ehr artifact fetch --name fhir-validator-cli --version 6.9.12"
+	@echo "  ehr          - compatibility spelling for the CLI; bin/ehr is the entry point (it carries the 0/1/2/3 exit contract, where make reports its own status 2 for any non-zero exit)"
+	@echo "                 e.g. bin/ehr artifact fetch --name synthea --version 4.0.0 -- see every command with bin/ehr help"
 	@echo "  pipeline     - regenerate docs/pipeline.md from docs/pipeline.edn"
 	@echo "  use-cases    - regenerate docs/use-cases.md from docs/use-cases.edn"
 	@echo "  operators-doc - regenerate docs/operators.md from the mutation-operator registry"
@@ -54,6 +55,12 @@ coverage:
 integration:
 	clojure -X:integration
 
+# Compatibility spelling, kept working and unchanged (CLI-2, 2026-07-26).
+# `bin/ehr` is the taught entry point: this target cannot carry the CLI's
+# 0/1/2/3 exit contract (ADR-0004, ADR-0010), because make's own exit
+# status is 2 for any failed recipe -- so a rejection (1) and a
+# no-verdict aggregate (3) both arrive here as 2. bin/ehr execs the same
+# invocation below, so the two are otherwise equivalent.
 ehr:
 	clojure -M -m ehr-testing-tools.cli $(ARGS)
 

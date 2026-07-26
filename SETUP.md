@@ -125,14 +125,14 @@ repo root.
 # local artifact cache. First run downloads roughly 190MB (Synthea jar)
 # + 185MB (the Temurin 17 JDK tarball) ~375MB total; cached afterward —
 # a second run returns instantly (":cached true" in the output).
-make ehr ARGS="artifact fetch --name synthea --version 4.0.0"
-make ehr ARGS="artifact fetch --name temurin-jdk --version 17.0.19+10"
+bin/ehr artifact fetch --name synthea --version 4.0.0
+bin/ehr artifact fetch --name temurin-jdk --version 17.0.19+10
 
 # Generate a small deterministic corpus (10 patients, pinned seeds and
 # reference date -- same invocation the README's quickstart uses).
-make ehr ARGS="corpus generate --config-path config/synthea/synthea.properties \
+bin/ehr corpus generate --config-path config/synthea/synthea.properties \
   --seed 100 --clinician-seed 555 --population 10 \
-  --reference-date 20260101 --output-dir out/my-first-corpus"
+  --reference-date 20260101 --output-dir out/my-first-corpus
 ```
 
 This lands in `out/my-first-corpus/` (gitignored — generated corpora are
@@ -151,9 +151,9 @@ locator, with a lineage record for the mutant:
 
 ```sh
 PATIENT_FILE=$(ls out/my-first-corpus/fhir/*.json | grep -v -e hospitalInformation -e practitionerInformation | head -1)
-make ehr ARGS="corpus mutate --input $PATIENT_FILE \
+bin/ehr corpus mutate --input $PATIENT_FILE \
   --operator-id remove-required-element --locator-path entry[0].resource.gender \
-  --output-dir out/my-first-mutants"
+  --output-dir out/my-first-mutants
 ```
 
 This lands in `out/my-first-mutants/`: the mutated bundle itself, plus
@@ -189,8 +189,8 @@ before searching the web.
 - **Wrong or old `java` on `PATH`.** `java -version` should show 11+
   (17+ if you have it). If Synthea generation fails with
   `UnsupportedClassVersionError`, that's the fetched Temurin 17 not being
-  used correctly — check `make ehr ARGS="artifact fetch --name
-  temurin-jdk --version 17.0.19+10"` actually completed, not your system
+  used correctly — check `bin/ehr artifact fetch --name
+  temurin-jdk --version 17.0.19+10` actually completed, not your system
   `java`.
 - **Clojure CLI not on `PATH` after install.** The official installer
   puts `clojure`/`clj` in `/usr/local/bin` — open a new shell (or
