@@ -591,3 +591,159 @@ vendored one must first walk the research doc's §5 sanitization gate
 valid-format NHS numbers; acceptable as committed internal test input,
 not as a published derivative).
 **Status.** Accepted (author-directed), 2026-07-26.
+
+---
+## ADR-0012 — The CLI properties `ehr-testing-sim` mounts against
+**Context.** `ehr-testing-sim` (a sibling repo, not a dependency of this
+one — the arrow points tools → sim only, and nothing in this repo's
+compile path touches sim today) was designed to mount into `ehr` as an
+`ehr sim` subcommand group with roughly four lines of change on this
+side. Its maintainer sent a note explaining that the ease is not
+accidental: it rests on five specific properties of this repo's CLI
+architecture, mostly consequences of ADR-0004, plus one commitment about
+`corpus/manifest.clj`'s schema. The note is vendored verbatim at
+[`notes/ehr-testing-sim-mounting-note.md`](ehr-testing-sim-mounting-note.md)
+as provenance; this record is the commitment.
+
+The reason to record it *now*, before any mount exists: none of these
+properties is individually precious, so a refactor could change one
+without anybody noticing it was load-bearing, and the breakage would
+surface at runtime in the *other* repo, where this repo's tests cannot
+see it. An interface commitment nobody wrote down is not an interface.
+
+Every claim below was re-verified against source while writing this
+record (2026-07-26, `src/ehr_testing_tools/cli.clj`,
+`cli/help.clj`, `result.clj`, `corpus/manifest.clj`,
+`corpus/intake.clj`, `test/ehr_testing_tools/cli/help_test.clj`); where
+the note's description and the code disagree, **the code is recorded and
+the disagreement is named**. Three such corrections appear, marked
+*[correction]*.
+
+**Decision.** These five properties, and the manifest commitment below,
+are interface commitments of this repo's CLI: refactor freely *within*
+each line, and treat crossing one as a change that needs a superseding
+record and a heads-up to sim, not a silent internal cleanup. Scope is
+exactly this: what the mount seam depends on. Everything about *how* a
+mount would be built is out of scope (see the closing paragraph).
+
+**1. Dispatch is a data-in / data-out function keyed on `[group action]`
+positionals.** `cli/dispatch` takes already-parsed `[args opts]`,
+destructures `[group action path]`, and returns a Result map to
+`main!`, which renders and exits. *Safe:* renaming `dispatch`,
+reordering or reorganizing arms, adding groups, replacing the `case`
+with data-driven routing (a group → handler map is fine). *Breaking:*
+dispatching on raw unparsed argv; requiring a handler to print or
+`System/exit` itself; passing `opts` in a per-group shape.
+
+**2. One `babashka.cli` parse, one spec.** `cli/parse` calls
+`babashka.cli/parse-args` exactly once, with `cli/cli-spec`, and
+`main!` is the only caller — coercion happens once, host-side, before
+dispatch. Today's spec coerces `:seed` and `:population` to `:long`,
+`:json` to `:boolean`, and carves `:reference-date`/`:version` out to
+`:string` because they are digit-shaped *identifiers* (a coerced long
+breaks `ProcessBuilder`'s `String[]`). `:help` is not in the spec at
+all — `--help` arrives as `:help true` from babashka.cli's own default
+handling. *Safe:* adding spec keys; merging another spec's keys in
+before parsing. *Breaking:* parsing per-group, parsing after dispatch,
+or moving off babashka.cli's coercion semantics — flags this repo never
+declared would inherit the change invisibly. The hazard the note names
+is real and unmitigated: merged specs disagreeing on a shared key are
+last-merge-wins, silently.
+
+**3. Result maps are structurally typed, not nominally.** `result.clj`
+defines `Result` as a Malli map — `:status` (`:ok`/`:rejected`/
+`:error`), optional `:category`, `:payload` — and the shell renders and
+exit-codes any conforming map without knowing which namespace built it.
+*Safe:* adding optional keys; adding categories; extending the
+exit-code table. *Breaking:* new required keys, or records/protocols in
+place of plain maps.
+
+*[correction]* The note says interpreting `:category` globally rather
+than per-status would be breaking. The shell already interprets exactly
+two category values globally, and has since DOC-1/ADR-0010:
+`:gate-no-verdict` maps to exit 3 in `result->exit-code`, and
+`:cli-help` makes `main!` print `:payload`'s `:text` verbatim instead of
+rendering EDN. CLI-2 adds a third category the shell itself produces,
+`:report-write-failed`, but that one is not interpreted specially. So
+the commitment is narrower than the note assumes and states a real
+constraint on sim: those two names are globally meaningful and a
+foreign category vocabulary must not reuse them. Adding a *third*
+globally-interpreted category is the breaking change.
+
+**4. Help is data this repo's machinery walks.** `cli/help/cli-spec` is
+`{:program, :exit-codes, :global-flags, :groups [...]}`, and a group is
+`{:group, :doc, :verbs [{:verb, :doc, :flags [{:flag, :doc, :default}]}]}`
+— matching the shape the note describes, plus two optional keys the
+`gate` and `check` groups use for their positional conventions
+(`:positional`, `:positional-doc`). Renderers are pure functions over
+it. *Safe:* any change to rendering. *Breaking:* reshaping the help data
+model without a shim.
+
+*[correction]* The note expects this repo's help-vs-dispatch coverage
+test to start covering a mounted sim group "for free." It will not, and
+that is better than it sounds: `test/ehr_testing_tools/cli/help_test.clj`
+checks both directions through two *hand-mirrored* structures — a
+`stub-key` `case` and a `known-dispatch-pairs` set. A new group that
+appears in the spec and in dispatch without an entry in both fails
+loudly (the `case` has no default). Mounting sim therefore requires
+updating those two, which is a two-line chore that cannot be forgotten,
+not free coverage.
+
+**5. The `-fn` injection point in dispatch.** `dispatch`'s 3-arity
+option map carries one injectable function per command
+(`:fetch-fn`, `:gate-v2-fn`, `:check-fn`, …), defaulting to the real
+one; `main!` does the same for `:dispatch-fn`/`:println-fn`/
+`:exit-fn`. This is what keeps CLI tests hermetic (AGENTS.md's rule),
+and a mounted sim arm gets the same treatment — an injectable
+`:sim-fn` — so this repo's tests never load a simulation engine.
+*Breaking:* dropping the injection convention, or hard-wiring one arm's
+handler.
+
+**The manifest commitments.** Sim emits run manifests shaped to
+`corpus/manifest.clj`'s `ManifestV1_1` and holds a mirror of that schema
+with a tripwire test, which can only detect drift after the fact. Two
+commitments, both of which this repo already keeps:
+
+- **Version, don't mutate.** `ManifestV0` (`:schema-version` `0`),
+  `ManifestV1` (`1`), and `ManifestV1_1` (the *string* `"1.1"`, not the
+  integer 2 — deliberate, per that namespace's own docstring) coexist
+  frozen; nothing regenerates or reinterprets an older manifest as a
+  newer one. That discipline continues: a shape change gets a new named
+  schema and a new version value, never an edit in place.
+- **The binding contract test belongs here.** Sim cannot host a test
+  that validates its emitted manifest against this repo's authoritative
+  schema without inverting the dependency arrow. When sim is mounted,
+  that test lives in this repo's `test-integration/` tree (it runs a
+  real simulation subprocess — the hermeticity path split applies).
+
+*[correction]* The note describes the manifest as the shape "so
+`ehr corpus intake` can ingest a sim run." `corpus/intake.clj` never
+reads a manifest: it catalogs every file it finds by content hash and a
+sniffed format (`:fhir-json`/`:v2-er7`/`:unknown`), and a `manifest.edn`
+sitting in a source directory would be catalogued as `:unknown` like any
+other unrecognized file. Intake ingesting a sim *corpus* is true; intake
+validating or consuming a sim *manifest* is not a thing this repo does
+today, and the contract test above — not intake — is what would catch
+manifest drift.
+
+**Alternatives rejected.** *Recording nothing until sim is actually
+mounted* — the properties are load-bearing now, and the whole failure
+mode is a refactor that looks internal from inside this repo; CLI-2
+itself edited `cli.clj` before this record existed, which is the
+argument. *Adopting the note as the record* — a cross-repo note is one
+party's account, and three of its claims turned out not to match this
+repo's code; an ADR that says "see the note" would have inherited those.
+The note is kept verbatim as provenance instead. *Designing the mount
+here* — see below; a commitment and a design have different lifetimes.
+
+**Consequence.** A refactor near `cli/parse`, `cli/dispatch`,
+`result.clj`, or `cli/help.clj` now has a stated line to check, and a
+one-line comment at the dispatch site points here. Explicitly **out of
+scope of this record and of CLI-2**: dependency coordinates for sim,
+whether the sim namespace loads optionally, the startup assertion that
+merged specs agree on shared keys (the property-2 hazard — worth doing,
+not decided here), the `:sim-fn` default, and the contract test itself.
+Those are mount-time design choices and belong to the session that does
+the mount. No `"sim"` arm exists in `dispatch` today, and this record
+does not add one.
+**Status.** Accepted (author-directed), 2026-07-26.

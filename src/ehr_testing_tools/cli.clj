@@ -432,6 +432,15 @@
   [args valid-options]
   (result/error :unknown-command {:args args :valid-options valid-options :hint "run: ehr help"}))
 
+;; Cross-repo interface commitment (ADR-0012): ehr-testing-sim mounts as
+;; one arm here, per its own ADR-0001. Preserve, when refactoring this
+;; boundary: parsed-[group action]-in / Result-map-out dispatch; a single
+;; merged babashka.cli spec parsed once, host-side; structural Result
+;; typing; the help-group data shape; the -fn injection point. Manifest
+;; schema changes require a version bump, and the binding contract test
+;; lives in test-integration/. Read ADR-0012 (and, for provenance,
+;; notes/ehr-testing-sim-mounting-note.md) before changing any of these.
+
 (defn dispatch
   "Routes [group action] positional args to the corresponding capability
   function with opts. The -fn keys are injectable (tests use this
