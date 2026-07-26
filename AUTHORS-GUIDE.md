@@ -119,3 +119,52 @@ an assistant may have cited; and make error text self-explanatory
 without a human in the loop to interpret it (DOC-1's enumerable-options
 error family — naming valid options plus a `run: ehr help`-style hint —
 is the precedent).
+
+## 7. Session-prompt verification checks carry their invariants
+
+A verification command a session prompt mandates is a measurement; the
+invariant it's meant to encode is the claim. They can disagree, and the
+executing agent must be able to tell which one broke — without the
+invariant stated alongside the command, both failure modes below
+collapse into a guess.
+
+**Two failure modes.** Reality disagreeing with a sound check is a
+finding — record it (an F-row, if it's a fact) and never adjust
+reality's numbers toward the prompt's own figures. A check misencoding
+its own stated invariant is an escalation — stop, report, and wait for a
+corrected check from the author; never silently patch the check to
+pass, and never silently wave a failure through.
+
+**Craft discipline.** Prefer checks on structure and membership (file
+lists, `FILE:` framing lines, exit codes, counts of structural markers)
+over substring checks that ordinary prose can satisfy. Beware
+self-reference: session prompts get archived and packed, so a prompt
+that names an artifact will itself contain that name in its own
+archived text — a substring check run over a pack that includes the
+prompt archive is a *structurally guaranteed* false positive, not an
+unlucky one. Where a check reproduces a reference figure, state what a
+reproduction failure means; the corpus-adoption prompt's "a reference
+figure fails to reproduce → the discrepancy is the deliverable; record
+it, do not adjust toward this prompt" is the model to copy. Prompts
+archive **as issued**: a defective check is corrected by an author
+ruling recorded in the session report, never by editing the archive —
+the archive is a record of what was asked, not of what should have been
+asked.
+
+Two sessions on 2026-07-26 hit each mode from opposite sides. The
+SimHospital corpus-adoption session's reference figures
+(`.agents/prompts/archive/2026-07-26-simhospital-corpus-adoption.md`)
+described the corpus as "segment delimiter CR" — true, but coarser than
+the vendored bytes' actual framing, which also separates messages with
+a blank LF line; the prompt's own tripwire treated the gap as a finding
+rather than a failure, and it now stands as F25 in
+`notes/facts-register.md`. The pack-elide session's Step 1 verification
+(`.agents/prompts/archive/2026-07-26-pack-elide-and-research-errata.md`)
+mandated a bare `grep -c "simhospital"` over the skills pack, expecting
+0; it returned 8, every hit prose inside the archived corpus-adoption
+prompt's own legitimately-included text. The stated invariant — no
+corpus file enters `pack-skills` — held; only the substring encoding
+was wrong. The executing agent stopped and reported instead of
+adjusting the grep, the author issued a corrected membership check
+in-flight, and the archived prompt keeps the original, defective grep
+exactly as issued.
