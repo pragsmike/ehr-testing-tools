@@ -539,6 +539,125 @@ tests): `test-integration/ehr_testing_tools/contract_pairing_test.clj`'s
 ns docstring still says "Run explicitly with `clojure -X:test :excludes
 '[]'`" — the same stale incantation the README edit above fixed.
 
+*[All three answered by the author 2026-07-26 and executed in CLI-2
+below: finding 1 fixed in code (`--report` creates its parent, residual
+IO failures categorized); finding 2 answered as **option (b)**, a
+`bin/ehr` wrapper rather than a Makefile change, the infeasibility
+premise measured before anything was built on it; the docstring rider
+fixed. The report above stands as the record of what DOC-4 found and
+deliberately left alone.]*
+
+## CLI-2 — Report writes and the entry point (interlude)
+
+Not a DOC wave: the code micro-wave answering DOC-4's two deliberately-
+unacted findings, plus the docstring rider, plus one cross-repo ADR the
+author added mid-planning. Slotted after DOC-4 because both findings are
+things DOC-4 could only document around.
+
+**Done (2026-07-26).** Seven commits, prompt archived at
+`.agents/prompts/archive/2026-07-26-cli2-report-and-entrypoint.md`.
+Two phases, both ratified. Itemized:
+
+- **Phase A, step 1 — `--report` conforms to ADR-0004.** A new private
+  `cli/write-report!` does `io/make-parents` then `spit`: the user named
+  where they want the file, so a missing intermediate directory is
+  created rather than surfaced as the uncaught `FileNotFoundException`
+  DOC-4 measured. Any residual `java.io.IOException` becomes
+  `result/error :report-write-failed` (payload: `:path`, the cause's
+  `:message`, a `:hint` — DOC-1's enumerable-options register) at exit 2
+  through ADR-0004's generic mapping, no special case added to
+  `result->exit-code`. Applied at all three write sites (gate's plain
+  and `--baseline` branches, check's) and nowhere else; the write error
+  outranks the verdict it would have accompanied, since a run whose
+  recorded output didn't land is an operational failure rather than a
+  judgment. Six additive tests, no existing test edited; red→green was
+  5 errors → 0.
+- **Phase A, step 2 — the strips shed the workaround.** All five
+  `mkdir -p` lines and the note clause that explained them leave
+  `use-cases.edn`. Verified first that nothing else in those strips
+  depended on the directory (`corpus intake` and `corpus generate` each
+  mkdir their own output). Four cheap strips re-run end to end; the
+  Synthea/`gate fhir` strip deliberately not re-run.
+- **Phase A, step 3 — the docstring rider.** `contract_pairing_test`'s
+  ns docstring now says `make integration`. Rider in the same sentence:
+  it also claimed the `^:integration` tag and the `:test` alias were
+  what excluded the suite; AGENTS.md's rule is a path split, so that
+  was restated too. Doc-only.
+- **Phase A, step 4 — ADR-0012.** The `ehr-testing-sim` maintainer's
+  mounting note is vendored verbatim
+  (`notes/ehr-testing-sim-mounting-note.md`) and turned into an
+  interface commitment: five load-bearing CLI properties (dispatch's
+  parsed-in/Result-out shape; one babashka.cli parse with one spec;
+  structural Result typing; the help-spec data shape; the `-fn`
+  injection point), each with its safe/breaking line, plus the two
+  manifest commitments (version-don't-mutate; the binding contract test
+  belongs in this repo's `test-integration/`). A one-line comment at
+  `cli.clj`'s dispatch site points at it. Every claim was re-verified
+  against source, and **three of the note's claims did not match the
+  code** and are recorded as corrections: the shell already interprets
+  two `:category` values globally (`:gate-no-verdict`, `:cli-help`); the
+  help-vs-dispatch coverage test is hand-mirrored, so a mounted group
+  fails loudly rather than being covered for free; and `corpus intake`
+  never reads a manifest at all. Mount-time design is explicitly out of
+  scope.
+- **Phase B, step 0 — the premise, measured.** The prompt's claim that
+  `make ehr` structurally cannot carry the exit contract was probed
+  before anything was built on it (a three-line makefile, GNU Make
+  4.2.1): a recipe exiting 3 leaves make exiting 2, `.SHELLSTATUS` lets
+  the makefile *read* the code but not *be* it, `-k` changes nothing,
+  and the only recipe-level lever (`-`) makes the failure invisible
+  instead. Premise holds. Also located the exit-3 case the fidelity
+  evidence needed (no committed fixture produces one: judge.v2 never
+  emits `:no-verdict`, and Synthea-derived FHIR carries genuine errors
+  that outrank it), and enumerated every live `make ehr` site — which
+  found README carrying 10, not the 1 the prompt assumed.
+- **Phase B, step 1 — `bin/ehr`.** Twelve lines of bash: resolve the
+  repo root from the script's own location, `exec` the same
+  `clojure -M -m` the make recipe runs, so equivalence is by
+  construction. Mode 100755 in the index (needed
+  `git update-index --chmod=+x`: the tree is NTFS with
+  `core.filemode=false`). All four exit codes proven through the
+  wrapper — 0 `help`, 2 an unknown verb, 1 a rejecting `gate v2`, 3 a
+  real `gate fhir` no-verdict aggregate — plus a check that a relative
+  path argument still resolves against the repo root when invoked from
+  a subdirectory. One CI smoke step in the fast tier (`bin/ehr help`
+  exits 0 and prints usage). Recorded in that commit: the wrapper sits
+  entirely outside the parse-and-dispatch boundary, so ADR-0012's
+  properties are untouched by it.
+- **Phase B, step 2 — the sweep, complete in one commit.** 54 live
+  teaching sites flipped (README 10, SETUP 5, `use-cases.edn` 30,
+  AGENTS 1, the renderer's two literals, four test expectations) and
+  `use-cases.md` regenerated. The three verdict-branching strips' notes
+  lose the "call `clojure -M -m ...` directly" escape hatch that
+  existed only because make swallowed the code. `make ehr` survives
+  unchanged as a compatibility spelling, with `make help` and a
+  Makefile comment naming `bin/ehr` as primary and stating the
+  collapse. CI's own three `make ehr` calls are deliberately left as-is
+  (a machine invocation, not instruction — and it keeps the compat
+  spelling exercised nightly).
+- Extended golden check clean (only `use-cases.md` regenerated;
+  `cli.md` carries no invocation spelling, confirmed by running the
+  target). Full suite 492 tests / 1507 assertions (486/1487 at DOC-4's
+  close), both lints green, coverage 90.93% forms / 94.08% lines. Link
+  check across README, SETUP, AGENTS, `use-cases.md`, `cli.md`,
+  `ADRs.md`, and the vendored note: 84 relative links, every file and
+  `#anchor` resolves.
+
+**Report to the author — SETUP.md has drifted from its cohort-validated
+text.** The narrow fence lift was used exactly as granted: five
+mechanical `make ehr ARGS="X"` → `bin/ehr X` substitutions in SETUP.md,
+nothing else touched. But SETUP is the one document validated
+externally (the trial cohort's 15-minute result), and the commands a
+walkthrough tells you to type are the substance of that validation, not
+packaging. The substitution is behavior-preserving and the wrapper is
+proven, so this is not a suspected break — it is a note that the
+validated artifact and the shipped artifact are no longer the same
+bytes, and a cohort re-check (or one fresh run of SETUP end to end by
+someone who hasn't seen it) would restore the claim. One related detail
+worth a glance if that re-check happens: SETUP's WSL2 framing now
+matters more than it did, since `bin/ehr` is a bash script rather than
+a make target.
+
 ## DOC-5 — Executable quickstart (enforcement)
 
 README's quickstart extracted to a script (`make quickstart-demo` or
@@ -569,6 +688,7 @@ existing green behavior, not authoring new checks.
 | DOC-3 | `docs/cli.md` + `docs/operators.md` generated (new `docsgen` renderers, two make targets, freshness-gated); `docs/locators.md` + `docs/formats.md` hand-written, examples/shapes machine-verified; registry gains `:doc`; golden check extended | **Done** (2026-07-25) | `.agents/prompts/archive/2026-07-25-doc3-reference-docs.md` |
 | LOC-1 | Locator grammar micro-wave (interlude, not a DOC wave): FHIR paths reject a trailing separator (split limit `-1`, dead guard revived); `MSH-1` refused at parse with a teaching `:hint`; both rejection categories preserved; `docs/locators.md`'s two stale sharp edges rewritten as dated grammar facts, didactic MSH account preserved; component-granularity edge out of scope by ruling | **Done** (2026-07-25) | `.agents/prompts/archive/2026-07-25-loc1-locator-grammar.md` |
 | DOC-4 | Per-use-case runnable command strips, route ratified as `:commands` in `use-cases.edn`: schema gains `:commands`/`:no-commands` (mutually exclusive, `[:fn]`-guarded), renderer emits a **You type:** fenced strip or a data-derived honest stub; 10 strips run-verified end to end (incl. a 99s `gate fhir` and `make integration` at 19m11s), 4 stubs naming their blocking external/planned stage; `ehr corpus operators` surfaces `:doc`; README's stale integration-suite incantation fixed to `make integration` | **Done** (2026-07-26) | `.agents/prompts/archive/2026-07-26-doc4-runnable-strips.md` |
+| CLI-2 | Code micro-wave (interlude, not a DOC wave): `--report` creates its parent and residual IO failures become `:report-write-failed` (exit 2, ADR-0004), strips drop their `mkdir -p` workarounds, contract-pairing's ns docstring drops a stale incantation; **ADR-0012** records the five CLI properties (plus two manifest commitments) `ehr-testing-sim` mounts against, with the note vendored and three of its claims corrected against source; `bin/ehr` becomes the taught entry point — entry-point decision **option (b)**, decided 2026-07-26, the make-can't-propagate premise measured at Step B0 first — with all four exit codes proven through it and 54 teaching sites flipped in one commit, `make ehr` kept as compat | **Done** (2026-07-26) | `.agents/prompts/archive/2026-07-26-cli2-report-and-entrypoint.md` |
 | DOC-5 | Quickstart-as-script, nightly-wired; README freshness link | Not started | — |
 
 ## Open decisions
@@ -589,6 +709,14 @@ existing green behavior, not authoring new checks.
   single source of truth living in the same freshness-gated document
   as the equations they ground, and the golden check inherits them. A
   separate `docs/cookbook.md` would have been a second place to rot.
+- **CLI entry point** (raised by DOC-4's second finding) — **decided
+  2026-07-26 (author): option (b)**, a `bin/ehr` wrapper as the taught
+  entry point, rather than trying to make the Makefile propagate the
+  child's status. The premise was measured before the wrapper was
+  built (CLI-2 Step B0): GNU make's own exit status is 0/1/2 by
+  definition, so a recipe cannot carry ADR-0004's 1 or ADR-0010's 3 no
+  matter how it is written. `make ehr` stays as a compatibility
+  spelling.
 - **Sequencing against first release** — **decided 2026-07-25
   (author): now, pre-release**, accepting the soft interface-hardening
   pressure a full CLI reference creates. Mitigation shipped with it:
