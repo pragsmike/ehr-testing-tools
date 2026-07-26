@@ -25,11 +25,13 @@ re-expression, plus one code wave (CLI help) and one enforcement wave
 
 **Operating rules** (inherited from the house discipline): one
 semantic change per commit; golden check
-(`make pipeline && make use-cases && git diff --exit-code
-docs/pipeline.md docs/use-cases.md`) proves behavior-neutral sessions
-and trips on scope creep; evidence over memory — every claim about
-the current CLI/doc surface is re-verified against the repo at
-session time, not taken from this plan.
+(`make pipeline && make use-cases && make operators-doc && make
+cli-doc && git diff --exit-code docs/pipeline.md docs/use-cases.md
+docs/operators.md docs/cli.md` — extended by DOC-3 from the
+two-target form these rules were written against) proves
+behavior-neutral sessions and trips on scope creep; evidence over
+memory — every claim about the current CLI/doc surface is re-verified
+against the repo at session time, not taken from this plan.
 
 ---
 

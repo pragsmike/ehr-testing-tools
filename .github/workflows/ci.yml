@@ -50,19 +50,25 @@ jobs:
       - name: make lint-deps
         run: make lint-deps
 
-      # Generated-doc freshness: docs/pipeline.md and docs/use-cases.md
-      # are derived from docs/pipeline.edn / docs/use-cases.edn (Makefile
-      # comments); regenerate and diff, failing if a committed copy is
-      # stale. Needs python3 (palgebra/tools/resource_equations_to_mermaid.py)
-      # -- confirmed present on ubuntu-latest without a setup step
-      # (Ubuntu 24.04 runner image ships Python 3.12.3 as system python,
-      # per actions/runner-images' own Ubuntu2404-Readme.md), so no
-      # actions/setup-python step is added here.
-      - name: Generated-doc freshness (docs/pipeline.md, docs/use-cases.md)
+      # Generated-doc freshness: four docs are derived rather than
+      # authored -- docs/pipeline.md and docs/use-cases.md from
+      # docs/pipeline.edn / docs/use-cases.edn, and (DOC-3, 2026-07-25)
+      # docs/operators.md from the mutation-operator registry and
+      # docs/cli.md from the CLI help spec (Makefile comments name each
+      # source). Regenerate all four and diff, failing if a committed
+      # copy is stale. Needs python3
+      # (palgebra/tools/resource_equations_to_mermaid.py) for the first
+      # two only -- confirmed present on ubuntu-latest without a setup
+      # step (Ubuntu 24.04 runner image ships Python 3.12.3 as system
+      # python, per actions/runner-images' own Ubuntu2404-Readme.md), so
+      # no actions/setup-python step is added here.
+      - name: Generated-doc freshness (pipeline, use-cases, operators, cli)
         run: |
           make pipeline
           make use-cases
-          git diff --exit-code docs/pipeline.md docs/use-cases.md
+          make operators-doc
+          make cli-doc
+          git diff --exit-code docs/pipeline.md docs/use-cases.md docs/operators.md docs/cli.md
 
       - name: make coverage
         run: make coverage
