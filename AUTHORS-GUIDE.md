@@ -145,11 +145,12 @@ prompt archive is a *structurally guaranteed* false positive, not an
 unlucky one. Where a check reproduces a reference figure, state what a
 reproduction failure means; the corpus-adoption prompt's "a reference
 figure fails to reproduce → the discrepancy is the deliverable; record
-it, do not adjust toward this prompt" is the model to copy. Prompts
-archive **as issued**: a defective check is corrected by an author
-ruling recorded in the session report, never by editing the archive —
-the archive is a record of what was asked, not of what should have been
-asked.
+it, do not adjust toward this prompt" is the model to copy. Prompt
+**bodies** archive as issued; an in-flight author ruling that corrects a
+defective check appends as a dated deviation record rather than editing
+the body — the same shape as the research-doc errata convention
+(`docs/research/HL7v2-sanitized-corpus-research.md`), applied here to
+prompts instead of research records.
 
 Two sessions on 2026-07-26 hit each mode from opposite sides. The
 SimHospital corpus-adoption session's reference figures
@@ -159,12 +160,11 @@ the vendored bytes' actual framing, which also separates messages with
 a blank LF line; the prompt's own tripwire treated the gap as a finding
 rather than a failure, and it now stands as F25 in
 `notes/facts-register.md`. The pack-elide session's Step 1 verification
-(`.agents/prompts/archive/2026-07-26-pack-elide-and-research-errata.md`)
 mandated a bare `grep -c "simhospital"` over the skills pack, expecting
 0; it returned 8, every hit prose inside the archived corpus-adoption
 prompt's own legitimately-included text. The stated invariant — no
 corpus file enters `pack-skills` — held; only the substring encoding
-was wrong. The executing agent stopped and reported instead of
-adjusting the grep, the author issued a corrected membership check
-in-flight, and the archived prompt keeps the original, defective grep
-exactly as issued.
+was wrong, and the corrected membership check plus the ruling are
+recorded in that prompt's own dated "Session deviation record" appendix
+(`.agents/prompts/archive/2026-07-26-pack-elide-and-research-errata.md`,
+appended before this deviation-record convention was itself ratified).
