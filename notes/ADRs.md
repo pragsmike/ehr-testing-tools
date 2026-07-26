@@ -498,3 +498,96 @@ alongside its own genuine defect), not merely reasoned around after the
 fact.
 **Cites.** D10, O1, O2 (`docs/palgebra-design.md`).
 **Status.** Accepted (author-directed), 2026-07-25.
+
+---
+## ADR-0011 — External data artifacts vendor into the tree; engine artifacts stay in the registry
+**Context.** ADR-0005 made every external input an artifact resolved
+through `artifacts.lock.edn` and materialized outside git in a
+content-addressed cache. Every artifact adopted under it so far has been
+an *engine* or an engine's bulk input: the Temurin JDK, the Synthea
+distribution, `validator_cli.jar` — tens to hundreds of megabytes,
+binary, and in one case license-unstated (ADR-0005's 2026-07-24
+amendment names that class explicitly). The mechanism was built for that
+shape. This session adopts the repo's first external **data** artifact:
+Google SimHospital's bundled 1,013-message HL7 v2.3 corpus
+(`docs/artifacts/messages.out`, 1,158,713 bytes of Apache-2.0 ASCII),
+identified by `docs/research/HL7v2-sanitized-corpus-research.md` as the
+best freely available foreign v2 corpus and needed as *fast-path test
+input* — the P7 residue the plan has tracked as externally blocked since
+2026-07-25. Nothing in ADR-0005 says which mechanism a small,
+redistributable, test-path data file belongs to, and the two candidate
+answers have materially different consequences.
+
+**Decision.** Split the two by role, not by the fact of being external.
+
+*Vendor into the tree, with a provenance sidecar*, when all three hold:
+
+1. **Size is in the ~megabyte order of magnitude**, not the ~hundred-
+   megabyte one — small enough that git owning every byte is cheaper
+   than a cache plus a fetch path, and diffable enough that a change to
+   it is visible in review.
+2. **The license permits redistribution**, verified by reading the
+   upstream license artifact itself, not a description of it — because
+   vendoring *is* redistribution, and ADR-0005's amendment holds the
+   redistributed class to the strict bar with no exceptions.
+3. **Its role is fast-path test input** (`test/`), not integration-tier
+   engine configuration. This is the load-bearing criterion: `AGENTS.md`'s
+   hermeticity rule is a *path split*, so anything a `test/` test needs
+   must be present from a cold clone with no network. A registry-fetched
+   input can only be consumed from `test-integration/`, i.e. the nightly
+   tier.
+
+A vendored data artifact ships with a `PROVENANCE.md` beside it
+recording upstream URL pinned to a resolved commit SHA, sha256, byte
+count, retrieval date, upstream status, structural counts, and any
+handling caveats — plus F-rows for each externally verifiable claim, per
+`AUTHORS-GUIDE.md` section 4. Provenance is the price of vendoring;
+`artifacts.lock.edn` carries this metadata for registry artifacts, and a
+vendored artifact must not lose it just because git is holding the
+bytes.
+
+*Stay registry-fetched* otherwise: large, generated-on-demand,
+binary, or license-encumbered artifacts — the JDK, Synthea, the
+validator CLI, and the eventual IG package, unchanged.
+
+**First instance:** `test/fixtures/v2/simhospital/` (this session) —
+the corpus, upstream `LICENSE`, and `PROVENANCE.md` together, with the
+corpus's CR framing protected by a `.gitattributes` `-text` entry
+alongside the existing v2 fixture rule. **Anticipated registry-side
+case:** the research doc's Phase B output — a pinned SimHospital run
+producing the missing `ORM^O01`/`A02`/`A03` story. That is *generated*
+by an engine from a pathway config, plausibly bulk, and its inputs are
+engine configuration; the pathway files this repo authors are ordinary
+git-versioned source (ADR-0005's "git is already the lockfile for what
+git owns"), while any bulk generated output beyond fixture scale is an
+artifact.
+
+**Alternatives rejected.** *Registry-pinning the corpus* — it would
+demote every consumer of it to `test-integration/` and the nightly tier
+by construction, which is precisely backwards for a file whose entire
+purpose is to be the substrate's fast, per-push input; and upstream was
+archived on 2025-03-28, so fetch-at-use would make a permanently frozen,
+unmaintained URL a single point of failure for the suite forever, where
+vendoring extinguishes that dependency at adoption time. *Committing the
+corpus without provenance, as just another fixture* — the fixture
+precedent covers five short hand-written messages this repo authored and
+owns; it does not cover a sourced third-party artifact whose license
+carries a notice obligation, whose upstream can move or vanish, and
+whose structural claims this repo's own docs assert. A file nobody can
+trace is a file nobody can re-verify.
+
+**Consequence.** ADR-0005's boundary sentence gains a third case:
+acquired-external-and-binary → registry; repo-authored text → ordinary
+source; acquired-external-small-redistributable-data → vendored *with*
+the provenance the registry would otherwise have carried. The
+hermeticity rule and the vendoring criterion now point the same
+direction, which is the intended relationship: a test on the `test/`
+path may depend on vendored data precisely because vendoring is what
+makes it cold-clone-available. Vendoring also imports a standing
+obligation this repo did not previously carry — the upstream `LICENSE`
+travels with the bytes, and any *derived* corpus published from a
+vendored one must first walk the research doc's §5 sanitization gate
+(the SimHospital corpus contains realistic demographics including
+valid-format NHS numbers; acceptable as committed internal test input,
+not as a published derivative).
+**Status.** Accepted (author-directed), 2026-07-26.
