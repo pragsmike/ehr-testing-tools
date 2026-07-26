@@ -1,9 +1,106 @@
 # docs/
 
-Reading order through this repo's documentation, spine-first: the
-pipeline is the map, and every other document below locates itself
-relative to it. Start at the top of this list and go as deep as you
-need — each entry names the question that document answers.
+Find yourself in the list below and follow that path — each one is a
+handful of steps and ends wherever that audience's actual question gets
+answered. `docs/positioning.md`'s [Audience](positioning.md#audience)
+section is the canonical register these paths are keyed off; this page
+just routes.
+
+## Task-first practitioner
+
+You have a job to do — generate data, break it on purpose, gate it —
+and don't need the method behind it yet.
+
+1. **[../SETUP.md](../SETUP.md)** — install, verify, generate your first
+   corpus.
+2. **[../README.md](../README.md#quickstart)** — every command in the
+   quickstart, in order.
+3. **`ehr help`**, **`ehr help <group>`**, **`ehr corpus operators`** —
+   the CLI's own reference for flags, groups, and the operator catalog.
+4. **[use-cases.md](use-cases.md)** — find the use case that matches
+   what you're actually trying to do.
+5. If a gate result surprises you: **[judge-calibration.md](judge-calibration.md)**
+   — exactly which defects each judge tier catches, and which it doesn't.
+
+## Method-first guide reader
+
+You've read (or are reading) `ehr-testing-guide`'s account of the
+method and want the map from method to capability.
+
+1. **[use-cases.md](use-cases.md)** — what this repo actually lets you
+   do, one entry per use case.
+2. **[The deep walk](#the-deep-walk-pipeline-first-reading-order)**,
+   below — the full pipeline-first reading order, ground up.
+
+## The AI assistant, reading on someone's behalf
+
+If you're an assistant acting for a human rather than a human reading
+directly, this is probably how you arrived here.
+
+1. **[../SETUP.md](../SETUP.md)**'s step 5 — the copy-paste prompt this
+   repo expects you to be handed.
+2. **`ehr help`** — exact commands and flags, not prose descriptions of
+   them.
+3. The **task-first practitioner** path above — same docs, same order.
+
+These docs aim to be legible to you specifically: exact,
+copy-pasteable commands over descriptions of commands; heading anchors
+that stay stable across a page's regeneration; error text that's
+self-explanatory without a human in the loop to interpret it.
+
+## Downstream data consumer
+
+You read `report.edn`, `manifest.edn`, or lineage records — via the
+`--json` projection or EDN directly — and never run the CLI yourself.
+
+1. **`--json`**, on any command — the projection; EDN remains
+   canonical.
+2. **[judge-calibration.md](judge-calibration.md)**'s
+   ["No-verdict, operationally"](judge-calibration.md#no-verdict-operationally-2026-07-25-adr-0010)
+   and ["Reading this table"](judge-calibration.md#reading-this-table)
+   sections — verdict and finding shapes, explained by example.
+3. A proper format reference for these shapes doesn't exist yet — see
+   [`.agents/plans/user-docs.md`](../.agents/plans/user-docs.md)'s
+   DOC-3 wave. Until then, the Malli schemas in source
+   (`judge.report`, `judge.finding`, `corpus.manifest`, `lineage`) are
+   the ground truth.
+
+## Contributor
+
+1. **[../AGENTS.md](../AGENTS.md)** — primary instruction surface, hard
+   rules, quick start.
+2. **[../AUTHORS-GUIDE.md](../AUTHORS-GUIDE.md)** — the full authoring
+   discipline.
+3. **[../notes/ADRs.md](../notes/ADRs.md)** and
+   **[../notes/facts-register.md](../notes/facts-register.md)** —
+   reasoning-of-record and externally verifiable facts.
+
+That's the whole path — the rest of this page isn't written for this
+audience.
+
+## Evaluator, deciding whether to adopt this at all
+
+1. **[../README.md](../README.md#maturity)** — the maturity table: the
+   actual contract with readers, not a formality.
+2. **[../README.md](../README.md#scope)** — what this repo explicitly
+   does not do.
+3. **[positioning.md](positioning.md)** — the fuller map: audiences,
+   the constellation this repo sits in, and the go-public gate it set
+   for itself.
+
+## Clojure library consumer
+
+Nothing to walk yet — this audience arrives post-first-release. See
+`positioning.md`'s
+[Go-public gate vs. first release](positioning.md#go-public-gate-vs-first-release)
+for what changes at that point and why it hasn't yet.
+
+## The deep walk: pipeline-first reading order
+
+The full reading order every other document above ultimately locates
+itself against: the pipeline is the map. Start at the top and go as
+deep as you need — each entry names the question that document
+answers.
 
 0. **[../SETUP.md](../SETUP.md)** — newcomer start here: what do I need
    to install, how do I verify it worked, how do I generate my first
