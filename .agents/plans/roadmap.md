@@ -94,6 +94,23 @@ name two further candidate step families for a future milestone, as
 (A21/A22) and observation/inpatient class-flip (A06/A07), both from
 `docs/clinical-realities.md`'s stub catalog.
 
+**Capture: encounters as first-class, M2b-surfaced.** Neither `:pending-*`
+step types nor `VisitID`/PV1-19 landed this session (both flagged in
+`docs/patient-state-model.md`'s mining section as pre-existing gaps,
+not new ones). The research pair's own mining (group D,
+`docs/research/SimHospital-Synthea-limitations-considered.md` §5.4)
+upgrades this from nice-to-have to evidence-backed: SimHospital's own
+in-code admission that a first pending encounter "will never be
+finished, since only the latest Encounter is checked" is direct proof
+that single-current-encounter assumptions break real workflows once
+multiple pending encounters can overlap. The capture — visit ids
+(PV1-19), readmission, and support for *multiple concurrent pending*
+encounters, not just one — must land **with or immediately before**
+whichever future milestone actually introduces `:pending-*` step
+types, since a pending-admission mechanism designed against a
+single-current-encounter assumption would reproduce the exact failure
+this evidence warns against.
+
 Co-landing invariants, landed: `cancel-references-existing-uncancelled-event`
 (a cancelled event must reference an event it cancels, of the right
 type, not already cancelled), `bed-swap-both-admitted-before-swap`,
@@ -127,6 +144,27 @@ Co-landing invariants: results reference orders that exist and
 precede them in time; order/result message types register in
 `message-type-registry` the same way ADT types already do.
 
+**M3-adjacent capture: per-patient pathway assignment.**
+`ehr-testing-sim.engine/run` today executes exactly one pathway for
+every patient in a run — the churn regression fleet (M2b) had to
+script `decide`/`evolve` directly, one call at a time, precisely
+because there is no config-level way to run a *mixture* of pathways
+across a patient population. SimHospital's own pathway config has a
+`percentage_of_patients`-style analogue for exactly this; this project
+has discussed the gap without capturing it in a planning artifact
+until now. Needed: a distribution/assignment layer — config mapping
+pathway ids to weights (a sampled mixture) or to explicit per-patient
+assignments (a scripted fleet, `run`'s existing single-pathway mode as
+the degenerate case) — so a scripted scenario fixture can run through
+`engine/run` end to end instead of hand-driving `decide`/`evolve`. This
+is also **M5's own prerequisite**: `CompileTrajectory` produces a
+*distinct* pathway per patient (each patient's own compiled clinical
+trajectory), so the assignment layer that lets `run` accept "one
+pathway per patient, not one pathway for all" is infrastructure M5
+needs regardless of where it lands first. Captured here as a named gap,
+not designed in the fuller sense `docs/operational-models.md` designs
+the allocation ladder.
+
 ## M4 — Persona + demographics tables; payer sampling; PID/IN1 enrichment
 
 Lands **Persona** (`:planned`) for real: demographics sampling from
@@ -135,7 +173,13 @@ vendored, hashed tables (`demographics-tables`, target 3), plus the
 reference on `:persona` — this is the milestone that turns that
 comment into a real `:catalytic` wire. PID gains demographic fields;
 IN1 lands as a segment for the first time, carrying the sampled payer
-(`docs/operational-models.md`'s payers model).
+(`docs/operational-models.md`'s payers model). **Upstream-demand
+citation** (`docs/research/SimHospital-Synthea-limitations-considered.md`
+§5.3): SimHospital issue #3 is a user unable to find a way to include
+the IN1 insurance segment — this milestone is the answer. PID's
+demographic enrichment also carries US phone formatting, named
+unavailable and uneditable in SimHospital issue #21 — the same issue
+that requests GT1/ZG1 (below, site-profiles' citation).
 
 Co-landing invariants: sampled demographics and payer are internally
 consistent with any age-linked rule (e.g. Medicare weighting at 65+
@@ -160,6 +204,25 @@ clinical-content-preserving compilation (every trajectory event maps
 to at least one IR step, none dropped or reordered against clinical
 causality).
 
+**Medications, M5+ note.** An OHDSI evaluation found Synthea's own
+medication data unreliable without its separate Medication
+Diversification Tool, citing limited model diversity as the root cause
+(`docs/research/SimHospital-Synthea-limitations-considered.md` §4.3,
+Wagner and Blacketer). Whenever medications land in this project
+(M5's GMF port or later), single-source distributions are expected to
+need the same kind of diversification step — recorded now so this
+isn't relearned the hard way once real medication content exists here.
+
+**No hidden modules (`sim-theory.md`'s IR-transforms-as-composition-
+layer note).** Synthea's built-in Java lifecycle modules run always-on
+and invisibly, surprising users who tried to run only their own custom
+module set (discussion #1126, `docs/research/SimHospital-Synthea-
+limitations-considered.md` §4.2). This milestone's own lifecycle
+behavior (birth, aging, death, whatever the GMF port needs) must be an
+explicit, listable stage or IR→IR transform — the same composition
+mechanism `InjectChurn` already established, not a special-cased
+always-on pass a config author has no way to see or disable.
+
 ## M6 — EmitState (FHIR snapshots first); emitter-coherence property
 
 Lands **EmitState** (`:planned`): state-document rendering from
@@ -167,7 +230,12 @@ Lands **EmitState** (`:planned`): state-document rendering from
 point to resolve `sim-theory.md`'s open question #3 — whether
 `state-history` is primitive or derived from `ground-truth-log` —
 since EmitState existing is exactly the precondition that question's
-own deferral names.
+own deferral names. **Upstream-demand citation**
+(`docs/research/SimHospital-Synthea-limitations-considered.md` §5.3):
+SimHospital issue #11, a 2024 user requesting FHIR output because
+Synthea already had it and it was easier to use — the issue stayed
+open through the project's archival, so this milestone answers a real,
+still-unmet request rather than a hypothetical one.
 
 Co-landing invariants: snapshot-at-instant (a state-document is a
 pure function of `state-history` at a queried instant, no access to
@@ -189,6 +257,17 @@ the milestone before it:
   via NIST/HAPI, per `docs/third-party-sources.md` Tier 2) — triggers
   once this repo has a public GitHub remote (ADR-0003's existing
   trigger) or another CI-capable remote.
+- **SETUP.md** — deferred trigger: owed before this repo has any user
+  besides its own author, not written speculatively now. Installation
+  friction is a first-class adoption risk for both mined upstreams —
+  SimHospital's Bazel/Go build breakage across several issues, and an
+  InterSystems team calling Synthea's JDK/Gradle setup a "nightmare"
+  even after successfully using the tool
+  (`docs/research/SimHospital-Synthea-limitations-considered.md` §5.2,
+  §4.5). This repo's cold-start already fits in one documented command
+  (`AGENTS.md`'s Quick start); SETUP.md exists to keep that true for
+  someone who isn't this repo's author, not to add ceremony ahead of
+  need.
 - **Packs demotion** — `pack-push` stays the active session-end
   ceremony (ADR-0006) until this repo's GitHub remote goes *public*;
   demoting it to dormant, the way `ehr-testing-tools` did at its own
@@ -202,7 +281,17 @@ the milestone before it:
   thin content without order/result data to bind them to — a
   site-profile milestone landing before M3's `order-profiles` catalytic
   exists would have little beyond code-table overrides to actually
-  exercise.
+  exercise. **Scope addition: MSH-12 (HL7 version id) as an explicit
+  site-profile config knob** — SimHospital issue #17
+  (`docs/research/SimHospital-Synthea-limitations-considered.md` §5.3),
+  a consumer of HL7v2.6 who could see multiple generated schemas in the
+  project but no documented way to switch versions, is this milestone's
+  citation for making version selection a named, configured field
+  rather than a hard-coded emitter constant. **Custom-segment
+  citation**: SimHospital issue #21, a 2024 user asking how to add GT1
+  and ZG1 segments — the same issue this roadmap's M4 entry cites for
+  US phone formatting — is this milestone's citation for the
+  Z-segment-template scope item above.
 
 ## Consumer plan: sim doesn't validate itself in a vacuum
 

@@ -211,7 +211,12 @@ needs a board) and rendered in PV1-7 as `id^family^given`, HL7's
 usual attending-doctor field shape. Providers serve many patients
 concurrently by construction: there is no occupancy invariant to
 write for a provider, because "attending has 40 patients at once" is
-never a bug.
+never a bug. (Synthea's own encounter export maps its `provider`
+column to an *organization*, not a clinician, leaving many encounters
+without an identifiable physician — Synthea issue #547, per
+`docs/research/SimHospital-Synthea-limitations-considered.md` §4.4 —
+a gap this model's provider/facility split already avoids by
+rendering a real per-patient attending, not an organization stand-in.)
 
 **Captured, not designed — open questions:**
 

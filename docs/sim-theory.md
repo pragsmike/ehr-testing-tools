@@ -112,6 +112,32 @@ process** (an alternative to fixed `:patients N`) was sketched but not
 built this session — explicitly a stretch item behind the seam, per
 the M2a session's own plan; M2b does not depend on it.
 
+## IR transforms as the composition layer
+
+Synthea's own composition pain — cross-cutting augmentation requiring
+every module to be edited individually (#780); modules surprising users
+via always-on global execution and hidden hard-coded Java lifecycle
+behavior (#941, #1126) — per
+`docs/research/SimHospital-Synthea-limitations-considered.md` §4.2, is
+answered structurally by this composite's own shape, not by a feature
+added in response to reading about it. **IR→IR transforms between
+`CompileTrajectory` and `Execute` are the cross-cutting composition
+mechanism; `InjectChurn` (landed, M2b) is the first instance of this
+pattern, not a special case bolted on beside it.** "Attach vital signs
+to every emergency encounter" is exactly this shape: a transform
+written once over `pathway-ir`, touching no module and no per-module
+edit, the same way `InjectChurn` inserts churn steps into any
+pathway — authored or compiled — without either pathway's own author
+knowing a transform ran. A corollary this pattern commits this project
+to, named now rather than left implicit until M5's module interpreter
+exists to violate it by accident: **no hidden modules** — any lifecycle
+behavior this project ever runs (birth, aging, death, whatever M5's GMF
+port needs) must be an explicit, listable stage or transform, never an
+always-on, invisible pass the way Synthea's built-in Java lifecycle
+modules are reported to surprise users who tried to run only their own
+custom module set (discussion #1126). `.agents/plans/roadmap.md`'s M5
+entry carries this as a roadmap note.
+
 ## Resource type bindings
 
 Per the notation, every resource name binds to a type; an equation
@@ -186,7 +212,14 @@ reconstructs `state-history`, and a snapshot at instant *t* agrees
 with the state implied by the messages up to *t*. This is the
 problem-statement guarantee "every message derivable from the log, and
 vice versa," extended across emitters — a *want*-level law that
-becomes a cross-emitter property test when EmitState lands.
+becomes a cross-emitter property test when EmitState lands. A named
+sub-law, surfaced by mining Synthea's own cross-format id divergence
+between CDA, FHIR, and CSV exports
+(`docs/research/SimHospital-Synthea-limitations-considered.md` §4.1):
+**every emitter renders the same event ids and patient ids for the
+same ground-truth facts** — no format-local id scheme, no re-derivation
+that could drift from another emitter's choice for the same event.
+Testable at M6, once EmitState exists to check EmitHL7 against.
 
 **Code provenance.** Concept triplets flow unchanged from module JSON
 through trajectory, IR, and log; emitters render codes natively and

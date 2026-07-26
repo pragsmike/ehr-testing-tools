@@ -892,3 +892,96 @@ M2a scope.
   document's own header discipline); the API shape is captured so
   M2a's implementation has a target, not so this session can skip
   ahead of it.
+
+---
+
+## ADR-0012 — Decide-time step rejections become a `:step-rejected` ground-truth event; cancel-reinstatement routes through the allocation ladder (v2)
+
+**Status:** Accepted (author-ratified 2026-07-26) — design capture,
+surfaced by M2b's landed session; no code lands with this ADR.
+
+**Context.** M2b's `InjectChurn` property-testing surfaced a real
+runtime behavior, already recorded in `.agents/plans/roadmap.md`'s M2b
+entry: a churn-inserted step that is statically legal per the
+applicability oracle can still be rejected at execution time by live
+world state InjectChurn had no visibility into — e.g. a bed a
+cancel-discharge would reinstate into was reclaimed by someone else's
+admission in the meantime. Today that rejection is a bare no-op: the
+step simply doesn't happen, and the ground-truth log carries no record
+that it was ever attempted or why it didn't occur. This is a narrower
+instance of a more general gap this project's own architecture makes
+conspicuous by contrast: `decide` (ADR-0008) already distinguishes
+"this step happens" from "this step doesn't," but only the first
+outcome leaves a trace. A log that is supposed to be the single
+authoritative record of a run (ADR-0002, ADR-0008) has a blind spot
+exactly where a tester might most want visibility — a hospital's live
+world state rejecting an attempted action is itself an operationally
+real fact, not merely an absence of one.
+
+**Decision.**
+
+1. **A `:step-rejected` event enters the ground-truth log** whenever
+   `decide` rejects an attempted step at execution time (not merely
+   whenever the applicability oracle would have refused it up front —
+   this event exists for exactly the runtime-visibility gap M2b's
+   cancel/bed-swap/merge rejections surfaced, where the oracle said yes
+   and the live world said no). It carries `:participants` (per
+   ADR-0010's shape), the attempted step, and a reason. It is **truth
+   about the run, not a message-bearing event** — no
+   `message-type-registry` entry, ever, by design: a real hospital's
+   ADT feed does not carry a message for "the system almost tried to
+   do something and didn't," so an emitter rendering one here would be
+   inventing wire traffic no real interface would ever see. It exists
+   for the ground-truth log's own consumers — `check.clj`'s invariant
+   catalog and any test harness reading the log directly — not for
+   `EmitHL7`.
+2. **Invariants may reference `:step-rejected` events.** A future
+   invariant asking "did this run ever attempt an illegal reinstatement
+   and silently drop it" becomes answerable by querying the log instead
+   of unanswerable by construction, the same glass-box-auditability
+   rationale (`docs/problem-statement.md`'s claim 3, "does the stream
+   contradict itself") this project already applies to every other
+   event type.
+3. **v2 refinement, captured alongside: cancel-reinstatement routes
+   through the allocation ladder instead of no-opping.** Today's
+   conservative behavior (`ehr-testing-sim.churn`'s M2b landing) treats
+   a blocked `:cancel-discharge` reinstatement as a dead end — the step
+   fails and (until decision 1 lands) leaves no trace. A real hospital
+   does not behave this way: cancelling a discharge and finding the
+   original bed already reclaimed does not mean the cancellation fails,
+   it means the patient needs a *different* bed, so the reinstatement
+   re-enters `ehr-testing-sim.facility/allocate`'s existing ladder
+   (`docs/operational-models.md`) exactly the way a fresh admission
+   would, rather than being special-cased as a no-op. This is captured
+   here as the correct future behavior, not built — it depends on
+   decision 1 existing first (a rejected first attempt should still be
+   visible even when the ladder retry succeeds), so both land together
+   whenever this ADR's implementation milestone is scheduled.
+
+**Rejected.**
+
+- **Silently continuing to no-op rejected steps** — rejected because it
+  reintroduces, for a different event class, exactly the "state that
+  doesn't originate from the log" problem ADR-0008 already eliminated
+  for patient state: a rejection is a fact about the run, and a log
+  claiming to be authoritative shouldn't have facts it doesn't contain.
+- **Rendering `:step-rejected` as an HL7 message** (e.g., a synthetic
+  ACK-reject or a house Z-segment) — rejected because no real ADT feed
+  carries a message for an attempt that never became a real hospital
+  action; inventing one would misrepresent what real wire traffic looks
+  like, the opposite of this project's realism goal.
+- **Making cancel-reinstatement retry the ladder immediately, ahead of
+  `:step-rejected` existing** — rejected because a silent retry that
+  happens to succeed would hide the fact that the *first* placement
+  attempt failed, which is exactly the visibility gap this ADR exists
+  to close; the two decisions are sequenced, not independent.
+
+**Consequences.** `docs/patient-state-model.md` gains a short capture
+paragraph describing `:step-rejected`'s shape and its M3-adjacent
+implementation timing. No code lands with this ADR: implementation
+(the event, its schema, `check.clj` support, and the ladder-retry
+refinement) is scheduled M3-adjacent, per `.agents/plans/roadmap.md`,
+not in this session. A future session implementing this ADR should
+treat `message-type-registry`'s deliberate non-entry for
+`:step-rejected` as load-bearing, not an oversight to "fix" by adding
+one.

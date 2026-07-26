@@ -80,7 +80,18 @@ gaps and one design lesson:
   regardless of which physical ward they're sitting in.
 - **`VisitID`** per encounter (PV1-19) — not landed yet; flagged for
   whenever encounters become first-class (readmission scenarios, M2b
-  or later). Not part of the schema below.
+  or later). Not part of the schema below. This gap is now
+  evidence-backed, not merely anticipated: the research pair's own
+  mining (`docs/research/SimHospital-Synthea-limitations-considered.md`
+  §5.4) surfaces SimHospital's own in-code admission that a first
+  pending encounter "will never be finished, since only the latest
+  Encounter is checked" — direct proof that a single-current-encounter
+  assumption breaks once multiple pending encounters can overlap.
+  Encounters-as-first-class (visit ids, readmission, and *multiple
+  concurrent pending* encounters, not just one) is captured in
+  `.agents/plans/roadmap.md` to land with or immediately before
+  whichever future milestone introduces `:pending-*` step types, for
+  exactly this reason.
 - **Pending locations and expected admit/discharge/transfer
   datetimes** (the A14/A15-family pending events) carry *expected*
   times, a field class this project's events don't have yet. Flagged
@@ -269,6 +280,30 @@ specifically so `decide` can query it directly (`nth`/`filter`/
 `:transfer-in-error`'s prior-location lookup already makes (see the
 worked example below).
 
+## Rejected steps (M2b-surfaced capture, ADR-0012)
+
+M2b's `InjectChurn` property-testing surfaced a gap in the log's own
+claim to be authoritative (ADR-0002, ADR-0008): a step that is
+statically legal per the applicability oracle above can still be
+rejected at execution time by live world state the oracle had no
+visibility into (e.g. a `:cancel-discharge` reinstatement targeting a
+bed someone else's admission has since reclaimed). Today that
+rejection is a bare no-op — no trace enters the log. [ADR-0012](../notes/ADRs.md#adr-0012)
+records the decision to close this: a `:step-rejected` event
+(`:participants`, the attempted step, a reason) enters the ground-truth
+log on every such rejection. It is **truth about the run, never a
+message-bearing event** — no `message-type-registry` entry, by design,
+since no real ADT feed carries a message for an attempted action that
+never became a real one — but `check.clj`'s invariant catalog and any
+test harness reading the log directly may reference it, the same
+glass-box-auditability rationale every other event type already
+serves. ADR-0012 also captures a v2 refinement: cancel-reinstatement
+should route back through `ehr-testing-sim.facility/allocate`'s
+existing ladder rather than dead-ending as a no-op, because a real
+hospital doesn't fail a cancellation when the original bed is gone —
+it finds the patient a different one. Both pieces are captured here as
+design, scheduled M3-adjacent; no code lands with this session.
+
 ## States and transitions
 
 ```mermaid
@@ -397,4 +432,11 @@ separately-parameterized invariant, `warm-up-mark-matches-window`
 seconds)` against the run's own configured window — `check/check-all`
 grew a third optional arg (`warm-up-seconds`, default 0) alongside the
 existing `facility-config` one, both following the same "needs more
-than just the log" pattern.
+than just the log" pattern. (This landed choice — mark the log,
+never silently trim it — is exactly the failure mode Synthea's own
+export-window confusion warns against: content that appears to vanish
+from a generated history with no marker explaining why, issues #1465
+and #1040 per `docs/research/SimHospital-Synthea-limitations-
+considered.md` §4.1/§4.2. A consumer here can always tell warm-up
+traffic from steady-state traffic by querying `:warm-up`, rather than
+wondering where events went.)

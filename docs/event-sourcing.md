@@ -168,6 +168,86 @@ typed, timestamped, and already authoritative — rather than porting
 `Person.history` itself; the accumulator deliberately carries no
 visit-history field of its own for exactly this reason.
 
+## Scope: what this architecture buys, and what it doesn't
+
+A tempering note, not a walk-back: an independent research pass over
+SimHospital's and Synthea's own public issue trackers, source, and
+practitioner discussion (`docs/research/SimHospital-Synthea-limitations-
+considered.md`, retrieved 2026-07-26) confirms the state-machinery
+critique this document makes — and sharpens exactly where its boundary
+sits. The report verifies further receipts beyond the two this document
+already cites above, each the same shadow-field-accretion family as
+`PatientInfo`'s six location fields, not a new failure mode: visit
+deletion pops the latest identifier off a `PastVisits` stack rather than
+deriving "the prior visit" from a durable fact stream; pending-location
+cancellation shuffles values between `PendingLocation` and
+`PriorPendingLocation` rather than the log simply being queried; and an
+in-code comment on consecutive pending encounters admits outright that
+the first "will never be finished, since only the latest Encounter is
+checked" — direct evidence of the single-current-object assumption this
+document's own argument predicts.
+
+What that critique does **not** reach, and the report is explicit about
+this too: the dominant complaints practitioners actually file against
+both tools are about **clinical fidelity** — Synthea's simplified and
+isolated disease models, its heterogeneous-outcome gap, its US-centric
+demographics — not storage architecture. Event sourcing dissolves the
+state-machinery failure class this document is about: reproducibility,
+correction/supersession, audit, and the coherence laws this project's
+own validation program states as claims 3 and 7
+(`docs/problem-statement.md`). It does not, by itself, buy clinical
+realism — validation claims 4 and 5, "would a clinician find these
+trajectories credible" and "does this look like a real ADT feed" —
+which rest on entirely separate mechanisms this project already treats
+as separate: content provenance (Synthea-derived GMF modules, M5),
+statistical calibration against published references, and capacity
+modeling (`docs/operational-models.md`'s allocation ladder, already
+built). Keeping these two arguments apart is deliberate, not a gap the
+report caught: an event-sourced engine that generated medically
+implausible trajectories would be exactly as untrustworthy as a
+mutable-state one, just for a different, unrelated reason.
+
+The report's own final assessment (§9) states, independently, the same
+design target this project's architecture and roadmap already converge
+on: "an immutable, replayable clinical-event ledger with explicit
+correction/supersession semantics; deterministic simulation time and
+identifiers; separately materialized current-state views; composable
+reactions across modules; and empirically validated domain models."
+Every clause in that sentence names a decision this project has already
+made or has on its roadmap — ADR-0008's log-is-primitive engine,
+ADR-0011's deterministic time model and ADR-0010's deterministic
+identity, the occupancy-board/state-history projection pattern
+(`docs/operational-models.md`), `sim-theory.edn`'s IR-transform
+composition (InjectChurn), and M5's empirically-sourced GMF module
+content — arrived at independently of this report, not retrofitted to
+match it after the fact. See `docs/research/SimHospital-Synthea-
+limitations-considered.md` for the full compendium this section
+distills; this project treats it as evidence to cite, not a source to
+re-verify each time it comes up.
+
+## Determinism threats: what a seed alone doesn't guarantee
+
+Synthea's own reproducibility saga — issues #682 and #1342, PRs #756
+and #1237 (`docs/research/SimHospital-Synthea-limitations-considered.md`
+§4.1) — is worth citing directly here because it demonstrates, with a
+paper trail, a claim this document otherwise only argues structurally:
+a seed is necessary, not sufficient. Their failure modes double as a
+checklist against this project's own defenses.
+
+| Threat (theirs) | Our status |
+|---|---|
+| UUID/id generation divergence | Defended: deterministic `:patient-id` (ADR-0010) and control ids, both derived from the run's seed, never `java.util.UUID/randomUUID` or similar wall-clock/hardware entropy |
+| Unordered-collection iteration | Mostly defended (the engine's work queue is a `sorted-map`); gap closed this session — `emitter-order-independence-test` (`test/ehr_testing_sim/emitter_order_independence_test.clj`) guards that `emit-hl7` never depends on a map's or set's own iteration order when building segments |
+| Reference *date* vs full timestamp | Defended: relative seconds (ADR-0011) plus an explicit `:reference-date` and a fixed `:utc-offset`, both pinned in the run manifest, never a bare current-time reference |
+| Locale/OS differences | Partially defended (locale/timezone recorded in the manifest); revisit once CI exists (`.agents/plans/roadmap.md`'s CI trigger) |
+| Cross-format id divergence (CDA vs FHIR vs CSV) | **Gap, open**: "the same event ids and patient ids across every emitter" is not yet a named law — see the cross-emitter id sub-law noted alongside `sim-theory.md`'s emitter-coherence law, testable once EmitState (M6) gives this project a second emitter to check the first against |
+
+The structural defense behind the first four rows is already argued
+elsewhere in this document (`:patient-id`/`:mrns` generation, the
+seconds/UTC-offset time model, the single seeded RNG); the table exists
+to make the comparison to a documented real-world failure explicit
+rather than left merely asserted.
+
 ## The practical payoffs
 
 Making the domain's event-sourced shape explicit, rather than leaving
