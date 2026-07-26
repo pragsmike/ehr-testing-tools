@@ -31,4 +31,17 @@
   ;; The same dispatch surface is exported for embedding as
   ;; `ehr sim <verb>` -- see ehr-testing-sim.cli's docstring and
   ;; notes/ADRs.md ADR-0001.
-  :cli {:main-opts ["-m" "ehr-testing-sim.cli"]}}}
+  :cli {:main-opts ["-m" "ehr-testing-sim.cli"]}
+
+  ;; Coverage measurement (ADR-0004). `make coverage` / `clojure -M:coverage`.
+  ;; Same cloverage pin as ehr-testing-tools' :coverage alias; no
+  ;; --fail-threshold yet -- this repo has no coverage baseline to ratchet
+  ;; against, so enforcement stays at "measure and report" for now, same
+  ;; staged posture ADR-0004 states (a threshold is an enforcement-wave
+  ;; addition, not a day-one one -- mirrors how tools' own ADR-0006 added
+  ;; it later, not at adoption).
+  :coverage {:extra-paths ["test"]
+             :extra-deps {cloverage/cloverage {:mvn/version "1.2.4"}
+                          org.clojure/test.check {:mvn/version "1.1.3"}
+                          org.slf4j/slf4j-nop {:mvn/version "2.0.17"}}
+             :main-opts ["-m" "cloverage.coverage" "-p" "src" "-s" "test"]}}}

@@ -81,6 +81,14 @@ vocabulary.
 - **Every new engine step type lands with its invariants** in
   `check.clj` and its tests, in the same change.
 - Schemas are malli; keep versions aligned with ehr-testing-tools.
+- **Test-first** (ADR-0004): a failing test precedes the implementation
+  it motivates; red→green evidence goes in the session report.
+  Property tests are REQUIRED for law-bearing constructs — here that
+  means determinism, the invariant catalog (the co-landing rule
+  above), emitter derivability laws, and schema round-trips. `make
+  test` and `make coverage` must be green/reported before any
+  session-final commit. Mechanical enforcement is partially live, not
+  merely planned: the pre-push hook already runs `make test`.
 
 ## Constraints
 
@@ -102,6 +110,8 @@ vocabulary.
 
 ## Skills
 
-Repo-local skills live in `.agents/skills/` (none yet). Handoffs in
+Repo-local skills live in `.agents/skills/`: `string-diagram` (renders
+`docs/sim-theory.edn` to Mermaid) and `handoff` (session continuity).
+See ADR-0005 for why these two and not the rest. Handoffs in
 `.agents/handoffs/`, plans in `.agents/plans/`, durable knowledge in
 `.agents/memory/`.

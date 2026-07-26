@@ -155,3 +155,133 @@ divergence (active vs. dormant `pack-push`) is recorded with its own
 trigger condition instead of left to be rediscovered later; skills
 stay out of per-repo drift by design; facts about upstream sources
 are checkable in one place instead of scattered across prose.
+
+---
+
+## ADR-0004 — Test-first, staged enforcement
+
+**Status:** Accepted (2026-07-26)
+
+**Context.** This repo's product *is* test instrumentation — synthetic
+traffic for testing EHR integrations — so a test-shy sim repo is
+self-refuting in exactly the way tools' ADR-0006 named for itself.
+Unlike tools at its ADR-0006, this repo isn't adopting the discipline
+ahead of capability code: its headline guarantees are already
+property-tested (`determinism-holds-for-all-seeds`,
+`every-run-satisfies-invariant-catalog` in
+`test/ehr_testing_sim/engine_test.clj`) and `check.clj`'s invariant
+catalog already co-lands with new step types by existing convention
+(ADR-0002 point 5). What's missing is not the practice but the
+written, mechanical rule: sessions are executed by agents that cannot
+see each other, so discipline must be stated and partly enforced, not
+remembered.
+
+**Decision.** Test-first is a hard rule — a failing test precedes the
+implementation it motivates; sessions demonstrate red→green in their
+reports; property tests are required for law-bearing constructs, which
+in this repo concretely means: determinism, the invariant catalog,
+emitter derivability laws (once emitters exist), and schema
+round-trips. Coverage is measured (`cloverage` via a `:coverage` alias
+and `make coverage`) and regressions require justification in the
+session report.
+
+Enforcement is staged: **now** — convention + prompt discipline +
+coverage measurement, **and** the pre-push hook already running `make
+test` (ADR-0003; unlike tools at its ADR-0006, this repo's mechanical
+enforcement is partially live from day one, not planned for a later
+wave, since the hook already existed before this ADR). **Later** — CI,
+once this repo has a public GitHub remote to run it against (ADR-0003's
+existing trigger); a coverage `--fail-threshold` gate, once a baseline
+worth ratcheting exists (today's baseline: 81.67% forms / 91.15% lines
+overall, `cli.clj` lowest at 50.30%/70.00% as the thin printing shell).
+
+**Rejected.** Full mechanical enforcement immediately (a
+`--fail-threshold` today) — there is no baseline yet to set it against,
+and an arbitrary number invites gaming rather than measuring. Coverage
+as vibes — unmeasured "good coverage" is unfalsifiable.
+
+**Consequences.** Every code-producing session carries the red→green
+reporting duty; `check.clj` invariant co-landing and the determinism
+property tests, already practiced, are now a stated rule instead of
+tacit convention; `AGENTS.md` gains the mechanical anchor (`make test`
++ `make coverage` before any session-final commit) that the sibling
+repo's own experience showed is necessary once sessions stop sharing
+memory.
+
+---
+
+## ADR-0005 — Copy two load-bearing skills; narrow, not revert, ADR-0003's no-skills-copy clause
+
+**Status:** Accepted (2026-07-26)
+
+**Context.** ADR-0003 decided `.agents/skills/` stays empty, reasoning
+that deliberation and utility skills should live at the shared user
+level to avoid per-repo drift. That reasoning holds for skills this
+repo merely benefits from occasionally. It does not hold for a skill
+this repo now has a concrete, load-bearing use for: `string-diagram`
+is needed to render `docs/sim-theory.edn` (the resource-theory
+equations) to Mermaid, and `handoff` is needed for multi-session
+continuity now that plan-scale work (the HL7 emitter) is next — both
+uses that exist today, not hypothetical future ones. A shared-level
+skill still works when invoked from this repo, but its presence isn't
+discoverable from inside this repo's own tree, and "read `AGENTS.md`,
+find what you need" is exactly the discoverability property the rest
+of this repo's authoring discipline (ADR-0003) is built around.
+
+**Decision.** Copy exactly two skills from
+`../ehr-testing-tools/.agents/skills/` into `.agents/skills/` here,
+wholesale, each for a stated, current use:
+
+1. `string-diagram` — load-bearing for rendering `docs/sim-theory.edn`
+   to Mermaid. Its `SKILL.md` hard-coded relative paths to a converter
+   script and example equation sets claimed into ehr-testing-tools'
+   own `palgebra/` directory, which is not copied here (out of scope —
+   copying it would be a data dependency ADR-0001 doesn't bless just
+   because the skill wants it). Adapted the "Step 2" command and the
+   "Files" section only, to reference `../ehr-testing-tools/palgebra/...`
+   explicitly: using this skill from ehr-testing-sim requires a sibling
+   checkout of ehr-testing-tools, same as this adoption session itself
+   did. No other content changed.
+2. `handoff` — load-bearing for multi-session continuity. Copied
+   verbatim; all its paths (`.agents/handoffs/`,
+   `.agents/handoffs/archive/`) are already repo-local conventions
+   (ADR-0003 point 5), so nothing needed adaptation.
+
+**Provenance.** Both are copies of ehr-testing-tools' own copies, not
+fetched from further upstream by this session. `string-diagram` is
+part of tools' verified cyberneutics-derived set (tools' own AGENTS.md:
+five skills copied and adapted from the public `pragsmike/cyberneutics`
+repo, `string-diagram`'s own provenance confirmed there directly
+against that repo's `.claude/skills/string-diagram/SKILL.md`). `handoff`
+carries a
+`license: MIT` / `metadata.author: cyberneutics` frontmatter block in
+tools' copy, preserved unchanged here — per tools' own AGENTS.md, its
+cyberneutics-derived skill set (which does not include `handoff`, per
+tools' own accounting) traces to the public `pragsmike/cyberneutics`
+repo; `handoff`'s frontmatter names `cyberneutics` as author without
+further upstream citation in tools' own skill file, and this session
+did not independently verify a `cyberneutics`-repo source for it
+beyond what tools' copy already states — carried forward as-is, not
+re-verified.
+
+This partially supersedes ADR-0003 point 6: the no-skills-copy default
+still holds for every other skill (the deliberation suite —
+`scenarios`, `probe`, `committee`, `review` — and utility skills like
+`find-skills`, `repo-adaptation`, `shared-skill-layout`,
+`wsl-windows-git-hygiene`), which remain shared/user-level exactly as
+ADR-0003 decided. Only `string-diagram` and `handoff` move to
+per-repo, and only because each has a stated, current load-bearing use
+in this repo today — the bar ADR-0003's reasoning implies but didn't
+name explicitly. A future skill earns the same treatment only under
+the same bar, not by analogy or convenience.
+
+**Consequences.** `make pack-skills`, not `make pack`, carries this
+content — the existing `PACK_ELIDE_PATTERN`
+(`^\.agents/skills/|^\.agents/prompts/archive/`) already elides
+`.agents/skills/**` from the main pack without any change, verified
+this session rather than modified. `.agents/skills/.gitkeep` is
+removed (no longer an empty directory placeholder). Two skills now
+carry independent copies across sibling repos; a future edit to either
+skill's teaching content in one repo does not propagate to the other
+without a deliberate sync — an accepted cost of per-repo discoverability,
+same tradeoff ADR-0003 already named for hooks and the pack ritual.

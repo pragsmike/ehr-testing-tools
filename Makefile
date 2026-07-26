@@ -28,11 +28,12 @@ PACKS_REPO_DIR := $(shell echo $$HOME)/.packs
 # and nothing changes when skills arrive.
 PACK_ELIDE_PATTERN := ^\.agents/skills/|^\.agents/prompts/archive/
 
-.PHONY: help test run pack pack-skills pack-push
+.PHONY: help test coverage run pack pack-skills pack-push
 
 help:
 	@echo "Targets:"
 	@echo "  test         - clojure -X:test"
+	@echo "  coverage     - run cloverage and report coverage (clojure -M:coverage)"
 	@echo "  run          - demo run: clojure -M:cli run --seed 42 --patients 5"
 	@echo "  pack         - concatenate tracked files (except .agents/skills, .agents/prompts/archive) into $(PACK_OUTPUT)"
 	@echo "  pack-skills  - concatenate only .agents/skills + .agents/prompts/archive into $(PACK_SKILLS_OUTPUT)"
@@ -40,6 +41,9 @@ help:
 
 test:
 	clojure -X:test
+
+coverage:
+	clojure -M:coverage
 
 run:
 	clojure -M:cli run --seed 42 --patients 5
