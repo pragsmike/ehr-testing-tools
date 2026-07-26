@@ -1,5 +1,25 @@
 # Free, sanitized longitudinal HL7v2 corpora and generators
 
+> **Errata (2026-07-26).** This is a dated research record; its body
+> is not rewritten. Corrections established during adoption
+> (`.agents/prompts/archive/2026-07-26-simhospital-corpus-adoption.md`)
+> live in `notes/facts-register.md` and supersede the body where they
+> conflict:
+>
+> * **Framing** — "segment delimiter CR" is correct but incomplete:
+>   segments are CR-terminated *within* a message, messages are
+>   separated by a blank LF line, and the final segment of each
+>   message carries no CR. See **F25**.
+> * **`custom-exporter-template` license** — stated flatly as
+>   Apache-2.0 in the body; the repository carries no LICENSE
+>   artifact and GitHub's license API returns 404 — the grant exists
+>   only in its README ("Copyright 2023-2025 The MITRE Corporation").
+>   Recorded as `license-stated-in-README`. See **F28**.
+> * **Archive date** — the 2025-03-28 archive date is cited from
+>   secondary reporting and is not independently confirmable via the
+>   GitHub API (no `archived_at` field); observed facts are
+>   `"archived": true` and last push 2024-03-20. See **F24**.
+
 **Research date:** 25 July 2026  
 **Decision target:** synthetic or demonstrably de-identified, PII-free HL7v2 event streams suitable for EHR system testing, preferably from Clojure/JVM.
 

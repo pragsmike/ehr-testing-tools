@@ -160,9 +160,14 @@ answers.
    engine wrapper answer before it's trusted enough to feed a committed
    manifest?
 8. **[research/](research/)** — the primary-source research behind the
-   above; read only if you need depth past a components.md citation:
+   above; read only if you need depth past a components.md citation.
+   Research documents are dated records: when later evidence refines or
+   corrects one, a dated errata block at the top points to the
+   superseding `notes/facts-register.md` rows and the body stands
+   unedited.
    - `EHR-testing-tools-selection-research.md`
    - `License Status of NIST HL7 v2 Validation Software  Evidence-Based Classification.md`
+   - `HL7v2-sanitized-corpus-research.md`
 
 Not part of this walk, but referenced from several points in it:
 [`ehr-testing-tools-problem-statement.md`](ehr-testing-tools-problem-statement.md)
