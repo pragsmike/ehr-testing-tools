@@ -11,7 +11,8 @@
             [ehr-testing-tools.digest :as digest]
             [ehr-testing-tools.corpus.operators :as operators]
             [ehr-testing-tools.corpus.mutate :as mutate]
-            [ehr-testing-tools.corpus.intake :as intake])
+            [ehr-testing-tools.corpus.intake :as intake]
+            [ehr-testing-tools.corpus.simhospital-corpus :as simhospital])
   (:import [java.io File]))
 
 (defn- temp-dir []
@@ -136,3 +137,42 @@
     (let [lineage (:lineage (:payload mutate-result))]
       (is (= (:id entry) (:parent lineage))
           "the mutant's lineage :parent must equal the intake catalog's own content-hash id -- same hash space, no adapter"))))
+
+;; ---- a real foreign corpus: the vendored SimHospital messages
+;; (ADR-0011). Every intake test above builds its own synthetic input;
+;; this one runs the route against data this repo did not author, which
+;; is the case intake exists for.
+;;
+;; Same division of labor as the er7 corpus tests: the exhaustive run
+;; (all 1,013 messages intaken, 403 distinct patients recovered through
+;; the catalog) was a one-time probe, registered as F27 -- it does not
+;; belong in a per-push suite. What is asserted here is that intake's
+;; public entry points handle the same hazard-selected slice `er7-test`
+;; proves round-trips: real MSH framing, a repeated PID-3, a long OBX
+;; tail, and the corpus's lone merge message. ----
+
+(deftest intakes-the-simhospital-hazard-slice-test
+  (let [src (temp-dir)
+        out (temp-dir)
+        slice (simhospital/hazard-slice)]
+    (doseq [{:keys [label message]} slice]
+      (spit (io/file src (str (name label) ".hl7")) message))
+    (let [r (intake/intake! {:source-dir src :source-label "simhospital"
+                             :out out :received "2026-07-26"})
+          {:keys [catalog intake-record]} (:payload r)]
+      (is (result/ok? r))
+      (is (= 3 (count catalog)))
+      (is (every? intake/valid-catalog-entry? catalog))
+      (is (every? #(= :v2-er7 (:format %)) catalog)
+          "real ER7 must sniff as :v2-er7 -- not merely this repo's hand-written fixtures")
+      (is (every? #(= :foreign (:layer %)) catalog))
+      (is (= 3 (count (distinct (map :id catalog))))
+          "three structurally distinct messages must yield three distinct catalog ids")
+      (is (= (set (map #(intake/content-hash (:message %) :v2-er7) slice))
+             (set (map :id catalog)))
+          "each catalog id must be the format-aware content hash of that message's own bytes")
+      (is (intake/valid-intake-record? intake-record))
+      (is (= 3 (:file-count intake-record)))
+      (is (= "2026-07-26" (:date intake-record)))
+      (is (= (:catalog-hash intake-record)
+             (digest/sha256-file (io/file out "catalog.edn")))))))
