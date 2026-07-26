@@ -322,6 +322,10 @@ Documented in `docs/locators.md` as a sharp edge with a "don't rely on
 it," which is the honest thing for a docs session to do; whether the
 two grammars should agree is a code question and a separate change.
 
+*[Answered by the author 2026-07-25 — option (b), fix the code. See the
+LOC-1 section below; the report above stands as the record of what
+DOC-3 found and deliberately left alone.]*
+
 - `docs/cli.md` — command reference. Thin if DOC-1's help-spec is
   authoritative: anchors the docs tree, points into `ehr help`,
   carries only what help text can't (worked examples, exit-code
@@ -344,6 +348,74 @@ applies directly, ~one extra renderer) and **hand-write `formats.md`
 with schema citations** (Malli → prose rendering is a bigger lift
 than it looks). `cli.md` generated from DOC-1's help-spec if that
 spec proves rich enough; otherwise hand-written and thin.
+
+## LOC-1 — Locator grammar micro-wave (interlude)
+
+Not a DOC wave: a code change, slotted between DOC-3 and DOC-4 because
+DOC-4's runnable strips should not be written against wart-y behavior.
+**Decided by the author 2026-07-25**, option (b) of the DOC-3 close-out
+report above: fix the code rather than keep documenting the warts.
+Pre-release is exactly when a grammar wart is cheap to fix — nothing is
+tagged, nothing is on Clojars, and both changes only *narrow* the
+accepted-input surface, so no valid locator anyone has written stops
+working.
+
+**Done (2026-07-25).** Five commits, prompt archived at
+`.agents/prompts/archive/2026-07-25-loc1-locator-grammar.md`. Two
+deliberate behavior changes, both at parse time in `locator.clj` —
+the locator string alone decides both conditions, so both fail before
+any file I/O:
+
+- **A trailing separator is a parse error in FHIR paths too.**
+  `entry[0].resource.` used to parse as `entry[0].resource`, not
+  because the grammar admitted it but because `clojure.string/split`'s
+  default limit discarded the trailing empty token before
+  `fhir-data-path`'s own `(some empty? segments)` guard could see it —
+  the guard was written for exactly this and was unreachable for
+  exactly this. Split limit `-1` brings it back to life; no second
+  guard was added. Both grammars are now anchored at both ends, which
+  is the point.
+- **`MSH-1` is refused, and the refusal teaches.** It used to parse
+  like any other field locator and then resolve onto `MSH-2`'s slot
+  (`corpus.er7/field-index` shifts only for *N* ≥ 2), silently
+  addressing the encoding characters — a successful mutation of the
+  wrong field, the worst kind of success. Now refused at parse for any
+  string naming MSH's field 1. The check is MSH-specific: `PID-1`,
+  `ZZ1-1`, `OBX[2]-1` still parse, and segment-level `MSH` is
+  untouched. `corpus.er7` was not modified — the substrate still maps
+  field 1 as it always did; what changed is that no locator can ask it
+  to.
+
+Categories preserved, payloads enriched (author ruling): the FHIR
+rejection flows through `:invalid-fhir-path` unchanged; the `MSH-1`
+refusal stays `:invalid-v2-path` and gains a `:hint` in DOC-1's
+enumerable-options house pattern, written from `corpus.er7`'s own
+account of the delimiter convention. Callers dispatching on
+`:category` see nothing new, and a test proves both categories
+survived.
+
+`docs/locators.md`'s two stale sharp-edge sections became grammar
+facts, dated. The didactic content survived by ruling: the whole
+account of *why* `MSH` is off by one — the header declaring its own
+delimiters, the *N* ≥ 2 shift, the worked resolution table — is
+teaching material and stayed; only the "don't rely on it" framing
+around behavior that no longer exists was rewritten. The hint is
+block-quoted verbatim and pinned as a string equality in
+`locators_doc_test`, so the doc's quote can't drift from the parser's
+wording.
+
+**Out of scope by ruling: component-granularity.** DOC-3's third sharp
+edge — `PID-5.1` parses and then resolves at its field, because the v2
+substrate is field-granular — is still true and stays documented as
+is. The v2 grammar is *intentionally* ahead of the substrate, parked
+the way `lower`/`erase` are parked: the grammar is the more stable
+layer, and future operators will need the finer forms. LOC-1
+deliberately did not shrink the grammar to match today's substrate;
+that would be reverting a decision, not fixing a wart.
+
+**No ADR.** A bug-class fix, recorded here, in `docs/locators.md`, and
+in the commit messages. Offered to the author to strike if they think
+it rises to ADR grade.
 
 ## DOC-4 — Runnable strips for use cases
 
@@ -384,6 +456,7 @@ existing green behavior, not authoring new checks.
 | DOC-1 | `ehr help` surface (data-first spec, plain-text render, exit codes documented), operator-listing verb, bounded error-message pass | **Done** (2026-07-25) | `.agents/prompts/archive/2026-07-25-doc1-cli-help.md` |
 | DOC-2 | Seven-audience register canonical in `positioning.md`; `docs/README.md` per-audience entry paths | **Done** (2026-07-25) | `.agents/prompts/archive/2026-07-25-doc2-audience-respine.md` |
 | DOC-3 | `docs/cli.md` + `docs/operators.md` generated (new `docsgen` renderers, two make targets, freshness-gated); `docs/locators.md` + `docs/formats.md` hand-written, examples/shapes machine-verified; registry gains `:doc`; golden check extended | **Done** (2026-07-25) | `.agents/prompts/archive/2026-07-25-doc3-reference-docs.md` |
+| LOC-1 | Locator grammar micro-wave (interlude, not a DOC wave): FHIR paths reject a trailing separator (split limit `-1`, dead guard revived); `MSH-1` refused at parse with a teaching `:hint`; both rejection categories preserved; `docs/locators.md`'s two stale sharp edges rewritten as dated grammar facts, didactic MSH account preserved; component-granularity edge out of scope by ruling | **Done** (2026-07-25) | `.agents/prompts/archive/2026-07-25-loc1-locator-grammar.md` |
 | DOC-4 | Per-use-case runnable command strips (route: `:commands` in use-cases.edn vs. cookbook — open) | Not started | — |
 | DOC-5 | Quickstart-as-script, nightly-wired; README freshness link | Not started | — |
 
