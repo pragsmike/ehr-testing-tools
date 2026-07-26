@@ -1,14 +1,17 @@
 #!/bin/sh
 # Enforce: git operations on this repo happen from WSL, not native Windows
 # (pushes are git operations too -- see .githooks/pre-commit), and the fast
-# suite (unit tests + both lints) is green before anything leaves this
-# clone. This is the "fast gates block" half of ADR-0006's staged
-# enforcement (.agents/plans/corpus-foundations.md, enforcement-wave row):
-# coverage, doc-freshness regeneration, and the integration suite are
-# deliberately NOT run here -- they're slow and belong in CI (per-push job
-# for the first two; nightly/manual workflow for integration) rather than
-# blocking every local push. Same opt-in mechanism as pre-commit: this
-# only fires once a clone has run `git config core.hooksPath .githooks`.
+# suite (unit tests + both lints + the quickstart-fence/script freshness
+# check, DOC-5) is green before anything leaves this clone. This is the
+# "fast gates block" half of ADR-0006's staged enforcement
+# (.agents/plans/corpus-foundations.md, enforcement-wave row): coverage,
+# doc-freshness regeneration, and the integration suite (which now
+# includes actually running the quickstart, not just checking it against
+# the README -- see bin/quickstart-demo) are deliberately NOT run here --
+# they're slow and belong in CI (per-push job for the first two;
+# nightly/manual workflow for integration) rather than blocking every
+# local push. Same opt-in mechanism as pre-commit: this only fires once a
+# clone has run `git config core.hooksPath .githooks`.
 
 is_wsl=0
 if [ -n "$WSL_DISTRO_NAME" ]; then
@@ -33,5 +36,6 @@ fail() {
 make test || fail "make test"
 make lint-pipeline || fail "make lint-pipeline"
 make lint-deps || fail "make lint-deps"
+make quickstart-fresh || fail "make quickstart-fresh"
 
 exit 0

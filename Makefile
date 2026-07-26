@@ -1,4 +1,4 @@
-.PHONY: help pack pack-skills pack-push test coverage integration ehr pipeline use-cases operators-doc cli-doc lint-pipeline lint-deps quickstart-demo
+.PHONY: help pack pack-skills pack-push test coverage integration ehr pipeline use-cases operators-doc cli-doc lint-pipeline lint-deps quickstart-demo quickstart-fresh
 
 SHELL := bash
 
@@ -45,6 +45,8 @@ help:
 	@echo "  quickstart-demo - run README.md's Quickstart commands verbatim (bin/quickstart-demo), asserting each"
 	@echo "                 one's exit code and a clean tree afterward; fetches real artifacts and runs the real"
 	@echo "                 FHIR validator -- integration-tier, not hermetic (DOC-5)"
+	@echo "  quickstart-fresh - check README.md's Quickstart fence and bin/quickstart-demo teach the identical"
+	@echo "                 commands, in the identical order; cheap, hermetic, fast tier (DOC-5)"
 	@echo "  pipeline     - regenerate docs/pipeline.md from docs/pipeline.edn"
 	@echo "  use-cases    - regenerate docs/use-cases.md from docs/use-cases.edn"
 	@echo "  operators-doc - regenerate docs/operators.md from the mutation-operator registry"
@@ -76,6 +78,16 @@ integration:
 # running either.
 quickstart-demo:
 	bin/quickstart-demo
+
+# Fast, per-push sibling of quickstart-demo above: proves README.md's
+# Quickstart fence and bin/quickstart-demo teach the identical commands,
+# in the identical order, without running either
+# (ehr-testing-tools.quickstart-fresh -- structural extraction + ordered
+# comparison, not a substring search; see that namespace's docstring for
+# why substring matching is unsafe here). Hermetic, milliseconds; joins
+# ci.yml's fast tier.
+quickstart-fresh:
+	clojure -X ehr-testing-tools.quickstart-fresh/quickstart-fresh!
 
 # Compatibility spelling, kept working and unchanged (CLI-2, 2026-07-26).
 # `bin/ehr` is the taught entry point: this target cannot carry the CLI's

@@ -64,6 +64,17 @@ jobs:
           out="$(bin/ehr help)"
           echo "$out" | grep -q '^Usage: ehr '
 
+      # DOC-5: fast, per-push half of the executable-quickstart pair.
+      # Proves README.md's Quickstart fence and bin/quickstart-demo teach
+      # the identical commands, in the identical order -- structural
+      # extraction + comparison, not a substring search
+      # (ehr-testing-tools.quickstart-fresh). Never runs either the
+      # README's commands or the script itself; that's quickstart-demo's
+      # job, nightly-tier (integration.yml), since it fetches real
+      # artifacts and runs the real FHIR validator.
+      - name: quickstart-fresh (README fence and script agree)
+        run: make quickstart-fresh
+
       # Generated-doc freshness: four docs are derived rather than
       # authored -- docs/pipeline.md and docs/use-cases.md from
       # docs/pipeline.edn / docs/use-cases.edn, and (DOC-3, 2026-07-25)
