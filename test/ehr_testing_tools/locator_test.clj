@@ -131,6 +131,24 @@
       (is (result/rejected? r) (str "expected rejection for " (pr-str bad)))
       (is (= :invalid-v2-path (:category r))))))
 
+;; ---- cross-format parity (LOC-1, 2026-07-25): both grammars are
+;; fully anchored, so neither accepts a separator with nothing after
+;; it. The v2 side was always so (v2-path-re's ^...$); the FHIR side
+;; got there when fhir-data-path started splitting with limit -1, which
+;; keeps the trailing empty token alive long enough for the existing
+;; (some empty? segments) guard to fire on it. Pinned side by side
+;; because the parity is the point of the change, not a side effect. ----
+
+(deftest both-grammars-reject-a-trailing-separator-test
+  (doseq [bad ["entry[0].resource." "gender." "entry[0]."]]
+    (let [r (locator/fhir-data-path bad)]
+      (is (result/rejected? r) (str "expected rejection for " (pr-str bad)))
+      (is (= :invalid-fhir-path (:category r)))))
+  (doseq [bad ["PID-3." "PID-" "PID-3.1."]]
+    (let [r (locator/v2-data-path bad)]
+      (is (result/rejected? r) (str "expected rejection for " (pr-str bad)))
+      (is (= :invalid-v2-path (:category r))))))
+
 (deftest fhir-data-path-navigates-real-data-with-get-in-test
   ;; The whole point: the parsed path must actually work with
   ;; get-in/assoc-in/update-in against plain-data (data.json-shaped)

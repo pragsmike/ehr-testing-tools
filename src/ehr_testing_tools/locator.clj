@@ -58,11 +58,20 @@
   into a data-path vector of string keys and integer indices, directly
   usable with get-in/assoc-in/update-in against plain-data parsed FHIR
   JSON. Returns result/ok [...] or result/rejected :invalid-fhir-path
-  on an empty string or any segment outside the grammar."
+  on an empty string or any segment outside the grammar.
+
+  The split uses limit -1 (LOC-1, 2026-07-25) so that a trailing empty
+  token survives to the empty-segment guard below rather than being
+  discarded before it: clojure.string/split's default limit drops
+  trailing empty tokens, which made \"entry[0].resource.\" parse
+  silently as \"entry[0].resource\" and left the guard unreachable for
+  that one input. With -1 the guard fires, and this grammar is
+  anchored at both ends exactly like the v2 grammar below -- a
+  separator with nothing after it is a parse error in both."
   [path-str]
   (if (empty? path-str)
     (result/rejected :invalid-fhir-path {:path path-str})
-    (let [segments (str/split path-str #"\.")
+    (let [segments (str/split path-str #"\." -1)
           parsed (map parse-segment segments)]
       (if (or (empty? segments) (some empty? segments) (some nil? parsed))
         (result/rejected :invalid-fhir-path {:path path-str})

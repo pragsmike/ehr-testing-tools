@@ -47,15 +47,16 @@
       (is (result/rejected? r) (str (pr-str path) " must be rejected"))
       (is (= :invalid-fhir-path (:category r))))))
 
-(deftest documented-fhir-trailing-dot-is-accepted-not-rejected-test
-  (testing "the sharp edge docs/locators.md names: clojure.string/split
-            drops a trailing empty token before the grammar ever sees
-            it, so a trailing dot is silently ignored rather than
-            refused -- unlike the v2 grammar, which is fully anchored
-            and refuses one"
+(deftest documented-fhir-trailing-separator-is-rejected-test
+  (testing "LOC-1 (2026-07-25) tightened this: a trailing dot used to be
+            silently dropped by clojure.string/split before the grammar
+            ever saw it, so \"entry[0].resource.\" parsed as
+            \"entry[0].resource\". It is now a parse error, which is what
+            docs/locators.md's grammar note states -- both grammars are
+            fully anchored, and neither accepts a trailing separator"
     (let [r (locator/fhir-data-path "entry[0].resource.")]
-      (is (result/ok? r))
-      (is (= ["entry" 0 "resource"] (:payload r))))))
+      (is (result/rejected? r))
+      (is (= :invalid-fhir-path (:category r))))))
 
 ;; ---- v2 ----
 
