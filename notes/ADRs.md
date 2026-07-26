@@ -285,3 +285,42 @@ carry independent copies across sibling repos; a future edit to either
 skill's teaching content in one repo does not propagate to the other
 without a deliberate sync — an accepted cost of per-repo discoverability,
 same tradeoff ADR-0003 already named for hooks and the pack ritual.
+
+---
+
+## ADR-0006 — Private GitHub remote added; session-end ceremony grows a step, `pack-push` stays ACTIVE
+
+**Status:** Accepted (2026-07-26)
+
+**Context.** ADR-0003's trigger for demoting `pack-push` to dormant
+(the arrangement tools itself used before its own ADR-0008) was
+explicitly **a *public* GitHub remote** — the `pragsmike/packs`
+transport exists because a private repo's raw file contents aren't
+fetchable by URL, and a private repo doesn't change that. This session
+adds a private origin (`git@github.com:pragsmike/ehr-testing-sim.git`)
+during an authoring session, ahead of any decision to publish.
+
+**Decision.**
+1. **`git remote add origin git@github.com:pragsmike/ehr-testing-sim.git`**
+   — this repo now has a GitHub remote for the first time.
+2. **Session-end ceremony grows a step:** commit → `git push origin` →
+   `make pack-push`, in that order. Pushing to origin first means a
+   collaborator with repo access has the code before the pack is
+   republished; `pack-push` still runs last (AUTHORS-GUIDE.md's
+   ordering caveat is unchanged — the pack header's clean-tree line is
+   only meaningful if nothing is left uncommitted afterward).
+3. **`pack-push` stays ACTIVE, not dormant.** A private repo's raw URLs
+   are not fetchable (`raw.githubusercontent.com` requires the
+   requester to be authenticated and authorized for a private repo,
+   which a chat session reading via plain HTTP fetch is not) — the
+   `pragsmike/packs` transport remains the only way a chat session
+   without repo-scoped credentials can read this repo's current state.
+   The Makefile's own demotion trigger (ADR-0003, its header comment)
+   is unchanged: demote when this repo's GitHub remote is **public**,
+   not merely when one exists.
+
+**Consequences.** `git push -u origin main` joins the ceremony without
+retiring anything; `AUTHORS-GUIDE.md` section 2 is updated to name the
+three-step order. The demotion trigger from ADR-0003 remains open and
+unmet — a future session that flips this repo's visibility to public
+records that as its own ADR, exactly as ADR-0003 already anticipated.

@@ -1,0 +1,51 @@
+# docs/sim-theory-equations.txt -- the string-diagram skill's equation
+# form of docs/sim-theory.edn, hand-derived following the exact
+# equation-line rules ehr-testing-tools.pipeline uses for its own
+# docs/pipeline.edn (stage -> "inputs x catalytic -> outputs [Label]
+# {catalytic: ...}"; a union resource -> a synthetic UnionX funnel
+# node; an external stage -> "{external: true}"). Regenerate
+# docs/sim-theory-diagram.md's mermaid block from this file with:
+#
+#   python ../ehr-testing-tools/palgebra/tools/resource_equations_to_mermaid.py \
+#     docs/sim-theory-equations.txt -o docs/sim-theory-diagram.mermaid
+#
+# This file itself is maintained by hand alongside docs/sim-theory.edn
+# (no Clojure translator exists in this repo, unlike tools' `make
+# pipeline`) -- edit both together. A "# planned: <Label>" comment line
+# marks a :planned stage; the skill ignores comment lines, so this is
+# documentary only, not a distinct diagram visual (see
+# docs/sim-theory-diagram.md's own note on this gap).
+
+# planned: Persona
+sim-config × demographics-tables → persona  [Persona]  {catalytic: demographics-tables}
+
+# planned: RunModules
+persona × gmf-module-set × gmf-interpreter → clinical-trajectory  [RunModules]  {catalytic: gmf-module-set, gmf-interpreter}
+
+# planned: CompileTrajectory
+clinical-trajectory → compiled-pathway  [CompileTrajectory]
+
+# planned: InjectChurn
+pathway-ir × churn-profile → operational-pathway  [InjectChurn]
+
+operational-pathway → ground-truth-log + state-history  [Execute]
+
+ground-truth-log × invariant-catalog → pass + rejected  [Check]  {catalytic: invariant-catalog}
+
+ground-truth-log × hl7-parser-dep × message-type-registry × snomed-icd10-map → hl7v2-stream  [EmitHL7]  {catalytic: hl7-parser-dep, message-type-registry, snomed-icd10-map}
+
+# planned: EmitState
+state-history → state-document  [EmitState]
+
+# planned: Package
+hl7v2-stream × ground-truth-log → sim-corpus + run-manifest  [Package]
+
+# planned: Calibrate
+sim-corpus × feed-statistics × churn-profile → churn-profile  [Calibrate]  {feedback: churn-profile→churn-profile}
+
+# union: pathway-ir = compiled-pathway ∪ authored-pathway (authored-pathway is author-supplied, no producing stage in this repo)
+compiled-pathway × authored-pathway → pathway-ir  [UnionPathwayIr]  {spider: funnel}
+
+# external: SystemUnderTest and ToolsCorpusIntake make no claim about what they do -- named slots only
+hl7v2-stream → sut-behavior  [SystemUnderTest]  {external: true}
+sim-corpus → catalog-entry  [ToolsCorpusIntake]  {external: true}

@@ -18,14 +18,15 @@ One file describes three systems:
 - **want** — the whole theory: every stage, law, and wire. Our best
   current guess at the envisioned system; it will change, and changes
   land as edits to the EDN with ADRs where they're structural.
-- **now** — the `:status :built` subset: **Execute** and **Check**
-  (walking-skeleton scope, per their `:contract` notes), plus the
-  manifest component inside Package that shipped ahead of its stage.
-  Everything the *now* claims is property-tested and green
-  (13 tests / 36 assertions, 2026-07-26).
-- **next** — the single stage marked `;; NEXT` in the EDN: **EmitHL7**,
-  the thin vertical slice from log to wire format that unlocks
-  validation claim #1.
+- **now** — the `:status :built` subset: **Execute**, **Check**, and
+  **EmitHL7** (each walking-skeleton or v0-slice scope, per their
+  `:contract` notes), plus the manifest component inside Package that
+  shipped ahead of its stage. Everything the *now* claims is
+  property-tested and green (20 tests / 55 assertions, 2026-07-26).
+- **next** — the single stage marked `;; NEXT` in the EDN:
+  **InjectChurn**, growing the engine's step vocabulary (transfer
+  first) under Execute's existing contract on the way to the full
+  Simulated-Hospital-derived churn family.
 
 No schema keys were invented for this convention — it lives in
 comments and here, keeping the EDN loadable by tools' Pipeline Malli

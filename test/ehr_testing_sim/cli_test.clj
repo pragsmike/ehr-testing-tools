@@ -4,6 +4,7 @@
   Result->exit-code mapping matches the host's, and help-group is
   well-formed for the host's help machinery."
   (:require [clojure.test :refer [deftest is testing]]
+            [clojure.string :as string]
             [ehr-testing-sim.cli :as cli]
             [ehr-testing-sim.check :as check]
             [ehr-testing-sim.result :as result]))
@@ -39,6 +40,23 @@
       (is (string? verb))
       (is (string? doc))
       (is (vector? flags)))))
+
+(deftest help-group-documents-emit
+  (testing "the run verb's flags cover --emit and --reference-date (EmitHL7 wiring)"
+    (let [run-verb (first (filter #(= "run" (:verb %)) (:verbs cli/help-group)))
+          flag-names (set (map :flag (:flags run-verb)))]
+      (is (contains? flag-names "--emit"))
+      (is (contains? flag-names "--reference-date")))))
+
+(deftest main!-emits-hl7-messages
+  (let [printed (atom []) exited (atom nil)]
+    (cli/main! ["run" "--seed" "42" "--patients" "2" "--emit" "hl7"]
+               {:println-fn #(swap! printed conj %)
+                :exit-fn #(reset! exited %)})
+    (is (= 0 @exited))
+    (let [payload (:payload (read-string (first @printed)))]
+      (is (= 4 (count (:messages payload))))
+      (is (every? #(string/starts-with? % "MSH|") (:messages payload))))))
 
 (deftest main!-prints-and-exits
   (let [printed (atom []) exited (atom nil)]

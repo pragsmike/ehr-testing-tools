@@ -45,6 +45,14 @@
           "appends provenance: each compiled step cites the trajectory event it realizes"]
    :contract "the novel layer -- neither mined source has this stage (Simulated Hospital has no trajectory generation; Synthea has no operational compilation), so its laws carry fresh validation burden rather than inherited provenance (docs/problem-statement.md, Cross-Cutting Arguments)"}
 
+  ;; NEXT -- InjectChurn is next: the engine's step-vocabulary growth
+  ;; (transfer first, then bed-swap, *-in-error, merge -- the
+  ;; Simulated-Hospital-derived churn family, docs/third-party-sources.md)
+  ;; happens under Execute's existing :built contract on the way there
+  ;; (each new step type co-lands with its check.clj invariants, the
+  ;; standing AGENTS.md convention; Execute's contract note already
+  ;; names this as the v0->want growth path). The author may re-aim
+  ;; NEXT; this is the default per the roadmap.
   {:id :churn
    :label "InjectChurn"
    :kind :transform
@@ -77,18 +85,16 @@
           "produces no :indeterminate in v0 -- stated explicitly, same as tools' own Check, since :indeterminate is otherwise part of the judge kind's floor"]
    :contract "the catalog doubles as validation claim #3's engine and the regression suite (docs/problem-statement.md); property-tested over randomized runs (engine-test/every-run-satisfies-invariant-catalog, 200 trials green 2026-07-26)"}
 
-  ;; NEXT -- the emitter is the next planned step: a thin vertical
-  ;; slice pathway -> engine -> log -> wire format, unlocking
-  ;; validation claim #1 (independent-parser conformance).
   {:id :emit-hl7
    :label "EmitHL7"
    :kind :transform
-   :status :planned
+   :status :built
    :inputs ["ground-truth-log"]
    :outputs ["hl7v2-stream"]
    :catalytic ["hl7-parser-dep" "message-type-registry" "snomed-icd10-map"]
-   :laws ["bidirectional derivability: every emitted message is derivable from the log, and every message is traceable back to the log event that produced it (problem-statement Guarantees) -- the property that makes the corpus a test instrument rather than mere traffic"
-          "native code rendering: concept triplets render as coded fields (CWE etc.) in their own system; the ONE sanctioned translation is SNOMED->ICD-10-CM for billing segments (DG1), via the pinned NLM map (catalytic target 1), or code pairs carried from the module where provided"]}
+   :laws ["bidirectional derivability: every emitted message is derivable from the log, and every message is traceable back to the log event that produced it (problem-statement Guarantees) -- the property that makes the corpus a test instrument rather than mere traffic -- property-tested (emit-hl7-test/bidirectional-derivability, 100 trials green 2026-07-26)"
+          "native code rendering: concept triplets render as coded fields (CWE etc.) in their own system; the ONE sanctioned translation is SNOMED->ICD-10-CM for billing segments (DG1), via the pinned NLM map (catalytic target 1), or code pairs carried from the module where provided"]
+   :contract "v0 scope: ADT^A01 (admission) and ADT^A03 (discharge) only, MSH/EVN/PID/PV1 populated minimally, on org.clojars.cmiles74/clojure-hl7-parser's structures (the emitter's only runtime dependency, docs/third-party-sources.md). Timestamps render from a pinned :reference-date run-config input (ehr-testing-sim.emit-hl7/default-reference-date), never wall-clock. ORU/ORM and the churn-family message types (transfer, bed-swap, cancel, merge, ...) land alongside their step types as the engine's step vocabulary grows past :admission/:delay/:discharge -- each a message-type-registry addition, not a redesign of this stage."}
 
   {:id :emit-state
    :label "EmitState"

@@ -29,6 +29,8 @@
   {:seed {:coerce :long}
    :patients {:coerce :long}
    :arrival-gap {:coerce :long}
+   :emit {:coerce :string}
+   :reference-date {:coerce :string}
    :json {:coerce :boolean}
    :help {:coerce :boolean}})
 
@@ -43,7 +45,9 @@
      :doc "Run a simulation: config + seed -> ground-truth event log (+ manifest)."
      :flags [{:flag "--seed" :doc "RNG seed (required; same config+seed => identical output)"}
              {:flag "--patients" :doc "number of patients" :default "1"}
-             {:flag "--arrival-gap" :doc "max minutes between arrivals" :default "60"}]}
+             {:flag "--arrival-gap" :doc "max minutes between arrivals" :default "60"}
+             {:flag "--emit" :doc "render messages into the payload (\"hl7\" for ADT^A01/A03)"}
+             {:flag "--reference-date" :doc "ISO date anchoring HL7 timestamps (pinned input)" :default "2024-01-01"}]}
     {:verb "check"
      :doc "Run the invariant catalog over a ground-truth log (EDN on stdin)."
      :flags []}]})

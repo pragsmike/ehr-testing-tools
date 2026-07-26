@@ -34,14 +34,19 @@ the elision. `make pack-skills` packs exactly the elided directories, to
 a separate file.
 
 **One deliberate inversion from tools' guide: `make pack-push` is
-ACTIVE here, not dormant, and is the session-end ceremony.** This repo
-has no public GitHub remote yet, so the `pragsmike/packs` transport is
-the *only* way a chat session can read it — the same arrangement tools
-used before it went public (its ADR-0008). A session here ends with
-commit → `make pack-push`, not commit → `git push origin`. When
-ehr-testing-sim gets a public GitHub remote, demote `pack-push` to
-dormant the same way tools did, and record that demotion as a new ADR
-(see `Makefile`'s header comment, which carries the same note).
+ACTIVE here, not dormant, and stays part of the session-end
+ceremony.** This repo's GitHub remote (`git@github.com:pragsmike/
+ehr-testing-sim.git`, added ADR-0006) is **private** — a private
+repo's raw file contents aren't fetchable by URL, so the
+`pragsmike/packs` transport is still the *only* way a chat session
+without repo-scoped credentials can read it, the same arrangement
+tools used before it went *public* (its ADR-0008). A session here now
+ends with commit → `git push origin` → `make pack-push`, in that order
+(ADR-0006) — pushing to origin no longer replaces `pack-push`, it
+precedes it. When ehr-testing-sim's remote goes *public*, demote
+`pack-push` to dormant the same way tools did, and record that
+demotion as a new ADR (see `Makefile`'s header comment, which carries
+the same note) — a private remote existing is not that trigger.
 
 `pack-push` copies both packs into a local clone of the public
 `pragsmike/packs` repo (`~/.packs`, cloned once by hand — see
