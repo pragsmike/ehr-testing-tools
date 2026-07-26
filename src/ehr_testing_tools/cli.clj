@@ -190,16 +190,24 @@
   candidates -- defects probed and found unconvictable at a gate's
   current tier -- are docstring prose in corpus.operators, not
   registry data, so they never appear here; see
-  docs/judge-calibration.md for those."
+  docs/judge-calibration.md for those.
+
+  :doc and :target answer different questions and both are carried
+  (DOC-3's own distinction, surfaced at the shell by DOC-4): :doc is
+  the edit -- what changes in the file -- and :target is the
+  conformance claim -- which base-spec constraint the edited file now
+  violates. A reader choosing an operator wants the first; a reader
+  explaining a gate's finding wants the second."
   [{:keys [format]}]
   (let [entries (operators/entries)
         filtered (if format
                    (filter #(= (keyword format) (:format %)) entries)
                    entries)
         rows (->> filtered
-                  (map (fn [{:keys [id format version locator-required? contract]}]
+                  (map (fn [{:keys [id format version locator-required? contract doc]}]
                          {:id id :format format :version version
                           :locator-required? locator-required?
+                          :doc doc
                           :type (:type contract) :target (:target contract)}))
                   (sort-by (juxt :format :id)))]
     (result/ok {:operators (vec rows)})))

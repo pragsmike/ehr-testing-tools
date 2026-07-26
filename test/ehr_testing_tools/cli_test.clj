@@ -467,6 +467,16 @@
     (is (true? (:locator-required? remove-req)))
     (is (= "1" (:version remove-req)))))
 
+(deftest operators-command-rows-carry-the-doc-sentence-test
+  ;; DOC-4: the one-line description DOC-3 put in the registry is
+  ;; readable at the shell too, not only in docs/operators.md. It is a
+  ;; distinct register from :target -- :doc is the edit, :target is the
+  ;; conformance claim -- so both are asserted present and different.
+  (let [rows (:operators (:payload (cli/operators-command {})))
+        remove-req (first (filter #(= :remove-required-element (:id %)) rows))]
+    (is (every? #(and (string? (:doc %)) (seq (:doc %))) rows))
+    (is (not= (:doc remove-req) (:target remove-req)))))
+
 (deftest operators-command-is-a-pure-registry-read-no-io-test
   ;; Proven by construction: redefining io/file to throw confirms
   ;; nothing in operators-command touches the filesystem (it only
