@@ -23,6 +23,24 @@
    :bring "A Synthea configuration (population size, seed, clinician seed, reference date)."
    :get "A byte-reproducible synthetic corpus, from a manifest that regenerates it byte-for-byte (EXP-A4)."
    :maturity :usable
+   :commands
+   {:lines ["# One-time: the pinned Synthea distribution and the JDK it runs on,"
+            "# into the local artifact cache (~/.cache/ehr-testing-tools/artifacts)."
+            "make ehr ARGS=\"artifact fetch --name synthea --version 4.0.0\""
+            "make ehr ARGS=\"artifact fetch --name temurin-jdk --version 17.0.19+10\""
+            ""
+            "# Generate. Every value here is pinned on purpose: --seed and"
+            "# --clinician-seed fix Synthea's two RNGs, --reference-date fixes what"
+            "# \"now\" means. Leave any of them out and the corpus stops being"
+            "# reproducible."
+            "make ehr ARGS=\"corpus generate --config-path config/synthea/synthea.properties \\"
+            "  --seed 100 --clinician-seed 555 --population 10 \\"
+            "  --reference-date 20260101 --output-dir out/demo-corpus\""
+            ""
+            "# What you got: FHIR R4 bundles, and the manifest that regenerates them."
+            "ls out/demo-corpus/fhir"
+            "cat out/demo-corpus/manifest.edn"]
+    :note "Flags and their defaults: [cli.md](cli.md#ehr-corpus-generate), or `ehr help corpus` at the shell. What each manifest field means: [formats.md](formats.md#the-corpus-manifest). Regenerating this corpus later *from* that manifest is its own case -- [Reproduction packages](#reproduction-packages)."}
    :equations ["synthea-config × synthea-artifact × jdk-runtime × config-hash → raw-corpus  [Generate]  {catalytic: synthea-artifact, jdk-runtime, config-hash}"
                "raw-corpus → canonical-fhir-datum  [Normalize]"]}
 
@@ -32,6 +50,30 @@
    :bring "A base corpus (generated or intaken) plus a chosen defect operator and locator."
    :get "A mutant with a lineage record naming the exact base-spec constraint it violates -- never produced without one."
    :maturity :experimental
+   :commands
+   {:lines ["# The catalog you are choosing from: every operator, and the"
+            "# constraint its output violates."
+            "make ehr ARGS=\"corpus operators --format fhir\""
+            ""
+            "# A base corpus to break, if you don't already have one."
+            "make ehr ARGS=\"corpus generate --config-path config/synthea/synthea.properties \\"
+            "  --seed 100 --clinician-seed 555 --population 10 \\"
+            "  --reference-date 20260101 --output-dir out/demo-corpus\""
+            ""
+            "# Pick one patient bundle. --input takes a file, or a directory of"
+            "# files sharing one locator's shape; a generated corpus also holds two"
+            "# non-patient bundles, so this picks a patient file specifically."
+            "PATIENT_FILE=$(ls out/demo-corpus/fhir/*.json | grep -v -e hospitalInformation -e practitionerInformation | head -1)"
+            ""
+            "# Break exactly one element, at exactly one locator."
+            "make ehr ARGS=\"corpus mutate --input $PATIENT_FILE \\"
+            "  --operator-id remove-required-element --locator-path entry[0].resource.gender \\"
+            "  --output-dir out/demo-mutants\""
+            ""
+            "# The mutant is never written without this: the lineage record naming"
+            "# the operator, the locator, and the constraint the result violates."
+            "cat out/demo-mutants/lineage/*.lineage.edn"]
+    :note "Operator ids and what each one edits: [operators.md](operators.md). Locator syntax for both formats: [locators.md](locators.md). The lineage record's own fields: [formats.md](formats.md#the-lineage-record). Whether a given gate actually *convicts* a given mutant is a measured property rather than a promise -- [judge-calibration.md](judge-calibration.md) is where a surprising gate result gets explained."}
    :equations ["canonical-fhir-datum × operator-catalog → mutant-fhir-datum + lineage-record  [Mutate]  {catalytic: operator-catalog}"]}
 
   {:id :test-a-validator-with-contract-pairing
@@ -113,6 +155,28 @@
    :bring "Nothing beyond the pinned artifacts -- the manifest already names everything else."
    :get "A manifest (config hash, seeds, artifact hashes, forced environment) that reproduces the exact corpus byte-for-byte, proven in EXP-A4 from a freshly emptied artifact cache."
    :maturity :usable
+   :commands
+   {:lines ["# Generate once."
+            "make ehr ARGS=\"corpus generate --config-path config/synthea/synthea.properties \\"
+            "  --seed 100 --clinician-seed 555 --population 10 \\"
+            "  --reference-date 20260101 --output-dir out/repro-a\""
+            ""
+            "# The manifest IS the reproduction package: config hash, both seeds,"
+            "# the sha256 of the Synthea jar and of the JDK, the forced locale and"
+            "# timezone. Hand someone this file rather than the corpus."
+            "cat out/repro-a/manifest.edn"
+            ""
+            "# There is no regenerate-from-manifest verb: you read the settings"
+            "# back out of the manifest and pass them in again -- later, elsewhere,"
+            "# from an empty artifact cache."
+            "make ehr ARGS=\"corpus generate --config-path config/synthea/synthea.properties \\"
+            "  --seed 100 --clinician-seed 555 --population 10 \\"
+            "  --reference-date 20260101 --output-dir out/repro-b\""
+            ""
+            "# Same corpus? Ask this repo's own equivalence judge, pairing files"
+            "# by content hash."
+            "make ehr ARGS=\"check out/repro-b/fhir --expected out/repro-a/fhir --pair-by hash\""]
+    :note "Why `--pair-by hash` rather than `diff -r`: two of Synthea's own output filenames (`hospitalInformation<timestamp>.json`, `practitionerInformation<timestamp>.json`) embed a wall-clock export timestamp no seed can pin, while their *contents* are identical run over run. [EXP-A4](experiments/EXP-A4-results.md) found exactly this and registered `:strip-run-timestamp-suffix` as a canonicalizer for it -- so the byte-identity claim is byte-identity *modulo* recorded canonicalizations, and pairing by content hash is the shell-level way to ask the same question. `check`'s flags: [cli.md](cli.md#ehr-check)."}
    :equations ["synthea-config × synthea-artifact × jdk-runtime × config-hash → raw-corpus  [Generate]  {catalytic: synthea-artifact, jdk-runtime, config-hash}"]}
 
   {:id :audit-regulatory-evidence-trail
@@ -139,6 +203,29 @@
    :bring "Nothing -- generate a small corpus and mutate it with known operators."
    :get "Labeled before/after pairs: each lineage record names the exact base-spec constraint its mutant violates, ready to use as a worked example."
    :maturity :illustrative
+   :commands
+   {:lines ["# A small corpus to teach from."
+            "make ehr ARGS=\"corpus generate --config-path config/synthea/synthea.properties \\"
+            "  --seed 100 --clinician-seed 555 --population 5 \\"
+            "  --reference-date 20260101 --output-dir out/teaching-corpus\""
+            "PATIENT_FILE=$(ls out/teaching-corpus/fhir/*.json | grep -v -e hospitalInformation -e practitionerInformation | head -1)"
+            ""
+            "# One run per defect class you want to show. Each writes a mutant"
+            "# plus a lineage record; that pair is the worked example."
+            "make ehr ARGS=\"corpus mutate --input $PATIENT_FILE \\"
+            "  --operator-id malformed-date --locator-path entry[0].resource.birthDate \\"
+            "  --output-dir out/teaching/malformed-date\""
+            "make ehr ARGS=\"corpus mutate --input $PATIENT_FILE \\"
+            "  --operator-id invalid-code-value --locator-path entry[0].resource.gender \\"
+            "  --output-dir out/teaching/invalid-code-value\""
+            ""
+            "# The label: what was broken, where, and which constraint that violates."
+            "cat out/teaching/malformed-date/lineage/*.lineage.edn"
+            ""
+            "# The value itself, before and after."
+            "grep -o '\"birthDate\"[^,]*' \"$PATIENT_FILE\" | head -1"
+            "grep -o '\"birthDate\"[^,]*' out/teaching/malformed-date/*.json | head -1"]
+    :note "A mutant is written as canonical JSON (one line); Synthea's own output is pretty-printed. A raw `diff` between the two is therefore ~60,000 lines of reformatting and not the teaching artifact -- the lineage record and the one changed value are. Operator ids: [operators.md](operators.md); locator syntax: [locators.md](locators.md); the lineage record's fields: [formats.md](formats.md#the-lineage-record). This case is `illustrative` because no shipped example pipeline runs it end to end, not because the commands don't run: these were run, 2026-07-26."}
    :equations ["canonical-fhir-datum × operator-catalog → mutant-fhir-datum + lineage-record  [Mutate]  {catalytic: operator-catalog}"]}
 
   {:id :bring-your-own-generator-augmentation
