@@ -42,14 +42,15 @@
   (mapv #(format (:surge-format ward) (ward-tag ward) %) (range 1 (inc (:surge-slots ward)))))
 
 (defn occupancy-board
-  "The derived index: bed-id -> mrn, folded from patient states. This
-  IS the consistency law stated as code: recomputing from `patients`
-  from scratch always equals this."
+  "The derived index: bed-id -> patient-id (ADR-0010; was bed-id -> mrn
+  before identity moved off :mrn), folded from patient states. This IS
+  the consistency law stated as code: recomputing from `patients` from
+  scratch always equals this."
   [patients]
   (into {}
-        (keep (fn [[mrn patient]]
+        (keep (fn [[patient-id patient]]
                 (when-let [bed (get-in patient [:location :bed])]
-                  [bed mrn])))
+                  [bed patient-id])))
         patients))
 
 (defn- free

@@ -51,7 +51,7 @@ flowchart LR
 ```
 
 **Now** (green): Execute, Check, EmitHL7 — property-tested and green
-(62 tests / 134 assertions). **Next** (amber): InjectChurn, growing the
+(73 tests / 156 assertions). **Next** (amber): InjectChurn, growing the
 engine's step vocabulary starting with transfer. **Later** (dashed
 grey): everything else in the *want*.
 

@@ -114,14 +114,16 @@ than each growing their own shadow state.
 
 | Field | Type | Notes |
 |---|---|---|
-| `:mrn` | `:string` | Stable patient identifier; never reassigned. |
+| `:patient-id` | `:string` | **Landed, M2a (ADR-0010).** The fold key and work-queue key — replaces `:mrn` in that role. Internal, deterministic (a pure function of the run's seed and the patient's arrival ordinal — never an RNG draw, so identity generation adds no new stochastic consumption); never reassigned, never rebinds. |
+| `:mrns` | `[:set :string]` | **Landed, M2a (ADR-0010).** Every MRN this patient-id has ever answered to — a singleton set until M2b's merge exists to grow it. MRN is now *state*, not identity: a real hospital's MRN is exactly what merge changes. |
+| `:active-mrn` | `:string` | **Landed, M2a (ADR-0010).** Which member of `:mrns` is currently live; emitters render this everywhere PID/control-ids used to read a bare `:mrn`. Until M2b's merge lands, always the patient's one and only MRN. |
 | `:status` | `[:enum :new :admitted :discharged :expired]` | Lifecycle. Boarding is **not** a separate status — see below. `:expired` (candidate, M2b+ — see `docs/clinical-realities.md`'s post-mortem entry) is **clinically absorbing but operationally alive**: reached via a death event or an expired discharge disposition, it is not a synonym for `:discharged` — a patient can be transferred (to a morgue ward, `:class :morgue`) or undergo autopsy/donor-management events while `:status = :expired`, exactly the way an `:admitted` patient can, before a final disposition-20 `:discharge` moves them to `:discharged`. See the event validity table below for what's legal in `:expired`. |
 | `:class` | `[:enum :inpatient :emergency :outpatient :preadmit :recurring :obstetrics]`, optional until admission | PV1-2. Tracked separately from `:status` per `ir.PatientInfo`'s own separation (mined above) — registration category, not lifecycle. Distinct from a *ward's* `:class` (`:inpatient`/`:ed`, `docs/operational-models.md`'s facility config) — same word, two different things: one is what kind of patient this is, the other is what a ward is designated for. Set at admission, unchanged by transfer within M1's scope. |
 | `:home-ward` | `:string`, ward id, nil until admission | The ward the pathway named — clinical intent (`docs/operational-models.md`'s own term for the rung-1/2 target). Diverges from `:location`'s ward exactly on rungs 3 (outlier) and 4 (boarding) of the allocation ladder. |
 | `:location` | `[:map [:ward :string] [:bed :string] [:placement [:enum :licensed :surge]]]`, nil until admission | The patient's actual **physical** location, always concrete — never nil-bed, even while boarding (see worked example below). `:placement` is exactly the two values `docs/operational-models.md` specifies; ladder rungs 3 and 4 are distinguished from 1 and 2 not by a third placement value but by `:location`'s ward differing from `:home-ward` (see the table below). |
 | `:attending` | `:string`, provider id, nil until admission | References `docs/operational-models.md`'s provider pool by id; rendered PV1-7 as `id^family^given` at emit time, not stored denormalized. |
 | `:payer` | `:string`, payer id, nil until sampled | References the payer pool by id (Persona's job once it lands; engine patient-init until then, per `docs/operational-models.md`). Never re-sampled — the attribute-pool contract. |
-| `:admitted-at` | `:int`, simulated minutes, nil until admission | The moment this patient was admitted. Landed with Milestone M1 for exactly one purpose: breaking ties among multiple patients boarding for the same ward — the bed-ready transfer relieves the longest-waiting one first (earliest `:admitted-at`, MRN as a further tiebreak). Not a SimHospital-style shadow field — set once, never rewritten. |
+| `:admitted-at` | `:int`, simulated **seconds** (was minutes pre-M2a — ADR-0011), nil until admission | The moment this patient was admitted. Landed with Milestone M1 for exactly one purpose: breaking ties among multiple patients boarding for the same ward — the bed-ready transfer relieves the longest-waiting one first (earliest `:admitted-at`, `:patient-id` as a further tiebreak — `:patient-id`'s zero-padded ordinal prefix keeps this tiebreak's lexical-order property `:mrn` used to give it for free). Not a SimHospital-style shadow field — set once, never rewritten. |
 | `:attributes` | `[:map-of :keyword :any]`, default `{}` | **Reserved, unused until M5.** The open blackboard Synthea's modules coordinate through (mined above) — named now so nothing else claims the key before the GMF interpreter lands. |
 
 Deliberately absent, per the mining above: no visit-history field (the
@@ -134,14 +136,35 @@ in the table above, including `:location`'s `{:ward :bed :placement}`
 map shape — the allocation ladder (`ehr-testing-sim.facility/allocate`)
 populates it for real as of Milestone M1. One field this table didn't
 originally name turned out to be necessary once the ladder's cross-
-patient coupling was implemented: `:admitted-at` (the simulated
-minute of admission — see ADR-0011 for the future move to simulated
-*seconds*), used only to break ties among multiple patients
+patient coupling was implemented: `:admitted-at` (the simulated moment
+of admission), used only to break ties among multiple patients
 boarding for the same ward — the longest-waiting one (earliest
-`:admitted-at`, MRN as a further tiebreak) is the one a bed-ready
-transfer relieves. It is not a shadow/undo field in the SimHospital
-sense above (mined section): it is a plain fact recorded once at
-admission and never rewritten, exactly like `:status` or `:class`.
+`:admitted-at`, `:patient-id` as a further tiebreak) is the one a
+bed-ready transfer relieves. It is not a shadow/undo field in the
+SimHospital sense above (mined section): it is a plain fact recorded
+once at admission and never rewritten, exactly like `:status` or
+`:class`.
+
+**Landed, M2a.** ADR-0010's identity split (`:patient-id`/`:mrns`/
+`:active-mrn`, above) and ADR-0011's time model are both implemented,
+not just designed: `ehr-testing-sim.engine/run`'s work queue and
+`world :patients` map are keyed by `:patient-id`; every ground-truth
+event carries a `:participants` vector (`[{:patient-id ... :role
+:subject}]` for every event type today — the degenerate single-
+participant case ADR-0010 names) and a `:warm-up` boolean
+(`t < :warm-up-seconds`, config default 0); every `:t` is seconds from
+run start. **The pathway IR is unchanged by the seconds move:**
+`:delay`'s `:from`/`:to` stay authored in minutes (authoring
+ergonomics, `ehr-testing-sim.pathway`'s own docstring), and the engine
+converts minutes to seconds at `decide`-time — the one place a
+minute-denominated draw becomes a clock advance. `:arrival-gap` (an
+engine-config input, not IR) took the same minutes-authored/seconds-
+internal treatment for a concrete, discovered reason: leaving it in
+raw seconds while dwell times scaled to minutes×60 clustered arrivals
+far faster than patients discharged, exhausting `config/default-
+facility`'s real usable capacity (16 concurrent — Cardiology's surge
+sits unused when every patient's home-ward is Renal) at patient counts
+the invariant-catalog property test already exercised.
 
 **Boarding relief policy: FIFO by `:admitted-at`, ratified as the
 default — not a law.** Relieving the longest-waiting boarder first is
@@ -317,3 +340,17 @@ convention). The post-mortem, leave-of-absence, and class-flip rows are
 candidates for M2b (or immediately after, per `docs/clinical-
 realities.md`'s own milestone notes) — recorded here as the applicability
 oracle's target shape, not yet implemented in `check.clj`.
+
+**Landed, M2a: two structural invariants over `:participants`, plus
+the warm-up mark.** `check.clj`'s catalog gains
+`every-event-has-participants` (every event names at least one
+participant) and `participant-ids-exist-in-run` (every patient-id named
+anywhere in `:participants` traces back to an `:admission` event
+somewhere in the same log — catching a stray or mistyped id a future
+churn-injection step could otherwise introduce), per ADR-0010. A third,
+separately-parameterized invariant, `warm-up-mark-matches-window`
+(ADR-0011), checks the pure predicate `:warm-up = (t < warm-up-
+seconds)` against the run's own configured window — `check/check-all`
+grew a third optional arg (`warm-up-seconds`, default 0) alongside the
+existing `facility-config` one, both following the same "needs more
+than just the log" pattern.

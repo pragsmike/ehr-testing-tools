@@ -4,7 +4,13 @@
   admission/transfer legality, transfer-from accuracy, no double
   occupancy, one-slot-per-admitted-patient, capacity, and surge-only-
   when-earlier-rungs-exhausted. Written before ehr-testing-sim.check
-  grows these (ADR-0004 test-first)."
+  grows these (ADR-0004 test-first).
+
+  M2a (ADR-0010) additions: every hand-written log below now carries
+  :participants (the fold-routing mechanism replay/check.clj need since
+  :mrn is no longer the fold key), plus the two structural invariants
+  ADR-0010 requires: every event has >=1 participant, and every
+  participant id traces back to an :admission in the same log."
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.generators :as gen]
@@ -20,38 +26,43 @@
                   {:id :renal :name "Renal" :beds 1 :surge-slots 1
                    :surge-format "%s-H%02d" :class :inpatient}]})
 
+(defn- subject
+  "Test-fixture convenience: a single-participant :participants vector."
+  [patient-id]
+  [{:patient-id patient-id :role :subject}])
+
 ;; --- Event-validity rows (patient-state-model.md) -----------------------
 
 (deftest admission-only-when-new-detects-double-admission
-  (let [log [{:event :admission :t 0 :mrn "MRN000001" :home-ward "Renal"
+  (let [log [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
               :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
-             {:event :admission :t 10 :mrn "MRN000001" :home-ward "Renal"
+             {:event :admission :t 10 :home-ward "Renal" :participants (subject "P1")
               :location {:ward "Renal" :bed "RENAL-02" :placement :licensed}}]]
     (is (seq (check/admission-only-when-new log)))))
 
 (deftest admission-only-when-new-holds-for-legit-log
   (is (empty? (check/admission-only-when-new
-               [{:event :admission :t 0 :mrn "MRN000001" :home-ward "Renal"
+               [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
                  :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
-                {:event :discharge :t 10 :mrn "MRN000001"}]))))
+                {:event :discharge :t 10 :participants (subject "P1")}]))))
 
 (deftest transfer-only-when-admitted-detects-transfer-before-admission
-  (let [log [{:event :transfer :t 0 :mrn "MRN000001" :home-ward "Renal"
+  (let [log [{:event :transfer :t 0 :home-ward "Renal" :participants (subject "P1")
               :from nil :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}]]
     (is (seq (check/transfer-only-when-admitted log)))))
 
 (deftest transfer-from-matches-state-detects-lying-event
-  (let [log [{:event :admission :t 0 :mrn "MRN000001" :home-ward "Renal"
+  (let [log [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
               :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
-             {:event :transfer :t 10 :mrn "MRN000001" :home-ward "Cardiology"
+             {:event :transfer :t 10 :home-ward "Cardiology" :participants (subject "P1")
               :from {:ward "WRONG" :bed "WRONG-01" :placement :licensed}
               :location {:ward "Cardiology" :bed "CARDIOLOGY-01" :placement :licensed}}]]
     (is (seq (check/transfer-from-matches-state log)))))
 
 (deftest transfer-from-matches-state-holds-when-honest
-  (let [log [{:event :admission :t 0 :mrn "MRN000001" :home-ward "Renal"
+  (let [log [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
               :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
-             {:event :transfer :t 10 :mrn "MRN000001" :home-ward "Cardiology"
+             {:event :transfer :t 10 :home-ward "Cardiology" :participants (subject "P1")
               :from {:ward "Renal" :bed "RENAL-01" :placement :licensed}
               :location {:ward "Cardiology" :bed "CARDIOLOGY-01" :placement :licensed}}]]
     (is (empty? (check/transfer-from-matches-state log)))))
@@ -59,14 +70,14 @@
 ;; --- Occupancy invariants ------------------------------------------------
 
 (deftest no-double-occupancy-detects-collision
-  (let [log [{:event :admission :t 0 :mrn "MRN000001" :home-ward "Renal"
+  (let [log [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
               :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
-             {:event :admission :t 5 :mrn "MRN000002" :home-ward "Renal"
+             {:event :admission :t 5 :home-ward "Renal" :participants (subject "P2")
               :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}]]
     (is (seq (check/no-double-occupancy log)))))
 
 (deftest admitted-occupies-one-slot-detects-nil-location
-  (let [log [{:event :admission :t 0 :mrn "MRN000001" :home-ward "Renal" :location nil}]]
+  (let [log [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1") :location nil}]]
     (is (seq (check/admitted-occupies-one-slot log)))))
 
 (deftest occupancy-within-capacity-detects-overflow
@@ -75,24 +86,69 @@
         facility {:id :t :wards [ward]}
         ;; two patients both claim they hold licensed beds in a 1-bed
         ;; ward -- an impossible log a bug could still produce.
-        log [{:event :admission :t 0 :mrn "MRN000001" :home-ward "Renal"
+        log [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
               :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
-             {:event :admission :t 5 :mrn "MRN000002" :home-ward "Renal"
+             {:event :admission :t 5 :home-ward "Renal" :participants (subject "P2")
               :location {:ward "Renal" :bed "RENAL-99" :placement :licensed}}]]
     (is (seq (check/occupancy-within-capacity log facility)))))
 
 (deftest surge-only-when-earlier-rungs-exhausted-detects-premature-surge
   (let [facility test-facility
         ;; Renal has a free licensed bed, yet this admission claims surge.
-        log [{:event :admission :t 0 :mrn "MRN000001" :home-ward "Renal" :forced false
+        log [{:event :admission :t 0 :home-ward "Renal" :forced false :participants (subject "P1")
               :location {:ward "Renal" :bed "RENAL-H01" :placement :surge}}]]
     (is (seq (check/surge-only-when-earlier-rungs-exhausted log facility)))))
 
 (deftest surge-only-when-earlier-rungs-exhausted-allows-forced
   (let [facility test-facility
-        log [{:event :admission :t 0 :mrn "MRN000001" :home-ward "Renal" :forced true
+        log [{:event :admission :t 0 :home-ward "Renal" :forced true :participants (subject "P1")
               :location {:ward "Renal" :bed "RENAL-H01" :placement :surge}}]]
     (is (empty? (check/surge-only-when-earlier-rungs-exhausted log facility)))))
+
+;; --- ADR-0010: structural participant invariants -------------------------
+
+(deftest every-event-has-participants-detects-empty-participants
+  (is (seq (check/every-event-has-participants
+            [{:event :admission :t 0 :home-ward "Renal" :participants []
+              :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}]))))
+
+(deftest every-event-has-participants-holds-when-present
+  (is (empty? (check/every-event-has-participants
+               [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
+                 :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}]))))
+
+(deftest participant-ids-exist-in-run-detects-unadmitted-participant
+  (let [log [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
+              :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
+             ;; P2 never appears in an :admission -- a stray/mistyped id.
+             {:event :discharge :t 10 :participants (subject "P2")}]]
+    (is (seq (check/participant-ids-exist-in-run log)))))
+
+(deftest participant-ids-exist-in-run-holds-for-legit-log
+  (let [log [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
+              :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
+             {:event :discharge :t 10 :participants (subject "P1")}]]
+    (is (empty? (check/participant-ids-exist-in-run log)))))
+
+;; --- ADR-0011: the warm-up mark -------------------------------------------
+
+(deftest warm-up-mark-matches-window-detects-mismarked-event
+  (let [log [{:event :admission :t 5 :warm-up false :home-ward "Renal" :participants (subject "P1")
+              :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}]]
+    ;; t=5 < warm-up-seconds=10, so :warm-up should be true -- it's false.
+    (is (seq (check/warm-up-mark-matches-window log 10)))))
+
+(deftest warm-up-mark-matches-window-holds-when-correct
+  (let [log [{:event :admission :t 5 :warm-up true :home-ward "Renal" :participants (subject "P1")
+              :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
+             {:event :discharge :t 20 :warm-up false :participants (subject "P1")}]]
+    (is (empty? (check/warm-up-mark-matches-window log 10)))))
+
+(deftest engine-run-warm-up-seconds-marks-exactly-the-window
+  (let [{:keys [ground-truth]} (engine/run {:seed 42 :patients 5 :warm-up-seconds 100})]
+    (is (empty? (check/warm-up-mark-matches-window ground-truth 100)))
+    (testing "a nonzero window actually marks at least one early event for this seed"
+      (is (some :warm-up ground-truth)))))
 
 ;; --- check-all: facility-aware, backward-compatible arity ---------------
 

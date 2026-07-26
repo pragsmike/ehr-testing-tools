@@ -80,13 +80,7 @@
           "decide/evolve split (ADR-0008): decide (rng, t, world, mrn, step) -> {:events :advance} consults world-so-far and the RNG but never mutates; evolve (world, event) -> world' is the ONLY function that changes patient state, pure and total, folding one event at a time -- so state-history is DERIVED (reduce evolve over a log prefix), not a second output the engine must keep in sync with the log by discipline; this is what makes state-based emitters renderings rather than redesigns (ADR-0002)"
           "order-profiles catalytic (target 3, hashed US-units config, docs/operational-models.md): order and result step types land under Execute's existing :built contract as the engine's step vocabulary grows -- an EmitHL7-style co-landing addition, not a new stage (repairs the plan's earlier capture gap: order profiles and the ORM/ORU cycle were discussed from the first session but appeared in no planning artifact before this one)"
           "provider-pool catalytic (target 3, hashed config, docs/operational-models.md): attending assignment at admission draws from the provider pool the same way bed assignment draws from facility config -- both are Execute-time allocations, not separate stages"]
-   :contract "v1 scope (Milestone M1, docs/operational-models.md): the walking-skeleton step set (:admission :delay :discharge) plus :transfer, engine-assigned via the allocation ladder and provider sampling -- provider-pool is a real catalytic now (synthetic Luhn-valid NPIs materialized once per run, ehr-testing-sim.config), not just a declared wire. The WANT is the full Simulated-Hospital-derived step vocabulary, landed step by step under the co-landing law (see :check)"
-   ;; M2a engine-prep (ADR-0010 patient-id/:participants, ADR-0011
-   ;; seconds/UTC-offset/arrival-process/warm-up) lands entirely under
-   ;; this existing :built contract -- no new input/output/catalytic,
-   ;; comment only, docs/sim-theory.md records why this needed no
-   ;; diagram regeneration.
-   }
+   :contract "v1 scope (Milestone M1, docs/operational-models.md): the walking-skeleton step set (:admission :delay :discharge) plus :transfer, engine-assigned via the allocation ladder and provider sampling -- provider-pool is a real catalytic now (synthetic Luhn-valid NPIs materialized once per run, ehr-testing-sim.config), not just a declared wire. M2a (ADR-0010, ADR-0011): patient-id is the fold/queue key, :mrn moved into state as {:mrns :active-mrn}, every event carries :participants, the clock is seconds (pathway IR's :delay stays minutes, converted at decide-time), and a configurable warm-up window marks early events -- all landed under this SAME :built contract, no new input/output/catalytic (docs/sim-theory.md records why this needed no diagram regeneration). The WANT is the full Simulated-Hospital-derived step vocabulary, landed step by step under the co-landing law (see :check)"}
 
   {:id :check
    :label "Check"

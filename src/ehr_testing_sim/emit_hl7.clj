@@ -10,14 +10,20 @@
 
   Consumes the ground-truth log ONLY: no RNG, no wall clock
   (determinism law). facility/providers are additional PINNED,
-  non-random inputs (like :reference-date already was) needed to
-  render PV1-3/6's ward^^bed^facility shape and PV1-7's attending --
-  passing them doesn't touch the no-RNG/no-wall-clock doctrine, since
-  neither is sampled here, only rendered. Every timestamp is rendered
-  from the pinned :reference-date run-config input plus the event's
-  log-relative minute offset (timestamp-anchoring law) -- never from
-  System/currentTimeMillis or similar."
+  non-random inputs (like :reference-date and :utc-offset already are)
+  needed to render PV1-3/6's ward^^bed^facility shape and PV1-7's
+  attending -- passing them doesn't touch the no-RNG/no-wall-clock
+  doctrine, since none is sampled here, only rendered. Every timestamp
+  is rendered from the pinned :reference-date run-config input plus
+  the event's log-relative SECOND offset (ADR-0011; was minutes before
+  M2a), suffixed with the pinned :utc-offset (ADR-0011: a fixed offset,
+  never a timezone-database lookup, never per-event) -- never from
+  System/currentTimeMillis or similar. PID-3 renders the event's own
+  :active-mrn (ADR-0010: MRN moved into state; the emitter renders
+  whichever MRN was active when the event happened, which until M2b's
+  merge exists is always the patient's one and only MRN)."
   (:require [com.nervestaple.hl7-parser.parser :as parser]
+            [clojure.string :as str]
             [ehr-testing-sim.config :as config]))
 
 (def default-reference-date
@@ -27,6 +33,13 @@
   states one explicitly (never buried in :invocation, per tools'
   ManifestV1 lesson)."
   "2024-01-01")
+
+(def default-utc-offset
+  "Pinned default for the :utc-offset run-config input (ADR-0011): a
+  fixed ISO-style offset (\"+00:00\"), no DST, no timezone database.
+  Rendered in HL7v2's own colon-free zone-suffix convention
+  (\"+0000\") -- see `hl7-timestamp`."
+  "+00:00")
 
 (def message-type-registry
   "Event type -> HL7 message type/trigger: the emitter's own catalytic
@@ -47,14 +60,24 @@
   [reference-date]
   (.atStartOfDay (java.time.LocalDate/parse reference-date)))
 
+(defn- hl7-offset-suffix
+  "ISO-style offset (\"+00:00\", \"-05:00\") rendered in HL7v2's own
+  zone-suffix convention: colon-free (\"+0000\", \"-0500\")."
+  [utc-offset]
+  (str/replace utc-offset ":" ""))
+
 (defn hl7-timestamp
-  "Renders the absolute HL7 timestamp for `minutes` (a log event's :t,
-  minutes from the run's epoch) anchored to :reference-date -- the
-  timestamp-anchoring law. Pure: reference-date + minutes in, string
-  out, nothing else consulted."
-  [reference-date minutes]
-  (.format (.plusMinutes (reference-instant reference-date) minutes)
-           hl7-timestamp-formatter))
+  "Renders the absolute HL7 timestamp for `seconds` (a log event's :t,
+  SECONDS from the run's epoch -- ADR-0011, was minutes before M2a)
+  anchored to :reference-date, suffixed with :utc-offset in HL7's own
+  colon-free zone convention -- the timestamp-anchoring law, extended
+  to state which fixed offset the naive wall-clock arithmetic is
+  asserted to be in (no timezone database, no DST: the arithmetic
+  itself never shifts across zones, ADR-0011). Pure: reference-date +
+  seconds + utc-offset in, string out, nothing else consulted."
+  [reference-date seconds utc-offset]
+  (str (.format (.plusSeconds (reference-instant reference-date) seconds) hl7-timestamp-formatter)
+       (hl7-offset-suffix utc-offset)))
 
 (defn- msh-segment
   [{:keys [type trigger]} control-id ts]
@@ -80,12 +103,12 @@
    (parser/create-field [ts])))
 
 (defn- pid-segment
-  [mrn]
+  [active-mrn]
   (parser/create-segment
    "PID"
    (parser/create-field ["1"])
    (parser/create-field [])
-   (parser/create-field [mrn])))
+   (parser/create-field [active-mrn])))
 
 (defn- location-field
   "Renders a location map as ward^^bed^facility (PV1-3/PV1-6's shared
@@ -129,10 +152,11 @@
 (defn event->message
   "Renders one ground-truth event to an ER7 string, or nil when the
   event's :event isn't in `message-type-registry`."
-  [reference-date facility providers {:keys [event t mrn location from attending]}]
+  [reference-date utc-offset facility providers
+   {:keys [event t active-mrn location from attending]}]
   (when-let [type+trigger (message-type-registry event)]
-    (let [ts (hl7-timestamp reference-date t)
-          control-id (str mrn "-" (:trigger type+trigger) "-" t)
+    (let [ts (hl7-timestamp reference-date t utc-offset)
+          control-id (str active-mrn "-" (:trigger type+trigger) "-" t)
           facility-name (name (:id facility))
           provider (provider-by-id providers attending)]
       (parser/str-message
@@ -140,15 +164,15 @@
         parser/DEFAULT-DELIMITERS
         (msh-segment type+trigger control-id ts)
         (evn-segment (:trigger type+trigger) ts)
-        (pid-segment mrn)
+        (pid-segment active-mrn)
         (pv1-segment facility-name location from provider))))))
 
 (def ^:private default-providers
   "A fixed, arbitrary reference-seed provider pool -- purely a fallback
   default for callers that don't care about exact NPI values (`emit`'s
-  2-arg arity). A real run threads back its OWN materialized providers
-  (ehr-testing-sim.engine/run's :providers) instead, so its messages'
-  PV1-7 matches its own ground-truth log's :attending ids."
+  lower arities). A real run threads back its OWN materialized
+  providers (ehr-testing-sim.engine/run's :providers) instead, so its
+  messages' PV1-7 matches its own ground-truth log's :attending ids."
   (config/materialize-providers (java.util.Random. 0) config/default-provider-templates))
 
 (defn emit
@@ -157,10 +181,13 @@
   (determinism law); events outside `message-type-registry` are
   skipped, not errored -- the theory's laws bind the events this stage
   claims to handle, not every event type that may ever appear in a
-  log. `facility`/`providers` default for standalone convenience;
-  callers rendering a specific run's log should pass back that SAME
-  run's :facility/:providers (ehr-testing-sim.run does)."
+  log. `utc-offset`/`facility`/`providers` default for standalone
+  convenience; callers rendering a specific run's log should pass back
+  that SAME run's :utc-offset/:facility/:providers (ehr-testing-sim.run
+  does)."
   ([ground-truth reference-date]
-   (emit ground-truth reference-date config/default-facility default-providers))
-  ([ground-truth reference-date facility providers]
-   (into [] (keep (partial event->message reference-date facility providers)) ground-truth)))
+   (emit ground-truth reference-date default-utc-offset config/default-facility default-providers))
+  ([ground-truth reference-date utc-offset]
+   (emit ground-truth reference-date utc-offset config/default-facility default-providers))
+  ([ground-truth reference-date utc-offset facility providers]
+   (into [] (keep (partial event->message reference-date utc-offset facility providers)) ground-truth)))

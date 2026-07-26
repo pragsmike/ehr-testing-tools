@@ -89,23 +89,27 @@ Simulated Hospital's order profiles and the ORM/ORU result cycle were
 discussed from this project's first session but, until this pass,
 named in no planning artifact.
 
-## M2a's engine-prep decisions add no new stage or wire
+## M2a lands under Execute's existing contract — no new stage or wire
 
 [ADR-0010](../notes/ADRs.md#adr-0010) (patient identity, MRNs-as-state,
 the `:participants` event shape) and [ADR-0011](../notes/ADRs.md#adr-0011)
-(seconds granularity, a pinned UTC offset, a seeded arrival process, a
-warm-up window) are both engine-internal refactors that land entirely
-under `Execute`'s existing `:built` contract — they change what a
+(seconds granularity, a pinned UTC offset, a warm-up window) are both
+now **landed** (M2a session, test-first, `engine.clj`/`check.clj`/
+`emit-hl7.clj`/`run.clj`/`cli.clj`) as engine-internal refactors under
+`Execute`'s existing `:built` contract — they change what a
 patient-fold key and an event's timestamp/subject shape look like
 internally, not `Execute`'s declared inputs, outputs, or catalytic
 wires (`provider-pool`, `order-profiles`), so neither decision needed
-an EDN edit beyond a comment. A one-line comment noting both ADRs as
-engine-prep context was added at `:execute`'s `:contract` note; since
-EDN comments (`;;`) are stripped before the equation→Mermaid machinery
-ever sees the data, this cannot change what any diagram generated from
-`sim-theory.edn` renders — confirmed by inspection rather than by
-re-running the generator, since a comment-only change has no data for
-that machinery to read differently.
+an EDN edit beyond folding a note into `:execute`'s own `:contract`
+string. Since EDN comments/prose are stripped or ignored before the
+equation→Mermaid machinery ever sees the structural keys (`:id`
+`:kind` `:status` `:inputs` `:outputs` `:catalytic`), this cannot
+change what any diagram generated from `sim-theory.edn` renders —
+confirmed by inspection rather than by re-running the generator, since
+neither change touches a structural key. ADR-0011's **seeded arrival
+process** (an alternative to fixed `:patients N`) was sketched but not
+built this session — explicitly a stretch item behind the seam, per
+the M2a session's own plan; M2b does not depend on it.
 
 ## Resource type bindings
 

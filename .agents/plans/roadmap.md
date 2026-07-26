@@ -32,7 +32,12 @@ surge placement only when earlier ladder rungs are exhausted (unless
 `:forced true`). Plus the occupancy board's own consistency law as a
 property test: board ≡ fold over patient locations.
 
-## M2a — Engine prep: identity, participants, and the time model
+## M2a — Engine prep: identity, participants, and the time model — **landed**
+
+(Identity/participants per ADR-0010 and the time model per ADR-0011,
+including the warm-up mark, are implemented and test-first — 73 tests
+/ 156 assertions green; the seeded arrival process is the one sketched
+item not built, explicitly a stretch M2b doesn't depend on.)
 
 Split out of the original single M2 milestone (this session) because
 its two decisions — [ADR-0010](../../notes/ADRs.md#adr-0010) (patient

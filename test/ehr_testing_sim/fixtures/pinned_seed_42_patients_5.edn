@@ -1,13 +1,44 @@
 ;; Captured from ehr-testing-sim.engine/run {:seed 42 :patients 5}
-;; POST-Milestone-M1 (2026-07-26) -- see notes/ADRs.md ADR-0009. This
-;; file previously pinned the pre-M1 (decide/evolve refactor session)
-;; baseline; M1's allocation-ladder bed choice and attending sampling
-;; both draw RNG at admission time, which perturbed every admission-
-;; bearing pathway's downstream RNG stream, so the pre-M1 baseline is
-;; gone (ADR-0009's before/after is in that session's own summary, not
-;; duplicated here). Regenerate again -- deliberately, not casually --
-;; the next time a milestone's new step types add stochastic behavior
-;; existing pathways now exercise (ADR-0009's own expectation, not a
-;; bug to chase). See
+;; POST-M2a (2026-07-26) -- see notes/ADRs.md ADR-0009, ADR-0010,
+;; ADR-0011. This file previously pinned the POST-Milestone-M1 baseline
+;; (bed choice / attending sampling RNG draws). M2a's ONE deliberate
+;; regeneration (per this session's own seed-perturbation plan --
+;; regenerate once, not once per task) folds in TWO changes at once:
+;;
+;; 1. Identity (ADR-0010): every event now carries :active-mrn (was
+;;    :mrn) and :participants (a vector of {:patient-id :role}, new).
+;;    The `:mrn` key is gone from every event map.
+;; 2. Time (ADR-0011): every :t is now SECONDS from run start (was
+;;    minutes); every event carries :warm-up (this run used
+;;    :warm-up-seconds 0, its default, so every mark is false). Note
+;;    also: :arrival-gap stays authored in MINUTES (same carve-out as
+;;    :delay's IR, and for the same calibration reason -- see
+;;    engine.clj's `run` docstring) and is converted to seconds
+;;    internally, so admission timestamps below land on round-minute
+;;    second values (0, 3480=58min, 78min, ...) rather than arbitrary
+;;    seconds -- expected, not a bug.
+;;
+;; BEFORE (pre-M2a, :mrn/minutes -- see git history for the full body):
+;;   {:event :admission, :t 0,   :mrn "MRN000001", ...}
+;;   {:event :admission, :t 58,  :mrn "MRN000002", ...}
+;;   {:event :admission, :t 78,  :mrn "MRN000003", ...}
+;;   {:event :admission, :t 93,  :mrn "MRN000004", ...}
+;;   {:event :admission, :t 143, :mrn "MRN000005", ...}
+;;   {:event :discharge, :t 179, :mrn "MRN000004", ...}
+;;   {:event :discharge, :t 202, :mrn "MRN000002", ...}
+;;   {:event :discharge, :t 222, :mrn "MRN000001", ...}
+;;   {:event :discharge, :t 248, :mrn "MRN000003", ...}
+;;   {:event :discharge, :t 304, :mrn "MRN000005", ...}
+;; AFTER (post-M2a, :active-mrn+:participants/seconds+:warm-up): this
+;; file's body, below. The RNG's own draw sequence and values are
+;; IDENTICAL to pre-M2a (same bed choices, same attendings, same
+;; relative admission order, each :t exactly 60x its pre-M2a minute
+;; value) -- only the identity/time SHAPE and the seconds SCALING
+;; changed, not the underlying stochastic choices.
+;;
+;; Regenerate again -- deliberately, not casually -- the next time a
+;; milestone's new step types or config surface add stochastic
+;; behavior existing pathways now exercise (ADR-0009's own expectation,
+;; not a bug to chase). See
 ;; ehr_testing_sim.engine_test/pinned-seed-survives-decide-evolve-refactor.
-{:ground-truth [{:event :admission, :t 0, :mrn "MRN000001", :reason "Kidney problems", :attending "0384055899", :home-ward "Renal", :location {:ward "Renal", :bed "RENAL-02", :placement :licensed}, :forced false} {:event :admission, :t 58, :mrn "MRN000002", :reason "Kidney problems", :attending "0384055899", :home-ward "Renal", :location {:ward "Renal", :bed "RENAL-04", :placement :licensed}, :forced false} {:event :admission, :t 78, :mrn "MRN000003", :reason "Kidney problems", :attending "3903633105", :home-ward "Renal", :location {:ward "Renal", :bed "RENAL-01", :placement :licensed}, :forced false} {:event :admission, :t 93, :mrn "MRN000004", :reason "Kidney problems", :attending "3903633105", :home-ward "Renal", :location {:ward "Renal", :bed "RENAL-03", :placement :licensed}, :forced false} {:event :admission, :t 143, :mrn "MRN000005", :reason "Kidney problems", :attending "3903633105", :home-ward "Renal", :location {:ward "Renal", :bed "RENAL-H01", :placement :surge}, :forced false} {:event :discharge, :t 179, :mrn "MRN000004", :location {:ward "Renal", :bed "RENAL-03", :placement :licensed}, :attending "3903633105"} {:event :discharge, :t 202, :mrn "MRN000002", :location {:ward "Renal", :bed "RENAL-04", :placement :licensed}, :attending "0384055899"} {:event :discharge, :t 222, :mrn "MRN000001", :location {:ward "Renal", :bed "RENAL-02", :placement :licensed}, :attending "0384055899"} {:event :discharge, :t 248, :mrn "MRN000003", :location {:ward "Renal", :bed "RENAL-01", :placement :licensed}, :attending "3903633105"} {:event :discharge, :t 304, :mrn "MRN000005", :location {:ward "Renal", :bed "RENAL-H01", :placement :surge}, :attending "3903633105"}]}
+{:ground-truth [{:event :admission, :t 0, :active-mrn "MRN000001", :reason "Kidney problems", :attending "0384055899", :home-ward "Renal", :location {:ward "Renal", :bed "RENAL-02", :placement :licensed}, :forced false, :participants [{:patient-id "PID-000000-918175ce", :role :subject}], :warm-up false} {:event :admission, :t 3480, :active-mrn "MRN000002", :reason "Kidney problems", :attending "0384055899", :home-ward "Renal", :location {:ward "Renal", :bed "RENAL-04", :placement :licensed}, :forced false, :participants [{:patient-id "PID-000001-881e2907", :role :subject}], :warm-up false} {:event :admission, :t 4680, :active-mrn "MRN000003", :reason "Kidney problems", :attending "3903633105", :home-ward "Renal", :location {:ward "Renal", :bed "RENAL-01", :placement :licensed}, :forced false, :participants [{:patient-id "PID-000002-8c2f7e6a", :role :subject}], :warm-up false} {:event :admission, :t 5580, :active-mrn "MRN000004", :reason "Kidney problems", :attending "3903633105", :home-ward "Renal", :location {:ward "Renal", :bed "RENAL-03", :placement :licensed}, :forced false, :participants [{:patient-id "PID-000003-75598130", :role :subject}], :warm-up false} {:event :admission, :t 8580, :active-mrn "MRN000005", :reason "Kidney problems", :attending "3903633105", :home-ward "Renal", :location {:ward "Renal", :bed "RENAL-H01", :placement :surge}, :forced false, :participants [{:patient-id "PID-000004-2467dffa", :role :subject}], :warm-up false} {:event :discharge, :t 10740, :active-mrn "MRN000004", :location {:ward "Renal", :bed "RENAL-03", :placement :licensed}, :attending "3903633105", :participants [{:patient-id "PID-000003-75598130", :role :subject}], :warm-up false} {:event :discharge, :t 12120, :active-mrn "MRN000002", :location {:ward "Renal", :bed "RENAL-04", :placement :licensed}, :attending "0384055899", :participants [{:patient-id "PID-000001-881e2907", :role :subject}], :warm-up false} {:event :discharge, :t 13320, :active-mrn "MRN000001", :location {:ward "Renal", :bed "RENAL-02", :placement :licensed}, :attending "0384055899", :participants [{:patient-id "PID-000000-918175ce", :role :subject}], :warm-up false} {:event :discharge, :t 14880, :active-mrn "MRN000003", :location {:ward "Renal", :bed "RENAL-01", :placement :licensed}, :attending "3903633105", :participants [{:patient-id "PID-000002-8c2f7e6a", :role :subject}], :warm-up false} {:event :discharge, :t 18240, :active-mrn "MRN000005", :location {:ward "Renal", :bed "RENAL-H01", :placement :surge}, :attending "3903633105", :participants [{:patient-id "PID-000004-2467dffa", :role :subject}], :warm-up false}]}

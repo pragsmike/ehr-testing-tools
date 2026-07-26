@@ -46,8 +46,11 @@
                 [:force-placement {:optional true} ForcePlacement]]]
    [:delay [:map
             [:type [:= :delay]]
-            ;; minutes; the engine samples uniformly in [from, to]
-            ;; from its own seeded RNG (determinism guarantee).
+            ;; minutes (authoring ergonomics, ADR-0011 -- the engine's
+            ;; own clock is seconds; it converts minutes -> seconds at
+            ;; decide-time, this field's authored unit never changes);
+            ;; the engine samples uniformly in [from, to] from its own
+            ;; seeded RNG (determinism guarantee).
             [:from :int]
             [:to :int]]]
    [:discharge [:map

@@ -69,8 +69,8 @@
     (is (map? (read-string (first @printed))))))
 
 (deftest check-catches-planted-violation
-  (let [bad [{:event :discharge :t 0 :mrn "MRN000001"}
-             {:event :admission :t 5 :mrn "MRN000001" :location "Renal"}]
+  (let [bad [{:event :discharge :t 0 :participants [{:patient-id "P1" :role :subject}]}
+             {:event :admission :t 5 :participants [{:patient-id "P1" :role :subject}] :location "Renal"}]
         r (check/check-all bad)]
     (is (result/rejected? r))
     (is (= :invariant-violation (:category r)))

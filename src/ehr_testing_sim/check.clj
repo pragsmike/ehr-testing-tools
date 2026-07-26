@@ -21,34 +21,95 @@
   when :new, transfer only when :admitted, a transfer's declared
   :from matches the fold). These read patient/world state via
   ehr-testing-sim.engine/replay -- the same fold `evolve` always was,
-  reused rather than reimplemented (ADR-0008)."
+  reused rather than reimplemented (ADR-0008).
+
+  M2a (ADR-0010) adds two structural invariants over :participants
+  (every event has >=1, every participant id traces to an :admission
+  in the same log) and moves every per-patient grouping from
+  `:mrn` to `:participants`-derived patient-ids -- an event with more
+  than one participant (M2b's bed-swap, merge) belongs to every
+  participant's own sequence, not just one. M2a (ADR-0011) adds the
+  warm-up-mark invariant (config/check-warm-up.clj docstring companion
+  below)."
   (:require [ehr-testing-sim.config :as config]
             [ehr-testing-sim.engine :as engine]
             [ehr-testing-sim.facility :as facility]
             [ehr-testing-sim.result :as result]))
 
-(defn- by-patient [ground-truth]
-  (group-by :mrn ground-truth))
+(defn- events-by-patient
+  "Every event each patient-id participates in, in log order -- the
+  general, patient-phrased replacement for `(group-by :mrn ...)`. An
+  event with multiple participants (M2b) appears in every participant's
+  own sequence; today's event types are all single-participant, so this
+  is presently equivalent to grouping by the sole participant, but is
+  written the general way so M2b needs no rewrite here."
+  [ground-truth]
+  (reduce (fn [acc event]
+            (reduce (fn [acc2 {:keys [patient-id]}]
+                      (update acc2 patient-id (fnil conj []) event))
+                    acc (:participants event)))
+          {} ground-truth))
 
 (defn timestamps-monotone
   "Within a patient, event times never decrease (log order is emission
   order, which the engine guarantees is time order)."
   [ground-truth]
-  (for [[mrn events] (by-patient ground-truth)
+  (for [[patient-id events] (events-by-patient ground-truth)
         [a b] (partition 2 1 events)
         :when (> (:t a) (:t b))]
-    {:invariant :timestamps-monotone :mrn mrn :at [(:t a) (:t b)]}))
+    {:invariant :timestamps-monotone :patient-id patient-id :at [(:t a) (:t b)]}))
 
 (defn discharge-follows-admission
   "No patient is discharged without a prior admission, and not twice."
   [ground-truth]
-  (for [[mrn events] (by-patient ground-truth)
+  (for [[patient-id events] (events-by-patient ground-truth)
         :let [kinds (mapv :event events)
               first-admit (.indexOf ^java.util.List kinds :admission)
               discharges (keep-indexed #(when (= :discharge %2) %1) kinds)]
         d discharges
         :when (or (neg? first-admit) (< d first-admit))]
-    {:invariant :discharge-follows-admission :mrn mrn :at d}))
+    {:invariant :discharge-follows-admission :patient-id patient-id :at d}))
+
+;; --- ADR-0010: structural participant invariants -------------------------
+
+(defn every-event-has-participants
+  "Every event names at least one participant (ADR-0010) -- a bug in a
+  decide implementation or a future churn-injection step could
+  otherwise emit an orphan event no patient's fold ever sees."
+  [ground-truth]
+  (for [event ground-truth
+        :when (empty? (:participants event))]
+    {:invariant :every-event-has-participants :event (:event event) :at (:t event)}))
+
+(defn participant-ids-exist-in-run
+  "Every patient-id named in any event's :participants is a patient-id
+  this run actually created -- i.e. appears as a participant on at
+  least one :admission event somewhere in the log (an admission is the
+  one event type that always exists for every patient this run knows
+  about, docs/patient-state-model.md's :admission validity row).
+  Catches a churn-injection or decide bug that names a stray or
+  mistyped patient-id."
+  [ground-truth]
+  (let [admitted-ids (into #{}
+                           (comp (filter #(= :admission (:event %)))
+                                 (mapcat :participants)
+                                 (map :patient-id))
+                           ground-truth)]
+    (for [event ground-truth
+          {:keys [patient-id]} (:participants event)
+          :when (not (contains? admitted-ids patient-id))]
+      {:invariant :participant-ids-exist-in-run :patient-id patient-id :at (:t event)})))
+
+;; --- ADR-0011: the warm-up mark -------------------------------------------
+
+(defn warm-up-mark-matches-window
+  "The warm-up mark is exactly `t < warm-up-seconds` (ADR-0011) -- a
+  pure predicate over each event's own :t and the run's configured
+  warm-up window, checkable without replay."
+  [ground-truth warm-up-seconds]
+  (for [event ground-truth
+        :when (not= (boolean (:warm-up event)) (< (:t event) warm-up-seconds))]
+    {:invariant :warm-up-mark-matches-window :at (:t event)}))
 
 ;; --- M1 event-validity rows (docs/patient-state-model.md) ---------------
 
@@ -56,26 +117,26 @@
   "docs/patient-state-model.md's event-validity table: :admission is
   legal only when the patient's prior state is :new."
   [ground-truth]
-  (for [{:keys [event before]} (engine/replay ground-truth)
+  (for [{:keys [event before patient-id]} (engine/replay ground-truth)
         :when (and (= :admission (:event event)) (not= :new (:status before)))]
-    {:invariant :admission-only-when-new :mrn (:mrn event) :at (:t event)}))
+    {:invariant :admission-only-when-new :patient-id patient-id :at (:t event)}))
 
 (defn transfer-only-when-admitted
   "docs/patient-state-model.md's event-validity table: :transfer
   (including bed-ready) is legal only when the patient's prior state
   is :admitted (Admitted or Boarding)."
   [ground-truth]
-  (for [{:keys [event before]} (engine/replay ground-truth)
+  (for [{:keys [event before patient-id]} (engine/replay ground-truth)
         :when (and (= :transfer (:event event)) (not= :admitted (:status before)))]
-    {:invariant :transfer-only-when-admitted :mrn (:mrn event) :at (:t event)}))
+    {:invariant :transfer-only-when-admitted :patient-id patient-id :at (:t event)}))
 
 (defn transfer-from-matches-state
   "A transfer event's declared :from matches the patient's actual
   location immediately beforehand (docs/operational-models.md)."
   [ground-truth]
-  (for [{:keys [event before]} (engine/replay ground-truth)
+  (for [{:keys [event before patient-id]} (engine/replay ground-truth)
         :when (and (= :transfer (:event event)) (not= (:from event) (:location before)))]
-    {:invariant :transfer-from-matches-state :mrn (:mrn event) :at (:t event)}))
+    {:invariant :transfer-from-matches-state :patient-id patient-id :at (:t event)}))
 
 ;; --- M1 facility invariants (docs/operational-models.md) ----------------
 
@@ -93,9 +154,9 @@
   physical slot -- location and its bed are never nil while admitted."
   [ground-truth]
   (for [{:keys [event world-after]} (engine/replay ground-truth)
-        [mrn {:keys [status location]}] world-after
+        [patient-id {:keys [status location]}] world-after
         :when (and (= status :admitted) (or (nil? location) (nil? (:bed location))))]
-    {:invariant :admitted-occupies-one-slot :mrn mrn :at (:t event)}))
+    {:invariant :admitted-occupies-one-slot :patient-id patient-id :at (:t event)}))
 
 (defn occupancy-within-capacity
   "Occupancy never exceeds a ward's declared capacity (licensed +
@@ -132,7 +193,7 @@
   legitimately exhausted -- unless :forced true (docs/operational-
   models.md's own exemption for the authoring escape hatch)."
   [ground-truth facility-config]
-  (for [{:keys [event world-before]} (engine/replay ground-truth)
+  (for [{:keys [event world-before patient-id]} (engine/replay ground-truth)
         :when (and (#{:admission :transfer} (:event event))
                    (= :surge (get-in event [:location :placement]))
                    (not (:forced event))
@@ -140,12 +201,15 @@
                                                   (facility/occupancy-board world-before)
                                                   (:home-ward event)
                                                   (get-in event [:location :ward]))))]
-    {:invariant :surge-only-when-earlier-rungs-exhausted :mrn (:mrn event) :at (:t event)}))
+    {:invariant :surge-only-when-earlier-rungs-exhausted :patient-id patient-id :at (:t event)}))
 
 (def catalog
-  "The full invariant catalog, in reporting order."
+  "The full invariant catalog needing only a ground-truth log, in
+  reporting order."
   [#'timestamps-monotone
    #'discharge-follows-admission
+   #'every-event-has-participants
+   #'participant-ids-exist-in-run
    #'admission-only-when-new
    #'transfer-only-when-admitted
    #'transfer-from-matches-state
@@ -159,18 +223,29 @@
   [#'occupancy-within-capacity
    #'surge-only-when-earlier-rungs-exhausted])
 
+(def warmup-catalog
+  "Invariants that need the run's configured warm-up window (ADR-0011),
+  not just the log -- same reason `facility-catalog` is separate."
+  [#'warm-up-mark-matches-window])
+
 (defn check-all
   "Runs every invariant in the catalog over a ground-truth log.
   `facility-config` (default config/default-facility) is needed by the
-  capacity/surge-ladder invariants; existing 1-arg call sites are
-  unaffected."
-  ([ground-truth] (check-all ground-truth config/default-facility))
-  ([ground-truth facility-config]
+  capacity/surge-ladder invariants; `warm-up-seconds` (default 0) is
+  needed by the warm-up-mark invariant. Existing 1-arg/2-arg call sites
+  are unaffected."
+  ([ground-truth] (check-all ground-truth config/default-facility 0))
+  ([ground-truth facility-config] (check-all ground-truth facility-config 0))
+  ([ground-truth facility-config warm-up-seconds]
    (let [base-violations (into [] (mapcat #(% ground-truth)) catalog)
          facility-violations (into [] (mapcat #(% ground-truth facility-config)) facility-catalog)
-         violations (into base-violations facility-violations)]
+         warmup-violations (into [] (mapcat #(% ground-truth warm-up-seconds)) warmup-catalog)
+         violations (-> base-violations
+                        (into facility-violations)
+                        (into warmup-violations))]
      (if (empty? violations)
-       (result/ok {:invariants-checked (into (mapv (comp :name meta) catalog)
-                                              (mapv (comp :name meta) facility-catalog))
+       (result/ok {:invariants-checked (-> (mapv (comp :name meta) catalog)
+                                            (into (mapv (comp :name meta) facility-catalog))
+                                            (into (mapv (comp :name meta) warmup-catalog)))
                    :events (count ground-truth)})
        (result/rejected :invariant-violation {:violations violations})))))
