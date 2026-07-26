@@ -7,18 +7,24 @@
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
+            [ehr-testing-sim.config :as config]
             [ehr-testing-sim.engine :as engine]
             [ehr-testing-sim.emit-hl7 :as emit-hl7]
             [com.nervestaple.hl7-parser.parser :as parser]
             [com.nervestaple.hl7-parser.message :as message])
   (:import [java.time LocalDate LocalDateTime]
-           [java.time.format DateTimeFormatter]))
+           [java.time.format DateTimeFormatter]
+           [java.util Random]))
 
 (def ref-date "2024-01-01")
 
 (defn- admission-discharge-events
+  "Renamed from v0 in spirit only (kept the name -- not worth touching
+  every call site) -- Milestone M1's :transfer joins the events this
+  helper covers, since the derivability law now extends to A02
+  (docs/operational-models.md, .agents/plans/roadmap.md M1)."
   [ground-truth]
-  (filterv #(#{:admission :discharge} (:event %)) ground-truth))
+  (filterv #(#{:admission :discharge :transfer} (:event %)) ground-truth))
 
 (defn- event-key
   "The (mrn, message-type, timestamp) triple a message must carry to
@@ -65,6 +71,52 @@
         (is (= (let [{:keys [type trigger]} (emit-hl7/message-type-registry (:event event))]
                  (str type "^" trigger))
                (message/get-field-first-value parsed "MSH" 9)))))))
+
+;; --- Milestone M1: A02, PV1-3/6/7 ----------------------------------------
+
+(def ^:private crowded-facility
+  {:id :crowded-test
+   :wards [{:id :ed :name "ED" :beds 0 :surge-slots 5
+            :surge-format "%s-H%02d" :class :ed}
+           {:id :renal :name "Renal" :beds 1 :surge-slots 0
+            :surge-format "%s-H%02d" :class :inpatient}]})
+
+(defn- find-a02
+  [messages]
+  (first (filter #(re-find #"\^A02" %) messages)))
+
+(deftest message-type-registry-has-a02
+  (is (= {:type "ADT" :trigger "A02"} (emit-hl7/message-type-registry :transfer))))
+
+(deftest transfer-emits-a02-with-pv1-3-6-7
+  (let [{:keys [ground-truth facility providers]}
+        (engine/run {:seed 1 :patients 3 :facility crowded-facility})
+        transfer-event (first (filter #(= :transfer (:event %)) ground-truth))
+        _ (assert transfer-event "expected this seed/facility to produce a bed-ready transfer")
+        messages (emit-hl7/emit ground-truth ref-date facility providers)
+        a02 (find-a02 messages)
+        parsed (parser/parse a02)
+        provider (first (filter #(= (:id %) (:attending transfer-event)) providers))]
+    (testing "PV1-3: ward^^bed^facility"
+      (is (= (str (get-in transfer-event [:location :ward]) "^^"
+                  (get-in transfer-event [:location :bed]) "^"
+                  (name (:id facility)))
+             (message/get-field-first-value parsed "PV1" 3))))
+    (testing "PV1-6: prior location, from the event's own :from -- no shadow field"
+      (is (= (str (get-in transfer-event [:from :ward]) "^^"
+                  (get-in transfer-event [:from :bed]) "^"
+                  (name (:id facility)))
+             (message/get-field-first-value parsed "PV1" 6))))
+    (testing "PV1-7: id^family^given"
+      (is (= (str (:id provider) "^" (get-in provider [:name :family]) "^" (get-in provider [:name :given]))
+             (message/get-field-first-value parsed "PV1" 7))))))
+
+(deftest admission-pv1-6-is-empty-no-prior-location
+  (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 1})
+        admission (first ground-truth)
+        messages (emit-hl7/emit ground-truth ref-date facility providers)
+        parsed (parser/parse (first messages))]
+    (is (= "" (or (message/get-field-first-value parsed "PV1" 6) "")))))
 
 (deftest timestamp-anchoring-concrete
   (testing "a known offset renders the expected absolute timestamp"

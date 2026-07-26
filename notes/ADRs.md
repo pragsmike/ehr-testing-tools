@@ -534,3 +534,83 @@ from its initial state — is the executable form of "impossible by
 construction," not an added nicety. A pinned-seed regression proves
 the refactor changes internal structure without changing observable
 output for the v0 step set.
+
+---
+
+## ADR-0009 — Seed stability is a within-version guarantee, not a cross-version one; the manifest's generator version is the cross-version key
+
+**Status:** Accepted (2026-07-26)
+
+**Context.** Milestone M1 (docs/operational-models.md) gives
+`:admission`'s `decide` two NEW stochastic choices it never had in
+v0: a seeded draw among candidate beds (the allocation ladder) and a
+seeded draw among ward-eligible providers (attending assignment) —
+plus, once per run, generating each provider's synthetic NPI from the
+same RNG (ADR-0007's decision (a), explicitly "generated from the run
+seed"). None of this existed when the decide/evolve refactor session
+captured `test/ehr_testing_sim/fixtures/pinned_seed_42_patients_5.edn`
+as a regression baseline. Every admission now consumes RNG draws that
+didn't exist before, which shifts the entire downstream RNG stream for
+ANY pathway using `:admission` — the pinned fixture (and, by the same
+logic, any external consumer who had pinned a seed against pre-M1
+output) necessarily produces different byte-for-byte output after M1,
+even though the *pathway* is unchanged. This was flagged as a live
+possibility before M1 landed, with two options on the table: accept
+the perturbation and regenerate, or engineer draw isolation to keep
+legacy output stable.
+
+**Decision.**
+
+1. **Take option (a): accept the perturbation.** Same config + seed
+   still yields byte-identical output (ADR-0002's guarantee is
+   unweakened) — but that guarantee is now stated precisely as a
+   **within-version** guarantee: identical output for a fixed
+   generator version, not across versions where the generator's own
+   step vocabulary and stochastic surface have grown. Before this
+   library's first published release, growing the step vocabulary
+   (this roadmap's whole M1-M6 sequence) is expected to keep shifting
+   RNG consumption for existing pathways whenever a step type they use
+   gains new stochastic behavior it didn't have before — this is not
+   a regression to guard against, it is what "the engine's step
+   vocabulary grows" (`sim-theory.edn`'s own `:execute` contract note)
+   means in practice.
+2. **The manifest's `:generator {:version ...}` field
+   (`ehr-testing-sim.manifest`, already shipped) is the cross-version
+   key.** A consumer that needs "will this exact byte stream reproduce
+   later" should pin generator version alongside seed and config, not
+   assume seed alone survives generator upgrades. No schema change
+   needed — `MirroredManifest` already carries this field; this ADR
+   just names it as the authoritative answer to a question this
+   project hadn't had occasion to state a policy on before.
+3. **The fixture is regenerated, not silently.** Before/after are both
+   recorded in the M1 session's own summary (and in `git log` for
+   commit that lands this ADR); the fixture file's header comment is
+   updated to say what it now pins (post-M1 output) and to warn that
+   the SAME regeneration is expected at each future milestone whose
+   step types add stochastic behavior existing pathways now exercise.
+
+**Rejected.** **Option (b): engineer draw isolation** to keep legacy
+byte-for-byte output stable across this change — e.g., a separate RNG
+stream for NPI generation, or skipping the bed-choice draw whenever
+only one candidate exists. Rejected on two grounds: first, making RNG
+*consumption* depend on facility *content* (draw only when >1
+candidate) is a strictly worse property than "consumption changed
+once, for a documented reason" — it would mean two structurally
+equivalent configs that merely differ in candidate count diverge in
+draw count, a subtler and more surprising coupling than what this ADR
+accepts instead. Second, ADR-0007 already specified NPIs as "generated
+from the run seed," which is only a meaningful claim if NPI generation
+consumes the SAME single RNG stream everything else does — carving out
+a second, isolated stream for it would break the "one seed, one RNG,
+fully determined consumption order" simplicity ADR-0002 and ADR-0008
+already established, in exchange for a backward-compatibility
+guarantee this pre-release project doesn't need yet.
+
+**Consequences.** `test/ehr_testing_sim/fixtures/pinned_seed_42_patients_5.edn`
+is regenerated against M1's engine (see the M1 session summary for the
+before/after diff); its header comment and the referencing test's
+docstring are updated to describe it as the post-M1 baseline. A future
+session whose own pinned-seed regression goes red should read this ADR
+before assuming a bug: check whether that session's own new step types
+explain the diff first, and if so, follow the same accept-and-record
+pattern rather than re-litigating the question.

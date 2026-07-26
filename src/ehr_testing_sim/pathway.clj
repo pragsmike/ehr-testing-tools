@@ -15,11 +15,12 @@
   FHIR/CDA later) renders codes natively with no re-mapping -- codes
   are properties of patient state, not of wire formats.
 
-  The v0 step set is deliberately tiny (walking skeleton): :admission,
-  :delay, :discharge. The full Simulated-Hospital-derived vocabulary
-  (transfer, bed-swap, *-in-error, cancel-*, merge, order, result, ...)
-  lands step by step, each with its engine transition and its
-  invariants in ehr-testing-sim.check."
+  The v0 step set was deliberately tiny (walking skeleton): :admission,
+  :delay, :discharge. Milestone M1 (docs/operational-models.md) adds
+  :transfer, engine-assigned via the allocation ladder. The full
+  Simulated-Hospital-derived vocabulary (bed-swap, *-in-error, cancel-*,
+  merge, order, result, ...) lands step by step, each with its engine
+  decide/evolve methods and its invariants in ehr-testing-sim.check."
   (:require [malli.core :as m]))
 
 (def Concept
@@ -30,12 +31,19 @@
    [:code :string]
    [:display {:optional true} :string]])
 
+(def ForcePlacement
+  "Authoring escape hatch (docs/operational-models.md): forces a
+  specific bed, overriding the allocation ladder outright and
+  exempting the placement from the surge-only-when-full invariant."
+  [:map [:ward :string] [:bed :string]])
+
 (def Step
   [:multi {:dispatch :type}
    [:admission [:map
                 [:type [:= :admission]]
                 [:location :string]
-                [:reason {:optional true} [:or :string Concept]]]]
+                [:reason {:optional true} [:or :string Concept]]
+                [:force-placement {:optional true} ForcePlacement]]]
    [:delay [:map
             [:type [:= :delay]]
             ;; minutes; the engine samples uniformly in [from, to]
@@ -43,7 +51,11 @@
             [:from :int]
             [:to :int]]]
    [:discharge [:map
-                [:type [:= :discharge]]]]])
+                [:type [:= :discharge]]]]
+   [:transfer [:map
+               [:type [:= :transfer]]
+               [:location :string]
+               [:force-placement {:optional true} ForcePlacement]]]])
 
 (def Pathway
   [:map

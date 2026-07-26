@@ -1,10 +1,13 @@
-;; Captured from ehr-testing-sim.engine/run {:seed 42 :patients 5} at the
-;; START of the M1 session that introduced ADR-0008's decide/evolve split
-;; (2026-07-26), BEFORE any refactor -- the pre-refactor ground truth this
-;; repo's determinism guarantee says must still be reproducible byte-for-
-;; byte after the engine is restructured internally. See
+;; Captured from ehr-testing-sim.engine/run {:seed 42 :patients 5}
+;; POST-Milestone-M1 (2026-07-26) -- see notes/ADRs.md ADR-0009. This
+;; file previously pinned the pre-M1 (decide/evolve refactor session)
+;; baseline; M1's allocation-ladder bed choice and attending sampling
+;; both draw RNG at admission time, which perturbed every admission-
+;; bearing pathway's downstream RNG stream, so the pre-M1 baseline is
+;; gone (ADR-0009's before/after is in that session's own summary, not
+;; duplicated here). Regenerate again -- deliberately, not casually --
+;; the next time a milestone's new step types add stochastic behavior
+;; existing pathways now exercise (ADR-0009's own expectation, not a
+;; bug to chase). See
 ;; ehr_testing_sim.engine_test/pinned-seed-survives-decide-evolve-refactor.
-;; Do NOT regenerate this file casually: it is the baseline a future
-;; regression compares against, not a snapshot to keep in sync with
-;; whatever the engine currently produces.
-{:ground-truth [{:event :admission, :t 0, :mrn "MRN000001", :location "Renal", :reason "Kidney problems"} {:event :admission, :t 5, :mrn "MRN000002", :location "Renal", :reason "Kidney problems"} {:event :admission, :t 37, :mrn "MRN000003", :location "Renal", :reason "Kidney problems"} {:event :admission, :t 62, :mrn "MRN000004", :location "Renal", :reason "Kidney problems"} {:event :discharge, :t 91, :mrn "MRN000002"} {:event :admission, :t 100, :mrn "MRN000005", :location "Renal", :reason "Kidney problems"} {:event :discharge, :t 132, :mrn "MRN000004"} {:event :discharge, :t 153, :mrn "MRN000001"} {:event :discharge, :t 211, :mrn "MRN000003"} {:event :discharge, :t 220, :mrn "MRN000005"}]}
+{:ground-truth [{:event :admission, :t 0, :mrn "MRN000001", :reason "Kidney problems", :attending "0384055899", :home-ward "Renal", :location {:ward "Renal", :bed "RENAL-02", :placement :licensed}, :forced false} {:event :admission, :t 58, :mrn "MRN000002", :reason "Kidney problems", :attending "0384055899", :home-ward "Renal", :location {:ward "Renal", :bed "RENAL-04", :placement :licensed}, :forced false} {:event :admission, :t 78, :mrn "MRN000003", :reason "Kidney problems", :attending "3903633105", :home-ward "Renal", :location {:ward "Renal", :bed "RENAL-01", :placement :licensed}, :forced false} {:event :admission, :t 93, :mrn "MRN000004", :reason "Kidney problems", :attending "3903633105", :home-ward "Renal", :location {:ward "Renal", :bed "RENAL-03", :placement :licensed}, :forced false} {:event :admission, :t 143, :mrn "MRN000005", :reason "Kidney problems", :attending "3903633105", :home-ward "Renal", :location {:ward "Renal", :bed "RENAL-H01", :placement :surge}, :forced false} {:event :discharge, :t 179, :mrn "MRN000004", :location {:ward "Renal", :bed "RENAL-03", :placement :licensed}, :attending "3903633105"} {:event :discharge, :t 202, :mrn "MRN000002", :location {:ward "Renal", :bed "RENAL-04", :placement :licensed}, :attending "0384055899"} {:event :discharge, :t 222, :mrn "MRN000001", :location {:ward "Renal", :bed "RENAL-02", :placement :licensed}, :attending "0384055899"} {:event :discharge, :t 248, :mrn "MRN000003", :location {:ward "Renal", :bed "RENAL-01", :placement :licensed}, :attending "3903633105"} {:event :discharge, :t 304, :mrn "MRN000005", :location {:ward "Renal", :bed "RENAL-H01", :placement :surge}, :attending "3903633105"}]}

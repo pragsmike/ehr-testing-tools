@@ -14,7 +14,8 @@
             [clojure.java.io :as io]
             [ehr-testing-sim.engine :as engine]
             [ehr-testing-sim.check :as check]
-            [ehr-testing-sim.result :as result]))
+            [ehr-testing-sim.result :as result])
+  (:import [java.util Random]))
 
 (deftest same-seed-same-output
   (testing "byte-identical reruns"
@@ -63,12 +64,120 @@
             (get state-history mrn)))
        (group-by :mrn ground-truth)))))
 
+;; --- M1: facility, providers, transfer, bed-ready coupling --------------
+
+(def ^:private crowded-facility
+  "One inpatient ward (Renal) with exactly one licensed bed and no
+  surge, so a second concurrent admission always boards; one ED ward
+  with generous surge (sized comfortably above the property test's
+  patient-count ceiling so 'facility exhausted' -- a 5th rung this
+  ladder deliberately doesn't have, docs/operational-models.md -- never
+  fires and the property stays about the coupling, not total capacity)."
+  {:id :crowded-test
+   :wards [{:id :ed :name "ED" :beds 0 :surge-slots 20
+            :surge-format "%s-H%02d" :class :ed}
+           {:id :renal :name "Renal" :beds 1 :surge-slots 0
+            :surge-format "%s-H%02d" :class :inpatient}]})
+
+(def ^:private test-providers
+  [{:id "1234567893" :name {:family "Chen" :given "A"} :role :attending
+    :specialty "Nephrology" :wards [:renal :ed]}])
+
+(deftest bed-ready-transfer-scripted-two-patients
+  (testing "B boards in ED surge because Renal's one bed is taken; A's
+            discharge frees RENAL-01, which bed-ready-transfers B out
+            of boarding -- the cross-patient coupling ADR-0008 exists
+            to make possible."
+    (let [world0 {:patients {"MRN000001" (engine/initial-patient "MRN000001")
+                              "MRN000002" (engine/initial-patient "MRN000002")}
+                  :facility crowded-facility
+                  :providers test-providers}
+          rng (Random. 1)
+          {a-events :events} (engine/decide rng 0 world0 "MRN000001"
+                                             {:type :admission :location "Renal"})
+          world1 (update-in world0 [:patients "MRN000001"]
+                             #(reduce engine/evolve % a-events))
+          {b-events :events} (engine/decide rng 10 world1 "MRN000002"
+                                             {:type :admission :location "Renal"})
+          world2 (update-in world1 [:patients "MRN000002"]
+                             #(reduce engine/evolve % b-events))
+          b-after-admission (get-in world2 [:patients "MRN000002"])]
+      (testing "A got the one licensed bed"
+        (is (= {:ward "Renal" :bed "RENAL-01" :placement :licensed}
+               (get-in world1 [:patients "MRN000001" :location]))))
+      (testing "B is boarding: home-ward Renal, physically in ED surge"
+        (is (= "Renal" (:home-ward b-after-admission)))
+        (is (= "ED" (get-in b-after-admission [:location :ward])))
+        (is (= :surge (get-in b-after-admission [:location :placement]))))
+      (let [{discharge-events :events} (engine/decide rng 100 world2 "MRN000001" {:type :discharge})]
+        (testing "A's discharge ALSO emits B's bed-ready transfer, same t"
+          (is (= 2 (count discharge-events)))
+          (is (= :discharge (:event (first discharge-events))))
+          (let [transfer (second discharge-events)]
+            (is (= :transfer (:event transfer)))
+            (is (true? (:bed-ready transfer)))
+            (is (= "MRN000002" (:mrn transfer)))
+            (is (= 100 (:t transfer)))
+            (is (= "Renal" (get-in transfer [:location :ward])))
+            (is (= "RENAL-01" (get-in transfer [:location :bed])))
+            (let [world3 (-> world2
+                             (update-in [:patients "MRN000001"] #(reduce engine/evolve % [(first discharge-events)]))
+                             (update-in [:patients "MRN000002"] #(reduce engine/evolve % [transfer])))]
+              (testing "B is no longer boarding"
+                (is (= "Renal" (get-in world3 [:patients "MRN000002" :home-ward])))
+                (is (= "Renal" (get-in world3 [:patients "MRN000002" :location :ward])))))))))))
+
+(defn- boarding?
+  [patient]
+  (and (= :admitted (:status patient))
+       (not= (:home-ward patient) (get-in patient [:location :ward]))))
+
+(defspec bed-ready-transfer-relieves-the-longest-waiting-boarder 150
+  (prop/for-all [seed gen/large-integer
+                 patients (gen/choose 3 10)]
+    (let [{:keys [ground-truth]} (engine/run {:seed seed :patients patients :facility crowded-facility})]
+      (every?
+       (fn [{:keys [event world-before]}]
+         (or (not= :discharge (:event event))
+             (let [vacated-ward (get-in world-before [(:mrn event) :location :ward])
+                   waiting (->> world-before
+                                (remove (fn [[mrn _]] (= mrn (:mrn event))))
+                                (filter (fn [[_ p]] (and (boarding? p) (= vacated-ward (:home-ward p)))))
+                                (sort-by (fn [[mrn p]] [(:admitted-at p) mrn]))
+                                (map first))]
+               ;; the specific longest-waiting boarder must get a
+               ;; bed-ready transfer AT THIS SAME instant -- checked
+               ;; against the full ground-truth log rather than this
+               ;; discharge's own replay record, since the transfer is
+               ;; a SEPARATE, immediately-following ground-truth event
+               ;; (same t, next in log order), not a second effect
+               ;; folded into the discharge's own world-after.
+               (or (empty? waiting)
+                   (some #(and (= :transfer (:event %))
+                               (true? (:bed-ready %))
+                               (= (first waiting) (:mrn %))
+                               (= (:t event) (:t %)))
+                         ground-truth)))))
+       (engine/replay ground-truth)))))
+
+(deftest replay-tracks-before-after-and-world
+  (let [{:keys [ground-truth]} (engine/run {:seed 7 :patients 2 :facility crowded-facility})
+        records (engine/replay ground-truth)]
+    (testing "one record per ground-truth event, in order"
+      (is (= (count ground-truth) (count records)))
+      (is (= ground-truth (map :event records))))
+    (testing "world-after of the last record has every patient at their final fold"
+      (let [final-world (:world-after (last records))]
+        (is (= #{"MRN000001" "MRN000002"} (set (keys final-world))))))))
+
 (deftest pinned-seed-survives-decide-evolve-refactor
-  (testing "ADR-0008's decide/evolve split changes the engine's internal
-            structure but not its observable output for the v0 step set --
-            the ground-truth log captured before the refactor (see the
-            fixture's own header comment) must still be reproducible
-            byte-for-byte after it."
+  (testing "the fixture pins the POST-Milestone-M1 baseline (ADR-0009 --
+            M1's bed-choice and attending-sampling RNG draws perturbed
+            the pre-M1 baseline this test used to pin, and that's an
+            accepted, documented, within-version-only guarantee, not a
+            bug). This test now guards against FUTURE undocumented
+            drift, the same role it played for the decide/evolve
+            refactor before M1 gave it a reason to regenerate."
     (let [baseline (edn/read-string
                     (slurp (io/resource "ehr_testing_sim/fixtures/pinned_seed_42_patients_5.edn")))
           current (select-keys (engine/run {:seed 42 :patients 5}) [:ground-truth])]

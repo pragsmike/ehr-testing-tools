@@ -10,7 +10,10 @@ against what *should* be true, independent of message parsing. See
 problem, constraints, black-box contract, and validation program.
 
 **Status: pre-release walking skeleton.** Built: the engine, the
-invariant catalog, and HL7v2 admission/discharge emission (below).
+invariant catalog, and HL7v2 admission/discharge/transfer emission
+(below); the facility and providers models (beds, the allocation
+ladder, boarding, bed-ready transfers, synthetic attendings —
+docs/operational-models.md).
 
 ## Pipeline: now / next / later
 
@@ -48,7 +51,7 @@ flowchart LR
 ```
 
 **Now** (green): Execute, Check, EmitHL7 — property-tested and green
-(20 tests / 55 assertions). **Next** (amber): InjectChurn, growing the
+(62 tests / 134 assertions). **Next** (amber): InjectChurn, growing the
 engine's step vocabulary starting with transfer. **Later** (dashed
 grey): everything else in the *want*.
 

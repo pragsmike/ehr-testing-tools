@@ -121,6 +121,7 @@ than each growing their own shadow state.
 | `:location` | `[:map [:ward :string] [:bed :string] [:placement [:enum :licensed :surge]]]`, nil until admission | The patient's actual **physical** location, always concrete — never nil-bed, even while boarding (see worked example below). `:placement` is exactly the two values `docs/operational-models.md` specifies; ladder rungs 3 and 4 are distinguished from 1 and 2 not by a third placement value but by `:location`'s ward differing from `:home-ward` (see the table below). |
 | `:attending` | `:string`, provider id, nil until admission | References `docs/operational-models.md`'s provider pool by id; rendered PV1-7 as `id^family^given` at emit time, not stored denormalized. |
 | `:payer` | `:string`, payer id, nil until sampled | References the payer pool by id (Persona's job once it lands; engine patient-init until then, per `docs/operational-models.md`). Never re-sampled — the attribute-pool contract. |
+| `:admitted-at` | `:int`, simulated minutes, nil until admission | The moment this patient was admitted. Landed with Milestone M1 for exactly one purpose: breaking ties among multiple patients boarding for the same ward — the bed-ready transfer relieves the longest-waiting one first (earliest `:admitted-at`, MRN as a further tiebreak). Not a SimHospital-style shadow field — set once, never rewritten. |
 | `:attributes` | `[:map-of :keyword :any]`, default `{}` | **Reserved, unused until M5.** The open blackboard Synthea's modules coordinate through (mined above) — named now so nothing else claims the key before the GMF interpreter lands. |
 
 Deliberately absent, per the mining above: no visit-history field (the
@@ -128,17 +129,24 @@ log is the history — M5's interpreter queries it directly), no
 `VisitID` (encounters aren't first-class yet), no shadow prior-location
 fields (M2's cancel-family reads priors from the log).
 
-**Staging note.** This table is the M1 target shape. The session that
-lands `evolve`/`decide` (ADR-0008) ships `PatientState` with `:class`,
-`:home-ward`, `:attending`, `:payer`, and `:attributes` present as
-described here, but `:location` still in its pre-M1 shape — a bare
-ward-name string, matching the v0 step set's own `:location` event
-field — because the `{:ward :bed :placement}` structure only becomes
-real alongside Milestone M1's allocation ladder. `:location` upgrades
-to the map shape when that ladder lands, in the same change (the same
-co-landing discipline as everywhere else in this project: a field
-shape and the code that populates it meaningfully land together, not
-ahead of each other).
+**Landed.** `ehr-testing-sim.engine/PatientState` carries every field
+in the table above, including `:location`'s `{:ward :bed :placement}`
+map shape — the allocation ladder (`ehr-testing-sim.facility/allocate`)
+populates it for real as of Milestone M1. One field this table didn't
+originally name turned out to be necessary once the ladder's cross-
+patient coupling was implemented: `:admitted-at` (the simulated
+minute of admission), used only to break ties among multiple patients
+boarding for the same ward — the longest-waiting one (earliest
+`:admitted-at`, MRN as a further tiebreak) is the one a bed-ready
+transfer relieves. It is not a shadow/undo field in the SimHospital
+sense above (mined section): it is a plain fact recorded once at
+admission and never rewritten, exactly like `:status` or `:class`.
+
+(Pre-M1 staging note, kept for history: the session that first landed
+`evolve`/`decide` — ADR-0008 — shipped `PatientState` with every field
+above present except `:location`, which stayed in its v0 bare-string
+shape until this ladder existed to populate the map shape meaningfully.
+That staging is now resolved.)
 
 ### Worked example: boarding, precisely
 
