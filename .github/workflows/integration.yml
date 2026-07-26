@@ -10,6 +10,13 @@
 # in this repo's branch protection or ci.yml references this workflow's
 # status, so there is no merge for it to block.
 #
+# DOC-5 (2026-07-26) added `make quickstart-demo` below, after cache
+# priming: README.md's Quickstart, run verbatim and asserted, against
+# real artifacts -- the slow half of the executable-quickstart pair
+# (the fast half, quickstart-fresh, lives in ci.yml and never runs
+# either the README or the script). Same non-blocking contract as
+# `make integration`: this job's own failure is the enforcement.
+#
 # Cold-cache fetch, what and from where: three artifacts, all GitHub
 # release assets, all license-verified in notes/facts-register.md --
 # synthea 4.0.0 (Apache-2.0, F2), temurin-jdk 17.0.19+10 (GPLv2 +
@@ -86,6 +93,23 @@ jobs:
           make ehr ARGS="artifact fetch --name synthea --version 4.0.0"
           make ehr ARGS="artifact fetch --name temurin-jdk --version 17.0.19+10"
           make ehr ARGS="artifact fetch --name fhir-validator-cli --version 6.9.12"
+
+      # DOC-5: the slow half of the executable-quickstart pair. Runs
+      # README.md's Quickstart fence verbatim (bin/quickstart-demo, via
+      # `make quickstart-demo`) under per-step exit-code assertions plus
+      # a tree-clean postcondition -- the fast half (ci.yml's
+      # quickstart-fresh) only proves this script and the README agree
+      # on what to run, never runs either. Against this job's warm cache
+      # (the priming step above), the script's own artifact-fetch lines
+      # are no-ops; cold, they do the real fetch -- both are correct, per
+      # the cache-honesty ruling. Timeout is generous relative to the
+      # measured warm-clone wall time (2m42-47s, DOC-5 Step 1's own
+      # evidence, dominated by the ~90s real `gate fhir` run): a
+      # GitHub-hosted runner and a cold cache can both be slower than a
+      # local warm run.
+      - name: make quickstart-demo
+        timeout-minutes: 15
+        run: make quickstart-demo
 
       - name: make integration
         run: make integration
