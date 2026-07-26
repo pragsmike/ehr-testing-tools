@@ -32,19 +32,63 @@ surge placement only when earlier ladder rungs are exhausted (unless
 `:forced true`). Plus the occupancy board's own consistency law as a
 property test: board ≡ fold over patient locations.
 
-## M2 — Churn family
+## M2a — Engine prep: identity, participants, and the time model
+
+Split out of the original single M2 milestone (this session) because
+its two decisions — [ADR-0010](../../notes/ADRs.md#adr-0010) (patient
+identity + the `:participants` event shape) and
+[ADR-0011](../../notes/ADRs.md#adr-0011) (seconds granularity, a
+pinned UTC offset, a seeded arrival process, a warm-up window) — are
+both **engine refactors that M2b's actual churn step types depend on**,
+not churn content themselves. Landing them first means M2b's merge and
+bed-swap steps are written directly against `:patient-id`/
+`:participants` and the new clock, rather than against `:mrn` and
+minutes with a mid-milestone migration. Both refactors are seam-able:
+each can land, be tested, and be reviewed independently of the other,
+and neither blocks on M2b existing yet.
+
+**Seed perturbation, expected twice over, both already covered by
+existing policy.** M1 already perturbed pinned-seed output once
+(ADR-0009, the allocation-ladder and provider-sampling draws). M2a's
+time-granularity change (ADR-0011 decision 1, minutes → seconds) shifts
+every timestamp-consuming draw again — a second, equally expected
+instance of exactly the pattern ADR-0009 already names and accepts:
+same config + seed stays byte-identical *within* a generator version,
+and each milestone that grows the engine's stochastic surface is
+expected to regenerate pinned fixtures, not treated as a regression to
+chase down. `:patient-id` generation (ADR-0010) is a further, third
+draw-order change from the same milestone; the same policy covers it.
+
+Co-landing invariants: the fold-key/queue-key rename (`:mrn` →
+`:patient-id`, `docs/patient-state-model.md`'s accumulator gaining
+`{:mrns :active-mrn}`) touches every existing `evolve`/`decide` method
+and test helper, so the determinism and invariant-catalog property
+tests must stay green across the rename, not just for new step types;
+`:participants` becomes a real field on every event (single-element
+vector for today's step types) with its own schema round-trip test.
+
+## M2b — Churn family
 
 Lands **InjectChurn** (currently `;; NEXT` in the theory, `:planned`):
 cancel-\*, \*-in-error, bed-swap, and merge step types, as the IR→IR
-transform the theory already names. Brings `churn-profile` in as real
-config rather than a named-but-unbuilt resource.
+transform the theory already names, built against M2a's
+`:patient-id`/`:participants` shape rather than the pre-M2a one. Brings
+`churn-profile` in as real config rather than a named-but-unbuilt
+resource. `docs/patient-state-model.md`'s conditional validity rows
+(status × event-class × attribute-conditions, added this session) name
+two further candidate step families for this milestone or immediately
+after, as **stretch/candidate steps, not core M2b scope**: leave-of-
+absence (A21/A22) and observation/inpatient class-flip (A06/A07), both
+from `docs/clinical-realities.md`'s stub catalog.
 
 Co-landing invariants: each new step type's own catalog entries
 (e.g. a cancelled event must reference an event it cancels; a merge
-must reference MRNs that both exist; a bed-swap preserves the
-occupancy invariants M1 established rather than bypassing them). The
-IR-endomorphism and clinical-steps-preserved laws already stated on
-`:churn` in the EDN become property tests here, not new claims.
+must reference patient-ids that both exist; a bed-swap preserves the
+occupancy invariants M1 established rather than bypassing them, and
+both invariants are now expressible as `:participants` cross-
+participant coherence checks per ADR-0010). The IR-endomorphism and
+clinical-steps-preserved laws already stated on `:churn` in the EDN
+become property tests here, not new claims.
 
 ## M3 — Order profiles + order/result steps
 
@@ -127,6 +171,69 @@ the milestone before it:
   demoting it to dormant, the way `ehr-testing-tools` did at its own
   ADR-0008, is recorded as its own ADR when that happens, not folded
   into this roadmap.
+- **Site profiles** (`docs/site-profiles.md`, this session) —
+  **proposed**, for author review rather than decided placement:
+  code-table overrides, naming idioms beyond `:surge-format`, and
+  Z-segment templates, as their own milestone landing **after M3**.
+  Reasoned there rather than earlier because Z-segment templates are
+  thin content without order/result data to bind them to — a
+  site-profile milestone landing before M3's `order-profiles` catalytic
+  exists would have little beyond code-table overrides to actually
+  exercise.
+
+## Consumer plan: sim doesn't validate itself in a vacuum
+
+This roadmap's milestones describe what this repo builds; two items
+describe how this repo's output gets exercised by consumers outside
+it, named here so they aren't lost between repos.
+
+- **Tools as first consumer.** An integration-tree item belongs **in
+  `ehr-testing-tools`**, not here (ADR-0001's dependency direction: sim
+  never depends on tools, but tools already may depend on sim): `ehr
+  gate` judging a sim-generated corpus end to end, as a real exercise
+  of tools' Gate machinery against this project's own traffic rather
+  than only hand-crafted fixtures. This can share its test harness with
+  the manifest contract test [`ADR-0001`](../../notes/ADRs.md#adr-0001)
+  already assigns to tools' integration tree (the binding
+  cross-repo contract tests live where both codebases share a
+  classpath). **Noted here, built there** — this roadmap does not
+  schedule tools' own work, only records the dependency so a future
+  session in either repo knows the item exists.
+- **Blaze as M6's ecological target.** `samply/blaze` (a Clojure FHIR
+  server) is named as the natural first real-world consumer for M6's
+  **EmitState** output (`docs/sim-theory.edn`) — a same-language FHIR
+  server this project's state-documents can be loaded into and queried
+  against, giving the emitter-coherence property test a genuine
+  external system to check against rather than only this repo's own
+  parsing round-trip. This is a target for M6's own validation work,
+  not a dependency this repo takes on; recorded here so M6 doesn't have
+  to rediscover the natural fit from scratch.
+
+## The adversarial-traffic exclusion
+
+**This simulator generates coherent truth; it deliberately never
+generates delivery incoherence.** Out-of-order arrival, dropped
+messages, malformed segments, and duplicate delivery are real
+phenomena a downstream interface must survive — but they are failures
+of a *transport* or *delivery* layer acting on a coherent stream, not
+facts about the hospital the stream describes. This project's own laws
+(ADR-0002's ground-truth-log primacy, the emitter-coherence law,
+`InjectChurn`'s own IR-endomorphism and clinical-steps-preserved laws)
+forbid the engine from ever emitting a stream that contradicts itself
+— which means this engine structurally **cannot** be the place
+out-of-order or dropped-message traffic comes from, on purpose, by the
+same laws that make its output trustworthy in the first place.
+
+That is exactly why this territory belongs to `ehr-testing-tools`'
+`corpus mutate` instead, operating on a sim-generated corpus **after**
+this project has produced it: sequence-reorder, segment-mangle, and
+duplicate-delivery operators, each with recorded lineage back to the
+coherent corpus it mutated. This isn't a gap sim leaves for tools to
+fill reluctantly — it's the intended division of labor, now written
+down as a reason rather than left to be inferred: sim's job is
+producing ground truth a mutation operator can trust was coherent
+*before* mutation, precisely because sim itself never introduces
+incoherence as a side effect of its own generation.
 
 ## Deliberate exclusions
 

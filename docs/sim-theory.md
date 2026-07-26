@@ -89,6 +89,24 @@ Simulated Hospital's order profiles and the ORM/ORU result cycle were
 discussed from this project's first session but, until this pass,
 named in no planning artifact.
 
+## M2a's engine-prep decisions add no new stage or wire
+
+[ADR-0010](../notes/ADRs.md#adr-0010) (patient identity, MRNs-as-state,
+the `:participants` event shape) and [ADR-0011](../notes/ADRs.md#adr-0011)
+(seconds granularity, a pinned UTC offset, a seeded arrival process, a
+warm-up window) are both engine-internal refactors that land entirely
+under `Execute`'s existing `:built` contract — they change what a
+patient-fold key and an event's timestamp/subject shape look like
+internally, not `Execute`'s declared inputs, outputs, or catalytic
+wires (`provider-pool`, `order-profiles`), so neither decision needed
+an EDN edit beyond a comment. A one-line comment noting both ADRs as
+engine-prep context was added at `:execute`'s `:contract` note; since
+EDN comments (`;;`) are stripped before the equation→Mermaid machinery
+ever sees the data, this cannot change what any diagram generated from
+`sim-theory.edn` renders — confirmed by inspection rather than by
+re-running the generator, since a comment-only change has no data for
+that machinery to read differently.
+
 ## Resource type bindings
 
 Per the notation, every resource name binds to a type; an equation

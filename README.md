@@ -60,7 +60,9 @@ detail view (every resource wire, catalytic input, and the
 `pathway-ir` union) generated mechanically from
 [`docs/sim-theory.edn`](docs/sim-theory.edn). [`.agents/plans/roadmap.md`](.agents/plans/roadmap.md)
 is the milestone plan this diagram's *next*/*later* stages resolve
-into.
+into. [`docs/site-profiles.md`](docs/site-profiles.md) answers "how do
+I make it simulate *my* hospital" — the config layer for site-specific
+codes, naming idioms, and Z-segments.
 
 ## Relation to the ehr-testing-* family
 

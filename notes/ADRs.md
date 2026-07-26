@@ -614,3 +614,281 @@ session whose own pinned-seed regression goes red should read this ADR
 before assuming a bug: check whether that session's own new step types
 explain the diff first, and if so, follow the same accept-and-record
 pattern rather than re-litigating the question.
+
+---
+
+## ADR-0010 — Patient identity becomes an internal `:patient-id`; MRNs move into state; events gain a `:participants` set
+
+**Status:** Accepted (author-directed 2026-07-26) — design capture for
+Milestone M2a (`.agents/plans/roadmap.md`); no code lands with this
+ADR.
+
+**Context.** `docs/patient-state-model.md`'s accumulator uses `:mrn` as
+a stable, never-reassigned identifier, and `ehr-testing-sim.engine`
+folds the log and keys its work queue by that same `:mrn`. M2b's churn
+family (`docs/sim-theory.edn`'s `InjectChurn`) needs a merge step
+(ADT^A34/A40) and, per `docs/clinical-realities.md`'s newborn entry, an
+organic merge scenario as well — and a real hospital's MRN is exactly
+the identifier that merge *changes*: two records (and their MRNs)
+become one patient, one MRN retired from active use but still owed to
+every message and log entry that referenced it before the merge. Using
+`:mrn` as the fold/queue key doesn't survive that: the key one patient
+is folded and scheduled under would have to change mid-run, at exactly
+the moment (a merge) when losing continuity of identity is least
+acceptable. Separately, M2b's bed-swap step and the merge step itself
+are the first step types where a single event legitimately describes
+something happening to *two* patients at once, not one — a shape
+`ehr-testing-sim.engine`'s current event schema (one implicit subject
+per event, keyed by its own `:mrn`) has no room for. Both problems are
+solved by the same underlying move (an event needs to be able to name
+more than one patient, and a patient needs an identity that survives
+what happens to their MRN), so they're decided together here rather
+than as two ADRs that would have to cross-reference each other's
+assumptions at every turn.
+
+**Decision.**
+
+1. **Identity.** Introduce an internal, deterministic `:patient-id` —
+   generated the same way bed ids, provider ids, and NPIs already are
+   (from the run's single seeded RNG, `docs/operational-models.md`) —
+   as the fold key `evolve` dispatches on and the key the engine's work
+   queue schedules by. `:patient-id` is never reassigned and never
+   rebinds; it is what MRN was assumed to be before merge complicated
+   that assumption.
+   - **MRNs become state, not identity.** The accumulator's `:mrn`
+     string field is replaced by `{:mrns #{...} :active-mrn ...}`: the
+     set of every MRN this patient-id has ever answered to, and which
+     one is currently live. A fresh patient starts with a singleton
+     set and that MRN as `:active-mrn`.
+   - **Merge is an event that rebinds, not a fold that disappears.** A
+     merge (A34/A40, landed in M2b) is an ordinary event two patient-
+     ids participate in (see point 2): the surviving patient-id's
+     `evolve` absorbs the merged identity's `:mrns` set into its own
+     and updates `:active-mrn` per the merge's stated direction; the
+     merged-away patient-id's own stream ends with a terminal
+     merged-into event and folds no further — its `:patient-id` still
+     exists as a fold target for every event that named it *before*
+     the merge, it simply gains no new state after.
+   - **Emitters render `:active-mrn`.** PID-3 and every other MRN-
+     bearing field renders whichever MRN is currently active for the
+     patient-id a message is about — exactly one value, no set
+     leaking into wire format.
+   - **The ground-truth log keeps both ids on merge events.** A merge
+     event carries both the surviving and the merged-away
+     `:patient-id` (and, since MRNs are what a message-parsing
+     consumer actually sees, both MRNs) so that message↔truth mapping
+     — the problem-statement's own guarantee, "every emitted message
+     is derivable from the ground-truth log, and vice versa" — never
+     breaks across a merge: a test harness holding only a pre-merge
+     MRN can still find its patient's continued log by looking up
+     which `:patient-id` that MRN belonged to and following the merge
+     event to the surviving id.
+   - **Consequence, recorded not actioned here:** every current
+     "events-for-mrn" phrasing — in tests, in prose, in any helper
+     that takes an MRN and returns a patient's events — becomes
+     "events-for-patient" once `:patient-id` is the real key. This
+     session does not rename anything (docs/notes only, per this
+     session's own scope boundary); M2a's implementation is where the
+     rename actually happens.
+
+2. **Multi-participant events.** Events gain a `:participants` field —
+   a vector of patient-ids, carrying roles where roles matter (e.g.
+   `[{:patient-id ... :role :subject} {:patient-id ... :role :subject}]`
+   for a bed-swap's two occupants, `[{:patient-id ... :role :survivor}
+   {:patient-id ... :role :merged}]` for a merge). A patient's state is
+   the fold of every event in whose `:participants` they appear, not
+   only events keyed by a single `:mrn`/`:patient-id` field as today.
+   Every event this project has today (`:admission`, `:delay`,
+   `:discharge`, M1's `:transfer`) is the **degenerate, single-
+   participant case** — a `:participants` vector of length one — so no
+   event this project has already shipped needs a *behavioral*
+   migration; only the id-key change (point 1) touches them, and that
+   touch is mechanical (rename the field, don't change its
+   cardinality). Invariants may now assert **cross-participant
+   coherence**: a bed-swap must leave both participants placed
+   somewhere (neither vanishes from the occupancy projection mid-
+   event); a merge must leave exactly one active MRN shared between
+   the two participants once folded (never zero, never two actives
+   claiming the same identity).
+
+**The SimHospital contrast, reasoned by analogy rather than freshly
+mined.** `docs/patient-state-model.md`'s own mining section already
+established the shape: `ir.PatientInfo`'s six location fields
+(`Location`, `PriorLocation`, `PriorLocationForCancelTransfer`, and
+three more) exist because a mutable-state design with no event log
+needs a hand-maintained shadow field everywhere a mutation might later
+need undoing. Merge is architecturally the same problem one level up —
+"what identity did this patient answer to before the merge" is exactly
+the kind of prior-value fact a mutable design has nowhere to keep
+except another bespoke field or side table. This project does not
+re-verify SimHospital's actual merge-handling source this session (no
+fresh read; `AGENTS.md`'s "do not invent facts about upstream sources"
+applies), so the claim here is inference from the already-verified
+location-field pattern, not a new mined fact: expect merge to be
+another instance of the same shadow-state-accretion family the log
+dissolves, on the strength of the pattern already established, not on
+a fresh citation. In this project's design, the log already carries
+"what MRN this patient-id answered to before" as an ordinary fact on
+the merge event itself — nothing needs its own undo field, the same
+argument `docs/patient-state-model.md` already made for location.
+
+**Rejected.**
+
+- **Keeping `:mrn` as the fold/queue key and giving merge special-case
+  handling** (e.g., re-keying the queue mid-run, or maintaining a
+  redirect table from old MRN to new) — rejected because it reproduces
+  exactly the shadow-bookkeeping problem this decision exists to avoid,
+  just relocated from patient state into engine plumbing.
+- **A single-subject event schema with a separate "linked-events"
+  side-table for multi-patient effects** (bed-swap, merge) — rejected
+  because it recreates a second place facts about cross-patient
+  coupling live, the same failure mode ADR-0008 already rejected for
+  patient state generally; `:participants` keeps the single ground-
+  truth-log-is-primitive shape (ADR-0008) intact by making multi-
+  subject-ness a property of the event's own data, not an escape hatch
+  around the event schema.
+
+**Consequences.** M2a's implementation work: rename the accumulator's
+`:mrn` field to `{:mrns :active-mrn}`, introduce `:patient-id`
+generation alongside bed/provider/NPI generation, thread
+`:participants` through the event schema (a vector even for today's
+single-subject events), and update every `evolve`/`decide` method and
+test helper that assumed a bare `:mrn` key — a mechanical but repo-wide
+change, which is exactly why it is scoped as its own milestone (M2a)
+ahead of M2b's actual churn step types rather than folded into them.
+`check.clj` gains cross-participant coherence as a new invariant
+*shape*, not new invariants themselves (those land with M2b's bed-swap
+and merge step types, per the co-landing convention). No wire-format
+consequence yet: PID-3 already renders a single MRN string; it renders
+`:active-mrn` instead of `:mrn` post-M2a, a rename at the render call
+site, not a segment redesign.
+
+---
+
+## ADR-0011 — The time model: integer seconds, a pinned UTC offset, a seeded arrival process, and a marked warm-up window
+
+**Status:** Accepted (author-directed 2026-07-26) — design capture for
+Milestone M2a (`.agents/plans/roadmap.md`); no code lands with this
+ADR.
+
+**Context.** The engine's clock today is implicit — event timestamps
+are simulated minutes from run start (`docs/patient-state-model.md`'s
+`:admitted-at`, typed `:int, simulated minutes`), there is no timezone
+or offset concept anywhere in the pipeline, patient count is a fixed
+`N` sampled up front, and a run has no notion of a warm-up period
+distinct from steady state. Four gaps surfaced together while scoping
+M2a because they share one property: each is cheaper to fix now, before
+M2b's churn family and M3's order/result bursts multiply the surface
+that depends on the clock, than to fix after every downstream consumer
+(emitters, the future log player, `docs/site-profiles.md`'s eventual
+config) has already assumed today's shape.
+
+**Decision.**
+
+1. **Granularity: integer seconds from run start, replacing minutes.**
+   Every timestamp in the engine — the event queue's ordering key, the
+   ground-truth log, `:admitted-at` and any future `:*-at` field — is
+   an integer count of seconds since the run began, not minutes.
+   Rendering precision (whether an emitter shows `HH:MM` or `HH:MM:SS`)
+   is each emitter's own choice at render time, unconstrained by the
+   engine's internal grain. **Rationale:** M3's order/result steps
+   (`docs/sim-theory.edn`'s `Execute` contract note on the
+   `order-profiles` catalytic) plausibly need sub-minute ordering for
+   a burst of results returning close together, and the roadmap's
+   future log-player consumer (`.agents/plans/roadmap.md`'s consumer
+   plan, this session) needs the same fine grain to pace replay
+   realistically. Changing grain now costs exactly one seed
+   perturbation (every timestamp-consuming draw shifts once) —
+   ADR-0009's policy already states that this class of change is
+   accepted and regenerated, not guarded against. Changing grain later,
+   once M3's order/result content and a log player both exist and
+   assume minutes, would cost a migration across every downstream
+   consumer instead of one regeneration here.
+2. **DST/zone: v1 pins a fixed UTC offset.** `sim-config` gains an
+   offset field (default `+00:00`), stated once per run and recorded in
+   the run manifest (`ehr-testing-sim.manifest`) alongside the other
+   pinned inputs ADR-0007 already established the pattern for (seed,
+   engine params, config hash). No timezone database, no daylight-
+   saving transition logic, no per-event offset — one offset, fixed for
+   the whole run. A deliberately DST-crossing corpus (a run whose
+   simulated window spans a spring-forward or fall-back transition) is
+   recorded in the roadmap as **premium future test data** — real
+   interfaces mishandle DST transitions often enough that it's valuable
+   generated traffic — not v1 scope: v1's job is a correct, simple
+   clock, not the hardest clock.
+3. **Arrival process: a seeded alternative to fixed `:patients N`.**
+   Alongside today's fixed patient count, `sim-config` gains a seeded
+   **arrival process** — exponential inter-arrival times at a
+   configured rate (a Poisson arrival process, the standard queueing-
+   theory model for independent arrivals) — as a second way to
+   populate a run. This is what makes load-driven realism possible:
+   boarding (`docs/operational-models.md`'s allocation ladder rung 4)
+   is a function of census pressure, and census pressure is a function
+   of how fast patients arrive relative to how fast beds free up, which
+   a fixed `N` sampled once can't vary within a run the way a live rate
+   can. It's also the mechanism the future log player needs for
+   open-ended generation (a corpus with no fixed end, paced against a
+   rate rather than exhausted after `N` patients). **Mechanism, API
+   shape only — not built this session:** windowed generation, where
+   the engine materializes arrivals for a rolling time window rather
+   than the whole run up front, and discharged patients are retired
+   from the working set (`world`, ADR-0008) once their stream is
+   complete, so a long or open-ended run's live working set stays
+   bounded rather than growing with total elapsed time. Sketched here
+   as the shape M2a's implementation targets; not designed in the
+   fuller sense `docs/operational-models.md` designs the allocation
+   ladder.
+4. **Warm-up: a config window whose events are marked or trimmed.** A
+   run beginning from an empty hospital has a cold-start artifact — the
+   first stretch of simulated time is systematically less
+   representative than steady state (no boarding is possible until
+   wards fill, no bed-ready transfers are possible until someone's been
+   admitted long enough to discharge). `sim-config` gains a warm-up
+   window (a duration from run start); events generated inside it are
+   either marked (a `:warm-up true` flag events downstream can filter
+   on) or trimmed entirely at packaging time (`docs/sim-theory.edn`'s
+   `Package` stage) — both options recorded, the choice between them
+   deferred to M2a's implementation rather than decided here, since it
+   turns on packaging details (does a consumer want to see the
+   cold-start traffic at all, or never receive it) this session doesn't
+   have enough information to settle. Either way, a steady-state
+   corpus intended for calibration or realism claims (`Calibrate`,
+   `docs/sim-theory.edn`) can exclude the cold-start artifact instead
+   of silently including it as if it were representative.
+
+**Consequences.** ADR-0009's within-version seed-stability policy
+absorbs decision 1's perturbation exactly as that ADR already commits
+to: same config + seed still byte-identical, but M2a's landing is
+another documented instance of "the generator's stochastic surface
+grew," not a regression. `docs/patient-state-model.md`'s `:admitted-at`
+type note (currently "simulated minutes") and any other prose
+referring to simulated minutes become stale the moment M2a lands
+seconds granularity; updating them is M2a's job (a mechanical doc pass
+alongside the code change), tracked here so it isn't silently missed
+in the gap between this ADR and that implementation. The run manifest
+gains the UTC-offset field (decision 2) the same way it already
+records seed and config hash — a schema addition, not a new concept,
+for `ehr-testing-sim.manifest/MirroredManifest`. The roadmap
+(`.agents/plans/roadmap.md`) gains the DST-crossing corpus as a named
+future-premium-content item and the arrival-process API sketch as
+M2a scope.
+
+**Rejected.**
+
+- **Keeping minutes and adding sub-minute precision only where M3
+  needs it** (a mixed-grain clock) — rejected because a clock whose
+  grain depends on which step type is running is a subtler and more
+  surprising property than "the clock is seconds, always," for a
+  saving (avoiding one seed perturbation) ADR-0009 already says isn't
+  worth engineering around.
+- **A full IANA timezone database with real DST transition rules** —
+  rejected for v1 as more machinery than the stated need (a
+  DST-crossing corpus as premium *future* content, not baseline
+  traffic) justifies; a fixed offset is the simplest thing that lets
+  every v1 corpus state its own UTC relationship unambiguously in the
+  manifest.
+- **Building windowed arrival generation and warm-up trimming this
+  session** — rejected because this is a docs/ADR session (see this
+  document's own header discipline); the API shape is captured so
+  M2a's implementation has a target, not so this session can skip
+  ahead of it.

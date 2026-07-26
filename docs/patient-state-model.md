@@ -5,7 +5,7 @@ of the accumulator `ehr-testing-sim.engine/evolve` folds the
 ground-truth log into (ADR-0008), the states and transitions that
 accumulator moves through, and the event-validity table that will
 double as `check.clj`'s invariant skeleton now and `InjectChurn`'s
-applicability oracle later (M2). It formalizes what
+applicability oracle later (M2b). It formalizes what
 [`docs/operational-models.md`](operational-models.md) describes in
 prose — that document is authoritative on *policy* (the allocation
 ladder, the taxonomy, the NPI decision); this one is authoritative on
@@ -71,19 +71,19 @@ gaps and one design lesson:
   whatever it was at admission (typically `:inpatient`) throughout,
   regardless of which physical ward they're sitting in.
 - **`VisitID`** per encounter (PV1-19) — not landed yet; flagged for
-  whenever encounters become first-class (readmission scenarios, M2
+  whenever encounters become first-class (readmission scenarios, M2b
   or later). Not part of the schema below.
 - **Pending locations and expected admit/discharge/transfer
   datetimes** (the A14/A15-family pending events) carry *expected*
   times, a field class this project's events don't have yet. Flagged
-  for the M2 churn milestone (`pending-*` step types), not designed
+  for the M2b churn milestone (`pending-*` step types), not designed
   here.
 - **`ReadmissionIndicator`, attending doctor, account status** — small,
   cheap PV1 fields once each is seen; no design burden.
 
 **The cautionary tale, worth recording as the worked example of why
 the log-is-primitive decision (ADR-0008) pays for itself starting at
-M2, not "someday":** `PatientInfo`'s location alone is *six* fields —
+M2b, not "someday":** `PatientInfo`'s location alone is *six* fields —
 `Location`, `PriorLocation`, `PriorLocationForCancelTransfer`,
 `PendingLocation`, `PriorPendingLocation`, and a prior for that one
 too. The in-code comment on the third explains why: normal flow clears
@@ -97,14 +97,14 @@ mutable-state workaround for not having an event log: without one,
 except a hand-maintained prior-value field, one per cancellable
 mutation.
 
-In this project's event-sourced engine, `:transfer-in-error`'s (M2)
+In this project's event-sourced engine, `:transfer-in-error`'s (M2b)
 `decide` reads the prior location by querying the log directly for
 that patient's most recent location-setting event before the one being
 cancelled, and the emitter derives PV1-6 (prior location) the same way
 at message-build time. **One `:location` field in the accumulator,
 plus a log query, replaces all six `PatientInfo` location fields.**
 This is not a hoped-for benefit of ADR-0008 — it is the concrete
-reason M2's cancel-family step types are expected to be cheap rather
+reason M2b's cancel-family step types are expected to be cheap rather
 than each growing their own shadow state.
 
 ## The accumulator
@@ -115,7 +115,7 @@ than each growing their own shadow state.
 | Field | Type | Notes |
 |---|---|---|
 | `:mrn` | `:string` | Stable patient identifier; never reassigned. |
-| `:status` | `[:enum :new :admitted :discharged]` | Lifecycle. Boarding is **not** a fourth status — see below. |
+| `:status` | `[:enum :new :admitted :discharged :expired]` | Lifecycle. Boarding is **not** a separate status — see below. `:expired` (candidate, M2b+ — see `docs/clinical-realities.md`'s post-mortem entry) is **clinically absorbing but operationally alive**: reached via a death event or an expired discharge disposition, it is not a synonym for `:discharged` — a patient can be transferred (to a morgue ward, `:class :morgue`) or undergo autopsy/donor-management events while `:status = :expired`, exactly the way an `:admitted` patient can, before a final disposition-20 `:discharge` moves them to `:discharged`. See the event validity table below for what's legal in `:expired`. |
 | `:class` | `[:enum :inpatient :emergency :outpatient :preadmit :recurring :obstetrics]`, optional until admission | PV1-2. Tracked separately from `:status` per `ir.PatientInfo`'s own separation (mined above) — registration category, not lifecycle. Distinct from a *ward's* `:class` (`:inpatient`/`:ed`, `docs/operational-models.md`'s facility config) — same word, two different things: one is what kind of patient this is, the other is what a ward is designated for. Set at admission, unchanged by transfer within M1's scope. |
 | `:home-ward` | `:string`, ward id, nil until admission | The ward the pathway named — clinical intent (`docs/operational-models.md`'s own term for the rung-1/2 target). Diverges from `:location`'s ward exactly on rungs 3 (outlier) and 4 (boarding) of the allocation ladder. |
 | `:location` | `[:map [:ward :string] [:bed :string] [:placement [:enum :licensed :surge]]]`, nil until admission | The patient's actual **physical** location, always concrete — never nil-bed, even while boarding (see worked example below). `:placement` is exactly the two values `docs/operational-models.md` specifies; ladder rungs 3 and 4 are distinguished from 1 and 2 not by a third placement value but by `:location`'s ward differing from `:home-ward` (see the table below). |
@@ -127,7 +127,7 @@ than each growing their own shadow state.
 Deliberately absent, per the mining above: no visit-history field (the
 log is the history — M5's interpreter queries it directly), no
 `VisitID` (encounters aren't first-class yet), no shadow prior-location
-fields (M2's cancel-family reads priors from the log).
+fields (M2b's cancel-family reads priors from the log).
 
 **Landed.** `ehr-testing-sim.engine/PatientState` carries every field
 in the table above, including `:location`'s `{:ward :bed :placement}`
@@ -135,12 +135,30 @@ map shape — the allocation ladder (`ehr-testing-sim.facility/allocate`)
 populates it for real as of Milestone M1. One field this table didn't
 originally name turned out to be necessary once the ladder's cross-
 patient coupling was implemented: `:admitted-at` (the simulated
-minute of admission), used only to break ties among multiple patients
+minute of admission — see ADR-0011 for the future move to simulated
+*seconds*), used only to break ties among multiple patients
 boarding for the same ward — the longest-waiting one (earliest
 `:admitted-at`, MRN as a further tiebreak) is the one a bed-ready
 transfer relieves. It is not a shadow/undo field in the SimHospital
 sense above (mined section): it is a plain fact recorded once at
 admission and never rewritten, exactly like `:status` or `:class`.
+
+**Boarding relief policy: FIFO by `:admitted-at`, ratified as the
+default — not a law.** Relieving the longest-waiting boarder first is
+this project's ratified default, chosen because it's the simplest
+policy that `:admitted-at` alone can express without inventing
+another field. It is deliberately **not** baked into the invariant
+catalog as a correctness rule: real hospitals often relieve boarders
+by acuity, service priority, or other clinical criteria, not strict
+arrival order, and encoding FIFO as a law would make it impossible to
+ever generate the (equally real) traffic of a hospital whose bed-ready
+transfers *don't* follow arrival order. FIFO-by-`:admitted-at` is
+therefore a **site-profile/Calibrate-territory config knob
+candidate** — `docs/site-profiles.md` and the `Calibrate` stage
+(`docs/sim-theory.edn`) are where an acuity-weighted or other
+alternative relief policy would eventually be configured, the same
+"policy, not law" treatment `docs/operational-models.md` already gives
+the no-census-floor non-invariant for surge use.
 
 (Pre-M1 staging note, kept for history: the session that first landed
 `evolve`/`decide` — ADR-0008 — shipped `PatientState` with every field
@@ -198,11 +216,11 @@ stateDiagram-v2
     Boarding --> Discharged : A03 discharge (still boarding at time of discharge)
     Discharged --> [*]
 
-    Admitted --> Pending : pending-* (M2, planned)
-    Pending --> Admitted : pending resolves (M2, planned)
-    Admitted --> CancelledOrInError : cancel-*, *-in-error (M2, planned)
-    CancelledOrInError --> Admitted : cancel-in-error reinstates (M2, planned)
-    Admitted --> Merged : merge (M2, planned)
+    Admitted --> Pending : pending-* (M2b, planned)
+    Pending --> Admitted : pending resolves (M2b, planned)
+    Admitted --> CancelledOrInError : cancel-*, *-in-error (M2b, planned)
+    CancelledOrInError --> Admitted : cancel-in-error reinstates (M2b, planned)
+    Admitted --> Merged : merge (M2b, planned)
     Merged --> [*]
 
     note right of Boarding
@@ -221,9 +239,21 @@ to hang the bed-ready-transfer transition on; per the accumulator
 table, it is **not** a fourth value of `:status` — it is the
 `:home-ward ≠ :location.ward` (ED-class) condition holding while
 `:status` is `:admitted`. `Pending`, `CancelledOrInError`, and `Merged`
-are M2's churn family, shown so this diagram doesn't need a redraw
-when M2 lands additively — only new edges, no restructuring of what's
+are M2b's churn family, shown so this diagram doesn't need a redraw
+when M2b lands additively — only new edges, no restructuring of what's
 here.
+
+**Not yet drawn, recorded in prose rather than redrawing the diagram
+this session (docs-only session; the diagram redraw is a small,
+mechanical follow-on):** `Admitted --> Expired` on a death event or an
+expired discharge disposition, and `Expired --> Discharged` on the
+final disposition-20 discharge. `Expired` would be its own top-level
+status box, unlike `Boarding` — it is a real fourth value of `:status`
+(see the accumulator table), not a condition over the existing three,
+because a patient in `:expired` is neither `:admitted` in the ordinary
+therapeutic sense nor `:discharged` yet. `docs/clinical-realities.md`'s
+post-mortem entry motivates the status; the event validity table below
+formalizes what's legal while in it.
 
 ## Event validity table
 
@@ -232,20 +262,50 @@ occur. This table does **double duty**, deliberately: it is the
 skeleton `check.clj`'s invariant catalog implements directly (each row
 becomes "event X's patient was in a legal state at the time," a
 co-landing invariant per `AGENTS.md`), and it is the applicability
-oracle `InjectChurn` (M2) will consult to decide where a churn event
+oracle `InjectChurn` (M2b) will consult to decide where a churn event
 can be legally inserted into an existing pathway — the same predicate
 answers "was this legal when it happened" and "would this be legal to
 insert here," because both ask the same question about the same
 state.
 
-| Event | Legal when | Illegal example |
-|---|---|---|
-| `:admission` | `:status = :new` | Admitting an already-admitted or already-discharged patient. |
-| `:transfer` (incl. bed-ready) | `:status = :admitted` (Admitted or Boarding) | Transferring a patient who hasn't been admitted yet, or who's already discharged. |
-| `:discharge` | `:status = :admitted` (Admitted or Boarding) | Discharging a patient not currently admitted, or discharging twice. |
-| `:pending-*` (M2, planned) | `:status = :admitted`, not already pending | Double-pending; pending a non-admitted patient. |
-| `:cancel-*` / `:*-in-error` (M2, planned) | The event class being cancelled must exist in this patient's log and not already be cancelled | Cancelling an event that never happened, or cancelling twice. |
-| `:merge` (M2, planned) | Both MRNs exist; at least the surviving MRN is `:admitted` or reachable | Merging into/from an MRN that was never admitted, or a double merge. |
+**Declared shape: status × event-class × attribute-conditions, not
+status × event-type alone.** The table below started as a per-event-
+*type* mapping (one row per `:admission`, `:transfer`, ...), which is
+enough while every event type's legality depends only on `:status`. The
+post-mortem entry (`docs/clinical-realities.md`) breaks that
+assumption: whether an event is legal in `:expired` depends on what
+*class* of event it is (therapeutic-intent vs. administrative/post-
+mortem), and one of those classes is itself gated on a patient
+*attribute* (`:donor`), not on status alone. The table's real shape is
+therefore a predicate over three axes — `(status, event-class,
+attribute-conditions) -> legal?` — and rows below are grouped by event-
+class wherever a single event type doesn't map to a single class.
+
+| Event / event-class | Legal when (status) | Attribute condition | Illegal example |
+|---|---|---|---|
+| `:admission` | `:status = :new` | — | Admitting an already-admitted or already-discharged patient. |
+| `:transfer` (incl. bed-ready) | `:status = :admitted` (Admitted or Boarding) | — | Transferring a patient who hasn't been admitted yet, or who's already discharged. |
+| `:discharge` | `:status = :admitted` (Admitted or Boarding) | — | Discharging a patient not currently admitted, or discharging twice. |
+| `:pending-*` (M2b, planned) | `:status = :admitted`, not already pending | — | Double-pending; pending a non-admitted patient. |
+| `:cancel-*` / `:*-in-error` (M2b, planned) | The event class being cancelled must exist in this patient's log and not already be cancelled | — | Cancelling an event that never happened, or cancelling twice. |
+| `:merge` (M2b, planned) | Both patient-ids exist (ADR-0010); at least the surviving patient-id is `:admitted` or reachable | — | Merging into/from a patient-id that was never admitted, or a double merge. |
+| Therapeutic-intent classes (orders, meds, procedures with clinical intent) | **Illegal** when `:status = :expired` | — | An order or medication timestamped after a death event — the classic post-mortem rejection case (`docs/clinical-realities.md`). |
+| Morgue/funeral-home transfer | Legal when `:status = :expired` (also legal pre-expiry as an ordinary `:transfer`) | — | A morgue transfer for a patient who is not `:expired`. |
+| Autopsy / specimen events | Legal when `:status = :expired` | — | An autopsy event for a patient who is not `:expired`. |
+| Donor-management / organ-procurement events | Legal when `:status = :expired` | **gated on `:donor` = true** in `:attributes` | A procurement event for a patient whose `:attributes` doesn't carry `:donor true` — the gate that makes this row conditional rather than a plain status check. |
+| Leave-of-absence, A21/A22 (candidate, M2b+ stub) | `:status = :admitted`, not already on leave — a sub-mode of Admitted parallel to Boarding (`docs/clinical-realities.md`) | — | Returning from leave (A22) for a patient who was never marked on leave (A21). |
+| Class-flip, A06/A07 (candidate, M2b+ stub) | `:status = :admitted` (Admitted or Boarding); `:class` changes, `:status` doesn't | — | A class-flip event for a patient who isn't currently admitted. |
+
+**Facility config gains a `:class :morgue` ward.** The morgue/funeral-
+home and autopsy rows above presuppose a real *location* a decedent can
+be transferred to — `docs/clinical-realities.md`'s own wire-truth
+section notes a genuine ADT^A02 transfers the decedent to MORGUE before
+the final A03. `docs/operational-models.md`'s facility config
+(`{:id :name :beds ... :class :inpatient|:ed}`) gains `:class :morgue`
+as a third documented ward class — **config documentation only, no
+code this session**; a morgue "ward" is a real occupancy-tracked
+location by the existing exclusive-resource model (ADR-0007), it simply
+never boards or admits in the ordinary sense.
 
 The current `check.clj` catalog (`timestamps-monotone`,
 `discharge-follows-admission`) already encodes the `:discharge` row's
@@ -253,4 +313,7 @@ constraint in a more specific form (admission strictly precedes
 discharge, not merely "some admission exists"); M1 formalizes the
 `:admission` and `:transfer` rows as new invariants in the same change
 that lands the `:transfer` step type (`AGENTS.md`'s co-landing
-convention).
+convention). The post-mortem, leave-of-absence, and class-flip rows are
+candidates for M2b (or immediately after, per `docs/clinical-
+realities.md`'s own milestone notes) — recorded here as the applicability
+oracle's target shape, not yet implemented in `check.clj`.
