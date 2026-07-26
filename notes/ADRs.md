@@ -329,9 +329,9 @@ records that as its own ADR, exactly as ADR-0003 already anticipated.
 
 ## ADR-0007 — Three-class operational resource taxonomy; occupancy as a derived projection; encounter-horizon scope; payers as an attribute; synthetic NPIs are Luhn-valid
 
-**Status:** Proposed (2026-07-26) — pending author review, per this
-session's brief; see [`docs/operational-models.md`](../docs/operational-models.md)
-for the full design this ADR records the decisions from.
+**Status:** Accepted (author-ratified 2026-07-26) — see
+[`docs/operational-models.md`](../docs/operational-models.md) for the
+full design this ADR records the decisions from.
 
 **Context.** The theory (`docs/sim-theory.edn`) named facility,
 provider, and payer resources only implicitly — as config a stage
@@ -420,5 +420,117 @@ work starts. The occupancy consistency law is a property test M1 must
 ship, not an optional nicety. `docs/problem-statement.md` gains
 constraint 10 (encounter horizon) as a one-sentence addition, per this
 session's own scope-minimality rule for touching that document. No
-code changes accompany this ADR — it is Proposed pending the author's
-review of `docs/operational-models.md`, per this session's brief.
+code accompanied this ADR at acceptance time; Milestone M1
+(`.agents/plans/roadmap.md`) is where `docs/operational-models.md`'s
+design becomes code.
+
+---
+
+## ADR-0008 — The engine is event-sourced: `decide`/`evolve` replace the fused `transition`; patient state is a fold of the log
+
+**Status:** Accepted (author-directed 2026-07-26)
+
+**Context.** The v0 engine's `transition` multimethod (`engine.clj`)
+fused two responsibilities that Milestone M1 is about to put real
+pressure on: given a patient's state and a pathway step, it decided
+what happens (consulting the RNG) *and* computed the resulting state
+*and* produced the ground-truth events, all in one function, one
+return value (`{:patient :events :advance}`). This was adequate for a
+three-step walking skeleton where every step touched exactly one
+patient's own state and nothing else. M1 breaks that: the allocation
+ladder must consult *other* patients' locations (the occupancy
+projection) before deciding where to place an admission, and the
+bed-ready transfer for a boarding patient is triggered by a *different*
+patient's discharge — a decision made while processing patient B's
+step needs to emit an event that changes patient A's state. A fused
+transition has no clean place to put "I looked at the whole facility
+and decided something happens to someone else." Splitting the
+responsibility now, before M1's step types multiply the surface, is
+cheaper than retrofitting it after.
+
+**Decision.**
+
+1. **The ground-truth log is the single primitive.** Patient state
+   (all patients', not any one patient's in isolation — the fold
+   input the theory calls `state-history`) is not maintained as an
+   independent structure the engine mutates; it is what you get by
+   folding the log through one pure function. There is no second
+   place a fact about a patient's state can originate.
+2. **Step application splits into a `decide`/`evolve` pair,**
+   replacing the fused `transition` multimethod:
+   - **`decide`** `(rng, t, world, mrn, step) → {:events [...] :advance N}`.
+     Consults `world` (the current fold of all patient state so far —
+     read-only) and the run's single RNG to decide what happens.
+     Returns the facts (events); **never returns a new state** and
+     never mutates `world`. This is where the allocation ladder and
+     the bed-ready cross-patient trigger live: `decide` may return
+     events naming a patient other than `mrn` (e.g. patient B's
+     discharge `decide` call also returns a transfer event for
+     boarding patient A), because deciding what happens is exactly
+     where cross-patient coupling belongs.
+   - **`evolve`** `(patient-state, event) → patient-state'`. Pure,
+     total, and deterministic: no RNG, no knowledge of the step or the
+     decision that produced the event, no knowledge of `world` or any
+     other patient — dispatch on the event's own `:event` key alone,
+     operating on exactly the one patient the event names. This is
+     deliberately narrower than `decide`'s view: cross-patient
+     coupling is a *decision* (does B's discharge free a bed A is
+     waiting on?), never a state-transition rule, so `evolve` never
+     needs to see two patients at once even when `decide` does. The
+     run loop is what maps an event to the right patient's slice of
+     `world` (`(:mrn event)`) and folds `evolve` in there.
+   - **The only path by which patient state changes is folding
+     emitted events through `evolve`.** The run loop calls `decide`,
+     then folds each returned event into `world` via `evolve` at that
+     event's own `:mrn`, then appends `events` to the ground-truth
+     log, in that order, every time. There is no code path that
+     assigns into a patient's state directly.
+3. **Consequences for the theory, recorded here and synced into
+   `docs/sim-theory.edn`/`.md`:**
+   - Log↔state drift — the failure mode of a system that maintains
+     state and events as two things a bug can let disagree — becomes
+     impossible by construction, not merely tested for: there is only
+     one function (`evolve`) that ever produces a new patient state,
+     and it is a pure fold over exactly the events already in the log.
+   - `sim-theory.md`'s open question #3 (is `state-history` primitive
+     or derived?) is **RESOLVED: derived.** `state-history` is
+     `(reduce evolve initial-world log-prefix)` at any prefix length —
+     a computable projection, not a second output the engine must keep
+     in sync with the log by discipline. The authority hierarchy is
+     now explicit and three deep: **log → patient states → occupancy
+     board**, each stage a projection of the one before it, each with
+     its own provable consistency law (the occupancy board's is
+     `docs/operational-models.md`'s "board ≡ fold over patient
+     locations"; patient states' is this ADR's fold property).
+   - EmitState's future implementation is exactly "fold the log to
+     instant *t*, render" — the snapshot-at-instant law
+     (`sim-theory.edn`'s `:emit-state` stage) stops being aspirational
+     prose once `evolve` exists to do the folding.
+   - The **emitter-coherence** global law (`sim-theory.md`) gains its
+     mechanism: "replaying `hl7v2-stream` reconstructs `state-history`"
+     is now a claim about composing `evolve` with message parsing, not
+     a hoped-for property with no stated procedure.
+
+**Rejected.** Keeping the fused `transition` and adding cross-patient
+awareness as a special case bolted onto it — cheaper today (no API
+change), but every step type M1 and M2 add (transfer, bed-swap,
+cancel-\*, merge) would widen the surface on which the returned
+`:patient` and the emitted `:events` could silently disagree, and a
+fused function gives cross-patient effects no principled place to
+live except further special-casing. Splitting once, now, is paid down
+across every future step type instead of re-argued per step.
+
+**Consequences.** `engine.clj`'s public surface changes: `transition`
+is replaced by `decide` and `evolve` (a breaking change to an internal
+namespace, not the CLI embedding contract ADR-0001 governs — no
+version note needed there). Every existing step type
+(`:admission`, `:delay`, `:discharge`) gets a `decide` method and,
+where it changes patient state, an `evolve` method; `:delay` has a
+`decide` (it samples the RNG) but no `evolve` (it changes no patient
+state, so it emits no events for `evolve` to fold). The property test
+this ADR requires — patient state, at every event boundary of a run,
+equals folding that patient's own event subsequence through `evolve`
+from its initial state — is the executable form of "impossible by
+construction," not an added nicety. A pinned-seed regression proves
+the refactor changes internal structure without changing observable
+output for the v0 step set.

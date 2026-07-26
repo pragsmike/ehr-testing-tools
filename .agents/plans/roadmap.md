@@ -1,10 +1,9 @@
 # Roadmap
 
-**Status: proposed.** ADR-0003 deferred writing a plan "until first
-real use" of `.agents/plans/`; this is that first use. Everything
-below — milestone order, scope, and the deliberate exclusions — is
-this session's proposal for the author to ratify, reorder, or veto,
-not a committed schedule. Each milestone names the
+**Status: accepted (2026-07-26).** ADR-0003 deferred writing a plan
+"until first real use" of `.agents/plans/`; this is that first use.
+Milestone order, scope, and the deliberate exclusions below are
+author-ratified. Each milestone names the
 [`sim-theory.edn`](../../docs/sim-theory.edn) stage(s) it advances and
 the invariants that must co-land with it (`AGENTS.md`'s co-landing
 convention: every new engine step type ships with its `check.clj`
@@ -13,8 +12,15 @@ invariants in the same change).
 ## M1 — Facility + providers models, transfer step, occupancy projection
 
 Advances **Execute** (`:built`, growing its step vocabulary) via its
-new `provider-pool` catalytic, plus the transfer step type (ADT^A02 in
-`EmitHL7`'s message-type-registry, once emitted).
+new `provider-pool` catalytic, plus the transfer step type.
+**A02 emission is IN M1** — the co-landing convention (`AGENTS.md`)
+extends to the emitter's `message-type-registry`, not just
+`check.clj`: a step type without a registered message type produces
+traffic that's invisible to every consumer downstream of `EmitHL7`,
+which is exactly the kind of silent gap the co-landing rule exists to
+prevent. The registry entry and derivability-law test coverage for
+A02 land in the same change as the `:transfer` step itself, not in a
+follow-on.
 [`docs/operational-models.md`](../../docs/operational-models.md),
 reviewed this session, is this milestone's spec — nothing here
 redecides what that document already decided.

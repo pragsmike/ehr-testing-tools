@@ -1,0 +1,10 @@
+;; Captured from ehr-testing-sim.engine/run {:seed 42 :patients 5} at the
+;; START of the M1 session that introduced ADR-0008's decide/evolve split
+;; (2026-07-26), BEFORE any refactor -- the pre-refactor ground truth this
+;; repo's determinism guarantee says must still be reproducible byte-for-
+;; byte after the engine is restructured internally. See
+;; ehr_testing_sim.engine_test/pinned-seed-survives-decide-evolve-refactor.
+;; Do NOT regenerate this file casually: it is the baseline a future
+;; regression compares against, not a snapshot to keep in sync with
+;; whatever the engine currently produces.
+{:ground-truth [{:event :admission, :t 0, :mrn "MRN000001", :location "Renal", :reason "Kidney problems"} {:event :admission, :t 5, :mrn "MRN000002", :location "Renal", :reason "Kidney problems"} {:event :admission, :t 37, :mrn "MRN000003", :location "Renal", :reason "Kidney problems"} {:event :admission, :t 62, :mrn "MRN000004", :location "Renal", :reason "Kidney problems"} {:event :discharge, :t 91, :mrn "MRN000002"} {:event :admission, :t 100, :mrn "MRN000005", :location "Renal", :reason "Kidney problems"} {:event :discharge, :t 132, :mrn "MRN000004"} {:event :discharge, :t 153, :mrn "MRN000001"} {:event :discharge, :t 211, :mrn "MRN000003"} {:event :discharge, :t 220, :mrn "MRN000005"}]}

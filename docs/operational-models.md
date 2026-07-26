@@ -186,10 +186,11 @@ table for provider identifiers:
   that no real NPI could occupy).
 
 **Decision: (a).** A generated 10-digit number that happens to
-coincide with a real NPPES-assigned NPI is possible (the space is
-10 billion minus check-digit constraints, NPPES has roughly a few
-million active assignments, so collision probability is low but
-non-zero) and **harmless**: NPPES is itself public data (the NPI
+coincide with a real NPPES-assigned NPI is possible (the valid-NPI
+body space is 10^9 — the check digit is determined by the nine body
+digits, not free to vary — and NPPES has roughly a few million active
+assignments, so collision probability is low but non-zero) and
+**harmless**: NPPES is itself public data (the NPI
 Registry is a public lookup service), so a coincidental match reveals
 nothing not already public, and no PHI is implicated — an NPI
 identifies a *provider*, not a patient. Recommending (a) over (b)

@@ -188,6 +188,18 @@ Recorded here rather than silently decided:
    and could drop out of Execute's signature, with EmitState consuming
    `ground-truth-log` instead. Deferred until EmitState exists to
    test it.
+
+   **RESOLVED (ADR-0008), ahead of the "deferred until EmitState
+   exists" plan above:** `state-history` is derived. The engine's
+   `decide`/`evolve` split makes `evolve (world, event) -> world'` the
+   only function that ever produces a new patient state, and it is a
+   pure fold over the log — `state-history` at any prefix is
+   `(reduce evolve initial-world log-prefix)`, a computed projection,
+   not independent bookkeeping the engine could let drift from the
+   log. The original entry is left standing above rather than deleted,
+   per this project's append-don't-erase convention for resolved
+   questions; EmitState (M6) still consumes this resolution when it
+   lands, it just no longer has to *establish* it.
 4. **Sum types on output wires** — inherited open question from
    tools' notation (Gate's routing discussion); sim's Check has the
    same shape (pass/rejected) and defers the same way.
