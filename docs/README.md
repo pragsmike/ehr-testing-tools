@@ -15,11 +15,19 @@ and don't need the method behind it yet.
    corpus.
 2. **[../README.md](../README.md#quickstart)** — every command in the
    quickstart, in order.
-3. **`ehr help`**, **`ehr help <group>`**, **`ehr corpus operators`** —
-   the CLI's own reference for flags, groups, and the operator catalog.
+3. **`ehr help`**, **`ehr help <group>`** — the CLI's own reference at
+   the shell; **[cli.md](cli.md)** is the same thing as a page, when
+   you're not at one.
 4. **[use-cases.md](use-cases.md)** — find the use case that matches
    what you're actually trying to do.
-5. If a gate result surprises you: **[judge-calibration.md](judge-calibration.md)**
+5. When you get to breaking data on purpose:
+   **[operators.md](operators.md)** — the catalog of what you can
+   break and what each defect violates — and
+   **[locators.md](locators.md)** — how to write the
+   `--locator-path` that says exactly where.
+6. **[formats.md](formats.md)** — what came back: report, manifest,
+   lineage record, and the `--json` projection.
+7. If a gate result surprises you: **[judge-calibration.md](judge-calibration.md)**
    — exactly which defects each judge tier catches, and which it doesn't.
 
 ## Method-first guide reader
@@ -53,17 +61,15 @@ self-explanatory without a human in the loop to interpret it.
 You read `report.edn`, `manifest.edn`, or lineage records — via the
 `--json` projection or EDN directly — and never run the CLI yourself.
 
-1. **`--json`**, on any command — the projection; EDN remains
-   canonical.
+1. **[formats.md](formats.md)** — start here. Every shape the tools
+   emit, field by field, with the `--json` mapping stated from real
+   output and one honest paragraph on reading it from Python.
 2. **[judge-calibration.md](judge-calibration.md)**'s
    ["No-verdict, operationally"](judge-calibration.md#no-verdict-operationally-2026-07-25-adr-0010)
    and ["Reading this table"](judge-calibration.md#reading-this-table)
-   sections — verdict and finding shapes, explained by example.
-3. A proper format reference for these shapes doesn't exist yet — see
-   [`.agents/plans/user-docs.md`](../.agents/plans/user-docs.md)'s
-   DOC-3 wave. Until then, the Malli schemas in source
-   (`judge.report`, `judge.finding`, `corpus.manifest`, `lineage`) are
-   the ground truth.
+   sections — what the verdicts *mean* in bulk, once you can parse them.
+3. **[locators.md](locators.md)** — how to read the `:locator` a
+   finding hands back to you.
 
 ## Contributor
 

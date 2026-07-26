@@ -50,14 +50,15 @@ different on-ramps:
    or lineage records — via the `--json` projection or EDN directly —
    and never runs the CLI themselves; a Python or SQL process on the
    other end of a pipeline. This repo's own "readable from Python"
-   promise (`README.md`) doesn't yet have a format reference behind it:
-   `--json` exists on every command, but its shape is documented only by
-   the Malli schemas in source (`judge.report`, `judge.finding`,
-   `corpus.manifest`, `lineage`) and by example in
-   `docs/judge-calibration.md`'s "Reading this table" and
-   "No-verdict, operationally" sections. A proper `docs/formats.md` is a
-   named gap, not a silent one — see `.agents/plans/user-docs.md`'s
-   DOC-3 wave.
+   promise (`README.md`) went unbacked by a format reference until
+   DOC-3 (2026-07-25): [`docs/formats.md`](formats.md) is now that
+   reference — the report, check report, manifest, lineage record, and
+   the `--json` projection's actual mapping, each field table citing
+   its Malli schema (`judge.report`, `judge.finding`, `corpus.manifest`,
+   `lineage`) and each shape backed by a real captured output rather
+   than by the schema alone. `docs/judge-calibration.md`'s "Reading
+   this table" and "No-verdict, operationally" sections remain the
+   companion for reading verdicts in bulk.
 6. **The Clojure library consumer.** Post-first-release: will `require`
    this repo's namespaces directly rather than shelling out to the CLI.
    Today's serving is source docstrings only — no public-vs-internal

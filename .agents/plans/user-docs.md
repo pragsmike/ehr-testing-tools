@@ -237,6 +237,91 @@ Itemized:
 
 ## DOC-3 — Reference docs
 
+**Done (2026-07-25).** Landed as six commits, both phases complete
+(prompt archived at
+`.agents/prompts/archive/2026-07-25-doc3-reference-docs.md`).
+Itemized:
+
+- **Step 0, evidence.** `cli-spec` verified group-by-group against the
+  option keys each command function actually destructures: rich enough
+  everywhere except one flag. `corpus generate` reads `:lockfile-path`
+  — a plain string that works from the shell — but `generate!`'s
+  docstring lists it among the function-valued injection seams, so
+  DOC-1's inventory missed it; added to the spec (spec-only, help grew
+  one line, no test needed editing). Deliberately not added:
+  `:jvm-args`/`:extra-args`, both vector-valued and so not expressible
+  as a CLI argument. Registry keys confirmed from the live registry
+  (ten entries, six keys each, `:doc` absent). Golden-check statement
+  sites enumerated by grep and split into live statements (three) and
+  historical records (nine) — see the Step 3 bullet.
+- **Step 1, `:doc`.** `register!`'s `Operator` schema gains an optional
+  `:doc`; all ten seed entries carry one. The register is deliberately
+  distinct from `:contract/:target`'s: `:doc` states the edit (what
+  changed in the file), `:target` states the conformance claim (which
+  base-spec constraint the result violates). `ehr corpus operators`
+  output is unchanged — confirmed by running it, not by reading the
+  code.
+- **Step 2, renderers.** New `ehr-testing-tools.docsgen`, sibling to
+  `.pipeline`/`.usecases`: pure `render-*` plus `-X`-invokable
+  `write-*!`. `make operators-doc` → `docs/operators.md` (per format: a
+  summary table into per-operator sections carrying doc sentence,
+  version, locator requirement, contract; closing pointers to
+  judge-calibration.md for measured blind spots and dropped candidates,
+  and to locators.md). `make cli-doc` → `docs/cli.md` (synopsis, global
+  flags, exit codes, per-group sections with positional conventions and
+  per-verb flag tables; no worked invocations, per the ruling — those
+  are DOC-4's). Both wholly generated, both carrying the house banner
+  and the pre-release line. `sorted-entries` sorts by `[format id]`
+  because the registry is an atom-held map with unspecified val order —
+  without it the freshness gate would test iteration order. Idempotence
+  verified by running both targets twice and diffing.
+- **Step 3, gate.** CI's freshness step covers four files. The
+  incantation was extended at the three sites that state it as a live
+  instruction (ci.yml, this plan's Operating rules, the 2026-07-25
+  handoff), each saying so explicitly rather than presenting the new
+  form as though it had always been. The nine historical statements —
+  `corpus-foundations.md`'s ENF-1 row, this plan's DOC-1/DOC-2
+  close-outs, six spent prompts — were left alone: the
+  supersede-never-revert discipline applies to records too, and editing
+  them would make the repo claim ENF-1 shipped a gate it didn't.
+  Tripwire did not fire; `git status` after the change showed exactly
+  ci.yml plus the two statement sites.
+- **Step 4, `docs/locators.md`.** Both grammars in user register, cited
+  to `locator.clj`/`er7.clj`. Three sharp edges found by probing the
+  parsers rather than reading their docstrings, all now documented:
+  `MSH-1` parses but resolves onto `MSH-2`'s position (it sits below
+  the N≥2 shift), so it silently addresses the encoding characters; a
+  component-level locator resolves at its field, because the substrate
+  is field-granular; and a trailing dot in a FHIR path is silently
+  ignored rather than refused, unlike the fully anchored v2 grammar.
+  All 40 example locators pinned by `locators_doc_test` — 9 tests, 97
+  assertions, in the ordinary `make test`.
+- **Step 5, `docs/formats.md`.** Report, check report, manifest,
+  lineage, `--json`, in audience-5 register, every field table citing
+  its Malli schema and every shape backed by a dated real capture. The
+  FHIR gate needed no schema-derived fallback: the artifact cache was
+  warm, so a live `ehr gate fhir` run against a real mutant bundle
+  supplied it (6554 findings, all three `:disposition` arms). Four
+  consumer traps stated: `--report` and stdout are different shapes and
+  `--report` is always EDN; `--baseline` changes the payload's type;
+  `:schema-version` is a string on current manifests and an integer on
+  the two frozen older ones; `:disposition`/`:cause` are FHIR-only.
+- Extended golden check clean, full suite (466 tests / 1391
+  assertions, from 439/1107 at DOC-2's close) and both lints green at
+  close-out. The 27 new tests: 16 in `docsgen-test`, 9 in
+  `locators-doc-test`, 2 in `operators-test`.
+
+**Report to the author — one code-shaped finding, deliberately not
+acted on:** the FHIR and v2 locator grammars disagree about a trailing
+separator. `PID-3.` is rejected (`v2-path-re` is fully anchored);
+`entry[0].resource.` is *accepted*, and parses as
+`entry[0].resource` — `clojure.string/split`'s default limit discards
+the trailing empty token before `fhir-data-path`'s own
+`(some empty? segments)` guard ever sees it, so the guard can't fire.
+Documented in `docs/locators.md` as a sharp edge with a "don't rely on
+it," which is the honest thing for a docs session to do; whether the
+two grammars should agree is a code question and a separate change.
+
 - `docs/cli.md` — command reference. Thin if DOC-1's help-spec is
   authoritative: anchors the docs tree, points into `ehr help`,
   carries only what help text can't (worked examples, exit-code
@@ -298,7 +383,7 @@ existing green behavior, not authoring new checks.
 |---|---|---|---|
 | DOC-1 | `ehr help` surface (data-first spec, plain-text render, exit codes documented), operator-listing verb, bounded error-message pass | **Done** (2026-07-25) | `.agents/prompts/archive/2026-07-25-doc1-cli-help.md` |
 | DOC-2 | Seven-audience register canonical in `positioning.md`; `docs/README.md` per-audience entry paths | **Done** (2026-07-25) | `.agents/prompts/archive/2026-07-25-doc2-audience-respine.md` |
-| DOC-3 | `docs/cli.md`, `docs/locators.md`, `docs/operators.md`, `docs/formats.md` | Not started | — |
+| DOC-3 | `docs/cli.md` + `docs/operators.md` generated (new `docsgen` renderers, two make targets, freshness-gated); `docs/locators.md` + `docs/formats.md` hand-written, examples/shapes machine-verified; registry gains `:doc`; golden check extended | **Done** (2026-07-25) | `.agents/prompts/archive/2026-07-25-doc3-reference-docs.md` |
 | DOC-4 | Per-use-case runnable command strips (route: `:commands` in use-cases.edn vs. cookbook — open) | Not started | — |
 | DOC-5 | Quickstart-as-script, nightly-wired; README freshness link | Not started | — |
 
@@ -306,11 +391,18 @@ existing green behavior, not authoring new checks.
 
 - **Operator-listing verb name** (author; blocks DOC-1's Step 3;
   recommendation: `ehr corpus operators`).
-- **DOC-3 generated vs. hand-written**, per document (recommendation
-  recorded in the DOC-3 section).
+- **DOC-3 generated vs. hand-written**, per document — **decided
+  2026-07-25 (author), as recommended**: `operators.md` and `cli.md`
+  are generated (from the registry and from DOC-1's `cli-spec`
+  respectively, on the pipeline.md/use-cases.md
+  renderer-plus-freshness-gate pattern); `locators.md` and
+  `formats.md` are hand-written with source citations. The `cli.md`
+  branch resolved in favor of generation: Step 0 found `cli-spec` rich
+  enough, needing one added flag.
 - **DOC-4 route**: `:commands` field vs. cookbook (recommendation:
   the field).
-- **Sequencing against first release**: a full CLI reference softly
-  hardens interfaces the README still labels pre-release; whether
-  DOC-3 waits for, rides with, or precedes the release session is the
-  author's call. Nothing in DOC-1/2 depends on it.
+- **Sequencing against first release** — **decided 2026-07-25
+  (author): now, pre-release**, accepting the soft interface-hardening
+  pressure a full CLI reference creates. Mitigation shipped with it:
+  both generated docs carry a one-line pre-release notice pointing at
+  README.md's maturity table.
