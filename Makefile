@@ -15,14 +15,22 @@ PACK_SKILLS_OUTPUT := $(shell echo $$HOME)/ehr-testing-tools-skills-pack.txt
 GIST_ID := 4fcd1abb4e74a5b54f9c241877edd02a
 PACKS_REPO_DIR := $(shell echo $$HOME)/.packs
 
-# Files elided from the default pack (see pack-skills below) -- an ERE
-# matched against `git ls-files` output, anchored to line start.
-PACK_ELIDE_PATTERN := ^\.agents/skills/|^\.agents/prompts/archive/
+# Two patterns, no longer one: PACK_SKILLS_PATTERN is what pack-skills
+# packs and pack elides; PACK_ELIDE_PATTERN is everything pack elides,
+# a strict superset once the vendored corpus joined it below. They
+# diverged because the corpus (ADR-0011: vendored data, bytes belong in
+# git, not in session context) must leave `pack` but must NOT enter
+# `pack-skills` -- provenance (PROVENANCE.md, the vendored LICENSE)
+# stays packed either way; only the ER7 bytes themselves are elided.
+# Both are EREs matched against `git ls-files` output, anchored to line
+# start.
+PACK_SKILLS_PATTERN := ^\.agents/skills/|^\.agents/prompts/archive/
+PACK_ELIDE_PATTERN  := $(PACK_SKILLS_PATTERN)|^test/fixtures/v2/simhospital/messages\.out$$
 
 help:
 	@echo "Available targets:"
 	@echo "  help         - show this message (default target)"
-	@echo "  pack         - concatenate tracked files (except .agents/skills, .agents/prompts/archive) into $(PACK_OUTPUT)"
+	@echo "  pack         - concatenate tracked files (except .agents/skills, .agents/prompts/archive, and test/fixtures/v2/simhospital/messages.out -- corpus bytes; provenance stays packed) into $(PACK_OUTPUT)"
 	@echo "  pack-skills  - concatenate only .agents/skills + .agents/prompts/archive into $(PACK_SKILLS_OUTPUT)"
 	@echo "  pack-push    - dormant (2026-07-25, not part of the session ritual) - pack + pack-skills, then publish both to the pragsmike/packs repo ($(PACKS_REPO_DIR))"
 	@echo "  test         - run the Clojure test suite (clojure -X:test); cold-cache/no-network hermetic"
@@ -147,7 +155,14 @@ lint-deps:
 #
 # Elides .agents/skills/** and .agents/prompts/archive/**: skill content
 # is large, changes rarely, and isn't needed for ordinary session context
-# -- see pack-skills below, which packs exactly what this elides.
+# -- see pack-skills below, which packs exactly what this elides. Also
+# elides the vendored SimHospital corpus bytes
+# (test/fixtures/v2/simhospital/messages.out, ADR-0011): large, static,
+# and already content-addressed by git -- a pack-consuming session needs
+# PROVENANCE.md, not the ER7 bytes, so PROVENANCE.md and the vendored
+# LICENSE stay packed while messages.out alone leaves. Unlike the skills
+# elision, this one is NOT the complement of pack-skills -- see
+# PACK_ELIDE_PATTERN/PACK_SKILLS_PATTERN above.
 pack:
 	@echo "Creating $(PACK_OUTPUT)..."
 	@{ \
@@ -158,7 +173,7 @@ pack:
 		echo "git status --porcelain:"; \
 		st="$$(git status --porcelain)"; \
 		if [ -z "$$st" ]; then echo "working tree clean"; else echo "$$st"; fi; \
-		echo "elides: .agents/skills, .agents/prompts/archive"; \
+		echo "elides: .agents/skills, .agents/prompts/archive, test/fixtures/v2/simhospital/messages.out (corpus bytes; provenance stays packed)"; \
 		echo "========== END PACK HEADER =========="; \
 		echo ""; \
 	} > $(PACK_OUTPUT)
@@ -189,7 +204,7 @@ pack-skills:
 		echo "========== END PACK HEADER =========="; \
 		echo ""; \
 	} > $(PACK_SKILLS_OUTPUT)
-	@git ls-files | grep -E '$(PACK_ELIDE_PATTERN)' | sort | while read -r file; do \
+	@git ls-files | grep -E '$(PACK_SKILLS_PATTERN)' | sort | while read -r file; do \
 		echo "========== FILE: ./$$file =========="; \
 		cat "$$file"; \
 		echo ""; \

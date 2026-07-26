@@ -30,6 +30,17 @@ directories, to a separate file. `pack`/`pack-skills` **remain as
 utilities**: reach for them when feeding a non-git AI surface that can't
 clone this repo directly.
 
+`make pack` also elides the vendored SimHospital corpus bytes
+(`test/fixtures/v2/simhospital/messages.out`, [ADR-0011](notes/ADRs.md)):
+it is large, static, and already content-addressed by git, so a session
+needs `PROVENANCE.md` (and the vendored `LICENSE`) to know what the
+corpus is and where it came from, not the ER7 bytes themselves — those
+stay packed while `messages.out` alone leaves. This elision is *not* the
+complement of `pack-skills`: `pack-skills` packs only
+`.agents/skills/**` and `.agents/prompts/archive/**`, unchanged by the
+corpus's addition to what `pack` elides — see the `Makefile`'s
+`PACK_ELIDE_PATTERN`/`PACK_SKILLS_PATTERN` split.
+
 Unlike the guide's pack, this one leads with a header block — repo name,
 UTC generation timestamp, current `git rev-parse HEAD`, and
 `git status --porcelain` (or `working tree clean`) — so a stale pack is a
