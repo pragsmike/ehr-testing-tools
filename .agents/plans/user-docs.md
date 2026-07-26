@@ -1,11 +1,18 @@
 # Plan: User Documentation (DOC waves)
 
-**Status (2026-07-25).** Adopted as an active driver plan following a
-documentation audit (design-channel session, 2026-07-25; the audit's
-findings are compressed into this document so it stands alone —
-evidence over memory). No wave has executed yet. Tracker table at the
-bottom; one prompt-session per wave, prompts archive to
-`.agents/prompts/archive/` as usual.
+**Status (2026-07-26): scheduled waves complete.** Adopted 2026-07-25
+as an active driver plan following a documentation audit
+(design-channel session, 2026-07-25; the audit's findings are
+compressed into this document so it stands alone — evidence over
+memory). DOC-1 through DOC-5 (plus the two interludes, LOC-1 and
+CLI-2) all landed between 2026-07-25 and 2026-07-26 — see the Tracker
+at the bottom for each wave's own evidence trail. Completion here
+triggers nothing by itself: the Deferred register below (cljdoc,
+namespace demarcation, guide cross-references, "since"-markers) is
+explicitly release-gated and stands unchanged; first release remains
+the author's own gate (`.agents/plans/corpus-foundations.md`), not
+something this plan's own completion advances. One prompt-session per
+wave, prompts archive to `.agents/prompts/archive/` as usual.
 
 **Companions:** `docs/positioning.md` (owns the audience definitions;
 DOC-2 extends them), `docs/README.md` (the reading-order spine DOC-2
@@ -667,6 +674,76 @@ split). README's code block either includes-by-reference or gains a
 freshness check against the script. ENF-1's sibling: enforcing
 existing green behavior, not authoring new checks.
 
+**Done (2026-07-26).** Landed as five commits (Step 0 through
+close-out), prompt archived at
+`.agents/prompts/archive/2026-07-26-doc5-executable-quickstart.md`.
+Itemized:
+
+- **Step 0, evidence.** README.md's Quickstart fence's 15 command
+  lines (11 taught commands, 4 of them continuation lines of two
+  multi-line invocations) run by hand, in order, from a clean tree
+  with `/out/` cleared, against a warm artifact cache. Every actual
+  exit code matched the README's own stated expectation (0 throughout,
+  except `gate fhir`'s taught rejection: `1`, exactly what "1 any
+  rejected" in the README's own prose commits to) — no §7
+  reality-vs-check finding, expected per CLI-2's prior sweep but
+  confirmed rather than assumed. Every write path lands under the
+  gitignored `/out/` or in the artifact cache outside the repo tree
+  entirely; `git status --porcelain` empty after the full run,
+  confirmed directly. `integration.yml`'s cache-priming step fetches
+  the identical three artifacts by name/version, so the script's own
+  fetch lines are warm-cache no-ops on every nightly run bar a
+  lockfile-hash change.
+- **Step 1, the script.** `bin/quickstart-demo` (mode 100755) runs the
+  README's commands verbatim inside a `# BEGIN/END quickstart
+  commands` marker pair, each wrapped in an `expect`/`expect_eval`
+  helper carrying its Step-0-sourced exit code — deliberately no
+  `set -e`, since the FHIR-gate step's taught `1` is correct behavior,
+  not a script bug. A tree-clean postcondition follows, stated with
+  its ADR-0005 invariant. `make quickstart-demo` invokes it. Verified
+  end to end in an isolated throwaway clone (testing against this
+  working copy's own uncommitted diff would have been circular — the
+  same reasoning AGENTS.md's hermeticity claim was verified under,
+  ADR-0008): two clean runs, both exit 0, tree clean, real wall time
+  2m42.7s–2m46.7s. The one-assertion sensitivity demonstration (wrong
+  expected code against the real `gate fhir` invocation) tripped
+  immediately and correctly; discarded after use.
+- **Step 2, freshness.** New `ehr-testing-tools.quickstart-fresh`:
+  structural extraction (the one ` ```sh ` fence; the script's one
+  marker pair) plus an ordered-list comparison, not a substring
+  search — this session's own archived prompt quotes the fence
+  verbatim, so a substring check would have been self-reference-
+  compromised from birth (§7). Failure output states the invariant
+  and names the first diverging line by index and content. `make
+  quickstart-fresh` (hermetic, milliseconds); joined `ci.yml`'s fast
+  tier and `.githooks/pre-push` (a genuine one-liner, qualifying under
+  the ruling's own test). 5 new tests, including two seeded-divergence
+  cases proving the check fails correctly before it's trusted to pass.
+  The real check's own sensitivity was separately demonstrated against
+  a scratch copy with one digit changed — tripped, named the exact
+  line and position, discarded after use.
+- **Step 3, nightly wiring.** `integration.yml` gains a `make
+  quickstart-demo` step after cache priming, `timeout-minutes: 15`
+  (generous against the ~2m45s measured warm wall time). Pushed, then
+  a manual `workflow_dispatch` run triggered rather than waiting on the
+  07:00 UTC schedule: **real proof, not just wiring-verified** — run
+  [30207151856](https://github.com/pragsmike/ehr-testing-tools/actions/runs/30207151856),
+  green throughout (`make quickstart-demo` ✓, `make integration` ✓,
+  job 12m2s total), `make quickstart-demo` itself ~2m26s on the runner
+  against the same warm cache (`:cached true` for all three
+  artifacts), consistent with the local isolated-clone timing.
+- Close-out: full suite (497 tests / 1521 assertions, up from 492/1507
+  at CLI-2's close), both lints, `make quickstart-fresh`, and coverage
+  (90.44% forms / 93.64% lines, above the 85% floor) all green; the
+  extended golden check (`pipeline`/`use-cases`/`operators-doc`/
+  `cli-doc`, no diff) unaffected — this wave touched no generated doc
+  and no CLI surface.
+
+No findings to report: every taught command's real behavior matched
+what the README already claimed, in both the by-hand run (Step 0) and
+the real nightly-tier run (Step 3). This wave's own governing doctrine
+(AUTHORS-GUIDE.md §7) applied to itself without incident.
+
 ## Deferred register (not scheduled; ride with first release)
 
 - **cljdoc** — automatic once Clojars/Maven coordinates exist
@@ -689,7 +766,7 @@ existing green behavior, not authoring new checks.
 | LOC-1 | Locator grammar micro-wave (interlude, not a DOC wave): FHIR paths reject a trailing separator (split limit `-1`, dead guard revived); `MSH-1` refused at parse with a teaching `:hint`; both rejection categories preserved; `docs/locators.md`'s two stale sharp edges rewritten as dated grammar facts, didactic MSH account preserved; component-granularity edge out of scope by ruling | **Done** (2026-07-25) | `.agents/prompts/archive/2026-07-25-loc1-locator-grammar.md` |
 | DOC-4 | Per-use-case runnable command strips, route ratified as `:commands` in `use-cases.edn`: schema gains `:commands`/`:no-commands` (mutually exclusive, `[:fn]`-guarded), renderer emits a **You type:** fenced strip or a data-derived honest stub; 10 strips run-verified end to end (incl. a 99s `gate fhir` and `make integration` at 19m11s), 4 stubs naming their blocking external/planned stage; `ehr corpus operators` surfaces `:doc`; README's stale integration-suite incantation fixed to `make integration` | **Done** (2026-07-26) | `.agents/prompts/archive/2026-07-26-doc4-runnable-strips.md` |
 | CLI-2 | Code micro-wave (interlude, not a DOC wave): `--report` creates its parent and residual IO failures become `:report-write-failed` (exit 2, ADR-0004), strips drop their `mkdir -p` workarounds, contract-pairing's ns docstring drops a stale incantation; **ADR-0012** records the five CLI properties (plus two manifest commitments) `ehr-testing-sim` mounts against, with the note vendored and three of its claims corrected against source; `bin/ehr` becomes the taught entry point — entry-point decision **option (b)**, decided 2026-07-26, the make-can't-propagate premise measured at Step B0 first — with all four exit codes proven through it and 54 teaching sites flipped in one commit, `make ehr` kept as compat | **Done** (2026-07-26) | `.agents/prompts/archive/2026-07-26-cli2-report-and-entrypoint.md` |
-| DOC-5 | Quickstart-as-script, nightly-wired; README freshness link | Not started | — |
+| DOC-5 | `bin/quickstart-demo` runs README's Quickstart verbatim under per-step exit-code assertions + tree-clean postcondition (`make quickstart-demo`); `ehr-testing-tools.quickstart-fresh` structurally proves the README fence and the script agree line-for-line, wired into ci.yml's fast tier + pre-push (`make quickstart-fresh`); `integration.yml` runs the script nightly, real `workflow_dispatch` proof green ([30207151856](https://github.com/pragsmike/ehr-testing-tools/actions/runs/30207151856)) | **Done** (2026-07-26) | `.agents/prompts/archive/2026-07-26-doc5-executable-quickstart.md` |
 
 ## Open decisions
 
