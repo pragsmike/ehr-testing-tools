@@ -153,8 +153,9 @@ make ehr ARGS="check out/demo-corpus/fhir --expected out/demo-corpus/fhir"
 
 # Run the test suite (hermetic — see AGENTS.md). A separate suite
 # exercises the real validator/HAPI engines against real mutants
-# end-to-end (tagged ^:integration, excluded from make test by
-# default): `clojure -X:test :excludes '[]'`.
+# end-to-end; it lives on the test-integration/ path (a path split, not
+# a tag filter) and needs the three artifacts above already fetched:
+# `make integration`. See docs/use-cases.md for what it proves.
 make test
 ```
 

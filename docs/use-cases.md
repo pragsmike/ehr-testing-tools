@@ -159,7 +159,24 @@ flowchart LR
 
 **Maturity:** usable
 
-**You type:** no strip -- this repo doesn't drive this use case end to end, so there is no command sequence to copy. You bring: Nothing beyond the pinned artifacts -- this repo generates and mutates its own test data.
+**You type:**
+
+```sh
+# The exemplar, run for real: five FHIR defect operators, each
+# mutated into a real Synthea bundle, each gated through the real
+# official validator as a subprocess. Needs the three pinned
+# artifacts first; takes minutes, not seconds.
+make ehr ARGS="artifact fetch --name synthea --version 4.0.0"
+make ehr ARGS="artifact fetch --name temurin-jdk --version 17.0.19+10"
+make ehr ARGS="artifact fetch --name fhir-validator-cli --version 6.9.12"
+make integration
+
+# The same shape by hand, for a gate of your own: take the mutant
+# you made in "Generate controlled-fault data" above and gate it.
+make ehr ARGS="gate fhir out/demo-mutants --report out/demo-mutants-report.edn"
+```
+
+What makes this *contract pairing* rather than "the gate went red": the assertion is on a specific **new** finding whose locator matches the mutation, never on the file's aggregate verdict. [EXP-C5](experiments/EXP-C5-results.md) found every baseline file in this corpus already carries hundreds of profile-driven errors (the validator auto-loads US Core from Synthea's own declared `meta.profile`), so an aggregate verdict cannot discriminate a mutant from its own base file. The exemplar is [`test-integration/ehr_testing_tools/contract_pairing_test.clj`](../test-integration/ehr_testing_tools/contract_pairing_test.clj) -- read it rather than reimplementing it. Note which locator it uses and why: the by-hand mutant above breaks `entry[0].resource.gender`, which EXP-C5 found the validator does **not** convict (`gender` is min-cardinality 0 in base FHIR, so removing it violates nothing), which is exactly why the suite itself uses `resourceType`. That asymmetry is the point of calibrating a gate instead of trusting it -- [judge-calibration.md](judge-calibration.md). `make integration` is the nightly tier and never a per-push gate; it lives on the `test-integration/` path, which is a path split rather than a tag filter (see `AGENTS.md`).
 
 ```
 synthea-config × synthea-artifact × jdk-runtime × config-hash → raw-corpus  [Generate]  {catalytic: synthea-artifact, jdk-runtime, config-hash}
@@ -346,7 +363,7 @@ flowchart LR
 
 **Maturity:** illustrative
 
-**You type:** no strip -- this repo doesn't drive this use case end to end, so there is no command sequence to copy. You bring: Your own transform, run outside this repo's own pipeline.
+**You type:** no strip -- this repo doesn't drive this use case end to end, so there is no command sequence to copy. You bring: Your own transform, run outside this repo's own pipeline. Its `Transform` stage is `{external: true}`: the system under test is your own transform, which this repo neither runs nor instruments. The shipped halves it surrounds do have strips -- producing the input corpus is [Generate conforming synthetic data](#generate-conforming-synthetic-data), gating the output is [Judge user-supplied data: intake -> gate -> report](#judge-user-supplied-data-intake---gate---report), and `ehr check` compares that output against an expected corpus ([cli.md](cli.md#ehr-check)). What no strip can write for you is the line in the middle that runs your transform.
 
 ```
 synthea-config × synthea-artifact × jdk-runtime × config-hash → raw-corpus  [Generate]  {catalytic: synthea-artifact, jdk-runtime, config-hash}
@@ -438,7 +455,7 @@ flowchart LR
 
 **Maturity:** illustrative
 
-**You type:** no strip -- this repo doesn't drive this use case end to end, so there is no command sequence to copy. You bring: Your own validation logic (external to this repo) plus a corpus.
+**You type:** no strip -- this repo doesn't drive this use case end to end, so there is no command sequence to copy. You bring: Your own validation logic (external to this repo) plus a corpus. Its `YourValidation` stage is `{external: true}`: the adequacy score is a property of validation logic this repo doesn't have and makes no claim about. The half this repo does drive -- producing the labeled mutants you score against -- has a strip at [Generate controlled-fault data](#generate-controlled-fault-data); the scoring loop around your own validator is yours to write.
 
 ```
 canonical-fhir-datum × operator-catalog → mutant-fhir-datum + lineage-record  [Mutate]  {catalytic: operator-catalog}
@@ -561,7 +578,7 @@ flowchart LR
 
 **Maturity:** illustrative
 
-**You type:** no strip -- this repo doesn't drive this use case end to end, so there is no command sequence to copy. You bring: The same input corpus, run through two versions of your own transform.
+**You type:** no strip -- this repo doesn't drive this use case end to end, so there is no command sequence to copy. You bring: The same input corpus, run through two versions of your own transform. Both `OldTransform` and `NewTransform` are `{external: true}` -- this repo never runs either version of your transform, so there is no invocation to show for the part that matters. Once their two output corpora exist, `ehr check --expected` compares them ([cli.md](cli.md#ehr-check)) and reports each divergence with a locator path.
 
 ```
 canonical-fhir-datum → expected-corpus  [OldTransform]  {external: true}
@@ -1020,7 +1037,7 @@ flowchart LR
 
 **Maturity:** planned
 
-**You type:** no strip -- this repo doesn't drive this use case end to end, so there is no command sequence to copy. You bring: A corpus from a generator this repo doesn't implement.
+**You type:** no strip -- this repo doesn't drive this use case end to end, so there is no command sequence to copy. You bring: A corpus from a generator this repo doesn't implement. `Intake` ships, and has a strip at [Acceptance QA of delivered/vendor corpora](#acceptance-qa-of-deliveredvendor-corpora). But the `Mutate` stage in this case's equations consumes `foreign-file` directly, and that works today only if your corpus is already `canonical-fhir-datum`-shaped (FHIR JSON matching `corpus.mutate`'s own substrate); the general foreign-format adapter into Mutate is future work, and no plan wave schedules it yet. Inventing an invocation for it here is exactly the dishonesty this page avoids. If your corpus is already FHIR JSON, [Judge user-supplied data: intake -> gate -> report](#judge-user-supplied-data-intake---gate---report) is the case that runs today.
 
 ```
 foreign-file → catalog-entry + intake-record  [Intake]
