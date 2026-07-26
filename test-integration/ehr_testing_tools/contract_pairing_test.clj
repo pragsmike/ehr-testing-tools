@@ -4,11 +4,14 @@
   file, gate the mutant through the real official validator
   (fhir-validator-cli, a real subprocess -- not an injected fake),
   and assert the gate's response matches the operator's own contract.
-  Tagged ^:integration and excluded from the default `make test` run
-  (deps.edn's :test alias, AGENTS.md's hermetic-test-suite rule) --
-  this is the first suite in the repo that genuinely needs a real
-  external engine; every other test in the repo goes through an
-  injected fake. Run explicitly with `clojure -X:test :excludes '[]'`.
+  Lives on the `test-integration/` path, which neither the :test nor
+  the :coverage alias includes -- AGENTS.md's hermetic-test-suite rule
+  is a path split, not a tag filter, so `^:integration` here documents
+  *why* this suite sits apart rather than being what excludes it. This
+  is the first suite in the repo that genuinely needs a real external
+  engine; every other test in the repo goes through an injected fake.
+  Run explicitly with `make integration`, after `ehr artifact fetch`
+  for synthea, temurin-jdk, and fhir-validator-cli.
 
   Honest classification, not uniform \"rejected\": EXP-C5
   (docs/experiments/EXP-C5-results.md) already found that
