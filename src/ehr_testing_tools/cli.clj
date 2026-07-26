@@ -212,6 +212,30 @@
                   (sort-by (juxt :format :id)))]
     (result/ok {:operators (vec rows)})))
 
+(defn- write-report!
+  "Writes `data` to `path` as canonical EDN (ADR-0004), creating the
+  path's missing parent directories first: `--report out/run/x.edn`
+  names where the user wants the file, and a missing intermediate
+  directory is not a mistake they should discover as a stack trace.
+
+  Returns nil on success, so a caller can treat it as \"no problem
+  here\". Any residual IO failure -- a parent that can't be created, a
+  read-only directory, a full disk -- returns a categorized
+  `result/error` instead: ADR-0004 reserves exceptions for programmer
+  error, and an unwritable report path is an operational failure, so it
+  joins DOC-1's enumerable-options error family (path, the cause's own
+  message, a hint) rather than escaping as an uncaught throw."
+  [path data]
+  (try
+    (io/make-parents (io/file path))
+    (spit path (pr-str data))
+    nil
+    (catch java.io.IOException e
+      (result/error :report-write-failed
+                    {:path path
+                     :message (.getMessage e)
+                     :hint "check --report names a writable file path, not a directory"}))))
+
 (defn- parse-treat-no-verdict-as
   "\"pass\" / \"rejected\" / nil -> result/ok :pass|:rejected|nil, or
   result/rejected :invalid-treat-no-verdict-as for anything else -- the
@@ -252,7 +276,11 @@
   eventually judge.fhir -- same shape). :path may name a single file or
   a directory; either way the result is normalized into one
   judge.report (gate-label identifies which gate ran, in :run). Writes
-  the report to :report when given (EDN, canonical -- ADR-0004).
+  the report to :report when given (EDN, canonical -- ADR-0004), via
+  `write-report!`: missing parent directories are created, and a
+  residual IO failure is returned as :report-write-failed (exit 2)
+  *instead of* the verdict -- a run whose recorded output didn't land
+  is an operational failure, not a judgment.
 
   :baseline (P6, a path to a previously-written --report EDN file)
   switches to baseline-relative mode (ehr-testing-tools.judge.report/
@@ -298,13 +326,13 @@
               (if baseline
                 (let [baseline-report (edn/read-string (slurp baseline))
                       br (report/baseline-relative-report results run baseline-report)
-                      decision (gate-decision (:totals (:relative br)) policy)]
-                  (when report (spit report (pr-str br)))
-                  (decision->result decision br))
+                      decision (gate-decision (:totals (:relative br)) policy)
+                      write-error (when report (write-report! report br))]
+                  (or write-error (decision->result decision br)))
                 (let [rpt (report/build-report results run)
-                      decision (gate-decision (:totals rpt) policy)]
-                  (when report (spit report (pr-str rpt)))
-                  (decision->result decision rpt))))))))))
+                      decision (gate-decision (:totals rpt) policy)
+                      write-error (when report (write-report! report rpt))]
+                  (or write-error (decision->result decision rpt)))))))))))
 
 (def gate-v2-command
   (gate-command gate-v2/gate-file gate-v2/gate-dir :v2))
@@ -356,7 +384,10 @@
   impure boundary; omitted entirely (with :expected given) delegates
   straight to check/check-corpus's own default
   ([{:kind :matches-expected}]). :canonicalizers is a comma-separated
-  \"id@version\" list; :pair-by is \"path\" (default) or \"hash\"."
+  \"id@version\" list; :pair-by is \"path\" (default) or \"hash\".
+  :report goes through `write-report!` on the same terms as the gate's:
+  parents created, a residual IO failure returned as
+  :report-write-failed instead of the check's own verdict."
   [{:keys [path expected assertions canonicalizers pair-by report]}]
   (let [assertions-data (when assertions (edn/read-string (slurp assertions)))
         opts (cond-> {:candidate-dir path}
@@ -364,9 +395,9 @@
                assertions-data (assoc :assertions assertions-data)
                canonicalizers (assoc :canonicalizers (parse-canonicalizer-steps canonicalizers))
                pair-by (assoc :pair-by (keyword pair-by)))
-        r (check/check-corpus opts)]
-    (when report (spit report (pr-str (:payload r))))
-    r))
+        r (check/check-corpus opts)
+        write-error (when report (write-report! report (:payload r)))]
+    (or write-error r)))
 
 (defn- help-text-for
   "Group usage text for a known group name, top-level usage text

@@ -27,6 +27,16 @@
   (is (= 1 (cli/result->exit-code (result/rejected :whatever {}))))
   (is (= 2 (cli/result->exit-code (result/error :whatever {})))))
 
+(deftest report-write-failed-maps-to-exit-2-test
+  ;; CLI-2's new member of the error family, asserted additively rather
+  ;; than by editing the mapping test above: an unwritable --report path
+  ;; is an operational failure, so it lands on 2 through ADR-0004's
+  ;; generic mapping -- not on a rejection's 1, and not on ADR-0010's
+  ;; :gate-no-verdict arm at 3.
+  (let [r (result/error :report-write-failed {:path "x" :message "m"})]
+    (is (= 2 (cli/result->exit-code r)))
+    (is (result/valid? r))))
+
 ;; ---- arg parsing ----
 
 (deftest parse-splits-positional-and-opts-test
@@ -517,6 +527,36 @@
     (is (.exists (io/file out-file)))
     (is (= (:payload r) (clojure.edn/read-string (slurp out-file))))))
 
+;; ---- --report path handling (CLI-2, ADR-0004): the user named where
+;; they want the file, so a missing intermediate directory is created
+;; rather than surfaced as a raw FileNotFoundException; an IO failure
+;; that survives that becomes a categorized result/error, never an
+;; uncaught throw. Both gate write sites (plain and --baseline) and
+;; check's own site are covered. ----
+
+(deftest gate-v2-command-report-creates-missing-parent-directories-test
+  (let [out-file (str (temp-dir*) "/nested/deeper/report.edn")
+        r (cli/gate-v2-command {:path "test/fixtures/v2/adt-a01-admit.hl7" :report out-file})]
+    (is (result/ok? r))
+    (is (.exists (io/file out-file)))
+    (is (= (:payload r) (clojure.edn/read-string (slurp out-file))))))
+
+(deftest gate-v2-command-report-write-failure-is-categorized-not-thrown-test
+  ;; A report path whose parent is an existing *file*: no directory can
+  ;; be created there, so the write genuinely fails after make-parents
+  ;; has done everything it can. The failure outranks the gate's own
+  ;; verdict -- the run's recorded output is incomplete, which is an
+  ;; operational error (exit 2), not a verdict.
+  (let [blocker (str (temp-dir*) "/not-a-directory")
+        _ (spit blocker "i am a file, not a directory")
+        out-file (str blocker "/report.edn")
+        r (cli/gate-v2-command {:path "test/fixtures/v2/adt-a01-admit.hl7" :report out-file})]
+    (is (result/error? r))
+    (is (= :report-write-failed (:category r)))
+    (is (= out-file (:path (:payload r))))
+    (is (string? (:message (:payload r))))
+    (is (= 2 (cli/result->exit-code r)))))
+
 ;; ---- fhir-gate-command: threads lockfile artifacts + :out-dir into
 ;; judge.fhir/gate-file|gate-dir, curried to gate-command's 1-arity
 ;; shape. No real subprocess exercised here (hermetic-suite discipline
@@ -660,6 +700,19 @@
     (is (.exists (io/file out-file)))
     (is (= (:payload r) (clojure.edn/read-string (slurp out-file))))))
 
+(deftest gate-v2-command-baseline-mode-report-creates-missing-parent-directories-test
+  ;; --baseline mode is its own write site (the payload's shape differs);
+  ;; it gets the same parent creation, not a second convention.
+  (let [in-dir (temp-dir*)
+        _ (spit (io/file in-dir "a.hl7") (slurp "test/fixtures/v2/adt-a01-admit.hl7"))
+        baseline-file (str (temp-dir*) "/baseline.edn")
+        _ (spit baseline-file (pr-str (:payload (cli/gate-v2-command {:path in-dir}))))
+        out-file (str (temp-dir*) "/nested/deeper/relative-report.edn")
+        r (cli/gate-v2-command {:path in-dir :baseline baseline-file :report out-file})]
+    (is (result/ok? r))
+    (is (.exists (io/file out-file)))
+    (is (= (:payload r) (clojure.edn/read-string (slurp out-file))))))
+
 ;; ---- check-command (`ehr check`): reads --assertions as an EDN file,
 ;; parses --canonicalizers "id@v,..." into ordered [id version] pairs,
 ;; delegates to ehr-testing-tools.check/check-corpus. ----
@@ -721,6 +774,31 @@
     (is (result/ok? r))
     (is (.exists (io/file out-file)))
     (is (= (:payload r) (clojure.edn/read-string (slurp out-file))))))
+
+(deftest check-command-report-creates-missing-parent-directories-test
+  (let [cand-dir (temp-dir*) exp-dir (temp-dir*)
+        bundle "{\"resourceType\":\"Bundle\"}"
+        _ (spit (io/file cand-dir "a.json") bundle)
+        _ (spit (io/file exp-dir "a.json") bundle)
+        out-file (str (temp-dir*) "/nested/deeper/check-report.edn")
+        r (cli/check-command {:path cand-dir :expected exp-dir :report out-file})]
+    (is (result/ok? r))
+    (is (.exists (io/file out-file)))
+    (is (= (:payload r) (clojure.edn/read-string (slurp out-file))))))
+
+(deftest check-command-report-write-failure-is-categorized-not-thrown-test
+  (let [cand-dir (temp-dir*) exp-dir (temp-dir*)
+        bundle "{\"resourceType\":\"Bundle\"}"
+        _ (spit (io/file cand-dir "a.json") bundle)
+        _ (spit (io/file exp-dir "a.json") bundle)
+        blocker (str (temp-dir*) "/not-a-directory")
+        _ (spit blocker "i am a file, not a directory")
+        out-file (str blocker "/check-report.edn")
+        r (cli/check-command {:path cand-dir :expected exp-dir :report out-file})]
+    (is (result/error? r))
+    (is (= :report-write-failed (:category r)))
+    (is (= out-file (:path (:payload r))))
+    (is (= 2 (cli/result->exit-code r)))))
 
 (deftest dispatch-routes-check-test
   (let [called (atom nil)
