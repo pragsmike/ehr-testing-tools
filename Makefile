@@ -1,4 +1,4 @@
-.PHONY: help pack pack-skills pack-push test coverage integration ehr pipeline use-cases lint-pipeline lint-deps
+.PHONY: help pack pack-skills pack-push test coverage integration ehr pipeline use-cases operators-doc cli-doc lint-pipeline lint-deps
 
 SHELL := bash
 
@@ -35,6 +35,8 @@ help:
 	@echo "  ehr          - invoke the ehr CLI, e.g. make ehr ARGS=\"artifact fetch --name synthea --version 4.0.0\" -- see every command with make ehr ARGS=\"help\""
 	@echo "  pipeline     - regenerate docs/pipeline.md from docs/pipeline.edn"
 	@echo "  use-cases    - regenerate docs/use-cases.md from docs/use-cases.edn"
+	@echo "  operators-doc - regenerate docs/operators.md from the mutation-operator registry"
+	@echo "  cli-doc      - regenerate docs/cli.md from the CLI help spec (src/ehr_testing_tools/cli/help.clj)"
 	@echo "  lint-pipeline - check every catalytic resource in docs/pipeline.edn and docs/use-cases.edn resolves to one of the four catalytic targets (docs/notation.md)"
 	@echo "  lint-deps     - check no palgebra.* namespace requires ehr-testing-tools.* (docs/palgebra-design.md D9)"
 
@@ -84,6 +86,26 @@ use-cases:
 	done
 	clojure -X ehr-testing-tools.usecases/write-use-cases-md! :use-cases-edn '"docs/use-cases.edn"' :cases-dir '"target/use-cases"' :out '"docs/use-cases.md"'
 	@echo "Regenerated docs/use-cases.md"
+
+# Regenerates docs/operators.md from the mutation-operator registry
+# (src/ehr_testing_tools/corpus/operators.clj -- the registry is the
+# source of truth, the doc is derived). Simpler than `pipeline` and
+# `use-cases` above: no mermaid step, so one Clojure call does the
+# whole job. docs/operators.md carries its own "do not hand-edit"
+# header; this target is the only sanctioned way to update it.
+operators-doc:
+	clojure -X ehr-testing-tools.docsgen/write-operators-md! :out '"docs/operators.md"'
+	@echo "Regenerated docs/operators.md"
+
+# Regenerates docs/cli.md from the CLI help spec
+# (src/ehr_testing_tools/cli/help.clj's cli-spec -- the same data
+# `ehr help` renders to plain text, so the page and the shell can't
+# drift apart). Same single-call shape as `operators-doc` above.
+# docs/cli.md carries its own "do not hand-edit" header; this target is
+# the only sanctioned way to update it.
+cli-doc:
+	clojure -X ehr-testing-tools.docsgen/write-cli-md! :out '"docs/cli.md"'
+	@echo "Regenerated docs/cli.md"
 
 # Tier-1 pipeline lint (P6, pattern nursery #13): every catalytic
 # resource named in docs/pipeline.edn and docs/use-cases.edn resolves
