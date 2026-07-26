@@ -42,6 +42,13 @@ index per segment — `entry[0][1]` is not a path. A name may start with
 an underscore; whether a given file actually has such a key is a
 question about that file, not about the grammar.
 
+**The grammar is fully anchored**, exactly like the v2 grammar below: a
+separator with nothing after it (`entry[0].resource.`) is a parse error,
+not a path quietly read without its trailing dot. *(Tightened by LOC-1,
+2026-07-25 — until then the trailing dot was silently dropped by the
+path split before the grammar saw it, and the two grammars disagreed
+about it. They no longer do.)*
+
 This is deliberately an operational *subset* of FHIRPath, not an
 implementation of it: no wildcards, no `where(...)` filters, no
 functions, no type operators. It exists to name one exact spot in one
@@ -94,16 +101,7 @@ touched:
 | `entry[0]..resource` | empty segment |
 | `entry[0]resource` | brackets must end the segment |
 | `entry[0][1]` | at most one index per segment |
-
-### Sharp edge: a trailing dot is ignored, not refused
-
-`entry[0].resource.` parses, and parses as `entry[0].resource` — the
-trailing dot is silently dropped rather than rejected. This is a
-consequence of how the path is split (a trailing empty token is
-discarded before the grammar sees it), and it is the one place the FHIR
-grammar is more forgiving than the v2 grammar below, which is fully
-anchored and refuses a trailing separator outright. Don't rely on it:
-write the path without the dot.
+| `entry[0].resource.` | anchored: nothing after the separator |
 
 ---
 
@@ -173,6 +171,7 @@ Each of these is refused with `:invalid-v2-path`:
 | `PID[0]` | repetitions are numbered from 1 |
 | `PID-3[0]` | likewise |
 | `PID-3.1.2.4` | there is no level below subcomponent |
+| `MSH-1` | `MSH-1` is the field separator itself — see below |
 
 ### Where a locator lands: the MSH off-by-one
 
@@ -205,13 +204,22 @@ PID|1||12345||Doe^John||19800101
 | `PID-5` | `Doe^John` |
 | `PID-7` | `19800101` |
 
-**Don't write `MSH-1`.** It parses — the grammar makes no `MSH`
-exception, deliberately, so that one regex serves every segment — but
-since it is below the *N* ≥ 2 shift it resolves onto `MSH-2`'s
-position. A locator of `MSH-1` therefore addresses the encoding
-characters, silently, which is almost certainly not what you meant. Use
-`MSH-2` when you mean the encoding characters, and nothing when you
-mean the field separator.
+**You can't write `MSH-1`.** There is no field there to name, so the
+parser refuses it — with `:invalid-v2-path`, before any file is touched,
+and with a hint that explains itself:
+
+> MSH-1 is the field separator character itself (the character right after the literal "MSH"), not an addressable field: the split that produces a segment's fields consumes it, so it holds no position of its own. The encoding characters are MSH-2.
+
+So: `MSH-2` when you mean the encoding characters, and nothing at all
+when you mean the field separator — a delimiter is not addressable.
+Every other `MSH` field is an ordinary locator, and field 1 is ordinary
+data in every *other* segment: `PID-1` and `ZZ1-1` parse fine.
+
+*(Tightened by LOC-1, 2026-07-25. Until then `MSH-1` parsed like any
+other field locator and then, sitting below the *N* ≥ 2 shift, resolved
+onto `MSH-2`'s position — silently addressing the encoding characters,
+which is almost certainly not what anyone meant. The off-by-one above is
+unchanged; what changed is that no locator can walk into it.)*
 
 ### Components and subcomponents parse, but resolve at the field
 

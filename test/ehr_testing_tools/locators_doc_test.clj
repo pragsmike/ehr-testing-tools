@@ -33,7 +33,8 @@
 (def fhir-rejected
   "Every rejected FHIR example in docs/locators.md."
   ["" "0entry" "entry[x]" "entry[-1]" "entry.0.resource"
-   "entry[0]..resource" "entry[0]resource" "entry[0][1]"])
+   "entry[0]..resource" "entry[0]resource" "entry[0][1]"
+   "entry[0].resource."])
 
 (deftest documented-fhir-locators-parse-to-the-documented-data-path-test
   (doseq [[path expected] fhir-accepted]
@@ -79,7 +80,7 @@
 (def v2-rejected
   "Every rejected v2 example in docs/locators.md."
   ["" "pid" "P1" "PIDX" "1ID" "PID.3" "PID-" "PID-0" "PID-3."
-   "PID[0]" "PID-3[0]" "PID-3.1.2.4"])
+   "PID[0]" "PID-3[0]" "PID-3.1.2.4" "MSH-1"])
 
 (deftest documented-v2-locators-parse-to-the-documented-map-test
   (doseq [[path expected] v2-accepted]
@@ -95,6 +96,15 @@
 
 ;; ---- v2 resolution: the MSH off-by-one and field granularity, against
 ;; the same two-segment message docs/locators.md prints ----
+
+(def documented-msh-1-hint
+  "The MSH-1 refusal's hint, exactly as docs/locators.md block-quotes it
+  under \"Where a locator lands: the MSH off-by-one\". Verbatim in both
+  places, per this namespace's own edit-one-edit-both rule."
+  (str "MSH-1 is the field separator character itself (the character right "
+       "after the literal \"MSH\"), not an addressable field: the split that "
+       "produces a segment's fields consumes it, so it holds no position of "
+       "its own. The encoding characters are MSH-2."))
 
 (def sample-message
   "The message docs/locators.md walks its v2 resolution examples
@@ -139,9 +149,9 @@
     (let [r (locator/v2-data-path "MSH-1")]
       (is (result/rejected? r))
       (is (= :invalid-v2-path (:category r)))
-      (is (re-find #"field separator" (:hint (:payload r)))
-          "the hint docs/locators.md quotes")
-      (is (re-find #"MSH-2" (:hint (:payload r)))))
+      (is (= documented-msh-1-hint (:hint (:payload r)))
+          "docs/locators.md block-quotes this hint verbatim; if the
+           parser's wording changes, change the doc's in the same commit"))
     (is (nil? (resolved-value "MSH-1")) "and so it lands nowhere")
     (is (= "^~\\&" (resolved-value "MSH-2")) "while MSH-2 still lands on the encoding characters")))
 
