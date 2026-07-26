@@ -59,7 +59,19 @@
                {:flag "--output-dir" :doc "output directory for the corpus + manifest.edn"}
                {:flag "--locale" :doc "BCP47-ish locale" :default "en-US"}
                {:flag "--timezone" :doc "timezone" :default "UTC"}
-               {:flag "--java-bin" :doc "java executable to invoke" :default "resolved via the artifact registry"}]}
+               {:flag "--java-bin" :doc "java executable to invoke" :default "resolved via the artifact registry"}
+               ;; DOC-3 Step 0: corpus.generate reads :lockfile-path and
+               ;; a plain string works from the shell, but DOC-1's
+               ;; inventory missed it -- it sits in generate!'s docstring
+               ;; alongside the function-valued injection seams
+               ;; (:read-lockfile, :resolve-artifact, ...) rather than
+               ;; with the user-facing options. Named here so `corpus
+               ;; generate` documents its lockfile the way `artifact
+               ;; fetch` and `gate fhir` already do. The flag's name
+               ;; differs from theirs (--lockfile-path vs --lockfile)
+               ;; because the option key does; renaming the key would be
+               ;; a contract change, not a help-spec one.
+               {:flag "--lockfile-path" :doc "path to the lockfile" :default "artifacts.lock.edn"}]}
       {:verb "mutate" :doc "Apply one mutation operator at one locator to every matching file under --input."
        :flags [{:flag "--input" :doc "a file, or a directory of files sharing one locator's shape"}
                {:flag "--operator-id" :doc "registered operator id -- see `ehr corpus operators`"}
