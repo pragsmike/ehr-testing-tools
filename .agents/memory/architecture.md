@@ -7,13 +7,14 @@ on details that may have moved.
 ## Upstream sources
 
 **Google Simulated Hospital** (github.com/google/simhospital,
-archived, Apache-2.0, Go) — mined for the *operational* model:
+archived, Apache-2.0, Go — license/archived-status and step-vocabulary
+count: see facts-register F3) — mined for the *operational* model:
 
-- `pkg/pathway`: ~30 scripted step types incl. ADT churn
-  (Transfer, BedSwap, TransferInError, Cancel*, Pending*, Merge,
-  DeleteVisit...). YAML pathways picked by `percentage_of_patients`
-  via a distribution manager. Our IR step vocabulary derives from
-  this list; churn realism is its key contribution.
+- `pkg/pathway`: scripted step types incl. ADT churn (Transfer,
+  BedSwap, TransferInError, Cancel*, Pending*, Merge, DeleteVisit...).
+  YAML pathways picked by `percentage_of_patients` via a distribution
+  manager. Our IR step vocabulary derives from this list; churn
+  realism is its key contribution.
 - `pkg/state` + `pkg/hospital`: discrete-event core — priority queue
   of Event structs, patients map, `RunNextEventIfDue` loop. Our
   `engine.clj` is its functional reduction (pure fold, retained
@@ -26,16 +27,18 @@ archived, Apache-2.0, Go) — mined for the *operational* model:
   (ADT^A01 etc.) — reference for our emitter, but emission is built
   on the cmiles74 parser's structures instead.
 
-**Synthea** (github.com/synthetichealth/synthea, Apache-2.0, Java) —
-mined for the *generative clinical* layer and US data:
+**Synthea** (github.com/synthetichealth/synthea, Apache-2.0, Java —
+module count, license, and asthma-module state count: see
+facts-register F2) — mined for the *generative clinical* layer and US
+data:
 
-- 85 disease modules as plain JSON (`src/main/resources/modules/`),
-  each a probabilistic state machine (Generic Module Framework:
+- Disease modules as plain JSON (`src/main/resources/modules/`), each
+  a probabilistic state machine (Generic Module Framework:
   Initial/Delay/Simple/ConditionOnset/MedicationOrder/Encounter...
   with direct/distributed/conditional/complex transitions guarded on
-  age/sex/race/attributes). Verified: asthma module = 52 states.
+  age/sex/race/attributes).
 - Modules embed real codes inline: SNOMED (conditions), LOINC
-  (labs), RxNorm (meds). Apache-licensed → redistributable.
+  (labs), RxNorm (meds) — redistributable under Synthea's license.
 - US-centric throughout: census demographics, geography, SSNs, US
   units. This is our US data source.
 - Plan: port the GMF *interpreter* (documented spec on their wiki),
@@ -43,10 +46,8 @@ mined for the *generative clinical* layer and US data:
   A Synthea module is a pathway generator; a simhospital pathway is
   one sample from it.
 
-**HL7v2 in Clojure:** org.clojars.cmiles74/clojure-hl7-parser 3.5.1
-(verified from the project's project.clj). Group is
-`org.clojars.cmiles74`, artifact `clojure-hl7-parser` — NOT the
-GitHub repo name.
+**HL7v2 in Clojure:** coordinates and the group-name gotcha — see
+facts-register F1.
 
 ## Terminology decisions
 
@@ -54,8 +55,9 @@ GitHub repo name.
   natively (HL7v2 CWE, FHIR CodeableConcept). Codes are state, not
   format (ADR-0002).
 - Systems: SNOMED CT, LOINC, RxNorm, ICD-10-CM, CVX. **Never CPT**
-  (AMA-licensed). SNOMED→ICD-10-CM for DG1/billing via the NLM map,
-  or carry both codes where Synthea provides them.
+  (AMA-licensed) — licensing basis: see facts-register F4.
+  SNOMED→ICD-10-CM for DG1/billing via the NLM map, or carry both
+  codes where Synthea provides them.
 
 ## Sibling-repo integration (ehr-testing-tools)
 

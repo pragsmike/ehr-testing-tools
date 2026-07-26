@@ -1,0 +1,137 @@
+;; ehr-testing-sim's resource theory -- the WANT (the ultimately
+;; envisioned system; our best current guess, expected to change).
+;; docs/sim-theory.md is the prose companion and defines the
+;; now/next/want reading. Notation is ehr-testing-tools'
+;; docs/notation.md (equation form, five stage kinds, catalytic
+;; targets, unions, external stages); this file keeps that repo's
+;; pipeline.edn schema shape exactly, so its equation->diagram
+;; machinery consumes this file unchanged.
+;;
+;; now/next/want convention: the WANT is this whole file. The NOW is
+;; derivable as the :status :built subset. The NEXT is the single
+;; stage marked ";; NEXT" below. No extra schema keys are invented
+;; for this -- the convention lives in comments and the companion
+;; prose, keeping the file loadable by tools' Pipeline Malli as-is.
+{:schema-version 1
+ :stages
+ [{:id :persona
+   :label "Persona"
+   :kind :transform
+   :status :planned
+   :inputs ["sim-config"]
+   :outputs ["persona"]
+   :catalytic ["demographics-tables"]
+   :laws ["samples only from the run's single seeded RNG, in fixed order (global determinism law, docs/sim-theory.md)"
+          "US-centric by data, not by code: nationality lives entirely in demographics-tables (catalytic target 3), never in stage logic"]}
+
+  {:id :trajectory
+   :label "RunModules"
+   :kind :transform
+   :status :planned
+   :inputs ["persona"]
+   :outputs ["clinical-trajectory"]
+   :catalytic ["gmf-module-set" "gmf-interpreter"]
+   :laws ["code passthrough: every coded concept ({:system :code :display}) in a trajectory event is carried verbatim from its source module -- the interpreter never invents or translates codes"
+          "glass-box traceability: every trajectory event cites the module id and state name that produced it, so any output event is auditable back to inspectable module JSON (validation cross-cutting argument, docs/problem-statement.md)"]
+   :contract "gmf-module-set's catalytic target (1: artifacts.lock vs 3: vendored-and-hashed) is an OPEN decision, trigger recorded in ADR-0003 -- the equation deliberately names the resource without prejudging its target"}
+
+  {:id :compile
+   :label "CompileTrajectory"
+   :kind :transform
+   :status :planned
+   :inputs ["clinical-trajectory"]
+   :outputs ["compiled-pathway"]
+   :laws ["clinical-content-preserving: every clinical trajectory event maps to at least one IR step; none is dropped, reordered against clinical causality, or invented"
+          "appends provenance: each compiled step cites the trajectory event it realizes"]
+   :contract "the novel layer -- neither mined source has this stage (Simulated Hospital has no trajectory generation; Synthea has no operational compilation), so its laws carry fresh validation burden rather than inherited provenance (docs/problem-statement.md, Cross-Cutting Arguments)"}
+
+  {:id :churn
+   :label "InjectChurn"
+   :kind :transform
+   :status :planned
+   :inputs ["pathway-ir" "churn-profile"]
+   :outputs ["operational-pathway"]
+   :laws ["IR endomorphism: operational-pathway is itself valid pathway IR -- churn injection is IR -> IR, so the engine needs no knowledge that churn exists"
+          "clinical-steps invariant: only inserts operational-noise steps (transfers, bed swaps, cancels, *-in-error, merges); never removes, reorders, or alters clinical steps"
+          "all stochastic choices draw from the run's single seeded RNG"]}
+
+  {:id :execute
+   :label "Execute"
+   :kind :transform
+   :status :built
+   :inputs ["operational-pathway"]
+   :outputs ["ground-truth-log" "state-history"]
+   :laws ["determinism: single seeded RNG, totally ordered event queue ([t seq-no] tiebreak) => byte-identical serialized output for identical inputs+seed -- property-tested (engine-test/determinism-holds-for-all-seeds, 100 trials green 2026-07-26)"
+          "pure fold: (state, due-event) -> (state', emitted-events); full per-patient state history is retained, which is what makes state-based emitters renderings rather than redesigns (ADR-0002)"]
+   :contract "v0 scope: executes the walking-skeleton step set (:admission :delay :discharge) for staggered multi-patient arrivals; the WANT is the full Simulated-Hospital-derived step vocabulary, landed step by step under the co-landing law (see :check)"}
+
+  {:id :check
+   :label "Check"
+   :kind :judge
+   :status :built
+   :inputs ["ground-truth-log"]
+   :outputs ["pass" "rejected"]
+   :catalytic ["invariant-catalog"]
+   :laws ["never modifies the log it judges (judge kind's own floor)"
+          "co-landing: every step type the engine executes has invariants in the catalog, added in the same change (AGENTS.md convention) -- a coupling law between :execute and this stage, held by discipline and reviewable by diffing the step set against the catalog"
+          "produces no :indeterminate in v0 -- stated explicitly, same as tools' own Check, since :indeterminate is otherwise part of the judge kind's floor"]
+   :contract "the catalog doubles as validation claim #3's engine and the regression suite (docs/problem-statement.md); property-tested over randomized runs (engine-test/every-run-satisfies-invariant-catalog, 200 trials green 2026-07-26)"}
+
+  ;; NEXT -- the emitter is the next planned step: a thin vertical
+  ;; slice pathway -> engine -> log -> wire format, unlocking
+  ;; validation claim #1 (independent-parser conformance).
+  {:id :emit-hl7
+   :label "EmitHL7"
+   :kind :transform
+   :status :planned
+   :inputs ["ground-truth-log"]
+   :outputs ["hl7v2-stream"]
+   :catalytic ["hl7-parser-dep" "message-type-registry" "snomed-icd10-map"]
+   :laws ["bidirectional derivability: every emitted message is derivable from the log, and every message is traceable back to the log event that produced it (problem-statement Guarantees) -- the property that makes the corpus a test instrument rather than mere traffic"
+          "native code rendering: concept triplets render as coded fields (CWE etc.) in their own system; the ONE sanctioned translation is SNOMED->ICD-10-CM for billing segments (DG1), via the pinned NLM map (catalytic target 1), or code pairs carried from the module where provided"]}
+
+  {:id :emit-state
+   :label "EmitState"
+   :kind :transform
+   :status :planned
+   :inputs ["state-history"]
+   :outputs ["state-document"]
+   :laws ["snapshot-at-instant: a state-document is a pure function of state-history at a queried simulated instant -- no access to the log, the engine, or the RNG"
+          "format dispatch: \"state-document\" is FHIR resources or a CDA document, resolved at call time -- one equation for both formats, the same deliberate collapsing tools' Gate documents for judge.fhir/judge.v2 rather than duplicating the equation per format"]}
+
+  {:id :package
+   :label "Package"
+   :kind :transform
+   :status :planned
+   :inputs ["hl7v2-stream" "ground-truth-log"]
+   :outputs ["sim-corpus" "run-manifest"]
+   :laws ["appends provenance: the manifest records every pinned input (seed, engine params, config hash, environment) in the tools-ingestible ManifestV1_1 mirror shape (ADR-0001 clause 5; ehr-testing-sim.manifest, :built ahead of its stage)"]
+   :contract "manifest construction is :built (manifest-test green); packaging around it is :planned -- a stage may be further along than its equation's status when a component shipped early"}
+
+  {:id :calibrate
+   :label "Calibrate"
+   :kind :feedback
+   :status :planned
+   :inputs ["sim-corpus" "feed-statistics" "churn-profile"]
+   :outputs ["churn-profile"]
+   :laws ["round bound: calibration iterates at most a declared N rounds toward the site's observed feed statistics (feedback kind's own floor -- no unbounded loops)"
+          "touches only churn-profile parameters; clinical module content is never calibrated against a site feed (that would launder real-feed information into clinical content -- see the no-PHI global law)"]
+   :contract "this is validation claim #5's third arm made mechanical: 'match your hospital' instead of 'trust our defaults' (docs/problem-statement.md)"}
+
+  ;; External stages: dashed boxes, no :kind/:status/:laws -- named
+  ;; slots this repo makes no claims about (docs/notation.md).
+  {:id :sut :label "SystemUnderTest" :external? true
+   :inputs ["hl7v2-stream"] :outputs ["sut-behavior"]}
+
+  {:id :tools-intake :label "ToolsCorpusIntake" :external? true
+   :inputs ["sim-corpus"] :outputs ["catalog-entry"]}]
+
+ ;; Union resources (docs/notation.md): pathway-ir is THE union of
+ ;; ADR-0002 clause 1, stated algebraically -- hand-authored scripts
+ ;; and compiled trajectories are indistinguishable to every stage
+ ;; downstream of this merge. authored-pathway enters the diagram as
+ ;; an author-supplied input resource with no producing stage inside
+ ;; this repo, exactly as tools' foreign-file does.
+ :resources
+ [{:resource "pathway-ir"
+   :union-of ["compiled-pathway" "authored-pathway"]}]}

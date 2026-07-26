@@ -26,7 +26,22 @@ and outranks your own inference about why something is organized a
 certain way. Never silently revert an Accepted ADR — supersede it with
 a new numbered record. Durable design lineage (what was mined from
 Simulated Hospital and Synthea, and why) lives in
-`.agents/memory/architecture.md`.
+`.agents/memory/architecture.md`; externally verifiable facts (license,
+version, capability claims) live in `notes/facts-register.md`.
+`AUTHORS-GUIDE.md` covers the full authoring discipline — read it
+before your first commit.
+
+## Before your first git operation: read this
+
+**All git operations — especially `git commit` — must be run from WSL,
+never from native Windows** (see `AUTHORS-GUIDE.md` section 1),
+enforced by `.githooks/pre-commit` once `git config core.hooksPath
+.githooks` has been run for a given clone — that config is per-clone
+and does not travel with the repo:
+
+```sh
+git config core.hooksPath .githooks
+```
 
 ## Quick start
 

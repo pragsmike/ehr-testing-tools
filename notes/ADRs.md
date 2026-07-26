@@ -82,3 +82,76 @@ state history rather than a redesign; the validation program's
 internal-consistency claims are cheaply machine-checkable at scale;
 churn injection (operational noise) becomes an IR-to-IR transform,
 cleanly separated from clinical trajectory generation.
+
+---
+
+## ADR-0003 — Adopt ehr-testing-tools' authoring conventions
+
+**Status:** Accepted (2026-07-26)
+
+**Context.** This repo started as a walking skeleton with no authoring
+discipline of its own, while its sibling ehr-testing-tools has already
+converged on a working set of conventions for exactly this
+situation — a solo author running Windows, doing git work from WSL,
+and depending on chat sessions that can't read the filesystem
+directly. Reinventing that discipline from scratch would either
+duplicate the sibling's reasoning or silently diverge from it for no
+reason. ADR-0001 already establishes that copying conventions and text
+from tools is fine — only code and data dependencies are barred.
+
+**Decision.**
+1. **Git hooks + WSL rule:** `.githooks/pre-commit` and
+   `.githooks/pre-push` are adopted from tools (the pre-push hook
+   trimmed to this repo's actual Makefile targets — `make test` only;
+   tools' `lint-pipeline`/`lint-deps`/`quickstart-fresh` targets don't
+   exist here). Activation (`git config core.hooksPath .githooks`) is
+   documented in `AGENTS.md`, mirroring tools' placement.
+2. **Pack ceremony, with the active-pack-push inversion carried
+   forward:** the pack ritual (`make pack`/`pack-skills`/`pack-push`)
+   is adopted, but unlike tools — where `pack-push` went dormant once
+   the repo and the `pragsmike/packs` transport both went public —
+   `pack-push` stays the **active** session-end ceremony here, because
+   this repo has no GitHub remote yet and the packs transport is
+   currently the only way a chat session can read it. This mirrors the
+   arrangement tools itself used before its own ADR-0008. **Trigger for
+   revisiting:** when this repo gets a public GitHub remote, demote
+   `pack-push` to dormant the way tools did, and record that demotion
+   as a new ADR.
+3. **ADR rules, unchanged:** never silently revert an Accepted ADR;
+   supersede with a new numbered record; ADRs outrank inference about
+   why the project is organized a certain way. Already this repo's
+   practice (this file's own header); now stated explicitly in
+   `AUTHORS-GUIDE.md` too.
+4. **Facts-register discipline, adopted:** `notes/facts-register.md`
+   holds F-rows only (no C-table) for load-bearing, externally
+   verifiable claims (license, version, count, capability), each with
+   claim / where-asserted / evidence / last-verified date, following
+   the same assert → register → date discipline as tools. Seeded from
+   the externally verifiable claims previously embedded in
+   `.agents/memory/architecture.md`, which now points at the register
+   instead of restating them.
+5. **Handoff convention, adopted:** mid-flight multi-session work ends
+   with a handoff document in `.agents/handoffs/`; tools' `handoff`
+   skill may be used to generate it.
+6. **Skills are NOT copied per-repo.** `.agents/skills/` stays empty.
+   Deliberation and utility skills (`handoff` and others) remain
+   shared at the user level, per tools' own shared-skill-layout
+   convention — copying them into this repo would create exactly the
+   kind of drift-prone duplication the shared layout exists to avoid.
+
+**Trigger conditions for later adoptions (agreed now, deferred until
+each condition is met):**
+- **CI** — adopt once this repo has a public GitHub remote to run it
+  against.
+- **Pinned-artifact or vendoring decision** (tools' `artifacts.lock.edn`
+  / vendor-corpus pattern) — adopt once Synthea modules (or another
+  large upstream artifact) actually land in this repo.
+- **`.agents/plans/` and pattern-nursery-style working files** — adopt
+  at first real multi-session use, not speculatively.
+
+**Consequences.** This repo's authoring discipline stays traceable to
+a working precedent instead of improvised ad hoc; the one deliberate
+divergence (active vs. dormant `pack-push`) is recorded with its own
+trigger condition instead of left to be rediscovered later; skills
+stay out of per-repo drift by design; facts about upstream sources
+are checkable in one place instead of scattered across prose.

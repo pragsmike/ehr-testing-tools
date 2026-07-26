@@ -1,0 +1,26 @@
+#!/bin/sh
+# Enforce: git operations on this repo happen from WSL, not native Windows.
+#
+# See AUTHORS-GUIDE.md, "Git operations: WSL only", for the rationale --
+# in short, mixed-platform commits are how other repos ended up with
+# line-ending wars, and .gitattributes alone is defense in depth, not a
+# substitute for the rule. This hook is only active once a clone has run
+# `git config core.hooksPath .githooks` (it points git at this tracked
+# directory instead of the untracked, per-clone .git/hooks/ — see
+# AGENTS.md), so it does not fire for anyone who hasn't opted in yet.
+
+is_wsl=0
+if [ -n "$WSL_DISTRO_NAME" ]; then
+  is_wsl=1
+elif [ -r /proc/version ] && grep -qi microsoft /proc/version 2>/dev/null; then
+  is_wsl=1
+fi
+
+if [ "$is_wsl" -ne 1 ]; then
+  echo "ERROR: commits to this repo must be made from WSL, not $(uname -s 2>/dev/null || echo 'this shell')." >&2
+  echo "  See AUTHORS-GUIDE.md, 'Git operations: WSL only', for why." >&2
+  echo "  Re-run this commit from a WSL shell instead." >&2
+  exit 1
+fi
+
+exit 0
