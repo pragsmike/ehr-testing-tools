@@ -56,6 +56,16 @@
    [:id :keyword]
    [:version :string]
    [:format :keyword]
+   ;; :doc (DOC-3) -- one sentence in the user's register: what this
+   ;; operator does to the input, not how it does it. Optional, so an
+   ;; entry registered without one is still valid; the seed catalog
+   ;; below carries one on every entry. This is what docs/operators.md
+   ;; renders per operator, alongside the :contract's own target
+   ;; sentence -- the two are deliberately different registers, not
+   ;; duplicates: :contract/:target names the base-spec constraint the
+   ;; mutation violates (a conformance claim, cited to the spec),
+   ;; :doc names the edit itself (what changed in the file).
+   [:doc {:optional true} [:string {:min 1}]]
    [:contract Contract]
    [:locator-required? :boolean]
    [:fn [:fn fn?]]])
@@ -103,6 +113,7 @@
 
 (register!
  {:id :remove-required-element :version "1" :format :fhir
+  :doc "Deletes whatever the locator names, leaving the rest of the resource as it was."
   :contract {:type :violates
              :target "removes the element at the locator path, violating that element's minimum-cardinality constraint (Element.min >= 1 per the base FHIR StructureDefinition for whichever element the locator names)"}
   :locator-required? true
@@ -114,6 +125,7 @@
 
 (register!
  {:id :duplicate-element :version "1" :format :fhir
+  :doc "Replaces the value at the locator with a two-element JSON array holding that same value twice."
   :contract {:type :violates
              :target "wraps the value at the locator into a two-element JSON array, violating the FHIR JSON representation rule that singular (max-cardinality-1) elements must be represented as a single value, never an array"}
   :locator-required? true
@@ -127,6 +139,7 @@
 
 (register!
  {:id :invalid-code-value :version "1" :format :fhir
+  :doc "Replaces the value at the locator with a code string no value set contains."
   :contract {:type :violates
              :target "replaces the value at the locator with a string outside any plausible bound ValueSet, violating the FHIR requirement that a code-type element's value be drawn from its bound ValueSet (e.g. Patient.gender is bound to http://hl7.org/fhir/ValueSet/administrative-gender)"}
   :locator-required? true
@@ -138,6 +151,7 @@
 
 (register!
  {:id :malformed-date :version "1" :format :fhir
+  :doc "Replaces the value at the locator with a date-shaped string that is not a real date (\"2026-13-45\")."
   :contract {:type :violates
              :target "replaces the value at the locator with a string failing the FHIR date/dateTime/instant regex (base FHIR spec's own YYYY[-MM[-DD]] / full dateTime pattern), violating that element's required lexical format"}
   :locator-required? true
@@ -157,6 +171,7 @@
 
 (register!
  {:id :wrong-type-value :version "1" :format :fhir
+  :doc "Replaces the value at the locator with one of a different JSON type -- a number where a string was, a string where a boolean was."
   :contract {:type :violates
              :target "replaces the value at the locator with a value of a structurally different JSON type than its FHIR data type requires (e.g. a string where a boolean or number is required), violating the base FHIR type constraint for whichever element the locator names"}
   :locator-required? true
@@ -179,6 +194,7 @@
 
 (register!
  {:id :blank-required-field :version "1" :format :v2
+  :doc "Empties the field the locator names, leaving its position in the segment intact."
   :contract {:type :violates
              :target "blanks the field at the locator, violating message-structure resolution's requirement that certain fields (e.g. MSH-9, the message type -- HAPI needs it to select which structure to parse the message into) be present with a value"}
   :locator-required? true
@@ -200,6 +216,7 @@
 
 (register!
  {:id :corrupt-encoding-characters :version "1" :format :v2
+  :doc "Replaces the field the locator names -- MSH-2, where a message declares its own delimiters -- with a three-character value, one short of the four HL7 v2 requires."
   :contract {:type :violates
              :target "replaces the field at the locator (MSH-2, the encoding characters) with a malformed 3-character value missing the required escape character, violating HL7 v2's own encoding-characters well-formedness rule (MSH-2 must name exactly four characters: component, repetition, escape, subcomponent separators)"}
   :locator-required? true
@@ -216,6 +233,7 @@
 
 (register!
  {:id :malformed-datetime-value :version "1" :format :v2
+  :doc "Replaces the field the locator names with a string that is not a valid HL7 v2 timestamp (\"notadate\")."
   :contract {:type :violates
              :target "replaces the field at the locator with a string failing HL7 v2's DTM lexical format (YYYY[MM[DD[HHMM[SS[.S[S[S[S]]]]]]]][+/-ZZZZ]), violating that field's required primitive data type -- HAPI's defaultValidation context wires primitive-type checking into parsing itself, so this is a parse-time failure, not a post-parse one"}
   :locator-required? true
@@ -229,6 +247,7 @@
 
 (register!
  {:id :truncate-segment-fields :version "1" :format :v2
+  :doc "Cuts the segment short at the locator's field, dropping that field and every field after it."
   :contract {:type :violates
              :target "truncates the segment named by the locator to end just before the locator's own field, dropping that field and every field after it -- violating message-structure resolution's requirement that certain fields exist positionally at all (distinct from :blank-required-field, which leaves the field's own slot present but empty; here the slot itself is gone)"}
   :locator-required? true
@@ -243,6 +262,7 @@
 
 (register!
  {:id :corrupt-segment-name :version "1" :format :v2
+  :doc "Changes the last character of the segment name the locator points at, so MSH becomes MSX."
   :contract {:type :violates
              :target "corrupts the last character of the segment name at the locator, violating HL7 v2's requirement that a message begin with a recognized MSH segment (verified only against MSH -- corrupting a non-header segment's own name, e.g. PID, was probed and found NOT to convict at this tier: HAPI's defaultValidation context tolerates an unrecognized segment identifier elsewhere in the message)"}
   :locator-required? true

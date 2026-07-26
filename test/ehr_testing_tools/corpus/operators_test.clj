@@ -130,6 +130,25 @@
       (is (= :v2 (:format entry)))
       (is (true? (:locator-required? entry))))))
 
+;; ---- :doc (DOC-3): every seed entry carries the one-sentence
+;; user-register description docs/operators.md renders. Asserted over
+;; the two seed-id sets rather than over `entries`, because this
+;; suite's own registry-mechanics tests register throwaway entries
+;; (:test-op, :e1) into the same shared registry -- those legitimately
+;; have no :doc, since the key is optional. ----
+
+(deftest every-seed-operator-carries-a-doc-sentence-test
+  (doseq [id (concat (sort seed-ids) (sort v2-seed-ids))]
+    (let [doc (:doc (operators/lookup id "1"))]
+      (is (string? (not-empty doc)) (str id " must carry a non-empty :doc"))
+      (is (re-find #"\.$" (or doc "")) (str id " :doc must be a sentence, ending in a period")))))
+
+(deftest doc-is-optional-in-the-schema-test
+  (let [r (operators/register! {:id :no-doc-op :version "1" :format :fhir
+                                 :contract {:type :violates :target "t"}
+                                 :locator-required? true :fn (fn [d _p] d)})]
+    (is (result/ok? r) "an entry without :doc is still a valid operator")))
+
 ;; MSH-1=field sep (no split slot), MSH-2="^~\&", MSH-9=message type at
 ;; split-index 8; PID-7=birth date at split-index 7 (see corpus.er7's
 ;; own field-index docstring for the MSH-vs-other-segment convention).
