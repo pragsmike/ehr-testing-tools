@@ -9,6 +9,8 @@ flowchart LR
     hl7_parser_dep(["hl7-parser-dep"])
     invariant_catalog(["invariant-catalog"])
     message_type_registry(["message-type-registry"])
+    order_profiles(["order-profiles"])
+    provider_pool(["provider-pool"])
     sim_config(["sim-config"])
     snomed_icd10_map(["snomed-icd10-map"])
 
@@ -46,6 +48,8 @@ flowchart LR
 
     %% Arrow 31: Execute
     InjectChurn -- operational-pathway --> Execute
+    provider_pool -. provider-pool .-> Execute
+    order_profiles -. order-profiles .-> Execute
 
     %% Arrow 33: Check
     Execute -- ground-truth-log --> Check
@@ -106,5 +110,7 @@ flowchart LR
     style hl7_parser_dep fill:#f5f5f5,stroke:#999,color:#333
     style invariant_catalog fill:#f5f5f5,stroke:#999,color:#333
     style message_type_registry fill:#f5f5f5,stroke:#999,color:#333
+    style order_profiles fill:#f5f5f5,stroke:#999,color:#333
+    style provider_pool fill:#f5f5f5,stroke:#999,color:#333
     style sim_config fill:#f5f5f5,stroke:#999,color:#333
     style snomed_icd10_map fill:#f5f5f5,stroke:#999,color:#333

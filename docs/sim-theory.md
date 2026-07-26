@@ -71,6 +71,24 @@ Three structural facts the diagram makes visible at a glance:
    tools does with a corpus — only that a named resource crosses at a
    named point, in the mirrored manifest shape.
 
+## Three catalytics added for the operational resource models
+
+[`docs/operational-models.md`](operational-models.md) names three
+resources this composite was previously silent on, and the EDN now
+wires all three as catalytic inputs at the stage where each binds:
+`order-profiles` and `provider-pool` on `Execute` (target 3, hashed
+US-units config each — order/result step types and attending
+assignment both land under Execute's existing `:built` contract as
+the engine's step vocabulary grows, the same co-landing path
+`InjectChurn`'s churn family and `EmitHL7`'s message types already
+follow), and `payer-pool`, recorded as a comment at `Persona` rather
+than a real wire, since Persona itself is still `:planned` and payer
+sampling runs at engine patient-init time until it lands. Adding
+`order-profiles` repairs the plan's biggest capture gap to date:
+Simulated Hospital's order profiles and the ORM/ORU result cycle were
+discussed from this project's first session but, until this pass,
+named in no planning artifact.
+
 ## Resource type bindings
 
 Per the notation, every resource name binds to a type; an equation
@@ -105,6 +123,9 @@ targets; unresolved is a gap, not an oversight:
 | `hl7-parser-dep` | 2 — deps.edn | `org.clojars.cmiles74/clojure-hl7-parser 3.5.1` (facts-register) |
 | `message-type-registry` | 4 — in-repo code registry | event→message-type mapping (ADT^A01 …), the emitter's own catalog |
 | `snomed-icd10-map` | 1 — artifacts.lock | the pinned NLM map; the one sanctioned code translation in the theory |
+| `order-profiles` | 3 — hashed repo-authored config | US-units order/result profiles, binds at `Execute` (`docs/operational-models.md`) |
+| `provider-pool` | 3 — hashed repo-authored config | synthetic provider identities, binds at `Execute` (`docs/operational-models.md`) |
+| `payer-pool` | 3 — hashed repo-authored config | synthetic payer pool; binds at `Persona` once it lands — comment only today, no wire yet (`docs/operational-models.md`) |
 
 ## Global laws
 

@@ -324,3 +324,101 @@ retiring anything; `AUTHORS-GUIDE.md` section 2 is updated to name the
 three-step order. The demotion trigger from ADR-0003 remains open and
 unmet — a future session that flips this repo's visibility to public
 records that as its own ADR, exactly as ADR-0003 already anticipated.
+
+---
+
+## ADR-0007 — Three-class operational resource taxonomy; occupancy as a derived projection; encounter-horizon scope; payers as an attribute; synthetic NPIs are Luhn-valid
+
+**Status:** Proposed (2026-07-26) — pending author review, per this
+session's brief; see [`docs/operational-models.md`](../docs/operational-models.md)
+for the full design this ADR records the decisions from.
+
+**Context.** The theory (`docs/sim-theory.edn`) named facility,
+provider, and payer resources only implicitly — as config a stage
+would eventually need — with no design for how each behaves once
+patients start occupying, using, or carrying them. Three questions
+needed answers before Milestone M1 (`.agents/plans/roadmap.md`) could
+be specified: what kind of thing is a bed, versus a provider, versus a
+payer; where does the occupancy board live relative to patient state;
+and what identifier scheme do synthetic providers carry. A fourth,
+narrower question — how far into a patient's life this simulator's
+scope extends — surfaced while writing the roadmap's exclusions and is
+recorded here alongside the resource-model decisions since both are
+scope-shaping calls a reviewer should ratify together.
+
+**Decision.**
+
+1. **Three-class resource taxonomy**, naming a spectrum of how much
+   the engine must track a resource, not just today's three examples:
+   **exclusive** resources (occupancy-tracked, capacity-bounded,
+   invariant-bearing — beds), **shared** resources (assigned but not
+   consumed, no exclusivity invariant — providers), and **attribute
+   pools** (sampled once at patient creation, carried as state, never
+   tracked as a resource at all — payers). Every future resource this
+   simulator models is expected to be one of these three; getting a
+   new resource's class right up front is meant to prevent both
+   over-building (an occupancy board for something nobody contends
+   over) and under-building (a missing double-booking invariant).
+2. **Occupancy — and derived projections generally — as the house
+   pattern:** the patient's own state is the single authoritative
+   record of its location; the occupancy board is a derived index,
+   proven consistent by a property test (board ≡ fold over patient
+   locations), never a second place facts get written first. This is
+   the same shape as `sim-theory.md`'s open question #3 (whether
+   `state-history` is primitive or derivable from
+   `ground-truth-log`) — one authoritative record, everything else a
+   projection with a proven consistency law — applied now to the
+   nearer-term occupancy board rather than left as only a future
+   question about the log.
+3. **Encounter-horizon scope boundary:** this simulator generates
+   hospital-operations traffic across a single encounter — admission
+   through discharge and its immediate churn — not a patient's
+   lifelong longitudinal history. Recorded as constraint 10 in
+   `docs/problem-statement.md` and as a named exclusion in
+   `.agents/plans/roadmap.md`.
+4. **Payers are an attribute pool, not a tracked resource:** sampled
+   once (age-linked where trivial — Medicare weighted at 65+, the
+   distribution idea mined from Synthea per
+   `docs/third-party-sources.md` tier 1), carried as patient state,
+   rendered in IN1 once that segment lands (Milestone M4). No board,
+   no assignment event, no capacity — the point of naming payers as
+   the attribute-pool instance of the taxonomy rather than inventing
+   a fourth category for them.
+5. **Synthetic provider NPIs are Luhn-valid, not obviously fake.**
+   Generated as structurally valid 10-digit NPIs (correct Luhn check
+   digit over the `80840` health-industry-issuer prefix) from the
+   run's seed, rather than an obviously-fake sentinel format.
+   Coincidence with a real NPPES-assigned NPI is possible and
+   recorded as harmless: NPPES is itself public data, and an NPI
+   identifies a provider, not a patient, so no PHI is implicated.
+
+**Rejected.**
+
+- **A fourth resource class**, or per-resource bespoke design with no
+  shared taxonomy — rejected because it was the taxonomy itself, not
+  any one model, that was missing; three classes account for beds,
+  providers, and payers without strain, and forcing every future
+  resource through the same three-way question (tracked-exclusive?
+  tracked-shared? untracked-attribute?) is more useful than solving
+  each resource's design from scratch.
+- **Occupancy as a second authoritative structure**, updated directly
+  alongside patient state — rejected because it reintroduces exactly
+  the two-sources-of-truth failure mode `sim-theory.md`'s open
+  question #3 already flags as a risk for `state-history`; keeping
+  the pattern singular (one authoritative record) now avoids arguing
+  the same case twice.
+- **Obviously-fake NPI format** (option b in
+  `docs/operational-models.md`) — rejected because realism against
+  systems that validate NPI check digits is a stated product goal,
+  and the coincidence risk with a real assignment is both low and,
+  on inspection, harmless.
+
+**Consequences.** `docs/operational-models.md` becomes Milestone M1's
+spec; a future resource proposal (equipment, order slots, transport)
+is expected to state its class under this taxonomy before design
+work starts. The occupancy consistency law is a property test M1 must
+ship, not an optional nicety. `docs/problem-statement.md` gains
+constraint 10 (encounter horizon) as a one-sentence addition, per this
+session's own scope-minimality rule for touching that document. No
+code changes accompany this ADR — it is Proposed pending the author's
+review of `docs/operational-models.md`, per this session's brief.

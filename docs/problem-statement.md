@@ -40,6 +40,7 @@ The gap: **there is no way to turn a small set of parameters into an unbounded s
 7. **Reproducibility.** Identical parameters and seed produce identical output; any interesting stream can be pinned and replayed.
 8. **Format-agnostic core.** The simulation models patient state and events independently of any wire format; concrete formats are renderings. Event-based output (HL7v2) is required first; state-based outputs (FHIR, CDA) must be addable without altering the core.
 9. **Permissive licensing.** The library and its bundled content must be redistributable under open-source terms.
+10. **Encounter horizon.** The simulation's scope is hospital-operations traffic across a single encounter — admission through discharge and its immediate churn — not a patient's lifelong longitudinal history, which upstream generative tools like Synthea already serve.
 
 ## Black-Box Description
 
