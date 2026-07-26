@@ -17,6 +17,19 @@
 # either the README or the script). Same non-blocking contract as
 # `make integration`: this job's own failure is the enforcement.
 #
+# ADR-0013 (2026-07-26) added four sim_*_test.clj entry points under
+# test-integration/ -- ehr-testing-tools' first cross-repo consumer loop
+# against the private ehr-testing-sim repo, consumed only as a
+# `../ehr-testing-sim` sibling-checkout subprocess, never a classpath or
+# deps.edn dependency (ADR-0013 decision 1). This runner has no sibling
+# checkout, so every one of those four tests takes its own clean-skip
+# path (sim-harness/available? false) every night -- by design, not an
+# oversight: exercising them for real requires a step this workflow does
+# not have yet (cloning a private sibling repo with credentials this
+# runner isn't given). No workflow change was made to add one; a future
+# session that wants nightly coverage of the real loop adds that step
+# deliberately, here.
+#
 # Cold-cache fetch, what and from where: three artifacts, all GitHub
 # release assets, all license-verified in notes/facts-register.md --
 # synthea 4.0.0 (Apache-2.0, F2), temurin-jdk 17.0.19+10 (GPLv2 +

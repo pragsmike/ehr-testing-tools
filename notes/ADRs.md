@@ -747,3 +747,135 @@ Those are mount-time design choices and belong to the session that does
 the mount. No `"sim"` arm exists in `dispatch` today, and this record
 does not add one.
 **Status.** Accepted (author-directed), 2026-07-26.
+
+---
+## ADR-0013 — The cross-repo consumer loop: sim consumed by subprocess, findings not failures, baseline-delta drift detection
+**Context.** `ehr-testing-sim`'s own ADR-0001 (clause 5) assigned this
+repo's integration tree the binding manifest contract test its own
+mirror (`ehr-testing-sim.manifest/MirroredManifest`) cannot provide for
+itself — a mirror only detects drift from what it once copied, never
+that the copy now disagrees with the authoritative source
+(`corpus/manifest.clj`'s `ManifestV1_1`). That debt, and sim's own
+problem-statement validation claim #6 (fitness as a test instrument —
+`ehr gate` judging sim-generated traffic), had never been executed: no
+test in this repo had ever invoked sim, and no sim-generated corpus had
+ever been gated. This session builds that first loop. ADR-0012 already
+recorded the interface commitments a future `ehr sim` mount would rest
+on and explicitly deferred the mount itself until the classpath question
+resolves (sim going public, or a private-dependency mechanism); this
+record does not revisit that deferral, only the narrower, already-open
+question of how this repo's *tests* consume sim today, without a mount.
+
+**Decision.**
+
+1. **Subprocess, never a classpath or `deps.edn` dependency.** Every
+   test in this loop invokes sim's own CLI (`clojure -M:cli run ...`) as
+   a subprocess in the sibling checkout (`../ehr-testing-sim`), through
+   `ehr-testing-tools.invocation/run!` — the same injectable wrapper
+   `judge.fhir` and `corpus.generate` already use for every other
+   pinned-engine subprocess (pattern nursery #2); no second subprocess
+   convention was invented for sim. `ehr-testing-tools.sim-harness`
+   (`test-integration/`) is the seam: it shells out, captures stdout,
+   and parses sim's own printed EDN `Result` map — nothing about sim's
+   internals is assumed beyond that public, already-stable CLI contract
+   (`ehr-testing-sim.cli`'s own `help-group`/`dispatch-action`, ADR-0001
+   there). This is deliberate and load-bearing, not a placeholder for a
+   future mount: sim is a private repo today and this repo is public
+   (ADR-0008); a git or Maven dependency from a public repo onto a
+   private one breaks public CI outright (no credentials to resolve it),
+   and even once sim is public, a classpath dependency would invert
+   ADR-0012's own stated arrow (tools depending on sim's *code*, not
+   merely its CLI contract) and tangle the two repos' version lockstep
+   for a relationship this loop doesn't need — everything this session
+   does only ever needs sim's stdout, never its namespaces.
+2. **Every sim-dependent test skips cleanly when the sibling is
+   absent.** `sim-harness/available?` guards every test built on it;
+   the guard prints `sim-harness/absence-message` and records a passing,
+   visible `is true` assertion rather than either failing (public CI has
+   no sibling checkout and must stay green) or silently vanishing (a
+   skip with no trace is indistinguishable from a test nobody wrote).
+   This is why the tests live in `test-integration/` and not `test/`:
+   AGENTS.md's hermeticity rule is a path split, and a subprocess
+   dependent on an optional sibling checkout is exactly the shape that
+   split exists for.
+3. **Findings, not failures, is the assertion discipline for what sim
+   actually returns.** Three of this session's four tests found a real
+   mismatch between what this repo's schemas/machinery expect and what
+   sim's Package-less v0 output actually provides, and none of the three
+   was resolved by loosening this repo's own side: the manifest contract
+   test asserts real conformance to `ManifestV1_1` and is currently
+   **red** (sim's manifest omits `:schema-version` entirely) — left red,
+   not patched, because the red *is* the deliverable, exactly the
+   drift-tripwire ADR-0012 anticipated; the gate loop test does not
+   assert all-pass (a corpus that's too well-behaved to reject anything
+   is itself measured, not asserted away) and, measured rather than
+   assumed, currently finds zero rejections at the v2 base-structural
+   tier; the intake trial confirms, by running it rather than by
+   quoting ADR-0012's own correction, that intake's catalog carries none
+   of a dropped-alongside manifest's provenance fields. AUTHORS-GUIDE.md
+   section 7's two-failure-modes discipline (a sound check disagreeing
+   with reality is a finding; a check misencoding its own invariant is
+   an escalation) is the general rule this decision instantiates for the
+   cross-repo case specifically.
+4. **Baseline-delta is how the gate loop's own drift becomes visible
+   over time.** `judge.report/build-report`'s output over a sim corpus
+   (fixed seed, churn on) is committed once
+   (`test-integration/fixtures/reports/sim-v2-gate-baseline.edn`, this
+   repo's existing `--baseline` artifact shape, e.g.
+   `test/fixtures/reports/pre-split-baseline.edn`); the test diffs a
+   fresh run against it (`judge.report/diff-reports`) every time the
+   sibling is present. A changed verdict, an appeared/disappeared
+   finding code, or a different file set is a sim-side change surfacing
+   here as a reported delta, not a silent no-op the next session would
+   have to rediscover from scratch. The baseline is regenerated
+   deliberately when sim's output legitimately changes, never hand-
+   edited, matching `pre-split-baseline.edn`'s own convention.
+5. **The `ehr sim` mount remains DEFERRED (ADR-0012, unchanged).**
+   Nothing in this record reopens that question: this loop proves sim is
+   consumable and reveals concrete drift without needing a mount, which
+   is exactly why a subprocess-only loop was worth building ahead of the
+   classpath question resolving. Recorded here so a future session
+   doesn't re-litigate whether *this* session's tests imply the mount
+   question was implicitly answered — they don't.
+
+**Rejected.** *Waiting for a public sim repo (or a private-dependency
+mechanism) before writing any cross-repo test* — this is precisely the
+"none of these properties is individually precious... the breakage
+would surface in the other repo" risk ADR-0012 named for the mount
+seam; the manifest contract test existing and passing (or, as it turns
+out, failing informatively) now is strictly more valuable than a
+mount-shaped test that only starts existing once the mount does.
+*Loosening `ManifestV1_1` to accept sim's current output* — the schema
+is the authoritative side of a binding contract test by construction
+(ADR-0012 clause 5's own reasoning); bending the authority to match a
+drifted implementation is not a passing test, it is deleting the test's
+reason to exist. *Failing the sibling-absent case instead of skipping*
+— would make every contributor session in this repo without a sim
+checkout red for a reason unrelated to anything they touched, and would
+make public CI (which has no sibling) permanently red on a suite
+ADR-0006/staged-enforcement already treats as reporting-only.
+*Asserting a fixed pass/reject distribution for the gate loop* — the
+whole point of claim #6's first motion is to observe what the gate
+actually says about sim's traffic; hard-coding an expected distribution
+(all-pass, or some-rejected) turns an ecological measurement into a
+tautology the moment sim's message shape changes for an unrelated
+reason.
+
+**Consequence.** `test-integration/ehr_testing_tools/sim_harness.clj`
+(plus its own fake-invocation unit test), `sim_manifest_contract_test.clj`,
+`sim_gate_loop_test.clj` (with its committed baseline fixture under
+`test-integration/fixtures/reports/`), and `sim_intake_test.clj` are new
+entry points on the `test-integration` path — `make integration`/
+`clojure -X:integration` picks them up automatically (no alias or
+Makefile change needed, matching how `contract_pairing_test.clj` and
+`baseline_gating_test.clj` were added before them). `.github/workflows/
+integration.yml`'s nightly run has no sibling checkout, so these four
+tests skip there every night until a future session deliberately adds a
+sim checkout step to that workflow — an explicit, not accidental,
+consequence of decision 2, noted in that workflow's own comments.
+`deps.edn` gains nothing: no `ehr-testing-sim` coordinate, git or
+Maven, anywhere in this repo, per decision 1. The manifest contract
+test's current red state is carried forward as an open, sim-side fix
+(the triage list this session's own report closes with), not silently
+tracked to green by editing `ManifestV1_1`.
+**Status.** Accepted (author-directed), 2026-07-26.
