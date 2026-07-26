@@ -311,6 +311,14 @@ Itemized:
   close-out. The 27 new tests: 16 in `docsgen-test`, 9 in
   `locators-doc-test`, 2 in `operators-test`.
 
+  *[Record check, DOC-4 ride-along 2026-07-26: this line is correct as
+  written. Re-measured at DOC-3's own close commit (`75ddbeb`,
+  extracted with `git archive` into a clean tree, `clojure -X:test`):
+  466 tests / 1391 assertions, 0 failures. LOC-1's 467/1403 is not a
+  competing baseline for the same commit — it appears in `1f43235`'s
+  body as the red-phase count* after *LOC-1's own new tests were
+  added. Nothing corrected; the annotation is the repair.]*
+
 **Report to the author — one code-shaped finding, deliberately not
 acted on:** the FHIR and v2 locator grammars disagree about a trailing
 separator. `PID-3.` is rejected (`v2-path-re` is fully anchored);
@@ -428,6 +436,109 @@ recommended) vs. a separate `docs/cookbook.md` cross-linked per case
 verified by actually running the internally-drivable ones once,
 locally, before they're committed as documentation.
 
+**Done (2026-07-26).** Landed as seven commits, route ratified as the
+`:commands` field (prompt archived at
+`.agents/prompts/archive/2026-07-26-doc4-runnable-strips.md`).
+Itemized:
+
+- **Step 0, evidence.** All 14 cases classified before any data was
+  written — expected 10 strips, 4 stubs. Every expectation held on
+  evidence, including the two flagged as genuinely uncertain:
+  `training-material` (`:illustrative`, expected runnable — it runs)
+  and `audit-regulatory-evidence-trail` (whose own `:get` names a gap
+  — the three evidence artifacts are produced by real commands, and
+  the strip says plainly that assembling them into one package is not
+  a command). Step 0 also enumerated the operators-verb tests as
+  Step 5's blast radius, and mapped README's quickstart lines to the
+  case ids they already covered.
+- **Step 1, schema + renderer.** `UseCase` gains two optional,
+  mutually exclusive keys: `:commands` (a map of `:lines` — the
+  literal lines of one fenced block — plus an optional `:note`) and
+  `:no-commands` (the honest reason there is no strip). A `[:fn]`
+  guard rejects a case carrying both. The `:lines`/`:note` split makes
+  the paste-safety rule structural: markdown prose and cross-links
+  have nowhere to go but `:note`, which renders below the fence.
+  `case->commands-block` renders both arms from case data alone —
+  no invocation is synthesized, and a case without either key still
+  renders a stub derived from `:bring`. The strip sits after
+  **Maturity:** and before the equations, above the formal grounding
+  rather than below the diagram (AUTHORS-GUIDE.md §6). 10 additive
+  tests.
+- **Steps 2–4, the data in three run-verified batches.** Corpus-side
+  (4 cases), gate/judge-side (5 cases), composition + stubs (1 strip,
+  4 stubs). Every command was run as committed, exit codes and
+  outcomes captured in each batch's commit body. The expensive runs
+  were real: a 99-second `gate fhir` producing a 2.9 MB report, and
+  `make integration` at 19m11s, 8 tests / 24 assertions green against
+  the real validator.
+- **Two strips changed because running them said so.**
+  `reproduction-packages` first ended in `diff -r`, which exits 1:
+  Synthea's `hospitalInformation<timestamp>.json` /
+  `practitionerInformation<timestamp>.json` names embed a wall-clock
+  timestamp no seed pins — exactly what EXP-A4 found and registered
+  `:strip-run-timestamp-suffix` for. The strip now ends in
+  `check ... --pair-by hash`, this repo's own equivalence judge, and
+  says why. `training-material` first ended in a `diff` of original
+  against mutant: 59,561 lines, because the mutant is canonical JSON
+  and Synthea's output is pretty-printed. It now ends with the lineage
+  record plus a two-line `grep` of the changed value.
+- **Step 5, `:doc` at the shell (optional, taken).**
+  `ehr corpus operators` rows carry the registry's one-line
+  description. Additive: none of the five enumerated tests needed
+  editing, one was added, and `cli.md` did not regenerate (confirmed
+  by running the target, not by assuming).
+- **README, one edit.** `README.md:154-158` spelled the integration
+  suite `clojure -X:test :excludes '[]'` — stale since the suite moved
+  to the `test-integration/` path, which AGENTS.md documents as a path
+  split precisely because a tag filter does not select it. It now says
+  `make integration`, matching the contract-pairing strip, in the same
+  batch commit.
+- Extended golden check clean, full suite (486 tests / 1487
+  assertions, from 475/1467 at LOC-1's close) and both lints green at
+  close-out. Link check across `use-cases.md` (41 links), `README.md`
+  (25), `cli.md` (9), `operators.md` (24): every relative target
+  exists and every `#anchor` matches a real heading slug.
+
+**Final per-case classification** — strip (10): generate-conforming-
+data, generate-controlled-fault-data, test-a-validator-with-contract-
+pairing, judge-user-supplied-data, regression-baselining,
+acceptance-qa-of-vendor-corpora, reproduction-packages,
+audit-regulatory-evidence-trail, judge-tier-calibration-studies,
+training-material. Stub (4): black-box-transform-surround,
+mutation-adequacy-of-your-own-checks,
+differential-ab-of-two-transform-versions,
+bring-your-own-generator-augmentation. No Step-0 expectation flipped.
+
+**Report to the author — two findings, deliberately not acted on:**
+
+1. **`--report <path>` does not create the path's parent directory,
+   and fails loudly in the wrong register.** `ehr gate v2 ... --report
+   out/calibration/before.edn` with no `out/calibration` throws an
+   uncaught `FileNotFoundException` — a raw stack trace plus "Full
+   report at: /tmp/clojure-*.edn" — rather than a `result/error` with
+   a category. ADR-0004 reserves exceptions for programmer error; an
+   unwritable report path is an operational failure, and DOC-1's
+   enumerable-options error family is the house pattern it should join
+   (`:report-path-unwritable`, naming the directory). Every strip that
+   writes a report now creates its directory first, with a comment
+   saying why, which is the honest thing a docs session can do; making
+   the CLI say it is a code change and a separate one.
+2. **`make ehr ARGS="..."` cannot carry the CLI's exit code.** `make`
+   exits 2 for any failed recipe, so ADR-0004's and ADR-0010's 0/1/2/3
+   contract collapses to "2" at the wrapper. Measured both ways on the
+   same invocations: a rejecting `gate v2` and a rejecting `gate fhir`
+   each gave make 2, direct CLI 1. The invocation convention stays the
+   README's per the ruling, and the three cases whose point is
+   branching on a verdict now name the direct invocation in their
+   notes — but if `make ehr` is meant to be the taught entry point, the
+   recipe could propagate the child's status instead (`exit $?`-shaped
+   change in the Makefile), and then the notes could be deleted.
+
+Also found, not changed (this session's data work may not touch
+tests): `test-integration/ehr_testing_tools/contract_pairing_test.clj`'s
+ns docstring still says "Run explicitly with `clojure -X:test :excludes
+'[]'`" — the same stale incantation the README edit above fixed.
+
 ## DOC-5 — Executable quickstart (enforcement)
 
 README's quickstart extracted to a script (`make quickstart-demo` or
@@ -457,7 +568,7 @@ existing green behavior, not authoring new checks.
 | DOC-2 | Seven-audience register canonical in `positioning.md`; `docs/README.md` per-audience entry paths | **Done** (2026-07-25) | `.agents/prompts/archive/2026-07-25-doc2-audience-respine.md` |
 | DOC-3 | `docs/cli.md` + `docs/operators.md` generated (new `docsgen` renderers, two make targets, freshness-gated); `docs/locators.md` + `docs/formats.md` hand-written, examples/shapes machine-verified; registry gains `:doc`; golden check extended | **Done** (2026-07-25) | `.agents/prompts/archive/2026-07-25-doc3-reference-docs.md` |
 | LOC-1 | Locator grammar micro-wave (interlude, not a DOC wave): FHIR paths reject a trailing separator (split limit `-1`, dead guard revived); `MSH-1` refused at parse with a teaching `:hint`; both rejection categories preserved; `docs/locators.md`'s two stale sharp edges rewritten as dated grammar facts, didactic MSH account preserved; component-granularity edge out of scope by ruling | **Done** (2026-07-25) | `.agents/prompts/archive/2026-07-25-loc1-locator-grammar.md` |
-| DOC-4 | Per-use-case runnable command strips (route: `:commands` in use-cases.edn vs. cookbook — open) | Not started | — |
+| DOC-4 | Per-use-case runnable command strips, route ratified as `:commands` in `use-cases.edn`: schema gains `:commands`/`:no-commands` (mutually exclusive, `[:fn]`-guarded), renderer emits a **You type:** fenced strip or a data-derived honest stub; 10 strips run-verified end to end (incl. a 99s `gate fhir` and `make integration` at 19m11s), 4 stubs naming their blocking external/planned stage; `ehr corpus operators` surfaces `:doc`; README's stale integration-suite incantation fixed to `make integration` | **Done** (2026-07-26) | `.agents/prompts/archive/2026-07-26-doc4-runnable-strips.md` |
 | DOC-5 | Quickstart-as-script, nightly-wired; README freshness link | Not started | — |
 
 ## Open decisions
@@ -472,8 +583,12 @@ existing green behavior, not authoring new checks.
   `formats.md` are hand-written with source citations. The `cli.md`
   branch resolved in favor of generation: Step 0 found `cli-spec` rich
   enough, needing one added flag.
-- **DOC-4 route**: `:commands` field vs. cookbook (recommendation:
-  the field).
+- **DOC-4 route**: `:commands` field vs. cookbook — **decided
+  2026-07-26 (author), as recommended**: the `:commands` field in
+  `docs/use-cases.edn` plus a renderer extension, so the strips are a
+  single source of truth living in the same freshness-gated document
+  as the equations they ground, and the golden check inherits them. A
+  separate `docs/cookbook.md` would have been a second place to rot.
 - **Sequencing against first release** — **decided 2026-07-25
   (author): now, pre-release**, accepting the soft interface-hardening
   pressure a full CLI reference creates. Mitigation shipped with it:
