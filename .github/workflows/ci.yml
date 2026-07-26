@@ -50,6 +50,20 @@ jobs:
       - name: make lint-deps
         run: make lint-deps
 
+      # bin/ehr smoke (CLI-2): the taught entry point is a wrapper, so the
+      # one thing worth a per-push check is that it still resolves the repo
+      # root and reaches the CLI. `help` is the cheapest invocation that
+      # proves both, and it must exit 0. The exit-code *fidelity* proof
+      # (all four of 0/1/2/3 through the wrapper) is run-once evidence in
+      # CLI-2's own commit body, not a CI job -- two of those four codes
+      # need a real FHIR validator subprocess, which is nightly-tier work
+      # (ENF-1's fast/slow split), and `exec` cannot selectively lose one
+      # code anyway.
+      - name: bin/ehr smoke (help exits 0 and prints usage)
+        run: |
+          out="$(bin/ehr help)"
+          echo "$out" | grep -q '^Usage: ehr '
+
       # Generated-doc freshness: four docs are derived rather than
       # authored -- docs/pipeline.md and docs/use-cases.md from
       # docs/pipeline.edn / docs/use-cases.edn, and (DOC-3, 2026-07-25)
