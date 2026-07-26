@@ -70,9 +70,10 @@
 ;; ---- v2 grammar (P7, arrives with mutation): segment / segment+repeat
 ;; / field / field+repeat / component / subcomponent, over the
 ;; delimiter-split ER7 substrate (corpus.er7) -- see locator.clj's v2
-;; section docstring for the MSH-1/MSH-2 off-by-one convention this
-;; grammar deliberately does NOT special-case (it lives in corpus.er7's
-;; field-to-split-index mapping instead). ----
+;; section docstring for the MSH-1/MSH-2 off-by-one convention, whose
+;; field-to-split-index mapping lives in corpus.er7 and whose one
+;; grammar-level consequence -- MSH-1 is not addressable at all -- is
+;; enforced here, in the MSH-1 block further down. ----
 
 (deftest v2-data-path-parses-a-bare-segment-test
   (let [r (locator/v2-data-path "PID")]
@@ -104,20 +105,62 @@
     (is (result/ok? r))
     (is (= {:segment "PID" :field 3 :component 1 :subcomponent 2} (:payload r)))))
 
-;; ---- MSH-1/MSH-2: syntactically ordinary field locators at the
-;; grammar level -- the off-by-one convention (MSH-1 has no split-array
-;; slot; MSH-2 lands at split-index 1) is a corpus.er7 concern, not
-;; this parser's, per the module docstring. ----
+;; ---- MSH-1: refused at parse (LOC-1, 2026-07-25). It used to parse
+;; like any other field locator and then resolve onto MSH-2's slot,
+;; because corpus.er7/field-index shifts only for N >= 2 -- so a
+;; locator of MSH-1 silently addressed the encoding characters. The
+;; refusal is MSH-specific and field-1-specific; every edge around it
+;; is pinned below. The off-by-one convention itself still lives in
+;; corpus.er7, unchanged. ----
 
-(deftest v2-data-path-parses-msh-1-like-any-other-field-test
+(deftest v2-data-path-refuses-msh-1-test
   (let [r (locator/v2-data-path "MSH-1")]
-    (is (result/ok? r))
-    (is (= {:segment "MSH" :field 1} (:payload r)))))
+    (is (result/rejected? r))
+    (is (= :invalid-v2-path (:category r)))
+    (is (= "MSH-1" (:path (:payload r))))
+    (let [hint (:hint (:payload r))]
+      (is (string? hint) "the refusal carries a teaching hint, DOC-1's house pattern")
+      (is (re-find #"field separator" hint))
+      (is (re-find #"MSH-2" hint) "and points at where the encoding characters actually live"))))
+
+(deftest v2-data-path-refuses-every-form-that-names-msh-field-1-test
+  (doseq [bad ["MSH-1" "MSH-1[2]" "MSH-1.1" "MSH-1.1.2" "MSH[1]-1"]]
+    (let [r (locator/v2-data-path bad)]
+      (is (result/rejected? r) (str "expected rejection for " (pr-str bad)))
+      (is (= :invalid-v2-path (:category r)))
+      (is (string? (:hint (:payload r))) (str (pr-str bad) " must teach, not just refuse")))))
+
+;; The refusal's edges: it is about MSH's field 1 and nothing else.
 
 (deftest v2-data-path-parses-msh-2-like-any-other-field-test
   (let [r (locator/v2-data-path "MSH-2")]
     (is (result/ok? r))
     (is (= {:segment "MSH" :field 2} (:payload r)))))
+
+(deftest v2-data-path-parses-pid-1-because-field-1-is-ordinary-data-elsewhere-test
+  (doseq [[path expected] [["PID-1" {:segment "PID" :field 1}]
+                           ["ZZ1-1" {:segment "ZZ1" :field 1}]
+                           ["OBX[2]-1" {:segment "OBX" :segment-repeat 2 :field 1}]]]
+    (let [r (locator/v2-data-path path)]
+      (is (result/ok? r) (str path " must parse -- only MSH's field 1 is special"))
+      (is (= expected (:payload r))))))
+
+(deftest v2-data-path-parses-msh-as-a-whole-segment-test
+  (let [r (locator/v2-data-path "MSH")]
+    (is (result/ok? r) "the segment-level MSH locator names no field and is untouched")
+    (is (= {:segment "MSH"} (:payload r)))))
+
+;; ---- categories: LOC-1 enriched two payloads and introduced no new
+;; category, so callers dispatching on :category are unaffected. ----
+
+(deftest loc-1-rejections-reuse-the-existing-categories-test
+  (is (= :invalid-fhir-path (:category (locator/fhir-data-path "entry[0].resource.")))
+      "the trailing-separator rejection is an ordinary :invalid-fhir-path")
+  (is (= :invalid-v2-path (:category (locator/v2-data-path "MSH-1")))
+      "the MSH-1 refusal is an ordinary :invalid-v2-path")
+  (is (= #{:invalid-v2-path}
+         (set (map #(:category (locator/v2-data-path %)) ["MSH-1" "PID-" "pid" ""])))
+      "one category for every v2 grammar refusal, teaching hint or not"))
 
 ;; ---- rejects: unknown segment-name shapes, zero/negative indices
 ;; (inexpressible in the grammar -- no digit class admits 0 or a sign),

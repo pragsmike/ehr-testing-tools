@@ -127,11 +127,23 @@
     (is (= 1 (er7/field-index "MSH" 2)))
     (is (= 8 (er7/field-index "MSH" 9)))
     (is (= 5 (er7/field-index "PID" 5)) "no other segment is shifted"))
-  (testing "the trap docs/locators.md warns about: MSH-1 is below the
-            N>=2 guard, so it resolves onto MSH-2's slot rather than
-            failing"
-    (is (= 1 (er7/field-index "MSH" 1)))
-    (is (= (resolved-value "MSH-1") (resolved-value "MSH-2")))))
+  (testing "LOC-1 (2026-07-25) closed the trap docs/locators.md used to
+            warn about. MSH-1 sits below the N>=2 shift, so it used to
+            resolve onto MSH-2's slot and silently address the encoding
+            characters; it is now refused at parse, with a hint that
+            teaches the convention, and never reaches the substrate at
+            all. corpus.er7/field-index is unchanged -- the substrate
+            still maps field 1 the way it always did; what changed is
+            that no locator can ask it to"
+    (is (= 1 (er7/field-index "MSH" 1)) "substrate mapping untouched")
+    (let [r (locator/v2-data-path "MSH-1")]
+      (is (result/rejected? r))
+      (is (= :invalid-v2-path (:category r)))
+      (is (re-find #"field separator" (:hint (:payload r)))
+          "the hint docs/locators.md quotes")
+      (is (re-find #"MSH-2" (:hint (:payload r)))))
+    (is (nil? (resolved-value "MSH-1")) "and so it lands nowhere")
+    (is (= "^~\\&" (resolved-value "MSH-2")) "while MSH-2 still lands on the encoding characters")))
 
 (deftest documented-component-granularity-test
   (testing "a locator naming a component resolves at its field: the

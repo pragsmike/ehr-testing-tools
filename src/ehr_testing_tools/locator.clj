@@ -90,21 +90,28 @@
 ;; fields -- the earlier P5 grammar required a field always, which
 ;; couldn't name those; this grammar corrects that.
 ;;
-;; MSH-1/MSH-2 off-by-one convention: at the GRAMMAR level, \"MSH-1\"
-;; and \"MSH-2\" parse exactly like any other segment's field locator
-;; (field 1, field 2) -- the grammar makes no MSH exception, deliberately,
-;; so the parser stays one regex for every segment. The off-by-one
-;; itself is real but lives one layer down, in how a parsed locator maps
-;; to a position in the delimiter-split substrate (corpus.er7): MSH-1 is
-;; the field separator character itself (\"|\" canonically), which never
-;; appears as a split token -- it IS the delimiter the split consumes --
-;; so it has no split-array slot; MSH-2 (the encoding characters,
-;; \"^~\\&\") is consequently the FIRST split token after the segment
-;; name, at split-index 1, not field-index 2. Concretely: for MSH, field
-;; N (N >= 2) resolves to split-index (N - 1); for every other segment,
+;; MSH-1/MSH-2 off-by-one convention: MSH-1 is the field separator
+;; character itself (\"|\" canonically), which never appears as a split
+;; token -- it IS the delimiter the split consumes -- so it has no
+;; split-array slot; MSH-2 (the encoding characters, \"^~\\&\") is
+;; consequently the FIRST split token after the segment name, at
+;; split-index 1, not field-index 2. Concretely: for MSH, field N
+;; (N >= 2) resolves to split-index (N - 1); for every other segment,
 ;; field N resolves to split-index N (split-index 0 being the segment
-;; name itself). corpus.er7 applies this mapping when resolving a parsed
+;; name itself). corpus.er7 applies that mapping when resolving a parsed
 ;; locator against split message data; nothing here needs to know it.
+;;
+;; The convention has exactly one grammar-level consequence, and it is
+;; enforced here rather than left to the substrate (LOC-1, 2026-07-25):
+;; MSH-1 is not addressable, so `v2-data-path` refuses it, with a hint
+;; that teaches why. Everything else about MSH parses like any other
+;; segment -- one regex still serves every segment, and the refusal is
+;; a single post-match check, not a second grammar. Before LOC-1,
+;; \"MSH-1\" parsed like an ordinary field locator and then landed on
+;; MSH-2's slot, since corpus.er7/field-index shifts only for N >= 2:
+;; it silently addressed the encoding characters, which is the worst
+;; kind of success. Field 1 is ordinary data in every OTHER segment
+;; (\"PID-1\", \"ZZ1-1\"), so the check is MSH-specific.
 ;;
 ;; Every numeric component (segment-repeat, field, field-repeat,
 ;; component, subcomponent) is constrained to a positive integer
@@ -121,6 +128,18 @@
 (def ^:private v2-path-re
   #"^([A-Z][A-Z0-9]{2})(?:\[([1-9]\d*)\])?(?:-([1-9]\d*)(?:\[([1-9]\d*)\])?(?:\.([1-9]\d*)(?:\.([1-9]\d*))?)?)?$")
 
+(def msh-1-hint
+  "Why MSH-1 is refused, in one sentence a reader can act on without a
+  human in the loop (AUTHORS-GUIDE section 6; DOC-1's enumerable-options
+  errors are the house precedent). Stated from corpus.er7's own account
+  of the delimiter convention -- MSH-1 is the character immediately
+  after the literal \"MSH\", MSH-2 is the four characters after that --
+  not a competing explanation."
+  (str "MSH-1 is the field separator character itself (the character right "
+       "after the literal \"MSH\"), not an addressable field: the split that "
+       "produces a segment's fields consumes it, so it holds no position of "
+       "its own. The encoding characters are MSH-2."))
+
 (defn v2-data-path
   "Parses a v2 locator's :path string under the grammar above into a
   structured path map -- {:segment ...} plus whichever of
@@ -129,14 +148,23 @@
   Returns result/ok {...} or result/rejected :invalid-v2-path on any
   string outside the grammar. The operator fns corpus.operators
   registers for :format :v2 consume this structured map, never the raw
-  path string."
+  path string.
+
+  One string inside the regex's grammar is still refused, per the MSH
+  note above: anything naming MSH's field 1 (\"MSH-1\", \"MSH-1[2]\",
+  \"MSH-1.1\"). It is the same :invalid-v2-path category as any other
+  refusal -- callers dispatching on the category see nothing new -- but
+  its payload carries a :hint teaching the convention rather than only
+  refusing."
   [path-str]
   (if-let [[_ segment seg-repeat field field-repeat component subcomponent]
            (re-matches v2-path-re (or path-str ""))]
-    (result/ok (cond-> {:segment segment}
-                 seg-repeat (assoc :segment-repeat (Long/parseLong seg-repeat))
-                 field (assoc :field (Long/parseLong field))
-                 field-repeat (assoc :field-repeat (Long/parseLong field-repeat))
-                 component (assoc :component (Long/parseLong component))
-                 subcomponent (assoc :subcomponent (Long/parseLong subcomponent))))
+    (if (and (= "MSH" segment) (= "1" field))
+      (result/rejected :invalid-v2-path {:path path-str :hint msh-1-hint})
+      (result/ok (cond-> {:segment segment}
+                   seg-repeat (assoc :segment-repeat (Long/parseLong seg-repeat))
+                   field (assoc :field (Long/parseLong field))
+                   field-repeat (assoc :field-repeat (Long/parseLong field-repeat))
+                   component (assoc :component (Long/parseLong component))
+                   subcomponent (assoc :subcomponent (Long/parseLong subcomponent)))))
     (result/rejected :invalid-v2-path {:path path-str})))
