@@ -11,7 +11,10 @@ vs. first release" below).
 
 ## Audience
 
-Three segments arrive here with different on-ramps:
+This is the canonical audience register for this project's user-facing
+docs — `docs/README.md` routes readers to an entry path keyed off these
+segments, rather than defining its own. Seven segments arrive here with
+different on-ramps:
 
 1. **Guide readers, arriving method-first.** They've read (or are reading)
    the guide's account of corpus construction and conformance gating and
@@ -29,6 +32,46 @@ Three segments arrive here with different on-ramps:
    method content (new properties, new correctness arguments, new test-plan
    guidance) belong in the guide, not here. This repo's contribution
    surface is tool code, not method.
+4. **The AI assistant, as a reader in its own right.** Segment 2's trial
+   cohort works agent-assisted by default (ChatGPT, Codex), and
+   `SETUP.md`'s step 5 hands the whole onboarding job to an assistant via
+   a copy-paste prompt — so an agent reading these docs on a human's
+   behalf is not an edge case, it's the cohort's default path. What this
+   reader needs, distinct from a human skimmer: exact, copy-pasteable
+   commands rather than descriptions of commands; heading anchors that
+   stay stable across a doc's regeneration; and error text that's
+   self-explanatory without a human in the loop to interpret it. DOC-1's
+   CLI help surface (`ehr help`, `ehr corpus operators`, and the
+   enumerable-options error family naming its valid options plus a
+   `run: ehr help`-style hint) is the first deliberate serving of this
+   audience — earlier CLI errors returned a bare `:unknown-command` map
+   naming nothing valid.
+5. **The downstream data consumer.** Reads `report.edn`, `manifest.edn`,
+   or lineage records — via the `--json` projection or EDN directly —
+   and never runs the CLI themselves; a Python or SQL process on the
+   other end of a pipeline. This repo's own "readable from Python"
+   promise (`README.md`) doesn't yet have a format reference behind it:
+   `--json` exists on every command, but its shape is documented only by
+   the Malli schemas in source (`judge.report`, `judge.finding`,
+   `corpus.manifest`, `lineage`) and by example in
+   `docs/judge-calibration.md`'s "Reading this table" and
+   "No-verdict, operationally" sections. A proper `docs/formats.md` is a
+   named gap, not a silent one — see `.agents/plans/user-docs.md`'s
+   DOC-3 wave.
+6. **The Clojure library consumer.** Post-first-release: will `require`
+   this repo's namespaces directly rather than shelling out to the CLI.
+   Today's serving is source docstrings only — no public-vs-internal
+   demarcation convention exists yet, and cljdoc generation rides on
+   Clojars/Maven Central coordinates that don't exist before that
+   release (see "Go-public gate vs. first release" below). This segment
+   is mostly deferred by design, not neglect.
+7. **The evaluator, deciding whether to adopt this at all.** Doesn't yet
+   have a task or a method question — needs to know what this repo
+   actually does, what it explicitly doesn't, and how mature each part
+   is before committing to it. Served today by `README.md`'s maturity
+   table (the actual contract with readers, not a formality), its Scope
+   section, and
+   [`docs/ehr-testing-tools-problem-statement.md`](ehr-testing-tools-problem-statement.md).
 
 ## The constellation
 
