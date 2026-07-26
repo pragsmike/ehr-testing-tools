@@ -95,3 +95,16 @@ completes, and update the date whether the claim held up or not.
 ## 5. Tool authoring conventions
 
 <!-- TODO: written at generator kickoff -->
+
+## 6. User-facing docs are agent-read
+
+`docs/positioning.md`'s Audience register names an AI assistant, acting
+on a human's behalf, as a first-class consumer of this repo's
+user-facing docs — not an edge case. Three preferences follow from
+that, style guidance rather than a gate: prefer exact, copy-pasteable
+commands over prose descriptions of commands; keep heading anchors
+stable across a page's regeneration, since an anchor is a link target
+an assistant may have cited; and make error text self-explanatory
+without a human in the loop to interpret it (DOC-1's enumerable-options
+error family — naming valid options plus a `run: ehr help`-style hint —
+is the precedent).
