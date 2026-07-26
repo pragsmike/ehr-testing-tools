@@ -5,6 +5,8 @@
 
 What you can do with this repo, formally: one entry per use case, each anchored to the resource equations (`docs/notation.md`) it actually composes from `docs/pipeline.edn`'s own built stages. An `{external: true}` stage in a case's equations names a black-box component the use case's own author fills in -- code this repo doesn't implement and makes no claim about; a `{spider: funnel}` merge node is a union resource (`docs/notation.md`) wherever a case's sources genuinely vary. Maturity here is a per-use-case honesty label distinct from `README.md`'s per-capability table -- see the header comment of `docs/use-cases.edn` for what each label means.
 
+Each case answers **what do I type** as well as what you get. Every command in a **You type:** strip was run, once, locally, before it was committed here -- see the commit that added it for the dated evidence. Where a case has no strip, it is because this repo genuinely doesn't drive that case end to end (an `{external: true}` stage is yours to run, or the case is `planned`); those cases say so rather than showing an invocation that has never run. Strips use the same `make ehr ARGS="..."` convention as [README.md](../README.md)'s Quickstart, and `$UPPERCASE` names mark values you supply. For what a flag does see [cli.md](cli.md) (or `ehr help <group>`), for operator ids [operators.md](operators.md), for locator syntax [locators.md](locators.md), for reading a verdict [judge-calibration.md](judge-calibration.md), and for the shape of what lands on disk [formats.md](formats.md).
+
 ## Generate conforming synthetic data
 
 **Audience:** Teams needing realistic FHIR test data without hand-authoring it, for any downstream use they choose.
@@ -14,6 +16,8 @@ What you can do with this repo, formally: one entry per use case, each anchored 
 **You get:** A byte-reproducible synthetic corpus, from a manifest that regenerates it byte-for-byte (EXP-A4).
 
 **Maturity:** usable
+
+**You type:** no strip -- this repo doesn't drive this use case end to end, so there is no command sequence to copy. You bring: A Synthea configuration (population size, seed, clinician seed, reference date).
 
 ```
 synthea-config × synthea-artifact × jdk-runtime × config-hash → raw-corpus  [Generate]  {catalytic: synthea-artifact, jdk-runtime, config-hash}
@@ -66,6 +70,8 @@ flowchart LR
 
 **Maturity:** experimental
 
+**You type:** no strip -- this repo doesn't drive this use case end to end, so there is no command sequence to copy. You bring: A base corpus (generated or intaken) plus a chosen defect operator and locator.
+
 ```
 canonical-fhir-datum × operator-catalog → mutant-fhir-datum + lineage-record  [Mutate]  {catalytic: operator-catalog}
 ```
@@ -104,6 +110,8 @@ flowchart LR
 **You get:** Contract pairing: for each defect operator, proof that the gate produces a new, locator-matching finding -- the exemplar is P5's own contract-pairing suite (test-integration/ehr_testing_tools/contract_pairing_test.clj) against the real official FHIR validator.
 
 **Maturity:** usable
+
+**You type:** no strip -- this repo doesn't drive this use case end to end, so there is no command sequence to copy. You bring: Nothing beyond the pinned artifacts -- this repo generates and mutates its own test data.
 
 ```
 synthea-config × synthea-artifact × jdk-runtime × config-hash → raw-corpus  [Generate]  {catalytic: synthea-artifact, jdk-runtime, config-hash}
@@ -193,6 +201,8 @@ flowchart LR
 
 **Maturity:** usable
 
+**You type:** no strip -- this repo doesn't drive this use case end to end, so there is no command sequence to copy. You bring: Your own corpus (foreign files, any origin).
+
 ```
 foreign-file → catalog-entry + intake-record  [Intake]
 canonical-fhir-datum × mutant-fhir-datum × foreign-file → datum  [UnionDatum]  {spider: funnel}
@@ -266,6 +276,8 @@ flowchart LR
 **You get:** Conformance evidence (Gate) and equivalence evidence (Check, against an expected corpus) surrounding a black box you never have to instrument -- only its declared inputs/outputs.
 
 **Maturity:** illustrative
+
+**You type:** no strip -- this repo doesn't drive this use case end to end, so there is no command sequence to copy. You bring: Your own transform, run outside this repo's own pipeline.
 
 ```
 synthea-config × synthea-artifact × jdk-runtime × config-hash → raw-corpus  [Generate]  {catalytic: synthea-artifact, jdk-runtime, config-hash}
@@ -357,6 +369,8 @@ flowchart LR
 
 **Maturity:** illustrative
 
+**You type:** no strip -- this repo doesn't drive this use case end to end, so there is no command sequence to copy. You bring: Your own validation logic (external to this repo) plus a corpus.
+
 ```
 canonical-fhir-datum × operator-catalog → mutant-fhir-datum + lineage-record  [Mutate]  {catalytic: operator-catalog}
 mutant-fhir-datum → your-validation-verdict  [YourValidation]  {external: true}
@@ -401,6 +415,8 @@ flowchart LR
 **You get:** What changed: judge.report/diff-reports compares two full reports (every changed verdict, added/removed file, appeared/disappeared code); --baseline mode (docs/judge-calibration.md) answers the narrower did-anything-NEW-appear question for a single run against a captured baseline.
 
 **Maturity:** usable
+
+**You type:** no strip -- this repo doesn't drive this use case end to end, so there is no command sequence to copy. You bring: A corpus you gate repeatedly, and the report from the last run you trusted.
 
 ```
 datum × validator-artifact × runtime × hapi-hl7v2-dep × profile-artifact → pass + rejected + indeterminate  [Gate]  {catalytic: validator-artifact, runtime, hapi-hl7v2-dep, profile-artifact}
@@ -458,6 +474,8 @@ flowchart LR
 
 **Maturity:** illustrative
 
+**You type:** no strip -- this repo doesn't drive this use case end to end, so there is no command sequence to copy. You bring: The same input corpus, run through two versions of your own transform.
+
 ```
 canonical-fhir-datum → expected-corpus  [OldTransform]  {external: true}
 canonical-fhir-datum → new-transform-output  [NewTransform]  {external: true}
@@ -512,6 +530,8 @@ flowchart LR
 **You get:** Cataloging (Intake, with content-hash provenance) plus a gate verdict, before you accept delivery -- an acceptance decision backed by evidence, not a spot check.
 
 **Maturity:** usable
+
+**You type:** no strip -- this repo doesn't drive this use case end to end, so there is no command sequence to copy. You bring: A vendor-delivered corpus.
 
 ```
 foreign-file → catalog-entry + intake-record  [Intake]
@@ -579,6 +599,8 @@ flowchart LR
 
 **Maturity:** usable
 
+**You type:** no strip -- this repo doesn't drive this use case end to end, so there is no command sequence to copy. You bring: Nothing beyond the pinned artifacts -- the manifest already names everything else.
+
 ```
 synthea-config × synthea-artifact × jdk-runtime × config-hash → raw-corpus  [Generate]  {catalytic: synthea-artifact, jdk-runtime, config-hash}
 ```
@@ -623,6 +645,8 @@ flowchart LR
 **You get:** A hash-linked, self-verifying provenance chain: lineage records (Merkle-style, correction-only-by-new-record), manifests, and reports, each independently checkable -- assembling these into one shareable evidence package is future work, not yet a single command.
 
 **Maturity:** experimental
+
+**You type:** no strip -- this repo doesn't drive this use case end to end, so there is no command sequence to copy. You bring: A corpus that's been through generation, mutation, and gating.
 
 ```
 canonical-fhir-datum × operator-catalog → mutant-fhir-datum + lineage-record  [Mutate]  {catalytic: operator-catalog}
@@ -676,6 +700,8 @@ flowchart LR
 **You get:** A per-{operator, locator} classification of what that tier detects, misses, or can only partially resolve -- docs/judge-calibration.md is exactly this, the first instance, derived from EXP-C5's own method.
 
 **Maturity:** usable
+
+**You type:** no strip -- this repo doesn't drive this use case end to end, so there is no command sequence to copy. You bring: A set of defect operators and a judge tier you want characterized.
 
 ```
 canonical-fhir-datum × operator-catalog → mutant-fhir-datum + lineage-record  [Mutate]  {catalytic: operator-catalog}
@@ -736,6 +762,8 @@ flowchart LR
 
 **Maturity:** illustrative
 
+**You type:** no strip -- this repo doesn't drive this use case end to end, so there is no command sequence to copy. You bring: Nothing -- generate a small corpus and mutate it with known operators.
+
 ```
 canonical-fhir-datum × operator-catalog → mutant-fhir-datum + lineage-record  [Mutate]  {catalytic: operator-catalog}
 ```
@@ -774,6 +802,8 @@ flowchart LR
 **You get:** This repo's own mutation/lineage/gate machinery applied to a foreign corpus -- today this requires the foreign corpus to already be canonical-fhir-datum-shaped (FHIR JSON matching corpus.mutate's own substrate); a general foreign-format adapter into Mutate is future work, stated honestly rather than implied.
 
 **Maturity:** planned
+
+**You type:** no strip -- this repo doesn't drive this use case end to end, so there is no command sequence to copy. You bring: A corpus from a generator this repo doesn't implement.
 
 ```
 foreign-file → catalog-entry + intake-record  [Intake]

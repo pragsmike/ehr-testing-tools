@@ -29,15 +29,37 @@
   fully support yet -- stated honestly in :get, not smoothed over)."
   #{:usable :experimental :illustrative :planned})
 
-(def UseCase
+(def Commands
+  "One case's runnable strip (DOC-4). :lines are the literal lines of a
+  single copy-pasteable fenced block -- `make ehr ARGS=\"...\"`
+  invocations exactly as README.md's Quickstart spells them, plus `#`
+  comment lines and $PLACEHOLDER shell variables for values the reader
+  supplies. Nothing that a paste would break goes in :lines; markdown
+  prose and cross-links (operators.md, locators.md, cli.md,
+  judge-calibration.md -- linked, never restated) go in the optional
+  :note, rendered as a paragraph *below* the fence."
   [:map
-   [:id :keyword]
-   [:title :string]
-   [:audience :string]
-   [:bring :string]
-   [:get :string]
-   [:maturity (into [:enum] maturities)]
-   [:equations [:vector :string]]])
+   [:lines [:vector :string]]
+   [:note {:optional true} :string]])
+
+(def UseCase
+  [:and
+   [:map
+    [:id :keyword]
+    [:title :string]
+    [:audience :string]
+    [:bring :string]
+    [:get :string]
+    [:maturity (into [:enum] maturities)]
+    [:equations [:vector :string]]
+    ;; DOC-4: a case carries EITHER a verified runnable strip
+    ;; (:commands) OR the honest reason there isn't one (:no-commands),
+    ;; never both and never an invented invocation. A case with neither
+    ;; still renders a stub, derived from :bring alone.
+    [:commands {:optional true} Commands]
+    [:no-commands {:optional true} :string]]
+   [:fn {:error/message ":commands and :no-commands are mutually exclusive"}
+    (fn [c] (not (and (:commands c) (:no-commands c))))]])
 
 (def UseCases
   [:map
@@ -54,16 +76,39 @@
 
 ;; ---- rendering: docs/use-cases.edn -> docs/use-cases.md ----
 
+(defn case->commands-block
+  "Renders one use case's **You type:** block (DOC-4) -- the runnable
+  strip if the case has one, the honest stub if it doesn't. Both arms
+  render from the case's own data: no invocation is synthesized here,
+  and the stub's sentence is derived from :bring plus the case's own
+  :no-commands reason, so a case this repo can't drive end to end says
+  so rather than showing a hypothetical command."
+  [{:keys [bring commands no-commands]}]
+  (if commands
+    (str "**You type:**\n\n"
+         "```sh\n" (str/join "\n" (:lines commands)) "\n```\n"
+         (when-let [note (:note commands)] (str "\n" note "\n")))
+    (str "**You type:** no strip -- this repo doesn't drive this use case "
+         "end to end, so there is no command sequence to copy. You bring: "
+         bring
+         (when no-commands (str " " no-commands))
+         "\n")))
+
 (defn case->markdown-section
   "Renders one use case as a markdown section: title, the narrative
-  fields (audience/bring/get/maturity), the raw equations block, and
-  the case's own already-rendered mermaid diagram."
-  [{:keys [title audience bring get maturity equations]} mermaid-text]
+  fields (audience/bring/get/maturity), the runnable strip (or its
+  honest stub), the raw equations block, and the case's own
+  already-rendered mermaid diagram. The strip sits above the equations
+  rather than below the diagram: it is the most copy-pasted surface
+  this page carries (AUTHORS-GUIDE.md section 6), and the equations
+  are the formal grounding underneath it, not a preamble to it."
+  [{:keys [title audience bring get maturity equations] :as use-case} mermaid-text]
   (str "## " title "\n\n"
        "**Audience:** " audience "\n\n"
        "**You bring:** " bring "\n\n"
        "**You get:** " get "\n\n"
        "**Maturity:** " (name maturity) "\n\n"
+       (case->commands-block use-case) "\n"
        "```\n" (str/join "\n" equations) "\n```\n\n"
        "```mermaid\n" (str/trim mermaid-text) "\n```\n"))
 
@@ -92,6 +137,21 @@
        "Maturity here is a per-use-case honesty label distinct from "
        "`README.md`'s per-capability table -- see the header comment of "
        "`docs/use-cases.edn` for what each label means.\n\n"
+       "Each case answers **what do I type** as well as what you get. "
+       "Every command in a **You type:** strip was run, once, locally, "
+       "before it was committed here -- see the commit that added it "
+       "for the dated evidence. Where a case has no strip, it is "
+       "because this repo genuinely doesn't drive that case end to end "
+       "(an `{external: true}` stage is yours to run, or the case is "
+       "`planned`); those cases say so rather than showing an "
+       "invocation that has never run. Strips use the same "
+       "`make ehr ARGS=\"...\"` convention as [README.md](../README.md)'s "
+       "Quickstart, and `$UPPERCASE` names mark values you supply. For "
+       "what a flag does see [cli.md](cli.md) (or `ehr help <group>`), "
+       "for operator ids [operators.md](operators.md), for locator "
+       "syntax [locators.md](locators.md), for reading a verdict "
+       "[judge-calibration.md](judge-calibration.md), and for the shape "
+       "of what lands on disk [formats.md](formats.md).\n\n"
        (str/join "\n" (map (fn [{:keys [id] :as use-case}]
                               (if-let [mermaid (get mermaid-by-id id)]
                                 (case->markdown-section use-case mermaid)
