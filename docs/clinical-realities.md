@@ -187,6 +187,53 @@ immediately after.
 
 ---
 
+## ED-to-inpatient conversion as a NEW encounter record, not a same-stay event *(stub — surfaced by M7's own vendored content)*
+
+**The reality.** A patient admitted through the ED and taken to surgery
+or an inpatient bed is, physically, one continuous hospital stay — but
+many registration/billing systems open a genuinely SECOND encounter or
+account record at the moment of conversion (ED account closes,
+inpatient account opens), rather than transferring the same encounter
+between locations. Real EHR/ADT practice is inconsistent about this:
+some sites model it as a single encounter with a location change
+(ADT^A02, the transfer this simulator already generates); others
+genuinely close the ED account and register a new inpatient one,
+because the two halves of the stay are billed, coded, and tracked
+under separate visit numbers.
+
+**The wire truth.** Site-dependent — either a single VisitID carried
+through an A02 transfer, or two distinct VisitIDs joined only by the
+patient's own MRN and a shared timestamp, with no standard segment
+asserting "these are the same physical stay." A downstream system
+naively assuming one encounter number per stay will misjoin or drop
+the second half either way it's modeled.
+
+**Our model.** Surfaced directly by a real vendored Synthea module,
+not invented: `appendicitis.json` (`docs/gmf-interpreter.md`'s M7
+survey) authors this exact pattern — an emergency `Encounter`
+immediately followed by its own `EncounterEnd`, then a new inpatient
+`Encounter` opens with zero elapsed time. This project's
+`compile-trajectory` currently treats the FIRST `:encounter-end` as
+closing the patient's only compiled encounter for the run
+(`encounter-closed?`, M5b) and silently drops everything after —
+correct for the lifetime-recurrence case that mechanism was built for,
+wrong for this one. The right model is `:transfer` (ADT^A02, already a
+real step type, `ehr-testing-sim.pathway`) for sites that model it as
+one encounter, or a genuine second `:admission` under a new participant
+identity for sites that model it as two — a real design decision, not
+yet made, named in `.agents/plans/roadmap.md`'s own M7 deferred-ledger
+bullet rather than decided here.
+
+**Why testers care.** An interface that assumes "one VisitID per
+physical stay" breaks on the two-account sites; an interface that
+assumes "location changes, encounter number doesn't" breaks on the
+new-account sites. Generating this traffic on purpose — once the
+mechanism above is built — would be premium content for exactly the
+same reason the newborn merge and post-mortem entries already are: it
+is *correct* hospital behavior that still breaks naive consumers.
+
+---
+
 ## Results pending at discharge *(stub — mechanism landed, M3)*
 
 **The reality.** A lab result does not always come back before a

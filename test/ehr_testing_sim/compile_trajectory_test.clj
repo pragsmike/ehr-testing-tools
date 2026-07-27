@@ -72,6 +72,35 @@
           {:keys [steps]} (ct/compile-trajectory trajectory facility 100)]
       (is (= [:admission :delay :discharge] (mapv :type steps))))))
 
+(deftest a-second-same-episode-encounter-after-the-first-encounter-end-is-dropped
+  (testing "M7 finding (docs/gmf-interpreter.md's own M7 survey section,
+            confirmed here against synthetic events rather than only
+            reasoned about): `encounter-closed?` is a single boolean set by
+            the FIRST :encounter-end and never cleared -- it was built to
+            stop a module recurring across a patient's WHOLE LIFE
+            (sinusitis.json's own Potential_Onset loop, M5b) from minting a
+            second admission, but it fires identically for a SAME-EPISODE
+            transfer to a different care setting (appendicitis.json's own
+            real shape: an ED encounter closes, an inpatient surgical
+            encounter opens immediately after, zero elapsed time) -- the
+            second encounter, and everything compiled from it, is silently
+            dropped. This is the real gap standing between
+            appendicitis.json vendoring cleanly (Task 2) and a demo that
+            shows its own surgery (Task 3) -- not a throw, not a load
+            rejection, a genuine compile-time content-completeness gap,
+            recorded here as a permanent regression witness, not merely a
+            one-off finding."
+    (let [trajectory [(ev :encounter {:t 100 :encounter-class :emergency
+                                      :codes [{:system :snomed :code "50849002" :display "ED admission"}]})
+                      (ev :encounter-end {:t 110 :references 0})
+                      (ev :encounter {:t 110 :encounter-class :inpatient
+                                      :codes [{:system :snomed :code "185347001" :display "Encounter for problem"}]})
+                      (ev :procedure {:t 111 :codes [{:system :snomed :code "80146002" :display "Excision of appendix"}]})
+                      (ev :encounter-end {:t 200 :references 2})]
+          {:keys [steps]} (ct/compile-trajectory trajectory facility 100)]
+      (is (= [:admission :delay :discharge] (mapv :type steps))
+          "the inpatient admission, the appendectomy procedure, and the second discharge are all missing -- exactly the drop this test exists to witness"))))
+
 ;; --- Standalone clinical step types ----------------------------------------
 
 (deftest procedure-compiles-to-a-procedure-step-with-codes-and-citation

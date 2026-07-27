@@ -788,6 +788,101 @@ sibling repo's own committed gate baselines are unaffected by this
 milestone, unlike every milestone before it that changed message
 shape. Said explicitly so the author needn't wonder.
 
+## M7 — Module curation: survey the catalog, vendor the expressible set — **landed**
+
+Lands the second and third real vendored GMF modules
+(`resources/modules/appendicitis.json` alongside the existing
+`sinusitis.json`) and, more valuably, a much sharper picture of what
+Synthea's actual current module library will and won't support under
+this project's own v1 interpreter subset. `docs/gmf-interpreter.md`'s
+M7 section has the full survey — 41 real modules read at the same
+pinned commit as `sinusitis.json` (`7e08387c68a7f0e21d13076609a159fd473fc902`),
+spanning emergency/inpatient/ambulatory/`Observation`-bearing axes the
+one-module set couldn't exercise. Only `appendicitis.json` cleared the
+full bar (zero state-type gap, zero condition-vocabulary gap) and is
+vendored, test-first, with a real red→green cycle
+(`vendored_appendicitis_test.clj`) and a full-set collision test
+(`fixture-clinic` + `sinusitis` + `appendicitis`, zero attribute
+collisions). 437 tests / 1125 assertions green (up from the M6-era
+baseline 432/1116), coverage 97.37%/98.99% (steady). The pinned
+regression fixture is untouched — this session's diff is
+`resources/modules/`, `docs/`, `notes/`, and tests only.
+
+**Two real findings, one caught before it ever reached a commit.** A
+new, empirically-confirmed compile-time gap: `compile-trajectory`'s
+`encounter-closed?` mechanism (built at M5b to stop a module recurring
+across a patient's WHOLE LIFE from minting a second admission) also
+drops a SAME-EPISODE second encounter — `appendicitis.json`'s own real
+shape (ED admission, immediate transfer to an inpatient surgical
+encounter) — silently, at compile time, not a throw. Proven both by a
+new synthetic-event unit test
+(`compile-trajectory-test/a-second-same-episode-encounter-after-the-
+first-encounter-end-is-dropped`) and by a real end-to-end demo run
+(`docs/demos/module-mix/`). Separately, the survey's own SECOND
+extended pass (author-directed, after this session's own seam
+checkpoint) mis-characterized `spina_bifida.json` as vendorable — its
+`Death` state looked like a safely isolated tail, exactly the
+`Device`/`DeviceEnd` precedent, but `Death` (unlike `Device`) was never
+promoted into v1's loader-recognized set; attempting to vendor it
+test-first caught the load-time `:unsupported-state-type` rejection
+immediately, before any commit — `docs/gmf-interpreter.md`'s own
+account of the correction is left visible, not rewritten away.
+
+**The prioritization table (`docs/gmf-interpreter.md`, M7 section) is
+the real deliverable for future `CallSubmodule`/`Death`/`Counter`/
+`MultiObservation` roadmap decisions — read it before making one.**
+Headline: `CallSubmodule` blocks roughly 24 of the 41 modules read at
+any depth this session — by far the largest blocker, confirming and
+sharpening the `ear_infections.json` finding the original M5-prep
+survey already made. `Death` is the single most consistent, safest-to-
+fix finding: every one of 12+ modules with a `Death` state has it on a
+genuinely excludable tail, never once on a mandatory path — promoting
+it to a `Device`/`DeviceEnd`-style consumed-internally state (wired to
+the existing `:expired` machinery, `docs/clinical-realities.md`'s
+post-mortem entry) is the cheapest, highest-confidence v1.1 extension
+this table names, and unlocks `spina_bifida.json` immediately. Two more
+NEW gaps this session found, neither previously documented: a
+`"wellness": true` boolean encounter-class encoding (vs. the
+`encounter_class: "wellness"` string this loader expects) blocks five
+confirmed modules including two (`epilepsy.json`, `med_rec.json`)
+otherwise fully clean; and a mandatory-path `Date` condition type
+(calendar-year-gated treatment protocols) blocks `stroke.json`/
+`atrial_fibrillation.json`/`osteoporosis.json`. `sore_throat.json` —
+this project's own prior "near-certain vendor" — turned out to need a
+bigger condition-vocabulary extension than previously characterized
+(`At Least`/`Symptom`/`Observation` predicates on its own mandatory
+diagnostic branch, not merely the excludable `Active Allergy` tail);
+deferred, not vendored, per this session's own test-first discipline
+(vendoring it would ship a module that crashes for most real patients).
+
+**Task 3: population defaults + demo, landed.** A documented default
+`:modules`/`:module-assignment` (90% `sinusitis` / 10% `appendicitis`,
+rough plausibility per this session's own weighting note — see
+`docs/demos/module-mix/config.edn`'s own header comment, not an
+epidemiological claim) with a real end-to-end CLI demo
+(`docs/demos/module-mix/`, seed 71, 100 patients, churn on, `--format
+er7`): a real emergency admission citing `appendicitis`/
+`appendicitis-encounter` glass-box, immediately followed by the
+discharge citing `transfer-to-inpatient` (the truncation finding's
+own wire-level trace), a sinusitis outpatient visit, and a mix summary
+(87 patients manifest sinusitis content, 3 manifest appendicitis, 10
+manifest neither of their own assigned module within the run's
+window — computed from ground-truth citations, since module
+ASSIGNMENT itself isn't separately stamped onto `:registered`).
+**The module-Observation OBX demo goal is recorded as genuinely
+unmet** — no vendorable `Observation`-bearing module was found this
+session (the M7 survey's own dedicated subsection has the full
+account) — and the inpatient/surgical half of `appendicitis.json`'s
+own content is demonstrably absent from the demo for the same
+compile-time reason named above, not merely described in prose.
+
+**Note for the author: `ehr-testing-tools`' own full-capability
+baseline config pins its own module list independently** — unchanged
+by this session unless that repo's own session opts in to add
+`appendicitis.json`; a tools-side refresh is a candidate next TOOLS
+task, not landed here (ADR-0001's dependency direction: this repo
+never reaches into tools' own fixtures).
+
 ## Later / triggers
 
 Not sequenced, because each is gated on a condition rather than on
@@ -848,12 +943,16 @@ the milestone before it:
   2026-07-27) — named here so the public roadmap reads as deliberate
   deferral, not abandonment; each item is discussed in full where
   cited, this bullet is only the index.**
-  - **Module curation beyond the current small set.** ADR-0013 pinned
-    `gmf-module-set` to a small, hand-curated, hashed subset in
-    `resources/modules/` (currently one: `sinusitis.json`) rather than
-    a lockfile over Synthea's full 85-module library (M5's own
-    section, above). Growing that set is real future work, gated on
-    nothing but author time — no external trigger blocks it.
+  - **Module curation beyond the current small set — M7 landed, this
+    remains open past it.** ADR-0013 pinned `gmf-module-set` to a
+    small, hand-curated, hashed subset in `resources/modules/` (now
+    two: `sinusitis.json`, `appendicitis.json`, M7's own section,
+    above) rather than a lockfile over Synthea's full 85-module
+    library. Growing the set further is real future work, gated on
+    nothing but author time and the specific deferred-feature
+    extensions M7's own prioritization table names — see the
+    `CallSubmodule`/`Death` bullet below, now backed by that table
+    instead of an unbacked deferral.
   - **Two-participant emitter coherence.** M6's own emitter-coherence
     property excludes bed-swap (A17) and merge (A40) — genuinely
     two-participant messages whose own wire-identity reconstruction (a
@@ -866,11 +965,27 @@ the milestone before it:
     first-class" note, above) — must land with or before any future
     milestone that introduces `:pending-*` step types, per that same
     note's own reasoning.
+  - **Multi-encounter-per-episode compile-time truncation (M7
+    finding, new).** `ehr-testing-sim.compile-trajectory`'s
+    `encounter-closed?` mechanism drops a real, same-episode second
+    encounter (`appendicitis.json`'s own ED→inpatient transfer, M7's
+    own section, above) — a `:transfer` step already exists in
+    `ehr-testing-sim.pathway` as the architecturally right primitive,
+    named but not built this session.
   - **`CallSubmodule`/`Counter`/`MultiObservation`/`Death` (GMF state
-    types).** Deferred from the interpreter's v1 scope at the design
-    stage (`docs/gmf-interpreter.md`, cited at M5's own section,
-    above) — no vendored module this project currently uses needs
-    them; revisit if a future vendored module does.
+    types), and two new gaps M7 found (`wellness: true` encounter-class
+    encoding, mandatory-path `Date` conditions).** Deferred from the
+    interpreter's v1 scope at the M5 design stage
+    (`docs/gmf-interpreter.md`) — **no longer an unbacked deferral**:
+    M7's own prioritization table (`docs/gmf-interpreter.md`, M7
+    section) quantifies each against 41 real modules read —
+    `CallSubmodule` blocks ~24 of them (the headline finding, by far
+    the largest); `Death` is the cheapest fix (every instance found on
+    a genuinely excludable tail, never mandatory, unlocks
+    `spina_bifida.json` immediately per M7's own self-correction, above);
+    the `wellness: true` encoding fix unlocks `epilepsy.json`/
+    `med_rec.json` immediately. Revisit this bullet by reading that
+    table, not by re-surveying from scratch.
   - **Calibrate** — already its own bullet, above; listed here too
     only for this index's own completeness.
 

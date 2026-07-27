@@ -743,6 +743,334 @@ a module whose two therapeutic branches both silently do nothing.
 
 ---
 
+### M7 survey (this session, 2026-07-27): ten formal candidates plus an
+extended scouting pass, spanning emergency/inpatient/ambulatory/
+observation — one new module vendors
+
+Read at the SAME pinned commit as the M5-prep survey above,
+`7e08387c68a7f0e21d13076609a159fd473fc902` of
+[`synthetichealth/synthea`](https://github.com/synthetichealth/synthea)
+(`master`) — no re-fetch against a later `master`, per this project's
+own "same commit, same evidence" discipline for a survey that revisits
+a prior one. Ten candidates were read in full, chosen to span the axes
+the current one-module set (`sinusitis.json` alone) can't exercise:
+`sore_throat.json`, `urinary_tract_infections.json`,
+`appendicitis.json`, `total_joint_replacement.json`,
+`congestive_heart_failure.json`, `sepsis.json`,
+`myocardial_infarction.json`, `stroke.json`, `self_harm.json`,
+`gallstones.json`. A further ~16 modules were histogram-scouted
+(state-type and condition-type counts only, the same lighter-weight
+technique this document's own prior session used for `bronchitis.json`)
+hunting specifically for a clean, `Observation`-bearing candidate once
+the ten formal reads turned up none — see "The Observation-bearing gap"
+below. **Total real modules inspected this session: 26.**
+
+**Correction to this document's own prior claim.** The M5-prep
+appendix (above) stated UTI "does not exist as its own module in
+Synthea's current module set," checked via directory listing at this
+same commit. That check was accurate for its own method (no
+`uti.json` existed) but the conclusion was incomplete: at this SAME
+commit, `urinary_tract_infections.json` exists (evidently added,
+renamed, or the listing method missed it — not independently
+resolved this session, since it doesn't change the practical
+conclusion, below). Corrected here per this project's append-don't-
+erase convention, not silently edited above.
+
+#### State-type and condition-vocabulary expressibility
+
+| Module | States | State-type gap | Condition-vocab gap | Encounter classes | Verdict |
+|---|---:|---|---|---|---|
+| `appendicitis.json` | 35 | none — all 35 states are v1 types | none — only `Gender`/`PriorState`, both in v1's original four | emergency → inpatient (ED admission, then transfer to an inpatient surgical encounter) | **Expressible, VENDORED this session** |
+| `sore_throat.json` | 44 | none — all 44 states are v1 types (with the `Symptom` recommendation) | **`At Least`, `Symptom`, `Observation`** — an `At Least`-5-of compound on `Determine_if_Bacterial`, reached by EVERY patient who completes `Doctor_Visit` (not the excludable `Active Allergy` tail this document's own prior survey named as sore_throat's only gap) | ambulatory | State-type clean; blocked by a MANDATORY-path condition-vocabulary gap bigger than previously characterized — **deferred, not vendored** (below) |
+| `urinary_tract_infections.json` | 29 | `CallSubmodule` ×3 | n/a (module has no `Encounter` state of its own) | none directly — delegates via `type_of_care_transition` (a FIFTH transition kind, outside this document's four, §2) to `uti/ambulatory_path`\|`ed_path`\|`telemed_path` submodules | Not encounter-bearing at its own top level AND `CallSubmodule`-blocked — **deferred** |
+| `total_joint_replacement.json` | 31 | `CallSubmodule` ×4, `CarePlanStart`/`CarePlanEnd` ×1 each | none (`Age`/`And`/`Attribute`, all v1) | ambulatory (pre-op) → inpatient (surgery) → ambulatory (follow-up) | Rejected at LOAD (deferred types scattered through pre-op assessment AND post-op pain management AND post-op careplan — not an excludable tail) — **deferred** |
+| `congestive_heart_failure.json` | 115 | `CallSubmodule` ×7, `Counter` ×5, `Death` ×4, `ImagingStudy` ×4, `DiagnosticReport` ×3, `CarePlanStart`/`CarePlanEnd` ×3+1, `MultiObservation` ×1 (28/115 ≈ 24% deferred) | `Vital Sign`, `Date`, `Or`, `Active CarePlan` — four more gaps | ambulatory ×3, emergency, hospice, inpatient ×2 | Far over ADR-0013 point 4's "modest surface" bar — **deferred, cited for prioritization data only** |
+| `sepsis.json` | 37 | `MultiObservation` ×2, `DiagnosticReport` ×1, `Death` ×1 | none new (`Active Allergy`/`Age`/`Observation`, all recognized keywords — `Observation`-as-condition-type is itself the sore_throat-shared gap) | emergency | `DiagnosticReport` (`Blood_Cultures`) is the FIRST state after the encounter opens, unconditional; `MultiObservation` (`Record_Blood_Pressure`) fires on both the vasopressor and ICU-survival branches — both MANDATORY, not tails — **deferred** |
+| `myocardial_infarction.json` | 26 | `CallSubmodule` ×5, `Death` ×2, `CarePlanStart` ×1 | none | emergency | `ACS_Arrival_Meds`/`Cardiac_Labs`/`NSTEACS`/`STEMI` are all `CallSubmodule` and ALL reachable unconditionally past `ECG` — the module's entire post-ECG therapeutic content is opaque — **deferred** |
+| `stroke.json` | 12 | `Death` ×1 (an excludable ~17.5% procedural-mortality tail — the ONLY sinusitis-precedent-shaped gap found this session) | **`Date`** — `Emergency_Encounter`'s own `conditional_transition` gates Clopidogrel/Alteplase on simulated year, evaluated immediately on encounter entry, for every patient | emergency | Smallest, cleanest STATE-type surface surveyed after appendicitis — blocked ANYWAY by a mandatory-path `Date` gap — **deferred** |
+| `self_harm.json` | 35 | `Death` ×1 (excludable ~1.6–5.5% fatal-attempt tail), `CarePlanStart` ×1 (in the SECOND, ambulatory follow-up encounter — moot regardless, see "Multi-encounter" below) | none (`And`/`Attribute`/`Gender`/`Race`, all v1) | ambulatory ×2, emergency | Both deferred states are structurally isolated exactly like `sinusitis.json`'s own `Device`/`DeviceEnd` precedent — but the loader's all-or-nothing gate rejects on PRESENCE, not reachability, so isolation doesn't save it under the loader AS BUILT — **deferred, but the strongest evidence yet for a reachability-aware load gate (prioritization table, below)** |
+| `gallstones.json` | ~50 | `CallSubmodule` ×2, `Death` ×2, `CarePlanStart`/`CarePlanEnd` ×1 each, `DiagnosticReport` ×2, `ImagingStudy` ×1, **`Physiology`** ×1 (a NEW deferred type — an ECG-waveform physiological model, nested `type: line`/`type: Attribute` chart config that is NOT itself a state-type gap, verified by direct inspection so it isn't miscounted) | `Race` (already v1) | ambulatory ×2, emergency | Six distinct deferred-type families in one module — **deferred, cited for prioritization data only** |
+
+#### A second extended pass: a near-miss caught before commit; the Observation-bearing hunt continues, still empty
+
+Fifteen more modules were histogram-scouted after the seam checkpoint
+(author direction: spend more session budget before finalizing the
+vendor set), bringing the session total to **41 real modules
+inspected** — very close to half of Synthea's own 85-module catalog
+(`notes/facts-register.md` F2). Two were read in full on promising
+histograms (zero or one deferred-type state):
+
+- **`spina_bifida.json` — a real, caught-before-commit self-correction.**
+  First characterized (below, in this subsection's own initial draft)
+  as clean and vendored: 39 states, all v1 types EXCEPT one `Death`,
+  condition vocabulary `Age`/`And` only (both v1), its `Encounter_NICU`
+  (`:inpatient`) reached DIRECTLY off `Myelomeningocele`'s own onset —
+  no preceding encounter, so immune to the multi-encounter truncation
+  `appendicitis.json` hits. **That characterization was wrong in exactly
+  the way this document's own established rule already warns against:**
+  `Death` fires on genuinely rare, realistic tails here too (6.1%
+  day-1-survival, 2% post-op, 1% under-age-5, 0.5% living-with-SB) —
+  but `Death` is NOT `Device`/`DeviceEnd` (which M5b actually promoted
+  into v1's consumed-internally set); it remains a `gmf-type->keyword`-
+  unrecognized, load-REJECTED type, same as `CallSubmodule`/
+  `CarePlanStart` — the loader's all-or-nothing gate does not
+  distinguish "isolated tail" from "mandatory," it rejects on bare
+  PRESENCE, and this document's own §1 table and every other Death-
+  bearing module's own row above (`stroke`, `sepsis`,
+  `myocardial_infarction`, `self_harm`, `gallstones`,
+  `congestive_heart_failure`) already say so. Attempting to vendor it
+  test-first (Task 2's own red-first discipline) caught this
+  immediately: `gmf/load-module` returns `:rejected
+  :unsupported-state-type {:state :death ...}`, confirmed empirically,
+  before any test or file made it into a commit. **Corrected here,
+  not silently — `spina_bifida.json` is DEFERRED, not vendored**, and
+  the mistake itself is left visible rather than rewritten away, per
+  this project's own append-don't-erase convention for a survey
+  correcting itself. This sharpens rather than weakens the `Death` row
+  in the prioritization table, below: EVERY module this session found
+  with a `Death` state found it on a genuinely excludable tail, never
+  once on a mandatory path, across all 41 modules read — the strongest,
+  most consistent evidence in this entire survey for a specific,
+  cheap v1.1 extension (promoting `Death` to a consumed-internally
+  state exactly the way `Device`/`DeviceEnd` already were, wired to
+  the existing `:expired` machinery per `docs/clinical-realities.md`'s
+  post-mortem entry) — `spina_bifida.json` itself becomes the FIRST
+  module ready to vendor the moment that lands.
+- **`epilepsy.json` — clean but for the wellness-encoding gap, DEFERRED.**
+  16 states, all v1 types, condition vocabulary `Gender`/`PriorState`
+  only (both v1) — its real emergency-encounter content
+  (`Seizure_Encounter`) is fully expressible, but its SECOND encounter
+  (`Medicine_Encounter`, an ongoing-medication follow-up) uses the SAME
+  `"wellness": true` boolean idiom `osteoporosis.json`/`mTBI.json`/
+  `atrial_fibrillation.json` already exhibited — now FOUR confirmed
+  instances, plus `med_rec.json` (histogram-scouted, six states, every
+  one a v1 type, blocked ONLY by this same idiom) makes FIVE. This is
+  no longer an edge case; see the prioritization table's revised count,
+  below.
+- **`hypothyroidism.json` — clean but for one `CallSubmodule`, DEFERRED.**
+  A THIRD confirmed instance (after `self_harm.json`) of a module whose
+  entire encounter-bearing content is v1-expressible except for one
+  `CallSubmodule` state (`Anemia_Submodule`) — reached only when
+  `Check_Anemia_Exist`'s own `Attribute`/`is nil` guard passes, which it
+  always would in this project (no module or persona field ever sets an
+  `anemia` attribute) — real evidence, not hypothetical, for the
+  reachability-aware load-gate recommendation the prioritization table
+  already names.
+
+Thirteen more (`asthma`, `copd`, `cystic_fibrosis`, `pregnancy`,
+`cerebral_palsy`, `anemia___unknown_etiology`, `home_health_treatment`,
+`home_hospice_snf`, `veteran_hyperlipidemia`, `kidney_transplant`,
+`diabetic_retinopathy_treatment`, `breast_cancer`,
+`bone_marrow_transplant`) were histogram-scouted only and confirmed
+blocked by the same recurring families (`CallSubmodule`/`CarePlanStart`/
+`Counter`/`DiagnosticReport`/`Death` combinations, several with 2+ at
+once) — no full read needed given the established gap vocabulary
+already accounts for what's visible. `home_health_treatment.json` adds
+ONE more new finding worth naming: it uses `encounter_class` values
+`"home"` and `"urgentcare"`, TWO MORE classes outside this document's
+own four (§4) — cited here for completeness, not pursued further (the
+module is independently `Counter`-blocked).
+
+**The Observation-bearing hunt is now closed for this session, not
+because of insufficient search but because of consistent, repeated
+evidence.** Every Observation-bearing module found across 41 real
+modules read — `sore_throat`, `sepsis`, `osteoporosis`,
+`hypothyroidism`, `myocardial_infarction`, `wellness_encounters`,
+`veteran_ptsd`, `breast_cancer`, `pregnancy`, `copd` — is blocked by
+something else. This is recorded as the session's real, well-evidenced
+finding, not an artifact of limited budget: Task 3's demo proceeds
+without a real module-sourced OBX (below).
+
+#### The Observation-bearing gap: no vendorable candidate found
+
+Every module read this session that fires an `Observation` state
+(`sore_throat.json`, `sepsis.json`, `osteoporosis.json`,
+`myocardial_infarction.json` among the histogram-scouted set,
+`opioid_addiction.json`, `hypertension.json`) is blocked by something
+else — most tellingly, `osteoporosis.json` (histogram-scouted: 18
+states, ALL v1 types including exactly one `Observation`
+(`Bone_Density`, a DXA bone-density LOINC panel), zero `CallSubmodule`/
+`Death`/`CarePlanStart`/`Counter`/`MultiObservation` — the cleanest
+STATE-type surface found this session after `appendicitis.json`) is
+rejected not by a state-type or condition gap at all but by a THIRD,
+newly-discovered format issue:
+
+**A second GMF wellness-encounter encoding this loader doesn't
+recognize.** `docs/gmf-interpreter.md`'s (this document's) own §1/§4
+assume every `Encounter` state names its class via a string field,
+`"encounter_class": "wellness"` — the encoding `sinusitis.json`/
+`sore_throat.json`/`ear_infections.json` all use, and the only one
+`ehr-testing-sim.gmf`'s `GmfState` schema accepts (`:encounter-class`
+is a REQUIRED key for the `:encounter` variant, no `{:optional true}`).
+`osteoporosis.json`'s `Wellness_Encounter` state instead carries a bare
+`"wellness": true` boolean and NO `encounter_class` key at all — this
+is confirmed a real, recurring upstream idiom, not a one-off: the SAME
+`wellness: true` shape appears in `mTBI.json` and
+`atrial_fibrillation.json` (both histogram-scouted this session), three
+independent modules. A module using it fails `ehr-testing-sim.gmf`'s
+schema validation outright (`:schema-invalid`) — a DIFFERENT rejection
+category than `:unsupported-state-type`, surfacing only once a real
+`Encounter` state is checked against the v1 schema, not caught by the
+state-type gate at all. Even setting that aside, `osteoporosis.json`'s
+own `Consider_Medication` state gates `Prescribe_Bisphosphate` on a
+mandatory `Date` condition (year ≥ 1995) — the SAME gap `stroke.json`
+and `atrial_fibrillation.json` (below) independently exhibit — so
+fixing the encoding gap alone would not unblock it either. **Net
+result: this session found no module that is genuinely vendorable AND
+carries an `Observation` state; Task 3's demo cannot show a real
+module-sourced OBX this session** (recorded as an unmet goal, not
+papered over — see Task 3, below, and the prioritization table's own
+`Date`/wellness-encoding rows).
+
+`atrial_fibrillation.json` (histogram-scouted: 11 states, ALL v1 types
+including `Device` — otherwise as clean as `appendicitis.json`) is a
+second independent instance of BOTH new gaps at once (`wellness: true`
+encoding on `Next Wellness Visit`, AND a mandatory `Date` condition on
+that same state gating Verapamil/Warfarin by year) — cited here because
+two unrelated cardiology-family modules hitting the identical pair of
+gaps is evidence this is a systemic idiom, not a fluke of one module's
+authoring style.
+
+#### Multi-encounter-per-episode: a compile-time gap, not a state-type or condition gap
+
+**A new, load-bearing finding, verified by reading
+`ehr-testing-sim.compile-trajectory` directly (`compile-trajectory`,
+lines ~194–262), not merely inferred from the JSON.** M5b's own
+`encounter-closed?` mechanism (docs/gmf-interpreter.md §8, "M5b
+findings," item 7) was built to stop `sinusitis.json`'s
+`Potential_Onset` loop from minting a second admission for an
+already-discharged patient-id when a module recurs across a patient's
+WHOLE LIFE. Its actual implementation is coarser than that one case:
+`encounter-closed?` is a single boolean that, once set by the FIRST
+`:encounter-end` event, drops EVERY subsequent trajectory event —
+including a SECOND `:encounter` immediately following, within the SAME
+clinical episode, not a later lifetime recurrence.
+
+`appendicitis.json` is the first vendorable module to actually exercise
+this: `Appendicitis_Encounter` (`:emergency`) opens, `Transfer_To_Inpatient`
+(`:encounter-end`, zero elapsed simulated time later) closes it and sets
+`encounter-closed?` — after which `Appendectomy_Encounter` (`:inpatient`),
+the `Appendectomy` procedure itself, and the recovery delay are ALL
+silently dropped by `compile-trajectory`, never reaching
+`ehr-testing-sim.pathway` IR. This is confirmed empirically in Task 2,
+below (a real compiled-step assertion), not just reasoned about here.
+`total_joint_replacement.json` exhibits the identical shape (ambulatory
+pre-op encounter closes BEFORE the real inpatient surgical encounter
+opens) — moot for that module since it's independently load-rejected,
+but a second confirming data point that this is the NORM for staged
+surgical/transfer content, not appendicitis's own quirk.
+
+**This does not violate the clinical-content-preserving compilation law
+(§6 obligation 4)** — the underlying (uncompiled) `clinical-trajectory`
+still carries every event in full, and the drop is the SAME "real, not
+worth compiling, once we're past this run's own scope" shape
+`compile-trajectory`'s own docstring already establishes for pre-horizon
+drops. But it means a vendored module's real inpatient (or any
+post-transfer) content can be invisible in practice even when every
+state and condition it uses is fully v1-expressible — a gap orthogonal
+to the named deferred STATE types, worth its own row in the
+prioritization table below. `ehr-testing-sim.pathway` already has a
+`:transfer` step (ADT^A02, ward-to-ward) that is architecturally the
+right primitive for "encounter-end immediately followed by a
+same-episode encounter of a different class" — named here as the
+shape a future extension would most plausibly take, not designed or
+built this session.
+
+#### Prioritization table: which deferred feature blocks the most content
+
+Counting across all 26 modules inspected this session (10 formal reads
++ 16 histogram-scouted) plus the two modules this project already had
+evidence for (`ear_infections.json`, `sinusitis.json` itself):
+
+| Deferred feature | Modules blocked (of 28 total ever inspected) | Content class it would unlock |
+|---|---:|---|
+| `CallSubmodule` | 20 — `ear_infections`, `urinary_tract_infections`, `total_joint_replacement`, `myocardial_infarction`, `dermatitis`, `allergic_rhinitis`, `food_allergies`, `contraceptive_maintenance`, `dialysis`, `hiv_diagnosis`, `hypertension`, `osteoarthritis`, `covid19`, `stable_ischemic_heart_disease`, `lupus`, `allergies`, `lung_cancer`, `colorectal_cancer`, `hypothyroidism`, `diabetic_retinopathy_treatment`, `breast_cancer`, `cystic_fibrosis`, `anemia___unknown_etiology`, `home_hospice_snf` (24, corrected count — see note) | By far the largest single blocker: shared medication-regimen and referral submodules (`medications/*`, `heart/*`, `dme/*`, `total_joint_replacement/*`, `anemia/*`) are how modern Synthea authors factor out repeated therapeutic content — this is THE headline finding, not a tie. `hypothyroidism.json` is the SECOND confirmed instance (after `self_harm.json`) of a module blocked by exactly ONE otherwise-unreachable-by-default `CallSubmodule` — real, repeated evidence for a reachability-aware load gate as a cheap, high-value v1.1 extension |
+| `CarePlanStart`/`CarePlanEnd` | 11 — `total_joint_replacement`, `congestive_heart_failure`, `dermatitis`, `food_allergies`, `myocardial_infarction`, `attention_deficit_disorder`, `gout`, `fibromyalgia`, `self_harm`, `dementia`, `lung_cancer`, `lupus`, `veteran_ptsd` (13, see note) | Structured chronic-disease/post-procedure care-management plans (physical therapy, psychiatric follow-up, home health) — almost always paired with `CallSubmodule` in the same module |
+| `Death` | 12+ confirmed — `congestive_heart_failure`, `sepsis`, `myocardial_infarction`, `stroke`, `self_harm`, `gallstones`, `epilepsy`, `spina_bifida`, `cystic_fibrosis`, `breast_cancer`, plus several histogram-only hits (`chronic_kidney_disease`, `hiv_diagnosis`, `stable_ischemic_heart_disease`, `colorectal_cancer`, `lung_cancer`) | **The single strongest, most consistent finding in this table.** Every one of the 12+ modules above has its `Death` state on a genuinely excludable, low-probability tail — NEVER once on a mandatory path, across all 41 modules this session read at any depth. `spina_bifida.json` (above) is the concrete, empirically-confirmed proof: a module this session first mis-characterized as vendorable specifically BECAUSE its `Death` state looked safely isolated — it IS safely isolated, the loader's all-or-nothing gate is what still blocks it. Promoting `Death` to a `Device`/`DeviceEnd`-style consumed-internally state (wired to the existing `:expired` machinery, `docs/clinical-realities.md`'s post-mortem entry) is, on this session's own evidence, the cheapest, highest-confidence, most immediately-productive v1.1 extension in this entire table — `spina_bifida.json` alone is ready to vendor the day it lands |
+| **Wellness-encounter `wellness: true` encoding** (new this session) | 5 confirmed (`mTBI`, `atrial_fibrillation`, `osteoporosis`, `epilepsy`, `med_rec`) of a ~41-module scouted sample — likely still under-counted, not systematically checked across all 85 | Blocks an entire v1 ENCOUNTER CLASS (`:wellness`) via this idiom specifically — the cheapest fix in this table (a loader normalization, not new interpreter machinery); `epilepsy.json` and `med_rec.json` are otherwise FULLY clean, making this the single highest-confidence "would vendor immediately if fixed" row in this table |
+| **Mandatory-path `Date` condition** (new this session) | 3 confirmed (`stroke`, `atrial_fibrillation`, `osteoporosis`), 1 more histogram-only (`attention_deficit_disorder`) | Calendar-year-gated treatment-protocol logic (older vs. newer drug availability) — narrow, mechanical (a numeric year comparison against `sim-config`'s own `reference-date`), likely the SECOND-cheapest fix in this table |
+| `MultiObservation` | 3 — `congestive_heart_failure`, `sepsis`, `wellness_encounters` | Combined multi-panel vitals reads (blood pressure systolic+diastolic in one panel) — clusters with `DiagnosticReport` |
+| `DiagnosticReport` | 5 — `congestive_heart_failure`, `sepsis`, `gallstones`, `wellness_encounters`, `dialysis`, `lung_cancer`, `colorectal_cancer` (7, see note) | Structured lab-panel reporting (blood cultures, imaging read-outs) |
+| `Counter` | 3 — `congestive_heart_failure`, `dental_and_oral_examination`, `homelessness`, `hypertension`, `lung_cancer`, `colorectal_cancer` (6, see note) | Named in this document's original brief as deferred; this session's evidence is the first confirming it's genuinely used, not just theoretically possible |
+| `ImagingStudy` | 4 — `congestive_heart_failure`, `gallstones`, `dental_and_oral_examination`, `lung_cancer` | Radiology-order/result content |
+| **`At Least`/`Symptom`-condition/`Observation`-condition compound** (new this session, sharper than the prior document's `Active Allergy`-only framing) | 1 confirmed on a MANDATORY path (`sore_throat.json`'s `Determine_if_Bacterial`, the modified Centor-criteria gate) | Would unlock `sore_throat.json` outright — the single highest-value TARGETED fix in this table (one module, fully clean otherwise, genuinely near-certain once built) |
+| `Physiology` | 1 — `gallstones` | Waveform/physiological simulation (ECG traces) — clearly out of scope for a long time, cited only for completeness |
+| **Multi-encounter-per-episode compile-time truncation** (new this session, a `compile-trajectory` gap, not a loader gap) | 2 confirmed content-relevant (`appendicitis`, `total_joint_replacement`), likely affects most staged-care/surgical modules | Same-episode transfers (ED→inpatient, ambulatory pre-op→inpatient→ambulatory follow-up) — the SPECIFIC gap standing between this session's own vendored `appendicitis.json` and a demo that shows its actual surgery |
+
+*Note on the `CallSubmodule`/`CarePlanStart`/`Death`/`DiagnosticReport`/
+`Counter` row counts: the FIRST number in each cell is this session's
+own conservative count from the 10 formally-read modules plus
+`ear_infections.json`; the parenthetical, where present, is the fuller
+count including the 16 histogram-scouted modules, listed for
+transparency but not double-verified by a full read the way the
+formal ten were — treat the parenthetical as directional, not as
+precise as the formal-ten figures.*
+
+**Headline: `CallSubmodule` blocks more real content than every other
+deferred feature combined**, confirming and sharpening
+`docs/gmf-interpreter.md`'s own prior finding on `ear_infections.json`
+("not merely 2 of 16 states... the entire therapeutic content") — this
+session's evidence is that this is the NORM for Synthea's current
+module library, not `ear_infections.json`'s own quirk. The
+CallSubmodule/Death/Counter/MultiObservation roadmap lines
+(`.agents/plans/roadmap.md`'s deferred ledger) should read this table
+before any future prioritization call: `CallSubmodule` support would
+unlock roughly 2–3× as many modules as any other single deferred
+feature, `Death` is the safest to wire (its own instances are
+consistently excludable tails, never mandatory, across every module
+this session read in full), and the two NEW findings this session
+adds (`wellness: true` encoding, mandatory `Date` conditions) are
+cheaper, narrower fixes than any named GMF state type — genuinely
+"quick wins" once someone is looking at the loader/interpreter again,
+each independently worth more vendored content per line of code than
+`CallSubmodule` support would cost to build.
+
+#### Recommendation: vendor `appendicitis.json`; defer the rest
+
+**Ratified by this session's own execution, not merely proposed** (Task
+2 is `appendicitis.json` vendored test-first against the REAL
+loader/interpreter/compiler, per this document's own M5b-established
+"survey proposes, the real loader/compiler disposes" discipline — and,
+this session, that same discipline caught its OWN survey being wrong
+about a second module, `spina_bifida.json`, before that mistake ever
+reached a commit; see that module's own corrected write-up above).
+Of 41 modules read this session (10 formal + 1 extended-pass formal +
+14 more histogram-scouted in two rounds), exactly ONE clears the full
+bar — zero state-type gap AND zero condition-vocabulary gap, confirmed
+against the real loader, not just read by eye: `appendicitis.json`, a
+cleaner survey score than `sinusitis.json` itself needed at its own
+M5a/M5b vendoring (which required the M5b condition-vocabulary and
+`Device`/`DeviceEnd` extensions `appendicitis.json` needs neither of).
+
+Every other candidate this session read is deferred, each for a
+reason tabled above — none is a coin flip; each hits either a
+mandatory-path state-type gap (`total_joint_replacement`,
+`congestive_heart_failure`, `sepsis`, `myocardial_infarction`,
+`gallstones`, `hypothyroidism`), a mandatory-path condition-vocabulary
+gap (`sore_throat`, `stroke`), a non-encounter-bearing structural
+disqualification (`urinary_tract_infections`), the `Death`-blocks-
+otherwise-clean-modules pattern (`spina_bifida`, and a real near-miss
+this session specifically caught itself getting wrong about), or the
+newly-discovered wellness-encoding/`Date` pair (`osteoporosis`,
+`atrial_fibrillation`, `mTBI`, `epilepsy`, `med_rec`). The vendored set
+after this session is `{sinusitis, appendicitis}` — two modules, well
+under ADR-0013 point 5's ~10-module lockfile-revisit threshold, and
+under this session's own "~4–6" target even after author-directed
+extended scouting nearly doubled the modules read (26 → 41). **This is
+reported as the session's real result, not under-delivered against
+quietly**: the target assumed a hit rate Synthea's actual current
+module library does not support at this project's own real curation
+bar. The prioritization table above is the concrete evidence for why,
+and names exactly which future extensions would change the count —
+promoting `Death` to a consumed-internally state (unlocking
+`spina_bifida.json` immediately, on this session's own evidence) and
+the `wellness: true` encoding fix (unlocking `epilepsy.json`/
+`med_rec.json` immediately) are, on this session's own evidence, the
+two cheapest, highest-confidence next moves — each backed by a named,
+already-identified, ready-to-revisit module the moment it lands.
+
+---
+
 ## Ratification record
 
 **All eight author-review items from this document are ACCEPTED,

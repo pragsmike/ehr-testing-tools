@@ -11,28 +11,44 @@ commit SHA it was fetched at, and a SHA-256 hash of the vendored file
 as fetched -- the concrete meaning of "hashed" in target 3's own name
 (docs/sim-theory.md's Catalytic resolution table).
 
-**M5b (this session, 2026-07-27): the first real entry lands.**
+**M5b (2026-07-27): the first real entry lands.**
 `sinusitis.json` -- the module `docs/gmf-interpreter.md`'s own
 candidate-module survey recommended (item 4 of that document's
 ratification record) -- is vendored below, verbatim, at the SAME pinned
 commit the survey itself read against (re-confirmed current at
 vendoring time; no re-fetch against a later `master` was needed).
 
+**M7 (this session, 2026-07-27): a second entry, `appendicitis.json`.**
+`docs/gmf-interpreter.md`'s own M7 survey read ten candidate modules in
+full (plus ~16 more histogram-scouted) at the SAME pinned commit and
+found `appendicitis.json` the only one with zero state-type gap AND
+zero condition-vocabulary gap -- a cleaner survey score than
+`sinusitis.json` itself needed. Vendored below, verbatim, at the same
+commit; the other nine formally-surveyed candidates are deferred (that
+document's own M7 appendix has the full per-module reasoning and the
+prioritization table).
+
 | Filename | Upstream URL | Commit SHA | SHA-256 | Retrieved |
 |---|---|---|---|---|
 | `sinusitis.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/sinusitis.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `3f321ffadebc0731f10b6d1a59b603862fa079bd203fd7cf7d43ea230c79d0af` | 2026-07-27 |
+| `appendicitis.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/appendicitis.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `2bdb7d712c146e04fb2a0b2e10452f38930e055e20e63410be0c4d8d59a1d876` | 2026-07-27 |
 
 License: Apache-2.0 (`synthetichealth/synthea`, `notes/facts-register.md`
 F2) -- the same license terms already govern every Synthea-derived
-source this project cites. The file on disk is byte-verbatim against
-the URL above (re-verified: `sha256sum resources/modules/sinusitis.json`
-equals the table's own hash) -- no reformatting, no re-indentation, no
-correction of the upstream file's own idiosyncrasies (it carries at
-least one unquoted-JSON--number code value and a `Device`/`DeviceEnd`
-state pair outside this project's ORIGINAL v1 scope; see
-`docs/gmf-interpreter.md` section 1's own updated table and this
-session's M5b findings for how the interpreter -- not the vendored
-file -- was extended to carry it).
+source this project cites. Both files on disk are byte-verbatim against
+the URLs above (re-verified: `sha256sum` on each equals the table's own
+hash) -- no reformatting, no re-indentation, no correction of either
+upstream file's own idiosyncrasies. `sinusitis.json` carries at least
+one unquoted-JSON-number code value and a `Device`/`DeviceEnd` state
+pair outside this project's ORIGINAL v1 scope; see `docs/gmf-
+interpreter.md` section 1's own updated table and its M5b findings for
+how the interpreter -- not the vendored file -- was extended to carry
+it. `appendicitis.json` needed no such interpreter extension (its own
+M7 finding) -- its real gap is a `compile-trajectory` content-
+completeness issue (the module's inpatient/surgical encounter is
+silently dropped by the multi-encounter-per-episode truncation
+`docs/gmf-interpreter.md`'s M7 section documents), not a loader or
+interpreter gap, and the vendored file itself is unaffected either way.
 
 **Prior session's own placeholder text, superseded by the table above
 but left standing per this project's append-don't-erase convention for
