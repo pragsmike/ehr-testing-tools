@@ -59,7 +59,12 @@
    :cancel-transfer {:type "ADT" :trigger "A12"}
    :cancel-discharge {:type "ADT" :trigger "A13"}
    :bed-swap {:type "ADT" :trigger "A17"}
-   :merge {:type "ADT" :trigger "A40"}})
+   :merge {:type "ADT" :trigger "A40"}
+   ;; M3: order/result. :step-rejected has NO entry, by design (ADR-0012:
+   ;; truth about the run, never wire traffic -- no real ADT/ORM/ORU feed
+   ;; carries a message for an attempt that never became a real action).
+   :order-placed {:type "ORM" :trigger "O01"}
+   :result-available {:type "ORU" :trigger "R01"}})
 
 (def ^:private hl7-timestamp-formatter
   (java.time.format.DateTimeFormatter/ofPattern "yyyyMMddHHmmss"))
@@ -229,6 +234,101 @@
       (pv1-segment facility-name nil nil nil)
       (mrg-segment merged-mrn)))))
 
+;; --- M3: ORM^O01 + ORU^R01 (docs/sim-theory.edn's order-profiles
+;; catalytic, docs/operational-models.md) -----------------------------------
+
+(defn- cwe-field
+  "CWE (Coded With Exceptions): identifier^text^coding-system. \"LN\" is
+  LOINC's own HL7v2 Table 0396 coding-system abbreviation -- the coded-
+  triplet's :system rendered natively (ADR-0002), not translated."
+  [{:keys [code display]}]
+  (parser/create-field [code display "LN"]))
+
+(defn- orc-segment
+  "ORC-1: order control -- \"NW\" (new order) is the only value this
+  stage ever emits, since InjectChurn has no order-cancellation step
+  (v1 scope). ORC-2: placer order number, reusing this message's own
+  control-id (no separate order-numbering scheme needed yet)."
+  [control-id]
+  (parser/create-segment
+   "ORC"
+   (parser/create-field ["NW"])
+   (parser/create-field [control-id])))
+
+(defn- obr-segment
+  "OBR-4: universal service id -- the PANEL-level LOINC concept (CBC/BMP
+  itself, not its analytes; those are per-OBX below)."
+  [set-id concept]
+  (parser/create-segment
+   "OBR"
+   (parser/create-field [(str set-id)])
+   (parser/create-field [])
+   (parser/create-field [])
+   (cwe-field concept)))
+
+(defn- obx-segment
+  "One analyte per OBX (docs/operational-models.md's own spec for this
+  milestone): OBX-2 \"NM\" (numeric) -- every analyte in this
+  catalytic's starter set is a numeric lab value, no other value types
+  needed yet. OBX-7 renders the reference range as \"low-high\"; OBX-8
+  the abnormal flag, HL7v2's own N/L/H vocabulary (Table 0078) -- a
+  direct rendering of ehr-testing-sim.order-profiles/abnormal-flag's
+  own :normal/:low/:high, computed truth carried straight from the log,
+  never re-derived at emit time (the log already has the answer)."
+  [set-id {:keys [concept units value reference-range abnormal-flag]}]
+  (parser/create-segment
+   "OBX"
+   (parser/create-field [(str set-id)])
+   (parser/create-field ["NM"])
+   (cwe-field concept)
+   (parser/create-field [])
+   (parser/create-field [(str value)])
+   (parser/create-field [units])
+   (parser/create-field [(str (:low reference-range) "-" (:high reference-range))])
+   (parser/create-field [(case abnormal-flag :normal "N" :low "L" :high "H")])))
+
+(defn- orm-message
+  "ORM^O01: order placed. No EVN segment -- EVN is an ADT-specific
+  segment (HL7v2 convention), not part of the order-message family."
+  [reference-date utc-offset facility providers
+   {:keys [t active-mrn location attending concept]}]
+  (let [type+trigger (message-type-registry :order-placed)
+        ts (hl7-timestamp reference-date t utc-offset)
+        control-id (str active-mrn "-" (:trigger type+trigger) "-" t)
+        facility-name (name (:id facility))
+        provider (provider-by-id providers attending)]
+    (parser/str-message
+     (parser/create-message
+      parser/DEFAULT-DELIMITERS
+      (msh-segment type+trigger control-id ts)
+      (pid-segment active-mrn)
+      (pv1-segment facility-name location nil provider)
+      (orc-segment control-id)
+      (obr-segment 1 concept)))))
+
+(defn- oru-message
+  "ORU^R01: result available -- OBR (order context) plus one OBX per
+  analyte, in the same order the profile's own :results carries them
+  (derived straight from the log, ehr-testing-sim.order-profiles'
+  sampling order -- no re-sorting here)."
+  [reference-date utc-offset facility providers
+   {:keys [t active-mrn location attending concept results]}]
+  (let [type+trigger (message-type-registry :result-available)
+        ts (hl7-timestamp reference-date t utc-offset)
+        control-id (str active-mrn "-" (:trigger type+trigger) "-" t)
+        facility-name (name (:id facility))
+        provider (provider-by-id providers attending)
+        obx-segments (map-indexed (fn [i r] (obx-segment (inc i) r)) results)]
+    (parser/str-message
+     (apply parser/create-message
+      parser/DEFAULT-DELIMITERS
+      (msh-segment type+trigger control-id ts)
+      (pid-segment active-mrn)
+      (pv1-segment facility-name location nil provider)
+      (orc-segment control-id)
+      (obr-segment 1 concept)
+      obx-segments))))
+
 (defn event->messages
   "Renders one ground-truth event to a vector of 0+ ER7 message strings
   -- most types render exactly one message; M2b's genuinely two-
@@ -243,6 +343,8 @@
     (not (message-type-registry event)) []
     (= :bed-swap event) [(bed-swap-message reference-date utc-offset facility providers ev)]
     (= :merge event) [(merge-message reference-date utc-offset facility providers ev)]
+    (= :order-placed event) [(orm-message reference-date utc-offset facility providers ev)]
+    (= :result-available event) [(oru-message reference-date utc-offset facility providers ev)]
     :else [(single-subject-message reference-date utc-offset facility providers ev)]))
 
 (def ^:private default-providers

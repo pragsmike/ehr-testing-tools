@@ -22,12 +22,16 @@ One file describes three systems:
   **EmitHL7**, and, as of Milestone M2b, **InjectChurn** (each
   walking-skeleton, v1-slice, or v0-slice scope, per their `:contract`
   notes), plus the manifest component inside Package that shipped
-  ahead of its stage. Everything the *now* claims is property-tested
-  and green (134 tests / 318 assertions, 2026-07-26).
-- **next** — the single stage marked `;; NEXT` in the EDN: **Execute**
-  itself, growing further under its own existing contract toward
-  Milestone M3's order/result step types and the ORM/ORU cycle
-  (`order-profiles`, already a declared catalytic).
+  ahead of its stage. As of Milestone M3, Execute's own step vocabulary
+  further grows (`:order`/`:result-followup`, the `order-profiles`
+  catalytic now real) and EmitHL7 gains ORM^O01/ORU^R01. Everything the
+  *now* claims is property-tested and green (181 tests / 503 assertions,
+  2026-07-26).
+- **next** — the single stage marked `;; NEXT` in the EDN: **Persona**,
+  Milestone M4 — demographics sampling from vendored, hashed tables,
+  plus the `payer-pool` catalytic this theory currently only records as
+  a comment at Persona (below), turning into a real wire once this
+  stage flips to `:built`.
 
 No schema keys were invented for this convention — it lives in
 comments and here, keeping the EDN loadable by tools' Pipeline Malli
@@ -111,6 +115,31 @@ neither change touches a structural key. ADR-0011's **seeded arrival
 process** (an alternative to fixed `:patients N`) was sketched but not
 built this session — explicitly a stretch item behind the seam, per
 the M2a session's own plan; M2b does not depend on it.
+
+## M3 lands under Execute's existing contract — no new stage or wire
+
+`order-profiles` was already a declared catalytic on `Execute` (the
+previous section) before this milestone — Milestone M3 makes it real
+(`ehr-testing-sim.order-profiles`, a small hand-curated CBC+BMP starter
+set, real LOINC codes verified against loinc.org,
+`notes/facts-register.md` F7) and lands the two new step types it
+feeds: `:order` (author-facing IR, `{:type :order :profile :cbc}`) and
+`:result-followup` (engine-internal only — never hand-authored; an
+`:order`'s own `decide` call auto-pairs its result after a
+profile-sampled turnaround, the choice recorded over a hand-authored
+`:result{:order-ref ...}}` step because it keeps authored pathways
+ergonomic, `docs/patient-state-model.md`). `EmitHL7` gains ORM^O01 and
+ORU^R01 the same way it gained the churn family's ADT triggers in
+M2b — a `message-type-registry` addition, not a redesign. None of this
+touches `Execute`'s or `EmitHL7`'s declared `:inputs`, `:outputs`, or
+`:catalytic` keys (`order-profiles` was already wired; ORM/ORU are new
+registry entries, not new catalytic wires), so — the same argument the
+M2a section above already made, confirmed by inspection rather than by
+re-running the generator — this cannot change what any diagram
+generated from `sim-theory.edn` renders. `:step-rejected` (ADR-0012,
+also landed this milestone) renders in **neither** diagram nor
+message-type-registry, by design: it is truth about the run, not wire
+traffic a real ADT/ORM/ORU feed would ever carry.
 
 ## IR transforms as the composition layer
 

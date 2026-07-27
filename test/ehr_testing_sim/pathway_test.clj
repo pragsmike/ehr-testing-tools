@@ -47,3 +47,34 @@
 (deftest merge-is-valid-ir-with-and-without-explicit-peer
   (is (pathway/valid? {:name "t" :steps [{:type :merge}]}))
   (is (pathway/valid? {:name "t" :steps [{:type :merge :with "PID-000001"}]})))
+
+;; --- M3-adjacent: per-patient pathway assignment (roadmap.md's M3 entry) --
+
+(deftest weighted-pool-entry-is-valid-pathways-config
+  (is (pathway/valid-pathways-config?
+       [{:pathway pathway/sample-admission-discharge :weight 1}])))
+
+(deftest explicit-ordinal-entry-is-valid-pathways-config
+  (is (pathway/valid-pathways-config?
+       [{:patient-ordinal 0 :pathway pathway/sample-admission-discharge}])))
+
+(deftest mixed-weighted-and-explicit-entries-are-valid-pathways-config
+  (is (pathway/valid-pathways-config?
+       [{:pathway pathway/sample-admission-discharge :weight 2}
+        {:pathway {:name "t" :steps [{:type :admission :location "Renal"}]} :weight 1}
+        {:patient-ordinal 3 :pathway pathway/sample-admission-discharge}])))
+
+(deftest entry-with-neither-weight-nor-ordinal-is-invalid
+  (is (not (pathway/valid-pathways-config? [{:pathway pathway/sample-admission-discharge}]))))
+
+(deftest entry-with-invalid-pathway-ir-is-invalid
+  (is (not (pathway/valid-pathways-config? [{:pathway {:steps "not-a-pathway"} :weight 1}]))))
+
+;; --- M3: order (result auto-pairs, never hand-authored -- see engine.clj) --
+
+(deftest order-step-is-valid-ir
+  (is (pathway/valid? {:name "t" :steps [{:type :admission :location "Renal"}
+                                          {:type :order :profile :cbc}]})))
+
+(deftest order-without-profile-is-invalid
+  (is (not (pathway/valid? {:name "t" :steps [{:type :order}]}))))

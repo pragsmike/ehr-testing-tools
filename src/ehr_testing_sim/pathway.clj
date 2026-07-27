@@ -83,7 +83,18 @@
    ;; target dynamically" shape the bed-ready transfer already uses, so
    ;; InjectChurn (M2b) can insert these without knowing patient-ids.
    [:bed-swap [:map [:type [:= :bed-swap]] [:with {:optional true} :string]]]
-   [:merge [:map [:type [:= :merge]] [:with {:optional true} :string]]]])
+   [:merge [:map [:type [:= :merge]] [:with {:optional true} :string]]]
+   ;; M3: order-profiles catalytic (docs/sim-theory.edn, docs/operational-
+   ;; models.md). :profile keys into ehr-testing-sim.order-profiles'
+   ;; catalog (world's :order-profiles, default order-profiles/default-
+   ;; profiles). NO authorable :result step -- the engine auto-pairs a
+   ;; result-available event after a profile-sampled turnaround
+   ;; (engine.clj's own :order decide method), the choice this
+   ;; milestone documents there: it keeps authored pathways ergonomic
+   ;; (just write the order; the result follows automatically) and
+   ;; avoids inventing an :order-ref authoring burden a hand-authored
+   ;; :result step would need.
+   [:order [:map [:type [:= :order]] [:profile :keyword]]]])
 
 (def Pathway
   [:map
@@ -93,6 +104,29 @@
 (defn valid? [pathway] (m/validate Pathway pathway))
 
 (defn explain [pathway] (m/explain Pathway pathway))
+
+;; --- M3-adjacent: per-patient pathway assignment (roadmap.md's M3 entry,
+;; SimHospital's percentage_of_patients analogue) -------------------------
+
+(def PathwayAssignment
+  "One entry in a :pathways run-config vector -- EITHER a weighted-pool
+  member ({:pathway :weight}, a sampled mixture across the patient
+  population) OR an explicit per-patient override ({:patient-ordinal
+  :pathway}, a scripted assignment for a specific arrival), never both
+  at once. `ehr-testing-sim.engine/run`'s degenerate case -- today's
+  single :pathway config -- is a :pathways vector of exactly one
+  weighted entry with :weight 1, unchanged behavior for every other
+  entry shape."
+  [:or
+   [:map {:closed true} [:pathway Pathway] [:weight [:or :int :double]]]
+   [:map {:closed true} [:patient-ordinal :int] [:pathway Pathway]]])
+
+(def PathwaysConfig
+  [:vector PathwayAssignment])
+
+(defn valid-pathways-config? [config] (m/validate PathwaysConfig config))
+
+(defn explain-pathways-config [config] (m/explain PathwaysConfig config))
 
 (def sample-admission-discharge
   "The walking-skeleton pathway: admit, dwell, discharge. Mirrors

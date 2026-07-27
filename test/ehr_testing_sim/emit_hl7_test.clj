@@ -278,6 +278,94 @@
     (is (= (emit-hl7/emit (:ground-truth world2) ref-date utc-offset churn-facility churn-providers)
            (emit-hl7/emit (:ground-truth world2) ref-date utc-offset churn-facility churn-providers)))))
 
+;; --- ADR-0012: :step-rejected renders NO message, by design ---------------
+
+(deftest step-rejected-has-no-message-type-registry-entry
+  (is (nil? (emit-hl7/message-type-registry :step-rejected))))
+
+(deftest step-rejected-event-renders-no-message
+  (testing "truth about the run, never wire traffic (ADR-0012): a
+            :step-rejected event produces the SAME empty vector any
+            unregistered event type does"
+    (let [world0 {:patients {"P1" (engine/initial-patient "P1" "MRN000001")}
+                  :facility churn-facility :providers churn-providers :ground-truth []}
+          world1 (admit world0 0 "P1" "Renal")
+          {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1" {:type :cancel-transfer})
+          rejected-event (first events)]
+      (is (= :step-rejected (:event rejected-event)))
+      (is (= [] (emit-hl7/event->messages ref-date utc-offset churn-facility churn-providers rejected-event))))))
+
+;; --- M3: ORM^O01 + ORU^R01 --------------------------------------------
+
+(def ^:private cbc-order-pathway
+  {:name "cbc-order" :steps [{:type :admission :location "Renal"}
+                             {:type :order :profile :cbc}
+                             {:type :discharge}]})
+
+(defn- run-with-order
+  [seed]
+  (engine/run {:seed seed :patients 1 :pathways [{:pathway cbc-order-pathway :weight 1}]}))
+
+(deftest message-type-registry-has-orm-and-oru
+  (is (= {:type "ORM" :trigger "O01"} (emit-hl7/message-type-registry :order-placed)))
+  (is (= {:type "ORU" :trigger "R01"} (emit-hl7/message-type-registry :result-available))))
+
+(defn- find-message
+  [messages trigger]
+  (first (filter #(re-find (re-pattern (str "\\^" trigger)) %) messages)))
+
+(deftest order-placed-emits-orm-with-orc-and-obr
+  (let [{:keys [ground-truth facility providers]} (run-with-order 1)
+        order-event (first (filter #(= :order-placed (:event %)) ground-truth))
+        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+        orm (find-message messages "O01")
+        parsed (parser/parse orm)]
+    (testing "ORC-1: new order"
+      (is (= "NW" (message/get-field-first-value parsed "ORC" 1))))
+    (testing "OBR-4: universal service id, CWE with the panel-level LOINC concept"
+      (let [{:keys [code display]} (:concept order-event)]
+        (is (= (str code "^" display "^LN") (message/get-field-first-value parsed "OBR" 4)))))
+    (testing "PID/PV1 context, same conventions as every other message type"
+      (is (= "MRN000001" (message/get-field-first-value parsed "PID" 3)))
+      (is (= (str (get-in order-event [:location :ward]) "^^"
+                  (get-in order-event [:location :bed]) "^" (name (:id facility)))
+             (message/get-field-first-value parsed "PV1" 3))))))
+
+(deftest result-available-emits-oru-with-one-obx-per-analyte-in-profile-order
+  (let [{:keys [ground-truth facility providers]} (run-with-order 1)
+        result-event (first (filter #(= :result-available (:event %)) ground-truth))
+        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+        oru (find-message messages "R01")
+        parsed (parser/parse oru)
+        obx-segments (message/get-segments parsed "OBX")]
+    (testing "one OBX per analyte, same count and order as the result's own :results"
+      (is (= (count (:results result-event)) (count obx-segments)) "CBC has 5 analytes"))
+    (doseq [[i {:keys [concept units value reference-range abnormal-flag]}]
+            (map-indexed vector (:results result-event))]
+      (let [obx (nth obx-segments i)
+            field #(parser/pr-field (:delimiters parsed) (message/get-segment-field-raw obx %))]
+        (testing (str "OBX #" (inc i) ": " (:code concept))
+          (is (= (str (inc i)) (field 1)) "OBX-1: set id")
+          (is (= "NM" (field 2)) "OBX-2: value type")
+          (is (= (str (:code concept) "^" (:display concept) "^LN") (field 3)) "OBX-3: CWE, LOINC triplet")
+          (is (= (str value) (field 5)) "OBX-5: value")
+          (is (= units (field 6)) "OBX-6: units")
+          (is (= (str (:low reference-range) "-" (:high reference-range)) (field 7)) "OBX-7: reference range")
+          (is (= (case abnormal-flag :normal "N" :low "L" :high "H") (field 8)) "OBX-8: abnormal flag"))))))
+
+(deftest order-and-result-round-trip-deterministically
+  (let [{:keys [ground-truth facility providers]} (run-with-order 1)]
+    (is (= (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+           (emit-hl7/emit ground-truth ref-date utc-offset facility providers)))))
+
+(defspec order-and-result-messages-derive-bijectively-from-the-log 50
+  (prop/for-all [seed gen/large-integer]
+    (let [{:keys [ground-truth facility providers]} (run-with-order seed)
+          order-result-events (filterv #(#{:order-placed :result-available} (:event %)) ground-truth)
+          messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+          order-result-messages (filter #(or (re-find #"\^O01" %) (re-find #"\^R01" %)) messages)]
+      (= 2 (count order-result-events) (count order-result-messages)))))
+
 (defspec timestamp-anchoring-property 100
   (prop/for-all [seconds (gen/choose 0 6000000)]
     (let [ts (emit-hl7/hl7-timestamp ref-date seconds utc-offset)

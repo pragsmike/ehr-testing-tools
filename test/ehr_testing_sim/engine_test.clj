@@ -20,6 +20,8 @@
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [ehr-testing-sim.engine :as engine]
+            [ehr-testing-sim.pathway :as pathway]
+            [ehr-testing-sim.order-profiles :as order-profiles]
             [ehr-testing-sim.check :as check]
             [ehr-testing-sim.result :as result])
   (:import [java.util Random]))
@@ -108,6 +110,25 @@
               (count (engine/events-for-patient ground-truth id-b)))))))
 
 ;; --- M1: facility, providers, transfer, bed-ready coupling --------------
+
+;; --- ADR-0012: :step-rejected -- test helper --------------------------
+
+(defn- assert-step-rejected!
+  "ADR-0012: a decide-time rejection is no longer a silent no-op --
+  exactly one :step-rejected event enters `outcome`'s :events, naming
+  ONLY the attempting patient as :participants (never a possibly-
+  nonexistent :with target -- participant-ids-exist-in-run stays sound)
+  and carrying the documented `reason` keyword. The pre-existing
+  :rejected outcome key (read directly by callers/tests, never entering
+  the log) is unchanged by this milestone."
+  [outcome patient-id reason]
+  (is (= 1 (count (:events outcome))))
+  (let [ev (first (:events outcome))]
+    (is (= :step-rejected (:event ev)))
+    (is (= reason (:reason ev)))
+    (is (= [{:patient-id patient-id :role :subject}] (:participants ev))))
+  (is (some? (:rejected outcome)))
+  (is (= patient-id (:patient-id (:rejected outcome)))))
 
 (def ^:private crowded-facility
   "One inpatient ward (Renal) with exactly one licensed bed and no
@@ -232,7 +253,8 @@
 
 (defn- world-of
   [patients]
-  {:patients patients :facility churn-facility :providers churn-providers :ground-truth []})
+  {:patients patients :facility churn-facility :providers churn-providers :ground-truth []
+   :order-profiles order-profiles/default-profiles})
 
 (defn- fold-events
   "Test helper: applies `events` to `world`'s patients (every named
@@ -276,9 +298,7 @@
 (deftest cancel-admit-on-never-admitted-patient-is-a-structured-rejection-not-a-throw
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         outcome (engine/decide (Random. 1) 10 world0 "P1" {:type :cancel-admit})]
-    (is (empty? (:events outcome)))
-    (is (some? (:rejected outcome)))
-    (is (= "P1" (:patient-id (:rejected outcome))))))
+    (assert-step-rejected! outcome "P1" :illegal-cancel-admit)))
 
 ;; --- cancel-transfer -> A12: the shadow-field dissolution -----------------
 
@@ -316,8 +336,7 @@
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
         outcome (engine/decide (Random. 1) 10 world1 "P1" {:type :cancel-transfer})]
-    (is (empty? (:events outcome)))
-    (is (some? (:rejected outcome)))))
+    (assert-step-rejected! outcome "P1" :illegal-cancel-transfer)))
 
 ;; --- cancel-discharge -> A13 -----------------------------------------------
 
@@ -340,8 +359,7 @@
     (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
           world1 (admit world0 0 "P1" "Renal")
           outcome (engine/decide (Random. 1) 10 world1 "P1" {:type :cancel-discharge})]
-      (is (empty? (:events outcome)))
-      (is (some? (:rejected outcome))))))
+      (assert-step-rejected! outcome "P1" :illegal-cancel-discharge))))
 
 (deftest cancel-transfer-cannot-be-applied-twice-to-the-same-transfer
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
@@ -351,8 +369,7 @@
         {c1-events :events} (engine/decide (Random. 1) 20 world2 "P1" {:type :cancel-transfer})
         world3 (fold-events world2 c1-events)
         second-attempt (engine/decide (Random. 1) 30 world3 "P1" {:type :cancel-transfer})]
-    (is (empty? (:events second-attempt)))
-    (is (some? (:rejected second-attempt)))))
+    (assert-step-rejected! second-attempt "P1" :illegal-cancel-transfer)))
 
 ;; --- transfer-in-error -----------------------------------------------------
 
@@ -403,8 +420,7 @@
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
         outcome (engine/decide (Random. 1) 10 world1 "P1" {:type :bed-swap})]
-    (is (empty? (:events outcome)))
-    (is (some? (:rejected outcome)))))
+    (assert-step-rejected! outcome "P1" :illegal-bed-swap)))
 
 ;; --- merge -> A40: the identity payoff --------------------------------------
 
@@ -433,15 +449,15 @@
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
         outcome (engine/decide (Random. 1) 10 world1 "P1" {:type :merge :with "P1"})]
-    (is (empty? (:events outcome)))
-    (is (some? (:rejected outcome)))))
+    (assert-step-rejected! outcome "P1" :illegal-merge)))
 
 (deftest merge-referencing-unknown-patient-id-is-rejected
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
         outcome (engine/decide (Random. 1) 10 world1 "P1" {:type :merge :with "GHOST"})]
-    (is (empty? (:events outcome)))
-    (is (some? (:rejected outcome)))))
+    (assert-step-rejected! outcome "P1" :illegal-merge)
+    (testing "the ghost id never enters :participants (participant-ids-exist-in-run stays sound)"
+      (is (= "GHOST" (:with (:attempted-step (first (:events outcome)))))))))
 
 (deftest double-merge-of-the-same-patient-id-is-rejected
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")
@@ -451,8 +467,7 @@
         {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1" {:type :merge :with "P2"})
         world2 (fold-events world1 events)
         outcome (engine/decide (Random. 1) 20 world2 "P3" {:type :merge :with "P2"})]
-    (is (empty? (:events outcome)))
-    (is (some? (:rejected outcome)))))
+    (assert-step-rejected! outcome "P3" :illegal-merge)))
 
 ;; --- M2b: InjectChurn wiring ------------------------------------------
 
@@ -484,6 +499,172 @@
                   (some #{:cancel-admit :cancel-transfer :cancel-discharge :bed-swap :merge}
                         (map :event ground-truth))))
               (range 1 50)))))
+
+;; --- M3-adjacent: per-patient pathway assignment (roadmap.md's M3 entry,
+;; SimHospital's percentage_of_patients analogue) -------------------------
+
+(def ^:private pathway-a
+  "Two clinical events (admission, discharge) once rendered -- :delay
+  itself emits none."
+  pathway/sample-admission-discharge)
+
+(def ^:private pathway-b
+  "One clinical event -- distinguishable from pathway-a by shape alone."
+  {:name "b" :steps [{:type :admission :location "Renal"}]})
+
+(deftest assign-pathway-with-a-single-weighted-entry-always-picks-it
+  (let [config [{:pathway pathway-a :weight 1}]]
+    (doseq [i (range 20)]
+      (is (= pathway-a (engine/assign-pathway (Random. i) config i))))))
+
+(deftest assign-pathway-explicit-ordinal-overrides-the-weighted-pool
+  (let [config [{:pathway pathway-a :weight 1}
+                {:patient-ordinal 2 :pathway pathway-b}]]
+    (is (= pathway-a (engine/assign-pathway (Random. 1) config 0)))
+    (is (= pathway-b (engine/assign-pathway (Random. 1) config 2)))))
+
+(deftest assign-pathway-is-deterministic-for-a-fixed-seed-and-ordinal
+  (let [config [{:pathway pathway-a :weight 1} {:pathway pathway-b :weight 1}]]
+    (is (= (engine/assign-pathway (Random. 99) config 4)
+           (engine/assign-pathway (Random. 99) config 4)))))
+
+(deftest weighted-pathway-assignment-favors-the-heavier-entry-overwhelmingly
+  (testing "an extreme weight ratio (1e6:1e-6) should never pick the
+            light entry across a range of rng seeds -- a statistical
+            sanity check on `weighted-pick`'s math, not a flaky test
+            (the light entry's selection probability is ~1e-12 per draw)"
+    (let [config [{:pathway pathway-a :weight 1000000} {:pathway pathway-b :weight 0.000001}]]
+      (is (every? #(= pathway-a (engine/assign-pathway (Random. %) config 0))
+                  (range 200))))))
+
+(def ^:private single-admission-renal
+  "Same step SHAPE as single-admission-renal-tagged below (one
+  :admission to the same ward) so swapping between them changes no
+  downstream RNG consumption (bed/attending choice depend on step type
+  and target ward, never on inert fields like :reason) -- isolating
+  assign-pathway's OWN fixed-consumption law from the unrelated (and
+  expected) fact that pathways of DIFFERENT shape consume different
+  amounts of RNG once executed."
+  {:name "solo" :steps [{:type :admission :location "Renal"}]})
+
+(def ^:private single-admission-renal-tagged
+  {:name "solo-tagged" :steps [{:type :admission :location "Renal" :reason "tagged"}]})
+
+(deftest explicit-override-does-not-perturb-other-patients-downstream-draws
+  (testing "fixed consumption (ADR-0009's own law, extended): exactly
+            one assign-pathway draw per patient whether the outcome is
+            explicit or weighted -- adding an explicit override (here,
+            to a same-shaped pathway, isolating the assignment
+            mechanism's own draw from the unrelated fact that a
+            DIFFERENTLY-shaped pathway naturally consumes different
+            downstream RNG once executed) for one patient must not
+            shift RNG consumption, and therefore output, for any OTHER
+            patient"
+    (let [seed 42
+          pool [{:pathway single-admission-renal :weight 1}]
+          overridden (conj pool {:patient-ordinal 2 :pathway single-admission-renal-tagged})
+          run1 (engine/run {:seed seed :patients 5 :pathways pool})
+          run2 (engine/run {:seed seed :patients 5 :pathways overridden})]
+      (doseq [i [0 1 3 4]]
+        (let [id (engine/patient-id-for seed i)]
+          (is (= (engine/events-for-patient (:ground-truth run1) id)
+                 (engine/events-for-patient (:ground-truth run2) id))))))))
+
+(deftest pathways-config-assigns-distinct-pathways-per-patient-through-run
+  (testing "M3-adjacent: engine/run consumes :pathways end-to-end (not
+            just via the pure assign-pathway helper) -- two explicit
+            per-ordinal assignments, no weighted pool needed"
+    (let [config [{:patient-ordinal 0 :pathway pathway-a}
+                  {:patient-ordinal 1 :pathway pathway-b}]
+          {:keys [ground-truth]} (engine/run {:seed 1 :patients 2 :pathways config})
+          id0 (engine/patient-id-for 1 0)
+          id1 (engine/patient-id-for 1 1)]
+      (is (= [:admission :discharge] (mapv :event (engine/events-for-patient ground-truth id0))))
+      (is (= [:admission] (mapv :event (engine/events-for-patient ground-truth id1)))))))
+
+(deftest absent-pathways-key-is-unperturbed-by-this-milestone
+  (testing "the degenerate case (roadmap.md's M3 entry): a run with NO
+            :pathways key at all takes the SAME code path it always
+            has -- no new draw, byte-identical to the pinned fixture
+            (pinned-seed-survives-decide-evolve-refactor, below, is the
+            fixture-level proof; this is the same guarantee stated
+            directly against this milestone's own new option)"
+    (is (= (engine/run {:seed 42 :patients 5})
+           (engine/run {:seed 42 :patients 5 :pathways nil})))))
+
+(deftest churned-run-surfaces-rejected-churn-steps-as-step-rejected-events
+  (testing "ADR-0012: what used to be a silent no-op (M2b's own
+            conservative cancel-discharge-reinstatement guard, and
+            InjectChurn's other decide-time rejections generally) is now
+            VISIBLE in the ground-truth log -- across enough seeds at
+            least one churned run surfaces a :step-rejected event"
+    (let [aggressive-profile {:cancel-admit 1.0 :cancel-transfer 1.0 :cancel-discharge 1.0
+                              :transfer-in-error 1.0 :bed-swap 1.0 :merge 1.0}
+          runs (for [seed (range 1 40)]
+                 (:ground-truth (engine/run {:seed seed :patients 6
+                                             :facility churn-facility :providers churn-providers
+                                             :churn-profile aggressive-profile})))]
+      (is (some (fn [gt] (some #(= :step-rejected (:event %)) gt)) runs)))))
+
+;; --- M3: order/result (auto-paired) --------------------------------------
+
+(deftest order-decide-emits-order-placed-and-schedules-a-followup
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+        world1 (admit world0 0 "P1" "Renal")
+        outcome (engine/decide (Random. 1) 10 world1 "P1" {:type :order :profile :cbc})]
+    (testing "one event now: order-placed"
+      (is (= 1 (count (:events outcome))))
+      (let [ev (first (:events outcome))]
+        (is (= :order-placed (:event ev)))
+        (is (= 10 (:t ev)))
+        (is (= :cbc (:profile ev)))
+        (is (= [{:patient-id "P1" :role :subject}] (:participants ev)))))
+    (testing "a follow-up is scheduled -- the result, NOT emitted directly
+              here (that would break global time-monotonicity across
+              patients, see engine.clj's :order docstring)"
+      (is (some? (:schedule-followup outcome)))
+      (let [{:keys [t patient-id steps]} (:schedule-followup outcome)]
+        (is (> t 10) "strictly after the order, per a positive turnaround")
+        (is (= "P1" patient-id))
+        (is (= 1 (count steps)))
+        (is (= :result-followup (:type (first steps))))
+        (let [result-event (:result-event (first steps))]
+          (is (= :result-available (:event result-event)))
+          (is (= t (:t result-event)))
+          (is (= 1 (:order-event-id result-event)) "the order-placed event's OWN index -- 0 is P1's :admission")
+          (is (= :cbc (:profile result-event)))
+          (is (= 5 (count (:results result-event))) "CBC's 5 analytes")
+          (doseq [{:keys [value reference-range abnormal-flag]} (:results result-event)]
+            (is (= abnormal-flag (order-profiles/abnormal-flag value reference-range)))))))))
+
+(deftest order-decide-is-deterministic
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+        world1 (admit world0 0 "P1" "Renal")]
+    (is (= (engine/decide (Random. 42) 10 world1 "P1" {:type :order :profile :cbc})
+           (engine/decide (Random. 42) 10 world1 "P1" {:type :order :profile :cbc})))))
+
+(deftest order-followup-produces-result-available-through-the-real-run-loop
+  (testing "M3-adjacent pathway-assignment mechanism (Task 1) makes this
+            an end-to-end engine/run test, not a hand-driven scripted one"
+    (let [pathway {:name "cbc-order" :steps [{:type :admission :location "Renal"}
+                                             {:type :order :profile :cbc}
+                                             {:type :delay :from 120 :to 120}
+                                             {:type :discharge}]}
+          {:keys [ground-truth]} (engine/run {:seed 7 :patients 1 :pathways [{:pathway pathway :weight 1}]})
+          kinds (mapv :event ground-truth)]
+      (testing "order-placed and result-available both appear, result strictly after order, before discharge"
+        (is (= [:admission :order-placed :result-available :discharge] kinds))
+        (let [[_ order result _] ground-truth]
+          (is (< (:t order) (:t result) (:t (last ground-truth))))
+          (is (= 1 (:order-event-id result))))))))
+
+(defspec order-and-result-round-trip-through-run-for-any-seed 100
+  (prop/for-all [seed gen/large-integer]
+    (let [pathway {:name "cbc-order" :steps [{:type :admission :location "Renal"}
+                                             {:type :order :profile :cbc}
+                                             {:type :discharge}]}
+          {:keys [ground-truth]} (engine/run {:seed seed :patients 3 :pathways [{:pathway pathway :weight 1}]})]
+      (result/ok? (check/check-all ground-truth)))))
 
 (deftest pinned-seed-survives-decide-evolve-refactor
   (testing "the fixture pins the POST-M2a baseline (ADR-0009/ADR-0010/

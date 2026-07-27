@@ -18,6 +18,7 @@
             [ehr-testing-sim.check :as check]
             [ehr-testing-sim.config :as config]
             [ehr-testing-sim.engine :as engine]
+            [ehr-testing-sim.order-profiles :as order-profiles]
             [ehr-testing-sim.result :as result]))
 
 (def test-facility
@@ -225,6 +226,87 @@
   (let [log (conj legit-merge-log
                   {:event :discharge :t 20 :participants (subject "P2")})]
     (is (seq (check/no-events-after-merged-terminal log)))))
+
+;; --- ADR-0012: :step-rejected -------------------------------------------
+
+(deftest step-rejected-reason-is-documented-detects-an-undocumented-reason
+  (let [log [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
+              :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
+             {:event :step-rejected :t 10 :participants (subject "P1")
+              :attempted-step {:type :cancel-admit} :reason :not-a-real-reason}]]
+    (is (seq (check/step-rejected-reason-is-documented log)))))
+
+(deftest step-rejected-reason-is-documented-holds-for-every-real-reason
+  (is (empty? (check/step-rejected-reason-is-documented
+               (for [reason engine/documented-step-rejection-reasons]
+                 {:event :step-rejected :t 10 :participants (subject "P1")
+                  :attempted-step {:type :cancel-admit} :reason reason})))))
+
+;; --- M3: order/result -----------------------------------------------------
+
+(def ^:private cbc-profile (:cbc order-profiles/default-profiles))
+
+(defn- legit-order-result-log
+  []
+  [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
+    :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
+   {:event :order-placed :t 10 :profile :cbc :concept (:concept cbc-profile) :participants (subject "P1")}
+   {:event :result-available :t 100 :profile :cbc :order-event-id 1 :concept (:concept cbc-profile)
+    :participants (subject "P1")
+    :results (mapv (fn [a] {:concept (:concept a) :units (:units a) :value (:low (:reference-range a))
+                            :reference-range (:reference-range a) :abnormal-flag :normal})
+                    (:analytes cbc-profile))}])
+
+(deftest order-only-when-admitted-holds-for-legit-log
+  (is (empty? (check/order-only-when-admitted (legit-order-result-log)))))
+
+(deftest order-only-when-admitted-detects-order-before-admission
+  (let [log [{:event :order-placed :t 0 :profile :cbc :concept (:concept cbc-profile) :participants (subject "P1")}]]
+    (is (seq (check/order-only-when-admitted log)))))
+
+(deftest order-only-when-admitted-allows-a-result-arriving-after-discharge
+  (testing "async turnaround: a result legitimately arrives after
+            discharge (pending labs at discharge is real clinical
+            traffic) -- NOT a violation"
+    (let [log (conj (legit-order-result-log)
+                    {:event :discharge :t 200 :participants (subject "P1")}
+                    {:event :result-available :t 300 :profile :cbc :order-event-id 1
+                     :concept (:concept cbc-profile) :participants (subject "P1")
+                     :results []})]
+      (is (empty? (check/order-only-when-admitted log))))))
+
+(deftest result-references-existing-order-and-follows-it-in-time-holds-for-legit-log
+  (is (empty? (check/result-references-existing-order-and-follows-it-in-time (legit-order-result-log)))))
+
+(deftest result-references-existing-order-and-follows-it-in-time-detects-phantom-order
+  (let [log [{:event :result-available :t 10 :profile :cbc :order-event-id 5
+              :concept (:concept cbc-profile) :participants (subject "P1") :results []}]]
+    (is (seq (check/result-references-existing-order-and-follows-it-in-time log)))))
+
+(deftest result-references-existing-order-and-follows-it-in-time-detects-time-travel
+  (let [log (update (legit-order-result-log) 2 assoc :t 5)] ;; before its own order's t=10
+    (is (seq (check/result-references-existing-order-and-follows-it-in-time log)))))
+
+(deftest result-analytes-match-order-profile-holds-for-legit-log
+  (is (empty? (check/result-analytes-match-order-profile (legit-order-result-log) order-profiles/default-profiles))))
+
+(deftest result-analytes-match-order-profile-detects-a-missing-analyte
+  (let [log (update-in (legit-order-result-log) [2 :results] #(vec (rest %)))]
+    (is (seq (check/result-analytes-match-order-profile log order-profiles/default-profiles)))))
+
+(deftest abnormal-flags-consistent-with-value-vs-range-holds-for-legit-log
+  (is (empty? (check/abnormal-flags-consistent-with-value-vs-range (legit-order-result-log)))))
+
+(deftest abnormal-flags-consistent-with-value-vs-range-detects-a-lying-flag
+  (let [log (update-in (legit-order-result-log) [2 :results 0] assoc :abnormal-flag :high)]
+    (is (seq (check/abnormal-flags-consistent-with-value-vs-range log)))))
+
+(deftest engine-run-with-order-profiles-satisfies-check-all
+  (let [pathway {:name "cbc" :steps [{:type :admission :location "Renal"}
+                                     {:type :order :profile :cbc}
+                                     {:type :discharge}]}
+        {:keys [ground-truth]} (engine/run {:seed 3 :patients 4 :pathways [{:pathway pathway :weight 1}]})]
+    (is (result/ok? (check/check-all ground-truth)))))
 
 ;; --- check-all: facility-aware, backward-compatible arity ---------------
 

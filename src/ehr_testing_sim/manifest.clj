@@ -17,8 +17,19 @@
 
 (def MirroredManifest
   "Structural mirror of tools' ManifestV1_1 (verified against its
-  source 2026-07-26; re-verify on tools schema changes)."
+  source 2026-07-26; re-verify on tools schema changes).
+
+  LESSON (M3 Task 0): this mirror once omitted :schema-version entirely
+  -- both here and in `build` -- and its own tripwire test
+  (manifest-test) stayed green throughout, because a mirror validates
+  its OWN output against its OWN copy of the schema; it agreed with
+  itself perfectly while both disagreed with the authoritative source.
+  A mirror cannot catch itself agreeing with its own mistake. That is
+  exactly why the BINDING contract test lives host-side, in tools'
+  test-integration tree (sim-manifest-contract-test), where the real
+  ManifestV1_1 is on the classpath to validate against -- not here."
   [:map
+   [:schema-version [:= "1.1"]]
    [:stage :keyword]
    [:generator [:map
                 [:name :string]
@@ -50,7 +61,8 @@
   acceptable pre-release, but the fields are mandatory so nothing
   downstream learns to tolerate their absence)."
   [{:keys [seed engine-params config invocation version sha256]}]
-  {:stage :simulated
+  {:schema-version "1.1"
+   :stage :simulated
    :generator {:name "ehr-testing-sim"
                :version (or version "0.0.0-SNAPSHOT")
                :sha256 (or sha256 (apply str (repeat 64 "0")))}

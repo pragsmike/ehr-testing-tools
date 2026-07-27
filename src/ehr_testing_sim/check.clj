@@ -35,6 +35,7 @@
             [ehr-testing-sim.config :as config]
             [ehr-testing-sim.engine :as engine]
             [ehr-testing-sim.facility :as facility]
+            [ehr-testing-sim.order-profiles :as order-profiles]
             [ehr-testing-sim.result :as result]))
 
 (defn- events-by-patient
@@ -283,6 +284,97 @@
                     (some #(= merged-id (:patient-id %)) (:participants later-event)))]
       {:invariant :no-events-after-merged-terminal :patient-id merged-id :at (:t later-event)})))
 
+;; --- ADR-0012: :step-rejected -- truth about the run, checked structurally
+;; (never a message-bearing event -- no message-type-registry entry, by
+;; design; see ehr-testing-sim.engine/documented-step-rejection-reasons) --
+
+(defn step-rejected-reason-is-documented
+  "ADR-0012's own invariant: every :step-rejected event's :reason is one
+  of the documented enum (ehr-testing-sim.engine/documented-step-
+  rejection-reasons) -- a rejection with an undocumented reason would
+  mean a new decide-time rejection path shipped without updating the
+  enum, the co-landing convention extended to this event type."
+  [ground-truth]
+  (for [event ground-truth
+        :when (and (= :step-rejected (:event event))
+                   (not (contains? engine/documented-step-rejection-reasons (:reason event))))]
+    {:invariant :step-rejected-reason-is-documented :reason (:reason event) :at (:t event)}))
+
+;; --- M3: order/result (docs/patient-state-model.md's event-validity
+;; table's therapeutic-intent-class row -- orders/results illegal when
+;; :status = :expired; written here as "legal only when :admitted", the
+;; strict generalization that's testable today since :expired isn't a
+;; landed status yet -- once it lands, :expired != :admitted makes this
+;; row cover it automatically, no new invariant needed then) ---------------
+
+(defn order-only-when-admitted
+  "Therapeutic-intent class (docs/patient-state-model.md's event-
+  validity table): :order-placed is legal only when the patient's prior
+  state is :admitted -- covers :new/:discharged/:merged today, and
+  (once that status lands) :expired too, since :expired is never
+  :admitted either.
+
+  Deliberately NOT extended to :result-available: a result's own
+  turnaround is asynchronous to the rest of the patient's pathway (the
+  patient's OTHER steps, including :discharge, are not blocked waiting
+  for it -- engine.clj's :order docstring), so a result legitimately
+  arriving after discharge is a real, common clinical pattern (pending
+  labs at discharge), not a bug -- an engine/run integration test
+  surfaced exactly this case during this milestone's own development,
+  which is why this invariant is scoped to the order alone rather than
+  generalized to both event types. result-references-existing-order-
+  and-follows-it-in-time already guarantees a result's own order was
+  itself legitimate."
+  [ground-truth]
+  (for [{:keys [event before patient-id]} (engine/replay ground-truth)
+        :when (and (= :order-placed (:event event)) (not= :admitted (:status before)))]
+    {:invariant :order-only-when-admitted :patient-id patient-id :at (:t event)}))
+
+(defn result-references-existing-order-and-follows-it-in-time
+  "Every :result-available event's :order-event-id is a real
+  :order-placed event in this same log, for the SAME patient, at or
+  before the result's own :t (co-landing invariant, Milestone M3)."
+  [ground-truth]
+  (let [indexed (vec ground-truth)]
+    (for [[idx event] (map-indexed vector indexed)
+          :when (= :result-available (:event event))
+          :let [target-idx (:order-event-id event)
+                target (get indexed target-idx)
+                patient-id (:patient-id (first (:participants event)))]
+          :when (or (nil? target)
+                    (not= :order-placed (:event target))
+                    (not (some #(= patient-id (:patient-id %)) (:participants target)))
+                    (> (:t target) (:t event)))]
+      {:invariant :result-references-existing-order-and-follows-it-in-time :patient-id patient-id :at (:t event)})))
+
+(defn result-analytes-match-order-profile
+  "Every :result-available event's :results analyte-concept set is
+  EXACTLY its own :profile's analyte set (`order-profiles` -- default
+  ehr-testing-sim.order-profiles/default-profiles, the same 'needs more
+  than just the log' pattern facility-catalog/warmup-catalog already
+  follow) -- catches a result that dropped, added, or substituted an
+  analyte relative to what its own profile declares."
+  [ground-truth order-profiles]
+  (for [event ground-truth
+        :when (= :result-available (:event event))
+        :let [expected (into #{} (map :concept) (:analytes (get order-profiles (:profile event))))
+              actual (into #{} (map :concept) (:results event))]
+        :when (not= expected actual)]
+    {:invariant :result-analytes-match-order-profile :profile (:profile event) :at (:t event)}))
+
+(defn abnormal-flags-consistent-with-value-vs-range
+  "The computed-truth mini-law (Milestone M3 Task 4), checked from the
+  log directly: every result entry's :abnormal-flag equals
+  ehr-testing-sim.order-profiles/abnormal-flag applied to its own value
+  and reference-range -- a flag that disagrees with its own value is a
+  bug, not a legitimate finding."
+  [ground-truth]
+  (for [event ground-truth
+        :when (= :result-available (:event event))
+        {:keys [value reference-range abnormal-flag]} (:results event)
+        :when (not= abnormal-flag (order-profiles/abnormal-flag value reference-range))]
+    {:invariant :abnormal-flags-consistent-with-value-vs-range :profile (:profile event) :at (:t event)}))
+
 (def catalog
   "The full invariant catalog needing only a ground-truth log, in
   reporting order."
@@ -298,7 +390,11 @@
    #'cancel-references-existing-uncancelled-event
    #'bed-swap-both-admitted-before-swap
    #'merge-survivor-absorbs-merged-mrns
-   #'no-events-after-merged-terminal])
+   #'no-events-after-merged-terminal
+   #'step-rejected-reason-is-documented
+   #'order-only-when-admitted
+   #'result-references-existing-order-and-follows-it-in-time
+   #'abnormal-flags-consistent-with-value-vs-range])
 
 (def facility-catalog
   "Invariants that need the facility config, not just the log (checked
@@ -312,24 +408,36 @@
   not just the log -- same reason `facility-catalog` is separate."
   [#'warm-up-mark-matches-window])
 
+(def order-profiles-catalog
+  "Invariants that need the order-profiles config, not just the log --
+  same reason `facility-catalog` is separate (Milestone M3)."
+  [#'result-analytes-match-order-profile])
+
 (defn check-all
   "Runs every invariant in the catalog over a ground-truth log.
   `facility-config` (default config/default-facility) is needed by the
   capacity/surge-ladder invariants; `warm-up-seconds` (default 0) is
-  needed by the warm-up-mark invariant. Existing 1-arg/2-arg call sites
-  are unaffected."
-  ([ground-truth] (check-all ground-truth config/default-facility 0))
-  ([ground-truth facility-config] (check-all ground-truth facility-config 0))
+  needed by the warm-up-mark invariant; `order-profiles-config`
+  (default ehr-testing-sim.order-profiles/default-profiles, Milestone
+  M3) is needed by result-analytes-match-order-profile. Existing
+  1-arg/2-arg/3-arg call sites are unaffected."
+  ([ground-truth] (check-all ground-truth config/default-facility 0 order-profiles/default-profiles))
+  ([ground-truth facility-config] (check-all ground-truth facility-config 0 order-profiles/default-profiles))
   ([ground-truth facility-config warm-up-seconds]
+   (check-all ground-truth facility-config warm-up-seconds order-profiles/default-profiles))
+  ([ground-truth facility-config warm-up-seconds order-profiles-config]
    (let [base-violations (into [] (mapcat #(% ground-truth)) catalog)
          facility-violations (into [] (mapcat #(% ground-truth facility-config)) facility-catalog)
          warmup-violations (into [] (mapcat #(% ground-truth warm-up-seconds)) warmup-catalog)
+         order-profiles-violations (into [] (mapcat #(% ground-truth order-profiles-config)) order-profiles-catalog)
          violations (-> base-violations
                         (into facility-violations)
-                        (into warmup-violations))]
+                        (into warmup-violations)
+                        (into order-profiles-violations))]
      (if (empty? violations)
        (result/ok {:invariants-checked (-> (mapv (comp :name meta) catalog)
                                             (into (mapv (comp :name meta) facility-catalog))
-                                            (into (mapv (comp :name meta) warmup-catalog)))
+                                            (into (mapv (comp :name meta) warmup-catalog))
+                                            (into (mapv (comp :name meta) order-profiles-catalog)))
                    :events (count ground-truth)})
        (result/rejected :invariant-violation {:violations violations})))))

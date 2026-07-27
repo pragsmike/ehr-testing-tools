@@ -130,40 +130,101 @@ rejection is a no-op for that one step, not a run-halting condition,
 and InjectChurn's own state model treats `:cancel-discharge`
 conservatively (never assumes it succeeds) for exactly this reason.
 
-## M3 — Order profiles + order/result steps
+## M3 — Order profiles + order/result steps — **landed**
 
-Advances **Execute** via its new `order-profiles` catalytic (added
-this session, target 3 — hashed US-units config): order and result
-step types, and ORM/ORU emission in `EmitHL7`. This is the milestone
-that repairs the capture gap named in this session's theory
+Advanced **Execute** via its `order-profiles` catalytic (declared
+comment-only ahead of this milestone, target 3 — hashed US-units
+config, now real): `:order` (author-facing IR, auto-pairs its own
+`:result-followup` after a profile-sampled turnaround — the ergonomics
+choice recorded over a hand-authored `:result{:order-ref ...}}` step,
+`docs/patient-state-model.md`) and ORM^O01/ORU^R01 emission in
+`EmitHL7` — 181 tests / 503 assertions green, coverage 95.35%/97.75%
+(up from the M2b baseline 94.78%/97.25%). `resources/order-profiles.edn`
+ships a small hand-curated CBC + BMP starter set, real LOINC codes
+verified directly against loinc.org (`notes/facts-register.md` F7), US
+conventional units, typical adult reference ranges, and a per-analyte
+value distribution (normal + abnormal tails). This is the milestone
+that repairs the capture gap named in an earlier theory
 sync — Simulated Hospital's order profiles and the ORM/ORU cycle were
 discussed from the project's first session but, until now, lived in
 no planning artifact.
 
-Co-landing invariants: results reference orders that exist and
-precede them in time; order/result message types register in
+**The run-loop mechanism this needed, recorded here since it's a real
+engine extension, not just a new step type:** `decide`'s outcome may
+now carry `:schedule-followup` — a genuine future `[t seq-no]` queue
+entry the run loop enqueues, distinct from returning events directly.
+An `:order`'s result is fully computed (all its RNG draws, including
+every analyte's sampled value and computed abnormal flag) atomically at
+order-decide-time, the same "decided atomically" precedent
+`:transfer-in-error` already set — but splicing that future-timestamped
+event directly into the order's own `:events` would enter
+`ground-truth` at the order's own log position, ahead of other
+patients' smaller-`:t` events the run loop hasn't processed yet yet,
+breaking the log's global time ordering. `:schedule-followup` instead
+asks the run loop to enqueue it for real, so it lands at its own
+correct position, the same as any other scheduled event.
+
+**A real finding, corrected before landing:** this milestone's own
+integration test surfaced that a patient can legitimately be discharged
+before their result arrives (async turnaround, `:order`'s own
+`:advance 0` doesn't block the rest of the pathway on the pending
+result) — pending labs at discharge are real, common clinical traffic,
+not a bug. The event-validity invariant this milestone co-lands
+(`order-only-when-admitted`) is therefore scoped to `:order-placed`
+alone, not generalized to `:result-available` as first drafted.
+
+Co-landing invariants: `result-references-existing-order-and-follows-
+it-in-time` (every result's `:order-event-id` names a real order for
+the same patient, at or before the result's own time);
+`result-analytes-match-order-profile` (a result's analyte set is
+exactly its own profile's); `abnormal-flags-consistent-with-value-vs-
+range` (the computed-truth mini-law, checked from the log directly);
+`order-only-when-admitted` (the therapeutic-intent-class validity row,
+scoped per the finding above). Order/result message types register in
 `message-type-registry` the same way ADT types already do.
 
-**M3-adjacent capture: per-patient pathway assignment.**
-`ehr-testing-sim.engine/run` today executes exactly one pathway for
-every patient in a run — the churn regression fleet (M2b) had to
-script `decide`/`evolve` directly, one call at a time, precisely
-because there is no config-level way to run a *mixture* of pathways
-across a patient population. SimHospital's own pathway config has a
-`percentage_of_patients`-style analogue for exactly this; this project
-has discussed the gap without capturing it in a planning artifact
-until now. Needed: a distribution/assignment layer — config mapping
-pathway ids to weights (a sampled mixture) or to explicit per-patient
-assignments (a scripted fleet, `run`'s existing single-pathway mode as
-the degenerate case) — so a scripted scenario fixture can run through
-`engine/run` end to end instead of hand-driving `decide`/`evolve`. This
-is also **M5's own prerequisite**: `CompileTrajectory` produces a
-*distinct* pathway per patient (each patient's own compiled clinical
-trajectory), so the assignment layer that lets `run` accept "one
-pathway per patient, not one pathway for all" is infrastructure M5
-needs regardless of where it lands first. Captured here as a named gap,
-not designed in the fuller sense `docs/operational-models.md` designs
-the allocation ladder.
+**Task 0's consumer-loop triage, landed alongside:** `manifest/build`
+and `MirroredManifest` both omitted `:schema-version` — correlated
+drift the mirror could not self-detect, since it validates its own
+output against its own copy of the schema (a mirror cannot catch itself
+agreeing with its own mistake, the reason the BINDING contract test
+lives in tools' own integration tree). Fixed both sides to mirror
+tools' `ManifestV1_1` exactly (`:schema-version "1.1"`); verified
+against tools' `sim-manifest-contract-test`, run as a subprocess, green.
+
+**ADR-0012 (`:step-rejected`), landed alongside.** Decide-time
+rejections (the cancel-family's own reinstatement guards, bed-swap/
+merge's no-eligible-peer cases) now append a `:step-rejected` ground-
+truth event — participants (the attempting patient only, never a
+possibly-nonexistent `:with` target), the attempted step, and a
+documented reason keyword (`ehr-testing-sim.engine/documented-step-
+rejection-reasons`, its own catalog-style enum, co-landed with a
+`step-rejected-reason-is-documented` invariant). No
+`message-type-registry` entry, by design — truth about the run, never
+wire traffic. Rejected steps consume no RNG beyond what `decide` had
+already drawn before discovering the rejection.
+
+**M3-adjacent capture, landed alongside: per-patient pathway
+assignment.** `ehr-testing-sim.engine/run` gained `:pathways`
+(`ehr-testing-sim.pathway/PathwaysConfig`): weighted-pool entries
+(`{:pathway :weight}`, a sampled mixture across the patient population)
+and/or explicit per-ordinal entries (`{:patient-ordinal :pathway}`, a
+scripted assignment), `assign-pathway`'s own input — SimHospital's
+`percentage_of_patients`-style analogue this project had discussed
+without capturing until now. `run`'s existing single-`:pathway` config
+is the degenerate case and stays byte-identical (the pinned fixture is
+untouched — `:pathways` absent entirely, not merely all-zero, means no
+new draw, exactly the same opt-in shape M2b's `:churn-profile` already
+established). The M2b scripted-scenario fleet
+(`ehr_testing_sim/churn_scenarios_test.clj`) now runs end-to-end through
+`engine/run` via explicit assignments, computing peer patient-ids with
+the pure `patient-id-for`; `engine-test`'s own
+`bed-ready-transfer-scripted-two-patients` is kept as the one direct
+decide/evolve-driven API-level regression, per this session's own
+migration note. This is also **M5's own prerequisite**:
+`CompileTrajectory` produces a *distinct* pathway per patient, so this
+assignment layer is infrastructure M5 needs regardless of where it
+landed first.
 
 ## M4 — Persona + demographics tables; payer sampling; PID/IN1 enrichment
 

@@ -63,6 +63,7 @@
             [ehr-testing-sim.config :as config]
             [ehr-testing-sim.churn :as churn]
             [ehr-testing-sim.facility :as facility]
+            [ehr-testing-sim.order-profiles :as order-profiles]
             [malli.core :as m])
   (:import [java.util Random]))
 
@@ -264,16 +265,44 @@
                             i))
                         ground-truth))))
 
+(def documented-step-rejection-reasons
+  "The closed enum every :step-rejected event's :reason must be drawn
+  from (ADR-0012's own invariant: 'every rejection's reason is from a
+  documented enum') -- check.clj's step-rejected-reason-is-documented
+  validates every log against exactly this set, so a new rejection path
+  earns an entry here in the same change (the co-landing convention,
+  extended to this event type)."
+  #{:illegal-cancel-admit
+    :illegal-cancel-transfer :illegal-cancel-transfer-bed-reoccupied
+    :illegal-cancel-discharge :illegal-cancel-discharge-bed-reoccupied
+    :illegal-bed-swap :illegal-merge})
+
 (defn- rejected-outcome
-  [reason patient-id extra]
-  {:events [] :advance 0 :rejected (merge {:reason reason :patient-id patient-id} extra)})
+  "ADR-0012 (M3): a decide-time rejection is no longer a silent no-op --
+  a :step-rejected ground-truth event now enters `:events` (folded via
+  `evolve`'s own identity method for this type, below, and logged like
+  any other event) alongside the pre-existing :rejected key callers
+  already read directly off decide's return value. `:participants`
+  names ONLY `patient-id`, the one attempting the step -- never a
+  possibly-nonexistent :with target named in `step` itself (that stays
+  in :attempted-step, plain data no invariant needs to resolve to a
+  real patient), so participant-ids-exist-in-run stays sound for every
+  rejection, including one that names a typo'd or never-admitted peer.
+  No RNG is drawn here: decide already drew everything it was going to
+  draw before discovering the rejection (determinism note, ADR-0012)."
+  [reason patient-id t step extra]
+  (let [event {:event :step-rejected :t t
+               :participants [{:patient-id patient-id :role :subject}]
+               :attempted-step step
+               :reason reason}]
+    {:events [event] :advance 0 :rejected (merge {:reason reason :patient-id patient-id} extra)}))
 
 (defmethod decide :cancel-admit
-  [_rng t world patient-id _step]
+  [_rng t world patient-id step]
   (let [ground-truth (:ground-truth world)
         idx (last-uncancelled-index ground-truth patient-id :admission :cancel-admit)]
     (if (nil? idx)
-      (rejected-outcome :illegal-cancel-admit patient-id nil)
+      (rejected-outcome :illegal-cancel-admit patient-id t step nil)
       (let [patient (get-in world [:patients patient-id])]
         {:events [{:event :cancel-admit :t t :active-mrn (:active-mrn patient)
                    :cancels-event-id idx
@@ -309,7 +338,7 @@
   (nth candidates (.nextInt rng (count candidates))))
 
 (defmethod decide :bed-swap
-  [rng t world patient-id {:keys [with]}]
+  [rng t world patient-id {:keys [with] :as step}]
   (let [{:keys [patients]} world
         self (get patients patient-id)
         eligible (->> patients
@@ -322,7 +351,7 @@
                   :else nil)
         peer (get patients peer-id)]
     (if (or (nil? peer-id) (nil? peer) (not= :admitted (:status peer)) (nil? (:location peer)))
-      (rejected-outcome :illegal-bed-swap patient-id {:with with})
+      (rejected-outcome :illegal-bed-swap patient-id t step {:with with})
       {:events [{:event :bed-swap :t t
                  :participants [{:patient-id patient-id :role :subject}
                                 {:patient-id peer-id :role :subject}]
@@ -333,7 +362,7 @@
        :advance 0})))
 
 (defmethod decide :merge
-  [rng t world patient-id {:keys [with]}]
+  [rng t world patient-id {:keys [with] :as step}]
   (let [{:keys [patients ground-truth]} world
         survivor (get patients patient-id)
         ;; :new (never admitted -- no :admission event exists yet for
@@ -357,7 +386,7 @@
                               ground-truth)]
     (if (or (nil? merged-id) (= patient-id merged-id) (nil? merged)
             (never-mergeable? merged) already-merged?)
-      (rejected-outcome :illegal-merge patient-id {:with with})
+      (rejected-outcome :illegal-merge patient-id t step {:with with})
       {:events [{:event :merge :t t
                  :participants [{:patient-id patient-id :role :survivor}
                                 {:patient-id merged-id :role :merged}]
@@ -365,6 +394,67 @@
                  :merged-mrn (:active-mrn merged)
                  :merged-mrns (:mrns merged)}]
        :advance 0})))
+
+;; --- M3: order/result (auto-paired, docs/sim-theory.edn's order-profiles
+;; catalytic) ---------------------------------------------------------------
+
+(defmethod decide :order
+  [rng t world patient-id {:keys [profile]}]
+  (let [{:keys [patients ground-truth order-profiles]} world
+        patient (get patients patient-id)
+        prof (get order-profiles profile)
+        order-idx (count ground-truth)
+        order-event {:event :order-placed :t t :active-mrn (:active-mrn patient)
+                     :profile profile :concept (:concept prof)
+                     :location (:location patient) :attending (:attending patient)
+                     :participants [{:patient-id patient-id :role :subject}]}
+        ;; :turnaround-minutes is authored (in the profile) the same
+        ;; minutes-authored way :delay's IR is (docs/patient-state-
+        ;; model.md's durations rule); converted to seconds here, the
+        ;; same one place :delay's own decide method already converts.
+        turnaround-seconds (* 60 (rand-int-in rng (get-in prof [:turnaround-minutes :from])
+                                              (get-in prof [:turnaround-minutes :to])))
+        results (mapv (fn [analyte]
+                        (let [value (order-profiles/sample-analyte-value rng analyte)]
+                          {:concept (:concept analyte) :units (:units analyte) :value value
+                           :reference-range (:reference-range analyte)
+                           ;; Computed truth, not sampled (Task 4's mini-law):
+                           ;; the flag is DERIVED from value vs range, here
+                           ;; and nowhere else.
+                           :abnormal-flag (order-profiles/abnormal-flag value (:reference-range analyte))}))
+                      (:analytes prof))
+        result-t (+ t turnaround-seconds)
+        ;; :location/:attending are the patient's state AT ORDER TIME
+        ;; (decide has no access to a FUTURE fold -- ADR-0008 -- and the
+        ;; result event's own values were already fully computed atomically
+        ;; back here); PV1 context for both messages reflects where the
+        ;; specimen was ordered, the same convention real order/result
+        ;; pairs use when a patient's location changes between the two.
+        result-event {:event :result-available :t result-t :active-mrn (:active-mrn patient)
+                      :profile profile :order-event-id order-idx :concept (:concept prof)
+                      :location (:location patient) :attending (:attending patient)
+                      :results results
+                      :participants [{:patient-id patient-id :role :subject}]}]
+    ;; The result event is fully computed NOW (all its RNG draws happen
+    ;; in this one decide call, same "decided atomically" precedent
+    ;; transfer-in-error already sets) but is NEVER returned directly in
+    ;; :events -- a future-t event spliced into THIS call's :events
+    ;; would enter ground-truth at this call's OWN log position, ahead
+    ;; of other patients' events with SMALLER :t that get processed
+    ;; later in wall-loop order, breaking the log's global t-ordering
+    ;; (engine-test's own `(apply <= (map :t ground-truth))` sanity
+    ;; check, and the derivability law any emitter/consumer relies on).
+    ;; Instead it rides `:schedule-followup`: the run loop enqueues it
+    ;; as a genuine future queue entry, so it enters ground-truth at its
+    ;; own correct global [t seq-no] position, the same way every other
+    ;; scheduled event does.
+    {:events [order-event] :advance 0
+     :schedule-followup {:t result-t :patient-id patient-id
+                         :steps [{:type :result-followup :result-event result-event}]}}))
+
+(defmethod decide :result-followup
+  [_rng _t _world _patient-id {:keys [result-event]}]
+  {:events [result-event] :advance 0})
 
 (defmulti evolve
   "Folds one ground-truth event into ONE patient it names:
@@ -420,6 +510,25 @@
       :survivor (-> patient (update :mrns into merged-mrns) (assoc :active-mrn surviving-mrn))
       :merged (assoc patient :status :merged))))
 
+;; --- ADR-0012: :step-rejected -- truth about the run, never a state
+;; transition (the attempted step never actually happened) --------------
+
+(defmethod evolve :step-rejected
+  [patient _event]
+  patient)
+
+;; --- M3: order/result -- neither changes any PatientState field today
+;; (docs/patient-state-model.md's accumulator has no order/result-history
+;; field; the log itself is the history, queried directly, ADR-0008) ------
+
+(defmethod evolve :order-placed
+  [patient _event]
+  patient)
+
+(defmethod evolve :result-available
+  [patient _event]
+  patient)
+
 (defn replay
   "Replays `ground-truth` through `evolve`, returning a parallel seq of
   {:event :patient-id :before :after :world-before :world-after} --
@@ -473,34 +582,81 @@
       (and (some? occupant) (not= occupant patient-id)))))
 
 (defmethod decide :cancel-transfer
-  [_rng t world patient-id _step]
+  [_rng t world patient-id step]
   (let [ground-truth (:ground-truth world)
         idx (last-uncancelled-index ground-truth patient-id :transfer :cancel-transfer)]
     (if (nil? idx)
-      (rejected-outcome :illegal-cancel-transfer patient-id nil)
+      (rejected-outcome :illegal-cancel-transfer patient-id t step nil)
       (let [patient (get-in world [:patients patient-id])
             {:keys [home-ward location]} (:before (nth (replay ground-truth) idx))]
         (if (bed-reoccupied-by-someone-else? world patient-id location)
-          (rejected-outcome :illegal-cancel-transfer-bed-reoccupied patient-id {:location location})
+          (rejected-outcome :illegal-cancel-transfer-bed-reoccupied patient-id t step {:location location})
           {:events [{:event :cancel-transfer :t t :active-mrn (:active-mrn patient)
                      :cancels-event-id idx :home-ward home-ward :location location
                      :participants [{:patient-id patient-id :role :subject}]}]
            :advance 0})))))
 
 (defmethod decide :cancel-discharge
-  [_rng t world patient-id _step]
+  [_rng t world patient-id step]
   (let [ground-truth (:ground-truth world)
         idx (last-uncancelled-index ground-truth patient-id :discharge :cancel-discharge)]
     (if (nil? idx)
-      (rejected-outcome :illegal-cancel-discharge patient-id nil)
+      (rejected-outcome :illegal-cancel-discharge patient-id t step nil)
       (let [patient (get-in world [:patients patient-id])
             {:keys [home-ward location attending]} (:before (nth (replay ground-truth) idx))]
         (if (bed-reoccupied-by-someone-else? world patient-id location)
-          (rejected-outcome :illegal-cancel-discharge-bed-reoccupied patient-id {:location location})
+          (rejected-outcome :illegal-cancel-discharge-bed-reoccupied patient-id t step {:location location})
           {:events [{:event :cancel-discharge :t t :active-mrn (:active-mrn patient)
                      :cancels-event-id idx :home-ward home-ward :location location :attending attending
                      :participants [{:patient-id patient-id :role :subject}]}]
            :advance 0})))))
+
+;; --- M3-adjacent: per-patient pathway assignment (roadmap.md's M3 entry,
+;; SimHospital's percentage_of_patients analogue -- the distribution layer
+;; M5's CompileTrajectory will also need, one pathway per patient) --------
+
+(defn- weighted-pick
+  "Which pool member `draw` (a uniform double in [0,1), already
+  consumed by the caller) falls into, among `pool` ({:pathway :weight}
+  maps) -- cumulative-weight bucketing, falling through to the last
+  member on any floating-point-boundary edge case rather than nil."
+  [pool draw]
+  (let [total (reduce + (map :weight pool))
+        target (* draw total)]
+    (loop [members pool acc 0.0]
+      (let [m (first members)
+            more (rest members)
+            acc' (+ acc (double (:weight m)))]
+        (if (or (empty? more) (< target acc'))
+          (:pathway m)
+          (recur more acc'))))))
+
+(defn assign-pathway
+  "Resolves the pathway `pathways-config` (ehr-testing-sim.pathway/
+  PathwaysConfig) assigns to patient ordinal `i` (0-indexed arrival
+  order): an explicit {:patient-ordinal i :pathway ...} entry when one
+  names this ordinal, otherwise a weighted pick among the config's
+  {:pathway :weight} pool entries. Today's single-:pathway `run` config
+  is this function's degenerate case, expressed as a one-entry weighted
+  pool with :weight 1 -- see `run`'s own docstring for why that case is
+  NOT wired to skip the draw below (it would perturb the very law this
+  paragraph states next).
+
+  ALWAYS consumes exactly one `.nextDouble` from `rng`, whether the
+  outcome is the explicit override or the weighted pick -- fixed RNG
+  consumption per patient, ADR-0009's own rejected-alternative reasoning
+  extended here: making draw count depend on whether THIS patient
+  happens to have an explicit override would mean adding one scripted
+  override for patient N shifts every OTHER patient's downstream draws,
+  the exact surprising coupling ADR-0009 already rejected for bed
+  choice (there: 'consumption changed once, for a documented reason' is
+  the accepted property; making it depend on candidate count is not)."
+  [^Random rng pathways-config i]
+  (let [draw (.nextDouble rng)
+        explicit (first (filter #(= i (:patient-ordinal %)) pathways-config))]
+    (if explicit
+      (:pathway explicit)
+      (weighted-pick (filterv :weight pathways-config) draw))))
 
 (defn- pop-min
   "Removes and returns the earliest queue entry. Queue is a sorted-map
@@ -515,6 +671,20 @@
     :seed             long (required)
     :patients         number of patients (default 1)
     :pathway          a pathway IR map (default pathway/sample-admission-discharge)
+    :pathways         M3-adjacent: ehr-testing-sim.pathway/PathwaysConfig
+                      -- a vector of weighted-pool ({:pathway :weight})
+                      and/or explicit ({:patient-ordinal :pathway})
+                      entries, `assign-pathway`'s own input. When
+                      present, EVERY patient's pathway comes from this
+                      (not :pathway, which is then ignored) and consumes
+                      one additional RNG draw per patient (fixed
+                      consumption, see `assign-pathway`'s docstring).
+                      ABSENT ENTIRELY (not merely nil) -- the default --
+                      means every patient gets the plain :pathway
+                      config, exactly as before this option existed: no
+                      new draw, byte-identical output, the reason the
+                      pinned fixture (no :pathways key) survives this
+                      milestone untouched.
     :arrival-gap      max MINUTES between successive patient arrivals
                       (default 60; actual gaps sampled from the seeded
                       RNG). Stays minutes, converted to seconds at the
@@ -538,6 +708,9 @@
     :facility         facility config (default config/default-facility)
     :providers        provider templates (default config/default-provider-templates;
                        NPIs are generated from THIS run's seed -- ADR-0007)
+    :order-profiles   M3: ehr-testing-sim.order-profiles/OrderProfiles map
+                      (default order-profiles/default-profiles) -- :order
+                      steps look up their :profile key here.
     :churn-profile    ehr-testing-sim.churn/ChurnProfile map (default nil
                        -- churn OFF). M2b: when present, InjectChurn runs
                        ONCE PER PATIENT (in arrival-ordinal order, a fixed
@@ -569,14 +742,16 @@
   rather than assumed; the engine computes it as a byproduct of the
   loop below because decide needs live world state to make its next
   decision, not because it's a second source of truth."
-  [{:keys [seed patients pathway arrival-gap warm-up-seconds facility providers churn-profile]
+  [{:keys [seed patients pathway pathways arrival-gap warm-up-seconds facility providers churn-profile order-profiles]
     :or {patients 1
          pathway pathway/sample-admission-discharge
          arrival-gap 60
          warm-up-seconds 0
          facility config/default-facility
-         providers config/default-provider-templates}}]
-  {:pre [(some? seed) (pathway/valid? pathway)]}
+         providers config/default-provider-templates
+         order-profiles order-profiles/default-profiles}}]
+  {:pre [(some? seed) (pathway/valid? pathway)
+         (or (nil? pathways) (pathway/valid-pathways-config? pathways))]}
   (let [rng (Random. ^long seed)
         ;; Provider NPIs are generated from this run's seed (ADR-0007),
         ;; drawn once up front -- before arrival staggering -- so
@@ -591,12 +766,18 @@
                                                   #(* 60 (rand-int-in rng 0 arrival-gap)))))
         mrn-for (fn [i] (format "MRN%06d" (inc i)))
         pid-for (fn [i] (patient-id-for seed i))
+        ;; M3-adjacent: :pathways ABSENT entirely -- the pinned-fixture
+        ;; path -- means every patient gets the same plain :pathway, no
+        ;; assign-pathway call, no new draw (see `run`'s docstring).
+        pathway-for (if pathways
+                      (fn [i] (assign-pathway rng pathways i))
+                      (fn [_i] pathway))
         ;; InjectChurn (M2b): ONLY when :churn-profile is actually
         ;; present does this stage run at all -- absent, `steps-for` is
         ;; a no-op and consumes no RNG (see the docstring's fixture note).
         steps-for (if churn-profile
-                    (fn [_i] (:steps (churn/inject pathway churn-profile rng)))
-                    (fn [_i] (:steps pathway)))
+                    (fn [i] (:steps (churn/inject (pathway-for i) churn-profile rng)))
+                    (fn [i] (:steps (pathway-for i))))
         init-queue (into (sorted-map)
                          (map-indexed
                           (fn [i arrival-t]
@@ -607,6 +788,7 @@
                                     arrivals)
                     :facility facility
                     :providers materialized-providers
+                    :order-profiles order-profiles
                     ;; Task 1 (M2b): cancel-family/transfer-in-error decide
                     ;; methods query the log directly for the event they
                     ;; reinstate from (docs/patient-state-model.md's
@@ -644,7 +826,7 @@
             ;; no-events-after-merged-terminal, not just a check.clj
             ;; invariant asserted after the fact.
             (recur queue' seq-no world ground-truth state-history)
-            (let [{:keys [events advance exhausted]} (decide rng t world patient-id step)]
+            (let [{:keys [events advance exhausted schedule-followup]} (decide rng t world patient-id step)]
               ;; A :rejected decide outcome (an illegal cancel/bed-swap/
               ;; merge -- Task 1's validity-table enforcement) is NOT a
               ;; run-halting condition, unlike :exhausted: it means THIS
@@ -675,8 +857,21 @@
                                                       (update sh2 patient-id (fnil conj [])
                                                               (get-in world' [:patients patient-id])))
                                                     sh (:participants ev)))
-                                          state-history events)]
+                                          state-history events)
+                  ;; M3: :order's decide may ask for a follow-up queue
+                  ;; entry (the auto-paired :result -- see engine's :order
+                  ;; docstring for why it rides the REAL queue instead of
+                  ;; being spliced into :events directly). Scheduled at
+                  ;; its own [t seq-no], same as any other event -- this
+                  ;; is what keeps ground-truth in true global time order
+                  ;; even though the result's CONTENT was fully decided
+                  ;; back when the order was placed.
+                  [queue'' seq-no'] (if schedule-followup
+                                      [(assoc queue' [(:t schedule-followup) seq-no]
+                                             (select-keys schedule-followup [:patient-id :steps]))
+                                       (inc seq-no)]
+                                      [queue' seq-no])]
               (if (seq remaining)
-                (recur (assoc queue' [(+ t advance) seq-no] {:patient-id patient-id :steps (vec remaining)})
-                       (inc seq-no) world'' ground-truth' state-history')
-                (recur queue' seq-no world'' ground-truth' state-history')))))))))))
+                (recur (assoc queue'' [(+ t advance) seq-no'] {:patient-id patient-id :steps (vec remaining)})
+                       (inc seq-no') world'' ground-truth' state-history')
+                (recur queue'' seq-no' world'' ground-truth' state-history')))))))))))

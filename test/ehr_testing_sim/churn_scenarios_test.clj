@@ -3,21 +3,36 @@
   exercising the compound cases the catalog names --
   docs/clinical-realities.md's newborn-merge entry (merge-while-
   boarding), transfer-in-error then cancel-then-retransfer, and a
-  bed-swap between a licensed and a surge occupant. Each scenario
-  asserts the EXACT ground-truth event sequence AND the exact rendered
-  HL7v2 message sequence, not just that some invariant holds -- these
-  are regression fixtures, driving decide/evolve directly (the same
-  scripted-two-patient pattern ehr-testing-sim.engine-test's
-  bed-ready-transfer-scripted-two-patients already established, since
-  ehr-testing-sim.engine/run has no per-patient pathway mechanism for
-  authoring a SPECIFIC two-patient interaction -- decide/evolve driven
-  by hand IS the authored pathway here)."
+  bed-swap between a licensed and a surge occupant.
+
+  M3-adjacent (roadmap.md's per-patient pathway assignment): migrated to
+  run end-to-end through `ehr-testing-sim.engine/run`'s :pathways option
+  -- each scenario is now an explicit {:patient-ordinal :pathway}
+  assignment per participant, exercising the REAL event loop (arrivals,
+  the work queue, decide/evolve folding) rather than hand-driving
+  decide/evolve one call at a time. `:with` fields that name a specific
+  peer patient-id are computed via `engine/patient-id-for` -- a PURE
+  function of this run's own seed and arrival ordinal (ADR-0010), so a
+  scripted scenario can name 'the 3rd patient' without engine/run having
+  run yet. `:arrival-gap 0` makes every patient arrive at t=0; the queue's
+  own seq-no tiebreak (assigned in arrival-ordinal order, then
+  monotonically for every re-queued step) is what still guarantees each
+  scenario's prerequisite admissions are fully processed before any
+  patient's SECOND step fires -- every prerequisite patient's pathway
+  here is exactly one step (:admission) long, so its only queue entry is
+  its ORIGINAL arrival (seq < patient count); any patient's second step
+  is re-queued with a freshly assigned seq (>= patient count, monotonic)
+  by construction, so it can never be processed before any first-round
+  arrival. See ehr-testing-sim.engine-test's own
+  bed-ready-transfer-scripted-two-patients for the ONE test this session
+  deliberately keeps as a direct decide/evolve-driven API-level
+  regression, per the roadmap's own migration note -- not everything
+  needs to move to engine/run, just this scripted fleet."
   (:require [clojure.test :refer [deftest is testing]]
             [ehr-testing-sim.engine :as engine]
             [ehr-testing-sim.emit-hl7 :as emit-hl7]
             [com.nervestaple.hl7-parser.parser :as parser]
-            [com.nervestaple.hl7-parser.message :as message])
-  (:import [java.util Random]))
+            [com.nervestaple.hl7-parser.message :as message]))
 
 (def ^:private ref-date "2024-01-01")
 (def ^:private utc-offset "+00:00")
@@ -32,32 +47,9 @@
            {:id :renal :name "Renal" :beds 1 :surge-slots 1
             :surge-format "%s-H%02d" :class :inpatient}]})
 
-(def ^:private providers
-  [{:id "1234567893" :name {:family "Chen" :given "A"} :role :attending
+(def ^:private provider-templates
+  [{:name {:family "Chen" :given "A"} :role :attending
     :specialty "Nephrology" :wards [:renal :ed]}])
-
-(defn- world-of
-  [patients]
-  {:patients patients :facility one-bed-one-surge-facility :providers providers :ground-truth []})
-
-(defn- fold-events
-  [world events]
-  (-> (reduce (fn [w ev]
-                (reduce (fn [w2 {:keys [patient-id]}]
-                          (update-in w2 [:patients patient-id] engine/evolve ev))
-                        w (:participants ev)))
-              world events)
-      (update :ground-truth into events)))
-
-(defn- step!
-  "Decides+folds `step` for `patient-id` at `t`, asserting it neither
-  exhausted nor rejected (a scripted scenario's own steps are all meant
-  to be legal) -- returns the updated world."
-  [world t patient-id step]
-  (let [{:keys [events exhausted rejected] :as outcome} (engine/decide (Random. 1) t world patient-id step)]
-    (assert (nil? exhausted) (str "unexpected exhaustion: " exhausted))
-    (assert (nil? rejected) (str "unexpected rejection: " rejected))
-    (fold-events world events)))
 
 (defn- triggers
   "The ordered A-trigger sequence a ground-truth log renders to, for
@@ -65,6 +57,21 @@
   [ground-truth facility providers]
   (mapv #(second (re-find #"\^(A\d+)" %))
         (emit-hl7/emit ground-truth ref-date utc-offset facility providers)))
+
+(defn- run-scenario
+  "Runs `pathways-by-ordinal` (a seq of pathway IR maps, one per patient
+  in arrival order) end-to-end through engine/run, with churn OFF (these
+  scenarios author their own churn steps directly in the IR -- no
+  InjectChurn needed) and arrivals collapsed to t=0 (see namespace
+  docstring)."
+  [seed pathways-by-ordinal]
+  (engine/run {:seed seed
+               :patients (count pathways-by-ordinal)
+               :arrival-gap 0
+               :facility one-bed-one-surge-facility
+               :providers provider-templates
+               :pathways (vec (map-indexed (fn [i p] {:patient-ordinal i :pathway p})
+                                            pathways-by-ordinal))}))
 
 ;; --- Scenario 1: merge-while-boarding --------------------------------------
 ;; docs/clinical-realities.md's newborn Babyboy/Babygirl entry: "a natural
@@ -78,31 +85,31 @@
   ;; NOT boarding), and P3 -- with both Renal rungs now exhausted -- boards
   ;; in ED surge (rung 4: home-ward Renal, physically ED). P3 is then
   ;; merged into P1 while still boarding.
-  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")
-                          "P2" (engine/initial-patient "P2" "MRN000002")
-                          "P3" (engine/initial-patient "P3" "MRN000003")})
-        world1 (-> world0
-                  (step! 0 "P1" {:type :admission :location "Renal"})   ;; licensed
-                  (step! 5 "P2" {:type :admission :location "Renal"})  ;; surge
-                  (step! 6 "P3" {:type :admission :location "Renal"})) ;; boards (ED)
-        p3-before-merge (get-in world1 [:patients "P3"])
-        _ (testing "sanity: P3 is genuinely boarding at this point"
-            (is (= "Renal" (:home-ward p3-before-merge)))
-            (is (= "ED" (get-in p3-before-merge [:location :ward]))))
-        world2 (step! world1 10 "P1" {:type :merge :with "P3"})
-        survivor (get-in world2 [:patients "P1"])
-        merged (get-in world2 [:patients "P3"])]
+  (let [seed 100
+        p3-id (engine/patient-id-for seed 2)
+        {:keys [ground-truth]} (run-scenario
+                                 seed
+                                 [{:name "p1" :steps [{:type :admission :location "Renal"}
+                                                       {:type :merge :with p3-id}]}
+                                  {:name "p2" :steps [{:type :admission :location "Renal"}]}
+                                  {:name "p3" :steps [{:type :admission :location "Renal"}]}])
+        p3-before-merge (first (filter #(and (= :admission (:event %))
+                                              (= p3-id (:patient-id (first (:participants %)))))
+                                        ground-truth))
+        survivor (last (filter #(and (= :merge (:event %))) ground-truth))]
+    (testing "sanity: P3 is genuinely boarding at this point"
+      (is (= "Renal" (get-in p3-before-merge [:home-ward])))
+      (is (= "ED" (get-in p3-before-merge [:location :ward]))))
     (testing "exact ground-truth event sequence"
-      (is (= [:admission :admission :admission :merge] (mapv :event (:ground-truth world2)))))
-    (testing "the merged patient was boarding at the moment of merge, and stays merged, not reverted to any prior status"
-      (is (= :merged (:status merged)))
-      (is (= #{"MRN000001" "MRN000003"} (:mrns survivor)))
-      (is (= "MRN000001" (:active-mrn survivor))))
+      (is (= [:admission :admission :admission :merge] (mapv :event ground-truth))))
+    (testing "the merge names P3 as :merged, P1 as :survivor"
+      (is (= #{[:survivor (engine/patient-id-for seed 0)] [:merged p3-id]}
+             (set (map (juxt :role :patient-id) (:participants survivor))))))
     (testing "exact rendered message sequence: A01 A01 A01 A40"
       (is (= ["A01" "A01" "A01" "A40"]
-             (triggers (:ground-truth world2) one-bed-one-surge-facility providers))))
+             (triggers ground-truth one-bed-one-surge-facility provider-templates))))
     (testing "the A40 carries PID=survivor, MRG=merged's prior mrn"
-      (let [a40 (last (emit-hl7/emit (:ground-truth world2) ref-date utc-offset one-bed-one-surge-facility providers))
+      (let [a40 (last (emit-hl7/emit ground-truth ref-date utc-offset one-bed-one-surge-facility provider-templates))
             parsed (parser/parse a40)]
         (is (= "MRN000001" (message/get-field-first-value parsed "PID" 3)))
         (is (= "MRN000003" (message/get-field-first-value parsed "MRG" 1)))))))
@@ -110,50 +117,46 @@
 ;; --- Scenario 2: transfer-in-error, then cancel-then-retransfer -----------
 
 (deftest transfer-in-error-then-cancel-then-retransfer
-  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
-        world1 (step! world0 0 "P1" {:type :admission :location "Renal"})
-        ;; transfer-in-error: an erroneous transfer to ED, corrected atomically
-        world2 (step! world1 10 "P1" {:type :transfer-in-error :location "ED"})
-        after-error (get-in world2 [:patients "P1"])
-        ;; a genuine, INTENDED transfer to ED follows -- the "retransfer"
-        world3 (step! world2 20 "P1" {:type :transfer :location "ED"})
-        after-retransfer (get-in world3 [:patients "P1"])]
-    (testing "the in-error correction left the patient exactly where they started"
-      (is (= "Renal" (:home-ward after-error)))
-      (is (= "Renal" (get-in after-error [:location :ward]))))
-    (testing "the retransfer that follows is a REAL, uncorrected move"
-      (is (= "ED" (get-in after-retransfer [:location :ward]))))
+  (let [seed 100
+        {:keys [ground-truth]} (run-scenario
+                                 seed
+                                 [{:name "p1" :steps [{:type :admission :location "Renal"}
+                                                       ;; transfer-in-error: an erroneous
+                                                       ;; transfer to ED, corrected atomically
+                                                       {:type :transfer-in-error :location "ED"}
+                                                       ;; a genuine, INTENDED transfer to ED
+                                                       ;; follows -- the "retransfer"
+                                                       {:type :transfer :location "ED"}]}])]
     (testing "exact ground-truth event sequence: admission, transfer(err), cancel-transfer(err), transfer(real)"
-      (is (= [:admission :transfer :cancel-transfer :transfer] (mapv :event (:ground-truth world3))))
-      (is (= [nil true nil] (mapv :in-error (rest (:ground-truth world3))))))
+      (is (= [:admission :transfer :cancel-transfer :transfer] (mapv :event ground-truth)))
+      (is (= [nil true nil] (mapv :in-error (rest ground-truth)))))
+    (testing "the in-error correction left the patient exactly where they started, and the retransfer is a real move"
+      (is (= "Renal" (get-in (nth ground-truth 2) [:home-ward])))
+      (is (= "Renal" (get-in (nth ground-truth 2) [:location :ward])))
+      (is (= "ED" (get-in (nth ground-truth 3) [:location :ward]))))
     (testing "exact rendered message sequence: A01 A02 A12 A02"
       (is (= ["A01" "A02" "A12" "A02"]
-             (triggers (:ground-truth world3) one-bed-one-surge-facility providers))))))
+             (triggers ground-truth one-bed-one-surge-facility provider-templates))))))
 
 ;; --- Scenario 3: bed-swap between a licensed and a surge occupant ---------
 
 (deftest bed-swap-between-licensed-and-surge-occupant
-  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")
-                          "P2" (engine/initial-patient "P2" "MRN000002")})
-        world1 (-> world0
-                  (step! 0 "P1" {:type :admission :location "Renal"})   ;; licensed (rung 1)
-                  (step! 5 "P2" {:type :admission :location "Renal"})) ;; surge (rung 2)
-        p1-before (get-in world1 [:patients "P1"])
-        p2-before (get-in world1 [:patients "P2"])
-        _ (testing "sanity: one licensed, one surge, same ward"
-            (is (= :licensed (get-in p1-before [:location :placement])))
-            (is (= :surge (get-in p2-before [:location :placement]))))
-        world2 (step! world1 10 "P1" {:type :bed-swap :with "P2"})
-        p1-after (get-in world2 [:patients "P1"])
-        p2-after (get-in world2 [:patients "P2"])]
-    (testing "placements are exchanged, home-wards untouched, both still admitted"
-      (is (= (:location p2-before) (:location p1-after)))
-      (is (= (:location p1-before) (:location p2-after)))
-      (is (= :surge (get-in p1-after [:location :placement])))
-      (is (= :licensed (get-in p2-after [:location :placement])))
-      (is (= :admitted (:status p1-after) (:status p2-after))))
+  (let [seed 100
+        p2-id (engine/patient-id-for seed 1)
+        {:keys [ground-truth]} (run-scenario
+                                 seed
+                                 [{:name "p1" :steps [{:type :admission :location "Renal"}
+                                                       {:type :bed-swap :with p2-id}]}
+                                  {:name "p2" :steps [{:type :admission :location "Renal"}]}])
+        [p1-admit p2-admit bed-swap] ground-truth]
+    (testing "sanity: one licensed, one surge, same ward"
+      (is (= :licensed (get-in p1-admit [:location :placement])))
+      (is (= :surge (get-in p2-admit [:location :placement]))))
     (testing "exact ground-truth event sequence"
-      (is (= [:admission :admission :bed-swap] (mapv :event (:ground-truth world2)))))
+      (is (= [:admission :admission :bed-swap] (mapv :event ground-truth))))
+    (testing "placements are exchanged"
+      (is (= (:location p2-admit) (get-in bed-swap [:swap (engine/patient-id-for seed 0) :to])))
+      (is (= (:location p1-admit) (get-in bed-swap [:swap p2-id :to]))))
     (testing "exact rendered message sequence: A01 A01 A17"
       (is (= ["A01" "A01" "A17"]
-             (triggers (:ground-truth world2) one-bed-one-surge-facility providers))))))
+             (triggers ground-truth one-bed-one-surge-facility provider-templates))))))

@@ -14,6 +14,10 @@
                                     :sha256 (apply str (repeat 64 "a"))}
                            :invocation {:verb "run" :opts {:seed 42}}})]
     (is (manifest/valid? m))
+    (is (= "1.1" (:schema-version m))
+        "mirrors tools' ManifestV1_1 :schema-version exactly -- a mirror
+         that omits this key can't self-detect the drift; the binding
+         check lives in tools' own sim-manifest-contract-test")
     (is (= :simulated (:stage m)))
     (is (= {:primary 42} (:seeds m)))
     (is (= "ehr-testing-sim" (get-in m [:generator :name])))))
