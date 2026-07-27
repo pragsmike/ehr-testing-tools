@@ -29,6 +29,13 @@ generating throwaway ones.
   so the excerpt also documents that ordinary apostrophes need no ER7
   escaping at all (Task 4's own finding is about literal delimiter
   characters, not everyday punctuation).
+- [`site-profiles/`](site-profiles/) — the site-profiles milestone's
+  own invariance property: the SAME seed, rendered under no profile and
+  under a deliberately gaudy second profile (a different HL7 version,
+  renamed sending facility, custom patient-class/disposition codes, a
+  `ZPI` payer Z-segment) — one `ground-truth.edn` (byte-identical
+  either way), two `messages-*.txt` files that differ only on the
+  declared dialect surfaces.
 
 Each subdirectory holds:
 
@@ -39,3 +46,10 @@ Each subdirectory holds:
   separated (each message's own segments are `\r`-delimited internally,
   per the real ER7 wire format — a text viewer that shows them running
   together per message is rendering that CR correctly, not truncating)
+
+`site-profiles/` is the one exception to this shape: it renders the
+SAME ground truth under two different site profiles, so it holds
+`config-aldric.edn` (the second profile's `--config` file),
+`ground-truth.edn` (ONE file — the two runs' logs are byte-identical,
+verified when generating this demo), and `messages-default.txt` /
+`messages-aldric.txt` in place of a single `messages.txt`.

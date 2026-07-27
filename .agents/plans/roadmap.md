@@ -326,6 +326,89 @@ CLI-produced traces (order/result post-Task-0, and Persona-enriched);
 `docs/sim-theory.edn`'s diagram companion files updated for the new
 `payer-pool` wire.
 
+## Site profiles — code tables, MSH dialect, Z-segments — **landed**
+
+Lands the config layer `docs/site-profiles.md` designed (M4's own
+session): a `site-profile` value (`ehr-testing-sim.site-profile/
+SiteProfile`, all keys optional) as a real catalytic on **EmitHL7**
+(`docs/sim-theory.edn`, target 3) — no new stage, one new wire, the
+same shape `order-profiles`/`provider-pool` joining `Execute` already
+established. **The default-profile identity is this milestone's own
+determinism anchor**, property-tested (`emit-hl7-test/default-profile-
+is-the-absent-profile`): no profile arg, an explicit `nil`, and `{}`
+all render identically. Ships an MSH dialect (version, sending/
+receiving app+facility — **SimHospital issue #17's own citation**,
+this roadmap's earlier scope note, answered: version selection is now
+a configured field, not a hard-coded emitter constant); PV1-2/PV1-36
+code-table overrides (rendering-time substitutions over the SAME
+underlying state value, `ehr-testing-sim.site-profile/code-for`); and
+a Z-segment template DSL (field→state/persona/event-path bindings,
+rendered after standard segments on their own declared trigger,
+escaped per ER7, an unbound path rendering empty rather than throwing
+— **SimHospital issue #21's own citation**, answered for the custom-
+segment scope item). The parser round-trip check this milestone's own
+spec asked for (`emit-hl7-test/parser-round-trips-messages-bearing-an-
+unknown-z-segment`) passed clean — `org.clojars.cmiles74/clojure-hl7-
+parser` is segment-name-agnostic on read, so no facts-register finding
+was needed here.
+
+**The invariance property, proven both structurally and statistically.**
+The milestone's own thesis — two site profiles over one seed produce
+the same ground truth in two accents — is checked two ways: the strong
+half (ground truth) structurally, since `:site-profile` is not a
+member of `ehr-testing-sim.engine/config-keys` and is therefore
+incapable of reaching `Execute` at all, not merely untested; the weak
+half (messages) via a property test over 100 random seeds/patient
+counts, comparing a default and a deliberately gaudy second profile
+(HL7 2.5.1, a renamed sending facility, custom patient-class/
+disposition codes, a `ZPI` payer Z-segment) after masking exactly the
+declared dialect surfaces (MSH-3/4/5/6/12, PV1-2/PV1-36, Z-segment
+lines) — the masking function itself is a deliverable, since it is the
+precise, executable statement of what a dialect may touch and nothing
+more. A CLI-produced two-profile demo (`docs/demos/site-profiles/`)
+carries the same event rendered under both profiles side by side, with
+ground-truth identity verified programmatically at generation time, not
+merely asserted in prose.
+
+**`:naming :surge-format` migrates to the profile — the one documented
+exception.** Every other component binds at `EmitHL7`'s own render
+call sites (Task 3's seam, `docs/site-profiles.md`); surge bed ids,
+by contrast, are already baked into ground truth at DECIDE time
+(`ehr-testing-sim.facility/surge-slot-ids`, pre-dating this milestone),
+so `ehr-testing-sim.site-profile/apply-naming` is a facility-config
+transform a caller applies BEFORE `engine/run`, never auto-wired into
+it and never read by `EmitHL7` — a config-level compatibility shim,
+not a fifth emit-time dialect surface, named here so it isn't
+mistaken for one.
+
+**`;; NEXT` stays on `RunModules`, Milestone M5, per the ratified
+order** — this milestone added a catalytic wire to an already-`:built`
+stage (`EmitHL7`), not a new stage of its own, so there was never a
+marker to move; recorded here so a future session doesn't go looking
+for one.
+
+230 tests / 625 assertions green, coverage 95.90%/98.06% (flat against
+the M4 baseline 95.91%/98.00% — a 0.01pp forms difference, well within
+noise, no regression to justify). The pinned fixture
+(`test/ehr_testing_sim/fixtures/pinned_seed_42_patients_5.edn`) is
+untouched this session — `:site-profile` never reaches `engine/run`,
+so there was no perturbation to regenerate against, the first
+milestone since ADR-0009 was ratified where that's true by
+construction rather than by luck.
+
+**Note for the author: the tools-side gate-loop baseline review
+(`ehr-testing-tools`' own consumer-loop Task 3, its own committed
+verdict baseline artifact) is now genuinely due again.** Sim's default
+(no-profile) message shape changed twice since that baseline was last
+recorded — M3/M4's own deltas (order/result messages, PID/IN1
+enrichment) plus this session's own default-path addition (PV1-36 now
+present, blank, on every non-discharge message; populated on discharge
+where before this field didn't exist at all). Re-run tools' Task 3
+procedure when convenient to confirm the gate's verdict on the new
+default shape and record any delta against the committed baseline —
+noted here, not actioned, since that review lives in tools' own
+repo/session per ADR-0001's dependency direction.
+
 ## M5 — GMF interpreter + module vendoring decision + CompileTrajectory
 
 Lands **RunModules** and **CompileTrajectory** (both `:planned`),
@@ -413,25 +496,12 @@ the milestone before it:
   demoting it to dormant, the way `ehr-testing-tools` did at its own
   ADR-0008, is recorded as its own ADR when that happens, not folded
   into this roadmap.
-- **Site profiles** (`docs/site-profiles.md`, this session) —
-  **proposed**, for author review rather than decided placement:
-  code-table overrides, naming idioms beyond `:surge-format`, and
-  Z-segment templates, as their own milestone landing **after M3**.
-  Reasoned there rather than earlier because Z-segment templates are
-  thin content without order/result data to bind them to — a
-  site-profile milestone landing before M3's `order-profiles` catalytic
-  exists would have little beyond code-table overrides to actually
-  exercise. **Scope addition: MSH-12 (HL7 version id) as an explicit
-  site-profile config knob** — SimHospital issue #17
-  (`docs/research/SimHospital-Synthea-limitations-considered.md` §5.3),
-  a consumer of HL7v2.6 who could see multiple generated schemas in the
-  project but no documented way to switch versions, is this milestone's
-  citation for making version selection a named, configured field
-  rather than a hard-coded emitter constant. **Custom-segment
-  citation**: SimHospital issue #21, a 2024 user asking how to add GT1
-  and ZG1 segments — the same issue this roadmap's M4 entry cites for
-  US phone formatting — is this milestone's citation for the
-  Z-segment-template scope item above.
+- **Site profiles** — **landed**, see its own section above (between
+  M4 and M5). GT1/ZG1 (SimHospital issue #21's own second half — the
+  same issue cited there for the Z-segment-template scope item) and
+  version-driven segment *restructuring* (beyond the MSH-12 literal)
+  stay future, per `docs/site-profiles.md`'s own honestly-updated
+  today/future table.
 
 ## Consumer plan: sim doesn't validate itself in a vacuum
 

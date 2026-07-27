@@ -25,8 +25,12 @@ One file describes three systems:
   that shipped ahead of its stage. As of Milestone M3, Execute's own
   step vocabulary further grows (`:order`/`:result-followup`, the
   `order-profiles` catalytic now real) and EmitHL7 gains
-  ORM^O01/ORU^R01. Everything the *now* claims is property-tested and
-  green (207 tests / 582 assertions, 2026-07-26).
+  ORM^O01/ORU^R01. As of the site-profiles milestone, EmitHL7 gains a
+  fourth catalytic (`site-profile`) — MSH dialect, code-table
+  overrides, and Z-segment templates, all property-tested against the
+  dialect-invariance law stated on that stage's own equation entry.
+  Everything the *now* claims is property-tested and green (230 tests /
+  625 assertions, 2026-07-26).
 - **next** — the single stage marked `;; NEXT` in the EDN: **RunModules**,
   Milestone M5 — the GMF interpreter port, the `gmf-module-set`
   vendoring-vs-lockfile decision, and `CompileTrajectory`.
@@ -47,7 +51,7 @@ pathway-ir = compiled-pathway ∪ authored-pathway      (union)
 pathway-ir × churn-profile → operational-pathway      [InjectChurn]
 operational-pathway → ground-truth-log + state-history [Execute]
 ground-truth-log → pass + rejected                    [Check]        {catalytic: invariant-catalog}
-ground-truth-log → hl7v2-stream                       [EmitHL7]      {catalytic: hl7-parser-dep, message-type-registry, snomed-icd10-map}
+ground-truth-log → hl7v2-stream                       [EmitHL7]      {catalytic: hl7-parser-dep, message-type-registry, snomed-icd10-map, site-profile}
 state-history → state-document                        [EmitState]
 hl7v2-stream × ground-truth-log → sim-corpus + run-manifest [Package]
 sim-corpus × feed-statistics × churn-profile → churn-profile [Calibrate]  (feedback, round-bounded)
@@ -91,6 +95,34 @@ follow), and `payer-pool`, recorded at the time as a comment at
 Simulated Hospital's order profiles and the ORM/ORU result cycle were
 discussed from this project's first session but, until this pass,
 named in no planning artifact.
+
+## Site profiles land `site-profile` as a fourth catalytic on EmitHL7
+
+[`docs/site-profiles.md`](site-profiles.md) — the "simulate MY
+hospital" config layer — lands as a fourth catalytic input on
+`EmitHL7`, the same shape `order-profiles`/`provider-pool` joining
+`Execute` already established: no new stage, no new `:inputs`/
+`:outputs`, one new catalytic wire on a stage that was already
+`:built`. `site-profile` (`ehr-testing-sim.site-profile/SiteProfile`)
+is an optional config value — absent, nil, or `{}` all render
+identically to the pre-milestone baseline, property-tested as this
+milestone's own determinism anchor — carrying an MSH dialect (version,
+sending/receiving app+facility), code-table overrides for PV1-2/PV1-36
+(rendering-time substitutions over the SAME underlying state value,
+never a new fact), and a Z-segment template DSL (field bindings to
+state/persona/event paths, rendered after standard segments, escaped,
+unbound paths empty rather than throwing). The milestone's own thesis —
+two site profiles over one seed produce the same ground truth in two
+accents — is the dialect-invariance law now stated directly on
+`EmitHL7`'s own equation entry (`sim-theory.edn`), property-tested
+alongside the structural guarantee that `site-profile` never reaches
+`Execute` at all (not a member of `ehr-testing-sim.engine/config-keys`).
+`:naming :surge-format`'s migration to the profile is the one
+documented exception bound at config-construction time rather than
+emit time (`ehr-testing-sim.site-profile/apply-naming`, a facility-
+config transform a caller applies before `Execute`, never auto-wired)
+— named here so it isn't mistaken for a second catalytic wire this
+stage doesn't actually carry.
 
 ## M2a lands under Execute's existing contract — no new stage or wire
 

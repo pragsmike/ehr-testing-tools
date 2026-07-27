@@ -80,6 +80,15 @@
   CLI-invisible despite reaching `engine/run` from a direct API caller;
   never again silently, per that test).
 
+  Milestone site-profiles: `:site-profile` (ehr-testing-sim.site-profile/
+  SiteProfile) is threaded straight to `emit-hl7/emit`, the SAME
+  rendering/manifest-only treatment `:utc-offset` already gets -- it is
+  NOT a member of `engine/config-keys` and never reaches `engine/run` at
+  all (docs/site-profiles.md's own binds-at-emit-time-only law), so it
+  rides `:config` the same passthrough way `:pathway`/`:order-profiles`
+  do (no `--site-profile` flag exists), never the plumbing-completeness
+  test's own engine-facing set.
+
   `opts`'s second, injectable arity follows the SAME -fn convention
   `ehr-testing-sim.cli/dispatch-action` already uses (`:engine-run-fn`,
   defaulting to the real `ehr-testing-sim.engine/run`) -- the seam the
@@ -88,7 +97,7 @@
   ([opts] (run-command opts {}))
   ([raw-opts {:keys [engine-run-fn] :or {engine-run-fn engine/run}}]
    (let [opts (merge-config-file raw-opts)
-         {:keys [seed patients emit reference-date utc-offset warm-up-seconds churn churn-profile]} opts]
+         {:keys [seed patients emit reference-date utc-offset warm-up-seconds churn churn-profile site-profile]} opts]
      (if (nil? seed)
        (result/error :missing-required-opt
                      {:message "--seed is required (determinism is a feature, not a default)"
@@ -119,4 +128,4 @@
                                                 :invocation {:verb "run" :opts opts}})
                      :summary {:patients (or patients 1)
                                :events (count ground-truth)}}
-              (= "hl7" emit) (assoc :messages (emit-hl7/emit ground-truth reference-date utc-offset facility providers))))))))))
+              (= "hl7" emit) (assoc :messages (emit-hl7/emit ground-truth reference-date utc-offset facility providers site-profile))))))))))

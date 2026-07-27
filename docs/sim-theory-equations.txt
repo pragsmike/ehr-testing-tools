@@ -30,7 +30,7 @@ operational-pathway × provider-pool × order-profiles → ground-truth-log + st
 
 ground-truth-log × invariant-catalog → pass + rejected  [Check]  {catalytic: invariant-catalog}
 
-ground-truth-log × hl7-parser-dep × message-type-registry × snomed-icd10-map → hl7v2-stream  [EmitHL7]  {catalytic: hl7-parser-dep, message-type-registry, snomed-icd10-map}
+ground-truth-log × hl7-parser-dep × message-type-registry × snomed-icd10-map × site-profile → hl7v2-stream  [EmitHL7]  {catalytic: hl7-parser-dep, message-type-registry, snomed-icd10-map, site-profile}
 
 # planned: EmitState
 state-history → state-document  [EmitState]

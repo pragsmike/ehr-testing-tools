@@ -19,7 +19,8 @@
   ones already known to work, using the injectable `:engine-run-fn`
   seam (same -fn convention as `ehr-testing-sim.cli/dispatch-action`)
   so no real simulation ever has to run against sentinel data."
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer [deftest is testing]]
             [ehr-testing-sim.engine :as engine]
             [ehr-testing-sim.run :as run]
             [ehr-testing-sim.result :as result]))
@@ -99,4 +100,31 @@
             "a key the file names but opts doesn't should reach the engine")
         (is (= ::from-opts-patients (:patients @captured))
             "an explicit opt wins over the same key in the config file")
+        (finally (.delete tmp))))))
+
+;; --- Milestone site-profiles: :site-profile is emit-only, never an
+;; engine/run input (docs/site-profiles.md's own binds-at-emit-time-only
+;; law) -- passthrough proven end to end via :emit "hl7", not via the
+;; engine-run-fn seam above, since :site-profile never reaches engine/run
+;; at all.
+
+(deftest run-command-threads-site-profile-into-emitted-messages
+  (testing "a :site-profile reaches ehr-testing-sim.emit-hl7/emit (its own
+            MSH dialect renders) without being a member of
+            ehr-testing-sim.engine/config-keys"
+    (is (not (contains? (set engine/config-keys) :site-profile)))
+    (let [r (run/run-command {:seed 42 :patients 1 :emit "hl7"
+                              :site-profile {:msh {:sending-app "ALDRIC-EHR"}}})
+          message (first (:messages (:payload r)))]
+      (is (result/ok? r))
+      (is (str/includes? message "ALDRIC-EHR")))))
+
+(deftest run-command-config-file-passthrough-carries-site-profile
+  (testing ":site-profile is a data-heavy key with no CLI flag of its own --
+            the same :config passthrough vehicle :pathway/:order-profiles use"
+    (let [tmp (java.io.File/createTempFile "sim-config" ".edn")
+          _ (spit tmp (pr-str {:site-profile {:msh {:sending-app "FROM-FILE"}}}))]
+      (try
+        (let [r (run/run-command {:seed 1 :patients 1 :emit "hl7" :config (.getPath tmp)})]
+          (is (str/includes? (first (:messages (:payload r))) "FROM-FILE")))
         (finally (.delete tmp))))))

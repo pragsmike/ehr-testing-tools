@@ -9,17 +9,22 @@
 
      then paste the output back in below.
 
-     MILESTONE M4 NOTE: this session's environment had no Python
-     interpreter available, so the mermaid block's `payer-pool` wire
-     (Persona's equation gained `payer-pool` as a real catalytic input,
-     docs/sim-theory-equations.txt) was applied BY HAND, following the
-     converter's own established conventions exactly (source-type node
-     declaration, `.-> ` dashed catalytic wire syntax, light-rounded
-     source styling) rather than mechanically regenerated. A future
-     session with Python available should re-run the converter and
-     diff against this block to confirm the hand-applied change matches
-     what the tool itself would have produced -- recorded here so this
-     isn't silently assumed identical. -->
+     MILESTONE site-profiles NOTE: this session's environment DID have
+     Python available, so the whole block below is a mechanical
+     regeneration (not a hand-edit) -- `site-profile` joined EmitHL7's
+     equation as a real catalytic input (this milestone's own catalytic
+     wire, docs/sim-theory.edn). This also resolves the M4 session's own
+     open item (its note, once here, asked a future Python-having
+     session to diff its hand-applied `payer-pool` wire against the
+     tool's real output): re-running the converter over the
+     THEN-CURRENT equations file first, before this milestone's own
+     edit, and diffing against the already-shipped M4 block confirmed
+     every node declaration, wire, and style line matched exactly --
+     the only difference was the `%% Arrow N` comment numbers (off by
+     one, an artifact of a since-added header line changing the
+     equations file's own line count, not a structural or convention
+     mismatch). Confirmed, not merely assumed, before regenerating with
+     this milestone's own addition on top. -->
 
 # The simulator's resource theory — diagram
 
@@ -30,6 +35,7 @@ Verified in this render:
 - **The `pathway-ir` union renders as a funnel/merge node** — `UnionPathwayIr`, green inverted-trapezoid, wiring both `compiled-pathway` and `authored-pathway` in and `pathway-ir` out — exactly ehr-testing-tools' own established convention for a union resource (`docs/notation.md`, `ehr-testing-tools.pipeline/union-resource->equation-line`), reused here rather than invented.
 - **`SystemUnderTest` and `ToolsCorpusIntake` render dashed** — both carry `{external: true}`, the same device tools' own external stages use.
 - **Gap, reported rather than faked:** the converter has no visual axis for `:built` vs `:planned` — only `{external: true}` (dashed) exists, and ehr-testing-tools' own history (`docs/notation.md`, "External stages") records that reusing dashed rendering for *planned-but-will-be-built-here* stages was tried once and deliberately dropped, because it conflates "not yet built" with "never built by this repo," which is a different claim. `ehr-testing-tools.pipeline/pipeline->equations-text` resolves this the same way this session does: a `:planned` stage gets a `# planned: <Label>` *comment* line in the equations text — documentary only, "not a distinct visual state" (that namespace's own docstring). So below, every stage box is visually identical dark-solid except the two external stages (dashed) and the union (green funnel); built vs. planned is legible only in [`sim-theory-equations.txt`](sim-theory-equations.txt)'s `# planned:` comments, not in the diagram itself. This is the same limitation tools carries in its own pipeline diagram, not a regression introduced here.
+- **The site-profiles milestone adds exactly one wire, no new stage or node shape:** `site-profile` joins `EmitHL7`'s existing catalytic set (dashed `.->`, light-rounded source node, same convention every other catalytic already uses) — the milestone's own theory-flip note (docs/sim-theory.edn's `:emit-hl7` entry) said this would be a wire-count change only if the converter renders catalytics; it does, and this is that one new wire.
 
 ```mermaid
 flowchart LR
@@ -47,6 +53,7 @@ flowchart LR
     payer_pool(["payer-pool"])
     provider_pool(["provider-pool"])
     sim_config(["sim-config"])
+    site_profile(["site-profile"])
     snomed_icd10_map(["snomed-icd10-map"])
 
     %% --- Operations (boxes; spiders use distinct shapes) ---
@@ -65,59 +72,60 @@ flowchart LR
     ToolsCorpusIntake["ToolsCorpusIntake"]
 
     %% --- Wires (typed connections) ---
-    %% Arrow 20: Persona
+    %% Arrow 19: Persona
     sim_config -- sim-config --> Persona
     demographics_tables -. demographics-tables .-> Persona
     payer_pool -. payer-pool .-> Persona
 
-    %% Arrow 23: RunModules
+    %% Arrow 22: RunModules
     Persona -- persona --> RunModules
     gmf_module_set -. gmf-module-set .-> RunModules
     gmf_interpreter -. gmf-interpreter .-> RunModules
 
-    %% Arrow 26: CompileTrajectory
+    %% Arrow 25: CompileTrajectory
     RunModules -- clinical-trajectory --> CompileTrajectory
 
-    %% Arrow 28: InjectChurn
+    %% Arrow 27: InjectChurn
     UnionPathwayIr -- pathway-ir --> InjectChurn
     Calibrate -- churn-profile --> InjectChurn
 
-    %% Arrow 30: Execute
+    %% Arrow 29: Execute
     InjectChurn -- operational-pathway --> Execute
     provider_pool -. provider-pool .-> Execute
     order_profiles -. order-profiles .-> Execute
 
-    %% Arrow 32: Check
+    %% Arrow 31: Check
     Execute -- ground-truth-log --> Check
     invariant_catalog -. invariant-catalog .-> Check
 
-    %% Arrow 34: EmitHL7
+    %% Arrow 33: EmitHL7
     Execute -- ground-truth-log --> EmitHL7
     hl7_parser_dep -. hl7-parser-dep .-> EmitHL7
     message_type_registry -. message-type-registry .-> EmitHL7
     snomed_icd10_map -. snomed-icd10-map .-> EmitHL7
+    site_profile -. site-profile .-> EmitHL7
 
-    %% Arrow 37: EmitState
+    %% Arrow 36: EmitState
     Execute -- state-history --> EmitState
 
-    %% Arrow 40: Package
+    %% Arrow 39: Package
     EmitHL7 -- hl7v2-stream --> Package
     Execute -- ground-truth-log --> Package
 
-    %% Arrow 43: Calibrate
+    %% Arrow 42: Calibrate
     Package -- sim-corpus --> Calibrate
     feed_statistics -- feed-statistics --> Calibrate
     Calibrate -- churn-profile --> Calibrate
     Calibrate -- churn-profile --> churn_profile
 
-    %% Arrow 46: UnionPathwayIr
+    %% Arrow 45: UnionPathwayIr
     CompileTrajectory -- compiled-pathway --> UnionPathwayIr
     authored_pathway -- authored-pathway --> UnionPathwayIr
 
-    %% Arrow 49: SystemUnderTest
+    %% Arrow 48: SystemUnderTest
     EmitHL7 -- hl7v2-stream --> SystemUnderTest
 
-    %% Arrow 50: ToolsCorpusIntake
+    %% Arrow 49: ToolsCorpusIntake
     Package -- sim-corpus --> ToolsCorpusIntake
 
     %% --- Styling ---
@@ -150,5 +158,6 @@ flowchart LR
     style payer_pool fill:#f5f5f5,stroke:#999,color:#333
     style provider_pool fill:#f5f5f5,stroke:#999,color:#333
     style sim_config fill:#f5f5f5,stroke:#999,color:#333
+    style site_profile fill:#f5f5f5,stroke:#999,color:#333
     style snomed_icd10_map fill:#f5f5f5,stroke:#999,color:#333
 ```

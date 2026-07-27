@@ -17,6 +17,7 @@
             [ehr-testing-sim.engine :as engine]
             [ehr-testing-sim.emit-hl7 :as emit-hl7]
             [ehr-testing-sim.persona :as persona]
+            [ehr-testing-sim.site-profile :as site-profile]
             [com.nervestaple.hl7-parser.parser :as parser]
             [com.nervestaple.hl7-parser.message :as message])
   (:import [java.time LocalDate LocalDateTime]
@@ -522,3 +523,197 @@
           expected (.plusSeconds (.atStartOfDay (LocalDate/parse ref-date)) seconds)]
       (and (= expected parsed)
            (= "+0000" offset-part)))))
+
+;; --- Milestone site-profiles, Task 1: the default-profile identity -------
+;; docs/site-profiles.md's own determinism anchor: no profile arg at all,
+;; an explicit nil, and an explicit {} must all render IDENTICALLY -- and,
+;; since nothing in emit-hl7 consumed a site-profile before this milestone,
+;; identically to today's own pre-milestone output too (the 5-arg arity
+;; below is untouched).
+
+(defspec default-profile-is-the-absent-profile 100
+  (prop/for-all [seed gen/large-integer
+                 patients (gen/choose 1 8)]
+    (let [{:keys [ground-truth facility providers]} (engine/run {:seed seed :patients patients})
+          five-arg (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+          nil-profile (emit-hl7/emit ground-truth ref-date utc-offset facility providers nil)
+          empty-profile (emit-hl7/emit ground-truth ref-date utc-offset facility providers {})]
+      (= five-arg nil-profile empty-profile))))
+
+;; --- Milestone site-profiles, Task 2: MSH dialect + code-table overrides -
+
+(def ^:private aldric-profile
+  "A deliberately different-looking profile -- distinct MSH dialect
+  fields and an overridden patient-class code -- exercised throughout
+  this milestone's own tests."
+  {:name "St. Aldric's Memorial"
+   :msh {:version "2.5.1" :sending-app "ALDRIC-EHR" :sending-facility "ALDRIC"
+         :receiving-app "DOWNSTREAM" :receiving-facility "DOWNSTREAM-FAC"}
+   :code-tables {:patient-class {:inpatient {:code "IN" :coding-system "99ALDRIC"}}
+                 :discharge-disposition {:discharged-to-home {:code "HOME" :coding-system "99ALDRIC"}}}})
+
+(deftest msh-dialect-renders-the-profiles-version-and-app-facility-fields
+  (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 1})
+        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers aldric-profile)
+        parsed (parser/parse (first messages))]
+    (testing "MSH-12: version id"
+      (is (= "2.5.1" (message/get-field-first-value parsed "MSH" 12))))
+    (testing "MSH-3/4: sending app/facility"
+      (is (= "ALDRIC-EHR" (message/get-field-first-value parsed "MSH" 3)))
+      (is (= "ALDRIC" (message/get-field-first-value parsed "MSH" 4))))
+    (testing "MSH-5/6: receiving app/facility"
+      (is (= "DOWNSTREAM" (message/get-field-first-value parsed "MSH" 5)))
+      (is (= "DOWNSTREAM-FAC" (message/get-field-first-value parsed "MSH" 6))))))
+
+(deftest absent-profile-renders-todays-hardcoded-msh-values
+  (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 1})
+        parsed (parser/parse (first (emit-hl7/emit ground-truth ref-date utc-offset facility providers)))]
+    (is (= "2.3" (message/get-field-first-value parsed "MSH" 12)))
+    (is (= "EHR-TESTING-SIM" (message/get-field-first-value parsed "MSH" 3)))
+    (is (= "SIM" (message/get-field-first-value parsed "MSH" 4)))))
+
+(deftest pv1-2-patient-class-renders-through-the-profiles-code-table
+  (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 1})
+        default-parsed (parser/parse (first (emit-hl7/emit ground-truth ref-date utc-offset facility providers)))
+        aldric-parsed (parser/parse (first (emit-hl7/emit ground-truth ref-date utc-offset facility providers aldric-profile)))]
+    (testing "no profile: today's hard-coded \"I\""
+      (is (= "I" (message/get-field-first-value default-parsed "PV1" 2))))
+    (testing "overridden: site code + coding-system suffix"
+      (is (= "IN^99ALDRIC" (message/get-field-first-value aldric-parsed "PV1" 2))))))
+
+(deftest pv1-36-discharge-disposition-renders-only-on-discharge-through-the-profiles-code-table
+  (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 1})
+        admission-msg (first (emit-hl7/emit ground-truth ref-date utc-offset facility providers))
+        discharge-msg (first (filter #(re-find #"\^A03" %) (emit-hl7/emit ground-truth ref-date utc-offset facility providers)))
+        aldric-discharge-msg (first (filter #(re-find #"\^A03" %)
+                                            (emit-hl7/emit ground-truth ref-date utc-offset facility providers aldric-profile)))]
+    (testing "non-discharge messages carry no disposition"
+      (is (= "" (or (message/get-field-first-value (parser/parse admission-msg) "PV1" 36) ""))))
+    (testing "discharge, no profile: today's standard default"
+      (is (= "01" (message/get-field-first-value (parser/parse discharge-msg) "PV1" 36))))
+    (testing "discharge, overridden profile"
+      (is (= "HOME^99ALDRIC" (message/get-field-first-value (parser/parse aldric-discharge-msg) "PV1" 36))))))
+
+;; --- Milestone site-profiles, Task 3: Z-segment templates -- THE SEAM -----
+
+(def ^:private zpi-profile
+  "A profile carrying a ZPI payer Z-segment, triggered on :admission,
+  bound to persona/payer state paths plus a literal fallback field."
+  (assoc aldric-profile
+         :z-segments [{:segment "ZPI" :trigger #{:admission}
+                       :fields [{:path [:persona :payer :id]}
+                                {:path [:persona :payer :type]}
+                                {:path [:persona :payer :nonexistent-key]}
+                                {:literal "ALDRIC-PAYER-V1"}]}]))
+
+(deftest z-segment-renders-after-standard-segments-on-its-trigger-event
+  (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 1})
+        admission (first (filter #(= :admission (:event %)) ground-truth))
+        patient-id (:patient-id (first (:participants admission)))
+        {:keys [persona]} (find-registered ground-truth patient-id)
+        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers zpi-profile)
+        parsed (parser/parse (first messages))]
+    (testing "standard segments still present, in order, ahead of the Z-segment
+              (IN1 too -- this is an admission message)"
+      (is (= ["MSH" "EVN" "PID" "PV1" "IN1" "ZPI"] (mapv (comp name :id) (:segments parsed)))))
+    (testing "ZPI-1/ZPI-2: bound to persona/payer state paths"
+      (is (= (get-in persona [:payer :id]) (message/get-field-first-value parsed "ZPI" 1)))
+      (is (= (name (get-in persona [:payer :type])) (message/get-field-first-value parsed "ZPI" 2))))
+    (testing "ZPI-3: an unbound path renders empty, never throws"
+      (is (= "" (or (message/get-field-first-value parsed "ZPI" 3) ""))))
+    (testing "ZPI-4: literal fallback"
+      (is (= "ALDRIC-PAYER-V1" (message/get-field-first-value parsed "ZPI" 4))))))
+
+(deftest z-segment-only-renders-on-its-declared-trigger
+  (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 1})
+        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers zpi-profile)
+        discharge-msg (first (filter #(re-find #"\^A03" %) messages))]
+    (is (empty? (message/get-segments (parser/parse discharge-msg) "ZPI")))))
+
+(deftest no-site-profile-renders-no-z-segments
+  (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 1})
+        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)]
+    (is (every? #(empty? (message/get-segments (parser/parse %) "ZPI")) messages))))
+
+;; --- Milestone site-profiles, Task 4: the invariance property ------------
+;; docs/site-profiles.md's own thesis: two site profiles over one seed
+;; produce the SAME ground truth in two accents. The strong half (ground
+;; truth) is checked structurally, above (run-test's own
+;; not-an-engine-input assertion) and trivially here (both emit calls
+;; below consume the exact same `ground-truth` value -- there is no second
+;; ground truth to diverge). The weak half (messages) needs the masking
+;; function: the precise, documented enumeration of every field a site
+;; profile is allowed to touch.
+
+(defn- mask-msh-fields
+  "Blanks MSH-3/4/5/6/12 (sending/receiving app+facility, version id) --
+  the declared MSH dialect surface. MSH-1 is the field-separator
+  character itself (not a token `str/split` produces); MSH-2 (encoding
+  characters) is index 1 after the split, so MSH-3/4/5/6/12 land at
+  indices 2/3/4/5/11."
+  [msh-line]
+  (let [fields (str/split msh-line #"\|" -1)]
+    (str/join "|" (map-indexed (fn [i f] (if (#{2 3 4 5 11} i) "" f)) fields))))
+
+(defn- mask-pv1-fields
+  "Blanks PV1-2/PV1-36 -- the two declared code-table-override fields.
+  PV1's segment id occupies split-index 0, so field N lands at index N."
+  [pv1-line]
+  (let [fields (str/split pv1-line #"\|" -1)]
+    (str/join "|" (map-indexed (fn [i f] (if (#{2 36} i) "" f)) fields))))
+
+(defn mask-dialect-surfaces
+  "Masks every declared site-profile dialect surface (docs/site-
+  profiles.md Task 4) in one rendered ER7 message: MSH-3/4/5/6/12,
+  PV1-2/PV1-36, and strips Z-segment lines entirely (a Z-segment's
+  CONTENT, not merely a field within it, is site-specific -- its bare
+  presence following a trigger is still exercised by the Z-segment
+  tests above, not by this property). Two profiles' renderings of the
+  SAME ground-truth event must be equal after this masking -- the
+  invariance property's own precise statement of what a dialect may
+  touch, and nothing more."
+  [message]
+  (->> (str/split message #"\r\n|\r|\n")
+       (remove #(re-find #"^Z" %))
+       (map (fn [line]
+              (cond
+                (str/starts-with? line "MSH") (mask-msh-fields line)
+                (str/starts-with? line "PV1") (mask-pv1-fields line)
+                :else line)))
+       (str/join "\r")))
+
+(def ^:private gaudy-profile
+  "The deliberately different-looking second profile Task 4 asks for:
+  a different HL7 version (2.5.1), a renamed sending facility, custom
+  patient-class/disposition codes, and a ZPI payer Z-segment -- exactly
+  `zpi-profile` above, reused here under the name this property's own
+  intent names it by."
+  zpi-profile)
+
+(deftest site-profile-never-reaches-the-engine
+  (testing "the invariance property's OWN strong half, stated structurally
+            (docs/site-profiles.md): :site-profile is not a member of
+            ehr-testing-sim.engine/config-keys, so it is structurally
+            incapable of perturbing ground-truth -- not merely untested"
+    (is (not (contains? (set engine/config-keys) :site-profile)))))
+
+(defspec invariance-messages-agree-after-masking-dialect-surfaces 100
+  (prop/for-all [seed gen/large-integer
+                 patients (gen/choose 1 6)]
+    (let [{:keys [ground-truth facility providers]} (engine/run {:seed seed :patients patients})
+          default-messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers nil)
+          gaudy-messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers gaudy-profile)]
+      (and (= (count default-messages) (count gaudy-messages))
+           (= (map mask-dialect-surfaces default-messages)
+              (map mask-dialect-surfaces gaudy-messages))))))
+
+(deftest parser-round-trips-messages-bearing-an-unknown-z-segment
+  (testing "docs/site-profiles.md Task 3: the parser must still parse
+            messages bearing unknown Z-segments -- asserted directly,
+            not merely assumed; a failure here would be a documented
+            parser finding (notes/facts-register.md), not a silent gap"
+    (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 1})
+          messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers zpi-profile)
+          zpi-msg (first messages)]
+      (is (some? (parser/parse zpi-msg)))
+      (is (= 1 (count (message/get-segments (parser/parse zpi-msg) "ZPI")))))))

@@ -24,7 +24,8 @@
   merge exists is always the patient's one and only MRN)."
   (:require [com.nervestaple.hl7-parser.parser :as parser]
             [clojure.string :as str]
-            [ehr-testing-sim.config :as config]))
+            [ehr-testing-sim.config :as config]
+            [ehr-testing-sim.site-profile :as site-profile]))
 
 (def default-reference-date
   "Pinned default for the :reference-date run-config input (an ISO
@@ -93,20 +94,29 @@
        (hl7-offset-suffix utc-offset)))
 
 (defn- msh-segment
-  [{:keys [type trigger]} control-id ts]
-  (parser/create-segment
-   "MSH"
-   (parser/create-field (parser/pr-delimiters parser/DEFAULT-DELIMITERS))
-   (parser/create-field ["EHR-TESTING-SIM"])
-   (parser/create-field ["SIM"])
-   (parser/create-field [])
-   (parser/create-field [])
-   (parser/create-field [ts])
-   (parser/create-field [])
-   (parser/create-field [type trigger])
-   (parser/create-field [control-id])
-   (parser/create-field ["P"])
-   (parser/create-field ["2.3"])))
+  "MSH-3/4/5/6/12 (sending/receiving app+facility, version id) render
+  `site-profile`'s :msh dialect, defaulting field-by-field to today's
+  hard-coded values (ehr-testing-sim.site-profile/default-msh) when
+  `site-profile` is nil, {}, or simply doesn't override that field --
+  Milestone site-profiles Task 2 (SimHospital issue #17's own citation,
+  .agents/plans/roadmap.md: a configured field, not a hard-coded
+  emitter constant)."
+  [site-profile {:keys [type trigger]} control-id ts]
+  (let [{:keys [version sending-app sending-facility receiving-app receiving-facility]}
+        (site-profile/effective-msh site-profile)]
+    (parser/create-segment
+     "MSH"
+     (parser/create-field (parser/pr-delimiters parser/DEFAULT-DELIMITERS))
+     (parser/create-field [sending-app])
+     (parser/create-field [sending-facility])
+     (parser/create-field [receiving-app])
+     (parser/create-field [receiving-facility])
+     (parser/create-field [ts])
+     (parser/create-field [])
+     (parser/create-field [type trigger])
+     (parser/create-field [control-id])
+     (parser/create-field ["P"])
+     (parser/create-field [version]))))
 
 (defn- evn-segment
   [trigger ts]
@@ -279,22 +289,93 @@
   [merged-mrn]
   (parser/create-segment "MRG" (parser/create-field [merged-mrn])))
 
+(defn- blank-fields
+  [n]
+  (repeat n (parser/create-field [])))
+
 (defn- pv1-segment
   "PV1-6 (prior location) is read directly off the CURRENT event's own
   :from -- present only on :transfer events -- never a separately
   maintained prior-location field on patient state (docs/patient-
   state-model.md's Simulated Hospital lesson: one :location field plus
-  the log's own facts replaces a shadow-field zoo)."
-  [facility-name location from provider]
-  (parser/create-segment
-   "PV1"
-   (parser/create-field ["1"])
-   (parser/create-field ["I"])
-   (location-field facility-name location)
-   (parser/create-field [])
-   (parser/create-field [])
-   (location-field facility-name from)
-   (provider-field provider)))
+  the log's own facts replaces a shadow-field zoo).
+
+  Milestone site-profiles Task 2: PV1-2 (patient class) renders through
+  `site-profile`'s :patient-class code-table override when present,
+  today's hard-coded \"I\" otherwise (:inpatient is the only class this
+  project ever produces, docs/patient-state-model.md). PV1-36
+  (discharge disposition) renders the SAME way, but only when
+  `disposition-state` is non-nil -- callers pass a state keyword
+  (:discharged-to-home) only for :discharge events; every other event
+  type passes nil, rendering PV1-36 empty, exactly as before this
+  milestone (no disposition concept existed to render at all)."
+  [site-profile facility-name location from provider disposition-state]
+  (apply parser/create-segment
+         "PV1"
+         (parser/create-field ["1"])
+         (parser/create-field (site-profile/code-for site-profile :patient-class
+                                                      site-profile/standard-patient-class-codes :inpatient))
+         (location-field facility-name location)
+         (parser/create-field [])
+         (parser/create-field [])
+         (location-field facility-name from)
+         (provider-field provider)
+         (concat (blank-fields 28)
+                 [(if disposition-state
+                    (parser/create-field (site-profile/code-for site-profile :discharge-disposition
+                                                                 site-profile/standard-discharge-disposition-codes
+                                                                 disposition-state))
+                    (parser/create-field []))])))
+
+;; --- Milestone site-profiles Task 3: Z-segment templates -- THE SEAM -----
+;; A site's fully custom fields (docs/site-profiles.md), bound declaratively
+;; to state/persona/event paths rather than hard-coded engine knowledge of
+;; what any particular site's Z-segment means.
+
+(defn- context-for-event
+  "The per-render lookup context a Z-segment template's `:path` bindings
+  resolve against (get-in): the event map itself (so [:location :ward],
+  [:attending], [:t], etc. all resolve directly, the same paths
+  docs/site-profiles.md's own examples name) plus :persona -- looked up
+  off the SAME `personas` map `emit` computes once per call, the primary
+  (first) participant's persona for a genuinely multi-participant event
+  (bed-swap, merge), the same simplification `ehr-testing-sim.engine/
+  replay`'s own :patient-id convenience view already makes."
+  [personas event]
+  (assoc event :persona (get personas (:patient-id (first (:participants event))))))
+
+(defn- render-z-field
+  "One Z-segment field: `:path` looked up (get-in -- nil-safe through a
+  missing intermediate map, so an unbound path never throws) in
+  `context`, `:literal` as a fixed fallback, an EMPTY field when
+  neither resolves to a value -- Task 3's own never-throw requirement.
+  Escaped per ER7, same as every other free-text-carrying field this
+  namespace renders (persona names, addresses, payer names)."
+  [context {:keys [path literal]}]
+  (let [value (if path (get-in context path) literal)
+        rendered (cond (nil? value) nil (keyword? value) (name value) :else (str value))]
+    (parser/create-field (if rendered [(escape-er7 rendered)] []))))
+
+(defn- z-segment-for
+  [context template]
+  (apply parser/create-segment (:segment template)
+         (mapv (partial render-z-field context) (:fields template))))
+
+(defn- z-segments-for
+  "0+ rendered Z-segments for `event` -- one per `site-profile`'s own
+  :z-segments template whose :trigger set names this event's :event, in
+  the profile's own template order. Rendered AFTER every standard
+  segment at every call site below (Task 3's own ordering requirement,
+  achieved by `concat`-ing this vector onto the end of each message's
+  segment list). No site-profile, or a profile with no :z-segments,
+  renders none -- an empty vector `concat`s as a no-op, so absent-
+  profile output is untouched by this function's existence."
+  [site-profile personas event]
+  (let [context (context-for-event personas event)]
+    (into []
+          (comp (filter #(contains? (:trigger %) (:event event)))
+                (map (partial z-segment-for context)))
+          (:z-segments site-profile))))
 
 (defn- single-subject-message
   "Renders one single-participant ground-truth event to an ER7 string,
@@ -305,30 +386,39 @@
   the log (docs/patient-state-model.md), so this renderer needs no
   event-type-specific branching to show the reinstated facts. M4: IN1
   rides ONLY :admission (`in1-segment`'s own docstring); every type
-  here gets PID enrichment uniformly via `personas`."
-  [reference-date utc-offset facility providers personas
+  here gets PID enrichment uniformly via `personas`. Milestone
+  site-profiles: PV1-36 disposition rides ONLY :discharge (the same
+  single-event-type gate IN1 already established for admission), and
+  every segment renders through `site-profile`'s own dialect/code-table/
+  Z-segment surfaces -- `z-segments-for`'s own docstring."
+  [reference-date utc-offset facility providers personas site-profile
    {:keys [event t active-mrn location from attending participants]}]
   (when-let [type+trigger (message-type-registry event)]
     (let [ts (hl7-timestamp reference-date t utc-offset)
           control-id (str active-mrn "-" (:trigger type+trigger) "-" t)
           facility-name (name (:id facility))
           provider (provider-by-id providers attending)
-          persona (get personas (:patient-id (first participants)))]
+          persona (get personas (:patient-id (first participants)))
+          disposition-state (when (= :discharge event) :discharged-to-home)]
       (parser/str-message
        (apply parser/create-message
         parser/DEFAULT-DELIMITERS
-        (msh-segment type+trigger control-id ts)
+        (msh-segment site-profile type+trigger control-id ts)
         (evn-segment (:trigger type+trigger) ts)
         (pid-segment active-mrn persona)
-        (pv1-segment facility-name location from provider)
-        (when (and (= :admission event) persona) [(in1-segment (:payer persona))]))))))
+        (pv1-segment site-profile facility-name location from provider disposition-state)
+        (concat (when (and (= :admission event) persona) [(in1-segment (:payer persona))])
+                (z-segments-for site-profile personas {:event event :t t :active-mrn active-mrn
+                                                       :location location :from from :attending attending
+                                                       :participants participants})))))))
 
 (defn- bed-swap-message
   "A17 (swap patients): ONE message per ground-truth event, carrying
   BOTH patients' PID/PV1 pairs -- the real HL7v2 A17 shape, and why the
   emitter-derivability law now keys on the event's own log position
   rather than a single :active-mrn (a bed-swap message has two)."
-  [reference-date utc-offset facility providers personas {:keys [t participants swap]}]
+  [reference-date utc-offset facility providers personas site-profile
+   {:keys [t participants swap] :as ev}]
   (let [type+trigger (message-type-registry :bed-swap)
         ts (hl7-timestamp reference-date t utc-offset)
         facility-name (name (:id facility))
@@ -337,34 +427,36 @@
         {mrn2 :active-mrn from2 :from to2 :to att2 :attending} (get swap p2)
         control-id (str mrn1 "+" mrn2 "-" (:trigger type+trigger) "-" t)]
     (parser/str-message
-     (parser/create-message
+     (apply parser/create-message
       parser/DEFAULT-DELIMITERS
-      (msh-segment type+trigger control-id ts)
+      (msh-segment site-profile type+trigger control-id ts)
       (evn-segment (:trigger type+trigger) ts)
       (pid-segment mrn1 (get personas p1))
-      (pv1-segment facility-name to1 from1 (provider-by-id providers att1))
+      (pv1-segment site-profile facility-name to1 from1 (provider-by-id providers att1) nil)
       (pid-segment mrn2 (get personas p2))
-      (pv1-segment facility-name to2 from2 (provider-by-id providers att2))))))
+      (pv1-segment site-profile facility-name to2 from2 (provider-by-id providers att2) nil)
+      (z-segments-for site-profile personas ev)))))
 
 (defn- merge-message
   "A40 (merge patient): PID carries the SURVIVING mrn, MRG-1 carries the
   prior (merged-away) one (docs/patient-state-model.md's identity
   payoff) -- ONE message per merge event."
-  [reference-date utc-offset facility _providers personas
-   {:keys [t surviving-mrn merged-mrn participants]}]
+  [reference-date utc-offset facility _providers personas site-profile
+   {:keys [t surviving-mrn merged-mrn participants] :as ev}]
   (let [type+trigger (message-type-registry :merge)
         ts (hl7-timestamp reference-date t utc-offset)
         facility-name (name (:id facility))
         control-id (str surviving-mrn "-" (:trigger type+trigger) "-" t)
         survivor-id (:patient-id (first (filter #(= :survivor (:role %)) participants)))]
     (parser/str-message
-     (parser/create-message
+     (apply parser/create-message
       parser/DEFAULT-DELIMITERS
-      (msh-segment type+trigger control-id ts)
+      (msh-segment site-profile type+trigger control-id ts)
       (evn-segment (:trigger type+trigger) ts)
       (pid-segment surviving-mrn (get personas survivor-id))
-      (pv1-segment facility-name nil nil nil)
-      (mrg-segment merged-mrn)))))
+      (pv1-segment site-profile facility-name nil nil nil nil)
+      (mrg-segment merged-mrn)
+      (z-segments-for site-profile personas ev)))))
 
 ;; --- M3: ORM^O01 + ORU^R01 (docs/sim-theory.edn's order-profiles
 ;; catalytic, docs/operational-models.md) -----------------------------------
@@ -422,29 +514,30 @@
 (defn- orm-message
   "ORM^O01: order placed. No EVN segment -- EVN is an ADT-specific
   segment (HL7v2 convention), not part of the order-message family."
-  [reference-date utc-offset facility providers personas
-   {:keys [t active-mrn location attending concept participants]}]
+  [reference-date utc-offset facility providers personas site-profile
+   {:keys [t active-mrn location attending concept participants] :as ev}]
   (let [type+trigger (message-type-registry :order-placed)
         ts (hl7-timestamp reference-date t utc-offset)
         control-id (str active-mrn "-" (:trigger type+trigger) "-" t)
         facility-name (name (:id facility))
         provider (provider-by-id providers attending)]
     (parser/str-message
-     (parser/create-message
+     (apply parser/create-message
       parser/DEFAULT-DELIMITERS
-      (msh-segment type+trigger control-id ts)
+      (msh-segment site-profile type+trigger control-id ts)
       (pid-segment active-mrn (get personas (:patient-id (first participants))))
-      (pv1-segment facility-name location nil provider)
+      (pv1-segment site-profile facility-name location nil provider nil)
       (orc-segment control-id)
-      (obr-segment 1 concept)))))
+      (obr-segment 1 concept)
+      (z-segments-for site-profile personas ev)))))
 
 (defn- oru-message
   "ORU^R01: result available -- OBR (order context) plus one OBX per
   analyte, in the same order the profile's own :results carries them
   (derived straight from the log, ehr-testing-sim.order-profiles'
   sampling order -- no re-sorting here)."
-  [reference-date utc-offset facility providers personas
-   {:keys [t active-mrn location attending concept results participants]}]
+  [reference-date utc-offset facility providers personas site-profile
+   {:keys [t active-mrn location attending concept results participants] :as ev}]
   (let [type+trigger (message-type-registry :result-available)
         ts (hl7-timestamp reference-date t utc-offset)
         control-id (str active-mrn "-" (:trigger type+trigger) "-" t)
@@ -454,12 +547,12 @@
     (parser/str-message
      (apply parser/create-message
       parser/DEFAULT-DELIMITERS
-      (msh-segment type+trigger control-id ts)
+      (msh-segment site-profile type+trigger control-id ts)
       (pid-segment active-mrn (get personas (:patient-id (first participants))))
-      (pv1-segment facility-name location nil provider)
+      (pv1-segment site-profile facility-name location nil provider nil)
       (orc-segment control-id)
       (obr-segment 1 concept)
-      obx-segments))))
+      (concat obx-segments (z-segments-for site-profile personas ev))))))
 
 (defn event->messages
   "Renders one ground-truth event to a vector of 0+ ER7 message strings
@@ -471,15 +564,17 @@
   is now a shape this stage already accommodates. Events outside
   `message-type-registry` render an empty vector, not an error."
   ([reference-date utc-offset facility providers ev]
-   (event->messages reference-date utc-offset facility providers {} ev))
-  ([reference-date utc-offset facility providers personas {:keys [event] :as ev}]
+   (event->messages reference-date utc-offset facility providers {} nil ev))
+  ([reference-date utc-offset facility providers personas ev]
+   (event->messages reference-date utc-offset facility providers personas nil ev))
+  ([reference-date utc-offset facility providers personas site-profile {:keys [event] :as ev}]
    (cond
      (not (message-type-registry event)) []
-     (= :bed-swap event) [(bed-swap-message reference-date utc-offset facility providers personas ev)]
-     (= :merge event) [(merge-message reference-date utc-offset facility providers personas ev)]
-     (= :order-placed event) [(orm-message reference-date utc-offset facility providers personas ev)]
-     (= :result-available event) [(oru-message reference-date utc-offset facility providers personas ev)]
-     :else [(single-subject-message reference-date utc-offset facility providers personas ev)])))
+     (= :bed-swap event) [(bed-swap-message reference-date utc-offset facility providers personas site-profile ev)]
+     (= :merge event) [(merge-message reference-date utc-offset facility providers personas site-profile ev)]
+     (= :order-placed event) [(orm-message reference-date utc-offset facility providers personas site-profile ev)]
+     (= :result-available event) [(oru-message reference-date utc-offset facility providers personas site-profile ev)]
+     :else [(single-subject-message reference-date utc-offset facility providers personas site-profile ev)])))
 
 (def ^:private default-providers
   "A fixed, arbitrary reference-seed provider pool -- purely a fallback
@@ -498,11 +593,19 @@
   log. `utc-offset`/`facility`/`providers` default for standalone
   convenience; callers rendering a specific run's log should pass back
   that SAME run's :utc-offset/:facility/:providers (ehr-testing-sim.run
-  does)."
+  does). `site-profile` (Milestone site-profiles) is the LAST, optional
+  argument: absent (the 5-arg arity), nil, or {} all render identically
+  -- the default-profile identity property (docs/site-profiles.md, this
+  milestone's own determinism anchor) -- since :site-profile reaches no
+  stage but this one's own render call sites, never ground-truth-log or
+  check.clj (ehr-testing-sim.engine/config-keys has no such key)."
   ([ground-truth reference-date]
    (emit ground-truth reference-date default-utc-offset config/default-facility default-providers))
   ([ground-truth reference-date utc-offset]
    (emit ground-truth reference-date utc-offset config/default-facility default-providers))
   ([ground-truth reference-date utc-offset facility providers]
+   (emit ground-truth reference-date utc-offset facility providers nil))
+  ([ground-truth reference-date utc-offset facility providers site-profile]
    (let [personas (personas-by-patient-id ground-truth)]
-     (into [] (mapcat (partial event->messages reference-date utc-offset facility providers personas)) ground-truth))))
+     (into [] (mapcat (partial event->messages reference-date utc-offset facility providers personas site-profile))
+           ground-truth))))

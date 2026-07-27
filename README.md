@@ -19,10 +19,15 @@ bed-swap, merge — docs/patient-state-model.md), order/result step
 types with a real CBC+BMP order-profiles catalytic (verified LOINC
 codes) plus ORM^O01/ORU^R01 emission (M3), a per-patient
 pathway-assignment layer (`:pathways`), `:step-rejected` ground-truth
-events for decide-time rejections (ADR-0012), and, as of Milestone M4,
+events for decide-time rejections (ADR-0012), Milestone M4's
 **Persona** — demographic sampling (name, DOB, sex, address, phone,
 SSN-shaped id) and age-linked payer sampling, folded into every
-patient's `:registered` event, with PID and IN1 segment enrichment.
+patient's `:registered` event, with PID and IN1 segment enrichment —
+and, landed most recently, **site profiles**
+(docs/site-profiles.md): an MSH dialect, PV1-2/PV1-36 code-table
+overrides, and a Z-segment template DSL, all bound at emit time and
+proven invariant to ground truth (two site profiles over one seed
+render the same facts in two accents).
 
 ## Pipeline: now / next / later
 
@@ -60,11 +65,13 @@ flowchart LR
 ```
 
 **Now** (green): Execute, Check, EmitHL7, InjectChurn (M2b), Execute's
-own order/result step types and EmitHL7's ORM/ORU cycle (M3), and, as
-of Milestone M4, **Persona** — demographics sampling from vendored,
-hashed tables plus a real `payer-pool` catalytic wire, folded into
-Execute's own step queue via the `:registered` event, plus PID/IN1
-enrichment — property-tested and green (207 tests / 582 assertions).
+own order/result step types and EmitHL7's ORM/ORU cycle (M3), Milestone
+M4's **Persona** — demographics sampling from vendored, hashed tables
+plus a real `payer-pool` catalytic wire, folded into Execute's own step
+queue via the `:registered` event, plus PID/IN1 enrichment — and
+EmitHL7's fourth catalytic, **site-profile** — MSH dialect, code-table
+overrides, Z-segment templates — property-tested and green (230 tests
+/ 625 assertions).
 **Next** (amber): **RunModules**, Milestone M5 — the GMF interpreter
 port, the `gmf-module-set` vendoring-vs-lockfile decision, and
 `CompileTrajectory`. **Later** (dashed grey): everything else in the
@@ -76,8 +83,9 @@ detail view (every resource wire, catalytic input, and the
 [`docs/sim-theory.edn`](docs/sim-theory.edn). [`.agents/plans/roadmap.md`](.agents/plans/roadmap.md)
 is the milestone plan this diagram's *next*/*later* stages resolve
 into. [`docs/site-profiles.md`](docs/site-profiles.md) answers "how do
-I make it simulate *my* hospital" — the config layer for site-specific
-codes, naming idioms, and Z-segments.
+I make it simulate *my* hospital" — landed: `--config` a `:site-profile`
+(MSH dialect, code-table overrides, Z-segment templates) and get your
+own hospital's dialect, ground truth unchanged either way.
 
 ## Relation to the ehr-testing-* family
 
