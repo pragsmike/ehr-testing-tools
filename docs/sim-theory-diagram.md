@@ -23,6 +23,24 @@
      the only difference was the `%% Arrow N` comment numbers (off by
      one, an artifact of a since-added header line changing the
      equations file's own line count, not a structural or convention
+
+     M5-PREP NOTE (docs/gmf-interpreter.md, ADR-0013): this session's
+     sim-theory.edn edit was prose-only (:contract notes on :trajectory/
+     :compile; gmf-module-set's catalytic TARGET resolving from OPEN to
+     3 -- a Catalytic-resolution-table fact, not a wire) -- `gmf-module-
+     set` was already a declared catalytic on RunModules before this
+     session, so no node or wire changed. Confirmed by actually
+     regenerating (python available this session too), not merely by
+     inspection: the fresh regen is byte-identical to the block below
+     modulo line endings. The regeneration ALSO surfaced that the
+     standalone docs/sim-theory-diagram.mermaid file had drifted stale
+     since the M4/site-profiles milestones (missing `payer-pool`/
+     `site-profile`, both already present in THIS file's own embedded
+     block below) -- a pre-existing gap between "paste the output back
+     in below" (done, each time) and actually overwriting the standalone
+     .mermaid file (apparently skipped at least twice), not something
+     this session's own edit caused. Fixed this session: the standalone
+     file now matches this block exactly.
      mismatch). Confirmed, not merely assumed, before regenerating with
      this milestone's own addition on top. -->
 

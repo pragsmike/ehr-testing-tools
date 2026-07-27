@@ -409,42 +409,118 @@ default shape and record any delta against the committed baseline —
 noted here, not actioned, since that review lives in tools' own
 repo/session per ADR-0001's dependency direction.
 
-## M5 — GMF interpreter + module vendoring decision + CompileTrajectory
+## M5 — GMF interpreter port + CompileTrajectory
 
-Lands **RunModules** and **CompileTrajectory** (both `:planned`),
-which means finally resolving `sim-theory.md`'s open question #1: is
-`gmf-module-set` a pinned lockfile (target 1) or vendored-and-hashed
-(target 3)? This is ADR-0003's own named trigger ("adopt
-[a pinned-artifact/vendoring pattern] once Synthea modules... actually
-land in this repo") — this milestone is that landing, and the
-decision gets its own ADR when it's made, per that trigger.
+**Split into M5a/M5b, per this session's own docs/ADR-prep pass
+(`docs/gmf-interpreter.md`, ADR-0013) — the same "sequential,
+shapes-then-content" precedent M2a/M2b already established** (M2a
+landed the engine-refactor shapes churn's actual content would need;
+M2b landed the content against those shapes). M5a lands the
+interpreter itself, pure and engine-adjacent, against a fixture this
+project controls end to end; M5b lands the part that actually touches
+real upstream content and the emitter-facing consequences of a new
+encounter class.
 
-Co-landing invariants: code-passthrough (every coded concept in a
-trajectory event is carried verbatim from its source module, never
+**Design captured ahead of either sub-milestone's build, this
+session (docs-only — no code or resources land here).**
+[`docs/gmf-interpreter.md`](../../docs/gmf-interpreter.md) is the v1
+design doc: the state-type/transition subset the interpreter executes
+(deferring `CallSubmodule`/`Counter`/`MultiObservation`/`Death`, and,
+per its own candidate-module survey, `Device`/`DeviceEnd` and
+`CarePlanStart`/`CarePlanEnd`; recommending `Symptom` join v1 as a
+write-only state), the history/horizon two-phase run per patient, the
+GMF-encounter-class → ADT mapping (including the new
+`:outpatient-visit` step pair), and the module-namespaced `:attributes`
+discipline. [ADR-0013](../../notes/ADRs.md#adr-0013) resolves
+`sim-theory.md`'s open question #1 — `gmf-module-set` vendors (target
+3, a small curated hashed subset in `resources/modules/`) rather than
+pins a lockfile (target 1) — the decision ADR-0003 deferred since
+scaffold day, decided now that `docs/gmf-interpreter.md`'s survey of
+three real Synthea modules gives it something concrete to be decided
+against. Both documents name several recommendations flagged for
+author ratification (the `Symptom` addition, the history-phase
+fast-forward granularity, the pre-horizon mark-don't-trim choice, the
+outpatient-visit validity/invariant sketch, and — `docs/gmf-
+interpreter.md`'s own appendix — `sinusitis.json` as the first module
+recommended to vendor) rather than silently decided; a future session
+opening M5a should confirm these before writing code against them, not
+assume them ratified by this session's own docs-only pass.
+
+### M5a — the interpreter itself: state machine, history/horizon, hand-written fixture
+
+Lands **RunModules** (`:planned → :built`), pure and engine-adjacent:
+the GMF state-machine walk (`docs/gmf-interpreter.md` §1–3), the
+`PriorState`-as-log-query compilation (§2 — no `engine.clj` signature
+change required; `world`'s existing `:ground-truth` mirror and
+`events-for-patient`, both already landed M2b/ADR-0010-era, are the
+mechanism), and the history/horizon two-phase run per patient (§3).
+Tested end to end against the one hand-written GMF-JSON fixture module
+ADR-0013 point 6 names — this project's own authored content, not
+vendored, so the interpreter's own red tests depend on nothing outside
+this repo's control. No real Synthea module content lands in M5a; no
+`ground-truth-log`/`hl7v2-stream` consequence yet, since
+`CompileTrajectory` (M5b) is what turns a trajectory into pathway IR
+the engine can execute.
+
+Co-landing invariants: code-passthrough (every coded concept a
+trajectory event carries is verbatim from its source module, never
 invented or translated); glass-box traceability (every trajectory
-event cites the module id and state name that produced it);
-clinical-content-preserving compilation (every trajectory event maps
-to at least one IR step, none dropped or reordered against clinical
-causality).
+event cites the module id and state name that produced it) — both
+checkable against the hand-written fixture alone, ahead of any vendored
+content existing.
 
-**Medications, M5+ note.** An OHDSI evaluation found Synthea's own
+### M5b — CompileTrajectory + the first vendored module + outpatient steps
+
+Lands **CompileTrajectory** (`:planned → :built`), the actual vendored
+module (`docs/gmf-interpreter.md`'s appendix recommendation, ADR-0013's
+curation criterion — `resources/modules/` + its `NOTICE` file, real
+provenance this time, not this repo's own hand-curated content), and
+the new IR step types M5a's trajectory events need somewhere to land:
+`:procedure`, `:observation`, `:medication-order`/`:medication-end`,
+and `:outpatient-visit`/`:outpatient-visit-end` (`docs/gmf-
+interpreter.md` §4's own sketch — the new step pair also activates
+`:class :outpatient`'s allocation-free path and the occupancy board's
+scope qualifier, both named there for author ratification). `EmitHL7`
+gains an A04 registry entry for `:outpatient-visit`;
+`:outpatient-visit-end` deliberately gets none, the same "real
+ground-truth event, no wire message" shape `:step-rejected` (ADR-0012)
+already established. This is also where end-to-end validation against
+a real vendored module actually happens — a hand-written fixture
+(M5a) proves the interpreter's own mechanics; a real Synthea module
+proves the whole pipeline against content this project didn't author.
+
+Co-landing invariants: clinical-content-preserving compilation (every
+trajectory event maps to at least one IR step, none dropped or
+reordered against clinical causality — `docs/gmf-interpreter.md` §1's
+table is the per-state-type mapping this invariant checks against);
+appends-provenance (every compiled IR step cites the trajectory event
+it realizes); `outpatient-visit-only-when-new`,
+`outpatient-patients-occupy-no-bed`, and the occupancy board's
+inpatient/ED-scoped consistency law (`docs/gmf-interpreter.md` §4).
+
+**Medications, M5b note.** An OHDSI evaluation found Synthea's own
 medication data unreliable without its separate Medication
 Diversification Tool, citing limited model diversity as the root cause
 (`docs/research/SimHospital-Synthea-limitations-considered.md` §4.3,
 Wagner and Blacketer). Whenever medications land in this project
-(M5's GMF port or later), single-source distributions are expected to
-need the same kind of diversification step — recorded now so this
-isn't relearned the hard way once real medication content exists here.
+(M5b's `:medication-order`/`:medication-end` or later), single-source
+distributions are expected to need the same kind of diversification
+step — recorded now so this isn't relearned the hard way once real
+medication content exists here.
 
 **No hidden modules (`sim-theory.md`'s IR-transforms-as-composition-
-layer note).** Synthea's built-in Java lifecycle modules run always-on
-and invisibly, surprising users who tried to run only their own custom
-module set (discussion #1126, `docs/research/SimHospital-Synthea-
-limitations-considered.md` §4.2). This milestone's own lifecycle
-behavior (birth, aging, death, whatever the GMF port needs) must be an
-explicit, listable stage or IR→IR transform — the same composition
-mechanism `InjectChurn` already established, not a special-cased
-always-on pass a config author has no way to see or disable.
+layer note), governing both sub-milestones.** Synthea's built-in Java
+lifecycle modules run always-on and invisibly, surprising users who
+tried to run only their own custom module set (discussion #1126,
+`docs/research/SimHospital-Synthea-limitations-considered.md` §4.2).
+This project's own lifecycle behavior (birth, aging, death, whatever
+the GMF port needs) must be an explicit, listable stage or IR→IR
+transform — the same composition mechanism `InjectChurn` already
+established, not a special-cased always-on pass a config author has no
+way to see or disable. `docs/gmf-interpreter.md` §5's module-namespaced
+`:attributes` discipline is this law's concrete extension into module
+*data*, not just module *execution* — named here so a future session
+reads both halves as one commitment, not two.
 
 ## M6 — EmitState (FHIR snapshots first); emitter-coherence property
 

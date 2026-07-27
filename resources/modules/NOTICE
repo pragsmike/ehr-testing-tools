@@ -1,0 +1,53 @@
+ehr-testing-sim -- resources/modules/ provenance notice
+=========================================================
+
+notes/ADRs.md ADR-0013 (module vendoring resolved) names Synthea
+(Apache-2.0, MITRE -- notes/facts-register.md F2) as the source for
+this directory's content: a small, curated subset of Synthea's own
+Generic Module Framework (GMF) JSON modules, vendored directly rather
+than pinned via a lockfile (ADR-0013's own target-3-not-target-1
+decision), each entry below carrying its upstream URL, the exact
+commit SHA it was fetched at, and a SHA-256 hash of the vendored file
+as fetched -- the concrete meaning of "hashed" in target 3's own name
+(docs/sim-theory.md's Catalytic resolution table).
+
+THIS FILE IS EMPTY OF ENTRIES AS OF THIS SESSION (2026-07-27, the
+M5-prep docs/ADR session that wrote ADR-0013 and
+docs/gmf-interpreter.md). No module JSON has been copied into this
+directory yet -- this session's own scope is design capture and ADR
+ratification prep, not vendoring; AGENTS.md's "do not invent facts
+about upstream sources" applies to provenance records the same way it
+applies to prose, so this file records real fetches only, never a
+placeholder entry for content that hasn't actually been copied in.
+
+What this session DID do, relevant to whoever adds the first real
+entry below: docs/gmf-interpreter.md's own candidate-module survey
+read three real Synthea modules in full against commit
+`7e08387c68a7f0e21d13076609a159fd473fc902` of
+github.com/synthetichealth/synthea (`master`, fetched 2026-07-27) --
+sinusitis.json, ear_infections.json, and sore_throat.json -- and
+recommends sinusitis.json as the first module to vendor under
+ADR-0013 point 4's curation criterion, FLAGGED FOR AUTHOR
+RATIFICATION, not yet acted on. Whoever lands Milestone M5b (the
+vendoring itself, per .agents/plans/roadmap.md's M5a/M5b split) should
+re-confirm the recommended module and commit SHA are still current
+(upstream `master` moves), then:
+
+1. Fetch the ratified module's JSON at whatever commit SHA is current
+   at vendoring time (not necessarily the SHA this notice's survey
+   used, if time has passed and upstream has moved).
+2. Copy it into this directory unchanged.
+3. Add a row to the (not-yet-existing) provenance table below:
+   filename | upstream URL (raw.githubusercontent.com/synthetichealth/
+   synthea/<sha>/src/main/resources/modules/<name>.json) | commit SHA |
+   SHA-256 of the vendored file | date fetched.
+
+Recorded: 2026-07-27. All content this directory will ever hold is
+Apache-2.0 upstream module data or this project's own hand-authored
+test fixtures (the latter never land here -- ADR-0013 point 6 places
+them in test/ehr_testing_sim/fixtures/ instead, since they carry no
+NOTICE obligation of their own, being this project's own authored
+data, not Synthea's). No PHI, no real-person data, by construction
+(this repo's standing constraint, docs/problem-statement.md /
+AGENTS.md) -- GMF module content is synthetic disease-progression
+logic, not patient records.

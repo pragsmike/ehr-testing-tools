@@ -132,6 +132,54 @@ invariant catalog (`check.clj`) never need to know which site profile
 is active; only the emitter's render call sites (and, for naming, a
 caller's own pre-run config-assembly step) do.
 
+## Two knob classes: dialect vs. site config
+
+The `:naming :surge-format` exception above is not merely one odd
+component among four — landing it is what surfaced that this layer
+actually has **two classes of knob**, not one, and every knob this
+layer has shipped or will ever ship belongs to exactly one:
+
+1. **Dialect knobs** — bound at emit time, inside `EmitHL7`'s own
+   render call sites, and **truth-invariant**: changing one can only
+   change how `hl7v2-stream` renders a fact, never what fact
+   `ground-truth-log` records. MSH dialect, code-table overrides, and
+   Z-segment templates are this layer's three dialect knobs. A dialect
+   knob's surface is, by definition, exactly what the masking function
+   (`emit-hl7-test/mask-dialect-surfaces`) strips before the weak-half
+   invariance property compares two profiles' output — the masking
+   function's own declared surface (MSH-3/4/5/6/12, PV1-2/PV1-36,
+   Z-segment lines) **is** the enumeration of every dialect knob this
+   layer has shipped to date; adding a fourth dialect knob means
+   extending that function in the same change, or the invariance
+   property test stops actually covering it.
+2. **Site config knobs** — bound before `Execute` runs, at
+   facility-config (or other pre-run config) construction time, and
+   **truth-affecting**: a site config knob changes what
+   `ground-truth-log` itself contains, because the fact it touches was
+   already decided at `decide`-time before this layer existed to
+   configure it. `:naming :surge-format`'s migration to the profile
+   (`ehr-testing-sim.site-profile/apply-naming`) is this class's first
+   citizen — surge bed ids are baked into ground truth at `decide`-time
+   (`ehr-testing-sim.facility/surge-slot-ids`), so a naming knob for
+   them cannot live at emit time the way the other three do without
+   lying about when the fact it renders was actually decided.
+
+**Every future site-profile knob must declare which class it belongs
+to before it lands**, because the classes get materially different
+treatment: only class 1 is covered by the invariance property
+(`emit-hl7-test/site-profile-never-reaches-the-engine` and
+`invariance-messages-agree-after-masking-dialect-surfaces`, both
+proven above) — a class 1 knob that somehow perturbed
+`ground-truth-log` would be a bug the property test exists to catch.
+Class 2 knobs are **not** covered by that property, and must not be
+expected to be: they run before `Execute`, so their whole purpose is
+to affect ground truth, and holding them to a truth-invariance law
+would be holding them to the wrong law. A knob proposal that can't
+answer "which class" cleanly — bound at emit time yet touching a
+`decide`-time fact, say — is a sign the knob is either mis-scoped or
+belongs partly to each, which this layer has not yet needed to
+support and should not silently assume.
+
 ## The invariance claim — proven
 
 **Two site profiles over one seed produce the same ground truth in two

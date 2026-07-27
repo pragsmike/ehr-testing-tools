@@ -10,8 +10,10 @@ flowchart LR
     invariant_catalog(["invariant-catalog"])
     message_type_registry(["message-type-registry"])
     order_profiles(["order-profiles"])
+    payer_pool(["payer-pool"])
     provider_pool(["provider-pool"])
     sim_config(["sim-config"])
+    site_profile(["site-profile"])
     snomed_icd10_map(["snomed-icd10-map"])
 
     %% --- Operations (boxes; spiders use distinct shapes) ---
@@ -30,58 +32,60 @@ flowchart LR
     ToolsCorpusIntake["ToolsCorpusIntake"]
 
     %% --- Wires (typed connections) ---
-    %% Arrow 20: Persona
+    %% Arrow 19: Persona
     sim_config -- sim-config --> Persona
     demographics_tables -. demographics-tables .-> Persona
+    payer_pool -. payer-pool .-> Persona
 
-    %% Arrow 23: RunModules
+    %% Arrow 22: RunModules
     Persona -- persona --> RunModules
     gmf_module_set -. gmf-module-set .-> RunModules
     gmf_interpreter -. gmf-interpreter .-> RunModules
 
-    %% Arrow 26: CompileTrajectory
+    %% Arrow 25: CompileTrajectory
     RunModules -- clinical-trajectory --> CompileTrajectory
 
-    %% Arrow 28: InjectChurn
+    %% Arrow 27: InjectChurn
     UnionPathwayIr -- pathway-ir --> InjectChurn
     Calibrate -- churn-profile --> InjectChurn
 
-    %% Arrow 30: Execute
+    %% Arrow 29: Execute
     InjectChurn -- operational-pathway --> Execute
     provider_pool -. provider-pool .-> Execute
     order_profiles -. order-profiles .-> Execute
 
-    %% Arrow 32: Check
+    %% Arrow 31: Check
     Execute -- ground-truth-log --> Check
     invariant_catalog -. invariant-catalog .-> Check
 
-    %% Arrow 34: EmitHL7
+    %% Arrow 33: EmitHL7
     Execute -- ground-truth-log --> EmitHL7
     hl7_parser_dep -. hl7-parser-dep .-> EmitHL7
     message_type_registry -. message-type-registry .-> EmitHL7
     snomed_icd10_map -. snomed-icd10-map .-> EmitHL7
+    site_profile -. site-profile .-> EmitHL7
 
-    %% Arrow 37: EmitState
+    %% Arrow 36: EmitState
     Execute -- state-history --> EmitState
 
-    %% Arrow 40: Package
+    %% Arrow 39: Package
     EmitHL7 -- hl7v2-stream --> Package
     Execute -- ground-truth-log --> Package
 
-    %% Arrow 43: Calibrate
+    %% Arrow 42: Calibrate
     Package -- sim-corpus --> Calibrate
     feed_statistics -- feed-statistics --> Calibrate
     Calibrate -- churn-profile --> Calibrate
     Calibrate -- churn-profile --> churn_profile
 
-    %% Arrow 46: UnionPathwayIr
+    %% Arrow 45: UnionPathwayIr
     CompileTrajectory -- compiled-pathway --> UnionPathwayIr
     authored_pathway -- authored-pathway --> UnionPathwayIr
 
-    %% Arrow 49: SystemUnderTest
+    %% Arrow 48: SystemUnderTest
     EmitHL7 -- hl7v2-stream --> SystemUnderTest
 
-    %% Arrow 50: ToolsCorpusIntake
+    %% Arrow 49: ToolsCorpusIntake
     Package -- sim-corpus --> ToolsCorpusIntake
 
     %% --- Styling ---
@@ -111,6 +115,8 @@ flowchart LR
     style invariant_catalog fill:#f5f5f5,stroke:#999,color:#333
     style message_type_registry fill:#f5f5f5,stroke:#999,color:#333
     style order_profiles fill:#f5f5f5,stroke:#999,color:#333
+    style payer_pool fill:#f5f5f5,stroke:#999,color:#333
     style provider_pool fill:#f5f5f5,stroke:#999,color:#333
     style sim_config fill:#f5f5f5,stroke:#999,color:#333
+    style site_profile fill:#f5f5f5,stroke:#999,color:#333
     style snomed_icd10_map fill:#f5f5f5,stroke:#999,color:#333

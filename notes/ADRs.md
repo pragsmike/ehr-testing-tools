@@ -985,3 +985,175 @@ not in this session. A future session implementing this ADR should
 treat `message-type-registry`'s deliberate non-entry for
 `:step-rejected` as load-bearing, not an oversight to "fix" by adding
 one.
+
+---
+
+## ADR-0013 — GMF module vendoring resolved: a curated, hashed subset in `resources/modules/`, not a lockfile
+
+**Status:** Accepted (author-ratified 2026-07-27) — design capture for
+Milestone M5 (`.agents/plans/roadmap.md`); no code or resources land
+with this ADR. See [`docs/gmf-interpreter.md`](../docs/gmf-interpreter.md)
+for the interpreter design this vendoring decision feeds.
+
+**Context.** [ADR-0003](#adr-0003) named a trigger, deferred rather
+than decided at scaffold time: "adopt [a pinned-artifact/vendoring
+pattern] once Synthea modules (or another large upstream artifact)
+actually land in this repo." `docs/sim-theory.md`'s open question #1
+has carried `gmf-module-set`'s catalytic target as **OPEN** since the
+theory file first named the resource — target 1 (`artifacts.lock`, a
+pinned lockfile fetched at build/run time, the treatment
+`snomed-icd10-map` already gets) or target 3 (hashed,
+repo-authored-or-derived config vendored directly into the repo, the
+treatment `order-profiles`/`provider-pool`/`demographics-tables`
+already get) — deliberately left unresolved until a real module
+landing forced the question. Milestone M5 (`RunModules` +
+`CompileTrajectory`, `docs/sim-theory.edn`) is that landing, and
+`docs/gmf-interpreter.md`'s own candidate-module survey (its
+appendix) is the first session to read real Synthea module JSON
+against this project's actual interpreter scope, giving this decision
+something concrete to be decided against rather than decided in the
+abstract.
+
+**Decision.**
+
+1. **Target 3: a small, curated, hashed subset vendored into
+   `resources/modules/`.** Not target 1 (a lockfile pinning URLs and
+   letting a build step fetch module content at need). Synthea's 85
+   GMF modules (`notes/facts-register.md` F2) are Apache-2.0 and this
+   project takes only a handful — the same shape
+   `resources/order-profiles.edn`/`resources/demographics/` already
+   established for other config this project vendors rather than
+   fetches, extended here to a directory of module JSON files instead
+   of a single EDN table.
+2. **Rationale, three independent arguments converging on the same
+   target:**
+   - **Glass-box law.** `docs/problem-statement.md`'s Cross-Cutting
+     Arguments (Provenance) and `docs/sim-theory.edn`'s own
+     `RunModules` law ("glass-box traceability: every trajectory event
+     cites the module id and state name that produced it, so any
+     output event is auditable back to inspectable module JSON") both
+     presuppose the module content a reader is auditing is sitting in
+     this repo's own tree, not resolved indirectly through a lockfile
+     and a fetch step at read time. A vendored file is inspectable by
+     `git show`; a lockfile entry is inspectable only by also trusting
+     whatever the fetch step retrieves matches what the lock pinned.
+   - **A curated few keeps review honest.** This project's own
+     no-hidden-modules corollary (`docs/sim-theory.md`'s IR-transforms
+     section, restated in the M5 roadmap entry) already commits every
+     lifecycle behavior this repo runs to being explicit and listable.
+     A lockfile pinning all 85 modules (or any large subset) at once
+     is exactly the shape that corollary warns against in spirit, even
+     though it names always-on invisible *execution* rather than
+     vendoring specifically: nobody reviews 85 files in one diff, the
+     same way nobody reads a `package-lock.json` line by line. A
+     handful of files in one PR, each individually reviewable, is the
+     vendoring-side instance of the same discipline.
+   - **No artifact-lock machinery exists here to justify building for
+     a handful of JSON files.** ADR-0003's own trigger conditions list
+     "pinned-artifact or vendoring pattern (tools' `artifacts.lock.edn`
+     / vendor-corpus pattern) — adopt once Synthea modules... actually
+     land." This project has never built lockfile-resolution
+     machinery, and standing it up (a fetch step, a lock schema, a
+     verification step against pinned hashes at fetch time) is real
+     engineering weight to carry for what this milestone's curation
+     criterion (below) keeps to a handful of files — weight that
+     buys nothing a flat `resources/modules/` directory with a NOTICE
+     file doesn't already buy at zero build-step cost.
+3. **Provenance per vendored module, recorded in a
+   `resources/modules/NOTICE` file** (the same role
+   `resources/demographics/NOTICE` already plays for the demographics
+   tables, extended to genuinely-vendored-not-hand-curated content this
+   time): for each module JSON vendored, its upstream URL
+   (`raw.githubusercontent.com/synthetichealth/synthea/<sha>/src/main/resources/modules/<name>.json`),
+   the exact commit SHA it was fetched at, and a content hash
+   (SHA-256) of the vendored file as fetched — the same three facts
+   `snomed-icd10-map`'s own pinning already requires of target 1,
+   applied to target 3's files instead of a lockfile entry. This is
+   the concrete meaning of "hashed" in target 3's own name
+   (`docs/sim-theory.md`'s Catalytic resolution table) for this
+   resource: the hash lives in the NOTICE file, not in a lockfile,
+   because there is no lockfile.
+4. **Curation criterion: a v1 module must be expressible in the
+   interpreter subset `docs/gmf-interpreter.md` defines.**
+   Concretely: encounter-bearing (the module reaches at least one
+   `Encounter`/`EncounterEnd` pair, so it exercises the trajectory→IR
+   mapping this milestone's laws are actually about) and a modest
+   state-type surface (its states are drawn overwhelmingly from that
+   document's v1 state-type list, with any state types outside it
+   confined to a small, excludable, non-load-bearing tail — not
+   scattered through the module's core diagnostic or therapeutic
+   logic). This is an operational test, not a vibe: `docs/gmf-
+   interpreter.md`'s own candidate-module survey applies it to three
+   real modules read for this milestone and its own appendix table is
+   the worked example of applying it. A module that fails this
+   criterion is not vendored in v1, full stop — it waits for whichever
+   future milestone extends the interpreter subset enough to cover it,
+   the same "don't build machinery ahead of a module that needs it"
+   discipline this whole ADR is about.
+5. **Explicit path to revisiting: a lockfile, if the vendored set ever
+   grows past roughly ten modules.** The curated-few argument above is
+   a claim about *this* milestone's scale, not a permanent ceiling —
+   if a future milestone's clinical-content ambitions genuinely need
+   dozens of modules rather than a handful, the review-honesty and
+   glass-box arguments above start trading off against real
+   duplication and update-friction costs a lockfile is built to solve,
+   and target 1 becomes the better answer. Ten is a round, deliberately
+   approximate trigger (not a hard invariant this project checks
+   mechanically) — a future session crossing it should read this ADR,
+   confirm the tradeoff has actually flipped rather than assuming it
+   has, and record the flip as its own superseding ADR per this
+   project's standing rule (never silently revert an Accepted ADR).
+6. **One hand-written module ships as the interpreter's own unit-test
+   fixture — ours, not Synthea's.** The GMF interpreter's red tests
+   (test-first, ADR-0004) need a module whose every state this project
+   controls, so a test can assert exact trajectory-event output against
+   a known-small input without also depending on a vendored file that
+   might itself change if this ADR's own curation criterion is later
+   revisited. This fixture is hand-authored GMF JSON, covering v1's
+   state types directly rather than borrowed from any real vendored
+   module; `docs/gmf-interpreter.md` names its intended coverage. It is
+   test fixture content (`test/ehr_testing_sim/fixtures/`, the same
+   directory the pinned-seed regression already lives in), not vendored
+   upstream content, and carries no NOTICE obligation for exactly that
+   reason — it is this project's own authored data, not Synthea's.
+
+**Rejected.**
+
+- **Target 1 (a lockfile), resolving the OPEN question the other
+  direction.** Rejected on the three grounds in the Decision above —
+  glass-box auditability, review-honesty at this milestone's actual
+  scale, and no existing lockfile machinery to amortize the build cost
+  against. Not rejected as *wrong in general*: point 5 names the
+  explicit condition under which this project expects to revisit and
+  likely choose it instead.
+- **Vendoring all 85 modules now, "to have them available."**
+  Rejected for the same review-honesty reason target 1 is rejected,
+  applied to target 3 instead of target 1: a curated few is the point,
+  not an accident of this milestone's limited time. Vendoring
+  everything now would also front-load work the curation criterion
+  (point 4) says most of those 85 modules would fail anyway, until the
+  interpreter subset grows to cover whatever each of them individually
+  needs.
+- **Using a real vendored module (rather than a hand-written one) as
+  the interpreter's own unit-test fixture.** Rejected because a real
+  module's states, once this ADR's curation criterion or the
+  interpreter's own v1 subset changes in a future milestone, would
+  drag the interpreter's own red-test suite along with it — coupling
+  test-suite stability to an upstream content decision this project
+  doesn't control. A hand-written fixture is stable by construction:
+  this project owns every line of it.
+
+**Consequences.** `docs/gmf-interpreter.md`'s candidate-module survey
+(its own appendix) names which single module vendors first under this
+ADR's criterion, for author ratification alongside this ADR's own
+acceptance. No code or resources land with this ADR: the actual
+vendoring (fetching the recommended module's JSON, writing
+`resources/modules/NOTICE`, computing its hash) and the hand-written
+fixture module are M5b/M5a implementation work respectively, per
+`.agents/plans/roadmap.md`'s own M5a/M5b split (this session's Task
+3). `docs/sim-theory.md`'s open question #1 is RESOLVED by this ADR
+the same way ADR-0008 resolved open question #3: the original entry
+stays in place per this project's append-don't-erase convention, with
+a resolution note pointing here; `docs/sim-theory.md`'s Catalytic
+resolution table gains this ADR's citation in `gmf-module-set`'s own
+row, replacing "OPEN."

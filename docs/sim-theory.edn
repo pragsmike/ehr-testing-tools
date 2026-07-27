@@ -43,7 +43,7 @@
    :catalytic ["gmf-module-set" "gmf-interpreter"]
    :laws ["code passthrough: every coded concept ({:system :code :display}) in a trajectory event is carried verbatim from its source module -- the interpreter never invents or translates codes"
           "glass-box traceability: every trajectory event cites the module id and state name that produced it, so any output event is auditable back to inspectable module JSON (validation cross-cutting argument, docs/problem-statement.md)"]
-   :contract "gmf-module-set's catalytic target (1: artifacts.lock vs 3: vendored-and-hashed) is an OPEN decision, trigger recorded in ADR-0003 -- the equation deliberately names the resource without prejudging its target"}
+   :contract "v1 semantics: docs/gmf-interpreter.md is this stage's design doc -- the state-type/transition subset it executes (deferring CallSubmodule/Counter/MultiObservation/Death), the history/horizon two-phase run per patient, the encounter-class mapping, and the module-namespaced :attributes discipline. gmf-module-set's catalytic target is RESOLVED (ADR-0013, author-ratified 2026-07-27): target 3, a small curated hashed subset vendored into resources/modules/, not target 1 (artifacts.lock) -- superseding this entry's prior OPEN-decision note (ADR-0003's own trigger). docs/gmf-interpreter.md's own candidate-module survey names the first module to vendor under ADR-0013's curation criterion, for author ratification alongside the ADR itself. No code lands with this decision; M5a/M5b (.agents/plans/roadmap.md) is where RunModules flips :built"}
 
   {:id :compile
    :label "CompileTrajectory"
@@ -53,7 +53,7 @@
    :outputs ["compiled-pathway"]
    :laws ["clinical-content-preserving: every clinical trajectory event maps to at least one IR step; none is dropped, reordered against clinical causality, or invented"
           "appends provenance: each compiled step cites the trajectory event it realizes"]
-   :contract "the novel layer -- neither mined source has this stage (Simulated Hospital has no trajectory generation; Synthea has no operational compilation), so its laws carry fresh validation burden rather than inherited provenance (docs/problem-statement.md, Cross-Cutting Arguments)"}
+   :contract "the novel layer -- neither mined source has this stage (Simulated Hospital has no trajectory generation; Synthea has no operational compilation), so its laws carry fresh validation burden rather than inherited provenance (docs/problem-statement.md, Cross-Cutting Arguments). docs/gmf-interpreter.md Sec 6 restates these laws as this stage's own build-session test obligations; Sec 1's per-state-type table names which trajectory events map to a new IR step (:procedure, :observation, :medication-order/:medication-end, :outpatient-visit/:outpatient-visit-end -- none exist in ehr-testing-sim.pathway yet, M5b build scope) versus an annotation on an existing step (ConditionOnset/ConditionEnd, attached to the enclosing Encounter-mapped step rather than a step of their own)"}
 
   {:id :churn
    :label "InjectChurn"
