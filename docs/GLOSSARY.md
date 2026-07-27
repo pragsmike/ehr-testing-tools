@@ -56,6 +56,15 @@ to ward W" while their physical location is an ED surge slot; it
 emerges from capacity pressure rather than being scripted. See
 [operational-models.md](operational-models.md).
 
+**Diagnosis.** *Here and everywhere in this project family:* a clinical
+determination — the thing that gets an ICD-10-CM code and rides in a DG1
+segment; content the simulator *generates*. **Never** used for a conformance judge's
+explanation of a verdict — that is a set of **findings** (see the conformance
+vocabulary below). The restriction is deliberate: in a healthcare product, "the
+gate's diagnosis" would be parsed clinically by half the audience. (Pleasant
+coincidence: "findings" is also what clinicians call itemized observed facts, so
+the connotation transfers instead of colliding.)
+
 **Encounter.** *In clinical/EHR usage:* a discrete interaction between
 patient and health system (a visit, a hospitalization). *Here:* the
 same concept, but note the simulator's current model is
@@ -248,6 +257,63 @@ trimmed) so steady-state corpora can filter the cold-start artifact
 without violating log completeness.
 
 ---
+## Conformance & gating vocabulary (family terms)
+
+These terms belong to the sibling
+[ehr-testing-tools](https://github.com/pragsmike/ehr-testing-tools)
+repository, which judges this simulator's output; sim's docs use
+them when discussing the consumer loop and the validation program.
+Tools' own code and ADRs are authoritative if any detail here
+drifts; this block exists so sim's readers need not switch repos
+mid-sentence. (The planned guide crosswalk reconciles against this
+definition set.)
+
+**Judge.** A component that examines one artifact against one tier
+of checks — e.g. the base-structural HL7v2 judge, or the FHIR
+judge. *Judging* is the act; a judge examines, it does not fix.
+
+**Verdict.** A judge's per-artifact classification. The enumeration
+is **pass / rejected / indeterminate / no-verdict** — deliberately
+not "pass/fail": *rejected* means the check ran and the answer is
+no (the same doctrine as this repo's `:rejected` Result arm);
+*indeterminate* means the judge examined the artifact but cannot
+classify it (e.g. a check needing a terminology tier this judge
+lacks); *no-verdict* means no determination was produced. Exit
+codes follow the ladder: 0 pass, 1 rejected, 2 error, 3 no-verdict.
+
+**Error (vs. rejected).** An *error* is the judge itself failing
+operationally — it could not run. A crashed judge yields an error,
+never a verdict. Rejected is an answer; error is the absence of the
+ability to answer. Keeping these apart is load-bearing: a corpus
+full of rejections is information, a corpus full of errors is a
+broken harness.
+
+**Findings.** The itemized, located reasons attached to any
+non-pass verdict: each names the check that fired, where in the
+artifact, and the stated reason. Findings are the actionable
+content of a verdict — and, in the cross-repo consumer loop, the
+currency in which the gate tells this simulator what to fix
+("findings, not failures" is that loop's assertion discipline:
+integration tests assert the gate *runs and verdicts*, never that
+everything passes).
+
+**Report.** The aggregate a gate run produces over a corpus: the
+verdict table plus all findings.
+
+**Baseline.** A pinned, committed report with a provenance header
+(date, the sim commit it was generated against, reason). Deltas
+against a baseline are how change is *reviewed*: a new corpus is
+diffed, findings are read, and only then is the baseline
+regenerated — ratification by regeneration, with the history in
+the headers.
+
+**Gate.** The workflow that runs judges across a corpus and
+produces the report; "gating" a corpus means putting it through.
+In this simulator's validation program, the gate is the independent
+examiner — the reason the output is never graded on its own
+homework.
+
+---
 
 ## Software concepts (for domain experts)
 
@@ -371,6 +437,9 @@ profiles exist. The guide's opening chapters treat this at length.
 HAPI's v2 parser and NIST's validation suite — used (via
 ehr-testing-tools) to judge generated messages, so the simulator is
 never graded by its own homework.
+
+See the conformance & gating vocabulary above for how judging is organized
+(judges, verdicts, findings, baselines)."
 
 ---
 
