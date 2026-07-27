@@ -82,7 +82,8 @@ program) · [sim-theory.md](sim-theory.md) +
 theory; the EDN is the source of truth, read via the now/next/want
 convention) · [event-sourcing.md](event-sourcing.md) (the
 architecture and its scope — what it buys and, honestly, what it
-doesn't).
+doesn't, including Milestone M6's own "coherence property, tested"
+section: how EmitHL7 and EmitState are checked against each other).
 
 Domain models: [operational-models.md](operational-models.md) ·
 [patient-state-model.md](patient-state-model.md) ·
@@ -136,11 +137,12 @@ assuming the doc is aspirational.
 
 ## Status
 
-Pre-release. The pipeline is built end-to-end through generated
-clinical trajectories (M5); the FHIR/state emitter (M6) is landing
-next, after which this directory gets a full alignment pass —
-expect minor staleness in cross-references and counts until then,
-and treat the ADRs and the theory EDN as tiebreakers. This project
+Pre-release. The pipeline is built end-to-end through the FHIR/state
+emitter (M6) — every theory stage but Calibrate is now both built and
+property-tested, including the emitter-coherence law itself. A full
+documentation alignment pass is next — expect minor staleness in
+cross-references and counts until then, and treat the ADRs and the
+theory EDN as tiebreakers. This project
 is one of three siblings: the
 [guide](https://github.com/pragsmike/ehr-testing-guide) teaches the
 testing method, the

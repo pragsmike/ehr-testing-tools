@@ -19,29 +19,36 @@ One file describes three systems:
   current guess at the envisioned system; it will change, and changes
   land as edits to the EDN with ADRs where they're structural.
 - **now** — the `:status :built` subset: **Execute**, **Check**,
-  **EmitHL7**, **InjectChurn** (M2b), **Persona** (M4), and, as of
-  Milestone M5b, **RunModules** and **CompileTrajectory** (each
-  walking-skeleton, v1-slice, or v0-slice scope, per their `:contract`
-  notes), plus the manifest component inside Package that shipped ahead
-  of its stage. As of Milestone M3, Execute's own step vocabulary
-  further grows (`:order`/`:result-followup`, the `order-profiles`
-  catalytic now real) and EmitHL7 gains ORM^O01/ORU^R01. As of the
-  site-profiles milestone, EmitHL7 gains a fourth catalytic
-  (`site-profile`) — MSH dialect, code-table overrides, and Z-segment
-  templates, all property-tested against the dialect-invariance law
-  stated on that stage's own equation entry. As of Milestone M5b,
-  Execute's step vocabulary grows again (`:outpatient-visit`/
-  `:outpatient-visit-end`/`:procedure`/`:observation`/
-  `:medication-order`/`:medication-end`) and EmitHL7 gains A04
-  (outpatient visit) and a second ORU^R01 rendering (an unsolicited
-  Observation, no order context). Everything the *now* claims is
-  property-tested and green (350 tests / 863 assertions, 2026-07-27).
-- **next** — the single stage marked `;; NEXT` in the EDN: **EmitState**,
-  Milestone M6 — state-document rendering from `state-history`, FHIR
-  resources before CDA. RunModules/CompileTrajectory's own two-session
-  split (M5a the interpreter library, M5b the real vendored module plus
-  the actual persona → modules → trajectory → IR wiring) is complete;
-  both stages are `:built` and the `;; NEXT` marker has moved on.
+  **EmitHL7**, **InjectChurn** (M2b), **Persona** (M4), **RunModules**
+  and **CompileTrajectory** (M5b; each walking-skeleton, v1-slice, or
+  v0-slice scope, per their `:contract` notes), and, as of Milestone M6,
+  **EmitState** (FHIR R4 only, CDA deferred with its own contract note)
+  — plus the manifest component inside Package that shipped ahead of
+  its stage. As of Milestone M3, Execute's own step vocabulary further
+  grows (`:order`/`:result-followup`, the `order-profiles` catalytic now
+  real) and EmitHL7 gains ORM^O01/ORU^R01. As of the site-profiles
+  milestone, EmitHL7 gains a fourth catalytic (`site-profile`) — MSH
+  dialect, code-table overrides, and Z-segment templates, all
+  property-tested against the dialect-invariance law stated on that
+  stage's own equation entry. As of Milestone M5b, Execute's step
+  vocabulary grows again (`:outpatient-visit`/`:outpatient-visit-end`/
+  `:procedure`/`:observation`/`:medication-order`/`:medication-end`) and
+  EmitHL7 gains A04 (outpatient visit) and a second ORU^R01 rendering
+  (an unsolicited Observation, no order context). As of Milestone M6,
+  `ehr-testing-sim.engine`'s own fold (`PatientState`) grows a
+  clinical-content accumulator (`:conditions`/`:observations`/
+  `:medication-orders`/`:discharged-at`) so EmitState can render from
+  folded state alone, never the log directly — the concrete mechanism
+  behind the now-property-tested emitter-coherence global law, below.
+  Everything the *now* claims is property-tested and green (388 tests /
+  1015 assertions, 2026-07-27).
+- **next** — the single stage marked `;; NEXT` in the EDN: **Calibrate**,
+  the feedback stage that fits a run's churn parameters to a site's own
+  observed feed statistics — the last stage with nothing built yet.
+  EmitState (Milestone M6) is complete: FHIR R4 resources render from
+  folded state, the emitter-coherence global law (below) is a real
+  property test for the first time, and the `;; NEXT` marker has moved
+  on.
 
 No schema keys were invented for this convention — it lives in
 comments and here, keeping the EDN loadable by tools' Pipeline Malli
@@ -248,8 +255,8 @@ whose name binds to nothing is malformed. Bindings, with build status:
 | `compiled-pathway`, `authored-pathway`, `pathway-ir`, `operational-pathway` | Malli, `ehr-testing-sim.pathway` — the union binds to `[:or …]` of its members per the notation; `operational-pathway`'s type IS the IR type (the endomorphism law). `compiled-pathway` is real as of M5b (`ehr-testing-sim.compile-trajectory`, six new step types plus the `:citation`/`:conditions` provenance fields) | v1 built |
 | `ground-truth-log` | Malli, planned as data; shape established by `engine/run` and consumed by `check` | de-facto built |
 | `state-history` | Malli, planned — per-patient `[t → state]`; today implicit in the pure fold, the want makes it a first-class output | planned |
-| `hl7v2-stream` | ER7 messages over the parser's structures | planned |
-| `state-document` | FHIR JSON or CDA XML (format dispatch) | planned |
+| `hl7v2-stream` | ER7 messages over the parser's structures | v1 built |
+| `state-document` | FHIR R4 JSON (`ehr-testing-sim.emit-state`) now; CDA XML deferred with a contract note | M6 built (FHIR arm) |
 | `run-manifest` | Malli, `ehr-testing-sim.manifest/MirroredManifest` (tools' ManifestV1_1 mirror) | built |
 | `sim-corpus` | directory layout + manifest, planned | planned |
 | `churn-profile` | Malli, `ehr-testing-sim.churn/ChurnProfile` — step-type → per-insertion-point probability | v1 built |
@@ -303,20 +310,53 @@ distributions), never raw feed content, and Calibrate's own law
 confines its influence to churn parameters — operational realism may
 learn from a site; clinical content never does.
 
-**Emitter coherence.** `hl7v2-stream` and every `state-document` are
-renderings of the same ground truth: replaying the message stream
-reconstructs `state-history`, and a snapshot at instant *t* agrees
-with the state implied by the messages up to *t*. This is the
-problem-statement guarantee "every message derivable from the log, and
-vice versa," extended across emitters — a *want*-level law that
-becomes a cross-emitter property test when EmitState lands. A named
-sub-law, surfaced by mining Synthea's own cross-format id divergence
-between CDA, FHIR, and CSV exports
+**Emitter coherence — PROPERTY-TESTED, Milestone M6.** `hl7v2-stream`
+and every `state-document` are renderings of the same ground truth:
+replaying the message stream reconstructs `state-history`, and a
+snapshot at instant *t* agrees with the state implied by the messages
+up to *t*. This is the problem-statement guarantee "every message
+derivable from the log, and vice versa," extended across emitters —
+stated as a *want*-level law since this file's own earlier drafts, now
+a real property test:
+`ehr-testing-sim.v2-replay-test/emitter-coherence-reconstructed-state-matches-the-log-fold-at-every-boundary`
+(150 trials, pathways + order/result + non-two-participant churn) and
+its sibling `emitter-coherence-holds-for-module-driven-outpatient-trajectories`
+(150 trials, module-driven trajectories), both green 2026-07-27. The
+mechanism: `ehr-testing-sim.v2-replay` folds a run's own emitted ER7
+stream through an independent reconstruction (`fold-message`), and
+`ehr-testing-sim.v2-replay/project-to-wire-visible-fields` — a
+deliverable in its own right, the formal statement of what the wire
+actually carries, sibling of `ehr-testing-sim.site-profile`'s own
+dialect-masking function — projects BOTH the reconstructed and the
+log-folded state down to the same comparable shape before comparing.
+Documented scope boundary, not silent: the property excludes bed-swap
+(A17) and merge (A40), genuinely two-participant messages whose own
+wire-identity reconstruction (a shared MRN reassigned mid-run) is real,
+separate engineering scope — `ehr-testing-sim.v2-replay`'s own header
+comment and `unsupported-triggers` name this precisely, the same
+"deferred with a contract note" treatment EmitState's own CDA arm gets.
+One genuine finding surfaced and fixed during this property's own
+development: a degenerate but structurally legal churn sequence
+(cancel-admit against an already-discharged patient's original
+admission, followed by cancel-discharge) left ground truth's own
+`:class` absent while the wire always asserts `:inpatient` for that
+message family regardless — `ehr-testing-sim.engine/evolve`'s own
+`:cancel-discharge` method now restores `:class` as part of its
+reinstatement, closing the gap in ground truth rather than loosening
+the projection to hide it.
+
+A named sub-law, surfaced by mining Synthea's own cross-format id
+divergence between CDA, FHIR, and CSV exports
 (`docs/research/SimHospital-Synthea-limitations-considered.md` §4.1):
 **every emitter renders the same event ids and patient ids for the
 same ground-truth facts** — no format-local id scheme, no re-derivation
 that could drift from another emitter's choice for the same event.
-Testable at M6, once EmitState exists to check EmitHL7 against.
+PROPERTY-TESTED alongside the law above:
+`ehr-testing-sim.emit-state-test/fhir-patient-id-and-active-mrn-resolve-to-the-same-hl7-identity`
+(150 trials, green 2026-07-27) — FHIR `Patient.id` is the same
+`patient-id` `ehr-testing-sim.engine/patient-id-for` assigns, and
+`Patient.identifier`'s MRN matches PID-3 on that same patient's own
+HL7 messages, over random runs.
 
 **Code provenance.** Concept triplets flow unchanged from module JSON
 through trajectory, IR, and log; emitters render codes natively and

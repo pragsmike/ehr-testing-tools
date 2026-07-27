@@ -357,6 +357,28 @@
     (is (= (:location pre-discharge) (:location reinstated)))
     (is (= (:home-ward pre-discharge) (:home-ward reinstated)))))
 
+(deftest cancel-discharge-restores-class-even-after-a-preceding-cancel-admit-stripped-it
+  (testing "M6 Task 2's own finding: a cancel-admit fired against an
+            already-discharged patient's original admission (structurally
+            legal -- last-uncancelled-index doesn't gate on CURRENT
+            status) strips :class via cancel-admit's own dissoc; a
+            following cancel-discharge reinstating :admitted must
+            restore :class too, or the patient ends up admitted with no
+            class at all -- surfaced by the v2-replay emitter-coherence
+            property (a :discharge-family patient's own PV1-2 always
+            renders :inpatient, ehr-testing-sim.emit-hl7's own
+            single-subject-message; ground truth must actually agree)"
+    (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+          world1 (admit world0 0 "P1" "Renal")
+          {d-events :events} (engine/decide (Random. 1) 10 world1 "P1" {:type :discharge})
+          world2 (fold-events world1 d-events)
+          {ca-events :events} (engine/decide (Random. 1) 20 world2 "P1" {:type :cancel-admit})
+          world3 (fold-events world2 ca-events)
+          _ (is (not (contains? (get-in world3 [:patients "P1"]) :class)) "sanity: cancel-admit stripped :class")
+          {cd-events :events} (engine/decide (Random. 1) 30 world3 "P1" {:type :cancel-discharge})
+          world4 (fold-events world3 cd-events)]
+      (is (= :inpatient (:class (get-in world4 [:patients "P1"])))))))
+
 (deftest cancel-discharge-on-never-discharged-patient-is-rejected
   (testing "docs/patient-state-model.md's own illegal example"
     (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
@@ -795,6 +817,104 @@
     (is (= [:registered :admission :observation :medication-order :medication-end :discharge]
            (mapv :event ground-truth)))
     (is (result/ok? (check/check-all ground-truth (:facility result))))))
+
+;; --- M6 Task 1: PatientState grows a clinical-content accumulator
+;; (:conditions/:observations/:medication-orders/:discharged-at) --
+;; EmitState's own "snapshot-at-instant" law (docs/sim-theory.edn) means
+;; the FHIR emitter may touch NOTHING but folded state, never the log
+;; directly; Condition/Observation/MedicationRequest content therefore
+;; has to actually LAND in the fold, the same way :location/:persona
+;; already do, rather than staying a log-only fact only check.clj reads
+;; via engine/replay. -----------------------------------------------------
+
+(deftest admission-folds-condition-annotations-into-patient-conditions
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+        conditions [{:event :condition-onset :codes [a-concept] :citation a-citation}]
+        {:keys [events]} (engine/decide (Random. 1) 5 world0 "P1"
+                                        {:type :admission :location "Renal" :conditions conditions})
+        world1 (fold-events world0 events)
+        p (get-in world1 [:patients "P1"])]
+    (is (= [{:codes [a-concept] :citation a-citation :onset-t 5 :clinical-status :active}]
+           (:conditions p)))))
+
+(deftest admission-with-no-conditions-leaves-the-conditions-field-absent
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+        world1 (admit world0 0 "P1" "Renal")]
+    (is (not (contains? (get-in world1 [:patients "P1"]) :conditions)))))
+
+(deftest a-condition-end-annotation-on-the-same-encounter-resolves-the-matching-onset
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+        end-citation {:module "sinusitis" :state :resolved}
+        conditions [{:event :condition-onset :codes [a-concept] :citation a-citation}
+                    {:event :condition-end :codes [a-concept] :citation end-citation}]
+        {:keys [events]} (engine/decide (Random. 1) 5 world0 "P1"
+                                        {:type :admission :location "Renal" :conditions conditions})
+        world1 (fold-events world0 events)
+        [condition] (:conditions (get-in world1 [:patients "P1"]))]
+    (is (= :resolved (:clinical-status condition)))
+    (is (= 5 (:end-t condition)))
+    (is (= a-citation (:citation condition)) "the ONSET's own citation is retained, not overwritten")))
+
+(deftest observation-decide-folds-into-patient-observations
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+        world1 (admit world0 0 "P1" "Renal")
+        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1"
+                                        {:type :observation :codes [a-concept] :value 38.2 :unit "Cel"})
+        world2 (fold-events world1 events)]
+    (is (= [{:codes [a-concept] :t 10 :value 38.2 :unit "Cel"}]
+           (:observations (get-in world2 [:patients "P1"]))))))
+
+(deftest result-available-folds-every-analyte-into-patient-observations
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+        world1 (admit world0 0 "P1" "Renal")
+        {order-events :events schedule :schedule-followup}
+        (engine/decide (Random. 42) 10 world1 "P1" {:type :order :profile :cbc})
+        result-event (:result-event (first (:steps schedule)))
+        world2 (fold-events world1 (into order-events [result-event]))
+        observations (:observations (get-in world2 [:patients "P1"]))]
+    (is (= 5 (count observations)) "CBC's 5 analytes")
+    (doseq [{:keys [codes t value unit reference-range interpretation]} observations]
+      (is (= 1 (count codes)))
+      (is (= (:t result-event) t))
+      (is (some? value))
+      (is (some? unit))
+      (is (some? reference-range))
+      (is (some? interpretation)))))
+
+(deftest medication-order-then-end-folds-into-patient-medication-orders-and-closes-it
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+        world1 (admit world0 0 "P1" "Renal")
+        {order-events :events} (engine/decide (Random. 1) 10 world1 "P1"
+                                              {:type :medication-order :codes [a-concept] :citation a-citation})
+        world2 (fold-events world1 order-events)
+        opened (first (:medication-orders (get-in world2 [:patients "P1"])))
+        {end-events :events} (engine/decide (Random. 1) 20 world2 "P1"
+                                            {:type :medication-end :order-citation a-citation})
+        world3 (fold-events world2 end-events)
+        closed (first (:medication-orders (get-in world3 [:patients "P1"])))]
+    (is (= {:codes [a-concept] :citation a-citation :ordered-t 10 :status :active} opened))
+    (is (= :completed (:status closed)))
+    (is (= 20 (:ended-t closed)))))
+
+(deftest medication-end-with-no-matching-order-citation-leaves-medication-orders-untouched
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+        world1 (admit world0 0 "P1" "Renal")
+        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1" {:type :medication-end :order-citation a-citation})
+        world2 (fold-events world1 events)]
+    (is (nil? (:medication-orders (get-in world2 [:patients "P1"]))))))
+
+(deftest discharge-and-outpatient-visit-end-both-stamp-discharged-at
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")
+                          "P2" (engine/initial-patient "P2" "MRN000002")})
+        world1 (admit world0 0 "P1" "Renal")
+        {d-events :events} (engine/decide (Random. 1) 30 world1 "P1" {:type :discharge})
+        world2 (fold-events world1 d-events)
+        {v-events :events} (engine/decide (Random. 1) 0 world0 "P2" {:type :outpatient-visit})
+        world3 (fold-events world0 v-events)
+        {e-events :events} (engine/decide (Random. 1) 40 world3 "P2" {:type :outpatient-visit-end})
+        world4 (fold-events world3 e-events)]
+    (is (= 30 (:discharged-at (get-in world2 [:patients "P1"]))))
+    (is (= 40 (:discharged-at (get-in world4 [:patients "P2"]))))))
 
 ;; --- M5b Task 4: end-to-end module wiring (persona -> run-module ->
 ;; CompileTrajectory -> IR), composing with :pathways -----------------------

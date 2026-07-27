@@ -36,6 +36,13 @@ generating throwaway ones.
   `ZPI` payer Z-segment) — one `ground-truth.edn` (byte-identical
   either way), two `messages-*.txt` files that differ only on the
   declared dialect surfaces.
+- [`emit-state/`](emit-state/) — Milestone M6's own demo pair: the SAME
+  seed as `order-result/`, rendered once as HL7v2 (`--emit hl7`) and
+  once as FHIR R4 (`--emit fhir`) — two renderings, one truth, with
+  `Patient.id`/`Patient.identifier` resolving to the same patient-id/MRN
+  `ehr-testing-sim.emit-hl7` uses, and the same computed LOINC/abnormal-
+  flag truth visible in both an OBX segment and an `Observation`
+  resource.
 
 Each subdirectory holds:
 

@@ -70,6 +70,59 @@
             [malli.core :as m])
   (:import [java.util Random]))
 
+;; --- M6 Task 1: the clinical-content accumulator -------------------------
+;; EmitState's own snapshot-at-instant law (docs/sim-theory.edn) means the
+;; FHIR emitter touches NOTHING but folded state, never the log directly
+;; -- so Condition/Observation/MedicationRequest content has to actually
+;; LAND in the fold, the same way :location/:persona already do, rather
+;; than staying a log-only fact only ehr-testing-sim.check reads via
+;; `replay`. Each record below is intentionally the smallest shape that
+;; carries what the FHIR builders need, not a re-derivation of the whole
+;; originating event.
+
+(def ConditionRecord
+  "One condition, folded from a compiled encounter step's own
+  :conditions annotations (ehr-testing-sim.pathway/ConditionAnnotation,
+  ehr-testing-sim.compile-trajectory's own annotate-condition). Scope
+  note: only conditions attached to an OPERATIONAL encounter step
+  (:admission/:outpatient-visit) are folded here -- :registered's own
+  :pre-horizon-facts (registration-time, pre-run history) are a
+  documented v1 scope boundary, not yet accumulated (CDA-style: deferred
+  with a contract note, not silently dropped)."
+  [:map
+   [:codes {:optional true} [:maybe [:vector pathway/Concept]]]
+   [:citation pathway/Citation]
+   [:onset-t :int]
+   [:clinical-status [:enum :active :resolved]]
+   [:end-t {:optional true} :int]])
+
+(def ObservationRecord
+  "One observation -- either a GMF `:observation` event (:codes/:value/
+  :unit only) or a single analyte flattened out of a `:result-available`
+  event's own :results (order-profiles' richer shape: adds
+  :reference-range/:interpretation, the computed abnormal flag).
+  Optional fields absent rather than nil for the plain-GMF case -- 'no
+  invented fields' (M6 Task 1)."
+  [:map
+   [:codes [:vector pathway/Concept]]
+   [:t :int]
+   [:value {:optional true} number?]
+   [:unit {:optional true} :string]
+   [:reference-range {:optional true} [:map [:low number?] [:high number?]]]
+   [:interpretation {:optional true} [:enum :normal :low :high]]])
+
+(def MedicationOrderRecord
+  "One medication order, folded from :medication-order and closed by a
+  citation-matching :medication-end (the SAME position-independent,
+  citation-based resolution ehr-testing-sim.compile-trajectory already
+  uses throughout, extended to fold time instead of compile time)."
+  [:map
+   [:codes {:optional true} [:maybe [:vector pathway/Concept]]]
+   [:citation pathway/Citation]
+   [:ordered-t :int]
+   [:status [:enum :active :completed]]
+   [:ended-t {:optional true} :int]])
+
 (def PatientState
   "The engine's per-patient accumulator -- what folding `evolve` over a
   patient's own event subsequence produces (docs/patient-state-model.md
@@ -93,7 +146,14 @@
   from this schema, not deleting behavior -- payer now lives at
   `(:payer (:persona patient))`, sampled by Persona alongside every
   other demographic fact, per that document's own 'Persona subsumes it'
-  note."
+  note.
+
+  Milestone M6: `:discharged-at` mirrors `:admitted-at` (Encounter.period's
+  own end instant); `:conditions`/`:observations`/`:medication-orders`
+  (ConditionRecord/ObservationRecord/MedicationOrderRecord, above) are
+  the clinical-content accumulator EmitState renders from -- see this
+  namespace's own header comment just above `PatientState` for why this
+  content had to actually enter the fold rather than stay log-only."
   [:map
    [:patient-id :string]
    [:mrns [:set :string]]
@@ -109,6 +169,10 @@
    [:attending {:optional true} [:maybe :string]]
    [:persona {:optional true} [:maybe persona/Persona]]
    [:admitted-at {:optional true} [:maybe :int]]
+   [:discharged-at {:optional true} [:maybe :int]]
+   [:conditions {:optional true} [:vector ConditionRecord]]
+   [:observations {:optional true} [:vector ObservationRecord]]
+   [:medication-orders {:optional true} [:vector MedicationOrderRecord]]
    [:attributes {:optional true} [:map-of :keyword :any]]])
 
 (defn valid-patient?
@@ -617,10 +681,47 @@
                                                                    (= order-citation (:citation ev)))
                                                           i))
                                              ground-truth)))]
-    {:events [(merge {:event :medication-end :t t :active-mrn (:active-mrn patient) :order-event-id order-event-id
+    ;; M6 Task 1: `:order-citation` now rides the event itself, alongside
+    ;; the already-resolved `:order-event-id` -- `evolve`'s own fold-time
+    ;; medication-orders match needs the CITATION (position-independent),
+    ;; never the log-position index `:order-event-id` carries (meaningless
+    ;; to a fold that never sees the whole log).
+    {:events [(merge {:event :medication-end :t t :active-mrn (:active-mrn patient)
+                      :order-event-id order-event-id :order-citation order-citation
                       :participants [{:patient-id patient-id :role :subject}]}
                      (citation-fields step))]
      :advance 0}))
+
+(defn- fold-condition-annotation
+  "One step in folding a compiled encounter step's own :conditions
+  vector (ehr-testing-sim.pathway/ConditionAnnotation) into `conditions`
+  (a patient's own ConditionRecord vector) -- an onset OPENS a new
+  record; an end CLOSES the most recent still-:active record with the
+  SAME :codes (compile-trajectory's own annotate-condition already
+  resolves a condition-end's :codes from its referenced onset, so codes
+  match even though onset/end carry DIFFERENT citations -- one per
+  module state). `t` is the enclosing encounter event's own :t: this
+  project only ever compiles ONE encounter per patient (the single-
+  encounter-horizon scope, ADR-0007), so every condition annotation for
+  a patient rides that SAME event -- onset and end share one instant
+  rather than each carrying its own, a documented simplification of
+  this scope, not a claim that a condition's real onset and resolution
+  were simultaneous."
+  [t conditions {:keys [event codes citation]}]
+  (case event
+    :condition-onset
+    (conj (or conditions []) {:codes codes :citation citation :onset-t t :clinical-status :active})
+
+    :condition-end
+    (if-let [idx (last (keep-indexed (fn [i c] (when (and (= :active (:clinical-status c)) (= codes (:codes c))) i))
+                                     conditions))]
+      (update conditions idx assoc :clinical-status :resolved :end-t t)
+      conditions)))
+
+(defn- fold-conditions
+  [patient t annotations]
+  (cond-> patient
+    (seq annotations) (update :conditions #(reduce (partial fold-condition-annotation t) % annotations))))
 
 (defmulti evolve
   "Folds one ground-truth event into ONE patient it names:
@@ -638,22 +739,23 @@
   (assoc patient :persona persona))
 
 (defmethod evolve :admission
-  [patient {:keys [location home-ward attending t]}]
-  (assoc patient
-         :status :admitted
-         :class :inpatient
-         :home-ward home-ward
-         :location location
-         :attending attending
-         :admitted-at t))
+  [patient {:keys [location home-ward attending t conditions]}]
+  (-> patient
+      (assoc :status :admitted
+             :class :inpatient
+             :home-ward home-ward
+             :location location
+             :attending attending
+             :admitted-at t)
+      (fold-conditions t conditions)))
 
 (defmethod evolve :transfer
   [patient {:keys [location home-ward]}]
   (assoc patient :location location :home-ward home-ward))
 
 (defmethod evolve :discharge
-  [patient _event]
-  (assoc patient :status :discharged :location nil))
+  [patient {:keys [t]}]
+  (assoc patient :status :discharged :location nil :discharged-at t))
 
 ;; --- M2b: churn family evolves -------------------------------------------
 
@@ -666,8 +768,23 @@
   (assoc patient :home-ward home-ward :location location))
 
 (defmethod evolve :cancel-discharge
+  ;; M6 Task 2 finding: :class must be part of the reinstatement, not
+  ;; merely :home-ward/:location/:attending -- a degenerate but
+  ;; structurally legal churn sequence (cancel-admit against an
+  ;; ALREADY-DISCHARGED patient's original admission, `last-uncancelled-
+  ;; index` doesn't gate on current status) strips :class via cancel-
+  ;; admit's own dissoc; a following cancel-discharge that omitted :class
+  ;; would leave an :admitted patient with no class at all, while the
+  ;; wire (ehr-testing-sim.emit-hl7's own single-subject-message) always
+  ;; renders PV1-2 :inpatient for this event family regardless -- a real
+  ;; wire/truth disagreement the emitter-coherence property surfaced.
+  ;; :inpatient is the only value ever legal here: :discharge (unlike
+  ;; :outpatient-visit-end) is reachable only from an :admission, which
+  ;; always sets :class :inpatient (docs/patient-state-model.md).
   [patient {:keys [home-ward location attending]}]
-  (assoc patient :status :admitted :home-ward home-ward :location location :attending attending))
+  (-> patient
+      (assoc :status :admitted :class :inpatient :home-ward home-ward :location location :attending attending)
+      (dissoc :discharged-at)))
 
 (defmethod evolve :bed-swap
   [patient {:keys [swap]}]
@@ -696,8 +813,18 @@
   patient)
 
 (defmethod evolve :result-available
-  [patient _event]
-  patient)
+  ;; M6 Task 1: EVERY analyte in :results becomes its own ObservationRecord
+  ;; -- order-profiles' richer shape (reference-range/computed abnormal
+  ;; flag) is exactly what Observation.referenceRange/interpretation
+  ;; render from (EmitState, below); :concept (singular) wraps to a
+  ;; single-element :codes vector, the same CodeableConcept shape every
+  ;; other record here uses.
+  [patient {:keys [t results]}]
+  (update patient :observations (fnil into [])
+          (mapv (fn [{:keys [concept units value reference-range abnormal-flag]}]
+                  {:codes [concept] :t t :value value :unit units
+                   :reference-range reference-range :interpretation abnormal-flag})
+                results)))
 
 ;; --- M5b: :outpatient-visit / :outpatient-visit-end -----------------------
 ;; Item 5/7: :status re-uses the SAME values :admission/:discharge already
@@ -708,21 +835,54 @@
 ;; model.md's event-validity table, the conditional row this milestone adds).
 
 (defmethod evolve :outpatient-visit
-  [patient {:keys [attending]}]
-  (assoc patient :status :admitted :class :outpatient :attending attending))
+  [patient {:keys [attending t conditions]}]
+  (-> patient
+      (assoc :status :admitted :class :outpatient :attending attending)
+      (fold-conditions t conditions)))
 
 (defmethod evolve :outpatient-visit-end
-  [patient _event]
-  (assoc patient :status :discharged))
+  [patient {:keys [t]}]
+  (assoc patient :status :discharged :discharged-at t))
 
-;; --- M5b: :procedure/:observation/:medication-order/:medication-end --
-;; log-only facts, no PatientState field changes (same as :order-placed/
-;; :result-available's own evolve treatment).
+;; --- M5b: :procedure -- a log-only fact, no PatientState field change
+;; (Procedure is deliberately outside EmitState's own rendered resource
+;; set, M6 Task 1 -- "keep the resource set to what state actually
+;; holds," applied by never accumulating what nothing renders).
 
 (defmethod evolve :procedure [patient _event] patient)
-(defmethod evolve :observation [patient _event] patient)
-(defmethod evolve :medication-order [patient _event] patient)
-(defmethod evolve :medication-end [patient _event] patient)
+
+;; --- M6 Task 1: :observation/:medication-order/:medication-end now land
+;; in the clinical-content accumulator (this namespace's own header
+;; comment above PatientState) -- EmitState's Observation/MedicationRequest
+;; resources render from exactly these records, nothing re-derived from
+;; the log.
+
+(defmethod evolve :observation
+  [patient {:keys [t codes value unit]}]
+  (update patient :observations (fnil conj [])
+          (cond-> {:codes codes :t t} (some? value) (assoc :value value) unit (assoc :unit unit))))
+
+(defmethod evolve :medication-order
+  [patient {:keys [t codes citation]}]
+  (update patient :medication-orders (fnil conj [])
+          {:codes codes :citation citation :ordered-t t :status :active}))
+
+(defmethod evolve :medication-end
+  ;; Citation-based, position-independent resolution (this project's
+  ;; standing preference over a fragile index, docs/patient-state-
+  ;; model.md's deterministic-event-id section) -- matches
+  ;; `:order-citation` (the medication-end IR step's own field, riding
+  ;; the ground-truth event unchanged since `decide`, below) against the
+  ;; accumulator's own still-:active entry, never the ground-truth log's
+  ;; :order-event-id (a log POSITION, meaningless at fold time without
+  ;; the whole log in hand -- exactly what this fold is not supposed to
+  ;; need, M6 Task 1's own snapshot-at-instant law).
+  [patient {:keys [t order-citation]}]
+  (if-let [idx (when order-citation
+                 (last (keep-indexed (fn [i m] (when (and (= :active (:status m)) (= order-citation (:citation m))) i))
+                                     (:medication-orders patient))))]
+    (update-in patient [:medication-orders idx] assoc :status :completed :ended-t t)
+    patient))
 
 (defn replay
   "Replays `ground-truth` through `evolve`, returning a parallel seq of

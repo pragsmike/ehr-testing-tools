@@ -61,7 +61,30 @@
      way the two prior sessions each recorded. A future session with
      Python (or a WSL shell) available should actually run the
      regeneration once to confirm this argument rather than continue
-     trusting it by inspection alone. -->
+     trusting it by inspection alone.
+
+     M6 NOTE (EmitState, this session): docs/sim-theory.edn's
+     :emit-state flips :planned -> :built. No node, wire, or catalytic
+     input changes -- EmitState's own node and its Execute --
+     state-history --> EmitState wire were both ALREADY present in this
+     file (state-history was always a real output of Execute); the
+     diagram's own documented gap (this file's own "Verified in this
+     render" section, above) means built-vs-planned renders identically
+     regardless, so the ONLY change is docs/sim-theory-equations.txt's
+     own "# planned: EmitState" comment line, now removed. This session
+     ALSO removed two comment lines that were already stale BEFORE this
+     session started ("# planned: RunModules"/"# planned:
+     CompileTrajectory" -- both stages flipped :built at M5a/M5b,
+     several sessions ago; the comments were simply never cleaned up) --
+     a small, adjacent correction, not new drift this session introduced.
+     Python was NOT available in this session's own environment (the
+     python/python3 names on PATH resolve to the Windows Store's
+     install-shim, not a real interpreter) -- the same gap the M5b
+     session recorded for itself. This note records the argument for why
+     no structural change is expected, the same way that session's own
+     note did; a future session with Python (or WSL) available should
+     run the actual regeneration once to confirm, rather than continue
+     trusting inspection alone. -->
 
 # The simulator's resource theory — diagram
 

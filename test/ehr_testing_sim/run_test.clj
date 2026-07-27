@@ -22,6 +22,7 @@
   (:require [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
             [ehr-testing-sim.engine :as engine]
+            [ehr-testing-sim.pathway :as pathway]
             [ehr-testing-sim.run :as run]
             [ehr-testing-sim.result :as result]))
 
@@ -138,6 +139,92 @@
           message (first (:messages (:payload r)))]
       (is (result/ok? r))
       (is (str/includes? message "ALDRIC-EHR")))))
+
+;; --- M6 Task 0: the tools full-capability session's own reproduction --
+;; assigning one patient ordinal BOTH an authored encounter-opening
+;; pathway AND a GMF module used to reach engine/run and blow up as
+;; :self-check-failed only once the invariant catalog caught the
+;; resulting double-encounter -- a config authoring error wearing a
+;; "bug in us" category. Caught here, statically, before any simulation
+;; runs (ADR-0007's single-encounter-horizon makes the combination
+;; illegal by construction).
+
+(deftest run-command-rejects-a-patient-assigned-both-the-default-pathway-and-a-module
+  (testing "the plainest reproduction shape: no :pathways override at
+            all means EVERY ordinal gets the default (admission-
+            bearing) :pathway -- an explicit module assignment on any
+            ordinal therefore always conflicts"
+    (let [r (run/run-command {:seed 1 :patients 1
+                              :module-assignment [{:patient-ordinal 0 :module-id "sinusitis"}]})]
+      (is (result/rejected? r))
+      (is (= :incompatible-assignment (:category r)))
+      (let [[conflict] (:conflicts (:payload r))]
+        (is (= 0 (:patient-ordinal conflict)))
+        (is (= :pathway (:pathway-source conflict)))
+        (is (= :module-assignment (:module-source conflict)))))))
+
+(deftest run-command-rejects-explicit-per-ordinal-pathway-plus-module-conflict-but-not-the-disjoint-cohort-pattern
+  (testing "the tools full-capability fixture's own shape: ordinal 0 gets
+            BOTH an admission-bearing pathway and a module (illegal);
+            ordinal 1 gets an EMPTY pathway plus a module (legal, the
+            documented module-only-patient pattern) -- only ordinal 0
+            is reported"
+    (let [r (run/run-command {:seed 1 :patients 2
+                              :pathways [{:patient-ordinal 0 :pathway pathway/sample-admission-discharge}
+                                         {:patient-ordinal 1 :pathway {:name "module-only" :steps []}}]
+                              :module-assignment [{:patient-ordinal 0 :module-id "sinusitis"}
+                                                  {:patient-ordinal 1 :module-id "sinusitis"}]})]
+      (is (result/rejected? r))
+      (is (= :incompatible-assignment (:category r)))
+      (is (= [0] (mapv :patient-ordinal (:conflicts (:payload r)))))
+      (is (= :pathways (:pathway-source (first (:conflicts (:payload r)))))))))
+
+(deftest run-command-does-not-reject-the-legal-disjoint-cohort-pattern
+  (testing "an empty pathway plus a module, alone, is not a conflict --
+            proves the check doesn't over-reject the documented
+            module-only-patient pattern engine-test's own fixtures use"
+    (let [captured (atom nil)
+          stub-engine-run (fn [engine-opts] (reset! captured engine-opts) {:ground-truth [] :facility nil :providers nil})
+          r (run/run-command {:seed 1 :patients 1
+                              :pathways [{:pathway {:name "module-only" :steps []} :weight 1}]
+                              :module-assignment [{:module-id "sinusitis" :weight 1}]}
+                             {:engine-run-fn stub-engine-run})]
+      (is (result/ok? r))
+      (is (some? @captured)))))
+
+(deftest incompatible-assignment-check-does-not-misfire-on-the-plumbing-completeness-sentinels
+  (testing "sentinel-opts (above) carries a bare-keyword :module-assignment
+            and :pathways -- structurally invalid, so the check must
+            skip rather than throw or false-positive"
+    (let [captured (atom nil)
+          stub-engine-run (fn [engine-opts] (reset! captured engine-opts) {:ground-truth [] :facility nil :providers nil})
+          r (run/run-command sentinel-opts {:engine-run-fn stub-engine-run})]
+      (is (result/ok? r))
+      (is (some? @captured)))))
+
+;; --- M6 Task 1: --emit fhir --------------------------------------------
+
+(deftest run-command-emit-fhir-produces-end-of-run-bundles-per-patient
+  (let [r (run/run-command {:seed 42 :patients 2 :emit "fhir"})]
+    (is (result/ok? r))
+    (let [bundles (:fhir-bundles (:payload r))]
+      (is (= 2 (count bundles)))
+      (doseq [[patient-id bundle] bundles]
+        (is (string? patient-id))
+        (is (= "Bundle" (:resourceType bundle)))))))
+
+(deftest run-command-emit-fhir-honors-an-explicit-at-instant
+  (testing "--at queries an arbitrary instant, not only end-of-run"
+    (let [end (run/run-command {:seed 42 :patients 1 :emit "fhir"})
+          mid (run/run-command {:seed 42 :patients 1 :emit "fhir" :at 0})
+          pid (engine/patient-id-for 42 0)]
+      (is (not= (get (:fhir-bundles (:payload end)) pid)
+                (get (:fhir-bundles (:payload mid)) pid))
+          "an early instant sees less state than end-of-run"))))
+
+(deftest run-command-without-emit-carries-no-fhir-bundles-key
+  (let [r (run/run-command {:seed 42 :patients 1})]
+    (is (not (contains? (:payload r) :fhir-bundles)))))
 
 (deftest run-command-config-file-passthrough-carries-site-profile
   (testing ":site-profile is a data-heavy key with no CLI flag of its own --

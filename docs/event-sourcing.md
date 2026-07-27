@@ -101,9 +101,9 @@ This simulator emits both sides *naturally*, not as two independent
 rendering efforts that happen to agree, because the underlying engine
 already has the shape that makes both sides cheap: `hl7v2-stream`
 (`EmitHL7`, built) is the log rendered as messages; `state-document`
-(`EmitState`, planned — M6) will be `state-history` — itself a
-derived fold, per ADR-0008 — rendered as FHIR resources or CDA
-documents at a queried instant. The **emitter-coherence** law
+(`EmitState`, built — M6, FHIR R4 first, CDA deferred) is
+`state-history` — itself a derived fold, per ADR-0008 — rendered as
+FHIR resources at a queried instant. The **emitter-coherence** law
 (`docs/sim-theory.md`'s global laws) — replaying `hl7v2-stream`
 reconstructs `state-history`, and a FHIR snapshot at instant *t* agrees
 with the state implied by messages up to *t* — is not a hoped-for
@@ -112,6 +112,63 @@ direct consequence of both emitters consuming the same log-is-primitive
 architecture the domain already implied. This project didn't invent a
 clever trick to keep two output formats in sync; it made explicit a
 structure HL7v2 and FHIR were already, silently, two views of.
+
+## The coherence property, tested
+
+Milestone M6 is where the paragraph above stops being an architectural
+argument and becomes a property test — the first time this project has
+had two emitters to check against each other at all.
+`ehr-testing-sim.v2-replay` is an INDEPENDENT reconstruction of patient
+state, built the wire-consumer's way: parse a run's own emitted ER7
+stream (the same `org.clojars.cmiles74/clojure-hl7-parser` structures
+`EmitHL7` renders through) and fold it, message by message
+(`fold-message`), into state — never touching `ehr-testing-sim.engine`,
+the ground-truth log, or the RNG. This is the same shape `EmitState`'s
+own `snapshot-at` embodies from the log-fold side (ADR-0008's `replay`),
+mirrored from the wire side: two independent folds of two independent
+renderings, checked against each other rather than against a shared
+implementation either could quietly share a bug with.
+
+The comparison needs one more piece, because the two folds don't carry
+identical information by design — the wire is a lossy rendering of
+truth, on purpose (no PV1 field distinguishes a licensed bed from a
+surge slot; DG1/RXO segments for conditions and medications were never
+built). `ehr-testing-sim.v2-replay/project-to-wire-visible-fields` is
+the formal statement of exactly what's wire-visible and what isn't —
+sibling of `ehr-testing-sim.site-profile`'s own dialect-masking function
+(that one states what a *dialect* may touch; this one states what the
+wire carries *at all*, truth-only or not) — applied identically to both
+the log-folded state and the message-reconstructed state before they're
+compared, so "what the wire carries" is answered once, not maintained
+as two hand-tuned shapes that could drift from each other.
+
+The property
+(`ehr-testing-sim.v2-replay-test/emitter-coherence-reconstructed-state-matches-the-log-fold-at-every-boundary`,
+150 trials over pathways, order/result, and non-two-participant churn,
+plus a 150-trial sibling over module-driven trajectories) checks
+agreement at EVERY message boundary, not just end-of-run — the stronger
+claim `docs/sim-theory.md`'s own wording ("a snapshot at instant *t*
+agrees with the state implied by messages up to *t*") actually makes.
+One genuine finding surfaced along the way, not papered over: a
+degenerate but structurally legal churn sequence (a cancel-admit against
+an already-discharged patient's original admission, followed by a
+cancel-discharge) left ground truth's own `:class` field absent, while
+`EmitHL7`'s own PV1-2 rendering always asserts `:inpatient` for that
+message family regardless. The fix landed in `ehr-testing-sim.engine`'s
+own `:cancel-discharge` fold (restoring `:class` as part of what it
+reinstates) — the property caught a real gap in ground truth, and the
+fix closed the gap rather than loosening what the projection would
+tolerate.
+
+The cross-emitter id sub-law (`docs/sim-theory.md`'s global laws,
+originally a named gap this document's own determinism table below
+flagged as open) is checked the same way, from the other direction:
+`ehr-testing-sim.emit-state-test/fhir-patient-id-and-active-mrn-resolve-to-the-same-hl7-identity`
+asserts that a FHIR `Patient.id` is the same `patient-id`
+`ehr-testing-sim.engine/patient-id-for` assigns, and `Patient.identifier`
+carries the same active MRN that patient's own HL7 messages render as
+PID-3 — over 150 random runs, not merely by construction of one
+hand-picked demo.
 
 ## The upstream contrasts: what happens without this made explicit
 
@@ -240,7 +297,7 @@ checklist against this project's own defenses.
 | Unordered-collection iteration | Mostly defended (the engine's work queue is a `sorted-map`); gap closed this session — `emitter-order-independence-test` (`test/ehr_testing_sim/emitter_order_independence_test.clj`) guards that `emit-hl7` never depends on a map's or set's own iteration order when building segments |
 | Reference *date* vs full timestamp | Defended: relative seconds (ADR-0011) plus an explicit `:reference-date` and a fixed `:utc-offset`, both pinned in the run manifest, never a bare current-time reference |
 | Locale/OS differences | Partially defended (locale/timezone recorded in the manifest); revisit once CI exists (`.agents/plans/roadmap.md`'s CI trigger) |
-| Cross-format id divergence (CDA vs FHIR vs CSV) | **Gap, open**: "the same event ids and patient ids across every emitter" is not yet a named law — see the cross-emitter id sub-law noted alongside `sim-theory.md`'s emitter-coherence law, testable once EmitState (M6) gives this project a second emitter to check the first against |
+| Cross-format id divergence (CDA vs FHIR vs CSV) | Defended for HL7v2/FHIR, property-tested: `Patient.id`/`Patient.identifier` resolve to the SAME `patient-id`/active-mrn `EmitHL7` uses (`sim-theory.md`'s cross-emitter id sub-law, `emit-state-test/fhir-patient-id-and-active-mrn-resolve-to-the-same-hl7-identity`, 150 trials). CDA is out of scope until it's built (EmitState's own format-dispatch contract note) — not a gap in what's landed, a boundary of what hasn't |
 
 The structural defense behind the first four rows is already argued
 elsewhere in this document (`:patient-id`/`:mrns` generation, the

@@ -106,7 +106,11 @@ interview:
           {:id :medicaid   :name "State Medicaid"  :type :medicaid   :weight 15}
           {:id :self       :name "Self-pay"        :type :self-pay   :weight 5}]
 
- ;; clinical content: weighted scenarios and/or disease modules
+ ;; clinical content: weighted scenarios and/or disease modules.
+ ;; A patient may have a pathway OR a module, never both -- a pathway
+ ;; that admits/visits AND a module (which also opens its own
+ ;; encounter) would double-book one patient's single visit and is
+ ;; rejected at config time, before a run ever starts.
  :pathways [{:pathway "admit-cbc-discharge" :weight 3}
             {:pathway "simple-admission"    :weight 7}]
  :modules ["sinusitis"]
@@ -165,6 +169,19 @@ by construction. Two practices keep it that way on your side: invent
 provider names rather than listing your actual staff, and when
 tuning realism, provide *summary statistics* (rates, mixes) — never
 excerpts of your real feed.
+
+## What if synthetic data ever reached a real system — how would we find and remove it?
+
+You wouldn't have to hunt for it; you can list it exactly. The same
+config-plus-seed that generated a corpus regenerates it byte-for-byte, so the
+complete inventory of every identifier it ever contained (MRNs, visit numbers,
+message control IDs, FHIR resource ids) is always recoverable — feed that list
+to your system's purge tooling. On the FHIR side, every resource additionally
+carries the standard HTEST "test data" security label and a generator tag, so
+it's searchable and bulk-deletable by query. On the HL7v2 side, synthetic
+identifiers are deliberately fingerprinted (invalid-range SSNs, documented MRN
+and control-ID formats). And the write-safety gates exist so this question stays
+hypothetical.
 
 ## What can't it do yet? (Honest list)
 

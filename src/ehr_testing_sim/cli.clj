@@ -30,6 +30,7 @@
    :patients {:coerce :long}
    :arrival-gap {:coerce :long}
    :emit {:coerce :string}
+   :at {:coerce :long}
    :reference-date {:coerce :string}
    :utc-offset {:coerce :string}
    :warm-up-seconds {:coerce :long}
@@ -50,7 +51,8 @@
      :flags [{:flag "--seed" :doc "RNG seed (required; same config+seed => identical output)"}
              {:flag "--patients" :doc "number of patients" :default "1"}
              {:flag "--arrival-gap" :doc "max minutes between arrivals" :default "60"}
-             {:flag "--emit" :doc "render messages into the payload (\"hl7\" for ADT^A01/A03)"}
+             {:flag "--emit" :doc "render output into the payload (\"hl7\" for ADT/ORM/ORU messages, \"fhir\" for a Bundle per patient)"}
+             {:flag "--at" :doc "with --emit fhir: seconds from run start to snapshot (default: end of run)"}
              {:flag "--reference-date" :doc "ISO date anchoring HL7 timestamps (pinned input)" :default "2024-01-01"}
              {:flag "--utc-offset" :doc "fixed ISO offset suffixed onto HL7 timestamps (pinned input, no DST)" :default "+00:00"}
              {:flag "--warm-up-seconds" :doc "events before this mark :warm-up true (log stays complete)" :default "0"}

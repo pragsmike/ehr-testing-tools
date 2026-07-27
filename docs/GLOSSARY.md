@@ -31,8 +31,11 @@ simulation will do, not what a clinician should do.
 **Resource.** *Here (in sim-theory documents):* a typed value flowing
 between pipeline stages in the resource-theory notation — "the wires"
 in the diagrams. *In FHIR:* a Resource is a standardized data object
-(Patient, Encounter, Observation). When M6's FHIR emitter documentation
-says "renders resources," it means FHIR Resources; when
+(Patient, Encounter, Observation) — M6's `ehr-testing-sim.emit-state`
+renders exactly six: Patient, Encounter, Condition, Observation,
+MedicationRequest, Coverage, each only when the folded state actually
+holds the fact it would carry. When this project's own docs say
+"renders resources," they mean FHIR Resources; when
 [sim-theory.md](sim-theory.md) says "resource," it means a wire.
 
 **Profile.** *Here:* a **site profile** — configuration describing one
@@ -135,10 +138,12 @@ truth-invariant — MSH identity, code-table overrides, Z-segments);
 naming baked into bed IDs). See [site-profiles.md](site-profiles.md).
 
 **Emitter.** A pure function from the ground-truth log (or state
-history) to a wire format. HL7v2 messages are the first emitter;
-FHIR and CDA are planned emitters over the same truth. "Formats are
-just emitters of the patient state machine" is this project's founding
-sentence.
+history) to a wire format. HL7v2 messages (`EmitHL7`) and FHIR
+resources (`EmitState`, M6) are both built emitters over the same
+truth, property-tested against each other (see **coherence property**,
+below); CDA is a still-planned emitter, deferred with its own contract
+note rather than stubbed. "Formats are just emitters of the patient
+state machine" is this project's founding sentence.
 
 **Facts register.** [notes/facts-register.md](../notes/facts-register.md):
 externally verifiable claims (versions, licenses, code
@@ -345,6 +350,22 @@ observation that HL7v2 feeds *are* event streams and FHIR resources
 *are* materialized views, so hospital integration has been doing this
 for decades without the name.
 
+**State-document.** This project's name (`sim-theory.edn`'s own
+`EmitState` stage) for a snapshot rendering of `state-history` at one
+instant — a FHIR Bundle today, a CDA document once that arm is built.
+Contrast **event**: a state-document describes what's true *now*
+(or at a queried *t*); an event describes what *happened*.
+
+**Coherence property** (also: emitter coherence). The property test
+(M6) that two independently-built emitters of the same ground truth —
+`EmitHL7`'s messages and `EmitState`'s FHIR snapshots — never
+disagree: replaying a run's own emitted messages reconstructs the same
+state its FHIR snapshot shows, at every message boundary. See
+[event-sourcing.md](event-sourcing.md#the-coherence-property-tested)
+for the mechanism (`ehr-testing-sim.v2-replay`) and
+[sim-theory.md](sim-theory.md)'s own global-laws section for the law's
+formal statement.
+
 **Red → green (test-first).** House discipline (ADR-0006 in tools,
 ADR-0004 here): a failing test is written and *observed to fail*
 before the code that makes it pass. Session reports carry the
@@ -381,8 +402,11 @@ register for what our parser dependency does and doesn't handle.
 
 **FHIR.** Fast Healthcare Interoperability Resources — HL7's modern
 REST/JSON standard. State-based: Resources describe current state.
-Planned emitter (M6), with the Blaze server as the ecological test
-target.
+Emitter landed at M6 (`ehr-testing-sim.emit-state`, R4 JSON) — a Bundle
+of Patient/Encounter/Condition/Observation/MedicationRequest/Coverage
+per patient snapshot; CDA is the format dispatch's other, still-deferred
+arm. The Blaze server is the ecological test target
+(`test/ehr_testing_sim/blaze_integration_test.clj`, skip-when-absent).
 
 **HL7 (organization) / HL7v2.** Health Level Seven International, the
 standards body; and its version-2 messaging standard (1980s-vintage,
@@ -520,7 +544,9 @@ exactly what came from where.
 ER7 parse/emit structures. Known limitation (no escape handling)
 receipted in the facts register with this repo's workaround.
 **Blaze** (samply). An open-source FHIR server, written in Clojure —
-M6's planned ecological target for the FHIR emitter.
+M6's ecological target for the FHIR emitter
+(`test/ehr_testing_sim/blaze_integration_test.clj`; unreachable ->
+clean skip, no dependency on it being present).
 **Mirth Connect.** A widely-deployed open-source interface engine; a
 representative real-world consumer.
 **ehr-testing-guide / ehr-testing-tools.** The sibling repositories:

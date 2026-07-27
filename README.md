@@ -63,28 +63,30 @@ flowchart TD
     EX --> GT[(Ground-truth log)]
     GT --> CK[Check]
     GT --> EH[EmitHL7]
-    GT -.-> ES[EmitState / FHIR]
+    EX --> ES[EmitState / FHIR]
     CAL[Calibrate] -.-> IC
     classDef built fill:#1b5e20,color:#e8f5e9
     classDef next fill:#e65100,color:#fff3e0
     classDef later fill:#424242,color:#eeeeee
-    class P,RM,CT,AP,IR,IC,EX,GT,CK,EH built
-    class ES next
+    class P,RM,CT,AP,IR,IC,EX,GT,CK,EH,ES built
     class CAL later
 ```
 
-Everything green is built and property-tested; **EmitState (FHIR
-snapshots) is next (M6)**; Calibrate is future. Full formal pipeline:
-[docs/sim-theory-diagram.md](docs/sim-theory-diagram.md); plan:
-[.agents/plans/roadmap.md](.agents/plans/roadmap.md).
+Everything green is built and property-tested — **EmitState (FHIR R4
+snapshots) landed at M6**; **Calibrate is the one stage left (next)**.
+Full formal pipeline: [docs/sim-theory-diagram.md](docs/sim-theory-diagram.md);
+plan: [.agents/plans/roadmap.md](.agents/plans/roadmap.md).
 
 ## What makes it different
 
 **The event log is the truth; formats are renderings.** An immutable,
 replayable event log is the single source; patient state is a fold of
-it; HL7v2 messages render the events and FHIR will render the
-snapshots — mirroring what the standards themselves are (v2 feeds
-*are* event streams; FHIR *is* the materialized view). See
+it; HL7v2 messages render the events and FHIR resources render the
+snapshots — mirroring what the standards themselves are (v2 feeds *are*
+event streams; FHIR *is* the materialized view), and now property-tested
+against each other, not merely asserted: replaying a run's own messages
+reconstructs the same state its FHIR snapshot shows, at every message
+boundary, over hundreds of randomized runs. See
 [docs/event-sourcing.md](docs/event-sourcing.md), including its
 honest scope: this architecture buys reproducibility, corrections,
 and audit — clinical realism comes from content and calibration, not
@@ -128,9 +130,12 @@ never alters ground truth. See
   simulator's own 850+ assertions missed — which is the point.
 - **Laws are property-tested, not asserted.** Determinism,
   log↔state consistency, message↔truth derivability, occupancy
-  coherence, churn's clinical-content preservation — each holds
-  across hundreds of randomized runs per property, and these tests
-  have repeatedly caught real bugs.
+  coherence, churn's clinical-content preservation, and — as of
+  Milestone M6 — emitter coherence itself (HL7v2 and FHIR agree at
+  every message boundary, replayed independently from the wire) — each
+  holds across hundreds of randomized runs per property, and these
+  tests have repeatedly caught real bugs. Every theory stage but
+  Calibrate is now both built and property-tested.
 - **Claims carry receipts.** Versions, licenses, verified codes, and
   upstream findings live in a dated facts register; the docs include
   an independently sourced research review that *tempers* our own
@@ -147,12 +152,23 @@ never alters ground truth. See
 ```bash
 clojure -X:test                                   # the suite
 clojure -M:cli run --seed 42 --patients 5 --emit hl7
+clojure -M:cli run --seed 42 --patients 5 --emit fhir              # FHIR R4 Bundle per patient (M6)
 clojure -M:cli run --seed 42 --patients 5 | clojure -M:cli check   # self-check, exit 0
 clojure -M:cli run --seed 7 --config my-site.edn --churn --emit hl7  # modules, profiles, churn
 clojure -M:cli help
 ```
 
-Worked examples with real output: [docs/demos/](docs/demos/).
+Worked examples with real output: [docs/demos/](docs/demos/), including
+a same-seed HL7v2/FHIR pair (`docs/demos/emit-state/`) — one patient's
+final v2 message next to their FHIR `Patient`/`Observation` resources
+from the same instant, ids resolving across both. To check FHIR output
+against a real FHIR server (`samply/blaze`, a same-language Clojure
+implementation — `test/ehr_testing_sim/blaze_integration_test.clj`):
+
+```bash
+docker run -p 8080:8080 samply/blaze:latest
+```
+
 Unfamiliar term (ours or the domain's):
 [docs/GLOSSARY.md](docs/GLOSSARY.md). Which document to read for your
 role: [docs/README.md](docs/README.md).
@@ -182,8 +198,8 @@ one seed away.
 
 ## Status
 
-Pre-release; MIT licensed; no PHI anywhere, by construction. Built
-end-to-end through generated clinical trajectories; the FHIR emitter
-(M6) lands next, followed by a documentation alignment pass. Design
-lineage and decision history: [docs/](docs/), `notes/ADRs.md`, and
-`.agents/memory/architecture.md`.
+Pre-release; MIT licensed; no PHI anywhere, by construction. The FHIR
+emitter landed at Milestone M6, end to end through the emitter-coherence
+property; a documentation alignment pass is next, then Calibrate — the
+one theory stage left unbuilt. Design lineage and decision history:
+[docs/](docs/), `notes/ADRs.md`, and `.agents/memory/architecture.md`.

@@ -670,27 +670,120 @@ outpatient traffic and module-driven ORU/ADT content) — the
 tools-side review procedure named as genuinely due at the site-profiles
 milestone remains genuinely due, more so now.
 
-## M6 — EmitState (FHIR snapshots first); emitter-coherence property
+## M6 — EmitState (FHIR snapshots first); emitter-coherence property — **landed**
 
-Lands **EmitState** (`:planned`): state-document rendering from
-`state-history`, FHIR resources before CDA. This is also the natural
-point to resolve `sim-theory.md`'s open question #3 — whether
-`state-history` is primitive or derived from `ground-truth-log` —
-since EmitState existing is exactly the precondition that question's
-own deferral names. **Upstream-demand citation**
+Lands **EmitState** (`:planned` → `:built`, `ehr-testing-sim.emit-state`):
+FHIR R4 resources (JSON, `clojure.data.json` — no new dep) rendered from
+`state-history`, CDA deferred with its own contract note (the format
+dispatch's other arm, no XML shell, no half-finished document type).
+`sim-theory.md`'s open question #3 (state-history primitive or derived)
+was already resolved at ADR-0008; EmitState existing is what makes that
+resolution load-bearing rather than merely stated — `snapshot-at`
+consumes `ehr-testing-sim.engine/replay`'s own fold output directly, no
+independent log access. **Upstream-demand citation**
 (`docs/research/SimHospital-Synthea-limitations-considered.md` §5.3):
 SimHospital issue #11, a 2024 user requesting FHIR output because
 Synthea already had it and it was easier to use — the issue stayed
-open through the project's archival, so this milestone answers a real,
-still-unmet request rather than a hypothetical one.
+open through the project's archival; this milestone answers a real,
+still-unmet request rather than a hypothetical one. 388 tests / 1015
+assertions green (up from the M5b baseline 350/863), coverage
+96.39%/98.34% (up from 96.37%/98.30% — flat, no regression to justify).
+The pinned regression fixture
+(`test/ehr_testing_sim/fixtures/pinned_seed_42_patients_5.edn`) is
+UNTOUCHED — emission is rendering; nothing this milestone changed
+touches ground-truth content or RNG order (confirmed, not merely
+assumed: the fixture's own test only inspects `:ground-truth`, and
+every engine-side change this milestone made — the clinical-content
+accumulator, the config-conflict check — is either RNG-free or gated
+behind config keys the fixture doesn't set).
 
-Co-landing invariants: snapshot-at-instant (a state-document is a
-pure function of `state-history` at a queried instant, no access to
-the log, engine, or RNG); the cross-emitter **emitter-coherence**
-property — replaying `hl7v2-stream` reconstructs `state-history`, and
-a FHIR snapshot at instant *t* agrees with the state implied by
-messages up to *t* — becomes a real property test for the first time
-once there are two emitters to check against each other.
+**Task 0, landed first: the config-reachable `:self-check-failed`,
+recategorized.** The tools full-capability session (that repo's own
+ADR-0015) found that assigning one patient ordinal BOTH an authored
+encounter-opening pathway and a GMF module reached `engine/run` and
+blew up as `:self-check-failed` only once the invariant catalog caught
+the resulting double encounter — a config authoring error wearing a
+"bug in us" category. `ehr-testing-sim.run/incompatible-assignments`
+now catches this STATICALLY, before `engine/run` (and its RNG) ever
+starts: `:rejected :incompatible-assignment`, naming the conflicting
+ordinal and both sources. Purely structural (no RNG, no module content
+resolved — every vendored module is encounter-bearing by ADR-0013's own
+curation criterion, so any module assignment conflicts with any
+encounter-opening pathway regardless of which specific module); guarded
+by each config's own schema validity so the plumbing-completeness
+test's deliberately-malformed sentinel opts are skipped, not
+misdiagnosed. `docs/simulate-your-facility.md`'s config section gains a
+one-line note (pathway cohorts and module cohorts are per-patient
+disjoint).
+
+**Task 1: EmitState's own shape.** `ehr-testing-sim.engine/PatientState`
+gains a clinical-content accumulator (`:conditions`/`:observations`/
+`:medication-orders`, plus `:discharged-at` mirroring `:admitted-at`) —
+the concrete reason the snapshot-at-instant law is satisfiable at all:
+Condition/Observation/MedicationRequest content was previously a
+log-only fact (`evolve`'s own no-op treatment of `:observation`/
+`:medication-order`/`:medication-end`/condition annotations), and
+EmitState may touch nothing but folded state. `patient-bundle` renders
+exactly six resource types (Patient, Encounter, Condition, Observation,
+MedicationRequest, Coverage) — no Procedure, deliberately, "keep the
+resource set to what state actually holds" applied by never
+accumulating what nothing renders. Cross-emitter ids: `Patient.id` is
+the same `patient-id` `ehr-testing-sim.emit-hl7` uses internally,
+`Patient.identifier` carries the same active-mrn PID-3 renders —
+property-tested
+(`emit-state-test/fhir-patient-id-and-active-mrn-resolve-to-the-same-hl7-identity`,
+150 trials). `sim run --emit fhir [--at <seconds>]` (default: end of
+run) is the CLI surface, the same verb grammar `--emit hl7` already
+established; no new engine-side config key (purely emit-time).
+
+**Task 2, the session's own central obligation: the emitter-coherence
+property, made real.** `ehr-testing-sim.v2-replay` is an INDEPENDENT
+reconstruction of patient state — parses a run's own emitted ER7
+stream (the same parser `EmitHL7` renders through) and folds it,
+message by message, into state, never touching the engine, the log, or
+the RNG. `project-to-wire-visible-fields` — a deliverable in its own
+right, sibling of `ehr-testing-sim.site-profile`'s own dialect-masking
+function — is the formal statement of what the wire actually carries;
+applied identically to both sides of the comparison, so "what the wire
+carries" is answered once. The property
+(`emitter-coherence-reconstructed-state-matches-the-log-fold-at-every-boundary`,
+150 trials over pathways/order-result/non-two-participant churn, plus a
+150-trial sibling over module-driven trajectories) checks agreement at
+EVERY message boundary, the stronger claim the theory's own wording
+makes. Bootstrap-from-empty (a patient's first message self-initializes
+the accumulator) is asserted directly. **Documented scope boundary, not
+silent:** bed-swap (A17) and merge (A40) are genuinely two-participant
+messages whose own wire-identity reconstruction (a shared MRN
+reassigned mid-run) is real, separate engineering scope — excluded from
+this property's own churn generator, the same "deferred with a contract
+note" treatment EmitState's own CDA arm gets.
+
+**One genuine finding, fixed, not papered over.** The property surfaced
+a real gap in ground truth: a degenerate but structurally legal churn
+sequence (cancel-admit against an already-discharged patient's original
+admission, then cancel-discharge) left `:class` absent from folded
+state, while `EmitHL7`'s own PV1-2 rendering always asserts `:inpatient`
+for that message family regardless. `ehr-testing-sim.engine/evolve`'s
+own `:cancel-discharge` method now restores `:class` as part of its
+reinstatement — the fix closes the gap in ground truth; the projection
+was never loosened to tolerate it.
+
+**Task 3: the ecological loop.** `test/ehr_testing_sim/blaze_integration_test.clj`
+(skip-when-absent, the same pattern `ehr-testing-tools`' own
+`sim-harness/available?` establishes) POSTs a run's own end-of-run
+Bundle(s) to a locally reachable `samply/blaze` and round-trips Patient
+fields when one is present; unreachable, a clean skip with a
+docker-run one-liner. Uses `java.net.HttpURLConnection` (JDK 1.1+), not
+`java.net.http.HttpClient` (JDK 11+) — this session's own JDK 8 runtime
+doesn't carry the latter (`notes/facts-register.md` F13).
+
+**Note for the author: the tools-side gate-loop baseline review needs
+NO new delta from this session** — EmitState adds no `hl7v2-stream`
+messages (a pure rendering addition over an existing catalytic-free
+wire, no engine step type, no message-type-registry entry), so the
+sibling repo's own committed gate baselines are unaffected by this
+milestone, unlike every milestone before it that changed message
+shape. Said explicitly so the author needn't wonder.
 
 ## Later / triggers
 
