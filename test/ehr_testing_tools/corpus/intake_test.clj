@@ -12,6 +12,7 @@
             [ehr-testing-tools.corpus.operators :as operators]
             [ehr-testing-tools.corpus.mutate :as mutate]
             [ehr-testing-tools.corpus.intake :as intake]
+            [ehr-testing-tools.corpus.manifest :as manifest]
             [ehr-testing-tools.corpus.simhospital-corpus :as simhospital])
   (:import [java.io File]))
 
@@ -176,3 +177,97 @@
       (is (= "2026-07-26" (:date intake-record)))
       (is (= (:catalog-hash intake-record)
              (digest/sha256-file (io/file out "catalog.edn")))))))
+
+;; ---- manifest sidecars (ADR-0014): an optional manifest.edn dropped
+;; alongside foreign-corpus files, directory-scoped -- every file in the
+;; SAME directory as a validating manifest.edn (including manifest.edn's
+;; own catalog entry, no special-casing) gains :provenance carrying the
+;; manifest's identity fields. Absent or invalid sidecars leave the
+;; catalog byte-identical to today; an invalid one is recorded as an
+;; intake-record :note, never an error -- enrich-kind, per this
+;; namespace's own law. ----
+
+(defn- sample-manifest
+  [seed]
+  (manifest/build-v1-1
+   {:stage :simulated
+    :generator {:name "ehr-testing-sim" :version "0.0.0-SNAPSHOT"
+                :sha256 (apply str (repeat 64 "0"))}
+    :seeds {:primary seed}
+    :engine-params {}
+    :config {:path "config.edn" :sha256 (apply str (repeat 64 "1"))}
+    :invocation {:command "clojure"}
+    :environment {:locale "en_US" :timezone "UTC" :jvm-version "17.0.20"}}))
+
+(deftest intake-attaches-provenance-from-valid-manifest-sidecar-test
+  (let [src (temp-dir)
+        out (temp-dir)
+        mf (sample-manifest 42)
+        _ (spit (io/file src "patient.json") sample-bundle-json)
+        _ (spit (io/file src "manifest.edn") (pr-str mf))
+        r (intake/intake! {:source-dir src :source-label "acme"
+                            :out out :received "2026-07-24"})
+        catalog (:catalog (:payload r))
+        entry (first (filter #(= "patient.json" (:path %)) catalog))]
+    (is (result/ok? r))
+    (is (every? intake/valid-catalog-entry? catalog))
+    (is (= (select-keys mf [:schema-version :stage :generator :seeds])
+           (:provenance entry)))))
+
+(deftest intake-manifest-sidecar-provenance-covers-its-own-catalog-entry-test
+  (let [src (temp-dir)
+        out (temp-dir)
+        mf (sample-manifest 7)
+        _ (spit (io/file src "patient.json") sample-bundle-json)
+        _ (spit (io/file src "manifest.edn") (pr-str mf))
+        r (intake/intake! {:source-dir src :source-label "acme"
+                            :out out :received "2026-07-24"})
+        catalog (:catalog (:payload r))
+        manifest-entry (first (filter #(= "manifest.edn" (:path %)) catalog))]
+    (is (= (select-keys mf [:schema-version :stage :generator :seeds])
+           (:provenance manifest-entry))
+        "the sidecar's own catalog entry is not special-cased -- it gets :provenance too")))
+
+(deftest intake-invalid-manifest-sidecars-are-notes-not-errors-and-catalog-is-byte-identical-test
+  (let [src (temp-dir)
+        out (temp-dir)
+        _ (.mkdirs (io/file src "malformed"))
+        _ (.mkdirs (io/file src "schema-invalid"))
+        _ (spit (io/file src "malformed" "a.json") sample-bundle-json)
+        _ (spit (io/file src "malformed" "manifest.edn") "{:not valid edn ]")
+        _ (spit (io/file src "schema-invalid" "b.json") sample-bundle-json)
+        _ (spit (io/file src "schema-invalid" "manifest.edn")
+                (pr-str {:schema-version "1.1" :stage :simulated}))
+        r (intake/intake! {:source-dir src :source-label "acme"
+                            :out out :received "2026-07-24"})
+        {:keys [catalog intake-record]} (:payload r)
+        a-entry (first (filter #(= "malformed/a.json" (:path %)) catalog))
+        b-entry (first (filter #(= "schema-invalid/b.json" (:path %)) catalog))]
+    (is (result/ok? r))
+    (is (every? intake/valid-catalog-entry? catalog))
+    (doseq [entry [a-entry b-entry]]
+      (is (not (contains? entry :provenance)))
+      (is (= #{:id :path :format :layer :source :received} (set (keys entry)))
+          "byte-identical to a sidecar-less catalog entry"))
+    (is (intake/valid-intake-record? intake-record))
+    (is (= 2 (count (:notes intake-record))))
+    (is (= #{:invalid-manifest-sidecar} (set (map :type (:notes intake-record)))))
+    (is (= #{"malformed" "schema-invalid"} (set (map :dir (:notes intake-record)))))))
+
+(deftest intake-manifest-sidecar-is-scoped-to-its-own-directory-test
+  (let [src (temp-dir)
+        out (temp-dir)
+        mf (sample-manifest 1)
+        _ (.mkdirs (io/file src "nested"))
+        _ (spit (io/file src "manifest.edn") (pr-str mf))
+        _ (spit (io/file src "top.json") sample-bundle-json)
+        _ (spit (io/file src "nested" "deep.json") sample-bundle-json)
+        r (intake/intake! {:source-dir src :source-label "acme"
+                            :out out :received "2026-07-24"})
+        catalog (:catalog (:payload r))
+        top-entry (first (filter #(= "top.json" (:path %)) catalog))
+        nested-entry (first (filter #(= "nested/deep.json" (:path %)) catalog))]
+    (is (some? (:provenance top-entry))
+        "top.json shares its directory with manifest.edn")
+    (is (not (contains? nested-entry :provenance))
+        "a nested directory without its own manifest.edn does not inherit the parent's")))

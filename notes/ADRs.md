@@ -879,3 +879,73 @@ test's current red state is carried forward as an open, sim-side fix
 (the triage list this session's own report closes with), not silently
 tracked to green by editing `ManifestV1_1`.
 **Status.** Accepted (author-directed), 2026-07-26.
+
+---
+## ADR-0014 — Intake learns optional manifest sidecars, directory-scoped and generator-agnostic
+**Context.** ADR-0012's own `[correction]` recorded that `corpus.intake`
+never reads a manifest — it catalogs every file by content hash and
+sniffed format only, so a `manifest.edn` dropped alongside a corpus is
+catalogued as `:unknown` like any other file, and none of its provenance
+survives into the catalog. ADR-0013 clause 3 exercised this directly
+rather than merely citing the correction: the M3 `sim_intake_test.clj`
+trial ran `ehr corpus intake` over a real sim run (messages plus its own
+`manifest.edn`) and confirmed the gap as a **finding**, not a bug in
+intake as it then stood — `ehr-testing-sim`'s manifest is shaped for
+exactly this purpose (`ehr-testing-sim.manifest`'s own docstring: "so
+`ehr corpus intake` can ingest a sim run"), and the mismatch is real
+impedance, not a misunderstanding on either side. The author has now
+ratified closing it: intake should read an optional manifest sidecar and
+attach its provenance to the catalog entries it describes.
+**Decision.** `corpus.intake` gains sidecar support, directory-scoped:
+for a file being catalogued, intake looks for `manifest.edn` in that
+file's own immediate parent directory only — never an ancestor directory,
+never inherited by a subdirectory that lacks its own copy. This matches
+the shape a producer like sim actually emits (one flat directory of
+output files plus one `manifest.edn` dropped beside them) without adding
+any directory-tracking machinery beyond what `source-files`/`catalog-entry`
+already compute per file. When the sidecar parses and validates against
+`corpus.manifest/ManifestV1_1`, every catalog entry for a file in that
+same directory — `manifest.edn`'s own entry included, deliberately not
+special-cased, since a filename branch would exist only to justify itself
+— gains `:provenance`: `{:schema-version :stage :generator :seeds}`,
+`select-keys` of the validated manifest, `:schema-version` typed as a
+plain string rather than the schema's `[:= "1.1"]` literal so a future
+schema version doesn't need a matching change here. An absent or invalid
+sidecar leaves the catalog byte-identical to today; an invalid one
+(malformed EDN, or well-formed EDN that fails `ManifestV1_1`, with
+malli's own `explain` as the reason) is recorded as one dedup'd
+`:invalid-manifest-sidecar` note per affected directory on the
+`IntakeRecord`, never an error and never a rejected intake run —
+`corpus.intake`'s own enrich-kind law (adds fields, never alters,
+already stated in its module docstring) governs invalid input the same
+way it governs absent input.
+
+The implementation is generator-agnostic by construction: nothing in
+`corpus.intake` names sim or any other producer. Any pipeline that drops
+a `ManifestV1_1`-shaped `manifest.edn` beside its output gets the same
+treatment; sim is this feature's first producer, not a parameter to its
+design.
+**Rejected.** Ancestor-directory inheritance (a subdirectory picking up a
+parent directory's sidecar) — no current producer emits nested output
+needing it, and it would make provenance attribution ambiguous the moment
+two sibling subdirectories both wanted their own manifest; deferred until
+a real producer needs it, not spelled out speculatively. Per-file manifest
+overrides (a sidecar naming which specific files it describes) — the
+one-manifest-per-directory shape already matches every producer this repo
+knows about, and a per-file join is unbuilt complexity for a case nobody
+has yet. Treating an invalid sidecar as an intake error — would turn a
+foreign pipeline's own manifest bug into a blocked intake run for data
+that is otherwise perfectly catalogable; the note is exactly enough signal
+without that cost.
+**Consequence.** `CatalogEntry` gains an optional `:provenance` field and
+`IntakeRecord` gains an optional `:notes` field (both additive — a
+sidecar-less intake run, which is every run before this session and the
+overwhelming majority after it, produces byte-identical catalog entries
+and an `IntakeRecord` with no `:notes` key at all). `sim_intake_test.clj`
+is updated in the same session: the old assertions documenting the
+absence of provenance passthrough are now assertions of its presence,
+since this record resolves the finding they were recording. A future
+producer needs nothing repo-side to get the same treatment — dropping a
+conformant `manifest.edn` beside its output is the entire integration
+surface.
+**Status.** Accepted (author-directed), 2026-07-26.

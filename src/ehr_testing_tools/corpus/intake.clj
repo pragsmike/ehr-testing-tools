@@ -14,17 +14,42 @@
   corpus.mutate independently computes as a mutant's :parent -- no
   adapter, no translation layer between intake and mutation; the two
   consume the same content-identity function, so lineage chains
-  across the intake/mutate boundary unchanged."
+  across the intake/mutate boundary unchanged.
+
+  Manifest sidecars (ADR-0014): a directory may carry an optional
+  manifest.edn alongside the files it describes. When one is present
+  and validates against corpus.manifest/ManifestV1_1, every catalog
+  entry for a file in that SAME directory (manifest.edn's own entry
+  included -- no special-casing) gains :provenance, the manifest's
+  identity fields. This is generator-agnostic: nothing here knows
+  about any particular producer, sim included -- any pipeline that
+  drops a ManifestV1_1-shaped manifest.edn beside its output gets the
+  same treatment. An absent or invalid sidecar leaves the catalog
+  byte-identical to a run with no sidecar at all; an invalid one is
+  recorded as an intake-record :note, never an error -- enrich-kind:
+  intake adds fields, it never alters or rejects on what it finds."
   (:require [clojure.data.json :as json]
+            [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [malli.core :as m]
             [ehr-testing-tools.digest :as digest]
+            [ehr-testing-tools.corpus.manifest :as manifest]
             [ehr-testing-tools.corpus.mutate :as mutate]
             [ehr-testing-tools.result :as result])
   (:import [java.io File]))
 
 (def known-source-formats #{:fhir-json :v2-er7 :unknown})
+
+(def Provenance
+  [:map
+   [:schema-version :string]
+   [:stage :keyword]
+   [:generator [:map
+                [:name :string]
+                [:version :string]
+                [:sha256 [:re #"^[0-9a-f]{64}$"]]]]
+   [:seeds [:map-of :keyword :int]]])
 
 (def CatalogEntry
   [:map
@@ -33,14 +58,17 @@
    [:format (into [:enum] known-source-formats)]
    [:layer [:= :foreign]]
    [:source :string]
-   [:received :string]])
+   [:received :string]
+   [:provenance {:optional true} Provenance]])
 
 (def IntakeRecord
   [:map
    [:source :string]
    [:date :string]
    [:file-count :int]
-   [:catalog-hash [:re #"^[0-9a-f]{64}$"]]])
+   [:catalog-hash [:re #"^[0-9a-f]{64}$"]]
+   [:notes {:optional true}
+    [:vector [:map [:type :keyword] [:dir :string] [:reason :string]]]]])
 
 (defn valid-catalog-entry?
   [entry]
@@ -120,25 +148,84 @@
         rel (if (str/starts-with? full root) (subs full (count root)) full)]
     (str/replace rel File/separator "/")))
 
+(defn- relative-dir-path
+  "Like relative-path, but for a directory -- source-dir itself relative
+  to source-dir is \".\" (relative-path's own root-vs-full comparison
+  only handles a *descendant*, since it looks for source-dir plus a
+  trailing separator as a prefix)."
+  [source-dir dir]
+  (let [root (.getCanonicalPath (io/file source-dir))
+        full (.getCanonicalPath ^File dir)]
+    (if (= root full) "." (relative-path source-dir dir))))
+
+;; ---- manifest sidecars (ADR-0014) ----
+
+(defn- sidecar-result
+  "manifest.edn in dir, if any: {:valid? true :manifest m} when it
+  parses and conforms to corpus.manifest/ManifestV1_1, {:valid? false
+  :reason \"...\"} for a parse failure or a schema mismatch (malli's own
+  explain, so the reason names exactly what didn't conform), or nil
+  when no manifest.edn is there at all."
+  [dir]
+  (let [mf (io/file dir "manifest.edn")]
+    (when (.isFile mf)
+      (try
+        (let [parsed (edn/read-string (slurp mf))]
+          (if (manifest/valid-v1-1? parsed)
+            {:valid? true :manifest parsed}
+            {:valid? false
+             :reason (str "manifest.edn does not conform to ManifestV1_1: "
+                          (pr-str (m/explain manifest/ManifestV1_1 parsed)))}))
+        (catch Exception e
+          {:valid? false :reason (str "manifest.edn failed to parse: " (or (ex-message e) (str e)))})))))
+
+(defn- provenance-fields
+  [manifest]
+  (select-keys manifest [:schema-version :stage :generator :seeds]))
+
 (defn- catalog-entry
-  [file source-dir source-label received]
+  [file source-dir source-label received sidecar-fn]
   (let [content (slurp file)
-        format (sniff-format content)]
-    {:id (content-hash content format)
-     :path (relative-path source-dir file)
-     :format format
-     :layer :foreign
-     :source source-label
-     :received received}))
+        format (sniff-format content)
+        base {:id (content-hash content format)
+              :path (relative-path source-dir file)
+              :format format
+              :layer :foreign
+              :source source-label
+              :received received}
+        sidecar (sidecar-fn (.getParentFile ^File file))]
+    (if (and sidecar (:valid? sidecar))
+      (assoc base :provenance (provenance-fields (:manifest sidecar)))
+      base)))
+
+(defn- invalid-sidecar-notes
+  "One dedup'd :invalid-manifest-sidecar note per directory (among
+  files' own directories) whose manifest.edn is present but invalid --
+  never one per file, since it's the same sidecar failing the same way
+  for every file it covers."
+  [files source-dir sidecar-fn]
+  (->> files
+       (map #(.getParentFile ^File %))
+       distinct
+       (keep (fn [dir]
+               (let [sidecar (sidecar-fn dir)]
+                 (when (and sidecar (not (:valid? sidecar)))
+                   {:type :invalid-manifest-sidecar
+                    :dir (relative-dir-path source-dir dir)
+                    :reason (:reason sidecar)}))))
+       vec))
 
 (defn intake!
   "Catalogs every file under :source-dir as a foreign-corpus entry:
   content hash (format-aware, see `content-hash`), format sniff,
-  {:layer :foreign :source source-label :received}. Writes
-  :out/catalog.edn (the vector of entries) and :out/intake-record.edn
-  (one batch record: source, date, file count, and the sha256 of the
-  catalog file's own persisted bytes -- hashing what's actually
-  written, same discipline as corpus.mutate's content-hash).
+  {:layer :foreign :source source-label :received}, plus :provenance
+  when the file's own directory carries a validating manifest.edn
+  sidecar (ADR-0014). Writes :out/catalog.edn (the vector of entries)
+  and :out/intake-record.edn (one batch record: source, date, file
+  count, the sha256 of the catalog file's own persisted bytes --
+  hashing what's actually written, same discipline as
+  corpus.mutate's content-hash -- and :notes when any sidecar present
+  was invalid).
 
   :received is a required, explicit date string -- never read from
   the wall clock here, matching corpus.generate's :reference-date
@@ -149,14 +236,17 @@
   Returns result/ok {:catalog [...] :intake-record {...} :out}."
   [{:keys [source-dir source-label out received]}]
   (let [files (source-files source-dir)
-        catalog (mapv #(catalog-entry % source-dir source-label received) files)
+        sidecar-fn (memoize sidecar-result)
+        catalog (mapv #(catalog-entry % source-dir source-label received sidecar-fn) files)
+        notes (invalid-sidecar-notes files source-dir sidecar-fn)
         out-dir (io/file out)]
     (.mkdirs out-dir)
     (let [catalog-file (io/file out-dir "catalog.edn")]
       (spit catalog-file (pr-str catalog))
-      (let [record {:source source-label
-                    :date received
-                    :file-count (count catalog)
-                    :catalog-hash (digest/sha256-file catalog-file)}]
+      (let [record (cond-> {:source source-label
+                            :date received
+                            :file-count (count catalog)
+                            :catalog-hash (digest/sha256-file catalog-file)}
+                     (seq notes) (assoc :notes notes))]
         (spit (io/file out-dir "intake-record.edn") (pr-str record))
         (result/ok {:catalog catalog :intake-record record :out out})))))
