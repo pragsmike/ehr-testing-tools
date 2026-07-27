@@ -1,6 +1,7 @@
 # ehr-testing-sim
 
 [![test](https://github.com/pragsmike/ehr-testing-sim/actions/workflows/test.yml/badge.svg)](https://github.com/pragsmike/ehr-testing-sim/actions/workflows/test.yml)
+[![version](https://img.shields.io/badge/version-0.1.0--pre-blue)](notes/ADRs.md#adr-0009) pre-release, unpublished — `clojure -M:cli version` reports the exact commit a build came from.
 
 Deterministic synthetic hospital traffic for testing EHR systems and
 integrations: clinically coded, operationally messy, provably
@@ -28,18 +29,20 @@ attached to bug reports, and published.
 clojure -M:cli run --seed 42 --patients 20 --churn --emit hl7
 ```
 
-Excerpts from real seeded runs (composited across demos — complete
-traces with their exact commands live in [docs/demos/](docs/demos/)):
+Excerpts from real seeded runs (composited across demos, every line
+below grep-confirmed verbatim against its own demo's committed output
+— complete traces with their exact commands live in
+[docs/demos/](docs/demos/)):
 
 ```
-MSH|^~\&|EHR-TESTING-SIM|SIM|||20240101000000||ADT^A01|...|P|2.3
-PID|1||MRN000002||O'Brien\S\...                        ← escaped, per spec
-PV1|1|I|ED^^ED-H01^general-hospital|...                ← admitted, boarding in an ED hallway slot
+MSH|^~\&|EHR-TESTING-SIM|SIM|||20240101015700+0000||ADT^A01|...|P|2.3
+PID|1||MRN000004||O'Brien^Jessica|...                  ← ordinary punctuation needs no escaping (a real delimiter char would)
+PV1|1|I|Emergency^^ED-H04^general-hospital|...          ← admitted, boarding in an ED hallway slot
 ...
 ADT^A03 (another patient discharges)  →  ADT^A02        ← the freed bed triggers the boarder's transfer
-PV1|1|I|Renal^^RENAL-01^...|...|ED^^ED-H01^...          ← new bed; prior location derived from the log
+PV1|1|I|Renal^^RENAL-04^...|||Emergency^^ED-H04^...     ← new bed; PV1-6 prior location derived from the log
 ...
-OBX|1|NM|6690-2^Leukocytes [#/volume] in Blood^LN||4.1|K/uL|4.5-11.0|L   ← real LOINC, computed abnormal flag
+OBX|1|NM|6690-2^Leukocytes [#/volume] in Blood by Automated count^LN||21.0|K/uL|4.5-11.0|H   ← real LOINC, computed abnormal flag
 ZPI|commercial-hmo|commercial|ALDRIC-PAYER-V1           ← only if YOUR site profile says so
 ```
 
@@ -47,7 +50,9 @@ The boarding→transfer coupling above was not scripted. It *emerged*:
 the ward was full, the patient boarded in the hallway, and another
 patient's discharge freed the bed. Capacity pressure produces
 operational realism here the way it does in real hospitals — by
-constraint, not by authorship.
+constraint, not by authorship. The full trace, with the exact command
+that reproduces it byte for byte, is
+[docs/demos/boarding-transfer/](docs/demos/boarding-transfer/).
 
 ## The pipeline
 
@@ -151,11 +156,14 @@ never alters ground truth. See
 
 ## Quick start
 
+Full installation, verification ladder, and a walkthrough: **[SETUP.md](SETUP.md)**.
+The essentials, if you already have the Clojure CLI on `PATH`:
+
 ```bash
 clojure -X:test                                   # the suite
 clojure -M:cli run --seed 42 --patients 5 --emit hl7
 clojure -M:cli run --seed 42 --patients 5 --emit fhir              # FHIR R4 Bundle per patient (M6)
-clojure -M:cli run --seed 42 --patients 5 | clojure -M:cli check   # self-check, exit 0
+clojure -M:cli check < docs/demos/persona-enriched/ground-truth.edn # standalone invariant check of a real log, exit 0 (every `run` also self-checks internally)
 clojure -M:cli run --seed 7 --config my-site.edn --churn --emit hl7  # modules, profiles, churn
 clojure -M:cli help
 ```
@@ -176,6 +184,10 @@ sibling's managed `fhir-sink`.
 Unfamiliar term (ours or the domain's):
 [docs/GLOSSARY.md](docs/GLOSSARY.md). Which document to read for your
 role: [docs/README.md](docs/README.md).
+
+**Contributing:** [CONTRIBUTING.md](CONTRIBUTING.md) — using it, contributing
+code/docs, or (no code required) reporting a clinical reality this
+simulator doesn't model yet.
 
 ## The family, and a deliberate division of labor
 

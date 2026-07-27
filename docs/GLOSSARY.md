@@ -325,8 +325,14 @@ homework.
 ## Software concepts (for domain experts)
 
 **CLI (command-line interface).** The `sim` program's verbs (`run`,
-`check`, …) — the product boundary consumers touch, and by house
-rule the surface all demos run through.
+`check`, `identifiers`, `version`, …) — the product boundary
+consumers touch, and by house rule the surface all demos run through.
+
+**`sim identifiers`.** The CLI verb answering "what would I have to
+find and remove?" — config + seed to the complete EDN inventory of
+every identifier a run would ever contain (patient-ids, MRNs, message
+control ids, FHIR resource ids, provider NPIs, the run's own id),
+without generating the corpus itself (ADR-0014).
 
 **Clojure / EDN / malli.** The implementation language (a Lisp on the
 JVM); its data notation (EDN — like JSON with richer types; our
@@ -401,6 +407,8 @@ event stream. A planned emitter here.
 (`MSH|^~\&|...`) — segments on lines, fields split by `|`, components
 by `^`. Special characters in data must be *escaped*; see the facts
 register for what our parser dependency does and doesn't handle.
+`sim run --format er7` (go-public session) renders exactly this —
+bare wire bytes to stdout, nothing else — and requires `--emit hl7`.
 
 **FHIR.** Fast Healthcare Interoperability Resources — HL7's modern
 REST/JSON standard. State-based: Resources describe current state.
@@ -414,6 +422,12 @@ coherence property, cross-emitter ids, shape validation
 (ADR-0014); checking output against a real FHIR server is the
 consumer's job, the same division of labor v2 conformance already
 follows.
+
+**HTEST.** The HL7 v3-ActReason code (`http://terminology.hl7.org/CodeSystem/v3-ActReason`,
+display "test health data") this project stamps into `meta.security`
+on every FHIR resource it renders — a standard, queryable marker that
+lets a real system that ever received this data find and purge it
+(facts-register F14).
 
 **HL7 (organization) / HL7v2.** Health Level Seven International, the
 standards body; and its version-2 messaging standard (1980s-vintage,

@@ -14,6 +14,13 @@ generating throwaway ones.
 
 ## Contents
 
+- [`boarding-transfer/`](boarding-transfer/) — the top-level README's own
+  headline claim, captured as a real trace: ED hallway boarding and a
+  bed-ready transfer, both emergent from census pressure against the
+  default facility's configured capacity, never scripted. Source of
+  the top-level README's own excerpt (go-public session, Task 3 —
+  every prior version of that excerpt had drifted from any real
+  output; this demo is the fix).
 - [`order-result/`](order-result/) — the M3 order/result cycle
   (ORM^O01 + ORU^R01), re-run through the CLI after Milestone M4
   Task 0's wiring fix (`:pathways` now reaches the engine from

@@ -805,22 +805,25 @@ the milestone before it:
   still NOT wired into CI — that's the integration tier, which stays
   local/scheduled-later, per this section's own standing design; a
   bare unit-test CI workflow existing is not the same trigger.
-- **SETUP.md** — deferred trigger: owed before this repo has any user
-  besides its own author, not written speculatively now. Installation
-  friction is a first-class adoption risk for both mined upstreams —
-  SimHospital's Bazel/Go build breakage across several issues, and an
-  InterSystems team calling Synthea's JDK/Gradle setup a "nightmare"
-  even after successfully using the tool
+- **SETUP.md — FIRED, 2026-07-27** (a same-day follow-on to go-public,
+  before the public-polish session; commit `e8a131d`, "Add SETUP
+  instructions."). Installation friction is a first-class adoption
+  risk for both mined upstreams — SimHospital's Bazel/Go build
+  breakage across several issues, and an InterSystems team calling
+  Synthea's JDK/Gradle setup a "nightmare" even after successfully
+  using the tool
   (`docs/research/SimHospital-Synthea-limitations-considered.md` §5.2,
-  §4.5). This repo's cold-start already fits in one documented command
-  (`AGENTS.md`'s Quick start); SETUP.md exists to keep that true for
-  someone who isn't this repo's author, not to add ceremony ahead of
-  need. **Checked, not fired, at go-public (2026-07-27):** a fresh
-  `git clone` + `clojure -X:test` (this session's own Task 4 cold-clone
-  smoke test, `notes/facts-register.md` F19) passed end to end using
-  nothing beyond the documented Quick start — the trigger this entry
-  names (a gap the quick start doesn't cover) did not fire, so SETUP.md
-  stays unwritten.
+  §4.5) — so `SETUP.md` now exists at the repo root: prerequisites,
+  platform guidance, a verification ladder, and a first-traffic
+  walkthrough, aimed at a reader who isn't this repo's author. (An
+  earlier version of this entry, written at go-public itself, checked
+  the trigger via a cold-clone smoke test — `notes/facts-register.md`
+  F19 — found it hadn't fired yet, and left SETUP.md unwritten; it was
+  written anyway shortly after, superseding that call. Recorded here so
+  the discrepancy reads as "fired since," not as this roadmap having
+  drifted from the tree — the public-polish session's own Task 3 wired
+  `SETUP.md` in from every doorway that should link to it: `README.md`,
+  `docs/README.md`, `docs/simulate-your-facility.md`, `AGENTS.md`.)
 - **Packs demotion — FIRED, 2026-07-27.** This repo's GitHub remote
   went public; `pack-push` demoted to dormant the way `ehr-testing-tools`
   did at its own ADR-0008, recorded as its own ADR (`notes/ADRs.md`
@@ -832,6 +835,44 @@ the milestone before it:
   version-driven segment *restructuring* (beyond the MSH-12 literal)
   stay future, per `docs/site-profiles.md`'s own honestly-updated
   today/future table.
+- **`--format fhir-json`** — deferred, public-polish session (Task 1,
+  2026-07-27). `--format er7` (bare ER7 messages to stdout for `--emit
+  hl7`) landed this session; the FHIR analogue (`--emit fhir`'s Bundles
+  bare to stdout) did not, because it needs a decided multi-patient
+  concatenation shape first (one JSON array of Bundles? newline-
+  delimited JSON, one Bundle per line?) that this session's own scope
+  didn't have room to settle alongside the ER7 half. Land both the
+  decision and the flag together, next time `--emit fhir`'s CLI surface
+  is touched.
+- **The deferred ledger, consolidated (public-polish session, Task 3,
+  2026-07-27) — named here so the public roadmap reads as deliberate
+  deferral, not abandonment; each item is discussed in full where
+  cited, this bullet is only the index.**
+  - **Module curation beyond the current small set.** ADR-0013 pinned
+    `gmf-module-set` to a small, hand-curated, hashed subset in
+    `resources/modules/` (currently one: `sinusitis.json`) rather than
+    a lockfile over Synthea's full 85-module library (M5's own
+    section, above). Growing that set is real future work, gated on
+    nothing but author time — no external trigger blocks it.
+  - **Two-participant emitter coherence.** M6's own emitter-coherence
+    property excludes bed-swap (A17) and merge (A40) — genuinely
+    two-participant messages whose own wire-identity reconstruction (a
+    shared MRN reassigned mid-run) is separate engineering scope, per
+    that milestone's "documented scope boundary, not silent" note
+    (M6's own section, above).
+  - **Encounters as first-class.** `VisitID`/PV1-19, readmission, and
+    support for multiple *concurrent* pending encounters (not just
+    one) are captured but unbuilt (M2b's "Capture: encounters as
+    first-class" note, above) — must land with or before any future
+    milestone that introduces `:pending-*` step types, per that same
+    note's own reasoning.
+  - **`CallSubmodule`/`Counter`/`MultiObservation`/`Death` (GMF state
+    types).** Deferred from the interpreter's v1 scope at the design
+    stage (`docs/gmf-interpreter.md`, cited at M5's own section,
+    above) — no vendored module this project currently uses needs
+    them; revisit if a future vendored module does.
+  - **Calibrate** — already its own bullet, above; listed here too
+    only for this index's own completeness.
 
 ## Consumer plan: sim doesn't validate itself in a vacuum
 

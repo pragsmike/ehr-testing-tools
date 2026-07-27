@@ -17,6 +17,18 @@ untouched).
 clojure -M:cli run --seed 41 --patients 5 --emit hl7
 ```
 
+To see the same messages as bare wire bytes on stdout — nothing else,
+no EDN wrapper — add `--format er7` (go-public session, Task 1):
+
+```bash
+clojure -M:cli run --seed 41 --patients 5 --emit hl7 --format er7
+```
+
+(`messages.txt` below predates this milestone's own site-profiles/M6
+PV1 field additions, so it is not a byte-for-byte match for a fresh
+`--format er7` run at this seed today; run the command above for
+current output.)
+
 ## What to look for
 
 - [`ground-truth.edn`](ground-truth.edn): every patient's log opens

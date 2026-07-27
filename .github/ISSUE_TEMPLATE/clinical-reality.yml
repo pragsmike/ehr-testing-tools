@@ -1,0 +1,71 @@
+name: Clinical reality report
+description: >-
+  A real hospital-operations phenomenon this simulator doesn't model
+  yet, or models wrong. No code or PR needed -- this is the single
+  most valuable contribution a clinician, informaticist, or health-IT
+  veteran can make. See docs/clinical-realities.md for the catalog
+  this feeds and CONTRIBUTING.md for the full pitch.
+title: "[clinical-reality] "
+labels:
+  - clinical-reality
+body:
+  - type: markdown
+    attributes:
+      value: >-
+        Every entry in `docs/clinical-realities.md` follows the same
+        four-part shape -- the first three fields below are exactly
+        that shape. Modeling the fix (states, events, config) is our
+        job, not yours; a real-world description is the whole
+        contribution. Partial answers are fine.
+
+  - type: textarea
+    id: reality
+    attributes:
+      label: "1. The reality"
+      description: What actually happens, in your own words.
+      placeholder: >-
+        e.g. "A patient admitted under observation status is
+        reclassified to inpatient mid-stay without a new encounter --
+        this changes billing and some downstream systems choke on it."
+    validations:
+      required: true
+
+  - type: textarea
+    id: wire-truth
+    attributes:
+      label: "2. The wire truth"
+      description: >-
+        How does this show up in HL7v2 or FHIR? Standard fields/codes
+        vs. site-custom ones, as much as you know -- guesses and gaps
+        are fine, say so if you're unsure.
+      placeholder: >-
+        e.g. "PV1-2 changes from O to I mid-visit; some sites send an
+        A06/A07, others just re-send A08 with the new class."
+    validations:
+      required: true
+
+  - type: textarea
+    id: verification
+    attributes:
+      label: "3. How you'd know we got it right"
+      description: >-
+        A concrete check a reviewer could run against generated
+        output -- a message sequence, a field value, an invariant
+        that should hold.
+      placeholder: >-
+        e.g. "Generate a run with an observation-to-inpatient flip and
+        confirm an A06 (or A07) fires with the correct PV1-2 before/
+        after values, and no new encounter/visit number is created."
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Anything else worth knowing?
+      description: >-
+        Optional: how common this is, which systems you've seen choke
+        on it, related standards/tables, or a pointer to public
+        documentation.
+    validations:
+      required: false

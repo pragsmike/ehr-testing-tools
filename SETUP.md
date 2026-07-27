@@ -56,9 +56,11 @@ is also why this repo runs on native Windows (see below).
   Clojure CLI, and the full suite has been verified passing on
   Windows-side Clojure with results byte-identical to WSL
   (facts-register F17: 403/1058 on both, empty diff of the test-var
-  lists). Install the Clojure CLI for Windows per clojure.org's
-  instructions and use the same commands as everywhere else.
-  *Contributing* still routes through WSL (that's `AGENTS.md`'s
+  lists, at that session's HEAD; F20 re-confirms the count moves
+  cleanly with capability growth, not that byte-identity itself has
+  been re-checked since). Install the Clojure CLI for Windows per
+  clojure.org's instructions and use the same commands as everywhere
+  else. *Contributing* still routes through WSL (that's `AGENTS.md`'s
   business, not yours).
 
 - **macOS / NixOS** — untested, flagged as such. Same three
@@ -77,15 +79,17 @@ clojure --version
 
 git clone https://github.com/pragsmike/ehr-testing-sim.git
 cd ehr-testing-sim
+clojure -M:cli version   # zeroth check: the CLI itself runs, reports its own version + git SHA
 clojure -X:test
 ```
 
-Expected: **403 tests / 1058 assertions, 0 failures, 0 errors**, about
-35 seconds after the one-time dependency fetch (verified end-to-end
-from a fresh clone: facts-register F19; the count moves as capability
-code lands — higher with 0 failures is fine, lower or failing means
-your environment differs from what's verified). The suite is hermetic:
-no network beyond that first dependency fetch, no server, nothing
+Expected: **426 tests / 1101 assertions, 0 failures, 0 errors**
+(facts-register F20; a fresh-clone run was last independently timed at
+~35 seconds after the one-time dependency fetch, facts-register F19 —
+the count moves as capability code lands; higher with 0 failures is
+fine, lower or failing means your environment differs from what's
+verified). The suite is hermetic: no network beyond that first
+dependency fetch, no server, nothing
 written outside the repo and your Maven cache.
 
 ## 4. First traffic walkthrough
@@ -101,17 +105,25 @@ see for yourself.
 clojure -M:cli run --seed 42 --patients 5 --churn --emit hl7
 
 # The same, as JSON:
-clojure -M:cli run --seed 42 --patients 5 --churn --emit hl7 --json
+clojure -M:cli run --seed 42 --patients 5 --churn --emit hl7 --format json
 
-# Just the messages, human-readable (ER7's segment separator is \r,
-# so raw messages look like one long line in a terminal — that's the
-# wire format being correct, not broken; this unrolls it for eyes):
-clojure -M:cli run --seed 42 --patients 5 --churn --emit hl7 --json \
-  | jq -r '.payload.messages[] | gsub("\r"; "\n") + "\n"'
+# Just the messages, bare — stdout carries ONLY the rendered wire
+# bytes (blank-line separated), nothing else: no manifest, no summary,
+# no ground truth. ER7's own segment separator is \r, so each message
+# still looks like one long line in a terminal — that's the wire
+# format being correct, not broken. (Alternative for the flagless
+# curious, pulling the same messages out of the full EDN result instead:
+# `... --emit hl7 --format json | jq -r '.payload.messages[] |
+# gsub("\r"; "\n") + "\n"'`.)
+clojure -M:cli run --seed 42 --patients 5 --churn --emit hl7 --format er7
 
-# Self-check: pipe a run's ground truth through the invariant catalog.
-# Exit 0 = every consistency law holds.
-clojure -M:cli run --seed 42 --patients 5 | clojure -M:cli check
+# Standalone self-check: run the invariant catalog over a real ground-
+# truth log (any of docs/demos/*/ground-truth.edn are bare EDN vectors,
+# exactly the shape `sim check` reads). Exit 0 = every law holds. Every
+# `sim run` also self-checks its own output internally, the same way,
+# before ever returning it -- this demonstrates the same catalog as a
+# standalone tool, checkable against a log from anywhere.
+clojure -M:cli check < docs/demos/persona-enriched/ground-truth.edn
 
 # FHIR instead: one Bundle per patient, end-of-run snapshots, every
 # resource carrying the standard HTEST "test data" security label.

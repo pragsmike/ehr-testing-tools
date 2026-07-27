@@ -34,7 +34,10 @@ program in [problem-statement.md](problem-statement.md).
 
 **A software or integration engineer asking "what would I actually
 get, and how does it work?"**
-Read [problem-statement.md](problem-statement.md) §Black-Box first
+If you want to run this yourself rather than just read about it,
+[../SETUP.md](../SETUP.md) is the installation and verification path —
+come back here once it's running. Otherwise, read
+[problem-statement.md](problem-statement.md) §Black-Box first
 (inputs, outputs, guarantees), then
 [event-sourcing.md](event-sourcing.md) — the architecture in three
 pages, including why HL7v2 feeds are event streams and FHIR
@@ -47,11 +50,14 @@ engine's rules of legality live in
 
 **An interface analyst or QA lead asking "how do I make it simulate
 *my* hospital?"**
-[site-profiles.md](site-profiles.md) is your document: local code
-values, MSH identity, HL7 version literal, Z-segments — and the
-guarantee that changing the dialect never changes the underlying
-truth. The knobs that *do* change the truth (ward layouts, surge
-naming, churn rates) live in
+[simulate-your-facility.md](simulate-your-facility.md) is written
+directly for you — a one-page site interview, an annotated example
+config, and an honest "what can't it do yet" list, no code required.
+[site-profiles.md](site-profiles.md) is the reference underneath its
+dialect half: local code values, MSH identity, HL7 version literal,
+Z-segments — and the guarantee that changing the dialect never
+changes the underlying truth. The knobs that *do* change the truth
+(ward layouts, surge naming, churn rates) live in
 [operational-models.md](operational-models.md).
 
 **A skeptic — a reviewer, a security or compliance function, or
@@ -75,12 +81,19 @@ those before editing anything in this directory.
 
 ## The map
 
+**Using this simulator, not reading about it: [`../SETUP.md`](../SETUP.md)**
+— installation, verification ladder, first-traffic walkthrough. Not
+part of this docs/ tree (it's a repo-root doorway for a different
+reader), but the first stop if you haven't run anything yet.
+
 Foundations: [problem-statement.md](problem-statement.md) (the
 contract: problem, audiences, constraints, black box, validation
 program) · [sim-theory.md](sim-theory.md) +
 [sim-theory.edn](sim-theory.edn) (the pipeline as a formal resource
 theory; the EDN is the source of truth, read via the now/next/want
-convention) · [event-sourcing.md](event-sourcing.md) (the
+convention) · [sim-theory-diagram.md](sim-theory-diagram.md) (the
+pipeline diagram, mechanically regenerated from the EDN — never
+hand-edit it) · [event-sourcing.md](event-sourcing.md) (the
 architecture and its scope — what it buys and, honestly, what it
 doesn't, including Milestone M6's own "coherence property, tested"
 section: how EmitHL7 and EmitState are checked against each other).
@@ -92,7 +105,9 @@ Domain models: [operational-models.md](operational-models.md) ·
 modules are executed here, including the as-built record of every
 deviation from the original design).
 
-Configuration & provenance: [site-profiles.md](site-profiles.md) ·
+Configuration & provenance: [simulate-your-facility.md](simulate-your-facility.md)
+(the site-interview FAQ, no code) · [site-profiles.md](site-profiles.md)
+(the dialect-layer reference underneath it) ·
 [third-party-sources.md](third-party-sources.md) (what was mined
 from where, and the load-bearing fact that only one runtime
 dependency exists).
@@ -137,19 +152,29 @@ assuming the doc is aspirational.
 
 ## Status
 
-Pre-release. The pipeline is built end-to-end through the FHIR/state
-emitter (M6) — every theory stage but Calibrate is now both built and
-property-tested, including the emitter-coherence law itself. A full
-documentation alignment pass was promised here as "next" — **this is
-that pass** (the go-public session, 2026-07-27): cross-references,
-counts, and tenses swept against the tree; where a residual gap
-remains, treat the ADRs and the theory EDN as tiebreakers, per house
-convention. This project
+Pre-release; public since 2026-07-27 (ADR-0015), not released — no
+version tag, GitHub Release, or Clojars/Maven coordinate exists yet,
+that being a separate, later trigger (ADR-0015 decision 4's own
+deferred ledger). The pipeline is built end-to-end through the
+FHIR/state emitter (M6) — every theory stage but Calibrate is now both
+built and property-tested, including the emitter-coherence law itself.
+A full documentation alignment pass was promised here as "next" —
+**that was the go-public session (2026-07-27)**: cross-references,
+counts, and tenses swept against the tree. A narrower public-polish
+pass followed the same day: `SETUP.md` (written between the two
+sessions) wired in from every doorway that names it, the top-level
+README's own worked excerpt re-verified line-by-line against real
+demo output (`docs/demos/boarding-transfer/` is the fix for what
+didn't survive that check), and this page's own map and status text
+brought current. Where a residual gap remains, treat the ADRs and the
+theory EDN as tiebreakers, per house convention. This project
 is one of three siblings: the
 [guide](https://github.com/pragsmike/ehr-testing-guide) teaches the
 testing method, the
 [tools](https://github.com/pragsmike/ehr-testing-tools) make it
 runnable, and this simulator generates the traffic. Terms and
 concepts shared with the guide defer to the guide's fuller
-treatment; a crosswalk reconciliation is planned as part of the
-alignment pass.
+treatment; a crosswalk reconciliation against the guide remains
+future work — no trigger is named yet, unlike the deferred items in
+[`.agents/plans/roadmap.md`](../.agents/plans/roadmap.md)'s own
+ledger.

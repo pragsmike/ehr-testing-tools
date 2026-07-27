@@ -162,6 +162,10 @@ those and edit.
 
 ## How do I run it, and get messages?
 
+(First time running this at all? [`SETUP.md`](../SETUP.md) covers
+installing the three prerequisites and verifying they work — come
+back here once `clojure -X:test` passes.)
+
 ```bash
 clojure -M:cli run --seed 42 --patients 40 --churn \
         --config stmarys.edn --emit hl7

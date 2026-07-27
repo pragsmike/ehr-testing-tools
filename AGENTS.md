@@ -5,6 +5,12 @@
 > (Codex, OpenCode, and others). Claude Code users: see `CLAUDE.md`,
 > which points here.
 
+**Users of this simulator** (not contributing code or docs): see
+[`SETUP.md`](SETUP.md) instead — installation, verification, and a
+first-traffic walkthrough, with none of this file's contribution
+discipline. This file governs contribution sessions (PRs, commits,
+docs edits); nothing here applies if you're only running `sim`.
+
 ## Project overview
 
 **Project:** ehr-testing-sim — a deterministic, seeded generator of

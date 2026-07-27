@@ -615,6 +615,22 @@ before assuming a bug: check whether that session's own new step types
 explain the diff first, and if so, follow the same accept-and-record
 pattern rather than re-litigating the question.
 
+**Cross-note, added by the public-polish session (2026-07-27), append-only
+— nothing above is edited.** Decision 2 named `:generator {:version ...}`
+as "the cross-version key" before that field had a single, honest source:
+`ehr-testing-sim.manifest/build` hardcoded `"0.0.0-SNAPSHOT"` literally.
+This session's Task 2 makes that claim load-bearing rather than aspirational:
+`ehr-testing-sim.version/version` (`resources/version.edn`, pinned
+`0.1.0-pre`) is now the one place the version lives, read by both the
+manifest's `:generator` block and the new `sim version` verb/`--version`
+flag, so they cannot silently disagree. This is purely the plumbing this
+decision already called for, not a new decision — the first-release
+obligations decision 2 and ADR-0015 decision 4 both name (a real tag
+scheme, a Clojars/Maven coordinate, a CHANGELOG, the point at which this
+guarantee starts being read literally by external consumers) remain
+exactly as unopened as before; a version string existing and being
+single-sourced is not a release.
+
 ---
 
 ## ADR-0010 — Patient identity becomes an internal `:patient-id`; MRNs move into state; events gain a `:participants` set

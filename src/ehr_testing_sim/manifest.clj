@@ -13,7 +13,8 @@
   ehr-testing-tools' test-integration tree, where both codebases are on
   the classpath and drift becomes a failing test rather than a latent
   incompatibility."
-  (:require [malli.core :as m]))
+  (:require [malli.core :as m]
+            [ehr-testing-sim.version :as version]))
 
 (def MirroredManifest
   "Structural mirror of tools' ManifestV1_1 (verified against its
@@ -56,16 +57,26 @@
 (defn build
   "Builds a tools-ingestible manifest for a sim run.
   Required: :seed, :engine-params (the run config), :config
-  {:path :sha256}, :invocation. :version should be this library's
-  release version; :sha256 the release artifact digest (placeholders
-  acceptable pre-release, but the fields are mandatory so nothing
-  downstream learns to tolerate their absence)."
+  {:path :sha256}, :invocation. :version defaults to
+  `ehr-testing-sim.version/version` -- the single version source `sim
+  version`/--version also read, so a manifest and the binary that
+  produced it cannot silently disagree (go-public session, Task 2);
+  an explicit :version arg still wins, for a caller with its own
+  reason to stamp something else. :sha256 defaults to
+  `ehr-testing-sim.version/generator-sha256` -- pre-release, there is
+  no release artifact to hash, so this is honestly a stand-in (SHA-256
+  of the git HEAD commit id when readable, else the all-zero
+  placeholder this field has always shown), never a silent zero
+  presented as if it meant something -- see that function's own
+  docstring for the full reasoning. Both fields are mandatory
+  regardless (a caller may still pass its own :version/:sha256), so
+  nothing downstream learns to tolerate their absence."
   [{:keys [seed engine-params config invocation version sha256]}]
   {:schema-version "1.1"
    :stage :simulated
    :generator {:name "ehr-testing-sim"
-               :version (or version "0.0.0-SNAPSHOT")
-               :sha256 (or sha256 (apply str (repeat 64 "0")))}
+               :version (or version version/version)
+               :sha256 (or sha256 (version/generator-sha256))}
    :seeds {:primary seed}
    :engine-params (or engine-params {})
    :config config
