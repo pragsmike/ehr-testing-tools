@@ -164,7 +164,10 @@ running totals, you know folds.
 source of truth: a time-ordered, immutable sequence of events
 describing everything that happened in a run. Messages, state
 snapshots, and test assertions all derive from it. See
-[event-sourcing.md](event-sourcing.md).
+[event-sourcing.md](event-sourcing.md). `sim run --format ground-truth`
+renders exactly this log, bare EDN, to stdout — the shape `sim check`
+reads on stdin, so `sim run --format ground-truth | sim check` is a
+real, working self-check pipe.
 
 **GMF (Generic Module Framework).** Synthea's format for encoding
 disease progression as JSON state machines — states (ConditionOnset,

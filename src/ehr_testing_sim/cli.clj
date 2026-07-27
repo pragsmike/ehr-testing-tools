@@ -63,7 +63,7 @@
              {:flag "--warm-up-seconds" :doc "events before this mark :warm-up true (log stays complete)" :default "0"}
              {:flag "--churn" :doc "activate InjectChurn with a modest sample profile (cancel-*/transfer-in-error/bed-swap/merge)"}
              {:flag "--config" :doc "path to an EDN file supplying data-heavy engine keys with no flag of their own (:pathway/:pathways/:order-profiles/:churn-profile); merged UNDER explicit flags"}
-             {:flag "--format" :doc "output rendering: edn (default), json, or er7 (bare wire messages to stdout, nothing else; requires --emit hl7). --json is a deprecated alias for --format json"}]}
+             {:flag "--format" :doc "output rendering: edn (default), json, er7 (bare wire messages to stdout, nothing else; requires --emit hl7), or ground-truth (bare EDN vector of the ground-truth log, nothing else -- pipe straight into `sim check`). --json is a deprecated alias for --format json"}]}
     {:verb "check"
      :doc "Run the invariant catalog over a ground-truth log (EDN on stdin)."
      :flags []}
@@ -160,6 +160,35 @@
   [r]
   (string/join "\n\n" (get-in r [:payload :messages])))
 
+(defn- ground-truth-requires-run?
+  "--format ground-truth only means something for the run verb (only
+  `run-command`'s own payload ever carries a :ground-truth key) --
+  same pre-dispatch-gate shape `er7-requires-emit-hl7?` already
+  established, so an invalid combination never even runs a
+  simulation."
+  [format action]
+  (and (= "ground-truth" format) (not= "run" action)))
+
+(defn- ground-truth-stdout
+  "Bare EDN: the run's own :ground-truth vector, pr-str'd, nothing
+  else -- readable straight back by `edn/read`, exactly the shape
+  `check-command` requires on stdin. This is what makes `sim run
+  --format ground-truth | sim check` actually work, unlike piping any
+  other format (every other format's stdout is a wrapped Result map,
+  never a bare vector)."
+  [r]
+  (pr-str (get-in r [:payload :ground-truth])))
+
+(def ^:private bare-formats
+  "Formats whose successful (:ok) render is bare, non-wrapped content
+  to stdout -- no :status/:payload envelope, no manifest, no summary.
+  A non-:ok Result under a bare format still renders as EDN, but to
+  stderr, never stdout: stdout stays reserved for the bare content,
+  and a failed run stays diagnosable and scriptable regardless of
+  format."
+  {"er7" er7-stdout
+   "ground-truth" ground-truth-stdout})
+
 (defn- help-text []
   (str "sim -- synthetic hospital traffic generator\n\n"
        (:doc help-group) "\n\n"
@@ -180,19 +209,41 @@
   (let [{:keys [version git-sha]} (:payload (version-command {}))]
     (str "sim " version (when git-sha (str " (" git-sha ")")) "\n")))
 
+(defn- bare-format-gate
+  "Pre-dispatch validity gates for the bare formats -- checked BEFORE
+  dispatch-action runs, so an invalid combination never even executes
+  a simulation. Returns a :rejected Result for an invalid combination,
+  else nil (meaning: proceed to dispatch-action as normal)."
+  [format action opts]
+  (cond
+    (er7-requires-emit-hl7? format opts)
+    (result/rejected :format-er7-requires-emit-hl7
+                      {:message "--format er7 renders bare wire messages and requires --emit hl7"
+                       :format format :emit (:emit opts)})
+
+    (ground-truth-requires-run? format action)
+    (result/rejected :format-ground-truth-requires-run
+                      {:message "--format ground-truth renders the run verb's own ground-truth log and requires the run verb"
+                       :format format :action action})))
+
 (defn main!
   "Testable main: parse, dispatch, render, exit-code. Injectable
   println/exit for tests, same pattern as tools' main!.
 
-  --format er7 renders bare ER7 wire bytes to stdout on :ok (nothing
-  else -- no manifest, no summary) and requires --emit hl7; without
-  it, the Result itself becomes a structured :rejected (exit 1)
-  rather than a silent edn dump, computed BEFORE dispatch-action runs.
-  Any non-:ok Result under --format er7 (that gate, or a genuine
+  The bare formats (`bare-formats` -- er7, ground-truth) render bare,
+  non-wrapped content to stdout on :ok (nothing else -- no manifest,
+  no summary) and each has its own precondition (er7 needs --emit
+  hl7; ground-truth needs the run verb): unmet, the Result itself
+  becomes a structured :rejected (exit 1) rather than a silent edn
+  dump, computed BEFORE dispatch-action runs (`bare-format-gate`).
+  Any non-:ok Result under a bare format (that gate, or a genuine
   rejection/error from the run itself) renders as EDN to stderr, never
-  stdout -- stdout stays reserved for bare messages, and a failed run
-  stays diagnosable and scriptable: the exit-code contract (0/1/2) is
-  unchanged across every format."
+  stdout -- stdout stays reserved for the bare content, and a failed
+  run stays diagnosable and scriptable: the exit-code contract (0/1/2)
+  is unchanged across every format. `--format ground-truth` is what
+  makes `sim run --format ground-truth | sim check` an actual working
+  pipe -- every other format's stdout is a wrapped Result map, which
+  `check-command` (needing a bare vector) always rejected."
   ([raw-args] (main! raw-args {}))
   ([raw-args {:keys [println-fn err-println-fn exit-fn]
               :or {println-fn println
@@ -209,14 +260,11 @@
        (do (println-fn (help-text)) (exit-fn 0))
 
        :else
-       (let [r (if (er7-requires-emit-hl7? format opts)
-                 (result/rejected :format-er7-requires-emit-hl7
-                                   {:message "--format er7 renders bare wire messages and requires --emit hl7"
-                                    :format format :emit (:emit opts)})
-                 (dispatch-action action opts))]
-         (if (= "er7" format)
+       (let [r (or (bare-format-gate format action opts)
+                    (dispatch-action action opts))]
+         (if-let [bare-render (get bare-formats format)]
            (if (result/ok? r)
-             (println-fn (er7-stdout r))
+             (println-fn (bare-render r))
              (err-println-fn (pr-str r)))
            (println-fn (render r (= "json" format))))
          (exit-fn (result->exit-code r)))))))

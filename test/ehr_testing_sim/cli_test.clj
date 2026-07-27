@@ -232,7 +232,83 @@
                           "--emit" "hl7" "--format" fmt]
                          {:println-fn (constantly nil) :exit-fn #(reset! exited %)})
               @exited))]
-      (apply = (map run-with-format ["edn" "json" "er7"])))))
+      (apply = (map run-with-format ["edn" "json" "er7" "ground-truth"])))))
+
+;; --- follow-up: --format ground-truth, making `run | check` real --------
+
+(deftest format-ground-truth-requires-run-verb
+  (testing "--format ground-truth only means something for the run verb --
+            any other action is a structured :rejected (exit 1), computed
+            before dispatch-action runs, the same pre-dispatch-gate shape
+            er7-requires-emit-hl7? already established"
+    (let [printed (atom []) errs (atom []) exited (atom nil)]
+      (cli/main! ["identifiers" "--format" "ground-truth"]
+                 {:println-fn #(swap! printed conj %)
+                  :err-println-fn #(swap! errs conj %)
+                  :exit-fn #(reset! exited %)})
+      (is (= 1 @exited))
+      (is (empty? @printed))
+      (let [r (read-string (first @errs))]
+        (is (= :rejected (:status r)))))))
+
+(deftest format-ground-truth-bare-stdout-is-a-readable-vector
+  (testing "stdout carries ONLY the bare :ground-truth vector -- no
+            :status/:payload wrapper, no manifest, no summary -- and it
+            reads back as exactly the vector run-command itself produced"
+    (let [printed (atom []) exited (atom nil)]
+      (cli/main! ["run" "--seed" "42" "--patients" "3" "--format" "ground-truth"]
+                 {:println-fn #(swap! printed conj %) :exit-fn #(reset! exited %)})
+      (is (= 0 @exited))
+      (is (= 1 (count @printed)))
+      (let [expected (:ground-truth (:payload (run/run-command {:seed 42 :patients 3})))
+            parsed (read-string (first @printed))]
+        (is (vector? parsed))
+        (is (= expected parsed))))))
+
+(deftest format-ground-truth-on-a-failing-run-shows-stderr-edn-and-exit-2
+  (let [printed (atom []) errs (atom []) exited (atom nil)]
+    (cli/main! ["run" "--format" "ground-truth"] ; no --seed
+               {:println-fn #(swap! printed conj %)
+                :err-println-fn #(swap! errs conj %)
+                :exit-fn #(reset! exited %)})
+    (is (= 2 @exited))
+    (is (empty? @printed))
+    (is (= :error (:status (read-string (first @errs)))))))
+
+(deftest help-group-documents-ground-truth-format
+  (let [run-verb (first (filter #(= "run" (:verb %)) (:verbs cli/help-group)))
+        format-flag (first (filter #(= "--format" (:flag %)) (:flags run-verb)))]
+    (is (string/includes? (:doc format-flag) "ground-truth"))))
+
+(deftest run-then-check-cli-pipe-round-trips
+  (testing "the real gap this format exists to close: `sim run --format
+            ground-truth | sim check` -- exercised via main! TWICE, the
+            first's stdout fed as the second's stdin, not just the two
+            capability functions called directly in-process"
+    (let [run-printed (atom []) run-exited (atom nil)]
+      (cli/main! ["run" "--seed" "9" "--patients" "4" "--churn" "--format" "ground-truth"]
+                 {:println-fn #(swap! run-printed conj %) :exit-fn #(reset! run-exited %)})
+      (is (= 0 @run-exited))
+      (let [check-printed (atom []) check-exited (atom nil)]
+        (with-in-str (first @run-printed)
+          (cli/main! ["check"]
+                     {:println-fn #(swap! check-printed conj %) :exit-fn #(reset! check-exited %)}))
+        (is (= 0 @check-exited))
+        (is (result/ok? (read-string (first @check-printed))))))))
+
+(defspec run-then-check-cli-pipe-round-trips-for-any-seed 30
+  (prop/for-all [seed gen/large-integer
+                 patients (gen/choose 1 8)]
+    (let [run-printed (atom []) run-exited (atom nil)]
+      (cli/main! ["run" "--seed" (str seed) "--patients" (str patients) "--format" "ground-truth"]
+                 {:println-fn #(swap! run-printed conj %) :exit-fn #(reset! run-exited %)})
+      (let [check-printed (atom []) check-exited (atom nil)]
+        (with-in-str (first @run-printed)
+          (cli/main! ["check"]
+                     {:println-fn #(swap! check-printed conj %) :exit-fn #(reset! check-exited %)}))
+        (and (= 0 @run-exited)
+             (= 0 @check-exited)
+             (result/ok? (read-string (first @check-printed))))))))
 
 ;; --- go-public Task 2: version identity ----------------------------------
 

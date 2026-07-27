@@ -163,7 +163,8 @@ The essentials, if you already have the Clojure CLI on `PATH`:
 clojure -X:test                                   # the suite
 clojure -M:cli run --seed 42 --patients 5 --emit hl7
 clojure -M:cli run --seed 42 --patients 5 --emit fhir              # FHIR R4 Bundle per patient (M6)
-clojure -M:cli check < docs/demos/persona-enriched/ground-truth.edn # standalone invariant check of a real log, exit 0 (every `run` also self-checks internally)
+clojure -M:cli run --seed 42 --patients 5 --format ground-truth \
+  | clojure -M:cli check                                          # self-check, exit 0 (every run also self-checks internally)
 clojure -M:cli run --seed 7 --config my-site.edn --churn --emit hl7  # modules, profiles, churn
 clojure -M:cli help
 ```

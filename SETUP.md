@@ -83,8 +83,8 @@ clojure -M:cli version   # zeroth check: the CLI itself runs, reports its own ve
 clojure -X:test
 ```
 
-Expected: **426 tests / 1101 assertions, 0 failures, 0 errors**
-(facts-register F20; a fresh-clone run was last independently timed at
+Expected: **432 tests / 1116 assertions, 0 failures, 0 errors**
+(facts-register F21; a fresh-clone run was last independently timed at
 ~35 seconds after the one-time dependency fetch, facts-register F19 —
 the count moves as capability code lands; higher with 0 failures is
 fine, lower or failing means your environment differs from what's
@@ -117,13 +117,16 @@ clojure -M:cli run --seed 42 --patients 5 --churn --emit hl7 --format json
 # gsub("\r"; "\n") + "\n"'`.)
 clojure -M:cli run --seed 42 --patients 5 --churn --emit hl7 --format er7
 
-# Standalone self-check: run the invariant catalog over a real ground-
-# truth log (any of docs/demos/*/ground-truth.edn are bare EDN vectors,
-# exactly the shape `sim check` reads). Exit 0 = every law holds. Every
-# `sim run` also self-checks its own output internally, the same way,
-# before ever returning it -- this demonstrates the same catalog as a
-# standalone tool, checkable against a log from anywhere.
-clojure -M:cli check < docs/demos/persona-enriched/ground-truth.edn
+# Self-check: pipe a run's own ground-truth log (--format ground-truth
+# is a bare EDN vector, exactly the shape `sim check` reads on stdin)
+# through the invariant catalog. Exit 0 = every law holds. `sim run`
+# also self-checks its own output internally, the same way, before
+# ever returning it -- this demonstrates the same catalog as a
+# standalone tool, checkable against a log from anywhere (e.g. any of
+# docs/demos/*/ground-truth.edn: `clojure -M:cli check <
+# docs/demos/persona-enriched/ground-truth.edn` works identically).
+clojure -M:cli run --seed 42 --patients 5 --format ground-truth \
+  | clojure -M:cli check
 
 # FHIR instead: one Bundle per patient, end-of-run snapshots, every
 # resource carrying the standard HTEST "test data" security label.
