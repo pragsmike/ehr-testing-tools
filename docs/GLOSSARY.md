@@ -241,6 +241,15 @@ message↔truth derivability) are all held this way (via
 `test.check`). Property tests here have repeatedly caught real bugs
 example tests missed.
 
+**Script space / truth space.** The two state machines every patient
+here is driven by, and the classic error the architecture makes
+structural rather than a matter of discipline: *script space* is a
+GMF module walking its own clinical logic — what a disease *should*
+do, never which bed or attending — while *truth space* is
+`decide`/`evolve` computing what a capacity-bounded hospital actually
+did. Nothing in script space can write truth. See
+[trajectory-computation.md](trajectory-computation.md).
+
 **Seam.** A designated clean stopping point in a work session: if
 budget runs out, everything before the seam commits green and the
 rest becomes its own session. Nothing lands half-done.

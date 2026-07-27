@@ -27,8 +27,14 @@ phenomenon is modeled and why testers need it. Then
 [operational-models.md](operational-models.md) (beds, surge slots,
 providers, payers — how the hospital itself is modeled) and
 [patient-state-model.md](patient-state-model.md) (the patient
-lifecycle and which events are legal when). If you want to know
-where the clinical content comes from and why you should trust it:
+lifecycle and which events are legal when).
+[trajectory-computation.md](trajectory-computation.md) is the
+one-page answer to "how does a disease actually turn into a
+hospital visit here" — script-space (what a disease module says
+should happen) versus truth-space (what a capacity-bounded hospital
+actually did), computed by two different, structurally separated
+mechanisms. If you want to know where the clinical content comes
+from and why you should trust it:
 [third-party-sources.md](third-party-sources.md) and the validation
 program in [problem-statement.md](problem-statement.md).
 
@@ -43,8 +49,12 @@ come back here once it's running. Otherwise, read
 pages, including why HL7v2 feeds are event streams and FHIR
 documents are snapshots, which is the observation the whole design
 rests on. Then [sim-theory.md](sim-theory.md) with its
-[diagram](sim-theory-diagram.md) for the full pipeline, and
-[demos/](demos/) for real command lines with real output. The
+[diagram](sim-theory-diagram.md) for the full pipeline,
+[trajectory-computation.md](trajectory-computation.md) for the
+execution-order walk through how one patient's traffic actually gets
+computed (the piece event-sourcing.md and sim-theory.md each hold
+only part of), and [demos/](demos/) for real command lines with real
+output. The
 engine's rules of legality live in
 [patient-state-model.md](patient-state-model.md).
 
@@ -101,9 +111,16 @@ section: how EmitHL7 and EmitState are checked against each other).
 Domain models: [operational-models.md](operational-models.md) ·
 [patient-state-model.md](patient-state-model.md) ·
 [clinical-realities.md](clinical-realities.md) ·
+[trajectory-computation.md](trajectory-computation.md) (the
+cross-cutting synthesis: how a patient trajectory is actually
+computed, script-space versus truth-space) ·
 [gmf-interpreter.md](gmf-interpreter.md) (how Synthea-format disease
 modules are executed here, including the as-built record of every
-deviation from the original design).
+deviation from the original design) ·
+[gmf-source-model.md](gmf-source-model.md) (its companion: how a real
+Synthea module is structured and run upstream, why most of the
+current catalog still blocks here, and the ordered unlock ladder for
+what would change that).
 
 Configuration & provenance: [simulate-your-facility.md](simulate-your-facility.md)
 (the site-interview FAQ, no code) · [site-profiles.md](site-profiles.md)

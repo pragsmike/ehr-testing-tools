@@ -950,9 +950,9 @@ the milestone before it:
     above) rather than a lockfile over Synthea's full 85-module
     library. Growing the set further is real future work, gated on
     nothing but author time and the specific deferred-feature
-    extensions M7's own prioritization table names — see the
-    `CallSubmodule`/`Death` bullet below, now backed by that table
-    instead of an unbacked deferral.
+    extensions M7's own prioritization table names — see the GMF
+    unlock ladder bullet below, now backed by that table instead of an
+    unbacked deferral.
   - **Two-participant emitter coherence.** M6's own emitter-coherence
     property excludes bed-swap (A17) and merge (A40) — genuinely
     two-participant messages whose own wire-identity reconstruction (a
@@ -972,20 +972,52 @@ the milestone before it:
     own section, above) — a `:transfer` step already exists in
     `ehr-testing-sim.pathway` as the architecturally right primitive,
     named but not built this session.
-  - **`CallSubmodule`/`Counter`/`MultiObservation`/`Death` (GMF state
-    types), and two new gaps M7 found (`wellness: true` encounter-class
-    encoding, mandatory-path `Date` conditions).** Deferred from the
-    interpreter's v1 scope at the M5 design stage
-    (`docs/gmf-interpreter.md`) — **no longer an unbacked deferral**:
-    M7's own prioritization table (`docs/gmf-interpreter.md`, M7
-    section) quantifies each against 41 real modules read —
-    `CallSubmodule` blocks ~24 of them (the headline finding, by far
-    the largest); `Death` is the cheapest fix (every instance found on
-    a genuinely excludable tail, never mandatory, unlocks
-    `spina_bifida.json` immediately per M7's own self-correction, above);
-    the `wellness: true` encoding fix unlocks `epilepsy.json`/
-    `med_rec.json` immediately. Revisit this bullet by reading that
-    table, not by re-surveying from scratch.
+  - **The GMF unlock ladder — four rungs, ordered by what each admits,
+    no longer an unbacked deferral.** `CallSubmodule`/`Counter`/
+    `MultiObservation`/`Death` were deferred from the interpreter's v1
+    scope at the M5 design stage (`docs/gmf-interpreter.md`); M7's own
+    prioritization table (`docs/gmf-interpreter.md`, M7 section)
+    quantifies each against 41 real modules read, and
+    [`docs/gmf-source-model.md`](../../docs/gmf-source-model.md) Part C
+    is where the full design sketch and cost class for each rung below
+    now live — revisit by reading that Part, not by re-surveying from
+    scratch.
+    1. **Reachability-aware load gate** (loader-only) —
+       `docs/gmf-source-model.md` Part C rung 1. Admits modules whose
+       only deferred-type states sit on genuinely unreachable-or-rare
+       branches without giving those states real semantics — the M7
+       survey's own `self_harm.json`/`stroke.json` evidence
+       (`docs/gmf-interpreter.md`, M7 section) is the receipts.
+    2. **`Death` mints the transition into `:expired`** — `docs/gmf-
+       source-model.md` Part C rung 2. The cheapest, highest-confidence
+       rung on M7's own evidence (every one of 12+ `Death` instances
+       found on an excludable tail, never mandatory); unlocks
+       `spina_bifida.json` immediately per M7's own self-correction,
+       above, and opens the donor-management content
+       `docs/clinical-realities.md`'s post-mortem entry already
+       describes.
+    3. **Predicate vocabulary, `Date` first** — `docs/gmf-source-model.md`
+       Part C rung 3. Admits `stroke.json` by itself (once rungs 1/2
+       land ahead of it); the survey's own further observed gaps
+       (`Vital Sign`, `Or`, `Active CarePlan`, `Observation`-as-condition)
+       are the natural next additions in the order the survey found
+       them.
+    4. **`CallSubmodule`** — `docs/gmf-source-model.md` Part C rung 4,
+       an M-scale milestone in its own right, not a task alongside the
+       three above. By far the largest single unlock (~24 of the 41
+       modules read at any depth this session, more than every other
+       deferred feature combined) — the headline finding, sharpening
+       the `ear_infections.json` finding the original M5-prep survey
+       already made.
+
+    Two further M7 findings sit outside this four-rung ladder (neither
+    is one of its rungs, per `docs/gmf-source-model.md` Part C's own
+    scope) but remain real and worth a cheap fix: a `"wellness": true`
+    boolean encounter-class encoding (vs. the `encounter_class:
+    "wellness"` string this loader expects) blocks five confirmed
+    modules including two (`epilepsy.json`, `med_rec.json`) otherwise
+    fully clean; and the multi-encounter-per-episode compile-time
+    truncation has its own bullet, above.
   - **Calibrate** — already its own bullet, above; listed here too
     only for this index's own completeness.
 

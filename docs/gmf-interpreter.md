@@ -12,7 +12,12 @@ vendored modules from stepping on each other or on this project's own
 engine-reserved state. [`notes/ADRs.md`](../notes/ADRs.md) ADR-0013
 records the sibling decision (module vendoring: target, provenance,
 curation criterion) this document's own candidate-module survey (the
-appendix) feeds directly.
+appendix) feeds directly. This document stays the as-built spec of
+*this project's own* interpreter — for how a real Synthea module is
+structured and run upstream, why so much of the current module
+catalog still fails to clear the bar below, and the ordered ladder of
+future extensions that would change that, see its companion,
+[`gmf-source-model.md`](gmf-source-model.md).
 
 **Provenance discipline for this document.** Per `AGENTS.md`'s
 standing rule ("do not invent facts about upstream sources"), every
