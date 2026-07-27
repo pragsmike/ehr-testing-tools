@@ -100,6 +100,8 @@ real interpreter complexity to support — the opposite of this
 project's own curation discipline (ADR-0013), which exists to keep
 real complexity out, not to reject cheap wins.
 
+*Ratified 2026-07-26 (item 1 of 8, this document's closing list, below).*
+
 ## 2. Transitions, v1
 
 All four of Synthea's transition kinds are v1 scope — every module
@@ -226,8 +228,8 @@ again, exactly as ADR-0009 already anticipates for every milestone
 that grows the engine's stochastic surface — expected, not a
 regression to chase.
 
-**Two open sub-questions, each with a recommendation, both flagged for
-author ratification:**
+**Two open sub-questions, each with a recommendation — both ratified
+2026-07-26 (items 2 and 3 of 8, this document's closing list, below):**
 
 1. **Granularity of the history-phase fast-forward.** Real Synthea
    advances in fixed weekly ticks because its own horizon is a
@@ -294,22 +296,34 @@ directly (like `:admission`/`:discharge`, not auto-paired like
 `EncounterEnd` pair already brackets start and end explicitly, so there
 is no turnaround-time to sample and no ergonomic reason to auto-pair).
 
-**Sketch, for author ratification alongside the rest of this
-document:**
+**Sketch, ratified 2026-07-26 (items 5–8 of 8, this document's closing
+list, below; item 4 is `sinusitis.json`'s own vendoring recommendation,
+appendix):**
 
-- `:outpatient-visit`'s `decide` does **not** call
+- **(Item 5.)** `:outpatient-visit`'s `decide` does **not** call
   `ehr-testing-sim.facility/allocate` — an outpatient encounter
   occupies no bed, so there is no ladder to consult. `:status`
   transitions `:new -> :admitted` (reusing the existing value — an
   outpatient patient genuinely is "mid-encounter," which is what
   `:status` actually tracks) and `:class` is set to `:outpatient`
-  (already a legal value); `:location` stays **deliberately nil** for
+  (already a legal value).
+- **(Item 6.)** `:location` stays **deliberately nil** for
   the visit's duration — a **named exception**, gated on `:class
   :outpatient`, to `docs/patient-state-model.md`'s existing "never
   nil-bed, even while boarding" rule for `:location`, which was written
   before this project had a class of patient with no bed to be nil
-  *about*.
-- `:outpatient-visit-end` transitions `:status` `:admitted ->
+  *about*. **Ratification note:** this exception is not merely prose —
+  it lands, M5b, as a genuine row in `docs/patient-state-model.md`'s
+  event-validity table (the same status × event-class ×
+  attribute-conditions shape that table's post-mortem/donor rows
+  already use, not a special-cased sentence bolted alongside it):
+  `:location = nil` is legal exactly when `:class = :outpatient`, for
+  events of the encounter/therapeutic-intent classes an outpatient
+  visit spans, illegal otherwise — a *conditional* validity row, keyed
+  on status × event-class × the `:class :outpatient` attribute
+  condition, the mechanism the table's own donor row already
+  establishes for a gated exception.
+- **(Item 7.)** `:outpatient-visit-end` transitions `:status` `:admitted ->
   :discharged`, the same terminal value inpatient discharge already
   uses (no new `:status` value invented — `:class :outpatient` is
   already the distinguishing fact, the same way `:class` already
@@ -324,22 +338,23 @@ document:**
   still exists because `state-history` (the fold, ADR-0008) needs a
   real event to transition on, independent of whether anything renders
   it.
-- **New invariants this implies (co-landing scope, `check.clj`, M5b):**
+- **(Item 8.) New invariants this implies (co-landing scope, `check.clj`, M5b):**
   `outpatient-visit-only-when-new` (the `:admission`-row's own
   treatment, applied to the new step); a structural
   `outpatient-patients-occupy-no-bed` check (`:class :outpatient =>
-  :location nil`, for the visit's duration); and the occupancy board's
-  own consistency law (`docs/operational-models.md`'s "board ≡ fold
-  over patient locations") gains an explicit scope qualifier —
-  *inpatient/ED* patient locations, not every patient's — since an
-  outpatient patient was never a candidate for the board to include in
-  the first place, not an exception being carved out of an otherwise
-  universal law.
+  :location nil`, for the visit's duration — the same fact item 6's
+  validity-table row states, checked mechanically here); and the
+  occupancy board's own consistency law (`docs/operational-models.md`'s
+  "board ≡ fold over patient locations") gains an explicit scope
+  qualifier — *inpatient/ED* patient locations, not every patient's —
+  since an outpatient patient was never a candidate for the board to
+  include in the first place, not an exception being carved out of an
+  otherwise universal law.
 
-This sketch is exactly the kind of design call this document's own
-introduction flags for author review: it touches an existing "never
-nil" invariant (`:location`), even though only under a new, named,
-narrowly-gated condition.
+This sketch touches an existing "never nil" invariant (`:location`),
+even though only under a new, named, narrowly-gated condition — see
+this document's closing list, below, for the full ratification
+record.
 
 ## 5. Attributes registry
 
@@ -424,6 +439,76 @@ them in one place, phrased as obligations rather than as prose laws:
    reordered against the clinical causality the module's own transition
    graph already encodes.
 
+## 7. Implementation status (M5a, as built)
+
+`RunModules` the *library* is `:built` as of Milestone M5a
+(`ehr-testing-sim.gmf` — the loader, §1/§5; `ehr-testing-sim.gmf-
+interpreter` — `step`/`walk-module`/`run-module`, §1–§3): every v1 state
+type and all four transition kinds land exactly as specified above,
+tested against `test/ehr_testing_sim/fixtures/fixture-clinic.json`
+(ADR-0013 point 6's own hand-written fixture — placed there, not
+`resources/modules/`, per that point's own reasoning: this project's
+authored test content carries no NOTICE obligation and is not vendored
+upstream data). `docs/sim-theory.edn`'s own `:trajectory` stage stays
+`:planned` regardless — see that file's own updated `:contract` note —
+because a library existing is not the same as the pipeline actually
+wiring persona → modules → trajectory inside a run; that wiring is
+M5b's job.
+
+Four implementation decisions this session made, each a concrete filling-
+in of a design choice §1–§3 above left unspecified rather than a silent
+divergence from anything ratified:
+
+1. **A blocked Guard's own re-check mechanism.** Neither §2 nor §3 states
+   *how* a Guard whose condition currently fails ever makes progress
+   under the "no fixed tick" design — real Synthea's own answer (a global
+   simulation tick re-checking every blocked module) is exactly the
+   mechanism §3 rejects reproducing. This session's own resolution,
+   `ehr-testing-sim.gmf-interpreter/guard-step`: a failing `:age`
+   condition with operator `>=` resolves ANALYTICALLY — the interpreter
+   computes the exact virtual-clock advance (a `java.time.LocalDate`
+   computation, zero rng draws) until the persona's age reaches the
+   guard's own threshold, then proceeds — while a Guard failing on any
+   other condition (a different operator, `:gender`, `:attribute`, or
+   `:prior-state`) simply BLOCKS, the same way real Synthea's own
+   Delay-then-Guard authoring idiom already requires a module author to
+   route around a Guard that needs elapsed time to pass. This keeps
+   "wait until old enough" Guards working without reintroducing a tick
+   loop for every OTHER kind of block, at the cost of scoping the
+   analytic resolution to the one condition kind (age) whose "how much
+   longer" is a closed-form computation rather than an open-ended wait
+   on some other actor.
+2. **`Observation`'s own sampled value.** §1's table does not specify how
+   (or whether) an `Observation` state's own value is sampled at the
+   interpreter layer — a defensible reading is "M5b/`CompileTrajectory`'s
+   concern." This session's own choice: when a state carries a `:range`,
+   the interpreter samples one value uniformly within it (one rng draw,
+   the same fixed-consumption law every other stochastic choice in this
+   project follows) and carries it on the trajectory event; a state with
+   no `:range` emits no `:value`. A future module needing something
+   richer (a categorical/abnormal-tail distribution, `order-profiles`'
+   own shape) is out of this session's scope, not precluded by it.
+3. **`EncounterEnd`'s own reference is "the most recently opened
+   Encounter for this module," not tracked open/closed.** Real GMF
+   modules occasionally have more than one Encounter conceptually
+   "pending" at once (the same gap `docs/patient-state-model.md`'s own
+   mining section already names for `VisitID`/pending encounters,
+   pre-existing and unrelated to this session). v1's interpreter does
+   not track which encounters are still open versus already closed — it
+   simply finds the LAST `:encounter` event this module emitted, which
+   is exactly correct for every module this session's own fixture and
+   property tests exercise (encounters do not nest or overlap in v1's
+   own state/transition scope) but would need real open/closed tracking
+   before a future module with genuinely overlapping encounters could
+   trust it.
+4. **Virtual time is an interpreter-internal `epoch-day`
+   (`java.time.LocalDate/toEpochDay`), not the engine's own seconds-
+   from-run-start clock (ADR-0011).** M5a is engine-free by design (the
+   roadmap's own M5a/M5b split) — mapping a module's own epoch-day
+   virtual clock onto a real run's seconds-from-registration clock is
+   exactly the kind of persona → modules → trajectory wiring M5b's own
+   session does, not a gap in this one.
+
 ---
 
 ## Appendix: candidate-module survey
@@ -480,8 +565,8 @@ below strictly requires it (§ recommendation, next).
 
 ### Recommendation: vendor `sinusitis.json` first
 
-**Flagged for author ratification, per ADR-0013 point 4's own
-criterion.** `sinusitis.json` over `sore_throat.json` — despite
+**Ratified 2026-07-26 (item 4 of 8, this document's closing list,
+below), per ADR-0013 point 4's own criterion.** `sinusitis.json` over `sore_throat.json` — despite
 `sore_throat.json`'s clean 44/44 state-type score — because
 `sinusitis.json`'s one gap (`Device`/`DeviceEnd`, 2 states) is
 **structurally isolated**: confined to the module's rare chronic-
@@ -517,6 +602,45 @@ a module whose two therapeutic branches both silently do nothing.
 
 ---
 
-*Author-review items from this document are consolidated in the
-session's own closing list — see the session report / commit message
-this document lands with.*
+## Ratification record
+
+**All eight author-review items from this document are ACCEPTED,
+2026-07-26** (author-ratified ahead of M5a's build session, per this
+roadmap's own M5a-opens-by-confirming-these convention,
+`.agents/plans/roadmap.md`'s M5 entry):
+
+1. `Symptom` joins v1 as a write-only, consumed-internally state (§1).
+2. History-phase fast-forward: no fixed tick — reuses the exact
+   per-state transition-sampling logic the horizon phase uses (§3,
+   sub-question 1).
+3. Pre-horizon facts enter `ground-truth-log` marked `:pre-horizon
+   true`, never trimmed (§3, sub-question 2).
+4. `sinusitis.json` is the first module recommended to vendor, M5b
+   (Appendix).
+5. `:outpatient-visit`'s `decide` calls no allocation ladder; `:status`
+   `:new -> :admitted`, `:class -> :outpatient` (§4 sketch).
+6. `:outpatient-visit`'s `:location` stays deliberately `nil` for the
+   visit's duration — a named, narrowly-gated exception to
+   `docs/patient-state-model.md`'s "never nil-bed" rule for
+   `:location`. **This item does not stay prose-only:** it is scheduled
+   to land, M5b, as a genuine conditional row in that document's
+   event-validity table (mechanism: status × event-class ×
+   attribute-conditions — the same shape the table's post-mortem/donor
+   rows already use for a gated exception, not a special-cased sentence
+   bolted on beside the table), per this session's own annotation at
+   item 6's own place in §4, above (§4 sketch).
+7. `:outpatient-visit-end`'s `:status` `:admitted -> :discharged`; no
+   `message-type-registry` entry, by design, the same precedent
+   ADR-0012 already established for `:step-rejected` (§4 sketch).
+8. New invariants implied by items 5–7:
+   `outpatient-visit-only-when-new`, `outpatient-patients-occupy-no-bed`,
+   and the occupancy board's inpatient/ED-scoped consistency-law
+   qualifier (§4 sketch).
+
+None of the eight requires code or resource changes to *this* session
+(M5a) — items 1–3 are interpreter-core design this session's own build
+implements directly (Tasks 1–3, below the roadmap's M5a scope); items
+4–8 are M5b scope (the vendored module, the outpatient step-type pair,
+and item 6's validity-table row specifically), recorded here as
+ratified so M5b's own session opens against decided design, not a
+still-open recommendation.

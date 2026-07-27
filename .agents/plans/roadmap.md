@@ -421,14 +421,14 @@ project controls end to end; M5b lands the part that actually touches
 real upstream content and the emitter-facing consequences of a new
 encounter class.
 
-**Design captured ahead of either sub-milestone's build, this
-session (docs-only — no code or resources land here).**
+**Design captured ahead of either sub-milestone's build** (docs/ADR
+session, 2026-07-26 — no code or resources landed with it).
 [`docs/gmf-interpreter.md`](../../docs/gmf-interpreter.md) is the v1
 design doc: the state-type/transition subset the interpreter executes
 (deferring `CallSubmodule`/`Counter`/`MultiObservation`/`Death`, and,
 per its own candidate-module survey, `Device`/`DeviceEnd` and
-`CarePlanStart`/`CarePlanEnd`; recommending `Symptom` join v1 as a
-write-only state), the history/horizon two-phase run per patient, the
+`CarePlanStart`/`CarePlanEnd`; `Symptom` joins v1 as a write-only
+state), the history/horizon two-phase run per patient, the
 GMF-encounter-class → ADT mapping (including the new
 `:outpatient-visit` step pair), and the module-namespaced `:attributes`
 discipline. [ADR-0013](../../notes/ADRs.md#adr-0013) resolves
@@ -437,37 +437,91 @@ discipline. [ADR-0013](../../notes/ADRs.md#adr-0013) resolves
 pins a lockfile (target 1) — the decision ADR-0003 deferred since
 scaffold day, decided now that `docs/gmf-interpreter.md`'s survey of
 three real Synthea modules gives it something concrete to be decided
-against. Both documents name several recommendations flagged for
-author ratification (the `Symptom` addition, the history-phase
+against. **All eight of both documents' author-review recommendations
+are ratified, 2026-07-26** (the `Symptom` addition, the history-phase
 fast-forward granularity, the pre-horizon mark-don't-trim choice, the
-outpatient-visit validity/invariant sketch, and — `docs/gmf-
-interpreter.md`'s own appendix — `sinusitis.json` as the first module
-recommended to vendor) rather than silently decided; a future session
-opening M5a should confirm these before writing code against them, not
-assume them ratified by this session's own docs-only pass.
+outpatient-visit validity/invariant sketch — split into its own four
+items, `docs/gmf-interpreter.md`'s own closing ratification record —
+and `sinusitis.json` as the first module to vendor): M5a (below) is
+built directly against this ratified design, not against a still-open
+recommendation.
 
-### M5a — the interpreter itself: state machine, history/horizon, hand-written fixture
+### M5a — the interpreter itself: state machine, history/horizon, hand-written fixture — **landed**
 
-Lands **RunModules** (`:planned → :built`), pure and engine-adjacent:
-the GMF state-machine walk (`docs/gmf-interpreter.md` §1–3), the
-`PriorState`-as-log-query compilation (§2 — no `engine.clj` signature
-change required; `world`'s existing `:ground-truth` mirror and
-`events-for-patient`, both already landed M2b/ADR-0010-era, are the
-mechanism), and the history/horizon two-phase run per patient (§3).
-Tested end to end against the one hand-written GMF-JSON fixture module
-ADR-0013 point 6 names — this project's own authored content, not
-vendored, so the interpreter's own red tests depend on nothing outside
-this repo's control. No real Synthea module content lands in M5a; no
+Lands **RunModules the LIBRARY** — `ehr-testing-sim.gmf` (the module
+loader) and `ehr-testing-sim.gmf-interpreter` (`step`/`walk-module`/
+`run-module`) — pure and engine-adjacent: the GMF state-machine walk
+(`docs/gmf-interpreter.md` §1–3), the `PriorState`-as-log-query
+compilation (§2 — no `engine.clj` signature change needed; the
+interpreter's own accumulating trajectory stands in for `world`'s
+`:ground-truth` mirror, per that section's own "same event shape, so
+M5b swaps the source, not the logic" note), and the history/horizon
+two-phase run per patient (§3, `run-module` — genuinely ONE continuous
+walk marking events `:pre-horizon` by the pure predicate `t <
+registration-t`, not two separately-driven passes). Tested end to end
+against `test/ehr_testing_sim/fixtures/fixture-clinic.json`, the one
+hand-written GMF-JSON fixture ADR-0013 point 6 names — this project's
+own authored content, not vendored, so the interpreter's own red tests
+depend on nothing outside this repo's control.
+
+**`docs/sim-theory.edn`'s own `:trajectory` stage stays `:planned`,
+corrected from this entry's own original scope note above (which had
+read "Lands RunModules (:planned → :built)").** A library existing is
+not the same as this repo's own run actually wiring persona → modules →
+trajectory together — that wiring, and the flip to `:built`, is M5b's
+job (`docs/gmf-interpreter.md` §7, "Implementation status," and
+`sim-theory.edn`'s own updated `:contract` note, both added this
+session). No real Synthea module content lands in M5a; no
 `ground-truth-log`/`hl7v2-stream` consequence yet, since
 `CompileTrajectory` (M5b) is what turns a trajectory into pathway IR
 the engine can execute.
 
-Co-landing invariants: code-passthrough (every coded concept a
-trajectory event carries is verbatim from its source module, never
-invented or translated); glass-box traceability (every trajectory
-event cites the module id and state name that produced it) — both
-checkable against the hand-written fixture alone, ahead of any vendored
-content existing.
+**Four implementation decisions, recorded honestly as this session's
+own filling-in of what §1–§3 left unspecified, not silent divergence**
+(`docs/gmf-interpreter.md` §7 has the full reasoning for each): (1) a
+blocked Guard's own re-check mechanism — an analytic virtual-clock jump
+for a failing `:age`/`>=` condition (zero rng draws), block otherwise;
+(2) `Observation`'s own sampled value — one uniform draw within a
+state's own `:range`, when present; (3) `EncounterEnd` references "the
+most recently opened Encounter for this module," not a tracked open/
+closed set (correct for every module this session's own fixture and
+properties exercise; a future module with genuinely overlapping
+encounters would need more); (4) virtual time is an interpreter-internal
+`epoch-day` (`java.time.LocalDate`), not the engine's own seconds clock
+— M5b's own mapping job.
+
+Co-landing invariants/properties: code-passthrough (every coded concept
+a trajectory event carries is verbatim from its source module, 150
+trials green); glass-box traceability (every trajectory event cites a
+real module id and state name, 150 trials green); attribute writes only
+through the declared, module-namespaced registry (150 trials green);
+determinism, both for a bare `walk-module` run and across the full
+history/horizon `run-module` (150 trials each); the phase boundary is
+exactly `t < registration-t`, the same pure-predicate shape ADR-0011's
+own warm-up mark already established (150 trials green) — all checkable
+against the hand-written fixture alone, ahead of any vendored content
+existing.
+
+**Task 0's ratification flips landed alongside, per this session's own
+scope.** All eight author-review recommendations flagged across
+`docs/gmf-interpreter.md` and its appendix (the `Symptom` addition, the
+history-phase fast-forward granularity, the pre-horizon mark-don't-trim
+choice, `sinusitis.json` as the first module to vendor, and the four
+sub-items of the `:outpatient-visit` sketch — including item 6, the
+`:location` nil exception, now scheduled to land M5b as a genuine
+conditional row in `docs/patient-state-model.md`'s event-validity table
+rather than staying prose-only) are ACCEPTED, 2026-07-26 — see that
+document's own closing "Ratification record."
+
+273 tests / 716 assertions green (up from the site-profiles baseline
+230/625), coverage 96.00%/98.18% overall (up from 95.90%/98.06% —
+`ehr-testing-sim.gmf` 98.69%/99.29%, `ehr-testing-sim.gmf-interpreter`
+93.79%/98.26%). The pinned regression fixture
+(`test/ehr_testing_sim/fixtures/pinned_seed_42_patients_5.edn`) is
+untouched — M5a never reaches `engine.clj`'s own config surface, so
+there was no perturbation to regenerate against, the same by-
+construction guarantee the site-profiles milestone first established
+for its own catalytic.
 
 ### M5b — CompileTrajectory + the first vendored module + outpatient steps
 

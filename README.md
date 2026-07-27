@@ -70,12 +70,16 @@ M4's **Persona** — demographics sampling from vendored, hashed tables
 plus a real `payer-pool` catalytic wire, folded into Execute's own step
 queue via the `:registered` event, plus PID/IN1 enrichment — and
 EmitHL7's fourth catalytic, **site-profile** — MSH dialect, code-table
-overrides, Z-segment templates — property-tested and green (230 tests
-/ 625 assertions).
+overrides, Z-segment templates — property-tested and green (273 tests
+/ 716 assertions).
 **Next** (amber): **RunModules**, Milestone M5 — the GMF interpreter
 port, the `gmf-module-set` vendoring-vs-lockfile decision, and
-`CompileTrajectory`. **Later** (dashed grey): everything else in the
-*want*.
+`CompileTrajectory`. Milestone M5a (landed) built the interpreter
+LIBRARY itself (`ehr-testing-sim.gmf`/`ehr-testing-sim.gmf-interpreter`
+— the module loader, the state-machine walk, and the history/horizon
+two-phase run) against a hand-written fixture module; the stage stays
+amber until M5b wires a real vendored module's trajectory into an
+actual run. **Later** (dashed grey): everything else in the *want*.
 
 [`docs/sim-theory-diagram.md`](docs/sim-theory-diagram.md) is the full
 detail view (every resource wire, catalytic input, and the

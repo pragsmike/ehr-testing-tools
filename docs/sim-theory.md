@@ -29,11 +29,16 @@ One file describes three systems:
   fourth catalytic (`site-profile`) — MSH dialect, code-table
   overrides, and Z-segment templates, all property-tested against the
   dialect-invariance law stated on that stage's own equation entry.
-  Everything the *now* claims is property-tested and green (230 tests /
-  625 assertions, 2026-07-26).
+  Everything the *now* claims is property-tested and green (273 tests /
+  716 assertions, 2026-07-27).
 - **next** — the single stage marked `;; NEXT` in the EDN: **RunModules**,
   Milestone M5 — the GMF interpreter port, the `gmf-module-set`
-  vendoring-vs-lockfile decision, and `CompileTrajectory`.
+  vendoring-vs-lockfile decision, and `CompileTrajectory`. M5a (this
+  session) landed the interpreter LIBRARY itself
+  (`ehr-testing-sim.gmf`/`ehr-testing-sim.gmf-interpreter`) against a
+  hand-written fixture; the stage's own `:status` stays `:planned` and
+  the `;; NEXT` marker stays here until M5b wires a real vendored
+  module's trajectory into an actual run.
 
 No schema keys were invented for this convention — it lives in
 comments and here, keeping the EDN loadable by tools' Pipeline Malli

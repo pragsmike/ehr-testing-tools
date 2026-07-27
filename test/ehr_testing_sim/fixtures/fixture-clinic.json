@@ -1,0 +1,203 @@
+{
+  "name": "Fixture Clinic",
+  "remarks": [
+    "Hand-authored GMF fixture for ehr-testing-sim's M5a interpreter tests",
+    "(notes/ADRs.md ADR-0013 point 6): this project's own authored data,",
+    "not derived from or copied out of any real Synthea module, so it carries",
+    "no NOTICE/provenance obligation the way a vendored module would.",
+    "Every v1 state type (docs/gmf-interpreter.md section 1) and all four",
+    "transition kinds (section 2) appear at least once. Concept triplets are",
+    "real, independently verified SNOMED CT/LOINC/RxNorm codes",
+    "(notes/facts-register.md F10-F12), reused across a small set of states",
+    "rather than one invented code per state."
+  ],
+  "states": {
+    "Initial": {
+      "type": "Initial",
+      "direct_transition": "Check_Age_Guard"
+    },
+
+    "Check_Age_Guard": {
+      "type": "Guard",
+      "allow": {"condition_type": "Age", "operator": ">=", "quantity": 0, "unit": "years"},
+      "direct_transition": "Log_Onset_Attribute"
+    },
+
+    "Log_Onset_Attribute": {
+      "type": "SetAttribute",
+      "attribute": "onset_logged",
+      "value": true,
+      "direct_transition": "Nasal_Congestion_Symptom"
+    },
+
+    "Nasal_Congestion_Symptom": {
+      "type": "Symptom",
+      "symptom": "Nasal Congestion",
+      "range": {"low": 10, "high": 40},
+      "direct_transition": "Sex_Branch"
+    },
+
+    "Sex_Branch": {
+      "type": "Simple",
+      "conditional_transition": [
+        {"condition": {"condition_type": "Gender", "gender": "F"}, "transition": "Route_Female"},
+        {"transition": "Route_Male"}
+      ]
+    },
+
+    "Route_Female": {
+      "type": "SetAttribute",
+      "attribute": "intake_branch",
+      "value": "female",
+      "direct_transition": "Merge_Point"
+    },
+
+    "Route_Male": {
+      "type": "SetAttribute",
+      "attribute": "intake_branch",
+      "value": "male",
+      "direct_transition": "Merge_Point"
+    },
+
+    "Merge_Point": {
+      "type": "Simple",
+      "distributed_transition": [
+        {"distribution": 0.7, "transition": "Sinusitis_Onset"},
+        {"distribution": 0.3, "transition": "No_Onset_Terminal"}
+      ]
+    },
+
+    "No_Onset_Terminal": {
+      "type": "Terminal"
+    },
+
+    "Sinusitis_Onset": {
+      "type": "ConditionOnset",
+      "target_encounter": "Doctor_Visit_Encounter",
+      "codes": [
+        {"system": "SNOMED-CT", "code": "36971009", "display": "Sinusitis (disorder)"}
+      ],
+      "direct_transition": "Symptom_To_Visit_Delay"
+    },
+
+    "Symptom_To_Visit_Delay": {
+      "type": "Delay",
+      "range": {"low": 2, "high": 5, "unit": "days"},
+      "direct_transition": "Doctor_Visit_Encounter"
+    },
+
+    "Doctor_Visit_Encounter": {
+      "type": "Encounter",
+      "encounter_class": "ambulatory",
+      "reason": "onset_logged",
+      "codes": [
+        {"system": "SNOMED-CT", "code": "185345009", "display": "Encounter for symptom"}
+      ],
+      "direct_transition": "Take_Temperature"
+    },
+
+    "Take_Temperature": {
+      "type": "Observation",
+      "category": "vital-signs",
+      "unit": "Cel",
+      "codes": [
+        {"system": "LOINC", "code": "8310-5", "display": "Body temperature"}
+      ],
+      "range": {"low": 37.5, "high": 39.5},
+      "direct_transition": "Severity_Guard"
+    },
+
+    "Severity_Guard": {
+      "type": "Guard",
+      "allow": {"condition_type": "Attribute", "attribute": "onset_logged", "operator": "==", "value": true},
+      "direct_transition": "Treatment_Branch"
+    },
+
+    "Treatment_Branch": {
+      "type": "Simple",
+      "complex_transition": [
+        {
+          "condition": {"condition_type": "Attribute", "attribute": "intake_branch", "operator": "==", "value": "female"},
+          "distributions": [
+            {"distribution": 0.6, "transition": "Prescribe_Amoxicillin"},
+            {"distribution": 0.3, "transition": "Skip_Meds"},
+            {"distribution": 0.1, "transition": "Sinus_Surgery"}
+          ]
+        },
+        {
+          "distributions": [
+            {"distribution": 1.0, "transition": "Skip_Meds"}
+          ]
+        }
+      ]
+    },
+
+    "Prescribe_Amoxicillin": {
+      "type": "MedicationOrder",
+      "reason": "onset_logged",
+      "codes": [
+        {"system": "RxNorm", "code": "308191", "display": "Amoxicillin 500 MG Oral Capsule"}
+      ],
+      "direct_transition": "Mark_Medicated"
+    },
+
+    "Mark_Medicated": {
+      "type": "SetAttribute",
+      "attribute": "medicated",
+      "value": true,
+      "direct_transition": "Treatment_Delay"
+    },
+
+    "Skip_Meds": {
+      "type": "Simple",
+      "direct_transition": "Treatment_Delay"
+    },
+
+    "Sinus_Surgery": {
+      "type": "Procedure",
+      "target_encounter": "Doctor_Visit_Encounter",
+      "reason": "onset_logged",
+      "codes": [
+        {"system": "SNOMED-CT", "code": "315618009", "display": "FESS - Functional endoscopic sinus surgery - sphenoethmoidectomy"}
+      ],
+      "duration": {"low": 30, "high": 60, "unit": "minutes"},
+      "direct_transition": "Treatment_Delay"
+    },
+
+    "Treatment_Delay": {
+      "type": "Delay",
+      "range": {"low": 7, "high": 10, "unit": "days"},
+      "direct_transition": "Prior_Visit_Guard"
+    },
+
+    "Prior_Visit_Guard": {
+      "type": "Guard",
+      "allow": {"condition_type": "PriorState", "name": "Doctor_Visit_Encounter"},
+      "direct_transition": "End_Encounter"
+    },
+
+    "End_Encounter": {
+      "type": "EncounterEnd",
+      "conditional_transition": [
+        {"condition": {"condition_type": "Attribute", "attribute": "medicated", "operator": "==", "value": true}, "transition": "End_Medication"},
+        {"transition": "Resolve_Condition"}
+      ]
+    },
+
+    "End_Medication": {
+      "type": "MedicationEnd",
+      "medication_order": "Prescribe_Amoxicillin",
+      "direct_transition": "Resolve_Condition"
+    },
+
+    "Resolve_Condition": {
+      "type": "ConditionEnd",
+      "condition_onset": "Sinusitis_Onset",
+      "direct_transition": "Terminal_Resolved"
+    },
+
+    "Terminal_Resolved": {
+      "type": "Terminal"
+    }
+  }
+}
