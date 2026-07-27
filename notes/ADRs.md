@@ -949,3 +949,131 @@ producer needs nothing repo-side to get the same treatment — dropping a
 conformant `manifest.edn` beside its output is the entire integration
 surface.
 **Status.** Accepted (author-directed), 2026-07-26.
+
+---
+## ADR-0015 — The gate loop maintains TWO baselines: legacy-floor and full-capability
+**Context.** This session reran `sim_gate_loop_test.clj` against the
+M3-era baseline ADR-0013 committed and found the first real drift since
+that loop was built: 43 messages became 44 for the identical `--seed 42
+--patients 20 --churn --emit hl7` invocation, an extra `ADT^A13`
+(cancel-discharge) churn event, verdicts and codes otherwise unchanged
+(still all `:pass`, zero findings). The cause is not a defect: M4
+(Persona) prepends an unconditional per-patient RNG draw ahead of every
+other stage, and that one extra draw reshuffles what the SAME seed's RNG
+stream hands to every downstream stochastic decision, including churn's
+own rolls -- an expected consequence of a new unconditional draw landing
+earlier in the sequence, not a sim-side bug. The baseline was
+regenerated (reviewed delta first, then regeneration with a provenance
+header, per ADR-0013's own discipline) and the loop is green again.
+
+But the deeper finding is scope, not drift: this loop's own default
+pathway has *never* carried an `:order` step, a module assignment, or an
+outpatient encounter -- sim's own M3 (order/result), M4 (Persona), M5a/M5b
+(GMF modules, outpatient visits) milestones all landed and this loop's
+own traffic shape never moved, because nothing in it exercises what
+those milestones added. A loop that only ever gates `ADT^A01/A02/A03`
+plus churn's ADT family cannot become a picture of sim's *current*
+capability merely by staying green -- it was never wired to see the rest.
+sim's own README names `ehr-testing-tools` gating its output as the
+reason sim's own 850+ assertions aren't graded on their own homework; a
+gate loop that structurally cannot see three milestones' worth of new
+message types undercuts that claim quietly, the kind of gap that doesn't
+announce itself in red text the way a real regression does.
+
+**Decision.** The cross-repo consumer loop now maintains TWO committed
+baselines, not one, each with its own test and its own scope statement:
+
+1. **`sim-v2-gate-baseline.edn` (LEGACY-FLOOR)** --
+   `sim_gate_loop_test.clj`, unchanged in shape (plain default pathway,
+   `--seed 42 --patients 20 --churn`), regenerated this session per the
+   delta above. Its own header now says explicitly what it is: a floor
+   proving the base-structural v2 judge still runs clean over sim's
+   *plainest* traffic, not a picture of sim's breadth. Kept, not
+   retired -- it is cheap (20 patients, ~44 messages), it is the
+   longest-running signal this loop has, and ADR-0013's own
+   baseline-delta discipline already treats a re-verified floor as
+   worth keeping even after a richer measurement exists alongside it
+   (the same reason `pre-split-baseline.edn` was never deleted when
+   newer baselines joined it).
+2. **`sim-v2-full-capability-baseline.edn` (the reference picture)** --
+   a NEW test, `sim_full_capability_gate_test.clj`, running a NEW
+   committed config fixture
+   (`test-integration/fixtures/sim-configs/full-capability.edn`) through
+   the SAME `--config` passthrough M4 Task 0 wired: an order-bearing CBC
+   pathway cohort (ordinals 0..39) and a disjoint module-only sinusitis
+   cohort (ordinals 40..59, an EMPTY authored pathway plus
+   `:module-assignment` -- the two cohorts cannot share a patient
+   population under this project's own single-encounter-horizon
+   invariant, confirmed empirically this session: a combined
+   pathway+module attempt on the SAME patients made every run
+   `:self-check-failed`, since a module's own compiled encounter is
+   prepended ahead of a patient's authored pathway and a second
+   encounter-opening step for an already-non-`:new` patient is illegal
+   by construction), `--churn` on with an elevated `:churn-profile`
+   (this file's own header documents why: `churn/sample-profile`'s
+   default rates produced only 2 of the 5 churn trigger codes across 40
+   CBC-cohort patients in this session's own trial runs). At `--seed 42
+   --patients 60`, this corpus contains `ADT^A01/A02/A03/A04` (outpatient,
+   sinusitis module), `ORM^O01`/`ORU^R01` (CBC order/result), and
+   `ADT^A11/A12/A13/A17/A40` (the full churn trigger family) -- 210
+   messages, 11 distinct message types, none of which the legacy-floor
+   loop has ever produced except A01/A02/A03. Captured baseline: all 210
+   `:pass`, zero findings -- this baseline's own header carries the full
+   verdict-by-message-type table, labeled explicitly as M6's own
+   reference picture: the current, dated, honestly-labeled statement of
+   what the v2 judge's base-structural tier makes of sim's *current*
+   breadth, for sim's own M6 (FHIR emitter, emitter-coherence work) to be
+   measured against later.
+3. **Both baselines stay.** This is a policy extension of ADR-0013's own
+   baseline-delta discipline (decision 4 there), not a supersession of
+   it: ADR-0013 established ONE baseline for the loop that existed at
+   the time; this record recognizes that a single baseline's *scope* can
+   go stale even while its *verdicts* stay green, and that the fix is
+   not to keep widening one baseline's own corpus (which would silently
+   change what "legacy-floor" means every time sim gains a milestone)
+   but to keep the narrow floor AND add a second baseline whose own job
+   is to keep pace with sim's breadth. Future sim milestones (site
+   profiles in gate traffic, a dialect-variant loop, FHIR once M6 lands)
+   are candidate THIRD/FOURTH baselines under this same policy, each
+   scoped and named for what it actually covers -- not folded into
+   whichever baseline happens to exist already.
+
+**Rejected.** *Widening the legacy-floor baseline's own corpus in place*
+(adding `:pathways`/`:modules` to `sim_gate_loop_test.clj` itself) -- would
+destroy the one property that makes a "floor" useful: a fixed, minimal,
+long-unchanged reference point. Every future milestone would then face a
+choice between silently growing that same corpus again (scope creep with
+no name for what changed) or leaving it stale on purpose (this session's
+own finding, repeating). *Retiring the legacy-floor loop once the
+full-capability loop exists* -- the two measure different things (a
+minimal floor vs. a breadth picture); retiring the floor would lose the
+cheapest, fastest signal this loop has for a plain-pathway regression,
+for no real savings (both loops together still run in seconds).
+*Combining the CBC pathway and the sinusitis module on the SAME patient
+cohort*, to make the fixture read as one simpler population -- empirically
+impossible under this project's own single-encounter-horizon invariant
+(see Decision 2's own parenthetical); two disjoint cohorts in one corpus
+is the only shape that actually exercises both without a self-check
+failure. *A site-profile variant in this same fixture* -- deliberately
+deferred (`full-capability.edn`'s own header): the full-capability
+baseline is already a wide surface; adding a THIRD dimension (dialect) in
+the same commit would conflate "sim's breadth grew" with "the gate now
+sees a different accent" in one diff. A candidate follow-on, not this
+session's scope.
+
+**Consequence.** `test-integration/fixtures/sim-configs/full-capability.edn`
+(new), `test-integration/ehr_testing_tools/sim_full_capability_gate_test.clj`
+(new), `test-integration/fixtures/reports/sim-v2-full-capability-baseline.edn`
+(new, full provenance header), `test-integration/fixtures/reports/
+sim-v2-gate-baseline.edn` (regenerated in place, provenance header
+updated to record both the M3-to-current delta and this record's own
+legacy-floor framing), `ehr-testing-tools.sim-harness/cli-args` (extended
+with a `:config` passthrough, resolved to an absolute path before it
+reaches the subprocess's argv -- the sibling's own working directory,
+not this repo's root, is where a relative path would otherwise resolve),
+and a new unit test on `sim_harness_test.clj` covering that resolution.
+Nothing in `../ehr-testing-sim` changes; `deps.edn` gains nothing;
+`make integration`/`clojure -X:integration` picks up the new test
+automatically, matching how every other `test-integration` entry point
+has been added since ADR-0013.
+**Status.** Accepted (author-directed), 2026-07-27.

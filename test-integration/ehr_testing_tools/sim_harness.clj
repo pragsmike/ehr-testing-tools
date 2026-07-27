@@ -39,14 +39,21 @@
   "opts -> sim's own `run` verb's argv, per its cli-spec
   (ehr-testing-sim.cli/help-group): :seed is required by sim itself (not
   re-validated here -- that is sim's own operational-error boundary, not
-  this harness's); :patients/:churn/:emit/:reference-date are optional
-  passthroughs."
-  [{:keys [seed patients churn emit reference-date]}]
+  this harness's); :patients/:churn/:emit/:reference-date/:config are
+  optional passthroughs. :config is resolved to an ABSOLUTE path before
+  it ever reaches argv -- the subprocess's own working directory is
+  `sim-repo-dir` (`../ehr-testing-sim`, per `run!`'s own `:dir`), not this
+  repo's root, so a bare relative fixture path (e.g.
+  `test-integration/fixtures/sim-configs/full-capability.edn`, this
+  repo's own convention for where such fixtures live) would resolve
+  against the WRONG directory if passed through verbatim."
+  [{:keys [seed patients churn emit reference-date config]}]
   (cond-> ["-M:cli" "run" "--seed" (str seed)]
     patients (conj "--patients" (str patients))
     churn (conj "--churn")
     emit (conj "--emit" emit)
-    reference-date (conj "--reference-date" reference-date)))
+    reference-date (conj "--reference-date" reference-date)
+    config (conj "--config" (.getAbsolutePath (io/file config)))))
 
 (defn run!
   "Runs `clojure -M:cli run --seed ...` (plus any of :patients/:churn/

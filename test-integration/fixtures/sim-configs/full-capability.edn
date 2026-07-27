@@ -1,0 +1,133 @@
+;; test-integration/fixtures/sim-configs/full-capability.edn -- the
+;; full-capability gate loop's own --config passthrough vehicle (M6's
+;; reference-picture baseline, notes/ADRs.md ADR-0015): every capability
+;; sim's own docs/demos/ has separately demonstrated, exercised together
+;; in ONE corpus, so the v2 gate judges the full breadth of what sim
+;; produces rather than the plain default pathway's ADT-only slice
+;; (test-integration/fixtures/reports/sim-v2-gate-baseline.edn's own
+;; legacy-floor scope). Designed for --patients 60 (this file's own
+;; explicit ordinals below only cover 40..59; fewer patients than that
+;; simply leaves part of the module-only cohort unrealized, not an error).
+;;
+;; TWO COHORTS, not one population wearing both hats -- ordinals 40..59
+;; are pulled out of the CBC pool below by an EXPLICIT :patient-ordinal
+;; override in BOTH :pathways (an EMPTY pathway) and :module-assignment
+;; (sinusitis). This split is load-bearing, not stylistic: a module's own
+;; compiled trajectory is PREPENDED ahead of a patient's authored pathway
+;; at execution time (ehr-testing-sim.engine's :registered decide method,
+;; `:prepend-steps`), so a patient given BOTH an authored :admission step
+;; (the CBC pathway below) AND a module whose own compiled encounter also
+;; opens (or closes) an encounter would carry TWO encounter-opening events
+;; for one patient -- illegal under this project's single-encounter-
+;; horizon invariant (`admission-only-when-new`/`outpatient-visit-only-
+;; when-new`, ADR-0007 point 3's "a single encounter, not a lifelong
+;; history" scope), confirmed empirically this session (a combined
+;; pathway+module attempt on the SAME patient population made every run
+;; :self-check-failed). `ehr-testing-sim.engine_test.clj`'s own "module-
+;; only patients" fixture uses this identical empty-pathway-plus-module
+;; pattern; this config just gives it a name and a cohort size.
+;;
+;; Cohort 1 -- ordinals 0..39 (the :pathways pool's fallback, no explicit
+;; override, so every ordinal NOT named in the override list below draws
+;; it): an order-bearing authored pathway, the CBC order/result cycle per
+;; sim's own resources/order-profiles.edn -- the SAME shape
+;; docs/demos/order-result/config.edn uses. `:module-assignment` has no
+;; pool entry of its own (every entry below is a `:patient-ordinal`
+;; override), so `assign-module` legitimately resolves to nil for this
+;; whole cohort (its own docstring's "most people don't have chronic
+;; sinusitis" case) -- no module ever touches them. Churn (turned on by
+;; the caller's own --churn flag, not this file -- see below) has a full
+;; admission/order/discharge pathway to insert into, so this cohort is
+;; also where ADT^A11/A12/A13/A17/A40 (cancel-admit/cancel-transfer/
+;; cancel-discharge/bed-swap/merge) actually have gaps to land in.
+;;
+;; Cohort 2 -- ordinals 40..59 (listed explicitly, below): an EMPTY
+;; authored pathway plus the M5b-vendored sinusitis module
+;; (resources/modules/sinusitis.json), assigned by the SAME explicit-
+;; ordinal override `ehr-testing-sim.engine/assign-module` resolves before
+;; ever consulting a pool. The module's own compiled trajectory (per
+;; docs/gmf-interpreter.md's own outpatient sketch) is this cohort's
+;; entire record: `:outpatient-visit`/`:outpatient-visit-end` (ADT^A04,
+;; no closing message -- real ambulatory feeds send a single A04) plus
+;; whatever medication/observation IR the module's own walk produces.
+;; `:module-horizon-days` 3650 (10 years) matches the value
+;; `ehr-testing-sim`'s own `engine_test.clj` module-assignment fixtures
+;; use -- wide enough that the module's walk isn't truncated by the
+;; horizon before it produces visible clinical content.
+;;
+;; :churn-profile -- the harness still passes the bare --churn flag (so
+;; "churn on" is a real, visible CLI toggle, not something buried in a
+;; fixture), but `run-command`'s own `effective-churn-profile` resolution
+;; checks a caller-supplied `:churn-profile` BEFORE the bare `:churn`
+;; boolean (`(cond churn-profile ... churn churn/sample-profile ...)`),
+;; so this file's own explicit profile below wins over --churn's default
+;; `churn/sample-profile` without the two conflicting -- both keys reach
+;; `run-command` together (:churn from the flag, :churn-profile from this
+;; file), and only the latter's rates are actually used. The rates below
+;; are elevated well above `churn/sample-profile`'s own 0.01-0.03
+;; ("modest, illustrative") specifically so this REFERENCE corpus has a
+;; real chance at the full churn trigger family (ADT^A11/A12/A13/A17/A40)
+;; at a patient count still small enough to read -- an empirical finding
+;; from this session's own trial runs: at `sample-profile`'s default
+;; rates and 40 CBC-cohort patients, only cancel-admit and merge actually
+;; fired (1 each); cancel-transfer/cancel-discharge/bed-swap never did.
+;; This is a deliberate authoring choice for a reference fixture, not a
+;; claim that real hospital churn runs this hot.
+;;
+;; No :site-profile here -- deliberately: the gate should judge sim's
+;; STANDARD dialect (the same default MSH/PV1/code-table rendering every
+;; other loop in this repo already sees), not a site profile's own
+;; declared surfaces. A dialect-variant loop (gating the SAME corpus
+;; rendered under a second site profile, per docs/demos/site-profiles/)
+;; is a candidate future addition -- explicitly NOT this session's scope.
+{:pathways
+ [{:pathway {:name "cbc-order"
+             :steps [{:type :admission :location "Renal"}
+                     {:type :order :profile :cbc}
+                     {:type :discharge}]}
+   :weight 1}
+  {:patient-ordinal 40 :pathway {:name "module-only" :steps []}}
+  {:patient-ordinal 41 :pathway {:name "module-only" :steps []}}
+  {:patient-ordinal 42 :pathway {:name "module-only" :steps []}}
+  {:patient-ordinal 43 :pathway {:name "module-only" :steps []}}
+  {:patient-ordinal 44 :pathway {:name "module-only" :steps []}}
+  {:patient-ordinal 45 :pathway {:name "module-only" :steps []}}
+  {:patient-ordinal 46 :pathway {:name "module-only" :steps []}}
+  {:patient-ordinal 47 :pathway {:name "module-only" :steps []}}
+  {:patient-ordinal 48 :pathway {:name "module-only" :steps []}}
+  {:patient-ordinal 49 :pathway {:name "module-only" :steps []}}
+  {:patient-ordinal 50 :pathway {:name "module-only" :steps []}}
+  {:patient-ordinal 51 :pathway {:name "module-only" :steps []}}
+  {:patient-ordinal 52 :pathway {:name "module-only" :steps []}}
+  {:patient-ordinal 53 :pathway {:name "module-only" :steps []}}
+  {:patient-ordinal 54 :pathway {:name "module-only" :steps []}}
+  {:patient-ordinal 55 :pathway {:name "module-only" :steps []}}
+  {:patient-ordinal 56 :pathway {:name "module-only" :steps []}}
+  {:patient-ordinal 57 :pathway {:name "module-only" :steps []}}
+  {:patient-ordinal 58 :pathway {:name "module-only" :steps []}}
+  {:patient-ordinal 59 :pathway {:name "module-only" :steps []}}]
+ :modules ["sinusitis"]
+ :module-assignment
+ [{:patient-ordinal 40 :module-id "sinusitis"}
+  {:patient-ordinal 41 :module-id "sinusitis"}
+  {:patient-ordinal 42 :module-id "sinusitis"}
+  {:patient-ordinal 43 :module-id "sinusitis"}
+  {:patient-ordinal 44 :module-id "sinusitis"}
+  {:patient-ordinal 45 :module-id "sinusitis"}
+  {:patient-ordinal 46 :module-id "sinusitis"}
+  {:patient-ordinal 47 :module-id "sinusitis"}
+  {:patient-ordinal 48 :module-id "sinusitis"}
+  {:patient-ordinal 49 :module-id "sinusitis"}
+  {:patient-ordinal 50 :module-id "sinusitis"}
+  {:patient-ordinal 51 :module-id "sinusitis"}
+  {:patient-ordinal 52 :module-id "sinusitis"}
+  {:patient-ordinal 53 :module-id "sinusitis"}
+  {:patient-ordinal 54 :module-id "sinusitis"}
+  {:patient-ordinal 55 :module-id "sinusitis"}
+  {:patient-ordinal 56 :module-id "sinusitis"}
+  {:patient-ordinal 57 :module-id "sinusitis"}
+  {:patient-ordinal 58 :module-id "sinusitis"}
+  {:patient-ordinal 59 :module-id "sinusitis"}]
+ :module-horizon-days 3650
+ :churn-profile {:cancel-admit 0.12 :cancel-transfer 0.12 :cancel-discharge 0.12
+                  :transfer-in-error 0.12 :bed-swap 0.12 :merge 0.1}}

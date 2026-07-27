@@ -6,7 +6,8 @@
   Lives on the test-integration path only because sim-harness.clj itself
   does (it is not required from test/); these tests need no sibling
   checkout and always run under `make integration`."
-  (:require [clojure.test :refer [deftest is]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer [deftest is]]
             [ehr-testing-tools.result :as result]
             [ehr-testing-tools.sim-harness :as sim-harness]))
 
@@ -49,3 +50,23 @@
         r (sim-harness/run! {:seed 42 :run-invocation fake})]
     (is (result/error? r))
     (is (= :spawn-failed (:category r)))))
+
+(deftest run-config-opt-resolves-to-an-absolute-path-test
+  ;; The full-capability gate loop's own --config passthrough
+  ;; (test-integration/fixtures/sim-configs/full-capability.edn): a
+  ;; relative fixture path must never reach argv verbatim, since the
+  ;; subprocess's own working directory is the sibling checkout
+  ;; (sim-harness/sim-repo-dir), not this repo's root -- captures the
+  ;; :args a real invocation would receive without spawning one.
+  (let [captured (atom nil)
+        underlying (fake-invocation 0 (pr-str {:status :ok :payload {}}))
+        fake (fn [opts] (reset! captured opts) (underlying opts))]
+    (sim-harness/run! {:seed 42
+                       :config "test-integration/fixtures/sim-configs/full-capability.edn"
+                       :run-invocation fake})
+    (let [args (:args @captured)
+          config-idx (.indexOf ^java.util.List args "--config")]
+      (is (pos? config-idx) "--config reached argv")
+      (let [config-arg (nth args (inc config-idx))]
+        (is (.isAbsolute (java.io.File. ^String config-arg)))
+        (is (str/ends-with? config-arg "full-capability.edn"))))))
