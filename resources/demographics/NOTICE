@@ -1,0 +1,38 @@
+ehr-testing-sim -- resources/demographics/ provenance notice
+==============================================================
+
+docs/third-party-sources.md names Synthea (Apache-2.0, MITRE) as the
+mined source for this project's US demographics tables
+(demographics-tables, docs/sim-theory.edn's Persona catalytic), on the
+strength of Synthea's own vendored name/geography data. Milestone M4's
+authoring session checked for a `../` sibling Synthea checkout to
+extract that data from, per this session's own instructions, and found
+none present (only ehr-testing-tools' `config/synthea/synthea.properties`
+-- a runner config file, not vendored demographic data). AGENTS.md's
+standing rule ("do not invent facts about upstream sources") applies
+here as much as anywhere else in this repo: absent an actual checkout
+to extract from, the tables in this directory
+(given-names.edn, surnames.edn, places.edn) are HAND-CURATED originals
+authored by this session, not copied, adapted, or algorithmically
+derived from any Synthea file.
+
+What IS carried from Synthea, honestly: the SCHEMA SHAPE these tables
+use (given names bucketed by sex and birth decade, a flat weighted
+surname pool, sampled geography rows) mirrors the general design of
+Synthea's own demographic sampling approach, as already described in
+docs/operational-models.md's payers-model section and
+docs/third-party-sources.md's Synthea entry -- mining for *design*, not
+data, the same distinction ADR-0002 already draws for Google Simulated
+Hospital. A future session WITH a Synthea checkout available can
+replace the content of these three files wholesale with a real
+extraction, keeping ehr-testing-sim.persona's readers unchanged, since
+the schema is already shaped to match.
+
+This file exists so a reader of this directory never has to guess
+whether "vendored from Synthea" means "copied from Synthea" here -- it
+doesn't, and this notice is the record of that distinction, dated to
+the session that made the call.
+
+Recorded: 2026-07-26. All content is synthetic; no PHI, no real-person
+data, by construction (this repo's standing constraint,
+docs/problem-statement.md / AGENTS.md).

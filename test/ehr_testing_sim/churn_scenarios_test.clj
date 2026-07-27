@@ -51,6 +51,18 @@
   [{:name {:family "Chen" :given "A"} :role :attending
     :specialty "Nephrology" :wards [:renal :ed]}])
 
+(defn- clinical-events
+  "M4: strips :registered events -- every patient's now-automatic first
+  event (Persona, engine.clj's own docstring) -- before asserting an
+  EXACT ground-truth sequence, so these scenarios keep asserting the
+  churn-relevant shape they were written for rather than every
+  positional index shifting by one per patient. :registered never
+  renders a message (no message-type-registry entry, same treatment
+  :step-rejected gets), so the `triggers` sequence below is already
+  unaffected and needs no equivalent filter."
+  [ground-truth]
+  (vec (remove #(= :registered (:event %)) ground-truth)))
+
 (defn- triggers
   "The ordered A-trigger sequence a ground-truth log renders to, for
   compact exact-sequence assertions."
@@ -101,7 +113,7 @@
       (is (= "Renal" (get-in p3-before-merge [:home-ward])))
       (is (= "ED" (get-in p3-before-merge [:location :ward]))))
     (testing "exact ground-truth event sequence"
-      (is (= [:admission :admission :admission :merge] (mapv :event ground-truth))))
+      (is (= [:admission :admission :admission :merge] (mapv :event (clinical-events ground-truth)))))
     (testing "the merge names P3 as :merged, P1 as :survivor"
       (is (= #{[:survivor (engine/patient-id-for seed 0)] [:merged p3-id]}
              (set (map (juxt :role :patient-id) (:participants survivor))))))
@@ -126,14 +138,15 @@
                                                        {:type :transfer-in-error :location "ED"}
                                                        ;; a genuine, INTENDED transfer to ED
                                                        ;; follows -- the "retransfer"
-                                                       {:type :transfer :location "ED"}]}])]
+                                                       {:type :transfer :location "ED"}]}])
+        events (clinical-events ground-truth)]
     (testing "exact ground-truth event sequence: admission, transfer(err), cancel-transfer(err), transfer(real)"
-      (is (= [:admission :transfer :cancel-transfer :transfer] (mapv :event ground-truth)))
-      (is (= [nil true nil] (mapv :in-error (rest ground-truth)))))
+      (is (= [:admission :transfer :cancel-transfer :transfer] (mapv :event events)))
+      (is (= [nil true nil] (mapv :in-error (rest events)))))
     (testing "the in-error correction left the patient exactly where they started, and the retransfer is a real move"
-      (is (= "Renal" (get-in (nth ground-truth 2) [:home-ward])))
-      (is (= "Renal" (get-in (nth ground-truth 2) [:location :ward])))
-      (is (= "ED" (get-in (nth ground-truth 3) [:location :ward]))))
+      (is (= "Renal" (get-in (nth events 2) [:home-ward])))
+      (is (= "Renal" (get-in (nth events 2) [:location :ward])))
+      (is (= "ED" (get-in (nth events 3) [:location :ward]))))
     (testing "exact rendered message sequence: A01 A02 A12 A02"
       (is (= ["A01" "A02" "A12" "A02"]
              (triggers ground-truth one-bed-one-surge-facility provider-templates))))))
@@ -148,12 +161,12 @@
                                  [{:name "p1" :steps [{:type :admission :location "Renal"}
                                                        {:type :bed-swap :with p2-id}]}
                                   {:name "p2" :steps [{:type :admission :location "Renal"}]}])
-        [p1-admit p2-admit bed-swap] ground-truth]
+        [p1-admit p2-admit bed-swap] (clinical-events ground-truth)]
     (testing "sanity: one licensed, one surge, same ward"
       (is (= :licensed (get-in p1-admit [:location :placement])))
       (is (= :surge (get-in p2-admit [:location :placement]))))
     (testing "exact ground-truth event sequence"
-      (is (= [:admission :admission :bed-swap] (mapv :event ground-truth))))
+      (is (= [:admission :admission :bed-swap] (mapv :event (clinical-events ground-truth)))))
     (testing "placements are exchanged"
       (is (= (:location p2-admit) (get-in bed-swap [:swap (engine/patient-id-for seed 0) :to])))
       (is (= (:location p1-admit) (get-in bed-swap [:swap p2-id :to]))))

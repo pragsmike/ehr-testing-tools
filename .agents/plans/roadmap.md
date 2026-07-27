@@ -226,26 +226,105 @@ migration note. This is also **M5's own prerequisite**:
 assignment layer is infrastructure M5 needs regardless of where it
 landed first.
 
-## M4 — Persona + demographics tables; payer sampling; PID/IN1 enrichment
+## M4 — Persona + demographics tables; payer sampling; PID/IN1 enrichment — **landed**
 
-Lands **Persona** (`:planned`) for real: demographics sampling from
-vendored, hashed tables (`demographics-tables`, target 3), plus the
-`payer-pool` catalytic this session recorded as a comment-only forward
-reference on `:persona` — this is the milestone that turns that
-comment into a real `:catalytic` wire. PID gains demographic fields;
-IN1 lands as a segment for the first time, carrying the sampled payer
-(`docs/operational-models.md`'s payers model). **Upstream-demand
-citation** (`docs/research/SimHospital-Synthea-limitations-considered.md`
-§5.3): SimHospital issue #3 is a user unable to find a way to include
-the IN1 insurance segment — this milestone is the answer. PID's
-demographic enrichment also carries US phone formatting, named
-unavailable and uneditable in SimHospital issue #21 — the same issue
-that requests GT1/ZG1 (below, site-profiles' citation).
+Lands **Persona** (`:planned` → `:built`) for real: demographics
+sampling from vendored, hashed tables (`demographics-tables`, target
+3), plus the `payer-pool` catalytic this session recorded as a
+comment-only forward reference on `:persona` — this is the milestone
+that turns that comment into a real `:catalytic` wire. PID gains
+demographic fields; IN1 lands as a segment for the first time,
+carrying the sampled payer (`docs/operational-models.md`'s payers
+model). **Upstream-demand citation**
+(`docs/research/SimHospital-Synthea-limitations-considered.md` §5.3):
+SimHospital issue #3 is a user unable to find a way to include the IN1
+insurance segment — this milestone is the answer. PID's demographic
+enrichment also carries US phone formatting, named unavailable and
+uneditable in SimHospital issue #21 — the same issue that requests
+GT1/ZG1 (below, site-profiles' citation).
 
-Co-landing invariants: sampled demographics and payer are internally
-consistent with any age-linked rule (e.g. Medicare weighting at 65+
-is only checkable once age is a real field); schema round-trip tests
-for the new `persona` resource type.
+**The wiring fix, first (Task 0).** This session opened by fixing a
+real gap the tools consumer loop surfaced: M3's `:pathways` reached
+`ehr-testing-sim.engine/run` from a direct API caller (engine-test)
+but never from `ehr-testing-sim.run/run-command` — CLI-invisible
+despite 181 green tests and a demo. `ehr-testing-sim.engine/config-keys`
+is now the canonical, documented list of every key `engine/run`
+accepts; `run-command` forwards the full set (a plumbing-completeness
+test asserts this with sentinel values, not just the known gap), and
+`--config FILE.edn` is the passthrough vehicle for the data-heavy keys
+(`:pathway`/`:pathways`/`:order-profiles`/`:churn-profile`) that have
+no flag of their own. `AGENTS.md` gained a standing rule: demos and
+verification commands run through the CLI surface (`clojure -M:cli
+...`), never engine internals — the reason this class of gap is caught
+by review next time, not just by a downstream consumer.
+
+**Implementation shape, honestly recorded.** Persona's equation
+(`sim-config → persona`) is satisfied by an engine-internal
+`:registered` event `ehr-testing-sim.engine/run` prepends to every
+patient's step queue (never authorable IR, the same treatment
+`:result-followup` already gets) — folded into Execute's own
+step-queue mechanism rather than a structurally separate pipeline
+pass, since persona is needed at the same init moment Execute already
+owns. `docs/sim-theory.edn`'s `:persona` stage records this in its own
+`:contract` string rather than pretending the diagram and the code
+agree on shape, the same discipline M2a/M3 already established for
+their own engine-internal landings. `resources/demographics/` (given
+names by sex+decade, surnames, places) are SMALL and HAND-CURATED, not
+extracted from Synthea — no `../` checkout was available this session
+(`resources/demographics/NOTICE` records the decision precisely).
+
+**A real bug, caught by the fixed-consumption property test.** Persona's
+own docstring first claimed 14 fixed RNG draws per persona; the
+property test (`persona-consumes-a-fixed-number-of-rng-draws-regardless-of-content`,
+a call-counting `java.util.Random` proxy, not a synthetic skip
+sequence) caught the true count at 13 before this landed. A second,
+more consequential bug surfaced the same way: `:registered` initially
+carried no `:active-mrn`, which silently broke
+`ehr-testing-sim.engine/replay`'s own bootstrap (it seeds a
+never-yet-seen participant's initial state from the FIRST event naming
+them) for every patient, surfacing as a real `merge-survivor-absorbs-
+merged-mrns` invariant violation in the churned-run property test
+before the fix — not a `:registered`-specific check, the EXISTING M2b
+merge invariant, catching a gap in the NEW code. `:registered` now
+carries `:active-mrn` like every other event type, for exactly this
+reason.
+
+Co-landing invariants: `registered-is-every-patients-first-event` and
+`registered-persona-is-schema-valid` (structural — every persona
+resource this run creates is schema-valid and is genuinely each
+patient's first event, the fold-bootstrap correctness the merge-bug
+above depended on); the age-linked payer property
+(`persona-test/sixty-five-plus-personas-are-mostly-medicare` and its
+under-65 converse) checks Medicare dominance at 65+ statistically,
+since payer sampling is a weighted pool, not a hard per-event rule.
+**PID/IN1 enrichment, landed alongside.** PID gains XPN name (family^given),
+DOB (HL7 date), sex (Table 0001), XAD address, and phone, uniformly across
+every message type (not admission-only); IN1 lands as a segment for the
+first time, carrying the sampled payer's id/name, riding ONLY the admission
+message (the real HL7v2 convention) — SimHospital issue #3's own request
+(`docs/research/SimHospital-Synthea-limitations-considered.md` §5.3),
+answered. GT1 stays site-profiles territory, as scoped.
+
+**The ER7 escaping property, and a verified parser finding
+(`notes/facts-register.md` F9).** `org.clojars.cmiles74/clojure-hl7-parser`
+3.5.1 implements NO escape-sequence handling in either direction —
+confirmed by reading its own shipped source (the read-side decoder exists
+but its call sites are commented-out dead code; the write side never
+encodes at all). `ehr-testing-sim.emit-hl7/escape-er7`/`unescape-er7` are
+this repo's own documented workaround. The property test itself caught a
+second, self-inflicted bug in the workaround's first draft: naive five-pass
+sequential decoding let two adjacent encoded tokens spuriously spell a
+third at their boundary (encoding `"|E|"` produces a string a five-pass
+decode misreads); fixed to a single regex pass.
+
+207 tests / 582 assertions green, coverage 95.91%/98.00% (up from the M3
+baseline 95.35%/97.75%). The pinned fixture regenerated once (Persona's
+`:registered` event, prepended to every patient's step queue, shifts the
+entire downstream RNG stream — ADR-0009's own accept-and-record policy,
+documented in the fixture's own header). `docs/demos/` seeded with two
+CLI-produced traces (order/result post-Task-0, and Persona-enriched);
+`docs/sim-theory.edn`'s diagram companion files updated for the new
+`payer-pool` wire.
 
 ## M5 — GMF interpreter + module vendoring decision + CompileTrajectory
 

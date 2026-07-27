@@ -187,6 +187,54 @@ immediately after.
 
 ---
 
+## Results pending at discharge *(stub — mechanism landed, M3)*
+
+**The reality.** A lab result does not always come back before a
+patient goes home. Turnaround time is asynchronous to the rest of a
+patient's own course of care: a clinician can discharge a patient with
+labs still pending, on the reasonable expectation that the result will
+route to the ordering provider (or a follow-up encounter) once it
+finalizes. This is routine, not exceptional — the alternative (holding
+every patient hostage to their slowest pending lab) is not how
+hospitals actually operate.
+
+**The wire truth.** An ORU^R01 timestamped after the ADT^A03 that
+closed the encounter it belongs to is completely legitimate traffic —
+the result still carries the original order's context (patient,
+ordering provider, specimen) via ORC/OBR, it simply arrives on its own
+schedule, decoupled from the encounter's own ADT lifecycle.
+
+**Our model.** `:order`'s `decide` samples its paired `:result-
+available` event's full turnaround atomically at order-time but rides
+`:schedule-followup` (`ehr-testing-sim.engine`) to enter the log at its
+own correct future position — nothing in that mechanism blocks the
+patient's other steps, including `:discharge`, on the pending result.
+This surfaced as a real finding during M3's own integration testing,
+not a design decided up front: the first draft of the `check.clj`
+event-validity invariant for order/result events generalized
+"admitted-only" to *both* `:order-placed` and `:result-available`,
+which is wrong — a result arriving after a legitimate discharge would
+then read as a bug. The correction (`docs/patient-state-model.md`'s
+event-validity table, the `:result-available` row) scopes the
+admitted-only constraint to `:order-placed` alone; a result's own
+constraint is purely referential (it must name a real, preceding
+`:order-placed` event for the same patient), never status-based. This
+is the same invariant-scoping lesson `check.clj`'s
+`order-only-when-admitted` docstring and
+`result-references-existing-order-and-follows-it-in-time` now encode
+in code, cited here as the clinical-realities catalog entry that
+motivated it.
+
+**Why testers care.** Post-discharge results are a classic downstream
+breaker: an interface that assumes "this MRN's encounter is closed,
+therefore no more messages for it" will silently drop, misroute, or
+error on a perfectly legitimate late-arriving ORU — exactly the kind
+of naive-consumer failure this simulator exists to surface on purpose,
+generated here as ordinary traffic (no special flag needed), not as a
+contrived edge case.
+
+---
+
 *Adding an entry: follow the four-part shape; link the milestone that
 lands it or mark it (stub); if it motivates a mechanism (as
 post-mortem motivates conditional validity rows), name the mechanism

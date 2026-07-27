@@ -252,12 +252,15 @@ tier-1 implementation source per
 does not claim to reproduce Synthea's exact tables, only the shape of
 the age-correlation.
 
-**Whose job this is.** Once `Persona` ([`sim-theory.edn`](sim-theory.edn))
-lands, payer sampling is Persona's — it belongs with the rest of
-per-patient attribute sampling (demographics, etc.), not with
-facility allocation. Until Persona exists, this model runs at engine
-patient-init time, as a stand-in that Persona subsumes rather than
-replaces.
+**Whose job this is. Landed, Milestone M4.** `Persona`
+([`sim-theory.edn`](sim-theory.edn)) now samples payer alongside every
+other per-patient attribute (demographics, etc.) — `ehr-testing-sim.persona/persona`,
+folded into patient state by the engine-internal `:registered` event.
+There was never an actual engine-patient-init stand-in coded (the
+`:payer` field this section originally described stayed nil
+throughout M1-M3); Persona landing simply makes the sampling this
+section always specified real, in the place it was always meant to
+live.
 
 **Carried, rendered, never tracked.** The sampled payer rides on
 patient state like any other attribute and renders in the IN1 segment

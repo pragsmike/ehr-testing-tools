@@ -19,19 +19,17 @@ One file describes three systems:
   current guess at the envisioned system; it will change, and changes
   land as edits to the EDN with ADRs where they're structural.
 - **now** — the `:status :built` subset: **Execute**, **Check**,
-  **EmitHL7**, and, as of Milestone M2b, **InjectChurn** (each
-  walking-skeleton, v1-slice, or v0-slice scope, per their `:contract`
-  notes), plus the manifest component inside Package that shipped
-  ahead of its stage. As of Milestone M3, Execute's own step vocabulary
-  further grows (`:order`/`:result-followup`, the `order-profiles`
-  catalytic now real) and EmitHL7 gains ORM^O01/ORU^R01. Everything the
-  *now* claims is property-tested and green (181 tests / 503 assertions,
-  2026-07-26).
-- **next** — the single stage marked `;; NEXT` in the EDN: **Persona**,
-  Milestone M4 — demographics sampling from vendored, hashed tables,
-  plus the `payer-pool` catalytic this theory currently only records as
-  a comment at Persona (below), turning into a real wire once this
-  stage flips to `:built`.
+  **EmitHL7**, **InjectChurn** (M2b), and, as of Milestone M4,
+  **Persona** (each walking-skeleton, v1-slice, or v0-slice scope, per
+  their `:contract` notes), plus the manifest component inside Package
+  that shipped ahead of its stage. As of Milestone M3, Execute's own
+  step vocabulary further grows (`:order`/`:result-followup`, the
+  `order-profiles` catalytic now real) and EmitHL7 gains
+  ORM^O01/ORU^R01. Everything the *now* claims is property-tested and
+  green (207 tests / 582 assertions, 2026-07-26).
+- **next** — the single stage marked `;; NEXT` in the EDN: **RunModules**,
+  Milestone M5 — the GMF interpreter port, the `gmf-module-set`
+  vendoring-vs-lockfile decision, and `CompileTrajectory`.
 
 No schema keys were invented for this convention — it lives in
 comments and here, keeping the EDN loadable by tools' Pipeline Malli
@@ -42,7 +40,7 @@ in one file by construction instead of drifting across three.
 ## The composite, read left to right
 
 ```
-sim-config → persona                                  [Persona]      {catalytic: demographics-tables}
+sim-config → persona                                  [Persona]      {catalytic: demographics-tables, payer-pool}
 persona → clinical-trajectory                         [RunModules]   {catalytic: gmf-module-set, gmf-interpreter}
 clinical-trajectory → compiled-pathway                [CompileTrajectory]
 pathway-ir = compiled-pathway ∪ authored-pathway      (union)
@@ -86,9 +84,9 @@ US-units config each — order/result step types and attending
 assignment both land under Execute's existing `:built` contract as
 the engine's step vocabulary grows, the same co-landing path
 `InjectChurn`'s churn family and `EmitHL7`'s message types already
-follow), and `payer-pool`, recorded as a comment at `Persona` rather
-than a real wire, since Persona itself is still `:planned` and payer
-sampling runs at engine patient-init time until it lands. Adding
+follow), and `payer-pool`, recorded at the time as a comment at
+`Persona` rather than a real wire (Persona itself was still `:planned`)
+-- since landed for real, Milestone M4, see that section below. Adding
 `order-profiles` repairs the plan's biggest capture gap to date:
 Simulated Hospital's order profiles and the ORM/ORU result cycle were
 discussed from this project's first session but, until this pass,
@@ -141,6 +139,36 @@ also landed this milestone) renders in **neither** diagram nor
 message-type-registry, by design: it is truth about the run, not wire
 traffic a real ADT/ORM/ORU feed would ever carry.
 
+## M4 lands Persona -- its own :built stage, folded into Execute's step queue
+
+Unlike M2a/M3 above (additions under an ALREADY-`:built` Execute),
+Persona genuinely flips from `:planned` to `:built` this milestone --
+a new stage, not an addition to one already landed. Its equation
+(`sim-config -> persona`) is satisfied by an engine-internal
+`:registered` event `ehr-testing-sim.engine/run` prepends to every
+patient's step queue (never authorable IR, the same treatment
+`:result-followup` already gets) -- persona is folded into Execute's
+own step-queue mechanism because a patient's persona is needed at the
+same init moment Execute already owns (arrival scheduling), not by a
+downstream consumer that exists yet (`RunModules`, still `:planned`,
+is the eventual real consumer of `persona` as a wire resource). The
+diagram stays topologically truthful (`sim-config` still flows to
+`persona` as its own box) while `:persona`'s own `:contract` string
+records the implementation shape honestly, the same "document the
+gap between diagram and code" discipline the M2a/M3 sections above
+already establish for their own implementation notes. `payer-pool`
+(`docs/operational-models.md`'s payers model) is a real `:catalytic`
+wire on `Persona` now, not a comment-only forward reference -- this
+also RETIRES the engine-patient-init payer stand-in
+`docs/operational-models.md` described (there was no code actually
+setting it; payer now lives at `(:payer (:persona patient))`, sampled
+with the rest of a patient's demographics). `demographics-tables`
+(vendored, `resources/demographics/`) are SMALL and hand-curated, not
+extracted from Synthea -- no `../` checkout was available this
+session; `resources/demographics/NOTICE` records that decision so a
+future session with a checkout can extract for real without any
+reader-side schema change.
+
 ## IR transforms as the composition layer
 
 Synthea's own composition pain — cross-cutting augmentation requiring
@@ -175,7 +203,7 @@ whose name binds to nothing is malformed. Bindings, with build status:
 | Resource | Binding | Status |
 |---|---|---|
 | `sim-config` | Malli, `ehr-testing-sim.config` (black-box Inputs, problem statement) | partial |
-| `persona` | Malli, planned | planned |
+| `persona` | Malli, `ehr-testing-sim.persona/Persona` | v1 built |
 | `clinical-trajectory` | Malli, planned — dated clinical events, each citing `{module, state}`, codes as `{:system :code :display}` | planned |
 | `compiled-pathway`, `authored-pathway`, `pathway-ir`, `operational-pathway` | Malli, `ehr-testing-sim.pathway` — the union binds to `[:or …]` of its members per the notation; `operational-pathway`'s type IS the IR type (the endomorphism law) | v0 built |
 | `ground-truth-log` | Malli, planned as data; shape established by `engine/run` and consumed by `check` | de-facto built |
@@ -195,7 +223,7 @@ targets; unresolved is a gap, not an oversight:
 
 | Catalytic | Target | Note |
 |---|---|---|
-| `demographics-tables` | 3 — hashed repo-authored config | vendored US tables (Synthea-derived, Apache-2.0), referenced by path + content hash |
+| `demographics-tables` | 3 — hashed repo-authored config | vendored US tables, `resources/demographics/` -- SMALL and hand-curated this milestone (no Synthea checkout available; NOTICE records why), same schema shape a real extraction would use |
 | `gmf-module-set` | **1 or 3 — OPEN** | vendor-vs-lockfile is the decision ADR-0003 defers to when modules land; the equation names the resource without prejudging |
 | `gmf-interpreter` | 4 — in-repo code registry | the GMF interpreter, versioned like data |
 | `invariant-catalog` | 4 — in-repo code registry | `ehr-testing-sim.check/catalog`, versioned; the co-landing law couples it to Execute's step set |
@@ -204,7 +232,7 @@ targets; unresolved is a gap, not an oversight:
 | `snomed-icd10-map` | 1 — artifacts.lock | the pinned NLM map; the one sanctioned code translation in the theory |
 | `order-profiles` | 3 — hashed repo-authored config | US-units order/result profiles, binds at `Execute` (`docs/operational-models.md`) |
 | `provider-pool` | 3 — hashed repo-authored config | synthetic provider identities, binds at `Execute` (`docs/operational-models.md`) |
-| `payer-pool` | 3 — hashed repo-authored config | synthetic payer pool; binds at `Persona` once it lands — comment only today, no wire yet (`docs/operational-models.md`) |
+| `payer-pool` | 3 — hashed repo-authored config | synthetic payer pool, `ehr-testing-sim.persona/under-65-payers`/`sixty-five-plus-payers` — a real wire on `Persona`, Milestone M4 (`docs/operational-models.md`) |
 
 ## Global laws
 

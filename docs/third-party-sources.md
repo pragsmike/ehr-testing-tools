@@ -29,7 +29,7 @@ Synthea's peer-reviewed pedigree (Walonoski et al., JAMIA 2018) is what validati
 
 ### `org.clojars.cmiles74/clojure-hl7-parser` 3.5.1
 
-[`notes/facts-register.md` F1](facts-register.md). **The only runtime code dependency of the three** — everything above is design or data; this is a library this repo actually calls. `ehr-testing-sim.emit-hl7` builds ADT^A01/A03 messages directly on its `create-message`/`create-segment`/`create-field` structures and parses them back with its `parser`/`message` namespaces (round-trip law, `docs/sim-theory.edn`'s `:emit-hl7` laws) — the ER7 structures this stage's ADT^A01/A03 v0 slice is built on ([`sim-theory-diagram.md`](sim-theory-diagram.md)'s `EmitHL7` box, now `:built`).
+[`notes/facts-register.md` F1](facts-register.md). **The only runtime code dependency of the three** — everything above is design or data; this is a library this repo actually calls. `ehr-testing-sim.emit-hl7` builds ADT^A01/A03 messages directly on its `create-message`/`create-segment`/`create-field` structures and parses them back with its `parser`/`message` namespaces (round-trip law, `docs/sim-theory.edn`'s `:emit-hl7` laws) — the ER7 structures this stage's ADT^A01/A03 v0 slice is built on ([`sim-theory-diagram.md`](sim-theory-diagram.md)'s `EmitHL7` box, now `:built`). **A verified limitation** ([`notes/facts-register.md` F9](facts-register.md)): this library implements no ER7 escape-sequence handling in either direction — `ehr-testing-sim.emit-hl7/escape-er7`/`unescape-er7` (Milestone M4) are this repo's own documented workaround, needed once free-text persona content (names, addresses) could contain a literal delimiter character.
 
 ### NLM SNOMED→ICD-10-CM map
 

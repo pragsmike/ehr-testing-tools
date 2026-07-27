@@ -64,6 +64,7 @@
             [ehr-testing-sim.churn :as churn]
             [ehr-testing-sim.facility :as facility]
             [ehr-testing-sim.order-profiles :as order-profiles]
+            [ehr-testing-sim.persona :as persona]
             [malli.core :as m])
   (:import [java.util Random]))
 
@@ -75,9 +76,22 @@
   moved into state -- a singleton set until M2b's merge exists to grow
   it. As of Milestone M1: :location is the {:ward :bed :placement} map
   (upgraded from v0's bare ward-name string, alongside the allocation
-  ladder that populates it for real); :class/:attending/:payer/
+  ladder that populates it for real); :class/:attending/
   :admitted-at are populated at admission; :attributes remains
-  reserved, unused until M5."
+  reserved, unused until M5.
+
+  Milestone M4: `:persona` (ehr-testing-sim.persona/Persona -- name,
+  DOB, sex, address, phone, SSN-shaped id, and payer, ALL of it,
+  including payer) is populated once, by the `:registered` event every
+  patient's step queue is now prepended with (`run`'s own docstring),
+  never resampled after (the attribute-pool contract). This RETIRES the
+  standalone `:payer` field docs/operational-models.md described as an
+  engine-patient-init stand-in: there was no code actually setting it
+  (always nil), so retiring it means removing the now-redundant field
+  from this schema, not deleting behavior -- payer now lives at
+  `(:payer (:persona patient))`, sampled by Persona alongside every
+  other demographic fact, per that document's own 'Persona subsumes it'
+  note."
   [:map
    [:patient-id :string]
    [:mrns [:set :string]]
@@ -91,7 +105,7 @@
                                          [:bed :string]
                                          [:placement [:enum :licensed :surge]]]]]
    [:attending {:optional true} [:maybe :string]]
-   [:payer {:optional true} [:maybe :string]]
+   [:persona {:optional true} [:maybe persona/Persona]]
    [:admitted-at {:optional true} [:maybe :int]]
    [:attributes {:optional true} [:map-of :keyword :any]]])
 
@@ -174,6 +188,34 @@
   {:events [] :advance 0
    :exhausted {:patient-id patient-id :ward home-ward-name
                :census (facility/ward-census facility board)}})
+
+;; --- M4: Persona (docs/sim-theory.edn's :persona stage) -------------------
+;; :registered is engine-internal, never authorable pathway IR -- the same
+;; treatment :result-followup already gets (pathway.clj's own docstring):
+;; `run` prepends it to every patient's step queue itself, so no
+;; ehr-testing-sim.pathway/Step schema entry exists for it and it never
+;; passes through pathway/valid?. Its decide call is the ACTUAL Persona
+;; stage boundary; folding it into Execute's own step-queue mechanism
+;; rather than a separate pipeline stage is this milestone's own documented
+;; theory-flip note (docs/sim-theory.edn, docs/sim-theory.md) -- the
+;; stage's contract ("samples once, from the run's single seeded RNG, in
+;; fixed order") is satisfied by this event exactly, not merely gestured at.
+
+(defmethod decide :registered
+  [rng t world patient-id _step]
+  ;; :active-mrn is REQUIRED here, not merely conventional: :registered
+  ;; is now every patient's FIRST event, and `replay` (below) bootstraps
+  ;; a never-yet-seen participant's initial state via `(initial-patient
+  ;; pid (:active-mrn event))` off the FIRST event naming them -- every
+  ;; other event type already carries :active-mrn for exactly this
+  ;; reason (a convention this event must honor, not just a rendering
+  ;; nicety), or `replay`'s own bootstrap (and every check.clj invariant
+  ;; built on it) silently seeds `:mrns #{nil}`.
+  {:events [{:event :registered :t t
+             :active-mrn (get-in world [:patients patient-id :active-mrn])
+             :persona (persona/persona rng (:persona-config world))
+             :participants [{:patient-id patient-id :role :subject}]}]
+   :advance 0})
 
 (defmethod decide :admission
   [rng t world patient-id {:keys [location reason force-placement]}]
@@ -467,6 +509,10 @@
   once per participant."
   (fn [_patient event] (:event event)))
 
+(defmethod evolve :registered
+  [patient {:keys [persona]}]
+  (assoc patient :persona persona))
+
 (defmethod evolve :admission
   [patient {:keys [location home-ward attending t]}]
   (assoc patient
@@ -666,6 +712,20 @@
   (let [[k v] (first queue)]
     [k v (dissoc queue k)]))
 
+(def config-keys
+  "The canonical, documented list of every key `run`'s config map
+  accepts (this def IS the documentation the M4 Task 0 plumbing-
+  completeness test checks against -- a new key earns an entry here in
+  the SAME change that teaches `run` to read it, never after).
+  `ehr-testing-sim.run/run-command` must forward every one of these
+  from its own opts through to `run` -- its own completeness test
+  asserts the full set, not just today's known gaps, so a future key
+  added here without a matching `run-command` forwarding update fails
+  loudly instead of shipping CLI-invisible the way M3's `:pathways` did
+  (caught only by the tools consumer loop, after the fact)."
+  [:seed :patients :pathway :pathways :arrival-gap :warm-up-seconds
+   :facility :providers :churn-profile :order-profiles :persona-config])
+
 (defn run
   "Runs the simulation. config:
     :seed             long (required)
@@ -725,6 +785,21 @@
                        pinned fixture; churn is opt-in, ADR-0009's
                        accept-and-record policy doesn't even apply here
                        since nothing about this path changed).
+    :persona-config   M4: ehr-testing-sim.persona/persona's own config
+                      map ({:age-min :age-max :payers-under-65
+                      :payers-65-plus}, all optional -- see that
+                      function's docstring for defaults). EVERY
+                      patient's step queue is prepended with an
+                      engine-internal `:registered` step (never
+                      authorable IR, the same treatment
+                      :result-followup already gets) that samples
+                      exactly one persona per patient, always -- this is
+                      NOT opt-in the way :churn-profile/:pathways are:
+                      Persona is a landed part of Execute's own step
+                      vocabulary now (docs/sim-theory.edn), so this
+                      milestone's own fixture regeneration is expected
+                      and documented (ADR-0009 policy), not guarded
+                      against the way M2b/M3's opt-in additions were.
 
   Returns {:ground-truth [event ...] :state-history {patient-id [state
   ...]} :facility .. :providers [materialized-provider ...]}. The
@@ -742,14 +817,15 @@
   rather than assumed; the engine computes it as a byproduct of the
   loop below because decide needs live world state to make its next
   decision, not because it's a second source of truth."
-  [{:keys [seed patients pathway pathways arrival-gap warm-up-seconds facility providers churn-profile order-profiles]
+  [{:keys [seed patients pathway pathways arrival-gap warm-up-seconds facility providers churn-profile order-profiles persona-config]
     :or {patients 1
          pathway pathway/sample-admission-discharge
          arrival-gap 60
          warm-up-seconds 0
          facility config/default-facility
          providers config/default-provider-templates
-         order-profiles order-profiles/default-profiles}}]
+         order-profiles order-profiles/default-profiles
+         persona-config {}}}]
   {:pre [(some? seed) (pathway/valid? pathway)
          (or (nil? pathways) (pathway/valid-pathways-config? pathways))]}
   (let [rng (Random. ^long seed)
@@ -778,17 +854,24 @@
         steps-for (if churn-profile
                     (fn [i] (:steps (churn/inject (pathway-for i) churn-profile rng)))
                     (fn [i] (:steps (pathway-for i))))
+        ;; M4: :registered is prepended to EVERY patient's step queue,
+        ;; ahead of whatever InjectChurn produced -- engine-internal,
+        ;; never seen by InjectChurn's own applicability oracle (it
+        ;; operates on `pathway-for`'s output, before this prepend), the
+        ;; same "not authorable IR" treatment :result-followup gets.
+        registered-steps-for (fn [i] (into [{:type :registered}] (steps-for i)))
         init-queue (into (sorted-map)
                          (map-indexed
                           (fn [i arrival-t]
                             [[arrival-t i]
-                             {:patient-id (pid-for i) :steps (steps-for i)}])
+                             {:patient-id (pid-for i) :steps (registered-steps-for i)}])
                           arrivals))
         init-world {:patients (into {} (map-indexed (fn [i _] [(pid-for i) (initial-patient (pid-for i) (mrn-for i))]))
                                     arrivals)
                     :facility facility
                     :providers materialized-providers
                     :order-profiles order-profiles
+                    :persona-config persona-config
                     ;; Task 1 (M2b): cancel-family/transfer-in-error decide
                     ;; methods query the log directly for the event they
                     ;; reinstate from (docs/patient-state-model.md's

@@ -43,8 +43,10 @@
 
 (deftest walking-skeleton-shape
   (let [{:keys [ground-truth]} (engine/run {:seed 7 :patients 3})]
-    (testing "each patient admits then discharges, in time order"
-      (is (= 6 (count ground-truth)))
+    (testing "each patient registers, admits, then discharges, in time
+              order (M4: :registered is now every patient's first
+              event, Persona's own stage boundary)"
+      (is (= 9 (count ground-truth)))
       (is (= #{"MRN000001" "MRN000002" "MRN000003"}
              (set (map :active-mrn ground-truth))))
       (is (apply <= (map :t ground-truth))))
@@ -579,8 +581,8 @@
           {:keys [ground-truth]} (engine/run {:seed 1 :patients 2 :pathways config})
           id0 (engine/patient-id-for 1 0)
           id1 (engine/patient-id-for 1 1)]
-      (is (= [:admission :discharge] (mapv :event (engine/events-for-patient ground-truth id0))))
-      (is (= [:admission] (mapv :event (engine/events-for-patient ground-truth id1)))))))
+      (is (= [:registered :admission :discharge] (mapv :event (engine/events-for-patient ground-truth id0))))
+      (is (= [:registered :admission] (mapv :event (engine/events-for-patient ground-truth id1)))))))
 
 (deftest absent-pathways-key-is-unperturbed-by-this-milestone
   (testing "the degenerate case (roadmap.md's M3 entry): a run with NO
@@ -653,10 +655,10 @@
           {:keys [ground-truth]} (engine/run {:seed 7 :patients 1 :pathways [{:pathway pathway :weight 1}]})
           kinds (mapv :event ground-truth)]
       (testing "order-placed and result-available both appear, result strictly after order, before discharge"
-        (is (= [:admission :order-placed :result-available :discharge] kinds))
-        (let [[_ order result _] ground-truth]
+        (is (= [:registered :admission :order-placed :result-available :discharge] kinds))
+        (let [[_ _ order result _] ground-truth]
           (is (< (:t order) (:t result) (:t (last ground-truth))))
-          (is (= 1 (:order-event-id result))))))))
+          (is (= 2 (:order-event-id result))))))))
 
 (defspec order-and-result-round-trip-through-run-for-any-seed 100
   (prop/for-all [seed gen/large-integer]
@@ -667,10 +669,10 @@
       (result/ok? (check/check-all ground-truth)))))
 
 (deftest pinned-seed-survives-decide-evolve-refactor
-  (testing "the fixture pins the POST-M2a baseline (ADR-0009/ADR-0010/
-            ADR-0011 -- identity/participants and the seconds clock
-            both perturbed the pre-M2a baseline this test used to pin,
-            regenerated ONCE per the M2a session plan, not a bug).
+  (testing "the fixture pins the POST-M4 baseline (ADR-0009 -- Persona's
+            :registered event, prepended to every patient's step queue,
+            perturbed the post-M2a baseline this test used to pin,
+            regenerated ONCE per the M4 session plan, not a bug).
             This test now guards against FUTURE undocumented drift."
     (let [baseline (edn/read-string
                     (slurp (io/resource "ehr_testing_sim/fixtures/pinned_seed_42_patients_5.edn")))

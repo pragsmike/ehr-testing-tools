@@ -16,8 +16,7 @@
 # documentary only, not a distinct diagram visual (see
 # docs/sim-theory-diagram.md's own note on this gap).
 
-# planned: Persona
-sim-config × demographics-tables → persona  [Persona]  {catalytic: demographics-tables}
+sim-config × demographics-tables × payer-pool → persona  [Persona]  {catalytic: demographics-tables, payer-pool}
 
 # planned: RunModules
 persona × gmf-module-set × gmf-interpreter → clinical-trajectory  [RunModules]  {catalytic: gmf-module-set, gmf-interpreter}

@@ -84,6 +84,24 @@
     ;; canonical output is readable EDN
     (is (map? (read-string (first @printed))))))
 
+;; --- M4 Task 0: the wiring fix, proven at the CLI-embedding level ---------
+
+(deftest dispatch-action-run-with-pathways-reaches-the-engine-and-emits-orm-oru
+  (testing "M3's :pathways (and, through it, an authored :order step)
+            reaches the engine THROUGH dispatch-action -- the same
+            entrypoint the standalone shell and a mounting host both
+            go through -- proving the completeness fix, not just
+            run-command's own unit test"
+    (let [pathway {:name "cbc-order" :steps [{:type :admission :location "Renal"}
+                                             {:type :order :profile :cbc}
+                                             {:type :discharge}]}
+          r (cli/dispatch-action "run" {:seed 7 :patients 1 :emit "hl7"
+                                        :pathways [{:pathway pathway :weight 1}]})]
+      (is (result/ok? r))
+      (let [messages (:messages (:payload r))]
+        (is (some #(string/includes? % "^O01") messages) "ORM^O01 (order-placed) present")
+        (is (some #(string/includes? % "^R01") messages) "ORU^R01 (result-available) present")))))
+
 (deftest check-catches-planted-violation
   (let [bad [{:event :discharge :t 0 :participants [{:patient-id "P1" :role :subject}]}
              {:event :admission :t 5 :participants [{:patient-id "P1" :role :subject}] :location "Renal"}]

@@ -23,12 +23,26 @@
   threads into engine/run AND into check/check-all's warm-up-mark
   invariant, so a run always self-checks against the SAME window it
   was actually generated with."
-  (:require [ehr-testing-sim.engine :as engine]
+  (:require [clojure.edn :as edn]
+            [ehr-testing-sim.engine :as engine]
             [ehr-testing-sim.check :as check]
             [ehr-testing-sim.churn :as churn]
             [ehr-testing-sim.emit-hl7 :as emit-hl7]
             [ehr-testing-sim.manifest :as manifest]
             [ehr-testing-sim.result :as result]))
+
+(defn- merge-config-file
+  "M4 Task 0: `:config` (a path to an EDN file) supplies the data-heavy
+  engine keys that have no CLI flag of their own (`:pathway`/
+  `:pathways`/`:order-profiles`, a full `:churn-profile` map) -- read
+  once, merged UNDER the caller's own opts (an explicit opt wins over
+  anything the file also names; the file exists to supply what flags
+  can't express, not to override them). Absent `:config` -- the
+  default -- this is the identity function on opts, byte for byte."
+  [opts]
+  (if-let [path (:config opts)]
+    (merge (edn/read-string (slurp path)) (dissoc opts :config))
+    opts))
 
 (defn run-command
   "opts: :seed (required, long), :patients (long), :reference-date
@@ -51,36 +65,58 @@
   (ehr-testing-sim.engine/run's own :churn-profile wiring). Neither
   key present -- the default -- means no :churn-profile reaches
   engine/run at all, the opt-in path Task 0's pinned-fixture
-  expectation depends on."
-  [{:keys [seed patients emit reference-date utc-offset warm-up-seconds churn churn-profile] :as opts}]
-  (if (nil? seed)
-    (result/error :missing-required-opt
-                  {:message "--seed is required (determinism is a feature, not a default)"
-                   :opt :seed})
-    (let [reference-date (or reference-date emit-hl7/default-reference-date)
-          utc-offset (or utc-offset emit-hl7/default-utc-offset)
-          warm-up-seconds (or warm-up-seconds 0)
-          effective-churn-profile (cond
-                                    churn-profile (merge churn/default-churn-profile churn-profile)
-                                    churn churn/sample-profile
-                                    :else nil)
-          engine-params (-> (select-keys opts [:patients :arrival-gap :warm-up-seconds])
-                             (assoc :reference-date reference-date :utc-offset utc-offset))
-          {:keys [ground-truth facility providers exhausted]}
-          (engine/run (merge {:seed seed :churn-profile effective-churn-profile}
-                             (select-keys opts [:patients :arrival-gap :facility :providers :warm-up-seconds])))
-          checked (when-not exhausted (check/check-all ground-truth facility warm-up-seconds))]
-      (cond
-        exhausted (result/error :capacity-exhausted exhausted)
-        (not (result/ok? checked)) (result/error :self-check-failed (:payload checked))
-        :else
-        (result/ok
-         (cond-> {:ground-truth ground-truth
-                  :manifest (manifest/build {:seed seed
-                                             :engine-params engine-params
-                                             :config {:path "(inline)"
-                                                      :sha256 (apply str (repeat 64 "0"))}
-                                             :invocation {:verb "run" :opts opts}})
-                  :summary {:patients (or patients 1)
-                            :events (count ground-truth)}}
-           (= "hl7" emit) (assoc :messages (emit-hl7/emit ground-truth reference-date utc-offset facility providers))))))))
+  expectation depends on.
+
+  M4 Task 0: `:config` (a path to an EDN file) is a passthrough vehicle
+  for the data-heavy engine keys that have no CLI flag of their own
+  (`:pathway`/`:pathways`/`:order-profiles`, and `:churn-profile` when a
+  caller wants the full map rather than the bare `--churn` toggle) --
+  read once, merged UNDER the rest of opts (explicit flag-driven keys
+  win on any overlap; the file supplies what flags can't express) --
+  see `merge-config-file`. Every key in `ehr-testing-sim.engine/config-
+  keys` reaches `engine/run` unconditionally, whether it arrived via a
+  flag or via `:config` -- that completeness is this function's own
+  plumbing-completeness test's whole point (M3's `:pathways` shipped
+  CLI-invisible despite reaching `engine/run` from a direct API caller;
+  never again silently, per that test).
+
+  `opts`'s second, injectable arity follows the SAME -fn convention
+  `ehr-testing-sim.cli/dispatch-action` already uses (`:engine-run-fn`,
+  defaulting to the real `ehr-testing-sim.engine/run`) -- the seam the
+  plumbing-completeness test uses to capture exactly what reaches the
+  engine without running a real simulation against sentinel data."
+  ([opts] (run-command opts {}))
+  ([raw-opts {:keys [engine-run-fn] :or {engine-run-fn engine/run}}]
+   (let [opts (merge-config-file raw-opts)
+         {:keys [seed patients emit reference-date utc-offset warm-up-seconds churn churn-profile]} opts]
+     (if (nil? seed)
+       (result/error :missing-required-opt
+                     {:message "--seed is required (determinism is a feature, not a default)"
+                      :opt :seed})
+       (let [reference-date (or reference-date emit-hl7/default-reference-date)
+             utc-offset (or utc-offset emit-hl7/default-utc-offset)
+             warm-up-seconds (or warm-up-seconds 0)
+             effective-churn-profile (cond
+                                       churn-profile (merge churn/default-churn-profile churn-profile)
+                                       churn churn/sample-profile
+                                       :else nil)
+             engine-params (-> (select-keys opts [:patients :arrival-gap :warm-up-seconds])
+                                (assoc :reference-date reference-date :utc-offset utc-offset))
+             {:keys [ground-truth facility providers exhausted]}
+             (engine-run-fn (merge (select-keys opts engine/config-keys)
+                                   {:seed seed :churn-profile effective-churn-profile}))
+             checked (when-not exhausted (check/check-all ground-truth facility warm-up-seconds))]
+         (cond
+           exhausted (result/error :capacity-exhausted exhausted)
+           (not (result/ok? checked)) (result/error :self-check-failed (:payload checked))
+           :else
+           (result/ok
+            (cond-> {:ground-truth ground-truth
+                     :manifest (manifest/build {:seed seed
+                                                :engine-params engine-params
+                                                :config {:path "(inline)"
+                                                         :sha256 (apply str (repeat 64 "0"))}
+                                                :invocation {:verb "run" :opts opts}})
+                     :summary {:patients (or patients 1)
+                               :events (count ground-truth)}}
+              (= "hl7" emit) (assoc :messages (emit-hl7/emit ground-truth reference-date utc-offset facility providers))))))))))

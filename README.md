@@ -15,11 +15,14 @@ plus the full churn family — below), the facility and providers
 models (beds, the allocation ladder, boarding, bed-ready transfers,
 synthetic attendings — docs/operational-models.md), InjectChurn
 (cancel-admit/cancel-transfer/cancel-discharge, transfer-in-error,
-bed-swap, merge — docs/patient-state-model.md), and, as of Milestone
-M3, order/result step types with a real CBC+BMP order-profiles
-catalytic (verified LOINC codes) plus ORM^O01/ORU^R01 emission, a
-per-patient pathway-assignment layer (`:pathways`), and `:step-rejected`
-ground-truth events for decide-time rejections (ADR-0012).
+bed-swap, merge — docs/patient-state-model.md), order/result step
+types with a real CBC+BMP order-profiles catalytic (verified LOINC
+codes) plus ORM^O01/ORU^R01 emission (M3), a per-patient
+pathway-assignment layer (`:pathways`), `:step-rejected` ground-truth
+events for decide-time rejections (ADR-0012), and, as of Milestone M4,
+**Persona** — demographic sampling (name, DOB, sex, address, phone,
+SSN-shaped id) and age-linked payer sampling, folded into every
+patient's `:registered` event, with PID and IN1 segment enrichment.
 
 ## Pipeline: now / next / later
 
@@ -32,8 +35,8 @@ ground-truth events for decide-time rejections (ADR-0012).
 
 ```mermaid
 flowchart LR
-    Persona["Persona"]:::next
-    RunModules["RunModules"]:::planned
+    Persona["Persona"]:::built
+    RunModules["RunModules"]:::next
     CompileTrajectory["CompileTrajectory"]:::planned
     InjectChurn["InjectChurn"]:::built
     Execute["Execute"]:::built
@@ -56,14 +59,16 @@ flowchart LR
     classDef planned fill:#37474f,stroke:#78909c,color:#cfd8dc,stroke-width:1px,stroke-dasharray: 3 3;
 ```
 
-**Now** (green): Execute, Check, EmitHL7, InjectChurn (M2b), and, as of
-Milestone M3, Execute's own order/result step types and EmitHL7's
-ORM/ORU cycle — property-tested and green (181 tests / 503 assertions).
-**Next** (amber): **Persona**, Milestone M4 — demographics sampling
-from vendored, hashed tables, plus the `payer-pool` catalytic this
-theory currently only records as a comment at Persona, turning into a
-real wire once this stage lands. **Later** (dashed grey): everything
-else in the *want*.
+**Now** (green): Execute, Check, EmitHL7, InjectChurn (M2b), Execute's
+own order/result step types and EmitHL7's ORM/ORU cycle (M3), and, as
+of Milestone M4, **Persona** — demographics sampling from vendored,
+hashed tables plus a real `payer-pool` catalytic wire, folded into
+Execute's own step queue via the `:registered` event, plus PID/IN1
+enrichment — property-tested and green (207 tests / 582 assertions).
+**Next** (amber): **RunModules**, Milestone M5 — the GMF interpreter
+port, the `gmf-module-set` vendoring-vs-lockfile decision, and
+`CompileTrajectory`. **Later** (dashed grey): everything else in the
+*want*.
 
 [`docs/sim-theory-diagram.md`](docs/sim-theory-diagram.md) is the full
 detail view (every resource wire, catalytic input, and the

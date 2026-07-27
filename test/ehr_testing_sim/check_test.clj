@@ -19,6 +19,7 @@
             [ehr-testing-sim.config :as config]
             [ehr-testing-sim.engine :as engine]
             [ehr-testing-sim.order-profiles :as order-profiles]
+            [ehr-testing-sim.persona :as persona]
             [ehr-testing-sim.result :as result]))
 
 (def test-facility
@@ -323,3 +324,31 @@
                                      :surge-format "%s-H%02d" :class :inpatient}]}
           {:keys [ground-truth]} (engine/run {:seed seed :patients patients :facility facility})]
       (result/ok? (check/check-all ground-truth facility)))))
+
+;; --- M4: Persona ------------------------------------------------------
+
+(def ^:private a-persona
+  (persona/persona (java.util.Random. 1) {}))
+
+(deftest registered-is-every-patients-first-event-holds-for-legit-log
+  (is (empty? (check/registered-is-every-patients-first-event
+               [{:event :registered :t 0 :active-mrn "MRN000001" :persona a-persona :participants (subject "P1")}
+                {:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
+                 :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}]))))
+
+(deftest registered-is-every-patients-first-event-detects-a-missing-registration
+  (is (seq (check/registered-is-every-patients-first-event
+            [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
+              :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}]))))
+
+(deftest registered-persona-is-schema-valid-holds-for-a-real-persona
+  (is (empty? (check/registered-persona-is-schema-valid
+               [{:event :registered :t 0 :active-mrn "MRN000001" :persona a-persona :participants (subject "P1")}]))))
+
+(deftest registered-persona-is-schema-valid-detects-a-malformed-persona
+  (is (seq (check/registered-persona-is-schema-valid
+            [{:event :registered :t 0 :active-mrn "MRN000001" :persona {:name "not a map"} :participants (subject "P1")}]))))
+
+(deftest engine-run-satisfies-check-all-with-persona
+  (let [{:keys [ground-truth]} (engine/run {:seed 5 :patients 4})]
+    (is (result/ok? (check/check-all ground-truth)))))

@@ -8,13 +8,15 @@
   and every rendered timestamp carries the pinned :utc-offset's HL7-
   style zone suffix. M2a (ADR-0010): PID-3 renders the event's own
   :active-mrn, not a bare :mrn."
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer [deftest is testing]]
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
             [ehr-testing-sim.config :as config]
             [ehr-testing-sim.engine :as engine]
             [ehr-testing-sim.emit-hl7 :as emit-hl7]
+            [ehr-testing-sim.persona :as persona]
             [com.nervestaple.hl7-parser.parser :as parser]
             [com.nervestaple.hl7-parser.message :as message])
   (:import [java.time LocalDate LocalDateTime]
@@ -365,6 +367,151 @@
           messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
           order-result-messages (filter #(or (re-find #"\^O01" %) (re-find #"\^R01" %)) messages)]
       (= 2 (count order-result-events) (count order-result-messages)))))
+
+;; --- M4: PID demographic enrichment + IN1 (payer) -------------------------
+
+(defn- find-registered
+  [ground-truth patient-id]
+  (first (filter #(and (= :registered (:event %))
+                       (some (fn [p] (= patient-id (:patient-id p))) (:participants %)))
+                 ground-truth)))
+
+(deftest admission-pid-carries-demographic-fields
+  (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 1})
+        admission (first (filter #(= :admission (:event %)) ground-truth))
+        patient-id (:patient-id (first (:participants admission)))
+        {:keys [persona]} (find-registered ground-truth patient-id)
+        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+        parsed (parser/parse (first messages))]
+    (testing "PID-5: XPN family^given"
+      (is (= (str (get-in persona [:name :family]) "^" (get-in persona [:name :given]))
+             (message/get-field-first-value parsed "PID" 5))))
+    (testing "PID-7: DOB, HL7 date (YYYYMMDD, dashes stripped)"
+      (is (= (clojure.string/replace (:dob persona) "-" "")
+             (message/get-field-first-value parsed "PID" 7))))
+    (testing "PID-8: sex, HL7 Table 0001 (F/M)"
+      (is (= (case (:sex persona) :female "F" :male "M")
+             (message/get-field-first-value parsed "PID" 8))))
+    (testing "PID-11: XAD street^^city^state^zip"
+      (let [{:keys [street city state zip]} (:address persona)]
+        (is (= (str street "^^" city "^" state "^" zip)
+               (message/get-field-first-value parsed "PID" 11)))))
+    (testing "PID-13: phone"
+      (is (= (:phone persona) (message/get-field-first-value parsed "PID" 13))))))
+
+(deftest admission-carries-in1-with-the-sampled-payer
+  (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 1})
+        admission (first (filter #(= :admission (:event %)) ground-truth))
+        patient-id (:patient-id (first (:participants admission)))
+        {:keys [persona]} (find-registered ground-truth patient-id)
+        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+        parsed (parser/parse (first messages))]
+    (testing "IN1-1: set id"
+      (is (= "1" (message/get-field-first-value parsed "IN1" 1))))
+    (testing "IN1-3/IN1-4: insurance company id/name, from the sampled payer pool entry"
+      (is (= (get-in persona [:payer :id]) (message/get-field-first-value parsed "IN1" 3)))
+      (is (= (get-in persona [:payer :name]) (message/get-field-first-value parsed "IN1" 4))))))
+
+(deftest non-admission-messages-carry-enriched-pid-but-no-in1
+  (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 5})
+        discharge (first (filter #(= :discharge (:event %)) ground-truth))
+        patient-id (:patient-id (first (:participants discharge)))
+        {:keys [persona]} (find-registered ground-truth patient-id)
+        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+        discharge-msg (first (filter #(re-find #"\^A03" %) messages))
+        parsed (parser/parse discharge-msg)]
+    (testing "PID is enriched the same way on every message type, not admission-only"
+      (is (= (str (get-in persona [:name :family]) "^" (get-in persona [:name :given]))
+             (message/get-field-first-value parsed "PID" 5))))
+    (testing "IN1 rides ONLY the admission message -- the real HL7 convention this milestone follows"
+      (is (empty? (message/get-segments parsed "IN1"))))))
+
+(deftest hand-built-worlds-without-a-registered-event-fall-back-to-legacy-pid
+  (testing "old test worlds that never processed a :registered step (e.g. churn-scenarios-style
+            hand-driven decide/evolve) still emit the pre-M4 3-field PID -- no persona, no crash"
+    (let [world0 {:patients {"P1" (engine/initial-patient "P1" "MRN000001")}
+                  :facility config/default-facility :providers config/default-provider-templates
+                  :ground-truth []}
+          {:keys [events]} (engine/decide (Random. 1) 0 world0 "P1" {:type :admission :location "Renal"})
+          messages (emit-hl7/emit events ref-date utc-offset config/default-facility config/default-provider-templates)
+          parsed (parser/parse (first messages))]
+      (is (= "MRN000001" (message/get-field-first-value parsed "PID" 3)))
+      (is (= "" (message/get-field-first-value parsed "PID" 5)))
+      (is (empty? (message/get-segments parsed "IN1"))))))
+
+;; --- M4 Task 4: the ER7 escaping property ----------------------------------
+;; org.clojars.cmiles74/clojure-hl7-parser implements NO escape-sequence
+;; handling in EITHER direction -- verified directly against its own source
+;; (notes/facts-register.md F9): pr-field/pr-content concatenate field
+;; content with no encoding step on write, and read-text's escape-handling
+;; branch (and read-subcomponents') is commented-out dead code on read, so
+;; a literal delimiter character corrupts field boundaries unless something
+;; upstream escapes it, and get-field-first-value returns an escape sequence
+;; LITERALLY rather than decoding it. This repo's own escape-er7/unescape-er7
+;; are the documented workaround: encode on write (this repo's job, since
+;; the library doesn't), decode on read (a small helper this repo provides
+;; since the library's own decoder is dead code).
+
+(defn- persona-with-family-name
+  [family-name]
+  (assoc (persona/persona (Random. 1) {}) :name {:family family-name :given "Pat"}))
+
+(defn- pid5-round-trip
+  "Builds a minimal admission-shaped world with `persona`, emits it, parses
+  the message back, and returns the raw PID-5 family name substring (before
+  the ^ component separator)."
+  [persona]
+  (let [world0 {:patients {"P1" (assoc (engine/initial-patient "P1" "MRN000001") :persona persona)}
+                :facility config/default-facility :providers config/default-provider-templates
+                :ground-truth []}
+        registered-event {:event :registered :t 0 :active-mrn "MRN000001" :persona persona
+                          :participants [{:patient-id "P1" :role :subject}]}
+        world1 (update-in world0 [:patients "P1"] engine/evolve registered-event)
+        {:keys [events]} (engine/decide (Random. 1) 0 world1 "P1" {:type :admission :location "Renal"})
+        ground-truth (into [registered-event] events)
+        messages (emit-hl7/emit ground-truth ref-date utc-offset config/default-facility config/default-provider-templates)
+        parsed (parser/parse (first messages))
+        pid5 (message/get-field-first-value parsed "PID" 5)]
+    (first (str/split pid5 #"\^"))))
+
+(deftest scripted-apostrophe-name-round-trips-byte-faithfully
+  (testing "O'Brien needs NO escaping at all -- apostrophe isn't an ER7
+            delimiter character, so the raw parsed value already IS the
+            original, no workaround needed"
+    (is (= "O'Brien" (pid5-round-trip (persona-with-family-name "O'Brien"))))))
+
+(deftest scripted-adversarial-delimiter-name-is-a-documented-parser-finding
+  (testing "Sm|th (a literal ER7 field-delimiter character embedded in a
+            name) is the adversarial case: the RAW parsed value is the
+            ESCAPED form, not the original -- proof the parser decodes
+            NOTHING (F9) -- and this repo's own unescape-er7 is required
+            to recover the original byte-faithfully"
+    (let [raw (pid5-round-trip (persona-with-family-name "Sm|th"))]
+      (is (not= "Sm|th" raw) "the library does not decode escape sequences -- this is the finding")
+      (is (= "Sm\\F\\th" raw) "our own encoder escaped the embedded delimiter, per standard ER7")
+      (is (= "Sm|th" (emit-hl7/unescape-er7 raw)) "our own decoder recovers the original exactly"))))
+
+(deftest escape-er7-is-identity-for-strings-with-no-delimiter-characters
+  (doseq [s ["O'Brien" "Smith-Jones" "D'Angelo" "Anderson-Lee" "Plain Name"]]
+    (is (= s (emit-hl7/escape-er7 s)))))
+
+(deftest escape-then-unescape-round-trips-every-reserved-character
+  (doseq [ch [\| \^ \~ \& \\]]
+    (let [s (str "a" ch "b")]
+      (is (= s (emit-hl7/unescape-er7 (emit-hl7/escape-er7 s)))))))
+
+(defspec every-generated-persona-name-round-trips-through-unescape-er7 200
+  (testing "the general property: ANY family name -- letters, apostrophes,
+            hyphens, spaces, or literal ER7 delimiter characters, in any
+            combination -- round-trips byte-faithfully through emit + parse
+            + unescape-er7, even when the raw parsed value (pre-unescape)
+            is not the original"
+    (prop/for-all [family-name (gen/not-empty
+                                (gen/vector (gen/elements (concat "ABCDEFGabcdefg '-" "|^~&\\"))
+                                            1 12))]
+      (let [family-name (apply str family-name)
+            raw (pid5-round-trip (persona-with-family-name family-name))]
+        (= family-name (emit-hl7/unescape-er7 raw))))))
 
 (defspec timestamp-anchoring-property 100
   (prop/for-all [seconds (gen/choose 0 6000000)]

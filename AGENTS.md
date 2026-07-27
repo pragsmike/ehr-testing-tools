@@ -89,6 +89,11 @@ vocabulary.
   test` and `make coverage` must be green/reported before any
   session-final commit. Mechanical enforcement is partially live, not
   merely planned: the pre-push hook already runs `make test`.
+- **Demos and verification commands run through the CLI surface**
+  (`clojure -M:cli ...`), never engine internals — the CLI is the
+  product boundary consumers touch (M3's `:pathways` shipped
+  invisible to any CLI invocation despite 181 green tests and a demo
+  that called `engine/run` directly).
 
 ## Constraints
 

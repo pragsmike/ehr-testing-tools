@@ -115,13 +115,139 @@
    (parser/create-field [trigger])
    (parser/create-field [ts])))
 
+;; --- M4 Task 4: ER7 escaping (notes/facts-register.md F9) -----------------
+;; org.clojars.cmiles74/clojure-hl7-parser implements NO escape-sequence
+;; handling in either direction, verified directly against its own source:
+;; pr-field/pr-content (the write path) concatenate field content into the
+;; wire string with no encoding step at all; read-text's and read-
+;; subcomponents' escape-handling branches (the read path) are commented-out
+;; dead code, and `delimiter?` doesn't even exempt the escape character from
+;; ending a token early. A literal |^~& character embedded in free text
+;; therefore corrupts the message's own field/component boundaries on parse
+;; unless something upstream escapes it, and even a properly-escaped value
+;; comes back from `get-field-first-value` STILL escaped, never decoded.
+;; escape-er7/unescape-er7 are this repo's own documented workaround:
+;; encode on write (below, at every persona-derived free-text field), decode
+;; on read (a consumer's own job, exactly like this repo's test suite does).
+
+(def ^:private er7-escape-table
+  "Order matters on ENCODE: the escape character itself is escaped
+  FIRST, or the backslashes this table's own replacements introduce
+  for |^~& would themselves get escaped a second time on a later pass."
+  [[\\ "\\E\\"] [\| "\\F\\"] [\^ "\\S\\"] [\~ "\\R\\"] [\& "\\T\\"]])
+
+(defn escape-er7
+  "Encodes ER7's five reserved delimiter characters per the standard
+  escape-sequence convention. Identity for any string containing none
+  of the five -- the overwhelmingly common case (ordinary names,
+  apostrophes, and hyphens need no escaping at all, ER7 or otherwise).
+  Safe as five sequential single-CHARACTER replacements (unlike decode,
+  below): each pass targets one literal input character never produced
+  by an earlier pass's own replacement text (F/S/R/T/E are never
+  themselves |^~&), so passes cannot collide."
+  [s]
+  (reduce (fn [acc [ch replacement]] (str/replace acc (str ch) replacement))
+          s er7-escape-table))
+
+(def ^:private er7-decode-map
+  {\E \\ \F \| \S \^ \R \~ \T \&})
+
+(defn unescape-er7
+  "Decodes ER7 escape sequences back to literal characters -- the
+  consumer-side half of this namespace's own documented workaround for
+  the parser's read-side gap (see this section's header comment).
+
+  MUST be a single regex pass, not five sequential string replacements
+  the way `escape-er7` is -- a property-test failure caught exactly
+  this during Milestone M4's own authoring: encoding \"|E|\" produces
+  \"\\F\\E\\F\\\" (backslash F backslash E backslash F backslash), and
+  five SEPARATE global replaces are each blind to what the others
+  already consumed, so the first pass (decoding \\E\\ back to a literal
+  backslash) spuriously matches the backslash-E-backslash formed by the
+  BOUNDARY between the two adjacent, unrelated \\F\\ tokens -- decoding
+  it wrong. A single regex scan matches real three-character tokens
+  left to right, consuming each match's characters before continuing,
+  so two adjacent tokens can never accidentally spell a third."
+  [s]
+  (str/replace s #"\\[EFRST]\\" (fn [^String match] (str (er7-decode-map (.charAt match 1))))))
+
+(defn- xpn-field
+  "XPN (Extended Person Name), PID-5: family^given. Free text from
+  ehr-testing-sim.persona -- escaped per ER7 (see this file's Task 4
+  section) before it ever reaches a field, since the library itself
+  never will."
+  [{:keys [family given]}]
+  (parser/create-field [(escape-er7 family) (escape-er7 given)]))
+
+(defn- xad-field
+  "XAD (Extended Address), PID-11: street^other-designation^city^state^zip.
+  Other-designation (apt/suite) is always empty -- resources/demographics'
+  vendored places carry no such field, same simplification the address
+  table's own header notes. Free text escaped per ER7, same reasoning
+  as `xpn-field`."
+  [{:keys [street city state zip]}]
+  (parser/create-field [(escape-er7 street) "" (escape-er7 city) (escape-er7 state) (escape-er7 zip)]))
+
 (defn- pid-segment
-  [active-mrn]
+  "PID-1/2/3 unconditionally (Set ID, blank, the active MRN); PID-4/6/9/10/12
+  stay blank placeholders so positional fields (5/7/8/11/13) land correctly.
+  M4: when `persona` is present (every real ehr-testing-sim.engine/run output,
+  post the :registered event -- ehr-testing-sim.persona/Persona), PID gains
+  demographic enrichment: PID-5 (XPN name), PID-7 (DOB, HL7 date), PID-8 (sex,
+  Table 0001 F/M), PID-11 (XAD address), PID-13 (phone). nil persona (hand-
+  built test worlds that never processed a :registered step) falls back to
+  the pre-M4 3-field segment exactly -- no positional padding, no crash."
+  [active-mrn persona]
+  (if (nil? persona)
+    (parser/create-segment
+     "PID"
+     (parser/create-field ["1"])
+     (parser/create-field [])
+     (parser/create-field [active-mrn]))
+    (parser/create-segment
+     "PID"
+     (parser/create-field ["1"])
+     (parser/create-field [])
+     (parser/create-field [active-mrn])
+     (parser/create-field [])
+     (xpn-field (:name persona))
+     (parser/create-field [])
+     (parser/create-field [(str/replace (:dob persona) "-" "")])
+     (parser/create-field [(case (:sex persona) :female "F" :male "M")])
+     (parser/create-field [])
+     (parser/create-field [])
+     (xad-field (:address persona))
+     (parser/create-field [])
+     (parser/create-field [(:phone persona)]))))
+
+(defn- in1-segment
+  "IN1 (insurance): IN1-1 set id, IN1-3/IN1-4 the sampled payer pool
+  entry's id/name (docs/operational-models.md's payers model, Milestone
+  M4 -- SimHospital issue #3's own request, docs/research/SimHospital-
+  Synthea-limitations-considered.md §5.3). Rides ONLY the admission
+  message (single-subject-message's own call site) -- the real HL7v2
+  convention: insurance coverage is registered once, at admission, not
+  restated on every subsequent ADT event."
+  [{payer-id :id payer-name :name}]
   (parser/create-segment
-   "PID"
+   "IN1"
    (parser/create-field ["1"])
    (parser/create-field [])
-   (parser/create-field [active-mrn])))
+   (parser/create-field [payer-id])
+   (parser/create-field [(escape-er7 payer-name)])))
+
+(defn- personas-by-patient-id
+  "patient-id -> persona, derived directly from the log's own
+  :registered events (ADR-0012's own precedent: a stage's own state is
+  recoverable by scanning the log, no second input needed). Computed
+  once per `emit` call and threaded down to every segment builder that
+  needs it -- pid-segment enrichment applies uniformly across every
+  message type, not just admission."
+  [ground-truth]
+  (into {}
+        (comp (filter #(= :registered (:event %)))
+              (map (fn [ev] [(:patient-id (first (:participants ev))) (:persona ev)])))
+        ground-truth))
 
 (defn- location-field
   "Renders a location map as ward^^bed^facility (PV1-3/PV1-6's shared
@@ -177,28 +303,32 @@
   family) carries its own :active-mrn/:location/:from/:attending
   directly -- cancel events reinstate these AT DECIDE-TIME by querying
   the log (docs/patient-state-model.md), so this renderer needs no
-  event-type-specific branching to show the reinstated facts."
-  [reference-date utc-offset facility providers
-   {:keys [event t active-mrn location from attending]}]
+  event-type-specific branching to show the reinstated facts. M4: IN1
+  rides ONLY :admission (`in1-segment`'s own docstring); every type
+  here gets PID enrichment uniformly via `personas`."
+  [reference-date utc-offset facility providers personas
+   {:keys [event t active-mrn location from attending participants]}]
   (when-let [type+trigger (message-type-registry event)]
     (let [ts (hl7-timestamp reference-date t utc-offset)
           control-id (str active-mrn "-" (:trigger type+trigger) "-" t)
           facility-name (name (:id facility))
-          provider (provider-by-id providers attending)]
+          provider (provider-by-id providers attending)
+          persona (get personas (:patient-id (first participants)))]
       (parser/str-message
-       (parser/create-message
+       (apply parser/create-message
         parser/DEFAULT-DELIMITERS
         (msh-segment type+trigger control-id ts)
         (evn-segment (:trigger type+trigger) ts)
-        (pid-segment active-mrn)
-        (pv1-segment facility-name location from provider))))))
+        (pid-segment active-mrn persona)
+        (pv1-segment facility-name location from provider)
+        (when (and (= :admission event) persona) [(in1-segment (:payer persona))]))))))
 
 (defn- bed-swap-message
   "A17 (swap patients): ONE message per ground-truth event, carrying
   BOTH patients' PID/PV1 pairs -- the real HL7v2 A17 shape, and why the
   emitter-derivability law now keys on the event's own log position
   rather than a single :active-mrn (a bed-swap message has two)."
-  [reference-date utc-offset facility providers {:keys [t participants swap]}]
+  [reference-date utc-offset facility providers personas {:keys [t participants swap]}]
   (let [type+trigger (message-type-registry :bed-swap)
         ts (hl7-timestamp reference-date t utc-offset)
         facility-name (name (:id facility))
@@ -211,26 +341,28 @@
       parser/DEFAULT-DELIMITERS
       (msh-segment type+trigger control-id ts)
       (evn-segment (:trigger type+trigger) ts)
-      (pid-segment mrn1)
+      (pid-segment mrn1 (get personas p1))
       (pv1-segment facility-name to1 from1 (provider-by-id providers att1))
-      (pid-segment mrn2)
+      (pid-segment mrn2 (get personas p2))
       (pv1-segment facility-name to2 from2 (provider-by-id providers att2))))))
 
 (defn- merge-message
   "A40 (merge patient): PID carries the SURVIVING mrn, MRG-1 carries the
   prior (merged-away) one (docs/patient-state-model.md's identity
   payoff) -- ONE message per merge event."
-  [reference-date utc-offset facility _providers {:keys [t surviving-mrn merged-mrn]}]
+  [reference-date utc-offset facility _providers personas
+   {:keys [t surviving-mrn merged-mrn participants]}]
   (let [type+trigger (message-type-registry :merge)
         ts (hl7-timestamp reference-date t utc-offset)
         facility-name (name (:id facility))
-        control-id (str surviving-mrn "-" (:trigger type+trigger) "-" t)]
+        control-id (str surviving-mrn "-" (:trigger type+trigger) "-" t)
+        survivor-id (:patient-id (first (filter #(= :survivor (:role %)) participants)))]
     (parser/str-message
      (parser/create-message
       parser/DEFAULT-DELIMITERS
       (msh-segment type+trigger control-id ts)
       (evn-segment (:trigger type+trigger) ts)
-      (pid-segment surviving-mrn)
+      (pid-segment surviving-mrn (get personas survivor-id))
       (pv1-segment facility-name nil nil nil)
       (mrg-segment merged-mrn)))))
 
@@ -290,8 +422,8 @@
 (defn- orm-message
   "ORM^O01: order placed. No EVN segment -- EVN is an ADT-specific
   segment (HL7v2 convention), not part of the order-message family."
-  [reference-date utc-offset facility providers
-   {:keys [t active-mrn location attending concept]}]
+  [reference-date utc-offset facility providers personas
+   {:keys [t active-mrn location attending concept participants]}]
   (let [type+trigger (message-type-registry :order-placed)
         ts (hl7-timestamp reference-date t utc-offset)
         control-id (str active-mrn "-" (:trigger type+trigger) "-" t)
@@ -301,7 +433,7 @@
      (parser/create-message
       parser/DEFAULT-DELIMITERS
       (msh-segment type+trigger control-id ts)
-      (pid-segment active-mrn)
+      (pid-segment active-mrn (get personas (:patient-id (first participants))))
       (pv1-segment facility-name location nil provider)
       (orc-segment control-id)
       (obr-segment 1 concept)))))
@@ -311,8 +443,8 @@
   analyte, in the same order the profile's own :results carries them
   (derived straight from the log, ehr-testing-sim.order-profiles'
   sampling order -- no re-sorting here)."
-  [reference-date utc-offset facility providers
-   {:keys [t active-mrn location attending concept results]}]
+  [reference-date utc-offset facility providers personas
+   {:keys [t active-mrn location attending concept results participants]}]
   (let [type+trigger (message-type-registry :result-available)
         ts (hl7-timestamp reference-date t utc-offset)
         control-id (str active-mrn "-" (:trigger type+trigger) "-" t)
@@ -323,7 +455,7 @@
      (apply parser/create-message
       parser/DEFAULT-DELIMITERS
       (msh-segment type+trigger control-id ts)
-      (pid-segment active-mrn)
+      (pid-segment active-mrn (get personas (:patient-id (first participants))))
       (pv1-segment facility-name location nil provider)
       (orc-segment control-id)
       (obr-segment 1 concept)
@@ -338,14 +470,16 @@
   single nilable message) since a future many-messages-per-event type
   is now a shape this stage already accommodates. Events outside
   `message-type-registry` render an empty vector, not an error."
-  [reference-date utc-offset facility providers {:keys [event] :as ev}]
-  (cond
-    (not (message-type-registry event)) []
-    (= :bed-swap event) [(bed-swap-message reference-date utc-offset facility providers ev)]
-    (= :merge event) [(merge-message reference-date utc-offset facility providers ev)]
-    (= :order-placed event) [(orm-message reference-date utc-offset facility providers ev)]
-    (= :result-available event) [(oru-message reference-date utc-offset facility providers ev)]
-    :else [(single-subject-message reference-date utc-offset facility providers ev)]))
+  ([reference-date utc-offset facility providers ev]
+   (event->messages reference-date utc-offset facility providers {} ev))
+  ([reference-date utc-offset facility providers personas {:keys [event] :as ev}]
+   (cond
+     (not (message-type-registry event)) []
+     (= :bed-swap event) [(bed-swap-message reference-date utc-offset facility providers personas ev)]
+     (= :merge event) [(merge-message reference-date utc-offset facility providers personas ev)]
+     (= :order-placed event) [(orm-message reference-date utc-offset facility providers personas ev)]
+     (= :result-available event) [(oru-message reference-date utc-offset facility providers personas ev)]
+     :else [(single-subject-message reference-date utc-offset facility providers personas ev)])))
 
 (def ^:private default-providers
   "A fixed, arbitrary reference-seed provider pool -- purely a fallback
@@ -370,4 +504,5 @@
   ([ground-truth reference-date utc-offset]
    (emit ground-truth reference-date utc-offset config/default-facility default-providers))
   ([ground-truth reference-date utc-offset facility providers]
-   (into [] (mapcat (partial event->messages reference-date utc-offset facility providers)) ground-truth)))
+   (let [personas (personas-by-patient-id ground-truth)]
+     (into [] (mapcat (partial event->messages reference-date utc-offset facility providers personas)) ground-truth))))

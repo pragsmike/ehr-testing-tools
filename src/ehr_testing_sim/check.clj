@@ -36,6 +36,7 @@
             [ehr-testing-sim.engine :as engine]
             [ehr-testing-sim.facility :as facility]
             [ehr-testing-sim.order-profiles :as order-profiles]
+            [ehr-testing-sim.persona :as persona]
             [ehr-testing-sim.result :as result]))
 
 (defn- events-by-patient
@@ -375,6 +376,30 @@
         :when (not= abnormal-flag (order-profiles/abnormal-flag value reference-range))]
     {:invariant :abnormal-flags-consistent-with-value-vs-range :profile (:profile event) :at (:t event)}))
 
+;; --- M4: Persona (docs/sim-theory.edn's :persona stage) -------------------
+
+(defn registered-is-every-patients-first-event
+  "docs/sim-theory.edn's :persona stage lands as the engine-internal
+  :registered event, prepended to every patient's step queue
+  (ehr-testing-sim.engine/run) -- structurally, that means it must be
+  the FIRST event naming any given patient-id, every time, or
+  ehr-testing-sim.engine/replay's own bootstrap (which seeds a
+  never-yet-seen participant's initial state off the first event
+  naming them, ADR-0010) would silently seed from the wrong event."
+  [ground-truth]
+  (for [[patient-id events] (events-by-patient ground-truth)
+        :when (not= :registered (:event (first events)))]
+    {:invariant :registered-is-every-patients-first-event :patient-id patient-id :at (:t (first events))}))
+
+(defn registered-persona-is-schema-valid
+  "Every :registered event's :persona validates against
+  ehr-testing-sim.persona/Persona -- the schema round-trip co-landing
+  invariant for M4's new persona resource type."
+  [ground-truth]
+  (for [event ground-truth
+        :when (and (= :registered (:event event)) (not (persona/valid-persona? (:persona event))))]
+    {:invariant :registered-persona-is-schema-valid :at (:t event)}))
+
 (def catalog
   "The full invariant catalog needing only a ground-truth log, in
   reporting order."
@@ -394,7 +419,9 @@
    #'step-rejected-reason-is-documented
    #'order-only-when-admitted
    #'result-references-existing-order-and-follows-it-in-time
-   #'abnormal-flags-consistent-with-value-vs-range])
+   #'abnormal-flags-consistent-with-value-vs-range
+   #'registered-is-every-patients-first-event
+   #'registered-persona-is-schema-valid])
 
 (def facility-catalog
   "Invariants that need the facility config, not just the log (checked

@@ -14,30 +14,26 @@
 ;; prose, keeping the file loadable by tools' Pipeline Malli as-is.
 {:schema-version 1
  :stages
- [;; NEXT -- Milestone M4 (.agents/plans/roadmap.md): Persona for real --
-  ;; demographics sampling from vendored, hashed tables, plus the
-  ;; payer-pool catalytic this comment names below turning into a real
-  ;; wire once this stage flips to :built. M3's own NEXT (Execute's
-  ;; order/result step family) landed this session -- see :execute's own
-  ;; :contract for the landing record. The author may re-aim NEXT; this
-  ;; is the default per the roadmap.
-  ;;
-  ;; payer-pool (target 3, hashed config, docs/operational-models.md)
-  ;; binds here for payer sampling once Persona lands -- not added to
-  ;; :catalytic below because Persona itself is still :planned and the
-  ;; wire would be premature until the stage is real; until then,
-  ;; payer sampling runs at engine patient-init time, temporarily
-  ;; inside Execute's scope (see provider-pool's real binding there).
+ [;; Milestone M4 (.agents/plans/roadmap.md): Persona landed for real --
+  ;; demographics sampling from vendored, hashed tables, plus payer-pool
+  ;; (the catalytic this comment used to name as a forward reference) now
+  ;; a real wire. M3's own NEXT (Execute's order/result step family)
+  ;; landed the session before -- see :execute's own :contract for that
+  ;; record.
   {:id :persona
    :label "Persona"
    :kind :transform
-   :status :planned
+   :status :built
    :inputs ["sim-config"]
    :outputs ["persona"]
-   :catalytic ["demographics-tables"]
-   :laws ["samples only from the run's single seeded RNG, in fixed order (global determinism law, docs/sim-theory.md)"
-          "US-centric by data, not by code: nationality lives entirely in demographics-tables (catalytic target 3), never in stage logic"]}
+   :catalytic ["demographics-tables" "payer-pool"]
+   :laws ["samples only from the run's single seeded RNG, in fixed order (global determinism law, docs/sim-theory.md) -- property-tested (persona-test/persona-consumes-a-fixed-number-of-rng-draws-regardless-of-content, 100 trials green 2026-07-26): 13 draws, always, regardless of which pool/decade-bucket any weighted pick lands in"
+          "US-centric by data, not by code: nationality lives entirely in demographics-tables (catalytic target 3), never in stage logic"]
+   :contract "v1 scope (M4, ehr-testing-sim.persona): name, DOB (age from a configured uniform distribution), sex, address, US-format phone, an SSN-shaped identifier (fixed 900 area-number prefix, SSA's own permanently-never-issued block -- notes/facts-register.md F8, the same obviously-synthetic-by-construction design move ADR-0007 already made for provider NPIs), and payer (age-linked, Medicare dominant 65+, docs/operational-models.md) -- ALL sampled together, once, at patient creation. IMPLEMENTATION NOTE, kept here so the diagram stays truthful about topology while being honest about code shape: this stage's equation (sim-config -> persona) is satisfied by an engine-internal `:registered` event ehr-testing-sim.engine/run prepends to EVERY patient's step queue (never authorable pathway IR, the same treatment :result-followup already gets) -- persona is folded into Execute's own step-queue mechanism rather than a structurally separate pipeline pass, because a patient's persona is consumed at the same init moment Execute already owns (arrival scheduling), not by a downstream stage that exists yet (RunModules, :planned, is the eventual real consumer of `persona` as a wire resource). This stage remains its own equation entry -- not folded into :execute's own contract -- because it has its own laws (fixed-draw-count, US-centric-by-data) worth stating independently of Execute's. Vendored tables (resources/demographics/) are SMALL and HAND-CURATED, not extracted from Synthea -- resources/demographics/NOTICE records why (no ../ checkout was available this session), in the same schema shape a real extraction would use."}
 
+  ;; NEXT -- Milestone M5 (.agents/plans/roadmap.md): RunModules + the
+  ;; GMF module-vendoring decision + CompileTrajectory. The author may
+  ;; re-aim NEXT; this is the ratified numbered order's default.
   {:id :trajectory
    :label "RunModules"
    :kind :transform

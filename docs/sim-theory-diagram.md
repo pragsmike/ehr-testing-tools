@@ -2,12 +2,24 @@
      (itself hand-derived from docs/sim-theory.edn -- see that file's own
      header for why no Clojure translator does this mechanically here, unlike
      ehr-testing-tools' `make pipeline`). Do not hand-edit the mermaid block
-     below. Regenerate with:
+     below except as noted here. Regenerate with:
 
        python ../ehr-testing-tools/palgebra/tools/resource_equations_to_mermaid.py \
          docs/sim-theory-equations.txt -o docs/sim-theory-diagram.mermaid
 
-     then paste the output back in below. -->
+     then paste the output back in below.
+
+     MILESTONE M4 NOTE: this session's environment had no Python
+     interpreter available, so the mermaid block's `payer-pool` wire
+     (Persona's equation gained `payer-pool` as a real catalytic input,
+     docs/sim-theory-equations.txt) was applied BY HAND, following the
+     converter's own established conventions exactly (source-type node
+     declaration, `.-> ` dashed catalytic wire syntax, light-rounded
+     source styling) rather than mechanically regenerated. A future
+     session with Python available should re-run the converter and
+     diff against this block to confirm the hand-applied change matches
+     what the tool itself would have produced -- recorded here so this
+     isn't silently assumed identical. -->
 
 # The simulator's resource theory — diagram
 
@@ -32,6 +44,7 @@ flowchart LR
     invariant_catalog(["invariant-catalog"])
     message_type_registry(["message-type-registry"])
     order_profiles(["order-profiles"])
+    payer_pool(["payer-pool"])
     provider_pool(["provider-pool"])
     sim_config(["sim-config"])
     snomed_icd10_map(["snomed-icd10-map"])
@@ -55,6 +68,7 @@ flowchart LR
     %% Arrow 20: Persona
     sim_config -- sim-config --> Persona
     demographics_tables -. demographics-tables .-> Persona
+    payer_pool -. payer-pool .-> Persona
 
     %% Arrow 23: RunModules
     Persona -- persona --> RunModules
@@ -133,6 +147,7 @@ flowchart LR
     style invariant_catalog fill:#f5f5f5,stroke:#999,color:#333
     style message_type_registry fill:#f5f5f5,stroke:#999,color:#333
     style order_profiles fill:#f5f5f5,stroke:#999,color:#333
+    style payer_pool fill:#f5f5f5,stroke:#999,color:#333
     style provider_pool fill:#f5f5f5,stroke:#999,color:#333
     style sim_config fill:#f5f5f5,stroke:#999,color:#333
     style snomed_icd10_map fill:#f5f5f5,stroke:#999,color:#333
