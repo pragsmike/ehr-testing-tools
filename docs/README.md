@@ -87,7 +87,12 @@ Docs are downstream of decisions: `../notes/ADRs.md` is the
 reasoning-of-record and outranks anything here that disagrees with
 it; `../AGENTS.md` and `../AUTHORS-GUIDE.md` are the working rules;
 `../.agents/plans/roadmap.md` is what's landed and what's next. Read
-those before editing anything in this directory.
+those before editing anything in this directory. If you're wondering
+how roughly forty independent sessions with no shared memory ended up
+behaving like one engineering culture — session types, the prompt
+discipline, the standing rules and where each one came from, the
+failure modes they defend against — [way-of-working.md](way-of-working.md)
+is that account.
 
 ## The map
 
@@ -129,6 +134,13 @@ Configuration & provenance: [simulate-your-facility.md](simulate-your-facility.m
 from where, and the load-bearing fact that only one runtime
 dependency exists).
 
+Process: [way-of-working.md](way-of-working.md) (the meta-process
+behind the forty-odd sessions that built this repo — session types,
+prompt discipline, standing rules and their origins, the failure modes
+they defend against; also, honestly, positioning material — a repo
+that can describe its own working discipline this precisely is itself
+part of the case for trusting its output).
+
 Evidence & scratch: [research/](research/) ·
 [positioning-notes.md](positioning-notes.md) (raw material for a
 future positioning doc — argument drafts, not commitments) ·
@@ -157,6 +169,10 @@ would waste your time. The classes:
   convention (four-part entries; collision-first ordering).
 - **Scratch**: positioning-notes.md and research mining notes —
   honest raw material, clearly marked.
+- **Practice, not product**: way-of-working.md. Describes how sessions
+  work, not what the simulator does; it changes when practice changes
+  and never outranks the ADRs on any question of *why* a structural
+  decision was made.
 
 Claims are kept true by machinery, not vigilance: checkable facts
 carry facts-register rows with verification dates; the pipeline

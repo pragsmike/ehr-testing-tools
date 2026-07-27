@@ -74,18 +74,19 @@ vocabulary.
 
 ## Code conventions
 
-- **Result-not-throw:** every capability function returns
-  `{:status :ok|:rejected|:error :category ... :payload ...}`.
+- **Result-not-throw** (ADR-0001 point 4): every capability function
+  returns `{:status :ok|:rejected|:error :category ... :payload ...}`.
   Exceptions are for programmer error only. Only `cli.clj` prints.
 - **EDN is canonical output; `--json` is a projection**, never the
   source of truth. Exit codes: 0 ok, 1 rejected, 2 operational error.
-- **Determinism is law:** all randomness flows from the single seeded
-  RNG in `engine/run`. No wall-clock, no hash-order dependence, no
-  unseeded entropy anywhere in the output path. If you add
-  randomness, thread the RNG; the property tests will catch you if
+- **Determinism is law** (ADR-0002 point 4): all randomness flows from
+  the single seeded RNG in `engine/run`. No wall-clock, no hash-order
+  dependence, no unseeded entropy anywhere in the output path. If you
+  add randomness, thread the RNG; the property tests will catch you if
   you don't.
-- **Every new engine step type lands with its invariants** in
-  `check.clj` and its tests, in the same change.
+- **Every new engine step type lands with its invariants** (ADR-0002
+  point 5, the co-landing rule) in `check.clj` and its tests, in the
+  same change.
 - Schemas are malli; keep versions aligned with ehr-testing-tools.
 - **Test-first** (ADR-0004): a failing test precedes the implementation
   it motivates; red→green evidence goes in the session report.
@@ -125,4 +126,6 @@ Repo-local skills live in `.agents/skills/`: `string-diagram` (renders
 `docs/sim-theory.edn` to Mermaid) and `handoff` (session continuity).
 See ADR-0005 for why these two and not the rest. Handoffs in
 `.agents/handoffs/`, plans in `.agents/plans/`, durable knowledge in
-`.agents/memory/`.
+`.agents/memory/`, one dated record per session in
+`.agents/session-records/` (see that directory's own `README.md`,
+and `docs/way-of-working.md` for the fuller meta-process it's part of).

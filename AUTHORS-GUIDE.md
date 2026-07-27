@@ -49,10 +49,14 @@ added private at ADR-0006) is now **public** — the trigger ADR-0003
 named and ADR-0006 reaffirmed. Public raw file contents are fetchable
 by URL (`raw.githubusercontent.com/pragsmike/ehr-testing-sim/...`), the
 same demotion tools recorded at its own ADR-0008. **The session-end
-ceremony is now: commit → `git push origin`.** `make pack`/`pack-skills`/
-`pack-push` still work and remain available for the occasional
-offline/local-snapshot use case, but none of them are a required step
-anymore.
+ceremony is now: write a session record → commit → `git push origin`.**
+The session-record step (started `.agents/session-records/`, see that
+directory's `README.md`) is the session's own last act before the
+commit — the durable, in-repo home for what a session summary used to
+live only in the design channel, per `docs/way-of-working.md`.
+`make pack`/`pack-skills`/`pack-push` still work and remain available
+for the occasional offline/local-snapshot use case, but none of them
+are a required step anymore.
 
 `pack-push` copies both packs into a local clone of the public
 `pragsmike/packs` repo (`~/.packs`, cloned once by hand — see

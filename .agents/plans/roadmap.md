@@ -1096,3 +1096,34 @@ try to fill in:
   theory's level of description — `sim-theory.md`'s own open question
   #5 already names this as deliberately absent unless paced emission
   ever acquires laws of its own.
+
+## Process debts (way-of-working session, 2026-07-27)
+
+`docs/way-of-working.md` (written this session, capturing the
+meta-process before the design channel that ran it retires) needed to
+cite, for each standing rule it named, where that rule's own origin
+lives — not just where its history is narrated in this roadmap. Most
+rules already carry their origin inline where they're stated
+(`AGENTS.md`'s test-first bullet names ADR-0004 directly; its
+CLI-surface bullet already named M3's `:pathways` gap as the reason).
+Three did not: the result-not-throw, determinism-is-law, and co-landing
+bullets in `AGENTS.md`'s Code conventions section stated the rule
+without an inline ADR citation, even though each traces to a specific
+decision (ADR-0001 point 4, ADR-0002 point 4, ADR-0002 point 5
+respectively). **Fixed in this same session** — those three bullets now
+carry their ADR citation the same way the others already did. Recorded
+here, not left silent, so a future session doesn't have to rediscover
+that the gap existed and was closed.
+
+**Cross-repo note, not actioned here (ADR-0001's dependency direction:
+this repo doesn't reach into tools' own tree).** `docs/way-of-working.md`
+describes a family-wide process — the author, the design-channel/
+build-session split, the WSL git discipline, the ADR/facts-register/
+roadmap conventions — that this repo's own `notes/ADRs.md` ADR-0003
+already documents as *adopted from* `ehr-testing-tools`, not invented
+here. `ehr-testing-tools` may want its own pointer to this document, or
+its own copy adapted to its own repo-specific details (its gate/corpus
+machinery, its own consumer-loop role as the thing sim's output gets
+judged by) — this session did not have a sibling checkout of that repo
+available to check whether such a document already exists there or to
+write one. Author's call, next `ehr-testing-tools` session.
