@@ -22,6 +22,16 @@ core.hooksPath .githooks` (see `AGENTS.md`); don't rely on the hook to
 catch a mistake for you — confirm you're in WSL *before* attempting a
 commit, not after a rejection.
 
+**Reaching WSL from a Windows-launched agent session.** If your shell is
+Git Bash/MINGW64, do not run git natively and do not invoke `wsl.exe
+<command>` inline — MSYS path conversion mangles arguments and quoting.
+Instead: write the commands to a script file, then run `MSYS_NO_PATHCONV=1
+wsl.exe bash /mnt/c/<path>/script.sh`. Heredoc commit messages are unsafe
+through this wrapper (backticks get shell-interpreted before reaching WSL
+— it has eaten commit-message text before); write the message to a file
+and use `git commit -F`. If WSL is unreachable, stop and hand the
+ceremony to the author — never commit from the Windows side.
+
 ## 2. The pack ritual — pack-push is ACTIVE here
 
 `make pack` concatenates most git-tracked files in the repo into
@@ -64,6 +74,11 @@ Pack markers (`========== FILE: ... ==========`, `========== END FILE
 `echo` commands that emit it) — a naive substring search over the pack
 would misidentify those lines as marker lines. Anchor any parser to the
 start of the line.
+
+**Pre-release amend allowance.** Pre-release, sole-author message amends
+are permitted via `--force-with-lease` followed by an immediate
+`pack-push` rerun; this allowance ends at first release or second
+contributor.
 
 Mid-flight multi-session work ends with a handoff document in
 `.agents/handoffs/`, not a pack — the pack is a filesystem-access
