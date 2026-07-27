@@ -85,34 +85,50 @@ editor). An annotated sketch — section by section, matching the
 interview:
 
 ```clojure
-{;; 1–2: your units
- :facility {:id "stmarys"
-            :wards [{:id "ED"    :name "Emergency"  :beds 20
+{;; 1–2: your units (ward :id is a keyword; :surge-format is required
+ ;; even at zero surge slots -- it's just never used to render one)
+ :facility {:id :stmarys
+            :wards [{:id :ed    :name "Emergency"  :beds 20
                      :surge-slots 8 :surge-format "%s-H%02d" :class :ed}
-                    {:id "MED4W" :name "4 West Med" :beds 24
+                    {:id :med4w :name "4 West Med" :beds 24
                      :surge-slots 4 :surge-format "%s-HALL-%d" :class :inpatient}
-                    {:id "TELE"  :name "Telemetry"  :beds 16
-                     :surge-slots 0 :class :inpatient}]}
+                    {:id :tele  :name "Telemetry"  :beds 16
+                     :surge-slots 0 :surge-format "%s-HALL-%d" :class :inpatient}]}
 
- ;; 3: your people (synthetic names; NPIs are generated, valid-format)
+ ;; 3: your people (synthetic names; NPIs are generated, valid-format;
+ ;; :wards references ward :id keywords, not names)
  :providers [{:name {:family "Okafor" :given "A."} :role :attending
-              :specialty "Hospital Medicine" :wards ["MED4W" "TELE"]}
+              :specialty "Hospital Medicine" :wards [:med4w :tele]}
              {:name {:family "Reyes" :given "M."} :role :attending
-              :specialty "Emergency Medicine" :wards ["ED"]}]
+              :specialty "Emergency Medicine" :wards [:ed]}]
 
- ;; 4: your payer mix
- :payers [{:id :medicare   :name "Medicare"        :type :medicare   :weight 45}
-          {:id :bcbs       :name "BCBS Commercial" :type :commercial :weight 35}
-          {:id :medicaid   :name "State Medicaid"  :type :medicaid   :weight 15}
-          {:id :self       :name "Self-pay"        :type :self-pay   :weight 5}]
+ ;; 4: your payer mix (:id is a string, not a keyword)
+ :payers [{:id "medicare" :name "Medicare"        :type :medicare   :weight 45}
+          {:id "bcbs"     :name "BCBS Commercial" :type :commercial :weight 35}
+          {:id "medicaid" :name "State Medicaid"  :type :medicaid   :weight 15}
+          {:id "self"     :name "Self-pay"        :type :self-pay   :weight 5}]
 
- ;; clinical content: weighted scenarios and/or disease modules.
- ;; A patient may have a pathway OR a module, never both -- a pathway
- ;; that admits/visits AND a module (which also opens its own
- ;; encounter) would double-book one patient's single visit and is
- ;; rejected at config time, before a run ever starts.
- :pathways [{:pathway "admit-cbc-discharge" :weight 3}
-            {:pathway "simple-admission"    :weight 7}]
+ ;; clinical content: weighted scenarios and/or disease modules. A
+ ;; :pathways entry's own :pathway is a full pathway definition
+ ;; (:name + :steps), not a name reference -- there is no named-
+ ;; pathway registry to resolve a bare string against. :location
+ ;; matches a ward's :name (above), not its :id. A patient may have a
+ ;; pathway OR a module, never both -- a pathway that admits/visits AND
+ ;; a module (which also opens its own encounter) would double-book
+ ;; one patient's single visit and is rejected at config time, before
+ ;; a run ever starts.
+ :pathways [{:pathway {:name "admit-cbc-discharge"
+                        :steps [{:type :admission :location "4 West Med"}
+                                {:type :order :profile :cbc}
+                                {:type :discharge}]}
+             :weight 3}
+            {:pathway {:name "simple-admission"
+                        :steps [{:type :admission :location "4 West Med"}
+                                {:type :delay :from 60 :to 240}
+                                {:type :discharge}]}
+             :weight 7}]
+ ;; :modules IS a vector of name strings -- resolved against
+ ;; resources/modules/<name>.json, unlike :pathways above.
  :modules ["sinusitis"]
 
  ;; 8: your mess, at your rates
@@ -125,18 +141,24 @@ interview:
   :msh {:version "2.5.1"
         :sending-app "STM-EHR" :sending-facility "STMARYS"
         :receiving-app "RHAPSODY" :receiving-facility "STM-HUB"}
-  :code-tables {:patient-class {:inpatient "IN" :outpatient "CLI"}
-                :discharge-disposition {:home "01H"}}
+  ;; each code-table entry is a map ({:code ... :coding-system
+  ;; optional}), not a bare string
+  :code-tables {:patient-class {:inpatient {:code "IN"} :outpatient {:code "CLI"}}
+                :discharge-disposition {:home {:code "01H"}}}
   :z-segments [{:segment "ZPI"
-                :on [:admission]
-                :fields [[:persona :payer :type]
-                         [:location :ward]
-                         "STM-PAYER-V2"]}]}}
+                :trigger #{:admission}
+                :fields [{:path [:persona :payer :type]}
+                         {:path [:location :ward]}
+                         {:literal "STM-PAYER-V2"}]}]}}
 ```
 
-Field names above are illustrative of the real schema — the shipped
-examples in [demos/](demos/) are always exact and runnable; start
-from one of those and edit.
+This example is schema-checked against `ehr-testing-sim.config`,
+`ehr-testing-sim.pathway`, `ehr-testing-sim.persona`, and
+`ehr-testing-sim.site-profile`'s malli schemas (2026-07-27,
+`notes/facts-register.md` F18) — every field name and value shape
+above is real, not just illustrative. The shipped examples in
+[demos/](demos/) are always exact and runnable; start from one of
+those and edit.
 
 ## How do I run it, and get messages?
 
@@ -212,5 +234,5 @@ scheme, a code value, a workflow — there's a good chance it's in
 [clinical-realities.md](clinical-realities.md) already (post-mortem
 transfers, hallway parking, newborn merges, results after
 discharge...). If it isn't, that catalog is exactly where it should
-be added: open an issue describing the reality, and how you'd know
+be added: [open an issue](https://github.com/pragsmike/ehr-testing-sim/issues) describing the reality, and how you'd know
 the simulation got it right.

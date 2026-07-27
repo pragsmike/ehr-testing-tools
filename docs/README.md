@@ -140,9 +140,11 @@ assuming the doc is aspirational.
 Pre-release. The pipeline is built end-to-end through the FHIR/state
 emitter (M6) — every theory stage but Calibrate is now both built and
 property-tested, including the emitter-coherence law itself. A full
-documentation alignment pass is next — expect minor staleness in
-cross-references and counts until then, and treat the ADRs and the
-theory EDN as tiebreakers. This project
+documentation alignment pass was promised here as "next" — **this is
+that pass** (the go-public session, 2026-07-27): cross-references,
+counts, and tenses swept against the tree; where a residual gap
+remains, treat the ADRs and the theory EDN as tiebreakers, per house
+convention. This project
 is one of three siblings: the
 [guide](https://github.com/pragsmike/ehr-testing-guide) teaches the
 testing method, the

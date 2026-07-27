@@ -1,0 +1,49 @@
+# Minimal CI (go-public Task 4, notes/ADRs.md ADR-0015's own trigger --
+# ADR-0003: "adopt [CI] once this repo has a public GitHub remote to
+# run it against"). Deliberately minimal: checkout + Clojure CLI setup
+# + `clojure -X:test`, the same command AGENTS.md's own Quick start and
+# this session's own cold-clone smoke test (notes/facts-register.md F19)
+# already prove works from a bare clone. No coverage gate, no lint
+# gate, no integration tier -- all deliberately future work, not an
+# oversight:
+#
+# - Coverage measurement (`make coverage` / `clojure -M:coverage`)
+#   exists and is reported per session (ADR-0004), but a --fail-
+#   threshold gate is explicitly staged for later, once a baseline
+#   worth ratcheting exists (ADR-0004's own "Rejected" section).
+# - Lint (clj-kondo or similar) has no configured gate anywhere in
+#   this repo yet; adding one is a future session's own decision, not
+#   silently assumed here.
+# - Integration validation (independent-parser round-tripping via
+#   NIST/HAPI, docs/third-party-sources.md Tier 2) stays local/
+#   scheduled-later, per .agents/plans/roadmap.md's own "Later /
+#   triggers" section -- this workflow runs the unit/property suite
+#   only, on every push and pull request, nothing that dials out to
+#   an external server (ADR-0014's own no-external-acceptance-
+#   instruments rule extends naturally to CI: nothing here should
+#   need network access beyond dependency resolution).
+
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: DeLaGuardo/setup-clojure@13.4
+        with:
+          cli: latest
+
+      - name: Run test suite
+        run: clojure -X:test

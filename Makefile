@@ -6,12 +6,13 @@
 # anchored to line-start markers works across them. See tools'
 # AUTHORS-GUIDE.md section 2 for the pack ritual's full reasoning.
 #
-# One deliberate difference from tools: pack-push here is ACTIVE, not
-# dormant. This repo has no GitHub remote yet, so the pragsmike/packs
-# transport is the ONLY way a chat session can read it -- the same
-# arrangement tools used before it went public (its ADR-0008). When
-# ehr-testing-sim gets a public GitHub repo, demote pack-push to
-# dormant the same way tools did, and update this comment.
+# DORMANT since 2026-07-27 (notes/ADRs.md ADR-0015): this repo's GitHub
+# remote is now public, so raw.githubusercontent.com/pragsmike/
+# ehr-testing-sim/... is the chat-read path -- the same demotion tools
+# recorded at its own ADR-0008. `pack`/`pack-skills`/`pack-push` all
+# still work (a local, offline pack is still occasionally useful) but
+# none of them are a required session-end step anymore; the ceremony is
+# commit -> `git push origin`.
 
 REPO_NAME := ehr-testing-sim
 PACK_OUTPUT := $(shell echo $$HOME)/ehr-testing-sim-pack.txt
@@ -37,7 +38,7 @@ help:
 	@echo "  run          - demo run: clojure -M:cli run --seed 42 --patients 5"
 	@echo "  pack         - concatenate tracked files (except .agents/skills, .agents/prompts/archive) into $(PACK_OUTPUT)"
 	@echo "  pack-skills  - concatenate only .agents/skills + .agents/prompts/archive into $(PACK_SKILLS_OUTPUT)"
-	@echo "  pack-push    - pack + pack-skills, then publish both to the pragsmike/packs repo ($(PACKS_REPO_DIR)) -- ACTIVE while this repo has no GitHub remote"
+	@echo "  pack-push    - pack + pack-skills, then publish both to the pragsmike/packs repo ($(PACKS_REPO_DIR)) -- DORMANT since 2026-07-27 (ADR-0015); optional, not a required ceremony step"
 
 test:
 	clojure -X:test
@@ -109,9 +110,11 @@ pack-skills:
 	done >> $(PACK_SKILLS_OUTPUT)
 	@echo "Done! Created $(PACK_SKILLS_OUTPUT)"
 
-# ACTIVE (unlike tools', which went dormant when it went public): this
-# is currently the only transport by which a chat session can read this
-# repo. Publishes the freshly generated pack AND skills pack to the
+# DORMANT since 2026-07-27 (ADR-0015), same as tools' own pack-push at
+# its ADR-0008 -- this repo's public GitHub remote is now the primary
+# read path; this recipe still works and remains occasionally useful
+# (a local, offline snapshot) but is no longer a required ceremony
+# step. Publishes the freshly generated pack AND skills pack to the
 # pragsmike/packs repo (local clone at $(PACKS_REPO_DIR), pushed to
 # GitHub), fetchable at
 #   raw.githubusercontent.com/pragsmike/packs/main/ehr-testing-sim-pack.txt

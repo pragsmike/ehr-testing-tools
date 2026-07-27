@@ -1,5 +1,7 @@
 # ehr-testing-sim
 
+[![test](https://github.com/pragsmike/ehr-testing-sim/actions/workflows/test.yml/badge.svg)](https://github.com/pragsmike/ehr-testing-sim/actions/workflows/test.yml)
+
 Deterministic synthetic hospital traffic for testing EHR systems and
 integrations: clinically coded, operationally messy, provably
 coherent, and safe by construction. One config and one seed produce
@@ -202,6 +204,8 @@ one seed away.
 
 Pre-release; MIT licensed; no PHI anywhere, by construction. The FHIR
 emitter landed at Milestone M6, end to end through the emitter-coherence
-property; a documentation alignment pass is next, then Calibrate — the
-one theory stage left unbuilt. Design lineage and decision history:
-[docs/](docs/), `notes/ADRs.md`, and `.agents/memory/architecture.md`.
+property; the documentation alignment pass promised here as "next" is
+this session (go-public, 2026-07-27; see `notes/ADRs.md` ADR-0015) —
+Calibrate remains the one theory stage left unbuilt. Design lineage and
+decision history: [docs/](docs/), `notes/ADRs.md`, and
+`.agents/memory/architecture.md`.

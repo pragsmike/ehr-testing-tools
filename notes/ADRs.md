@@ -1268,3 +1268,119 @@ remove it, if this ever reached a real system regardless" — enumerable
 by construction, per this project's own determinism guarantee, rather
 than a promise resting on the external-write path this ADR just
 removed.
+
+---
+
+## ADR-0015 — Going public: the visibility decision and its pre-recorded triggers, executed in one place
+
+**Status:** Accepted (author-ratified 2026-07-27)
+
+**Context.** ADR-0003 named the trigger for demoting `pack-push` to
+dormant ("when this repo gets a public GitHub remote") and for
+adopting CI ("once this repo has a public GitHub remote to run it
+against"); ADR-0006 reaffirmed that a *private* remote (added that
+session) does not meet either trigger and that "a future session that
+flips this repo's visibility to public records that as its own ADR,
+exactly as ADR-0003 already anticipated." This is that session. A
+go-public session necessarily touches several small, previously-decided
+facts at once — the pack transport's own reason to exist, the pre-
+release amend allowance, and the standing risk of conflating "public"
+with "released" — and this project's own convention (never silently
+revert an Accepted ADR; supersede with a new numbered record) means
+each deserves a decision recorded here rather than a quiet edit to the
+file that states it. Task 0 of this session's own audit (git history,
+full reachable history of the public `pragsmike/packs` transport, and a
+supplementary grep sweep for hostnames/paths/tokens/emails —
+`notes/facts-register.md` F15) found nothing that blocks this decision.
+
+**Decision.**
+
+1. **`pack-push` demotes to dormant.** The trigger ADR-0003 named and
+   ADR-0006 reaffirmed is now met: this repo's GitHub remote is public.
+   Public raw URLs (`raw.githubusercontent.com/pragsmike/ehr-testing-sim/...`)
+   are now the chat-read path for any session that needs this repo's
+   current state — the same demotion `ehr-testing-tools` recorded at its
+   own ADR-0008, for the same reason. `make pack`/`make pack-skills`
+   remain available (a local, offline snapshot is still occasionally
+   useful) but `make pack-push` is no longer a required ceremony step;
+   the session-end ceremony simplifies to **commit → `git push origin`**.
+   `Makefile`'s header comment and `AUTHORS-GUIDE.md` section 2 are
+   updated accordingly (below); `docs/GLOSSARY.md`'s **Ceremony** entry
+   and `.agents/plans/roadmap.md`'s own "Packs demotion" trigger note are
+   marked fired, pointing here.
+2. **The pre-release amend allowance ends, dated.** `AUTHORS-GUIDE.md`'s
+   `--force-with-lease` clause was scoped to end "at first release or
+   second contributor" — neither has happened — but a public remote
+   introduces a THIRD condition that reasoning didn't anticipate: once
+   history is fetchable by anyone, a rewritten commit can silently
+   invalidate a clone or fork nobody here knows exists. Public history
+   is append-only in practice from this date forward, regardless of
+   release status; the allowance closes 2026-07-27, and `AUTHORS-GUIDE.md`
+   is updated to say so (below), not silently — the original two
+   conditions stay recorded as what the allowance was ORIGINALLY scoped
+   to end at, since this ADR adds a condition rather than replacing them.
+3. **ADR-0009's clause is restated, not changed, to prevent a
+   misreading.** Going public is not a release. ADR-0009's own seed-
+   stability policy — same config + seed is byte-identical *within a
+   generator version*, and that guarantee is stated to hold only up to
+   this library's *first published release* (a Clojars/Maven
+   coordinate, per that ADR's own "before this library's first
+   published release" framing) — is unweakened and unchanged by this
+   ADR. Nothing about today's visibility flip is a release: no tag
+   exists, no Clojars/Maven artifact exists, no version number beyond
+   `deps.edn`'s own unversioned git-coordinate dependency shape has been
+   minted. A future session or external reader who sees a public repo
+   and assumes "public" means "released, so seed-stability now extends
+   across generator versions" would be wrong; this decision states that
+   plainly so the confusion has a canonical answer to point to rather
+   than being re-litigated per session.
+4. **The release gate stays a deferred, named ledger — not opened
+   today.** Going public and cutting a release are different triggers
+   (decision 3), and this session deliberately does not fire the
+   second one. What a future release-gate session will need to decide,
+   named here so it has a checklist rather than a blank page: a version
+   tag and its scheme (this project has never minted one), a GitHub
+   Release, Clojars/Maven coordinates (`deps.edn` currently has none to
+   publish under), a CHANGELOG, and the point at which ADR-0009's
+   within-version guarantee starts being read literally by external
+   consumers pinning a released coordinate rather than a git SHA. None
+   of this is designed or decided today; it is named so "public" and
+   "released" stay two separate, non-conflatable facts about this
+   repo's history, per decision 3.
+
+**Rejected.**
+
+- **Deleting `pack-push` entirely, rather than demoting it.** Rejected
+  for the same reason `ehr-testing-tools` kept its own dormant
+  `pack-push` rather than removing it at its ADR-0008: a local, offline
+  pack is still occasionally useful (no network dependency, a single
+  file to paste into a context window that can't fetch a URL), and the
+  mechanism costs nothing to leave in place once it's no longer a
+  required step.
+- **Editing ADR-0003's, ADR-0006's, or ADR-0009's own bodies to reflect
+  today's decision.** Rejected by this project's own standing rule
+  (never silently revert an Accepted ADR — supersede with a new
+  numbered record). Each of those ADRs' bodies stays exactly as
+  originally accepted; this ADR is the supersession, and any place those
+  ADRs are read for their own now-fired triggers should be read
+  alongside this one, not instead of it.
+- **Treating "public" and "released" as the same trigger**, and
+  therefore letting ADR-0009's guarantee scope silently extend today.
+  Rejected because it would misstate a fact this session has no
+  standing to change — no release-gate work (decision 4) happened this
+  session — and because the misreading is exactly the kind of thing
+  this project's own culture (per `AGENTS.md`'s "do not invent facts")
+  exists to prevent from happening by omission.
+
+**Consequences.** `Makefile`'s header comment and recipe help text,
+`AUTHORS-GUIDE.md` sections 1–2, `docs/GLOSSARY.md`'s **Ceremony**
+entry, and `.agents/plans/roadmap.md`'s "Packs demotion" trigger note
+are all updated in this same session, landing alongside this ADR
+(this project's own co-landing convention, extended from code+invariant
+pairs to decision+mechanism pairs). `notes/facts-register.md` gains no
+new F-row from this ADR itself (the audit and schema-validation
+findings that informed it are already F15–F18); a future session
+reading this repo's own git history for "when did this go public" has
+this ADR as the answer, dated and reasoned, rather than inferring it
+from a bare commit that flips a GitHub setting this repository's own
+tree cannot record.

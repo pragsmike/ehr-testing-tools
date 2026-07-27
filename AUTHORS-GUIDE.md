@@ -32,7 +32,7 @@ through this wrapper (backticks get shell-interpreted before reaching WSL
 and use `git commit -F`. If WSL is unreachable, stop and hand the
 ceremony to the author — never commit from the Windows side.
 
-## 2. The pack ritual — pack-push is ACTIVE here
+## 2. The pack ritual — pack-push is DORMANT here (since 2026-07-27)
 
 `make pack` concatenates most git-tracked files in the repo into
 `ehr-testing-sim-pack.txt` (gitignored — it is session scaffolding, not a
@@ -43,20 +43,16 @@ so it doesn't belong in every session's context — and the header records
 the elision. `make pack-skills` packs exactly the elided directories, to
 a separate file.
 
-**One deliberate inversion from tools' guide: `make pack-push` is
-ACTIVE here, not dormant, and stays part of the session-end
-ceremony.** This repo's GitHub remote (`git@github.com:pragsmike/
-ehr-testing-sim.git`, added ADR-0006) is **private** — a private
-repo's raw file contents aren't fetchable by URL, so the
-`pragsmike/packs` transport is still the *only* way a chat session
-without repo-scoped credentials can read it, the same arrangement
-tools used before it went *public* (its ADR-0008). A session here now
-ends with commit → `git push origin` → `make pack-push`, in that order
-(ADR-0006) — pushing to origin no longer replaces `pack-push`, it
-precedes it. When ehr-testing-sim's remote goes *public*, demote
-`pack-push` to dormant the same way tools did, and record that
-demotion as a new ADR (see `Makefile`'s header comment, which carries
-the same note) — a private remote existing is not that trigger.
+**`make pack-push` is DORMANT, as of `notes/ADRs.md` ADR-0015.** This
+repo's GitHub remote (`git@github.com:pragsmike/ehr-testing-sim.git`,
+added private at ADR-0006) is now **public** — the trigger ADR-0003
+named and ADR-0006 reaffirmed. Public raw file contents are fetchable
+by URL (`raw.githubusercontent.com/pragsmike/ehr-testing-sim/...`), the
+same demotion tools recorded at its own ADR-0008. **The session-end
+ceremony is now: commit → `git push origin`.** `make pack`/`pack-skills`/
+`pack-push` still work and remain available for the occasional
+offline/local-snapshot use case, but none of them are a required step
+anymore.
 
 `pack-push` copies both packs into a local clone of the public
 `pragsmike/packs` repo (`~/.packs`, cloned once by hand — see
@@ -75,10 +71,16 @@ Pack markers (`========== FILE: ... ==========`, `========== END FILE
 would misidentify those lines as marker lines. Anchor any parser to the
 start of the line.
 
-**Pre-release amend allowance.** Pre-release, sole-author message amends
-are permitted via `--force-with-lease` followed by an immediate
-`pack-push` rerun; this allowance ends at first release or second
-contributor.
+**Pre-release amend allowance — CLOSED 2026-07-27 (ADR-0015).** Pre-release,
+sole-author message amends were permitted via `--force-with-lease`
+followed by an immediate `pack-push` rerun; that allowance was
+originally scoped to end at first release or second contributor —
+neither has happened — but going public added a condition that scoping
+didn't anticipate: once history is fetchable by anyone, a rewritten
+commit can silently invalidate a clone or fork nobody here knows
+exists. Public history is append-only in practice from this date
+forward, regardless of release status. Fix mistakes with a new commit,
+not an amend.
 
 Mid-flight multi-session work ends with a handoff document in
 `.agents/handoffs/`, not a pack — the pack is a filesystem-access

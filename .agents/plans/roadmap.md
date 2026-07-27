@@ -796,10 +796,15 @@ the milestone before it:
 - **Calibrate** (`:planned`, feedback stage) — waits on a real
   `sim-corpus` and a site's `feed-statistics` to calibrate against;
   premature before Package and a first external consumer exist.
-- **CI + integration validation** (independent-parser round-tripping
-  via NIST/HAPI, per `docs/third-party-sources.md` Tier 2) — triggers
-  once this repo has a public GitHub remote (ADR-0003's existing
-  trigger) or another CI-capable remote.
+- **CI — FIRED (unit/property tier), 2026-07-27; integration tier
+  stays later.** The trigger ADR-0003 named (a public GitHub remote)
+  is met; `.github/workflows/test.yml` runs `clojure -X:test` on every
+  push/PR — deliberately minimal (no coverage gate, no lint gate, per
+  the workflow file's own header comment). Independent-parser round-
+  tripping via NIST/HAPI (`docs/third-party-sources.md` Tier 2) is
+  still NOT wired into CI — that's the integration tier, which stays
+  local/scheduled-later, per this section's own standing design; a
+  bare unit-test CI workflow existing is not the same trigger.
 - **SETUP.md** — deferred trigger: owed before this repo has any user
   besides its own author, not written speculatively now. Installation
   friction is a first-class adoption risk for both mined upstreams —
@@ -810,12 +815,17 @@ the milestone before it:
   §4.5). This repo's cold-start already fits in one documented command
   (`AGENTS.md`'s Quick start); SETUP.md exists to keep that true for
   someone who isn't this repo's author, not to add ceremony ahead of
-  need.
-- **Packs demotion** — `pack-push` stays the active session-end
-  ceremony (ADR-0006) until this repo's GitHub remote goes *public*;
-  demoting it to dormant, the way `ehr-testing-tools` did at its own
-  ADR-0008, is recorded as its own ADR when that happens, not folded
-  into this roadmap.
+  need. **Checked, not fired, at go-public (2026-07-27):** a fresh
+  `git clone` + `clojure -X:test` (this session's own Task 4 cold-clone
+  smoke test, `notes/facts-register.md` F19) passed end to end using
+  nothing beyond the documented Quick start — the trigger this entry
+  names (a gap the quick start doesn't cover) did not fire, so SETUP.md
+  stays unwritten.
+- **Packs demotion — FIRED, 2026-07-27.** This repo's GitHub remote
+  went public; `pack-push` demoted to dormant the way `ehr-testing-tools`
+  did at its own ADR-0008, recorded as its own ADR (`notes/ADRs.md`
+  ADR-0015) rather than folded into this roadmap, exactly as this entry
+  said it would be.
 - **Site profiles** — **landed**, see its own section above (between
   M4 and M5). GT1/ZG1 (SimHospital issue #21's own second half — the
   same issue cited there for the Z-segment-template scope item) and

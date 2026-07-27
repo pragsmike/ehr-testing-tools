@@ -103,9 +103,11 @@ pipeline stage *uses without consuming* — a code table, a dependency,
 a configuration file. Each catalytic must resolve to a pinned,
 versioned source. See [sim-theory.md](sim-theory.md).
 
-**Ceremony.** The session-end ritual: commit → `git push origin` →
-`make pack-push`, in that order (ADR-0006). The ordering keeps the
-published pack's "clean tree" header meaningful.
+**Ceremony.** The session-end ritual: commit → `git push origin`.
+`make pack-push` (ADR-0006) was part of this ritual while the repo's
+GitHub remote was private; it went dormant when the remote went public
+(ADR-0015) — the pack transport is no longer the chat-read path,
+`raw.githubusercontent.com` against the public remote is.
 
 **Churn.** Operational noise: transfers, bed swaps, cancellations,
 error-entries, merges — the administrative messiness real ADT feeds
@@ -468,7 +470,7 @@ ehr-testing-tools) to judge generated messages, so the simulator is
 never graded by its own homework.
 
 See the conformance & gating vocabulary above for how judging is organized
-(judges, verdicts, findings, baselines)."
+(judges, verdicts, findings, baselines).
 
 ---
 
