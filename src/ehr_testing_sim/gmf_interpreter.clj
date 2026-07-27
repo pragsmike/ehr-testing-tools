@@ -142,17 +142,76 @@
                           (or (nil? max-age) (<= (- (:t ctx) (:t event)) max-age))))
                    (:trajectory ctx)))))
 
+;; --- M5b: Active Condition / Active Medication -- the log-query family
+;; docs/gmf-interpreter.md's own condition-vocabulary-gap note predicted
+;; ("architecturally the same log-query mechanism PriorState already
+;; establishes... just keyed on a medication/allergy concept rather than
+;; a module state name"), now built because the ratified vendored module
+;; (sinusitis.json) genuinely needs it on its own mandatory post-encounter
+;; path (Wait_for_condition_to_resolve), not merely a hypothetical
+;; extension. `Active Allergy` is NOT built the same way: this project's
+;; persona/Persona carries no allergy concept anywhere (unlike a
+;; condition/medication onset, there is no v1 state type that ever WRITES
+;; an allergy fact for this query to find), so it is a documented, always-
+;; false simplification -- the conservative default (never wrongly
+;; blocks a module's OWN main path, since sinusitis.json's only Active
+;; Allergy check is confined to `Penicillin_Allergy_Check`, one arm of
+;; Doctor_Visit's own 20% branch, not the 100%-reached path
+;; Active Condition/Active Medication sit on) rather than a silent guess.
+
+(defn- code-matches?
+  [event-codes condition-codes]
+  (boolean (some (fn [ec] (some (fn [cc] (and (= (:system ec) (:system cc)) (= (:code ec) (:code cc))))
+                                condition-codes))
+                 event-codes)))
+
+(defn- active-onset-condition-holds?
+  "Does `ctx`'s own trajectory contain an `onset-event-type` event whose
+  :codes match `condition`'s own :codes, with no LATER `end-event-type`
+  event referencing that onset's own trajectory index (the same
+  index-based reference ConditionEnd/MedicationEnd's own :references
+  field already carries, gmf-interpreter's `index-of-citation`)? Most
+  recent matching onset, same as PriorState's own 'most recent' rule."
+  [onset-event-type end-event-type ctx condition]
+  (let [trajectory (vec (:trajectory ctx))
+        onset-idx (last (keep-indexed (fn [i ev] (when (and (= onset-event-type (:event ev))
+                                                             (code-matches? (:codes ev) (:codes condition)))
+                                                    i))
+                                      trajectory))]
+    (boolean (and onset-idx
+                  (not (some (fn [ev] (and (= end-event-type (:event ev)) (= onset-idx (:references ev))))
+                            trajectory))))))
+
+;; Mutual recursion with evaluate-condition (And's own sub-conditions are
+;; evaluated through the SAME dispatcher, below) -- forward-declared so
+;; this namespace reads top-to-bottom without reordering evaluate-condition
+;; ahead of the condition-type helpers that already precede it.
+(declare evaluate-condition)
+
+(defn- and-condition-holds?
+  [module-id ctx {:keys [conditions]}]
+  (every? #(evaluate-condition module-id ctx %) conditions))
+
 (defn evaluate-condition
   "The interpreter's own guard evaluator (docs/gmf-interpreter.md section 2:
   '(evaluate-condition condition patient-state (:ground-truth world)
   step)', instantiated here over `ctx`'s own persona/attributes/
-  trajectory -- the M5a stand-in for `world`'s :ground-truth mirror)."
+  trajectory -- the M5a stand-in for `world`'s :ground-truth mirror).
+  M5b adds :active-condition/:active-medication (log query by concept,
+  architecturally the same shape :prior-state already establishes),
+  :and (recursive compound), and :active-allergy (always false -- this
+  namespace's own docstring note on why: no allergy concept exists
+  anywhere in this project's Persona for a query to find)."
   [module-id ctx condition]
   (case (:condition-type condition)
     :age (age-condition-holds? condition (:persona ctx) (:t ctx))
     :gender (gender-condition-holds? condition (:persona ctx))
     :attribute (attribute-condition-holds? module-id ctx condition)
     :prior-state (prior-state-condition-holds? module-id ctx condition)
+    :active-condition (active-onset-condition-holds? :condition-onset :condition-end ctx condition)
+    :active-medication (active-onset-condition-holds? :medication-order :medication-end ctx condition)
+    :active-allergy false
+    :and (and-condition-holds? module-id ctx condition)
     (throw (ex-info "ehr-testing-sim.gmf-interpreter: unsupported condition type"
                      {:condition-type (:condition-type condition)}))))
 
@@ -300,6 +359,11 @@
       :terminal {:events [] :attributes (:attributes ctx) :advance 0 :next nil :terminal? true :blocked? false}
       :initial (pass-through-outcome module-id ctx rng state 0 [])
       :simple (pass-through-outcome module-id ctx rng state 0 [])
+      ;; M5b: consumed-internally, like :simple -- gmf/gmf-type->keyword's
+      ;; own docstring note (no equipment-tracking home yet, no trajectory
+      ;; event, no attribute write).
+      :device (pass-through-outcome module-id ctx rng state 0 [])
+      :device-end (pass-through-outcome module-id ctx rng state 0 [])
       :delay (let [t' (resolve-time-advance rng (:t ctx) state)]
                (pass-through-outcome module-id ctx rng state (- t' (:t ctx)) []))
       :guard (guard-step module-id ctx rng state)

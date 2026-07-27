@@ -77,6 +77,18 @@ invariant below (no double-occupancy, capacity bound, transfer-from
 matches current state) is a check on the *projection*, not a
 separate thing the engine has to keep in sync by discipline.
 
+**Scope qualifier, M5b (`docs/gmf-interpreter.md` section 4 item 8):**
+"every patient's current state," above, means every **inpatient/ED**
+patient's — an outpatient (`:class :outpatient`) was never a candidate
+for this board to include in the first place, not an exception carved
+out of an otherwise universal law. `ehr-testing-sim.facility/
+occupancy-board` already folds only patients carrying a `:bed`
+(`get-in patient [:location :bed]`), which an outpatient patient never
+does (`:location` stays nil for the visit's whole duration, the same
+document's item 6) — the scope narrowing is true by the board's own
+existing construction, this note just states it as a law rather than
+leaving it implicit.
+
 This is the house pattern, not a one-off for beds: **one authoritative
 record (the patient's own state), everything else a projection with a
 proven consistency law.** [`sim-theory.md`](sim-theory.md)'s open

@@ -87,14 +87,17 @@
 (defn participant-ids-exist-in-run
   "Every patient-id named in any event's :participants is a patient-id
   this run actually created -- i.e. appears as a participant on at
-  least one :admission event somewhere in the log (an admission is the
-  one event type that always exists for every patient this run knows
-  about, docs/patient-state-model.md's :admission validity row).
-  Catches a churn-injection or decide bug that names a stray or
-  mistyped patient-id."
+  least one :registered event somewhere in the log. :registered is the
+  ONE event type EVERY real patient this run creates always gets (M4),
+  unconditionally -- a stricter, more universal proof than requiring an
+  :admission/:outpatient-visit, which (M5b) a module-assigned patient
+  can legitimately never get at all if their own disease process never
+  produces an operational encounter inside this run's own configured
+  horizon window. Catches a churn-injection or decide bug that names a
+  stray or mistyped patient-id."
   [ground-truth]
   (let [admitted-ids (into #{}
-                           (comp (filter #(= :admission (:event %)))
+                           (comp (filter #(= :registered (:event %)))
                                  (mapcat :participants)
                                  (map :patient-id))
                            ground-truth)]
@@ -154,12 +157,45 @@
 
 (defn admitted-occupies-one-slot
   "An admitted patient (Admitted or Boarding) occupies exactly one
-  physical slot -- location and its bed are never nil while admitted."
+  physical slot -- location and its bed are never nil while admitted.
+  M5b: EXCEPT an outpatient (`:class :outpatient`) -- docs/patient-
+  state-model.md's event-validity table's own conditional row (`:location
+  = nil` is legal exactly when `:class = :outpatient`), the named,
+  narrowly-gated exception to this rule (docs/gmf-interpreter.md section
+  4's item 6). `outpatient-patients-occupy-no-bed`, below, is this same
+  fact's own converse: an outpatient patient's :location must ALWAYS be
+  nil, never merely may be."
   [ground-truth]
   (for [{:keys [event world-after]} (engine/replay ground-truth)
-        [patient-id {:keys [status location]}] world-after
-        :when (and (= status :admitted) (or (nil? location) (nil? (:bed location))))]
+        [patient-id {:keys [status location class]}] world-after
+        :when (and (= status :admitted) (not= class :outpatient)
+                   (or (nil? location) (nil? (:bed location))))]
     {:invariant :admitted-occupies-one-slot :patient-id patient-id :at (:t event)}))
+
+;; --- M5b: :outpatient-visit / :outpatient-visit-end (docs/gmf-interpreter.md
+;; section 4's sketch, item 8's own invariant list) --------------------------
+
+(defn outpatient-visit-only-when-new
+  "docs/patient-state-model.md's event-validity table, extended: an
+  :outpatient-visit is legal only when the patient's prior state is
+  :new -- the same treatment :admission's own row already gets."
+  [ground-truth]
+  (for [{:keys [event before patient-id]} (engine/replay ground-truth)
+        :when (and (= :outpatient-visit (:event event)) (not= :new (:status before)))]
+    {:invariant :outpatient-visit-only-when-new :patient-id patient-id :at (:t event)}))
+
+(defn outpatient-patients-occupy-no-bed
+  "The structural half of item 6's conditional validity row: `:class
+  :outpatient => :location nil`, for the visit's entire duration -- an
+  outpatient patient was never a candidate for the occupancy board to
+  include in the first place (`ehr-testing-sim.facility/occupancy-board`
+  already only folds patients with a `:bed` present, so this is checked
+  here directly rather than assumed from that board's own omission)."
+  [ground-truth]
+  (for [{:keys [event world-after]} (engine/replay ground-truth)
+        [patient-id {:keys [class location]}] world-after
+        :when (and (= class :outpatient) (some? location))]
+    {:invariant :outpatient-patients-occupy-no-bed :patient-id patient-id :at (:t event)}))
 
 (defn occupancy-within-capacity
   "Occupancy never exceeds a ward's declared capacity (licensed +
@@ -376,6 +412,41 @@
         :when (not= abnormal-flag (order-profiles/abnormal-flag value reference-range))]
     {:invariant :abnormal-flags-consistent-with-value-vs-range :profile (:profile event) :at (:t event)}))
 
+;; --- M5b: CompileTrajectory's new event types (docs/gmf-interpreter.md
+;; section 1's table) -- :procedure/:observation/:medication-order are the
+;; therapeutic-intent class (docs/patient-state-model.md's event-validity
+;; table row), the same "legal only when :admitted" scoping :order-placed
+;; already gets; :medication-end is deliberately NOT included, same reason
+;; :result-available isn't -- a medication legitimately continues (and
+;; ends) after discharge (a patient still taking a prescription at home).
+
+(defn clinical-content-only-when-admitted
+  "Therapeutic-intent class, extended to M5b's compiled clinical content:
+  :procedure/:observation/:medication-order are legal only when the
+  patient's prior state is :admitted."
+  [ground-truth]
+  (for [{:keys [event before patient-id]} (engine/replay ground-truth)
+        :when (and (#{:procedure :observation :medication-order} (:event event)) (not= :admitted (:status before)))]
+    {:invariant :clinical-content-only-when-admitted :patient-id patient-id :at (:t event)}))
+
+(defn medication-end-references-existing-order-and-follows-it-in-time
+  "Every :medication-end event's :order-event-id is a real
+  :medication-order event in this same log, for the SAME patient, at or
+  before the end's own :t -- the same shape result's own referential
+  invariant already establishes for :order-placed/:result-available."
+  [ground-truth]
+  (let [indexed (vec ground-truth)]
+    (for [[idx event] (map-indexed vector indexed)
+          :when (= :medication-end (:event event))
+          :let [target-idx (:order-event-id event)
+                target (get indexed target-idx)
+                patient-id (:patient-id (first (:participants event)))]
+          :when (or (nil? target)
+                    (not= :medication-order (:event target))
+                    (not (some #(= patient-id (:patient-id %)) (:participants target)))
+                    (> (:t target) (:t event)))]
+      {:invariant :medication-end-references-existing-order-and-follows-it-in-time :patient-id patient-id :at (:t event)})))
+
 ;; --- M4: Persona (docs/sim-theory.edn's :persona stage) -------------------
 
 (defn registered-is-every-patients-first-event
@@ -421,7 +492,11 @@
    #'result-references-existing-order-and-follows-it-in-time
    #'abnormal-flags-consistent-with-value-vs-range
    #'registered-is-every-patients-first-event
-   #'registered-persona-is-schema-valid])
+   #'registered-persona-is-schema-valid
+   #'outpatient-visit-only-when-new
+   #'outpatient-patients-occupy-no-bed
+   #'clinical-content-only-when-admitted
+   #'medication-end-references-existing-order-and-follows-it-in-time])
 
 (def facility-catalog
   "Invariants that need the facility config, not just the log (checked

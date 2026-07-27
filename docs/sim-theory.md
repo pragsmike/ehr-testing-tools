@@ -19,26 +19,29 @@ One file describes three systems:
   current guess at the envisioned system; it will change, and changes
   land as edits to the EDN with ADRs where they're structural.
 - **now** — the `:status :built` subset: **Execute**, **Check**,
-  **EmitHL7**, **InjectChurn** (M2b), and, as of Milestone M4,
-  **Persona** (each walking-skeleton, v1-slice, or v0-slice scope, per
-  their `:contract` notes), plus the manifest component inside Package
-  that shipped ahead of its stage. As of Milestone M3, Execute's own
-  step vocabulary further grows (`:order`/`:result-followup`, the
-  `order-profiles` catalytic now real) and EmitHL7 gains
-  ORM^O01/ORU^R01. As of the site-profiles milestone, EmitHL7 gains a
-  fourth catalytic (`site-profile`) — MSH dialect, code-table
-  overrides, and Z-segment templates, all property-tested against the
-  dialect-invariance law stated on that stage's own equation entry.
-  Everything the *now* claims is property-tested and green (273 tests /
-  716 assertions, 2026-07-27).
-- **next** — the single stage marked `;; NEXT` in the EDN: **RunModules**,
-  Milestone M5 — the GMF interpreter port, the `gmf-module-set`
-  vendoring-vs-lockfile decision, and `CompileTrajectory`. M5a (this
-  session) landed the interpreter LIBRARY itself
-  (`ehr-testing-sim.gmf`/`ehr-testing-sim.gmf-interpreter`) against a
-  hand-written fixture; the stage's own `:status` stays `:planned` and
-  the `;; NEXT` marker stays here until M5b wires a real vendored
-  module's trajectory into an actual run.
+  **EmitHL7**, **InjectChurn** (M2b), **Persona** (M4), and, as of
+  Milestone M5b, **RunModules** and **CompileTrajectory** (each
+  walking-skeleton, v1-slice, or v0-slice scope, per their `:contract`
+  notes), plus the manifest component inside Package that shipped ahead
+  of its stage. As of Milestone M3, Execute's own step vocabulary
+  further grows (`:order`/`:result-followup`, the `order-profiles`
+  catalytic now real) and EmitHL7 gains ORM^O01/ORU^R01. As of the
+  site-profiles milestone, EmitHL7 gains a fourth catalytic
+  (`site-profile`) — MSH dialect, code-table overrides, and Z-segment
+  templates, all property-tested against the dialect-invariance law
+  stated on that stage's own equation entry. As of Milestone M5b,
+  Execute's step vocabulary grows again (`:outpatient-visit`/
+  `:outpatient-visit-end`/`:procedure`/`:observation`/
+  `:medication-order`/`:medication-end`) and EmitHL7 gains A04
+  (outpatient visit) and a second ORU^R01 rendering (an unsolicited
+  Observation, no order context). Everything the *now* claims is
+  property-tested and green (350 tests / 863 assertions, 2026-07-27).
+- **next** — the single stage marked `;; NEXT` in the EDN: **EmitState**,
+  Milestone M6 — state-document rendering from `state-history`, FHIR
+  resources before CDA. RunModules/CompileTrajectory's own two-session
+  split (M5a the interpreter library, M5b the real vendored module plus
+  the actual persona → modules → trajectory → IR wiring) is complete;
+  both stages are `:built` and the `;; NEXT` marker has moved on.
 
 No schema keys were invented for this convention — it lives in
 comments and here, keeping the EDN loadable by tools' Pipeline Malli
@@ -241,8 +244,8 @@ whose name binds to nothing is malformed. Bindings, with build status:
 |---|---|---|
 | `sim-config` | Malli, `ehr-testing-sim.config` (black-box Inputs, problem statement) | partial |
 | `persona` | Malli, `ehr-testing-sim.persona/Persona` | v1 built |
-| `clinical-trajectory` | Malli, planned — dated clinical events, each citing `{module, state}`, codes as `{:system :code :display}` | planned |
-| `compiled-pathway`, `authored-pathway`, `pathway-ir`, `operational-pathway` | Malli, `ehr-testing-sim.pathway` — the union binds to `[:or …]` of its members per the notation; `operational-pathway`'s type IS the IR type (the endomorphism law) | v0 built |
+| `clinical-trajectory` | de-facto built as data, no formal Malli type yet — dated clinical events, each citing `{module, state}`, codes as `{:system :code :display}` (`ehr-testing-sim.gmf-interpreter/run-module`'s own `:trajectory` output) | de-facto built |
+| `compiled-pathway`, `authored-pathway`, `pathway-ir`, `operational-pathway` | Malli, `ehr-testing-sim.pathway` — the union binds to `[:or …]` of its members per the notation; `operational-pathway`'s type IS the IR type (the endomorphism law). `compiled-pathway` is real as of M5b (`ehr-testing-sim.compile-trajectory`, six new step types plus the `:citation`/`:conditions` provenance fields) | v1 built |
 | `ground-truth-log` | Malli, planned as data; shape established by `engine/run` and consumed by `check` | de-facto built |
 | `state-history` | Malli, planned — per-patient `[t → state]`; today implicit in the pure fold, the want makes it a first-class output | planned |
 | `hl7v2-stream` | ER7 messages over the parser's structures | planned |

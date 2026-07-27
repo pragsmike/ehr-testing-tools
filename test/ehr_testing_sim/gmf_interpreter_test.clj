@@ -348,9 +348,80 @@
     (is (true? (:blocked? (interp/step not-equal-attribute-module (Random. 1) ctx-closed))))))
 
 (deftest evaluate-condition-throws-on-an-unrecognized-condition-type
-  (is (thrown? clojure.lang.ExceptionInfo
-               (interp/evaluate-condition "any-mod" (ctx-for (persona-at 1))
-                                           {:condition-type :active-allergy}))))
+  (testing ":at-least (Synthea's own compound N-of wrapper) is still outside
+            v1's vocabulary -- docs/gmf-interpreter.md section 2's own gap
+            note, unlike :active-allergy/:active-condition/:active-medication/
+            :and, which joined v1 at M5b (this namespace's own updated tests,
+            below)"
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (interp/evaluate-condition "any-mod" (ctx-for (persona-at 1))
+                                             {:condition-type :at-least})))))
+
+;; --- M5b: Active Condition / Active Medication / Active Allergy / And ----
+;; (docs/gmf-interpreter.md section 2's own condition-vocabulary-gap note,
+;; built once the ratified vendored module (sinusitis.json) genuinely
+;; needed it on its own mandatory post-encounter path -- see gmf.clj's
+;; own condition-type->keyword docstring for the full account.)
+
+(def onset-concept {:system :snomed :code "36971009" :display "Sinusitis (disorder)"})
+(def other-concept {:system :snomed :code "999999999" :display "Something else"})
+
+(defn- ctx-with-onset [p]
+  (assoc (ctx-for p) :trajectory [{:module "m" :state :onset :event :condition-onset :t 0 :codes [onset-concept]}]))
+
+(deftest active-condition-holds-after-an-uncancelled-onset-of-the-matching-concept
+  (is (true? (interp/evaluate-condition "m" (ctx-with-onset (persona-at 1))
+                                        {:condition-type :active-condition :codes [onset-concept]}))))
+
+(deftest active-condition-does-not-hold-for-a-different-concept
+  (is (false? (interp/evaluate-condition "m" (ctx-with-onset (persona-at 1))
+                                         {:condition-type :active-condition :codes [other-concept]}))))
+
+(deftest active-condition-does-not-hold-once-a-referencing-condition-end-exists
+  (let [ctx (update (ctx-with-onset (persona-at 1)) :trajectory conj
+                    {:module "m" :state :resolve :event :condition-end :t 10 :references 0})]
+    (is (false? (interp/evaluate-condition "m" ctx {:condition-type :active-condition :codes [onset-concept]})))))
+
+(deftest active-medication-mirrors-active-condition-over-medication-order-end
+  (let [ctx (assoc (ctx-for (persona-at 1)) :trajectory
+                   [{:module "m" :state :rx :event :medication-order :t 0 :codes [onset-concept]}])]
+    (is (true? (interp/evaluate-condition "m" ctx {:condition-type :active-medication :codes [onset-concept]})))
+    (let [ended (update ctx :trajectory conj {:module "m" :state :end-rx :event :medication-end :t 5 :references 0})]
+      (is (false? (interp/evaluate-condition "m" ended {:condition-type :active-medication :codes [onset-concept]}))))))
+
+(deftest active-allergy-is-always-false
+  (testing "documented simplification -- no allergy concept exists anywhere
+            in this project's Persona for a query to find (gmf-
+            interpreter's own evaluate-condition docstring note)"
+    (is (false? (interp/evaluate-condition "m" (ctx-with-onset (persona-at 1)) {:condition-type :active-allergy})))))
+
+(deftest and-condition-is-true-only-when-every-sub-condition-holds
+  (let [ctx (ctx-with-onset (persona-at 1))
+        all-true {:condition-type :and :conditions [{:condition-type :active-condition :codes [onset-concept]}
+                                                     {:condition-type :active-allergy}
+                                                     {:condition-type :active-allergy}]}
+        one-false {:condition-type :and :conditions [{:condition-type :active-condition :codes [onset-concept]}
+                                                      {:condition-type :active-condition :codes [other-concept]}]}]
+    (is (false? (interp/evaluate-condition "m" ctx all-true)) "every sub-condition true except the always-false allergy check")
+    (is (false? (interp/evaluate-condition "m" ctx one-false)))
+    (is (true? (interp/evaluate-condition "m" ctx {:condition-type :and
+                                                   :conditions [{:condition-type :active-condition :codes [onset-concept]}]})))))
+
+;; --- M5b: Device/DeviceEnd -- consumed-internally, like :simple -----------
+
+(def device-module
+  {:id "device-mod" :name "Device"
+   :states {:initial {:type :initial :direct-transition :neb}
+            :neb {:type :device :code {:system :snomed :code "170615005" :display "Home nebulizer (physical object)"}
+                  :direct-transition :end-neb}
+            :end-neb {:type :device-end :device :neb :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest device-and-device-end-produce-no-trajectory-event
+  (let [ctx (ctx-for (persona-at 1))
+        outcome (interp/walk-module device-module (Random. 1) ctx)]
+    (is (= :terminal (:status outcome)))
+    (is (empty? (:trajectory outcome)))))
 
 (def infinite-loop-module
   {:id "loop-mod" :name "Loop"

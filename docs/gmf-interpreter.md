@@ -63,6 +63,7 @@ it can't yet be *vendored*.
 | `Observation` | v1, trajectory event | compiles to a new, lighter-weight `:observation` IR step — **not** `:order`/`:result-followup` (order-profiles' panel/turnaround-time semantics don't fit a same-encounter vitals or exam finding, `sore_throat.json`'s `Take_Temperature_High`/`Take_Temperature_Low` being the read example); M5b build scope |
 | `MedicationOrder` | v1, trajectory event | compiles to a new `:medication-order` IR step (M5b build scope, distinct from `:order`'s lab-panel semantics) |
 | `MedicationEnd` | v1, trajectory event | references its `MedicationOrder` trajectory event; compiles to a new `:medication-end` IR step |
+| `Device` / `DeviceEnd` | v1, consumed internally **(M5b finding, moved here from the Deferred table below)** | none — structurally identical to `Simple`: no equipment-tracking home exists anywhere in `docs/patient-state-model.md`'s accumulator or the pathway IR, so these states pass through (ordinary transition resolution, no attribute write, no trajectory event) rather than mint anything. Discovered load-bearing, not merely convenient: the ratified vendored module (`sinusitis.json`) uses them for its Nebulizer content, exactly where this document's own appendix already predicted (confined to the module's rare chronic-surgical tail) — but the M5a loader's own all-or-nothing gate ("any deferred-type use fails it, full stop") rejected the WHOLE module for two states, not merely that tail, since the loader has no partial-compile mechanism to "simply not compile that one branch's terminal states" the way the appendix's prose imagined. Consumed-internally is the minimal, disciplined resolution — see the M5b findings section below for the full account |
 
 **Deferred, with reasons:**
 
@@ -72,8 +73,7 @@ it can't yet be *vendored*.
 | `Counter` | Named in this document's own brief as deferred; not observed in any of the four modules read this session, so its omission carries no survey evidence either way — carried forward as originally scoped |
 | `MultiObservation` | Named in this document's own brief as deferred; not observed in any of the four modules read this session — same status as `Counter` |
 | `Death` | Defers to the expired-state machinery this project has already captured (`:expired` status, `docs/patient-state-model.md`'s accumulator table; the post-mortem event-validity rows, `docs/clinical-realities.md`) rather than being ported as its own mechanism — wire it to that machinery when donor/post-mortem content lands, not before. Not observed in any of the four modules read this session (all four are acute, non-fatal illness modules by design of the candidate search) |
-| `Device` / `DeviceEnd` | **Discovered by survey, not in this document's original brief.** `sinusitis.json` uses `Device`/`DeviceEnd` for its Nebulizer content (2 of 44 states) — confined to the module's low-probability chronic-surgical tail, not its acute-care spine. Deferred for v1: equipment/device tracking has no home yet in `docs/patient-state-model.md`'s accumulator or the pathway IR, and a first vendored module's value doesn't hinge on it (§ appendix) |
-| `CarePlanStart` / `CarePlanEnd` | **Discovered spot-checking `bronchitis.json`** (read while scouting a urinary-tract-infection candidate that turned out not to exist as its own module, below) — not present in any of the three formally surveyed candidates. Deferred for the same reason as `Device`/`DeviceEnd`: no accumulator or IR home yet, and no formal candidate needs it |
+| `CarePlanStart` / `CarePlanEnd` | **Discovered spot-checking `bronchitis.json`** (read while scouting a urinary-tract-infection candidate that turned out not to exist as its own module, below) — not present in any of the three formally surveyed candidates. Deferred for the same reason as `Device`/`DeviceEnd` was originally deferred here (no accumulator or IR home yet, and no formal candidate needs it) — unlike `Device`/`DeviceEnd`, no vendored module has yet forced this one to be reconsidered, so it stays deferred |
 
 **A recommendation, flagged for author review: add `Symptom` to v1 as
 a write-only, consumed-internally state — not deferred.** `Symptom` is
@@ -119,13 +119,21 @@ defer any of them:
   `distributed_transition` composed: an ordered list of conditions,
   each guarding its own nested distribution.
 
-**Condition predicates, v1: age, sex, attribute, and `PriorState`.**
-Synthea's own condition vocabulary is larger than this (the three
-formally surveyed modules alone also use `Active Allergy`, `Active
-Medication`, and compound `At Least`-N-of wrappers — see the appendix's
-own gap notes); v1 executes exactly these four, chosen because they
-cover every module's *entry* logic (age/sex-gated onset) and the one
-compilation decision worth making carefully up front:
+**Condition predicates, v1 as originally scoped: age, sex, attribute,
+and `PriorState`** — plus, **M5b finding**, `Active Condition`/`Active
+Medication`/`And`, joined once the ratified vendored module
+(`sinusitis.json`) turned out to need them on its own MANDATORY
+post-encounter path (`Wait_for_condition_to_resolve`, reached by every
+patient who ever completes a Doctor_Visit encounter, not an excludable
+tail the way `Device`/`DeviceEnd` is), plus `Active Allergy` as a
+documented, always-false simplification (see the M5b findings section
+below for the full account of all four, including why `Active Allergy`
+could NOT be built the same log-query way the other two were). Synthea's
+own condition vocabulary is still larger than this (the three formally
+surveyed modules alone also use compound `At Least`-N-of wrappers — see
+the appendix's own gap notes, still deferred); the original four were
+chosen because they cover every module's *entry* logic (age/sex-gated
+onset) and the one compilation decision worth making carefully up front:
 
 **`PriorState` compiles to a ground-truth-log query — the log IS
 `person.history`, done right.** `docs/patient-state-model.md`'s own
@@ -508,6 +516,139 @@ divergence from anything ratified:
    virtual clock onto a real run's seconds-from-registration clock is
    exactly the kind of persona → modules → trajectory wiring M5b's own
    session does, not a gap in this one.
+
+---
+
+## 8. M5b findings: vendoring `sinusitis.json` against the REAL loader
+
+Section 1's appendix recommendation (`sinusitis.json` as the first
+module to vendor) was made from a SURVEY read of the module's JSON —
+state types and condition types, read by eye, against v1's own scope as
+this document defined it. M5b is the first session to actually run that
+module through the real M5a loader and interpreter, and doing so
+surfaced six gaps the survey did not (and structurally could not)
+catch by reading alone, each resolved this session per this document's
+own "extend v1 with a documented reason, or defer the module" standing
+option (`docs/gmf-interpreter.md`'s own M5b task brief) -- the first
+five surfaced by the loader/interpreter, the sixth by CompileTrajectory
+itself (Task 3):
+
+1. **The loader's all-or-nothing gate is stricter than the appendix's
+   own prose imagined.** The appendix's recommendation reasoned that
+   `sinusitis.json`'s `Device`/`DeviceEnd` gap was safe because it is
+   "reachable by simply not compiling that one branch's terminal
+   states" — but `ehr-testing-sim.gmf/load-module` has no partial-
+   compile mechanism at all: ANY deferred-type state anywhere in a
+   module rejects the WHOLE module, by design (section 1's own
+   docstring, ADR-0013 point 4). Resolved by extending v1: `Device`/
+   `DeviceEnd` join as consumed-internally states, structurally
+   identical to `Simple` (§1's table, above) — no trajectory event, no
+   attribute write, ordinary transition resolution. This is the minimal
+   treatment the appendix's own reasoning already justified; only the
+   MECHANISM (a real state-type entry, not a load-time exemption) needed
+   building.
+2. **A real, previously-unexercised loader bug: a module with no
+   top-level `:remarks` field failed schema validation.**
+   `ehr-testing-sim.gmf`'s own module constructor always assigned an
+   explicit `:remarks` key (nil when absent from the source JSON); an
+   `{:optional true}` schema key permits the key's ABSENCE, not an
+   explicit nil value, so this fails `[:vector :string]` — never
+   surfaced by M5a because the hand-written fixture always carries a
+   top-level `:remarks` array. `sinusitis.json` has none (only
+   PER-STATE remarks, a separate, already-supported field). Fixed: the
+   loader now only assocs `:remarks` when the source module actually has
+   one — a bug fix, not a v1-scope decision, but recorded here since it
+   was this vendoring session's own discovery.
+3. **A vendored module can carry a code value that isn't a JSON
+   string.** `sinusitis.json`'s `Prescribe_Alternative_Antibiotic` state
+   carries its RxNorm code as an unquoted JSON number
+   (`"code": 1649987`), and `ehr-testing-sim.pathway/Concept` requires a
+   string. Fixed at the normalization layer (`ehr-testing-sim.gmf/
+   normalize-code` now coerces `:code` to a string unconditionally) —
+   the code's own digits pass through unchanged (code passthrough law
+   unweakened), only their Clojure type changes, the same kind of
+   representation normalization this loader already applies to every
+   other GMF field (kebab-casing, keywordizing systems).
+4. **The condition-vocabulary gap on `sinusitis.json` is on the
+   module's MANDATORY path, not an excludable branch — bigger than the
+   appendix's own survey characterized it.** The appendix's condition-
+   vocabulary-gap note named `Penicillin_Allergy_Check`'s own `Active
+   Allergy` condition (reached by only 20% of encounters, Doctor_Visit's
+   own distributed split) as `sinusitis.json`'s share of the common,
+   cross-module gap — implicitly contrasting it with `sore_throat.json`'s
+   OWN gap, which sits on that module's mandatory path. What the survey
+   missed: `Wait_for_condition_to_resolve` (reached by EVERY patient who
+   completes ANY Doctor_Visit encounter, not merely the 20% who reach the
+   allergy check) uses an `And` compound over `Active Medication`/`Active
+   Condition` sub-conditions — entirely outside the original v1 four
+   predicates. Left unresolved, this condition-vocabulary gap — not
+   `Device`/`DeviceEnd` — would have been the real blocker: `evaluate-
+   condition` throws `ex-info` for any unrecognized condition type
+   (a programmer-error signal, not a result-not-throw outcome), and
+   virtually every patient who ever onsets sinusitis over a realistic
+   history-phase horizon reaches this state. Resolved by extending v1's
+   condition vocabulary, per this document's own §2 prediction ("Active
+   Allergy`/`Active Medication` are architecturally the same log-query
+   mechanism `PriorState` already establishes"): `:active-condition`/
+   `:active-medication` are now log queries over the trajectory-so-far
+   ("does an onset event for this concept exist with no later end event
+   referencing it"), the same index-based reference shape `ConditionEnd`/
+   `MedicationEnd` already carry; `:and` is a recursive conjunction over
+   its own `:conditions`. `Active Allergy` (used only by
+   `Penicillin_Allergy_Check`, the excludable 20% branch) is NOT built
+   the same log-query way — this project's `persona/Persona` schema has
+   no allergy concept anywhere, so there is no onset event any query
+   could ever find. It resolves to a documented, always-`false` constant
+   instead: the conservative default (never wrongly blocks the module's
+   own MANDATORY path, since the only place it's consulted is the
+   excludable branch), recorded honestly as a real simplification rather
+   than a silent gap.
+5. **`sinusitis.json` has no `Terminal` state at all — confirmed a
+   structural property the appendix's own survey table never checked.**
+   Real Synthea modules of this shape run for a patient's entire
+   lifetime under Synthea's own fixed-tick engine and are not authored
+   to "finish" the way this project's hand-written fixture (purpose-
+   built to demonstrate every v1 state type, including `Terminal`) does.
+   `ehr-testing-sim.gmf-interpreter/walk-module`/`run-module` loop until
+   `:terminal?` or `:blocked?` (or, for `run-module`, an optional
+   `horizon-end-t` bound); a module that never reaches Terminal and never
+   blocks on a Guard (this module has none) would otherwise run until
+   the `max-steps` runaway-loop backstop fires and THROWS, treating it as
+   a module-authoring bug. This is resolved not by any interpreter change
+   but by a now-load-bearing REQUIREMENT on M5b's own real engine wiring
+   (Task 4): every real call to `run-module` against a vendored module
+   MUST supply a bounded `horizon-end-t` (this project's own encounter-
+   horizon scope, ADR-0007 point 3, makes this the correct choice
+   anyway, not merely a workaround) — an UNBOUNDED `run-module` call
+   is safe only for a module (like the hand-written fixture) known to
+   reach Terminal or block. Recorded here so a future module vendored
+   without this same property doesn't silently reproduce the risk.
+
+6. **`ConditionEnd` can reference its own onset via `referenced_by_attribute`
+   rather than a direct `condition_onset` state citation — harmless to
+   the interpreter's own control flow, but leaves CompileTrajectory's own
+   annotation codeless.** `sinusitis.json`'s `Sinusitis_Ends` state uses
+   `referenced_by_attribute` (an attribute-tracked condition, not a fixed
+   state name) — a reference shape v1's interpreter does not resolve, so
+   the trajectory event's own `:references` (and therefore its `:codes`,
+   `ehr-testing-sim.compile-trajectory`'s own resolution path) comes back
+   nil. This turned out NOT to break the interpreter's own walk for this
+   module (every place this state's condition is actually EVALUATED
+   happens before this specific end event ever fires, so the missing
+   reference is never consulted at decide time) — but CompileTrajectory's
+   own condition annotation for it is genuinely codeless. Resolved by
+   making `ehr-testing-sim.pathway/ConditionAnnotation`'s own `:codes`
+   field `{:optional true}` rather than required: a real annotation can
+   legitimately carry no concept when its source event named none, the
+   same "don't fabricate what was never actually said" discipline this
+   whole session already applies to the vendored file's own idiosyncrasies.
+
+None of these six findings changes `resources/modules/sinusitis.json`
+itself — the vendored file on disk is byte-verbatim against upstream
+(`resources/modules/NOTICE`'s own hash record); every resolution above
+lives in the interpreter/loader (`ehr-testing-sim.gmf`/`ehr-testing-sim.
+gmf-interpreter`) or in how M5b's own engine wiring calls it, never in
+the vendored data.
 
 ---
 

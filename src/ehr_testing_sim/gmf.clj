@@ -62,7 +62,23 @@
   ratified into v1 alongside the rest -- see that document's own
   closing ratification record). Any :type string NOT a key here is a
   deferred type (section 1's own table) -- `unsupported-state-type`,
-  below, is exactly 'not a key in this map.'"
+  below, is exactly 'not a key in this map.'
+
+  M5b finding: `Device`/`DeviceEnd` join v1 here too, as consumed-
+  internally states structurally identical to `Simple` -- discovered
+  necessary when the ratified vendored module (sinusitis.json,
+  ADR-0013/docs/gmf-interpreter.md's own recommendation) turned out to
+  use them for its Nebulizer content, confined to the module's rare
+  chronic-surgical tail exactly as that document's own survey predicted,
+  but the M5a loader's own all-or-nothing gate ('any deferred-type use
+  fails it, full stop') rejected the WHOLE module for two states with no
+  clinical content this project's accumulator or IR has a home for yet
+  (no equipment-tracking concept anywhere in docs/patient-state-model.md).
+  Consumed-internally is the correct, minimal treatment: no trajectory
+  event, no attribute write, ordinary transition resolution -- the same
+  'reachable by simply not compiling that one branch's terminal states'
+  disposition docs/gmf-interpreter.md's own appendix already named for
+  this exact gap, now actually built rather than merely anticipated."
   {"Initial" :initial
    "Terminal" :terminal
    "Simple" :simple
@@ -77,7 +93,9 @@
    "Procedure" :procedure
    "Observation" :observation
    "MedicationOrder" :medication-order
-   "MedicationEnd" :medication-end})
+   "MedicationEnd" :medication-end
+   "Device" :device
+   "DeviceEnd" :device-end})
 
 (def ^:private code-system->keyword
   "GMF's own code-system strings -> ehr-testing-sim.pathway/Concept's
@@ -96,32 +114,67 @@
   {"wellness" :wellness "ambulatory" :ambulatory "emergency" :emergency "inpatient" :inpatient})
 
 (def ^:private condition-type->keyword
-  "v1's four condition predicates (docs/gmf-interpreter.md section 2):
-  age, sex (Gender), attribute, PriorState."
-  {"Age" :age "Gender" :gender "Attribute" :attribute "PriorState" :prior-state})
+  "v1's condition predicates (docs/gmf-interpreter.md section 2): age,
+  sex (Gender), attribute, PriorState -- plus, M5b, the log-query family
+  `Active Condition`/`Active Medication` join as the architecturally-
+  same-shape extension that document's own condition-vocabulary-gap
+  note already named as the natural next step ('the identical shape to
+  PriorState's own query, just keyed on a concept rather than a module
+  state name'), `And` as a recursive compound wrapper, and `Active
+  Allergy` as a documented, always-false simplification (this project's
+  Persona has no allergy concept to query yet -- see ehr-testing-sim.gmf-
+  interpreter/evaluate-condition's own docstring note). Discovered
+  load-bearing, not merely convenient: the ratified vendored module
+  (sinusitis.json) uses `And`/`Active Medication`/`Active Condition` on
+  `Wait_for_condition_to_resolve`, a state EVERY patient who ever reaches
+  the module's own Doctor_Visit encounter passes through -- not an
+  excludable tail the way Device/DeviceEnd is, so leaving this gap
+  unresolved would mean the vendored module throws for virtually every
+  patient who ever onsets, not merely fails to cover a rare branch."
+  {"Age" :age "Gender" :gender "Attribute" :attribute "PriorState" :prior-state
+   "Active Condition" :active-condition "Active Medication" :active-medication
+   "Active Allergy" :active-allergy "And" :and})
 
 (defn- normalize-code
+  "GMF's own code triplet -> ehr-testing-sim.pathway/Concept. M5b: :code
+  is coerced to a string regardless of its own JSON type -- the vendored
+  sinusitis.json carries at least one unquoted-JSON-number code value
+  (Prescribe_Alternative_Antibiotic's own RxNorm code), and
+  pathway/Concept requires a string. This is a representation
+  normalization, the same kind `slug`/keywordizing already apply to
+  every other GMF field this loader touches -- the code's own digits
+  pass through unchanged (code passthrough law), only their Clojure
+  type does, never a translation or invention of the value itself."
   [{:keys [system code display]}]
-  (cond-> {:system (get code-system->keyword system (keyword (slug system))) :code code}
+  (cond-> {:system (get code-system->keyword system (keyword (slug system))) :code (str code)}
     display (assoc :display display)))
 
 (defn- normalize-condition
   "A leaf condition map ({:condition-type ...}) -> the same shape with
-  :condition-type keywordized to v1's vocabulary. Nested compound
-  conditions (`At Least`, boolean `And`/`Or`) are OUT of v1's scope
-  (docs/gmf-interpreter.md section 2's own gap note) -- passed through
-  unrecognized rather than validated here; the interpreter (M5a Task 2)
-  is where an actually-unsupported condition type surfaces, at
-  evaluation time, not at load time (section 1's own state-type gate is
-  the load-time enforcement point; conditions are a narrower, later
-  concern this loader does not gate)."
+  :condition-type keywordized to v1's vocabulary, :codes normalized
+  (Concept triplets, same as every other state's own :codes) for the
+  concept-keyed predicates (Active Condition/Active Medication/Active
+  Allergy), and :conditions recursively normalized for And's own nested
+  sub-conditions. Compound conditions OUTSIDE this vocabulary (`At
+  Least`, boolean `Or`) stay out of v1's scope (docs/gmf-interpreter.md
+  section 2's own gap note) -- passed through unrecognized rather than
+  validated here; the interpreter is where an actually-unsupported
+  condition type surfaces, at evaluation time, not at load time (section
+  1's own state-type gate is the load-time enforcement point; conditions
+  are a narrower, later concern this loader does not gate)."
   [condition]
   (when condition
     (let [condition-type (get condition-type->keyword (:condition-type condition)
                                (keyword (slug (:condition-type condition))))]
       (cond-> (assoc condition :condition-type condition-type)
         (and (= :prior-state condition-type) (:name condition))
-        (update :name (fn [n] (keyword (slug n))))))))
+        (update :name (fn [n] (keyword (slug n))))
+
+        (:codes condition)
+        (update :codes #(mapv normalize-code %))
+
+        (and (= :and condition-type) (:conditions condition))
+        (update :conditions #(mapv normalize-condition %))))))
 
 (defn- normalize-transition-entry
   [{:keys [transition condition distributions] :as entry}]
@@ -147,11 +200,13 @@
       (-> state
           (assoc :type kw-type)
           (cond-> (:codes state) (update :codes #(mapv normalize-code %))
+                  (:code state) (update :code normalize-code)
                   (:allow state) (update :allow normalize-condition)
                   (:encounter-class state) (update :encounter-class
                                                     (fn [c] (get encounter-class->keyword c (keyword (slug c)))))
                   (:condition-onset state) (update :condition-onset (fn [t] (keyword (slug t))))
                   (:medication-order state) (update :medication-order (fn [t] (keyword (slug t))))
+                  (:device state) (update :device (fn [t] (keyword (slug t))))
                   (:target-encounter state) (update :target-encounter (fn [t] (keyword (slug t)))))
           normalize-transitions))))
 
@@ -250,7 +305,12 @@
                    [:range {:optional true} Range])]
    [:medication-order (with-transitions [:type [:= :medication-order]] [:codes [:vector pathway/Concept]]
                         [:reason {:optional true} :string])]
-   [:medication-end (with-transitions [:type [:= :medication-end]] [:medication-order {:optional true} :keyword])]])
+   [:medication-end (with-transitions [:type [:= :medication-end]] [:medication-order {:optional true} :keyword])]
+   ;; M5b: consumed-internally, like :simple -- see gmf-type->keyword's
+   ;; own docstring note. :code is singular (GMF's own Device shape, one
+   ;; equipment concept per state -- unlike :codes' plural elsewhere).
+   [:device (with-transitions [:type [:= :device]] [:code {:optional true} pathway/Concept])]
+   [:device-end (with-transitions [:type [:= :device-end]] [:device {:optional true} :keyword])]])
 
 (def GmfModule
   [:map
@@ -289,10 +349,40 @@
       (result/rejected :attribute-collision {:attribute (reserved-attribute-collision states)})
 
       :else
-      (let [module {:id id :name (:name raw) :remarks (:remarks raw) :states states}]
+      (let [module (cond-> {:id id :name (:name raw) :states states}
+                     ;; M5b: only assoc :remarks when the module actually
+                     ;; HAS one -- the vendored sinusitis.json carries no
+                     ;; top-level :remarks (only per-state ones, a separate,
+                     ;; already-supported field this loader never validates
+                     ;; the shape of), and an explicit nil under an
+                     ;; {:optional true} key still fails [:vector :string]
+                     ;; (optional means the KEY may be absent, not that a
+                     ;; present value may be nil) -- the fixture module
+                     ;; happened to always carry one, so M5a never
+                     ;; exercised this path.
+                     (:remarks raw) (assoc :remarks (:remarks raw)))]
         (if (valid-module? module)
           (result/ok module)
           (result/rejected :schema-invalid {:explain (explain-module module)}))))))
+
+;; --- M5b: per-patient module assignment -- SimHospital's own percentage_of_
+;; patients analogue, the SAME shape ehr-testing-sim.pathway/PathwaysConfig
+;; already established for authored pathways (docs/gmf-interpreter.md's own
+;; Task 4: module assignment composes with :pathways, both just IR entering
+;; the union). ehr-testing-sim.engine/assign-module is this schema's own
+;; resolver -- kept there, not here, mirroring assign-pathway's own placement
+;; (the resolver needs a seeded RNG; the schema doesn't) -------------------
+
+(def ModuleAssignment
+  [:or
+   [:map {:closed true} [:module-id :string] [:weight [:or :int :double]]]
+   [:map {:closed true} [:patient-ordinal :int] [:module-id :string]]])
+
+(def ModulesConfig
+  [:vector ModuleAssignment])
+
+(defn valid-modules-config? [config] (m/validate ModulesConfig config))
+(defn explain-modules-config [config] (m/explain ModulesConfig config))
 
 ;; --- Registry (no hidden modules, section 5) -------------------------------
 

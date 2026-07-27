@@ -62,7 +62,9 @@
   (:require [ehr-testing-sim.pathway :as pathway]
             [ehr-testing-sim.config :as config]
             [ehr-testing-sim.churn :as churn]
+            [ehr-testing-sim.compile-trajectory :as compile-trajectory]
             [ehr-testing-sim.facility :as facility]
+            [ehr-testing-sim.gmf-interpreter :as gmf-interpreter]
             [ehr-testing-sim.order-profiles :as order-profiles]
             [ehr-testing-sim.persona :as persona]
             [malli.core :as m])
@@ -201,8 +203,28 @@
 ;; stage's contract ("samples once, from the run's single seeded RNG, in
 ;; fixed order") is satisfied by this event exactly, not merely gestured at.
 
+;; M5b Task 4: persona -> run-module -> CompileTrajectory -> IR, the ACTUAL
+;; RunModules/CompileTrajectory stage boundary, folded into THIS SAME
+;; engine-internal step for the same reason Persona itself was (M4's own
+;; documented theory-flip note): a patient's assigned module is consumed at
+;; the same init moment this event already owns. `step`'s own :module (set,
+;; per patient, by `run`'s eager `registered-steps-for` -- mirroring how
+;; :pathways' own per-patient resolution already happens eagerly, ahead of
+;; the main loop) is nil for the (default, opt-in) case of no module
+;; assignment -- byte-identical to pre-M5b :registered output, no new draw,
+;; the same "absent means untouched" law :pathways/:churn-profile already
+;; establish. `registration-t` is `persona/reference-today-epoch-day` --
+;; docs/gmf-interpreter.md section 3's own "that patient's own :registered
+;; event time," expressed in the SAME calendar anchor every persona's own
+;; DOB is already computed against (persona.clj's own docstring note).
+;; `:module-horizon-days` bounds the walk (`run-module`'s own optional
+;; `horizon-end-t`) -- REQUIRED for any real vendored module (M5b's own
+;; finding, docs/gmf-interpreter.md section 8 item 5: a module with no
+;; Terminal state and no Guard to block on would otherwise run until the
+;; interpreter's own max-steps backstop throws).
+
 (defmethod decide :registered
-  [rng t world patient-id _step]
+  [rng t world patient-id {:keys [module]}]
   ;; :active-mrn is REQUIRED here, not merely conventional: :registered
   ;; is now every patient's FIRST event, and `replay` (below) bootstraps
   ;; a never-yet-seen participant's initial state via `(initial-patient
@@ -211,14 +233,33 @@
   ;; reason (a convention this event must honor, not just a rendering
   ;; nicety), or `replay`'s own bootstrap (and every check.clj invariant
   ;; built on it) silently seeds `:mrns #{nil}`.
-  {:events [{:event :registered :t t
-             :active-mrn (get-in world [:patients patient-id :active-mrn])
-             :persona (persona/persona rng (:persona-config world))
-             :participants [{:patient-id patient-id :role :subject}]}]
-   :advance 0})
+  (let [persona (persona/persona rng (:persona-config world))
+        compiled (when module
+                   (let [reg-t (persona/reference-today-epoch-day)
+                         horizon-end-t (+ reg-t (:module-horizon-days world))
+                         {:keys [trajectory]} (gmf-interpreter/run-module module rng persona reg-t horizon-end-t)]
+                     (compile-trajectory/compile-trajectory trajectory (:facility world) reg-t)))]
+    {:events [(cond-> {:event :registered :t t
+                       :active-mrn (get-in world [:patients patient-id :active-mrn])
+                       :persona persona
+                       :participants [{:patient-id patient-id :role :subject}]}
+                (seq (:registration-facts compiled)) (assoc :pre-horizon-facts (:registration-facts compiled)))]
+     :advance 0
+     :prepend-steps (:steps compiled)}))
+
+(defn- citation-fields
+  "M5b: :citation/:conditions ride through onto the ground-truth event
+  ONLY when the compiled step actually carries them (glass-box
+  traceability, docs/gmf-interpreter.md section 6 obligations 1/3) --
+  `select-keys` + a nil-dropping `into {}` keeps a hand-authored step
+  (never compiled, carries neither key) producing the EXACT same event
+  shape it always has, byte-identical, no perturbation for any pathway
+  that predates M5b."
+  [step]
+  (into {} (filter val) (select-keys step [:citation :conditions])))
 
 (defmethod decide :admission
-  [rng t world patient-id {:keys [location reason force-placement]}]
+  [rng t world patient-id {:keys [location reason force-placement] :as step}]
   (let [{:keys [facility providers patients]} world
         board (facility/occupancy-board patients)
         alloc (facility/allocate rng facility board location force-placement)]
@@ -229,7 +270,7 @@
             active-mrn (get-in patients [patient-id :active-mrn])]
         {:events [(merge {:event :admission :t t :active-mrn active-mrn :reason reason :attending attending
                           :participants [{:patient-id patient-id :role :subject}]}
-                         alloc)]
+                         alloc (citation-fields step))]
          :advance 0}))))
 
 (defmethod decide :delay
@@ -256,11 +297,12 @@
        :advance 0})))
 
 (defmethod decide :discharge
-  [_rng t world patient-id _step]
+  [_rng t world patient-id step]
   (let [patient (get-in world [:patients patient-id])
-        discharge-event {:event :discharge :t t :active-mrn (:active-mrn patient)
-                          :location (:location patient) :attending (:attending patient)
-                          :participants [{:patient-id patient-id :role :subject}]}
+        discharge-event (merge {:event :discharge :t t :active-mrn (:active-mrn patient)
+                                 :location (:location patient) :attending (:attending patient)
+                                 :participants [{:patient-id patient-id :role :subject}]}
+                                (citation-fields step))
         vacated-ward (get-in patient [:location :ward])
         vacated-location (:location patient)
         waiting-id (->> (:patients world)
@@ -498,6 +540,88 @@
   [_rng _t _world _patient-id {:keys [result-event]}]
   {:events [result-event] :advance 0})
 
+;; --- M5b: :outpatient-visit / :outpatient-visit-end (docs/gmf-interpreter.md
+;; section 4's sketch, items 5-7) --------------------------------------------
+
+(defmethod decide :outpatient-visit
+  [rng t world patient-id {:keys [reason] :as step}]
+  ;; Item 5: NO facility/allocate call -- an outpatient encounter occupies
+  ;; no bed, so there is no ladder to consult. Still gets an attending
+  ;; (real ambulatory visits have a treating provider) -- chosen uniformly
+  ;; among ALL providers, not ward-filtered (there is no ward), the same
+  ;; "no ward-scoping concept, choose uniformly among everyone" treatment
+  ;; bed-swap/merge's own peer selection already establishes.
+  (let [{:keys [providers patients]} world
+        patient (get patients patient-id)
+        attending (:id (uniform-choice rng providers))]
+    {:events [(merge {:event :outpatient-visit :t t :active-mrn (:active-mrn patient)
+                      :reason reason :attending attending
+                      :participants [{:patient-id patient-id :role :subject}]}
+                     (citation-fields step))]
+     :advance 0}))
+
+(defmethod decide :outpatient-visit-end
+  [_rng t world patient-id step]
+  (let [patient (get-in world [:patients patient-id])]
+    {:events [(merge {:event :outpatient-visit-end :t t :active-mrn (:active-mrn patient)
+                      :attending (:attending patient)
+                      :participants [{:patient-id patient-id :role :subject}]}
+                     (citation-fields step))]
+     :advance 0}))
+
+;; --- M5b: CompileTrajectory's new ground-truth event types (docs/gmf-
+;; interpreter.md section 1's table) -- each is a real, glass-box-cited
+;; ground-truth event; none carries or changes PatientState (the log
+;; itself is the record, ADR-0008, the same "no PatientState field for
+;; it" treatment :order-placed/:result-available already get). None
+;; consumes RNG -- their content was already fully sampled by the GMF
+;; interpreter (M5a); CompileTrajectory/the engine only replay it.
+
+(defmethod decide :procedure
+  [_rng t world patient-id {:keys [codes] :as step}]
+  (let [patient (get-in world [:patients patient-id])]
+    {:events [(merge {:event :procedure :t t :active-mrn (:active-mrn patient) :codes codes
+                      :participants [{:patient-id patient-id :role :subject}]}
+                     (citation-fields step))]
+     :advance 0}))
+
+(defmethod decide :observation
+  [_rng t world patient-id {:keys [codes value unit] :as step}]
+  (let [patient (get-in world [:patients patient-id])]
+    {:events [(merge {:event :observation :t t :active-mrn (:active-mrn patient) :codes codes}
+                     (when (some? value) {:value value})
+                     (when unit {:unit unit})
+                     {:participants [{:patient-id patient-id :role :subject}]}
+                     (citation-fields step))]
+     :advance 0}))
+
+(defmethod decide :medication-order
+  [_rng t world patient-id {:keys [codes] :as step}]
+  (let [patient (get-in world [:patients patient-id])]
+    {:events [(merge {:event :medication-order :t t :active-mrn (:active-mrn patient) :codes codes
+                      :participants [{:patient-id patient-id :role :subject}]}
+                     (citation-fields step))]
+     :advance 0}))
+
+(defmethod decide :medication-end
+  [_rng t world patient-id {:keys [order-citation] :as step}]
+  ;; Resolved by CITATION match against ground-truth, never a pathway-
+  ;; position index (pathway.clj's own :medication-end docstring) -- the
+  ;; same glass-box, position-independent resolution ConditionEnd's own
+  ;; trajectory-level :references already models, one level down at the
+  ;; ground-truth log.
+  (let [{:keys [ground-truth patients]} world
+        patient (get patients patient-id)
+        order-event-id (when order-citation
+                         (last (keep-indexed (fn [i ev] (when (and (= :medication-order (:event ev))
+                                                                   (= order-citation (:citation ev)))
+                                                          i))
+                                             ground-truth)))]
+    {:events [(merge {:event :medication-end :t t :active-mrn (:active-mrn patient) :order-event-id order-event-id
+                      :participants [{:patient-id patient-id :role :subject}]}
+                     (citation-fields step))]
+     :advance 0}))
+
 (defmulti evolve
   "Folds one ground-truth event into ONE patient it names:
   (patient-state, event) -> patient-state'. Pure and total: no RNG, no
@@ -574,6 +698,31 @@
 (defmethod evolve :result-available
   [patient _event]
   patient)
+
+;; --- M5b: :outpatient-visit / :outpatient-visit-end -----------------------
+;; Item 5/7: :status re-uses the SAME values :admission/:discharge already
+;; establish (:new -> :admitted -> :discharged) -- no new :status value
+;; invented, :class :outpatient is already the distinguishing fact. Item 6:
+;; :location and :home-ward are never set at all (stay absent/nil) -- the
+;; named exception to "never nil-bed while admitted" (docs/patient-state-
+;; model.md's event-validity table, the conditional row this milestone adds).
+
+(defmethod evolve :outpatient-visit
+  [patient {:keys [attending]}]
+  (assoc patient :status :admitted :class :outpatient :attending attending))
+
+(defmethod evolve :outpatient-visit-end
+  [patient _event]
+  (assoc patient :status :discharged))
+
+;; --- M5b: :procedure/:observation/:medication-order/:medication-end --
+;; log-only facts, no PatientState field changes (same as :order-placed/
+;; :result-available's own evolve treatment).
+
+(defmethod evolve :procedure [patient _event] patient)
+(defmethod evolve :observation [patient _event] patient)
+(defmethod evolve :medication-order [patient _event] patient)
+(defmethod evolve :medication-end [patient _event] patient)
 
 (defn replay
   "Replays `ground-truth` through `evolve`, returning a parallel seq of
@@ -663,10 +812,14 @@
 
 (defn- weighted-pick
   "Which pool member `draw` (a uniform double in [0,1), already
-  consumed by the caller) falls into, among `pool` ({:pathway :weight}
+  consumed by the caller) falls into, among `pool` ({value-key :weight}
   maps) -- cumulative-weight bucketing, falling through to the last
-  member on any floating-point-boundary edge case rather than nil."
-  [pool draw]
+  member on any floating-point-boundary edge case rather than nil.
+  `value-key` is which field names the resolved value -- :pathway for
+  ehr-testing-sim.pathway/PathwaysConfig, :module-id for M5b's own
+  ehr-testing-sim.gmf/ModulesConfig -- the same pool shape, two resource
+  kinds."
+  [pool draw value-key]
   (let [total (reduce + (map :weight pool))
         target (* draw total)]
     (loop [members pool acc 0.0]
@@ -674,7 +827,7 @@
             more (rest members)
             acc' (+ acc (double (:weight m)))]
         (if (or (empty? more) (< target acc'))
-          (:pathway m)
+          (get m value-key)
           (recur more acc'))))))
 
 (defn assign-pathway
@@ -702,7 +855,34 @@
         explicit (first (filter #(= i (:patient-ordinal %)) pathways-config))]
     (if explicit
       (:pathway explicit)
-      (weighted-pick (filterv :weight pathways-config) draw))))
+      (weighted-pick (filterv :weight pathways-config) draw :pathway))))
+
+;; --- M5b: per-patient module assignment (ehr-testing-sim.gmf/
+;; ModulesConfig) -- the SAME shape/law as assign-pathway just above,
+;; extended to modules per docs/gmf-interpreter.md's own Task 4 (module
+;; assignment composes with :pathways -- both just IR entering the union).
+
+(defn assign-module
+  "Resolves the module id `modules-config` (ehr-testing-sim.gmf/
+  ModulesConfig) assigns to patient ordinal `i` -- an explicit
+  {:patient-ordinal i :module-id ...} entry when one names this ordinal,
+  otherwise a weighted pick among the config's {:module-id :weight} pool
+  entries, or nil when NEITHER covers this ordinal (unlike
+  assign-pathway's own PathwaysConfig, a real population is expected to
+  have patients with no assigned module at all -- most people don't have
+  chronic sinusitis -- so an empty/non-covering pool is a legitimate,
+  common case, not a caller error). ALWAYS consumes exactly one
+  `.nextDouble` from `rng` regardless of outcome, the same fixed-
+  consumption law `assign-pathway` already establishes, for the
+  identical reason (ADR-0009's own rejected-alternative reasoning)."
+  [^Random rng modules-config i]
+  (let [draw (.nextDouble rng)
+        explicit (first (filter #(= i (:patient-ordinal %)) modules-config))
+        pool (filterv :weight modules-config)]
+    (cond
+      explicit (:module-id explicit)
+      (seq pool) (weighted-pick pool draw :module-id)
+      :else nil)))
 
 (defn- pop-min
   "Removes and returns the earliest queue entry. Queue is a sorted-map
@@ -724,7 +904,8 @@
   loudly instead of shipping CLI-invisible the way M3's `:pathways` did
   (caught only by the tools consumer loop, after the fact)."
   [:seed :patients :pathway :pathways :arrival-gap :warm-up-seconds
-   :facility :providers :churn-profile :order-profiles :persona-config])
+   :facility :providers :churn-profile :order-profiles :persona-config
+   :modules :module-assignment :module-horizon-days])
 
 (defn run
   "Runs the simulation. config:
@@ -800,6 +981,50 @@
                       milestone's own fixture regeneration is expected
                       and documented (ADR-0009 policy), not guarded
                       against the way M2b/M3's opt-in additions were.
+    :modules          M5b: a vector of ALREADY-LOADED GMF module maps
+                      (ehr-testing-sim.gmf/load-module's own :payload
+                      shape -- this namespace does no file I/O of its
+                      own, ehr-testing-sim.run's job, the same layering
+                      :facility/:providers/:order-profiles already
+                      follow). Looked up by :id against
+                      :module-assignment's own resolution.
+    :module-assignment M5b: ehr-testing-sim.gmf/ModulesConfig -- the
+                      SAME weighted-pool/explicit-ordinal shape
+                      :pathways already establishes, `assign-module`'s
+                      own input, ONE additional fixed RNG draw per
+                      patient when present (assign-pathway's own fixed-
+                      consumption, ADR-0009, law, extended). ABSENT
+                      ENTIRELY (not merely nil or []) -- the default --
+                      means no patient ever walks a module: no draw, no
+                      :module carried on any :registered step, BYTE-
+                      IDENTICAL to pre-M5b output (the pinned fixture;
+                      the same opt-in law :pathways/:churn-profile
+                      already establish). A patient's own compiled
+                      module content is PREPENDED onto whatever
+                      :pathway/:pathways already queued for them, never
+                      a replacement -- both are just IR entering the SAME
+                      queue (the pathway-ir union, docs/sim-theory.edn).
+                      A caller wanting MODULE-ONLY patients must pass an
+                      explicit empty pathway (`{:name ... :steps []}`):
+                      the DEFAULT :pathway (sample-admission-discharge)
+                      otherwise still runs AFTER the module's own compiled
+                      content, and usually conflicts with it (the module's
+                      own encounter already admitted/discharged this
+                      patient-id; the default pathway assumes a fresh
+                      :new patient) -- exactly the same compose-don't-
+                      second-guess-the-author posture InjectChurn already
+                      takes toward whatever pathway it's handed.
+    :module-horizon-days M5b: how many days past this run's own
+                      registration instant (persona/reference-today-
+                      epoch-day) an assigned module's own walk runs
+                      before stopping (`ehr-testing-sim.gmf-interpreter/
+                      run-module`'s own optional `horizon-end-t` bound)
+                      -- REQUIRED to be finite for any real module walk
+                      to terminate (docs/gmf-interpreter.md section 8
+                      item 5's own finding: a vendored module may have
+                      no Terminal state and no Guard to block on).
+                      Ignored entirely when no patient has an assigned
+                      module.
 
   Returns {:ground-truth [event ...] :state-history {patient-id [state
   ...]} :facility .. :providers [materialized-provider ...]}. The
@@ -817,7 +1042,8 @@
   rather than assumed; the engine computes it as a byproduct of the
   loop below because decide needs live world state to make its next
   decision, not because it's a second source of truth."
-  [{:keys [seed patients pathway pathways arrival-gap warm-up-seconds facility providers churn-profile order-profiles persona-config]
+  [{:keys [seed patients pathway pathways arrival-gap warm-up-seconds facility providers churn-profile order-profiles
+           persona-config modules module-assignment module-horizon-days]
     :or {patients 1
          pathway pathway/sample-admission-discharge
          arrival-gap 60
@@ -825,7 +1051,9 @@
          facility config/default-facility
          providers config/default-provider-templates
          order-profiles order-profiles/default-profiles
-         persona-config {}}}]
+         persona-config {}
+         modules []
+         module-horizon-days 90}}]
   {:pre [(some? seed) (pathway/valid? pathway)
          (or (nil? pathways) (pathway/valid-pathways-config? pathways))]}
   (let [rng (Random. ^long seed)
@@ -854,12 +1082,28 @@
         steps-for (if churn-profile
                     (fn [i] (:steps (churn/inject (pathway-for i) churn-profile rng)))
                     (fn [i] (:steps (pathway-for i))))
+        ;; M5b Task 4: module-assignment is resolved eagerly, the SAME
+        ;; point :pathways' own assign-pathway draw already occupies (one
+        ;; more fixed-consumption draw per patient, ONLY when
+        ;; :module-assignment is actually present -- absent entirely,
+        ;; `module-for` draws nothing, byte-identical to pre-M5b (see
+        ;; `run`'s own docstring)). The MODULE WALK itself (persona-
+        ;; dependent -- an unbounded number of draws) stays at :registered
+        ;; decide-time, below, the same place persona sampling already is.
+        modules-by-id (into {} (map (fn [m] [(:id m) m])) modules)
+        module-for (if module-assignment
+                     (fn [i] (get modules-by-id (assign-module rng module-assignment i)))
+                     (fn [_i] nil))
         ;; M4: :registered is prepended to EVERY patient's step queue,
         ;; ahead of whatever InjectChurn produced -- engine-internal,
         ;; never seen by InjectChurn's own applicability oracle (it
         ;; operates on `pathway-for`'s output, before this prepend), the
-        ;; same "not authorable IR" treatment :result-followup gets.
-        registered-steps-for (fn [i] (into [{:type :registered}] (steps-for i)))
+        ;; same "not authorable IR" treatment :result-followup gets. M5b:
+        ;; carries this patient's own resolved module (nil, absent
+        ;; :module-assignment) -- :registered's own decide method is
+        ;; where the actual walk + compile happens (this namespace's own
+        ;; comment there).
+        registered-steps-for (fn [i] (into [{:type :registered :module (module-for i)}] (steps-for i)))
         init-queue (into (sorted-map)
                          (map-indexed
                           (fn [i arrival-t]
@@ -872,6 +1116,7 @@
                     :providers materialized-providers
                     :order-profiles order-profiles
                     :persona-config persona-config
+                    :module-horizon-days module-horizon-days
                     ;; Task 1 (M2b): cancel-family/transfer-in-error decide
                     ;; methods query the log directly for the event they
                     ;; reinstate from (docs/patient-state-model.md's
@@ -909,7 +1154,7 @@
             ;; no-events-after-merged-terminal, not just a check.clj
             ;; invariant asserted after the fact.
             (recur queue' seq-no world ground-truth state-history)
-            (let [{:keys [events advance exhausted schedule-followup]} (decide rng t world patient-id step)]
+            (let [{:keys [events advance exhausted schedule-followup prepend-steps]} (decide rng t world patient-id step)]
               ;; A :rejected decide outcome (an illegal cancel/bed-swap/
               ;; merge -- Task 1's validity-table enforcement) is NOT a
               ;; run-halting condition, unlike :exhausted: it means THIS
@@ -953,8 +1198,17 @@
                                       [(assoc queue' [(:t schedule-followup) seq-no]
                                              (select-keys schedule-followup [:patient-id :steps]))
                                        (inc seq-no)]
-                                      [queue' seq-no])]
-              (if (seq remaining)
-                (recur (assoc queue'' [(+ t advance) seq-no'] {:patient-id patient-id :steps (vec remaining)})
+                                      [queue' seq-no])
+                  ;; M5b Task 4: :registered's own decide call may ask for
+                  ;; compiled module steps to run BEFORE whatever was
+                  ;; already queued (this patient's own authored pathway,
+                  ;; if any) -- spliced onto the FRONT of `remaining`,
+                  ;; never replacing it: module-compiled and authored IR
+                  ;; are both just steps entering the SAME queue (the
+                  ;; pathway-ir union, docs/sim-theory.edn), not two
+                  ;; competing sources.
+                  remaining' (into (vec prepend-steps) remaining)]
+              (if (seq remaining')
+                (recur (assoc queue'' [(+ t advance) seq-no'] {:patient-id patient-id :steps remaining'})
                        (inc seq-no') world'' ground-truth' state-history')
                 (recur queue'' seq-no' world'' ground-truth' state-history')))))))))))

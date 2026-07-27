@@ -23,11 +23,19 @@ events for decide-time rejections (ADR-0012), Milestone M4's
 **Persona** — demographic sampling (name, DOB, sex, address, phone,
 SSN-shaped id) and age-linked payer sampling, folded into every
 patient's `:registered` event, with PID and IN1 segment enrichment —
-and, landed most recently, **site profiles**
-(docs/site-profiles.md): an MSH dialect, PV1-2/PV1-36 code-table
-overrides, and a Z-segment template DSL, all bound at emit time and
-proven invariant to ground truth (two site profiles over one seed
-render the same facts in two accents).
+**site profiles** (docs/site-profiles.md): an MSH dialect, PV1-2/PV1-36
+code-table overrides, and a Z-segment template DSL, all bound at emit
+time and proven invariant to ground truth (two site profiles over one
+seed render the same facts in two accents) — and, landed most
+recently, Milestone M5's **RunModules + CompileTrajectory**
+(docs/gmf-interpreter.md): a GMF (Synthea Generic Module Framework)
+interpreter, the first real vendored module
+(`resources/modules/sinusitis.json`, provenance in its own `NOTICE`),
+and the compiled-trajectory step types it needs
+(`:outpatient-visit`/`:outpatient-visit-end`, `:procedure`,
+`:observation`, `:medication-order`/`:medication-end`) — module
+assignment composes with `:pathways`, both just IR entering the same
+union.
 
 ## Pipeline: now / next / later
 
@@ -41,13 +49,13 @@ render the same facts in two accents).
 ```mermaid
 flowchart LR
     Persona["Persona"]:::built
-    RunModules["RunModules"]:::next
-    CompileTrajectory["CompileTrajectory"]:::planned
+    RunModules["RunModules"]:::built
+    CompileTrajectory["CompileTrajectory"]:::built
     InjectChurn["InjectChurn"]:::built
     Execute["Execute"]:::built
     Check["Check"]:::built
     EmitHL7["EmitHL7"]:::built
-    EmitState["EmitState"]:::planned
+    EmitState["EmitState"]:::next
     Package["Package"]:::planned
     Calibrate["Calibrate"]:::planned
 
@@ -68,18 +76,17 @@ flowchart LR
 own order/result step types and EmitHL7's ORM/ORU cycle (M3), Milestone
 M4's **Persona** — demographics sampling from vendored, hashed tables
 plus a real `payer-pool` catalytic wire, folded into Execute's own step
-queue via the `:registered` event, plus PID/IN1 enrichment — and
+queue via the `:registered` event, plus PID/IN1 enrichment —
 EmitHL7's fourth catalytic, **site-profile** — MSH dialect, code-table
-overrides, Z-segment templates — property-tested and green (273 tests
-/ 716 assertions).
-**Next** (amber): **RunModules**, Milestone M5 — the GMF interpreter
-port, the `gmf-module-set` vendoring-vs-lockfile decision, and
-`CompileTrajectory`. Milestone M5a (landed) built the interpreter
-LIBRARY itself (`ehr-testing-sim.gmf`/`ehr-testing-sim.gmf-interpreter`
-— the module loader, the state-machine walk, and the history/horizon
-two-phase run) against a hand-written fixture module; the stage stays
-amber until M5b wires a real vendored module's trajectory into an
-actual run. **Later** (dashed grey): everything else in the *want*.
+overrides, Z-segment templates — and Milestone M5's **RunModules +
+CompileTrajectory**: a GMF interpreter (`ehr-testing-sim.gmf`/
+`ehr-testing-sim.gmf-interpreter`), the first real vendored module
+(`resources/modules/sinusitis.json`), and the actual persona → module
+walk → compiled-trajectory → IR wiring inside `engine/run` — all
+property-tested and green (350 tests / 863 assertions).
+**Next** (amber): **EmitState**, Milestone M6 — state-document
+rendering from `state-history`, FHIR resources before CDA.
+**Later** (dashed grey): everything else in the *want*.
 
 [`docs/sim-theory-diagram.md`](docs/sim-theory-diagram.md) is the full
 detail view (every resource wire, catalytic input, and the

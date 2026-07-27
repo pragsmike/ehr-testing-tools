@@ -37,24 +37,66 @@
   exempting the placement from the surge-only-when-full invariant."
   [:map [:ward :string] [:bed :string]])
 
+(def Citation
+  "M5b (docs/gmf-interpreter.md section 6, obligation 3 -- provenance):
+  the {:module :state} back-reference a CompileTrajectory-produced IR
+  step carries, riding straight through from the trajectory event it
+  realizes, which itself cites the module/state that produced IT
+  (docs/gmf-interpreter.md section 6, obligation 1) -- the glass-box
+  chain is three links long (module state -> trajectory event ->
+  compiled IR step), and this is the third link. Present ONLY on a
+  compiled step; a hand-authored step was never realized from any
+  trajectory event, so it simply omits this optional field."
+  [:map [:module :string] [:state :keyword]])
+
+(def ConditionAnnotation
+  "M5b: a ConditionOnset/ConditionEnd trajectory event compiles to an
+  ANNOTATION on its enclosing Encounter-mapped step, never a standalone
+  IR step of its own (docs/gmf-interpreter.md section 1's own table --
+  this project's pathway IR has no diagnosis-list step yet). `:event` is
+  which of the pair this is; `:references` mirrors the trajectory
+  event's own (a ConditionEnd's back-reference to its ConditionOnset,
+  by trajectory index -- docs/gmf-interpreter.md section 1). `:codes` is
+  {:optional true}, not required: a ConditionEnd's own codes are
+  resolved from its referenced onset when one exists, but a real
+  vendored module can author that reference via `referenced_by_attribute`
+  rather than a direct state citation (M5b finding, docs/gmf-
+  interpreter.md's own findings section) -- the interpreter doesn't
+  resolve THAT reference shape, so the annotation is left codeless
+  rather than fabricating a concept it was never actually told."
+  [:map
+   [:event [:enum :condition-onset :condition-end]]
+   [:codes {:optional true} [:maybe [:vector Concept]]]
+   [:citation Citation]
+   [:references {:optional true} [:maybe :int]]])
+
 (def Step
   [:multi {:dispatch :type}
    [:admission [:map
                 [:type [:= :admission]]
                 [:location :string]
                 [:reason {:optional true} [:or :string Concept]]
-                [:force-placement {:optional true} ForcePlacement]]]
+                [:force-placement {:optional true} ForcePlacement]
+                ;; M5b: present only on a CompileTrajectory-produced step.
+                [:citation {:optional true} Citation]
+                [:conditions {:optional true} [:vector ConditionAnnotation]]]]
    [:delay [:map
             [:type [:= :delay]]
             ;; minutes (authoring ergonomics, ADR-0011 -- the engine's
             ;; own clock is seconds; it converts minutes -> seconds at
             ;; decide-time, this field's authored unit never changes);
             ;; the engine samples uniformly in [from, to] from its own
-            ;; seeded RNG (determinism guarantee).
+            ;; seeded RNG (determinism guarantee). M5b extends this same
+            ;; rule with a third unit (docs/patient-state-model.md's
+            ;; durations rule): CompileTrajectory's own interpreter-days
+            ;; -> authored-minutes conversion, at the ONE place a day-
+            ;; denominated trajectory gap becomes a compiled :delay --
+            ;; never a fourth engine-side conversion.
             [:from :int]
             [:to :int]]]
    [:discharge [:map
-                [:type [:= :discharge]]]]
+                [:type [:= :discharge]]
+                [:citation {:optional true} Citation]]]
    [:transfer [:map
                [:type [:= :transfer]]
                [:location :string]
@@ -94,7 +136,53 @@
    ;; (just write the order; the result follows automatically) and
    ;; avoids inventing an :order-ref authoring burden a hand-authored
    ;; :result step would need.
-   [:order [:map [:type [:= :order]] [:profile :keyword]]]])
+   [:order [:map [:type [:= :order]] [:profile :keyword]]]
+   ;; M5b: docs/gmf-interpreter.md section 4's outpatient sketch, items
+   ;; 5-7 -- NO :location field (unlike :admission/:transfer): an
+   ;; outpatient encounter occupies no bed, so there is no ward for the
+   ;; allocation ladder to consult and no ward name for an author to
+   ;; supply. Paired explicitly (like :admission/:discharge), never
+   ;; auto-paired the way :order/:result-followup is -- a GMF module's
+   ;; own Encounter/EncounterEnd pair already brackets start and end, so
+   ;; there is no turnaround time to sample.
+   [:outpatient-visit [:map
+                       [:type [:= :outpatient-visit]]
+                       [:reason {:optional true} [:or :string Concept]]
+                       [:citation {:optional true} Citation]
+                       [:conditions {:optional true} [:vector ConditionAnnotation]]]]
+   [:outpatient-visit-end [:map [:type [:= :outpatient-visit-end]] [:citation {:optional true} Citation]]]
+   ;; --- M5b: CompileTrajectory's own new step types (docs/gmf-
+   ;; interpreter.md section 1's table) -- :procedure/:observation/
+   ;; :medication-order/:medication-end. Every one carries :citation
+   ;; (compiled) or omits it (hand-authored) -- these are compile targets
+   ;; first, author-facing IR second; nothing stops a scenario author
+   ;; from writing one directly, the same way :order already works.
+   [:procedure [:map
+                [:type [:= :procedure]]
+                [:codes [:vector Concept]]
+                [:citation {:optional true} Citation]]]
+   [:observation [:map
+                  [:type [:= :observation]]
+                  [:codes [:vector Concept]]
+                  [:value {:optional true} number?]
+                  [:unit {:optional true} :string]
+                  [:citation {:optional true} Citation]]]
+   [:medication-order [:map
+                       [:type [:= :medication-order]]
+                       [:codes [:vector Concept]]
+                       [:citation {:optional true} Citation]]]
+   [:medication-end [:map
+                     [:type [:= :medication-end]]
+                     ;; the compiled :medication-order STEP's own
+                     ;; citation, not a pathway-position index -- glass-
+                     ;; box resolution by module/state, the same
+                     ;; citation-matching mechanism CompileTrajectory
+                     ;; itself uses to find the step to annotate for
+                     ;; ConditionOnset/ConditionEnd (never a positional
+                     ;; index, which churn/other IR transforms could
+                     ;; invalidate by inserting steps around it).
+                     [:order-citation {:optional true} Citation]
+                     [:citation {:optional true} Citation]]]])
 
 (def Pathway
   [:map

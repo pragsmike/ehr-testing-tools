@@ -78,3 +78,38 @@
 
 (deftest order-without-profile-is-invalid
   (is (not (pathway/valid? {:name "t" :steps [{:type :order}]}))))
+
+;; --- M5b: outpatient-visit / outpatient-visit-end (docs/gmf-interpreter.md
+;; section 4's sketch, items 5-7) -- no :location field at all -----------
+
+(deftest outpatient-visit-pair-is-valid-ir-with-and-without-a-reason
+  (is (pathway/valid? {:name "t" :steps [{:type :outpatient-visit} {:type :outpatient-visit-end}]}))
+  (is (pathway/valid? {:name "t" :steps [{:type :outpatient-visit :reason "Sinus congestion"}
+                                          {:type :outpatient-visit-end}]}))
+  (is (pathway/valid? {:name "t" :steps [{:type :outpatient-visit
+                                           :reason {:system :snomed :code "36971009" :display "Sinusitis (disorder)"}}
+                                          {:type :outpatient-visit-end}]})))
+
+;; --- M5b: CompileTrajectory's new step types (docs/gmf-interpreter.md
+;; section 1's table) -- :procedure/:observation/:medication-order/
+;; :medication-end, plus :citation/:conditions on compiled steps -------
+
+(def ^:private a-citation {:module "sinusitis" :state :doctor-visit})
+(def ^:private a-concept {:system :snomed :code "36971009" :display "Sinusitis (disorder)"})
+
+(deftest procedure-step-is-valid-ir-with-and-without-a-citation
+  (is (pathway/valid? {:name "t" :steps [{:type :procedure :codes [a-concept]}]}))
+  (is (pathway/valid? {:name "t" :steps [{:type :procedure :codes [a-concept] :citation a-citation}]})))
+
+(deftest observation-step-is-valid-ir-with-a-sampled-value
+  (is (pathway/valid? {:name "t" :steps [{:type :observation :codes [a-concept] :value 38.2 :unit "Cel"
+                                           :citation a-citation}]})))
+
+(deftest medication-order-and-end-are-valid-ir
+  (is (pathway/valid? {:name "t" :steps [{:type :medication-order :codes [a-concept] :citation a-citation}
+                                          {:type :medication-end :order-citation a-citation :citation a-citation}]})))
+
+(deftest admission-with-a-citation-and-condition-annotations-is-valid-ir
+  (is (pathway/valid? {:name "t" :steps [{:type :admission :location "Renal" :citation a-citation
+                                           :conditions [{:event :condition-onset :codes [a-concept] :citation a-citation}]}]})))
+

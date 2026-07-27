@@ -523,44 +523,129 @@ there was no perturbation to regenerate against, the same by-
 construction guarantee the site-profiles milestone first established
 for its own catalytic.
 
-### M5b — CompileTrajectory + the first vendored module + outpatient steps
+### M5b — CompileTrajectory + the first vendored module + outpatient steps — **landed**
 
-Lands **CompileTrajectory** (`:planned → :built`), the actual vendored
-module (`docs/gmf-interpreter.md`'s appendix recommendation, ADR-0013's
-curation criterion — `resources/modules/` + its `NOTICE` file, real
-provenance this time, not this repo's own hand-curated content), and
-the new IR step types M5a's trajectory events need somewhere to land:
-`:procedure`, `:observation`, `:medication-order`/`:medication-end`,
-and `:outpatient-visit`/`:outpatient-visit-end` (`docs/gmf-
-interpreter.md` §4's own sketch — the new step pair also activates
-`:class :outpatient`'s allocation-free path and the occupancy board's
-scope qualifier, both named there for author ratification). `EmitHL7`
-gains an A04 registry entry for `:outpatient-visit`;
-`:outpatient-visit-end` deliberately gets none, the same "real
-ground-truth event, no wire message" shape `:step-rejected` (ADR-0012)
-already established. This is also where end-to-end validation against
-a real vendored module actually happens — a hand-written fixture
-(M5a) proves the interpreter's own mechanics; a real Synthea module
-proves the whole pipeline against content this project didn't author.
+Lands **CompileTrajectory** (`:planned → :built`, `ehr-testing-sim.
+compile-trajectory`), the first real vendored module
+(`resources/modules/sinusitis.json` + its `NOTICE` provenance record —
+upstream URL, commit SHA `7e08387c68a7f0e21d13076609a159fd473fc902`,
+SHA-256, retrieval date), the new IR step types M5a's trajectory events
+needed somewhere to land (`:procedure`, `:observation`,
+`:medication-order`/`:medication-end`, `:outpatient-visit`/
+`:outpatient-visit-end`), and the actual persona → `run-module` →
+CompileTrajectory → IR wiring inside `ehr-testing-sim.engine/run`'s own
+`:registered` decide method — the flip `docs/gmf-interpreter.md`
+section 7 named as M5b's own job, not M5a's. 350 tests / 863 assertions
+green (up from the M5a baseline 273/716), coverage 96.37%/98.30% (up
+from 96.00%/98.18%). The pinned regression fixture
+(`test/ehr_testing_sim/fixtures/pinned_seed_42_patients_5.edn`) is
+UNTOUCHED — `:modules`/`:module-assignment` absent entirely (the
+fixture's own config) draws no new RNG and carries no new keys on any
+`:registered` event, the same by-construction guarantee every opt-in
+addition since M2b has established.
+
+**Six real findings, surfaced by running the ratified recommendation
+against the REAL loader/interpreter/compiler for the first time**
+(`docs/gmf-interpreter.md` section 8 has the full account of each):
+the loader's all-or-nothing deferred-state gate was stricter than the
+appendix's own prose assumed (`Device`/`DeviceEnd` join v1 as
+consumed-internally states, like `Simple`); a real module with no
+top-level `:remarks` broke the loader's own schema validation (fixed —
+the M5a fixture always had one, so this path was never exercised); a
+vendored module can carry a non-string JSON code value
+(`normalize-code` now coerces); the condition-vocabulary gap on
+`sinusitis.json`'s own MANDATORY post-encounter path (`Active
+Condition`/`Active Medication`/`And`) was bigger than the appendix's
+own survey characterized (all three join v1's condition vocabulary as
+log-query predicates, architecturally the same shape `PriorState`
+already established; `Active Allergy` is a documented, always-false
+simplification — no allergy concept exists anywhere in this project's
+Persona); `sinusitis.json` has no `Terminal` state at all (real Synthea
+modules of this shape run for a lifetime under Synthea's own tick
+engine) — resolved by making a bounded `:module-horizon-days` a
+load-bearing REQUIREMENT of real engine wiring, never an unbounded
+`run-module` call; and `ConditionEnd`'s own `referenced_by_attribute`
+reference shape (harmless to the interpreter's own walk, but left
+CompileTrajectory's own annotation codeless — `:codes` is now
+`{:optional true}` on `ehr-testing-sim.pathway/ConditionAnnotation`).
+
+**A seventh finding, surfaced by CompileTrajectory itself, not the
+loader.** `sinusitis.json`'s own `Potential_Onset` loop recurs across a
+patient's WHOLE life — compiling every recurrence would mint a second
+`:admission`/`:outpatient-visit` for an already-`:discharged`
+patient-id, illegal by this project's own event-validity table. This
+project's own encounter-horizon scope (ADR-0007 point 3: "a single
+encounter... not a patient's lifelong longitudinal history") is now a
+real compile-time law: CompileTrajectory compiles through the end of
+the FIRST horizon-phase encounter, then stops — everything after is
+out of this run's own scope, a fact the underlying (uncompiled)
+clinical-trajectory still carries in full, never silently invented or
+duplicated.
+
+**CompileTrajectory's own shape.** Encounter/EncounterEnd map to
+`:outpatient-visit`(-end) or `:admission`/`:discharge` by encounter
+class (`:emergency`/`:inpatient` target this run's own first `:ed`/
+`:inpatient`-class ward — a GMF module names a class, never a specific
+hospital ward). Procedure/Observation/MedicationOrder/MedicationEnd
+each compile to their own new standalone step, carrying `:citation`
+(the third link of the module-state → trajectory-event → IR-step
+glass-box chain, `docs/gmf-interpreter.md` section 6 obligation 3).
+ConditionOnset/ConditionEnd compile to an ANNOTATION on the enclosing
+Encounter-mapped step's own `:conditions` vector, never a step of their
+own (section 1's table); no open encounter to attach to (dropped
+pre-horizon, or genuinely none) is a log-only fact, the same shape
+`:step-rejected` already established. Pre-horizon ConditionOnset/
+ConditionEnd/MedicationOrder/MedicationEnd become REGISTRATION-TIME
+facts (ratified item 5) riding the engine's own `:registered` event
+(`:pre-horizon-facts`); pre-horizon Encounter/Procedure/Observation are
+dropped outright (section 3's own "no operational trajectory event for
+the encounter machinery" during history). The day → minutes conversion
+(`docs/patient-state-model.md`'s durations rule, extended with its own
+day clause) happens at exactly one point, bridging gaps between
+compiled steps with a deterministic `:delay`.
+
+**End-to-end wiring.** `ehr-testing-sim.engine/config-keys` gains
+`:modules` (already-loaded module maps — `ehr-testing-sim.run`'s own
+job to resolve names against `resources/modules/`, engine.clj does no
+file I/O of its own), `:module-assignment` (`ehr-testing-sim.gmf/
+ModulesConfig` — the SAME weighted-pool/explicit-ordinal shape
+`:pathways` already establishes, via the new `assign-module`), and
+`:module-horizon-days`. A patient's own compiled module content is
+PREPENDED onto whatever `:pathway`/`:pathways` already queued for
+them — both are just IR entering the SAME pathway-ir union, never a
+replacement; a caller wanting module-only patients passes an explicit
+empty pathway (documented in `run`'s own docstring, discovered by this
+session's own end-to-end property test). `participant-ids-exist-in-run`
+broadened from "proof via `:admission`/`:outpatient-visit`" to "proof
+via `:registered` alone" — a module-assigned patient can legitimately
+have no operational encounter at all inside this run's own horizon
+window, a real gap M5b's own property testing surfaced, not a
+module-specific carve-out.
 
 Co-landing invariants: clinical-content-preserving compilation (every
-trajectory event maps to at least one IR step, none dropped or
-reordered against clinical causality — `docs/gmf-interpreter.md` §1's
-table is the per-state-type mapping this invariant checks against);
-appends-provenance (every compiled IR step cites the trajectory event
-it realizes); `outpatient-visit-only-when-new`,
-`outpatient-patients-occupy-no-bed`, and the occupancy board's
-inpatient/ED-scoped consistency law (`docs/gmf-interpreter.md` §4).
+trajectory event maps to at least one IR step or a documented drop —
+`docs/gmf-interpreter.md` §1's table is the per-state-type mapping this
+invariant checks against, property-tested against both the M5a fixture
+and the real vendored module); appends-provenance (every compiled IR
+step cites the trajectory event it realizes); `outpatient-visit-only-
+when-new`, `outpatient-patients-occupy-no-bed`,
+`clinical-content-only-when-admitted` (`:procedure`/`:observation`/
+`:medication-order`), `medication-end-references-existing-order-and-
+follows-it-in-time`, and the occupancy board's inpatient/ED-scoped
+consistency law (`docs/gmf-interpreter.md` §4). `mixed-authored-and-
+compiled-run-satisfies-the-full-invariant-catalog` (150 trials) proves
+the theory's own central claim: authored pathways and compiled
+trajectories are both just IR entering the union.
 
 **Medications, M5b note.** An OHDSI evaluation found Synthea's own
 medication data unreliable without its separate Medication
 Diversification Tool, citing limited model diversity as the root cause
 (`docs/research/SimHospital-Synthea-limitations-considered.md` §4.3,
-Wagner and Blacketer). Whenever medications land in this project
-(M5b's `:medication-order`/`:medication-end` or later), single-source
-distributions are expected to need the same kind of diversification
-step — recorded now so this isn't relearned the hard way once real
-medication content exists here.
+Wagner and Blacketer). Now that `:medication-order`/`:medication-end`
+carry real vendored content, single-source distributions are expected
+to need the same kind of diversification step whenever a second
+medication-bearing module lands — recorded again here, not yet acted
+on (only one module is vendored).
 
 **No hidden modules (`sim-theory.md`'s IR-transforms-as-composition-
 layer note), governing both sub-milestones.** Synthea's built-in Java
@@ -574,7 +659,16 @@ established, not a special-cased always-on pass a config author has no
 way to see or disable. `docs/gmf-interpreter.md` §5's module-namespaced
 `:attributes` discipline is this law's concrete extension into module
 *data*, not just module *execution* — named here so a future session
-reads both halves as one commitment, not two.
+reads both halves as one commitment, not two. M5b's own `:modules`
+config key is exactly this discipline applied to module ASSIGNMENT:
+listable (`engine/config-keys`), opt-in (absent means untouched), never
+an invisible always-on pass.
+
+**Note for the author: the tools-side gate-loop baseline review is now
+FIVE deltas behind** (M3, M4, site-profiles, and now M5b's own A04/
+outpatient traffic and module-driven ORU/ADT content) — the
+tools-side review procedure named as genuinely due at the site-profiles
+milestone remains genuinely due, more so now.
 
 ## M6 — EmitState (FHIR snapshots first); emitter-coherence property
 

@@ -42,7 +42,26 @@
      this session's own edit caused. Fixed this session: the standalone
      file now matches this block exactly.
      mismatch). Confirmed, not merely assumed, before regenerating with
-     this milestone's own addition on top. -->
+     this milestone's own addition on top.
+
+     M5B NOTE: this session's own sim-theory.edn edit was ALSO status-
+     only for diagram purposes -- :trajectory/:compile flipped
+     :planned -> :built and their own :contract strings grew, but
+     RunModules' catalytic set (gmf-module-set/gmf-interpreter) and
+     CompileTrajectory's inputs/outputs (clinical-trajectory in,
+     compiled-pathway out, feeding UnionPathwayIr) were both already
+     declared before this session -- no node, wire, or catalytic input
+     changed, by the same argument the M5-prep session already made for
+     its own prose-only edit. UNLIKE that session and the site-profiles
+     session, this session's own environment did NOT have Python
+     available (this session ran from a native Windows shell, not WSL;
+     AGENTS.md's own WSL-recipe note is about git specifically, not a
+     blanket guarantee) -- so this note records the argument for why no
+     regeneration is needed, not a re-confirmed byte-identical diff the
+     way the two prior sessions each recorded. A future session with
+     Python (or a WSL shell) available should actually run the
+     regeneration once to confirm this argument rather than continue
+     trusting it by inspection alone. -->
 
 # The simulator's resource theory — diagram
 

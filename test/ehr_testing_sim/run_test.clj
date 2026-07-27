@@ -64,7 +64,9 @@
    :facility ::facility-sentinel
    :providers ::providers-sentinel
    :churn-profile {::churn-profile-sentinel true}
-   :order-profiles ::order-profiles-sentinel})
+   :order-profiles ::order-profiles-sentinel
+   :module-assignment ::module-assignment-sentinel
+   :module-horizon-days ::module-horizon-days-sentinel})
 
 (deftest run-command-forwards-every-engine-config-key
   (testing "the FULL ehr-testing-sim.engine/config-keys set reaches
@@ -84,6 +86,24 @@
               "the :churn-profile sentinel must survive run-command's own default-merge")
           (is (= (get sentinel-opts k) (get @captured k))
               (str k " was not forwarded from run-command to engine/run")))))))
+
+;; --- M5b: :modules (names) -> loaded module maps -------------------------
+
+(deftest run-command-resolves-module-names-against-the-real-vendored-directory
+  (testing "the config/CLI-facing :modules (names) translates to engine/
+            run's own :modules (already-loaded module maps) -- the SAME
+            kind of translation :churn/:churn-profile already does"
+    (let [captured (atom nil)
+          stub-engine-run (fn [engine-opts] (reset! captured engine-opts) {:ground-truth [] :facility nil :providers nil})]
+      (run/run-command {:seed 1 :modules ["sinusitis"]} {:engine-run-fn stub-engine-run})
+      (is (= 1 (count (:modules @captured))))
+      (is (= "sinusitis" (:id (first (:modules @captured))))))))
+
+(deftest run-command-surfaces-an-unresolvable-module-name-as-a-structured-error
+  (let [r (run/run-command {:seed 1 :modules ["not-a-real-module"]})]
+    (is (result/error? r))
+    (is (= :module-not-found (:category r)))
+    (is (= "not-a-real-module" (:module (:payload r))))))
 
 (deftest run-command-config-file-passthrough
   (testing "M4 Task 0: :config (a path to an EDN file) supplies the

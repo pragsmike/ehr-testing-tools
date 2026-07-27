@@ -127,10 +127,100 @@
     (is (seq (check/participant-ids-exist-in-run log)))))
 
 (deftest participant-ids-exist-in-run-holds-for-legit-log
-  (let [log [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
+  (let [log [{:event :registered :t 0 :participants (subject "P1")}
+             {:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
               :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
              {:event :discharge :t 10 :participants (subject "P1")}]]
     (is (empty? (check/participant-ids-exist-in-run log)))))
+
+(deftest participant-ids-exist-in-run-recognizes-registered-alone-as-proof
+  (testing "M5b: a module-assigned patient can legitimately have NO
+            operational encounter at all within this run's own horizon
+            (their disease process may never produce one in the
+            configured window) -- :registered is the one event type
+            EVERY real patient this run creates always gets (M4), so it
+            is sufficient proof on its own, without requiring an
+            :admission/:outpatient-visit that may simply never come."
+    (let [log [{:event :registered :t 0 :participants (subject "P1")}]]
+      (is (empty? (check/participant-ids-exist-in-run log))))))
+
+(deftest participant-ids-exist-in-run-recognizes-an-outpatient-visit-as-proof
+  (testing "an outpatient patient never gets an :admission event at all --
+            :registered (M5b's own broadened proof) covers it uniformly"
+    (let [log [{:event :registered :t 0 :participants (subject "P1")}
+               {:event :outpatient-visit :t 0 :participants (subject "P1")}
+               {:event :outpatient-visit-end :t 10 :participants (subject "P1")}]]
+      (is (empty? (check/participant-ids-exist-in-run log))))))
+
+;; --- M5b: outpatient-visit / outpatient-visit-end -------------------------
+
+(deftest outpatient-visit-only-when-new-detects-a-double-visit
+  (let [log [{:event :outpatient-visit :t 0 :participants (subject "P1")}
+             {:event :outpatient-visit :t 10 :participants (subject "P1")}]]
+    (is (seq (check/outpatient-visit-only-when-new log)))))
+
+(deftest outpatient-visit-only-when-new-holds-for-legit-log
+  (is (empty? (check/outpatient-visit-only-when-new
+               [{:event :outpatient-visit :t 0 :participants (subject "P1")}
+                {:event :outpatient-visit-end :t 10 :participants (subject "P1")}]))))
+
+(deftest admitted-occupies-one-slot-does-not-flag-a-nil-location-outpatient-visit
+  (testing "item 6's conditional validity row: :location = nil is LEGAL
+            exactly when :class = :outpatient -- the named exception to
+            'never nil-bed while admitted'"
+    (is (empty? (check/admitted-occupies-one-slot
+                 [{:event :outpatient-visit :t 0 :participants (subject "P1")}])))))
+
+(deftest outpatient-patients-occupy-no-bed-holds-for-legit-log
+  (is (empty? (check/outpatient-patients-occupy-no-bed
+               [{:event :outpatient-visit :t 0 :participants (subject "P1")}]))))
+
+;; --- M5b: :procedure/:observation/:medication-order/:medication-end ------
+
+(def ^:private a-citation {:module "sinusitis" :state :doctor-visit})
+(def ^:private a-concept {:system :snomed :code "36971009" :display "Sinusitis (disorder)"})
+
+(deftest clinical-content-only-when-admitted-detects-a-procedure-before-admission
+  (let [log [{:event :procedure :t 0 :codes [a-concept] :participants (subject "P1")}]]
+    (is (seq (check/clinical-content-only-when-admitted log)))))
+
+(deftest clinical-content-only-when-admitted-holds-for-legit-log
+  (let [log [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
+              :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
+             {:event :procedure :t 5 :codes [a-concept] :participants (subject "P1")}
+             {:event :observation :t 6 :codes [a-concept] :participants (subject "P1")}
+             {:event :medication-order :t 7 :codes [a-concept] :participants (subject "P1")}]]
+    (is (empty? (check/clinical-content-only-when-admitted log)))))
+
+(deftest medication-end-references-existing-order-and-follows-it-in-time-detects-phantom-order
+  (let [log [{:event :medication-end :t 0 :order-event-id 99 :participants (subject "P1")}]]
+    (is (seq (check/medication-end-references-existing-order-and-follows-it-in-time log)))))
+
+(deftest medication-end-references-existing-order-and-follows-it-in-time-holds-for-legit-log
+  (let [log [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
+              :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
+             {:event :medication-order :t 5 :codes [a-concept] :participants (subject "P1")}
+             {:event :medication-end :t 10 :order-event-id 1 :participants (subject "P1")}]]
+    (is (empty? (check/medication-end-references-existing-order-and-follows-it-in-time log)))))
+
+(deftest engine-run-with-compiled-clinical-steps-satisfies-check-all
+  (let [pathway {:name "clinical" :steps [{:type :admission :location "Renal"}
+                                          {:type :procedure :codes [a-concept]}
+                                          {:type :observation :codes [a-concept] :value 38.2 :unit "Cel"}
+                                          {:type :medication-order :codes [a-concept] :citation a-citation}
+                                          {:type :medication-end :order-citation a-citation}
+                                          {:type :discharge}]}
+        {:keys [ground-truth] :as result} (engine/run {:seed 5 :patients 2 :pathways [{:pathway pathway :weight 1}]})]
+    (is (result/ok? (check/check-all ground-truth (:facility result))))))
+
+(deftest outpatient-patients-occupy-no-bed-detects-a-bed-assigned-to-an-outpatient
+  (testing "structurally shouldn't happen (no decide path sets :location for
+            :outpatient-visit), but this invariant checks any log directly,
+            independent of whether decide itself enforces it"
+    (let [log [{:event :outpatient-visit :t 0 :participants (subject "P1")}
+               {:event :transfer :t 5 :home-ward "Renal" :participants (subject "P1")
+                :from nil :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}]]
+      (is (seq (check/outpatient-patients-occupy-no-bed log))))))
 
 ;; --- ADR-0011: the warm-up mark -------------------------------------------
 

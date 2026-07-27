@@ -122,7 +122,7 @@
       (let [m (first members) more (rest members) acc' (+ acc (double (:weight m)))]
         (if (or (empty? more) (< target acc')) m (recur more acc'))))))
 
-(def ^:private reference-birth-year
+(def reference-birth-year
   "The fixed, documented anchor 'today' is relative to when computing a
   birth year from a sampled age -- deliberately NOT wall-clock (the
   determinism law: no unseeded entropy anywhere in the output path).
@@ -130,8 +130,30 @@
   year, so DOB and rendered message timestamps stay mutually plausible
   for a run using the default reference date; a caller who overrides
   :reference-date and needs exact DOB-vs-encounter-date coherence is
-  out of this milestone's scope (recorded here, not silently assumed)."
+  out of this milestone's scope (recorded here, not silently assumed).
+  Public as of M5b: ehr-testing-sim.engine's own :registered decide
+  method needs this SAME anchor as `docs/gmf-interpreter.md`'s own
+  `registration-t` -- 'that patient's own :registered event time' is,
+  in THIS project's calendar terms, this fixed reference date, the same
+  one every persona's own age is already computed against -- rather
+  than inventing a second, potentially-drifting copy of the constant."
   2024)
+
+(defn reference-today-epoch-day
+  "The epoch-day (java.time.LocalDate/toEpochDay) of this run's own fixed
+  calendar anchor -- `reference-birth-year` PLUS ONE, Jan 1, deliberately
+  NOT `reference-birth-year` itself: an age-0 persona's own DOB is
+  sampled ANYWHERE within `reference-birth-year` (month/day are free,
+  `persona`'s own docstring), so a same-year anchor could fall BEFORE a
+  real sampled DOB (a negative-age nonsense for the GMF interpreter's
+  own history-phase walk, which assumes `registration-t >= dob-epoch-
+  day`) -- one full year clears every possible DOB `persona` can ever
+  produce, for any age from 0 up. Every persona's DOB is computed
+  relative to `reference-birth-year`, so THIS date is also the correct,
+  patient-independent `registration-t` for a real engine run's own GMF
+  module walk (M5b, ehr-testing-sim.engine's :registered decide method)."
+  []
+  (.toEpochDay (java.time.LocalDate/of ^int (inc reference-birth-year) 1 1)))
 
 (def ^:private decades
   "The birth decades resources/demographics/given-names.edn actually

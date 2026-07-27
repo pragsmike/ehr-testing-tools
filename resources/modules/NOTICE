@@ -11,36 +11,42 @@ commit SHA it was fetched at, and a SHA-256 hash of the vendored file
 as fetched -- the concrete meaning of "hashed" in target 3's own name
 (docs/sim-theory.md's Catalytic resolution table).
 
-THIS FILE IS EMPTY OF ENTRIES AS OF THIS SESSION (2026-07-27, the
-M5-prep docs/ADR session that wrote ADR-0013 and
-docs/gmf-interpreter.md). No module JSON has been copied into this
-directory yet -- this session's own scope is design capture and ADR
-ratification prep, not vendoring; AGENTS.md's "do not invent facts
-about upstream sources" applies to provenance records the same way it
-applies to prose, so this file records real fetches only, never a
-placeholder entry for content that hasn't actually been copied in.
+**M5b (this session, 2026-07-27): the first real entry lands.**
+`sinusitis.json` -- the module `docs/gmf-interpreter.md`'s own
+candidate-module survey recommended (item 4 of that document's
+ratification record) -- is vendored below, verbatim, at the SAME pinned
+commit the survey itself read against (re-confirmed current at
+vendoring time; no re-fetch against a later `master` was needed).
 
-What this session DID do, relevant to whoever adds the first real
-entry below: docs/gmf-interpreter.md's own candidate-module survey
-read three real Synthea modules in full against commit
+| Filename | Upstream URL | Commit SHA | SHA-256 | Retrieved |
+|---|---|---|---|---|
+| `sinusitis.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/sinusitis.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `3f321ffadebc0731f10b6d1a59b603862fa079bd203fd7cf7d43ea230c79d0af` | 2026-07-27 |
+
+License: Apache-2.0 (`synthetichealth/synthea`, `notes/facts-register.md`
+F2) -- the same license terms already govern every Synthea-derived
+source this project cites. The file on disk is byte-verbatim against
+the URL above (re-verified: `sha256sum resources/modules/sinusitis.json`
+equals the table's own hash) -- no reformatting, no re-indentation, no
+correction of the upstream file's own idiosyncrasies (it carries at
+least one unquoted-JSON--number code value and a `Device`/`DeviceEnd`
+state pair outside this project's ORIGINAL v1 scope; see
+`docs/gmf-interpreter.md` section 1's own updated table and this
+session's M5b findings for how the interpreter -- not the vendored
+file -- was extended to carry it).
+
+**Prior session's own placeholder text, superseded by the table above
+but left standing per this project's append-don't-erase convention for
+resolved questions (the same treatment `docs/sim-theory.md`'s own
+resolved open questions get):** this file was previously empty of
+entries (the M5-prep docs/ADR session, 2026-07-27, scope was design
+capture only). That session's own candidate-module survey read three
+real Synthea modules in full against the SAME commit
 `7e08387c68a7f0e21d13076609a159fd473fc902` of
 github.com/synthetichealth/synthea (`master`, fetched 2026-07-27) --
 sinusitis.json, ear_infections.json, and sore_throat.json -- and
-recommends sinusitis.json as the first module to vendor under
-ADR-0013 point 4's curation criterion, FLAGGED FOR AUTHOR
-RATIFICATION, not yet acted on. Whoever lands Milestone M5b (the
-vendoring itself, per .agents/plans/roadmap.md's M5a/M5b split) should
-re-confirm the recommended module and commit SHA are still current
-(upstream `master` moves), then:
-
-1. Fetch the ratified module's JSON at whatever commit SHA is current
-   at vendoring time (not necessarily the SHA this notice's survey
-   used, if time has passed and upstream has moved).
-2. Copy it into this directory unchanged.
-3. Add a row to the (not-yet-existing) provenance table below:
-   filename | upstream URL (raw.githubusercontent.com/synthetichealth/
-   synthea/<sha>/src/main/resources/modules/<name>.json) | commit SHA |
-   SHA-256 of the vendored file | date fetched.
+recommended sinusitis.json as the first module to vendor under
+ADR-0013 point 4's curation criterion. That recommendation is what this
+session acted on.
 
 Recorded: 2026-07-27. All content this directory will ever hold is
 Apache-2.0 upstream module data or this project's own hand-authored

@@ -24,12 +24,41 @@
   invariant, so a run always self-checks against the SAME window it
   was actually generated with."
   (:require [clojure.edn :as edn]
+            [clojure.java.io :as io]
             [ehr-testing-sim.engine :as engine]
             [ehr-testing-sim.check :as check]
             [ehr-testing-sim.churn :as churn]
             [ehr-testing-sim.emit-hl7 :as emit-hl7]
+            [ehr-testing-sim.gmf :as gmf]
             [ehr-testing-sim.manifest :as manifest]
             [ehr-testing-sim.result :as result]))
+
+(defn- resolve-modules
+  "M5b: `:modules` at the config/CLI-facing layer is a vector of NAME
+  STRINGS (resolving to `resources/modules/<name>.json` -- test code may
+  point at other fixture paths via a lower-level API, per this
+  function's own callers, but `run-command`'s own surface only ever
+  resolves the real vendored directory); `ehr-testing-sim.engine/run`'s
+  OWN `:modules` key wants already-loaded module maps instead (engine.clj
+  does no file I/O of its own, the same layering `:facility`/`:providers`
+  already follow). This is THIS namespace's own translation step, the
+  same role `:churn`/`:churn-profile`'s own translation already plays.
+  Result-not-throw: a missing or invalid module name in a caller's own
+  config is an operational error (`:module-not-found`/
+  `:module-load-failed`), never a thrown exception."
+  [names]
+  (loop [names names acc []]
+    (if (empty? names)
+      (result/ok acc)
+      (let [module-name (first names)
+            res (io/resource (str "modules/" module-name ".json"))]
+        (if (nil? res)
+          (result/error :module-not-found {:module module-name})
+          (let [loaded (gmf/load-module module-name (slurp res))]
+            (if (result/ok? loaded)
+              (recur (rest names) (conj acc (:payload loaded)))
+              (result/error :module-load-failed
+                            {:module module-name :category (:category loaded) :payload (:payload loaded)}))))))))
 
 (defn- merge-config-file
   "M4 Task 0: `:config` (a path to an EDN file) supplies the data-heavy
@@ -89,6 +118,16 @@
   do (no `--site-profile` flag exists), never the plumbing-completeness
   test's own engine-facing set.
 
+  M5b: `:modules` (a vector of NAME STRINGS, resolving against
+  `resources/modules/<name>.json` -- `resolve-modules`'s own docstring)
+  and `:module-assignment`/`:module-horizon-days` (forwarded verbatim,
+  no translation needed) ride `:config` the same passthrough way
+  `:pathway`/`:order-profiles` already do (no `--modules` flag exists;
+  this is data-heavy config, not a bare toggle). A name that fails to
+  resolve or load is `:module-not-found`/`:module-load-failed` --
+  surfaced BEFORE `engine/run` is ever called, the same
+  fail-fast-on-a-bad-config posture `--seed` missing already gets.
+
   `opts`'s second, injectable arity follows the SAME -fn convention
   `ehr-testing-sim.cli/dispatch-action` already uses (`:engine-run-fn`,
   defaulting to the real `ehr-testing-sim.engine/run`) -- the seam the
@@ -97,11 +136,18 @@
   ([opts] (run-command opts {}))
   ([raw-opts {:keys [engine-run-fn] :or {engine-run-fn engine/run}}]
    (let [opts (merge-config-file raw-opts)
-         {:keys [seed patients emit reference-date utc-offset warm-up-seconds churn churn-profile site-profile]} opts]
-     (if (nil? seed)
+         {:keys [seed patients emit reference-date utc-offset warm-up-seconds churn churn-profile site-profile modules]} opts
+         resolved-modules (when modules (resolve-modules modules))]
+     (cond
+       (nil? seed)
        (result/error :missing-required-opt
                      {:message "--seed is required (determinism is a feature, not a default)"
                       :opt :seed})
+
+       (and resolved-modules (not (result/ok? resolved-modules)))
+       resolved-modules
+
+       :else
        (let [reference-date (or reference-date emit-hl7/default-reference-date)
              utc-offset (or utc-offset emit-hl7/default-utc-offset)
              warm-up-seconds (or warm-up-seconds 0)
@@ -111,9 +157,10 @@
                                        :else nil)
              engine-params (-> (select-keys opts [:patients :arrival-gap :warm-up-seconds])
                                 (assoc :reference-date reference-date :utc-offset utc-offset))
-             {:keys [ground-truth facility providers exhausted]}
-             (engine-run-fn (merge (select-keys opts engine/config-keys)
-                                   {:seed seed :churn-profile effective-churn-profile}))
+             engine-opts (cond-> (merge (select-keys opts engine/config-keys)
+                                        {:seed seed :churn-profile effective-churn-profile})
+                           resolved-modules (assoc :modules (:payload resolved-modules)))
+             {:keys [ground-truth facility providers exhausted]} (engine-run-fn engine-opts)
              checked (when-not exhausted (check/check-all ground-truth facility warm-up-seconds))]
          (cond
            exhausted (result/error :capacity-exhausted exhausted)

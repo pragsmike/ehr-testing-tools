@@ -20,6 +20,7 @@
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [ehr-testing-sim.engine :as engine]
+            [ehr-testing-sim.gmf :as gmf]
             [ehr-testing-sim.pathway :as pathway]
             [ehr-testing-sim.order-profiles :as order-profiles]
             [ehr-testing-sim.check :as check]
@@ -667,6 +668,238 @@
                                              {:type :discharge}]}
           {:keys [ground-truth]} (engine/run {:seed seed :patients 3 :pathways [{:pathway pathway :weight 1}]})]
       (result/ok? (check/check-all ground-truth)))))
+
+;; --- M5b: :outpatient-visit / :outpatient-visit-end (docs/gmf-interpreter.md
+;; section 4's sketch, items 5-7) -------------------------------------------
+
+(deftest outpatient-visit-admits-with-no-bed-no-ward-no-allocation-ladder
+  (testing "item 5: no ehr-testing-sim.facility/allocate call at all --
+            :status :new -> :admitted, :class :outpatient, :location stays
+            nil for the visit's duration"
+    (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+          {:keys [events]} (engine/decide (Random. 1) 0 world0 "P1"
+                                          {:type :outpatient-visit :reason "Sinus congestion"})
+          world1 (fold-events world0 events)
+          p (get-in world1 [:patients "P1"])]
+      (is (= 1 (count events)))
+      (is (= :outpatient-visit (:event (first events))))
+      (is (= [{:patient-id "P1" :role :subject}] (:participants (first events))))
+      (is (= :admitted (:status p)))
+      (is (= :outpatient (:class p)))
+      (is (nil? (:location p)))
+      (is (some? (:attending p)) "an outpatient visit still gets an attending, uniformly chosen (no ward to filter by)"))))
+
+(deftest outpatient-visit-end-discharges-without-touching-location
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+        {v1-events :events} (engine/decide (Random. 1) 0 world0 "P1" {:type :outpatient-visit})
+        world1 (fold-events world0 v1-events)
+        {end-events :events} (engine/decide (Random. 1) 30 world1 "P1" {:type :outpatient-visit-end})
+        world2 (fold-events world1 end-events)
+        p (get-in world2 [:patients "P1"])]
+    (is (= 1 (count end-events)))
+    (is (= :outpatient-visit-end (:event (first end-events))))
+    (is (= :discharged (:status p)))
+    (is (nil? (:location p)))
+    (is (= :outpatient (:class p)) "class persists past discharge, same as every other class today")))
+
+(deftest outpatient-visit-decide-is-deterministic
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})]
+    (is (= (engine/decide (Random. 42) 0 world0 "P1" {:type :outpatient-visit})
+           (engine/decide (Random. 42) 0 world0 "P1" {:type :outpatient-visit})))))
+
+(deftest outpatient-visit-round-trips-through-the-real-run-loop-and-satisfies-the-catalog
+  (let [pathway {:name "outpatient" :steps [{:type :outpatient-visit :reason "Sinus congestion"}
+                                            {:type :delay :from 30 :to 30}
+                                            {:type :outpatient-visit-end}]}
+        {:keys [ground-truth] :as result} (engine/run {:seed 11 :patients 2 :pathways [{:pathway pathway :weight 1}]})]
+    (is (= [:registered :outpatient-visit :outpatient-visit-end]
+           (mapv :event (engine/events-for-patient ground-truth (engine/patient-id-for 11 0)))))
+    (is (result/ok? (check/check-all ground-truth (:facility result))))))
+
+(defspec outpatient-visits-never-occupy-a-bed-for-any-seed 150
+  (prop/for-all [seed gen/large-integer]
+    (let [pathway {:name "outpatient" :steps [{:type :outpatient-visit}
+                                              {:type :delay :from 10 :to 30}
+                                              {:type :outpatient-visit-end}]}
+          {:keys [ground-truth]} (engine/run {:seed seed :patients 3 :pathways [{:pathway pathway :weight 1}]})]
+      (result/ok? (check/check-all ground-truth)))))
+
+;; --- M5b: CompileTrajectory's new ground-truth event types, and
+;; citation/conditions passthrough for glass-box traceability ------------
+
+(def ^:private a-citation {:module "sinusitis" :state :doctor-visit})
+(def ^:private a-concept {:system :snomed :code "36971009" :display "Sinusitis (disorder)"})
+
+(deftest admission-carries-a-compiled-citation-and-condition-annotations-into-ground-truth
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+        conditions [{:event :condition-onset :codes [a-concept] :citation a-citation}]
+        {:keys [events]} (engine/decide (Random. 1) 0 world0 "P1"
+                                        {:type :admission :location "Renal"
+                                         :citation a-citation :conditions conditions})]
+    (is (= a-citation (:citation (first events))))
+    (is (= conditions (:conditions (first events))))))
+
+(deftest admission-with-no-citation-carries-none-byte-identical-to-pre-m5b
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+        {:keys [events]} (engine/decide (Random. 1) 0 world0 "P1" {:type :admission :location "Renal"})]
+    (is (not (contains? (first events) :citation)))
+    (is (not (contains? (first events) :conditions)))))
+
+(deftest procedure-decide-emits-a-log-only-fact-with-codes-and-citation
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+        world1 (admit world0 0 "P1" "Renal")
+        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1"
+                                        {:type :procedure :codes [a-concept] :citation a-citation})]
+    (is (= 1 (count events)))
+    (is (= :procedure (:event (first events))))
+    (is (= [a-concept] (:codes (first events))))
+    (is (= a-citation (:citation (first events))))
+    (is (= [{:patient-id "P1" :role :subject}] (:participants (first events))))))
+
+(deftest observation-decide-carries-value-and-unit-through
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+        world1 (admit world0 0 "P1" "Renal")
+        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1"
+                                        {:type :observation :codes [a-concept] :value 38.2 :unit "Cel"
+                                         :citation a-citation})]
+    (is (= :observation (:event (first events))))
+    (is (= 38.2 (:value (first events))))
+    (is (= "Cel" (:unit (first events))))))
+
+(deftest medication-order-then-end-references-the-order-by-citation-match
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+        world1 (admit world0 0 "P1" "Renal")
+        {order-events :events} (engine/decide (Random. 1) 10 world1 "P1"
+                                              {:type :medication-order :codes [a-concept] :citation a-citation})
+        world2 (fold-events world1 order-events)
+        {end-events :events} (engine/decide (Random. 1) 20 world2 "P1"
+                                            {:type :medication-end :order-citation a-citation})]
+    (is (= :medication-order (:event (first order-events))))
+    (is (= :medication-end (:event (first end-events))))
+    (is (= 1 (:order-event-id (first end-events)))
+        "the ground-truth log INDEX of the medication-order event -- 0 is P1's :admission")))
+
+(deftest medication-end-with-no-matching-order-has-a-nil-order-event-id
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+        world1 (admit world0 0 "P1" "Renal")
+        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1" {:type :medication-end :order-citation a-citation})]
+    (is (nil? (:order-event-id (first events))))))
+
+(deftest procedure-observation-medication-round-trip-through-the-real-run-loop
+  (let [pathway {:name "clinical" :steps [{:type :admission :location "Renal"}
+                                          {:type :observation :codes [a-concept] :value 38.2 :unit "Cel"}
+                                          {:type :medication-order :codes [a-concept] :citation a-citation}
+                                          {:type :medication-end :order-citation a-citation}
+                                          {:type :discharge}]}
+        {:keys [ground-truth] :as result} (engine/run {:seed 3 :patients 1 :pathways [{:pathway pathway :weight 1}]})]
+    (is (= [:registered :admission :observation :medication-order :medication-end :discharge]
+           (mapv :event ground-truth)))
+    (is (result/ok? (check/check-all ground-truth (:facility result))))))
+
+;; --- M5b Task 4: end-to-end module wiring (persona -> run-module ->
+;; CompileTrajectory -> IR), composing with :pathways -----------------------
+
+(def ^:private clinic-module
+  (:payload (gmf/load-module "fixture-clinic"
+                            (slurp (io/resource "ehr_testing_sim/fixtures/fixture-clinic.json")))))
+
+(def ^:private sinusitis-module
+  (:payload (gmf/load-module "sinusitis" (slurp (io/resource "modules/sinusitis.json")))))
+
+(deftest config-keys-includes-the-module-wiring-keys
+  (is (every? (set engine/config-keys) [:modules :module-assignment :module-horizon-days])))
+
+(deftest assign-module-resolves-explicit-ordinal-and-consumes-exactly-one-draw
+  (let [config [{:patient-ordinal 0 :module-id "fixture-clinic"}]]
+    (is (= "fixture-clinic" (engine/assign-module (Random. 1) config 0)))))
+
+(deftest assign-module-resolves-a-weighted-pool-entry
+  (let [config [{:module-id "fixture-clinic" :weight 1}]]
+    (is (= "fixture-clinic" (engine/assign-module (Random. 1) config 5)))))
+
+(deftest assign-module-resolves-nil-for-an-ordinal-neither-side-covers
+  (testing "unlike assign-pathway's own PathwaysConfig -- a real
+            population is expected to have patients with no module at
+            all, an explicit-only config with no matching ordinal is a
+            legitimate 'no module' outcome, not an error"
+    (let [config [{:patient-ordinal 0 :module-id "fixture-clinic"}]]
+      (is (nil? (engine/assign-module (Random. 1) config 7))))))
+
+(deftest a-run-with-modules-configured-compiles-and-executes-a-real-trajectory
+  (testing "persona -> run-module -> CompileTrajectory -> IR, wired into a
+            real run -- :modules absent entirely is untouched (the pinned-
+            fixture regression, below, is that same guarantee). Uses the
+            REAL vendored sinusitis.json, deliberately, not the hand-
+            written fixture: sinusitis.json's own Potential_Onset loop
+            recurs across a patient's whole life (docs/gmf-interpreter.md),
+            so it reliably produces horizon-phase content against THIS
+            engine's own FIXED registration anchor (persona/reference-
+            today-epoch-day) regardless of a patient's randomly sampled
+            age -- fixture-clinic's own episode, by contrast, is a single
+            near-birth event, so a fixed anchor decades removed from most
+            sampled ages would only rarely catch it (a real, worth-noting
+            interaction between a fixed calendar anchor and a young-age-
+            only module, not a wiring bug -- see mixed-authored-and-
+            compiled-run-satisfies-the-full-invariant-catalog, below, for
+            fixture-clinic's own continued coverage of the invariant-
+            holds-even-when-nothing-lands case)."
+    (let [{:keys [ground-truth] :as result}
+          (engine/run {:seed 1 :patients 30
+                       ;; an EXPLICIT empty pathway -- otherwise every
+                       ;; patient also gets the DEFAULT :pathway
+                       ;; (sample-admission-discharge) appended after
+                       ;; their compiled module content, which usually
+                       ;; conflicts (the module's own encounter already
+                       ;; discharged them; the default pathway assumes a
+                       ;; fresh :new patient) -- a real caller wanting
+                       ;; module-only patients must do the same.
+                       :pathway {:name "module-only" :steps []}
+                       :modules [sinusitis-module]
+                       :module-assignment [{:module-id "sinusitis" :weight 1}]
+                       :module-horizon-days 3650})
+          kinds (into #{} (map :event) ground-truth)
+          registered-events (filter #(= :registered (:event %)) ground-truth)]
+      (is (some #{:outpatient-visit :observation :medication-order :medication-end} kinds)
+          (str "expected at least one compiled clinical event across 30 patients, got " kinds))
+      (is (some :pre-horizon-facts registered-events)
+          "expected at least one patient's own history-phase facts to ride :registered")
+      (is (some :citation (filter #(#{:outpatient-visit :admission} (:event %)) ground-truth))
+          "the compiled encounter step carries its module/state citation into ground truth")
+      (is (result/ok? (check/check-all ground-truth (:facility result)))))))
+
+(deftest modules-absent-entirely-draws-no-extra-rng-byte-identical-to-pre-m5b
+  (testing "the SAME opt-in law :pathways/:churn-profile already establish"
+    (is (= (engine/run {:seed 42 :patients 5})
+           (engine/run {:seed 42 :patients 5})))))
+
+(defspec mixed-authored-and-compiled-run-satisfies-the-full-invariant-catalog 150
+  (testing "docs/gmf-interpreter.md section 4's own central theory claim:
+            authored pathways and compiled trajectories are BOTH just IR
+            entering the union -- some patients on an explicit authored
+            pathway, others on a compiled module, one run, one invariant
+            catalog. Explicit per-ordinal assignment on BOTH sides (not a
+            weighted pool for either) keeps the two sources from landing
+            on the SAME patient at once -- a single patient-id running
+            BOTH an authored admission pathway AND a module's own
+            encounter is a real, separate compositional question
+            (whichever runs second finds the patient already discharged),
+            not what this property is stated about."
+    (prop/for-all [seed gen/large-integer]
+      (let [pathway {:name "scripted" :steps [{:type :admission :location "Renal"}
+                                              {:type :delay :from 30 :to 30}
+                                              {:type :discharge}]}
+            empty-pathway {:name "module-only" :steps []}
+            {:keys [ground-truth] :as result}
+            (engine/run {:seed seed :patients 4
+                         :pathways [{:patient-ordinal 0 :pathway pathway}
+                                    {:patient-ordinal 1 :pathway pathway}
+                                    {:patient-ordinal 2 :pathway empty-pathway}
+                                    {:patient-ordinal 3 :pathway empty-pathway}]
+                         :modules [clinic-module]
+                         :module-assignment [{:patient-ordinal 2 :module-id "fixture-clinic"}
+                                             {:patient-ordinal 3 :module-id "fixture-clinic"}]
+                         :module-horizon-days 3650})]
+        (result/ok? (check/check-all ground-truth (:facility result)))))))
 
 (deftest pinned-seed-survives-decide-evolve-refactor
   (testing "the fixture pins the POST-M4 baseline (ADR-0009 -- Persona's

@@ -298,6 +298,85 @@
       (is (= :step-rejected (:event rejected-event)))
       (is (= [] (emit-hl7/event->messages ref-date utc-offset churn-facility churn-providers rejected-event))))))
 
+;; --- M5b: :outpatient-visit -> A04; :outpatient-visit-end -> no message ---
+
+(def ^:private outpatient-pathway
+  {:name "outpatient" :steps [{:type :outpatient-visit :reason "Sinus congestion"}
+                              {:type :delay :from 30 :to 30}
+                              {:type :outpatient-visit-end}]})
+
+(deftest message-type-registry-has-a04
+  (is (= {:type "ADT" :trigger "A04"} (emit-hl7/message-type-registry :outpatient-visit))))
+
+(deftest outpatient-visit-end-has-no-message-type-registry-entry
+  (testing "item 7: a real ground-truth event, deliberately no wire message
+            -- the same ADR-0012 :step-rejected precedent"
+    (is (nil? (emit-hl7/message-type-registry :outpatient-visit-end)))))
+
+(deftest outpatient-visit-emits-a04-with-pv1-2-o-and-empty-pv1-3
+  (let [{:keys [ground-truth facility providers]}
+        (engine/run {:seed 1 :patients 1 :pathways [{:pathway outpatient-pathway :weight 1}]})
+        visit-event (first (filter #(= :outpatient-visit (:event %)) ground-truth))
+        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+        a04 (first (filter #(re-find #"\^A04" %) messages))
+        parsed (parser/parse a04)]
+    (is (some? a04))
+    (testing "PV1-2: outpatient's own code table entry, \"O\""
+      (is (= "O" (message/get-field-first-value parsed "PV1" 2))))
+    (testing "PV1-3: empty -- no location, no bed (item 6)"
+      (is (= "" (or (message/get-field-first-value parsed "PV1" 3) ""))))
+    (testing "PV1-7: attending still renders, even with no ward to have filtered by"
+      (is (not= "" (message/get-field-first-value parsed "PV1" 7))))))
+
+(deftest outpatient-visit-end-event-renders-no-message
+  (let [{:keys [ground-truth facility providers]}
+        (engine/run {:seed 1 :patients 1 :pathways [{:pathway outpatient-pathway :weight 1}]})
+        end-event (first (filter #(= :outpatient-visit-end (:event %)) ground-truth))]
+    (is (some? end-event))
+    (is (= [] (emit-hl7/event->messages ref-date utc-offset facility providers end-event)))))
+
+(deftest other-message-types-still-render-pv1-2-i-unaffected-by-outpatient
+  (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 1})
+        admission-msg (first (emit-hl7/emit ground-truth ref-date utc-offset facility providers))]
+    (is (= "I" (message/get-field-first-value (parser/parse admission-msg) "PV1" 2)))))
+
+;; --- M5b: :observation -> ORU^R01 (OBX only, no ORC/OBR -- unsolicited,
+;; not order-linked); :procedure/:medication-order/:medication-end are
+;; truth-only, per the mapping table (docs/gmf-interpreter.md section 1) --
+;; no message-type-registry entry, DG1/billing rendering gated on
+;; snomed-icd10-map, never built this milestone. ------------------------
+
+(def ^:private a-concept {:system :snomed :code "8310-5" :display "Body temperature"})
+
+(deftest message-type-registry-has-observation-but-not-procedure-or-medication
+  (is (= {:type "ORU" :trigger "R01"} (emit-hl7/message-type-registry :observation)))
+  (is (nil? (emit-hl7/message-type-registry :procedure)))
+  (is (nil? (emit-hl7/message-type-registry :medication-order)))
+  (is (nil? (emit-hl7/message-type-registry :medication-end))))
+
+(deftest observation-emits-oru-with-one-obx-and-no-orc-or-obr
+  (let [pathway {:name "vitals" :steps [{:type :admission :location "Renal"}
+                                        {:type :observation :codes [a-concept] :value 38.2 :unit "Cel"}]}
+        {:keys [ground-truth facility providers]} (engine/run {:seed 1 :patients 1 :pathways [{:pathway pathway :weight 1}]})
+        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+        oru (first (filter #(re-find #"\^R01" %) messages))
+        parsed (parser/parse oru)]
+    (is (some? oru))
+    (is (= "8310-5" (first (str/split (message/get-field-first-value parsed "OBX" 3) #"\^"))))
+    (is (= "38.2" (message/get-field-first-value parsed "OBX" 5)))
+    (is (= "Cel" (message/get-field-first-value parsed "OBX" 6)))
+    (is (= "" (or (message/get-field-first-value parsed "ORC" 1) "")) "no order context -- unsolicited observation")))
+
+(deftest procedure-and-medication-events-render-no-message
+  (let [pathway {:name "clinical" :steps [{:type :admission :location "Renal"}
+                                          {:type :procedure :codes [a-concept]}
+                                          {:type :medication-order :codes [a-concept]}
+                                          {:type :medication-end}]}
+        {:keys [ground-truth facility providers]} (engine/run {:seed 1 :patients 1 :pathways [{:pathway pathway :weight 1}]})]
+    (doseq [event (filter #(#{:procedure :medication-order :medication-end} (:event %)) ground-truth)]
+      (is (= [] (emit-hl7/event->messages ref-date utc-offset facility providers event))
+          (str (:event event) " should render no message")))))
+
 ;; --- M3: ORM^O01 + ORU^R01 --------------------------------------------
 
 (def ^:private cbc-order-pathway

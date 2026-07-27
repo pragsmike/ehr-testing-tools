@@ -20,6 +20,21 @@ alike — are minutes; the engine's own clock is seconds (ADR-0011);
 conversion happens exactly once, at the boundary where a minute-
 denominated draw becomes a clock advance (decide-time).
 
+**M5b's own day clause, extending this same rule.** The GMF
+interpreter's own virtual clock (`ehr-testing-sim.gmf-interpreter`) is a
+THIRD unit again — an epoch DAY (`docs/gmf-interpreter.md` section 7
+item 4) — never authored minutes and never the engine's own seconds.
+`ehr-testing-sim.compile-trajectory` is the one place a day-denominated
+gap between two trajectory events becomes a compiled `:delay` step
+(minutes, the SAME authored unit every hand-written pathway already
+uses) — one conversion (`days * 1440`), at exactly one boundary,
+the identical "convert once, at the seam between two clocks" discipline
+this rule already states for minutes -> seconds. The full chain is now
+three units deep, each converted exactly once, at its own single named
+seam: authored minutes -> (CompileTrajectory) -> engine seconds, with
+interpreter days feeding the first of those two seams, never the
+second directly.
+
 ## Design inputs: mined from upstream
 
 Before formalizing the schema, two upstream sources were read
@@ -386,7 +401,10 @@ class wherever a single event type doesn't map to a single class.
 | Event / event-class | Legal when (status) | Attribute condition | Illegal example |
 |---|---|---|---|
 | `:admission` | `:status = :new` | — | Admitting an already-admitted or already-discharged patient. |
+| `:outpatient-visit` (M5b) | `:status = :new` | — | Visiting an already-visiting or already-discharged patient (same row-shape as `:admission`, `docs/gmf-interpreter.md` section 4 item 5). |
+| `:outpatient-visit-end` (M5b) | `:status = :admitted`, `:class = :outpatient` | — | Ending a visit for a patient who was never admitted as outpatient, or ending twice. |
 | `:transfer` (incl. bed-ready) | `:status = :admitted` (Admitted or Boarding) | — | Transferring a patient who hasn't been admitted yet, or who's already discharged. |
+| Encounter/therapeutic-intent classes' own `:location` field — **CONDITIONAL ROW (item 6, `docs/gmf-interpreter.md` section 4)** | `:location = nil` is **legal** exactly when `:class = :outpatient`, for the events an outpatient visit spans; **illegal** (the ordinary "never nil-bed while admitted" rule) otherwise | gated on the `:class :outpatient` attribute | A `:transfer`/`:admission`-family event whose patient's `:class` is NOT `:outpatient` but whose `:location` is nil anyway — the pre-M5b rule, now stated as this table's own conditional-row mechanism (the same status × event-class × attribute-condition shape the post-mortem/donor rows below already use) rather than a plain, unconditional sentence. |
 | `:discharge` | `:status = :admitted` (Admitted or Boarding) | — | Discharging a patient not currently admitted, or discharging twice. |
 | `:pending-*` (M2b, planned) | `:status = :admitted`, not already pending | — | Double-pending; pending a non-admitted patient. |
 | `:cancel-*` / `:*-in-error` (M2b, planned) | The event class being cancelled must exist in this patient's log and not already be cancelled | — | Cancelling an event that never happened, or cancelling twice. |

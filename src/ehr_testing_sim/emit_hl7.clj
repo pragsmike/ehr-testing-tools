@@ -65,7 +65,25 @@
    ;; truth about the run, never wire traffic -- no real ADT/ORM/ORU feed
    ;; carries a message for an attempt that never became a real action).
    :order-placed {:type "ORM" :trigger "O01"}
-   :result-available {:type "ORU" :trigger "R01"}})
+   :result-available {:type "ORU" :trigger "R01"}
+   ;; M5b (docs/gmf-interpreter.md section 4's sketch, item 5): the new
+   ;; outpatient encounter class. :outpatient-visit-end has NO entry, by
+   ;; design (item 7 -- the same ADR-0012 :step-rejected precedent: many
+   ;; real ambulatory feeds send a single A04 and no closing message for a
+   ;; same-day visit; inventing a discharge-shaped message here would be
+   ;; manufacturing wire traffic no real interface sends).
+   :outpatient-visit {:type "ADT" :trigger "A04"}
+   ;; M5b (docs/gmf-interpreter.md section 1's table): :observation is an
+   ;; UNSOLICITED finding, not an order's result -- same ORU^R01 message
+   ;; family as :result-available, rendered WITHOUT the ORC/OBR order
+   ;; context that doesn't exist for it (a real, legal ORU shape).
+   ;; :procedure/:medication-order/:medication-end deliberately get NO
+   ;; entry here -- truth-only ground-truth facts this milestone, the same
+   ;; treatment ConditionOnset/ConditionEnd's own DG1/billing rendering
+   ;; already gets (gated on snomed-icd10-map landing, not built yet): a
+   ;; real message shape for procedures/medications is its own future
+   ;; catalytic/segment-design work, not a same-session add.
+   :observation {:type "ORU" :trigger "R01"}})
 
 (def ^:private hl7-timestamp-formatter
   (java.time.format.DateTimeFormatter/ofPattern "yyyyMMddHHmmss"))
@@ -302,19 +320,21 @@
 
   Milestone site-profiles Task 2: PV1-2 (patient class) renders through
   `site-profile`'s :patient-class code-table override when present,
-  today's hard-coded \"I\" otherwise (:inpatient is the only class this
-  project ever produces, docs/patient-state-model.md). PV1-36
+  `patient-class` (a keyword, `standard-patient-class-codes`'s own
+  vocabulary) otherwise -- every call site but M5b's own
+  :outpatient-visit passes :inpatient, the only class this project
+  produced before this milestone (docs/patient-state-model.md). PV1-36
   (discharge disposition) renders the SAME way, but only when
   `disposition-state` is non-nil -- callers pass a state keyword
   (:discharged-to-home) only for :discharge events; every other event
   type passes nil, rendering PV1-36 empty, exactly as before this
   milestone (no disposition concept existed to render at all)."
-  [site-profile facility-name location from provider disposition-state]
+  [site-profile patient-class facility-name location from provider disposition-state]
   (apply parser/create-segment
          "PV1"
          (parser/create-field ["1"])
          (parser/create-field (site-profile/code-for site-profile :patient-class
-                                                      site-profile/standard-patient-class-codes :inpatient))
+                                                      site-profile/standard-patient-class-codes patient-class))
          (location-field facility-name location)
          (parser/create-field [])
          (parser/create-field [])
@@ -399,14 +419,18 @@
           facility-name (name (:id facility))
           provider (provider-by-id providers attending)
           persona (get personas (:patient-id (first participants)))
-          disposition-state (when (= :discharge event) :discharged-to-home)]
+          disposition-state (when (= :discharge event) :discharged-to-home)
+          ;; M5b: the only two event types this project ever renders
+          ;; :outpatient for -- every other type here is still :inpatient
+          ;; (this project's own sole class before this milestone).
+          patient-class (if (#{:outpatient-visit :outpatient-visit-end} event) :outpatient :inpatient)]
       (parser/str-message
        (apply parser/create-message
         parser/DEFAULT-DELIMITERS
         (msh-segment site-profile type+trigger control-id ts)
         (evn-segment (:trigger type+trigger) ts)
         (pid-segment active-mrn persona)
-        (pv1-segment site-profile facility-name location from provider disposition-state)
+        (pv1-segment site-profile patient-class facility-name location from provider disposition-state)
         (concat (when (and (= :admission event) persona) [(in1-segment (:payer persona))])
                 (z-segments-for site-profile personas {:event event :t t :active-mrn active-mrn
                                                        :location location :from from :attending attending
@@ -432,9 +456,9 @@
       (msh-segment site-profile type+trigger control-id ts)
       (evn-segment (:trigger type+trigger) ts)
       (pid-segment mrn1 (get personas p1))
-      (pv1-segment site-profile facility-name to1 from1 (provider-by-id providers att1) nil)
+      (pv1-segment site-profile :inpatient facility-name to1 from1 (provider-by-id providers att1) nil)
       (pid-segment mrn2 (get personas p2))
-      (pv1-segment site-profile facility-name to2 from2 (provider-by-id providers att2) nil)
+      (pv1-segment site-profile :inpatient facility-name to2 from2 (provider-by-id providers att2) nil)
       (z-segments-for site-profile personas ev)))))
 
 (defn- merge-message
@@ -454,7 +478,7 @@
       (msh-segment site-profile type+trigger control-id ts)
       (evn-segment (:trigger type+trigger) ts)
       (pid-segment surviving-mrn (get personas survivor-id))
-      (pv1-segment site-profile facility-name nil nil nil nil)
+      (pv1-segment site-profile :inpatient facility-name nil nil nil nil)
       (mrg-segment merged-mrn)
       (z-segments-for site-profile personas ev)))))
 
@@ -526,7 +550,7 @@
       parser/DEFAULT-DELIMITERS
       (msh-segment site-profile type+trigger control-id ts)
       (pid-segment active-mrn (get personas (:patient-id (first participants))))
-      (pv1-segment site-profile facility-name location nil provider nil)
+      (pv1-segment site-profile :inpatient facility-name location nil provider nil)
       (orc-segment control-id)
       (obr-segment 1 concept)
       (z-segments-for site-profile personas ev)))))
@@ -549,10 +573,51 @@
       parser/DEFAULT-DELIMITERS
       (msh-segment site-profile type+trigger control-id ts)
       (pid-segment active-mrn (get personas (:patient-id (first participants))))
-      (pv1-segment site-profile facility-name location nil provider nil)
+      (pv1-segment site-profile :inpatient facility-name location nil provider nil)
       (orc-segment control-id)
       (obr-segment 1 concept)
       (concat obx-segments (z-segments-for site-profile personas ev))))))
+
+;; --- M5b: :observation -> ORU^R01, OBX only (docs/gmf-interpreter.md
+;; section 1's table) -------------------------------------------------------
+
+(defn- observation-obx-segment
+  "OBX-3 is the FIRST of :codes (docs/gmf-interpreter.md section 1: a GMF
+  Observation's own concept), OBX-5 the sampled :value when present
+  (some Observation states carry no :range, hence no value -- an empty
+  field, never a fabricated one), OBX-6 :unit. No reference-range/
+  abnormal-flag -- those are order-profiles' own computed-truth concept
+  (Milestone M3), not part of a GMF Observation's own shape."
+  [set-id {:keys [codes value unit]}]
+  (parser/create-segment
+   "OBX"
+   (parser/create-field [(str set-id)])
+   (parser/create-field ["NM"])
+   (cwe-field (first codes))
+   (parser/create-field [])
+   (parser/create-field (if (some? value) [(str value)] []))
+   (parser/create-field (if unit [unit] []))))
+
+(defn- observation-message
+  "ORU^R01 with a SINGLE OBX and no ORC/OBR -- a legal, real HL7v2 shape
+  for an unsolicited observation not tied to any originating order
+  (unlike :result-available's own order-linked ORU, docs/operational-
+  models.md)."
+  [reference-date utc-offset facility providers personas site-profile
+   {:keys [t active-mrn location attending participants] :as ev}]
+  (let [type+trigger (message-type-registry :observation)
+        ts (hl7-timestamp reference-date t utc-offset)
+        control-id (str active-mrn "-" (:trigger type+trigger) "-" t)
+        facility-name (name (:id facility))
+        provider (provider-by-id providers attending)]
+    (parser/str-message
+     (apply parser/create-message
+      parser/DEFAULT-DELIMITERS
+      (msh-segment site-profile type+trigger control-id ts)
+      (pid-segment active-mrn (get personas (:patient-id (first participants))))
+      (pv1-segment site-profile :inpatient facility-name location nil provider nil)
+      (observation-obx-segment 1 ev)
+      (z-segments-for site-profile personas ev)))))
 
 (defn event->messages
   "Renders one ground-truth event to a vector of 0+ ER7 message strings
@@ -574,6 +639,7 @@
      (= :merge event) [(merge-message reference-date utc-offset facility providers personas site-profile ev)]
      (= :order-placed event) [(orm-message reference-date utc-offset facility providers personas site-profile ev)]
      (= :result-available event) [(oru-message reference-date utc-offset facility providers personas site-profile ev)]
+     (= :observation event) [(observation-message reference-date utc-offset facility providers personas site-profile ev)]
      :else [(single-subject-message reference-date utc-offset facility providers personas site-profile ev)])))
 
 (def ^:private default-providers
