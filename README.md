@@ -1,143 +1,189 @@
 # ehr-testing-sim
 
-Deterministic, seeded generation of synthetic hospital traffic for
-testing EHR integrations: clinically plausible, operationally messy
-(ADT churn: transfers, cancellations, merges, corrections), US-coded
-patient event streams from minimal parameters — with a ground-truth
-trajectory log as a first-class output so test harnesses can assert
-against what *should* be true, independent of message parsing. See
-[`docs/problem-statement.md`](docs/problem-statement.md) for the full
-problem, constraints, black-box contract, and validation program.
+Deterministic synthetic hospital traffic for testing EHR systems and
+integrations: clinically coded, operationally messy, provably
+coherent, and safe by construction. One config and one seed produce
+an unbounded, byte-reproducible stream of HL7v2 messages — patients
+with names, insurers, lab results, hallway waits, cancelled
+transfers, and merged records — none of whom ever existed.
 
-**Status: pre-release walking skeleton.** Built: the engine, the
-invariant catalog, HL7v2 ADT emission (admission/discharge/transfer
-plus the full churn family — below), the facility and providers
-models (beds, the allocation ladder, boarding, bed-ready transfers,
-synthetic attendings — docs/operational-models.md), InjectChurn
-(cancel-admit/cancel-transfer/cancel-discharge, transfer-in-error,
-bed-swap, merge — docs/patient-state-model.md), order/result step
-types with a real CBC+BMP order-profiles catalytic (verified LOINC
-codes) plus ORM^O01/ORU^R01 emission (M3), a per-patient
-pathway-assignment layer (`:pathways`), `:step-rejected` ground-truth
-events for decide-time rejections (ADR-0012), Milestone M4's
-**Persona** — demographic sampling (name, DOB, sex, address, phone,
-SSN-shaped id) and age-linked payer sampling, folded into every
-patient's `:registered` event, with PID and IN1 segment enrichment —
-**site profiles** (docs/site-profiles.md): an MSH dialect, PV1-2/PV1-36
-code-table overrides, and a Z-segment template DSL, all bound at emit
-time and proven invariant to ground truth (two site profiles over one
-seed render the same facts in two accents) — and, landed most
-recently, Milestone M5's **RunModules + CompileTrajectory**
-(docs/gmf-interpreter.md): a GMF (Synthea Generic Module Framework)
-interpreter, the first real vendored module
-(`resources/modules/sinusitis.json`, provenance in its own `NOTICE`),
-and the compiled-trajectory step types it needs
-(`:outpatient-visit`/`:outpatient-visit-end`, `:procedure`,
-`:observation`, `:medication-order`/`:medication-end`) — module
-assignment composes with `:pathways`, both just IR entering the same
-union.
+## The problem it solves
 
-## Pipeline: now / next / later
+Teams testing EHR integrations are stuck between two bad options:
+real production feeds (PHI, HIPAA, un-shareable, slow to obtain) and
+hand-crafted test messages (sparse, static, unrealistically clean —
+they exercise the happy path and miss everything that actually breaks
+systems). This simulator is the third option: traffic with the
+statistical texture and administrative messiness of a real feed, and
+none of the risk. Because it contains no real person's data *by
+construction* — deterministic rules over public tables, no real
+records anywhere upstream — its output can be committed to repos,
+attached to bug reports, and published.
 
-<!-- Hand-derived from docs/sim-theory.edn's :status fields and its
-     ";; NEXT" marker (no generator reads status yet, unlike the full
-     diagram below) -- regenerate this block by hand whenever a stage
-     flips status or NEXT moves. External stages and the pathway-ir
-     union are omitted here to stay under ~12 nodes; see the detail
-     view for those. -->
+## What a run looks like
 
-```mermaid
-flowchart LR
-    Persona["Persona"]:::built
-    RunModules["RunModules"]:::built
-    CompileTrajectory["CompileTrajectory"]:::built
-    InjectChurn["InjectChurn"]:::built
-    Execute["Execute"]:::built
-    Check["Check"]:::built
-    EmitHL7["EmitHL7"]:::built
-    EmitState["EmitState"]:::next
-    Package["Package"]:::planned
-    Calibrate["Calibrate"]:::planned
-
-    Persona --> RunModules --> CompileTrajectory --> InjectChurn --> Execute
-    Execute --> Check
-    Execute --> EmitHL7
-    Execute --> EmitState
-    EmitHL7 --> Package
-    Package --> Calibrate
-    Calibrate -.-> InjectChurn
-
-    classDef built fill:#1b5e20,stroke:#2e7d32,color:#c8e6c9,stroke-width:2px;
-    classDef next fill:#e65100,stroke:#ff9800,color:#fff3e0,stroke-width:3px;
-    classDef planned fill:#37474f,stroke:#78909c,color:#cfd8dc,stroke-width:1px,stroke-dasharray: 3 3;
+```bash
+clojure -M:cli run --seed 42 --patients 20 --churn --emit hl7
 ```
 
-**Now** (green): Execute, Check, EmitHL7, InjectChurn (M2b), Execute's
-own order/result step types and EmitHL7's ORM/ORU cycle (M3), Milestone
-M4's **Persona** — demographics sampling from vendored, hashed tables
-plus a real `payer-pool` catalytic wire, folded into Execute's own step
-queue via the `:registered` event, plus PID/IN1 enrichment —
-EmitHL7's fourth catalytic, **site-profile** — MSH dialect, code-table
-overrides, Z-segment templates — and Milestone M5's **RunModules +
-CompileTrajectory**: a GMF interpreter (`ehr-testing-sim.gmf`/
-`ehr-testing-sim.gmf-interpreter`), the first real vendored module
-(`resources/modules/sinusitis.json`), and the actual persona → module
-walk → compiled-trajectory → IR wiring inside `engine/run` — all
-property-tested and green (350 tests / 863 assertions).
-**Next** (amber): **EmitState**, Milestone M6 — state-document
-rendering from `state-history`, FHIR resources before CDA.
-**Later** (dashed grey): everything else in the *want*.
+Excerpts from real seeded runs (composited across demos — complete
+traces with their exact commands live in [docs/demos/](docs/demos/)):
 
-[`docs/sim-theory-diagram.md`](docs/sim-theory-diagram.md) is the full
-detail view (every resource wire, catalytic input, and the
-`pathway-ir` union) generated mechanically from
-[`docs/sim-theory.edn`](docs/sim-theory.edn). [`.agents/plans/roadmap.md`](.agents/plans/roadmap.md)
-is the milestone plan this diagram's *next*/*later* stages resolve
-into. [`docs/site-profiles.md`](docs/site-profiles.md) answers "how do
-I make it simulate *my* hospital" — landed: `--config` a `:site-profile`
-(MSH dialect, code-table overrides, Z-segment templates) and get your
-own hospital's dialect, ground truth unchanged either way.
+```
+MSH|^~\&|EHR-TESTING-SIM|SIM|||20240101000000||ADT^A01|...|P|2.3
+PID|1||MRN000002||O'Brien\S\...                        ← escaped, per spec
+PV1|1|I|ED^^ED-H01^general-hospital|...                ← admitted, boarding in an ED hallway slot
+...
+ADT^A03 (another patient discharges)  →  ADT^A02        ← the freed bed triggers the boarder's transfer
+PV1|1|I|Renal^^RENAL-01^...|...|ED^^ED-H01^...          ← new bed; prior location derived from the log
+...
+OBX|1|NM|6690-2^Leukocytes [#/volume] in Blood^LN||4.1|K/uL|4.5-11.0|L   ← real LOINC, computed abnormal flag
+ZPI|commercial-hmo|commercial|ALDRIC-PAYER-V1           ← only if YOUR site profile says so
+```
 
-## Relation to the ehr-testing-* family
+The boarding→transfer coupling above was not scripted. It *emerged*:
+the ward was full, the patient boarded in the hallway, and another
+patient's discharge freed the bed. Capacity pressure produces
+operational realism here the way it does in real hospitals — by
+constraint, not by authorship.
 
-- [`ehr-testing-guide`](https://github.com/pragsmike/ehr-testing-guide)
-  teaches the testing method.
-- [`ehr-testing-tools`](https://github.com/pragsmike/ehr-testing-tools)
-  makes it runnable (corpus construction, conformance gating).
-- **ehr-testing-sim** (this repo) is the traffic source — usable
-  standalone, and mountable inside tools' `ehr` CLI as the `sim`
-  subcommand (three exported values in `ehr-testing-sim.cli`; see
-  [`notes/ADRs.md`](notes/ADRs.md) ADR-0001). Dependency direction:
-  tools → sim, never the reverse.
+## The pipeline
+
+<!-- Hand-derived from docs/sim-theory.edn's :status fields and its
+     ;; NEXT marker. Regenerate on milestone flips. Detail view:
+     docs/sim-theory-diagram.md -->
+```mermaid
+flowchart TD
+    P[Persona] --> RM[RunModules]
+    RM --> CT[CompileTrajectory]
+    AP[Authored pathways] --> IR{{Pathway IR}}
+    CT --> IR
+    IR --> IC[InjectChurn]
+    IC --> EX[Execute]
+    EX --> GT[(Ground-truth log)]
+    GT --> CK[Check]
+    GT --> EH[EmitHL7]
+    GT -.-> ES[EmitState / FHIR]
+    CAL[Calibrate] -.-> IC
+    classDef built fill:#1b5e20,color:#e8f5e9
+    classDef next fill:#e65100,color:#fff3e0
+    classDef later fill:#424242,color:#eeeeee
+    class P,RM,CT,AP,IR,IC,EX,GT,CK,EH built
+    class ES next
+    class CAL later
+```
+
+Everything green is built and property-tested; **EmitState (FHIR
+snapshots) is next (M6)**; Calibrate is future. Full formal pipeline:
+[docs/sim-theory-diagram.md](docs/sim-theory-diagram.md); plan:
+[.agents/plans/roadmap.md](.agents/plans/roadmap.md).
+
+## What makes it different
+
+**The event log is the truth; formats are renderings.** An immutable,
+replayable event log is the single source; patient state is a fold of
+it; HL7v2 messages render the events and FHIR will render the
+snapshots — mirroring what the standards themselves are (v2 feeds
+*are* event streams; FHIR *is* the materialized view). See
+[docs/event-sourcing.md](docs/event-sourcing.md), including its
+honest scope: this architecture buys reproducibility, corrections,
+and audit — clinical realism comes from content and calibration, not
+storage design.
+
+**Realism is emergent, not scripted.** Boarding, hallway placements,
+outlier admissions, and bed-ready transfers arise from census
+pressure against configured capacity — a dimension the incumbent
+generators explicitly lack.
+
+**Churn is first-class.** Cancellations, error-entries, bed swaps,
+and record merges — the traffic that breaks real interfaces and that
+hand-crafted test data never contains — are generated with correct
+reversal semantics (derived from the log, not shadow bookkeeping).
+
+**Clinical content has provenance.** Disease trajectories come from
+Synthea's clinically reviewed, Apache-licensed module format,
+executed by our interpreter; every code (SNOMED CT, LOINC, RxNorm) is
+carried verbatim from inspectable module JSON and verified against
+official sources — never invented. Every generated event cites the
+module state that caused it.
+
+**(config + seed) IS the corpus.** Byte-identical reproduction,
+always. Ship a one-line manifest instead of 2 GB of messages;
+regenerate on demand. Any interesting run is a permanent, pinnable
+test case.
+
+**It speaks your hospital's dialect.** Site profiles render the same
+truth in different accents — local code values, MSH identity, HL7
+version, Z-segments — with a property-tested guarantee that dialect
+never alters ground truth. See
+[docs/site-profiles.md](docs/site-profiles.md).
+
+## Why you can trust it
+
+- **It is never graded on its own homework.** A sibling repo
+  (ehr-testing-tools) consumes the output as a real downstream
+  system: contract-validating the manifests, running the messages
+  through an independent conformance gate, tracking verdicts against
+  reviewed baselines. This loop has caught real defects the
+  simulator's own 850+ assertions missed — which is the point.
+- **Laws are property-tested, not asserted.** Determinism,
+  log↔state consistency, message↔truth derivability, occupancy
+  coherence, churn's clinical-content preservation — each holds
+  across hundreds of randomized runs per property, and these tests
+  have repeatedly caught real bugs.
+- **Claims carry receipts.** Versions, licenses, verified codes, and
+  upstream findings live in a dated facts register; the docs include
+  an independently sourced research review that *tempers* our own
+  architectural claims, kept because corrections build more trust
+  than endorsements.
+- **Safety is structural.** No real records exist anywhere upstream
+  of the generator, so no leakage is possible — a stronger statement
+  than any de-identification process can make. The full validation
+  program (seven claims, each with its proof strategy):
+  [docs/problem-statement.md](docs/problem-statement.md).
 
 ## Quick start
 
 ```bash
-clojure -X:test                                  # run the suite
-clojure -M:cli run --seed 42 --patients 5        # a run, as EDN
-clojure -M:cli run --seed 42 | clojure -M:cli check   # self-check, exit 0
+clojure -X:test                                   # the suite
+clojure -M:cli run --seed 42 --patients 5 --emit hl7
+clojure -M:cli run --seed 42 --patients 5 | clojure -M:cli check   # self-check, exit 0
+clojure -M:cli run --seed 7 --config my-site.edn --churn --emit hl7  # modules, profiles, churn
 clojure -M:cli help
 ```
 
-Same seed + config ⇒ byte-identical output, always — guarantee #1,
-enforced by property tests.
+Worked examples with real output: [docs/demos/](docs/demos/).
+Unfamiliar term (ours or the domain's):
+[docs/GLOSSARY.md](docs/GLOSSARY.md). Which document to read for your
+role: [docs/README.md](docs/README.md).
 
-## Design in three sentences
+## The family, and a deliberate division of labor
 
-Pathways are data (a common IR shared by hand-authored scripts and,
-later, trajectories compiled from Synthea-style clinical modules); a
-seeded discrete-event engine executes them into a format-free
-ground-truth log. Wire formats (HL7v2 first; FHIR/CDA later) are
-emitters consuming that log, never the reverse. Codes (SNOMED CT,
-LOINC, RxNorm, ICD-10-CM) travel as data on patient state, so every
-emitter renders them natively (ADR-0002).
+Three sibling projects:
+the [guide](https://github.com/pragsmike/ehr-testing-guide) teaches
+the testing method; the
+[tools](https://github.com/pragsmike/ehr-testing-tools) make it
+runnable (corpus construction, conformance gating, mutation);
+**this simulator generates the traffic.**
 
-Design lineage — what was mined from Google's Simulated Hospital
-(operational model, churn vocabulary, event queue) and Synthea
-(generative clinical modules, US demographics, embedded codes) — is
-recorded in [`.agents/memory/architecture.md`](.agents/memory/architecture.md)
-and summarized in [`docs/third-party-sources.md`](docs/third-party-sources.md).
+One boundary is worth stating plainly because it looks like a
+limitation and is actually a guarantee: **this simulator always
+produces plausible, coherent, time-ordered data.** Its laws forbid it
+from emitting incoherence — every message derives from the
+ground-truth log, in order, internally consistent. Adversarial
+delivery conditions — out-of-order arrival, dropped messages, missing
+fields, duplicates, mangled segments — are deliberately **not**
+generated here; they are introduced downstream by
+ehr-testing-tools' mutation operators, applied to a sim corpus with
+full lineage records. You get both realisms — coherent-but-messy
+truth from sim, damaged delivery from tools — and always know
+exactly which faults were injected, because the pristine original is
+one seed away.
 
-## License
+## Status
 
-MIT — see [LICENSE](LICENSE). No PHI anywhere, by construction.
+Pre-release; MIT licensed; no PHI anywhere, by construction. Built
+end-to-end through generated clinical trajectories; the FHIR emitter
+(M6) lands next, followed by a documentation alignment pass. Design
+lineage and decision history: [docs/](docs/), `notes/ADRs.md`, and
+`.agents/memory/architecture.md`.
