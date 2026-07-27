@@ -1157,3 +1157,114 @@ stays in place per this project's append-don't-erase convention, with
 a resolution note pointing here; `docs/sim-theory.md`'s Catalytic
 resolution table gains this ADR's citation in `gmf-module-set`'s own
 row, replacing "OPEN."
+
+---
+
+## ADR-0014 — Sim runs no external acceptance instruments; that is the consumer's job
+
+**Status:** Accepted (author-ratified 2026-07-27)
+
+**Context.** Milestone M6's own Task 3 landed
+`test/ehr_testing_sim/blaze_integration_test.clj`: skip-when-absent,
+but when a local `samply/blaze` FHIR server was reachable, it POSTed a
+run's own end-of-run Bundle(s) and asserted round-trip equivalence
+against Blaze's own verdict. This was reasoned, at the time, as
+EmitState's own instance of "never graded on our own homework"
+(`README.md`'s own phrase for claim #1's proof strategy,
+`docs/problem-statement.md`). On reflection the analogy doesn't hold:
+claim #1's actual proof strategy is validating the emitted CORPUS with
+independent tooling **someone else runs** (NIST's HL7v2 conformance
+tools, the HAPI parser, `notes/facts-register.md` F6) — this repo has
+never itself opened a socket to NIST's or HAPI's own infrastructure to
+do that checking; the checking happens in `ehr-testing-tools`, against
+artifacts sim produced and handed over as files. The Blaze test broke
+that symmetry: it made *this* repo the thing dialing out to an external
+server, the one shape claim #1's own proof strategy never asked sim
+itself to perform. It also left this repo with its only arbitrary-URL
+write path (`BLAZE_BASE_URL`, an environment variable naming a server
+this process would `POST` to) — a component this project's own safety
+argument (`docs/problem-statement.md`'s claim #7, "no PHI ever," proof
+by construction) had never had to account for before, because nothing
+else in sim ever sends data anywhere; it only writes files a caller
+chooses to read.
+
+**Decision.**
+
+1. **External acceptance instruments live with the consumer, never
+   with sim.** This extends claim #1's own already-accepted structure
+   (independent-parser validation happens in `ehr-testing-tools`, not
+   here) to FHIR: whatever real-server round-trip a state-document
+   emitter's output eventually needs is `ehr-testing-tools`' own
+   consumer-loop work (its own gate/corpus machinery, the same
+   division of labor its own ADRs already establish for v2 —
+   `.agents/plans/roadmap.md`'s own "Consumer plan: sim doesn't
+   validate itself in a vacuum" section, restated here as a binding
+   decision rather than a roadmap note). `test/ehr_testing_sim/
+   blaze_integration_test.clj` is deleted; `notes/facts-register.md` F13
+   (the JDK-8/HttpURLConnection finding that test motivated) is
+   annotated superseded, not deleted, per this register's own
+   append-only discipline.
+2. **Sim's own in-repo FHIR evidence is the serverless set, and stops
+   there.** The emitter-coherence property
+   (`ehr-testing-sim.v2-replay-test`, `docs/event-sourcing.md`), the
+   cross-emitter id sub-law
+   (`emit-state-test/fhir-patient-id-and-active-mrn-resolve-to-the-
+   same-hl7-identity`), and shape validation (Bundle JSON round-trips
+   through `clojure.data.json`, `emit-state-test`'s own
+   `patient-bundle-round-trips-through-clojure-data-json`) are the
+   complete list of what this repo itself proves about its FHIR output.
+   Anything requiring a real FHIR server's own verdict is out of scope
+   here, by design, not merely unbuilt.
+3. **Safety consequence, stated plainly:** the simulator writes files
+   only. Nothing in `ehr-testing-sim` sends data to any server, and no
+   component here accepts an arbitrary server URL as input — the
+   `BLAZE_BASE_URL` environment variable this ADR removes was the one
+   exception, and it no longer exists. The family's sole POSTing
+   component will be `ehr-testing-tools`' own managed `fhir-sink` (a
+   consumer-side component that starts what it talks to, rather than
+   dialing out to a caller-named URL) — recorded here so a future
+   session doesn't reintroduce an arbitrary-URL write path in sim
+   without first reading why this one was removed.
+4. **The shelved guard-ladder spec is tools' to pick up, not sim's.** A
+   guard-ladder design for gating writes to an external URL was
+   considered and shelved during this reversal; it is recorded here as
+   available reference material for `ehr-testing-tools`, should that
+   repo ever add an external-URL mode to its own `fhir-sink` (rather
+   than the start-what-it-talks-to shape decision 3 names as the
+   current plan) — sim itself has no further use for it, having no
+   external-URL write path left to gate.
+
+**Rejected.**
+
+- **Keeping the Blaze test as an opt-in, rarely-run check.** Rejected
+  because the objection isn't that the test runs too often or is
+  expensive — it's that its very existence means sim POSTs to a
+  server at all, the structural fact this ADR removes, not a frequency
+  problem a skip-when-absent guard already mitigates.
+- **Moving the Blaze test to `ehr-testing-tools` verbatim.** Considered
+  and set aside for this session: `ehr-testing-tools` already has its
+  own consumer-loop and gate machinery this capability belongs beside
+  (`.agents/plans/roadmap.md`'s own "Consumer plan" section, this
+  ADR's decision 1); porting this session's own Blaze-specific test
+  file verbatim would prejudge that repo's own design for how it wants
+  to shape its `fhir-sink` acceptance work, which is that repo's call,
+  not this one's to make on its behalf.
+
+**Consequences.** `README.md`, `docs/GLOSSARY.md`, and
+`.agents/plans/roadmap.md` are swept of their M6-session Blaze
+references (reworded to state this ADR's decision, not merely
+deleted, so a reader lands on the reasoning rather than a gap).
+`docs/simulate-your-facility.md`'s own "what if synthetic data ever
+reached a real system" FAQ answer states the same safety consequence
+(decision 3) as its own closing line. Every resource `ehr-testing-sim.
+emit-state` produces additionally carries a standard HTEST security
+label and a generator/run-id tag (`meta.tag`) — landed alongside this
+ADR, not a substitute for it: labeling test data and refusing to POST
+it anywhere are two independent safety properties, and this project
+now holds both. A new `sim identifiers` CLI verb (config + seed → the
+complete EDN inventory of every identifier a run's own output
+contains) is this project's own answer to "how would we find and
+remove it, if this ever reached a real system regardless" — enumerable
+by construction, per this project's own determinism guarantee, rather
+than a promise resting on the external-write path this ADR just
+removed.

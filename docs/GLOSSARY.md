@@ -405,8 +405,13 @@ REST/JSON standard. State-based: Resources describe current state.
 Emitter landed at M6 (`ehr-testing-sim.emit-state`, R4 JSON) — a Bundle
 of Patient/Encounter/Condition/Observation/MedicationRequest/Coverage
 per patient snapshot; CDA is the format dispatch's other, still-deferred
-arm. The Blaze server is the ecological test target
-(`test/ehr_testing_sim/blaze_integration_test.clj`, skip-when-absent).
+arm. Every resource carries the standard HTEST security label and a
+run-tag (`meta.tag`) identifying its generator/seed. This project's own
+in-repo FHIR evidence stops at the serverless set — the emitter-
+coherence property, cross-emitter ids, shape validation
+(ADR-0014); checking output against a real FHIR server is the
+consumer's job, the same division of labor v2 conformance already
+follows.
 
 **HL7 (organization) / HL7v2.** Health Level Seven International, the
 standards body; and its version-2 messaging standard (1980s-vintage,
@@ -543,10 +548,6 @@ exactly what came from where.
 **clojure-hl7-parser** (cmiles74). The one runtime HL7 dependency:
 ER7 parse/emit structures. Known limitation (no escape handling)
 receipted in the facts register with this repo's workaround.
-**Blaze** (samply). An open-source FHIR server, written in Clojure —
-M6's ecological target for the FHIR emitter
-(`test/ehr_testing_sim/blaze_integration_test.clj`; unreachable ->
-clean skip, no dependency on it being present).
 **Mirth Connect.** A widely-deployed open-source interface engine; a
 representative real-world consumer.
 **ehr-testing-guide / ehr-testing-tools.** The sibling repositories:

@@ -161,13 +161,15 @@ clojure -M:cli help
 Worked examples with real output: [docs/demos/](docs/demos/), including
 a same-seed HL7v2/FHIR pair (`docs/demos/emit-state/`) — one patient's
 final v2 message next to their FHIR `Patient`/`Observation` resources
-from the same instant, ids resolving across both. To check FHIR output
-against a real FHIR server (`samply/blaze`, a same-language Clojure
-implementation — `test/ehr_testing_sim/blaze_integration_test.clj`):
-
-```bash
-docker run -p 8080:8080 samply/blaze:latest
-```
+from the same instant, ids resolving across both. This project proves
+its own internal laws (the emitter-coherence property, cross-emitter
+ids, shape validation) and stops there, by design (ADR-0014): sim never
+POSTs to any external server, so checking FHIR output against a real
+FHIR server is the consumer's job — the same division of labor
+v2 conformance already follows (NIST/HAPI round-tripping belongs to
+`ehr-testing-tools`, never to this repo) — see the
+[ehr-testing-tools](https://github.com/pragsmike/ehr-testing-tools)
+sibling's managed `fhir-sink`.
 
 Unfamiliar term (ours or the domain's):
 [docs/GLOSSARY.md](docs/GLOSSARY.md). Which document to read for your

@@ -59,7 +59,8 @@ Four components (`ehr-testing-sim.site-profile`), each extending an
 existing idea rather than inventing a new mechanism:
 
 1. **MSH dialect.** A site profile's `:msh` supplies MSH-12 (HL7
-   version id) and MSH-3/4/5/6 (sending/receiving app+facility),
+   version id), MSH-3/4/5/6 (sending/receiving app+facility), and
+   MSH-11 (processing id — post-M6, ADR-0014's own Task 4 addition),
    defaulting field-by-field to today's hard-coded values when absent
    (`ehr-testing-sim.site-profile/default-msh`). Version changes the
    MSH-12 literal only — this layer does not restructure segments per
@@ -68,6 +69,26 @@ existing idea rather than inventing a new mechanism:
    could see multiple generated schemas but no documented way to
    switch versions) is answered: version selection is a named,
    configured field, never a hard-coded emitter constant.
+
+   **MSH-11 (`:processing-id`, HL7 Table 0103: "P" production, "T"
+   training, "D" debugging) defaults to "P" and is configurable to "T"
+   or "D".** A realism-vs-caution trade worth naming explicitly, since
+   it differs from every other dialect knob on this page: MSH-3/4/5/6/12
+   and the code-table/Z-segment knobs change how a fact is *said* with
+   no bearing on whether a receiving system treats the message
+   differently in kind, but MSH-11 is a field real interface engines
+   and downstream systems are *built* to route on — a training or
+   debugging processing id can (correctly, by HL7 convention) steer a
+   message to a sandbox environment, suppress a production side effect,
+   or otherwise change how the receiving system behaves. That is
+   exactly the point of the field, and also exactly why changing it
+   under test can silently defeat the test: a corpus generated with
+   `:processing-id "T"` against a system that special-cases training
+   traffic is no longer exercising the same code path production
+   traffic would hit. Leave this at its "P" default when the goal is
+   testing production-shaped behavior; set it deliberately, and record
+   why, when the goal is exercising a receiving system's own
+   training/debug handling.
 2. **Code-table overrides.** A site profile supplies its own value set
    for a user-defined HL7 table — patient class (table 0004,
    `docs/patient-state-model.md`'s `:class` field, PV1-2) and
@@ -147,9 +168,11 @@ layer has shipped or will ever ship belongs to exactly one:
    knob's surface is, by definition, exactly what the masking function
    (`emit-hl7-test/mask-dialect-surfaces`) strips before the weak-half
    invariance property compares two profiles' output — the masking
-   function's own declared surface (MSH-3/4/5/6/12, PV1-2/PV1-36,
+   function's own declared surface (MSH-3/4/5/6/11/12, PV1-2/PV1-36,
    Z-segment lines) **is** the enumeration of every dialect knob this
-   layer has shipped to date; adding a fourth dialect knob means
+   layer has shipped to date — MSH-11 (`:processing-id`) joined this
+   surface post-M6 (ADR-0014's own Task 4), the fourth dialect knob the
+   paragraph below already anticipated; adding a fifth means
    extending that function in the same change, or the invariance
    property test stops actually covering it.
 2. **Site config knobs** — bound before `Execute` runs, at
@@ -203,7 +226,7 @@ half** (messages) as a property test over 100 random seeds/patient
 counts (`emit-hl7-test/invariance-messages-agree-after-masking-
 dialect-surfaces`), comparing a default and a deliberately gaudy second
 profile after **masking** exactly the declared dialect surfaces
-(MSH-3/4/5/6/12, PV1-2/PV1-36, and Z-segment lines stripped entirely).
+(MSH-3/4/5/6/11/12, PV1-2/PV1-36, and Z-segment lines stripped entirely).
 The masking function (`emit-hl7-test/mask-dialect-surfaces`) is itself
 a deliverable of this claim, not merely test scaffolding: it is the
 precise, executable enumeration of what a dialect may touch, and
@@ -236,7 +259,20 @@ segments with a different MSH-12 literal, never a genuinely different
 segment set) stays future — HL7v2's own version-to-version segment
 changes are a large surface this layer doesn't attempt. Generalized
 naming idioms beyond `:surge-format` (ward ids, provider id formats)
-stay future too.
+stay future too. **A TEST-surname knob** (post-M6, ADR-0014's own Task
+4) — an optional site-profile field forcing every persona's own
+rendered surname to a fixed, obviously-synthetic marker (e.g. "TEST" or
+"ZZTEST", the convention some real EHRs already reserve for exactly
+this purpose) — is designed, not built: it would be a fifth dialect
+knob (bound at `pid-segment`'s own render call, truth-invariant the
+same way MSH/code-table/Z-segment/processing-id already are, since a
+patient's *actual* sampled name never changes, only which string PID-5
+renders) but isn't trivial to land in this same session — it needs its
+own masking-function extension and its own invariance coverage, the
+same discipline every other dialect knob here already carries, and
+this session's own scope is the MSH-11 knob. Recorded here so a future
+session has a named, reasoned starting point rather than reinventing
+the idea from scratch.
 
 ## Where this lands
 

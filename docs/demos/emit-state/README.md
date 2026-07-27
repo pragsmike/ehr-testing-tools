@@ -29,7 +29,13 @@ clojure -M:cli run --seed 42 --patients 3 \
   `Patient`, `Encounter`, five `Observation`s (the CBC panel), and
   `Coverage` — no `Condition`/`MedicationRequest` here, since this
   patient's pathway is a plain admission + order + discharge (no module,
-  no medication).
+  no medication). Post-M6 (ADR-0014): every resource here also carries
+  `meta.security` (the standard HTEST "test health data" label) and
+  `meta.tag` (`{"system": "urn:ehr-testing-sim", "code": "42"}`, this
+  run's own seed) — regenerated to show the labels, no other content
+  changed. The v2 side (`ground-truth.edn`, `messages.txt`) is
+  byte-identical to before: the labels are a FHIR-rendering-only
+  addition, never a ground-truth fact.
 
 ## The ids resolving across both — patient 1 (MRN000001)
 

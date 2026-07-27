@@ -59,7 +59,7 @@
 
 (deftest patient-resource-carries-patient-id-active-mrn-and-persona-fields
   (let [state {:patient-id "PID-000000-abc" :active-mrn "MRN000001" :status :admitted :persona a-persona}
-        bundle (emit-state/patient-bundle ref-date utc-offset state)
+        bundle (emit-state/patient-bundle ref-date utc-offset 42 state)
         patient (first (filter #(= "Patient" (:resourceType %)) (map :resource (:entry bundle))))]
     (is (= "PID-000000-abc" (:id patient)))
     (is (= "MRN000001" (:value (first (:identifier patient)))))
@@ -74,7 +74,7 @@
                   :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}
                   :admitted-at 100 :persona a-persona}
         discharged (assoc admitted :status :discharged :discharged-at 500)
-        resources-of (fn [state] (map :resource (:entry (emit-state/patient-bundle ref-date utc-offset state))))
+        resources-of (fn [state] (map :resource (:entry (emit-state/patient-bundle ref-date utc-offset 42 state))))
         encounter-of (fn [state] (first (filter #(= "Encounter" (:resourceType %)) (resources-of state))))]
     (is (nil? (encounter-of never-admitted)))
     (is (= "in-progress" (:status (encounter-of admitted))))
@@ -88,7 +88,7 @@
         state {:patient-id "P1" :active-mrn "M1" :status :discharged :persona a-persona
                :conditions [{:codes [a-concept] :citation {:module "sinusitis" :state :onset}
                              :onset-t 10 :clinical-status :resolved :end-t 200}]}
-        resources (map :resource (:entry (emit-state/patient-bundle ref-date utc-offset state)))
+        resources (map :resource (:entry (emit-state/patient-bundle ref-date utc-offset 42 state)))
         condition (first (filter #(= "Condition" (:resourceType %)) resources))]
     (is (= "36971009" (:code (first (:coding (:code condition))))))
     (is (= "http://snomed.info/sct" (:system (first (:coding (:code condition))))))
@@ -100,7 +100,7 @@
         state {:patient-id "P1" :active-mrn "M1" :status :admitted :persona a-persona
                :observations [{:codes [loinc] :t 50 :value 4.1 :unit "K/uL"
                                :reference-range {:low 4.5 :high 11.0} :interpretation :low}]}
-        resources (map :resource (:entry (emit-state/patient-bundle ref-date utc-offset state)))
+        resources (map :resource (:entry (emit-state/patient-bundle ref-date utc-offset 42 state)))
         obs (first (filter #(= "Observation" (:resourceType %)) resources))]
     (is (= "6690-2" (:code (first (:coding (:code obs))))))
     (is (= "http://loinc.org" (:system (first (:coding (:code obs))))))
@@ -114,7 +114,7 @@
         state {:patient-id "P1" :active-mrn "M1" :status :admitted :persona a-persona
                :medication-orders [{:codes [rxnorm] :citation {:module "m" :state :s}
                                     :ordered-t 20 :status :completed :ended-t 300}]}
-        resources (map :resource (:entry (emit-state/patient-bundle ref-date utc-offset state)))
+        resources (map :resource (:entry (emit-state/patient-bundle ref-date utc-offset 42 state)))
         med (first (filter #(= "MedicationRequest" (:resourceType %)) resources))]
     (is (= "308191" (:code (first (:coding (:medicationCodeableConcept med))))))
     (is (= "completed" (:status med)))
@@ -122,21 +122,21 @@
 
 (deftest coverage-resource-renders-the-sampled-payer
   (let [state {:patient-id "P1" :active-mrn "M1" :status :admitted :persona a-persona}
-        resources (map :resource (:entry (emit-state/patient-bundle ref-date utc-offset state)))
+        resources (map :resource (:entry (emit-state/patient-bundle ref-date utc-offset 42 state)))
         coverage (first (filter #(= "Coverage" (:resourceType %)) resources))]
     (is (= "active" (:status coverage)))
     (is (= "Commercial HMO" (:display (first (:payor coverage)))))))
 
 (deftest no-invented-fields-a-bare-registered-only-patient-yields-just-patient-and-coverage
   (let [state {:patient-id "P1" :active-mrn "M1" :status :new :persona a-persona}
-        resources (map (comp :resourceType) (map :resource (:entry (emit-state/patient-bundle ref-date utc-offset state))))]
+        resources (map (comp :resourceType) (map :resource (:entry (emit-state/patient-bundle ref-date utc-offset 42 state))))]
     (is (= #{"Patient" "Coverage"} (set resources)))))
 
 ;; --- the bundle is valid JSON --------------------------------------------
 
 (deftest patient-bundle-round-trips-through-clojure-data-json
   (let [{:keys [ground-truth]} (engine/run {:seed 42 :patients 2})
-        bundles (emit-state/bundle-run ground-truth ref-date utc-offset :end)]
+        bundles (emit-state/bundle-run ground-truth ref-date utc-offset 42 :end)]
     (is (= 2 (count bundles)))
     (doseq [[_ bundle] bundles]
       (is (= "Bundle" (:resourceType (json/read-str (json/write-str bundle) :key-fn keyword)))))))
@@ -148,7 +148,7 @@
   (prop/for-all [seed gen/large-integer
                  patients (gen/choose 1 8)]
     (let [{:keys [ground-truth]} (engine/run {:seed seed :patients patients})
-          bundles (emit-state/bundle-run ground-truth ref-date utc-offset :end)
+          bundles (emit-state/bundle-run ground-truth ref-date utc-offset seed :end)
           messages (emit-hl7/emit ground-truth ref-date utc-offset)]
       (every?
        (fn [i]
@@ -161,3 +161,38 @@
                  (and (= pid (:id patient))
                       (seq own-messages))))))
        (range patients)))))
+
+;; --- Standards-native test-data marking (post-M6, ADR-0014) --------------
+;; notes/facts-register.md F14: HTEST system/code/display verified against
+;; terminology.hl7.org before landing (no-guessing-codes rule).
+
+(def ^:private htest-security
+  {:system "http://terminology.hl7.org/CodeSystem/v3-ActReason"
+   :code "HTEST"
+   :display "test health data"})
+
+(deftest patient-bundle-resources-carry-htest-security-and-run-tag
+  (let [state {:patient-id "P1" :active-mrn "M1" :status :admitted :persona a-persona}
+        bundle (emit-state/patient-bundle ref-date utc-offset 42 state)
+        resources (map :resource (:entry bundle))]
+    (is (seq resources) "sanity: this state actually renders resources")
+    (doseq [r resources]
+      (is (= [htest-security] (:security (:meta r))))
+      (is (= [{:system "urn:ehr-testing-sim" :code "42"}] (:tag (:meta r)))))))
+
+(defspec every-resource-in-every-bundle-carries-htest-and-run-tag 100
+  (prop/for-all [seed gen/large-integer
+                 patients (gen/choose 1 5)]
+    (let [{:keys [ground-truth]} (engine/run {:seed seed :patients patients})
+          bundles (emit-state/bundle-run ground-truth ref-date utc-offset seed :end)]
+      (and (seq bundles)
+           (every?
+            (fn [[_ bundle]]
+              (and (seq (:entry bundle))
+                   (every?
+                    (fn [{:keys [resource]}]
+                      (and (= [htest-security] (:security (:meta resource)))
+                           (= [{:system "urn:ehr-testing-sim" :code (str seed)}]
+                              (:tag (:meta resource)))))
+                    (:entry bundle))))
+            bundles)))))

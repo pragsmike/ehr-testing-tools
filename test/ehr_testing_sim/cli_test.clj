@@ -20,7 +20,14 @@
   (let [r (cli/dispatch-action "explode" {})]
     (is (result/error? r))
     (is (= :unknown-command (:category r)))
-    (is (= ["run" "check"] (:known (:payload r))))))
+    (is (= ["run" "check" "identifiers"] (:known (:payload r))))))
+
+(deftest dispatch-routes-identifiers
+  (let [seen (atom nil)
+        r (cli/dispatch-action "identifiers" {:seed 1}
+                               {:identifiers-fn (fn [opts] (reset! seen opts) (result/ok :listed))})]
+    (is (result/ok? r))
+    (is (= {:seed 1} @seen))))
 
 (deftest run-requires-seed
   (let [r (cli/dispatch-action "run" {})]

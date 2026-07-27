@@ -172,16 +172,18 @@ excerpts of your real feed.
 
 ## What if synthetic data ever reached a real system — how would we find and remove it?
 
-You wouldn't have to hunt for it; you can list it exactly. The same
-config-plus-seed that generated a corpus regenerates it byte-for-byte, so the
-complete inventory of every identifier it ever contained (MRNs, visit numbers,
-message control IDs, FHIR resource ids) is always recoverable — feed that list
-to your system's purge tooling. On the FHIR side, every resource additionally
-carries the standard HTEST "test data" security label and a generator tag, so
-it's searchable and bulk-deletable by query. On the HL7v2 side, synthetic
-identifiers are deliberately fingerprinted (invalid-range SSNs, documented MRN
-and control-ID formats). And the write-safety gates exist so this question stays
-hypothetical.
+You wouldn't have to hunt for it; you can list it exactly. Run
+`sim identifiers --seed <seed> --patients <n> [--config <file>]` against the
+same config-plus-seed that generated the corpus and get back the complete
+inventory of every identifier it ever contained — patient ids, MRNs (every one,
+including any merged away), visit-relevant ids, message control IDs, FHIR
+resource ids, provider NPIs, and the run's own id — as machine-readable EDN;
+feed that list straight to your system's purge tooling. On the FHIR side, every
+resource additionally carries the standard HTEST "test data" security label and
+a generator tag, so it's searchable and bulk-deletable by query. On the HL7v2
+side, synthetic identifiers are deliberately fingerprinted (invalid-range SSNs,
+documented MRN and control-ID formats). And the simulator itself only ever
+writes files — nothing in it sends data to any server.
 
 ## What can't it do yet? (Honest list)
 

@@ -22,6 +22,7 @@
             [clojure.edn :as edn]
             [ehr-testing-sim.result :as result]
             [ehr-testing-sim.check :as check]
+            [ehr-testing-sim.identifiers :as identifiers]
             [ehr-testing-sim.run :as run])
   (:gen-class))
 
@@ -60,7 +61,12 @@
              {:flag "--config" :doc "path to an EDN file supplying data-heavy engine keys with no flag of their own (:pathway/:pathways/:order-profiles/:churn-profile); merged UNDER explicit flags"}]}
     {:verb "check"
      :doc "Run the invariant catalog over a ground-truth log (EDN on stdin)."
-     :flags []}]})
+     :flags []}
+    {:verb "identifiers"
+     :doc "Config + seed -> the complete EDN inventory of every identifier this run's output contains (patient-ids, MRNs, visit beds, HL7 control ids, FHIR resource ids, provider NPIs, run-id) -- ADR-0014's own answer to 'how would we find and remove it.'"
+     :flags [{:flag "--seed" :doc "RNG seed (required; same as `sim run`'s own --seed)"}
+             {:flag "--patients" :doc "number of patients" :default "1"}
+             {:flag "--config" :doc "path to an EDN file supplying data-heavy engine keys (same as `sim run`)"}]}]})
 
 (defn parse
   [raw-args]
@@ -87,12 +93,14 @@
   "The mountable dispatch: [action opts] -> Result. The -fn keys are
   injectable for tests (same pattern as tools' dispatch)."
   ([action opts] (dispatch-action action opts {}))
-  ([action opts {:keys [run-fn check-fn]
+  ([action opts {:keys [run-fn check-fn identifiers-fn]
                  :or {run-fn run/run-command
-                      check-fn check-command}}]
+                      check-fn check-command
+                      identifiers-fn identifiers/identifiers-command}}]
    (case action
      "run" (run-fn opts)
      "check" (check-fn opts)
+     "identifiers" (identifiers-fn opts)
      (unknown-action action))))
 
 ;; --- standalone shell -------------------------------------------------

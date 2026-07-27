@@ -40,7 +40,24 @@
      the fold for this reason). Procedure is deliberately absent --
      ground truth carries :procedure events, but nothing in this
      resource set needs them, and inventing a seventh resource type
-     nobody asked for would violate this law for its own sake."
+     nobody asked for would violate this law for its own sake.
+  5. Standards-native test-data marking (post-M6, ADR-0014): EVERY
+     resource this namespace renders carries `meta.security` (the
+     standard FHIR/HL7 HTEST \"test health data\" label, verified
+     against terminology.hl7.org before landing --
+     notes/facts-register.md F14) and `meta.tag` (this run's own
+     seed/run-id, system \"urn:ehr-testing-sim\") -- generator and
+     provenance on every resource, so a real system that ever received
+     this data could find and purge it by a standard security-label
+     query alone, never a project-specific convention only this repo
+     knows to look for. Applied as a POST-PROCESSING step over already-
+     built resources (`with-test-meta`, below), deliberately NOT
+     threaded into the individual resource builders: a run's own seed
+     is a property of the RUN, not of any patient's own folded state,
+     so threading it into `patient-resource`/`encounter-resource`/etc.
+     would violate law 4 above (\"populated ONLY from fields the fold
+     already carries\") for a concern that has nothing to do with
+     clinical content."
   (:require [ehr-testing-sim.engine :as engine]))
 
 ;; --- Law 1: snapshot-at-instant -------------------------------------------
@@ -184,14 +201,45 @@
      :payor [{:display (:name payer)}]
      :type {:text (name (:type payer))}}))
 
+;; --- Law 5: standards-native test-data marking -----------------------------
+
+(def ^:private htest-security
+  "The standard FHIR/HL7 test-data security label -- HL7 v3-ActReason
+  HTEST, display \"test health data\" (notes/facts-register.md F14,
+  verified against terminology.hl7.org before landing, per this
+  project's own no-guessing-codes rule). Carried on every resource this
+  namespace renders (law 5, above)."
+  {:system "http://terminology.hl7.org/CodeSystem/v3-ActReason"
+   :code "HTEST"
+   :display "test health data"})
+
+(defn- run-tag
+  "This run's own provenance tag: system \"urn:ehr-testing-sim\", code =
+  the run's seed/run-id (rendered as a string -- FHIR's own Coding.code
+  is a string, never a bare number)."
+  [run-id]
+  {:system "urn:ehr-testing-sim" :code (str run-id)})
+
+(defn- with-test-meta
+  "Merges law 5's own meta.security/meta.tag onto one already-built
+  resource. Merge, not overwrite: no builder above sets :meta today, so
+  this is additive in practice, but merging (not assoc-ing a bare
+  {:security ... :tag ...}) means a future resource type that DOES
+  carry its own :meta content composes rather than silently losing it."
+  [run-id resource]
+  (update resource :meta merge {:security [htest-security] :tag [(run-tag run-id)]}))
+
 (defn patient-bundle
   "One patient's own state -> a FHIR Bundle (type \"collection\") of
   every resource that state actually holds -- Patient/Coverage whenever
   a persona has folded (M4's :registered, always this patient's first
   event); Encounter once admitted; Condition/Observation/
   MedicationRequest exactly as many as the accumulator carries, zero
-  otherwise. No resource is emitted speculatively."
-  [reference-date utc-offset patient-state]
+  otherwise. No resource is emitted speculatively. `run-id` (this run's
+  own seed) is stamped onto every resource's own meta.security/meta.tag
+  (law 5) -- a run-level fact, applied after the resource builders run,
+  never threaded into them (see law 5's own docstring note)."
+  [reference-date utc-offset run-id patient-state]
   (let [resources (concat
                     (some-> (patient-resource patient-state) vector)
                     (some-> (encounter-resource reference-date utc-offset patient-state) vector)
@@ -201,18 +249,19 @@
                     (some-> (coverage-resource patient-state) vector))]
     {:resourceType "Bundle"
      :type "collection"
-     :entry (mapv (fn [r] {:resource r}) resources)}))
+     :entry (mapv (fn [r] {:resource (with-test-meta run-id r)}) resources)}))
 
 (defn bundle-run
   "The stage function: ground-truth log -> {patient-id -> Bundle}, one
   per patient who exists (has folded at least a :registered event) at
   or before `t`. `t` may be an explicit instant (seconds from run
   start) or `:end` (this run's own last event time) -- the CLI's own
-  `sim run --emit fhir [--at ...]` convenience. Calls
+  `sim run --emit fhir [--at ...]` convenience. `run-id` (this run's
+  own seed) is stamped onto every resource, per law 5. Calls
   ehr-testing-sim.engine/replay exactly once (the fold); every bundle
   is a pure projection of that single call's own output, per
   `snapshot-at`'s law."
-  [ground-truth reference-date utc-offset t]
+  [ground-truth reference-date utc-offset run-id t]
   (let [t (if (= :end t) (reduce max 0 (map :t ground-truth)) t)
         snapshot (snapshot-at (engine/replay ground-truth) t)]
-    (into {} (map (fn [[patient-id state]] [patient-id (patient-bundle reference-date utc-offset state)])) snapshot)))
+    (into {} (map (fn [[patient-id state]] [patient-id (patient-bundle reference-date utc-offset run-id state)])) snapshot)))

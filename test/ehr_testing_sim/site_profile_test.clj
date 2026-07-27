@@ -43,6 +43,20 @@
     (is (= (assoc site-profile/default-msh :version "2.5.1" :sending-app "ALDRIC-EHR")
            (site-profile/effective-msh profile)))))
 
+;; --- post-M6 (ADR-0014, Task 4): MSH-11 processing id -----------------------
+
+(deftest default-msh-processing-id-is-P
+  (is (= "P" (:processing-id site-profile/default-msh))))
+
+(deftest effective-msh-overrides-processing-id
+  (is (= "T" (:processing-id (site-profile/effective-msh {:msh {:processing-id "T"}}))))
+  (is (= "D" (:processing-id (site-profile/effective-msh {:msh {:processing-id "D"}})))))
+
+(deftest processing-id-only-accepts-the-documented-enum
+  (is (site-profile/valid-profile? {:msh {:processing-id "T"}}))
+  (is (site-profile/valid-profile? {:msh {:processing-id "D"}}))
+  (is (not (site-profile/valid-profile? {:msh {:processing-id "X"}}))))
+
 ;; --- Task 2: code-table overrides ------------------------------------------
 
 (deftest code-for-falls-back-to-standard-when-no-override

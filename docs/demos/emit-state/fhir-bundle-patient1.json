@@ -2,19 +2,26 @@
  "type":"collection",
  "entry":
  [{"resource":
-   {"resourceType":"Patient",
-    "id":"PID-000000-918175ce",
-    "identifier":
-    [{"system":"urn:ehr-testing-sim:mrn", "value":"MRN000001"}],
-    "name":[{"family":"Gonzalez", "given":["Barbara"]}],
-    "gender":"female",
-    "birthDate":"1935-02-21",
-    "address":
+   {"address":
     [{"line":["22 Chestnut Ct"],
       "city":"Providence",
       "state":"RI",
       "postalCode":"02903"}],
-    "telecom":[{"system":"phone", "value":"607-335-0157"}]}},
+    "meta":
+    {"security":
+     [{"system":
+       "http:\/\/terminology.hl7.org\/CodeSystem\/v3-ActReason",
+       "code":"HTEST",
+       "display":"test health data"}],
+     "tag":[{"system":"urn:ehr-testing-sim", "code":"42"}]},
+    "name":[{"family":"Gonzalez", "given":["Barbara"]}],
+    "birthDate":"1935-02-21",
+    "resourceType":"Patient",
+    "id":"PID-000000-918175ce",
+    "identifier":
+    [{"system":"urn:ehr-testing-sim:mrn", "value":"MRN000001"}],
+    "telecom":[{"system":"phone", "value":"607-335-0157"}],
+    "gender":"female"}},
   {"resource":
    {"resourceType":"Encounter",
     "id":"PID-000000-918175ce-encounter",
@@ -23,9 +30,23 @@
     "subject":{"reference":"Patient\/PID-000000-918175ce"},
     "period":
     {"start":"2024-01-01T00:00:00+00:00",
-     "end":"2024-01-01T00:00:00+00:00"}}},
+     "end":"2024-01-01T00:00:00+00:00"},
+    "meta":
+    {"security":
+     [{"system":
+       "http:\/\/terminology.hl7.org\/CodeSystem\/v3-ActReason",
+       "code":"HTEST",
+       "display":"test health data"}],
+     "tag":[{"system":"urn:ehr-testing-sim", "code":"42"}]}}},
   {"resource":
    {"referenceRange":[{"low":{"value":4.5}, "high":{"value":11.0}}],
+    "meta":
+    {"security":
+     [{"system":
+       "http:\/\/terminology.hl7.org\/CodeSystem\/v3-ActReason",
+       "code":"HTEST",
+       "display":"test health data"}],
+     "tag":[{"system":"urn:ehr-testing-sim", "code":"42"}]},
     "interpretation":[{"coding":[{"code":"H"}]}],
     "encounter":
     {"reference":"Encounter\/PID-000000-918175ce-encounter"},
@@ -43,6 +64,13 @@
     "subject":{"reference":"Patient\/PID-000000-918175ce"}}},
   {"resource":
    {"referenceRange":[{"low":{"value":4.2}, "high":{"value":5.9}}],
+    "meta":
+    {"security":
+     [{"system":
+       "http:\/\/terminology.hl7.org\/CodeSystem\/v3-ActReason",
+       "code":"HTEST",
+       "display":"test health data"}],
+     "tag":[{"system":"urn:ehr-testing-sim", "code":"42"}]},
     "interpretation":[{"coding":[{"code":"N"}]}],
     "encounter":
     {"reference":"Encounter\/PID-000000-918175ce-encounter"},
@@ -60,6 +88,13 @@
     "subject":{"reference":"Patient\/PID-000000-918175ce"}}},
   {"resource":
    {"referenceRange":[{"low":{"value":12.0}, "high":{"value":17.5}}],
+    "meta":
+    {"security":
+     [{"system":
+       "http:\/\/terminology.hl7.org\/CodeSystem\/v3-ActReason",
+       "code":"HTEST",
+       "display":"test health data"}],
+     "tag":[{"system":"urn:ehr-testing-sim", "code":"42"}]},
     "interpretation":[{"coding":[{"code":"H"}]}],
     "encounter":
     {"reference":"Encounter\/PID-000000-918175ce-encounter"},
@@ -76,6 +111,13 @@
     "subject":{"reference":"Patient\/PID-000000-918175ce"}}},
   {"resource":
    {"referenceRange":[{"low":{"value":36.0}, "high":{"value":50.0}}],
+    "meta":
+    {"security":
+     [{"system":
+       "http:\/\/terminology.hl7.org\/CodeSystem\/v3-ActReason",
+       "code":"HTEST",
+       "display":"test health data"}],
+     "tag":[{"system":"urn:ehr-testing-sim", "code":"42"}]},
     "interpretation":[{"coding":[{"code":"N"}]}],
     "encounter":
     {"reference":"Encounter\/PID-000000-918175ce-encounter"},
@@ -93,6 +135,13 @@
     "subject":{"reference":"Patient\/PID-000000-918175ce"}}},
   {"resource":
    {"referenceRange":[{"low":{"value":150}, "high":{"value":450}}],
+    "meta":
+    {"security":
+     [{"system":
+       "http:\/\/terminology.hl7.org\/CodeSystem\/v3-ActReason",
+       "code":"HTEST",
+       "display":"test health data"}],
+     "tag":[{"system":"urn:ehr-testing-sim", "code":"42"}]},
     "interpretation":[{"coding":[{"code":"N"}]}],
     "encounter":
     {"reference":"Encounter\/PID-000000-918175ce-encounter"},
@@ -114,4 +163,11 @@
     "status":"active",
     "beneficiary":{"reference":"Patient\/PID-000000-918175ce"},
     "payor":[{"display":"Medicare"}],
-    "type":{"text":"medicare"}}}]}
+    "type":{"text":"medicare"},
+    "meta":
+    {"security":
+     [{"system":
+       "http:\/\/terminology.hl7.org\/CodeSystem\/v3-ActReason",
+       "code":"HTEST",
+       "display":"test health data"}],
+     "tag":[{"system":"urn:ehr-testing-sim", "code":"42"}]}}}]}

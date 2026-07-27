@@ -35,7 +35,7 @@
             [ehr-testing-sim.pathway :as pathway]
             [ehr-testing-sim.result :as result]))
 
-(defn- resolve-modules
+(defn resolve-modules
   "M5b: `:modules` at the config/CLI-facing layer is a vector of NAME
   STRINGS (resolving to `resources/modules/<name>.json` -- test code may
   point at other fixture paths via a lower-level API, per this
@@ -122,7 +122,7 @@
    (or (first (filter #(= i (:patient-ordinal %)) module-assignment))
        (seq (filterv :weight module-assignment)))))
 
-(defn- incompatible-assignments
+(defn incompatible-assignments
   "The full check: every ordinal (0-indexed, `patients` of them,
   default 1) certain to receive BOTH an encounter-opening pathway and a
   module. Guarded by each config's OWN schema validity
@@ -148,14 +148,32 @@
                      :module-source :module-assignment})))
           (range (or patients 1)))))
 
-(defn- merge-config-file
+(defn effective-churn-profile
+  "M2b: resolves opts' `:churn`/`:churn-profile` into the profile
+  `engine/run` actually wants -- a bare `:churn` toggle expands to
+  `churn/sample-profile`; an explicit `:churn-profile` is merged OVER
+  `churn/default-churn-profile` (a caller only needs to name the rates
+  they want to change); neither key present means nil, the opt-in path
+  the pinned fixture depends on. Public: `ehr-testing-sim.identifiers/
+  identifiers-command` reuses this SAME resolution (a projection over
+  the same run `run-command` executes), rather than re-deriving it."
+  [{:keys [churn churn-profile]}]
+  (cond
+    churn-profile (merge churn/default-churn-profile churn-profile)
+    churn churn/sample-profile
+    :else nil))
+
+(defn merge-config-file
   "M4 Task 0: `:config` (a path to an EDN file) supplies the data-heavy
   engine keys that have no CLI flag of their own (`:pathway`/
   `:pathways`/`:order-profiles`, a full `:churn-profile` map) -- read
   once, merged UNDER the caller's own opts (an explicit opt wins over
   anything the file also names; the file exists to supply what flags
   can't express, not to override them). Absent `:config` -- the
-  default -- this is the identity function on opts, byte for byte."
+  default -- this is the identity function on opts, byte for byte.
+  Public: `ehr-testing-sim.identifiers/identifiers-command` reuses this
+  SAME config-merging step (a projection over the same run this
+  namespace's own `run-command` executes), rather than re-deriving it."
   [opts]
   (if-let [path (:config opts)]
     (merge (edn/read-string (slurp path)) (dissoc opts :config))
@@ -259,10 +277,7 @@
        (let [reference-date (or reference-date emit-hl7/default-reference-date)
              utc-offset (or utc-offset emit-hl7/default-utc-offset)
              warm-up-seconds (or warm-up-seconds 0)
-             effective-churn-profile (cond
-                                       churn-profile (merge churn/default-churn-profile churn-profile)
-                                       churn churn/sample-profile
-                                       :else nil)
+             effective-churn-profile (effective-churn-profile opts)
              engine-params (-> (select-keys opts [:patients :arrival-gap :warm-up-seconds])
                                 (assoc :reference-date reference-date :utc-offset utc-offset))
              engine-opts (cond-> (merge (select-keys opts engine/config-keys)
@@ -285,4 +300,4 @@
                                :events (count ground-truth)}}
               (= "hl7" emit) (assoc :messages (emit-hl7/emit ground-truth reference-date utc-offset facility providers site-profile))
               (= "fhir" emit) (assoc :fhir-bundles
-                                     (emit-state/bundle-run ground-truth reference-date utc-offset (or at :end)))))))))))
+                                     (emit-state/bundle-run ground-truth reference-date utc-offset seed (or at :end)))))))))))

@@ -768,14 +768,17 @@ own `:cancel-discharge` method now restores `:class` as part of its
 reinstatement — the fix closes the gap in ground truth; the projection
 was never loosened to tolerate it.
 
-**Task 3: the ecological loop.** `test/ehr_testing_sim/blaze_integration_test.clj`
-(skip-when-absent, the same pattern `ehr-testing-tools`' own
-`sim-harness/available?` establishes) POSTs a run's own end-of-run
-Bundle(s) to a locally reachable `samply/blaze` and round-trips Patient
-fields when one is present; unreachable, a clean skip with a
-docker-run one-liner. Uses `java.net.HttpURLConnection` (JDK 1.1+), not
-`java.net.http.HttpClient` (JDK 11+) — this session's own JDK 8 runtime
-doesn't carry the latter (`notes/facts-register.md` F13).
+**Task 3: the ecological loop — landed, then removed (ADR-0014).**
+`test/ehr_testing_sim/blaze_integration_test.clj` originally POSTed a
+run's own end-of-run Bundle(s) to a locally reachable `samply/blaze`
+and round-tripped Patient fields when one was present (skip-when-absent
+otherwise). A post-M6 session deleted it: sim runs no external
+acceptance instruments, the same never-graded-on-its-own-homework
+symmetry v2 conformance already follows (NIST/HAPI round-tripping
+belongs to `ehr-testing-tools`, never to this repo) — see ADR-0014.
+`notes/facts-register.md` F13 (the JDK-8/HttpURLConnection finding this
+test motivated) is annotated superseded, not deleted, per this
+project's append-only discipline.
 
 **Note for the author: the tools-side gate-loop baseline review needs
 NO new delta from this session** — EmitState adds no `hl7v2-stream`
@@ -838,15 +841,17 @@ it, named here so they aren't lost between repos.
   classpath). **Noted here, built there** — this roadmap does not
   schedule tools' own work, only records the dependency so a future
   session in either repo knows the item exists.
-- **Blaze as M6's ecological target.** `samply/blaze` (a Clojure FHIR
-  server) is named as the natural first real-world consumer for M6's
-  **EmitState** output (`docs/sim-theory.edn`) — a same-language FHIR
-  server this project's state-documents can be loaded into and queried
-  against, giving the emitter-coherence property test a genuine
-  external system to check against rather than only this repo's own
-  parsing round-trip. This is a target for M6's own validation work,
-  not a dependency this repo takes on; recorded here so M6 doesn't have
-  to rediscover the natural fit from scratch.
+- **External FHIR acceptance belongs to tools, not sim (ADR-0014).**
+  `samply/blaze` was briefly named as M6's own ecological target and a
+  round-trip test landed against it; a post-M6 session reversed that —
+  sim proves its own internal laws (the emitter-coherence property,
+  cross-emitter ids, shape validation) and stops there, exactly as
+  claim #1's v2 conformance work already does (NIST/HAPI round-tripping
+  lives in `ehr-testing-tools`, never here). The family's sole
+  POSTing component is tools' own managed `fhir-sink`, which starts
+  what it talks to; no component anywhere in this family accepts an
+  arbitrary external server URL. Noted here so a future session doesn't
+  rediscover the reversal from scratch.
 
 ## The adversarial-traffic exclusion
 

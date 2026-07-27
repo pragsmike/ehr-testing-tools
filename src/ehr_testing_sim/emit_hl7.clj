@@ -111,6 +111,30 @@
   (str (.format (.plusSeconds (reference-instant reference-date) seconds) hl7-timestamp-formatter)
        (hl7-offset-suffix utc-offset)))
 
+(defn control-id-for
+  "MSH-10 (message control id) for one ground-truth event -- the SAME
+  construction every message-builder call site below uses, extracted
+  once (post-M6, ADR-0014's own `sim identifiers` verb reuses this
+  exact function so its own inventory can never drift from what a real
+  emission actually renders): `active-mrn` and the event's own trigger
+  and `:t` for every single-subject type; `mrn1+mrn2` for :bed-swap
+  (genuinely two participants, no single :active-mrn to key on);
+  `surviving-mrn` for :merge (PID carries the survivor, not the one
+  being merged away). nil for any event type outside
+  `message-type-registry` (the same 'no message, no id' rule
+  `event->messages` already follows)."
+  [{:keys [event t active-mrn surviving-mrn participants swap]}]
+  (when-let [{:keys [trigger]} (message-type-registry event)]
+    (case event
+      :bed-swap
+      (let [[p1 p2] (mapv :patient-id participants)]
+        (str (:active-mrn (get swap p1)) "+" (:active-mrn (get swap p2)) "-" trigger "-" t))
+
+      :merge
+      (str surviving-mrn "-" trigger "-" t)
+
+      (str active-mrn "-" trigger "-" t))))
+
 (defn- msh-segment
   "MSH-3/4/5/6/12 (sending/receiving app+facility, version id) render
   `site-profile`'s :msh dialect, defaulting field-by-field to today's
@@ -120,7 +144,7 @@
   .agents/plans/roadmap.md: a configured field, not a hard-coded
   emitter constant)."
   [site-profile {:keys [type trigger]} control-id ts]
-  (let [{:keys [version sending-app sending-facility receiving-app receiving-facility]}
+  (let [{:keys [version sending-app sending-facility receiving-app receiving-facility processing-id]}
         (site-profile/effective-msh site-profile)]
     (parser/create-segment
      "MSH"
@@ -133,7 +157,7 @@
      (parser/create-field [])
      (parser/create-field [type trigger])
      (parser/create-field [control-id])
-     (parser/create-field ["P"])
+     (parser/create-field [processing-id])
      (parser/create-field [version]))))
 
 (defn- evn-segment
@@ -412,10 +436,10 @@
   every segment renders through `site-profile`'s own dialect/code-table/
   Z-segment surfaces -- `z-segments-for`'s own docstring."
   [reference-date utc-offset facility providers personas site-profile
-   {:keys [event t active-mrn location from attending participants]}]
+   {:keys [event t active-mrn location from attending participants] :as ev}]
   (when-let [type+trigger (message-type-registry event)]
     (let [ts (hl7-timestamp reference-date t utc-offset)
-          control-id (str active-mrn "-" (:trigger type+trigger) "-" t)
+          control-id (control-id-for ev)
           facility-name (name (:id facility))
           provider (provider-by-id providers attending)
           persona (get personas (:patient-id (first participants)))
@@ -449,7 +473,7 @@
         [p1 p2] (mapv :patient-id participants)
         {mrn1 :active-mrn from1 :from to1 :to att1 :attending} (get swap p1)
         {mrn2 :active-mrn from2 :from to2 :to att2 :attending} (get swap p2)
-        control-id (str mrn1 "+" mrn2 "-" (:trigger type+trigger) "-" t)]
+        control-id (control-id-for ev)]
     (parser/str-message
      (apply parser/create-message
       parser/DEFAULT-DELIMITERS
@@ -470,7 +494,7 @@
   (let [type+trigger (message-type-registry :merge)
         ts (hl7-timestamp reference-date t utc-offset)
         facility-name (name (:id facility))
-        control-id (str surviving-mrn "-" (:trigger type+trigger) "-" t)
+        control-id (control-id-for ev)
         survivor-id (:patient-id (first (filter #(= :survivor (:role %)) participants)))]
     (parser/str-message
      (apply parser/create-message
@@ -542,7 +566,7 @@
    {:keys [t active-mrn location attending concept participants] :as ev}]
   (let [type+trigger (message-type-registry :order-placed)
         ts (hl7-timestamp reference-date t utc-offset)
-        control-id (str active-mrn "-" (:trigger type+trigger) "-" t)
+        control-id (control-id-for ev)
         facility-name (name (:id facility))
         provider (provider-by-id providers attending)]
     (parser/str-message
@@ -564,7 +588,7 @@
    {:keys [t active-mrn location attending concept results participants] :as ev}]
   (let [type+trigger (message-type-registry :result-available)
         ts (hl7-timestamp reference-date t utc-offset)
-        control-id (str active-mrn "-" (:trigger type+trigger) "-" t)
+        control-id (control-id-for ev)
         facility-name (name (:id facility))
         provider (provider-by-id providers attending)
         obx-segments (map-indexed (fn [i r] (obx-segment (inc i) r)) results)]
@@ -607,7 +631,7 @@
    {:keys [t active-mrn location attending participants] :as ev}]
   (let [type+trigger (message-type-registry :observation)
         ts (hl7-timestamp reference-date t utc-offset)
-        control-id (str active-mrn "-" (:trigger type+trigger) "-" t)
+        control-id (control-id-for ev)
         facility-name (name (:id facility))
         provider (provider-by-id providers attending)]
     (parser/str-message

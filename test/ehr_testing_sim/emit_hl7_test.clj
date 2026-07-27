@@ -627,7 +627,8 @@
   this milestone's own tests."
   {:name "St. Aldric's Memorial"
    :msh {:version "2.5.1" :sending-app "ALDRIC-EHR" :sending-facility "ALDRIC"
-         :receiving-app "DOWNSTREAM" :receiving-facility "DOWNSTREAM-FAC"}
+         :receiving-app "DOWNSTREAM" :receiving-facility "DOWNSTREAM-FAC"
+         :processing-id "T"}
    :code-tables {:patient-class {:inpatient {:code "IN" :coding-system "99ALDRIC"}}
                  :discharge-disposition {:discharged-to-home {:code "HOME" :coding-system "99ALDRIC"}}}})
 
@@ -642,12 +643,26 @@
       (is (= "ALDRIC" (message/get-field-first-value parsed "MSH" 4))))
     (testing "MSH-5/6: receiving app/facility"
       (is (= "DOWNSTREAM" (message/get-field-first-value parsed "MSH" 5)))
-      (is (= "DOWNSTREAM-FAC" (message/get-field-first-value parsed "MSH" 6))))))
+      (is (= "DOWNSTREAM-FAC" (message/get-field-first-value parsed "MSH" 6))))
+    (testing "MSH-11: processing id (post-M6, ADR-0014's own Task 4 knob)"
+      (is (= "T" (message/get-field-first-value parsed "MSH" 11))))))
+
+(deftest msh-11-processing-id-defaults-to-P-and-accepts-T-or-D
+  (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 1})
+        parsed-for (fn [processing-id]
+                     (parser/parse
+                      (first (emit-hl7/emit ground-truth ref-date utc-offset facility providers
+                                            (when processing-id {:msh {:processing-id processing-id}})))))]
+    (is (= "P" (message/get-field-first-value (parsed-for nil) "MSH" 11)) "no profile: today's default")
+    (is (= "P" (message/get-field-first-value (parsed-for "P") "MSH" 11)))
+    (is (= "T" (message/get-field-first-value (parsed-for "T") "MSH" 11)))
+    (is (= "D" (message/get-field-first-value (parsed-for "D") "MSH" 11)))))
 
 (deftest absent-profile-renders-todays-hardcoded-msh-values
   (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 1})
         parsed (parser/parse (first (emit-hl7/emit ground-truth ref-date utc-offset facility providers)))]
     (is (= "2.3" (message/get-field-first-value parsed "MSH" 12)))
+    (is (= "P" (message/get-field-first-value parsed "MSH" 11)))
     (is (= "EHR-TESTING-SIM" (message/get-field-first-value parsed "MSH" 3)))
     (is (= "SIM" (message/get-field-first-value parsed "MSH" 4)))))
 
@@ -725,14 +740,18 @@
 ;; profile is allowed to touch.
 
 (defn- mask-msh-fields
-  "Blanks MSH-3/4/5/6/12 (sending/receiving app+facility, version id) --
-  the declared MSH dialect surface. MSH-1 is the field-separator
-  character itself (not a token `str/split` produces); MSH-2 (encoding
-  characters) is index 1 after the split, so MSH-3/4/5/6/12 land at
-  indices 2/3/4/5/11."
+  "Blanks MSH-3/4/5/6/11/12 (sending/receiving app+facility, processing
+  id, version id) -- the declared MSH dialect surface. MSH-1 is the
+  field-separator character itself (not a token `str/split` produces);
+  MSH-2 (encoding characters) is index 1 after the split, so
+  MSH-3/4/5/6/11/12 land at indices 2/3/4/5/10/11. MSH-11 (processing
+  id) joined this surface post-M6 (ADR-0014's own Task 4 knob) --
+  docs/site-profiles.md's own rule that a new dialect knob extends this
+  function in the same change, or the invariance property stops
+  actually covering it."
   [msh-line]
   (let [fields (str/split msh-line #"\|" -1)]
-    (str/join "|" (map-indexed (fn [i f] (if (#{2 3 4 5 11} i) "" f)) fields))))
+    (str/join "|" (map-indexed (fn [i f] (if (#{2 3 4 5 10 11} i) "" f)) fields))))
 
 (defn- mask-pv1-fields
   "Blanks PV1-2/PV1-36 -- the two declared code-table-override fields.
@@ -743,8 +762,9 @@
 
 (defn mask-dialect-surfaces
   "Masks every declared site-profile dialect surface (docs/site-
-  profiles.md Task 4) in one rendered ER7 message: MSH-3/4/5/6/12,
-  PV1-2/PV1-36, and strips Z-segment lines entirely (a Z-segment's
+  profiles.md Task 4, extended post-M6 by ADR-0014's own MSH-11 knob)
+  in one rendered ER7 message: MSH-3/4/5/6/11/12, PV1-2/PV1-36, and
+  strips Z-segment lines entirely (a Z-segment's
   CONTENT, not merely a field within it, is site-specific -- its bare
   presence following a trigger is still exercised by the Z-segment
   tests above, not by this property). Two profiles' renderings of the
@@ -796,3 +816,17 @@
           zpi-msg (first messages)]
       (is (some? (parser/parse zpi-msg)))
       (is (= 1 (count (message/get-segments (parser/parse zpi-msg) "ZPI")))))))
+
+;; --- post-M6 (ADR-0014): control-id-for is the ONE source every message
+;; builder AND `sim identifiers` derive MSH-10 from -- proven here by
+;; checking it against a real run's own rendered messages, not merely
+;; against itself.
+
+(defspec control-id-for-matches-every-rendered-messages-own-msh-10 100
+  (prop/for-all [seed gen/large-integer
+                 patients (gen/choose 1 6)]
+    (let [{:keys [ground-truth facility providers]} (engine/run {:seed seed :patients patients})
+          messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+          rendered-control-ids (into #{} (map #(message/get-field-first-value (parser/parse %) "MSH" 10)) messages)
+          derived-control-ids (into #{} (keep emit-hl7/control-id-for) ground-truth)]
+      (= rendered-control-ids derived-control-ids))))

@@ -38,19 +38,29 @@
    [:sending-app {:optional true} :string]
    [:sending-facility {:optional true} :string]
    [:receiving-app {:optional true} :string]
-   [:receiving-facility {:optional true} :string]])
+   [:receiving-facility {:optional true} :string]
+   [:processing-id {:optional true} [:enum "P" "T" "D"]]])
 
 (def default-msh
   "Today's hard-coded MSH values (ehr-testing-sim.emit-hl7, pre-site-
   profiles) -- what an absent/empty profile's MSH dialect renders,
   byte-identical to always (SimHospital issue #17's own citation,
   .agents/plans/roadmap.md, is why :version in particular is now a
-  configured field rather than a hard-coded emitter constant)."
+  configured field rather than a hard-coded emitter constant).
+  `:processing-id` (MSH-11, HL7 Table 0103: \"P\" production, \"T\"
+  training, \"D\" debugging) defaults to \"P\" -- this project's own
+  output has always rendered a literal \"P\" here, pre-dating this
+  field's own existence as a configured knob (post-M6, ADR-0014's own
+  Task 4); a site profile may override it to \"T\"/\"D\" for a
+  training/debugging feed instead. See docs/site-profiles.md's own
+  realism-vs-caution paragraph on this specific knob before changing it
+  in a config a consumer's own routing logic depends on."
   {:version "2.3"
    :sending-app "EHR-TESTING-SIM"
    :sending-facility "SIM"
    :receiving-app ""
-   :receiving-facility ""})
+   :receiving-facility ""
+   :processing-id "P"})
 
 (defn effective-msh
   "`default-msh` overridden field-by-field by `site-profile`'s :msh --
