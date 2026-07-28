@@ -52,6 +52,74 @@
     (is (result/rejected? r))
     (is (= :invalid-sink (:category r)))))
 
+;; ---- write-file! write discipline (SS-4 Step 5, ruling 7): :mode
+;; defaults to :fail-if-exists (every test above); :overwrite is
+;; explicit and destructive; :append is sound only where the sink's own
+;; :framing concatenates (:er7-multi/:ndjson/:mllp), rejected
+;; :append-unsound otherwise (:bundle-entries, or the :file-per-item
+;; default -- single-item semantics don't support append at all). ----
+
+(deftest write-file-overwrite-replaces-existing-content-test
+  (let [dir (temp-dir)
+        target (str dir "/out.json")
+        sink (:payload (ss/file-sink {:path target :format :fhir-json}))]
+    (spit target "old")
+    (let [r (write/write-file! sink "new" :mode :overwrite)]
+      (is (result/ok? r))
+      (is (= "new" (slurp target))))))
+
+(deftest write-file-overwrite-on-a-missing-file-is-a-plain-create-test
+  (let [dir (temp-dir)
+        target (str dir "/out.json")
+        sink (:payload (ss/file-sink {:path target :format :fhir-json}))
+        r (write/write-file! sink "hello" :mode :overwrite)]
+    (is (result/ok? r))
+    (is (= "hello" (slurp target)))))
+
+(deftest write-file-append-sound-framings-concatenate-onto-an-existing-file-test
+  (doseq [framing [:er7-multi :ndjson :mllp]]
+    (testing (name framing)
+      (let [dir (temp-dir)
+            target (str dir "/out.dat")
+            sink (:payload (ss/file-sink {:path target :format :v2-er7 :framing framing}))]
+        (spit target "AAA")
+        (let [r (write/write-file! sink "BBB" :mode :append)]
+          (is (result/ok? r))
+          (is (= "AAABBB" (slurp target))))))))
+
+(deftest write-file-append-onto-a-missing-file-creates-it-test
+  (let [dir (temp-dir)
+        target (str dir "/out.dat")
+        sink (:payload (ss/file-sink {:path target :format :v2-er7 :framing :ndjson}))
+        r (write/write-file! sink "AAA" :mode :append)]
+    (is (result/ok? r))
+    (is (= "AAA" (slurp target)))))
+
+(deftest write-file-append-rejects-bundle-entries-as-unsound-test
+  (let [dir (temp-dir)
+        target (str dir "/out.json")
+        sink (:payload (ss/file-sink {:path target :format :fhir-json :framing :bundle-entries}))]
+    (spit target "{}")
+    (let [r (write/write-file! sink "{}" :mode :append)]
+      (is (result/rejected? r))
+      (is (= :append-unsound (:category r)))
+      (is (= "{}" (slurp target)) "nothing written when append itself is rejected as unsound"))))
+
+(deftest write-file-append-rejects-default-file-per-item-framing-as-unsound-test
+  (let [dir (temp-dir)
+        target (str dir "/out.json")
+        sink (:payload (ss/file-sink {:path target :format :fhir-json}))]
+    (let [r (write/write-file! sink "hello" :mode :append)]
+      (is (result/rejected? r))
+      (is (= :append-unsound (:category r))))))
+
+(deftest write-file-rejects-an-unknown-mode-test
+  (let [dir (temp-dir)
+        sink (:payload (ss/file-sink {:path (str dir "/out.json") :format :fhir-json}))
+        r (write/write-file! sink "hello" :mode :not-a-real-mode)]
+    (is (result/rejected? r))
+    (is (= :invalid-write-mode (:category r)))))
+
 ;; ---- write-dir! ----
 
 (deftest write-dir-happy-path-test
@@ -89,6 +157,50 @@
   (let [r (write/write-dir! {:kind :file :path "./x" :format :fhir-json} {})]
     (is (result/rejected? r))
     (is (= :invalid-sink (:category r)))))
+
+;; ---- write-dir! write discipline (SS-4 Step 5, ruling 7): :overwrite
+;; writes into a non-empty existing directory; :append is REJECTED
+;; :append-unsound unconditionally this session -- append-to-corpus
+;; means manifest merge, an OPEN item (docs/source-sink-design.md),
+;; not improvised here regardless of framing. ----
+
+(deftest write-dir-overwrite-writes-into-a-non-empty-existing-dir-test
+  (let [parent (temp-dir)
+        target (str parent "/out")
+        sink (:payload (ss/dir-sink {:path target :format :fhir-json}))]
+    (.mkdirs (io/file target))
+    (spit (io/file target "already-here.json") "x")
+    (let [r (write/write-dir! sink {"a.json" "AAA"} :mode :overwrite)]
+      (is (result/ok? r))
+      (is (= "AAA" (slurp (io/file target "a.json"))))
+      (is (.exists (io/file target "already-here.json"))
+          "overwrite only affects the files this call names, not a directory wipe"))))
+
+(deftest write-dir-overwrite-replaces-a-named-file-that-already-exists-test
+  (let [parent (temp-dir)
+        target (str parent "/out")
+        sink (:payload (ss/dir-sink {:path target :format :fhir-json}))]
+    (.mkdirs (io/file target))
+    (spit (io/file target "a.json") "old")
+    (let [r (write/write-dir! sink {"a.json" "new"} :mode :overwrite)]
+      (is (result/ok? r))
+      (is (= "new" (slurp (io/file target "a.json")))))))
+
+(deftest write-dir-append-is-rejected-unsound-unconditionally-test
+  (let [parent (temp-dir)
+        target (str parent "/out")
+        sink (:payload (ss/dir-sink {:path target :format :fhir-json}))
+        r (write/write-dir! sink {"a.json" "AAA"} :mode :append)]
+    (is (result/rejected? r))
+    (is (= :append-unsound (:category r)))
+    (is (not (.exists (io/file target))) "nothing written -- append is rejected before any write")))
+
+(deftest write-dir-rejects-an-unknown-mode-test
+  (let [parent (temp-dir)
+        sink (:payload (ss/dir-sink {:path (str parent "/out") :format :fhir-json}))
+        r (write/write-dir! sink {"a.json" "AAA"} :mode :not-a-real-mode)]
+    (is (result/rejected? r))
+    (is (= :invalid-write-mode (:category r)))))
 
 ;; ---- write-stdout! (SS-4 Step 3) ----
 
