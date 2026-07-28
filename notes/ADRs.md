@@ -34,6 +34,7 @@ that record's own heading and Status line, nothing interpretive added.
 | 0016 | Verdict cache + verification tiers: T2 is change-triggered and nightly, not per-commit ritual | Accepted |
 | 0017 | Formal Source and Sink types: generator/reader unification, framing as an axis, maps-canonical/URLs-surface, sink composability law | Accepted |
 | 0018 | Glossary authority placement: docs/GLOSSARY.md is the authoritative home of family conformance vocabulary | Accepted |
+| 0019 | CLI ergonomics: determinism law of defaults, one flag vocabulary, pre-release breaking window | Accepted |
 
 ---
 ## ADR-0001 — License: Apache 2.0
@@ -1437,4 +1438,108 @@ B), which this record's push unblocks. No `src/` changes; this is a
 docs-and-process record.
 **Cites.** F30 (`notes/facts-register.md`), [ADR-0010](ADRs.md) as
 amended by R3, [ADR-0013](ADRs.md), [ADR-0015](ADRs.md).
+**Status.** Accepted (author-directed), 2026-07-27.
+
+---
+## ADR-0019 — CLI ergonomics: determinism law of defaults, one flag vocabulary, pre-release breaking window
+**Context.** `ehr`'s common operations are flag-heavy and its flag
+vocabulary is inconsistent: `corpus generate`'s zero-flag path doesn't
+exist — six flags are required for a basic run (`--config-path`,
+`--seed`, `--clinician-seed`, `--population`, `--reference-date`,
+`--output-dir`) — and the same concept is spelled differently across
+verbs: a lockfile path is `--lockfile` on `artifact fetch`/`gate fhir`
+but `--lockfile-path` on `corpus generate` (`cli/help.clj:29,74,98`); an
+output directory is `--output-dir` on `corpus generate`/`corpus mutate`
+but `--out-dir` on `gate fhir` (`cli/help.clj:59,80,99`); a primary
+input arrives as `--input` (`corpus mutate`), `--source-dir` (`corpus
+intake`), or a trailing positional `PATH` (`gate`), depending on the
+verb, with no shared convention. This repo is pre-release (ADR-0008):
+interfaces may still move, and the Clojars/Maven Central distribution
+decision — `docs/positioning.md`'s own "open as of 2026-07-23" item — is
+explicitly deferred to first release, not decided yet. That decision is
+also the deadline: once coordinates are published and a version tag is
+cut, a flag rename stops being a free edit and starts being a migration
+for whoever has already scripted against the old spelling.
+`docs/source-sink-design.md`'s SS-1..SS-5 (ADR-0017) are about to change
+this same CLI's input/output surface again (the URL/source-sink string
+format, D4) — a second surface-breaking change to the same commands, on
+a separate timeline, would cost readers two migrations where one would
+do.
+**Decision.**
+
+1. **The determinism law of defaults.** A CLI flag may default only to a
+   pinned constant, or a value derived deterministically from other
+   pinned inputs — never the clock, the environment, the network, or the
+   machine. `corpus intake`'s `--received` (today's one exception,
+   defaulting to `today`) is named and reasoned explicitly rather than
+   left as a silent inconsistency: it is a record-keeping date (when a
+   batch was received for cataloging), not a generation input that
+   determines what bytes get produced — the same distinction
+   `corpus/generate.clj`'s own `:reference-date` docstring already draws
+   for *why* that flag must never default to wall-clock "now." Full
+   statement and worked reasoning: `docs/source-sink-design.md` Part
+   IX.1 (D8).
+2. **Old flag spellings are removed, not aliased — pre-release is the
+   window this is cheap in.** The one-flag-vocabulary table
+   (`docs/source-sink-design.md` Part IX.3, D10: `--lockfile`, `--out`,
+   `--out-dir`, positional `PATH`/`--path`) replaces every inconsistent
+   spelling with no deprecation shim for the old one. This is a
+   deliberate use of the pre-release window ADR-0008 opened: the
+   Clojars/Maven Central decision above is the point after which a
+   contributor session can no longer assume "nobody has scripted against
+   this yet," so a flag rename done now costs nothing beyond updating
+   `docs/cli.md`/`ehr help` (both generated from `cli-spec`,
+   `cli/help.clj`), while the identical rename done after first release
+   would need an aliasing period this repo has never needed to build.
+3. **The zero-flag `corpus generate` acceptance property.** D9
+   (`docs/source-sink-design.md` Part IX.2) pins `corpus generate`'s
+   defaults so that running it with no flags is byte-reproducible across
+   machines given the same pinned artifacts — extending EXP-A4's
+   already-proven byte-identical-reproducibility claim
+   (`docs/experiments/EXP-A4-results.md`) to the invocation a first-time
+   reader actually types, per `SETUP.md`'s own walkthrough and
+   `docs/use-cases.md`'s "Generate conforming synthetic data" strip.
+4. **One-surface-change coordination with SS-1.** D14
+   (`docs/source-sink-design.md` Part IX.7): the flag-vocabulary change
+   and SS-1's URL/source-sink surface land in the same build session —
+   either SS-1's scope grows to include this capture's CLI changes, or a
+   UX build session lands immediately before SS-1 and SS-1 rebases onto
+   it. `.agents/plans/corpus-foundations.md` records both shapes as a
+   proposal, decided by the author at build time (see that plan's UX-1
+   row). Whichever session changes the surface re-verifies every command
+   strip in `docs/use-cases.md` and the quickstart's structural
+   enforcement (`make quickstart-fresh`, T0).
+
+**Alternatives rejected.** *Deprecation aliases for the old flag
+spellings* — a shim with no users: this repo is pre-release with no
+external scripts to protect, and carrying an alias into a first release
+just to avoid a rename that costs nothing today is manufacturing
+migration debt rather than avoiding it. *Wall-clock defaults for
+convenience* (e.g. `--reference-date` defaulting to today, `--output-dir`
+timestamping itself) — this is precisely the failure mode the
+determinism law exists to name: a reproducibility toolkit whose own
+quickstart isn't reproducible is self-refuting (`docs/positioning.md`,
+Dogfooding commitments), and the cost saved (typing one more flag) is
+far smaller than the cost imposed (a "first corpus" that can't be
+regenerated identically by the next reader). *Leaving `corpus generate`
+flag-heavy, ratifying only the vocabulary rename* — the zero-flag run is
+the quickstart's first command and the acceptance property's own
+reproducibility demonstration; ratifying spellings without ratifying
+defaults would still leave a first-time reader typing six required flags
+before seeing any output.
+**Consequence.** `docs/source-sink-design.md` Part IX (D8–D14) is the
+detailed design; `.agents/plans/corpus-foundations.md` gains the staged
+build-session work (cli-spec changes, the shipped default properties
+file, the sniffing gate, the three new conveniences, use-cases and
+quickstart re-verification) as a UX-1 row, sequenced against SS-1 per
+decision 4. No `src/` code changes with this record — `cli/help.clj`,
+`corpus/generate.clj`, `corpus/intake.clj`, and `corpus/operators.clj`
+are unchanged in behavior until a build session lands; this ADR and its
+companion design section are the forward notice of what will change, not
+the change itself, the same relationship ADR-0017 held to SS-1..SS-5
+before any of those rows started.
+**Cites.** ADR-0004 (CLI as a thin shell over `cli-spec`), ADR-0008
+(pre-release status — the window this ADR's breaking-change ruling
+depends on), ADR-0017 (SS-1..SS-5 sequencing — decision 4's
+coordination partner).
 **Status.** Accepted (author-directed), 2026-07-27.
