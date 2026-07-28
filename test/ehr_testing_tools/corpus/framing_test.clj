@@ -128,3 +128,80 @@
                           (every? true? (map #(Arrays/equals ^bytes %1 ^bytes %2)
                                               items (:payload decoded)))))))))]
     (is (:pass? check-result) (str check-result))))
+
+;; ---- :ndjson -- byte-exact round trip (ruling 1) ----
+
+(def ^:private ndjson-line-gen
+  "A byte array with no embedded LF -- NDJSON's own real invariant (a
+  valid JSON value never emits a raw 0x0A byte; embedded newlines are
+  always \\n-escaped inside a JSON string)."
+  (gen/fmap byte-array (gen/vector safe-body-byte-gen 0 40)))
+
+(deftest ndjson-round-trip-property-test
+  (let [check-result
+        (tc/quick-check 100
+          (prop/for-all [items (gen/vector ndjson-line-gen 0 8)]
+            (let [encoded (framing/encode :ndjson items)]
+              (and (result/ok? encoded)
+                   (let [decoded (framing/decode :ndjson (:payload encoded))]
+                     (and (result/ok? decoded)
+                          (= (count items) (count (:payload decoded)))
+                          (every? true? (map #(Arrays/equals ^bytes %1 ^bytes %2)
+                                              items (:payload decoded)))))))))]
+    (is (:pass? check-result) (str check-result))))
+
+(deftest ndjson-concrete-example-test
+  (let [items [(byte-array (map byte "{\"a\":1}")) (byte-array (map byte "{\"b\":2}"))]
+        encoded (:payload (framing/encode :ndjson items))]
+    (is (= "{\"a\":1}\n{\"b\":2}\n" (String. ^bytes encoded "UTF-8"))
+        "every item, including the last, gets its own trailing LF")
+    (let [decoded (:payload (framing/decode :ndjson encoded))]
+      (is (= 2 (count decoded)))
+      (is (every? true? (map #(Arrays/equals ^bytes %1 ^bytes %2) items decoded))))))
+
+(deftest ndjson-empty-input-test
+  (let [decoded (framing/decode :ndjson (byte-array 0))]
+    (is (result/ok? decoded))
+    (is (= [] (:payload decoded)))))
+
+;; ---- :bundle-entries -- entry-preserving, envelope-lossy (ruling 1) ----
+
+(def ^:private resource-gen
+  (gen/let [resource-type (gen/elements ["Patient" "Observation" "Encounter"])
+            id (gen/fmap str gen/nat)]
+    {"resourceType" resource-type "id" id}))
+
+(deftest bundle-entries-entry-preserving-property-test
+  (testing "decode(encode(resources)) == resources, as data -- never claimed byte-exact"
+    (let [check-result
+          (tc/quick-check 50
+            (prop/for-all [resources (gen/vector resource-gen 0 5)]
+              (let [encoded (framing/encode :bundle-entries resources)]
+                (and (result/ok? encoded)
+                     (let [decoded (framing/decode :bundle-entries (:payload encoded))]
+                       (and (result/ok? decoded)
+                            (= resources (:payload decoded))))))))]
+      (is (:pass? check-result) (str check-result)))))
+
+(deftest bundle-entries-envelope-is-lossy-test
+  (testing "encode always produces a canonical `collection` Bundle -- a decoded-
+            from Bundle's own id/type are never carried through re-encoding"
+    (let [original (byte-array (map byte (str "{\"resourceType\":\"Bundle\",\"id\":\"abc\","
+                                               "\"type\":\"searchset\",\"entry\":"
+                                               "[{\"resource\":{\"resourceType\":\"Patient\",\"id\":\"1\"}}]}")))
+          decoded (:payload (framing/decode :bundle-entries original))
+          re-encoded (:payload (framing/encode :bundle-entries decoded))
+          re-parsed (clojure.data.json/read-str (String. ^bytes re-encoded "UTF-8"))]
+      (is (= [{"resourceType" "Patient" "id" "1"}] decoded))
+      (is (= "collection" (get re-parsed "type")))
+      (is (not (contains? re-parsed "id")) "the original Bundle's own :id is not fabricated back"))))
+
+(deftest bundle-entries-malformed-input-test
+  (testing "not JSON at all"
+    (let [r (framing/decode :bundle-entries (byte-array (map byte "not json")))]
+      (is (result/rejected? r))
+      (is (= :malformed-bundle-entries-frame (:category r)))))
+  (testing "valid JSON but no \"entry\" key"
+    (let [r (framing/decode :bundle-entries (byte-array (map byte "{\"resourceType\":\"Bundle\"}")))]
+      (is (result/rejected? r))
+      (is (= :malformed-bundle-entries-frame (:category r))))))

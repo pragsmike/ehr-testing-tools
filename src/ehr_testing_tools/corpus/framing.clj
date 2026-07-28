@@ -62,6 +62,19 @@
   [^bytes ba from to]
   (Arrays/copyOfRange ba (long from) (long to)))
 
+(defn- split-bytes
+  "haystack split on every occurrence of delimiter, byte-exact -- every
+  piece survives, including empty ones (the same no-token-dropped
+  discipline ehr-testing-tools.corpus.er7's own split-all uses, applied
+  here at the byte level): joining the result with delimiter between
+  pieces recovers haystack exactly."
+  [^bytes haystack ^bytes delimiter]
+  (loop [start 0 acc []]
+    (let [idx (index-of-bytes haystack delimiter start)]
+      (if (neg? idx)
+        (conj acc (slice haystack start (alength haystack)))
+        (recur (+ idx (alength delimiter)) (conj acc (slice haystack start idx)))))))
+
 ;; ---- :file-per-item -- the identity framing, made explicit as the
 ;; schema default (ruling 1) ----
 
@@ -124,21 +137,74 @@
   [items]
   (result/ok (concat-bytes (interleave items (repeat message-separator)))))
 
+;; ---- :ndjson -- one JSON value per LF-terminated line, byte-exact
+;; (ruling 1). Every item, including the last, is followed by its own
+;; trailing LF on encode -- the canonical NDJSON convention -- so
+;; decode (which drops exactly one trailing empty piece, the mark of
+;; that final LF) recovers the identical item seq. An item is expected
+;; to carry no embedded LF of its own (a valid JSON value never emits a
+;; raw, unescaped 0x0A byte) -- this codec does not itself validate
+;; that the bytes are JSON; it only frames lines. ----
+
+(defn- decode-ndjson
+  [^bytes bs]
+  (let [pieces (split-bytes bs (byte-array [lf]))
+        trailing-empty? (and (seq pieces) (zero? (alength ^bytes (last pieces))))]
+    (result/ok (vec (if trailing-empty? (butlast pieces) pieces)))))
+
+(defn- encode-ndjson
+  [items]
+  (result/ok (concat-bytes (mapcat (fn [item] [item (byte-array [lf])]) items))))
+
+;; ---- :bundle-entries -- entry-preserving, envelope-lossy (ruling 1).
+;; Structural, not delimiter, framing: a FHIR Bundle is a JSON object,
+;; so decoding it is unavoidably a text (UTF-8) operation -- the one
+;; named exception to the byte-exact codecs above (FHIR JSON is itself
+;; always UTF-8 by spec, not an assumption this codec invents). The
+;; law is item-level identity: decode(encode(items)) == items as data,
+;; never byte-identical -- encode always produces a canonical
+;; `collection` Bundle, so any original Bundle-level metadata (id,
+;; type, fullUrl, ...) a decoded-from Bundle carried is lost, by
+;; design, not by omission. ----
+
+(defn- decode-bundle-entries
+  [^bytes bs]
+  (try
+    (let [parsed (json/read-str (String. bs "UTF-8"))]
+      (if (and (map? parsed) (contains? parsed "entry"))
+        (result/ok (mapv #(get % "resource") (get parsed "entry")))
+        (result/rejected :malformed-bundle-entries-frame
+                          {:hint "expected a FHIR Bundle JSON object with an \"entry\" array"})))
+    (catch Exception e
+      (result/rejected :malformed-bundle-entries-frame
+                        {:hint (str "not parseable JSON: " (or (ex-message e) (str e)))}))))
+
+(defn- encode-bundle-entries
+  [items]
+  (result/ok (.getBytes ^String (json/write-str {"resourceType" "Bundle"
+                                                  "type" "collection"
+                                                  "entry" (mapv (fn [resource] {"resource" resource}) items)})
+                         "UTF-8")))
+
 ;; ---- dispatch ----
 
 (defn decode
   "framing (one of ehr-testing-tools.corpus.source-sink/Framing's five
-  kinds) x bs (a byte array) -> result/ok [item byte-arrays...], or a
-  framing-specific result/rejected on malformed input."
+  kinds) x bs (a byte array) -> result/ok [item byte-arrays...] (item
+  data-maps for :bundle-entries), or a framing-specific
+  result/rejected on malformed input."
   [framing bs]
   (case framing
     :file-per-item (decode-file-per-item bs)
-    :er7-multi (decode-er7-multi bs)))
+    :er7-multi (decode-er7-multi bs)
+    :ndjson (decode-ndjson bs)
+    :bundle-entries (decode-bundle-entries bs)))
 
 (defn encode
-  "The inverse of decode: framing x items (a seq of item byte-arrays)
-  -> result/ok a byte array."
+  "The inverse of decode: framing x items -> result/ok a byte array."
   [framing items]
   (case framing
     :file-per-item (encode-file-per-item items)
-    :er7-multi (encode-er7-multi items)))
+    :er7-multi (encode-er7-multi items)
+    :ndjson (encode-ndjson items)
+    :bundle-entries (encode-bundle-entries items)))
