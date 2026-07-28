@@ -1,4 +1,4 @@
-.PHONY: help pack pack-skills pack-push test coverage integration ehr pipeline use-cases operators-doc cli-doc lint-pipeline lint-deps quickstart-demo quickstart-fresh check-palgebra-drift
+.PHONY: help pack pack-skills pack-push test coverage integration integration-smoke ehr pipeline use-cases operators-doc cli-doc lint-pipeline lint-deps quickstart-demo quickstart-fresh check-palgebra-drift
 
 SHELL := bash
 
@@ -40,6 +40,9 @@ help:
 	@echo "                   bin/ehr artifact fetch --name synthea --version 4.0.0"
 	@echo "                   bin/ehr artifact fetch --name temurin-jdk --version 17.0.19+10"
 	@echo "                   bin/ehr artifact fetch --name fhir-validator-cli --version 6.9.12"
+	@echo "  integration-smoke - T1 tier (ADR-0016): one clean/mutant FHIR pairing plus one sim-harness"
+	@echo "                 manifest check, target under 2 minutes warm -- session-boundary tier between"
+	@echo "                 'test' and 'integration'; same artifact-fetch prerequisites as 'integration'"
 	@echo "  ehr          - compatibility spelling for the CLI; bin/ehr is the entry point (it carries the 0/1/2/3 exit contract, where make reports its own status 2 for any non-zero exit)"
 	@echo "                 e.g. bin/ehr artifact fetch --name synthea --version 4.0.0 -- see every command with bin/ehr help"
 	@echo "  quickstart-demo - run README.md's Quickstart commands verbatim (bin/quickstart-demo), asserting each"
@@ -68,6 +71,14 @@ coverage:
 # `make test`/`make coverage`.
 integration:
 	clojure -X:integration
+
+# T1, integration-smoke (2026-07-27 verification-tiers session,
+# ADR-0016): see test-integration/ehr_testing_tools/smoke_test.clj's
+# own docstring and deps.edn's :integration-smoke alias. Same artifact
+# prerequisites as `integration` above (a subset of its own corpus/
+# validator work, at far smaller scale).
+integration-smoke:
+	clojure -X:integration-smoke
 
 # Runs README.md's Quickstart commands verbatim, under per-step exit-code
 # assertions, via bin/quickstart-demo (DOC-5, .agents/plans/user-docs.md).
