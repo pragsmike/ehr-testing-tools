@@ -1127,3 +1127,24 @@ machinery, its own consumer-loop role as the thing sim's output gets
 judged by) — this session did not have a sibling checkout of that repo
 available to check whether such a document already exists there or to
 write one. Author's call, next `ehr-testing-tools` session.
+
+## Considered, unscheduled
+
+Directions named deliberately, not designed or committed to a
+milestone — recorded so a future session finds a trigger to check
+rather than a blank page.
+
+- **Extract palgebra (the converter, notation, examples, and the
+  `string-diagram` skill) into a standalone repo both `ehr-testing-sim`
+  and `ehr-testing-tools` depend on.** Named at `notes/ADRs.md`
+  ADR-0016 (the session that vendored palgebra's converter and
+  examples into this repo's `.agents/skills/string-diagram/`, pinned to
+  `ehr-testing-tools@7ecce38`, superseding ADR-0005's non-vendoring
+  clause) as an alternative deferred rather than rejected: palgebra is
+  itself a tool for expressing and working with abstract designs and
+  doesn't belong to either consumer repo. Vendoring now stages this
+  extraction — the skill directory becomes a natural `git mv` source
+  later — rather than foreclosing it. **Trigger to revisit:** the
+  nightly drift check ADR-0016 adds to `ehr-testing-tools`' consumer-
+  loop workflow firing more than rarely, or a third consumer of
+  palgebra appearing.
