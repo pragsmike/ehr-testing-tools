@@ -205,9 +205,12 @@ is one of three siblings: the
 [guide](https://github.com/pragsmike/ehr-testing-guide) teaches the
 testing method, the
 [tools](https://github.com/pragsmike/ehr-testing-tools) make it
-runnable, and this simulator generates the traffic. Terms and
-concepts shared with the guide defer to the guide's fuller
-treatment; a crosswalk reconciliation against the guide remains
-future work — no trigger is named yet, unlike the deferred items in
+runnable, and this simulator generates the traffic. Conformance-and-
+gating terms (judge, verdict, findings, gate, baseline) reconcile
+against tools' own authoritative `docs/GLOSSARY.md` as of 2026-07-27;
+other terms and concepts shared with the guide still defer to the
+guide's fuller treatment, and a crosswalk reconciliation against the
+guide remains future work for those — no trigger is named yet, unlike
+the deferred items in
 [`.agents/plans/roadmap.md`](../.agents/plans/roadmap.md)'s own
 ledger.

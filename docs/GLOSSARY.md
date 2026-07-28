@@ -59,14 +59,11 @@ to ward W" while their physical location is an ED surge slot; it
 emerges from capacity pressure rather than being scripted. See
 [operational-models.md](operational-models.md).
 
-**Diagnosis.** *Here and everywhere in this project family:* a clinical
-determination — the thing that gets an ICD-10-CM code and rides in a DG1
-segment; content the simulator *generates*. **Never** used for a conformance judge's
-explanation of a verdict — that is a set of **findings** (see the conformance
-vocabulary below). The restriction is deliberate: in a healthcare product, "the
-gate's diagnosis" would be parsed clinically by half the audience. (Pleasant
-coincidence: "findings" is also what clinicians call itemized observed facts, so
-the connotation transfers instead of colliding.)
+**Diagnosis.** *Here:* a clinical determination — the thing that gets
+an ICD-10-CM code and rides in a DG1 segment; content the simulator
+*generates*. Never a conformance judge's explanation of a verdict —
+that's **findings**, and the reasoning for keeping the two apart lives
+in tools' glossary now (see the conformance vocabulary section below).
 
 **Encounter.** *In clinical/EHR usage:* a discrete interaction between
 patient and health system (a visit, a hospitalization). *Here:* the
@@ -550,5 +547,8 @@ representative real-world consumer.
 **ehr-testing-guide / ehr-testing-tools.** The sibling repositories:
 the guide teaches the testing method; tools makes it runnable
 (corpus construction, conformance gating) and is this simulator's
-first real consumer. Terms shared with the guide defer to the
-guide's fuller treatment; a crosswalk reconciliation is planned.
+first real consumer. Conformance-and-gating terms (judge, verdict,
+findings, gate, baseline) now reconcile against tools' own
+authoritative glossary, above. Method/teaching terms shared with the
+guide still defer to the guide's fuller treatment; a crosswalk
+reconciliation against the guide is planned for those.
