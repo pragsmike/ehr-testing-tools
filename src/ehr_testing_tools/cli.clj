@@ -36,7 +36,8 @@
    ;; auto-coerced to a long (which would break ProcessBuilder's String[]
    ;; args downstream in corpus.generate/invocation).
    :reference-date {:coerce :string}
-   :version {:coerce :string}})
+   :version {:coerce :string}
+   :no-verdict-cache {:coerce :boolean}})
 
 (defn parse
   "Parses raw CLI args into {:args [positional...] :opts {...}}."
@@ -350,14 +351,19 @@
   is for `make pipeline`); :java-bin, when given, bypasses registry
   resolution exactly like corpus.generate's own :java-bin override.
   :treat-no-verdict-as (ADR-0010) passes straight through to
-  gate-command."
-  [{:keys [path report lockfile out-dir java-bin baseline treat-no-verdict-as]}]
+  gate-command. :no-verdict-cache (ADR-0016) disables the content-
+  addressed verdict cache at the validator seam for this invocation --
+  judge.fhir/gate-file's own :verdict-cache? false, the escape hatch
+  for when the cache's determinism assumption is ever suspect; caching
+  stays on by default."
+  [{:keys [path report lockfile out-dir java-bin baseline treat-no-verdict-as no-verdict-cache]}]
   (let [artifacts-result (default-lockfile-artifacts lockfile)]
     (if-not (result/ok? artifacts-result)
       artifacts-result
       (let [fhir-opts (cond-> {:artifacts (:payload artifacts-result)
                                 :out-dir (or out-dir default-fhir-gate-out-dir)}
-                        java-bin (assoc :java-bin java-bin))
+                        java-bin (assoc :java-bin java-bin)
+                        no-verdict-cache (assoc :verdict-cache? false))
             gate-fn (gate-command #(gate-fhir/gate-file % fhir-opts)
                                   #(gate-fhir/gate-dir % fhir-opts)
                                   :fhir)]

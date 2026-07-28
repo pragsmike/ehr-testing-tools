@@ -148,6 +148,7 @@ Gate against FHIR base-spec conformance (the official validator).
 | `--lockfile` | `artifacts.lock.edn` | path to the lockfile |
 | `--out-dir` | `target/gate-fhir` | validator scratch directory |
 | `--java-bin` | — | java executable to invoke |
+| `--no-verdict-cache` | `false (caching on)` | skip the content-addressed verdict cache (ADR-0016); always re-runs the validator subprocess |
 
 ## `ehr check`
 

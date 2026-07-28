@@ -291,7 +291,13 @@
                            (spit (subs output-arg (count "-output=")) "{\"resourceType\":\"OperationOutcome\",\"issue\":[]}"))
                          (ok-invocation))
         before (slurp input-path)
+        ;; :verdict-cache-dir scoped under this test's own fresh out-dir
+        ;; -- otherwise two tests gating byte-identical fixture content
+        ;; ("{}", "{\"resourceType\":...}") through the same fake
+        ;; validator-artifact would collide on the same cache key and
+        ;; silently short-circuit each other's :run-invocation fake.
         _ (gate/gate-file input-path {:artifacts [validator-artifact] :java-bin "/fake/java" :out-dir out-dir
+                                       :verdict-cache-dir (str out-dir "/verdict-cache")
                                        :run-invocation run-invocation
                                        :resolve-artifact (fn [_ _ _] (result/ok {:path "/fake/v.jar" :artifact validator-artifact}))})
         after (slurp input-path)]
@@ -306,8 +312,78 @@
                            (spit (subs output-arg (count "-output=")) "{\"resourceType\":\"OperationOutcome\",\"issue\":[]}"))
                          (ok-invocation))
         r (gate/gate-file input-path {:artifacts [validator-artifact] :java-bin "/fake/java" :out-dir out-dir
+                                       :verdict-cache-dir (str out-dir "/verdict-cache")
                                        :run-invocation run-invocation
                                        :resolve-artifact (fn [_ _ _] (result/ok {:path "/fake/v.jar" :artifact validator-artifact}))})]
     (is (result/ok? r))
     (is (= :pass (:verdict (:payload r))))
     (is (= input-path (:path (:payload r))))))
+
+;; ---- verdict cache integration at gate-file (ADR-0016, session ruling
+;; 3): a hit must skip execute -- and therefore the subprocess -- entirely.
+;; Key-sensitivity and pure lookup/store behavior are covered at the unit
+;; level in judge.verdict-cache-test; these exercise gate-file's own
+;; wiring of that seam. ----
+
+(deftest gate-file-second-call-with-identical-input-is-a-cache-hit-and-skips-the-subprocess-test
+  (let [out-dir (temp-dir)
+        cache-dir (str out-dir "/verdict-cache")
+        input-path (str out-dir "/input.json")
+        _ (spit input-path "{\"resourceType\":\"Bundle\"}")
+        invocation-count (atom 0)
+        run-invocation (fn [{:keys [args]}]
+                         (swap! invocation-count inc)
+                         (let [output-arg (first (filter #(clojure.string/starts-with? % "-output=") args))]
+                           (spit (subs output-arg (count "-output=")) "{\"resourceType\":\"OperationOutcome\",\"issue\":[]}"))
+                         (ok-invocation))
+        opts {:artifacts [validator-artifact] :java-bin "/fake/java" :out-dir out-dir
+              :verdict-cache-dir cache-dir
+              :run-invocation run-invocation
+              :resolve-artifact (fn [_ _ _] (result/ok {:path "/fake/v.jar" :artifact validator-artifact}))}
+        r1 (gate/gate-file input-path opts)
+        r2 (gate/gate-file input-path opts)]
+    (is (result/ok? r1))
+    (is (result/ok? r2))
+    (is (= (:verdict (:payload r1)) (:verdict (:payload r2))))
+    (is (= (:findings (:payload r1)) (:findings (:payload r2))))
+    (is (= 1 @invocation-count) "the second gate-file call should be a cache hit, never touching :run-invocation")))
+
+(deftest gate-file-verdict-cache-false-always-re-invokes-test
+  (let [out-dir (temp-dir)
+        cache-dir (str out-dir "/verdict-cache")
+        input-path (str out-dir "/input.json")
+        _ (spit input-path "{\"resourceType\":\"Bundle\"}")
+        invocation-count (atom 0)
+        run-invocation (fn [{:keys [args]}]
+                         (swap! invocation-count inc)
+                         (let [output-arg (first (filter #(clojure.string/starts-with? % "-output=") args))]
+                           (spit (subs output-arg (count "-output=")) "{\"resourceType\":\"OperationOutcome\",\"issue\":[]}"))
+                         (ok-invocation))
+        opts {:artifacts [validator-artifact] :java-bin "/fake/java" :out-dir out-dir
+              :verdict-cache-dir cache-dir :verdict-cache? false
+              :run-invocation run-invocation
+              :resolve-artifact (fn [_ _ _] (result/ok {:path "/fake/v.jar" :artifact validator-artifact}))}]
+    (gate/gate-file input-path opts)
+    (gate/gate-file input-path opts)
+    (is (= 2 @invocation-count) "--no-verdict-cache (:verdict-cache? false) must never short-circuit the subprocess")))
+
+(deftest gate-file-different-content-is-a-cache-miss-test
+  (let [out-dir (temp-dir)
+        cache-dir (str out-dir "/verdict-cache")
+        path-a (str out-dir "/a.json")
+        path-b (str out-dir "/b.json")
+        _ (spit path-a "{\"resourceType\":\"Bundle\",\"entry\":[1]}")
+        _ (spit path-b "{\"resourceType\":\"Bundle\",\"entry\":[2]}")
+        invocation-count (atom 0)
+        run-invocation (fn [{:keys [args]}]
+                         (swap! invocation-count inc)
+                         (let [output-arg (first (filter #(clojure.string/starts-with? % "-output=") args))]
+                           (spit (subs output-arg (count "-output=")) "{\"resourceType\":\"OperationOutcome\",\"issue\":[]}"))
+                         (ok-invocation))
+        opts {:artifacts [validator-artifact] :java-bin "/fake/java" :out-dir out-dir
+              :verdict-cache-dir cache-dir
+              :run-invocation run-invocation
+              :resolve-artifact (fn [_ _ _] (result/ok {:path "/fake/v.jar" :artifact validator-artifact}))}]
+    (gate/gate-file path-a opts)
+    (gate/gate-file path-b opts)
+    (is (= 2 @invocation-count) "distinct file content must never collide on the same cache key")))

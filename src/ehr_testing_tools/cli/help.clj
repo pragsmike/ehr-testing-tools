@@ -97,7 +97,8 @@
        :flags (into gate-common-flags
                     [{:flag "--lockfile" :doc "path to the lockfile" :default "artifacts.lock.edn"}
                      {:flag "--out-dir" :doc "validator scratch directory" :default "target/gate-fhir"}
-                     {:flag "--java-bin" :doc "java executable to invoke"}])}]}
+                     {:flag "--java-bin" :doc "java executable to invoke"}
+                     {:flag "--no-verdict-cache" :doc "skip the content-addressed verdict cache (ADR-0016); always re-runs the validator subprocess" :default "false (caching on)"}])}]}
 
     {:group "check"
      :doc "Check a candidate corpus against an expected corpus and/or explicit per-file assertions -- the corpus's second judge, alongside Gate."

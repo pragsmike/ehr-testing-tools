@@ -29,8 +29,10 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [ehr-testing-tools.artifact :as artifact]
+            [ehr-testing-tools.digest :as digest]
             [ehr-testing-tools.invocation :as invocation]
             [ehr-testing-tools.judge.finding :as finding]
+            [ehr-testing-tools.judge.verdict-cache :as verdict-cache]
             [ehr-testing-tools.result :as result])
   (:import [java.io File]))
 
@@ -101,6 +103,55 @@
                   (result/ok (conj (:payload acc) (:path (:payload r))))))))
           (result/ok [])
           ig-refs))
+
+(defn- resolve-ig-artifacts
+  "Like `resolve-igs`, but resolves each ig-ref to its artifact record
+  (not its filesystem path) -- the shape the verdict cache's key needs
+  (name+version+sha256), not the shape the validator's argv needs."
+  [artifacts ig-refs resolve-artifact]
+  (reduce (fn [acc {:keys [name version]}]
+            (if-not (result/ok? acc)
+              (reduced acc)
+              (let [r (resolve-artifact artifacts name version)]
+                (if-not (result/ok? r)
+                  (reduced r)
+                  (result/ok (conj (:payload acc) (:artifact (:payload r))))))))
+          (result/ok [])
+          ig-refs))
+
+(defn- cache-argv-shape
+  "The parts of the validator's argv that vary the *invocation*, not
+  the per-run scratch paths (-output=<path>, the input path itself) --
+  those don't change what the validator does, only where its output
+  lands, so they're deliberately excluded from the verdict-cache key.
+  ig-refs are named by id (name@version), not resolved path, matching
+  :ig-artifacts' own path-independence in the cache key."
+  [fhir-version ig-refs]
+  (vec (concat ["-version" fhir-version "-tx" "n/a"]
+               (mapcat (fn [{:keys [name version]}] ["-ig" (str name "@" version)]) ig-refs))))
+
+(defn- verdict-cache-lookup
+  "Resolves the validator + IG artifacts (cheap: cache-directory
+  lookups, no subprocess) and the input's content hash, builds the
+  verdict-cache key, and checks for a hit -- all BEFORE `execute` would
+  run the subprocess. Returns {:key ... :hit ...} (hit nil on a miss),
+  or nil if artifact resolution itself failed (in which case the
+  caller falls through to the normal execute path, which will surface
+  the same resolution failure through its own, already-tested error
+  handling, rather than this seam inventing a second copy of it)."
+  [path {:keys [artifacts ig-refs fhir-version verdict-cache-dir resolve-artifact]
+         :or {ig-refs [] fhir-version default-fhir-version resolve-artifact artifact/resolve}}]
+  (let [validator-resolve (resolve-artifact artifacts engine-name "6.9.12")]
+    (when (result/ok? validator-resolve)
+      (let [ig-resolve (resolve-ig-artifacts artifacts ig-refs resolve-artifact)]
+        (when (result/ok? ig-resolve)
+          (let [key (verdict-cache/cache-key
+                     {:content-sha256 (digest/sha256-file path)
+                      :validator-artifact (:artifact (:payload validator-resolve))
+                      :ig-artifacts (:payload ig-resolve)
+                      :argv-shape (cache-argv-shape fhir-version ig-refs)
+                      :verdict-mapping-version verdict-mapping-version})]
+            {:key key :hit (verdict-cache/lookup verdict-cache-dir key)}))))))
 
 (defn execute
   "Execute half of the two-step engine (pattern nursery #1). Resolves
@@ -258,13 +309,31 @@
   minus :input-path -- set here from path). Reads the file only to
   confirm it exists; never writes to it -- the Judge stage kind's own
   law (docs/notation.md). Returns result/ok {:verdict :findings
-  :path}, or the first failing execute step's result unchanged."
+  :path}, or the first failing execute step's result unchanged.
+
+  Verdict cache (ADR-0016, session ruling 3): unless :verdict-cache?
+  is false, a hit against the content-addressed cache (keyed on the
+  input's content hash, the resolved validator+IG artifact identities,
+  the argv shape, and judge.fhir/verdict-mapping-version -- see
+  judge.verdict-cache) returns the cached {:verdict :findings [:cause]}
+  directly, skipping `execute` entirely -- so the validator subprocess
+  never runs on a hit. A miss runs execute+interpret exactly as before
+  and stores the interpret result under that same key for next time.
+  :verdict-cache-dir defaults to verdict-cache/default-cache-dir."
   [path opts]
-  (let [execute-result (execute (assoc opts :input-path path))]
-    (if-not (result/ok? execute-result)
-      execute-result
-      (let [{:keys [raw-outcome engine]} (:payload execute-result)]
-        (result/ok (assoc (interpret raw-outcome engine) :path (str path)))))))
+  (let [{:keys [verdict-cache?] :or {verdict-cache? true}} opts
+        cache-dir (:verdict-cache-dir opts verdict-cache/default-cache-dir)
+        cache-lookup (when verdict-cache? (verdict-cache-lookup path opts))]
+    (if-let [hit (:hit cache-lookup)]
+      (result/ok (assoc hit :path (str path)))
+      (let [execute-result (execute (assoc opts :input-path path))]
+        (if-not (result/ok? execute-result)
+          execute-result
+          (let [{:keys [raw-outcome engine]} (:payload execute-result)
+                interpreted (interpret raw-outcome engine)]
+            (when (and verdict-cache? cache-lookup)
+              (verdict-cache/store! cache-dir (:key cache-lookup) interpreted))
+            (result/ok (assoc interpreted :path (str path)))))))))
 
 (defn- json-files-in
   [dir]
