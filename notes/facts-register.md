@@ -10,6 +10,50 @@
      AUTHORS-GUIDE.md section 4 for the assert -> register -> date
      discipline this file exists to support. -->
 
+## Index
+
+Hand-maintained, not enforced by a lint or CI check (same choice as
+`notes/ADRs.md`'s table of contents). Update this table in the same
+commit as any new F-row — one line per row: an extractive digest (a
+clause already present in the full row below, not a new
+characterization), the last-verified date, and the status column
+verbatim.
+
+| # | Claim digest | Last verified | Status |
+|---|---|---|---|
+| F1 | NIST v2-validation ships no license artifact anywhere in the repo (`license-unstated`) | 2026-07-24 | inventory (EXP-SBOM) + deep research executed — still license-unstated at repo level |
+| F2 | Synthea ships under Apache License 2.0; current release v4.0.0, published 2026-03-05 | 2026-07-23 | verified |
+| F3 | HAPI HL7v2 is dual-licensed MPL/GPL at the licensee's election; current release v2.6.0, published 2025-02-05 | 2026-07-23 | verified |
+| F4 | HAPI FHIR ships under Apache License 2.0; license page is Smile-Digital-Health-branded | 2026-07-23 | verified |
+| F5 | The official FHIR validator (hapifhir/org.hl7.fhir.core) ships under Apache License 2.0 | 2026-07-23 | verified |
+| F6 | CDC's `lib-hl7v2-nist-validator` LICENSE is standard Apache License 2.0 boilerplate, despite GitHub's detector misclassifying it | 2026-07-23 | verified |
+| F7 | SUSHI (FHIR/sushi) ships under Apache License 2.0, maintained by the HL7 community | 2026-07-23 | verified |
+| F8 | NIST IGAMT has no repo-level LICENSE, but 2 of 12 sampled files carry a first-party public-domain (§105) header | 2026-07-23 | inventory executed (EXP-SBOM) — license-unstated at repo level |
+| F9 | CDC wrapper vendors NIST's HL7 v2 engine as 6 jar+pom pairs via a local `file://` Maven repo, not a live network Nexus | 2026-07-23 | verified — supersedes the unregistered SSL/Nexus claim this row now backs |
+| F10 | CDC wrapper's dependency closure includes exactly one copyleft runtime dep, `xom:xom:1.3.7` (LGPL 2.1), not named by ADR-0001 | 2026-07-23 | flagged — not adjudicated |
+| F11 | Synthea v4.0.0's CLI has two independent RNG seeds (`-s` patient-generation, `-cs` clinician); `-p` is population size, not parallelism | 2026-07-24 | verified |
+| F12 | Eclipse Temurin JDK 17.0.19+10 ships under GPLv2 with the Classpath Exception | 2026-07-24 | verified |
+| F13 | HAPI FHIR's current stable Maven Central release is 8.2.0; HAPI HL7v2's is 2.6.0, under genuinely distinct group IDs | 2026-07-24 | verified |
+| F14 | `hit-nexus.nist.gov` is a live, unauthenticated NIST Maven repo serving all six NIST-origin coordinates the CDC wrapper vendors (F9) | 2026-07-24 | verified — volatile, re-verify before relying on it |
+| F15 | NIST's software-licensing statement permits use/copy/modify/distribute but is silent on foreign-copyright redistribution rights | 2026-07-24 | verified (statement text); the redistribution-rights gap is the residual question |
+| F16 | `com.github.hl7-tools:validation-report` has no LICENSE on `master` or `main`; the `hl7-tools` org's provenance is unknown | 2026-07-24 | verified (absence); org provenance unresolved |
+| F17 | HAPI FHIR's Bundle-entry `id`-vs-`fullUrl` total drop is a known, open upstream defect (hapifhir/hapi-fhir#5645), not the documented override behavior | 2026-07-24 | verified |
+| F18 | The official FHIR validator's current stable release is `6.9.12` (2026-07-15); `validator_cli.jar` sha256 computed by direct re-download | 2026-07-24 | verified |
+| F19 | `slf4j-nop`'s current stable release is 2.0.17, MIT-licensed; added only to `:test`/`:coverage` aliases, not base `:deps` | 2026-07-25 | verified |
+| F20 | `cognitect.test-runner.api/test` reads only its own `:dirs` key, never the invoking alias's `:extra-paths` | 2026-07-25 | verified |
+| F21 | The pinned test-runner exposes two non-interchangeable exclusion keys: `:exclude` (CLI entry point, singular) vs `:excludes` (exec-fn, plural) | 2026-07-25 | verified |
+| F22 | HAPI HL7v2's `defaultValidation()` registers no rule checking segment presence/requiredness or field cardinality | 2026-07-25 | verified |
+| F23 | Google SimHospital's bundled HL7 v2 corpus is licensed Apache-2.0 at the pinned vendored commit | 2026-07-26 | verified |
+| F24 | `google/simhospital` is archived, last pushed 2024-03-20; the research doc's 2025-03-28 archive-date claim is not independently confirmed here | 2026-07-26 | verified (status and last-push observed; the archive date remains research-doc-cited only) |
+| F25 | The vendored SimHospital corpus contains exactly 1,013 HL7 v2.3 messages across 403 distinct MRNs; messages are separated by a blank LF line, not CR alone | 2026-07-26 | verified |
+| F26 | `corpus.er7` round-trips all 1,013 vendored SimHospital messages byte-identically | 2026-07-26 | verified |
+| F27 | `corpus.intake` handles the vendored SimHospital corpus with no `src/` change, recovering all 403 patients through the catalog | 2026-07-26 | verified |
+| F28 | Synthea has no HL7 v2 exporter (issue #535 still open, 7 years); MITRE's `custom-exporter-template` is `license-stated-in-README`, not artifact-backed; MayaMaker is GPL-3.0 and stale | 2026-07-26 | verified |
+| F29 | The pinned `validator_cli.jar` (6.9.12) batches multiple input files in one invocation, attributing findings back to source file by name | 2026-07-27 | verified |
+| F30 | Sim's `docs/GLOSSARY.md` teaches pre-R3 `:indeterminate` semantics, contradicting this repo's own code and ADRs on two points | 2026-07-27 | verified |
+
+## Register
+
 | # | Claim | Where asserted | Evidence | Last verified | Status |
 |---|---|---|---|---|---|
 | F1 | NIST v2-validation (usnistgov/v2-validation) ships no license artifact anywhere in the repo: no LICENSE/COPYING/NOTICE at root or in any of its 3 sbt modules, no license block in `build.sbt` or bundled dependency POMs, no license text in a systematic 10-file source-header sample, no README statement, GitHub's own detector 404s. Classified `license-unstated`. NIST's general open-source policy (nist.gov/open/license) is suggestive-not-sufficient — it doesn't name this repo, though a tool-portfolio page (`nist.gov/itl/.../hl7-v2-conformance-testing-tools`) states NIST offers the HL7 v2 testing-tool *category* — which includes this repo — as "public domain resources," without naming it verbatim. Public-domain status remains plausible but unverified. | `docs/positioning.md` (go-public gate), `docs/experiments/EXP-SBOM-results.md`, `docs/research/License Status of NIST HL7 v2 Validation Software  Evidence-Based Classification.md` | https://github.com/usnistgov/v2-validation (229-entry recursive tree, `truncated:false`); https://api.github.com/repos/usnistgov/v2-validation/license (404); https://www.nist.gov/itl/health-it-testing-infrastructure/testing-tools/hl7-v2-conformance-testing-tools | 2026-07-24 | inventory (EXP-SBOM) + deep research executed — still license-unstated at repo level; official public distribution channel identified (hit-nexus.nist.gov, [F14](../notes/facts-register.md)), enabling a fetch-at-build (Mode 2) adoption path whose use-rights basis is NIST's general software statement ([F15](../notes/facts-register.md)); residual narrowed to two questions — foreign-copyright redistribution confirmation (F15) and `hl7-tools` org provenance ([F16](../notes/facts-register.md), a distinct question from this row's usnistgov §105 argument) — inquiry narrowed to 4 questions with a named recipient (Robert Snelick, NIST Systems Interoperability Group); inquiry draft maintained privately by the author; this row mirrors ehr-testing-guide claims-register F3 — that repo's F3 update happens after the author reviews these results |
