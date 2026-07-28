@@ -211,6 +211,66 @@
                               :raw-outcome (json/read-str (slurp outcome-path))
                               :engine {:name engine-name :version (:version artifact)}}))))))))))
 
+;; ---- execute-batch: one subprocess, many files (ADR-0016 ruling 4) ----
+
+(defn execute-batch
+  "Batch variant of `execute`: ONE validator subprocess invocation over
+  MULTIPLE input files, amortizing the dominant fixed cost (terminology/
+  package loading -- measured ~25s, independent of file count, F29 in
+  notes/facts-register.md) across every file in the batch instead of
+  paying it again per file. Given multiple positional inputs, the
+  validator's own output is a `Bundle` of one `OperationOutcome` per
+  input (not the single flat OperationOutcome `execute` gets for one
+  file) -- each entry carries an `operationoutcome-file` extension
+  whose `valueString` is the EXACT argv string that produced it
+  (verified directly, F29: a directory-qualified path like
+  \"subdir/clean.json\" comes back unchanged, not basename-truncated).
+  This function preserves that Bundle verbatim as :raw-outcome;
+  `interpret-batch` (below) is the per-entry analog of `interpret`.
+
+  Options: same shape as `execute`, with :input-path replaced by
+  :input-paths (a seq, in argv order). Returns result/ok {:invocation
+  :outcome-path :raw-outcome (a Bundle) :engine}, or the first failing
+  step's result unchanged -- same shape as `execute` otherwise."
+  [{:keys [input-paths artifacts out-dir fhir-version ig-refs java-bin
+           resolve-artifact resolve-java-bin run-invocation]
+    :or {fhir-version default-fhir-version
+         ig-refs []
+         resolve-artifact artifact/resolve
+         resolve-java-bin resolve-java-bin
+         run-invocation invocation/run!}}]
+  (let [validator-resolve (resolve-artifact artifacts engine-name "6.9.12")]
+    (if-not (result/ok? validator-resolve)
+      validator-resolve
+      (let [{:keys [path artifact]} (:payload validator-resolve)
+            java-bin-result (if java-bin
+                               (result/ok {:path java-bin :artifact nil})
+                               (resolve-java-bin artifacts {}))]
+        (if-not (result/ok? java-bin-result)
+          java-bin-result
+          (let [ig-resolve (resolve-igs artifacts ig-refs resolve-artifact)]
+            (if-not (result/ok? ig-resolve)
+              ig-resolve
+              (let [resolved-java-bin (:path (:payload java-bin-result))
+                    out (io/file out-dir)
+                    _ (.mkdirs out)
+                    batch-id (digest/sha256-string (str/join "|" input-paths))
+                    outcome-path (.getAbsolutePath (io/file out (str "batch-" batch-id ".outcome.json")))
+                    stdout-path (.getAbsolutePath (io/file out (str "batch-" batch-id ".validator-stdout.log")))
+                    stderr-path (.getAbsolutePath (io/file out (str "batch-" batch-id ".validator-stderr.log")))
+                    ig-args (mapcat (fn [ig-path] ["-ig" ig-path]) (:payload ig-resolve))
+                    args (vec (concat ["-version" fhir-version "-tx" "n/a"] ig-args
+                                       [(str "-output=" outcome-path)]
+                                       input-paths))
+                    invocation-result (run-invocation {:command resolved-java-bin :args (into ["-jar" path] args)
+                                                        :stdout-path stdout-path :stderr-path stderr-path})]
+                (if-not (result/ok? invocation-result)
+                  invocation-result
+                  (result/ok {:invocation (:payload invocation-result)
+                              :outcome-path outcome-path
+                              :raw-outcome (json/read-str (slurp outcome-path))
+                              :engine {:name engine-name :version (:version artifact)}}))))))))))
+
 ;; ---- interpret: pure, versioned ----
 
 (defn- severity->keyword
@@ -302,6 +362,33 @@
     (cond-> {:verdict verdict :findings findings}
       cause (assoc :cause cause))))
 
+(def ^:private operationoutcome-file-extension-url
+  "http://hl7.org/fhir/StructureDefinition/operationoutcome-file")
+
+(defn- bundle-entry->source-arg
+  "The exact argv string `execute-batch` passed for this Bundle entry's
+  own input file, read back from its own operationoutcome-file
+  extension (F29) -- never re-derived from position, since this is the
+  one piece of the validator's own batch contract that keeps per-entry
+  attribution honest."
+  [entry]
+  (some #(when (= operationoutcome-file-extension-url (get % "url"))
+           (get % "valueString"))
+        (get-in entry ["resource" "extension"])))
+
+(defn interpret-batch
+  "The per-entry analog of `interpret` for a batch raw-outcome (a
+  Bundle, see `execute-batch`): one {:verdict :findings [:cause]
+  :source-arg} per entry, :source-arg being the exact input-paths
+  string (per `execute-batch`'s own docstring) this entry's findings
+  belong to -- callers match it back to their own paths directly, not
+  by position or basename."
+  [raw-bundle engine]
+  (mapv (fn [entry]
+          (assoc (interpret (get entry "resource") engine)
+                 :source-arg (bundle-entry->source-arg entry)))
+        (get raw-bundle "entry" [])))
+
 ;; ---- gate: read (never mutate) -> execute -> interpret ----
 
 (defn gate-file
@@ -334,6 +421,54 @@
             (when (and verdict-cache? cache-lookup)
               (verdict-cache/store! cache-dir (:key cache-lookup) interpreted))
             (result/ok (assoc interpreted :path (str path)))))))))
+
+(defn gate-batch
+  "Gates every file in paths with ONE validator subprocess invocation
+  (`execute-batch`/`interpret-batch`, ADR-0016 ruling 4) instead of one
+  per file -- adopted where a caller's own polarity assertions permit
+  batching (contract_pairing_test.clj; see that suite's own docstring).
+
+  The verdict cache (ruling 3) still applies PER FILE, ahead of the
+  batch call: any path already cached is answered from the cache and
+  dropped from the batch entirely; only cache misses go into the one
+  subprocess invocation, so a fully-warm call makes no subprocess call
+  at all -- the same cache, and the same keys, `gate-file` uses, so a
+  file gated individually before or after a batch call still hits.
+
+  Returns result/ok {:results [{:verdict :findings [:cause] :path} ...]}
+  in the SAME order as paths (not the validator's own Bundle order,
+  though F29 found the two agree in practice) -- matched back to each
+  path by `interpret-batch`'s own :source-arg (the exact argv string,
+  never position). Returns the first failing step's result unchanged,
+  or result/error :batch-attribution-missing if any path's own argv
+  string never appears in the Bundle (a validator-contract violation
+  this function refuses to paper over with a guessed match)."
+  [paths opts]
+  (let [{:keys [verdict-cache?] :or {verdict-cache? true}} opts
+        cache-dir (:verdict-cache-dir opts verdict-cache/default-cache-dir)
+        lookups (into {} (map (fn [path] [path (when verdict-cache? (verdict-cache-lookup path opts))])
+                               paths))
+        hits (into {} (keep (fn [[path lookup]] (when-let [hit (:hit lookup)] [path hit])) lookups))
+        misses (vec (remove hits paths))]
+    (if (empty? misses)
+      (result/ok {:results (mapv (fn [path] (assoc (get hits path) :path (str path))) paths)})
+      (let [execute-result (execute-batch (assoc opts :input-paths misses))]
+        (if-not (result/ok? execute-result)
+          execute-result
+          (let [{:keys [raw-outcome engine]} (:payload execute-result)
+                by-arg (into {} (map (fn [{:keys [source-arg] :as r}] [source-arg (dissoc r :source-arg)])
+                                      (interpret-batch raw-outcome engine)))
+                missing (remove by-arg misses)]
+            (if (seq missing)
+              (result/error :batch-attribution-missing {:paths (vec missing)})
+              (do
+                (when verdict-cache?
+                  (doseq [path misses]
+                    (when-let [key (:key (get lookups path))]
+                      (verdict-cache/store! cache-dir key (get by-arg path)))))
+                (result/ok {:results (mapv (fn [path]
+                                              (assoc (or (get hits path) (get by-arg path)) :path (str path)))
+                                            paths)})))))))))
 
 (defn- json-files-in
   [dir]

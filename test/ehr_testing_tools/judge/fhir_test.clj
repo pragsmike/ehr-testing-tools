@@ -1,6 +1,8 @@
 (ns ehr-testing-tools.judge.fhir-test
   (:require [clojure.test :refer [deftest is testing]]
+            [clojure.data.json :as json]
             [clojure.java.io :as io]
+            [clojure.string :as str]
             [ehr-testing-tools.result :as result]
             [ehr-testing-tools.judge.finding :as finding]
             [ehr-testing-tools.judge.fhir :as gate])
@@ -387,3 +389,142 @@
     (gate/gate-file path-a opts)
     (gate/gate-file path-b opts)
     (is (= 2 @invocation-count) "distinct file content must never collide on the same cache key")))
+
+;; ---- gate-batch: one subprocess, many files (ADR-0016 ruling 4, F29) ----
+
+(defn- fake-batch-invocation
+  "Mimics the real validator's own multi-file contract (F29): writes a
+  Bundle with one entry per positional input arg (everything in argv
+  after -output=<path>), each entry's operationoutcome-file extension
+  set to that EXACT arg string, and its issues drawn from issues-by-arg
+  (keyed by that same exact arg string, default [])."
+  [issues-by-arg]
+  (fn [{:keys [args]}]
+    (let [args (vec args)
+          output-arg (first (filter #(str/starts-with? % "-output=") args))
+          output-path (subs output-arg (count "-output="))
+          output-idx (.indexOf ^java.util.List args output-arg)
+          input-args (subvec args (inc output-idx))
+          entries (mapv (fn [arg]
+                          {"resource"
+                           {"resourceType" "OperationOutcome"
+                            "extension" [{"url" "http://hl7.org/fhir/StructureDefinition/operationoutcome-file"
+                                          "valueString" arg}]
+                            "issue" (vec (get issues-by-arg arg []))}})
+                        input-args)]
+      (spit output-path (json/write-str {"resourceType" "Bundle" "type" "collection" "entry" entries}))
+      (ok-invocation))))
+
+(deftest gate-batch-attributes-results-per-file-in-input-order-test
+  (let [out-dir (temp-dir)
+        cache-dir (str out-dir "/verdict-cache")
+        path-a (str out-dir "/a.json")
+        path-b (str out-dir "/b.json")
+        _ (spit path-a "{\"resourceType\":\"Bundle\",\"entry\":[1]}")
+        _ (spit path-b "{\"resourceType\":\"Bundle\",\"entry\":[2]}")
+        run-invocation (fake-batch-invocation
+                         {path-a []
+                          path-b [{"severity" "error" "code" "invalid" "expression" ["Patient.birthDate"]
+                                    "details" {"text" "Not a valid date format"}}]})
+        opts {:artifacts [validator-artifact] :java-bin "/fake/java" :out-dir out-dir
+              :verdict-cache-dir cache-dir
+              :run-invocation run-invocation
+              :resolve-artifact (fn [_ _ _] (result/ok {:path "/fake/v.jar" :artifact validator-artifact}))}
+        r (gate/gate-batch [path-a path-b] opts)]
+    (is (result/ok? r))
+    (let [[result-a result-b] (:results (:payload r))]
+      (is (= path-a (:path result-a)))
+      (is (= :pass (:verdict result-a)))
+      (is (= path-b (:path result-b)))
+      (is (= :rejected (:verdict result-b))))))
+
+(deftest gate-batch-issues-exactly-one-subprocess-invocation-for-n-files-test
+  (let [out-dir (temp-dir)
+        paths (mapv #(let [p (str out-dir "/" % ".json")] (spit p (str "{\"n\":" % "}")) p) (range 5))
+        invocation-count (atom 0)
+        underlying (fake-batch-invocation {})
+        run-invocation (fn [opts] (swap! invocation-count inc) (underlying opts))
+        opts {:artifacts [validator-artifact] :java-bin "/fake/java" :out-dir out-dir
+              :verdict-cache-dir (str out-dir "/verdict-cache")
+              :run-invocation run-invocation
+              :resolve-artifact (fn [_ _ _] (result/ok {:path "/fake/v.jar" :artifact validator-artifact}))}
+        r (gate/gate-batch paths opts)]
+    (is (result/ok? r))
+    (is (= 5 (count (:results (:payload r)))))
+    (is (= 1 @invocation-count) "five files must cost exactly one subprocess invocation")))
+
+(deftest gate-batch-fully-warm-cache-makes-no-subprocess-call-test
+  (let [out-dir (temp-dir)
+        cache-dir (str out-dir "/verdict-cache")
+        path-a (str out-dir "/a.json")
+        path-b (str out-dir "/b.json")
+        _ (spit path-a "{\"a\":1}")
+        _ (spit path-b "{\"b\":2}")
+        invocation-count (atom 0)
+        underlying (fake-batch-invocation {})
+        run-invocation (fn [opts] (swap! invocation-count inc) (underlying opts))
+        opts {:artifacts [validator-artifact] :java-bin "/fake/java" :out-dir out-dir
+              :verdict-cache-dir cache-dir
+              :run-invocation run-invocation
+              :resolve-artifact (fn [_ _ _] (result/ok {:path "/fake/v.jar" :artifact validator-artifact}))}
+        r1 (gate/gate-batch [path-a path-b] opts)
+        r2 (gate/gate-batch [path-a path-b] opts)]
+    (is (result/ok? r1))
+    (is (result/ok? r2))
+    (is (= 1 @invocation-count) "the second gate-batch call must be entirely cache hits")
+    (is (= (:results (:payload r1)) (:results (:payload r2))))))
+
+(deftest gate-batch-partial-warm-cache-only-batches-the-misses-test
+  (let [out-dir (temp-dir)
+        cache-dir (str out-dir "/verdict-cache")
+        path-a (str out-dir "/a.json")
+        path-b (str out-dir "/b.json")
+        _ (spit path-a "{\"a\":1}")
+        _ (spit path-b "{\"b\":2}")
+        captured-input-args (atom nil)
+        underlying (fake-batch-invocation {})
+        run-invocation (fn [{:keys [args] :as opts}]
+                         (let [args (vec args)
+                               output-arg (first (filter #(str/starts-with? % "-output=") args))
+                               output-idx (.indexOf ^java.util.List args output-arg)]
+                           (reset! captured-input-args (subvec args (inc output-idx))))
+                         (underlying opts))
+        opts {:artifacts [validator-artifact] :java-bin "/fake/java" :out-dir out-dir
+              :verdict-cache-dir cache-dir
+              :run-invocation run-invocation
+              :resolve-artifact (fn [_ _ _] (result/ok {:path "/fake/v.jar" :artifact validator-artifact}))}
+        _ (gate/gate-file path-a opts)]
+    (reset! captured-input-args nil)
+    (let [r (gate/gate-batch [path-a path-b] opts)]
+      (is (result/ok? r))
+      (is (= [path-b] @captured-input-args) "only the still-uncached path should reach the batch subprocess call"))))
+
+(deftest gate-batch-missing-attribution-is-an-error-not-a-silent-mismatch-test
+  (let [out-dir (temp-dir)
+        path-a (str out-dir "/a.json")
+        path-b (str out-dir "/b.json")
+        _ (spit path-a "{\"a\":1}")
+        _ (spit path-b "{\"b\":2}")
+        ;; a broken fake: only ever attributes findings back to path-a,
+        ;; simulating a validator-contract violation (a batch entry
+        ;; whose own file this seam cannot identify).
+        broken-run-invocation (fn [{:keys [args] :as opts}]
+                                 (let [args (vec args)
+                                       output-arg (first (filter #(str/starts-with? % "-output=") args))
+                                       output-path (subs output-arg (count "-output="))]
+                                   (spit output-path
+                                         (json/write-str
+                                          {"resourceType" "Bundle" "type" "collection"
+                                           "entry" [{"resource" {"resourceType" "OperationOutcome"
+                                                                  "extension" [{"url" "http://hl7.org/fhir/StructureDefinition/operationoutcome-file"
+                                                                                "valueString" path-a}]
+                                                                  "issue" []}}]}))
+                                   (ok-invocation)))
+        opts {:artifacts [validator-artifact] :java-bin "/fake/java" :out-dir out-dir
+              :verdict-cache-dir (str out-dir "/verdict-cache")
+              :run-invocation broken-run-invocation
+              :resolve-artifact (fn [_ _ _] (result/ok {:path "/fake/v.jar" :artifact validator-artifact}))}
+        r (gate/gate-batch [path-a path-b] opts)]
+    (is (result/error? r))
+    (is (= :batch-attribution-missing (:category r)))
+    (is (= [path-b] (:paths (:payload r))))))

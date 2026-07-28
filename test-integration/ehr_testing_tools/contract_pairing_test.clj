@@ -36,7 +36,21 @@
   unshare -r -n specifically to *measure* offline behavior) -- the
   FHIR package cache primed during EXP-C5 makes these runs fast
   either way, and this suite's job is proving detection is wired
-  end-to-end, not re-measuring offline behavior."
+  end-to-end, not re-measuring offline behavior.
+
+  Batched (ADR-0016 ruling 4, F29 in notes/facts-register.md, this
+  session): all five mutants are built up front and gated with ONE
+  `judge.fhir/gate-batch` call in the :once fixture below, instead of
+  five separate `gate-file` subprocess launches -- the validator's own
+  fixed terminology/package-load cost (measured ~25s, independent of
+  file count) was previously paid five times, once per contract test;
+  batching pays it once for the whole suite. Each deftest below reads
+  its own pre-computed outcome from `mutant-outcomes` rather than
+  gating anything itself -- the polarity assertions this suite makes
+  (a specific locator-matching finding, per file) are exactly what
+  `gate-batch`'s own per-file attribution (matched by exact argv
+  string, never position) preserves, which is what ruling 4 means by
+  \"where polarity assertions permit.\""
   (:require [clojure.test :refer [deftest is testing use-fixtures]]
             [clojure.java.io :as io]
             [clojure.string :as str]
@@ -55,6 +69,20 @@
 
 (def ^:private base-file (atom nil))
 
+;; operator-id -> {:mutant-path :outcome}, populated once by
+;; generate-fixture! below -- every deftest reads from here.
+(def ^:private mutant-outcomes (atom nil))
+
+(def ^:private mutant-specs
+  "[operator-id locator-path], in the order each contract test below
+  needs its own mutant -- the SAME five (operator, locator) pairings
+  this suite has always used, now built and gated together."
+  [[:duplicate-element "entry[0].resource.gender"]
+   [:malformed-date "entry[0].resource.birthDate"]
+   [:wrong-type-value "entry[0].resource.multipleBirthBoolean"]
+   [:remove-required-element "entry[0].resource.resourceType"]
+   [:invalid-code-value "entry[0].resource.gender"]])
+
 (defn- select-patient-file
   [corpus-dir]
   (->> (.listFiles (io/file corpus-dir "fhir"))
@@ -62,28 +90,10 @@
                      (not (re-find #"hospitalInformation|practitionerInformation" (.getName ^File %)))))
        first))
 
-(defn- generate-fixture!
-  "Once per suite run: a fresh, tiny, deterministic Synthea R4 corpus
-  (EXP-A4/EXP-B2/EXP-C5's pinned settings -- seed 100, clinician-seed
-  555, reference-date 20260101), so this suite is self-sufficient
-  (never relies on another experiment's leftover, gitignored out/
-  directory being present)."
-  [f]
-  (let [corpus-dir (str work-dir "/corpus")
-        gen-result (generate/generate! {:config-path "config/synthea/synthea.properties"
-                                         :seed 100 :clinician-seed 555 :population 1
-                                         :reference-date "20260101" :output-dir corpus-dir})]
-    (if-not (result/ok? gen-result)
-      (throw (ex-info "contract-pairing fixture: corpus generation failed -- run `ehr artifact fetch` for synthea/temurin-jdk first" gen-result))
-      (reset! base-file (.getAbsolutePath (select-patient-file corpus-dir)))))
-  (f))
-
-(use-fixtures :once generate-fixture!)
-
-(defn- mutate-and-gate!
+(defn- mutate!
   "Mutates @base-file at locator-path with operator-id, writes the
-  mutant, gates it through the real validator. Returns {:mutant-path
-  :outcome}."
+  mutant to its own path, and returns that path. Does not gate --
+  gating happens once, batched, for every spec together (below)."
   [operator-id locator-path]
   (let [base-data (json/read-str (slurp @base-file))
         operator (operators/lookup operator-id "1")
@@ -91,13 +101,40 @@
     (when-not (result/ok? mutate-result)
       (throw (ex-info "contract-pairing: mutate failed" mutate-result)))
     (let [mutant (:mutant (:payload mutate-result))
-          mutant-path (str work-dir "/" (name operator-id) "-mutant.json")
-          _ (io/make-parents mutant-path)
-          _ (spit mutant-path (json/write-str mutant))
-          gate-result (gate/gate-file mutant-path {:artifacts @lockfile-artifacts :out-dir work-dir})]
-      (when-not (result/ok? gate-result)
-        (throw (ex-info "contract-pairing: gate failed" gate-result)))
-      {:mutant-path mutant-path :outcome (:payload gate-result)})))
+          mutant-path (str work-dir "/" (name operator-id) "-mutant.json")]
+      (io/make-parents mutant-path)
+      (spit mutant-path (json/write-str mutant))
+      mutant-path)))
+
+(defn- generate-fixture!
+  "Once per suite run: a fresh, tiny, deterministic Synthea R4 corpus
+  (EXP-A4/EXP-B2/EXP-C5's pinned settings -- seed 100, clinician-seed
+  555, reference-date 20260101), so this suite is self-sufficient
+  (never relies on another experiment's leftover, gitignored out/
+  directory being present) -- then every mutant in mutant-specs is
+  built and gated together in ONE gate-batch call (ADR-0016 ruling 4)."
+  [f]
+  (let [corpus-dir (str work-dir "/corpus")
+        gen-result (generate/generate! {:config-path "config/synthea/synthea.properties"
+                                         :seed 100 :clinician-seed 555 :population 1
+                                         :reference-date "20260101" :output-dir corpus-dir})]
+    (if-not (result/ok? gen-result)
+      (throw (ex-info "contract-pairing fixture: corpus generation failed -- run `ehr artifact fetch` for synthea/temurin-jdk first" gen-result))
+      (reset! base-file (.getAbsolutePath (select-patient-file corpus-dir))))
+    (let [mutant-paths (mapv (fn [[operator-id locator-path]] (mutate! operator-id locator-path)) mutant-specs)
+          batch-result (gate/gate-batch mutant-paths {:artifacts @lockfile-artifacts :out-dir work-dir})]
+      (when-not (result/ok? batch-result)
+        (throw (ex-info "contract-pairing: gate-batch failed" batch-result)))
+      (reset! mutant-outcomes
+              (into {} (map (fn [[operator-id _] path outcome] [operator-id {:mutant-path path :outcome outcome}])
+                             mutant-specs mutant-paths (:results (:payload batch-result)))))))
+  (f))
+
+(use-fixtures :once generate-fixture!)
+
+(defn- outcome-for
+  [operator-id]
+  (get @mutant-outcomes operator-id))
 
 (defn- finding-matching-locator
   [findings locator-suffix]
@@ -109,7 +146,7 @@
 ;; observations ----
 
 (deftest ^:integration duplicate-element-contract-test
-  (let [{:keys [outcome]} (mutate-and-gate! :duplicate-element "entry[0].resource.gender")
+  (let [{:keys [outcome]} (outcome-for :duplicate-element)
         matches (finding-matching-locator (:findings outcome) "entry[0].resource.gender")]
     (is (= :rejected (:verdict outcome)))
     (is (seq matches) "expected a finding whose locator matches the mutation's own locator")
@@ -117,7 +154,7 @@
     (is (some #(= :rejected (:disposition %)) matches))))
 
 (deftest ^:integration malformed-date-contract-test
-  (let [{:keys [outcome]} (mutate-and-gate! :malformed-date "entry[0].resource.birthDate")
+  (let [{:keys [outcome]} (outcome-for :malformed-date)
         matches (finding-matching-locator (:findings outcome) "entry[0].resource.birthDate")]
     (is (= :rejected (:verdict outcome)))
     (is (seq matches))
@@ -125,7 +162,7 @@
     (is (some #(= :rejected (:disposition %)) matches))))
 
 (deftest ^:integration wrong-type-value-contract-test
-  (let [{:keys [outcome]} (mutate-and-gate! :wrong-type-value "entry[0].resource.multipleBirthBoolean")
+  (let [{:keys [outcome]} (outcome-for :wrong-type-value)
         ;; the validator addresses this choice-type element as
         ;; \"multipleBirth[x]\" in its own expression syntax, not the
         ;; JSON-serialized field name -- match on the resource-level
@@ -142,7 +179,7 @@
   ;; genuinely required (min=1 on every FHIR resource); this contract
   ;; test uses that locator so remove-required-element's own
   ;; :violates contract is tested honestly.
-  (let [{:keys [outcome]} (mutate-and-gate! :remove-required-element "entry[0].resource.resourceType")
+  (let [{:keys [outcome]} (outcome-for :remove-required-element)
         matches (finding-matching-locator (:findings outcome) "entry[0].resource")]
     (is (= :rejected (:verdict outcome)))
     (is (seq matches) "expected a finding at/near the resource whose resourceType was removed")
@@ -166,7 +203,7 @@
   ;; Observation.code) would plausibly land :indeterminate instead --
   ;; untested here, out of this session's scope (no such locator in
   ;; the single-patient fixture this suite generates).
-  (let [{:keys [outcome]} (mutate-and-gate! :invalid-code-value "entry[0].resource.gender")
+  (let [{:keys [outcome]} (outcome-for :invalid-code-value)
         matches (finding-matching-locator (:findings outcome) "entry[0].resource.gender")]
     (is (= :rejected (:verdict outcome))
         "OBSERVED class (EXP-C5): detected, not indeterminate -- AdministrativeGender is base-bundled")
@@ -177,10 +214,14 @@
 ;; ---- the Judge stage kind law (docs/notation.md): gating never
 ;; modifies the datum it judges -- tested here against the REAL
 ;; engine, not just the unit-level fakes judge.fhir's own test suite
-;; already covers this with ----
+;; already covers this with. Re-gates the already-batched
+;; duplicate-element mutant through gate-file directly -- the verdict
+;; cache (ADR-0016 ruling 3) makes this a cache hit, not a second
+;; subprocess launch, since gate-batch stored this same file's result
+;; under the same key gate-file looks up. ----
 
 (deftest ^:integration gate-fhir-never-modifies-its-input-test
-  (let [{:keys [mutant-path]} (mutate-and-gate! :duplicate-element "entry[0].resource.gender")
+  (let [{:keys [mutant-path]} (outcome-for :duplicate-element)
         before (slurp mutant-path)
         _ (gate/gate-file mutant-path {:artifacts @lockfile-artifacts :out-dir work-dir})
         after (slurp mutant-path)]
