@@ -58,7 +58,10 @@ different on-ramps:
    `lineage`) and each shape backed by a real captured output rather
    than by the schema alone. `docs/judge-calibration.md`'s "Reading
    this table" and "No-verdict, operationally" sections remain the
-   companion for reading verdicts in bulk.
+   companion for reading verdicts in bulk; [`docs/GLOSSARY.md`](GLOSSARY.md)
+   is the companion for the vocabulary itself — judge, verdict,
+   findings, gate, baseline — and is this family's authoritative
+   definition set ([ADR-0018](../notes/ADRs.md)).
 6. **The Clojure library consumer.** Post-first-release: will `require`
    this repo's namespaces directly rather than shelling out to the CLI.
    Today's serving is source docstrings only — no public-vs-internal

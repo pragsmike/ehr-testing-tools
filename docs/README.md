@@ -6,6 +6,11 @@ answered. `docs/positioning.md`'s [Audience](positioning.md#audience)
 section is the canonical register these paths are keyed off; this page
 just routes.
 
+If a term below is unfamiliar — judge, verdict, findings, gate,
+baseline, and the rest of the conformance vocabulary — **[GLOSSARY.md](GLOSSARY.md)**
+is the authoritative definition set for this repo and its family
+([ADR-0018](../notes/ADRs.md)).
+
 ## Task-first practitioner
 
 You have a job to do — generate data, break it on purpose, gate it —

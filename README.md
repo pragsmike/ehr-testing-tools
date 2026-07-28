@@ -200,6 +200,11 @@ for the full problem statement.
 
 ## How this repo works
 
+Term definitions — judge, verdict, findings, gate, baseline, and the
+rest of the conformance vocabulary shared with `ehr-testing-sim` — live
+in [`docs/GLOSSARY.md`](docs/GLOSSARY.md), the authoritative glossary
+for this repo and its family.
+
 Start at [`docs/README.md`](docs/README.md) for the reading order
 through everything under `docs/`. The short version: decisions live in
 [`notes/ADRs.md`](notes/ADRs.md), externally verifiable facts get an
