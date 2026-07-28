@@ -1,0 +1,160 @@
+(ns ehr-testing-tools.corpus.source-sink-url-test
+  "Test-first (ruling 4, SS-1 Step 3): written before ehr-testing-tools.
+  corpus.source-sink-url existed. Covers the URL<->map parser: the
+  round-trip law (D4 -- parse ∘ print = identity on canonical maps),
+  explicit examples from docs/source-sink-design.md Part IV, and the
+  negative cases ruling 4 names by name (unknown scheme, whitespace,
+  missing required kind-specific fields) plus the six-schemes-fixed/
+  two-implemented split (ruling 3, D-a)."
+  (:require [clojure.test :refer [deftest is testing]]
+            [clojure.test.check :as tc]
+            [clojure.test.check.generators :as gen]
+            [clojure.test.check.properties :as prop]
+            [clojure.string :as str]
+            [ehr-testing-tools.result :as result]
+            [ehr-testing-tools.corpus.source-sink-url :as url]))
+
+;; ---- generators: safe path segments only -- '?'/'&'/'=' would be
+;; ambiguous with the query grammar, and this scheme doesn't percent-
+;; encode :path the way it does query values (matching the design's
+;; own unencoded example, "dir:./corpus") ----
+
+(def safe-path-gen
+  (gen/fmap (fn [segs] (str "./" (str/join "/" segs)))
+            (gen/vector (gen/fmap #(apply str %) (gen/vector gen/char-alpha 1 8)) 1 4)))
+
+(def format-gen (gen/elements [:fhir-json :v2-er7 :inferred]))
+(def framing-gen (gen/elements [:file-per-item :er7-multi :ndjson :bundle-entries :mllp]))
+
+(defn- source-map-gen
+  [kind]
+  (gen/let [path safe-path-gen
+            format (gen/one-of [(gen/return nil) format-gen])
+            framing (gen/one-of [(gen/return nil) framing-gen])]
+    (cond-> {:kind kind :path path}
+      format (assoc :format format)
+      framing (assoc :framing framing))))
+
+(defn- sink-map-gen
+  [kind]
+  (gen/let [path safe-path-gen
+            format format-gen
+            framing (gen/one-of [(gen/return nil) framing-gen])]
+    (cond-> {:kind kind :path path :format format}
+      framing (assoc :framing framing))))
+
+(deftest source-designator-round-trip-property-test
+  (testing "parse ∘ print = identity on canonical dir/file Source maps (D4 law)"
+    (doseq [kind [:dir :file]]
+      (let [check-result
+            (tc/quick-check 100
+              (prop/for-all [m (source-map-gen kind)]
+                (let [printed (url/print-source-designator m)]
+                  (and (result/ok? printed)
+                       (let [parsed (url/parse-source-designator (:payload printed))]
+                         (and (result/ok? parsed)
+                              (= m (:payload parsed))))))))]
+        (is (:pass? check-result) (str kind " source round-trip failed: " (:shrunk check-result)))))))
+
+(deftest sink-designator-round-trip-property-test
+  (testing "parse ∘ print = identity on canonical dir/file Sink maps (D4 law, sink twin)"
+    (doseq [kind [:dir :file]]
+      (let [check-result
+            (tc/quick-check 100
+              (prop/for-all [m (sink-map-gen kind)]
+                (let [printed (url/print-sink-designator m)]
+                  (and (result/ok? printed)
+                       (let [parsed (url/parse-sink-designator (:payload printed))]
+                         (and (result/ok? parsed)
+                              (= m (:payload parsed))))))))]
+        (is (:pass? check-result) (str kind " sink round-trip failed: " (:shrunk check-result)))))))
+
+;; ---- harness sanity: a concrete example, so the property tests above
+;; aren't the only evidence the round-trip machinery does something
+;; (same discipline as canonical_test/mutate_test's own harness-catches-
+;; a-violation tests) ----
+
+(deftest concrete-round-trip-example-test
+  (let [m {:kind :dir :path "./corpus" :format :v2-er7 :framing :er7-multi}
+        printed (url/print-source-designator m)]
+    (is (result/ok? printed))
+    (is (= "dir:./corpus?format=v2-er7&framing=er7-multi" (:payload printed)))
+    (let [parsed (url/parse-source-designator (:payload printed))]
+      (is (result/ok? parsed))
+      (is (= m (:payload parsed))))))
+
+;; ---- explicit examples from docs/source-sink-design.md Part IV ----
+
+(deftest design-doc-example-urls-parse-test
+  (testing "dir: with format+framing query params"
+    (let [r (url/parse-source-designator "dir:./corpus?format=v2-er7&framing=er7-multi")]
+      (is (result/ok? r))
+      (is (= {:kind :dir :path "./corpus" :format :v2-er7 :framing :er7-multi} (:payload r)))))
+  (testing "sim: is recognized (D-a) but not-yet-supported (ruling 8's scope fence)"
+    (let [r (url/parse-source-designator "sim:?seed=42")]
+      (is (result/rejected? r))
+      (is (= :unsupported-source-kind (:category r)))
+      (is (= :sim (:kind (:payload r))))))
+  (testing "blaze:// is recognized but not-yet-supported"
+    (let [r (url/parse-source-designator "blaze://host:8080/fhir?query=Patient%3F_count%3D100")]
+      (is (result/rejected? r))
+      (is (= :unsupported-source-kind (:category r)))
+      (is (= :blaze (:kind (:payload r))))))
+  (testing "stdin: is recognized but not-yet-supported"
+    (let [r (url/parse-source-designator "stdin:?framing=mllp&format=v2-er7")]
+      (is (result/rejected? r))
+      (is (= :unsupported-source-kind (:category r)))
+      (is (= :stdin (:kind (:payload r))))))
+  (testing "synthea: is recognized but not-yet-supported"
+    (let [r (url/parse-source-designator "synthea:")]
+      (is (result/rejected? r))
+      (is (= :unsupported-source-kind (:category r)))
+      (is (= :synthea (:kind (:payload r)))))))
+
+;; ---- negative cases (ruling 4) ----
+
+(deftest unknown-scheme-test
+  (let [r (url/parse-source-designator "ftp:./corpus")]
+    (is (result/rejected? r))
+    (is (= :unknown-source-scheme (:category r)))))
+
+(deftest whitespace-is-malformed-test
+  (let [r (url/parse-source-designator "dir: ./corpus")]
+    (is (result/rejected? r))
+    (is (= :malformed-source-designator (:category r)))))
+
+(deftest missing-required-field-test
+  (testing "dir: with no path at all propagates dir-source's own :invalid-source rejection"
+    (let [r (url/parse-source-designator "dir:")]
+      (is (result/rejected? r))
+      (is (= :invalid-source (:category r))))))
+
+(deftest no-scheme-at-all-test
+  (let [r (url/parse-source-designator "just-a-bare-path")]
+    (is (result/rejected? r))
+    (is (= :malformed-source-designator (:category r)))))
+
+;; ---- sink twins: same shape, :format is mandatory (D3) ----
+
+(deftest sink-designator-examples-test
+  (testing "file: sink round-trips with mandatory :format"
+    (let [printed (url/print-sink-designator {:kind :file :path "./out/one.json" :format :fhir-json})]
+      (is (result/ok? printed))
+      (is (= "file:./out/one.json?format=fhir-json" (:payload printed)))))
+  (testing "dir: sink missing :format is rejected, not silently inferred (D3)"
+    (let [r (url/parse-sink-designator "dir:./out")]
+      (is (result/rejected? r))
+      (is (= :invalid-sink (:category r)))))
+  (testing "stdout: is a recognized sink scheme but not-yet-supported"
+    (let [r (url/parse-sink-designator "stdout:?format=v2-er7")]
+      (is (result/rejected? r))
+      (is (= :unsupported-sink-kind (:category r)))
+      (is (= :stdout (:kind (:payload r))))))
+  (testing "blaze:// is a recognized sink scheme but not-yet-supported"
+    (let [r (url/parse-sink-designator "blaze://host:8080/fhir")]
+      (is (result/rejected? r))
+      (is (= :unsupported-sink-kind (:category r)))))
+  (testing "an unknown sink scheme is rejected by name"
+    (let [r (url/parse-sink-designator "sim:?seed=1")]
+      (is (result/rejected? r))
+      (is (= :unknown-sink-scheme (:category r))))))
