@@ -168,3 +168,89 @@ was wrong, and the corrected membership check plus the ruling are
 recorded in that prompt's own dated "Session deviation record" appendix
 (`.agents/prompts/archive/2026-07-26-pack-elide-and-research-errata.md`,
 appended before this deviation-record convention was itself ratified).
+
+## 8. Hermeticity: path split, not tag filter
+
+`AGENTS.md`'s hard rules state the invariant (cold-clone, no-network
+`make test`/`make coverage`, every network-touching `test/`-path test
+goes through an injected fake); this section is the mechanics moved out
+from under it (2026-07-27, NAV-1) so that bullet could stay short.
+
+Hermeticity is a **path split, not a tag filter**: tests that genuinely
+need the network, a real external engine, or a warm artifact cache live
+under `test-integration/`, not `test/` — e.g.
+`test-integration/ehr_testing_tools/contract_pairing_test.clj`, which
+runs the real `validator_cli.jar` subprocess against a real generated
+corpus. Neither the `:test` nor the `:coverage` alias in `deps.edn` adds
+`test-integration` to its paths, so both are cold-cache/no-network green
+*by construction* — this is deliberate, not incidental: `make coverage`
+runs cloverage's own test runner, which does not honor `clojure.test`'s
+`:excludes` the way `cognitect.test-runner` does, so a tag-only
+exclusion (the original design) does not actually keep integration
+tests out of `make coverage`. A path a test isn't on is a path
+cloverage can't run it from, regardless of what runner it uses.
+`^:integration` metadata stays on those tests as documentation of *why*
+they moved, not as the enforcement mechanism.
+
+Run the integration suite explicitly with `make integration`
+(`clojure -X:integration`, the `:integration` alias) — it requires `ehr
+artifact fetch` for `synthea`, `temurin-jdk`, and `fhir-validator-cli`
+first (see `make help`). The per-push CI job
+(`.github/workflows/ci.yml`) runs `make test`, both lints, generated-doc
+freshness, and `make coverage` — every *fast* gate — but never `make
+integration`; that suite runs only in `.github/workflows/integration.yml`,
+scheduled nightly plus `workflow_dispatch`, with the artifact cache
+pre-primed and keyed on `artifacts.lock.edn` (ENF-1, enforcement wave,
+2026-07-25). Its failure reports; it blocks no merge. Verified
+2026-07-25: fresh temp clone, deps primed once, then both targets run
+inside a network-isolated namespace against an empty artifact cache —
+see `.agents/prompts/archive/2026-07-25-ci-hotfix-integration-path.md`
+for the exact counts.
+
+## 9. Skills provenance: the cyberneutics-derived set
+
+Moved out of `AGENTS.md`'s Skills section (2026-07-27, NAV-1), which now
+carries only the list and this pointer.
+
+The cyberneutics-derived set is five skills: `scenarios`, `probe`,
+`review`, `committee`, and `string-diagram` — all copied and adapted
+from the public
+[`pragsmike/cyberneutics`](https://github.com/pragsmike/cyberneutics)
+repo, the author's own methodology project. `string-diagram`'s upstream
+provenance is verified directly: its `SKILL.md` (name and description
+match the copy here) lives at `.claude/skills/string-diagram/SKILL.md`
+in that repo, retrieved HTTP 200 2026-07-24 — see `docs/notation.md`
+for the citation.
+
+Of those five, `scenarios`, `probe`, and `committee` additionally share
+a single `.agents/cyberneutics-config.yaml` for the `situations_root`
+key that resolves where their output directories live — **2026-07-23
+divergence from upstream cyberneutics**: upstream splits this into
+`.claude/cyberneutics-config.yaml` (scenarios/probe) and
+`.agents/committee-config.yml` (committee); this repo unifies both
+under `.agents/` since all three read the same key for the same
+purpose. `scenarios` and `probe` also depend on
+`agent/scenario-roster.md`, copied verbatim from the public
+`pragsmike/cyberneutics` repo (see that file's header comment for
+provenance) — copied now, adapted at first real use.
+
+## 10. Session allowlist growth: the two-strikes rule
+
+Moved out of `AGENTS.md`'s "Session permissions allowlist" section
+(2026-07-27, NAV-1), which now states the rule in two sentences and
+points here.
+
+A command family earns a spot on the allowlist once it has been
+genuinely needed — and therefore prompted for — twice, not on the first
+occurrence. One-off needs stay as one-off prompts; a family that
+recurs is a signal the allowlist is missing something structural, not
+that this session happened to need something unusual. This keeps the
+list scoped to the repo's actual routine work instead of accreting
+every command a single session happened to run.
+
+`Write`/`Edit` are the standing exception: they stay scoped to this
+repo and are never broadened to the filesystem at large, regardless of
+how often a wider grant might be convenient — a mis-pathed write
+outside the repo was caught by a permission prompt this week, which is
+exactly the failure mode that scoping exists to catch, so it is not
+subject to the two-strikes rule or any other empirical pressure.
