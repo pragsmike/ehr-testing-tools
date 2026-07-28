@@ -1,0 +1,81 @@
+(ns ehr-testing-tools.corpus.source-sink-test
+  "Test-first (ruling 4, SS-1): written before ehr-testing-tools.corpus.
+  source-sink existed. Schema-level coverage only -- the URL<->map
+  parser's own round-trip property lives in source_sink_url_test.clj
+  (Step 3); this file covers the canonical-map shape and the dir/file
+  constructors."
+  (:require [clojure.test :refer [deftest is testing]]
+            [ehr-testing-tools.corpus.source-sink :as ss]
+            [ehr-testing-tools.result :as result]))
+
+(deftest source-kinds-test
+  (testing "the design's six named source kinds (D1) are all recognized as known"
+    (is (= #{:dir :file :stdin :blaze :synthea :sim} ss/known-source-kinds)))
+  (testing "SS-1 implements only the two reader kinds with no engine"
+    (is (= #{:dir :file} ss/implemented-source-kinds))
+    (is (every? ss/known-source-kinds ss/implemented-source-kinds))))
+
+(deftest sink-kinds-test
+  (is (= #{:dir :file :stdout :blaze} ss/known-sink-kinds))
+  (is (= #{:dir :file} ss/implemented-sink-kinds))
+  (is (every? ss/known-sink-kinds ss/implemented-sink-kinds)))
+
+(deftest valid-source?-test
+  (testing "a minimal :kind-only map is a valid generic Source (kind is open, D4)"
+    (is (ss/valid-source? {:kind :dir}))
+    (is (ss/valid-source? {:kind :some-future-kind})))
+  (testing ":format/:framing are optional (sources may infer, Part IV)"
+    (is (ss/valid-source? {:kind :dir :format :fhir-json :framing :file-per-item})))
+  (testing "not a map, or missing :kind, is invalid"
+    (is (not (ss/valid-source? {})))
+    (is (not (ss/valid-source? "dir:./corpus")))
+    (is (not (ss/valid-source? nil)))))
+
+(deftest valid-sink?-test
+  (testing "a Sink requires :format explicitly -- no inference on the write side (D3)"
+    (is (not (ss/valid-sink? {:kind :dir})))
+    (is (ss/valid-sink? {:kind :dir :format :fhir-json})))
+  (testing ":kind is open like Source's"
+    (is (ss/valid-sink? {:kind :some-future-kind :format :v2-er7}))))
+
+(deftest dir-source-test
+  (testing "happy path: :path is required and round-trips into the map"
+    (let [r (ss/dir-source {:path "./corpus"})]
+      (is (result/ok? r))
+      (is (= {:kind :dir :path "./corpus"} (:payload r)))))
+  (testing ":format/:framing pass through when given"
+    (let [r (ss/dir-source {:path "./corpus" :format :v2-er7 :framing :er7-multi})]
+      (is (result/ok? r))
+      (is (= {:kind :dir :path "./corpus" :format :v2-er7 :framing :er7-multi} (:payload r)))))
+  (testing "missing :path is rejected, not a thrown exception (ADR-0004)"
+    (let [r (ss/dir-source {})]
+      (is (result/rejected? r))
+      (is (= :invalid-source (:category r))))))
+
+(deftest file-source-test
+  (testing "happy path"
+    (let [r (ss/file-source {:path "./corpus/one.json"})]
+      (is (result/ok? r))
+      (is (= {:kind :file :path "./corpus/one.json"} (:payload r)))))
+  (testing "missing :path is rejected"
+    (is (result/rejected? (ss/file-source {})))))
+
+(deftest dir-sink-test
+  (testing "happy path: :path and :format both required"
+    (let [r (ss/dir-sink {:path "./out" :format :fhir-json})]
+      (is (result/ok? r))
+      (is (= {:kind :dir :path "./out" :format :fhir-json} (:payload r)))))
+  (testing "missing :format is rejected (D3's no-inference-on-write law)"
+    (is (result/rejected? (ss/dir-sink {:path "./out"}))))
+  (testing "missing :path is rejected"
+    (is (result/rejected? (ss/dir-sink {:format :fhir-json})))))
+
+(deftest file-sink-test
+  (testing "happy path"
+    (let [r (ss/file-sink {:path "./out/one.json" :format :fhir-json})]
+      (is (result/ok? r))
+      (is (= {:kind :file :path "./out/one.json" :format :fhir-json} (:payload r)))))
+  (testing "missing :format is rejected"
+    (is (result/rejected? (ss/file-sink {:path "./out/one.json"}))))
+  (testing "missing :path is rejected"
+    (is (result/rejected? (ss/file-sink {:format :fhir-json})))))
