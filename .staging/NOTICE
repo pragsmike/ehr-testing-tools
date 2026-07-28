@@ -1,0 +1,73 @@
+ehr-testing-sim -- third-party notices
+=======================================
+
+This project's own code and documentation are MIT-licensed (see
+LICENSE). This file records attribution obligations for third-party
+terminology content this project's data files embed -- LOINC and
+SNOMED CT, both cited from wherever this repo's own code provenance
+law (docs/sim-theory.md) requires a code to carry its source, never
+invented (AGENTS.md's standing "do not invent facts about upstream
+sources" rule).
+
+Two narrower, directory-scoped NOTICE files sit alongside this one and
+are not superseded by it -- each covers content vendored (or
+deliberately NOT vendored) into its own directory, with its own dated
+provenance record:
+
+- resources/demographics/NOTICE -- given-names.edn, surnames.edn,
+  places.edn are this project's own hand-curated originals (schema
+  mirrors Synthea's design; content is not copied, adapted, or
+  extracted from any Synthea file).
+- resources/modules/NOTICE -- resources/modules/sinusitis.json,
+  Synthea's own Generic Module Framework JSON, vendored verbatim
+  under Apache-2.0, with its upstream URL/commit SHA/SHA-256 recorded
+  per file.
+
+## LOINC
+
+Files carrying real LOINC codes: resources/order-profiles.edn (the
+CBC and BMP lab-panel codes and their component analytes,
+notes/facts-register.md F7), test/ehr_testing_sim/fixtures/fixture-clinic.json
+(one Body-temperature observation code, F11), and generated demo
+output under docs/demos/ that renders these same codes (no new LOINC
+content of its own). Every LOINC code this project embeds carries its
+own display name alongside it (the `:display` field on each concept
+triplet, docs/sim-theory.md's code-provenance law) -- the pairing
+LOINC's own license requires when a LOINC identifier is extracted from
+the Licensed Materials. No LOINC Table, Panels and Forms File, Answer
+File, or other bulk LOINC artifact is redistributed anywhere in this
+project; only these small, individually-verified codes, each with its
+own facts-register row and last-verified date.
+
+Per LOINC's Copyright Notice and License
+(https://loinc.org/license/, fetched verbatim 2026-07-27,
+notes/facts-register.md F16), the notice required (Section 10) of any
+product or service incorporating portions of the Licensed Materials:
+
+> This material contains content from LOINC (http://loinc.org). LOINC
+> is copyright (c) Regenstrief Institute, Inc. and the Logical
+> Observation Identifiers Names and Codes (LOINC) Committee and is
+> available at no cost under the license at http://loinc.org/license.
+> LOINC(R) is a registered United States trademark of Regenstrief
+> Institute, Inc.
+
+## SNOMED CT
+
+This project never redistributes bulk SNOMED CT content (no SNOMED CT
+table, release file, or browser export ships anywhere in this repo).
+Every SNOMED CT code this project's data carries reaches it by one of
+two narrower paths, each already tracked on its own terms: codes
+embedded in the vendored Synthea module (resources/modules/sinusitis.json)
+ride that file's own Apache-2.0 distribution from Synthea
+(notes/facts-register.md F2, resources/modules/NOTICE) -- Synthea's own
+license, not a separate SNOMED grant, is what covers their presence
+here; codes in this project's own hand-authored test fixture
+(test/ehr_testing_sim/fixtures/fixture-clinic.json) were individually
+looked up and verified against a primary or search-engine-mediated
+source at authoring time (notes/facts-register.md F10, three codes) and
+are used, as small individually-verified identifiers rather than bulk
+content, under the terms available to US NLM/UMLS users
+(notes/facts-register.md F4). Neither path constitutes redistribution
+of the SNOMED CT release itself, and this project's own code-provenance
+law (docs/sim-theory.md) forbids inventing a code that wasn't verified
+this way.

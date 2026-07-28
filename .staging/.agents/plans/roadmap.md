@@ -1,0 +1,1150 @@
+# Roadmap
+
+**Status: accepted (2026-07-26).** ADR-0003 deferred writing a plan
+"until first real use" of `.agents/plans/`; this is that first use.
+Milestone order, scope, and the deliberate exclusions below are
+author-ratified. Each milestone names the
+[`sim-theory.edn`](../../docs/sim-theory.edn) stage(s) it advances and
+the invariants that must co-land with it (`AGENTS.md`'s co-landing
+convention: every new engine step type ships with its `check.clj`
+invariants in the same change).
+
+## M1 — Facility + providers models, transfer step, occupancy projection
+
+Advances **Execute** (`:built`, growing its step vocabulary) via its
+new `provider-pool` catalytic, plus the transfer step type.
+**A02 emission is IN M1** — the co-landing convention (`AGENTS.md`)
+extends to the emitter's `message-type-registry`, not just
+`check.clj`: a step type without a registered message type produces
+traffic that's invisible to every consumer downstream of `EmitHL7`,
+which is exactly the kind of silent gap the co-landing rule exists to
+prevent. The registry entry and derivability-law test coverage for
+A02 land in the same change as the `:transfer` step itself, not in a
+follow-on.
+[`docs/operational-models.md`](../../docs/operational-models.md),
+reviewed this session, is this milestone's spec — nothing here
+redecides what that document already decided.
+
+Co-landing invariants: no bed holds two patients; an admitted patient
+occupies exactly one bed; a transfer's from-location matches the
+patient's current state; occupancy never exceeds ward capacity;
+surge placement only when earlier ladder rungs are exhausted (unless
+`:forced true`). Plus the occupancy board's own consistency law as a
+property test: board ≡ fold over patient locations.
+
+## M2a — Engine prep: identity, participants, and the time model — **landed**
+
+(Identity/participants per ADR-0010 and the time model per ADR-0011,
+including the warm-up mark, are implemented and test-first — 73 tests
+/ 156 assertions green; the seeded arrival process is the one sketched
+item not built, explicitly a stretch M2b doesn't depend on.)
+
+Split out of the original single M2 milestone (this session) because
+its two decisions — [ADR-0010](../../notes/ADRs.md#adr-0010) (patient
+identity + the `:participants` event shape) and
+[ADR-0011](../../notes/ADRs.md#adr-0011) (seconds granularity, a
+pinned UTC offset, a seeded arrival process, a warm-up window) — are
+both **engine refactors that M2b's actual churn step types depend on**,
+not churn content themselves. Landing them first means M2b's merge and
+bed-swap steps are written directly against `:patient-id`/
+`:participants` and the new clock, rather than against `:mrn` and
+minutes with a mid-milestone migration. Both refactors are seam-able:
+each can land, be tested, and be reviewed independently of the other,
+and neither blocks on M2b existing yet.
+
+**Seed perturbation, expected twice over, both already covered by
+existing policy.** M1 already perturbed pinned-seed output once
+(ADR-0009, the allocation-ladder and provider-sampling draws). M2a's
+time-granularity change (ADR-0011 decision 1, minutes → seconds) shifts
+every timestamp-consuming draw again — a second, equally expected
+instance of exactly the pattern ADR-0009 already names and accepts:
+same config + seed stays byte-identical *within* a generator version,
+and each milestone that grows the engine's stochastic surface is
+expected to regenerate pinned fixtures, not treated as a regression to
+chase down. `:patient-id` generation (ADR-0010) is a further, third
+draw-order change from the same milestone; the same policy covers it.
+
+Co-landing invariants: the fold-key/queue-key rename (`:mrn` →
+`:patient-id`, `docs/patient-state-model.md`'s accumulator gaining
+`{:mrns :active-mrn}`) touches every existing `evolve`/`decide` method
+and test helper, so the determinism and invariant-catalog property
+tests must stay green across the rename, not just for new step types;
+`:participants` becomes a real field on every event (single-element
+vector for today's step types) with its own schema round-trip test.
+
+## M2b — Churn family — **landed**
+
+Lands **InjectChurn** (`:built` in the theory; `;; NEXT` moved to
+`Execute`'s own further growth, M3): cancel-admit/cancel-transfer/
+cancel-discharge (A11/A12/A13), transfer-in-error (A02+A12, in-error
+marked), bed-swap (A17, genuinely two-participant), and merge (A40,
+the identity payoff) — 134 tests / 318 assertions green, coverage
+94.76%/97.25% (up from the M2a baseline 91.72%/94.69%). `churn-profile`
+is real config (`ehr-testing-sim.churn/ChurnProfile`) rather than a
+named-but-unbuilt resource, wired into `sim run` via `--churn` or an
+explicit `:churn-profile`. Task 0's two ratified items landed alongside:
+the durations rule (one line, `docs/patient-state-model.md`) and
+result-not-throw capacity exhaustion (`ehr-testing-sim.facility/allocate`
+no longer throws; `run-command` surfaces `:error :capacity-exhausted`),
+plus an ED-diversion/waiting-room-boarding stub entry in
+`docs/clinical-realities.md`. `docs/patient-state-model.md`'s conditional
+validity rows (status × event-class × attribute-conditions, added M2a)
+name two further candidate step families for a future milestone, as
+**stretch/candidate steps, not landed this session**: leave-of-absence
+(A21/A22) and observation/inpatient class-flip (A06/A07), both from
+`docs/clinical-realities.md`'s stub catalog.
+
+**Capture: encounters as first-class, M2b-surfaced.** Neither `:pending-*`
+step types nor `VisitID`/PV1-19 landed this session (both flagged in
+`docs/patient-state-model.md`'s mining section as pre-existing gaps,
+not new ones). The research pair's own mining (group D,
+`docs/research/SimHospital-Synthea-limitations-considered.md` §5.4)
+upgrades this from nice-to-have to evidence-backed: SimHospital's own
+in-code admission that a first pending encounter "will never be
+finished, since only the latest Encounter is checked" is direct proof
+that single-current-encounter assumptions break real workflows once
+multiple pending encounters can overlap. The capture — visit ids
+(PV1-19), readmission, and support for *multiple concurrent pending*
+encounters, not just one — must land **with or immediately before**
+whichever future milestone actually introduces `:pending-*` step
+types, since a pending-admission mechanism designed against a
+single-current-encounter assumption would reproduce the exact failure
+this evidence warns against.
+
+Co-landing invariants, landed: `cancel-references-existing-uncancelled-event`
+(a cancelled event must reference an event it cancels, of the right
+type, not already cancelled), `bed-swap-both-admitted-before-swap`,
+`merge-survivor-absorbs-merged-mrns`, `no-events-after-merged-terminal`
+— all expressed as `:participants` cross-participant coherence checks
+per ADR-0010. The IR-endomorphism, clinical-steps-preserved, and
+zero-probability-identity laws stated on `:churn` in the EDN are now
+property tests (`churn-test`), not just claims. One design decision
+surfaced only by property-testing InjectChurn against the full
+invariant catalog, recorded here rather than in an ADR since it's an
+internal robustness fix, not a wire/contract change: a churn-inserted
+step that is STATICALLY legal (per the applicability oracle) can still
+be REJECTED at execution time by live world state InjectChurn has no
+visibility into (e.g. a bed a cancel-discharge would reinstate into was
+reclaimed by someone else's admission in the meantime) — such a
+rejection is a no-op for that one step, not a run-halting condition,
+and InjectChurn's own state model treats `:cancel-discharge`
+conservatively (never assumes it succeeds) for exactly this reason.
+
+## M3 — Order profiles + order/result steps — **landed**
+
+Advanced **Execute** via its `order-profiles` catalytic (declared
+comment-only ahead of this milestone, target 3 — hashed US-units
+config, now real): `:order` (author-facing IR, auto-pairs its own
+`:result-followup` after a profile-sampled turnaround — the ergonomics
+choice recorded over a hand-authored `:result{:order-ref ...}}` step,
+`docs/patient-state-model.md`) and ORM^O01/ORU^R01 emission in
+`EmitHL7` — 181 tests / 503 assertions green, coverage 95.35%/97.75%
+(up from the M2b baseline 94.78%/97.25%). `resources/order-profiles.edn`
+ships a small hand-curated CBC + BMP starter set, real LOINC codes
+verified directly against loinc.org (`notes/facts-register.md` F7), US
+conventional units, typical adult reference ranges, and a per-analyte
+value distribution (normal + abnormal tails). This is the milestone
+that repairs the capture gap named in an earlier theory
+sync — Simulated Hospital's order profiles and the ORM/ORU cycle were
+discussed from the project's first session but, until now, lived in
+no planning artifact.
+
+**The run-loop mechanism this needed, recorded here since it's a real
+engine extension, not just a new step type:** `decide`'s outcome may
+now carry `:schedule-followup` — a genuine future `[t seq-no]` queue
+entry the run loop enqueues, distinct from returning events directly.
+An `:order`'s result is fully computed (all its RNG draws, including
+every analyte's sampled value and computed abnormal flag) atomically at
+order-decide-time, the same "decided atomically" precedent
+`:transfer-in-error` already set — but splicing that future-timestamped
+event directly into the order's own `:events` would enter
+`ground-truth` at the order's own log position, ahead of other
+patients' smaller-`:t` events the run loop hasn't processed yet yet,
+breaking the log's global time ordering. `:schedule-followup` instead
+asks the run loop to enqueue it for real, so it lands at its own
+correct position, the same as any other scheduled event.
+
+**A real finding, corrected before landing:** this milestone's own
+integration test surfaced that a patient can legitimately be discharged
+before their result arrives (async turnaround, `:order`'s own
+`:advance 0` doesn't block the rest of the pathway on the pending
+result) — pending labs at discharge are real, common clinical traffic,
+not a bug. The event-validity invariant this milestone co-lands
+(`order-only-when-admitted`) is therefore scoped to `:order-placed`
+alone, not generalized to `:result-available` as first drafted.
+
+Co-landing invariants: `result-references-existing-order-and-follows-
+it-in-time` (every result's `:order-event-id` names a real order for
+the same patient, at or before the result's own time);
+`result-analytes-match-order-profile` (a result's analyte set is
+exactly its own profile's); `abnormal-flags-consistent-with-value-vs-
+range` (the computed-truth mini-law, checked from the log directly);
+`order-only-when-admitted` (the therapeutic-intent-class validity row,
+scoped per the finding above). Order/result message types register in
+`message-type-registry` the same way ADT types already do.
+
+**Task 0's consumer-loop triage, landed alongside:** `manifest/build`
+and `MirroredManifest` both omitted `:schema-version` — correlated
+drift the mirror could not self-detect, since it validates its own
+output against its own copy of the schema (a mirror cannot catch itself
+agreeing with its own mistake, the reason the BINDING contract test
+lives in tools' own integration tree). Fixed both sides to mirror
+tools' `ManifestV1_1` exactly (`:schema-version "1.1"`); verified
+against tools' `sim-manifest-contract-test`, run as a subprocess, green.
+
+**ADR-0012 (`:step-rejected`), landed alongside.** Decide-time
+rejections (the cancel-family's own reinstatement guards, bed-swap/
+merge's no-eligible-peer cases) now append a `:step-rejected` ground-
+truth event — participants (the attempting patient only, never a
+possibly-nonexistent `:with` target), the attempted step, and a
+documented reason keyword (`ehr-testing-sim.engine/documented-step-
+rejection-reasons`, its own catalog-style enum, co-landed with a
+`step-rejected-reason-is-documented` invariant). No
+`message-type-registry` entry, by design — truth about the run, never
+wire traffic. Rejected steps consume no RNG beyond what `decide` had
+already drawn before discovering the rejection.
+
+**M3-adjacent capture, landed alongside: per-patient pathway
+assignment.** `ehr-testing-sim.engine/run` gained `:pathways`
+(`ehr-testing-sim.pathway/PathwaysConfig`): weighted-pool entries
+(`{:pathway :weight}`, a sampled mixture across the patient population)
+and/or explicit per-ordinal entries (`{:patient-ordinal :pathway}`, a
+scripted assignment), `assign-pathway`'s own input — SimHospital's
+`percentage_of_patients`-style analogue this project had discussed
+without capturing until now. `run`'s existing single-`:pathway` config
+is the degenerate case and stays byte-identical (the pinned fixture is
+untouched — `:pathways` absent entirely, not merely all-zero, means no
+new draw, exactly the same opt-in shape M2b's `:churn-profile` already
+established). The M2b scripted-scenario fleet
+(`ehr_testing_sim/churn_scenarios_test.clj`) now runs end-to-end through
+`engine/run` via explicit assignments, computing peer patient-ids with
+the pure `patient-id-for`; `engine-test`'s own
+`bed-ready-transfer-scripted-two-patients` is kept as the one direct
+decide/evolve-driven API-level regression, per this session's own
+migration note. This is also **M5's own prerequisite**:
+`CompileTrajectory` produces a *distinct* pathway per patient, so this
+assignment layer is infrastructure M5 needs regardless of where it
+landed first.
+
+## M4 — Persona + demographics tables; payer sampling; PID/IN1 enrichment — **landed**
+
+Lands **Persona** (`:planned` → `:built`) for real: demographics
+sampling from vendored, hashed tables (`demographics-tables`, target
+3), plus the `payer-pool` catalytic this session recorded as a
+comment-only forward reference on `:persona` — this is the milestone
+that turns that comment into a real `:catalytic` wire. PID gains
+demographic fields; IN1 lands as a segment for the first time,
+carrying the sampled payer (`docs/operational-models.md`'s payers
+model). **Upstream-demand citation**
+(`docs/research/SimHospital-Synthea-limitations-considered.md` §5.3):
+SimHospital issue #3 is a user unable to find a way to include the IN1
+insurance segment — this milestone is the answer. PID's demographic
+enrichment also carries US phone formatting, named unavailable and
+uneditable in SimHospital issue #21 — the same issue that requests
+GT1/ZG1 (below, site-profiles' citation).
+
+**The wiring fix, first (Task 0).** This session opened by fixing a
+real gap the tools consumer loop surfaced: M3's `:pathways` reached
+`ehr-testing-sim.engine/run` from a direct API caller (engine-test)
+but never from `ehr-testing-sim.run/run-command` — CLI-invisible
+despite 181 green tests and a demo. `ehr-testing-sim.engine/config-keys`
+is now the canonical, documented list of every key `engine/run`
+accepts; `run-command` forwards the full set (a plumbing-completeness
+test asserts this with sentinel values, not just the known gap), and
+`--config FILE.edn` is the passthrough vehicle for the data-heavy keys
+(`:pathway`/`:pathways`/`:order-profiles`/`:churn-profile`) that have
+no flag of their own. `AGENTS.md` gained a standing rule: demos and
+verification commands run through the CLI surface (`clojure -M:cli
+...`), never engine internals — the reason this class of gap is caught
+by review next time, not just by a downstream consumer.
+
+**Implementation shape, honestly recorded.** Persona's equation
+(`sim-config → persona`) is satisfied by an engine-internal
+`:registered` event `ehr-testing-sim.engine/run` prepends to every
+patient's step queue (never authorable IR, the same treatment
+`:result-followup` already gets) — folded into Execute's own
+step-queue mechanism rather than a structurally separate pipeline
+pass, since persona is needed at the same init moment Execute already
+owns. `docs/sim-theory.edn`'s `:persona` stage records this in its own
+`:contract` string rather than pretending the diagram and the code
+agree on shape, the same discipline M2a/M3 already established for
+their own engine-internal landings. `resources/demographics/` (given
+names by sex+decade, surnames, places) are SMALL and HAND-CURATED, not
+extracted from Synthea — no `../` checkout was available this session
+(`resources/demographics/NOTICE` records the decision precisely).
+
+**A real bug, caught by the fixed-consumption property test.** Persona's
+own docstring first claimed 14 fixed RNG draws per persona; the
+property test (`persona-consumes-a-fixed-number-of-rng-draws-regardless-of-content`,
+a call-counting `java.util.Random` proxy, not a synthetic skip
+sequence) caught the true count at 13 before this landed. A second,
+more consequential bug surfaced the same way: `:registered` initially
+carried no `:active-mrn`, which silently broke
+`ehr-testing-sim.engine/replay`'s own bootstrap (it seeds a
+never-yet-seen participant's initial state from the FIRST event naming
+them) for every patient, surfacing as a real `merge-survivor-absorbs-
+merged-mrns` invariant violation in the churned-run property test
+before the fix — not a `:registered`-specific check, the EXISTING M2b
+merge invariant, catching a gap in the NEW code. `:registered` now
+carries `:active-mrn` like every other event type, for exactly this
+reason.
+
+Co-landing invariants: `registered-is-every-patients-first-event` and
+`registered-persona-is-schema-valid` (structural — every persona
+resource this run creates is schema-valid and is genuinely each
+patient's first event, the fold-bootstrap correctness the merge-bug
+above depended on); the age-linked payer property
+(`persona-test/sixty-five-plus-personas-are-mostly-medicare` and its
+under-65 converse) checks Medicare dominance at 65+ statistically,
+since payer sampling is a weighted pool, not a hard per-event rule.
+**PID/IN1 enrichment, landed alongside.** PID gains XPN name (family^given),
+DOB (HL7 date), sex (Table 0001), XAD address, and phone, uniformly across
+every message type (not admission-only); IN1 lands as a segment for the
+first time, carrying the sampled payer's id/name, riding ONLY the admission
+message (the real HL7v2 convention) — SimHospital issue #3's own request
+(`docs/research/SimHospital-Synthea-limitations-considered.md` §5.3),
+answered. GT1 stays site-profiles territory, as scoped.
+
+**The ER7 escaping property, and a verified parser finding
+(`notes/facts-register.md` F9).** `org.clojars.cmiles74/clojure-hl7-parser`
+3.5.1 implements NO escape-sequence handling in either direction —
+confirmed by reading its own shipped source (the read-side decoder exists
+but its call sites are commented-out dead code; the write side never
+encodes at all). `ehr-testing-sim.emit-hl7/escape-er7`/`unescape-er7` are
+this repo's own documented workaround. The property test itself caught a
+second, self-inflicted bug in the workaround's first draft: naive five-pass
+sequential decoding let two adjacent encoded tokens spuriously spell a
+third at their boundary (encoding `"|E|"` produces a string a five-pass
+decode misreads); fixed to a single regex pass.
+
+207 tests / 582 assertions green, coverage 95.91%/98.00% (up from the M3
+baseline 95.35%/97.75%). The pinned fixture regenerated once (Persona's
+`:registered` event, prepended to every patient's step queue, shifts the
+entire downstream RNG stream — ADR-0009's own accept-and-record policy,
+documented in the fixture's own header). `docs/demos/` seeded with two
+CLI-produced traces (order/result post-Task-0, and Persona-enriched);
+`docs/sim-theory.edn`'s diagram companion files updated for the new
+`payer-pool` wire.
+
+## Site profiles — code tables, MSH dialect, Z-segments — **landed**
+
+Lands the config layer `docs/site-profiles.md` designed (M4's own
+session): a `site-profile` value (`ehr-testing-sim.site-profile/
+SiteProfile`, all keys optional) as a real catalytic on **EmitHL7**
+(`docs/sim-theory.edn`, target 3) — no new stage, one new wire, the
+same shape `order-profiles`/`provider-pool` joining `Execute` already
+established. **The default-profile identity is this milestone's own
+determinism anchor**, property-tested (`emit-hl7-test/default-profile-
+is-the-absent-profile`): no profile arg, an explicit `nil`, and `{}`
+all render identically. Ships an MSH dialect (version, sending/
+receiving app+facility — **SimHospital issue #17's own citation**,
+this roadmap's earlier scope note, answered: version selection is now
+a configured field, not a hard-coded emitter constant); PV1-2/PV1-36
+code-table overrides (rendering-time substitutions over the SAME
+underlying state value, `ehr-testing-sim.site-profile/code-for`); and
+a Z-segment template DSL (field→state/persona/event-path bindings,
+rendered after standard segments on their own declared trigger,
+escaped per ER7, an unbound path rendering empty rather than throwing
+— **SimHospital issue #21's own citation**, answered for the custom-
+segment scope item). The parser round-trip check this milestone's own
+spec asked for (`emit-hl7-test/parser-round-trips-messages-bearing-an-
+unknown-z-segment`) passed clean — `org.clojars.cmiles74/clojure-hl7-
+parser` is segment-name-agnostic on read, so no facts-register finding
+was needed here.
+
+**The invariance property, proven both structurally and statistically.**
+The milestone's own thesis — two site profiles over one seed produce
+the same ground truth in two accents — is checked two ways: the strong
+half (ground truth) structurally, since `:site-profile` is not a
+member of `ehr-testing-sim.engine/config-keys` and is therefore
+incapable of reaching `Execute` at all, not merely untested; the weak
+half (messages) via a property test over 100 random seeds/patient
+counts, comparing a default and a deliberately gaudy second profile
+(HL7 2.5.1, a renamed sending facility, custom patient-class/
+disposition codes, a `ZPI` payer Z-segment) after masking exactly the
+declared dialect surfaces (MSH-3/4/5/6/12, PV1-2/PV1-36, Z-segment
+lines) — the masking function itself is a deliverable, since it is the
+precise, executable statement of what a dialect may touch and nothing
+more. A CLI-produced two-profile demo (`docs/demos/site-profiles/`)
+carries the same event rendered under both profiles side by side, with
+ground-truth identity verified programmatically at generation time, not
+merely asserted in prose.
+
+**`:naming :surge-format` migrates to the profile — the one documented
+exception.** Every other component binds at `EmitHL7`'s own render
+call sites (Task 3's seam, `docs/site-profiles.md`); surge bed ids,
+by contrast, are already baked into ground truth at DECIDE time
+(`ehr-testing-sim.facility/surge-slot-ids`, pre-dating this milestone),
+so `ehr-testing-sim.site-profile/apply-naming` is a facility-config
+transform a caller applies BEFORE `engine/run`, never auto-wired into
+it and never read by `EmitHL7` — a config-level compatibility shim,
+not a fifth emit-time dialect surface, named here so it isn't
+mistaken for one.
+
+**`;; NEXT` stays on `RunModules`, Milestone M5, per the ratified
+order** — this milestone added a catalytic wire to an already-`:built`
+stage (`EmitHL7`), not a new stage of its own, so there was never a
+marker to move; recorded here so a future session doesn't go looking
+for one.
+
+230 tests / 625 assertions green, coverage 95.90%/98.06% (flat against
+the M4 baseline 95.91%/98.00% — a 0.01pp forms difference, well within
+noise, no regression to justify). The pinned fixture
+(`test/ehr_testing_sim/fixtures/pinned_seed_42_patients_5.edn`) is
+untouched this session — `:site-profile` never reaches `engine/run`,
+so there was no perturbation to regenerate against, the first
+milestone since ADR-0009 was ratified where that's true by
+construction rather than by luck.
+
+**Note for the author: the tools-side gate-loop baseline review
+(`ehr-testing-tools`' own consumer-loop Task 3, its own committed
+verdict baseline artifact) is now genuinely due again.** Sim's default
+(no-profile) message shape changed twice since that baseline was last
+recorded — M3/M4's own deltas (order/result messages, PID/IN1
+enrichment) plus this session's own default-path addition (PV1-36 now
+present, blank, on every non-discharge message; populated on discharge
+where before this field didn't exist at all). Re-run tools' Task 3
+procedure when convenient to confirm the gate's verdict on the new
+default shape and record any delta against the committed baseline —
+noted here, not actioned, since that review lives in tools' own
+repo/session per ADR-0001's dependency direction.
+
+## M5 — GMF interpreter port + CompileTrajectory
+
+**Split into M5a/M5b, per this session's own docs/ADR-prep pass
+(`docs/gmf-interpreter.md`, ADR-0013) — the same "sequential,
+shapes-then-content" precedent M2a/M2b already established** (M2a
+landed the engine-refactor shapes churn's actual content would need;
+M2b landed the content against those shapes). M5a lands the
+interpreter itself, pure and engine-adjacent, against a fixture this
+project controls end to end; M5b lands the part that actually touches
+real upstream content and the emitter-facing consequences of a new
+encounter class.
+
+**Design captured ahead of either sub-milestone's build** (docs/ADR
+session, 2026-07-26 — no code or resources landed with it).
+[`docs/gmf-interpreter.md`](../../docs/gmf-interpreter.md) is the v1
+design doc: the state-type/transition subset the interpreter executes
+(deferring `CallSubmodule`/`Counter`/`MultiObservation`/`Death`, and,
+per its own candidate-module survey, `Device`/`DeviceEnd` and
+`CarePlanStart`/`CarePlanEnd`; `Symptom` joins v1 as a write-only
+state), the history/horizon two-phase run per patient, the
+GMF-encounter-class → ADT mapping (including the new
+`:outpatient-visit` step pair), and the module-namespaced `:attributes`
+discipline. [ADR-0013](../../notes/ADRs.md#adr-0013) resolves
+`sim-theory.md`'s open question #1 — `gmf-module-set` vendors (target
+3, a small curated hashed subset in `resources/modules/`) rather than
+pins a lockfile (target 1) — the decision ADR-0003 deferred since
+scaffold day, decided now that `docs/gmf-interpreter.md`'s survey of
+three real Synthea modules gives it something concrete to be decided
+against. **All eight of both documents' author-review recommendations
+are ratified, 2026-07-26** (the `Symptom` addition, the history-phase
+fast-forward granularity, the pre-horizon mark-don't-trim choice, the
+outpatient-visit validity/invariant sketch — split into its own four
+items, `docs/gmf-interpreter.md`'s own closing ratification record —
+and `sinusitis.json` as the first module to vendor): M5a (below) is
+built directly against this ratified design, not against a still-open
+recommendation.
+
+### M5a — the interpreter itself: state machine, history/horizon, hand-written fixture — **landed**
+
+Lands **RunModules the LIBRARY** — `ehr-testing-sim.gmf` (the module
+loader) and `ehr-testing-sim.gmf-interpreter` (`step`/`walk-module`/
+`run-module`) — pure and engine-adjacent: the GMF state-machine walk
+(`docs/gmf-interpreter.md` §1–3), the `PriorState`-as-log-query
+compilation (§2 — no `engine.clj` signature change needed; the
+interpreter's own accumulating trajectory stands in for `world`'s
+`:ground-truth` mirror, per that section's own "same event shape, so
+M5b swaps the source, not the logic" note), and the history/horizon
+two-phase run per patient (§3, `run-module` — genuinely ONE continuous
+walk marking events `:pre-horizon` by the pure predicate `t <
+registration-t`, not two separately-driven passes). Tested end to end
+against `test/ehr_testing_sim/fixtures/fixture-clinic.json`, the one
+hand-written GMF-JSON fixture ADR-0013 point 6 names — this project's
+own authored content, not vendored, so the interpreter's own red tests
+depend on nothing outside this repo's control.
+
+**`docs/sim-theory.edn`'s own `:trajectory` stage stays `:planned`,
+corrected from this entry's own original scope note above (which had
+read "Lands RunModules (:planned → :built)").** A library existing is
+not the same as this repo's own run actually wiring persona → modules →
+trajectory together — that wiring, and the flip to `:built`, is M5b's
+job (`docs/gmf-interpreter.md` §7, "Implementation status," and
+`sim-theory.edn`'s own updated `:contract` note, both added this
+session). No real Synthea module content lands in M5a; no
+`ground-truth-log`/`hl7v2-stream` consequence yet, since
+`CompileTrajectory` (M5b) is what turns a trajectory into pathway IR
+the engine can execute.
+
+**Four implementation decisions, recorded honestly as this session's
+own filling-in of what §1–§3 left unspecified, not silent divergence**
+(`docs/gmf-interpreter.md` §7 has the full reasoning for each): (1) a
+blocked Guard's own re-check mechanism — an analytic virtual-clock jump
+for a failing `:age`/`>=` condition (zero rng draws), block otherwise;
+(2) `Observation`'s own sampled value — one uniform draw within a
+state's own `:range`, when present; (3) `EncounterEnd` references "the
+most recently opened Encounter for this module," not a tracked open/
+closed set (correct for every module this session's own fixture and
+properties exercise; a future module with genuinely overlapping
+encounters would need more); (4) virtual time is an interpreter-internal
+`epoch-day` (`java.time.LocalDate`), not the engine's own seconds clock
+— M5b's own mapping job.
+
+Co-landing invariants/properties: code-passthrough (every coded concept
+a trajectory event carries is verbatim from its source module, 150
+trials green); glass-box traceability (every trajectory event cites a
+real module id and state name, 150 trials green); attribute writes only
+through the declared, module-namespaced registry (150 trials green);
+determinism, both for a bare `walk-module` run and across the full
+history/horizon `run-module` (150 trials each); the phase boundary is
+exactly `t < registration-t`, the same pure-predicate shape ADR-0011's
+own warm-up mark already established (150 trials green) — all checkable
+against the hand-written fixture alone, ahead of any vendored content
+existing.
+
+**Task 0's ratification flips landed alongside, per this session's own
+scope.** All eight author-review recommendations flagged across
+`docs/gmf-interpreter.md` and its appendix (the `Symptom` addition, the
+history-phase fast-forward granularity, the pre-horizon mark-don't-trim
+choice, `sinusitis.json` as the first module to vendor, and the four
+sub-items of the `:outpatient-visit` sketch — including item 6, the
+`:location` nil exception, now scheduled to land M5b as a genuine
+conditional row in `docs/patient-state-model.md`'s event-validity table
+rather than staying prose-only) are ACCEPTED, 2026-07-26 — see that
+document's own closing "Ratification record."
+
+273 tests / 716 assertions green (up from the site-profiles baseline
+230/625), coverage 96.00%/98.18% overall (up from 95.90%/98.06% —
+`ehr-testing-sim.gmf` 98.69%/99.29%, `ehr-testing-sim.gmf-interpreter`
+93.79%/98.26%). The pinned regression fixture
+(`test/ehr_testing_sim/fixtures/pinned_seed_42_patients_5.edn`) is
+untouched — M5a never reaches `engine.clj`'s own config surface, so
+there was no perturbation to regenerate against, the same by-
+construction guarantee the site-profiles milestone first established
+for its own catalytic.
+
+### M5b — CompileTrajectory + the first vendored module + outpatient steps — **landed**
+
+Lands **CompileTrajectory** (`:planned → :built`, `ehr-testing-sim.
+compile-trajectory`), the first real vendored module
+(`resources/modules/sinusitis.json` + its `NOTICE` provenance record —
+upstream URL, commit SHA `7e08387c68a7f0e21d13076609a159fd473fc902`,
+SHA-256, retrieval date), the new IR step types M5a's trajectory events
+needed somewhere to land (`:procedure`, `:observation`,
+`:medication-order`/`:medication-end`, `:outpatient-visit`/
+`:outpatient-visit-end`), and the actual persona → `run-module` →
+CompileTrajectory → IR wiring inside `ehr-testing-sim.engine/run`'s own
+`:registered` decide method — the flip `docs/gmf-interpreter.md`
+section 7 named as M5b's own job, not M5a's. 350 tests / 863 assertions
+green (up from the M5a baseline 273/716), coverage 96.37%/98.30% (up
+from 96.00%/98.18%). The pinned regression fixture
+(`test/ehr_testing_sim/fixtures/pinned_seed_42_patients_5.edn`) is
+UNTOUCHED — `:modules`/`:module-assignment` absent entirely (the
+fixture's own config) draws no new RNG and carries no new keys on any
+`:registered` event, the same by-construction guarantee every opt-in
+addition since M2b has established.
+
+**Six real findings, surfaced by running the ratified recommendation
+against the REAL loader/interpreter/compiler for the first time**
+(`docs/gmf-interpreter.md` section 8 has the full account of each):
+the loader's all-or-nothing deferred-state gate was stricter than the
+appendix's own prose assumed (`Device`/`DeviceEnd` join v1 as
+consumed-internally states, like `Simple`); a real module with no
+top-level `:remarks` broke the loader's own schema validation (fixed —
+the M5a fixture always had one, so this path was never exercised); a
+vendored module can carry a non-string JSON code value
+(`normalize-code` now coerces); the condition-vocabulary gap on
+`sinusitis.json`'s own MANDATORY post-encounter path (`Active
+Condition`/`Active Medication`/`And`) was bigger than the appendix's
+own survey characterized (all three join v1's condition vocabulary as
+log-query predicates, architecturally the same shape `PriorState`
+already established; `Active Allergy` is a documented, always-false
+simplification — no allergy concept exists anywhere in this project's
+Persona); `sinusitis.json` has no `Terminal` state at all (real Synthea
+modules of this shape run for a lifetime under Synthea's own tick
+engine) — resolved by making a bounded `:module-horizon-days` a
+load-bearing REQUIREMENT of real engine wiring, never an unbounded
+`run-module` call; and `ConditionEnd`'s own `referenced_by_attribute`
+reference shape (harmless to the interpreter's own walk, but left
+CompileTrajectory's own annotation codeless — `:codes` is now
+`{:optional true}` on `ehr-testing-sim.pathway/ConditionAnnotation`).
+
+**A seventh finding, surfaced by CompileTrajectory itself, not the
+loader.** `sinusitis.json`'s own `Potential_Onset` loop recurs across a
+patient's WHOLE life — compiling every recurrence would mint a second
+`:admission`/`:outpatient-visit` for an already-`:discharged`
+patient-id, illegal by this project's own event-validity table. This
+project's own encounter-horizon scope (ADR-0007 point 3: "a single
+encounter... not a patient's lifelong longitudinal history") is now a
+real compile-time law: CompileTrajectory compiles through the end of
+the FIRST horizon-phase encounter, then stops — everything after is
+out of this run's own scope, a fact the underlying (uncompiled)
+clinical-trajectory still carries in full, never silently invented or
+duplicated.
+
+**CompileTrajectory's own shape.** Encounter/EncounterEnd map to
+`:outpatient-visit`(-end) or `:admission`/`:discharge` by encounter
+class (`:emergency`/`:inpatient` target this run's own first `:ed`/
+`:inpatient`-class ward — a GMF module names a class, never a specific
+hospital ward). Procedure/Observation/MedicationOrder/MedicationEnd
+each compile to their own new standalone step, carrying `:citation`
+(the third link of the module-state → trajectory-event → IR-step
+glass-box chain, `docs/gmf-interpreter.md` section 6 obligation 3).
+ConditionOnset/ConditionEnd compile to an ANNOTATION on the enclosing
+Encounter-mapped step's own `:conditions` vector, never a step of their
+own (section 1's table); no open encounter to attach to (dropped
+pre-horizon, or genuinely none) is a log-only fact, the same shape
+`:step-rejected` already established. Pre-horizon ConditionOnset/
+ConditionEnd/MedicationOrder/MedicationEnd become REGISTRATION-TIME
+facts (ratified item 5) riding the engine's own `:registered` event
+(`:pre-horizon-facts`); pre-horizon Encounter/Procedure/Observation are
+dropped outright (section 3's own "no operational trajectory event for
+the encounter machinery" during history). The day → minutes conversion
+(`docs/patient-state-model.md`'s durations rule, extended with its own
+day clause) happens at exactly one point, bridging gaps between
+compiled steps with a deterministic `:delay`.
+
+**End-to-end wiring.** `ehr-testing-sim.engine/config-keys` gains
+`:modules` (already-loaded module maps — `ehr-testing-sim.run`'s own
+job to resolve names against `resources/modules/`, engine.clj does no
+file I/O of its own), `:module-assignment` (`ehr-testing-sim.gmf/
+ModulesConfig` — the SAME weighted-pool/explicit-ordinal shape
+`:pathways` already establishes, via the new `assign-module`), and
+`:module-horizon-days`. A patient's own compiled module content is
+PREPENDED onto whatever `:pathway`/`:pathways` already queued for
+them — both are just IR entering the SAME pathway-ir union, never a
+replacement; a caller wanting module-only patients passes an explicit
+empty pathway (documented in `run`'s own docstring, discovered by this
+session's own end-to-end property test). `participant-ids-exist-in-run`
+broadened from "proof via `:admission`/`:outpatient-visit`" to "proof
+via `:registered` alone" — a module-assigned patient can legitimately
+have no operational encounter at all inside this run's own horizon
+window, a real gap M5b's own property testing surfaced, not a
+module-specific carve-out.
+
+Co-landing invariants: clinical-content-preserving compilation (every
+trajectory event maps to at least one IR step or a documented drop —
+`docs/gmf-interpreter.md` §1's table is the per-state-type mapping this
+invariant checks against, property-tested against both the M5a fixture
+and the real vendored module); appends-provenance (every compiled IR
+step cites the trajectory event it realizes); `outpatient-visit-only-
+when-new`, `outpatient-patients-occupy-no-bed`,
+`clinical-content-only-when-admitted` (`:procedure`/`:observation`/
+`:medication-order`), `medication-end-references-existing-order-and-
+follows-it-in-time`, and the occupancy board's inpatient/ED-scoped
+consistency law (`docs/gmf-interpreter.md` §4). `mixed-authored-and-
+compiled-run-satisfies-the-full-invariant-catalog` (150 trials) proves
+the theory's own central claim: authored pathways and compiled
+trajectories are both just IR entering the union.
+
+**Medications, M5b note.** An OHDSI evaluation found Synthea's own
+medication data unreliable without its separate Medication
+Diversification Tool, citing limited model diversity as the root cause
+(`docs/research/SimHospital-Synthea-limitations-considered.md` §4.3,
+Wagner and Blacketer). Now that `:medication-order`/`:medication-end`
+carry real vendored content, single-source distributions are expected
+to need the same kind of diversification step whenever a second
+medication-bearing module lands — recorded again here, not yet acted
+on (only one module is vendored).
+
+**No hidden modules (`sim-theory.md`'s IR-transforms-as-composition-
+layer note), governing both sub-milestones.** Synthea's built-in Java
+lifecycle modules run always-on and invisibly, surprising users who
+tried to run only their own custom module set (discussion #1126,
+`docs/research/SimHospital-Synthea-limitations-considered.md` §4.2).
+This project's own lifecycle behavior (birth, aging, death, whatever
+the GMF port needs) must be an explicit, listable stage or IR→IR
+transform — the same composition mechanism `InjectChurn` already
+established, not a special-cased always-on pass a config author has no
+way to see or disable. `docs/gmf-interpreter.md` §5's module-namespaced
+`:attributes` discipline is this law's concrete extension into module
+*data*, not just module *execution* — named here so a future session
+reads both halves as one commitment, not two. M5b's own `:modules`
+config key is exactly this discipline applied to module ASSIGNMENT:
+listable (`engine/config-keys`), opt-in (absent means untouched), never
+an invisible always-on pass.
+
+**Note for the author: the tools-side gate-loop baseline review is now
+FIVE deltas behind** (M3, M4, site-profiles, and now M5b's own A04/
+outpatient traffic and module-driven ORU/ADT content) — the
+tools-side review procedure named as genuinely due at the site-profiles
+milestone remains genuinely due, more so now.
+
+## M6 — EmitState (FHIR snapshots first); emitter-coherence property — **landed**
+
+Lands **EmitState** (`:planned` → `:built`, `ehr-testing-sim.emit-state`):
+FHIR R4 resources (JSON, `clojure.data.json` — no new dep) rendered from
+`state-history`, CDA deferred with its own contract note (the format
+dispatch's other arm, no XML shell, no half-finished document type).
+`sim-theory.md`'s open question #3 (state-history primitive or derived)
+was already resolved at ADR-0008; EmitState existing is what makes that
+resolution load-bearing rather than merely stated — `snapshot-at`
+consumes `ehr-testing-sim.engine/replay`'s own fold output directly, no
+independent log access. **Upstream-demand citation**
+(`docs/research/SimHospital-Synthea-limitations-considered.md` §5.3):
+SimHospital issue #11, a 2024 user requesting FHIR output because
+Synthea already had it and it was easier to use — the issue stayed
+open through the project's archival; this milestone answers a real,
+still-unmet request rather than a hypothetical one. 388 tests / 1015
+assertions green (up from the M5b baseline 350/863), coverage
+96.39%/98.34% (up from 96.37%/98.30% — flat, no regression to justify).
+The pinned regression fixture
+(`test/ehr_testing_sim/fixtures/pinned_seed_42_patients_5.edn`) is
+UNTOUCHED — emission is rendering; nothing this milestone changed
+touches ground-truth content or RNG order (confirmed, not merely
+assumed: the fixture's own test only inspects `:ground-truth`, and
+every engine-side change this milestone made — the clinical-content
+accumulator, the config-conflict check — is either RNG-free or gated
+behind config keys the fixture doesn't set).
+
+**Task 0, landed first: the config-reachable `:self-check-failed`,
+recategorized.** The tools full-capability session (that repo's own
+ADR-0015) found that assigning one patient ordinal BOTH an authored
+encounter-opening pathway and a GMF module reached `engine/run` and
+blew up as `:self-check-failed` only once the invariant catalog caught
+the resulting double encounter — a config authoring error wearing a
+"bug in us" category. `ehr-testing-sim.run/incompatible-assignments`
+now catches this STATICALLY, before `engine/run` (and its RNG) ever
+starts: `:rejected :incompatible-assignment`, naming the conflicting
+ordinal and both sources. Purely structural (no RNG, no module content
+resolved — every vendored module is encounter-bearing by ADR-0013's own
+curation criterion, so any module assignment conflicts with any
+encounter-opening pathway regardless of which specific module); guarded
+by each config's own schema validity so the plumbing-completeness
+test's deliberately-malformed sentinel opts are skipped, not
+misdiagnosed. `docs/simulate-your-facility.md`'s config section gains a
+one-line note (pathway cohorts and module cohorts are per-patient
+disjoint).
+
+**Task 1: EmitState's own shape.** `ehr-testing-sim.engine/PatientState`
+gains a clinical-content accumulator (`:conditions`/`:observations`/
+`:medication-orders`, plus `:discharged-at` mirroring `:admitted-at`) —
+the concrete reason the snapshot-at-instant law is satisfiable at all:
+Condition/Observation/MedicationRequest content was previously a
+log-only fact (`evolve`'s own no-op treatment of `:observation`/
+`:medication-order`/`:medication-end`/condition annotations), and
+EmitState may touch nothing but folded state. `patient-bundle` renders
+exactly six resource types (Patient, Encounter, Condition, Observation,
+MedicationRequest, Coverage) — no Procedure, deliberately, "keep the
+resource set to what state actually holds" applied by never
+accumulating what nothing renders. Cross-emitter ids: `Patient.id` is
+the same `patient-id` `ehr-testing-sim.emit-hl7` uses internally,
+`Patient.identifier` carries the same active-mrn PID-3 renders —
+property-tested
+(`emit-state-test/fhir-patient-id-and-active-mrn-resolve-to-the-same-hl7-identity`,
+150 trials). `sim run --emit fhir [--at <seconds>]` (default: end of
+run) is the CLI surface, the same verb grammar `--emit hl7` already
+established; no new engine-side config key (purely emit-time).
+
+**Task 2, the session's own central obligation: the emitter-coherence
+property, made real.** `ehr-testing-sim.v2-replay` is an INDEPENDENT
+reconstruction of patient state — parses a run's own emitted ER7
+stream (the same parser `EmitHL7` renders through) and folds it,
+message by message, into state, never touching the engine, the log, or
+the RNG. `project-to-wire-visible-fields` — a deliverable in its own
+right, sibling of `ehr-testing-sim.site-profile`'s own dialect-masking
+function — is the formal statement of what the wire actually carries;
+applied identically to both sides of the comparison, so "what the wire
+carries" is answered once. The property
+(`emitter-coherence-reconstructed-state-matches-the-log-fold-at-every-boundary`,
+150 trials over pathways/order-result/non-two-participant churn, plus a
+150-trial sibling over module-driven trajectories) checks agreement at
+EVERY message boundary, the stronger claim the theory's own wording
+makes. Bootstrap-from-empty (a patient's first message self-initializes
+the accumulator) is asserted directly. **Documented scope boundary, not
+silent:** bed-swap (A17) and merge (A40) are genuinely two-participant
+messages whose own wire-identity reconstruction (a shared MRN
+reassigned mid-run) is real, separate engineering scope — excluded from
+this property's own churn generator, the same "deferred with a contract
+note" treatment EmitState's own CDA arm gets.
+
+**One genuine finding, fixed, not papered over.** The property surfaced
+a real gap in ground truth: a degenerate but structurally legal churn
+sequence (cancel-admit against an already-discharged patient's original
+admission, then cancel-discharge) left `:class` absent from folded
+state, while `EmitHL7`'s own PV1-2 rendering always asserts `:inpatient`
+for that message family regardless. `ehr-testing-sim.engine/evolve`'s
+own `:cancel-discharge` method now restores `:class` as part of its
+reinstatement — the fix closes the gap in ground truth; the projection
+was never loosened to tolerate it.
+
+**Task 3: the ecological loop — landed, then removed (ADR-0014).**
+`test/ehr_testing_sim/blaze_integration_test.clj` originally POSTed a
+run's own end-of-run Bundle(s) to a locally reachable `samply/blaze`
+and round-tripped Patient fields when one was present (skip-when-absent
+otherwise). A post-M6 session deleted it: sim runs no external
+acceptance instruments, the same never-graded-on-its-own-homework
+symmetry v2 conformance already follows (NIST/HAPI round-tripping
+belongs to `ehr-testing-tools`, never to this repo) — see ADR-0014.
+`notes/facts-register.md` F13 (the JDK-8/HttpURLConnection finding this
+test motivated) is annotated superseded, not deleted, per this
+project's append-only discipline.
+
+**Note for the author: the tools-side gate-loop baseline review needs
+NO new delta from this session** — EmitState adds no `hl7v2-stream`
+messages (a pure rendering addition over an existing catalytic-free
+wire, no engine step type, no message-type-registry entry), so the
+sibling repo's own committed gate baselines are unaffected by this
+milestone, unlike every milestone before it that changed message
+shape. Said explicitly so the author needn't wonder.
+
+## M7 — Module curation: survey the catalog, vendor the expressible set — **landed**
+
+Lands the second and third real vendored GMF modules
+(`resources/modules/appendicitis.json` alongside the existing
+`sinusitis.json`) and, more valuably, a much sharper picture of what
+Synthea's actual current module library will and won't support under
+this project's own v1 interpreter subset. `docs/gmf-interpreter.md`'s
+M7 section has the full survey — 41 real modules read at the same
+pinned commit as `sinusitis.json` (`7e08387c68a7f0e21d13076609a159fd473fc902`),
+spanning emergency/inpatient/ambulatory/`Observation`-bearing axes the
+one-module set couldn't exercise. Only `appendicitis.json` cleared the
+full bar (zero state-type gap, zero condition-vocabulary gap) and is
+vendored, test-first, with a real red→green cycle
+(`vendored_appendicitis_test.clj`) and a full-set collision test
+(`fixture-clinic` + `sinusitis` + `appendicitis`, zero attribute
+collisions). 437 tests / 1125 assertions green (up from the M6-era
+baseline 432/1116), coverage 97.37%/98.99% (steady). The pinned
+regression fixture is untouched — this session's diff is
+`resources/modules/`, `docs/`, `notes/`, and tests only.
+
+**Two real findings, one caught before it ever reached a commit.** A
+new, empirically-confirmed compile-time gap: `compile-trajectory`'s
+`encounter-closed?` mechanism (built at M5b to stop a module recurring
+across a patient's WHOLE LIFE from minting a second admission) also
+drops a SAME-EPISODE second encounter — `appendicitis.json`'s own real
+shape (ED admission, immediate transfer to an inpatient surgical
+encounter) — silently, at compile time, not a throw. Proven both by a
+new synthetic-event unit test
+(`compile-trajectory-test/a-second-same-episode-encounter-after-the-
+first-encounter-end-is-dropped`) and by a real end-to-end demo run
+(`docs/demos/module-mix/`). Separately, the survey's own SECOND
+extended pass (author-directed, after this session's own seam
+checkpoint) mis-characterized `spina_bifida.json` as vendorable — its
+`Death` state looked like a safely isolated tail, exactly the
+`Device`/`DeviceEnd` precedent, but `Death` (unlike `Device`) was never
+promoted into v1's loader-recognized set; attempting to vendor it
+test-first caught the load-time `:unsupported-state-type` rejection
+immediately, before any commit — `docs/gmf-interpreter.md`'s own
+account of the correction is left visible, not rewritten away.
+
+**The prioritization table (`docs/gmf-interpreter.md`, M7 section) is
+the real deliverable for future `CallSubmodule`/`Death`/`Counter`/
+`MultiObservation` roadmap decisions — read it before making one.**
+Headline: `CallSubmodule` blocks roughly 24 of the 41 modules read at
+any depth this session — by far the largest blocker, confirming and
+sharpening the `ear_infections.json` finding the original M5-prep
+survey already made. `Death` is the single most consistent, safest-to-
+fix finding: every one of 12+ modules with a `Death` state has it on a
+genuinely excludable tail, never once on a mandatory path — promoting
+it to a `Device`/`DeviceEnd`-style consumed-internally state (wired to
+the existing `:expired` machinery, `docs/clinical-realities.md`'s
+post-mortem entry) is the cheapest, highest-confidence v1.1 extension
+this table names, and unlocks `spina_bifida.json` immediately. Two more
+NEW gaps this session found, neither previously documented: a
+`"wellness": true` boolean encounter-class encoding (vs. the
+`encounter_class: "wellness"` string this loader expects) blocks five
+confirmed modules including two (`epilepsy.json`, `med_rec.json`)
+otherwise fully clean; and a mandatory-path `Date` condition type
+(calendar-year-gated treatment protocols) blocks `stroke.json`/
+`atrial_fibrillation.json`/`osteoporosis.json`. `sore_throat.json` —
+this project's own prior "near-certain vendor" — turned out to need a
+bigger condition-vocabulary extension than previously characterized
+(`At Least`/`Symptom`/`Observation` predicates on its own mandatory
+diagnostic branch, not merely the excludable `Active Allergy` tail);
+deferred, not vendored, per this session's own test-first discipline
+(vendoring it would ship a module that crashes for most real patients).
+
+**Task 3: population defaults + demo, landed.** A documented default
+`:modules`/`:module-assignment` (90% `sinusitis` / 10% `appendicitis`,
+rough plausibility per this session's own weighting note — see
+`docs/demos/module-mix/config.edn`'s own header comment, not an
+epidemiological claim) with a real end-to-end CLI demo
+(`docs/demos/module-mix/`, seed 71, 100 patients, churn on, `--format
+er7`): a real emergency admission citing `appendicitis`/
+`appendicitis-encounter` glass-box, immediately followed by the
+discharge citing `transfer-to-inpatient` (the truncation finding's
+own wire-level trace), a sinusitis outpatient visit, and a mix summary
+(87 patients manifest sinusitis content, 3 manifest appendicitis, 10
+manifest neither of their own assigned module within the run's
+window — computed from ground-truth citations, since module
+ASSIGNMENT itself isn't separately stamped onto `:registered`).
+**The module-Observation OBX demo goal is recorded as genuinely
+unmet** — no vendorable `Observation`-bearing module was found this
+session (the M7 survey's own dedicated subsection has the full
+account) — and the inpatient/surgical half of `appendicitis.json`'s
+own content is demonstrably absent from the demo for the same
+compile-time reason named above, not merely described in prose.
+
+**Note for the author: `ehr-testing-tools`' own full-capability
+baseline config pins its own module list independently** — unchanged
+by this session unless that repo's own session opts in to add
+`appendicitis.json`; a tools-side refresh is a candidate next TOOLS
+task, not landed here (ADR-0001's dependency direction: this repo
+never reaches into tools' own fixtures).
+
+## Later / triggers
+
+Not sequenced, because each is gated on a condition rather than on
+the milestone before it:
+
+- **Calibrate** (`:planned`, feedback stage) — waits on a real
+  `sim-corpus` and a site's `feed-statistics` to calibrate against;
+  premature before Package and a first external consumer exist.
+- **CI — FIRED (unit/property tier), 2026-07-27; integration tier
+  stays later.** The trigger ADR-0003 named (a public GitHub remote)
+  is met; `.github/workflows/test.yml` runs `clojure -X:test` on every
+  push/PR — deliberately minimal (no coverage gate, no lint gate, per
+  the workflow file's own header comment). Independent-parser round-
+  tripping via NIST/HAPI (`docs/third-party-sources.md` Tier 2) is
+  still NOT wired into CI — that's the integration tier, which stays
+  local/scheduled-later, per this section's own standing design; a
+  bare unit-test CI workflow existing is not the same trigger.
+- **SETUP.md — FIRED, 2026-07-27** (a same-day follow-on to go-public,
+  before the public-polish session; commit `e8a131d`, "Add SETUP
+  instructions."). Installation friction is a first-class adoption
+  risk for both mined upstreams — SimHospital's Bazel/Go build
+  breakage across several issues, and an InterSystems team calling
+  Synthea's JDK/Gradle setup a "nightmare" even after successfully
+  using the tool
+  (`docs/research/SimHospital-Synthea-limitations-considered.md` §5.2,
+  §4.5) — so `SETUP.md` now exists at the repo root: prerequisites,
+  platform guidance, a verification ladder, and a first-traffic
+  walkthrough, aimed at a reader who isn't this repo's author. (An
+  earlier version of this entry, written at go-public itself, checked
+  the trigger via a cold-clone smoke test — `notes/facts-register.md`
+  F19 — found it hadn't fired yet, and left SETUP.md unwritten; it was
+  written anyway shortly after, superseding that call. Recorded here so
+  the discrepancy reads as "fired since," not as this roadmap having
+  drifted from the tree — the public-polish session's own Task 3 wired
+  `SETUP.md` in from every doorway that should link to it: `README.md`,
+  `docs/README.md`, `docs/simulate-your-facility.md`, `AGENTS.md`.)
+- **Packs demotion — FIRED, 2026-07-27.** This repo's GitHub remote
+  went public; `pack-push` demoted to dormant the way `ehr-testing-tools`
+  did at its own ADR-0008, recorded as its own ADR (`notes/ADRs.md`
+  ADR-0015) rather than folded into this roadmap, exactly as this entry
+  said it would be.
+- **Site profiles** — **landed**, see its own section above (between
+  M4 and M5). GT1/ZG1 (SimHospital issue #21's own second half — the
+  same issue cited there for the Z-segment-template scope item) and
+  version-driven segment *restructuring* (beyond the MSH-12 literal)
+  stay future, per `docs/site-profiles.md`'s own honestly-updated
+  today/future table.
+- **`--format fhir-json`** — deferred, public-polish session (Task 1,
+  2026-07-27). `--format er7` (bare ER7 messages to stdout for `--emit
+  hl7`) landed this session; the FHIR analogue (`--emit fhir`'s Bundles
+  bare to stdout) did not, because it needs a decided multi-patient
+  concatenation shape first (one JSON array of Bundles? newline-
+  delimited JSON, one Bundle per line?) that this session's own scope
+  didn't have room to settle alongside the ER7 half. Land both the
+  decision and the flag together, next time `--emit fhir`'s CLI surface
+  is touched.
+- **The deferred ledger, consolidated (public-polish session, Task 3,
+  2026-07-27) — named here so the public roadmap reads as deliberate
+  deferral, not abandonment; each item is discussed in full where
+  cited, this bullet is only the index.**
+  - **Module curation beyond the current small set — M7 landed, this
+    remains open past it.** ADR-0013 pinned `gmf-module-set` to a
+    small, hand-curated, hashed subset in `resources/modules/` (now
+    two: `sinusitis.json`, `appendicitis.json`, M7's own section,
+    above) rather than a lockfile over Synthea's full 85-module
+    library. Growing the set further is real future work, gated on
+    nothing but author time and the specific deferred-feature
+    extensions M7's own prioritization table names — see the GMF
+    unlock ladder bullet below, now backed by that table instead of an
+    unbacked deferral.
+  - **Two-participant emitter coherence.** M6's own emitter-coherence
+    property excludes bed-swap (A17) and merge (A40) — genuinely
+    two-participant messages whose own wire-identity reconstruction (a
+    shared MRN reassigned mid-run) is separate engineering scope, per
+    that milestone's "documented scope boundary, not silent" note
+    (M6's own section, above).
+  - **Encounters as first-class.** `VisitID`/PV1-19, readmission, and
+    support for multiple *concurrent* pending encounters (not just
+    one) are captured but unbuilt (M2b's "Capture: encounters as
+    first-class" note, above) — must land with or before any future
+    milestone that introduces `:pending-*` step types, per that same
+    note's own reasoning.
+  - **Multi-encounter-per-episode compile-time truncation (M7
+    finding, new).** `ehr-testing-sim.compile-trajectory`'s
+    `encounter-closed?` mechanism drops a real, same-episode second
+    encounter (`appendicitis.json`'s own ED→inpatient transfer, M7's
+    own section, above) — a `:transfer` step already exists in
+    `ehr-testing-sim.pathway` as the architecturally right primitive,
+    named but not built this session.
+  - **The GMF unlock ladder — four rungs, ordered by what each admits,
+    no longer an unbacked deferral.** `CallSubmodule`/`Counter`/
+    `MultiObservation`/`Death` were deferred from the interpreter's v1
+    scope at the M5 design stage (`docs/gmf-interpreter.md`); M7's own
+    prioritization table (`docs/gmf-interpreter.md`, M7 section)
+    quantifies each against 41 real modules read, and
+    [`docs/gmf-source-model.md`](../../docs/gmf-source-model.md) Part C
+    is where the full design sketch and cost class for each rung below
+    now live — revisit by reading that Part, not by re-surveying from
+    scratch.
+    1. **Reachability-aware load gate** (loader-only) —
+       `docs/gmf-source-model.md` Part C rung 1. Admits modules whose
+       only deferred-type states sit on genuinely unreachable-or-rare
+       branches without giving those states real semantics — the M7
+       survey's own `self_harm.json`/`stroke.json` evidence
+       (`docs/gmf-interpreter.md`, M7 section) is the receipts.
+    2. **`Death` mints the transition into `:expired`** — `docs/gmf-
+       source-model.md` Part C rung 2. The cheapest, highest-confidence
+       rung on M7's own evidence (every one of 12+ `Death` instances
+       found on an excludable tail, never mandatory); unlocks
+       `spina_bifida.json` immediately per M7's own self-correction,
+       above, and opens the donor-management content
+       `docs/clinical-realities.md`'s post-mortem entry already
+       describes.
+    3. **Predicate vocabulary, `Date` first** — `docs/gmf-source-model.md`
+       Part C rung 3. Admits `stroke.json` by itself (once rungs 1/2
+       land ahead of it); the survey's own further observed gaps
+       (`Vital Sign`, `Or`, `Active CarePlan`, `Observation`-as-condition)
+       are the natural next additions in the order the survey found
+       them.
+    4. **`CallSubmodule`** — `docs/gmf-source-model.md` Part C rung 4,
+       an M-scale milestone in its own right, not a task alongside the
+       three above. By far the largest single unlock (~24 of the 41
+       modules read at any depth this session, more than every other
+       deferred feature combined) — the headline finding, sharpening
+       the `ear_infections.json` finding the original M5-prep survey
+       already made.
+
+    Two further M7 findings sit outside this four-rung ladder (neither
+    is one of its rungs, per `docs/gmf-source-model.md` Part C's own
+    scope) but remain real and worth a cheap fix: a `"wellness": true`
+    boolean encounter-class encoding (vs. the `encounter_class:
+    "wellness"` string this loader expects) blocks five confirmed
+    modules including two (`epilepsy.json`, `med_rec.json`) otherwise
+    fully clean; and the multi-encounter-per-episode compile-time
+    truncation has its own bullet, above.
+  - **Calibrate** — already its own bullet, above; listed here too
+    only for this index's own completeness.
+
+## Consumer plan: sim doesn't validate itself in a vacuum
+
+This roadmap's milestones describe what this repo builds; two items
+describe how this repo's output gets exercised by consumers outside
+it, named here so they aren't lost between repos.
+
+- **Tools as first consumer.** An integration-tree item belongs **in
+  `ehr-testing-tools`**, not here (ADR-0001's dependency direction: sim
+  never depends on tools, but tools already may depend on sim): `ehr
+  gate` judging a sim-generated corpus end to end, as a real exercise
+  of tools' Gate machinery against this project's own traffic rather
+  than only hand-crafted fixtures. This can share its test harness with
+  the manifest contract test [`ADR-0001`](../../notes/ADRs.md#adr-0001)
+  already assigns to tools' integration tree (the binding
+  cross-repo contract tests live where both codebases share a
+  classpath). **Noted here, built there** — this roadmap does not
+  schedule tools' own work, only records the dependency so a future
+  session in either repo knows the item exists.
+- **External FHIR acceptance belongs to tools, not sim (ADR-0014).**
+  `samply/blaze` was briefly named as M6's own ecological target and a
+  round-trip test landed against it; a post-M6 session reversed that —
+  sim proves its own internal laws (the emitter-coherence property,
+  cross-emitter ids, shape validation) and stops there, exactly as
+  claim #1's v2 conformance work already does (NIST/HAPI round-tripping
+  lives in `ehr-testing-tools`, never here). The family's sole
+  POSTing component is tools' own managed `fhir-sink`, which starts
+  what it talks to; no component anywhere in this family accepts an
+  arbitrary external server URL. Noted here so a future session doesn't
+  rediscover the reversal from scratch.
+
+## The adversarial-traffic exclusion
+
+**This simulator generates coherent truth; it deliberately never
+generates delivery incoherence.** Out-of-order arrival, dropped
+messages, malformed segments, and duplicate delivery are real
+phenomena a downstream interface must survive — but they are failures
+of a *transport* or *delivery* layer acting on a coherent stream, not
+facts about the hospital the stream describes. This project's own laws
+(ADR-0002's ground-truth-log primacy, the emitter-coherence law,
+`InjectChurn`'s own IR-endomorphism and clinical-steps-preserved laws)
+forbid the engine from ever emitting a stream that contradicts itself
+— which means this engine structurally **cannot** be the place
+out-of-order or dropped-message traffic comes from, on purpose, by the
+same laws that make its output trustworthy in the first place.
+
+That is exactly why this territory belongs to `ehr-testing-tools`'
+`corpus mutate` instead, operating on a sim-generated corpus **after**
+this project has produced it: sequence-reorder, segment-mangle, and
+duplicate-delivery operators, each with recorded lineage back to the
+coherent corpus it mutated. This isn't a gap sim leaves for tools to
+fill reluctantly — it's the intended division of labor, now written
+down as a reason rather than left to be inferred: sim's job is
+producing ground truth a mutation operator can trust was coherent
+*before* mutation, precisely because sim itself never introduces
+incoherence as a side effect of its own generation.
+
+## Deliberate exclusions
+
+Recorded so they read as decisions, not gaps someone might otherwise
+try to fill in:
+
+- **Lifelong birth-to-death records.** This simulator's scope is
+  hospital-operations traffic over an *encounter horizon* — one
+  admission through its discharge and immediate churn — not a
+  patient's full longitudinal history. Synthea already serves the
+  longitudinal need well (that's precisely why it's mined as a
+  tier-1 source rather than reimplemented); duplicating its scope
+  here would be redundant, not additive.
+- **CPT codes.** AMA-licensed; excluded by the standing constraint
+  (`docs/problem-statement.md` §3, `AGENTS.md` Constraints), not a
+  future milestone.
+- **Delivery/transport** (file, stream, MLLP pacing). Below this
+  theory's level of description — `sim-theory.md`'s own open question
+  #5 already names this as deliberately absent unless paced emission
+  ever acquires laws of its own.
+
+## Process debts (way-of-working session, 2026-07-27)
+
+`docs/way-of-working.md` (written this session, capturing the
+meta-process before the design channel that ran it retires) needed to
+cite, for each standing rule it named, where that rule's own origin
+lives — not just where its history is narrated in this roadmap. Most
+rules already carry their origin inline where they're stated
+(`AGENTS.md`'s test-first bullet names ADR-0004 directly; its
+CLI-surface bullet already named M3's `:pathways` gap as the reason).
+Three did not: the result-not-throw, determinism-is-law, and co-landing
+bullets in `AGENTS.md`'s Code conventions section stated the rule
+without an inline ADR citation, even though each traces to a specific
+decision (ADR-0001 point 4, ADR-0002 point 4, ADR-0002 point 5
+respectively). **Fixed in this same session** — those three bullets now
+carry their ADR citation the same way the others already did. Recorded
+here, not left silent, so a future session doesn't have to rediscover
+that the gap existed and was closed.
+
+**Cross-repo note, not actioned here (ADR-0001's dependency direction:
+this repo doesn't reach into tools' own tree).** `docs/way-of-working.md`
+describes a family-wide process — the author, the design-channel/
+build-session split, the WSL git discipline, the ADR/facts-register/
+roadmap conventions — that this repo's own `notes/ADRs.md` ADR-0003
+already documents as *adopted from* `ehr-testing-tools`, not invented
+here. `ehr-testing-tools` may want its own pointer to this document, or
+its own copy adapted to its own repo-specific details (its gate/corpus
+machinery, its own consumer-loop role as the thing sim's output gets
+judged by) — this session did not have a sibling checkout of that repo
+available to check whether such a document already exists there or to
+write one. Author's call, next `ehr-testing-tools` session.
+
+## Considered, unscheduled
+
+Directions named deliberately, not designed or committed to a
+milestone — recorded so a future session finds a trigger to check
+rather than a blank page.
+
+- **Extract palgebra (the converter, notation, examples, and the
+  `string-diagram` skill) into a standalone repo both `ehr-testing-sim`
+  and `ehr-testing-tools` depend on.** Named at `notes/ADRs.md`
+  ADR-0016 (the session that vendored palgebra's converter and
+  examples into this repo's `.agents/skills/string-diagram/`, pinned to
+  `ehr-testing-tools@7ecce38`, superseding ADR-0005's non-vendoring
+  clause) as an alternative deferred rather than rejected: palgebra is
+  itself a tool for expressing and working with abstract designs and
+  doesn't belong to either consumer repo. Vendoring now stages this
+  extraction — the skill directory becomes a natural `git mv` source
+  later — rather than foreclosing it. **Trigger to revisit:** the
+  nightly drift check ADR-0016 adds to `ehr-testing-tools`' consumer-
+  loop workflow firing more than rarely, or a third consumer of
+  palgebra appearing.

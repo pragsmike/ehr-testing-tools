@@ -1,0 +1,23 @@
+;; Hand-curated surnames, flat weighted pool (not decade/sex-linked --
+;; surname frequency doesn't correlate with either the way given names
+;; do). See resources/demographics/NOTICE for provenance.
+;;
+;; DELIBERATELY includes apostrophe and hyphen cases (O'Brien,
+;; D'Angelo, O'Malley, O'Connell, Smith-Jones, Anderson-Lee,
+;; Taylor-Wright, Garcia-Lopez) -- Milestone M4 Task 4's escaping
+;; property test needs real, naturally-occurring non-alphanumeric
+;; characters in sampled personas, not only in a scripted fixture.
+[{:name "Smith" :weight 24} {:name "Johnson" :weight 19} {:name "Williams" :weight 16}
+ {:name "Brown" :weight 14} {:name "Jones" :weight 14} {:name "Garcia" :weight 13}
+ {:name "Miller" :weight 12} {:name "Davis" :weight 12} {:name "Rodriguez" :weight 11}
+ {:name "Martinez" :weight 11} {:name "Hernandez" :weight 10} {:name "Lopez" :weight 10}
+ {:name "Gonzalez" :weight 9} {:name "Wilson" :weight 9} {:name "Anderson" :weight 9}
+ {:name "Taylor" :weight 8} {:name "Thomas" :weight 8} {:name "Moore" :weight 8}
+ {:name "Jackson" :weight 7} {:name "Martin" :weight 7} {:name "Lee" :weight 7}
+ {:name "Walker" :weight 6} {:name "Chen" :weight 6} {:name "Nguyen" :weight 6}
+ {:name "Patel" :weight 5} {:name "Kim" :weight 5} {:name "Okafor" :weight 4}
+ {:name "Reyes" :weight 4} {:name "Kowalski" :weight 3} {:name "Nowak" :weight 3}
+ ;; apostrophe/hyphen cases -- weighted modestly, real, not exotic
+ {:name "O'Brien" :weight 3} {:name "O'Malley" :weight 2} {:name "O'Connell" :weight 2}
+ {:name "D'Angelo" :weight 2} {:name "Smith-Jones" :weight 2} {:name "Anderson-Lee" :weight 2}
+ {:name "Taylor-Wright" :weight 2} {:name "Garcia-Lopez" :weight 2}]

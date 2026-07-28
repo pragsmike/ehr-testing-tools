@@ -1,0 +1,173 @@
+{"resourceType":"Bundle",
+ "type":"collection",
+ "entry":
+ [{"resource":
+   {"address":
+    [{"line":["22 Chestnut Ct"],
+      "city":"Providence",
+      "state":"RI",
+      "postalCode":"02903"}],
+    "meta":
+    {"security":
+     [{"system":
+       "http:\/\/terminology.hl7.org\/CodeSystem\/v3-ActReason",
+       "code":"HTEST",
+       "display":"test health data"}],
+     "tag":[{"system":"urn:ehr-testing-sim", "code":"42"}]},
+    "name":[{"family":"Gonzalez", "given":["Barbara"]}],
+    "birthDate":"1935-02-21",
+    "resourceType":"Patient",
+    "id":"PID-000000-918175ce",
+    "identifier":
+    [{"system":"urn:ehr-testing-sim:mrn", "value":"MRN000001"}],
+    "telecom":[{"system":"phone", "value":"607-335-0157"}],
+    "gender":"female"}},
+  {"resource":
+   {"resourceType":"Encounter",
+    "id":"PID-000000-918175ce-encounter",
+    "status":"finished",
+    "class":{"code":"IMP"},
+    "subject":{"reference":"Patient\/PID-000000-918175ce"},
+    "period":
+    {"start":"2024-01-01T00:00:00+00:00",
+     "end":"2024-01-01T00:00:00+00:00"},
+    "meta":
+    {"security":
+     [{"system":
+       "http:\/\/terminology.hl7.org\/CodeSystem\/v3-ActReason",
+       "code":"HTEST",
+       "display":"test health data"}],
+     "tag":[{"system":"urn:ehr-testing-sim", "code":"42"}]}}},
+  {"resource":
+   {"referenceRange":[{"low":{"value":4.5}, "high":{"value":11.0}}],
+    "meta":
+    {"security":
+     [{"system":
+       "http:\/\/terminology.hl7.org\/CodeSystem\/v3-ActReason",
+       "code":"HTEST",
+       "display":"test health data"}],
+     "tag":[{"system":"urn:ehr-testing-sim", "code":"42"}]},
+    "interpretation":[{"coding":[{"code":"H"}]}],
+    "encounter":
+    {"reference":"Encounter\/PID-000000-918175ce-encounter"},
+    "valueQuantity":{"value":21.0, "unit":"K\/uL"},
+    "resourceType":"Observation",
+    "effectiveDateTime":"2024-01-01T01:21:00+00:00",
+    "status":"final",
+    "id":"PID-000000-918175ce-obs-0",
+    "code":
+    {"coding":
+     [{"system":"http:\/\/loinc.org",
+       "code":"6690-2",
+       "display":
+       "Leukocytes [#\/volume] in Blood by Automated count"}]},
+    "subject":{"reference":"Patient\/PID-000000-918175ce"}}},
+  {"resource":
+   {"referenceRange":[{"low":{"value":4.2}, "high":{"value":5.9}}],
+    "meta":
+    {"security":
+     [{"system":
+       "http:\/\/terminology.hl7.org\/CodeSystem\/v3-ActReason",
+       "code":"HTEST",
+       "display":"test health data"}],
+     "tag":[{"system":"urn:ehr-testing-sim", "code":"42"}]},
+    "interpretation":[{"coding":[{"code":"N"}]}],
+    "encounter":
+    {"reference":"Encounter\/PID-000000-918175ce-encounter"},
+    "valueQuantity":{"value":4.7, "unit":"M\/uL"},
+    "resourceType":"Observation",
+    "effectiveDateTime":"2024-01-01T01:21:00+00:00",
+    "status":"final",
+    "id":"PID-000000-918175ce-obs-1",
+    "code":
+    {"coding":
+     [{"system":"http:\/\/loinc.org",
+       "code":"789-8",
+       "display":
+       "Erythrocytes [#\/volume] in Blood by Automated count"}]},
+    "subject":{"reference":"Patient\/PID-000000-918175ce"}}},
+  {"resource":
+   {"referenceRange":[{"low":{"value":12.0}, "high":{"value":17.5}}],
+    "meta":
+    {"security":
+     [{"system":
+       "http:\/\/terminology.hl7.org\/CodeSystem\/v3-ActReason",
+       "code":"HTEST",
+       "display":"test health data"}],
+     "tag":[{"system":"urn:ehr-testing-sim", "code":"42"}]},
+    "interpretation":[{"coding":[{"code":"H"}]}],
+    "encounter":
+    {"reference":"Encounter\/PID-000000-918175ce-encounter"},
+    "valueQuantity":{"value":19.6, "unit":"g\/dL"},
+    "resourceType":"Observation",
+    "effectiveDateTime":"2024-01-01T01:21:00+00:00",
+    "status":"final",
+    "id":"PID-000000-918175ce-obs-2",
+    "code":
+    {"coding":
+     [{"system":"http:\/\/loinc.org",
+       "code":"718-7",
+       "display":"Hemoglobin [Mass\/volume] in Blood"}]},
+    "subject":{"reference":"Patient\/PID-000000-918175ce"}}},
+  {"resource":
+   {"referenceRange":[{"low":{"value":36.0}, "high":{"value":50.0}}],
+    "meta":
+    {"security":
+     [{"system":
+       "http:\/\/terminology.hl7.org\/CodeSystem\/v3-ActReason",
+       "code":"HTEST",
+       "display":"test health data"}],
+     "tag":[{"system":"urn:ehr-testing-sim", "code":"42"}]},
+    "interpretation":[{"coding":[{"code":"N"}]}],
+    "encounter":
+    {"reference":"Encounter\/PID-000000-918175ce-encounter"},
+    "valueQuantity":{"value":41.2, "unit":"%"},
+    "resourceType":"Observation",
+    "effectiveDateTime":"2024-01-01T01:21:00+00:00",
+    "status":"final",
+    "id":"PID-000000-918175ce-obs-3",
+    "code":
+    {"coding":
+     [{"system":"http:\/\/loinc.org",
+       "code":"4544-3",
+       "display":
+       "Hematocrit [Volume Fraction] of Blood by Automated count"}]},
+    "subject":{"reference":"Patient\/PID-000000-918175ce"}}},
+  {"resource":
+   {"referenceRange":[{"low":{"value":150}, "high":{"value":450}}],
+    "meta":
+    {"security":
+     [{"system":
+       "http:\/\/terminology.hl7.org\/CodeSystem\/v3-ActReason",
+       "code":"HTEST",
+       "display":"test health data"}],
+     "tag":[{"system":"urn:ehr-testing-sim", "code":"42"}]},
+    "interpretation":[{"coding":[{"code":"N"}]}],
+    "encounter":
+    {"reference":"Encounter\/PID-000000-918175ce-encounter"},
+    "valueQuantity":{"value":280.0, "unit":"K\/uL"},
+    "resourceType":"Observation",
+    "effectiveDateTime":"2024-01-01T01:21:00+00:00",
+    "status":"final",
+    "id":"PID-000000-918175ce-obs-4",
+    "code":
+    {"coding":
+     [{"system":"http:\/\/loinc.org",
+       "code":"777-3",
+       "display":
+       "Platelets [#\/volume] in Blood by Automated count"}]},
+    "subject":{"reference":"Patient\/PID-000000-918175ce"}}},
+  {"resource":
+   {"resourceType":"Coverage",
+    "id":"PID-000000-918175ce-coverage",
+    "status":"active",
+    "beneficiary":{"reference":"Patient\/PID-000000-918175ce"},
+    "payor":[{"display":"Medicare"}],
+    "type":{"text":"medicare"},
+    "meta":
+    {"security":
+     [{"system":
+       "http:\/\/terminology.hl7.org\/CodeSystem\/v3-ActReason",
+       "code":"HTEST",
+       "display":"test health data"}],
+     "tag":[{"system":"urn:ehr-testing-sim", "code":"42"}]}}}]}

@@ -1,0 +1,30 @@
+#!/bin/sh
+# Enforce: git operations on this repo happen from WSL, not native Windows
+# (pushes are git operations too -- see .githooks/pre-commit), and the test
+# suite is green before anything leaves this clone. Same opt-in mechanism
+# as pre-commit: this only fires once a clone has run
+# `git config core.hooksPath .githooks`.
+
+is_wsl=0
+if [ -n "$WSL_DISTRO_NAME" ]; then
+  is_wsl=1
+elif [ -r /proc/version ] && grep -qi microsoft /proc/version 2>/dev/null; then
+  is_wsl=1
+fi
+
+if [ "$is_wsl" -ne 1 ]; then
+  echo "ERROR: git pushes from this repo must be made from WSL, not $(uname -s 2>/dev/null || echo 'this shell')." >&2
+  echo "  See AUTHORS-GUIDE.md, 'Git operations: WSL only', for why." >&2
+  echo "  Re-run this push from a WSL shell instead." >&2
+  exit 1
+fi
+
+fail() {
+  echo "ERROR: $1 failed -- push refused." >&2
+  echo "  Fix the failure, or in a genuine emergency: git push --no-verify" >&2
+  exit 1
+}
+
+make test || fail "make test"
+
+exit 0
