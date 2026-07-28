@@ -1236,3 +1236,114 @@ level more granular: not just fast-vs-slow gates, but which commits
 owe the slow one), ADR-0013 (sim-harness subprocess convention, reused
 unchanged by T1's own sim-harness half).
 **Status.** Accepted (author-directed), 2026-07-27.
+
+---
+## ADR-0017 — Formal Source and Sink types: generator/reader unification, framing as an axis, maps-canonical/URLs-surface, sink composability law
+**Context.** Corpus input and output in this repo are ad-hoc today:
+`corpus.generate` (`src/ehr_testing_tools/corpus/generate.clj`) knows
+Synthea specifically; `corpus.intake` (`corpus/intake.clj`) knows
+directories specifically; the sim consumer loop's subprocess seam
+(`test-integration/ehr_testing_tools/sim_harness.clj`, ADR-0013) lives
+only in harness code, never in `src/`; sinks are bare output paths with
+no declared format, framing, or write discipline. `docs/notation.md`'s
+own equation notation already classifies resources as source-like
+(no producing stage) versus sink-like (no consuming stage) at the
+diagram level; this record promotes that classification to a runtime
+type. `docs/source-sink-design.md` (landed alongside this record) is
+the full design; this ADR is its reasoning-of-record.
+**Decision.** Source and Sink become formal, registry-open types.
+Full detail in `docs/source-sink-design.md`; the load-bearing points:
+
+1. **Generator/reader unification via `dir` plus manifest.** A
+   generator source (`synthea`, `sim`, registrable `simhospital`)
+   executes its engine into a fresh directory with a `ManifestV1_1`
+   sidecar, then *is* a `dir` source over that directory. A streaming
+   reader (`stdin`, anything piped from `nc`) spools to a directory
+   first — one file per framed item, plus a capture manifest — then is
+   a `dir` source too. Every corpus is therefore replayable: network
+   and pipe inputs exist on disk before anything judges them: `corpus.
+   intake` stays the single ingestion door, with no per-source
+   adapters, for every source alike.
+2. **Framing is an axis, independent of format.** Sources and sinks
+   carry `:framing` (`:file-per-item \| :er7-multi \| :ndjson \|
+   :bundle-entries \| :mllp`) — file does not imply item, as the
+   vendored 1,013-message-in-one-file SimHospital corpus (ADR-0011)
+   already demonstrates. MLLP support is a framing *codec* only (pure
+   bytes⇄messages functions); transport is `nc`'s job, and no socket
+   code enters this repo.
+3. **Sinks emit manifest sidecars; every sink's output is a valid
+   source.** Stated as a law, not a convenience: `dir`/`file`/`stdout`
+   (optionally MLLP-framed)/`blaze` sinks all declare `:format` and
+   `:framing`/protocol explicitly (no inference, ever, on the write
+   side), default to fail-if-exists, and report network failures as
+   Result values, never a thrown exception. The composability law gets
+   a property test in SS-4: a sink's own output re-intakes with
+   lineage intact.
+4. **Maps canonical, URLs surface.** The runtime type is a Clojure map
+   (`:kind`/`:format`/`:framing`/kind-specific fields, open `:kind` set
+   via registry); the CLI/wire format is a compact URL string that
+   parses to exactly one canonical map (`parse ∘ print = identity`,
+   round-trip tested). EDN config files use maps directly, so nested
+   generator params never get forced through query-string encoding.
+   Format inference (extension, then content sniff — `corpus.intake`'s
+   existing order) applies only where `:format` is absent on a
+   *source*, and the fact of inference is recorded in the catalog
+   entry.
+5. **Vocabulary: the `:origin` rename.** The runtime `Source`/`Sink`
+   types deliberately rhyme with `docs/notation.md`'s existing
+   source/sink classification of equation resources. `CatalogEntry`'s
+   existing `:source :string` field (a provenance label,
+   `corpus/intake.clj:60`) collides with the new type and is renamed
+   `:origin`, in the same genus of fix as the judge/gate `:policy` →
+   `:disposition` rename (ADR-0009) — a criterion-layer or data-layer
+   fact should not wear a word a formal type now claims. The rename
+   ships in a build session (SS-1 or its own micro-session, open as
+   D-c), not this capture session, which touches no `src/` code.
+6. **Explicit non-goals.** Sim stays subprocess-only (ADR-0013,
+   unchanged); the intended future evolution — sim as a pinned
+   artifact-registry entry once published, dissolving the
+   sibling-checkout requirement — is recorded, not built. No
+   SimHospital implementation ships; the generator registry slot is
+   the entire accommodation. Network sources may carry real
+   (non-synthetic) data, tagged `:foreign` with provenance; synthetic-
+   only guarantees apply only to this repo's own generators. Spooling
+   carries a size cap with an explicit override. Format ≠ version ≠
+   profile: sources declare format only, and FHIR version/profile stay
+   the judge tier's concern.
+
+Three questions are deliberately left open, not resolved by this
+record: **D-a** (URL scheme spellings — `dir:` vs. `file:` with
+trailing slash, invented schemes for generators), **D-b** (whether the
+`blaze` sink lands before or after the IG-pinning blocker clears —
+they interact on what profile a written resource claims), **D-c**
+(which build session ships the `:origin` rename). `docs/source-sink-
+design.md`'s Decision Register carries all three as open; this ADR
+records that they are open by design, not an oversight.
+**Rejected.** *URLs as the canonical form, maps as a parsed
+projection* — inverts D4's own reasoning: nested generator params
+(module sets, patient counts) would have to round-trip through
+query-string encoding on every access, not just at the CLI boundary,
+for no benefit over treating the map as canonical and the URL as one
+surface onto it. *Per-source adapters into the catalog* (one
+Intake-shaped function per source kind) — exactly the N×M seam
+proliferation the generator/reader unification (decision 1) exists to
+avoid; a single `dir`-shaped ingestion door, fed by any source that has
+already normalized to that shape, is the whole point. *Sockets in this
+repo* — `nc` already exists, is already trusted infrastructure for
+MLLP transport in HL7 tooling generally, and building socket code here
+would duplicate a solved problem while adding an attack surface this
+repo has no reason to own; the framing *codec* (pure functions) is the
+genuinely new, in-scope work, not the wire. *A real SimHospital
+implementation* — no consuming use case exists yet to justify the
+build cost; the registry slot alone (decision 6) keeps the door open
+at the cost of one entry, when a real use case shows up.
+**Consequence.** `docs/source-sink-design.md` is the design record this
+ADR accepts; `.agents/plans/corpus-foundations.md` gains staged build-
+session rows SS-1..SS-5, each naming its own test-first obligation and
+verification tier (ADR-0016). No `src/` namespace changes with this
+record — `corpus.generate`, `corpus.intake`, and `sim-harness` are
+unchanged in behavior until a build session lands. `CatalogEntry`'s
+`:source` field remains named `:source` until the rename ships (D-c);
+this ADR is the forward notice that it will change, not the change
+itself.
+**Status.** Accepted (author-directed), 2026-07-27.
