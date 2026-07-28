@@ -12,6 +12,7 @@
             [clojure.test.check.properties :as prop]
             [clojure.string :as str]
             [ehr-testing-tools.result :as result]
+            [ehr-testing-tools.corpus.generate :as generate]
             [ehr-testing-tools.corpus.source-sink-url :as url]))
 
 ;; ---- generators: safe path segments only -- '?'/'&'/'=' would be
@@ -90,11 +91,12 @@
     (let [r (url/parse-source-designator "dir:./corpus?format=v2-er7&framing=er7-multi")]
       (is (result/ok? r))
       (is (= {:kind :dir :path "./corpus" :format :v2-er7 :framing :er7-multi} (:payload r)))))
-  (testing "sim: is recognized (D-a) but not-yet-supported (ruling 8's scope fence)"
+  (testing "sim: is recognized (D-a) and now supported (SS-2 Step 4) -- ?seed=42 coerces to an int"
     (let [r (url/parse-source-designator "sim:?seed=42")]
-      (is (result/rejected? r))
-      (is (= :unsupported-source-kind (:category r)))
-      (is (= :sim (:kind (:payload r))))))
+      (is (result/ok? r))
+      (is (= :sim (:kind (:payload r))))
+      (is (= 42 (:seed (:payload r))))
+      (is (= 1 (:patients (:payload r))) "sim's own pinned default (D8), not re-derived here")))
   (testing "blaze:// is recognized but not-yet-supported"
     (let [r (url/parse-source-designator "blaze://host:8080/fhir?query=Patient%3F_count%3D100")]
       (is (result/rejected? r))
@@ -105,11 +107,32 @@
       (is (result/rejected? r))
       (is (= :unsupported-source-kind (:category r)))
       (is (= :stdin (:kind (:payload r))))))
-  (testing "synthea: is recognized but not-yet-supported"
+  (testing "synthea: is recognized and now supported (SS-2 Step 4) -- zero-param means exactly zero-flag `ehr corpus generate`"
     (let [r (url/parse-source-designator "synthea:")]
+      (is (result/ok? r))
+      (is (= :synthea (:kind (:payload r))))
+      (is (= generate/default-seed (:seed (:payload r))))
+      (is (= generate/default-population (:population (:payload r)))))))
+
+;; ---- generator Source parsing (SS-2 Step 4): synthea:/sim: now
+;; construct real, validated Source values through the registry
+;; (ehr-testing-tools.corpus.generators) -- never executed here, only
+;; validated+shaped; execution is ehr-testing-tools.corpus.generator-
+;; source/resolve!'s own, later job. ----
+
+(deftest generator-source-non-numeric-seed-is-invalid-params-not-a-thrown-exception-test
+  (testing "\"abc\" doesn't coerce to an int -- left as a string, so the registry's own
+            params-schema rejects it (ADR-0004: a bad external value is a rejection, never a throw)"
+    (let [r (url/parse-source-designator "sim:?seed=abc")]
       (is (result/rejected? r))
-      (is (= :unsupported-source-kind (:category r)))
-      (is (= :synthea (:kind (:payload r)))))))
+      (is (= :invalid-generator-params (:category r))))))
+
+(deftest generator-source-explicit-params-override-defaults-test
+  (let [r (url/parse-source-designator "synthea:?seed=7&population=3")]
+    (is (result/ok? r))
+    (is (= 7 (:seed (:payload r))))
+    (is (= 3 (:population (:payload r))))
+    (is (= generate/default-reference-date (:reference-date (:payload r))))))
 
 ;; ---- negative cases (ruling 4) ----
 

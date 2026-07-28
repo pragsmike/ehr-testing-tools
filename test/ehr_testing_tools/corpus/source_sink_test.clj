@@ -11,9 +11,12 @@
 (deftest source-kinds-test
   (testing "the design's six named source kinds (D1) are all recognized as known"
     (is (= #{:dir :file :stdin :blaze :synthea :sim} ss/known-source-kinds)))
-  (testing "SS-1 implements only the two reader kinds with no engine"
-    (is (= #{:dir :file} ss/implemented-source-kinds))
-    (is (every? ss/known-source-kinds ss/implemented-source-kinds))))
+  (testing "SS-1's two reader kinds plus SS-2's two generator kinds are implemented"
+    (is (= #{:dir :file :synthea :sim} ss/implemented-source-kinds))
+    (is (every? ss/known-source-kinds ss/implemented-source-kinds)))
+  (testing "printable-source-kinds stays narrower -- SS-2 parses generator Source values, never prints them"
+    (is (= #{:dir :file} ss/printable-source-kinds))
+    (is (every? ss/implemented-source-kinds ss/printable-source-kinds))))
 
 (deftest sink-kinds-test
   (is (= #{:dir :file :stdout :blaze} ss/known-sink-kinds))
@@ -79,3 +82,24 @@
     (is (result/rejected? (ss/file-sink {:path "./out/one.json"}))))
   (testing "missing :path is rejected"
     (is (result/rejected? (ss/file-sink {:format :fhir-json})))))
+
+;; ---- generator-source (SS-2 Step 4): validates+shapes only, never
+;; executes -- the registry (ehr-testing-tools.corpus.generators) owns
+;; param resolution, this constructor just calls through and tags the
+;; result with :kind. ----
+
+(deftest generator-source-happy-path-test
+  (let [r (ss/generator-source :synthea {:seed 7})]
+    (is (result/ok? r))
+    (is (= :synthea (:kind (:payload r))))
+    (is (= 7 (:seed (:payload r))))))
+
+(deftest generator-source-unknown-kind-test
+  (let [r (ss/generator-source :not-a-registered-kind {})]
+    (is (result/rejected? r))
+    (is (= :unknown-generator-kind (:category r)))))
+
+(deftest generator-source-invalid-params-test
+  (let [r (ss/generator-source :synthea {:seed "not-an-int"})]
+    (is (result/rejected? r))
+    (is (= :invalid-generator-params (:category r)))))

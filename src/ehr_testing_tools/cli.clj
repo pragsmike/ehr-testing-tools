@@ -21,6 +21,7 @@
             [ehr-testing-tools.corpus.mutate :as mutate]
             [ehr-testing-tools.corpus.intake :as intake]
             [ehr-testing-tools.corpus.operators :as operators]
+            [ehr-testing-tools.corpus.generator-source :as generator-source]
             [ehr-testing-tools.corpus.source-sink-url :as source-sink-url]
             [ehr-testing-tools.locator :as locator]
             [ehr-testing-tools.check :as check]
@@ -364,6 +365,11 @@
                       (spit (io/file out-dir "lineage" (str basename ".lineage.edn")) (pr-str lineage))
                       (recur (rest remaining) (conj processed {:file basename :lineage-id (:id lineage)})))))))))))))
 
+(defn- generator-url?
+  [designator-result]
+  (and (result/ok? designator-result)
+       (contains? #{:synthea :sim} (:kind (:payload designator-result)))))
+
 (defn intake-command
   "`ehr corpus intake`: catalogs :path (positional PATH, or --path --
   D10, replacing --source-dir) as a foreign-corpus batch labeled
@@ -376,10 +382,34 @@
   this CLI parameter's own name is unaffected, since it was never
   called :source). :received defaults to today (the CLI's own impure
   boundary -- corpus.intake/intake! itself never touches the wall
-  clock, matching corpus.generate's :reference-date discipline)."
+  clock, matching corpus.generate's :reference-date discipline).
+
+  SS-2 Step 4 (ruling 6): :path may also be a generator URL
+  (\"sim:?seed=42\", \"synthea:?seed=1&population=5\") instead of a
+  directory -- the generate-and-catalog path in one command. Tried
+  first via source-sink-url/parse-source-designator; a generator-kind
+  result resolves the generator for real
+  (ehr-testing-tools.corpus.generator-source/resolve!, executing its
+  engine and yielding a dir Source) before intaking it via intake/
+  intake-via-source!. Any non-generator outcome (a bare directory path,
+  a dir:/file: URL -- already reduced to a bare path by dispatch's own
+  resolve-path-designators before this function ever runs, per ruling
+  7 -- or simply an unparseable string) falls through to the unchanged
+  intake!/:source-dir path exactly as before this session. `ehr corpus
+  generate` itself is untouched by this ruling -- its own verb, flags,
+  and defaults do not change here."
   [{:keys [path label out received]}]
-  (intake/intake! {:source-dir path :source-label label :out out
-                    :received (or received (str (LocalDate/now)))}))
+  (let [received (or received (str (LocalDate/now)))
+        designator-result (source-sink-url/parse-source-designator path)]
+    (if (generator-url? designator-result)
+      (let [source (:payload designator-result)
+            resolved-result (generator-source/resolve! (:kind source) (dissoc source :kind))]
+        (if-not (result/ok? resolved-result)
+          resolved-result
+          (intake/intake-via-source! {:source (:payload resolved-result)
+                                      :source-label label :out out :received received})))
+      (intake/intake! {:source-dir (source-sink-url/path-designator->path path)
+                        :source-label label :out out :received received}))))
 
 (defn operators-command
   "`ehr corpus operators`: lists the registered mutation operator

@@ -7,6 +7,7 @@
             [ehr-testing-tools.artifact :as artifact]
             [ehr-testing-tools.judge.report :as report]
             [ehr-testing-tools.corpus.operators :as operators]
+            [ehr-testing-tools.corpus.generators :as generators]
             [ehr-testing-tools.cli :as cli])
   (:import [java.io File]))
 
@@ -784,6 +785,69 @@
         r (cli/intake-command {:path in-dir :label "acme" :out out-dir})]
     (is (result/ok? r))
     (is (= (str (java.time.LocalDate/now)) (:date (:intake-record (:payload r)))))))
+
+;; ---- intake-command accepts a generator URL in place of PATH (SS-2
+;; Step 4, ruling 6): the one-command generate-and-catalog path.
+;; Hermetic via a temporarily swapped-in :sim registry entry (restored
+;; in a finally, since ehr-testing-tools.corpus.generators is a single
+;; shared, process-wide registry -- other test namespaces' own :sim
+;; coverage depends on the real entry surviving this test). ----
+
+(defn- with-fake-sim-entry
+  "Swaps the real :sim generator entry for a hermetic fake for the
+  duration of thunk, then restores the real one -- even on failure."
+  [thunk]
+  (let [real-entry (generators/lookup :sim)]
+    (try
+      (thunk)
+      (finally
+        (generators/register! real-entry)))))
+
+(deftest intake-command-generator-url-resolves-and-catalogs-test
+  (with-fake-sim-entry
+    (fn []
+      (let [corpus-dir (str (temp-dir*) "/corpus")
+            out-dir (str (temp-dir*) "/out")]
+        (generators/register!
+         {:kind :sim
+          :default-params {:seed 1}
+          :params-schema [:map [:seed {:optional true} :int]]
+          :out-dir-fn (fn [_] corpus-dir)
+          :execute-fn (fn [_ dir]
+                        (.mkdirs (io/file dir))
+                        (spit (io/file dir "msg-000.hl7") "MSH|^~\\&|SIM|...")
+                        (result/ok {:out-dir dir}))})
+        (let [r (cli/intake-command {:path "sim:?seed=42" :label "sim-test"
+                                      :out out-dir :received "2026-07-28"})]
+          (is (result/ok? r))
+          (is (= 1 (:file-count (:intake-record (:payload r)))))
+          (is (every? #(= "sim-test" (:origin %)) (:catalog (:payload r)))))))))
+
+(deftest intake-command-generator-url-out-dir-collision-propagates-test
+  (with-fake-sim-entry
+    (fn []
+      (let [corpus-dir (temp-dir*) ; already exists and non-empty
+            _ (spit (io/file corpus-dir "leftover.txt") "from a previous run")
+            out-dir (str (temp-dir*) "/out")]
+        (generators/register!
+         {:kind :sim
+          :default-params {:seed 1}
+          :params-schema [:map [:seed {:optional true} :int]]
+          :out-dir-fn (fn [_] corpus-dir)
+          :execute-fn (fn [_ dir] (result/ok {:out-dir dir}))})
+        (let [r (cli/intake-command {:path "sim:" :label "sim-test" :out out-dir})]
+          (is (result/error? r))
+          (is (= :out-dir-exists (:category r))))))))
+
+(deftest intake-command-plain-path-still-works-unaffected-test
+  ;; a bare directory path that happens to have no scheme colon at all
+  ;; must still intake directly, unaffected by the generator-URL branch
+  (let [in-dir (temp-dir*)
+        out-dir (str (temp-dir*) "/out")
+        _ (spit (io/file in-dir "patient.json") sample-bundle-json)
+        r (cli/intake-command {:path in-dir :label "acme" :out out-dir :received "2026-07-24"})]
+    (is (result/ok? r))
+    (is (= 1 (:file-count (:intake-record (:payload r)))))))
 
 ;; ---- operators-command (`ehr corpus operators`): a pure read of
 ;; corpus.operators' registry -- no filesystem, no subprocess, no

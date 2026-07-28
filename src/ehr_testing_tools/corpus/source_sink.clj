@@ -22,6 +22,7 @@
   generator registry proper (shaped like corpus.operators's) is SS-2
   (D7)."
   (:require [malli.core :as m]
+            [ehr-testing-tools.corpus.generators :as generators]
             [ehr-testing-tools.result :as result]))
 
 (def known-source-kinds
@@ -34,11 +35,25 @@
   #{:dir :file :stdin :blaze :synthea :sim})
 
 (def implemented-source-kinds
-  "Kinds SS-1 actually built a constructor for -- the two reader kinds
-  with no engine (D1's 'no per-source adapters' unification target).
-  The remaining known kinds are parser-recognized (D-a) but rejected
-  as not-yet-supported (Step 3's ruling) until their own build
-  session."
+  "Kinds with an actual constructor. SS-1 built :dir/:file (the two
+  reader kinds with no engine, D1's 'no per-source adapters'
+  unification target); SS-2 Step 4 adds :synthea/:sim (the two
+  generator kinds, via `generator-source` below, backed by the
+  registry in ehr-testing-tools.corpus.generators) -- parseable now.
+  `printable-source-kinds` below stays narrower: this session builds a
+  parser for generator-shaped Source values, never a printer (ruling 6,
+  docs/source-sink-design.md -- generator URLs land at intake, they are
+  never printed back out). The remaining known kinds (:stdin, :blaze)
+  are still parser-recognized (D-a) but rejected as not-yet-supported
+  until their own build session."
+  #{:dir :file :synthea :sim})
+
+(def printable-source-kinds
+  "The subset of implemented-source-kinds print-source-designator
+  actually knows how to render -- :dir/:file only. A generator Source's
+  own fields (:seed, :population, ...) have no query-param renderer
+  built this session; printing one stays :unsupported-source-kind
+  rather than silently producing a lossy or wrong URL."
   #{:dir :file})
 
 (def known-sink-kinds
@@ -126,3 +141,21 @@
   "Like dir-sink, for a single-file :file Sink."
   [{:keys [path format framing]}]
   (build :invalid-sink :file FileSink {:path path :format format :framing framing}))
+
+(defn generator-source
+  "Constructs+validates a canonical generator Source map for a
+  registered :kind (:synthea/:sim, SS-2 Step 4) -- params are resolved
+  against ehr-testing-tools.corpus.generators's own registry (merged
+  onto that kind's pinned defaults, D8, and validated against its own
+  params-schema), so a zero-param URL means exactly what that kind's
+  own zero-flag invocation means. This constructor only validates and
+  shapes the Source value; it never executes the generator itself
+  (ehr-testing-tools.corpus.generator-source/resolve! does that, later,
+  when intake actually needs bytes). Returns result/ok the shaped map,
+  or generators/resolve-params's own :unknown-generator-kind /
+  :invalid-generator-params, propagated unchanged."
+  [kind params]
+  (let [params-result (generators/resolve-params kind params)]
+    (if-not (result/ok? params-result)
+      params-result
+      (result/ok (assoc (:payload params-result) :kind kind)))))

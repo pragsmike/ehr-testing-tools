@@ -114,11 +114,44 @@
         port (assoc :port port)
         (seq path) (assoc :path path)))))
 
+(def ^:private generator-int-query-keys
+  "Query-string params that must coerce string -> int before reaching
+  ehr-testing-tools.corpus.generators's own params-schema (which
+  validates real ints, matching every non-URL caller -- e.g. the
+  hermetic tests calling generators/resolve-params directly with
+  already-typed maps)."
+  #{:seed :clinician-seed :population :patients})
+
+(def ^:private generator-bool-query-keys
+  #{:churn})
+
+(defn- parse-long-safely
+  "s -> a Long, or s unchanged if it isn't parseable as one -- never
+  throws (ADR-0004: a malformed external value is the params-schema's
+  own :invalid-generator-params rejection, not an uncaught exception
+  thrown from this coercion step)."
+  [s]
+  (try (Long/parseLong s) (catch NumberFormatException _ s)))
+
+(defn- coerce-generator-query
+  "Generator-kind query params arrive from parse-query as ALL-string
+  values (only :format/:framing are coerced upstream, by
+  extract-format-framing) -- this widens that coercion to the numeric/
+  boolean generator params every registered kind's own params-schema
+  expects typed."
+  [m]
+  (as-> m m
+    (reduce (fn [acc k] (if (contains? acc k) (update acc k parse-long-safely) acc))
+            m generator-int-query-keys)
+    (reduce (fn [acc k] (if (contains? acc k) (update acc k #(= "true" %)) acc))
+            m generator-bool-query-keys)))
+
 (defn- finish-source
   [kind m]
   (case kind
     :dir (ss/dir-source m)
-    :file (ss/file-source m)))
+    :file (ss/file-source m)
+    (:synthea :sim) (ss/generator-source kind (coerce-generator-query (dissoc m :kind)))))
 
 (defn- finish-sink
   [kind m]
@@ -193,10 +226,12 @@
 
 (defn print-source-designator
   "Renders a canonical Source map back to its URL string. Only :dir/
-  :file (the implemented kinds) are printable this session; any other
-  kind, or a map that doesn't validate, is result/rejected."
+  :file (ss/printable-source-kinds, narrower than implemented-source-
+  kinds -- SS-2 Step 4 adds generator-kind PARSING, never printing) are
+  printable; any other kind, or a map that doesn't validate, is
+  result/rejected."
   [m]
-  (print-designator m ss/implemented-source-kinds ss/valid-source?
+  (print-designator m ss/printable-source-kinds ss/valid-source?
                      :unsupported-source-kind :invalid-source))
 
 (defn print-sink-designator

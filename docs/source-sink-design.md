@@ -48,6 +48,7 @@ source while writing this record: `src/ehr_testing_tools/corpus/intake.clj`,
 | OPEN-1 | Mixed-format directory behavior under bare `gate` (D11): error naming the override, vs. silent per-file dispatch. | Author taste call — either is implementable; the capture session ruled the error-by-default reading in but left it open for reconsideration at build time. | **Resolved 2026-07-27 (UX-1 build):** error default confirmed — a mixed-format directory under bare `gate` is an error naming the override (`gate v2`/`gate fhir`), not a silent per-file split |
 | OPEN-2 | Whether `corpus generate`'s zero-flag `--population` default (D9) is `5` or `1`. | Trade-off between run speed (`1`, fastest) and corpus usefulness (`5`, enough patients for a non-degenerate first run) — a build-time taste call, not a design consequence. | **Resolved 2026-07-27 (UX-1 build):** `--population 5` |
 | OPEN-3 | Whether `ehr doctor` (D13) belongs in the first release or ships after. | Sequencing convenience only — `doctor` has no design dependency on anything else in this capture. | **Resolved 2026-07-27 (UX-1 build):** `doctor` ships in the first release |
+| OPEN-4 | Whether `corpus generate` grows an `--engine` flag now that the generator registry (SS-2) names more than one engine kind (`synthea`, `sim`), so a caller could pick which engine `corpus generate` drives instead of only ever driving Synthea. | Raised 2026-07-28 (SS-2 build), ruling 6: `corpus generate`'s own verb, flags, and defaults are explicitly out of scope for SS-2 — generator URLs land at `corpus intake` only this session — so this is recorded rather than decided; a future session either adds `--engine` or leaves `corpus generate` Synthea-only forever, with `intake GENERATOR-URL` as the one multi-engine door. | **Open** |
 
 ---
 
@@ -550,3 +551,7 @@ command.
 - ~~**OPEN-3** — whether `ehr doctor` (D13) belongs in the first
   release or ships after.~~ **Resolved 2026-07-27 (UX-1 build)** — see
   the Decision Register above.
+- **OPEN-4** — whether `corpus generate` grows an `--engine` flag now
+  that the generator registry (SS-2) names more than one engine kind.
+  Raised, not decided, 2026-07-28 (SS-2 build) — see the Decision
+  Register above.
