@@ -13,6 +13,17 @@
     (.mkdirs f)
     (.getAbsolutePath f)))
 
+(defn- delete-tree!
+  "Removes a derived, fixed-path output-dir before a zero-flag test runs
+  -- these tests deliberately omit :output-dir to exercise D9's own
+  derivation, so (unlike temp-dir above) the path is not unique per run;
+  a leftover directory from a previous `make test` invocation would
+  otherwise collide with the :output-dir-exists guard."
+  [path]
+  (let [f (io/file path)]
+    (when (.exists f)
+      (doseq [child (reverse (file-seq f))] (.delete ^File child)))))
+
 (def synthea-artifact
   {:kind :engine :name "synthea" :version "4.0.0"
    :sha256 (apply str (repeat 64 "c"))
@@ -320,6 +331,7 @@
   ;; :config-path given at all -- the pinned D9 defaults must be what
   ;; actually reaches the subprocess args and the manifest, not merely
   ;; documented.
+  (delete-tree! (generate/default-output-dir generate/default-seed generate/default-population))
   (let [args-atom (atom nil)
         deps (stub-deps {:lockfile-result (ok-lockfile)
                           :resolve-result (ok-resolve)
@@ -346,6 +358,7 @@
 (deftest generate-clinician-seed-derives-from-explicit-seed-test
   ;; D9: "--clinician-seed defaults to --seed's value" -- must track an
   ;; explicitly-given --seed too, not just the pinned default.
+  (delete-tree! (generate/default-output-dir 7 generate/default-population))
   (let [args-atom (atom nil)
         deps (stub-deps {:lockfile-result (ok-lockfile)
                           :resolve-result (ok-resolve)

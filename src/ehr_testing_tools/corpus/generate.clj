@@ -23,6 +23,23 @@
 (def default-locale "en-US")
 (def default-timezone "UTC")
 
+;; Zero-flag defaults (D9, docs/source-sink-design.md Part IX.2,
+;; ADR-0019). Every value here is a pinned constant, or derived
+;; deterministically from other pinned inputs (the determinism law of
+;; defaults, D8) -- never the clock, the environment, or the machine.
+;; reference-date is frozen at a fixed date, not "today", precisely
+;; because Synthea generates relative to wall-clock "now" otherwise.
+(def default-seed 1)
+(def default-reference-date "20260101")
+(def default-population 5)
+(def default-config-path "resources/synthea-default.properties")
+
+(defn default-output-dir
+  "The zero-flag --output-dir: derived from seed/population, not a
+  required flag -- target/corpus/synthea-s<seed>-p<pop>."
+  [seed population]
+  (str "target/corpus/synthea-s" seed "-p" population))
+
 (defn resolve-java-bin
   "Resolves the pinned JVM runtime through the artifact registry
   (P4: the JVM is a locked :runtime artifact, not something read off
@@ -101,10 +118,18 @@
                 (str "--exporter.baseDirectory=" output-dir)]
                extra-args)))
 
+(defn- non-empty-existing-dir?
+  [output-dir]
+  (let [f (io/file output-dir)]
+    (and (.isDirectory f) (seq (.listFiles f)))))
+
 (defn generate!
   "Generates a Synthea corpus. Options:
-    :config-path     -- path to a repo-authored Synthea properties file
-    :seed            -- integer seed (patient generation)
+    :config-path     -- path to a repo-authored Synthea properties file.
+                        Defaults to default-config-path (the shipped
+                        resources/ properties file, D9) when omitted.
+    :seed            -- integer seed (patient generation). Defaults to
+                        default-seed (D9) when omitted.
     :clinician-seed  -- integer seed (clinician/practitioner generation).
                         Required, not optional: EXP-A4 found that Synthea
                         defaults this to System.currentTimeMillis() when
@@ -112,14 +137,32 @@
                         practitioner assignment (and everything that
                         references one) non-reproducible even with :seed
                         pinned -- :seed alone does not determine output.
-    :population      -- integer population size
+                        Defaults to :seed's own (possibly also defaulted)
+                        value when omitted (D9: \"one seed to remember,
+                        not two\").
+    :population      -- integer population size. Defaults to
+                        default-population (D9) when omitted.
     :reference-date  -- YYYYMMDD string. Required, not optional: Synthea
                         generates relative to wall-clock \"now\" unless
                         told otherwise, which would make every run
                         non-reproducible by construction regardless of
-                        what else is pinned.
+                        what else is pinned. Defaults to
+                        default-reference-date (D9) when omitted -- a
+                        pinned constant, never \"today\".
     :output-dir      -- directory for Synthea's output tree + manifest.edn
-                        (created if missing; gitignored -- not committed)
+                        (created if missing; gitignored -- not committed).
+                        Defaults to (default-output-dir seed population)
+                        when omitted (D9) -- a *stable* path for a given
+                        seed/population, which is exactly why this
+                        function rejects up front (:output-dir-exists)
+                        when the directory already has content: a second
+                        zero-flag invocation would otherwise land in the
+                        same directory as the first, and Synthea's own
+                        writer silently no-ops per file
+                        (FileAlreadyExistsException, caught internally,
+                        exit 0) rather than erroring -- probed directly,
+                        2026-07-28, see docs/source-sink-design.md Part
+                        IX.2's determinism-probe addendum.
     :locale          -- BCP47-ish \"language-COUNTRY\" (default \"en-US\").
                         Forced via -Duser.language/-Duser.country, placed
                         before -jar. Required-with-a-default, not
@@ -160,9 +203,14 @@
 
   Never auto-fetches: if the Synthea artifact isn't already resolvable
   from the cache, this returns the resolve failure as-is -- run
-  `ehr artifact fetch` first. Returns result/ok {:manifest :output-dir},
-  or the first failing step's result (lockfile read, artifact resolve,
-  JVM resolve, or invocation) unchanged."
+  `ehr artifact fetch` first. Rejects up front with result/error
+  :output-dir-exists {:output-dir :hint} if :output-dir already exists
+  and is non-empty, before reading the lockfile or invoking anything --
+  D9's derived --output-dir is stable across zero-flag calls, so this is
+  the guard against the silent-no-op hazard described above. Returns
+  result/ok {:manifest :output-dir}, or the first failing step's result
+  (the output-dir check, lockfile read, artifact resolve, JVM resolve,
+  or invocation) unchanged."
   [{:keys [config-path seed clinician-seed population reference-date output-dir
            locale timezone jvm-args extra-args java-bin resolve-java-bin
            java-version-fn lockfile-path read-lockfile resolve-artifact run-invocation]
@@ -173,9 +221,19 @@
          lockfile-path default-lockfile-path
          read-lockfile artifact/read-lockfile
          resolve-artifact artifact/resolve
-         run-invocation invocation/run!}}]
-  (let [lockfile-result (read-lockfile lockfile-path)]
-    (if-not (result/ok? lockfile-result)
+         run-invocation invocation/run!
+         config-path default-config-path
+         seed default-seed
+         reference-date default-reference-date
+         population default-population}}]
+  (let [clinician-seed (or clinician-seed seed)
+        output-dir (or output-dir (default-output-dir seed population))]
+   (if (non-empty-existing-dir? output-dir)
+     (result/error :output-dir-exists
+                    {:output-dir output-dir
+                     :hint "remove the directory, or pass a different --output-dir, to regenerate"})
+    (let [lockfile-result (read-lockfile lockfile-path)]
+     (if-not (result/ok? lockfile-result)
       lockfile-result
       (let [artifacts (:artifacts (:payload lockfile-result))
             resolve-result (resolve-artifact artifacts synthea-name synthea-version)]
@@ -222,4 +280,4 @@
                             :canonicalizers-applied []
                             :environment (environment-record resolved-java-bin java-version-fn locale timezone)})]
                     (spit (io/file out-dir "manifest.edn") (pr-str m))
-                    (result/ok {:manifest m :output-dir output-dir})))))))))))
+                    (result/ok {:manifest m :output-dir output-dir})))))))))))))

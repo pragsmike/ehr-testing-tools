@@ -50,13 +50,13 @@
     {:group "corpus"
      :doc "Generate, mutate, intake, and inspect synthetic corpora."
      :verbs
-     [{:verb "generate" :doc "Generate a deterministic synthetic Synthea corpus."
-       :flags [{:flag "--config-path" :doc "Synthea properties file"}
-               {:flag "--seed" :doc "patient-generation seed (integer)"}
-               {:flag "--clinician-seed" :doc "clinician-generation seed (integer) -- required: Synthea defaults this to wall-clock time otherwise, which breaks reproducibility even with --seed pinned"}
-               {:flag "--population" :doc "population size (integer)"}
-               {:flag "--reference-date" :doc "generation reference date, YYYYMMDD -- required: Synthea otherwise generates relative to wall-clock \"now\""}
-               {:flag "--output-dir" :doc "output directory for the corpus + manifest.edn"}
+     [{:verb "generate" :doc "Generate a deterministic synthetic Synthea corpus. Zero-flag defaults (D9, ADR-0019) make the bare command a byte-reproducible run -- re-running it into the same (derived) --output-dir without clearing it first is rejected (:output-dir-exists), not silently overwritten."
+       :flags [{:flag "--config-path" :doc "Synthea properties file" :default "resources/synthea-default.properties"}
+               {:flag "--seed" :doc "patient-generation seed (integer)" :default "1"}
+               {:flag "--clinician-seed" :doc "clinician-generation seed (integer) -- Synthea defaults this to wall-clock time otherwise, which breaks reproducibility even with --seed pinned" :default "the resolved --seed value"}
+               {:flag "--population" :doc "population size (integer)" :default "5"}
+               {:flag "--reference-date" :doc "generation reference date, YYYYMMDD -- Synthea otherwise generates relative to wall-clock \"now\"" :default "20260101"}
+               {:flag "--output-dir" :doc "output directory for the corpus + manifest.edn -- rejected if it already exists and is non-empty" :default "target/corpus/synthea-s<seed>-p<population>"}
                {:flag "--locale" :doc "BCP47-ish locale" :default "en-US"}
                {:flag "--timezone" :doc "timezone" :default "UTC"}
                {:flag "--java-bin" :doc "java executable to invoke" :default "resolved via the artifact registry"}
