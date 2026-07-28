@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# The `ehr` CLI's entry point (ADR-0004; exit codes extended by
+# ADR-0010). This exists for one reason: the exit-code contract.
+#
+#   0  ran and passed
+#   1  ran and legitimately rejected
+#   2  operational error
+#   3  a gate's aggregate contains :no-verdict under the default
+#      --treat-no-verdict-as policy
+#
+# A bare `clojure -M:ehr` would carry the contract fine too; this wrapper
+# exists so a relative path in an argument always means the same thing
+# regardless of the caller's own cwd -- it `cd`s to the workspace root
+# first, same as `artifacts.lock.edn`/`config/`/`test/fixtures/**` (all
+# cwd-relative literal paths, not classpath resources) require.
+#
+# ehr-testing-tools' own `Makefile`/`make ehr` compatibility spelling did
+# not survive the Polylith landing (notes/ADRs.md ADR-0002) -- this
+# wrapper plus the root `deps.edn`'s `:ehr` alias is the sole entry point
+# now.
+#
+# Expects a Linux/macOS shell with `clojure` on PATH; on Windows that
+# means WSL2, which is this repo's assumed platform (AUTHORS-GUIDE.md
+# section 1, SETUP.md).
+set -uo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)" || exit 2
+cd -- "$repo_root" || exit 2
+
+exec clojure -M:ehr "$@"

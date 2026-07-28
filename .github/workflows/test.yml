@@ -49,3 +49,12 @@ jobs:
 
       - name: poly test :all
         run: clojure -M:poly test :all
+
+      - name: poly test :project
+        # Mirrors .githooks/pre-push's own gate (AGENTS.md) -- :all
+        # already runs every project's test/ dir too (confirmed,
+        # ADR-0002), but CI staying explicit about :project is the
+        # same belt-and-suspenders reasoning that gate exists for
+        # locally: the conformance project's own test/ omission must
+        # never be silent.
+        run: clojure -M:poly test :project

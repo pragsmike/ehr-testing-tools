@@ -1,11 +1,30 @@
 {:aliases  {:dev {:extra-paths ["development/src"]
 
-                  :extra-deps {org.clojure/clojure {:mvn/version "1.12.3"}
-                               poly/sim     {:local/root "components/sim"}
-                               poly/sim-cli {:local/root "bases/sim-cli"}}}
+                  :extra-deps {org.clojure/clojure {:mvn/version "1.12.5"}
+                               poly/sim      {:local/root "components/sim"}
+                               poly/sim-cli  {:local/root "bases/sim-cli"}
+                               poly/tools    {:local/root "components/tools"}
+                               poly/palgebra {:local/root "components/palgebra"}
+                               poly/ehr-cli  {:local/root "bases/ehr-cli"}}}
 
             :test {:extra-paths ["components/sim/test"
-                                  "bases/sim-cli/test"]}
+                                  "bases/sim-cli/test"
+                                  "components/tools/test"
+                                  "components/palgebra/test"
+                                  "bases/ehr-cli/test"
+                                  "projects/conformance/test"]}
+
+            ;; `bin/ehr`'s own invocation alias. Runs from the workspace
+            ;; root (not a project subdirectory) because artifacts.lock.edn,
+            ;; config/, resources/synthea-default.properties, and
+            ;; test/fixtures/** are all cwd-relative literal paths in
+            ;; ehrt.tools.* code (not classpath resources) -- landing-
+            ;; session finding, see notes/ADRs.md ADR-0002.
+            :ehr {:extra-deps {org.clojure/clojure {:mvn/version "1.12.5"}
+                               poly/tools    {:local/root "components/tools"}
+                               poly/palgebra {:local/root "components/palgebra"}
+                               poly/ehr-cli  {:local/root "bases/ehr-cli"}}
+                  :main-opts ["-m" "ehrt.ehr-cli.core"]}
 
             :poly {:main-opts ["-m" "polylith.clj.core.poly-cli.core"]
                    :jvm-opts ["--enable-native-access=ALL-UNNAMED"]

@@ -1,6 +1,6 @@
 {:deps {poly/sim     {:local/root "../../components/sim"}
         poly/sim-cli {:local/root "../../bases/sim-cli"}
-        org.clojure/clojure {:mvn/version "1.12.3"}}
+        org.clojure/clojure {:mvn/version "1.12.5"}}
 
  :aliases {:test {:extra-paths []
                   :extra-deps  {}}
