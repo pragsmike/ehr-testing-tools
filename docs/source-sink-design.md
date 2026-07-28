@@ -38,6 +38,16 @@ source while writing this record: `src/ehr_testing_tools/corpus/intake.clj`,
 | D-a | URL scheme spellings (`dir:` vs `file:` with trailing slash; invented schemes for generators). | Author taste call, cheap to defer, expensive to guess wrong before any parser exists. | **Open** |
 | D-b | Whether the `blaze` sink lands before or after the IG-pinning blocker clears — they interact: what profile does a written resource claim? | No IG package is pinned in `artifacts.lock.edn` today (`docs/pipeline.edn`'s own Gate contract note); a `blaze` sink writing FHIR resources without an answer to "which profile" is premature. | **Open** |
 | D-c | Whether the `:origin` rename (D6) ships with the first source build session (SS-1) or gets its own micro-session. | Sequencing convenience only; no design consequence either way. | **Open** |
+| D8 | **The determinism law of defaults.** A CLI flag may default only to a pinned constant or a value derived deterministically from other pinned inputs — never the clock, the environment, the network, or the machine. `corpus intake`'s `--received` (a record-keeping date, not a generation input) is the one named exemption. | The reproducibility toolkit's own reason for existing (`docs/positioning.md`, Dogfooding) is undermined by a convenience default that reads wall-clock time; naming the one legitimate exception (lineage dates) prevents it from being read as a loophole. | Settled (§IX) |
+| D9 | **Ratified zero-flag defaults for `corpus generate`.** `--seed 1`; `--clinician-seed` defaults to `--seed`'s value; `--reference-date 20260101` (a named pinned constant beside `default-locale`/`default-timezone`); `--population 5`; `--output-dir` derived as `target/corpus/synthea-s<seed>-p<pop>`; `--config-path` defaults to a minimal properties file shipped in `resources/`. | The zero-flag run is the quickstart's first impression and doubles as a reproducibility demo (byte-identical across machines) rather than a mere convenience — leaving `generate` flag-heavy would bury that demo under six required flags. | Settled (§IX) |
+| D10 | **One flag vocabulary, spellings ratified, old spellings removed.** `--lockfile` (not `--lockfile-path`), `--out` (new, for a single output file), `--out-dir` (not `--output-dir`), positional `PATH` with `--path` as its explicit twin (not `--input`/`--source-dir`). No aliases for the old spellings. | Pre-release (ADR-0008) is the one window where a breaking flag rename is cheap; `docs/cli.md`/`ehr help` regenerate from `cli-spec` so the two surfaces cannot drift apart. | Settled (§IX) |
+| D11 | **`ehr gate PATH` dispatches per file via format sniffing.** `gate v2`/`gate fhir` remain as explicit overrides; a sniff-dispatched directory containing both formats is an error naming the override, not a silent per-file split. | Reuses `corpus.intake/sniff-format` (already a heuristic, already honest about being one) instead of inventing a second sniffing mechanism; erroring on a mixed directory keeps the default path from silently doing the wrong thing. | Settled (§IX) — mixed-directory behavior itself is OPEN-1 |
+| D12 | **`corpus mutate` output and locator defaults.** `--out-dir` derives as `<input>-mutants/<operator-id>@<version>/`; a registry entry MAY declare `:default-locator` (its canonical conviction target); `--locator-path` stays required for operators without one. | Matches D9's derived-output-dir pattern; no operator's default locator is invented speculatively — declaring one is calibration work against `docs/judge-calibration.md`, done when that operator's default is actually authored. | Settled (§IX) |
+| D13 | **Three new CLI conveniences.** `ehr version` (repo version-of-record plus pinned artifact versions from the lockfile); `ehr artifact fetch --all` (every lockfile artifact in one invocation); `ehr doctor` (runs `SETUP.md`'s verification checklist as a command, exit 0/1/2 per the existing ladder). | Collapses recurring multi-step setup friction (T2's three-fetch incantation, `SETUP.md`'s manual checklist) into single commands, at the cost of one freshness obligation (`doctor`'s content must not disagree with `SETUP.md`). | Settled (§IX) |
+| D14 | **The flag-vocabulary change and SS-1's URL surface land in the same build session.** Either SS-1 grows to include D9–D13, or a UX build session lands immediately before SS-1 and SS-1 rebases onto it — proposed in `.agents/plans/corpus-foundations.md`, decided by the author at build time. `docs/use-cases.md`'s ten command strips and the quickstart are re-verified end to end in whichever session changes the surface. | Two surface-breaking changes to the same CLI in two separate sessions would cost users two migrations instead of one; this repo's readers are pre-release and there is no reason to spend that cost twice. | Settled (§IX) |
+| OPEN-1 | Mixed-format directory behavior under bare `gate` (D11): error naming the override, vs. silent per-file dispatch. | Author taste call — either is implementable; the capture session ruled the error-by-default reading in but left it open for reconsideration at build time. | **Open** |
+| OPEN-2 | Whether `corpus generate`'s zero-flag `--population` default (D9) is `5` or `1`. | Trade-off between run speed (`1`, fastest) and corpus usefulness (`5`, enough patients for a non-degenerate first run) — a build-time taste call, not a design consequence. | **Open** |
+| OPEN-3 | Whether `ehr doctor` (D13) belongs in the first release or ships after. | Sequencing convenience only — `doctor` has no design dependency on anything else in this capture. | **Open** |
 
 ---
 
@@ -350,6 +360,140 @@ sink-bytes → framed-stream  [EncodeFraming]  {catalytic: framing-codec}       
 
 ---
 
+## Part IX — CLI Ergonomics (D8–D14, 2026-07-27, UX-1 capture)
+
+**Why this section lives here rather than in a standalone doc.** SS-1
+(Part I–IV above) is about to change the CLI's own input/output surface
+(the URL string format, D4); this capture session rules the surface's
+*ergonomics* — its defaults and flag names — in the same document SS-1
+builds from, so the two land together (D14) rather than costing readers
+two migrations. Nothing below changes `src/` — same no-code convention
+as the rest of this document (see the header).
+
+### IX.1 The determinism law of defaults (D8)
+
+**Law.** A CLI flag may default only to a pinned constant, or a value
+derived deterministically from other pinned inputs (another flag's
+value, a hash, a path template). No default may read the clock, the
+environment, the network, or the machine.
+
+**The one named exemption.** `corpus intake`'s `--received` currently
+defaults to `today` (`cli/help.clj:85`, `corpus/intake.clj:230`'s own
+docstring already frames `:received` as "a required, explicit date
+string — never read from the wall clock *here*," i.e. inside the core
+function; the CLI shell is where the today-default lives). This is a
+**record-keeping** date — when a batch was received for cataloging — not
+a generation input that determines what bytes get produced. The law
+governs the latter: `corpus generate`'s `--reference-date` is exactly
+what `--received` is not, which is why Synthea's own generator treats an
+unpinned reference date as a reproducibility hazard
+(`corpus/generate.clj`'s `reference-date` docstring: "Synthea generates
+relative to wall-clock \"now\" unless told otherwise, which would make
+every run non-reproducible by construction") while an intake batch's
+received-date has no such downstream effect on any byte produced. Every
+other wall-clock-shaped default proposed for this CLI is judged against
+this same generation-input-vs-record-keeping-date distinction, not
+against convenience.
+
+### IX.2 Ratified defaults for `corpus generate` (D9)
+
+The zero-flag happy path:
+
+| Flag | Default | Derivation |
+|---|---|---|
+| `--seed` | `1` | pinned constant |
+| `--clinician-seed` | value of `--seed` | derived — one seed to remember, not two |
+| `--reference-date` | `20260101` | pinned constant, named beside `default-locale`/`default-timezone` (`corpus/generate.clj:22-24`) — a comment at the definition site states it is intentionally frozen, not "today" |
+| `--population` | `5` | pinned constant (OPEN-2: `5` vs. `1`) |
+| `--output-dir` | `target/corpus/synthea-s<seed>-p<pop>` | derived from `--seed`/`--population` |
+| `--config-path` | a minimal Synthea properties file shipped in `resources/` | pinned artifact, authored in the build session; its content is part of the pin |
+
+**Acceptance property.** `ehr corpus generate` with no flags must be
+byte-reproducible across machines given the same pinned artifacts (the
+shipped `resources/` properties file, the locked Synthea/JDK artifact
+versions) — the same claim EXP-A4 already proved for an explicit-flags
+invocation (`docs/experiments/EXP-A4-results.md`), now extended to the
+zero-flag case specifically because it is what a first-time reader
+actually runs. This makes the quickstart's first command a
+reproducibility demonstration, not merely a convenience.
+
+### IX.3 One flag vocabulary (D10)
+
+| Concept | Spelling | Replaces |
+|---|---|---|
+| lockfile path | `--lockfile` | `--lockfile-path` (`corpus generate`'s current spelling, `cli/help.clj:74`) |
+| output file | `--out` | — (new; `corpus intake`'s `--out` already uses this spelling and is unaffected) |
+| output directory | `--out-dir` | `--output-dir` (`corpus generate`, `corpus mutate`) |
+| primary input | positional `PATH`, with `--path` as the explicit twin (existing `gate`/`check` precedent, `cli/help.clj:92-93,106-107`) | `--input` (`corpus mutate`), `--source-dir` (`corpus intake`) |
+
+Old spellings are **removed, not aliased** — pre-release (ADR-0008), one
+vocabulary, no deprecation shims to carry into a first release. `docs/
+cli.md` and `ehr help` both render from `cli-spec` (`cli/help.clj`), so
+neither can drift from the other or from this table once a build session
+applies it.
+
+### IX.4 `ehr gate PATH` sniffs (D11)
+
+Bare `ehr gate PATH` dispatches per file via the existing format-sniffing
+heuristic (`corpus.intake/sniff-format`, `corpus/intake.clj:101-111`) —
+the same cheap, unvalidating, extension-then-content heuristic Part IV's
+format inference already reuses (§IV). `gate v2` / `gate fhir` remain as
+explicit overrides, and are what a directory mixing both formats
+requires: a sniff-dispatched directory containing both `:fhir-json` and
+`:v2-er7` files is an **error naming the override**, telling the caller
+to run `gate v2`/`gate fhir` explicitly rather than silently splitting
+the directory per file. OPEN-1 records that the author may prefer the
+silent-split reading instead; not resolved here.
+
+### IX.5 `corpus mutate` defaults (D12)
+
+`--out-dir` derives as `<input>-mutants/<operator-id>@<version>/` — the
+same derived-from-inputs pattern as D9's `--output-dir`. Each registry
+entry (`corpus.operators`, `corpus/operators.clj:54-71`'s `Operator`
+schema) MAY declare `:default-locator`, its own canonical conviction
+target — the seed catalog already documents, per operator, which locator
+is verified to convict (e.g. `:corrupt-segment-name`'s docstring names
+MSH specifically, `corpus/operators.clj:267`). No operator's default
+locator is invented by this capture session: declaring one is
+calibration work against `docs/judge-calibration.md`, done by whichever
+build session actually authors it. `--locator-path` remains required for
+any operator without a declared default.
+
+### IX.6 New conveniences (D13)
+
+- **`ehr version`** — prints this repo's own version-of-record plus the
+  pinned artifact versions read from `artifacts.lock.edn` (Synthea, the
+  Temurin JDK, the FHIR validator CLI — ADR-0005's registry).
+- **`ehr artifact fetch --all`** — fetches every artifact the lockfile
+  names, collapsing `SETUP.md`'s own three-invocation walkthrough
+  (`synthea`, `temurin-jdk`, and, for the T2/integration path,
+  `fhir-validator-cli`) into one command.
+- **`ehr doctor`** — runs `SETUP.md`'s verification checklist as a
+  command: WSL detection where relevant, Java resolution through the
+  artifact registry, artifact cache presence, exit 0/1/2 per the
+  existing ladder (`cli/help.clj`'s `exit-codes`). `doctor`'s checklist
+  content is drawn from `SETUP.md`, not authored independently, so the
+  two cannot silently disagree — the same freshness obligation `docs/
+  cli.md` already owes `cli-spec` (OPEN-3: whether `doctor` ships in the
+  first release or after).
+
+### IX.7 Sequencing with SS-1 (D14)
+
+The flag-vocabulary table (D10) and SS-1's URL/source-sink surface
+(Part IV) are a **breaking change to the same CLI, twice, if built in
+two separate sessions** — this capture session rules that they land
+together: either SS-1's own scope grows to include D9–D13, or a
+dedicated UX build session lands immediately before SS-1 and SS-1
+rebases onto its result. `.agents/plans/corpus-foundations.md` records
+both shapes as a proposal for the author to decide at build time (see
+that plan's own UX-1 row). Whichever session changes the surface owes
+re-verification of `docs/use-cases.md`'s ten command strips end to end,
+and the quickstart's structural enforcement (`make quickstart-fresh`,
+T0) must stay green with the new zero-flag `generate` as its first
+command.
+
+---
+
 ## Deferred decisions (record only — not resolved here)
 
 - **D-a** — URL scheme spellings (`dir:` vs `file:` with trailing
@@ -360,3 +504,10 @@ sink-bytes → framed-stream  [EncodeFraming]  {catalytic: framing-codec}       
   written resource claim?
 - **D-c** — whether the `:origin` rename (D6) ships with the first
   source build session (SS-1) or its own micro-session.
+- **OPEN-1** — mixed-format directory behavior under bare `gate` (D11):
+  error naming the override, vs. silent per-file dispatch. Author taste
+  call at build time.
+- **OPEN-2** — whether `corpus generate`'s zero-flag `--population`
+  default (D9) is `5` or `1`. Speed vs. corpus-usefulness trade-off.
+- **OPEN-3** — whether `ehr doctor` (D13) belongs in the first release
+  or ships after. Sequencing convenience only.
