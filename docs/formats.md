@@ -237,7 +237,7 @@ not an external engine — the same slot, a different kind of occupant.
 
 ## The corpus manifest
 
-Written as `manifest.edn` in a generated corpus's `--output-dir`. It is
+Written as `manifest.edn` in a generated corpus's `--out-dir`. It is
 the provenance record: everything that was pinned when this corpus was
 made, so someone else can make the same one.
 

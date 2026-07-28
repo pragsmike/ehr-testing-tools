@@ -133,7 +133,7 @@ docstrings and docs already in this repo, not new doctrine.
 
 **Operator.** A registered defect transform, applied by
 `--operator-id`/`--operator-version` at a `--locator-path`, to every
-matching file under `--input`. Each operator names what it edits (the
+matching file under `PATH` (positional, or `--path`). Each operator names what it edits (the
 change) and its contract (which base-spec constraint the edited file
 now violates). Register: `docs/operators.md`.
 

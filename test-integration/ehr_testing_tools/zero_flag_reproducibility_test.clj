@@ -59,7 +59,7 @@
 
 (defn- generate-zero-flag!
   []
-  (let [r (generate/generate! {:output-dir work-dir})]
+  (let [r (generate/generate! {:out-dir work-dir})]
     (when-not (result/ok? r)
       (throw (ex-info "zero-flag-reproducibility: generation failed -- run `ehr artifact fetch` for synthea/temurin-jdk first" r)))
     r))

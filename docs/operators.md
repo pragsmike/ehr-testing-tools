@@ -7,7 +7,7 @@
 
 This is the catalog `ehr corpus mutate` applies: every registered defect operator, what it does to a file, and which base-spec constraint the result violates. The same catalog is readable at the shell — `ehr corpus operators`, or `ehr corpus operators --format v2` for one format — and as EDN or JSON from that verb's output.
 
-Each operator is applied by id: `--operator-id <id> --operator-version <version>`, at one `--locator-path`, to every matching file under `--input`. See [cli.md](cli.md#ehr-corpus-mutate) for the full flag list and [use-cases.md](use-cases.md) for which task calls for which operator.
+Each operator is applied by id: `--operator-id <id> --operator-version <version>`, at one `--locator-path`, to every matching file under `PATH` (positional, or `--path`). See [cli.md](cli.md#ehr-corpus-mutate) for the full flag list and [use-cases.md](use-cases.md) for which task calls for which operator.
 
 Two descriptions appear per operator, and they answer different questions. **What it does** is the edit — what changed in the file. **Contract** is the conformance claim — which constraint in the base specification the edited file now violates, which is what makes the operator useful as a test of whether a gate catches it.
 

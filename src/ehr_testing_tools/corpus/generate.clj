@@ -34,8 +34,8 @@
 (def default-population 5)
 (def default-config-path "resources/synthea-default.properties")
 
-(defn default-output-dir
-  "The zero-flag --output-dir: derived from seed/population, not a
+(defn default-out-dir
+  "The zero-flag --out-dir: derived from seed/population, not a
   required flag -- target/corpus/synthea-s<seed>-p<pop>."
   [seed population]
   (str "target/corpus/synthea-s" seed "-p" population))
@@ -106,7 +106,7 @@
   after it, they'd be passed as plain program arguments to Synthea
   instead. extra-args (Synthea's own --config*=value overrides) belong
   after, as additional program arguments."
-  [{:keys [jar-path seed clinician-seed population reference-date config-path output-dir
+  [{:keys [jar-path seed clinician-seed population reference-date config-path out-dir
            jvm-args extra-args]}]
   (vec (concat jvm-args
                ["-jar" jar-path
@@ -115,12 +115,12 @@
                 "-p" (str population)
                 "-r" reference-date
                 "-c" config-path
-                (str "--exporter.baseDirectory=" output-dir)]
+                (str "--exporter.baseDirectory=" out-dir)]
                extra-args)))
 
 (defn- non-empty-existing-dir?
-  [output-dir]
-  (let [f (io/file output-dir)]
+  [out-dir]
+  (let [f (io/file out-dir)]
     (and (.isDirectory f) (seq (.listFiles f)))))
 
 (defn generate!
@@ -149,12 +149,12 @@
                         what else is pinned. Defaults to
                         default-reference-date (D9) when omitted -- a
                         pinned constant, never \"today\".
-    :output-dir      -- directory for Synthea's output tree + manifest.edn
+    :out-dir         -- directory for Synthea's output tree + manifest.edn
                         (created if missing; gitignored -- not committed).
-                        Defaults to (default-output-dir seed population)
+                        Defaults to (default-out-dir seed population)
                         when omitted (D9) -- a *stable* path for a given
                         seed/population, which is exactly why this
-                        function rejects up front (:output-dir-exists)
+                        function rejects up front (:out-dir-exists)
                         when the directory already has content: a second
                         zero-flag invocation would otherwise land in the
                         same directory as the first, and Synthea's own
@@ -197,28 +197,28 @@
                         version for the manifest's environment record;
                         defaults to real-java-version (injectable for
                         testing).
-    :lockfile-path, :read-lockfile, :resolve-artifact, :run-invocation
+    :lockfile, :read-lockfile, :resolve-artifact, :run-invocation
                      -- injectable for testing; default to the real
                         artifact/invocation implementations.
 
   Never auto-fetches: if the Synthea artifact isn't already resolvable
   from the cache, this returns the resolve failure as-is -- run
   `ehr artifact fetch` first. Rejects up front with result/error
-  :output-dir-exists {:output-dir :hint} if :output-dir already exists
+  :out-dir-exists {:out-dir :hint} if :out-dir already exists
   and is non-empty, before reading the lockfile or invoking anything --
-  D9's derived --output-dir is stable across zero-flag calls, so this is
+  D9's derived --out-dir is stable across zero-flag calls, so this is
   the guard against the silent-no-op hazard described above. Returns
-  result/ok {:manifest :output-dir}, or the first failing step's result
-  (the output-dir check, lockfile read, artifact resolve, JVM resolve,
+  result/ok {:manifest :out-dir}, or the first failing step's result
+  (the out-dir check, lockfile read, artifact resolve, JVM resolve,
   or invocation) unchanged."
-  [{:keys [config-path seed clinician-seed population reference-date output-dir
+  [{:keys [config-path seed clinician-seed population reference-date out-dir
            locale timezone jvm-args extra-args java-bin resolve-java-bin
-           java-version-fn lockfile-path read-lockfile resolve-artifact run-invocation]
+           java-version-fn lockfile read-lockfile resolve-artifact run-invocation]
     :or {locale default-locale timezone default-timezone
          jvm-args [] extra-args []
          resolve-java-bin resolve-java-bin
          java-version-fn real-java-version
-         lockfile-path default-lockfile-path
+         lockfile default-lockfile-path
          read-lockfile artifact/read-lockfile
          resolve-artifact artifact/resolve
          run-invocation invocation/run!
@@ -227,12 +227,12 @@
          reference-date default-reference-date
          population default-population}}]
   (let [clinician-seed (or clinician-seed seed)
-        output-dir (or output-dir (default-output-dir seed population))]
-   (if (non-empty-existing-dir? output-dir)
-     (result/error :output-dir-exists
-                    {:output-dir output-dir
-                     :hint "remove the directory, or pass a different --output-dir, to regenerate"})
-    (let [lockfile-result (read-lockfile lockfile-path)]
+        out-dir (or out-dir (default-out-dir seed population))]
+   (if (non-empty-existing-dir? out-dir)
+     (result/error :out-dir-exists
+                    {:out-dir out-dir
+                     :hint "remove the directory, or pass a different --out-dir, to regenerate"})
+    (let [lockfile-result (read-lockfile lockfile)]
      (if-not (result/ok? lockfile-result)
       lockfile-result
       (let [artifacts (:artifacts (:payload lockfile-result))
@@ -247,16 +247,16 @@
               java-bin-result
               (let [resolved-java-bin (:path (:payload java-bin-result))
                     jvm-artifact (:artifact (:payload java-bin-result))
-                    out-dir (io/file output-dir)
-                    _ (.mkdirs out-dir)
-                    stdout-path (.getAbsolutePath (io/file out-dir "synthea-stdout.log"))
-                    stderr-path (.getAbsolutePath (io/file out-dir "synthea-stderr.log"))
+                    out-dir-file (io/file out-dir)
+                    _ (.mkdirs out-dir-file)
+                    stdout-path (.getAbsolutePath (io/file out-dir-file "synthea-stdout.log"))
+                    stderr-path (.getAbsolutePath (io/file out-dir-file "synthea-stderr.log"))
                     all-jvm-args (vec (concat (locale-jvm-args locale) (timezone-jvm-args timezone) jvm-args))
                     args (synthea-args {:jar-path path :seed seed :clinician-seed clinician-seed
                                          :population population
                                          :reference-date reference-date
                                          :config-path config-path
-                                         :output-dir (.getAbsolutePath out-dir)
+                                         :out-dir (.getAbsolutePath out-dir-file)
                                          :jvm-args all-jvm-args
                                          :extra-args extra-args})
                     invocation-result (run-invocation {:command resolved-java-bin :args args
@@ -279,5 +279,5 @@
                             :invocation (:payload invocation-result)
                             :canonicalizers-applied []
                             :environment (environment-record resolved-java-bin java-version-fn locale timezone)})]
-                    (spit (io/file out-dir "manifest.edn") (pr-str m))
-                    (result/ok {:manifest m :output-dir output-dir})))))))))))))
+                    (spit (io/file out-dir-file "manifest.edn") (pr-str m))
+                    (result/ok {:manifest m :out-dir out-dir})))))))))))))

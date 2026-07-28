@@ -165,10 +165,26 @@
 
 (deftest dispatch-routes-corpus-mutate-test
   (let [called (atom nil)
-        r (cli/dispatch ["corpus" "mutate"] {:input "x.json"}
+        r (cli/dispatch ["corpus" "mutate"] {:path "x.json"}
                          {:mutate-fn (fn [opts] (reset! called opts) (result/ok {:count 0}))})]
     (is (result/ok? r))
-    (is (= {:input "x.json"} @called))))
+    (is (= {:path "x.json"} @called))))
+
+(deftest dispatch-corpus-mutate-accepts-a-positional-path-test
+  ;; D10: `ehr corpus mutate PATH` -- PATH is the third positional arg,
+  ;; with --path as its explicit twin, same convention gate already has.
+  (let [called (atom nil)
+        r (cli/dispatch ["corpus" "mutate" "x.json"] {}
+                         {:mutate-fn (fn [opts] (reset! called opts) (result/ok {:count 0}))})]
+    (is (result/ok? r))
+    (is (= "x.json" (:path @called)))))
+
+(deftest dispatch-corpus-mutate-explicit-path-opt-not-overridden-by-positional-test
+  (let [called (atom nil)
+        r (cli/dispatch ["corpus" "mutate" "positional.json"] {:path "explicit.json"}
+                         {:mutate-fn (fn [opts] (reset! called opts) (result/ok {:count 0}))})]
+    (is (result/ok? r))
+    (is (= "explicit.json" (:path @called)))))
 
 (deftest dispatch-routes-gate-v2-test
   (let [called (atom nil)
@@ -202,10 +218,19 @@
 
 (deftest dispatch-routes-corpus-intake-test
   (let [called (atom nil)
-        r (cli/dispatch ["corpus" "intake"] {:source-dir "src"}
+        r (cli/dispatch ["corpus" "intake"] {:path "src"}
                          {:intake-fn (fn [opts] (reset! called opts) (result/ok {:catalog []}))})]
     (is (result/ok? r))
-    (is (= {:source-dir "src"} @called))))
+    (is (= {:path "src"} @called))))
+
+(deftest dispatch-corpus-intake-accepts-a-positional-path-test
+  ;; D10: `ehr corpus intake PATH` -- same positional/--path convention
+  ;; as gate and corpus mutate.
+  (let [called (atom nil)
+        r (cli/dispatch ["corpus" "intake" "src"] {}
+                         {:intake-fn (fn [opts] (reset! called opts) (result/ok {:catalog []}))})]
+    (is (result/ok? r))
+    (is (= "src" (:path @called)))))
 
 (deftest dispatch-routes-corpus-operators-test
   (let [called (atom nil)
@@ -292,8 +317,8 @@
   (let [in-dir (temp-dir*)
         out-dir (str (temp-dir*) "/out")
         _ (spit (io/file in-dir "patient1.json") sample-bundle-json)
-        r (cli/mutate-command {:input in-dir :operator-id "remove-required-element"
-                                :locator-path "entry[0].resource.gender" :output-dir out-dir})]
+        r (cli/mutate-command {:path in-dir :operator-id "remove-required-element"
+                                :locator-path "entry[0].resource.gender" :out-dir out-dir})]
     (is (result/ok? r))
     (is (= 1 (:count (:payload r))))
     (let [mutant (slurp (io/file out-dir "patient1.json"))
@@ -309,8 +334,8 @@
         _ (spit (io/file in-dir "a.json") sample-bundle-json)
         _ (spit (io/file in-dir "b.json") sample-bundle-json)
         _ (spit (io/file in-dir "not-json.txt") "ignore me")
-        r (cli/mutate-command {:input in-dir :operator-id "duplicate-element"
-                                :locator-path "entry[0].resource.gender" :output-dir out-dir})]
+        r (cli/mutate-command {:path in-dir :operator-id "duplicate-element"
+                                :locator-path "entry[0].resource.gender" :out-dir out-dir})]
     (is (result/ok? r))
     (is (= 2 (:count (:payload r))))
     (is (.exists (io/file out-dir "a.json")))
@@ -322,16 +347,16 @@
         out-dir (str (temp-dir*) "/out")
         f (io/file in-dir "one.json")
         _ (spit f sample-bundle-json)
-        r (cli/mutate-command {:input (.getAbsolutePath f) :operator-id "wrong-type-value"
-                                :locator-path "entry[0].resource.gender" :output-dir out-dir})]
+        r (cli/mutate-command {:path (.getAbsolutePath f) :operator-id "wrong-type-value"
+                                :locator-path "entry[0].resource.gender" :out-dir out-dir})]
     (is (result/ok? r))
     (is (= 1 (:count (:payload r))))))
 
 (deftest mutate-command-rejects-unknown-operator-test
   (let [in-dir (temp-dir*)
         _ (spit (io/file in-dir "a.json") sample-bundle-json)
-        r (cli/mutate-command {:input in-dir :operator-id "no-such-operator"
-                                :locator-path "entry[0].resource.gender" :output-dir (temp-dir*)})]
+        r (cli/mutate-command {:path in-dir :operator-id "no-such-operator"
+                                :locator-path "entry[0].resource.gender" :out-dir (temp-dir*)})]
     (is (result/rejected? r))
     (is (= :unknown-operator (:category r)))))
 
@@ -342,8 +367,8 @@
   ;; unchanged; only the payload gains :valid-options and a hint.
   (let [in-dir (temp-dir*)
         _ (spit (io/file in-dir "a.json") sample-bundle-json)
-        r (cli/mutate-command {:input in-dir :operator-id "no-such-operator"
-                                :locator-path "entry[0].resource.gender" :output-dir (temp-dir*)})]
+        r (cli/mutate-command {:path in-dir :operator-id "no-such-operator"
+                                :locator-path "entry[0].resource.gender" :out-dir (temp-dir*)})]
     (is (= :unknown-operator (:category r)) "category survives the payload extension")
     (is (contains? (set (:valid-options (:payload r))) :remove-required-element))
     (is (= 10 (count (:valid-options (:payload r)))))
@@ -352,23 +377,23 @@
 (deftest mutate-command-defaults-operator-version-to-1-test
   (let [in-dir (temp-dir*)
         _ (spit (io/file in-dir "a.json") sample-bundle-json)
-        r (cli/mutate-command {:input in-dir :operator-id "remove-required-element"
-                                :locator-path "entry[0].resource.gender" :output-dir (temp-dir*)})]
+        r (cli/mutate-command {:path in-dir :operator-id "remove-required-element"
+                                :locator-path "entry[0].resource.gender" :out-dir (temp-dir*)})]
     (is (result/ok? r))))
 
 (deftest mutate-command-propagates-a-locator-that-does-not-resolve-test
   (let [in-dir (temp-dir*)
         _ (spit (io/file in-dir "a.json") sample-bundle-json)
-        r (cli/mutate-command {:input in-dir :operator-id "remove-required-element"
-                                :locator-path "entry[0].resource.noSuchField" :output-dir (temp-dir*)})]
+        r (cli/mutate-command {:path in-dir :operator-id "remove-required-element"
+                                :locator-path "entry[0].resource.noSuchField" :out-dir (temp-dir*)})]
     (is (result/rejected? r))
     (is (= :locator-not-found (:category r)))))
 
 (deftest mutate-command-rejects-invalid-locator-path-syntax-test
   (let [in-dir (temp-dir*)
         _ (spit (io/file in-dir "a.json") sample-bundle-json)
-        r (cli/mutate-command {:input in-dir :operator-id "remove-required-element"
-                                :locator-path "entry[bad]" :output-dir (temp-dir*)})]
+        r (cli/mutate-command {:path in-dir :operator-id "remove-required-element"
+                                :locator-path "entry[bad]" :out-dir (temp-dir*)})]
     (is (result/rejected? r))
     (is (= :invalid-fhir-path (:category r)))))
 
@@ -383,8 +408,8 @@
   (let [in-dir (temp-dir*)
         out-dir (str (temp-dir*) "/out")
         _ (spit (io/file in-dir "adt.hl7") @admit-content)
-        r (cli/mutate-command {:input in-dir :operator-id "blank-required-field"
-                                :locator-path "MSH-9" :output-dir out-dir})]
+        r (cli/mutate-command {:path in-dir :operator-id "blank-required-field"
+                                :locator-path "MSH-9" :out-dir out-dir})]
     (is (result/ok? r))
     (is (= 1 (:count (:payload r))))
     (let [mutant (slurp (io/file out-dir "adt.hl7"))
@@ -401,8 +426,8 @@
         _ (spit (io/file in-dir "a.hl7") @admit-content)
         _ (spit (io/file in-dir "b.hl7") @admit-content)
         _ (spit (io/file in-dir "not-hl7.json") sample-bundle-json)
-        r (cli/mutate-command {:input in-dir :operator-id "corrupt-encoding-characters"
-                                :locator-path "MSH-2" :output-dir out-dir})]
+        r (cli/mutate-command {:path in-dir :operator-id "corrupt-encoding-characters"
+                                :locator-path "MSH-2" :out-dir out-dir})]
     (is (result/ok? r))
     (is (= 2 (:count (:payload r))))
     (is (.exists (io/file out-dir "a.hl7")))
@@ -412,16 +437,16 @@
 (deftest mutate-command-v2-propagates-a-locator-that-does-not-resolve-test
   (let [in-dir (temp-dir*)
         _ (spit (io/file in-dir "a.hl7") @admit-content)
-        r (cli/mutate-command {:input in-dir :operator-id "blank-required-field"
-                                :locator-path "ZZZ-3" :output-dir (temp-dir*)})]
+        r (cli/mutate-command {:path in-dir :operator-id "blank-required-field"
+                                :locator-path "ZZZ-3" :out-dir (temp-dir*)})]
     (is (result/rejected? r))
     (is (= :locator-not-found (:category r)))))
 
 (deftest mutate-command-v2-rejects-invalid-locator-path-syntax-test
   (let [in-dir (temp-dir*)
         _ (spit (io/file in-dir "a.hl7") @admit-content)
-        r (cli/mutate-command {:input in-dir :operator-id "blank-required-field"
-                                :locator-path "PID-0" :output-dir (temp-dir*)})]
+        r (cli/mutate-command {:path in-dir :operator-id "blank-required-field"
+                                :locator-path "PID-0" :out-dir (temp-dir*)})]
     (is (result/rejected? r))
     (is (= :invalid-v2-path (:category r)))))
 
@@ -432,7 +457,7 @@
   (let [in-dir (temp-dir*)
         out-dir (str (temp-dir*) "/out")
         _ (spit (io/file in-dir "patient.json") sample-bundle-json)
-        r (cli/intake-command {:source-dir in-dir :label "acme" :out out-dir :received "2026-07-24"})]
+        r (cli/intake-command {:path in-dir :label "acme" :out out-dir :received "2026-07-24"})]
     (is (result/ok? r))
     (is (= 1 (:file-count (:intake-record (:payload r)))))
     (is (= "2026-07-24" (:date (:intake-record (:payload r)))))))
@@ -441,7 +466,7 @@
   (let [in-dir (temp-dir*)
         out-dir (str (temp-dir*) "/out")
         _ (spit (io/file in-dir "patient.json") sample-bundle-json)
-        r (cli/intake-command {:source-dir in-dir :label "acme" :out out-dir})]
+        r (cli/intake-command {:path in-dir :label "acme" :out out-dir})]
     (is (result/ok? r))
     (is (= (str (java.time.LocalDate/now)) (:date (:intake-record (:payload r)))))))
 

@@ -14,11 +14,11 @@
     (.getAbsolutePath f)))
 
 (defn- delete-tree!
-  "Removes a derived, fixed-path output-dir before a zero-flag test runs
-  -- these tests deliberately omit :output-dir to exercise D9's own
+  "Removes a derived, fixed-path out-dir before a zero-flag test runs
+  -- these tests deliberately omit :out-dir to exercise D9's own
   derivation, so (unlike temp-dir above) the path is not unique per run;
   a leftover directory from a previous `make test` invocation would
-  otherwise collide with the :output-dir-exists guard."
+  otherwise collide with the :out-dir-exists guard."
   [path]
   (let [f (io/file path)]
     (when (.exists f)
@@ -72,7 +72,7 @@
                                        :clinician-seed 999
                                        :population 10
                                        :reference-date "20260101"
-                                       :output-dir out-dir}))]
+                                       :out-dir out-dir}))]
     (is (result/ok? r))
     (let [manifest (:manifest (:payload r))]
       (is (= "1.1" (:schema-version manifest)))
@@ -132,7 +132,7 @@
                                       {:config-path (.getAbsolutePath config-file)
                                        :seed 1 :clinician-seed 2 :population 1
                                        :reference-date "20260101"
-                                       :output-dir out-dir
+                                       :out-dir out-dir
                                        :locale "fr-FR"
                                        :timezone "Asia/Tokyo"}))]
     (is (result/ok? r))
@@ -159,7 +159,7 @@
         r (generate/generate! (merge deps
                                       {:config-path (.getAbsolutePath config-file)
                                        :seed 1 :clinician-seed 2 :population 1 :reference-date "20260101"
-                                       :output-dir out-dir
+                                       :out-dir out-dir
                                        :jvm-args ["-Duser.language=fr" "-Duser.country=FR"]}))]
     (is (result/ok? r))
     (let [invoked-args (:args @args-atom)
@@ -187,7 +187,7 @@
            (merge deps
                   {:config-path (.getAbsolutePath config-file)
                    :seed 1 :population 1 :reference-date "20260101"
-                   :output-dir out-dir
+                   :out-dir out-dir
                    :java-bin "/fake/jdk17/bin/java"
                    :java-version-fn (fn [java-bin] (str "STUBBED-VERSION-FOR:" java-bin))}))]
     (is (result/ok? r))
@@ -199,7 +199,7 @@
                           :resolve-result (ok-resolve)
                           :invocation-result (ok-invocation)})
         r (generate/generate! (merge deps {:config-path "x" :seed 1 :population 1
-                                            :output-dir (temp-dir)}))]
+                                            :out-dir (temp-dir)}))]
     (is (result/error? r))
     (is (= :not-found (:category r)))))
 
@@ -210,7 +210,7 @@
                           :resolve-result (result/rejected :not-cached {:name "synthea" :version "4.0.0"})
                           :invocation-result (ok-invocation)})
         r (generate/generate! (merge deps {:config-path "x" :seed 1 :population 1
-                                            :output-dir (temp-dir)}))]
+                                            :out-dir (temp-dir)}))]
     (is (result/rejected? r))
     (is (= :not-cached (:category r)))))
 
@@ -219,7 +219,7 @@
                           :resolve-result (ok-resolve)
                           :invocation-result (result/error :spawn-failed {:message "no java"})})
         r (generate/generate! (merge deps {:config-path "x" :seed 1 :population 1
-                                            :output-dir (temp-dir)}))]
+                                            :out-dir (temp-dir)}))]
     (is (result/error? r))
     (is (= :spawn-failed (:category r)))))
 
@@ -239,7 +239,7 @@
            (merge deps
                   {:config-path (.getAbsolutePath config-file)
                    :seed 1 :clinician-seed 2 :population 1 :reference-date "20260101"
-                   :output-dir out-dir
+                   :out-dir out-dir
                    :resolve-java-bin (fn [artifacts _opts]
                                        (swap! resolve-java-bin-calls conj artifacts)
                                        (result/ok {:path "/resolved/jdk/bin/java"
@@ -263,7 +263,7 @@
            (merge deps
                   {:config-path (.getAbsolutePath config-file)
                    :seed 1 :clinician-seed 2 :population 1 :reference-date "20260101"
-                   :output-dir out-dir
+                   :out-dir out-dir
                    :java-bin "/explicit/java"
                    :resolve-java-bin (fn [_artifacts _opts] (swap! resolve-java-bin-calls inc) (result/ok {}))}))]
     (is (result/ok? r))
@@ -280,7 +280,7 @@
                           :invocation-result (ok-invocation)})
         r (generate/generate! (merge deps {:config-path (.getAbsolutePath config-file)
                                             :seed 1 :clinician-seed 2 :population 1
-                                            :reference-date "20260101" :output-dir out-dir}))]
+                                            :reference-date "20260101" :out-dir out-dir}))]
     (is (result/ok? r))
     (is (manifest/valid-v1-1? (:manifest (:payload r))))))
 
@@ -291,7 +291,7 @@
         r (generate/generate!
            (merge deps
                   {:config-path "x" :seed 1 :population 1 :reference-date "20260101"
-                   :output-dir (temp-dir)
+                   :out-dir (temp-dir)
                    :resolve-java-bin (fn [_artifacts _opts]
                                        (result/rejected :not-cached {:name "temurin-jdk" :version "17.0.19+10"}))}))]
     (is (result/rejected? r))
@@ -327,11 +327,11 @@
 ;; ships resources/synthea-default.properties. ----
 
 (deftest generate-zero-flag-defaults-assembly-test
-  ;; No :seed/:clinician-seed/:population/:reference-date/:output-dir/
+  ;; No :seed/:clinician-seed/:population/:reference-date/:out-dir/
   ;; :config-path given at all -- the pinned D9 defaults must be what
   ;; actually reaches the subprocess args and the manifest, not merely
   ;; documented.
-  (delete-tree! (generate/default-output-dir generate/default-seed generate/default-population))
+  (delete-tree! (generate/default-out-dir generate/default-seed generate/default-population))
   (let [args-atom (atom nil)
         deps (stub-deps {:lockfile-result (ok-lockfile)
                           :resolve-result (ok-resolve)
@@ -351,14 +351,14 @@
       (is (clojure.string/includes? arg-str "-r 20260101"))
       (is (clojure.string/includes? arg-str (str "-c " generate/default-config-path)))
       (is (clojure.string/includes? arg-str "--exporter.baseDirectory=")
-          "default --output-dir is derived, not required")
-      (is (clojure.string/includes? (:output-dir (:payload r)) "synthea-s1-p5")
-          "derived --output-dir names the seed and population it was derived from"))))
+          "default --out-dir is derived, not required")
+      (is (clojure.string/includes? (:out-dir (:payload r)) "synthea-s1-p5")
+          "derived --out-dir names the seed and population it was derived from"))))
 
 (deftest generate-clinician-seed-derives-from-explicit-seed-test
   ;; D9: "--clinician-seed defaults to --seed's value" -- must track an
   ;; explicitly-given --seed too, not just the pinned default.
-  (delete-tree! (generate/default-output-dir 7 generate/default-population))
+  (delete-tree! (generate/default-out-dir 7 generate/default-population))
   (let [args-atom (atom nil)
         deps (stub-deps {:lockfile-result (ok-lockfile)
                           :resolve-result (ok-resolve)
@@ -371,9 +371,9 @@
         "an explicit --seed with no --clinician-seed still derives clinician-seed from it")
     (is (clojure.string/includes? (clojure.string/join " " (:args @args-atom)) "-cs 7"))))
 
-(deftest generate-rejects-when-output-dir-already-has-content-test
+(deftest generate-rejects-when-out-dir-already-has-content-test
   ;; Determinism probe finding (2026-07-28, UX-1 build session,
-  ;; author-directed): D9's derived --output-dir is a *stable* path for a
+  ;; author-directed): D9's derived --out-dir is a *stable* path for a
   ;; given seed/population, so a second zero-flag invocation lands in the
   ;; same directory as the first. Synthea itself throws
   ;; FileAlreadyExistsException per patient file but swallows it and
@@ -389,12 +389,12 @@
            (merge deps
                   {:run-invocation (fn [opts] (swap! run-invocation-calls inc) ((:run-invocation deps) opts))
                    :seed 1 :clinician-seed 1 :population 5 :reference-date "20260101"
-                   :output-dir out-dir}))]
+                   :out-dir out-dir}))]
     (is (result/error? r))
-    (is (= :output-dir-exists (:category r)))
+    (is (= :out-dir-exists (:category r)))
     (is (zero? @run-invocation-calls) "must fail before invoking the subprocess, not after")))
 
-(deftest generate-creates-output-dir-if-missing-test
+(deftest generate-creates-out-dir-if-missing-test
   (let [parent (temp-dir)
         out-dir (str parent "/nested/does/not/exist/yet")
         config-file (File/createTempFile "synthea" ".properties")
@@ -403,6 +403,6 @@
                           :invocation-result (ok-invocation)})
         r (generate/generate! (merge deps {:config-path (.getAbsolutePath config-file)
                                             :seed 1 :population 1 :reference-date "20260101"
-                                            :output-dir out-dir}))]
+                                            :out-dir out-dir}))]
     (is (result/ok? r))
     (is (.isDirectory (io/file out-dir)))))

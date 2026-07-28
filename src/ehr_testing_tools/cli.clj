@@ -128,21 +128,22 @@
 
 (defn mutate-command
   "`ehr corpus mutate`: applies one operator, at one locator, to every
-  matching file under :input (a file or a directory) -- *.json for a
-  :fhir operator, *.hl7 for a :v2 one, dispatched on the looked-up
-  operator's own :format -- writing each mutant alongside a lineage EDN
-  sidecar under :output-dir/lineage/ (a subdirectory, not interleaved
-  sidecars -- chosen so a downstream stage can glob :output-dir for
-  data and :output-dir/lineage for provenance without filtering one out
-  of the other). Fails fast: the first file whose locator doesn't
-  resolve, or any other per-file failure, is returned as-is and stops
-  the batch -- partial output on disk from files already processed
-  before the failure is left in place (not rolled back), since it's
-  individually valid.
+  matching file under :path (a file or a directory, positional --
+  D10) -- *.json for a :fhir operator, *.hl7 for a :v2 one, dispatched
+  on the looked-up operator's own :format -- writing each mutant
+  alongside a lineage EDN sidecar under :out-dir/lineage/ (a
+  subdirectory, not interleaved sidecars -- chosen so a downstream
+  stage can glob :out-dir for data and :out-dir/lineage for provenance
+  without filtering one out of the other). Fails fast: the first file
+  whose locator doesn't resolve, or any other per-file failure, is
+  returned as-is and stops the batch -- partial output on disk from
+  files already processed before the failure is left in place (not
+  rolled back), since it's individually valid.
 
-  Options: :input, :operator-id (a string, coerced to keyword),
-  :operator-version (default \"1\"), :locator-path, :output-dir."
-  [{:keys [input operator-id operator-version locator-path output-dir]
+  Options: :path (positional PATH, or --path -- D10), :operator-id (a
+  string, coerced to keyword), :operator-version (default \"1\"),
+  :locator-path, :out-dir."
+  [{:keys [path operator-id operator-version locator-path out-dir]
     :or {operator-version "1"}}]
   (let [operator (operators/lookup (keyword operator-id) operator-version)]
     (if-not operator
@@ -155,9 +156,9 @@
         (if-not (result/ok? locator-result)
           locator-result
           (let [locator-envelope (:payload locator-result)
-                files (files-with-extension-in input (format-file-extension format))]
-            (.mkdirs (io/file output-dir))
-            (.mkdirs (io/file output-dir "lineage"))
+                files (files-with-extension-in path (format-file-extension format))]
+            (.mkdirs (io/file out-dir))
+            (.mkdirs (io/file out-dir "lineage"))
             (loop [remaining files processed []]
               (if (empty? remaining)
                 (result/ok {:count (count processed) :files processed})
@@ -168,17 +169,22 @@
                     mutate-result
                     (let [{:keys [mutant lineage]} (:payload mutate-result)
                           basename (.getName f)]
-                      (write-mutant format (io/file output-dir basename) mutant)
-                      (spit (io/file output-dir "lineage" (str basename ".lineage.edn")) (pr-str lineage))
+                      (write-mutant format (io/file out-dir basename) mutant)
+                      (spit (io/file out-dir "lineage" (str basename ".lineage.edn")) (pr-str lineage))
                       (recur (rest remaining) (conj processed {:file basename :lineage-id (:id lineage)})))))))))))))
 
 (defn intake-command
-  "`ehr corpus intake`: catalogs :source-dir as a foreign-corpus batch
-  labeled :label. :received defaults to today (the CLI's own impure
-  boundary -- corpus.intake/intake! itself never touches the wall
-  clock, matching corpus.generate's :reference-date discipline)."
-  [{:keys [source-dir label out received]}]
-  (intake/intake! {:source-dir source-dir :source-label label :out out
+  "`ehr corpus intake`: catalogs :path (positional PATH, or --path --
+  D10, replacing --source-dir) as a foreign-corpus batch labeled
+  :label. Translated to corpus.intake/intake!'s own :source-dir
+  parameter at this CLI-shell boundary -- D10 renames the CLI surface,
+  not the capability layer's internal vocabulary (unchanged from
+  ADR-0012's :origin rename, D-c, still open and out of scope here).
+  :received defaults to today (the CLI's own impure boundary --
+  corpus.intake/intake! itself never touches the wall clock, matching
+  corpus.generate's :reference-date discipline)."
+  [{:keys [path label out received]}]
+  (intake/intake! {:source-dir path :source-label label :out out
                     :received (or received (str (LocalDate/now)))}))
 
 (defn operators-command
@@ -476,17 +482,16 @@
        (nil? group) (bare-invocation-response)
 
        :else
-       (let [;; `ehr gate fhir PATH|DIR` / `ehr gate v2 PATH|DIR`: PATH is
-             ;; a positional third arg, not a --path flag (the CLI's other
-             ;; commands are all --flag-driven, but the prompt's own gate
-             ;; CLI contract is a trailing bare path -- honored here rather
-             ;; than silently reinterpreted as --path). `ehr check DIR` has
-             ;; no sub-verb, so its positional path is the *second* arg
-             ;; (bound above as `action`), not the third. An explicit
-             ;; --path opt, if given, is NOT overridden by a positional
-             ;; path in either case.
+       (let [;; `ehr gate fhir PATH|DIR` / `ehr gate v2 PATH|DIR` /
+             ;; `ehr corpus mutate PATH` / `ehr corpus intake PATH`: PATH
+             ;; is a positional third arg, with --path as its explicit
+             ;; twin (D10) -- never overridden by a positional path when
+             ;; --path was given explicitly. `ehr check DIR` has no
+             ;; sub-verb, so its positional path is the *second* arg
+             ;; (bound above as `action`), not the third.
              opts (cond
                     (and (= group "gate") path (not (:path opts))) (assoc opts :path path)
+                    (and (= group "corpus") (#{"mutate" "intake"} action) path (not (:path opts))) (assoc opts :path path)
                     (and (= group "check") action (not (:path opts))) (assoc opts :path action)
                     :else opts)]
          (case group

@@ -139,7 +139,7 @@
        "The same catalog is readable at the shell — `ehr corpus operators`, or "
        "`ehr corpus operators --format v2` for one format — and as EDN or JSON from that verb's output.\n\n"
        "Each operator is applied by id: `--operator-id <id> --operator-version <version>`, "
-       "at one `--locator-path`, to every matching file under `--input`. "
+       "at one `--locator-path`, to every matching file under `PATH` (positional, or `--path`). "
        "See [cli.md](cli.md#ehr-corpus-mutate) for the full flag list and "
        "[use-cases.md](use-cases.md) for which task calls for which operator.\n\n"
        "Two descriptions appear per operator, and they answer different questions. "
@@ -170,9 +170,14 @@
     "_No flags._"))
 
 (defn- verb-section
-  [group-name {:keys [verb doc flags]}]
+  "A verb's own :positional/:positional-doc (D10) render the same way a
+  group's do below -- declared per-verb rather than per-group because,
+  unlike gate/check, not every verb in a group takes one."
+  [group-name {:keys [verb doc flags positional positional-doc]}]
   (str "### `ehr " group-name " " verb "`\n\n"
        doc "\n\n"
+       (when positional
+         (str "**Positional argument `" positional "`** — " positional-doc "\n\n"))
        (flags-table flags) "\n"))
 
 (defn- group-section

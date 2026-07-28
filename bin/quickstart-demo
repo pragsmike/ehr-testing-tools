@@ -66,12 +66,12 @@ expect 0 bin/ehr artifact fetch --name temurin-jdk --version 17.0.19+10
 
 expect 0 bin/ehr corpus generate --config-path config/synthea/synthea.properties \
   --seed 100 --clinician-seed 555 --population 10 \
-  --reference-date 20260101 --output-dir out/demo-corpus
+  --reference-date 20260101 --out-dir out/demo-corpus
 
 expect_eval 0 'PATIENT_FILE=$(ls out/demo-corpus/fhir/*.json | grep -v -e hospitalInformation -e practitionerInformation | head -1)'
-expect 0 bin/ehr corpus mutate --input $PATIENT_FILE \
+expect 0 bin/ehr corpus mutate $PATIENT_FILE \
   --operator-id remove-required-element --locator-path entry[0].resource.gender \
-  --output-dir out/demo-mutants
+  --out-dir out/demo-mutants
 
 expect 0 bin/ehr artifact fetch --name fhir-validator-cli --version 6.9.12
 expect 0 bin/ehr gate v2 test/fixtures/v2

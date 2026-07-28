@@ -132,7 +132,7 @@ bin/ehr artifact fetch --name temurin-jdk --version 17.0.19+10
 # reference date -- same invocation the README's quickstart uses).
 bin/ehr corpus generate --config-path config/synthea/synthea.properties \
   --seed 100 --clinician-seed 555 --population 10 \
-  --reference-date 20260101 --output-dir out/my-first-corpus
+  --reference-date 20260101 --out-dir out/my-first-corpus
 ```
 
 This lands in `out/my-first-corpus/` (gitignored — generated corpora are
@@ -151,9 +151,9 @@ locator, with a lineage record for the mutant:
 
 ```sh
 PATIENT_FILE=$(ls out/my-first-corpus/fhir/*.json | grep -v -e hospitalInformation -e practitionerInformation | head -1)
-bin/ehr corpus mutate --input $PATIENT_FILE \
+bin/ehr corpus mutate $PATIENT_FILE \
   --operator-id remove-required-element --locator-path entry[0].resource.gender \
-  --output-dir out/my-first-mutants
+  --out-dir out/my-first-mutants
 ```
 
 This lands in `out/my-first-mutants/`: the mutated bundle itself, plus

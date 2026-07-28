@@ -126,19 +126,20 @@ bin/ehr artifact fetch --name temurin-jdk --version 17.0.19+10
 # Generate a small deterministic corpus (EXP-A4's pinned settings).
 bin/ehr corpus generate --config-path config/synthea/synthea.properties \
   --seed 100 --clinician-seed 555 --population 10 \
-  --reference-date 20260101 --output-dir out/demo-corpus
+  --reference-date 20260101 --out-dir out/demo-corpus
 
 # Mutate one patient bundle: drop a required element at a named
-# locator, with a lineage record for the mutant. (mutate --input takes
-# a file or a directory of files sharing one locator's shape; the
-# corpus dir above also holds two non-patient bundles --
-# hospitalInformation*.json, practitionerInformation*.json -- so this
-# picks a patient file specifically rather than the whole directory.
-# See the full operator catalog: `bin/ehr corpus operators`.)
+# locator, with a lineage record for the mutant. (mutate's positional
+# PATH -- --path is its explicit twin -- takes a file or a directory of
+# files sharing one locator's shape; the corpus dir above also holds two
+# non-patient bundles -- hospitalInformation*.json,
+# practitionerInformation*.json -- so this picks a patient file
+# specifically rather than the whole directory. See the full operator
+# catalog: `bin/ehr corpus operators`.)
 PATIENT_FILE=$(ls out/demo-corpus/fhir/*.json | grep -v -e hospitalInformation -e practitionerInformation | head -1)
-bin/ehr corpus mutate --input $PATIENT_FILE \
+bin/ehr corpus mutate $PATIENT_FILE \
   --operator-id remove-required-element --locator-path entry[0].resource.gender \
-  --output-dir out/demo-mutants
+  --out-dir out/demo-mutants
 
 # Gate a file or directory against HL7 v2 (base-structural, HAPI) or
 # FHIR (base-spec, the official validator -- also fetches its own

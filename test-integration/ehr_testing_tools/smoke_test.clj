@@ -73,7 +73,7 @@
   (let [corpus-dir (str work-dir "/corpus")
         gen-result (generate/generate! {:config-path "config/synthea/synthea.properties"
                                          :seed 100 :clinician-seed 555 :population 1
-                                         :reference-date "20260101" :output-dir corpus-dir})]
+                                         :reference-date "20260101" :out-dir corpus-dir})]
     (if-not (result/ok? gen-result)
       (throw (ex-info "integration-smoke fixture: corpus generation failed -- run `ehr artifact fetch` for synthea/temurin-jdk first" gen-result))
       (reset! base-file (.getAbsolutePath (select-patient-file corpus-dir)))))

@@ -31,7 +31,7 @@ bin/ehr artifact fetch --name temurin-jdk --version 17.0.19+10
 # reproducible.
 bin/ehr corpus generate --config-path config/synthea/synthea.properties \
   --seed 100 --clinician-seed 555 --population 10 \
-  --reference-date 20260101 --output-dir out/demo-corpus
+  --reference-date 20260101 --out-dir out/demo-corpus
 
 # What you got: FHIR R4 bundles, and the manifest that regenerates them.
 ls out/demo-corpus/fhir
@@ -101,17 +101,17 @@ bin/ehr corpus operators --format fhir
 # A base corpus to break, if you don't already have one.
 bin/ehr corpus generate --config-path config/synthea/synthea.properties \
   --seed 100 --clinician-seed 555 --population 10 \
-  --reference-date 20260101 --output-dir out/demo-corpus
+  --reference-date 20260101 --out-dir out/demo-corpus
 
-# Pick one patient bundle. --input takes a file, or a directory of
+# Pick one patient bundle. --path takes a file, or a directory of
 # files sharing one locator's shape; a generated corpus also holds two
 # non-patient bundles, so this picks a patient file specifically.
 PATIENT_FILE=$(ls out/demo-corpus/fhir/*.json | grep -v -e hospitalInformation -e practitionerInformation | head -1)
 
 # Break exactly one element, at exactly one locator.
-bin/ehr corpus mutate --input $PATIENT_FILE \
+bin/ehr corpus mutate --path $PATIENT_FILE \
   --operator-id remove-required-element --locator-path entry[0].resource.gender \
-  --output-dir out/demo-mutants
+  --out-dir out/demo-mutants
 
 # The mutant is never written without this: the lineage record naming
 # the operator, the locator, and the constraint the result violates.
@@ -277,7 +277,7 @@ YOUR_CORPUS=test/fixtures/v2
 # Catalog it first. Intake recurses and records EVERY file it finds
 # -- content hash, sniffed format, source label, received date -- so
 # a file it can't sniff is recorded as :unknown, never skipped.
-bin/ehr corpus intake --source-dir $YOUR_CORPUS \
+bin/ehr corpus intake --path $YOUR_CORPUS \
   --label partner-export --out out/partner/intake
 cat out/partner/intake/intake-record.edn
 
@@ -640,7 +640,7 @@ VENDOR_CORPUS=test/fixtures/v2
 
 # 1. Catalog before you accept: a content hash per file, and one
 #    batch record naming the source and the date you received it.
-bin/ehr corpus intake --source-dir $VENDOR_CORPUS \
+bin/ehr corpus intake --path $VENDOR_CORPUS \
   --label acme-delivery --received 2026-07-26 \
   --out out/acceptance/intake
 cat out/acceptance/intake/intake-record.edn
@@ -724,7 +724,7 @@ flowchart LR
 # Generate once.
 bin/ehr corpus generate --config-path config/synthea/synthea.properties \
   --seed 100 --clinician-seed 555 --population 10 \
-  --reference-date 20260101 --output-dir out/repro-a
+  --reference-date 20260101 --out-dir out/repro-a
 
 # The manifest IS the reproduction package: config hash, both seeds,
 # the sha256 of the Synthea jar and of the JDK, the forced locale and
@@ -736,7 +736,7 @@ cat out/repro-a/manifest.edn
 # from an empty artifact cache.
 bin/ehr corpus generate --config-path config/synthea/synthea.properties \
   --seed 100 --clinician-seed 555 --population 10 \
-  --reference-date 20260101 --output-dir out/repro-b
+  --reference-date 20260101 --out-dir out/repro-b
 
 # Same corpus? Ask this repo's own equivalence judge, pairing files
 # by content hash.
@@ -799,15 +799,15 @@ flowchart LR
 # Generate -- the manifest is the first link.
 bin/ehr corpus generate --config-path config/synthea/synthea.properties \
   --seed 100 --clinician-seed 555 --population 10 \
-  --reference-date 20260101 --output-dir out/audit/corpus
+  --reference-date 20260101 --out-dir out/audit/corpus
 PATIENT_FILE=$(ls out/audit/corpus/fhir/*.json | grep -v -e hospitalInformation -e practitionerInformation | head -1)
 
 # Mutate -- the lineage record is the second: hash-linked to the
 # file it came from, corrected only by a new record, never by
 # editing this one.
-bin/ehr corpus mutate --input $PATIENT_FILE \
+bin/ehr corpus mutate --path $PATIENT_FILE \
   --operator-id remove-required-element --locator-path entry[0].resource.resourceType \
-  --output-dir out/audit/mutants
+  --out-dir out/audit/mutants
 
 # Gate -- the report is the third, and it is finding-level, not
 # just a verdict. The gate legitimately rejects here: that is the
@@ -889,9 +889,9 @@ bin/ehr gate v2 test/fixtures/v2/adt-a01-admit.hl7 \
   --report out/calibration/before.edn
 
 # One mutant per {operator, locator} cell you want filled in.
-bin/ehr corpus mutate --input test/fixtures/v2/adt-a01-admit.hl7 \
+bin/ehr corpus mutate --path test/fixtures/v2/adt-a01-admit.hl7 \
   --operator-id blank-required-field --locator-path MSH-9 \
-  --output-dir out/calibration/blank-required-field
+  --out-dir out/calibration/blank-required-field
 
 # Gate the mutant at the same tier. The verdict, and the finding
 # code it carries, are that cell of the table.
@@ -970,17 +970,17 @@ flowchart LR
 # A small corpus to teach from.
 bin/ehr corpus generate --config-path config/synthea/synthea.properties \
   --seed 100 --clinician-seed 555 --population 5 \
-  --reference-date 20260101 --output-dir out/teaching-corpus
+  --reference-date 20260101 --out-dir out/teaching-corpus
 PATIENT_FILE=$(ls out/teaching-corpus/fhir/*.json | grep -v -e hospitalInformation -e practitionerInformation | head -1)
 
 # One run per defect class you want to show. Each writes a mutant
 # plus a lineage record; that pair is the worked example.
-bin/ehr corpus mutate --input $PATIENT_FILE \
+bin/ehr corpus mutate --path $PATIENT_FILE \
   --operator-id malformed-date --locator-path entry[0].resource.birthDate \
-  --output-dir out/teaching/malformed-date
-bin/ehr corpus mutate --input $PATIENT_FILE \
+  --out-dir out/teaching/malformed-date
+bin/ehr corpus mutate --path $PATIENT_FILE \
   --operator-id invalid-code-value --locator-path entry[0].resource.gender \
-  --output-dir out/teaching/invalid-code-value
+  --out-dir out/teaching/invalid-code-value
 
 # The label: what was broken, where, and which constraint that violates.
 cat out/teaching/malformed-date/lineage/*.lineage.edn
