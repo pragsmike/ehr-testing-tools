@@ -1347,3 +1347,65 @@ unchanged in behavior until a build session lands. `CatalogEntry`'s
 this ADR is the forward notice that it will change, not the change
 itself.
 **Status.** Accepted (author-directed), 2026-07-27.
+
+---
+## ADR-0018 — Glossary authority placement: docs/GLOSSARY.md is the authoritative home of family conformance vocabulary
+**Context.** `ehr-testing-tools` had no glossary. Its core vocabulary —
+judge, verdict, findings, gate, baseline — was defined reader-facing
+only in the sibling `ehr-testing-sim` repo's `docs/GLOSSARY.md`
+("Conformance & gating vocabulary" block), which carried its own
+standing disclaimer that this repo's code and ADRs are authoritative if
+any detail there drifts. It already had: F30
+(`notes/facts-register.md`) records that sim's block, as of sim HEAD
+`8cbe9b421921a9a9e41228ebca1dd77b65074372`, teaches pre-R3
+`:indeterminate` semantics — describing the terminology-suppressed case
+as `:indeterminate` ("the judge examined the artifact but cannot
+classify it") rather than the current `:no-verdict(:terminology-
+suppressed)`, and omitting the mandatory `:cause` pairing entirely
+(`src/ehr_testing_tools/judge/finding.clj`'s `valid-cause-pairing?`,
+[ADR-0010](ADRs.md) as amended by R3). Sim's block also predates
+[ADR-0015](ADRs.md)'s two-baseline (legacy-floor / full-capability)
+design, describing only one baseline. This is exactly the failure mode
+a disclaimer alone cannot prevent: nothing enforces the sync it merely
+promises, so the copy furthest from the vocabulary's own registers of
+record (this repo's code and ADRs) is the one that goes stale first,
+silently.
+**Decision.** `ehr-testing-tools`'s `docs/GLOSSARY.md` is the
+authoritative home of the family's conformance-and-gating vocabulary —
+Judge, Verdict, Error, Findings, Report, Baseline, Gate, plus the
+Diagnosis and InjectChurn disambiguations, corrected against this
+repo's current code and ADRs (this session's own `docs/GLOSSARY.md`).
+`ehr-testing-sim`'s own block becomes a pointer to it, plus a handful
+of one-line local glosses too short to drift — that shrink is a
+separate, sim-side session (named, not performed, by this record) run
+after this repo's glossary is pushed. Every entry in this repo's
+glossary cites its register of record (an ADR or a namespace), so the
+glossary stays downstream of doctrine rather than becoming a second
+source of it — the same failure mode this record exists to close, not
+reopened one repo over.
+**Rejected.** *Leave the full block in sim with a sync ritual* — F30
+is direct evidence the ritual doesn't exist today and, absent
+enforcement, wouldn't reliably exist tomorrow either; a disclaimer that
+authority sits elsewhere is not the same thing as that authority
+actually being consulted before every edit. *Duplicate the full
+definitions in both repos, kept manually in sync* — two authoritative
+copies is exactly how F30 happened; a second full copy is a second
+place to forget to update, not a safeguard. *Put the glossary in the
+guide repo instead* — rejected for this specific vocabulary set: the
+guide teaches method, not this repo's own judge/gate implementation
+doctrine (verdict arms, the `:cause` pairing rule, the two-baseline
+policy) — those facts live here, in this repo's code and ADRs, and a
+glossary entry for them belongs where its register of record does. The
+guide crosswalk `ehr-testing-sim`'s docs already plan reconciles
+against *this* glossary for family conformance terms; it does not
+replace it.
+**Consequence.** `docs/GLOSSARY.md` (this session) is linked from
+`docs/README.md`, `README.md`, and `docs/positioning.md`'s Audience
+segment 5. `ehr-testing-sim`'s own "Conformance & gating vocabulary"
+block is now stale by this record's own decision, not merely by
+neglect — its shrink to a pointer is the named follow-on session (Part
+B), which this record's push unblocks. No `src/` changes; this is a
+docs-and-process record.
+**Cites.** F30 (`notes/facts-register.md`), [ADR-0010](ADRs.md) as
+amended by R3, [ADR-0013](ADRs.md), [ADR-0015](ADRs.md).
+**Status.** Accepted (author-directed), 2026-07-27.
