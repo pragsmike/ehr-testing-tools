@@ -44,10 +44,10 @@ source while writing this record: `src/ehr_testing_tools/corpus/intake.clj`,
 | D11 | **`ehr gate PATH` dispatches per file via format sniffing.** `gate v2`/`gate fhir` remain as explicit overrides; a sniff-dispatched directory containing both formats is an error naming the override, not a silent per-file split. | Reuses `corpus.intake/sniff-format` (already a heuristic, already honest about being one) instead of inventing a second sniffing mechanism; erroring on a mixed directory keeps the default path from silently doing the wrong thing. | Settled (§IX) — mixed-directory behavior itself is OPEN-1 |
 | D12 | **`corpus mutate` output and locator defaults.** `--out-dir` derives as `<input>-mutants/<operator-id>@<version>/`; a registry entry MAY declare `:default-locator` (its canonical conviction target); `--locator-path` stays required for operators without one. | Matches D9's derived-output-dir pattern; no operator's default locator is invented speculatively — declaring one is calibration work against `docs/judge-calibration.md`, done when that operator's default is actually authored. | Settled (§IX) |
 | D13 | **Three new CLI conveniences.** `ehr version` (repo version-of-record plus pinned artifact versions from the lockfile); `ehr artifact fetch --all` (every lockfile artifact in one invocation); `ehr doctor` (runs `SETUP.md`'s verification checklist as a command, exit 0/1/2 per the existing ladder). | Collapses recurring multi-step setup friction (T2's three-fetch incantation, `SETUP.md`'s manual checklist) into single commands, at the cost of one freshness obligation (`doctor`'s content must not disagree with `SETUP.md`). | Settled (§IX) |
-| D14 | **The flag-vocabulary change and SS-1's URL surface land in the same build session.** Either SS-1 grows to include D9–D13, or a UX build session lands immediately before SS-1 and SS-1 rebases onto it — proposed in `.agents/plans/corpus-foundations.md`, decided by the author at build time. `docs/use-cases.md`'s ten command strips and the quickstart are re-verified end to end in whichever session changes the surface. | Two surface-breaking changes to the same CLI in two separate sessions would cost users two migrations instead of one; this repo's readers are pre-release and there is no reason to spend that cost twice. | Settled (§IX) |
-| OPEN-1 | Mixed-format directory behavior under bare `gate` (D11): error naming the override, vs. silent per-file dispatch. | Author taste call — either is implementable; the capture session ruled the error-by-default reading in but left it open for reconsideration at build time. | **Open** |
-| OPEN-2 | Whether `corpus generate`'s zero-flag `--population` default (D9) is `5` or `1`. | Trade-off between run speed (`1`, fastest) and corpus usefulness (`5`, enough patients for a non-degenerate first run) — a build-time taste call, not a design consequence. | **Open** |
-| OPEN-3 | Whether `ehr doctor` (D13) belongs in the first release or ships after. | Sequencing convenience only — `doctor` has no design dependency on anything else in this capture. | **Open** |
+| D14 | **The flag-vocabulary change and SS-1's URL surface land in the same build session.** Either SS-1 grows to include D9–D13, or a UX build session lands immediately before SS-1 and SS-1 rebases onto it — proposed in `.agents/plans/corpus-foundations.md`, decided by the author at build time. `docs/use-cases.md`'s ten command strips and the quickstart are re-verified end to end in whichever session changes the surface. | Two surface-breaking changes to the same CLI in two separate sessions would cost users two migrations instead of one; this repo's readers are pre-release and there is no reason to spend that cost twice. | Settled (§IX) — sequencing resolved 2026-07-27 (UX-1 build): UX-1 runs as its own build session, SS-1 rebases onto its result |
+| OPEN-1 | Mixed-format directory behavior under bare `gate` (D11): error naming the override, vs. silent per-file dispatch. | Author taste call — either is implementable; the capture session ruled the error-by-default reading in but left it open for reconsideration at build time. | **Resolved 2026-07-27 (UX-1 build):** error default confirmed — a mixed-format directory under bare `gate` is an error naming the override (`gate v2`/`gate fhir`), not a silent per-file split |
+| OPEN-2 | Whether `corpus generate`'s zero-flag `--population` default (D9) is `5` or `1`. | Trade-off between run speed (`1`, fastest) and corpus usefulness (`5`, enough patients for a non-degenerate first run) — a build-time taste call, not a design consequence. | **Resolved 2026-07-27 (UX-1 build):** `--population 5` |
+| OPEN-3 | Whether `ehr doctor` (D13) belongs in the first release or ships after. | Sequencing convenience only — `doctor` has no design dependency on anything else in this capture. | **Resolved 2026-07-27 (UX-1 build):** `doctor` ships in the first release |
 
 ---
 
@@ -442,8 +442,8 @@ explicit overrides, and are what a directory mixing both formats
 requires: a sniff-dispatched directory containing both `:fhir-json` and
 `:v2-er7` files is an **error naming the override**, telling the caller
 to run `gate v2`/`gate fhir` explicitly rather than silently splitting
-the directory per file. OPEN-1 records that the author may prefer the
-silent-split reading instead; not resolved here.
+the directory per file. OPEN-1 resolved 2026-07-27 (UX-1 build): the
+error default is confirmed, not the silent-split reading.
 
 ### IX.5 `corpus mutate` defaults (D12)
 
@@ -474,8 +474,8 @@ any operator without a declared default.
   existing ladder (`cli/help.clj`'s `exit-codes`). `doctor`'s checklist
   content is drawn from `SETUP.md`, not authored independently, so the
   two cannot silently disagree — the same freshness obligation `docs/
-  cli.md` already owes `cli-spec` (OPEN-3: whether `doctor` ships in the
-  first release or after).
+  cli.md` already owes `cli-spec` (OPEN-3 resolved 2026-07-27, UX-1
+  build: `doctor` ships in the first release).
 
 ### IX.7 Sequencing with SS-1 (D14)
 
@@ -504,10 +504,12 @@ command.
   written resource claim?
 - **D-c** — whether the `:origin` rename (D6) ships with the first
   source build session (SS-1) or its own micro-session.
-- **OPEN-1** — mixed-format directory behavior under bare `gate` (D11):
-  error naming the override, vs. silent per-file dispatch. Author taste
-  call at build time.
-- **OPEN-2** — whether `corpus generate`'s zero-flag `--population`
-  default (D9) is `5` or `1`. Speed vs. corpus-usefulness trade-off.
-- **OPEN-3** — whether `ehr doctor` (D13) belongs in the first release
-  or ships after. Sequencing convenience only.
+- ~~**OPEN-1** — mixed-format directory behavior under bare `gate`
+  (D11).~~ **Resolved 2026-07-27 (UX-1 build)** — see the Decision
+  Register above.
+- ~~**OPEN-2** — whether `corpus generate`'s zero-flag `--population`
+  default (D9) is `5` or `1`.~~ **Resolved 2026-07-27 (UX-1 build)** —
+  see the Decision Register above.
+- ~~**OPEN-3** — whether `ehr doctor` (D13) belongs in the first
+  release or ships after.~~ **Resolved 2026-07-27 (UX-1 build)** — see
+  the Decision Register above.
