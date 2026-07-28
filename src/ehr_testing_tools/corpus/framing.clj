@@ -137,6 +137,39 @@
   [items]
   (result/ok (concat-bytes (interleave items (repeat message-separator)))))
 
+;; ---- :mllp -- the 0x0B / 0x1C 0x0D envelope, byte-exact (ruling 1,
+;; D2 Part II). Transport (the wire, nc) is explicitly out of scope --
+;; this codec only frames/unframes bytes this repo already has in
+;; hand, on either side of that external subprocess. Messages
+;; concatenate directly, no filler bytes between one message's 0x1C
+;; 0x0D and the next message's own 0x0B. ----
+
+(def ^:private mllp-start (byte 0x0B))
+(def ^:private mllp-end (byte-array [(byte 0x1C) (byte 0x0D)]))
+
+(defn- decode-mllp
+  [^bytes bs]
+  (let [n (alength bs)]
+    (loop [pos 0 acc []]
+      (cond
+        (= pos n) (result/ok acc)
+
+        (not= mllp-start (aget bs pos))
+        (result/rejected :malformed-mllp-frame
+                          {:pos pos :hint "expected 0x0B start-of-block"})
+
+        :else
+        (let [end-idx (index-of-bytes bs mllp-end (inc pos))]
+          (if (neg? end-idx)
+            (result/rejected :malformed-mllp-frame
+                              {:pos pos :hint "no 0x1C 0x0D end-of-block found"})
+            (recur (+ end-idx (alength mllp-end))
+                   (conj acc (slice bs (inc pos) end-idx)))))))))
+
+(defn- encode-mllp
+  [items]
+  (result/ok (concat-bytes (mapcat (fn [item] [(byte-array [mllp-start]) item mllp-end]) items))))
+
 ;; ---- :ndjson -- one JSON value per LF-terminated line, byte-exact
 ;; (ruling 1). Every item, including the last, is followed by its own
 ;; trailing LF on encode -- the canonical NDJSON convention -- so
@@ -198,7 +231,8 @@
     :file-per-item (decode-file-per-item bs)
     :er7-multi (decode-er7-multi bs)
     :ndjson (decode-ndjson bs)
-    :bundle-entries (decode-bundle-entries bs)))
+    :bundle-entries (decode-bundle-entries bs)
+    :mllp (decode-mllp bs)))
 
 (defn encode
   "The inverse of decode: framing x items -> result/ok a byte array."
@@ -207,4 +241,5 @@
     :file-per-item (encode-file-per-item items)
     :er7-multi (encode-er7-multi items)
     :ndjson (encode-ndjson items)
-    :bundle-entries (encode-bundle-entries items)))
+    :bundle-entries (encode-bundle-entries items)
+    :mllp (encode-mllp items)))

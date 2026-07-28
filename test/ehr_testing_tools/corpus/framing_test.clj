@@ -1,8 +1,7 @@
 (ns ehr-testing-tools.corpus.framing-test
-  "Test-first (ruling 1, SS-3 Step 2): written before ehr-testing-tools.
-  corpus.framing existed. :file-per-item and :er7-multi only this
-  step -- :ndjson/:bundle-entries (Step 3) and :mllp (Step 4) grow
-  `decode`/`encode`'s own case dispatch in their own commits."
+  "Test-first (ruling 1, SS-3): written before ehr-testing-tools.corpus.
+  framing existed, then grown one codec per commit (Steps 2-4):
+  :file-per-item/:er7-multi, then :ndjson/:bundle-entries, then :mllp."
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.test.check :as tc]
             [clojure.test.check.generators :as gen]
@@ -205,3 +204,55 @@
     (let [r (framing/decode :bundle-entries (byte-array (map byte "{\"resourceType\":\"Bundle\"}")))]
       (is (result/rejected? r))
       (is (= :malformed-bundle-entries-frame (:category r))))))
+
+;; ---- :mllp -- the 0x0B / 0x1C 0x0D envelope, byte-exact (ruling 1;
+;; Step 4) ----
+
+(def ^:private mllp-body-byte-gen
+  "Any byte except 0x0B (VT, the start marker) and 0x1C (FS, the first
+  end-marker byte) -- content containing either would be ambiguous
+  with the envelope itself; every other byte, including CR (0x0D), is
+  fair game."
+  (gen/such-that #(not (contains? #{0x0B 0x1C} (bit-and 0xff %))) gen/byte))
+
+(def ^:private mllp-message-gen
+  (gen/fmap byte-array (gen/vector mllp-body-byte-gen 0 40)))
+
+(deftest mllp-round-trip-property-test
+  (let [check-result
+        (tc/quick-check 100
+          (prop/for-all [items (gen/vector mllp-message-gen 0 8)]
+            (let [encoded (framing/encode :mllp items)]
+              (and (result/ok? encoded)
+                   (let [decoded (framing/decode :mllp (:payload encoded))]
+                     (and (result/ok? decoded)
+                          (= (count items) (count (:payload decoded)))
+                          (every? true? (map #(Arrays/equals ^bytes %1 ^bytes %2)
+                                              items (:payload decoded)))))))))]
+    (is (:pass? check-result) (str check-result))))
+
+(deftest mllp-concrete-example-test
+  (let [items [(byte-array (map byte "MSH|^~\\&|A")) (byte-array (map byte "MSH|^~\\&|B"))]
+        encoded (:payload (framing/encode :mllp items))]
+    (is (= (concat [0x0B] (map int "MSH|^~\\&|A") [0x1C 0x0D]
+                   [0x0B] (map int "MSH|^~\\&|B") [0x1C 0x0D])
+           (map #(bit-and 0xff %) encoded)))
+    (let [decoded (:payload (framing/decode :mllp encoded))]
+      (is (every? true? (map #(Arrays/equals ^bytes %1 ^bytes %2) items decoded))))))
+
+(deftest mllp-charset-law-test
+  (let [msg (byte-array (concat (map byte "A|") [latin1-o-umlaut] (map byte "|B")))
+        framed (:payload (framing/encode :mllp [msg]))
+        decoded (:payload (framing/decode :mllp framed))]
+    (is (= 1 (count decoded)))
+    (is (Arrays/equals ^bytes msg ^bytes (first decoded)))))
+
+(deftest mllp-malformed-input-test
+  (testing "doesn't start with 0x0B"
+    (let [r (framing/decode :mllp (byte-array (map byte "no vt here")))]
+      (is (result/rejected? r))
+      (is (= :malformed-mllp-frame (:category r)))))
+  (testing "no end-of-block marker"
+    (let [r (framing/decode :mllp (byte-array (cons 0x0B (map int "unterminated"))))]
+      (is (result/rejected? r))
+      (is (= :malformed-mllp-frame (:category r))))))
