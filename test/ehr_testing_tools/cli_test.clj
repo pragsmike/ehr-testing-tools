@@ -83,7 +83,7 @@
 (deftest dispatch-unknown-group-names-the-valid-groups-test
   (let [r (cli/dispatch ["bogus" "thing"] {} {})]
     (is (= :unknown-command (:category r)) "category survives the payload extension")
-    (is (= #{"artifact" "corpus" "gate" "check"} (set (:valid-options (:payload r)))))
+    (is (= #{"artifact" "corpus" "gate" "check" "version" "doctor"} (set (:valid-options (:payload r)))))
     (is (= "run: ehr help" (:hint (:payload r))))))
 
 (deftest dispatch-unknown-artifact-action-names-fetch-and-resolve-test
@@ -153,6 +153,29 @@
                          {:fetch-fn (fn [opts] (reset! called opts) (result/ok {:cached true}))})]
     (is (result/ok? r))
     (is (= {:name "synthea" :version "4.0.0"} @called))))
+
+(deftest dispatch-routes-artifact-fetch-all-test
+  (let [fetch-called (atom false) fetch-all-called (atom nil)
+        r (cli/dispatch ["artifact" "fetch"] {:all true}
+                         {:fetch-fn (fn [_] (reset! fetch-called true) (result/ok {}))
+                          :fetch-all-fn (fn [opts] (reset! fetch-all-called opts) (result/ok {:results []}))})]
+    (is (result/ok? r))
+    (is (= {:all true} @fetch-all-called))
+    (is (not @fetch-called) "must not also call the single-artifact fetch")))
+
+(deftest dispatch-routes-version-test
+  (let [called (atom nil)
+        r (cli/dispatch ["version"] {}
+                         {:version-fn (fn [opts] (reset! called opts) (result/ok {:identity "pre-release"}))})]
+    (is (result/ok? r))
+    (is (some? @called))))
+
+(deftest dispatch-routes-doctor-test
+  (let [called (atom nil)
+        r (cli/dispatch ["doctor"] {}
+                         {:doctor-fn (fn [opts] (reset! called opts) (result/ok {:checks []}))})]
+    (is (result/ok? r))
+    (is (some? @called))))
 
 (deftest dispatch-routes-artifact-resolve-test
   (let [called (atom nil)
@@ -301,6 +324,155 @@
   (let [r (cli/resolve-command {:name "synthea" :version "4.0.0" :lockfile "/no/such/lockfile.edn"})]
     (is (result/error? r))
     (is (= :not-found (:category r)))))
+
+;; ---- D13: ehr artifact fetch --all (docs/source-sink-design.md Part
+;; IX.6, ADR-0019) -- every lockfile entry, one failure never masking
+;; another, exit worst-of. ----
+
+(deftest fetch-all-command-fetches-every-lockfile-entry-test
+  (let [art1 (assoc (sample-artifact) :name "synthea")
+        art2 (assoc (sample-artifact) :name "temurin-jdk")
+        lockfile (temp-lockfile [art1 art2])
+        called (atom [])]
+    (with-redefs [artifact/fetch (fn [a] (swap! called conj a) (result/ok {:cached true}))]
+      (let [r (cli/fetch-all-command {:lockfile lockfile})]
+        (is (result/ok? r))
+        (is (= [art1 art2] @called))
+        (is (= 2 (count (:results (:payload r)))))))))
+
+(deftest fetch-all-command-one-failure-does-not-abort-the-rest-test
+  (let [art1 (assoc (sample-artifact) :name "will-fail")
+        art2 (assoc (sample-artifact) :name "will-succeed")
+        lockfile (temp-lockfile [art1 art2])
+        called (atom [])]
+    (with-redefs [artifact/fetch (fn [a]
+                                   (swap! called conj (:name a))
+                                   (if (= "will-fail" (:name a))
+                                     (result/error :download-failed {})
+                                     (result/ok {:cached true})))]
+      (let [r (cli/fetch-all-command {:lockfile lockfile})]
+        (is (= ["will-fail" "will-succeed"] @called)
+            "every artifact is attempted regardless of an earlier failure")
+        (is (result/error? r) "worst-of: any error makes the aggregate an error")
+        (is (= :some-fetches-failed (:category r)))))))
+
+(deftest fetch-all-command-worst-of-prefers-error-over-rejected-test
+  (let [art1 (assoc (sample-artifact) :name "rejected-one")
+        art2 (assoc (sample-artifact) :name "error-one")
+        lockfile (temp-lockfile [art1 art2])]
+    (with-redefs [artifact/fetch (fn [a]
+                                   (if (= "rejected-one" (:name a))
+                                     (result/rejected :hash-mismatch {})
+                                     (result/error :download-failed {})))]
+      (let [r (cli/fetch-all-command {:lockfile lockfile})]
+        (is (result/error? r) "a single error outranks any number of rejections")))))
+
+(deftest fetch-all-command-propagates-lockfile-read-failure-test
+  (let [r (cli/fetch-all-command {:lockfile "/no/such/lockfile.edn"})]
+    (is (result/error? r))
+    (is (= :not-found (:category r)))))
+
+;; ---- D13: ehr version -- honestly-pre-release identity, never a
+;; fabricated semver. ----
+
+(deftest version-command-reports-pre-release-identity-and-artifacts-test
+  (let [art (sample-artifact)
+        lockfile (temp-lockfile [art])
+        r (cli/version-command {:lockfile lockfile :git-describe-fn (fn [] "abc1234")})]
+    (is (result/ok? r))
+    (is (= "pre-release" (:identity (:payload r))))
+    (is (= "abc1234" (:git (:payload r))))
+    (is (= [{:name (:name art) :version (:version art)}] (:artifacts (:payload r))))))
+
+(deftest version-command-real-git-describe-never-throws-test
+  (is (string? (cli/real-git-describe))))
+
+(deftest version-command-propagates-lockfile-read-failure-test
+  (let [r (cli/version-command {:lockfile "/no/such/lockfile.edn"})]
+    (is (result/error? r))
+    (is (= :not-found (:category r)))))
+
+;; ---- D13: ehr doctor -- SETUP.md's verification checklist as checks,
+;; hermetic via injected fakes (the artifact_test.clj pattern). ----
+
+(deftest doctor-command-all-checks-pass-is-ok-test
+  (let [art (sample-artifact)
+        lockfile (temp-lockfile [art])
+        r (cli/doctor-command
+           {:lockfile lockfile
+            :resolve-java-bin-fn (fn [_artifacts _opts] (result/ok {:path "/fake/java"}))
+            :resolve-artifact-fn (fn [_artifacts _name _version] (result/ok {:path "/fake/cached"}))
+            :git-config-fn (fn [_key] ".githooks")
+            :os-name-fn (fn [] "Linux")})]
+    (is (result/ok? r))
+    (is (every? #(= :pass (:status %)) (:checks (:payload r))))))
+
+(deftest doctor-command-any-failing-check-is-rejected-not-error-test
+  (let [art (sample-artifact)
+        lockfile (temp-lockfile [art])
+        r (cli/doctor-command
+           {:lockfile lockfile
+            :resolve-java-bin-fn (fn [_artifacts _opts] (result/rejected :not-cached {}))
+            :resolve-artifact-fn (fn [_artifacts _name _version] (result/ok {:path "/fake/cached"}))
+            :git-config-fn (fn [_key] ".githooks")
+            :os-name-fn (fn [] "Linux")})]
+    (is (result/rejected? r))
+    (is (= :doctor-checks-failed (:category r)))
+    (is (= 1 (cli/result->exit-code r)))
+    (is (= :fail (:status (first (:checks (:payload r))))))))
+
+(deftest doctor-command-uncached-artifact-fails-the-cache-check-test
+  (let [art (sample-artifact)
+        lockfile (temp-lockfile [art])
+        r (cli/doctor-command
+           {:lockfile lockfile
+            :resolve-java-bin-fn (fn [_artifacts _opts] (result/ok {:path "/fake/java"}))
+            :resolve-artifact-fn (fn [_artifacts _name _version] (result/rejected :not-cached {}))
+            :git-config-fn (fn [_key] ".githooks")
+            :os-name-fn (fn [] "Linux")})]
+    (is (result/rejected? r))
+    (let [cache-check (first (filter #(clojure.string/includes? (:name %) "artifact cache") (:checks (:payload r))))]
+      (is (= :fail (:status cache-check))))))
+
+(deftest doctor-command-unwired-hooks-path-fails-that-check-test
+  (let [art (sample-artifact)
+        lockfile (temp-lockfile [art])
+        r (cli/doctor-command
+           {:lockfile lockfile
+            :resolve-java-bin-fn (fn [_artifacts _opts] (result/ok {:path "/fake/java"}))
+            :resolve-artifact-fn (fn [_artifacts _name _version] (result/ok {:path "/fake/cached"}))
+            :git-config-fn (fn [_key] nil)
+            :os-name-fn (fn [] "Linux")})]
+    (is (result/rejected? r))
+    (let [hooks-check (first (filter #(clojure.string/includes? (:name %) "hooksPath") (:checks (:payload r))))]
+      (is (= :fail (:status hooks-check))))))
+
+(deftest doctor-command-native-windows-fails-the-platform-check-test
+  (let [art (sample-artifact)
+        lockfile (temp-lockfile [art])
+        r (cli/doctor-command
+           {:lockfile lockfile
+            :resolve-java-bin-fn (fn [_artifacts _opts] (result/ok {:path "/fake/java"}))
+            :resolve-artifact-fn (fn [_artifacts _name _version] (result/ok {:path "/fake/cached"}))
+            :git-config-fn (fn [_key] ".githooks")
+            :os-name-fn (fn [] "Windows 11")})]
+    (is (result/rejected? r))
+    (let [platform-check (first (filter #(= "platform" (:name %)) (:checks (:payload r))))]
+      (is (= :fail (:status platform-check))))))
+
+(deftest doctor-command-cannot-even-check-is-error-not-rejected-test
+  (let [r (cli/doctor-command {:lockfile "/no/such/lockfile.edn"})]
+    (is (result/error? r))
+    (is (= :not-found (:category r)))
+    (is (= 2 (cli/result->exit-code r)))))
+
+(deftest doctor-command-real-fns-never-throw-test
+  ;; The real, non-injected fns (git config/os name) must never throw --
+  ;; a doctor that crashes trying to check something is worse than one
+  ;; that reports it honestly.
+  (is (string? (cli/real-os-name)))
+  (is (or (nil? (cli/real-git-config "core.hooksPath"))
+          (string? (cli/real-git-config "core.hooksPath")))))
 
 ;; ---- mutate-command (`ehr corpus mutate`): input file/dir, operator
 ;; id, locator, output dir -> writes mutant JSON files plus lineage

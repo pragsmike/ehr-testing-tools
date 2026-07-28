@@ -26,7 +26,8 @@
             [ehr-testing-tools.judge.v2 :as gate-v2]
             [ehr-testing-tools.judge.fhir :as gate-fhir]
             [ehr-testing-tools.judge.report :as report])
-  (:import [java.time LocalDate]))
+  (:import [java.time LocalDate]
+           [java.lang ProcessBuilder$Redirect]))
 
 (def cli-spec
   {:seed {:coerce :long}
@@ -37,7 +38,8 @@
    ;; args downstream in corpus.generate/invocation).
    :reference-date {:coerce :string}
    :version {:coerce :string}
-   :no-verdict-cache {:coerce :boolean}})
+   :no-verdict-cache {:coerce :boolean}
+   :all {:coerce :boolean}})
 
 (defn parse
   "Parses raw CLI args into {:args [positional...] :opts {...}}."
@@ -85,12 +87,188 @@
           (result/rejected :unknown-artifact {:name name :version version})
           (artifact/fetch artifact-entry))))))
 
+(defn- worst-fetch-result
+  "Folds a batch of per-artifact fetch Results by severity -- ok <
+  rejected < error -- so one failing fetch never masks a worse one
+  elsewhere in the batch (D13: 'exit worst-of'). :results always
+  carries every individual outcome, in lockfile order, regardless of
+  which status wins."
+  [entries results]
+  (let [labeled (mapv (fn [entry r] {:name (:name entry) :version (:version entry) :result r})
+                       entries results)]
+    (cond
+      (some result/error? results) (result/error :some-fetches-failed {:results labeled})
+      (some result/rejected? results) (result/rejected :some-fetches-rejected {:results labeled})
+      :else (result/ok {:results labeled}))))
+
+(defn fetch-all-command
+  "`ehr artifact fetch --all`: fetches every artifact the lockfile
+  names, one invocation instead of SETUP.md's own multi-fetch
+  walkthrough (D13). One failing artifact does not abort the rest --
+  every entry is attempted, and the aggregate result is the worst-of
+  every individual outcome."
+  [{:keys [lockfile]}]
+  (let [artifacts-result (default-lockfile-artifacts lockfile)]
+    (if-not (result/ok? artifacts-result)
+      artifacts-result
+      (let [entries (:payload artifacts-result)]
+        (worst-fetch-result entries (mapv artifact/fetch entries))))))
+
 (defn resolve-command
   [{:keys [name version lockfile]}]
   (let [artifacts-result (default-lockfile-artifacts lockfile)]
     (if-not (result/ok? artifacts-result)
       artifacts-result
       (artifact/resolve (:payload artifacts-result) name version))))
+
+;; ---- D13 (docs/source-sink-design.md Part IX.6, ADR-0019): `ehr
+;; version` -- an honestly-pre-release identity, never a fabricated
+;; semver. ----
+
+(def repo-identity
+  "Never a semver -- this repo is pre-release (ADR-0008): no version
+  tag has been cut. \"pre-release\" is the identity claim itself, not a
+  placeholder for one; a real semver arrives with the first release
+  tag, a separate, later change."
+  "pre-release")
+
+(defn real-git-describe
+  "`git describe --always --dirty --long`, or \"unknown\" if git isn't
+  on PATH, this isn't a git checkout, or the repo has no commits yet --
+  `ehr version` must never fail just because it can't get git info.
+  Reads stdout only, never merged with stderr: a warning git prints
+  there (e.g. this WSL/NTFS checkout's own stale-fsmonitor warning,
+  AUTHORS-GUIDE.md's documented workaround) must never leak into the
+  reported identity string."
+  []
+  (try
+    (let [pb (ProcessBuilder. (into-array String ["git" "describe" "--always" "--dirty" "--long"]))]
+      (.redirectError pb ProcessBuilder$Redirect/DISCARD)
+      (let [proc (.start pb)
+            output (str/trim (slurp (.getInputStream proc)))]
+        (if (and (zero? (.waitFor proc)) (seq output)) output "unknown")))
+    (catch Exception _ "unknown")))
+
+(defn version-command
+  "`ehr version`: this repo's own pre-release identity (never a
+  fabricated semver, D13) plus every pinned artifact's name@version
+  read from the lockfile -- ADR-0005's registry, the same source
+  `ehr artifact fetch`/`resolve` already read from."
+  [{:keys [lockfile git-describe-fn] :or {git-describe-fn real-git-describe}}]
+  (let [artifacts-result (default-lockfile-artifacts lockfile)]
+    (if-not (result/ok? artifacts-result)
+      artifacts-result
+      (result/ok {:identity repo-identity
+                  :git (git-describe-fn)
+                  :artifacts (mapv #(select-keys % [:name :version]) (:payload artifacts-result))}))))
+
+;; ---- D13 (docs/source-sink-design.md Part IX.6, ADR-0019): `ehr
+;; doctor` -- runs SETUP.md's own verification ladder as checks.
+;;
+;; MAINTENANCE NOTE (the NAV-1 index pattern, notes/ADRs.md's own table
+;; preamble): this checklist is hand-maintained against SETUP.md's
+;; "Verification ladder" (section 3) and prerequisites table (section
+;; 1) -- not enforced by a lint or CI check. Whenever SETUP.md's
+;; prerequisites or verification steps change, update the checks below
+;; in the SAME commit (and vice versa) -- the two must never silently
+;; disagree about what "your setup is working" means.
+
+(defn real-git-config
+  "`git config --get key`, or nil if unset, git isn't on PATH, or
+  this isn't a git checkout. Reads stdout only -- see real-git-describe's
+  own docstring for why stderr is never merged in."
+  [key]
+  (try
+    (let [pb (ProcessBuilder. (into-array String ["git" "config" "--get" key]))]
+      (.redirectError pb ProcessBuilder$Redirect/DISCARD)
+      (let [proc (.start pb)
+            output (str/trim (slurp (.getInputStream proc)))]
+        (when (and (zero? (.waitFor proc)) (seq output)) output)))
+    (catch Exception _ nil)))
+
+(defn real-os-name
+  []
+  (System/getProperty "os.name"))
+
+(defn- check-java-resolution
+  "SETUP.md section 1's JDK row, as a check: Synthea's own JVM must
+  resolve through the artifact registry (never PATH), matching
+  corpus.generate/resolve-java-bin's own contract."
+  [artifacts resolve-java-bin-fn]
+  (let [r (resolve-java-bin-fn artifacts {})]
+    {:name "java resolution (via the artifact registry)"
+     :status (if (result/ok? r) :pass :fail)
+     :detail (if (result/ok? r)
+               (str "resolved: " (:path (:payload r)))
+               (str "not resolved -- run: ehr artifact fetch --name "
+                    generate/jdk-name " --version " generate/jdk-version))}))
+
+(defn- check-artifact-cache
+  "SETUP.md section 4's walkthrough assumes every lockfile artifact is
+  already cached -- this checks that directly, per entry, rather than
+  waiting for a mid-walkthrough failure to reveal it."
+  [artifacts resolve-artifact-fn]
+  (let [per (map (fn [a] [a (resolve-artifact-fn artifacts (:name a) (:version a))]) artifacts)
+        failing (remove (fn [[_ r]] (result/ok? r)) per)]
+    {:name "artifact cache (per lockfile entry)"
+     :status (if (empty? failing) :pass :fail)
+     :detail (if (empty? failing)
+               (str (count artifacts) " artifact(s) cached")
+               (str (count failing) " not cached: "
+                    (str/join ", " (map (fn [[a _]] (str (:name a) "@" (:version a))) failing))
+                    " -- run: ehr artifact fetch --all"))}))
+
+(defn- check-hooks-path
+  "AGENTS.md's WSL-only-commit rule is hook-enforced, but only once
+  `git config core.hooksPath .githooks` has been run for this clone
+  (SETUP.md section 1's maintainer-tools row) -- contribution-session
+  setup, not required to use the tools, but checked here since a
+  doctor that can't tell you why `git commit` didn't get checked is
+  less useful than one that can."
+  [git-config-fn]
+  (let [v (git-config-fn "core.hooksPath")]
+    {:name "git hooksPath wiring (contribution sessions only)"
+     :status (if (= ".githooks" v) :pass :fail)
+     :detail (if (= ".githooks" v)
+               "core.hooksPath = .githooks"
+               "not configured -- run: git config core.hooksPath .githooks (only needed to contribute to this repo)")}))
+
+(defn- check-platform
+  "SETUP.md section 2: native Windows is not supported (no make/bash);
+  WSL2, Linux, and macOS all are. Meaningful only on Windows -- this
+  check's :fail arm is the one place doctor can say so before a reader
+  hits `make: command not found` themselves."
+  [os-name-fn]
+  (let [os (os-name-fn)]
+    {:name "platform"
+     :status (if (str/includes? (str/lower-case os) "windows") :fail :pass)
+     :detail (if (str/includes? (str/lower-case os) "windows")
+               (str os " -- native Windows is not supported; use WSL2 (SETUP.md section 2)")
+               os)}))
+
+(defn doctor-command
+  "`ehr doctor`: SETUP.md's verification checklist as a command.
+  0 = every check passed; 1 = at least one check failed (a real,
+  actionable gap); 2 = doctor couldn't even read the lockfile to know
+  what to check (the same operational-error class as every other
+  lockfile-reading command here)."
+  [{:keys [lockfile resolve-java-bin-fn resolve-artifact-fn git-config-fn os-name-fn]
+    :or {resolve-java-bin-fn generate/resolve-java-bin
+         resolve-artifact-fn artifact/resolve
+         git-config-fn real-git-config
+         os-name-fn real-os-name}}]
+  (let [artifacts-result (default-lockfile-artifacts lockfile)]
+    (if-not (result/ok? artifacts-result)
+      artifacts-result
+      (let [artifacts (:payload artifacts-result)
+            checks [(check-java-resolution artifacts resolve-java-bin-fn)
+                    (check-artifact-cache artifacts resolve-artifact-fn)
+                    (check-hooks-path git-config-fn)
+                    (check-platform os-name-fn)]
+            failing (filter #(= :fail (:status %)) checks)]
+        (if (empty? failing)
+          (result/ok {:checks checks})
+          (result/rejected :doctor-checks-failed {:checks checks}))))))
 
 (def ^:private format-file-extension
   "The file extension `ehr corpus mutate` selects :input files by, and
@@ -556,9 +734,10 @@
   command -- see `help-response`/`bare-invocation-response` and the ns
   docstring's EDN-out exception."
   ([args opts] (dispatch args opts {}))
-  ([args opts {:keys [fetch-fn resolve-fn generate-fn mutate-fn intake-fn operators-fn
-                       gate-v2-fn gate-fhir-fn check-fn]
+  ([args opts {:keys [fetch-fn fetch-all-fn resolve-fn generate-fn mutate-fn intake-fn operators-fn
+                       gate-v2-fn gate-fhir-fn check-fn version-fn doctor-fn]
                :or {fetch-fn fetch-command
+                    fetch-all-fn fetch-all-command
                     resolve-fn resolve-command
                     generate-fn generate/generate!
                     mutate-fn mutate-command
@@ -566,7 +745,9 @@
                     operators-fn operators-command
                     gate-v2-fn gate-v2-command
                     gate-fhir-fn fhir-gate-command
-                    check-fn check-command}}]
+                    check-fn check-command
+                    version-fn version-command
+                    doctor-fn doctor-command}}]
    (let [[group action path] args]
      (cond
        (:help opts) (help-response group)
@@ -588,7 +769,7 @@
                     :else opts)]
          (case group
            "artifact" (case action
-                        "fetch" (fetch-fn opts)
+                        "fetch" (if (:all opts) (fetch-all-fn opts) (fetch-fn opts))
                         "resolve" (resolve-fn opts)
                         (unknown-command-error args (help/verb-names (help/find-group help/cli-spec "artifact"))))
            "corpus" (case action
@@ -610,6 +791,8 @@
                     :else
                     (unknown-command-error args (help/verb-names (help/find-group help/cli-spec "gate"))))
            "check" (check-fn opts)
+           "version" (version-fn opts)
+           "doctor" (doctor-fn opts)
            (unknown-command-error args (help/group-names help/cli-spec))))))))
 
 (defn render

@@ -43,7 +43,8 @@
      :doc "Fetch and resolve locked external engine/tool artifacts (ADR-0005)."
      :verbs
      [{:verb "fetch" :doc "Fetch a locked artifact into the local content-addressed cache."
-       :flags artifact-flags}
+       :flags (into artifact-flags
+                    [{:flag "--all" :doc "fetch every artifact the lockfile names (D13); collapses SETUP.md's multi-fetch walkthrough into one command -- --name/--version are ignored when given. One failing artifact does not abort the rest; the aggregate result is the worst-of every individual outcome." :default "false"}])}
       {:verb "resolve" :doc "Resolve an already-fetched artifact to a filesystem path."
        :flags artifact-flags}]}
 
@@ -109,7 +110,15 @@
              {:flag "--assertions" :doc "path to an EDN file of assertion maps" :default "[{:kind :matches-expected}] when --expected is given"}
              {:flag "--canonicalizers" :doc "ordered \"id@version,id2@version2\" list" :default "none"}
              {:flag "--pair-by" :doc "\"path\" or \"hash\"" :default "path"}
-             {:flag "--report" :doc "write the report EDN to this path"}]}]})
+             {:flag "--report" :doc "write the report EDN to this path"}]}
+
+    {:group "version"
+     :doc "Prints this repo's own honestly-pre-release identity (never a fabricated semver, D13) plus every pinned artifact's name@version from the lockfile."
+     :flags [{:flag "--lockfile" :doc "path to the lockfile" :default "artifacts.lock.edn"}]}
+
+    {:group "doctor"
+     :doc "Runs SETUP.md's verification checklist as checks (D13): java resolution via the artifact registry, artifact cache presence per lockfile entry, git hooksPath wiring, and platform support. Exit 0 every check passed; 1 at least one failed; 2 couldn't even read the lockfile to know what to check."
+     :flags [{:flag "--lockfile" :doc "path to the lockfile" :default "artifacts.lock.edn"}]}]})
 
 (defn group-names
   "Every group name in the spec, in declared order."

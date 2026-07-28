@@ -21,6 +21,8 @@ ehr <group> [<verb>] [flags]
 | [`corpus`](#ehr-corpus) | Generate, mutate, intake, and inspect synthetic corpora. |
 | [`gate`](#ehr-gate) | Conformance-gate a file or directory against HL7 v2 or FHIR. Bare `ehr gate PATH` (no v2/fhir verb) sniffs the format via corpus.intake/sniff-format and dispatches (D11, ADR-0019); a directory mixing both formats, or containing a file the sniffer can't classify, is an error naming the explicit override (`gate v2 PATH` / `gate fhir PATH`), never a silent per-file split. |
 | [`check`](#ehr-check) | Check a candidate corpus against an expected corpus and/or explicit per-file assertions -- the corpus's second judge, alongside Gate. |
+| [`version`](#ehr-version) | Prints this repo's own honestly-pre-release identity (never a fabricated semver, D13) plus every pinned artifact's name@version from the lockfile. |
+| [`doctor`](#ehr-doctor) | Runs SETUP.md's verification checklist as checks (D13): java resolution via the artifact registry, artifact cache presence per lockfile entry, git hooksPath wiring, and platform support. Exit 0 every check passed; 1 at least one failed; 2 couldn't even read the lockfile to know what to check. |
 
 ## Global flags
 
@@ -55,6 +57,7 @@ Fetch a locked artifact into the local content-addressed cache.
 | `--name` | — | artifact name, e.g. "synthea" |
 | `--version` | — | artifact version, e.g. "4.0.0" |
 | `--lockfile` | `artifacts.lock.edn` | path to the lockfile |
+| `--all` | `false` | fetch every artifact the lockfile names (D13); collapses SETUP.md's multi-fetch walkthrough into one command -- --name/--version are ignored when given. One failing artifact does not abort the rest; the aggregate result is the worst-of every individual outcome. |
 
 ### `ehr artifact resolve`
 
@@ -168,3 +171,19 @@ Check a candidate corpus against an expected corpus and/or explicit per-file ass
 | `--canonicalizers` | `none` | ordered "id@version,id2@version2" list |
 | `--pair-by` | `path` | "path" or "hash" |
 | `--report` | — | write the report EDN to this path |
+
+## `ehr version`
+
+Prints this repo's own honestly-pre-release identity (never a fabricated semver, D13) plus every pinned artifact's name@version from the lockfile.
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--lockfile` | `artifacts.lock.edn` | path to the lockfile |
+
+## `ehr doctor`
+
+Runs SETUP.md's verification checklist as checks (D13): java resolution via the artifact registry, artifact cache presence per lockfile entry, git hooksPath wiring, and platform support. Exit 0 every check passed; 1 at least one failed; 2 couldn't even read the lockfile to know what to check.
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--lockfile` | `artifacts.lock.edn` | path to the lockfile |

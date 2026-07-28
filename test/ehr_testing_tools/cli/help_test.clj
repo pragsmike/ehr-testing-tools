@@ -55,7 +55,9 @@
     ["corpus" "operators"] :operators-fn
     ["gate" "v2"] :gate-v2-fn
     ["gate" "fhir"] :gate-fhir-fn
-    ["check" nil] :check-fn))
+    ["check" nil] :check-fn
+    ["version" nil] :version-fn
+    ["doctor" nil] :doctor-fn))
 
 (deftest every-spec-command-pair-actually-routes-in-dispatch-test
   (doseq [[group verb] (help/command-pairs help/cli-spec)]
@@ -75,7 +77,9 @@
   #{["artifact" "fetch"] ["artifact" "resolve"]
     ["corpus" "generate"] ["corpus" "mutate"] ["corpus" "intake"] ["corpus" "operators"]
     ["gate" "v2"] ["gate" "fhir"]
-    ["check" nil]})
+    ["check" nil]
+    ["version" nil]
+    ["doctor" nil]})
 
 (deftest spec-command-pairs-match-dispatchs-known-routes-test
   (is (= known-dispatch-pairs (set (help/command-pairs help/cli-spec)))))
