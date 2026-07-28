@@ -36,6 +36,7 @@
             [ehr-testing-tools.digest :as digest]
             [ehr-testing-tools.corpus.manifest :as manifest]
             [ehr-testing-tools.corpus.mutate :as mutate]
+            [ehr-testing-tools.corpus.source-sink :as source-sink]
             [ehr-testing-tools.result :as result])
   (:import [java.io File]))
 
@@ -250,3 +251,36 @@
                      (seq notes) (assoc :notes notes))]
         (spit (io/file out-dir "intake-record.edn") (pr-str record))
         (result/ok {:catalog catalog :intake-record record :out out})))))
+
+(defn intake-via-source!
+  "Like intake!, but takes a :dir Source value
+  (ehr-testing-tools.corpus.source-sink) in place of a bare
+  :source-dir string -- the door SS-1 gives every Source-typed caller
+  (D1/D7, docs/source-sink-design.md: intake stays the single
+  ingestion door, unchanged in role, gains callers). No behavior
+  change: a :dir Source's :path IS the directory intake! would have
+  walked directly, so this is a thin translation, not a
+  reimplementation -- proven byte-identical against the pre-SS-1 call
+  shape by the golden-catalog comparison (test-integration/
+  ehr_testing_tools/intake_source_golden_test.clj, SS-1 Step 4).
+
+  Only :dir is accepted this session (SS-1's own scope fence, ruling
+  8) -- any other :kind is rejected :unsupported-source-kind, the same
+  vocabulary ehr-testing-tools.corpus.source-sink-url uses, even
+  though this function never touches URLs itself. A :dir map that
+  fails Source's own schema is rejected :invalid-source."
+  [{:keys [source source-label out received]}]
+  (if (not= :dir (:kind source))
+    (result/rejected :unsupported-source-kind
+                      {:kind (:kind source)
+                       :hint "only :dir sources are supported this session -- SS-2/SS-3/SS-5 land the rest"})
+    ;; Re-validated through source-sink/dir-source's own DirSource
+    ;; schema (not just the generic, kind-open Source schema): a bare
+    ;; {:kind :dir} with no :path is a valid *Source* but not a valid
+    ;; *DirSource* -- this is the check that actually catches it,
+    ;; rather than reaching intake!'s own source-files with a nil dir.
+    (let [validated (source-sink/dir-source source)]
+      (if-not (result/ok? validated)
+        (result/rejected :invalid-source {:source source :explain validated})
+        (intake! {:source-dir (:path (:payload validated))
+                  :source-label source-label :out out :received received})))))

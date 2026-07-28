@@ -13,7 +13,9 @@
             [ehr-testing-tools.corpus.mutate :as mutate]
             [ehr-testing-tools.corpus.intake :as intake]
             [ehr-testing-tools.corpus.manifest :as manifest]
-            [ehr-testing-tools.corpus.simhospital-corpus :as simhospital])
+            [ehr-testing-tools.corpus.simhospital-corpus :as simhospital]
+            [ehr-testing-tools.corpus.source-sink :as source-sink]
+            [ehr-testing-tools.corpus.golden-comparison :as golden])
   (:import [java.io File]))
 
 (defn- temp-dir []
@@ -271,3 +273,37 @@
         "top.json shares its directory with manifest.edn")
     (is (not (contains? nested-entry :provenance))
         "a nested directory without its own manifest.edn does not inherit the parent's")))
+
+;; ---- intake-via-source! (SS-1 Step 4, D1/D7): a :dir Source value in
+;; place of a bare :source-dir string. The real acceptance property --
+;; byte-identical against the pre-SS-1 call shape, over a REAL
+;; generated corpus -- is test-integration/ehr_testing_tools/
+;; intake_source_golden_test.clj (needs a real `corpus generate`); the
+;; tests below are the fast, hermetic unit-tier coverage of this
+;; function's own dispatch/error-handling logic against a synthetic
+;; fixture. ----
+
+(deftest intake-via-source-dir-matches-pre-ss-1-call-shape-test
+  (let [src (temp-dir)
+        out-a (temp-dir)
+        out-b (temp-dir)
+        _ (spit (io/file src "patient.json") sample-bundle-json)
+        source (:payload (source-sink/dir-source {:path src}))
+        pre-ss1 (intake/intake! {:source-dir src :source-label "acme" :out out-a :received "2026-07-24"})
+        via-source (intake/intake-via-source! {:source source :source-label "acme" :out out-b :received "2026-07-24"})]
+    (is (result/ok? pre-ss1))
+    (is (result/ok? via-source))
+    (is (= (:catalog (:payload pre-ss1)) (:catalog (:payload via-source))))
+    (is (golden/catalogs-byte-identical? out-a out-b))))
+
+(deftest intake-via-source-rejects-non-dir-kinds-test
+  (let [r (intake/intake-via-source! {:source {:kind :file :path "x.json"}
+                                       :source-label "acme" :out (temp-dir) :received "2026-07-24"})]
+    (is (result/rejected? r))
+    (is (= :unsupported-source-kind (:category r)))))
+
+(deftest intake-via-source-rejects-an-invalid-source-map-test
+  (let [r (intake/intake-via-source! {:source {:kind :dir} ; no :path
+                                       :source-label "acme" :out (temp-dir) :received "2026-07-24"})]
+    (is (result/rejected? r))
+    (is (= :invalid-source (:category r)))))
