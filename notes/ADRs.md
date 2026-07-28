@@ -1543,3 +1543,101 @@ before any of those rows started.
 depends on), ADR-0017 (SS-1..SS-5 sequencing — decision 4's
 coordination partner).
 **Status.** Accepted (author-directed), 2026-07-27.
+
+---
+## ADR-0020 — The operation manifest: a distinct schema for transformation lineage, never `ManifestV1_1`'s vocabulary
+**Context.** SS-4 (2026-07-28) probed whether a `dir`/`file` sink could
+honestly emit a `ManifestV1_1` sidecar naming this repo as producer, so
+that a written corpus would be intake-ready the same way a generated one
+already is (D-d, `docs/source-sink-design.md` Decision Register).
+`ManifestV1_1`'s required `:generator`/`:config`/`:invocation` fields are
+all shaped for an external pinned engine — an `artifacts.lock.edn`
+artifact record, a real config file's content hash, a subprocess
+invocation record — exactly what Synthea's and sim's own manifests
+supply, and exactly what a sink write (pure in-process Clojure, no
+subprocess, no pinned artifact, no config file) structurally does not
+have. SS-4 stopped there rather than improvise a field mapping,
+recording two options for the author: (A) a distinct manifest schema for
+operation-producers, or (B) reuse `ManifestV1_1` with proxy values
+standing in for the missing fields. Neither was adopted at capture time.
+**Decision.** Option A, sub-choice A1: `ehr-testing-tools.corpus.
+operation-manifest/OperationManifestV1`, a new, independently-versioned
+schema, written under its own filename, `operation-manifest.edn` —
+never `manifest.edn`, never dispatched by try-order against
+`ManifestV1_1`. The two schemas encode different speech acts and the
+filename difference makes that visible before a single field is read:
+
+- **`ManifestV1_1` states engine provenance** — which artifact ran,
+  under which config, via which subprocess invocation. Its fields exist
+  because an external engine (Synthea, sim) genuinely has them.
+- **`OperationManifestV1` states transformation lineage** — these input
+  content hashes, this operator at this version, at this locator,
+  producing these output content hashes. Its fields exist because an
+  in-process transformation (`corpus.mutate` today; any future
+  `dir`/`file`-writing operation later) genuinely has *these*, and does
+  not have `ManifestV1_1`'s.
+
+Full field table in `docs/source-sink-design.md` Part III.5. Load-
+bearing points: `:producer` carries this repo's own honest identity via
+the `ehr version` machinery (`cli/repo-identity`, `cli/real-git-describe`)
+with no `:sha256` field — an absent field is honest, a fabricated one is
+not, the same discipline `ManifestV1_1`'s own `:runtime` field already
+applies when `--java-bin` bypasses artifact resolution. `:items[].
+input-hash` is per-item *optional*, present iff the producer actually
+held it (`corpus.mutate` always does, via its own lineage record's
+`:parent`; a hypothetical future plain write might not) — the same
+no-verdict, cause-pairing discipline this repo's judge tier already
+applies to provenance instead of conformance. `write-dir!`/`write-file!`
+(`ehr-testing-tools.corpus.sink-write`) write items first, the manifest
+last (items-then-manifest ordering), so a torn write is detectable as
+items-without-manifest, never a manifest naming items that were never
+written. `corpus.intake` gains a second, symmetric sidecar recognizer:
+`:provenance` from a `ManifestV1_1` sidecar, `:operation-provenance`
+from an `OperationManifestV1` one — two distinct catalog-entry fields,
+never merged into one, matching the two-schemas-two-files split above.
+A directory presenting *both* sidecars is rejected `:ambiguous-sidecars`
+— a directory claiming two producers for the same bytes is a defect to
+surface, never an ordering to pick by precedence.
+**Rejected.** *Option B — reuse `ManifestV1_1` with proxy values* (e.g.
+a hash of this repo's own `git describe` string standing in for an
+artifact `:sha256`) — unblocks emission with no new schema, but
+privately redefines what `:generator`/`:config`/`:invocation` mean
+relative to every other producer using the identical schema, sim
+included: the same abstraction-incoherence class ADR-0009's
+`:policy`→`:disposition` rename and ADR-0017 decision 5's `:origin`
+rename already exist to prevent, one level down — a file format
+carrying unearned specificity (a `:sha256` field that names no real
+artifact) is worse than a file format that simply doesn't have the
+field. *Option A2 — dispatch intake's existing `manifest.edn`
+recognizer by schema try-order instead of a second, distinctly-named
+file* — an implicit try-order contract (try `ManifestV1_1` first, fall
+back to `OperationManifestV1`, or vice versa) is itself an unstated
+precedence rule, exactly what the never-both rejection above refuses to
+have; a distinct filename makes the discriminant visible in a directory
+listing, not buried in recognizer order. *Precedence instead of
+rejection for a directory with both sidecars* — silently trusting one
+producer's claim over another's for the same bytes would hide a real
+defect (two producers claiming the same directory) behind whichever
+schema happens to be tried first.
+**Consequence.** `docs/source-sink-design.md` Part III.5 is the detailed
+field-by-field design; D-d closes Resolved in the Decision Register.
+`ManifestV1_1`, `corpus.generate`'s emitters, and ADR-0012's sim-
+mounting clause are untouched by construction — sim neither emits nor
+reads operation manifests, so option A's own "eventually sim's mirrored
+schema" coordination concern never triggers. `corpus.mutate`'s existing
+per-mutant `lineage/*.lineage.edn` sidecars are **not** removed or
+consolidated into the new manifest — `docs/source-sink-design.md` Part
+III.5 names the resulting field duplication (`:parent`/`:produced`/
+`:transformation` versus `:items[].input-hash`/`:sha256`/`:operation`
+for the same mutant) as a finding for a future session, per the
+one-fact-one-authority discipline: naming a duplication is not the same
+as silently consolidating two registers into one.
+**Cites.** ADR-0004 (Result-not-throw, operational rejections —
+`:ambiguous-sidecars`'s own shape), ADR-0009 (`:policy`→`:disposition`,
+the abstraction-incoherence precedent option B would repeat), ADR-0014
+(intake's existing directory-scoped sidecar mechanism, extended here
+rather than replaced), ADR-0017 (the composability law this schema
+completes the provenance half of), ADR-0019 (D8's determinism-law-of-
+defaults, which `:written-at` joins as a named record-keeping
+exemption).
+**Status.** Accepted (author-directed), 2026-07-28.
