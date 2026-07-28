@@ -80,7 +80,7 @@
   ;; Mirrors corpus.generate/resolve-java-bin -- the same pinned
   ;; temurin-jdk :runtime artifact, resolved through the registry, is
   ;; what runs every JVM-based engine this repo wraps, never PATH.
-  (let [extract-result (resolve-and-extract artifacts "temurin-jdk" "17.0.19+10" {})]
+  (let [extract-result (resolve-and-extract artifacts "temurin-jdk" "21.0.12+8" {})]
     (if-not (result/ok? extract-result)
       extract-result
       (let [{:keys [extracted-dir artifact]} (:payload extract-result)

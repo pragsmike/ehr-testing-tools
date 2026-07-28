@@ -13,12 +13,12 @@
    :license-note "Apache License 2.0; verified 2026-07-23 -- see docs/components.md (Synthea) and facts register F2."}
   {:kind :runtime
    :name "temurin-jdk"
-   :version "17.0.19+10"
-   :sha256 "d8afc263758141a66e0e3aafc321e783f7016696f4eaea067d340a269037d331"
-   :source "https://github.com/adoptium/temurin17-binaries/releases/download/jdk-17.0.19%2B10/OpenJDK17U-jdk_x64_linux_hotspot_17.0.19_10.tar.gz"
-   :acquired "2026-07-24"
+   :version "21.0.12+8"
+   :sha256 "e4446ff06a276155697597cc0f1b15da004ff083f4964a35271ecee567177370"
+   :source "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12%2B8/OpenJDK21U-jdk_x64_linux_hotspot_21.0.12_8.tar.gz"
+   :acquired "2026-07-28"
    :license-status :verified
-   :license-note "GPLv2 with the Classpath Exception; verified 2026-07-24 -- see docs/components.md (Synthea) and facts register F12. Linux x64, HotSpot, jdk image type -- the platform this repo's orchestrator actually runs on."}
+   :license-note "GPLv2 with the Classpath Exception; verified 2026-07-28 -- see docs/components.md (Synthea) and facts register F31 (supersedes F12's 17.0.19+10 verification, same license). Linux x64, HotSpot, jdk image type -- the platform this repo's orchestrator actually runs on."}
   {:kind :engine
    :name "fhir-validator-cli"
    :version "6.9.12"
@@ -26,4 +26,4 @@
    :source "https://github.com/hapifhir/org.hl7.fhir.core/releases/download/6.9.12/validator_cli.jar"
    :acquired "2026-07-24"
    :license-status :verified
-   :license-note "Apache License 2.0; verified 2026-07-23 -- see docs/components.md (Official FHIR validator) and facts register F5. Current stable GitHub release as of 2026-07-24 (published 2026-07-15); runs under the already-locked temurin-jdk 17.0.19+10 :runtime artifact above, resolved through the artifact registry like every other engine, never PATH."}]}
+   :license-note "Apache License 2.0; verified 2026-07-23 -- see docs/components.md (Official FHIR validator) and facts register F5. Current stable GitHub release as of 2026-07-24 (published 2026-07-15); runs under the already-locked temurin-jdk 21.0.12+8 :runtime artifact above, resolved through the artifact registry like every other engine, never PATH."}]}

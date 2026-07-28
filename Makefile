@@ -38,7 +38,7 @@ help:
 	@echo "  integration  - run the integration test suite (clojure -X:integration); requires"
 	@echo "                 'ehr artifact fetch' for synthea, temurin-jdk, and fhir-validator-cli first, e.g.:"
 	@echo "                   bin/ehr artifact fetch --name synthea --version 4.0.0"
-	@echo "                   bin/ehr artifact fetch --name temurin-jdk --version 17.0.19+10"
+	@echo "                   bin/ehr artifact fetch --name temurin-jdk --version 21.0.12+8"
 	@echo "                   bin/ehr artifact fetch --name fhir-validator-cli --version 6.9.12"
 	@echo "  integration-smoke - T1 tier (ADR-0016): one clean/mutant FHIR pairing plus one sim-harness"
 	@echo "                 manifest check, target under 2 minutes warm -- session-boundary tier between"

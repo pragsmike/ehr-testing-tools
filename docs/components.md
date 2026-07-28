@@ -36,9 +36,11 @@ time) — both of which `corpus.generate` requires explicitly (facts
 register [F11](../notes/facts-register.md), EXP-A4). v4.0.0 requires a
 Java 17+ runtime (its release jar is class file version 61.0); the JDK
 it runs under is itself a locked `:runtime` artifact (ADR-0005) —
-Eclipse Temurin 17.0.19+10, GPLv2 with the Classpath Exception (facts
-register [F12](../notes/facts-register.md)) — resolved through the same
-artifact registry as the Synthea distribution itself, not from `PATH`.
+Eclipse Temurin 21.0.12+8, GPLv2 with the Classpath Exception (facts
+register [F31](../notes/facts-register.md), supersedes the 17.0.19+10
+pin [F12](../notes/facts-register.md) verified -- SS-1's toolchain
+step) — resolved through the same artifact registry as the Synthea
+distribution itself, not from `PATH`.
 
 **Deliberately not used for.** v2 messages (we project from its output —
 see EXP-A3) or profile-constrained FHIR beyond what filtering achieves.

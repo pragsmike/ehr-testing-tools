@@ -17,7 +17,7 @@ tools.
 | Prerequisite | Why | Minimum version | Verify with |
 |---|---|---|---|
 | **git** | Clone the repo. | Any recent 2.x | `git --version` |
-| **JDK** | Runs the Clojure orchestrator (`make test`, the `ehr` CLI itself). Verified this session on OpenJDK 11.0.27 — `make test` and a full `corpus generate` + `corpus mutate` run both passed on it. | 11+ (17+ recommended — this repo's own dependencies, HAPI FHIR/HAPI HL7v2, are compiled for 17, though nothing in the current codebase loads those classes yet) | `java -version` |
+| **JDK** | Runs the Clojure orchestrator (`make test`, the `ehr` CLI itself). Verified this session on OpenJDK 21.0.7 (Ubuntu build) — `make test` and a full `corpus generate` + `corpus mutate` run both passed on it. | 17+ (this repo's own dependencies, HAPI FHIR/HAPI HL7v2, are compiled for 17; 21 is the currently-verified version, matching the pinned `temurin-jdk` `:runtime` artifact's own move to 21 -- SS-1, F31) | `java -version` |
 | **Clojure CLI** (`clojure`/`clj`) | Resolves `deps.edn` and runs everything above. | This repo is developed and verified against Clojure CLI **1.12.0.1479**. (`deps.edn` separately pins the Clojure *language* to `1.12.5` — that's resolved automatically the first time you run `clojure`/`make`, not something you install yourself.) | `clojure --version` |
 | **GNU make** | Every documented command in this repo is a `make` target. | Any recent version (verified on GNU Make 4.2.1) | `make --version` |
 | **bash** | The `Makefile`'s `SHELL` and its recipes are bash, not POSIX `sh` or PowerShell. | Any recent version (verified on 5.0.17) | `bash --version` |
@@ -25,11 +25,11 @@ tools.
 
 **Note on the JDK:** Synthea itself requires a JDK 17+ *runtime* (its
 release jar is class file version 61.0), but you never install that
-yourself — `ehr artifact fetch --name temurin-jdk --version 17.0.19+10`
-downloads a pinned Eclipse Temurin 17 build into this repo's own artifact
+yourself — `ehr artifact fetch --name temurin-jdk --version 21.0.12+8`
+downloads a pinned Eclipse Temurin 21 build into this repo's own artifact
 cache (`~/.cache/ehr-testing-tools/artifacts`, per `artifacts.lock.edn`)
 and Synthea always runs under that copy, never under whatever `java` is on
-your `PATH`. Don't install a second system JDK 17 on its account.
+your `PATH`. Don't install a second system JDK on its account.
 
 ### Maintainer-only tools
 
@@ -45,11 +45,11 @@ Not needed to use the tools — only if you're contributing to this repo
 ## 2. Platform guidance
 
 - **Linux.** This repo is developed and tested on **Ubuntu** (20.04 LTS
-  this session). One-liner for the prerequisites table above (JDK 17,
+  this session). One-liner for the prerequisites table above (JDK 21,
   `git`, `make`, `curl` — the Clojure CLI needs a separate step, below):
 
   ```sh
-  sudo apt update && sudo apt install -y openjdk-17-jdk git make curl
+  sudo apt update && sudo apt install -y openjdk-21-jdk git make curl
   ```
 
   **Do not `apt install clojure`** — on Ubuntu that installs an unrelated,
@@ -123,10 +123,10 @@ repo root.
 ```sh
 # One-time: fetch the pinned Synthea distribution and its JDK into the
 # local artifact cache. First run downloads roughly 190MB (Synthea jar)
-# + 185MB (the Temurin 17 JDK tarball) ~375MB total; cached afterward —
+# + 198MB (the Temurin 21 JDK tarball) ~388MB total; cached afterward —
 # a second run returns instantly (":cached true" in the output).
 bin/ehr artifact fetch --name synthea --version 4.0.0
-bin/ehr artifact fetch --name temurin-jdk --version 17.0.19+10
+bin/ehr artifact fetch --name temurin-jdk --version 21.0.12+8
 
 # Generate a small deterministic corpus. Zero flags: every default is
 # pinned (D9) -- this exact command is byte-reproducible on any machine
@@ -188,11 +188,11 @@ before searching the web.
 
 ## 6. Troubleshooting seeds
 
-- **Wrong or old `java` on `PATH`.** `java -version` should show 11+
-  (17+ if you have it). If Synthea generation fails with
-  `UnsupportedClassVersionError`, that's the fetched Temurin 17 not being
+- **Wrong or old `java` on `PATH`.** `java -version` should show 17+
+  (21 if you have it). If Synthea generation fails with
+  `UnsupportedClassVersionError`, that's the fetched Temurin 21 not being
   used correctly — check `bin/ehr artifact fetch --name
-  temurin-jdk --version 17.0.19+10` actually completed, not your system
+  temurin-jdk --version 21.0.12+8` actually completed, not your system
   `java`.
 - **Clojure CLI not on `PATH` after install.** The official installer
   puts `clojure`/`clj` in `/usr/local/bin` — open a new shell (or
@@ -201,6 +201,6 @@ before searching the web.
   or PowerShell errors on `Makefile` syntax. This repo's build doesn't
   run on native Windows at all — go to the WSL2 section above.
 - **First `corpus generate` is slower than expected.** The first artifact
-  fetch downloads roughly 375MB total (Synthea jar + Temurin JDK tarball,
+  fetch downloads roughly 388MB total (Synthea jar + Temurin JDK tarball,
   verified this session), plus extraction. Every run after that is fast —
   the cache is content-addressed and reused.

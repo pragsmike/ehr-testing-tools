@@ -68,8 +68,8 @@
   target 3 a repo-relative file path string; target 4
   {:registry :id :version}."
   {"synthea-artifact"    {:target 1 :ref {:name "synthea" :version "4.0.0"}}
-   "jdk-runtime"         {:target 1 :ref {:name "temurin-jdk" :version "17.0.19+10"}}
-   "runtime"             {:target 1 :ref {:name "temurin-jdk" :version "17.0.19+10"}}
+   "jdk-runtime"         {:target 1 :ref {:name "temurin-jdk" :version "21.0.12+8"}}
+   "runtime"             {:target 1 :ref {:name "temurin-jdk" :version "21.0.12+8"}}
    "validator-artifact"  {:target 1 :ref {:name "fhir-validator-cli" :version "6.9.12"}}
    ;; No IG pinned in artifacts.lock.edn this session (judge.fhir's own
    ;; docstring; docs/pipeline.edn's Gate :contract) -- classification

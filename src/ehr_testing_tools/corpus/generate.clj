@@ -17,7 +17,7 @@
 (def synthea-name "synthea")
 (def synthea-version "4.0.0")
 (def jdk-name "temurin-jdk")
-(def jdk-version "17.0.19+10")
+(def jdk-version "21.0.12+8")
 (def jdk-relative-path "bin/java")
 (def default-lockfile-path "artifacts.lock.edn")
 (def default-locale "en-US")
@@ -184,9 +184,12 @@
                         appended after the standard ones
     :java-bin        -- java executable to invoke. When omitted, resolved
                         through the artifact registry (resolve-java-bin
-                        above) against the pinned Temurin JDK 17 :runtime
+                        above) against the pinned Temurin JDK 21 :runtime
                         artifact -- never PATH, never a hardcoded home
-                        path. Must be Java 17+ for Synthea v4.0.0.
+                        path. Must be Java 17+ for Synthea v4.0.0 (21
+                        satisfies this; the pin moved to 21 in SS-1's
+                        toolchain step, not because Synthea's own
+                        requirement changed).
                         Passing :java-bin explicitly bypasses registry
                         resolution entirely (useful for a non-default
                         JVM, or for tests).

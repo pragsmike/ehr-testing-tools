@@ -23,7 +23,7 @@ Each case answers **what do I type** as well as what you get. Every command in a
 # One-time: the pinned Synthea distribution and the JDK it runs on,
 # into the local artifact cache (~/.cache/ehr-testing-tools/artifacts).
 bin/ehr artifact fetch --name synthea --version 4.0.0
-bin/ehr artifact fetch --name temurin-jdk --version 17.0.19+10
+bin/ehr artifact fetch --name temurin-jdk --version 21.0.12+8
 
 # Generate. Every value here is pinned on purpose: --seed and
 # --clinician-seed fix Synthea's two RNGs, --reference-date fixes what
@@ -167,7 +167,7 @@ flowchart LR
 # official validator as a subprocess. Needs the three pinned
 # artifacts first; takes minutes, not seconds.
 bin/ehr artifact fetch --name synthea --version 4.0.0
-bin/ehr artifact fetch --name temurin-jdk --version 17.0.19+10
+bin/ehr artifact fetch --name temurin-jdk --version 21.0.12+8
 bin/ehr artifact fetch --name fhir-validator-cli --version 6.9.12
 make integration
 

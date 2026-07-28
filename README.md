@@ -121,7 +121,7 @@ bin/ehr help
 # One-time: fetch the pinned Synthea distribution and its JDK, into the
 # local artifact cache (~/.cache/ehr-testing-tools/artifacts).
 bin/ehr artifact fetch --name synthea --version 4.0.0
-bin/ehr artifact fetch --name temurin-jdk --version 17.0.19+10
+bin/ehr artifact fetch --name temurin-jdk --version 21.0.12+8
 
 # Generate a small deterministic corpus. Zero flags: every default is
 # pinned (--seed 1, --population 5, --reference-date 20260101, D9), so

@@ -71,7 +71,7 @@ rm -rf target/corpus/synthea-s1-p5 out/demo-mutants out/demo-mutants-report.edn
 expect 0 bin/ehr help
 
 expect 0 bin/ehr artifact fetch --name synthea --version 4.0.0
-expect 0 bin/ehr artifact fetch --name temurin-jdk --version 17.0.19+10
+expect 0 bin/ehr artifact fetch --name temurin-jdk --version 21.0.12+8
 
 expect 0 bin/ehr corpus generate
 

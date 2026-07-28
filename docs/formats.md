@@ -281,7 +281,7 @@ A real manifest (paths and hashes elided):
 {:schema-version "1.1",
  :stage :generate,
  :generator {:name "synthea", :version "4.0.0", :sha256 "ed43c20a…"},
- :runtime {:name "temurin-jdk", :version "17.0.19+10", :sha256 "d8afc263…"},
+ :runtime {:name "temurin-jdk", :version "21.0.12+8", :sha256 "e4446ff0…"},
  :seeds {:master 100, :clinician 555},
  :engine-params {:reference-date "20260101"},
  :config {:path "config/synthea/synthea.properties", :sha256 "ead0388b…"},
@@ -291,7 +291,7 @@ A real manifest (paths and hashes elided):
               :stderr-path "…", :stderr-sha256 "65928446…",
               :dir nil, :env {}},
  :canonicalizers-applied [],
- :environment {:locale "en-US", :timezone "UTC", :jvm-version "17.0.19"}}
+ :environment {:locale "en-US", :timezone "UTC", :jvm-version "21.0.12"}}
 ```
 
 ---
