@@ -73,8 +73,15 @@
    [:provenance {:optional true} Provenance]])
 
 (def IntakeRecord
+  "D-c follow-up (2026-07-28, SS-2 Step 0): :source renamed to :origin,
+  the same word freed by CatalogEntry's own D6 rename above -- this
+  field is a distinct schema from CatalogEntry (this is the one
+  batch-level record, not a per-file entry), so it was not itself named
+  by D6/ADR-0017 decision 5, but a checker pass over SS-1 found it
+  carrying the same collision by coincidence of spelling, not design.
+  No compatibility alias, same reasoning as CatalogEntry's rename."
   [:map
-   [:source :string]
+   [:origin :string]
    [:date :string]
    [:file-count :int]
    [:catalog-hash [:re #"^[0-9a-f]{64}$"]]
@@ -232,7 +239,7 @@
   {:layer :foreign :origin source-label :received}, plus :provenance
   when the file's own directory carries a validating manifest.edn
   sidecar (ADR-0014). Writes :out/catalog.edn (the vector of entries)
-  and :out/intake-record.edn (one batch record: source, date, file
+  and :out/intake-record.edn (one batch record: origin, date, file
   count, the sha256 of the catalog file's own persisted bytes --
   hashing what's actually written, same discipline as
   corpus.mutate's content-hash -- and :notes when any sidecar present
@@ -254,7 +261,7 @@
     (.mkdirs out-dir)
     (let [catalog-file (io/file out-dir "catalog.edn")]
       (spit catalog-file (pr-str catalog))
-      (let [record (cond-> {:source source-label
+      (let [record (cond-> {:origin source-label
                             :date received
                             :file-count (count catalog)
                             :catalog-hash (digest/sha256-file catalog-file)}

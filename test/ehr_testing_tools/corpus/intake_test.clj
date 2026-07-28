@@ -94,7 +94,7 @@
       (is (= (:catalog (:payload r)) written-catalog))
       (is (= (:intake-record (:payload r)) written-record))
       (is (intake/valid-intake-record? written-record))
-      (is (= "acme" (:source written-record)))
+      (is (= "acme" (:origin written-record)))
       (is (= "2026-07-24" (:date written-record)))
       (is (= 1 (:file-count written-record)))
       (is (= (:catalog-hash written-record)
