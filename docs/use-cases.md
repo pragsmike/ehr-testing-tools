@@ -1067,3 +1067,63 @@ flowchart LR
     style foreign_file fill:#f5f5f5,stroke:#999,color:#333
     style operator_catalog fill:#f5f5f5,stroke:#999,color:#333
 ```
+
+## Simulator (sim) traffic as an intake source, in one command
+
+**Audience:** Teams wanting deterministic, seeded HL7v2 hospital traffic (boarding, churn, cancellations, merges) as a corpus, without a separate generate-then-catalog step.
+
+**You bring:** A seed. ehr-testing-sim (a sibling project, github.com/pragsmike/ehr-testing-sim) checked out alongside this repo (../ehr-testing-sim) -- subprocess-only, per ADR-0013; this repo never bundles or depends on it.
+
+**You get:** A cataloged v2 corpus: HL7v2 messages plus sim's own manifest.edn sidecar, its provenance (generator name/version/sha256, seeds) attached to every catalog entry (ADR-0014) -- generated fresh at your own seed, in one command (SS-2, the generator registry).
+
+**Maturity:** usable
+
+**You type:**
+
+```sh
+# Requires the ehr-testing-sim sibling checkout (../ehr-testing-sim,
+# subprocess-only -- ADR-0013; clone it alongside this repo to run this).
+bin/ehr corpus intake 'sim:?seed=42&patients=5&emit=hl7' \
+  --label sim-traffic --out out/sim-intake
+cat out/sim-intake/intake-record.edn
+
+# Every catalog entry carries sim's own real provenance (ADR-0014).
+cat out/sim-intake/catalog.edn
+```
+
+Generator-URL params (seed, patients, churn, emit, reference-date, config) are sim's own `run` verb's flags; a bare `sim:` with no query string still works, at sim's own pinned one-patient/hl7 default (the determinism law of defaults, D8). Gate the result the same way any intaken corpus gates -- [Judge user-supplied data: intake -> gate -> report](#judge-user-supplied-data-intake---gate---report). Synthea's own equivalent one-command path is `bin/ehr corpus intake 'synthea:?seed=1&population=5'`, over the SAME generator registry (docs/source-sink-design.md); `ehr corpus generate` itself is unchanged and remains the Synthea-only, more-flag-heavy path (OPEN-4 in the design doc records whether that changes later).
+
+```
+generator-config × sim-subprocess → generated-corpus  [EngineExecute]
+generated-corpus → catalog-entry + intake-record  [Intake]
+```
+
+```mermaid
+flowchart LR
+
+    %% --- Source types (raw inputs, not produced by any operation) ---
+    generator_config(["generator-config"])
+    sim_subprocess(["sim-subprocess"])
+
+    %% --- Operations (boxes; spiders use distinct shapes) ---
+    EngineExecute["EngineExecute"]
+    Intake["Intake"]
+
+    %% --- Wires (typed connections) ---
+    %% Arrow 1: EngineExecute
+    generator_config -- generator-config --> EngineExecute
+    sim_subprocess -- sim-subprocess --> EngineExecute
+
+    %% Arrow 2: Intake
+    EngineExecute -- generated-corpus --> Intake
+
+    %% --- Styling ---
+
+    %% Operations: dark boxes (fan=blue, funnel=green, enrichment=outlined, gate=purple, external=dashed)
+    style EngineExecute fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style Intake fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+
+    %% Source types: light rounded
+    style generator_config fill:#f5f5f5,stroke:#999,color:#333
+    style sim_subprocess fill:#f5f5f5,stroke:#999,color:#333
+```

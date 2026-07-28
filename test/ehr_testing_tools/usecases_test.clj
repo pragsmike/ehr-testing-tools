@@ -75,9 +75,11 @@
   (let [data (edn/read-string (slurp "docs/use-cases.edn"))]
     (is (usecases/valid? data))))
 
-(deftest committed-use-cases-edn-has-fourteen-cases-test
+(deftest committed-use-cases-edn-has-fifteen-cases-test
+  ;; 14 -> 15, SS-2 Step 5: :simulator-traffic-as-intake-source, the
+  ;; new eleventh verified command strip (ruling 7).
   (let [data (edn/read-string (slurp "docs/use-cases.edn"))]
-    (is (= 14 (count (:cases data))))))
+    (is (= 15 (count (:cases data))))))
 
 (deftest committed-use-cases-edn-has-unique-ids-test
   (let [data (edn/read-string (slurp "docs/use-cases.edn"))
