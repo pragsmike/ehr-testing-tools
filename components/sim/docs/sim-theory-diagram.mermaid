@@ -1,0 +1,122 @@
+flowchart LR
+
+    %% --- Source types (raw inputs, not produced by any operation) ---
+    authored_pathway(["authored-pathway"])
+    demographics_tables(["demographics-tables"])
+    feed_statistics(["feed-statistics"])
+    gmf_interpreter(["gmf-interpreter"])
+    gmf_module_set(["gmf-module-set"])
+    hl7_parser_dep(["hl7-parser-dep"])
+    invariant_catalog(["invariant-catalog"])
+    message_type_registry(["message-type-registry"])
+    order_profiles(["order-profiles"])
+    payer_pool(["payer-pool"])
+    provider_pool(["provider-pool"])
+    sim_config(["sim-config"])
+    site_profile(["site-profile"])
+    snomed_icd10_map(["snomed-icd10-map"])
+
+    %% --- Operations (boxes; spiders use distinct shapes) ---
+    Persona["Persona"]
+    RunModules["RunModules"]
+    CompileTrajectory["CompileTrajectory"]
+    InjectChurn["InjectChurn"]
+    Execute["Execute"]
+    Check["Check"]
+    EmitHL7["EmitHL7"]
+    EmitState["EmitState"]
+    Package["Package"]
+    Calibrate["Calibrate"]
+    UnionPathwayIr[\"UnionPathwayIr"/]
+    SystemUnderTest["SystemUnderTest"]
+    ToolsCorpusIntake["ToolsCorpusIntake"]
+
+    %% --- Wires (typed connections) ---
+    %% Arrow 19: Persona
+    sim_config -- sim-config --> Persona
+    demographics_tables -. demographics-tables .-> Persona
+    payer_pool -. payer-pool .-> Persona
+
+    %% Arrow 22: RunModules
+    Persona -- persona --> RunModules
+    gmf_module_set -. gmf-module-set .-> RunModules
+    gmf_interpreter -. gmf-interpreter .-> RunModules
+
+    %% Arrow 25: CompileTrajectory
+    RunModules -- clinical-trajectory --> CompileTrajectory
+
+    %% Arrow 27: InjectChurn
+    UnionPathwayIr -- pathway-ir --> InjectChurn
+    Calibrate -- churn-profile --> InjectChurn
+
+    %% Arrow 29: Execute
+    InjectChurn -- operational-pathway --> Execute
+    provider_pool -. provider-pool .-> Execute
+    order_profiles -. order-profiles .-> Execute
+
+    %% Arrow 31: Check
+    Execute -- ground-truth-log --> Check
+    invariant_catalog -. invariant-catalog .-> Check
+
+    %% Arrow 33: EmitHL7
+    Execute -- ground-truth-log --> EmitHL7
+    hl7_parser_dep -. hl7-parser-dep .-> EmitHL7
+    message_type_registry -. message-type-registry .-> EmitHL7
+    snomed_icd10_map -. snomed-icd10-map .-> EmitHL7
+    site_profile -. site-profile .-> EmitHL7
+
+    %% Arrow 36: EmitState
+    Execute -- state-history --> EmitState
+
+    %% Arrow 39: Package
+    EmitHL7 -- hl7v2-stream --> Package
+    Execute -- ground-truth-log --> Package
+
+    %% Arrow 42: Calibrate
+    Package -- sim-corpus --> Calibrate
+    feed_statistics -- feed-statistics --> Calibrate
+    Calibrate -- churn-profile --> Calibrate
+    Calibrate -- churn-profile --> churn_profile
+
+    %% Arrow 45: UnionPathwayIr
+    CompileTrajectory -- compiled-pathway --> UnionPathwayIr
+    authored_pathway -- authored-pathway --> UnionPathwayIr
+
+    %% Arrow 48: SystemUnderTest
+    EmitHL7 -- hl7v2-stream --> SystemUnderTest
+
+    %% Arrow 49: ToolsCorpusIntake
+    Package -- sim-corpus --> ToolsCorpusIntake
+
+    %% --- Styling ---
+
+    %% Operations: dark boxes (fan=blue, funnel=green, enrichment=outlined, gate=purple, external=dashed)
+    style Persona fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style RunModules fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style CompileTrajectory fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style InjectChurn fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style Execute fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style Check fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style EmitHL7 fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style EmitState fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style Package fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style Calibrate fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style UnionPathwayIr fill:#1b5e20,stroke:#2e7d32,color:#c8e6c9,stroke-width:2px
+    style SystemUnderTest fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px,stroke-dasharray: 5 5
+    style ToolsCorpusIntake fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px,stroke-dasharray: 5 5
+
+    %% Source types: light rounded
+    style authored_pathway fill:#f5f5f5,stroke:#999,color:#333
+    style demographics_tables fill:#f5f5f5,stroke:#999,color:#333
+    style feed_statistics fill:#f5f5f5,stroke:#999,color:#333
+    style gmf_interpreter fill:#f5f5f5,stroke:#999,color:#333
+    style gmf_module_set fill:#f5f5f5,stroke:#999,color:#333
+    style hl7_parser_dep fill:#f5f5f5,stroke:#999,color:#333
+    style invariant_catalog fill:#f5f5f5,stroke:#999,color:#333
+    style message_type_registry fill:#f5f5f5,stroke:#999,color:#333
+    style order_profiles fill:#f5f5f5,stroke:#999,color:#333
+    style payer_pool fill:#f5f5f5,stroke:#999,color:#333
+    style provider_pool fill:#f5f5f5,stroke:#999,color:#333
+    style sim_config fill:#f5f5f5,stroke:#999,color:#333
+    style site_profile fill:#f5f5f5,stroke:#999,color:#333
+    style snomed_icd10_map fill:#f5f5f5,stroke:#999,color:#333

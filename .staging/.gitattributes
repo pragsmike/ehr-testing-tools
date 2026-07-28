@@ -1,7 +1,0 @@
-# ehr-testing-tools' .gitattributes carries two rules disabling line-ending
-# normalization (-text) for HL7v2 ER7 fixture bytes (segments are \r-
-# terminated; a normalizing checkout would corrupt them). Neither path
-# exists in this repo yet: no test/fixtures/v2/*.hl7, no vendored
-# SimHospital corpus. Add the equivalent -text rule here the moment either
-# lands, before the first commit of the actual bytes -- see tools'
-# .gitattributes for the exact pattern and rationale.

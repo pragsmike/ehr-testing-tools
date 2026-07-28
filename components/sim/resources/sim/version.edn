@@ -1,0 +1,8 @@
+;; This library's single version source (go-public session, Task 2).
+;; Pre-release: no Clojars/Maven coordinate exists to publish this
+;; under yet (ADR-0015 decision 4's own deferred release-gate ledger).
+;; Read by ehrt.sim.version, the one namespace both
+;; ehrt.sim.manifest's :generator block and `sim version`/
+;; --version consume -- so they cannot silently disagree. Bump this
+;; file by hand; nothing here is generated.
+"0.1.0-pre"
