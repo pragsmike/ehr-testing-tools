@@ -1,9 +1,6 @@
 (ns ehr-testing-tools.corpus.sink-write
   "Write (Part III/D3, docs/source-sink-design.md): datum x sink-map ->
-  sink-bytes. ManifestV1_1 sidecar emission for dir/file is blocked
-  this session on D-d (the manifest-interop STOP, docs/source-sink-
-  design.md Decision Register) -- write-file!/write-dir! below still
-  emit no sidecar. write-stdout! (SS-4 Step 3): the :stdout sink, no
+  sink-bytes. write-stdout! (SS-4 Step 3): the :stdout sink, no
   manifest by design (no directory to drop one in), the byte-stream
   form of the composability law -- see Part III's own dated note.
 
@@ -23,12 +20,81 @@
     regardless of framing -- append-to-a-corpus means merging into an
     existing catalog/manifest, which this session does not build
     (recorded as an OPEN item in docs/source-sink-design.md, not
-    improvised here)."
+    improvised here).
+
+  Operation manifest emission (SS-4b Step 3, D-d resolved via ADR-0020,
+  docs/source-sink-design.md Part III.5): write-file!/write-dir! both
+  accept an optional :operation-manifest argument -- a map of
+  :producer/:operation/:written-at plus either :items (already fully
+  shaped -- the caller, e.g. a batched CLI loop, already knows exactly
+  what it wrote) or :input-hashes (a {relative-path sha256} map used to
+  enrich items this function derives itself from the files/content it
+  was actually given). :format/:framing on the emitted manifest are
+  always read off the sink, never re-declared by the caller -- the
+  no-inference-on-write law applies here too. The manifest is written
+  last, after every item file (items-then-manifest ordering, ruling 3):
+  a process that dies mid-write leaves items without a manifest,
+  detectable, never the reverse."
   (:require [clojure.java.io :as io]
+            [ehr-testing-tools.digest :as digest]
+            [ehr-testing-tools.corpus.operation-manifest :as operation-manifest]
             [ehr-testing-tools.corpus.source-sink :as ss]
             [ehr-testing-tools.corpus.framing :as framing]
             [ehr-testing-tools.result :as result])
   (:import [java.io File OutputStream]))
+
+(defn- derive-items
+  "{relative-path content} -> the operation manifest's own :items shape,
+  computing :sha256 from the content this call was actually given and
+  merging in :input-hash wherever input-hashes (a {relative-path
+  sha256} map) names that same path -- absent, not nil, everywhere it
+  doesn't (ruling 1's own present-iff-known discipline)."
+  [files input-hashes]
+  (mapv (fn [[relative-path content]]
+          (cond-> {:name relative-path :sha256 (digest/sha256-string content)}
+            (contains? input-hashes relative-path)
+            (assoc :input-hash (get input-hashes relative-path))))
+        files))
+
+(defn- operation-manifest-payload
+  [sink operation-manifest-input files]
+  (let [items (or (:items operation-manifest-input)
+                  (derive-items files (get operation-manifest-input :input-hashes {})))]
+    (operation-manifest/build
+     {:producer (:producer operation-manifest-input)
+      :operation (:operation operation-manifest-input)
+      :written-at (:written-at operation-manifest-input)
+      :format (:format sink)
+      :framing (or (:framing sink) ss/default-framing)
+      :items items})))
+
+(defn- write-dir-operation-manifest!
+  "Writes operation-manifest.edn directly under dir-path, last, per
+  items-then-manifest ordering. No-op when operation-manifest-input is
+  nil -- absence is the SS-4-compatible default every existing
+  write-dir! caller keeps getting."
+  [dir-path sink operation-manifest-input files]
+  (when operation-manifest-input
+    (spit (io/file dir-path "operation-manifest.edn")
+          (pr-str (operation-manifest-payload sink operation-manifest-input files)))))
+
+(defn- write-file-operation-manifest!
+  "Writes operation-manifest.edn as a SIBLING of a :file sink's own
+  :path (the target file has no directory of its own to nest a sidecar
+  inside) -- one :items entry, named for the target file's own
+  basename, :input-hash taken from operation-manifest-input's singular
+  :input-hash (a :file sink writes exactly one item, so there is no
+  {relative-path ...} map to key by). No-op when
+  operation-manifest-input is nil."
+  [path sink operation-manifest-input content]
+  (when operation-manifest-input
+    (let [basename (.getName (io/file path))
+          item (cond-> {:name basename :sha256 (digest/sha256-string content)}
+                 (:input-hash operation-manifest-input)
+                 (assoc :input-hash (:input-hash operation-manifest-input)))
+          payload (operation-manifest-payload sink (assoc operation-manifest-input :items [item]) {})
+          manifest-file (io/file (.getParentFile (io/file path)) "operation-manifest.edn")]
+      (spit manifest-file (pr-str payload)))))
 
 (def append-sound-framings
   "The framing kinds ruling 7 names as concatenating soundly at the
@@ -54,10 +120,14 @@
   write). Missing parent directories are created first in every mode
   (same convenience as cli.clj's write-report!).
 
+  :operation-manifest (see this namespace's own docstring): when
+  present, operation-manifest.edn is written as a sibling of :path,
+  after content is written, describing this one item.
+
   Returns result/ok {:path}, or result/rejected :invalid-sink if sink
   doesn't validate as a FileSink, :invalid-write-mode for an
   unrecognized :mode, or :append-unsound (see above)."
-  [sink content & {:keys [mode] :or {mode :fail-if-exists}}]
+  [sink content & {:keys [mode operation-manifest] :or {mode :fail-if-exists}}]
   (cond
     (not (ss/valid-sink? sink))
     (result/rejected :invalid-sink {:sink sink})
@@ -84,6 +154,7 @@
           (if (= :append mode)
             (spit f content :append true)
             (spit f content))
+          (write-file-operation-manifest! path sink operation-manifest content)
           (result/ok {:path path}))))))
 
 (defn- non-empty-existing-dir?
@@ -108,10 +179,14 @@
   :append-unsound unconditionally (see this namespace's own docstring)
   -- nothing is written on that path.
 
+  :operation-manifest (see this namespace's own docstring): when
+  present, operation-manifest.edn is written under :path last, after
+  every file this call names.
+
   Returns result/ok {:path}, or result/rejected :invalid-sink if sink
   doesn't validate as a DirSink, :invalid-write-mode for an
   unrecognized :mode, or :append-unsound."
-  [sink files & {:keys [mode] :or {mode :fail-if-exists}}]
+  [sink files & {:keys [mode operation-manifest] :or {mode :fail-if-exists}}]
   (cond
     (not (ss/valid-sink? sink))
     (result/rejected :invalid-sink {:sink sink})
@@ -137,6 +212,7 @@
             (let [f (io/file path relative-path)]
               (io/make-parents f)
               (spit f content)))
+          (write-dir-operation-manifest! path sink operation-manifest files)
           (result/ok {:path path}))))))
 
 (defn write-stdout!

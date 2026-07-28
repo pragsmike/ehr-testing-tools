@@ -316,6 +316,21 @@
   [path operator-id operator-version]
   (str path "-mutants/" operator-id "@" operator-version "/"))
 
+(def ^:private operator-format->sink-format
+  "corpus.operators' own :format vocabulary (:fhir/:v2) to
+  source-sink's (:fhir-json/:v2-er7) -- the same mapping
+  sniff-gate-command already carries the inverse of."
+  {:fhir :fhir-json :v2 :v2-er7})
+
+(defn- mutate-producer
+  "SS-4b (D-d resolved, ADR-0020): the operation manifest's own
+  :producer field, this repo's honest identity via the same `ehr
+  version` machinery version-command already uses. git-describe-fn is
+  injectable (mirrors version-command's own parameter) so hermetic
+  tests never shell out to a real git process."
+  [git-describe-fn]
+  {:name "ehr-testing-tools" :identity repo-identity :git (git-describe-fn)})
+
 (defn- stdout-out-dir-result
   "SS-4 ruling 6: --out-dir gains the Sink seam additively -- a bare
   path (including a derived one, D12) behaves exactly as before; a
@@ -427,9 +442,23 @@
   dir:/file: URL already reduced to a bare path by dispatch's own
   resolve-path-designators -- runs the unchanged directory-write path
   below. :stdout-out is test-only injection for the stdout path (see
-  mutate-to-stdout!'s own docstring); real callers never pass it."
-  [{:keys [path operator-id operator-version locator-path out-dir stdout-out]
-    :or {operator-version "1"}}]
+  mutate-to-stdout!'s own docstring); real callers never pass it.
+
+  SS-4b (D-d resolved, ADR-0020): the directory-write path additionally
+  emits operation-manifest.edn last, after every mutant and lineage
+  sidecar in this batch has already landed (items-then-manifest
+  ordering) -- via sink-write/write-dir!, :mode :overwrite (the
+  directory itself was already created by this same call; this is not
+  a second fail-if-exists gate on top of it), :items built from what
+  this loop already computed (lineage's own :produced/:parent, no
+  re-hashing). :git-describe-fn/:now-fn are injectable (mirror
+  version-command's own :git-describe-fn) so hermetic tests never shell
+  out to a real git process or read the wall clock; real callers never
+  pass either."
+  [{:keys [path operator-id operator-version locator-path out-dir stdout-out
+           git-describe-fn now-fn]
+    :or {operator-version "1" git-describe-fn real-git-describe
+         now-fn #(str (LocalDate/now))}}]
   (let [operator (operators/lookup (keyword operator-id) operator-version)]
     (if-not operator
       (result/rejected :unknown-operator
@@ -456,7 +485,26 @@
                 (.mkdirs (io/file out-dir "lineage"))
                 (loop [remaining files processed []]
                   (if (empty? remaining)
-                    (result/ok {:count (count processed) :files processed})
+                    (let [items (mapv (fn [{:keys [file sha256 input-hash]}]
+                                         (cond-> {:name file :sha256 sha256}
+                                           input-hash (assoc :input-hash input-hash)))
+                                       processed)
+                          sink (:payload (source-sink/dir-sink
+                                          {:path out-dir :format (get operator-format->sink-format format)}))
+                          manifest-result (sink-write/write-dir!
+                                           sink {}
+                                           :mode :overwrite
+                                           :operation-manifest
+                                           {:producer (mutate-producer git-describe-fn)
+                                            :operation {:kind :mutate
+                                                        :operator-id (:id operator)
+                                                        :operator-version (:version operator)
+                                                        :locator locator-envelope}
+                                            :written-at (now-fn)
+                                            :items items})]
+                      (if-not (result/ok? manifest-result)
+                        manifest-result
+                        (result/ok {:count (count processed) :files processed})))
                     (let [f (first remaining)
                           base-data (read-base-data format f)
                           mutate-result (mutate/mutate base-data operator locator-envelope)]
@@ -466,7 +514,9 @@
                               basename (.getName f)]
                           (write-mutant format (io/file out-dir basename) mutant)
                           (spit (io/file out-dir "lineage" (str basename ".lineage.edn")) (pr-str lineage))
-                          (recur (rest remaining) (conj processed {:file basename :lineage-id (:id lineage)})))))))))))))))
+                          (recur (rest remaining)
+                                 (conj processed {:file basename :lineage-id (:id lineage)
+                                                   :sha256 (:produced lineage) :input-hash (:parent lineage)})))))))))))))))
 
 (defn- generator-url?
   [designator-result]

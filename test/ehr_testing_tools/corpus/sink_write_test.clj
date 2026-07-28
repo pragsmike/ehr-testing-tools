@@ -4,10 +4,15 @@
   only this session -- fail-if-exists is the default (D3); no
   :overwrite/:append yet (SS-4 Step 5); dir/file ManifestV1_1 sidecar
   emission is blocked on D-d (SS-4's manifest-interop STOP). SS-4 Step 3
-  adds write-stdout! coverage below."
+  adds write-stdout! coverage below. SS-4b Step 3 (D-d resolved, ADR-0020)
+  adds :operation-manifest coverage for write-dir!/write-file!, test-first
+  again -- written before either function accepts the new kwarg."
   (:require [clojure.test :refer [deftest is testing]]
+            [clojure.edn :as edn]
             [clojure.java.io :as io]
+            [ehr-testing-tools.digest :as digest]
             [ehr-testing-tools.result :as result]
+            [ehr-testing-tools.corpus.operation-manifest :as om]
             [ehr-testing-tools.corpus.source-sink :as ss]
             [ehr-testing-tools.corpus.sink-write :as write])
   (:import [java.io ByteArrayOutputStream File]))
@@ -243,3 +248,100 @@
   (let [r (write/write-stdout! {:kind :dir :path "./x" :format :fhir-json} [])]
     (is (result/rejected? r))
     (is (= :invalid-sink (:category r)))))
+
+;; ---- :operation-manifest (SS-4b Step 3, D-d resolved via ADR-0020) ----
+
+(def ^:private producer
+  {:name "ehr-testing-tools" :identity "pre-release" :git "abc1234-dirty"})
+
+(def ^:private operation
+  {:kind :mutate :operator-id :blank-required-field :operator-version "1"
+   :locator {:format :v2 :path "MSH-9"}})
+
+(deftest write-dir-with-no-operation-manifest-writes-nothing-extra-test
+  (let [parent (temp-dir)
+        target (str parent "/out")
+        sink (:payload (ss/dir-sink {:path target :format :v2-er7}))
+        r (write/write-dir! sink {"a.hl7" "AAA"})]
+    (is (result/ok? r))
+    (is (not (.exists (io/file target "operation-manifest.edn")))
+        "absent :operation-manifest is a no-op -- backward compatible with every SS-4 write-dir! caller")))
+
+(deftest write-dir-with-explicit-items-writes-operation-manifest-last-test
+  (let [parent (temp-dir)
+        target (str parent "/out")
+        sink (:payload (ss/dir-sink {:path target :format :v2-er7}))
+        sha (digest/sha256-string "AAA")
+        r (write/write-dir! sink {"a.hl7" "AAA"}
+                             :operation-manifest {:producer producer
+                                                   :operation operation
+                                                   :written-at "2026-07-28"
+                                                   :items [{:name "a.hl7" :sha256 sha}]})]
+    (is (result/ok? r))
+    (is (= "AAA" (slurp (io/file target "a.hl7"))))
+    (let [manifest (edn/read-string (slurp (io/file target "operation-manifest.edn")))]
+      (is (om/valid? manifest))
+      (is (= producer (:producer manifest)))
+      (is (= operation (:operation manifest)))
+      (is (= :v2-er7 (:format manifest)))
+      (is (= :file-per-item (:framing manifest))
+          "the sink's own default framing, read off the sink, never re-declared by the caller")
+      (is (= [{:name "a.hl7" :sha256 sha}] (:items manifest))))))
+
+(deftest write-dir-derives-items-from-files-when-not-given-explicitly-test
+  (let [parent (temp-dir)
+        target (str parent "/out")
+        sink (:payload (ss/dir-sink {:path target :format :fhir-json}))
+        r (write/write-dir! sink {"a.json" "AAA" "b.json" "BBB"}
+                             :operation-manifest {:producer producer
+                                                   :operation operation
+                                                   :written-at "2026-07-28"
+                                                   :input-hashes {"a.json" (digest/sha256-string "parent-A")}})]
+    (is (result/ok? r))
+    (let [manifest (edn/read-string (slurp (io/file target "operation-manifest.edn")))
+          by-name (into {} (map (juxt :name identity)) (:items manifest))]
+      (is (om/valid? manifest))
+      (is (= (digest/sha256-string "AAA") (:sha256 (get by-name "a.json"))))
+      (is (= (digest/sha256-string "parent-A") (:input-hash (get by-name "a.json"))))
+      (is (not (contains? (get by-name "b.json") :input-hash))
+          "input-hash present only where the caller actually supplied one"))))
+
+(deftest write-dir-operation-manifest-is-honored-under-overwrite-with-empty-files-test
+  (testing "mutate-command's own split-write shape: files already landed via a prior progressive loop, this call names none but still emits the manifest"
+    (let [parent (temp-dir)
+          target (str parent "/out")
+          sink (:payload (ss/dir-sink {:path target :format :v2-er7}))]
+      (.mkdirs (io/file target))
+      (spit (io/file target "a.hl7") "AAA")
+      (let [r (write/write-dir! sink {} :mode :overwrite
+                                 :operation-manifest {:producer producer
+                                                       :operation operation
+                                                       :written-at "2026-07-28"
+                                                       :items [{:name "a.hl7" :sha256 (digest/sha256-string "AAA")}]})]
+        (is (result/ok? r))
+        (is (.exists (io/file target "operation-manifest.edn")))))))
+
+(deftest write-file-with-operation-manifest-writes-a-sibling-manifest-test
+  (let [dir (temp-dir)
+        target (str dir "/out.hl7")
+        sink (:payload (ss/file-sink {:path target :format :v2-er7}))
+        r (write/write-file! sink "AAA"
+                              :operation-manifest {:producer producer :operation operation
+                                                    :written-at "2026-07-28"})]
+    (is (result/ok? r))
+    (let [manifest (edn/read-string (slurp (io/file dir "operation-manifest.edn")))]
+      (is (om/valid? manifest))
+      (is (= [{:name "out.hl7" :sha256 (digest/sha256-string "AAA")}] (:items manifest))))))
+
+(deftest write-file-with-operation-manifest-preserves-input-hash-when-given-test
+  (let [dir (temp-dir)
+        target (str dir "/out.hl7")
+        sink (:payload (ss/file-sink {:path target :format :v2-er7}))
+        parent-hash (digest/sha256-string "parent")
+        r (write/write-file! sink "AAA"
+                              :operation-manifest {:producer producer :operation operation
+                                                    :written-at "2026-07-28"
+                                                    :input-hash parent-hash})]
+    (is (result/ok? r))
+    (let [manifest (edn/read-string (slurp (io/file dir "operation-manifest.edn")))]
+      (is (= parent-hash (:input-hash (first (:items manifest))))))))

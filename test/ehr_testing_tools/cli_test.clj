@@ -578,6 +578,36 @@
       (let [lineage (clojure.edn/read-string (slurp lineage-file))]
         (is (= :remove-required-element (:id (:operator (:transformation lineage)))))))))
 
+;; ---- operation-manifest.edn (SS-4b, D-d resolved via ADR-0020): the
+;; directory-write path now emits it last, after every mutant/lineage
+;; sidecar -- git-describe-fn/now-fn are injected here for determinism,
+;; mirroring version-command's own test precedent (line ~454). ----
+
+(deftest mutate-command-emits-operation-manifest-after-the-batch-test
+  (let [in-dir (temp-dir*)
+        out-dir (str (temp-dir*) "/out")
+        _ (spit (io/file in-dir "patient1.json") sample-bundle-json)
+        r (cli/mutate-command {:path in-dir :operator-id "remove-required-element"
+                                :locator-path "entry[0].resource.gender" :out-dir out-dir
+                                :git-describe-fn (fn [] "abc1234") :now-fn (fn [] "2026-07-28")})]
+    (is (result/ok? r))
+    (let [manifest-file (io/file out-dir "operation-manifest.edn")]
+      (is (.exists manifest-file))
+      (let [manifest (clojure.edn/read-string (slurp manifest-file))
+            lineage (clojure.edn/read-string
+                     (slurp (io/file out-dir "lineage" "patient1.json.lineage.edn")))]
+        (is (= :operation (:manifest-kind manifest)))
+        (is (= {:name "ehr-testing-tools" :identity "pre-release" :git "abc1234"}
+               (:producer manifest)))
+        (is (= :mutate (:kind (:operation manifest))))
+        (is (= :remove-required-element (:operator-id (:operation manifest))))
+        (is (= "1" (:operator-version (:operation manifest))))
+        (is (= "2026-07-28" (:written-at manifest)))
+        (is (= :fhir-json (:format manifest)))
+        (is (= [{:name "patient1.json" :sha256 (:produced lineage) :input-hash (:parent lineage)}]
+               (:items manifest))
+            "the item's own sha256/input-hash come straight from the same lineage record, no re-derivation")))))
+
 (deftest mutate-command-processes-every-json-file-in-a-directory-test
   (let [in-dir (temp-dir*)
         out-dir (str (temp-dir*) "/out")
