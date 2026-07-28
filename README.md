@@ -123,10 +123,12 @@ bin/ehr help
 bin/ehr artifact fetch --name synthea --version 4.0.0
 bin/ehr artifact fetch --name temurin-jdk --version 17.0.19+10
 
-# Generate a small deterministic corpus (EXP-A4's pinned settings).
-bin/ehr corpus generate --config-path config/synthea/synthea.properties \
-  --seed 100 --clinician-seed 555 --population 10 \
-  --reference-date 20260101 --out-dir out/demo-corpus
+# Generate a small deterministic corpus. Zero flags: every default is
+# pinned (--seed 1, --population 5, --reference-date 20260101, D9), so
+# this exact command is byte-reproducible on any machine given the same
+# locked Synthea/JDK versions (EXP-A4's claim, extended to the zero-flag
+# case) -- it lands in the derived target/corpus/synthea-s1-p5/.
+bin/ehr corpus generate
 
 # Mutate one patient bundle: drop a required element at a named
 # locator, with a lineage record for the mutant. (mutate's positional
@@ -136,7 +138,7 @@ bin/ehr corpus generate --config-path config/synthea/synthea.properties \
 # practitionerInformation*.json -- so this picks a patient file
 # specifically rather than the whole directory. See the full operator
 # catalog: `bin/ehr corpus operators`.)
-PATIENT_FILE=$(ls out/demo-corpus/fhir/*.json | grep -v -e hospitalInformation -e practitionerInformation | head -1)
+PATIENT_FILE=$(ls target/corpus/synthea-s1-p5/fhir/*.json | grep -v -e hospitalInformation -e practitionerInformation | head -1)
 bin/ehr corpus mutate $PATIENT_FILE \
   --operator-id remove-required-element --locator-path entry[0].resource.gender \
   --out-dir out/demo-mutants
@@ -158,7 +160,7 @@ bin/ehr gate fhir out/demo-mutants --report out/demo-mutants-report.edn
 
 # Check a corpus against an expected corpus (golden equivalence) --
 # the corpus's second judge, alongside Gate.
-bin/ehr check out/demo-corpus/fhir --expected out/demo-corpus/fhir
+bin/ehr check target/corpus/synthea-s1-p5/fhir --expected target/corpus/synthea-s1-p5/fhir
 
 # Run the test suite (hermetic — see AGENTS.md). A separate suite
 # exercises the real validator/HAPI engines against real mutants

@@ -128,15 +128,17 @@ repo root.
 bin/ehr artifact fetch --name synthea --version 4.0.0
 bin/ehr artifact fetch --name temurin-jdk --version 17.0.19+10
 
-# Generate a small deterministic corpus (10 patients, pinned seeds and
-# reference date -- same invocation the README's quickstart uses).
-bin/ehr corpus generate --config-path config/synthea/synthea.properties \
-  --seed 100 --clinician-seed 555 --population 10 \
-  --reference-date 20260101 --out-dir out/my-first-corpus
+# Generate a small deterministic corpus. Zero flags: every default is
+# pinned (D9) -- this exact command is byte-reproducible on any machine
+# given the same locked Synthea/JDK versions.
+bin/ehr corpus generate
 ```
 
-This lands in `out/my-first-corpus/` (gitignored — generated corpora are
-never committed; the manifest and hashes are the record, not the bytes):
+This lands in `target/corpus/synthea-s1-p5/` (gitignored — generated
+corpora are never committed; the manifest and hashes are the record, not
+the bytes). Re-running the same zero-flag command a second time is
+rejected, not silently overwritten — remove the directory first, or pass
+a different `--out-dir`, to regenerate:
 
 - `fhir/*.json` — one FHIR R4 Bundle per patient (plus two non-patient
   bundles, `hospitalInformation*.json` and `practitionerInformation*.json`).
@@ -150,7 +152,7 @@ Now mutate one patient bundle — drop a required element at a named
 locator, with a lineage record for the mutant:
 
 ```sh
-PATIENT_FILE=$(ls out/my-first-corpus/fhir/*.json | grep -v -e hospitalInformation -e practitionerInformation | head -1)
+PATIENT_FILE=$(ls target/corpus/synthea-s1-p5/fhir/*.json | grep -v -e hospitalInformation -e practitionerInformation | head -1)
 bin/ehr corpus mutate $PATIENT_FILE \
   --operator-id remove-required-element --locator-path entry[0].resource.gender \
   --out-dir out/my-first-mutants

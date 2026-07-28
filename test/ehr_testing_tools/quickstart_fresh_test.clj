@@ -18,7 +18,7 @@
   (let [{:keys [ok? readme-count script-count divergence]} (qf/check)]
     (is ok? (str "divergence: " divergence))
     (is (nil? divergence))
-    (is (= 15 readme-count))
+    (is (= 13 readme-count))
     (is (= readme-count script-count))))
 
 ;; ---- extraction on its own: comments/blanks stripped, continuation
