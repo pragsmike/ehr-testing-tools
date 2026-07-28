@@ -415,6 +415,28 @@ other wall-clock-shaped default proposed for this CLI is judged against
 this same generation-input-vs-record-keeping-date distinction, not
 against convenience.
 
+**SS-4 Step 0 (2026-07-28) — D8's named exemption list extended, plus
+two adjacent notes from the SS-3 checker pass.** D8's named
+record-keeping exemption list gains the spool's own `:captured-at`
+(`ehr-testing-tools.corpus.spool`) and a sink manifest's own
+`:written-at` (SS-4 Part III, below) alongside `corpus intake`'s
+`--received` — every one of the three records when bytes arrived,
+landed, or were captured, not what bytes a deterministic run produces,
+the same distinction D8 already draws; naming `:written-at` here too,
+ahead of its own implementation, keeps this list extended once,
+completely, rather than piecemeal across two sessions. The spool's
+wall-clock-derived output path (`default-spool-out-dir`,
+unlike every other D9-precedent derived path) is named as a deliberate
+exception in the same family, not an oversight: a capture is an event,
+not a generation, so a stable path would trip the spool's own
+fail-if-exists guard on every second capture, inverting the guard from
+catching an accidental overwrite to blocking every legitimate one. The
+spool's check-then-write atomicity (nothing lands on disk until the
+full input is confirmed under-cap and decodes cleanly) buys that
+guarantee at a memory cost equal to the cap itself (default 1 GiB, held
+fully in memory before any byte is written) — an argument for keeping
+the default conservative, not for raising it casually.
+
 ### IX.2 Ratified defaults for `corpus generate` (D9)
 
 The zero-flag happy path:
