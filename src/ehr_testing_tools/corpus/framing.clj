@@ -219,6 +219,23 @@
                                                   "entry" (mapv (fn [resource] {"resource" resource}) items)})
                          "UTF-8")))
 
+(def known-framings
+  "Every framing kind decode/encode dispatch on below -- the in-repo
+  'registry' ehr-testing-tools.lint's own framing-codec classification
+  (target 4, docs/source-sink-design.md Part VIII: 'the same shape as
+  corpus.operators/corpus.canonicalizers') checks against via `lookup`."
+  #{:file-per-item :er7-multi :ndjson :bundle-entries :mllp})
+
+(defn lookup
+  "id (a framing keyword) x version (ignored -- framing kinds aren't
+  versioned the way corpus.operators entries are) -> id itself when
+  known-framings contains it, else nil. Registry-lookup shape for
+  ehr-testing-tools.lint's target-4 verification (registry-lookup-fns),
+  matching corpus.operators/canonical's own {id version} -> entry-or-
+  nil contract."
+  [id _version]
+  (when (contains? known-framings id) id))
+
 ;; ---- dispatch ----
 
 (defn decode

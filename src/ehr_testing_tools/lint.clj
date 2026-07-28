@@ -50,6 +50,7 @@
             ;; canonicalizer-set resolves regardless of what else this
             ;; process happened to load first.
             [ehr-testing-tools.corpus.canonicalizers]
+            [ehr-testing-tools.corpus.framing :as framing]
             [ehr-testing-tools.corpus.operators :as operators]
             [ehr-testing-tools.check.schemas :as schemas]
             [palgebra.lint :as palgebra-lint]))
@@ -59,7 +60,8 @@
   registry keyword -> its [id version] lookup fn."
   {:corpus.operators operators/lookup
    :canonical canonical/lookup
-   :check.schemas schemas/lookup})
+   :check.schemas schemas/lookup
+   :framing framing/lookup})
 
 (def catalytic-resource-targets
   "resource-name -> {:target 1|2|3|4 :ref (optional, target-specific)}.
@@ -84,7 +86,12 @@
    ;; path this lint could check); classification only.
    "expected-corpus"     {:target 3}
    "assertion-set"       {:target 3}
-   "canonicalizer-set"   {:target 4 :ref {:registry :canonical :id :strip-run-timestamp-suffix :version "1"}}})
+   "canonicalizer-set"   {:target 4 :ref {:registry :canonical :id :strip-run-timestamp-suffix :version "1"}}
+   ;; SS-3: docs/source-sink-design.md Part VIII names framing-codec as
+   ;; target 4, "the same shape as corpus.operators/corpus.canonicalizers"
+   ;; -- ehr-testing-tools.corpus.framing/lookup is that shape's minimal
+   ;; form (framing kinds aren't versioned, so :version is a fixed "1").
+   "framing-codec"       {:target 4 :ref {:registry :framing :id :er7-multi :version "1"}}})
 
 ;; ---- per-target verification ----
 

@@ -256,3 +256,14 @@
     (let [r (framing/decode :mllp (byte-array (cons 0x0B (map int "unterminated"))))]
       (is (result/rejected? r))
       (is (= :malformed-mllp-frame (:category r))))))
+
+;; ---- lookup -- the registry-lookup shape ehr-testing-tools.lint's own
+;; target-4 framing-codec classification checks against (Step 7) ----
+
+(deftest lookup-test
+  (testing "every known framing kind resolves, :version ignored"
+    (doseq [f framing/known-framings]
+      (is (= f (framing/lookup f "1")))
+      (is (= f (framing/lookup f "anything")))))
+  (testing "an unknown framing keyword resolves to nil"
+    (is (nil? (framing/lookup :not-a-real-framing "1")))))

@@ -75,11 +75,13 @@
   (let [data (edn/read-string (slurp "docs/use-cases.edn"))]
     (is (usecases/valid? data))))
 
-(deftest committed-use-cases-edn-has-fifteen-cases-test
+(deftest committed-use-cases-edn-has-sixteen-cases-test
   ;; 14 -> 15, SS-2 Step 5: :simulator-traffic-as-intake-source, the
   ;; new eleventh verified command strip (ruling 7).
+  ;; 15 -> 16, SS-3 Step 7: :piped-hl7-traffic-as-intake-source, the
+  ;; stdin-intake strip, verified for real against the ADR-0011 fixture.
   (let [data (edn/read-string (slurp "docs/use-cases.edn"))]
-    (is (= 15 (count (:cases data))))))
+    (is (= 16 (count (:cases data))))))
 
 (deftest committed-use-cases-edn-has-unique-ids-test
   (let [data (edn/read-string (slurp "docs/use-cases.edn"))
