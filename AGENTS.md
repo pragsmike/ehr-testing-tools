@@ -23,23 +23,27 @@ and why.
 
 **Landed so far:** `components/sim` + `bases/sim-cli` (from
 `ehr-testing-sim`) — a deterministic, seeded generator of synthetic
-hospital traffic for testing EHR integrations.
+hospital traffic for testing EHR integrations. `components/tools` +
+`components/palgebra` + `bases/ehr-cli` (from `ehr-testing-tools`) —
+corpus construction (generation, mutation, provenance) and conformance
+gating (HL7 v2, FHIR); `projects/tools-cli` composes the three,
+`projects/conformance` is the base-less project exercising sim + tools
++ palgebra together (see `notes/ADRs.md` ADR-0002, closing named holes
+H1–H3).
 
-**Deliberately out of scope for now:** `ehr-testing-tools` (a
-source-sink formalization session is running against that repo
-independently; nothing from it lands here until that work is tagged
-stable — see notes/ADRs.md ADR-0001, named hole H2).
-`ehr-testing-guide` stays out of this workspace entirely, permanently
-(ADR-0001, R2) — it is not a future landing, don't plan namespace or
-directory shape around it arriving later.
+**Deliberately out of scope, permanently:** `ehr-testing-guide` stays
+out of this workspace entirely (ADR-0001, R2) — it is not a future
+landing, don't plan namespace or directory shape around it arriving
+later.
 
-**Publishing:** `ehr-testing-tools` will be this family's only
-published library artifact once it lands (ADR-0001, R3). Everything
-else in this workspace — including sim — builds an app artifact or
-nothing; never treat a component here as a publishable library in its
-own right. This resolves Polylith's own one-library-per-workspace
-constraint (see the brief, §11 "Building more than one library from
-one workspace").
+**Publishing:** `projects/tools-cli` will be this family's only
+published library artifact, once a future session names Clojars/Maven
+Central coordinates (ADR-0001 R3, named hole H5 — still open, author's
+call). Everything else in this workspace — including sim — builds an
+app artifact or nothing; never treat a component here as a publishable
+library in its own right. This resolves Polylith's own
+one-library-per-workspace constraint (see the brief, §11 "Building
+more than one library from one workspace").
 
 ## Before your first git operation: read this
 
@@ -105,13 +109,19 @@ the pre-merge repo, not by interface-design judgment. **Its width is
 not design intent.** Don't narrow it opportunistically, and don't
 treat the width of the interface as evidence about how sim's internals
 should be decomposed into more than one component later — that's a
-future, author-ruled extraction session's call (ADR-0001, named hole
-H1 territory), not a standing invitation for cleanup.
+future, author-ruled extraction session's call, not a standing
+invitation for cleanup.
+
+The same discipline, same disclosure, applies to `components/tools`'
+`ehrt.tools.interface` and `components/palgebra`'s
+`ehrt.palgebra.interface` (ADR-0002, R13) — judge/corpus foundation
+extraction is a future, ruled session's call (ADR-0002, R14), not
+something this width hints at.
 
 ## Discipline inherited from sim (ADR-0001, R4)
 
-Where sim's and (eventually) tools' conventions differ, sim's form
-wins; this is sim's own discipline, unchanged by the move:
+Where sim's and tools' conventions differ, sim's form wins; this is
+sim's own discipline, unchanged by the move:
 
 - **Result-not-throw**: every capability function returns `{:status
   :ok|:rejected|:error :category ... :payload ...}`. Exceptions are
@@ -129,11 +139,14 @@ wins; this is sim's own discipline, unchanged by the move:
 
 ## Constraints
 
-- **Dependency direction**: `ehr-testing-tools`, once landed, may
-  depend on `components/sim`; `components/sim` must never depend on
-  anything tools-derived (inherited from sim's own ADR-0001; still the
-  rule inside one workspace, enforced now by `poly check` rather than
-  by being a separate repo).
+- **Dependency direction**: `components/tools`/`projects/conformance`
+  may depend on `components/sim`; `components/sim` must never depend
+  on anything tools-derived (inherited from sim's own ADR-0001; still
+  the rule inside one workspace, enforced now by `poly check` rather
+  than by being a separate repo). In practice `projects/conformance`
+  consumes sim by subprocess only, never a classpath dependency
+  (`tools/ADR-0013`, carried forward as provenance) — `poly/sim` does
+  not appear in its `deps.edn`.
 - **No PHI, no real-person data, ever** — including in test fixtures
   and docs.
 - **No CPT codes** (AMA-licensed). SNOMED CT, LOINC, RxNorm, ICD-10-CM,
