@@ -1400,3 +1400,103 @@ reading this repo's own git history for "when did this go public" has
 this ADR as the answer, dated and reasoned, rather than inferring it
 from a bare commit that flips a GitHub setting this repository's own
 tree cannot record.
+
+---
+
+## ADR-0016 — String-diagram skill vendors its palgebra tooling; ADR-0005's non-vendoring clause superseded
+
+**Status:** Accepted (author-ratified 2026-07-27)
+
+**Context.** ADR-0005 adopted `string-diagram` into this repo but left
+its converter and example equation sets claimed into ehr-testing-tools'
+own `palgebra/` directory, requiring a sibling checkout of
+`ehr-testing-tools` at `../ehr-testing-tools` to use the skill at all.
+That requirement contradicts ADR-0001's dependency direction in
+practice — this repo's independence claim ("tools may depend on sim,
+never the reverse") is undermined by a skill this repo ships needing a
+directory this repo doesn't control just to run — and ADR-0015's
+going-public decision turns a merely-inconvenient cross-repo reference
+into a live problem for external readers: `docs/sim-theory.md`'s
+`notation.md` hyperlink used a relative path (`../../ehr-testing-tools/
+docs/notation.md`) that escapes this repo's own root entirely, a dead
+link on GitHub's web UI for anyone without an identical sibling
+checkout on disk.
+
+**Decision.**
+
+1. **Vendor four files** under `.agents/skills/string-diagram/`:
+   `tools/resource_equations_to_mermaid.py`,
+   `examples/ai-study-equations.txt`,
+   `examples/lemon-pie-equations.txt`, and
+   `examples/decision-monad-equations.txt`. Each is pinned to
+   `ehr-testing-tools` commit `7ecce38ca2f388759c4cb9a934a8c6f2fee7a5c8`
+   (2026-07-27), recorded in a provenance header on every vendored
+   file naming the source repo, source path, commit SHA, vendoring
+   date, and this ADR.
+2. **`SKILL.md` becomes self-contained.** Its Step 2 command and
+   "Files" section now use skill-relative paths
+   (`tools/resource_equations_to_mermaid.py`,
+   `examples/*.txt`); the paragraph requiring a sibling checkout is
+   removed.
+3. **The two `docs/sim-theory-*` regeneration headers repoint** to the
+   vendored converter path
+   (`.agents/skills/string-diagram/tools/resource_equations_to_mermaid.py`),
+   and `docs/sim-theory.md`'s notation link becomes the absolute
+   GitHub URL
+   (`https://github.com/pragsmike/ehr-testing-tools/blob/main/docs/notation.md`)
+   rather than a path that escapes this repo's root — `notation.md` is
+   conceptual reference material, not tooling this skill executes, so
+   it is linked by URL rather than vendored.
+4. **Faithfulness evidence.** This session ran the newly-vendored
+   converter against `docs/sim-theory-equations.txt` and diffed the
+   output against the mermaid block already committed in
+   `docs/sim-theory-diagram.md`. Every node declaration, wire, and
+   style line matched exactly. The only differences were twelve
+   `%% Arrow N` comment-number shifts — an artifact of the equations
+   file's line-position-derived numbering, the same non-structural
+   phenomenon this file's own M4 MILESTONE note already documented
+   ("the only difference was the `%% Arrow N` comment numbers...not a
+   structural or convention mismatch") — and one trailing blank line,
+   traced to `generate_mermaid()`'s unconditional blank separator line
+   before the (here empty) waste-sinks section: a pre-existing quirk
+   of the converter itself, unrelated to vendoring, that a normal
+   paste-the-output-back-in edit would trim. No structural drift.
+5. **Drift handling going forward.** A companion session in
+   `ehr-testing-tools` — the repo ADR-0001 permits to know about this
+   one — adds a nightly byte-diff between its own authoritative
+   `palgebra/` copies and these vendored ones to its existing nightly
+   integration workflow, naming this ADR in its failure message so the
+   remedy is always a re-vendor session here (or a deliberate
+   divergence ADR), never a silent edit on either side.
+
+**Rejected.**
+
+- **Keeping the sibling-checkout requirement.** Rejected: it
+  contradicts ADR-0001's independence claim in practice, and ADR-0015's
+  going-public decision makes a broken cross-repo reference a problem
+  for external readers, not merely an inconvenience for the author.
+- **Fetching the script by URL at use time instead of vendoring.**
+  Rejected: introduces a network dependency this project doesn't
+  otherwise have, and pins nothing — a moving `main` branch upstream
+  could silently change the tool's output between sessions with no
+  record of when or why.
+- **Extracting palgebra into its own repo that both sim and tools
+  depend on.** Deferred, not rejected: palgebra is itself a tool for
+  expressing and working with abstract designs and doesn't belong to
+  either consumer; vendoring now stages that extraction (the skill
+  directory becomes a natural `git mv` source later) rather than
+  foreclosing it. See `.agents/plans/roadmap.md`'s "Considered,
+  unscheduled" entry; the trigger to revisit is the nightly drift check
+  firing more than rarely, or a third consumer appearing.
+
+**Consequences.** ADR-0005's non-vendoring clause for `string-diagram`
+(its Decision point 1 and "Files" reasoning) is superseded by this
+ADR; per this project's own no-silent-revert convention, ADR-0005's
+body is not edited. `.agents/skills/string-diagram/` is now
+self-contained: nothing outside that directory and the two
+`docs/sim-theory-*` regeneration headers references the vendored
+files. Historical/provenance mentions of `ehr-testing-tools` elsewhere
+in this repo — `notes/ADRs.md`, session records,
+`notes/facts-register.md`, docstrings, and this ADR's own text — are
+unaffected; this decision removes *live path* references only, not the
+repo's honest account of where the tooling originated.
