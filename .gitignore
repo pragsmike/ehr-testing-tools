@@ -4,3 +4,4 @@ target/
 out/
 .clj-kondo
 .lsp
+__pycache__/
