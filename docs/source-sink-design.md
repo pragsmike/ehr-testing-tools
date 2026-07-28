@@ -38,7 +38,7 @@ source while writing this record: `src/ehr_testing_tools/corpus/intake.clj`,
 | D-a | URL scheme spellings (`dir:` vs `file:` with trailing slash; invented schemes for generators). | Author taste call, cheap to defer, expensive to guess wrong before any parser exists. | **Resolved 2026-07-28 (SS-1 build):** six fixed spellings, no trailing-slash magic -- `file:` (single file), `dir:` (directory tree, a distinct scheme), `stdin:`, `synthea:`, `sim:` (all four: scheme, colon, optional path, optional `?query`), and `blaze://host:port/path?query=...` (the one scheme with an authority, since it names a network endpoint). Format/framing ride as query params on every scheme. All six parse far enough to name their own `:kind`; only `dir:`/`file:` have real constructors this session (`ehr-testing-tools.corpus.source-sink`) -- the other four are recognized-but-rejected (`:unsupported-source-kind`/`:unsupported-sink-kind`), never silently accepted and never confused with a genuinely unknown scheme. See `ehr-testing-tools.corpus.source-sink-url`. |
 | D-b | Whether the `blaze` sink lands before or after the IG-pinning blocker clears — they interact: what profile does a written resource claim? | No IG package is pinned in `artifacts.lock.edn` today (`docs/pipeline.edn`'s own Gate contract note); a `blaze` sink writing FHIR resources without an answer to "which profile" is premature. | **Open** |
 | D-c | Whether the `:origin` rename (D6) ships with the first source build session (SS-1) or gets its own micro-session. | Sequencing convenience only; no design consequence either way. | **Resolved 2026-07-28 (SS-1 build), Step 5:** ships in SS-1, sequenced after the golden-catalog comparison (ruling 5) passes -- `CatalogEntry`'s `:source` field is `:origin` now; `IntakeRecord`'s own (distinct) `:source` field is unaffected -- D6/ADR-0017 decision 5 names only `CatalogEntry`'s collision. No compatibility alias for the old spelling (pre-release, D10's own reasoning). **IntakeRecord follow-up (2026-07-28, SS-2 Step 0):** the SS-1 checker pass found `IntakeRecord`'s own `:source` field -- a different schema, colliding on spelling only, never named by D6/ADR-0017 decision 5 -- carrying the identical incoherence; renamed to `:origin` for consistency, same no-alias reasoning, closing D-c's scope completely. |
-| D-d | **Manifest interop: can a `dir`/`file` sink honestly emit a `ManifestV1_1` sidecar naming this repo as producer?** | Probed 2026-07-28 (SS-4 build), ruling 2: `ManifestV1_1`'s required `:generator`/`:config`/`:invocation` fields are all shaped for an *external pinned engine* -- an `artifacts.lock.edn` artifact record, a real properties file, a subprocess invocation record -- exactly what `corpus.generate`'s and `corpus.generators`'s own `:synthea`/`:sim` entries supply (`corpus/generate.clj`'s `manifest/build-v1-1` call site), and exactly what a `dir`/`file` sink write (pure in-process Clojure -- `corpus.mutate` is pure, `corpus.sink-write` is a plain file write, neither runs a subprocess or consumes a pinned artifact) structurally does not have. Forcing values in would fabricate an artifact identity or a config file that doesn't exist -- the schema improvisation ruling 2 directs against. Two options framed for the author, neither adopted this session: **(A)** a distinct, versioned manifest schema for operation-producers (write/mutate), with `:generator` replaced by a plain producer-identity field (this repo's own `ehr version` identity, not sha256-verified) and `:config`/`:invocation` made optional or dropped -- requires coordinating with intake's sidecar recognition (today: any `manifest.edn` is tried against `ManifestV1_1` specifically, `corpus/intake.clj`'s `sidecar-result`) and, eventually, with sim's own mirrored schema (ADR-0012 clause on manifest commitments). **(B)** reuse `ManifestV1_1` unchanged, with `:generator`/`:config`/`:invocation` populated by placeholder/proxy values (e.g. a hash of this repo's own git-describe string standing in for an artifact `:sha256`) -- unblocks emission now, but privately redefines what those field names mean relative to every other producer (sim included) using the identical schema, the same abstraction-incoherence class ADR-0009/ADR-0017 decision 5 already exist to prevent. | **Open (STOP-AND-REPORT, SS-4 build)** -- `dir`/`file` sinks emit no manifest this session (ruling 8's own scope fence: "no manifest schema evolution, ruling 2's stop governs"); the composability property (Part III) is correspondingly reduced to its hash-identity half only, this session; full manifest emission and the property's `:origin`/provenance half wait on this decision. |
+| D-d | **Manifest interop: can a `dir`/`file` sink honestly emit a `ManifestV1_1` sidecar naming this repo as producer?** | Probed 2026-07-28 (SS-4 build), ruling 2: `ManifestV1_1`'s required `:generator`/`:config`/`:invocation` fields are all shaped for an *external pinned engine* -- an `artifacts.lock.edn` artifact record, a real properties file, a subprocess invocation record -- exactly what `corpus.generate`'s and `corpus.generators`'s own `:synthea`/`:sim` entries supply (`corpus/generate.clj`'s `manifest/build-v1-1` call site), and exactly what a `dir`/`file` sink write (pure in-process Clojure -- `corpus.mutate` is pure, `corpus.sink-write` is a plain file write, neither runs a subprocess or consumes a pinned artifact) structurally does not have. Forcing values in would fabricate an artifact identity or a config file that doesn't exist -- the schema improvisation ruling 2 directs against. Two options framed for the author, neither adopted this session: **(A)** a distinct, versioned manifest schema for operation-producers (write/mutate), with `:generator` replaced by a plain producer-identity field (this repo's own `ehr version` identity, not sha256-verified) and `:config`/`:invocation` made optional or dropped -- requires coordinating with intake's sidecar recognition (today: any `manifest.edn` is tried against `ManifestV1_1` specifically, `corpus/intake.clj`'s `sidecar-result`) and, eventually, with sim's own mirrored schema (ADR-0012 clause on manifest commitments). **(B)** reuse `ManifestV1_1` unchanged, with `:generator`/`:config`/`:invocation` populated by placeholder/proxy values (e.g. a hash of this repo's own git-describe string standing in for an artifact `:sha256`) -- unblocks emission now, but privately redefines what those field names mean relative to every other producer (sim included) using the identical schema, the same abstraction-incoherence class ADR-0009/ADR-0017 decision 5 already exist to prevent. | **Resolved 2026-07-28 (SS-4b build): option A, sub-choice A1** -- a distinct, versioned manifest schema for operation-producers, `ehr-testing-tools.corpus.operation-manifest/OperationManifestV1`, under its own filename `operation-manifest.edn` (never `manifest.edn` -- the two are never confused, never merged, and a directory carrying both is rejected, not resolved by precedence). `ManifestV1_1`, `corpus.generate`'s emitters, and ADR-0012's sim-mounting clause are untouched by construction: sim neither emits nor reads operation manifests, so the "eventually sim's mirrored schema" coordination option A's own text names never triggers. Option B is rejected outright: reusing `ManifestV1_1` with proxy values institutionalizes fabricated identity in a file format, the same incoherence class ADR-0009/ADR-0017 decision 5 already exist to prevent. Option A's sibling, **A2** (dispatch intake's existing `manifest.edn` recognizer by try-order across both schemas instead of a second, distinctly-named file) is also rejected: an implicit try-order contract is exactly the kind of unstated precedence rule the never-both rule (below) refuses to have. Full schema in Part III.5; ADR-0020 is the reasoning-of-record. |
 | D8 | **The determinism law of defaults.** A CLI flag may default only to a pinned constant or a value derived deterministically from other pinned inputs — never the clock, the environment, the network, or the machine. `corpus intake`'s `--received` (a record-keeping date, not a generation input) is the one named exemption. | The reproducibility toolkit's own reason for existing (`docs/positioning.md`, Dogfooding) is undermined by a convenience default that reads wall-clock time; naming the one legitimate exception (lineage dates) prevents it from being read as a loophole. | Settled (§IX) |
 | D9 | **Ratified zero-flag defaults for `corpus generate`.** `--seed 1`; `--clinician-seed` defaults to `--seed`'s value; `--reference-date 20260101` (a named pinned constant beside `default-locale`/`default-timezone`); `--population 5`; `--output-dir` derived as `target/corpus/synthea-s<seed>-p<pop>`; `--config-path` defaults to a minimal properties file shipped in `resources/`. | The zero-flag run is the quickstart's first impression and doubles as a reproducibility demo (byte-identical across machines) rather than a mere convenience — leaving `generate` flag-heavy would bury that demo under six required flags. | Settled (§IX) |
 | D10 | **One flag vocabulary, spellings ratified, old spellings removed.** `--lockfile` (not `--lockfile-path`), `--out` (new, for a single output file), `--out-dir` (not `--output-dir`), positional `PATH` with `--path` as its explicit twin (not `--input`/`--source-dir`). No aliases for the old spellings. | Pre-release (ADR-0008) is the one window where a breaking flag rename is cheap; `docs/cli.md`/`ehr help` regenerate from `cli-spec` so the two surfaces cannot drift apart. | Settled (§IX) |
@@ -50,7 +50,7 @@ source while writing this record: `src/ehr_testing_tools/corpus/intake.clj`,
 | OPEN-2 | Whether `corpus generate`'s zero-flag `--population` default (D9) is `5` or `1`. | Trade-off between run speed (`1`, fastest) and corpus usefulness (`5`, enough patients for a non-degenerate first run) — a build-time taste call, not a design consequence. | **Resolved 2026-07-27 (UX-1 build):** `--population 5` |
 | OPEN-3 | Whether `ehr doctor` (D13) belongs in the first release or ships after. | Sequencing convenience only — `doctor` has no design dependency on anything else in this capture. | **Resolved 2026-07-27 (UX-1 build):** `doctor` ships in the first release |
 | OPEN-4 | Whether `corpus generate` grows an `--engine` flag now that the generator registry (SS-2) names more than one engine kind (`synthea`, `sim`), so a caller could pick which engine `corpus generate` drives instead of only ever driving Synthea. | Raised 2026-07-28 (SS-2 build), ruling 6: `corpus generate`'s own verb, flags, and defaults are explicitly out of scope for SS-2 — generator URLs land at `corpus intake` only this session — so this is recorded rather than decided; a future session either adds `--engine` or leaves `corpus generate` Synthea-only forever, with `intake GENERATOR-URL` as the one multi-engine door. | **Open** |
-| OPEN-6 | Dir-sink `:append` -- append-to-a-corpus means merging into an existing catalog/manifest (which files were already there, whose provenance, whose hashes), not a per-file bytes-concatenation the way `:er7-multi`/`:ndjson`/`:mllp` file-sink append is. | Raised 2026-07-28 (SS-4 build), ruling 7: SS-4's own write-discipline scope names this REJECTED `:append-unsound` unconditionally this session, regardless of framing -- `write-dir!` (`ehr-testing-tools.corpus.sink-write`) rejects it by name, not silently. What a sound dir-append would even mean (manifest merge semantics) is itself unresolved, and interacts with D-d (manifest interop) once that resolves. | **Open** |
+| OPEN-6 | Dir-sink `:append` -- append-to-a-corpus means merging into an existing catalog/manifest (which files were already there, whose provenance, whose hashes), not a per-file bytes-concatenation the way `:er7-multi`/`:ndjson`/`:mllp` file-sink append is. | Raised 2026-07-28 (SS-4 build), ruling 7: SS-4's own write-discipline scope names this REJECTED `:append-unsound` unconditionally this session, regardless of framing -- `write-dir!` (`ehr-testing-tools.corpus.sink-write`) rejects it by name, not silently. What a sound dir-append would even mean (manifest merge semantics) is itself unresolved, and interacts with D-d (manifest interop) once that resolves. **D-d resolved (2026-07-28, SS-4b build):** a dir-append now has a concrete schema to merge against -- `OperationManifestV1`'s own `:items` -- but what merging two `:items` vectors (and two `:producer`/`:operation` claims for the same directory) means is still not decided here; this note only removes the "no schema exists yet" half of why it was deferred. | **Open** |
 | OPEN-5 | Whether a `dir:` Source ever grows framing-awareness — i.e. a directory containing one or more multi-item files (an `er7-multi`/`ndjson`/`mllp`/`bundle-entries`-framed file sitting inside an otherwise ordinary directory), spooled per-file rather than treated as a single opaque foreign file. | Raised 2026-07-28 (SS-3 build), ruling 5: this session's spool resolves exactly two cases — a `stdin:` source (always) and a bare `file:` source whose own `:framing` isn't `:file-per-item` — deliberately leaving `dir:` sources `:file-per-item`-only, per the session's own scope fence (ruling 7). A directory mixing ordinary files with one or more multi-item files inside it is unaddressed; whether that ever needs the same treatment recursively (walk the directory, spool anything non-`:file-per-item` it contains) or stays out of scope permanently is a future call, not decided here. | **Open** |
 
 ---
@@ -174,6 +174,18 @@ whichever session D-d resolves in. The `stdout` sink (below) carries no
 manifest by design regardless (no directory to drop one in) — its own
 form of the law is unaffected by D-d and lands in full this session.
 
+**SS-4b (2026-07-28) — the reduced property's provenance half, dated
+closed.** D-d resolved (Decision Register, above): `dir`/`file` sinks
+now emit `operation-manifest.edn` (Part III.5, below), and the
+composability property (`sink_composability_test.clj`) gained the half
+this note deferred -- write via a `dir` Sink with an operation manifest,
+then intake the same directory back, and the catalog's
+`:operation-provenance :origin` reflects the manifest's own
+`:producer`, with per-item `:input-hash` surviving into
+`:operation-provenance :input-hash` wherever the write actually
+supplied one. The `stdout` sink is unaffected, exactly as predicted
+above: no directory, no manifest, by design, not by gap.
+
 **The stdout sink's own law (byte-stream form, SS-4 Step 3).** A
 `stdout` sink has no directory, so it cannot restate the composability
 law as "re-intake the output" the way `dir`/`file` do. Its law is
@@ -193,6 +205,79 @@ analogue of the `dir`/`file` law, not an exemption from it.
 **No inference on the write side, ever.** Sinks declare `:format` and
 `:framing`/protocol explicitly. Sources may infer (see Part IV); sinks
 never do.
+
+---
+
+## Part III.5 — The Operation Manifest (D-d, resolved via option A1)
+
+A generator manifest (`ManifestV1_1`, above) and an operation manifest
+are different speech acts, per D-d's resolution: engine provenance
+(which artifact, which config, which subprocess) versus transformation
+lineage (these input hashes, this operator at this version, these
+output hashes). `ehr-testing-tools.corpus.operation-manifest/
+OperationManifestV1`, written as `operation-manifest.edn` beside a
+`dir`/`file` sink's own output, is that second schema -- never reusing
+`ManifestV1_1`'s field names for a value they were never shaped to
+hold, and never sharing its filename.
+
+### Fields
+
+| Field | Type | Meaning |
+|---|---|---|
+| `:manifest-kind` | `:operation` | the schema discriminator -- distinguishes this file from `ManifestV1_1`'s own `manifest.edn` before even reading `:schema-version` |
+| `:schema-version` | `1` | this schema's own version lineage, independent of `ManifestV1_1`'s `"1.1"` -- the two never share a version lineage |
+| `:producer` | map | `{:name :identity :git}` -- this repo's own honest identity, via the `ehr version` machinery (`cli/repo-identity`, `cli/real-git-describe`). No `:sha256` field: an absent field is honest, a fabricated one is not |
+| `:operation` | map | `{:kind :operator-id :operator-version :locator}` -- what was done: the operator applied, its version, and the locator it ran at. `:kind` today is always `:mutate`, the one dir/file-writing operation this repo has; the field exists so a future operation-producer names itself here too, not because more than one exists yet |
+| `:written-at` | string | a record-keeping date (D8's exemption list, extended here alongside `:received`/`:captured-at`) -- when this manifest was written, never a generation input |
+| `:format` | keyword | the sink's own declared format (`:fhir-json`/`:v2-er7`), read off the sink -- never inferred (this Part's own no-inference law) |
+| `:framing` | keyword | the sink's own declared framing |
+| `:items` | vector of maps | one entry per file written this call: `{:name :sha256 :input-hash}` -- `:name` the file's path relative to the sink's own `:path`, `:sha256` its content hash, `:input-hash` (optional, present iff the producer actually held it) the content hash of whatever this item was derived from. `mutate` always knows this (its own lineage record's `:parent`); a plain write may not |
+
+### Write discipline: items-then-manifest ordering (ruling 3, carried)
+
+Every item file lands on disk before `operation-manifest.edn` does, so
+a process that dies mid-write leaves items without a manifest --
+detectable, never a manifest naming items that don't exist.
+`write-dir!`/`write-file!` (`ehr-testing-tools.corpus.sink-write`) both
+accept an optional `:operation-manifest` argument; when present, the
+manifest is written last, unconditionally overwriting any prior
+`operation-manifest.edn` at that path -- the outer call's own `:mode`
+(`:fail-if-exists`/`:overwrite`) already gates whether the *items* land
+at all; the manifest write that follows is not a second gate on the
+same directory.
+
+### Never both (ruling 2)
+
+A directory presenting both `manifest.edn` (`ManifestV1_1`) and
+`operation-manifest.edn` (`OperationManifestV1`) claims two producers
+for the same bytes -- a defect to surface, not an ordering question.
+`corpus.intake` rejects the whole intake run `:ambiguous-sidecars`
+rather than picking one by precedence. This rules out **A2** (dispatch
+intake's existing recognizer by try-order across both schemas instead
+of a second, distinctly-named file): an implicit try-order contract is
+exactly the kind of unstated precedence rule the never-both rule
+refuses to have.
+
+### One fact, one authority (ruling 4)
+
+`operation-manifest.edn` is the directory's own self-description --
+portable, readable with no tools running. `corpus.intake`'s catalog
+remains the *consumer's* word: its own record after examining the
+bytes, enriched from whichever sidecar it trusted -- `:provenance` from
+a `ManifestV1_1` sidecar, `:operation-provenance` from an
+`OperationManifestV1` one, two distinct enrichment fields, symmetric,
+never merged into one.
+
+**Named finding, not resolved here.** Mutate's own per-mutant
+`lineage/*.lineage.edn` sidecars are a *third*, pre-existing register
+this design does not consolidate: a lineage sidecar's own
+`:parent`/`:produced`/`:transformation` now genuinely duplicate
+`operation-manifest.edn`'s own `:items[].input-hash`/`:sha256`/
+`:operation` for the same mutant, once both exist side by side for the
+same `corpus mutate` run. Consolidating the two registers -- making
+`operation-manifest.edn` the lineage sidecars' one authority, or vice
+versa -- is future work, not built or decided this session; ruling 8
+directs this be named, not silently fixed.
 
 ---
 
@@ -610,10 +695,10 @@ command.
 - **D-b** — whether the `blaze` sink lands before or after the
   IG-pinning blocker clears. They interact: what profile does a
   written resource claim?
-- **D-d** — manifest interop: can a `dir`/`file` sink honestly emit a
-  `ManifestV1_1` sidecar naming this repo as producer? Probed, not
-  resolved, 2026-07-28 (SS-4 build) — a STOP-AND-REPORT, two options
-  framed for the author — see the Decision Register above.
+- ~~**D-d** — manifest interop: can a `dir`/`file` sink honestly emit a
+  `ManifestV1_1` sidecar naming this repo as producer?~~ **Resolved
+  2026-07-28 (SS-4b build)** — option A1: a distinct `OperationManifestV1`
+  schema, `operation-manifest.edn` — see the Decision Register above.
 - ~~**D-c** — whether the `:origin` rename (D6) ships with the first
   source build session (SS-1) or its own micro-session.~~ **Resolved
   2026-07-28 (SS-1 build)** — see the Decision Register above.
