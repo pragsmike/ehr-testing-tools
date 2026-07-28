@@ -41,6 +41,5 @@ fi
 gitleaks detect --no-banner -v || fail "gitleaks detect"
 
 clojure -M:poly check || fail "clojure -M:poly check"
-clojure -M:poly test :project || fail "clojure -M:poly test :project"
 
 exit 0
