@@ -7,6 +7,35 @@
      per-record files. Do not silently revert an Accepted decision; supersede
      it with a new numbered record. -->
 
+## Table of contents
+
+Hand-maintained, not enforced by a lint or CI check (this repo is doc-only
+for the session that added this index). Update this table in the same
+commit as any new or superseded ADR — one line per record, derived from
+that record's own heading and Status line, nothing interpretive added.
+
+| ADR | Title | Status |
+|---|---|---|
+| 0001 | License: Apache 2.0 | Superseded by ADR-0007 |
+| 0002 | Inherit the guide's authoring discipline, adapted | Accepted |
+| 0003 | Agent-facing layout and prompt archive | Accepted |
+| 0004 | Internal structure: capabilities as data transformations | Accepted |
+| 0005 | External inputs are locked artifacts | Accepted |
+| 0006 | Test-first, staged enforcement | Accepted |
+| 0007 | License: MIT (supersedes ADR-0001) | Accepted |
+| 0008 | Publish the repository | Accepted |
+| 0009 | Judge/gate factorization | Accepted |
+| 0010 | Verdict partiality is explicit: the no-verdict arm | Accepted |
+| 0011 | External data artifacts vendor into the tree; engine artifacts stay in the registry | Accepted |
+| 0012 | The CLI properties `ehr-testing-sim` mounts against | Accepted |
+| 0013 | The cross-repo consumer loop: sim consumed by subprocess, findings not failures, baseline-delta drift detection | Accepted |
+| 0014 | Intake learns optional manifest sidecars, directory-scoped and generator-agnostic | Accepted |
+| 0015 | The gate loop maintains TWO baselines: legacy-floor and full-capability | Accepted |
+| 0016 | Verdict cache + verification tiers: T2 is change-triggered and nightly, not per-commit ritual | Accepted |
+| 0017 | Formal Source and Sink types: generator/reader unification, framing as an axis, maps-canonical/URLs-surface, sink composability law | Accepted |
+| 0018 | Glossary authority placement: docs/GLOSSARY.md is the authoritative home of family conformance vocabulary | Accepted |
+
+---
 ## ADR-0001 — License: Apache 2.0
 **Context.** This repo will be published and must interoperate with a JVM
 healthcare tooling ecosystem that is predominantly Apache-2.0/MIT (HAPI FHIR,
