@@ -278,59 +278,28 @@ without violating log completeness.
 ---
 ## Conformance & gating vocabulary (family terms)
 
-These terms belong to the sibling
+**2026-07-27:** these definitions moved to the sibling
 [ehr-testing-tools](https://github.com/pragsmike/ehr-testing-tools)
-repository, which judges this simulator's output; sim's docs use
-them when discussing the consumer loop and the validation program.
-Tools' own code and ADRs are authoritative if any detail here
-drifts; this block exists so sim's readers need not switch repos
-mid-sentence. (The planned guide crosswalk reconciles against this
-definition set.)
+repository's own authoritative
+[`docs/GLOSSARY.md`](https://github.com/pragsmike/ehr-testing-tools/blob/main/docs/GLOSSARY.md) —
+the previous copy here had drifted to pre-R3 verdict semantics (tools'
+facts register, F30), which is exactly the risk of keeping a second
+full copy instead of a pointer. Four terms sim's own docs still use
+mid-sentence get a one-line local gloss below; everything else —
+verdict arms, cause pairing, exit codes, the two-baseline design — is
+tools' glossary, not this one.
 
-**Judge.** A component that examines one artifact against one tier
-of checks — e.g. the base-structural HL7v2 judge, or the FHIR
-judge. *Judging* is the act; a judge examines, it does not fix.
+**Gate.** The workflow that runs judges across a corpus and produces
+the report — see tools' glossary.
 
-**Verdict.** A judge's per-artifact classification. The enumeration
-is **pass / rejected / indeterminate / no-verdict** — deliberately
-not "pass/fail": *rejected* means the check ran and the answer is
-no (the same doctrine as this repo's `:rejected` Result arm);
-*indeterminate* means the judge examined the artifact but cannot
-classify it (e.g. a check needing a terminology tier this judge
-lacks); *no-verdict* means no determination was produced. Exit
-codes follow the ladder: 0 pass, 1 rejected, 2 error, 3 no-verdict.
+**Findings.** The itemized, located reasons attached to a non-pass
+verdict — see tools' glossary.
 
-**Error (vs. rejected).** An *error* is the judge itself failing
-operationally — it could not run. A crashed judge yields an error,
-never a verdict. Rejected is an answer; error is the absence of the
-ability to answer. Keeping these apart is load-bearing: a corpus
-full of rejections is information, a corpus full of errors is a
-broken harness.
+**Verdict.** A judge's per-artifact classification — see tools'
+glossary.
 
-**Findings.** The itemized, located reasons attached to any
-non-pass verdict: each names the check that fired, where in the
-artifact, and the stated reason. Findings are the actionable
-content of a verdict — and, in the cross-repo consumer loop, the
-currency in which the gate tells this simulator what to fix
-("findings, not failures" is that loop's assertion discipline:
-integration tests assert the gate *runs and verdicts*, never that
-everything passes).
-
-**Report.** The aggregate a gate run produces over a corpus: the
-verdict table plus all findings.
-
-**Baseline.** A pinned, committed report with a provenance header
-(date, the sim commit it was generated against, reason). Deltas
-against a baseline are how change is *reviewed*: a new corpus is
-diffed, findings are read, and only then is the baseline
-regenerated — ratification by regeneration, with the history in
-the headers.
-
-**Gate.** The workflow that runs judges across a corpus and
-produces the report; "gating" a corpus means putting it through.
-In this simulator's validation program, the gate is the independent
-examiner — the reason the output is never graded on its own
-homework.
+**Baseline.** A pinned, committed report used to review change by
+delta — see tools' glossary.
 
 ---
 
