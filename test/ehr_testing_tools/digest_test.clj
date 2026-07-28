@@ -25,3 +25,13 @@
     (is (= (digest/sha256-file (.getAbsolutePath f))
            (digest/sha256-string "hello artifact")))))
 
+(deftest sha256-bytes-matches-sha256-string-on-utf8-content-test
+  (is (= (digest/sha256-string "hello artifact")
+         (digest/sha256-bytes (.getBytes "hello artifact" "UTF-8")))))
+
+(deftest sha256-bytes-is-deterministic-and-content-sensitive-test
+  (is (= (digest/sha256-bytes (byte-array [1 2 3]))
+         (digest/sha256-bytes (byte-array [1 2 3]))))
+  (is (not= (digest/sha256-bytes (byte-array [1 2 3]))
+            (digest/sha256-bytes (byte-array [1 2 4])))))
+

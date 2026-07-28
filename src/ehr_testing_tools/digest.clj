@@ -22,3 +22,13 @@
   [s]
   (let [digest (MessageDigest/getInstance "SHA-256")]
     (apply str (map #(format "%02x" %) (.digest digest (.getBytes ^String s "UTF-8"))))))
+
+(defn sha256-bytes
+  "Hex-encoded SHA-256 digest of a raw byte array -- the spool's own
+  per-item hashing (ehr-testing-tools.corpus.spool, SS-3) needs this
+  directly rather than through sha256-string's UTF-8 re-encoding, since
+  a framed item's bytes are not guaranteed to be valid UTF-8 text
+  (the charset law, docs/source-sink-design.md Part II)."
+  [^bytes bs]
+  (let [digest (MessageDigest/getInstance "SHA-256")]
+    (apply str (map #(format "%02x" %) (.digest digest bs)))))
