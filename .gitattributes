@@ -1,3 +1,11 @@
 * text=auto eol=lf
 *.png binary
 *.jar binary
+
+# HL7v2 ER7 messages use \r (not \n) as their segment separator; these
+# demo transcripts carry that wire format literally (blank-line-
+# separated messages, \r within each). -text disables line-ending
+# normalization so a checkout on any platform can't rewrite those
+# bytes -- same hazard and same fix as ehr-testing-tools' own
+# .gitattributes for its v2 fixtures.
+components/sim/docs/demos/**/messages*.txt -text
