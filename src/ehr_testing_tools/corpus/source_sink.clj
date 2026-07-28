@@ -60,6 +60,26 @@
   "Every sink kind the design names (Part III, D3)."
   #{:dir :file :stdout :blaze})
 
+(def Framing
+  "The five framing kinds Part II names (D2), as a closed enum -- SS-1
+  left :framing an open :keyword since no framing codec existed yet to
+  dispatch on an unrecognized value; SS-3's ehr-testing-tools.corpus.
+  framing gives every kind here a real codec, so a Source/Sink
+  declaring anything else is invalid at construction, not a silent
+  pass-through that fails later at decode/encode time."
+  [:enum :file-per-item :er7-multi :ndjson :bundle-entries :mllp])
+
+(def default-framing
+  "The design's own stated default (Part II) for a Source/Sink that
+  declares no :framing at all: :file-per-item, the identity framing --
+  one file, one item. A named constant for framing-aware callers to
+  consult (ehr-testing-tools.corpus.framing's dispatch, the spool's
+  framed-file? check, SS-3) -- deliberately NOT injected into a
+  constructed Source/Sink map by the builders below, so an absent
+  :framing stays absent and the D4 round-trip law (parse ∘ print =
+  identity on canonical maps) is unaffected by this default existing."
+  :file-per-item)
+
 (def implemented-sink-kinds
   "Kinds SS-1 actually built a constructor for."
   #{:dir :file})
@@ -76,7 +96,7 @@
   [:map
    [:kind :keyword]
    [:format {:optional true} :keyword]
-   [:framing {:optional true} :keyword]])
+   [:framing {:optional true} Framing]])
 
 (def Sink
   "The canonical Sink map's well-known fields (Part III/IV). Unlike
@@ -87,7 +107,7 @@
   [:map
    [:kind :keyword]
    [:format :keyword]
-   [:framing {:optional true} :keyword]])
+   [:framing {:optional true} Framing]])
 
 (def DirSource [:and Source [:map [:kind [:= :dir]] [:path :string]]])
 (def FileSource [:and Source [:map [:kind [:= :file]] [:path :string]]])

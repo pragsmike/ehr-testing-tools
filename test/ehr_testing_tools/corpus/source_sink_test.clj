@@ -103,3 +103,28 @@
   (let [r (ss/generator-source :synthea {:seed "not-an-int"})]
     (is (result/rejected? r))
     (is (= :invalid-generator-params (:category r)))))
+
+;; ---- framing is an explicit axis (SS-3 Step 1, D2/Part II): a closed
+;; enum, not any keyword -- tightened from SS-1's open :keyword now that
+;; ehr-testing-tools.corpus.framing (SS-3) gives every named kind a real
+;; codec to dispatch to. ----
+
+(deftest framing-enum-test
+  (testing "the five design-named framing kinds all validate on Source and Sink"
+    (doseq [f [:file-per-item :er7-multi :ndjson :bundle-entries :mllp]]
+      (is (ss/valid-source? {:kind :dir :framing f}))
+      (is (ss/valid-sink? {:kind :dir :format :fhir-json :framing f}))))
+  (testing "an unrecognized framing keyword is rejected, not silently accepted"
+    (is (not (ss/valid-source? {:kind :dir :framing :not-a-real-framing})))
+    (is (not (ss/valid-sink? {:kind :dir :format :fhir-json :framing :not-a-real-framing})))
+    (let [r (ss/dir-source {:path "./corpus" :framing :not-a-real-framing})]
+      (is (result/rejected? r))
+      (is (= :invalid-source (:category r))))))
+
+(deftest default-framing-test
+  (testing ":file-per-item is the design's stated default (D2/Part II) -- a named
+            constant every framing-aware caller consults, never injected into a
+            constructed map (preserves the D4 round-trip law on an absent :framing)"
+    (is (= :file-per-item ss/default-framing))
+    (is (= {:kind :dir :path "./corpus"} (:payload (ss/dir-source {:path "./corpus"})))
+        "omitting :framing still omits it from the constructed map")))
