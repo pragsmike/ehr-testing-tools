@@ -35,6 +35,7 @@
             [malli.core :as m]
             [ehr-testing-tools.digest :as digest]
             [ehr-testing-tools.corpus.manifest :as manifest]
+            [ehr-testing-tools.corpus.operation-manifest :as operation-manifest]
             [ehr-testing-tools.corpus.mutate :as mutate]
             [ehr-testing-tools.corpus.source-sink :as source-sink]
             [ehr-testing-tools.result :as result])
@@ -52,6 +53,23 @@
                 [:sha256 [:re #"^[0-9a-f]{64}$"]]]]
    [:seeds [:map-of :keyword :int]]])
 
+(def OperationProvenance
+  "The operation-manifest.edn sidecar's own enrichment shape (SS-4b,
+  D-d resolved via ADR-0020) -- symmetric to Provenance above, never
+  merged into it: :origin carries the OperationManifestV1's own
+  :producer claim (this repo's honest identity, not an intake batch's
+  :origin label -- a different field entirely, despite the shared
+  word), :operation its :operation, :written-at its :written-at, and
+  :input-hash (optional, present iff the manifest's own :items named
+  this file with one) the content hash of whatever this file was
+  derived from."
+  [:map
+   [:origin [:map [:name :string] [:identity :string] [:git :string]]]
+   [:operation [:map [:kind :keyword] [:operator-id :keyword]
+                [:operator-version :string] [:locator :map]]]
+   [:written-at :string]
+   [:input-hash {:optional true} [:re #"^[0-9a-f]{64}$"]]])
+
 (def CatalogEntry
   "D-c (docs/source-sink-design.md D6, resolved 2026-07-28, SS-1
   Step 5): :source renamed to :origin. The field is a provenance label
@@ -62,7 +80,13 @@
   incoherence ADR-0009's :policy -> :disposition rename already exists
   to prevent (docs/source-sink-design.md Part VI). No compatibility
   alias for the old :source spelling -- pre-release (ADR-0008), same
-  reasoning as D10's no-aliases."
+  reasoning as D10's no-aliases.
+
+  :provenance (ManifestV1_1 sidecar) and :operation-provenance
+  (OperationManifestV1 sidecar, SS-4b) are mutually exclusive per
+  directory -- corpus.intake rejects a directory carrying both
+  sidecars :ambiguous-sidecars rather than ever setting both fields on
+  the same entry."
   [:map
    [:id [:re #"^[0-9a-f]{64}$"]]
    [:path :string]
@@ -70,7 +94,8 @@
    [:layer [:= :foreign]]
    [:origin :string]
    [:received :string]
-   [:provenance {:optional true} Provenance]])
+   [:provenance {:optional true} Provenance]
+   [:operation-provenance {:optional true} OperationProvenance]])
 
 (def IntakeRecord
   "D-c follow-up (2026-07-28, SS-2 Step 0): :source renamed to :origin,
@@ -201,8 +226,65 @@
   [manifest]
   (select-keys manifest [:schema-version :stage :generator :seeds]))
 
+;; ---- operation-manifest.edn sidecars (SS-4b, D-d resolved via
+;; ADR-0020, docs/source-sink-design.md Part III.5): a second,
+;; symmetric sidecar mechanism -- same directory-scoped lookup as
+;; manifest.edn above, its own recognizer, its own enrichment field
+;; (:operation-provenance, never :provenance), never both in the same
+;; directory (enforced in intake! below, not here). ----
+
+(defn- operation-manifest-sidecar-result
+  "operation-manifest.edn in dir, if any -- same {:valid? ...} shape as
+  sidecar-result above, validated against
+  ehr-testing-tools.corpus.operation-manifest/OperationManifestV1
+  instead of ManifestV1_1."
+  [dir]
+  (let [mf (io/file dir "operation-manifest.edn")]
+    (when (.isFile mf)
+      (try
+        (let [parsed (edn/read-string (slurp mf))]
+          (if (operation-manifest/valid? parsed)
+            {:valid? true :manifest parsed}
+            {:valid? false
+             :reason (str "operation-manifest.edn does not conform to OperationManifestV1: "
+                          (pr-str (m/explain operation-manifest/OperationManifestV1 parsed)))}))
+        (catch Exception e
+          {:valid? false :reason (str "operation-manifest.edn failed to parse: " (or (ex-message e) (str e)))})))))
+
+(defn- operation-provenance-fields
+  "The :operation-provenance value for one file: :origin/:operation/
+  :written-at apply uniformly (directory-wide, like Provenance's own
+  fields above), :input-hash is per-item -- looked up in the manifest's
+  own :items by this file's basename (the file's own path relative to
+  its immediate parent directory, which is also where
+  operation-manifest.edn sits -- the same directory-scoped assumption
+  ADR-0014 already makes for manifest.edn), present only when that item
+  actually named one."
+  [manifest file-basename]
+  (let [item (first (filter #(= file-basename (:name %)) (:items manifest)))]
+    (cond-> {:origin (:producer manifest)
+             :operation (:operation manifest)
+             :written-at (:written-at manifest)}
+      (:input-hash item) (assoc :input-hash (:input-hash item)))))
+
+(defn- ambiguous-sidecar-dirs
+  "Directories (among files' own immediate parents) where BOTH
+  manifest.edn and operation-manifest.edn are present -- checked by
+  raw file existence, independent of either one's own validity, since
+  a directory claiming two producers for the same bytes is a defect
+  regardless of whether either claim happens to parse."
+  [files source-dir]
+  (->> files
+       (map #(.getParentFile ^File %))
+       distinct
+       (filter (fn [dir]
+                 (and (.isFile (io/file dir "manifest.edn"))
+                      (.isFile (io/file dir "operation-manifest.edn")))))
+       (map #(relative-dir-path source-dir %))
+       vec))
+
 (defn- catalog-entry
-  [file source-dir source-label received sidecar-fn]
+  [file source-dir source-label received sidecar-fn op-sidecar-fn]
   (let [content (slurp file)
         format (sniff-format content)
         base {:id (content-hash content format)
@@ -211,10 +293,18 @@
               :layer :foreign
               :origin source-label
               :received received}
-        sidecar (sidecar-fn (.getParentFile ^File file))]
-    (if (and sidecar (:valid? sidecar))
+        parent (.getParentFile ^File file)
+        sidecar (sidecar-fn parent)
+        op-sidecar (op-sidecar-fn parent)]
+    (cond
+      (and sidecar (:valid? sidecar))
       (assoc base :provenance (provenance-fields (:manifest sidecar)))
-      base)))
+
+      (and op-sidecar (:valid? op-sidecar))
+      (assoc base :operation-provenance
+             (operation-provenance-fields (:manifest op-sidecar) (.getName file)))
+
+      :else base)))
 
 (defn- invalid-sidecar-notes
   "One dedup'd :invalid-manifest-sidecar note per directory (among
@@ -233,17 +323,36 @@
                     :reason (:reason sidecar)}))))
        vec))
 
+(defn- invalid-operation-manifest-sidecar-notes
+  "Symmetric to invalid-sidecar-notes above, for operation-manifest.edn."
+  [files source-dir op-sidecar-fn]
+  (->> files
+       (map #(.getParentFile ^File %))
+       distinct
+       (keep (fn [dir]
+               (let [sidecar (op-sidecar-fn dir)]
+                 (when (and sidecar (not (:valid? sidecar)))
+                   {:type :invalid-operation-manifest-sidecar
+                    :dir (relative-dir-path source-dir dir)
+                    :reason (:reason sidecar)}))))
+       vec))
+
 (defn intake!
   "Catalogs every file under :source-dir as a foreign-corpus entry:
   content hash (format-aware, see `content-hash`), format sniff,
   {:layer :foreign :origin source-label :received}, plus :provenance
   when the file's own directory carries a validating manifest.edn
-  sidecar (ADR-0014). Writes :out/catalog.edn (the vector of entries)
-  and :out/intake-record.edn (one batch record: origin, date, file
-  count, the sha256 of the catalog file's own persisted bytes --
-  hashing what's actually written, same discipline as
-  corpus.mutate's content-hash -- and :notes when any sidecar present
-  was invalid).
+  sidecar (ADR-0014), or :operation-provenance when it carries a
+  validating operation-manifest.edn sidecar instead (SS-4b, D-d
+  resolved via ADR-0020) -- never both: a directory presenting BOTH
+  sidecars is rejected result/rejected :ambiguous-sidecars before any
+  catalog or intake-record is written, naming every offending directory
+  (relative to :source-dir), never resolved by precedence. Writes
+  :out/catalog.edn (the vector of entries) and :out/intake-record.edn
+  (one batch record: origin, date, file count, the sha256 of the
+  catalog file's own persisted bytes -- hashing what's actually
+  written, same discipline as corpus.mutate's content-hash -- and
+  :notes when any sidecar present was invalid, either kind).
 
   :received is a required, explicit date string -- never read from
   the wall clock here, matching corpus.generate's :reference-date
@@ -251,23 +360,31 @@
   state); the CLI shell is where wall-clock defaulting belongs, not
   this core function.
 
-  Returns result/ok {:catalog [...] :intake-record {...} :out}."
+  Returns result/ok {:catalog [...] :intake-record {...} :out}, or
+  result/rejected :ambiguous-sidecars {:dirs [...]}."
   [{:keys [source-dir source-label out received]}]
   (let [files (source-files source-dir)
-        sidecar-fn (memoize sidecar-result)
-        catalog (mapv #(catalog-entry % source-dir source-label received sidecar-fn) files)
-        notes (invalid-sidecar-notes files source-dir sidecar-fn)
-        out-dir (io/file out)]
-    (.mkdirs out-dir)
-    (let [catalog-file (io/file out-dir "catalog.edn")]
-      (spit catalog-file (pr-str catalog))
-      (let [record (cond-> {:origin source-label
-                            :date received
-                            :file-count (count catalog)
-                            :catalog-hash (digest/sha256-file catalog-file)}
-                     (seq notes) (assoc :notes notes))]
-        (spit (io/file out-dir "intake-record.edn") (pr-str record))
-        (result/ok {:catalog catalog :intake-record record :out out})))))
+        ambiguous (ambiguous-sidecar-dirs files source-dir)]
+    (if (seq ambiguous)
+      (result/rejected :ambiguous-sidecars
+                        {:dirs ambiguous
+                         :hint "a directory with both manifest.edn and operation-manifest.edn claims two producers for the same bytes -- remove one"})
+      (let [sidecar-fn (memoize sidecar-result)
+            op-sidecar-fn (memoize operation-manifest-sidecar-result)
+            catalog (mapv #(catalog-entry % source-dir source-label received sidecar-fn op-sidecar-fn) files)
+            notes (into (invalid-sidecar-notes files source-dir sidecar-fn)
+                        (invalid-operation-manifest-sidecar-notes files source-dir op-sidecar-fn))
+            out-dir (io/file out)]
+        (.mkdirs out-dir)
+        (let [catalog-file (io/file out-dir "catalog.edn")]
+          (spit catalog-file (pr-str catalog))
+          (let [record (cond-> {:origin source-label
+                                :date received
+                                :file-count (count catalog)
+                                :catalog-hash (digest/sha256-file catalog-file)}
+                         (seq notes) (assoc :notes notes))]
+            (spit (io/file out-dir "intake-record.edn") (pr-str record))
+            (result/ok {:catalog catalog :intake-record record :out out})))))))
 
 (defn intake-via-source!
   "Like intake!, but takes a :dir Source value

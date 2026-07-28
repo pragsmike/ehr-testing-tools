@@ -13,6 +13,7 @@
             [ehr-testing-tools.corpus.mutate :as mutate]
             [ehr-testing-tools.corpus.intake :as intake]
             [ehr-testing-tools.corpus.manifest :as manifest]
+            [ehr-testing-tools.corpus.operation-manifest :as operation-manifest]
             [ehr-testing-tools.corpus.simhospital-corpus :as simhospital]
             [ehr-testing-tools.corpus.source-sink :as source-sink]
             [ehr-testing-tools.corpus.golden-comparison :as golden])
@@ -273,6 +274,120 @@
         "top.json shares its directory with manifest.edn")
     (is (not (contains? nested-entry :provenance))
         "a nested directory without its own manifest.edn does not inherit the parent's")))
+
+;; ---- operation-manifest.edn sidecars (SS-4b, D-d resolved via
+;; ADR-0020): a second, symmetric recognizer -- :operation-provenance
+;; instead of :provenance, never both on the same entry (the schemas
+;; are mutually exclusive per directory, enforced below as
+;; :ambiguous-sidecars, not by precedence). ----
+
+(def ^:private producer
+  {:name "ehr-testing-tools" :identity "pre-release" :git "abc1234-dirty"})
+
+(def ^:private operation
+  {:kind :mutate :operator-id :blank-required-field :operator-version "1"
+   :locator {:format :v2 :path "MSH-9"}})
+
+(defn- sample-operation-manifest
+  [items]
+  (operation-manifest/build
+   {:producer producer :operation operation :written-at "2026-07-28"
+    :format :v2-er7 :framing :file-per-item :items items}))
+
+(deftest intake-attaches-operation-provenance-from-valid-operation-manifest-sidecar-test
+  (let [src (temp-dir)
+        out (temp-dir)
+        sha (digest/sha256-string sample-v2-message)
+        parent-hash (apply str (repeat 64 "b"))
+        om (sample-operation-manifest [{:name "a.hl7" :sha256 sha :input-hash parent-hash}])
+        _ (spit (io/file src "a.hl7") sample-v2-message)
+        _ (spit (io/file src "operation-manifest.edn") (pr-str om))
+        r (intake/intake! {:source-dir src :source-label "acme"
+                            :out out :received "2026-07-24"})
+        catalog (:catalog (:payload r))
+        entry (first (filter #(= "a.hl7" (:path %)) catalog))]
+    (is (result/ok? r))
+    (is (every? intake/valid-catalog-entry? catalog))
+    (is (not (contains? entry :provenance)))
+    (is (= producer (:origin (:operation-provenance entry))))
+    (is (= operation (:operation (:operation-provenance entry))))
+    (is (= "2026-07-28" (:written-at (:operation-provenance entry))))
+    (is (= parent-hash (:input-hash (:operation-provenance entry))))))
+
+(deftest intake-operation-provenance-input-hash-is-absent-when-not-supplied-test
+  (let [src (temp-dir)
+        out (temp-dir)
+        om (sample-operation-manifest [{:name "a.hl7" :sha256 (digest/sha256-string sample-v2-message)}])
+        _ (spit (io/file src "a.hl7") sample-v2-message)
+        _ (spit (io/file src "operation-manifest.edn") (pr-str om))
+        r (intake/intake! {:source-dir src :source-label "acme"
+                            :out out :received "2026-07-24"})
+        entry (first (filter #(= "a.hl7" (:path %)) (:catalog (:payload r))))]
+    (is (not (contains? (:operation-provenance entry) :input-hash)))))
+
+(deftest intake-invalid-operation-manifest-sidecar-is-a-note-not-an-error-test
+  (let [src (temp-dir)
+        out (temp-dir)
+        _ (spit (io/file src "a.hl7") sample-v2-message)
+        _ (spit (io/file src "operation-manifest.edn") "{:not valid edn ]")
+        r (intake/intake! {:source-dir src :source-label "acme"
+                            :out out :received "2026-07-24"})
+        {:keys [catalog intake-record]} (:payload r)
+        entry (first (filter #(= "a.hl7" (:path %)) catalog))]
+    (is (result/ok? r))
+    (is (not (contains? entry :operation-provenance)))
+    (is (intake/valid-intake-record? intake-record))
+    (is (= #{:invalid-operation-manifest-sidecar} (set (map :type (:notes intake-record)))))))
+
+(deftest intake-operation-manifest-sidecar-is-scoped-to-its-own-directory-test
+  (let [src (temp-dir)
+        out (temp-dir)
+        om (sample-operation-manifest [{:name "top.hl7" :sha256 (digest/sha256-string sample-v2-message)}])
+        _ (.mkdirs (io/file src "nested"))
+        _ (spit (io/file src "operation-manifest.edn") (pr-str om))
+        _ (spit (io/file src "top.hl7") sample-v2-message)
+        _ (spit (io/file src "nested" "deep.hl7") sample-v2-message)
+        r (intake/intake! {:source-dir src :source-label "acme"
+                            :out out :received "2026-07-24"})
+        catalog (:catalog (:payload r))
+        top-entry (first (filter #(= "top.hl7" (:path %)) catalog))
+        nested-entry (first (filter #(= "nested/deep.hl7" (:path %)) catalog))]
+    (is (some? (:operation-provenance top-entry)))
+    (is (not (contains? nested-entry :operation-provenance)))))
+
+(deftest intake-rejects-a-directory-carrying-both-sidecars-as-ambiguous-test
+  (let [src (temp-dir)
+        out (temp-dir)
+        mf (sample-manifest 1)
+        om (sample-operation-manifest [{:name "a.hl7" :sha256 (digest/sha256-string sample-v2-message)}])
+        _ (spit (io/file src "a.hl7") sample-v2-message)
+        _ (spit (io/file src "manifest.edn") (pr-str mf))
+        _ (spit (io/file src "operation-manifest.edn") (pr-str om))
+        r (intake/intake! {:source-dir src :source-label "acme"
+                            :out out :received "2026-07-24"})]
+    (is (result/rejected? r))
+    (is (= :ambiguous-sidecars (:category r)))
+    (is (= ["."] (:dirs (:payload r))))
+    (is (not (.exists (io/file out "catalog.edn")))
+        "no partial catalog written -- the whole run is rejected, not silently resolved by precedence")))
+
+(deftest intake-ambiguous-sidecars-is-scoped-per-directory-test
+  (let [src (temp-dir)
+        out (temp-dir)
+        mf (sample-manifest 1)
+        om (sample-operation-manifest [{:name "b.hl7" :sha256 (digest/sha256-string sample-v2-message)}])
+        _ (.mkdirs (io/file src "fine"))
+        _ (.mkdirs (io/file src "ambiguous"))
+        _ (spit (io/file src "fine" "a.hl7") sample-v2-message)
+        _ (spit (io/file src "ambiguous" "b.hl7") sample-v2-message)
+        _ (spit (io/file src "ambiguous" "manifest.edn") (pr-str mf))
+        _ (spit (io/file src "ambiguous" "operation-manifest.edn") (pr-str om))
+        r (intake/intake! {:source-dir src :source-label "acme"
+                            :out out :received "2026-07-24"})]
+    (is (result/rejected? r))
+    (is (= :ambiguous-sidecars (:category r)))
+    (is (= ["ambiguous"] (:dirs (:payload r)))
+        "the unambiguous 'fine' directory is not itself the problem -- only 'ambiguous' is named")))
 
 ;; ---- intake-via-source! (SS-1 Step 4, D1/D7): a :dir Source value in
 ;; place of a bare :source-dir string. The real acceptance property --
