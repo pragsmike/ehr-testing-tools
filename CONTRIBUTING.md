@@ -19,9 +19,10 @@ optional ceremony:
   ceremony unless explicitly delegated for a given session — see
   `AUTHORS-GUIDE.md` §1 before your first commit. Enforced by a
   pre-commit hook, not merely requested.
-- **`clojure -M:poly check` and `clojure -M:poly test :project` must
-  be green before a push leaves your clone** — the pre-push hook
-  enforces this, alongside a clean `gitleaks detect` scan.
+- **`clojure -M:poly check` must be green before a push leaves your
+  clone** — the pre-push hook enforces this, alongside a clean
+  `gitleaks detect` scan. Tests (`poly test :all` / `:project`) are
+  CI's gate, not the push's (`notes/ADRs.md` ADR-0003).
 - **A brick's `interface` is its whole public contract.** Reaching into
   another brick's implementation namespace from `src` is not a style
   preference, it's a build error (`poly check`).

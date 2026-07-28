@@ -57,9 +57,9 @@ git config core.hooksPath .githooks
 ```
 
 `.githooks/pre-push` additionally gates on a clean `gitleaks detect`
-scan and `clojure -M:poly check` / `clojure -M:poly test :project`
-being green. See `AUTHORS-GUIDE.md` §1 for the full rationale and
-gitleaks install instructions.
+scan and `clojure -M:poly check` being green -- tests are CI's job, not
+the push gate's (`notes/ADRs.md` ADR-0003). See `AUTHORS-GUIDE.md` §1
+for the full rationale and gitleaks install instructions.
 
 **Git operations are the author's, not an agent's (ADR-0001, R6).** A
 session prepares working trees and proposes commit messages; it does

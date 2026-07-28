@@ -46,8 +46,9 @@ commit from the Windows side.
 ### Pre-push hooks: gitleaks
 
 `.githooks/pre-push` refuses to push unless `gitleaks detect` finds
-nothing and `clojure -M:poly check` / `clojure -M:poly test :project`
-are both green. `gitleaks` isn't packaged for apt on Ubuntu/WSL2;
+nothing and `clojure -M:poly check` is green -- tests run in CI, not in
+this hook (`notes/ADRs.md` ADR-0003). `gitleaks` isn't packaged for apt
+on Ubuntu/WSL2;
 install it from a GitHub release, checksum-verified, same method used
 for sim's own go-public secrets audit (sim's `notes/facts-register.md`
 F15):
