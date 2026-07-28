@@ -20,7 +20,7 @@
 
 (deftest sink-kinds-test
   (is (= #{:dir :file :stdout :blaze} ss/known-sink-kinds))
-  (is (= #{:dir :file} ss/implemented-sink-kinds))
+  (is (= #{:dir :file :stdout} ss/implemented-sink-kinds))
   (is (every? ss/known-sink-kinds ss/implemented-sink-kinds)))
 
 (deftest valid-source?-test
@@ -135,6 +135,21 @@
     (let [r (ss/dir-source {:path "./corpus" :framing :not-a-real-framing})]
       (is (result/rejected? r))
       (is (= :invalid-source (:category r))))))
+
+;; ---- stdout-sink (SS-4 Step 3): no :path, :format required (D3),
+;; sink-side twin of stdin-source above ----
+
+(deftest stdout-sink-test
+  (testing "happy path: no :path, :format required"
+    (let [r (ss/stdout-sink {:format :v2-er7 :framing :mllp})]
+      (is (result/ok? r))
+      (is (= {:kind :stdout :format :v2-er7 :framing :mllp} (:payload r)))))
+  (testing ":framing is optional"
+    (let [r (ss/stdout-sink {:format :fhir-json})]
+      (is (result/ok? r))
+      (is (= {:kind :stdout :format :fhir-json} (:payload r)))))
+  (testing "missing :format is rejected (D3's no-inference-on-write law)"
+    (is (result/rejected? (ss/stdout-sink {})))))
 
 (deftest default-framing-test
   (testing ":file-per-item is the design's stated default (D2/Part II) -- a named

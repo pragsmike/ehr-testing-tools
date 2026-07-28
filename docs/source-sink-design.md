@@ -173,6 +173,22 @@ whichever session D-d resolves in. The `stdout` sink (below) carries no
 manifest by design regardless (no directory to drop one in) — its own
 form of the law is unaffected by D-d and lands in full this session.
 
+**The stdout sink's own law (byte-stream form, SS-4 Step 3).** A
+`stdout` sink has no directory, so it cannot restate the composability
+law as "re-intake the output" the way `dir`/`file` do. Its law is
+stated instead as a two-part chain, matching ruling 4: (1) the framing
+round-trip already proved per-kind by
+`ehr-testing-tools.corpus.framing`'s own property tests (SS-3) —
+`decode(encode(items)) = items`, byte-exact for every framing but
+`:bundle-entries` (item-level identity there, Part II) — is what makes
+the bytes a `stdout` sink writes decodable at all; (2) the loopback
+(SS-4 Step 4) is the acceptance form of "every sink's output is a
+valid source" for a byte stream rather than a directory: this repo's
+own `stdout:` sink output, piped directly into this repo's own
+`stdin:` source (SS-3), re-intakes with hashes equal — the CLI, not a
+hand-authored glue script, proves the pipe. This is the byte-stream
+analogue of the `dir`/`file` law, not an exemption from it.
+
 **No inference on the write side, ever.** Sinks declare `:format` and
 `:framing`/protocol explicitly. Sources may infer (see Part IV); sinks
 never do.

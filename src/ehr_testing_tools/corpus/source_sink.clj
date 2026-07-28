@@ -82,8 +82,12 @@
   :file-per-item)
 
 (def implemented-sink-kinds
-  "Kinds SS-1 actually built a constructor for."
-  #{:dir :file})
+  "Kinds with an actual constructor. SS-1 built :dir/:file; SS-4 Step 3
+  adds :stdout (`stdout-sink` below -- no :path, no manifest sidecar,
+  the byte-stream form of the composability law, docs/source-sink-
+  design.md Part III). :blaze remains parser-recognized (D-a) but
+  rejected as not-yet-supported until SS-5 (D-b)."
+  #{:dir :file :stdout})
 
 (def Source
   "The canonical Source map's well-known fields (Part IV, D4): :kind is
@@ -121,6 +125,12 @@
   [:and Source [:map [:kind [:= :stdin]]]])
 (def DirSink [:and Sink [:map [:kind [:= :dir]] [:path :string]]])
 (def FileSink [:and Sink [:map [:kind [:= :file]] [:path :string]]])
+(def StdoutSink
+  "No :path -- stdout names no filesystem location, the sink-side twin
+  of StdinSource above. :format is still required (Sink's own base
+  schema, D3's no-inference-on-write law); :framing defaults to
+  default-framing when absent, same as every other Source/Sink."
+  [:and Sink [:map [:kind [:= :stdout]]]])
 
 (defn valid-source?
   [m]
@@ -177,6 +187,15 @@
   "Like dir-sink, for a single-file :file Sink."
   [{:keys [path format framing]}]
   (build :invalid-sink :file FileSink {:path path :format format :framing framing}))
+
+(defn stdout-sink
+  "Constructs+validates a canonical :stdout Sink map (SS-4 Step 3). No
+  :path; :format is required (D3), :framing optional (defaults to
+  default-framing at the point something actually encodes, e.g.
+  ehr-testing-tools.corpus.sink-write/write-stdout! -- not injected
+  here, same discipline as stdin-source above)."
+  [{:keys [format framing]}]
+  (build :invalid-sink :stdout StdoutSink {:format format :framing framing}))
 
 (defn generator-source
   "Constructs+validates a canonical generator Source map for a

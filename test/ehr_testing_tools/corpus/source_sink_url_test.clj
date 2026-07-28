@@ -70,6 +70,27 @@
                               (= m (:payload parsed))))))))]
         (is (:pass? check-result) (str kind " sink round-trip failed: " (:shrunk check-result)))))))
 
+(defn- stdout-sink-map-gen
+  "Like sink-map-gen, but no :path -- stdout: names no filesystem
+  location (SS-4 Step 3, sink-side twin of stdin's own no-:path shape)."
+  []
+  (gen/let [format format-gen
+            framing (gen/one-of [(gen/return nil) framing-gen])]
+    (cond-> {:kind :stdout :format format}
+      framing (assoc :framing framing))))
+
+(deftest stdout-sink-designator-round-trip-property-test
+  (testing "parse ∘ print = identity on canonical :stdout Sink maps (D4 law)"
+    (let [check-result
+          (tc/quick-check 100
+            (prop/for-all [m (stdout-sink-map-gen)]
+              (let [printed (url/print-sink-designator m)]
+                (and (result/ok? printed)
+                     (let [parsed (url/parse-sink-designator (:payload printed))]
+                       (and (result/ok? parsed)
+                            (= m (:payload parsed))))))))]
+      (is (:pass? check-result) (str "stdout sink round-trip failed: " (:shrunk check-result))))))
+
 ;; ---- harness sanity: a concrete example, so the property tests above
 ;; aren't the only evidence the round-trip machinery does something
 ;; (same discipline as canonical_test/mutate_test's own harness-catches-
@@ -189,11 +210,17 @@
     (let [r (url/parse-sink-designator "dir:./out")]
       (is (result/rejected? r))
       (is (= :invalid-sink (:category r)))))
-  (testing "stdout: is a recognized sink scheme but not-yet-supported"
-    (let [r (url/parse-sink-designator "stdout:?format=v2-er7")]
-      (is (result/rejected? r))
-      (is (= :unsupported-sink-kind (:category r)))
-      (is (= :stdout (:kind (:payload r))))))
+  (testing "stdout: is recognized and now supported (SS-4 Step 3) -- format/framing thread through"
+    (let [r (url/parse-sink-designator "stdout:?format=v2-er7&framing=mllp")]
+      (is (result/ok? r))
+      (is (= {:kind :stdout :format :v2-er7 :framing :mllp} (:payload r)))))
+  (testing "a bare stdout:?format=... (no framing) round-trips"
+    (let [printed (url/print-sink-designator {:kind :stdout :format :fhir-json})]
+      (is (result/ok? printed))
+      (is (= "stdout:?format=fhir-json" (:payload printed)))
+      (let [parsed (url/parse-sink-designator (:payload printed))]
+        (is (result/ok? parsed))
+        (is (= {:kind :stdout :format :fhir-json} (:payload parsed))))))
   (testing "blaze:// is a recognized sink scheme but not-yet-supported"
     (let [r (url/parse-sink-designator "blaze://host:8080/fhir")]
       (is (result/rejected? r))

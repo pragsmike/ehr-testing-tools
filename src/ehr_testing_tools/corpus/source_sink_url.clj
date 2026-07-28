@@ -158,7 +158,8 @@
   [kind m]
   (case kind
     :dir (ss/dir-sink m)
-    :file (ss/file-sink m)))
+    :file (ss/file-sink m)
+    :stdout (ss/stdout-sink m)))
 
 (defn- parse-designator
   "Shared parse skeleton for parse-source-designator/parse-sink-
