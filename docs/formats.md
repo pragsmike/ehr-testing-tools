@@ -18,7 +18,7 @@ Three sources of output, and they are not the same thing:
 |---|---|
 | **stdout** | the full result envelope — `:status`, an optional `:category`, and `:payload` |
 | **`--report <path>`** | the report **alone**, unwrapped, always EDN — even when `--json` was also passed |
-| **files on disk** | `manifest.edn` beside a generated corpus; `lineage/*.lineage.edn` beside mutants |
+| **files on disk** | `manifest.edn` beside a generated corpus; `lineage/*.lineage.edn` beside mutants; `operation-manifest.edn` beside a mutant batch |
 
 That first distinction catches people: `ehr gate v2 ... --report r.edn --json`
 writes EDN to `r.edn` and prints JSON to stdout, and the two are *not*
@@ -339,6 +339,58 @@ The `:contract` map is copied from the operator's registry entry — see
 
 ---
 
+## The operation manifest
+
+Written as `operation-manifest.edn` in a mutant batch's own `--out-dir`,
+alongside the mutants and their `lineage/` sidecars — written last, after
+every item in the batch. It is a *different* provenance record from the
+corpus manifest above, on purpose (D-d, `docs/source-sink-design.md` Part
+III.5; `ADR-0020`): the corpus manifest states *engine* provenance (which
+artifact ran, under which config); this one states *transformation*
+lineage (these input hashes, this operator, these output hashes) for an
+in-process write that never ran an external engine at all.
+
+Schema: `ehr-testing-tools.corpus.operation-manifest/OperationManifestV1`.
+
+| Field | Type | Meaning |
+|---|---|---|
+| `:manifest-kind` | `:operation` | discriminates this file from a corpus manifest at a glance |
+| `:schema-version` | `1` | this schema's own version, unrelated to the corpus manifest's `"1.1"` |
+| `:producer` | map | `{:name :identity :git}` — this repo's own honest identity (the same identity `ehr version` reports). No `:sha256`: an absent field is honest, a fabricated one is not |
+| `:operation` | map | `{:kind :operator-id :operator-version :locator}` — what was done. `:kind` is `:mutate` today, the one operation that writes a batch this way |
+| `:written-at` | string | a record-keeping date — when the manifest was written, not a generation input |
+| `:format` / `:framing` | keyword | read straight off the sink that wrote the batch |
+| `:items` | vector of maps | one per file in the batch: `{:name :sha256 :input-hash}` — `:input-hash` (optional) is the content hash of whatever that item was derived from, present only where the write actually knew it |
+
+A real manifest (from the "Generate controlled-fault data" strip above):
+
+```clojure
+{:manifest-kind :operation,
+ :schema-version 1,
+ :producer {:name "ehr-testing-tools", :identity "pre-release", :git "318953e"},
+ :operation {:kind :mutate,
+             :operator-id :remove-required-element,
+             :operator-version "1",
+             :locator {:format :fhir, :path "entry[0].resource.gender"}},
+ :written-at "2026-07-28",
+ :format :fhir-json,
+ :framing :file-per-item,
+ :items [{:name "Brandon214_Rosenbaum794_….json",
+          :sha256 "95070c9d…",
+          :input-hash "1284fd04…"}]}
+```
+
+`:items[].sha256` and `:input-hash` here are exactly the same mutant's
+own lineage record's `:produced` and `:parent` — no separate hashing, no
+chance of the two disagreeing. `ehr corpus intake` recognizes this file
+automatically (directory-scoped, the same mechanism the corpus manifest
+above uses) and attaches `:operation-provenance` to every catalog entry
+in that directory; a directory carrying *both* a corpus manifest and an
+operation manifest is rejected `:ambiguous-sidecars` — never resolved by
+picking one.
+
+---
+
 ## The `--json` projection
 
 `--json` projects the whole result envelope, not just the payload. The
@@ -417,6 +469,7 @@ which findings are worth alerting on — see
 | Check report and its codes | `ehr-testing-tools.check` | live `ehr check` runs in both golden-equivalence and per-file-assertion modes, 2026-07-25 |
 | Corpus manifest | `ehr-testing-tools.corpus.manifest/ManifestV1_1` | a real generated corpus's `manifest.edn` |
 | Lineage record | `ehr-testing-tools.lineage/LineageRecord` | a real mutant's lineage sidecar |
+| Operation manifest | `ehr-testing-tools.corpus.operation-manifest/OperationManifestV1` | a real `corpus mutate` batch's `operation-manifest.edn`, 2026-07-28 |
 | The `--json` mapping | — | the captured JSON output of the runs above, not inferred from the projection's source |
 
 Semantics cited, never restated here: [ADR-0009](../notes/ADRs.md)

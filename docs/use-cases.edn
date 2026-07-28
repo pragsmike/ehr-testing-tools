@@ -48,7 +48,7 @@
    :title "Generate controlled-fault data"
    :audience "Teams needing deliberately broken data for any downstream use, with full traceability back to what was broken and why."
    :bring "A base corpus (generated or intaken) plus a chosen defect operator and locator."
-   :get "A mutant with a lineage record naming the exact base-spec constraint it violates -- never produced without one."
+   :get "A mutant with a lineage record naming the exact base-spec constraint it violates -- never produced without one -- plus an operation-manifest.edn naming the whole batch's own producer and per-item lineage (SS-4b)."
    :maturity :experimental
    :commands
    {:lines ["# The catalog you are choosing from: every operator, and the"
@@ -72,7 +72,12 @@
             ""
             "# The mutant is never written without this: the lineage record naming"
             "# the operator, the locator, and the constraint the result violates."
-            "cat out/demo-mutants/lineage/*.lineage.edn"]
+            "cat out/demo-mutants/lineage/*.lineage.edn"
+            ""
+            "# The batch's own self-description, written last, after every mutant"
+            "# and lineage sidecar above -- the same producer/per-item-lineage shape"
+            "# `ehr corpus intake` recognizes automatically (SS-4b, formats.md)."
+            "cat out/demo-mutants/operation-manifest.edn"]
     :note "Operator ids and what each one edits: [operators.md](operators.md). Locator syntax for both formats: [locators.md](locators.md). The lineage record's own fields: [formats.md](formats.md#the-lineage-record). Whether a given gate actually *convicts* a given mutant is a measured property rather than a promise -- [judge-calibration.md](judge-calibration.md) is where a surprising gate result gets explained."}
    :equations ["canonical-fhir-datum × operator-catalog → mutant-fhir-datum + lineage-record  [Mutate]  {catalytic: operator-catalog}"]}
 

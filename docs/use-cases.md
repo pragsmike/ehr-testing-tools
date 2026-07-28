@@ -87,7 +87,7 @@ flowchart LR
 
 **You bring:** A base corpus (generated or intaken) plus a chosen defect operator and locator.
 
-**You get:** A mutant with a lineage record naming the exact base-spec constraint it violates -- never produced without one.
+**You get:** A mutant with a lineage record naming the exact base-spec constraint it violates -- never produced without one -- plus an operation-manifest.edn naming the whole batch's own producer and per-item lineage (SS-4b).
 
 **Maturity:** experimental
 
@@ -116,6 +116,11 @@ bin/ehr corpus mutate --path $PATIENT_FILE \
 # The mutant is never written without this: the lineage record naming
 # the operator, the locator, and the constraint the result violates.
 cat out/demo-mutants/lineage/*.lineage.edn
+
+# The batch's own self-description, written last, after every mutant
+# and lineage sidecar above -- the same producer/per-item-lineage shape
+# `ehr corpus intake` recognizes automatically (SS-4b, formats.md).
+cat out/demo-mutants/operation-manifest.edn
 ```
 
 Operator ids and what each one edits: [operators.md](operators.md). Locator syntax for both formats: [locators.md](locators.md). The lineage record's own fields: [formats.md](formats.md#the-lineage-record). Whether a given gate actually *convicts* a given mutant is a measured property rather than a promise -- [judge-calibration.md](judge-calibration.md) is where a surprising gate result gets explained.
