@@ -19,16 +19,19 @@
 #
 # ADR-0013 (2026-07-26) added four sim_*_test.clj entry points under
 # test-integration/ -- ehr-testing-tools' first cross-repo consumer loop
-# against the private ehr-testing-sim repo, consumed only as a
-# `../ehr-testing-sim` sibling-checkout subprocess, never a classpath or
-# deps.edn dependency (ADR-0013 decision 1). This runner has no sibling
-# checkout, so every one of those four tests takes its own clean-skip
-# path (sim-harness/available? false) every night -- by design, not an
-# oversight: exercising them for real requires a step this workflow does
-# not have yet (cloning a private sibling repo with credentials this
-# runner isn't given). No workflow change was made to add one; a future
-# session that wants nightly coverage of the real loop adds that step
-# deliberately, here.
+# against ehr-testing-sim, consumed only as a `../ehr-testing-sim`
+# sibling-checkout subprocess, never a classpath or deps.edn dependency
+# (ADR-0013 decision 1). At the time this comment was first written,
+# that repo was private and this runner had no sibling checkout, so
+# every one of those four tests took its own clean-skip path
+# (sim-harness/available? false) every night, by design, not an
+# oversight. ehr-testing-sim went public 2026-07-27 (its own ADR-0015),
+# which is what makes the "Checkout sibling ehr-testing-sim" step below
+# possible without a credential this runner isn't given -- added for the
+# palgebra drift check (below), not to newly exercise the four
+# sim_*_test.clj tests themselves; whether those should now run for real
+# against the same checkout is a separate call for a future session, not
+# decided here.
 #
 # Cold-cache fetch, what and from where: three artifacts, all GitHub
 # release assets, all license-verified in notes/facts-register.md --
@@ -126,3 +129,20 @@ jobs:
 
       - name: make integration
         run: make integration
+
+      # Sibling checkout for the palgebra drift check below (ehr-testing-sim
+      # went public 2026-07-27, its own ADR-0015, so a plain unauthenticated
+      # clone works -- no deploy key/token needed). Lands at `../ehr-testing-sim`
+      # relative to this job's own checkout, the same sibling-checkout path
+      # ADR-0013's sim-harness already assumes (test-integration/
+      # ehr_testing_tools/sim_harness.clj's `sim-repo-dir`), so no new path
+      # convention is introduced here.
+      - name: Checkout sibling ehr-testing-sim
+        run: git clone --depth 1 https://github.com/pragsmike/ehr-testing-sim.git ../ehr-testing-sim
+
+      # Nightly drift check (ehr-testing-sim's ADR-0016): this repo's
+      # authoritative palgebra/ files vs. the copies vendored into that
+      # repo's string-diagram skill. See bin/check-palgebra-drift for the
+      # comparison itself and its failure message.
+      - name: make check-palgebra-drift
+        run: make check-palgebra-drift

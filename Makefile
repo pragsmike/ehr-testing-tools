@@ -1,4 +1,4 @@
-.PHONY: help pack pack-skills pack-push test coverage integration ehr pipeline use-cases operators-doc cli-doc lint-pipeline lint-deps quickstart-demo quickstart-fresh
+.PHONY: help pack pack-skills pack-push test coverage integration ehr pipeline use-cases operators-doc cli-doc lint-pipeline lint-deps quickstart-demo quickstart-fresh check-palgebra-drift
 
 SHELL := bash
 
@@ -53,6 +53,7 @@ help:
 	@echo "  cli-doc      - regenerate docs/cli.md from the CLI help spec (src/ehr_testing_tools/cli/help.clj)"
 	@echo "  lint-pipeline - check every catalytic resource in docs/pipeline.edn and docs/use-cases.edn resolves to one of the four catalytic targets (docs/notation.md)"
 	@echo "  lint-deps     - check no palgebra.* namespace requires ehr-testing-tools.* (docs/palgebra-design.md D9)"
+	@echo "  check-palgebra-drift - diff this repo's palgebra/ against ehr-testing-sim's vendored copies (that repo's ADR-0016); nightly-only, clean-skips without a sibling checkout"
 
 test:
 	clojure -X:test
@@ -170,6 +171,15 @@ lint-pipeline:
 # itself; CI wiring is a separate, later step.
 lint-deps:
 	clojure -X palgebra.deps-lint/lint-deps!
+
+# Nightly-only (.github/workflows/integration.yml): diffs this repo's
+# authoritative palgebra/ files against the copies ehr-testing-sim
+# vendored into its string-diagram skill (that repo's ADR-0016), modulo
+# sim's own provenance header. Clean-skips if no sibling ehr-testing-sim
+# checkout is present, same coupling rule as the sim-harness suite
+# (ADR-0013) -- see bin/check-palgebra-drift for the comparison itself.
+check-palgebra-drift:
+	bin/check-palgebra-drift
 
 # Concatenates most git-tracked files in the repo into one pack file, for
 # pasting into a chat UI that can't read the filesystem directly. Leads
