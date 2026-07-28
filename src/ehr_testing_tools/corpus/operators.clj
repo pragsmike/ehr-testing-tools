@@ -68,6 +68,14 @@
    [:doc {:optional true} [:string {:min 1}]]
    [:contract Contract]
    [:locator-required? :boolean]
+   ;; :default-locator (D12, docs/source-sink-design.md Part IX.5,
+   ;; ADR-0019) -- an operator's own canonical conviction target,
+   ;; consulted by the CLI when --locator-path is omitted. Optional:
+   ;; declaring one is calibration work against docs/judge-calibration.md,
+   ;; done per operator when its default is actually authored, not
+   ;; invented speculatively by this session (D12's own text) -- no seed
+   ;; catalog entry below declares one yet.
+   [:default-locator {:optional true} [:string {:min 1}]]
    [:fn [:fn fn?]]])
 
 (defonce ^:private registry (atom {}))

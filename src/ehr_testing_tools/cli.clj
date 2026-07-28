@@ -126,6 +126,13 @@
     :fhir (spit file (json/write-str mutant))
     :v2 (spit file mutant)))
 
+(defn- default-mutate-out-dir
+  "D12 (docs/source-sink-design.md Part IX.5, ADR-0019): the derived
+  --out-dir, matching D9's derived-from-inputs pattern --
+  <input>-mutants/<operator-id>@<version>/."
+  [path operator-id operator-version]
+  (str path "-mutants/" operator-id "@" operator-version "/"))
+
 (defn mutate-command
   "`ehr corpus mutate`: applies one operator, at one locator, to every
   matching file under :path (a file or a directory, positional --
@@ -142,7 +149,11 @@
 
   Options: :path (positional PATH, or --path -- D10), :operator-id (a
   string, coerced to keyword), :operator-version (default \"1\"),
-  :locator-path, :out-dir."
+  :locator-path (D12: falls back to the looked-up operator's own
+  :default-locator when omitted; still required if the operator
+  declares none), :out-dir (D12: defaults to
+  (default-mutate-out-dir path operator-id operator-version) when
+  omitted)."
   [{:keys [path operator-id operator-version locator-path out-dir]
     :or {operator-version "1"}}]
   (let [operator (operators/lookup (keyword operator-id) operator-version)]
@@ -152,7 +163,8 @@
                          :valid-options (sort (map :id (operators/entries)))
                          :hint "run: ehr corpus operators"})
       (let [format (:format operator)
-            locator-result (locator/make format locator-path)]
+            out-dir (or out-dir (default-mutate-out-dir path operator-id operator-version))
+            locator-result (locator/make format (or locator-path (:default-locator operator)))]
         (if-not (result/ok? locator-result)
           locator-result
           (let [locator-envelope (:payload locator-result)

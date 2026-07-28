@@ -98,8 +98,8 @@ Apply one mutation operator at one locator to every matching file under PATH.
 | `--path` | — | alternative to the positional PATH |
 | `--operator-id` | — | registered operator id -- see `ehr corpus operators` |
 | `--operator-version` | `1` | operator version |
-| `--locator-path` | — | format-specific locator string (FHIR data-path, or v2 segment/field grammar) |
-| `--out-dir` | — | directory for mutants + a lineage/ sidecar subdirectory |
+| `--locator-path` | — | format-specific locator string (FHIR data-path, or v2 segment/field grammar) -- falls back to the operator's own :default-locator when declared (D12); still required otherwise |
+| `--out-dir` | `<PATH>-mutants/<operator-id>@<operator-version>/` | directory for mutants + a lineage/ sidecar subdirectory |
 
 ### `ehr corpus intake`
 

@@ -6,6 +6,7 @@
             [ehr-testing-tools.result :as result]
             [ehr-testing-tools.artifact :as artifact]
             [ehr-testing-tools.judge.report :as report]
+            [ehr-testing-tools.corpus.operators :as operators]
             [ehr-testing-tools.cli :as cli])
   (:import [java.io File]))
 
@@ -384,6 +385,72 @@
         r (cli/mutate-command {:path in-dir :operator-id "remove-required-element"
                                 :locator-path "entry[0].resource.gender" :out-dir (temp-dir*)})]
     (is (result/ok? r))))
+
+;; ---- D12 (docs/source-sink-design.md Part IX.5, ADR-0019): derived
+;; --out-dir; a registry entry MAY declare :default-locator, consulted
+;; when --locator-path is omitted. No seed-catalog operator declares
+;; one yet -- these tests exercise the mechanism with a fake operator,
+;; snapshotting/restoring the real registry around it. ----
+
+(deftest mutate-command-derives-out-dir-when-omitted-test
+  (let [in-dir (temp-dir*)
+        _ (spit (io/file in-dir "a.json") sample-bundle-json)
+        r (cli/mutate-command {:path in-dir :operator-id "remove-required-element"
+                                :locator-path "entry[0].resource.gender"})]
+    (is (result/ok? r))
+    (is (.isDirectory (io/file (str in-dir "-mutants/remove-required-element@1/"))))
+    (is (.isFile (io/file (str in-dir "-mutants/remove-required-element@1/") "a.json")))))
+
+(deftest mutate-command-explicit-out-dir-not-overridden-by-default-test
+  (let [in-dir (temp-dir*)
+        out-dir (temp-dir*)
+        _ (spit (io/file in-dir "a.json") sample-bundle-json)
+        r (cli/mutate-command {:path in-dir :operator-id "remove-required-element"
+                                :locator-path "entry[0].resource.gender" :out-dir out-dir})]
+    (is (result/ok? r))
+    (is (.isFile (io/file out-dir "a.json")))))
+
+(defn- with-fake-default-locator-operator
+  "Registers a fake :fhir operator declaring :default-locator, runs f,
+  then restores the real registry -- same snapshot/restore convention
+  ehr-testing-tools.canonical's own tests use."
+  [f]
+  (let [snapshot (operators/registry-snapshot)]
+    (try
+      (operators/register!
+       {:id :fake-default-locator-op :version "1" :format :fhir
+        :contract {:type :violates :target "test contract"}
+        :locator-required? true
+        :default-locator "entry[0].resource.gender"
+        :fn (fn [data _locator] (result/ok {:mutant data :lineage {:id "fake-lineage"}}))})
+      (f)
+      (finally (operators/reset-registry! snapshot)))))
+
+(deftest mutate-command-falls-back-to-operators-default-locator-test
+  (with-fake-default-locator-operator
+    (fn []
+      (let [in-dir (temp-dir*)
+            _ (spit (io/file in-dir "a.json") sample-bundle-json)
+            r (cli/mutate-command {:path in-dir :operator-id "fake-default-locator-op"
+                                    :out-dir (temp-dir*)})]
+        (is (result/ok? r) (pr-str r))))))
+
+(deftest mutate-command-explicit-locator-path-not-overridden-by-default-test
+  (with-fake-default-locator-operator
+    (fn []
+      (let [in-dir (temp-dir*)
+            _ (spit (io/file in-dir "a.json") sample-bundle-json)
+            r (cli/mutate-command {:path in-dir :operator-id "fake-default-locator-op"
+                                    :locator-path "entry[0].resource.id" :out-dir (temp-dir*)})]
+        (is (result/ok? r) (pr-str r))))))
+
+(deftest mutate-command-still-requires-locator-path-for-operator-without-a-default-test
+  (let [in-dir (temp-dir*)
+        _ (spit (io/file in-dir "a.json") sample-bundle-json)
+        r (cli/mutate-command {:path in-dir :operator-id "remove-required-element"
+                                :out-dir (temp-dir*)})]
+    (is (not (result/ok? r))
+        "remove-required-element declares no :default-locator, so an omitted --locator-path must still fail")))
 
 (deftest mutate-command-propagates-a-locator-that-does-not-resolve-test
   (let [in-dir (temp-dir*)
