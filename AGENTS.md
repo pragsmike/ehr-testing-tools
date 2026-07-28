@@ -201,11 +201,10 @@ uniquely covers.
 
 ## Repo conventions
 
-- **Internal src structure is an open decision, not yet ratified** — see
-  `docs/positioning.md`, "Open decisions." `src/ehr_testing_tools/core.clj`
-  is placeholder scaffolding only; do not add `corpus/`, `gate/`, or other
-  capability namespaces without checking whether that decision has been
-  made first.
+- **Internal src structure is ratified** — one artifact, one source
+  tree, organized by capability (`corpus.*`, `judge.*`, `artifact`,
+  `cli`), never by format or tool ([ADR-0004](notes/ADRs.md); closed the
+  `docs/positioning.md` "Open decisions" entry of the same name).
 - **Scope fence:** this repo builds runnable tools (generation, mutation,
   conformance gates); it does not judge semantic correctness, validate
   licensed terminology, or host a service. See `README.md` for the full
