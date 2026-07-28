@@ -120,6 +120,24 @@ transport step — see the palgebra equations below.
 are named here as the codec's own edge conditions, resolved at build
 time with tests (SS-3), not assumed away.
 
+**`:er7-multi` grammar, probed (2026-07-28, SS-3 build session, ruling
+3).** Re-measured directly against the vendored fixture
+(`test/fixtures/v2/simhospital/messages.out`), independently of the
+existing `simhospital-corpus` test helper's own docstring (which
+records the same finding, citing facts-register F25): 1,013 messages,
+1,013 `MSH` occurrences (one per message, none embedded elsewhere),
+every message starting with `MSH` at a line start; segments within a
+message are CR-terminated (0x0D) with no CR after the last segment;
+messages are separated by a blank LF line (`\n\n`, 0x0A 0x0A), and the
+file ends with a trailing `\n\n` after the last message (no message
+lacks its own trailing separator). `ehr-testing-tools.corpus.framing`'s
+`:er7-multi` codec decodes via MSH-line-start scanning (a message
+starts at offset 0 or immediately after a bare LF) rather than a
+literal `\n\n` split — behaviorally identical on this fixture, but
+robust to a message payload that happens to contain a literal `\n\n`
+substring internally, which pure blank-line splitting cannot
+distinguish from a real boundary.
+
 ---
 
 ## Part III — Sinks (D3)
