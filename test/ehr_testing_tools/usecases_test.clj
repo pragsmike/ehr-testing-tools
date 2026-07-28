@@ -75,13 +75,16 @@
   (let [data (edn/read-string (slurp "docs/use-cases.edn"))]
     (is (usecases/valid? data))))
 
-(deftest committed-use-cases-edn-has-sixteen-cases-test
+(deftest committed-use-cases-edn-has-seventeen-cases-test
   ;; 14 -> 15, SS-2 Step 5: :simulator-traffic-as-intake-source, the
   ;; new eleventh verified command strip (ruling 7).
   ;; 15 -> 16, SS-3 Step 7: :piped-hl7-traffic-as-intake-source, the
   ;; stdin-intake strip, verified for real against the ADR-0011 fixture.
+  ;; 16 -> 17, SS-4 Step 6: :mutate-output-piped-straight-into-intake,
+  ;; the loopback strip, verified for real (test-integration/
+  ;; mutate_stdout_stdin_loopback_test.clj).
   (let [data (edn/read-string (slurp "docs/use-cases.edn"))]
-    (is (= 16 (count (:cases data))))))
+    (is (= 17 (count (:cases data))))))
 
 (deftest committed-use-cases-edn-has-unique-ids-test
   (let [data (edn/read-string (slurp "docs/use-cases.edn"))

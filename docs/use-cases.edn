@@ -392,4 +392,28 @@
             "cat out/demo-stdin-intake/intake-record.edn"]
     :note "Any of the four multi-item framing kinds work the same way: `?framing=ndjson`, `?framing=mllp`, or `?framing=bundle-entries` (for a piped FHIR Bundle) instead of `er7-multi` -- see [source-sink-design.md](source-sink-design.md) Part II for what each one assumes about its bytes. A real interface engine's own feed pipes in exactly the same way this excerpt does (`nc ... | bin/ehr corpus intake 'stdin:?framing=mllp&format=v2-er7' ...`) -- `nc` (or any transport) is the one piece outside this repo's scope (D2); everything on this repo's side of the pipe is real. The spool's own capture-manifest.edn is a distinct schema from ADR-0014's manifest.edn (captured-at/origin/framing/format/item-count/per-item sha256s, not a generator's provenance record), so it is not treated as a provenance sidecar -- it gets cataloged like any other foreign file, which is why the catalog above has one more entry than there are messages. Gate the result the same way any intaken corpus gates -- [Judge user-supplied data: intake -> gate -> report](#judge-user-supplied-data-intake---gate---report)."}
    :equations ["framed-stream × size-cap → spooled-corpus  [Spool]  {catalytic: framing-codec}"
+               "spooled-corpus → catalog-entry + intake-record  [Intake]"]}
+
+  {:id :mutate-output-piped-straight-into-intake
+   :title "Mutate's own output, piped straight into intake -- no intermediate directory"
+   :audience "Teams generating mutant corpora as part of a larger pipeline who don't want a scratch directory in between two of this repo's own commands, and anyone wanting to see the composability law (every sink's output is a valid source, docs/source-sink-design.md Part III) exercised end to end rather than merely asserted."
+   :bring "A base v2 corpus (a directory of .hl7 files) and a chosen defect operator/locator -- exactly what [Generate controlled-fault data](#generate-controlled-fault-data) already brings; the difference is only where the mutants go."
+   :get "A cataloged mutant corpus, produced by chaining two `ehr` invocations through a real OS pipe: `corpus mutate` batches every mutant, frames them (MLLP here; er7-multi/ndjson work the same way), and writes the framed bytes to its own stdout instead of a directory; `corpus intake` reads them from its own stdin, spools one file per mutant, and catalogs the result -- no scratch files land on disk in between (SS-4)."
+   :maturity :usable
+   :commands
+   {:lines ["# Same operator/locator as the plain directory-output case; only"
+            "# --out-dir changes, to a stdout: designator instead of a path."
+            "bin/ehr corpus mutate in/v2-corpus \\"
+            "  --operator-id blank-required-field --locator-path MSH-9 \\"
+            "  --out-dir 'stdout:?format=v2-er7&framing=mllp' \\"
+            "  | bin/ehr corpus intake 'stdin:?format=v2-er7&framing=mllp' \\"
+            "    --label mutate-loopback --out out/mutate-loopback-intake"
+            ""
+            "# What you got: one file per mutant, cataloged -- no directory of"
+            "# mutant files or lineage sidecars ever touched disk on the way."
+            "cat out/mutate-loopback-intake/intake-record.edn"]
+    :note "Named scope decision, not an oversight: a stdout destination writes no lineage sidecar (`--out-dir/lineage/*.lineage.edn`, [Generate controlled-fault data](#generate-controlled-fault-data)'s own directory case) -- there is no directory to drop one into. A run that needs lineage writes to a directory, exactly as before; this pipe is for batching mutants straight into another consumer, not for the lineage-preserving path. Any of the framing kinds that concatenate soundly work here (`mllp`/`er7-multi`/`ndjson`) -- see [source-sink-design.md](source-sink-design.md) Part III for the sink side and Part II for what each framing assumes about its bytes."}
+   :equations ["mutant-v2-datum × stdout-sink-map → sink-bytes  [Write]"
+               "sink-bytes → framed-stream  [EncodeFraming]  {catalytic: framing-codec}"
+               "framed-stream × size-cap → spooled-corpus  [Spool]  {catalytic: framing-codec}"
                "spooled-corpus → catalog-entry + intake-record  [Intake]"]}]}
