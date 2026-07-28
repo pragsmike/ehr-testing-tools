@@ -23,7 +23,9 @@
             [ehr-testing-tools.corpus.operators :as operators]
             [ehr-testing-tools.corpus.generator-source :as generator-source]
             [ehr-testing-tools.corpus.spool-source :as spool-source]
+            [ehr-testing-tools.corpus.source-sink :as source-sink]
             [ehr-testing-tools.corpus.source-sink-url :as source-sink-url]
+            [ehr-testing-tools.corpus.sink-write :as sink-write]
             [ehr-testing-tools.locator :as locator]
             [ehr-testing-tools.check :as check]
             [ehr-testing-tools.judge.v2 :as gate-v2]
@@ -314,6 +316,87 @@
   [path operator-id operator-version]
   (str path "-mutants/" operator-id "@" operator-version "/"))
 
+(defn- stdout-out-dir-result
+  "SS-4 ruling 6: --out-dir gains the Sink seam additively -- a bare
+  path (including a derived one, D12) behaves exactly as before; a
+  literal `stdout:...` designator (the one sink scheme this repo has a
+  reason to route mutate's own output through this session, ruling 5)
+  is parsed as a real Sink instead. The str/starts-with? check (rather
+  than trying source-sink-url/parse-sink-designator on every --out-dir
+  value unconditionally) is deliberate: most --out-dir values are plain
+  filesystem paths, and on Windows some of those legitimately contain a
+  colon (\"C:\\...\") that parse-sink-designator would otherwise read as
+  an unknown scheme name -- `stdout:` is unambiguous as a literal
+  prefix, so this never mistakes a real path for one. Returns nil when
+  out-dir isn't a stdout: designator at all (the directory-write path
+  runs unchanged); otherwise the parse result (ok the Sink map, or
+  parse-sink-designator's own rejection, e.g. a missing/invalid
+  ?format=)."
+  [out-dir]
+  (when (and out-dir (str/starts-with? out-dir "stdout:"))
+    (source-sink-url/parse-sink-designator out-dir)))
+
+(defn- mutant->stdout-item
+  "The write-stdout!-ready shape for one mutant, per the sink's own
+  :framing -- :bundle-entries wants the mutant's own parsed data
+  directly (only sensible when format is :fhir, whose mutant already
+  IS a data map, ehr-testing-tools.corpus.framing's own item shape for
+  that codec); every other framing wants bytes, the same UTF-8
+  serialization write-mutant already produces to a file, taken here in
+  memory instead of spit to disk."
+  [format framing-kind mutant]
+  (if (= :bundle-entries framing-kind)
+    mutant
+    (.getBytes ^String (case format :fhir (json/write-str mutant) :v2 mutant) "UTF-8")))
+
+(defn- mutate-to-stdout!
+  "SS-4 rulings 5-6: mutate's output routed through a :stdout Sink
+  instead of a directory. Every matching file is mutated in turn and
+  its mutant collected as one item; the whole batch is encoded and
+  written in a single write-stdout! call, per the sink's own :framing.
+  Fails fast on the first per-file mutation failure, same discipline as
+  the directory-write path.
+
+  Scope decision, named rather than silently dropped: NO lineage
+  sidecar is written for a stdout destination -- lineage is a file
+  under :out-dir/lineage/, and a stdout sink names no directory to put
+  one in (the same reason the sink itself carries no manifest, Part III's
+  own law statement). A caller who needs lineage for a mutate run
+  writes to a directory (the unchanged default); stdout is for the
+  byte-stream composability loopback (ruling 5), not a lineage-preserving
+  destination.
+
+  :stdout-out is injectable (an OutputStream, defaults to System/out via
+  write-stdout! itself when omitted) so hermetic tests never write to
+  the real process stdout -- the same -fn injection discipline this
+  namespace already uses for subprocess/network seams, applied here to
+  a stream instead of a function."
+  [format operator locator-envelope files sink stdout-out]
+  (loop [remaining files items []]
+    (if (empty? remaining)
+      (let [write-result (if stdout-out
+                            (sink-write/write-stdout! sink items :out stdout-out)
+                            (sink-write/write-stdout! sink items))]
+        ;; :stdout-sink? true tells main! (below) that raw framed bytes
+        ;; already went to the real process stdout -- the human-readable
+        ;; EDN result summary main! always prints must be redirected
+        ;; away from stdout too, or it corrupts the byte stream a
+        ;; downstream `stdin:` consumer expects to decode (caught by
+        ;; the real loopback test, test-integration/, before this fix).
+        (if (result/ok? write-result)
+          (result/ok (assoc (:payload write-result) :stdout-sink? true))
+          write-result))
+      (let [f (first remaining)
+            base-data (read-base-data format f)
+            mutate-result (mutate/mutate base-data operator locator-envelope)]
+        (if-not (result/ok? mutate-result)
+          mutate-result
+          (recur (rest remaining)
+                 (conj items (mutant->stdout-item
+                              format
+                              (or (:framing sink) source-sink/default-framing)
+                              (:mutant (:payload mutate-result))))))))))
+
 (defn mutate-command
   "`ehr corpus mutate`: applies one operator, at one locator, to every
   matching file under :path (a file or a directory, positional --
@@ -334,8 +417,18 @@
   :default-locator when omitted; still required if the operator
   declares none), :out-dir (D12: defaults to
   (default-mutate-out-dir path operator-id operator-version) when
-  omitted)."
-  [{:keys [path operator-id operator-version locator-path out-dir]
+  omitted).
+
+  SS-4 rulings 5-6: :out-dir also accepts a `stdout:...` Sink
+  designator (never a default -- only when the caller passes one
+  explicitly) -- see stdout-out-dir-result/mutate-to-stdout! for that
+  path's own contract (batched write, no lineage sidecar). Every other
+  :out-dir value -- the derived default, an explicit directory path, a
+  dir:/file: URL already reduced to a bare path by dispatch's own
+  resolve-path-designators -- runs the unchanged directory-write path
+  below. :stdout-out is test-only injection for the stdout path (see
+  mutate-to-stdout!'s own docstring); real callers never pass it."
+  [{:keys [path operator-id operator-version locator-path out-dir stdout-out]
     :or {operator-version "1"}}]
   (let [operator (operators/lookup (keyword operator-id) operator-version)]
     (if-not operator
@@ -344,27 +437,36 @@
                          :valid-options (sort (map :id (operators/entries)))
                          :hint "run: ehr corpus operators"})
       (let [format (:format operator)
+            stdout-result (stdout-out-dir-result out-dir)
             out-dir (or out-dir (default-mutate-out-dir path operator-id operator-version))
             locator-result (locator/make format (or locator-path (:default-locator operator)))]
         (if-not (result/ok? locator-result)
           locator-result
           (let [locator-envelope (:payload locator-result)
                 files (files-with-extension-in path (format-file-extension format))]
-            (.mkdirs (io/file out-dir))
-            (.mkdirs (io/file out-dir "lineage"))
-            (loop [remaining files processed []]
-              (if (empty? remaining)
-                (result/ok {:count (count processed) :files processed})
-                (let [f (first remaining)
-                      base-data (read-base-data format f)
-                      mutate-result (mutate/mutate base-data operator locator-envelope)]
-                  (if-not (result/ok? mutate-result)
-                    mutate-result
-                    (let [{:keys [mutant lineage]} (:payload mutate-result)
-                          basename (.getName f)]
-                      (write-mutant format (io/file out-dir basename) mutant)
-                      (spit (io/file out-dir "lineage" (str basename ".lineage.edn")) (pr-str lineage))
-                      (recur (rest remaining) (conj processed {:file basename :lineage-id (:id lineage)})))))))))))))
+            (cond
+              (some? stdout-result)
+              (if-not (result/ok? stdout-result)
+                stdout-result
+                (mutate-to-stdout! format operator locator-envelope files (:payload stdout-result) stdout-out))
+
+              :else
+              (do
+                (.mkdirs (io/file out-dir))
+                (.mkdirs (io/file out-dir "lineage"))
+                (loop [remaining files processed []]
+                  (if (empty? remaining)
+                    (result/ok {:count (count processed) :files processed})
+                    (let [f (first remaining)
+                          base-data (read-base-data format f)
+                          mutate-result (mutate/mutate base-data operator locator-envelope)]
+                      (if-not (result/ok? mutate-result)
+                        mutate-result
+                        (let [{:keys [mutant lineage]} (:payload mutate-result)
+                              basename (.getName f)]
+                          (write-mutant format (io/file out-dir basename) mutant)
+                          (spit (io/file out-dir "lineage" (str basename ".lineage.edn")) (pr-str lineage))
+                          (recur (rest remaining) (conj processed {:file basename :lineage-id (:id lineage)})))))))))))))))
 
 (defn- generator-url?
   [designator-result]
@@ -902,16 +1004,27 @@
   in `dispatch`) prints its :text payload verbatim via println-fn
   instead of going through `render` -- the ns docstring's one
   deliberate EDN-out exception; --json is ignored for these regardless
-  of what was passed, since there is no EDN form to project."
+  of what was passed, since there is no EDN form to project.
+
+  SS-4: a result whose :payload carries :stdout-sink? true (mutate-to-
+  stdout!'s own marker) means raw framed bytes already went to the real
+  process stdout -- printing the EDN summary there too would corrupt
+  the byte stream a downstream `stdin:` consumer expects to decode
+  cleanly (caught for real by the loopback integration test before
+  this redirect existed). That summary is printed to *err* instead in
+  this one case -- stdout stays exactly, only, the framed bytes."
   ([raw-args] (main! raw-args {}))
   ([raw-args {:keys [dispatch-fn println-fn exit-fn]
               :or {dispatch-fn dispatch println-fn println exit-fn #(System/exit %)}}]
    (let [{:keys [args opts]} (parse raw-args)
          r (dispatch-fn args opts)
-         code (result->exit-code r)]
-     (println-fn (if (= :cli-help (:category r))
-                   (:text (:payload r))
-                   (render r (:json opts))))
+         code (result->exit-code r)
+         text (if (= :cli-help (:category r))
+                (:text (:payload r))
+                (render r (:json opts)))]
+     (if (:stdout-sink? (:payload r))
+       (binding [*out* *err*] (println-fn text))
+       (println-fn text))
      (exit-fn code)
      code)))
 

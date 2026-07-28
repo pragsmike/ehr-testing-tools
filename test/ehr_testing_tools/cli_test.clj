@@ -766,6 +766,58 @@
     (is (result/rejected? r))
     (is (= :invalid-v2-path (:category r)))))
 
+;; ---- mutate-command routed through a :stdout Sink (SS-4 rulings 5-6):
+;; :out-dir accepting a `stdout:...` designator instead of a directory
+;; path, batched write, no lineage sidecar (named scope decision, see
+;; mutate-to-stdout!'s own docstring). :stdout-out is the injected
+;; ByteArrayOutputStream so nothing here touches the real process
+;; stdout. ----
+
+(deftest mutate-command-stdout-sink-v2-mllp-writes-every-mutant-test
+  (let [in-dir (temp-dir*)
+        out (java.io.ByteArrayOutputStream.)
+        _ (spit (io/file in-dir "a.hl7") @admit-content)
+        _ (spit (io/file in-dir "b.hl7") @admit-content)
+        r (cli/mutate-command {:path in-dir :operator-id "corrupt-encoding-characters"
+                                :locator-path "MSH-2"
+                                :out-dir "stdout:?format=v2-er7&framing=mllp"
+                                :stdout-out out})]
+    (is (result/ok? r))
+    (is (pos? (:bytes-written (:payload r))))
+    (let [bs (.toByteArray out)]
+      ;; two MLLP-framed messages: 0x0B ... 0x1C 0x0D, back to back
+      (is (pos? (alength bs)))
+      (is (= 0x0B (bit-and 0xff (aget bs 0))))
+      (is (= 2 (count (re-seq #"\x0b" (String. bs "ISO-8859-1"))))
+          "two 0x0B start markers, one per mutant, no directory/lineage written"))
+    (is (not (.exists (io/file "stdout:?format=v2-er7&framing=mllp")))
+        "no literal directory named after the designator string was ever created")))
+
+(deftest mutate-command-stdout-sink-fhir-ndjson-writes-every-mutant-test
+  (let [in-dir (temp-dir*)
+        out (java.io.ByteArrayOutputStream.)
+        _ (spit (io/file in-dir "a.json") sample-bundle-json)
+        r (cli/mutate-command {:path in-dir :operator-id "remove-required-element"
+                                :locator-path "entry[0].resource.gender"
+                                :out-dir "stdout:?format=fhir-json&framing=ndjson"
+                                :stdout-out out})]
+    (is (result/ok? r))
+    (let [text (String. (.toByteArray out) "UTF-8")]
+      (is (clojure.string/ends-with? text "\n") "ndjson's own trailing-LF-per-item convention")
+      (is (= 1 (count (clojure.string/split-lines text)))))))
+
+(deftest mutate-command-stdout-sink-propagates-mutation-failure-test
+  (let [in-dir (temp-dir*)
+        out (java.io.ByteArrayOutputStream.)
+        _ (spit (io/file in-dir "a.hl7") @admit-content)
+        r (cli/mutate-command {:path in-dir :operator-id "blank-required-field"
+                                :locator-path "ZZZ-3"
+                                :out-dir "stdout:?format=v2-er7&framing=mllp"
+                                :stdout-out out})]
+    (is (result/rejected? r))
+    (is (= :locator-not-found (:category r)))
+    (is (zero? (alength (.toByteArray out))) "nothing written when a per-file mutation fails")))
+
 ;; ---- intake-command (`ehr corpus intake`): the real wiring, not the
 ;; injected-stub path dispatch-routes-corpus-intake-test exercises ----
 
@@ -1403,6 +1455,31 @@
                           :exit-fn (fn [_c] nil)})]
     (is (= 0 code))
     (is (clojure.string/includes? @printed "\"status\""))))
+
+;; ---- SS-4: a :stdout-sink? true payload (mutate-to-stdout!'s own
+;; marker) redirects main!'s EDN summary print to *err*, so raw framed
+;; bytes already on stdout aren't corrupted by a trailing summary --
+;; the real loopback integration test caught this before the redirect
+;; existed. ----
+
+(deftest main-bang-redirects-stdout-sink-result-summary-to-stderr-test
+  (let [printed-via-stderr? (atom nil)
+        code (cli/main! ["corpus" "mutate"]
+                         {:dispatch-fn (fn [_args _opts] (result/ok {:stdout-sink? true :bytes-written 42}))
+                          :println-fn (fn [_s] (reset! printed-via-stderr? (identical? *out* *err*)))
+                          :exit-fn (fn [_c] nil)})]
+    (is (= 0 code))
+    (is (true? @printed-via-stderr?)
+        "the EDN summary must print through *err*, not *out*, when raw bytes already went to stdout")))
+
+(deftest main-bang-does-not-redirect-an-ordinary-result-test
+  (let [printed-via-stderr? (atom nil)
+        code (cli/main! ["artifact" "fetch"]
+                         {:dispatch-fn (fn [_args _opts] (result/ok {:cached true}))
+                          :println-fn (fn [_s] (reset! printed-via-stderr? (identical? *out* *err*)))
+                          :exit-fn (fn [_c] nil)})]
+    (is (= 0 code))
+    (is (false? @printed-via-stderr?))))
 
 (deftest main-bang-passes-real-parsed-args-to-dispatch-fn-test
   (let [captured (atom nil)
