@@ -1077,3 +1077,162 @@ Nothing in `../ehr-testing-sim` changes; `deps.edn` gains nothing;
 automatically, matching how every other `test-integration` entry point
 has been added since ADR-0013.
 **Status.** Accepted (author-directed), 2026-07-27.
+
+---
+## ADR-0016 — Verdict cache + verification tiers: T2 is change-triggered and nightly, not per-commit ritual
+
+**Context.** `make integration` costs 19m11s locally and 10m29s in CI
+cold-cache (CI run 30175880198), dominated by per-file
+`validator_cli.jar` subprocess launches — JVM startup alone runs
+roughly 1–2 minutes per invocation, and a single `gate fhir` strip was
+recorded at 99s. The suite's *placement* was already right
+(hermeticity is a path split, `test-integration/` vs `test/`; T2 runs
+nightly plus `workflow_dispatch`, blocking no merge) but session
+*discipline* still forced its cost onto every commit:
+`.agents/plans/judge-gate-refactor.md`'s Phase 1 stated "Verify after
+each commit: full test suite + both integration suites..." — a rule
+sized for that phase's own renaming sweep, generalized since into a
+per-session ritual that pays T2's ~19-minute cost regardless of
+whether a given commit touches anything T2 uniquely exercises. Nothing
+in the suite's own design was wrong; the ritual wrapped around it was
+sized for the wrong grain.
+
+**Decision.**
+
+1. **Three verification tiers, named once, referenced everywhere.**
+   - **T0 — fast gates** (unchanged): `make test` + `lint-pipeline` +
+     `lint-deps` + `quickstart-fresh`. Pre-push-hook-enforced
+     (`.githooks/pre-push`) and owed after every commit.
+   - **T1 — integration-smoke** (new, `make integration-smoke`,
+     `:integration-smoke` alias, target under 2 minutes measured
+     *warm*): one real `validator_cli.jar` pairing (one known-clean
+     Synthea file, one mutant with a known conviction at a fixed
+     locator) asserting pairing polarity only — never an aggregate
+     verdict, since EXP-C5/contract-pairing already established a real
+     US-Core-profiled file always carries hundreds of incidental
+     profile-driven findings — plus one `sim-harness` run at a fixed
+     seed asserting its emitted manifest validates against
+     `corpus.manifest/ManifestV1_1`, skip-when-absent like every other
+     sim-consuming suite. Owed at session boundaries and on any
+     integration-adjacent commit (trigger list below). The two `gate
+     fhir` calls this tier makes share the verdict cache (decision 3)
+     with every other invocation this session makes: the first T1 run
+     in a session pays for two real subprocess launches; every
+     subsequent T1 run against the same fixed corpus is a cache hit on
+     both files and finishes near-instantly — which is *why* the
+     2-minute target is stated warm, not cold.
+   - **T2 — full integration** (`make integration`, unchanged in
+     content): nightly CI (`.github/workflows/integration.yml`) plus
+     release gates plus any in-session commit whose changed paths
+     intersect the trigger list below.
+2. **T2's in-session trigger is change-aware, stated as text.** T2 is
+   owed in-session only when the changed paths intersect:
+   `src/ehr_testing_tools/judge/fhir.clj`,
+   `src/ehr_testing_tools/judge/v2*`,
+   `src/ehr_testing_tools/invocation.clj`,
+   `src/ehr_testing_tools/artifact.clj`,
+   `src/ehr_testing_tools/corpus/generate.clj`, anything under
+   `test-integration/`, the `:integration` alias in `deps.edn`, or
+   `.github/workflows/`. Everything else owes T0 per commit and T1 at
+   session close; nightly T2 remains the backstop regardless. This
+   text is the authority (`AGENTS.md`'s own "Verification tiers"
+   section states it too, for discoverability, but does not supersede
+   this record if the two ever drift — this ADR is amended first). A
+   `bin/needs-integration` helper was considered (diff changed paths
+   against this list, exit 0/1) but judged unnecessary machinery for a
+   six-entry list a human or an agent can read directly; not added.
+3. **Verdict cache is content-addressed and inert on miss**
+   (`ehr-testing-tools.judge.verdict-cache`, wired at
+   `judge.fhir/gate-file`). Key = SHA-256 of {the input file's own
+   content hash, the resolved validator artifact's identity
+   (name+version+sha256 — the sha256 specifically so a same-named,
+   same-versioned but differently-published jar can never alias, per
+   `digest.clj`'s own claim-vs-fact distinction, ADR-0005), the
+   resolved IG/profile artifacts' identities (same shape), the
+   validator's own argv shape (`-version`, `-tx`, `-ig` flags — *not*
+   the per-run `-output=`/input scratch paths, which don't change what
+   the validator does), and `judge.fhir/verdict-mapping-version`
+   (`interpret`'s own classification-table version — a mapping-version
+   bump must invalidate every cached verdict, since the same raw
+   OperationOutcome now classifies differently)}. Value = the judge's
+   own `interpret` output (`{:verdict :findings [:cause]}`), EDN, at
+   `target/verdict-cache/<key>.edn` (gitignored, `target/` already is).
+   A hit skips `execute` entirely — the validator subprocess never
+   runs; a miss runs exactly as before and stores its result under
+   that key. **Determinism assumption, stated because nothing else in
+   this repo states it:** the pinned `validator_cli.jar`, given
+   byte-identical input content, an identical argv shape, and
+   identical IG/profile artifacts, produces the identical
+   OperationOutcome every time. Nothing in this session falsified that
+   assumption (contract-pairing's own polarity assertions passed
+   unchanged with caching wired in), but it is an assumption, not a
+   proof — a determinism regression in some future validator release
+   would silently serve a stale verdict rather than erroring, which is
+   exactly what the escape hatches below are for. **Escape hatches:**
+   delete `target/verdict-cache/` (it is pure build scratch, safe to
+   remove any time), or disable caching for one invocation
+   (`ehr gate fhir --no-verdict-cache`, library `:verdict-cache?
+   false`) when the assumption is ever suspect. `judge.v2` (HAPI
+   HL7v2) needs no cache and gets none: it runs HAPI in-process
+   (pattern nursery #1's two-step engine discipline applies without a
+   subprocess, per that namespace's own docstring) — there is no
+   subprocess to skip, so a cache there would add a stale-data risk
+   for zero wall-clock benefit.
+4. **Batch validator invocation: probed, not assumed.** Whether the
+   pinned `validator_cli.jar` accepts multiple files or a directory
+   per invocation, with per-file-attributable findings, is an
+   empirical question about a third-party tool — probed directly
+   (facts-register row, `notes/facts-register.md`) rather than assumed
+   either way. Adopted in `contract_pairing_test.clj` only if
+   attribution came back exact; the verdict cache (decision 3) is this
+   session's primary cost reduction regardless of the probe's outcome.
+
+**Rejected.** *Widening `judge.report`'s or `judge.finding`'s own
+schema to carry cache provenance* — the cache is an invocation-layer
+optimization (whether the subprocess ran), not a judgment-layer fact;
+folding it into the finding/report schema would conflate "how this
+verdict was computed" with "what this verdict says," the same
+layering mistake ADR-0009's judge/gate factorization already argues
+against elsewhere. *A time-based (TTL) cache instead of content-
+addressed* — a TTL cache can serve a stale verdict for unchanged
+inputs past its expiry and can also evict a still-valid one before its
+expiry; content-addressing is exact by construction (same key = same
+inputs = same computation, given the stated determinism assumption)
+and needs no clock. *Tag-filtering T1 out of the existing
+`:integration` alias instead of a dedicated namespace* — this repo's
+own hermeticity precedent (`test/` vs `test-integration/`,
+`AGENTS.md`) is a path/namespace split specifically because
+`cognitect.test-runner.api/test`'s `:excludes` is not honored
+uniformly across every runner this repo uses (`make coverage`'s
+cloverage runner is the documented example); a dedicated namespace
+(`smoke_test.clj`, selected via `:nses`) sidesteps that class of bug
+entirely rather than re-risking it for a new tier. *A shorter T2
+cadence (e.g. every-other-commit) instead of change-triggered* —
+would still pay T2's cost on commits that can't possibly regress
+anything it uniquely covers (a doc fix, an ADR append), the same
+waste this record exists to remove, merely at a lower average rate
+rather than eliminated at the source.
+
+**Consequence.** `.agents/plans/judge-gate-refactor.md`'s Phase 1
+"Verify after each commit" line is amended in place with a dated note
+pointing here — that line was sized for Phase 1's own renaming sweep,
+not a standing rule; it is not itself in error, but this record now
+governs going forward. `AGENTS.md` gains a "Verification tiers"
+section restating decisions 1–2 for discoverability. `.githooks/pre-
+push` is unchanged (T0 was already correct there). CI is unchanged:
+`.github/workflows/ci.yml` already runs only T0-tier work per push;
+`.github/workflows/integration.yml` already runs T2 nightly plus
+`workflow_dispatch` — this record documents why that placement is
+right, it does not move anything. Measured wall times (T0/T1/T2
+cold/T2 warm-cache) on the author's own machine are recorded in this
+session's own report, not restated here — a wall-clock number is a
+measurement, not an architectural decision, and belongs beside the
+session that took it.
+
+**Cites.** ADR-0005 (claim-vs-fact, the reasoning behind keying on
+sha256 rather than name+version alone), ADR-0006 (staged enforcement —
+this record is staged enforcement's own logical continuation, one
+level more granular: not just fast-vs-slow gates, but which commits
+owe the slow one), ADR-0013 (sim-harness subprocess convention, reused
+unchanged by T1's own sim-harness half).
+**Status.** Accepted (author-directed), 2026-07-27.
