@@ -87,7 +87,7 @@
        :flags [{:flag "--format" :doc "\"fhir\" or \"v2\" -- narrow the listing to one format" :default "all"}]}]}
 
     {:group "gate"
-     :doc "Conformance-gate a file or directory against HL7 v2 or FHIR."
+     :doc "Conformance-gate a file or directory against HL7 v2 or FHIR. Bare `ehr gate PATH` (no v2/fhir verb) sniffs the format via corpus.intake/sniff-format and dispatches (D11, ADR-0019); a directory mixing both formats, or containing a file the sniffer can't classify, is an error naming the explicit override (`gate v2 PATH` / `gate fhir PATH`), never a silent per-file split."
      :positional "PATH"
      :positional-doc "a file or directory, given as a trailing positional argument, not --path -- an explicit --path is never overridden by it"
      :verbs

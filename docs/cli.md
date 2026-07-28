@@ -19,7 +19,7 @@ ehr <group> [<verb>] [flags]
 |---|---|
 | [`artifact`](#ehr-artifact) | Fetch and resolve locked external engine/tool artifacts (ADR-0005). |
 | [`corpus`](#ehr-corpus) | Generate, mutate, intake, and inspect synthetic corpora. |
-| [`gate`](#ehr-gate) | Conformance-gate a file or directory against HL7 v2 or FHIR. |
+| [`gate`](#ehr-gate) | Conformance-gate a file or directory against HL7 v2 or FHIR. Bare `ehr gate PATH` (no v2/fhir verb) sniffs the format via corpus.intake/sniff-format and dispatches (D11, ADR-0019); a directory mixing both formats, or containing a file the sniffer can't classify, is an error naming the explicit override (`gate v2 PATH` / `gate fhir PATH`), never a silent per-file split. |
 | [`check`](#ehr-check) | Check a candidate corpus against an expected corpus and/or explicit per-file assertions -- the corpus's second judge, alongside Gate. |
 
 ## Global flags
@@ -124,7 +124,7 @@ List the registered mutation operator catalog (a pure registry read; dropped/unc
 
 ## `ehr gate`
 
-Conformance-gate a file or directory against HL7 v2 or FHIR.
+Conformance-gate a file or directory against HL7 v2 or FHIR. Bare `ehr gate PATH` (no v2/fhir verb) sniffs the format via corpus.intake/sniff-format and dispatches (D11, ADR-0019); a directory mixing both formats, or containing a file the sniffer can't classify, is an error naming the explicit override (`gate v2 PATH` / `gate fhir PATH`), never a silent per-file split.
 
 **Positional argument `PATH`** — a file or directory, given as a trailing positional argument, not --path -- an explicit --path is never overridden by it
 

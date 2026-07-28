@@ -376,6 +376,86 @@
         (gate-fn {:path path :report report :baseline baseline
                   :treat-no-verdict-as treat-no-verdict-as})))))
 
+;; ---- D11 (docs/source-sink-design.md Part IX.4, ADR-0019): bare
+;; `ehr gate PATH` sniffs via corpus.intake/sniff-format instead of a
+;; second sniffing mechanism. `gate v2`/`gate fhir` remain explicit
+;; overrides -- required for a directory mixing both formats, or
+;; containing a file the sniffer can't classify: both are the same
+;; operational error (:gate-format-ambiguous, exit 2), naming the
+;; override, not a silent per-file split (OPEN-1, resolved). ----
+
+(def ^:private gate-candidate-extensions #{"json" "hl7"})
+
+(defn- gate-candidate-files-in
+  "Files directly under dir with either judge's own extension
+  (judge.fhir/gate-dir's *.json, judge.v2/gate-dir's *.hl7) -- the
+  exact candidate set either explicit gate would ever look at, so a
+  manifest.edn/lineage/ sidecar sitting alongside gate output is never
+  mistaken for an unclassifiable gate candidate."
+  [dir]
+  (->> (.listFiles (io/file dir))
+       (filter #(.isFile %))
+       (filter #(contains? gate-candidate-extensions
+                            (last (str/split (.getName %) #"\."))))
+       (sort-by #(.getName %))))
+
+(def ^:private sniffed-format->gate-label
+  {:fhir-json :fhir :v2-er7 :v2})
+
+(defn- sniff-path-format
+  [f]
+  (get sniffed-format->gate-label (intake/sniff-format (slurp f))))
+
+(defn- ambiguous-format-error
+  [path payload]
+  (result/error :gate-format-ambiguous
+                (merge {:path path
+                        :hint "ambiguous format -- run: ehr gate v2 PATH, or ehr gate fhir PATH"}
+                       payload)))
+
+(defn sniff-gate-command
+  "The bare `ehr gate PATH` dispatch (D11): sniffs :path via
+  corpus.intake/sniff-format and calls gate-v2-fn or gate-fhir-fn with
+  opts unchanged -- both already handle file-vs-directory internally
+  (gate-command's own .isDirectory branch), so this function's only job
+  is deciding *which* of the two to call. A single unclassifiable file,
+  a directory with no *.json/*.hl7 candidates, one containing any
+  unclassifiable candidate, or one mixing both formats, are all the
+  same :gate-format-ambiguous operational error (exit 2) -- never a
+  silent per-file split."
+  [{:keys [path] :as opts} gate-v2-fn gate-fhir-fn]
+  (let [f (io/file path)]
+    (cond
+      (not (.exists f))
+      (result/error :gate-path-not-found
+                     {:path path
+                      :hint "no such file or directory -- run: ehr help gate"})
+
+      (.isFile f)
+      (case (sniff-path-format f)
+        :fhir (gate-fhir-fn opts)
+        :v2 (gate-v2-fn opts)
+        (ambiguous-format-error path {:unrecognized-files [path]}))
+
+      :else
+      (let [files (gate-candidate-files-in path)]
+        (if (empty? files)
+          (ambiguous-format-error path {:reason :no-candidate-files})
+          (let [sniffed (map (fn [file] [(.getName file) (sniff-path-format file)]) files)
+                unrecognized (mapv first (filter (fn [[_ fmt]] (nil? fmt)) sniffed))]
+            (if (seq unrecognized)
+              (ambiguous-format-error path {:unrecognized-files unrecognized})
+              (let [formats (into #{} (map second) sniffed)]
+                (if (> (count formats) 1)
+                  (ambiguous-format-error
+                   path
+                   {:counts (into {}
+                                  (map (fn [[fmt fs]] [(get {:fhir :fhir-json :v2 :v2-er7} fmt) (count fs)]))
+                                  (group-by second sniffed))})
+                  (case (first formats)
+                    :fhir (gate-fhir-fn opts)
+                    :v2 (gate-v2-fn opts)))))))))))
+
 (defn- parse-canonicalizer-steps
   "\"id@v,id2@v2\" -> [[:id \"v\"] [:id2 \"v2\"]] -- the ordered
   [id version] pairs ehr-testing-tools.canonical/apply-canonicalizers
@@ -505,9 +585,17 @@
                       "intake" (intake-fn opts)
                       "operators" (operators-fn opts)
                       (unknown-command-error args (help/verb-names (help/find-group help/cli-spec "corpus"))))
-           "gate" (case action
-                    "v2" (gate-v2-fn opts)
-                    "fhir" (gate-fhir-fn opts)
+           "gate" (cond
+                    (= action "v2") (gate-v2-fn opts)
+                    (= action "fhir") (gate-fhir-fn opts)
+                    ;; D11: no recognized verb, but a path arrived
+                    ;; either positionally (bound above as `action`) or
+                    ;; via an explicit --path -- sniff-dispatch it.
+                    ;; --path always wins when both are given.
+                    (or action (:path opts))
+                    (sniff-gate-command (assoc opts :path (or (:path opts) action))
+                                         gate-v2-fn gate-fhir-fn)
+                    :else
                     (unknown-command-error args (help/verb-names (help/find-group help/cli-spec "gate"))))
            "check" (check-fn opts)
            (unknown-command-error args (help/group-names help/cli-spec))))))))

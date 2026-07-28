@@ -95,10 +95,14 @@
     (is (= :unknown-command (:category r)))
     (is (= #{"generate" "mutate" "intake" "operators"} (set (:valid-options (:payload r)))))))
 
-(deftest dispatch-unknown-gate-action-names-v2-and-fhir-test
+(deftest dispatch-unrecognized-gate-action-is-sniffed-as-a-path-test
+  ;; D11: an action that isn't "v2"/"fhir" is no longer necessarily an
+  ;; unknown-command error -- it's sniff-dispatched as a candidate PATH
+  ;; first (matching the bare `ehr gate PATH` contract); "bogus" doesn't
+  ;; exist as a path either, so this surfaces as :gate-path-not-found,
+  ;; not the old :unknown-command shape.
   (let [r (cli/dispatch ["gate" "bogus"] {} {})]
-    (is (= :unknown-command (:category r)))
-    (is (= #{"v2" "fhir"} (set (:valid-options (:payload r)))))))
+    (is (= :gate-path-not-found (:category r)))))
 
 ;; ---- help / --help / bare ehr (DOC-1 Step 2): a :category :cli-help
 ;; result short-circuits before any capability -fn runs. ----
@@ -856,6 +860,100 @@
   ;; doesn't silently swallow it as a false "pass").
   (let [r (cli/gate-v2-command {:path "/no/such/file.hl7"})]
     (is (not (result/ok? r)))))
+
+;; ---- D11 (docs/source-sink-design.md Part IX.4, ADR-0019): bare
+;; `ehr gate PATH` sniffs via corpus.intake/sniff-format and dispatches
+;; to gate-v2/gate-fhir; `gate v2`/`gate fhir` remain explicit overrides.
+;; A sniff-dispatched directory mixing both formats, or containing a
+;; file the sniffer can't classify, is an operational error naming the
+;; override -- not a silent per-file split (OPEN-1, resolved). ----
+
+(deftest dispatch-gate-bare-path-sniffs-v2-test
+  (let [v2-called (atom nil) fhir-called (atom nil)
+        r (cli/dispatch ["gate" "test/fixtures/v2/adt-a01-admit.hl7"] {}
+                         {:gate-v2-fn (fn [opts] (reset! v2-called opts) (result/ok {:totals {}}))
+                          :gate-fhir-fn (fn [opts] (reset! fhir-called opts) (result/ok {:totals {}}))})]
+    (is (result/ok? r))
+    (is (= "test/fixtures/v2/adt-a01-admit.hl7" (:path @v2-called)))
+    (is (nil? @fhir-called) "must not also call the fhir gate")))
+
+(deftest dispatch-gate-bare-path-sniffs-fhir-test
+  (let [in-dir (temp-dir*)
+        _ (spit (io/file in-dir "patient.json") sample-bundle-json)
+        v2-called (atom nil) fhir-called (atom nil)
+        r (cli/dispatch ["gate" in-dir] {}
+                         {:gate-v2-fn (fn [opts] (reset! v2-called opts) (result/ok {:totals {}}))
+                          :gate-fhir-fn (fn [opts] (reset! fhir-called opts) (result/ok {:totals {}}))})]
+    (is (result/ok? r))
+    (is (= in-dir (:path @fhir-called)))
+    (is (nil? @v2-called) "must not also call the v2 gate")))
+
+(deftest dispatch-gate-explicit-verb-still-works-test
+  ;; `gate v2`/`gate fhir` remain explicit overrides -- unaffected by
+  ;; the sniffing dispatch added for the no-verb, bare-path case.
+  (let [v2-called (atom nil)
+        r (cli/dispatch ["gate" "v2" "test/fixtures/v2"] {}
+                         {:gate-v2-fn (fn [opts] (reset! v2-called opts) (result/ok {:totals {}}))
+                          :gate-fhir-fn (fn [_] (throw (ex-info "must not be called" {})))})]
+    (is (result/ok? r))
+    (is (= "test/fixtures/v2" (:path @v2-called)))))
+
+(deftest dispatch-gate-bare-with-explicit-path-opt-sniffs-test
+  ;; `ehr gate --path X` (no positional at all) must still sniff --
+  ;; the sniffing dispatch is keyed on there being no recognized verb,
+  ;; not on how :path got into opts.
+  (let [v2-called (atom nil)
+        r (cli/dispatch ["gate"] {:path "test/fixtures/v2/adt-a01-admit.hl7"}
+                         {:gate-v2-fn (fn [opts] (reset! v2-called opts) (result/ok {:totals {}}))
+                          :gate-fhir-fn (fn [_] (throw (ex-info "must not be called" {})))})]
+    (is (result/ok? r))
+    (is (= "test/fixtures/v2/adt-a01-admit.hl7" (:path @v2-called)))))
+
+(deftest dispatch-gate-bare-invocation-still-errors-test
+  ;; `ehr gate` with no verb, no positional, and no --path is still an
+  ;; operational error -- there is nothing to sniff.
+  (let [r (cli/dispatch ["gate"] {} {})]
+    (is (result/error? r))
+    (is (= :unknown-command (:category r)))))
+
+(deftest sniff-gate-command-rejects-mixed-format-directory-test
+  (let [in-dir (temp-dir*)
+        _ (spit (io/file in-dir "a.json") sample-bundle-json)
+        _ (spit (io/file in-dir "b.hl7") (slurp "test/fixtures/v2/adt-a01-admit.hl7"))
+        r (cli/sniff-gate-command {:path in-dir} cli/gate-v2-command cli/fhir-gate-command)]
+    (is (result/error? r))
+    (is (= :gate-format-ambiguous (:category r)))
+    (is (= {:fhir-json 1 :v2-er7 1} (:counts (:payload r))))
+    (is (re-find #"gate v2" (:hint (:payload r))))
+    (is (re-find #"gate fhir" (:hint (:payload r))))))
+
+(deftest sniff-gate-command-rejects-unclassifiable-file-test
+  (let [in-dir (temp-dir*)
+        _ (spit (io/file in-dir "a.json") sample-bundle-json)
+        _ (spit (io/file in-dir "junk.hl7") "not er7 at all")
+        r (cli/sniff-gate-command {:path in-dir} cli/gate-v2-command cli/fhir-gate-command)]
+    (is (result/error? r))
+    (is (= :gate-format-ambiguous (:category r)))
+    (is (some #(= "junk.hl7" %) (:unrecognized-files (:payload r))))))
+
+(deftest sniff-gate-command-rejects-unclassifiable-single-file-test
+  (let [f (str (temp-dir*) "/junk.json")
+        _ (spit f "not json at all")
+        r (cli/sniff-gate-command {:path f} cli/gate-v2-command cli/fhir-gate-command)]
+    (is (result/error? r))
+    (is (= :gate-format-ambiguous (:category r)))
+    (is (= [f] (:unrecognized-files (:payload r))))))
+
+(deftest sniff-gate-command-homogeneous-directory-dispatches-test
+  (let [in-dir (temp-dir*)
+        _ (spit (io/file in-dir "a.json") sample-bundle-json)
+        _ (spit (io/file in-dir "b.json") sample-bundle-json)
+        fhir-called (atom nil)
+        r (cli/sniff-gate-command {:path in-dir}
+                                   (fn [_] (throw (ex-info "must not be called" {})))
+                                   (fn [opts] (reset! fhir-called opts) (result/ok {:totals {}})))]
+    (is (result/ok? r))
+    (is (= in-dir (:path @fhir-called)))))
 
 ;; ---- main! (the real -main body, refactored to take injectable
 ;; :dispatch-fn / :println-fn / :exit-fn so its exit-code mapping and
