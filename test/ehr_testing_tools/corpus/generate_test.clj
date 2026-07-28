@@ -311,6 +311,76 @@
     (is (result/rejected? r))
     (is (= :not-cached (:category r)))))
 
+;; ---- D9: zero-flag defaults (docs/source-sink-design.md Part IX.2,
+;; ADR-0019) -- red until Step 4 wires :or defaults into generate! and
+;; ships resources/synthea-default.properties. ----
+
+(deftest generate-zero-flag-defaults-assembly-test
+  ;; No :seed/:clinician-seed/:population/:reference-date/:output-dir/
+  ;; :config-path given at all -- the pinned D9 defaults must be what
+  ;; actually reaches the subprocess args and the manifest, not merely
+  ;; documented.
+  (let [args-atom (atom nil)
+        deps (stub-deps {:lockfile-result (ok-lockfile)
+                          :resolve-result (ok-resolve)
+                          :invocation-result (ok-invocation)
+                          :invocation-args-atom args-atom})
+        r (generate/generate! deps)]
+    (is (result/ok? r))
+    (let [manifest (:manifest (:payload r))
+          arg-str (clojure.string/join " " (:args @args-atom))]
+      (is (= 1 (:master (:seeds manifest))) "default --seed is the pinned constant 1")
+      (is (= 1 (:clinician (:seeds manifest))) "default --clinician-seed derives from --seed, not a separate constant")
+      (is (= "20260101" (:reference-date (:engine-params manifest))) "default --reference-date is the pinned constant")
+      (is (= generate/default-config-path (:path (:config manifest))) "default --config-path is the shipped resources/ properties file")
+      (is (clojure.string/includes? arg-str "-s 1"))
+      (is (clojure.string/includes? arg-str "-cs 1"))
+      (is (clojure.string/includes? arg-str "-p 5"))
+      (is (clojure.string/includes? arg-str "-r 20260101"))
+      (is (clojure.string/includes? arg-str (str "-c " generate/default-config-path)))
+      (is (clojure.string/includes? arg-str "--exporter.baseDirectory=")
+          "default --output-dir is derived, not required")
+      (is (clojure.string/includes? (:output-dir (:payload r)) "synthea-s1-p5")
+          "derived --output-dir names the seed and population it was derived from"))))
+
+(deftest generate-clinician-seed-derives-from-explicit-seed-test
+  ;; D9: "--clinician-seed defaults to --seed's value" -- must track an
+  ;; explicitly-given --seed too, not just the pinned default.
+  (let [args-atom (atom nil)
+        deps (stub-deps {:lockfile-result (ok-lockfile)
+                          :resolve-result (ok-resolve)
+                          :invocation-result (ok-invocation)
+                          :invocation-args-atom args-atom})
+        r (generate/generate! (merge deps {:seed 7}))]
+    (is (result/ok? r))
+    (is (= 7 (:master (:seeds (:manifest (:payload r))))))
+    (is (= 7 (:clinician (:seeds (:manifest (:payload r)))))
+        "an explicit --seed with no --clinician-seed still derives clinician-seed from it")
+    (is (clojure.string/includes? (clojure.string/join " " (:args @args-atom)) "-cs 7"))))
+
+(deftest generate-rejects-when-output-dir-already-has-content-test
+  ;; Determinism probe finding (2026-07-28, UX-1 build session,
+  ;; author-directed): D9's derived --output-dir is a *stable* path for a
+  ;; given seed/population, so a second zero-flag invocation lands in the
+  ;; same directory as the first. Synthea itself throws
+  ;; FileAlreadyExistsException per patient file but swallows it and
+  ;; still exits 0 -- silently writing nothing while generate! reported
+  ;; :ok. Fail fast instead, before invoking anything.
+  (let [out-dir (temp-dir)
+        _ (spit (io/file out-dir "stale-file.json") "{}")
+        run-invocation-calls (atom 0)
+        deps (stub-deps {:lockfile-result (ok-lockfile)
+                          :resolve-result (ok-resolve)
+                          :invocation-result (ok-invocation)})
+        r (generate/generate!
+           (merge deps
+                  {:run-invocation (fn [opts] (swap! run-invocation-calls inc) ((:run-invocation deps) opts))
+                   :seed 1 :clinician-seed 1 :population 5 :reference-date "20260101"
+                   :output-dir out-dir}))]
+    (is (result/error? r))
+    (is (= :output-dir-exists (:category r)))
+    (is (zero? @run-invocation-calls) "must fail before invoking the subprocess, not after")))
+
 (deftest generate-creates-output-dir-if-missing-test
   (let [parent (temp-dir)
         out-dir (str parent "/nested/does/not/exist/yet")

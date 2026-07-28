@@ -417,6 +417,42 @@ zero-flag case specifically because it is what a first-time reader
 actually runs. This makes the quickstart's first command a
 reproducibility demonstration, not merely a convenience.
 
+**Determinism probe (2026-07-28, UX-1 build session) — record-keeping
+exemption.** Two real generations at the pinned D9 values, into a
+freshly-emptied identical output directory, produced byte-identical
+corpus payloads (modulo the two canonicalizations EXP-A4 already
+registered — the filename timestamp suffix and Synthea's own
+`metadata/*.json` run-audit fields) and identical `manifest.edn` content
+except for exactly two fields inside `:invocation`: `:started-at` and
+`:duration-ms`. Both describe when and how long the subprocess ran, not
+a generation input — the same record-keeping-vs-generation-input
+distinction D8 already draws for `corpus intake`'s `--received`. These
+two fields are named here as the D8-exempt set for the zero-flag
+acceptance property's manifest-identity check; every other manifest
+field, including `:invocation`'s `:command`/`:args`/`:stdout-path`/
+`:stderr-path`/`:stdout-sha256`/`:stderr-sha256`, is asserted equal.
+
+**Output-directory collision (2026-07-28, UX-1 build session) —
+addendum, author-directed.** Because `--output-dir` is now a *derived,
+stable* path for a given seed/population rather than a required flag a
+caller chooses fresh each time, a second zero-flag invocation lands in
+the same directory as the first by construction. Probed directly: `corpus.generate`
+had no guard against this, and Synthea's own per-file writer throws
+`FileAlreadyExistsException` for every already-written patient bundle
+on a second run into a non-empty directory — caught internally by
+Synthea (its process still exits 0), so the second invocation silently
+wrote nothing and `generate!` still returned `result/ok`, with no signal
+anywhere that the "regenerated" corpus was actually untouched leftovers
+from the first run. Resolved by pulling one piece of Part III's sink
+discipline (D3: fail-if-exists is the default) forward into
+`corpus.generate` itself, ahead of the SS-1..SS-5 Source/Sink build-out:
+`generate!` now rejects with `result/error :output-dir-exists` before
+invoking anything if `--output-dir` already exists and is non-empty,
+naming the path and hinting at removing it or passing a different
+`--output-dir`. This is scoped to this one collision, not a preview of
+the general Sink type — SS-4 still owns building `:overwrite`/`:append`
+as explicit opt-ins across every sink kind.
+
 ### IX.3 One flag vocabulary (D10)
 
 | Concept | Spelling | Replaces |
