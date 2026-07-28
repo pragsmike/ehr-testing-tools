@@ -42,9 +42,20 @@
                      (not (re-find #"hospitalInformation|practitionerInformation" (.getName ^File %)))))
        first))
 
+(defn- delete-tree!
+  "Clears a fixture's own last run before regenerating into it --
+  corpus.generate!'s :out-dir-exists guard (Step 4, the determinism
+  probe's 2026-07-28 finding) now rejects a rerun into a non-empty
+  directory, so this suite's own fixed work-dir is no longer safely
+  re-runnable without this."
+  [^File f]
+  (when (.exists f)
+    (doseq [child (reverse (file-seq f))] (.delete ^File child))))
+
 (defn- generate-fixture!
   [f]
   (let [corpus-dir (str work-dir "/corpus")
+        _ (delete-tree! (io/file corpus-dir))
         gen-result (generate/generate! {:config-path "config/synthea/synthea.properties"
                                          :seed 100 :clinician-seed 555 :population 1
                                          :reference-date "20260101" :out-dir corpus-dir})]
