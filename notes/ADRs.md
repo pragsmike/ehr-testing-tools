@@ -248,12 +248,14 @@ silently resolved by whatever shape was locally convenient.
 - **H5. Published-artifact coordinates** (Clojars verified-group vs.
   Maven Central; group likely `io.github.pragsmike` or an owned
   domain) — author's call, unblocked by nothing in this repo.
-- **H6. Workspace CI, mostly landed, one trigger remaining.** The
-  `poly check` + `poly test :all` workflow landed this session
-  (`53d76b0`, `.github/workflows/test.yml`). What's still open: the
-  workflow hasn't run for real yet (nothing has been pushed to
-  `origin` this session without the author's own explicit go-ahead —
-  see R6 above and `AUTHORS-GUIDE.md` §1), so switching the test step from
-  `:all` to incremental `poly test` waits on the author pushing,
-  confirming green, and tagging `stable-<sha>` — the workflow's own
-  comment names this explicitly so it isn't forgotten.
+- **H6. Workspace CI — CLOSED, 2026-07-28.** The `poly check` + `poly
+  test :all` workflow landed this session (`53d76b0`,
+  `.github/workflows/test.yml`), then all three of its own trigger
+  conditions cleared the same session: author pushed to `origin`
+  (`git push origin main`, `2a77fd6`), GitHub Actions ran it green
+  (run `30379102956`, 1m15s), and the author tagged `stable-bootstrap`
+  at that same commit (`git push origin stable-bootstrap`). The
+  workflow's own `test.yml` comment names the next step: switch from
+  `clojure -M:poly test :all` to incremental `clojure -M:poly test`
+  (changed-or-affected since the most recent `stable-*` tag) — that
+  edit itself is a small, low-risk follow-up, not reopening this hole.
