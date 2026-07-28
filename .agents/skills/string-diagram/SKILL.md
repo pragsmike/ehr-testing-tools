@@ -112,12 +112,8 @@ with the user, then proceed.
 
 ### Step 2: Run the converter
 
-The converter script is claimed into ehr-testing-tools' `palgebra/`
-directory, not vendored into this repo (see "Files" below) — this
-step requires a sibling checkout of `ehr-testing-tools` at `../ehr-testing-tools`:
-
 ```bash
-python ../ehr-testing-tools/palgebra/tools/resource_equations_to_mermaid.py equations.txt -o flow.mermaid
+python .agents/skills/string-diagram/tools/resource_equations_to_mermaid.py equations.txt -o flow.mermaid
 ```
 
 Options:
@@ -168,17 +164,16 @@ as red sink nodes.
 
 ## Files
 
-This skill's teaching material (`SKILL.md`, this file) is copied into
-this repo (ADR-0005); the converter and example equation sets it
-teaches from remain claimed into ehr-testing-tools' `palgebra/`
-directory (that repo's `.agents/plans/judge-gate-refactor.md` Phase 2,
-D9) — they speak only in wires/boxes/composition, not in either repo's
-own stages, and were not vendored here. Using this skill from
-ehr-testing-sim requires a sibling checkout of ehr-testing-tools at
-`../ehr-testing-tools`:
+This skill is self-contained. `SKILL.md` (this file) was copied into
+this repo per ADR-0005; the converter and example equation sets are
+vendored copies of ehr-testing-tools' `palgebra/` material, pinned to
+that repo's commit `7ecce38ca2f388759c4cb9a934a8c6f2fee7a5c8`, per
+ADR-0016 (which supersedes ADR-0005's non-vendoring clause). They
+speak only in wires/boxes/composition, not in either repo's own
+stages.
 
 - `SKILL.md` — this file
-- `../ehr-testing-tools/palgebra/tools/resource_equations_to_mermaid.py` — the converter (Python 3.7+, no dependencies)
-- `../ehr-testing-tools/palgebra/examples/ai-study-equations.txt` — the AI study pipeline equations
-- `../ehr-testing-tools/palgebra/examples/lemon-pie-equations.txt` — the lemon meringue pie equations
-- `../ehr-testing-tools/palgebra/examples/decision-monad-equations.txt` — the fan→funnel deliberated choice pipeline (demonstrates spider annotations)
+- `tools/resource_equations_to_mermaid.py` — the converter (Python 3.7+, no dependencies)
+- `examples/ai-study-equations.txt` — the AI study pipeline equations
+- `examples/lemon-pie-equations.txt` — the lemon meringue pie equations
+- `examples/decision-monad-equations.txt` — the fan→funnel deliberated choice pipeline (demonstrates spider annotations)
