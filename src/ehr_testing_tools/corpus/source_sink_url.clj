@@ -204,3 +204,25 @@
   [m]
   (print-designator m ss/implemented-sink-kinds ss/valid-sink?
                      :unsupported-sink-kind :invalid-sink))
+
+(defn path-designator->path
+  "CLI-boundary sugar (ruling 7, SS-1 Step 6): for a positional PATH or
+  a --out-dir/--out value, accepts a dir:/file: URL designator
+  alongside the documented bare-path spelling. If s starts with a
+  recognized \"dir\" or \"file\" scheme, returns just its :path
+  component (any query string, e.g. ?format=..., is ignored -- these
+  CLI flags never needed a :format/:framing before URL acceptance
+  landed, and still don't). Any other string -- a bare path, or any of
+  the other four recognized schemes, which aren't file-path-shaped
+  arguments anyway -- passes through unchanged: this function only
+  ever WIDENS what's accepted, never rejects a string a bare-path
+  caller could already pass. A Windows absolute path (\"C:\\...\") is
+  never mistaken for a scheme -- only the literal \"dir\"/\"file\"
+  scheme names trigger the URL reading, and \"C\" is neither."
+  [s]
+  (if-let [[scheme rest] (split-scheme s)]
+    (if (#{"dir" "file"} scheme)
+      (let [[path _query] (split-path-query rest)]
+        (if (seq path) path s))
+      s)
+    s))

@@ -136,6 +136,24 @@
 
 ;; ---- sink twins: same shape, :format is mandatory (D3) ----
 
+;; ---- path-designator->path (ruling 7, Step 6's CLI-boundary sugar) ----
+
+(deftest path-designator->path-test
+  (testing "dir:/file: designators resolve to their :path component"
+    (is (= "./corpus" (url/path-designator->path "dir:./corpus")))
+    (is (= "./corpus" (url/path-designator->path "dir:./corpus?format=v2-er7")))
+    (is (= "./out/one.json" (url/path-designator->path "file:./out/one.json"))))
+  (testing "bare paths pass through unchanged"
+    (is (= "./corpus" (url/path-designator->path "./corpus")))
+    (is (= "target/gate-fhir" (url/path-designator->path "target/gate-fhir"))))
+  (testing "a Windows absolute path is never mistaken for a scheme"
+    (is (= "C:\\Users\\prags\\corpus" (url/path-designator->path "C:\\Users\\prags\\corpus"))))
+  (testing "other recognized schemes (not file-path-shaped) pass through unchanged"
+    (is (= "sim:?seed=42" (url/path-designator->path "sim:?seed=42")))
+    (is (= "blaze://host:8080/fhir" (url/path-designator->path "blaze://host:8080/fhir"))))
+  (testing "dir:/file: with no path at all falls back to the original string"
+    (is (= "dir:" (url/path-designator->path "dir:")))))
+
 (deftest sink-designator-examples-test
   (testing "file: sink round-trips with mandatory :format"
     (let [printed (url/print-sink-designator {:kind :file :path "./out/one.json" :format :fhir-json})]

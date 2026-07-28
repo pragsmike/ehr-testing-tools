@@ -49,7 +49,7 @@
        :flags artifact-flags}]}
 
     {:group "corpus"
-     :doc "Generate, mutate, intake, and inspect synthetic corpora."
+     :doc "Generate, mutate, intake, and inspect synthetic corpora. Any PATH, --out-dir, or --out below may also be spelled as a dir:/file: URL designator (ruling 7, docs/source-sink-design.md D4) instead of a bare path -- bare paths remain the documented, common spelling."
      :verbs
      [{:verb "generate" :doc "Generate a deterministic synthetic Synthea corpus. Zero-flag defaults (D9, ADR-0019) make the bare command a byte-reproducible run -- re-running it into the same (derived) --out-dir without clearing it first is rejected (:out-dir-exists), not silently overwritten."
        :flags [{:flag "--config-path" :doc "Synthea properties file" :default "resources/synthea-default.properties"}
@@ -88,7 +88,7 @@
        :flags [{:flag "--format" :doc "\"fhir\" or \"v2\" -- narrow the listing to one format" :default "all"}]}]}
 
     {:group "gate"
-     :doc "Conformance-gate a file or directory against HL7 v2 or FHIR. Bare `ehr gate PATH` (no v2/fhir verb) sniffs the format via corpus.intake/sniff-format and dispatches (D11, ADR-0019); a directory mixing both formats, or containing a file the sniffer can't classify, is an error naming the explicit override (`gate v2 PATH` / `gate fhir PATH`), never a silent per-file split."
+     :doc "Conformance-gate a file or directory against HL7 v2 or FHIR. Bare `ehr gate PATH` (no v2/fhir verb) sniffs the format via corpus.intake/sniff-format and dispatches (D11, ADR-0019); a directory mixing both formats, or containing a file the sniffer can't classify, is an error naming the explicit override (`gate v2 PATH` / `gate fhir PATH`), never a silent per-file split. PATH (and gate fhir's --out-dir) may also be spelled as a dir:/file: URL designator (ruling 7) instead of a bare path."
      :positional "PATH"
      :positional-doc "a file or directory, given as a trailing positional argument, not --path -- an explicit --path is never overridden by it"
      :verbs
@@ -102,7 +102,7 @@
                      {:flag "--no-verdict-cache" :doc "skip the content-addressed verdict cache (ADR-0016); always re-runs the validator subprocess" :default "false (caching on)"}])}]}
 
     {:group "check"
-     :doc "Check a candidate corpus against an expected corpus and/or explicit per-file assertions -- the corpus's second judge, alongside Gate."
+     :doc "Check a candidate corpus against an expected corpus and/or explicit per-file assertions -- the corpus's second judge, alongside Gate. DIR may also be spelled as a dir: URL designator (ruling 7) instead of a bare path."
      :positional "DIR"
      :positional-doc "check has no sub-verb: the second positional argument names the candidate directory directly"
      :flags [{:flag "--path" :doc "alternative to the positional DIR"}

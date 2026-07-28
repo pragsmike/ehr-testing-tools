@@ -21,6 +21,7 @@
             [ehr-testing-tools.corpus.mutate :as mutate]
             [ehr-testing-tools.corpus.intake :as intake]
             [ehr-testing-tools.corpus.operators :as operators]
+            [ehr-testing-tools.corpus.source-sink-url :as source-sink-url]
             [ehr-testing-tools.locator :as locator]
             [ehr-testing-tools.check :as check]
             [ehr-testing-tools.judge.v2 :as gate-v2]
@@ -726,6 +727,26 @@
 ;; lives in test-integration/. Read ADR-0012 (and, for provenance,
 ;; notes/ehr-testing-sim-mounting-note.md) before changing any of these.
 
+(defn- resolve-path-designators
+  "CLI acceptance is additive (ruling 7, docs/source-sink-design.md
+  Part IX via SS-1 Step 6): wherever a positional PATH names an input,
+  or --out-dir/--out names an output, a dir:/file: URL designator is
+  now also accepted alongside the documented bare-path spelling --
+  parsed to the same path a bare spelling would have given
+  (source-sink-url/path-designator->path), never the other way
+  around. Applied once here, in dispatch, so every downstream command
+  function keeps working with plain path strings exactly as before --
+  this is CLI-shell-boundary sugar, not a new capability those
+  functions need to know about. A key absent from opts is left absent
+  (most verbs use only one or two of these three)."
+  [opts]
+  (reduce (fn [opts k]
+            (if (contains? opts k)
+              (update opts k source-sink-url/path-designator->path)
+              opts))
+          opts
+          [:path :out-dir :out]))
+
 (defn dispatch
   "Routes [group action] positional args to the corresponding capability
   function with opts. The -fn keys are injectable (tests use this
@@ -769,7 +790,8 @@
                     (and (= group "gate") path (not (:path opts))) (assoc opts :path path)
                     (and (= group "corpus") (#{"mutate" "intake"} action) path (not (:path opts))) (assoc opts :path path)
                     (and (= group "check") action (not (:path opts))) (assoc opts :path action)
-                    :else opts)]
+                    :else opts)
+             opts (resolve-path-designators opts)]
          (case group
            "artifact" (case action
                         "fetch" (if (:all opts) (fetch-all-fn opts) (fetch-fn opts))
@@ -787,9 +809,12 @@
                     ;; D11: no recognized verb, but a path arrived
                     ;; either positionally (bound above as `action`) or
                     ;; via an explicit --path -- sniff-dispatch it.
-                    ;; --path always wins when both are given.
+                    ;; --path always wins when both are given. `action`
+                    ;; never went through resolve-path-designators
+                    ;; above (it wasn't known to be a path yet at that
+                    ;; point) -- resolved here instead.
                     (or action (:path opts))
-                    (sniff-gate-command (assoc opts :path (or (:path opts) action))
+                    (sniff-gate-command (assoc opts :path (source-sink-url/path-designator->path (or (:path opts) action)))
                                          gate-v2-fn gate-fhir-fn)
                     :else
                     (unknown-command-error args (help/verb-names (help/find-group help/cli-spec "gate"))))

@@ -214,6 +214,78 @@
     (is (result/ok? r))
     (is (= "explicit.json" (:path @called)))))
 
+;; ---- ruling 7 (SS-1 Step 6): PATH/--out-dir/--out may also spell a
+;; dir:/file: URL designator, resolved to the same plain path a bare
+;; spelling would give -- additive, bare paths keep working unchanged
+;; (covered above by every -accepts-a-positional-path-/-explicit-path-
+;; opt- test already passing with plain strings). ----
+
+(deftest dispatch-corpus-mutate-accepts-a-dir-url-positional-path-test
+  (let [called (atom nil)
+        r (cli/dispatch ["corpus" "mutate" "dir:./some-dir"] {}
+                         {:mutate-fn (fn [opts] (reset! called opts) (result/ok {:count 0}))})]
+    (is (result/ok? r))
+    (is (= "./some-dir" (:path @called)))))
+
+(deftest dispatch-corpus-mutate-accepts-a-file-url-explicit-path-opt-test
+  (let [called (atom nil)
+        r (cli/dispatch ["corpus" "mutate"] {:path "file:./x.json"}
+                         {:mutate-fn (fn [opts] (reset! called opts) (result/ok {:count 0}))})]
+    (is (result/ok? r))
+    (is (= "./x.json" (:path @called)))))
+
+(deftest dispatch-corpus-mutate-accepts-a-dir-url-out-dir-test
+  (let [called (atom nil)
+        r (cli/dispatch ["corpus" "mutate" "x.json"] {:out-dir "dir:./mutants-out"}
+                         {:mutate-fn (fn [opts] (reset! called opts) (result/ok {:count 0}))})]
+    (is (result/ok? r))
+    (is (= "./mutants-out" (:out-dir @called)))))
+
+(deftest dispatch-corpus-generate-accepts-a-dir-url-out-dir-test
+  (let [called (atom nil)
+        r (cli/dispatch ["corpus" "generate"] {:out-dir "dir:./corpus-out"}
+                         {:generate-fn (fn [opts] (reset! called opts) (result/ok {:out-dir "x"}))})]
+    (is (result/ok? r))
+    (is (= "./corpus-out" (:out-dir @called)))))
+
+(deftest dispatch-corpus-intake-accepts-a-dir-url-positional-path-and-out-test
+  (let [called (atom nil)
+        r (cli/dispatch ["corpus" "intake" "dir:./src"] {:out "dir:./catalog-out"}
+                         {:intake-fn (fn [opts] (reset! called opts) (result/ok {:catalog []}))})]
+    (is (result/ok? r))
+    (is (= "./src" (:path @called)))
+    (is (= "./catalog-out" (:out @called)))))
+
+(deftest dispatch-gate-accepts-a-file-url-positional-path-test
+  (let [called (atom nil)
+        r (cli/dispatch ["gate" "v2" "file:./one.hl7"] {}
+                         {:gate-v2-fn (fn [opts] (reset! called opts) (result/ok {:totals {}}))})]
+    (is (result/ok? r))
+    (is (= "./one.hl7" (:path @called)))))
+
+(deftest dispatch-check-accepts-a-dir-url-positional-path-test
+  (let [called (atom nil)
+        r (cli/dispatch ["check" "dir:./candidate"] {}
+                         {:check-fn (fn [opts] (reset! called opts) (result/ok {:results []}))})]
+    (is (result/ok? r))
+    (is (= "./candidate" (:path @called)))))
+
+(deftest dispatch-gate-bare-sniff-accepts-a-dir-url-positional-path-test
+  (let [called (atom nil)
+        r (cli/dispatch ["gate" "dir:./mixed-corpus"] {}
+                         {:gate-v2-fn (fn [opts] (reset! called [:v2 opts]) (result/ok {:totals {}}))
+                          :gate-fhir-fn (fn [opts] (reset! called [:fhir opts]) (result/ok {:totals {}}))})]
+    ;; sniff-gate-command dispatches by content, not scheme -- a
+    ;; nonexistent directory (this test never creates one) yields
+    ;; :gate-path-not-found, which is fine here: the point under test
+    ;; is that the URL's :path ("./mixed-corpus") is what reaches
+    ;; sniff-gate-command at all, not which format it sniffs to.
+    ;; Confirmed via the error payload's own :path field, since neither
+    ;; fn above gets called in this case.
+    (is (result/error? r))
+    (is (= :gate-path-not-found (:category r)))
+    (is (= "./mixed-corpus" (:path (:payload r))))))
+
 (deftest dispatch-routes-gate-v2-test
   (let [called (atom nil)
         r (cli/dispatch ["gate" "v2"] {:path "test/fixtures/v2"}

@@ -18,9 +18,9 @@ ehr <group> [<verb>] [flags]
 | Group | What it covers |
 |---|---|
 | [`artifact`](#ehr-artifact) | Fetch and resolve locked external engine/tool artifacts (ADR-0005). |
-| [`corpus`](#ehr-corpus) | Generate, mutate, intake, and inspect synthetic corpora. |
-| [`gate`](#ehr-gate) | Conformance-gate a file or directory against HL7 v2 or FHIR. Bare `ehr gate PATH` (no v2/fhir verb) sniffs the format via corpus.intake/sniff-format and dispatches (D11, ADR-0019); a directory mixing both formats, or containing a file the sniffer can't classify, is an error naming the explicit override (`gate v2 PATH` / `gate fhir PATH`), never a silent per-file split. |
-| [`check`](#ehr-check) | Check a candidate corpus against an expected corpus and/or explicit per-file assertions -- the corpus's second judge, alongside Gate. |
+| [`corpus`](#ehr-corpus) | Generate, mutate, intake, and inspect synthetic corpora. Any PATH, --out-dir, or --out below may also be spelled as a dir:/file: URL designator (ruling 7, docs/source-sink-design.md D4) instead of a bare path -- bare paths remain the documented, common spelling. |
+| [`gate`](#ehr-gate) | Conformance-gate a file or directory against HL7 v2 or FHIR. Bare `ehr gate PATH` (no v2/fhir verb) sniffs the format via corpus.intake/sniff-format and dispatches (D11, ADR-0019); a directory mixing both formats, or containing a file the sniffer can't classify, is an error naming the explicit override (`gate v2 PATH` / `gate fhir PATH`), never a silent per-file split. PATH (and gate fhir's --out-dir) may also be spelled as a dir:/file: URL designator (ruling 7) instead of a bare path. |
+| [`check`](#ehr-check) | Check a candidate corpus against an expected corpus and/or explicit per-file assertions -- the corpus's second judge, alongside Gate. DIR may also be spelled as a dir: URL designator (ruling 7) instead of a bare path. |
 | [`version`](#ehr-version) | Prints this repo's own honestly-pre-release identity (never a fabricated semver, D13) plus every pinned artifact's name@version from the lockfile. |
 | [`doctor`](#ehr-doctor) | Runs SETUP.md's verification checklist as checks (D13): java resolution via the artifact registry, artifact cache presence per lockfile entry, git hooksPath wiring, and platform support. Exit 0 every check passed; 1 at least one failed; 2 couldn't even read the lockfile to know what to check. |
 
@@ -71,7 +71,7 @@ Resolve an already-fetched artifact to a filesystem path.
 
 ## `ehr corpus`
 
-Generate, mutate, intake, and inspect synthetic corpora.
+Generate, mutate, intake, and inspect synthetic corpora. Any PATH, --out-dir, or --out below may also be spelled as a dir:/file: URL designator (ruling 7, docs/source-sink-design.md D4) instead of a bare path -- bare paths remain the documented, common spelling.
 
 ### `ehr corpus generate`
 
@@ -127,7 +127,7 @@ List the registered mutation operator catalog (a pure registry read; dropped/unc
 
 ## `ehr gate`
 
-Conformance-gate a file or directory against HL7 v2 or FHIR. Bare `ehr gate PATH` (no v2/fhir verb) sniffs the format via corpus.intake/sniff-format and dispatches (D11, ADR-0019); a directory mixing both formats, or containing a file the sniffer can't classify, is an error naming the explicit override (`gate v2 PATH` / `gate fhir PATH`), never a silent per-file split.
+Conformance-gate a file or directory against HL7 v2 or FHIR. Bare `ehr gate PATH` (no v2/fhir verb) sniffs the format via corpus.intake/sniff-format and dispatches (D11, ADR-0019); a directory mixing both formats, or containing a file the sniffer can't classify, is an error naming the explicit override (`gate v2 PATH` / `gate fhir PATH`), never a silent per-file split. PATH (and gate fhir's --out-dir) may also be spelled as a dir:/file: URL designator (ruling 7) instead of a bare path.
 
 **Positional argument `PATH`** — a file or directory, given as a trailing positional argument, not --path -- an explicit --path is never overridden by it
 
@@ -159,7 +159,7 @@ Gate against FHIR base-spec conformance (the official validator).
 
 ## `ehr check`
 
-Check a candidate corpus against an expected corpus and/or explicit per-file assertions -- the corpus's second judge, alongside Gate.
+Check a candidate corpus against an expected corpus and/or explicit per-file assertions -- the corpus's second judge, alongside Gate. DIR may also be spelled as a dir: URL designator (ruling 7) instead of a bare path.
 
 **Positional argument `DIR`** — check has no sub-verb: the second positional argument names the candidate directory directly
 
