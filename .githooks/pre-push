@@ -1,0 +1,46 @@
+#!/bin/sh
+# Enforce: git operations on this repo happen from WSL, not native Windows
+# (pushes are git operations too -- see .githooks/pre-commit), a secrets
+# scan is clean, and the workspace's own gates are green before anything
+# leaves this clone. Same opt-in mechanism as pre-commit: this only fires
+# once a clone has run `git config core.hooksPath .githooks`.
+#
+# `poly test :project` is deliberately separate from a bare `poly test`
+# (which only runs brick/base-scoped tests): project-level tests (the
+# future conformance project, per ADR-0001 H3) do not run under
+# `poly test` alone, so this gate names `:project` explicitly -- their
+# omission must never be silent. See SETUP.md for hook installation and
+# gitleaks install instructions.
+
+is_wsl=0
+if [ -n "$WSL_DISTRO_NAME" ]; then
+  is_wsl=1
+elif [ -r /proc/version ] && grep -qi microsoft /proc/version 2>/dev/null; then
+  is_wsl=1
+fi
+
+if [ "$is_wsl" -ne 1 ]; then
+  echo "ERROR: git pushes from this repo must be made from WSL, not $(uname -s 2>/dev/null || echo 'this shell')." >&2
+  echo "  See AUTHORS-GUIDE.md, 'Git operations: WSL only', for why." >&2
+  echo "  Re-run this push from a WSL shell instead." >&2
+  exit 1
+fi
+
+fail() {
+  echo "ERROR: $1 failed -- push refused." >&2
+  echo "  Fix the failure, or in a genuine emergency: git push --no-verify" >&2
+  exit 1
+}
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "ERROR: gitleaks not found on PATH -- push refused." >&2
+  echo "  Install it (see SETUP.md), or in a genuine emergency: git push --no-verify" >&2
+  exit 1
+fi
+
+gitleaks detect --no-banner -v || fail "gitleaks detect"
+
+clojure -M:poly check || fail "clojure -M:poly check"
+clojure -M:poly test :project || fail "clojure -M:poly test :project"
+
+exit 0
