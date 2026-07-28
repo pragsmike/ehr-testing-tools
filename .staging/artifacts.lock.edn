@@ -1,0 +1,29 @@
+;; External-input lockfile (ADR-0005). Deliberately parallel to deps.edn:
+;; the only path by which tools receive external inputs. Artifact bytes
+;; themselves live outside git, in the content-addressed cache at
+;; ~/.cache/ehr-testing-tools/artifacts/<sha256> (or $EHR_TESTING_TOOLS_CACHE).
+{:artifacts
+ [{:kind :engine
+   :name "synthea"
+   :version "4.0.0"
+   :sha256 "ed43c20ad40ba5c3bc724503a5af032715fe3c491620b766148e7c2361e6ecc1"
+   :source "https://github.com/synthetichealth/synthea/releases/download/v4.0.0/synthea-with-dependencies.jar"
+   :acquired "2026-07-24"
+   :license-status :verified
+   :license-note "Apache License 2.0; verified 2026-07-23 -- see docs/components.md (Synthea) and facts register F2."}
+  {:kind :runtime
+   :name "temurin-jdk"
+   :version "21.0.12+8"
+   :sha256 "e4446ff06a276155697597cc0f1b15da004ff083f4964a35271ecee567177370"
+   :source "https://github.com/adoptium/temurin21-binaries/releases/download/jdk-21.0.12%2B8/OpenJDK21U-jdk_x64_linux_hotspot_21.0.12_8.tar.gz"
+   :acquired "2026-07-28"
+   :license-status :verified
+   :license-note "GPLv2 with the Classpath Exception; verified 2026-07-28 -- see docs/components.md (Synthea) and facts register F31 (supersedes F12's 17.0.19+10 verification, same license). Linux x64, HotSpot, jdk image type -- the platform this repo's orchestrator actually runs on."}
+  {:kind :engine
+   :name "fhir-validator-cli"
+   :version "6.9.12"
+   :sha256 "0e53ab1d1a6f1e35f505255c0b8ce10a35fcf27e6e96b503640f784cd07e5ad6"
+   :source "https://github.com/hapifhir/org.hl7.fhir.core/releases/download/6.9.12/validator_cli.jar"
+   :acquired "2026-07-24"
+   :license-status :verified
+   :license-note "Apache License 2.0; verified 2026-07-23 -- see docs/components.md (Official FHIR validator) and facts register F5. Current stable GitHub release as of 2026-07-24 (published 2026-07-15); runs under the already-locked temurin-jdk 21.0.12+8 :runtime artifact above, resolved through the artifact registry like every other engine, never PATH."}]}

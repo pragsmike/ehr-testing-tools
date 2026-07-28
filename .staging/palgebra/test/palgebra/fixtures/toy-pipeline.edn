@@ -1,0 +1,14 @@
+;; A toy pipeline over the toy signature (toy-signature.edn): two
+;; sorts (raw-widget, polished-widget), three stages. No EHR
+;; vocabulary anywhere in it -- exercises palgebra.signature's loader
+;; and palgebra.lint's catalytic-resource mechanism without EHR
+;; freight.
+{:schema-version 1
+ :stages [{:id :assemble :label "Assemble" :kind :transform :status :built
+           :inputs ["raw-widget"] :outputs ["polished-widget"]
+           :catalytic ["assembly-tool"]}
+          {:id :inspect :label "Inspect" :kind :judge :status :built
+           :inputs ["polished-widget"] :outputs ["polished-widget"]}
+          {:id :buff :label "Buff" :kind :normalize :status :built
+           :inputs ["polished-widget"] :outputs ["polished-widget"]
+           :catalytic ["buffing-compound"]}]}

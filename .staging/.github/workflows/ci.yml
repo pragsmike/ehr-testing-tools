@@ -1,0 +1,106 @@
+# CI (ADR-0008 go-public gate, condition 3; enforcement wave landed here,
+# ENF-1, 2026-07-25): runs the hermetic test suite, both lints
+# (lint-pipeline, lint-deps), generated-doc freshness, and coverage with
+# a fail-threshold floor, on every push and PR. Everything here is a
+# *fast* gate (ADR-0006 staged enforcement, .agents/plans/corpus-
+# foundations.md): the integration suite (real validator/HAPI, network +
+# warm artifact cache) deliberately runs nowhere in this per-push path --
+# see .github/workflows/integration.yml (scheduled + workflow_dispatch,
+# reports but never blocks a merge).
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK (Temurin 21)
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Set up Clojure CLI
+        uses: DeLaGuardo/setup-clojure@13.6.1
+        with:
+          cli: latest
+
+      - name: Cache Clojure/Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.m2/repository
+            ~/.gitlibs
+            ~/.deps.clj
+          key: ${{ runner.os }}-clojure-${{ hashFiles('deps.edn') }}
+          restore-keys: |
+            ${{ runner.os }}-clojure-
+
+      - name: make test
+        run: make test
+
+      - name: make lint-pipeline
+        run: make lint-pipeline
+
+      - name: make lint-deps
+        run: make lint-deps
+
+      # bin/ehr smoke (CLI-2): the taught entry point is a wrapper, so the
+      # one thing worth a per-push check is that it still resolves the repo
+      # root and reaches the CLI. `help` is the cheapest invocation that
+      # proves both, and it must exit 0. The exit-code *fidelity* proof
+      # (all four of 0/1/2/3 through the wrapper) is run-once evidence in
+      # CLI-2's own commit body, not a CI job -- two of those four codes
+      # need a real FHIR validator subprocess, which is nightly-tier work
+      # (ENF-1's fast/slow split), and `exec` cannot selectively lose one
+      # code anyway.
+      - name: bin/ehr smoke (help exits 0 and prints usage)
+        run: |
+          out="$(bin/ehr help)"
+          echo "$out" | grep -q '^Usage: ehr '
+
+      # DOC-5: fast, per-push half of the executable-quickstart pair.
+      # Proves README.md's Quickstart fence and bin/quickstart-demo teach
+      # the identical commands, in the identical order -- structural
+      # extraction + comparison, not a substring search
+      # (ehr-testing-tools.quickstart-fresh). Never runs either the
+      # README's commands or the script itself; that's quickstart-demo's
+      # job, nightly-tier (integration.yml), since it fetches real
+      # artifacts and runs the real FHIR validator.
+      - name: quickstart-fresh (README fence and script agree)
+        run: make quickstart-fresh
+
+      # Generated-doc freshness: four docs are derived rather than
+      # authored -- docs/pipeline.md and docs/use-cases.md from
+      # docs/pipeline.edn / docs/use-cases.edn, and (DOC-3, 2026-07-25)
+      # docs/operators.md from the mutation-operator registry and
+      # docs/cli.md from the CLI help spec (Makefile comments name each
+      # source). Regenerate all four and diff, failing if a committed
+      # copy is stale. Needs python3
+      # (palgebra/tools/resource_equations_to_mermaid.py) for the first
+      # two only -- confirmed present on ubuntu-latest without a setup
+      # step (Ubuntu 24.04 runner image ships Python 3.12.3 as system
+      # python, per actions/runner-images' own Ubuntu2404-Readme.md), so
+      # no actions/setup-python step is added here.
+      - name: Generated-doc freshness (pipeline, use-cases, operators, cli)
+        run: |
+          make pipeline
+          make use-cases
+          make operators-doc
+          make cli-doc
+          git diff --exit-code docs/pipeline.md docs/use-cases.md docs/operators.md docs/cli.md
+
+      - name: make coverage
+        run: make coverage
+
+      - name: Upload coverage report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: target/coverage/

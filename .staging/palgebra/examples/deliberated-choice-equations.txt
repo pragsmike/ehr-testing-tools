@@ -1,0 +1,87 @@
+# Deliberated Choice Pipeline (Full)
+# Fan (scenario generation) → Funnel (committee deliberation) → Evaluation → Remediation loop
+# From palgebra/duality-and-composition.md — the decision monad with remediation feedback
+#
+# This is the full composed pipeline. For the simpler view without remediation,
+# see decision-monad-equations.txt.
+
+# ══════════════════════════════════════════════════════════════════
+# Fan half: divergent scenario generation (one-to-many)
+# ══════════════════════════════════════════════════════════════════
+
+# ── Phase 0: Situation Framing ──────────────────────────────────
+# Transformation: raw problem → structured situation with ambiguity markers
+raw-problem → situation  [FrameSituation]
+
+# ── Phase 1: Scenario Generation (fan spider) ───────────────────
+# The core divergent operation: one situation → multiple scenarios
+# Scenario roster and parameters are catalytic (shape divergence, not consumed)
+situation × scenario-roster × scenario-parameters → scenario-set  [Fan]
+  {catalytic: scenario-roster, scenario-parameters; spider: fan}
+
+# ── Phase 2: Scenario Assessment ────────────────────────────────
+# Enrichment: score scenarios without altering them
+scenario-set × scenario-rubric → scenario-set  [AssessScenarios]
+  {catalytic: scenario-rubric; enriches: scenario-scores}
+
+# ── Phase 3: Coverage Gate ──────────────────────────────────────
+# Coproduct: adequate coverage → forward; gaps → regenerate
+scenario-set × coverage-criteria → adequate-set + gaps-identified  [CoverageGate]
+  {catalytic: coverage-criteria; discard: gaps-identified}
+
+# ══════════════════════════════════════════════════════════════════
+# Bridge: charter the committee using the scenario set
+# ══════════════════════════════════════════════════════════════════
+
+adequate-set → charter  [DraftCharter]
+
+# ══════════════════════════════════════════════════════════════════
+# Funnel half: convergent committee deliberation (many-to-one)
+# ══════════════════════════════════════════════════════════════════
+
+# ── Phase 4: Convening ──────────────────────────────────────────
+charter × character-propensities → roster + convening  [Convene]
+  {catalytic: character-propensities}
+
+# ── Phase 5: Deliberation (funnel spider) ───────────────────────
+# The core convergent operation: scenarios + committee → transcript
+# The committee debates across all scenarios simultaneously
+charter × roster × convening × adequate-set × character-propensities × roberts-rules → transcript  [Deliberate]
+  {catalytic: character-propensities, roberts-rules; spider: funnel}
+
+# ── Phase 6: Resolution ────────────────────────────────────────
+transcript × charter → resolution  [Resolve]  {catalytic: charter}
+
+# ══════════════════════════════════════════════════════════════════
+# Evaluation and remediation loop
+# ══════════════════════════════════════════════════════════════════
+
+# ── Phase 7: Evaluation ────────────────────────────────────────
+# Enrichment: independent review scores the transcript
+transcript × evaluation-rubrics × charter → evaluation  [Evaluate]
+  {catalytic: evaluation-rubrics, charter; enriches: scores}
+
+# ── Phase 8: Quality Gate ──────────────────────────────────────
+# Coproduct: passed (≥ threshold) vs. needs-remediation
+evaluation × remediation-threshold → passed-evaluation + needs-remediation  [QualityGate]
+  {catalytic: remediation-threshold}
+
+# ── Phase 8a: Remediation (conditional) ────────────────────────
+# Transformation: cited gaps → amended transcript + remediation record
+needs-remediation × transcript × character-propensities → remediation + transcript  [Remediate]
+  {catalytic: character-propensities}
+
+# ── Phase 8b: Re-evaluation (feedback) ─────────────────────────
+# Bounded trace: max 2 remediation rounds
+# Named ReEvaluate to avoid Mermaid node collision
+transcript × evaluation-rubrics × charter → evaluation  [ReEvaluate]
+  {catalytic: evaluation-rubrics, charter; enriches: scores; feedback: transcript→transcript}
+
+# ══════════════════════════════════════════════════════════════════
+# Human gate: collapse operator
+# ══════════════════════════════════════════════════════════════════
+
+# ── Phase 9: Human Gate ────────────────────────────────────────
+# Collapse: graded uncertainty → crisp commitment (accept or reject)
+passed-evaluation × resolution → accepted-resolution + rejected-resolution  [HumanGate]
+  {discard: rejected-resolution}

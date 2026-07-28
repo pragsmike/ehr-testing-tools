@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(make *)",
+      "Bash(git *)",
+      "Bash(clojure *)",
+      "Bash(clj *)",
+      "Bash(gh api *)",
+      "Bash(gh gist *)",
+      "Bash(jq *)",
+      "Bash(python3 *)",
+      "Bash(wsl *)",
+      "Bash(curl *github.com*)",
+      "Bash(curl *githubusercontent.com*)",
+      "Bash(curl *repo1.maven.org*)",
+      "Bash(curl *maven.apache.org*)",
+      "Bash(sha256sum *)",
+      "Bash(diff *)",
+      "Bash(tar *)",
+      "Bash(unzip *)",
+      "Bash(mkdir *)",
+      "Bash(cp *)",
+      "Bash(mv *)",
+      "Bash(find *)",
+      "Bash(bash *)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:api.github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:repo1.maven.org)",
+      "WebFetch(domain:repo.maven.apache.org)",
+      "Edit(/**)"
+    ]
+  }
+}

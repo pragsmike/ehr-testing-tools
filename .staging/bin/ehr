@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# The `ehr` CLI's entry point (ADR-0004; exit codes extended by
+# ADR-0010). This exists for one reason: the exit-code contract.
+#
+#   0  ran and passed
+#   1  ran and legitimately rejected
+#   2  operational error
+#   3  a gate's aggregate contains :no-verdict under the default
+#      --treat-no-verdict-as policy
+#
+# `make ehr ARGS="..."` cannot carry that contract and structurally
+# never could: GNU make's own exit status is 0 / 1 (with -q) / 2 (any
+# error), so a recipe that fails with 1 or 3 still leaves make exiting 2
+# -- measured, including the .SHELLSTATUS route, in CLI-2's probe commit.
+# This wrapper `exec`s into the JVM instead, so the CLI's status *is* the
+# wrapper's status. `make ehr` remains as a compatibility spelling.
+#
+# Equivalence with that recipe is by construction: the line below is the
+# same `clojure -M -m` invocation `Makefile`'s `ehr:` target runs, and
+# both run from the repo root -- so a relative path in an argument means
+# the same thing under either spelling.
+#
+# Expects a Linux/macOS shell with `clojure` on PATH; on Windows that
+# means WSL2, which is this repo's assumed platform (AUTHORS-GUIDE.md
+# section 1, SETUP.md).
+set -uo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)" || exit 2
+cd -- "$repo_root" || exit 2
+
+exec clojure -M -m ehr-testing-tools.cli "$@"

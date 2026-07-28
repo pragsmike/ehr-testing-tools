@@ -1,0 +1,89 @@
+flowchart LR
+
+    %% --- Source types (raw inputs, not produced by any operation) ---
+    character_propensities(["character-propensities"])
+    evaluation_rubrics(["evaluation-rubrics"])
+    problem_statement(["problem-statement"])
+    remediation_threshold(["remediation-threshold"])
+    roberts_rules(["roberts-rules"])
+
+    %% --- Operations (boxes; spiders use distinct shapes) ---
+    DraftCharter["DraftCharter"]
+    Convene["Convene"]
+    Deliberate["Deliberate"]
+    Resolve["Resolve"]
+    Evaluate["Evaluate"]
+    QualityGate["QualityGate"]
+    Remediate["Remediate"]
+    ReEvaluate["ReEvaluate"]
+    HumanGate["HumanGate"]
+
+    %% --- Waste / discard sinks ---
+    rejected_resolution_sink(["rejected-resolution"])
+
+    %% --- Wires (typed connections) ---
+    %% Arrow 7: DraftCharter
+    problem_statement -- problem-statement --> DraftCharter
+
+    %% Arrow 12: Convene
+    DraftCharter -. charter .-> Convene
+    character_propensities -. character-propensities .-> Convene
+
+    %% Arrow 17: Deliberate
+    DraftCharter -. charter .-> Deliberate
+    Convene -- roster --> Deliberate
+    Convene -- convening --> Deliberate
+    character_propensities -. character-propensities .-> Deliberate
+    roberts_rules -. roberts-rules .-> Deliberate
+
+    %% Arrow 22: Resolve
+    Remediate -- transcript --> Resolve
+    DraftCharter -. charter .-> Resolve
+
+    %% Arrow 27: Evaluate
+    Remediate -- transcript --> Evaluate
+    evaluation_rubrics -. evaluation-rubrics .-> Evaluate
+    DraftCharter -. charter .-> Evaluate
+
+    %% Arrow 31: QualityGate
+    ReEvaluate -- evaluation --> QualityGate
+    remediation_threshold -. remediation-threshold .-> QualityGate
+
+    %% Arrow 35: Remediate
+    QualityGate -- needs-remediation --> Remediate
+    Remediate -- transcript --> Remediate
+    character_propensities -. character-propensities .-> Remediate
+
+    %% Arrow 40: ReEvaluate
+    Remediate -- transcript --> ReEvaluate
+    evaluation_rubrics -. evaluation-rubrics .-> ReEvaluate
+    DraftCharter -. charter .-> ReEvaluate
+    ReEvaluate -- transcript --> transcript
+
+    %% Arrow 44: HumanGate
+    QualityGate -- passed-evaluation --> HumanGate
+    Resolve -- resolution --> HumanGate
+    HumanGate -- "rejected-resolution" --> rejected_resolution_sink
+
+    %% --- Styling ---
+
+    %% Operations: dark boxes (fan=blue, funnel=green, enrichment=outlined, gate=purple)
+    style DraftCharter fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style Convene fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style Deliberate fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style Resolve fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style Evaluate fill:#e8eaf6,stroke:#3949ab,color:#1a237e,stroke-width:2px
+    style QualityGate fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style Remediate fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style ReEvaluate fill:#e8eaf6,stroke:#3949ab,color:#1a237e,stroke-width:2px
+    style HumanGate fill:#4a148c,stroke:#6a1b9a,color:#e1bee7,stroke-width:2px
+
+    %% Source types: light rounded
+    style character_propensities fill:#f5f5f5,stroke:#999,color:#333
+    style evaluation_rubrics fill:#f5f5f5,stroke:#999,color:#333
+    style problem_statement fill:#f5f5f5,stroke:#999,color:#333
+    style remediation_threshold fill:#f5f5f5,stroke:#999,color:#333
+    style roberts_rules fill:#f5f5f5,stroke:#999,color:#333
+
+    %% Waste sinks: red
+    style rejected_resolution_sink fill:#fee,stroke:#c00,color:#c00,stroke-width:2px

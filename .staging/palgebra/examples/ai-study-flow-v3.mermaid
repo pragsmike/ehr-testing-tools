@@ -1,0 +1,108 @@
+flowchart LR
+
+    %% --- Source types (raw inputs, not produced by any operation) ---
+    evidence_rubric(["evidence-rubric"])
+    evidence_template(["evidence-template"])
+    experience_reports(["experience-reports"])
+    findings_rubric(["findings-rubric"])
+    findings_template(["findings-template"])
+    guides(["guides"])
+    prior_candidates_long_list(["prior-candidates-long-list"])
+    probe_catalog(["probe-catalog"])
+    probe_matrix(["probe-matrix"])
+    rollup_template(["rollup-template"])
+    security_criteria(["security-criteria"])
+    use_case_rubrics(["use-case-rubrics"])
+
+    %% --- Operations (boxes) ---
+    SynthesizeUseCases["SynthesizeUseCases"]
+    ExtractPreferenceSignals["ExtractPreferenceSignals"]
+    AssembleCandidatesLongList["AssembleCandidatesLongList"]
+    DraftCandidateEvidence["DraftCandidateEvidence"]
+    ScoreEvidenceQuality["ScoreEvidenceQuality"]
+    SecurityTriageToShortList["SecurityTriageToShortList"]
+    DraftCandidateFindings["DraftCandidateFindings"]
+    SynthesizeFindingsRollup["SynthesizeFindingsRollup"]
+    UpdatePrefsFromFindings["UpdatePrefsFromFindings"]
+
+    %% --- Waste / discard sinks ---
+    rejected_candidates_sink(["rejected-candidates"])
+
+    %% --- Wires (typed connections) ---
+    %% Arrow 18: SynthesizeUseCases
+    experience_reports -- experience-reports --> SynthesizeUseCases
+    use_case_rubrics -. use-case-rubrics .-> SynthesizeUseCases
+
+    %% Arrow 21: ExtractPreferenceSignals
+    experience_reports -- experience-reports --> ExtractPreferenceSignals
+
+    %% Arrow 24: AssembleCandidatesLongList
+    UpdatePrefsFromFindings -- prefs --> AssembleCandidatesLongList
+    ExtractPreferenceSignals -- preference-signals --> AssembleCandidatesLongList
+    SynthesizeUseCases -- use-cases --> AssembleCandidatesLongList
+    guides -. guides .-> AssembleCandidatesLongList
+    prior_candidates_long_list -- prior-candidates-long-list --> AssembleCandidatesLongList
+
+    %% Arrow 27: DraftCandidateEvidence
+    AssembleCandidatesLongList -- candidates-long-list --> DraftCandidateEvidence
+    evidence_template -. evidence-template .-> DraftCandidateEvidence
+    probe_catalog -. probe-catalog .-> DraftCandidateEvidence
+    probe_matrix -. probe-matrix .-> DraftCandidateEvidence
+    guides -. guides .-> DraftCandidateEvidence
+
+    %% Arrow 30: ScoreEvidenceQuality
+    DraftCandidateEvidence -- evidence --> ScoreEvidenceQuality
+    evidence_rubric -. evidence-rubric .-> ScoreEvidenceQuality
+
+    %% Arrow 33: SecurityTriageToShortList
+    AssembleCandidatesLongList -- candidates-long-list --> SecurityTriageToShortList
+    DraftCandidateEvidence -- evidence --> SecurityTriageToShortList
+    security_criteria -. security-criteria .-> SecurityTriageToShortList
+    SecurityTriageToShortList -- "rejected-candidates" --> rejected_candidates_sink
+
+    %% Arrow 36: DraftCandidateFindings
+    SecurityTriageToShortList -- candidates-short-list --> DraftCandidateFindings
+    DraftCandidateEvidence -- evidence --> DraftCandidateFindings
+    SynthesizeUseCases -- use-cases --> DraftCandidateFindings
+    ExtractPreferenceSignals -- preference-signals --> DraftCandidateFindings
+    findings_template -. findings-template .-> DraftCandidateFindings
+    guides -. guides .-> DraftCandidateFindings
+
+    %% Arrow 39: SynthesizeFindingsRollup
+    DraftCandidateFindings -- findings --> SynthesizeFindingsRollup
+    rollup_template -. rollup-template .-> SynthesizeFindingsRollup
+    findings_rubric -. findings-rubric .-> SynthesizeFindingsRollup
+
+    %% Arrow 42: UpdatePrefsFromFindings
+    SynthesizeFindingsRollup -- findings-rollup --> UpdatePrefsFromFindings
+    UpdatePrefsFromFindings -- prefs --> prefs
+
+    %% --- Styling ---
+
+    %% Operations: dark boxes
+    style SynthesizeUseCases fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style ExtractPreferenceSignals fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style AssembleCandidatesLongList fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style DraftCandidateEvidence fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style ScoreEvidenceQuality fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style SecurityTriageToShortList fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style DraftCandidateFindings fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style SynthesizeFindingsRollup fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style UpdatePrefsFromFindings fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+
+    %% Source types: light rounded
+    style evidence_rubric fill:#f5f5f5,stroke:#999,color:#333
+    style evidence_template fill:#f5f5f5,stroke:#999,color:#333
+    style experience_reports fill:#f5f5f5,stroke:#999,color:#333
+    style findings_rubric fill:#f5f5f5,stroke:#999,color:#333
+    style findings_template fill:#f5f5f5,stroke:#999,color:#333
+    style guides fill:#f5f5f5,stroke:#999,color:#333
+    style prior_candidates_long_list fill:#f5f5f5,stroke:#999,color:#333
+    style probe_catalog fill:#f5f5f5,stroke:#999,color:#333
+    style probe_matrix fill:#f5f5f5,stroke:#999,color:#333
+    style rollup_template fill:#f5f5f5,stroke:#999,color:#333
+    style security_criteria fill:#f5f5f5,stroke:#999,color:#333
+    style use_case_rubrics fill:#f5f5f5,stroke:#999,color:#333
+
+    %% Waste sinks: red
+    style rejected_candidates_sink fill:#fee,stroke:#c00,color:#c00,stroke-width:2px

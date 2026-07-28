@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+# Runs README.md's Quickstart fenced block, verbatim, under per-step exit-
+# code assertions (DOC-5, .agents/plans/user-docs.md). `make quickstart-demo`
+# is the entry point; this script is what it calls.
+#
+# Invariant per taught command: its real exit code equals what README.md's
+# own exit-code prose commits to for that exact invocation, or -- where the
+# README states no specific code -- what Step 0's evidence run measured
+# (.agents/prompts/2026-07-26-doc5-executable-quickstart.md's commit body
+# is the source of truth for every number below). A bare `set -e` cannot
+# make this distinction: `gate fhir`'s taught rejection is exit 1 by design
+# (a genuine defect, correctly caught), not a script failure -- `set -e`
+# would abort on it as though it were one. Hence the explicit `expect`
+# wrapper below instead of `-e`.
+#
+# The block between the BEGIN/END markers is read by `make quickstart-fresh`
+# (the freshness extractor) to prove this script and README.md's fence
+# teach the identical commands, in the identical order. Keep every taught
+# line inside that block, one statement per README command, and do not
+# "improve" a command here -- an improvement belongs in the README first
+# (AUTHORS-GUIDE.md sec7's craft discipline).
+set -uo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)" || exit 2
+cd -- "$repo_root" || exit 2
+
+fail() {
+  echo "FAIL: $1" >&2
+  exit 1
+}
+
+# expect CODE CMD...  Runs CMD with CMD's own argv (the same word-splitting
+# and globbing a user typing CMD directly at this call site would get --
+# the function wrapper adds no reinterpretation), asserts its exit status
+# is exactly CODE.
+expect() {
+  local want="$1"; shift
+  "$@"
+  local got=$?
+  if [ "$got" -ne "$want" ]; then
+    fail "'$*' exited $got, expected $want"
+  fi
+}
+
+# expect_eval CODE SNIPPET  Like expect, but for a shell snippet that needs
+# a pipeline or a variable assignment (PATIENT_FILE below) rather than one
+# invocable command -- eval runs SNIPPET in this shell's own scope, so an
+# assignment inside it is visible to the taught lines after this call, the
+# same as it would be if a user pasted the README line directly.
+expect_eval() {
+  local want="$1" snippet="$2"
+  eval "$snippet"
+  local got=$?
+  if [ "$got" -ne "$want" ]; then
+    fail "'$snippet' exited $got, expected $want"
+  fi
+}
+
+echo "== quickstart-demo: README.md's Quickstart, verbatim, asserted =="
+
+# Script-only apparatus, not a taught line (outside BEGIN/END, so
+# quickstart-fresh's freshness check never sees it): `corpus generate`'s
+# zero-flag --out-dir is now a *derived, stable* path (D9) and rejects
+# a rerun into a non-empty one (:out-dir-exists, the determinism probe's
+# 2026-07-28 finding) -- this script must be safely re-runnable, so it
+# clears its own last run's output first. A first-time reader following
+# README.md never needs this: their repo starts clean.
+rm -rf target/corpus/synthea-s1-p5 out/demo-mutants out/demo-mutants-report.edn
+
+# BEGIN quickstart commands (verbatim from README.md's Quickstart fence)
+expect 0 bin/ehr help
+
+expect 0 bin/ehr artifact fetch --name synthea --version 4.0.0
+expect 0 bin/ehr artifact fetch --name temurin-jdk --version 21.0.12+8
+
+expect 0 bin/ehr corpus generate
+
+expect_eval 0 'PATIENT_FILE=$(ls target/corpus/synthea-s1-p5/fhir/*.json | grep -v -e hospitalInformation -e practitionerInformation | head -1)'
+expect 0 bin/ehr corpus mutate $PATIENT_FILE \
+  --operator-id remove-required-element --locator-path entry[0].resource.gender \
+  --out-dir out/demo-mutants
+
+expect 0 bin/ehr artifact fetch --name fhir-validator-cli --version 6.9.12
+expect 0 bin/ehr gate v2 test/fixtures/v2
+expect 1 bin/ehr gate fhir out/demo-mutants --report out/demo-mutants-report.edn
+
+expect 0 bin/ehr check target/corpus/synthea-s1-p5/fhir --expected target/corpus/synthea-s1-p5/fhir
+
+expect 0 make test
+# END quickstart commands
+
+# Tree-clean postcondition (ADR-0005): every write path above lands under
+# the gitignored /out/, or in the artifact cache outside the repo tree
+# entirely -- a full run must leave the tracked tree exactly as it found
+# it. A non-empty status here means some taught command wrote somewhere
+# ADR-0005 doesn't cover -- a finding about the quickstart, not a bug in
+# this script.
+dirty="$(git status --porcelain)"
+if [ -n "$dirty" ]; then
+  fail "tree not clean after a full run (ADR-0005 postcondition violated):
+$dirty"
+fi
+
+echo "== quickstart-demo: every command asserted, tree clean =="

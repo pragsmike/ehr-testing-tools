@@ -1,0 +1,42 @@
+# AI Study Flow — Resource Equations
+# Input format for resource_equations_to_mermaid.py
+#
+# Syntax:
+#   input-a × input-b × input-c → output  [OperationName]  {catalytic: input-b; discard: waste-output; feedback: out→in}
+#
+# × = cross product (monoidal product). ASCII fallback: *
+# → = morphism arrow. ASCII fallback: ->
+# + = coproduct (multiple outputs, e.g. short-list + rejected)
+# (parens) = grouping (associativity, no semantic effect)
+# [Name] = operation name (the box in the string diagram)
+# {annotations} = catalytic, discard, feedback metadata
+#
+# Type names: lowercase hyphenated identifiers
+# Comments: lines starting with #
+
+# Arrow 1: experience reports × use-case-rubrics → use-cases
+experience-reports × use-case-rubrics → use-cases  [SynthesizeUseCases]  {catalytic: use-case-rubrics}
+
+# Arrow 2: experience reports → preference-signals
+experience-reports → preference-signals  [ExtractPreferenceSignals]
+
+# Arrow 3: wide net — assemble candidates long list
+(prefs × preference-signals) × use-cases × guides × prior-candidates-long-list → candidates-long-list  [AssembleCandidatesLongList]  {catalytic: guides}
+
+# Arrow 4: evidence gathering (gate-ready, all candidates)
+candidates-long-list × evidence-template × probe-catalog × probe-matrix × guides → evidence  [DraftCandidateEvidence]  {catalytic: evidence-template, probe-catalog, probe-matrix, guides}
+
+# Arrow 5: evidence quality scoring (confidence, not fit)
+evidence × evidence-rubric → evidence-scores  [ScoreEvidenceQuality]  {catalytic: evidence-rubric}
+
+# Arrow 6: security triage — coproduct: short-list + rejected
+(candidates-long-list × evidence) × security-criteria → candidates-short-list + rejected-candidates  [SecurityTriageToShortList]  {catalytic: security-criteria; discard: rejected-candidates}
+
+# Arrow 7: candidate findings (per candidate, use-case-partitioned)
+(candidates-short-list × evidence × use-cases × preference-signals) × findings-template × guides → findings  [DraftCandidateFindings]  {catalytic: findings-template, guides}
+
+# Arrow 8: rollup aggregation (ranked recommendation)
+findings × rollup-template × findings-rubric → findings-rollup  [SynthesizeFindingsRollup]  {catalytic: rollup-template, findings-rubric}
+
+# Arrow 9: feedback loop — learnings flow back into prefs
+findings-rollup → prefs  [UpdatePrefsFromFindings]  {feedback: prefs→prefs}

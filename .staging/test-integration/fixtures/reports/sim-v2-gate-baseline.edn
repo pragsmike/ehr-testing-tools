@@ -1,0 +1,235 @@
+;; Regenerated (ADR-0013's baseline-delta discipline): judge.v2's report
+;; over ehr-testing-sim's own `clojure -M:cli run --seed 42 --patients 20
+;; --churn --emit hl7` output, recaptured 2026-07-27 against sim commit
+;; 26700ce26568b8ea18cf5b7f7ae2a669130a7128 (HEAD of ../ehr-testing-sim at
+;; recapture time). Reason: the M3-era baseline below this header replaced
+;; predates M4 (Persona -- a181cad), site-profiles (e0ed952), M5a (GMF
+;; interpreter, 1dd5683), and M5b (CompileTrajectory/modules/outpatient,
+;; 05f7b64) -- none of which had been re-run against this baseline until
+;; this session's rerun. Reviewed delta (this session's own report):
+;; :files-added ["target/sim-gate-loop/corpus/msg-043.hl7"] (43 -> 44
+;; messages for the SAME seed/patients/churn config), :changed-verdicts
+;; [], :files-removed [], :codes-appeared [], :codes-disappeared []. The
+;; new message is an ADT^A13 (cancel-discharge, a churn event) for
+;; MRN000017 -- not a new message TYPE, one more churn-inserted event than
+;; before, because M4's Persona stage prepends an unconditional
+;; :registered step (and its own RNG draw) onto every patient's queue
+;; ahead of InjectChurn, which shifts what the SAME seed's RNG stream
+;; hands to every later stochastic decision, including churn's own rolls
+;; -- exactly the kind of downstream reshuffle a new unconditional draw
+;; earlier in the sequence is expected to cause, not a defect. All 44
+;; messages :pass at judge.v2's base-structural tier, zero findings of any
+;; kind -- the verdict picture itself is UNCHANGED; only the file count
+;; drifted. sim-gate-loop-test.clj diffs its own fresh run against this
+;; file (judge.report/diff-reports) every time the sibling checkout is
+;; present -- a changed verdict, an appeared/disappeared finding code, or
+;; a different file set is a sim-side change surfacing here, not a
+;; failure of this test. Regenerate deliberately, like
+;; test/fixtures/reports/pre-split-baseline.edn, never hand-edit.
+;;
+;; NOTE this loop is now the LEGACY-FLOOR baseline (see ADR-0015): it
+;; exercises only the plain default pathway (ADT^A01/A02/A03 plus churn's
+;; A11/A12/A13/A17/A40 family) with no order profile, no module, no site
+;; profile -- sim's own default pathway has never carried an :order step,
+;; so M3's ORM/ORU emission, M5b's outpatient A04, and any module-driven
+;; trajectory are invisible to this baseline by construction, regardless
+;; of how much sim's own capability grows. See
+;; test-integration/fixtures/reports/sim-v2-full-capability-baseline.edn
+;; for the baseline that DOES exercise them.
+;;
+;; --- Prior header, superseded above but left standing per this repo's
+;; append-don't-erase convention for resolved questions (AUTHORS-GUIDE.md
+;; section 7's own precedent) ---
+;; Captured baseline (ADR-0013's baseline-delta workflow): judge.v2's
+;; report over ehr-testing-sim's own `clojure -M:cli run --seed 42
+;; --patients 20 --churn --emit hl7` output, captured 2026-07-26 against
+;; sim commit HEAD as of that date. Observed at capture time: all 43
+;; messages :pass, zero findings of any kind -- sim's v0 wire output is
+;; already well-formed enough for judge.v2's base-structural tier (no
+;; conformance profile, no terminology in play at this tier).
+{:run
+ {:gate :v2,
+  :path "target/sim-gate-loop/corpus",
+  :source "ehr-testing-sim",
+  :seed 42,
+  :patients 20,
+  :churn true},
+ :totals {:pass 44, :rejected 0, :indeterminate 0, :no-verdict 0},
+ :by-code {},
+ :files
+ [{:path "target/sim-gate-loop/corpus/msg-000.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-001.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-002.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-003.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-004.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-005.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-006.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-007.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-008.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-009.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-010.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-011.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-012.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-013.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-014.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-015.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-016.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-017.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-018.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-019.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-020.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-021.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-022.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-023.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-024.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-025.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-026.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-027.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-028.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-029.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-030.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-031.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-032.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-033.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-034.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-035.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-036.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-037.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-038.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-039.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-040.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-041.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-042.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}
+  {:path "target/sim-gate-loop/corpus/msg-043.hl7",
+   :verdict :pass,
+   :finding-count 0,
+   :findings []}]}

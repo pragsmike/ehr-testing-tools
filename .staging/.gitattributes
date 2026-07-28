@@ -1,0 +1,15 @@
+# HL7 v2 ER7 messages use \r (not \n) as their segment separator, and
+# EXP-B2's round-trip fidelity comparison depends on the committed
+# fixture bytes being exactly what a real interface would send --
+# git rewriting line endings on checkout would invalidate the
+# experiment before it even runs. -text disables any line-ending
+# normalization for these files, regardless of core.autocrlf.
+test/fixtures/v2/*.hl7 -text
+
+# The vendored SimHospital corpus (ADR-0011) is the same hazard at
+# 1,013-message scale, and mixes both terminators on purpose: CR
+# between segments within a message, a blank LF line between messages.
+# See test/fixtures/v2/simhospital/PROVENANCE.md -- a normalizing
+# checkout would rewrite every one of those bytes and break both the
+# vendored sha256 and every round-trip assertion built on it.
+test/fixtures/v2/simhospital/messages.out -text

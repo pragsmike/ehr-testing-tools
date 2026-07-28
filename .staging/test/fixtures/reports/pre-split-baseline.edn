@@ -1,0 +1,24 @@
+;; A frozen, hand-authored Report artifact in the PRE-VERDICT-SPLIT
+;; shape (before ADR-0010/R3): three-valued (:pass/:rejected/
+;; :indeterminate), no :no-verdict key in :totals, no :cause anywhere.
+;; Exercises the ruling that baseline-relative mode reads old baselines
+;; forward without migration -- report_test.clj's
+;; baseline-relative-report-reads-a-pre-split-three-valued-baseline-test
+;; and its sibling read this file as `baseline`, never write it. Do not
+;; hand-edit to add :no-verdict/:cause -- that would defeat the point.
+{:run {:gate :fhir :path "corpus/"}
+ :totals {:pass 1 :rejected 1 :indeterminate 1}
+ :by-code {"structure" 1 "code-invalid" 1}
+ :files [{:path "clean.json" :verdict :pass :finding-count 0 :findings []}
+         {:path "noisy.json" :verdict :rejected :finding-count 1
+          :findings [{:severity :error :code "structure"
+                      :locator {:format :fhir :path "meta.profile"}
+                      :message "profile-driven structure error"
+                      :engine {:name "fhir-validator-cli" :version "6.9.12"}
+                      :disposition :rejected}]}
+         {:path "suppressed.json" :verdict :indeterminate :finding-count 1
+          :findings [{:severity :warning :code "code-invalid"
+                      :locator {:format :fhir :path "value.coding"}
+                      :message "Unable to validate code without using server"
+                      :engine {:name "fhir-validator-cli" :version "6.9.12"}
+                      :disposition :indeterminate}]}]}
