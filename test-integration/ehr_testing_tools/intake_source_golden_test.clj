@@ -8,7 +8,13 @@
   not just intake_test.clj's own synthetic-fixture unit coverage of the
   same function. Needs a real `corpus generate` (network + subprocess
   on first run, cached after) -- ^:integration, run via `make
-  integration`, not `make test`."
+  integration`, not `make test`.
+
+  Re-baseline note (Step 5, D-c's :source -> :origin rename): this
+  comparison is a live A/B diff against a freshly generated corpus
+  each run, not a stored golden fixture file, so the rename needed no
+  separate fixture update -- both sides of the diff write :origin now,
+  and still match each other."
   (:require [clojure.test :refer [deftest is]]
             [clojure.java.io :as io]
             [ehr-testing-tools.result :as result]

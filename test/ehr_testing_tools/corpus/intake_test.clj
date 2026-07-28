@@ -71,7 +71,7 @@
       (is (= 3 (count catalog)))
       (is (every? intake/valid-catalog-entry? catalog))
       (is (every? #(= :foreign (:layer %)) catalog))
-      (is (every? #(= "acme-pipeline" (:source %)) catalog))
+      (is (every? #(= "acme-pipeline" (:origin %)) catalog))
       (is (every? #(= "2026-07-24" (:received %)) catalog))
       (is (= #{:fhir-json :v2-er7 :unknown} (set (map :format catalog)))))))
 
@@ -249,7 +249,7 @@
     (is (every? intake/valid-catalog-entry? catalog))
     (doseq [entry [a-entry b-entry]]
       (is (not (contains? entry :provenance)))
-      (is (= #{:id :path :format :layer :source :received} (set (keys entry)))
+      (is (= #{:id :path :format :layer :origin :received} (set (keys entry)))
           "byte-identical to a sidecar-less catalog entry"))
     (is (intake/valid-intake-record? intake-record))
     (is (= 2 (count (:notes intake-record))))

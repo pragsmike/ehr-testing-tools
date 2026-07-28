@@ -53,12 +53,22 @@
    [:seeds [:map-of :keyword :int]]])
 
 (def CatalogEntry
+  "D-c (docs/source-sink-design.md D6, resolved 2026-07-28, SS-1
+  Step 5): :source renamed to :origin. The field is a provenance label
+  (an intake batch's source-label, e.g. \"acme-pipeline\") -- it always
+  was, but the word :source now belongs to the formal Source type
+  (ehr-testing-tools.corpus.source-sink), and a data-layer label
+  wearing the same word as a runtime type is exactly the abstraction
+  incoherence ADR-0009's :policy -> :disposition rename already exists
+  to prevent (docs/source-sink-design.md Part VI). No compatibility
+  alias for the old :source spelling -- pre-release (ADR-0008), same
+  reasoning as D10's no-aliases."
   [:map
    [:id [:re #"^[0-9a-f]{64}$"]]
    [:path :string]
    [:format (into [:enum] known-source-formats)]
    [:layer [:= :foreign]]
-   [:source :string]
+   [:origin :string]
    [:received :string]
    [:provenance {:optional true} Provenance]])
 
@@ -192,7 +202,7 @@
               :path (relative-path source-dir file)
               :format format
               :layer :foreign
-              :source source-label
+              :origin source-label
               :received received}
         sidecar (sidecar-fn (.getParentFile ^File file))]
     (if (and sidecar (:valid? sidecar))
@@ -219,7 +229,7 @@
 (defn intake!
   "Catalogs every file under :source-dir as a foreign-corpus entry:
   content hash (format-aware, see `content-hash`), format sniff,
-  {:layer :foreign :source source-label :received}, plus :provenance
+  {:layer :foreign :origin source-label :received}, plus :provenance
   when the file's own directory carries a validating manifest.edn
   sidecar (ADR-0014). Writes :out/catalog.edn (the vector of entries)
   and :out/intake-record.edn (one batch record: source, date, file

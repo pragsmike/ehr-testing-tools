@@ -36,7 +36,7 @@
 ;; canonical_test/mutate_test's own harness-catches-a-violation tests) ----
 
 (deftest catalogs-byte-identical?-catches-a-real-mismatch-test
-  (testing "a different :source-label changes catalog.edn's :source field on every entry -- must be caught"
+  (testing "a different :source-label changes catalog.edn's :origin field on every entry -- must be caught"
     (let [src (temp-dir)
           out-a (temp-dir)
           out-b (temp-dir)

@@ -66,7 +66,7 @@
               (is (= (count messages) (count hl7-entries))
                   "every emitted HL7 message sniffs as :v2-er7")
               (is (every? #(= :foreign (:layer %)) catalog))
-              (is (every? #(= "ehr-testing-sim" (:source %)) catalog))
+              (is (every? #(= "ehr-testing-sim" (:origin %)) catalog))
               (is (some? manifest-entry) "manifest.edn is catalogued too, not skipped")
               (is (= :unknown (:format manifest-entry))
                   "manifest.edn's own sniffed :format is still :unknown -- ADR-0014 adds :provenance, it does not teach sniff-format to recognize manifests")

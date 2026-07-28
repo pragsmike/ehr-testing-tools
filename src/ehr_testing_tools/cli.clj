@@ -368,11 +368,14 @@
   D10, replacing --source-dir) as a foreign-corpus batch labeled
   :label. Translated to corpus.intake/intake!'s own :source-dir
   parameter at this CLI-shell boundary -- D10 renames the CLI surface,
-  not the capability layer's internal vocabulary (unchanged from
-  ADR-0012's :origin rename, D-c, still open and out of scope here).
-  :received defaults to today (the CLI's own impure boundary --
-  corpus.intake/intake! itself never touches the wall clock, matching
-  corpus.generate's :reference-date discipline)."
+  not the capability layer's internal vocabulary. :label still names
+  the batch's provenance label at this boundary (:source-label here,
+  :origin on the written CatalogEntry -- ADR-0017 D6, D-c resolved
+  SS-1 Step 5: the catalog field itself is :origin now, not :source;
+  this CLI parameter's own name is unaffected, since it was never
+  called :source). :received defaults to today (the CLI's own impure
+  boundary -- corpus.intake/intake! itself never touches the wall
+  clock, matching corpus.generate's :reference-date discipline)."
   [{:keys [path label out received]}]
   (intake/intake! {:source-dir path :source-label label :out out
                     :received (or received (str (LocalDate/now)))}))
