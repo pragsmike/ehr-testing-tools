@@ -1,20 +1,23 @@
 (ns ehr-testing-tools.corpus.sink-composability-test
   "The composability law (D3, docs/source-sink-design.md Part III):
-  every sink's output is a valid source. SS-4 ruling 4's dir/file form,
-  REDUCED per D-d's own STOP (docs/source-sink-design.md Decision
-  Register): dir/file sinks emit no ManifestV1_1 sidecar this session
-  (the manifest-interop probe found no honest field mapping for a sink
-  write, ruling 2), so this property proves only the hash-identity
-  half -- write via a :dir Sink, intake the same directory back through
-  a :dir Source, and the catalog's content hashes and :origin survive
-  -- not the :origin-reflects-the-sink's-manifest half ruling 4 also
-  names, which waits on D-d. Test-first (ADR-0006): written before any
-  Sink/intake code changed for this session, and green immediately --
-  ehr-testing-tools.corpus.sink-write/write-dir! and
-  ehr-testing-tools.corpus.intake/intake-via-source! both already exist
-  from SS-1, so this property is a proof obligation on EXISTING code,
-  not new production code -- exactly the composability law's own point:
-  it should already hold, and this is what checks that it does."
+  every sink's output is a valid source. SS-4 ruling 4's dir/file form
+  was REDUCED per D-d's own STOP (docs/source-sink-design.md Decision
+  Register): dir/file sinks emitted no manifest that session, so the
+  property proved only the hash-identity half -- write via a :dir Sink,
+  intake the same directory back through a :dir Source, and the
+  catalog's content hashes and :origin survive.
+
+  SS-4b (2026-07-28, D-d resolved via ADR-0020) completes the deferred
+  half below: dir sinks now accept an :operation-manifest
+  (ehr-testing-tools.corpus.sink-write), and intake recognizes it
+  (ehr-testing-tools.corpus.intake's second sidecar recognizer) --
+  the property gains the provenance half ruling 5 names: the catalog's
+  :operation-provenance :origin reflects the manifest's own :producer,
+  and per-item :input-hash survives wherever the write actually
+  supplied one, absent wherever it didn't (present-iff-known, not a
+  nil placeholder). The original hash-identity-only property below is
+  kept unchanged -- it still documents the no-operation-manifest case,
+  which stays fully supported (:operation-manifest is opt-in)."
   (:require [clojure.test :refer [deftest is]]
             [clojure.test.check :as tc]
             [clojure.test.check.generators :as gen]
@@ -96,3 +99,86 @@
       (is (= #{"a.json" "b.json"} (into #{} (map :path) catalog)))
       (is (= (digest/sha256-string "AAA")
              (:id (first (filter #(= "a.json" (:path %)) catalog))))))))
+
+;; ---- the provenance half (SS-4b, D-d resolved via ADR-0020, ruling 5) ----
+
+(def ^:private producer
+  {:name "ehr-testing-tools" :identity "pre-release" :git "abc1234-dirty"})
+
+(def ^:private operation
+  {:kind :mutate :operator-id :blank-required-field :operator-version "1"
+   :locator {:format :v2 :path "MSH-9"}})
+
+(def ^:private item-set-with-input-hash-flags-gen
+  "Like item-set-gen, but pairs each item's content with a boolean:
+  whether this write actually supplied an input-hash for it. The
+  property must hold in both cases (present-iff-known, ruling 1) --
+  not just the all-or-nothing case a simpler generator would only
+  cover by chance."
+  (gen/let [items item-set-gen
+            flags (gen/vector gen/boolean (count items))]
+    (zipmap (keys items) (map vector (vals items) flags))))
+
+(deftest dir-sink-write-then-intake-provenance-property-test
+  (let [check-result
+        (tc/quick-check 30
+          (prop/for-all [items item-set-with-input-hash-flags-gen]
+            (let [target (temp-dir-path)
+                  files (into {} (map (fn [[filename [content _]]] [filename content])) items)
+                  input-hashes (into {}
+                                      (keep (fn [[filename [content has-input-hash?]]]
+                                              (when has-input-hash?
+                                                [filename (digest/sha256-string (str "parent-of-" content))])))
+                                      items)
+                  sink (:payload (ss/dir-sink {:path target :format :fhir-json}))
+                  write-result (write/write-dir! sink files
+                                                  :operation-manifest
+                                                  {:producer producer :operation operation
+                                                   :written-at "2026-07-28"
+                                                   :input-hashes input-hashes})
+                  out-dir (temp-dir-path)
+                  source (:payload (ss/dir-source {:path target}))
+                  intake-result (intake/intake-via-source!
+                                 {:source source :source-label "composability-prop"
+                                  :out out-dir :received "2026-07-28"})]
+              (and (result/ok? write-result)
+                   (result/ok? intake-result)
+                   (let [catalog (:catalog (:payload intake-result))]
+                     (and (= (inc (count files)) (count catalog))
+                          (every? #(= producer (:origin (:operation-provenance %))) catalog)
+                          (every? (fn [[filename [content _]]]
+                                    (let [entry (first (filter #(= filename (:path %)) catalog))]
+                                      (and (some? entry)
+                                           (= (digest/sha256-string content) (:id entry))
+                                           (= (get input-hashes filename)
+                                              (:input-hash (:operation-provenance entry))))))
+                                  items)))))))]
+    (is (:pass? check-result) (str check-result))))
+
+(deftest dir-sink-write-then-intake-provenance-concrete-example-test
+  (let [target (temp-dir-path)
+        out-dir (temp-dir-path)
+        items {"a.hl7" "AAA" "b.hl7" "BBB"}
+        parent-hash (digest/sha256-string "parent-of-AAA")
+        write-result (write/write-dir! (:payload (ss/dir-sink {:path target :format :v2-er7}))
+                                        items
+                                        :operation-manifest
+                                        {:producer producer :operation operation
+                                         :written-at "2026-07-28"
+                                         :input-hashes {"a.hl7" parent-hash}})
+        source (:payload (ss/dir-source {:path target}))
+        intake-result (intake/intake-via-source!
+                       {:source source :source-label "concrete" :out out-dir :received "2026-07-28"})]
+    (is (result/ok? write-result))
+    (is (result/ok? intake-result))
+    (let [catalog (:catalog (:payload intake-result))
+          a-entry (first (filter #(= "a.hl7" (:path %)) catalog))
+          b-entry (first (filter #(= "b.hl7" (:path %)) catalog))]
+      (is (= 3 (count catalog)) "a.hl7, b.hl7, and operation-manifest.edn's own catalog entry")
+      (is (= producer (:origin (:operation-provenance a-entry))))
+      (is (= parent-hash (:input-hash (:operation-provenance a-entry))))
+      (is (not (contains? (:operation-provenance b-entry) :input-hash))
+          "b.hl7 got no input-hash -- present iff the write actually supplied one")
+      (is (= producer (:origin (:operation-provenance
+                                 (first (filter #(= "operation-manifest.edn" (:path %)) catalog)))))
+          "the sidecar's own catalog entry is not special-cased, same discipline as ADR-0014's manifest.edn"))))
