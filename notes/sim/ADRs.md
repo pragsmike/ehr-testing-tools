@@ -1,3 +1,10 @@
+> Provenance, frozen at merge: moved intact from `ehr-testing-sim`
+> (origin repo) into the `ehr-testing` workspace on 2026-07-28, byte-
+> identical below except this header. Not updated for the workspace's
+> new paths or `ehrt.sim.*` namespaces — see `notes/ADRs.md` ADR-0001
+> for the workspace's own, current decision record, which cross-
+> references entries here as `sim/ADR-NNNN`.
+
 # Architecture Decision Records — ehr-testing-sim
 
 Numbered, append-only. Never silently revert an Accepted ADR;

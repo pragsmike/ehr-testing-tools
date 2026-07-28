@@ -1,3 +1,10 @@
+> Provenance, frozen at merge: moved intact from `ehr-testing-sim`
+> (origin repo) into the `ehr-testing` workspace on 2026-07-28, byte-
+> identical below except this header. F-rows are not re-verified or
+> updated for the workspace's new paths/namespaces by the move itself
+> — a workspace-level claim that repeats one of these needs its own
+> fresh F-row (see `AUTHORS-GUIDE.md` §4).
+
 # Facts Register
 
 <!-- Tracks load-bearing, externally verifiable assertions made anywhere in
