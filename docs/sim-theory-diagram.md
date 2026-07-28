@@ -4,7 +4,7 @@
      ehr-testing-tools' `make pipeline`). Do not hand-edit the mermaid block
      below except as noted here. Regenerate with:
 
-       python ../ehr-testing-tools/palgebra/tools/resource_equations_to_mermaid.py \
+       python .agents/skills/string-diagram/tools/resource_equations_to_mermaid.py \
          docs/sim-theory-equations.txt -o docs/sim-theory-diagram.mermaid
 
      then paste the output back in below.

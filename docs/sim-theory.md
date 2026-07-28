@@ -3,7 +3,7 @@
 This document is the prose companion to [`sim-theory.edn`](sim-theory.edn),
 which is the author-time source of truth (the same arrangement as
 ehr-testing-tools' `pipeline.edn`/`pipeline.md`, whose
-[notation](../../ehr-testing-tools/docs/notation.md) this theory is
+[notation](https://github.com/pragsmike/ehr-testing-tools/blob/main/docs/notation.md) this theory is
 written in — equation form, the five stage kinds and their laws,
 catalytic targets, unions, external stages). The EDN keeps tools'
 schema shape exactly, so its equation→Mermaid machinery renders this
