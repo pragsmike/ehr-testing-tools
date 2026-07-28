@@ -193,7 +193,7 @@ named once, referenced everywhere:
 
 This replaces the older per-commit habit of running the full
 integration suite after every commit regardless of what changed (see
-`.agents/plans/judge-gate-refactor.md`'s Phase 1 verify line, amended
+`.agents/plans/archive/judge-gate-refactor.md`'s Phase 1 verify line, amended
 in place with a dated note pointing here) — that habit was sized for
 one specific renaming sweep, not a standing rule, and paid T2's
 ~19-minute cost on commits that could not possibly regress anything T2

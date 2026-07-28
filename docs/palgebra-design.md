@@ -2,7 +2,7 @@
 
 **Status:** design record, pre-implementation. Decisions below are marked settled / provisional / open.
 **Scope:** the process-algebra layer (palgebra) of `ehr-testing-tools`, its two modeling layers (abstract and lowered), the judge/gate factorization it induces, and the refactoring both imply.
-**Companion:** [`.agents/plans/judge-gate-refactor.md`](../.agents/plans/judge-gate-refactor.md) (the concrete, repo-inventoried execution plan). This document is the *why*; that one is the *what, in what order*.
+**Companion:** [`.agents/plans/archive/judge-gate-refactor.md`](../.agents/plans/archive/judge-gate-refactor.md) (the concrete, repo-inventoried execution plan — spent, kept as record). This document is the *why*; that one is the *what, in what order*.
 
 ---
 
