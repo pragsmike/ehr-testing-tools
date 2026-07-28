@@ -23,9 +23,11 @@
   unification (execute, verify, wrap as a dir Source) that actually
   CALLS an entry's :out-dir-fn/:execute-fn -- the same registry-vs-
   consumption split operators.clj draws against corpus.mutate."
-  (:require [malli.core :as m]
+  (:require [clojure.java.io :as io]
+            [malli.core :as m]
             [ehr-testing-tools.corpus.generate :as generate]
-            [ehr-testing-tools.result :as result]))
+            [ehr-testing-tools.result :as result]
+            [ehr-testing-tools.sim :as sim]))
 
 (def GeneratorEntry
   [:map
@@ -107,3 +109,55 @@
   :params-schema synthea-params-schema
   :out-dir-fn (fn [{:keys [seed population]}] (generate/default-out-dir seed population))
   :execute-fn (fn [params out-dir] (generate/generate! (assoc params :out-dir out-dir)))})
+
+;; ---- seed catalog: sim, over ehr-testing-tools.sim's own subprocess
+;; adapter (Step 3, D7). :patients/:emit get their own pinned defaults
+;; here (sim's own CLI has no zero-flag default for either that would
+;; produce a v2 corpus by itself -- :emit in particular defaults to
+;; nothing upstream, which would produce zero messages) so that a
+;; zero-param `sim:` URL still means something: one patient, HL7v2
+;; messages emitted. :seed reuses generate/default-seed (the SAME
+;; pinned value synthea's own zero-param URL uses) for one shared
+;; convention across every registered generator, not a second,
+;; independently-chosen constant. ----
+
+(def sim-params-schema
+  [:map
+   [:seed {:optional true} :int]
+   [:patients {:optional true} :int]
+   [:churn {:optional true} :boolean]
+   [:emit {:optional true} :string]
+   [:reference-date {:optional true} :string]
+   [:config {:optional true} :string]])
+
+(defn- spool-sim-output!
+  "Writes sim's own run! payload to out-dir: one .hl7 file per message
+  (:messages), plus sim's own :manifest verbatim as manifest.edn --
+  this repo writes no manifest of its own for sim output; provenance
+  is the generator's word (ruling 4, docs/source-sink-design.md D7).
+  Returns result/error :sim-produced-no-messages, writing NOTHING, when
+  the run's own payload carried no messages at all -- an all-metadata
+  directory (manifest.edn alone) would defeat generator-source/
+  resolve!'s own generic empty-output check, since manifest.edn alone
+  makes the directory non-empty."
+  [{:keys [messages manifest]} out-dir]
+  (if (empty? messages)
+    (result/error :sim-produced-no-messages
+                  {:hint (str "sim's own run produced no messages -- :emit \"hl7\" "
+                              "(this entry's own pinned default) is required to produce a v2 corpus")})
+    (do
+      (.mkdirs (io/file out-dir))
+      (dorun (map-indexed (fn [i m] (spit (io/file out-dir (format "msg-%03d.hl7" i)) m)) messages))
+      (spit (io/file out-dir "manifest.edn") (pr-str manifest))
+      (result/ok {:out-dir out-dir}))))
+
+(register!
+ {:kind :sim
+  :default-params {:seed generate/default-seed :patients 1 :emit "hl7"}
+  :params-schema sim-params-schema
+  :out-dir-fn (fn [{:keys [seed patients]}] (str "target/corpus/sim-s" seed "-p" patients))
+  :execute-fn (fn [params out-dir]
+                (let [run-result (sim/run! params)]
+                  (if-not (result/ok? run-result)
+                    run-result
+                    (spool-sim-output! (:payload run-result) out-dir))))})

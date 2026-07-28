@@ -1,13 +1,18 @@
 (ns ehr-testing-tools.corpus.generators-test
-  "Test-first (ruling 2, SS-2 Step 1): written before ehr-testing-tools.
-  corpus.generators existed. Registry mechanics (shaped like
-  corpus.operators's own test), then the :synthea seed entry: its
-  pinned defaults are asserted equal to corpus.generate's OWN default-*
-  vars (never re-derived copies that could drift), and its
-  :execute-fn is proven to BE corpus.generate/generate! -- hermetically,
-  via the same injected-fake shape generate_test.clj already uses, no
-  real subprocess or network."
+  "Test-first (ruling 2, SS-2 Step 1; :sim entry added Step 3).
+  Registry mechanics (shaped like corpus.operators's own test), then
+  the :synthea seed entry: its pinned defaults are asserted equal to
+  corpus.generate's OWN default-* vars (never re-derived copies that
+  could drift), and its :execute-fn is proven to BE corpus.generate/
+  generate! -- hermetically, via the same injected-fake shape
+  generate_test.clj already uses, no real subprocess or network. The
+  :sim entry (Step 3) is proven the same way, via ehr-testing-tools.
+  sim/run!'s own injectable :run-invocation, plus an explicit :sim-dir
+  so discovery succeeds without touching the real machine's own
+  filesystem state."
   (:require [clojure.test :refer [deftest is testing]]
+            [clojure.java.io :as io]
+            [clojure.edn :as edn]
             [ehr-testing-tools.result :as result]
             [ehr-testing-tools.corpus.generate :as generate]
             [ehr-testing-tools.corpus.generators :as generators])
@@ -132,3 +137,68 @@
     (let [r ((:execute-fn entry) (:payload params-result) out-dir)]
       (is (result/ok? r))
       (is (= out-dir (:out-dir (:payload r)))))))
+
+;; ---- :sim seed entry (Step 3): drives ehr-testing-tools.sim/run!,
+;; then spools its own :messages/:manifest into out-dir -- tools
+;; writes no manifest of its own for sim output (ruling 4: sim's own
+;; ManifestV1_1-shaped payload IS the manifest). Hermetic throughout:
+;; an injected :run-invocation fake, never a real subprocess, and an
+;; explicit :sim-dir so discovery succeeds without depending on the
+;; real machine's own filesystem state. ----
+
+(defn- fake-sim-invocation
+  [stdout]
+  (fn [{:keys [stdout-path stderr-path]}]
+    (spit stdout-path stdout)
+    (spit stderr-path "")
+    (result/ok {:exit-code 0})))
+
+(deftest sim-registered-test
+  (is (some? (generators/lookup :sim))))
+
+(deftest sim-default-params-test
+  (let [r (generators/resolve-params :sim {})]
+    (is (result/ok? r))
+    (is (= {:seed generate/default-seed :patients 1 :emit "hl7"} (:payload r)))))
+
+(deftest sim-out-dir-fn-test
+  (let [entry (generators/lookup :sim)]
+    (is (= "target/corpus/sim-s7-p3" ((:out-dir-fn entry) {:seed 7 :patients 3})))))
+
+(deftest sim-execute-fn-happy-path-spools-messages-and-manifest-test
+  (let [out-dir (temp-dir)
+        entry (generators/lookup :sim)
+        sim-payload {:ground-truth [] :manifest {:stage :simulated} :messages ["MSH|1" "MSH|2"]}
+        fake (fake-sim-invocation (pr-str {:status :ok :payload sim-payload}))
+        params-result (generators/resolve-params :sim {:sim-dir (temp-dir) :run-invocation fake})]
+    (is (result/ok? params-result))
+    (let [r ((:execute-fn entry) (:payload params-result) out-dir)]
+      (is (result/ok? r))
+      (let [files (.listFiles (io/file out-dir))]
+        (is (= 3 (count files)) "two message files plus manifest.edn")
+        (is (some #(= "manifest.edn" (.getName %)) files))
+        (is (= {:stage :simulated} (edn/read-string (slurp (io/file out-dir "manifest.edn")))))))))
+
+(deftest sim-execute-fn-no-messages-is-its-own-rejection-test
+  (let [out-dir (temp-dir)
+        entry (generators/lookup :sim)
+        sim-payload {:ground-truth [] :manifest {:stage :simulated} :messages []}
+        fake (fake-sim-invocation (pr-str {:status :ok :payload sim-payload}))
+        params-result (generators/resolve-params :sim {:sim-dir (temp-dir) :run-invocation fake})]
+    (is (result/ok? params-result))
+    (let [r ((:execute-fn entry) (:payload params-result) out-dir)]
+      (is (result/error? r))
+      (is (= :sim-produced-no-messages (:category r))))))
+
+(deftest sim-execute-fn-propagates-sim-run-failures-unchanged-test
+  (let [out-dir (temp-dir)
+        entry (generators/lookup :sim)
+        missing (let [f (File/createTempFile "generators-test-missing" "")]
+                  (.delete f)
+                  (.getAbsolutePath f))
+        params-result (generators/resolve-params
+                       :sim {:sim-dir nil :env-sim-dir-fn (fn [] nil) :default-dir missing})]
+    (is (result/ok? params-result))
+    (let [r ((:execute-fn entry) (:payload params-result) out-dir)]
+      (is (result/error? r))
+      (is (= :sim-not-available (:category r))))))
