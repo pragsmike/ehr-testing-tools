@@ -160,6 +160,45 @@ this repo.
   `artifacts.lock.edn` (ENF-1, enforcement wave, 2026-07-25). Its
   failure reports; it blocks no merge.
 
+## Verification tiers
+
+(2026-07-27, ADR-0016 — the ADR is the reasoning-of-record for the
+decision below; this section states the working rule.) Three tiers,
+named once, referenced everywhere:
+
+- **T0 — fast gates**: `make test` + `lint-pipeline` + `lint-deps` +
+  `quickstart-fresh`. Owed after every commit; `.githooks/pre-push`
+  enforces it.
+- **T1 — integration-smoke** (`make integration-smoke`): one real
+  `validator_cli.jar` clean/mutant pairing (polarity only, never an
+  aggregate verdict) plus one `sim-harness` manifest-validates check,
+  skip-when-absent. Target under 2 minutes, measured *warm* against
+  the content-addressed verdict cache (`judge.verdict-cache`,
+  ADR-0016) — the first run in a session pays for two real subprocess
+  launches; later runs against the same fixed corpus are cache hits.
+  Owed at session boundaries and on any integration-adjacent commit
+  (the trigger list below).
+- **T2 — full integration** (`make integration`): nightly CI plus
+  release gates, unchanged in content. In-session, T2 is owed only
+  when the changed paths intersect: `src/ehr_testing_tools/judge/
+  fhir.clj`, `src/ehr_testing_tools/judge/v2*`,
+  `src/ehr_testing_tools/invocation.clj`,
+  `src/ehr_testing_tools/artifact.clj`,
+  `src/ehr_testing_tools/corpus/generate.clj`, anything under
+  `test-integration/`, the `:integration` alias in `deps.edn`, or
+  `.github/workflows/`. Everything else owes T0 per commit and T1 at
+  session close — nightly T2 is the backstop regardless, so nothing
+  outside that list ever goes fully unverified, only deferred to the
+  scheduled run.
+
+This replaces the older per-commit habit of running the full
+integration suite after every commit regardless of what changed (see
+`.agents/plans/judge-gate-refactor.md`'s Phase 1 verify line, amended
+in place with a dated note pointing here) — that habit was sized for
+one specific renaming sweep, not a standing rule, and paid T2's
+~19-minute cost on commits that could not possibly regress anything T2
+uniquely covers.
+
 ## Repo conventions
 
 - **Internal src structure is an open decision, not yet ratified** — see
