@@ -11,8 +11,8 @@
 (deftest source-kinds-test
   (testing "the design's six named source kinds (D1) are all recognized as known"
     (is (= #{:dir :file :stdin :blaze :synthea :sim} ss/known-source-kinds)))
-  (testing "SS-1's two reader kinds plus SS-2's two generator kinds are implemented"
-    (is (= #{:dir :file :synthea :sim} ss/implemented-source-kinds))
+  (testing "SS-1's two reader kinds, SS-2's two generator kinds, and SS-3's :stdin are implemented"
+    (is (= #{:dir :file :synthea :sim :stdin} ss/implemented-source-kinds))
     (is (every? ss/known-source-kinds ss/implemented-source-kinds)))
   (testing "printable-source-kinds stays narrower -- SS-2 parses generator Source values, never prints them"
     (is (= #{:dir :file} ss/printable-source-kinds))
@@ -98,6 +98,21 @@
   (let [r (ss/generator-source :not-a-registered-kind {})]
     (is (result/rejected? r))
     (is (= :unknown-generator-kind (:category r)))))
+
+;; ---- stdin-source (SS-3 Step 6): no :path, but :format/:framing are
+;; how a caller declares what the piped bytes actually are ----
+
+(deftest stdin-source-test
+  (testing "happy path: no :path required"
+    (let [r (ss/stdin-source {:format :v2-er7 :framing :er7-multi})]
+      (is (result/ok? r))
+      (is (= {:kind :stdin :format :v2-er7 :framing :er7-multi} (:payload r)))))
+  (testing ":format/:framing are both optional here too"
+    (let [r (ss/stdin-source {})]
+      (is (result/ok? r))
+      (is (= {:kind :stdin} (:payload r)))))
+  (testing "an unrecognized framing keyword is rejected, same as every other kind"
+    (is (result/rejected? (ss/stdin-source {:framing :not-a-real-framing})))))
 
 (deftest generator-source-invalid-params-test
   (let [r (ss/generator-source :synthea {:seed "not-an-int"})]

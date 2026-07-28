@@ -102,11 +102,14 @@
       (is (result/rejected? r))
       (is (= :unsupported-source-kind (:category r)))
       (is (= :blaze (:kind (:payload r))))))
-  (testing "stdin: is recognized but not-yet-supported"
+  (testing "stdin: is recognized and now supported (SS-3 Step 6) -- format/framing thread through"
     (let [r (url/parse-source-designator "stdin:?framing=mllp&format=v2-er7")]
-      (is (result/rejected? r))
-      (is (= :unsupported-source-kind (:category r)))
-      (is (= :stdin (:kind (:payload r))))))
+      (is (result/ok? r))
+      (is (= {:kind :stdin :format :v2-er7 :framing :mllp} (:payload r)))))
+  (testing "a bare stdin: (no query) is valid -- file-per-item over whatever arrives"
+    (let [r (url/parse-source-designator "stdin:")]
+      (is (result/ok? r))
+      (is (= {:kind :stdin} (:payload r)))))
   (testing "synthea: is recognized and now supported (SS-2 Step 4) -- zero-param means exactly zero-flag `ehr corpus generate`"
     (let [r (url/parse-source-designator "synthea:")]
       (is (result/ok? r))

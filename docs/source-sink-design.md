@@ -49,6 +49,7 @@ source while writing this record: `src/ehr_testing_tools/corpus/intake.clj`,
 | OPEN-2 | Whether `corpus generate`'s zero-flag `--population` default (D9) is `5` or `1`. | Trade-off between run speed (`1`, fastest) and corpus usefulness (`5`, enough patients for a non-degenerate first run) — a build-time taste call, not a design consequence. | **Resolved 2026-07-27 (UX-1 build):** `--population 5` |
 | OPEN-3 | Whether `ehr doctor` (D13) belongs in the first release or ships after. | Sequencing convenience only — `doctor` has no design dependency on anything else in this capture. | **Resolved 2026-07-27 (UX-1 build):** `doctor` ships in the first release |
 | OPEN-4 | Whether `corpus generate` grows an `--engine` flag now that the generator registry (SS-2) names more than one engine kind (`synthea`, `sim`), so a caller could pick which engine `corpus generate` drives instead of only ever driving Synthea. | Raised 2026-07-28 (SS-2 build), ruling 6: `corpus generate`'s own verb, flags, and defaults are explicitly out of scope for SS-2 — generator URLs land at `corpus intake` only this session — so this is recorded rather than decided; a future session either adds `--engine` or leaves `corpus generate` Synthea-only forever, with `intake GENERATOR-URL` as the one multi-engine door. | **Open** |
+| OPEN-5 | Whether a `dir:` Source ever grows framing-awareness — i.e. a directory containing one or more multi-item files (an `er7-multi`/`ndjson`/`mllp`/`bundle-entries`-framed file sitting inside an otherwise ordinary directory), spooled per-file rather than treated as a single opaque foreign file. | Raised 2026-07-28 (SS-3 build), ruling 5: this session's spool resolves exactly two cases — a `stdin:` source (always) and a bare `file:` source whose own `:framing` isn't `:file-per-item` — deliberately leaving `dir:` sources `:file-per-item`-only, per the session's own scope fence (ruling 7). A directory mixing ordinary files with one or more multi-item files inside it is unaddressed; whether that ever needs the same treatment recursively (walk the directory, spool anything non-`:file-per-item` it contains) or stays out of scope permanently is a future call, not decided here. | **Open** |
 
 ---
 
@@ -573,3 +574,7 @@ command.
   that the generator registry (SS-2) names more than one engine kind.
   Raised, not decided, 2026-07-28 (SS-2 build) — see the Decision
   Register above.
+- **OPEN-5** — whether a `dir:` Source ever grows framing-awareness
+  (a directory containing one or more multi-item files, spooled
+  per-file). Raised, not decided, 2026-07-28 (SS-3 build) — see the
+  Decision Register above.

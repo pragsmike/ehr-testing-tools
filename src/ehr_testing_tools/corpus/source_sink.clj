@@ -39,14 +39,15 @@
   reader kinds with no engine, D1's 'no per-source adapters'
   unification target); SS-2 Step 4 adds :synthea/:sim (the two
   generator kinds, via `generator-source` below, backed by the
-  registry in ehr-testing-tools.corpus.generators) -- parseable now.
-  `printable-source-kinds` below stays narrower: this session builds a
-  parser for generator-shaped Source values, never a printer (ruling 6,
-  docs/source-sink-design.md -- generator URLs land at intake, they are
-  never printed back out). The remaining known kinds (:stdin, :blaze)
-  are still parser-recognized (D-a) but rejected as not-yet-supported
-  until their own build session."
-  #{:dir :file :synthea :sim})
+  registry in ehr-testing-tools.corpus.generators); SS-3 Step 6 adds
+  :stdin (`stdin-source` below -- resolved to a real :dir Source via
+  ehr-testing-tools.corpus.spool-source, never executed here).
+  `printable-source-kinds` below stays narrower: no session yet builds
+  a printer for anything but :dir/:file (ruling 6, docs/source-sink-
+  design.md -- generator and stdin URLs are parsed and consumed, never
+  printed back out). :blaze remains parser-recognized (D-a) but
+  rejected as not-yet-supported until SS-5."
+  #{:dir :file :synthea :sim :stdin})
 
 (def printable-source-kinds
   "The subset of implemented-source-kinds print-source-designator
@@ -111,6 +112,13 @@
 
 (def DirSource [:and Source [:map [:kind [:= :dir]] [:path :string]]])
 (def FileSource [:and Source [:map [:kind [:= :file]] [:path :string]]])
+(def StdinSource
+  "No :path -- stdin names no filesystem location. :format/:framing
+  are how a caller declares what the piped bytes actually are
+  (ehr-testing-tools.corpus.spool-source, SS-3 Step 6, is what actually
+  reads and spools them; this schema only shapes+validates the
+  declaration)."
+  [:and Source [:map [:kind [:= :stdin]]]])
 (def DirSink [:and Sink [:map [:kind [:= :dir]] [:path :string]]])
 (def FileSink [:and Sink [:map [:kind [:= :file]] [:path :string]]])
 
@@ -149,6 +157,14 @@
   "Like dir-source, for a single-file :file Source."
   [{:keys [path format framing]}]
   (build :invalid-source :file FileSource {:path path :format format :framing framing}))
+
+(defn stdin-source
+  "Constructs+validates a canonical :stdin Source map. No required
+  fields at all -- a bare `stdin:` is valid, meaning file-per-item over
+  whatever bytes arrive (the schema default, source-sink/default-
+  framing); :format/:framing are how a caller declares real framing."
+  [{:keys [format framing]}]
+  (build :invalid-source :stdin StdinSource {:format format :framing framing}))
 
 (defn dir-sink
   "Constructs+validates a canonical :dir Sink map. :path and :format

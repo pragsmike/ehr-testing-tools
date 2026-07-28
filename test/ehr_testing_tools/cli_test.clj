@@ -849,6 +849,36 @@
     (is (result/ok? r))
     (is (= 1 (:file-count (:intake-record (:payload r)))))))
 
+;; ---- intake-command accepts a stdin designator in place of PATH
+;; (SS-3 Step 6, ruling 5): read (via :in-override in tests), spool,
+;; then catalog exactly like a resolved generator Source. ----
+
+(deftest intake-command-stdin-url-resolves-and-catalogs-test
+  (let [out-dir (str (temp-dir*) "/out")
+        piped (java.io.ByteArrayInputStream.
+               (.getBytes "MSH|^~\\&|A\n\nMSH|^~\\&|B\n\n" "UTF-8"))
+        r (cli/intake-command {:path "stdin:?format=v2-er7&framing=er7-multi"
+                                :label "piped" :out out-dir :received "2026-07-28"
+                                :in-override piped})]
+    (is (result/ok? r))
+    ;; 2 spooled item files + the spool's own capture-manifest.edn (a
+    ;; distinct schema from ADR-0014's manifest.edn -- named differently
+    ;; on purpose, ruling 4 -- so it is NOT recognized as a provenance
+    ;; sidecar; it's just a third foreign file, cataloged like any other)
+    (is (= 3 (:file-count (:intake-record (:payload r)))))
+    (is (every? #(= "piped" (:origin %)) (:catalog (:payload r))))
+    (is (= #{"item-0000.hl7" "item-0001.hl7" "capture-manifest.edn"}
+           (into #{} (map :path) (:catalog (:payload r)))))))
+
+(deftest intake-command-stdin-propagates-spool-rejection-test
+  (let [out-dir (str (temp-dir*) "/out")
+        piped (java.io.ByteArrayInputStream. (.getBytes "no message here" "UTF-8"))
+        r (cli/intake-command {:path "stdin:?format=v2-er7&framing=er7-multi"
+                                :label "piped" :out out-dir
+                                :in-override piped})]
+    (is (result/rejected? r))
+    (is (= :malformed-er7-multi-frame (:category r)))))
+
 ;; ---- operators-command (`ehr corpus operators`): a pure read of
 ;; corpus.operators' registry -- no filesystem, no subprocess, no
 ;; options required. ----

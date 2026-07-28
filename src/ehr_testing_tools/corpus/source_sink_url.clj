@@ -151,6 +151,7 @@
   (case kind
     :dir (ss/dir-source m)
     :file (ss/file-source m)
+    :stdin (ss/stdin-source m)
     (:synthea :sim) (ss/generator-source kind (coerce-generator-query (dissoc m :kind)))))
 
 (defn- finish-sink
