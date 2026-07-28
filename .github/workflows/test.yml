@@ -1,0 +1,51 @@
+# Poly-gated CI, ported from ehr-testing-sim's own minimal workflow
+# (notes/sim/ADRs.md ADR-0015's own trigger) to the workspace's own
+# tool: checkout + Clojure CLI + Temurin 21 (matching sim's CI
+# convention, notes/ADRs.md ADR-0001's own environment-stanza
+# distinction between that and local dev's stock OpenJDK) + `poly
+# check` + `poly test :all`.
+#
+# `poly test :all` runs every brick's tests unconditionally -- this is
+# deliberate for now: incremental testing (`poly test`, scoped to
+# bricks changed-or-affected since the last `stable-*` tag) only makes
+# sense once a `stable-*` tag exists to diff against. AUTHOR ACTION:
+# once this workflow is green on a real push, tag that commit
+# `stable-<sha>` (`git tag stable-$(git rev-parse --short HEAD)`,
+# pushed) -- from then on, switch the test step below to:
+#   clojure -M:poly test
+# (bricks/projects changed or affected since the most recent
+# `stable-*` tag only) rather than `:all`.
+#
+# No coverage gate, no lint gate, same deliberately-staged posture as
+# sim's own CI comment: not an oversight, future work once a baseline
+# exists to ratchet against.
+
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # poly's changed/affected diffing needs tag history
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: DeLaGuardo/setup-clojure@13.4
+        with:
+          cli: latest
+
+      - name: poly check
+        run: clojure -M:poly check
+
+      - name: poly test :all
+        run: clojure -M:poly test :all
