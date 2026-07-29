@@ -222,14 +222,16 @@ writes files — nothing in it sends data to any server.
 - **Your order catalog wholesale.** Lab panels ship with a starter
   set (real LOINC); adding your own panels is a config-format away
   rather than a today feature — ask.
-- **Network delivery.** Output is files/streams; MLLP delivery is
-  deliberately out of scope here (point your interface engine's
-  file reader at it, or ask about the tools sibling).
+- **Network delivery.** Output is files/streams; actually sending
+  it live over the wire is deliberately out of scope here (point
+  your interface engine's file reader at it). MLLP *framing* itself
+  is available, though — see the piped `corpus mutate`/`corpus
+  intake` workflow in [use-cases.md](use-cases.md#mutates-own-output-piped-straight-into-intake----no-intermediate-directory).
 - **Broken-feed conditions.** This simulator *always* produces
   coherent, ordered traffic — that's a guarantee, not a gap.
   Out-of-order, dropped, or mangled delivery is injected downstream
-  by the [tools](https://github.com/pragsmike/ehr-testing-tools)
-  sibling, with a record of exactly what was damaged.
+  by [`ehrt corpus mutate`](operators.md), with a record of exactly
+  what was damaged.
 
 ## Who do I ask?
 

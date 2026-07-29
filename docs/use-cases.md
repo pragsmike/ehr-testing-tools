@@ -1077,7 +1077,7 @@ flowchart LR
 
 **Audience:** Teams wanting deterministic, seeded HL7v2 hospital traffic (boarding, churn, cancellations, merges) as a corpus, without a separate generate-then-catalog step.
 
-**You bring:** A seed. ehr-testing-sim (a sibling project, github.com/pragsmike/ehr-testing-sim) checked out alongside this repo (../ehr-testing-sim) -- subprocess-only, per ADR-0013; this repo never bundles or depends on it.
+**You bring:** A seed.
 
 **You get:** A cataloged v2 corpus: HL7v2 messages plus sim's own manifest.edn sidecar, its provenance (generator name/version/sha256, seeds) attached to every catalog entry (ADR-0014) -- generated fresh at your own seed, in one command (SS-2, the generator registry).
 
@@ -1086,8 +1086,6 @@ flowchart LR
 **You type:**
 
 ```sh
-# Requires the ehr-testing-sim sibling checkout (../ehr-testing-sim,
-# subprocess-only -- ADR-0013; clone it alongside this repo to run this).
 bin/ehrt corpus intake 'sim:?seed=42&patients=5&emit=hl7' \
   --label sim-traffic --out out/sim-intake
 cat out/sim-intake/intake-record.edn
@@ -1099,7 +1097,7 @@ cat out/sim-intake/catalog.edn
 Generator-URL params (seed, patients, churn, emit, reference-date, config) are sim's own `run` verb's flags; a bare `sim:` with no query string still works, at sim's own pinned one-patient/hl7 default (the determinism law of defaults, D8). Gate the result the same way any intaken corpus gates -- [Judge user-supplied data: intake -> gate -> report](#judge-user-supplied-data-intake---gate---report). Synthea's own equivalent one-command path is `bin/ehrt corpus intake 'synthea:?seed=1&population=5'`, over the SAME generator registry (docs/source-sink-design.md); `ehrt corpus generate` itself is unchanged and remains the Synthea-only, more-flag-heavy path (OPEN-4 in the design doc records whether that changes later).
 
 ```
-generator-config × sim-subprocess → generated-corpus  [EngineExecute]
+generator-config × sim-engine → generated-corpus  [EngineExecute]
 generated-corpus → catalog-entry + intake-record  [Intake]
 ```
 
@@ -1108,7 +1106,7 @@ flowchart LR
 
     %% --- Source types (raw inputs, not produced by any operation) ---
     generator_config(["generator-config"])
-    sim_subprocess(["sim-subprocess"])
+    sim_engine(["sim-engine"])
 
     %% --- Operations (boxes; spiders use distinct shapes) ---
     EngineExecute["EngineExecute"]
@@ -1117,7 +1115,7 @@ flowchart LR
     %% --- Wires (typed connections) ---
     %% Arrow 1: EngineExecute
     generator_config -- generator-config --> EngineExecute
-    sim_subprocess -- sim-subprocess --> EngineExecute
+    sim_engine -- sim-engine --> EngineExecute
 
     %% Arrow 2: Intake
     EngineExecute -- generated-corpus --> Intake
@@ -1130,7 +1128,7 @@ flowchart LR
 
     %% Source types: light rounded
     style generator_config fill:#f5f5f5,stroke:#999,color:#333
-    style sim_subprocess fill:#f5f5f5,stroke:#999,color:#333
+    style sim_engine fill:#f5f5f5,stroke:#999,color:#333
 ```
 
 ## Piped multi-message HL7v2 traffic as an intake source (stdin)
