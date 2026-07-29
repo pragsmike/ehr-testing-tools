@@ -16,7 +16,12 @@
             [ehrt.kernel.result :as result]))
 
 (def ArtifactKind [:enum :engine :profile :module :runtime :other])
-(def LicenseStatus [:enum :verified :unverified :license-blocked-indeterminate])
+;; :use-permitted--unstated--confirmation-pending (ADR-0005's 2026-07-24
+;; amendment): a fetched-by-the-user-at-their-own-initiative artifact whose
+;; use rights are plausible but formal license is unconfirmed -- distinct
+;; from :unverified, which this repo has not yet examined at all.
+(def LicenseStatus [:enum :verified :unverified :license-blocked-indeterminate
+                    :use-permitted--unstated--confirmation-pending])
 
 (def Artifact
   [:map
