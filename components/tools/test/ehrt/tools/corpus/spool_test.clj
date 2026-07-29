@@ -6,8 +6,7 @@
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
-            [ehrt.tools.result :as result]
-            [ehrt.tools.digest :as digest]
+            [ehrt.kernel.interface :as kernel]
             [ehrt.tools.corpus.spool :as spool])
   (:import [java.io ByteArrayInputStream File]))
 
@@ -45,7 +44,7 @@
                           :origin "stdin"
                           :captured-at "2026-07-28T00:00:00Z"
                           :out-dir out-dir})]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (is (= 2 (:item-count (:payload r))))
     (let [files (->> (.listFiles (io/file out-dir))
                      (map #(.getName %))
@@ -61,7 +60,7 @@
       (is (= 2 (:item-count manifest)))
       (is (= 2 (count (:items manifest))))
       (is (= "item-0000.hl7" (:file (first (:items manifest)))))
-      (is (= (digest/sha256-bytes (read-file-bytes (io/file out-dir "item-0000.hl7")))
+      (is (= (kernel/sha256-bytes (read-file-bytes (io/file out-dir "item-0000.hl7")))
              (:sha256 (first (:items manifest))))))))
 
 ;; ---- default out-dir derivation ----
@@ -74,7 +73,7 @@
                             :format :v2-er7
                             :origin "stdin"
                             :captured-at "2026-07-28T01-02-03Z"})]
-      (is (result/ok? r))
+      (is (kernel/ok? r))
       (is (= expected-dir (:out-dir (:payload r))))
       (delete-tree! expected-dir))))
 
@@ -88,7 +87,7 @@
                             :framing :er7-multi :format :v2-er7
                             :origin "stdin" :captured-at "2026-07-28T00:00:00Z"
                             :out-dir out-dir})]
-      (is (result/rejected? r))
+      (is (kernel/rejected? r))
       (is (= :spool-target-exists (:category r)))
       (is (= ["leftover.txt"] (map #(.getName %) (.listFiles (io/file out-dir))))
           "the pre-existing directory is left untouched"))))
@@ -103,7 +102,7 @@
                           :origin "stdin" :captured-at "2026-07-28T00:00:00Z"
                           :out-dir out-dir
                           :max-bytes 100})]
-    (is (result/rejected? r))
+    (is (kernel/rejected? r))
     (is (= :spool-cap-exceeded (:category r)))
     (is (= 100 (:max-bytes (:payload r))))
     (is (not (.exists (io/file out-dir)))
@@ -120,7 +119,7 @@
                           :origin "stdin" :captured-at "2026-07-28T00:00:00Z"
                           :out-dir out-dir
                           :max-bytes 10000})]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (is (= 1 (:item-count (:payload r))))))
 
 ;; ---- malformed framing propagates; nothing is written ----
@@ -131,7 +130,7 @@
                           :framing :er7-multi :format :v2-er7
                           :origin "stdin" :captured-at "2026-07-28T00:00:00Z"
                           :out-dir out-dir})]
-    (is (result/rejected? r))
+    (is (kernel/rejected? r))
     (is (= :malformed-er7-multi-frame (:category r)))
     (is (not (.exists (io/file out-dir))))))
 
@@ -146,7 +145,7 @@
                           :framing :bundle-entries :format :fhir-json
                           :origin "./bundle.json" :captured-at "2026-07-28T00:00:00Z"
                           :out-dir out-dir})]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (is (= 2 (:item-count (:payload r))))
     (is (= ["capture-manifest.edn" "item-0000.json" "item-0001.json"]
            (sort (map #(.getName %) (.listFiles (io/file out-dir))))))

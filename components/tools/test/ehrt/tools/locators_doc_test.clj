@@ -12,8 +12,7 @@
   one, edit both."
   (:require [clojure.test :refer [deftest is testing]]
             [ehrt.tools.corpus.er7 :as er7]
-            [ehrt.tools.locator :as locator]
-            [ehrt.tools.result :as result]))
+            [ehrt.kernel.interface :as kernel]))
 
 ;; ---- FHIR ----
 
@@ -38,14 +37,14 @@
 
 (deftest documented-fhir-locators-parse-to-the-documented-data-path-test
   (doseq [[path expected] fhir-accepted]
-    (let [r (locator/fhir-data-path path)]
-      (is (result/ok? r) (str path " must parse"))
+    (let [r (kernel/fhir-data-path path)]
+      (is (kernel/ok? r) (str path " must parse"))
       (is (= expected (:payload r)) (str path " must parse to the path docs/locators.md prints")))))
 
 (deftest documented-fhir-non-locators-are-rejected-test
   (doseq [path fhir-rejected]
-    (let [r (locator/fhir-data-path path)]
-      (is (result/rejected? r) (str (pr-str path) " must be rejected"))
+    (let [r (kernel/fhir-data-path path)]
+      (is (kernel/rejected? r) (str (pr-str path) " must be rejected"))
       (is (= :invalid-fhir-path (:category r))))))
 
 (deftest documented-fhir-trailing-separator-is-rejected-test
@@ -55,8 +54,8 @@
             \"entry[0].resource\". It is now a parse error, which is what
             docs/locators.md's grammar note states -- both grammars are
             fully anchored, and neither accepts a trailing separator"
-    (let [r (locator/fhir-data-path "entry[0].resource.")]
-      (is (result/rejected? r))
+    (let [r (kernel/fhir-data-path "entry[0].resource.")]
+      (is (kernel/rejected? r))
       (is (= :invalid-fhir-path (:category r))))))
 
 ;; ---- v2 ----
@@ -84,14 +83,14 @@
 
 (deftest documented-v2-locators-parse-to-the-documented-map-test
   (doseq [[path expected] v2-accepted]
-    (let [r (locator/v2-data-path path)]
-      (is (result/ok? r) (str path " must parse"))
+    (let [r (kernel/v2-data-path path)]
+      (is (kernel/ok? r) (str path " must parse"))
       (is (= expected (:payload r)) (str path " must parse to the map docs/locators.md prints")))))
 
 (deftest documented-v2-non-locators-are-rejected-test
   (doseq [path v2-rejected]
-    (let [r (locator/v2-data-path path)]
-      (is (result/rejected? r) (str (pr-str path) " must be rejected"))
+    (let [r (kernel/v2-data-path path)]
+      (is (kernel/rejected? r) (str (pr-str path) " must be rejected"))
       (is (= :invalid-v2-path (:category r))))))
 
 ;; ---- v2 resolution: the MSH off-by-one and field granularity, against
@@ -118,8 +117,8 @@
   a segment-only locator or one that doesn't resolve."
   [path]
   (let [parsed (er7/parse sample-message)
-        r (locator/v2-data-path path)]
-    (when (result/ok? r)
+        r (kernel/v2-data-path path)]
+    (when (kernel/ok? r)
       (when-let [{:keys [segment-index field-index]} (er7/resolve-locator parsed (:payload r))]
         (when field-index
           (get-in parsed [:segments segment-index field-index]))))))
@@ -146,8 +145,8 @@
             still maps field 1 the way it always did; what changed is
             that no locator can ask it to"
     (is (= 1 (er7/field-index "MSH" 1)) "substrate mapping untouched")
-    (let [r (locator/v2-data-path "MSH-1")]
-      (is (result/rejected? r))
+    (let [r (kernel/v2-data-path "MSH-1")]
+      (is (kernel/rejected? r))
       (is (= :invalid-v2-path (:category r)))
       (is (= documented-msh-1-hint (:hint (:payload r)))
           "docs/locators.md block-quotes this hint verbatim; if the
@@ -167,7 +166,7 @@
             message doesn't have parses fine and resolves to nil --
             two different failures, at two different layers"
     (doseq [path ["PID-99" "NK1-2"]]
-      (is (result/ok? (locator/v2-data-path path)) (str path " must parse"))
+      (is (kernel/ok? (kernel/v2-data-path path)) (str path " must parse"))
       (is (nil? (er7/resolve-locator (er7/parse sample-message)
-                                     (:payload (locator/v2-data-path path))))
+                                     (:payload (kernel/v2-data-path path))))
           (str path " must not resolve against the sample message")))))

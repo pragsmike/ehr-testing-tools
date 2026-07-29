@@ -21,10 +21,10 @@
   regression, not just a one-off session probe."
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.java.io :as io]
-            [ehrt.tools.result :as result]
+            [ehrt.kernel.interface :as kernel]
             [ehrt.tools.corpus.mutate :as mutate]
             [ehrt.tools.corpus.operators :as operators]
-            [ehrt.tools.judge.v2 :as judge]))
+            [ehrt.judge.interface :as judge]))
 
 (def ^:private work-dir "target/v2-contract-pairing")
 (def ^:private admit-fixture "components/tools/test-fixtures/v2/adt-a01-admit.hl7")
@@ -37,14 +37,14 @@
   (let [base (slurp (io/file admit-fixture))
         operator (operators/lookup operator-id "1")
         mutate-result (mutate/mutate base operator {:format :v2 :path locator-path})]
-    (when-not (result/ok? mutate-result)
+    (when-not (kernel/ok? mutate-result)
       (throw (ex-info "v2 contract-pairing: mutate failed" mutate-result)))
     (let [mutant (:mutant (:payload mutate-result))
           mutant-path (str work-dir "/" (name operator-id) "-mutant.hl7")]
       (io/make-parents mutant-path)
       (spit mutant-path mutant)
-      (let [gate-result (judge/gate-file mutant-path)]
-        (when-not (result/ok? gate-result)
+      (let [gate-result (judge/v2-gate-file mutant-path)]
+        (when-not (kernel/ok? gate-result)
           (throw (ex-info "v2 contract-pairing: gate failed" gate-result)))
         (:payload gate-result)))))
 
@@ -54,7 +54,7 @@
 ;; tests exist to demonstrate, not an incidental sanity check. ----
 
 (deftest unmutated-fixture-is-pass-test
-  (let [outcome (:payload (judge/gate-file admit-fixture))]
+  (let [outcome (:payload (judge/v2-gate-file admit-fixture))]
     (is (= :pass (:verdict outcome)))
     (is (= [] (:findings outcome)))))
 
@@ -116,6 +116,6 @@
   (let [_ (mutate-and-gate! :blank-required-field "MSH-9")
         mutant-path (str work-dir "/blank-required-field-mutant.hl7")
         before (slurp mutant-path)
-        _ (judge/gate-file mutant-path)
+        _ (judge/v2-gate-file mutant-path)
         after (slurp mutant-path)]
     (is (= before after))))

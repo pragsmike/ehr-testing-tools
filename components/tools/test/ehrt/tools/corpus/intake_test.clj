@@ -7,8 +7,7 @@
             [clojure.edn :as edn]
             [clojure.data.json :as json]
             [clojure.string]
-            [ehrt.tools.result :as result]
-            [ehrt.tools.digest :as digest]
+            [ehrt.kernel.interface :as kernel]
             [ehrt.tools.corpus.operators :as operators]
             [ehrt.tools.corpus.mutate :as mutate]
             [ehrt.tools.corpus.intake :as intake]
@@ -67,7 +66,7 @@
         _ (spit (io/file src "notes.txt") "not clinical data at all")
         r (intake/intake! {:source-dir src :source-label "acme-pipeline"
                             :out out :received "2026-07-24"})]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (let [catalog (:catalog (:payload r))]
       (is (= 3 (count catalog)))
       (is (every? intake/valid-catalog-entry? catalog))
@@ -89,7 +88,7 @@
         out (temp-dir)
         _ (spit (io/file src "patient.json") sample-bundle-json)
         r (intake/intake! {:source-dir src :source-label "acme" :out out :received "2026-07-24"})]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (let [written-catalog (edn/read-string (slurp (io/file out "catalog.edn")))
           written-record (edn/read-string (slurp (io/file out "intake-record.edn")))]
       (is (= (:catalog (:payload r)) written-catalog))
@@ -99,13 +98,13 @@
       (is (= "2026-07-24" (:date written-record)))
       (is (= 1 (:file-count written-record)))
       (is (= (:catalog-hash written-record)
-             (digest/sha256-file (io/file out "catalog.edn")))))))
+             (kernel/sha256-file (io/file out "catalog.edn")))))))
 
 (deftest intake-handles-empty-source-dir-test
   (let [src (temp-dir)
         out (temp-dir)
         r (intake/intake! {:source-dir src :source-label "empty" :out out :received "2026-07-24"})]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (is (= 0 (:file-count (:intake-record (:payload r)))))
     (is (= [] (:catalog (:payload r))))))
 
@@ -116,7 +115,7 @@
         _ (spit (io/file src "nested" "deeper" "patient.json") sample-bundle-json)
         r (intake/intake! {:source-dir src :source-label "x" :out out :received "2026-07-24"})
         entry (first (:catalog (:payload r)))]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (is (= 1 (count (:catalog (:payload r)))))
     (is (= "nested/deeper/patient.json" (clojure.string/replace (:path entry) "\\" "/")))))
 
@@ -137,7 +136,7 @@
         operator (operators/lookup :remove-required-element "1")
         mutate-result (mutate/mutate base-data operator
                                       {:format :fhir :path "entry[0].resource.gender"})]
-    (is (result/ok? mutate-result))
+    (is (kernel/ok? mutate-result))
     (let [lineage (:lineage (:payload mutate-result))]
       (is (= (:id entry) (:parent lineage))
           "the mutant's lineage :parent must equal the intake catalog's own content-hash id -- same hash space, no adapter"))))
@@ -164,7 +163,7 @@
     (let [r (intake/intake! {:source-dir src :source-label "simhospital"
                              :out out :received "2026-07-26"})
           {:keys [catalog intake-record]} (:payload r)]
-      (is (result/ok? r))
+      (is (kernel/ok? r))
       (is (= 3 (count catalog)))
       (is (every? intake/valid-catalog-entry? catalog))
       (is (every? #(= :v2-er7 (:format %)) catalog)
@@ -179,7 +178,7 @@
       (is (= 3 (:file-count intake-record)))
       (is (= "2026-07-26" (:date intake-record)))
       (is (= (:catalog-hash intake-record)
-             (digest/sha256-file (io/file out "catalog.edn")))))))
+             (kernel/sha256-file (io/file out "catalog.edn")))))))
 
 ;; ---- manifest sidecars (ADR-0014): an optional manifest.edn dropped
 ;; alongside foreign-corpus files, directory-scoped -- every file in the
@@ -212,7 +211,7 @@
                             :out out :received "2026-07-24"})
         catalog (:catalog (:payload r))
         entry (first (filter #(= "patient.json" (:path %)) catalog))]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (is (every? intake/valid-catalog-entry? catalog))
     (is (= (select-keys mf [:schema-version :stage :generator :seeds])
            (:provenance entry)))))
@@ -246,7 +245,7 @@
         {:keys [catalog intake-record]} (:payload r)
         a-entry (first (filter #(= "malformed/a.json" (:path %)) catalog))
         b-entry (first (filter #(= "schema-invalid/b.json" (:path %)) catalog))]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (is (every? intake/valid-catalog-entry? catalog))
     (doseq [entry [a-entry b-entry]]
       (is (not (contains? entry :provenance)))
@@ -297,7 +296,7 @@
 (deftest intake-attaches-operation-provenance-from-valid-operation-manifest-sidecar-test
   (let [src (temp-dir)
         out (temp-dir)
-        sha (digest/sha256-string sample-v2-message)
+        sha (kernel/sha256-string sample-v2-message)
         parent-hash (apply str (repeat 64 "b"))
         om (sample-operation-manifest [{:name "a.hl7" :sha256 sha :input-hash parent-hash}])
         _ (spit (io/file src "a.hl7") sample-v2-message)
@@ -306,7 +305,7 @@
                             :out out :received "2026-07-24"})
         catalog (:catalog (:payload r))
         entry (first (filter #(= "a.hl7" (:path %)) catalog))]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (is (every? intake/valid-catalog-entry? catalog))
     (is (not (contains? entry :provenance)))
     (is (= producer (:origin (:operation-provenance entry))))
@@ -317,7 +316,7 @@
 (deftest intake-operation-provenance-input-hash-is-absent-when-not-supplied-test
   (let [src (temp-dir)
         out (temp-dir)
-        om (sample-operation-manifest [{:name "a.hl7" :sha256 (digest/sha256-string sample-v2-message)}])
+        om (sample-operation-manifest [{:name "a.hl7" :sha256 (kernel/sha256-string sample-v2-message)}])
         _ (spit (io/file src "a.hl7") sample-v2-message)
         _ (spit (io/file src "operation-manifest.edn") (pr-str om))
         r (intake/intake! {:source-dir src :source-label "acme"
@@ -334,7 +333,7 @@
                             :out out :received "2026-07-24"})
         {:keys [catalog intake-record]} (:payload r)
         entry (first (filter #(= "a.hl7" (:path %)) catalog))]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (is (not (contains? entry :operation-provenance)))
     (is (intake/valid-intake-record? intake-record))
     (is (= #{:invalid-operation-manifest-sidecar} (set (map :type (:notes intake-record)))))))
@@ -342,7 +341,7 @@
 (deftest intake-operation-manifest-sidecar-is-scoped-to-its-own-directory-test
   (let [src (temp-dir)
         out (temp-dir)
-        om (sample-operation-manifest [{:name "top.hl7" :sha256 (digest/sha256-string sample-v2-message)}])
+        om (sample-operation-manifest [{:name "top.hl7" :sha256 (kernel/sha256-string sample-v2-message)}])
         _ (.mkdirs (io/file src "nested"))
         _ (spit (io/file src "operation-manifest.edn") (pr-str om))
         _ (spit (io/file src "top.hl7") sample-v2-message)
@@ -359,13 +358,13 @@
   (let [src (temp-dir)
         out (temp-dir)
         mf (sample-manifest 1)
-        om (sample-operation-manifest [{:name "a.hl7" :sha256 (digest/sha256-string sample-v2-message)}])
+        om (sample-operation-manifest [{:name "a.hl7" :sha256 (kernel/sha256-string sample-v2-message)}])
         _ (spit (io/file src "a.hl7") sample-v2-message)
         _ (spit (io/file src "manifest.edn") (pr-str mf))
         _ (spit (io/file src "operation-manifest.edn") (pr-str om))
         r (intake/intake! {:source-dir src :source-label "acme"
                             :out out :received "2026-07-24"})]
-    (is (result/rejected? r))
+    (is (kernel/rejected? r))
     (is (= :ambiguous-sidecars (:category r)))
     (is (= ["."] (:dirs (:payload r))))
     (is (not (.exists (io/file out "catalog.edn")))
@@ -375,7 +374,7 @@
   (let [src (temp-dir)
         out (temp-dir)
         mf (sample-manifest 1)
-        om (sample-operation-manifest [{:name "b.hl7" :sha256 (digest/sha256-string sample-v2-message)}])
+        om (sample-operation-manifest [{:name "b.hl7" :sha256 (kernel/sha256-string sample-v2-message)}])
         _ (.mkdirs (io/file src "fine"))
         _ (.mkdirs (io/file src "ambiguous"))
         _ (spit (io/file src "fine" "a.hl7") sample-v2-message)
@@ -384,7 +383,7 @@
         _ (spit (io/file src "ambiguous" "operation-manifest.edn") (pr-str om))
         r (intake/intake! {:source-dir src :source-label "acme"
                             :out out :received "2026-07-24"})]
-    (is (result/rejected? r))
+    (is (kernel/rejected? r))
     (is (= :ambiguous-sidecars (:category r)))
     (is (= ["ambiguous"] (:dirs (:payload r)))
         "the unambiguous 'fine' directory is not itself the problem -- only 'ambiguous' is named")))
@@ -406,19 +405,19 @@
         source (:payload (source-sink/dir-source {:path src}))
         pre-ss1 (intake/intake! {:source-dir src :source-label "acme" :out out-a :received "2026-07-24"})
         via-source (intake/intake-via-source! {:source source :source-label "acme" :out out-b :received "2026-07-24"})]
-    (is (result/ok? pre-ss1))
-    (is (result/ok? via-source))
+    (is (kernel/ok? pre-ss1))
+    (is (kernel/ok? via-source))
     (is (= (:catalog (:payload pre-ss1)) (:catalog (:payload via-source))))
     (is (golden/catalogs-byte-identical? out-a out-b))))
 
 (deftest intake-via-source-rejects-non-dir-kinds-test
   (let [r (intake/intake-via-source! {:source {:kind :file :path "x.json"}
                                        :source-label "acme" :out (temp-dir) :received "2026-07-24"})]
-    (is (result/rejected? r))
+    (is (kernel/rejected? r))
     (is (= :unsupported-source-kind (:category r)))))
 
 (deftest intake-via-source-rejects-an-invalid-source-map-test
   (let [r (intake/intake-via-source! {:source {:kind :dir} ; no :path
                                        :source-label "acme" :out (temp-dir) :received "2026-07-24"})]
-    (is (result/rejected? r))
+    (is (kernel/rejected? r))
     (is (= :invalid-source (:category r)))))

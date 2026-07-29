@@ -4,30 +4,29 @@
   Re-exports exactly what bases/ehr-cli and projects/conformance/test
   call from outside their own namespace -- determined by grep against
   the pre-carve ehr-testing-tools repo, not by interface-design
-  judgment. Narrowing this surface (splitting components/tools into
-  judge/corpus/foundation bricks, per named hole H4 and the deferred
-  judge-vs-corpus foundation-extraction question) is a future,
-  author-ruled extraction session's call -- see AGENTS.md's
-  fat-component disclosure. Don't treat this file's width as evidence
-  about how components/tools should be decomposed.
+  judgment. NARROWED (ADR-0008, named hole H4 closed): result, digest,
+  artifact, canonical, locator, and invocation moved to
+  `ehrt.kernel.interface`, judge's five namespaces to
+  `ehrt.judge.interface` -- this file now re-exports those two
+  interfaces' own already-qualified names verbatim rather than reaching
+  into their internals, plus whatever's left in this component
+  (corpus.*, check, sim, docsgen). Don't treat this file's remaining
+  width as evidence about how the rest of `components/tools` should be
+  decomposed -- that's still a future, author-ruled call.
 
-  Five short names collided across two source namespaces each
-  (`gate-file`/`gate-dir` in both judge.fhir and judge.v2, `lookup`/
-  `register!` in both corpus.operators and corpus.generators, `valid?`
-  in both judge.report and result, `resolve!` in both
-  corpus.generator-source and corpus.spool-source) -- each pair is
-  qualified below (fhir-/v2- prefix, generators- prefix, report-
-  prefix, spool- prefix) rather than picking one winner silently;
-  every caller of the qualified half was updated at its call site in
-  the same commit. Two more names (`resolve`, `run!`) don't collide
-  with each other but each shadows a clojure.core name, which loads
-  fine but prints a WARNING on every namespace load -- polluting real
-  `bin/ehr` output; qualified as `resolve-artifact`/`sim-run!`
-  instead, callers updated to match."
-  (:require [ehrt.tools.result :as result]
-            [ehrt.tools.artifact :as artifact]
-            [ehrt.tools.digest :as digest]
-            [ehrt.tools.locator :as locator]
+  Two short names collided across two source namespaces each
+  (`lookup`/`register!` in both corpus.operators and corpus.generators,
+  `resolve!` in both corpus.generator-source and corpus.spool-source)
+  -- each pair is qualified below (generators- prefix, spool- prefix)
+  rather than picking one winner silently; every caller of the
+  qualified half was updated at its call site in the same commit
+  (ADR-0002). `report-valid?` stays qualified here too, even though
+  judge.report's own collision partner (`result/valid?`) left this
+  component entirely -- the collision now is with THIS namespace's own
+  bare `valid?`, re-exported from kernel.interface a few lines above;
+  unqualifying it would shadow that def, not resolve a stale problem."
+  (:require [ehrt.kernel.interface :as kernel]
+            [ehrt.judge.interface :as judge]
             [ehrt.tools.check :as check]
             [ehrt.tools.sim :as sim]
             [ehrt.tools.docsgen :as docsgen]
@@ -43,30 +42,21 @@
             [ehrt.tools.corpus.mutate :as mutate]
             [ehrt.tools.corpus.generate :as generate]
             [ehrt.tools.corpus.operators :as operators]
-            [ehrt.tools.corpus.manifest :as manifest]
-            [ehrt.tools.judge.v2 :as judge-v2]
-            [ehrt.tools.judge.fhir :as judge-fhir]
-            [ehrt.tools.judge.report :as judge-report]))
+            [ehrt.tools.corpus.manifest :as manifest]))
 
-;; result
-(def ok result/ok)
-(def ok? result/ok?)
-(def rejected result/rejected)
-(def rejected? result/rejected?)
-(def error result/error)
-(def error? result/error?)
-(def valid? result/valid?)
-
-;; artifact
-(def fetch artifact/fetch)
-(def read-lockfile artifact/read-lockfile)
-(def resolve-artifact artifact/resolve)
-
-;; digest
-(def sha256-file digest/sha256-file)
-
-;; locator
-(def make locator/make)
+;; kernel.interface (result/digest/artifact/locator, ADR-0008)
+(def ok kernel/ok)
+(def ok? kernel/ok?)
+(def rejected kernel/rejected)
+(def rejected? kernel/rejected?)
+(def error kernel/error)
+(def error? kernel/error?)
+(def valid? kernel/valid?)
+(def fetch kernel/fetch)
+(def read-lockfile kernel/read-lockfile)
+(def resolve-artifact kernel/resolve-artifact)
+(def sha256-file kernel/sha256-file)
+(def make kernel/make)
 
 ;; check
 (def Assertion check/Assertion)
@@ -140,21 +130,18 @@
 ;; corpus.manifest
 (def ManifestV1_1 manifest/ManifestV1_1)
 
-;; judge.v2 (collides with judge.fhir on gate-file/gate-dir -- qualified v2-*)
-(def v2-gate-file judge-v2/gate-file)
-(def v2-gate-dir judge-v2/gate-dir)
-
-;; judge.fhir (collides with judge.v2 on gate-file/gate-dir -- qualified fhir-*)
-(def fhir-gate-file judge-fhir/gate-file)
-(def fhir-gate-dir judge-fhir/gate-dir)
-(def fhir-gate-batch judge-fhir/gate-batch)
-
-;; judge.report (collides with result on valid? -- qualified report-*)
-(def Report judge-report/Report)
-(def baseline-relative-report judge-report/baseline-relative-report)
-(def build-report judge-report/build-report)
-(def diff-reports judge-report/diff-reports)
-(def report-valid? judge-report/valid?)
+;; judge.interface (ADR-0008) -- already qualified v2-/fhir- there
+;; (the gate-file/gate-dir collision, ADR-0002), passed through verbatim.
+(def v2-gate-file judge/v2-gate-file)
+(def v2-gate-dir judge/v2-gate-dir)
+(def fhir-gate-file judge/fhir-gate-file)
+(def fhir-gate-dir judge/fhir-gate-dir)
+(def fhir-gate-batch judge/fhir-gate-batch)
+(def Report judge/Report)
+(def baseline-relative-report judge/baseline-relative-report)
+(def build-report judge/build-report)
+(def diff-reports judge/diff-reports)
+(def report-valid? judge/report-valid?)
 
 ;; docsgen -- write-cli-md! is the one docsgen entry point a base needs
 ;; cross-brick (bases/ehr-cli owns the real cli-spec, ADR-0002's own

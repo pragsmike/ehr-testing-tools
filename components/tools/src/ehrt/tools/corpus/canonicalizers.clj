@@ -13,7 +13,7 @@
   run ID, wall-clock start time, wall-clock duration) inside Synthea's
   own metadata/ output."
   (:require [clojure.string :as str]
-            [ehrt.tools.canonical :as canonical]))
+            [ehrt.kernel.interface :as kernel]))
 
 (defn strip-run-timestamp-suffix
   "hospitalInformation<digits>.json / practitionerInformation<digits>.json
@@ -33,12 +33,12 @@
   [metadata-map]
   (dissoc metadata-map "runID" "runStartTime" "runTimeInSeconds"))
 
-(canonical/register!
+(kernel/register!
  {:id :strip-run-timestamp-suffix :version "1" :format :text
   :fn strip-run-timestamp-suffix
   :docstring "Strips Synthea's wall-clock export-timestamp suffix from hospitalInformation/practitionerInformation filenames."})
 
-(canonical/register!
+(kernel/register!
  {:id :strip-synthea-run-metadata :version "1" :format :edn
   :fn strip-synthea-run-metadata
   :docstring "Removes Synthea's per-execution audit fields (runID, runStartTime, runTimeInSeconds) from a parsed metadata/*.json map."})

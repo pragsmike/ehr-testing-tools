@@ -6,7 +6,7 @@
             [clojure.test.check :as tc]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
-            [ehrt.tools.result :as result]
+            [ehrt.kernel.interface :as kernel]
             [ehrt.tools.corpus.framing :as framing]
             [ehrt.tools.corpus.simhospital-corpus :as simhospital])
   (:import [java.nio.file Files]
@@ -28,21 +28,21 @@
         (tc/quick-check 100
           (prop/for-all [item gen/bytes]
             (let [decoded (framing/decode :file-per-item item)]
-              (and (result/ok? decoded)
+              (and (kernel/ok? decoded)
                    (= [(vec item)] (mapv vec (:payload decoded)))
                    (let [encoded (framing/encode :file-per-item (:payload decoded))]
-                     (and (result/ok? encoded)
+                     (and (kernel/ok? encoded)
                           (Arrays/equals ^bytes item ^bytes (:payload encoded))))))))]
     (is (:pass? check-result) (str check-result))))
 
 (deftest file-per-item-encode-rejects-wrong-item-count-test
   (testing "zero items"
     (let [r (framing/encode :file-per-item [])]
-      (is (result/rejected? r))
+      (is (kernel/rejected? r))
       (is (= :invalid-item-count (:category r)))))
   (testing "more than one item"
     (let [r (framing/encode :file-per-item [(byte-array [1]) (byte-array [2])])]
-      (is (result/rejected? r))
+      (is (kernel/rejected? r))
       (is (= :invalid-item-count (:category r))))))
 
 ;; ---- :er7-multi -- the ADR-0011 SimHospital fixture is the witness
@@ -52,12 +52,12 @@
   (testing "decodes the 1,013-message fixture: exactly 1,013 items, every one MSH-led"
     (let [bs (fixture-bytes)
           decoded (framing/decode :er7-multi bs)]
-      (is (result/ok? decoded))
+      (is (kernel/ok? decoded))
       (is (= 1013 (count (:payload decoded))))
       (is (every? starts-with-msh? (:payload decoded)))
       (testing "encode is byte-identical to the original file"
         (let [encoded (framing/encode :er7-multi (:payload decoded))]
-          (is (result/ok? encoded))
+          (is (kernel/ok? encoded))
           (is (Arrays/equals ^bytes bs ^bytes (:payload encoded)))))))
   (testing "corpus.er7's own field-level parse still accepts every decoded message
             (CR-terminated segments, no residual \\n from the framing layer)"
@@ -95,7 +95,7 @@
 
 (deftest er7-multi-malformed-input-test
   (let [r (framing/decode :er7-multi (byte-array (map byte "no message here")))]
-    (is (result/rejected? r))
+    (is (kernel/rejected? r))
     (is (= :malformed-er7-multi-frame (:category r)))))
 
 ;; ---- round-trip property test over synthetic MSH-led messages
@@ -120,9 +120,9 @@
         (tc/quick-check 100
           (prop/for-all [items (gen/vector er7-message-gen 1 8)]
             (let [encoded (framing/encode :er7-multi items)]
-              (and (result/ok? encoded)
+              (and (kernel/ok? encoded)
                    (let [decoded (framing/decode :er7-multi (:payload encoded))]
-                     (and (result/ok? decoded)
+                     (and (kernel/ok? decoded)
                           (= (count items) (count (:payload decoded)))
                           (every? true? (map #(Arrays/equals ^bytes %1 ^bytes %2)
                                               items (:payload decoded)))))))))]
@@ -141,9 +141,9 @@
         (tc/quick-check 100
           (prop/for-all [items (gen/vector ndjson-line-gen 0 8)]
             (let [encoded (framing/encode :ndjson items)]
-              (and (result/ok? encoded)
+              (and (kernel/ok? encoded)
                    (let [decoded (framing/decode :ndjson (:payload encoded))]
-                     (and (result/ok? decoded)
+                     (and (kernel/ok? decoded)
                           (= (count items) (count (:payload decoded)))
                           (every? true? (map #(Arrays/equals ^bytes %1 ^bytes %2)
                                               items (:payload decoded)))))))))]
@@ -160,7 +160,7 @@
 
 (deftest ndjson-empty-input-test
   (let [decoded (framing/decode :ndjson (byte-array 0))]
-    (is (result/ok? decoded))
+    (is (kernel/ok? decoded))
     (is (= [] (:payload decoded)))))
 
 ;; ---- :bundle-entries -- entry-preserving, envelope-lossy (ruling 1) ----
@@ -176,9 +176,9 @@
           (tc/quick-check 50
             (prop/for-all [resources (gen/vector resource-gen 0 5)]
               (let [encoded (framing/encode :bundle-entries resources)]
-                (and (result/ok? encoded)
+                (and (kernel/ok? encoded)
                      (let [decoded (framing/decode :bundle-entries (:payload encoded))]
-                       (and (result/ok? decoded)
+                       (and (kernel/ok? decoded)
                             (= resources (:payload decoded))))))))]
       (is (:pass? check-result) (str check-result)))))
 
@@ -198,11 +198,11 @@
 (deftest bundle-entries-malformed-input-test
   (testing "not JSON at all"
     (let [r (framing/decode :bundle-entries (byte-array (map byte "not json")))]
-      (is (result/rejected? r))
+      (is (kernel/rejected? r))
       (is (= :malformed-bundle-entries-frame (:category r)))))
   (testing "valid JSON but no \"entry\" key"
     (let [r (framing/decode :bundle-entries (byte-array (map byte "{\"resourceType\":\"Bundle\"}")))]
-      (is (result/rejected? r))
+      (is (kernel/rejected? r))
       (is (= :malformed-bundle-entries-frame (:category r))))))
 
 ;; ---- :mllp -- the 0x0B / 0x1C 0x0D envelope, byte-exact (ruling 1;
@@ -223,9 +223,9 @@
         (tc/quick-check 100
           (prop/for-all [items (gen/vector mllp-message-gen 0 8)]
             (let [encoded (framing/encode :mllp items)]
-              (and (result/ok? encoded)
+              (and (kernel/ok? encoded)
                    (let [decoded (framing/decode :mllp (:payload encoded))]
-                     (and (result/ok? decoded)
+                     (and (kernel/ok? decoded)
                           (= (count items) (count (:payload decoded)))
                           (every? true? (map #(Arrays/equals ^bytes %1 ^bytes %2)
                                               items (:payload decoded)))))))))]
@@ -250,11 +250,11 @@
 (deftest mllp-malformed-input-test
   (testing "doesn't start with 0x0B"
     (let [r (framing/decode :mllp (byte-array (map byte "no vt here")))]
-      (is (result/rejected? r))
+      (is (kernel/rejected? r))
       (is (= :malformed-mllp-frame (:category r)))))
   (testing "no end-of-block marker"
     (let [r (framing/decode :mllp (byte-array (cons 0x0B (map int "unterminated"))))]
-      (is (result/rejected? r))
+      (is (kernel/rejected? r))
       (is (= :malformed-mllp-frame (:category r))))))
 
 ;; ---- lookup -- the registry-lookup shape ehrt.tools.lint's own

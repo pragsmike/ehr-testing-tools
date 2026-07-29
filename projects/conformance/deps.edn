@@ -6,6 +6,10 @@
         ;; exercises. See ADR-0004 for why the ADR-0013-era reasons
         ;; (private-repo split, cross-repo version lockstep) no longer
         ;; hold.
+        ;; poly/kernel, poly/judge (ADR-0008): tools' own src requires
+        ;; both directly now.
+        poly/kernel   {:local/root "../../components/kernel"}
+        poly/judge    {:local/root "../../components/judge"}
         poly/tools    {:local/root "../../components/tools"}
         poly/palgebra {:local/root "../../components/palgebra"}
         poly/sim      {:local/root "../../components/sim"}

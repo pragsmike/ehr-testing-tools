@@ -26,7 +26,7 @@
   (:require [clojure.java.io :as io]
             [malli.core :as m]
             [ehrt.tools.corpus.generate :as generate]
-            [ehrt.tools.result :as result]
+            [ehrt.kernel.interface :as kernel]
             [ehrt.tools.sim :as sim]))
 
 (def GeneratorEntry
@@ -40,13 +40,13 @@
 (defonce ^:private registry (atom {}))
 
 (defn register!
-  "Registers a generator entry, keyed by :kind. Returns result/ok
-  {:kind} or result/rejected :invalid-generator-entry."
+  "Registers a generator entry, keyed by :kind. Returns kernel/ok
+  {:kind} or kernel/rejected :invalid-generator-entry."
   [entry]
   (if (m/validate GeneratorEntry entry)
     (do (swap! registry assoc (:kind entry) entry)
-        (result/ok (select-keys entry [:kind])))
-    (result/rejected :invalid-generator-entry {:entry entry})))
+        (kernel/ok (select-keys entry [:kind])))
+    (kernel/rejected :invalid-generator-entry {:entry entry})))
 
 (defn lookup
   [kind]
@@ -71,19 +71,19 @@
   "Merges params onto kind's own pinned :default-params (D8 -- a
   param a caller omits falls back to a pinned constant, never the
   clock/environment/machine), then validates the merged map against
-  the registered :params-schema. Returns result/ok the merged params,
-  or result/rejected :unknown-generator-kind (naming every registered
+  the registered :params-schema. Returns kernel/ok the merged params,
+  or kernel/rejected :unknown-generator-kind (naming every registered
   kind, DOC-1's enumerable-options convention) / :invalid-generator-
   params (malli's own explain)."
   [kind params]
   (if-let [entry (lookup kind)]
     (let [merged (merge (:default-params entry) params)]
       (if (m/validate (:params-schema entry) merged)
-        (result/ok merged)
-        (result/rejected :invalid-generator-params
+        (kernel/ok merged)
+        (kernel/rejected :invalid-generator-params
                           {:kind kind :params merged
                            :explain (m/explain (:params-schema entry) merged)})))
-    (result/rejected :unknown-generator-kind
+    (kernel/rejected :unknown-generator-kind
                       {:kind kind :valid-options (sort (map :kind (entries)))})))
 
 ;; ---- seed catalog: synthea, re-expressed over corpus.generate's own
@@ -135,21 +135,21 @@
   (:messages), plus sim's own :manifest verbatim as manifest.edn --
   this repo writes no manifest of its own for sim output; provenance
   is the generator's word (ruling 4, docs/source-sink-design.md D7).
-  Returns result/error :sim-produced-no-messages, writing NOTHING, when
+  Returns kernel/error :sim-produced-no-messages, writing NOTHING, when
   the run's own payload carried no messages at all -- an all-metadata
   directory (manifest.edn alone) would defeat generator-source/
   resolve!'s own generic empty-output check, since manifest.edn alone
   makes the directory non-empty."
   [{:keys [messages manifest]} out-dir]
   (if (empty? messages)
-    (result/error :sim-produced-no-messages
+    (kernel/error :sim-produced-no-messages
                   {:hint (str "sim's own run produced no messages -- :emit \"hl7\" "
                               "(this entry's own pinned default) is required to produce a v2 corpus")})
     (do
       (.mkdirs (io/file out-dir))
       (dorun (map-indexed (fn [i m] (spit (io/file out-dir (format "msg-%03d.hl7" i)) m)) messages))
       (spit (io/file out-dir "manifest.edn") (pr-str manifest))
-      (result/ok {:out-dir out-dir}))))
+      (kernel/ok {:out-dir out-dir}))))
 
 (register!
  {:kind :sim
@@ -158,6 +158,6 @@
   :out-dir-fn (fn [{:keys [seed patients]}] (str "target/corpus/sim-s" seed "-p" patients))
   :execute-fn (fn [params out-dir]
                 (let [run-result (sim/run! params)]
-                  (if-not (result/ok? run-result)
+                  (if-not (kernel/ok? run-result)
                     run-result
                     (spool-sim-output! (:payload run-result) out-dir))))})

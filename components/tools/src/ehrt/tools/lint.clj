@@ -41,7 +41,7 @@
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.set :as set]
-            [ehrt.tools.canonical :as canonical]
+            [ehrt.kernel.interface :as kernel]
             ;; Registration is a load-time side effect of requiring
             ;; these seed-catalog namespaces (same convention as
             ;; corpus.mutate-test's own docstring) -- required here,
@@ -59,7 +59,7 @@
   "Dispatch table for target-4 (in-repo code registry) verification:
   registry keyword -> its [id version] lookup fn."
   {:corpus.operators operators/lookup
-   :canonical canonical/lookup
+   :canonical kernel/lookup
    :check.schemas schemas/lookup
    :framing framing/lookup})
 
@@ -106,14 +106,26 @@
                             (str (:name ref) "@" (:version ref) " found in artifacts.lock.edn")
                             (str (:name ref) "@" (:version ref) " not found in artifacts.lock.edn"))})))
 
+(def target-2-deps-edn-paths
+  "Every brick deps.edn a target-2 (deps.edn coordinate) catalytic
+  resource might name its ref against. Was components/tools/deps.edn
+  alone before ADR-0008 moved the HAPI HL7v2 coordinate to
+  components/judge/deps.edn along with judge.v2, its real consumer --
+  checked across both rather than re-hardcoded to judge's alone, since
+  a future target-2 entry could name either brick's own coordinate."
+  ["components/tools/deps.edn" "components/judge/deps.edn" "components/kernel/deps.edn"])
+
 (defn- verify-target-2
   [{:keys [ref]}]
   (if-not ref
     {:ok? false :note "target 2 (deps.edn) requires a coordinate ref"}
-    (let [deps-edn (edn/read-string (slurp "components/tools/deps.edn"))
-          coord (symbol ref)
-          found? (contains? (:deps deps-edn) coord)]
-      {:ok? found? :note (if found? (str coord " found in deps.edn :deps") (str coord " not found in deps.edn :deps"))})))
+    (let [coord (symbol ref)
+          found-in (->> target-2-deps-edn-paths
+                        (filter #(contains? (:deps (edn/read-string (slurp %))) coord)))]
+      {:ok? (boolean (seq found-in))
+       :note (if (seq found-in)
+               (str coord " found in " (first found-in) " :deps")
+               (str coord " not found in any of " target-2-deps-edn-paths " :deps"))})))
 
 (defn- verify-target-3
   [{:keys [ref]}]

@@ -15,7 +15,7 @@
   (:require [clojure.java.io :as io]
             [ehrt.tools.corpus.source-sink :as source-sink]
             [ehrt.tools.corpus.spool :as spool]
-            [ehrt.tools.result :as result]))
+            [ehrt.kernel.interface :as kernel]))
 
 (defn needs-spooling?
   "true when source's own bytes must ride the spool before intake can
@@ -38,7 +38,7 @@
   the file's own bytes (:file). out-dir/max-bytes -- passed straight
   through to spool/spool! when given.
 
-  Returns result/ok a canonical :dir Source over the spooled capture
+  Returns kernel/ok a canonical :dir Source over the spooled capture
   directory, or spool/spool!'s own rejection, propagated unchanged."
   [{:keys [source captured-at in-override out-dir max-bytes]}]
   (let [[in origin] (case (:kind source)
@@ -51,6 +51,6 @@
                                              :captured-at captured-at}
                                      out-dir (assoc :out-dir out-dir)
                                      max-bytes (assoc :max-bytes max-bytes)))]
-    (if-not (result/ok? spool-result)
+    (if-not (kernel/ok? spool-result)
       spool-result
       (source-sink/dir-source {:path (:out-dir (:payload spool-result))}))))

@@ -36,11 +36,10 @@
   a process that dies mid-write leaves items without a manifest,
   detectable, never the reverse."
   (:require [clojure.java.io :as io]
-            [ehrt.tools.digest :as digest]
             [ehrt.tools.corpus.operation-manifest :as operation-manifest]
             [ehrt.tools.corpus.source-sink :as ss]
             [ehrt.tools.corpus.framing :as framing]
-            [ehrt.tools.result :as result])
+            [ehrt.kernel.interface :as kernel])
   (:import [java.io File OutputStream]))
 
 (defn- derive-items
@@ -51,7 +50,7 @@
   doesn't (ruling 1's own present-iff-known discipline)."
   [files input-hashes]
   (mapv (fn [[relative-path content]]
-          (cond-> {:name relative-path :sha256 (digest/sha256-string content)}
+          (cond-> {:name relative-path :sha256 (kernel/sha256-string content)}
             (contains? input-hashes relative-path)
             (assoc :input-hash (get input-hashes relative-path))))
         files))
@@ -89,7 +88,7 @@
   [path sink operation-manifest-input content]
   (when operation-manifest-input
     (let [basename (.getName (io/file path))
-          item (cond-> {:name basename :sha256 (digest/sha256-string content)}
+          item (cond-> {:name basename :sha256 (kernel/sha256-string content)}
                  (:input-hash operation-manifest-input)
                  (assoc :input-hash (:input-hash operation-manifest-input)))
           payload (operation-manifest-payload sink (assoc operation-manifest-input :items [item]) {})
@@ -110,7 +109,7 @@
 
 (defn write-file!
   "Writes content (a string) to a :file sink's :path. :mode (see this
-  namespace's own docstring) defaults to :fail-if-exists: result/rejected
+  namespace's own docstring) defaults to :fail-if-exists: kernel/rejected
   :sink-target-exists if the target file is already there, never
   overwritten. :overwrite always writes, existing file or not.
   :append is rejected :append-unsound before anything is written unless
@@ -124,22 +123,22 @@
   present, operation-manifest.edn is written as a sibling of :path,
   after content is written, describing this one item.
 
-  Returns result/ok {:path}, or result/rejected :invalid-sink if sink
+  Returns kernel/ok {:path}, or kernel/rejected :invalid-sink if sink
   doesn't validate as a FileSink, :invalid-write-mode for an
   unrecognized :mode, or :append-unsound (see above)."
   [sink content & {:keys [mode operation-manifest] :or {mode :fail-if-exists}}]
   (cond
     (not (ss/valid-sink? sink))
-    (result/rejected :invalid-sink {:sink sink})
+    (kernel/rejected :invalid-sink {:sink sink})
 
     (not= :file (:kind sink))
-    (result/rejected :invalid-sink {:sink sink :hint "write-file! requires a :file sink"})
+    (kernel/rejected :invalid-sink {:sink sink :hint "write-file! requires a :file sink"})
 
     (not (contains? known-write-modes mode))
-    (result/rejected :invalid-write-mode {:mode mode :valid-options (sort known-write-modes)})
+    (kernel/rejected :invalid-write-mode {:mode mode :valid-options (sort known-write-modes)})
 
     (and (= :append mode) (not (contains? append-sound-framings (:framing sink))))
-    (result/rejected :append-unsound
+    (kernel/rejected :append-unsound
                       {:sink sink :sound-framings (sort append-sound-framings)
                        :hint "append only concatenates soundly for :er7-multi/:ndjson/:mllp -- this sink's own :framing isn't one of those"})
 
@@ -147,7 +146,7 @@
     (let [{:keys [path]} sink
           f (io/file path)]
       (if (and (= :fail-if-exists mode) (.exists f))
-        (result/rejected :sink-target-exists
+        (kernel/rejected :sink-target-exists
                           {:path path :hint "remove the file, or pass :mode :overwrite/:append"})
         (do
           (io/make-parents f)
@@ -155,7 +154,7 @@
             (spit f content :append true)
             (spit f content))
           (write-file-operation-manifest! path sink operation-manifest content)
-          (result/ok {:path path}))))))
+          (kernel/ok {:path path}))))))
 
 (defn- non-empty-existing-dir?
   "Mirrors corpus.generate's own non-empty-existing-dir? (D9's
@@ -170,7 +169,7 @@
   "Writes files (a {relative-path content-string} map) under a :dir
   sink's :path, creating any nested subdirectories relative-path
   implies. :mode (see this namespace's own docstring) defaults to
-  :fail-if-exists: result/rejected :sink-target-exists if the target
+  :fail-if-exists: kernel/rejected :sink-target-exists if the target
   directory already exists AND is non-empty -- an existing empty
   directory is fine, same convention as corpus.generate's own
   :out-dir-exists guard. :overwrite writes the named files regardless
@@ -183,29 +182,29 @@
   present, operation-manifest.edn is written under :path last, after
   every file this call names.
 
-  Returns result/ok {:path}, or result/rejected :invalid-sink if sink
+  Returns kernel/ok {:path}, or kernel/rejected :invalid-sink if sink
   doesn't validate as a DirSink, :invalid-write-mode for an
   unrecognized :mode, or :append-unsound."
   [sink files & {:keys [mode operation-manifest] :or {mode :fail-if-exists}}]
   (cond
     (not (ss/valid-sink? sink))
-    (result/rejected :invalid-sink {:sink sink})
+    (kernel/rejected :invalid-sink {:sink sink})
 
     (not= :dir (:kind sink))
-    (result/rejected :invalid-sink {:sink sink :hint "write-dir! requires a :dir sink"})
+    (kernel/rejected :invalid-sink {:sink sink :hint "write-dir! requires a :dir sink"})
 
     (not (contains? known-write-modes mode))
-    (result/rejected :invalid-write-mode {:mode mode :valid-options (sort known-write-modes)})
+    (kernel/rejected :invalid-write-mode {:mode mode :valid-options (sort known-write-modes)})
 
     (= :append mode)
-    (result/rejected :append-unsound
+    (kernel/rejected :append-unsound
                       {:sink sink
                        :hint "dir sink append means catalog/manifest merge -- an OPEN item (docs/source-sink-design.md), not built this session"})
 
     :else
     (let [{:keys [path]} sink]
       (if (and (= :fail-if-exists mode) (non-empty-existing-dir? path))
-        (result/rejected :sink-target-exists
+        (kernel/rejected :sink-target-exists
                           {:path path :hint "remove the directory, or pass :mode :overwrite"})
         (do
           (doseq [[relative-path content] files]
@@ -213,7 +212,7 @@
               (io/make-parents f)
               (spit f content)))
           (write-dir-operation-manifest! path sink operation-manifest files)
-          (result/ok {:path path}))))))
+          (kernel/ok {:path path}))))))
 
 (defn write-stdout!
   "Encodes items (ehrt.tools.corpus.framing/encode's own item
@@ -228,19 +227,19 @@
   No manifest: a :stdout sink names no directory to drop one in (Part
   III's own law statement) -- a designed exemption, not a gap.
 
-  Returns result/ok {:bytes-written n}, or result/rejected :invalid-sink
+  Returns kernel/ok {:bytes-written n}, or kernel/rejected :invalid-sink
   if sink doesn't validate as a StdoutSink, or
   ehrt.tools.corpus.framing/encode's own rejection (e.g.
   :invalid-item-count for :file-per-item with something other than
   exactly one item), propagated unchanged."
   [sink items & {:keys [out] :or {out System/out}}]
   (if (or (not (ss/valid-sink? sink)) (not= :stdout (:kind sink)))
-    (result/rejected :invalid-sink {:sink sink :hint "write-stdout! requires a :stdout sink"})
+    (kernel/rejected :invalid-sink {:sink sink :hint "write-stdout! requires a :stdout sink"})
     (let [chosen-framing (or (:framing sink) ss/default-framing)
           encode-result (framing/encode chosen-framing items)]
-      (if-not (result/ok? encode-result)
+      (if-not (kernel/ok? encode-result)
         encode-result
         (let [^bytes bs (:payload encode-result)]
           (.write ^OutputStream out bs)
           (.flush ^OutputStream out)
-          (result/ok {:bytes-written (alength bs)}))))))
+          (kernel/ok {:bytes-written (alength bs)}))))))

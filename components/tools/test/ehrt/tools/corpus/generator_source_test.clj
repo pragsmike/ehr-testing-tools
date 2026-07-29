@@ -11,7 +11,7 @@
   invalid params)."
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.java.io :as io]
-            [ehrt.tools.result :as result]
+            [ehrt.kernel.interface :as kernel]
             [ehrt.tools.corpus.generators :as generators]
             [ehrt.tools.corpus.generator-source :as generator-source])
   (:import [java.io File]))
@@ -44,14 +44,14 @@
                       :execute-fn (fn [_ dir]
                                     (.mkdirs (io/file dir))
                                     (spit (io/file dir "message.hl7") "MSH|...")
-                                    (result/ok {:out-dir dir}))})
+                                    (kernel/ok {:out-dir dir}))})
     (let [r (generator-source/resolve! :fake-gen-happy {})]
-      (is (result/ok? r))
+      (is (kernel/ok? r))
       (is (= {:kind :dir :path out-dir} (:payload r))))))
 
 (deftest resolve-unknown-kind-propagates-test
   (let [r (generator-source/resolve! :no-such-generator-kind {})]
-    (is (result/rejected? r))
+    (is (kernel/rejected? r))
     (is (= :unknown-generator-kind (:category r)))))
 
 (deftest resolve-invalid-params-propagates-test
@@ -59,9 +59,9 @@
                           :default-params {}
                           :params-schema [:map [:seed :int]]
                           :out-dir-fn (fn [_] (temp-dir-path))
-                          :execute-fn (fn [_ dir] (result/ok {:out-dir dir}))})
+                          :execute-fn (fn [_ dir] (kernel/ok {:out-dir dir}))})
   (let [r (generator-source/resolve! :fake-gen-strict-params {:seed "not-an-int"})]
-    (is (result/rejected? r))
+    (is (kernel/rejected? r))
     (is (= :invalid-generator-params (:category r)))))
 
 (deftest resolve-pre-existing-out-dir-is-rejected-before-executing-test
@@ -74,18 +74,18 @@
                        {:out-dir-fn (fn [_] out-dir)
                         :execute-fn (fn [_ dir]
                                       (reset! executed? true)
-                                      (result/ok {:out-dir dir}))})
+                                      (kernel/ok {:out-dir dir}))})
       (let [r (generator-source/resolve! :fake-gen-collision {})]
-        (is (result/error? r))
+        (is (kernel/error? r))
         (is (= :out-dir-exists (:category r)))
         (is (false? @executed?))))))
 
 (deftest resolve-engine-failure-propagates-unchanged-test
   (register-fake! :fake-gen-engine-failure
                    {:out-dir-fn (fn [_] (temp-dir-path))
-                    :execute-fn (fn [_ _] (result/error :some-engine-failure {:detail "boom"}))})
+                    :execute-fn (fn [_ _] (kernel/error :some-engine-failure {:detail "boom"}))})
   (let [r (generator-source/resolve! :fake-gen-engine-failure {})]
-    (is (result/error? r))
+    (is (kernel/error? r))
     (is (= :some-engine-failure (:category r)))
     (is (= "boom" (:detail (:payload r))))))
 
@@ -96,7 +96,7 @@
                        {:out-dir-fn (fn [_] out-dir)
                         :execute-fn (fn [_ dir]
                                       (.mkdirs (io/file dir))
-                                      (result/ok {:out-dir dir}))})
+                                      (kernel/ok {:out-dir dir}))})
       (let [r (generator-source/resolve! :fake-gen-empty-output {})]
-        (is (result/error? r))
+        (is (kernel/error? r))
         (is (= :generator-produced-no-output (:category r)))))))

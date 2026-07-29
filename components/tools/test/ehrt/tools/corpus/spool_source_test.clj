@@ -6,7 +6,7 @@
   test-integration-tier (this step's own real-pipe test)."
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.java.io :as io]
-            [ehrt.tools.result :as result]
+            [ehrt.kernel.interface :as kernel]
             [ehrt.tools.corpus.spool-source :as spool-source])
   (:import [java.io ByteArrayInputStream File]))
 
@@ -42,7 +42,7 @@
                                    :captured-at "2026-07-28T00:00:00Z"
                                    :in-override (stream "MSH|^~\\&|A\n\n")
                                    :out-dir out-dir})]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (is (= {:kind :dir :path out-dir} (:payload r)))
     (is (= "MSH|^~\\&|A" (slurp (io/file out-dir "item-0000.hl7"))))
     (is (.exists (io/file out-dir "capture-manifest.edn")))))
@@ -53,7 +53,7 @@
                                    :captured-at "2026-07-28T00:00:00Z"
                                    :in-override (stream "MSH|^~\\&|A\n\n")
                                    :out-dir out-dir})]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (is (= "stdin" (:origin (clojure.edn/read-string (slurp (io/file out-dir "capture-manifest.edn"))))))))
 
 ;; ---- resolve! -- a framed :file source ----
@@ -68,7 +68,7 @@
                                             :format :v2-er7 :framing :er7-multi}
                                    :captured-at "2026-07-28T00:00:00Z"
                                    :out-dir out-dir})]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (is (= {:kind :dir :path out-dir} (:payload r)))
     (is (= "MSH|^~\\&|A" (slurp (io/file out-dir "item-0000.hl7"))))
     (is (= "MSH|^~\\&|B" (slurp (io/file out-dir "item-0001.hl7"))))
@@ -83,5 +83,5 @@
                                    :captured-at "2026-07-28T00:00:00Z"
                                    :in-override (stream "no message here")
                                    :out-dir out-dir})]
-    (is (result/rejected? r))
+    (is (kernel/rejected? r))
     (is (= :malformed-er7-multi-frame (:category r)))))

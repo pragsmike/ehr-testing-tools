@@ -1,4 +1,9 @@
-{:deps {poly/tools    {:local/root "../../components/tools"}
+{:deps {;; poly/kernel, poly/judge (ADR-0008): tools' own src requires
+        ;; both directly now (result/digest/artifact/canonical/locator/
+        ;; invocation, judge's five namespaces).
+        poly/kernel   {:local/root "../../components/kernel"}
+        poly/judge    {:local/root "../../components/judge"}
+        poly/tools    {:local/root "../../components/tools"}
         poly/palgebra {:local/root "../../components/palgebra"}
         poly/ehr-cli  {:local/root "../../bases/ehr-cli"}
         ;; poly/sim: the `ehr sim` mount (ADR-0004, ADR-0012 fulfilled)
@@ -25,16 +30,22 @@
            ;; (ADR-0006 posture: measure and report; the 85%
            ;; --fail-threshold did not carry forward -- see
            ;; notes/ADRs.md ADR-0002 for why).
-           :coverage {:extra-paths ["../../components/tools/test"
+           :coverage {:extra-paths ["../../components/kernel/test"
+                                     "../../components/judge/test"
+                                     "../../components/tools/test"
                                      "../../components/palgebra/test"
                                      "../../bases/ehr-cli/test"]
                       :extra-deps {cloverage/cloverage {:mvn/version "1.2.4"}
                                    org.clojure/test.check {:mvn/version "1.1.3"}
                                    org.slf4j/slf4j-nop {:mvn/version "2.0.17"}}
                       :main-opts ["-m" "cloverage.coverage"
+                                  "-p" "../../components/kernel/src"
+                                  "-p" "../../components/judge/src"
                                   "-p" "../../components/tools/src"
                                   "-p" "../../components/palgebra/src"
                                   "-p" "../../bases/ehr-cli/src"
+                                  "-s" "../../components/kernel/test"
+                                  "-s" "../../components/judge/test"
                                   "-s" "../../components/tools/test"
                                   "-s" "../../components/palgebra/test"
                                   "-s" "../../bases/ehr-cli/test"]}}}

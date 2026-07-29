@@ -37,7 +37,7 @@
   string -- mirroring corpus.mutate/content-hash's rationale (hash what
   actually gets persisted to disk, not an incidental in-memory form)."
   (:require [clojure.string :as str]
-            [ehrt.tools.digest :as digest]))
+            [ehrt.kernel.interface :as kernel]))
 
 (def segment-terminator
   "\r")
@@ -93,9 +93,9 @@
   would be written to disk, per corpus.mutate/content-hash's own
   hash-what-gets-persisted rationale, applied here to the v2 substrate."
   [content]
-  (digest/sha256-string content))
+  (kernel/sha256-string content))
 
-;; ---- locator resolution: a parsed ehrt.tools.locator/v2-data-path
+;; ---- locator resolution: a parsed ehrt.kernel.locator/v2-data-path
 ;; map -> a position in this substrate's :segments. Field granularity
 ;; only (see module docstring); a locator naming a :component or
 ;; :subcomponent still resolves at the field it names, ignoring the
@@ -124,7 +124,7 @@
 
 (defn resolve-locator
   "Resolves a parsed v2 locator ({:segment ... :segment-repeat ...
-  :field ...}, ehrt.tools.locator/v2-data-path's own output)
+  :field ...}, ehrt.kernel.locator/v2-data-path's own output)
   against parsed (this namespace's `parse` output) to {:segment-index
   :field-index}, :field-index nil for a segment-only locator. Returns
   nil if the locator doesn't resolve -- the named segment doesn't occur

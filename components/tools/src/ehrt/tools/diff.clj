@@ -36,7 +36,7 @@
 (defn path->locator-path
   "Renders a diff-paths path (a vector of string keys and integer
   indices) in the FHIR locator grammar's own dotted/bracketed string
-  form (ehrt.tools.locator/fhir-data-path is this function's
+  form (ehrt.kernel.locator/fhir-data-path is this function's
   inverse): [\"entry\" 0 \"resource\" \"gender\"] ->
   \"entry[0].resource.gender\". An empty path (the whole value differs,
   not a specific field within it) renders as \"\"."

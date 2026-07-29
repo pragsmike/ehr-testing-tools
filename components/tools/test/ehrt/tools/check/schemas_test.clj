@@ -3,14 +3,14 @@
   (same convention as corpus.operators/corpus.canonicalizers) --
   requiring it below is enough."
   (:require [clojure.test :refer [deftest is testing]]
-            [ehrt.tools.result :as result]
+            [ehrt.kernel.interface :as kernel]
             [ehrt.tools.check.schemas :as schemas]))
 
 (deftest register-and-lookup-round-trips-test
   (let [r (schemas/register! {:id :test-schema :version "1"
                                :schema [:map ["x" :int]]
                                :docstring "test-only"})]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (is (= {:id :test-schema :version "1"} (:payload r)))
     (is (some? (schemas/lookup :test-schema "1")))))
 
@@ -19,7 +19,7 @@
 
 (deftest register-rejects-an-invalid-entry-test
   (let [r (schemas/register! {:id :bad :version "1"})]
-    (is (result/rejected? r))
+    (is (kernel/rejected? r))
     (is (= :invalid-entry (:category r)))))
 
 (deftest registry-snapshot-and-reset-round-trip-test

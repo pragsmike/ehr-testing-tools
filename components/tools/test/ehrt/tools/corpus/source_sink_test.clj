@@ -6,7 +6,7 @@
   constructors."
   (:require [clojure.test :refer [deftest is testing]]
             [ehrt.tools.corpus.source-sink :as ss]
-            [ehrt.tools.result :as result]))
+            [ehrt.kernel.interface :as kernel]))
 
 (deftest source-kinds-test
   (testing "the design's six named source kinds (D1) are all recognized as known"
@@ -44,44 +44,44 @@
 (deftest dir-source-test
   (testing "happy path: :path is required and round-trips into the map"
     (let [r (ss/dir-source {:path "./corpus"})]
-      (is (result/ok? r))
+      (is (kernel/ok? r))
       (is (= {:kind :dir :path "./corpus"} (:payload r)))))
   (testing ":format/:framing pass through when given"
     (let [r (ss/dir-source {:path "./corpus" :format :v2-er7 :framing :er7-multi})]
-      (is (result/ok? r))
+      (is (kernel/ok? r))
       (is (= {:kind :dir :path "./corpus" :format :v2-er7 :framing :er7-multi} (:payload r)))))
   (testing "missing :path is rejected, not a thrown exception (ADR-0004)"
     (let [r (ss/dir-source {})]
-      (is (result/rejected? r))
+      (is (kernel/rejected? r))
       (is (= :invalid-source (:category r))))))
 
 (deftest file-source-test
   (testing "happy path"
     (let [r (ss/file-source {:path "./corpus/one.json"})]
-      (is (result/ok? r))
+      (is (kernel/ok? r))
       (is (= {:kind :file :path "./corpus/one.json"} (:payload r)))))
   (testing "missing :path is rejected"
-    (is (result/rejected? (ss/file-source {})))))
+    (is (kernel/rejected? (ss/file-source {})))))
 
 (deftest dir-sink-test
   (testing "happy path: :path and :format both required"
     (let [r (ss/dir-sink {:path "./out" :format :fhir-json})]
-      (is (result/ok? r))
+      (is (kernel/ok? r))
       (is (= {:kind :dir :path "./out" :format :fhir-json} (:payload r)))))
   (testing "missing :format is rejected (D3's no-inference-on-write law)"
-    (is (result/rejected? (ss/dir-sink {:path "./out"}))))
+    (is (kernel/rejected? (ss/dir-sink {:path "./out"}))))
   (testing "missing :path is rejected"
-    (is (result/rejected? (ss/dir-sink {:format :fhir-json})))))
+    (is (kernel/rejected? (ss/dir-sink {:format :fhir-json})))))
 
 (deftest file-sink-test
   (testing "happy path"
     (let [r (ss/file-sink {:path "./out/one.json" :format :fhir-json})]
-      (is (result/ok? r))
+      (is (kernel/ok? r))
       (is (= {:kind :file :path "./out/one.json" :format :fhir-json} (:payload r)))))
   (testing "missing :format is rejected"
-    (is (result/rejected? (ss/file-sink {:path "./out/one.json"}))))
+    (is (kernel/rejected? (ss/file-sink {:path "./out/one.json"}))))
   (testing "missing :path is rejected"
-    (is (result/rejected? (ss/file-sink {:format :fhir-json})))))
+    (is (kernel/rejected? (ss/file-sink {:format :fhir-json})))))
 
 ;; ---- generator-source (SS-2 Step 4): validates+shapes only, never
 ;; executes -- the registry (ehrt.tools.corpus.generators) owns
@@ -90,13 +90,13 @@
 
 (deftest generator-source-happy-path-test
   (let [r (ss/generator-source :synthea {:seed 7})]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (is (= :synthea (:kind (:payload r))))
     (is (= 7 (:seed (:payload r))))))
 
 (deftest generator-source-unknown-kind-test
   (let [r (ss/generator-source :not-a-registered-kind {})]
-    (is (result/rejected? r))
+    (is (kernel/rejected? r))
     (is (= :unknown-generator-kind (:category r)))))
 
 ;; ---- stdin-source (SS-3 Step 6): no :path, but :format/:framing are
@@ -105,18 +105,18 @@
 (deftest stdin-source-test
   (testing "happy path: no :path required"
     (let [r (ss/stdin-source {:format :v2-er7 :framing :er7-multi})]
-      (is (result/ok? r))
+      (is (kernel/ok? r))
       (is (= {:kind :stdin :format :v2-er7 :framing :er7-multi} (:payload r)))))
   (testing ":format/:framing are both optional here too"
     (let [r (ss/stdin-source {})]
-      (is (result/ok? r))
+      (is (kernel/ok? r))
       (is (= {:kind :stdin} (:payload r)))))
   (testing "an unrecognized framing keyword is rejected, same as every other kind"
-    (is (result/rejected? (ss/stdin-source {:framing :not-a-real-framing})))))
+    (is (kernel/rejected? (ss/stdin-source {:framing :not-a-real-framing})))))
 
 (deftest generator-source-invalid-params-test
   (let [r (ss/generator-source :synthea {:seed "not-an-int"})]
-    (is (result/rejected? r))
+    (is (kernel/rejected? r))
     (is (= :invalid-generator-params (:category r)))))
 
 ;; ---- framing is an explicit axis (SS-3 Step 1, D2/Part II): a closed
@@ -133,7 +133,7 @@
     (is (not (ss/valid-source? {:kind :dir :framing :not-a-real-framing})))
     (is (not (ss/valid-sink? {:kind :dir :format :fhir-json :framing :not-a-real-framing})))
     (let [r (ss/dir-source {:path "./corpus" :framing :not-a-real-framing})]
-      (is (result/rejected? r))
+      (is (kernel/rejected? r))
       (is (= :invalid-source (:category r))))))
 
 ;; ---- stdout-sink (SS-4 Step 3): no :path, :format required (D3),
@@ -142,14 +142,14 @@
 (deftest stdout-sink-test
   (testing "happy path: no :path, :format required"
     (let [r (ss/stdout-sink {:format :v2-er7 :framing :mllp})]
-      (is (result/ok? r))
+      (is (kernel/ok? r))
       (is (= {:kind :stdout :format :v2-er7 :framing :mllp} (:payload r)))))
   (testing ":framing is optional"
     (let [r (ss/stdout-sink {:format :fhir-json})]
-      (is (result/ok? r))
+      (is (kernel/ok? r))
       (is (= {:kind :stdout :format :fhir-json} (:payload r)))))
   (testing "missing :format is rejected (D3's no-inference-on-write law)"
-    (is (result/rejected? (ss/stdout-sink {})))))
+    (is (kernel/rejected? (ss/stdout-sink {})))))
 
 (deftest default-framing-test
   (testing ":file-per-item is the design's stated default (D2/Part II) -- a named

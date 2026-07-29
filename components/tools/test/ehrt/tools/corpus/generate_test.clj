@@ -2,7 +2,7 @@
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.java.io :as io]
             [clojure.edn :as edn]
-            [ehrt.tools.result :as result]
+            [ehrt.kernel.interface :as kernel]
             [ehrt.tools.corpus.generate :as generate]
             [ehrt.tools.corpus.manifest :as manifest])
   (:import [java.io File]))
@@ -31,7 +31,7 @@
    :acquired "2026-07-24" :license-status :verified})
 
 (defn- stub-deps
-  "Fake read-lockfile/resolve-artifact/resolve-java-bin/run-invocation
+  "Fake read-lockfile/resolve-kernel/resolve-artifact-java-bin/run-invocation
   for fast, hermetic tests -- no real jar, no real JVM archive, no real
   subprocess. resolve-java-bin defaults to an always-ok stub so tests
   that don't care about JVM resolution (most of them -- it's exercised
@@ -41,17 +41,17 @@
   {:read-lockfile (fn [_path] lockfile-result)
    :resolve-artifact (fn [_artifacts _name _version] resolve-result)
    :resolve-java-bin (fn [_artifacts _opts]
-                       (result/ok {:path "/stub/jdk/bin/java"
+                       (kernel/ok {:path "/stub/jdk/bin/java"
                                    :artifact {:name "temurin-jdk" :version "17.0.19+10"
                                               :sha256 (apply str (repeat 64 "d"))}}))
    :run-invocation (fn [invocation-opts]
                      (when invocation-args-atom (reset! invocation-args-atom invocation-opts))
                      invocation-result)})
 
-(defn- ok-lockfile [] (result/ok {:artifacts [synthea-artifact]}))
-(defn- ok-resolve [] (result/ok {:path "/fake/synthea.jar" :artifact synthea-artifact}))
+(defn- ok-lockfile [] (kernel/ok {:artifacts [synthea-artifact]}))
+(defn- ok-resolve [] (kernel/ok {:path "/fake/synthea.jar" :artifact synthea-artifact}))
 (defn- ok-invocation []
-  (result/ok {:command "java" :args ["-jar" "/fake/synthea.jar"]
+  (kernel/ok {:command "java" :args ["-jar" "/fake/synthea.jar"]
               :exit-code 0 :duration-ms 42 :started-at "2026-07-24T00:00:00Z"
               :stdout-path "/fake/out.log" :stderr-path "/fake/err.log"
               :stdout-sha256 (apply str (repeat 64 "0"))
@@ -73,7 +73,7 @@
                                        :population 10
                                        :reference-date "20260101"
                                        :out-dir out-dir}))]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (let [manifest (:manifest (:payload r))]
       (is (= "1.1" (:schema-version manifest)))
       (is (= :generate (:stage manifest)))
@@ -135,7 +135,7 @@
                                        :out-dir out-dir
                                        :locale "fr-FR"
                                        :timezone "Asia/Tokyo"}))]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (is (= "fr-FR" (:locale (:environment (:manifest (:payload r))))))
     (is (= "Asia/Tokyo" (:timezone (:environment (:manifest (:payload r))))))
     (let [arg-list (:args @args-atom)]
@@ -161,7 +161,7 @@
                                        :seed 1 :clinician-seed 2 :population 1 :reference-date "20260101"
                                        :out-dir out-dir
                                        :jvm-args ["-Duser.language=fr" "-Duser.country=FR"]}))]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (let [invoked-args (:args @args-atom)
           jar-index (.indexOf invoked-args "-jar")
           lang-index (.indexOf invoked-args "-Duser.language=fr")
@@ -190,37 +190,37 @@
                    :out-dir out-dir
                    :java-bin "/fake/jdk17/bin/java"
                    :java-version-fn (fn [java-bin] (str "STUBBED-VERSION-FOR:" java-bin))}))]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (is (= "STUBBED-VERSION-FOR:/fake/jdk17/bin/java"
            (:jvm-version (:environment (:manifest (:payload r))))))))
 
 (deftest generate-propagates-lockfile-read-failure-test
-  (let [deps (stub-deps {:lockfile-result (result/error :not-found {:path "artifacts.lock.edn"})
+  (let [deps (stub-deps {:lockfile-result (kernel/error :not-found {:path "artifacts.lock.edn"})
                           :resolve-result (ok-resolve)
                           :invocation-result (ok-invocation)})
         r (generate/generate! (merge deps {:config-path "x" :seed 1 :population 1
                                             :out-dir (temp-dir)}))]
-    (is (result/error? r))
+    (is (kernel/error? r))
     (is (= :not-found (:category r)))))
 
 (deftest generate-propagates-resolve-failure-without-fetching-test
   ;; generate! never auto-fetches -- if the artifact isn't already
   ;; resolvable, that's the caller's job (`ehr artifact fetch` first).
   (let [deps (stub-deps {:lockfile-result (ok-lockfile)
-                          :resolve-result (result/rejected :not-cached {:name "synthea" :version "4.0.0"})
+                          :resolve-result (kernel/rejected :not-cached {:name "synthea" :version "4.0.0"})
                           :invocation-result (ok-invocation)})
         r (generate/generate! (merge deps {:config-path "x" :seed 1 :population 1
                                             :out-dir (temp-dir)}))]
-    (is (result/rejected? r))
+    (is (kernel/rejected? r))
     (is (= :not-cached (:category r)))))
 
 (deftest generate-propagates-invocation-failure-test
   (let [deps (stub-deps {:lockfile-result (ok-lockfile)
                           :resolve-result (ok-resolve)
-                          :invocation-result (result/error :spawn-failed {:message "no java"})})
+                          :invocation-result (kernel/error :spawn-failed {:message "no java"})})
         r (generate/generate! (merge deps {:config-path "x" :seed 1 :population 1
                                             :out-dir (temp-dir)}))]
-    (is (result/error? r))
+    (is (kernel/error? r))
     (is (= :spawn-failed (:category r)))))
 
 ;; ---- java-bin resolved via the artifact registry, not PATH (P4:
@@ -242,10 +242,10 @@
                    :out-dir out-dir
                    :resolve-java-bin (fn [artifacts _opts]
                                        (swap! resolve-java-bin-calls conj artifacts)
-                                       (result/ok {:path "/resolved/jdk/bin/java"
+                                       (kernel/ok {:path "/resolved/jdk/bin/java"
                                                    :artifact {:name "temurin-jdk" :version "17.0.19+10"
                                                               :sha256 (apply str (repeat 64 "d"))}}))}))]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (is (= 1 (count @resolve-java-bin-calls)) "resolve-java-bin must be consulted when :java-bin isn't given")
     (is (= "/resolved/jdk/bin/java" (:command @args-atom))
         "the invocation must run the registry-resolved java, not PATH's \"java\"")))
@@ -265,8 +265,8 @@
                    :seed 1 :clinician-seed 2 :population 1 :reference-date "20260101"
                    :out-dir out-dir
                    :java-bin "/explicit/java"
-                   :resolve-java-bin (fn [_artifacts _opts] (swap! resolve-java-bin-calls inc) (result/ok {}))}))]
-    (is (result/ok? r))
+                   :resolve-java-bin (fn [_artifacts _opts] (swap! resolve-java-bin-calls inc) (kernel/ok {}))}))]
+    (is (kernel/ok? r))
     (is (zero? @resolve-java-bin-calls) "an explicit :java-bin must bypass registry resolution entirely")
     (is (= "/explicit/java" (:command @args-atom)))
     (is (not (contains? (:manifest (:payload r)) :runtime))
@@ -281,7 +281,7 @@
         r (generate/generate! (merge deps {:config-path (.getAbsolutePath config-file)
                                             :seed 1 :clinician-seed 2 :population 1
                                             :reference-date "20260101" :out-dir out-dir}))]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (is (manifest/valid-v1-1? (:manifest (:payload r))))))
 
 (deftest generate-propagates-java-bin-resolution-failure-test
@@ -293,8 +293,8 @@
                   {:config-path "x" :seed 1 :population 1 :reference-date "20260101"
                    :out-dir (temp-dir)
                    :resolve-java-bin (fn [_artifacts _opts]
-                                       (result/rejected :not-cached {:name "temurin-jdk" :version "17.0.19+10"}))}))]
-    (is (result/rejected? r))
+                                       (kernel/rejected :not-cached {:name "temurin-jdk" :version "17.0.19+10"}))}))]
+    (is (kernel/rejected? r))
     (is (= :not-cached (:category r)))))
 
 (deftest resolve-java-bin-composes-resolve-and-extract-and-find-executable-test
@@ -302,24 +302,24 @@
         find-calls (atom [])
         resolve-and-extract (fn [artifacts name version _opts]
                               (swap! extract-calls conj [name version])
-                              (result/ok {:extracted-dir "/fake/extracted"
+                              (kernel/ok {:extracted-dir "/fake/extracted"
                                           :artifact {:name name :version version
                                                      :sha256 (apply str (repeat 64 "e"))}}))
         find-executable (fn [dir relative-path]
                           (swap! find-calls conj [dir relative-path])
-                          (result/ok {:path (str dir "/" relative-path)}))
+                          (kernel/ok {:path (str dir "/" relative-path)}))
         r (generate/resolve-java-bin [] {:resolve-and-extract resolve-and-extract
                                           :find-executable find-executable})]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (is (= [[generate/jdk-name generate/jdk-version]] @extract-calls))
     (is (= [["/fake/extracted" "bin/java"]] @find-calls))
     (is (= "/fake/extracted/bin/java" (:path (:payload r))))
     (is (= generate/jdk-name (:name (:artifact (:payload r)))))))
 
 (deftest resolve-java-bin-propagates-resolve-and-extract-failure-test
-  (let [r (generate/resolve-java-bin [] {:resolve-and-extract (fn [_ _ _ _] (result/rejected :not-cached {}))
+  (let [r (generate/resolve-java-bin [] {:resolve-and-extract (fn [_ _ _ _] (kernel/rejected :not-cached {}))
                                           :find-executable (fn [_ _] (throw (ex-info "must not be called" {})))})]
-    (is (result/rejected? r))
+    (is (kernel/rejected? r))
     (is (= :not-cached (:category r)))))
 
 ;; ---- D9: zero-flag defaults (docs/source-sink-design.md Part IX.2,
@@ -338,7 +338,7 @@
                           :invocation-result (ok-invocation)
                           :invocation-args-atom args-atom})
         r (generate/generate! deps)]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (let [manifest (:manifest (:payload r))
           arg-str (clojure.string/join " " (:args @args-atom))]
       (is (= 1 (:master (:seeds manifest))) "default --seed is the pinned constant 1")
@@ -365,7 +365,7 @@
                           :invocation-result (ok-invocation)
                           :invocation-args-atom args-atom})
         r (generate/generate! (merge deps {:seed 7}))]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (is (= 7 (:master (:seeds (:manifest (:payload r))))))
     (is (= 7 (:clinician (:seeds (:manifest (:payload r)))))
         "an explicit --seed with no --clinician-seed still derives clinician-seed from it")
@@ -390,7 +390,7 @@
                   {:run-invocation (fn [opts] (swap! run-invocation-calls inc) ((:run-invocation deps) opts))
                    :seed 1 :clinician-seed 1 :population 5 :reference-date "20260101"
                    :out-dir out-dir}))]
-    (is (result/error? r))
+    (is (kernel/error? r))
     (is (= :out-dir-exists (:category r)))
     (is (zero? @run-invocation-calls) "must fail before invoking the subprocess, not after")))
 
@@ -404,5 +404,5 @@
         r (generate/generate! (merge deps {:config-path (.getAbsolutePath config-file)
                                             :seed 1 :population 1 :reference-date "20260101"
                                             :out-dir out-dir}))]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (is (.isDirectory (io/file out-dir)))))

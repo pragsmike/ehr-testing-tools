@@ -10,8 +10,7 @@
   record whose :parent points at whatever the correction is relative
   to -- never mutating a record already produced."
   (:require [malli.core :as m]
-            [ehrt.tools.digest :as digest]
-            [ehrt.tools.result :as result]))
+            [ehrt.kernel.interface :as kernel]))
 
 (def sha256-pattern
   [:re #"^[0-9a-f]{64}$"])
@@ -36,13 +35,13 @@
   IS this value; callers pass a record already without :id (e.g. via
   `(dissoc record :id)`)."
   [record-without-id]
-  (digest/sha256-string (pr-str record-without-id)))
+  (kernel/sha256-string (pr-str record-without-id)))
 
 (defn build
   "Builds a lineage record. :parent and :produced are content hashes
   (sha256 hex strings) of the base and mutant datum respectively --
   computing those from the actual datum bytes is the caller's job
-  (e.g. `digest/sha256-string`); this function only computes :id, from
+  (e.g. `kernel/sha256-string`); this function only computes :id, from
   the rest of the record's own content."
   [{:keys [parent stage transformation produced]}]
   (let [without-id {:parent parent :stage stage :transformation transformation :produced produced}]

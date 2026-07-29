@@ -5,6 +5,11 @@
         ;; poly/tools' own src now requires ehrt.sim.interface
         ;; transitively (ADR-0005, the ehr-sim-mount) -- any project
         ;; that includes poly/tools needs sim on the classpath now.
+        ;; poly/kernel, poly/judge (ADR-0008): poly/tools' own src
+        ;; requires both directly now -- any project including
+        ;; poly/tools needs them on the classpath too.
+        poly/kernel   {:local/root "../../components/kernel"}
+        poly/judge    {:local/root "../../components/judge"}
         poly/tools    {:local/root "../../components/tools"}
         poly/palgebra {:local/root "../../components/palgebra"}
         poly/sim      {:local/root "../../components/sim"}

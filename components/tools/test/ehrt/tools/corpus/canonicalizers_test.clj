@@ -3,7 +3,7 @@
             [clojure.test.check :as tc]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
-            [ehrt.tools.canonical :as canonical]
+            [ehrt.kernel.interface :as kernel]
             [ehrt.tools.corpus.canonicalizers :as canonicalizers]))
 
 ;; Loading the canonicalizers namespace registers its entries as a
@@ -11,17 +11,17 @@
 ;; "registry + laws" entry describes) -- require it above is enough.
 
 (deftest strip-run-timestamp-suffix-registered-test
-  (is (some? (canonical/lookup :strip-run-timestamp-suffix "1"))))
+  (is (some? (kernel/lookup :strip-run-timestamp-suffix "1"))))
 
 (deftest strip-run-timestamp-suffix-strips-hospital-and-practitioner-test
-  (let [entry (canonical/lookup :strip-run-timestamp-suffix "1")
+  (let [entry (kernel/lookup :strip-run-timestamp-suffix "1")
         f (:fn entry)]
     (is (= "hospitalInformation.json" (f "hospitalInformation1784838114079.json")))
     (is (= "practitionerInformation.json" (f "practitionerInformation1784838156341.json")))
     (is (= "fhir/Abraham_100.json" (f "fhir/Abraham_100.json")) "leaves unrelated names untouched")))
 
 (deftest strip-run-timestamp-suffix-idempotent-property-test
-  (let [entry (canonical/lookup :strip-run-timestamp-suffix "1")
+  (let [entry (kernel/lookup :strip-run-timestamp-suffix "1")
         f (:fn entry)
         matching-gen (gen/let [prefix (gen/elements ["hospitalInformation" "practitionerInformation"])
                                 n (gen/large-integer* {:min 0 :max Long/MAX_VALUE})]
@@ -31,10 +31,10 @@
     (is (:pass? check-result))))
 
 (deftest strip-synthea-run-metadata-registered-test
-  (is (some? (canonical/lookup :strip-synthea-run-metadata "1"))))
+  (is (some? (kernel/lookup :strip-synthea-run-metadata "1"))))
 
 (deftest strip-synthea-run-metadata-removes-volatile-keys-test
-  (let [entry (canonical/lookup :strip-synthea-run-metadata "1")
+  (let [entry (kernel/lookup :strip-synthea-run-metadata "1")
         f (:fn entry)
         input {"runID" "abc-123" "seed" 100 "clinicianSeed" 555
                "runStartTime" "2026-07-24T00:00:00Z" "runTimeInSeconds" 42
@@ -42,7 +42,7 @@
     (is (= {"seed" 100 "clinicianSeed" 555 "patientCount" 100} (f input)))))
 
 (deftest strip-synthea-run-metadata-idempotent-property-test
-  (let [entry (canonical/lookup :strip-synthea-run-metadata "1")
+  (let [entry (kernel/lookup :strip-synthea-run-metadata "1")
         f (:fn entry)
         key-gen (gen/elements ["runID" "runStartTime" "runTimeInSeconds" "seed" "clinicianSeed" "other"])
         map-gen (gen/map key-gen gen/simple-type-printable)

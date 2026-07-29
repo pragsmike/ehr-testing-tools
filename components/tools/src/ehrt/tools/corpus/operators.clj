@@ -44,7 +44,7 @@
   generic top-level registry namespace would be premature abstraction."
   (:require [malli.core :as m]
             [ehrt.tools.corpus.er7 :as er7]
-            [ehrt.tools.result :as result]))
+            [ehrt.kernel.interface :as kernel]))
 
 (def Contract
   [:map
@@ -82,12 +82,12 @@
 
 (defn register!
   "Registers an operator entry, keyed by [id version]. Returns
-  result/ok {:id :version} or result/rejected :invalid-operator."
+  kernel/ok {:id :version} or kernel/rejected :invalid-operator."
   [entry]
   (if (m/validate Operator entry)
     (do (swap! registry assoc [(:id entry) (:version entry)] entry)
-        (result/ok (select-keys entry [:id :version])))
-    (result/rejected :invalid-operator {:entry entry})))
+        (kernel/ok (select-keys entry [:id :version])))
+    (kernel/rejected :invalid-operator {:entry entry})))
 
 (defn lookup
   [id version]
@@ -187,7 +187,7 @@
 
 ;; ---- v2 seed catalog (P7): every :fn here is (parsed loc) -> parsed,
 ;; parsed being ehrt.tools.corpus.er7/parse's output and loc
-;; being ehrt.tools.locator/v2-data-path's structured map --
+;; being ehrt.kernel.locator/v2-data-path's structured map --
 ;; corpus.mutate validates loc resolves (er7/resolve-locator) before
 ;; calling in, same trust boundary as the FHIR operators above. Every
 ;; entry below convicts under judge.v2's base-structural tier -- see

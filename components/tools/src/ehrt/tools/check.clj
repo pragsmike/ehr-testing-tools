@@ -62,13 +62,10 @@
             [clojure.set :as set]
             [clojure.string :as str]
             [malli.core :as m]
-            [ehrt.tools.canonical :as canonical]
             [ehrt.tools.check.schemas :as schemas]
             [ehrt.tools.diff :as diff]
-            [ehrt.tools.digest :as digest]
-            [ehrt.tools.judge.report :as report]
-            [ehrt.tools.locator :as locator]
-            [ehrt.tools.result :as result])
+            [ehrt.judge.interface :as judge]
+            [ehrt.kernel.interface :as kernel])
   (:import [java.io File]))
 
 (def engine-name "check")
@@ -80,15 +77,15 @@
   [:map [:kind [:= :matches-expected]]])
 
 (def PresentAbsent
-  [:map [:kind [:enum :present :absent]] [:locator locator/Locator]])
+  [:map [:kind [:enum :present :absent]] [:locator kernel/Locator]])
 
 (def ValueAssertion
-  [:map [:kind [:= :value]] [:locator locator/Locator] [:expected :any]])
+  [:map [:kind [:= :value]] [:locator kernel/Locator] [:expected :any]])
 
 (def CountOp [:enum := :<= :>=])
 
 (def CountAssertion
-  [:map [:kind [:= :count]] [:locator locator/Locator] [:op CountOp] [:value :int]])
+  [:map [:kind [:= :count]] [:locator kernel/Locator] [:op CountOp] [:value :int]])
 
 (def SchemaRef
   [:map [:id :keyword] [:version :string]])
@@ -147,7 +144,7 @@
 
 (defn- index-by-content-hash
   [dir]
-  (into {} (map (fn [f] [(digest/sha256-string (slurp f)) f])) (files-in dir)))
+  (into {} (map (fn [f] [(kernel/sha256-string (slurp f)) f])) (files-in dir)))
 
 (defn- pair-files
   "Pairs candidate-dir's files against expected-dir's files, by
@@ -176,15 +173,15 @@
   type. A non-empty list parses content as JSON (the corpus substrate
   corpus.mutate's own canonicalizers already assume, EXP-B2), then
   threads the parsed value through the ordered canonicalizer chain
-  (ehrt.tools.canonical/apply-canonicalizers)."
+  (ehrt.tools.kernel/apply-canonicalizers)."
   [content steps]
   (if (empty? steps)
-    (result/ok {:data content :applied []})
-    (let [parsed (try (result/ok (json/read-str content))
-                       (catch Exception _ (result/error :unparseable-content {})))]
-      (if-not (result/ok? parsed)
+    (kernel/ok {:data content :applied []})
+    (let [parsed (try (kernel/ok (json/read-str content))
+                       (catch Exception _ (kernel/error :unparseable-content {})))]
+      (if-not (kernel/ok? parsed)
         parsed
-        (canonical/apply-canonicalizers (:payload parsed) steps)))))
+        (kernel/apply-canonicalizers (:payload parsed) steps)))))
 
 (defn- compare-pair
   "Compares one candidate/expected file pair after canonicalization.
@@ -195,11 +192,11 @@
   (let [cand-canon (canon-value (slurp cand-file) steps)
         exp-canon (canon-value (slurp exp-file) steps)]
     (cond
-      (not (result/ok? cand-canon))
+      (not (kernel/ok? cand-canon))
       [{:severity :error :code "unparseable-content" :locator {:format :fhir :path ""}
         :message (str rel ": candidate content did not parse for canonicalization") :engine engine}]
 
-      (not (result/ok? exp-canon))
+      (not (kernel/ok? exp-canon))
       [{:severity :error :code "unparseable-content" :locator {:format :fhir :path ""}
         :message (str rel ": expected content did not parse for canonicalization") :engine engine}]
 
@@ -243,14 +240,14 @@
 
 (defn- resolve-locator-value
   "Resolves locator-envelope against parsed-datum via the FHIR locator
-  grammar (ehrt.tools.locator/fhir-data-path) -- the same
+  grammar (ehrt.tools.kernel/fhir-data-path) -- the same
   data-path substrate corpus.mutate and judge.fhir already operate on.
   Returns [true value] if the path resolves (including to a
   legitimate nil), or [false nil] if the locator doesn't parse or
   doesn't resolve anywhere in parsed-datum."
   [parsed-datum locator-envelope]
-  (let [path-result (locator/fhir-data-path (:path locator-envelope))]
-    (if-not (result/ok? path-result)
+  (let [path-result (kernel/fhir-data-path (:path locator-envelope))]
+    (if-not (kernel/ok? path-result)
       [false nil]
       (let [path (:payload path-result)
             sentinel ::not-found
@@ -325,9 +322,9 @@
   [candidate-dir assertions engine]
   (mapv (fn [file]
           (let [rel (relative-path candidate-dir file)
-                parsed (try (result/ok (json/read-str (slurp file)))
-                            (catch Exception _ (result/error :unparseable-datum {})))]
-            (if-not (result/ok? parsed)
+                parsed (try (kernel/ok (json/read-str (slurp file)))
+                            (catch Exception _ (kernel/error :unparseable-datum {})))]
+            (if-not (kernel/ok? parsed)
               {:path rel :verdict :rejected
                :findings [{:severity :error :code "unparseable-datum" :locator {:format :fhir :path ""}
                            :message (str rel " could not be parsed as JSON") :engine engine}]}
@@ -342,8 +339,8 @@
   [{:kind :matches-expected}] whenever :expected-dir is given).
   :pair-by (:path default, or :hash) and :canonicalizers (an ordered
   vector of [id version] pairs, default []) govern :matches-expected
-  only. Returns result/ok {report} when every file passes, or
-  result/rejected :check-rejected {report} the moment any file was
+  only. Returns kernel/ok {report} when every file passes, or
+  kernel/rejected :check-rejected {report} the moment any file was
   rejected -- report is a ehrt.tools.judge.report Report, built
   from the same {:path :verdict :findings} shape Gate's own gate-dir
   functions produce. Never writes to :candidate-dir or :expected-dir
@@ -352,7 +349,7 @@
     :or {pair-by :path canonicalizers []}}]
   (let [assertions (or assertions (when expected-dir default-assertions) [])]
     (if-not (valid-assertions? assertions)
-      (result/rejected :invalid-assertions {:assertions assertions})
+      (kernel/rejected :invalid-assertions {:assertions assertions})
       (let [engine {:name engine-name :version assertion-vocabulary-version}
             grouped (group-by #(= :matches-expected (:kind %)) assertions)
             matches-expected? (seq (get grouped true))
@@ -364,12 +361,12 @@
             per-file-results (when (seq per-file)
                                 (run-per-file-assertions candidate-dir per-file engine))
             results (vec (concat me-results per-file-results))
-            rpt (report/build-report results {:check {:name engine-name :version assertion-vocabulary-version}
+            rpt (judge/build-report results {:check {:name engine-name :version assertion-vocabulary-version}
                                                 :candidate-dir (str candidate-dir)
                                                 :expected-dir (some-> expected-dir str)
                                                 :assertions assertions
                                                 :pair-by pair-by
                                                 :canonicalizers canonicalizers})]
         (if (pos? (:rejected (:totals rpt)))
-          (result/rejected :check-rejected rpt)
-          (result/ok rpt))))))
+          (kernel/rejected :check-rejected rpt)
+          (kernel/ok rpt))))))

@@ -30,9 +30,8 @@
   wall-clock default belongs, matching `:received`'s own discipline."
   (:require [clojure.data.json :as json]
             [clojure.java.io :as io]
-            [ehrt.tools.digest :as digest]
             [ehrt.tools.corpus.framing :as framing]
-            [ehrt.tools.result :as result])
+            [ehrt.kernel.interface :as kernel])
   (:import [java.io ByteArrayOutputStream]))
 
 (def default-max-bytes
@@ -111,8 +110,8 @@
   InputStream, a File, a byte array, ...) -- read up to :max-bytes
   (default default-max-bytes) before anything is decoded or written.
 
-  Returns result/ok {:out-dir :item-count :manifest}, or
-  result/rejected:
+  Returns kernel/ok {:out-dir :item-count :manifest}, or
+  kernel/rejected:
   - :spool-target-exists -- :out-dir already exists and is non-empty
     (D3's fail-if-exists convention), checked before :in is even read.
   - :spool-cap-exceeded {:max-bytes} -- :in has more than :max-bytes
@@ -124,16 +123,16 @@
     :or {max-bytes default-max-bytes}}]
   (let [out-dir (or out-dir (default-spool-out-dir captured-at))]
     (if (non-empty-existing-dir? out-dir)
-      (result/rejected :spool-target-exists
+      (kernel/rejected :spool-target-exists
                         {:out-dir out-dir
                          :hint "remove the directory, or pass a different :out-dir"})
       (let [{:keys [bytes exceeded?]} (read-capped in max-bytes)]
         (if exceeded?
-          (result/rejected :spool-cap-exceeded
+          (kernel/rejected :spool-cap-exceeded
                             {:max-bytes max-bytes :out-dir out-dir
                              :hint "pass a larger max-bytes override, or a smaller/paginated input"})
           (let [decode-result (framing/decode framing bytes)]
-            (if-not (result/ok? decode-result)
+            (if-not (kernel/ok? decode-result)
               decode-result
               (let [items (:payload decode-result)
                     item-files (map-indexed (fn [i item] {:idx i :bytes (item-bytes framing item)}) items)]
@@ -142,9 +141,9 @@
                   (with-open [out (io/output-stream (io/file out-dir (item-filename idx format)))]
                     (.write out ^bytes bytes)))
                 (let [item-entries (mapv (fn [{:keys [idx bytes]}]
-                                            {:file (item-filename idx format) :sha256 (digest/sha256-bytes bytes)})
+                                            {:file (item-filename idx format) :sha256 (kernel/sha256-bytes bytes)})
                                           item-files)
                       manifest {:captured-at captured-at :origin origin :framing framing :format format
                                 :item-count (count items) :items item-entries}]
                   (spit (io/file out-dir "capture-manifest.edn") (pr-str manifest))
-                  (result/ok {:out-dir out-dir :item-count (count items) :manifest manifest}))))))))))
+                  (kernel/ok {:out-dir out-dir :item-count (count items) :manifest manifest}))))))))))

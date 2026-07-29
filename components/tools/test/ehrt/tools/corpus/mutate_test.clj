@@ -8,7 +8,7 @@
             [clojure.test.check.properties :as prop]
             [clojure.data.json :as json]
             [clojure.java.io :as io]
-            [ehrt.tools.result :as result]
+            [ehrt.kernel.interface :as kernel]
             [ehrt.tools.lineage :as lineage]
             [ehrt.tools.diff :as diff]
             [ehrt.tools.corpus.er7 :as er7]
@@ -26,7 +26,7 @@
 (deftest mutate-happy-path-returns-mutant-and-lineage-test
   (let [r (mutate/mutate sample-bundle (op :remove-required-element)
                           {:format :fhir :path "entry[0].resource.gender"})]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (let [{:keys [mutant lineage]} (:payload r)]
       (is (not (contains? (get-in mutant ["entry" 0 "resource"]) "gender")))
       (is (lineage/valid? lineage))
@@ -46,13 +46,13 @@
 (deftest mutate-rejects-a-locator-pointing-nowhere-test
   (let [r (mutate/mutate sample-bundle (op :remove-required-element)
                           {:format :fhir :path "entry[0].resource.nonExistentField"})]
-    (is (result/rejected? r))
+    (is (kernel/rejected? r))
     (is (= :locator-not-found (:category r)))))
 
 (deftest mutate-propagates-a-malformed-locator-path-test
   (let [r (mutate/mutate sample-bundle (op :remove-required-element)
                           {:format :fhir :path "entry[bad]"})]
-    (is (result/rejected? r))
+    (is (kernel/rejected? r))
     (is (= :invalid-fhir-path (:category r)))))
 
 (deftest mutate-lineage-parent-and-produced-are-content-hashes-of-canonical-json-test
@@ -111,7 +111,7 @@
               (let [path-str (str "entry[" idx "].resource." field)
                     locator {:format :fhir :path path-str}
                     r (mutate/mutate bundle (op operator-id) locator)]
-                (and (result/ok? r)
+                (and (kernel/ok? r)
                      (= #{["entry" idx "resource" field]}
                         (diff/diff-paths bundle (:mutant (:payload r))))))))]
       (is (:pass? check-result) (str operator-id " violated the intended-diff-only law: " (:shrunk check-result))))))
@@ -143,7 +143,7 @@
 (deftest mutate-v2-happy-path-returns-mutant-string-and-lineage-test
   (let [base (admit-content)
         r (mutate/mutate base (v2-op :blank-required-field) {:format :v2 :path "MSH-9"})]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (let [{:keys [mutant lineage]} (:payload r)]
       (is (string? mutant))
       (is (= "" (nth (get-in (er7/parse mutant) [:segments 0]) 8))
@@ -169,10 +169,10 @@
 
 (deftest mutate-v2-rejects-a-locator-pointing-nowhere-test
   (let [r (mutate/mutate (admit-content) (v2-op :blank-required-field) {:format :v2 :path "ZZZ-3"})]
-    (is (result/rejected? r))
+    (is (kernel/rejected? r))
     (is (= :locator-not-found (:category r)))))
 
 (deftest mutate-v2-propagates-a-malformed-locator-path-test
   (let [r (mutate/mutate (admit-content) (v2-op :blank-required-field) {:format :v2 :path "PID-0"})]
-    (is (result/rejected? r))
+    (is (kernel/rejected? r))
     (is (= :invalid-v2-path (:category r)))))

@@ -8,21 +8,21 @@
   ehrt.tools.corpus.generate/generate!'s own :run-invocation already
   uses, not a separate injection argument."
   (:require [clojure.test :refer [deftest is]]
-            [ehrt.tools.result :as result]
+            [ehrt.kernel.interface :as kernel]
             [ehrt.tools.sim :as sim]))
 
 (deftest run-delegates-to-run-command-fn-test
   (let [captured (atom nil)
-        fake (fn [opts] (reset! captured opts) (result/ok {:manifest {:stage :simulated}}))
+        fake (fn [opts] (reset! captured opts) (kernel/ok {:manifest {:stage :simulated}}))
         r (sim/run! {:seed 42 :patients 3 :run-command-fn fake})]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (is (= {:stage :simulated} (:manifest (:payload r))))
     (is (= {:seed 42 :patients 3} @captured)
         "run-command-fn itself is stripped out before delegating, same as :out-dir")))
 
 (deftest run-strips-out-dir-and-discovery-keys-before-delegating-test
   (let [captured (atom nil)
-        fake (fn [opts] (reset! captured opts) (result/ok {}))]
+        fake (fn [opts] (reset! captured opts) (kernel/ok {}))]
     (sim/run! {:seed 42 :out-dir "target/sim-harness" :sim-dir "/whatever"
                :env-sim-dir-fn (fn [] nil) :default-dir "../ehr-testing-sim"
                :run-command-fn fake})
@@ -30,8 +30,8 @@
         "the old subprocess-only opts never reach run-command -- it doesn't know them")))
 
 (deftest run-passes-through-rejected-and-error-unchanged-test
-  (let [rejected-fake (fn [_] (result/rejected :incompatible-assignment {:conflicts []}))
-        error-fake (fn [_] (result/error :missing-required-opt {:opt :seed}))]
+  (let [rejected-fake (fn [_] (kernel/rejected :incompatible-assignment {:conflicts []}))
+        error-fake (fn [_] (kernel/error :missing-required-opt {:opt :seed}))]
     (is (= :incompatible-assignment (:category (sim/run! {:run-command-fn rejected-fake}))))
     (is (= :missing-required-opt (:category (sim/run! {:run-command-fn error-fake}))))))
 
@@ -44,5 +44,5 @@
   ;; invocation) rather than mocking the one seam meant to prove the
   ;; real wiring works.
   (let [r (sim/run! {:seed 100 :patients 1})]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (is (map? (:manifest (:payload r))))))

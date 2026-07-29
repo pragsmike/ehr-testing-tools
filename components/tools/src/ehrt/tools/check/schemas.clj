@@ -15,7 +15,7 @@
   register their own project-specific schemas the same way
   corpus.canonicalizers registers concrete canonicalizer entries."
   (:require [malli.core :as m]
-            [ehrt.tools.result :as result]))
+            [ehrt.kernel.interface :as kernel]))
 
 (def Entry
   [:map
@@ -27,13 +27,13 @@
 (defonce ^:private registry (atom {}))
 
 (defn register!
-  "Registers a schema entry, keyed by [id version]. Returns result/ok
-  {:id :version} or result/rejected :invalid-entry."
+  "Registers a schema entry, keyed by [id version]. Returns kernel/ok
+  {:id :version} or kernel/rejected :invalid-entry."
   [entry]
   (if (m/validate Entry entry)
     (do (swap! registry assoc [(:id entry) (:version entry)] entry)
-        (result/ok (select-keys entry [:id :version])))
-    (result/rejected :invalid-entry {:entry entry})))
+        (kernel/ok (select-keys entry [:id :version])))
+    (kernel/rejected :invalid-entry {:entry entry})))
 
 (defn lookup
   [id version]

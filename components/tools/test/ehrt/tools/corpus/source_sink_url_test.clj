@@ -11,7 +11,7 @@
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
             [clojure.string :as str]
-            [ehrt.tools.result :as result]
+            [ehrt.kernel.interface :as kernel]
             [ehrt.tools.corpus.generate :as generate]
             [ehrt.tools.corpus.source-sink-url :as url]))
 
@@ -51,9 +51,9 @@
             (tc/quick-check 100
               (prop/for-all [m (source-map-gen kind)]
                 (let [printed (url/print-source-designator m)]
-                  (and (result/ok? printed)
+                  (and (kernel/ok? printed)
                        (let [parsed (url/parse-source-designator (:payload printed))]
-                         (and (result/ok? parsed)
+                         (and (kernel/ok? parsed)
                               (= m (:payload parsed))))))))]
         (is (:pass? check-result) (str kind " source round-trip failed: " (:shrunk check-result)))))))
 
@@ -64,9 +64,9 @@
             (tc/quick-check 100
               (prop/for-all [m (sink-map-gen kind)]
                 (let [printed (url/print-sink-designator m)]
-                  (and (result/ok? printed)
+                  (and (kernel/ok? printed)
                        (let [parsed (url/parse-sink-designator (:payload printed))]
-                         (and (result/ok? parsed)
+                         (and (kernel/ok? parsed)
                               (= m (:payload parsed))))))))]
         (is (:pass? check-result) (str kind " sink round-trip failed: " (:shrunk check-result)))))))
 
@@ -85,9 +85,9 @@
           (tc/quick-check 100
             (prop/for-all [m (stdout-sink-map-gen)]
               (let [printed (url/print-sink-designator m)]
-                (and (result/ok? printed)
+                (and (kernel/ok? printed)
                      (let [parsed (url/parse-sink-designator (:payload printed))]
-                       (and (result/ok? parsed)
+                       (and (kernel/ok? parsed)
                             (= m (:payload parsed))))))))]
       (is (:pass? check-result) (str "stdout sink round-trip failed: " (:shrunk check-result))))))
 
@@ -99,10 +99,10 @@
 (deftest concrete-round-trip-example-test
   (let [m {:kind :dir :path "./corpus" :format :v2-er7 :framing :er7-multi}
         printed (url/print-source-designator m)]
-    (is (result/ok? printed))
+    (is (kernel/ok? printed))
     (is (= "dir:./corpus?format=v2-er7&framing=er7-multi" (:payload printed)))
     (let [parsed (url/parse-source-designator (:payload printed))]
-      (is (result/ok? parsed))
+      (is (kernel/ok? parsed))
       (is (= m (:payload parsed))))))
 
 ;; ---- explicit examples from docs/source-sink-design.md Part IV ----
@@ -110,30 +110,30 @@
 (deftest design-doc-example-urls-parse-test
   (testing "dir: with format+framing query params"
     (let [r (url/parse-source-designator "dir:./corpus?format=v2-er7&framing=er7-multi")]
-      (is (result/ok? r))
+      (is (kernel/ok? r))
       (is (= {:kind :dir :path "./corpus" :format :v2-er7 :framing :er7-multi} (:payload r)))))
   (testing "sim: is recognized (D-a) and now supported (SS-2 Step 4) -- ?seed=42 coerces to an int"
     (let [r (url/parse-source-designator "sim:?seed=42")]
-      (is (result/ok? r))
+      (is (kernel/ok? r))
       (is (= :sim (:kind (:payload r))))
       (is (= 42 (:seed (:payload r))))
       (is (= 1 (:patients (:payload r))) "sim's own pinned default (D8), not re-derived here")))
   (testing "blaze:// is recognized but not-yet-supported"
     (let [r (url/parse-source-designator "blaze://host:8080/fhir?query=Patient%3F_count%3D100")]
-      (is (result/rejected? r))
+      (is (kernel/rejected? r))
       (is (= :unsupported-source-kind (:category r)))
       (is (= :blaze (:kind (:payload r))))))
   (testing "stdin: is recognized and now supported (SS-3 Step 6) -- format/framing thread through"
     (let [r (url/parse-source-designator "stdin:?framing=mllp&format=v2-er7")]
-      (is (result/ok? r))
+      (is (kernel/ok? r))
       (is (= {:kind :stdin :format :v2-er7 :framing :mllp} (:payload r)))))
   (testing "a bare stdin: (no query) is valid -- file-per-item over whatever arrives"
     (let [r (url/parse-source-designator "stdin:")]
-      (is (result/ok? r))
+      (is (kernel/ok? r))
       (is (= {:kind :stdin} (:payload r)))))
   (testing "synthea: is recognized and now supported (SS-2 Step 4) -- zero-param means exactly zero-flag `ehr corpus generate`"
     (let [r (url/parse-source-designator "synthea:")]
-      (is (result/ok? r))
+      (is (kernel/ok? r))
       (is (= :synthea (:kind (:payload r))))
       (is (= generate/default-seed (:seed (:payload r))))
       (is (= generate/default-population (:population (:payload r)))))))
@@ -148,12 +148,12 @@
   (testing "\"abc\" doesn't coerce to an int -- left as a string, so the registry's own
             params-schema rejects it (ADR-0004: a bad external value is a rejection, never a throw)"
     (let [r (url/parse-source-designator "sim:?seed=abc")]
-      (is (result/rejected? r))
+      (is (kernel/rejected? r))
       (is (= :invalid-generator-params (:category r))))))
 
 (deftest generator-source-explicit-params-override-defaults-test
   (let [r (url/parse-source-designator "synthea:?seed=7&population=3")]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (is (= 7 (:seed (:payload r))))
     (is (= 3 (:population (:payload r))))
     (is (= generate/default-reference-date (:reference-date (:payload r))))))
@@ -162,23 +162,23 @@
 
 (deftest unknown-scheme-test
   (let [r (url/parse-source-designator "ftp:./corpus")]
-    (is (result/rejected? r))
+    (is (kernel/rejected? r))
     (is (= :unknown-source-scheme (:category r)))))
 
 (deftest whitespace-is-malformed-test
   (let [r (url/parse-source-designator "dir: ./corpus")]
-    (is (result/rejected? r))
+    (is (kernel/rejected? r))
     (is (= :malformed-source-designator (:category r)))))
 
 (deftest missing-required-field-test
   (testing "dir: with no path at all propagates dir-source's own :invalid-source rejection"
     (let [r (url/parse-source-designator "dir:")]
-      (is (result/rejected? r))
+      (is (kernel/rejected? r))
       (is (= :invalid-source (:category r))))))
 
 (deftest no-scheme-at-all-test
   (let [r (url/parse-source-designator "just-a-bare-path")]
-    (is (result/rejected? r))
+    (is (kernel/rejected? r))
     (is (= :malformed-source-designator (:category r)))))
 
 ;; ---- sink twins: same shape, :format is mandatory (D3) ----
@@ -204,28 +204,28 @@
 (deftest sink-designator-examples-test
   (testing "file: sink round-trips with mandatory :format"
     (let [printed (url/print-sink-designator {:kind :file :path "./out/one.json" :format :fhir-json})]
-      (is (result/ok? printed))
+      (is (kernel/ok? printed))
       (is (= "file:./out/one.json?format=fhir-json" (:payload printed)))))
   (testing "dir: sink missing :format is rejected, not silently inferred (D3)"
     (let [r (url/parse-sink-designator "dir:./out")]
-      (is (result/rejected? r))
+      (is (kernel/rejected? r))
       (is (= :invalid-sink (:category r)))))
   (testing "stdout: is recognized and now supported (SS-4 Step 3) -- format/framing thread through"
     (let [r (url/parse-sink-designator "stdout:?format=v2-er7&framing=mllp")]
-      (is (result/ok? r))
+      (is (kernel/ok? r))
       (is (= {:kind :stdout :format :v2-er7 :framing :mllp} (:payload r)))))
   (testing "a bare stdout:?format=... (no framing) round-trips"
     (let [printed (url/print-sink-designator {:kind :stdout :format :fhir-json})]
-      (is (result/ok? printed))
+      (is (kernel/ok? printed))
       (is (= "stdout:?format=fhir-json" (:payload printed)))
       (let [parsed (url/parse-sink-designator (:payload printed))]
-        (is (result/ok? parsed))
+        (is (kernel/ok? parsed))
         (is (= {:kind :stdout :format :fhir-json} (:payload parsed))))))
   (testing "blaze:// is a recognized sink scheme but not-yet-supported"
     (let [r (url/parse-sink-designator "blaze://host:8080/fhir")]
-      (is (result/rejected? r))
+      (is (kernel/rejected? r))
       (is (= :unsupported-sink-kind (:category r)))))
   (testing "an unknown sink scheme is rejected by name"
     (let [r (url/parse-sink-designator "sim:?seed=1")]
-      (is (result/rejected? r))
+      (is (kernel/rejected? r))
       (is (= :unknown-sink-scheme (:category r))))))

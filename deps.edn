@@ -3,12 +3,18 @@
                   :extra-deps {org.clojure/clojure {:mvn/version "1.12.5"}
                                poly/sim      {:local/root "components/sim"}
                                poly/sim-cli  {:local/root "bases/sim-cli"}
+                               ;; kernel/judge (ADR-0008): tools' own src
+                               ;; now requires both directly.
+                               poly/kernel   {:local/root "components/kernel"}
+                               poly/judge    {:local/root "components/judge"}
                                poly/tools    {:local/root "components/tools"}
                                poly/palgebra {:local/root "components/palgebra"}
                                poly/ehr-cli  {:local/root "bases/ehr-cli"}}}
 
             :test {:extra-paths ["components/sim/test"
                                   "bases/sim-cli/test"
+                                  "components/kernel/test"
+                                  "components/judge/test"
                                   "components/tools/test"
                                   "components/palgebra/test"
                                   "bases/ehr-cli/test"
@@ -22,6 +28,8 @@
             ;; ehrt.tools.* code (not classpath resources) -- landing-
             ;; session finding, see notes/ADRs.md ADR-0002.
             :ehr {:extra-deps {org.clojure/clojure {:mvn/version "1.12.5"}
+                               poly/kernel   {:local/root "components/kernel"}
+                               poly/judge    {:local/root "components/judge"}
                                poly/tools    {:local/root "components/tools"}
                                poly/palgebra {:local/root "components/palgebra"}
                                poly/ehr-cli  {:local/root "bases/ehr-cli"}

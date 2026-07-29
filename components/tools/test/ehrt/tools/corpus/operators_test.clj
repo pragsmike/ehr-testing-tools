@@ -3,7 +3,7 @@
   side effect (same registration-at-load-time convention as
   corpus.canonicalizers) -- requiring it above is enough."
   (:require [clojure.test :refer [deftest is testing]]
-            [ehrt.tools.result :as result]
+            [ehrt.kernel.interface :as kernel]
             [ehrt.tools.corpus.operators :as operators]))
 
 ;; ---- registry mechanics ----
@@ -13,13 +13,13 @@
                                  :contract {:type :violates :target "test constraint"}
                                  :locator-required? true
                                  :fn (fn [data _path] data)})]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (is (some? (operators/lookup :test-op "1")))
     (is (nil? (operators/lookup :nope "1")))))
 
 (deftest register-rejects-invalid-entry-test
   (let [r (operators/register! {:id :bad :version "1"})]
-    (is (result/rejected? r))
+    (is (kernel/rejected? r))
     (is (= :invalid-operator (:category r)))))
 
 (deftest register-rejects-bad-contract-type-test
@@ -27,7 +27,7 @@
                                  :contract {:type :not-violates-or-preserves :target "x"}
                                  :locator-required? true
                                  :fn (fn [data _path] data)})]
-    (is (result/rejected? r))))
+    (is (kernel/rejected? r))))
 
 (deftest entries-lists-all-registered-test
   (operators/register! {:id :e1 :version "1" :format :fhir
@@ -147,7 +147,7 @@
   (let [r (operators/register! {:id :no-doc-op :version "1" :format :fhir
                                  :contract {:type :violates :target "t"}
                                  :locator-required? true :fn (fn [d _p] d)})]
-    (is (result/ok? r) "an entry without :doc is still a valid operator")))
+    (is (kernel/ok? r) "an entry without :doc is still a valid operator")))
 
 ;; MSH-1=field sep (no split slot), MSH-2="^~\&", MSH-9=message type at
 ;; split-index 8; PID-7=birth date at split-index 7 (see corpus.er7's

@@ -1,11 +1,9 @@
 (ns ehrt.tools.check-test
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.java.io :as io]
-            [ehrt.tools.result :as result]
-            [ehrt.tools.canonical :as canonical]
+            [ehrt.kernel.interface :as kernel]
             [ehrt.tools.check.schemas :as schemas]
-            [ehrt.tools.judge.finding :as finding]
-            [ehrt.tools.judge.report :as report]
+            [ehrt.judge.interface :as judge]
             [ehrt.tools.check :as check])
   (:import [java.io File]))
 
@@ -54,7 +52,7 @@
     (spit (io/file cand "a.json") bundle-json)
     (spit (io/file exp "a.json") bundle-json)
     (let [r (check/check-corpus {:candidate-dir cand :expected-dir exp})]
-      (is (result/ok? r))
+      (is (kernel/ok? r))
       (is (= {:pass 1 :rejected 0 :indeterminate 0 :no-verdict 0} (:totals (:payload r)))))))
 
 (deftest matches-expected-differing-corpora-reject-with-a-locator-path-test
@@ -62,7 +60,7 @@
     (spit (io/file cand "a.json") bundle-json-different-gender)
     (spit (io/file exp "a.json") bundle-json)
     (let [r (check/check-corpus {:candidate-dir cand :expected-dir exp})]
-      (is (result/rejected? r))
+      (is (kernel/rejected? r))
       (is (= :check-rejected (:category r)))
       (let [rpt (:payload r)
             finding (first (:findings (first (filter #(= "a.json" (:path %)) (:files rpt)))))]
@@ -75,15 +73,15 @@
   ;; equivalence IS canonical equality, not byte equality.
   (let [cand (temp-dir*) exp (temp-dir*)
         strip-id (fn [data] (update-in data ["entry" 0 "resource"] dissoc "id"))]
-    (canonical/register! {:id :test-strip-patient-id :version "1" :format :edn
+    (kernel/register! {:id :test-strip-patient-id :version "1" :format :edn
                            :fn strip-id :docstring "test-only: drops entry[0].resource.id"})
     (spit (io/file cand "a.json") "{\"entry\":[{\"resource\":{\"id\":\"cand-id\",\"gender\":\"female\"}}]}")
     (spit (io/file exp "a.json") "{\"entry\":[{\"resource\":{\"id\":\"exp-id\",\"gender\":\"female\"}}]}")
     (let [without-canon (check/check-corpus {:candidate-dir cand :expected-dir exp})
           with-canon (check/check-corpus {:candidate-dir cand :expected-dir exp
                                            :canonicalizers [[:test-strip-patient-id "1"]]})]
-      (is (result/rejected? without-canon) "byte-different without a canonicalizer -- must reject")
-      (is (result/ok? with-canon) "equivalent once the volatile id field is canonicalized away"))))
+      (is (kernel/rejected? without-canon) "byte-different without a canonicalizer -- must reject")
+      (is (kernel/ok? with-canon) "equivalent once the volatile id field is canonicalized away"))))
 
 (deftest matches-expected-reports-missing-and-extra-files-test
   (let [cand (temp-dir*) exp (temp-dir*)]
@@ -94,7 +92,7 @@
     (let [r (check/check-corpus {:candidate-dir cand :expected-dir exp})
           rpt (:payload r)
           codes-by-path (into {} (map (juxt :path :verdict)) (:files rpt))]
-      (is (result/rejected? r))
+      (is (kernel/rejected? r))
       (is (= :rejected (get codes-by-path "extra.json")))
       (is (= :rejected (get codes-by-path "missing.json")))
       (is (= :pass (get codes-by-path "shared.json"))))))
@@ -104,7 +102,7 @@
     (spit (io/file cand "candidate-name.json") bundle-json)
     (spit (io/file exp "expected-name.json") bundle-json)
     (let [r (check/check-corpus {:candidate-dir cand :expected-dir exp :pair-by :hash})]
-      (is (result/ok? r))
+      (is (kernel/ok? r))
       (is (= 1 (count (:files (:payload r))))))))
 
 (deftest matches-expected-default-assertions-when-omitted-with-expected-dir-test
@@ -112,7 +110,7 @@
     (spit (io/file cand "a.json") bundle-json)
     (spit (io/file exp "a.json") bundle-json)
     ;; No :assertions key at all -- defaults to [{:kind :matches-expected}].
-    (is (result/ok? (check/check-corpus {:candidate-dir cand :expected-dir exp})))))
+    (is (kernel/ok? (check/check-corpus {:candidate-dir cand :expected-dir exp})))))
 
 ;; ---- per-file assertions ----
 
@@ -123,8 +121,8 @@
         ok (check/check-corpus {:candidate-dir cand :assertions assertions})
         _ (spit (io/file cand "a.json") "{\"entry\":[{\"resource\":{}}]}")
         rejected (check/check-corpus {:candidate-dir cand :assertions assertions})]
-    (is (result/ok? ok))
-    (is (result/rejected? rejected))))
+    (is (kernel/ok? ok))
+    (is (kernel/rejected? rejected))))
 
 (deftest absent-assertion-red-green-test
   (let [cand (temp-dir*)
@@ -133,8 +131,8 @@
         ok (check/check-corpus {:candidate-dir cand :assertions assertions})
         _ (spit (io/file cand "a.json") "{\"entry\":[{\"resource\":{\"deceasedBoolean\":true}}]}")
         rejected (check/check-corpus {:candidate-dir cand :assertions assertions})]
-    (is (result/ok? ok))
-    (is (result/rejected? rejected))))
+    (is (kernel/ok? ok))
+    (is (kernel/rejected? rejected))))
 
 (deftest value-assertion-red-green-test
   (let [cand (temp-dir*)
@@ -143,8 +141,8 @@
         ok (check/check-corpus {:candidate-dir cand :assertions assertions})
         wrong-value-assertions [{:kind :value :locator {:format :fhir :path "entry[0].resource.gender"} :expected "male"}]
         rejected (check/check-corpus {:candidate-dir cand :assertions wrong-value-assertions})]
-    (is (result/ok? ok))
-    (is (result/rejected? rejected))))
+    (is (kernel/ok? ok))
+    (is (kernel/rejected? rejected))))
 
 (deftest count-assertion-red-green-test
   (let [cand (temp-dir*)
@@ -153,19 +151,19 @@
         exactly-two [{:kind :count :locator {:format :fhir :path "entry"} :op := :value 2}]
         ok (check/check-corpus {:candidate-dir cand :assertions exactly-one})
         rejected (check/check-corpus {:candidate-dir cand :assertions exactly-two})]
-    (is (result/ok? ok))
-    (is (result/rejected? rejected))))
+    (is (kernel/ok? ok))
+    (is (kernel/rejected? rejected))))
 
 (deftest count-assertion-supports-lte-and-gte-test
   (let [cand (temp-dir*)
         _ (spit (io/file cand "a.json") bundle-json)]
-    (is (result/ok? (check/check-corpus
+    (is (kernel/ok? (check/check-corpus
                       {:candidate-dir cand
                        :assertions [{:kind :count :locator {:format :fhir :path "entry"} :op :<= :value 5}]})))
-    (is (result/ok? (check/check-corpus
+    (is (kernel/ok? (check/check-corpus
                       {:candidate-dir cand
                        :assertions [{:kind :count :locator {:format :fhir :path "entry"} :op :>= :value 1}]})))
-    (is (result/rejected? (check/check-corpus
+    (is (kernel/rejected? (check/check-corpus
                             {:candidate-dir cand
                              :assertions [{:kind :count :locator {:format :fhir :path "entry"} :op :>= :value 2}]})))))
 
@@ -176,8 +174,8 @@
         ok (check/check-corpus {:candidate-dir cand :assertions assertions})
         _ (spit (io/file cand "a.json") "{\"noResourceTypeHere\":true}")
         rejected (check/check-corpus {:candidate-dir cand :assertions assertions})]
-    (is (result/ok? ok))
-    (is (result/rejected? rejected))))
+    (is (kernel/ok? ok))
+    (is (kernel/rejected? rejected))))
 
 ;; ---- shared finding envelope + report reuse ----
 
@@ -185,14 +183,14 @@
   (let [engine {:name "check" :version "v1"}
         assertion {:kind :present :locator {:format :fhir :path "entry[0].resource.gender"}}
         f (first (check/assertion-findings assertion {"entry" [{"resource" {}}]} engine))]
-    (is (finding/valid? f))
+    (is (judge/finding-valid? f))
     (is (= "check" (:name (:engine f))))))
 
 (deftest report-validates-against-gate-report-schema-test
   (let [cand (temp-dir*) exp (temp-dir*)]
     (spit (io/file cand "a.json") bundle-json)
     (spit (io/file exp "a.json") bundle-json)
-    (is (report/valid? (:payload (check/check-corpus {:candidate-dir cand :expected-dir exp}))))))
+    (is (judge/report-valid? (:payload (check/check-corpus {:candidate-dir cand :expected-dir exp}))))))
 
 ;; ---- gate-kind law: never modifies the datum it judges ----
 

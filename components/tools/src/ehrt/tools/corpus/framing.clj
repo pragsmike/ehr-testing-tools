@@ -23,7 +23,7 @@
   writes UTF-8 text; its law is item-level identity (entries survive,
   the Bundle envelope does not), never byte-exact."
   (:require [clojure.data.json :as json]
-            [ehrt.tools.result :as result])
+            [ehrt.kernel.interface :as kernel])
   (:import [java.util Arrays]
            [java.io ByteArrayOutputStream]))
 
@@ -80,13 +80,13 @@
 
 (defn- decode-file-per-item
   [^bytes bs]
-  (result/ok [bs]))
+  (kernel/ok [bs]))
 
 (defn- encode-file-per-item
   [items]
   (if (= 1 (count items))
-    (result/ok (first items))
-    (result/rejected :invalid-item-count
+    (kernel/ok (first items))
+    (kernel/rejected :invalid-item-count
                       {:framing :file-per-item :count (count items)
                        :hint ":file-per-item encodes exactly one item -- one file, one item"})))
 
@@ -127,15 +127,15 @@
   [^bytes bs]
   (let [starts (msh-line-start-offsets bs)]
     (if (empty? starts)
-      (result/rejected :malformed-er7-multi-frame
+      (kernel/rejected :malformed-er7-multi-frame
                         {:hint "no MSH-led message found -- every er7-multi message must start with MSH at a line start"})
-      (result/ok (mapv (fn [s e] (strip-trailing-separator (slice bs s e)))
+      (kernel/ok (mapv (fn [s e] (strip-trailing-separator (slice bs s e)))
                         starts
                         (conj (vec (rest starts)) (alength bs)))))))
 
 (defn- encode-er7-multi
   [items]
-  (result/ok (concat-bytes (interleave items (repeat message-separator)))))
+  (kernel/ok (concat-bytes (interleave items (repeat message-separator)))))
 
 ;; ---- :mllp -- the 0x0B / 0x1C 0x0D envelope, byte-exact (ruling 1,
 ;; D2 Part II). Transport (the wire, nc) is explicitly out of scope --
@@ -152,23 +152,23 @@
   (let [n (alength bs)]
     (loop [pos 0 acc []]
       (cond
-        (= pos n) (result/ok acc)
+        (= pos n) (kernel/ok acc)
 
         (not= mllp-start (aget bs pos))
-        (result/rejected :malformed-mllp-frame
+        (kernel/rejected :malformed-mllp-frame
                           {:pos pos :hint "expected 0x0B start-of-block"})
 
         :else
         (let [end-idx (index-of-bytes bs mllp-end (inc pos))]
           (if (neg? end-idx)
-            (result/rejected :malformed-mllp-frame
+            (kernel/rejected :malformed-mllp-frame
                               {:pos pos :hint "no 0x1C 0x0D end-of-block found"})
             (recur (+ end-idx (alength mllp-end))
                    (conj acc (slice bs (inc pos) end-idx)))))))))
 
 (defn- encode-mllp
   [items]
-  (result/ok (concat-bytes (mapcat (fn [item] [(byte-array [mllp-start]) item mllp-end]) items))))
+  (kernel/ok (concat-bytes (mapcat (fn [item] [(byte-array [mllp-start]) item mllp-end]) items))))
 
 ;; ---- :ndjson -- one JSON value per LF-terminated line, byte-exact
 ;; (ruling 1). Every item, including the last, is followed by its own
@@ -183,11 +183,11 @@
   [^bytes bs]
   (let [pieces (split-bytes bs (byte-array [lf]))
         trailing-empty? (and (seq pieces) (zero? (alength ^bytes (last pieces))))]
-    (result/ok (vec (if trailing-empty? (butlast pieces) pieces)))))
+    (kernel/ok (vec (if trailing-empty? (butlast pieces) pieces)))))
 
 (defn- encode-ndjson
   [items]
-  (result/ok (concat-bytes (mapcat (fn [item] [item (byte-array [lf])]) items))))
+  (kernel/ok (concat-bytes (mapcat (fn [item] [item (byte-array [lf])]) items))))
 
 ;; ---- :bundle-entries -- entry-preserving, envelope-lossy (ruling 1).
 ;; Structural, not delimiter, framing: a FHIR Bundle is a JSON object,
@@ -205,16 +205,16 @@
   (try
     (let [parsed (json/read-str (String. bs "UTF-8"))]
       (if (and (map? parsed) (contains? parsed "entry"))
-        (result/ok (mapv #(get % "resource") (get parsed "entry")))
-        (result/rejected :malformed-bundle-entries-frame
+        (kernel/ok (mapv #(get % "resource") (get parsed "entry")))
+        (kernel/rejected :malformed-bundle-entries-frame
                           {:hint "expected a FHIR Bundle JSON object with an \"entry\" array"})))
     (catch Exception e
-      (result/rejected :malformed-bundle-entries-frame
+      (kernel/rejected :malformed-bundle-entries-frame
                         {:hint (str "not parseable JSON: " (or (ex-message e) (str e)))}))))
 
 (defn- encode-bundle-entries
   [items]
-  (result/ok (.getBytes ^String (json/write-str {"resourceType" "Bundle"
+  (kernel/ok (.getBytes ^String (json/write-str {"resourceType" "Bundle"
                                                   "type" "collection"
                                                   "entry" (mapv (fn [resource] {"resource" resource}) items)})
                          "UTF-8")))
@@ -240,9 +240,9 @@
 
 (defn decode
   "framing (one of ehrt.tools.corpus.source-sink/Framing's five
-  kinds) x bs (a byte array) -> result/ok [item byte-arrays...] (item
+  kinds) x bs (a byte array) -> kernel/ok [item byte-arrays...] (item
   data-maps for :bundle-entries), or a framing-specific
-  result/rejected on malformed input."
+  kernel/rejected on malformed input."
   [framing bs]
   (case framing
     :file-per-item (decode-file-per-item bs)
@@ -252,7 +252,7 @@
     :mllp (decode-mllp bs)))
 
 (defn encode
-  "The inverse of decode: framing x items -> result/ok a byte array."
+  "The inverse of decode: framing x items -> kernel/ok a byte array."
   [framing items]
   (case framing
     :file-per-item (encode-file-per-item items)

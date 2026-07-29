@@ -33,12 +33,11 @@
             [clojure.java.io :as io]
             [clojure.string :as str]
             [malli.core :as m]
-            [ehrt.tools.digest :as digest]
             [ehrt.tools.corpus.manifest :as manifest]
             [ehrt.tools.corpus.operation-manifest :as operation-manifest]
             [ehrt.tools.corpus.mutate :as mutate]
             [ehrt.tools.corpus.source-sink :as source-sink]
-            [ehrt.tools.result :as result])
+            [ehrt.kernel.interface :as kernel])
   (:import [java.io File]))
 
 (def known-source-formats #{:fhir-json :v2-er7 :unknown})
@@ -168,7 +167,7 @@
   [content format]
   (case format
     :fhir-json (mutate/content-hash (json/read-str content))
-    (digest/sha256-string content)))
+    (kernel/sha256-string content)))
 
 ;; ---- intake! ----
 
@@ -345,7 +344,7 @@
   sidecar (ADR-0014), or :operation-provenance when it carries a
   validating operation-manifest.edn sidecar instead (SS-4b, D-d
   resolved via ADR-0020) -- never both: a directory presenting BOTH
-  sidecars is rejected result/rejected :ambiguous-sidecars before any
+  sidecars is rejected kernel/rejected :ambiguous-sidecars before any
   catalog or intake-record is written, naming every offending directory
   (relative to :source-dir), never resolved by precedence. Writes
   :out/catalog.edn (the vector of entries) and :out/intake-record.edn
@@ -360,13 +359,13 @@
   state); the CLI shell is where wall-clock defaulting belongs, not
   this core function.
 
-  Returns result/ok {:catalog [...] :intake-record {...} :out}, or
-  result/rejected :ambiguous-sidecars {:dirs [...]}."
+  Returns kernel/ok {:catalog [...] :intake-record {...} :out}, or
+  kernel/rejected :ambiguous-sidecars {:dirs [...]}."
   [{:keys [source-dir source-label out received]}]
   (let [files (source-files source-dir)
         ambiguous (ambiguous-sidecar-dirs files source-dir)]
     (if (seq ambiguous)
-      (result/rejected :ambiguous-sidecars
+      (kernel/rejected :ambiguous-sidecars
                         {:dirs ambiguous
                          :hint "a directory with both manifest.edn and operation-manifest.edn claims two producers for the same bytes -- remove one"})
       (let [sidecar-fn (memoize sidecar-result)
@@ -381,10 +380,10 @@
           (let [record (cond-> {:origin source-label
                                 :date received
                                 :file-count (count catalog)
-                                :catalog-hash (digest/sha256-file catalog-file)}
+                                :catalog-hash (kernel/sha256-file catalog-file)}
                          (seq notes) (assoc :notes notes))]
             (spit (io/file out-dir "intake-record.edn") (pr-str record))
-            (result/ok {:catalog catalog :intake-record record :out out})))))))
+            (kernel/ok {:catalog catalog :intake-record record :out out})))))))
 
 (defn intake-via-source!
   "Like intake!, but takes a :dir Source value
@@ -405,7 +404,7 @@
   fails Source's own schema is rejected :invalid-source."
   [{:keys [source source-label out received]}]
   (if (not= :dir (:kind source))
-    (result/rejected :unsupported-source-kind
+    (kernel/rejected :unsupported-source-kind
                       {:kind (:kind source)
                        :hint "only :dir sources are supported this session -- SS-2/SS-3/SS-5 land the rest"})
     ;; Re-validated through source-sink/dir-source's own DirSource
@@ -414,7 +413,7 @@
     ;; *DirSource* -- this is the check that actually catches it,
     ;; rather than reaching intake!'s own source-files with a nil dir.
     (let [validated (source-sink/dir-source source)]
-      (if-not (result/ok? validated)
-        (result/rejected :invalid-source {:source source :explain validated})
+      (if-not (kernel/ok? validated)
+        (kernel/rejected :invalid-source {:source source :explain validated})
         (intake! {:source-dir (:path (:payload validated))
                   :source-label source-label :out out :received received})))))

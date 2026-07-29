@@ -24,7 +24,7 @@
   (:require [clojure.java.io :as io]
             [ehrt.tools.corpus.generators :as generators]
             [ehrt.tools.corpus.source-sink :as source-sink]
-            [ehrt.tools.result :as result])
+            [ehrt.kernel.interface :as kernel])
   (:import [java.io File]))
 
 (defn- non-empty-existing-dir?
@@ -36,25 +36,25 @@
   "kind -- a registered generator :kind (ehrt.tools.corpus.
   generators); params -- the caller-supplied, kind-specific params
   (merged onto the registry's own pinned defaults, D8, by
-  generators/resolve-params). Returns result/ok a canonical :dir
+  generators/resolve-params). Returns kernel/ok a canonical :dir
   Source over the freshly generated corpus, or one of the three
   rejections above, or generators/resolve-params's own
   :unknown-generator-kind / :invalid-generator-params, propagated
   unchanged."
   [kind params]
   (let [params-result (generators/resolve-params kind params)]
-    (if-not (result/ok? params-result)
+    (if-not (kernel/ok? params-result)
       params-result
       (let [merged-params (:payload params-result)
             entry (generators/lookup kind)
             out-dir ((:out-dir-fn entry) merged-params)]
         (if (non-empty-existing-dir? out-dir)
-          (result/error :out-dir-exists
+          (kernel/error :out-dir-exists
                         {:kind kind :out-dir out-dir
                          :hint "remove the directory, or pass different params (e.g. a different seed), to regenerate"})
           (let [execute-result ((:execute-fn entry) merged-params out-dir)]
-            (if-not (result/ok? execute-result)
+            (if-not (kernel/ok? execute-result)
               execute-result
               (if-not (non-empty-existing-dir? out-dir)
-                (result/error :generator-produced-no-output {:kind kind :out-dir out-dir})
+                (kernel/error :generator-produced-no-output {:kind kind :out-dir out-dir})
                 (source-sink/dir-source {:path out-dir})))))))))

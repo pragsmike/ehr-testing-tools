@@ -13,7 +13,7 @@
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.java.io :as io]
             [clojure.edn :as edn]
-            [ehrt.tools.result :as result]
+            [ehrt.kernel.interface :as kernel]
             [ehrt.tools.corpus.generate :as generate]
             [ehrt.tools.corpus.generators :as generators])
   (:import [java.io File]))
@@ -31,28 +31,28 @@
                                   :default-params {}
                                   :params-schema [:map]
                                   :out-dir-fn (fn [_] "target/x")
-                                  :execute-fn (fn [_ _] (result/ok {}))})]
-    (is (result/ok? r))
+                                  :execute-fn (fn [_ _] (kernel/ok {}))})]
+    (is (kernel/ok? r))
     (is (some? (generators/lookup :test-gen)))
     (is (nil? (generators/lookup :nope)))))
 
 (deftest register-rejects-invalid-entry-test
   (let [r (generators/register! {:kind :bad})]
-    (is (result/rejected? r))
+    (is (kernel/rejected? r))
     (is (= :invalid-generator-entry (:category r)))))
 
 (deftest entries-lists-all-registered-test
   (generators/register! {:kind :another-test-gen
                           :default-params {} :params-schema [:map]
                           :out-dir-fn (fn [_] "target/y")
-                          :execute-fn (fn [_ _] (result/ok {}))})
+                          :execute-fn (fn [_ _] (kernel/ok {}))})
   (is (some #(= :another-test-gen (:kind %)) (generators/entries))))
 
 ;; ---- resolve-params ----
 
 (deftest resolve-params-unknown-kind-test
   (let [r (generators/resolve-params :no-such-kind {})]
-    (is (result/rejected? r))
+    (is (kernel/rejected? r))
     (is (= :unknown-generator-kind (:category r)))))
 
 (deftest resolve-params-merges-given-onto-defaults-test
@@ -60,9 +60,9 @@
                           :default-params {:a 1 :b 2}
                           :params-schema [:map [:a :int] [:b :int]]
                           :out-dir-fn (fn [_] "target/z")
-                          :execute-fn (fn [_ _] (result/ok {}))})
+                          :execute-fn (fn [_ _] (kernel/ok {}))})
   (let [r (generators/resolve-params :merge-test-gen {:b 20})]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (is (= {:a 1 :b 20} (:payload r)))))
 
 (deftest resolve-params-invalid-merged-params-rejected-test
@@ -70,9 +70,9 @@
                           :default-params {:a 1}
                           :params-schema [:map [:a :int]]
                           :out-dir-fn (fn [_] "target/w")
-                          :execute-fn (fn [_ _] (result/ok {}))})
+                          :execute-fn (fn [_ _] (kernel/ok {}))})
   (let [r (generators/resolve-params :invalid-merge-test-gen {:a "not-an-int"})]
-    (is (result/rejected? r))
+    (is (kernel/rejected? r))
     (is (= :invalid-generator-params (:category r)))))
 
 ;; ---- :synthea seed entry (D7): re-expresses corpus.generate's own
@@ -86,7 +86,7 @@
 (deftest synthea-default-params-match-generates-own-defaults-test
   (testing "D9: the zero-param synthea: URL must mean exactly what zero-flag `ehr corpus generate` means"
     (let [r (generators/resolve-params :synthea {})]
-      (is (result/ok? r))
+      (is (kernel/ok? r))
       (is (= {:seed generate/default-seed
               :population generate/default-population
               :reference-date generate/default-reference-date
@@ -95,7 +95,7 @@
 
 (deftest synthea-resolve-params-given-seed-overrides-default-test
   (let [r (generators/resolve-params :synthea {:seed 42})]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (is (= 42 (:seed (:payload r))))
     (is (= generate/default-population (:population (:payload r))))))
 
@@ -114,7 +114,7 @@
    :acquired "2026-07-24" :license-status :verified})
 
 (defn- ok-invocation []
-  (result/ok {:command "java" :args ["-jar" "/fake/synthea.jar"]
+  (kernel/ok {:command "java" :args ["-jar" "/fake/synthea.jar"]
               :exit-code 0 :duration-ms 1 :started-at "2026-07-24T00:00:00Z"
               :stdout-path "/fake/out.log" :stderr-path "/fake/err.log"
               :stdout-sha256 (apply str (repeat 64 "0"))
@@ -129,13 +129,13 @@
                        :synthea
                        {:config-path (.getAbsolutePath config-file)
                         :seed 1 :population 1
-                        :read-lockfile (fn [_] (result/ok {:artifacts [synthea-artifact]}))
-                        :resolve-artifact (fn [_ _ _] (result/ok {:path "/fake/synthea.jar" :artifact synthea-artifact}))
-                        :resolve-java-bin (fn [_ _] (result/ok {:path "/stub/java" :artifact nil}))
+                        :read-lockfile (fn [_] (kernel/ok {:artifacts [synthea-artifact]}))
+                        :resolve-artifact (fn [_ _ _] (kernel/ok {:path "/fake/synthea.jar" :artifact synthea-artifact}))
+                        :resolve-java-bin (fn [_ _] (kernel/ok {:path "/stub/java" :artifact nil}))
                         :run-invocation (fn [_] (ok-invocation))})]
-    (is (result/ok? params-result))
+    (is (kernel/ok? params-result))
     (let [r ((:execute-fn entry) (:payload params-result) out-dir)]
-      (is (result/ok? r))
+      (is (kernel/ok? r))
       (is (= out-dir (:out-dir (:payload r)))))))
 
 ;; ---- :sim seed entry (Step 3): drives ehrt.tools.sim/run!,
@@ -152,7 +152,7 @@
 
 (deftest sim-default-params-test
   (let [r (generators/resolve-params :sim {})]
-    (is (result/ok? r))
+    (is (kernel/ok? r))
     (is (= {:seed generate/default-seed :patients 1 :emit "hl7"} (:payload r)))))
 
 (deftest sim-out-dir-fn-test
@@ -163,11 +163,11 @@
   (let [out-dir (temp-dir)
         entry (generators/lookup :sim)
         sim-payload {:ground-truth [] :manifest {:stage :simulated} :messages ["MSH|1" "MSH|2"]}
-        fake (fn [_] (result/ok sim-payload))
+        fake (fn [_] (kernel/ok sim-payload))
         params-result (generators/resolve-params :sim {:run-command-fn fake})]
-    (is (result/ok? params-result))
+    (is (kernel/ok? params-result))
     (let [r ((:execute-fn entry) (:payload params-result) out-dir)]
-      (is (result/ok? r))
+      (is (kernel/ok? r))
       (let [files (.listFiles (io/file out-dir))]
         (is (= 3 (count files)) "two message files plus manifest.edn")
         (is (some #(= "manifest.edn" (.getName %)) files))
@@ -177,19 +177,19 @@
   (let [out-dir (temp-dir)
         entry (generators/lookup :sim)
         sim-payload {:ground-truth [] :manifest {:stage :simulated} :messages []}
-        fake (fn [_] (result/ok sim-payload))
+        fake (fn [_] (kernel/ok sim-payload))
         params-result (generators/resolve-params :sim {:run-command-fn fake})]
-    (is (result/ok? params-result))
+    (is (kernel/ok? params-result))
     (let [r ((:execute-fn entry) (:payload params-result) out-dir)]
-      (is (result/error? r))
+      (is (kernel/error? r))
       (is (= :sim-produced-no-messages (:category r))))))
 
 (deftest sim-execute-fn-propagates-sim-run-failures-unchanged-test
   (let [out-dir (temp-dir)
         entry (generators/lookup :sim)
-        fake (fn [_] (result/error :missing-required-opt {:opt :seed}))
+        fake (fn [_] (kernel/error :missing-required-opt {:opt :seed}))
         params-result (generators/resolve-params :sim {:run-command-fn fake})]
-    (is (result/ok? params-result))
+    (is (kernel/ok? params-result))
     (let [r ((:execute-fn entry) (:payload params-result) out-dir)]
-      (is (result/error? r))
+      (is (kernel/error? r))
       (is (= :missing-required-opt (:category r))))))

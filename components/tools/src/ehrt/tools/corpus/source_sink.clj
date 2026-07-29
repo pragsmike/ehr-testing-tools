@@ -23,7 +23,7 @@
   (D7)."
   (:require [malli.core :as m]
             [ehrt.tools.corpus.generators :as generators]
-            [ehrt.tools.result :as result]))
+            [ehrt.kernel.interface :as kernel]))
 
 (def known-source-kinds
   "Every source kind the design names (Part I.1, D1): two generators
@@ -143,8 +143,8 @@
 (defn- build
   "Shared constructor shape for every kind-specific builder below:
   merges the given, non-nil kind-specific fields onto {:kind kind},
-  validates against schema, and returns result/ok the canonical map or
-  result/rejected :invalid-source / :invalid-sink naming what didn't
+  validates against schema, and returns kernel/ok the canonical map or
+  kernel/rejected :invalid-source / :invalid-sink naming what didn't
   conform (ADR-0004: a bad constructor call is an operational
   rejection, never a thrown exception)."
   [error-category kind schema base-fields]
@@ -152,8 +152,8 @@
                 (filter (fn [[_ v]] (some? v)))
                 base-fields)]
     (if (m/validate schema m)
-      (result/ok m)
-      (result/rejected error-category {:kind kind :explain (m/explain schema m)}))))
+      (kernel/ok m)
+      (kernel/rejected error-category {:kind kind :explain (m/explain schema m)}))))
 
 (defn dir-source
   "Constructs+validates a canonical :dir Source map. :path is required;
@@ -206,11 +206,11 @@
   own zero-flag invocation means. This constructor only validates and
   shapes the Source value; it never executes the generator itself
   (ehrt.tools.corpus.generator-source/resolve! does that, later,
-  when intake actually needs bytes). Returns result/ok the shaped map,
+  when intake actually needs bytes). Returns kernel/ok the shaped map,
   or generators/resolve-params's own :unknown-generator-kind /
   :invalid-generator-params, propagated unchanged."
   [kind params]
   (let [params-result (generators/resolve-params kind params)]
-    (if-not (result/ok? params-result)
+    (if-not (kernel/ok? params-result)
       params-result
-      (result/ok (assoc (:payload params-result) :kind kind)))))
+      (kernel/ok (assoc (:payload params-result) :kind kind)))))

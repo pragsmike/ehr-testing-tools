@@ -8,11 +8,8 @@
   alongside the output tree as the committed provenance record."
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
-            [ehrt.tools.artifact :as artifact]
-            [ehrt.tools.invocation :as invocation]
-            [ehrt.tools.digest :as digest]
             [ehrt.tools.corpus.manifest :as manifest]
-            [ehrt.tools.result :as result]))
+            [ehrt.kernel.interface :as kernel]))
 
 (def synthea-name "synthea")
 (def synthea-version "4.0.0")
@@ -44,22 +41,22 @@
   "Resolves the pinned JVM runtime through the artifact registry
   (P4: the JVM is a locked :runtime artifact, not something read off
   PATH or a hardcoded home path) -- ensures the cached Temurin archive
-  is extracted, then locates bin/java inside it. Returns result/ok
+  is extracted, then locates bin/java inside it. Returns kernel/ok
   {:path :artifact}, or propagates the first failing step's
   rejection/error (:unknown-artifact, :not-cached, :extract-failed,
   :executable-not-found)."
   ([artifacts] (resolve-java-bin artifacts {}))
   ([artifacts {:keys [resolve-and-extract find-executable]
-               :or {resolve-and-extract artifact/resolve-and-extract
-                    find-executable artifact/find-executable}}]
+               :or {resolve-and-extract kernel/resolve-and-extract
+                    find-executable kernel/find-executable}}]
    (let [extract-result (resolve-and-extract artifacts jdk-name jdk-version {})]
-     (if-not (result/ok? extract-result)
+     (if-not (kernel/ok? extract-result)
        extract-result
        (let [{:keys [extracted-dir artifact]} (:payload extract-result)
              found-result (find-executable extracted-dir jdk-relative-path)]
-         (if-not (result/ok? found-result)
+         (if-not (kernel/ok? found-result)
            found-result
-           (result/ok {:path (:path (:payload found-result)) :artifact artifact})))))))
+           (kernel/ok {:path (:path (:payload found-result)) :artifact artifact})))))))
 
 (defn real-java-version
   "Queries java-bin's own reported version by actually running it -- the
@@ -206,12 +203,12 @@
 
   Never auto-fetches: if the Synthea artifact isn't already resolvable
   from the cache, this returns the resolve failure as-is -- run
-  `ehr artifact fetch` first. Rejects up front with result/error
+  `ehr artifact fetch` first. Rejects up front with kernel/error
   :out-dir-exists {:out-dir :hint} if :out-dir already exists
   and is non-empty, before reading the lockfile or invoking anything --
   D9's derived --out-dir is stable across zero-flag calls, so this is
   the guard against the silent-no-op hazard described above. Returns
-  result/ok {:manifest :out-dir}, or the first failing step's result
+  kernel/ok {:manifest :out-dir}, or the first failing step's result
   (the out-dir check, lockfile read, artifact resolve, JVM resolve,
   or invocation) unchanged."
   [{:keys [config-path seed clinician-seed population reference-date out-dir
@@ -222,9 +219,9 @@
          resolve-java-bin resolve-java-bin
          java-version-fn real-java-version
          lockfile default-lockfile-path
-         read-lockfile artifact/read-lockfile
-         resolve-artifact artifact/resolve
-         run-invocation invocation/run!
+         read-lockfile kernel/read-lockfile
+         resolve-artifact kernel/resolve-artifact
+         run-invocation kernel/run-invocation!
          config-path default-config-path
          seed default-seed
          reference-date default-reference-date
@@ -232,21 +229,21 @@
   (let [clinician-seed (or clinician-seed seed)
         out-dir (or out-dir (default-out-dir seed population))]
    (if (non-empty-existing-dir? out-dir)
-     (result/error :out-dir-exists
+     (kernel/error :out-dir-exists
                     {:out-dir out-dir
                      :hint "remove the directory, or pass a different --out-dir, to regenerate"})
     (let [lockfile-result (read-lockfile lockfile)]
-     (if-not (result/ok? lockfile-result)
+     (if-not (kernel/ok? lockfile-result)
       lockfile-result
       (let [artifacts (:artifacts (:payload lockfile-result))
             resolve-result (resolve-artifact artifacts synthea-name synthea-version)]
-        (if-not (result/ok? resolve-result)
+        (if-not (kernel/ok? resolve-result)
           resolve-result
           (let [{:keys [path artifact]} (:payload resolve-result)
                 java-bin-result (if java-bin
-                                   (result/ok {:path java-bin :artifact nil})
+                                   (kernel/ok {:path java-bin :artifact nil})
                                    (resolve-java-bin artifacts {}))]
-            (if-not (result/ok? java-bin-result)
+            (if-not (kernel/ok? java-bin-result)
               java-bin-result
               (let [resolved-java-bin (:path (:payload java-bin-result))
                     jvm-artifact (:artifact (:payload java-bin-result))
@@ -265,7 +262,7 @@
                     invocation-result (run-invocation {:command resolved-java-bin :args args
                                                         :stdout-path stdout-path
                                                         :stderr-path stderr-path})]
-                (if-not (result/ok? invocation-result)
+                (if-not (kernel/ok? invocation-result)
                   invocation-result
                   (let [m (manifest/build-v1-1
                            {:stage :generate
@@ -278,9 +275,9 @@
                                         :sha256 (:sha256 jvm-artifact)})
                             :seeds {:master seed :clinician clinician-seed}
                             :engine-params {:reference-date reference-date}
-                            :config {:path config-path :sha256 (digest/sha256-file config-path)}
+                            :config {:path config-path :sha256 (kernel/sha256-file config-path)}
                             :invocation (:payload invocation-result)
                             :canonicalizers-applied []
                             :environment (environment-record resolved-java-bin java-version-fn locale timezone)})]
                     (spit (io/file out-dir-file "manifest.edn") (pr-str m))
-                    (result/ok {:manifest m :out-dir out-dir})))))))))))))
+                    (kernel/ok {:manifest m :out-dir out-dir})))))))))))))

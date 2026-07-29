@@ -23,8 +23,7 @@
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
             [clojure.java.io :as io]
-            [ehrt.tools.result :as result]
-            [ehrt.tools.digest :as digest]
+            [ehrt.kernel.interface :as kernel]
             [ehrt.tools.corpus.source-sink :as ss]
             [ehrt.tools.corpus.sink-write :as write]
             [ehrt.tools.corpus.intake :as intake])
@@ -72,15 +71,15 @@
                   intake-result (intake/intake-via-source!
                                  {:source source :source-label "composability-prop"
                                   :out out-dir :received "2026-07-28"})]
-              (and (result/ok? write-result)
-                   (result/ok? intake-result)
+              (and (kernel/ok? write-result)
+                   (kernel/ok? intake-result)
                    (let [catalog (:catalog (:payload intake-result))]
                      (and (= (count items) (count catalog))
                           (every? #(= "composability-prop" (:origin %)) catalog)
                           (every? (fn [[filename content]]
                                     (let [entry (first (filter #(= filename (:path %)) catalog))]
                                       (and (some? entry)
-                                           (= (digest/sha256-string content) (:id entry)))))
+                                           (= (kernel/sha256-string content) (:id entry)))))
                                   items)))))))]
     (is (:pass? check-result) (str check-result))))
 
@@ -92,12 +91,12 @@
         source (:payload (ss/dir-source {:path target}))
         intake-result (intake/intake-via-source!
                        {:source source :source-label "concrete" :out out-dir :received "2026-07-28"})]
-    (is (result/ok? write-result))
-    (is (result/ok? intake-result))
+    (is (kernel/ok? write-result))
+    (is (kernel/ok? intake-result))
     (let [catalog (:catalog (:payload intake-result))]
       (is (= 2 (count catalog)))
       (is (= #{"a.json" "b.json"} (into #{} (map :path) catalog)))
-      (is (= (digest/sha256-string "AAA")
+      (is (= (kernel/sha256-string "AAA")
              (:id (first (filter #(= "a.json" (:path %)) catalog))))))))
 
 ;; ---- the provenance half (SS-4b, D-d resolved via ADR-0020, ruling 5) ----
@@ -128,7 +127,7 @@
                   input-hashes (into {}
                                       (keep (fn [[filename [content has-input-hash?]]]
                                               (when has-input-hash?
-                                                [filename (digest/sha256-string (str "parent-of-" content))])))
+                                                [filename (kernel/sha256-string (str "parent-of-" content))])))
                                       items)
                   sink (:payload (ss/dir-sink {:path target :format :fhir-json}))
                   write-result (write/write-dir! sink files
@@ -141,15 +140,15 @@
                   intake-result (intake/intake-via-source!
                                  {:source source :source-label "composability-prop"
                                   :out out-dir :received "2026-07-28"})]
-              (and (result/ok? write-result)
-                   (result/ok? intake-result)
+              (and (kernel/ok? write-result)
+                   (kernel/ok? intake-result)
                    (let [catalog (:catalog (:payload intake-result))]
                      (and (= (inc (count files)) (count catalog))
                           (every? #(= producer (:origin (:operation-provenance %))) catalog)
                           (every? (fn [[filename [content _]]]
                                     (let [entry (first (filter #(= filename (:path %)) catalog))]
                                       (and (some? entry)
-                                           (= (digest/sha256-string content) (:id entry))
+                                           (= (kernel/sha256-string content) (:id entry))
                                            (= (get input-hashes filename)
                                               (:input-hash (:operation-provenance entry))))))
                                   items)))))))]
@@ -159,7 +158,7 @@
   (let [target (temp-dir-path)
         out-dir (temp-dir-path)
         items {"a.hl7" "AAA" "b.hl7" "BBB"}
-        parent-hash (digest/sha256-string "parent-of-AAA")
+        parent-hash (kernel/sha256-string "parent-of-AAA")
         write-result (write/write-dir! (:payload (ss/dir-sink {:path target :format :v2-er7}))
                                         items
                                         :operation-manifest
@@ -169,8 +168,8 @@
         source (:payload (ss/dir-source {:path target}))
         intake-result (intake/intake-via-source!
                        {:source source :source-label "concrete" :out out-dir :received "2026-07-28"})]
-    (is (result/ok? write-result))
-    (is (result/ok? intake-result))
+    (is (kernel/ok? write-result))
+    (is (kernel/ok? intake-result))
     (let [catalog (:catalog (:payload intake-result))
           a-entry (first (filter #(= "a.hl7" (:path %)) catalog))
           b-entry (first (filter #(= "b.hl7" (:path %)) catalog))]

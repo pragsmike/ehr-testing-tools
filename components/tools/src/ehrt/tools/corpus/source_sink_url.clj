@@ -34,7 +34,7 @@
   load-bearing."
   (:require [clojure.string :as str]
             [ehrt.tools.corpus.source-sink :as ss]
-            [ehrt.tools.result :as result])
+            [ehrt.kernel.interface :as kernel])
   (:import [java.net URLDecoder URLEncoder]))
 
 (def source-schemes
@@ -168,30 +168,30 @@
   [url schemes implemented-kinds finish unknown-scheme-category unsupported-kind-category malformed-category]
   (cond
     (has-whitespace? url)
-    (result/rejected malformed-category {:url url :hint "a source/sink designator may not contain whitespace"})
+    (kernel/rejected malformed-category {:url url :hint "a source/sink designator may not contain whitespace"})
 
     :else
     (if-let [[scheme rest] (split-scheme url)]
       (if-let [kind (get schemes scheme)]
         (let [m (if (= kind :blaze) (parse-blaze rest) (parse-plain kind rest))]
           (if (nil? m)
-            (result/rejected malformed-category {:url url :hint "blaze: requires blaze://host..."})
+            (kernel/rejected malformed-category {:url url :hint "blaze: requires blaze://host..."})
             (if (contains? implemented-kinds kind)
               (finish kind m)
-              (result/rejected unsupported-kind-category
+              (kernel/rejected unsupported-kind-category
                                 {:kind kind :url url
                                  :hint (str "kind " (name kind) " is recognized (D-a) but not yet supported -- a later SS-1..SS-5 session lands it")}))))
-        (result/rejected unknown-scheme-category
+        (kernel/rejected unknown-scheme-category
                           {:url url :scheme scheme :valid-options (sort (keys schemes))}))
-      (result/rejected malformed-category
+      (kernel/rejected malformed-category
                         {:url url :hint "expected scheme:... e.g. dir:./corpus"}))))
 
 (defn parse-source-designator
   "Parses a Source URL string (e.g. \"dir:./corpus?format=v2-er7\") into
-  a canonical Source map. Returns result/ok the map (already validated
+  a canonical Source map. Returns kernel/ok the map (already validated
   through ehrt.tools.corpus.source-sink's own dir-source/file-
   source constructors for the two implemented kinds), or
-  result/rejected :malformed-source-designator, :unknown-source-scheme,
+  kernel/rejected :malformed-source-designator, :unknown-source-scheme,
   :unsupported-source-kind, or (propagated from the constructor)
   :invalid-source."
   [url]
@@ -214,24 +214,24 @@
   (let [{:keys [kind path format framing]} m]
     (cond
       (not (valid? m))
-      (result/rejected invalid-category {:map m})
+      (kernel/rejected invalid-category {:map m})
 
       (not (contains? implemented-kinds kind))
-      (result/rejected unsupported-kind-category {:kind kind :map m})
+      (kernel/rejected unsupported-kind-category {:kind kind :map m})
 
       :else
       (let [query-pairs (cond-> []
                            format (conj (str "format=" (url-encode (name format))))
                            framing (conj (str "framing=" (url-encode (name framing)))))
             query-str (when (seq query-pairs) (str "?" (str/join "&" query-pairs)))]
-        (result/ok (str (name kind) ":" (or path "") query-str))))))
+        (kernel/ok (str (name kind) ":" (or path "") query-str))))))
 
 (defn print-source-designator
   "Renders a canonical Source map back to its URL string. Only :dir/
   :file (ss/printable-source-kinds, narrower than implemented-source-
   kinds -- SS-2 Step 4 adds generator-kind PARSING, never printing) are
   printable; any other kind, or a map that doesn't validate, is
-  result/rejected."
+  kernel/rejected."
   [m]
   (print-designator m ss/printable-source-kinds ss/valid-source?
                      :unsupported-source-kind :invalid-source))

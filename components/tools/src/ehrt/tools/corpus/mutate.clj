@@ -22,11 +22,9 @@
   disqualified as the mutation substrate. See EXP-B2's results
   (docs/experiments/EXP-B2-results.md) for both findings' evidence."
   (:require [clojure.data.json :as json]
-            [ehrt.tools.digest :as digest]
-            [ehrt.tools.locator :as locator]
             [ehrt.tools.lineage :as lineage]
             [ehrt.tools.corpus.er7 :as er7]
-            [ehrt.tools.result :as result]))
+            [ehrt.kernel.interface :as kernel]))
 
 (defn content-hash
   "The content hash `corpus.mutate`'s FHIR path and lineage records
@@ -36,7 +34,7 @@
   analogous \"canonical parsed form\" to serialize for v2 the way JSON
   serves FHIR; the ER7 string itself already is the persisted form."
   [data]
-  (digest/sha256-string (json/write-str data)))
+  (kernel/sha256-string (json/write-str data)))
 
 (defn- lineage-for
   [{:keys [parent operator locator-envelope produced]}]
@@ -52,15 +50,15 @@
   "base-data is parsed FHIR JSON (plain Clojure data, string keys and
   integer indices -- e.g. clojure.data.json/read-str's own output)."
   [base-data operator locator-envelope]
-  (let [path-result (locator/fhir-data-path (:path locator-envelope))]
-    (if-not (result/ok? path-result)
+  (let [path-result (kernel/fhir-data-path (:path locator-envelope))]
+    (if-not (kernel/ok? path-result)
       path-result
       (let [path (:payload path-result)
             sentinel ::not-found]
         (if (= sentinel (get-in base-data path sentinel))
-          (result/rejected :locator-not-found {:path path})
+          (kernel/rejected :locator-not-found {:path path})
           (let [mutant ((:fn operator) base-data path)]
-            (result/ok {:mutant mutant
+            (kernel/ok {:mutant mutant
                         :lineage (lineage-for {:parent (content-hash base-data)
                                                 :operator operator
                                                 :locator-envelope locator-envelope
@@ -72,15 +70,15 @@
   substrate parsing stays this namespace's own concern rather than
   every caller's."
   [base-content operator locator-envelope]
-  (let [path-result (locator/v2-data-path (:path locator-envelope))]
-    (if-not (result/ok? path-result)
+  (let [path-result (kernel/v2-data-path (:path locator-envelope))]
+    (if-not (kernel/ok? path-result)
       path-result
       (let [loc (:payload path-result)
             parsed (er7/parse base-content)]
         (if-not (er7/resolve-locator parsed loc)
-          (result/rejected :locator-not-found {:path loc})
+          (kernel/rejected :locator-not-found {:path loc})
           (let [mutant (er7/serialize ((:fn operator) parsed loc))]
-            (result/ok {:mutant mutant
+            (kernel/ok {:mutant mutant
                         :lineage (lineage-for {:parent (er7/content-hash base-content)
                                                 :operator operator
                                                 :locator-envelope locator-envelope
@@ -91,12 +89,12 @@
   at locator (a locator envelope, {:format :path} -- ehrt.tools.
   locator). Dispatches on operator's own :format (:fhir or :v2) to the
   matching substrate; base-data's own shape is format-dependent (see
-  mutate-fhir/mutate-v2's docstrings). Returns result/ok {:mutant
+  mutate-fhir/mutate-v2's docstrings). Returns kernel/ok {:mutant
   :lineage}, or:
     - the locator path's own parse rejection (:invalid-fhir-path or
       :invalid-v2-path), if the locator's :path doesn't parse under
       its format's grammar
-    - result/rejected :locator-not-found if the parsed path doesn't
+    - kernel/rejected :locator-not-found if the parsed path doesn't
       resolve anywhere in base-data
   operator's own :fn is assumed pure and total once the path is known
   to resolve; validation of *that* is this function's job, not the
