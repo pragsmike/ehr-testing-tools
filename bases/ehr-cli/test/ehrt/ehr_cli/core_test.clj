@@ -84,7 +84,7 @@
 (deftest dispatch-unknown-group-names-the-valid-groups-test
   (let [r (cli/dispatch ["bogus" "thing"] {} {})]
     (is (= :unknown-command (:category r)) "category survives the payload extension")
-    (is (= #{"artifact" "corpus" "gate" "check" "version" "doctor"} (set (:valid-options (:payload r)))))
+    (is (= #{"artifact" "corpus" "gate" "check" "version" "doctor" "sim"} (set (:valid-options (:payload r)))))
     (is (= "run: ehr help" (:hint (:payload r))))))
 
 (deftest dispatch-unknown-artifact-action-names-fetch-and-resolve-test

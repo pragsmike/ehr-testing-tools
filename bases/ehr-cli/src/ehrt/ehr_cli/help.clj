@@ -118,7 +118,19 @@
 
     {:group "doctor"
      :doc "Runs SETUP.md's verification checklist as checks (D13): java resolution via the artifact registry, artifact cache presence per lockfile entry, git hooksPath wiring, and platform support. Exit 0 every check passed; 1 at least one failed; 2 couldn't even read the lockfile to know what to check."
-     :flags [{:flag "--lockfile" :doc "path to the lockfile" :default "artifacts.lock.edn"}]}]})
+     :flags [{:flag "--lockfile" :doc "path to the lockfile" :default "artifacts.lock.edn"}]}
+
+    {:group "sim"
+     :doc "Run the sim engine, mounted in-process (ADR-0005, ADR-0012 fulfilled) -- ehrt.sim.interface/run-command directly, no subprocess."
+     :verbs
+     [{:verb "run" :doc "Runs one deterministic simulation and returns its ground truth, manifest, and summary (plus --emit's rendered messages/bundles, when given)."
+       :flags [{:flag "--seed" :doc "simulation seed (integer) -- required, determinism is a feature, not a default"}
+               {:flag "--patients" :doc "patient count (integer)"}
+               {:flag "--reference-date" :doc "ISO date string, pinned input for HL7 timestamp anchoring"}
+               {:flag "--warm-up-seconds" :doc "engine warm-up window (integer)" :default "0"}
+               {:flag "--emit" :doc "\"hl7\" to render messages into the payload, \"fhir\" to render FHIR bundles instead"}
+               {:flag "--churn" :doc "turn churn on with sensible defaults" :default "false"}
+               {:flag "--config" :doc "path to an EDN file carrying the data-heavy engine keys with no flag of their own (:pathway/:pathways/:order-profiles/:churn-profile/:site-profile/:modules/...)"}]}]}]})
 
 (defn group-names
   "Every group name in the spec, in declared order."

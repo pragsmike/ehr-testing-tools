@@ -30,7 +30,8 @@
             [ehrt.tools.interface :as check]
             [ehrt.tools.interface :as gate-v2]
             [ehrt.tools.interface :as gate-fhir]
-            [ehrt.tools.interface :as report])
+            [ehrt.tools.interface :as report]
+            [ehrt.tools.interface :as sim])
   (:import [java.time LocalDate]
            [java.lang ProcessBuilder$Redirect]))
 
@@ -44,7 +45,13 @@
    :reference-date {:coerce :string}
    :version {:coerce :string}
    :no-verdict-cache {:coerce :boolean}
-   :all {:coerce :boolean}})
+   :all {:coerce :boolean}
+   ;; `ehr sim run` (ADR-0005, ADR-0012 fulfilled): sim's own opt names,
+   ;; unchanged -- ehrt.sim.interface/run-command's own :patients/
+   ;; :warm-up-seconds/:churn.
+   :patients {:coerce :long}
+   :warm-up-seconds {:coerce :long}
+   :churn {:coerce :boolean}})
 
 (defn parse
   "Parses raw CLI args into {:args [positional...] :opts {...}}."
@@ -929,14 +936,31 @@
   [args valid-options]
   (result/error :unknown-command {:args args :valid-options valid-options :hint "run: ehr help"}))
 
-;; Cross-repo interface commitment (ADR-0012): ehr-testing-sim mounts as
-;; one arm here, per its own ADR-0001. Preserve, when refactoring this
-;; boundary: parsed-[group action]-in / Result-map-out dispatch; a single
-;; merged babashka.cli spec parsed once, host-side; structural Result
-;; typing; the help-group data shape; the -fn injection point. Manifest
-;; schema changes require a version bump, and the binding contract test
-;; lives in test-integration/. Read ADR-0012 (and, for provenance,
-;; notes/ehr-testing-sim-mounting-note.md) before changing any of these.
+(defn sim-run-command
+  "`ehr sim run`: mounts ehrt.sim.interface/run-command in-process
+  (ADR-0005, 2026-07-28 -- ADR-0012's own long-deferred \"ehr sim
+  mount\", fulfilled once sim and tools shared one workspace/classpath).
+  No translation layer: this CLI's own flag names already match sim's
+  own opts 1:1 (:seed, :patients, :reference-date, :emit, :churn,
+  :config, :warm-up-seconds -- see ehrt.sim.interface/run-command's own
+  docstring for the full set); the -fn injection point below
+  (:sim-run-fn) is what keeps this repo's own CLI tests hermetic, per
+  ADR-0012 property 5's own commitment."
+  [opts]
+  (sim/sim-run! opts))
+
+;; Cross-repo interface commitment (ADR-0012), now fulfilled by
+;; sim-run-command above (ADR-0005): the five properties ADR-0012 named
+;; are exactly what made this mount ~roughly four lines of change --
+;; preserve them, when refactoring this boundary: parsed-[group
+;; action]-in / Result-map-out dispatch; a single merged babashka.cli
+;; spec parsed once, host-side; structural Result typing; the help-group
+;; data shape; the -fn injection point (:sim-run-fn, alongside every
+;; other -fn key dispatch already carries). Manifest schema changes
+;; require a version bump, and the binding contract test lives in
+;; projects/conformance/test/. Read ADR-0012 and ADR-0005 (and, for
+;; provenance, notes/ehr-testing-sim-mounting-note.md) before changing
+;; any of these.
 
 (defn- resolve-path-designators
   "CLI acceptance is additive (ruling 7, docs/source-sink-design.md
@@ -970,7 +994,7 @@
   docstring's EDN-out exception."
   ([args opts] (dispatch args opts {}))
   ([args opts {:keys [fetch-fn fetch-all-fn resolve-fn generate-fn mutate-fn intake-fn operators-fn
-                       gate-v2-fn gate-fhir-fn check-fn version-fn doctor-fn]
+                       gate-v2-fn gate-fhir-fn check-fn version-fn doctor-fn sim-run-fn]
                :or {fetch-fn fetch-command
                     fetch-all-fn fetch-all-command
                     resolve-fn resolve-command
@@ -982,7 +1006,8 @@
                     gate-fhir-fn fhir-gate-command
                     check-fn check-command
                     version-fn version-command
-                    doctor-fn doctor-command}}]
+                    doctor-fn doctor-command
+                    sim-run-fn sim-run-command}}]
    (let [[group action path] args]
      (cond
        (:help opts) (help-response group)
@@ -1032,6 +1057,9 @@
            "check" (check-fn opts)
            "version" (version-fn opts)
            "doctor" (doctor-fn opts)
+           "sim" (case action
+                   "run" (sim-run-fn opts)
+                   (unknown-command-error args (help/verb-names (help/find-group help/cli-spec "sim"))))
            (unknown-command-error args (help/group-names help/cli-spec))))))))
 
 (defn render

@@ -142,16 +142,10 @@
 ;; then spools its own :messages/:manifest into out-dir -- tools
 ;; writes no manifest of its own for sim output (ruling 4: sim's own
 ;; ManifestV1_1-shaped payload IS the manifest). Hermetic throughout:
-;; an injected :run-invocation fake, never a real subprocess, and an
-;; explicit :sim-dir so discovery succeeds without depending on the
-;; real machine's own filesystem state. ----
-
-(defn- fake-sim-invocation
-  [stdout]
-  (fn [{:keys [stdout-path stderr-path]}]
-    (spit stdout-path stdout)
-    (spit stderr-path "")
-    (result/ok {:exit-code 0})))
+;; an injected :run-command-fn fake (ADR-0005 -- sim/run! is an
+;; in-process mount now, not a subprocess; this replaces the old
+;; :run-invocation/:sim-dir discovery injection with the one seam that
+;; still exists), never a real simulation. ----
 
 (deftest sim-registered-test
   (is (some? (generators/lookup :sim))))
@@ -169,8 +163,8 @@
   (let [out-dir (temp-dir)
         entry (generators/lookup :sim)
         sim-payload {:ground-truth [] :manifest {:stage :simulated} :messages ["MSH|1" "MSH|2"]}
-        fake (fake-sim-invocation (pr-str {:status :ok :payload sim-payload}))
-        params-result (generators/resolve-params :sim {:sim-dir (temp-dir) :run-invocation fake})]
+        fake (fn [_] (result/ok sim-payload))
+        params-result (generators/resolve-params :sim {:run-command-fn fake})]
     (is (result/ok? params-result))
     (let [r ((:execute-fn entry) (:payload params-result) out-dir)]
       (is (result/ok? r))
@@ -183,8 +177,8 @@
   (let [out-dir (temp-dir)
         entry (generators/lookup :sim)
         sim-payload {:ground-truth [] :manifest {:stage :simulated} :messages []}
-        fake (fake-sim-invocation (pr-str {:status :ok :payload sim-payload}))
-        params-result (generators/resolve-params :sim {:sim-dir (temp-dir) :run-invocation fake})]
+        fake (fn [_] (result/ok sim-payload))
+        params-result (generators/resolve-params :sim {:run-command-fn fake})]
     (is (result/ok? params-result))
     (let [r ((:execute-fn entry) (:payload params-result) out-dir)]
       (is (result/error? r))
@@ -193,12 +187,9 @@
 (deftest sim-execute-fn-propagates-sim-run-failures-unchanged-test
   (let [out-dir (temp-dir)
         entry (generators/lookup :sim)
-        missing (let [f (File/createTempFile "generators-test-missing" "")]
-                  (.delete f)
-                  (.getAbsolutePath f))
-        params-result (generators/resolve-params
-                       :sim {:sim-dir nil :env-sim-dir-fn (fn [] nil) :default-dir missing})]
+        fake (fn [_] (result/error :missing-required-opt {:opt :seed}))
+        params-result (generators/resolve-params :sim {:run-command-fn fake})]
     (is (result/ok? params-result))
     (let [r ((:execute-fn entry) (:payload params-result) out-dir)]
       (is (result/error? r))
-      (is (= :sim-not-available (:category r))))))
+      (is (= :missing-required-opt (:category r))))))

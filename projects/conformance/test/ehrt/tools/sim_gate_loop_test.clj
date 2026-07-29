@@ -31,10 +31,10 @@
   test/fixtures/reports/pre-split-baseline.edn) via
   judge.report/diff-reports, so a sim-side fix (or regression) shows up
   as a verdict delta here instead of a silent no-op; a missing baseline
-  is reported, not failed on (bootstrapping this suite on a machine that
-  hasn't captured one yet is not itself a defect). Skips cleanly (see
-  sim-harness/absence-message) when ../ehr-testing-sim isn't checked
-  out."
+  is reported, not failed on (bootstrapping this suite on a machine
+  that hasn't captured one yet is not itself a defect). Runs
+  unconditionally (ADR-0005): sim is an in-process mount now, never a
+  sibling checkout that might be absent."
   (:require [clojure.test :refer [deftest is]]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
@@ -61,36 +61,33 @@
       (spit (io/file dir (format "msg-%03d.hl7" i)) message))
     messages)))
 
-(deftest ^:integration sim-v2-gate-loop-test
-  (if-not (sim-harness/available?)
-    (do (println sim-harness/absence-message)
-        (is true sim-harness/absence-message))
-    (let [run-result (sim-harness/run! {:seed 42 :patients 20 :churn true :emit "hl7"})]
-      (when-not (result/ok? run-result)
-        (throw (ex-info "sim-gate-loop: sim run failed" run-result)))
-      (let [messages (:messages (:payload run-result))
-            corpus-dir (str work-dir "/corpus")]
-        (is (seq messages) "sanity: --emit hl7 produced at least one message")
-        (write-messages! corpus-dir messages)
-        (let [gate-result (gate-v2/v2-gate-dir corpus-dir)]
-          (is (result/ok? gate-result) "the gate ran to completion")
-          (let [results (:results (:payload gate-result))
-                current (report/build-report results {:gate :v2 :path corpus-dir
-                                                       :source "ehr-testing-sim"
-                                                       :seed 42 :patients 20 :churn true})]
-            (is (= (count messages) (count results))
-                "one verdict per emitted message")
-            (is (report/report-valid? current)
-                "the built report conforms to judge.report/Report")
-            (if (.isFile (io/file baseline-path))
-              (let [baseline (edn/read-string (slurp baseline-path))
-                    diff (report/diff-reports baseline current)]
-                (is (empty? (:files-added diff))
-                    "same seed/config/churn should always emit the same file set")
-                (is (empty? (:files-removed diff))
-                    "same seed/config/churn should always emit the same file set")
-                (println "SIM-GATE-LOOP diff vs baseline:" (pr-str diff)))
-              (println "SIM-GATE-LOOP: no baseline yet at" baseline-path
-                       "-- capture one from this run's report before relying on drift detection."))
-            (println "SIM-GATE-LOOP verdict totals:" (:totals current))
-            (println "SIM-GATE-LOOP by-code:" (:by-code current))))))))
+(deftest sim-v2-gate-loop-test
+  (let [run-result (sim-harness/run! {:seed 42 :patients 20 :churn true :emit "hl7"})]
+    (when-not (result/ok? run-result)
+      (throw (ex-info "sim-gate-loop: sim run failed" run-result)))
+    (let [messages (:messages (:payload run-result))
+          corpus-dir (str work-dir "/corpus")]
+      (is (seq messages) "sanity: --emit hl7 produced at least one message")
+      (write-messages! corpus-dir messages)
+      (let [gate-result (gate-v2/v2-gate-dir corpus-dir)]
+        (is (result/ok? gate-result) "the gate ran to completion")
+        (let [results (:results (:payload gate-result))
+              current (report/build-report results {:gate :v2 :path corpus-dir
+                                                     :source "ehr-testing-sim"
+                                                     :seed 42 :patients 20 :churn true})]
+          (is (= (count messages) (count results))
+              "one verdict per emitted message")
+          (is (report/report-valid? current)
+              "the built report conforms to judge.report/Report")
+          (if (.isFile (io/file baseline-path))
+            (let [baseline (edn/read-string (slurp baseline-path))
+                  diff (report/diff-reports baseline current)]
+              (is (empty? (:files-added diff))
+                  "same seed/config/churn should always emit the same file set")
+              (is (empty? (:files-removed diff))
+                  "same seed/config/churn should always emit the same file set")
+              (println "SIM-GATE-LOOP diff vs baseline:" (pr-str diff)))
+            (println "SIM-GATE-LOOP: no baseline yet at" baseline-path
+                     "-- capture one from this run's report before relying on drift detection."))
+          (println "SIM-GATE-LOOP verdict totals:" (:totals current))
+          (println "SIM-GATE-LOOP by-code:" (:by-code current)))))))

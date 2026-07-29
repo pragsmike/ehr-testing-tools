@@ -57,7 +57,8 @@
     ["gate" "fhir"] :gate-fhir-fn
     ["check" nil] :check-fn
     ["version" nil] :version-fn
-    ["doctor" nil] :doctor-fn))
+    ["doctor" nil] :doctor-fn
+    ["sim" "run"] :sim-run-fn))
 
 (deftest every-spec-command-pair-actually-routes-in-dispatch-test
   (doseq [[group verb] (help/command-pairs help/cli-spec)]
@@ -79,7 +80,8 @@
     ["gate" "v2"] ["gate" "fhir"]
     ["check" nil]
     ["version" nil]
-    ["doctor" nil]})
+    ["doctor" nil]
+    ["sim" "run"]})
 
 (deftest spec-command-pairs-match-dispatchs-known-routes-test
   (is (= known-dispatch-pairs (set (help/command-pairs help/cli-spec)))))

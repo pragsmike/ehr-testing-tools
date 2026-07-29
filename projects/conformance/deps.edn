@@ -1,9 +1,14 @@
-{:deps {;; No poly/sim entry -- ADR-0013 (notes/tools/ADRs.md, carried
-        ;; forward as provenance): sim is consumed by subprocess only,
-        ;; never a classpath/deps.edn dependency, even from this test
-        ;; loop. sim_harness.clj shells out to the sim CLI directly.
+{:deps {;; poly/sim: ADR-0013's subprocess-only rule is superseded
+        ;; (ADR-0004, 2026-07-28) -- ehrt.tools.sim now calls
+        ;; ehrt.sim.interface/run-command in-process, so this project's
+        ;; sim_harness.clj and its five sim_*_test.clj consumers need
+        ;; sim on the classpath like any other component this project
+        ;; exercises. See ADR-0004 for why the ADR-0013-era reasons
+        ;; (private-repo split, cross-repo version lockstep) no longer
+        ;; hold.
         poly/tools    {:local/root "../../components/tools"}
         poly/palgebra {:local/root "../../components/palgebra"}
+        poly/sim      {:local/root "../../components/sim"}
         org.clojure/clojure {:mvn/version "1.12.5"}}
 
  :aliases {;; Base-less project (R15): sim + tools + palgebra, test-only.

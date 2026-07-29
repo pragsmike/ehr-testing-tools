@@ -14,33 +14,42 @@
   AUTHORS-GUIDE.md section 7's two-failure-modes discipline): if sim's
   manifest fails to validate, that failure IS the deliverable -- report
   the exact malli mismatch, never loosen ManifestV1_1 to accommodate
-  it. Skips cleanly (see sim-harness/absence-message) when
-  ../ehr-testing-sim isn't checked out."
+  it. Runs unconditionally (ADR-0005): sim is an in-process mount now,
+  never a sibling checkout that might be absent.
+
+  ADR-0005 dated finding, 2026-07-28: this test's own :generator :name
+  expectation was still \"ehr-testing-sim\" -- stale since the H2
+  rename (ADR-0001) gave sim its current self-identity, \"ehrt.sim\"
+  (components/sim/src/ehrt/sim/manifest.clj). This test path never
+  actually ran end to end before the in-process mount (always skipped,
+  local and CI both, for lack of a sibling checkout), so the staleness
+  went uncaught until now. Per AUTHORS-GUIDE.md's own two-failure-modes
+  split, this is the SECOND mode -- \"a check misencoding its own
+  invariant\" -- not sim-side drift: the rename was already deliberate
+  and ratified (ADR-0001's own mechanical rename), so the fix is
+  correcting this test's stale expectation, not leaving it red."
   (:require [clojure.test :refer [deftest is]]
             [malli.core :as m]
             [ehrt.tools.interface :as result]
             [ehrt.tools.interface :as manifest]
             [ehrt.tools.sim-harness :as sim-harness]))
 
-(deftest ^:integration sim-manifest-conforms-to-tools-manifest-v1-1-test
-  (if-not (sim-harness/available?)
-    (do (println sim-harness/absence-message)
-        (is true sim-harness/absence-message))
-    (let [run-result (sim-harness/run! {:seed 100 :patients 1})]
-      (when-not (result/ok? run-result)
-        (throw (ex-info "sim-manifest-contract: sim run failed" run-result)))
-      (let [mf (:manifest (:payload run-result))]
-        (is (m/validate manifest/ManifestV1_1 mf)
-            (str "sim's emitted manifest does not conform to ManifestV1_1 -- "
-                 "exact mismatch (a FINDING for the sim repo, not something "
-                 "to paper over here): "
-                 (pr-str (m/explain manifest/ManifestV1_1 mf))))
-        ;; The fields intake cares about, asserted individually so a
-        ;; single :schema-version-shaped mismatch above doesn't obscure
-        ;; whether the rest of the manifest is otherwise sound.
-        (is (= :simulated (:stage mf)))
-        (is (= "ehr-testing-sim" (get-in mf [:generator :name])))
-        (is (string? (get-in mf [:generator :version])))
-        (is (map? (:seeds mf)))
-        (is (every? keyword? (keys (:seeds mf))))
-        (is (every? int? (vals (:seeds mf))))))))
+(deftest sim-manifest-conforms-to-tools-manifest-v1-1-test
+  (let [run-result (sim-harness/run! {:seed 100 :patients 1})]
+    (when-not (result/ok? run-result)
+      (throw (ex-info "sim-manifest-contract: sim run failed" run-result)))
+    (let [mf (:manifest (:payload run-result))]
+      (is (m/validate manifest/ManifestV1_1 mf)
+          (str "sim's emitted manifest does not conform to ManifestV1_1 -- "
+               "exact mismatch (a FINDING for the sim repo, not something "
+               "to paper over here): "
+               (pr-str (m/explain manifest/ManifestV1_1 mf))))
+      ;; The fields intake cares about, asserted individually so a
+      ;; single :schema-version-shaped mismatch above doesn't obscure
+      ;; whether the rest of the manifest is otherwise sound.
+      (is (= :simulated (:stage mf)))
+      (is (= "ehrt.sim" (get-in mf [:generator :name])))
+      (is (string? (get-in mf [:generator :version])))
+      (is (map? (:seeds mf)))
+      (is (every? keyword? (keys (:seeds mf))))
+      (is (every? int? (vals (:seeds mf)))))))

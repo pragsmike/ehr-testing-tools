@@ -71,12 +71,13 @@
 (def Assertion check/Assertion)
 (def check-corpus check/check-corpus)
 
-;; sim (ehrt.tools' own sim-consumer wrapper, ADR-0013 -- distinct
-;; from the ehrt.sim component itself)
-(def available? sim/available?)
-(def default-sim-repo-dir sim/default-sim-repo-dir)
+;; sim (ehrt.tools' own sim-consumer wrapper -- distinct from the
+;; ehrt.sim component itself). ADR-0005: in-process as of 2026-07-28,
+;; the ehr-sim-mount fulfillment of ADR-0012; no more available?/
+;; default-sim-repo-dir/sim-dir-env-var -- there is nothing left to
+;; discover or degrade gracefully without (see ehrt.tools.sim's own
+;; docstring).
 (def sim-run! sim/run!)
-(def sim-dir-env-var sim/sim-dir-env-var)
 
 ;; corpus.canonicalizers
 (def strip-run-timestamp-suffix canonicalizers/strip-run-timestamp-suffix)
