@@ -277,7 +277,7 @@ flowchart LR
 # Point this at your own corpus. This repo vendors one you can try
 # it on: five HL7 v2 messages, plus a synthetic 1,013-message corpus
 # under simhospital/ (ADR-0011).
-YOUR_CORPUS=test/fixtures/v2
+YOUR_CORPUS=components/tools/test-fixtures/v2
 
 # Catalog it first. Intake recurses and records EVERY file it finds
 # -- content hash, sniffed format, source label, received date -- so
@@ -510,14 +510,14 @@ flowchart LR
 
 ```sh
 # The run you trust becomes the baseline. Keep this file.
-bin/ehr gate v2 test/fixtures/v2 --report out/regression/baseline.edn
+bin/ehr gate v2 components/tools/test-fixtures/v2 --report out/regression/baseline.edn
 
 # ...later, the same corpus again -- but judged relative to that
 # baseline: a finding counts toward rejection only if its
 # {severity, code, locator-path} isn't already in the baseline for
 # that same file. The exit code follows the relative view, so a
 # corpus that is identically noisy to its baseline still exits 0.
-bin/ehr gate v2 test/fixtures/v2 \
+bin/ehr gate v2 components/tools/test-fixtures/v2 \
   --report out/regression/today.edn \
   --baseline out/regression/baseline.edn
 ```
@@ -641,7 +641,7 @@ flowchart LR
 
 ```sh
 # The delivered corpus, as received.
-VENDOR_CORPUS=test/fixtures/v2
+VENDOR_CORPUS=components/tools/test-fixtures/v2
 
 # 1. Catalog before you accept: a content hash per file, and one
 #    batch record naming the source and the date you received it.
@@ -890,11 +890,11 @@ bin/ehr corpus operators --format v2
 
 # Baseline: what does this tier say about the file BEFORE you
 # break it? On a real-world corpus this is not a formality.
-bin/ehr gate v2 test/fixtures/v2/adt-a01-admit.hl7 \
+bin/ehr gate v2 components/tools/test-fixtures/v2/adt-a01-admit.hl7 \
   --report out/calibration/before.edn
 
 # One mutant per {operator, locator} cell you want filled in.
-bin/ehr corpus mutate --path test/fixtures/v2/adt-a01-admit.hl7 \
+bin/ehr corpus mutate --path components/tools/test-fixtures/v2/adt-a01-admit.hl7 \
   --operator-id blank-required-field --locator-path MSH-9 \
   --out-dir out/calibration/blank-required-field
 
@@ -1137,7 +1137,7 @@ flowchart LR
 
 **Audience:** Teams with an existing HL7v2 feed (a file of many MSH-delimited messages, or anything nc/a real interface engine can pipe as bytes) who want it cataloged as a corpus without a separate file-splitting step.
 
-**You bring:** A byte stream framed as one of the SS-3 framing kinds (er7-multi here; ndjson/mllp/bundle-entries work the same way) -- this example pipes an excerpt of the vendored SimHospital corpus (test/fixtures/v2/simhospital/messages.out, ADR-0011), but any MSH-multi-message file or a real nc pipe works identically.
+**You bring:** A byte stream framed as one of the SS-3 framing kinds (er7-multi here; ndjson/mllp/bundle-entries work the same way) -- this example pipes an excerpt of the vendored SimHospital corpus (components/tools/test-fixtures/v2/simhospital/messages.out, ADR-0011), but any MSH-multi-message file or a real nc pipe works identically.
 
 **You get:** A cataloged v2 corpus: one file per message (the spool, docs/source-sink-design.md Part I.2/D2), plus capture-manifest.edn recording when it was captured, its declared origin, framing, format, item count, and per-item sha256s -- generated in one command, no manual message-splitting step (SS-3).
 
@@ -1150,7 +1150,7 @@ flowchart LR
 # straight into intake -- the framing (er7-multi: MSH-led messages
 # separated by a blank line) is decoded and spooled, one file per
 # message, before anything is cataloged.
-head -c 2464 test/fixtures/v2/simhospital/messages.out | \
+head -c 2464 components/tools/test-fixtures/v2/simhospital/messages.out | \
   bin/ehr corpus intake 'stdin:?format=v2-er7&framing=er7-multi' \
   --label simhospital-excerpt --out out/demo-stdin-intake
 

@@ -84,7 +84,7 @@ expect 0 bin/ehr corpus mutate $PATIENT_FILE \
   --out-dir out/demo-mutants
 
 expect 0 bin/ehr artifact fetch --name fhir-validator-cli --version 6.9.12
-expect 0 bin/ehr gate v2 test/fixtures/v2
+expect 0 bin/ehr gate v2 components/tools/test-fixtures/v2
 expect 1 bin/ehr gate fhir out/demo-mutants --report out/demo-mutants-report.edn
 
 expect 0 bin/ehr check target/corpus/synthea-s1-p5/fhir --expected target/corpus/synthea-s1-p5/fhir

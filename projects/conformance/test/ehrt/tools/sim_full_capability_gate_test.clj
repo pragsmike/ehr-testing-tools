@@ -7,7 +7,7 @@
   makes of sim's ORM/ORU order-result cycle, M5b's module-driven
   outpatient trajectories, or churn's full trigger-code family, all
   landing in the SAME corpus. This loop runs
-  test-integration/fixtures/sim-configs/full-capability.edn (an
+  projects/conformance/test-fixtures/sim-configs/full-capability.edn (an
   order-bearing CBC pathway for one cohort, an empty pathway plus the
   vendored sinusitis module for a second, disjoint cohort -- see that
   file's own header for why the two cohorts cannot share a patient
@@ -23,7 +23,7 @@
   reasoning ADR-0013 gives for the legacy loop, extended here to a wider
   message-type breadth. The gate's report is compared against its own
   committed baseline
-  (test-integration/fixtures/reports/sim-v2-full-capability-baseline.edn)
+  (projects/conformance/test-fixtures/reports/sim-v2-full-capability-baseline.edn)
   via judge.report/diff-reports; a missing baseline is reported, not
   failed on. Runs unconditionally (ADR-0005): sim is an in-process
   mount now, never a sibling checkout that might be absent."
@@ -36,8 +36,8 @@
             [ehrt.tools.sim-harness :as sim-harness]))
 
 (def ^:private work-dir "target/sim-full-capability-gate")
-(def ^:private baseline-path "test-integration/fixtures/reports/sim-v2-full-capability-baseline.edn")
-(def ^:private config-path "test-integration/fixtures/sim-configs/full-capability.edn")
+(def ^:private baseline-path "projects/conformance/test-fixtures/reports/sim-v2-full-capability-baseline.edn")
+(def ^:private config-path "projects/conformance/test-fixtures/sim-configs/full-capability.edn")
 
 (defn- write-messages!
   "Same zero-padded, log-order file naming as sim-gate-loop-test.clj's

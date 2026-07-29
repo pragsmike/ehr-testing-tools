@@ -1,7 +1,14 @@
 # Provenance — SimHospital `messages.out`
 
-Vendored under [ADR-0011](../../../../notes/ADRs.md) (external data
-artifacts vendor into the tree; engine artifacts stay in the registry).
+Vendored under [tools/ADR-0011](../../../../../notes/tools/ADRs.md)
+(external data artifacts vendor into the tree; engine artifacts stay in
+the registry) -- origin-qualified per this workspace's own citation
+convention (`notes/ADRs.md`'s header): this is `ehr-testing-tools`'
+pre-merge numbering, frozen provenance, not a workspace-level ADR. Link
+and citation both corrected 2026-07-28 (discipline-parity session,
+fixture relocation) -- pointed at the wrong file (a workspace ADR-0011
+that has never existed) since the H2 carve; not previously caught
+because nothing ever clicked it.
 This directory holds a third-party artifact, not fixtures this repo
 authored: the corpus, its upstream `LICENSE`, and this manifest travel
 together.
@@ -55,9 +62,9 @@ The file mixes two terminators, deliberately, and both are load-bearing:
 A checkout that normalizes line endings would rewrite every one of those
 bytes and silently invalidate every round-trip assertion this corpus
 exists to support. `.gitattributes` at the repo root carries
-`test/fixtures/v2/simhospital/messages.out -text` for exactly this
+`components/tools/test-fixtures/v2/simhospital/messages.out -text` for exactly this
 reason, alongside the pre-existing rule for the hand-written
-`test/fixtures/v2/*.hl7` fixtures.
+`components/tools/test-fixtures/v2/*.hl7` fixtures.
 
 ## Structural counts (reproduced 2026-07-26 against the vendored copy)
 
@@ -78,7 +85,7 @@ collections.
 Every one of the 1,013 `PID` segments carries a repeated `PID-3`
 (`<MRN>^^^SIMULATOR MRN^MRN~<NHS number>^^^NHSNBR^NHSNMBR`), which makes
 this corpus a direct exercise of the repetition-preservation property
-`test/fixtures/v2/adt-a01-admit-repeated-identifiers.hl7` was
+`components/tools/test-fixtures/v2/adt-a01-admit-repeated-identifiers.hl7` was
 hand-written to check.
 
 **Event coverage is narrow, by construction of this particular run:** no
@@ -113,10 +120,12 @@ own additional bar for anything it would present as a sanitized corpus.
 
 ## Consumers
 
-`test/ehr_testing_tools/corpus/simhospital_corpus.clj` (test support
-loader) and the `corpus.er7` / `corpus.intake` slice tests that read
-through it. Per ADR-0011 and the ruling recorded with it, the exhaustive
-1,013-message verifications are one-time probes registered in
-`notes/facts-register.md` (F23–F27), not per-push assertions: git
+`components/tools/test/ehrt/tools/corpus/simhospital_corpus.clj` (test
+support loader) and the `corpus.er7` / `corpus.intake` slice tests that
+read through it. Per tools/ADR-0011 and the ruling recorded with it, the
+exhaustive 1,013-message verifications are one-time probes registered in
+`notes/tools/facts-register.md` (F23–F27, frozen provenance -- not this
+workspace's own live `notes/facts-register.md`, instantiated fresh at a
+different sequence, 2026-07-28), not per-push assertions: git
 content-addresses these bytes, so the suite guards path-and-framing
 behavior rather than re-proving corpus integrity on every run.

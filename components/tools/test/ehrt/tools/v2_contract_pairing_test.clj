@@ -2,7 +2,7 @@
   "v2's twin of test-integration/ehr_testing_tools/contract_pairing_test.clj
   (P5): for each of the five v2 defect operators (ehrt.tools.
   corpus.operators, P7 seed catalog), mutate a real fixture
-  (test/fixtures/v2/adt-a01-admit.hl7), gate the mutant through the
+  (components/tools/test-fixtures/v2/adt-a01-admit.hl7), gate the mutant through the
   real judge.v2 (in-process HAPI HL7v2, no external engine subprocess
   -- judge.v2's own docstring), and assert judge.v2's response matches
   the operator's own :violates contract. This is the polarity
@@ -27,7 +27,7 @@
             [ehrt.tools.judge.v2 :as judge]))
 
 (def ^:private work-dir "target/v2-contract-pairing")
-(def ^:private admit-fixture "test/fixtures/v2/adt-a01-admit.hl7")
+(def ^:private admit-fixture "components/tools/test-fixtures/v2/adt-a01-admit.hl7")
 
 (defn- mutate-and-gate!
   "Mutates admit-fixture's content at locator-path with operator-id,

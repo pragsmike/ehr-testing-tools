@@ -9,3 +9,11 @@
 # bytes -- same hazard and same fix as ehr-testing-tools' own
 # .gitattributes for its v2 fixtures.
 components/sim/docs/demos/**/messages*.txt -text
+
+# The same hazard, for ehr-testing-tools' own v2 fixtures -- carried
+# over from tools' pre-carve .gitattributes (H2 landing) but never
+# actually added here until the discipline-parity session's own
+# fixture relocation (2026-07-28) surfaced the gap: these files sat
+# unprotected at their old root test/fixtures/v2/ path since the carve.
+components/tools/test-fixtures/v2/*.hl7 -text
+components/tools/test-fixtures/v2/simhospital/messages.out -text

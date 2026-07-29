@@ -193,7 +193,7 @@ touching caches, generated files, or filesystem layout.
 
 **(c) Tests and tools run with cwd = workspace root.** Every
 cwd-relative literal path in this workspace (`artifacts.lock.edn`,
-`config/synthea/synthea.properties`, `test/fixtures/**`, etc. — see
+`config/synthea/synthea.properties`, `components/tools/test-fixtures/**`, etc. — see
 `notes/ADRs.md` ADR-0002's own deviation record) resolves against the
 JVM process's actual working directory, which `poly test` and `bin/ehr`
 both fix at the workspace root, not a project or component

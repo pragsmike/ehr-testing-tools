@@ -1,10 +1,10 @@
-;; test-integration/fixtures/sim-configs/full-capability.edn -- the
+;; projects/conformance/test-fixtures/sim-configs/full-capability.edn -- the
 ;; full-capability gate loop's own --config passthrough vehicle (M6's
 ;; reference-picture baseline, notes/ADRs.md ADR-0015): every capability
 ;; sim's own docs/demos/ has separately demonstrated, exercised together
 ;; in ONE corpus, so the v2 gate judges the full breadth of what sim
 ;; produces rather than the plain default pathway's ADT-only slice
-;; (test-integration/fixtures/reports/sim-v2-gate-baseline.edn's own
+;; (projects/conformance/test-fixtures/reports/sim-v2-gate-baseline.edn's own
 ;; legacy-floor scope). Designed for --patients 60 (this file's own
 ;; explicit ordinals below only cover 40..59; fewer patients than that
 ;; simply leaves part of the module-only cohort unrealized, not an error).

@@ -5,7 +5,7 @@
             [ehrt.tools.corpus.er7 :as er7]
             [ehrt.tools.corpus.simhospital-corpus :as simhospital]))
 
-(def ^:private fixture-dir "test/fixtures/v2")
+(def ^:private fixture-dir "components/tools/test-fixtures/v2")
 
 (defn- fixture [name] (slurp (io/file fixture-dir name)))
 

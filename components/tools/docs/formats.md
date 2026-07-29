@@ -137,7 +137,7 @@ Free-form by design, so it differs:
 
 ```clojure
 ;; ehr gate v2 / ehr gate fhir
-{:gate :v2, :path "test/fixtures/v2/adt-a01-admit.hl7"}
+{:gate :v2, :path "components/tools/test-fixtures/v2/adt-a01-admit.hl7"}
 
 ;; ehr check
 {:check {:name "check", :version "v1"},

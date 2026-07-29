@@ -54,7 +54,7 @@ this tier, so there is no check this judge can only partially resolve.
 ### Calibration: what the seed catalog convicts, and what P7 found it can't (2026-07-25, CAL-1)
 
 Every seed operator below was verified empirically against
-`test/fixtures/v2/adt-a01-admit.hl7` before being registered --
+`components/tools/test-fixtures/v2/adt-a01-admit.hl7` before being registered --
 `test/ehr_testing_tools/v2_contract_pairing_test.clj` is where that
 claim gets a regression, not just a one-off session probe.
 

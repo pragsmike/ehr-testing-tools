@@ -25,7 +25,7 @@
 ;; present -- a changed verdict, an appeared/disappeared finding code, or
 ;; a different file set is a sim-side change surfacing here, not a
 ;; failure of this test. Regenerate deliberately, like
-;; test/fixtures/reports/pre-split-baseline.edn, never hand-edit.
+;; components/tools/test-fixtures/reports/pre-split-baseline.edn, never hand-edit.
 ;;
 ;; NOTE this loop is now the LEGACY-FLOOR baseline (see ADR-0015): it
 ;; exercises only the plain default pathway (ADT^A01/A02/A03 plus churn's
@@ -34,7 +34,7 @@
 ;; so M3's ORM/ORU emission, M5b's outpatient A04, and any module-driven
 ;; trajectory are invisible to this baseline by construction, regardless
 ;; of how much sim's own capability grows. See
-;; test-integration/fixtures/reports/sim-v2-full-capability-baseline.edn
+;; projects/conformance/test-fixtures/reports/sim-v2-full-capability-baseline.edn
 ;; for the baseline that DOES exercise them.
 ;;
 ;; --- Prior header, superseded above but left standing per this repo's

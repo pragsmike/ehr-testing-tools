@@ -26,9 +26,9 @@
   rejection.
 
   The gate's report is compared against a committed baseline artifact
-  (test-integration/fixtures/reports/sim-v2-gate-baseline.edn, this
+  (projects/conformance/test-fixtures/reports/sim-v2-gate-baseline.edn, this
   repo's --baseline convention -- same shape as
-  test/fixtures/reports/pre-split-baseline.edn) via
+  components/tools/test-fixtures/reports/pre-split-baseline.edn) via
   judge.report/diff-reports, so a sim-side fix (or regression) shows up
   as a verdict delta here instead of a silent no-op; a missing baseline
   is reported, not failed on (bootstrapping this suite on a machine
@@ -44,7 +44,7 @@
             [ehrt.tools.sim-harness :as sim-harness]))
 
 (def ^:private work-dir "target/sim-gate-loop")
-(def ^:private baseline-path "test-integration/fixtures/reports/sim-v2-gate-baseline.edn")
+(def ^:private baseline-path "projects/conformance/test-fixtures/reports/sim-v2-gate-baseline.edn")
 
 (defn- write-messages!
   "Writes each ER7 message string to its own .hl7 file under dir,

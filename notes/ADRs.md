@@ -663,6 +663,53 @@ against `ehr-testing-sim`'s vendored copies) repointed to
 sim-side comparison paths are unaffected (sim didn't move this
 session).
 
+### Erratum (2026-07-28, discipline-parity session — fix-forward, dated, not a revert)
+
+**Correcting a mischaracterization of this ADR, not a mischaracterization
+this ADR itself made.** The discipline-parity session's own prompt
+described this record as having claimed fixture bytes "moved to brick
+resources with `io/resource` conversion." Re-read directly: this ADR
+never claimed that. Its own "cwd-relative literal paths, a real (not
+just cosmetic) tools-vs-sim convention difference" section says the
+opposite, explicitly and by name: *"the correct, lowest-risk fix was
+**not** to convert these to `io/resource`... but to place the actual
+files at the workspace root, unchanged relative paths, zero code
+edits."* That decision was deliberate, disclosed, and — per this same
+erratum — still correct in its core judgment (below). No correction to
+this ADR's own factual content follows from that mischaracterization;
+it's recorded here only so a future reader hitting the same claim
+doesn't waste time hunting for a passage that isn't there.
+
+**What *was* real, found by this same session's own audit
+(`notes/discipline-parity-audit.md` row M24):** the fixture directories
+this ADR placed at the workspace root (`test/`, `test-integration/`)
+were never relocated under an owning brick — genuine top-level
+untidiness, unrelated to the `io/resource` question. The
+discipline-parity session relocated them
+(`components/tools/test-fixtures/`, `projects/conformance/test-fixtures/`)
+while keeping this ADR's own cwd-relative-literal-path design
+unchanged — re-examined, not merely carried over: roughly a third of
+the call sites across the 11 consuming test files (concentrated in
+`bases/ehr-cli/test/ehrt/ehr_cli/core_test.clj`) pass the fixture path
+to real CLI dispatch code (`gate/gate-file`, `cli/gate-v2-command`) as
+the literal filesystem path a user would type — these are testing real
+path-handling behavior, not fixture lookup, and would have broken under
+an `io/resource` conversion regardless of brick placement. This ADR's
+original choice holds for the reason it originally gave, confirmed
+against a wider set of call sites than the original decision inspected.
+
+**A second, unrelated gap the same relocation surfaced:** tools' own
+pre-carve `.gitattributes` carried `-text` overrides protecting
+`test/fixtures/v2/*.hl7` and `test/fixtures/v2/simhospital/messages.out`
+from line-ending normalization (the same class of hazard ADR-0001's own
+deviation record found and fixed for `components/sim/docs/demos/`).
+Neither override was ported during this ADR's own carve. The vendored
+corpus bytes were checked against their recorded sha256
+(`fa9719a5f157391dcf78197e4239bce8af0382ae40b903d019a2773a1a9ff520`) at
+relocation time and found intact — not corrupted in the interim — but
+the gap was real and is now closed at the fixtures' new location
+(`.gitattributes`, discipline-parity session).
+
 ---
 
 ## ADR-0003 — Pre-push gate doctrine: irreversibility-only

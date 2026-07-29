@@ -1,8 +1,8 @@
-;; test-integration/fixtures/reports/sim-v2-full-capability-baseline.edn --
+;; projects/conformance/test-fixtures/reports/sim-v2-full-capability-baseline.edn --
 ;; the FULL-CAPABILITY baseline (notes/ADRs.md ADR-0015): judge.v2's
 ;; report over ehr-testing-sim's own
 ;;   clojure -M:cli run --seed 42 --patients 60 --churn --emit hl7
-;;     --config test-integration/fixtures/sim-configs/full-capability.edn
+;;     --config projects/conformance/test-fixtures/sim-configs/full-capability.edn
 ;; output, captured 2026-07-27 against sim commit
 ;; 26700ce26568b8ea18cf5b7f7ae2a669130a7128 (HEAD of ../ehr-testing-sim at
 ;; capture time). This is the FIRST capture of this baseline (no prior
@@ -22,7 +22,7 @@
 ;; (HAPI's default-validation parse plus DefaultValidator, no conformance
 ;; profile, no terminology) finds sim's wire output well-formed across
 ;; this much wider breadth exactly as it already did for the legacy
-;; loop's narrower ADT-only slice (test-integration/fixtures/reports/
+;; loop's narrower ADT-only slice (projects/conformance/test-fixtures/reports/
 ;; sim-v2-gate-baseline.edn). Verdict table by message type (this
 ;; session's own report, the M6 reference picture proper):
 ;;
@@ -52,7 +52,7 @@
 ;; present -- a changed verdict, an appeared/disappeared finding code, or
 ;; a different file set is a sim-side change surfacing here, not a
 ;; failure of this test. Regenerate deliberately, like
-;; test/fixtures/reports/pre-split-baseline.edn, never hand-edit.
+;; components/tools/test-fixtures/reports/pre-split-baseline.edn, never hand-edit.
 {:run
  {:gate :v2,
   :path "target/sim-full-capability-gate/corpus",
@@ -60,7 +60,7 @@
   :seed 42,
   :patients 60,
   :churn true,
-  :config "test-integration/fixtures/sim-configs/full-capability.edn"},
+  :config "projects/conformance/test-fixtures/sim-configs/full-capability.edn"},
  :totals {:pass 210, :rejected 0, :indeterminate 0, :no-verdict 0},
  :by-code {},
  :files

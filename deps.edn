@@ -18,7 +18,7 @@
             ;; `bin/ehr`'s own invocation alias. Runs from the workspace
             ;; root (not a project subdirectory) because artifacts.lock.edn,
             ;; config/, resources/synthea-default.properties, and
-            ;; test/fixtures/** are all cwd-relative literal paths in
+            ;; components/tools/test-fixtures/** are all cwd-relative literal paths in
             ;; ehrt.tools.* code (not classpath resources) -- landing-
             ;; session finding, see notes/ADRs.md ADR-0002.
             :ehr {:extra-deps {org.clojure/clojure {:mvn/version "1.12.5"}

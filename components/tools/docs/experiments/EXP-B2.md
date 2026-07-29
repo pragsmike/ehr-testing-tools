@@ -25,7 +25,7 @@ bytes to re-serialized bytes; two input sets:
   configuration if not present, since the manifest makes this cheap
   and the corpus itself was never committed, per ADR-0005).
 - **HL7 v2 ER7**: 3–5 hand-authored ADT fixture messages committed
-  under `test/fixtures/v2/` (MSH/EVN/PID/PV1, v2.4, realistic field
+  under `components/tools/test-fixtures/v2/` (MSH/EVN/PID/PV1, v2.4, realistic field
   population — not minimal skeletons, so the round-trip is exercised
   against messages that look like something a real interface would
   send).
@@ -63,7 +63,7 @@ bytes to re-serialized bytes; two input sets:
   `docs/experiments/results-template.md`, self-scored against
   `docs/experiments/results-rubric.md`).
 - `docs/experiments.md`'s EXP-B2 row updated with the executed date.
-- `test/fixtures/v2/*.hl7` — the hand-authored ADT fixtures, committed
+- `components/tools/test-fixtures/v2/*.hl7` — the hand-authored ADT fixtures, committed
   (small, deterministic, not gitignored the way generated corpora are).
 
 **Acceptance.** Every representation × input-set combination has every

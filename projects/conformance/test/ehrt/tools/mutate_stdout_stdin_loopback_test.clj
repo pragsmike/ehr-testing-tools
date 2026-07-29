@@ -42,8 +42,8 @@
 (deftest ^:integration mutate-stdout-into-intake-stdin-real-loopback-test
   (doseq [d [input-dir reference-mutant-dir catalog-out-dir]] (delete-tree! (io/file d)))
   (.mkdirs (io/file input-dir))
-  (io/copy (io/file "test/fixtures/v2/adt-a01-admit.hl7") (io/file input-dir "a.hl7"))
-  (io/copy (io/file "test/fixtures/v2/adt-a02-transfer.hl7") (io/file input-dir "b.hl7"))
+  (io/copy (io/file "components/tools/test-fixtures/v2/adt-a01-admit.hl7") (io/file input-dir "a.hl7"))
+  (io/copy (io/file "components/tools/test-fixtures/v2/adt-a02-transfer.hl7") (io/file input-dir "b.hl7"))
 
   ;; The reference: the SAME mutate run, written to a plain directory --
   ;; what the loopback's re-intaken hashes must equal, not merely "some

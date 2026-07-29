@@ -62,17 +62,17 @@
 (deftest check-catches-an-altered-line-test
   (let [readme (temp-file! (str "```sh\n"
                                  "bin/ehr help\n"
-                                 "bin/ehr gate v2 test/fixtures/v2\n"
+                                 "bin/ehr gate v2 components/tools/test-fixtures/v2\n"
                                  "```\n"))
         script (temp-file! (str "# BEGIN quickstart commands (verbatim from README.md's Quickstart fence)\n"
                                  "expect 0 bin/ehr help\n"
-                                 "expect 0 bin/ehr gate v2 test/fixtures/v2-typo\n"
+                                 "expect 0 bin/ehr gate v2 components/tools/test-fixtures/v2-typo\n"
                                  "# END quickstart commands\n"))
         {:keys [ok? divergence]} (qf/check {:readme-path readme :script-path script})]
     (is (not ok?))
     (is (= 1 (:index divergence)))
-    (is (= "bin/ehr gate v2 test/fixtures/v2" (:readme divergence)))
-    (is (= "bin/ehr gate v2 test/fixtures/v2-typo" (:script divergence)))))
+    (is (= "bin/ehr gate v2 components/tools/test-fixtures/v2" (:readme divergence)))
+    (is (= "bin/ehr gate v2 components/tools/test-fixtures/v2-typo" (:script divergence)))))
 
 (deftest check-catches-a-missing-trailing-command-test
   (let [readme (temp-file! (str "```sh\n"

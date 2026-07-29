@@ -64,7 +64,7 @@ bin/ehr corpus mutate $PATIENT_FILE \
   --out-dir out/demo-mutants
 
 bin/ehr artifact fetch --name fhir-validator-cli --version 6.9.12
-bin/ehr gate v2 test/fixtures/v2
+bin/ehr gate v2 components/tools/test-fixtures/v2
 # gate fhir exits 1 here -- a genuine defect in the mutant, correctly caught
 bin/ehr gate fhir out/demo-mutants --report out/demo-mutants-report.edn
 

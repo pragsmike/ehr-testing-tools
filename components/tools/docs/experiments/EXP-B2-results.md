@@ -142,7 +142,7 @@ per the plan file), regardless of this result.
 |---|---|---|
 | Sample corpus (8 patients, EXP-A4's final pinned settings) | `out/exp-b2-corpus/` (not committed, gitignored per ADR-0005) | Manifest: `{:seeds {:master 100, :clinician 555}, :engine-params {:reference-date "20260101"}, :generator {:sha256 "ed43c20ad4...1e6ecc1"}, :runtime {:sha256 "d8afc26375...9037d331"}}` (full manifest in `out/exp-b2-corpus/manifest.edn`) |
 | `docs/experiments/EXP-B2.md` | protocol | -- |
-| `test/fixtures/v2/*.hl7` | 5 fixtures | committed in the prior session commit (`EXP-B2 protocol + fixtures`) |
+| `components/tools/test-fixtures/v2/*.hl7` | 5 fixtures | committed in the prior session commit (`EXP-B2 protocol + fixtures`) |
 | `deps.edn` HAPI FHIR/HL7v2 additions | exact-pinned deps | facts register F13 |
 
 ## Rubric self-score

@@ -1,6 +1,6 @@
 (ns ehrt.tools.corpus.simhospital-corpus
   "Test support (not `src/`): loads the vendored SimHospital corpus
-  (`test/fixtures/v2/simhospital/messages.out`, ADR-0011) and names the
+  (`components/tools/test-fixtures/v2/simhospital/messages.out`, ADR-0011) and names the
   hazard-selected slice the committed tests assert over. Shared by
   `corpus.er7`'s and `corpus.intake`'s corpus tests so both exercise the
   *same* messages -- the intake slice test is only meaningful as
@@ -22,7 +22,7 @@
             [clojure.string :as str]))
 
 (def corpus-path
-  "test/fixtures/v2/simhospital/messages.out")
+  "components/tools/test-fixtures/v2/simhospital/messages.out")
 
 (def message-separator
   "A blank LF line between messages -- NOT the segment terminator, which
@@ -77,7 +77,7 @@
 ;; ---- the hazard slice ----
 ;;
 ;; Three messages, each earning its place by exhibiting a hazard the
-;; hand-written fixtures in test/fixtures/v2/ chose the same way, and
+;; hand-written fixtures in components/tools/test-fixtures/v2/ chose the same way, and
 ;; each selected by a stable structural predicate rather than a byte
 ;; offset or a hard-coded index -- so the selection survives any future
 ;; re-vendoring of the corpus that keeps its structure.
