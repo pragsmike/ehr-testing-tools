@@ -6,3 +6,10 @@ target/
 .clj-kondo/.cache/
 .portal/
 development/src/dev/scratch*
+
+# Claude Code local state -- author-ruled untracked, whole directory
+# (carve-loss audit, 2026-07-28: distinct from ehr-testing-tools' own
+# pre-carve convention, which tracked .claude/settings.json as a shared
+# allowlist and ignored only settings.local.json; this workspace ignores
+# .claude/ entirely -- notes/ADRs.md ADR-0006).
+.claude/

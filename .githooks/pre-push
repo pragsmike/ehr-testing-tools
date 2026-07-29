@@ -1,16 +1,18 @@
 #!/bin/sh
 # Enforce: git operations on this repo happen from WSL, not native Windows
 # (pushes are git operations too -- see .githooks/pre-commit), a secrets
-# scan is clean, and the workspace's own gates are green before anything
-# leaves this clone. Same opt-in mechanism as pre-commit: this only fires
-# once a clone has run `git config core.hooksPath .githooks`.
+# scan is clean, and `clojure -M:poly check` (dependency direction,
+# interface boundaries) is green before anything leaves this clone. Same
+# opt-in mechanism as pre-commit: this only fires once a clone has run
+# `git config core.hooksPath .githooks`.
 #
-# `poly test :project` is deliberately separate from a bare `poly test`
-# (which only runs brick/base-scoped tests): project-level tests (the
-# future conformance project, per ADR-0001 H3) do not run under
-# `poly test` alone, so this gate names `:project` explicitly -- their
-# omission must never be silent. See SETUP.md for hook installation and
-# gitleaks install instructions.
+# Deliberately does NOT run tests. This gate is irreversibility-only --
+# WSL provenance, a fail-closed secrets scan, and a fail-closed dependency
+# check are all things that are expensive or impossible to undo once
+# pushed; a failing test is not (CI catches it the next push, fixing it
+# costs one more commit). See notes/ADRs.md ADR-0003 for the doctrine and
+# why `poly test :project` was removed from this hook. See SETUP.md for
+# hook installation and gitleaks install instructions.
 
 is_wsl=0
 if [ -n "$WSL_DISTRO_NAME" ]; then

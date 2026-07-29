@@ -1,7 +1,7 @@
 ;; The pipeline's resource equations, as data (author-time source of
 ;; truth -- docs/notation.md defines the terms; docs/pipeline.md is
 ;; GENERATED from this file via `make pipeline`, never hand-edited).
-;; Validated against ehr-testing-tools.pipeline/Pipeline (Malli).
+;; Validated against ehrt.tools.pipeline/Pipeline (Malli).
 {:schema-version 1
  :stages
  [{:id :generate
@@ -20,7 +20,7 @@
    :status :built
    :inputs ["raw-corpus"]
    :outputs ["canonical-fhir-datum"]
-   :laws ["is the application of a registered canonicalizer (ehr-testing-tools.canonical) -- idempotence is the canonicalizer's own property-tested law, not a separate assertion here"]}
+   :laws ["is the application of a registered canonicalizer (ehrt.tools.canonical) -- idempotence is the canonicalizer's own property-tested law, not a separate assertion here"]}
 
   {:id :mutate
    :label "Mutate"
@@ -40,7 +40,7 @@
    :inputs ["foreign-file"]
    :outputs ["catalog-entry" "intake-record"]
    :laws ["adds fields without altering existing ones: computes a content hash and a format sniff about a file, never touches the file's own bytes"
-          "an intaken FHIR file's catalog id is the exact value corpus.mutate independently computes as a mutant's lineage :parent -- no adapter between intake and mutate, verified by a lineage-chaining test (ehr-testing-tools.corpus.intake-test)"]}
+          "an intaken FHIR file's catalog id is the exact value corpus.mutate independently computes as a mutant's lineage :parent -- no adapter between intake and mutate, verified by a lineage-chaining test (ehrt.tools.corpus.intake-test)"]}
 
   {:id :gate
    :label "Gate"
@@ -52,7 +52,7 @@
    :laws ["never modifies the datum it judges -- verified against the real engine, not only injected fakes (contract-pairing suite)"
           "format dispatch: \"datum\" is FHIR JSON or v2 ER7, resolved at call time to judge.fhir or judge.v2 -- one equation for both engines, a deliberate collapsing documented here rather than duplicating the equation per format (the notation's × only expresses product/AND between inputs, not OR between format alternatives); docs/judge-calibration.md is the per-format detail this equation deliberately omits"
           "the three-way output split (pass/rejected/indeterminate) above is the derived, policy-bearing route-by-verdict construct (ADR-0009, docs/palgebra-design.md D12) layered on the judge law -- \"gate = judge ⨟ route-by-verdict\", not primitive; full notation treatment of sum types on output wires is deferred (plan Phase 4 / O3)"]
-   :contract "judge.v2 never produces :indeterminate (no terminology, no profile at its base-structural tier); judge.fhir's verdict-mapping table is EXP-C5-derived and versioned (ehr-testing-tools.judge.fhir/verdict-mapping-version, cited to docs/experiments/EXP-C5-results.md) -- no IG pinned in artifacts.lock.edn this session, though -ig wiring exists"}
+   :contract "judge.v2 never produces :indeterminate (no terminology, no profile at its base-structural tier); judge.fhir's verdict-mapping table is EXP-C5-derived and versioned (ehrt.tools.judge.fhir/verdict-mapping-version, cited to docs/experiments/EXP-C5-results.md) -- no IG pinned in artifacts.lock.edn this session, though -ig wiring exists"}
 
   {:id :report
    :label "Report"
@@ -70,9 +70,9 @@
    :inputs ["datum"]
    :outputs ["pass" "rejected"]
    :catalytic ["expected-corpus" "assertion-set" "canonicalizer-set"]
-   :laws ["never modifies the datum it judges -- the judge kind's own law, verified directly (ehr-testing-tools.check-test/check-does-not-modify-candidate-or-expected-files-test)"
+   :laws ["never modifies the datum it judges -- the judge kind's own law, verified directly (ehrt.tools.check-test/check-does-not-modify-candidate-or-expected-files-test)"
           "produces no :indeterminate output in v1, unlike Gate itself -- stated explicitly rather than left implicit, since :indeterminate is otherwise part of the judge kind's own floor"]
-   :contract "Check is the corpus's second judge, alongside Gate: Gate checks a datum against a standard (a spec, a profile); Check verifies a datum against a caller's own expectations. Golden equivalence (:matches-expected) is equality of canonicalized forms under a declared, ordered canonicalizer list (ehr-testing-tools.canonical) -- an empty list is literal byte/string equality. expected-corpus and assertion-set are catalytic target 3 (hashed repo-authored config, docs/notation.md) whether repo-authored directly or brought in via corpus.intake as a foreign artifact -- an intaken catalog entry's own :id is already a content hash, so an intaken expected-corpus/assertion-set is hash-referenced exactly like a repo-authored one, just with a different origin. canonicalizer-set is catalytic target 4 (in-repo code registry, ehr-testing-tools.canonical, referenced by {id, version} pairs), the same registry Normalize's own canonicalizer application already uses."}]
+   :contract "Check is the corpus's second judge, alongside Gate: Gate checks a datum against a standard (a spec, a profile); Check verifies a datum against a caller's own expectations. Golden equivalence (:matches-expected) is equality of canonicalized forms under a declared, ordered canonicalizer list (ehrt.tools.canonical) -- an empty list is literal byte/string equality. expected-corpus and assertion-set are catalytic target 3 (hashed repo-authored config, docs/notation.md) whether repo-authored directly or brought in via corpus.intake as a foreign artifact -- an intaken catalog entry's own :id is already a content hash, so an intaken expected-corpus/assertion-set is hash-referenced exactly like a repo-authored one, just with a different origin. canonicalizer-set is catalytic target 4 (in-repo code registry, ehrt.tools.canonical, referenced by {id, version} pairs), the same registry Normalize's own canonicalizer application already uses."}]
 
  ;; Union resources (docs/notation.md, P6, pattern nursery #13): a
  ;; named resource declared as the union of others -- a stage consuming

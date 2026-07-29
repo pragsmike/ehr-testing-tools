@@ -1,4 +1,4 @@
-;; The signature data ehr-testing-tools.pipeline loads and passes to
+;; The signature data ehrt.tools.pipeline loads and passes to
 ;; palgebra.signature (design D13, docs/palgebra-design.md; claimed
 ;; R2, .agents/plans/judge-gate-refactor.md Phase 2): exactly the five
 ;; stage kinds this repo's pipeline uses. Their one-line laws stay in

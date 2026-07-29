@@ -8,7 +8,8 @@
   `cli-spec` is this session's ground truth for the CLI surface,
   enumerated from source in DOC-1 Step 0 (see that session's commit
   history for the read-from-source inventory this spec is built from)."
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str]
+            [ehrt.tools.interface :as tools]))
 
 (def exit-codes
   "0/1/2/3 per ADR-0004's ok/rejected/error mapping, extended by
@@ -210,3 +211,18 @@
        "Run `" (:program spec) " help <group>` for a group's verbs and flags.\n\n"
        "Global flags:\n" (render-flags (:global-flags spec))
        "\n\nExit codes:\n" (render-exit-codes (:exit-codes spec))))
+
+;; ---- impure shell (I/O) ----
+
+(defn write-cli-md!
+  "-X-invokable: regenerates docs/cli.md from this namespace's own
+  cli-spec (the Makefile's `cli-doc` target passes
+  components/tools/docs/cli.md). Lives here, not in
+  components/tools/docsgen, because only this base can supply the real
+  spec without inverting Polylith's base -> component dependency
+  direction (ADR-0002's own deviation record on why docsgen.clj's
+  cli.md renderer moved out of requiring cli.help directly) --
+  ehrt.tools.interface/write-cli-md! does the actual rendering/spit,
+  this function only supplies :spec."
+  [{:keys [out]}]
+  (tools/write-cli-md! {:out out :spec cli-spec}))

@@ -160,7 +160,7 @@ flowchart LR
 
 **You bring:** Nothing beyond the pinned artifacts -- this repo generates and mutates its own test data.
 
-**You get:** Contract pairing: for each defect operator, proof that the gate produces a new, locator-matching finding -- the exemplar is P5's own contract-pairing suite (test-integration/ehr_testing_tools/contract_pairing_test.clj) against the real official FHIR validator.
+**You get:** Contract pairing: for each defect operator, proof that the gate produces a new, locator-matching finding -- the exemplar is P5's own contract-pairing suite (projects/integration/test/ehrt/tools/contract_pairing_test.clj) against the real official FHIR validator.
 
 **Maturity:** usable
 
@@ -181,7 +181,7 @@ make integration
 bin/ehr gate fhir out/demo-mutants --report out/demo-mutants-report.edn
 ```
 
-What makes this *contract pairing* rather than "the gate went red": the assertion is on a specific **new** finding whose locator matches the mutation, never on the file's aggregate verdict. [EXP-C5](experiments/EXP-C5-results.md) found every baseline file in this corpus already carries hundreds of profile-driven errors (the validator auto-loads US Core from Synthea's own declared `meta.profile`), so an aggregate verdict cannot discriminate a mutant from its own base file. The exemplar is [`test-integration/ehr_testing_tools/contract_pairing_test.clj`](../test-integration/ehr_testing_tools/contract_pairing_test.clj) -- read it rather than reimplementing it. Note which locator it uses and why: the by-hand mutant above breaks `entry[0].resource.gender`, which EXP-C5 found the validator does **not** convict (`gender` is min-cardinality 0 in base FHIR, so removing it violates nothing), which is exactly why the suite itself uses `resourceType`. That asymmetry is the point of calibrating a gate instead of trusting it -- [judge-calibration.md](judge-calibration.md). `make integration` is the nightly tier and never a per-push gate; it lives on the `test-integration/` path, which is a path split rather than a tag filter (see `AGENTS.md`).
+What makes this *contract pairing* rather than "the gate went red": the assertion is on a specific **new** finding whose locator matches the mutation, never on the file's aggregate verdict. [EXP-C5](experiments/EXP-C5-results.md) found every baseline file in this corpus already carries hundreds of profile-driven errors (the validator auto-loads US Core from Synthea's own declared `meta.profile`), so an aggregate verdict cannot discriminate a mutant from its own base file. The exemplar is [`projects/integration/test/ehrt/tools/contract_pairing_test.clj`](../../../projects/integration/test/ehrt/tools/contract_pairing_test.clj) -- read it rather than reimplementing it. Note which locator it uses and why: the by-hand mutant above breaks `entry[0].resource.gender`, which EXP-C5 found the validator does **not** convict (`gender` is min-cardinality 0 in base FHIR, so removing it violates nothing), which is exactly why the suite itself uses `resourceType`. That asymmetry is the point of calibrating a gate instead of trusting it -- [judge-calibration.md](judge-calibration.md). `make integration` is the nightly tier and never a per-push gate; it lives on the `test-integration/` path, which is a path split rather than a tag filter (see `AGENTS.md`).
 
 ```
 synthea-config × synthea-artifact × jdk-runtime × config-hash → raw-corpus  [Generate]  {catalytic: synthea-artifact, jdk-runtime, config-hash}
@@ -522,7 +522,7 @@ bin/ehr gate v2 test/fixtures/v2 \
   --baseline out/regression/baseline.edn
 ```
 
-In `--baseline` mode the payload becomes `{:absolute :relative}` rather than a bare report -- `:absolute` still carries every finding, `:relative` is the filtered view the exit code follows ([formats.md](formats.md#baseline-mode-changes-the-payloads-shape), [judge-calibration.md](judge-calibration.md#baseline-relative-gating-2026-07-25-p6)). Baseline matching is by file path, so this answers *did anything new appear in this corpus*. The wider question -- every changed verdict, added/removed file, appeared/disappeared code between two arbitrary reports -- is `ehr-testing-tools.judge.report/diff-reports`, a library function today, not a CLI verb.
+In `--baseline` mode the payload becomes `{:absolute :relative}` rather than a bare report -- `:absolute` still carries every finding, `:relative` is the filtered view the exit code follows ([formats.md](formats.md#baseline-mode-changes-the-payloads-shape), [judge-calibration.md](judge-calibration.md#baseline-relative-gating-2026-07-25-p6)). Baseline matching is by file path, so this answers *did anything new appear in this corpus*. The wider question -- every changed verdict, added/removed file, appeared/disappeared code between two arbitrary reports -- is `ehrt.tools.judge.report/diff-reports`, a library function today, not a CLI verb.
 
 ```
 datum × validator-artifact × runtime × hapi-hl7v2-dep × profile-artifact → pass + rejected + indeterminate  [Gate]  {catalytic: validator-artifact, runtime, hapi-hl7v2-dep, profile-artifact}

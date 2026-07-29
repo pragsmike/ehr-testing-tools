@@ -30,6 +30,7 @@
             [ehrt.tools.locator :as locator]
             [ehrt.tools.check :as check]
             [ehrt.tools.sim :as sim]
+            [ehrt.tools.docsgen :as docsgen]
             [ehrt.tools.corpus.canonicalizers :as canonicalizers]
             [ehrt.tools.corpus.golden-comparison :as golden-comparison]
             [ehrt.tools.corpus.generators :as generators]
@@ -154,3 +155,13 @@
 (def build-report judge-report/build-report)
 (def diff-reports judge-report/diff-reports)
 (def report-valid? judge-report/valid?)
+
+;; docsgen -- write-cli-md! is the one docsgen entry point a base needs
+;; cross-brick (bases/ehr-cli owns the real cli-spec, ADR-0002's own
+;; deviation record on why docsgen can no longer require cli.help
+;; directly; the discipline-parity session's own docsgen-regen restoration
+;; is the first live caller). write-operators-md!/write-equations-txt!/
+;; write-pipeline-md!/write-case-equations!/write-use-cases-md! are all
+;; invoked directly via `-X` from the Makefile, not required in source,
+;; so they don't need an interface export.
+(def write-cli-md! docsgen/write-cli-md!)
