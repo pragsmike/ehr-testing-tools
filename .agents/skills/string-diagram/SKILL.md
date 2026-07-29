@@ -113,7 +113,7 @@ with the user, then proceed.
 ### Step 2: Run the converter
 
 ```bash
-python .agents/skills/string-diagram/tools/resource_equations_to_mermaid.py equations.txt -o flow.mermaid
+python components/palgebra/tools/resource_equations_to_mermaid.py equations.txt -o flow.mermaid
 ```
 
 Options:
@@ -164,16 +164,17 @@ as red sink nodes.
 
 ## Files
 
-This skill is self-contained. `SKILL.md` (this file) was copied into
-this repo per ADR-0005; the converter and example equation sets are
-vendored copies of ehr-testing-tools' `palgebra/` material, pinned to
-that repo's commit `7ecce38ca2f388759c4cb9a934a8c6f2fee7a5c8`, per
-ADR-0016 (which supersedes ADR-0005's non-vendoring clause). They
-speak only in wires/boxes/composition, not in either repo's own
-stages.
+`SKILL.md` (this file) stays here; the converter and example equation
+sets it teaches from live in `components/palgebra/` -- this
+workspace's own palgebra component, not a vendored copy pinned to
+another repo's commit (ADR-0005, carve-loss recovery session,
+2026-07-28: corrects a stale sim-era vendoring pin this skill carried
+from before the H2 monorepo landing, when palgebra genuinely lived in
+a separate repo -- see that ADR for the full history). They speak only
+in wires/boxes/composition, not in this workspace's own stages.
 
 - `SKILL.md` — this file
-- `tools/resource_equations_to_mermaid.py` — the converter (Python 3.7+, no dependencies)
-- `examples/ai-study-equations.txt` — the AI study pipeline equations
-- `examples/lemon-pie-equations.txt` — the lemon meringue pie equations
-- `examples/decision-monad-equations.txt` — the fan→funnel deliberated choice pipeline (demonstrates spider annotations)
+- `../../../components/palgebra/tools/resource_equations_to_mermaid.py` — the converter (Python 3.7+, no dependencies)
+- `../../../components/palgebra/examples/ai-study-equations.txt` — the AI study pipeline equations
+- `../../../components/palgebra/examples/lemon-pie-equations.txt` — the lemon meringue pie equations
+- `../../../components/palgebra/examples/decision-monad-equations.txt` — the fan→funnel deliberated choice pipeline (demonstrates spider annotations)
