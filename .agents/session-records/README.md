@@ -9,7 +9,7 @@ session forward, a session doing non-trivial work in this workspace
 writes its own record here as its last act before the ceremony (commit
 → push, per `AUTHORS-GUIDE.md` §1 — the same ceremony sim used, this
 workspace's own checkpoint/delegation model layered on top per
-`docs/way-of-working.md` §1).
+`docs/dev/way-of-working.md` §1).
 
 ## Filename convention
 

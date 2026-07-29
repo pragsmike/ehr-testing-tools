@@ -257,11 +257,11 @@ resolution failure on a specific file.
 
 | Claim | Authority |
 |---|---|
-| FHIR path grammar, and what it rejects | `ehr-testing-tools.locator/fhir-data-path` |
-| v2 path grammar, and what it rejects | `ehr-testing-tools.locator/v2-data-path` |
-| The `MSH` off-by-one, and field positions generally | `ehr-testing-tools.corpus.er7/field-index` |
-| Segment occurrence and resolution against a message | `ehr-testing-tools.corpus.er7/resolve-locator` |
-| Field granularity of the v2 substrate | `ehr-testing-tools.corpus.er7` namespace docstring |
+| FHIR path grammar, and what it rejects | `ehrt.kernel.locator/fhir-data-path` |
+| v2 path grammar, and what it rejects | `ehrt.kernel.locator/v2-data-path` |
+| The `MSH` off-by-one, and field positions generally | `ehrt.tools.corpus.er7/field-index` |
+| Segment occurrence and resolution against a message | `ehrt.tools.corpus.er7/resolve-locator` |
+| Field granularity of the v2 substrate | `ehrt.tools.corpus.er7` namespace docstring |
 | Every example on this page | `test/ehr_testing_tools/locators_doc_test.clj` |
 
 Related: [operators.md](operators.md) (which operator to pair a locator

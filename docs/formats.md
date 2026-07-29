@@ -36,7 +36,7 @@ The single most important shape here. Both gates (`ehrt gate v2`,
 judges' aggregation verbatim rather than defining its own — so one
 reader handles all three.
 
-Schema: `ehr-testing-tools.judge.report/Report`.
+Schema: `ehrt.judge.report/Report`.
 
 | Field | Type | Meaning |
 |---|---|---|
@@ -45,13 +45,13 @@ Schema: `ehr-testing-tools.judge.report/Report`.
 | `:by-code` | map | finding code → how many findings carried it, across every file |
 | `:files` | vector | one entry per file judged |
 
-`:totals` is `ehr-testing-tools.judge.report/Totals`: `:pass`,
+`:totals` is `ehrt.judge.report/Totals`: `:pass`,
 `:rejected`, `:indeterminate`, `:no-verdict`, each an integer. These
 count **files**, not findings.
 
 ### A file entry
 
-Schema: `ehr-testing-tools.judge.report/FileEntry`.
+Schema: `ehrt.judge.report/FileEntry`.
 
 | Field | Type | Present | Meaning |
 |---|---|---|---|
@@ -74,7 +74,7 @@ a pass/fail gate, `:verdict` is enough.
 
 ### The four verdicts
 
-Vocabulary: `ehr-testing-tools.judge.finding/Verdict`.
+Vocabulary: `ehrt.judge.finding/Verdict`.
 
 | Verdict | Means |
 |---|---|
@@ -89,7 +89,7 @@ what we managed to check*. It gets its own CLI exit code (`3`) for the
 same reason — so no workflow silently inherits a policy for it. The
 reasoning is [ADR-0010](../notes/ADRs.md); this page does not restate it.
 
-Causes are `ehr-testing-tools.judge.finding/Cause`, a deliberately small
+Causes are `ehrt.judge.finding/Cause`, a deliberately small
 enum. Today it has exactly one member, `:terminology-suppressed`. Expect
 it to grow; don't assume the set.
 
@@ -99,7 +99,7 @@ When ordering matters: `:rejected` beats `:no-verdict` beats
 
 ### A finding
 
-Schema: `ehr-testing-tools.judge.finding/Finding` — one shape for every
+Schema: `ehrt.judge.finding/Finding` — one shape for every
 judge, regardless of format.
 
 | Field | Type | Present | Meaning |
@@ -241,7 +241,7 @@ Written as `manifest.edn` in a generated corpus's `--out-dir`. It is
 the provenance record: everything that was pinned when this corpus was
 made, so someone else can make the same one.
 
-Schema: `ehr-testing-tools.corpus.manifest/ManifestV1_1` — the version
+Schema: `ehrt.tools.corpus.manifest/ManifestV1_1` — the version
 `ehrt corpus generate` produces today.
 
 | Field | Type | Meaning |
@@ -302,7 +302,7 @@ Written one per mutant, as `<output-dir>/lineage/<filename>.lineage.edn`
 — a subdirectory rather than sidecars interleaved with the data, so you
 can glob the data and the provenance separately.
 
-Schema: `ehr-testing-tools.lineage/LineageRecord`.
+Schema: `ehrt.tools.lineage/LineageRecord`.
 
 | Field | Type | Meaning |
 |---|---|---|
@@ -350,7 +350,7 @@ artifact ran, under which config); this one states *transformation*
 lineage (these input hashes, this operator, these output hashes) for an
 in-process write that never ran an external engine at all.
 
-Schema: `ehr-testing-tools.corpus.operation-manifest/OperationManifestV1`.
+Schema: `ehrt.tools.corpus.operation-manifest/OperationManifestV1`.
 
 | Field | Type | Meaning |
 |---|---|---|
@@ -463,13 +463,13 @@ which findings are worth alerting on — see
 
 | Shape | Schema | Verified against |
 |---|---|---|
-| Report, totals, file entry | `ehr-testing-tools.judge.report/Report` | live `ehrt gate v2` runs, passing and rejected, 2026-07-25 |
-| Verdicts, causes, findings | `ehr-testing-tools.judge.finding/Finding`, `/Verdict`, `/Cause` | the same runs |
-| FHIR findings' `:disposition` / `:cause` | `ehr-testing-tools.judge.fhir/interpret` | a live `ehrt gate fhir` run against a real mutant bundle, 2026-07-25 — 6554 findings, all three dispositions present |
-| Check report and its codes | `ehr-testing-tools.check` | live `ehrt check` runs in both golden-equivalence and per-file-assertion modes, 2026-07-25 |
-| Corpus manifest | `ehr-testing-tools.corpus.manifest/ManifestV1_1` | a real generated corpus's `manifest.edn` |
-| Lineage record | `ehr-testing-tools.lineage/LineageRecord` | a real mutant's lineage sidecar |
-| Operation manifest | `ehr-testing-tools.corpus.operation-manifest/OperationManifestV1` | a real `corpus mutate` batch's `operation-manifest.edn`, 2026-07-28 |
+| Report, totals, file entry | `ehrt.judge.report/Report` | live `ehrt gate v2` runs, passing and rejected, 2026-07-25 |
+| Verdicts, causes, findings | `ehrt.judge.finding/Finding`, `/Verdict`, `/Cause` | the same runs |
+| FHIR findings' `:disposition` / `:cause` | `ehrt.judge.fhir/interpret` | a live `ehrt gate fhir` run against a real mutant bundle, 2026-07-25 — 6554 findings, all three dispositions present |
+| Check report and its codes | `ehrt.tools.check` | live `ehrt check` runs in both golden-equivalence and per-file-assertion modes, 2026-07-25 |
+| Corpus manifest | `ehrt.tools.corpus.manifest/ManifestV1_1` | a real generated corpus's `manifest.edn` |
+| Lineage record | `ehrt.tools.lineage/LineageRecord` | a real mutant's lineage sidecar |
+| Operation manifest | `ehrt.tools.corpus.operation-manifest/OperationManifestV1` | a real `corpus mutate` batch's `operation-manifest.edn`, 2026-07-28 |
 | The `--json` mapping | — | the captured JSON output of the runs above, not inferred from the projection's source |
 
 Semantics cited, never restated here: [ADR-0009](../notes/ADRs.md)

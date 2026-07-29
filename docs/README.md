@@ -7,9 +7,18 @@ answered. [`docs/dev/positioning.md`](dev/positioning.md)'s
 register these paths are keyed off; this page just routes.
 
 Everything under this directory is complete at this level — no
-Polylith, no `components/` paths, no repository history to read first.
-If you're maintaining or extending this workspace rather than using
-it, go to [`docs/dev/`](dev/) instead.
+Polylith vocabulary (component, base, project, brick), no repository
+history to read first, and no discussion of this workspace's own
+internal directory layout as architecture. A `components/...` string
+still appears here and there as a literal filesystem path — real test
+fixtures a copy-pasted command needs (`components/tools/test-fixtures/v2`,
+the same path the root README's own Quickstart uses), or a hyperlink
+out to supplementary component-adjacent material for a reader who
+wants more depth than this page promises. Neither requires knowing
+what a "component" is; you're not meant to explore that directory,
+only paste the path or follow the link. If you're maintaining or
+extending this workspace rather than using it, go to
+[`docs/dev/`](dev/) instead.
 
 If a term below is unfamiliar — judge, verdict, findings, gate,
 baseline, and the rest of the conformance vocabulary — **[`glossary.md`](glossary.md)**

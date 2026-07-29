@@ -34,12 +34,12 @@ appears at the mutation's own locator.
 **Severity note:** FHIR's `IssueSeverity` ValueSet has four values,
 not three -- `fatal` alongside `error`/`warning`/`information`.
 `judge.fhir` treats both `fatal` and `error` as `:rejected`-eligible
-(`rejecting-severities`, `ehr-testing-tools.judge.fhir`).
+(`rejecting-severities`, `ehrt.judge.fhir`).
 
 ## v2 judge (`judge.v2`), base-structural only
 
 Mutation operators exist for HL7 v2 as of P7's seed catalog
-(`ehr-testing-tools.corpus.operators`, five `:v2` entries). What's
+(`ehrt.tools.corpus.operators`, five `:v2` entries). What's
 calibrated here is the tier itself: HAPI's `defaultValidation` context
 wires primitive-type checking into parsing, so message-structure-
 resolution failures, encoding/delimiter failures, and primitive
