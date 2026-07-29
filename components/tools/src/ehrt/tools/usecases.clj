@@ -31,7 +31,7 @@
 
 (def Commands
   "One case's runnable strip (DOC-4). :lines are the literal lines of a
-  single copy-pasteable fenced block -- `bin/ehr ...`
+  single copy-pasteable fenced block -- `bin/ehrt ...`
   invocations exactly as README.md's Quickstart spells them, plus `#`
   comment lines and $PLACEHOLDER shell variables for values the reader
   supplies. Nothing that a paste would break goes in :lines; markdown
@@ -145,9 +145,9 @@
        "(an `{external: true}` stage is yours to run, or the case is "
        "`planned`); those cases say so rather than showing an "
        "invocation that has never run. Strips use the same "
-       "`bin/ehr ...` convention as [README.md](../README.md)'s "
+       "`bin/ehrt ...` convention as [README.md](../README.md)'s "
        "Quickstart, and `$UPPERCASE` names mark values you supply. For "
-       "what a flag does see [cli.md](cli.md) (or `ehr help <group>`), "
+       "what a flag does see [cli.md](cli.md) (or `ehrt help <group>`), "
        "for operator ids [operators.md](operators.md), for locator "
        "syntax [locators.md](locators.md), for reading a verdict "
        "[judge-calibration.md](judge-calibration.md), and for the shape "

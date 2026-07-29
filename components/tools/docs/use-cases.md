@@ -5,7 +5,7 @@
 
 What you can do with this repo, formally: one entry per use case, each anchored to the resource equations (`docs/notation.md`) it actually composes from `docs/pipeline.edn`'s own built stages. An `{external: true}` stage in a case's equations names a black-box component the use case's own author fills in -- code this repo doesn't implement and makes no claim about; a `{spider: funnel}` merge node is a union resource (`docs/notation.md`) wherever a case's sources genuinely vary. Maturity here is a per-use-case honesty label distinct from `README.md`'s per-capability table -- see the header comment of `docs/use-cases.edn` for what each label means.
 
-Each case answers **what do I type** as well as what you get. Every command in a **You type:** strip was run, once, locally, before it was committed here -- see the commit that added it for the dated evidence. Where a case has no strip, it is because this repo genuinely doesn't drive that case end to end (an `{external: true}` stage is yours to run, or the case is `planned`); those cases say so rather than showing an invocation that has never run. Strips use the same `bin/ehr ...` convention as [README.md](../README.md)'s Quickstart, and `$UPPERCASE` names mark values you supply. For what a flag does see [cli.md](cli.md) (or `ehr help <group>`), for operator ids [operators.md](operators.md), for locator syntax [locators.md](locators.md), for reading a verdict [judge-calibration.md](judge-calibration.md), and for the shape of what lands on disk [formats.md](formats.md).
+Each case answers **what do I type** as well as what you get. Every command in a **You type:** strip was run, once, locally, before it was committed here -- see the commit that added it for the dated evidence. Where a case has no strip, it is because this repo genuinely doesn't drive that case end to end (an `{external: true}` stage is yours to run, or the case is `planned`); those cases say so rather than showing an invocation that has never run. Strips use the same `bin/ehrt ...` convention as [README.md](../README.md)'s Quickstart, and `$UPPERCASE` names mark values you supply. For what a flag does see [cli.md](cli.md) (or `ehrt help <group>`), for operator ids [operators.md](operators.md), for locator syntax [locators.md](locators.md), for reading a verdict [judge-calibration.md](judge-calibration.md), and for the shape of what lands on disk [formats.md](formats.md).
 
 ## Generate conforming synthetic data
 
@@ -22,14 +22,14 @@ Each case answers **what do I type** as well as what you get. Every command in a
 ```sh
 # One-time: the pinned Synthea distribution and the JDK it runs on,
 # into the local artifact cache (~/.cache/ehr-testing-tools/artifacts).
-bin/ehr artifact fetch --name synthea --version 4.0.0
-bin/ehr artifact fetch --name temurin-jdk --version 21.0.12+8
+bin/ehrt artifact fetch --name synthea --version 4.0.0
+bin/ehrt artifact fetch --name temurin-jdk --version 21.0.12+8
 
 # Generate. Every value here is pinned on purpose: --seed and
 # --clinician-seed fix Synthea's two RNGs, --reference-date fixes what
 # "now" means. Leave any of them out and the corpus stops being
 # reproducible.
-bin/ehr corpus generate --config-path config/synthea/synthea.properties \
+bin/ehrt corpus generate --config-path config/synthea/synthea.properties \
   --seed 100 --clinician-seed 555 --population 10 \
   --reference-date 20260101 --out-dir out/demo-corpus
 
@@ -38,7 +38,7 @@ ls out/demo-corpus/fhir
 cat out/demo-corpus/manifest.edn
 ```
 
-Flags and their defaults: [cli.md](cli.md#ehr-corpus-generate), or `ehr help corpus` at the shell. What each manifest field means: [formats.md](formats.md#the-corpus-manifest). Regenerating this corpus later *from* that manifest is its own case -- [Reproduction packages](#reproduction-packages).
+Flags and their defaults: [cli.md](cli.md#ehrt-corpus-generate), or `ehrt help corpus` at the shell. What each manifest field means: [formats.md](formats.md#the-corpus-manifest). Regenerating this corpus later *from* that manifest is its own case -- [Reproduction packages](#reproduction-packages).
 
 ```
 synthea-config × synthea-artifact × jdk-runtime × config-hash → raw-corpus  [Generate]  {catalytic: synthea-artifact, jdk-runtime, config-hash}
@@ -96,10 +96,10 @@ flowchart LR
 ```sh
 # The catalog you are choosing from: every operator, and the
 # constraint its output violates.
-bin/ehr corpus operators --format fhir
+bin/ehrt corpus operators --format fhir
 
 # A base corpus to break, if you don't already have one.
-bin/ehr corpus generate --config-path config/synthea/synthea.properties \
+bin/ehrt corpus generate --config-path config/synthea/synthea.properties \
   --seed 100 --clinician-seed 555 --population 10 \
   --reference-date 20260101 --out-dir out/demo-corpus
 
@@ -109,7 +109,7 @@ bin/ehr corpus generate --config-path config/synthea/synthea.properties \
 PATIENT_FILE=$(ls out/demo-corpus/fhir/*.json | grep -v -e hospitalInformation -e practitionerInformation | head -1)
 
 # Break exactly one element, at exactly one locator.
-bin/ehr corpus mutate --path $PATIENT_FILE \
+bin/ehrt corpus mutate --path $PATIENT_FILE \
   --operator-id remove-required-element --locator-path entry[0].resource.gender \
   --out-dir out/demo-mutants
 
@@ -119,7 +119,7 @@ cat out/demo-mutants/lineage/*.lineage.edn
 
 # The batch's own self-description, written last, after every mutant
 # and lineage sidecar above -- the same producer/per-item-lineage shape
-# `ehr corpus intake` recognizes automatically (SS-4b, formats.md).
+# `ehrt corpus intake` recognizes automatically (SS-4b, formats.md).
 cat out/demo-mutants/operation-manifest.edn
 ```
 
@@ -171,14 +171,14 @@ flowchart LR
 # mutated into a real Synthea bundle, each gated through the real
 # official validator as a subprocess. Needs the three pinned
 # artifacts first; takes minutes, not seconds.
-bin/ehr artifact fetch --name synthea --version 4.0.0
-bin/ehr artifact fetch --name temurin-jdk --version 21.0.12+8
-bin/ehr artifact fetch --name fhir-validator-cli --version 6.9.12
+bin/ehrt artifact fetch --name synthea --version 4.0.0
+bin/ehrt artifact fetch --name temurin-jdk --version 21.0.12+8
+bin/ehrt artifact fetch --name fhir-validator-cli --version 6.9.12
 make integration
 
 # The same shape by hand, for a gate of your own: take the mutant
 # you made in "Generate controlled-fault data" above and gate it.
-bin/ehr gate fhir out/demo-mutants --report out/demo-mutants-report.edn
+bin/ehrt gate fhir out/demo-mutants --report out/demo-mutants-report.edn
 ```
 
 What makes this *contract pairing* rather than "the gate went red": the assertion is on a specific **new** finding whose locator matches the mutation, never on the file's aggregate verdict. [EXP-C5](experiments/EXP-C5-results.md) found every baseline file in this corpus already carries hundreds of profile-driven errors (the validator auto-loads US Core from Synthea's own declared `meta.profile`), so an aggregate verdict cannot discriminate a mutant from its own base file. The exemplar is [`projects/integration/test/ehrt/tools/contract_pairing_test.clj`](../../../projects/integration/test/ehrt/tools/contract_pairing_test.clj) -- read it rather than reimplementing it. Note which locator it uses and why: the by-hand mutant above breaks `entry[0].resource.gender`, which EXP-C5 found the validator does **not** convict (`gender` is min-cardinality 0 in base FHIR, so removing it violates nothing), which is exactly why the suite itself uses `resourceType`. That asymmetry is the point of calibrating a gate instead of trusting it -- [judge-calibration.md](judge-calibration.md). `make integration` is the nightly tier and never a per-push gate; it lives on the `test-integration/` path, which is a path split rather than a tag filter (see `AGENTS.md`).
@@ -282,16 +282,16 @@ YOUR_CORPUS=components/tools/test-fixtures/v2
 # Catalog it first. Intake recurses and records EVERY file it finds
 # -- content hash, sniffed format, source label, received date -- so
 # a file it can't sniff is recorded as :unknown, never skipped.
-bin/ehr corpus intake --path $YOUR_CORPUS \
+bin/ehrt corpus intake --path $YOUR_CORPUS \
   --label partner-export --out out/partner/intake
 cat out/partner/intake/intake-record.edn
 
 # Gate it. `gate v2` reads *.hl7 in the directory you name (not
 # recursively); `gate fhir` is the same shape for FHIR JSON.
-bin/ehr gate v2 $YOUR_CORPUS --report out/partner/gate-report.edn
+bin/ehrt gate v2 $YOUR_CORPUS --report out/partner/gate-report.edn
 ```
 
-What the report contains, field by field: [formats.md](formats.md#the-report); the stdout envelope and the `--report` file are deliberately different shapes. If your corpus is real-world and profile-stamped, read [judge-calibration.md](judge-calibration.md#baseline-relative-gating-2026-07-25-p6) before you trust a red verdict, and reach for `--baseline` ([Regression baselining / drift detection](#regression-baselining--drift-detection)). A workflow can branch on the gate's exit code directly: `bin/ehr` carries the 0/1/2/3 contract ([cli.md](cli.md#exit-codes)).
+What the report contains, field by field: [formats.md](formats.md#the-report); the stdout envelope and the `--report` file are deliberately different shapes. If your corpus is real-world and profile-stamped, read [judge-calibration.md](judge-calibration.md#baseline-relative-gating-2026-07-25-p6) before you trust a red verdict, and reach for `--baseline` ([Regression baselining / drift detection](#regression-baselining--drift-detection)). A workflow can branch on the gate's exit code directly: `bin/ehrt` carries the 0/1/2/3 contract ([cli.md](cli.md#exit-codes)).
 
 ```
 foreign-file → catalog-entry + intake-record  [Intake]
@@ -367,7 +367,7 @@ flowchart LR
 
 **Maturity:** illustrative
 
-**You type:** no strip -- this repo doesn't drive this use case end to end, so there is no command sequence to copy. You bring: Your own transform, run outside this repo's own pipeline. Its `Transform` stage is `{external: true}`: the system under test is your own transform, which this repo neither runs nor instruments. The shipped halves it surrounds do have strips -- producing the input corpus is [Generate conforming synthetic data](#generate-conforming-synthetic-data), gating the output is [Judge user-supplied data: intake -> gate -> report](#judge-user-supplied-data-intake---gate---report), and `ehr check` compares that output against an expected corpus ([cli.md](cli.md#ehr-check)). What no strip can write for you is the line in the middle that runs your transform.
+**You type:** no strip -- this repo doesn't drive this use case end to end, so there is no command sequence to copy. You bring: Your own transform, run outside this repo's own pipeline. Its `Transform` stage is `{external: true}`: the system under test is your own transform, which this repo neither runs nor instruments. The shipped halves it surrounds do have strips -- producing the input corpus is [Generate conforming synthetic data](#generate-conforming-synthetic-data), gating the output is [Judge user-supplied data: intake -> gate -> report](#judge-user-supplied-data-intake---gate---report), and `ehrt check` compares that output against an expected corpus ([cli.md](cli.md#ehrt-check)). What no strip can write for you is the line in the middle that runs your transform.
 
 ```
 synthea-config × synthea-artifact × jdk-runtime × config-hash → raw-corpus  [Generate]  {catalytic: synthea-artifact, jdk-runtime, config-hash}
@@ -510,14 +510,14 @@ flowchart LR
 
 ```sh
 # The run you trust becomes the baseline. Keep this file.
-bin/ehr gate v2 components/tools/test-fixtures/v2 --report out/regression/baseline.edn
+bin/ehrt gate v2 components/tools/test-fixtures/v2 --report out/regression/baseline.edn
 
 # ...later, the same corpus again -- but judged relative to that
 # baseline: a finding counts toward rejection only if its
 # {severity, code, locator-path} isn't already in the baseline for
 # that same file. The exit code follows the relative view, so a
 # corpus that is identically noisy to its baseline still exits 0.
-bin/ehr gate v2 components/tools/test-fixtures/v2 \
+bin/ehrt gate v2 components/tools/test-fixtures/v2 \
   --report out/regression/today.edn \
   --baseline out/regression/baseline.edn
 ```
@@ -580,7 +580,7 @@ flowchart LR
 
 **Maturity:** illustrative
 
-**You type:** no strip -- this repo doesn't drive this use case end to end, so there is no command sequence to copy. You bring: The same input corpus, run through two versions of your own transform. Both `OldTransform` and `NewTransform` are `{external: true}` -- this repo never runs either version of your transform, so there is no invocation to show for the part that matters. Once their two output corpora exist, `ehr check --expected` compares them ([cli.md](cli.md#ehr-check)) and reports each divergence with a locator path.
+**You type:** no strip -- this repo doesn't drive this use case end to end, so there is no command sequence to copy. You bring: The same input corpus, run through two versions of your own transform. Both `OldTransform` and `NewTransform` are `{external: true}` -- this repo never runs either version of your transform, so there is no invocation to show for the part that matters. Once their two output corpora exist, `ehrt check --expected` compares them ([cli.md](cli.md#ehrt-check)) and reports each divergence with a locator path.
 
 ```
 canonical-fhir-datum → expected-corpus  [OldTransform]  {external: true}
@@ -645,14 +645,14 @@ VENDOR_CORPUS=components/tools/test-fixtures/v2
 
 # 1. Catalog before you accept: a content hash per file, and one
 #    batch record naming the source and the date you received it.
-bin/ehr corpus intake --path $VENDOR_CORPUS \
+bin/ehrt corpus intake --path $VENDOR_CORPUS \
   --label acme-delivery --received 2026-07-26 \
   --out out/acceptance/intake
 cat out/acceptance/intake/intake-record.edn
 
 # 2. Gate it, and keep the report: that is the evidence behind the
 #    acceptance decision, rather than a spot check.
-bin/ehr gate v2 $VENDOR_CORPUS --report out/acceptance/gate-report.edn
+bin/ehrt gate v2 $VENDOR_CORPUS --report out/acceptance/gate-report.edn
 ```
 
 The intake record's `:catalog-hash` is the sha256 of the catalog file's own bytes, so "this is the delivery I accepted" is later checkable against the record rather than against memory ([formats.md](formats.md)). The gate's exit code is the acceptance decision in machine-readable form -- 0 accept, 1 rejected, 3 the aggregate contains `:no-verdict` and you have not said how to treat it ([cli.md](cli.md#exit-codes)).
@@ -727,7 +727,7 @@ flowchart LR
 
 ```sh
 # Generate once.
-bin/ehr corpus generate --config-path config/synthea/synthea.properties \
+bin/ehrt corpus generate --config-path config/synthea/synthea.properties \
   --seed 100 --clinician-seed 555 --population 10 \
   --reference-date 20260101 --out-dir out/repro-a
 
@@ -739,16 +739,16 @@ cat out/repro-a/manifest.edn
 # There is no regenerate-from-manifest verb: you read the settings
 # back out of the manifest and pass them in again -- later, elsewhere,
 # from an empty artifact cache.
-bin/ehr corpus generate --config-path config/synthea/synthea.properties \
+bin/ehrt corpus generate --config-path config/synthea/synthea.properties \
   --seed 100 --clinician-seed 555 --population 10 \
   --reference-date 20260101 --out-dir out/repro-b
 
 # Same corpus? Ask this repo's own equivalence judge, pairing files
 # by content hash.
-bin/ehr check out/repro-b/fhir --expected out/repro-a/fhir --pair-by hash
+bin/ehrt check out/repro-b/fhir --expected out/repro-a/fhir --pair-by hash
 ```
 
-Why `--pair-by hash` rather than `diff -r`: two of Synthea's own output filenames (`hospitalInformation<timestamp>.json`, `practitionerInformation<timestamp>.json`) embed a wall-clock export timestamp no seed can pin, while their *contents* are identical run over run. [EXP-A4](experiments/EXP-A4-results.md) found exactly this and registered `:strip-run-timestamp-suffix` as a canonicalizer for it -- so the byte-identity claim is byte-identity *modulo* recorded canonicalizations, and pairing by content hash is the shell-level way to ask the same question. `check`'s flags: [cli.md](cli.md#ehr-check).
+Why `--pair-by hash` rather than `diff -r`: two of Synthea's own output filenames (`hospitalInformation<timestamp>.json`, `practitionerInformation<timestamp>.json`) embed a wall-clock export timestamp no seed can pin, while their *contents* are identical run over run. [EXP-A4](experiments/EXP-A4-results.md) found exactly this and registered `:strip-run-timestamp-suffix` as a canonicalizer for it -- so the byte-identity claim is byte-identity *modulo* recorded canonicalizations, and pairing by content hash is the shell-level way to ask the same question. `check`'s flags: [cli.md](cli.md#ehrt-check).
 
 ```
 synthea-config × synthea-artifact × jdk-runtime × config-hash → raw-corpus  [Generate]  {catalytic: synthea-artifact, jdk-runtime, config-hash}
@@ -802,7 +802,7 @@ flowchart LR
 # leave behind, each artifact independently checkable.
 
 # Generate -- the manifest is the first link.
-bin/ehr corpus generate --config-path config/synthea/synthea.properties \
+bin/ehrt corpus generate --config-path config/synthea/synthea.properties \
   --seed 100 --clinician-seed 555 --population 10 \
   --reference-date 20260101 --out-dir out/audit/corpus
 PATIENT_FILE=$(ls out/audit/corpus/fhir/*.json | grep -v -e hospitalInformation -e practitionerInformation | head -1)
@@ -810,15 +810,15 @@ PATIENT_FILE=$(ls out/audit/corpus/fhir/*.json | grep -v -e hospitalInformation 
 # Mutate -- the lineage record is the second: hash-linked to the
 # file it came from, corrected only by a new record, never by
 # editing this one.
-bin/ehr corpus mutate --path $PATIENT_FILE \
+bin/ehrt corpus mutate --path $PATIENT_FILE \
   --operator-id remove-required-element --locator-path entry[0].resource.resourceType \
   --out-dir out/audit/mutants
 
 # Gate -- the report is the third, and it is finding-level, not
 # just a verdict. The gate legitimately rejects here: that is the
 # evidence, not a failure of the run.
-bin/ehr artifact fetch --name fhir-validator-cli --version 6.9.12
-bin/ehr gate fhir out/audit/mutants --report out/audit/gate-report.edn
+bin/ehrt artifact fetch --name fhir-validator-cli --version 6.9.12
+bin/ehrt gate fhir out/audit/mutants --report out/audit/gate-report.edn
 
 # The three links, side by side.
 ls out/audit/corpus/manifest.edn \
@@ -826,7 +826,7 @@ ls out/audit/corpus/manifest.edn \
    out/audit/gate-report.edn
 ```
 
-There is no `ehr audit package` verb: assembling these three into one shareable evidence bundle is future work, as *You get* above already says. What ships is that each artifact is independently checkable -- a lineage record's `:id` is the hash of its own remaining fields, a manifest names the sha256 of every artifact that produced the corpus, and the report carries findings rather than verdicts alone ([formats.md](formats.md)). Expect the gate to reject and therefore expect a non-zero exit -- 1, the rejection code ([cli.md](cli.md#exit-codes)). `gate fhir` runs the real validator as a subprocess and takes minutes, not seconds.
+There is no `ehrt audit package` verb: assembling these three into one shareable evidence bundle is future work, as *You get* above already says. What ships is that each artifact is independently checkable -- a lineage record's `:id` is the hash of its own remaining fields, a manifest names the sha256 of every artifact that produced the corpus, and the report carries findings rather than verdicts alone ([formats.md](formats.md)). Expect the gate to reject and therefore expect a non-zero exit -- 1, the rejection code ([cli.md](cli.md#exit-codes)). `gate fhir` runs the real validator as a subprocess and takes minutes, not seconds.
 
 ```
 canonical-fhir-datum × operator-catalog → mutant-fhir-datum + lineage-record  [Mutate]  {catalytic: operator-catalog}
@@ -886,21 +886,21 @@ flowchart LR
 ```sh
 # The tier you are characterizing (v2 here; `gate fhir` is the
 # other), and the operators you are characterizing it against.
-bin/ehr corpus operators --format v2
+bin/ehrt corpus operators --format v2
 
 # Baseline: what does this tier say about the file BEFORE you
 # break it? On a real-world corpus this is not a formality.
-bin/ehr gate v2 components/tools/test-fixtures/v2/adt-a01-admit.hl7 \
+bin/ehrt gate v2 components/tools/test-fixtures/v2/adt-a01-admit.hl7 \
   --report out/calibration/before.edn
 
 # One mutant per {operator, locator} cell you want filled in.
-bin/ehr corpus mutate --path components/tools/test-fixtures/v2/adt-a01-admit.hl7 \
+bin/ehrt corpus mutate --path components/tools/test-fixtures/v2/adt-a01-admit.hl7 \
   --operator-id blank-required-field --locator-path MSH-9 \
   --out-dir out/calibration/blank-required-field
 
 # Gate the mutant at the same tier. The verdict, and the finding
 # code it carries, are that cell of the table.
-bin/ehr gate v2 out/calibration/blank-required-field \
+bin/ehrt gate v2 out/calibration/blank-required-field \
   --report out/calibration/after.edn
 
 # before: {:pass 1 ...} / after: {:rejected 1 ...} with
@@ -973,17 +973,17 @@ flowchart LR
 
 ```sh
 # A small corpus to teach from.
-bin/ehr corpus generate --config-path config/synthea/synthea.properties \
+bin/ehrt corpus generate --config-path config/synthea/synthea.properties \
   --seed 100 --clinician-seed 555 --population 5 \
   --reference-date 20260101 --out-dir out/teaching-corpus
 PATIENT_FILE=$(ls out/teaching-corpus/fhir/*.json | grep -v -e hospitalInformation -e practitionerInformation | head -1)
 
 # One run per defect class you want to show. Each writes a mutant
 # plus a lineage record; that pair is the worked example.
-bin/ehr corpus mutate --path $PATIENT_FILE \
+bin/ehrt corpus mutate --path $PATIENT_FILE \
   --operator-id malformed-date --locator-path entry[0].resource.birthDate \
   --out-dir out/teaching/malformed-date
-bin/ehr corpus mutate --path $PATIENT_FILE \
+bin/ehrt corpus mutate --path $PATIENT_FILE \
   --operator-id invalid-code-value --locator-path entry[0].resource.gender \
   --out-dir out/teaching/invalid-code-value
 
@@ -1088,7 +1088,7 @@ flowchart LR
 ```sh
 # Requires the ehr-testing-sim sibling checkout (../ehr-testing-sim,
 # subprocess-only -- ADR-0013; clone it alongside this repo to run this).
-bin/ehr corpus intake 'sim:?seed=42&patients=5&emit=hl7' \
+bin/ehrt corpus intake 'sim:?seed=42&patients=5&emit=hl7' \
   --label sim-traffic --out out/sim-intake
 cat out/sim-intake/intake-record.edn
 
@@ -1096,7 +1096,7 @@ cat out/sim-intake/intake-record.edn
 cat out/sim-intake/catalog.edn
 ```
 
-Generator-URL params (seed, patients, churn, emit, reference-date, config) are sim's own `run` verb's flags; a bare `sim:` with no query string still works, at sim's own pinned one-patient/hl7 default (the determinism law of defaults, D8). Gate the result the same way any intaken corpus gates -- [Judge user-supplied data: intake -> gate -> report](#judge-user-supplied-data-intake---gate---report). Synthea's own equivalent one-command path is `bin/ehr corpus intake 'synthea:?seed=1&population=5'`, over the SAME generator registry (docs/source-sink-design.md); `ehr corpus generate` itself is unchanged and remains the Synthea-only, more-flag-heavy path (OPEN-4 in the design doc records whether that changes later).
+Generator-URL params (seed, patients, churn, emit, reference-date, config) are sim's own `run` verb's flags; a bare `sim:` with no query string still works, at sim's own pinned one-patient/hl7 default (the determinism law of defaults, D8). Gate the result the same way any intaken corpus gates -- [Judge user-supplied data: intake -> gate -> report](#judge-user-supplied-data-intake---gate---report). Synthea's own equivalent one-command path is `bin/ehrt corpus intake 'synthea:?seed=1&population=5'`, over the SAME generator registry (docs/source-sink-design.md); `ehrt corpus generate` itself is unchanged and remains the Synthea-only, more-flag-heavy path (OPEN-4 in the design doc records whether that changes later).
 
 ```
 generator-config × sim-subprocess → generated-corpus  [EngineExecute]
@@ -1151,7 +1151,7 @@ flowchart LR
 # separated by a blank line) is decoded and spooled, one file per
 # message, before anything is cataloged.
 head -c 2464 components/tools/test-fixtures/v2/simhospital/messages.out | \
-  bin/ehr corpus intake 'stdin:?format=v2-er7&framing=er7-multi' \
+  bin/ehrt corpus intake 'stdin:?format=v2-er7&framing=er7-multi' \
   --label simhospital-excerpt --out out/demo-stdin-intake
 
 # What you got: one file per message, plus the spool's own capture
@@ -1160,7 +1160,7 @@ ls out/demo-stdin-intake
 cat out/demo-stdin-intake/intake-record.edn
 ```
 
-Any of the four multi-item framing kinds work the same way: `?framing=ndjson`, `?framing=mllp`, or `?framing=bundle-entries` (for a piped FHIR Bundle) instead of `er7-multi` -- see [source-sink-design.md](source-sink-design.md) Part II for what each one assumes about its bytes. A real interface engine's own feed pipes in exactly the same way this excerpt does (`nc ... | bin/ehr corpus intake 'stdin:?framing=mllp&format=v2-er7' ...`) -- `nc` (or any transport) is the one piece outside this repo's scope (D2); everything on this repo's side of the pipe is real. The spool's own capture-manifest.edn is a distinct schema from ADR-0014's manifest.edn (captured-at/origin/framing/format/item-count/per-item sha256s, not a generator's provenance record), so it is not treated as a provenance sidecar -- it gets cataloged like any other foreign file, which is why the catalog above has one more entry than there are messages. Gate the result the same way any intaken corpus gates -- [Judge user-supplied data: intake -> gate -> report](#judge-user-supplied-data-intake---gate---report).
+Any of the four multi-item framing kinds work the same way: `?framing=ndjson`, `?framing=mllp`, or `?framing=bundle-entries` (for a piped FHIR Bundle) instead of `er7-multi` -- see [source-sink-design.md](source-sink-design.md) Part II for what each one assumes about its bytes. A real interface engine's own feed pipes in exactly the same way this excerpt does (`nc ... | bin/ehrt corpus intake 'stdin:?framing=mllp&format=v2-er7' ...`) -- `nc` (or any transport) is the one piece outside this repo's scope (D2); everything on this repo's side of the pipe is real. The spool's own capture-manifest.edn is a distinct schema from ADR-0014's manifest.edn (captured-at/origin/framing/format/item-count/per-item sha256s, not a generator's provenance record), so it is not treated as a provenance sidecar -- it gets cataloged like any other foreign file, which is why the catalog above has one more entry than there are messages. Gate the result the same way any intaken corpus gates -- [Judge user-supplied data: intake -> gate -> report](#judge-user-supplied-data-intake---gate---report).
 
 ```
 framed-stream × size-cap → spooled-corpus  [Spool]  {catalytic: framing-codec}
@@ -1203,7 +1203,7 @@ flowchart LR
 
 **You bring:** A base v2 corpus (a directory of .hl7 files) and a chosen defect operator/locator -- exactly what [Generate controlled-fault data](#generate-controlled-fault-data) already brings; the difference is only where the mutants go.
 
-**You get:** A cataloged mutant corpus, produced by chaining two `ehr` invocations through a real OS pipe: `corpus mutate` batches every mutant, frames them (MLLP here; er7-multi/ndjson work the same way), and writes the framed bytes to its own stdout instead of a directory; `corpus intake` reads them from its own stdin, spools one file per mutant, and catalogs the result -- no scratch files land on disk in between (SS-4).
+**You get:** A cataloged mutant corpus, produced by chaining two `ehrt` invocations through a real OS pipe: `corpus mutate` batches every mutant, frames them (MLLP here; er7-multi/ndjson work the same way), and writes the framed bytes to its own stdout instead of a directory; `corpus intake` reads them from its own stdin, spools one file per mutant, and catalogs the result -- no scratch files land on disk in between (SS-4).
 
 **Maturity:** usable
 
@@ -1212,10 +1212,10 @@ flowchart LR
 ```sh
 # Same operator/locator as the plain directory-output case; only
 # --out-dir changes, to a stdout: designator instead of a path.
-bin/ehr corpus mutate in/v2-corpus \
+bin/ehrt corpus mutate in/v2-corpus \
   --operator-id blank-required-field --locator-path MSH-9 \
   --out-dir 'stdout:?format=v2-er7&framing=mllp' \
-  | bin/ehr corpus intake 'stdin:?format=v2-er7&framing=mllp' \
+  | bin/ehrt corpus intake 'stdin:?format=v2-er7&framing=mllp' \
     --label mutate-loopback --out out/mutate-loopback-intake
 
 # What you got: one file per mutant, cataloged -- no directory of

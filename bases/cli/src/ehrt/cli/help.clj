@@ -1,5 +1,5 @@
-(ns ehrt.ehr-cli.help
-  "The `ehr help` surface's data (DOC-1): one spec structure describing
+(ns ehrt.cli.help
+  "The `ehrt help` surface's data (DOC-1): one spec structure describing
   every group/verb, its flags, its positional-argument convention, and
   the shared exit-code table -- rendered to plain text by the pure
   functions below. The spec does not drive argument parsing (`cli/parse`
@@ -36,7 +36,7 @@
    {:flag "--treat-no-verdict-as" :doc "\"pass\" or \"rejected\" -- folds :no-verdict into an existing polarity (ADR-0010)"}])
 
 (def cli-spec
-  {:program "ehr"
+  {:program "ehrt"
    :exit-codes exit-codes
    :global-flags global-flags
    :groups
@@ -72,7 +72,7 @@
                {:flag "--lockfile" :doc "path to the lockfile" :default "artifacts.lock.edn"}]}
       {:verb "mutate" :doc "Apply one mutation operator at one locator to every matching file under PATH."
        :flags [{:flag "--path" :doc "alternative to the positional PATH"}
-               {:flag "--operator-id" :doc "registered operator id -- see `ehr corpus operators`"}
+               {:flag "--operator-id" :doc "registered operator id -- see `ehrt corpus operators`"}
                {:flag "--operator-version" :doc "operator version" :default "1"}
                {:flag "--locator-path" :doc "format-specific locator string (FHIR data-path, or v2 segment/field grammar) -- falls back to the operator's own :default-locator when declared (D12); still required otherwise"}
                {:flag "--out-dir" :doc "directory for mutants + a lineage/ sidecar subdirectory" :default "<PATH>-mutants/<operator-id>@<operator-version>/"}]
@@ -89,7 +89,7 @@
        :flags [{:flag "--format" :doc "\"fhir\" or \"v2\" -- narrow the listing to one format" :default "all"}]}]}
 
     {:group "gate"
-     :doc "Conformance-gate a file or directory against HL7 v2 or FHIR. Bare `ehr gate PATH` (no v2/fhir verb) sniffs the format via corpus.intake/sniff-format and dispatches (D11, ADR-0019); a directory mixing both formats, or containing a file the sniffer can't classify, is an error naming the explicit override (`gate v2 PATH` / `gate fhir PATH`), never a silent per-file split. PATH (and gate fhir's --out-dir) may also be spelled as a dir:/file: URL designator (ruling 7) instead of a bare path."
+     :doc "Conformance-gate a file or directory against HL7 v2 or FHIR. Bare `ehrt gate PATH` (no v2/fhir verb) sniffs the format via corpus.intake/sniff-format and dispatches (D11, ADR-0019); a directory mixing both formats, or containing a file the sniffer can't classify, is an error naming the explicit override (`gate v2 PATH` / `gate fhir PATH`), never a silent per-file split. PATH (and gate fhir's --out-dir) may also be spelled as a dir:/file: URL designator (ruling 7) instead of a bare path."
      :positional "PATH"
      :positional-doc "a file or directory, given as a trailing positional argument, not --path -- an explicit --path is never overridden by it"
      :verbs
@@ -179,7 +179,7 @@
   per-group because, unlike gate/check, not every verb in a group takes
   one (corpus generate/operators don't; corpus mutate/intake do)."
   [group-name {:keys [verb doc flags positional positional-doc]}]
-  (str "ehr " group-name " " verb "\n"
+  (str "ehrt " group-name " " verb "\n"
        "  " doc "\n"
        (when positional
          (str "\nPositional: " positional " -- " positional-doc "\n"))
@@ -187,11 +187,11 @@
        "Flags:\n" (render-flags flags)))
 
 (defn render-group
-  "Group usage text: `ehr help <group>` and `ehr <group> --help`. Returns
+  "Group usage text: `ehrt help <group>` and `ehrt <group> --help`. Returns
   nil for an unrecognized group name -- callers decide what that means."
   [spec group-name]
   (when-let [g (find-group spec group-name)]
-    (str "ehr " group-name " -- " (:doc g) "\n"
+    (str "ehrt " group-name " -- " (:doc g) "\n"
          (when (:positional g)
            (str "\nPositional: " (:positional g) " -- " (:positional-doc g) "\n"))
          "\n"
@@ -201,7 +201,7 @@
          "\n\nExit codes:\n" (render-exit-codes (:exit-codes spec)))))
 
 (defn render-top-level
-  "The top-level usage text: bare `ehr`, `ehr help`, `--help` with no
+  "The top-level usage text: bare `ehrt`, `ehrt help`, `--help` with no
   group. Always succeeds (the spec is static data, not user input)."
   [spec]
   (str "Usage: " (:program spec) " <group> [<verb>] [flags]\n\n"

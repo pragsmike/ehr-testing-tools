@@ -5,8 +5,8 @@ Two doors, depending on what brought you here.
 ## Using something this workspace builds
 
 You want to run a built artifact (e.g. generate synthetic traffic with
-`sim-cli`), not change this repo. Go to [`SETUP.md`](SETUP.md) —
-installation and verification. Nothing below applies to you.
+`bin/ehrt sim run`), not change this repo. Go to [`SETUP.md`](SETUP.md)
+— installation and verification. Nothing below applies to you.
 
 ## Contributing code or docs
 

@@ -11,14 +11,14 @@
   commit -- while keeping ADR-0013's own dependency-*direction*
   invariant intact and now poly-enforced: this file requires
   `ehrt.sim.interface`, never the reverse. This is ADR-0012's own
-  long-deferred \"ehr sim mount\" (notes/tools/ADRs.md; provenance note
+  long-deferred \"ehrt sim mount\" (notes/tools/ADRs.md; provenance note
   notes/tools/ehr-testing-sim-mounting-note.md), fulfilled once the
   classpath question it named actually resolved.
 
   Promotes projects/conformance/test/ehrt/tools/sim_harness.clj's own
   former subprocess seam into src/, so the sim generator source
-  (ehrt.tools.corpus.generators), the CLI's own `ehr sim` mount
-  (bases/ehr-cli), and the test harness all drive the SAME code.
+  (ehrt.tools.corpus.generators), the CLI's own `ehrt sim` mount
+  (bases/cli), and the test harness all drive the SAME code.
   There is deliberately no `available?` here anymore: sim is always on
   this classpath, never something to discover or degrade gracefully
   without -- see ADR-0005 for why the old skip-when-absent machinery

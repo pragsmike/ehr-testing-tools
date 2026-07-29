@@ -1,7 +1,7 @@
 (ns ehrt.tools.interface
   "Deliberately wide (H2 landing session ruling R13, notes/ADRs.md
   ADR-0002 -- same discipline as ehrt.sim.interface, ADR-0001 R5).
-  Re-exports exactly what bases/ehr-cli and projects/conformance/test
+  Re-exports exactly what bases/cli and projects/conformance/test
   call from outside their own namespace -- determined by grep against
   the pre-carve ehr-testing-tools repo, not by interface-design
   judgment. NARROWED (ADR-0008, named hole H4 closed): result, digest,
@@ -144,7 +144,7 @@
 (def report-valid? judge/report-valid?)
 
 ;; docsgen -- write-cli-md! is the one docsgen entry point a base needs
-;; cross-brick (bases/ehr-cli owns the real cli-spec, ADR-0002's own
+;; cross-brick (bases/cli owns the real cli-spec, ADR-0002's own
 ;; deviation record on why docsgen can no longer require cli.help
 ;; directly; the discipline-parity session's own docsgen-regen restoration
 ;; is the first live caller). write-operators-md!/write-equations-txt!/

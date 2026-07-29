@@ -67,7 +67,7 @@ jobs:
       # a version/hash bump in the lockfile invalidates it automatically.
       # Populates ~/.cache/ehr-testing-tools/artifacts (or
       # $EHR_TESTING_TOOLS_CACHE if set -- unchanged env-var name,
-      # ADR-0002's own deliberate non-rename). A cache hit makes `ehr
+      # ADR-0002's own deliberate non-rename). A cache hit makes `ehrt
       # artifact fetch` below a no-network no-op; a cache miss means
       # every fetch below hits the network for real.
       - name: Cache artifact cache
@@ -78,9 +78,9 @@ jobs:
 
       - name: Prime artifact cache (synthea, temurin-jdk, fhir-validator-cli)
         run: |
-          clojure -M:ehr artifact fetch --name synthea --version 4.0.0
-          clojure -M:ehr artifact fetch --name temurin-jdk --version 21.0.12+8
-          clojure -M:ehr artifact fetch --name fhir-validator-cli --version 6.9.12
+          clojure -M:ehrt artifact fetch --name synthea --version 4.0.0
+          clojure -M:ehrt artifact fetch --name temurin-jdk --version 21.0.12+8
+          clojure -M:ehrt artifact fetch --name fhir-validator-cli --version 6.9.12
 
       - name: poly check
         run: clojure -M:poly check

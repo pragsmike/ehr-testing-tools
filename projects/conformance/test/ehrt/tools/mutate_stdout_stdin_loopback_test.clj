@@ -5,7 +5,7 @@
   reading a `stdin:` Source, run for real (not simulated with an
   injected stream -- cli_test.clj's own hermetic coverage of the same
   wiring, mutate-command-stdout-sink-*-test). This is the byte-stream
-  form of the composability law's acceptance: `bin/ehr ... | bin/ehr
+  form of the composability law's acceptance: `bin/ehrt ... | bin/ehrt
   ...`, via a real `bash -c` shell pipe (two chained subprocesses, not
   simulated) so the exit-code/piping semantics match exactly what a
   human running this at a shell would see. ^:integration, run via
@@ -29,7 +29,7 @@
 
 (defn- run-shell!
   "Runs cmd through a real bash -c (so a `|` in cmd is a genuine OS-level
-  pipe between two real bin/ehr subprocesses, not something this test
+  pipe between two real bin/ehrt subprocesses, not something this test
   simulates in-process). Returns {:exit-code :stdout :stderr}."
   [^String cmd]
   (let [pb (ProcessBuilder. (into-array String ["bash" "-c" cmd]))
@@ -49,16 +49,16 @@
   ;; what the loopback's re-intaken hashes must equal, not merely "some
   ;; hash" (proves the bytes crossing the stdout->stdin pipe are the
   ;; SAME bytes mutate produces, not an artifact of the framing codec).
-  (let [reference (run-shell! (str "bin/ehr corpus mutate " input-dir
+  (let [reference (run-shell! (str "bin/ehrt corpus mutate " input-dir
                                     " --operator-id blank-required-field --locator-path MSH-9"
                                     " --out-dir " reference-mutant-dir))]
     (is (= 0 (:exit-code reference))
         (str "reference mutate run failed -- stdout: " (:stdout reference) " stderr: " (:stderr reference))))
 
-  (let [loopback-cmd (str "bin/ehr corpus mutate " input-dir
+  (let [loopback-cmd (str "bin/ehrt corpus mutate " input-dir
                            " --operator-id blank-required-field --locator-path MSH-9"
                            " --out-dir 'stdout:?format=v2-er7&framing=mllp'"
-                           " | bin/ehr corpus intake 'stdin:?format=v2-er7&framing=mllp'"
+                           " | bin/ehrt corpus intake 'stdin:?format=v2-er7&framing=mllp'"
                            " --label loopback --out " catalog-out-dir
                            " --received 2026-07-28")
         loopback (run-shell! loopback-cmd)]

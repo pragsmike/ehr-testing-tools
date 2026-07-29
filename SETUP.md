@@ -87,11 +87,13 @@ clojure -M:poly version   # expect: poly 0.3.32 (2025-12-29)
 clojure -M:poly check     # expect: OK
 ```
 
-Per-project verification ladders and first-traffic walkthroughs (e.g.
-running `sim-cli` once `bases/sim-cli` has landed) get added here as
-each project lands — see `AGENTS.md` for what's landed so far. This
-page doesn't assert a quickstart for a project that isn't in the tree
-yet.
+Per-project verification ladders and first-traffic walkthroughs get
+added here as each project lands — see the root
+[`README.md`](README.md#quickstart) for the canonical Quickstart
+(`bin/ehrt ...`) and `AGENTS.md` for what's landed so far.
+`bases/sim-cli` (sim's own standalone CLI) is deprecated in favor of
+the `bin/ehrt sim run` mount (R33, ADR-0009) — it still works, but this
+page doesn't teach it as a path.
 
 ## 4. Troubleshooting
 

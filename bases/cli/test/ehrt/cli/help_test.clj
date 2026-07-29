@@ -1,8 +1,8 @@
-(ns ehrt.ehr-cli.help-test
+(ns ehrt.cli.help-test
   (:require [clojure.test :refer [deftest is]]
             [clojure.string :as str]
-            [ehrt.ehr-cli.help :as help]
-            [ehrt.ehr-cli.core :as cli]
+            [ehrt.cli.help :as help]
+            [ehrt.cli.core :as cli]
             [ehrt.tools.interface :as result]))
 
 (deftest render-top-level-lists-every-group-test

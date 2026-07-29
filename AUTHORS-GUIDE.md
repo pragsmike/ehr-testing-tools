@@ -201,7 +201,7 @@ touching caches, generated files, or filesystem layout.
 cwd-relative literal path in this workspace (`artifacts.lock.edn`,
 `config/synthea/synthea.properties`, `components/tools/test-fixtures/**`, etc. — see
 `notes/ADRs.md` ADR-0002's own deviation record) resolves against the
-JVM process's actual working directory, which `poly test` and `bin/ehr`
+JVM process's actual working directory, which `poly test` and `bin/ehrt`
 both fix at the workspace root, not a project or component
 subdirectory. Adding a new cwd-relative path without confirming this
 invariant still holds is how a test passes locally and fails from a

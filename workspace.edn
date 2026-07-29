@@ -18,8 +18,8 @@
             ;; confirmed component-to-component/test-to-interface
             ;; dependencies it doesn't trace transitively -- notes/ADRs.md
             ;; ADR-0002).
-            "tools-cli" {:alias "tools-cli"
-                         :necessary ["palgebra"]}
+            "ehrt-cli" {:alias "ehrt-cli"
+                        :necessary ["palgebra"]}
             "conformance" {:alias "conformance"
                            :necessary ["tools" "palgebra"]}
             "integration" {:alias "integration"

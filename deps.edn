@@ -9,7 +9,7 @@
                                poly/judge    {:local/root "components/judge"}
                                poly/tools    {:local/root "components/tools"}
                                poly/palgebra {:local/root "components/palgebra"}
-                               poly/ehr-cli  {:local/root "bases/ehr-cli"}}}
+                               poly/cli      {:local/root "bases/cli"}}}
 
             :test {:extra-paths ["components/sim/test"
                                   "bases/sim-cli/test"
@@ -17,26 +17,29 @@
                                   "components/judge/test"
                                   "components/tools/test"
                                   "components/palgebra/test"
-                                  "bases/ehr-cli/test"
+                                  "bases/cli/test"
                                   "projects/conformance/test"
                                   "projects/integration/test"]}
 
-            ;; `bin/ehr`'s own invocation alias. Runs from the workspace
-            ;; root (not a project subdirectory) because artifacts.lock.edn,
-            ;; config/, resources/synthea-default.properties, and
-            ;; components/tools/test-fixtures/** are all cwd-relative literal paths in
-            ;; ehrt.tools.* code (not classpath resources) -- landing-
-            ;; session finding, see notes/ADRs.md ADR-0002.
-            :ehr {:extra-deps {org.clojure/clojure {:mvn/version "1.12.5"}
-                               poly/kernel   {:local/root "components/kernel"}
-                               poly/judge    {:local/root "components/judge"}
-                               poly/tools    {:local/root "components/tools"}
-                               poly/palgebra {:local/root "components/palgebra"}
-                               poly/ehr-cli  {:local/root "bases/ehr-cli"}
-                               ;; The `ehr sim` mount (ADR-0004, ADR-0012
-                               ;; fulfilled) -- in-process, no subprocess.
-                               poly/sim      {:local/root "components/sim"}}
-                  :main-opts ["-m" "ehrt.ehr-cli.core"]}
+            ;; `bin/ehrt`'s own invocation alias (R32: the CLI tool is
+            ;; renamed ehr -> ehrt, "e-heart" -- ehr stays reserved for
+            ;; future payload-EHR tooling, ADR-0009). Runs from the
+            ;; workspace root (not a project subdirectory) because
+            ;; artifacts.lock.edn, config/, resources/synthea-default.properties,
+            ;; and components/tools/test-fixtures/** are all cwd-relative
+            ;; literal paths in ehrt.tools.* code (not classpath
+            ;; resources) -- landing-session finding, see notes/ADRs.md
+            ;; ADR-0002.
+            :ehrt {:extra-deps {org.clojure/clojure {:mvn/version "1.12.5"}
+                                poly/kernel   {:local/root "components/kernel"}
+                                poly/judge    {:local/root "components/judge"}
+                                poly/tools    {:local/root "components/tools"}
+                                poly/palgebra {:local/root "components/palgebra"}
+                                poly/cli      {:local/root "bases/cli"}
+                                ;; The `ehrt sim` mount (ADR-0004, ADR-0012
+                                ;; fulfilled) -- in-process, no subprocess.
+                                poly/sim      {:local/root "components/sim"}}
+                   :main-opts ["-m" "ehrt.cli.core"]}
 
             :poly {:main-opts ["-m" "polylith.clj.core.poly-cli.core"]
                    :jvm-opts ["--enable-native-access=ALL-UNNAMED"]

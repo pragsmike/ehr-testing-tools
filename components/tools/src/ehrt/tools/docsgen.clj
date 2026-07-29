@@ -3,11 +3,11 @@
   rather than authored prose (DOC-3): docs/operators.md from the
   mutation-operator registry (ehrt.tools.corpus.operators), and
   docs/cli.md from a caller-supplied help spec shaped like
-  bases/ehr-cli's own cli-spec. A sibling to ehrt.tools.pipeline and
+  bases/cli's own cli-spec. A sibling to ehrt.tools.pipeline and
   .usecases in exactly the way those two are siblings of each other:
   pure render-* functions assembling a markdown string, plus a thin
   `-X`-invokable write-*! shell. `render-cli-md` takes its spec as a
-  plain argument rather than importing bases/ehr-cli's help.clj
+  plain argument rather than importing bases/cli's help.clj
   directly -- components never depend on bases (Polylith's dependency
   direction is the reverse) -- so this namespace has no compile-time
   knowledge of the CLI base at all; only a caller with access to both
@@ -85,7 +85,7 @@
 
 (defn sorted-entries
   "Every registered operator, sorted by [format id] -- the same order
-  `ehr corpus operators` lists them in, so the doc and the verb can be
+  `ehrt corpus operators` lists them in, so the doc and the verb can be
   read against each other line for line."
   []
   (sort-by (juxt :format :id) (operators/entries)))
@@ -136,13 +136,13 @@
                "Edit the registry (or this file's renderer, components/tools/src/ehrt/tools/docsgen.clj) and regenerate instead.")
        "\n# Mutation operators\n\n"
        pre-release-notice "\n\n"
-       "This is the catalog `ehr corpus mutate` applies: every registered defect operator, "
+       "This is the catalog `ehrt corpus mutate` applies: every registered defect operator, "
        "what it does to a file, and which base-spec constraint the result violates. "
-       "The same catalog is readable at the shell — `ehr corpus operators`, or "
-       "`ehr corpus operators --format v2` for one format — and as EDN or JSON from that verb's output.\n\n"
+       "The same catalog is readable at the shell — `ehrt corpus operators`, or "
+       "`ehrt corpus operators --format v2` for one format — and as EDN or JSON from that verb's output.\n\n"
        "Each operator is applied by id: `--operator-id <id> --operator-version <version>`, "
        "at one `--locator-path`, to every matching file under `PATH` (positional, or `--path`). "
-       "See [cli.md](cli.md#ehr-corpus-mutate) for the full flag list and "
+       "See [cli.md](cli.md#ehrt-corpus-mutate) for the full flag list and "
        "[use-cases.md](use-cases.md) for which task calls for which operator.\n\n"
        "Two descriptions appear per operator, and they answer different questions. "
        "**What it does** is the edit — what changed in the file. "
@@ -158,7 +158,7 @@
        "Those dropped candidates and the measured blind spots behind them are in "
        "[judge-calibration.md](judge-calibration.md), which is where to look when a gate "
        "result surprises you. They are not registry data, so they never appear in "
-       "`ehr corpus operators` output either.\n"))
+       "`ehrt corpus operators` output either.\n"))
 
 ;; ---- docs/cli.md ----
 
@@ -176,7 +176,7 @@
   group's do below -- declared per-verb rather than per-group because,
   unlike gate/check, not every verb in a group takes one."
   [group-name {:keys [verb doc flags positional positional-doc]}]
-  (str "### `ehr " group-name " " verb "`\n\n"
+  (str "### `ehrt " group-name " " verb "`\n\n"
        doc "\n\n"
        (when positional
          (str "**Positional argument `" positional "`** — " positional-doc "\n\n"))
@@ -184,7 +184,7 @@
 
 (defn- group-section
   [{:keys [group doc positional positional-doc verbs flags]}]
-  (str "## `ehr " group "`\n\n"
+  (str "## `ehrt " group "`\n\n"
        doc "\n\n"
        (when positional
          (str "**Positional argument `" positional "`** — " positional-doc "\n\n"))
@@ -193,12 +193,12 @@
          (str (flags-table flags) "\n"))))
 
 (defn render-cli-md
-  "Pure: the help spec -> docs/cli.md's content. Same spec `ehr help`
-  and `ehr help <group>` render to plain text, so the page and the
+  "Pure: the help spec -> docs/cli.md's content. Same spec `ehrt help`
+  and `ehrt help <group>` render to plain text, so the page and the
   shell cannot drift apart -- there is one source, rendered twice."
   [spec]
   (str (banner "cli-doc"
-               "the CLI help spec in bases/ehr-cli/src/ehrt/ehr_cli/help.clj"
+               "the CLI help spec in bases/cli/src/ehrt/cli/help.clj"
                "Edit `cli-spec` (or this file's renderer, components/tools/src/ehrt/tools/docsgen.clj) and regenerate instead.")
        "\n# CLI reference\n\n"
        pre-release-notice "\n\n"
@@ -209,13 +209,13 @@
        "What this page deliberately does not carry: worked invocations. "
        "For \"what do I actually type for my task,\" see [use-cases.md](use-cases.md). "
        "For what `--report` writes and `--json` emits, see [formats.md](formats.md). "
-       "For the mutation operators `ehr corpus mutate` takes by id, see "
+       "For the mutation operators `ehrt corpus mutate` takes by id, see "
        "[operators.md](operators.md); for the locator strings it takes by path, see "
        "[locators.md](locators.md).\n\n"
        "## Synopsis\n\n"
        "```\n" (:program spec) " <group> [<verb>] [flags]\n```\n\n"
        (table ["Group" "What it covers"]
-              (map (fn [g] [(str "[`" (:group g) "`](#ehr-" (:group g) ")") (:doc g)]) (:groups spec)))
+              (map (fn [g] [(str "[`" (:group g) "`](#ehrt-" (:group g) ")") (:doc g)]) (:groups spec)))
        "\n\n"
        "## Global flags\n\n"
        "Accepted anywhere in the command line, on any group or verb.\n\n"
@@ -242,7 +242,7 @@
   called with an implicit default (the Makefile's `cli-doc` target did
   not survive the Polylith landing, notes/ADRs.md ADR-0002) -- `spec`
   is the CLI's own cli-spec, which the caller must supply, since
-  components/tools cannot itself require bases/ehr-cli's help.clj
+  components/tools cannot itself require bases/cli's help.clj
   (Polylith's dependency direction is base -> component, never the
   reverse)."
   [{:keys [out spec]}]

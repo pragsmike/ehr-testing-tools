@@ -13,7 +13,7 @@
 ;; ---- test-cli-spec: a representative fixture, not the real cli-spec ----
 ;;
 ;; render-cli-md is pure (spec -> markdown string); it has no compile-time
-;; dependency on bases/ehr-cli's help.clj (components never depend on
+;; dependency on bases/cli's help.clj (components never depend on
 ;; bases -- Polylith's direction is the reverse, notes/ADRs.md ADR-0002),
 ;; so these tests exercise the renderer against a small, representative
 ;; spec of the same shape rather than importing the live one. The real
@@ -102,9 +102,9 @@
   (let [md (docsgen/render-cli-md test-cli-spec)]
     (doseq [[group verb] (command-pairs test-cli-spec)]
       (if verb
-        (is (str/includes? md (str "### `ehr " group " " verb "`"))
+        (is (str/includes? md (str "### `ehrt " group " " verb "`"))
             (str group " " verb " must get its own section"))
-        (is (str/includes? md (str "## `ehr " group "`"))
+        (is (str/includes? md (str "## `ehrt " group "`"))
             (str group " must get its own section"))))))
 
 (deftest cli-md-lists-every-flag-the-spec-declares-test

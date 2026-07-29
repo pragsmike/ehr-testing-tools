@@ -1,4 +1,4 @@
-(ns ehrt.ehr-cli.executable-bits-test
+(ns ehrt.cli.executable-bits-test
   "Guard: every tracked bin/ and .githooks/ script, and every tracked file
   whose content starts with a shebang, must carry index mode 100755.
 

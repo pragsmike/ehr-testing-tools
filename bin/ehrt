@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# The `ehr` CLI's entry point (ADR-0004; exit codes extended by
-# ADR-0010). This exists for one reason: the exit-code contract.
+# The `ehrt` CLI's entry point (ADR-0004; exit codes extended by
+# ADR-0010). Renamed from `ehr` (R32, ADR-0009, 2026-07-29) -- "e-heart";
+# `ehr` stays reserved for future payload-EHR tooling. This exists for
+# one reason: the exit-code contract.
 #
 #   0  ran and passed
 #   1  ran and legitimately rejected
@@ -8,7 +10,7 @@
 #   3  a gate's aggregate contains :no-verdict under the default
 #      --treat-no-verdict-as policy
 #
-# A bare `clojure -M:ehr` would carry the contract fine too; this wrapper
+# A bare `clojure -M:ehrt` would carry the contract fine too; this wrapper
 # exists so a relative path in an argument always means the same thing
 # regardless of the caller's own cwd -- it `cd`s to the workspace root
 # first, same as `artifacts.lock.edn`/`config/`/`components/tools/test-fixtures/**` (all
@@ -16,7 +18,7 @@
 #
 # ehr-testing-tools' own `Makefile`/`make ehr` compatibility spelling did
 # not survive the Polylith landing (notes/ADRs.md ADR-0002) -- this
-# wrapper plus the root `deps.edn`'s `:ehr` alias is the sole entry point
+# wrapper plus the root `deps.edn`'s `:ehrt` alias is the sole entry point
 # now.
 #
 # Expects a Linux/macOS shell with `clojure` on PATH; on Windows that
@@ -27,4 +29,4 @@ set -uo pipefail
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)" || exit 2
 cd -- "$repo_root" || exit 2
 
-exec clojure -M:ehr "$@"
+exec clojure -M:ehrt "$@"

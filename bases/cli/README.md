@@ -107,7 +107,7 @@ copy (a stopgap from before the root README existed, ADR-0002).
 Requires a JDK 17+ runtime for Synthea itself — resolved through this
 repo's own artifact registry, not your `PATH` (see
 [`docs/components.md`](../../components/tools/docs/components.md)).
-Commands run through `bin/ehr`, from the workspace root, `exec`ing
+Commands run through `bin/ehrt`, from the workspace root, `exec`ing
 straight into the CLI so the exit code you see is the CLI's own 0/1/2/3
 contract.
 

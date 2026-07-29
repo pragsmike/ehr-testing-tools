@@ -11,23 +11,24 @@
 # (discipline-parity session, carve-loss-audit row "docs/*
 # regeneration tooling") -- paths adjusted for the Polylith layout,
 # cli-doc newly requires ehrt.tools.interface/write-cli-md! + a spec-
-# supplying wrapper in bases/ehr-cli (ADR-0002's own deviation record
-# on why docsgen can no longer require cli.help directly).
+# supplying wrapper in bases/cli (ADR-0002's own deviation record
+# on why docsgen can no longer require cli.help directly; base renamed
+# ehr-cli -> cli, R35, ADR-0009).
 
 help:
 	@echo "Available targets:"
 	@echo "  help         - show this message (default target)"
 	@echo "  test         - the per-push lane: poly check -- every brick + projects/conformance's own suite, no artifact-fetch machinery (ADR-0004)"
-	@echo "  integration  - projects/integration's own suite: real Synthea, real FHIR validator -- requires 'ehr artifact fetch' first, e.g.:"
-	@echo "                   bin/ehr artifact fetch --name synthea --version 4.0.0"
-	@echo "                   bin/ehr artifact fetch --name temurin-jdk --version 21.0.12+8"
-	@echo "                   bin/ehr artifact fetch --name fhir-validator-cli --version 6.9.12"
+	@echo "  integration  - projects/integration's own suite: real Synthea, real FHIR validator -- requires 'ehrt artifact fetch' first, e.g.:"
+	@echo "                   bin/ehrt artifact fetch --name synthea --version 4.0.0"
+	@echo "                   bin/ehrt artifact fetch --name temurin-jdk --version 21.0.12+8"
+	@echo "                   bin/ehrt artifact fetch --name fhir-validator-cli --version 6.9.12"
 	@echo "  quickstart   - run README.md's Quickstart commands verbatim (bin/quickstart-demo), asserting each one's exit code and a clean tree afterward"
 	@echo "  ci-parity    - fresh clone + cold artifact cache + the per-push lane: 'green as CI sees it', runnable locally (ADR-0004's own local-state-is-not-clone-state lesson)"
 	@echo "  pipeline     - regenerate components/tools/docs/pipeline.md from pipeline.edn"
 	@echo "  use-cases    - regenerate components/tools/docs/use-cases.md from use-cases.edn"
 	@echo "  operators-doc - regenerate components/tools/docs/operators.md from the live operator registry"
-	@echo "  cli-doc      - regenerate components/tools/docs/cli.md from bases/ehr-cli's own cli-spec"
+	@echo "  cli-doc      - regenerate components/tools/docs/cli.md from bases/cli's own cli-spec"
 	@echo "  docsgen      - all four of the above"
 
 test:
@@ -67,12 +68,12 @@ operators-doc:
 	clojure -X:dev ehrt.tools.docsgen/write-operators-md! :out '"components/tools/docs/operators.md"'
 	@echo "Regenerated components/tools/docs/operators.md"
 
-# Regenerates components/tools/docs/cli.md from bases/ehr-cli's own
+# Regenerates components/tools/docs/cli.md from bases/cli's own
 # cli-spec, ehrt.tools' docsgen not itself required (Polylith: bases
 # depend on components, never the reverse) -- the wrapper lives in
-# bases/ehr-cli/src/ehrt/ehr_cli/help.clj.
+# bases/cli/src/ehrt/cli/help.clj.
 cli-doc:
-	clojure -X:dev ehrt.ehr-cli.help/write-cli-md! :out '"components/tools/docs/cli.md"'
+	clojure -X:dev ehrt.cli.help/write-cli-md! :out '"components/tools/docs/cli.md"'
 	@echo "Regenerated components/tools/docs/cli.md"
 
 docsgen: pipeline use-cases operators-doc cli-doc

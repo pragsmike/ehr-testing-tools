@@ -1,9 +1,9 @@
-(ns ehrt.ehr-cli.core
-  "The `ehr` entrypoint (ADR-0004) -- the only namespace that prints.
+(ns ehrt.cli.core
+  "The `ehrt` entrypoint (ADR-0004) -- the only namespace that prints.
   A thin shell: parse, call the capability function, print, map the
   result to an exit code. EDN is canonical output; --json is a
   projection, never the source of truth. One deliberate exception
-  (DOC-1): `ehr help`, `ehr help <group>`, and `--help` anywhere print
+  (DOC-1): `ehrt help`, `ehrt help <group>`, and `--help` anywhere print
   plain human-readable usage text instead of EDN/JSON -- they're for a
   human or an AI assistant at a shell, not a pipeline, so the EDN-out
   convention doesn't serve them. `dispatch` marks these results
@@ -16,7 +16,7 @@
             [clojure.string :as str]
             [ehrt.tools.interface :as result]
             [ehrt.tools.interface :as artifact]
-            [ehrt.ehr-cli.help :as help]
+            [ehrt.cli.help :as help]
             [ehrt.tools.interface :as generate]
             [ehrt.tools.interface :as mutate]
             [ehrt.tools.interface :as intake]
@@ -46,7 +46,7 @@
    :version {:coerce :string}
    :no-verdict-cache {:coerce :boolean}
    :all {:coerce :boolean}
-   ;; `ehr sim run` (ADR-0005, ADR-0012 fulfilled): sim's own opt names,
+   ;; `ehrt sim run` (ADR-0005, ADR-0012 fulfilled): sim's own opt names,
    ;; unchanged -- ehrt.sim.interface/run-command's own :patients/
    ;; :warm-up-seconds/:churn.
    :patients {:coerce :long}
@@ -64,7 +64,7 @@
   gate's aggregate contains :no-verdict under the default (undecided)
   --treat-no-verdict-as policy. Distinct from 1 so no workflow silently
   inherits a no-verdict-handling default (the policy-totality law, D10)
-  -- `ehr gate ... --treat-no-verdict-as pass|rejected` is the explicit
+  -- `ehrt gate ... --treat-no-verdict-as pass|rejected` is the explicit
   opt-in to fold :no-verdict into an existing polarity instead."
   3)
 
@@ -114,7 +114,7 @@
       :else (result/ok {:results labeled}))))
 
 (defn fetch-all-command
-  "`ehr artifact fetch --all`: fetches every artifact the lockfile
+  "`ehrt artifact fetch --all`: fetches every artifact the lockfile
   names, one invocation instead of SETUP.md's own multi-fetch
   walkthrough (D13). One failing artifact does not abort the rest --
   every entry is attempted, and the aggregate result is the worst-of
@@ -133,7 +133,7 @@
       artifacts-result
       (artifact/resolve-artifact (:payload artifacts-result) name version))))
 
-;; ---- D13 (docs/source-sink-design.md Part IX.6, ADR-0019): `ehr
+;; ---- D13 (docs/source-sink-design.md Part IX.6, ADR-0019): `ehrt
 ;; version` -- an honestly-pre-release identity, never a fabricated
 ;; semver. ----
 
@@ -147,7 +147,7 @@
 (defn real-git-describe
   "`git describe --always --dirty --long`, or \"unknown\" if git isn't
   on PATH, this isn't a git checkout, or the repo has no commits yet --
-  `ehr version` must never fail just because it can't get git info.
+  `ehrt version` must never fail just because it can't get git info.
   Reads stdout only, never merged with stderr: a warning git prints
   there (e.g. this WSL/NTFS checkout's own stale-fsmonitor warning,
   AUTHORS-GUIDE.md's documented workaround) must never leak into the
@@ -162,10 +162,10 @@
     (catch Exception _ "unknown")))
 
 (defn version-command
-  "`ehr version`: this repo's own pre-release identity (never a
+  "`ehrt version`: this repo's own pre-release identity (never a
   fabricated semver, D13) plus every pinned artifact's name@version
   read from the lockfile -- ADR-0005's registry, the same source
-  `ehr artifact fetch`/`resolve` already read from."
+  `ehrt artifact fetch`/`resolve` already read from."
   [{:keys [lockfile git-describe-fn] :or {git-describe-fn real-git-describe}}]
   (let [artifacts-result (default-lockfile-artifacts lockfile)]
     (if-not (result/ok? artifacts-result)
@@ -174,7 +174,7 @@
                   :git (git-describe-fn)
                   :artifacts (mapv #(select-keys % [:name :version]) (:payload artifacts-result))}))))
 
-;; ---- D13 (docs/source-sink-design.md Part IX.6, ADR-0019): `ehr
+;; ---- D13 (docs/source-sink-design.md Part IX.6, ADR-0019): `ehrt
 ;; doctor` -- runs SETUP.md's own verification ladder as checks.
 ;;
 ;; MAINTENANCE NOTE (the NAV-1 index pattern, notes/ADRs.md's own table
@@ -212,7 +212,7 @@
      :status (if (result/ok? r) :pass :fail)
      :detail (if (result/ok? r)
                (str "resolved: " (:path (:payload r)))
-               (str "not resolved -- run: ehr artifact fetch --name "
+               (str "not resolved -- run: ehrt artifact fetch --name "
                     generate/jdk-name " --version " generate/jdk-version))}))
 
 (defn- check-artifact-cache
@@ -228,7 +228,7 @@
                (str (count artifacts) " artifact(s) cached")
                (str (count failing) " not cached: "
                     (str/join ", " (map (fn [[a _]] (str (:name a) "@" (:version a))) failing))
-                    " -- run: ehr artifact fetch --all"))}))
+                    " -- run: ehrt artifact fetch --all"))}))
 
 (defn- check-hooks-path
   "AGENTS.md's WSL-only-commit rule is hook-enforced, but only once
@@ -259,7 +259,7 @@
                os)}))
 
 (defn doctor-command
-  "`ehr doctor`: SETUP.md's verification checklist as a command.
+  "`ehrt doctor`: SETUP.md's verification checklist as a command.
   0 = every check passed; 1 = at least one check failed (a real,
   actionable gap); 2 = doctor couldn't even read the lockfile to know
   what to check (the same operational-error class as every other
@@ -283,7 +283,7 @@
           (result/rejected :doctor-checks-failed {:checks checks}))))))
 
 (def ^:private format-file-extension
-  "The file extension `ehr corpus mutate` selects :input files by, and
+  "The file extension `ehrt corpus mutate` selects :input files by, and
   reads/writes base-data/mutant through, per operator :format."
   {:fhir "json" :v2 "hl7"})
 
@@ -331,7 +331,7 @@
 
 (defn- mutate-producer
   "SS-4b (D-d resolved, ADR-0020): the operation manifest's own
-  :producer field, this repo's honest identity via the same `ehr
+  :producer field, this repo's honest identity via the same `ehrt
   version` machinery version-command already uses. git-describe-fn is
   injectable (mirrors version-command's own parameter) so hermetic
   tests never shell out to a real git process."
@@ -420,7 +420,7 @@
                               (:mutant (:payload mutate-result))))))))))
 
 (defn mutate-command
-  "`ehr corpus mutate`: applies one operator, at one locator, to every
+  "`ehrt corpus mutate`: applies one operator, at one locator, to every
   matching file under :path (a file or a directory, positional --
   D10) -- *.json for a :fhir operator, *.hl7 for a :v2 one, dispatched
   on the looked-up operator's own :format -- writing each mutant
@@ -471,7 +471,7 @@
       (result/rejected :unknown-operator
                         {:id operator-id :version operator-version
                          :valid-options (sort (map :id (operators/entries)))
-                         :hint "run: ehr corpus operators"})
+                         :hint "run: ehrt corpus operators"})
       (let [format (:format operator)
             stdout-result (stdout-out-dir-result out-dir)
             out-dir (or out-dir (default-mutate-out-dir path operator-id operator-version))
@@ -536,7 +536,7 @@
        (= :stdin (:kind (:payload designator-result)))))
 
 (defn intake-command
-  "`ehr corpus intake`: catalogs :path (positional PATH, or --path --
+  "`ehrt corpus intake`: catalogs :path (positional PATH, or --path --
   D10, replacing --source-dir) as a foreign-corpus batch labeled
   :label. Translated to corpus.intake/intake!'s own :source-dir
   parameter at this CLI-shell boundary -- D10 renames the CLI surface,
@@ -570,7 +570,7 @@
   already reduced to a bare path by dispatch's own
   resolve-path-designators before this function ever runs, per ruling
   7 -- or simply an unparseable string) falls through to the unchanged
-  intake!/:source-dir path exactly as before SS-2. `ehr corpus
+  intake!/:source-dir path exactly as before SS-2. `ehrt corpus
   generate` itself is untouched by any of this -- its own verb, flags,
   and defaults do not change here."
   [{:keys [path label out received in-override]}]
@@ -600,7 +600,7 @@
                         :source-label label :out out :received received}))))
 
 (defn operators-command
-  "`ehr corpus operators`: lists the registered mutation operator
+  "`ehrt corpus operators`: lists the registered mutation operator
   catalog (corpus.operators) -- a pure registry read, no filesystem or
   subprocess involved, so it takes no required options. :format
   (\"fhir\" or \"v2\", optional) narrows the listing to one format.
@@ -690,7 +690,7 @@
     :no-verdict (result/rejected :gate-no-verdict payload)))
 
 (defn gate-command
-  "Builds an `ehr gate <format>` command function from that format's
+  "Builds an `ehrt gate <format>` command function from that format's
   gate-file/gate-dir functions (ehrt.tools.interface, and
   eventually judge.fhir -- same shape). :path may name a single file or
   a directory; either way the result is normalized into one
@@ -760,7 +760,7 @@
   "target/gate-fhir")
 
 (defn fhir-gate-command
-  "`ehr gate fhir`: unlike judge.v2 (fully self-contained, no options),
+  "`ehrt gate fhir`: unlike judge.v2 (fully self-contained, no options),
   judge.fhir needs the lockfile's artifacts plus a scratch directory
   for the validator's raw OperationOutcome output and invocation logs
   -- resolved here, then judge.fhir/gate-file and gate-dir are curried
@@ -789,7 +789,7 @@
                   :treat-no-verdict-as treat-no-verdict-as})))))
 
 ;; ---- D11 (docs/source-sink-design.md Part IX.4, ADR-0019): bare
-;; `ehr gate PATH` sniffs via corpus.intake/sniff-format instead of a
+;; `ehrt gate PATH` sniffs via corpus.intake/sniff-format instead of a
 ;; second sniffing mechanism. `gate v2`/`gate fhir` remain explicit
 ;; overrides -- required for a directory mixing both formats, or
 ;; containing a file the sniffer can't classify: both are the same
@@ -822,11 +822,11 @@
   [path payload]
   (result/error :gate-format-ambiguous
                 (merge {:path path
-                        :hint "ambiguous format -- run: ehr gate v2 PATH, or ehr gate fhir PATH"}
+                        :hint "ambiguous format -- run: ehrt gate v2 PATH, or ehrt gate fhir PATH"}
                        payload)))
 
 (defn sniff-gate-command
-  "The bare `ehr gate PATH` dispatch (D11): sniffs :path via
+  "The bare `ehrt gate PATH` dispatch (D11): sniffs :path via
   corpus.intake/sniff-format and calls gate-v2-fn or gate-fhir-fn with
   opts unchanged -- both already handle file-vs-directory internally
   (gate-command's own .isDirectory branch), so this function's only job
@@ -841,7 +841,7 @@
       (not (.exists f))
       (result/error :gate-path-not-found
                      {:path path
-                      :hint "no such file or directory -- run: ehr help gate"})
+                      :hint "no such file or directory -- run: ehrt help gate"})
 
       (.isFile f)
       (case (sniff-path-format f)
@@ -881,7 +881,7 @@
           (str/split s #","))))
 
 (defn check-command
-  "`ehr check DIR --expected DIR --assertions FILE
+  "`ehrt check DIR --expected DIR --assertions FILE
   [--canonicalizers id@v,...] [--pair-by path|hash] [--report ...]`.
   :assertions names an EDN file holding a vector of assertion maps
   (ehrt.tools.interface/Assertion) -- read here, the CLI's own
@@ -906,13 +906,13 @@
 (defn- help-text-for
   "Group usage text for a known group name, top-level usage text
   otherwise (nil group, or a name that isn't a real group -- e.g. a
-  bare `ehr`, or `ehr help bogus`)."
+  bare `ehrt`, or `ehrt help bogus`)."
   [group]
   (or (and group (help/render-group help/cli-spec group))
       (help/render-top-level help/cli-spec)))
 
 (defn- help-response
-  "An explicit help request (`ehr help`, `ehr help <group>`, `--help`
+  "An explicit help request (`ehrt help`, `ehrt help <group>`, `--help`
   anywhere): result/ok (exit 0) carrying the plain-text usage under
   :payload's :text, marked :category :cli-help so main! prints it
   verbatim instead of through `render`."
@@ -920,8 +920,8 @@
   (assoc (result/ok {:text (help-text-for group)}) :category :cli-help))
 
 (defn- bare-invocation-response
-  "Bare `ehr` (no group at all): prints the same top-level usage text
-  as `ehr help`, but stays result/error (exit 2) -- an incomplete
+  "Bare `ehrt` (no group at all): prints the same top-level usage text
+  as `ehrt help`, but stays result/error (exit 2) -- an incomplete
   invocation is operationally an error, not a help request, even
   though the text shown is identical."
   []
@@ -930,15 +930,15 @@
 (defn- unknown-command-error
   "An unrecognized group or verb: :unknown-command, extended (DOC-1's
   bounded error-message pass) with :valid-options (drawn from the help
-  spec -- one source of truth with `ehr help`'s own text, so the two
+  spec -- one source of truth with `ehrt help`'s own text, so the two
   can't drift apart) and a fixed :hint pointing at the fuller help
   surface."
   [args valid-options]
-  (result/error :unknown-command {:args args :valid-options valid-options :hint "run: ehr help"}))
+  (result/error :unknown-command {:args args :valid-options valid-options :hint "run: ehrt help"}))
 
 (defn sim-run-command
-  "`ehr sim run`: mounts ehrt.sim.interface/run-command in-process
-  (ADR-0005, 2026-07-28 -- ADR-0012's own long-deferred \"ehr sim
+  "`ehrt sim run`: mounts ehrt.sim.interface/run-command in-process
+  (ADR-0005, 2026-07-28 -- ADR-0012's own long-deferred \"ehrt sim
   mount\", fulfilled once sim and tools shared one workspace/classpath).
   No translation layer: this CLI's own flag names already match sim's
   own opts 1:1 (:seed, :patients, :reference-date, :emit, :churn,
@@ -987,7 +987,7 @@
   function with opts. The -fn keys are injectable (tests use this
   to avoid real subprocesses/network); default to the real commands.
 
-  `ehr help`, `ehr help <group>`, and `--help` (given anywhere --
+  `ehrt help`, `ehrt help <group>`, and `--help` (given anywhere --
   `opts`'s :help true) short-circuit before any capability function
   runs, returning a :category :cli-help result instead of routing to a
   command -- see `help-response`/`bare-invocation-response` and the ns
@@ -1015,11 +1015,11 @@
        (nil? group) (bare-invocation-response)
 
        :else
-       (let [;; `ehr gate fhir PATH|DIR` / `ehr gate v2 PATH|DIR` /
-             ;; `ehr corpus mutate PATH` / `ehr corpus intake PATH`: PATH
+       (let [;; `ehrt gate fhir PATH|DIR` / `ehrt gate v2 PATH|DIR` /
+             ;; `ehrt corpus mutate PATH` / `ehrt corpus intake PATH`: PATH
              ;; is a positional third arg, with --path as its explicit
              ;; twin (D10) -- never overridden by a positional path when
-             ;; --path was given explicitly. `ehr check DIR` has no
+             ;; --path was given explicitly. `ehrt check DIR` has no
              ;; sub-verb, so its positional path is the *second* arg
              ;; (bound above as `action`), not the third.
              opts (cond

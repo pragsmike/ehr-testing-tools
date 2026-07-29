@@ -23,20 +23,35 @@ and why.
 
 **Landed so far:** `components/sim` + `bases/sim-cli` (from
 `ehr-testing-sim`) — a deterministic, seeded generator of synthetic
-hospital traffic for testing EHR integrations. `components/tools` +
-`components/palgebra` + `bases/ehr-cli` (from `ehr-testing-tools`) —
-corpus construction (generation, mutation, provenance) and conformance
-gating (HL7 v2, FHIR); `projects/tools-cli` composes the three,
+hospital traffic for testing EHR integrations, presented to users via
+the `bin/ehrt sim run` mount (below); `sim-cli` itself is DEPRECATED,
+not removed (R33, ADR-0009) — it keeps working, its own tests keep
+running, but the user path never mentions it and this dev path marks
+it deprecated here. **Retirement trigger:** retire `bases/sim-cli` and
+`projects/sim` when a review finds no use outside their own tests —
+not scheduled, just named, per `notes/facts-register.md`.
+`components/tools` + `components/palgebra`
++ `bases/cli` (from `ehr-testing-tools`) — corpus construction
+(generation, mutation, provenance) and conformance gating (HL7 v2,
+FHIR); `components/kernel` + `components/judge` (ADR-0008) — the
+shared foundation layer and the conformance-judging code, extracted out
+of `components/tools`' own named hole H4 (ADR-0002 R14).
+`projects/ehrt-cli` composes tools + kernel + judge + palgebra + cli,
 `projects/conformance` is the base-less project exercising sim + tools
 + palgebra together (see `notes/ADRs.md` ADR-0002, closing named holes
 H1–H3).
+
+**The CLI is `ehrt`** ("e-heart", R32/ADR-0009, 2026-07-29) —
+`bin/ehrt`, renamed from `ehr`; `ehr` stays reserved for future
+payload-EHR tooling, not a stale spelling to clean up if you see it
+elsewhere in this file's own citations of pre-rename history.
 
 **Deliberately out of scope, permanently:** `ehr-testing-guide` stays
 out of this workspace entirely (ADR-0001, R2) — it is not a future
 landing, don't plan namespace or directory shape around it arriving
 later.
 
-**Publishing:** `projects/tools-cli` will be this family's only
+**Publishing:** `projects/ehrt-cli` will be this family's only
 published library artifact, once a future session names Clojars/Maven
 Central coordinates (ADR-0001 R3, named hole H5 — still open, author's
 call). Everything else in this workspace — including sim — builds an

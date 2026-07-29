@@ -1,4 +1,4 @@
-(ns ehrt.ehr-cli.core-test
+(ns ehrt.cli.core-test
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.edn]
             [clojure.java.io :as io]
@@ -8,7 +8,7 @@
             [ehrt.tools.interface :as report]
             [ehrt.tools.interface :as operators]
             [ehrt.tools.interface :as generators]
-            [ehrt.ehr-cli.core :as cli])
+            [ehrt.cli.core :as cli])
   (:import [java.io File]))
 
 (defn- sample-artifact []
@@ -85,7 +85,7 @@
   (let [r (cli/dispatch ["bogus" "thing"] {} {})]
     (is (= :unknown-command (:category r)) "category survives the payload extension")
     (is (= #{"artifact" "corpus" "gate" "check" "version" "doctor" "sim"} (set (:valid-options (:payload r)))))
-    (is (= "run: ehr help" (:hint (:payload r))))))
+    (is (= "run: ehrt help" (:hint (:payload r))))))
 
 (deftest dispatch-unknown-artifact-action-names-fetch-and-resolve-test
   (let [r (cli/dispatch ["artifact" "bogus"] {} {})]
@@ -100,13 +100,13 @@
 (deftest dispatch-unrecognized-gate-action-is-sniffed-as-a-path-test
   ;; D11: an action that isn't "v2"/"fhir" is no longer necessarily an
   ;; unknown-command error -- it's sniff-dispatched as a candidate PATH
-  ;; first (matching the bare `ehr gate PATH` contract); "bogus" doesn't
+  ;; first (matching the bare `ehrt gate PATH` contract); "bogus" doesn't
   ;; exist as a path either, so this surfaces as :gate-path-not-found,
   ;; not the old :unknown-command shape.
   (let [r (cli/dispatch ["gate" "bogus"] {} {})]
     (is (= :gate-path-not-found (:category r)))))
 
-;; ---- help / --help / bare ehr (DOC-1 Step 2): a :category :cli-help
+;; ---- help / --help / bare ehrt (DOC-1 Step 2): a :category :cli-help
 ;; result short-circuits before any capability -fn runs. ----
 
 (deftest dispatch-help-verb-alone-returns-top-level-usage-test
@@ -200,7 +200,7 @@
     (is (= {:path "x.json"} @called))))
 
 (deftest dispatch-corpus-mutate-accepts-a-positional-path-test
-  ;; D10: `ehr corpus mutate PATH` -- PATH is the third positional arg,
+  ;; D10: `ehrt corpus mutate PATH` -- PATH is the third positional arg,
   ;; with --path as its explicit twin, same convention gate already has.
   (let [called (atom nil)
         r (cli/dispatch ["corpus" "mutate" "x.json"] {}
@@ -302,7 +302,7 @@
     (is (= {:path "some-corpus/"} @called))))
 
 (deftest dispatch-gate-accepts-a-positional-path-test
-  ;; `ehr gate v2 PATH` -- PATH is the third positional arg, not a
+  ;; `ehrt gate v2 PATH` -- PATH is the third positional arg, not a
   ;; --path flag, matching the CLI contract as specified.
   (let [called (atom nil)
         r (cli/dispatch ["gate" "v2" "components/tools/test-fixtures/v2"] {}
@@ -325,7 +325,7 @@
     (is (= {:path "src"} @called))))
 
 (deftest dispatch-corpus-intake-accepts-a-positional-path-test
-  ;; D10: `ehr corpus intake PATH` -- same positional/--path convention
+  ;; D10: `ehrt corpus intake PATH` -- same positional/--path convention
   ;; as gate and corpus mutate.
   (let [called (atom nil)
         r (cli/dispatch ["corpus" "intake" "src"] {}
@@ -398,7 +398,7 @@
     (is (result/error? r))
     (is (= :not-found (:category r)))))
 
-;; ---- D13: ehr artifact fetch --all (docs/source-sink-design.md Part
+;; ---- D13: ehrt artifact fetch --all (docs/source-sink-design.md Part
 ;; IX.6, ADR-0019) -- every lockfile entry, one failure never masking
 ;; another, exit worst-of. ----
 
@@ -445,7 +445,7 @@
     (is (result/error? r))
     (is (= :not-found (:category r)))))
 
-;; ---- D13: ehr version -- honestly-pre-release identity, never a
+;; ---- D13: ehrt version -- honestly-pre-release identity, never a
 ;; fabricated semver. ----
 
 (deftest version-command-reports-pre-release-identity-and-artifacts-test
@@ -465,7 +465,7 @@
     (is (result/error? r))
     (is (= :not-found (:category r)))))
 
-;; ---- D13: ehr doctor -- SETUP.md's verification checklist as checks,
+;; ---- D13: ehrt doctor -- SETUP.md's verification checklist as checks,
 ;; hermetic via injected fakes (the artifact_test.clj pattern). ----
 
 (deftest doctor-command-all-checks-pass-is-ok-test
@@ -547,7 +547,7 @@
   (is (or (nil? (cli/real-git-config "core.hooksPath"))
           (string? (cli/real-git-config "core.hooksPath")))))
 
-;; ---- mutate-command (`ehr corpus mutate`): input file/dir, operator
+;; ---- mutate-command (`ehrt corpus mutate`): input file/dir, operator
 ;; id, locator, output dir -> writes mutant JSON files plus lineage
 ;; EDN sidecars under output-dir/lineage/ (design choice, documented
 ;; on mutate-command's own docstring: a subdirectory rather than
@@ -652,7 +652,7 @@
     (is (= :unknown-operator (:category r)) "category survives the payload extension")
     (is (contains? (set (:valid-options (:payload r))) :remove-required-element))
     (is (= 10 (count (:valid-options (:payload r)))))
-    (is (= "run: ehr corpus operators" (:hint (:payload r))))))
+    (is (= "run: ehrt corpus operators" (:hint (:payload r))))))
 
 (deftest mutate-command-defaults-operator-version-to-1-test
   (let [in-dir (temp-dir*)
@@ -848,7 +848,7 @@
     (is (= :locator-not-found (:category r)))
     (is (zero? (alength (.toByteArray out))) "nothing written when a per-file mutation fails")))
 
-;; ---- intake-command (`ehr corpus intake`): the real wiring, not the
+;; ---- intake-command (`ehrt corpus intake`): the real wiring, not the
 ;; injected-stub path dispatch-routes-corpus-intake-test exercises ----
 
 (deftest intake-command-delegates-to-corpus-intake-with-explicit-received-test
@@ -961,7 +961,7 @@
     (is (result/rejected? r))
     (is (= :malformed-er7-multi-frame (:category r)))))
 
-;; ---- operators-command (`ehr corpus operators`): a pure read of
+;; ---- operators-command (`ehrt corpus operators`): a pure read of
 ;; corpus.operators' registry -- no filesystem, no subprocess, no
 ;; options required. ----
 
@@ -1012,7 +1012,7 @@
       (is (result/ok? r))
       (is (= 10 (count (:operators (:payload r))))))))
 
-;; ---- gate-command / gate-v2-command (`ehr gate v2`): builds a
+;; ---- gate-command / gate-v2-command (`ehrt gate v2`): builds a
 ;; format-agnostic gate report over a file or directory; exit-code
 ;; contract via result/ok vs result/rejected, not special-cased in
 ;; result->exit-code (ADR-0004's generic mapping already does the
@@ -1091,7 +1091,7 @@
     (is (result/error? r))
     (is (= :not-found (:category r)))))
 
-;; ---- gate --baseline (`ehr gate v2|fhir DIR --baseline report.edn`,
+;; ---- gate --baseline (`ehrt gate v2|fhir DIR --baseline report.edn`,
 ;; P6): a finding counts toward rejection only if it isn't already
 ;; present in the baseline for that file. ----
 
@@ -1125,7 +1125,7 @@
     (is (= :gate-rejected (:category r)))
     (is (= 1 (cli/result->exit-code r)))))
 
-;; ---- --treat-no-verdict-as (`ehr gate --treat-no-verdict-as
+;; ---- --treat-no-verdict-as (`ehrt gate --treat-no-verdict-as
 ;; pass|rejected`, ADR-0010): policy totality at the act layer. Tested
 ;; against `gate-command` directly with an injected fake gate-file-fn --
 ;; neither judge.v2 (never produces :no-verdict) nor judge.fhir
@@ -1229,7 +1229,7 @@
     (is (.exists (io/file out-file)))
     (is (= (:payload r) (clojure.edn/read-string (slurp out-file))))))
 
-;; ---- check-command (`ehr check`): reads --assertions as an EDN file,
+;; ---- check-command (`ehrt check`): reads --assertions as an EDN file,
 ;; parses --canonicalizers "id@v,..." into ordered [id version] pairs,
 ;; delegates to ehrt.tools.interface/check-corpus. ----
 
@@ -1324,7 +1324,7 @@
     (is (= {:path "some-corpus/"} @called))))
 
 (deftest dispatch-check-accepts-a-positional-path-test
-  ;; `ehr check DIR` -- check has no sub-verb, so the second positional
+  ;; `ehrt check DIR` -- check has no sub-verb, so the second positional
   ;; arg IS the path, unlike gate's third-positional convention.
   (let [called (atom nil)
         r (cli/dispatch ["check" "some-corpus/"] {}
@@ -1349,7 +1349,7 @@
     (is (not (result/ok? r)))))
 
 ;; ---- D11 (docs/source-sink-design.md Part IX.4, ADR-0019): bare
-;; `ehr gate PATH` sniffs via corpus.intake/sniff-format and dispatches
+;; `ehrt gate PATH` sniffs via corpus.intake/sniff-format and dispatches
 ;; to gate-v2/gate-fhir; `gate v2`/`gate fhir` remain explicit overrides.
 ;; A sniff-dispatched directory mixing both formats, or containing a
 ;; file the sniffer can't classify, is an operational error naming the
@@ -1386,7 +1386,7 @@
     (is (= "components/tools/test-fixtures/v2" (:path @v2-called)))))
 
 (deftest dispatch-gate-bare-with-explicit-path-opt-sniffs-test
-  ;; `ehr gate --path X` (no positional at all) must still sniff --
+  ;; `ehrt gate --path X` (no positional at all) must still sniff --
   ;; the sniffing dispatch is keyed on there being no recognized verb,
   ;; not on how :path got into opts.
   (let [v2-called (atom nil)
@@ -1397,7 +1397,7 @@
     (is (= "components/tools/test-fixtures/v2/adt-a01-admit.hl7" (:path @v2-called)))))
 
 (deftest dispatch-gate-bare-invocation-still-errors-test
-  ;; `ehr gate` with no verb, no positional, and no --path is still an
+  ;; `ehrt gate` with no verb, no positional, and no --path is still an
   ;; operational error -- there is nothing to sniff.
   (let [r (cli/dispatch ["gate"] {} {})]
     (is (result/error? r))
@@ -1554,7 +1554,7 @@
                          {:println-fn (fn [s] (reset! printed s))
                           :exit-fn (fn [_c] nil)})]
     (is (= 0 code))
-    (is (clojure.string/includes? @printed "--treat-no-verdict-as") "ehr gate --help --json still renders gate's own group usage")
+    (is (clojure.string/includes? @printed "--treat-no-verdict-as") "ehrt gate --help --json still renders gate's own group usage")
     (is (not (clojure.string/includes? @printed "{")) "plain text, never a JSON/EDN projection, regardless of --json")))
 
 (deftest main-bang-bare-invocation-prints-usage-and-exits-two-test

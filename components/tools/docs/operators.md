@@ -5,9 +5,9 @@
 
 **Pre-release.** Nothing in this repo has had a first release yet; the interfaces below may still move. See [`README.md`](../README.md#maturity) for the per-capability maturity table.
 
-This is the catalog `ehr corpus mutate` applies: every registered defect operator, what it does to a file, and which base-spec constraint the result violates. The same catalog is readable at the shell — `ehr corpus operators`, or `ehr corpus operators --format v2` for one format — and as EDN or JSON from that verb's output.
+This is the catalog `ehrt corpus mutate` applies: every registered defect operator, what it does to a file, and which base-spec constraint the result violates. The same catalog is readable at the shell — `ehrt corpus operators`, or `ehrt corpus operators --format v2` for one format — and as EDN or JSON from that verb's output.
 
-Each operator is applied by id: `--operator-id <id> --operator-version <version>`, at one `--locator-path`, to every matching file under `PATH` (positional, or `--path`). See [cli.md](cli.md#ehr-corpus-mutate) for the full flag list and [use-cases.md](use-cases.md) for which task calls for which operator.
+Each operator is applied by id: `--operator-id <id> --operator-version <version>`, at one `--locator-path`, to every matching file under `PATH` (positional, or `--path`). See [cli.md](cli.md#ehrt-corpus-mutate) for the full flag list and [use-cases.md](use-cases.md) for which task calls for which operator.
 
 Two descriptions appear per operator, and they answer different questions. **What it does** is the edit — what changed in the file. **Contract** is the conformance claim — which constraint in the base specification the edited file now violates, which is what makes the operator useful as a test of whether a gate catches it.
 
@@ -113,4 +113,4 @@ Cuts the segment short at the locator's field, dropping that field and every fie
 
 ## What this catalog does not tell you
 
-Whether a gate actually *convicts* a given mutant is a measured property, not a property of the operator. Every entry above was verified to convict at its format's current judge tier before being registered — and several plausible defects were probed, found not to convict, and dropped rather than shipped unconvictable. Those dropped candidates and the measured blind spots behind them are in [judge-calibration.md](judge-calibration.md), which is where to look when a gate result surprises you. They are not registry data, so they never appear in `ehr corpus operators` output either.
+Whether a gate actually *convicts* a given mutant is a measured property, not a property of the operator. Every entry above was verified to convict at its format's current judge tier before being registered — and several plausible defects were probed, found not to convict, and dropped rather than shipped unconvictable. Those dropped candidates and the measured blind spots behind them are in [judge-calibration.md](judge-calibration.md), which is where to look when a gate result surprises you. They are not registry data, so they never appear in `ehrt corpus operators` output either.

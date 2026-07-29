@@ -5,8 +5,8 @@
         poly/judge    {:local/root "../../components/judge"}
         poly/tools    {:local/root "../../components/tools"}
         poly/palgebra {:local/root "../../components/palgebra"}
-        poly/ehr-cli  {:local/root "../../bases/ehr-cli"}
-        ;; poly/sim: the `ehr sim` mount (ADR-0004, ADR-0012 fulfilled)
+        poly/cli      {:local/root "../../bases/cli"}
+        ;; poly/sim: the `ehrt sim` mount (ADR-0004, ADR-0012 fulfilled)
         ;; -- ehrt.tools.sim calls ehrt.sim.interface/run-command
         ;; in-process, no subprocess. Real dependency, not test-only.
         poly/sim      {:local/root "../../components/sim"}
@@ -15,8 +15,8 @@
  :aliases {:test {:extra-paths []
                    :extra-deps  {}}
 
-           ;; Not the real `ehr` entry point -- see root deps.edn's own
-           ;; :ehr alias and bin/ehr. ehrt.tools.* reads
+           ;; Not the real `ehrt` entry point -- see root deps.edn's own
+           ;; :ehrt alias and bin/ehrt. ehrt.tools.* reads
            ;; artifacts.lock.edn/config/*/components/tools/test-fixtures/** as
            ;; cwd-relative literal paths (ADR-0005, not classpath
            ;; resources), so those only resolve when cwd is the
@@ -24,7 +24,7 @@
            ;; needs those files copied here first. Kept for parity with
            ;; every other project's own :run alias, not as the
            ;; supported invocation path.
-           :run {:main-opts ["-m" "ehrt.ehr-cli.core"]}
+           :run {:main-opts ["-m" "ehrt.cli.core"]}
 
            ;; Ported from ehr-testing-tools' own :coverage alias
            ;; (ADR-0006 posture: measure and report; the 85%
@@ -34,7 +34,7 @@
                                      "../../components/judge/test"
                                      "../../components/tools/test"
                                      "../../components/palgebra/test"
-                                     "../../bases/ehr-cli/test"]
+                                     "../../bases/cli/test"]
                       :extra-deps {cloverage/cloverage {:mvn/version "1.2.4"}
                                    org.clojure/test.check {:mvn/version "1.1.3"}
                                    org.slf4j/slf4j-nop {:mvn/version "2.0.17"}}
@@ -43,9 +43,9 @@
                                   "-p" "../../components/judge/src"
                                   "-p" "../../components/tools/src"
                                   "-p" "../../components/palgebra/src"
-                                  "-p" "../../bases/ehr-cli/src"
+                                  "-p" "../../bases/cli/src"
                                   "-s" "../../components/kernel/test"
                                   "-s" "../../components/judge/test"
                                   "-s" "../../components/tools/test"
                                   "-s" "../../components/palgebra/test"
-                                  "-s" "../../bases/ehr-cli/test"]}}}
+                                  "-s" "../../bases/cli/test"]}}}
