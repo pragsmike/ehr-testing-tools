@@ -158,11 +158,16 @@ sim's own discipline, unchanged by the move:
 
 ## Skills
 
-Workspace-level skills live in `.agents/skills/` — currently `handoff`
-and `string-diagram`, carried over from `ehr-testing-sim` as-is
-(ADR-0001, R4's landing includes this; diffing against
-`ehr-testing-tools`' own skill copies, where both exist, is deferred
-to that repo's own landing session). Handoffs, plans, and durable
-memory follow the same `.agents/` layout sim used; see
-`docs/way-of-working.md` for how this session's own conventions
-differ from sim's 40-session history.
+Workspace-level skills live in `.agents/skills/` — the union of sim's
+and tools' pre-carve skill sets (ADR-0005, carve-loss recovery session,
+2026-07-28, R21): `handoff` and `string-diagram` from sim (sim's own
+form wins on collision, per ADR-0001 R4's standing rule; `string-diagram`
+also folded in a fix tools' own divergent copy had that sim's didn't —
+pointing at `components/palgebra/` directly instead of vendoring a
+stale, commit-pinned copy of it), plus eight tools-only skills:
+`committee`, `find-skills`, `probe`, `repo-adaptation`, `review`,
+`scenarios`, `shared-skill-layout`, `wsl-windows-git-hygiene`. See
+ADR-0005 for the full collision-diff record. Handoffs, plans, and
+durable memory follow the same `.agents/` layout sim used; see
+`docs/way-of-working.md` for how this session's own conventions differ
+from sim's 40-session history.

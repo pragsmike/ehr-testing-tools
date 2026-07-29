@@ -90,7 +90,7 @@
   when :ok? is true; see diverge-at above otherwise."
   ([] (check {}))
   ([{:keys [readme-path script-path]
-     :or {readme-path "bases/ehr-cli/README.md" script-path "bin/quickstart-demo"}}]
+     :or {readme-path "README.md" script-path "bin/quickstart-demo"}}]
    (let [readme-lines (readme-command-lines readme-path)
          script-lines (script-command-lines script-path)
          divergence (diverge-at readme-lines script-lines)]

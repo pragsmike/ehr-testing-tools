@@ -45,28 +45,35 @@ for an inventory of what did and didn't survive the move.
 ## Quickstart
 
 Prerequisites and full verification steps: [`SETUP.md`](SETUP.md).
-Short version, from a WSL2/Linux/macOS shell with the Clojure CLI on
-PATH:
+Every command below is run for real and asserted by `bin/quickstart-demo`
+(`make quickstart`) — this fence and that script are meant to teach the
+identical sequence, in the identical order (DOC-5's own discipline); if
+you ever see them drift, that script is the bug report.
 
 ```sh
-git clone <this repo>
-cd ehr-testing
 bin/ehr help
-```
 
-Generate a small synthetic corpus and gate it against HL7 v2 base
-structure:
+bin/ehr artifact fetch --name synthea --version 4.0.0
+bin/ehr artifact fetch --name temurin-jdk --version 21.0.12+8
 
-```sh
-bin/ehr corpus generate --seed 1 --population 5 --out-dir target/demo
-bin/ehr gate v2 target/demo
-```
+bin/ehr corpus generate
 
-Run the sim engine directly (mounted in-process as of ADR-0005 — no
-separate sim checkout needed):
+PATIENT_FILE=$(ls target/corpus/synthea-s1-p5/fhir/*.json | grep -v -e hospitalInformation -e practitionerInformation | head -1)
+bin/ehr corpus mutate $PATIENT_FILE \
+  --operator-id remove-required-element --locator-path entry[0].resource.gender \
+  --out-dir out/demo-mutants
 
-```sh
+bin/ehr artifact fetch --name fhir-validator-cli --version 6.9.12
+bin/ehr gate v2 test/fixtures/v2
+# gate fhir exits 1 here -- a genuine defect in the mutant, correctly caught
+bin/ehr gate fhir out/demo-mutants --report out/demo-mutants-report.edn
+
+bin/ehr check target/corpus/synthea-s1-p5/fhir --expected target/corpus/synthea-s1-p5/fhir
+
+# mounted in-process (ADR-0005) -- no separate sim checkout needed
 bin/ehr sim run --seed 100 --patients 1
+
+clojure -M:poly test :all
 ```
 
 `bin/ehr help <group>` documents every command group and its flags

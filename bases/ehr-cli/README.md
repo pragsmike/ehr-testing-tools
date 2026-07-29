@@ -93,73 +93,23 @@ publication does and doesn't mean.
 
 ## Quickstart
 
+See the workspace root [`README.md`](../../README.md#quickstart) — the
+one canonical Quickstart fence, checked line-for-line against
+`bin/quickstart-demo` by `ehrt.tools.quickstart-fresh`
+(`components/tools/src/ehrt/tools/quickstart_fresh.clj`). This section
+used to duplicate it; ADR-0005 (carve-loss recovery, 2026-07-28)
+retired the duplicate once the workspace gained its own root README --
+two independently-editable copies of the same taught sequence is
+exactly the doc-rot shape DOC-5 exists to prevent, and having a root
+README to point at removed the reason this file ever carried its own
+copy (a stopgap from before the root README existed, ADR-0002).
+
 Requires a JDK 17+ runtime for Synthea itself — resolved through this
 repo's own artifact registry, not your `PATH` (see
 [`docs/components.md`](../../components/tools/docs/components.md)).
-
-Commands run through `bin/ehr`, from the workspace root. It `exec`s
-straight into the CLI, so the exit code you see is the CLI's own
-0/1/2/3 contract, and your arguments are plain shell arguments.
-
-Fetch the pinned artifacts once, then generate and mutate:
-
-```sh
-# See every command, flag, and exit code the CLI supports.
-bin/ehr help
-
-# One-time: fetch the pinned Synthea distribution and its JDK, into the
-# local artifact cache (~/.cache/ehr-testing-tools/artifacts).
-bin/ehr artifact fetch --name synthea --version 4.0.0
-bin/ehr artifact fetch --name temurin-jdk --version 21.0.12+8
-
-# Generate a small deterministic corpus. Zero flags: every default is
-# pinned (--seed 1, --population 5, --reference-date 20260101, D9), so
-# this exact command is byte-reproducible on any machine given the same
-# locked Synthea/JDK versions (EXP-A4's claim, extended to the zero-flag
-# case) -- it lands in the derived target/corpus/synthea-s1-p5/.
-bin/ehr corpus generate
-
-# Mutate one patient bundle: drop a required element at a named
-# locator, with a lineage record for the mutant. (mutate's positional
-# PATH -- --path is its explicit twin -- takes a file or a directory of
-# files sharing one locator's shape; the corpus dir above also holds two
-# non-patient bundles -- hospitalInformation*.json,
-# practitionerInformation*.json -- so this picks a patient file
-# specifically rather than the whole directory. See the full operator
-# catalog: `bin/ehr corpus operators`.)
-PATIENT_FILE=$(ls target/corpus/synthea-s1-p5/fhir/*.json | grep -v -e hospitalInformation -e practitionerInformation | head -1)
-bin/ehr corpus mutate $PATIENT_FILE \
-  --operator-id remove-required-element --locator-path entry[0].resource.gender \
-  --out-dir out/demo-mutants
-
-# Gate a file or directory against HL7 v2 (base-structural, HAPI) or
-# FHIR (base-spec, the official validator -- also fetches its own
-# pinned artifact the first time). Exit code: 0 all pass, 1 any
-# rejected, 2 operational error, 3 the aggregate contains :no-verdict
-# and no --treat-no-verdict-as policy was given (a check the judge
-# couldn't fully apply, e.g. terminology-suppressed offline -- distinct
-# from a genuine rejection, so it gets its own exit code rather than
-# silently inheriting either polarity; see docs/judge-calibration.md).
-# --treat-no-verdict-as pass|rejected folds it into an existing
-# polarity when that's the right call for your workflow. --report
-# writes the corpus report; --json projects it.
-bin/ehr artifact fetch --name fhir-validator-cli --version 6.9.12
-bin/ehr gate v2 test/fixtures/v2
-bin/ehr gate fhir out/demo-mutants --report out/demo-mutants-report.edn
-
-# Check a corpus against an expected corpus (golden equivalence) --
-# the corpus's second judge, alongside Gate.
-bin/ehr check target/corpus/synthea-s1-p5/fhir --expected target/corpus/synthea-s1-p5/fhir
-
-# Run the test suite (hermetic).
-clojure -M:poly test :all
-```
-
-Output is EDN by default; every command accepts `--json` for a
-projection (EDN remains the source of truth). Generated corpora and
-mutants are plain FHIR JSON plus EDN manifests — consumable from
-Python or any language; no Clojure knowledge is needed to use the
-results.
+Commands run through `bin/ehr`, from the workspace root, `exec`ing
+straight into the CLI so the exit code you see is the CLI's own 0/1/2/3
+contract.
 
 ## Relationship to ehr-testing-guide
 

@@ -1,9 +1,8 @@
 #!/usr/bin/env bash
 # Runs README.md's Quickstart fenced block, verbatim, under per-step exit-
 # code assertions (DOC-5, notes/tools/agents/plans/user-docs.md, tools'
-# own pre-Polylith provenance). Invoke this script directly -- the
-# `make quickstart-demo` entry point did not survive the Polylith landing
-# (notes/ADRs.md ADR-0002).
+# own pre-Polylith provenance). Invoke via `make quickstart` (ADR-0004's
+# own thin Makefile, R23) or directly.
 #
 # Invariant per taught command: its real exit code equals what README.md's
 # own exit-code prose commits to for that exact invocation, or -- where the
@@ -89,6 +88,8 @@ expect 0 bin/ehr gate v2 test/fixtures/v2
 expect 1 bin/ehr gate fhir out/demo-mutants --report out/demo-mutants-report.edn
 
 expect 0 bin/ehr check target/corpus/synthea-s1-p5/fhir --expected target/corpus/synthea-s1-p5/fhir
+
+expect 0 bin/ehr sim run --seed 100 --patients 1
 
 expect 0 clojure -M:poly test :all
 # END quickstart commands
