@@ -662,3 +662,415 @@ against `ehr-testing-sim`'s vendored copies) repointed to
 `components/palgebra/tools/...`/`components/palgebra/examples/...`; the
 sim-side comparison paths are unaffected (sim didn't move this
 session).
+
+---
+
+## ADR-0004 — Carve-loss audit; CI two-lane rule restored; local state is not clone state
+
+**Status:** Accepted (author-directed), 2026-07-28.
+
+**Note on numbering.** `ADR-0003` is a reserved, not-yet-written slot —
+the pending `2026-07-28-ehr-testing-h2-closeout-sweep` session's own
+pre-push hook-doctrine record, which that session's own prompt already
+cites forward. That session stopped at its own step 0 precondition
+(CI red) before writing it; this session and the executable-bits fix
+session that preceded it needed to proceed regardless, so this record
+takes the next number rather than block on a slot another session owns.
+No ADR number is ever reassigned once used — see ADR-0005 below for why
+that discipline mattered concretely this same day.
+
+### Context
+
+Three post-H2-landing failures shared one root cause: material dropped
+at carve time as "superseded," without a load-bearing inventory,
+turned out to still be load-bearing. In order of discovery:
+
+1. `bin/ehr` and ten other tracked scripts lost their executable bit in
+   the index during the carve (`core.fileMode=false` made this
+   invisible locally) — fixed same-day, its own session
+   (`2026-07-28-ehr-testing-ci-red-executable-bits`), CI run
+   `30405350913` red, `30408485074` green.
+2. Fixing (1) let `poly test :all` run far enough to reach 13
+   `^:integration`-tagged test namespaces requiring `ehr artifact
+   fetch` (synthea, temurin-jdk, the FHIR validator) — machinery CI's
+   cold clone has never had, because the pre-carve `deps.edn`
+   `:test`/`:integration` alias split (and the Makefile `test`/
+   `integration` target split enforcing it) that used to keep these
+   off the per-push path was dropped wholesale as "superseded"
+   (ADR-0002's own disclosure), without anyone identifying this
+   specific consequence.
+3. (Named but not yet hit in CI, found by this session's own audit:)
+   `README.md` never existed at the workspace root — poly's generated
+   placeholder `readme.md` sat there instead — and the workspace skill
+   set only ever got half of what sim and tools each carried.
+
+This session: audits the full loss set (not just these three) so the
+next failure isn't a fourth surprise; restores the ENF-1 two-lane rule
+in Polylith's own idiom; authors the missing README; restores a thin
+Makefile. The sibling-checkout fix originally scoped here (R20) grew
+into its own record — see ADR-0005 — once the author's own amended
+ruling turned a repointing fix into an architecture fulfillment.
+
+### Decision
+
+**R18.** The ENF-1 two-lane rule stands unchanged in the workspace,
+quoted verbatim from its origin
+(`notes/tools/prompts/2026-07-25-enf1-enforcement-wave.md`): *"Fast
+gates block, slow gates schedule — hooks and the per-push CI job carry
+only the fast checks... the integration suite goes in a separate
+scheduled/manual workflow, never in the per-push path."* And, on
+fetching engines in CI: *"If any secret/licensing consideration
+surfaces around fetching an engine in CI... stop and report rather
+than fetch."* No such consideration surfaced this session — all three
+artifacts `.github/workflows/integration.yml` fetches are already
+license-verified in `artifacts.lock.edn` itself.
+
+**R19.** The lane split is structural, not metadata: `projects/integration`
+holds the artifact-fetch-dependent test namespaces; `projects/conformance`
+keeps workspace-internal suites. The `^:integration` tag may remain as
+documentation but is not the enforcement mechanism — poly's own
+`skip:PROJECTS` (per-push: `poly test :all skip:integration`) and
+`project:NAME` (nightly: `poly test :all project:integration`)
+selectors are, pinned empirically this session (not assumed from
+ADR-0002's own prior, correct-but-unverified claim that `:all` already
+runs every project's test/ dir): `project:X` alone narrows an entire
+run to just that project's own dependency closure, dropping every
+other brick; `:all-bricks` gets silently overridden by a co-occurring
+`project:X`, not merged with it. `:all skip:X` is the form that
+actually unions "every brick, every project except X."
+
+Membership in `projects/integration` was decided by actual dependency,
+not the inherited tag list: of the 13 `^:integration`-tagged
+namespaces, 5 (`baseline_gating_test`, `contract_pairing_test`,
+`intake_source_golden_test`, `zero_flag_reproducibility_test`, and
+`smoke_test`'s FHIR half) genuinely need `ehr artifact fetch`
+machinery and moved; 2 (`mutate_stdout_stdin_loopback_test`,
+`stdin_intake_real_pipe_test`) only need `bin/ehr`'s own executable
+bit and pre-committed fixtures — hermetic once (1) above landed — and
+stayed; 5 sim-consuming suites stayed too, on the expectation ADR-0005
+confirmed (they needed a *different* fix, not artifact-fetch, and
+became fully hermetic once that fix landed rather than merely staying
+un-broken). `smoke_test.clj` itself split along a seam its own
+docstring already drew ("FHIR half" / "sim-harness half") once the two
+halves needed different lanes — a real, disclosed cost: the tier's
+original point (both real-engine seams smoke-tested in one sub-2-minute
+pass) no longer holds for the FHIR half on the per-push path. One
+correction along the way: the "13 known" count itself was off by one —
+`components/tools/test/ehrt/tools/corpus/golden_comparison_test.clj`
+matched a grep for `^:integration` only inside a docstring's prose
+(naming a *different*, real integration test), not as a real tag; 12
+namespaces actually carried it.
+
+**R20.** Superseded by its own amendment — see ADR-0005.
+
+**R21.** Workspace skills are the union of sim's and tools' pre-carve
+sets: `handoff` and `string-diagram` from sim (sim's form wins on
+collision, ADR-0001 R4), eight tools-only skills (`committee`,
+`find-skills`, `probe`, `repo-adaptation`, `review`, `scenarios`,
+`shared-skill-layout`, `wsl-windows-git-hygiene`) added live. `handoff`
+diffed byte-identical (no fix to fold in). `string-diagram` diffed
+divergent: the live (sim) copy vendored its own stale, commit-pinned
+copy of palgebra's converter+examples from before palgebra was ever in
+this workspace; tools' own copy pointed at a live `palgebra/` location
+instead of vendoring — the fix ADR-0002 already flagged as a "named,
+disclosed gap for a future session's deliberate call." That session is
+this one: folded tools' fix in, repointed at the *current* workspace
+location (`components/palgebra/...`, one directory deeper than tools'
+own old bare `palgebra/`), deleted the now-redundant vendored copy
+(`.agents/skills/string-diagram/{tools,examples}/`).
+
+**R22.** Root `README.md` authored; poly's generated `readme.md`
+removed in the same working-tree change — `git rm` then a fresh
+`Write`, not `git mv`, per the case-only-rename hazard this WSL/NTFS
+checkout has for `README.md`/`readme.md` (confirmed hazard, not
+theoretical: the `Write` tool itself refused to write `README.md`
+until `readme.md` — the *same inode* on this filesystem — was read
+first). Authoring the root README surfaced a real, second-order fix:
+`ehrt.tools.quickstart-fresh`'s own `readme-path` default was
+`bases/ehr-cli/README.md`, a stopgap from when tools' own README was
+relocated there because no root README existed yet (ADR-0002). With a
+real root README now the obvious canonical Quickstart-teaching surface,
+the default moved to it, and `bases/ehr-cli/README.md`'s own duplicate
+Quickstart section became a pointer to the root one instead of a second,
+driftable copy — exactly the doc-rot shape DOC-5's own freshness check
+exists to prevent, now pointed at the file that should own it.
+
+**R23.** A thin Makefile returns: `test`, `integration`, `quickstart`,
+`ci-parity` — named entry points to poly/CLI commands, not logic. The
+full pre-carve Makefile (pack/pack-skills/pack-push, docsgen
+regeneration, both lints, `check-palgebra-drift`, `coverage`,
+`integration-smoke`) stays superseded per ADR-0002's own
+author-approved decision, not reopened by this record.
+`ci-parity` — fresh `git clone` to a scratch dir, artifact cache
+repointed at an empty directory via `EHR_TESTING_TOOLS_CACHE`, then the
+per-push lane — is this session's own answer to the generalized trap
+below, made runnable rather than merely stated. Its full fresh-clone
+form could not be exercised this session (git commit is the author's
+own ceremony, ADR-0001 R6, and nothing existed to clone from beyond
+this session's own starting commit); its constituent commands (cold
+cache, `skip:integration`) were verified directly against the working
+tree instead — `make ci-parity` itself is a commit away from its own
+first real run, which the author's own post-session actions name.
+
+### The carve-loss audit
+
+Landed as `notes/carve-loss-audit.md`, committed before any restoration
+in this record, so every fix below cites an audit row rather than
+re-arguing its own premise. Method: every non-generated path at tools'
+`stable-pre-monorepo` tag and sim's final pre-merge tree, diffed
+against the current tree, with `src/`/`test/`/`docs/` subtrees excluded
+from the row-by-row listing (already exhaustively verified elsewhere —
+zero unaccounted paths found there when re-checked for this audit).
+15 tools-side rows, 21 sim-side (sim: zero new findings, already fully
+disclosed in ADR-0001), one row UNDECIDED at write time
+(`.claude/settings.json`, a git-tracked shared permissions allowlist —
+ruled live, in-session, by the author during this session's own step 3:
+don't commit it, `.claude/` stays untracked).
+
+### The generalized trap
+
+Stated for citation, this record's own contribution to the workspace's
+running doctrine: **local state is not clone state.** Index modes,
+artifact caches, and sibling checkouts have each, independently, masked
+a real CI failure behind a local green this same week — the executable
+bit (working tree already had it set; the index didn't), the artifact
+cache (this dev machine's own cache was warm from real prior use;
+CI's is always cold), and the sibling checkout (a real `../ehr-testing-sim`
+happens to sit next to this clone on this machine; CI has no sibling at
+all — see ADR-0005 for how that one, specifically, stopped mattering).
+`make ci-parity` is this doctrine's own local probe: the clone is the
+ground truth, not the working tree.
+
+### Deviation record
+
+**The `poly test :all` mechanism, pinned empirically (step 0), not
+assumed from ADR-0002's own prior claim.** `projects/conformance/deps.edn`'s
+own `:test` alias (`cognitect-labs/test-runner`, `:dirs ["test"]`, no
+`:excludes`) has no selector at all — `poly test :all`'s own "all brick
+tests + all project tests" semantics is what pulled every namespace
+under it in unconditionally, once the executable-bit fix let the run
+get that far. `poly help test`'s own documented ARGS (`:all`,
+`:all-bricks`, `project:NAME`, `skip:PROJECTS`) were read and tested
+directly (three separate empirical passes: `:all-bricks project:conformance`
+narrows instead of unions; `project:integration` alone runs bricks only,
+not the project's own test/ tree; `:all skip:integration` is the form
+that actually works) rather than guessed from the flag names' own
+apparent meaning.
+
+**`.github/workflows/test.yml`'s own third step, dropped, not
+carried forward as `skip:integration`.** The pre-this-session workflow
+ran `poly test :all` then a redundant `poly test :project` as
+belt-and-suspenders against `:all` ever silently skipping project-level
+tests. `:all skip:integration`'s own comprehensiveness (verified this
+session, not assumed) makes that redundant step strictly weaker than
+what it followed (`:project`'s own "changed since last stable tag"
+scope is narrower than a full `:all`), so it was removed rather than
+adapted — named here since removing a gate, even a redundant one,
+deserves its own line.
+
+**Named, disclosed, out of scope.** `.github/workflows/test.yml`'s
+former `poly test :project` step carried a comment citing "AGENTS.md"
+and ".githooks/pre-push's own gate" for its own rationale — stale in
+two ways even before this session touched it (pre-push dropped its own
+`poly test :project` gate in `1ebf4ce`, the same-day executable-bits
+session's own prompt), and this session's own edit to that step
+removed the comment along with the step. Not separately fixed as its
+own row: it no longer exists to be stale.
+
+---
+
+## ADR-0005 — The `ehr sim` mount: ADR-0012 fulfilled, ADR-0013 decision 1 retired
+
+**Status:** Accepted (author-directed, amending the session's own R20
+in-session), 2026-07-28.
+
+### Context
+
+ADR-0004's own R19 restructuring left five `sim_*_test.clj` suites (plus
+`smoke_test.clj`'s sim half) in `projects/conformance`, still resolving
+sim through a sibling-checkout discovery order (`ehrt.tools.sim`'s
+`:sim-dir` → `EHR_TESTING_SIM_DIR` → `../ehr-testing-sim`, ADR-0013)
+that CI's cold clone never satisfies — they skip cleanly there rather
+than fail, so they weren't part of ADR-0004's own red-CI fix, but they
+also never ran for real anywhere CI could see.
+
+This session's own initial proposal (documented in chat, not
+committed) was a minimal repointing: keep the subprocess, retarget its
+discovery default from the sibling checkout to `projects/sim` in this
+same workspace, via a new `bin/sim` launcher mirroring `bin/ehr`'s own
+shape. The author's own amended ruling rejected the subprocess
+entirely: *"I'm ok with not using the subprocess at all, and simply
+mounting sim's CLI tree as a subcommand of tools ehr... this was the
+original design, and the subprocess technique was a way to get around
+the fact that sim grew in a separate project that wasn't available to
+all agents at the time."*
+
+That recollection undersold its own case. `notes/tools/ADRs.md`
+ADR-0013's own decision 1 gives the real, stronger reason: *"sim is a
+private repo today and this repo is public (ADR-0008); a git or Maven
+dependency from a public repo onto a private one breaks public CI
+outright... and even once sim is public, a classpath dependency would
+invert ADR-0012's own stated arrow... and tangle the two repos' version
+lockstep."* And ADR-0013 decision 5, verbatim: *"The `ehr sim` mount
+remains DEFERRED (ADR-0012, unchanged)."* `notes/tools/ADRs.md`
+ADR-0012 itself is the mount's own pre-existing design — five CLI
+interface properties, verified against source, that a mount would rest
+on, explicitly left unbuilt pending "the classpath question" resolving.
+That question resolved the moment sim and tools became bricks in one
+workspace (H2, this same week) — this record is that resolution,
+exercised, not a new design.
+
+### Decision
+
+**Mount, in-process, via `ehrt.sim.interface` directly.**
+`components/tools/src/ehrt/tools/sim.clj` (the adapter both
+`ehrt.tools.corpus.generators`' `:sim` entry and the test harness
+already drove) now calls `ehrt.sim.interface/run-command` directly —
+no subprocess, no discovery order, no availability check. `bases/ehr-cli`
+gains an `ehr sim run` group, dispatching through the same
+`ehrt.tools.interface/sim-run!` re-export every other consumer already
+used. `poly/sim` is a real `:local/root` dependency now, everywhere
+`components/tools`' own compiled code loads (`projects/tools-cli`,
+`projects/conformance`, `projects/integration` — transitively, since
+`poly/tools` itself now requires `ehrt.sim.interface`; root `deps.edn`'s
+own `:ehr`/`:dev` aliases).
+
+**ADR-0013's direction invariant preserved, poly-enforced.** The rule
+was never "sim and tools must never share a classpath" — AGENTS.md's
+own constraints section already permitted `components/tools`/
+`projects/conformance` depending on `components/sim`, the arrow
+tools → sim, one-directional. `ehrt.tools.sim` requiring
+`ehrt.sim.interface`, never the reverse, is exactly that arrow;
+`poly check` enforces it structurally (a `sim` → `tools` require would
+fail dependency-direction validation, not merely violate a convention).
+What's retired is decision 1's *mechanism* (subprocess, because a
+classpath dependency used to be structurally impossible across the
+public/private, independently-versioned repo boundary) — the
+motivating constraint, not the direction rule built on top of it.
+
+**Sibling-discovery machinery removed as dead code, not left
+permanently-true.** `available?`, `default-sim-repo-dir`,
+`sim-dir-env-var`, and `sim-not-available` are gone from
+`ehrt.tools.sim` and its `ehrt.tools.interface` re-export entirely —
+not kept as a function that always returns `true`. `EHR_TESTING_SIM_DIR`
+is no longer read anywhere in this workspace. `projects/conformance/test/ehrt/tools/sim_harness.clj`
+(the project-local pass-through every `sim_*_test.clj` and `smoke_test.clj`
+call through) lost its own `available?`/`absence-message` the same
+way; its five consumers and `smoke_test.clj`'s sim half each lost their
+own `(if-not (sim-harness/available?) (skip) (run-for-real))` wrapper,
+now running unconditionally.
+
+**One OS-level pipe test retained, deliberately, as the
+consumer-fidelity witness.** Every in-process test proves the mount's
+own *logic*; none of them prove `bin/ehr sim run --seed ... --patients ...`
+— the actual invocation a human or script would type — still resolves,
+parses its flags, and prints a real Result to stdout. `projects/conformance/test/ehrt/tools/sim_cli_real_invocation_test.clj`
+is that proof, real `bin/ehr` subprocess and all, comment-marked as the
+one deliberate exception to "everything else is in-process now" — same
+real-subprocess discipline `mutate_stdout_stdin_loopback_test.clj` and
+`stdin_intake_real_pipe_test.clj` already established, stdout and
+stderr kept separate (a JVM/WSL warning on stderr must never corrupt
+the EDN this test reads from stdout — caught once, by this test itself,
+during this session; see the deviation record).
+
+**Registered in help; docsgen deferred to its own owner.** `bases/ehr-cli/src/ehrt/ehr_cli/help.clj`'s
+own `cli-spec` gained the `sim` group/`run` verb (flags matching
+`run-command`'s own opts 1:1: `--seed`, `--patients`,
+`--reference-date`, `--warm-up-seconds`, `--emit`, `--churn`,
+`--config`); `help_test.clj`'s two hand-mirrored coverage structures
+(`stub-key`, `known-dispatch-pairs`) updated to match, per ADR-0012
+property 4's own correction about what "mounting sim" does and doesn't
+give for free. Regenerating `docs/cli.md` itself from this updated spec
+is the pending closeout-sweep session's own step 4 (docsgen regen
+tooling, a named row in this session's own carve-loss audit) — not
+duplicated here; the spec data is ready for it.
+
+**Sim stays out of any future published-library artifact (named,
+not built).** `projects/tools-cli`'s own `poly/sim` dependency is for
+the CLI mount only. ADR-0001 R3 already names `projects/tools-cli` as
+this family's sole future publishable library, once H5 (Clojars/Maven
+coordinates, still open) resolves; whatever that publishing mechanism
+turns out to be must exclude sim's own code from the published
+artifact's own coordinates when the time comes — recorded here as a
+constraint on that future session, since this session is the one that
+introduced the dependency it constrains.
+
+**`bases/sim-cli` / `projects/sim` untouched, deliberately.** Sim's own
+standalone CLI artifact and its composing project are exactly as this
+session found them — confirmed via `git status` showing zero changes
+under either path. Whether sim keeps a standalone CLI future
+independent of the `ehr sim` mount is an explicitly deferred author
+call, not decided by this record either way.
+
+### ADR-0012's five properties, exercised
+
+Each of the five interface commitments ADR-0012 recorded (before any
+mount existed, so a later refactor couldn't silently break one without
+noticing it was load-bearing) held, verified against source rather
+than assumed: **(1)** `dispatch`'s own `[group action]`-in, Result-out
+shape needed only a new `case` arm. **(2)** The single, host-side
+`babashka.cli` spec (`core.clj`'s own `cli-spec`, distinct from
+`help.clj`'s rendering spec of the same name) needed three new coerced
+keys (`:patients`, `:warm-up-seconds`, `:churn`) and nothing else.
+**(3)** Structural Result typing meant `run-command`'s own return value
+needed no unwrapping, parsing, or reshaping at all — sim's Result maps
+and tools' own are interchangeable by shape, not by shared code.
+**(4)** The help-group data shape absorbed a new group with no changes
+to its own renderers. **(5)** The `-fn` injection point
+(`:sim-run-fn`, defaulting to the new `sim-run-command`) is what kept
+`bases/ehr-cli`'s own CLI tests hermetic, exactly the property ADR-0012
+named it for.
+
+### Deviation record
+
+**A genuine, previously-latent finding, surfaced by the mount, not
+caused by it.** `sim_manifest_contract_test.clj` asserted
+`(:generator :name)` equals `"ehr-testing-sim"` — sim's *pre-H2-rename*
+self-identity. `components/sim/src/ehrt/sim/manifest.clj:77` has
+reported `"ehrt.sim"` since ADR-0001's own mechanical rename. This test
+path had never actually executed end to end before this session (always
+skipped, local and CI both, for lack of a sibling checkout at the
+moments it ran) — the in-process mount is what first let it run for
+real, and it caught its own staleness on the first real run.
+AUTHORS-GUIDE.md's two-failure-modes discipline: a sound check
+disagreeing with reality is a finding (leave it red, ADR-0013's own
+precedent); a check misencoding its own invariant is an escalation
+(fix the check). This is the second kind — the rename was already
+deliberate and ratified, so the test's own expectation was corrected
+to `"ehrt.sim"`, not left red.
+
+**The injection-seam convention, corrected mid-session to match this
+codebase's own existing pattern, not invented fresh.** `ehrt.tools.sim/run!`'s
+first draft took an injectable `:run-command-fn` as a *second*
+argument (`(run! opts {:run-command-fn fake})`), modeled on no
+particular precedent. `components/tools/test/ehrt/tools/corpus/generators_test.clj`'s
+own `:sim` entry calls `(sim/run! params)` with one argument — the same
+single-opts-map convention `ehrt.tools.corpus.generate/generate!`'s own
+`:run-invocation`/`:resolve-artifact`/`:resolve-java-bin` already use,
+proven by three tests that broke the moment `run!`'s real signature
+diverged from what `generators.clj`'s already-committed `:execute-fn`
+assumed. Fixed by moving `:run-command-fn` into the single opts map
+(pulled out and `dissoc`'d before delegating, same shape as `:out-dir`)
+— a real correction caught by the existing test suite, not a
+hypothetical one.
+
+**The witness test's own stderr-merge bug, caught by itself.**
+`sim_cli_real_invocation_test.clj`'s first draft merged `bin/ehr`'s
+stderr into stdout (`redirectErrorStream true`) before parsing stdout
+as EDN — a JVM/WSL warning on stderr (this checkout's own documented
+stale-fsmonitor-class warning, AUTHORS-GUIDE.md) corrupted the parse.
+Fixed by keeping the streams separate and reading only stdout, the same
+discipline `real-git-describe`'s own docstring already names for
+exactly this reason.
+
+**Named, disclosed, out of scope.** The five sim-consuming test
+namespaces' own docstrings and prose still narrate a subprocess/
+sibling-checkout world in places beyond the specific "Skips cleanly..."
+sentences this session corrected (e.g. `sim_intake_test.clj`'s own
+opening paragraph still frames itself as proving intake against "a
+real *sim manifest*... something the unit-level fixtures... cannot
+cover, since they build their own synthetic... values rather than
+invoking sim" — still true, just no longer contingent on a sibling).
+Not rewritten wholesale this session; the specific sentences asserting
+skip-when-absent behavior that no longer exists were the correctness
+bar, not full prose freshness.
