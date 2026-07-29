@@ -26,4 +26,58 @@
    :source "https://github.com/hapifhir/org.hl7.fhir.core/releases/download/6.9.12/validator_cli.jar"
    :acquired "2026-07-24"
    :license-status :verified
-   :license-note "Apache License 2.0; verified 2026-07-23 -- see docs/components.md (Official FHIR validator) and facts register F5. Current stable GitHub release as of 2026-07-24 (published 2026-07-15); runs under the already-locked temurin-jdk 21.0.12+8 :runtime artifact above, resolved through the artifact registry like every other engine, never PATH."}]}
+   :license-note "Apache License 2.0; verified 2026-07-23 -- see docs/components.md (Official FHIR validator) and facts register F5. Current stable GitHub release as of 2026-07-24 (published 2026-07-15); runs under the already-locked temurin-jdk 21.0.12+8 :runtime artifact above, resolved through the artifact registry like every other engine, never PATH."}
+  ;; NIST HL7 v2 engine, six coordinates the CDC wrapper (lib-hl7v2-nist-validator
+  ;; 1.4.0) depends on -- fetched by users from NIST's own official channel
+  ;; (hit-nexus.nist.gov) at their own initiative; this repo redistributes none
+  ;; of them (ADR-0005's 2026-07-24 amendment). Not yet consumed by any src/
+  ;; code this session -- EXP-D3 (docs/experiments/EXP-D3-results.md) recorded
+  ;; this inventory ahead of the judge-v2-nist component landing.
+  {:kind :engine
+   :name "nist-hl7-v2-parser"
+   :version "1.7.3"
+   :sha256 "62fac887d19842b26ddde2b9916db39dd7a2cdcdafeeeb1cac6a0e52c0d17999"
+   :source "https://hit-nexus.nist.gov/repository/releases/gov/nist/hl7-v2-parser/1.7.3/hl7-v2-parser-1.7.3.jar"
+   :acquired "2026-07-29"
+   :license-status :use-permitted--unstated--confirmation-pending
+   :license-note "gov.nist:hl7-v2-parser -- license-unstated at the coordinate level (facts register F9, EXP-SBOM); use-permitted per ADR-0005's 2026-07-24 amendment (user-initiated fetch from NIST's own official channel, never vendored/shipped by this repo). Cross-verified 2026-07-29 by two independent clients (Maven resolver + plain curl) -- see EXP-D3-results.md's Jar Inventory table and facts register F5."}
+  {:kind :engine
+   :name "nist-hl7-v2-profile"
+   :version "1.7.3"
+   :sha256 "354d7a3e0a39b5eae705d9f2d56cc9c25721bbd2ae80d71ea6bd0df92f4846e7"
+   :source "https://hit-nexus.nist.gov/repository/releases/gov/nist/hl7-v2-profile/1.7.3/hl7-v2-profile-1.7.3.jar"
+   :acquired "2026-07-29"
+   :license-status :use-permitted--unstated--confirmation-pending
+   :license-note "gov.nist:hl7-v2-profile -- same posture and evidence as nist-hl7-v2-parser above (facts register F9, F5; ADR-0005 amendment)."}
+  {:kind :engine
+   :name "nist-hl7-v2-validation"
+   :version "1.7.3"
+   :sha256 "3e5b6a9b95066c4abeae1435de0a06e08c43fa8e786bb5c1a609d8172925de50"
+   :source "https://hit-nexus.nist.gov/repository/releases/gov/nist/hl7-v2-validation/1.7.3/hl7-v2-validation-1.7.3.jar"
+   :acquired "2026-07-29"
+   :license-status :use-permitted--unstated--confirmation-pending
+   :license-note "gov.nist:hl7-v2-validation -- same posture and evidence as nist-hl7-v2-parser above (facts register F9, F5; ADR-0005 amendment). The core validation engine EXP-D3 drove directly via reflection to obtain the raw, unfiltered Report."}
+  {:kind :engine
+   :name "nist-xml-util"
+   :version "2.1.0"
+   :sha256 "ba41c996d50e2a14c617f780a301cc69f5c683ddc6830e1b52f065e50bef224c"
+   :source "https://hit-nexus.nist.gov/repository/releases/gov/nist/xml-util/2.1.0/xml-util-2.1.0.jar"
+   :acquired "2026-07-29"
+   :license-status :use-permitted--unstated--confirmation-pending
+   :license-note "gov.nist:xml-util -- same posture and evidence as nist-hl7-v2-parser above (facts register F9, F5; ADR-0005 amendment)."}
+  {:kind :engine
+   :name "nist-hl7-v2-schemas"
+   :version "1.7.2"
+   :sha256 "22fd209727f7d1e4fa17b773bf62f9b27b076c95b082e98faa7592ab454c28fb"
+   :source "https://hit-nexus.nist.gov/repository/releases/gov/nist/hit/hl7-v2-schemas/1.7.2/hl7-v2-schemas-1.7.2.jar"
+   :acquired "2026-07-29"
+   :license-status :use-permitted--unstated--confirmation-pending
+   :license-note "gov.nist.hit:hl7-v2-schemas -- same posture and evidence as nist-hl7-v2-parser above (facts register F9, F5; ADR-0005 amendment)."}
+  {:kind :engine
+   :name "nist-validation-report"
+   :version "1.2.0"
+   :sha256 "e21fc63edcb8efd5c1db137b224dfb187d2fed63b924564ff34693eedd46cc7f"
+   :source "https://hit-nexus.nist.gov/repository/releases/com/github/hl7-tools/validation-report/1.2.0/validation-report-1.2.0.jar"
+   :acquired "2026-07-29"
+   :license-status :use-permitted--unstated--confirmation-pending
+   :license-note "com.github.hl7-tools:validation-report -- license-unstated at the coordinate level (facts register F9, F16, EXP-SBOM); use-permitted per ADR-0005's 2026-07-24 amendment. Defines gov.nist.validation.report.Entry/Report, the shared reporting types EXP-D3's harness read directly via javap."}]}
