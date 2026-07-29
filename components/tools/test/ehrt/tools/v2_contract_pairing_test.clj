@@ -24,7 +24,7 @@
             [ehrt.kernel.interface :as kernel]
             [ehrt.tools.corpus.mutate :as mutate]
             [ehrt.tools.corpus.operators :as operators]
-            [ehrt.judge.interface :as judge]))
+            [ehrt.judge-v2-hapi.interface :as v2-hapi]))
 
 (def ^:private work-dir "target/v2-contract-pairing")
 (def ^:private admit-fixture "components/tools/test-fixtures/v2/adt-a01-admit.hl7")
@@ -43,7 +43,7 @@
           mutant-path (str work-dir "/" (name operator-id) "-mutant.hl7")]
       (io/make-parents mutant-path)
       (spit mutant-path mutant)
-      (let [gate-result (judge/v2-gate-file mutant-path)]
+      (let [gate-result (v2-hapi/gate-file mutant-path)]
         (when-not (kernel/ok? gate-result)
           (throw (ex-info "v2 contract-pairing: gate failed" gate-result)))
         (:payload gate-result)))))
@@ -54,7 +54,7 @@
 ;; tests exist to demonstrate, not an incidental sanity check. ----
 
 (deftest unmutated-fixture-is-pass-test
-  (let [outcome (:payload (judge/v2-gate-file admit-fixture))]
+  (let [outcome (:payload (v2-hapi/gate-file admit-fixture))]
     (is (= :pass (:verdict outcome)))
     (is (= [] (:findings outcome)))))
 
@@ -107,15 +107,15 @@
     (is (= "PID-7" (:path (:locator (first (:findings outcome))))))))
 
 ;; ---- the Judge stage kind law (docs/notation.md): gating never
-;; modifies the datum it judges -- judge/v2_test.clj already covers
-;; this against a real fixture; this is the same law against a real
-;; MUTANT, same discipline as the FHIR suite's own
+;; modifies the datum it judges -- ehrt.judge-v2-hapi.v2-test already
+;; covers this against a real fixture; this is the same law against a
+;; real MUTANT, same discipline as the FHIR suite's own
 ;; gate-fhir-never-modifies-its-input-test ----
 
 (deftest gate-v2-never-modifies-its-input-test
   (let [_ (mutate-and-gate! :blank-required-field "MSH-9")
         mutant-path (str work-dir "/blank-required-field-mutant.hl7")
         before (slurp mutant-path)
-        _ (judge/v2-gate-file mutant-path)
+        _ (v2-hapi/gate-file mutant-path)
         after (slurp mutant-path)]
     (is (= before after))))

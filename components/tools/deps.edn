@@ -3,8 +3,11 @@
  :deps {metosin/malli {:mvn/version "0.20.1"}
         org.clojure/data.json {:mvn/version "2.5.2"}}
         ;; HAPI FHIR/HL7v2 deps moved to components/judge/deps.edn
-        ;; (ADR-0008) -- judge.fhir/judge.v2 are their real consumers;
-        ;; verified no `:import` of either remains in this component.
+        ;; (ADR-0008), then on again to components/judge-v2-hapi/deps.edn
+        ;; and components/judge-fhir-official/deps.edn (ADR-0011, the
+        ;; per-engine judge split) -- their real consumers moved with
+        ;; them each time; verified no `:import` of either remains in
+        ;; this component.
 
  :aliases
  {:test {:extra-paths ["test"]

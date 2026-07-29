@@ -1,9 +1,9 @@
-(ns ehrt.judge.v2-test
+(ns ehrt.judge-v2-hapi.v2-test
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.string :as str]
             [ehrt.kernel.interface :as kernel]
             [ehrt.judge.finding :as finding]
-            [ehrt.judge.v2 :as gate]))
+            [ehrt.judge-v2-hapi.v2 :as gate]))
 
 (def valid-message (slurp "components/tools/test-fixtures/v2/adt-a01-admit.hl7"))
 

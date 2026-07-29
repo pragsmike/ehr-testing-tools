@@ -7,6 +7,12 @@
                                ;; now requires both directly.
                                poly/kernel   {:local/root "components/kernel"}
                                poly/judge    {:local/root "components/judge"}
+                               ;; judge-v2-hapi/judge-fhir-official
+                               ;; (ADR-0011): the per-engine judge split
+                               ;; -- tools' own interface now requires
+                               ;; both directly too.
+                               poly/judge-v2-hapi        {:local/root "components/judge-v2-hapi"}
+                               poly/judge-fhir-official  {:local/root "components/judge-fhir-official"}
                                poly/tools    {:local/root "components/tools"}
                                poly/palgebra {:local/root "components/palgebra"}
                                poly/cli      {:local/root "bases/cli"}}}
@@ -15,6 +21,8 @@
                                   "bases/sim-cli/test"
                                   "components/kernel/test"
                                   "components/judge/test"
+                                  "components/judge-v2-hapi/test"
+                                  "components/judge-fhir-official/test"
                                   "components/tools/test"
                                   "components/palgebra/test"
                                   "bases/cli/test"
@@ -33,6 +41,8 @@
             :ehrt {:extra-deps {org.clojure/clojure {:mvn/version "1.12.5"}
                                 poly/kernel   {:local/root "components/kernel"}
                                 poly/judge    {:local/root "components/judge"}
+                                poly/judge-v2-hapi        {:local/root "components/judge-v2-hapi"}
+                                poly/judge-fhir-official  {:local/root "components/judge-fhir-official"}
                                 poly/tools    {:local/root "components/tools"}
                                 poly/palgebra {:local/root "components/palgebra"}
                                 poly/cli      {:local/root "bases/cli"}

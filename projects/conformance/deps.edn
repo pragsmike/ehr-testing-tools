@@ -10,6 +10,11 @@
         ;; both directly now.
         poly/kernel   {:local/root "../../components/kernel"}
         poly/judge    {:local/root "../../components/judge"}
+        ;; poly/judge-v2-hapi, poly/judge-fhir-official (ADR-0011): the
+        ;; per-engine judge split -- ehrt.tools.interface now requires
+        ;; both directly too.
+        poly/judge-v2-hapi        {:local/root "../../components/judge-v2-hapi"}
+        poly/judge-fhir-official  {:local/root "../../components/judge-fhir-official"}
         poly/tools    {:local/root "../../components/tools"}
         poly/palgebra {:local/root "../../components/palgebra"}
         poly/sim      {:local/root "../../components/sim"}

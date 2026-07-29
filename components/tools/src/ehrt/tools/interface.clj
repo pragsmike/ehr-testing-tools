@@ -12,7 +12,15 @@
   into their internals, plus whatever's left in this component
   (corpus.*, check, sim, docsgen). Don't treat this file's remaining
   width as evidence about how the rest of `components/tools` should be
-  decomposed -- that's still a future, author-ruled call.
+  decomposed -- that's still a future, author-ruled call. NARROWED
+  AGAIN (ADR-0011, the per-engine judge split): the two gate engines
+  now live in their own components (`ehrt.judge-v2-hapi.interface`,
+  `ehrt.judge-fhir-official.interface`), each exporting unqualified
+  `gate-file`/`gate-dir`(`/gate-batch`) -- this file re-applies its OWN
+  `v2-`/`fhir-` qualification at the re-export layer below, unchanged,
+  so nothing downstream of this interface sees any difference.
+  `ehrt.judge.interface` itself now only carries the verdict vocabulary
+  (`Report`, `build-report`, etc.).
 
   Two short names collided across two source namespaces each
   (`lookup`/`register!` in both corpus.operators and corpus.generators,
@@ -27,6 +35,8 @@
   unqualifying it would shadow that def, not resolve a stale problem."
   (:require [ehrt.kernel.interface :as kernel]
             [ehrt.judge.interface :as judge]
+            [ehrt.judge-v2-hapi.interface :as judge-v2-hapi]
+            [ehrt.judge-fhir-official.interface :as judge-fhir-official]
             [ehrt.tools.check :as check]
             [ehrt.tools.sim :as sim]
             [ehrt.tools.docsgen :as docsgen]
@@ -130,13 +140,19 @@
 ;; corpus.manifest
 (def ManifestV1_1 manifest/ManifestV1_1)
 
-;; judge.interface (ADR-0008) -- already qualified v2-/fhir- there
-;; (the gate-file/gate-dir collision, ADR-0002), passed through verbatim.
-(def v2-gate-file judge/v2-gate-file)
-(def v2-gate-dir judge/v2-gate-dir)
-(def fhir-gate-file judge/fhir-gate-file)
-(def fhir-gate-dir judge/fhir-gate-dir)
-(def fhir-gate-batch judge/fhir-gate-batch)
+;; judge-v2-hapi.interface / judge-fhir-official.interface (ADR-0011):
+;; each exports unqualified gate-file/gate-dir(/gate-batch) now that
+;; they live in their own components -- this file re-applies its OWN
+;; v2-/fhir- qualification here (the original gate-file/gate-dir
+;; collision, ADR-0002/ADR-0008), so every downstream caller of THIS
+;; interface sees the exact same names as before the split.
+(def v2-gate-file judge-v2-hapi/gate-file)
+(def v2-gate-dir judge-v2-hapi/gate-dir)
+(def fhir-gate-file judge-fhir-official/gate-file)
+(def fhir-gate-dir judge-fhir-official/gate-dir)
+(def fhir-gate-batch judge-fhir-official/gate-batch)
+
+;; judge.interface (ADR-0008; ADR-0011 narrowed this to vocabulary only)
 (def Report judge/Report)
 (def baseline-relative-report judge/baseline-relative-report)
 (def build-report judge/build-report)

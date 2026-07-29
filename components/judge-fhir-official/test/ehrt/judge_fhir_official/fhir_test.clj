@@ -1,11 +1,11 @@
-(ns ehrt.judge.fhir-test
+(ns ehrt.judge-fhir-official.fhir-test
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.data.json :as json]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [ehrt.kernel.interface :as kernel]
             [ehrt.judge.finding :as finding]
-            [ehrt.judge.fhir :as gate])
+            [ehrt.judge-fhir-official.fhir :as gate])
   (:import [java.io File]))
 
 (defn- temp-dir []

@@ -1,4 +1,4 @@
-(ns ehrt.judge.v2
+(ns ehrt.judge-v2-hapi.v2
   "Base-structural HL7 v2 judge (P5): HAPI HL7v2 strict/default-validation
   parsing, plus HAPI's DefaultValidator, in-process. Pattern nursery #1
   (two-step engines) applies even without a subprocess: `execute`
@@ -39,7 +39,6 @@
   message failed to parse at all (`:rejected`)."
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
-            [ehrt.judge.finding :as finding]
             [ehrt.kernel.interface :as kernel])
   (:import [ca.uhn.hl7v2 DefaultHapiContext HL7Exception]
            [ca.uhn.hl7v2.validation ValidationExceptionHandler]

@@ -3,6 +3,11 @@
         ;; invocation, judge's five namespaces).
         poly/kernel   {:local/root "../../components/kernel"}
         poly/judge    {:local/root "../../components/judge"}
+        ;; poly/judge-v2-hapi, poly/judge-fhir-official (ADR-0011): the
+        ;; per-engine judge split -- ehrt.tools.interface now requires
+        ;; both directly too.
+        poly/judge-v2-hapi        {:local/root "../../components/judge-v2-hapi"}
+        poly/judge-fhir-official  {:local/root "../../components/judge-fhir-official"}
         poly/tools    {:local/root "../../components/tools"}
         poly/palgebra {:local/root "../../components/palgebra"}
         poly/cli      {:local/root "../../bases/cli"}
@@ -32,6 +37,8 @@
            ;; notes/ADRs.md ADR-0002 for why).
            :coverage {:extra-paths ["../../components/kernel/test"
                                      "../../components/judge/test"
+                                     "../../components/judge-v2-hapi/test"
+                                     "../../components/judge-fhir-official/test"
                                      "../../components/tools/test"
                                      "../../components/palgebra/test"
                                      "../../bases/cli/test"]
@@ -41,11 +48,15 @@
                       :main-opts ["-m" "cloverage.coverage"
                                   "-p" "../../components/kernel/src"
                                   "-p" "../../components/judge/src"
+                                  "-p" "../../components/judge-v2-hapi/src"
+                                  "-p" "../../components/judge-fhir-official/src"
                                   "-p" "../../components/tools/src"
                                   "-p" "../../components/palgebra/src"
                                   "-p" "../../bases/cli/src"
                                   "-s" "../../components/kernel/test"
                                   "-s" "../../components/judge/test"
+                                  "-s" "../../components/judge-v2-hapi/test"
+                                  "-s" "../../components/judge-fhir-official/test"
                                   "-s" "../../components/tools/test"
                                   "-s" "../../components/palgebra/test"
                                   "-s" "../../bases/cli/test"]}}}

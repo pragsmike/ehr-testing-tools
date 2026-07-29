@@ -1,4 +1,4 @@
-(ns ehrt.judge.fhir
+(ns ehrt.judge-fhir-official.fhir
   "FHIR conformance judge (P5): the official validator
   (`fhir-validator-cli`, `artifacts.lock.edn` kind `:engine`), run as a
   pinned subprocess against base FHIR R4 -- no implementation guide
@@ -28,8 +28,7 @@
   (:require [clojure.data.json :as json]
             [clojure.java.io :as io]
             [clojure.string :as str]
-            [ehrt.judge.finding :as finding]
-            [ehrt.judge.verdict-cache :as verdict-cache]
+            [ehrt.judge.interface :as judge]
             [ehrt.kernel.interface :as kernel])
   (:import [java.io File]))
 
@@ -142,13 +141,13 @@
     (when (kernel/ok? validator-resolve)
       (let [ig-resolve (resolve-ig-artifacts artifacts ig-refs resolve-artifact)]
         (when (kernel/ok? ig-resolve)
-          (let [key (verdict-cache/cache-key
+          (let [key (judge/verdict-cache-key
                      {:content-sha256 (kernel/sha256-file path)
                       :validator-artifact (:artifact (:payload validator-resolve))
                       :ig-artifacts (:payload ig-resolve)
                       :argv-shape (cache-argv-shape fhir-version ig-refs)
                       :verdict-mapping-version verdict-mapping-version})]
-            {:key key :hit (verdict-cache/lookup verdict-cache-dir key)}))))))
+            {:key key :hit (judge/verdict-cache-lookup verdict-cache-dir key)}))))))
 
 (defn execute
   "Execute half of the two-step engine (pattern nursery #1). Resolves
@@ -344,7 +343,7 @@
   :no-verdict / :pass by `issue->classification` (recorded on the
   finding itself as :disposition, for auditability, with a sibling
   :cause when :disposition is :no-verdict). Overall verdict is the
-  worst-of every finding's classification (judge.finding/worst-of):
+  worst-of every finding's classification (ehrt.judge.interface/worst-of):
   :rejected > :no-verdict > :pass -- when the overall verdict is
   :no-verdict, :cause is taken from the first contributing finding (the
   only cause in this taxonomy today is :terminology-suppressed, so no
@@ -353,7 +352,7 @@
   [raw-outcome engine]
   (let [issues (get raw-outcome "issue" [])
         findings (mapv #(issue->finding engine %) issues)
-        verdict (finding/worst-of (map :disposition findings))
+        verdict (judge/worst-of (map :disposition findings))
         cause (when (= verdict :no-verdict)
                 (:cause (first (filter #(= :no-verdict (:disposition %)) findings))))]
     (cond-> {:verdict verdict :findings findings}
@@ -403,10 +402,10 @@
   directly, skipping `execute` entirely -- so the validator subprocess
   never runs on a hit. A miss runs execute+interpret exactly as before
   and stores the interpret result under that same key for next time.
-  :verdict-cache-dir defaults to verdict-cache/default-cache-dir."
+  :verdict-cache-dir defaults to ehrt.judge.interface/verdict-cache-default-dir."
   [path opts]
   (let [{:keys [verdict-cache?] :or {verdict-cache? true}} opts
-        cache-dir (:verdict-cache-dir opts verdict-cache/default-cache-dir)
+        cache-dir (:verdict-cache-dir opts judge/verdict-cache-default-dir)
         cache-lookup (when verdict-cache? (verdict-cache-lookup path opts))]
     (if-let [hit (:hit cache-lookup)]
       (kernel/ok (assoc hit :path (str path)))
@@ -416,7 +415,7 @@
           (let [{:keys [raw-outcome engine]} (:payload execute-result)
                 interpreted (interpret raw-outcome engine)]
             (when (and verdict-cache? cache-lookup)
-              (verdict-cache/store! cache-dir (:key cache-lookup) interpreted))
+              (judge/verdict-cache-store! cache-dir (:key cache-lookup) interpreted))
             (kernel/ok (assoc interpreted :path (str path)))))))))
 
 (defn gate-batch
@@ -442,7 +441,7 @@
   this function refuses to paper over with a guessed match)."
   [paths opts]
   (let [{:keys [verdict-cache?] :or {verdict-cache? true}} opts
-        cache-dir (:verdict-cache-dir opts verdict-cache/default-cache-dir)
+        cache-dir (:verdict-cache-dir opts judge/verdict-cache-default-dir)
         lookups (into {} (map (fn [path] [path (when verdict-cache? (verdict-cache-lookup path opts))])
                                paths))
         hits (into {} (keep (fn [[path lookup]] (when-let [hit (:hit lookup)] [path hit])) lookups))
@@ -462,7 +461,7 @@
                 (when verdict-cache?
                   (doseq [path misses]
                     (when-let [key (:key (get lookups path))]
-                      (verdict-cache/store! cache-dir key (get by-arg path)))))
+                      (judge/verdict-cache-store! cache-dir key (get by-arg path)))))
                 (kernel/ok {:results (mapv (fn [path]
                                               (assoc (or (get hits path) (get by-arg path)) :path (str path)))
                                             paths)})))))))))

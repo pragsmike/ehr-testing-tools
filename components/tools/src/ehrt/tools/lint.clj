@@ -112,8 +112,13 @@
   alone before ADR-0008 moved the HAPI HL7v2 coordinate to
   components/judge/deps.edn along with judge.v2, its real consumer --
   checked across both rather than re-hardcoded to judge's alone, since
-  a future target-2 entry could name either brick's own coordinate."
-  ["components/tools/deps.edn" "components/judge/deps.edn" "components/kernel/deps.edn"])
+  a future target-2 entry could name either brick's own coordinate.
+  ADR-0011 moved the HAPI HL7v2 and HAPI FHIR coordinates on again, to
+  components/judge-v2-hapi/deps.edn and
+  components/judge-fhir-official/deps.edn respectively, alongside their
+  own engines -- added here rather than re-narrowed, same rationale."
+  ["components/tools/deps.edn" "components/judge/deps.edn" "components/kernel/deps.edn"
+   "components/judge-v2-hapi/deps.edn" "components/judge-fhir-official/deps.edn"])
 
 (defn- verify-target-2
   [{:keys [ref]}]
