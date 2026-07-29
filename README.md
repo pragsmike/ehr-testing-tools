@@ -65,6 +65,9 @@ bin/ehrt artifact fetch --name synthea --version 4.0.0
 bin/ehrt artifact fetch --name temurin-jdk --version 21.0.12+8
 
 bin/ehrt corpus generate
+# zero-flag `generate` is byte-reproducible, so it REJECTS a directory
+# that already exists rather than overwriting it -- remove
+# target/corpus/synthea-s1-p5 first (or pass --out-dir) to regenerate.
 
 PATIENT_FILE=$(ls target/corpus/synthea-s1-p5/fhir/*.json | grep -v -e hospitalInformation -e practitionerInformation | head -1)
 bin/ehrt corpus mutate $PATIENT_FILE \

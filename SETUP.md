@@ -104,6 +104,22 @@ page doesn't teach it as a path.
   doesn't pin a version by itself; `deps.edn`'s `:poly` alias does
   (`polylith/clj-poly {:mvn/version "0.3.32"}`). If your output
   differs, check that alias against what's actually in your clone.
+- **`bin/ehrt corpus generate` fails with `:category :out-dir-exists`.**
+  Zero-flag `generate` is byte-reproducible and therefore rejects
+  overwriting a prior run rather than silently clobbering it — remove
+  `target/corpus/synthea-s1-p5` first, or pass a different `--out-dir`,
+  to regenerate.
+- **A `WARNING: run! already refers to...` line appears on stdout.**
+  Harmless namespace-shadowing warning from `ehrt.tools.sim`; it
+  doesn't affect the exit code and can be ignored.
+- **`bin/ehrt gate ... --report <file>` still prints the full result to
+  stdout.** `--report` writes the file but doesn't suppress the console
+  dump; redirect stdout (`> /dev/null`) if you only want the exit code,
+  or read the report file directly.
+- **`clojure -M:poly test :all` takes several minutes.** It runs every
+  brick's test suite, including property-based tests with 100-200
+  random cases each; there's no faster documented subset for a
+  first-time full run.
 
 ## 5. The agent prompt
 
