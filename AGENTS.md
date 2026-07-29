@@ -36,10 +36,16 @@ not scheduled, just named, per `notes/facts-register.md`.
 FHIR); `components/kernel` + `components/judge` (ADR-0008) — the
 shared foundation layer and the conformance-judging code, extracted out
 of `components/tools`' own named hole H4 (ADR-0002 R14).
-`projects/ehrt-cli` composes tools + kernel + judge + palgebra + cli,
-`projects/conformance` is the base-less project exercising sim + tools
-+ palgebra together (see `notes/ADRs.md` ADR-0002, closing named holes
-H1–H3).
+`components/judge-v2-hapi` + `components/judge-fhir-official`
+(ADR-0011) — the two gate engines themselves, extracted out of
+`components/judge` in turn; `judge` now keeps only the verdict
+vocabulary (`report`/`finding`/`verdict-cache`). A third engine (NIST
+HL7 v2, profile-aware) is a named future addition (EXP-D3) landing into
+this same per-engine seam.
+`projects/ehrt-cli` composes tools + kernel + judge + judge-v2-hapi +
+judge-fhir-official + palgebra + cli, `projects/conformance` is the
+base-less project exercising sim + tools + palgebra together (see
+`notes/ADRs.md` ADR-0002, closing named holes H1–H3).
 
 **The CLI is `ehrt`** ("e-heart", R32/ADR-0009, 2026-07-29) —
 `bin/ehrt`, renamed from `ehr`; `ehr` stays reserved for future
