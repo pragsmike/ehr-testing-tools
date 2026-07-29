@@ -171,3 +171,33 @@ ADR-0005 for the full collision-diff record. Handoffs, plans, and
 durable memory follow the same `.agents/` layout sim used; see
 `docs/way-of-working.md` for how this session's own conventions differ
 from sim's 40-session history.
+
+## The discipline surface, mapped (discipline-parity session, ADR-0006)
+
+Where each piece of this workspace's own discipline apparatus actually
+lives, since it's now spread across several directories with different
+provenance:
+
+- **Live, current, edit freely:** `notes/ADRs.md` (architecture
+  decisions); `notes/facts-register.md` (externally verifiable facts,
+  `AUTHORS-GUIDE.md` §4); `.agents/memory/`, `.agents/plans/`,
+  `.agents/session-records/` (durable design lineage, the rolling plan,
+  one dated record per session — `AUTHORS-GUIDE.md` §7 and each
+  directory's own `README.md`); `.agents/skills/` (the sim/tools union,
+  ADR-0005); `notes/prompts/*.md` (session prompts, flat, self-archived
+  in place with a dated deviation note — this workspace's own form,
+  distinct from either parent's live/archive split, see
+  `notes/discipline-parity-audit.md` row M15).
+- **Frozen provenance, read-only, never edited for new paths or
+  namespaces:** `notes/sim/` and `notes/tools/` (each parent's own
+  ADRs, facts-register, and `.agents/` tree as they stood at the
+  merge). Cite them origin-qualified (`sim/ADR-0008`, `tools/F12`) when
+  a live document references a pre-merge decision; never edit them to
+  "fix" a stale path — the whole point is that they show what was true
+  then.
+
+## `.claude/`
+
+Untracked, deliberately (carve-loss audit, author-ruled 2026-07-28: "don't
+commit `.claude/settings.json`... `.claude/` stays untracked"). Do not
+`git add` anything under it.
