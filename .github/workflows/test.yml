@@ -3,18 +3,30 @@
 # tool: checkout + Clojure CLI + Temurin 21 (matching sim's CI
 # convention, notes/ADRs.md ADR-0001's own environment-stanza
 # distinction between that and local dev's stock OpenJDK) + `poly
-# check` + `poly test :all`.
+# check` + the per-push test lane.
 #
-# `poly test :all` runs every brick's tests unconditionally -- this is
-# deliberate for now: incremental testing (`poly test`, scoped to
-# bricks changed-or-affected since the last `stable-*` tag) only makes
-# sense once a `stable-*` tag exists to diff against. AUTHOR ACTION:
-# once this workflow is green on a real push, tag that commit
-# `stable-<sha>` (`git tag stable-$(git rev-parse --short HEAD)`,
-# pushed) -- from then on, switch the test step below to:
-#   clojure -M:poly test
-# (bricks/projects changed or affected since the most recent
-# `stable-*` tag only) rather than `:all`.
+# Per-push lane = ENF-1's fast gate, restored (ADR-0004, 2026-07-28,
+# carve-loss recovery session; original doctrine:
+# notes/tools/prompts/2026-07-25-enf1-enforcement-wave.md): every brick
+# suite plus projects/conformance's own test/ tree, explicitly excluding
+# projects/integration -- the project that holds every namespace
+# requiring `ehr artifact fetch` machinery (synthea, temurin-jdk,
+# fhir-validator-cli), absent from this runner's cold clone.
+# `skip:integration` (poly's own project-exclusion mechanism, `poly help`)
+# is verified, not assumed, to exclude exactly that project while
+# `:all` still runs every other brick and project test, conformance's
+# own test/ tree included -- pinned empirically this session, not taken
+# on ADR-0002's earlier word alone. The dropped third `poly test
+# :project` step (pre-ADR-0004) existed only to guard against `:all`
+# silently skipping conformance's own tests, a gap `:all skip:integration`
+# doesn't have (verified the same way); `:project`'s own incremental
+# "changed since last stable-* tag" scope would in any case be a
+# *narrower* check than `:all skip:integration`'s comprehensive one, not
+# a stronger belt-and-suspenders pass.
+#
+# `projects/integration`'s own suite runs on a separate, scheduled +
+# workflow_dispatch lane (.github/workflows/integration.yml) that primes
+# the artifact cache first -- reports, never blocks a merge.
 #
 # No coverage gate, no lint gate, same deliberately-staged posture as
 # sim's own CI comment: not an oversight, future work once a baseline
@@ -47,14 +59,5 @@ jobs:
       - name: poly check
         run: clojure -M:poly check
 
-      - name: poly test :all
-        run: clojure -M:poly test :all
-
-      - name: poly test :project
-        # Mirrors .githooks/pre-push's own gate (AGENTS.md) -- :all
-        # already runs every project's test/ dir too (confirmed,
-        # ADR-0002), but CI staying explicit about :project is the
-        # same belt-and-suspenders reasoning that gate exists for
-        # locally: the conformance project's own test/ omission must
-        # never be silent.
-        run: clojure -M:poly test :project
+      - name: poly test :all skip:integration
+        run: clojure -M:poly test :all skip:integration

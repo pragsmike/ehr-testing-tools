@@ -1,0 +1,89 @@
+# Nightly/manual integration workflow (ENF-1 doctrine, restored
+# ADR-0004, 2026-07-28, carve-loss recovery session -- original:
+# notes/tools/prompts/2026-07-25-enf1-enforcement-wave.md). Runs
+# `projects/integration`'s own suite: every namespace that needs real
+# cached artifacts, network, and the real FHIR validator subprocess --
+# which the per-push lane (.github/workflows/test.yml) deliberately
+# excludes (`skip:integration`). Scheduled nightly plus on-demand via
+# workflow_dispatch, never on push/PR; its failure reports without
+# blocking anything -- nothing in this repo's branch protection or
+# test.yml references this workflow's status.
+#
+# ENF-1's own stop-clause, quoted verbatim (notes/tools/prompts/
+# 2026-07-25-enf1-enforcement-wave.md, Step 3): "If any secret/licensing
+# consideration surfaces around fetching an engine in CI (check
+# artifacts.lock.edn's entries against components.md's license rows),
+# stop and report rather than fetch." All three artifacts this job
+# fetches are already license-verified in artifacts.lock.edn itself
+# (synthea 4.0.0, Apache-2.0; temurin-jdk 21.0.12+8, GPLv2+Classpath
+# Exception; fhir-validator-cli 6.9.12, Apache-2.0) -- if a future
+# version bump or a new artifact entry lacks that verification, this
+# job must stop and report, not fetch anyway.
+#
+# Cold-cache fetch, what and from where: three artifacts, all GitHub
+# release assets -- see artifacts.lock.edn for exact sources/hashes.
+# A live external distribution point (GitHub's release-asset hosting)
+# failing is signal about artifact availability, not CI flakiness to
+# retry around.
+
+name: Integration
+
+on:
+  schedule:
+    # 07:00 UTC -- outside US/EU working hours, a quiet window for a job
+    # whose failures are investigated the next morning, not paged on.
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+
+jobs:
+  integration:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # poly's changed/affected diffing needs tag history
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: DeLaGuardo/setup-clojure@13.4
+        with:
+          cli: latest
+
+      - name: Cache Clojure/Maven dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.m2/repository
+            ~/.gitlibs
+            ~/.deps.clj
+          key: ${{ runner.os }}-clojure-${{ hashFiles('deps.edn') }}
+          restore-keys: |
+            ${{ runner.os }}-clojure-
+
+      # Engine-artifact cache: keyed on artifacts.lock.edn's own hash, so
+      # a version/hash bump in the lockfile invalidates it automatically.
+      # Populates ~/.cache/ehr-testing-tools/artifacts (or
+      # $EHR_TESTING_TOOLS_CACHE if set -- unchanged env-var name,
+      # ADR-0002's own deliberate non-rename). A cache hit makes `ehr
+      # artifact fetch` below a no-network no-op; a cache miss means
+      # every fetch below hits the network for real.
+      - name: Cache artifact cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ehr-testing-tools/artifacts
+          key: ${{ runner.os }}-artifacts-${{ hashFiles('artifacts.lock.edn') }}
+
+      - name: Prime artifact cache (synthea, temurin-jdk, fhir-validator-cli)
+        run: |
+          clojure -M:ehr artifact fetch --name synthea --version 4.0.0
+          clojure -M:ehr artifact fetch --name temurin-jdk --version 21.0.12+8
+          clojure -M:ehr artifact fetch --name fhir-validator-cli --version 6.9.12
+
+      - name: poly check
+        run: clojure -M:poly check
+
+      - name: poly test :all project:integration
+        run: clojure -M:poly test :all project:integration

@@ -21,4 +21,6 @@
             "tools-cli" {:alias "tools-cli"
                          :necessary ["palgebra"]}
             "conformance" {:alias "conformance"
+                           :necessary ["tools" "palgebra"]}
+            "integration" {:alias "integration"
                            :necessary ["tools" "palgebra"]}}}
