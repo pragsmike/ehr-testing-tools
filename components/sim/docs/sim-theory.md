@@ -113,7 +113,7 @@ named in no planning artifact.
 
 ## Site profiles land `site-profile` as a fourth catalytic on EmitHL7
 
-[`docs/site-profiles.md`](site-profiles.md) — the "simulate MY
+[`site-profiles.md`](../../../docs/site-profiles.md) — the "simulate MY
 hospital" config layer — lands as a fourth catalytic input on
 `EmitHL7`, the same shape `order-profiles`/`provider-pool` joining
 `Execute` already established: no new stage, no new `:inputs`/

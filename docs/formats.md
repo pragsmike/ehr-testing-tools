@@ -20,7 +20,7 @@ Three sources of output, and they are not the same thing:
 | **`--report <path>`** | the report **alone**, unwrapped, always EDN — even when `--json` was also passed |
 | **files on disk** | `manifest.edn` beside a generated corpus; `lineage/*.lineage.edn` beside mutants; `operation-manifest.edn` beside a mutant batch |
 
-That first distinction catches people: `ehr gate v2 ... --report r.edn --json`
+That first distinction catches people: `ehrt gate v2 ... --report r.edn --json`
 writes EDN to `r.edn` and prints JSON to stdout, and the two are *not*
 the same shape — the file has no `status` wrapper. To get JSON on disk,
 redirect stdout.
@@ -31,8 +31,8 @@ See [cli.md](cli.md) for which commands take `--report` and `--json`.
 
 ## The report
 
-The single most important shape here. Both gates (`ehr gate v2`,
-`ehr gate fhir`) and `ehr check` produce it — `ehr check` reuses the
+The single most important shape here. Both gates (`ehrt gate v2`,
+`ehrt gate fhir`) and `ehrt check` produce it — `ehrt check` reuses the
 judges' aggregation verbatim rather than defining its own — so one
 reader handles all three.
 
@@ -112,8 +112,8 @@ judge, regardless of format.
 | `:native-ref` | any | optional | the engine's own raw reference, unnormalized, for auditing |
 
 Two fields on top of that are **format-specific extensions**, added by
-the FHIR judge only. Don't expect them from `ehr gate v2` or
-`ehr check`:
+the FHIR judge only. Don't expect them from `ehrt gate v2` or
+`ehrt check`:
 
 | Field | Meaning |
 |---|---|
@@ -136,10 +136,10 @@ path expressions). Treat it as opaque unless you're auditing.
 Free-form by design, so it differs:
 
 ```clojure
-;; ehr gate v2 / ehr gate fhir
+;; ehrt gate v2 / ehrt gate fhir
 {:gate :v2, :path "components/tools/test-fixtures/v2/adt-a01-admit.hl7"}
 
-;; ehr check
+;; ehrt check
 {:check {:name "check", :version "v1"},
  :candidate-dir "…/check-cand",
  :expected-dir  "…/check-exp",     ; nil when only per-file assertions ran
@@ -150,7 +150,7 @@ Free-form by design, so it differs:
 
 ### A whole small report
 
-Real output, from `ehr gate v2` against one mutated fixture:
+Real output, from `ehrt gate v2` against one mutated fixture:
 
 ```clojure
 {:run {:gate :v2, :path "…/v2-mutant"},
@@ -193,11 +193,11 @@ right tool.
 
 ## The check report
 
-`ehr check` produces the same `Report` shape as the gates — same
+`ehrt check` produces the same `Report` shape as the gates — same
 `:totals`, same `:files`, same finding envelope. What differs is the
 vocabulary of the codes it emits, and its `:run` map (above).
 
-Codes you'll see from `ehr check`, and nowhere else:
+Codes you'll see from `ehrt check`, and nowhere else:
 
 | `:code` | Raised when |
 |---|---|
@@ -211,7 +211,7 @@ Codes you'll see from `ehr check`, and nowhere else:
 | `count-mismatch` | a `:count` assertion's comparison failed |
 | `unknown-schema` / `schema-invalid` | a `:schema` assertion named an unregistered schema, or the datum failed it |
 
-Every verdict `ehr check` produces is binary, `:pass` or `:rejected`.
+Every verdict `ehrt check` produces is binary, `:pass` or `:rejected`.
 Its criterion is always fully applicable — an expected corpus or an
 explicit assertion either matches or it doesn't — so there is no
 partiality for `:no-verdict` to name. `:totals` still carries all four
@@ -242,7 +242,7 @@ the provenance record: everything that was pinned when this corpus was
 made, so someone else can make the same one.
 
 Schema: `ehr-testing-tools.corpus.manifest/ManifestV1_1` — the version
-`ehr corpus generate` produces today.
+`ehrt corpus generate` produces today.
 
 | Field | Type | Meaning |
 |---|---|---|
@@ -356,7 +356,7 @@ Schema: `ehr-testing-tools.corpus.operation-manifest/OperationManifestV1`.
 |---|---|---|
 | `:manifest-kind` | `:operation` | discriminates this file from a corpus manifest at a glance |
 | `:schema-version` | `1` | this schema's own version, unrelated to the corpus manifest's `"1.1"` |
-| `:producer` | map | `{:name :identity :git}` — this repo's own honest identity (the same identity `ehr version` reports). No `:sha256`: an absent field is honest, a fabricated one is not |
+| `:producer` | map | `{:name :identity :git}` — this repo's own honest identity (the same identity `ehrt version` reports). No `:sha256`: an absent field is honest, a fabricated one is not |
 | `:operation` | map | `{:kind :operator-id :operator-version :locator}` — what was done. `:kind` is `:mutate` today, the one operation that writes a batch this way |
 | `:written-at` | string | a record-keeping date — when the manifest was written, not a generation input |
 | `:format` / `:framing` | keyword | read straight off the sink that wrote the batch |
@@ -382,7 +382,7 @@ A real manifest (from the "Generate controlled-fault data" strip above):
 
 `:items[].sha256` and `:input-hash` here are exactly the same mutant's
 own lineage record's `:produced` and `:parent` — no separate hashing, no
-chance of the two disagreeing. `ehr corpus intake` recognizes this file
+chance of the two disagreeing. `ehrt corpus intake` recognizes this file
 automatically (directory-scoped, the same mechanism the corpus manifest
 above uses) and attaches `:operation-provenance` to every catalog entry
 in that directory; a directory carrying *both* a corpus manifest and an
@@ -433,7 +433,7 @@ The same v2 gate result, projected:
 only on the latter two. The exit code is the more reliable thing to
 branch on in a script — see [cli.md](cli.md#exit-codes).
 
-One exception, so it doesn't surprise you: `ehr help` and `--help` print
+One exception, so it doesn't surprise you: `ehrt help` and `--help` print
 plain text, not EDN or JSON. They are for a human or an assistant at a
 shell, not for a pipeline.
 
@@ -463,10 +463,10 @@ which findings are worth alerting on — see
 
 | Shape | Schema | Verified against |
 |---|---|---|
-| Report, totals, file entry | `ehr-testing-tools.judge.report/Report` | live `ehr gate v2` runs, passing and rejected, 2026-07-25 |
+| Report, totals, file entry | `ehr-testing-tools.judge.report/Report` | live `ehrt gate v2` runs, passing and rejected, 2026-07-25 |
 | Verdicts, causes, findings | `ehr-testing-tools.judge.finding/Finding`, `/Verdict`, `/Cause` | the same runs |
-| FHIR findings' `:disposition` / `:cause` | `ehr-testing-tools.judge.fhir/interpret` | a live `ehr gate fhir` run against a real mutant bundle, 2026-07-25 — 6554 findings, all three dispositions present |
-| Check report and its codes | `ehr-testing-tools.check` | live `ehr check` runs in both golden-equivalence and per-file-assertion modes, 2026-07-25 |
+| FHIR findings' `:disposition` / `:cause` | `ehr-testing-tools.judge.fhir/interpret` | a live `ehrt gate fhir` run against a real mutant bundle, 2026-07-25 — 6554 findings, all three dispositions present |
+| Check report and its codes | `ehr-testing-tools.check` | live `ehrt check` runs in both golden-equivalence and per-file-assertion modes, 2026-07-25 |
 | Corpus manifest | `ehr-testing-tools.corpus.manifest/ManifestV1_1` | a real generated corpus's `manifest.edn` |
 | Lineage record | `ehr-testing-tools.lineage/LineageRecord` | a real mutant's lineage sidecar |
 | Operation manifest | `ehr-testing-tools.corpus.operation-manifest/OperationManifestV1` | a real `corpus mutate` batch's `operation-manifest.edn`, 2026-07-28 |

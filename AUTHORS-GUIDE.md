@@ -149,7 +149,7 @@ forward with an origin citation as described above.
 
 ## 5. Checkpoint and deviation discipline (this migration's own convention)
 
-Distinct from sim's own 40-session culture (`docs/way-of-working.md`
+Distinct from sim's own 40-session culture (`docs/dev/way-of-working.md`
 describes both): the bootstrap-and-landing sessions that built this
 workspace follow a **checkpoint convention** — a session prompt marks
 COMMIT points (the author commits before the session continues) and
@@ -157,7 +157,7 @@ AUTHOR ACTION points (git surgery, placing external documents — things
 only the author does). When a step's premise turns out false against
 the live tree, the rule is **fix-forward with disclosure**: stop,
 record the finding in that session's own deviation appendix, and ask
-— never silently adapt or guess. See `docs/way-of-working.md` for the
+— never silently adapt or guess. See `docs/dev/way-of-working.md` for the
 fuller shape and `notes/ADRs.md` ADR-0001's own deviation record for a
 worked example.
 

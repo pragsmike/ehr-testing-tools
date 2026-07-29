@@ -9,9 +9,12 @@ architecture happens in the design record (an ADR or the plan file),
 not in the results file itself.
 
 Experiments this project needs run before committing to architecture,
-adopted from the component-selection research behind
-`docs/ehr-testing-tools-problem-statement.md`. Each gates a specific
-decision — an experiment that doesn't gate anything doesn't belong here.
+adopted from the component-selection research behind tools' own
+pre-merge `notes/tools/docs/ehr-testing-tools-problem-statement.md`
+(frozen provenance -- retired here per `notes/docs-audit.md`, its
+history-free content now lives in `docs/what-is-this.md`). Each gates a
+specific decision — an experiment that doesn't gate anything doesn't
+belong here.
 
 | Id | Objective | Gates | Priority |
 |---|---|---|---|

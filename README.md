@@ -1,48 +1,46 @@
 # ehr-testing
 
-**⚠️ Draft — flagged for author review before this commits (R22).** This
-is the workspace's public face; the content below is accurate as of
-2026-07-28 but hasn't had a human editorial pass yet.
+**`ehrt`, pronounced "e-heart."** Reproducible test data for EHR
+integrations — generated, broken on purpose, and conformance-gated,
+end to end. One system: generate deterministic synthetic hospital
+traffic, mutate it to probe conformance gates, and judge candidate
+corpora against HL7 v2 and FHIR rules. Offline and deterministic by
+construction; plain FHIR JSON, HL7v2 text, and EDN out the other end,
+so you can use the results from Python, SQL, or anything else. Clojure
+inside, no Clojure skills required.
 
-A [Polylith](https://polylith.gitbook.io/polylith) monorepo for testing
-EHR (electronic health record) integrations: generate deterministic
-synthetic hospital traffic, mutate it to probe conformance gates, and
-judge candidate corpora against HL7 v2 and FHIR conformance rules — one
-workspace, one development REPL, several deployable artifacts.
+**I want to generate or judge test data** → you want the [`docs/`](docs/)
+path — start at [`docs/what-is-this.md`](docs/what-is-this.md), or jump
+straight to the Quickstart below.
 
-This workspace consolidates three formerly-separate repositories:
+**I want to maintain or extend this workspace** → you want the
+[`docs/dev/`](docs/dev/) path — start at
+[`docs/dev/architecture.md`](docs/dev/architecture.md), and read
+[`AGENTS.md`](AGENTS.md) before your first commit.
 
-- **`ehr-testing-sim`** — a deterministic, seeded generator of synthetic
-  hospital traffic (patients, encounters, orders, results), for testing
-  EHR integrations against realistic-shaped data without any real PHI.
-  Landed as [`components/sim`](components/sim) + [`bases/sim-cli`](bases/sim-cli).
-- **`ehr-testing-tools`** — corpus construction (generation, mutation,
-  provenance tracking) and conformance gating (HL7 v2 via HAPI, FHIR via
-  the official validator). Landed as [`components/tools`](components/tools) +
-  [`components/palgebra`](components/palgebra) (string-diagram tooling for
-  documenting data-flow pipelines) + [`bases/cli`](bases/cli).
-- **`ehr-testing-guide`** — deliberately **not** part of this workspace,
-  permanently (`notes/ADRs.md` ADR-0001, R2). Not a deferred landing.
+This workspace is the operational companion to
+[`ehr-testing-guide`](https://github.com/pragsmike/ehr-testing-guide):
+the guide teaches the testing method, this workspace makes it runnable.
+See [`docs/dev/positioning.md`](docs/dev/positioning.md) for the fuller
+map of how the two relate.
 
-See [`notes/ADRs.md`](notes/ADRs.md) for the full decision record of how
-and why this consolidation happened, and [`notes/carve-loss-audit.md`](notes/carve-loss-audit.md)
-for an inventory of what did and didn't survive the move.
+## Maturity
 
-## Project map
+Pre-release honesty is a feature here, not a hedge — these labels are
+the actual contract with readers, not a formality.
 
-| Path | What it is |
-|---|---|
-| `components/sim` | Fat component: the simulation engine (patients, encounters, GMF-driven pathways, churn, HL7 v2 / FHIR emission). |
-| `bases/sim-cli` | Thin CLI dispatch for sim, standalone (`clojure -M:run run --seed ...` from `projects/sim`). |
-| `components/kernel` | The foundation layer judge and corpus share: result, digest, artifact, canonical, locator, invocation (ADR-0002 R14, closed by ADR-0008). |
-| `components/judge` | FHIR and HL7 v2 conformance judging, extracted from `components/tools` (ADR-0008). |
-| `components/tools` | Corpus generation/mutation/intake, reporting, and the residual pipeline plumbing (docsgen, lint, the sim adapter) — narrowed by the kernel/judge extraction (ADR-0008). |
-| `components/palgebra` | String-diagram tooling (resource-equation → Mermaid) used to document this workspace's own data-flow pipelines. |
-| `bases/cli` | Thin CLI dispatch for tools — the `ehrt` command ("e-heart", R32/ADR-0009; `ehr` stays reserved for future payload-EHR tooling). As of the sim mount (`notes/ADRs.md` ADR-0005), `ehrt sim run` also dispatches straight into `components/sim`, in-process, no subprocess. |
-| `projects/sim` | Composes sim's own artifact. |
-| `projects/ehrt-cli` | Composes tools + palgebra + cli — the published CLI artifact. |
-| `projects/conformance` | Base-less: exercises sim + tools + palgebra together, workspace-internal suites only. |
-| `projects/integration` | Base-less: the artifact-fetch-dependent suites (real Synthea, the real FHIR validator) — nightly/on-demand only, never per-push (`notes/ADRs.md` ADR-0004). |
+| Capability | Maturity | Evidence |
+|---|---|---|
+| **Generate** (sim; `corpus.generate`) | **Usable** | Clean-environment byte-reproducibility proven. |
+| **Mutate** (`corpus.mutate`) | **Experimental** | FHIR and v2 both work (v2: locator grammar, `corpus.er7` substrate, seed operators, contract-pairing proof against `judge.v2`); interfaces may still move. |
+| **Intake** (`corpus.intake`) | **Experimental** | Foreign-corpus cataloging; same content-hash lineage as generated corpora. |
+| **Gate** (`judge.fhir` / `judge.v2`) | **Experimental** | Base-spec (FHIR, official validator) / base-structural (v2, HAPI); offline verdict policy; no implementation guide pinned yet; baseline-relative mode for real-world corpora. |
+| **Check** (`ehrt.tools.check`) | **Experimental** | Dataset-vs-expectations judge alongside Gate: golden equivalence plus a small per-file assertion vocabulary. |
+
+**Status: pre-release.** No version tag, nothing published to Clojars
+or Maven Central, interfaces may still move. See
+[`docs/dev/positioning.md`](docs/dev/positioning.md) for what
+publication does and doesn't mean.
 
 ## Quickstart
 

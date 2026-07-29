@@ -4,7 +4,7 @@
 asks on meeting this project: "how do I make it simulate *my*
 hospital?" — and, as of the site-profiles milestone
 (`.agents/plans/roadmap.md`), a working `--config`-file knob, not just
-a design document. `docs/clinical-realities.md`'s site-defined-codes
+a design document. `clinical-realities.md`'s site-defined-codes
 entry names the reality this layer exists to configure; this document
 specifies the config layer itself.
 
@@ -94,7 +94,7 @@ existing idea rather than inventing a new mechanism:
    `docs/patient-state-model.md`'s `:class` field, PV1-2) and
    discharge disposition (table 0112, PV1-36; this project's own
    standard default renders the one case it produces today,
-   "discharged to home" — `docs/clinical-realities.md`'s post-mortem
+   "discharged to home" — `clinical-realities.md`'s post-mortem
    disposition codes 20/40–42 stay future, since `:expired` isn't a
    landed status yet). Overriding a table is a **rendering-time
    substitution**: the underlying state value (`:class :inpatient`, a
@@ -211,7 +211,7 @@ byte-identical across any two site profiles — a site profile can only
 change `hl7v2-stream`'s rendering (code strings, Z-segment content),
 never `ground-truth-log`'s content or `check.clj`'s verdict on it. This
 is the same "truth is invariant under dialect" argument
-[`docs/event-sourcing.md`](event-sourcing.md) makes for emitter
+[`event-sourcing.md`](../components/sim/docs/event-sourcing.md) makes for emitter
 coherence generally, specialized to site profiles as the
 dialect-selection mechanism: two hospitals' interfaces can disagree
 about what a disposition code looks like on the wire while agreeing,

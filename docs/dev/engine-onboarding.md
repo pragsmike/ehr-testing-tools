@@ -7,7 +7,7 @@ committed manifest. This is a checklist, not a tutorial: each item
 names a question the wrapper's author must have a concrete answer for,
 citing the pattern or ADR that motivates it. Every engine this
 checklist governs is one of the components described in
-[`docs/components.md`](components.md) — that page describes what each
+[`components.md`](components.md) — that page describes what each
 engine is and how it's currently used; this one is what a *new* engine
 has to clear before it earns a section there.
 
@@ -34,7 +34,7 @@ manifest that looks fully pinned and isn't.
    properties file, not just its `--help` text)? Every stream that
    affects output must be a required, pinned manifest field — see the
    clinician-seed case above.
-2. **Environment forced-and-recorded** (pattern [#15](../.agents/memory/patterns.md)).
+2. **Environment forced-and-recorded** (pattern [#15](../../notes/tools/agents/memory/patterns.md)).
    Locale, timezone, JVM version, and any other ambient field the
    engine's output could plausibly depend on must be forced explicitly
    into the subprocess invocation (not left to inherit from the host),
@@ -42,13 +42,13 @@ manifest that looks fully pinned and isn't.
    read from the orchestrating process's own environment, which can
    silently differ from what the subprocess actually saw.
 3. **Native output preserved verbatim** (pattern
-   [#1](../.agents/memory/patterns.md), two-step engines). The
+   [#1](../../notes/tools/agents/memory/patterns.md), two-step engines). The
    execution step writes the engine's raw output tree unmodified;
    interpretation into canonical data is a separate, later, pure step.
    This is what let EXP-A4's driver-hash fix apply by recomputation
    over already-preserved outputs, with zero regeneration.
 4. **Every external input resolved via the three lockfile targets**
-   (pattern [#13](../.agents/memory/patterns.md)). Anything the engine
+   (pattern [#13](../../notes/tools/agents/memory/patterns.md)). Anything the engine
    consumes as input — its own binary/distribution, module sets,
    profile packages, a runtime it needs (a JVM, an interpreter) — must
    resolve to exactly one of: `artifacts.lock.edn` (acquired/external/

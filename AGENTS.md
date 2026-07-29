@@ -16,7 +16,7 @@ work); nothing here applies if you're only running a built artifact.
 **Project:** `ehr-testing` — a [Polylith](https://polylith.gitbook.io/polylith)
 monorepo consolidating the `ehr-testing-*` family of repos into one
 workspace, one development REPL, many deployable artifacts. Top
-namespace: `ehrt`. See [`docs/migration/polylith-brief.md`](docs/migration/polylith-brief.md)
+namespace: `ehrt`. See [`docs/dev/migration/polylith-brief.md`](docs/dev/migration/polylith-brief.md)
 for the Polylith architecture reference this migration was planned
 against, and `notes/ADRs.md` ADR-0001 for what was actually decided
 and why.
@@ -193,7 +193,7 @@ stale, commit-pinned copy of it), plus eight tools-only skills:
 `scenarios`, `shared-skill-layout`, `wsl-windows-git-hygiene`. See
 ADR-0005 for the full collision-diff record. Handoffs, plans, and
 durable memory follow the same `.agents/` layout sim used; see
-`docs/way-of-working.md` for how this session's own conventions differ
+`docs/dev/way-of-working.md` for how this session's own conventions differ
 from sim's 40-session history.
 
 ## The discipline surface, mapped (discipline-parity session, ADR-0006)

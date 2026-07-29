@@ -106,7 +106,7 @@ apply its criterion is a signal to *escalate* (route to a human, or a
 tier with a terminology server) or *retry* (re-run once a terminology
 server is available), not to silently wave through.
 
-`ehr gate fhir|v2 ... --treat-no-verdict-as pass|rejected` is the
+`ehrt gate fhir|v2 ... --treat-no-verdict-as pass|rejected` is the
 explicit opt-in for a workflow that has already made that call: `pass`
 when the workflow accepts that terminology-suppressed findings are out
 of scope for this gate (e.g. a downstream terminology-aware check
@@ -120,14 +120,14 @@ polarity by accident.
 ## Baseline-relative gating (2026-07-25, P6)
 
 The profile-noise finding above has a direct practical consequence:
-gating a real-world, profile-stamped corpus straight against `ehr gate
+gating a real-world, profile-stamped corpus straight against `ehrt gate
 fhir` gives you `:rejected` on nearly every file, most of it noise
 inherited from the file's own declared profile, not a defect a
 pipeline change introduced. File-level (or corpus-level) verdict alone
 cannot discriminate "this file has always looked like this" from
 "this file just broke."
 
-`ehr gate fhir|v2 DIR --baseline report.edn` answers a narrower,
+`ehrt gate fhir|v2 DIR --baseline report.edn` answers a narrower,
 actually useful question: **did gating this corpus find anything NEW
 relative to a prior run?** It gates normally, then recomputes each
 file's verdict against a previously-captured baseline report (any

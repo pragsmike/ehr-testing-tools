@@ -1,24 +1,26 @@
 # Locators
 
 A **locator** names one exact spot inside one exact file. It is what
-`ehr corpus mutate --locator-path ...` takes, and what a finding in a
+`ehrt corpus mutate --locator-path ...` takes, and what a finding in a
 gate report points back at. There are two grammars, one per format —
 FHIR paths into parsed JSON, and HL7 v2 segment/field addresses — and
 they have nothing in common but the job.
 
 Which grammar applies is decided by the operator, not by you: every
-operator declares its `:format`, and `ehr corpus mutate` parses
+operator declares its `:format`, and `ehrt corpus mutate` parses
 `--locator-path` under that format's grammar. See
 [operators.md](operators.md) for which operators need a locator (today:
-all of them) and [cli.md](cli.md#ehr-corpus-mutate) or
-`ehr help corpus` for where the flag goes.
+all of them) and [cli.md](cli.md#ehrt-corpus-mutate) or
+`ehrt help corpus` for where the flag goes.
 
 This page describes what the parsers in
-[`src/ehr_testing_tools/locator.clj`](../src/ehr_testing_tools/locator.clj)
-and [`src/ehr_testing_tools/corpus/er7.clj`](../src/ehr_testing_tools/corpus/er7.clj)
+[`ehrt.kernel.locator`](../components/kernel/src/ehrt/kernel/locator.clj)
+and [`ehrt.tools.corpus.er7`](../components/tools/src/ehrt/tools/corpus/er7.clj)
 actually accept — those files are authoritative, and every example
 below is pinned to them by
-[`test/ehr_testing_tools/locators_doc_test.clj`](../test/ehr_testing_tools/locators_doc_test.clj),
+[`ehrt.tools.locators-doc-test`](../components/tools/test/ehrt/tools/locators_doc_test.clj)
+(kept in `components/tools/test/` rather than kernel's own, since it
+also pins `ehrt.tools.corpus.er7` — ADR-0008's own deviation record),
 which runs in the ordinary `make test`. If a grammar changes and this
 page doesn't, that test fails.
 
@@ -242,7 +244,7 @@ particular message. `PID-99` and `NK1-2` both parse; against the
 two-segment message above, neither resolves — the field is past the end
 of the segment, and the segment isn't in the message at all.
 
-`ehr corpus mutate` checks that a locator resolves *before* it invokes
+`ehrt corpus mutate` checks that a locator resolves *before* it invokes
 any operator, so a locator that doesn't resolve stops the batch with an
 error rather than silently mutating nothing. The two failures reach you
 differently: a bad grammar is `:invalid-v2-path` (or
@@ -263,6 +265,6 @@ resolution failure on a specific file.
 | Every example on this page | `test/ehr_testing_tools/locators_doc_test.clj` |
 
 Related: [operators.md](operators.md) (which operator to pair a locator
-with), [cli.md](cli.md#ehr-corpus-mutate) (the flags around it),
+with), [cli.md](cli.md#ehrt-corpus-mutate) (the flags around it),
 [formats.md](formats.md) (how a locator comes back to you in a report's
 findings).

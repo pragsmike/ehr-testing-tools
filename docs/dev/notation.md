@@ -1,6 +1,6 @@
 # Pipeline Notation
 
-[docs/pipeline.md](pipeline.md) describes this repo's own pipeline as a
+[pipeline.md](pipeline.md) describes this repo's own pipeline as a
 sequence of resource equations. This document is the language that
 description is written in — read it before or alongside the pipeline
 page if the equation syntax there is unfamiliar.
@@ -40,7 +40,7 @@ Every resource name in an equation binds to a concrete type:
   documented at its point of use," not a free-floating name.
 - **Prose resources** (protocols, results files, capability doc pages)
   bind to a template/rubric pair (pattern nursery
-  [#12](../.agents/memory/patterns.md)) — the prose complement of
+  [#12](../../notes/tools/agents/memory/patterns.md)) — the prose complement of
   Malli, since a protocol document can't be hard-schema'd but can
   still be scored against a fixed rubric.
 
@@ -51,7 +51,7 @@ explicit, before implementation.
 ## Catalytic resources resolve to one of four targets
 
 A resource marked `{catalytic: …}` participates in a stage without
-being consumed (pattern nursery [#13](../.agents/memory/patterns.md)).
+being consumed (pattern nursery [#13](../../notes/tools/agents/memory/patterns.md)).
 Every catalytic resource must resolve to exactly one of four targets:
 
 1. `artifacts.lock.edn` — an acquired, external, or binary input
@@ -67,7 +67,7 @@ Every catalytic resource must resolve to exactly one of four targets:
    kind, not degree: target 3 is data this repo wrote; target 4 is code
    this repo wrote, versioned and referenced the same way data would
    be. (This target was added to close a gap in the original three —
-   see pattern nursery [#13](../.agents/memory/patterns.md) for the
+   see pattern nursery [#13](../../notes/tools/agents/memory/patterns.md) for the
    trial history that surfaced it.)
 
 A catalytic resource that resolves to none of the four is a gap in
@@ -78,7 +78,7 @@ the equation, not an oversight to paper over silently.
 A resource may be declared as the **union** of others: a named
 resource whose value, at any point it's consumed, is one of a fixed
 set of member resources — not their product. This closes a gap
-pattern nursery [#13](../.agents/memory/patterns.md)'s P5 evidence
+pattern nursery [#13](../../notes/tools/agents/memory/patterns.md)'s P5 evidence
 named directly: the equation notation's `×` expresses product/AND
 between inputs, and `+` expresses coproduct/OR between *outputs*, but
 nothing expressed "downstream of any one of several alternative
@@ -105,7 +105,7 @@ names bind to types" above — is the union (sum type) of its members'
 types: a Malli `[:or schema-a schema-b ...]` for data resources bound
 to hard schemas, or the narrative superset of the member rubrics for
 prose resources bound to soft types (pattern nursery
-[#12](../.agents/memory/patterns.md)). An equation whose union members
+[#12](../../notes/tools/agents/memory/patterns.md)). An equation whose union members
 don't share a format is a bug in the union's own declaration, not
 something this rule papers over.
 
@@ -158,7 +158,7 @@ one-line law:
 | Kind | Law |
 |---|---|
 | **transform** | Appends provenance — never drops what came before. |
-| **normalize** | Is an idempotent endomorphism — precisely a registered canonicalizer (pattern [#3](../.agents/memory/patterns.md)), not a separate concept. |
+| **normalize** | Is an idempotent endomorphism — precisely a registered canonicalizer (pattern [#3](../../notes/tools/agents/memory/patterns.md)), not a separate concept. |
 | **enrich** | Adds fields without altering existing ones. |
 | **judge** | Produces a verdict plus findings over its subject; never modifies what it judges. |
 | **feedback** | Carries a round bound — no unbounded loops. |
@@ -172,12 +172,12 @@ exactly the declared locator/contract target and nothing else — true
 of this particular `transform`, not of `transform` stages in general).
 
 **Judge, and the derived `gate`** (ADR-0009,
-[`docs/palgebra-design.md`](palgebra-design.md)): the kind's own law is
+[`palgebra-design.md`](../../components/tools/docs/palgebra-design.md)): the kind's own law is
 the judge law above — a `judge` stage never acts on the verdict it
 produces. Gate's own three-way output split (pass / rejected /
 indeterminate) is not part of the kind's floor; it is the derived,
 policy-bearing construct `gate = judge ⨟ route-by-verdict` — a workflow
-position (the `ehr gate` CLI verb, whose exit-code mapping is the
+position (the `ehrt gate` CLI verb, whose exit-code mapping is the
 policy) built on top of a `judge`-kind stage, not a primitive of the
 notation itself. Full notation treatment of sum types on output wires
 (routing-in-the-algebra vs. above it) is an open question, deferred to
@@ -196,7 +196,7 @@ not merely "plain-data JSON is what we use").
 
 This formalization is exploratory, not settled: it is on trial against
 the promotion criteria recorded in pattern nursery
-[#13](../.agents/memory/patterns.md), and its shape may still change as
+[#13](../../notes/tools/agents/memory/patterns.md), and its shape may still change as
 more stages move from planned to built. The equation syntax and
 diagram-rendering machinery belong to the shared
 `.agents/skills/string-diagram` skill (a general monoidal-category

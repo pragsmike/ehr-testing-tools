@@ -25,10 +25,10 @@ help:
 	@echo "                   bin/ehrt artifact fetch --name fhir-validator-cli --version 6.9.12"
 	@echo "  quickstart   - run README.md's Quickstart commands verbatim (bin/quickstart-demo), asserting each one's exit code and a clean tree afterward"
 	@echo "  ci-parity    - fresh clone + cold artifact cache + the per-push lane: 'green as CI sees it', runnable locally (ADR-0004's own local-state-is-not-clone-state lesson)"
-	@echo "  pipeline     - regenerate components/tools/docs/pipeline.md from pipeline.edn"
-	@echo "  use-cases    - regenerate components/tools/docs/use-cases.md from use-cases.edn"
-	@echo "  operators-doc - regenerate components/tools/docs/operators.md from the live operator registry"
-	@echo "  cli-doc      - regenerate components/tools/docs/cli.md from bases/cli's own cli-spec"
+	@echo "  pipeline     - regenerate docs/dev/pipeline.md from components/tools/docs/pipeline.edn"
+	@echo "  use-cases    - regenerate docs/use-cases.md from components/tools/docs/use-cases.edn"
+	@echo "  operators-doc - regenerate docs/operators.md from the live operator registry"
+	@echo "  cli-doc      - regenerate docs/cli.md from bases/cli's own cli-spec"
 	@echo "  docsgen      - all four of the above"
 
 test:
@@ -41,40 +41,46 @@ integration:
 quickstart:
 	bin/quickstart-demo
 
-# Regenerates components/tools/docs/pipeline.md from pipeline.edn (the
-# hand-authored source of truth) -- equations text + mermaid diagram,
-# same two-step shape as `use-cases` below.
+# Regenerates docs/dev/pipeline.md from components/tools/docs/pipeline.edn
+# (the hand-authored source of truth, staying component-adjacent --
+# notes/docs-audit.md) -- equations text + mermaid diagram, same
+# two-step shape as `use-cases` below. Output moved out of
+# components/tools/docs/ to docs/dev/ (ADR-0010, audience-forked docs).
 pipeline:
-	@mkdir -p target
+	@mkdir -p target docs/dev
 	clojure -X:dev ehrt.tools.pipeline/write-equations-txt! :pipeline-edn '"components/tools/docs/pipeline.edn"' :out '"target/pipeline-equations.txt"'
 	python3 components/palgebra/tools/resource_equations_to_mermaid.py target/pipeline-equations.txt -o target/pipeline-flow.mermaid
-	clojure -X:dev ehrt.tools.pipeline/write-pipeline-md! :pipeline-edn '"components/tools/docs/pipeline.edn"' :equations-txt '"target/pipeline-equations.txt"' :mermaid '"target/pipeline-flow.mermaid"' :out '"components/tools/docs/pipeline.md"'
-	@echo "Regenerated components/tools/docs/pipeline.md"
+	clojure -X:dev ehrt.tools.pipeline/write-pipeline-md! :pipeline-edn '"components/tools/docs/pipeline.edn"' :equations-txt '"target/pipeline-equations.txt"' :mermaid '"target/pipeline-flow.mermaid"' :out '"docs/dev/pipeline.md"'
+	@echo "Regenerated docs/dev/pipeline.md"
 
-# Regenerates components/tools/docs/use-cases.md from use-cases.edn --
-# one equations file + mermaid diagram per named use case.
+# Regenerates docs/use-cases.md from components/tools/docs/use-cases.edn
+# (source stays component-adjacent) -- one equations file + mermaid
+# diagram per named use case. Output moved to docs/ (user path, ADR-0010).
 use-cases:
-	@mkdir -p target/use-cases
+	@mkdir -p target/use-cases docs
 	clojure -X:dev ehrt.tools.usecases/write-case-equations! :use-cases-edn '"components/tools/docs/use-cases.edn"' :out-dir '"target/use-cases"'
 	@for f in target/use-cases/*.txt; do \
 		python3 components/palgebra/tools/resource_equations_to_mermaid.py "$$f" -o "$${f%.txt}.mermaid"; \
 	done
-	clojure -X:dev ehrt.tools.usecases/write-use-cases-md! :use-cases-edn '"components/tools/docs/use-cases.edn"' :cases-dir '"target/use-cases"' :out '"components/tools/docs/use-cases.md"'
-	@echo "Regenerated components/tools/docs/use-cases.md"
+	clojure -X:dev ehrt.tools.usecases/write-use-cases-md! :use-cases-edn '"components/tools/docs/use-cases.edn"' :cases-dir '"target/use-cases"' :out '"docs/use-cases.md"'
+	@echo "Regenerated docs/use-cases.md"
 
-# Regenerates components/tools/docs/operators.md from the live operator
-# registry (requiring corpus.operators populates it at namespace load).
+# Regenerates docs/operators.md (user path, ADR-0010) from the live
+# operator registry (requiring corpus.operators populates it at
+# namespace load).
 operators-doc:
-	clojure -X:dev ehrt.tools.docsgen/write-operators-md! :out '"components/tools/docs/operators.md"'
-	@echo "Regenerated components/tools/docs/operators.md"
+	@mkdir -p docs
+	clojure -X:dev ehrt.tools.docsgen/write-operators-md! :out '"docs/operators.md"'
+	@echo "Regenerated docs/operators.md"
 
-# Regenerates components/tools/docs/cli.md from bases/cli's own
+# Regenerates docs/cli.md (user path, ADR-0010) from bases/cli's own
 # cli-spec, ehrt.tools' docsgen not itself required (Polylith: bases
 # depend on components, never the reverse) -- the wrapper lives in
 # bases/cli/src/ehrt/cli/help.clj.
 cli-doc:
-	clojure -X:dev ehrt.cli.help/write-cli-md! :out '"components/tools/docs/cli.md"'
-	@echo "Regenerated components/tools/docs/cli.md"
+	@mkdir -p docs
+	clojure -X:dev ehrt.cli.help/write-cli-md! :out '"docs/cli.md"'
+	@echo "Regenerated docs/cli.md"
 
 docsgen: pipeline use-cases operators-doc cli-doc
 

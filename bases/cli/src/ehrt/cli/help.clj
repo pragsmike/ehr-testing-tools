@@ -216,9 +216,10 @@
 
 (defn write-cli-md!
   "-X-invokable: regenerates docs/cli.md from this namespace's own
-  cli-spec (the Makefile's `cli-doc` target passes
-  components/tools/docs/cli.md). Lives here, not in
-  components/tools/docsgen, because only this base can supply the real
+  cli-spec (the Makefile's `cli-doc` target passes docs/cli.md, moved
+  out of components/tools/docs/ to the root user path, ADR-0010).
+  Lives here, not in components/tools/docsgen, because only this base
+  can supply the real
   spec without inverting Polylith's base -> component dependency
   direction (ADR-0002's own deviation record on why docsgen.clj's
   cli.md renderer moved out of requiring cli.help directly) --

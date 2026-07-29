@@ -10,7 +10,7 @@ you yet.
 
 You will not write code. Everything below is one configuration file.
 Unfamiliar words (ours or the domain's) are in the
-[glossary](GLOSSARY.md).
+[glossary](glossary.md).
 
 <!-- MAINTENANCE: the example config below must be validated against
      config.clj's schemas (m/validate) whenever schemas change; the
@@ -157,7 +157,7 @@ This example is schema-checked against `ehrt.sim.config`,
 `ehrt.sim.site-profile`'s malli schemas (2026-07-27,
 `notes/facts-register.md` F18) — every field name and value shape
 above is real, not just illustrative. The shipped examples in
-[demos/](demos/) are always exact and runnable; start from one of
+[demos/](../components/sim/docs/demos/) are always exact and runnable; start from one of
 those and edit.
 
 ## How do I run it, and get messages?
@@ -235,7 +235,7 @@ writes files — nothing in it sends data to any server.
 
 If your facility has a quirk this page doesn't cover — a location
 scheme, a code value, a workflow — there's a good chance it's in
-[clinical-realities.md](clinical-realities.md) already (post-mortem
+[clinical-realities.md](../components/sim/docs/clinical-realities.md) already (post-mortem
 transfers, hallway parking, newborn merges, results after
 discharge...). If it isn't, that catalog is exactly where it should
 be added: [open an issue](https://github.com/pragsmike/ehrt.sim/issues) describing the reality, and how you'd know
