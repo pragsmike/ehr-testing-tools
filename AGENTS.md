@@ -61,17 +61,26 @@ scan and `clojure -M:poly check` being green -- tests are CI's job, not
 the push gate's (`notes/ADRs.md` ADR-0003). See `AUTHORS-GUIDE.md` §1
 for the full rationale and gitleaks install instructions.
 
-**Git operations are the author's, not an agent's (ADR-0001, R6).** A
-session prepares working trees and proposes commit messages; it does
-not itself run `git commit`, `git push`, `git merge`, or `gh` unless
-the author has explicitly said otherwise for that session, in that
-chat, in the moment — a standing default that a session must not
-generalize backward onto earlier turns or forward onto a future
-session that hasn't heard it. Agents working in this environment hold
-ambient authenticated `gh` credentials (the `pragsmike/packs`
-precedent, documented at sim's own `AUTHORS-GUIDE.md` §2) — the
-standing rule, unchanged by any one session's delegation, is that
-those credentials do not get used off an agent's own initiative.
+**Git operations run under whatever mode the author set for the
+session, in that session's own chat (ADR-0001 R6, superseded in place
+by ADR-0007 R30).** The default remains R6's: a session prepares
+working trees and proposes commit messages, and does not itself run
+`git commit`, `git push`, `git merge`, or `gh`, unless the author has
+said otherwise for that session, in that chat, in the moment — a
+default that does not generalize backward onto earlier turns or
+forward onto a future session that hasn't heard it. R30 names the
+*standing alternative mode*, not a one-off exception to it: a session
+the author has told to commit and push at each checkpoint does so
+unattended, the staging-hygiene ritual (`AUTHORS-GUIDE.md` §1) still
+run before every commit. Two classes of action stay the author's alone
+under either mode: **tags** (the `stable-*` tag is the actual trust
+boundary, ADR-0003) and **repo-level `gh` mutations**
+(create/delete/settings/visibility — the `pragsmike/packs` precedent,
+documented at sim's own `AUTHORS-GUIDE.md` §2). Agents working in this
+environment hold ambient authenticated `gh` credentials for exactly
+those repo-level mutations — the standing rule, unchanged by either
+mode, is that those credentials do not get used off an agent's own
+initiative.
 
 ## Workspace vocabulary
 

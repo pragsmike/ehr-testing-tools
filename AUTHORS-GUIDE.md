@@ -20,17 +20,23 @@ is not fine for writing to git history. `.githooks/pre-commit` and
 `.githooks/pre-push` enforce this once a clone runs `git config
 core.hooksPath .githooks` (see `AGENTS.md`).
 
-**Commits and pushes are the author's ceremony (ADR-0001, R6).** An
-agent session prepares the working tree and proposes commit messages;
-it does not run `git commit`, `git push`, `git merge`, or `gh` on its
-own initiative. A session may be told, explicitly, in that session's
-own chat, that the author wants it to execute commits directly for the
-remainder of that session — that's a live delegation scoped to the
-session that received it, not a rewrite of this rule. The next session
-starts back at the default: agent prepares, author commits, unless
-told otherwise again. Pushing to the shared GitHub remote is a step
-further still — confirm before pushing even in a session where commits
-have been delegated, the same as any other push to a shared remote.
+**Commits and pushes follow whatever mode the author set for the
+session, stated in that session's own chat (ADR-0001 R6, superseded in
+place by ADR-0007 R30).** The default is still R6's: an agent session
+prepares the working tree and proposes commit messages; it does not
+run `git commit`, `git push`, `git merge`, or `gh` on its own
+initiative, unless told otherwise. R6 originally scoped that telling
+as a one-off, session-local delegation, always reverting to the
+default next session. R30 adds a second, standing mode alongside it:
+when the author says, at a session's own start, that this session
+commits *and pushes* at each checkpoint unattended — the mode this
+workspace now runs under whenever a session prompt says so — the
+session does exactly that, without confirming each individual push,
+because the confirmation already happened once, for the whole session,
+at the start. Either way, the next session starts back at whichever
+mode its own prompt states; no session's mode carries forward
+silently. Tags and repo-level `gh` mutations (create/delete/settings/
+visibility) are never delegated by either mode — see `AGENTS.md`.
 
 **Reaching WSL from a Windows-launched agent session.** If your shell
 is Git Bash/MINGW64, do not run git natively and do not invoke

@@ -1362,4 +1362,77 @@ working-tree green can lie). Final grep sweep: zero stale
 frozen provenance, archived prompts, and this record's own erratum
 text.
 
+---
+
+## ADR-0007 — Commit/push restored to session ritual; ruling provenance tags adopted
+
+**Status:** Accepted (author-directed), 2026-07-29.
+
+### Context
+
+`AGENTS.md` and `AUTHORS-GUIDE.md` §1 both state, as ADR-0001 R6: git
+commit/push/merge/`gh` are the author's ceremony; a session prepares
+the working tree and proposes commit messages but does not itself
+commit or push, absent an explicit, in-session, in-chat delegation that
+does not generalize to future sessions. That rule was itself a
+channel-inferred default, not a verbatim author ruling — it encoded a
+stale model of `ehr-testing-sim`'s own 40-session practice (an async,
+multi-session culture where an out-of-band author review gated every
+push) carried into this workspace's bootstrap prompt dressed as if it
+were an author ruling, and it went unexamined by the discipline-parity
+audit (ADR-0006) for exactly that reason: the audit inventoried
+mechanisms against both parents' final states, and a rule that never
+existed in either parent's own terms in the form R6 stated it has no
+parent-side row to diff against.
+
+The author's actual practice this session (2026-07-29, development
+resumption: kernel/judge extraction, the `ehrt` rename, audience-forked
+docs) is to commit and push at each checkpoint, unattended, watching
+progress land on the remote — the opposite of R6's default. This
+record supersedes R6 in place (ADR-0001 is not reverted; R6's own text
+stands as the historical record of what was ruled and why it was
+wrong) and adopts a provenance-tag convention so a future audit can
+tell, without re-deriving it from a close prose reading, which rulings
+came from the author directly and which are this workspace's own
+inferred defaults.
+
+### Decision
+
+**R30** (supersedes R6). Committing at checkpoints, and pushing at
+each checkpoint, are part of the session ritual for sessions the
+author has told, explicitly, in that session's own chat, to operate
+this way — the same scoping R6 always had for its one-off delegations,
+now the *standing* mode rather than the exception, until a future
+ruling changes it again. The staging-hygiene ritual (`AUTHORS-GUIDE.md`
+§1, "Staging hygiene between checkpoints") is unchanged and still
+applies before every commit, delegated or not: `git diff --cached
+--stat` recorded, anything outside the checkpoint's own stated scope
+unstaged first. Two classes of action stay the author's alone,
+unaffected by R30: **tags** (ADR-0003's own trust boundary — the
+`stable-*` tag, not the push, is what CI and a future clone actually
+trust) and **repo-level `gh` mutations** — create/delete/settings/
+visibility (the `pragsmike/packs` precedent, `AGENTS.md`'s own
+citation of it, correctly scoped and left as-is here).
+
+**Provenance tags, adopted this record forward.** Every author-ruling
+list in a session prompt or ADR from this point on marks each ruling
+`[A]` (author-ruled, verbatim or a direct paraphrase the author would
+recognize as their own) or `[C]` (channel-inferred: a default this
+workspace's own tooling or a prior session supplied, reasonable but
+not something the author said in so many words, and vetoable post-hoc
+without it counting as reverting an Accepted decision). R6 itself,
+read again with this distinction available, was a `[C]` ruling
+wearing `[A]`'s clothing — the tag exists so that mistake doesn't
+recur silently. Tags are provenance metadata, not a quality signal:
+a `[C]` ruling is not weaker or more provisional than an `[A]` one
+once accepted; it is only *more revisable* by a later author veto
+without that veto needing to clear the "supersede, don't revert" bar
+this file otherwise holds every Accepted decision to.
+
+### Deviation record
+
+None — this record is itself the first act taken under R30 (its own
+commit is also its own push), so there is nothing yet to disclose
+about R30's application beyond this record's own existence.
+
 Self-archived to `notes/prompts/2026-07-28-ehr-testing-discipline-parity.md`.

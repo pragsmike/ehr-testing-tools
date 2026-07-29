@@ -33,12 +33,14 @@ time delegation possible.** Concretely:
   session's git-delegation is currently set for that session). A
   session does not blow through either kind of checkpoint
   unsupervised.
-- **Default: agent prepares, author commits.** `notes/ADRs.md`
-  ADR-0001 (R6) states this as the durable rule. Within a single
-  session, the author may explicitly delegate commit (and, separately
-  and more cautiously, push) execution to the agent — a live, scoped
-  grant, not a rewrite of the rule for the next session. `AUTHORS-GUIDE.md`
-  §1 has the exact boundary.
+- **Default: agent prepares, author commits — unless the session's own
+  prompt says otherwise.** `notes/ADRs.md` ADR-0001 (R6) states the
+  default; `notes/ADRs.md` ADR-0007 (R30) names the standing
+  alternative mode, commit-and-push-at-each-checkpoint, that a session
+  runs under when its own prompt says so at the start, not a per-push
+  ask. Either way it is a live, scoped grant for that session, not a
+  rewrite of the default for the next one. `AUTHORS-GUIDE.md` §1 has
+  the exact boundary.
 
 ## 2. Fix-forward with disclosure (ADR-0001, R10)
 
