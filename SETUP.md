@@ -81,8 +81,8 @@ git --version
 java -version
 clojure --version
 
-git clone https://github.com/pragsmike/ehr-testing.git
-cd ehr-testing
+git clone https://github.com/pragsmike/ehr-testing-tools.git
+cd ehr-testing-tools
 clojure -M:poly version   # expect: poly 0.3.32 (2025-12-29)
 clojure -M:poly check     # expect: OK
 ```
