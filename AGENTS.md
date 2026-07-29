@@ -16,7 +16,7 @@ work); nothing here applies if you're only running a built artifact.
 **Project:** `ehr-testing` — a [Polylith](https://polylith.gitbook.io/polylith)
 monorepo consolidating the `ehr-testing-*` family of repos into one
 workspace, one development REPL, many deployable artifacts. Top
-namespace: `ehrt`. See [`doc/migration/polylith-brief.md`](doc/migration/polylith-brief.md)
+namespace: `ehrt`. See [`docs/migration/polylith-brief.md`](docs/migration/polylith-brief.md)
 for the Polylith architecture reference this migration was planned
 against, and `notes/ADRs.md` ADR-0001 for what was actually decided
 and why.

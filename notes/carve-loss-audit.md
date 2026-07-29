@@ -92,3 +92,22 @@ a disposition.
   before step 3 completed. Zero rows remain open.
 - Sim-side rows: 0 open findings — fully accounted for by ADR-0001's
   own prior disclosure.
+
+## Accepted warts (R29, discipline-parity session, 2026-07-28)
+
+Four root residents are deliberate, not oversight, and are recorded
+here — not as a disposition row (none of them are carve *losses*; all
+four are things that legitimately never had a brick to live in) but so
+"ambient at the workspace root" reads as a named, accepted state with
+its own exit plan rather than unexamined clutter:
+
+| Path | Why it's at root | Exit plan |
+|---|---|---|
+| `bin/` (`ehr`, `check-palgebra-drift`, `quickstart-demo`) | Entry-point scripts; `bin/ehr` itself must `cd` to the workspace root before `exec`ing (ADR-0002's own cwd-relative-path finding) — a script whose whole job is establishing "workspace root as cwd" can't itself live inside a brick without begging the question. | None currently planned — this is likely a permanent root resident, not a staging state; named here for completeness, not because a move is expected. |
+| `config/synthea/synthea.properties` | Synthea's own properties-file input, read cwd-relative by `ehrt.tools.corpus.generate` (ADR-0002). | Brick-owned resources, future session — once/if `components/tools` grows a `resources/tools/` tree (this session added `test-fixtures/`, a sibling, not this), config could move there with a matching cwd-relative-path update, same treatment fixtures just got. |
+| `resources/synthea-default.properties` | Same reason and same consumer as the row above; historically ungrouped from `config/synthea/` for reasons not recorded. | Same exit plan as above — likely belongs alongside `config/synthea/synthea.properties`, not treated as a separate question, when that future session runs. |
+| `artifacts.lock.edn` | The artifact registry `ehrt.tools.artifact` reads cwd-relative (ADR-0002); genuinely workspace-wide (both `projects/sim` and `projects/tools-cli` artifact-fetch through it), so no single brick is the obvious owner even under the resources-migration plan above. | No exit plan named — this one may be a permanent root resident on its own merits (a workspace-wide registry isn't naturally brick-scoped the way fixtures or one component's config is); revisit only if a future session identifies a real owning brick. |
+
+None of these four block anything; they're recorded so a future
+top-level-tidy pass doesn't have to re-derive from scratch why they're
+still there.
