@@ -1,4 +1,6 @@
-# ehr-testing
+# ehr-testing-tools
+
+[![CI](https://github.com/pragsmike/ehr-testing-tools/actions/workflows/test.yml/badge.svg)](https://github.com/pragsmike/ehr-testing-tools/actions/workflows/test.yml)
 
 **`ehrt`, pronounced "e-heart."** Reproducible test data for EHR
 integrations — generated, broken on purpose, and conformance-gated,
@@ -8,6 +10,12 @@ corpora against HL7 v2 and FHIR rules. Offline and deterministic by
 construction; plain FHIR JSON, HL7v2 text, and EDN out the other end,
 so you can use the results from Python, SQL, or anything else. Clojure
 inside, no Clojure skills required.
+
+It's for the people who actually test EHR integrations day to day —
+interface analysts, QA engineers, data engineers — not necessarily
+Clojure programmers. If you're comfortable working alongside an AI
+assistant, [`SETUP.md`](SETUP.md) has a copy-paste prompt that walks
+it through installing and running this for you.
 
 **I want to generate or judge test data** → you want the [`docs/`](docs/)
 path — start at [`docs/what-is-this.md`](docs/what-is-this.md), or jump
@@ -31,11 +39,11 @@ the actual contract with readers, not a formality.
 
 | Capability | Maturity | Evidence |
 |---|---|---|
-| **Generate** (sim; `corpus.generate`) | **Usable** | Clean-environment byte-reproducibility proven. |
-| **Mutate** (`corpus.mutate`) | **Experimental** | FHIR and v2 both work (v2: locator grammar, `corpus.er7` substrate, seed operators, contract-pairing proof against `judge.v2`); interfaces may still move. |
-| **Intake** (`corpus.intake`) | **Experimental** | Foreign-corpus cataloging; same content-hash lineage as generated corpora. |
-| **Gate** (`judge.fhir` / `judge.v2`) | **Experimental** | Base-spec (FHIR, official validator) / base-structural (v2, HAPI); offline verdict policy; no implementation guide pinned yet; baseline-relative mode for real-world corpora. |
-| **Check** (`ehrt.tools.check`) | **Experimental** | Dataset-vs-expectations judge alongside Gate: golden equivalence plus a small per-file assertion vocabulary. |
+| **Generate** (sim; `corpus.generate`) | **Usable** | Clean-environment byte-reproducibility proven — [EXP-A4](components/tools/docs/experiments/EXP-A4-results.md). |
+| **Mutate** (`corpus.mutate`) | **Experimental** | FHIR and v2 both work (v2: locator grammar, `corpus.er7` substrate, seed operators, contract-pairing proof against `judge.v2`); interfaces may still move — [EXP-B2](components/tools/docs/experiments/EXP-B2-results.md). |
+| **Intake** (`corpus.intake`) | **Experimental** | Foreign-corpus cataloging; same content-hash lineage as generated corpora — [intake tests](components/tools/test/ehrt/tools/corpus/intake_test.clj). |
+| **Gate** (`judge.fhir` / `judge.v2`) | **Experimental** | Base-spec (FHIR, official validator) / base-structural (v2, HAPI); offline verdict policy; no implementation guide pinned yet; baseline-relative mode for real-world corpora — [EXP-C5](components/tools/docs/experiments/EXP-C5-results.md), [judge calibration](docs/judge-calibration.md). |
+| **Check** (`ehrt.tools.check`) | **Experimental** | Dataset-vs-expectations judge alongside Gate: golden equivalence plus a small per-file assertion vocabulary — [check tests](components/tools/test/ehrt/tools/check_test.clj). |
 
 **Status: pre-release.** No version tag, nothing published to Clojars
 or Maven Central, interfaces may still move. See

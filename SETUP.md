@@ -104,3 +104,19 @@ page doesn't teach it as a path.
   doesn't pin a version by itself; `deps.edn`'s `:poly` alias does
   (`polylith/clj-poly {:mvn/version "0.3.32"}`). If your output
   differs, check that alias against what's actually in your clone.
+
+## 5. The agent prompt
+
+If you'd rather have an AI assistant do this for you, give it this
+prompt:
+
+```
+I have a fresh clone of the ehr-testing-tools repository. I am on
+[Windows 11 / Ubuntu / NixOS / macOS]. Read SETUP.md and README.md in
+the repo root. Help me: (1) install the prerequisites for my platform,
+(2) run the verification ladder until `clojure -M:poly check` passes,
+(3) work through the root README's Quickstart to generate, mutate, and
+gate my first synthetic corpus, and (4) explain what the output files
+are. If anything fails, diagnose from the repo's docs before searching
+the web.
+```
