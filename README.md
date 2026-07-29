@@ -87,6 +87,23 @@ clojure -M:poly test :all
 `bin/ehrt help <group>` documents every command group and its flags
 (`artifact`, `corpus`, `gate`, `check`, `version`, `doctor`, `sim`).
 
+## Scope
+
+This workspace does **not** do:
+
+- Semantic correctness checking — properties, metamorphic relations, and
+  golden-case comparison remain the caller's own code, written against
+  their own transforms.
+- Full terminology validation against licensed vocabularies (e.g.
+  complete SNOMED CT) — that imports licensing and distribution
+  problems this project does not take on.
+- Production message routing or integration-engine functionality — these
+  are test-time tools, not runtime infrastructure.
+- A hosted, public validation service — local deployment is the target.
+
+See [`docs/what-is-this.md`](docs/what-is-this.md#scope--what-this-deliberately-does-not-do)
+for the full problem statement.
+
 ## Contributing
 
 Read [`AGENTS.md`](AGENTS.md) first — it is the canonical instruction
