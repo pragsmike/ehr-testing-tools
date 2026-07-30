@@ -454,6 +454,17 @@ split here is structural — a distinct verb, not a flag on a
 wire-emitting path — precisely so that mistake isn't a flag away.
 `show` is read-only: it never modifies the file it renders.
 
+`ehrt play PATH` (ADR-0014) is `show` plus time: it paces the same
+file's messages against their own MSH-7 timestamps (`--rate`
+stream-seconds per wallclock-second, `--idle-cap` capping any single
+wait) instead of rendering them all at once — at an arbitrarily large
+`--rate`, it renders identically to `show`. Paced emission through
+`--sink` (a `file:` designator this session) writes bytes
+**byte-identical** to what an unpaced batch write through the same
+designator would produce; pacing changes *when* bytes move, never
+*which* bytes — timing is the instrument's own concern, entirely
+outside this section's own artifact-vs-display doctrine.
+
 ### Every other command also senses a terminal now (ADR-0013)
 
 Beyond `show`, every envelope-emitting command (`gate`, `generate`,

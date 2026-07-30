@@ -296,12 +296,19 @@ bin/ehrt gate v2 $YOUR_CORPUS --report out/partner/gate-report.edn
 # sits).
 bin/ehrt show $YOUR_CORPUS/adt-a01-admit.hl7
 
+# Play it back, paced against each message's own MSH-7 timestamp --
+# ehrt show plus time (ADR-0014). A tight --idle-cap keeps this demo
+# fast even though the two real messages are over an hour apart.
+cat $YOUR_CORPUS/adt-a01-admit.hl7 <(printf '\n\n') $YOUR_CORPUS/adt-a02-transfer.hl7 \
+  > out/partner/playback.hl7
+bin/ehrt play out/partner/playback.hl7 --rate 3600 --idle-cap 1
+
 # Don't recognize EDN? --json has been on every command all along --
 # pipe straight into jq, no report file needed.
 bin/ehrt gate v2 $YOUR_CORPUS --json | jq '.payload.totals'
 ```
 
-What the report contains, field by field: [formats.md](formats.md#the-report); the stdout envelope and the `--report` file are deliberately different shapes. If your corpus is real-world and profile-stamped, read [judge-calibration.md](judge-calibration.md#baseline-relative-gating-2026-07-25-p6) before you trust a red verdict, and reach for `--baseline` ([Regression baselining / drift detection](#regression-baselining--drift-detection)). A workflow can branch on the gate's exit code directly: `bin/ehrt` carries the 0/1/2/3 contract ([cli.md](cli.md#exit-codes)). `ehrt show` ([formats.md](formats.md#display-is-not-wire-format)) is the pretty-always display verb for a quick look at what you just gated. For querying EDN directly (or a `--report` file after the fact) see [formats.md](formats.md#reading-these-from-a-shell)'s jet mention.
+What the report contains, field by field: [formats.md](formats.md#the-report); the stdout envelope and the `--report` file are deliberately different shapes. If your corpus is real-world and profile-stamped, read [judge-calibration.md](judge-calibration.md#baseline-relative-gating-2026-07-25-p6) before you trust a red verdict, and reach for `--baseline` ([Regression baselining / drift detection](#regression-baselining--drift-detection)). A workflow can branch on the gate's exit code directly: `bin/ehrt` carries the 0/1/2/3 contract ([cli.md](cli.md#exit-codes)). `ehrt show` ([formats.md](formats.md#display-is-not-wire-format)) is the pretty-always display verb for a quick look at what you just gated; `ehrt play` ([formats.md](formats.md#display-is-not-wire-format)) is the same rendering, paced against real timestamps (ADR-0014). For querying EDN directly (or a `--report` file after the fact) see [formats.md](formats.md#reading-these-from-a-shell)'s jet mention.
 
 ```
 foreign-file → catalog-entry + intake-record  [Intake]
