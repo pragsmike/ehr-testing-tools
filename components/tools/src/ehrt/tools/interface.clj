@@ -20,7 +20,15 @@
   `v2-`/`fhir-` qualification at the re-export layer below, unchanged,
   so nothing downstream of this interface sees any difference.
   `ehrt.judge.interface` itself now only carries the verdict vocabulary
-  (`Report`, `build-report`, etc.).
+  (`Report`, `build-report`, etc.). ADR-0012 adds a third engine sibling,
+  `ehrt.judge-v2-nist.interface` (profile-tier, direct NIST engine) --
+  re-exported below as `v2-nist-*`, same qualification discipline as
+  the other two. Its `make-validator`/`gate-file`/`gate-dir` differ in
+  signature from `v2-gate-file`/`v2-gate-dir`: this tier takes a
+  validator-state map (from `v2-nist-make-validator`, built once per
+  profile bundle and reused across files, since context construction
+  dominates cost) rather than a bare path, because a profile bundle
+  (Π) is itself an input at this tier, not a fixed dependency.
 
   Two short names collided across two source namespaces each
   (`lookup`/`register!` in both corpus.operators and corpus.generators,
@@ -37,6 +45,7 @@
             [ehrt.judge.interface :as judge]
             [ehrt.judge-v2-hapi.interface :as judge-v2-hapi]
             [ehrt.judge-fhir-official.interface :as judge-fhir-official]
+            [ehrt.judge-v2-nist.interface :as judge-v2-nist]
             [ehrt.tools.check :as check]
             [ehrt.tools.sim :as sim]
             [ehrt.tools.docsgen :as docsgen]
@@ -151,6 +160,14 @@
 (def fhir-gate-file judge-fhir-official/gate-file)
 (def fhir-gate-dir judge-fhir-official/gate-dir)
 (def fhir-gate-batch judge-fhir-official/gate-batch)
+
+;; judge-v2-nist.interface (ADR-0012, third judge engine, profile
+;; tier): make-validator/gate-file/gate-dir take a validator-state map
+;; (built once per Π bundle), not a bare path -- see this ns's own
+;; docstring for why.
+(def v2-nist-make-validator judge-v2-nist/make-validator)
+(def v2-nist-gate-file judge-v2-nist/gate-file)
+(def v2-nist-gate-dir judge-v2-nist/gate-dir)
 
 ;; judge.interface (ADR-0008; ADR-0011 narrowed this to vocabulary only)
 (def Report judge/Report)

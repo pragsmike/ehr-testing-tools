@@ -1,4 +1,11 @@
-{:deps {;; poly/kernel, poly/judge (ADR-0008): tools' own src requires
+{;; NIST v2-validation engine (judge-v2-nist, ADR-0012): its three
+ ;; gov.nist coordinates resolve from NIST's own Nexus, not Maven
+ ;; Central. Root deps.edn's own :mvn/repos isn't inherited here --
+ ;; `poly test :all` resolves each project's own deps.edn
+ ;; independently, so this repeats the same entry.
+ :mvn/repos {"nist-hit" {:url "https://hit-nexus.nist.gov/repository/releases/"}}
+
+ :deps {;; poly/kernel, poly/judge (ADR-0008): tools' own src requires
         ;; both directly now (result/digest/artifact/canonical/locator/
         ;; invocation, judge's five namespaces).
         poly/kernel   {:local/root "../../components/kernel"}
@@ -8,6 +15,10 @@
         ;; both directly too.
         poly/judge-v2-hapi        {:local/root "../../components/judge-v2-hapi"}
         poly/judge-fhir-official  {:local/root "../../components/judge-fhir-official"}
+        ;; poly/judge-v2-nist (ADR-0012): the third judge engine,
+        ;; profile-tier NIST v2-validation -- ehrt.tools.interface now
+        ;; requires it too.
+        poly/judge-v2-nist        {:local/root "../../components/judge-v2-nist"}
         poly/tools    {:local/root "../../components/tools"}
         poly/palgebra {:local/root "../../components/palgebra"}
         poly/cli      {:local/root "../../bases/cli"}
@@ -39,6 +50,7 @@
                                      "../../components/judge/test"
                                      "../../components/judge-v2-hapi/test"
                                      "../../components/judge-fhir-official/test"
+                                     "../../components/judge-v2-nist/test"
                                      "../../components/tools/test"
                                      "../../components/palgebra/test"
                                      "../../bases/cli/test"]
@@ -50,6 +62,7 @@
                                   "-p" "../../components/judge/src"
                                   "-p" "../../components/judge-v2-hapi/src"
                                   "-p" "../../components/judge-fhir-official/src"
+                                  "-p" "../../components/judge-v2-nist/src"
                                   "-p" "../../components/tools/src"
                                   "-p" "../../components/palgebra/src"
                                   "-p" "../../bases/cli/src"
@@ -57,6 +70,7 @@
                                   "-s" "../../components/judge/test"
                                   "-s" "../../components/judge-v2-hapi/test"
                                   "-s" "../../components/judge-fhir-official/test"
+                                  "-s" "../../components/judge-v2-nist/test"
                                   "-s" "../../components/tools/test"
                                   "-s" "../../components/palgebra/test"
                                   "-s" "../../bases/cli/test"]}}}

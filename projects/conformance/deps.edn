@@ -1,4 +1,11 @@
-{:deps {;; poly/sim: ADR-0013's subprocess-only rule is superseded
+{;; NIST v2-validation engine (judge-v2-nist, ADR-0012): its three
+ ;; gov.nist coordinates resolve from NIST's own Nexus, not Maven
+ ;; Central. Root deps.edn's own :mvn/repos isn't inherited here --
+ ;; `poly test :all` resolves each project's own deps.edn
+ ;; independently, so this repeats the same entry.
+ :mvn/repos {"nist-hit" {:url "https://hit-nexus.nist.gov/repository/releases/"}}
+
+ :deps {;; poly/sim: ADR-0013's subprocess-only rule is superseded
         ;; (ADR-0004, 2026-07-28) -- ehrt.tools.sim now calls
         ;; ehrt.sim.interface/run-command in-process, so this project's
         ;; sim_harness.clj and its five sim_*_test.clj consumers need
@@ -15,6 +22,10 @@
         ;; both directly too.
         poly/judge-v2-hapi        {:local/root "../../components/judge-v2-hapi"}
         poly/judge-fhir-official  {:local/root "../../components/judge-fhir-official"}
+        ;; poly/judge-v2-nist (ADR-0012): the third judge engine,
+        ;; profile-tier NIST v2-validation -- ehrt.tools.interface now
+        ;; requires it too.
+        poly/judge-v2-nist        {:local/root "../../components/judge-v2-nist"}
         poly/tools    {:local/root "../../components/tools"}
         poly/palgebra {:local/root "../../components/palgebra"}
         poly/sim      {:local/root "../../components/sim"}
