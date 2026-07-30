@@ -289,9 +289,15 @@ cat out/partner/intake/intake-record.edn
 # Gate it. `gate v2` reads *.hl7 in the directory you name (not
 # recursively); `gate fhir` is the same shape for FHIR JSON.
 bin/ehrt gate v2 $YOUR_CORPUS --report out/partner/gate-report.edn
+
+# Look at what you just gated -- ER7's own segment separator is a
+# bare CR, unreadable in a terminal; `show` renders it for a human
+# (never wire format -- don't pipe this anywhere a real v2 consumer
+# sits).
+bin/ehrt show $YOUR_CORPUS/adt-a01-admit.hl7
 ```
 
-What the report contains, field by field: [formats.md](formats.md#the-report); the stdout envelope and the `--report` file are deliberately different shapes. If your corpus is real-world and profile-stamped, read [judge-calibration.md](judge-calibration.md#baseline-relative-gating-2026-07-25-p6) before you trust a red verdict, and reach for `--baseline` ([Regression baselining / drift detection](#regression-baselining--drift-detection)). A workflow can branch on the gate's exit code directly: `bin/ehrt` carries the 0/1/2/3 contract ([cli.md](cli.md#exit-codes)).
+What the report contains, field by field: [formats.md](formats.md#the-report); the stdout envelope and the `--report` file are deliberately different shapes. If your corpus is real-world and profile-stamped, read [judge-calibration.md](judge-calibration.md#baseline-relative-gating-2026-07-25-p6) before you trust a red verdict, and reach for `--baseline` ([Regression baselining / drift detection](#regression-baselining--drift-detection)). A workflow can branch on the gate's exit code directly: `bin/ehrt` carries the 0/1/2/3 contract ([cli.md](cli.md#exit-codes)). `ehrt show` ([formats.md](formats.md#display-is-not-wire-format)) is the pretty-always display verb for a quick look at what you just gated.
 
 ```
 foreign-file → catalog-entry + intake-record  [Intake]

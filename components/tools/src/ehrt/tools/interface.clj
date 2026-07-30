@@ -61,7 +61,8 @@
             [ehrt.tools.corpus.mutate :as mutate]
             [ehrt.tools.corpus.generate :as generate]
             [ehrt.tools.corpus.operators :as operators]
-            [ehrt.tools.corpus.manifest :as manifest]))
+            [ehrt.tools.corpus.manifest :as manifest]
+            [ehrt.tools.display :as display]))
 
 ;; kernel.interface (result/digest/artifact/locator, ADR-0008)
 (def ok kernel/ok)
@@ -175,6 +176,12 @@
 (def build-report judge/build-report)
 (def diff-reports judge/diff-reports)
 (def report-valid? judge/report-valid?)
+
+;; ehrt.tools.display (ADR-0013, `ehrt show`): pretty rendering for
+;; eyes, never wire format -- see that namespace's own docstring.
+(def render-er7-message display/render-er7-message)
+(def render-er7-stream display/render-er7-stream)
+(def render-fhir-json display/render-fhir-json)
 
 ;; docsgen -- write-cli-md! is the one docsgen entry point a base needs
 ;; cross-brick (bases/cli owns the real cli-spec, ADR-0002's own

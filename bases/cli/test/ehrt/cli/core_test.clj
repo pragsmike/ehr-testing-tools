@@ -84,7 +84,7 @@
 (deftest dispatch-unknown-group-names-the-valid-groups-test
   (let [r (cli/dispatch ["bogus" "thing"] {} {})]
     (is (= :unknown-command (:category r)) "category survives the payload extension")
-    (is (= #{"artifact" "corpus" "gate" "check" "version" "doctor" "sim"} (set (:valid-options (:payload r)))))
+    (is (= #{"artifact" "corpus" "gate" "check" "version" "doctor" "sim" "show"} (set (:valid-options (:payload r)))))
     (is (= "run: ehrt help" (:hint (:payload r))))))
 
 (deftest dispatch-unknown-artifact-action-names-fetch-and-resolve-test
@@ -1670,3 +1670,52 @@
                           :tty?-fn (fn [] false)})]
     (is (= 0 code))
     (is (clojure.string/includes? @printed "Usage:"))))
+
+;; ---- ADR-0013: `ehrt show` -- pretty-always, joins D11's own sniff
+;; dispatch, never consults --pretty/--edn/--json/:tty?-fn. ----
+
+(def ^:private v2-fixture-dir "components/tools/test-fixtures/v2")
+
+(deftest show-command-renders-a-single-v2-file-test
+  (let [r (cli/show-command {:path (str v2-fixture-dir "/adt-a01-admit.hl7")})]
+    (is (result/ok? r))
+    (is (= :display-text (:category r)))
+    (is (not (clojure.string/includes? (:text (:payload r)) "\r")))
+    (is (clojure.string/includes? (:text (:payload r)) "MSH"))))
+
+(deftest show-command-path-not-found-test
+  (let [r (cli/show-command {:path "components/tools/test-fixtures/v2/no-such-file.hl7"})]
+    (is (result/error? r))
+    (is (= :gate-path-not-found (:category r)))))
+
+(deftest show-command-unrecognized-single-file-is-ambiguous-test
+  (let [f (File/createTempFile "show-unrecognized" ".txt")]
+    (spit f "not hl7 or fhir at all")
+    (let [r (cli/show-command {:path (.getAbsolutePath f)})]
+      (is (result/error? r))
+      (is (= :show-format-ambiguous (:category r))))))
+
+(deftest show-command-renders-a-directory-of-uniform-format-files-test
+  (let [r (cli/show-command {:path v2-fixture-dir})]
+    (is (result/ok? r))
+    (is (= :display-text (:category r)))
+    (is (not (clojure.string/includes? (:text (:payload r)) "\r")))))
+
+(deftest main-bang-show-prints-text-verbatim-regardless-of-flags-and-tty-test
+  (let [printed (atom nil)
+        code (cli/main! ["show" v2-fixture-dir "--json" "--edn"]
+                         {:dispatch-fn (fn [_args _opts]
+                                         (assoc (result/ok {}) :category :display-text
+                                                :payload {:text "MSH\nPID"}))
+                          :println-fn (fn [s] (reset! printed s))
+                          :exit-fn (fn [_c] nil)
+                          :tty?-fn (fn [] true)})]
+    (is (= 0 code))
+    (is (= "MSH\nPID" @printed))))
+
+(deftest dispatch-show-positional-path-binds-like-checks-test
+  (let [captured (atom nil)
+        r (cli/dispatch ["show" (str v2-fixture-dir "/adt-a01-admit.hl7")] {}
+                         {:show-fn (fn [opts] (reset! captured opts) (result/ok {}))})]
+    (is (result/ok? r))
+    (is (= (str v2-fixture-dir "/adt-a01-admit.hl7") (:path @captured)))))

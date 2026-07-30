@@ -133,7 +133,13 @@
                {:flag "--warm-up-seconds" :doc "engine warm-up window (integer)" :default "0"}
                {:flag "--emit" :doc "\"hl7\" to render messages into the payload, \"fhir\" to render FHIR bundles instead"}
                {:flag "--churn" :doc "turn churn on with sensible defaults" :default "false"}
-               {:flag "--config" :doc "path to an EDN file carrying the data-heavy engine keys with no flag of their own (:pathway/:pathways/:order-profiles/:churn-profile/:site-profile/:modules/...)"}]}]}]})
+               {:flag "--config" :doc "path to an EDN file carrying the data-heavy engine keys with no flag of their own (:pathway/:pathways/:order-profiles/:churn-profile/:site-profile/:modules/...)"}]}]}
+
+    {:group "show"
+     :doc "Render a file (or a directory of files sharing one sniffed format) for a human: HL7 v2 (ER7) one segment per line, blank line between messages; FHIR JSON pretty-printed. Pretty-always -- no flags needed, `ehrt show FILE | less` just works regardless of what stdout is attached to. Display is not wire format (ADR-0013): the rendered ER7 is deliberately nonconformant (LF-joined segments) and must never be piped anywhere a real HL7 v2 consumer sits."
+     :positional "PATH"
+     :positional-doc "a file, or a directory of files sharing one sniffed format, given as a trailing positional argument, not --path -- an explicit --path is never overridden by it"
+     :flags [{:flag "--path" :doc "alternative to the positional PATH"}]}]})
 
 (defn group-names
   "Every group name in the spec, in declared order."

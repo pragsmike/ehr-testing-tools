@@ -24,6 +24,7 @@ ehrt <group> [<verb>] [flags]
 | [`version`](#ehrt-version) | Prints this repo's own honestly-pre-release identity (never a fabricated semver, D13) plus every pinned artifact's name@version from the lockfile. |
 | [`doctor`](#ehrt-doctor) | Runs SETUP.md's verification checklist as checks (D13): java resolution via the artifact registry, artifact cache presence per lockfile entry, git hooksPath wiring, and platform support. Exit 0 every check passed; 1 at least one failed; 2 couldn't even read the lockfile to know what to check. |
 | [`sim`](#ehrt-sim) | Run the sim engine, mounted in-process (ADR-0005, ADR-0012 fulfilled) -- ehrt.sim.interface/run-command directly, no subprocess. |
+| [`show`](#ehrt-show) | Render a file (or a directory of files sharing one sniffed format) for a human: HL7 v2 (ER7) one segment per line, blank line between messages; FHIR JSON pretty-printed. Pretty-always -- no flags needed, `ehrt show FILE \| less` just works regardless of what stdout is attached to. Display is not wire format (ADR-0013): the rendered ER7 is deliberately nonconformant (LF-joined segments) and must never be piped anywhere a real HL7 v2 consumer sits. |
 
 ## Global flags
 
@@ -208,3 +209,13 @@ Runs one deterministic simulation and returns its ground truth, manifest, and su
 | `--emit` | — | "hl7" to render messages into the payload, "fhir" to render FHIR bundles instead |
 | `--churn` | `false` | turn churn on with sensible defaults |
 | `--config` | — | path to an EDN file carrying the data-heavy engine keys with no flag of their own (:pathway/:pathways/:order-profiles/:churn-profile/:site-profile/:modules/...) |
+
+## `ehrt show`
+
+Render a file (or a directory of files sharing one sniffed format) for a human: HL7 v2 (ER7) one segment per line, blank line between messages; FHIR JSON pretty-printed. Pretty-always -- no flags needed, `ehrt show FILE | less` just works regardless of what stdout is attached to. Display is not wire format (ADR-0013): the rendered ER7 is deliberately nonconformant (LF-joined segments) and must never be piped anywhere a real HL7 v2 consumer sits.
+
+**Positional argument `PATH`** — a file, or a directory of files sharing one sniffed format, given as a trailing positional argument, not --path -- an explicit --path is never overridden by it
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--path` | — | alternative to the positional PATH |

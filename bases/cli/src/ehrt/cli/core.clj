@@ -2,13 +2,18 @@
   "The `ehrt` entrypoint (ADR-0004) -- the only namespace that prints.
   A thin shell: parse, call the capability function, print, map the
   result to an exit code. EDN is canonical output; --json is a
-  projection, never the source of truth. One deliberate exception
-  (DOC-1): `ehrt help`, `ehrt help <group>`, and `--help` anywhere print
-  plain human-readable usage text instead of EDN/JSON -- they're for a
-  human or an AI assistant at a shell, not a pipeline, so the EDN-out
-  convention doesn't serve them. `dispatch` marks these results
-  `:category :cli-help`; `main!` prints their `:text` payload verbatim
-  rather than passing them through `render`."
+  projection, never the source of truth. Two deliberate exceptions to
+  that: (DOC-1) `ehrt help`, `ehrt help <group>`, and `--help` anywhere
+  print plain human-readable usage text instead of EDN/JSON -- they're
+  for a human or an AI assistant at a shell, not a pipeline, so the
+  EDN-out convention doesn't serve them (`dispatch` marks these results
+  `:category :cli-help`); and (ADR-0013) `ehrt show` always renders for
+  eyes, `:category :display-text`. `main!` prints either kind's `:text`
+  payload verbatim rather than passing it through `render`/
+  `render-pretty`. Beyond those two, ADR-0013 also adds a TTY-sensitive
+  default for every other command: a real terminal gets a human summary
+  (`render-pretty`) where a pipe/redirect still gets the unchanged EDN
+  envelope -- see `main!`'s own docstring."
   (:require [babashka.cli :as cli]
             [clojure.data.json :as json]
             [clojure.edn :as edn]
@@ -31,7 +36,8 @@
             [ehrt.tools.interface :as gate-v2]
             [ehrt.tools.interface :as gate-fhir]
             [ehrt.tools.interface :as report]
-            [ehrt.tools.interface :as sim])
+            [ehrt.tools.interface :as sim]
+            [ehrt.tools.interface :as display])
   (:import [java.time LocalDate]
            [java.lang ProcessBuilder$Redirect]))
 
@@ -872,6 +878,83 @@
                     :fhir (gate-fhir-fn opts)
                     :v2 (gate-v2-fn opts)))))))))))
 
+;; ---- ADR-0013: `ehrt show` -- the pretty-always display verb. Joins
+;; D11's own sniff dispatch (gate-candidate-files-in/sniff-path-format
+;; above) rather than inventing a second one; rendering itself lives in
+;; ehrt.tools.display, required here as `display`. ----
+
+(defn- show-ambiguous-error
+  [path payload]
+  (result/error :show-format-ambiguous
+                (merge {:path path
+                        :hint "ambiguous format -- ehrt show only renders HL7 v2 (ER7) or FHIR JSON"}
+                       payload)))
+
+(defn- render-sniffed-content
+  [gate-label content]
+  (case gate-label
+    :v2 (display/render-er7-stream content)
+    :fhir (display/render-fhir-json content)))
+
+(defn- show-file
+  [f]
+  (let [gate-label (sniff-path-format f)]
+    (if (nil? gate-label)
+      (show-ambiguous-error (.getPath f) {:unrecognized-files [(.getPath f)]})
+      (render-sniffed-content gate-label (slurp f)))))
+
+(defn- as-display-text
+  [r]
+  (if-not (result/ok? r)
+    r
+    (assoc (result/ok {}) :category :display-text :payload {:text (:payload r)})))
+
+(defn show-command
+  "`ehrt show PATH`: pretty-always display verb (ADR-0013) -- never
+  consults :tty?-fn or --pretty/--edn/--json; its entire job is
+  rendering for eyes, so `ehrt show foo.hl7 | less` must work with no
+  flag at all (main! recognizes this result's :category :display-text
+  the same way it already special-cases :cli-help). Joins D11's own
+  sniff dispatch: a single file sniffs and renders directly; a
+  directory renders every ER7/FHIR-JSON candidate file in turn (the
+  same candidate set gate-dir would look at), joined by a blank line,
+  and a mixed or unclassifiable set is the same operational-error shape
+  D11 already uses for gate -- naming what confused it, never a silent
+  per-file split. Read-only by construction: this never writes
+  anything -- ehrt.tools.display's own functions only ever read the
+  string content this function already slurped."
+  [{:keys [path]}]
+  (let [f (io/file path)]
+    (cond
+      (not (.exists f))
+      (result/error :gate-path-not-found
+                     {:path path :hint "no such file or directory -- run: ehrt help show"})
+
+      (.isFile f)
+      (as-display-text (show-file f))
+
+      :else
+      (let [files (gate-candidate-files-in path)]
+        (if (empty? files)
+          (show-ambiguous-error path {:reason :no-candidate-files})
+          (let [sniffed (map (fn [file] [(.getName file) (sniff-path-format file)]) files)
+                unrecognized (mapv first (filter (fn [[_ fmt]] (nil? fmt)) sniffed))]
+            (if (seq unrecognized)
+              (show-ambiguous-error path {:unrecognized-files unrecognized})
+              (let [formats (into #{} (map second) sniffed)]
+                (if (> (count formats) 1)
+                  (show-ambiguous-error
+                   path
+                   {:counts (into {}
+                                  (map (fn [[gl fs]] [(get {:fhir :fhir-json :v2 :v2-er7} gl) (count fs)]))
+                                  (group-by second sniffed))})
+                  (let [rendered (map show-file files)
+                        failed (first (remove result/ok? rendered))]
+                    (if failed
+                      failed
+                      (as-display-text
+                       (result/ok (str/join "\n\n" (map :payload rendered)))))))))))))))
+
 (defn- parse-canonicalizer-steps
   "\"id@v,id2@v2\" -> [[:id \"v\"] [:id2 \"v2\"]] -- the ordered
   [id version] pairs ehrt.tools.interface/apply-canonicalizers
@@ -998,7 +1081,7 @@
   docstring's EDN-out exception."
   ([args opts] (dispatch args opts {}))
   ([args opts {:keys [fetch-fn fetch-all-fn resolve-fn generate-fn mutate-fn intake-fn operators-fn
-                       gate-v2-fn gate-fhir-fn check-fn version-fn doctor-fn sim-run-fn]
+                       gate-v2-fn gate-fhir-fn check-fn version-fn doctor-fn sim-run-fn show-fn]
                :or {fetch-fn fetch-command
                     fetch-all-fn fetch-all-command
                     resolve-fn resolve-command
@@ -1011,7 +1094,8 @@
                     check-fn check-command
                     version-fn version-command
                     doctor-fn doctor-command
-                    sim-run-fn sim-run-command}}]
+                    sim-run-fn sim-run-command
+                    show-fn show-command}}]
    (let [[group action path] args]
      (cond
        (:help opts) (help-response group)
@@ -1030,6 +1114,7 @@
                     (and (= group "gate") path (not (:path opts))) (assoc opts :path path)
                     (and (= group "corpus") (#{"mutate" "intake"} action) path (not (:path opts))) (assoc opts :path path)
                     (and (= group "check") action (not (:path opts))) (assoc opts :path action)
+                    (and (= group "show") action (not (:path opts))) (assoc opts :path action)
                     :else opts)
              opts (resolve-path-designators opts)]
          (case group
@@ -1064,6 +1149,7 @@
            "sim" (case action
                    "run" (sim-run-fn opts)
                    (unknown-command-error args (help/verb-names (help/find-group help/cli-spec "sim"))))
+           "show" (show-fn opts)
            (unknown-command-error args (help/group-names help/cli-spec))))))))
 
 (defn render
@@ -1152,11 +1238,12 @@
   the test JVM).
 
   A :category :cli-help result (help-response/bare-invocation-response
-  in `dispatch`) prints its :text payload verbatim via println-fn
-  instead of going through `render`/`render-pretty` -- the ns
-  docstring's one deliberate EDN-out exception; --json/--pretty/--edn
-  are all ignored for these regardless of what was passed, since there
-  is no EDN form to project.
+  in `dispatch`) or :category :display-text result (show-command,
+  ADR-0013) prints its :text payload verbatim via println-fn instead of
+  going through `render`/`render-pretty` -- the ns docstring's
+  deliberate EDN-out exceptions; --json/--pretty/--edn are all ignored
+  for these regardless of what was passed, since there is no EDN form
+  to project.
 
   ADR-0013: stdout rendering resolves in this order -- --pretty forces
   `render-pretty` even into a pipe; else --edn forces the raw EDN
@@ -1182,7 +1269,7 @@
          r (dispatch-fn args opts)
          code (result->exit-code r)
          text (cond
-                (= :cli-help (:category r)) (:text (:payload r))
+                (#{:cli-help :display-text} (:category r)) (:text (:payload r))
                 (:pretty opts) (render-pretty r (:report opts))
                 (:edn opts) (render r false)
                 (:json opts) (render r true)

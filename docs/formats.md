@@ -437,6 +437,35 @@ One exception, so it doesn't surprise you: `ehrt help` and `--help` print
 plain text, not EDN or JSON. They are for a human or an assistant at a
 shell, not for a pipeline.
 
+### Display is not wire format
+
+`ehrt show PATH` (ADR-0013) renders a file for a human — one thing this
+page doesn't otherwise cover, since it never emits a Result envelope at
+all. It's pretty-always: no flag, no TTY check, `ehrt show FILE | less`
+just works. HL7 v2 (ER7) renders one segment per line, a blank line
+between messages; FHIR JSON renders pretty-printed.
+
+The ER7 rendering is **deliberately nonconformant ER7** — real ER7
+segments are separated by a bare carriage return, unreadable in a
+terminal, which is the whole reason `show` exists; its LF-joined output
+must never be piped anywhere a real HL7 v2 consumer (an MLLP listener,
+`gate v2`, anything expecting the wire format) sits. The eyes/pipes
+split here is structural — a distinct verb, not a flag on a
+wire-emitting path — precisely so that mistake isn't a flag away.
+`show` is read-only: it never modifies the file it renders.
+
+### Every other command also senses a terminal now (ADR-0013)
+
+Beyond `show`, every envelope-emitting command (`gate`, `generate`,
+`mutate`, `intake`, and kin) picks a **human summary** by default when
+stdout is a real terminal, and the unchanged EDN envelope when it's
+piped or redirected — nothing above this section changes for a script
+that already redirects or pipes output. `--pretty` forces the human
+summary even into a pipe; `--edn` forces the raw envelope even at a
+terminal; `--json` behaves exactly as this page already describes,
+regardless of any of the above. `--report` files are untouched: always
+EDN, always the bare report.
+
 ### Reading these from Python
 
 `--json` plus `json.load` is the supported path, and it is the one to
