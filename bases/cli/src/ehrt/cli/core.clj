@@ -36,6 +36,7 @@
             [ehrt.tools.interface :as check]
             [ehrt.tools.interface :as gate-v2]
             [ehrt.tools.interface :as gate-fhir]
+            [ehrt.tools.interface :as gate-v2-nist]
             [ehrt.tools.interface :as report]
             [ehrt.tools.interface :as sim]
             [ehrt.tools.interface :as display]
@@ -842,6 +843,98 @@
         (gate-fn {:path path :report report :baseline baseline
                   :treat-no-verdict-as treat-no-verdict-as})))))
 
+;; ---- ADR-0015: `ehrt gate v2-nist` -- picks up ADR-0012's own
+;; skipped CLI expansion. Unlike judge.v2/judge.fhir, this tier's own
+;; gate-file/gate-dir (ehrt.tools.interface/v2-nist-gate-file/-gate-dir)
+;; return a BARE {:findings :verdict :cause?} map, no :path, no
+;; kernel/ok wrapper -- adapted to gate-command's expected shape here,
+;; at the CLI seam, rather than changing the engine's own signature. ----
+
+(defn- v2-nist-wrap-ambiguous-msg-id
+  [path ex-data-map]
+  (result/error :v2-nist-ambiguous-msg-id
+                (merge {:path path
+                        :hint "this profile bundle declares more than one msg-id -- ehrt gate v2-nist has no --msg-id flag yet; narrow --profile to a single-msg-id bundle"}
+                       ex-data-map)))
+
+(defn- v2-nist-gate-file*
+  "Adapts ehrt.tools.interface/v2-nist-gate-file's own bare {:findings
+  :verdict :cause?} map into gate-command's expected kernel/ok
+  {:verdict :findings :path [:cause]} shape. Catches the engine's own
+  :ambiguous-msg-id ex-info (ADR-0012's deliberate caller-contract
+  throw) and surfaces it as a named CLI error instead of an uncaught
+  stack trace -- everything else the engine can throw propagates
+  unchanged, since only this one exception type is a recognized,
+  named condition at this seam."
+  [validator-state path]
+  (let [f (io/file path)]
+    (if-not (.isFile f)
+      (result/error :file-not-found {:path (str path)})
+      (try
+        (result/ok (assoc (gate-v2-nist/v2-nist-gate-file validator-state f) :path path))
+        (catch clojure.lang.ExceptionInfo e
+          (if (= :ambiguous-msg-id (:type (ex-data e)))
+            (v2-nist-wrap-ambiguous-msg-id path (ex-data e))
+            (throw e)))))))
+
+(defn- v2-nist-gate-dir*
+  "Applies v2-nist-gate-file* to every *.hl7 file under dir (sorted,
+  deterministic order), fail-fast on the first non-ok result -- the
+  same composition judge-fhir-official/gate-dir itself uses to build a
+  directory gate out of repeated single-file gates."
+  [validator-state dir]
+  (reduce (fn [acc f]
+            (if-not (result/ok? acc)
+              (reduced acc)
+              (let [r (v2-nist-gate-file* validator-state (.getPath f))]
+                (if-not (result/ok? r)
+                  (reduced r)
+                  (result/ok (update (:payload acc) :results conj (:payload r)))))))
+          (result/ok {:results []})
+          (->> (file-seq (io/file dir))
+               (filter #(and (.isFile %) (str/ends-with? (.getName %) ".hl7")))
+               (sort-by #(.getName %)))))
+
+(def default-v2-nist-profile-hint
+  "components/tools/test-fixtures/v2-nist/COVID19_ELR-v2.3.1 -- the CDC COVID19_ELR-v2.3.1 fixture, this repo's own documented try-it bundle (ADR-0012/ADR-0015)")
+
+(defn v2-nist-gate-command
+  "`ehrt gate v2-nist PATH --profile BUNDLE_DIR` (ADR-0015): the
+  profile-tier NIST engine (ADR-0012), reaching the CLI for the first
+  time. --profile is REQUIRED -- there is no project-owned default
+  profile yet (ADR-0012's own \"stand-in, not this project's own
+  profile\" disclosure), so an absent --profile is a named rejection,
+  never a silently-assumed bundle. The validator is built exactly ONCE
+  per invocation (:make-validator-fn, defaulting to
+  ehrt.tools.interface/v2-nist-make-validator, injectable so a test can
+  count calls) -- context construction dominates this engine's own
+  cost (ADR-0012), so gate-command's own gate-file-fn/gate-dir-fn
+  closures below close over one already-built validator-state, never
+  rebuilding it per file. A malformed --profile (missing PROFILE.xml,
+  or anything else v2-nist-make-validator itself throws on -- one of
+  this workspace's few deliberate throw sites, a caller-contract
+  violation per ADR-0012) is caught here and surfaced as a named
+  operational error, not an uncaught stack trace."
+  [{:keys [path report profile baseline treat-no-verdict-as make-validator-fn]
+    :or {make-validator-fn gate-v2-nist/v2-nist-make-validator}}]
+  (if (str/blank? profile)
+    (result/rejected :v2-nist-profile-required
+                      {:hint (str "ehrt gate v2-nist requires --profile BUNDLE_DIR -- try " default-v2-nist-profile-hint)})
+    (let [validator-result (try
+                              (result/ok (make-validator-fn profile))
+                              (catch Exception e
+                                (result/error :v2-nist-profile-error
+                                              {:profile profile :message (.getMessage e)
+                                               :hint (str "check --profile names a directory containing a valid PROFILE.xml -- try " default-v2-nist-profile-hint)})))]
+      (if-not (result/ok? validator-result)
+        validator-result
+        (let [validator-state (:payload validator-result)
+              gate-fn (gate-command (partial v2-nist-gate-file* validator-state)
+                                    (partial v2-nist-gate-dir* validator-state)
+                                    :v2-nist)]
+          (gate-fn {:path path :report report :baseline baseline
+                    :treat-no-verdict-as treat-no-verdict-as}))))))
+
 ;; ---- D11 (docs/source-sink-design.md Part IX.4, ADR-0019): bare
 ;; `ehrt gate PATH` sniffs via corpus.intake/sniff-format instead of a
 ;; second sniffing mechanism. `gate v2`/`gate fhir` remain explicit
@@ -1374,7 +1467,7 @@
   docstring's EDN-out exception."
   ([args opts] (dispatch args opts {}))
   ([args opts {:keys [fetch-fn fetch-all-fn resolve-fn generate-fn generate-sim-fn mutate-fn intake-fn operators-fn
-                       gate-v2-fn gate-fhir-fn check-fn version-fn doctor-fn sim-run-fn show-fn play-fn]
+                       gate-v2-fn gate-fhir-fn gate-v2-nist-fn check-fn version-fn doctor-fn sim-run-fn show-fn play-fn]
                :or {fetch-fn fetch-command
                     fetch-all-fn fetch-all-command
                     resolve-fn resolve-command
@@ -1385,6 +1478,7 @@
                     operators-fn operators-command
                     gate-v2-fn gate-v2-command
                     gate-fhir-fn fhir-gate-command
+                    gate-v2-nist-fn v2-nist-gate-command
                     check-fn check-command
                     version-fn version-command
                     doctor-fn doctor-command
@@ -1437,6 +1531,11 @@
            "gate" (cond
                     (= action "v2") (gate-v2-fn opts)
                     (= action "fhir") (gate-fhir-fn opts)
+                    ;; ADR-0015: explicit verb only -- bare `ehrt gate
+                    ;; PATH` sniffing (D11, below) never dispatches
+                    ;; here, since sniffing has no --profile bundle to
+                    ;; build a validator from.
+                    (= action "v2-nist") (gate-v2-nist-fn opts)
                     ;; D11: no recognized verb, but a path arrived
                     ;; either positionally (bound above as `action`) or
                     ;; via an explicit --path -- sniff-dispatch it.

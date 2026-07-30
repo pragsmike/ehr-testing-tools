@@ -102,7 +102,7 @@
        :flags [{:flag "--format" :doc "\"fhir\" or \"v2\" -- narrow the listing to one format" :default "all"}]}]}
 
     {:group "gate"
-     :doc "Conformance-gate a file or directory against HL7 v2 or FHIR. Bare `ehrt gate PATH` (no v2/fhir verb) sniffs the format via corpus.intake/sniff-format and dispatches (D11, ADR-0019); a directory mixing both formats, or containing a file the sniffer can't classify, is an error naming the explicit override (`gate v2 PATH` / `gate fhir PATH`), never a silent per-file split. PATH (and gate fhir's --out-dir) may also be spelled as a dir:/file: URL designator (ruling 7) instead of a bare path."
+     :doc "Conformance-gate a file or directory against HL7 v2, FHIR, or (given --profile) a HL7 v2 conformance profile (NIST, ADR-0012). Bare `ehrt gate PATH` (no verb) sniffs the format via corpus.intake/sniff-format and dispatches between v2 and fhir only (D11, ADR-0019) -- it never dispatches to v2-nist, which has no default profile to sniff into; a directory mixing v2 and fhir, or containing a file the sniffer can't classify, is an error naming the explicit override (`gate v2 PATH` / `gate fhir PATH`), never a silent per-file split. PATH (and gate fhir's --out-dir) may also be spelled as a dir:/file: URL designator (ruling 7) instead of a bare path."
      :positional "PATH"
      :positional-doc "a file or directory, given as a trailing positional argument, not --path -- an explicit --path is never overridden by it"
      :verbs
@@ -113,7 +113,10 @@
                     [{:flag "--lockfile" :doc "path to the lockfile" :default "artifacts.lock.edn"}
                      {:flag "--out-dir" :doc "validator scratch directory" :default "out/scratch/gate-fhir"}
                      {:flag "--java-bin" :doc "java executable to invoke"}
-                     {:flag "--no-verdict-cache" :doc "skip the content-addressed verdict cache (ADR-0016); always re-runs the validator subprocess" :default "false (caching on)"}])}]}
+                     {:flag "--no-verdict-cache" :doc "skip the content-addressed verdict cache (ADR-0016); always re-runs the validator subprocess" :default "false (caching on)"}])}
+      {:verb "v2-nist" :doc "Gate against HL7 v2 PROFILE-tier conformance (the direct NIST engine, ADR-0012): profile usage/cardinality/length, conformance statements, co-constraints, slicing, and value-set bindings -- what the v2 (HAPI) tier structurally cannot check. Complementary to `gate v2`, not a replacement. The validator is built once per invocation and reused across every file (context construction dominates this engine's own cost) -- never rebuilt per file."
+       :flags (into gate-common-flags
+                    [{:flag "--profile" :doc "REQUIRED: a conformance-profile bundle (Π) directory -- PROFILE.xml required, CONSTRAINTS.xml/VALUESETS.xml/VALUESETBINDINGS.xml/COCONSTRAINTS.xml/SLICINGS.xml optional. No default is assumed -- try components/tools/test-fixtures/v2-nist/COVID19_ELR-v2.3.1, the CDC COVID19_ELR-v2.3.1 fixture, this repo's own documented try-it bundle"}])}]}
 
     {:group "check"
      :doc "Check a candidate corpus against an expected corpus and/or explicit per-file assertions -- the corpus's second judge, alongside Gate. DIR may also be spelled as a dir: URL designator (ruling 7) instead of a bare path."

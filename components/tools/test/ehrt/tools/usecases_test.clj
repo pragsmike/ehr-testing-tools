@@ -75,7 +75,7 @@
   (let [data (edn/read-string (slurp "components/tools/docs/use-cases.edn"))]
     (is (usecases/valid? data))))
 
-(deftest committed-use-cases-edn-has-nineteen-cases-test
+(deftest committed-use-cases-edn-has-twenty-cases-test
   ;; 14 -> 15, SS-2 Step 5: :simulator-traffic-as-intake-source, the
   ;; new eleventh verified command strip (ruling 7).
   ;; 15 -> 16, SS-3 Step 7: :piped-hl7-traffic-as-intake-source, the
@@ -89,8 +89,11 @@
   ;; 18 -> 19, ADR-0015 CLI trial-UX session, step 4:
   ;; :play-a-generated-corpus-back-over-time, the directory-input play
   ;; strip, verified for real.
+  ;; 19 -> 20, ADR-0015 CLI trial-UX session, step 5:
+  ;; :profile-tier-hl7v2-conformance-gating, the `gate v2-nist` strip
+  ;; against the committed CDC fixture, verified for real and timed.
   (let [data (edn/read-string (slurp "components/tools/docs/use-cases.edn"))]
-    (is (= 19 (count (:cases data))))))
+    (is (= 20 (count (:cases data))))))
 
 (deftest committed-use-cases-edn-has-unique-ids-test
   (let [data (edn/read-string (slurp "components/tools/docs/use-cases.edn"))

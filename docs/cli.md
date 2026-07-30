@@ -21,7 +21,7 @@ ehrt <group> [<verb>] [flags]
 |---|---|
 | [`artifact`](#ehrt-artifact) | Fetch and resolve locked external engine/tool artifacts (ADR-0005). |
 | [`corpus`](#ehrt-corpus) | Generate, mutate, intake, and inspect synthetic corpora. Any PATH, --out-dir, or --out below may also be spelled as a dir:/file: URL designator (ruling 7, docs/source-sink-design.md D4) instead of a bare path -- bare paths remain the documented, common spelling. `corpus generate sim`/`corpus generate synthea` (ADR-0015) is the front door for generating a corpus; `corpus intake` additionally accepts a generator URL (sim:/synthea:) in place of PATH as its own compose form -- generate, then catalog, in one command (SS-2) -- or a stdin designator (stdin:?format=...&framing=...) -- read piped bytes, spool, then catalog, in one command (SS-3). |
-| [`gate`](#ehrt-gate) | Conformance-gate a file or directory against HL7 v2 or FHIR. Bare `ehrt gate PATH` (no v2/fhir verb) sniffs the format via corpus.intake/sniff-format and dispatches (D11, ADR-0019); a directory mixing both formats, or containing a file the sniffer can't classify, is an error naming the explicit override (`gate v2 PATH` / `gate fhir PATH`), never a silent per-file split. PATH (and gate fhir's --out-dir) may also be spelled as a dir:/file: URL designator (ruling 7) instead of a bare path. |
+| [`gate`](#ehrt-gate) | Conformance-gate a file or directory against HL7 v2, FHIR, or (given --profile) a HL7 v2 conformance profile (NIST, ADR-0012). Bare `ehrt gate PATH` (no verb) sniffs the format via corpus.intake/sniff-format and dispatches between v2 and fhir only (D11, ADR-0019) -- it never dispatches to v2-nist, which has no default profile to sniff into; a directory mixing v2 and fhir, or containing a file the sniffer can't classify, is an error naming the explicit override (`gate v2 PATH` / `gate fhir PATH`), never a silent per-file split. PATH (and gate fhir's --out-dir) may also be spelled as a dir:/file: URL designator (ruling 7) instead of a bare path. |
 | [`check`](#ehrt-check) | Check a candidate corpus against an expected corpus and/or explicit per-file assertions -- the corpus's second judge, alongside Gate. DIR may also be spelled as a dir: URL designator (ruling 7) instead of a bare path. |
 | [`version`](#ehrt-version) | Prints this repo's own honestly-pre-release identity (never a fabricated semver, D13) plus every pinned artifact's name@version from the lockfile. |
 | [`doctor`](#ehrt-doctor) | Runs SETUP.md's verification checklist as checks (D13): java resolution via the artifact registry, artifact cache presence per lockfile entry, git hooksPath wiring, and platform support. Exit 0 every check passed; 1 at least one failed; 2 couldn't even read the lockfile to know what to check. |
@@ -138,7 +138,7 @@ List the registered mutation operator catalog (a pure registry read; dropped/unc
 
 ## `ehrt gate`
 
-Conformance-gate a file or directory against HL7 v2 or FHIR. Bare `ehrt gate PATH` (no v2/fhir verb) sniffs the format via corpus.intake/sniff-format and dispatches (D11, ADR-0019); a directory mixing both formats, or containing a file the sniffer can't classify, is an error naming the explicit override (`gate v2 PATH` / `gate fhir PATH`), never a silent per-file split. PATH (and gate fhir's --out-dir) may also be spelled as a dir:/file: URL designator (ruling 7) instead of a bare path.
+Conformance-gate a file or directory against HL7 v2, FHIR, or (given --profile) a HL7 v2 conformance profile (NIST, ADR-0012). Bare `ehrt gate PATH` (no verb) sniffs the format via corpus.intake/sniff-format and dispatches between v2 and fhir only (D11, ADR-0019) -- it never dispatches to v2-nist, which has no default profile to sniff into; a directory mixing v2 and fhir, or containing a file the sniffer can't classify, is an error naming the explicit override (`gate v2 PATH` / `gate fhir PATH`), never a silent per-file split. PATH (and gate fhir's --out-dir) may also be spelled as a dir:/file: URL designator (ruling 7) instead of a bare path.
 
 **Positional argument `PATH`** — a file or directory, given as a trailing positional argument, not --path -- an explicit --path is never overridden by it
 
@@ -167,6 +167,18 @@ Gate against FHIR base-spec conformance (the official validator).
 | `--out-dir` | `out/scratch/gate-fhir` | validator scratch directory |
 | `--java-bin` | — | java executable to invoke |
 | `--no-verdict-cache` | `false (caching on)` | skip the content-addressed verdict cache (ADR-0016); always re-runs the validator subprocess |
+
+### `ehrt gate v2-nist`
+
+Gate against HL7 v2 PROFILE-tier conformance (the direct NIST engine, ADR-0012): profile usage/cardinality/length, conformance statements, co-constraints, slicing, and value-set bindings -- what the v2 (HAPI) tier structurally cannot check. Complementary to `gate v2`, not a replacement. The validator is built once per invocation and reused across every file (context construction dominates this engine's own cost) -- never rebuilt per file.
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--path` | — | alternative to the positional PATH |
+| `--report` | — | write the report EDN to this path |
+| `--baseline` | — | baseline-relative mode: path to a previous --report EDN; only genuinely new findings count |
+| `--treat-no-verdict-as` | — | "pass" or "rejected" -- folds :no-verdict into an existing polarity (ADR-0010) |
+| `--profile` | — | REQUIRED: a conformance-profile bundle (Π) directory -- PROFILE.xml required, CONSTRAINTS.xml/VALUESETS.xml/VALUESETBINDINGS.xml/COCONSTRAINTS.xml/SLICINGS.xml optional. No default is assumed -- try components/tools/test-fixtures/v2-nist/COVID19_ELR-v2.3.1, the CDC COVID19_ELR-v2.3.1 fixture, this repo's own documented try-it bundle |
 
 ## `ehrt check`
 

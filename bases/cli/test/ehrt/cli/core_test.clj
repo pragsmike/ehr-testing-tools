@@ -8,6 +8,7 @@
             [ehrt.tools.interface :as report]
             [ehrt.tools.interface :as operators]
             [ehrt.tools.interface :as generators]
+            [ehrt.tools.interface :as gate-v2-nist]
             [ehrt.cli.core :as cli])
   (:import [java.io File]))
 
@@ -1282,6 +1283,65 @@
                                    :java-bin "/fake/java"})]
     (is (result/rejected? r))
     (is (= :invalid-treat-no-verdict-as (:category r)))))
+
+;; ---- ADR-0015: `ehrt gate v2-nist` -- the profile-tier NIST engine
+;; reaches the CLI. Real, engine-in-the-loop coverage against the
+;; committed CDC fixture (components/tools/test-fixtures/v2-nist/) --
+;; hermetic in the sense that it touches no network (the jars already
+;; resolved into ~/.m2 for every other v2-nist test in this workspace)
+;; but genuinely runs the validator, matching ADR-0012's own measured
+;; numbers exactly (473 findings, :no-verdict/:profile-spec-error). ----
+
+(def ^:private v2-nist-profile-dir "components/tools/test-fixtures/v2-nist/COVID19_ELR-v2.3.1")
+(def ^:private v2-nist-message-file "components/tools/test-fixtures/v2-nist/covidELR/231HL7TestFilewithHHSData.txt")
+
+(deftest v2-nist-gate-command-requires-profile-test
+  (let [r (cli/v2-nist-gate-command {:path v2-nist-message-file})]
+    (is (result/rejected? r))
+    (is (= :v2-nist-profile-required (:category r)))
+    (is (clojure.string/includes? (:hint (:payload r)) v2-nist-profile-dir)
+        "the rejection names the committed CDC fixture as the try-it bundle")))
+
+(deftest v2-nist-gate-command-bad-profile-dir-is-a-named-error-not-a-crash-test
+  (let [r (cli/v2-nist-gate-command {:path v2-nist-message-file :profile (temp-dir*)})]
+    (is (result/error? r))
+    (is (= :v2-nist-profile-error (:category r)))
+    (is (clojure.string/includes? (:message (:payload r)) "PROFILE.xml")
+        "the engine's own PROFILE.xml-required message surfaces, not a stack trace")))
+
+(deftest v2-nist-gate-command-file-happy-path-against-cdc-fixture-test
+  (let [r (cli/v2-nist-gate-command {:path v2-nist-message-file :profile v2-nist-profile-dir})]
+    (is (result/rejected? r))
+    (is (= :gate-no-verdict (:category r)))
+    (let [file-entry (first (:files (:payload r)))]
+      (is (= :no-verdict (:verdict file-entry)))
+      (is (= :profile-spec-error (:cause file-entry)))
+      (is (= 473 (:finding-count file-entry))
+          "matches ADR-0012's own measured finding count for this exact fixture"))))
+
+(deftest v2-nist-gate-command-dir-happy-path-test
+  (let [dir (temp-dir*)
+        _ (spit (io/file dir "msg-000.hl7") (slurp v2-nist-message-file))
+        r (cli/v2-nist-gate-command {:path dir :profile v2-nist-profile-dir})]
+    (is (result/rejected? r))
+    (is (= :gate-no-verdict (:category r)))
+    (is (= 1 (count (:files (:payload r)))))
+    (is (clojure.string/ends-with? (:path (first (:files (:payload r)))) "msg-000.hl7"))))
+
+(deftest v2-nist-gate-command-builds-validator-exactly-once-per-invocation-test
+  (let [dir (temp-dir*)
+        _ (spit (io/file dir "msg-000.hl7") (slurp v2-nist-message-file))
+        _ (spit (io/file dir "msg-001.hl7") (slurp v2-nist-message-file))
+        build-calls (atom 0)
+        r (cli/v2-nist-gate-command
+           {:path dir :profile v2-nist-profile-dir
+            :make-validator-fn (fn [profile]
+                                  (swap! build-calls inc)
+                                  (gate-v2-nist/v2-nist-make-validator profile))})]
+    (is (result/rejected? r))
+    (is (= :gate-no-verdict (:category r)))
+    (is (= 2 (count (:files (:payload r)))) "both files in the directory were gated")
+    (is (= 1 @build-calls) "the validator is built once per invocation, not once per file")))
 
 (deftest gate-v2-command-baseline-mode-writes-the-baseline-relative-report-when-requested-test
   (let [in-dir (temp-dir*)

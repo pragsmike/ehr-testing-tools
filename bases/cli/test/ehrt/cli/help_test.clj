@@ -62,6 +62,7 @@
     ["corpus" "operators"] :operators-fn
     ["gate" "v2"] :gate-v2-fn
     ["gate" "fhir"] :gate-fhir-fn
+    ["gate" "v2-nist"] :gate-v2-nist-fn
     ["check" nil] :check-fn
     ["version" nil] :version-fn
     ["doctor" nil] :doctor-fn
@@ -86,7 +87,7 @@
   update here) is a discoverable gap rather than a silent one."
   #{["artifact" "fetch"] ["artifact" "resolve"]
     ["corpus" "generate"] ["corpus" "mutate"] ["corpus" "intake"] ["corpus" "operators"]
-    ["gate" "v2"] ["gate" "fhir"]
+    ["gate" "v2"] ["gate" "fhir"] ["gate" "v2-nist"]
     ["check" nil]
     ["version" nil]
     ["doctor" nil]
