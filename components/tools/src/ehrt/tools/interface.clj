@@ -62,7 +62,8 @@
             [ehrt.tools.corpus.generate :as generate]
             [ehrt.tools.corpus.operators :as operators]
             [ehrt.tools.corpus.manifest :as manifest]
-            [ehrt.tools.display :as display]))
+            [ehrt.tools.display :as display]
+            [ehrt.tools.player :as player]))
 
 ;; kernel.interface (result/digest/artifact/locator, ADR-0008)
 (def ok kernel/ok)
@@ -182,6 +183,14 @@
 (def render-er7-message display/render-er7-message)
 (def render-er7-stream display/render-er7-stream)
 (def render-fhir-json display/render-fhir-json)
+
+;; ehrt.tools.player (ADR-0014, `ehrt play`): the pure pacing core --
+;; no clock, no IO -- see that namespace's own docstring. No
+;; collisions with any existing export here, so no qualification.
+(def plan player/plan)
+(def message-timestamp-ms player/message-timestamp-ms)
+(def message-type-trigger player/message-type-trigger)
+(def message-patient-id player/message-patient-id)
 
 ;; docsgen -- write-cli-md! is the one docsgen entry point a base needs
 ;; cross-brick (bases/cli owns the real cli-spec, ADR-0002's own
