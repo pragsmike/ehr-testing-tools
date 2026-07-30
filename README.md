@@ -88,7 +88,12 @@ clojure -M:poly test :all
 ```
 
 `bin/ehrt help <group>` documents every command group and its flags
-(`artifact`, `corpus`, `gate`, `check`, `version`, `doctor`, `sim`).
+(`artifact`, `corpus`, `gate`, `check`, `version`, `doctor`, `sim`,
+`show`). Don't recognize EDN? Every command has taken `--json` all
+along — pipe straight into `jq`, no report file needed (`bin/ehrt gate
+v2 ... --json | jq '.payload.totals'`); `bin/ehrt show FILE` renders a
+v2/FHIR file for a human instead. See
+[`docs/formats.md`](docs/formats.md#reading-these-from-a-shell).
 
 ## Scope
 

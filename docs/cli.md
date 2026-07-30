@@ -7,6 +7,8 @@
 
 Every group, verb, and flag the `ehrt` command accepts. This page and `ehrt help` render the same spec, so the two cannot drift apart — reach for `ehrt help <group>` when you are already at a shell, and for this page when you are not.
 
+Every command accepts --json (EDN is canonical, --json a projection); `ehrt show FILE` renders a v2/FHIR file for a human. See docs/formats.md.
+
 What this page deliberately does not carry: worked invocations. For "what do I actually type for my task," see [use-cases.md](use-cases.md). For what `--report` writes and `--json` emits, see [formats.md](formats.md). For the mutation operators `ehrt corpus mutate` takes by id, see [operators.md](operators.md); for the locator strings it takes by path, see [locators.md](locators.md).
 
 ## Synopsis

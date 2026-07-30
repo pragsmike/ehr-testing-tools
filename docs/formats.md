@@ -486,6 +486,33 @@ For reading verdicts in bulk — what a `:no-verdict` rate actually means,
 which findings are worth alerting on — see
 [judge-calibration.md](judge-calibration.md).
 
+### Reading these from a shell
+
+`--json | jq` is the zero-install route, and for most shell use it's
+the right one — every command already accepts `--json`, so there's
+nothing to install beyond `jq` itself:
+
+```sh
+bin/ehrt gate v2 some/corpus --json | jq '.payload.totals'
+```
+
+For querying EDN directly, or for rescuing an existing `--report` file
+(always EDN, never affected by `--json`) into something `jq` can read
+without a full rerun — [`jet`](https://github.com/borkdude/jet)
+(borkdude) reads and writes EDN, JSON, and Transit, and is this
+family's natural `jq`-equivalent for EDN. Its own README is the
+authoritative reference for its query syntax; the conversion path alone
+already covers the common rescue case:
+
+```sh
+# Rescue an existing --report EDN file into JSON for jq.
+jet --to json < some/report.edn | jq '.totals'
+```
+
+Neither `--json` nor `jet` changes what's canonical: EDN is still the
+source of truth ([above](#the-json-projection)); both are just ways to
+read it from a shell instead of a REPL.
+
 ---
 
 ## Where this comes from

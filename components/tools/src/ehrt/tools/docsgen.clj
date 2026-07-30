@@ -206,6 +206,7 @@
        "This page and `" (:program spec) " help` render the same spec, so the two cannot "
        "drift apart — reach for `" (:program spec) " help <group>` when you are already at a shell, "
        "and for this page when you are not.\n\n"
+       (if (:doc spec) (str (:doc spec) "\n\n") "")
        "What this page deliberately does not carry: worked invocations. "
        "For \"what do I actually type for my task,\" see [use-cases.md](use-cases.md). "
        "For what `--report` writes and `--json` emits, see [formats.md](formats.md). "

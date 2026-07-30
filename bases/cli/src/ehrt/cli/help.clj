@@ -37,8 +37,15 @@
    {:flag "--baseline" :doc "baseline-relative mode: path to a previous --report EDN; only genuinely new findings count"}
    {:flag "--treat-no-verdict-as" :doc "\"pass\" or \"rejected\" -- folds :no-verdict into an existing polarity (ADR-0010)"}])
 
+(def top-level-doc
+  "Surfaced by `ehrt help`/bare `ehrt`, above the group list (ADR-0013):
+  --json and `show` are easy to miss otherwise -- every command has
+  taken --json since D13, and `show` is new."
+  "Every command accepts --json (EDN is canonical, --json a projection); `ehrt show FILE` renders a v2/FHIR file for a human. See docs/formats.md.")
+
 (def cli-spec
   {:program "ehrt"
+   :doc top-level-doc
    :exit-codes exit-codes
    :global-flags global-flags
    :groups
@@ -213,6 +220,7 @@
   group. Always succeeds (the spec is static data, not user input)."
   [spec]
   (str "Usage: " (:program spec) " <group> [<verb>] [flags]\n\n"
+       (when (:doc spec) (str (:doc spec) "\n\n"))
        "Groups:\n"
        (str/join "\n" (map (fn [g] (str "  " (:group g) "  " (:doc g))) (:groups spec)))
        "\n\n"
