@@ -45,8 +45,15 @@
 (def Cause
   "The no-verdict cause taxonomy (O2), minimum viable: judge.fhir's
   terminology-suppressed classification is the first live specimen.
-  Grows as new operational-partiality causes are identified."
-  [:enum :terminology-suppressed])
+  Grows as new operational-partiality causes are identified. Second
+  live specimen (judge-v2-nist, 2026-07-30): :profile-spec-error --
+  the NIST v2-validation engine's own 'Specification Error'
+  classification, meaning the conformance profile (Π) itself is
+  defective (e.g. references a value set that doesn't exist), so the
+  criterion could not be fully applied to the message under test --
+  distinct from :terminology-suppressed, where the criterion is sound
+  but an external resource (terminology/value-set data) is absent."
+  [:enum :terminology-suppressed :profile-spec-error])
 
 (def VerdictOutcome
   "A verdict paired with its cause -- cause is required if and only if

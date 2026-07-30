@@ -1,4 +1,10 @@
-{:aliases  {:dev {:extra-paths ["development/src"]
+{;; NIST v2-validation engine (judge-v2-nist, ADR-0012): its three
+ ;; gov.nist coordinates resolve from NIST's own Nexus, not Maven
+ ;; Central -- :mvn/repos is only honored at the root deps.edn, never
+ ;; a component's own.
+ :mvn/repos {"nist-hit" {:url "https://hit-nexus.nist.gov/repository/releases/"}}
+
+ :aliases  {:dev {:extra-paths ["development/src"]
 
                   :extra-deps {org.clojure/clojure {:mvn/version "1.12.5"}
                                poly/sim      {:local/root "components/sim"}
@@ -13,6 +19,10 @@
                                ;; both directly too.
                                poly/judge-v2-hapi        {:local/root "components/judge-v2-hapi"}
                                poly/judge-fhir-official  {:local/root "components/judge-fhir-official"}
+                               ;; judge-v2-nist (ADR-0012): the third
+                               ;; judge engine, profile-tier NIST
+                               ;; v2-validation, direct (no CDC wrapper).
+                               poly/judge-v2-nist        {:local/root "components/judge-v2-nist"}
                                poly/tools    {:local/root "components/tools"}
                                poly/palgebra {:local/root "components/palgebra"}
                                poly/cli      {:local/root "bases/cli"}}}
@@ -23,6 +33,7 @@
                                   "components/judge/test"
                                   "components/judge-v2-hapi/test"
                                   "components/judge-fhir-official/test"
+                                  "components/judge-v2-nist/test"
                                   "components/tools/test"
                                   "components/palgebra/test"
                                   "bases/cli/test"
@@ -43,6 +54,7 @@
                                 poly/judge    {:local/root "components/judge"}
                                 poly/judge-v2-hapi        {:local/root "components/judge-v2-hapi"}
                                 poly/judge-fhir-official  {:local/root "components/judge-fhir-official"}
+                                poly/judge-v2-nist        {:local/root "components/judge-v2-nist"}
                                 poly/tools    {:local/root "components/tools"}
                                 poly/palgebra {:local/root "components/palgebra"}
                                 poly/cli      {:local/root "bases/cli"}
