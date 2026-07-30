@@ -1829,8 +1829,70 @@
     (is (result/error? r))
     (is (= :gate-path-not-found (:category r)))))
 
-(deftest play-command-directory-input-is-unsupported-test
-  (let [r (cli/play-command {:path v2-fixture-dir})]
+;; ---- ADR-0015: `play` accepts a directory of files sharing the
+;; sniffed v2 format, concatenated in lexical filename order. FHIR
+;; directories, mixed directories, and empty ones remain
+;; :play-input-unsupported -- the same shape D11's sniff dispatch
+;; already uses, never a silent per-file split. ----
+
+(deftest play-command-directory-input-concatenates-in-lexical-order-test
+  ;; The strongest available assertion (per this session's own plan):
+  ;; a directory of msg-000/msg-001 paces IDENTICALLY -- same sleeps,
+  ;; same rendered output -- to the pre-`cat`-ed single file of the
+  ;; same two messages in the same order.
+  (let [dir (temp-dir*)
+        _ (spit (io/file dir "msg-000.hl7") (fixture-content "adt-a01-admit.hl7"))
+        _ (spit (io/file dir "msg-001.hl7") (fixture-content "adt-a02-transfer.hl7"))
+        cat-file (temp-file-with-content (two-message-blob))
+        slept-dir (atom []) printed-dir (atom [])
+        slept-file (atom []) printed-file (atom [])
+        r-dir (cli/play-command {:path dir :rate 1 :idle-cap 1e7
+                                  :sleep-fn (fn [ms] (swap! slept-dir conj ms))
+                                  :println-fn (fn [s] (swap! printed-dir conj s))})
+        r-file (cli/play-command {:path cat-file :rate 1 :idle-cap 1e7
+                                   :sleep-fn (fn [ms] (swap! slept-file conj ms))
+                                   :println-fn (fn [s] (swap! printed-file conj s))})]
+    (is (result/ok? r-dir))
+    (is (result/ok? r-file))
+    (is (= @slept-file @slept-dir) "directory input paces identically to the pre-cat file")
+    (is (= @printed-file @printed-dir) "directory input renders identically to the pre-cat file")
+    (is (= (:emitted (:payload r-file)) (:emitted (:payload r-dir))))))
+
+(deftest play-command-directory-input-order-is-lexical-not-content-test
+  ;; a-second.hl7 (adt-a02, the LATER MSH-7 timestamp) is named to sort
+  ;; before b-first.hl7 (adt-a01, the EARLIER one) -- the directory
+  ;; listing's own order wins; play never sorts by MSH-7.
+  (let [dir (temp-dir*)
+        _ (spit (io/file dir "a-second.hl7") (fixture-content "adt-a02-transfer.hl7"))
+        _ (spit (io/file dir "b-first.hl7") (fixture-content "adt-a01-admit.hl7"))
+        printed (atom [])
+        r (cli/play-command {:path dir :rate 1e15 :idle-cap 1e7
+                              :sleep-fn (fn [_ms] nil)
+                              :println-fn (fn [s] (swap! printed conj s))})
+        rendered (clojure.string/join "\n" @printed)
+        a02-index (clojure.string/index-of rendered "A02")
+        a01-index (clojure.string/index-of rendered "A01")]
+    (is (result/ok? r))
+    (is (and a02-index a01-index (< a02-index a01-index))
+        "a-second.hl7's own A02 message must render before b-first.hl7's own A01")))
+
+(deftest play-command-directory-input-empty-is-unsupported-test
+  (let [r (cli/play-command {:path (temp-dir*)})]
+    (is (result/error? r))
+    (is (= :play-input-unsupported (:category r)))))
+
+(deftest play-command-directory-input-fhir-only-is-unsupported-test
+  (let [dir (temp-dir*)
+        _ (spit (io/file dir "patient.json") "{\"resourceType\": \"Patient\"}")
+        r (cli/play-command {:path dir})]
+    (is (result/error? r))
+    (is (= :play-input-unsupported (:category r)))))
+
+(deftest play-command-directory-input-mixed-formats-is-unsupported-test
+  (let [dir (temp-dir*)
+        _ (spit (io/file dir "msg-000.hl7") (fixture-content "adt-a01-admit.hl7"))
+        _ (spit (io/file dir "patient.json") "{\"resourceType\": \"Patient\"}")
+        r (cli/play-command {:path dir})]
     (is (result/error? r))
     (is (= :play-input-unsupported (:category r)))))
 

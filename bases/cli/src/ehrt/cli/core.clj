@@ -1122,21 +1122,78 @@
                         {:kind kind :path path
                          :hint "ehrt play only supports a file: sink this session -- dir:/blaze: (and a future mllp: transport) are named, disclosed deferrals (ADR-0014)"}))))))
 
+(defn- play-events-from-file
+  [f]
+  (if-not (= :v2 (sniff-path-format f))
+    (result/error :play-input-unsupported
+                  {:path (.getPath f) :hint "ehrt play only supports HL7 v2 (ER7) input this session -- FHIR is a named, disclosed deferral (ADR-0014)"})
+    (player/split-er7-multi (slurp f))))
+
+(defn- play-events-from-dir
+  "ADR-0015: a directory of files sharing the sniffed v2 format,
+  concatenated in lexical filename order -- the exact candidate set
+  `gate-dir`/`show`'s own directory dispatch already use
+  (gate-candidate-files-in, already name-sorted), and exactly the
+  order the sim generator's own msg-%03d emission produces by
+  construction. Each file is decoded on its own via
+  player/split-er7-multi, then the per-file message sequences are
+  concatenated in that same directory-listing order -- this IS the
+  order contract (help text states it too, not left to be discovered
+  by reading source): the directory listing's own order is the
+  corpus's own statement, never sorted by content. A FHIR directory, a
+  mixed or unclassifiable one, or an empty one, are all
+  :play-input-unsupported -- the same shape D11's sniff dispatch
+  already uses for an ambiguous gate, never a silent per-file split."
+  [path]
+  (let [files (gate-candidate-files-in path)]
+    (if (empty? files)
+      (result/error :play-input-unsupported
+                    {:path path :reason :no-candidate-files
+                     :hint "ehrt play found no HL7 v2 (ER7) or FHIR JSON candidate files in this directory"})
+      (let [sniffed (map (fn [file] [(.getName file) (sniff-path-format file)]) files)
+            unrecognized (mapv first (filter (fn [[_ fmt]] (nil? fmt)) sniffed))
+            formats (into #{} (map second) sniffed)]
+        (cond
+          (seq unrecognized)
+          (result/error :play-input-unsupported
+                        {:path path :unrecognized-files unrecognized
+                         :hint "ehrt play only supports HL7 v2 (ER7) directories -- ambiguous format"})
+
+          (> (count formats) 1)
+          (result/error :play-input-unsupported
+                        {:path path
+                         :hint "ehrt play only supports a directory of one format -- this one mixes HL7 v2 and FHIR JSON"})
+
+          (= :fhir (first formats))
+          (result/error :play-input-unsupported
+                        {:path path :hint "ehrt play only supports HL7 v2 (ER7) input this session -- a FHIR directory is a named, disclosed deferral (ADR-0014)"})
+
+          :else
+          (let [per-file (map (fn [file] (player/split-er7-multi (slurp file))) files)
+                failed (first (remove result/ok? per-file))]
+            (if failed
+              failed
+              (result/ok (vec (mapcat :payload per-file))))))))))
+
 (defn play-command
   "`ehrt play PATH [--rate R] [--idle-cap SECONDS] [--ticker full|line]
-  [--sink DESIGNATOR]` (ADR-0014): paces PATH's own HL7 v2 (ER7)
-  messages against their MSH-7 timestamps and either renders them
-  through a ticker (the default -- full blocks via `render-er7-message`,
-  or one compact `--ticker line` per event) or writes them, byte-
-  identically to an unpaced batch write, through a `--sink` designator.
-  `ehrt play PATH` at an arbitrarily large --rate, ticker sink, is
-  exactly `ehrt show PATH` (ADR-0013/ADR-0014's own identity) --
-  ordinary division makes this true with no special-cased rate value.
+  [--sink DESIGNATOR]` (ADR-0014, directories per ADR-0015): paces
+  PATH's own HL7 v2 (ER7) messages against their MSH-7 timestamps and
+  either renders them through a ticker (the default -- full blocks via
+  `render-er7-message`, or one compact `--ticker line` per event) or
+  writes them, byte-identically to an unpaced batch write, through a
+  `--sink` designator. `ehrt play PATH` at an arbitrarily large --rate,
+  ticker sink, is exactly `ehrt show PATH` (ADR-0013/ADR-0014's own
+  identity) -- ordinary division makes this true with no special-cased
+  rate value.
 
-  A single HL7 v2 (ER7) file is this session's own input scope; a
-  directory, or a FHIR JSON path, is :play-input-unsupported (a named,
-  disclosed deferral -- a sim event-log adapter and a bed-board sink
-  are future work, ADR-0014).
+  PATH is a single HL7 v2 (ER7) file, or a directory of files sharing
+  the sniffed v2 format (ADR-0015 -- concatenated in lexical filename
+  order, see `play-events-from-dir`'s own docstring for the order
+  contract). A FHIR JSON path, or a FHIR/mixed/unclassifiable
+  directory, is :play-input-unsupported (a named, disclosed deferral --
+  a sim event-log adapter and a bed-board sink are future work,
+  ADR-0014).
 
   :sleep-fn is injectable (defaults to real-sleep!, Thread/sleep) so
   hermetic tests never actually wait; :println-fn defaults to println.
@@ -1161,16 +1218,8 @@
               (result/error :gate-path-not-found
                              {:path path :hint "no such file or directory -- run: ehrt help play"})
 
-              (not (.isFile f))
-              (result/error :play-input-unsupported
-                             {:path path :hint "ehrt play reads a single file this session -- a directory input is a named, disclosed deferral (ADR-0014)"})
-
-              (not= :v2 (sniff-path-format f))
-              (result/error :play-input-unsupported
-                             {:path path :hint "ehrt play only supports HL7 v2 (ER7) input this session -- FHIR is a named, disclosed deferral (ADR-0014)"})
-
               :else
-              (let [events-result (player/split-er7-multi (slurp f))]
+              (let [events-result (if (.isDirectory f) (play-events-from-dir path) (play-events-from-file f))]
                 (if-not (result/ok? events-result)
                   events-result
                   (let [events (:payload events-result)

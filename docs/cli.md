@@ -27,7 +27,7 @@ ehrt <group> [<verb>] [flags]
 | [`doctor`](#ehrt-doctor) | Runs SETUP.md's verification checklist as checks (D13): java resolution via the artifact registry, artifact cache presence per lockfile entry, git hooksPath wiring, and platform support. Exit 0 every check passed; 1 at least one failed; 2 couldn't even read the lockfile to know what to check. |
 | [`sim`](#ehrt-sim) | Run the sim engine, mounted in-process (ADR-0005, ADR-0012 fulfilled) -- ehrt.sim.interface/run-command directly, no subprocess. |
 | [`show`](#ehrt-show) | Render a file (or a directory of files sharing one sniffed format) for a human: HL7 v2 (ER7) one segment per line, blank line between messages; FHIR JSON pretty-printed. Pretty-always -- no flags needed, `ehrt show FILE \| less` just works regardless of what stdout is attached to. Display is not wire format (ADR-0013): the rendered ER7 is deliberately nonconformant (LF-joined segments) and must never be piped anywhere a real HL7 v2 consumer sits. |
-| [`play`](#ehrt-play) | Paces a single HL7 v2 (ER7) file's own messages against their MSH-7 timestamps and renders (or writes) them over time -- `ehrt show` plus time (ADR-0014). `ehrt play FILE` at an arbitrarily large --rate, the default ticker sink, is exactly `ehrt show FILE`. A directory, or a FHIR JSON path, is a named, disclosed deferral this session (:play-input-unsupported). |
+| [`play`](#ehrt-play) | Paces a HL7 v2 (ER7) file's or directory's own messages against their MSH-7 timestamps and renders (or writes) them over time -- `ehrt show` plus time (ADR-0014). `ehrt play FILE` at an arbitrarily large --rate, the default ticker sink, is exactly `ehrt show FILE`. A directory's files must share the sniffed v2 format; they are concatenated in LEXICAL FILENAME ORDER before pacing (ADR-0015) -- that ordering is the contract: name your files so their sort order is their intended play order (the sim generator's own msg-%03d output already satisfies this). A FHIR JSON path, or a FHIR/mixed/unclassifiable directory, is a named, disclosed deferral (:play-input-unsupported). |
 
 ## Global flags
 
@@ -229,9 +229,9 @@ Render a file (or a directory of files sharing one sniffed format) for a human: 
 
 ## `ehrt play`
 
-Paces a single HL7 v2 (ER7) file's own messages against their MSH-7 timestamps and renders (or writes) them over time -- `ehrt show` plus time (ADR-0014). `ehrt play FILE` at an arbitrarily large --rate, the default ticker sink, is exactly `ehrt show FILE`. A directory, or a FHIR JSON path, is a named, disclosed deferral this session (:play-input-unsupported).
+Paces a HL7 v2 (ER7) file's or directory's own messages against their MSH-7 timestamps and renders (or writes) them over time -- `ehrt show` plus time (ADR-0014). `ehrt play FILE` at an arbitrarily large --rate, the default ticker sink, is exactly `ehrt show FILE`. A directory's files must share the sniffed v2 format; they are concatenated in LEXICAL FILENAME ORDER before pacing (ADR-0015) -- that ordering is the contract: name your files so their sort order is their intended play order (the sim generator's own msg-%03d output already satisfies this). A FHIR JSON path, or a FHIR/mixed/unclassifiable directory, is a named, disclosed deferral (:play-input-unsupported).
 
-**Positional argument `PATH`** — a single HL7 v2 (ER7) file, given as a trailing positional argument, not --path -- an explicit --path is never overridden by it
+**Positional argument `PATH`** — a HL7 v2 (ER7) file, or a directory of files sharing the sniffed v2 format (concatenated in lexical filename order), given as a trailing positional argument, not --path -- an explicit --path is never overridden by it
 
 | Flag | Default | Meaning |
 |---|---|---|

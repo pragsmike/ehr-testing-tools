@@ -75,7 +75,7 @@
   (let [data (edn/read-string (slurp "components/tools/docs/use-cases.edn"))]
     (is (usecases/valid? data))))
 
-(deftest committed-use-cases-edn-has-eighteen-cases-test
+(deftest committed-use-cases-edn-has-nineteen-cases-test
   ;; 14 -> 15, SS-2 Step 5: :simulator-traffic-as-intake-source, the
   ;; new eleventh verified command strip (ruling 7).
   ;; 15 -> 16, SS-3 Step 7: :piped-hl7-traffic-as-intake-source, the
@@ -86,8 +86,11 @@
   ;; 17 -> 18, ADR-0015 CLI trial-UX session, step 3:
   ;; :generate-sim-traffic, the `corpus generate sim` front-door strip,
   ;; verified for real.
+  ;; 18 -> 19, ADR-0015 CLI trial-UX session, step 4:
+  ;; :play-a-generated-corpus-back-over-time, the directory-input play
+  ;; strip, verified for real.
   (let [data (edn/read-string (slurp "components/tools/docs/use-cases.edn"))]
-    (is (= 18 (count (:cases data))))))
+    (is (= 19 (count (:cases data))))))
 
 (deftest committed-use-cases-edn-has-unique-ids-test
   (let [data (edn/read-string (slurp "components/tools/docs/use-cases.edn"))

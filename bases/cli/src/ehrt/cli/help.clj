@@ -153,9 +153,9 @@
      :flags [{:flag "--path" :doc "alternative to the positional PATH"}]}
 
     {:group "play"
-     :doc "Paces a single HL7 v2 (ER7) file's own messages against their MSH-7 timestamps and renders (or writes) them over time -- `ehrt show` plus time (ADR-0014). `ehrt play FILE` at an arbitrarily large --rate, the default ticker sink, is exactly `ehrt show FILE`. A directory, or a FHIR JSON path, is a named, disclosed deferral this session (:play-input-unsupported)."
+     :doc "Paces a HL7 v2 (ER7) file's or directory's own messages against their MSH-7 timestamps and renders (or writes) them over time -- `ehrt show` plus time (ADR-0014). `ehrt play FILE` at an arbitrarily large --rate, the default ticker sink, is exactly `ehrt show FILE`. A directory's files must share the sniffed v2 format; they are concatenated in LEXICAL FILENAME ORDER before pacing (ADR-0015) -- that ordering is the contract: name your files so their sort order is their intended play order (the sim generator's own msg-%03d output already satisfies this). A FHIR JSON path, or a FHIR/mixed/unclassifiable directory, is a named, disclosed deferral (:play-input-unsupported)."
      :positional "PATH"
-     :positional-doc "a single HL7 v2 (ER7) file, given as a trailing positional argument, not --path -- an explicit --path is never overridden by it"
+     :positional-doc "a HL7 v2 (ER7) file, or a directory of files sharing the sniffed v2 format (concatenated in lexical filename order), given as a trailing positional argument, not --path -- an explicit --path is never overridden by it"
      :flags [{:flag "--path" :doc "alternative to the positional PATH"}
              {:flag "--rate" :doc "stream-seconds per wallclock-second -- 1 is real time" :default "60"}
              {:flag "--idle-cap" :doc "wallclock cap, in seconds, on any single inter-event wait -- a capped wait emits a skip cue (never into a data sink) and is counted separately from a clamped one" :default "5"}

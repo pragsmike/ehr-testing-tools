@@ -108,7 +108,7 @@ cat out/corpus/sim-s42-p5/manifest.edn
 bin/ehrt show out/corpus/sim-s42-p5
 ```
 
-Flags and their defaults: [cli.md](cli.md#ehrt-corpus-generate), or `ehrt help corpus` at the shell -- `generate sim`'s own flags (--patients/--churn/--emit/--config) sit alongside `generate synthea`'s in the same verb entry. This is the front door for sim traffic (ADR-0015); `corpus intake 'sim:...'` remains the one-command generate-and-catalog compose form for when you want a cataloged batch, not a bare corpus -- see [Simulator (sim) traffic as an intake source, in one command](#simulator-sim-traffic-as-an-intake-source-in-one-command).
+Flags and their defaults: [cli.md](cli.md#ehrt-corpus-generate), or `ehrt help corpus` at the shell -- `generate sim`'s own flags (--patients/--churn/--emit/--config) sit alongside `generate synthea`'s in the same verb entry. This is the front door for sim traffic (ADR-0015); `corpus intake 'sim:...'` remains the one-command generate-and-catalog compose form for when you want a cataloged batch, not a bare corpus -- see [Simulator (sim) traffic as an intake source, in one command](#simulator-sim-traffic-as-an-intake-source-in-one-command). Play it back paced against its own MSH-7 timestamps -- `bin/ehrt play out/corpus/sim-s42-p5` (ADR-0015: `play` accepts a directory of .hl7 files directly, no manual `cat` step, in lexical filename order -- exactly the `msg-%03d` order this generator emits) -- see [Play a generated corpus back over time](#play-a-generated-corpus-back-over-time).
 
 ```
 generator-config × sim-engine → generated-corpus  [EngineExecute]
@@ -137,6 +137,65 @@ flowchart LR
     %% Source types: light rounded
     style generator_config fill:#f5f5f5,stroke:#999,color:#333
     style sim_engine fill:#f5f5f5,stroke:#999,color:#333
+```
+
+## Play a generated corpus back over time
+
+**Audience:** Teams wanting to watch, demo, or load-test against hospital traffic paced the way it actually happened, not delivered all at once.
+
+**You bring:** A directory of HL7 v2 (ER7) messages sharing one sniffed format -- a `corpus generate sim` out-dir is the natural source, its own `msg-%03d.hl7` filenames already in the intended play order (ADR-0015).
+
+**You get:** The same messages, rendered (or, with --sink, written byte-identically to an unpaced batch write) at a chosen wallclock rate against their own MSH-7 timestamps -- `ehrt play PATH` at an arbitrarily large --rate is exactly `ehrt show PATH` (ADR-0013/ADR-0014's own identity).
+
+**Maturity:** usable
+
+**You type:**
+
+```sh
+bin/ehrt corpus generate sim --seed 42 --patients 5
+
+# Real time is --rate 1; the default (--rate 60) plays a stream-hour
+# per wallclock-minute. No manual `cat` step -- play reads the
+# directory directly, in lexical filename order (ADR-0015).
+bin/ehrt play out/corpus/sim-s42-p5 --rate 3600
+
+# Write it out paced, byte-identical to an unpaced batch write,
+# instead of rendering it to the terminal.
+bin/ehrt play out/corpus/sim-s42-p5 --rate 3600 --sink file:out/paced-tail.hl7
+```
+
+The directory-listing order is the play order -- name files so their sort order is their intended order (D9's own emitted `msg-%03d` naming already satisfies this; see [Generate deterministic sim (HL7v2) traffic](#generate-deterministic-sim-hl7v2-traffic)). A directory mixing HL7 v2 and FHIR JSON, or containing an unclassifiable file, is `:play-input-unsupported` -- the same shape a mixed `gate PATH` directory already uses (D11), never a silent per-file split. Flags and their defaults: [cli.md](cli.md#ehrt-play), or `ehrt help play` at the shell.
+
+```
+hl7v2-directory → paced-event-stream  [Pace]
+paced-event-stream → rendered-ticker-output  [Render]
+```
+
+```mermaid
+flowchart LR
+
+    %% --- Source types (raw inputs, not produced by any operation) ---
+    hl7v2_directory(["hl7v2-directory"])
+
+    %% --- Operations (boxes; spiders use distinct shapes) ---
+    Pace["Pace"]
+    Render["Render"]
+
+    %% --- Wires (typed connections) ---
+    %% Arrow 1: Pace
+    hl7v2_directory -- hl7v2-directory --> Pace
+
+    %% Arrow 2: Render
+    Pace -- paced-event-stream --> Render
+
+    %% --- Styling ---
+
+    %% Operations: dark boxes (fan=blue, funnel=green, enrichment=outlined, gate=purple, external=dashed)
+    style Pace fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style Render fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+
+    %% Source types: light rounded
+    style hl7v2_directory fill:#f5f5f5,stroke:#999,color:#333
 ```
 
 ## Generate controlled-fault data
