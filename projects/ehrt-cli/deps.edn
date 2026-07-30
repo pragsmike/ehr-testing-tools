@@ -22,7 +22,7 @@
         poly/tools    {:local/root "../../components/tools"}
         poly/palgebra {:local/root "../../components/palgebra"}
         poly/cli      {:local/root "../../bases/cli"}
-        ;; poly/sim: the `ehrt sim` mount (ADR-0004, ADR-0012 fulfilled)
+        ;; poly/sim: the `ehrt sim` mount (ADR-0004, tools/ADR-0012 fulfilled)
         ;; -- ehrt.tools.sim calls ehrt.sim.interface/run-command
         ;; in-process, no subprocess. Real dependency, not test-only.
         poly/sim      {:local/root "../../components/sim"}
