@@ -107,7 +107,7 @@ page doesn't teach it as a path.
 - **`bin/ehrt corpus generate` fails with `:category :out-dir-exists`.**
   Zero-flag `generate` is byte-reproducible and therefore rejects
   overwriting a prior run rather than silently clobbering it — remove
-  `target/corpus/synthea-s1-p5` first, or pass a different `--out-dir`,
+  `out/corpus/synthea-s1-p5` first, or pass a different `--out-dir`,
   to regenerate.
 - **A `WARNING: run! already refers to...` line appears on stdout.**
   Harmless namespace-shadowing warning from `ehrt.tools.sim`; it

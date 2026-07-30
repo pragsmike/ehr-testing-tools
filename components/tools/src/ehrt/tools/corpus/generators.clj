@@ -155,7 +155,7 @@
  {:kind :sim
   :default-params {:seed generate/default-seed :patients 1 :emit "hl7"}
   :params-schema sim-params-schema
-  :out-dir-fn (fn [{:keys [seed patients]}] (str "target/corpus/sim-s" seed "-p" patients))
+  :out-dir-fn (fn [{:keys [seed patients]}] (str "out/corpus/sim-s" seed "-p" patients))
   :execute-fn (fn [params out-dir]
                 (let [run-result (sim/run! params)]
                   (if-not (kernel/ok? run-result)

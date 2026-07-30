@@ -192,7 +192,7 @@
     (is (= "./out/one.json" (url/path-designator->path "file:./out/one.json"))))
   (testing "bare paths pass through unchanged"
     (is (= "./corpus" (url/path-designator->path "./corpus")))
-    (is (= "target/gate-fhir" (url/path-designator->path "target/gate-fhir"))))
+    (is (= "out/scratch/gate-fhir" (url/path-designator->path "out/scratch/gate-fhir"))))
   (testing "a Windows absolute path is never mistaken for a scheme"
     (is (= "C:\\Users\\prags\\corpus" (url/path-designator->path "C:\\Users\\prags\\corpus"))))
   (testing "other recognized schemes (not file-path-shaped) pass through unchanged"

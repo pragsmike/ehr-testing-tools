@@ -1,6 +1,11 @@
 .cpcache/
 .nrepl-port
 target/
+
+# The single tool-owned output root (ADR-0013, 2026-07-30): ehrt writes
+# only under out/ unless --out-dir is given; always safe to delete --
+# everything in it is reproducible from seeds and inputs.
+out/
 .calva/output-window/
 .lsp/.cache/
 .clj-kondo/.cache/

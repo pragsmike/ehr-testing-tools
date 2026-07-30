@@ -757,7 +757,7 @@
   (gate-command gate-v2/v2-gate-file gate-v2/v2-gate-dir :v2))
 
 (def default-fhir-gate-out-dir
-  "target/gate-fhir")
+  "out/scratch/gate-fhir")
 
 (defn fhir-gate-command
   "`ehrt gate fhir`: unlike judge.v2 (fully self-contained, no options),
@@ -765,8 +765,9 @@
   for the validator's raw OperationOutcome output and invocation logs
   -- resolved here, then judge.fhir/gate-file and gate-dir are curried
   down to the 1-arity shape gate-command expects. :out-dir defaults to
-  `target/gate-fhir` (gitignored build scratch, like `target/` already
-  is for `make pipeline`); :java-bin, when given, bypasses registry
+  `out/scratch/gate-fhir` (ADR-0013: the single tool-owned, gitignored
+  out/ root -- moved from a bare target/gate-fhir); :java-bin, when
+  given, bypasses registry
   resolution exactly like corpus.generate's own :java-bin override.
   :treat-no-verdict-as (ADR-0010) passes straight through to
   gate-command. :no-verdict-cache (ADR-0016) disables the content-

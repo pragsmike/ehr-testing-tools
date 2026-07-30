@@ -562,7 +562,7 @@ The zero-flag happy path:
 | `--clinician-seed` | value of `--seed` | derived — one seed to remember, not two |
 | `--reference-date` | `20260101` | pinned constant, named beside `default-locale`/`default-timezone` (`corpus/generate.clj:22-24`) — a comment at the definition site states it is intentionally frozen, not "today" |
 | `--population` | `5` | pinned constant (OPEN-2: `5` vs. `1`) |
-| `--output-dir` | `target/corpus/synthea-s<seed>-p<pop>` | derived from `--seed`/`--population` |
+| `--output-dir` | `out/corpus/synthea-s<seed>-p<pop>` | derived from `--seed`/`--population` (ADR-0013, 2026-07-30: moved from `target/corpus/…` to the single tool-owned `out/` root) |
 | `--config-path` | a minimal Synthea properties file shipped in `resources/` | pinned artifact, authored in the build session; its content is part of the pin |
 
 **Acceptance property.** `ehrt corpus generate` with no flags must be

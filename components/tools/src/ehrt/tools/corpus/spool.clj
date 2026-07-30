@@ -39,13 +39,15 @@
   (* 1024 1024 1024))
 
 (defn default-spool-out-dir
-  "The derived out-dir (ruling 4): target/spool/<captured-at>, sanitized
-  to filesystem-safe characters -- time-derived, since a stream's
-  content isn't known ahead of a full capture (unlike a generator's own
+  "The derived out-dir (ruling 4): out/spool/<captured-at> (ADR-0013,
+  2026-07-30: moved from target/spool/ -- every zero-flag default lives
+  under the single tool-owned out/ root now), sanitized to
+  filesystem-safe characters -- time-derived, since a stream's content
+  isn't known ahead of a full capture (unlike a generator's own
   seed-derived out-dir, D9's precedent, there is no cheaper deterministic
   input to derive from here)."
   [captured-at]
-  (str "target/spool/" (clojure.string/replace captured-at #"[^A-Za-z0-9._-]" "-")))
+  (str "out/spool/" (clojure.string/replace captured-at #"[^A-Za-z0-9._-]" "-")))
 
 (defn- non-empty-existing-dir?
   "Mirrors sink-write's own non-empty-existing-dir? (D3's fail-if-exists

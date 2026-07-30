@@ -66,7 +66,7 @@
 ;; ---- default out-dir derivation ----
 
 (deftest spool-default-out-dir-is-derived-from-captured-at-test
-  (let [expected-dir "target/spool/2026-07-28T01-02-03Z"]
+  (let [expected-dir "out/spool/2026-07-28T01-02-03Z"]
     (delete-tree! expected-dir) ;; idempotent across repeated runs -- this default is a fixed, derived path
     (let [r (spool/spool! {:in (er7-multi-stream ["MSH|^~\\&|A"])
                             :framing :er7-multi

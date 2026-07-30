@@ -23,7 +23,7 @@
 (deftest sim-generator-source-round-trips-through-intake-test
   (let [seed 101
         patients 2
-        corpus-dir (str "target/corpus/sim-s" seed "-p" patients)
+        corpus-dir (str "out/corpus/sim-s" seed "-p" patients)
         out-dir "target/integration-sim-generator-source-catalog"
         _ (delete-tree! (io/file corpus-dir))
         _ (delete-tree! (io/file out-dir))

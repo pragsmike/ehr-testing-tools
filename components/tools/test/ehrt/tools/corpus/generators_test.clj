@@ -157,7 +157,7 @@
 
 (deftest sim-out-dir-fn-test
   (let [entry (generators/lookup :sim)]
-    (is (= "target/corpus/sim-s7-p3" ((:out-dir-fn entry) {:seed 7 :patients 3})))))
+    (is (= "out/corpus/sim-s7-p3" ((:out-dir-fn entry) {:seed 7 :patients 3})))))
 
 (deftest sim-execute-fn-happy-path-spools-messages-and-manifest-test
   (let [out-dir (temp-dir)

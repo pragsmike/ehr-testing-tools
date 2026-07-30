@@ -85,7 +85,7 @@ Generate a deterministic synthetic Synthea corpus. Zero-flag defaults (D9, ADR-0
 | `--clinician-seed` | `the resolved --seed value` | clinician-generation seed (integer) -- Synthea defaults this to wall-clock time otherwise, which breaks reproducibility even with --seed pinned |
 | `--population` | `5` | population size (integer) |
 | `--reference-date` | `20260101` | generation reference date, YYYYMMDD -- Synthea otherwise generates relative to wall-clock "now" |
-| `--out-dir` | `target/corpus/synthea-s<seed>-p<population>` | output directory for the corpus + manifest.edn -- rejected if it already exists and is non-empty |
+| `--out-dir` | `out/corpus/synthea-s<seed>-p<population>` | output directory for the corpus + manifest.edn -- rejected if it already exists and is non-empty |
 | `--locale` | `en-US` | BCP47-ish locale |
 | `--timezone` | `UTC` | timezone |
 | `--java-bin` | `resolved via the artifact registry` | java executable to invoke |
@@ -154,7 +154,7 @@ Gate against FHIR base-spec conformance (the official validator).
 | `--baseline` | — | baseline-relative mode: path to a previous --report EDN; only genuinely new findings count |
 | `--treat-no-verdict-as` | — | "pass" or "rejected" -- folds :no-verdict into an existing polarity (ADR-0010) |
 | `--lockfile` | `artifacts.lock.edn` | path to the lockfile |
-| `--out-dir` | `target/gate-fhir` | validator scratch directory |
+| `--out-dir` | `out/scratch/gate-fhir` | validator scratch directory |
 | `--java-bin` | — | java executable to invoke |
 | `--no-verdict-cache` | `false (caching on)` | skip the content-addressed verdict cache (ADR-0016); always re-runs the validator subprocess |
 

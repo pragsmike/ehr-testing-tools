@@ -58,7 +58,7 @@
                {:flag "--clinician-seed" :doc "clinician-generation seed (integer) -- Synthea defaults this to wall-clock time otherwise, which breaks reproducibility even with --seed pinned" :default "the resolved --seed value"}
                {:flag "--population" :doc "population size (integer)" :default "5"}
                {:flag "--reference-date" :doc "generation reference date, YYYYMMDD -- Synthea otherwise generates relative to wall-clock \"now\"" :default "20260101"}
-               {:flag "--out-dir" :doc "output directory for the corpus + manifest.edn -- rejected if it already exists and is non-empty" :default "target/corpus/synthea-s<seed>-p<population>"}
+               {:flag "--out-dir" :doc "output directory for the corpus + manifest.edn -- rejected if it already exists and is non-empty" :default "out/corpus/synthea-s<seed>-p<population>"}
                {:flag "--locale" :doc "BCP47-ish locale" :default "en-US"}
                {:flag "--timezone" :doc "timezone" :default "UTC"}
                {:flag "--java-bin" :doc "java executable to invoke" :default "resolved via the artifact registry"}
@@ -98,7 +98,7 @@
       {:verb "fhir" :doc "Gate against FHIR base-spec conformance (the official validator)."
        :flags (into gate-common-flags
                     [{:flag "--lockfile" :doc "path to the lockfile" :default "artifacts.lock.edn"}
-                     {:flag "--out-dir" :doc "validator scratch directory" :default "target/gate-fhir"}
+                     {:flag "--out-dir" :doc "validator scratch directory" :default "out/scratch/gate-fhir"}
                      {:flag "--java-bin" :doc "java executable to invoke"}
                      {:flag "--no-verdict-cache" :doc "skip the content-addressed verdict cache (ADR-0016); always re-runs the validator subprocess" :default "false (caching on)"}])}]}
 

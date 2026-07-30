@@ -67,9 +67,9 @@ bin/ehrt artifact fetch --name temurin-jdk --version 21.0.12+8
 bin/ehrt corpus generate
 # zero-flag `generate` is byte-reproducible, so it REJECTS a directory
 # that already exists rather than overwriting it -- remove
-# target/corpus/synthea-s1-p5 first (or pass --out-dir) to regenerate.
+# out/corpus/synthea-s1-p5 first (or pass --out-dir) to regenerate.
 
-PATIENT_FILE=$(ls target/corpus/synthea-s1-p5/fhir/*.json | grep -v -e hospitalInformation -e practitionerInformation | head -1)
+PATIENT_FILE=$(ls out/corpus/synthea-s1-p5/fhir/*.json | grep -v -e hospitalInformation -e practitionerInformation | head -1)
 bin/ehrt corpus mutate $PATIENT_FILE \
   --operator-id remove-required-element --locator-path entry[0].resource.gender \
   --out-dir out/demo-mutants
@@ -79,7 +79,7 @@ bin/ehrt gate v2 components/tools/test-fixtures/v2
 # gate fhir exits 1 here -- a genuine defect in the mutant, correctly caught
 bin/ehrt gate fhir out/demo-mutants --report out/demo-mutants-report.edn
 
-bin/ehrt check target/corpus/synthea-s1-p5/fhir --expected target/corpus/synthea-s1-p5/fhir
+bin/ehrt check out/corpus/synthea-s1-p5/fhir --expected out/corpus/synthea-s1-p5/fhir
 
 # mounted in-process (ADR-0005) -- no separate sim checkout needed
 bin/ehrt sim run --seed 100 --patients 1

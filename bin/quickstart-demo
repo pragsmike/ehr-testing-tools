@@ -68,7 +68,7 @@ echo "== quickstart-demo: README.md's Quickstart, verbatim, asserted =="
 # 2026-07-28 finding) -- this script must be safely re-runnable, so it
 # clears its own last run's output first. A first-time reader following
 # README.md never needs this: their repo starts clean.
-rm -rf target/corpus/synthea-s1-p5 out/demo-mutants out/demo-mutants-report.edn
+rm -rf out/corpus/synthea-s1-p5 out/demo-mutants out/demo-mutants-report.edn
 
 # BEGIN quickstart commands (verbatim from README.md's Quickstart fence)
 expect 0 bin/ehrt help
@@ -78,7 +78,7 @@ expect 0 bin/ehrt artifact fetch --name temurin-jdk --version 21.0.12+8
 
 expect 0 bin/ehrt corpus generate
 
-expect_eval 0 'PATIENT_FILE=$(ls target/corpus/synthea-s1-p5/fhir/*.json | grep -v -e hospitalInformation -e practitionerInformation | head -1)'
+expect_eval 0 'PATIENT_FILE=$(ls out/corpus/synthea-s1-p5/fhir/*.json | grep -v -e hospitalInformation -e practitionerInformation | head -1)'
 expect 0 bin/ehrt corpus mutate $PATIENT_FILE \
   --operator-id remove-required-element --locator-path entry[0].resource.gender \
   --out-dir out/demo-mutants
@@ -87,7 +87,7 @@ expect 0 bin/ehrt artifact fetch --name fhir-validator-cli --version 6.9.12
 expect 0 bin/ehrt gate v2 components/tools/test-fixtures/v2
 expect 1 bin/ehrt gate fhir out/demo-mutants --report out/demo-mutants-report.edn
 
-expect 0 bin/ehrt check target/corpus/synthea-s1-p5/fhir --expected target/corpus/synthea-s1-p5/fhir
+expect 0 bin/ehrt check out/corpus/synthea-s1-p5/fhir --expected out/corpus/synthea-s1-p5/fhir
 
 expect 0 bin/ehrt sim run --seed 100 --patients 1
 

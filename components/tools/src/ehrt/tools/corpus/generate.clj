@@ -33,9 +33,11 @@
 
 (defn default-out-dir
   "The zero-flag --out-dir: derived from seed/population, not a
-  required flag -- target/corpus/synthea-s<seed>-p<pop>."
+  required flag -- out/corpus/synthea-s<seed>-p<pop> (ADR-0013: every
+  zero-flag default lives under the single tool-owned out/ root, not
+  build tooling's own target/)."
   [seed population]
-  (str "target/corpus/synthea-s" seed "-p" population))
+  (str "out/corpus/synthea-s" seed "-p" population))
 
 (defn resolve-java-bin
   "Resolves the pinned JVM runtime through the artifact registry
