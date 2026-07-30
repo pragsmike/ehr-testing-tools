@@ -120,6 +120,33 @@ page doesn't teach it as a path.
   brick's test suite, including property-based tests with 100-200
   random cases each; there's no faster documented subset for a
   first-time full run.
+- **The full test suite (or `make integration`) takes 15-20+ minutes
+  on WSL, far longer than expected.** Diagnostic: `df -T .` from
+  inside the repo. If it reports `9p` or `drvfs` as the filesystem
+  type, the repo is being read over the Windows/WSL mount bridge
+  (`/mnt/c/...`) rather than WSL's own ext4 filesystem — every file
+  read and write a Linux JVM does crosses that bridge, and a
+  test-suite-sized workload pays for it on every single file touch.
+  The same trap applies to AI agent tooling running as a Windows app
+  that shells out via `wsl -e bash -lc "cd /mnt/c/... && clojure ..."`
+  — that's still a Linux JVM doing all its repo I/O through the 9p
+  bridge, even though the invoking process is native Windows. Fix:
+  clone (or re-clone) the repo onto WSL's own filesystem — somewhere
+  under `~`, not `/mnt/c/...` — and keep `~/.m2` there too; if driving
+  this repo from agent tooling, point its test/build commands at that
+  native or ext4 path rather than a `/mnt/c/...` one. Author-measured
+  reference numbers, all against the same full suite, same day
+  (2026-07-29, `notes/facts-register.md` F7): **~20 min** on a
+  `9p`/`drvfs`-mounted `/mnt/c/...` clone, **3:15** on a WSL ext4
+  clone, **~2.5 min** on CI's own Ubuntu runner (CI run `30501195915`,
+  cross-verified this session to be running the identical full
+  suite — 177 test-namespace summaries, matching the local count
+  exactly), and **8 min** for `make integration` on the ext4 clone.
+  Checkouts themselves are line-ending-safe on any platform regardless
+  of where you clone — this repo's `.gitattributes` was re-audited the
+  same session and covers every CR-carrying tracked file (`-text` on
+  all 13, confirmed byte-identical under a simulated
+  `core.autocrlf=true` Windows-style clone).
 
 ## 5. The agent prompt
 
