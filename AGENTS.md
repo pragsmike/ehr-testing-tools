@@ -155,7 +155,9 @@ sim's own discipline, unchanged by the move:
 
 - **Result-not-throw**: every capability function returns `{:status
   :ok|:rejected|:error :category ... :payload ...}`. Exceptions are
-  for programmer error only.
+  for programmer error only — a caller-contract violation (e.g. an
+  ambiguous `:msg-id`, `notes/ADRs.md` ADR-0012) is exactly this case,
+  not an engine or data outcome.
 - **Determinism is law**: all randomness in `components/sim` flows
   from the single seeded RNG in `engine/run`. No wall-clock, no
   hash-order dependence.

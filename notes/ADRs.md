@@ -2118,7 +2118,7 @@ only ones that actually changed.
 
 ## ADR-0012 — `judge-v2-nist` adopts the NIST engine directly: msg-id contract, Cause growth, fixture provenance
 
-**Status:** Accepted (author-directed, autonomous session per R30), 2026-07-30.
+**Status:** Accepted (author-directed, autonomous session per R30), 2026-07-30. msg-id `ex-info` mechanism (below) ratified `[A]` (ADR-0007 provenance tag), 2026-07-30, judge-v2-nist follow-through session.
 
 ### Context
 
@@ -2186,6 +2186,23 @@ executes ex-info (a programming defect in the *call*, not an engine
 verdict about the message under test, must not masquerade as
 `:rejected` or `:no-verdict`), and it is flagged here for author
 ratification rather than treated as settled convention.
+
+**Ratification (2026-07-30, `[A]`, ADR-0007 provenance tag — direct
+author ruling, judge-v2-nist follow-through session).** The msg-id
+`ex-info` mechanism above is ratified. The doctrinal basis is
+`AGENTS.md`'s own pre-existing Result-not-throw carve-out — "Exceptions
+are for programmer error only" — which this session's own sibling-engine
+grep looked one layer below: it searched the two sibling *engines* for a
+caller-contract-violation precedent and found none, but the precedent
+was never going to live in an engine; it lives in the workspace-wide
+Result-not-throw rule itself. An ambiguous `:msg-id` — the caller
+failing to disambiguate a plural-id profile — is a defect in the
+*call*, not an engine or data outcome, so the mechanism was
+doctrine-consistent all along. Standing boundary, stated once so no
+future engine re-litigates it: engine and data outcomes are values
+(findings, verdicts, `:check-exception` captures, `kernel/error`
+results); caller-contract violations are programmer error and fail fast
+via `ex-info` with descriptive data.
 
 **`ehrt.judge.finding/Cause` grows its second specimen:
 `:profile-spec-error`.** The enum is now
