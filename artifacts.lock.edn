@@ -40,7 +40,7 @@
    :source "https://hit-nexus.nist.gov/repository/releases/gov/nist/hl7-v2-parser/1.7.3/hl7-v2-parser-1.7.3.jar"
    :acquired "2026-07-29"
    :license-status :use-permitted--unstated--confirmation-pending
-   :license-note "gov.nist:hl7-v2-parser -- license-unstated at the coordinate level (facts register tools/F9, EXP-SBOM); use-permitted per ADR-0005's 2026-07-24 amendment (user-initiated fetch from NIST's own official channel, never vendored/shipped by this repo). Cross-verified 2026-07-29 by two independent clients (Maven resolver + plain curl) -- see EXP-D3-results.md's Jar Inventory table and facts register F5."}
+   :license-note "gov.nist:hl7-v2-parser -- license-unstated at the coordinate level (facts register tools/F9, EXP-SBOM); use-permitted per ADR-0005's 2026-07-24 amendment (user-initiated fetch from NIST's own official channel, never vendored/shipped by this repo). Cross-verified 2026-07-29 by two independent clients (Maven resolver + plain curl) -- see EXP-D3-results.md's Jar Inventory table and facts register F5. Re-verified 2026-07-30 (judge-v2-nist landing, ADR-0012): resolved from hit-nexus via tools.deps into the local ~/.m2 cache, sha256 matches this entry exactly."}
   {:kind :engine
    :name "nist-hl7-v2-profile"
    :version "1.7.3"
@@ -48,7 +48,7 @@
    :source "https://hit-nexus.nist.gov/repository/releases/gov/nist/hl7-v2-profile/1.7.3/hl7-v2-profile-1.7.3.jar"
    :acquired "2026-07-29"
    :license-status :use-permitted--unstated--confirmation-pending
-   :license-note "gov.nist:hl7-v2-profile -- same posture and evidence as nist-hl7-v2-parser above (facts register tools/F9, F5; ADR-0005 amendment)."}
+   :license-note "gov.nist:hl7-v2-profile -- same posture and evidence as nist-hl7-v2-parser above (facts register tools/F9, F5; ADR-0005 amendment). Re-verified 2026-07-30 (judge-v2-nist landing, ADR-0012): resolved from hit-nexus via tools.deps into the local ~/.m2 cache, sha256 matches this entry exactly."}
   {:kind :engine
    :name "nist-hl7-v2-validation"
    :version "1.7.3"
@@ -56,7 +56,7 @@
    :source "https://hit-nexus.nist.gov/repository/releases/gov/nist/hl7-v2-validation/1.7.3/hl7-v2-validation-1.7.3.jar"
    :acquired "2026-07-29"
    :license-status :use-permitted--unstated--confirmation-pending
-   :license-note "gov.nist:hl7-v2-validation -- same posture and evidence as nist-hl7-v2-parser above (facts register tools/F9, F5; ADR-0005 amendment). The core validation engine EXP-D3 drove directly via reflection to obtain the raw, unfiltered Report."}
+   :license-note "gov.nist:hl7-v2-validation -- same posture and evidence as nist-hl7-v2-parser above (facts register tools/F9, F5; ADR-0005 amendment). The core validation engine EXP-D3 drove directly via reflection to obtain the raw, unfiltered Report. Re-verified 2026-07-30 (judge-v2-nist landing, ADR-0012): resolved from hit-nexus via tools.deps into the local ~/.m2 cache, sha256 matches this entry exactly -- this is the coordinate judge-v2-nist calls directly (SyncHL7Validator), not via reflection."}
   {:kind :engine
    :name "nist-xml-util"
    :version "2.1.0"
@@ -64,7 +64,7 @@
    :source "https://hit-nexus.nist.gov/repository/releases/gov/nist/xml-util/2.1.0/xml-util-2.1.0.jar"
    :acquired "2026-07-29"
    :license-status :use-permitted--unstated--confirmation-pending
-   :license-note "gov.nist:xml-util -- same posture and evidence as nist-hl7-v2-parser above (facts register tools/F9, F5; ADR-0005 amendment)."}
+   :license-note "gov.nist:xml-util -- same posture and evidence as nist-hl7-v2-parser above (facts register tools/F9, F5; ADR-0005 amendment). Re-verified 2026-07-30 (judge-v2-nist landing, ADR-0012): resolved transitively from hit-nexus via tools.deps into the local ~/.m2 cache, sha256 matches this entry exactly."}
   {:kind :engine
    :name "nist-hl7-v2-schemas"
    :version "1.7.2"
@@ -72,7 +72,7 @@
    :source "https://hit-nexus.nist.gov/repository/releases/gov/nist/hit/hl7-v2-schemas/1.7.2/hl7-v2-schemas-1.7.2.jar"
    :acquired "2026-07-29"
    :license-status :use-permitted--unstated--confirmation-pending
-   :license-note "gov.nist.hit:hl7-v2-schemas -- same posture and evidence as nist-hl7-v2-parser above (facts register tools/F9, F5; ADR-0005 amendment)."}
+   :license-note "gov.nist.hit:hl7-v2-schemas -- same posture and evidence as nist-hl7-v2-parser above (facts register tools/F9, F5; ADR-0005 amendment). Re-verified 2026-07-30 (judge-v2-nist landing, ADR-0012): resolved transitively from hit-nexus via tools.deps into the local ~/.m2 cache, sha256 matches this entry exactly."}
   {:kind :engine
    :name "nist-validation-report"
    :version "1.2.0"
@@ -80,4 +80,4 @@
    :source "https://hit-nexus.nist.gov/repository/releases/com/github/hl7-tools/validation-report/1.2.0/validation-report-1.2.0.jar"
    :acquired "2026-07-29"
    :license-status :use-permitted--unstated--confirmation-pending
-   :license-note "com.github.hl7-tools:validation-report -- license-unstated at the coordinate level (facts register tools/F9, tools/F16, EXP-SBOM); use-permitted per ADR-0005's 2026-07-24 amendment. Defines gov.nist.validation.report.Entry/Report, the shared reporting types EXP-D3's harness read directly via javap."}]}
+   :license-note "com.github.hl7-tools:validation-report -- license-unstated at the coordinate level (facts register tools/F9, tools/F16, EXP-SBOM); use-permitted per ADR-0005's 2026-07-24 amendment. Defines gov.nist.validation.report.Entry/Report, the shared reporting types EXP-D3's harness read directly via javap. Re-verified 2026-07-30 (judge-v2-nist landing, ADR-0012): resolved transitively from hit-nexus via tools.deps into the local ~/.m2 cache, sha256 matches this entry exactly -- these are the same Entry/Report types judge-v2-nist.v2 imports directly."}]}
