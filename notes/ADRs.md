@@ -10,6 +10,24 @@ Legacy ADRs move into this workspace intact as provenance
 new paths/namespaces) and are cited here origin-qualified, e.g.
 `sim/ADR-0008`, `tools/ADR-0017`.
 
+**Citation rule (added 2026-07-30, judge-v2-nist follow-through
+session): a bare `ADR-00XX` in this file, or in any other workspace
+document, means this file's own record.** Frozen-era ADRs are always
+cited origin-qualified (`tools/ADR-0012`, `sim/ADR-0008`, etc.) — never
+bare. This is the rule the two paragraphs above already modeled; it is
+restated as an explicit standing rule here because ADR-0012 below now
+shares its number with the frozen `notes/tools/ADRs.md` ADR-0012 (the
+`ehr sim` mount design), a genuine collision this session's own
+citation-space audit found, unambiguous when ADR-0005 wrote its own
+unqualified `ADR-0012` references (2026-07-28, before this workspace's
+own ADR-0012 existed) but ambiguous since. Renumbering either record
+was considered and rejected: ADR numbers are load-bearing in immutable
+places this workspace cannot edit (commit messages, archived prompts,
+docstrings) and this register's own append-only, never-reassigned
+numbering rule exists for exactly this reason. Existing unqualified
+frozen-era references are fixed forward, dated, as they're found — not
+rewritten wholesale, and never by editing the frozen files themselves.
+
 ---
 
 ## ADR-0001 — Migration plan: bootstrap the workspace, land sim, freeze tools out
@@ -1015,7 +1033,7 @@ own row: it no longer exists to be stale.
 
 ---
 
-## ADR-0005 — The `ehr sim` mount: ADR-0012 fulfilled, ADR-0013 decision 1 retired
+## ADR-0005 — The `ehr sim` mount: `notes/tools/ADRs.md` ADR-0012 fulfilled, `notes/tools/ADRs.md` ADR-0013 decision 1 retired
 
 **Status:** Accepted (author-directed, amending the session's own R20
 in-session), 2026-07-28.
@@ -1025,7 +1043,7 @@ in-session), 2026-07-28.
 ADR-0004's own R19 restructuring left five `sim_*_test.clj` suites (plus
 `smoke_test.clj`'s sim half) in `projects/conformance`, still resolving
 sim through a sibling-checkout discovery order (`ehrt.tools.sim`'s
-`:sim-dir` → `EHR_TESTING_SIM_DIR` → `../ehr-testing-sim`, ADR-0013)
+`:sim-dir` → `EHR_TESTING_SIM_DIR` → `../ehr-testing-sim`, `notes/tools/ADRs.md` ADR-0013)
 that CI's cold clone never satisfies — they skip cleanly there rather
 than fail, so they weren't part of ADR-0004's own red-CI fix, but they
 also never ran for real anywhere CI could see.
@@ -1047,8 +1065,10 @@ private repo today and this repo is public (ADR-0008); a git or Maven
 dependency from a public repo onto a private one breaks public CI
 outright... and even once sim is public, a classpath dependency would
 invert ADR-0012's own stated arrow... and tangle the two repos' version
-lockstep."* And ADR-0013 decision 5, verbatim: *"The `ehr sim` mount
-remains DEFERRED (ADR-0012, unchanged)."* `notes/tools/ADRs.md`
+lockstep."* [The quoted "ADR-0012" is `notes/tools/ADRs.md` ADR-0012 —
+qualified fix-forward, 2026-07-30, not the workspace's own ADR-0012
+below.] And `notes/tools/ADRs.md` ADR-0013 decision 5, verbatim: *"The
+`ehr sim` mount remains DEFERRED (ADR-0012, unchanged)."* `notes/tools/ADRs.md`
 ADR-0012 itself is the mount's own pre-existing design — five CLI
 interface properties, verified against source, that a mount would rest
 on, explicitly left unbuilt pending "the classpath question" resolving.
@@ -1071,7 +1091,7 @@ used. `poly/sim` is a real `:local/root` dependency now, everywhere
 `poly/tools` itself now requires `ehrt.sim.interface`; root `deps.edn`'s
 own `:ehr`/`:dev` aliases).
 
-**ADR-0013's direction invariant preserved, poly-enforced.** The rule
+**`notes/tools/ADRs.md` ADR-0013's direction invariant preserved, poly-enforced.** The rule
 was never "sim and tools must never share a classpath" — AGENTS.md's
 own constraints section already permitted `components/tools`/
 `projects/conformance` depending on `components/sim`, the arrow
@@ -1114,8 +1134,8 @@ own `cli-spec` gained the `sim` group/`run` verb (flags matching
 `run-command`'s own opts 1:1: `--seed`, `--patients`,
 `--reference-date`, `--warm-up-seconds`, `--emit`, `--churn`,
 `--config`); `help_test.clj`'s two hand-mirrored coverage structures
-(`stub-key`, `known-dispatch-pairs`) updated to match, per ADR-0012
-property 4's own correction about what "mounting sim" does and doesn't
+(`stub-key`, `known-dispatch-pairs`) updated to match, per `notes/tools/ADRs.md`
+ADR-0012 property 4's own correction about what "mounting sim" does and doesn't
 give for free. Regenerating `docs/cli.md` itself from this updated spec
 is the pending closeout-sweep session's own step 4 (docsgen regen
 tooling, a named row in this session's own carve-loss audit) — not
@@ -1138,9 +1158,9 @@ under either path. Whether sim keeps a standalone CLI future
 independent of the `ehr sim` mount is an explicitly deferred author
 call, not decided by this record either way.
 
-### ADR-0012's five properties, exercised
+### `notes/tools/ADRs.md` ADR-0012's five properties, exercised
 
-Each of the five interface commitments ADR-0012 recorded (before any
+Each of the five interface commitments `notes/tools/ADRs.md` ADR-0012 recorded (before any
 mount existed, so a later refactor couldn't silently break one without
 noticing it was load-bearing) held, verified against source rather
 than assumed: **(1)** `dispatch`'s own `[group action]`-in, Result-out
@@ -1154,7 +1174,7 @@ and tools' own are interchangeable by shape, not by shared code.
 **(4)** The help-group data shape absorbed a new group with no changes
 to its own renderers. **(5)** The `-fn` injection point
 (`:sim-run-fn`, defaulting to the new `sim-run-command`) is what kept
-`bases/ehr-cli`'s own CLI tests hermetic, exactly the property ADR-0012
+`bases/ehr-cli`'s own CLI tests hermetic, exactly the property `notes/tools/ADRs.md` ADR-0012
 named it for.
 
 ### Deviation record
@@ -1169,8 +1189,8 @@ skipped, local and CI both, for lack of a sibling checkout at the
 moments it ran) — the in-process mount is what first let it run for
 real, and it caught its own staleness on the first real run.
 AUTHORS-GUIDE.md's two-failure-modes discipline: a sound check
-disagreeing with reality is a finding (leave it red, ADR-0013's own
-precedent); a check misencoding its own invariant is an escalation
+disagreeing with reality is a finding (leave it red, `notes/tools/ADRs.md`
+ADR-0013's own precedent); a check misencoding its own invariant is an escalation
 (fix the check). This is the second kind — the rename was already
 deliberate and ratified, so the test's own expectation was corrected
 to `"ehrt.sim"`, not left red.
@@ -2119,6 +2139,14 @@ only ones that actually changed.
 ## ADR-0012 — `judge-v2-nist` adopts the NIST engine directly: msg-id contract, Cause growth, fixture provenance
 
 **Status:** Accepted (author-directed, autonomous session per R30), 2026-07-30. msg-id `ex-info` mechanism (below) ratified `[A]` (ADR-0007 provenance tag), 2026-07-30, judge-v2-nist follow-through session.
+
+**Note (2026-07-30, added by the judge-v2-nist follow-through session):**
+this record shares its number with the frozen `notes/tools/ADRs.md`
+ADR-0012 (the `ehr sim` mount's own pre-existing design, cited
+origin-qualified throughout `notes/ADRs.md` ADR-0005 above). Per this
+file's own preamble citation rule: a bare `ADR-0012` anywhere in this
+workspace's live documents means *this* record; the tools-era one is
+always cited as `notes/tools/ADRs.md` ADR-0012 or `tools/ADR-0012`.
 
 ### Context
 

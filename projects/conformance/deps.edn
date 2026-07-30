@@ -5,14 +5,14 @@
  ;; independently, so this repeats the same entry.
  :mvn/repos {"nist-hit" {:url "https://hit-nexus.nist.gov/repository/releases/"}}
 
- :deps {;; poly/sim: ADR-0013's subprocess-only rule is superseded
-        ;; (ADR-0004, 2026-07-28) -- ehrt.tools.sim now calls
-        ;; ehrt.sim.interface/run-command in-process, so this project's
-        ;; sim_harness.clj and its five sim_*_test.clj consumers need
-        ;; sim on the classpath like any other component this project
-        ;; exercises. See ADR-0004 for why the ADR-0013-era reasons
-        ;; (private-repo split, cross-repo version lockstep) no longer
-        ;; hold.
+ :deps {;; poly/sim: notes/tools/ADRs.md ADR-0013's subprocess-only rule
+        ;; is superseded (ADR-0004, 2026-07-28) -- ehrt.tools.sim now
+        ;; calls ehrt.sim.interface/run-command in-process, so this
+        ;; project's sim_harness.clj and its five sim_*_test.clj
+        ;; consumers need sim on the classpath like any other component
+        ;; this project exercises. See ADR-0004 for why the
+        ;; notes/tools/ADRs.md ADR-0013-era reasons (private-repo split,
+        ;; cross-repo version lockstep) no longer hold.
         ;; poly/kernel, poly/judge (ADR-0008): tools' own src requires
         ;; both directly now.
         poly/kernel   {:local/root "../../components/kernel"}
