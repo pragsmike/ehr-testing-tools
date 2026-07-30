@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>NIST HL7 v2 Toolchain — artifacts as objects, tools as arrows</title>
+<style>
+  .viz-root {
+    color-scheme: light;
+    --surface-1:      #fcfcfb;
+    --page:           #f9f9f7;
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --muted:          #898781;
+    --grid:           #e1e0d9;
+    --baseline:       #c3c2b7;
+    --border:         rgba(11,11,11,0.10);
+    --profile:        #2a78d6;  /* blue  — profile/authoring artifacts */
+    --test:           #eb6834;  /* orange — test artifacts */
+    --msg:            #1baf7a;  /* aqua  — runtime messages */
+    --report:         #4a3aa7;  /* violet — reports */
+    --std:            #898781;  /* neutral — base standard / human inputs */
+    --profile-bg:     rgba(42,120,214,0.07);
+    --test-bg:        rgba(235,104,52,0.07);
+    --msg-bg:         rgba(27,175,122,0.08);
+    --report-bg:      rgba(74,58,167,0.07);
+    --std-bg:         rgba(137,135,129,0.08);
+    --chip-bg:        #f0efec;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .viz-root {
+      color-scheme: dark;
+      --surface-1:      #1a1a19;
+      --page:           #0d0d0d;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --muted:          #898781;
+      --grid:           #2c2c2a;
+      --baseline:       #383835;
+      --border:         rgba(255,255,255,0.10);
+      --profile:        #3987e5;
+      --test:           #d95926;
+      --msg:            #199e70;
+      --report:         #9085e9;
+      --std:            #898781;
+      --profile-bg:     rgba(57,135,229,0.12);
+      --test-bg:        rgba(217,89,38,0.12);
+      --msg-bg:         rgba(25,158,112,0.13);
+      --report-bg:      rgba(144,133,233,0.13);
+      --std-bg:         rgba(137,135,129,0.13);
+      --chip-bg:        #262624;
+    }
+  }
+  html, body { margin: 0; padding: 0; }
+  body.viz-root { background: var(--page); font-family: system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--text-primary); }
+  .wrap { max-width: 1280px; margin: 0 auto; padding: 24px 20px 40px; }
+  h1 { font-size: 19px; font-weight: 650; margin: 0 0 2px; }
+  .sub { font-size: 13px; color: var(--text-secondary); margin: 0 0 14px; }
+  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+  svg { display: block; width: 100%; height: auto; }
+  svg text { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 12px; font-size: 12px; color: var(--text-secondary); align-items: center; }
+  .legend .k { display: inline-flex; align-items: center; gap: 6px; }
+  .sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; }
+  .foot { font-size: 11.5px; color: var(--muted); margin-top: 14px; line-height: 1.55; }
+  .foot code { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 10.5px; }
+
+  /* node + text styles used inside the SVG */
+  .obj      { rx: 8; stroke-width: 1.4; }
+  .objTitle { font-size: 13px; font-weight: 650; fill: var(--text-primary); }
+  .objSub   { font-size: 10.5px; fill: var(--text-secondary); }
+  .typ      { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 10px; fill: var(--text-secondary); }
+  .typS     { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 9.5px; fill: var(--muted); }
+  .edge     { fill: none; stroke-width: 2; }
+  .toolChip { fill: var(--chip-bg); stroke: var(--border); }
+  .toolName { font-size: 11.5px; font-weight: 650; fill: var(--text-primary); }
+  .toolSig  { font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 9.5px; fill: var(--text-secondary); }
+  .band     { fill: none; stroke: var(--grid); stroke-dasharray: 5 4; rx: 10; }
+  .bandLbl  { font-size: 10.5px; font-weight: 650; letter-spacing: .06em; fill: var(--muted); }
+</style>
+</head>
+<body class="viz-root">
+<div class="wrap">
+  <h1>NIST HL7 v2 Toolchain — a typed diagram</h1>
+  <p class="sub">Artifacts as objects, tools as arrows. Types verified against the XSDs in <code>usnistgov/hl7-v2-schemas</code>, the <code>validation-report</code> Java model, and <code>v2-validation</code>'s Scala API (July 2026).</p>
+  <div class="card">
+  <svg viewBox="0 0 1240 780" role="img" aria-label="Typed flow diagram of the NIST HL7 v2 toolchain">
+    <defs>
+      <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 1 L 9 5 L 0 9 z" fill="var(--baseline)"/>
+      </marker>
+    </defs>
+
+    <!-- ===================== stage bands ===================== -->
+    <text class="bandLbl" x="30"   y="26">AUTHORING (interactive, occasional)</text>
+    <text class="bandLbl" x="660"  y="26">EXECUTION (offline, unattended)</text>
+    <line x1="640" y1="34" x2="640" y2="600" stroke="var(--grid)" stroke-dasharray="5 4"/>
+
+    <!-- ===================== objects: inputs ===================== -->
+    <!-- HL7 base standard -->
+    <g>
+      <rect class="obj" x="30" y="60" width="200" height="64" fill="var(--std-bg)" stroke="var(--std)"/>
+      <text class="objTitle" x="44" y="84">HL7 v2.x base standard</text>
+      <text class="objSub" x="44" y="101">every event, v2.1 – 2.8.x</text>
+      <text class="typS" x="44" y="115">built-in model inside IGAMT</text>
+    </g>
+    <!-- IG author -->
+    <g>
+      <rect class="obj" x="30" y="150" width="200" height="50" fill="var(--std-bg)" stroke="var(--std)"/>
+      <text class="objTitle" x="44" y="172">IG author decisions</text>
+      <text class="objSub" x="44" y="189">usage · cardinality · vocab · length</text>
+    </g>
+    <!-- scenarios -->
+    <g>
+      <rect class="obj" x="30" y="300" width="200" height="50" fill="var(--std-bg)" stroke="var(--std)"/>
+      <text class="objTitle" x="44" y="322">Test scenarios</text>
+      <text class="objSub" x="44" y="339">domain-expert use cases</text>
+    </g>
+
+    <!-- ===================== IGAMT arrow ===================== -->
+    <path class="edge" d="M 230 92 C 280 92, 280 120, 320 140" stroke="var(--std)" marker-end="url(#arr)"/>
+    <path class="edge" d="M 230 175 C 270 175, 280 160, 320 150" stroke="var(--std)" marker-end="url(#arr)"/>
+    <g>
+      <rect class="toolChip" x="255" y="103" width="64" height="36" rx="8"/>
+      <text class="toolName" x="287" y="119" text-anchor="middle">IGAMT</text>
+      <text class="toolSig"  x="287" y="132" text-anchor="middle">V × A → Π</text>
+    </g>
+
+    <!-- ===================== object: profile bundle Π ===================== -->
+    <g>
+      <rect class="obj" x="330" y="60" width="302" height="196" fill="var(--profile-bg)" stroke="var(--profile)"/>
+      <text class="objTitle" x="346" y="84">Π — Conformance profile bundle</text>
+      <text class="objSub" x="346" y="100">IGAMT export · the contract artifact</text>
+      <text class="typ" x="346" y="122">Profile.xml          : ConformanceProfile</text>
+      <text class="typ" x="346" y="138">Constraints.xml      : ConformanceContext</text>
+      <text class="typ" x="346" y="154">ValueSets.xml        : ValueSetLibrary</text>
+      <text class="typ" x="346" y="170">ValueSetBindings.xml : ValueSetBindingsContext</text>
+      <text class="typ" x="346" y="186">CoConstraints.xml    : CoConstraintContext</text>
+      <text class="typ" x="346" y="202">Slicings.xml         : ProfileSlicing</text>
+      <text class="typS" x="346" y="224">XSDs: hl7-v2-schemas (+ Commons, Expressions)</text>
+      <text class="typS" x="346" y="240">Profile.xml required · rest optional</text>
+    </g>
+    <!-- IG narrative -->
+    <g>
+      <rect class="obj" x="330" y="286" width="200" height="48" fill="var(--profile-bg)" stroke="var(--profile)"/>
+      <text class="objTitle" x="344" y="307">IG narrative</text>
+      <text class="objSub" x="344" y="324">Word / HTML, generated from Π</text>
+    </g>
+    <path class="edge" d="M 430 256 L 430 286" stroke="var(--profile)" marker-end="url(#arr)"/>
+    <text class="typS" x="440" y="276">export</text>
+
+    <!-- ===================== TCAMT arrow ===================== -->
+    <path class="edge" d="M 230 325 C 300 325, 330 380, 360 395" stroke="var(--std)" marker-end="url(#arr)"/>
+    <path class="edge" d="M 400 256 C 400 300, 390 360, 385 392" stroke="var(--profile)" marker-end="url(#arr)"/>
+    <g>
+      <rect class="toolChip" x="272" y="342" width="70" height="36" rx="8"/>
+      <text class="toolName" x="307" y="358" text-anchor="middle">TCAMT</text>
+      <text class="toolSig"  x="307" y="371" text-anchor="middle">Π × S → T</text>
+    </g>
+
+    <!-- ===================== object: test package T ===================== -->
+    <g>
+      <rect class="obj" x="330" y="395" width="290" height="130" fill="var(--test-bg)" stroke="var(--test)"/>
+      <text class="objTitle" x="346" y="419">T — Test package</text>
+      <text class="typ" x="346" y="441">test plans   : narrative + computable</text>
+      <text class="typ" x="346" y="457">test cases   : steps (v2 interaction | manual)</text>
+      <text class="typ" x="346" y="473">test data    : example messages (ER7)</text>
+      <text class="typ" x="346" y="489">constraints  : context-based, per test case</text>
+      <text class="typS" x="346" y="511">basis for ONC / HIMSS IIP / AIRA testing</text>
+    </g>
+
+    <!-- ===================== object: message under test ===================== -->
+    <g>
+      <rect class="obj" x="330" y="545" width="302" height="66" fill="var(--msg-bg)" stroke="var(--msg)"/>
+      <text class="objTitle" x="346" y="569">m — Message under test</text>
+      <text class="typ" x="346" y="587">ER7 (pipe-and-hat wire format)</text>
+      <text class="typS" x="346" y="603">from SUT, or generated/mutated corpus</text>
+    </g>
+
+    <!-- ===================== validate arrow (engine) ===================== -->
+    <path class="edge" d="M 632 160 C 706 160, 722 220, 740 262" stroke="var(--profile)" marker-end="url(#arr)"/>
+    <path class="edge" d="M 632 578 C 706 578, 726 470, 748 419" stroke="var(--msg)" marker-end="url(#arr)"/>
+    <path class="edge" d="M 632 460 C 668 460, 676 420, 698 392" stroke="var(--test)" marker-end="url(#arr)"/>
+    
+
+    <!-- engine box -->
+    <g>
+      <rect class="obj" x="700" y="265" width="282" height="150" fill="var(--surface-1)" stroke="var(--baseline)"/>
+      <text class="objTitle" x="716" y="290">v2-validation engine</text>
+      <text class="toolSig" x="716" y="308">validate : Π × ER7 → Report</text>
+      <text class="typ" x="716" y="330">parse     : ER7 × Profile → ParseTree</text>
+      <text class="typ" x="716" y="346">structure : usage · cardinality · length</text>
+      <text class="typ" x="716" y="362">content   : ConformanceContext · CoConstraints</text>
+      <text class="typ" x="716" y="378">valueset  : ValueSetLibrary bindings</text>
+      <text class="typS" x="716" y="400">Scala · gov.nist 1.7.3 via hit-nexus</text>
+    </g>
+    <!-- hosted instantiations note -->
+    <g>
+      <rect class="band" x="700" y="430" width="282" height="64"/>
+      <text class="bandLbl" x="716" y="450">HOSTED INSTANTIATIONS</text>
+      <text class="objSub" x="716" y="468">GVT (gvt-core + gvt-ui) · domain suites:</text>
+      <text class="objSub" x="716" y="484">immunization · syndromic · lab/ELR · IHE PCD</text>
+    </g>
+    <path class="edge" d="M 835 415 L 835 430" stroke="var(--baseline)" marker-end="url(#arr)"/>
+
+    <!-- ===================== object: Report ===================== -->
+    <path class="edge" d="M 982 340 L 1020 340" stroke="var(--report)" marker-end="url(#arr)"/>
+    <g>
+      <rect class="obj" x="1024" y="265" width="186" height="150" fill="var(--report-bg)" stroke="var(--report)"/>
+      <text class="objTitle" x="1038" y="290">Report</text>
+      <text class="objSub" x="1038" y="306">gov.nist.validation.report</text>
+      <text class="typ" x="1038" y="328">[Entry] where Entry =</text>
+      <text class="typ" x="1038" y="344">{ path, line, column,</text>
+      <text class="typ" x="1038" y="360">  category,</text>
+      <text class="typ" x="1038" y="376">  classification,</text>
+      <text class="typ" x="1038" y="392">  description }</text>
+      <text class="typS" x="1038" y="409">+ Trace</text>
+    </g>
+
+    <!-- ===================== CDC filter arrow → NistReport ===================== -->
+    <path class="edge" d="M 1117 415 L 1117 480" stroke="var(--report)" marker-end="url(#arr)"/>
+    <g>
+      <rect class="toolChip" x="1000" y="430" width="108" height="36" rx="8"/>
+      <text class="toolName" x="1054" y="446" text-anchor="middle">CDC wrapper</text>
+      <text class="toolSig"  x="1054" y="459" text-anchor="middle">filter ERR|WARN</text>
+    </g>
+    <g>
+      <rect class="obj" x="1024" y="484" width="186" height="62" fill="var(--report-bg)" stroke="var(--report)"/>
+      <text class="objTitle" x="1038" y="508">NistReport</text>
+      <text class="typ" x="1038" y="526">errors + warnings only</text>
+      <text class="typS" x="1038" y="540">via gov.cdc wrapper (Central)</text>
+    </g>
+
+    <!-- ===================== ehr-testing-tools overlay ===================== -->
+    <rect class="band" x="30" y="620" width="1180" height="130"/>
+    <text class="bandLbl" x="46" y="644">EHR-TESTING-TOOLS INTEGRATION (dashed = planned hooks)</text>
+
+    <g>
+      <rect class="obj" x="46" y="658" width="180" height="72" fill="var(--msg-bg)" stroke="var(--msg)"/>
+      <text class="objTitle" x="60" y="680">generate ∘ mutate</text>
+      <text class="objSub" x="60" y="697">Synthea-derived corpus,</text>
+      <text class="objSub" x="60" y="712">defect classes injected</text>
+    </g>
+    <path class="edge" d="M 226 690 C 284 686, 300 636, 336 602" stroke="var(--msg)" stroke-dasharray="6 5" marker-end="url(#arr)"/>
+    <text class="typS" x="284" y="650">→ m</text>
+
+    <g>
+      <rect class="obj" x="420" y="658" width="330" height="72" fill="var(--surface-1)" stroke="var(--baseline)" stroke-dasharray="6 5"/>
+      <text class="objTitle" x="436" y="680">gating: HAPI ⊗ NIST engine</text>
+      <text class="objSub" x="436" y="697">two complementary conformance gates —</text>
+      <text class="objSub" x="436" y="712">NIST adds value sets, co-constraints, slicing</text>
+    </g>
+    <path class="edge" d="M 660 658 C 648 560, 656 420, 696 348" stroke="var(--baseline)" stroke-dasharray="6 5" marker-end="url(#arr)"/>
+
+    <g>
+      <rect class="obj" x="880" y="658" width="330" height="72" fill="var(--surface-1)" stroke="var(--baseline)" stroke-dasharray="6 5"/>
+      <text class="objTitle" x="896" y="680">checking: defect class ↔ Entry.category</text>
+      <text class="objSub" x="896" y="697">closed loop — inject violation class X,</text>
+      <text class="objSub" x="896" y="712">expect finding class X, engine as oracle</text>
+    </g>
+    <path class="edge" d="M 1117 550 L 1117 656" stroke="var(--report)" stroke-dasharray="6 5" marker-end="url(#arr)"/>
+  </svg>
+
+  <div class="legend" aria-hidden="false">
+    <span class="k"><span class="sw" style="background:var(--std)"></span>inputs / human decisions</span>
+    <span class="k"><span class="sw" style="background:var(--profile)"></span>profile artifacts (Π)</span>
+    <span class="k"><span class="sw" style="background:var(--test)"></span>test artifacts (T)</span>
+    <span class="k"><span class="sw" style="background:var(--msg)"></span>messages (ER7)</span>
+    <span class="k"><span class="sw" style="background:var(--report)"></span>reports</span>
+    <span class="k">▭ solid border = artifact object · chip = tool arrow · dashed = planned hook</span>
+  </div>
+  </div>
+
+  <p class="foot">
+    Types verified from source: <code>Profile.xsd</code> (root <code>ConformanceProfile</code>), <code>ConformanceContext.xsd</code>, <code>ValueSets.xsd</code> (root <code>ValueSetLibrary</code>), <code>ValueSetBindings.xsd</code> (root <code>ValueSetBindingsContext</code>), <code>CoConstraintContext.xsd</code>, <code>ProfileSlicing.xsd</code> in <code>usnistgov/hl7-v2-schemas</code>; <code>Report/Entry/Trace</code> in <code>usnistgov/validation-report</code>; <code>hl7.v2.validation.Validator.validate(message, id): Future[Report]</code> mixing <code>structure</code>, <code>content</code>, and <code>vs</code> validators in <code>usnistgov/v2-validation</code>. Engine resolves from NIST's Nexus (<code>hit-nexus.nist.gov/repository/releases</code>), or transitively via <code>gov.cdc:lib-hl7v2-nist-validator</code> (Maven Central, Apache-2.0). IGAMT/TCAMT are interactive authoring tools: in the offline pipeline they appear only as the provenance of Π and T, exported once and committed.
+  </p>
+</div>
+</body>
+</html>
