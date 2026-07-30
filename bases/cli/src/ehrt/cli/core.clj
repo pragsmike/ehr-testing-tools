@@ -39,6 +39,9 @@
   {:seed {:coerce :long}
    :population {:coerce :long}
    :json {:coerce :boolean}
+   ;; ADR-0013: TTY-default rendering forcing flags.
+   :pretty {:coerce :boolean}
+   :edn {:coerce :boolean}
    ;; Digit-only strings that are identifiers, not numbers -- must not be
    ;; auto-coerced to a long (which would break ProcessBuilder's String[]
    ;; args downstream in corpus.generate/invocation).
@@ -1069,38 +1072,122 @@
     (json/write-str r)
     (pr-str r)))
 
+;; ---- ADR-0013: TTY-default rendering. A live terminal gets a human
+;; summary; a pipe/redirect gets the EDN envelope exactly as before --
+;; the determinism doctrine governs artifacts (files, --report,
+;; redirected bytes), not what a human sees at a shell. ----
+
+(defn real-tty?
+  "(some? (System/console)) -- the classic JVM idiom, chosen because it
+  returns nil the moment either stream is redirected, which is exactly
+  the conservative bias the TTY rule calls for (any doubt resolves to
+  the machine format)."
+  []
+  (some? (System/console)))
+
+(defn- pretty-kv-line
+  [[k v]]
+  (str (name k) "=" v))
+
+(defn- pretty-verdict-line
+  [{:keys [path verdict finding-count]}]
+  (str (name verdict) "  " path
+       (when (pos? finding-count)
+         (str "  (" finding-count (if (= 1 finding-count) " finding)" " findings)")))))
+
+(defn- report-payload
+  "The Report shape (ehrt.judge.report/Report) both gate and check
+  produce -- :files plus :totals. Baseline mode's {:absolute :relative}
+  payload, and anything else that doesn't match, is not this shape."
+  [payload]
+  (and (map? payload) (contains? payload :files) (contains? payload :totals) payload))
+
+(defn- pretty-report-summary
+  "gate/check's own tailored summary (ADR-0013): one verdict line per
+  file, then aggregate totals, then by-code counts, then any path this
+  run actually wrote (--report)."
+  [rpt report-path]
+  (str (str/join "\n" (map pretty-verdict-line (:files rpt)))
+       "\n\ntotals: " (str/join ", " (map pretty-kv-line (:totals rpt)))
+       (when (seq (:by-code rpt))
+         (str "\nby-code: " (str/join ", " (map pretty-kv-line (:by-code rpt)))))
+       (when report-path
+         (str "\nreport written: " report-path))))
+
+(defn- pretty-generic-summary
+  "Every other envelope command's brief summary (ADR-0013): status,
+  category, whatever key counts/paths the payload happens to carry,
+  plus a hint pointing at the full envelope. Never a prettified EDN
+  envelope -- the envelope is the machine form, full stop."
+  [r]
+  (let [{:keys [status category payload]} r
+        interesting (select-keys payload [:count :out-dir :path :cached :git :identity :item-count])]
+    (str (name status)
+         (when category (str " (" (name category) ")"))
+         (when (seq interesting)
+           (str "\n" (str/join "\n" (map pretty-kv-line interesting))))
+         "\n(--edn or --json for the full result)")))
+
+(defn render-pretty
+  "Human-facing rendering for a Result envelope (ADR-0013). Dispatches
+  on the payload's own shape, not on which command ran: a Report-shaped
+  payload (gate, check) gets the tailored per-file summary; everything
+  else -- including baseline mode's {:absolute :relative} payload --
+  gets the generic summary (this ruling's own named, permitted skip:
+  tailoring beyond gate/check is not required)."
+  [r report-path]
+  (if-let [rpt (report-payload (:payload r))]
+    (pretty-report-summary rpt report-path)
+    (pretty-generic-summary r)))
+
 (defn main!
   "The real body of -main, with every side-effecting boundary
   injectable for testing: :dispatch-fn (default `dispatch`),
-  :println-fn (default `println`), :exit-fn (default `System/exit`).
-  Returns the exit code it computed -- mainly useful for tests; -main
-  itself ignores the return value since :exit-fn already terminated
-  the process in real use. This split is what lets -main's exit-code
-  mapping and command routing be unit-tested without a real
-  System/exit (which would kill the test JVM).
+  :println-fn (default `println`), :exit-fn (default `System/exit`),
+  :tty?-fn (default `real-tty?`, ADR-0013). Returns the exit code it
+  computed -- mainly useful for tests; -main itself ignores the return
+  value since :exit-fn already terminated the process in real use.
+  This split is what lets -main's exit-code mapping and command
+  routing be unit-tested without a real System/exit (which would kill
+  the test JVM).
 
   A :category :cli-help result (help-response/bare-invocation-response
   in `dispatch`) prints its :text payload verbatim via println-fn
-  instead of going through `render` -- the ns docstring's one
-  deliberate EDN-out exception; --json is ignored for these regardless
-  of what was passed, since there is no EDN form to project.
+  instead of going through `render`/`render-pretty` -- the ns
+  docstring's one deliberate EDN-out exception; --json/--pretty/--edn
+  are all ignored for these regardless of what was passed, since there
+  is no EDN form to project.
+
+  ADR-0013: stdout rendering resolves in this order -- --pretty forces
+  `render-pretty` even into a pipe; else --edn forces the raw EDN
+  envelope even at a terminal; else --json behaves exactly as it always
+  has (a JSON projection, regardless of TTY); else, with none of the
+  three given, :tty?-fn decides -- a real terminal gets `render-pretty`,
+  a pipe/redirect gets the EDN envelope (today's unconditional default,
+  unchanged for every existing piped/redirected caller). `--report`
+  files are untouched by any of this.
 
   SS-4: a result whose :payload carries :stdout-sink? true (mutate-to-
   stdout!'s own marker) means raw framed bytes already went to the real
-  process stdout -- printing the EDN summary there too would corrupt
-  the byte stream a downstream `stdin:` consumer expects to decode
-  cleanly (caught for real by the loopback integration test before
-  this redirect existed). That summary is printed to *err* instead in
-  this one case -- stdout stays exactly, only, the framed bytes."
+  process stdout -- printing the summary there too would corrupt the
+  byte stream a downstream `stdin:` consumer expects to decode cleanly
+  (caught for real by the loopback integration test before this
+  redirect existed). That summary is printed to *err* instead in this
+  one case -- stdout stays exactly, only, the framed bytes."
   ([raw-args] (main! raw-args {}))
-  ([raw-args {:keys [dispatch-fn println-fn exit-fn]
-              :or {dispatch-fn dispatch println-fn println exit-fn #(System/exit %)}}]
+  ([raw-args {:keys [dispatch-fn println-fn exit-fn tty?-fn]
+              :or {dispatch-fn dispatch println-fn println exit-fn #(System/exit %)
+                   tty?-fn real-tty?}}]
    (let [{:keys [args opts]} (parse raw-args)
          r (dispatch-fn args opts)
          code (result->exit-code r)
-         text (if (= :cli-help (:category r))
-                (:text (:payload r))
-                (render r (:json opts)))]
+         text (cond
+                (= :cli-help (:category r)) (:text (:payload r))
+                (:pretty opts) (render-pretty r (:report opts))
+                (:edn opts) (render r false)
+                (:json opts) (render r true)
+                (tty?-fn) (render-pretty r (:report opts))
+                :else (render r false))]
      (if (:stdout-sink? (:payload r))
        (binding [*out* *err*] (println-fn text))
        (println-fn text))

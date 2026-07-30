@@ -12,6 +12,13 @@
     (is (str/includes? text "--json"))
     (is (str/includes? text "Exit codes"))))
 
+(deftest render-top-level-lists-pretty-and-edn-flags-test
+  ;; ADR-0013: the TTY-default rendering's forcing flags are documented
+  ;; alongside --json, not a hidden feature.
+  (let [text (help/render-top-level help/cli-spec)]
+    (is (str/includes? text "--pretty"))
+    (is (str/includes? text "--edn"))))
+
 (deftest render-top-level-lists-exit-codes-0-1-2-3-test
   (let [text (help/render-top-level help/cli-spec)]
     (doseq [code [0 1 2 3]]

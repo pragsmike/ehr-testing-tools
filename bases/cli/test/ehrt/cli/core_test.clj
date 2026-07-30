@@ -1566,3 +1566,107 @@
     (is (= 2 code))
     (is (= 2 @exit-code))
     (is (clojure.string/includes? @printed "Usage:"))))
+
+;; ---- ADR-0013: TTY-default rendering -- render-pretty's own dispatch,
+;; then main!'s :tty?-fn seam and the --pretty/--edn/--json precedence
+;; over it. ----
+
+(def ^:private sample-report
+  {:run {:gate :v2 :path "some/dir"}
+   :totals {:pass 1 :rejected 1 :indeterminate 0 :no-verdict 0}
+   :by-code {"hl7-exception" 1}
+   :files [{:path "a.hl7" :verdict :pass :finding-count 0 :findings []}
+           {:path "b.hl7" :verdict :rejected :finding-count 1 :findings []}]})
+
+(deftest render-pretty-report-shaped-payload-lists-verdicts-and-totals-test
+  (let [text (cli/render-pretty (result/rejected :gate-rejected sample-report) nil)]
+    (is (clojure.string/includes? text "pass  a.hl7"))
+    (is (clojure.string/includes? text "rejected  b.hl7  (1 finding)"))
+    (is (clojure.string/includes? text "totals:"))
+    (is (clojure.string/includes? text "by-code:"))
+    (is (not (clojure.string/includes? text "report written")))))
+
+(deftest render-pretty-report-shaped-payload-names-the-report-path-when-given-test
+  (let [text (cli/render-pretty (result/rejected :gate-rejected sample-report) "out/r.edn")]
+    (is (clojure.string/includes? text "report written: out/r.edn"))))
+
+(deftest render-pretty-non-report-payload-falls-back-to-generic-summary-test
+  ;; Baseline mode's {:absolute :relative} payload (and anything else
+  ;; that isn't Report-shaped) is this ruling's own named, permitted
+  ;; skip -- a generic status/category/hint summary, never a
+  ;; prettified EDN envelope.
+  (let [text (cli/render-pretty (result/ok {:count 3 :out-dir "out/demo"}) nil)]
+    (is (clojure.string/includes? text "ok"))
+    (is (clojure.string/includes? text "count=3"))
+    (is (clojure.string/includes? text "out-dir=out/demo"))
+    (is (clojure.string/includes? text "--edn or --json"))))
+
+(deftest main-bang-tty-true-defaults-to-pretty-rendering-test
+  (let [printed (atom nil)
+        code (cli/main! ["artifact" "fetch"]
+                         {:dispatch-fn (fn [_args _opts] (result/ok {:cached true}))
+                          :println-fn (fn [s] (reset! printed s))
+                          :exit-fn (fn [_c] nil)
+                          :tty?-fn (fn [] true)})]
+    (is (= 0 code))
+    (is (clojure.string/includes? @printed "ok"))
+    (is (not (clojure.string/includes? @printed ":status")))))
+
+(deftest main-bang-tty-false-defaults-to-edn-envelope-test
+  (let [printed (atom nil)
+        code (cli/main! ["artifact" "fetch"]
+                         {:dispatch-fn (fn [_args _opts] (result/ok {:cached true}))
+                          :println-fn (fn [s] (reset! printed s))
+                          :exit-fn (fn [_c] nil)
+                          :tty?-fn (fn [] false)})]
+    (is (= 0 code))
+    (is (clojure.string/includes? @printed ":status :ok"))))
+
+(deftest main-bang-default-tty-fn-is-real-tty-and-behaves-like-a-pipe-in-tests-test
+  ;; No :tty?-fn override -- the test JVM has no real console attached,
+  ;; so real-tty? returns false here, matching every pre-existing test's
+  ;; own EDN-envelope assertions (backward compatible by construction).
+  (is (false? (cli/real-tty?))))
+
+(deftest main-bang-pretty-flag-forces-pretty-even-when-tty-fn-false-test
+  (let [printed (atom nil)
+        code (cli/main! ["artifact" "fetch" "--pretty"]
+                         {:dispatch-fn (fn [_args _opts] (result/ok {:cached true}))
+                          :println-fn (fn [s] (reset! printed s))
+                          :exit-fn (fn [_c] nil)
+                          :tty?-fn (fn [] false)})]
+    (is (= 0 code))
+    (is (clojure.string/includes? @printed "ok"))
+    (is (not (clojure.string/includes? @printed ":status")))))
+
+(deftest main-bang-edn-flag-forces-edn-even-when-tty-fn-true-test
+  (let [printed (atom nil)
+        code (cli/main! ["artifact" "fetch" "--edn"]
+                         {:dispatch-fn (fn [_args _opts] (result/ok {:cached true}))
+                          :println-fn (fn [s] (reset! printed s))
+                          :exit-fn (fn [_c] nil)
+                          :tty?-fn (fn [] true)})]
+    (is (= 0 code))
+    (is (clojure.string/includes? @printed ":status :ok"))))
+
+(deftest main-bang-json-flag-wins-over-tty-fn-true-unchanged-from-before-test
+  ;; formats.md's own documented contract: --json is a projection,
+  ;; unconditionally, regardless of what's attached to stdout -- ADR-0013
+  ;; only adds the sniff for when NONE of --pretty/--edn/--json is given.
+  (let [printed (atom nil)
+        code (cli/main! ["artifact" "fetch" "--json"]
+                         {:dispatch-fn (fn [_args _opts] (result/ok {:cached true}))
+                          :println-fn (fn [s] (reset! printed s))
+                          :exit-fn (fn [_c] nil)
+                          :tty?-fn (fn [] true)})]
+    (is (= 0 code))
+    (is (clojure.string/includes? @printed "\"status\""))))
+
+(deftest main-bang-help-ignores-pretty-and-edn-flags-too-test
+  (let [printed (atom nil)
+        code (cli/main! ["help" "--pretty"]
+                         {:println-fn (fn [s] (reset! printed s))
+                          :exit-fn (fn [_c] nil)
+                          :tty?-fn (fn [] false)})]
+    (is (= 0 code))
+    (is (clojure.string/includes? @printed "Usage:"))))

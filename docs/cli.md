@@ -32,6 +32,8 @@ Accepted anywhere in the command line, on any group or verb.
 | Flag | Default | Meaning |
 |---|---|---|
 | `--json` | — | project the EDN result to JSON (EDN remains canonical) |
+| `--pretty` | — | force a human-readable summary, even when stdout is piped -- the default at a real terminal already; ADR-0013 |
+| `--edn` | — | force the raw EDN envelope, even at a terminal -- the default when stdout is piped or redirected already; ADR-0013 |
 | `--help` | — | print this command's usage and exit 0 without running it |
 
 ## Exit codes

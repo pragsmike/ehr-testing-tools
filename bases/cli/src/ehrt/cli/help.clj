@@ -22,6 +22,8 @@
 
 (def global-flags
   [{:flag "--json" :doc "project the EDN result to JSON (EDN remains canonical)"}
+   {:flag "--pretty" :doc "force a human-readable summary, even when stdout is piped -- the default at a real terminal already; ADR-0013"}
+   {:flag "--edn" :doc "force the raw EDN envelope, even at a terminal -- the default when stdout is piped or redirected already; ADR-0013"}
    {:flag "--help" :doc "print this command's usage and exit 0 without running it"}])
 
 (def ^:private artifact-flags
