@@ -192,6 +192,84 @@
     (is (result/ok? r))
     (is (= {:seed 1} @called))))
 
+;; ---- ADR-0015: `corpus generate` grows source subcommands. The third
+;; positional slot (occupied by PATH for mutate/intake) is the source
+;; discriminator here instead -- bare `corpus generate` and `corpus
+;; generate synthea` both stay wired to :generate-fn (generate!,
+;; unchanged); `corpus generate sim` is a new, separate :generate-sim-fn
+;; injection point. ----
+
+(deftest dispatch-corpus-generate-bare-and-explicit-synthea-route-identically-test
+  ;; Pins bare-generate compatibility: both spellings hit the exact same
+  ;; injection point, so bin/quickstart-demo's own bare `generate` call
+  ;; is untouched by this session's subcommand addition.
+  (doseq [args [["corpus" "generate"] ["corpus" "generate" "synthea"]]]
+    (let [called (atom nil)
+          r (cli/dispatch args {:seed 7}
+                           {:generate-fn (fn [opts] (reset! called opts) (result/ok {:manifest {}}))})]
+      (is (result/ok? r))
+      (is (= {:seed 7} @called) (str args " must route through :generate-fn")))))
+
+(deftest dispatch-routes-corpus-generate-sim-test
+  (let [called (atom nil)
+        r (cli/dispatch ["corpus" "generate" "sim"] {:patients 3}
+                         {:generate-sim-fn (fn [opts] (reset! called opts) (result/ok {:out-dir "x"}))})]
+    (is (result/ok? r))
+    (is (= {:patients 3} @called))))
+
+(deftest dispatch-corpus-generate-unknown-source-names-synthea-and-sim-test
+  (let [r (cli/dispatch ["corpus" "generate" "bogus"] {} {})]
+    (is (= :unknown-command (:category r)))
+    (is (= #{"synthea" "sim"} (set (:valid-options (:payload r)))))))
+
+;; ---- generate-sim-command: real, hermetic (sim is in-process,
+;; ADR-0005 -- no subprocess, no network), matching the house
+;; convention of small real invocations over injected fakes when the
+;; real thing is already this cheap. temp-dir* is defined further down
+;; this file; declared here so the compiler accepts the forward
+;; reference (deftest bodies don't run until the whole namespace has
+;; already loaded, by which point the real def exists). ----
+
+(declare temp-dir*)
+
+(deftest generate-sim-command-zero-flag-defaults-writes-a-v2-corpus-test
+  (let [out-dir (str (temp-dir*) "/fresh")
+        r (cli/generate-sim-command {:out-dir out-dir})]
+    (is (result/ok? r))
+    (is (.exists (io/file out-dir "manifest.edn")))
+    (is (.exists (io/file out-dir "msg-000.hl7")) "zero-flag :emit \"hl7\" default produces a v2 corpus")))
+
+(deftest generate-sim-command-same-seed-is-byte-identical-test
+  (let [dir-a (str (temp-dir*) "/a") dir-b (str (temp-dir*) "/b")
+        opts {:seed 99 :patients 2 :emit "hl7"}]
+    (is (result/ok? (cli/generate-sim-command (assoc opts :out-dir dir-a))))
+    (is (result/ok? (cli/generate-sim-command (assoc opts :out-dir dir-b))))
+    (is (= (slurp (io/file dir-a "msg-000.hl7")) (slurp (io/file dir-b "msg-000.hl7"))))
+    (is (= (slurp (io/file dir-a "msg-001.hl7")) (slurp (io/file dir-b "msg-001.hl7"))))))
+
+(deftest generate-sim-command-maps-flags-onto-registry-params-test
+  ;; :patients 3 -> 6 messages (2 per patient, matching the emitter's
+  ;; own fixture behavior already exercised elsewhere in this suite);
+  ;; the point under test is that the CLI's own --patients flag reaches
+  ;; the registry's :sim entry at all, not the emitter's own arithmetic.
+  (let [out-dir (str (temp-dir*) "/fresh")
+        r (cli/generate-sim-command {:seed 5 :patients 3 :churn false :emit "hl7" :out-dir out-dir})]
+    (is (result/ok? r))
+    (is (.exists (io/file out-dir "msg-005.hl7")) "3 patients' worth of messages actually landed")))
+
+(deftest generate-sim-command-rejects-existing-nonempty-out-dir-test
+  (let [out-dir (temp-dir*)
+        _ (spit (io/file out-dir "stale.txt") "x")
+        r (cli/generate-sim-command {:seed 1 :patients 1 :out-dir out-dir})]
+    (is (result/error? r))
+    (is (= :out-dir-exists (:category r)))))
+
+(deftest generate-sim-command-default-out-dir-matches-registrys-own-out-dir-fn-test
+  (let [entry (generators/generators-lookup :sim)
+        params-result (generators/generators-resolve-params :sim {:seed 3 :patients 4})
+        expected-out-dir ((:out-dir-fn entry) (:payload params-result))]
+    (is (= "out/corpus/sim-s3-p4" expected-out-dir))))
+
 (deftest dispatch-routes-corpus-mutate-test
   (let [called (atom nil)
         r (cli/dispatch ["corpus" "mutate"] {:path "x.json"}

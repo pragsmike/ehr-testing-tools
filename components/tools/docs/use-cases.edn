@@ -44,6 +44,28 @@
    :equations ["synthea-config × synthea-artifact × jdk-runtime × config-hash → raw-corpus  [Generate]  {catalytic: synthea-artifact, jdk-runtime, config-hash}"
                "raw-corpus → canonical-fhir-datum  [Normalize]"]}
 
+  {:id :generate-sim-traffic
+   :title "Generate deterministic sim (HL7v2) traffic"
+   :audience "Teams wanting deterministic, seeded HL7v2 hospital traffic (boarding, churn, cancellations, merges) as a corpus, with no cataloging step required first."
+   :bring "A seed (optional -- the zero-flag default is deterministic on its own, D9/ADR-0015)."
+   :get "A v2 (ER7) corpus: one .hl7 file per message plus sim's own manifest.edn, at a derived, byte-reproducible out-dir."
+   :maturity :usable
+   :commands
+   {:lines ["# Zero-flag: one patient, HL7v2 messages, sim's own pinned seed."
+            "bin/ehrt corpus generate sim"
+            ""
+            "# Seeded, multi-patient."
+            "bin/ehrt corpus generate sim --seed 42 --patients 5"
+            ""
+            "# What you got."
+            "ls out/corpus/sim-s42-p5"
+            "cat out/corpus/sim-s42-p5/manifest.edn"
+            ""
+            "# Look at it."
+            "bin/ehrt show out/corpus/sim-s42-p5"]
+    :note "Flags and their defaults: [cli.md](cli.md#ehrt-corpus-generate), or `ehrt help corpus` at the shell -- `generate sim`'s own flags (--patients/--churn/--emit/--config) sit alongside `generate synthea`'s in the same verb entry. This is the front door for sim traffic (ADR-0015); `corpus intake 'sim:...'` remains the one-command generate-and-catalog compose form for when you want a cataloged batch, not a bare corpus -- see [Simulator (sim) traffic as an intake source, in one command](#simulator-sim-traffic-as-an-intake-source-in-one-command)."}
+   :equations ["generator-config × sim-engine → generated-corpus  [EngineExecute]"]}
+
   {:id :generate-controlled-fault-data
    :title "Generate controlled-fault data"
    :audience "Teams needing deliberately broken data for any downstream use, with full traceability back to what was broken and why."
@@ -387,7 +409,7 @@
             ""
             "# Every catalog entry carries sim's own real provenance (ADR-0014)."
             "cat out/sim-intake/catalog.edn"]
-    :note "Generator-URL params (seed, patients, churn, emit, reference-date, config) are sim's own `run` verb's flags; a bare `sim:` with no query string still works, at sim's own pinned one-patient/hl7 default (the determinism law of defaults, D8). Gate the result the same way any intaken corpus gates -- [Judge user-supplied data: intake -> gate -> report](#judge-user-supplied-data-intake---gate---report). Synthea's own equivalent one-command path is `bin/ehrt corpus intake 'synthea:?seed=1&population=5'`, over the SAME generator registry (docs/source-sink-design.md); `ehrt corpus generate` itself is unchanged and remains the Synthea-only, more-flag-heavy path (OPEN-4 in the design doc records whether that changes later)."}
+    :note "This is the compose form -- generate, then catalog, in one command -- for when you want a cataloged batch, not a bare corpus; `bin/ehrt corpus generate sim` (ADR-0015, [Generate deterministic sim (HL7v2) traffic](#generate-deterministic-sim-hl7v2-traffic)) is the front door when you just want the corpus. Generator-URL params (seed, patients, churn, emit, reference-date, config) are sim's own `run` verb's flags, the same names `generate sim`'s own flags use; a bare `sim:` with no query string still works, at sim's own pinned one-patient/hl7 default (the determinism law of defaults, D8). Gate the result the same way any intaken corpus gates -- [Judge user-supplied data: intake -> gate -> report](#judge-user-supplied-data-intake---gate---report). Synthea's own equivalent one-command compose path is `bin/ehrt corpus intake 'synthea:?seed=1&population=5'`, over the SAME generator registry (docs/source-sink-design.md), fronted the same way by `bin/ehrt corpus generate synthea`/bare `corpus generate`."}
    :equations ["generator-config × sim-engine → generated-corpus  [EngineExecute]"
                "generated-corpus → catalog-entry + intake-record  [Intake]"]}
 

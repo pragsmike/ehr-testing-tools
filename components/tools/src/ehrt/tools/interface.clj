@@ -102,6 +102,7 @@
 ;; qualified generators-*)
 (def generators-lookup generators/lookup)
 (def generators-register! generators/register!)
+(def generators-resolve-params generators/resolve-params)
 
 ;; corpus.generator-source (collides with corpus.spool-source on resolve! --
 ;; keeps the unqualified name; spool-source's twin is qualified instead)
@@ -139,6 +140,11 @@
 (def jdk-name generate/jdk-name)
 (def jdk-version generate/jdk-version)
 (def resolve-java-bin generate/resolve-java-bin)
+;; ADR-0015: shared by generate! and ehrt.cli.core/generate-sim-command,
+;; so every generator source's own :out-dir-exists guard is the same
+;; check and the same :hint text.
+(def out-dir-exists? generate/non-empty-existing-dir?)
+(def out-dir-exists-error generate/out-dir-exists-error)
 
 ;; corpus.operators (collides with corpus.generators on lookup/register! --
 ;; keeps the unqualified names; generators' twins are qualified instead)

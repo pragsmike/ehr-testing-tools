@@ -20,7 +20,7 @@ ehrt <group> [<verb>] [flags]
 | Group | What it covers |
 |---|---|
 | [`artifact`](#ehrt-artifact) | Fetch and resolve locked external engine/tool artifacts (ADR-0005). |
-| [`corpus`](#ehrt-corpus) | Generate, mutate, intake, and inspect synthetic corpora. Any PATH, --out-dir, or --out below may also be spelled as a dir:/file: URL designator (ruling 7, docs/source-sink-design.md D4) instead of a bare path -- bare paths remain the documented, common spelling. `corpus intake` additionally accepts a generator URL (sim:/synthea:) in place of PATH -- generate, then catalog, in one command (SS-2) -- or a stdin designator (stdin:?format=...&framing=...) -- read piped bytes, spool, then catalog, in one command (SS-3). |
+| [`corpus`](#ehrt-corpus) | Generate, mutate, intake, and inspect synthetic corpora. Any PATH, --out-dir, or --out below may also be spelled as a dir:/file: URL designator (ruling 7, docs/source-sink-design.md D4) instead of a bare path -- bare paths remain the documented, common spelling. `corpus generate sim`/`corpus generate synthea` (ADR-0015) is the front door for generating a corpus; `corpus intake` additionally accepts a generator URL (sim:/synthea:) in place of PATH as its own compose form -- generate, then catalog, in one command (SS-2) -- or a stdin designator (stdin:?format=...&framing=...) -- read piped bytes, spool, then catalog, in one command (SS-3). |
 | [`gate`](#ehrt-gate) | Conformance-gate a file or directory against HL7 v2 or FHIR. Bare `ehrt gate PATH` (no v2/fhir verb) sniffs the format via corpus.intake/sniff-format and dispatches (D11, ADR-0019); a directory mixing both formats, or containing a file the sniffer can't classify, is an error naming the explicit override (`gate v2 PATH` / `gate fhir PATH`), never a silent per-file split. PATH (and gate fhir's --out-dir) may also be spelled as a dir:/file: URL designator (ruling 7) instead of a bare path. |
 | [`check`](#ehrt-check) | Check a candidate corpus against an expected corpus and/or explicit per-file assertions -- the corpus's second judge, alongside Gate. DIR may also be spelled as a dir: URL designator (ruling 7) instead of a bare path. |
 | [`version`](#ehrt-version) | Prints this repo's own honestly-pre-release identity (never a fabricated semver, D13) plus every pinned artifact's name@version from the lockfile. |
@@ -78,24 +78,28 @@ Resolve an already-fetched artifact to a filesystem path.
 
 ## `ehrt corpus`
 
-Generate, mutate, intake, and inspect synthetic corpora. Any PATH, --out-dir, or --out below may also be spelled as a dir:/file: URL designator (ruling 7, docs/source-sink-design.md D4) instead of a bare path -- bare paths remain the documented, common spelling. `corpus intake` additionally accepts a generator URL (sim:/synthea:) in place of PATH -- generate, then catalog, in one command (SS-2) -- or a stdin designator (stdin:?format=...&framing=...) -- read piped bytes, spool, then catalog, in one command (SS-3).
+Generate, mutate, intake, and inspect synthetic corpora. Any PATH, --out-dir, or --out below may also be spelled as a dir:/file: URL designator (ruling 7, docs/source-sink-design.md D4) instead of a bare path -- bare paths remain the documented, common spelling. `corpus generate sim`/`corpus generate synthea` (ADR-0015) is the front door for generating a corpus; `corpus intake` additionally accepts a generator URL (sim:/synthea:) in place of PATH as its own compose form -- generate, then catalog, in one command (SS-2) -- or a stdin designator (stdin:?format=...&framing=...) -- read piped bytes, spool, then catalog, in one command (SS-3).
 
 ### `ehrt corpus generate`
 
-Generate a deterministic synthetic Synthea corpus. Zero-flag defaults (D9, ADR-0019) make the bare command a byte-reproducible run -- re-running it into the same (derived) --out-dir without clearing it first is rejected (:out-dir-exists), not silently overwritten.
+Generate a deterministic synthetic corpus. Grows a source subcommand (ADR-0015): `corpus generate synthea` (Synthea, the flags below) or `corpus generate sim` (this workspace's own sim engine, ehrt.sim -- --patients/--churn/--emit/--config below); bare `corpus generate`, with no subcommand, stays exactly `generate synthea` for compatibility with every existing doc and script. Zero-flag defaults (D9, ADR-0019) make either source's bare command a byte-reproducible run -- re-running it into the same (derived) --out-dir without clearing it first is rejected (:out-dir-exists), not silently overwritten.
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `--config-path` | `resources/synthea-default.properties` | Synthea properties file |
-| `--seed` | `1` | patient-generation seed (integer) |
-| `--clinician-seed` | `the resolved --seed value` | clinician-generation seed (integer) -- Synthea defaults this to wall-clock time otherwise, which breaks reproducibility even with --seed pinned |
-| `--population` | `5` | population size (integer) |
-| `--reference-date` | `20260101` | generation reference date, YYYYMMDD -- Synthea otherwise generates relative to wall-clock "now" |
-| `--out-dir` | `out/corpus/synthea-s<seed>-p<population>` | output directory for the corpus + manifest.edn -- rejected if it already exists and is non-empty |
-| `--locale` | `en-US` | BCP47-ish locale |
-| `--timezone` | `UTC` | timezone |
-| `--java-bin` | `resolved via the artifact registry` | java executable to invoke |
-| `--lockfile` | `artifacts.lock.edn` | path to the lockfile |
+| `--config-path` | `resources/synthea-default.properties` | synthea: Synthea properties file |
+| `--seed` | `1` | patient/master-generation seed (integer), shared by both sources |
+| `--clinician-seed` | `the resolved --seed value` | synthea: clinician-generation seed (integer) -- Synthea defaults this to wall-clock time otherwise, which breaks reproducibility even with --seed pinned |
+| `--population` | `5` | synthea: population size (integer) |
+| `--reference-date` | `20260101` | generation reference date, shared by both sources -- YYYYMMDD for synthea; Synthea otherwise generates relative to wall-clock "now" |
+| `--out-dir` | `out/corpus/synthea-s<seed>-p<population> for synthea, out/corpus/sim-s<seed>-p<patients> for sim` | output directory for the corpus + manifest.edn -- rejected if it already exists and is non-empty |
+| `--locale` | `en-US` | synthea: BCP47-ish locale |
+| `--timezone` | `UTC` | synthea: timezone |
+| `--java-bin` | `resolved via the artifact registry` | synthea: java executable to invoke |
+| `--lockfile` | `artifacts.lock.edn` | synthea: path to the lockfile |
+| `--patients` | `1` | sim: patient count (integer) |
+| `--churn` | `false` | sim: turn churn on with sensible defaults |
+| `--emit` | `hl7` | sim: message format to emit -- "hl7" produces a v2 corpus |
+| `--config` | `none` | sim: path to an EDN file carrying the data-heavy engine keys (:pathway/:pathways/:order-profiles/:churn-profile/:site-profile/:modules/...) |
 
 ### `ehrt corpus mutate`
 

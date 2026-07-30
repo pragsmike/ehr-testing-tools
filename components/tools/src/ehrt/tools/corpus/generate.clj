@@ -117,10 +117,27 @@
                 (str "--exporter.baseDirectory=" out-dir)]
                extra-args)))
 
-(defn- non-empty-existing-dir?
+(defn non-empty-existing-dir?
+  "Public (ADR-0015): shared by `generate!` below and
+  `ehrt.cli.core/generate-sim-command`, so the :out-dir-exists guard --
+  and its own :hint text -- have exactly one place to change, not one
+  per generator source."
   [out-dir]
   (let [f (io/file out-dir)]
     (and (.isDirectory f) (seq (.listFiles f)))))
+
+(defn out-dir-exists-error
+  "The shared :out-dir-exists rejection (D9's determinism law: a
+  zero-flag command derives a stable path, so a second zero-flag run
+  must never silently land in the same directory as the first) --
+  factored out here so `generate!` and every other generator source's
+  own CLI front door raise it identically. :hint text is a single
+  shared string for the same reason (ADR-0015's own remedy-hint
+  ruling revises it in one place, not once per call site)."
+  [out-dir]
+  (kernel/error :out-dir-exists
+                {:out-dir out-dir
+                 :hint "remove the directory, or pass a different --out-dir, to regenerate"}))
 
 (defn generate!
   "Generates a Synthea corpus. Options:
@@ -231,9 +248,7 @@
   (let [clinician-seed (or clinician-seed seed)
         out-dir (or out-dir (default-out-dir seed population))]
    (if (non-empty-existing-dir? out-dir)
-     (kernel/error :out-dir-exists
-                    {:out-dir out-dir
-                     :hint "remove the directory, or pass a different --out-dir, to regenerate"})
+     (out-dir-exists-error out-dir)
     (let [lockfile-result (read-lockfile lockfile)]
      (if-not (kernel/ok? lockfile-result)
       lockfile-result

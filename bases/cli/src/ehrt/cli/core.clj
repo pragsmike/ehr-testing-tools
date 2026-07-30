@@ -23,6 +23,7 @@
             [ehrt.tools.interface :as artifact]
             [ehrt.cli.help :as help]
             [ehrt.tools.interface :as generate]
+            [ehrt.tools.interface :as generators]
             [ehrt.tools.interface :as mutate]
             [ehrt.tools.interface :as intake]
             [ehrt.tools.interface :as operators]
@@ -431,6 +432,45 @@
                               format
                               (or (:framing sink) source-sink/default-framing)
                               (:mutant (:payload mutate-result))))))))))
+
+;; ---- ADR-0015: `ehrt corpus generate sim` -- the sim source's own
+;; generation front door, alongside bare `ehrt corpus generate`/`ehrt
+;; corpus generate synthea` (both still `generate/generate!`,
+;; unchanged). No generation logic of its own: resolves CLI opts
+;; against the :sim generator registry entry's own :default-params,
+;; then drives that same entry's :out-dir-fn/:execute-fn -- the
+;; registry (ehrt.tools.corpus.generators) stays the single source of
+;; what :sim generation does. ----
+
+(defn generate-sim-command
+  "`ehrt corpus generate sim` (ADR-0015): CLI opts -> the :sim
+  generator registry entry's own :default-params (D9's zero-flag
+  contract -- a zero-flag `generate sim` is a complete, deterministic
+  command, sharing generate/default-seed with :synthea's own zero-flag
+  default), merged params -> that entry's own :out-dir-fn for the
+  derived out-dir, then its own :execute-fn. Rejects up front with the
+  shared :out-dir-exists guard (ehrt.tools.interface/out-dir-exists?/
+  out-dir-exists-error) when the resolved out-dir already exists and is
+  non-empty -- the same determinism guard corpus.generate/generate!
+  enforces for :synthea: a second zero-flag run must never silently
+  land in the same directory as the first."
+  [{:keys [seed patients churn emit reference-date config out-dir]}]
+  (let [params (cond-> {}
+                 (some? seed) (assoc :seed seed)
+                 (some? patients) (assoc :patients patients)
+                 (some? churn) (assoc :churn churn)
+                 emit (assoc :emit emit)
+                 reference-date (assoc :reference-date reference-date)
+                 config (assoc :config config))
+        resolved-result (generators/generators-resolve-params :sim params)]
+    (if-not (result/ok? resolved-result)
+      resolved-result
+      (let [entry (generators/generators-lookup :sim)
+            merged (:payload resolved-result)
+            resolved-out-dir (or out-dir ((:out-dir-fn entry) merged))]
+        (if (generate/out-dir-exists? resolved-out-dir)
+          (generate/out-dir-exists-error resolved-out-dir)
+          ((:execute-fn entry) merged resolved-out-dir))))))
 
 (defn mutate-command
   "`ehrt corpus mutate`: applies one operator, at one locator, to every
@@ -1284,12 +1324,13 @@
   command -- see `help-response`/`bare-invocation-response` and the ns
   docstring's EDN-out exception."
   ([args opts] (dispatch args opts {}))
-  ([args opts {:keys [fetch-fn fetch-all-fn resolve-fn generate-fn mutate-fn intake-fn operators-fn
+  ([args opts {:keys [fetch-fn fetch-all-fn resolve-fn generate-fn generate-sim-fn mutate-fn intake-fn operators-fn
                        gate-v2-fn gate-fhir-fn check-fn version-fn doctor-fn sim-run-fn show-fn play-fn]
                :or {fetch-fn fetch-command
                     fetch-all-fn fetch-all-command
                     resolve-fn resolve-command
                     generate-fn generate/generate!
+                    generate-sim-fn generate-sim-command
                     mutate-fn mutate-command
                     intake-fn intake-command
                     operators-fn operators-command
@@ -1329,7 +1370,17 @@
                         "resolve" (resolve-fn opts)
                         (unknown-command-error args (help/verb-names (help/find-group help/cli-spec "artifact"))))
            "corpus" (case action
-                      "generate" (generate-fn opts)
+                      ;; ADR-0015: `corpus generate` grows source
+                      ;; subcommands (sim/synthea) via the same third
+                      ;; positional slot gate's own v2/fhir discriminator
+                      ;; already occupies one level up -- `path` here is
+                      ;; the subcommand name, not a filesystem path; bare
+                      ;; `corpus generate` (path nil) stays synthea,
+                      ;; byte-for-byte unchanged.
+                      "generate" (case (or path "synthea")
+                                   "synthea" (generate-fn opts)
+                                   "sim" (generate-sim-fn opts)
+                                   (unknown-command-error args ["synthea" "sim"]))
                       "mutate" (mutate-fn opts)
                       "intake" (intake-fn opts)
                       "operators" (operators-fn opts)

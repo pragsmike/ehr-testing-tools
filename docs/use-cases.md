@@ -81,6 +81,64 @@ flowchart LR
     style synthea_config fill:#f5f5f5,stroke:#999,color:#333
 ```
 
+## Generate deterministic sim (HL7v2) traffic
+
+**Audience:** Teams wanting deterministic, seeded HL7v2 hospital traffic (boarding, churn, cancellations, merges) as a corpus, with no cataloging step required first.
+
+**You bring:** A seed (optional -- the zero-flag default is deterministic on its own, D9/ADR-0015).
+
+**You get:** A v2 (ER7) corpus: one .hl7 file per message plus sim's own manifest.edn, at a derived, byte-reproducible out-dir.
+
+**Maturity:** usable
+
+**You type:**
+
+```sh
+# Zero-flag: one patient, HL7v2 messages, sim's own pinned seed.
+bin/ehrt corpus generate sim
+
+# Seeded, multi-patient.
+bin/ehrt corpus generate sim --seed 42 --patients 5
+
+# What you got.
+ls out/corpus/sim-s42-p5
+cat out/corpus/sim-s42-p5/manifest.edn
+
+# Look at it.
+bin/ehrt show out/corpus/sim-s42-p5
+```
+
+Flags and their defaults: [cli.md](cli.md#ehrt-corpus-generate), or `ehrt help corpus` at the shell -- `generate sim`'s own flags (--patients/--churn/--emit/--config) sit alongside `generate synthea`'s in the same verb entry. This is the front door for sim traffic (ADR-0015); `corpus intake 'sim:...'` remains the one-command generate-and-catalog compose form for when you want a cataloged batch, not a bare corpus -- see [Simulator (sim) traffic as an intake source, in one command](#simulator-sim-traffic-as-an-intake-source-in-one-command).
+
+```
+generator-config × sim-engine → generated-corpus  [EngineExecute]
+```
+
+```mermaid
+flowchart LR
+
+    %% --- Source types (raw inputs, not produced by any operation) ---
+    generator_config(["generator-config"])
+    sim_engine(["sim-engine"])
+
+    %% --- Operations (boxes; spiders use distinct shapes) ---
+    EngineExecute["EngineExecute"]
+
+    %% --- Wires (typed connections) ---
+    %% Arrow 1: EngineExecute
+    generator_config -- generator-config --> EngineExecute
+    sim_engine -- sim-engine --> EngineExecute
+
+    %% --- Styling ---
+
+    %% Operations: dark boxes (fan=blue, funnel=green, enrichment=outlined, gate=purple, external=dashed)
+    style EngineExecute fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+
+    %% Source types: light rounded
+    style generator_config fill:#f5f5f5,stroke:#999,color:#333
+    style sim_engine fill:#f5f5f5,stroke:#999,color:#333
+```
+
 ## Generate controlled-fault data
 
 **Audience:** Teams needing deliberately broken data for any downstream use, with full traceability back to what was broken and why.
@@ -1111,7 +1169,7 @@ cat out/sim-intake/intake-record.edn
 cat out/sim-intake/catalog.edn
 ```
 
-Generator-URL params (seed, patients, churn, emit, reference-date, config) are sim's own `run` verb's flags; a bare `sim:` with no query string still works, at sim's own pinned one-patient/hl7 default (the determinism law of defaults, D8). Gate the result the same way any intaken corpus gates -- [Judge user-supplied data: intake -> gate -> report](#judge-user-supplied-data-intake---gate---report). Synthea's own equivalent one-command path is `bin/ehrt corpus intake 'synthea:?seed=1&population=5'`, over the SAME generator registry (docs/source-sink-design.md); `ehrt corpus generate` itself is unchanged and remains the Synthea-only, more-flag-heavy path (OPEN-4 in the design doc records whether that changes later).
+This is the compose form -- generate, then catalog, in one command -- for when you want a cataloged batch, not a bare corpus; `bin/ehrt corpus generate sim` (ADR-0015, [Generate deterministic sim (HL7v2) traffic](#generate-deterministic-sim-hl7v2-traffic)) is the front door when you just want the corpus. Generator-URL params (seed, patients, churn, emit, reference-date, config) are sim's own `run` verb's flags, the same names `generate sim`'s own flags use; a bare `sim:` with no query string still works, at sim's own pinned one-patient/hl7 default (the determinism law of defaults, D8). Gate the result the same way any intaken corpus gates -- [Judge user-supplied data: intake -> gate -> report](#judge-user-supplied-data-intake---gate---report). Synthea's own equivalent one-command compose path is `bin/ehrt corpus intake 'synthea:?seed=1&population=5'`, over the SAME generator registry (docs/source-sink-design.md), fronted the same way by `bin/ehrt corpus generate synthea`/bare `corpus generate`.
 
 ```
 generator-config × sim-engine → generated-corpus  [EngineExecute]

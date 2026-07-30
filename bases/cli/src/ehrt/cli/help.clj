@@ -59,18 +59,18 @@
        :flags artifact-flags}]}
 
     {:group "corpus"
-     :doc "Generate, mutate, intake, and inspect synthetic corpora. Any PATH, --out-dir, or --out below may also be spelled as a dir:/file: URL designator (ruling 7, docs/source-sink-design.md D4) instead of a bare path -- bare paths remain the documented, common spelling. `corpus intake` additionally accepts a generator URL (sim:/synthea:) in place of PATH -- generate, then catalog, in one command (SS-2) -- or a stdin designator (stdin:?format=...&framing=...) -- read piped bytes, spool, then catalog, in one command (SS-3)."
+     :doc "Generate, mutate, intake, and inspect synthetic corpora. Any PATH, --out-dir, or --out below may also be spelled as a dir:/file: URL designator (ruling 7, docs/source-sink-design.md D4) instead of a bare path -- bare paths remain the documented, common spelling. `corpus generate sim`/`corpus generate synthea` (ADR-0015) is the front door for generating a corpus; `corpus intake` additionally accepts a generator URL (sim:/synthea:) in place of PATH as its own compose form -- generate, then catalog, in one command (SS-2) -- or a stdin designator (stdin:?format=...&framing=...) -- read piped bytes, spool, then catalog, in one command (SS-3)."
      :verbs
-     [{:verb "generate" :doc "Generate a deterministic synthetic Synthea corpus. Zero-flag defaults (D9, ADR-0019) make the bare command a byte-reproducible run -- re-running it into the same (derived) --out-dir without clearing it first is rejected (:out-dir-exists), not silently overwritten."
-       :flags [{:flag "--config-path" :doc "Synthea properties file" :default "resources/synthea-default.properties"}
-               {:flag "--seed" :doc "patient-generation seed (integer)" :default "1"}
-               {:flag "--clinician-seed" :doc "clinician-generation seed (integer) -- Synthea defaults this to wall-clock time otherwise, which breaks reproducibility even with --seed pinned" :default "the resolved --seed value"}
-               {:flag "--population" :doc "population size (integer)" :default "5"}
-               {:flag "--reference-date" :doc "generation reference date, YYYYMMDD -- Synthea otherwise generates relative to wall-clock \"now\"" :default "20260101"}
-               {:flag "--out-dir" :doc "output directory for the corpus + manifest.edn -- rejected if it already exists and is non-empty" :default "out/corpus/synthea-s<seed>-p<population>"}
-               {:flag "--locale" :doc "BCP47-ish locale" :default "en-US"}
-               {:flag "--timezone" :doc "timezone" :default "UTC"}
-               {:flag "--java-bin" :doc "java executable to invoke" :default "resolved via the artifact registry"}
+     [{:verb "generate" :doc "Generate a deterministic synthetic corpus. Grows a source subcommand (ADR-0015): `corpus generate synthea` (Synthea, the flags below) or `corpus generate sim` (this workspace's own sim engine, ehrt.sim -- --patients/--churn/--emit/--config below); bare `corpus generate`, with no subcommand, stays exactly `generate synthea` for compatibility with every existing doc and script. Zero-flag defaults (D9, ADR-0019) make either source's bare command a byte-reproducible run -- re-running it into the same (derived) --out-dir without clearing it first is rejected (:out-dir-exists), not silently overwritten."
+       :flags [{:flag "--config-path" :doc "synthea: Synthea properties file" :default "resources/synthea-default.properties"}
+               {:flag "--seed" :doc "patient/master-generation seed (integer), shared by both sources" :default "1"}
+               {:flag "--clinician-seed" :doc "synthea: clinician-generation seed (integer) -- Synthea defaults this to wall-clock time otherwise, which breaks reproducibility even with --seed pinned" :default "the resolved --seed value"}
+               {:flag "--population" :doc "synthea: population size (integer)" :default "5"}
+               {:flag "--reference-date" :doc "generation reference date, shared by both sources -- YYYYMMDD for synthea; Synthea otherwise generates relative to wall-clock \"now\"" :default "20260101"}
+               {:flag "--out-dir" :doc "output directory for the corpus + manifest.edn -- rejected if it already exists and is non-empty" :default "out/corpus/synthea-s<seed>-p<population> for synthea, out/corpus/sim-s<seed>-p<patients> for sim"}
+               {:flag "--locale" :doc "synthea: BCP47-ish locale" :default "en-US"}
+               {:flag "--timezone" :doc "synthea: timezone" :default "UTC"}
+               {:flag "--java-bin" :doc "synthea: java executable to invoke" :default "resolved via the artifact registry"}
                ;; D10 (ADR-0019): --lockfile-path renamed to --lockfile,
                ;; one spelling across every verb that takes a lockfile
                ;; (artifact fetch/resolve, gate fhir, corpus generate) --
@@ -78,7 +78,11 @@
                ;; directly from dispatch with no per-verb translation
                ;; layer, so the CLI spelling and the function's own
                ;; parameter name are the same thing here).
-               {:flag "--lockfile" :doc "path to the lockfile" :default "artifacts.lock.edn"}]}
+               {:flag "--lockfile" :doc "synthea: path to the lockfile" :default "artifacts.lock.edn"}
+               {:flag "--patients" :doc "sim: patient count (integer)" :default "1"}
+               {:flag "--churn" :doc "sim: turn churn on with sensible defaults" :default "false"}
+               {:flag "--emit" :doc "sim: message format to emit -- \"hl7\" produces a v2 corpus" :default "hl7"}
+               {:flag "--config" :doc "sim: path to an EDN file carrying the data-heavy engine keys (:pathway/:pathways/:order-profiles/:churn-profile/:site-profile/:modules/...)" :default "none"}]}
       {:verb "mutate" :doc "Apply one mutation operator at one locator to every matching file under PATH."
        :flags [{:flag "--path" :doc "alternative to the positional PATH"}
                {:flag "--operator-id" :doc "registered operator id -- see `ehrt corpus operators`"}
