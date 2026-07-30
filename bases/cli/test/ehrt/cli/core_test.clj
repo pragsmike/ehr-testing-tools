@@ -84,7 +84,7 @@
 (deftest dispatch-unknown-group-names-the-valid-groups-test
   (let [r (cli/dispatch ["bogus" "thing"] {} {})]
     (is (= :unknown-command (:category r)) "category survives the payload extension")
-    (is (= #{"artifact" "corpus" "gate" "check" "version" "doctor" "sim" "show"} (set (:valid-options (:payload r)))))
+    (is (= #{"artifact" "corpus" "gate" "check" "version" "doctor" "sim" "show" "play"} (set (:valid-options (:payload r)))))
     (is (= "run: ehrt help" (:hint (:payload r))))))
 
 (deftest dispatch-unknown-artifact-action-names-fetch-and-resolve-test
@@ -1719,3 +1719,152 @@
                          {:show-fn (fn [opts] (reset! captured opts) (result/ok {}))})]
     (is (result/ok? r))
     (is (= (str v2-fixture-dir "/adt-a01-admit.hl7") (:path @captured)))))
+
+;; ---- ADR-0014: `ehrt play` -- executor, sinks, and the CLI verb ----
+
+(defn- fixture-content
+  [name]
+  (slurp (io/file v2-fixture-dir name)))
+
+(defn- two-message-blob
+  "Two real fixtures, joined the same way ehrt.tools.corpus.framing's
+  own :er7-multi encode would -- adt-a01 (MSH-7 20260715142300) then
+  adt-a02 (MSH-7 20260715153015), 4035s apart."
+  []
+  (str (fixture-content "adt-a01-admit.hl7") "\n\n" (fixture-content "adt-a02-transfer.hl7")))
+
+(defn- temp-file-with-content
+  [content]
+  (let [f (File/createTempFile "ehrt-play-test" ".hl7")]
+    (spit f content)
+    (.getAbsolutePath f)))
+
+(deftest dispatch-play-positional-path-binds-like-checks-test
+  (let [captured (atom nil)
+        r (cli/dispatch ["play" "some/file.hl7"] {}
+                         {:play-fn (fn [opts] (reset! captured opts) (result/ok {}))})]
+    (is (result/ok? r))
+    (is (= "some/file.hl7" (:path @captured)))))
+
+(deftest play-command-path-not-found-test
+  (let [r (cli/play-command {:path "components/tools/test-fixtures/v2/no-such-file.hl7"})]
+    (is (result/error? r))
+    (is (= :gate-path-not-found (:category r)))))
+
+(deftest play-command-directory-input-is-unsupported-test
+  (let [r (cli/play-command {:path v2-fixture-dir})]
+    (is (result/error? r))
+    (is (= :play-input-unsupported (:category r)))))
+
+(deftest play-command-invalid-rate-is-rejected-test
+  (let [r (cli/play-command {:path (temp-file-with-content (fixture-content "adt-a01-admit.hl7")) :rate -1.0})]
+    (is (result/rejected? r))
+    (is (= :invalid-rate (:category r)))))
+
+(deftest play-command-invalid-idle-cap-is-rejected-test
+  (let [r (cli/play-command {:path (temp-file-with-content (fixture-content "adt-a01-admit.hl7")) :idle-cap 0.0})]
+    (is (result/rejected? r))
+    (is (= :invalid-idle-cap (:category r)))))
+
+(deftest play-command-unsupported-sink-kind-is-rejected-test
+  (let [r (cli/play-command {:path (temp-file-with-content (two-message-blob))
+                              :sink "dir:./wherever"
+                              :sleep-fn (fn [_ms] nil)})]
+    (is (result/error? r))
+    (is (= :play-sink-kind-unsupported (:category r)))))
+
+(deftest play-command-ticker-full-executes-recorded-sleeps-in-order-test
+  (let [slept (atom [])
+        printed (atom [])
+        r (cli/play-command {:path (temp-file-with-content (two-message-blob))
+                              :rate 1
+                              :idle-cap 1e7 ;; seconds -- comfortably bigger than the real 4035s delta below, so nothing is capped
+                              :sleep-fn (fn [ms] (swap! slept conj ms))
+                              :println-fn (fn [s] (swap! printed conj s))})]
+    (is (result/ok? r))
+    (is (= [0 4035000] @slept) "the second message's own wait is the real 4035s MSH-7 delta, undivided at rate 1")
+    (is (= 2 (:emitted (:payload r))))
+    (is (some #(clojure.string/includes? % "MSH") @printed) "the ticker's full mode renders a real block")))
+
+(deftest play-command-ticker-line-mode-renders-compact-lines-test
+  (let [printed (atom [])
+        r (cli/play-command {:path (temp-file-with-content (two-message-blob))
+                              :rate 1e15
+                              :ticker "line"
+                              :sleep-fn (fn [_ms] nil)
+                              :println-fn (fn [s] (swap! printed conj s))})]
+    (is (result/ok? r))
+    (is (= 2 (count @printed)))
+    (is (every? #(clojure.string/includes? % "ADT^A0") @printed))
+    (is (every? #(clojure.string/includes? % "^^^CGH^MR") @printed) "PID-3 present in the compact line")))
+
+(deftest play-command-at-huge-rate-matches-show-identity-test
+  ;; ehrt play at an arbitrarily large --rate, ticker sink, renders the
+  ;; identical full-block text `ehrt show` would for the same content
+  ;; (ADR-0013/ADR-0014's own identity) -- checked directly rather than
+  ;; merely asserted.
+  (let [path (temp-file-with-content (fixture-content "adt-a01-admit.hl7"))
+        play-printed (atom [])
+        play-result (cli/play-command {:path path :rate 1e15
+                                        :sleep-fn (fn [_ms] nil)
+                                        :println-fn (fn [s] (swap! play-printed conj s))})
+        show-result (cli/show-command {:path path})]
+    (is (result/ok? play-result))
+    (is (result/ok? show-result))
+    (is (= (clojure.string/trim (:text (:payload show-result)))
+           (clojure.string/trim (clojure.string/join "\n" @play-printed))))))
+
+(deftest play-command-skip-cue-appears-in-ticker-stream-not-as-a-message-test
+  (let [printed (atom [])
+        r (cli/play-command {:path (temp-file-with-content (two-message-blob))
+                              :rate 1 :idle-cap 5
+                              :sleep-fn (fn [_ms] nil)
+                              :println-fn (fn [s] (swap! printed conj s))})]
+    (is (result/ok? r))
+    (is (= 1 (:skip-count (:payload r))))
+    (is (some #(clojure.string/includes? % "idle-skip") @printed)
+        "the cue reaches the ticker's own stream")))
+
+(deftest play-command-file-sink-writes-byte-identical-to-unpaced-content-test
+  (let [in-path (temp-file-with-content (two-message-blob))
+        out-path (str in-path ".out")
+        cue-lines (atom [])
+        r (cli/play-command {:path in-path
+                              :rate 1e15 ;; no real waits -- keeps this test fast without faking sleep
+                              :sink (str "file:" out-path)
+                              :sleep-fn (fn [_ms] nil)
+                              :println-fn (fn [s] (swap! cue-lines conj s))})]
+    (is (result/ok? r))
+    ;; framing/encode-er7-multi trails EVERY item (including the last)
+    ;; with its own separator -- an unpaced batch encode over the same
+    ;; 2 events would produce this exact trailing "\n\n" too, so this
+    ;; is the real byte-identity target, not the bare source bytes.
+    (is (= (str (two-message-blob) "\n\n") (slurp out-path))
+        "N single-event sink writes, in order, equal the unpaced batch content byte-for-byte")
+    (is (empty? @cue-lines) "no cue at rate 1e15 with no cap triggered, and no ticker text either -- stdout stays exactly the sink's own summary, never ticker prose")))
+
+(deftest play-command-skip-cue-with-a-data-sink-goes-to-stderr-not-the-sink-test
+  (let [in-path (temp-file-with-content (two-message-blob))
+        out-path (str in-path ".out2")
+        err-sw (java.io.StringWriter.)]
+    (binding [*err* err-sw]
+      (let [r (cli/play-command {:path in-path
+                                  :rate 1 :idle-cap 5
+                                  :sink (str "file:" out-path)
+                                  :sleep-fn (fn [_ms] nil)})]
+        (is (result/ok? r))
+        (is (= (str (two-message-blob) "\n\n") (slurp out-path))
+            "the cue never enters the sink's own bytes")
+        (is (clojure.string/includes? (str err-sw) "idle-skip")
+            "the cue still reaches stderr, per the cue rule")))))
+
+(deftest play-command-summary-envelope-carries-every-documented-field-test
+  (let [r (cli/play-command {:path (temp-file-with-content (two-message-blob))
+                              :rate 1 :idle-cap 100000
+                              :sleep-fn (fn [_ms] nil)
+                              :println-fn (fn [_s] nil)})]
+    (is (result/ok? r))
+    (is (= #{:emitted :clamped-count :unparseable-count :skip-count
+             :rate :idle-cap-ms :wallclock-ms :stream-span-ms :sink}
+           (set (keys (:payload r)))))
+    (is (= 4035000 (:stream-span-ms (:payload r))))))

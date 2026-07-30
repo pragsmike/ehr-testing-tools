@@ -37,12 +37,15 @@
                   message)]
     (str/replace trimmed "\r" "\n")))
 
-(defn- er7-multi->messages
+(defn split-er7-multi
   "Splits raw ER7 text into a seq of message strings via the same
   MSH-line-start boundary `ehrt.tools.corpus.framing/decode`'s
-  `:er7-multi` codec uses -- not a second splitter. Returns
-  kernel/ok [message strings...], or framing/decode's own
-  :malformed-er7-multi-frame rejection, propagated unchanged."
+  `:er7-multi` codec uses -- not a second splitter. Public: this is
+  also the corpus player's own input-adapter seam (ADR-0014), reused
+  from the CLI base through this interface rather than re-split a
+  second time. Returns kernel/ok [message strings...], or
+  framing/decode's own :malformed-er7-multi-frame rejection,
+  propagated unchanged."
   [content]
   (let [decoded (framing/decode :er7-multi (.getBytes ^String content "UTF-8"))]
     (if-not (kernel/ok? decoded)
@@ -54,10 +57,10 @@
   single rendered string, each message through `render-er7-message`,
   joined by a blank line between messages -- the split and the join
   live here, in the stream layer, never inside `render-er7-message`.
-  Propagates `er7-multi->messages`' own rejection (no MSH-led message
+  Propagates `split-er7-multi`'s own rejection (no MSH-led message
   found) unchanged."
   [content]
-  (let [messages-result (er7-multi->messages content)]
+  (let [messages-result (split-er7-multi content)]
     (if-not (kernel/ok? messages-result)
       messages-result
       (kernel/ok (str/join "\n\n" (map render-er7-message (:payload messages-result)))))))

@@ -37,7 +37,8 @@
             [ehrt.tools.interface :as gate-fhir]
             [ehrt.tools.interface :as report]
             [ehrt.tools.interface :as sim]
-            [ehrt.tools.interface :as display])
+            [ehrt.tools.interface :as display]
+            [ehrt.tools.interface :as player])
   (:import [java.time LocalDate]
            [java.lang ProcessBuilder$Redirect]))
 
@@ -48,6 +49,9 @@
    ;; ADR-0013: TTY-default rendering forcing flags.
    :pretty {:coerce :boolean}
    :edn {:coerce :boolean}
+   ;; ADR-0014: ehrt play's own pacing flags.
+   :rate {:coerce :double}
+   :idle-cap {:coerce :double}
    ;; Digit-only strings that are identifiers, not numbers -- must not be
    ;; auto-coerced to a long (which would break ProcessBuilder's String[]
    ;; args downstream in corpus.generate/invocation).
@@ -955,6 +959,206 @@
                       (as-display-text
                        (result/ok (str/join "\n\n" (map :payload rendered)))))))))))))))
 
+;; ---- ADR-0014: `ehrt play`'s executor -- folds player/plan's own
+;; emission plan through an injected :sleep-fn and one sink function.
+;; This is the only place in this file that ever sleeps for the
+;; player's own sake; the plan itself (ehrt.tools.player) never does. ----
+
+(defn real-sleep!
+  "Thread/sleep ms, skipped entirely for a non-positive wait -- the
+  production :sleep-fn default; tests inject a recording fake instead."
+  [ms]
+  (when (pos? ms) (Thread/sleep (long ms))))
+
+(defn- run-plan!
+  "Folds a player/plan result through sleep-fn and sink-fn, in event
+  order: sleep the computed wait, invoke cue-fn when this index was
+  actually idle-capped (the skip cue -- ADR-0014's own cue rule: never
+  routed into sink-fn), then sink-fn the event itself. Returns
+  {:emitted n :clamped-count :unparseable-count :skip-count} --
+  the plan's own counts, passed through for the end-of-run summary."
+  [{:keys [plan clamped-count unparseable-count skip-count capped-indices]}
+   sleep-fn cue-fn sink-fn]
+  (doseq [[idx [wait-ms event]] (map-indexed vector plan)]
+    (sleep-fn wait-ms)
+    (when (contains? capped-indices idx) (cue-fn idx))
+    (sink-fn event))
+  {:emitted (count plan)
+   :clamped-count clamped-count
+   :unparseable-count unparseable-count
+   :skip-count skip-count})
+
+(defn- ticker-full-sink
+  "Full-mode ticker (the default): render-er7-message, one block per
+  event -- the exact rendering `ehrt show`'s own directory dispatch
+  already uses (ADR-0013), pretty-always, no TTY consultation."
+  [println-fn]
+  (fn [event] (println-fn (display/render-er7-message event)) (println-fn "")))
+
+(defn- ticker-line-sink
+  "Compact --ticker line mode: MSH-7 timestamp, MSH-9 type^trigger,
+  first PID-3 when the message carries one -- player's own lenient
+  field reads, never a second HL7 parser. A field player can't read is
+  rendered as \"?\", never a thrown exception."
+  [println-fn]
+  (fn [event]
+    (println-fn (str (or (player/message-timestamp-ms event) "?") "  "
+                      (or (player/message-type-trigger event) "?")
+                      (when-let [pid (player/message-patient-id event)] (str "  " pid))))))
+
+(defn- stderr-cue-fn
+  "The skip cue, routed to stderr -- used whenever the ticker itself
+  isn't already the destination (a data sink owns stdout instead), so
+  the cue never lands in sink-fn's own bytes (ADR-0014's cue rule)."
+  [_idx]
+  (binding [*out* *err*] (println "-- idle-skip: stream-time jumped --")))
+
+(defn- ticker-cue-fn
+  "The skip cue, printed through the ticker's own stream -- display
+  text, same as the ticker's own rendering, never a data sink's bytes."
+  [println-fn]
+  (fn [_idx] (println-fn "-- idle-skip: stream-time jumped --")))
+
+(defn- file-sink-fn
+  "A :file Sink's own :path -> a fn of one event, appending that
+  event's own player/frame-event bytes (ADR-0014's byte-identity
+  requirement: N single-event appends, in order, equal one batch
+  encode over the same events). Opens the output stream once, up
+  front (truncating any prior content -- this run owns the file for
+  its own duration), and returns it closed via the 0-arity call the
+  caller makes when the run finishes."
+  [path]
+  (io/make-parents (io/file path))
+  (let [out (io/output-stream path)]
+    {:sink-fn (fn [event]
+                (let [r (player/frame-event event)]
+                  (when (result/ok? r)
+                    (.write ^java.io.OutputStream out ^bytes (:payload r)))))
+     :close-fn (fn [] (.close ^java.io.OutputStream out))}))
+
+(defn- validate-positive
+  "opts's own numeric coercion (babashka.cli's :coerce :double on
+  --rate/--idle-cap, same convention as --seed's :coerce :long) already
+  guarantees a real double or nil here -- this only enforces the
+  CLI-boundary contract that a given value must be positive (ADR-0004:
+  a bad CLI argument is an operational rejection, not a thrown
+  exception, matching parse-treat-no-verdict-as's own discipline)."
+  [category v]
+  (cond
+    (nil? v) (result/ok nil)
+    (pos? v) (result/ok v)
+    :else (result/rejected category {:value v :hint "must be a positive number"})))
+
+(defn- ensure-default-play-sink-format
+  "D3's no-inference-on-write law means a Sink always declares its own
+  :format explicitly -- a bare `--sink file:out/tail.hl7` (no
+  ?format=...) would otherwise fail :invalid-sink for a missing key.
+  Since ehrt play only ever emits v2-er7/er7-multi content this
+  session, a designator with no query string at all gets that default
+  filled in; a caller who already wrote a query string (any query,
+  including a different format) is left completely alone."
+  [designator]
+  (if (str/includes? designator "?")
+    designator
+    (str designator "?format=v2-er7&framing=er7-multi")))
+
+(defn- resolve-play-sink
+  "--sink DESIGNATOR (ADR-0014: reuses the existing source-sink
+  designator vocabulary, never a parallel flag scheme) -> kernel/ok
+  {:sink-fn :close-fn :cue-fn} for a supported kind, or an operational
+  error naming what's unsupported. Scoped to :file this session
+  (:dir/:blaze -- including the future :mllp transport -- are named,
+  disclosed deferrals, ADR-0014's own bail-out procedure); nil sink
+  (no --sink given) means \"use the ticker\" and isn't resolved here."
+  [designator println-fn]
+  (let [parsed (source-sink-url/parse-sink-designator (ensure-default-play-sink-format designator))]
+    (if-not (result/ok? parsed)
+      parsed
+      (let [{:keys [kind path]} (:payload parsed)]
+        (case kind
+          :file (let [{:keys [sink-fn close-fn]} (file-sink-fn path)]
+                  (result/ok {:sink-fn sink-fn :close-fn close-fn :cue-fn stderr-cue-fn}))
+          (result/error :play-sink-kind-unsupported
+                        {:kind kind :path path
+                         :hint "ehrt play only supports a file: sink this session -- dir:/blaze: (and a future mllp: transport) are named, disclosed deferrals (ADR-0014)"}))))))
+
+(defn play-command
+  "`ehrt play PATH [--rate R] [--idle-cap SECONDS] [--ticker full|line]
+  [--sink DESIGNATOR]` (ADR-0014): paces PATH's own HL7 v2 (ER7)
+  messages against their MSH-7 timestamps and either renders them
+  through a ticker (the default -- full blocks via `render-er7-message`,
+  or one compact `--ticker line` per event) or writes them, byte-
+  identically to an unpaced batch write, through a `--sink` designator.
+  `ehrt play PATH` at an arbitrarily large --rate, ticker sink, is
+  exactly `ehrt show PATH` (ADR-0013/ADR-0014's own identity) --
+  ordinary division makes this true with no special-cased rate value.
+
+  A single HL7 v2 (ER7) file is this session's own input scope; a
+  directory, or a FHIR JSON path, is :play-input-unsupported (a named,
+  disclosed deferral -- a sim event-log adapter and a bed-board sink
+  are future work, ADR-0014).
+
+  :sleep-fn is injectable (defaults to real-sleep!, Thread/sleep) so
+  hermetic tests never actually wait; :println-fn defaults to println.
+  Returns the standard Result envelope (events emitted, stream-time
+  span, wallclock elapsed, the resolved rate/idle-cap, and every count
+  player/plan itself computed) -- rendered through the ordinary
+  TTY/--pretty/--edn/--json machinery, exactly like every other
+  command; ADR-0014 does not add a second output convention."
+  [{:keys [path rate idle-cap ticker sink sleep-fn println-fn now-ms-fn]
+    :or {sleep-fn real-sleep! println-fn println now-ms-fn #(System/currentTimeMillis)}}]
+  (let [rate-result (validate-positive :invalid-rate rate)]
+    (if-not (result/ok? rate-result)
+      rate-result
+      (let [idle-cap-result (validate-positive :invalid-idle-cap idle-cap)]
+        (if-not (result/ok? idle-cap-result)
+          idle-cap-result
+          (let [resolved-rate (or (:payload rate-result) player/default-rate)
+                resolved-idle-cap-ms (if-let [s (:payload idle-cap-result)] (long (* 1000 s)) player/default-idle-cap-ms)
+                f (io/file path)]
+            (cond
+              (not (.exists f))
+              (result/error :gate-path-not-found
+                             {:path path :hint "no such file or directory -- run: ehrt help play"})
+
+              (not (.isFile f))
+              (result/error :play-input-unsupported
+                             {:path path :hint "ehrt play reads a single file this session -- a directory input is a named, disclosed deferral (ADR-0014)"})
+
+              (not= :v2 (sniff-path-format f))
+              (result/error :play-input-unsupported
+                             {:path path :hint "ehrt play only supports HL7 v2 (ER7) input this session -- FHIR is a named, disclosed deferral (ADR-0014)"})
+
+              :else
+              (let [events-result (player/split-er7-multi (slurp f))]
+                (if-not (result/ok? events-result)
+                  events-result
+                  (let [events (:payload events-result)
+                        plan-result (player/plan events {:rate resolved-rate :idle-cap-ms resolved-idle-cap-ms})
+                        started-ms (now-ms-fn)
+                        sink-result
+                        (if sink
+                          (resolve-play-sink sink println-fn)
+                          (result/ok {:sink-fn (case ticker
+                                                  "line" (ticker-line-sink println-fn)
+                                                  (ticker-full-sink println-fn))
+                                      :close-fn (fn [])
+                                      :cue-fn (ticker-cue-fn println-fn)}))]
+                    (if-not (result/ok? sink-result)
+                      sink-result
+                      (let [{:keys [sink-fn close-fn cue-fn]} (:payload sink-result)
+                            run-result (run-plan! plan-result sleep-fn cue-fn sink-fn)
+                            _ (close-fn)
+                            ended-ms (now-ms-fn)
+                            first-ts (some player/message-timestamp-ms events)
+                            last-ts (some player/message-timestamp-ms (reverse events))]
+                        (result/ok (merge run-result
+                                           {:rate resolved-rate
+                                            :idle-cap-ms resolved-idle-cap-ms
+                                            :wallclock-ms (- ended-ms started-ms)
+                                            :stream-span-ms (when (and first-ts last-ts) (- last-ts first-ts))
+                                            :sink (or sink "ticker")}))))))))))))))
+
 (defn- parse-canonicalizer-steps
   "\"id@v,id2@v2\" -> [[:id \"v\"] [:id2 \"v2\"]] -- the ordered
   [id version] pairs ehrt.tools.interface/apply-canonicalizers
@@ -1081,7 +1285,7 @@
   docstring's EDN-out exception."
   ([args opts] (dispatch args opts {}))
   ([args opts {:keys [fetch-fn fetch-all-fn resolve-fn generate-fn mutate-fn intake-fn operators-fn
-                       gate-v2-fn gate-fhir-fn check-fn version-fn doctor-fn sim-run-fn show-fn]
+                       gate-v2-fn gate-fhir-fn check-fn version-fn doctor-fn sim-run-fn show-fn play-fn]
                :or {fetch-fn fetch-command
                     fetch-all-fn fetch-all-command
                     resolve-fn resolve-command
@@ -1095,7 +1299,8 @@
                     version-fn version-command
                     doctor-fn doctor-command
                     sim-run-fn sim-run-command
-                    show-fn show-command}}]
+                    show-fn show-command
+                    play-fn play-command}}]
    (let [[group action path] args]
      (cond
        (:help opts) (help-response group)
@@ -1115,6 +1320,7 @@
                     (and (= group "corpus") (#{"mutate" "intake"} action) path (not (:path opts))) (assoc opts :path path)
                     (and (= group "check") action (not (:path opts))) (assoc opts :path action)
                     (and (= group "show") action (not (:path opts))) (assoc opts :path action)
+                    (and (= group "play") action (not (:path opts))) (assoc opts :path action)
                     :else opts)
              opts (resolve-path-designators opts)]
          (case group
@@ -1150,6 +1356,7 @@
                    "run" (sim-run-fn opts)
                    (unknown-command-error args (help/verb-names (help/find-group help/cli-spec "sim"))))
            "show" (show-fn opts)
+           "play" (play-fn opts)
            (unknown-command-error args (help/group-names help/cli-spec))))))))
 
 (defn render

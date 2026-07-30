@@ -66,7 +66,8 @@
     ["version" nil] :version-fn
     ["doctor" nil] :doctor-fn
     ["sim" "run"] :sim-run-fn
-    ["show" nil] :show-fn))
+    ["show" nil] :show-fn
+    ["play" nil] :play-fn))
 
 (deftest every-spec-command-pair-actually-routes-in-dispatch-test
   (doseq [[group verb] (help/command-pairs help/cli-spec)]
@@ -90,7 +91,8 @@
     ["version" nil]
     ["doctor" nil]
     ["sim" "run"]
-    ["show" nil]})
+    ["show" nil]
+    ["play" nil]})
 
 (deftest spec-command-pairs-match-dispatchs-known-routes-test
   (is (= known-dispatch-pairs (set (help/command-pairs help/cli-spec)))))

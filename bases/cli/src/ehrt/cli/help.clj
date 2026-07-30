@@ -146,7 +146,17 @@
      :doc "Render a file (or a directory of files sharing one sniffed format) for a human: HL7 v2 (ER7) one segment per line, blank line between messages; FHIR JSON pretty-printed. Pretty-always -- no flags needed, `ehrt show FILE | less` just works regardless of what stdout is attached to. Display is not wire format (ADR-0013): the rendered ER7 is deliberately nonconformant (LF-joined segments) and must never be piped anywhere a real HL7 v2 consumer sits."
      :positional "PATH"
      :positional-doc "a file, or a directory of files sharing one sniffed format, given as a trailing positional argument, not --path -- an explicit --path is never overridden by it"
-     :flags [{:flag "--path" :doc "alternative to the positional PATH"}]}]})
+     :flags [{:flag "--path" :doc "alternative to the positional PATH"}]}
+
+    {:group "play"
+     :doc "Paces a single HL7 v2 (ER7) file's own messages against their MSH-7 timestamps and renders (or writes) them over time -- `ehrt show` plus time (ADR-0014). `ehrt play FILE` at an arbitrarily large --rate, the default ticker sink, is exactly `ehrt show FILE`. A directory, or a FHIR JSON path, is a named, disclosed deferral this session (:play-input-unsupported)."
+     :positional "PATH"
+     :positional-doc "a single HL7 v2 (ER7) file, given as a trailing positional argument, not --path -- an explicit --path is never overridden by it"
+     :flags [{:flag "--path" :doc "alternative to the positional PATH"}
+             {:flag "--rate" :doc "stream-seconds per wallclock-second -- 1 is real time" :default "60"}
+             {:flag "--idle-cap" :doc "wallclock cap, in seconds, on any single inter-event wait -- a capped wait emits a skip cue (never into a data sink) and is counted separately from a clamped one" :default "5"}
+             {:flag "--ticker" :doc "\"full\" (a complete rendered block per message) or \"line\" (one compact MSH-7/MSH-9/PID-3 line per message) -- ignored when --sink is given" :default "full"}
+             {:flag "--sink" :doc "a file: designator (ADR-0017's own vocabulary) to write paced, byte-identical-to-unpaced output to, instead of the ticker -- dir:/blaze: (and a future mllp: transport) are named, disclosed deferrals (ADR-0014)"}]}]})
 
 (defn group-names
   "Every group name in the spec, in declared order."

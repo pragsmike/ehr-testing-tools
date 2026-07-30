@@ -27,6 +27,7 @@ ehrt <group> [<verb>] [flags]
 | [`doctor`](#ehrt-doctor) | Runs SETUP.md's verification checklist as checks (D13): java resolution via the artifact registry, artifact cache presence per lockfile entry, git hooksPath wiring, and platform support. Exit 0 every check passed; 1 at least one failed; 2 couldn't even read the lockfile to know what to check. |
 | [`sim`](#ehrt-sim) | Run the sim engine, mounted in-process (ADR-0005, ADR-0012 fulfilled) -- ehrt.sim.interface/run-command directly, no subprocess. |
 | [`show`](#ehrt-show) | Render a file (or a directory of files sharing one sniffed format) for a human: HL7 v2 (ER7) one segment per line, blank line between messages; FHIR JSON pretty-printed. Pretty-always -- no flags needed, `ehrt show FILE \| less` just works regardless of what stdout is attached to. Display is not wire format (ADR-0013): the rendered ER7 is deliberately nonconformant (LF-joined segments) and must never be piped anywhere a real HL7 v2 consumer sits. |
+| [`play`](#ehrt-play) | Paces a single HL7 v2 (ER7) file's own messages against their MSH-7 timestamps and renders (or writes) them over time -- `ehrt show` plus time (ADR-0014). `ehrt play FILE` at an arbitrarily large --rate, the default ticker sink, is exactly `ehrt show FILE`. A directory, or a FHIR JSON path, is a named, disclosed deferral this session (:play-input-unsupported). |
 
 ## Global flags
 
@@ -221,3 +222,17 @@ Render a file (or a directory of files sharing one sniffed format) for a human: 
 | Flag | Default | Meaning |
 |---|---|---|
 | `--path` | — | alternative to the positional PATH |
+
+## `ehrt play`
+
+Paces a single HL7 v2 (ER7) file's own messages against their MSH-7 timestamps and renders (or writes) them over time -- `ehrt show` plus time (ADR-0014). `ehrt play FILE` at an arbitrarily large --rate, the default ticker sink, is exactly `ehrt show FILE`. A directory, or a FHIR JSON path, is a named, disclosed deferral this session (:play-input-unsupported).
+
+**Positional argument `PATH`** — a single HL7 v2 (ER7) file, given as a trailing positional argument, not --path -- an explicit --path is never overridden by it
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--path` | — | alternative to the positional PATH |
+| `--rate` | `60` | stream-seconds per wallclock-second -- 1 is real time |
+| `--idle-cap` | `5` | wallclock cap, in seconds, on any single inter-event wait -- a capped wait emits a skip cue (never into a data sink) and is counted separately from a clamped one |
+| `--ticker` | `full` | "full" (a complete rendered block per message) or "line" (one compact MSH-7/MSH-9/PID-3 line per message) -- ignored when --sink is given |
+| `--sink` | — | a file: designator (ADR-0017's own vocabulary) to write paced, byte-identical-to-unpaced output to, instead of the ticker -- dir:/blaze: (and a future mllp: transport) are named, disclosed deferrals (ADR-0014) |

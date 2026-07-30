@@ -187,10 +187,17 @@
 ;; ehrt.tools.player (ADR-0014, `ehrt play`): the pure pacing core --
 ;; no clock, no IO -- see that namespace's own docstring. No
 ;; collisions with any existing export here, so no qualification.
+(def default-rate player/default-rate)
+(def default-idle-cap-ms player/default-idle-cap-ms)
 (def plan player/plan)
 (def message-timestamp-ms player/message-timestamp-ms)
 (def message-type-trigger player/message-type-trigger)
 (def message-patient-id player/message-patient-id)
+(def frame-event player/frame-event)
+
+;; ehrt.tools.display's own input-adapter seam, reused by ehrt play
+;; (ADR-0014) -- not a second splitter.
+(def split-er7-multi display/split-er7-multi)
 
 ;; docsgen -- write-cli-md! is the one docsgen entry point a base needs
 ;; cross-brick (bases/cli owns the real cli-spec, ADR-0002's own
