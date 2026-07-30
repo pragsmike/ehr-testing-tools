@@ -2113,3 +2113,223 @@ legitimate API/schema reference material a user path doc may cite, is
 an open author call this session does not make unilaterally. If the
 author rules they should be fixed, the two stale citations are the
 only ones that actually changed.
+
+---
+
+## ADR-0012 — `judge-v2-nist` adopts the NIST engine directly: msg-id contract, Cause growth, fixture provenance
+
+**Status:** Accepted (author-directed, autonomous session per R30), 2026-07-30.
+
+### Context
+
+ADR-0011 built the per-engine judge seam and named `judge-v2-nist` (NIST
+HL7 v2 `v2-validation`, profile-aware) as the third sibling, explicitly
+not landed that session — pending EXP-D3. EXP-D3 (2026-07-29) recorded
+the six NIST-origin Maven coordinates resolve cleanly from NIST's own
+Nexus (`hit-nexus.nist.gov`) and characterized the CDC wrapper's own
+report-filtering behavior (`docs/experiments/EXP-D3-results.md`). A
+Cowork cloud session (2026-07-30) then spiked the engine directly from
+Clojure — execution-verified, not read-verified — and found a
+Java-friendly synchronous API (`hl7.v2.validation.SyncHL7Validator`)
+this workspace's own platform research doc
+(`components/tools/docs/research/NIST-HL7v2-dev-test-platform.md` §D.5)
+had not surfaced; its own notes and script are archived verbatim at
+`components/tools/docs/research/judge-v2-nist-spike-notes.md` and
+`judge-v2-nist-spike.clj`. This record is the landing session that
+followed, same day, and the decisions it had to make that the spike
+itself left open.
+
+### Decision
+
+**Direct engine, not the CDC wrapper — supersedes the platform research
+doc's own §D.5 recommendation.** `components/judge-v2-nist` depends on
+the three `gov.nist` coordinates (`hl7-v2-validation`, `hl7-v2-parser`,
+`hl7-v2-profile`, all 1.7.3) directly; `gov.cdc:lib-hl7v2-nist-validator`
+is never a dependency, only a worked-example citation. Reasons, in order
+of weight: **(1)** the wrapper's own `ProfileManager.filterAndConvert`
+keeps only 4 of the underlying engine's 8 classification strings
+(`Error`/`Warning`/`Alert`/`Informational`), silently discarding
+`Affirmative`/`Informational`-adjacent/`Specification Error` signal —
+EXP-D3's own Round 3 measured this at 75.6% of raw findings dropped
+against the wrapper's shipped baseline message, and `Affirmative` is
+exactly the classification meaning "this optional/RE field is empty,
+and that's fine," load-bearing for this workspace's own verdict policy
+and the mutate↔judge alignment loop the module docstring names. **(2)**
+the wrapper's own documented version drift (README claims 1.6.3, last
+published POM pins 1.6.10, unreleased `main` pins 1.7.3 — platform
+research doc §D.4) is a supply-chain smell this workspace does not need
+to inherit once the underlying coordinates are directly resolvable.
+**(3)** hit-nexus resolving cleanly (EXP-D3) removes the platform
+research doc's own stated reason for preferring the wrapper (§D.2: the
+NIST coordinates aren't independently resolvable) — that premise no
+longer holds, so the recommendation built on it no longer holds either.
+The one Scala surface the direct path crosses
+(`scala.jdk.javaapi.CollectionConverters/asJava`, once, at validator
+construction) is not enough interop friction to outweigh (1)–(3).
+
+**msg-id contract: explicit when a profile declares more than one,
+never picked implicitly.** `ehrt.judge-v2-nist.v2/execute` refuses (via
+`ex-info`, `{:type :ambiguous-msg-id :msg-ids [...]}`) when the profile
+bundle's own `:msg-ids` has more than one entry and the caller passed no
+explicit `:msg-id` — a single-id profile needs no `:msg-id` at all.
+Sorting (or any other implicit tie-break) was considered and rejected:
+picking a message-id ordering by convenience would silently validate
+against the wrong message type on a plural profile, exactly the kind of
+caller mistake `judge-v2-hapi`'s own `gate-file` docstring already
+distinguishes from an operational condition. Neither sibling engine
+(`judge-v2-hapi`, `judge-fhir-official`) has a genuine precedent for a
+caller-contract violation of this shape (both are throw-free,
+result-not-throw throughout, and neither has a concept requiring
+caller disambiguation) — this is the *fallback* case named in this
+session's own decision procedure: no precedent existed, so this
+executes ex-info (a programming defect in the *call*, not an engine
+verdict about the message under test, must not masquerade as
+`:rejected` or `:no-verdict`), and it is flagged here for author
+ratification rather than treated as settled convention.
+
+**`ehrt.judge.finding/Cause` grows its second specimen:
+`:profile-spec-error`.** The enum is now
+`[:enum :terminology-suppressed :profile-spec-error]`. The NIST
+engine's own `Specification Error` classification means the
+conformance profile (Π) itself is defective (e.g. references a value
+set that doesn't exist) — the criterion could not be fully applied to
+the message under test, distinct from `:terminology-suppressed` (the
+criterion is sound, an external resource is merely absent).
+`judge-v2-nist.v2/interpret` returns `:cause :profile-spec-error`
+directly for Specification-Error captures; the spike's own
+`:proposed-cause` rider (a placeholder for exactly this ADR) is deleted,
+and its one specimen test renamed and updated to assert the real cause.
+Co-landed with `judge-v2-nist` itself in one commit, per this
+workspace's own co-landing discipline (a new engine step's invariants
+ship with it, not after).
+
+**Fixture provenance: a stand-in, not this project's own profile.**
+`components/tools/test-fixtures/v2-nist/` vendors CDC's own
+`COVID19_ELR-v2.3.1` Π bundle (`PROFILE.xml`, `CONSTRAINTS.xml`,
+`VALUESETS-disabled.xml` — as shipped, not renamed) plus one companion
+ER7 message, from the author's local
+`~/Documents/NIST/lib-hl7v2-nist-validator` clone (HEAD
+`eeac90c5f88dca3018992005232acdf3da644d88`), Apache-2.0, full
+provenance and per-file sha256s in that directory's own `NOTICE.md`.
+This is an explicit stand-in until a project-authored IGAMT export
+replaces it — `notes/facts-register.md` F8 (the IGAMT registration
+disclaimer, captured verbatim 2026-07-29) names the derived-from/
+modified-notice obligation that *future* export will carry; F8 does not
+attach to this vendored CDC test resource directly (it is CDC's own
+fixture, not an IGAMT export this project produced), and `NOTICE.md`
+says so, so a future replacement session knows where that obligation is
+recorded rather than re-deriving it.
+
+**No-vendor posture reaffirmed; mirror/fork deferred, dated.** Jars are
+never vendored into this repo — they resolve from `hit-nexus.nist.gov`
+via each affected `deps.edn`'s own `:mvn/repos` entry (root, plus every
+project whose own `deps.edn` resolves independently:
+`projects/conformance`, `projects/integration`, `projects/ehrt-cli` —
+`poly test :all` does not inherit root's `:mvn/repos`, a real finding
+this session hit directly rather than one the spike's own wiring notes
+anticipated) into the local `~/.m2` cache, matching the ADR-0005
+amendment's (2026-07-24, `notes/tools/ADRs.md`) no-redistribution
+posture, reaffirmed rather than revisited by this session. Mirroring
+the six resolved jars into a `file://` repo (CDC's own pattern, named in
+the spike's own notes) is deferred to a future session, not built or
+scheduled here — noted as a real future risk (hit-nexus has no stated
+SLA and changed operators, NIST → Prometheus Computing, August 2026)
+but out of this session's own scope.
+
+**Engine version reads "unknown" for this engine — a real, disclosed
+finding, not a bug.** Unlike `judge-v2-hapi`'s HAPI jars (Maven-built,
+carry `META-INF/maven/.../pom.properties`),
+`gov.nist:hl7-v2-validation:1.7.3` packages no Maven metadata at all
+(confirmed by direct jar inspection) — `v2/engine-version` correctly
+falls back to `"unknown"`, the same fallback path judge-v2-hapi's own
+`hapi-version` already has for exactly this case, not a defect
+introduced by this landing.
+
+**Interface re-export, CLI expansion deferred.** `ehrt.tools.interface`
+re-exports `v2-nist-make-validator`/`v2-nist-gate-file`/
+`v2-nist-gate-dir`, same qualification discipline ADR-0011 established,
+with one documented signature difference: this tier's `gate-file`/
+`gate-dir` take a validator-state map (from `make-validator`, built once
+per Π bundle and reused across files, since context construction
+dominates cost), not a bare path — Π is an input at this tier, not a
+fixed dependency. A real `bases/cli` `gate v2-nist` verb (a bundle-dir
+flag, validator-state caching across a single invocation) is deliberately
+NOT built this session — real design work, not a re-export — and is
+named here as follow-on, not silently dropped.
+
+**Verification.** `clojure -M:poly check`: green throughout (each
+addition verified incrementally: component landing, tools-interface
+requiring the new component, the three affected projects'
+`:mvn/repos`/`poly/judge-v2-nist` wiring). `clojure -M:poly test :all
+skip:integration`: full log captured directly (`> file 2>&1; echo
+EXITCODE:$?`, no pipe, per this workspace's own tail-masks-exit-code
+lesson) — `EXITCODE:0`, 181 test namespaces, zero `FAIL`/error markers
+beyond the expected `0 failures, 0 errors` on every namespace, up from
+this session's own 177-namespace baseline (`judge-v2-nist`'s own two
+new test namespaces). All six NIST jar sha256s re-verified against
+`artifacts.lock.edn`'s existing EXP-D3 entries (resolved fresh via
+hit-nexus into `~/.m2`, byte-for-byte match, dated verification line
+appended to each entry's own `:license-note`).
+
+### Deviation record
+
+**`:mvn/repos` is not inherited from root `deps.edn` by `poly test
+:all`'s own per-project resolution — a real finding, not anticipated by
+the spike's own wiring notes.** The spike's own `NOTES.md` named adding
+`:mvn/repos` "to the ROOT deps.edn" as the one step needed; that is
+sufficient for `clojure -M:dev:test`-style invocations (which resolve
+against root `deps.edn` directly) but not for `poly test :all`, which
+resolves each of `projects/conformance`, `projects/integration`, and
+`projects/ehrt-cli`'s own `deps.edn` independently. Found by actually
+running the full suite after the tools-interface wiring landed (`poly
+check` passed; `poly test :all` failed on artifact resolution) — fixed
+by repeating the same `:mvn/repos` entry in each of the three affected
+project `deps.edn` files, same discipline `poly/judge-v2-nist`'s own
+local-root entry already needed at that same layer (ADR-0011's own
+"flat, project-level convention" — no component `deps.edn` carries a
+sibling `poly/X` entry; each project names every brick and every
+external repo it needs directly).
+
+**Measured engine-in-the-loop numbers matched the spike's finding
+counts exactly, but not its verdict/cause.** The spike's own `NOTES.md`
+predicted `:no-verdict/:terminology-suppressed` for the COVID19_ELR
+fixture (473 findings: structure 441, value-set 28, content 4 — this
+session's own measurement matches every one of those counts exactly,
+confirming the wiring is unchanged). The measured *cause* is
+`:profile-spec-error`, not `:terminology-suppressed` — not a wiring
+discrepancy from the spike, but a direct, expected consequence of this
+same session's own Cause-growth decision above: the spike's code
+returned `:terminology-suppressed` for Specification-Error captures
+only because `:profile-spec-error` did not yet exist in the shared
+enum at spike time; `interpret` returns the real cause now that it
+does. Recorded here so a future reader comparing this session's pinned
+test numbers against the spike's own prose doesn't mistake the cause
+difference for an unexplained divergence.
+
+**Fixture layout matched the spike's own description exactly.** CDC's
+`COVID19_ELR-v2.3.1` bundle, as found in the author's local clone,
+carries exactly `PROFILE.xml`, `CONSTRAINTS.xml`, and
+`VALUESETS-disabled.xml` — no `VALUESETBINDINGS.xml`/
+`COCONSTRAINTS.xml`/`SLICINGS.xml`, matching the spike notes' own
+"Wiring into the workspace" step 5 description with no deviation to
+record on this axis.
+
+**`projects/ehrt-cli`'s own `:coverage` alias widened for consistency,
+beyond this session's own literal step list.** The step list named only
+root `deps.edn`'s `:dev`/`:ehrt`/`:test` and the three projects'
+`:deps`/`:mvn/repos`; `:coverage`'s own `-p`/`-s` path lists (measure-
+and-report, ADR-0004 posture, no enforcement gate) were widened to
+include `components/judge-v2-nist/{src,test}` anyway, matching every
+sibling engine's own existing entries there — mechanical, low-risk,
+and leaving the new component invisible to coverage measurement seemed
+a worse default than the small addition.
+
+**CLI/help.clj gate-verb expansion, named but not built.** Per this
+session's own step 7 permission ("if that expansion balloons... skip
+it, note it as follow-on work"): a real `gate v2-nist` CLI verb needs a
+profile-bundle-dir flag this tier doesn't share with `gate v2`/`gate
+fhir` (both take a bare PATH) and validator-state reuse across a single
+CLI invocation (building a fresh `SyncHL7Validator` per file would
+defeat the whole point of `make-validator`'s own "build once per
+bundle" discipline) — real design work belonging to a future session,
+not a mechanical re-export.
