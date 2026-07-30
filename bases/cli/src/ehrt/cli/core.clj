@@ -473,6 +473,18 @@
           (generate/out-dir-exists-error resolved-out-dir)
           ((:execute-fn entry) merged resolved-out-dir))))))
 
+(defn- with-generate-breadcrumb
+  "ADR-0015: attaches a `try: bin/ehrt show <out-dir>` breadcrumb to a
+  successful generate result -- both `generate/generate!` (:synthea)
+  and `generate-sim-command` (:sim) already echo :out-dir in their own
+  OK payload, so no new data is needed, just a pointer at what to try
+  next. Metadata only, per pretty-generic-summary's own docstring --
+  never the payload, so the EDN/JSON envelope is unaffected."
+  [r]
+  (if (result/ok? r)
+    (vary-meta r assoc :breadcrumb (str "try: bin/ehrt show " (:out-dir (:payload r))))
+    r))
+
 (defn mutate-command
   "`ehrt corpus mutate`: applies one operator, at one locator, to every
   matching file under :path (a file or a directory, positional --
@@ -565,7 +577,12 @@
                                             :items items})]
                       (if-not (result/ok? manifest-result)
                         manifest-result
-                        (result/ok {:count (count processed) :files processed})))
+                        ;; ADR-0015 breadcrumb: metadata only, never the
+                        ;; payload -- invisible to pr-str/json/write-str,
+                        ;; so the EDN/JSON envelope is unaffected; only
+                        ;; pretty-generic-summary reads it.
+                        (vary-meta (result/ok {:count (count processed) :files processed})
+                                   assoc :breadcrumb (str "try: bin/ehrt gate " out-dir))))
                     (let [f (first remaining)
                           base-data (read-base-data format f)
                           mutate-result (mutate/mutate base-data operator locator-envelope)]
@@ -1521,8 +1538,8 @@
                       ;; `corpus generate` (path nil) stays synthea,
                       ;; byte-for-byte unchanged.
                       "generate" (case (or path "synthea")
-                                   "synthea" (generate-fn opts)
-                                   "sim" (generate-sim-fn opts)
+                                   "synthea" (with-generate-breadcrumb (generate-fn opts))
+                                   "sim" (with-generate-breadcrumb (generate-sim-fn opts))
                                    (unknown-command-error args ["synthea" "sim"]))
                       "mutate" (mutate-fn opts)
                       "intake" (intake-fn opts)
@@ -1609,8 +1626,18 @@
 (defn- pretty-generic-summary
   "Every other envelope command's brief summary (ADR-0013): status,
   category, whatever key counts/paths the payload happens to carry,
-  plus a hint pointing at the full envelope. Never a prettified EDN
-  envelope -- the envelope is the machine form, full stop."
+  the payload's own :hint (ADR-0015: a rejection's remedy belongs in
+  the human summary, not only in the EDN a human isn't reading -- the
+  :out-dir-exists rejection is why this exists, but any payload
+  carrying a :hint gets it, not a special case just for that one
+  category), then a breadcrumb (ADR-0015) when `r` itself carries one
+  as METADATA -- never in :payload, so it never touches the EDN/JSON
+  envelope (pr-str/json/write-str both ignore metadata by
+  construction; a command function that wants a breadcrumb attaches it
+  to its own result via `vary-meta`, e.g. `mutate-command`'s directory-
+  write path, or `with-generate-breadcrumb` below) -- plus a pointer at
+  the full envelope. Never a prettified EDN envelope -- the envelope is
+  the machine form, full stop."
   [r]
   (let [{:keys [status category payload]} r
         interesting (select-keys payload [:count :out-dir :path :cached :git :identity :item-count])]
@@ -1618,6 +1645,10 @@
          (when category (str " (" (name category) ")"))
          (when (seq interesting)
            (str "\n" (str/join "\n" (map pretty-kv-line interesting))))
+         (when-let [hint (:hint payload)]
+           (str "\n" hint))
+         (when-let [breadcrumb (:breadcrumb (meta r))]
+           (str "\n" breadcrumb))
          "\n(--edn or --json for the full result)")))
 
 (defn render-pretty

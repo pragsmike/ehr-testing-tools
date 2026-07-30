@@ -51,7 +51,9 @@
         (if (non-empty-existing-dir? out-dir)
           (kernel/error :out-dir-exists
                         {:kind kind :out-dir out-dir
-                         :hint "remove the directory, or pass different params (e.g. a different seed), to regenerate"})
+                         :hint (str "same params always derive the same out-dir, so this run refused to silently overwrite the last one -- "
+                                    "run `rm -rf " out-dir "` to regenerate in place, "
+                                    "or pass different params (e.g. a different seed) to keep this run and start a new one")})
           (let [execute-result ((:execute-fn entry) merged-params out-dir)]
             (if-not (kernel/ok? execute-result)
               execute-result

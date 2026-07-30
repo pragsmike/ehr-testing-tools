@@ -133,11 +133,18 @@
   factored out here so `generate!` and every other generator source's
   own CLI front door raise it identically. :hint text is a single
   shared string for the same reason (ADR-0015's own remedy-hint
-  ruling revises it in one place, not once per call site)."
+  ruling revises it in one place, not once per call site): the literal
+  remedy, not a bare refusal -- the exact `rm -rf` for a fresh
+  identical rerun, and the --out-dir alternative for keeping the prior
+  run. `render-pretty` (bases/cli) frames this rejection as the
+  determinism story it is, not a bug -- same inputs, same directory,
+  never silently overwritten."
   [out-dir]
   (kernel/error :out-dir-exists
                 {:out-dir out-dir
-                 :hint "remove the directory, or pass a different --out-dir, to regenerate"}))
+                 :hint (str "same inputs always derive the same out-dir, so this run refused to silently overwrite the last one -- "
+                            "run `rm -rf " out-dir "` to regenerate in place, "
+                            "or pass a different --out-dir to keep this run and start a new one")}))
 
 (defn generate!
   "Generates a Synthea corpus. Options:

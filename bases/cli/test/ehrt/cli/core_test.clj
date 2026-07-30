@@ -1739,6 +1739,57 @@
     (is (clojure.string/includes? text "out-dir=out/demo"))
     (is (clojure.string/includes? text "--edn or --json"))))
 
+;; ---- ADR-0015: remedy hints and breadcrumbs, pretty-only, envelope
+;; untouched (verified below by comparing --edn/--json output with and
+;; without the pretty-only annotations present). ----
+
+(deftest render-pretty-generic-summary-surfaces-a-payload-hint-test
+  (let [text (cli/render-pretty (result/error :out-dir-exists {:out-dir "out/x" :hint "do the thing"}) nil)]
+    (is (clojure.string/includes? text "do the thing"))))
+
+(deftest generate-out-dir-exists-hint-names-the-literal-remedy-test
+  ;; The shared helper itself (both generate! and generate-sim-command
+  ;; raise it identically) -- rm -rf and the --out-dir alternative,
+  ;; both named literally, not just "remove the directory."
+  (let [r (result/out-dir-exists-error "out/corpus/sim-s1-p1")]
+    (is (result/error? r))
+    (is (clojure.string/includes? (:hint (:payload r)) "rm -rf out/corpus/sim-s1-p1"))
+    (is (clojure.string/includes? (:hint (:payload r)) "--out-dir"))))
+
+(deftest generate-sim-command-out-dir-exists-hint-renders-as-the-determinism-story-in-pretty-test
+  (let [out-dir (temp-dir*)
+        _ (spit (io/file out-dir "stale.txt") "x")
+        r (cli/generate-sim-command {:seed 1 :patients 1 :out-dir out-dir})
+        text (cli/render-pretty r nil)]
+    (is (result/error? r))
+    (is (clojure.string/includes? text (str "rm -rf " out-dir)))
+    (is (clojure.string/includes? text "refused to silently overwrite"))))
+
+(deftest dispatch-corpus-generate-synthea-and-sim-both-carry-a-show-breadcrumb-in-pretty-test
+  (doseq [args [["corpus" "generate" "synthea"] ["corpus" "generate" "sim"]]]
+    (let [r (cli/dispatch args {}
+                           {:generate-fn (fn [_opts] (result/ok {:out-dir "out/corpus/synthea-s1-p5"}))
+                            :generate-sim-fn (fn [_opts] (result/ok {:out-dir "out/corpus/sim-s1-p1"}))})
+          text (cli/render-pretty r nil)]
+      (is (result/ok? r))
+      (is (clojure.string/includes? text "try: bin/ehrt show out/corpus/")
+          (str args " must carry a show breadcrumb"))
+      (is (not (clojure.string/includes? (pr-str r) "breadcrumb"))
+          "the breadcrumb is metadata, invisible to pr-str -- the EDN envelope is unaffected")
+      (is (not (clojure.string/includes? (cli/render r true) "breadcrumb"))
+          "and invisible to the --json projection too"))))
+
+(deftest mutate-command-directory-write-carries-a-gate-breadcrumb-test
+  (let [in-dir (temp-dir*)
+        _ (spit (io/file in-dir "a.hl7") (slurp "components/tools/test-fixtures/v2/adt-a01-admit.hl7"))
+        out-dir (str (temp-dir*) "/out")
+        r (cli/mutate-command {:path in-dir :operator-id "blank-required-field" :locator-path "MSH-9" :out-dir out-dir})
+        text (cli/render-pretty r nil)]
+    (is (result/ok? r))
+    (is (clojure.string/includes? text (str "try: bin/ehrt gate " out-dir)))
+    (is (not (clojure.string/includes? (pr-str r) "breadcrumb"))
+        "the breadcrumb is metadata, never part of the envelope pr-str would print")))
+
 (deftest main-bang-tty-true-defaults-to-pretty-rendering-test
   (let [printed (atom nil)
         code (cli/main! ["artifact" "fetch"]
