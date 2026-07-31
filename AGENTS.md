@@ -39,13 +39,18 @@ of `components/tools`' own named hole H4 (ADR-0002 R14).
 `components/judge-v2-hapi` + `components/judge-fhir-official`
 (ADR-0011) — the two gate engines themselves, extracted out of
 `components/judge` in turn; `judge` now keeps only the verdict
-vocabulary (`report`/`finding`/`verdict-cache`). A third engine (NIST
-HL7 v2, profile-aware) is a named future addition (EXP-D3) landing into
-this same per-engine seam.
-`projects/ehrt-cli` composes tools + kernel + judge + judge-v2-hapi +
-judge-fhir-official + palgebra + cli, `projects/conformance` is the
-base-less project exercising sim + tools + palgebra together (see
-`notes/ADRs.md` ADR-0002, closing named holes H1–H3).
+vocabulary (`report`/`finding`/`verdict-cache`). `components/judge-v2-nist`
+(ADR-0012, 2026-07-30) — the third gate engine, profile-aware NIST HL7
+v2 validation, landed into that same per-engine seam (`gate v2-nist`).
+**Updated 2026-07-31** (review catch-up): this section previously
+called judge-v2-nist a "named future addition (EXP-D3)"; it is landed.
+`projects/ehrt-cli` composes kernel + judge + judge-v2-hapi +
+judge-fhir-official + judge-v2-nist + tools + palgebra + cli + sim,
+`projects/conformance` and `projects/integration` are the two base-less
+projects exercising sim + tools (+ kernel/judge/judge-v2-hapi/
+judge-fhir-official/judge-v2-nist transitively) + palgebra together,
+split by artifact-fetch dependency (see `notes/ADRs.md` ADR-0002,
+closing named holes H1–H3, and ADR-0004 R19).
 
 **The CLI is `ehrt`** ("e-heart", R32/ADR-0009, 2026-07-29) —
 `bin/ehrt`, renamed from `ehr`; `ehr` stays reserved for future

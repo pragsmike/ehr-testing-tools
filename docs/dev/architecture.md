@@ -28,6 +28,7 @@ flowchart LR
     judge[judge]
     judgev2hapi[judge-v2-hapi]
     judgefhirofficial[judge-fhir-official]
+    judgev2nist[judge-v2-nist]
     tools[tools]
     palgebra[palgebra]
     sim[sim]
@@ -38,10 +39,12 @@ flowchart LR
     judgev2hapi --> kernel
     judgefhirofficial --> judge
     judgefhirofficial --> kernel
+    judgev2nist --> kernel
     tools --> kernel
     tools --> judge
     tools --> judgev2hapi
     tools --> judgefhirofficial
+    tools --> judgev2nist
     tools --> palgebra
     tools --> sim
     cli --> tools
@@ -52,8 +55,9 @@ flowchart LR
 |---|---|---|
 | `components/kernel` | component | The foundation layer judge and corpus share: `result`, `digest`, `artifact`, `canonical`, `locator`, `invocation`. Extracted from `components/tools` (ADR-0002 R14's named hole H4, closed by ADR-0008) once census showed which root-layer namespaces two or more of {judge, corpus, cli} actually depended on. |
 | `components/judge` | component | The verdict vocabulary and shared machinery every gate engine produces into: `ehrt.judge.report`, `.finding`, `.verdict-cache`. Extracted alongside kernel (ADR-0008); narrowed again (ADR-0011) when the two gate engines themselves moved out to their own components. Depends on kernel only. |
-| `components/judge-v2-hapi` | component | The HAPI-backed HL7 v2 base-structural conformance engine (`ehrt.judge-v2-hapi.v2`, in-process, no subprocess). Extracted from `components/judge` (ADR-0011, the per-engine judge split — a second v2 engine, NIST-backed, is a named future addition, EXP-D3). Depends on kernel only. |
+| `components/judge-v2-hapi` | component | The HAPI-backed HL7 v2 base-structural conformance engine (`ehrt.judge-v2-hapi.v2`, in-process, no subprocess). Extracted from `components/judge` (ADR-0011, the per-engine judge split). Depends on kernel only. |
 | `components/judge-fhir-official` | component | The official HL7 FHIR validator engine (`ehrt.judge-fhir-official.fhir`, pinned subprocess). Extracted from `components/judge` (ADR-0011). Depends on `judge` (the verdict vocabulary's `worst-of` and the shared verdict-cache) and kernel. |
+| `components/judge-v2-nist` | component | The third gate engine: profile-aware NIST HL7 v2 validation (`ehrt.judge-v2-nist.v2`), landed ADR-0012 (2026-07-30) into the same per-engine seam ADR-0011 established. Depends on kernel only. |
 | `components/tools` | component | Corpus generation, mutation, intake, and the residual pipeline plumbing (docsgen, lint, the `ehrt sim` adapter). Narrowed by the kernel/judge extraction, then again by the per-engine judge split; still the fattest component, and its own `ehrt.tools.interface` still re-exports corpus.* wholesale — narrowing that further is a future, author-ruled call (see `AGENTS.md`'s fat-component disclosure). |
 | `components/palgebra` | component | String-diagram tooling (resource-equation → Mermaid) this workspace uses to document its own data-flow pipelines (`pipeline.md`, `use-cases.md`, sim's own theory docs). Self-contained — never requires tools or sim. |
 | `components/sim` | component | The simulation engine: deterministic, seeded hospital traffic (patients, encounters, GMF-driven pathways, churn, HL7 v2/FHIR emission). Never depends on anything tools-derived — the one dependency-direction rule that predates this workspace and is now poly-enforced rather than merely a convention (two separate repos used to make it structural; `poly check` does now). |
@@ -64,7 +68,7 @@ flowchart LR
 
 | Project | Composes | What it deploys |
 |---|---|---|
-| `projects/ehrt-cli` | kernel, judge, judge-v2-hapi, judge-fhir-official, tools, palgebra, cli, sim | The published CLI artifact (`bin/ehrt` runs `poly/cli` via root `deps.edn`'s own `:ehrt` alias, not this project directly — see below). Named for the deployable, `ehrt` (R35). |
+| `projects/ehrt-cli` | kernel, judge, judge-v2-hapi, judge-fhir-official, judge-v2-nist, tools, palgebra, cli, sim | The published CLI artifact (`bin/ehrt` runs `poly/cli` via root `deps.edn`'s own `:ehrt` alias, not this project directly — see below). Named for the deployable, `ehrt` (R35). |
 | `projects/sim` | sim | Sim's own standalone artifact (`bases/sim-cli`'s composing project). |
 | `projects/conformance` | sim, tools, palgebra (test-only) | Base-less: exercises sim + tools + palgebra together, workspace-internal suites only — the per-push lane's own cross-brick integration coverage. |
 | `projects/integration` | sim, tools, palgebra (test-only) | Base-less: the artifact-fetch-dependent suites (real Synthea, the real FHIR validator) — nightly/on-demand only, never per-push (`notes/ADRs.md` ADR-0004). |
@@ -127,5 +131,5 @@ belongs to before it's written, not after.
   `notes/tools/ADRs.md` (frozen provenance, cited origin-qualified).
 - What's landed so far, in prose: `AGENTS.md`'s own "Landed so far"
   section — kept current, unlike this page's own bricks table, which
-  is accurate as of ADR-0011 and will drift; trust `poly ws
-  get:components:keys` over either when they disagree.
+  is accurate as of ADR-0012 (2026-07-31 catch-up) and will drift;
+  trust `poly ws get:components:keys` over either when they disagree.
