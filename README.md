@@ -61,13 +61,21 @@ you ever see them drift, that script is the bug report.
 ```sh
 bin/ehrt help
 
+bin/ehrt corpus generate
+# bare `generate` runs this workspace's own sim engine (ADR-0005) --
+# mounted in-process, so this first command needs nothing fetched.
+# zero-flag `generate` is byte-reproducible, so it REJECTS a directory
+# that already exists rather than overwriting it -- remove
+# out/corpus/sim-s1-p1 first (or pass --out-dir) to regenerate.
+
 bin/ehrt artifact fetch --name synthea --version 4.0.0
 bin/ehrt artifact fetch --name temurin-jdk --version 21.0.12+8
 
-bin/ehrt corpus generate
-# zero-flag `generate` is byte-reproducible, so it REJECTS a directory
-# that already exists rather than overwriting it -- remove
-# out/corpus/synthea-s1-p5 first (or pass --out-dir) to regenerate.
+bin/ehrt corpus generate synthea
+# the Synthea lane needs the two artifacts fetched above -- same
+# byte-reproducible, rejected-not-overwritten contract (D9) as bare
+# generate; remove out/corpus/synthea-s1-p5 first (or pass --out-dir)
+# to regenerate.
 
 PATIENT_FILE=$(ls out/corpus/synthea-s1-p5/fhir/*.json | grep -v -e hospitalInformation -e practitionerInformation | head -1)
 bin/ehrt corpus mutate $PATIENT_FILE \

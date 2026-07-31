@@ -56,7 +56,10 @@
   (case [group verb]
     ["artifact" "fetch"] :fetch-fn
     ["artifact" "resolve"] :resolve-fn
-    ["corpus" "generate"] :generate-fn
+    ;; ADR-0015 amendment (2026-07-30): bare `corpus generate` routes
+    ;; to the sim lane now, not synthea -- see notes/ADRs.md ADR-0015's
+    ;; own amendment paragraph.
+    ["corpus" "generate"] :generate-sim-fn
     ["corpus" "mutate"] :mutate-fn
     ["corpus" "intake"] :intake-fn
     ["corpus" "operators"] :operators-fn

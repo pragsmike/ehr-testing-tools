@@ -15,10 +15,14 @@
 ;; ---- the committed files: the real proof this check exists for ----
 
 (deftest committed-readme-and-script-agree-test
+  ;; 14 -> 15 (ADR-0015 amendment, 2026-07-30): a new taught line, bare
+  ;; `bin/ehrt corpus generate` (now the sim lane), landed ahead of the
+  ;; existing `generate synthea` line in both README.md and
+  ;; bin/quickstart-demo.
   (let [{:keys [ok? readme-count script-count divergence]} (qf/check)]
     (is ok? (str "divergence: " divergence))
     (is (nil? divergence))
-    (is (= 14 readme-count))
+    (is (= 15 readme-count))
     (is (= readme-count script-count))))
 
 ;; ---- extraction on its own: comments/blanks stripped, continuation

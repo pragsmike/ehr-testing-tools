@@ -29,7 +29,7 @@ bin/ehrt artifact fetch --name temurin-jdk --version 21.0.12+8
 # --clinician-seed fix Synthea's two RNGs, --reference-date fixes what
 # "now" means. Leave any of them out and the corpus stops being
 # reproducible.
-bin/ehrt corpus generate --config-path config/synthea/synthea.properties \
+bin/ehrt corpus generate synthea --config-path config/synthea/synthea.properties \
   --seed 100 --clinician-seed 555 --population 10 \
   --reference-date 20260101 --out-dir out/demo-corpus
 
@@ -216,7 +216,7 @@ flowchart LR
 bin/ehrt corpus operators --format fhir
 
 # A base corpus to break, if you don't already have one.
-bin/ehrt corpus generate --config-path config/synthea/synthea.properties \
+bin/ehrt corpus generate synthea --config-path config/synthea/synthea.properties \
   --seed 100 --clinician-seed 555 --population 10 \
   --reference-date 20260101 --out-dir out/demo-corpus
 
@@ -861,7 +861,7 @@ flowchart LR
 
 ```sh
 # Generate once.
-bin/ehrt corpus generate --config-path config/synthea/synthea.properties \
+bin/ehrt corpus generate synthea --config-path config/synthea/synthea.properties \
   --seed 100 --clinician-seed 555 --population 10 \
   --reference-date 20260101 --out-dir out/repro-a
 
@@ -873,7 +873,7 @@ cat out/repro-a/manifest.edn
 # There is no regenerate-from-manifest verb: you read the settings
 # back out of the manifest and pass them in again -- later, elsewhere,
 # from an empty artifact cache.
-bin/ehrt corpus generate --config-path config/synthea/synthea.properties \
+bin/ehrt corpus generate synthea --config-path config/synthea/synthea.properties \
   --seed 100 --clinician-seed 555 --population 10 \
   --reference-date 20260101 --out-dir out/repro-b
 
@@ -936,7 +936,7 @@ flowchart LR
 # leave behind, each artifact independently checkable.
 
 # Generate -- the manifest is the first link.
-bin/ehrt corpus generate --config-path config/synthea/synthea.properties \
+bin/ehrt corpus generate synthea --config-path config/synthea/synthea.properties \
   --seed 100 --clinician-seed 555 --population 10 \
   --reference-date 20260101 --out-dir out/audit/corpus
 PATIENT_FILE=$(ls out/audit/corpus/fhir/*.json | grep -v -e hospitalInformation -e practitionerInformation | head -1)
@@ -1159,7 +1159,7 @@ flowchart LR
 
 ```sh
 # A small corpus to teach from.
-bin/ehrt corpus generate --config-path config/synthea/synthea.properties \
+bin/ehrt corpus generate synthea --config-path config/synthea/synthea.properties \
   --seed 100 --clinician-seed 555 --population 5 \
   --reference-date 20260101 --out-dir out/teaching-corpus
 PATIENT_FILE=$(ls out/teaching-corpus/fhir/*.json | grep -v -e hospitalInformation -e practitionerInformation | head -1)
@@ -1280,7 +1280,7 @@ cat out/sim-intake/intake-record.edn
 cat out/sim-intake/catalog.edn
 ```
 
-This is the compose form -- generate, then catalog, in one command -- for when you want a cataloged batch, not a bare corpus; `bin/ehrt corpus generate sim` (ADR-0015, [Generate deterministic sim (HL7v2) traffic](#generate-deterministic-sim-hl7v2-traffic)) is the front door when you just want the corpus. Generator-URL params (seed, patients, churn, emit, reference-date, config) are sim's own `run` verb's flags, the same names `generate sim`'s own flags use; a bare `sim:` with no query string still works, at sim's own pinned one-patient/hl7 default (the determinism law of defaults, D8). Gate the result the same way any intaken corpus gates -- [Judge user-supplied data: intake -> gate -> report](#judge-user-supplied-data-intake---gate---report). Synthea's own equivalent one-command compose path is `bin/ehrt corpus intake 'synthea:?seed=1&population=5'`, over the SAME generator registry (docs/source-sink-design.md), fronted the same way by `bin/ehrt corpus generate synthea`/bare `corpus generate`.
+This is the compose form -- generate, then catalog, in one command -- for when you want a cataloged batch, not a bare corpus; `bin/ehrt corpus generate sim` (ADR-0015, [Generate deterministic sim (HL7v2) traffic](#generate-deterministic-sim-hl7v2-traffic)) is the front door when you just want the corpus. Generator-URL params (seed, patients, churn, emit, reference-date, config) are sim's own `run` verb's flags, the same names `generate sim`'s own flags use; a bare `sim:` with no query string still works, at sim's own pinned one-patient/hl7 default (the determinism law of defaults, D8). Gate the result the same way any intaken corpus gates -- [Judge user-supplied data: intake -> gate -> report](#judge-user-supplied-data-intake---gate---report). Synthea's own equivalent one-command compose path is `bin/ehrt corpus intake 'synthea:?seed=1&population=5'`, over the SAME generator registry (docs/source-sink-design.md), fronted the same way by `bin/ehrt corpus generate synthea` (ADR-0015 amendment, 2026-07-30: bare `corpus generate`, with no subcommand, means `generate sim` now, not synthea).
 
 ```
 generator-config × sim-engine → generated-corpus  [EngineExecute]

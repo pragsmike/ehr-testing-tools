@@ -187,29 +187,37 @@
     (is (= {:name "synthea" :version "4.0.0"} @called))))
 
 (deftest dispatch-routes-corpus-generate-test
+  ;; ADR-0015 amendment (2026-07-30, cold-start UX session): bare
+  ;; `corpus generate` now routes to the sim lane, not synthea.
   (let [called (atom nil)
         r (cli/dispatch ["corpus" "generate"] {:seed 1}
-                         {:generate-fn (fn [opts] (reset! called opts) (result/ok {:manifest {}}))})]
+                         {:generate-sim-fn (fn [opts] (reset! called opts) (result/ok {:out-dir "x"}))})]
     (is (result/ok? r))
     (is (= {:seed 1} @called))))
 
 ;; ---- ADR-0015: `corpus generate` grows source subcommands. The third
 ;; positional slot (occupied by PATH for mutate/intake) is the source
-;; discriminator here instead -- bare `corpus generate` and `corpus
-;; generate synthea` both stay wired to :generate-fn (generate!,
-;; unchanged); `corpus generate sim` is a new, separate :generate-sim-fn
-;; injection point. ----
+;; discriminator here instead -- `corpus generate synthea` stays wired
+;; to :generate-fn (generate!, unchanged); `corpus generate sim` is its
+;; own :generate-sim-fn injection point. ADR-0015 amendment (2026-07-30,
+;; cold-start UX session, notes/ADRs.md ADR-0015's own amendment
+;; paragraph): bare `corpus generate` (path nil) now means sim, not
+;; synthea -- sim needs no fetched artifacts, so the cold first command
+;; succeeds unfetched. ----
 
-(deftest dispatch-corpus-generate-bare-and-explicit-synthea-route-identically-test
-  ;; Pins bare-generate compatibility: both spellings hit the exact same
-  ;; injection point, so bin/quickstart-demo's own bare `generate` call
-  ;; is untouched by this session's subcommand addition.
-  (doseq [args [["corpus" "generate"] ["corpus" "generate" "synthea"]]]
+(deftest dispatch-corpus-generate-bare-and-explicit-sim-route-identically-test
+  ;; Pins bare-generate compatibility under the amendment: both
+  ;; spellings hit the exact same injection point (:generate-sim-fn),
+  ;; byte-identical (generate-sim-command-same-seed-is-byte-identical-test
+  ;; below already proves the sim lane itself is byte-reproducible for a
+  ;; given seed -- this pins that bare and `generate sim` are the SAME
+  ;; call, not merely two byte-identical ones).
+  (doseq [args [["corpus" "generate"] ["corpus" "generate" "sim"]]]
     (let [called (atom nil)
           r (cli/dispatch args {:seed 7}
-                           {:generate-fn (fn [opts] (reset! called opts) (result/ok {:manifest {}}))})]
+                           {:generate-sim-fn (fn [opts] (reset! called opts) (result/ok {:out-dir "x"}))})]
       (is (result/ok? r))
-      (is (= {:seed 7} @called) (str args " must route through :generate-fn")))))
+      (is (= {:seed 7} @called) (str args " must route through :generate-sim-fn")))))
 
 (deftest dispatch-routes-corpus-generate-sim-test
   (let [called (atom nil)
@@ -324,7 +332,7 @@
 (deftest dispatch-corpus-generate-accepts-a-dir-url-out-dir-test
   (let [called (atom nil)
         r (cli/dispatch ["corpus" "generate"] {:out-dir "dir:./corpus-out"}
-                         {:generate-fn (fn [opts] (reset! called opts) (result/ok {:out-dir "x"}))})]
+                         {:generate-sim-fn (fn [opts] (reset! called opts) (result/ok {:out-dir "x"}))})]
     (is (result/ok? r))
     (is (= "./corpus-out" (:out-dir @called)))))
 

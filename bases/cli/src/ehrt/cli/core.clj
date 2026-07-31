@@ -1534,10 +1534,14 @@
                       ;; subcommands (sim/synthea) via the same third
                       ;; positional slot gate's own v2/fhir discriminator
                       ;; already occupies one level up -- `path` here is
-                      ;; the subcommand name, not a filesystem path; bare
-                      ;; `corpus generate` (path nil) stays synthea,
-                      ;; byte-for-byte unchanged.
-                      "generate" (case (or path "synthea")
+                      ;; the subcommand name, not a filesystem path.
+                      ;; ADR-0015 amendment (2026-07-30, cold-start
+                      ;; ruling): bare `corpus generate` (path nil) now
+                      ;; means sim, not synthea -- sim needs no fetched
+                      ;; artifacts, so the cold first command succeeds
+                      ;; unfetched; `generate synthea` remains the
+                      ;; explicit, unchanged spelling for that lane.
+                      "generate" (case (or path "sim")
                                    "synthea" (with-generate-breadcrumb (generate-fn opts))
                                    "sim" (with-generate-breadcrumb (generate-sim-fn opts))
                                    (unknown-command-error args ["synthea" "sim"]))

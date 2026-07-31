@@ -82,7 +82,7 @@ Generate, mutate, intake, and inspect synthetic corpora. Any PATH, --out-dir, or
 
 ### `ehrt corpus generate`
 
-Generate a deterministic synthetic corpus. Grows a source subcommand (ADR-0015): `corpus generate synthea` (Synthea, the flags below) or `corpus generate sim` (this workspace's own sim engine, ehrt.sim -- --patients/--churn/--emit/--config below); bare `corpus generate`, with no subcommand, stays exactly `generate synthea` for compatibility with every existing doc and script. Zero-flag defaults (D9, ADR-0019) make either source's bare command a byte-reproducible run -- re-running it into the same (derived) --out-dir without clearing it first is rejected (:out-dir-exists), not silently overwritten.
+Generate a deterministic synthetic corpus. Grows a source subcommand (ADR-0015): `corpus generate sim` (this workspace's own sim engine, ehrt.sim -- --patients/--churn/--emit/--config below) or `corpus generate synthea` (Synthea, the flags below); bare `corpus generate`, with no subcommand, is `generate sim` (ADR-0015 amendment, 2026-07-30: sim needs no fetched artifacts, so the cold first command succeeds unfetched) -- run `generate synthea` explicitly for that lane. Zero-flag defaults (D9, ADR-0019) make either source's bare command a byte-reproducible run -- re-running it into the same (derived) --out-dir without clearing it first is rejected (:out-dir-exists), not silently overwritten.
 
 | Flag | Default | Meaning |
 |---|---|---|
