@@ -1,4 +1,4 @@
-.PHONY: help test integration quickstart ci-parity pipeline use-cases operators-doc cli-doc docsgen
+.PHONY: help test integration quickstart quickstart-fresh ci-parity pipeline use-cases operators-doc cli-doc docsgen lint-pipeline
 
 # Thin, deliberately (R23, ADR-0004, 2026-07-28 carve-loss recovery
 # session): every target below is a named entry point to a poly/CLI
@@ -24,12 +24,14 @@ help:
 	@echo "                   bin/ehrt artifact fetch --name temurin-jdk --version 21.0.12+8"
 	@echo "                   bin/ehrt artifact fetch --name fhir-validator-cli --version 6.9.12"
 	@echo "  quickstart   - run README.md's Quickstart commands verbatim (bin/quickstart-demo), asserting each one's exit code and a clean tree afterward"
+	@echo "  quickstart-fresh - assert README.md's Quickstart fence and bin/quickstart-demo teach the identical commands, in the identical order (ehrt.tools.quickstart-fresh)"
 	@echo "  ci-parity    - fresh clone + cold artifact cache + the per-push lane: 'green as CI sees it', runnable locally (ADR-0004's own local-state-is-not-clone-state lesson)"
 	@echo "  pipeline     - regenerate docs/dev/pipeline.md from components/tools/docs/pipeline.edn"
 	@echo "  use-cases    - regenerate docs/use-cases.md from components/tools/docs/use-cases.edn"
 	@echo "  operators-doc - regenerate docs/operators.md from the live operator registry"
 	@echo "  cli-doc      - regenerate docs/cli.md from bases/cli's own cli-spec"
 	@echo "  docsgen      - all four of the above"
+	@echo "  lint-pipeline - assert every catalytic resource in docs/pipeline.edn and docs/use-cases.edn resolves to one of the four catalytic targets (ehrt.tools.lint)"
 
 test:
 	clojure -M:poly check
@@ -40,6 +42,9 @@ integration:
 
 quickstart:
 	bin/quickstart-demo
+
+quickstart-fresh:
+	clojure -X:dev ehrt.tools.quickstart-fresh/quickstart-fresh!
 
 # Regenerates docs/dev/pipeline.md from components/tools/docs/pipeline.edn
 # (the hand-authored source of truth, staying component-adjacent --
@@ -83,6 +88,9 @@ cli-doc:
 	@echo "Regenerated docs/cli.md"
 
 docsgen: pipeline use-cases operators-doc cli-doc
+
+lint-pipeline:
+	clojure -X:dev ehrt.tools.lint/lint-pipeline!
 
 # ADR-0004's own generalized trap, made runnable: index modes, artifact
 # caches, and sibling checkouts have each masked a CI failure behind a

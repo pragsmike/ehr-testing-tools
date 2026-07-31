@@ -7,7 +7,7 @@ this document; build sessions SS-1..SS-5
 or receives EHR corpus bytes in this repo — unifying `corpus.generate`'s
 Synthea-specific engine, `corpus.intake`'s directory-specific ingestion,
 the sim consumer loop's harness-only subprocess seam
-(`test-integration/ehr_testing_tools/sim_harness.clj`, ADR-0013), and
+(`projects/conformance/test/ehrt/tools/sim_harness.clj`, tools/ADR-0013), and
 today's bare output-path sinks under one typed, registry-open surface.
 **Companion:** ADR-0017 (`notes/ADRs.md`) is the reasoning-of-record for
 the decision to formalize; `.agents/plans/corpus-foundations.md`'s
@@ -17,10 +17,14 @@ SS-1..SS-5 rows are the build-session sequencing. This document is the
 `docs/palgebra-design.md` uses against `judge-gate-refactor.md`.
 
 Every fact asserted below about the current codebase was re-read from
-source while writing this record: `src/ehr_testing_tools/corpus/intake.clj`,
-`corpus/generate.clj`, `artifact.clj`, `invocation.clj`,
-`test-integration/ehr_testing_tools/sim_harness.clj`, ADR-0013, ADR-0014,
-`docs/notation.md`, `docs/pipeline.edn`.
+source while writing this record (pre-Polylith paths at the time; homes
+below are the Polylith equivalents, added in the 2026-07-31 errata
+pass): `components/tools/src/ehrt/tools/corpus/intake.clj`,
+`components/tools/src/ehrt/tools/corpus/generate.clj`,
+`components/kernel/src/ehrt/kernel/artifact.clj`,
+`components/kernel/src/ehrt/kernel/invocation.clj`,
+`projects/conformance/test/ehrt/tools/sim_harness.clj`, tools/ADR-0013,
+tools/ADR-0014, `docs/notation.md`, `docs/pipeline.edn`.
 
 ---
 
@@ -61,8 +65,9 @@ source while writing this record: `src/ehr_testing_tools/corpus/intake.clj`,
 
 **Generator sources** run an engine and are parameterized (seed, module
 set, patient count, …): `synthea` (built today as `corpus.generate`),
-`sim` (built today only as a `test-integration/`-only subprocess seam,
-ADR-0013), and — deliberately unimplemented but registrable —
+`sim` (built today only as `projects/conformance/test`'s own
+subprocess seam, tools/ADR-0013), and — deliberately unimplemented but
+registrable —
 `simhospital`. Deterministic by seed; emit provenance. `simhospital`'s
 registry entry is the entire accommodation this design makes for it; no
 implementation ships (D5).
@@ -370,11 +375,13 @@ of bug, caught before it ships rather than after.
   half — the two-step pattern (execute, then interpret) is unchanged;
   see the `EngineExecute`/`Generate` correspondence in the equations
   below.
-- **`sim-harness`** (`test-integration/ehr_testing_tools/sim_harness.clj`)
+- **`sim-harness`** (`projects/conformance/test/ehrt/tools/sim_harness.clj`)
   grows up: its subprocess seam becomes the `sim` generator source in
   `src/`, with the harness delegating to it; the cross-repo consumer
-  loop keeps testing through it, unchanged in spirit (ADR-0013's
-  subprocess-only rule is not reopened by this design).
+  loop keeps testing through it, unchanged in spirit (tools/ADR-0013's
+  subprocess-only rule is not reopened by this design — superseded in
+  practice by ADR-0004's in-process `ehrt sim` mount, which this design
+  doc predates).
 - **`corpus.intake`** is untouched in role; gains nothing but callers —
   every source, generator or reader, ends up handing intake a
   `dir`-shaped tree exactly as it does today.
@@ -569,7 +576,7 @@ The zero-flag happy path:
 byte-reproducible across machines given the same pinned artifacts (the
 shipped `resources/` properties file, the locked Synthea/JDK artifact
 versions) — the same claim EXP-A4 already proved for an explicit-flags
-invocation (`docs/experiments/EXP-A4-results.md`), now extended to the
+invocation (`../../components/tools/docs/experiments/EXP-A4-results.md`), now extended to the
 zero-flag case specifically because it is what a first-time reader
 actually runs. This makes the quickstart's first command a
 reproducibility demonstration, not merely a convenience.

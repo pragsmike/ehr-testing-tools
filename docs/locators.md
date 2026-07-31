@@ -262,7 +262,7 @@ resolution failure on a specific file.
 | The `MSH` off-by-one, and field positions generally | `ehrt.tools.corpus.er7/field-index` |
 | Segment occurrence and resolution against a message | `ehrt.tools.corpus.er7/resolve-locator` |
 | Field granularity of the v2 substrate | `ehrt.tools.corpus.er7` namespace docstring |
-| Every example on this page | `test/ehr_testing_tools/locators_doc_test.clj` |
+| Every example on this page | `components/tools/test/ehrt/tools/locators_doc_test.clj` |
 
 Related: [operators.md](operators.md) (which operator to pair a locator
 with), [cli.md](cli.md#ehrt-corpus-mutate) (the flags around it),

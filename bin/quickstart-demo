@@ -14,14 +14,14 @@
 # `set -e` would abort on it as though it were one. Hence the explicit
 # `expect` wrapper below instead of `-e`.
 #
-# The block between the BEGIN/END markers used to be read by
-# `make quickstart-fresh` (the freshness extractor) to prove this script
-# and README.md's fence teach the identical commands, in the identical
-# order; that extractor did not survive the Polylith landing either
-# (ADR-0002) and has no poly-era replacement yet. Keep every taught line
-# inside that block, one statement per README command, and do not
-# "improve" a command here -- an improvement belongs in the README first
-# (AUTHORS-GUIDE.md sec7's craft discipline).
+# The block between the BEGIN/END markers is read by `make quickstart-fresh`
+# (`ehrt.tools.quickstart-fresh`, its poly-era replacement, green in the
+# per-push lane -- components/tools/test/ehrt/tools/quickstart_fresh_test.clj)
+# to prove this script and README.md's fence teach the identical commands,
+# in the identical order. Keep every taught line inside that block, one
+# statement per README command, and do not "improve" a command here -- an
+# improvement belongs in the README first (AUTHORS-GUIDE.md sec7's craft
+# discipline).
 set -uo pipefail
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)" || exit 2

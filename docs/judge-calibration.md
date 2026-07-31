@@ -2,10 +2,10 @@
 
 One page, honest, cited -- exactly the question a team gating its own
 ingestion-pipeline output against this repo's gates needs answered
-before it trusts a green run. Source: `docs/experiments/EXP-C5-results.md`
+before it trusts a green run. Source: `../components/tools/docs/experiments/EXP-C5-results.md`
 (the offline validator-behavior classification) and P5's contract-pairing
-suite (`test/ehr_testing_tools/contract_pairing_test.clj`, tagged
-`^:integration`, run explicitly against the real official FHIR
+suite (`projects/integration/test/ehrt/tools/contract_pairing_test.clj`,
+tagged `^:integration`, run explicitly against the real official FHIR
 validator -- not simulated).
 
 ## FHIR judge (`judge.fhir`), base spec + whatever profile the input itself declares
@@ -46,8 +46,9 @@ resolution failures, encoding/delimiter failures, and primitive
 data-type violations (a malformed DTM, for instance) all surface as
 parse-time exceptions -- `:rejected`. Nothing at this tier checks
 conformance profiles, usage/cardinality beyond parse-time structure,
-predicates, or co-constraints (the NIST/CDC engine's own territory,
-EXP-D3, not adopted). Nothing here ever produces `:indeterminate` or
+predicates, or co-constraints (`judge-v2-nist`'s own territory,
+ADR-0012, `gate v2-nist`, profile-aware -- landed as a direct engine,
+not the CDC wrapper EXP-D3 originally evaluated). Nothing here ever produces `:indeterminate` or
 `:no-verdict` (ADR-0010): there is no terminology and no profile at
 this tier, so there is no check this judge can only partially resolve.
 
@@ -55,7 +56,7 @@ this tier, so there is no check this judge can only partially resolve.
 
 Every seed operator below was verified empirically against
 `components/tools/test-fixtures/v2/adt-a01-admit.hl7` before being registered --
-`test/ehr_testing_tools/v2_contract_pairing_test.clj` is where that
+`components/tools/test/ehrt/tools/v2_contract_pairing_test.clj` is where that
 claim gets a regression, not just a one-off session probe.
 
 | Defect operator | Locator used | Verdict / finding | Notes |
@@ -72,7 +73,7 @@ probed and dropped, not shipped unconvictable
 (`corpus/operators.clj`'s own docstring records them as the
 catalog-side source of this finding):
 
-| Dropped candidate | Result (probed, and reproduced fresh 2026-07-25) | Why (facts register [F22](../notes/facts-register.md)) |
+| Dropped candidate | Result (probed, and reproduced fresh 2026-07-25) | Why (facts register [tools/F22](../notes/tools/facts-register.md)) |
 |---|---|---|
 | Drop the PID segment entirely | `:pass`, `:validation-exceptions []` | No rule in this tier's `defaultValidation` chain checks segment presence -- confirmed directly from HAPI's own `DefaultValidationWithoutTNBuilder` source, which registers no such rule |
 | Corrupt PID's own segment-name (`PID` -> `PIX`) | `:pass`, `:validation-exceptions []` | HAPI does register a message-level `onlyAllowableSegmentsInSuperStructure()` rule, but it does not fire for this shape (empirically confirmed, not merely inferred); no other rule in the chain covers it |

@@ -92,7 +92,7 @@ configuration — `resource.id` is dropped from every Bundle entry when
 `entry.fullUrl` is a `urn:uuid:` value, a known upstream defect distinct
 from the documented (and otherwise configurable) fullUrl-overrides-id
 behavior. This is why mutation itself operates on plain-data JSON
-instead (see `docs/experiments/EXP-B2-results.md`).
+instead (see `../../components/tools/docs/experiments/EXP-B2-results.md`).
 
 **Deliberately not used for.** Authoritative gate verdicts — the
 official validator (below) is canonical where they diverge
@@ -116,7 +116,7 @@ packages resolve as locked `:profile`-kind artifacts when a caller
 supplies them (the `-ig` machinery is built; none is pinned yet).
 Verdicts are consumed as OperationOutcome data and normalized by
 `judge.report`. Known operational constraints that shape our wrapper,
-confirmed directly by EXP-C5 (`docs/experiments/EXP-C5-results.md`),
+confirmed directly by EXP-C5 (`../../components/tools/docs/experiments/EXP-C5-results.md`),
 not merely anticipated: offline/no-terminology operation has open
 upstream bugs (locally packaged ValueSets can still fail to validate a
 code), so verdict policy classifies rather than trusts raw pass/fail;
@@ -140,19 +140,27 @@ EXP-SBOM's inventory (facts register [F1](../../notes/facts-register.md));
 a clarification inquiry to NIST is maintained privately by the author.
 Underpins NIST's hosted validation tools used in US EHR certification.
 
-**Role in pipeline.** Candidate engine for the full `judge.v2` tier;
-adoption blocked pending NIST license confirmation (EXP-SBOM executed;
-still license-unstated). A live, official NIST-operated distribution
-channel for this engine's build artifacts exists at `hit-nexus.nist.gov`
-(facts register [F14](../../notes/facts-register.md)), opening a
-fetch-at-build adoption path (Mode 2: use rights only, no
-redistribution) grounded in NIST's general software statement (facts
-register [F15](../../notes/facts-register.md)) — narrower and less blocked
-than full redistribution (Mode 1). The residual inquiry to NIST is
-narrowed accordingly and maintained privately by the author.
+**Role in pipeline.** The engine behind the third gate tier,
+`judge-v2-nist` (`gate v2-nist`) — **adopted directly, not through the
+CDC wrapper below** (ADR-0012, 2026-07-30): `components/judge-v2-nist`
+depends on the three `gov.nist` coordinates (`hl7-v2-validation`,
+`hl7-v2-parser`, `hl7-v2-profile`, all 1.7.3) itself, fetched from the
+same live `hit-nexus.nist.gov` channel (facts register
+[F14](../../notes/facts-register.md)) via `:mvn/repos` in each project's
+own `deps.edn` (Mode 2: use rights only, no redistribution), grounded in
+NIST's general software statement (facts register
+[F15](../../notes/facts-register.md)). License status remains
+`:use-permitted--unstated--confirmation-pending` in
+`artifacts.lock.edn` — the residual NIST licensing inquiry is still
+open and maintained privately by the author; the engine ships and is
+tested (a stand-in fixture profile, per ADR-0012's own disclosure,
+pending a project-owned profile) with that posture disclosed, not
+resolved.
 
-**Deliberately not used for.** Anything today — not yet adopted; see
-Role in pipeline above for the blocker.
+**Deliberately not used for.** Anything beyond the shipped `gate
+v2-nist` profile-tier gate — no project-owned profile is pinned yet
+(ADR-0012's stand-in-fixture disclosure), and the license posture above
+is confirmation-pending, not confirmed.
 
 ## CDC `lib-hl7v2-nist-validator`
 
@@ -174,18 +182,22 @@ resolve normally from Maven Central with mostly permissive licenses,
 except one transitive LGPL-2.1 dependency (`xom`, flagged for ADR-0001
 review — facts register [F10](../../notes/facts-register.md)).
 
-**Role in pipeline.** Candidate runtime for the full `judge.v2` tier,
-contingent on the v2 gate architecture decision (EXP-SBOM classifies; it
-does not decide — `docs/experiments/EXP-SBOM-results.md`). The same
-`hit-nexus.nist.gov` channel that serves the underlying NIST engine
-(facts register [F14](../../notes/facts-register.md)) also makes a
-fetch-at-build path available for this wrapper's six vendored
-NIST-origin coordinates, rather than only the vendored-jar path
-EXP-SBOM inventoried (F9) — the same Mode-2 adoption path and the same
-residual inquiry as the NIST engine above.
+**Role in pipeline.** Evaluated as a candidate runtime for the full
+`judge.v2` tier (EXP-SBOM classifies; it does not decide —
+`../../components/tools/docs/experiments/EXP-SBOM-results.md`); **not adopted** —
+ADR-0012 (2026-07-30) chose to depend on the underlying NIST engine
+directly instead, for three reasons recorded there: this wrapper's own
+`ProfileManager.filterAndConvert` silently drops 75.6% of raw findings
+against its own shipped baseline (EXP-D3 Round 3), its own documented
+version pins drift against each other (README/POM/`main`), and the
+underlying coordinates being independently resolvable (EXP-D3) removed
+the reason to prefer the wrapper in the first place. `components/judge-v2-nist`
+is never a dependency of this wrapper's own code.
 
-**Deliberately not used for.** Anything today — same adoption blocker as
-the NIST engine it wraps.
+**Deliberately not used for.** Never adopted — see ADR-0012 for the
+full reasoning; `docs/judge-calibration.md`'s v2-tier section and
+`components/judge-v2-nist` above are where the direct-engine path
+actually landed.
 
 ## IGAMT
 

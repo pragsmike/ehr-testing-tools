@@ -30,9 +30,11 @@
   ;; NIST HL7 v2 engine, six coordinates the CDC wrapper (lib-hl7v2-nist-validator
   ;; 1.4.0) depends on -- fetched by users from NIST's own official channel
   ;; (hit-nexus.nist.gov) at their own initiative; this repo redistributes none
-  ;; of them (ADR-0005's 2026-07-24 amendment). Not yet consumed by any src/
-  ;; code this session -- EXP-D3 (docs/experiments/EXP-D3-results.md) recorded
-  ;; this inventory ahead of the judge-v2-nist component landing.
+  ;; of them (ADR-0005's 2026-07-24 amendment). Consumed directly by
+  ;; components/judge-v2-nist (ADR-0012, 2026-07-30, landed via :mvn/repos
+  ;; in each project's own deps.edn, not vendored) -- EXP-D3
+  ;; (components/tools/docs/experiments/EXP-D3-results.md) recorded this
+  ;; inventory ahead of that landing.
   {:kind :engine
    :name "nist-hl7-v2-parser"
    :version "1.7.3"
