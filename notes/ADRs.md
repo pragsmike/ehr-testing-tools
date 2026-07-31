@@ -2903,6 +2903,36 @@ type before a reader could find it — the same discoverability argument
 ADR-0013 already made for why `out/` had to be the *default*, not an
 opt-in flag, applies here one level up.
 
+**Amendment (2026-07-30, added by the cold-start UX session, ADR-0015
+self-amendment).** This record's own compatibility sentence above
+("Bare `corpus generate` (no subcommand) stays exactly Synthea,
+byte-for-byte unchanged... compatibility with every existing doc,
+strip, and script that already types the bare form, `bin/quickstart-demo`
+included") is reversed here, fix-forward, not a revert of what this
+record correctly decided for its own session: **bare `corpus generate`
+now means `generate sim`**, not `generate synthea`. Ruled by the author
+one session later, from a genuine cold-environment run of bare `bin/ehrt
+corpus generate` (author's machine, Git Bash/Windows side, 2026-07-30):
+a `run!` shadowing warning from `ehrt.tools.sim` was the first line of
+output; the run then rejected `:not-cached` (the Temurin JDK archive
+wasn't in the local artifact cache — Synthea's lane needs fetched
+artifacts before it can run at all) with no remedy text; and the
+rejected run left behind an empty `out/corpus/` directory. Rationale:
+sim is this project's own engine, mounted in-process per ADR-0005 — zero
+external artifacts, zero subprocess, zero network — so with sim as the
+default, the first command a cold user types succeeds with nothing
+fetched, where Synthea's default forced a fetch step before any success
+was possible at all. `generate synthea` remains the explicit spelling
+for the Synthea lane, unchanged in behavior; only the bare form's
+routing flips — `generate sim` remains valid and identical to bare.
+Consequence: `bin/quickstart-demo` (this record's own named beneficiary
+of the old compatibility guarantee) now pins `generate synthea`
+explicitly, since it deliberately exercises the Synthea→FHIR gate lane
+the rest of the script depends on — the flip changes what it types, not
+what it tests. Full ruling record, including the cold-run transcript in
+full and every downstream doc/test site touched:
+`notes/prompts/2026-07-30-ehr-testing-cold-start-ux.md`.
+
 **[A] `corpus intake`'s generator-URL form (SS-2) and stdin form (SS-3)
 are retained, unchanged in behavior.** They were designed as
 composition features — generate-then-catalog, pipe-then-catalog — and
