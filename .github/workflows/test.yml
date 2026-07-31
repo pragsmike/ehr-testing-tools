@@ -31,6 +31,17 @@
 # No coverage gate, no lint gate, same deliberately-staged posture as
 # sim's own CI comment: not an oversight, future work once a baseline
 # exists to ratchet against.
+#
+# Generated-doc freshness (P1-2, 2026-07-31 review catch-up, finding
+# 10a): `make docsgen` regenerates docs/dev/pipeline.md, docs/use-cases.md,
+# docs/operators.md, and docs/cli.md from their component-adjacent EDN/
+# spec sources; `git diff --exit-code` on exactly those four files fails
+# the build the moment a source edit lands without its regen in the same
+# commit. `pipeline`/`use-cases` shell out to
+# components/palgebra/tools/resource_equations_to_mermaid.py, so
+# actions/setup-python below is not incidental -- ubuntu-latest ships a
+# python3, but this pins the dependency explicitly rather than relying
+# on the runner image's own default.
 
 name: test
 
@@ -56,8 +67,17 @@ jobs:
         with:
           cli: latest
 
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
       - name: poly check
         run: clojure -M:poly check
 
       - name: poly test :all skip:integration
         run: clojure -M:poly test :all skip:integration
+
+      - name: generated-doc freshness (regen + diff)
+        run: |
+          make docsgen
+          git diff --exit-code docs/dev/pipeline.md docs/use-cases.md docs/operators.md docs/cli.md

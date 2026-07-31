@@ -1,10 +1,13 @@
 (ns ehrt.tools.docsgen-test
   "Covers the two generated reference documents' renderers (DOC-3).
   The real staleness guard is CI's generated-doc freshness step
-  (regenerate + `git diff --exit-code`); these tests cover what that
-  step can't -- that the renderers actually emit every registered
-  operator and every spec'd group/verb/flag, rather than emitting a
-  well-formed page that happens to be missing half its data."
+  (.github/workflows/test.yml's \"generated-doc freshness (regen +
+  diff)\" step, P1-2, 2026-07-31 review catch-up: `make docsgen` then
+  `git diff --exit-code` on all four generated docs, per push); these
+  tests cover what that step can't -- that the renderers actually emit
+  every registered operator and every spec'd group/verb/flag, rather
+  than emitting a well-formed page that happens to be missing half its
+  data."
   (:require [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
             [ehrt.tools.corpus.operators :as operators]
@@ -18,9 +21,9 @@
 ;; so these tests exercise the renderer against a small, representative
 ;; spec of the same shape rather than importing the live one. The real
 ;; spec's own freshness against docs/cli.md is CI's generated-doc
-;; freshness step (regenerate + `git diff --exit-code`), per this file's
-;; own top docstring -- these tests were never that check; they prove
-;; the renderer doesn't silently drop a group/verb/flag/exit-code that
+;; freshness step (.github/workflows/test.yml, per this file's own top
+;; docstring) -- these tests were never that check; they prove the
+;; renderer doesn't silently drop a group/verb/flag/exit-code that
 ;; *is* in whatever spec it's given.
 
 (def test-cli-spec
