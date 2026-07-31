@@ -2,7 +2,7 @@
   "Pins every example locator printed in docs/locators.md to what the
   parsers actually do with it (DOC-3, author ruling: no unverified
   example in that document). This is the doc's test, not the grammar's
-  -- ehrt.tools.locator-test and corpus.er7-test cover the
+  -- ehrt.tools.locator-test and ehrt.corpus-io.er7-test cover the
   grammars themselves. What this suite adds is that the *documentation*
   can't rot silently: change a grammar and the doc's examples fail
   here, in the ordinary `make test` run, rather than quietly becoming
@@ -11,7 +11,7 @@
   Every vector below appears verbatim in docs/locators.md. If you edit
   one, edit both."
   (:require [clojure.test :refer [deftest is testing]]
-            [ehrt.tools.corpus.er7 :as er7]
+            [ehrt.corpus-io.interface :as corpus-io]
             [ehrt.kernel.interface :as kernel]))
 
 ;; ---- FHIR ----
@@ -116,10 +116,10 @@
   "The field string a documented locator actually lands on, or nil for
   a segment-only locator or one that doesn't resolve."
   [path]
-  (let [parsed (er7/parse sample-message)
+  (let [parsed (corpus-io/parse sample-message)
         r (kernel/v2-data-path path)]
     (when (kernel/ok? r)
-      (when-let [{:keys [segment-index field-index]} (er7/resolve-locator parsed (:payload r))]
+      (when-let [{:keys [segment-index field-index]} (corpus-io/resolve-locator parsed (:payload r))]
         (when field-index
           (get-in parsed [:segments segment-index field-index]))))))
 
@@ -133,9 +133,9 @@
   (testing "MSH-1 IS the field separator, which the split consumes, so
             it holds no slot of its own; MSH-2 is therefore the first
             token after the segment name"
-    (is (= 1 (er7/field-index "MSH" 2)))
-    (is (= 8 (er7/field-index "MSH" 9)))
-    (is (= 5 (er7/field-index "PID" 5)) "no other segment is shifted"))
+    (is (= 1 (corpus-io/field-index "MSH" 2)))
+    (is (= 8 (corpus-io/field-index "MSH" 9)))
+    (is (= 5 (corpus-io/field-index "PID" 5)) "no other segment is shifted"))
   (testing "LOC-1 (2026-07-25) closed the trap docs/locators.md used to
             warn about. MSH-1 sits below the N>=2 shift, so it used to
             resolve onto MSH-2's slot and silently address the encoding
@@ -144,7 +144,7 @@
             all. corpus.er7/field-index is unchanged -- the substrate
             still maps field 1 the way it always did; what changed is
             that no locator can ask it to"
-    (is (= 1 (er7/field-index "MSH" 1)) "substrate mapping untouched")
+    (is (= 1 (corpus-io/field-index "MSH" 1)) "substrate mapping untouched")
     (let [r (kernel/v2-data-path "MSH-1")]
       (is (kernel/rejected? r))
       (is (= :invalid-v2-path (:category r)))
@@ -167,6 +167,6 @@
             two different failures, at two different layers"
     (doseq [path ["PID-99" "NK1-2"]]
       (is (kernel/ok? (kernel/v2-data-path path)) (str path " must parse"))
-      (is (nil? (er7/resolve-locator (er7/parse sample-message)
+      (is (nil? (corpus-io/resolve-locator (corpus-io/parse sample-message)
                                      (:payload (kernel/v2-data-path path))))
           (str path " must not resolve against the sample message")))))

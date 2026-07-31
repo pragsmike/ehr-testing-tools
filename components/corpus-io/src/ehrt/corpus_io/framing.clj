@@ -1,9 +1,9 @@
-(ns ehrt.tools.corpus.framing
+(ns ehrt.corpus-io.framing
   "Framing codecs (D2, docs/source-sink-design.md Part II): pure
   bytes<->item-seq functions per :framing kind -- `decode` (framed
   bytes -> a vector of item byte-arrays) and `encode` (item byte-arrays
   -> framed bytes), dispatched on the same closed enum
-  ehrt.tools.corpus.source-sink/Framing names. No IO, no
+  ehrt.corpus-io.source-sink/Framing names. No IO, no
   println; Result-valued on malformed input (ruling 1, SS-3).
 
   Charset law (ruling 2, SS-3): framing is a byte-level concern;
@@ -14,7 +14,7 @@
   decode/encode round trip byte-identically. v2's MSH-18 (the
   message's own declared charset field) is exactly why this law
   exists: the payload's declared charset is the parser tier's own
-  concern (ehrt.tools.corpus.er7, judge.v2), never this codec's.
+  concern (ehrt.corpus-io.er7, judge.v2), never this codec's.
 
   :bundle-entries is the one named exception (ruling 1): FHIR JSON is
   structurally framed, not delimiter-framed, so decoding it requires
@@ -65,7 +65,7 @@
 (defn- split-bytes
   "haystack split on every occurrence of delimiter, byte-exact -- every
   piece survives, including empty ones (the same no-token-dropped
-  discipline ehrt.tools.corpus.er7's own split-all uses, applied
+  discipline ehrt.corpus-io.er7's own split-all uses, applied
   here at the byte level): joining the result with delimiter between
   pieces recovers haystack exactly."
   [^bytes haystack ^bytes delimiter]
@@ -231,8 +231,10 @@
   versioned the way corpus.operators entries are) -> id itself when
   known-framings contains it, else nil. Registry-lookup shape for
   ehrt.docs-tooling.lint's target-4 verification (registry-lookup-fns,
-  reached via ehrt.tools.interface/framing-lookup since the docs-tooling
-  split, 2026-07-31),
+  reached directly via ehrt.corpus-io.interface/lookup since the
+  corpus-io split, 2026-07-31 -- docs-tooling.lint no longer relays
+  through ehrt.tools.interface for this one, per AR-4's repoint-
+  forward rule),
   matching corpus.operators/canonical's own {id version} -> entry-or-
   nil contract."
   [id _version]
@@ -241,7 +243,7 @@
 ;; ---- dispatch ----
 
 (defn decode
-  "framing (one of ehrt.tools.corpus.source-sink/Framing's five
+  "framing (one of ehrt.corpus-io.source-sink/Framing's five
   kinds) x bs (a byte array) -> kernel/ok [item byte-arrays...] (item
   data-maps for :bundle-entries), or a framing-specific
   kernel/rejected on malformed input."

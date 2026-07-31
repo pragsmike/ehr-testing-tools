@@ -2057,7 +2057,7 @@
   (slurp (io/file v2-fixture-dir name)))
 
 (defn- two-message-blob
-  "Two real fixtures, joined the same way ehrt.tools.corpus.framing's
+  "Two real fixtures, joined the same way ehrt.corpus-io.framing's
   own :er7-multi encode would -- adt-a01 (MSH-7 20260715142300) then
   adt-a02 (MSH-7 20260715153015), 4035s apart."
   []

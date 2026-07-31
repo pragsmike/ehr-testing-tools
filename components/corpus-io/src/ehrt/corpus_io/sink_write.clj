@@ -1,4 +1,4 @@
-(ns ehrt.tools.corpus.sink-write
+(ns ehrt.corpus-io.sink-write
   "Write (Part III/D3, docs/source-sink-design.md): datum x sink-map ->
   sink-bytes. write-stdout! (SS-4 Step 3): the :stdout sink, no
   manifest by design (no directory to drop one in), the byte-stream
@@ -36,9 +36,9 @@
   a process that dies mid-write leaves items without a manifest,
   detectable, never the reverse."
   (:require [clojure.java.io :as io]
-            [ehrt.tools.corpus.operation-manifest :as operation-manifest]
-            [ehrt.tools.corpus.source-sink :as ss]
-            [ehrt.tools.corpus.framing :as framing]
+            [ehrt.corpus-io.operation-manifest :as operation-manifest]
+            [ehrt.corpus-io.source-sink :as ss]
+            [ehrt.corpus-io.framing :as framing]
             [ehrt.kernel.interface :as kernel])
   (:import [java.io File OutputStream]))
 
@@ -215,7 +215,7 @@
           (kernel/ok {:path path}))))))
 
 (defn write-stdout!
-  "Encodes items (ehrt.tools.corpus.framing/encode's own item
+  "Encodes items (ehrt.corpus-io.framing/encode's own item
   shape per :framing kind -- byte arrays for every framing but
   :bundle-entries, whose items are parsed resource data) via a
   :stdout sink's own :framing (defaults to source-sink/default-framing
@@ -229,7 +229,7 @@
 
   Returns kernel/ok {:bytes-written n}, or kernel/rejected :invalid-sink
   if sink doesn't validate as a StdoutSink, or
-  ehrt.tools.corpus.framing/encode's own rejection (e.g.
+  ehrt.corpus-io.framing/encode's own rejection (e.g.
   :invalid-item-count for :file-per-item with something other than
   exactly one item), propagated unchanged."
   [sink items & {:keys [out] :or {out System/out}}]

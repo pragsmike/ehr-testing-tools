@@ -20,6 +20,12 @@
         ;; requires it too.
         poly/judge-v2-nist        {:local/root "../../components/judge-v2-nist"}
         poly/tools    {:local/root "../../components/tools"}
+        ;; poly/corpus-io (2026-07-31, corpus-io split stage 2,
+        ;; ADR-0017): bases/cli's own core.clj requires it directly for
+        ;; the transport seam (source-sink/source-sink-url/sink-write/
+        ;; spool-source), and ehrt.tools.interface's domain namespaces
+        ;; require it too.
+        poly/corpus-io {:local/root "../../components/corpus-io"}
         ;; poly/docs-tooling (2026-07-31, docs-tooling split):
         ;; bases/cli/help.clj's own write-cli-md! wrapper requires
         ;; ehrt.docs-tooling.interface directly (NOT through tools --
@@ -59,6 +65,7 @@
                                      "../../components/judge-fhir-official/test"
                                      "../../components/judge-v2-nist/test"
                                      "../../components/tools/test"
+                                     "../../components/corpus-io/test"
                                      "../../components/docs-tooling/test"
                                      "../../components/palgebra/test"
                                      "../../bases/cli/test"]
@@ -72,6 +79,7 @@
                                   "-p" "../../components/judge-fhir-official/src"
                                   "-p" "../../components/judge-v2-nist/src"
                                   "-p" "../../components/tools/src"
+                                  "-p" "../../components/corpus-io/src"
                                   "-p" "../../components/docs-tooling/src"
                                   "-p" "../../components/palgebra/src"
                                   "-p" "../../bases/cli/src"
@@ -81,6 +89,7 @@
                                   "-s" "../../components/judge-fhir-official/test"
                                   "-s" "../../components/judge-v2-nist/test"
                                   "-s" "../../components/tools/test"
+                                  "-s" "../../components/corpus-io/test"
                                   "-s" "../../components/docs-tooling/test"
                                   "-s" "../../components/palgebra/test"
                                   "-s" "../../bases/cli/test"]}}}

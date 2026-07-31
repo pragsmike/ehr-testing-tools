@@ -28,10 +28,15 @@
             [ehrt.tools.interface :as intake]
             [ehrt.tools.interface :as operators]
             [ehrt.tools.interface :as generator-source]
-            [ehrt.tools.interface :as spool-source]
-            [ehrt.tools.interface :as source-sink]
-            [ehrt.tools.interface :as source-sink-url]
-            [ehrt.tools.interface :as sink-write]
+            ;; corpus-io stage 2 (2026-07-31, ADR-0017): the seam
+            ;; these four used to reach through ehrt.tools.interface
+            ;; moved to its own component -- repointed directly per
+            ;; AR-4, same alias names, so every call site below is
+            ;; unchanged.
+            [ehrt.corpus-io.interface :as spool-source]
+            [ehrt.corpus-io.interface :as source-sink]
+            [ehrt.corpus-io.interface :as source-sink-url]
+            [ehrt.corpus-io.interface :as sink-write]
             [ehrt.tools.interface :as locator]
             [ehrt.tools.interface :as check]
             [ehrt.tools.interface :as gate-v2]
@@ -650,7 +655,7 @@
   SS-2 Step 4 (ruling 6): :path may also be a generator URL
   (\"sim:?seed=42\", \"synthea:?seed=1&population=5\") instead of a
   directory -- the generate-and-catalog path in one command. Tried
-  first via source-sink-url/parse-source-designator; a generator-kind
+  first via generator-source/parse-source-designator; a generator-kind
   result resolves the generator for real
   (ehrt.tools.interface/resolve!, executing its
   engine and yielding a dir Source) before intaking it via intake/
@@ -673,7 +678,7 @@
   and defaults do not change here."
   [{:keys [path label out received in-override]}]
   (let [received (or received (str (LocalDate/now)))
-        designator-result (source-sink-url/parse-source-designator path)]
+        designator-result (generator-source/parse-source-designator path)]
     (cond
       (generator-url? designator-result)
       (let [source (:payload designator-result)

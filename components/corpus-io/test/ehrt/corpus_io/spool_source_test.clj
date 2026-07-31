@@ -1,4 +1,4 @@
-(ns ehrt.tools.corpus.spool-source-test
+(ns ehrt.corpus-io.spool-source-test
   "Test-first (ruling 5, SS-3 Step 6): written before ehrt.tools.
   corpus.spool-source existed. Hermetic throughout -- every :in-override
   is an injected ByteArrayInputStream, never real stdin; the real-pipe
@@ -7,7 +7,7 @@
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.java.io :as io]
             [ehrt.kernel.interface :as kernel]
-            [ehrt.tools.corpus.spool-source :as spool-source])
+            [ehrt.corpus-io.spool-source :as spool-source])
   (:import [java.io ByteArrayInputStream File]))
 
 (defn- temp-dir-path

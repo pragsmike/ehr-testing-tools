@@ -20,7 +20,9 @@
             [ehrt.tools.interface :as result]
             [ehrt.tools.interface :as generate]
             [ehrt.tools.interface :as intake]
-            [ehrt.tools.interface :as source-sink]
+            ;; corpus-io stage 2 (2026-07-31, ADR-0017): dir-source
+            ;; moved to its own component -- repointed per AR-4.
+            [ehrt.corpus-io.interface :as source-sink]
             [ehrt.tools.interface :as golden])
   (:import [java.io File]))
 

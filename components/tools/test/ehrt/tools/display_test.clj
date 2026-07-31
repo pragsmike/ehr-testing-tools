@@ -3,7 +3,7 @@
             [clojure.string :as str]
             [clojure.java.io :as io]
             [ehrt.tools.display :as display]
-            [ehrt.tools.corpus.framing :as framing]
+            [ehrt.corpus-io.interface :as corpus-io]
             [ehrt.kernel.interface :as kernel]))
 
 (def ^:private fixture-dir "components/tools/test-fixtures/v2")
@@ -38,7 +38,7 @@
 
 (defn- er7-multi-blob
   "Two real fixtures, joined by the same \\n\\n separator
-  ehrt.tools.corpus.framing's own encode-er7-multi produces -- an
+  ehrt.corpus-io.framing's own encode-er7-multi produces -- an
   er7-multi stream a real SS-3 stdin capture would contain."
   []
   (str (fixture-content "adt-a01-admit.hl7") "\n\n" (fixture-content "adt-a02-transfer.hl7")))
@@ -61,7 +61,7 @@
   ;; render-er7-stream rendered (one blank-line-joined block per
   ;; message).
   (let [blob (er7-multi-blob)
-        decoded (framing/decode :er7-multi (.getBytes blob "UTF-8"))
+        decoded (corpus-io/decode :er7-multi (.getBytes blob "UTF-8"))
         rendered (display/render-er7-stream blob)]
     (is (kernel/ok? decoded))
     (is (kernel/ok? rendered))

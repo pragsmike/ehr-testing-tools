@@ -1,8 +1,14 @@
-(ns ehrt.tools.corpus.er7-test
+(ns ehrt.corpus-io.er7-test
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.java.io :as io]
             [clojure.string :as str]
-            [ehrt.tools.corpus.er7 :as er7]
+            [ehrt.corpus-io.er7 :as er7]
+            ;; simhospital-corpus is a test fixture helper, not a
+            ;; moved src namespace -- it wasn't in AR-1's 17-file scope
+            ;; and stayed in components/tools/test (corpus-io stage 2,
+            ;; 2026-07-31). Both projects that compose this test
+            ;; (conformance) also declare poly/tools, so its test dir
+            ;; is on the classpath alongside this one.
             [ehrt.tools.corpus.simhospital-corpus :as simhospital]))
 
 (def ^:private fixture-dir "components/tools/test-fixtures/v2")

@@ -14,7 +14,7 @@
   tree. For FHIR (P4): data.json-shaped JSON, string keys and integer
   indices -- HAPI FHIR's round-trip was found to silently drop
   resource.id, disqualifying it as a mutation substrate. For v2 (P7):
-  ehrt.tools.corpus.er7's delimiter-split segments/fields --
+  ehrt.corpus-io.er7's delimiter-split segments/fields --
   HAPI HL7v2's PipeParser round-trip was found to canonicalize away
   trailing empty fields, the same class of hazard for the same reason
   (docs/experiments/EXP-B2-results.md); PipeParser remains fine for
@@ -43,7 +43,7 @@
   catalog has few enough consumers so far (corpus.mutate) that a
   generic top-level registry namespace would be premature abstraction."
   (:require [malli.core :as m]
-            [ehrt.tools.corpus.er7 :as er7]
+            [ehrt.corpus-io.interface :as corpus-io]
             [ehrt.kernel.interface :as kernel]))
 
 (def Contract
@@ -186,9 +186,9 @@
   :fn wrong-type-value})
 
 ;; ---- v2 seed catalog (P7): every :fn here is (parsed loc) -> parsed,
-;; parsed being ehrt.tools.corpus.er7/parse's output and loc
+;; parsed being ehrt.corpus-io.er7/parse's output and loc
 ;; being ehrt.kernel.locator/v2-data-path's structured map --
-;; corpus.mutate validates loc resolves (er7/resolve-locator) before
+;; corpus.mutate validates loc resolves (corpus-io/resolve-locator) before
 ;; calling in, same trust boundary as the FHIR operators above. Every
 ;; entry below convicts under judge.v2's base-structural tier -- see
 ;; the module docstring for the candidates that did not and were
@@ -196,8 +196,8 @@
 
 (defn- v2-blank-field
   [parsed {:keys [segment segment-repeat field]}]
-  (let [seg-idx (er7/segment-occurrence-index parsed segment segment-repeat)
-        fld-idx (er7/field-index segment field)]
+  (let [seg-idx (corpus-io/segment-occurrence-index parsed segment segment-repeat)
+        fld-idx (corpus-io/field-index segment field)]
     (assoc-in parsed [:segments seg-idx fld-idx] "")))
 
 (register!
@@ -218,8 +218,8 @@
 
 (defn- v2-corrupt-encoding-characters
   [parsed {:keys [segment segment-repeat field]}]
-  (let [seg-idx (er7/segment-occurrence-index parsed segment segment-repeat)
-        fld-idx (er7/field-index segment field)]
+  (let [seg-idx (corpus-io/segment-occurrence-index parsed segment segment-repeat)
+        fld-idx (corpus-io/field-index segment field)]
     (assoc-in parsed [:segments seg-idx fld-idx] corrupted-encoding-characters)))
 
 (register!
@@ -235,8 +235,8 @@
 
 (defn- v2-malformed-datetime-value
   [parsed {:keys [segment segment-repeat field]}]
-  (let [seg-idx (er7/segment-occurrence-index parsed segment segment-repeat)
-        fld-idx (er7/field-index segment field)]
+  (let [seg-idx (corpus-io/segment-occurrence-index parsed segment segment-repeat)
+        fld-idx (corpus-io/field-index segment field)]
     (assoc-in parsed [:segments seg-idx fld-idx] not-a-real-datetime)))
 
 (register!
@@ -249,8 +249,8 @@
 
 (defn- v2-truncate-segment-fields
   [parsed {:keys [segment segment-repeat field]}]
-  (let [seg-idx (er7/segment-occurrence-index parsed segment segment-repeat)
-        fld-idx (er7/field-index segment field)]
+  (let [seg-idx (corpus-io/segment-occurrence-index parsed segment segment-repeat)
+        fld-idx (corpus-io/field-index segment field)]
     (update-in parsed [:segments seg-idx] #(subvec % 0 fld-idx))))
 
 (register!
@@ -263,7 +263,7 @@
 
 (defn- v2-corrupt-segment-name
   [parsed {:keys [segment segment-repeat]}]
-  (let [seg-idx (er7/segment-occurrence-index parsed segment segment-repeat)
+  (let [seg-idx (corpus-io/segment-occurrence-index parsed segment segment-repeat)
         original (get-in parsed [:segments seg-idx 0])
         corrupted (str (subs original 0 (dec (count original))) "X")]
     (assoc-in parsed [:segments seg-idx 0] corrupted)))

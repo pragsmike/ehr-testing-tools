@@ -1,4 +1,4 @@
-(ns ehrt.tools.corpus.er7
+(ns ehrt.corpus-io.er7
   "The v2 mutation substrate (P7): plain delimiter-split ER7 data --
   segments split on the segment terminator, fields split on MSH-1's own
   field separator -- never a HAPI-parsed tree. Same applied decision

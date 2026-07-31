@@ -1,11 +1,11 @@
-(ns ehrt.tools.corpus.spool-source
+(ns ehrt.corpus-io.spool-source
   "The two spool resolutions (ruling 5, docs/source-sink-design.md
   Part I.2): a `:stdin` Source always needs spooling (there is no
   directory yet); a `:file` Source whose own `:framing` isn't the
   identity framing (`:file-per-item`, source-sink/default-framing)
   needs it too -- its bytes are multiple items packed into one file,
   not yet a dir-shaped corpus-tree. Both resolve through the SAME
-  mechanism (ehrt.tools.corpus.spool), mirroring
+  mechanism (ehrt.corpus-io.spool), mirroring
   generator-source's own execute-then-wrap-as-dir shape (SS-2) for the
   read side instead of the generate side.
 
@@ -13,8 +13,8 @@
   directory of multi-item files stays a recorded OPEN item, never
   silently spooled -- SS-3's own scope fence."
   (:require [clojure.java.io :as io]
-            [ehrt.tools.corpus.source-sink :as source-sink]
-            [ehrt.tools.corpus.spool :as spool]
+            [ehrt.corpus-io.source-sink :as source-sink]
+            [ehrt.corpus-io.spool :as spool]
             [ehrt.kernel.interface :as kernel]))
 
 (defn needs-spooling?

@@ -19,16 +19,20 @@
             ;; brick the same project declares -- it does not see a
             ;; project's own ad hoc test-tree requires). Re-derived
             ;; 2026-07-31 (docs-tooling split, finding 14) via
-            ;; `clojure -M:poly deps`/`check` with every entry below
-            ;; temporarily cleared, per brick, per project -- see
-            ;; notes/ADRs.md's dated ADR note for the full method and
-            ;; per-project findings. "ehrt-cli" needs no override at
-            ;; all now: bases/cli directly requires both
-            ;; ehrt.tools.interface and ehrt.docs-tooling.interface, and
-            ;; every other declared brick (including palgebra) is real-
-            ;; edge-reachable transitively through those two.
+            ;; `clojure -M:poly deps`/`check` with every entry temporarily
+            ;; cleared, per brick, per project; re-derived AGAIN 2026-07-31
+            ;; (corpus-io split stage 2, ADR-0017), same method, after
+            ;; corpus-io joined all three projects. "ehrt-cli" needs no
+            ;; override at all: bases/cli directly requires
+            ;; ehrt.tools.interface, ehrt.corpus-io.interface, and
+            ;; ehrt.docs-tooling.interface, and every other declared brick
+            ;; (including palgebra) is real-edge-reachable transitively
+            ;; through those three. "integration" ALSO needs no override
+            ;; now (a change from the docs-tooling-split-era table, which
+            ;; had `tools` here): with :necessary [] on this project,
+            ;; `poly check` reports zero warnings -- confirmed empirically,
+            ;; not just carried forward from the prior table.
             "ehrt-cli" {:alias "ehrt-cli"}
             "conformance" {:alias "conformance"
                            :necessary ["docs-tooling"]}
-            "integration" {:alias "integration"
-                           :necessary ["tools"]}}}
+            "integration" {:alias "integration"}}}

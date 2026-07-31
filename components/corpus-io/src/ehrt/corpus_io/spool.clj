@@ -1,4 +1,4 @@
-(ns ehrt.tools.corpus.spool
+(ns ehrt.corpus-io.spool
   "The spool (ruling 4, docs/source-sink-design.md Part I.2/D1): the
   second unification. Just as a generator source resolves to a `dir`
   Source by executing its engine into a fresh directory (SS-2's
@@ -30,7 +30,7 @@
   wall-clock default belongs, matching `:received`'s own discipline."
   (:require [clojure.data.json :as json]
             [clojure.java.io :as io]
-            [ehrt.tools.corpus.framing :as framing]
+            [ehrt.corpus-io.framing :as framing]
             [ehrt.kernel.interface :as kernel])
   (:import [java.io ByteArrayOutputStream]))
 
@@ -91,7 +91,7 @@
   (str "item-" (pad4 idx) "." (get format->extension format "dat")))
 
 (defn- item-bytes
-  "An item, as returned by ehrt.tools.corpus.framing/decode, is
+  "An item, as returned by ehrt.corpus-io.framing/decode, is
   already a byte array for every byte-exact framing kind -- except
   :bundle-entries, whose items are parsed resource data (ruling 1: that
   codec's law is item-level identity, not byte-exact). This function is
@@ -118,7 +118,7 @@
     (D3's fail-if-exists convention), checked before :in is even read.
   - :spool-cap-exceeded {:max-bytes} -- :in has more than :max-bytes
     of content; nothing is written (see the cap discussion above).
-  - whatever ehrt.tools.corpus.framing/decode itself rejects
+  - whatever ehrt.corpus-io.framing/decode itself rejects
     with (:malformed-er7-multi-frame, :malformed-mllp-frame, ...),
     propagated unchanged; nothing is written on this path either."
   [{:keys [in framing format origin captured-at out-dir max-bytes]

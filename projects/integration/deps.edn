@@ -27,6 +27,12 @@
         ;; requires it too.
         poly/judge-v2-nist        {:local/root "../../components/judge-v2-nist"}
         poly/tools    {:local/root "../../components/tools"}
+        ;; poly/corpus-io (2026-07-31, corpus-io split stage 2,
+        ;; ADR-0017): poly/tools' own src now requires it directly
+        ;; (transport seam), and this project's own
+        ;; zero_flag_reproducibility_test.clj requires it directly too
+        ;; (canonicalizers, repointed from ehrt.tools.interface).
+        poly/corpus-io {:local/root "../../components/corpus-io"}
         ;; poly/palgebra DROPPED here (2026-07-31, docs-tooling split,
         ;; finding 14 re-derivation): tools' own src no longer requires
         ;; palgebra at all (that edge moved to docs-tooling, which this

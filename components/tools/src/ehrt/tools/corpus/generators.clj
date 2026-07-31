@@ -10,7 +10,7 @@
   schema validating the MERGED map, open by default so kind-specific
   extras -- including injected-fake dependencies in tests -- pass
   through unvalidated at this level, same convention as
-  ehrt.tools.corpus.source-sink's own open :map schemas),
+  ehrt.corpus-io.source-sink's own open :map schemas),
   :out-dir-fn (merged params -> a deterministic output directory, D9's
   own derived-path pattern generalized past synthea alone), and
   :execute-fn (merged params x out-dir -> a Result, driving whatever

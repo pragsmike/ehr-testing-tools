@@ -17,7 +17,7 @@
   raw segment text on the separator character MSH-1 itself declares --
   no HAPI dependency, no full HL7 parse, for reading one field."
   (:require [clojure.string :as str]
-            [ehrt.tools.corpus.framing :as framing])
+            [ehrt.corpus-io.interface :as corpus-io])
   (:import [java.time LocalDateTime ZoneOffset]))
 
 (def default-rate
@@ -42,7 +42,7 @@
 (defn- segment-starting-with
   "The first segment in message whose own 3-char id is prefix, or nil.
   Segments are CR-separated; the boundary rule matches
-  ehrt.tools.corpus.framing's own message-internal segment split."
+  ehrt.corpus-io.framing's own message-internal segment split."
   [message prefix]
   (first (filter #(str/starts-with? % prefix) (str/split message #"\r"))))
 
@@ -127,7 +127,7 @@
         (segment-field pid sep 3)))))
 
 ;; ---- wire-format framing for a data sink (ADR-0014's own byte-
-;; identity requirement) -- reuses ehrt.tools.corpus.framing/encode
+;; identity requirement) -- reuses ehrt.corpus-io.framing/encode
 ;; directly, never a second implementation of the :er7-multi separator
 ;; convention. Pure: returns bytes, writes nothing. ----
 
@@ -138,11 +138,11 @@
   bytes, in order, onto one file produces bytes byte-identical to one
   batch `framing/encode :er7-multi events` call over the same events,
   since :er7-multi's own encode is exactly item+separator per item,
-  concatenated in order (ehrt.tools.corpus.framing/encode-er7-multi).
+  concatenated in order (ehrt.corpus-io.framing/encode-er7-multi).
   This is what lets paced file emission satisfy ADR-0014's own
   byte-identity requirement without a second framing implementation."
   [event]
-  (framing/encode :er7-multi [(.getBytes ^String event "UTF-8")]))
+  (corpus-io/encode :er7-multi [(.getBytes ^String event "UTF-8")]))
 
 ;; ---- the plan: the entire time computation, no clock, no IO ----
 

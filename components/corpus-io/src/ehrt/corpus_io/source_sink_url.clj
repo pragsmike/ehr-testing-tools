@@ -1,4 +1,4 @@
-(ns ehrt.tools.corpus.source-sink-url
+(ns ehrt.corpus-io.source-sink-url
   "The URL<->map surface for Source and Sink (docs/source-sink-design.md
   Part IV, D4; ADR-0017 decision 4): a compact URL string is the
   CLI/wire projection of a canonical Source/Sink map (ehr-testing-
@@ -16,11 +16,11 @@
 
   Ruling 3 (SS-1): the grammar above is fixed for all six source
   schemes now (`source-schemes`) and all four sink schemes
-  (`sink-schemes`) -- growing `ehrt.tools.corpus.source-sink`'s
+  (`sink-schemes`) -- growing `ehrt.corpus-io.source-sink`'s
   own `implemented-source-kinds`/`implemented-sink-kinds` later (SS-2's
   generators, SS-3's stdin, SS-5's blaze) never requires touching this
   grammar again. Only `dir:`/`file:` have real constructors this
-  session (ehrt.tools.corpus.source-sink); every other
+  session (ehrt.corpus-io.source-sink); every other
   recognized scheme parses far enough to name its own :kind, then is
   rejected :unsupported-source-kind / :unsupported-sink-kind -- never
   silently accepted, never confused with an actually-unknown scheme
@@ -31,9 +31,22 @@
   *values* (format, framing, and any other kind-specific query param)
   are percent-decoded on parse and percent-encoded on print, since
   those ride through '&'/'='-delimited query syntax where encoding is
-  load-bearing."
+  load-bearing.
+
+  Source-side generator schemes (:synthea/:sim) split out (corpus-io
+  stage 2, 2026-07-31): `finish-source`, `parse-source-designator`,
+  and the generator-query coercion helpers stayed behind in
+  `ehrt.tools.corpus.generator-source` -- the only piece of this
+  namespace's own parsing surface with a real edge into the domain's
+  generator registry (ehrt.tools.corpus.generators). This
+  namespace's `parse-designator` (below) is the shared skeleton both
+  the sink-side parser here and the domain-side source parser call --
+  now `defn`, not `defn-`, and re-exported through this component's
+  own interface, exactly so the domain side can supply its own
+  `finish` callback without corpus-io ever depending on tools (the
+  ADR-0017 stage 2 directional rule)."
   (:require [clojure.string :as str]
-            [ehrt.tools.corpus.source-sink :as ss]
+            [ehrt.corpus-io.source-sink :as ss]
             [ehrt.kernel.interface :as kernel])
   (:import [java.net URLDecoder URLEncoder]))
 
@@ -114,46 +127,6 @@
         port (assoc :port port)
         (seq path) (assoc :path path)))))
 
-(def ^:private generator-int-query-keys
-  "Query-string params that must coerce string -> int before reaching
-  ehrt.tools.corpus.generators's own params-schema (which
-  validates real ints, matching every non-URL caller -- e.g. the
-  hermetic tests calling generators/resolve-params directly with
-  already-typed maps)."
-  #{:seed :clinician-seed :population :patients})
-
-(def ^:private generator-bool-query-keys
-  #{:churn})
-
-(defn- parse-long-safely
-  "s -> a Long, or s unchanged if it isn't parseable as one -- never
-  throws (ADR-0004: a malformed external value is the params-schema's
-  own :invalid-generator-params rejection, not an uncaught exception
-  thrown from this coercion step)."
-  [s]
-  (try (Long/parseLong s) (catch NumberFormatException _ s)))
-
-(defn- coerce-generator-query
-  "Generator-kind query params arrive from parse-query as ALL-string
-  values (only :format/:framing are coerced upstream, by
-  extract-format-framing) -- this widens that coercion to the numeric/
-  boolean generator params every registered kind's own params-schema
-  expects typed."
-  [m]
-  (as-> m m
-    (reduce (fn [acc k] (if (contains? acc k) (update acc k parse-long-safely) acc))
-            m generator-int-query-keys)
-    (reduce (fn [acc k] (if (contains? acc k) (update acc k #(= "true" %)) acc))
-            m generator-bool-query-keys)))
-
-(defn- finish-source
-  [kind m]
-  (case kind
-    :dir (ss/dir-source m)
-    :file (ss/file-source m)
-    :stdin (ss/stdin-source m)
-    (:synthea :sim) (ss/generator-source kind (coerce-generator-query (dissoc m :kind)))))
-
 (defn- finish-sink
   [kind m]
   (case kind
@@ -161,10 +134,15 @@
     :file (ss/file-sink m)
     :stdout (ss/stdout-sink m)))
 
-(defn- parse-designator
-  "Shared parse skeleton for parse-source-designator/parse-sink-
-  designator: differ only in which scheme table, implemented-kind set,
-  finisher, and error-category prefix they use."
+(defn parse-designator
+  "Shared parse skeleton for parse-sink-designator (below) and, cross-
+  brick, ehrt.tools.corpus.generator-source's own
+  parse-source-designator: differ only in which scheme table,
+  implemented-kind set, finisher, and error-category prefix they use.
+  Public (not `defn-`) and re-exported through this component's own
+  interface specifically so the domain side can supply the
+  generator-aware `finish-source` callback (corpus-io stage 2,
+  2026-07-31) without this component ever depending on tools."
   [url schemes implemented-kinds finish unknown-scheme-category unsupported-kind-category malformed-category]
   (cond
     (has-whitespace? url)
@@ -186,20 +164,12 @@
       (kernel/rejected malformed-category
                         {:url url :hint "expected scheme:... e.g. dir:./corpus"}))))
 
-(defn parse-source-designator
-  "Parses a Source URL string (e.g. \"dir:./corpus?format=v2-er7\") into
-  a canonical Source map. Returns kernel/ok the map (already validated
-  through ehrt.tools.corpus.source-sink's own dir-source/file-
-  source constructors for the two implemented kinds), or
-  kernel/rejected :malformed-source-designator, :unknown-source-scheme,
-  :unsupported-source-kind, or (propagated from the constructor)
-  :invalid-source."
-  [url]
-  (parse-designator url source-schemes ss/implemented-source-kinds finish-source
-                     :unknown-source-scheme :unsupported-source-kind :malformed-source-designator))
-
 (defn parse-sink-designator
-  "Sink twin of parse-source-designator."
+  "Sink twin of ehrt.tools.corpus.generator-source's own
+  parse-source-designator (relocated there, corpus-io stage 2,
+  2026-07-31 -- the source-side parser needs the generator-kind
+  branch's domain edge; the sink grammar has no generator schemes, so
+  it stayed here)."
   [url]
   (parse-designator url sink-schemes ss/implemented-sink-kinds finish-sink
                      :unknown-sink-scheme :unsupported-sink-kind :malformed-sink-designator))

@@ -9,7 +9,7 @@
 
   SS-4b (2026-07-28, D-d resolved via ADR-0020) completes the deferred
   half below: dir sinks now accept an :operation-manifest
-  (ehrt.tools.corpus.sink-write), and intake recognizes it
+  (ehrt.corpus-io.sink-write), and intake recognizes it
   (ehrt.tools.corpus.intake's second sidecar recognizer) --
   the property gains the provenance half ruling 5 names: the catalog's
   :operation-provenance :origin reflects the manifest's own :producer,
@@ -17,15 +17,21 @@
   supplied one, absent wherever it didn't (present-iff-known, not a
   nil placeholder). The original hash-identity-only property below is
   kept unchanged -- it still documents the no-operation-manifest case,
-  which stays fully supported (:operation-manifest is opt-in)."
+  which stays fully supported (:operation-manifest is opt-in).
+
+  Crosses the corpus-io/tools boundary deliberately (corpus-io stage
+  2, 2026-07-31): source-sink/sink-write are transport, intake is
+  domain, and this property exercises both together, so it stayed in
+  tools' own test tree rather than moving whole -- repointed to
+  ehrt.corpus-io.interface for the two moved namespaces."
   (:require [clojure.test :refer [deftest is]]
             [clojure.test.check :as tc]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
             [clojure.java.io :as io]
             [ehrt.kernel.interface :as kernel]
-            [ehrt.tools.corpus.source-sink :as ss]
-            [ehrt.tools.corpus.sink-write :as write]
+            [ehrt.corpus-io.interface :as ss]
+            [ehrt.corpus-io.interface :as write]
             [ehrt.tools.corpus.intake :as intake])
   (:import [java.io File]))
 

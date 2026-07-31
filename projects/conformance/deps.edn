@@ -27,6 +27,12 @@
         ;; requires it too.
         poly/judge-v2-nist        {:local/root "../../components/judge-v2-nist"}
         poly/tools    {:local/root "../../components/tools"}
+        ;; poly/corpus-io (2026-07-31, corpus-io split stage 2,
+        ;; ADR-0017): the transport/IO seam extracted out of tools --
+        ;; ehrt.tools.interface's own domain namespaces now require it
+        ;; directly (mutate/operators/intake/generator-source), and
+        ;; this project hosts corpus-io's own moved tests too.
+        poly/corpus-io {:local/root "../../components/corpus-io"}
         ;; poly/docs-tooling (2026-07-31, docs-tooling split, AR-3
         ;; default placement): hosts docs-tooling's own moved tests
         ;; (docsgen/usecases/pipeline/quickstart-fresh/lint/stale-path/

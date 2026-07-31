@@ -49,17 +49,27 @@ stage 1 of 3, `notes/2026-07-30-refactoring-review.md` §5.1a):
 `components/docs-tooling` — dev-time-only doc/lint tooling (docsgen,
 usecases, pipeline, quickstart-fresh, lint), extracted out of
 `components/tools`; it is now the sole home of what used to be the
-`tools → palgebra` src edge (finding 14). Stages 2 (`corpus-io`) and 3
-(narrowing `tools` to its domain) are ruled but not yet executed.
+`tools → palgebra` src edge (finding 14). **Updated a third time
+2026-07-31** (corpus-io split, refactoring-review stage 2 of 3,
+`notes/ADRs.md` ADR-0017): `components/corpus-io` — the corpus
+transport/IO seam (sources, sinks, spooling, framing codecs, wire
+wrappers: `framing`, `er7`, `spool`, `spool-source`, `source-sink`,
+`source-sink-url`, `sink-write`, `operation-manifest`,
+`canonicalizers`), extracted out of `components/tools`; `tools`' own
+domain namespaces (`mutate`/`operators`/`intake`/`generator-source`)
+and `bases/cli` now require it directly. Stage 3 (narrowing `tools` to
+its domain, retiring the façade) is ruled but not yet executed.
 `projects/ehrt-cli` composes kernel + judge + judge-v2-hapi +
-judge-fhir-official + judge-v2-nist + tools + docs-tooling + palgebra +
-cli + sim, `projects/conformance` and `projects/integration` are the
-two base-less projects exercising sim + tools (+ kernel/judge/
-judge-v2-hapi/judge-fhir-official/judge-v2-nist transitively) +
-palgebra together, split by artifact-fetch dependency (see
-`notes/ADRs.md` ADR-0002, closing named holes H1–H3, and ADR-0004 R19);
-`conformance` additionally composes `docs-tooling`, hosting its moved
-tests (ADR-0002's own AR-3 placement rule, `notes/ADRs.md` ADR-0016).
+judge-fhir-official + judge-v2-nist + tools + corpus-io + docs-tooling
++ palgebra + cli + sim, `projects/conformance` and `projects/integration`
+are the two base-less projects exercising sim + tools + corpus-io
+(+ kernel/judge/judge-v2-hapi/judge-fhir-official/judge-v2-nist
+transitively) + palgebra together, split by artifact-fetch dependency
+(see `notes/ADRs.md` ADR-0002, closing named holes H1–H3, and ADR-0004
+R19); `conformance` additionally composes `docs-tooling`, hosting its
+moved tests (ADR-0002's own AR-3 placement rule, `notes/ADRs.md`
+ADR-0016), and now also hosts `corpus-io`'s own moved tests (same
+placement rule, ADR-0017).
 
 **The CLI is `ehrt`** ("e-heart", R32/ADR-0009, 2026-07-29) —
 `bin/ehrt`, renamed from `ehr`; `ehr` stays reserved for future

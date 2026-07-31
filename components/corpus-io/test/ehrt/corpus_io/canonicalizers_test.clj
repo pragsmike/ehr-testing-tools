@@ -1,10 +1,10 @@
-(ns ehrt.tools.corpus.canonicalizers-test
+(ns ehrt.corpus-io.canonicalizers-test
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.test.check :as tc]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
             [ehrt.kernel.interface :as kernel]
-            [ehrt.tools.corpus.canonicalizers :as canonicalizers]))
+            [ehrt.corpus-io.canonicalizers :as canonicalizers]))
 
 ;; Loading the canonicalizers namespace registers its entries as a
 ;; side effect (this is the registration point the pattern nursery's

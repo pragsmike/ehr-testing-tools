@@ -1,11 +1,11 @@
-(ns ehrt.tools.corpus.source-sink-test
-  "Test-first (ruling 4, SS-1): written before ehrt.tools.corpus.
+(ns ehrt.corpus-io.source-sink-test
+  "Test-first (ruling 4, SS-1): written before ehrt.corpus-io.
   source-sink existed. Schema-level coverage only -- the URL<->map
   parser's own round-trip property lives in source_sink_url_test.clj
   (Step 3); this file covers the canonical-map shape and the dir/file
   constructors."
   (:require [clojure.test :refer [deftest is testing]]
-            [ehrt.tools.corpus.source-sink :as ss]
+            [ehrt.corpus-io.source-sink :as ss]
             [ehrt.kernel.interface :as kernel]))
 
 (deftest source-kinds-test
@@ -83,21 +83,11 @@
   (testing "missing :path is rejected"
     (is (kernel/rejected? (ss/file-sink {:format :fhir-json})))))
 
-;; ---- generator-source (SS-2 Step 4): validates+shapes only, never
-;; executes -- the registry (ehrt.tools.corpus.generators) owns
-;; param resolution, this constructor just calls through and tags the
-;; result with :kind. ----
-
-(deftest generator-source-happy-path-test
-  (let [r (ss/generator-source :synthea {:seed 7})]
-    (is (kernel/ok? r))
-    (is (= :synthea (:kind (:payload r))))
-    (is (= 7 (:seed (:payload r))))))
-
-(deftest generator-source-unknown-kind-test
-  (let [r (ss/generator-source :not-a-registered-kind {})]
-    (is (kernel/rejected? r))
-    (is (= :unknown-generator-kind (:category r)))))
+;; generator-source's own tests (SS-2 Step 4) moved whole to
+;; ehrt.tools.corpus.generator-source-test (corpus-io stage 2,
+;; 2026-07-31) -- the constructor itself relocated there, the only
+;; piece of this namespace with a real edge into the domain's
+;; generators registry.
 
 ;; ---- stdin-source (SS-3 Step 6): no :path, but :format/:framing are
 ;; how a caller declares what the piped bytes actually are ----
@@ -114,14 +104,9 @@
   (testing "an unrecognized framing keyword is rejected, same as every other kind"
     (is (kernel/rejected? (ss/stdin-source {:framing :not-a-real-framing})))))
 
-(deftest generator-source-invalid-params-test
-  (let [r (ss/generator-source :synthea {:seed "not-an-int"})]
-    (is (kernel/rejected? r))
-    (is (= :invalid-generator-params (:category r)))))
-
 ;; ---- framing is an explicit axis (SS-3 Step 1, D2/Part II): a closed
 ;; enum, not any keyword -- tightened from SS-1's open :keyword now that
-;; ehrt.tools.corpus.framing (SS-3) gives every named kind a real
+;; ehrt.corpus-io.framing (SS-3) gives every named kind a real
 ;; codec to dispatch to. ----
 
 (deftest framing-enum-test

@@ -12,9 +12,9 @@
             [ehrt.tools.corpus.mutate :as mutate]
             [ehrt.tools.corpus.intake :as intake]
             [ehrt.tools.corpus.manifest :as manifest]
-            [ehrt.tools.corpus.operation-manifest :as operation-manifest]
+            [ehrt.corpus-io.operation-manifest :as operation-manifest]
             [ehrt.tools.corpus.simhospital-corpus :as simhospital]
-            [ehrt.tools.corpus.source-sink :as source-sink]
+            [ehrt.corpus-io.source-sink :as source-sink]
             [ehrt.tools.corpus.golden-comparison :as golden])
   (:import [java.io File]))
 

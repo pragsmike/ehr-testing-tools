@@ -1,4 +1,4 @@
-(ns ehrt.tools.corpus.source-sink
+(ns ehrt.corpus-io.source-sink
   "Formal Source and Sink types (ADR-0017, docs/source-sink-design.md
   Parts I-IV): the canonical Clojure-map shape every corpus input/output
   in this repo will eventually pass through -- generators (synthea, sim,
@@ -8,7 +8,7 @@
   canonical-map schemas and the dir/file kinds only (ruling 8's scope
   fence); the other four kinds are named in `known-source-kinds`/
   `known-sink-kinds` (the design's own set) but have no constructor
-  here yet -- ehrt.tools.corpus.source-sink-url (Step 3) is the
+  here yet -- ehrt.corpus-io.source-sink-url (Step 3) is the
   URL surface that recognizes all six schemes and rejects the
   unimplemented ones by name, not silently.
 
@@ -22,7 +22,6 @@
   generator registry proper (shaped like corpus.operators's) is SS-2
   (D7)."
   (:require [malli.core :as m]
-            [ehrt.tools.corpus.generators :as generators]
             [ehrt.kernel.interface :as kernel]))
 
 (def known-source-kinds
@@ -38,10 +37,13 @@
   "Kinds with an actual constructor. SS-1 built :dir/:file (the two
   reader kinds with no engine, D1's 'no per-source adapters'
   unification target); SS-2 Step 4 adds :synthea/:sim (the two
-  generator kinds, via `generator-source` below, backed by the
-  registry in ehrt.tools.corpus.generators); SS-3 Step 6 adds
-  :stdin (`stdin-source` below -- resolved to a real :dir Source via
-  ehrt.tools.corpus.spool-source, never executed here).
+  generator kinds, via `ehrt.tools.corpus.generator-source/
+  generator-source` -- corpus-io stage 2, 2026-07-31: the generator-
+  kind Source constructor stayed behind in `tools`, the only piece of
+  this namespace with a real edge into the domain's generator
+  registry, backed by the registry in ehrt.tools.corpus.generators);
+  SS-3 Step 6 adds :stdin (`stdin-source` below -- resolved to a real
+  :dir Source via ehrt.corpus-io.spool-source, never executed here).
   `printable-source-kinds` below stays narrower: no session yet builds
   a printer for anything but :dir/:file (ruling 6, docs/source-sink-
   design.md -- generator and stdin URLs are parsed and consumed, never
@@ -64,7 +66,7 @@
 (def Framing
   "The five framing kinds Part II names (D2), as a closed enum -- SS-1
   left :framing an open :keyword since no framing codec existed yet to
-  dispatch on an unrecognized value; SS-3's ehrt.tools.corpus.
+  dispatch on an unrecognized value; SS-3's ehrt.corpus-io.
   framing gives every kind here a real codec, so a Source/Sink
   declaring anything else is invalid at construction, not a silent
   pass-through that fails later at decode/encode time."
@@ -74,7 +76,7 @@
   "The design's own stated default (Part II) for a Source/Sink that
   declares no :framing at all: :file-per-item, the identity framing --
   one file, one item. A named constant for framing-aware callers to
-  consult (ehrt.tools.corpus.framing's dispatch, the spool's
+  consult (ehrt.corpus-io.framing's dispatch, the spool's
   framed-file? check, SS-3) -- deliberately NOT injected into a
   constructed Source/Sink map by the builders below, so an absent
   :framing stays absent and the D4 round-trip law (parse ∘ print =
@@ -119,7 +121,7 @@
 (def StdinSource
   "No :path -- stdin names no filesystem location. :format/:framing
   are how a caller declares what the piped bytes actually are
-  (ehrt.tools.corpus.spool-source, SS-3 Step 6, is what actually
+  (ehrt.corpus-io.spool-source, SS-3 Step 6, is what actually
   reads and spools them; this schema only shapes+validates the
   declaration)."
   [:and Source [:map [:kind [:= :stdin]]]])
@@ -192,25 +194,7 @@
   "Constructs+validates a canonical :stdout Sink map (SS-4 Step 3). No
   :path; :format is required (D3), :framing optional (defaults to
   default-framing at the point something actually encodes, e.g.
-  ehrt.tools.corpus.sink-write/write-stdout! -- not injected
+  ehrt.corpus-io.sink-write/write-stdout! -- not injected
   here, same discipline as stdin-source above)."
   [{:keys [format framing]}]
   (build :invalid-sink :stdout StdoutSink {:format format :framing framing}))
-
-(defn generator-source
-  "Constructs+validates a canonical generator Source map for a
-  registered :kind (:synthea/:sim, SS-2 Step 4) -- params are resolved
-  against ehrt.tools.corpus.generators's own registry (merged
-  onto that kind's pinned defaults, D8, and validated against its own
-  params-schema), so a zero-param URL means exactly what that kind's
-  own zero-flag invocation means. This constructor only validates and
-  shapes the Source value; it never executes the generator itself
-  (ehrt.tools.corpus.generator-source/resolve! does that, later,
-  when intake actually needs bytes). Returns kernel/ok the shaped map,
-  or generators/resolve-params's own :unknown-generator-kind /
-  :invalid-generator-params, propagated unchanged."
-  [kind params]
-  (let [params-result (generators/resolve-params kind params)]
-    (if-not (kernel/ok? params-result)
-      params-result
-      (kernel/ok (assoc (:payload params-result) :kind kind)))))

@@ -14,7 +14,7 @@
   HAPI-parsed tree as the mutation substrate. FHIR operates on plain
   Clojure data (data.json-shaped FHIR JSON, `content-hash` below) --
   HAPI FHIR's round-trip was found to silently drop resource.id,
-  disqualifying it. v2 operates on ehrt.tools.corpus.er7's
+  disqualifying it. v2 operates on ehrt.corpus-io.er7's
   delimiter-split substrate (its own `content-hash`) -- HAPI HL7v2's
   PipeParser round-trip was found to canonicalize away trailing empty
   fields, the same class of hazard for the same reason; PipeParser
@@ -23,13 +23,13 @@
   (docs/experiments/EXP-B2-results.md) for both findings' evidence."
   (:require [clojure.data.json :as json]
             [ehrt.tools.lineage :as lineage]
-            [ehrt.tools.corpus.er7 :as er7]
+            [ehrt.corpus-io.interface :as corpus-io]
             [ehrt.kernel.interface :as kernel]))
 
 (defn content-hash
   "The content hash `corpus.mutate`'s FHIR path and lineage records
   use to identify a FHIR datum: sha256 of its canonical (compact) JSON
-  serialization. v2 uses ehrt.tools.corpus.er7/content-hash
+  serialization. v2 uses ehrt.corpus-io.er7/content-hash
   instead (sha256 of the serialized ER7 string) -- there is no
   analogous \"canonical parsed form\" to serialize for v2 the way JSON
   serves FHIR; the ER7 string itself already is the persisted form."
@@ -66,7 +66,7 @@
 
 (defn- mutate-v2
   "base-content is a raw ER7 string (e.g. (slurp a .hl7 file)) --
-  ehrt.tools.corpus.er7/parse is called internally, so the
+  ehrt.corpus-io.er7/parse is called internally, so the
   substrate parsing stays this namespace's own concern rather than
   every caller's."
   [base-content operator locator-envelope]
@@ -74,15 +74,15 @@
     (if-not (kernel/ok? path-result)
       path-result
       (let [loc (:payload path-result)
-            parsed (er7/parse base-content)]
-        (if-not (er7/resolve-locator parsed loc)
+            parsed (corpus-io/parse base-content)]
+        (if-not (corpus-io/resolve-locator parsed loc)
           (kernel/rejected :locator-not-found {:path loc})
-          (let [mutant (er7/serialize ((:fn operator) parsed loc))]
+          (let [mutant (corpus-io/serialize ((:fn operator) parsed loc))]
             (kernel/ok {:mutant mutant
-                        :lineage (lineage-for {:parent (er7/content-hash base-content)
+                        :lineage (lineage-for {:parent (corpus-io/content-hash base-content)
                                                 :operator operator
                                                 :locator-envelope locator-envelope
-                                                :produced (er7/content-hash mutant)})})))))))
+                                                :produced (corpus-io/content-hash mutant)})})))))))
 
 (defn mutate
   "Applies operator (a corpus.operators registry entry) to base-data

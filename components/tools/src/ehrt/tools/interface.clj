@@ -71,7 +71,33 @@
   judge.report's own collision partner (`result/valid?`) left this
   component entirely -- the collision now is with THIS namespace's own
   bare `valid?`, re-exported from kernel.interface a few lines above;
-  unqualifying it would shadow that def, not resolve a stale problem."
+  unqualifying it would shadow that def, not resolve a stale problem.
+
+  corpus-io split (2026-07-31, refactoring-review stage 2, ADR-0017):
+  `framing`/`er7`/`spool`/`spool-source`/`source-sink`/
+  `source-sink-url`/`sink-write`/`operation-manifest`/`canonicalizers`
+  moved to their own component, `components/corpus-io` -- the
+  transport/IO seam (sources, sinks, spooling, framing codecs, wire
+  wrappers), no domain logic. This file drops every re-export those
+  namespaces used to source (`framing-lookup`, `spool-resolve!`,
+  `default-framing`, `dir-sink`, `dir-source`, `parse-sink-designator`,
+  `path-designator->path`, `write-dir!`, `write-stdout!`,
+  `strip-run-timestamp-suffix`, `strip-synthea-run-metadata`) with no
+  relay left behind -- every real consumer (`bases/cli`,
+  `docs-tooling.lint`, `projects/integration`'s zero-flag test) could
+  be repointed to `ehrt.corpus-io.interface` directly this stage
+  (AR-4), so none needed one. Two real edges from this seam into the
+  domain's generator registry surfaced during characterization and
+  were resolved by keeping the domain-touching code behind rather than
+  moving it: `source-sink`'s own `generator-source` constructor
+  relocated whole into `ehrt.tools.corpus.generator-source` (below,
+  still `resolve!`'s own namespace), and `source-sink-url`'s
+  `parse-source-designator` (the generator-URL branch) relocated there
+  too -- `parse-source-designator` below now sources from
+  `generator-source`, not the namespace that used to carry it, with
+  the SAME exported name (byte-identical to every existing caller).
+  `manifest`/`intake`/`mutate`/`generate`/`operators`/
+  `golden-comparison` stayed -- domain, not transport."
   (:require [ehrt.kernel.interface :as kernel]
             [ehrt.judge.interface :as judge]
             [ehrt.judge-v2-hapi.interface :as judge-v2-hapi]
@@ -80,15 +106,9 @@
             [ehrt.tools.check :as check]
             [ehrt.tools.check.schemas :as schemas]
             [ehrt.tools.sim :as sim]
-            [ehrt.tools.corpus.canonicalizers :as canonicalizers]
-            [ehrt.tools.corpus.framing :as framing]
             [ehrt.tools.corpus.golden-comparison :as golden-comparison]
             [ehrt.tools.corpus.generators :as generators]
             [ehrt.tools.corpus.generator-source :as generator-source]
-            [ehrt.tools.corpus.spool-source :as spool-source]
-            [ehrt.tools.corpus.source-sink :as source-sink]
-            [ehrt.tools.corpus.source-sink-url :as source-sink-url]
-            [ehrt.tools.corpus.sink-write :as sink-write]
             [ehrt.tools.corpus.intake :as intake]
             [ehrt.tools.corpus.mutate :as mutate]
             [ehrt.tools.corpus.generate :as generate]
@@ -130,17 +150,8 @@
 ;; docstring).
 (def sim-run! sim/run!)
 
-;; corpus.canonicalizers
-(def strip-run-timestamp-suffix canonicalizers/strip-run-timestamp-suffix)
-(def strip-synthea-run-metadata canonicalizers/strip-synthea-run-metadata)
-
 ;; corpus.golden-comparison
 (def compare-catalogs golden-comparison/compare-catalogs)
-
-;; corpus.framing (docs-tooling split, 2026-07-31): docs-tooling.lint's
-;; own target-4 verification for the framing-codec catalytic resource --
-;; qualified framing-lookup, same reason as check-schemas-lookup above.
-(def framing-lookup framing/lookup)
 
 ;; corpus.generators (collides with corpus.operators on lookup/register! --
 ;; qualified generators-*)
@@ -149,25 +160,12 @@
 (def generators-resolve-params generators/resolve-params)
 
 ;; corpus.generator-source (collides with corpus.spool-source on resolve! --
-;; keeps the unqualified name; spool-source's twin is qualified instead)
+;; keeps the unqualified name; spool-source's twin is qualified instead).
+;; parse-source-designator (corpus-io stage 2, 2026-07-31): relocated
+;; here from corpus.source-sink-url, source name changed, exported
+;; name unchanged -- byte-identical to every existing caller.
 (def resolve! generator-source/resolve!)
-
-;; corpus.spool-source
-(def spool-resolve! spool-source/resolve!)
-
-;; corpus.source-sink
-(def default-framing source-sink/default-framing)
-(def dir-sink source-sink/dir-sink)
-(def dir-source source-sink/dir-source)
-
-;; corpus.source-sink-url
-(def parse-sink-designator source-sink-url/parse-sink-designator)
-(def parse-source-designator source-sink-url/parse-source-designator)
-(def path-designator->path source-sink-url/path-designator->path)
-
-;; corpus.sink-write
-(def write-dir! sink-write/write-dir!)
-(def write-stdout! sink-write/write-stdout!)
+(def parse-source-designator generator-source/parse-source-designator)
 
 ;; corpus.intake
 (def intake! intake/intake!)

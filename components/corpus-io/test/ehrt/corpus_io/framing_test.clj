@@ -1,5 +1,5 @@
-(ns ehrt.tools.corpus.framing-test
-  "Test-first (ruling 1, SS-3): written before ehrt.tools.corpus.
+(ns ehrt.corpus-io.framing-test
+  "Test-first (ruling 1, SS-3): written before ehrt.corpus-io.
   framing existed, then grown one codec per commit (Steps 2-4):
   :file-per-item/:er7-multi, then :ndjson/:bundle-entries, then :mllp."
   (:require [clojure.test :refer [deftest is testing]]
@@ -7,7 +7,10 @@
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
             [ehrt.kernel.interface :as kernel]
-            [ehrt.tools.corpus.framing :as framing]
+            [ehrt.corpus-io.framing :as framing]
+            ;; simhospital-corpus is a test fixture helper that stayed
+            ;; in components/tools/test (corpus-io stage 2, 2026-07-31
+            ;; -- not one of AR-1's 17 moved src namespaces).
             [ehrt.tools.corpus.simhospital-corpus :as simhospital])
   (:import [java.nio.file Files]
            [java.util Arrays]))

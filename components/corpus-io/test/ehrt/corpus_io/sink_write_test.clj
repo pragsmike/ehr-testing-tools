@@ -1,6 +1,6 @@
-(ns ehrt.tools.corpus.sink-write-test
+(ns ehrt.corpus-io.sink-write-test
   "Test-first (ADR-0006; ruling 8, SS-1 Step 6): written before
-  ehrt.tools.corpus.sink-write existed. Plain write discipline
+  ehrt.corpus-io.sink-write existed. Plain write discipline
   only this session -- fail-if-exists is the default (D3); no
   :overwrite/:append yet (SS-4 Step 5); dir/file ManifestV1_1 sidecar
   emission is blocked on D-d (SS-4's manifest-interop STOP). SS-4 Step 3
@@ -11,9 +11,9 @@
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [ehrt.kernel.interface :as kernel]
-            [ehrt.tools.corpus.operation-manifest :as om]
-            [ehrt.tools.corpus.source-sink :as ss]
-            [ehrt.tools.corpus.sink-write :as write])
+            [ehrt.corpus-io.operation-manifest :as om]
+            [ehrt.corpus-io.source-sink :as ss]
+            [ehrt.corpus-io.sink-write :as write])
   (:import [java.io ByteArrayOutputStream File]))
 
 (defn- temp-dir []

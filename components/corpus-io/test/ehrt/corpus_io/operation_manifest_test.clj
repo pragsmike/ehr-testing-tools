@@ -1,11 +1,11 @@
-(ns ehrt.tools.corpus.operation-manifest-test
+(ns ehrt.corpus-io.operation-manifest-test
   "Test-first (ADR-0006; SS-4b Step 3): written before
-  ehrt.tools.corpus.operation-manifest existed. Schema-level
-  coverage only -- write-side wiring (ehrt.tools.corpus.sink-write)
+  ehrt.corpus-io.operation-manifest existed. Schema-level
+  coverage only -- write-side wiring (ehrt.corpus-io.sink-write)
   and intake-side recognition (ehrt.tools.corpus.intake) each own
   their own test namespaces."
   (:require [clojure.test :refer [deftest is testing]]
-            [ehrt.tools.corpus.operation-manifest :as om]))
+            [ehrt.corpus-io.operation-manifest :as om]))
 
 (def ^:private producer
   {:name "ehr-testing-tools" :identity "pre-release" :git "abc1234-dirty"})

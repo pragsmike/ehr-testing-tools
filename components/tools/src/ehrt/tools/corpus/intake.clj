@@ -34,9 +34,8 @@
             [clojure.string :as str]
             [malli.core :as m]
             [ehrt.tools.corpus.manifest :as manifest]
-            [ehrt.tools.corpus.operation-manifest :as operation-manifest]
             [ehrt.tools.corpus.mutate :as mutate]
-            [ehrt.tools.corpus.source-sink :as source-sink]
+            [ehrt.corpus-io.interface :as corpus-io]
             [ehrt.kernel.interface :as kernel])
   (:import [java.io File]))
 
@@ -74,7 +73,7 @@
   Step 5): :source renamed to :origin. The field is a provenance label
   (an intake batch's source-label, e.g. \"acme-pipeline\") -- it always
   was, but the word :source now belongs to the formal Source type
-  (ehrt.tools.corpus.source-sink), and a data-layer label
+  (ehrt.corpus-io.source-sink), and a data-layer label
   wearing the same word as a runtime type is exactly the abstraction
   incoherence ADR-0009's :policy -> :disposition rename already exists
   to prevent (docs/source-sink-design.md Part VI). No compatibility
@@ -235,18 +234,18 @@
 (defn- operation-manifest-sidecar-result
   "operation-manifest.edn in dir, if any -- same {:valid? ...} shape as
   sidecar-result above, validated against
-  ehrt.tools.corpus.operation-manifest/OperationManifestV1
+  ehrt.corpus-io.operation-manifest/OperationManifestV1
   instead of ManifestV1_1."
   [dir]
   (let [mf (io/file dir "operation-manifest.edn")]
     (when (.isFile mf)
       (try
         (let [parsed (edn/read-string (slurp mf))]
-          (if (operation-manifest/valid? parsed)
+          (if (corpus-io/operation-manifest-valid? parsed)
             {:valid? true :manifest parsed}
             {:valid? false
              :reason (str "operation-manifest.edn does not conform to OperationManifestV1: "
-                          (pr-str (m/explain operation-manifest/OperationManifestV1 parsed)))}))
+                          (pr-str (m/explain corpus-io/OperationManifestV1 parsed)))}))
         (catch Exception e
           {:valid? false :reason (str "operation-manifest.edn failed to parse: " (or (ex-message e) (str e)))})))))
 
@@ -387,7 +386,7 @@
 
 (defn intake-via-source!
   "Like intake!, but takes a :dir Source value
-  (ehrt.tools.corpus.source-sink) in place of a bare
+  (ehrt.corpus-io.source-sink) in place of a bare
   :source-dir string -- the door SS-1 gives every Source-typed caller
   (D1/D7, docs/source-sink-design.md: intake stays the single
   ingestion door, unchanged in role, gains callers). No behavior
@@ -399,7 +398,7 @@
 
   Only :dir is accepted this session (SS-1's own scope fence, ruling
   8) -- any other :kind is rejected :unsupported-source-kind, the same
-  vocabulary ehrt.tools.corpus.source-sink-url uses, even
+  vocabulary ehrt.corpus-io.source-sink-url uses, even
   though this function never touches URLs itself. A :dir map that
   fails Source's own schema is rejected :invalid-source."
   [{:keys [source source-label out received]}]
@@ -407,12 +406,12 @@
     (kernel/rejected :unsupported-source-kind
                       {:kind (:kind source)
                        :hint "only :dir sources are supported this session -- SS-2/SS-3/SS-5 land the rest"})
-    ;; Re-validated through source-sink/dir-source's own DirSource
+    ;; Re-validated through corpus-io's own dir-source/DirSource
     ;; schema (not just the generic, kind-open Source schema): a bare
     ;; {:kind :dir} with no :path is a valid *Source* but not a valid
     ;; *DirSource* -- this is the check that actually catches it,
     ;; rather than reaching intake!'s own source-files with a nil dir.
-    (let [validated (source-sink/dir-source source)]
+    (let [validated (corpus-io/dir-source source)]
       (if-not (kernel/ok? validated)
         (kernel/rejected :invalid-source {:source source :explain validated})
         (intake! {:source-dir (:path (:payload validated))

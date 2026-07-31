@@ -1,12 +1,14 @@
-(ns ehrt.tools.corpus.operation-manifest
+(ns ehrt.corpus-io.operation-manifest
   "The operation manifest (D-d resolved via option A1, ADR-0020,
   docs/source-sink-design.md Part III.5): a distinct, independently-
   versioned schema for a dir/file sink's own transformation lineage --
   written as operation-manifest.edn, never manifest.edn, never sharing
-  a field name with ehrt.tools.corpus.manifest/ManifestV1_1. A
-  generator manifest states engine provenance (which artifact, which
-  config, which subprocess); this manifest states transformation
-  lineage (these input hashes, this operator at this version, at this
+  a field name with ehrt.tools.corpus.manifest/ManifestV1_1 (that
+  generator-provenance schema stayed in tools, corpus-io stage 2,
+  2026-07-31 -- domain provenance, not transport). A generator
+  manifest states engine provenance (which artifact, which config,
+  which subprocess); this manifest states transformation lineage
+  (these input hashes, this operator at this version, at this
   locator, these output hashes) -- different speech acts, deliberately
   never reconciled into one schema.
 

@@ -44,16 +44,23 @@
             [ehrt.kernel.interface :as kernel]
             ;; docs-tooling split (2026-07-31): this namespace no longer
             ;; lives inside components/tools, so it can no longer reach
-            ;; corpus.canonicalizers/corpus.framing/corpus.operators/
-            ;; check.schemas directly -- those are tools-internal,
-            ;; non-interface namespaces now in a sibling brick. Routed
-            ;; through ehrt.tools.interface instead, which already
-            ;; requires corpus.canonicalizers itself (so the
-            ;; canonicalizer-set registration load-time side effect this
-            ;; namespace's own docstring describes still fires, transitively,
-            ;; the moment this require loads) and re-exports lookup/
-            ;; framing-lookup/check-schemas-lookup for the other three.
+            ;; corpus.operators/check.schemas directly -- those are
+            ;; tools-internal, non-interface namespaces in a sibling
+            ;; brick. Routed through ehrt.tools.interface instead,
+            ;; which re-exports lookup/check-schemas-lookup for these
+            ;; two. corpus.framing moved on again, corpus-io stage 2
+            ;; (2026-07-31): now reached directly via
+            ;; ehrt.corpus-io.interface, per AR-4's repoint-forward
+            ;; rule (this namespace can reach corpus-io directly rather
+            ;; than relaying through tools, since corpus-io has no
+            ;; edge back into tools to create a cycle the way tools'
+            ;; own domain registries would). corpus.canonicalizers also
+            ;; moved to corpus-io -- its own kernel/register! load-time
+            ;; side effect (this namespace's :canonical target-4 check
+            ;; depends on it having fired) now transitively follows
+            ;; from this same require instead of tools/interface's.
             [ehrt.tools.interface :as tools]
+            [ehrt.corpus-io.interface :as corpus-io]
             [ehrt.palgebra.interface :as palgebra-lint]))
 
 (def registry-lookup-fns
@@ -62,7 +69,7 @@
   {:corpus.operators tools/lookup
    :canonical kernel/lookup
    :check.schemas tools/check-schemas-lookup
-   :framing tools/framing-lookup})
+   :framing corpus-io/lookup})
 
 (def catalytic-resource-targets
   "resource-name -> {:target 1|2|3|4 :ref (optional, target-specific)}.
@@ -90,7 +97,7 @@
    "canonicalizer-set"   {:target 4 :ref {:registry :canonical :id :strip-run-timestamp-suffix :version "1"}}
    ;; SS-3: docs/source-sink-design.md Part VIII names framing-codec as
    ;; target 4, "the same shape as corpus.operators/corpus.canonicalizers"
-   ;; -- ehrt.tools.corpus.framing/lookup is that shape's minimal
+   ;; -- ehrt.corpus-io.framing/lookup is that shape's minimal
    ;; form (framing kinds aren't versioned, so :version is a fixed "1").
    "framing-codec"       {:target 4 :ref {:registry :framing :id :er7-multi :version "1"}}})
 

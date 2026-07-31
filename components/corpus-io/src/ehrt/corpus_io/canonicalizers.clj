@@ -1,10 +1,12 @@
-(ns ehrt.tools.corpus.canonicalizers
+(ns ehrt.corpus-io.canonicalizers
   "Concrete canonicalizer entries discovered by EXP-A4, registered into
-  ehrt.tools.canonical at namespace load time (require this
-  namespace to make them available; the registration IS the load-time
-  side effect -- see canonical.clj's registry doc). Their idempotence-law
-  property tests live on the test side (canonicalizers_test.clj), per
-  the same split as canonical.clj itself: these entries need no
+  ehrt.kernel.interface's own canonical registry at namespace load
+  time (require this namespace to make them available; the
+  registration IS the load-time side effect -- kernel/register!,
+  below; the registry moved tools -> kernel at ADR-0008, this
+  namespace's own stale docstring citation corrected corpus-io stage
+  2, 2026-07-31). Their idempotence-law property tests live on the
+  test side (canonicalizers_test.clj): these entries need no
   test.check dependency to run, only to be verified.
 
   Both entries here address volatility EXP-A4 found in Synthea's output

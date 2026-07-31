@@ -9,7 +9,7 @@
   event, at whatever cadence it computes.
 
   The ER7 message-boundary rule is the same one
-  `ehrt.tools.corpus.framing`'s own `:er7-multi` codec uses
+  `ehrt.corpus-io.framing`'s own `:er7-multi` codec uses
   (MSH-line-start detection) -- this namespace calls `framing/decode`
   directly rather than inventing a second splitter; a test asserts the
   two agree on the shared er7-multi fixtures.
@@ -22,7 +22,7 @@
   touch the filesystem."
   (:require [clojure.data.json :as json]
             [clojure.string :as str]
-            [ehrt.tools.corpus.framing :as framing]
+            [ehrt.corpus-io.interface :as corpus-io]
             [ehrt.kernel.interface :as kernel]))
 
 (defn render-er7-message
@@ -39,7 +39,7 @@
 
 (defn split-er7-multi
   "Splits raw ER7 text into a seq of message strings via the same
-  MSH-line-start boundary `ehrt.tools.corpus.framing/decode`'s
+  MSH-line-start boundary `ehrt.corpus-io.framing/decode`'s
   `:er7-multi` codec uses -- not a second splitter. Public: this is
   also the corpus player's own input-adapter seam (ADR-0014), reused
   from the CLI base through this interface rather than re-split a
@@ -47,7 +47,7 @@
   framing/decode's own :malformed-er7-multi-frame rejection,
   propagated unchanged."
   [content]
-  (let [decoded (framing/decode :er7-multi (.getBytes ^String content "UTF-8"))]
+  (let [decoded (corpus-io/decode :er7-multi (.getBytes ^String content "UTF-8"))]
     (if-not (kernel/ok? decoded)
       decoded
       (kernel/ok (mapv #(String. ^bytes % "UTF-8") (:payload decoded))))))

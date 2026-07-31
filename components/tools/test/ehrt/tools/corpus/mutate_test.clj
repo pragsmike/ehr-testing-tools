@@ -11,7 +11,7 @@
             [ehrt.kernel.interface :as kernel]
             [ehrt.tools.lineage :as lineage]
             [ehrt.tools.diff :as diff]
-            [ehrt.tools.corpus.er7 :as er7]
+            [ehrt.corpus-io.er7 :as er7]
             [ehrt.tools.corpus.operators :as operators]
             [ehrt.tools.corpus.mutate :as mutate]))
 
@@ -132,7 +132,7 @@
   (is (re-matches #"^[0-9a-f]{64}$" (mutate/content-hash sample-bundle))))
 
 ;; ---- v2 dispatch (P7): same fn, same contract shape, a different
-;; substrate underneath -- ehrt.tools.corpus.er7 instead of
+;; substrate underneath -- ehrt.corpus-io.er7 instead of
 ;; plain FHIR JSON, dispatched on operator's own :format. ----
 
 (defn- v2-op [id] (operators/lookup id "1"))
