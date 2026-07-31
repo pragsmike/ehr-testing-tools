@@ -213,20 +213,37 @@
       :else
       {:findings findings :verdict :pass})))
 
-;; ---- gates (same shape as judge-v2-hapi) ----
+;; ---- gates (same shape as judge-v2-hapi, ruled 2026-07-31 -- judge-
+;; family parity pass, P2-2: both engines return the kernel envelope,
+;; neither throws for an operational condition, both walk recursively) ----
 
 (defn gate-file
   "Profile-tier gate for one ER7 file against a profile bundle dir.
   validator-state comes from make-validator (build once per bundle,
-  reuse across files -- context construction dominates cost)."
+  reuse across files -- context construction dominates cost). Returns
+  kernel/ok {:verdict :findings :path [:cause]}, or kernel/error
+  :file-not-found if file doesn't name a readable file -- parity with
+  judge-v2-hapi/gate-file (ruled 2026-07-31): an operational condition
+  like a missing path is a result value, never a thrown
+  FileNotFoundException across the component interface."
   [validator-state file & opts]
-  (interpret (apply execute validator-state (slurp file) opts)))
+  (let [f (io/file file)]
+    (if-not (.isFile f)
+      (kernel/error :file-not-found {:path (str file)})
+      (let [content (slurp f)]
+        (kernel/ok (assoc (interpret (apply execute validator-state content opts))
+                           :path (str file)))))))
 
 (defn gate-dir
-  "Applies gate-file to every *.hl7 file under dir. Returns
-  {filename gate-result}."
+  "Applies gate-file to every *.hl7 file found recursively under dir
+  (sorted by filename). Returns kernel/ok {:results [{:verdict
+  :findings :path [:cause]} ...]} -- the same envelope shape
+  judge-v2-hapi/gate-dir returns (parity pass, ruled 2026-07-31); the
+  recursive walk itself (file-seq, this engine's own pre-existing
+  behavior) is now the shared rule both engines follow."
   [validator-state dir & opts]
-  (into {}
-        (for [^File f (sort-by #(.getName ^File %) (file-seq (io/file dir)))
-              :when (and (.isFile f) (.endsWith (.getName f) ".hl7"))]
-          [(.getName f) (apply gate-file validator-state f opts)])))
+  (kernel/ok
+   {:results (vec
+              (for [^File f (sort-by #(.getName ^File %) (file-seq (io/file dir)))
+                    :when (and (.isFile f) (.endsWith (.getName f) ".hl7"))]
+                (:payload (apply gate-file validator-state f opts))))}))

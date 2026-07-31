@@ -56,6 +56,25 @@ manifest that looks fully pinned and isn't.
    hashed repo-authored config (text we wrote and version, referenced
    by path plus content-hash). An input that resolves to none of the
    three is a gap, not an oversight to paper over.
+
+   **Note, 2026-07-31 (P2-3, ruled — review finding 8).** `judge-v2-nist`'s
+   six NIST jars briefly resolved through *two* targets at once: real
+   loading went through `deps.edn` (`:mvn/repos` into `~/.m2`), but the
+   same six coordinates also carried `artifacts.lock.edn` rows that
+   `ehrt doctor`'s cache check expected to be fetched, failing on any
+   machine where the engine itself ran fine. Ruled: `deps.edn` is the
+   one resolution channel for a JVM-library-style engine like this; the
+   lockfile rows stay as provenance/license records only (this repo's
+   confirmation-pending posture for `hit-nexus.nist.gov` coordinates
+   lives there, not in `deps.edn` comments), marked `:resolved-via
+   :deps-edn` so doctor's cache check skips them rather than reporting
+   a false gap (`components/kernel/src/ehrt/kernel/artifact.clj`'s
+   `Artifact` schema; `bases/cli/src/ehrt/cli/core.clj`'s
+   `check-artifact-cache`). A future engine whose jars this repo
+   vendors into a `file://` mirror (ADR-0012 named this as an open risk
+   for `hit-nexus`'s own SLA) would flip back to `:artifact-cache` and
+   drop the `deps.edn` coordinate — that end-state remains open,
+   unaffected by this ruling.
 5. **License row in the facts register.** The engine's license status
    gets an F-row in `notes/facts-register.md` (claim, evidence, date)
    before its output is trusted for anything beyond local

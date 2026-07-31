@@ -1977,6 +1977,22 @@ planned NIST v2 engine (EXP-D3) is its expected second consumer.
 Disclosed here for the author to veto post-hoc if the single-consumer
 fact changes the calculus.
 
+**Superseded 2026-07-31 (author ruling, P2-4, review finding 7).** The
+expected-second-consumer justification above did not materialize:
+`judge-v2-nist` landed (ADR-0012, 2026-07-30) without ever touching
+`verdict-cache` — `ehrt.judge-fhir-official.fhir` remains the sole
+consumer. Ruled anyway to leave `verdict-cache` in `judge` for now
+(fix-forward, not a code move) — the generic key shape argument above
+still holds on its own, independent of consumer count, and a single
+extraction 2 for a still-single consumer is deferred until one of two
+concrete triggers fires: (i) a second real consumer actually appears
+(not merely planned), or (ii) `judge`'s own tools-split (this same
+review's §5.1(a), stage 3, which narrows `tools` to its domain and
+would touch every judge-adjacent boundary at once — the natural point
+to re-derive this placement alongside everything else moving). No code
+changed by this ruling; `verdict-cache`'s existing tests and consumers
+are unaffected.
+
 **The HAPI FHIR/HL7v2 Maven-coordinate pair, moved on again.** ADR-0008
 moved `ca.uhn.hapi.fhir/hapi-fhir-base` and
 `ca.uhn.hapi.fhir/hapi-fhir-structures-r4` into `components/judge/deps.edn`
@@ -2380,6 +2396,75 @@ CLI invocation (building a fresh `SyncHL7Validator` per file would
 defeat the whole point of `make-validator`'s own "build once per
 bundle" discipline) — real design work belonging to a future session,
 not a mechanical re-export.
+
+### Ruling — 2026-07-31 (judge-family parity pass, P2-2)
+
+The 2026-07-30 refactoring review (`notes/2026-07-30-refactoring-review.md`,
+finding 6) found `gate-file`/`gate-dir` asymmetric between the two live
+v2 engines: this ADR's own `gate-file` threw a raw
+`FileNotFoundException` across the component interface on a missing
+path (`judge-v2-hapi/gate-file` returned `kernel/error :file-not-found`
+instead); `gate-dir` returned a bare `{filename result}` map with no
+kernel envelope and walked recursively (`file-seq`), where
+`judge-v2-hapi/gate-dir` returned `kernel/ok {:results [...]}` and
+walked flat (`.listFiles`). Ruled (author, 2026-07-31, P2-2/AR-1):
+
+- **Recursive is the shared rule for every engine's `gate-dir`.**
+  `judge-v2-nist`'s own `file-seq` behavior is the standard;
+  `judge-v2-hapi/gate-dir` changed to match (its `hl7-files-in` now
+  walks `file-seq` instead of `.listFiles`) — a deliberate behavior
+  change, not a bug fix, pinned by a cross-engine contract test
+  (`projects/conformance/test/ehrt/tools/judge_engine_parity_test.clj`)
+  against a fixture tree with one nested subdirectory.
+- **Both engines return the kernel envelope from both functions.**
+  `judge-v2-nist/gate-file` now returns `kernel/ok {:verdict :findings
+  :path [:cause]}` or `kernel/error :file-not-found` (never throws);
+  `judge-v2-nist/gate-dir` now returns `kernel/ok {:results [...]}` —
+  the same shape `judge-v2-hapi` already produced.
+- **The `bases/cli` compensating adapter simplified accordingly.**
+  `v2-nist-gate-file*`/`v2-nist-gate-dir*` (`bases/cli/src/ehrt/cli/core.clj`)
+  dropped their own `.isFile` pre-check and hand-rolled fail-fast
+  directory composition — they now delegate straight to the engine,
+  catching only the engine's own `:ambiguous-msg-id` ex-info. The CLI's
+  missing-file exit code and message are unchanged from the user's
+  perspective (pinned by
+  `v2-nist-gate-command-missing-file-is-a-named-error-not-a-crash-test`,
+  `bases/cli/test/ehrt/cli/core_test.clj`).
+- Co-landed: `judge-v2-nist`'s own component test
+  (`v2_engine_test.clj`) now validates its real-engine findings against
+  `ehrt.judge.finding/Finding` and `valid-cause-pairing?`, giving it the
+  test-tier dependency on `judge` finding 6c named as missing —
+  mirroring what `judge-v2-hapi/v2_test.clj` already did.
+
+### Ruling — 2026-07-31 (NIST artifact channel, P2-3)
+
+The 2026-07-30 refactoring review (finding 8) found the six NIST jars
+above resolving through *two* channels at once: real classpath loading
+goes through `deps.edn`'s `:mvn/repos nist-hit` entry (into `~/.m2`,
+confirmed working — the integration lane exercises the engine live from
+there), while the same six coordinates also carry
+`artifacts.lock.edn` rows that `ehrt doctor`'s `check-artifact-cache`
+expected to be fetched into the content-addressed artifact cache —
+failing on any machine where the engine itself ran fine, contradicting
+this ADR's own engine-onboarding checklist item 4 ("resolves to exactly
+one of" the three lockfile targets). Ruled (author, 2026-07-31, P2-3/AR-2,
+option (a) of the two named in the review): the six rows **stay** in
+`artifacts.lock.edn` as provenance/license records — the
+`:use-permitted--unstated--confirmation-pending` posture and its
+evidence trail live there, not scattered into `deps.edn` comments — and
+each gains `:resolved-via :deps-edn`
+(`components/kernel/src/ehrt/kernel/artifact.clj`'s `Artifact` schema,
+optional key, default implied `:artifact-cache` when absent).
+`check-artifact-cache` (`bases/cli/src/ehrt/cli/core.clj`) skips
+cache-checking any row so marked, and says so in its `:detail` line —
+the rows remain listed by name/version, just never asked whether
+they're in `~/.m2`'s sibling cache. Recorded in
+`docs/dev/engine-onboarding.md` checklist item 4 as a dated note.
+The spike's own file://-mirror end-state (vendoring the six jars the
+way CDC's own wrapper does, named as a future risk in this ADR's own
+"Fixture layout" deviation-record entry above, given `hit-nexus`'s lack
+of a stated SLA) remains open and unaffected by this ruling — it would,
+if built, flip these rows back toward `:artifact-cache`.
 
 ---
 

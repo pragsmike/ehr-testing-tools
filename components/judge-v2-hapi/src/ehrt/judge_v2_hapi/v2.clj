@@ -203,13 +203,18 @@
         (kernel/ok (assoc (interpret raw) :path (str path)))))))
 
 (defn- hl7-files-in
+  "*.hl7 files found recursively under dir (sorted by filename) --
+  parity with judge-v2-nist/gate-dir's own file-seq walk (judge-family
+  parity pass, ruled 2026-07-31, P2-2: recursive is the shared rule
+  both engines now follow; flat .listFiles was the divergent one)."
   [dir]
-  (->> (.listFiles (io/file dir))
-       (filter #(str/ends-with? (.getName ^File %) ".hl7"))
+  (->> (file-seq (io/file dir))
+       (filter #(and (.isFile ^File %) (str/ends-with? (.getName ^File %) ".hl7")))
        (sort-by #(.getName ^File %))))
 
 (defn gate-dir
-  "Gates every *.hl7 file under dir (sorted, deterministic order).
-  Returns kernel/ok {:results [{:verdict :findings :path} ...]}."
+  "Gates every *.hl7 file found recursively under dir (sorted by
+  filename, deterministic order). Returns kernel/ok {:results
+  [{:verdict :findings :path} ...]}."
   [dir]
   (kernel/ok {:results (mapv #(:payload (gate-file %)) (hl7-files-in dir))}))

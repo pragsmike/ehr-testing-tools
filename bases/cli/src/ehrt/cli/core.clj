@@ -231,16 +231,29 @@
                     generate/jdk-name " --version " generate/jdk-version))}))
 
 (defn- check-artifact-cache
-  "SETUP.md section 4's walkthrough assumes every lockfile artifact is
-  already cached -- this checks that directly, per entry, rather than
-  waiting for a mid-walkthrough failure to reveal it."
+  "SETUP.md section 4's walkthrough assumes every lockfile artifact that
+  resolves through the artifact cache is already cached -- checked
+  directly, per entry, rather than waiting for a mid-walkthrough
+  failure to reveal it. Rows marked :resolved-via :deps-edn (P2-3,
+  ruled 2026-07-31: review finding 8, the NIST engine's six lockfile
+  rows) resolve through a project's own deps.edn -- a Maven coordinate
+  into ~/.m2, engine-onboarding checklist item 4's third lockfile
+  target -- never through this cache, so this check skips them rather
+  than reporting a false gap; they're still listed, just not
+  cache-checked, and the :detail line below says so explicitly so the
+  human-readable story matches what's actually true."
   [artifacts resolve-artifact-fn]
-  (let [per (map (fn [a] [a (resolve-artifact-fn artifacts (:name a) (:version a))]) artifacts)
+  (let [deps-edn-resolved (filter #(= :deps-edn (:resolved-via %)) artifacts)
+        cache-checked (remove #(= :deps-edn (:resolved-via %)) artifacts)
+        per (map (fn [a] [a (resolve-artifact-fn artifacts (:name a) (:version a))]) cache-checked)
         failing (remove (fn [[_ r]] (result/ok? r)) per)]
     {:name "artifact cache (per lockfile entry)"
      :status (if (empty? failing) :pass :fail)
      :detail (if (empty? failing)
-               (str (count artifacts) " artifact(s) cached")
+               (str (count cache-checked) " artifact(s) cached"
+                    (when (seq deps-edn-resolved)
+                      (str "; " (count deps-edn-resolved) " resolved via deps.edn (not cache-checked): "
+                           (str/join ", " (map :name deps-edn-resolved)))))
                (str (count failing) " not cached: "
                     (str/join ", " (map (fn [[a _]] (str (:name a) "@" (:version a))) failing))
                     " -- run: ehrt artifact fetch --all"))}))
@@ -875,11 +888,14 @@
                   :treat-no-verdict-as treat-no-verdict-as})))))
 
 ;; ---- ADR-0015: `ehrt gate v2-nist` -- picks up ADR-0012's own
-;; skipped CLI expansion. Unlike judge.v2/judge.fhir, this tier's own
-;; gate-file/gate-dir (ehrt.tools.interface/v2-nist-gate-file/-gate-dir)
-;; return a BARE {:findings :verdict :cause?} map, no :path, no
-;; kernel/ok wrapper -- adapted to gate-command's expected shape here,
-;; at the CLI seam, rather than changing the engine's own signature. ----
+;; skipped CLI expansion. As of the judge-family parity pass (P2-2,
+;; ruled 2026-07-31), ehrt.tools.interface/v2-nist-gate-file/-gate-dir
+;; return the same kernel/ok {:verdict :findings :path [:cause]} /
+;; kernel/error envelope judge-v2-hapi's own engine does, and walk
+;; recursively like judge-v2-hapi's own gate-dir now does too -- these
+;; adapters only need to catch the engine's own :ambiguous-msg-id
+;; ex-info (ADR-0012's deliberate caller-contract throw) and surface it
+;; as a named CLI error instead of an uncaught stack trace. ----
 
 (defn- v2-nist-wrap-ambiguous-msg-id
   [path ex-data-map]
@@ -889,42 +905,34 @@
                        ex-data-map)))
 
 (defn- v2-nist-gate-file*
-  "Adapts ehrt.tools.interface/v2-nist-gate-file's own bare {:findings
-  :verdict :cause?} map into gate-command's expected kernel/ok
-  {:verdict :findings :path [:cause]} shape. Catches the engine's own
-  :ambiguous-msg-id ex-info (ADR-0012's deliberate caller-contract
-  throw) and surfaces it as a named CLI error instead of an uncaught
-  stack trace -- everything else the engine can throw propagates
-  unchanged, since only this one exception type is a recognized,
-  named condition at this seam."
+  "Delegates to ehrt.tools.interface/v2-nist-gate-file, which now
+  returns the kernel envelope directly, including kernel/error
+  :file-not-found for a missing path (parity pass, ruled 2026-07-31) --
+  catches the engine's own :ambiguous-msg-id ex-info (ADR-0012's
+  deliberate caller-contract throw) and surfaces it as a named CLI
+  error instead of an uncaught stack trace; everything else the engine
+  can throw propagates unchanged, since only this one exception type is
+  a recognized, named condition at this seam."
   [validator-state path]
-  (let [f (io/file path)]
-    (if-not (.isFile f)
-      (result/error :file-not-found {:path (str path)})
-      (try
-        (result/ok (assoc (gate-v2-nist/v2-nist-gate-file validator-state f) :path path))
-        (catch clojure.lang.ExceptionInfo e
-          (if (= :ambiguous-msg-id (:type (ex-data e)))
-            (v2-nist-wrap-ambiguous-msg-id path (ex-data e))
-            (throw e)))))))
+  (try
+    (gate-v2-nist/v2-nist-gate-file validator-state (io/file path))
+    (catch clojure.lang.ExceptionInfo e
+      (if (= :ambiguous-msg-id (:type (ex-data e)))
+        (v2-nist-wrap-ambiguous-msg-id path (ex-data e))
+        (throw e)))))
 
 (defn- v2-nist-gate-dir*
-  "Applies v2-nist-gate-file* to every *.hl7 file under dir (sorted,
-  deterministic order), fail-fast on the first non-ok result -- the
-  same composition judge-fhir-official/gate-dir itself uses to build a
-  directory gate out of repeated single-file gates."
+  "Delegates to ehrt.tools.interface/v2-nist-gate-dir, itself now
+  kernel-enveloped and recursive like judge-v2-hapi's own gate-dir
+  (parity pass, ruled 2026-07-31) -- catches :ambiguous-msg-id exactly
+  like v2-nist-gate-file* above."
   [validator-state dir]
-  (reduce (fn [acc f]
-            (if-not (result/ok? acc)
-              (reduced acc)
-              (let [r (v2-nist-gate-file* validator-state (.getPath f))]
-                (if-not (result/ok? r)
-                  (reduced r)
-                  (result/ok (update (:payload acc) :results conj (:payload r)))))))
-          (result/ok {:results []})
-          (->> (file-seq (io/file dir))
-               (filter #(and (.isFile %) (str/ends-with? (.getName %) ".hl7")))
-               (sort-by #(.getName %)))))
+  (try
+    (gate-v2-nist/v2-nist-gate-dir validator-state dir)
+    (catch clojure.lang.ExceptionInfo e
+      (if (= :ambiguous-msg-id (:type (ex-data e)))
+        (v2-nist-wrap-ambiguous-msg-id dir (ex-data e))
+        (throw e)))))
 
 (def default-v2-nist-profile-hint
   "components/tools/test-fixtures/v2-nist/COVID19_ELR-v2.3.1 -- the CDC COVID19_ELR-v2.3.1 fixture, this repo's own documented try-it bundle (ADR-0012/ADR-0015)")

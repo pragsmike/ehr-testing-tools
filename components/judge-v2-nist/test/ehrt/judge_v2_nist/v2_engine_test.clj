@@ -29,9 +29,18 @@
   `interpret` return the real :profile-spec-error cause directly
   instead of the spike's placeholder -- a consequence of this session's
   own change, not a wiring difference from the spike (see this
-  landing's own deviation record)."
+  landing's own deviation record).
+
+  `gate-file` now returns the kernel/ok envelope (judge-family parity
+  pass, ruled 2026-07-31, P2-2) -- this test unwraps :payload and
+  additionally validates every finding against
+  ehrt.judge.finding/Finding, giving this component its own missing
+  test-tier dependency on `judge`, mirroring judge-v2-hapi's own
+  v2_test.clj."
   (:require [clojure.java.io :as io]
             [clojure.test :refer [deftest is testing]]
+            [ehrt.kernel.interface :as kernel]
+            [ehrt.judge.finding :as finding]
             [ehrt.judge-v2-nist.interface :as v2nist]))
 
 (def ^:private bundle-dir "components/tools/test-fixtures/v2-nist/COVID19_ELR-v2.3.1")
@@ -51,15 +60,21 @@
 
 (deftest gate-file-against-real-engine-and-fixture-test
   (let [validator-state (v2nist/make-validator bundle-dir)
-        result (v2nist/gate-file validator-state (io/file message-file))
+        r (v2nist/gate-file validator-state (io/file message-file))
+        result (:payload r)
         findings (:findings result)
         area-of (fn [finding] (first (clojure.string/split (:code finding) #"/")))]
+    (testing "gate-file returns the kernel envelope (parity pass, ruled 2026-07-31)"
+      (is (kernel/ok? r)))
     (testing "verdict/cause: a defective Π (Specification Error entries,
               a consequence of the value-set library being absent) --
               :no-verdict/:profile-spec-error, not :rejected"
       (is (= :no-verdict (:verdict result)))
-      (is (= :profile-spec-error (:cause result))))
+      (is (= :profile-spec-error (:cause result)))
+      (is (finding/valid-cause-pairing? (:verdict result) (:cause result))))
     (testing "finding counts, pinned (see ns docstring for provenance)"
       (is (= 473 (count findings)))
       (is (= {"structure" 441 "value-set" 28 "content" 4}
-             (frequencies (map area-of findings)))))))
+             (frequencies (map area-of findings)))))
+    (testing "every finding validates against the shared schema"
+      (is (every? finding/valid? findings)))))

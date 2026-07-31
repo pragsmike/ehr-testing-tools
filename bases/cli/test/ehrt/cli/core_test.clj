@@ -630,6 +630,33 @@
     (is (clojure.string/includes? (:hint (:payload r)) "SETUP.md")
         "the hint-family rule: no category of doctor output is ever a dead end")))
 
+(deftest doctor-command-deps-edn-resolved-artifact-skips-the-cache-check-test
+  ;; P2-3 (ruled 2026-07-31, review finding 8): a row marked
+  ;; :resolved-via :deps-edn (the NIST engine's six lockfile rows'
+  ;; ruled posture) is never asked about the cache -- an engine that
+  ;; only ever loads via a project's own deps.edn must not fail doctor
+  ;; just because it was never fetched into the artifact cache.
+  (let [cached (sample-artifact)
+        deps-edn-art (assoc (sample-artifact)
+                             :name "nist-hl7-v2-validation" :resolved-via :deps-edn)
+        lockfile (temp-lockfile [cached deps-edn-art])
+        r (cli/doctor-command
+           {:lockfile lockfile
+            :resolve-java-bin-fn (fn [_artifacts _opts] (result/ok {:path "/fake/java"}))
+            :resolve-artifact-fn (fn [_artifacts name _version]
+                                    (if (= name "nist-hl7-v2-validation")
+                                      (result/rejected :not-cached {})
+                                      (result/ok {:path "/fake/cached"})))
+            :git-config-fn (fn [_key] ".githooks")
+            :os-name-fn (fn [] "Linux")})]
+    (is (result/ok? r)
+        "the deps.edn-resolved row is skipped by the cache check entirely, so an artifact that never touches the cache doesn't fail doctor")
+    (let [cache-check (first (filter #(clojure.string/includes? (:name %) "artifact cache") (:checks (:payload r))))]
+      (is (= :pass (:status cache-check)))
+      (is (clojure.string/includes? (:detail cache-check) "resolved via deps.edn")
+          "the human-readable story distinguishes deps.edn resolution from cache resolution")
+      (is (clojure.string/includes? (:detail cache-check) "nist-hl7-v2-validation")))))
+
 (deftest doctor-command-real-fns-never-throw-test
   ;; The real, non-injected fns (git config/os name) must never throw --
   ;; a doctor that crashes trying to check something is worse than one
@@ -1354,6 +1381,19 @@
     (is (= :gate-no-verdict (:category r)))
     (is (= 2 (count (:files (:payload r)))) "both files in the directory were gated")
     (is (= 1 @build-calls) "the validator is built once per invocation, not once per file")))
+
+(deftest v2-nist-gate-command-missing-file-is-a-named-error-not-a-crash-test
+  ;; Pins the CLI's missing-file behavior byte-identical across the
+  ;; judge-family parity pass (P2-2, ruled 2026-07-31): the engine's
+  ;; own gate-file now returns kernel/error :file-not-found directly
+  ;; (it used to be v2-nist-gate-file*'s own .isFile pre-check, dropped
+  ;; once the component started behaving) -- exit code and category are
+  ;; unchanged from the user's perspective either way.
+  (let [r (cli/v2-nist-gate-command {:path "/no/such/file.hl7" :profile v2-nist-profile-dir})]
+    (is (result/error? r))
+    (is (= :file-not-found (:category r)))
+    (is (= "/no/such/file.hl7" (:path (:payload r))))
+    (is (= 2 (cli/result->exit-code r)))))
 
 (deftest gate-v2-command-baseline-mode-writes-the-baseline-relative-report-when-requested-test
   (let [in-dir (temp-dir*)

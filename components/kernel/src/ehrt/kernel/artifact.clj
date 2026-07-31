@@ -23,6 +23,17 @@
 (def LicenseStatus [:enum :verified :unverified :license-blocked-indeterminate
                     :use-permitted--unstated--confirmation-pending])
 
+;; :resolved-via (P2-3, ruled 2026-07-31): most artifacts resolve through
+;; the content-addressed cache `resolve`/`fetch` manage (the implied
+;; default when this key is absent, :artifact-cache); a row marked
+;; :deps-edn instead is provenance/license-only -- the engine actually
+;; loads it via a project's own deps.edn (a Maven coordinate resolving
+;; into ~/.m2), engine-onboarding checklist item 4's third lockfile
+;; target. `ehrt doctor`'s artifact-cache check skips :deps-edn rows
+;; rather than reporting a false gap for something that was never meant
+;; to be cache-resolved.
+(def ResolvedVia [:enum :artifact-cache :deps-edn])
+
 (def Artifact
   [:map
    [:kind ArtifactKind]
@@ -32,7 +43,8 @@
    [:source :string]
    [:acquired :string]
    [:license-status LicenseStatus]
-   [:license-note {:optional true} :string]])
+   [:license-note {:optional true} :string]
+   [:resolved-via {:optional true} ResolvedVia]])
 
 (def Lockfile
   [:map [:artifacts [:vector Artifact]]])
