@@ -125,14 +125,17 @@
 (deftest resolve-unknown-artifact-test
   (let [r (artifact/resolve [] "nope" "1.0.0" {})]
     (is (result/rejected? r))
-    (is (= :unknown-artifact (:category r)))))
+    (is (= :unknown-artifact (:category r)))
+    (is (= artifact/artifact-remedy-hint (:hint (:payload r)))
+        "cold-start UX session (2026-07-30): the whole :not-cached family carries the fetch/doctor remedy hint")))
 
 (deftest resolve-known-but-not-yet-fetched-test
   (let [dir (temp-dir)
         art (sample-artifact "not fetched yet")
         r (artifact/resolve [art] "sample" "1.0.0" {:cache-dir-override dir})]
     (is (result/rejected? r))
-    (is (= :not-cached (:category r)))))
+    (is (= :not-cached (:category r)))
+    (is (= artifact/artifact-remedy-hint (:hint (:payload r))))))
 
 (deftest resolve-known-and-cached-test
   (let [dir (temp-dir)
@@ -197,6 +200,11 @@
     (is (= :unknown-artifact (:category r)))))
 
 (deftest resolve-and-extract-propagates-extractor-failure-test
+  ;; The real default-extractor! itself attaches artifact-remedy-hint
+  ;; (real-extractor-attaches-remedy-hint-test below); an injected fake
+  ;; extractor's own return value passes through unchanged here, so
+  ;; this test's fake deliberately omits :hint to prove propagation
+  ;; doesn't fabricate one.
   (let [dir (temp-dir)
         art (assoc (sample-artifact "archive bytes") :kind :runtime)
         _ (spit (io/file dir (:sha256 art)) "archive bytes")
@@ -205,6 +213,17 @@
                                          {:cache-dir-override dir :extractor extractor})]
     (is (result/error? r))
     (is (= :extract-failed (:category r)))))
+
+(deftest real-extractor-attaches-remedy-hint-test
+  ;; default-extractor! itself (not resolve-and-extract's propagation of
+  ;; an injected fake, above) is the actual :extract-failed construction
+  ;; site -- exercised directly against a real `tar` subprocess run on a
+  ;; bogus archive path, which fails fast with a nonzero exit.
+  (let [dir (temp-dir)
+        r (artifact/default-extractor! (str dir "/does-not-exist.tar.gz") (str dir "/dest"))]
+    (is (result/error? r))
+    (is (= :extract-failed (:category r)))
+    (is (= artifact/artifact-remedy-hint (:hint (:payload r))))))
 
 (deftest find-executable-locates-file-at-any-depth-test
   (let [dir (temp-dir)
@@ -219,4 +238,5 @@
   (let [dir (temp-dir)
         r (artifact/find-executable dir "bin/java")]
     (is (result/rejected? r))
-    (is (= :executable-not-found (:category r)))))
+    (is (= :executable-not-found (:category r)))
+    (is (= artifact/artifact-remedy-hint (:hint (:payload r))))))

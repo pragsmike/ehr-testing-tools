@@ -206,13 +206,16 @@
 (deftest generate-propagates-resolve-failure-without-fetching-test
   ;; generate! never auto-fetches -- if the artifact isn't already
   ;; resolvable, that's the caller's job (`ehr artifact fetch` first).
-  (let [deps (stub-deps {:lockfile-result (ok-lockfile)
+  (let [out-dir (temp-dir)
+        deps (stub-deps {:lockfile-result (ok-lockfile)
                           :resolve-result (kernel/rejected :not-cached {:name "synthea" :version "4.0.0"})
                           :invocation-result (ok-invocation)})
         r (generate/generate! (merge deps {:config-path "x" :seed 1 :population 1
-                                            :out-dir (temp-dir)}))]
+                                            :out-dir out-dir}))]
     (is (kernel/rejected? r))
-    (is (= :not-cached (:category r)))))
+    (is (= :not-cached (:category r)))
+    (is (empty? (.listFiles (io/file out-dir)))
+        "cold-start UX session (2026-07-30): artifact resolution runs before out-dir is ever touched -- a rejected run leaves no trace")))
 
 (deftest generate-propagates-invocation-failure-test
   (let [deps (stub-deps {:lockfile-result (ok-lockfile)
@@ -285,17 +288,20 @@
     (is (manifest/valid-v1-1? (:manifest (:payload r))))))
 
 (deftest generate-propagates-java-bin-resolution-failure-test
-  (let [deps (stub-deps {:lockfile-result (ok-lockfile)
+  (let [out-dir (temp-dir)
+        deps (stub-deps {:lockfile-result (ok-lockfile)
                           :resolve-result (ok-resolve)
                           :invocation-result (ok-invocation)})
         r (generate/generate!
            (merge deps
                   {:config-path "x" :seed 1 :population 1 :reference-date "20260101"
-                   :out-dir (temp-dir)
+                   :out-dir out-dir
                    :resolve-java-bin (fn [_artifacts _opts]
                                        (kernel/rejected :not-cached {:name "temurin-jdk" :version "17.0.19+10"}))}))]
     (is (kernel/rejected? r))
-    (is (= :not-cached (:category r)))))
+    (is (= :not-cached (:category r)))
+    (is (empty? (.listFiles (io/file out-dir)))
+        "java-bin resolution runs before out-dir is ever touched -- a rejected run leaves no trace")))
 
 (deftest resolve-java-bin-composes-resolve-and-extract-and-find-executable-test
   (let [extract-calls (atom [])

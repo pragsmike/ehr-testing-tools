@@ -182,7 +182,9 @@
     (is (kernel/ok? params-result))
     (let [r ((:execute-fn entry) (:payload params-result) out-dir)]
       (is (kernel/error? r))
-      (is (= :sim-produced-no-messages (:category r))))))
+      (is (= :sim-produced-no-messages (:category r)))
+      (is (empty? (.listFiles (io/file out-dir)))
+          "cold-start UX session (2026-07-30): a rejected run leaves no trace -- not even manifest.edn -- in a pre-existing empty out-dir"))))
 
 (deftest sim-execute-fn-propagates-sim-run-failures-unchanged-test
   (let [out-dir (temp-dir)
@@ -192,4 +194,6 @@
     (is (kernel/ok? params-result))
     (let [r ((:execute-fn entry) (:payload params-result) out-dir)]
       (is (kernel/error? r))
-      (is (= :missing-required-opt (:category r))))))
+      (is (= :missing-required-opt (:category r)))
+      (is (empty? (.listFiles (io/file out-dir)))
+          "a rejected sim/run! call must never reach spool-sim-output! -- no trace left"))))

@@ -116,12 +116,24 @@
                (.delete tmp)
                (result/error :download-failed {:source source :message (.getMessage e)})))))))))
 
+(def artifact-remedy-hint
+  "The shared :hint text for every rejection this namespace's own
+  resolve/resolve-and-extract/find-executable can raise when an
+  artifact this repo needs isn't ready yet (cold-start UX session,
+  2026-07-30, ADR-0015 amendment) -- deliberately command-agnostic
+  (never names a specific generate lane or verb), since the SAME
+  rejection surfaces through several different CLI commands
+  (`corpus generate synthea`, `gate fhir`, `artifact resolve`, ...),
+  all sharing this one namespace's own resolution machinery."
+  "run: bin/ehrt artifact fetch --all -- or bin/ehrt doctor to see exactly what's missing")
+
 (defn resolve
   "Looks up name+version in artifacts (a lockfile's :artifacts vector),
   and answers strictly from the cache -- never touches the network.
   Returns result/ok {:path :artifact}, or result/rejected
   :unknown-artifact (no such name+version in the lockfile) or
-  :not-cached (known, but fetch hasn't been run for it yet)."
+  :not-cached (known, but fetch hasn't been run for it yet) -- both
+  carrying artifact-remedy-hint."
   ([artifacts name version] (resolve artifacts name version {}))
   ([artifacts name version {:keys [cache-dir-override]}]
    (if-let [artifact (clojure.core/first
@@ -129,8 +141,8 @@
      (let [dir (cache-dir cache-dir-override)]
        (if (cached-and-verified? dir (:sha256 artifact))
          (result/ok {:path (.getAbsolutePath (io/file dir (:sha256 artifact))) :artifact artifact})
-         (result/rejected :not-cached {:name name :version version})))
-     (result/rejected :unknown-artifact {:name name :version version}))))
+         (result/rejected :not-cached {:name name :version version :hint artifact-remedy-hint})))
+     (result/rejected :unknown-artifact {:name name :version version :hint artifact-remedy-hint}))))
 
 ;; ---- extraction (archives, not single files -- a JVM's bin/java is
 ;; unreachable until its tarball is unpacked) ----
@@ -149,7 +161,7 @@
   "The real, filesystem-touching extractor: shells out to `tar -xzf`
   -- the only function in this namespace that ever spawns a
   subprocess. Returns result/ok {:dest dest-dir} or result/error
-  :extract-failed on a nonzero exit."
+  :extract-failed (carrying artifact-remedy-hint) on a nonzero exit."
   [archive-path dest-dir]
   (.mkdirs (io/file dest-dir))
   (let [pb (ProcessBuilder. (into-array String ["tar" "-xzf" archive-path "-C" dest-dir]))]
@@ -160,7 +172,8 @@
       (if (zero? exit-code)
         (result/ok {:dest dest-dir})
         (result/error :extract-failed {:archive archive-path :dest dest-dir
-                                        :exit-code exit-code :output output})))))
+                                        :exit-code exit-code :output output
+                                        :hint artifact-remedy-hint})))))
 
 (defn- extracted-already?
   "True when dest-dir exists and is non-empty -- the idempotency check
@@ -195,7 +208,7 @@
   one-level subdirectory of root -- archives extract to a single
   version-named top directory whose exact name this deliberately
   doesn't hardcode. Returns result/ok {:path} or result/rejected
-  :executable-not-found."
+  :executable-not-found (carrying artifact-remedy-hint)."
   [root relative-path]
   (let [root-file (io/file root)
         candidates (when (.isDirectory root-file)
@@ -206,4 +219,5 @@
                        candidate))]
     (if-let [found (clojure.core/first (sort-by str candidates))]
       (result/ok {:path (.getAbsolutePath found)})
-      (result/rejected :executable-not-found {:root root :relative-path relative-path}))))
+      (result/rejected :executable-not-found
+                        {:root root :relative-path relative-path :hint artifact-remedy-hint}))))
