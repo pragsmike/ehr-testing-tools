@@ -22,7 +22,15 @@
   There is deliberately no `available?` here anymore: sim is always on
   this classpath, never something to discover or degrade gracefully
   without -- see ADR-0005 for why the old skip-when-absent machinery
-  was removed rather than kept as a permanently-true no-op."
+  was removed rather than kept as a permanently-true no-op.
+
+  `:refer-clojure :exclude [run!]` (cold-start UX session, 2026-07-30):
+  this namespace's own public `run!` below shadows `clojure.core/run!`
+  -- silences the resulting `already refers to` load-time warning,
+  which otherwise printed as the first line of output on every cold
+  invocation of this CLI. No behavior change: nothing in this namespace
+  calls `clojure.core/run!`."
+  (:refer-clojure :exclude [run!])
   (:require [ehrt.sim.interface :as sim]))
 
 (defn run!
