@@ -1627,6 +1627,38 @@
        (when report-path
          (str "\nreport written: " report-path))))
 
+(defn- doctor-checks-payload
+  "The Checks shape doctor-command produces: {:checks [{:name :status
+  :detail} ...]}. A grep of this workspace found :checks used nowhere
+  else (2026-07-30, doctor-rendering session) -- shape-keyed dispatch
+  stays consistent with report-payload's own precedent; no departure
+  to category-keying was needed."
+  [payload]
+  (and (map? payload) (contains? payload :checks) payload))
+
+(defn- pretty-doctor-check-line
+  [{:keys [name status detail]}]
+  (str (clojure.core/name status) "  " name " -- " detail))
+
+(defn- pretty-doctor-summary
+  "doctor's own tailored summary (2026-07-30 doctor-rendering session,
+  ADR-0013's shape-dispatch sanction): one line per check -- status,
+  name, and the check's own :detail in full, pass or fail alike (the
+  detail already carries the remedy on a failing check, and the
+  existing pass details are already short, so no truncation is needed
+  either way -- a diagnostic that hid its own passing findings would
+  invite doubt). A final line states the outcome and, when any check
+  failed, the failing count -- worded as a checklist report, never
+  \"rejected\": doctor succeeded at diagnosing, the checks are what
+  failed."
+  [checks]
+  (let [failing (remove #(= :pass (:status %)) checks)]
+    (str (str/join "\n" (map pretty-doctor-check-line checks))
+         "\n\n"
+         (if (empty? failing)
+           "all checks passed"
+           (str (count failing) " of " (count checks) " check(s) failed")))))
+
 (defn- pretty-generic-summary
   "Every other envelope command's brief summary (ADR-0013): status,
   category, whatever key counts/paths the payload happens to carry,
@@ -1658,14 +1690,23 @@
 (defn render-pretty
   "Human-facing rendering for a Result envelope (ADR-0013). Dispatches
   on the payload's own shape, not on which command ran: a Report-shaped
-  payload (gate, check) gets the tailored per-file summary; everything
-  else -- including baseline mode's {:absolute :relative} payload --
-  gets the generic summary (this ruling's own named, permitted skip:
-  tailoring beyond gate/check is not required)."
+  payload (gate, check) gets the tailored per-file summary; a Checks-
+  shaped payload (doctor, 2026-07-30 doctor-rendering session) gets the
+  tailored checklist summary; everything else -- including baseline
+  mode's {:absolute :relative} payload -- gets the generic summary
+  (this ruling's own named, permitted skip: tailoring beyond gate/
+  check/doctor is not required). The machine contract (:status/
+  :category/:payload) is never touched by any of this -- only which
+  human-facing string gets built from it."
   [r report-path]
-  (if-let [rpt (report-payload (:payload r))]
-    (pretty-report-summary rpt report-path)
-    (pretty-generic-summary r)))
+  (cond
+    (report-payload (:payload r))
+    (pretty-report-summary (report-payload (:payload r)) report-path)
+
+    (doctor-checks-payload (:payload r))
+    (pretty-doctor-summary (:checks (doctor-checks-payload (:payload r))))
+
+    :else (pretty-generic-summary r)))
 
 (defn main!
   "The real body of -main, with every side-effecting boundary

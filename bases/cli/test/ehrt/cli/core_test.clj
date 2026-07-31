@@ -1747,6 +1747,90 @@
     (is (clojure.string/includes? text "out-dir=out/demo"))
     (is (clojure.string/includes? text "--edn or --json"))))
 
+;; ---- doctor's tailored checklist rendering (2026-07-30 doctor-
+;; rendering session): the same shape-dispatch ADR-0013 sanctioned for
+;; gate/check, extended to doctor's own {:checks [...]} payload. The
+;; human wording is a checklist report, never "rejected" -- doctor
+;; succeeded at diagnosing; the checks are what failed. The machine
+;; contract (:status/:category/:payload) is untouched by any of this;
+;; the envelope-equality tests below pin it against this session's own
+;; captured before-state. ----
+
+(def ^:private sample-doctor-checks
+  [{:name "java resolution (via the artifact registry)" :status :pass :detail "resolved: /fake/java"}
+   {:name "artifact cache (per lockfile entry)" :status :pass :detail "1 artifact(s) cached"}
+   {:name "git hooksPath wiring (contribution sessions only)" :status :pass :detail "core.hooksPath = .githooks"}
+   {:name "platform" :status :fail :detail "Windows 11 -- native Windows is not supported; use WSL2 (SETUP.md section 2)"}])
+
+(deftest render-pretty-doctor-checks-payload-all-pass-lists-each-check-and-says-so-test
+  (let [checks (mapv #(assoc % :status :pass :detail "Linux") sample-doctor-checks)
+        text (cli/render-pretty (result/ok {:checks checks}) nil)]
+    (is (clojure.string/includes? text "pass  platform -- Linux"))
+    (is (clojure.string/includes? text "pass  java resolution (via the artifact registry) -- Linux"))
+    (is (clojure.string/includes? text "all checks passed"))
+    (is (not (clojure.string/includes? text "rejected")))))
+
+(deftest render-pretty-doctor-checks-payload-failing-check-shows-full-detail-and-never-says-rejected-test
+  (let [text (cli/render-pretty (result/rejected :doctor-checks-failed {:checks sample-doctor-checks}) nil)]
+    (is (clojure.string/includes? text "pass  java resolution (via the artifact registry) -- resolved: /fake/java"))
+    (is (clojure.string/includes? text "fail  platform -- Windows 11 -- native Windows is not supported; use WSL2 (SETUP.md section 2)")
+        "a failing check's detail is the remedy -- shown in full, not truncated")
+    (is (clojure.string/includes? text "1 of 4 check(s) failed"))
+    (is (not (clojure.string/includes? text "rejected"))
+        "the human wording is a checklist report, never \"rejected\"")))
+
+(deftest render-pretty-doctor-lockfile-unreadable-falls-back-to-generic-summary-test
+  ;; The exit-2 "couldn't even read the lockfile" category carries no
+  ;; :checks key -- doctor-checks-payload correctly declines it and it
+  ;; falls through to the generic summary, not the doctor-tailored one.
+  (let [text (cli/render-pretty (result/error :not-found {:path "/no/such/lockfile.edn"}) nil)]
+    (is (clojure.string/includes? text "error (not-found)"))
+    (is (clojure.string/includes? text "path=/no/such/lockfile.edn"))))
+
+(deftest doctor-command-all-pass-envelope-pinned-against-before-state-test
+  ;; Pinned against this session's own captured before-state (the
+  ;; render-pretty change touches only the pretty string, never the
+  ;; envelope this test asserts byte-for-byte).
+  (let [lockfile (temp-lockfile [(sample-artifact)])
+        r (cli/doctor-command
+           {:lockfile lockfile
+            :resolve-java-bin-fn (fn [_artifacts _opts] (result/ok {:path "/fake/java"}))
+            :resolve-artifact-fn (fn [_artifacts _name _version] (result/ok {:path "/fake/cached"}))
+            :git-config-fn (fn [_key] ".githooks")
+            :os-name-fn (fn [] "Linux")})]
+    (is (= {:status :ok
+            :payload {:checks [{:name "java resolution (via the artifact registry)" :status :pass :detail "resolved: /fake/java"}
+                                {:name "artifact cache (per lockfile entry)" :status :pass :detail "1 artifact(s) cached"}
+                                {:name "git hooksPath wiring (contribution sessions only)" :status :pass :detail "core.hooksPath = .githooks"}
+                                {:name "platform" :status :pass :detail "Linux"}]}}
+           r))))
+
+(deftest doctor-command-checks-failed-envelope-pinned-against-before-state-test
+  ;; NOTE: this pin predates step 3's :hint addition (2026-07-30
+  ;; doctor-rendering session) -- updated there, not deleted, per this
+  ;; session's own decision procedure.
+  (let [lockfile (temp-lockfile [(sample-artifact)])
+        r (cli/doctor-command
+           {:lockfile lockfile
+            :resolve-java-bin-fn (fn [_artifacts _opts] (result/ok {:path "/fake/java"}))
+            :resolve-artifact-fn (fn [_artifacts _name _version] (result/ok {:path "/fake/cached"}))
+            :git-config-fn (fn [_key] ".githooks")
+            :os-name-fn (fn [] "Windows 11")})]
+    (is (= {:status :rejected
+            :category :doctor-checks-failed
+            :payload {:checks [{:name "java resolution (via the artifact registry)" :status :pass :detail "resolved: /fake/java"}
+                                {:name "artifact cache (per lockfile entry)" :status :pass :detail "1 artifact(s) cached"}
+                                {:name "git hooksPath wiring (contribution sessions only)" :status :pass :detail "core.hooksPath = .githooks"}
+                                {:name "platform" :status :fail :detail "Windows 11 -- native Windows is not supported; use WSL2 (SETUP.md section 2)"}]}}
+           r))))
+
+(deftest doctor-command-lockfile-unreadable-envelope-pinned-against-before-state-test
+  ;; NOTE: this pin predates step 3's :hint addition (2026-07-30
+  ;; doctor-rendering session) -- updated there, not deleted.
+  (let [r (cli/doctor-command {:lockfile "/no/such/lockfile.edn"})]
+    (is (= {:status :error :category :not-found :payload {:path "/no/such/lockfile.edn"}}
+           r))))
+
 ;; ---- ADR-0015: remedy hints and breadcrumbs, pretty-only, envelope
 ;; untouched (verified below by comparing --edn/--json output with and
 ;; without the pretty-only annotations present). ----
