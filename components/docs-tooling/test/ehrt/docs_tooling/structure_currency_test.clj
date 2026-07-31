@@ -1,4 +1,4 @@
-(ns ehrt.tools.structure-currency-test
+(ns ehrt.docs-tooling.structure-currency-test
   "P1-3 (2026-07-31 review catch-up, finding 2): AGENTS.md's own
   'Landed so far' section and docs/dev/architecture.md's mermaid
   diagram/bricks table are both promised to stay current with the

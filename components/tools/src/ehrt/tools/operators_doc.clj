@@ -1,30 +1,29 @@
-(ns ehrt.tools.docsgen
-  "Renderers for the two reference documents that are *derived data*
-  rather than authored prose (DOC-3): docs/operators.md from the
-  mutation-operator registry (ehrt.tools.corpus.operators), and
-  docs/cli.md from a caller-supplied help spec shaped like
-  bases/cli's own cli-spec. A sibling to ehrt.tools.pipeline and
-  .usecases in exactly the way those two are siblings of each other:
-  pure render-* functions assembling a markdown string, plus a thin
-  `-X`-invokable write-*! shell. `render-cli-md` takes its spec as a
-  plain argument rather than importing bases/cli's help.clj
-  directly -- components never depend on bases (Polylith's dependency
-  direction is the reverse) -- so this namespace has no compile-time
-  knowledge of the CLI base at all; only a caller with access to both
-  (e.g. a REPL, or a future dev-tooling base) can wire the two
-  together.
+(ns ehrt.tools.operators-doc
+  "Renderer for docs/operators.md, the derived (DOC-3) reference for
+  the mutation-operator registry (ehrt.tools.corpus.operators). Split
+  out of the former ehrt.tools.docsgen (docs-tooling extraction,
+  2026-07-31, refactoring-review stage 1): that namespace's cli.md
+  half (render-cli-md/write-cli-md!) was pure -- no dependency on
+  anything in this component -- and moved to components/docs-tooling
+  whole; this half genuinely reaches into corpus.operators' live
+  registry, which would have made this component and docs-tooling
+  require each other (docs-tooling needing this data back, this
+  component already needing docs-tooling's write-cli-md! back) -- a
+  real circular component dependency, a hard Clojure compile error,
+  not a style question. Staying behind avoids it, and this is this
+  component's own operator-doc renderer either way (its own Makefile
+  target is `operators-doc`).
 
-  Both outputs are WHOLLY generated (author ruling, DOC-3): every word
-  in docs/operators.md and docs/cli.md comes from here or from the data
-  these functions read. There is no hand-edited region in either file,
-  which is what lets CI's generated-doc freshness step regenerate and
-  `git diff --exit-code` them alongside docs/pipeline.md and
-  docs/use-cases.md. Preamble prose therefore lives as string literals
-  below, the same way ehrt.tools.pipeline/render-pipeline-md's
-  does.
+  Both this file and docs-tooling's own ehrt.docs-tooling.docsgen
+  carry their own private copies of banner/escape-cell/table/
+  exit-code-table -- the same handful of pure markdown-table helpers
+  the original docsgen.clj shared across both halves. Duplicated
+  rather than shared through an interface, since sharing them would
+  reintroduce exactly the cross-brick coupling the split exists to
+  avoid, for four small pure functions.
 
-  Determinism matters here in a way it doesn't for the pipeline
-  renderers: `corpus.operators/entries` returns the vals of an atom-held
+  Determinism matters here in a way it doesn't for the cli.md
+  renderer: corpus.operators/entries returns the vals of an atom-held
   map, whose order is not specified. Every listing below sorts by
   [format id] before rendering, so regeneration is byte-identical
   across runs and the freshness gate tests staleness rather than map
@@ -32,7 +31,7 @@
   (:require [clojure.string :as str]
             [ehrt.tools.corpus.operators :as operators]))
 
-;; ---- shared helpers ----
+;; ---- shared helpers (this half's own copy -- see docstring) ----
 
 (def pre-release-notice
   "One line, in both generated docs' preambles (author ruling, DOC-3).
@@ -64,11 +63,6 @@
             (concat [(str "| " (str/join " | " headers) " |")
                      (str "|" (str/join "|" (repeat (count headers) "---")) "|")]
                     (map (fn [row] (str "| " (str/join " | " (map escape-cell row)) " |")) rows))))
-
-(defn- exit-code-table
-  [spec]
-  (table ["Code" "Meaning"]
-         (map (fn [{:keys [code meaning]}] [(str "`" code "`") meaning]) (:exit-codes spec))))
 
 ;; ---- docs/operators.md ----
 
@@ -133,7 +127,7 @@
   [entries]
   (str (banner "operators-doc"
                "the mutation-operator registry in components/tools/src/ehrt/tools/corpus/operators.clj"
-               "Edit the registry (or this file's renderer, components/tools/src/ehrt/tools/docsgen.clj) and regenerate instead.")
+               "Edit the registry (or this file's renderer, components/tools/src/ehrt/tools/operators_doc.clj) and regenerate instead.")
        "\n# Mutation operators\n\n"
        pre-release-notice "\n\n"
        "This is the catalog `ehrt corpus mutate` applies: every registered defect operator, "
@@ -160,73 +154,6 @@
        "result surprises you. They are not registry data, so they never appear in "
        "`ehrt corpus operators` output either.\n"))
 
-;; ---- docs/cli.md ----
-
-(defn- flags-table
-  [flags]
-  (if (seq flags)
-    (table ["Flag" "Default" "Meaning"]
-           (map (fn [{:keys [flag doc default]}]
-                  [(str "`" flag "`") (if default (str "`" default "`") "—") doc])
-                flags))
-    "_No flags._"))
-
-(defn- verb-section
-  "A verb's own :positional/:positional-doc (D10) render the same way a
-  group's do below -- declared per-verb rather than per-group because,
-  unlike gate/check, not every verb in a group takes one."
-  [group-name {:keys [verb doc flags positional positional-doc]}]
-  (str "### `ehrt " group-name " " verb "`\n\n"
-       doc "\n\n"
-       (when positional
-         (str "**Positional argument `" positional "`** — " positional-doc "\n\n"))
-       (flags-table flags) "\n"))
-
-(defn- group-section
-  [{:keys [group doc positional positional-doc verbs flags]}]
-  (str "## `ehrt " group "`\n\n"
-       doc "\n\n"
-       (when positional
-         (str "**Positional argument `" positional "`** — " positional-doc "\n\n"))
-       (if verbs
-         (str/join "\n" (map #(verb-section group %) verbs))
-         (str (flags-table flags) "\n"))))
-
-(defn render-cli-md
-  "Pure: the help spec -> docs/cli.md's content. Same spec `ehrt help`
-  and `ehrt help <group>` render to plain text, so the page and the
-  shell cannot drift apart -- there is one source, rendered twice."
-  [spec]
-  (str (banner "cli-doc"
-               "the CLI help spec in bases/cli/src/ehrt/cli/help.clj"
-               "Edit `cli-spec` (or this file's renderer, components/tools/src/ehrt/tools/docsgen.clj) and regenerate instead.")
-       "\n# CLI reference\n\n"
-       pre-release-notice "\n\n"
-       "Every group, verb, and flag the `" (:program spec) "` command accepts. "
-       "This page and `" (:program spec) " help` render the same spec, so the two cannot "
-       "drift apart — reach for `" (:program spec) " help <group>` when you are already at a shell, "
-       "and for this page when you are not.\n\n"
-       (if (:doc spec) (str (:doc spec) "\n\n") "")
-       "What this page deliberately does not carry: worked invocations. "
-       "For \"what do I actually type for my task,\" see [use-cases.md](use-cases.md). "
-       "For what `--report` writes and `--json` emits, see [formats.md](formats.md). "
-       "For the mutation operators `ehrt corpus mutate` takes by id, see "
-       "[operators.md](operators.md); for the locator strings it takes by path, see "
-       "[locators.md](locators.md).\n\n"
-       "## Synopsis\n\n"
-       "```\n" (:program spec) " <group> [<verb>] [flags]\n```\n\n"
-       (table ["Group" "What it covers"]
-              (map (fn [g] [(str "[`" (:group g) "`](#ehrt-" (:group g) ")") (:doc g)]) (:groups spec)))
-       "\n\n"
-       "## Global flags\n\n"
-       "Accepted anywhere in the command line, on any group or verb.\n\n"
-       (flags-table (:global-flags spec)) "\n\n"
-       "## Exit codes\n\n"
-       "The same table every group's `" (:program spec) " help <group>` output ends with. "
-       "These are the contract a CI job branches on.\n\n"
-       (exit-code-table spec) "\n\n"
-       (str/join "\n" (map group-section (:groups spec)))))
-
 ;; ---- impure shell (I/O) ----
 
 (defn write-operators-md!
@@ -237,14 +164,3 @@
   registration-at-load-time convention corpus.canonicalizers uses."
   [{:keys [out]}]
   (spit out (render-operators-md (sorted-entries))))
-
-(defn write-cli-md!
-  "-X-invokable: renders a caller-supplied help spec to out. No longer
-  called with an implicit default (the Makefile's `cli-doc` target did
-  not survive the Polylith landing, notes/ADRs.md ADR-0002) -- `spec`
-  is the CLI's own cli-spec, which the caller must supply, since
-  components/tools cannot itself require bases/cli's help.clj
-  (Polylith's dependency direction is base -> component, never the
-  reverse)."
-  [{:keys [out spec]}]
-  (spit out (render-cli-md spec)))

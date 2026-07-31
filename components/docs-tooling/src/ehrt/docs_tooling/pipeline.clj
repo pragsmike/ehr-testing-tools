@@ -1,4 +1,4 @@
-(ns ehrt.tools.pipeline
+(ns ehrt.docs-tooling.pipeline
   "Schema for the pipeline's own resource-equation data
   (docs/pipeline.edn, docs/notation.md, pattern nursery #13) -- the
   notation eats the repo's own dogfood: docs/pipeline.edn is authored

@@ -1,4 +1,4 @@
-(ns ehrt.tools.quickstart-fresh
+(ns ehrt.docs-tooling.quickstart-fresh
   "DOC-5 (.agents/plans/user-docs.md): README.md's Quickstart fence and
   bin/quickstart-demo are two independently-edited copies of the same
   taught command sequence, and nothing forces them to stay in sync --

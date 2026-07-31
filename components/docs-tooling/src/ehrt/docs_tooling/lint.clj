@@ -1,4 +1,4 @@
-(ns ehrt.tools.lint
+(ns ehrt.docs-tooling.lint
   "Tier-1 pipeline lint (P6, pattern nursery #13): every catalytic
   resource named in docs/pipeline.edn and docs/use-cases.edn resolves
   to one of the four catalytic targets docs/notation.md defines.
@@ -42,26 +42,27 @@
             [clojure.java.io :as io]
             [clojure.set :as set]
             [ehrt.kernel.interface :as kernel]
-            ;; Registration is a load-time side effect of requiring
-            ;; these seed-catalog namespaces (same convention as
-            ;; corpus.mutate-test's own docstring) -- required here,
-            ;; not just transitively via some other namespace, so
-            ;; target-4 verification against operator-catalog/
-            ;; canonicalizer-set resolves regardless of what else this
-            ;; process happened to load first.
-            [ehrt.tools.corpus.canonicalizers]
-            [ehrt.tools.corpus.framing :as framing]
-            [ehrt.tools.corpus.operators :as operators]
-            [ehrt.tools.check.schemas :as schemas]
+            ;; docs-tooling split (2026-07-31): this namespace no longer
+            ;; lives inside components/tools, so it can no longer reach
+            ;; corpus.canonicalizers/corpus.framing/corpus.operators/
+            ;; check.schemas directly -- those are tools-internal,
+            ;; non-interface namespaces now in a sibling brick. Routed
+            ;; through ehrt.tools.interface instead, which already
+            ;; requires corpus.canonicalizers itself (so the
+            ;; canonicalizer-set registration load-time side effect this
+            ;; namespace's own docstring describes still fires, transitively,
+            ;; the moment this require loads) and re-exports lookup/
+            ;; framing-lookup/check-schemas-lookup for the other three.
+            [ehrt.tools.interface :as tools]
             [ehrt.palgebra.interface :as palgebra-lint]))
 
 (def registry-lookup-fns
   "Dispatch table for target-4 (in-repo code registry) verification:
   registry keyword -> its [id version] lookup fn."
-  {:corpus.operators operators/lookup
+  {:corpus.operators tools/lookup
    :canonical kernel/lookup
-   :check.schemas schemas/lookup
-   :framing framing/lookup})
+   :check.schemas tools/check-schemas-lookup
+   :framing tools/framing-lookup})
 
 (def catalytic-resource-targets
   "resource-name -> {:target 1|2|3|4 :ref (optional, target-specific)}.

@@ -1,4 +1,4 @@
-(ns ehrt.tools.usecases-test
+(ns ehrt.docs-tooling.usecases-test
   "Tests the use-cases catalog's own schema (docs/use-cases.edn) and
   its pure rendering functions -- mirrors pipeline_test.clj's own
   split (schema tests; rendering tests over already-rendered text, not
@@ -8,7 +8,7 @@
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.edn :as edn]
             [clojure.string :as str]
-            [ehrt.tools.usecases :as usecases]))
+            [ehrt.docs-tooling.usecases :as usecases]))
 
 (def sample-case
   {:id :sample-case

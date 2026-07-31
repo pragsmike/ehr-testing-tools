@@ -44,7 +44,7 @@ quickstart:
 	bin/quickstart-demo
 
 quickstart-fresh:
-	clojure -X:dev ehrt.tools.quickstart-fresh/quickstart-fresh!
+	clojure -X:dev ehrt.docs-tooling.quickstart-fresh/quickstart-fresh!
 
 # Regenerates docs/dev/pipeline.md from components/tools/docs/pipeline.edn
 # (the hand-authored source of truth, staying component-adjacent --
@@ -53,9 +53,9 @@ quickstart-fresh:
 # components/tools/docs/ to docs/dev/ (ADR-0010, audience-forked docs).
 pipeline:
 	@mkdir -p target docs/dev
-	clojure -X:dev ehrt.tools.pipeline/write-equations-txt! :pipeline-edn '"components/tools/docs/pipeline.edn"' :out '"target/pipeline-equations.txt"'
+	clojure -X:dev ehrt.docs-tooling.pipeline/write-equations-txt! :pipeline-edn '"components/tools/docs/pipeline.edn"' :out '"target/pipeline-equations.txt"'
 	python3 components/palgebra/tools/resource_equations_to_mermaid.py target/pipeline-equations.txt -o target/pipeline-flow.mermaid
-	clojure -X:dev ehrt.tools.pipeline/write-pipeline-md! :pipeline-edn '"components/tools/docs/pipeline.edn"' :equations-txt '"target/pipeline-equations.txt"' :mermaid '"target/pipeline-flow.mermaid"' :out '"docs/dev/pipeline.md"'
+	clojure -X:dev ehrt.docs-tooling.pipeline/write-pipeline-md! :pipeline-edn '"components/tools/docs/pipeline.edn"' :equations-txt '"target/pipeline-equations.txt"' :mermaid '"target/pipeline-flow.mermaid"' :out '"docs/dev/pipeline.md"'
 	@echo "Regenerated docs/dev/pipeline.md"
 
 # Regenerates docs/use-cases.md from components/tools/docs/use-cases.edn
@@ -63,11 +63,11 @@ pipeline:
 # diagram per named use case. Output moved to docs/ (user path, ADR-0010).
 use-cases:
 	@mkdir -p target/use-cases docs
-	clojure -X:dev ehrt.tools.usecases/write-case-equations! :use-cases-edn '"components/tools/docs/use-cases.edn"' :out-dir '"target/use-cases"'
+	clojure -X:dev ehrt.docs-tooling.usecases/write-case-equations! :use-cases-edn '"components/tools/docs/use-cases.edn"' :out-dir '"target/use-cases"'
 	@for f in target/use-cases/*.txt; do \
 		python3 components/palgebra/tools/resource_equations_to_mermaid.py "$$f" -o "$${f%.txt}.mermaid"; \
 	done
-	clojure -X:dev ehrt.tools.usecases/write-use-cases-md! :use-cases-edn '"components/tools/docs/use-cases.edn"' :cases-dir '"target/use-cases"' :out '"docs/use-cases.md"'
+	clojure -X:dev ehrt.docs-tooling.usecases/write-use-cases-md! :use-cases-edn '"components/tools/docs/use-cases.edn"' :cases-dir '"target/use-cases"' :out '"docs/use-cases.md"'
 	@echo "Regenerated docs/use-cases.md"
 
 # Regenerates docs/operators.md (user path, ADR-0010) from the live
@@ -75,7 +75,7 @@ use-cases:
 # namespace load).
 operators-doc:
 	@mkdir -p docs
-	clojure -X:dev ehrt.tools.docsgen/write-operators-md! :out '"docs/operators.md"'
+	clojure -X:dev ehrt.tools.operators-doc/write-operators-md! :out '"docs/operators.md"'
 	@echo "Regenerated docs/operators.md"
 
 # Regenerates docs/cli.md (user path, ADR-0010) from bases/cli's own
@@ -90,7 +90,7 @@ cli-doc:
 docsgen: pipeline use-cases operators-doc cli-doc
 
 lint-pipeline:
-	clojure -X:dev ehrt.tools.lint/lint-pipeline!
+	clojure -X:dev ehrt.docs-tooling.lint/lint-pipeline!
 
 # ADR-0004's own generalized trap, made runnable: index modes, artifact
 # caches, and sibling checkouts have each masked a CI failure behind a

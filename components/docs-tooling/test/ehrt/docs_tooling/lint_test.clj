@@ -1,10 +1,10 @@
-(ns ehrt.tools.lint-test
+(ns ehrt.docs-tooling.lint-test
   "Tier-1 pipeline lint (P6, pattern nursery #13): every catalytic
   resource named in docs/pipeline.edn and docs/use-cases.edn resolves
   to one of the four catalytic targets (docs/notation.md)."
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.java.io :as io]
-            [ehrt.tools.lint :as lint])
+            [ehrt.docs-tooling.lint :as lint])
   (:import [java.io File]))
 
 (defn- temp-edn-file! [content]

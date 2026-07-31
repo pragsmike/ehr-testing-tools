@@ -13,14 +13,22 @@
                                            :exclude []}}
  :projects {"development" {:alias "dev"}
             "sim" {:alias "sim"}
-            ;; :necessary overrides warning 207 (poly's brick-necessity
-            ;; check is one-hop from a *base*; palgebra/tools are real,
-            ;; confirmed component-to-component/test-to-interface
-            ;; dependencies it doesn't trace transitively -- notes/ADRs.md
-            ;; ADR-0002).
-            "ehrt-cli" {:alias "ehrt-cli"
-                        :necessary ["palgebra"]}
+            ;; :necessary overrides warning 207 (poly's own brick-graph
+            ;; reachability check: is a declared brick reached by a real
+            ;; :require edge from the project's base, or from another
+            ;; brick the same project declares -- it does not see a
+            ;; project's own ad hoc test-tree requires). Re-derived
+            ;; 2026-07-31 (docs-tooling split, finding 14) via
+            ;; `clojure -M:poly deps`/`check` with every entry below
+            ;; temporarily cleared, per brick, per project -- see
+            ;; notes/ADRs.md's dated ADR note for the full method and
+            ;; per-project findings. "ehrt-cli" needs no override at
+            ;; all now: bases/cli directly requires both
+            ;; ehrt.tools.interface and ehrt.docs-tooling.interface, and
+            ;; every other declared brick (including palgebra) is real-
+            ;; edge-reachable transitively through those two.
+            "ehrt-cli" {:alias "ehrt-cli"}
             "conformance" {:alias "conformance"
-                           :necessary ["tools" "palgebra"]}
+                           :necessary ["docs-tooling"]}
             "integration" {:alias "integration"
-                           :necessary ["tools" "palgebra"]}}}
+                           :necessary ["tools"]}}}

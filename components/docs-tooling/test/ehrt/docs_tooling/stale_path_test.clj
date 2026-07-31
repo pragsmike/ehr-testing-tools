@@ -1,4 +1,4 @@
-(ns ehrt.tools.stale-path-test
+(ns ehrt.docs-tooling.stale-path-test
   "P1-1 (2026-07-31 review catch-up, finding 4): a stale-path family
   (pre-Polylith `ehr_testing_tools` paths, `test-integration/`, and a
   `docs/experiments/` link missing its component-adjacent `tools/`

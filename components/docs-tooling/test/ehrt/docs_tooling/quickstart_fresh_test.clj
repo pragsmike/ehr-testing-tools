@@ -1,9 +1,9 @@
-(ns ehrt.tools.quickstart-fresh-test
+(ns ehrt.docs-tooling.quickstart-fresh-test
   "DOC-5: README.md's Quickstart fence and bin/quickstart-demo teach the
   identical commands, in the identical order (AUTHORS-GUIDE.md sec7 --
   a check proven able to fail before it's trusted to pass)."
   (:require [clojure.test :refer [deftest is testing]]
-            [ehrt.tools.quickstart-fresh :as qf])
+            [ehrt.docs-tooling.quickstart-fresh :as qf])
   (:import [java.io File]))
 
 (defn- temp-file!
@@ -90,4 +90,4 @@
     (is (not ok?))
     (is (= 1 (:index divergence)))
     (is (= "make test" (:readme divergence)))
-    (is (= :ehrt.tools.quickstart-fresh/missing (:script divergence)))))
+    (is (= :ehrt.docs-tooling.quickstart-fresh/missing (:script divergence)))))

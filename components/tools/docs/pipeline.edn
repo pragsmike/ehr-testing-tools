@@ -1,7 +1,7 @@
 ;; The pipeline's resource equations, as data (author-time source of
 ;; truth -- docs/notation.md defines the terms; docs/pipeline.md is
 ;; GENERATED from this file via `make pipeline`, never hand-edited).
-;; Validated against ehrt.tools.pipeline/Pipeline (Malli).
+;; Validated against ehrt.docs-tooling.pipeline/Pipeline (Malli).
 {:schema-version 1
  :stages
  [{:id :generate

@@ -9,7 +9,7 @@
   enumerated from source in DOC-1 Step 0 (see that session's commit
   history for the read-from-source inventory this spec is built from)."
   (:require [clojure.string :as str]
-            [ehrt.tools.interface :as tools]))
+            [ehrt.docs-tooling.interface :as docs-tooling]))
 
 (def exit-codes
   "0/1/2/3 per ADR-0004's ok/rejected/error mapping, extended by
@@ -251,12 +251,19 @@
   "-X-invokable: regenerates docs/cli.md from this namespace's own
   cli-spec (the Makefile's `cli-doc` target passes docs/cli.md, moved
   out of components/tools/docs/ to the root user path, ADR-0010).
-  Lives here, not in components/tools/docsgen, because only this base
-  can supply the real
-  spec without inverting Polylith's base -> component dependency
-  direction (ADR-0002's own deviation record on why docsgen.clj's
-  cli.md renderer moved out of requiring cli.help directly) --
-  ehrt.tools.interface/write-cli-md! does the actual rendering/spit,
-  this function only supplies :spec."
+  Lives here, not in components/docs-tooling/.../docsgen, because only
+  this base can supply the real spec without inverting Polylith's
+  base -> component dependency direction (ADR-0002's own deviation
+  record on why docsgen.clj's cli.md renderer moved out of requiring
+  cli.help directly) -- ehrt.docs-tooling.interface/write-cli-md! does
+  the actual rendering/spit, this function only supplies :spec.
+
+  Calls docs-tooling directly (docs-tooling split, 2026-07-31), not
+  through ehrt.tools.interface as before that split: routing this call
+  through tools as well as keeping it here would have made tools and
+  docs-tooling depend on each other -- a real circular component
+  dependency (docs-tooling.lint genuinely needs to reach back into
+  tools' own operator/framing/schema registries, in the other
+  direction) -- `poly check` Error 104, not a style preference."
   [{:keys [out]}]
-  (tools/write-cli-md! {:out out :spec cli-spec}))
+  (docs-tooling/write-cli-md! {:out out :spec cli-spec}))

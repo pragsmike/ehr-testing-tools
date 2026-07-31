@@ -221,7 +221,7 @@
 
 (def known-framings
   "Every framing kind decode/encode dispatch on below -- the in-repo
-  'registry' ehrt.tools.lint's own framing-codec classification
+  'registry' ehrt.docs-tooling.lint's own framing-codec classification
   (target 4, docs/source-sink-design.md Part VIII: 'the same shape as
   corpus.operators/corpus.canonicalizers') checks against via `lookup`."
   #{:file-per-item :er7-multi :ndjson :bundle-entries :mllp})
@@ -230,7 +230,9 @@
   "id (a framing keyword) x version (ignored -- framing kinds aren't
   versioned the way corpus.operators entries are) -> id itself when
   known-framings contains it, else nil. Registry-lookup shape for
-  ehrt.tools.lint's target-4 verification (registry-lookup-fns),
+  ehrt.docs-tooling.lint's target-4 verification (registry-lookup-fns,
+  reached via ehrt.tools.interface/framing-lookup since the docs-tooling
+  split, 2026-07-31),
   matching corpus.operators/canonical's own {id version} -> entry-or-
   nil contract."
   [id _version]

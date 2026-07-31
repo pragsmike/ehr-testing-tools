@@ -1,6 +1,6 @@
-(ns ehrt.tools.usecases
+(ns ehrt.docs-tooling.usecases
   "Schema and renderer for the use-cases catalog's own data
-  (docs/use-cases.edn, P6) -- a sibling to ehrt.tools.pipeline
+  (docs/use-cases.edn, P6) -- a sibling to ehrt.docs-tooling.pipeline
   (docs/pipeline.edn), same split: this namespace validates the
   authored EDN and assembles already-rendered equations/mermaid text
   into docs/use-cases.md (`make use-cases`); it has nothing to do with

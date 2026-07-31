@@ -30,6 +30,37 @@
   dominates cost) rather than a bare path, because a profile bundle
   (Π) is itself an input at this tier, not a fixed dependency.
 
+  docs-tooling split (2026-07-31, refactoring-review stage 1):
+  `docsgen`/`usecases`/`pipeline`/`quickstart-fresh`/`lint` moved to
+  their own component, `components/docs-tooling` -- dev-time-only
+  tooling, the sole source of the former `tools -> palgebra` src edge
+  (finding 14). This component no longer exports `write-cli-md!` at
+  all: `bases/cli/help.clj`'s own wrapper (a real caller, not a grep
+  false positive) now calls `ehrt.docs-tooling.interface/write-cli-md!`
+  directly instead of routing through here. The first attempt kept a
+  `write-cli-md!` re-export here, delegating to docs-tooling -- but
+  `docs-tooling.lint` genuinely reaches back into this component's own
+  `corpus.canonicalizers`/`corpus.framing`/`corpus.operators`/
+  `check.schemas` registries (illegal to reach directly once lint left
+  this brick, so it goes through the three exports below --
+  `lookup`/`framing-lookup`/`check-schemas-lookup`), a real
+  `docs-tooling -> tools` edge; combined with this component keeping
+  `write-cli-md!` (a `tools -> docs-tooling` edge), `poly check`
+  reported Error 104, a genuine circular *component* dependency --
+  Polylith forbids two bricks depending on each other regardless of
+  which specific namespaces create each edge, a stricter constraint
+  than a plain Clojure namespace-require cycle. Dropping the
+  `tools -> docs-tooling` direction (this paragraph's own resolution)
+  was the only way to break it while keeping `docs-tooling.lint`'s
+  edge, which is the one neither side can give up. The former
+  `ehrt.tools.docsgen`'s cli.md-rendering half moved to
+  `ehrt.docs-tooling.docsgen` untouched by any of this (it was already
+  pure, no dependency on this component either way); its
+  operators.md-rendering half stayed behind, renamed
+  `ehrt.tools.operators-doc` (its own Makefile target's name) --
+  unrelated to the cycle, staying because it genuinely needs
+  `corpus.operators`' live registry.
+
   Two short names collided across two source namespaces each
   (`lookup`/`register!` in both corpus.operators and corpus.generators,
   `resolve!` in both corpus.generator-source and corpus.spool-source)
@@ -47,9 +78,10 @@
             [ehrt.judge-fhir-official.interface :as judge-fhir-official]
             [ehrt.judge-v2-nist.interface :as judge-v2-nist]
             [ehrt.tools.check :as check]
+            [ehrt.tools.check.schemas :as schemas]
             [ehrt.tools.sim :as sim]
-            [ehrt.tools.docsgen :as docsgen]
             [ehrt.tools.corpus.canonicalizers :as canonicalizers]
+            [ehrt.tools.corpus.framing :as framing]
             [ehrt.tools.corpus.golden-comparison :as golden-comparison]
             [ehrt.tools.corpus.generators :as generators]
             [ehrt.tools.corpus.generator-source :as generator-source]
@@ -83,6 +115,13 @@
 (def Assertion check/Assertion)
 (def check-corpus check/check-corpus)
 
+;; check.schemas (docs-tooling split, 2026-07-31): docs-tooling.lint's
+;; own target-4 (in-repo registry) verification needs this registry's
+;; lookup now that lint no longer lives in this component -- qualified
+;; check-schemas-lookup, since bare lookup already means
+;; corpus.operators/lookup below.
+(def check-schemas-lookup schemas/lookup)
+
 ;; sim (ehrt.tools' own sim-consumer wrapper -- distinct from the
 ;; ehrt.sim component itself). ADR-0005: in-process as of 2026-07-28,
 ;; the ehr-sim-mount fulfillment of ADR-0012; no more available?/
@@ -97,6 +136,11 @@
 
 ;; corpus.golden-comparison
 (def compare-catalogs golden-comparison/compare-catalogs)
+
+;; corpus.framing (docs-tooling split, 2026-07-31): docs-tooling.lint's
+;; own target-4 verification for the framing-codec catalytic resource --
+;; qualified framing-lookup, same reason as check-schemas-lookup above.
+(def framing-lookup framing/lookup)
 
 ;; corpus.generators (collides with corpus.operators on lookup/register! --
 ;; qualified generators-*)
@@ -205,12 +249,14 @@
 ;; (ADR-0014) -- not a second splitter.
 (def split-er7-multi display/split-er7-multi)
 
-;; docsgen -- write-cli-md! is the one docsgen entry point a base needs
-;; cross-brick (bases/cli owns the real cli-spec, ADR-0002's own
-;; deviation record on why docsgen can no longer require cli.help
-;; directly; the discipline-parity session's own docsgen-regen restoration
-;; is the first live caller). write-operators-md!/write-equations-txt!/
-;; write-pipeline-md!/write-case-equations!/write-use-cases-md! are all
-;; invoked directly via `-X` from the Makefile, not required in source,
-;; so they don't need an interface export.
-(def write-cli-md! docsgen/write-cli-md!)
+;; docsgen split (2026-07-31): write-cli-md! moved out of this
+;; interface entirely, to ehrt.docs-tooling.interface -- bases/cli/
+;; help.clj now calls that directly (see this ns's own docstring for
+;; why this component can no longer re-export it without a circular
+;; component dependency). write-operators-md! stayed behind in this
+;; component (renamed ehrt.tools.operators-doc) since it genuinely
+;; needs corpus.operators' live registry; write-equations-txt!/
+;; write-pipeline-md!/write-case-equations!/write-use-cases-md!/
+;; lint-pipeline! are all invoked directly via `-X` from the Makefile,
+;; not required in source, so none of them need an interface export
+;; either.

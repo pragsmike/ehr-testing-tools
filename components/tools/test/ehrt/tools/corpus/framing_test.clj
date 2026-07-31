@@ -257,8 +257,10 @@
       (is (kernel/rejected? r))
       (is (= :malformed-mllp-frame (:category r))))))
 
-;; ---- lookup -- the registry-lookup shape ehrt.tools.lint's own
-;; target-4 framing-codec classification checks against (Step 7) ----
+;; ---- lookup -- the registry-lookup shape ehrt.docs-tooling.lint's own
+;; target-4 framing-codec classification checks against (Step 7, via
+;; ehrt.tools.interface/framing-lookup since the docs-tooling split,
+;; 2026-07-31) ----
 
 (deftest lookup-test
   (testing "every known framing kind resolves, :version ignored"

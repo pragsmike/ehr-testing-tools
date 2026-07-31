@@ -1,7 +1,7 @@
 ;; The use-cases catalog, as data (author-time source of truth --
 ;; docs/use-cases.md is GENERATED from this file via `make use-cases`,
 ;; never hand-edited). Validated against
-;; ehrt.tools.usecases/UseCases (Malli). Equations reuse
+;; ehrt.docs-tooling.usecases/UseCases (Malli). Equations reuse
 ;; docs/pipeline.edn's own stage names verbatim where a use case
 ;; consumes this repo's built pipeline; external stages ({external:
 ;; true}) name a black-box component the use case's own author fills

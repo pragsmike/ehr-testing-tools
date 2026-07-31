@@ -1,11 +1,11 @@
-(ns ehrt.tools.pipeline-test
+(ns ehrt.docs-tooling.pipeline-test
   "Tests the equation-data schema itself (docs/notation.md, pattern
   nursery #13) -- the notation eats the repo's own dogfood: if
   docs/pipeline.edn doesn't validate, the notation trial fails on its
   own terms."
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.edn :as edn]
-            [ehrt.tools.pipeline :as pipeline]))
+            [ehrt.docs-tooling.pipeline :as pipeline]))
 
 (def sample-stage
   {:id :generate

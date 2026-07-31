@@ -24,6 +24,16 @@
                                ;; v2-validation, direct (no CDC wrapper).
                                poly/judge-v2-nist        {:local/root "components/judge-v2-nist"}
                                poly/tools    {:local/root "components/tools"}
+                               ;; docs-tooling (2026-07-31, refactoring-
+                               ;; review split stage 1): dev-time-only
+                               ;; doc/lint tooling, extracted out of
+                               ;; tools. bases/cli/help.clj requires it
+                               ;; directly (write-cli-md!) -- NOT tools'
+                               ;; own interface, which deliberately does
+                               ;; not re-export it (a real circular
+                               ;; component dependency otherwise, see
+                               ;; ehrt.tools.interface's own docstring).
+                               poly/docs-tooling {:local/root "components/docs-tooling"}
                                poly/palgebra {:local/root "components/palgebra"}
                                poly/cli      {:local/root "bases/cli"}}}
 
@@ -35,6 +45,7 @@
                                   "components/judge-fhir-official/test"
                                   "components/judge-v2-nist/test"
                                   "components/tools/test"
+                                  "components/docs-tooling/test"
                                   "components/palgebra/test"
                                   "bases/cli/test"
                                   "projects/conformance/test"
@@ -56,6 +67,11 @@
                                 poly/judge-fhir-official  {:local/root "components/judge-fhir-official"}
                                 poly/judge-v2-nist        {:local/root "components/judge-v2-nist"}
                                 poly/tools    {:local/root "components/tools"}
+                                ;; docs-tooling (2026-07-31): bases/cli/
+                                ;; help.clj requires it directly
+                                ;; (write-cli-md!), so bin/ehrt's own
+                                ;; classpath needs it too.
+                                poly/docs-tooling {:local/root "components/docs-tooling"}
                                 poly/palgebra {:local/root "components/palgebra"}
                                 poly/cli      {:local/root "bases/cli"}
                                 ;; The `ehrt sim` mount (ADR-0004, ADR-0012

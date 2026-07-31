@@ -27,7 +27,14 @@
         ;; requires it too.
         poly/judge-v2-nist        {:local/root "../../components/judge-v2-nist"}
         poly/tools    {:local/root "../../components/tools"}
-        poly/palgebra {:local/root "../../components/palgebra"}
+        ;; poly/palgebra DROPPED here (2026-07-31, docs-tooling split,
+        ;; finding 14 re-derivation): tools' own src no longer requires
+        ;; palgebra at all (that edge moved to docs-tooling, which this
+        ;; project deliberately does not include -- AR-3 places
+        ;; docs-tooling's own tests in conformance only). Confirmed by
+        ;; grep: no file under this project's own test/ requires
+        ;; ehrt.palgebra either. If a future change reintroduces a real
+        ;; need, re-add it then, with its own earning edge named.
         poly/sim      {:local/root "../../components/sim"}
         org.clojure/clojure {:mvn/version "1.12.5"}}
 
