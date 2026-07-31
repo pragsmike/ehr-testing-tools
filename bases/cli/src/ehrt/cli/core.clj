@@ -278,7 +278,15 @@
   0 = every check passed; 1 = at least one check failed (a real,
   actionable gap); 2 = doctor couldn't even read the lockfile to know
   what to check (the same operational-error class as every other
-  lockfile-reading command here)."
+  lockfile-reading command here). Both non-ok outcomes carry a :hint
+  (2026-07-30 doctor-rendering session, the hint-family rule from the
+  cold-start UX session: no category of doctor output is ever a dead
+  end, even rendered by the generic fallback path). The exit-2 hint is
+  attached here, at this CLI-boundary construction site, rather than
+  inside kernel/artifact's shared read-lockfile -- default-lockfile-
+  artifacts' other callers (fetch, generate, version, gate v2-nist)
+  read the same lockfile and are untouched, out of this session's
+  scope."
   [{:keys [lockfile resolve-java-bin-fn resolve-artifact-fn git-config-fn os-name-fn]
     :or {resolve-java-bin-fn generate/resolve-java-bin
          resolve-artifact-fn artifact/resolve-artifact
@@ -286,7 +294,9 @@
          os-name-fn real-os-name}}]
   (let [artifacts-result (default-lockfile-artifacts lockfile)]
     (if-not (result/ok? artifacts-result)
-      artifacts-result
+      (update artifacts-result :payload assoc :hint
+              (str "couldn't read the lockfile at " (:path (:payload artifacts-result))
+                   " -- see SETUP.md section 1"))
       (let [artifacts (:payload artifacts-result)
             checks [(check-java-resolution artifacts resolve-java-bin-fn)
                     (check-artifact-cache artifacts resolve-artifact-fn)
@@ -295,7 +305,11 @@
             failing (filter #(= :fail (:status %)) checks)]
         (if (empty? failing)
           (result/ok {:checks checks})
-          (result/rejected :doctor-checks-failed {:checks checks}))))))
+          (result/rejected :doctor-checks-failed
+                            {:checks checks
+                             :hint (str (count failing) " check(s) failed: "
+                                        (str/join ", " (map :name failing))
+                                        " -- run: ehrt doctor --edn for the full per-check detail")}))))))
 
 (def ^:private format-file-extension
   "The file extension `ehrt corpus mutate` selects :input files by, and

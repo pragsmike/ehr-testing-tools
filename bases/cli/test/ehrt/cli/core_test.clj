@@ -579,7 +579,9 @@
     (is (result/rejected? r))
     (is (= :doctor-checks-failed (:category r)))
     (is (= 1 (cli/result->exit-code r)))
-    (is (= :fail (:status (first (:checks (:payload r))))))))
+    (is (= :fail (:status (first (:checks (:payload r))))))
+    (is (clojure.string/includes? (:hint (:payload r)) "--edn")
+        "the hint-family rule: no category of doctor output is ever a dead end")))
 
 (deftest doctor-command-uncached-artifact-fails-the-cache-check-test
   (let [art (sample-artifact)
@@ -624,7 +626,9 @@
   (let [r (cli/doctor-command {:lockfile "/no/such/lockfile.edn"})]
     (is (result/error? r))
     (is (= :not-found (:category r)))
-    (is (= 2 (cli/result->exit-code r)))))
+    (is (= 2 (cli/result->exit-code r)))
+    (is (clojure.string/includes? (:hint (:payload r)) "SETUP.md")
+        "the hint-family rule: no category of doctor output is ever a dead end")))
 
 (deftest doctor-command-real-fns-never-throw-test
   ;; The real, non-injected fns (git config/os name) must never throw --
@@ -1806,9 +1810,10 @@
            r))))
 
 (deftest doctor-command-checks-failed-envelope-pinned-against-before-state-test
-  ;; NOTE: this pin predates step 3's :hint addition (2026-07-30
-  ;; doctor-rendering session) -- updated there, not deleted, per this
-  ;; session's own decision procedure.
+  ;; Updated for step 3's :hint addition (2026-07-30 doctor-rendering
+  ;; session, notes/prompts/2026-07-30-ehr-testing-doctor-rendering.md)
+  ;; -- the pin's referent changed by ruling, same as the compat-test
+  ;; precedent; :hint is additive, everything else is the pre-hint pin.
   (let [lockfile (temp-lockfile [(sample-artifact)])
         r (cli/doctor-command
            {:lockfile lockfile
@@ -1821,14 +1826,18 @@
             :payload {:checks [{:name "java resolution (via the artifact registry)" :status :pass :detail "resolved: /fake/java"}
                                 {:name "artifact cache (per lockfile entry)" :status :pass :detail "1 artifact(s) cached"}
                                 {:name "git hooksPath wiring (contribution sessions only)" :status :pass :detail "core.hooksPath = .githooks"}
-                                {:name "platform" :status :fail :detail "Windows 11 -- native Windows is not supported; use WSL2 (SETUP.md section 2)"}]}}
+                                {:name "platform" :status :fail :detail "Windows 11 -- native Windows is not supported; use WSL2 (SETUP.md section 2)"}]
+                      :hint "1 check(s) failed: platform -- run: ehrt doctor --edn for the full per-check detail"}}
            r))))
 
 (deftest doctor-command-lockfile-unreadable-envelope-pinned-against-before-state-test
-  ;; NOTE: this pin predates step 3's :hint addition (2026-07-30
-  ;; doctor-rendering session) -- updated there, not deleted.
+  ;; Updated for step 3's :hint addition (2026-07-30 doctor-rendering
+  ;; session) -- attached at this CLI-boundary site (doctor-command),
+  ;; not inside kernel/artifact's shared read-lockfile.
   (let [r (cli/doctor-command {:lockfile "/no/such/lockfile.edn"})]
-    (is (= {:status :error :category :not-found :payload {:path "/no/such/lockfile.edn"}}
+    (is (= {:status :error :category :not-found
+            :payload {:path "/no/such/lockfile.edn"
+                      :hint "couldn't read the lockfile at /no/such/lockfile.edn -- see SETUP.md section 1"}}
            r))))
 
 ;; ---- ADR-0015: remedy hints and breadcrumbs, pretty-only, envelope
