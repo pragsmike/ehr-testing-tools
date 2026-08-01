@@ -27,7 +27,7 @@ help:
 	@echo "  quickstart-fresh - assert README.md's Quickstart fence and bin/quickstart-demo teach the identical commands, in the identical order (ehrt.docs-tooling.quickstart-fresh)"
 	@echo "  ci-parity    - fresh clone + cold artifact cache + the per-push lane: 'green as CI sees it', runnable locally (ADR-0004's own local-state-is-not-clone-state lesson)"
 	@echo "  pipeline     - regenerate docs/dev/pipeline.md from components/corpus/docs/pipeline.edn"
-	@echo "  use-cases    - regenerate docs/use-cases.md from components/corpus/docs/use-cases.edn"
+	@echo "  use-cases    - regenerate docs/use-cases.md (index) and docs/use-cases/*.md (per-case pages) from components/corpus/docs/use-cases.edn"
 	@echo "  operators-doc - regenerate docs/operators.md from the live operator registry"
 	@echo "  cli-doc      - regenerate docs/cli.md from bases/cli's own cli-spec"
 	@echo "  docsgen      - all four of the above"
@@ -58,17 +58,20 @@ pipeline:
 	clojure -X:dev ehrt.docs-tooling.pipeline/write-pipeline-md! :pipeline-edn '"components/corpus/docs/pipeline.edn"' :equations-txt '"target/pipeline-equations.txt"' :mermaid '"target/pipeline-flow.mermaid"' :out '"docs/dev/pipeline.md"'
 	@echo "Regenerated docs/dev/pipeline.md"
 
-# Regenerates docs/use-cases.md from components/corpus/docs/use-cases.edn
-# (source stays component-adjacent) -- one equations file + mermaid
-# diagram per named use case. Output moved to docs/ (user path, ADR-0010).
+# Regenerates docs/use-cases.md (the generated index) and
+# docs/use-cases/*.md (one standalone page per case) from
+# components/corpus/docs/use-cases.edn (source stays component-
+# adjacent) -- one equations file + mermaid diagram per named use
+# case. Output moved to docs/ (user path, ADR-0010); split into an
+# index plus per-case pages, migration item 14, 2026-08-02.
 use-cases:
-	@mkdir -p target/use-cases docs
+	@mkdir -p target/use-cases docs/use-cases
 	clojure -X:dev ehrt.docs-tooling.usecases/write-case-equations! :use-cases-edn '"components/corpus/docs/use-cases.edn"' :out-dir '"target/use-cases"'
 	@for f in target/use-cases/*.txt; do \
 		python3 components/palgebra/tools/resource_equations_to_mermaid.py "$$f" -o "$${f%.txt}.mermaid"; \
 	done
-	clojure -X:dev ehrt.docs-tooling.usecases/write-use-cases-md! :use-cases-edn '"components/corpus/docs/use-cases.edn"' :cases-dir '"target/use-cases"' :out '"docs/use-cases.md"'
-	@echo "Regenerated docs/use-cases.md"
+	clojure -X:dev ehrt.docs-tooling.usecases/write-use-cases! :use-cases-edn '"components/corpus/docs/use-cases.edn"' :cases-dir '"target/use-cases"' :index-out '"docs/use-cases.md"' :pages-dir '"docs/use-cases"'
+	@echo "Regenerated docs/use-cases.md and docs/use-cases/*.md"
 
 # Regenerates docs/operators.md (user path, ADR-0010) from the live
 # operator registry (requiring corpus.operators populates it at

@@ -33,12 +33,13 @@
 # exists to ratchet against.
 #
 # Generated-doc freshness (P1-2, 2026-07-31 review catch-up, finding
-# 10a): `make docsgen` regenerates docs/dev/pipeline.md, docs/use-cases.md,
-# docs/operators.md, and docs/cli.md from their component-adjacent EDN/
-# spec sources; `git diff --exit-code` on exactly those four files fails
-# the build the moment a source edit lands without its regen in the same
-# commit. `pipeline`/`use-cases` shell out to
-# components/palgebra/tools/resource_equations_to_mermaid.py, so
+# 10a): `make docsgen` regenerates docs/dev/pipeline.md, docs/use-cases.md
+# (the generated index) plus docs/use-cases/*.md (one page per case,
+# migration item 14, 2026-08-02), docs/operators.md, and docs/cli.md
+# from their component-adjacent EDN/spec sources; `git diff --exit-code`
+# on exactly those paths fails the build the moment a source edit lands
+# without its regen in the same commit. `pipeline`/`use-cases` shell out
+# to components/palgebra/tools/resource_equations_to_mermaid.py, so
 # actions/setup-python below is not incidental -- ubuntu-latest ships a
 # python3, but this pins the dependency explicitly rather than relying
 # on the runner image's own default.
@@ -80,4 +81,4 @@ jobs:
       - name: generated-doc freshness (regen + diff)
         run: |
           make docsgen
-          git diff --exit-code docs/dev/pipeline.md docs/use-cases.md docs/operators.md docs/cli.md
+          git diff --exit-code docs/dev/pipeline.md docs/use-cases.md docs/use-cases/ docs/operators.md docs/cli.md
