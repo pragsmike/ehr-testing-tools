@@ -4566,6 +4566,23 @@ standing conflict with this file's own `.claude/`-untracked ruling
 (carve-loss audit, 2026-07-28) — not resolved, referred back to the
 author. Full account: `.agents/session-records/2026-08-01-migration-session-1.md`.
 
+**Dated note, 2026-08-02 (migration session 2).** Four more items this
+ADR's own fence named as ruled-but-unexecuted landed this session, per
+the migration report's own sequencing
+(`.agents/plans/2026-08-01-migration-report.md` items 1/12/4/11, both
+"RULED 2026-08-02" blocks): `notes/prompts/` sealed (item 1 — the
+landed forward pointer confirmed as the whole migration, now pinned by
+`ehrt.docs-tooling.notes-prompts-frozen-test`) with its paired tripwire
+extension (item 12 — `stale_path_test.clj`'s third addendum, scoped by
+verb tense so historical narration and file citations stay legal); and
+the `notes/` index (item 4 — `notes/README.md`) landing together with
+the per-directory README-presence gate (item 11 —
+`ehrt.docs-tooling.readme-presence-test`, `notes/sim/`/`notes/tools/`
+exempt per ruling 6) and the 11 README files it required (`.agents/skills/README.md`
+plus one per skill, mirrored to `.claude/skills/`). Items 3(a), 5, 8,
+10, 14 remain fenced. Full account:
+`.agents/session-records/2026-08-02-migration-session-2.md`.
+
 ---
 
 ## ADR-0024 — `.claude/skills/` carved out of the untracked-`.claude/` ruling; mirror-with-gate lands the Claude Code discovery fix

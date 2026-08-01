@@ -5,10 +5,8 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (approved migration, sequenced — .agents/plans/2026-08-01-migration-report.md)
-- Items 1+12: notes/prompts tombstone ratified + tripwire extension (ruled 2026-08-01)
 - Item 3(a): sim register citation-stubs pass (citation-only ruled 2026-08-01)
-- Items 4+11: notes/ index + README-presence gate (frozen dirs exempt)
-- Item 10: index-completeness gate (after 1, 4, 11)
+- Item 10: index-completeness gate (after 1, 4, 11 — 1, 4, 11 now landed, see Done below)
 - Item 5: way-of-working → skills distillation (build-session incl. full ceremony,
   capture-session, extraction-stage, errata-sweep, session-prompt) — after item 9
 - Item 8: .agents/reading-sets.edn, placeholder budgets = actuals (charter R-D)
@@ -55,3 +53,13 @@ per item; done items move to the bottom of their section with a date and sha.
 - Item 9: `.claude/skills/` mirror-with-gate lands (ADR-0024); end-to-end proof
   and the /mnt/c fast-forward are AUTHOR ACTION, see Externals above (a9e5be6,
   8df3cf3)
+
+## Done (this session, 2026-08-02, migration session 2)
+- Items 1+12: `notes/prompts/` sealed — `ehrt.docs-tooling.notes-prompts-frozen-test`
+  pins the 29-file set, `stale_path_test.clj` gains the archive-instruction
+  tripwire (both red→green live-proven) (6c3c494)
+- Items 4+11: `notes/README.md` lands (six top-level files + three subdirs
+  indexed, zone-marked); `.agents/skills/README.md` plus all 10 skill-directory
+  READMEs land (mirrored to `.claude/skills/`); `ehrt.docs-tooling.readme-presence-test`
+  enforces both trees going forward, `notes/sim/`/`notes/tools/` exempt
+  (ruling 6) (sha: this checkpoint's own, filled in by the session record)

@@ -60,7 +60,16 @@ Fourteen items below: nine are charter §4 table rows, five are gates/artifacts 
 
 **1. `notes/prompts/*` → `.agents/prompts/*` (historical migration)**
 
-Status: not started beyond the forward pointer (D4). All 29 files stay at `notes/prompts/`; only prompts from sessions after 2026-08-01 land in `.agents/prompts/` (2 there now).
+**RULED 2026-08-02 (migration session 2): executed.** The second
+reading named below is ratified and sealed: the 29 files never
+physically move; the landed forward pointer already was the whole
+migration. `ehrt.docs-tooling.notes-prompts-frozen-test` now pins the
+exact 29-file set as a per-push gate — any future addition, removal, or
+rename to `notes/prompts/` fails the build (`README.md` itself stays
+unpinned by content, only by existence). See item 12 below for the
+paired tripwire extension.
+
+Status (as assessed migration session 1, superseded above): not started beyond the forward pointer (D4). All 29 files stay at `notes/prompts/`; only prompts from sessions after 2026-08-01 land in `.agents/prompts/` (2 there now).
 
 Work: charter's own instruction is explicit and narrow — "only this session's own new prompt lands in `.agents/prompts/`; the existing `notes/prompts/*.md` files stay where they are" (ADR-0023's fence). Re-reading the charter table itself ("Move with history; index both READMEs; retire the `notes/prompts` convention with a tombstone README") against ADR-0023's fence text, these disagree on whether the 29 files ever physically move. **Open question:** does "move with history" mean `git mv` all 29 files (preserving blame) with a tombstone left at `notes/prompts/README.md`, or does it mean what already happened — new prompts only, old ones frozen in place with a pointer, and "tombstone" describes the *README*, not the directory's contents? The forward pointer already landed under the second reading. Recommend ratifying the second reading (matches precedent: sim's and tools' own histories were never physically relocated file-by-file either, R8) unless the author wants full history-preserving moves.
 
@@ -86,7 +95,16 @@ Session size: **one session** under reading (a); likely **two** under reading (b
 
 **4. `notes/` audits and characterizations — indexed**
 
-Status: **not started.** `notes/` itself has no `README.md`. Six loose files sit at its top level unindexed: `2026-07-30-refactoring-review.md`, `carve-loss-audit.md`, `discipline-parity-audit.md`, `docs-audit.md`, `judge-engine-extraction-characterization.md`, `storefront-parity-audit.md`. `notes/prompts/` has its own README; `notes/sim/` and `notes/tools/` do not (both frozen, but the per-directory README-presence gate (§5.3) would still require one — even a one-line "frozen provenance, see X" stub).
+**RULED 2026-08-02 (migration session 2): executed.** `notes/README.md`
+lands, indexing all six top-level files plus the three subdirectories,
+zone-marked (current-truth registers / historical audits / frozen
+provenance) per R-C's two-zone rule, naming
+`2026-07-30-refactoring-review.md` as the origin of the current
+refactoring arc, and stating explicitly that open work lives in
+`.agents/plans/roadmap.md`, not here. No README stub landed for
+`notes/sim/`/`notes/tools/` — item 11's own ruling (below) exempts them.
+
+Status (as assessed migration session 1, superseded above): **not started.** `notes/` itself has no `README.md`. Six loose files sit at its top level unindexed: `2026-07-30-refactoring-review.md`, `carve-loss-audit.md`, `discipline-parity-audit.md`, `docs-audit.md`, `judge-engine-extraction-characterization.md`, `storefront-parity-audit.md`. `notes/prompts/` has its own README; `notes/sim/` and `notes/tools/` do not (both frozen, but the per-directory README-presence gate (§5.3) would still require one — even a one-line "frozen provenance, see X" stub).
 
 Work: one `notes/README.md` indexing the six top-level files plus the three subdirectories (`prompts/`, `sim/`, `tools/`), marked historical/archive per R-C's two-zone rule; one-line README stubs for `notes/sim/` and `notes/tools/` if the README-presence gate is built to require them uniformly (see item 11's own open question about whether frozen dirs are exempt).
 
@@ -197,7 +215,18 @@ Session size: **one session.**
 
 **11. Per-directory README presence (`.agents/` and `notes/` subdirectories)**
 
-Status: **not started; currently 0 of 10 `.agents/skills/*` subdirectories have a README** (confirmed this session — `committee`, `find-skills`, `handoff`, `probe`, `repo-adaptation`, `review`, `scenarios`, `shared-skill-layout`, `string-diagram`, `wsl-windows-git-hygiene` all lack one), and neither do `notes/sim/` or `notes/tools/` (both frozen). `notes/prompts/` already has one.
+**RULED 2026-08-02 (migration session 2): executed.** Open question
+answered per ruling 6 (already recorded below): `notes/sim/` and
+`notes/tools/` are exempt. `.agents/skills/README.md` plus all 10
+skill-directory READMEs landed (mirrored into `.claude/skills/` too,
+keeping `skill-mirror-currency-test` green); `notes/README.md` covers
+item 4's own indexing need for `notes/`'s three subdirectories.
+`ehrt.docs-tooling.readme-presence-test` now enforces this as a
+per-push gate — every direct subdirectory of `.agents/`, of
+`.agents/skills/`, and of `notes/` must carry a `README.md`, except the
+ruling-6 pair.
+
+Status (as assessed migration session 1, superseded above): **not started; currently 0 of 10 `.agents/skills/*` subdirectories have a README** (confirmed this session — `committee`, `find-skills`, `handoff`, `probe`, `repo-adaptation`, `review`, `scenarios`, `shared-skill-layout`, `string-diagram`, `wsl-windows-git-hygiene` all lack one), and neither do `notes/sim/` or `notes/tools/` (both frozen). `notes/prompts/` already has one.
 
 **Open question:** does this gate apply to frozen/tombstone directories (`notes/sim/`, `notes/tools/`), or are they exempt as historical, already self-describing via their own frozen-header text? Recommend exempt with a one-line stub only if the index-completeness test (item 10) needs a real file to point at — otherwise skip them, since forcing a README onto a directory whose own charter is "byte-identical, never rewritten" is mildly in tension with that promise.
 
@@ -209,7 +238,16 @@ Session size: **one session**, bundled naturally with item 4 (both are "write sh
 
 **12. Tripwire extension: `notes/prompts/`**
 
-Status: **half done.** `positioning.md` is already in `stale_path_test.clj`'s forbidden list (confirmed, lines 36–46/70/89–91) — that half of §5.5 is closed. `notes/prompts/` is not yet in any forbidden-reference list, and per the existing test's own documented scope (it deliberately never reads `notes/ADRs.md`, `notes/prompts/`, or `.agents/session-records/`, since those "narrate history and legitimately cite the old names"), adding `notes/prompts/` as forbidden would need to be scoped to *current-tense instructional* text only (`AGENTS.md`, `docs/**/*.md`, skill files) — the same scope the existing test already uses for `docs/`.
+**RULED 2026-08-02 (migration session 2): executed.** `stale_path_test.clj`
+gains a third addendum forbidding present-tense/imperative instruction
+that work archives to `notes/prompts/`, scoped by verb tense (not the
+bare path token) so legitimate historical narration
+(`docs/dev/way-of-working.md`'s own past-participle reference) and
+citations of a specific archived file both stay legal. Scanned over
+`docs/**/*.md` + `AGENTS.md` + every `.agents/skills/**/SKILL.md`, per
+this item's own scope note below.
+
+Status (as assessed migration session 1, superseded above): **half done.** `positioning.md` is already in `stale_path_test.clj`'s forbidden list (confirmed, lines 36–46/70/89–91) — that half of §5.5 is closed. `notes/prompts/` is not yet in any forbidden-reference list, and per the existing test's own documented scope (it deliberately never reads `notes/ADRs.md`, `notes/prompts/`, or `.agents/session-records/`, since those "narrate history and legitimately cite the old names"), adding `notes/prompts/` as forbidden would need to be scoped to *current-tense instructional* text only (`AGENTS.md`, `docs/**/*.md`, skill files) — the same scope the existing test already uses for `docs/`.
 
 Work: extend `stale_path_test.clj`'s (or a sibling test's) scan to flag `notes/prompts/` appearing in current-tense instructional prose, once item 1's own open question (does the directory retire, or just get a pointer?) is settled — this gate's exact shape depends on that answer.
 
@@ -280,6 +318,19 @@ The author ruled all eight open questions above before this session began work. 
 8. "Use-cases split" = review P3-1 (`notes/2026-07-30-refactoring-review.md` §5.2): split `docs/use-cases.md` at the `use-cases.edn` source into index + per-use-case files, generation/anchors/freshness-gate intact. Item 14 is hereby scoped.
 
 This session (per its own author rulings AR-1..AR-5) executed items 9 (blocked, see above), 6, 7, and 13, and left items 1, 3(a), 4 (the underlying work, not the roster path-check), 5, 8, 10, 11, 12, 14 fenced for later sessions (AR-5) — see `.agents/session-records/2026-08-01-migration-session-1.md` for the full account.
+
+## RULED 2026-08-02 (migration session 2)
+
+This session (per its own author rulings AR-1..AR-5) executed items 1
+and 12 together (`notes/prompts/` sealed: file-list gate,
+archive-instruction tripwire) and items 4 and 11 together (`notes/README.md`,
+the `.agents/skills/` README-presence gate and its 11 missing READMEs),
+and left items 3(a), 5, 8, 10, 14 fenced for later sessions (AR-5) — see
+`.agents/session-records/2026-08-02-migration-session-2.md` for the
+full account, including the AR-1(b) sweep finding (neither
+`docs/dev/way-of-working.md` nor `AUTHORS-GUIDE.md` needed repointing —
+already correct) and the README survey (11 of 18 required directories
+were missing one at session start).
 
 ## Urgent items
 
