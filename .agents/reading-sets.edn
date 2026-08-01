@@ -32,7 +32,7 @@
           ".agents/memory/README.md"
           ;; the living plan -- what's landed, what's next, milestone grain
           ".agents/plans/roadmap.md"]
-  :budget-lines 523}
+  :budget-lines 538}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one

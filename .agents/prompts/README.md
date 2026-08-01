@@ -32,3 +32,4 @@ Files in this directory:
   * 2026-08-01-migration-session-1.md
   * 2026-08-02-migration-session-2.md
   * 2026-08-02-migration-session-3.md
+  * 2026-08-02-migration-session-4.md

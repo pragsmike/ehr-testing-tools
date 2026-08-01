@@ -7,14 +7,9 @@ per item; done items move to the bottom of their section with a date and sha.
 ## Now (approved migration, sequenced — .agents/plans/2026-08-01-migration-report.md)
 - Item 5: way-of-working → skills distillation (build-session incl. full ceremony,
   capture-session, extraction-stage, errata-sweep, session-prompt) — after item 9
-- Item 8: .agents/reading-sets.edn, placeholder budgets = actuals (charter R-D)
 - Item 14: use-cases split per review P3-1 (notes/2026-07-30-refactoring-review.md §5.2)
 
 ## Next (backlog, no session scheduled)
-- components/sim/src bare-ADR-docstring sweep: many bare, mis-qualified
-  `ADR-NNNN` references beyond the ones migration session 3's own citation-stubs
-  pass flagged and fixed — `engine.clj` alone has 40+ remaining — a dedicated
-  sweep, not attempted exhaustively in that session (2026-08-02 finding)
 - Pairing-as-data (review P3-3): mutate↔judge conviction registry — design pass in
   the design channel first; vocabulary is load-bearing
 - Storefront demo fixture: minimal clean-gating FHIR fixture so the README's mutate
@@ -75,3 +70,21 @@ per item; done items move to the bottom of their section with a date and sha.
   at their live restatement site (4 were miscitations, fixed not just
   supplemented); `notes/facts-register.md` F20 stub names the two-file
   topology; full accounting in the session record (54ab3b6)
+
+## Done (this session, 2026-08-02, migration session 4)
+- Item 8: `.agents/reading-sets.edn` lands — five named sets, each path
+  justified inline, gated by `ehrt.docs-tooling.reading-set-budget-test`
+  (ghost-path + budget checks, both red→green live-proven); every
+  `:budget-lines` is this session's own measured actual, corrected once
+  more for this section's own weight (see the session record's "it
+  caught itself twice" note): `:onboarding` 538, `:corpus` 1519, `:sim`
+  574, `:judge` 644, `:docs` 433 — the baseline the author's future
+  budget ruling (charter §6) now has a real number to cite (ab679c9)
+- `components/sim/src`/`test` bare-`ADR-NNNN` docstring sweep (the "Next"
+  backlog item migration session 3 named): 151 bare references across 39
+  files classified and requalified — 149 to `sim/ADR-NNNN`, 1 to
+  `tools/ADR-0015` (a cross-repo miscitation this sweep discovered), 1
+  left deliberately bare (already correctly cites the live register);
+  two further wrong-file-path miscitations also fixed; docstring/comment/
+  fixture-remark edits only, zero behavior change; full one-to-one
+  accounting in the session record (72f5542)

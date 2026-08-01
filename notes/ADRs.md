@@ -4638,6 +4638,16 @@ against the pre-sweep baseline). Items 5, 14 remain fenced. Full
 account, including the complete one-to-one accounting table:
 `.agents/session-records/2026-08-02-migration-session-4.md`.
 
+**Correction, same day.** The `:onboarding` figure above (523) was
+measured before this same session's own C3 (this dated note, the
+session record, and the roadmap's "Done" entries for this session,
+below) added lines to `.agents/plans/roadmap.md` — itself one of
+`:onboarding`'s own cited paths. Measured actual after C3:
+**`:onboarding` 538** (the other four sets are unaffected; none of them
+cite `roadmap.md`). `.agents/reading-sets.edn` carries the corrected
+number; this note is a same-session fix-forward, not an edit to the
+paragraph above.
+
 ---
 
 ## ADR-0024 — `.claude/skills/` carved out of the untracked-`.claude/` ruling; mirror-with-gate lands the Claude Code discovery fix
