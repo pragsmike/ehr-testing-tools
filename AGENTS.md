@@ -201,4 +201,11 @@ library in its own right.
 
 Untracked, deliberately (carve-loss audit, author-ruled 2026-07-28: "don't
 commit `.claude/settings.json`... `.claude/` stays untracked"). Do not
-`git add` anything under it.
+`git add` anything under it — **except `.claude/skills/`**, carved out
+2026-08-01 (ADR-0024, `notes/ADRs.md`): a real-file mirror of
+`.agents/skills/`, tracked because Claude Code does not read
+`.agents/skills/` for skill discovery, only `.claude/skills/<name>/SKILL.md`.
+Edit skills at their canonical home, `.agents/skills/`, never in
+`.claude/skills/` directly — the mirror is generated/copied, not
+independently authored, and `ehrt.docs-tooling.skill-mirror-currency-test`
+fails the build if the two drift.

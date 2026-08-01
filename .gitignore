@@ -12,9 +12,17 @@ out/
 .portal/
 development/src/dev/scratch*
 
-# Claude Code local state -- author-ruled untracked, whole directory
-# (carve-loss audit, 2026-07-28: distinct from ehr-testing-tools' own
-# pre-carve convention, which tracked .claude/settings.json as a shared
-# allowlist and ignored only settings.local.json; this workspace ignores
-# .claude/ entirely -- notes/ADRs.md ADR-0006).
-.claude/
+# Claude Code local state -- author-ruled untracked (carve-loss audit,
+# 2026-07-28: distinct from ehr-testing-tools' own pre-carve convention,
+# which tracked .claude/settings.json as a shared allowlist and ignored
+# only settings.local.json; this workspace ignores .claude/ entirely --
+# notes/ADRs.md ADR-0006). CARVE-OUT 2026-08-01 (ADR-0024): .claude/skills/
+# is tracked -- a real-file mirror of .agents/skills/, gated by
+# ehrt.docs-tooling.skill-mirror-currency-test, needed for Claude Code's
+# own skill discovery (which does not read .agents/skills/). The parent
+# pattern must be .claude/* (not .claude/) for the negations below to
+# take effect -- git will not recurse into an excluded directory to
+# evaluate re-include rules for its own contents.
+.claude/*
+!.claude/skills/
+!.claude/skills/**
