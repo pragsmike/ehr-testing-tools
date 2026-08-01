@@ -1,5 +1,11 @@
 # 2026-08-01 — Agent-UX Charter (design doc for author ruling)
 
+**Status (2026-08-01): adopted; capture executed by this commit.** See
+`notes/ADRs.md` ADR-0023 for the adoption record, its §7 sequencing
+amendment (capture ran first, ahead of items 1–3), and the fence naming
+what this session deliberately did not execute. This file stays the
+spec; it is not moved or archived by adoption.
+
 Status: DRAFT for ruling. On acceptance this is captured into the repo (ADR + docs)
 via a capture session, then implemented via build sessions. Companion rulings already
 made: use-cases split (yes); notes mapping (yes, per §4); register collapse (yes);

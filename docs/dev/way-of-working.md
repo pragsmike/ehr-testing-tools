@@ -42,6 +42,13 @@ time delegation possible.** Concretely:
   rewrite of the default for the next one. `AUTHORS-GUIDE.md` §1 has
   the exact boundary.
 
+  **Amendment, 2026-08-01 (R-F ratified, `notes/ADRs.md` ADR-0007's
+  own dated amendment):** the default named above is superseded in
+  place — R30 (commit-and-push-at-each-checkpoint, unattended) is now
+  the standing default; prepare-only is the exception a session's own
+  prompt must state. `AUTHORS-GUIDE.md` §1 and ADR-0007's own amendment
+  carry the full detail.
+
 ## 2. Fix-forward with disclosure (ADR-0001, R10)
 
 **When a step's stated premise doesn't hold against the live tree, the

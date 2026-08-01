@@ -38,6 +38,19 @@ mode its own prompt states; no session's mode carries forward
 silently. Tags and repo-level `gh` mutations (create/delete/settings/
 visibility) are never delegated by either mode — see `AGENTS.md`.
 
+**Amendment, 2026-08-01 (agent-UX charter, R-F ratified,
+`notes/ADRs.md` ADR-0007's own dated amendment).** The default
+described above is superseded in place: R30-mode (commit and push at
+each checkpoint, unattended) is now the *standing default* a session
+runs under absent contrary instruction; prepare-only (R6's shape,
+described above) is now the exception a session's own prompt must
+state explicitly — the inverse of the scoping described above. The
+"next session starts back at whichever mode its own prompt states"
+rule is unchanged: a session can still opt back into prepare-only by
+saying so. ADR-0007's own amendment carries the full list of ceremony
+safeguards this default now carries (staged-scope check, personal-info
+scan, commit-message-via-file, session record before final push).
+
 **Reaching WSL from a Windows-launched agent session.** If your shell
 is Git Bash/MINGW64, do not run git natively and do not invoke
 `wsl.exe <command>` inline with untrusted interpolation — MSYS path

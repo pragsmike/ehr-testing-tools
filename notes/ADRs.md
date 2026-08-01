@@ -385,6 +385,27 @@ silently resolved by whatever shape was locally convenient.
   prompt archived at
   `notes/prompts/2026-08-01-ehr-testing-storefront-and-ruled-literals.md`.
 
+### Amendments (2026-08-01, agent-ux capture session — fix-forward, dated, not a revert)
+
+- **R1's repo name reconciled with the actual remote.** R1 states
+  "Workspace repo is `ehr-testing`." The workspace was in fact landed,
+  and has run its entire history, on the pre-existing
+  `pragsmike/ehr-testing-tools` remote (`git remote -v`, confirmed this
+  session) — the bootstrap session merged sim and tools into the
+  `ehr-testing-tools` repo rather than a freshly named `ehr-testing`
+  one, and no session since has renamed the GitHub repo or corrected
+  R1's own text. Top namespace `ehrt` (R1's second sentence) is
+  unaffected and correct as landed. Recorded as measured, not
+  corrected by a repo rename — every commit URL and citation in this
+  workspace's history already assumes `ehr-testing-tools`, so
+  reconciling the record to match reality is the fix-forward move, not
+  renaming the remote to match a plan that was never executed. R1's
+  own original text stands unedited above, historical record of what
+  was ruled; this amendment is the correction. `ehr-testing` remains
+  the workspace's own conceptual/family name (`AGENTS.md`'s "Project:"
+  line) — that usage is unaffected, since it names the multi-repo
+  family this workspace consolidates, not the git remote.
+
 ---
 
 ## ADR-0002 — Land `ehr-testing-tools`: components/tools + components/palgebra + bases/ehr-cli, close H1/H2/H3
@@ -1543,6 +1564,38 @@ this file otherwise holds every Accepted decision to.
 None — this record is itself the first act taken under R30 (its own
 commit is also its own push), so there is nothing yet to disclose
 about R30's application beyond this record's own existence.
+
+### Amendments (2026-08-01, agent-ux capture session — fix-forward, dated, not a revert)
+
+- **R-F ratified: R30-mode becomes the standing ceremony default.**
+  The agent-UX charter (`.agents/plans/2026-08-01-agent-ux-charter.md`
+  §3, R-F) proposed and the author ruled: commit-and-push-at-each-
+  checkpoint, unattended, is now the default a session runs under
+  absent contrary instruction; "prepare-only" (R6's own shape) becomes
+  the exception a session's own prompt must state explicitly — the
+  inverse of R30's original scoping above ("a session the author has
+  told, explicitly, in that session's own chat, to operate this way").
+  R6's and R30's own text above stand unedited; this is a dated
+  amendment, not a rewrite of either. The ceremony's codified
+  safeguards, drawn from this week's actual practice rather than
+  invented fresh: staged scope must match the session's own file list
+  (`git diff --cached --stat`, reviewed before every commit, per
+  `AUTHORS-GUIDE.md` §1's existing "Staging hygiene" ritual); a
+  personal-info/secrets scan of staged content before each commit
+  (gitleaks already gates this at push per ADR-0003 — the scan here is
+  the same discipline applied earlier, at stage time, not a new gate);
+  the commit message written to a file, never inlined through the WSL
+  wrapper (the heredoc hazard `AUTHORS-GUIDE.md` §1 already names); the
+  session record (`.agents/session-records/`) written before the
+  session's own final push, not after; hooks remain the backstop, not
+  the only defense. **AUTHOR ACTION checkpoints stay author-only in
+  every mode** — R30 was never a grant over tags or repo-level `gh`
+  mutations, and this amendment doesn't extend it into one.
+  `AUTHORS-GUIDE.md` §1 and `docs/dev/way-of-working.md` §1 carry
+  matching dated notes; `AGENTS.md`'s own restatement of this rule is
+  updated directly as part of this same capture session's AGENTS.md
+  restructure (current-tense operational text, not a historical record
+  like this file — no separate amendment note needed there).
 
 ---
 
@@ -4401,3 +4454,80 @@ record's own trial-UX work happens to reference gate-loop baselines at
 all (it does not, directly).
 
 **Status.** Accepted (author-directed, autonomous session per R30), 2026-07-30.
+
+---
+
+## ADR-0023 — Agent-UX charter adopted: capture executed, R-F enacted, sequencing amended
+
+**Status:** Accepted (author-ratified via the charter's own ruling
+process, `.agents/plans/2026-08-01-agent-ux-charter.md`), 2026-08-01.
+
+### Context
+
+The agent-UX charter (`.agents/plans/2026-08-01-agent-ux-charter.md`)
+diagnosed an enforcement-asymmetry pattern across this workspace's own
+`.agents/` machinery — gated surfaces (ADR discipline, facts-register,
+tripwires) stayed true; ungated ones (the session-record ritual, the
+design channel's own preflight reading) rotted at session velocity,
+specifically the eight 2026-07-30..08-01 sessions that archived prompts
+but never wrote `.agents/session-records/` entries (charter §2). The
+charter's rules (§3, R-A through R-F) and target structure (§4) were
+ratified by the author; this ADR is the capture session's own record of
+what landed, per the charter's own §7 sequencing.
+
+### Decision
+
+**The charter is adopted in full** — all six rules (R-A–R-F) ruled —
+this session (the "capture session," charter §7 item 4) executing the
+capture step only: this ADR, the `AGENTS.md` restructure, the
+`positioning.md` → `AUDIENCES.md` rename, and the ADR-0001 R1 naming
+fix. Charter §7 items 1–3 and 5–6 are named below, fenced, not executed
+here.
+
+**Sequencing amendment to the charter's own §7 (design-channel ruling,
+recorded here per the charter's own request).** The charter's written
+sequencing put this capture step fourth, after the use-cases split (1),
+the skill-adaptation pass (2), and the migration report (3). The design
+channel amended this ordering before execution: **capture runs first**,
+because the ceremony flip (R-F) and the record ritual (R-A) should
+govern every subsequent session, *including* those three — running them
+under the old, ungated ceremony first would repeat exactly the failure
+mode (charter §2.1) this charter exists to close. Items 1–3 now follow
+capture rather than precede it; §7's own numbered list is superseded in
+place by this ordering, not rewritten — the charter file itself gains a
+dated status line recording it (see below).
+
+**R-F enacted.** `notes/ADRs.md` ADR-0007 carries its own dated
+amendment (this same commit) ratifying R-F: R30-mode is now the
+standing ceremony default, prepare-only the stated exception.
+`AUTHORS-GUIDE.md` §1 and `docs/dev/way-of-working.md` §1 carry matching
+dated notes.
+
+**Charter status line.** `.agents/plans/2026-08-01-agent-ux-charter.md`
+gains a one-line status header: "adopted; capture executed `<sha>`" —
+plans stay in `plans/`, not moved or archived; the charter document
+itself remains the spec R-A through R-D and R-E point back to.
+
+### Fence — ruled but deliberately not executed this session (AR-7)
+
+Named here as ruled-but-unexecuted, not silently deferred: the register
+merge (`notes/sim/ADRs.md`/`notes/sim/facts-register.md` origin-tagged
+import into the live files); the `notes/prompts/` → `.agents/prompts/`
+historical migration (only this session's own new prompt lands in
+`.agents/prompts/`; the existing `notes/prompts/*.md` files stay where
+they are, with a one-line forward pointer added to their own README);
+the index-completeness, reading-set budget, and per-directory
+README-presence gates (charter §5 items 1–3); the
+`.agents/reading-sets.edn` file itself; the repo-adaptation skill's
+three-way diff and adaptation pass; the use-cases split; the
+`agent/scenario-roster.md` → `.agents/skills/scenarios/` merge; and
+filling `.agents/memory/`'s or `.agents/plans/`'s remaining stub content
+beyond what this session's own record adds. This session changes law
+and signage, not residence — heavy migration work is explicitly out of
+scope (charter §7, sequencing amendment above).
+
+### Deviation record
+
+None.
+
+---
