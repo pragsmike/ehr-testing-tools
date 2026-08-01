@@ -36,3 +36,4 @@ tools' own pre-merge plans stay frozen at `notes/sim/agents/plans/` and
 Files in this directory:
 
   * 2026-08-01-agent-ux-charter.md
+  * 2026-08-01-migration-report.md
