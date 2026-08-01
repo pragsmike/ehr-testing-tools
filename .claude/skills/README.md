@@ -4,9 +4,22 @@ The sim/tools union (ADR-0005), canonical here — edit at this location,
 never in the mirror described below. One line each; see each skill's
 own `SKILL.md` for the full trigger conditions and workflow.
 
+- **[`build-session/`](build-session/SKILL.md)** — this repo's
+  checkpointed commit/push ceremony: WSL-only git, staging hygiene,
+  commit-message-via-file, gitleaks, post-push verification, and the
+  COMMIT/AUTHOR-ACTION model.
+- **[`capture-session/`](capture-session/SKILL.md)** — turns a ratified
+  decision into `notes/ADRs.md` law: provenance tags, dated amendments
+  over rewrites, same-commit doc updates, and a named fence.
 - **[`committee/`](committee/SKILL.md)** — adversarial committee
   deliberation over a decision space; writes a dated deliberation
   record.
+- **[`errata-sweep/`](errata-sweep/SKILL.md)** — fixes stale or
+  contradicted doc claims: the citation-vs-instruction distinction,
+  one-to-one accounting, and a co-landed tripwire.
+- **[`extraction-stage/`](extraction-stage/SKILL.md)** — the
+  characterize→extract→verify→records discipline for splitting a
+  Polylith brick with zero behavior change, proven byte-for-byte.
 - **[`find-skills/`](find-skills/SKILL.md)** — helps discover and
   install agent skills when asked "is there a skill for X."
 - **[`handoff/`](handoff/SKILL.md)** — generates a session handoff
@@ -22,6 +35,9 @@ own `SKILL.md` for the full trigger conditions and workflow.
   deliberation transcript against the five core rubrics.
 - **[`scenarios/`](scenarios/SKILL.md)** — divergent scenario generation
   (the fan operation) over a situation, using the bundled roster.
+- **[`session-prompt/`](session-prompt/SKILL.md)** — the design
+  channel's own preflight for authoring a session prompt: re-read the
+  repo at a stated HEAD, then the canonical prompt anatomy.
 - **[`shared-skill-layout/`](shared-skill-layout/SKILL.md)** —
   diagnoses/standardizes where a skill should live across Windows-native
   and WSL agent environments.
