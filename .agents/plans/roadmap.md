@@ -74,5 +74,4 @@ per item; done items move to the bottom of their section with a date and sha.
 - Item 3(a): sim citation-stubs pass, reading (a) — 8 F-rows and 10 ADRs cited
   at their live restatement site (4 were miscitations, fixed not just
   supplemented); `notes/facts-register.md` F20 stub names the two-file
-  topology; full accounting in the session record (sha: this checkpoint's own,
-  filled in by the session record)
+  topology; full accounting in the session record (54ab3b6)
