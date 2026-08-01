@@ -30,7 +30,20 @@
   are exempt and stripped before matching, because the Maturity
   table's own Evidence-column hrefs legitimately point at files named
   `EXP-A4-results.md` -- a citation, not a leak -- and an editorial
-  HTML comment is invisible prose, not storefront-facing text."
+  HTML comment is invisible prose, not storefront-facing text.
+
+  2026-08-01 addendum (agent-ux capture session, `notes/ADRs.md`
+  ADR-0023, AR-4): `positioning.md` joins the forbidden-string family
+  above -- `docs/dev/positioning.md` was renamed `docs/dev/AUDIENCES.md`
+  this session when agents joined its audience register as an explicit
+  class, and every live citation across `docs/` was swept to the new
+  name. A stray `positioning.md` reference surviving anywhere under
+  `docs/**/*.md` is by construction stale -- the file no longer exists
+  at that path -- so it is forbidden outright, the same denylist shape
+  as `ehrt.tools.` above, not scoped to a prefix or suffix pattern.
+  `notes/`'s own historical citations of the old name (pre-rename
+  prompts, ADR context) are untouched, out of this test's scan scope,
+  same as every other entry in this family."
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.java.io :as io]
             [clojure.string :as str]))
@@ -53,7 +66,9 @@
     (re-find #"(?<!corpus/)docs/experiments/" content)
     (conj :docs-experiments-missing-corpus-prefix)
     (str/includes? content "ehrt.tools.")
-    (conj :retired-ehrt-tools-namespace)))
+    (conj :retired-ehrt-tools-namespace)
+    (str/includes? content "positioning.md")
+    (conj :retired-positioning-filename)))
 
 (deftest no-stale-path-family-anywhere-in-docs-or-use-cases-edn-test
   (doseq [path (scan-sources)]
@@ -70,7 +85,10 @@
   (is (= [:docs-experiments-missing-corpus-prefix] (violations "see docs/experiments/EXP-A4-results.md")))
   (is (= [:retired-ehrt-tools-namespace] (violations "see ehrt.tools.corpus.manifest/ManifestV1_1")))
   (testing "the stage-3 citation form does not trip the retired-prefix pattern"
-    (is (empty? (violations "see ehrt.corpus.manifest/ManifestV1_1")))))
+    (is (empty? (violations "see ehrt.corpus.manifest/ManifestV1_1"))))
+  (is (= [:retired-positioning-filename] (violations "see docs/dev/positioning.md for the audience register")))
+  (testing "the post-rename citation form does not trip the retired-filename pattern"
+    (is (empty? (violations "see docs/dev/AUDIENCES.md for the audience register")))))
 
 ;; README register tripwire (2026-08-01, AR-3) -- separate from the scan
 ;; above: different source (README.md only), different exemptions (link

@@ -1,4 +1,4 @@
-# Positioning
+# Audiences
 
 This document maps how this workspace relates to
 [`ehr-testing-guide`](https://github.com/pragsmike/ehr-testing-guide)
@@ -9,7 +9,11 @@ manifesto. Revised for the unified `ehr-testing` workspace
 its content is tools' own pre-merge positioning doc (`notes/tools/ADRs.md`
 ADR-0008 is where tools itself went public), broadened to cover sim as
 well as tools now that both live in one workspace and relate to the
-guide identically.
+guide identically. Renamed to this filename (2026-08-01, agent-UX
+charter capture session, `notes/ADRs.md` ADR-0023) when **agents**
+joined the audience register below as an explicit class — the file's
+own audience-register identity now outweighs its original working-doc
+name; see the ADR for the prior filename this superseded.
 
 ## Audience
 
@@ -76,6 +80,28 @@ Seven segments arrive here with different on-ramps:
    each part is before committing to it. Served today by `README.md`'s
    maturity table (the actual contract with readers, not a formality),
    its Scope section, and [`docs/what-is-this.md`](../what-is-this.md).
+8. **Agents, as a contributing audience in their own right** (added
+   2026-08-01, agent-UX charter, `notes/ADRs.md` ADR-0023). Distinct
+   from segment 4 above — that's an AI assistant reading *user-facing*
+   docs on a human's behalf, task-first, at usage time. This segment is
+   an agent *driving a contribution session* — PRs, commits, docs
+   edits, migration work — the same work `AGENTS.md` governs for a
+   human contributor. Entry points: [`AGENTS.md`](../../AGENTS.md) (the
+   primary instruction surface) and `.agents/` (durable session
+   context: skills, memory, plans, session-records, prompts). What this
+   audience needs, distinct from a human contributor's own reading
+   style: small, budgeted surfaces it can read cold every session
+   without exhausting context (per-task reading sets,
+   `.agents/reading-sets.edn`, forthcoming — charter R-D); indexes over
+   prose narrative wherever a directory accumulates more than a
+   handful of files; deterministic commands over hand-run procedures
+   (`poly ws get:...`, not `poly info`'s pretty-printed prose); and a
+   clear current-truth/archive zone boundary — instruction lives in
+   `AGENTS.md` and `.agents/`'s current-truth surfaces, provenance and
+   history live in archives (`notes/ADRs.md`, `notes/sim/`,
+   `notes/tools/`, session records) and are never mistaken for live
+   instruction. The seven audiences above are otherwise unchanged by
+   this addition.
 
 ## The constellation
 

@@ -114,9 +114,9 @@ this shows up:
   maintainer working on sim's own modules reads these alongside its
   code, not as workspace-wide architecture).
 
-`docs/dev/positioning.md` and `docs/dev/source-sink-design.md` are the
+`docs/dev/AUDIENCES.md` and `docs/dev/source-sink-design.md` are the
 two long-form design references beyond the equation notation itself —
-positioning maps this workspace against the guide and its audiences;
+AUDIENCES.md maps this workspace against the guide and its audiences;
 source-sink-design is the fuller rationale for the intake/mutate/sink
 seam (`ruling 7`, `Part I`–`Part IX`, cited throughout source).
 

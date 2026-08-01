@@ -162,7 +162,7 @@ The two exist for different purposes: [`ehr-testing-guide`](https://github.com/p
 teaches the testing method — what correctness means for a lossy
 transform, how a corpus should be layered, where validation sits
 relative to semantic checks; this workspace makes that method
-runnable. See [`docs/dev/positioning.md`](dev/positioning.md) for the
+runnable. See [`docs/dev/AUDIENCES.md`](dev/AUDIENCES.md) for the
 fuller map, including why the guide doesn't cite this workspace yet.
 
 Get started: [`README.md`](../README.md#quickstart).

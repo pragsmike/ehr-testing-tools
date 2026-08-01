@@ -2,8 +2,8 @@
 
 Find yourself in the list below and follow that path — each one is a
 handful of steps and ends wherever that audience's actual question gets
-answered. [`docs/dev/positioning.md`](dev/positioning.md)'s
-[Audience](dev/positioning.md#audience) section is the canonical
+answered. [`docs/dev/AUDIENCES.md`](dev/AUDIENCES.md)'s
+[Audience](dev/AUDIENCES.md#audience) section is the canonical
 register these paths are keyed off; this page just routes.
 
 Everything under this directory is complete at this level — no
@@ -75,7 +75,7 @@ maturity table is the actual per-capability contract with readers.
 
 Arriving from [`ehr-testing-guide`](https://github.com/pragsmike/ehr-testing-guide)
 with a method chapter in hand, looking for which tool serves it — see
-[`docs/dev/positioning.md`](dev/positioning.md)'s own referral-trigger
+[`docs/dev/AUDIENCES.md`](dev/AUDIENCES.md)'s own referral-trigger
 sections for the chapter-to-capability map.
 
 ## Maintaining or extending this workspace

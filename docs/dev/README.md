@@ -14,11 +14,11 @@ projects compose them, and where the theory docs live. Then:
   session conventions (checkpoints, fix-forward-with-disclosure, the
   commit/push ritual) and how they differ from sim's 40-session
   pre-merge history.
-- [`positioning.md`](positioning.md) — how this workspace relates to
+- [`AUDIENCES.md`](AUDIENCES.md) — how this workspace relates to
   [`ehr-testing-guide`](https://github.com/pragsmike/ehr-testing-guide)
   and to every audience that reads its docs, user and maintainer alike
-  — the canonical audience register `docs/README.md` itself routes
-  from.
+  (including agents themselves, as a contributing audience) — the
+  canonical audience register `docs/README.md` itself routes from.
 - [`migration/polylith-brief.md`](migration/polylith-brief.md) — the
   Polylith architecture reference the sim+tools consolidation was
   planned against.
