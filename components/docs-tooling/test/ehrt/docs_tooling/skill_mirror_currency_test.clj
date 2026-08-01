@@ -10,7 +10,14 @@
   the canonical tree exists, byte-identical, under the mirror) and
   absence (the mirror carries no file the canonical tree doesn't also
   have) -- a one-sided check would pass a mirror that's stale in either
-  direction (missing a new skill, or carrying a deleted one)."
+  direction (missing a new skill, or carrying a deleted one). Content
+  equality alone missed a real drift caught live while landing this
+  test (ADR-0024): a plain `cp -r` copied every script's bytes
+  correctly but not its git-tracked executable mode (100755 ->
+  100644) -- same content, same blob sha, wrong mode. The presence
+  check below asserts `.canExecute()` parity too, not just `slurp`
+  equality, so that species of drift fails loudly instead of shipping
+  a mirror whose scripts silently stopped being runnable."
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.java.io :as io]))
 
@@ -41,7 +48,10 @@
         (when (.exists mirror-file)
           (is (= (slurp canonical-file) (slurp mirror-file))
               (str rel " differs between " canonical-root " and " mirror-root
-                 " -- .agents/skills/ is canonical, .claude/skills/ must match it exactly")))))))
+                 " -- .agents/skills/ is canonical, .claude/skills/ must match it exactly"))
+          (is (= (.canExecute canonical-file) (.canExecute mirror-file))
+              (str rel "'s executable bit differs between " canonical-root " and " mirror-root
+                 " -- same content, wrong mode; re-sync with chmod preserved (`cp -p`, not a plain `cp`)")))))))
 
 (deftest mirror-has-no-orphaned-file-test
   (testing "absence: the mirror carries no file the canonical tree doesn't also have"
