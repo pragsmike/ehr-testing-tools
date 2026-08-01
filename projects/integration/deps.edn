@@ -7,7 +7,8 @@
         ;; that includes poly/corpus needs sim on the classpath now.
         ;; poly/kernel, poly/judge (ADR-0008): poly/corpus' own src
         ;; requires both directly now -- any project including
-        ;; poly/corpus needs them on the classpath too.
+        ;; poly/corpus needs them on the classpath too. sim's own src
+        ;; requires kernel directly too (ADR-0022, 2026-08-01).
         poly/kernel   {:local/root "../../components/kernel"}
         poly/judge    {:local/root "../../components/judge"}
         ;; poly/judge-fhir-official (ADR-0011): required directly by

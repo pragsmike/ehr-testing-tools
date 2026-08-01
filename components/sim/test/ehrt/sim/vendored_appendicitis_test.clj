@@ -28,10 +28,10 @@
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
+            [ehrt.kernel.interface :as result]
             [ehrt.sim.gmf :as gmf]
             [ehrt.sim.gmf-interpreter :as interp]
-            [ehrt.sim.persona :as persona]
-            [ehrt.sim.result :as result])
+            [ehrt.sim.persona :as persona])
   (:import [java.util Random]))
 
 (def appendicitis-json (slurp (io/resource "sim/modules/appendicitis.json")))

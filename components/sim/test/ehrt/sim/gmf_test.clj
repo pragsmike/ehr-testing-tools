@@ -9,8 +9,8 @@
   (no hidden modules, docs/gmf-interpreter.md section 5)."
   (:require [clojure.java.io :as io]
             [clojure.test :refer [deftest is testing]]
-            [ehrt.sim.gmf :as gmf]
-            [ehrt.sim.result :as result]))
+            [ehrt.kernel.interface :as result]
+            [ehrt.sim.gmf :as gmf]))
 
 (def fixture-clinic-json
   (slurp (io/resource "ehrt/sim/fixtures/fixture-clinic.json")))

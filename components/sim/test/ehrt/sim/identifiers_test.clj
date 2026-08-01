@@ -12,11 +12,11 @@
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
+            [ehrt.kernel.interface :as result]
             [ehrt.sim.emit-hl7 :as emit-hl7]
             [ehrt.sim.emit-state :as emit-state]
             [ehrt.sim.engine :as engine]
             [ehrt.sim.identifiers :as identifiers]
-            [ehrt.sim.result :as result]
             [com.nervestaple.hl7-parser.parser :as parser]
             [com.nervestaple.hl7-parser.message :as message]))
 

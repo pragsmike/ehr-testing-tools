@@ -7,9 +7,9 @@
   is a future, author-ruled extraction session's call -- see
   AGENTS.md's fat-component disclosure. Don't treat this file's width
   as evidence about how components/sim should be decomposed."
-  (:require [ehrt.sim.check :as check]
+  (:require [ehrt.kernel.interface :as result]
+            [ehrt.sim.check :as check]
             [ehrt.sim.identifiers :as identifiers]
-            [ehrt.sim.result :as result]
             [ehrt.sim.run :as run]
             [ehrt.sim.version :as version]))
 

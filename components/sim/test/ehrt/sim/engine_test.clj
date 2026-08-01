@@ -24,7 +24,7 @@
             [ehrt.sim.pathway :as pathway]
             [ehrt.sim.order-profiles :as order-profiles]
             [ehrt.sim.check :as check]
-            [ehrt.sim.result :as result])
+            [ehrt.kernel.interface :as result])
   (:import [java.util Random]))
 
 (deftest same-seed-same-output

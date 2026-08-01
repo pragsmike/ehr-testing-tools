@@ -32,12 +32,12 @@
   warm-up-mark invariant (config/check-warm-up.clj docstring companion
   below)."
   (:require [clojure.set]
+            [ehrt.kernel.interface :as result]
             [ehrt.sim.config :as config]
             [ehrt.sim.engine :as engine]
             [ehrt.sim.facility :as facility]
             [ehrt.sim.order-profiles :as order-profiles]
-            [ehrt.sim.persona :as persona]
-            [ehrt.sim.result :as result]))
+            [ehrt.sim.persona :as persona]))
 
 (defn- events-by-patient
   "Every event each patient-id participates in, in log order -- the

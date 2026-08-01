@@ -21,10 +21,10 @@
   so no real simulation ever has to run against sentinel data."
   (:require [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
+            [ehrt.kernel.interface :as result]
             [ehrt.sim.engine :as engine]
             [ehrt.sim.pathway :as pathway]
-            [ehrt.sim.run :as run]
-            [ehrt.sim.result :as result]))
+            [ehrt.sim.run :as run]))
 
 (def ^:private one-bed-no-ed-facility
   "A facility with exactly one bed and no ED ward at all -- the second

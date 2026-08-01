@@ -25,6 +25,7 @@
   was actually generated with."
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
+            [ehrt.kernel.interface :as result]
             [ehrt.sim.engine :as engine]
             [ehrt.sim.check :as check]
             [ehrt.sim.churn :as churn]
@@ -32,8 +33,7 @@
             [ehrt.sim.emit-state :as emit-state]
             [ehrt.sim.gmf :as gmf]
             [ehrt.sim.manifest :as manifest]
-            [ehrt.sim.pathway :as pathway]
-            [ehrt.sim.result :as result]))
+            [ehrt.sim.pathway :as pathway]))
 
 (defn resolve-modules
   "M5b: `:modules` at the config/CLI-facing layer is a vector of NAME

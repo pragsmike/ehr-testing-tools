@@ -9,7 +9,11 @@
                   :extra-deps {org.clojure/clojure {:mvn/version "1.12.5"}
                                poly/sim      {:local/root "components/sim"}
                                ;; kernel/judge (ADR-0008): corpus' own
-                               ;; src requires both directly.
+                               ;; src requires both directly; sim's own
+                               ;; src requires kernel directly too
+                               ;; (ADR-0022, 2026-08-01 -- sim adopts
+                               ;; ehrt.kernel.result, retiring its own
+                               ;; copied envelope).
                                poly/kernel   {:local/root "components/kernel"}
                                poly/judge    {:local/root "components/judge"}
                                ;; judge-v2-hapi/judge-fhir-official
@@ -90,6 +94,8 @@
                                 poly/cli      {:local/root "bases/cli"}
                                 ;; The `ehrt sim` mount (ADR-0004, ADR-0012
                                 ;; fulfilled) -- in-process, no subprocess.
+                                ;; sim's own src requires poly/kernel
+                                ;; directly too (ADR-0022, 2026-08-01).
                                 poly/sim      {:local/root "components/sim"}}
                    :main-opts ["-m" "ehrt.cli.core"]}
 

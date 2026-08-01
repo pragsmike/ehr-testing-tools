@@ -215,7 +215,11 @@ sim's own discipline, unchanged by the move:
   separate repo). The old subprocess-only consumption rule
   (`tools/ADR-0013`) is superseded: since the in-process `ehrt sim`
   mount (ADR-0004/ADR-0005) `poly/sim` is a real classpath dependency
-  of `ehrt-cli`, `conformance`, and `integration` alike.
+  of `ehrt-cli`, `conformance`, and `integration` alike. `components/sim`
+  now also depends on `components/kernel` (ADR-0022, 2026-08-01 — sim
+  adopts `ehrt.kernel.result`, retiring its own copied envelope
+  namespace) — kernel is not corpus-derived, so this is a new edge, not
+  an exception to the rule above.
 - **No PHI, no real-person data, ever** — including in test fixtures
   and docs.
 - **No CPT codes** (AMA-licensed). SNOMED CT, LOINC, RxNorm, ICD-10-CM,

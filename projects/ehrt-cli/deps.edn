@@ -7,7 +7,8 @@
 
  :deps {;; poly/kernel, poly/judge (ADR-0008): corpus' own src requires
         ;; both directly now (result/digest/artifact/canonical/locator/
-        ;; invocation, judge's five namespaces).
+        ;; invocation, judge's five namespaces). sim's own src requires
+        ;; kernel directly too (ADR-0022, 2026-08-01).
         poly/kernel   {:local/root "../../components/kernel"}
         poly/judge    {:local/root "../../components/judge"}
         ;; poly/judge-v2-hapi, poly/judge-fhir-official (ADR-0011): the

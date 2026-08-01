@@ -25,10 +25,10 @@
   than a second config dialect: this verb can never disagree with what
   a real emission of the SAME run actually contains, because it reads
   the exact functions that produce it."
-  (:require [ehrt.sim.emit-hl7 :as emit-hl7]
+  (:require [ehrt.kernel.interface :as result]
+            [ehrt.sim.emit-hl7 :as emit-hl7]
             [ehrt.sim.emit-state :as emit-state]
             [ehrt.sim.engine :as engine]
-            [ehrt.sim.result :as result]
             [ehrt.sim.run :as run]))
 
 (defn- final-world

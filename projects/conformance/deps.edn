@@ -14,7 +14,8 @@
         ;; notes/tools/ADRs.md ADR-0013-era reasons (private-repo split,
         ;; cross-repo version lockstep) no longer hold.
         ;; poly/kernel, poly/judge (ADR-0008): corpus' own src requires
-        ;; both directly now.
+        ;; both directly now. sim's own src requires kernel directly
+        ;; too (ADR-0022, 2026-08-01 -- sim adopts ehrt.kernel.result).
         poly/kernel   {:local/root "../../components/kernel"}
         poly/judge    {:local/root "../../components/judge"}
         ;; poly/judge-v2-hapi, poly/judge-fhir-official (ADR-0011): the

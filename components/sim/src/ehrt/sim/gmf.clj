@@ -6,7 +6,7 @@
   :cvx keywords per ehrt.sim.pathway/Concept), and validates it
   against the v1 subset docs/gmf-interpreter.md section 1 defines.
 
-  Load-time enforcement, result-not-throw (ehrt.sim.result):
+  Load-time enforcement, result-not-throw (ehrt.kernel.result):
   a module using a state type OUTSIDE v1's subset (CallSubmodule, Counter,
   MultiObservation, Death, Device/DeviceEnd, CarePlanStart/CarePlanEnd --
   section 1's own deferred-type table) is REJECTED with
@@ -30,8 +30,8 @@
   section 5's own corollary applied to module content specifically."
   (:require [clojure.data.json :as json]
             [clojure.string :as str]
+            [ehrt.kernel.interface :as result]
             [ehrt.sim.pathway :as pathway]
-            [ehrt.sim.result :as result]
             [malli.core :as m]))
 
 ;; --- Normalization: JSON's snake_case/CamelCase -> this project's kebab
