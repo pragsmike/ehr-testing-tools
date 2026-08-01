@@ -716,7 +716,7 @@
             lineage (clojure.edn/read-string
                      (slurp (io/file out-dir "lineage" "patient1.json.lineage.edn")))]
         (is (= :operation (:manifest-kind manifest)))
-        (is (= {:name "ehrt.tools" :identity "pre-release" :git "abc1234"}
+        (is (= {:name "ehrt" :identity "pre-release" :git "abc1234"}
                (:producer manifest)))
         (is (= :mutate (:kind (:operation manifest))))
         (is (= :remove-required-element (:operator-id (:operation manifest))))
@@ -726,6 +726,21 @@
         (is (= [{:name "patient1.json" :sha256 (:produced lineage) :input-hash (:parent lineage)}]
                (:items manifest))
             "the item's own sha256/input-hash come straight from the same lineage record, no re-derivation")))))
+
+(deftest operation-manifest-producer-name-is-pinned-to-the-product-name-test
+  (testing "the producer's :name is \"ehrt\" -- the product name, decoupled from
+            component layout (author ruling 2026-08-01) -- pinned on its own so a
+            future rename can't silently change this output vocabulary again"
+    (let [in-dir (temp-dir*)
+          out-dir (str (temp-dir*) "/out")
+          _ (spit (io/file in-dir "patient1.json") sample-bundle-json)
+          r (cli/mutate-command {:path in-dir :operator-id "remove-required-element"
+                                  :locator-path "entry[0].resource.gender" :out-dir out-dir
+                                  :git-describe-fn (fn [] "abc1234") :now-fn (fn [] "2026-07-28")})
+          manifest (clojure.edn/read-string
+                    (slurp (io/file out-dir "operation-manifest.edn")))]
+      (is (result/ok? r))
+      (is (= "ehrt" (:name (:producer manifest)))))))
 
 (deftest mutate-command-processes-every-json-file-in-a-directory-test
   (let [in-dir (temp-dir*)

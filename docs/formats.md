@@ -367,7 +367,7 @@ A real manifest (from the "Generate controlled-fault data" strip above):
 ```clojure
 {:manifest-kind :operation,
  :schema-version 1,
- :producer {:name "ehr-testing-tools", :identity "pre-release", :git "318953e"},
+ :producer {:name "ehrt", :identity "pre-release", :git "318953e"},
  :operation {:kind :mutate,
              :operator-id :remove-required-element,
              :operator-version "1",

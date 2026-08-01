@@ -349,6 +349,42 @@ silently resolved by whatever shape was locally convenient.
   transcripts, per-push lane confirmation) in `notes/facts-register.md`
   F17.
 
+### Amendments (2026-08-01, storefront + ruled literals session — fix-forward, dated, not a revert)
+
+- **`operation-manifest.edn`'s `:producer :name` is now the literal
+  `"ehrt"`** (author ruling 2026-08-01, closing ADR-0018's named-future
+  item 4). The product name, decoupled from component layout, so an
+  unrelated future internal rename never touches it again —
+  `"ehrt.tools"` was a leftover from the `tools` component's own
+  pre-retirement name (ADR-0018), not a deliberate output-format
+  choice. Changed at its single construction site
+  (`ehrt.cli.core/mutate-producer`); `ehrt.cli.core-test` gained a
+  dedicated pinning test
+  (`operation-manifest-producer-name-is-pinned-to-the-product-name-test`)
+  plus its existing integration-style assertion updated, both red
+  against `"ehrt.tools"` first, green after. Two other embedded
+  examples were also brought in line: `docs/formats.md`'s illustrative
+  manifest, discovered this session to actually read the *even older*
+  `"ehr-testing-tools"` (never `"ehrt.tools"` — genuinely stale
+  documentation, not merely due for this ruling); and
+  `ehrt.corpus-io.operation-manifest-test`'s arbitrary fixture
+  producer (same stale string — the schema itself doesn't constrain
+  `:name`'s value, so this was a consistency fix, not a red→green
+  case). `OperationManifestV1`'s own `:schema-version` stays the
+  literal `1` — pre-release default, no bump: the identity string
+  changed, not the shape.
+- **Stage 3's one disclosed unruled call is blessed.** The project
+  test trees' namespace prefixes, `ehrt.conformance.*` and
+  `ehrt.integration.*` (ADR-0018's own deviation record), stand as
+  landed — author ruling 2026-08-01, no code changes.
+- Full session detail (including the README storefront fixes this
+  session also made — a real captured "What you get" output, a
+  register tripwire forbidding internal provenance codes in
+  `README.md`, and a latent quickstart-fresh-breaking bug this session
+  found and fixed along the way) in `notes/facts-register.md` F18;
+  prompt archived at
+  `notes/prompts/2026-08-01-ehr-testing-storefront-and-ruled-literals.md`.
+
 ---
 
 ## ADR-0002 — Land `ehr-testing-tools`: components/tools + components/palgebra + bases/ehr-cli, close H1/H2/H3

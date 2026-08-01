@@ -56,10 +56,9 @@ runnable commands.
 
 ## What you get
 
-Break one required element in one generated patient, then watch the
-gate catch exactly that:
+Introduce one defect into a generated patient, then gate the result:
 
-```sh
+```bash
 bin/ehrt corpus mutate patient.json \
   --operator-id remove-required-element \
   --locator-path entry[0].resource.gender \
@@ -68,18 +67,24 @@ bin/ehrt corpus mutate patient.json \
 bin/ehrt gate fhir out/demo-mutants
 ```
 
-<!-- CAPTURE-BEFORE-LANDING: replace this block with real output from the
-     quickstart fence run, per the captured-output convention -->
 ```
-out/demo-mutants/patient.mutant.json  REJECTED
-  Patient.gender: minimum required = 1, found 0
-1 file judged, 1 rejected — exit 1
+rejected  out/demo-mutants/patient.json  (2560 findings)
+
+totals: pass=0, rejected=1, indeterminate=0, no-verdict=0
+by-code: unknown=2, code-invalid=635, structure=1086, not-found=398, informational=91, invariant=191, business-rule=90, invalid=67
 ```
 
-The rejection is the point: a gate that never fails is a gate you can't
-trust. Every command also takes `--json` for piping into `jq`, and
-`bin/ehrt show FILE` renders any v2 or FHIR file for a human. See
-[`docs/formats.md`](docs/formats.md#reading-these-from-a-shell).
+That's a real gate run against a real generated patient — and an honest
+one: base FHIR doesn't actually require `Patient.gender`, so this
+mutation isn't what earns the rejection above. A realistically
+generated patient carries hundreds of legitimate findings against a
+profile-aware validator before you break anything on purpose; picking
+a locator that's guaranteed to move the needle, and telling new
+findings from inherited ones, are exactly what
+[`docs/judge-calibration.md`](docs/judge-calibration.md) and
+`--baseline` are for. Every command also takes `--json` for piping
+into `jq`, and `bin/ehrt show FILE` renders any v2 or FHIR file for a
+human. See [`docs/formats.md`](docs/formats.md#reading-these-from-a-shell).
 
 ## Where to start
 
@@ -99,9 +104,13 @@ the guide teaches the testing method, this workspace makes it runnable.
 
 ## Quickstart
 
-Prerequisites and full verification: [`SETUP.md`](SETUP.md). Every
-command below is run for real and asserted by CI on every push — if
-this section and reality ever drift, the build fails.
+Prerequisites and full verification: [`SETUP.md`](SETUP.md). CI asserts
+on every push that every command below and
+[`bin/quickstart-demo`](bin/quickstart-demo) teach the identical
+sequence, in the identical order — if this section and the script ever
+drift apart, the build fails. Actually *running* the sequence for real
+is `make quickstart`, a local/manual check today — no CI workflow
+executes it yet.
 
 ```sh
 bin/ehrt help
@@ -127,7 +136,10 @@ bin/ehrt corpus mutate $PATIENT_FILE \
 
 bin/ehrt artifact fetch --name fhir-validator-cli --version 6.9.12
 bin/ehrt gate v2 components/corpus/test-fixtures/v2
-# gate fhir exits 1 here -- a genuine defect in the mutant, correctly caught
+# gate fhir exits 1 here -- rejected, but not because of this mutation:
+# a real Synthea patient already carries hundreds of legitimate profile
+# findings before you break anything (Patient.gender isn't required in
+# base FHIR) -- see docs/judge-calibration.md
 bin/ehrt gate fhir out/demo-mutants --report out/demo-mutants-report.edn
 
 bin/ehrt check out/corpus/synthea-s1-p5/fhir --expected out/corpus/synthea-s1-p5/fhir

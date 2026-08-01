@@ -10,7 +10,7 @@
 # (notes/tools/prompts/2026-07-26-doc5-executable-quickstart.md's commit
 # body is the source of truth for every number below). A bare `set -e`
 # cannot make this distinction: `gate fhir`'s taught rejection is exit 1 by
-# design (a genuine defect, correctly caught), not a script failure --
+# design (a real validator rejecting real findings), not a script failure --
 # `set -e` would abort on it as though it were one. Hence the explicit
 # `expect` wrapper below instead of `-e`.
 #
@@ -87,6 +87,10 @@ expect 0 bin/ehrt corpus mutate $PATIENT_FILE \
 
 expect 0 bin/ehrt artifact fetch --name fhir-validator-cli --version 6.9.12
 expect 0 bin/ehrt gate v2 components/corpus/test-fixtures/v2
+# gate fhir exits 1 here -- rejected, but not because of this mutation:
+# a real Synthea patient already carries hundreds of legitimate profile
+# findings before you break anything (Patient.gender isn't required in
+# base FHIR) -- see docs/judge-calibration.md
 expect 1 bin/ehrt gate fhir out/demo-mutants --report out/demo-mutants-report.edn
 
 expect 0 bin/ehrt check out/corpus/synthea-s1-p5/fhir --expected out/corpus/synthea-s1-p5/fhir

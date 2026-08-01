@@ -8,7 +8,7 @@
             [ehrt.corpus-io.operation-manifest :as om]))
 
 (def ^:private producer
-  {:name "ehr-testing-tools" :identity "pre-release" :git "abc1234-dirty"})
+  {:name "ehrt" :identity "pre-release" :git "abc1234-dirty"})
 
 (def ^:private operation
   {:kind :mutate :operator-id :blank-required-field :operator-version "1"

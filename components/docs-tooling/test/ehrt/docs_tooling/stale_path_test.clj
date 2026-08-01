@@ -16,7 +16,21 @@
   source above) only -- notes/ADRs.md, notes/prompts/, and
   .agents/session-records/ narrate history and legitimately cite the
   old names, and this test never reads them (confirmed at AR-7's own
-  request, not assumed)."
+  request, not assumed).
+
+  2026-08-01 addendum (storefront + ruled literals session, AR-3): a
+  second, unrelated tripwire in the same family, scanning README.md
+  specifically. README.md is this workspace's storefront, read by
+  people who have never seen an ADR number and shouldn't need to --
+  internal provenance codes (`ADR-\\d+`, `EXP-[A-Z]?\\d+`, `DOC-\\d+`,
+  and bare `D\\d+` ruling codes like source-sink-design.md's D9/D13)
+  leaking into its body prose is exactly the kind of internal-logbook
+  drift the storefront must not carry. Deliberately narrower than the
+  scan above: markdown link destinations (`](...)`) and HTML comments
+  are exempt and stripped before matching, because the Maturity
+  table's own Evidence-column hrefs legitimately point at files named
+  `EXP-A4-results.md` -- a citation, not a leak -- and an editorial
+  HTML comment is invisible prose, not storefront-facing text."
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.java.io :as io]
             [clojure.string :as str]))
@@ -57,3 +71,52 @@
   (is (= [:retired-ehrt-tools-namespace] (violations "see ehrt.tools.corpus.manifest/ManifestV1_1")))
   (testing "the stage-3 citation form does not trip the retired-prefix pattern"
     (is (empty? (violations "see ehrt.corpus.manifest/ManifestV1_1")))))
+
+;; README register tripwire (2026-08-01, AR-3) -- separate from the scan
+;; above: different source (README.md only), different exemptions (link
+;; destinations and HTML comments, not a path-prefix distinction).
+
+(defn- strip-exempt-spans
+  "Strips markdown link destinations (`](...)`) and HTML comments
+  (`<!-- ... -->`) from README.md's text before the register-code scan
+  below -- both are legitimate places for an internal code to appear
+  (the Maturity table's own Evidence-column hrefs, an editorial aside)
+  and must not trip the tripwire. Link targets are blanked, not
+  deleted, so surrounding prose offsets/structure survive intact."
+  [content]
+  (-> content
+      (str/replace #"\]\([^)]*\)" "]()")
+      (str/replace #"(?s)<!--.*?-->" "")))
+
+(def ^:private register-code-re
+  #"ADR-\d+|EXP-[A-Z]?\d+|DOC-\d+|\bD\d+\b")
+
+(defn- register-code-violations
+  "Every internal provenance-code match in README.md's prose, link
+  targets and HTML comments already stripped. Distinct, in match
+  order."
+  [content]
+  (->> (re-seq register-code-re (strip-exempt-spans content))
+       distinct
+       vec))
+
+(deftest readme-body-carries-no-internal-provenance-codes-test
+  (let [found (register-code-violations (slurp "README.md"))]
+    (is (empty? found)
+        (str "README.md's storefront prose cites internal provenance codes: " found))))
+
+(deftest each-register-code-pattern-is-actually-caught-test
+  (is (= ["ADR-0012"] (register-code-violations "ratified in ADR-0012, see below")))
+  (is (= ["EXP-A4"] (register-code-violations "results in EXP-A4 confirm this")))
+  (is (= ["EXP-5"] (register-code-violations "results in EXP-5 confirm this")))
+  (is (= ["DOC-5"] (register-code-violations "landed under DOC-5")))
+  (is (= ["D9"] (register-code-violations "the zero-flag defaults, D9"))))
+
+(deftest link-destinations-and-html-comments-are-exempt-test
+  (testing "a real Evidence-column href citing an EXP results file"
+    (is (empty? (register-code-violations
+                  "[Byte-reproducibility proof](components/corpus/docs/experiments/EXP-A4-results.md) in a clean environment."))))
+  (testing "an HTML comment"
+    (is (empty? (register-code-violations "<!-- ADR-0012 predates this rename -->"))))
+  (testing "the same code outside both exemptions still trips it"
+    (is (= ["ADR-0012"] (register-code-violations "predates ADR-0012, unlike the comment above")))))

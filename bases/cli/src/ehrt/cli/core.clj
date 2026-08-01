@@ -387,13 +387,15 @@
   injectable (mirrors version-command's own parameter) so hermetic
   tests never shell out to a real git process.
 
-  :name stays the literal \"ehrt.tools\" after the tools component
-  retired (ADR-0018): it is an identity string in an emitted output
-  format (operation-manifest.edn), and stage 3's own AR-6 requires the
-  seam commands byte-identical -- changing it is an output-format
-  change needing its own ruling, recorded as a named-future there."
+  :name is the literal \"ehrt\" (author ruling 2026-08-01, closing the
+  named-future ADR-0018 left open): the product name, not a component
+  layout artifact -- \"ehrt.tools\" was left over from the tools
+  component's own pre-retirement name (ADR-0018) and would have needed
+  editing again on the next unrelated internal rename. Pinned by
+  ehrt.cli.core-test's own dedicated test so a future rename can't
+  silently change this output vocabulary again."
   [git-describe-fn]
-  {:name "ehrt.tools" :identity repo-identity :git (git-describe-fn)})
+  {:name "ehrt" :identity repo-identity :git (git-describe-fn)})
 
 (defn- stdout-out-dir-result
   "SS-4 ruling 6: --out-dir gains the Sink seam additively -- a bare
