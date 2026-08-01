@@ -83,7 +83,25 @@ Status: active since ADR-0023 (R-A). Not a work item to schedule — flagged her
 
 **3. Register merge: `notes/sim/{ADRs,facts-register}.md` → live registers**
 
-Status: **not started**, and the charter's own wording underspecifies it enough to need an explicit design ruling before a build session can start — this is AR-3's own flagged riskiest item, and the investigation this session bears that out.
+**RULED 2026-08-02 (migration session 3): reading (a) executed.** Survey
+pass over `docs/`, `AGENTS.md`, `README.md`, `notes/ADRs.md`,
+`notes/facts-register.md`, and `components/sim/src` docstrings against
+all 22 frozen F-rows and all 16 frozen sim ADRs: 8 F-rows and 10 ADRs had
+uncited live restatements, now cited `(sim/FN)`/`(sim/ADR-NNNN)` at
+their restatement site (prose unchanged, citation added); 4 of those
+were found to be outright *mis*-cited (pointing at the live,
+unrelated-numbered `notes/ADRs.md`/`notes/facts-register.md` instead of
+the frozen sim ones) and corrected, not just supplemented. One index
+stub (`notes/facts-register.md` F20) now names the two-file topology
+explicitly. Full one-to-one accounting table:
+`.agents/session-records/2026-08-02-migration-session-3.md`. A larger,
+explicitly out-of-scope finding: `components/sim/src` docstrings carry
+many more bare (uncited, mis-qualified) `ADR-NNNN` references beyond
+the ones this session's own survey flagged and fixed — `engine.clj`
+alone has 40+, most left untouched — named as a future dedicated sweep,
+not attempted exhaustively here (see session record).
+
+Status (as assessed migration session 2, superseded above): **not started**, and the charter's own wording underspecifies it enough to need an explicit design ruling before a build session can start — this is AR-3's own flagged riskiest item, and the investigation this session bears that out.
 
 What's actually there: `notes/sim/ADRs.md` has 16 ADR entries (its own internal numbering, ADR-0001–0016); `notes/sim/facts-register.md` has 22 F-rows (F1–F22, its own numbering). Both carry a frozen-provenance header already. Current state of use: root `notes/ADRs.md` already cites sim entries 11 times as `sim/ADR-NNNN` — a citation-only pattern, never a physical copy — matching exactly how `notes/tools/ADRs.md` (16 entries, already merged in the 2026-07-28 workspace-formation session) is still cited today (12 `tools/ADR-` citations in the live file) rather than copied in. Root `notes/facts-register.md` cites `tools/F` rows 3 times — but has **zero** `sim/F` citations anywhere, despite 22 sim facts existing. Sim's ADRs are lightly cross-referenced already; sim's facts-register isn't cross-referenced at all.
 
@@ -205,7 +223,21 @@ answer** — see the session record for the exact question posed.
 
 **10. Index-completeness gate (`.agents/` and `notes/`)**
 
-Status: **not started.** `.agents/prompts/README.md` and `.agents/session-records/README.md` both already list their contents accurately by hand (verified this session — exact match, 2/2 and 8/8 respectively at last check) but nothing *enforces* that they stay that way; a future session could add a file and forget the index line with nothing failing.
+**RULED 2026-08-02 (migration session 3): executed.**
+`ehrt.docs-tooling.index-completeness-test` walks `.agents/plans/`,
+`.agents/prompts/`, `.agents/session-records/`, `.agents/skills/`, and
+`notes/`, checking both directions (presence and absence/ghost) against
+each README's own index. `notes/prompts/` gets a convention-based
+exemption (dated-filename pattern enforced instead of a literal list,
+since 28 files would break its one-screen budget) rather than the
+literal-list check the other directories use; `notes/sim/`/`notes/tools/`
+stay exempt entirely (ruling 6, extended from presence to completeness);
+`.claude/skills/` is not walked (already indexed via
+`.agents/skills/README.md`, has its own separate mirror-drift gate).
+Both directions verified red live (a missing-index seed, a ghost-entry
+seed), each reverted after confirming the failure.
+
+Status (as assessed migration session 2, superseded above): **not started.** `.agents/prompts/README.md` and `.agents/session-records/README.md` both already list their contents accurately by hand (verified this session — exact match, 2/2 and 8/8 respectively at last check) but nothing *enforces* that they stay that way; a future session could add a file and forget the index line with nothing failing.
 
 Work: a test in the `docs-tooling` component (natural home, given `structure_currency_test.clj` and `stale_path_test.clj` already live there) that walks each indexed directory (`.agents/prompts/`, `.agents/session-records/`, `.agents/skills/*` once item 5/9 give it content worth indexing, `notes/prompts/`) and asserts the README's own file list matches the directory's real contents, both directions (presence — every real file is listed — and absence — every listed file is real), same shape as the exact-token-both-directions pattern this repo's own `1c3d77c` commit just hardened two other gates into.
 
@@ -331,6 +363,20 @@ full account, including the AR-1(b) sweep finding (neither
 `docs/dev/way-of-working.md` nor `AUTHORS-GUIDE.md` needed repointing —
 already correct) and the README survey (11 of 18 required directories
 were missing one at session start).
+
+## RULED 2026-08-02 (migration session 3)
+
+This session (per its own author rulings AR-1..AR-4) executed item 10
+(the index-completeness gate, both directions, over the same directory
+set item 11 established) and item 3(a) (the sim citation-stubs pass,
+reading (a) — citation-only, per migration session 1's own ruling 2),
+and left items 5, 8, 14 fenced for later sessions (AR-4) — see
+`.agents/session-records/2026-08-02-migration-session-3.md` for the
+full account, including the complete one-to-one accounting table over
+all 38 frozen sim rows, the four miscitation bugs found and fixed
+(distinct from the citations freshly added), and the larger
+bare-ADR-docstring finding in `components/sim/src` named as future work
+rather than swept exhaustively this session.
 
 ## Urgent items
 

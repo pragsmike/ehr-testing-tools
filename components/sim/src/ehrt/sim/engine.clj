@@ -2,12 +2,12 @@
   "The discrete-event simulation core: a priority queue of pending
   events ordered by simulated time, a world of patient states (plus,
   from Milestone M1 on, the static facility/provider config decide
-  needs to read), and the decide/evolve pair (ADR-0008) that replaces
+  needs to read), and the decide/evolve pair (`sim/ADR-0008`) that replaces
   a single fused transition function. Architecture mined from Google's
   Simulated Hospital (pkg/state WrappedQueue + pkg/hospital
   RunNextEventIfDue).
 
-  Event-sourcing doctrine (ADR-0008): the ground-truth log is the only
+  Event-sourcing doctrine (`sim/ADR-0008`): the ground-truth log is the only
   primitive. `decide` (rng, t, world, patient-id, step) -> {:events
   :advance} consults the current world (every patient's state so far,
   plus facility/provider config -- read-only) and the run's single RNG
@@ -22,7 +22,7 @@
   is PatientState's design spec, docs/sim-theory.md open question #3
   (state-history is derived, not primitive) is this ADR's resolution.
 
-  Identity doctrine (ADR-0010, M2a): `:patient-id` -- not `:mrn` -- is
+  Identity doctrine (`sim/ADR-0010`, M2a): `:patient-id` -- not `:mrn` -- is
   the fold key and the work-queue key. `:mrn` moves into state as
   {:mrns #{...} :active-mrn ...}, because a real hospital's MRN is
   exactly the identifier merge (M2b) changes; patient-id never
@@ -32,24 +32,24 @@
   a patient's state folds exactly the events they participate in.
   `patient-id-for` is a PURE function of this run's seed and a
   patient's arrival ordinal -- deliberately off the seeded RNG stream,
-  so identity generation adds no new stochastic draws for ADR-0009's
+  so identity generation adds no new stochastic draws for `sim/ADR-0009`'s
   seed-stability accounting to track (unlike NPI generation, which IS
-  an RNG draw, ADR-0007).
+  an RNG draw, `sim/ADR-0007`).
 
-  Time doctrine (ADR-0011, M2a): the engine clock (every event's :t) is
+  Time doctrine (`sim/ADR-0011`, M2a): the engine clock (every event's :t) is
   now integer SECONDS from run start, not minutes. The pathway IR is
   NOT changed -- :delay's :from/:to stay minutes, authoring ergonomics
   -- the engine converts minutes -> seconds itself, at the one place a
   minute-denominated draw becomes a clock advance. A warm-up window
   (:warm-up-seconds, default 0) marks every event with `:t <
   warm-up-seconds` as `:warm-up true`; the log stays complete (no
-  trimming here -- ADR-0011 leaves trimming, if any, to Package).
+  trimming here -- `sim/ADR-0011` leaves trimming, if any, to Package).
 
   Determinism doctrine: ALL randomness flows from the single
   java.util.Random seeded in `run`. No other entropy source (wall
   clock, hash ordering, nondeterministic seq realization) may
   influence output. Same config + seed => identical output, byte for
-  byte once serialized -- WITHIN a version; see notes/ADRs.md ADR-0009
+  byte once serialized -- WITHIN a version; see `sim/ADR-0009`
   for the cross-version seed-stability policy Milestone M1's new RNG
   draws (bed choice, attending sampling) triggered, and M2a's identity/
   time changes triggered again (documented once, per the M2a session

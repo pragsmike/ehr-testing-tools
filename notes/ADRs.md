@@ -4583,6 +4583,30 @@ plus one per skill, mirrored to `.claude/skills/`). Items 3(a), 5, 8,
 10, 14 remain fenced. Full account:
 `.agents/session-records/2026-08-02-migration-session-2.md`.
 
+**Dated note, 2026-08-02 (migration session 3).** Two more items landed
+(`.agents/plans/2026-08-01-migration-report.md` items 10/3(a), both
+"RULED 2026-08-02" blocks): the index-completeness gate (item 10 —
+`ehrt.docs-tooling.index-completeness-test`, both directions, over the
+same directory set item 11 established) and the sim citation-stubs
+pass (item 3(a) — reading (a), citation-only, ratified migration
+session 1; 8 F-rows and 10 ADRs of the frozen sim registers now cited at
+their live restatement site, 4 of those corrections of an outright
+miscitation rather than a fresh addition; `notes/facts-register.md`
+gains an F20 stub naming the two-file topology). **Ruling 6 extension,
+ratified by dispatch:** this session's own prompt explicitly extended
+ruling 6 (the README-presence exemption for `notes/sim/`/`notes/tools/`,
+ADR-0023's own prior dated note) to README-completeness too — same
+directories, same frozen-provenance rationale, not a new ruling
+requiring separate ratification, per the prompt's own AR-1 text
+("extension recorded in the dated ADR note as a design-channel ruling
+ratified by dispatch"). Items 5, 8, 14 remain fenced. A finding beyond
+this session's own scope, named not fixed: `components/sim/src`
+docstrings carry many bare, mis-qualified `ADR-NNNN` references beyond
+the ones this session's citation survey flagged (`engine.clj` alone has
+40+, most untouched) — recorded on the roadmap as a future dedicated
+sweep. Full account:
+`.agents/session-records/2026-08-02-migration-session-3.md`.
+
 ---
 
 ## ADR-0024 — `.claude/skills/` carved out of the untracked-`.claude/` ruling; mirror-with-gate lands the Claude Code discovery fix

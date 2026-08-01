@@ -3,7 +3,7 @@
   models (docs/operational-models.md): facility (beds -- exclusive),
   providers (shared). Payers land with Persona (M4); not here.
 
-  Also: the synthetic-NPI Luhn math. ADR-0007 decision (a): provider
+  Also: the synthetic-NPI Luhn math. `sim/ADR-0007` decision (a): provider
   identifiers are structurally valid NPIs (correct Luhn check digit
   over the CMS `80840` health-industry-issuer prefix), generated from
   the run's own seeded RNG -- not an obviously-fake sentinel format.

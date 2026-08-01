@@ -3,7 +3,7 @@
   (docs/operational-models.md). The board is NEVER an independent
   structure the engine writes to -- it is a pure fold over patient
   states (`occupancy-board`), recomputed on demand every time `decide`
-  needs it (ADR-0008's own pattern, applied to beds: one authoritative
+  needs it (`sim/ADR-0008`'s own pattern, applied to beds: one authoritative
   record -- patient state -- everything else a projection with a
   proven consistency law).
 

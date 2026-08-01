@@ -4,12 +4,12 @@
   Catalytic resolution table): a small, hand-curated starter set of lab
   order/result profiles (`resources/order-profiles.edn`) -- CBC and BMP
   panels, real LOINC codes verified against loinc.org
-  (notes/facts-register.md F7), US conventional units, typical adult
+  (`sim/F7`), US conventional units, typical adult
   reference ranges, and a per-analyte value distribution.
 
   Concepts ride as {:system :loinc :code :display} triplets, the same
   coded-triplet shape ehrt.sim.pathway/Concept already
-  establishes (ADR-0002's code-provenance law) -- no CPT anywhere
+  establishes (`sim/ADR-0002`'s code-provenance law) -- no CPT anywhere
   (docs/third-party-sources.md's standing constraint).
 
   Value sampling law: `sample-analyte-value` draws a 3-way categorical

@@ -174,7 +174,8 @@ section.
 
 **CVX.** Vaccine codes; CDC-maintained; free to use.
 
-**decide / evolve.** The engine's event-sourcing split: `decide (state,
+**decide / evolve.** The engine's event-sourcing split (`sim/ADR-0008`):
+`decide (state,
 step) → events` chooses what happens (may consult the world and the
 RNG); `evolve (state, event) → state'` is the only function that
 changes patient state, by folding events. State can therefore never
@@ -182,7 +183,7 @@ disagree with the log. See
 [`event-sourcing.md`](../components/sim/docs/event-sourcing.md).
 
 **Determinism / seeded RNG.** Same configuration + same seed ⇒
-byte-identical output, always. All randomness flows from one seeded
+byte-identical output, always (`sim/ADR-0002`). All randomness flows from one seeded
 random-number generator consumed in a fixed order — this is the
 property that makes any interesting run reproducible from a one-line
 manifest, enforced by property tests, not by hope.
@@ -280,7 +281,7 @@ semantics. See
 [`gmf-interpreter.md`](../components/sim/docs/gmf-interpreter.md).
 
 **Ground-truth log.** The simulator's primary output and single
-source of truth: a time-ordered, immutable sequence of events
+source of truth (`sim/ADR-0002`): a time-ordered, immutable sequence of events
 describing everything that happened in a run. Messages, state
 snapshots, and test assertions all derive from it. See
 [`event-sourcing.md`](../components/sim/docs/event-sourcing.md).
@@ -300,7 +301,7 @@ messages. See the guide for the standards landscape.
 **HTEST.** The HL7 v3-ActReason code
 (`http://terminology.hl7.org/CodeSystem/v3-ActReason`, display "test
 health data") stamped into `meta.security` on every FHIR resource sim
-renders — a standard, queryable marker that lets a real system that
+renders (`sim/F14`) — a standard, queryable marker that lets a real system that
 ever received this data find and purge it.
 
 **ICD-10-CM / ICD-10-PCS.** US billing diagnoses / inpatient
@@ -370,7 +371,7 @@ description.
 **MRN.** Medical Record Number — a facility's patient identifier. In
 sim, MRNs are *state* (a patient carries a set with one active)
 because merges rebind them; the stable identity underneath is an
-internal patient-id.
+internal patient-id (`sim/ADR-0010`).
 
 **Mutant.** The file an operator produces — a deliberately broken
 variant of a base bundle, with a lineage record tracing it back to
@@ -380,7 +381,7 @@ record"), `ehrt.corpus.operators`.
 **NPI / NPPES.** National Provider Identifier — the US 10-digit
 provider ID (Luhn check-digit over an `80840` prefix) — and the public
 registry that issues them. Sim's synthetic providers carry Luhn-valid
-NPIs; coincidence with real assignments is possible and harmless.
+NPIs (`sim/ADR-0007`); coincidence with real assignments is possible and harmless.
 
 **Observation status.** A billing-critical middle state between
 outpatient and inpatient; converting between them mid-stay (A06/A07)
@@ -410,11 +411,11 @@ for a non-git chat surface. Not part of this workspace's own ritual;
 see `AUTHORS-GUIDE.md` §2 for why.
 
 **Participants.** Every ground-truth event names the patients it
-involves, with roles. Most events have one participant; bed-swaps have
+involves, with roles (`sim/ADR-0010`). Most events have one participant; bed-swaps have
 two; merges have a survivor and a merged identity.
 
 **Payer.** The insurance entity (Medicare, Medicaid, commercial,
-self-pay). Modeled as an *attribute pool* — sampled per patient,
+self-pay). Modeled as an *attribute pool* (`sim/ADR-0007`) — sampled per patient,
 age-linked, never a tracked resource. Rendered in IN1.
 
 **Persona.** A patient's generated demographics: name, DOB, sex,
@@ -483,7 +484,7 @@ what's true *now*; an event describes what *happened*.
 
 **Step-rejected.** A ground-truth event recording that the engine
 *refused* an attempted step (illegal in the current state; bed since
-reclaimed) — truth about the run that never becomes a message. Exists
+reclaimed) — truth about the run that never becomes a message (`sim/ADR-0012`). Exists
 so authored scenarios are debuggable.
 
 **Subprocess coupling.** Retired as of the `ehrt sim` mount
@@ -509,7 +510,7 @@ disposition (0112), location types. The standards-sanctioned escape
 hatch that makes every hospital's feed a dialect; the reason site
 profiles exist.
 
-**Validators (HAPI, NIST).** Independent HL7 conformance tooling —
+**Validators (HAPI, NIST).** Independent HL7 conformance tooling (`sim/F6`) —
 HAPI's v2 parser and the official FHIR validator — used to judge
 generated messages, so the simulator is never graded by its own
 homework.
@@ -533,15 +534,15 @@ it into an existing polarity. Register: `ehrt.judge.finding`
 **Warm-up.** The initial window of a run during which the simulated
 hospital is filling from empty; its events are *marked* (never
 trimmed) so steady-state corpora can filter the cold-start artifact
-without violating log completeness.
+without violating log completeness (`sim/ADR-0011`).
 
 ## Organizations and upstream projects
 
 **Synthea** (MITRE). The open-source synthetic-patient generator whose
 GMF modules, US demographics, and embedded codes this workspace mines
-as *data* (Apache-2.0). Not a runtime dependency.
+as *data* (Apache-2.0, `sim/F2`). Not a runtime dependency.
 
-**Simulated Hospital / SimHospital** (Google Health; archived). The
+**Simulated Hospital / SimHospital** (Google Health; archived; `sim/F3`). The
 HL7v2 hospital-workflow simulator whose operational design — pathway
 step vocabulary, churn family, event queue — sim mined, and whose
 mutable-state workarounds motivated the event-sourced alternative. See

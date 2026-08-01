@@ -141,7 +141,7 @@ dialect** — with one documented exception. MSH dialect, code-table
 overrides, and Z-segment templates all bind at emit time
 (`docs/sim-theory.edn`'s `EmitHL7` stage — a real catalytic wire now,
 not a declared-ahead-of-time one), never inside `decide`/`evolve` or
-the ground-truth log, following directly from ADR-0002's separation of
+the ground-truth log, following directly from `sim/ADR-0002`'s separation of
 ground truth from wire format: a site profile changes how a fact is
 *said*, never what fact is true — property-tested as this layer's own
 invariance claim, below. `:naming :surge-format`'s migration is the

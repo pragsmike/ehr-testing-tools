@@ -15,7 +15,7 @@
   don't execute' survey-reading section 1 also describes (that describes
   reading a module's states for SURVEY purposes, e.g. the design doc's own
   candidate-module appendix; this loader is the boundary a module crosses
-  to actually be RUN, where ADR-0013 point 4's curation criterion applies
+  to actually be RUN, where `sim/ADR-0013` point 4's curation criterion applies
   in full: any deferred-type use fails it, full stop). A module whose own
   SetAttribute/Symptom writes a bare (non-namespaced) attribute name
   colliding with an engine-reserved key (`:donor`, docs/patient-state-

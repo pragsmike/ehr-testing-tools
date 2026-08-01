@@ -99,7 +99,8 @@ inside; no Clojure skills required to use it.
    schemes (MRN, SSN-shaped, never real); US units of measure.
 3. **Standard terminology, no licensed vocabularies.** Clinical
    concepts carry real codes from freely usable systems — SNOMED CT,
-   LOINC, RxNorm, ICD-10-CM, CVX. No AMA-licensed CPT content, ever.
+   LOINC, RxNorm, ICD-10-CM, CVX. No AMA-licensed CPT content, ever
+   (`sim/F4`).
 4. **Offline and deterministic.** No network access at execution time;
    any externally-fetched artifact (engines, validators, runtimes) is
    acquired once, pinned, and cached locally. Identical inputs and
@@ -116,7 +117,7 @@ inside; no Clojure skills required to use it.
    hospital-operations traffic across a single encounter — admission
    through discharge and its immediate churn — not a patient's
    lifelong longitudinal history, which Synthea already serves and
-   this workspace can also wrap directly.
+   this workspace can also wrap directly (`sim/ADR-0007`).
 
 ## Validation & evidence
 
@@ -127,8 +128,8 @@ this workspace actually carries out, not just states:
 
 | Claim | Proof strategy |
 |---|---|
-| Syntactic validity | Every emitted message/resource is gated by independent tooling this workspace didn't write (HAPI, the official FHIR validator) — never graded by its own homework. |
-| Terminology correctness | Coded elements cross-checked against official code-system releases; codes travel as `{:system :code :display}` triplets from source data to every emitter, never invented. |
+| Syntactic validity | Every emitted message/resource is gated by independent tooling this workspace didn't write (HAPI, the official FHIR validator) — never graded by its own homework (`sim/F6`). |
+| Terminology correctness | Coded elements cross-checked against official code-system releases; codes travel as `{:system :code :display}` triplets from source data to every emitter, never invented (`sim/ADR-0002`). |
 | Internal consistency | Property-based testing over the ground-truth log — invariants (identifier stability, no discharge-before-admit, results follow orders, timestamps monotone) machine-checked across thousands of randomized runs, not asserted once. |
 | Clinical plausibility | Provenance to established, peer-reviewed prior art (Synthea's GMF modules) rather than re-arguing clinical content from scratch. |
 | Operational realism | Pedigree (Simulated Hospital's own NHS-deployment-informed design), anchoring to published throughput data, and site-tunable churn rates so a team can calibrate against their own feed's statistics instead of trusting defaults. |

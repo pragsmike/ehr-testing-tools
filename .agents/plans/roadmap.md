@@ -5,14 +5,16 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (approved migration, sequenced — .agents/plans/2026-08-01-migration-report.md)
-- Item 3(a): sim register citation-stubs pass (citation-only ruled 2026-08-01)
-- Item 10: index-completeness gate (after 1, 4, 11 — 1, 4, 11 now landed, see Done below)
 - Item 5: way-of-working → skills distillation (build-session incl. full ceremony,
   capture-session, extraction-stage, errata-sweep, session-prompt) — after item 9
 - Item 8: .agents/reading-sets.edn, placeholder budgets = actuals (charter R-D)
 - Item 14: use-cases split per review P3-1 (notes/2026-07-30-refactoring-review.md §5.2)
 
 ## Next (backlog, no session scheduled)
+- components/sim/src bare-ADR-docstring sweep: many bare, mis-qualified
+  `ADR-NNNN` references beyond the ones migration session 3's own citation-stubs
+  pass flagged and fixed — `engine.clj` alone has 40+ remaining — a dedicated
+  sweep, not attempted exhaustively in that session (2026-08-02 finding)
 - Pairing-as-data (review P3-3): mutate↔judge conviction registry — design pass in
   the design channel first; vocabulary is load-bearing
 - Storefront demo fixture: minimal clean-gating FHIR fixture so the README's mutate
@@ -63,3 +65,14 @@ per item; done items move to the bottom of their section with a date and sha.
   READMEs land (mirrored to `.claude/skills/`); `ehrt.docs-tooling.readme-presence-test`
   enforces both trees going forward, `notes/sim/`/`notes/tools/` exempt
   (ruling 6) (ab9fe5e)
+
+## Done (this session, 2026-08-02, migration session 3)
+- Item 10: `ehrt.docs-tooling.index-completeness-test` lands — both directions,
+  over `.agents/plans/`, `.agents/prompts/`, `.agents/session-records/`,
+  `.agents/skills/`, `notes/`; `notes/prompts/` convention-exempt; ruling 6
+  extended to completeness (77880f7)
+- Item 3(a): sim citation-stubs pass, reading (a) — 8 F-rows and 10 ADRs cited
+  at their live restatement site (4 were miscitations, fixed not just
+  supplemented); `notes/facts-register.md` F20 stub names the two-file
+  topology; full accounting in the session record (sha: this checkpoint's own,
+  filled in by the session record)

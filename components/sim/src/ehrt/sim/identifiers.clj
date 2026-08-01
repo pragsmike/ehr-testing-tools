@@ -1,5 +1,5 @@
 (ns ehrt.sim.identifiers
-  "The `sim identifiers` capability (post-M6, ADR-0014): config + seed
+  "The `sim identifiers` capability (post-M6, `sim/ADR-0014`): config + seed
   -> the complete, machine-readable EDN inventory of every identifier a
   run's own output actually contains -- patient-ids, MRNs (every one
   any patient-id ever held, including merged-away), the bed ids each

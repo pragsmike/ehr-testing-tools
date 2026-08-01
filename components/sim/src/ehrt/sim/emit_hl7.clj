@@ -15,11 +15,11 @@
   attending -- passing them doesn't touch the no-RNG/no-wall-clock
   doctrine, since none is sampled here, only rendered. Every timestamp
   is rendered from the pinned :reference-date run-config input plus
-  the event's log-relative SECOND offset (ADR-0011; was minutes before
-  M2a), suffixed with the pinned :utc-offset (ADR-0011: a fixed offset,
+  the event's log-relative SECOND offset (`sim/ADR-0011`; was minutes before
+  M2a), suffixed with the pinned :utc-offset (`sim/ADR-0011`: a fixed offset,
   never a timezone-database lookup, never per-event) -- never from
   System/currentTimeMillis or similar. PID-3 renders the event's own
-  :active-mrn (ADR-0010: MRN moved into state; the emitter renders
+  :active-mrn (`sim/ADR-0010`: MRN moved into state; the emitter renders
   whichever MRN was active when the event happened, which until M2b's
   merge exists is always the patient's one and only MRN)."
   (:require [com.nervestaple.hl7-parser.parser :as parser]
@@ -36,7 +36,7 @@
   "2024-01-01")
 
 (def default-utc-offset
-  "Pinned default for the :utc-offset run-config input (ADR-0011): a
+  "Pinned default for the :utc-offset run-config input (`sim/ADR-0011`): a
   fixed ISO-style offset (\"+00:00\"), no DST, no timezone database.
   Rendered in HL7v2's own colon-free zone-suffix convention
   (\"+0000\") -- see `hl7-timestamp`."
@@ -167,7 +167,7 @@
    (parser/create-field [trigger])
    (parser/create-field [ts])))
 
-;; --- M4 Task 4: ER7 escaping (notes/facts-register.md F9) -----------------
+;; --- M4 Task 4: ER7 escaping (`sim/F9`) -----------------
 ;; org.clojars.cmiles74/clojure-hl7-parser implements NO escape-sequence
 ;; handling in either direction, verified directly against its own source:
 ;; pr-field/pr-content (the write path) concatenate field content into the

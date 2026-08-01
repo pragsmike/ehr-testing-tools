@@ -12,7 +12,7 @@
   itself named ('until Persona exists, this model runs at engine
   patient-init time, as a stand-in that Persona subsumes rather than
   replaces'): payer sampling now happens HERE, once, at patient
-  creation, never resampled (the attribute-pool contract, ADR-0007).
+  creation, never resampled (the attribute-pool contract, `sim/ADR-0007`).
   There was no actual stand-in CODE to remove -- `:payer` has been a
   reserved, always-nil PatientState field since M1 -- so 'retiring' the
   stand-in means wiring the real sampler in its place, not deleting
@@ -56,7 +56,7 @@
   (edn/read-string (slurp (io/resource "sim/demographics/places.edn"))))
 
 ;; --- Payer pool (docs/operational-models.md's payers model; this
-;; namespace is its real binding, per ADR-0007 decision 4) -----------------
+;; namespace is its real binding, per sim/ADR-0007 decision 4) -----------------
 
 (def Payer
   [:map
@@ -170,15 +170,15 @@
   "Fixed area-number prefix for the synthetic SSN-shaped identifier:
   '900' is inside the block SSA has never issued and states it will
   never issue (area numbers 000, 666, and 900-999 are permanently
-  excluded from assignment -- notes/facts-register.md F8) -- an
+  excluded from assignment -- `sim/F8`) -- an
   obviously-synthetic-by-construction choice, the same design move
-  ADR-0007 already made for provider NPIs (a real, documented
+  `sim/ADR-0007` already made for provider NPIs (a real, documented
   never-issued range rather than an arbitrary sentinel format)."
   "900")
 
 (defn persona
   "Samples one persona from `rng` (the run's own seeded java.util.Random
-  -- never a derived/isolated stream, ADR-0009's own reasoning extended
+  -- never a derived/isolated stream, `sim/ADR-0009`'s own reasoning extended
   here) and `config` ({:age-min :age-max :payers-under-65 :payers-65-plus},
   all optional). Fixed RNG consumption, in this exact order, always:
 
@@ -201,7 +201,7 @@
         SELECTION is derived from age, not itself a draw) (1 draw)
 
   13 draws total, always -- fixed regardless of which pool/bucket any
-  weighted pick lands in (the same ADR-0009-derived law
+  weighted pick lands in (the same `sim/ADR-0009`-derived law
   ehrt.sim.engine/assign-pathway and ehrt.sim.churn/
   roll-gap already state for this project's other probabilistic
   choices)."

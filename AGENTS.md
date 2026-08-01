@@ -171,7 +171,7 @@ library in its own right.
 - **No PHI, no real-person data, ever** — including in test fixtures
   and docs.
 - **No CPT codes** (AMA-licensed). SNOMED CT, LOINC, RxNorm, ICD-10-CM,
-  CVX only.
+  CVX only (`sim/F4`).
 - **Fix-forward with disclosure** (ADR-0001, R10): do not invent facts
   about upstream sources or this migration's own history —
   `notes/ADRs.md` and `notes/sim/`/`notes/tools/` are the record; if a
@@ -191,9 +191,9 @@ library in its own right.
   function returns `{:status :ok|:rejected|:error ...}`; exceptions are
   for programmer error only); determinism is law (all randomness in
   `components/sim` flows from the single seeded RNG in `engine/run`,
-  no wall-clock, no hash-order dependence); co-landing (a new engine
+  no wall-clock, no hash-order dependence) (`sim/ADR-0002`); co-landing (a new engine
   step type ships with its invariants in the same change); test-first,
-  properties for law-bearing constructs; the CLI-surface rule (demos
+  properties for law-bearing constructs (`sim/ADR-0004`); the CLI-surface rule (demos
   and verification run through `bases/cli`, never through component
   internals directly).
 

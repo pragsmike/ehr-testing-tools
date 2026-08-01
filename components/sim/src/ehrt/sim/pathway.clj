@@ -13,7 +13,7 @@
   A pathway is data (EDN), never code. Concepts are carried as coded
   triplets {:system :code :display} so every emitter (HL7v2 now,
   FHIR/CDA later) renders codes natively with no re-mapping -- codes
-  are properties of patient state, not of wire formats.
+  are properties of patient state, not of wire formats (`sim/ADR-0002`).
 
   The v0 step set was deliberately tiny (walking skeleton): :admission,
   :delay, :discharge. Milestone M1 (docs/operational-models.md) adds
