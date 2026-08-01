@@ -12,7 +12,7 @@
 
 (def version
   "This library's own version. Pre-release: no Clojars/Maven
-  coordinate exists yet to publish a real release under (ADR-0015
+  coordinate exists yet to publish a real release under (sim/ADR-0015
   decision 4's own deferred release-gate ledger)."
   (edn/read-string (slurp (io/resource "sim/version.edn"))))
 

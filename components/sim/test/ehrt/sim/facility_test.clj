@@ -1,7 +1,7 @@
 (ns ehrt.sim.facility-test
   "The occupancy board (a derived projection, never written directly --
-  ADR-0008/docs/operational-models.md) and the four-rung allocation
-  ladder. Written before ehrt.sim.facility exists (ADR-0004
+  sim/ADR-0008/docs/operational-models.md) and the four-rung allocation
+  ladder. Written before ehrt.sim.facility exists (sim/ADR-0004
   test-first)."
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.test.check.clojure-test :refer [defspec]]

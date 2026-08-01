@@ -2,11 +2,11 @@
   "The EmitHL7 stage's laws (docs/sim-theory.edn): bidirectional
   derivability, determinism, round-trip through an independent parser,
   and timestamp anchoring to a pinned :reference-date. Written before
-  ehrt.sim.emit-hl7 exists (ADR-0004 test-first).
+  ehrt.sim.emit-hl7 exists (sim/ADR-0004 test-first).
 
-  M2a (ADR-0011): timestamps are SECONDS from run start (was minutes),
+  M2a (sim/ADR-0011): timestamps are SECONDS from run start (was minutes),
   and every rendered timestamp carries the pinned :utc-offset's HL7-
-  style zone suffix. M2a (ADR-0010): PID-3 renders the event's own
+  style zone suffix. M2a (sim/ADR-0010): PID-3 renders the event's own
   :active-mrn, not a bare :mrn."
   (:require [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
@@ -38,7 +38,7 @@
 (defn- event-key
   "The (mrn, message-type, timestamp) triple a message must carry to
   map back to its unique log event -- the derivability law's own
-  vocabulary. mrn here is the event's rendered :active-mrn (ADR-0010)."
+  vocabulary. mrn here is the event's rendered :active-mrn (sim/ADR-0010)."
   [{:keys [event active-mrn t]}]
   (let [{:keys [type trigger]} (emit-hl7/message-type-registry event)]
     [active-mrn (str type "^" trigger) (emit-hl7/hl7-timestamp ref-date t utc-offset)]))
@@ -132,7 +132,7 @@
             with the HL7-style (colon-free) zone offset"
     (is (= "20240101013000+0000" (emit-hl7/hl7-timestamp "2024-01-01" 5400 "+00:00")))
     (is (= "20240102000000+0000" (emit-hl7/hl7-timestamp "2024-01-01" 86400 "+00:00")))
-    (testing "a non-UTC fixed offset renders its own suffix, arithmetic unaffected (no timezone database, ADR-0011)"
+    (testing "a non-UTC fixed offset renders its own suffix, arithmetic unaffected (no timezone database, sim/ADR-0011)"
       (is (= "20240101013000-0500" (emit-hl7/hl7-timestamp "2024-01-01" 5400 "-05:00"))))))
 
 ;; --- M2b: churn family message types --------------------------------------
@@ -281,13 +281,13 @@
     (is (= (emit-hl7/emit (:ground-truth world2) ref-date utc-offset churn-facility churn-providers)
            (emit-hl7/emit (:ground-truth world2) ref-date utc-offset churn-facility churn-providers)))))
 
-;; --- ADR-0012: :step-rejected renders NO message, by design ---------------
+;; --- sim/ADR-0012: :step-rejected renders NO message, by design ---------------
 
 (deftest step-rejected-has-no-message-type-registry-entry
   (is (nil? (emit-hl7/message-type-registry :step-rejected))))
 
 (deftest step-rejected-event-renders-no-message
-  (testing "truth about the run, never wire traffic (ADR-0012): a
+  (testing "truth about the run, never wire traffic (sim/ADR-0012): a
             :step-rejected event produces the SAME empty vector any
             unregistered event type does"
     (let [world0 {:patients {"P1" (engine/initial-patient "P1" "MRN000001")}
@@ -310,7 +310,7 @@
 
 (deftest outpatient-visit-end-has-no-message-type-registry-entry
   (testing "item 7: a real ground-truth event, deliberately no wire message
-            -- the same ADR-0012 :step-rejected precedent"
+            -- the same sim/ADR-0012 :step-rejected precedent"
     (is (nil? (emit-hl7/message-type-registry :outpatient-visit-end)))))
 
 (deftest outpatient-visit-emits-a04-with-pv1-2-o-and-empty-pv1-3
@@ -644,7 +644,7 @@
     (testing "MSH-5/6: receiving app/facility"
       (is (= "DOWNSTREAM" (message/get-field-first-value parsed "MSH" 5)))
       (is (= "DOWNSTREAM-FAC" (message/get-field-first-value parsed "MSH" 6))))
-    (testing "MSH-11: processing id (post-M6, ADR-0014's own Task 4 knob)"
+    (testing "MSH-11: processing id (post-M6, sim/ADR-0014's own Task 4 knob)"
       (is (= "T" (message/get-field-first-value parsed "MSH" 11))))))
 
 (deftest msh-11-processing-id-defaults-to-P-and-accepts-T-or-D
@@ -745,7 +745,7 @@
   field-separator character itself (not a token `str/split` produces);
   MSH-2 (encoding characters) is index 1 after the split, so
   MSH-3/4/5/6/11/12 land at indices 2/3/4/5/10/11. MSH-11 (processing
-  id) joined this surface post-M6 (ADR-0014's own Task 4 knob) --
+  id) joined this surface post-M6 (sim/ADR-0014's own Task 4 knob) --
   docs/site-profiles.md's own rule that a new dialect knob extends this
   function in the same change, or the invariance property stops
   actually covering it."
@@ -762,7 +762,7 @@
 
 (defn mask-dialect-surfaces
   "Masks every declared site-profile dialect surface (docs/site-
-  profiles.md Task 4, extended post-M6 by ADR-0014's own MSH-11 knob)
+  profiles.md Task 4, extended post-M6 by sim/ADR-0014's own MSH-11 knob)
   in one rendered ER7 message: MSH-3/4/5/6/11/12, PV1-2/PV1-36, and
   strips Z-segment lines entirely (a Z-segment's
   CONTENT, not merely a field within it, is site-specific -- its bare
@@ -817,7 +817,7 @@
       (is (some? (parser/parse zpi-msg)))
       (is (= 1 (count (message/get-segments (parser/parse zpi-msg) "ZPI")))))))
 
-;; --- post-M6 (ADR-0014): control-id-for is the ONE source every message
+;; --- post-M6 (sim/ADR-0014): control-id-for is the ONE source every message
 ;; builder AND `sim identifiers` derive MSH-10 from -- proven here by
 ;; checking it against a real run's own rendered messages, not merely
 ;; against itself.

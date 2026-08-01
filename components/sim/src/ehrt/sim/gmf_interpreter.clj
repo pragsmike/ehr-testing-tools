@@ -28,7 +28,7 @@
   calendar-correct month/year math GMF's own Delay/Age units need
   (`.plusMonths`/`.plusYears` are NOT fixed day-counts). This is an
   interpreter-internal representation; mapping it onto the engine's own
-  seconds-from-run-start clock (ADR-0011) is M5b's concern (RunModules
+  seconds-from-run-start clock (sim/ADR-0011) is M5b's concern (RunModules
   meeting the real engine), not this session's.
 
   A documented v1 simplification, recorded here rather than left as a
@@ -348,7 +348,7 @@
   :terminal? bool :blocked? bool}; NEVER mutates `ctx` -- the caller
   (`walk-module`, below) is what folds an outcome back into a new ctx,
   the same decide/evolve-style separation ehrt.sim.engine already
-  establishes (ADR-0008), scaled down to this interpreter's own single-
+  establishes (sim/ADR-0008), scaled down to this interpreter's own single-
   function `step`, since a GMF state's own effect and its own transition
   are never independently interesting the way decide/evolve's
   cross-patient split is."
@@ -432,7 +432,7 @@
   from `persona`'s own DOB (Task 2's `initial-context`) -- no fixed tick,
   no separately-invoked phase pass. Every trajectory event this walk
   emits is marked `:pre-horizon` by the exact pure predicate `(< t
-  registration-t)` -- the same shape ADR-0011's own warm-up mark already
+  registration-t)` -- the same shape sim/ADR-0011's own warm-up mark already
   uses (`warm-up-mark-matches-window`), applied here to the history/
   horizon boundary instead of a run's warm-up window. `registration-t`
   is the caller-supplied virtual instant (an epoch-day, `dob-epoch-day`'s

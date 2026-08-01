@@ -146,7 +146,7 @@
 ;; :self-check-failed only once the invariant catalog caught the
 ;; resulting double-encounter -- a config authoring error wearing a
 ;; "bug in us" category. Caught here, statically, before any simulation
-;; runs (ADR-0007's single-encounter-horizon makes the combination
+;; runs (sim/ADR-0007's single-encounter-horizon makes the combination
 ;; illegal by construction).
 
 (deftest run-command-rejects-a-patient-assigned-both-the-default-pathway-and-a-module

@@ -42,7 +42,7 @@
   (mapv #(format (:surge-format ward) (ward-tag ward) %) (range 1 (inc (:surge-slots ward)))))
 
 (defn occupancy-board
-  "The derived index: bed-id -> patient-id (ADR-0010; was bed-id -> mrn
+  "The derived index: bed-id -> patient-id (sim/ADR-0010; was bed-id -> mrn
   before identity moved off :mrn), folded from patient states. This IS
   the consistency law stated as code: recomputing from `patients` from
   scratch always equals this."

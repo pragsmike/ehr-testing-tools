@@ -2,7 +2,7 @@
   "Schema validity and sampling laws for the order-profiles catalytic
   (docs/sim-theory.edn's `order-profiles`, target 3 -- hashed repo-
   authored config). Written before ehrt.sim.order-profiles
-  exists (ADR-0004 test-first)."
+  exists (sim/ADR-0004 test-first)."
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.generators :as gen]

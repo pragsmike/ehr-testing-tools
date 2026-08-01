@@ -3,7 +3,7 @@
   property it exists to check -- 'the law graduates' (docs/sim-theory.md's
   global emitter-coherence law becomes a real property test once a
   second emitter exists to fold the wire back into state). Written
-  test-first (ADR-0004).
+  test-first (sim/ADR-0004).
 
   Scope boundary, documented not silent: bed-swap (A17) and merge (A40)
   are genuinely two-participant messages (two PID/PV1 pairs in ONE

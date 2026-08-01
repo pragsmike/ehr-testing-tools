@@ -1,12 +1,12 @@
 (ns ehrt.sim.vendored-module-test
   "M5b Task 1: the FIRST real vendored module (resources/modules/
-  sinusitis.json, ADR-0013's own curation criterion, docs/gmf-
+  sinusitis.json, sim/ADR-0013's own curation criterion, docs/gmf-
   interpreter.md's own recommendation) loads and validates against the
   v1 subset, registers cleanly alongside the M5a fixture (no attribute
   collisions), and can be walked to completion by the interpreter for
   many seeds without throwing.
 
-  Written test-first (ADR-0004): the FIRST version of this file (before
+  Written test-first (sim/ADR-0004): the FIRST version of this file (before
   ehrt.sim.gmf/ehrt.sim.gmf-interpreter were extended this
   session) asserted the same success shape below and went RED for real
   reasons -- `gmf/load-module` rejected the file outright with
@@ -69,7 +69,7 @@
 (defn- registration-t-for [persona] (+ (interp/dob-epoch-day persona) (* 365 30)))
 
 ;; A modest horizon window past registration -- this project's own
-;; encounter-horizon scope (ADR-0007 point 3), not a lifelong walk. The
+;; encounter-horizon scope (sim/ADR-0007 point 3), not a lifelong walk. The
 ;; vendored module has NO Terminal state at all (a real finding: unlike
 ;; the hand-written fixture, sinusitis.json is authored for Synthea's
 ;; own lifelong tick engine and never reaches Terminal) -- `run-module`'s

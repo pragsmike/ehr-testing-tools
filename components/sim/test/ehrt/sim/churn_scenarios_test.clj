@@ -12,7 +12,7 @@
   the work queue, decide/evolve folding) rather than hand-driving
   decide/evolve one call at a time. `:with` fields that name a specific
   peer patient-id are computed via `engine/patient-id-for` -- a PURE
-  function of this run's own seed and arrival ordinal (ADR-0010), so a
+  function of this run's own seed and arrival ordinal (sim/ADR-0010), so a
   scripted scenario can name 'the 3rd patient' without engine/run having
   run yet. `:arrival-gap 0` makes every patient arrive at t=0; the queue's
   own seq-no tiebreak (assigned in arrival-ordinal order, then

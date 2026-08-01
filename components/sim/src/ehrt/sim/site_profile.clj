@@ -2,7 +2,7 @@
   "Site profiles (docs/site-profiles.md): the 'simulate MY hospital'
   config layer. A site profile changes HOW a fact is said at emit time
   (MSH dialect, code-table overrides, Z-segment content) -- never WHAT
-  happened (ADR-0002; docs/site-profiles.md's own applied-at-the-
+  happened (sim/ADR-0002; docs/site-profiles.md's own applied-at-the-
   emitter argument: all three bind at ehrt.sim.emit-hl7's render
   call sites, never inside decide/evolve or the ground-truth log).
 
@@ -50,7 +50,7 @@
   `:processing-id` (MSH-11, HL7 Table 0103: \"P\" production, \"T\"
   training, \"D\" debugging) defaults to \"P\" -- this project's own
   output has always rendered a literal \"P\" here, pre-dating this
-  field's own existence as a configured knob (post-M6, ADR-0014's own
+  field's own existence as a configured knob (post-M6, sim/ADR-0014's own
   Task 4); a site profile may override it to \"T\"/\"D\" for a
   training/debugging feed instead. See docs/site-profiles.md's own
   realism-vs-caution paragraph on this specific knob before changing it

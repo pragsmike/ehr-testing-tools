@@ -7,7 +7,7 @@
   Laws:
   1. Snapshot-at-instant: `snapshot-at` is a pure function of REPLAY
      RECORDS (ehrt.sim.engine/replay's own output -- the fold,
-     ADR-0008) at a queried instant `t`. No access to the log beyond
+     sim/ADR-0008) at a queried instant `t`. No access to the log beyond
      the fold: everything downstream of `snapshot-at` (the resource
      builders, `patient-bundle`) reads ONLY the folded PatientState map
      `replay` already computed -- never a raw ground-truth event's own
@@ -15,7 +15,7 @@
      convenience call site that also calls `replay` itself, so a caller
      never has to; it does not weaken the law, since `replay` IS the
      fold this law is about, the same one ehrt.sim.check already
-     reuses rather than reimplementing (ADR-0008's own precedent).
+     reuses rather than reimplementing (sim/ADR-0008's own precedent).
   2. Format dispatch: FHIR resources now. A CDA arm is real future
      scope (docs/sim-theory.edn's own equation names both), not stubbed
      here -- no XML shell, no half-finished document type. A future
@@ -41,7 +41,7 @@
      ground truth carries :procedure events, but nothing in this
      resource set needs them, and inventing a seventh resource type
      nobody asked for would violate this law for its own sake.
-  5. Standards-native test-data marking (post-M6, ADR-0014): EVERY
+  5. Standards-native test-data marking (post-M6, sim/ADR-0014): EVERY
      resource this namespace renders carries `meta.security` (the
      standard FHIR/HL7 HTEST \"test health data\" label, verified
      against terminology.hl7.org before landing --
@@ -76,7 +76,7 @@
 
 (defn- coding-system-uri
   "Concept :system keyword -> FHIR's own canonical coding-system URI
-  (the standard mappings for this project's four code systems, ADR-0002's
+  (the standard mappings for this project's four code systems, sim/ADR-0002's
   native-code-rendering law extended to FHIR: never translated, only
   its SYSTEM identifier is format-specific)."
   [system]

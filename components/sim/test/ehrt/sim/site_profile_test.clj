@@ -1,7 +1,7 @@
 (ns ehrt.sim.site-profile-test
   "docs/site-profiles.md: the site-profile schema (Task 1), MSH dialect
   and code-table override helpers (Task 2). Written before
-  ehrt.sim.site-profile exists (ADR-0004 test-first)."
+  ehrt.sim.site-profile exists (sim/ADR-0004 test-first)."
   (:require [clojure.test :refer [deftest is testing]]
             [ehrt.sim.config :as config]
             [ehrt.sim.site-profile :as site-profile]))
@@ -43,7 +43,7 @@
     (is (= (assoc site-profile/default-msh :version "2.5.1" :sending-app "ALDRIC-EHR")
            (site-profile/effective-msh profile)))))
 
-;; --- post-M6 (ADR-0014, Task 4): MSH-11 processing id -----------------------
+;; --- post-M6 (sim/ADR-0014, Task 4): MSH-11 processing id -----------------------
 
 (deftest default-msh-processing-id-is-P
   (is (= "P" (:processing-id site-profile/default-msh))))

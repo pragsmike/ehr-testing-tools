@@ -67,7 +67,7 @@
   M5b finding: `Device`/`DeviceEnd` join v1 here too, as consumed-
   internally states structurally identical to `Simple` -- discovered
   necessary when the ratified vendored module (sinusitis.json,
-  ADR-0013/docs/gmf-interpreter.md's own recommendation) turned out to
+  sim/ADR-0013/docs/gmf-interpreter.md's own recommendation) turned out to
   use them for its Nebulizer content, confined to the module's rare
   chronic-surgical tail exactly as that document's own survey predicted,
   but the M5a loader's own all-or-nothing gate ('any deferred-type use

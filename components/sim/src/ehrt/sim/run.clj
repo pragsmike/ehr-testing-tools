@@ -14,8 +14,8 @@
   emit-hl7/emit (PV1-3/6/7) are threaded that SAME config, not a fresh
   default that might not even share ward names.
 
-  M2a (ADR-0011): :utc-offset is a rendering/manifest-only concern (the
-  engine's ground-truth log never needs it, ADR-0011 -- it never
+  M2a (sim/ADR-0011): :utc-offset is a rendering/manifest-only concern (the
+  engine's ground-truth log never needs it, sim/ADR-0011 -- it never
   shifts the underlying arithmetic, only labels which fixed offset the
   naive wall clock is asserted to be in) so it's threaded here and into
   emit-hl7, not into engine/run. :warm-up-seconds IS an engine concern
@@ -63,8 +63,9 @@
                             {:module module-name :category (:category loaded) :payload (:payload loaded)}))))))))
 
 ;; --- M6 Task 0: config-reachable :self-check-failed, recategorized -------
-;; The tools full-capability session (notes/ADRs.md ADR-0015 in the
-;; sibling repo) found that assigning one patient ordinal BOTH an
+;; The tools full-capability session (`tools/ADR-0015`, this project's
+;; own frozen pre-merge history, notes/tools/ADRs.md) found that
+;; assigning one patient ordinal BOTH an
 ;; authored encounter-opening pathway (:admission/:outpatient-visit
 ;; somewhere in its steps) AND a GMF module reaches engine/run and blows
 ;; up as :self-check-failed -- a config-reachable outcome wearing the
@@ -73,12 +74,12 @@
 ;; (ehrt.sim.engine/run's own :registered decide method), so the
 ;; pathway's own encounter-opening step finds an already-non-:new
 ;; patient -- illegal under this project's single-encounter-horizon
-;; scope (ADR-0007 point 3). The combination stays illegal; this makes
+;; scope (sim/ADR-0007 point 3). The combination stays illegal; this makes
 ;; the refusal honest and early: :rejected :incompatible-assignment,
 ;; naming the patient ordinal and the two conflicting sources, BEFORE
 ;; engine/run (and its RNG) ever starts. Purely structural -- no RNG, no
 ;; module content resolved (every vendored module is encounter-bearing
-;; by ADR-0013's own curation criterion, so ANY module assignment
+;; by sim/ADR-0013's own curation criterion, so ANY module assignment
 ;; conflicts with ANY encounter-opening pathway, regardless of which
 ;; specific module).
 
@@ -204,7 +205,7 @@
   assignment` (payload {:conflicts [{:patient-ordinal :pathway-source
   :module-source} ...]}), checked BEFORE engine/run is ever called --
   `incompatible-assignments`' own docstring has the full reasoning
-  (single-encounter-horizon, ADR-0007; this used to reach engine/run
+  (single-encounter-horizon, sim/ADR-0007; this used to reach engine/run
   and surface only as :self-check-failed once the invariant catalog
   caught the resulting double encounter).
 

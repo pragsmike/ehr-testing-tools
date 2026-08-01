@@ -1,7 +1,7 @@
 (ns ehrt.sim.churn-test
   "InjectChurn (docs/sim-theory.edn): the pathway-ir x churn-profile ->
   operational-pathway IR->IR transform. Written before
-  ehrt.sim.churn exists (ADR-0004 test-first). The stage's own
+  ehrt.sim.churn exists (sim/ADR-0004 test-first). The stage's own
   laws (docs/sim-theory.edn's :churn entry) become property tests here:
   IR endomorphism, the clinical-steps invariant (only inserts, never
   removes/reorders/alters), and single-seeded-RNG determinism."

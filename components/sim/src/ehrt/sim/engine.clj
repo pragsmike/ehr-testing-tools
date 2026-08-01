@@ -127,7 +127,7 @@
   "The engine's per-patient accumulator -- what folding `evolve` over a
   patient's own event subsequence produces (docs/patient-state-model.md
   is the full design spec). `:patient-id` is the fold/queue key
-  (ADR-0010); `:mrns`/`:active-mrn` are what `:mrn` became once MRN
+  (sim/ADR-0010); `:mrns`/`:active-mrn` are what `:mrn` became once MRN
   moved into state -- a singleton set until M2b's merge exists to grow
   it. As of Milestone M1: :location is the {:ward :bed :placement} map
   (upgraded from v0's bare ward-name string, alongside the allocation
@@ -186,7 +186,7 @@
   `evolve`'s fold origin. The single place this shape is constructed,
   so tests reconstructing state independently (the fold-consistency
   property) start from the same place the engine itself does.
-  ADR-0010: keyed by `patient-id`, not `mrn` -- `mrn` is the patient's
+  sim/ADR-0010: keyed by `patient-id`, not `mrn` -- `mrn` is the patient's
   starting (and, until M2b's merge, only) MRN."
   [patient-id mrn]
   {:patient-id patient-id :mrns #{mrn} :active-mrn mrn :status :new})
@@ -206,12 +206,12 @@
     (bit-xor x (unsigned-bit-shift-right x 31))))
 
 (defn patient-id-for
-  "The internal, deterministic patient-id (ADR-0010): a PURE function
+  "The internal, deterministic patient-id (sim/ADR-0010): a PURE function
   of this run's seed and the patient's arrival ordinal (0-indexed) --
   never reassigned, never re-derived elsewhere, and deliberately OFF
   the seeded RNG stream (identity needs no stochastic behavior, only
   spread across seeds -- keeping it off the RNG means identity
-  generation adds no new draws for ADR-0009's accounting to track).
+  generation adds no new draws for sim/ADR-0009's accounting to track).
   Distinct format from :mrn (\"PID-\" prefix, never \"MRN\") so the two
   id spaces are never visually confusable; the zero-padded ordinal
   leads so patient-id's lexical order matches arrival order exactly
@@ -224,7 +224,7 @@
 (defn events-for-patient
   "Every event `patient-id` participates in, in log order -- the
   patient-phrased replacement for what a single :mrn-keyed lookup used
-  to mean before ADR-0010's :participants existed. An event with more
+  to mean before sim/ADR-0010's :participants existed. An event with more
   than one participant (M2b's bed-swap, merge) appears in every
   participant's own sequence, not just one."
   [ground-truth patient-id]
@@ -233,13 +233,13 @@
 
 (defmulti decide
   "Decides what happens when patient `patient-id` is due to execute
-  `step` at simulated time t (SECONDS from the run's epoch, ADR-0011).
+  `step` at simulated time t (SECONDS from the run's epoch, sim/ADR-0011).
   Consults `world` ({:patients {patient-id -> patient-state} :facility
   .. :providers ..} -- read-only) and the seeded RNG to make stochastic
   and cross-patient choices; returns {:events [<ground-truth
   event>...] :advance <seconds>}. NEVER returns or implies a new
   patient state -- state changes only by folding the returned events
-  through `evolve` (ADR-0008). Pure given the RNG (the RNG is the only
+  through `evolve` (sim/ADR-0008). Pure given the RNG (the RNG is the only
   stateful argument, and its consumption order is fixed by the
   deterministic event ordering)."
   (fn [_rng _t _world _patient-id step] (:type step)))
@@ -340,7 +340,7 @@
 (defmethod decide :delay
   [rng _t _world _patient-id {:keys [from to]}]
   ;; :from/:to are authored in MINUTES (pathway.clj IR, unchanged --
-  ;; ADR-0011 decision 1's authoring-ergonomics carve-out); the engine
+  ;; sim/ADR-0011 decision 1's authoring-ergonomics carve-out); the engine
   ;; converts to SECONDS here, the one place a minute-denominated draw
   ;; becomes a clock advance.
   {:events []
@@ -415,7 +415,7 @@
 
 (def documented-step-rejection-reasons
   "The closed enum every :step-rejected event's :reason must be drawn
-  from (ADR-0012's own invariant: 'every rejection's reason is from a
+  from (sim/ADR-0012's own invariant: 'every rejection's reason is from a
   documented enum') -- check.clj's step-rejected-reason-is-documented
   validates every log against exactly this set, so a new rejection path
   earns an entry here in the same change (the co-landing convention,
@@ -426,7 +426,7 @@
     :illegal-bed-swap :illegal-merge})
 
 (defn- rejected-outcome
-  "ADR-0012 (M3): a decide-time rejection is no longer a silent no-op --
+  "sim/ADR-0012 (M3): a decide-time rejection is no longer a silent no-op --
   a :step-rejected ground-truth event now enters `:events` (folded via
   `evolve`'s own identity method for this type, below, and logged like
   any other event) alongside the pre-existing :rejected key callers
@@ -437,7 +437,7 @@
   real patient), so participant-ids-exist-in-run stays sound for every
   rejection, including one that names a typo'd or never-admitted peer.
   No RNG is drawn here: decide already drew everything it was going to
-  draw before discovering the rejection (determinism note, ADR-0012)."
+  draw before discovering the rejection (determinism note, sim/ADR-0012)."
   [reason patient-id t step extra]
   (let [event {:event :step-rejected :t t
                :participants [{:patient-id patient-id :role :subject}]
@@ -573,7 +573,7 @@
                       (:analytes prof))
         result-t (+ t turnaround-seconds)
         ;; :location/:attending are the patient's state AT ORDER TIME
-        ;; (decide has no access to a FUTURE fold -- ADR-0008 -- and the
+        ;; (decide has no access to a FUTURE fold -- sim/ADR-0008 -- and the
         ;; result event's own values were already fully computed atomically
         ;; back here); PV1 context for both messages reflects where the
         ;; specimen was ordered, the same convention real order/result
@@ -636,7 +636,7 @@
 ;; --- M5b: CompileTrajectory's new ground-truth event types (docs/gmf-
 ;; interpreter.md section 1's table) -- each is a real, glass-box-cited
 ;; ground-truth event; none carries or changes PatientState (the log
-;; itself is the record, ADR-0008, the same "no PatientState field for
+;; itself is the record, sim/ADR-0008, the same "no PatientState field for
 ;; it" treatment :order-placed/:result-available already get). None
 ;; consumes RNG -- their content was already fully sampled by the GMF
 ;; interpreter (M5a); CompileTrajectory/the engine only replay it.
@@ -702,7 +702,7 @@
   match even though onset/end carry DIFFERENT citations -- one per
   module state). `t` is the enclosing encounter event's own :t: this
   project only ever compiles ONE encounter per patient (the single-
-  encounter-horizon scope, ADR-0007), so every condition annotation for
+  encounter-horizon scope, sim/ADR-0007), so every condition annotation for
   a patient rides that SAME event -- onset and end share one instant
   rather than each carrying its own, a documented simplification of
   this scope, not a claim that a condition's real onset and resolution
@@ -728,9 +728,9 @@
   (patient-state, event) -> patient-state'. Pure and total: no RNG, no
   knowledge of the step or decision that produced the event, no
   knowledge of `world` or any other patient. This is the ONLY function
-  that ever produces a new patient state (ADR-0008) -- the run loop is
+  that ever produces a new patient state (sim/ADR-0008) -- the run loop is
   what maps an event to every participant's slice of `world` (via the
-  event's own :participants, ADR-0010) and folds `evolve` in there,
+  event's own :participants, sim/ADR-0010) and folds `evolve` in there,
   once per participant."
   (fn [_patient event] (:event event)))
 
@@ -797,7 +797,7 @@
       :survivor (-> patient (update :mrns into merged-mrns) (assoc :active-mrn surviving-mrn))
       :merged (assoc patient :status :merged))))
 
-;; --- ADR-0012: :step-rejected -- truth about the run, never a state
+;; --- sim/ADR-0012: :step-rejected -- truth about the run, never a state
 ;; transition (the attempted step never actually happened) --------------
 
 (defmethod evolve :step-rejected
@@ -806,7 +806,7 @@
 
 ;; --- M3: order/result -- neither changes any PatientState field today
 ;; (docs/patient-state-model.md's accumulator has no order/result-history
-;; field; the log itself is the history, queried directly, ADR-0008) ------
+;; field; the log itself is the history, queried directly, sim/ADR-0008) ------
 
 (defmethod evolve :order-placed
   [patient _event]
@@ -892,10 +892,10 @@
   patient's pre/post state even once M2b's bed-swap/merge span two
   (cross-participant invariants read world-before/world-after
   directly instead). Every participant in :participants folds via
-  `evolve`, not just the primary one -- ADR-0010: a patient's state
+  `evolve`, not just the primary one -- sim/ADR-0010: a patient's state
   folds exactly the events they participate in. `world-before`/
   `world-after` are the full {patient-id -> patient-state} map
-  immediately before/after this event (ADR-0008: state-history is
+  immediately before/after this event (sim/ADR-0008: state-history is
   derived -- this IS that derivation, generalized across patients)."
   [ground-truth]
   (loop [events ground-truth patients {} acc (transient [])]
@@ -1003,11 +1003,11 @@
 
   ALWAYS consumes exactly one `.nextDouble` from `rng`, whether the
   outcome is the explicit override or the weighted pick -- fixed RNG
-  consumption per patient, ADR-0009's own rejected-alternative reasoning
+  consumption per patient, sim/ADR-0009's own rejected-alternative reasoning
   extended here: making draw count depend on whether THIS patient
   happens to have an explicit override would mean adding one scripted
   override for patient N shifts every OTHER patient's downstream draws,
-  the exact surprising coupling ADR-0009 already rejected for bed
+  the exact surprising coupling sim/ADR-0009 already rejected for bed
   choice (there: 'consumption changed once, for a documented reason' is
   the accepted property; making it depend on candidate count is not)."
   [^Random rng pathways-config i]
@@ -1034,7 +1034,7 @@
   common case, not a caller error). ALWAYS consumes exactly one
   `.nextDouble` from `rng` regardless of outcome, the same fixed-
   consumption law `assign-pathway` already establishes, for the
-  identical reason (ADR-0009's own rejected-alternative reasoning)."
+  identical reason (sim/ADR-0009's own rejected-alternative reasoning)."
   [^Random rng modules-config i]
   (let [draw (.nextDouble rng)
         explicit (first (filter #(= i (:patient-ordinal %)) modules-config))
@@ -1091,7 +1091,7 @@
                       RNG). Stays minutes, converted to seconds at the
                       point arrivals are computed -- symmetric to
                       :delay's own minutes-authored/seconds-internal
-                      split (ADR-0011), and empirically necessary: an
+                      split (sim/ADR-0011), and empirically necessary: an
                       earlier draft left this in raw seconds while
                       :delay's dwell times (minutes*60) stayed
                       comparatively huge, so arrivals clustered far
@@ -1104,11 +1104,11 @@
                       preserves the calibration that made that headroom
                       real.
     :warm-up-seconds  events with :t less than this get :warm-up true
-                      (default 0; ADR-0011 -- the log stays complete,
+                      (default 0; sim/ADR-0011 -- the log stays complete,
                       no trimming here)
     :facility         facility config (default config/default-facility)
     :providers        provider templates (default config/default-provider-templates;
-                       NPIs are generated from THIS run's seed -- ADR-0007)
+                       NPIs are generated from THIS run's seed -- sim/ADR-0007)
     :order-profiles   M3: ehrt.sim.order-profiles/OrderProfiles map
                       (default order-profiles/default-profiles) -- :order
                       steps look up their :profile key here.
@@ -1117,13 +1117,13 @@
                        ONCE PER PATIENT (in arrival-ordinal order, a fixed
                        point in the draw sequence) against THIS run's own
                        `rng` -- not a derived/isolated stream, same
-                       reasoning ADR-0009 gives for NPI generation --
+                       reasoning sim/ADR-0009 gives for NPI generation --
                        between building each patient's step queue and the
                        main loop. Absent entirely (not merely all-zero),
                        this stage never runs and consumes no RNG: the
                        reason a config with no :churn-profile key
                        reproduces byte-identical pre-M2b output (the
-                       pinned fixture; churn is opt-in, ADR-0009's
+                       pinned fixture; churn is opt-in, sim/ADR-0009's
                        accept-and-record policy doesn't even apply here
                        since nothing about this path changed).
     :persona-config   M4: ehrt.sim.persona/persona's own config
@@ -1139,7 +1139,7 @@
                       Persona is a landed part of Execute's own step
                       vocabulary now (docs/sim-theory.edn), so this
                       milestone's own fixture regeneration is expected
-                      and documented (ADR-0009 policy), not guarded
+                      and documented (sim/ADR-0009 policy), not guarded
                       against the way M2b/M3's opt-in additions were.
     :modules          M5b: a vector of ALREADY-LOADED GMF module maps
                       (ehrt.sim.gmf/load-module's own :payload
@@ -1153,7 +1153,7 @@
                       :pathways already establishes, `assign-module`'s
                       own input, ONE additional fixed RNG draw per
                       patient when present (assign-pathway's own fixed-
-                      consumption, ADR-0009, law, extended). ABSENT
+                      consumption, sim/ADR-0009, law, extended). ABSENT
                       ENTIRELY (not merely nil or []) -- the default --
                       means no patient ever walks a module: no draw, no
                       :module carried on any :registered step, BYTE-
@@ -1195,7 +1195,7 @@
   that might not even share ward names. ground-truth is format-free,
   ordered by [t seq-no]; emitters consume it and test assertions target
   it directly (a first-class output, per the problem statement).
-  state-history is DERIVED (ADR-0008; sim-theory.md open question #3)
+  state-history is DERIVED (sim/ADR-0008; sim-theory.md open question #3)
   -- (get state-history patient-id) is exactly (rest (reductions evolve
   (initial-patient patient-id mrn) (events for patient-id))), proven as
   a property test (engine-test/patient-state-is-a-fold-of-the-log)
@@ -1217,7 +1217,7 @@
   {:pre [(some? seed) (pathway/valid? pathway)
          (or (nil? pathways) (pathway/valid-pathways-config? pathways))]}
   (let [rng (Random. ^long seed)
-        ;; Provider NPIs are generated from this run's seed (ADR-0007),
+        ;; Provider NPIs are generated from this run's seed (sim/ADR-0007),
         ;; drawn once up front -- before arrival staggering -- so
         ;; provider identity is as deterministic and as fixed-order as
         ;; everything else this RNG produces.

@@ -1,6 +1,6 @@
 (ns ehrt.sim.identifiers-test
-  "The `sim identifiers` capability (post-M6, ADR-0014). Written test-
-  first (ADR-0004): determinism (same config+seed => identical
+  "The `sim identifiers` capability (post-M6, sim/ADR-0014). Written test-
+  first (sim/ADR-0004): determinism (same config+seed => identical
   inventory) and completeness against a real run (every id a real
   emission of THIS run actually carries -- MRNs/control-ids on the
   wire, resource ids in the FHIR Bundles, provider NPIs, patient-ids --

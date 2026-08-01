@@ -8,7 +8,7 @@
 
   The authoritative schema lives in ehr-testing-tools; this namespace
   mirrors the *shape* without depending on it (dependency arrow points
-  tools -> sim only, ADR-0001). The mirrored schema here is a tripwire,
+  tools -> sim only, sim/ADR-0001). The mirrored schema here is a tripwire,
   not the contract: the binding contract test belongs in
   ehr-testing-tools' test-integration tree, where both codebases are on
   the classpath and drift becomes a failing test rather than a latent

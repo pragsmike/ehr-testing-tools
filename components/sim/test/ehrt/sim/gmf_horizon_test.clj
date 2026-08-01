@@ -1,11 +1,11 @@
 (ns ehrt.sim.gmf-horizon-test
   "Red tests for the history/horizon two-phase run (M5a Task 3, docs/gmf-
   interpreter.md section 3) -- written before ehrt.sim.gmf-
-  interpreter/run-module exists (ADR-0004 test-first). The ratified
+  interpreter/run-module exists (sim/ADR-0004 test-first). The ratified
   design: ONE continuous walk from the persona's own DOB (Task 2's
   `initial-context`) through registration and on to a (caller-supplied)
   horizon end, no fixed tick -- every emitted trajectory event is marked
-  `:pre-horizon` by the SAME pure predicate ADR-0011's own warm-up mark
+  `:pre-horizon` by the SAME pure predicate sim/ADR-0011's own warm-up mark
   already uses (`t < boundary`), never a second, separately-driven phase
   pass. This is what makes 'the phases genuinely share state' true by
   construction rather than by extra plumbing: attributes and the

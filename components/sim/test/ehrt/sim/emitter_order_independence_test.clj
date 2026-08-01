@@ -13,7 +13,7 @@
   byte-identical either way.
 
   Expected to already be green -- this is a tripwire against a regression,
-  not a red-then-green fix (ADR-0004's test-first rule applies to new
+  not a red-then-green fix (sim/ADR-0004's test-first rule applies to new
   behavior; a guard test for an existing structural guarantee is the
   documented exception). Run repeatedly (`clojure -X:test`, 3x per the
   mining notes) precisely because a hash-order-dependent bug, if one were

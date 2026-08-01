@@ -15,7 +15,7 @@
   - all stochastic choices draw from the run's single seeded RNG:
     `inject` takes the run's own `java.util.Random` (the SAME instance
     ehrt.sim.engine/run already threads through decide, not a
-    derived or isolated stream) -- the same reasoning ADR-0009 gives
+    derived or isolated stream) -- the same reasoning sim/ADR-0009 gives
     for NPI generation, extended here.
 
   Applicability oracle: docs/patient-state-model.md's event-validity
@@ -29,7 +29,7 @@
   ask of a real log, asked instead of a pathway's step-type sequence.
 
   RNG consumption is fixed regardless of the profile's VALUES or the
-  pathway's applicability state at any point (ADR-0009's own rejected-
+  pathway's applicability state at any point (sim/ADR-0009's own rejected-
   alternative reasoning: making consumption depend on content is worse
   than a fixed, occasionally-discarded draw) -- every churn step type
   draws exactly one `.nextDouble` at every insertion point (`gap`),

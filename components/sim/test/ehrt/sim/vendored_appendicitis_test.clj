@@ -3,7 +3,7 @@
   appendicitis.json, docs/gmf-interpreter.md's own M7 survey
   recommendation -- the only one of 26 modules read that session with
   ZERO state-type gap AND zero condition-vocabulary gap). Written
-  test-first (ADR-0004): the FIRST version of this file, run before
+  test-first (sim/ADR-0004): the FIRST version of this file, run before
   `resources/modules/appendicitis.json` existed, went RED for the
   simple, expected reason (the resource does not exist yet) -- once the
   file is vendored, every assertion below is expected to go GREEN

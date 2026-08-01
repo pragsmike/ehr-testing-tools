@@ -2,7 +2,7 @@
   "Red tests for CompileTrajectory (M5b Task 3, docs/gmf-interpreter.md
   section 1's per-state-type mapping table and section 6's own build-
   session test obligations) -- written before ehrt.sim.compile-
-  trajectory exists (ADR-0004 test-first). Pure, RNG-free: every value
+  trajectory exists (sim/ADR-0004 test-first). Pure, RNG-free: every value
   CompileTrajectory ever touches was already sampled by the GMF
   interpreter (M5a); this stage only re-shapes already-decided content
   into pathway IR.
@@ -229,7 +229,7 @@
   an annotation OR was legitimately dropped (no open encounter), (c) a
   pre-horizon event dropped or captured as a registration-fact, or (d)
   everything from the FIRST horizon-phase :encounter-end onward -- this
-  project's own single-encounter-horizon scope (ADR-0007 point 3) -- per
+  project's own single-encounter-horizon scope (sim/ADR-0007 point 3) -- per
   this session's own resolution -- never silently unaccounted for."
   [trajectory {:keys [steps registration-facts]}]
   (let [step-citations (into #{} (keep :citation) steps)

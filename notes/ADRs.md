@@ -4607,6 +4607,37 @@ the ones this session's citation survey flagged (`engine.clj` alone has
 sweep. Full account:
 `.agents/session-records/2026-08-02-migration-session-3.md`.
 
+**Dated note, 2026-08-02 (migration session 4).** Item 8 landed
+(`.agents/plans/2026-08-01-migration-report.md` item 8, no dependencies
+per that report's own sequencing note): `.agents/reading-sets.edn` —
+five named sets (`:onboarding`, `:corpus`, `:sim`, `:judge`, `:docs`),
+each path justified inline by an EDN comment, gated by
+`ehrt.docs-tooling.reading-set-budget-test` (path resolution + budget,
+both red→green live-proven against the real file this session, in
+addition to the test suite's own permanent fixture-based mechanism
+checks). **Every `:budget-lines` value is this session's own measured
+actual, the baseline the author's future budget ruling (charter §6) now
+has a real number to cite against:** `:onboarding` 523, `:corpus` 1519,
+`:sim` 574, `:judge` 644, `:docs` 433. Also landed: the
+`components/sim/src`/`test` bare-`ADR-NNNN` docstring sweep migration
+session 3 named as a future dedicated task (roadmap "Next") — 151 bare
+references across 39 files classified and requalified: 149 to
+`sim/ADR-NNNN` (sim's own frozen register, the overwhelming majority),
+1 to `tools/ADR-0015` (`components/sim/src/ehrt/sim/run.clj` — a
+cross-repo citation this session found was headed at the wrong frozen
+register entirely, not just missing a qualifier), and 1 left
+deliberately bare
+(`components/sim/src/ehrt/sim/interface.clj`'s own citation of the
+LIVE `notes/ADRs.md` ADR-0001 R5 — correct exactly as written, not
+sim's frozen ADR-0001). Two further miscitations (a wrong file path
+named outright, `notes/ADRs.md` where `notes/sim/ADRs.md` was meant)
+also corrected. Docstring/comment/fixture-remark edits only, zero
+behavior change (`clojure -M:poly check` and the full `:all
+skip:integration` suite both green before and after, diffed by hand
+against the pre-sweep baseline). Items 5, 14 remain fenced. Full
+account, including the complete one-to-one accounting table:
+`.agents/session-records/2026-08-02-migration-session-4.md`.
+
 ---
 
 ## ADR-0024 — `.claude/skills/` carved out of the untracked-`.claude/` ruling; mirror-with-gate lands the Claude Code discovery fix

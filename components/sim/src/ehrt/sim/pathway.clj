@@ -82,7 +82,7 @@
                 [:conditions {:optional true} [:vector ConditionAnnotation]]]]
    [:delay [:map
             [:type [:= :delay]]
-            ;; minutes (authoring ergonomics, ADR-0011 -- the engine's
+            ;; minutes (authoring ergonomics, sim/ADR-0011 -- the engine's
             ;; own clock is seconds; it converts minutes -> seconds at
             ;; decide-time, this field's authored unit never changes);
             ;; the engine samples uniformly in [from, to] from its own
@@ -102,7 +102,7 @@
                [:location :string]
                [:force-placement {:optional true} ForcePlacement]]]
    ;; --- M2b churn family (docs/patient-state-model.md's event-validity
-   ;; table; ADR-0010's :participants). Cancel-* steps name no target
+   ;; table; sim/ADR-0010's :participants). Cancel-* steps name no target
    ;; explicitly -- decide finds the most recent uncancelled event of the
    ;; class being cancelled in THIS patient's own log (docs/patient-
    ;; state-model.md's deterministic-event-id section), the same way
@@ -118,7 +118,7 @@
                         [:type [:= :transfer-in-error]]
                         [:location :string]
                         [:force-placement {:optional true} ForcePlacement]]]
-   ;; Genuinely two-participant (ADR-0010). `:with` is the scripted-
+   ;; Genuinely two-participant (sim/ADR-0010). `:with` is the scripted-
    ;; authoring escape hatch (same precedent as :force-placement) naming
    ;; the peer patient-id explicitly; omitted, decide picks a uniformly
    ;; seeded eligible peer from `world` -- the same "decide resolves the

@@ -2,7 +2,7 @@
   "name": "Fixture Clinic",
   "remarks": [
     "Hand-authored GMF fixture for ehrt.sim's M5a interpreter tests",
-    "(notes/ADRs.md ADR-0013 point 6): this project's own authored data,",
+    "(notes/sim/ADRs.md ADR-0013 point 6): this project's own authored data,",
     "not derived from or copied out of any real Synthea module, so it carries",
     "no NOTICE/provenance obligation the way a vendored module would.",
     "Every v1 state type (docs/gmf-interpreter.md section 1) and all four",

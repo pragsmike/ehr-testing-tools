@@ -21,14 +21,14 @@
   when :new, transfer only when :admitted, a transfer's declared
   :from matches the fold). These read patient/world state via
   ehrt.sim.engine/replay -- the same fold `evolve` always was,
-  reused rather than reimplemented (ADR-0008).
+  reused rather than reimplemented (sim/ADR-0008).
 
-  M2a (ADR-0010) adds two structural invariants over :participants
+  M2a (sim/ADR-0010) adds two structural invariants over :participants
   (every event has >=1, every participant id traces to an :admission
   in the same log) and moves every per-patient grouping from
   `:mrn` to `:participants`-derived patient-ids -- an event with more
   than one participant (M2b's bed-swap, merge) belongs to every
-  participant's own sequence, not just one. M2a (ADR-0011) adds the
+  participant's own sequence, not just one. M2a (sim/ADR-0011) adds the
   warm-up-mark invariant (config/check-warm-up.clj docstring companion
   below)."
   (:require [clojure.set]
@@ -73,10 +73,10 @@
         :when (or (neg? first-admit) (< d first-admit))]
     {:invariant :discharge-follows-admission :patient-id patient-id :at d}))
 
-;; --- ADR-0010: structural participant invariants -------------------------
+;; --- sim/ADR-0010: structural participant invariants -------------------------
 
 (defn every-event-has-participants
-  "Every event names at least one participant (ADR-0010) -- a bug in a
+  "Every event names at least one participant (sim/ADR-0010) -- a bug in a
   decide implementation or a future churn-injection step could
   otherwise emit an orphan event no patient's fold ever sees."
   [ground-truth]
@@ -106,10 +106,10 @@
           :when (not (contains? admitted-ids patient-id))]
       {:invariant :participant-ids-exist-in-run :patient-id patient-id :at (:t event)})))
 
-;; --- ADR-0011: the warm-up mark -------------------------------------------
+;; --- sim/ADR-0011: the warm-up mark -------------------------------------------
 
 (defn warm-up-mark-matches-window
-  "The warm-up mark is exactly `t < warm-up-seconds` (ADR-0011) -- a
+  "The warm-up mark is exactly `t < warm-up-seconds` (sim/ADR-0011) -- a
   pure predicate over each event's own :t and the run's configured
   warm-up window, checkable without replay."
   [ground-truth warm-up-seconds]
@@ -243,7 +243,7 @@
     {:invariant :surge-only-when-earlier-rungs-exhausted :patient-id patient-id :at (:t event)}))
 
 ;; --- M2b: churn family (docs/patient-state-model.md's event-validity
-;; table's cancel-*/bed-swap/merge rows; ADR-0010's cross-participant
+;; table's cancel-*/bed-swap/merge rows; sim/ADR-0010's cross-participant
 ;; coherence) -------------------------------------------------------------
 
 (def ^:private cancel-target-type
@@ -278,7 +278,7 @@
 (defn bed-swap-both-admitted-before-swap
   "Both bed-swap participants were :admitted immediately beforehand
   (docs/operational-models.md's own admitted-when-placed rule, extended
-  to the genuinely-two-participant case -- ADR-0010)."
+  to the genuinely-two-participant case -- sim/ADR-0010)."
   [ground-truth]
   (for [{:keys [event world-before]} (engine/replay ground-truth)
         :when (= :bed-swap (:event event))
@@ -310,7 +310,7 @@
 (defn no-events-after-merged-terminal
   "The merged patient-id's stream ends with its own merge event -- no
   later event in the log names it as a participant (docs/patient-
-  state-model.md, ADR-0010)."
+  state-model.md, sim/ADR-0010)."
   [ground-truth]
   (let [indexed (vec ground-truth)]
     (for [[merge-idx event] (map-indexed vector indexed)
@@ -321,12 +321,12 @@
                     (some #(= merged-id (:patient-id %)) (:participants later-event)))]
       {:invariant :no-events-after-merged-terminal :patient-id merged-id :at (:t later-event)})))
 
-;; --- ADR-0012: :step-rejected -- truth about the run, checked structurally
+;; --- sim/ADR-0012: :step-rejected -- truth about the run, checked structurally
 ;; (never a message-bearing event -- no message-type-registry entry, by
 ;; design; see ehrt.sim.engine/documented-step-rejection-reasons) --
 
 (defn step-rejected-reason-is-documented
-  "ADR-0012's own invariant: every :step-rejected event's :reason is one
+  "sim/ADR-0012's own invariant: every :step-rejected event's :reason is one
   of the documented enum (ehrt.sim.engine/documented-step-
   rejection-reasons) -- a rejection with an undocumented reason would
   mean a new decide-time rejection path shipped without updating the
@@ -456,7 +456,7 @@
   the FIRST event naming any given patient-id, every time, or
   ehrt.sim.engine/replay's own bootstrap (which seeds a
   never-yet-seen participant's initial state off the first event
-  naming them, ADR-0010) would silently seed from the wrong event."
+  naming them, sim/ADR-0010) would silently seed from the wrong event."
   [ground-truth]
   (for [[patient-id events] (events-by-patient ground-truth)
         :when (not= :registered (:event (first events)))]
@@ -506,7 +506,7 @@
    #'surge-only-when-earlier-rungs-exhausted])
 
 (def warmup-catalog
-  "Invariants that need the run's configured warm-up window (ADR-0011),
+  "Invariants that need the run's configured warm-up window (sim/ADR-0011),
   not just the log -- same reason `facility-catalog` is separate."
   [#'warm-up-mark-matches-window])
 

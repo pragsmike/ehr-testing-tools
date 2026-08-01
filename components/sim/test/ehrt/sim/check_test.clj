@@ -4,12 +4,12 @@
   admission/transfer legality, transfer-from accuracy, no double
   occupancy, one-slot-per-admitted-patient, capacity, and surge-only-
   when-earlier-rungs-exhausted. Written before ehrt.sim.check
-  grows these (ADR-0004 test-first).
+  grows these (sim/ADR-0004 test-first).
 
-  M2a (ADR-0010) additions: every hand-written log below now carries
+  M2a (sim/ADR-0010) additions: every hand-written log below now carries
   :participants (the fold-routing mechanism replay/check.clj need since
   :mrn is no longer the fold key), plus the two structural invariants
-  ADR-0010 requires: every event has >=1 participant, and every
+  sim/ADR-0010 requires: every event has >=1 participant, and every
   participant id traces back to an :admission in the same log."
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.test.check.clojure-test :refer [defspec]]
@@ -107,7 +107,7 @@
               :location {:ward "Renal" :bed "RENAL-H01" :placement :surge}}]]
     (is (empty? (check/surge-only-when-earlier-rungs-exhausted log facility)))))
 
-;; --- ADR-0010: structural participant invariants -------------------------
+;; --- sim/ADR-0010: structural participant invariants -------------------------
 
 (deftest every-event-has-participants-detects-empty-participants
   (is (seq (check/every-event-has-participants
@@ -222,7 +222,7 @@
                 :from nil :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}]]
       (is (seq (check/outpatient-patients-occupy-no-bed log))))))
 
-;; --- ADR-0011: the warm-up mark -------------------------------------------
+;; --- sim/ADR-0011: the warm-up mark -------------------------------------------
 
 (deftest warm-up-mark-matches-window-detects-mismarked-event
   (let [log [{:event :admission :t 5 :warm-up false :home-ward "Renal" :participants (subject "P1")
@@ -318,7 +318,7 @@
                   {:event :discharge :t 20 :participants (subject "P2")})]
     (is (seq (check/no-events-after-merged-terminal log)))))
 
-;; --- ADR-0012: :step-rejected -------------------------------------------
+;; --- sim/ADR-0012: :step-rejected -------------------------------------------
 
 (deftest step-rejected-reason-is-documented-detects-an-undocumented-reason
   (let [log [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")

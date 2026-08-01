@@ -61,14 +61,14 @@
    :cancel-discharge {:type "ADT" :trigger "A13"}
    :bed-swap {:type "ADT" :trigger "A17"}
    :merge {:type "ADT" :trigger "A40"}
-   ;; M3: order/result. :step-rejected has NO entry, by design (ADR-0012:
+   ;; M3: order/result. :step-rejected has NO entry, by design (sim/ADR-0012:
    ;; truth about the run, never wire traffic -- no real ADT/ORM/ORU feed
    ;; carries a message for an attempt that never became a real action).
    :order-placed {:type "ORM" :trigger "O01"}
    :result-available {:type "ORU" :trigger "R01"}
    ;; M5b (docs/gmf-interpreter.md section 4's sketch, item 5): the new
    ;; outpatient encounter class. :outpatient-visit-end has NO entry, by
-   ;; design (item 7 -- the same ADR-0012 :step-rejected precedent: many
+   ;; design (item 7 -- the same sim/ADR-0012 :step-rejected precedent: many
    ;; real ambulatory feeds send a single A04 and no closing message for a
    ;; same-day visit; inventing a discharge-shaped message here would be
    ;; manufacturing wire traffic no real interface sends).
@@ -100,12 +100,12 @@
 
 (defn hl7-timestamp
   "Renders the absolute HL7 timestamp for `seconds` (a log event's :t,
-  SECONDS from the run's epoch -- ADR-0011, was minutes before M2a)
+  SECONDS from the run's epoch -- sim/ADR-0011, was minutes before M2a)
   anchored to :reference-date, suffixed with :utc-offset in HL7's own
   colon-free zone convention -- the timestamp-anchoring law, extended
   to state which fixed offset the naive wall-clock arithmetic is
   asserted to be in (no timezone database, no DST: the arithmetic
-  itself never shifts across zones, ADR-0011). Pure: reference-date +
+  itself never shifts across zones, sim/ADR-0011). Pure: reference-date +
   seconds + utc-offset in, string out, nothing else consulted."
   [reference-date seconds utc-offset]
   (str (.format (.plusSeconds (reference-instant reference-date) seconds) hl7-timestamp-formatter)
@@ -114,7 +114,7 @@
 (defn control-id-for
   "MSH-10 (message control id) for one ground-truth event -- the SAME
   construction every message-builder call site below uses, extracted
-  once (post-M6, ADR-0014's own `sim identifiers` verb reuses this
+  once (post-M6, sim/ADR-0014's own `sim identifiers` verb reuses this
   exact function so its own inventory can never drift from what a real
   emission actually renders): `active-mrn` and the event's own trigger
   and `:t` for every single-subject type; `mrn1+mrn2` for :bed-swap
@@ -290,7 +290,7 @@
 
 (defn- personas-by-patient-id
   "patient-id -> persona, derived directly from the log's own
-  :registered events (ADR-0012's own precedent: a stage's own state is
+  :registered events (sim/ADR-0012's own precedent: a stage's own state is
   recoverable by scanning the log, no second input needed). Computed
   once per `emit` call and threaded down to every segment builder that
   needs it -- pid-segment enrichment applies uniformly across every
@@ -512,7 +512,7 @@
 (defn- cwe-field
   "CWE (Coded With Exceptions): identifier^text^coding-system. \"LN\" is
   LOINC's own HL7v2 Table 0396 coding-system abbreviation -- the coded-
-  triplet's :system rendered natively (ADR-0002), not translated."
+  triplet's :system rendered natively (sim/ADR-0002), not translated."
   [{:keys [code display]}]
   (parser/create-field [code display "LN"]))
 

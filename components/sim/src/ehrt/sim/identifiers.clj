@@ -44,7 +44,7 @@
   "patient-id -> the DISTINCT bed ids that patient's own `:location`
   ever named, in first-seen order -- read off `:world-after` at every
   replay step (not the per-record :before/:after convenience view,
-  which only tracks the event's PRIMARY participant, ADR-0010; a bed-
+  which only tracks the event's PRIMARY participant, sim/ADR-0010; a bed-
   swap's second participant would otherwise be missed)."
   [replay-records patient-ids]
   (into {}
@@ -90,7 +90,7 @@
      :provider-npis      [...], sorted}
 
   Deterministic by construction (same config+seed => identical ground-
-  truth/providers => identical inventory, ADR-0002); complete against
+  truth/providers => identical inventory, sim/ADR-0002); complete against
   THIS run by construction (every id comes from the same ground-truth/
   bundle-run/materialized-providers a real emission of this run would
   also read, never a separately-maintained list -- proved as a property,

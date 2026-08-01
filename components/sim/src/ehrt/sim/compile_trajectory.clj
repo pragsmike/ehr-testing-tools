@@ -7,7 +7,7 @@
   decided by the GMF interpreter (M5a) -- CompileTrajectory only
   re-shapes already-decided content into pathway IR the engine can
   execute, the same 'the interpreter decides, this stage merely
-  compiles' split ADR-0008's own decide/evolve separation established
+  compiles' split sim/ADR-0008's own decide/evolve separation established
   one layer down.
 
   The mapping (section 1's table):
@@ -43,7 +43,7 @@
     compiled encounter step exists to attach to -- no prior encounter in
     the trajectory at all, OR its own encounter was itself dropped as a
     pre-horizon fact, below -- the condition event compiles to NO IR
-    step: a log-only fact, the same shape `:step-rejected` (ADR-0012)
+    step: a log-only fact, the same shape `:step-rejected` (sim/ADR-0012)
     already established for 'real, worth keeping, not worth inventing an
     attachment point for.'
 
@@ -203,7 +203,7 @@
             more (rest events)
             event-type (:event event)]
         (cond
-          ;; This project's own encounter-horizon scope (ADR-0007 point 3:
+          ;; This project's own encounter-horizon scope (sim/ADR-0007 point 3:
           ;; "hospital-operations traffic across a single encounter... not
           ;; a patient's lifelong longitudinal history") -- a real vendored
           ;; module can be authored to recur across a patient's WHOLE life

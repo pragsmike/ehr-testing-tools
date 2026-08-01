@@ -51,7 +51,7 @@
               ([n] (swap! calls inc) (proxy-super nextInt n))))}))
 
 (defspec persona-consumes-a-fixed-number-of-rng-draws-regardless-of-content 100
-  (testing "ADR-0009's own fixed-consumption law, extended to Persona:
+  (testing "sim/ADR-0009's own fixed-consumption law, extended to Persona:
             13 draws, always, regardless of which age range (and
             therefore which decade bucket and payer pool) is
             configured -- content never changes draw COUNT"

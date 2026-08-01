@@ -2,14 +2,14 @@
   "Determinism and invariants over the engine. The properties here are
   the executable form of the problem statement's Guarantees section:
   same inputs + seed => identical output; every run satisfies the
-  invariant catalog. Also: ADR-0008's decide/evolve split -- patient
+  invariant catalog. Also: sim/ADR-0008's decide/evolve split -- patient
   state is a fold of the log, proven as a property, plus a pinned-seed
   regression proving the refactor didn't change observable output for
   the v0 step set.
 
-  M2a (ADR-0010): patient-id is the fold/queue key; :mrn moves into
+  M2a (sim/ADR-0010): patient-id is the fold/queue key; :mrn moves into
   state as {:mrns :active-mrn}; every event carries :participants.
-  M2a (ADR-0011): the engine clock is seconds; :delay's IR stays
+  M2a (sim/ADR-0011): the engine clock is seconds; :delay's IR stays
   minutes, converted at decide-time; a warm-up window marks early
   events. See ehrt.sim.check-test for the invariant-catalog
   side of both."
@@ -52,7 +52,7 @@
              (set (map :active-mrn ground-truth))))
       (is (apply <= (map :t ground-truth))))
     (testing "every event names exactly one participant (all M2a event
-              types are single-subject -- ADR-0010)"
+              types are single-subject -- sim/ADR-0010)"
       (is (every? #(= [:subject] (mapv :role (:participants %))) ground-truth))
       (is (= 3 (count (set (map (comp :patient-id first :participants) ground-truth))))))))
 
@@ -68,7 +68,7 @@
     (= (engine/run {:seed seed :patients patients})
        (engine/run {:seed seed :patients patients}))))
 
-;; --- ADR-0008: the engine is event-sourced ------------------------------
+;; --- sim/ADR-0008: the engine is event-sourced ------------------------------
 
 (defspec patient-state-is-a-fold-of-the-log 100
   (prop/for-all [seed gen/large-integer
@@ -82,7 +82,7 @@
               (get state-history patient-id))))
        by-patient-id))))
 
-;; --- ADR-0010: patient-id, mrns-as-state, participants -------------------
+;; --- sim/ADR-0010: patient-id, mrns-as-state, participants -------------------
 
 (deftest initial-patient-carries-mrns-set-and-active-mrn
   (let [p (engine/initial-patient "PID-000000" "MRN000001")]
@@ -114,10 +114,10 @@
 
 ;; --- M1: facility, providers, transfer, bed-ready coupling --------------
 
-;; --- ADR-0012: :step-rejected -- test helper --------------------------
+;; --- sim/ADR-0012: :step-rejected -- test helper --------------------------
 
 (defn- assert-step-rejected!
-  "ADR-0012: a decide-time rejection is no longer a silent no-op --
+  "sim/ADR-0012: a decide-time rejection is no longer a silent no-op --
   exactly one :step-rejected event enters `outcome`'s :events, naming
   ONLY the attempting patient as :participants (never a possibly-
   nonexistent :with target -- participant-ids-exist-in-run stays sound)
@@ -153,7 +153,7 @@
 (deftest bed-ready-transfer-scripted-two-patients
   (testing "B boards in ED surge because Renal's one bed is taken; A's
             discharge frees RENAL-01, which bed-ready-transfers B out
-            of boarding -- the cross-patient coupling ADR-0008 exists
+            of boarding -- the cross-patient coupling sim/ADR-0008 exists
             to make possible."
     (let [world0 {:patients {"P1" (engine/initial-patient "P1" "MRN000001")
                               "P2" (engine/initial-patient "P2" "MRN000002")}
@@ -261,7 +261,7 @@
 
 (defn- fold-events
   "Test helper: applies `events` to `world`'s patients (every named
-  participant, ADR-0010) and appends them to `world`'s :ground-truth --
+  participant, sim/ADR-0010) and appends them to `world`'s :ground-truth --
   mirrors what engine/run's loop does each iteration, for scripted
   multi-step tests that drive decide/evolve directly."
   [world events]
@@ -576,7 +576,7 @@
   {:name "solo-tagged" :steps [{:type :admission :location "Renal" :reason "tagged"}]})
 
 (deftest explicit-override-does-not-perturb-other-patients-downstream-draws
-  (testing "fixed consumption (ADR-0009's own law, extended): exactly
+  (testing "fixed consumption (sim/ADR-0009's own law, extended): exactly
             one assign-pathway draw per patient whether the outcome is
             explicit or weighted -- adding an explicit override (here,
             to a same-shaped pathway, isolating the assignment
@@ -618,7 +618,7 @@
            (engine/run {:seed 42 :patients 5 :pathways nil})))))
 
 (deftest churned-run-surfaces-rejected-churn-steps-as-step-rejected-events
-  (testing "ADR-0012: what used to be a silent no-op (M2b's own
+  (testing "sim/ADR-0012: what used to be a silent no-op (M2b's own
             conservative cancel-discharge-reinstatement guard, and
             InjectChurn's other decide-time rejections generally) is now
             VISIBLE in the ground-truth log -- across enough seeds at
@@ -1022,7 +1022,7 @@
         (result/ok? (check/check-all ground-truth (:facility result)))))))
 
 (deftest pinned-seed-survives-decide-evolve-refactor
-  (testing "the fixture pins the POST-M4 baseline (ADR-0009 -- Persona's
+  (testing "the fixture pins the POST-M4 baseline (sim/ADR-0009 -- Persona's
             :registered event, prepended to every patient's step queue,
             perturbed the post-M2a baseline this test used to pin,
             regenerated ONCE per the M4 session plan, not a bug).

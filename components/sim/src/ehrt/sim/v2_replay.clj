@@ -43,7 +43,7 @@
   seconds since that reference instant. Only the first 14 characters
   (the naive local timestamp) are read -- the zone suffix is always the
   SAME pinned :utc-offset every message in one run shares, never
-  per-event, so it carries no information the fold needs (ADR-0011)."
+  per-event, so it carries no information the fold needs (sim/ADR-0011)."
   [reference-date ts]
   (let [local (java.time.LocalDateTime/parse (subs ts 0 14) hl7-datetime-formatter)
         reference (.atStartOfDay (java.time.LocalDate/parse reference-date))]

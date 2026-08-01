@@ -1,7 +1,7 @@
 (ns ehrt.sim.gmf-test
   "Red tests for the GMF module loader (M5a Task 1, docs/gmf-interpreter.md
-  section 1, ADR-0013 point 6) -- written before ehrt.sim.gmf exists
-  (ADR-0004 test-first). Covers: the hand-written fixture module loads and
+  section 1, sim/ADR-0013 point 6) -- written before ehrt.sim.gmf exists
+  (sim/ADR-0004 test-first). Covers: the hand-written fixture module loads and
   validates against the v1 subset; a module using a deferred state type is
   REJECTED with :unsupported-state-type (result-not-throw, never a throw);
   a module whose own SetAttribute writes a bare engine-reserved attribute
@@ -24,7 +24,7 @@
                  :condition-onset :condition-end :encounter :encounter-end
                  :procedure :observation :medication-order :medication-end}
                types))))
-    (testing "small enough to hand-verify, per ADR-0013 point 6"
+    (testing "small enough to hand-verify, per sim/ADR-0013 point 6"
       (is (<= 15 (count (:states (:payload loaded))) 30)))))
 
 (deftest fixture-clinic-uses-all-four-transition-kinds
