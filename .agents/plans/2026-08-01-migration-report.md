@@ -4,14 +4,14 @@
 **Date:** 2026-08-01
 **Mode:** assessment (per `.agents/skills/repo-adaptation/SKILL.md` Steps 1–3; no implementation this session — see AR-4 fence, `.agents/prompts/2026-08-01-skill-adaptation.md`)
 **Produced by:** the adapted repo-adaptation skill's own assessment mode, run against this repo, per charter §7 item 3 (`.agents/plans/2026-08-01-agent-ux-charter.md`)
-**Status (2026-08-02, migration session 5):** of the fourteen items in
-Part B below, only item 14 (the use-cases split) remains open -- items
-1-13 are all executed or ruled-closed as of this session (item 5 by
-this session itself; item 9 by the author's own fresh-session
-confirmation, this session's own dated note). See each item's own
-`RULED`/`CONFIRMED` paragraph below and `.agents/plans/roadmap.md` for
-the live picture; this report's Part A/B prose is left as originally
-written, annotated in place rather than rewritten.
+**Status (2026-08-02, migration session 6): FULLY EXECUTED.** All
+fourteen items in Part B below are executed or ruled-closed -- item 14
+(the use-cases split), the last item open as of migration session 5,
+closed this session. See each item's own `RULED`/`CONFIRMED` paragraph
+below and `.agents/plans/roadmap.md` for the live picture; this
+report's Part A/B prose is left as originally written, annotated in
+place rather than rewritten. This report now describes completed work
+only -- new work items belong on the roadmap, not here.
 
 This report has two parts. **Part A** is the skill's own template output (Steps 1–2: inspect and classify). **Part B** is this session's actual deliverable: every charter §4 migration-table row and §5 gate not yet executed, as an approvable work item with its co-landed gate, sequenced, session-sized, and with open questions named rather than resolved. Charter rows already closed by the 2026-08-01 capture session (ADR-0023) or by this session's own skill-adaptation checkpoint are listed too, marked done, so this report is a complete picture of the table — not just the gaps.
 
@@ -335,7 +335,34 @@ Session size: **zero, pending a ruling** — likely closes without a build sessi
 
 **14. Use-cases split** *(charter §7 item 1, ruled "yes" but never defined anywhere this session could find)*
 
-Status: **cannot be scoped — the charter, the adoption ADR, the capture session's own prompt and session record, and this session's own search of `notes/` and `.agents/` all name "the use-cases split" as a ruled, pending item without ever stating what document or artifact splits into what.** This is not this session's gap to fill by inference — AR-3 asks that open questions be named for the author, not resolved, and this is the clearest case of that in the whole report.
+**RULED 2026-08-02 (migration session 6): executed, and the last open
+item of this report.** Scoped per migration session 1's own ruling 8
+below: `docs/use-cases.md` split at the `components/corpus/docs/use-cases.edn`
+source into a generated index (one line per case, title linked to its
+own page, its own `:audience` cited verbatim) plus one standalone page
+per case at `docs/use-cases/<id>.md`. `ehrt.docs-tooling.usecases`
+gained `case-slug`/`case->body-md`/`case->page-md`/`case->index-line`/
+`render-use-cases-index-md`/`cases->pages`; `write-use-cases!` writes
+both outputs from one EDN read. Content conservation proven one-to-one
+against the pre-split single-file rendering (a one-time script diff,
+per case, modulo heading-level/banner/link-depth scaffolding — caught
+its own boundary-whitespace bug on first run, fixed, reran green) and
+by a permanent dogfooding test over the real committed EDN
+(`every-real-cases-narrative-fields-survive-into-its-own-page-test`).
+The CI freshness gate (`.github/workflows/test.yml`) now diffs
+`docs/use-cases/` alongside the index. Every repo citation of
+`docs/use-cases.md#<case>` (the 9 distinct intra-catalog cross-links
+inside `use-cases.edn`'s own `:note` fields, plus the one external
+citation in `docs/simulate-your-facility.md`) repointed to the per-case
+file; every reference-doc link inside a case's own text (`cli.md`,
+`operators.md`, `locators.md`, `judge-calibration.md`, `formats.md`,
+`dev/source-sink-design.md`, the two `EXP-*-results.md` links, the
+contract-pairing test link) gained the extra `../` its new one-level-
+deeper home requires — found and fixed in the same checkpoint, not a
+separate sweep, since a stale relative link would have made the split
+itself wrong on day one. Full accounting: this session's own record.
+
+Status (as assessed migration session 5, superseded above): **cannot be scoped — the charter, the adoption ADR, the capture session's own prompt and session record, and this session's own search of `notes/` and `.agents/` all name "the use-cases split" as a ruled, pending item without ever stating what document or artifact splits into what.** This is not this session's gap to fill by inference — AR-3 asks that open questions be named for the author, not resolved, and this is the clearest case of that in the whole report.
 
 **Open question:** what, concretely, is "the use-cases split"? (Candidate guesses this report is deliberately *not* adopting: splitting `docs/use-cases.md`/`components/corpus/docs/use-cases.edn` by audience; splitting the charter's own use-cases enumeration in `AUDIENCES.md`; something from the design-channel conversation that produced the charter, never written down per R-B's own admission that "the design-channel conversation... holds whatever isn't in those deviation records.")
 
@@ -433,6 +460,17 @@ provenance-tag convention was adopted has actually used it. Item 14
 remains the only open item after this session -- see
 `.agents/session-records/2026-08-02-migration-session-5.md` for the
 full account.
+
+## RULED 2026-08-02 (migration session 6)
+
+This session executed item 14 -- the use-cases split, scoped by
+migration session 1's own ruling 8, the last item open after migration
+session 5. See item 14's own body above for the full description and
+`.agents/session-records/2026-08-02-migration-session-6.md` for the
+complete account, including the conservation accounting and the anchor-
+sweep hit list. **This report is now fully executed** -- all fourteen
+Part B items are done or ruled-closed; see `.agents/plans/roadmap.md`
+for what's next.
 
 ## Urgent items
 

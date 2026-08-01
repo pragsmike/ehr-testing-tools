@@ -131,8 +131,10 @@
   :budget-lines 765}
 
  ;; components/docs-tooling (dev-time-only doc/lint tooling) generates and
- ;; lints docs/cli.md, docs/pipeline.md-equivalents, and docs/use-cases.md, and
- ;; gates docs/dev/architecture.md's own currency against AGENTS.md
+ ;; lints docs/cli.md, docs/pipeline.md-equivalents, and docs/use-cases.md
+ ;; (the generated index, migration item 14, 2026-08-02) plus its per-case
+ ;; pages under docs/use-cases/, and gates docs/dev/architecture.md's own
+ ;; currency against AGENTS.md
  ;; (ehrt.docs-tooling.structure-currency-test) -- so architecture.md is this
  ;; task class's own doc, not a workspace-wide add. docs/dev/README.md is the
  ;; maintainer-docs-tree index docs-tooling sessions work within.

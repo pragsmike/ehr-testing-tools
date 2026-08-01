@@ -226,7 +226,7 @@ writes files — nothing in it sends data to any server.
   it live over the wire is deliberately out of scope here (point
   your interface engine's file reader at it). MLLP *framing* itself
   is available, though — see the piped `corpus mutate`/`corpus
-  intake` workflow in [use-cases.md](use-cases.md#mutates-own-output-piped-straight-into-intake----no-intermediate-directory).
+  intake` workflow in [Mutate's own output, piped straight into intake -- no intermediate directory](use-cases/mutate-output-piped-straight-into-intake.md).
 - **Broken-feed conditions.** This simulator *always* produces
   coherent, ordered traffic — that's a guarantee, not a gap.
   Out-of-order, dropped, or mangled delivery is injected downstream

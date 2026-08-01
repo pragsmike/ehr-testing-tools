@@ -5,7 +5,8 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (approved migration, sequenced — .agents/plans/2026-08-01-migration-report.md)
-- Item 14: use-cases split per review P3-1 (notes/2026-07-30-refactoring-review.md §5.2)
+- (none — the fourteen-item migration report is fully executed as of
+  migration session 6; see Done below)
 
 ## Next (backlog, no session scheduled)
 - Pairing-as-data (review P3-3): mutate↔judge conviction registry — design pass in
@@ -108,3 +109,18 @@ per item; done items move to the bottom of their section with a date and sha.
   every set, same reason the existing ten skills are (session-type, not
   domain-task-class). Budget deltas in the session record and
   `notes/ADRs.md` ADR-0023's own dated-note thread.
+
+## Done (this session, 2026-08-02, migration session 6)
+- Item 14 (last open item, migration report fully executed): use-cases
+  split — `docs/use-cases.md` is now a generated index (one line per
+  case, linking out), `docs/use-cases/<id>.md` is one standalone page
+  per case, both from `components/corpus/docs/use-cases.edn` unchanged
+  except for the internal cross-case and reference-doc links the file
+  split itself requires (never a case's own narrative/strip/equations
+  text). Content conservation proven one-to-one against the prior
+  single-file rendering (script-diffed per case, modulo heading/banner/
+  link-depth scaffolding); the CI freshness gate
+  (`.github/workflows/test.yml`) now diffs `docs/use-cases/` alongside
+  the index. Every repo citation of `docs/use-cases.md#<case>` swept to
+  its per-case file. Full accounting in the session record (ceca0f7,
+  plus this checkpoint's own commit).
