@@ -11,97 +11,7 @@ verification, none of this file's contribution discipline. This file
 governs contribution sessions (PRs, commits, docs edits, migration
 work); nothing here applies if you're only running a built artifact.
 
-## Workspace overview
-
-**Project:** `ehr-testing` — a [Polylith](https://polylith.gitbook.io/polylith)
-monorepo consolidating the `ehr-testing-*` family of repos into one
-workspace, one development REPL, many deployable artifacts. Top
-namespace: `ehrt`. See [`docs/dev/migration/polylith-brief.md`](docs/dev/migration/polylith-brief.md)
-for the Polylith architecture reference this migration was planned
-against, and `notes/ADRs.md` ADR-0001 for what was actually decided
-and why.
-
-**Landed so far:** `components/sim` (from `ehr-testing-sim`) — a
-deterministic, seeded generator of synthetic hospital traffic for
-testing EHR integrations, presented to users via the `bin/ehrt sim
-run`/`check`/`identifiers`/`version` mount (below). `bases/sim-cli`
-and `projects/sim` (sim's own former standalone CLI and its composing
-project) were retired 2026-08-01 (F2 fired, `notes/facts-register.md`)
-once `ehrt sim` reached full parity with it (P3-6) — no code here
-requires either any more.
-`components/corpus` + `components/palgebra`
-+ `bases/cli` (from `ehr-testing-tools`) — corpus construction
-(generation, mutation, provenance) and conformance gating (HL7 v2,
-FHIR); `components/kernel` + `components/judge` (ADR-0008) — the
-shared foundation layer and the conformance-judging code, extracted out
-of the then-`components/tools`' own named hole H4 (ADR-0002 R14).
-`components/judge-v2-hapi` + `components/judge-fhir-official`
-(ADR-0011) — the two gate engines themselves, extracted out of
-`components/judge` in turn; `judge` now keeps only the verdict
-vocabulary (`report`/`finding`/`verdict-cache`). `components/judge-v2-nist`
-(ADR-0012, 2026-07-30) — the third gate engine, profile-aware NIST HL7
-v2 validation, landed into that same per-engine seam (`gate v2-nist`).
-**Updated 2026-07-31** (review catch-up): this section previously
-called judge-v2-nist a "named future addition (EXP-D3)"; it is landed.
-**Updated again 2026-07-31** (docs-tooling split, refactoring-review
-stage 1 of 3, `notes/2026-07-30-refactoring-review.md` §5.1a):
-`components/docs-tooling` — dev-time-only doc/lint tooling (docsgen,
-usecases, pipeline, quickstart-fresh, lint), extracted out of
-`components/tools`; it is now the sole home of what used to be the
-`tools → palgebra` src edge (finding 14). **Updated a third time
-2026-07-31** (corpus-io split, refactoring-review stage 2 of 3,
-`notes/ADRs.md` ADR-0017): `components/corpus-io` — the corpus
-transport/IO seam (sources, sinks, spooling, framing codecs, wire
-wrappers: `framing`, `er7`, `spool`, `spool-source`, `source-sink`,
-`source-sink-url`, `sink-write`, `operation-manifest`,
-`canonicalizers`), extracted out of `components/tools`; the domain
-namespaces (`mutate`/`operators`/`intake`/`generator-source`)
-and `bases/cli` now require it directly. **Updated a fourth time
-2026-07-31** (split stage 3, `notes/ADRs.md` ADR-0018): the `tools`
-component is RETIRED — what remained after stages 1–2 was the corpus
-domain, renamed `components/corpus` (`ehrt.corpus.*`, sim adapter
-`ehrt.corpus.sim-adapter`) with an interface designed from live
-consumers (38 defs from the façade's 64: kernel/judge/engine relays
-dissolved, consumers repointed to the owning interfaces directly);
-`bases/cli` now composes component interfaces directly and the corpus
-domain has no judge-engine edge at all.
-`projects/ehrt-cli` composes kernel + judge + judge-v2-hapi +
-judge-fhir-official + judge-v2-nist + corpus + corpus-io + docs-tooling
-+ palgebra + cli + sim, `projects/conformance` and `projects/integration`
-are the two base-less projects exercising sim + corpus + corpus-io
-(+ kernel/judge and, in `conformance` only, all three engines)
-+ palgebra together, split by artifact-fetch dependency
-(see `notes/ADRs.md` ADR-0002, closing named holes H1–H3, and ADR-0004
-R19); `conformance` additionally composes `docs-tooling`, hosting its
-moved tests (ADR-0002's own AR-3 placement rule, `notes/ADRs.md`
-ADR-0016), and also hosts `corpus-io`'s own moved tests (same
-placement rule, ADR-0017); `integration` dropped `judge-v2-nist` at
-stage 3 (nothing on its classpath consumes it once the façade's
-every-engine relay retired — its own tests gate through the official
-FHIR validator only; `judge-v2-hapi` stays, because the corpus
-brick's own contract-pairing test requires it and poly runs a
-declared brick's tests in every composing project).
-
-**The CLI is `ehrt`** ("e-heart", R32/ADR-0009, 2026-07-29) —
-`bin/ehrt`, renamed from `ehr`; `ehr` stays reserved for future
-payload-EHR tooling, not a stale spelling to clean up if you see it
-elsewhere in this file's own citations of pre-rename history.
-
-**Deliberately out of scope, permanently:** `ehr-testing-guide` stays
-out of this workspace entirely (ADR-0001, R2) — it is not a future
-landing, don't plan namespace or directory shape around it arriving
-later.
-
-**Publishing:** `projects/ehrt-cli` will be this family's only
-published library artifact, once a future session names Clojars/Maven
-Central coordinates (ADR-0001 R3, named hole H5 — still open, author's
-call). Everything else in this workspace — including sim — builds an
-app artifact or nothing; never treat a component here as a publishable
-library in its own right. This resolves Polylith's own
-one-library-per-workspace constraint (see the brief, §11 "Building
-more than one library from one workspace").
-
-## Before your first git operation: read this
+## Session mode and ceremony: read this before your first git operation
 
 **All git operations — especially `git commit` — must be run from WSL,
 never from native Windows**, enforced by `.githooks/pre-commit` once
@@ -117,37 +27,52 @@ scan and `clojure -M:poly check` being green -- tests are CI's job, not
 the push gate's (`notes/ADRs.md` ADR-0003). See `AUTHORS-GUIDE.md` §1
 for the full rationale and gitleaks install instructions.
 
-**Git operations run under whatever mode the author set for the
-session, in that session's own chat (ADR-0001 R6, superseded in place
-by ADR-0007 R30).** The default remains R6's: a session prepares
-working trees and proposes commit messages, and does not itself run
-`git commit`, `git push`, `git merge`, or `gh`, unless the author has
-said otherwise for that session, in that chat, in the moment — a
-default that does not generalize backward onto earlier turns or
-forward onto a future session that hasn't heard it. R30 names the
-*standing alternative mode*, not a one-off exception to it: a session
-the author has told to commit and push at each checkpoint does so
-unattended, the staging-hygiene ritual (`AUTHORS-GUIDE.md` §1) still
-run before every commit. Two classes of action stay the author's alone
+**The standing default is R30: a session commits and pushes at each
+checkpoint, unattended** (`notes/ADRs.md` ADR-0007, R-F ratified by
+ADR-0023, 2026-08-01) — the staging-hygiene ritual (`AUTHORS-GUIDE.md`
+§1: `git diff --cached --stat` reviewed before every commit, anything
+outside the checkpoint's own scope unstaged first) runs before every
+commit regardless. **Prepare-only** (a session prepares the working
+tree and proposes commit messages, never itself running `git commit`,
+`git push`, `git merge`, or `gh`) is the exception a session's own
+prompt must state explicitly, in that chat, at the start — a live,
+scoped choice for that session, not a rule either mode carries forward
+silently to the next one. Two classes of action stay the author's alone
 under either mode: **tags** (the `stable-*` tag is the actual trust
 boundary, ADR-0003) and **repo-level `gh` mutations**
 (create/delete/settings/visibility — the `pragsmike/packs` precedent,
-documented at sim's own `AUTHORS-GUIDE.md` §2). Agents working in this
-environment hold ambient authenticated `gh` credentials for exactly
-those repo-level mutations — the standing rule, unchanged by either
-mode, is that those credentials do not get used off an agent's own
-initiative.
+`sim's AUTHORS-GUIDE.md` §2). Agents working in this environment hold
+ambient authenticated `gh` credentials for exactly those repo-level
+mutations — the standing rule, unchanged by either mode, is that those
+credentials do not get used off an agent's own initiative. AUTHOR
+ACTION checkpoints (git surgery, placing external documents — things
+only the author does) stay author-only in every mode.
 
-## Workspace vocabulary
+## Reading this repo
 
-This is a Polylith workspace, not a plain multi-module repo — the
-vocabulary and the tool are both load-bearing:
+Per-task-class reading sets (onboarding / corpus / sim / judge / docs,
+each a budgeted path list) are **forthcoming — a build session lands
+`.agents/reading-sets.edn`** per the agent-UX charter
+(`.agents/plans/2026-08-01-agent-ux-charter.md` R-D, adopted
+`notes/ADRs.md` ADR-0023). Until then, start from this file's own
+Structure section below, `docs/dev/architecture.md` for the fuller
+workspace map, and `.agents/` (routing below) for durable session
+context.
+
+## Structure
+
+This is a [Polylith](https://polylith.gitbook.io/polylith) monorepo,
+top namespace `ehrt`, consolidating the `ehr-testing-*` family into one
+workspace, one development REPL, many deployable artifacts. See
+[`docs/dev/migration/polylith-brief.md`](docs/dev/migration/polylith-brief.md)
+for the Polylith architecture reference this migration was planned
+against.
 
 - **Component** — a chunk of domain behind one `interface` namespace
   (`components/<name>/`). Reusable, swappable, invisible to other
   bricks below its own `interface`.
-- **Base** — a thin entry point to the outside world: CLI dispatch,
-  an HTTP handler (`bases/<name>/`). No interface of its own.
+- **Base** — a thin entry point to the outside world: CLI dispatch, an
+  HTTP handler (`bases/<name>/`). No interface of its own.
 - **Brick** — component or base, interchangeably, when the distinction
   doesn't matter.
 - **Project** (`projects/<name>/deps.edn`) — the set of bricks that
@@ -156,118 +81,121 @@ vocabulary and the tool are both load-bearing:
   aliases see every brick at once, one REPL for the whole workspace.
 
 **`poly ws get:...` is the agent's primary source of workspace truth**
-— the workspace as queryable EDN data, not a report to eyeball.
-Prefer it over parsing `poly info`'s pretty-printed output:
-`clojure -M:poly ws get:keys`, `get:components:keys`,
-`get:changes:changed-or-affected-projects since:release`. `clojure
--M:poly check` and `clojure -M:poly test` are the enforcement
-surface — a brick that reaches into another brick's implementation
-namespace (not its `interface`) fails `check`, not a code review.
+— the workspace as queryable EDN data, not a report to eyeball. Prefer
+it over parsing `poly info`'s pretty-printed output: `clojure -M:poly
+ws get:keys`, `get:components:keys`, `get:changes:changed-or-affected-
+projects since:release`. `clojure -M:poly check` and `clojure -M:poly
+test` are the enforcement surface — a brick that reaches into another
+brick's implementation namespace (not its `interface`) fails `check`,
+not a code review.
 
-## The fat-component disclosure
+**Components:** `components/kernel` (shared foundation, incl.
+`ehrt.kernel.result` — the result-not-throw envelope); `components/judge`
+(the verdict vocabulary: report/finding/verdict-cache); the three gate
+engines behind it — `components/judge-v2-hapi`, `components/judge-fhir-official`,
+`components/judge-v2-nist`; `components/corpus` (corpus domain:
+generate/mutate/intake/operators, interface designed from live
+consumers); `components/corpus-io` (transport/IO: sources, sinks,
+spooling, framing codecs); `components/docs-tooling` (dev-time-only
+doc/lint tooling); `components/palgebra` (conformance-gating notation
+and rendering); `components/sim` (deterministic, seeded generator of
+synthetic hospital traffic).
+**Bases:** `bases/cli` — thin CLI dispatch, `bin/ehrt` ("e-heart",
+`ehr` stays reserved for future payload-EHR tooling).
+**Projects:** `projects/ehrt-cli` composes every component and the
+base above; `projects/conformance` and `projects/integration` are
+base-less, exercising sim + corpus + corpus-io (+ the judge engines)
+together, split by artifact-fetch dependency.
 
-`components/sim`'s public contract, `ehrt.sim.interface`, is
-**deliberately wide** right now (ADR-0001, R5) — it re-exports
-whatever sim's own CLI, tests, and (previously) Makefile targets
-called from outside their own namespaces, determined by grep against
-the pre-merge repo, not by interface-design judgment. **Its width is
-not design intent.** Don't narrow it opportunistically, and don't
-treat the width of the interface as evidence about how sim's internals
-should be decomposed into more than one component later — that's a
-future, author-ruled extraction session's call, not a standing
-invitation for cleanup.
+Full history of how this structure got here — the three-stage `tools`
+split into `docs-tooling`/`corpus-io`/`corpus`, the judge-engine
+extractions, the `sim-cli` retirement, the CLI rename — is not narrated
+in this file; `notes/ADRs.md`'s own numbered records (grep `^## ADR-`
+for the index) are the reasoning-of-record, and
+`docs/dev/architecture.md`'s bricks table is the current structure map
+this file's own tokens above are checked against
+(`ehrt.docs-tooling.structure-currency-test`) — keep both in sync when
+a brick is added, renamed, or retired.
 
-The same discipline, same disclosure, applies to `components/palgebra`'s
-`ehrt.palgebra.interface` (ADR-0002, R13). `components/corpus`'
-`ehrt.corpus.interface` is the exception, deliberately: stage 3 of the
-tools split (`notes/ADRs.md` ADR-0018, 2026-07-31) was the ruled
-session that redesigned it from live consumers — its 38 defs ARE
-design intent, the one sanctioned improvement of that stage.
+**Deliberately out of scope, permanently:** `ehr-testing-guide` stays
+out of this workspace entirely (ADR-0001, R2) — it is not a future
+landing, don't plan namespace or directory shape around it arriving
+later.
 
-## Discipline inherited from sim (ADR-0001, R4)
+**Publishing:** `projects/ehrt-cli` will be this family's only
+published library artifact, once a future session names Clojars/Maven
+Central coordinates (ADR-0001 R3, named hole H5 — still open, author's
+call). Everything else in this workspace — including sim — builds an
+app artifact or nothing; never treat a component here as a publishable
+library in its own right.
 
-Where sim's and tools' conventions differ, sim's form wins; this is
-sim's own discipline, unchanged by the move:
+### `.agents/` — durable session context, routing
 
-- **Result-not-throw**: every capability function returns `{:status
-  :ok|:rejected|:error :category ... :payload ...}`. Exceptions are
-  for programmer error only — a caller-contract violation (e.g. an
-  ambiguous `:msg-id`, `notes/ADRs.md` ADR-0012) is exactly this case,
-  not an engine or data outcome.
-- **Determinism is law**: all randomness in `components/sim` flows
-  from the single seeded RNG in `engine/run`. No wall-clock, no
-  hash-order dependence.
-- **Co-landing**: a new engine step type ships with its invariants
-  (and message type, where relevant) in the same change.
-- **Test-first, properties for law-bearing constructs** (determinism,
-  the invariant catalog, emitter derivability, schema round-trips).
-- **The CLI-surface rule**: demos and verification commands run
-  through `bases/cli` (`ehrt sim run`/`check`/`identifiers`/`version`),
-  never through `components/sim` internals directly.
+- [`.agents/session-records/`](.agents/session-records/README.md) —
+  one dated record per non-trivial session, written as its last
+  pre-push act (charter R-A, `notes/ADRs.md` ADR-0023).
+- [`.agents/plans/`](.agents/plans/README.md) — what's landed and
+  what's next, milestone grain.
+- [`.agents/memory/`](.agents/memory/README.md) — durable design
+  lineage too expensive to re-derive, not decision-of-record (that's
+  an ADR) or one verifiable claim (that's `notes/facts-register.md`).
+- [`.agents/skills/`](.agents/skills/) — the sim/tools union (ADR-0005):
+  `handoff`, `string-diagram`, `committee`, `find-skills`, `probe`,
+  `repo-adaptation`, `review`, `scenarios`, `shared-skill-layout`,
+  `wsl-windows-git-hygiene`.
+- `.agents/prompts/` — session prompts, archived by the session they
+  drove, indexed (charter R-A). New home going forward;
+  `notes/prompts/*.md` stays the historical archive for prompts
+  through 2026-08-01 (its own README points here).
+
+## Discipline surface, mapped (ADR-0006)
+
+- **Live, current, edit freely:** `notes/ADRs.md` (architecture
+  decisions); `notes/facts-register.md` (externally verifiable facts,
+  `AUTHORS-GUIDE.md` §4); `.agents/memory/`, `.agents/plans/`,
+  `.agents/session-records/`, `.agents/prompts/` (above); `.agents/skills/`.
+- **Frozen provenance, read-only, never edited for new paths or
+  namespaces:** `notes/sim/` and `notes/tools/` (each parent's own
+  ADRs, facts-register, and `.agents/` tree as they stood at the
+  merge). Cite them origin-qualified (`sim/ADR-0008`, `tools/F12`) when
+  a live document references a pre-merge decision.
 
 ## Constraints
 
 - **Dependency direction**: `components/corpus`/`projects/conformance`
   may depend on `components/sim`; `components/sim` must never depend
-  on anything corpus-derived (inherited from sim's own ADR-0001, where
-  the rule named the then-`tools` component; still the rule inside one
-  workspace, enforced now by `poly check` rather than by being a
-  separate repo). The old subprocess-only consumption rule
-  (`tools/ADR-0013`) is superseded: since the in-process `ehrt sim`
-  mount (ADR-0004/ADR-0005) `poly/sim` is a real classpath dependency
-  of `ehrt-cli`, `conformance`, and `integration` alike. `components/sim`
-  now also depends on `components/kernel` (ADR-0022, 2026-08-01 — sim
-  adopts `ehrt.kernel.result`, retiring its own copied envelope
-  namespace) — kernel is not corpus-derived, so this is a new edge, not
-  an exception to the rule above.
+  on anything corpus-derived, enforced by `poly check`.
+  `components/sim` also depends on `components/kernel` (ADR-0022) —
+  kernel is not corpus-derived, so this is a new edge, not an
+  exception.
 - **No PHI, no real-person data, ever** — including in test fixtures
   and docs.
 - **No CPT codes** (AMA-licensed). SNOMED CT, LOINC, RxNorm, ICD-10-CM,
   CVX only.
-- Do not invent facts about upstream sources or about this migration's
-  own history — `notes/ADRs.md` and `notes/sim/` are the record; if a
+- **Fix-forward with disclosure** (ADR-0001, R10): do not invent facts
+  about upstream sources or this migration's own history —
+  `notes/ADRs.md` and `notes/sim/`/`notes/tools/` are the record; if a
   step's premise doesn't hold against the live tree, stop, record it,
-  and ask (ADR-0001, R10) rather than silently adapting.
-
-## Skills
-
-Workspace-level skills live in `.agents/skills/` — the union of sim's
-and tools' pre-carve skill sets (ADR-0005, carve-loss recovery session,
-2026-07-28, R21): `handoff` and `string-diagram` from sim (sim's own
-form wins on collision, per ADR-0001 R4's standing rule; `string-diagram`
-also folded in a fix tools' own divergent copy had that sim's didn't —
-pointing at `components/palgebra/` directly instead of vendoring a
-stale, commit-pinned copy of it), plus eight tools-only skills:
-`committee`, `find-skills`, `probe`, `repo-adaptation`, `review`,
-`scenarios`, `shared-skill-layout`, `wsl-windows-git-hygiene`. See
-ADR-0005 for the full collision-diff record. Handoffs, plans, and
-durable memory follow the same `.agents/` layout sim used; see
-`docs/dev/way-of-working.md` for how this session's own conventions differ
-from sim's 40-session history.
-
-## The discipline surface, mapped (discipline-parity session, ADR-0006)
-
-Where each piece of this workspace's own discipline apparatus actually
-lives, since it's now spread across several directories with different
-provenance:
-
-- **Live, current, edit freely:** `notes/ADRs.md` (architecture
-  decisions); `notes/facts-register.md` (externally verifiable facts,
-  `AUTHORS-GUIDE.md` §4); `.agents/memory/`, `.agents/plans/`,
-  `.agents/session-records/` (durable design lineage, the rolling plan,
-  one dated record per session — `AUTHORS-GUIDE.md` §7 and each
-  directory's own `README.md`); `.agents/skills/` (the sim/tools union,
-  ADR-0005); `notes/prompts/*.md` (session prompts, flat, self-archived
-  in place with a dated deviation note — this workspace's own form,
-  distinct from either parent's live/archive split, see
-  `notes/discipline-parity-audit.md` row M15).
-- **Frozen provenance, read-only, never edited for new paths or
-  namespaces:** `notes/sim/` and `notes/tools/` (each parent's own
-  ADRs, facts-register, and `.agents/` tree as they stood at the
-  merge). Cite them origin-qualified (`sim/ADR-0008`, `tools/F12`) when
-  a live document references a pre-merge decision; never edit them to
-  "fix" a stale path — the whole point is that they show what was true
-  then.
+  and ask rather than silently adapting. `docs/dev/way-of-working.md`
+  §2 has the worked examples.
+- **The fat-component disclosure** (ADR-0001 R5, ADR-0002 R13):
+  `components/sim`'s and `components/palgebra`'s public interfaces are
+  deliberately wide right now — re-exporting whatever their own
+  callers used pre-merge, determined by grep, not interface-design
+  judgment. Don't narrow them opportunistically, and don't read their
+  width as a decomposition hint. `components/corpus`'s interface is
+  the exception: ADR-0018's stage-3 split redesigned it from live
+  consumers — its defs ARE design intent.
+- **Discipline inherited from sim** (ADR-0001, R4 — sim's form wins
+  where conventions differ): result-not-throw (every capability
+  function returns `{:status :ok|:rejected|:error ...}`; exceptions are
+  for programmer error only); determinism is law (all randomness in
+  `components/sim` flows from the single seeded RNG in `engine/run`,
+  no wall-clock, no hash-order dependence); co-landing (a new engine
+  step type ships with its invariants in the same change); test-first,
+  properties for law-bearing constructs; the CLI-surface rule (demos
+  and verification run through `bases/cli`, never through component
+  internals directly).
 
 ## `.claude/`
 
