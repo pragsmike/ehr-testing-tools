@@ -143,11 +143,23 @@
      [{:verb "run" :doc "Runs one deterministic simulation and returns its ground truth, manifest, and summary (plus --emit's rendered messages/bundles, when given)."
        :flags [{:flag "--seed" :doc "simulation seed (integer) -- required, determinism is a feature, not a default"}
                {:flag "--patients" :doc "patient count (integer)"}
+               {:flag "--arrival-gap" :doc "max minutes between arrivals (integer)" :default "60"}
                {:flag "--reference-date" :doc "ISO date string, pinned input for HL7 timestamp anchoring"}
+               {:flag "--utc-offset" :doc "fixed ISO offset suffixed onto HL7 timestamps (pinned input, no DST)" :default "+00:00"}
                {:flag "--warm-up-seconds" :doc "engine warm-up window (integer)" :default "0"}
                {:flag "--emit" :doc "\"hl7\" to render messages into the payload, \"fhir\" to render FHIR bundles instead"}
+               {:flag "--at" :doc "with --emit fhir: seconds from run start to snapshot (integer, default: end of run)"}
                {:flag "--churn" :doc "turn churn on with sensible defaults" :default "false"}
-               {:flag "--config" :doc "path to an EDN file carrying the data-heavy engine keys with no flag of their own (:pathway/:pathways/:order-profiles/:churn-profile/:site-profile/:modules/...)"}]}]}
+               {:flag "--config" :doc "path to an EDN file carrying the data-heavy engine keys with no flag of their own (:pathway/:pathways/:order-profiles/:churn-profile/:site-profile/:modules/...)"}
+               {:flag "--format" :doc "\"er7\" renders bare wire messages to stdout, nothing else (requires --emit hl7); \"ground-truth\" renders the bare EDN ground-truth vector to stdout, nothing else -- pipe straight into `ehrt sim check`. Default edn (the full envelope); --json also works, same as always."}]}
+      {:verb "check" :doc "Runs the invariant catalog (capacity/surge-ladder, timestamp-monotone, and friends) over a ground-truth EDN vector read from stdin -- e.g. `ehrt sim run --format ground-truth | ehrt sim check`."
+       :flags []}
+      {:verb "identifiers" :doc "Config + seed -> the complete EDN inventory of every identifier this run's output would contain (patient-ids, MRNs, visit beds, HL7 control ids, FHIR resource ids, provider NPIs, run-id) -- how you'd find and remove synthetic data that ever reached a real system (docs/simulate-your-facility.md)."
+       :flags [{:flag "--seed" :doc "RNG seed (required; same as `ehrt sim run`'s own --seed)"}
+               {:flag "--patients" :doc "patient count (integer)" :default "1"}
+               {:flag "--config" :doc "path to an EDN file supplying data-heavy engine keys (same as `ehrt sim run`)"}]}
+      {:verb "version" :doc "Prints sim's own library version and git SHA -- the SAME source the run manifest's :generator block stamps."
+       :flags []}]}
 
     {:group "show"
      :doc "Render a file (or a directory of files sharing one sniffed format) for a human: HL7 v2 (ER7) one segment per line, blank line between messages; FHIR JSON pretty-printed. Pretty-always -- no flags needed, `ehrt show FILE | less` just works regardless of what stdout is attached to. Display is not wire format (ADR-0013): the rendered ER7 is deliberately nonconformant (LF-joined segments) and must never be piped anywhere a real HL7 v2 consumer sits."

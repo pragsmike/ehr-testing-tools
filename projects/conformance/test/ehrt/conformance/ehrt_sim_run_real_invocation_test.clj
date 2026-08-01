@@ -1,5 +1,5 @@
-(ns ehrt.conformance.sim-cli-real-invocation-test
-  "ADR-0005: the ONE deliberate real-OS-process witness for the `ehr
+(ns ehrt.conformance.ehrt-sim-run-real-invocation-test
+  "ADR-0005: the ONE deliberate real-OS-process witness for the `ehrt
   sim` mount -- every other sim-consuming test in this tree
   (sim_manifest_contract_test.clj and its four siblings, smoke_test.clj)
   now calls straight into ehrt.sim.interface in-process, which proves
@@ -9,7 +9,12 @@
   `bin/ehrt` subprocess and all -- consumer-fidelity, not logic
   coverage, which is why there is exactly one of these and not five.
   Same real-subprocess style as mutate_stdout_stdin_loopback_test.clj
-  and stdin_intake_real_pipe_test.clj."
+  and stdin_intake_real_pipe_test.clj.
+
+  Renamed from sim_cli_real_invocation_test.clj (P3-6, 2026-08-01,
+  sim-cli retirement sweep): this test has never subprocessed
+  bases/sim-cli -- it always exercised `bin/ehrt sim run` -- so the old
+  name became doubly misleading once sim-cli itself was retired."
   (:require [clojure.test :refer [deftest is]]
             [clojure.edn :as edn]))
 

@@ -35,7 +35,6 @@ flowchart LR
     palgebra[palgebra]
     sim[sim]
     cli[bases/cli]
-    simcli[bases/sim-cli]
 
     judge --> kernel
     judgev2hapi --> kernel
@@ -59,7 +58,6 @@ flowchart LR
     cli --> corpus
     cli --> corpusio
     cli --> docstooling
-    simcli --> sim
 ```
 
 | Brick | Kind | What it is |
@@ -74,15 +72,13 @@ flowchart LR
 | `components/docs-tooling` | component | Dev-time-only doc/lint tooling: `docsgen` (docs/cli.md's renderer), `usecases`, `pipeline`, `quickstart-fresh`, `lint`. Extracted out of the domain component (2026-07-31, refactoring-review stage 1 of 3, `notes/2026-07-30-refactoring-review.md` §5.1a). Never in any shipped project's runtime path — the Makefile's own docsgen/lint-pipeline/quickstart-fresh targets invoke it via `-X`, not through `bin/ehrt`; the one real cross-brick caller is `bases/cli/help.clj`, which requires its interface directly for `write-cli-md!` (never a domain relay — see ADR-0016's circular-dependency finding). `lint.clj` reaches `corpus` (operator/check-schema registry lookups) and `corpus-io` (framing) directly. |
 | `components/palgebra` | component | String-diagram tooling (resource-equation → Mermaid) this workspace uses to document its own data-flow pipelines (`pipeline.md`, `use-cases.md`, sim's own theory docs). Self-contained — never requires corpus, docs-tooling, or sim. |
 | `components/sim` | component | The simulation engine: deterministic, seeded hospital traffic (patients, encounters, GMF-driven pathways, churn, HL7 v2/FHIR emission). Never depends on anything corpus-derived — the one dependency-direction rule that predates this workspace and is now poly-enforced rather than merely a convention (two separate repos used to make it structural; `poly check` does now). |
-| `bases/cli` | base | Thin CLI dispatch — the `ehrt` command (ADR-0009; renamed from `ehr`, which stays reserved for future payload-EHR tooling). Composes component interfaces directly since stage 3 (kernel's result/artifact/locator vocabulary, judge's report vocabulary, each gate engine, corpus, corpus-io, docs-tooling — no façade between). `ehrt sim run` dispatches straight into `components/sim`, in-process, no subprocess (the `ehrt sim` mount, ADR-0005). |
-| `bases/sim-cli` | base | Sim's own standalone CLI, DEPRECATED (R33, ADR-0009) — kept working and tested, but no user-facing doc teaches it; `bin/ehrt sim run` is the presented surface. Retirement trigger (dated, not scheduled): retire when a review finds no use outside its own tests — `notes/facts-register.md` F2. |
+| `bases/cli` | base | Thin CLI dispatch — the `ehrt` command (ADR-0009; renamed from `ehr`, which stays reserved for future payload-EHR tooling). Composes component interfaces directly since stage 3 (kernel's result/artifact/locator vocabulary, judge's report vocabulary, each gate engine, corpus, corpus-io, docs-tooling — no façade between). `ehrt sim run`/`check`/`identifiers`/`version` dispatch straight into `components/sim`, in-process, no subprocess (the `ehrt sim` mount, ADR-0005; the latter three verbs mounted P3-6, 2026-08-01, closing the sim-cli retirement's own parity gap). |
 
 ## The projects
 
 | Project | Composes | What it deploys |
 |---|---|---|
 | `projects/ehrt-cli` | kernel, judge, judge-v2-hapi, judge-fhir-official, judge-v2-nist, corpus, corpus-io, docs-tooling, palgebra, cli, sim | The published CLI artifact (`bin/ehrt` runs `poly/cli` via root `deps.edn`'s own `:ehrt` alias, not this project directly — see below). Named for the deployable, `ehrt` (R35). |
-| `projects/sim` | sim | Sim's own standalone artifact (`bases/sim-cli`'s composing project). |
 | `projects/conformance` | sim, corpus, corpus-io, docs-tooling, palgebra, all three judge engines (test-only) | Base-less: exercises sim + corpus + corpus-io + docs-tooling + palgebra together, workspace-internal suites only — the per-push lane's own cross-brick integration coverage; also hosts docs-tooling's own moved tests (2026-07-31 split, AR-3 placement) and corpus-io's own moved tests (2026-07-31 split stage 2, same placement rule). The judge engines are consumed directly by its own parity/gate-loop suites since stage 3 (no façade relay). |
 | `projects/integration` | sim, corpus, corpus-io, judge-v2-hapi, judge-fhir-official (test-only) | Base-less: the artifact-fetch-dependent suites (real Synthea, the real FHIR validator) — nightly/on-demand only, never per-push (`notes/ADRs.md` ADR-0004). Does not include docs-tooling or palgebra (2026-07-31 re-derivation), and dropped judge-v2-nist at stage 3 (ADR-0018: it was only ever here because the retired façade required every engine). judge-v2-hapi stays — the corpus brick's own contract-pairing test requires it, and poly runs a declared brick's tests in every composing project (its drop was tried and reverted when the integration lane itself went red, see ADR-0018's deviation record). |
 | *(root `deps.edn`)* | every brick | Not a `projects/` directory — the root `deps.edn`'s `:dev`/`:test` aliases are the development project, seeing every brick at once for one REPL. Its `:ehrt` alias is `bin/ehrt`'s own real invocation path (kernel, judge, judge-v2-hapi, judge-fhir-official, judge-v2-nist, corpus, corpus-io, docs-tooling, palgebra, cli, sim — not through `projects/ehrt-cli`, which exists for coverage/publishing tooling, not the CLI's own runtime). |

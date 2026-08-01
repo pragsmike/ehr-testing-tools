@@ -223,11 +223,37 @@ Runs one deterministic simulation and returns its ground truth, manifest, and su
 |---|---|---|
 | `--seed` | — | simulation seed (integer) -- required, determinism is a feature, not a default |
 | `--patients` | — | patient count (integer) |
+| `--arrival-gap` | `60` | max minutes between arrivals (integer) |
 | `--reference-date` | — | ISO date string, pinned input for HL7 timestamp anchoring |
+| `--utc-offset` | `+00:00` | fixed ISO offset suffixed onto HL7 timestamps (pinned input, no DST) |
 | `--warm-up-seconds` | `0` | engine warm-up window (integer) |
 | `--emit` | — | "hl7" to render messages into the payload, "fhir" to render FHIR bundles instead |
+| `--at` | — | with --emit fhir: seconds from run start to snapshot (integer, default: end of run) |
 | `--churn` | `false` | turn churn on with sensible defaults |
 | `--config` | — | path to an EDN file carrying the data-heavy engine keys with no flag of their own (:pathway/:pathways/:order-profiles/:churn-profile/:site-profile/:modules/...) |
+| `--format` | — | "er7" renders bare wire messages to stdout, nothing else (requires --emit hl7); "ground-truth" renders the bare EDN ground-truth vector to stdout, nothing else -- pipe straight into `ehrt sim check`. Default edn (the full envelope); --json also works, same as always. |
+
+### `ehrt sim check`
+
+Runs the invariant catalog (capacity/surge-ladder, timestamp-monotone, and friends) over a ground-truth EDN vector read from stdin -- e.g. `ehrt sim run --format ground-truth | ehrt sim check`.
+
+_No flags._
+
+### `ehrt sim identifiers`
+
+Config + seed -> the complete EDN inventory of every identifier this run's output would contain (patient-ids, MRNs, visit beds, HL7 control ids, FHIR resource ids, provider NPIs, run-id) -- how you'd find and remove synthetic data that ever reached a real system (docs/simulate-your-facility.md).
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--seed` | — | RNG seed (required; same as `ehrt sim run`'s own --seed) |
+| `--patients` | `1` | patient count (integer) |
+| `--config` | — | path to an EDN file supplying data-heavy engine keys (same as `ehrt sim run`) |
+
+### `ehrt sim version`
+
+Prints sim's own library version and git SHA -- the SAME source the run manifest's :generator block stamps.
+
+_No flags._
 
 ## `ehrt show`
 

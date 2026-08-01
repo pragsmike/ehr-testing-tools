@@ -12,23 +12,26 @@
  :validations {:inconsistent-lib-versions {:type :error
                                            :exclude []}}
  :projects {"development" {:alias "dev"}
-            "sim" {:alias "sim"}
             ;; :necessary overrides warning 207 (poly's own brick-graph
             ;; reachability check: is a declared brick reached by a real
             ;; :require edge from the project's base, or from another
             ;; brick the same project declares -- it does not see a
             ;; project's own ad hoc test-tree requires). Re-derived
             ;; 2026-07-31 (docs-tooling split, finding 14), AGAIN the
-            ;; same day (corpus-io split stage 2, ADR-0017), and a
-            ;; FOURTH time the same day (split stage 3, ADR-0018: tools
-            ;; renamed corpus and retired), each time via `clojure
-            ;; -M:poly deps`/`check` with every entry temporarily
-            ;; cleared. "ehrt-cli" needs no override: bases/cli now
-            ;; requires every interface it consumes directly (kernel,
-            ;; judge, all three engines, corpus, corpus-io,
-            ;; docs-tooling) -- palgebra is reachable transitively
-            ;; through docs-tooling. "conformance" keeps the
-            ;; docs-tooling entry it has carried since stage 1 (the
+            ;; same day (corpus-io split stage 2, ADR-0017), a THIRD
+            ;; time the same day (split stage 3, ADR-0018: tools renamed
+            ;; corpus and retired), and a FIFTH time 2026-08-01
+            ;; (sim-cli retirement, P3-6, F2 fired -- the "sim" project
+            ;; entry above this comment is gone with it: it existed
+            ;; solely to compose sim + sim-cli into one deployable
+            ;; artifact, and had no :necessary entry of its own to carry
+            ;; forward), each time via `clojure -M:poly deps`/`check`
+            ;; with every entry temporarily cleared. "ehrt-cli" needs no
+            ;; override: bases/cli now requires every interface it
+            ;; consumes directly (kernel, judge, all three engines,
+            ;; corpus, corpus-io, docs-tooling) -- palgebra is reachable
+            ;; transitively through docs-tooling. "conformance" keeps
+            ;; the docs-tooling entry it has carried since stage 1 (the
             ;; brick is there solely to host its own moved tests) and
             ;; gains judge-fhir-official + judge-v2-nist: only this
             ;; project's own test tree (parity/gate-loop suites)

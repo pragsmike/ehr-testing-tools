@@ -38,8 +38,12 @@
   point, same rule as docs-tooling's own -X-invokables); `Assertion`
   (deleted, above). The sim adapter (`ehrt.corpus.sim-adapter`,
   renamed from `tools.sim` -- AR-1: the old name collided confusingly
-  with the `sim` component itself) exports only `run!`, below, as
-  `sim-run!`."
+  with the `sim` component itself) exports `run!`, `check!`,
+  `identifiers!`, and `version!`, below, as `sim-run!`/`sim-check!`/
+  `sim-identifiers!`/`sim-version!` (the latter three added P3-6,
+  2026-08-01, mounting `ehrt sim check`/`ehrt sim identifiers`/`ehrt
+  sim version` -- a parity gap found ahead of the sim-cli retirement
+  review, see notes/facts-register.md F2)."
   (:require [ehrt.corpus.check :as check]
             [ehrt.corpus.check.schemas :as schemas]
             [ehrt.corpus.display :as display]
@@ -129,3 +133,6 @@
 
 ;; ---- the sim adapter (ADR-0005: in-process since 2026-07-28) ----
 (def sim-run! sim-adapter/run!)
+(def sim-check! sim-adapter/check!)               ; P3-6 parity mount (2026-08-01)
+(def sim-identifiers! sim-adapter/identifiers!)    ; P3-6 parity mount (2026-08-01)
+(def sim-version! sim-adapter/version!)            ; P3-6 parity mount (2026-08-01)

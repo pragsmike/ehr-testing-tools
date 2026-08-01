@@ -70,6 +70,9 @@
     ["version" nil] :version-fn
     ["doctor" nil] :doctor-fn
     ["sim" "run"] :sim-run-fn
+    ["sim" "check"] :sim-check-fn
+    ["sim" "identifiers"] :sim-identifiers-fn
+    ["sim" "version"] :sim-version-fn
     ["show" nil] :show-fn
     ["play" nil] :play-fn))
 
@@ -94,7 +97,7 @@
     ["check" nil]
     ["version" nil]
     ["doctor" nil]
-    ["sim" "run"]
+    ["sim" "run"] ["sim" "check"] ["sim" "identifiers"] ["sim" "version"]
     ["show" nil]
     ["play" nil]})
 

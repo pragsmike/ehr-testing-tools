@@ -46,3 +46,42 @@
   (let [r (sim/run! {:seed 100 :patients 1})]
     (is (kernel/ok? r))
     (is (map? (:manifest (:payload r))))))
+
+;; ---- check!/identifiers!/version! (P3-6 parity mount, 2026-08-01):
+;; same -fn injection convention as run!'s own :run-command-fn. ----
+
+(deftest check-delegates-to-check-all-fn-test
+  (let [captured (atom nil)
+        fake (fn [ground-truth] (reset! captured ground-truth) (kernel/ok {}))]
+    (sim/check! [{:event :admission}] {:check-all-fn fake})
+    (is (= [{:event :admission}] @captured))))
+
+(deftest check-default-calls-the-real-check-all-test
+  (let [bad [{:event :discharge :t 0 :participants [{:patient-id "P1" :role :subject}]}
+             {:event :admission :t 5 :participants [{:patient-id "P1" :role :subject}] :location "Renal"}]
+        r (sim/check! bad)]
+    (is (kernel/rejected? r))
+    (is (= :invariant-violation (:category r)))))
+
+(deftest identifiers-delegates-to-identifiers-fn-and-strips-injection-key-test
+  (let [captured (atom nil)
+        fake (fn [opts] (reset! captured opts) (kernel/ok {:run-id "1"}))
+        r (sim/identifiers! {:seed 1 :patients 2 :identifiers-fn fake})]
+    (is (kernel/ok? r))
+    (is (= {:seed 1 :patients 2} @captured)
+        "identifiers-fn itself is stripped out before delegating, same as run!'s own :run-command-fn")))
+
+(deftest identifiers-default-calls-the-real-identifiers-command-test
+  (let [r (sim/identifiers! {:seed 100 :patients 1})]
+    (is (kernel/ok? r))
+    (is (contains? (:payload r) :patient-ids))))
+
+(deftest version-delegates-to-git-sha-fn-test
+  (let [r (sim/version! {:git-sha-fn (constantly "abc123")})]
+    (is (string? (:version r)))
+    (is (= "abc123" (:git-sha r)))))
+
+(deftest version-default-calls-the-real-version-and-git-sha-test
+  (let [r (sim/version!)]
+    (is (string? (:version r)))
+    (is (contains? r :git-sha))))

@@ -75,7 +75,19 @@
    ;; :warm-up-seconds/:churn.
    :patients {:coerce :long}
    :warm-up-seconds {:coerce :long}
-   :churn {:coerce :boolean}})
+   :churn {:coerce :boolean}
+   ;; P3-6 parity mount (2026-08-01): `ehrt sim run` already forwarded
+   ;; every parsed opt to run-command unchanged, but :arrival-gap/:at
+   ;; had no :coerce entry, so either flag arrived as an uncoerced
+   ;; string -- silently wrong once run.clj does arithmetic on it
+   ;; (:arrival-gap feeds engine-params directly; :at is compared
+   ;; against numeric run-elapsed seconds in emit-state/bundle-run).
+   ;; :utc-offset already worked (default string coercion), added here
+   ;; only for the same digit-only-string discipline :reference-date
+   ;; documents above.
+   :arrival-gap {:coerce :long}
+   :at {:coerce :long}
+   :utc-offset {:coerce :string}})
 
 (defn parse
   "Parses raw CLI args into {:args [positional...] :opts {...}}."
@@ -1465,18 +1477,121 @@
   [args valid-options]
   (result/error :unknown-command {:args args :valid-options valid-options :hint "run: ehrt help"}))
 
+(defn- sim-er7-requires-emit-hl7?
+  [format opts]
+  (and (= "er7" format) (not= "hl7" (:emit opts))))
+
+(defn- sim-er7-bare-text
+  "Bare wire bytes: every rendered message, joined by one blank line,
+  nothing else -- the property bases/sim-cli's own `--format er7`
+  always promised."
+  [r]
+  (str/join "\n\n" (get-in r [:payload :messages])))
+
+(defn- sim-ground-truth-bare-text
+  "Bare EDN: the run's own :ground-truth vector, pr-str'd, nothing
+  else -- readable straight back by `edn/read`, exactly the shape
+  `sim-check-command` requires on stdin. Makes `ehrt sim run --format
+  ground-truth | ehrt sim check` an actual working pipe, same property
+  bases/sim-cli's own run-then-check-cli-pipe-round-trips test proved
+  for the standalone binary."
+  [r]
+  (pr-str (get-in r [:payload :ground-truth])))
+
 (defn sim-run-command
   "`ehrt sim run`: mounts ehrt.sim.interface/run-command in-process
   (ADR-0005, 2026-07-28 -- ADR-0012's own long-deferred \"ehrt sim
   mount\", fulfilled once sim and tools shared one workspace/classpath).
   No translation layer: this CLI's own flag names already match sim's
   own opts 1:1 (:seed, :patients, :reference-date, :emit, :churn,
-  :config, :warm-up-seconds -- see ehrt.sim.interface/run-command's own
-  docstring for the full set); the -fn injection point below
-  (:sim-run-fn) is what keeps this repo's own CLI tests hermetic, per
-  ADR-0012 property 5's own commitment."
+  :config, :warm-up-seconds, :arrival-gap, :at, :utc-offset -- see
+  ehrt.sim.interface/run-command's own docstring for the full set); the
+  -fn injection point below (:sim-run-fn) is what keeps this repo's own
+  CLI tests hermetic, per ADR-0012 property 5's own commitment.
+
+  P3-6 parity mount (2026-08-01): :format \"er7\"/\"ground-truth\" mount
+  bases/sim-cli's own two bare-stdout rendering modes -- :format
+  \"json\" needs no separate mount, since it's already exactly what
+  this CLI's own --json does (the full envelope, JSON instead of EDN);
+  :format \"edn\" is already the default. An :ok result under a bare
+  format gets its bare content attached as `:bare-text` metadata (never
+  :payload, so the EDN/JSON envelope is unaffected) -- `main!` prints
+  that verbatim when present, same precedence as its :cli-help/
+  :display-text special cases, but WITHOUT forcing exit 0: unlike
+  `show-command`'s :category :display-text (always ok, ADR-0013), a
+  bare-format run keeps the real result->exit-code contract, since
+  bases/sim-cli's own format-er7-on-a-failing-run-shows-stderr-edn-and-
+  exit-2 test requires a failing run to still exit non-zero under a
+  bare format. Simplification, disclosed rather than silent: a non-:ok
+  result under a bare format renders through the normal stdout path
+  (EDN or --pretty) instead of bases/sim-cli's own stderr-only
+  discipline for that case -- still visible, still the right exit code,
+  just not stream-split; `ehrt sim check` reading a non-vector off a
+  failed pipe already reports :malformed-input rather than
+  misbehaving, so the pipe fails loudly either way."
   [opts]
-  (sim/sim-run! opts))
+  (let [format (:format opts)]
+    (if (sim-er7-requires-emit-hl7? format opts)
+      (result/rejected :format-er7-requires-emit-hl7
+                        {:message "--format er7 renders bare wire messages and requires --emit hl7"
+                         :format format :emit (:emit opts)})
+      (let [r (sim/sim-run! (dissoc opts :format))]
+        (cond
+          (and (= format "er7") (result/ok? r)) (vary-meta r assoc :bare-text (sim-er7-bare-text r))
+          (and (= format "ground-truth") (result/ok? r)) (vary-meta r assoc :bare-text (sim-ground-truth-bare-text r))
+          :else r)))))
+
+(defn sim-check-command
+  "`ehrt sim check`: mounts sim's own invariant catalog
+  (ehrt.sim.interface/check-all, via the sim adapter's `check!` --
+  same dependency-direction invariant sim-run-command already relies
+  on: corpus requires sim, never the reverse) over a ground-truth EDN
+  vector read from stdin. Same stdin contract bases/sim-cli's own
+  check-command always used (ported directly, same three named
+  rejections), and the SAME 1-arg check-all arity (default facility/
+  warm-up/order-profiles) it always called.
+
+  P3-6 parity mount (2026-08-01): bases/sim-cli's `check` verb had no
+  `ehrt` equivalent before this -- found during the sim-cli retirement
+  review's own parity check (notes/facts-register.md F2), escalated,
+  and wired before that retirement could proceed."
+  [_opts]
+  (let [log (try (edn/read {:eof ::eof} (java.io.PushbackReader. *in*))
+                 (catch Exception _e ::unreadable))]
+    (cond
+      (= ::eof log) (result/rejected :empty-input {:message "expected a ground-truth EDN vector on stdin"})
+      (= ::unreadable log) (result/rejected :unreadable-input {:message "stdin was not readable EDN"})
+      (not (vector? log)) (result/rejected :malformed-input {:message "expected a vector of event maps"})
+      :else (sim/sim-check! log))))
+
+(defn sim-identifiers-command
+  "`ehrt sim identifiers`: mounts ehrt.sim.interface/identifiers-command
+  (via the sim adapter's `identifiers!`, same dependency-direction
+  invariant as sim-run-command/sim-check-command) -- the SAME config
+  surface `ehrt sim run` accepts (:seed, :patients, :config; see
+  identifiers-command's own docstring for the full inventory it
+  returns).
+
+  P3-6 parity mount (2026-08-01): docs/simulate-your-facility.md
+  already teaches this capability as the standalone `sim identifiers`
+  binary invocation (the privacy/removal FAQ's own answer) -- this is
+  the SAME capability, reachable through `ehrt` instead; the doc was
+  updated to the new spelling in the same session."
+  [opts]
+  (sim/sim-identifiers! opts))
+
+(defn sim-version-command
+  "`ehrt sim version`: mounts ehrt.sim.interface/version + git-sha (via
+  the sim adapter's `version!`, same dependency-direction invariant as
+  every other sim-* command here) -- sim's own library version marker,
+  the SAME source the run manifest's :generator block stamps; distinct
+  from this repo's own `ehrt version` (repo identity + pinned
+  artifacts).
+
+  P3-6 parity mount (2026-08-01): bases/sim-cli's `version` verb had no
+  `ehrt` equivalent before this."
+  [_opts]
+  (result/ok (sim/sim-version!)))
 
 ;; Cross-repo interface commitment (ADR-0012), now fulfilled by
 ;; sim-run-command above (ADR-0005): the five properties ADR-0012 named
@@ -1523,7 +1638,8 @@
   docstring's EDN-out exception."
   ([args opts] (dispatch args opts {}))
   ([args opts {:keys [fetch-fn fetch-all-fn resolve-fn generate-fn generate-sim-fn mutate-fn intake-fn operators-fn
-                       gate-v2-fn gate-fhir-fn gate-v2-nist-fn check-fn version-fn doctor-fn sim-run-fn show-fn play-fn]
+                       gate-v2-fn gate-fhir-fn gate-v2-nist-fn check-fn version-fn doctor-fn
+                       sim-run-fn sim-check-fn sim-identifiers-fn sim-version-fn show-fn play-fn]
                :or {fetch-fn fetch-command
                     fetch-all-fn fetch-all-command
                     resolve-fn resolve-command
@@ -1539,6 +1655,9 @@
                     version-fn version-command
                     doctor-fn doctor-command
                     sim-run-fn sim-run-command
+                    sim-check-fn sim-check-command
+                    sim-identifiers-fn sim-identifiers-command
+                    sim-version-fn sim-version-command
                     show-fn show-command
                     play-fn play-command}}]
    (let [[group action path] args]
@@ -1613,6 +1732,9 @@
            "doctor" (doctor-fn opts)
            "sim" (case action
                    "run" (sim-run-fn opts)
+                   "check" (sim-check-fn opts)
+                   "identifiers" (sim-identifiers-fn opts)
+                   "version" (sim-version-fn opts)
                    (unknown-command-error args (help/verb-names (help/find-group help/cli-spec "sim"))))
            "show" (show-fn opts)
            "play" (play-fn opts)
@@ -1781,7 +1903,17 @@
   byte stream a downstream `stdin:` consumer expects to decode cleanly
   (caught for real by the loopback integration test before this
   redirect existed). That summary is printed to *err* instead in this
-  one case -- stdout stays exactly, only, the framed bytes."
+  one case -- stdout stays exactly, only, the framed bytes.
+
+  P3-6 (2026-08-01): a result carrying :bare-text METADATA (`ehrt sim
+  run --format er7|ground-truth`, sim-run-command) prints that text
+  verbatim instead of going through render/render-pretty -- same
+  stdout-is-reserved-for-bare-content property as :stdout-sink?, but
+  metadata rather than :payload (so, unlike :stdout-sink?, it never
+  touches the EDN/JSON envelope) and, unlike :cli-help/:display-text,
+  does NOT force exit 0 -- `code` below is still computed from the
+  real Result, since a failing bare-format run must still exit
+  non-zero (bases/sim-cli's own contract, ported)."
   ([raw-args] (main! raw-args {}))
   ([raw-args {:keys [dispatch-fn println-fn exit-fn tty?-fn]
               :or {dispatch-fn dispatch println-fn println exit-fn #(System/exit %)
@@ -1791,6 +1923,7 @@
          code (result->exit-code r)
          text (cond
                 (#{:cli-help :display-text} (:category r)) (:text (:payload r))
+                (:bare-text (meta r)) (:bare-text (meta r))
                 (:pretty opts) (render-pretty r (:report opts))
                 (:edn opts) (render r false)
                 (:json opts) (render r true)

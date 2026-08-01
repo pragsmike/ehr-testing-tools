@@ -91,9 +91,10 @@ Per-project verification ladders and first-traffic walkthroughs get
 added here as each project lands — see the root
 [`README.md`](README.md#quickstart) for the canonical Quickstart
 (`bin/ehrt ...`) and `AGENTS.md` for what's landed so far.
-`bases/sim-cli` (sim's own standalone CLI) is deprecated in favor of
-the `bin/ehrt sim run` mount (R33, ADR-0009) — it still works, but this
-page doesn't teach it as a path.
+Sim's own former standalone CLI (`bases/sim-cli`) was retired
+2026-08-01 once `bin/ehrt sim run`/`check`/`identifiers`/`version`
+(the in-process mount, ADR-0005/P3-6) reached full parity with it —
+see `notes/facts-register.md` F2.
 
 ## 4. Troubleshooting
 

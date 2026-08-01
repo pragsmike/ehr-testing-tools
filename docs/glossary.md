@@ -326,7 +326,7 @@ intended consumer of this simulator's output.
 **Invariant catalog.** The machine-checkable consistency rules in
 sim's `check.clj` (no bed holds two patients; results follow orders;
 timestamps monotone; …), run over ground-truth logs — standalone via
-`sim check`, in every run's self-check, and across hundreds of
+`ehrt sim check`, in every run's self-check, and across hundreds of
 randomized runs in property tests.
 
 **IR (intermediate representation).** The pathway format — the single

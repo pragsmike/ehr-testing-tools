@@ -287,6 +287,145 @@
     (is (result/ok? r))
     (is (= {:path "x.json"} @called))))
 
+;; ---- ehrt sim check / identifiers / version (P3-6 parity mount,
+;; 2026-08-01) -- real, hermetic invocations, same house convention
+;; generate-sim-command's own tests above already follow (sim runs
+;; in-process, ADR-0005, so a real run is as cheap as a fake one). ----
+
+(deftest dispatch-routes-sim-check-test
+  (let [called (atom nil)
+        r (cli/dispatch ["sim" "check"] {}
+                         {:sim-check-fn (fn [opts] (reset! called opts) (result/ok {}))})]
+    (is (result/ok? r))
+    (is (= {} @called))))
+
+(deftest dispatch-routes-sim-identifiers-test
+  (let [called (atom nil)
+        r (cli/dispatch ["sim" "identifiers"] {:seed 1}
+                         {:sim-identifiers-fn (fn [opts] (reset! called opts) (result/ok {}))})]
+    (is (result/ok? r))
+    (is (= {:seed 1} @called))))
+
+(deftest dispatch-routes-sim-version-test
+  (let [called (atom nil)
+        r (cli/dispatch ["sim" "version"] {}
+                         {:sim-version-fn (fn [opts] (reset! called opts) (result/ok {}))})]
+    (is (result/ok? r))
+    (is (= {} @called))))
+
+(deftest dispatch-sim-unknown-verb-names-run-check-identifiers-version-test
+  (let [r (cli/dispatch ["sim" "explode"] {} {})]
+    (is (= :unknown-command (:category r)))
+    (is (= #{"run" "check" "identifiers" "version"} (set (:valid-options (:payload r)))))))
+
+(deftest sim-check-command-runs-invariant-catalog-over-stdin-test
+  (let [run-result (cli/sim-run-command {:seed 1 :patients 1})
+        ground-truth (:ground-truth (:payload run-result))]
+    (with-in-str (pr-str ground-truth)
+      (is (result/ok? (cli/sim-check-command {}))))))
+
+(deftest sim-check-command-catches-a-planted-violation-test
+  (let [bad [{:event :discharge :t 0 :participants [{:patient-id "P1" :role :subject}]}
+             {:event :admission :t 5 :participants [{:patient-id "P1" :role :subject}] :location "Renal"}]]
+    (with-in-str (pr-str bad)
+      (let [r (cli/sim-check-command {})]
+        (is (result/rejected? r))
+        (is (= :invariant-violation (:category r)))))))
+
+(deftest sim-check-command-empty-stdin-is-a-named-rejection-test
+  (with-in-str ""
+    (let [r (cli/sim-check-command {})]
+      (is (result/rejected? r))
+      (is (= :empty-input (:category r))))))
+
+(deftest sim-check-command-unreadable-stdin-is-a-named-rejection-test
+  (with-in-str "]"
+    (let [r (cli/sim-check-command {})]
+      (is (result/rejected? r))
+      (is (= :unreadable-input (:category r))))))
+
+(deftest sim-check-command-non-vector-stdin-is-a-named-rejection-test
+  (with-in-str "{:not :a-vector}"
+    (let [r (cli/sim-check-command {})]
+      (is (result/rejected? r))
+      (is (= :malformed-input (:category r))))))
+
+(deftest sim-identifiers-command-returns-the-complete-inventory-test
+  (let [r (cli/sim-identifiers-command {:seed 1 :patients 1})]
+    (is (result/ok? r))
+    (doseq [k [:run-id :patient-ids :mrns :visit-beds :control-ids :fhir-resource-ids :provider-npis]]
+      (is (contains? (:payload r) k)))))
+
+(deftest sim-version-command-reports-version-and-git-sha-test
+  (let [r (cli/sim-version-command {})]
+    (is (result/ok? r))
+    (is (string? (:version (:payload r))))
+    (is (contains? (:payload r) :git-sha))))
+
+;; ---- ehrt sim run --format (P3-6 parity mount, 2026-08-01): bare
+;; er7/ground-truth stdout, mounted via :bare-text metadata (main!'s
+;; own precedence) rather than :payload -- see sim-run-command's own
+;; docstring for why exit-code computation stays unaffected. ----
+
+(deftest sim-run-command-format-er7-requires-emit-hl7-test
+  (let [r (cli/sim-run-command {:seed 1 :format "er7"})]
+    (is (result/rejected? r))
+    (is (= :format-er7-requires-emit-hl7 (:category r)))))
+
+(deftest sim-run-command-format-er7-bare-text-is-messages-joined-test
+  (let [r (cli/sim-run-command {:seed 42 :patients 2 :emit "hl7" :format "er7"})]
+    (is (result/ok? r))
+    (is (= (clojure.string/join "\n\n" (:messages (:payload r))) (:bare-text (meta r))))))
+
+(deftest sim-run-command-format-ground-truth-bare-text-round-trips-test
+  (let [r (cli/sim-run-command {:seed 42 :patients 3 :format "ground-truth"})]
+    (is (result/ok? r))
+    (is (= (:ground-truth (:payload r)) (clojure.edn/read-string (:bare-text (meta r)))))))
+
+(deftest sim-run-command-format-edn-and-json-carry-no-bare-text-test
+  (doseq [format [nil "edn" "json"]]
+    (let [r (cli/sim-run-command (cond-> {:seed 1} format (assoc :format format)))]
+      (is (nil? (:bare-text (meta r)))))))
+
+(deftest run-then-check-pipe-round-trips-through-bare-text-test
+  (testing "the real gap --format ground-truth exists to close: `ehrt sim
+            run --format ground-truth | ehrt sim check`, proven at the
+            sim-run-command/sim-check-command boundary (main! itself
+            already proven to honor :bare-text, format-er7/ground-truth
+            tests above)"
+    (let [run-result (cli/sim-run-command {:seed 9 :patients 4 :churn true :format "ground-truth"})]
+      (with-in-str (:bare-text (meta run-result))
+        (is (result/ok? (cli/sim-check-command {})))))))
+
+(deftest main!-sim-run-format-ground-truth-prints-bare-text-and-exits-per-result-test
+  (let [printed (atom []) exited (atom nil)]
+    (cli/main! ["sim" "run" "--seed" "1" "--format" "ground-truth"]
+               {:println-fn #(swap! printed conj %) :exit-fn #(reset! exited %)})
+    (is (= 0 @exited))
+    (is (= 1 (count @printed)))
+    (is (vector? (clojure.edn/read-string (first @printed))))))
+
+(deftest main!-sim-run-format-er7-without-emit-hl7-exits-1-with-normal-rendering-test
+  (let [printed (atom []) exited (atom nil)]
+    (cli/main! ["sim" "run" "--seed" "1" "--format" "er7"]
+               {:println-fn #(swap! printed conj %) :exit-fn #(reset! exited %)})
+    (is (= 1 @exited))
+    (is (= :format-er7-requires-emit-hl7 (:category (clojure.edn/read-string (first @printed)))))))
+
+;; ---- ehrt sim run: --arrival-gap/--at numeric coercion (P3-6 parity
+;; mount, 2026-08-01) -- both had no :coerce entry before this, so
+;; either flag arrived as an uncoerced string; a real run.clj/emit-
+;; state consumer needs a long. ----
+
+(deftest parse-coerces-arrival-gap-and-at-to-longs-test
+  (let [{:keys [opts]} (cli/parse ["sim" "run" "--seed" "1" "--arrival-gap" "30" "--at" "120"])]
+    (is (= 30 (:arrival-gap opts)))
+    (is (= 120 (:at opts)))))
+
+(deftest sim-run-command-honors-utc-offset-test
+  (let [r (cli/sim-run-command {:seed 1 :patients 1 :emit "fhir" :utc-offset "-05:00"})]
+    (is (result/ok? r))))
+
 (deftest dispatch-corpus-mutate-accepts-a-positional-path-test
   ;; D10: `ehrt corpus mutate PATH` -- PATH is the third positional arg,
   ;; with --path as its explicit twin, same convention gate already has.

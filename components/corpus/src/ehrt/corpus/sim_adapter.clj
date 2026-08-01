@@ -59,3 +59,36 @@
   [opts]
   (let [run-command-fn (get opts :run-command-fn sim/run-command)]
     (run-command-fn (dissoc opts :out-dir :sim-dir :env-sim-dir-fn :default-dir :run-command-fn))))
+
+(defn check!
+  "Delegates to ehrt.sim.interface/check-all, 1-arg arity (ground-truth
+  only -- default facility/warm-up/order-profiles) -- the SAME arity
+  bases/sim-cli's own check-command always used (P3-6 parity mount,
+  2026-08-01). :check-all-fn is injectable, same -fn convention as
+  run!'s own :run-command-fn."
+  ([ground-truth] (check! ground-truth {}))
+  ([ground-truth {:keys [check-all-fn] :or {check-all-fn sim/check-all}}]
+   (check-all-fn ground-truth)))
+
+(defn identifiers!
+  "Delegates to ehrt.sim.interface/identifiers-command -- opts pass
+  through unchanged (:seed, :patients, :config; see
+  identifiers-command's own docstring for the full config surface,
+  shared with run!). :identifiers-fn is injectable, same -fn
+  convention as run!'s own :run-command-fn (P3-6 parity mount,
+  2026-08-01)."
+  [opts]
+  (let [identifiers-fn (get opts :identifiers-fn sim/identifiers-command)]
+    (identifiers-fn (dissoc opts :identifiers-fn))))
+
+(defn version!
+  "Delegates to ehrt.sim.interface/version + git-sha -- the SAME source
+  the run manifest's own :generator block stamps (ehrt.sim.manifest),
+  not this repo's own `ehrt version` identity (a different concept:
+  the repo's pre-release identity plus pinned artifacts, vs. sim's own
+  library version marker). :git-sha-fn is injectable, matching the -fn
+  convention run!/check!/identifiers! already use (P3-6 parity mount,
+  2026-08-01)."
+  ([] (version! {}))
+  ([{:keys [git-sha-fn] :or {git-sha-fn sim/git-sha}}]
+   {:version sim/version :git-sha (git-sha-fn)}))

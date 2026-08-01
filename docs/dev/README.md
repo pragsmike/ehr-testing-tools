@@ -35,15 +35,6 @@ projects compose them, and where the theory docs live. Then:
   rationale for the intake/mutate/sink seam, cited throughout source as
   `Part I`–`Part IX`.
 
-## Deprecation notices
-
-- **`bases/sim-cli` / `projects/sim`** — DEPRECATED, not removed (R33,
-  `notes/ADRs.md` ADR-0009). Kept working and tested; `bin/ehrt sim
-  run` (the in-process mount, ADR-0005) is the presented surface
-  everywhere else. Retirement trigger, dated not scheduled:
-  `notes/facts-register.md` F2 — retire when a review finds no use
-  outside its own tests.
-
 ## Component-adjacent docs
 
 Not listed above because they live beside the component they document,

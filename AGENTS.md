@@ -21,15 +21,14 @@ for the Polylith architecture reference this migration was planned
 against, and `notes/ADRs.md` ADR-0001 for what was actually decided
 and why.
 
-**Landed so far:** `components/sim` + `bases/sim-cli` (from
-`ehr-testing-sim`) — a deterministic, seeded generator of synthetic
-hospital traffic for testing EHR integrations, presented to users via
-the `bin/ehrt sim run` mount (below); `sim-cli` itself is DEPRECATED,
-not removed (R33, ADR-0009) — it keeps working, its own tests keep
-running, but the user path never mentions it and this dev path marks
-it deprecated here. **Retirement trigger:** retire `bases/sim-cli` and
-`projects/sim` when a review finds no use outside their own tests —
-not scheduled, just named, per `notes/facts-register.md`.
+**Landed so far:** `components/sim` (from `ehr-testing-sim`) — a
+deterministic, seeded generator of synthetic hospital traffic for
+testing EHR integrations, presented to users via the `bin/ehrt sim
+run`/`check`/`identifiers`/`version` mount (below). `bases/sim-cli`
+and `projects/sim` (sim's own former standalone CLI and its composing
+project) were retired 2026-08-01 (F2 fired, `notes/facts-register.md`)
+once `ehrt sim` reached full parity with it (P3-6) — no code here
+requires either any more.
 `components/corpus` + `components/palgebra`
 + `bases/cli` (from `ehr-testing-tools`) — corpus construction
 (generation, mutation, provenance) and conformance gating (HL7 v2,
@@ -203,8 +202,8 @@ sim's own discipline, unchanged by the move:
 - **Test-first, properties for law-bearing constructs** (determinism,
   the invariant catalog, emitter derivability, schema round-trips).
 - **The CLI-surface rule**: demos and verification commands run
-  through `bases/sim-cli`, never through `components/sim` internals
-  directly.
+  through `bases/cli` (`ehrt sim run`/`check`/`identifiers`/`version`),
+  never through `components/sim` internals directly.
 
 ## Constraints
 

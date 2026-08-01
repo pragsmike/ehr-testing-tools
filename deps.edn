@@ -8,7 +8,6 @@
 
                   :extra-deps {org.clojure/clojure {:mvn/version "1.12.5"}
                                poly/sim      {:local/root "components/sim"}
-                               poly/sim-cli  {:local/root "bases/sim-cli"}
                                ;; kernel/judge (ADR-0008): corpus' own
                                ;; src requires both directly.
                                poly/kernel   {:local/root "components/kernel"}
@@ -49,7 +48,6 @@
                                poly/cli      {:local/root "bases/cli"}}}
 
             :test {:extra-paths ["components/sim/test"
-                                  "bases/sim-cli/test"
                                   "components/kernel/test"
                                   "components/judge/test"
                                   "components/judge-v2-hapi/test"

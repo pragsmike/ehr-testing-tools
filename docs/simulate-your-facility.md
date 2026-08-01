@@ -199,7 +199,7 @@ excerpts of your real feed.
 ## What if synthetic data ever reached a real system — how would we find and remove it?
 
 You wouldn't have to hunt for it; you can list it exactly. Run
-`sim identifiers --seed <seed> --patients <n> [--config <file>]` against the
+`ehrt sim identifiers --seed <seed> --patients <n> [--config <file>]` against the
 same config-plus-seed that generated the corpus and get back the complete
 inventory of every identifier it ever contained — patient ids, MRNs (every one,
 including any merged away), visit-relevant ids, message control IDs, FHIR
