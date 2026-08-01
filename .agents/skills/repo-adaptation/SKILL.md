@@ -9,7 +9,7 @@ description: >
   agent instructions across tools like Codex, OpenCode, or Cursor, even if they don't use the
   word "migration" or "adaptation."
 license: MIT
-allowed-tools:
+compatibility:
   - codex
   - claude-code
   - opencode

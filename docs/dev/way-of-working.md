@@ -49,6 +49,13 @@ time delegation possible.** Concretely:
   prompt must state. `AUTHORS-GUIDE.md` §1 and ADR-0007's own amendment
   carry the full detail.
 
+  **Amendment, 2026-08-01 (skill-adaptation session, ADR-0007's own
+  second dated amendment):** the ceremony gains a post-push check —
+  verify the pushed commit message against the message file that
+  produced it, every push. A mismatch is a fix-forward note in the
+  session record, never an amend. `AUTHORS-GUIDE.md` §1 has the full
+  rationale.
+
 ## 2. Fix-forward with disclosure (ADR-0001, R10)
 
 **When a step's stated premise doesn't hold against the live tree, the

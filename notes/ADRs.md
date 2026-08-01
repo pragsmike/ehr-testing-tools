@@ -1597,6 +1597,28 @@ about R30's application beyond this record's own existence.
   restructure (current-tense operational text, not a historical record
   like this file — no separate amendment note needed there).
 
+### Amendments (2026-08-01, skill-adaptation session — fix-forward, dated, not a revert)
+
+- **Ceremony gains post-push message verification.** Motivated by the
+  C3 quoting hazard (`feedback_wsl_dollar_exitcode_quoting` /
+  `feedback_wsl_wrapper_raw_byte_patterns`-class failures: the WSL
+  wrapper has, in past sessions, silently mangled backticked literals
+  or raw control bytes out of a commit message on its way from a
+  message file through to the pushed commit). The ceremony's existing
+  safeguards catch scope and secrets before a commit; nothing
+  previously checked that what actually landed on the remote matches
+  what was intended, after the fact. Added: **after every push, run
+  `git log --format=%B -1` against the pushed commit and diff it
+  against the message file that produced it.** A clean match needs no
+  record. A mangled message is never fixed by amending a pushed
+  commit — it gets a fix-forward note in that session's own
+  `.agents/session-records/` entry (per R10, `notes/ADRs.md`'s
+  standing fix-forward discipline) naming what the wrapper dropped and
+  whether a corrective commit was made. This is a checkpoint-time
+  check like the rest of R30's safeguards, not a new gate a hook
+  enforces — `AUTHORS-GUIDE.md` §1 and `docs/dev/way-of-working.md` §1
+  carry matching dated notes.
+
 ---
 
 ## ADR-0008 — Kernel and judge extraction: ADR-0002 R14 (named hole H4) closed

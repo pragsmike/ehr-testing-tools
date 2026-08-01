@@ -38,6 +38,18 @@ Keep it concise and operational. It is read on every agent invocation, so every 
 
 Each skill is a self-contained package for a repeatable workflow. The `SKILL.md` manifest has YAML frontmatter (`name`, `description`) and markdown instructions. Skills are loaded on demand based on their description matching the user's task.
 
+**Verified 2026-08-01 against Claude Code 2.1.63: this path is not a
+discovery path for Claude Code.** Claude Code reads `.claude/skills/<slug>/SKILL.md`
+(project) or `~/.claude/skills/<slug>/` (personal), or a plugin/marketplace
+install — never `.agents/skills/`. See `references/compatibility-matrix.md`'s
+"Verified findings" section for the empirical probe and the corroborating
+primary sources (`pragsmike/skills` adoption guide, `pragsmike/cyberneutics`
+layout). This diagram's placement of `skills/` under `.agents/` still holds
+for AGENTS.md-native tools (Codex, OpenCode per their own claimed native
+support, unverified this pass) — it just isn't universal, and a repo
+targeting Claude Code specifically needs a `.claude/skills/` copy (or
+equivalent) too, not `.agents/skills/` alone.
+
 ### `.agents/handoffs/`
 
 Prose markdown files that carry context between sessions. Use when work spans multiple conversations and the next agent (or the same agent in a new session) needs to understand what was done, what's pending, and what decisions were made.

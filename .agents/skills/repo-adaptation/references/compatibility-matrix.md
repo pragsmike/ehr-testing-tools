@@ -2,17 +2,85 @@
 
 How the target `AGENTS.md` + `.agents/` structure relates to current AI coding tools.
 
+**Read `## Verified findings (2026-08-01)` below before trusting the Claude
+Code row of the table that follows** — it was wrong in a way that mattered
+(discovery path, not just phrasing) until this pass, and the fix was made by
+empirical test, not by re-reading vendor docs.
+
 ## Tool support overview
 
 | Tool | Primary instruction file | Reads `AGENTS.md`? | Reads `.agents/skills/`? | Legacy files |
 |---|---|---|---|---|
-| **OpenAI Codex** | `AGENTS.md` | Yes (native) | Yes (native) | N/A |
-| **OpenCode** | `AGENTS.md` | Yes (preferred) | Project rules supported | Falls back to `CLAUDE.md` |
-| **Claude Code** | `CLAUDE.md` | Via convention | Via custom commands | `CLAUDE.md`, `.claude/` |
-| **Cursor** | `.cursorrules` | No (manual) | No | `.cursorrules`, `.cursorignore` |
-| **GitHub Copilot** | `.github/copilot-instructions.md` | No | No | Own format |
-| **Windsurf** | `.windsurfrules` | No | No | Own format |
-| **Aider** | `.aider.conf.yml` | No | No | Own format |
+| **OpenAI Codex** | `AGENTS.md` | Yes (native) | Yes (native) | N/A — unverified this pass, carried from original authoring |
+| **OpenCode** | `AGENTS.md` | Yes (preferred) | Project rules supported | Falls back to `CLAUDE.md` — unverified this pass, carried from original authoring |
+| **Claude Code** | `CLAUDE.md` (auto-loaded); `AGENTS.md` only if a human points to it | No — see findings below | **No.** Reads `.claude/skills/<slug>/SKILL.md` (project) or `~/.claude/skills/<slug>/` (personal), or a plugin/marketplace install. See findings below. | `CLAUDE.md`, `.claude/` |
+| **Cursor** | `.cursorrules` | No (manual) | No | `.cursorrules`, `.cursorignore` — unverified this pass, carried from original authoring |
+| **GitHub Copilot** | `.github/copilot-instructions.md` | No | No | Own format — unverified this pass, carried from original authoring |
+| **Windsurf** | `.windsurfrules` | No | No | Own format — unverified this pass, carried from original authoring |
+| **Aider** | `.aider.conf.yml` | No | No | Own format — unverified this pass, carried from original authoring |
+
+## Verified findings (2026-08-01)
+
+Tested tool: **Claude Code 2.1.63**, inside `ehr-testing-tools` (a repo whose
+`.agents/skills/` holds 11 skill directories, including this one). Everything
+else in this file's rows was left as originally authored — plausible, but not
+independently re-tested this pass; only the Claude Code row above was
+actually exercised, because that was the tool available to test with.
+
+**1. Direct observation, this session.** The running session's own
+Skill-tool listing did not contain any of `.agents/skills/`'s 11 entries
+under their own names — not `committee`, `find-skills`, `handoff`, `probe`,
+`review`, `scenarios`, `shared-skill-layout`, `string-diagram`,
+`wsl-windows-git-hygiene`, nor a bare `repo-adaptation`. One entry,
+`anthropic-skills:repo-adaptation`, did appear, with a description
+byte-for-byte identical to this file's own `SKILL.md` frontmatter
+description — but a full filename search of `~/.claude` (all of
+`plugins/`, `plugins/marketplaces/claude-plugins-official/`, `cache/`,
+`downloads/`, etc.) turned up zero files or directories named
+`repo-adaptation` or `anthropic-skills` anywhere on disk, and the one
+registered marketplace (`claude-plugins-official`) has no plugin by either
+name. Conclusion: `anthropic-skills:repo-adaptation` is a fixed, built-in
+skill the product ships regardless of repo content — its match to this
+file's wording is a notable coincidence (or convergent authorship on the
+same well-known problem), not evidence that `.agents/skills/` was read.
+
+**2. Live probe.** Created `.claude/skills/zzz-discovery-probe-20260801/SKILL.md`
+(unique name, thrown away immediately after) in the same repo. Neither this
+session's own listing nor a freshly spawned subagent's listing picked it up.
+Inconclusive by itself — a subagent may inherit a catalog fixed at session
+start rather than rescanning the filesystem live — but consistent with (3)
+and (4) below, and it rules out "just add the file and it works mid-session."
+
+**3. Primary-source corroboration.** Cloned `pragsmike/skills` (HEAD
+`311b022`, the sole commit) this session. Its own `README.md` and
+`docs/adoption-guide.md` state Claude Code's supported install paths as
+project `.claude/skills/<name>/` and personal `~/.claude/skills/<name>/`,
+plus `/plugin marketplace add pragsmike/skills` — never `.agents/skills/`.
+The same docs give paths for Cursor (`.cursor/skills/`), Gemini CLI
+(`.gemini/skills/`), GitHub Copilot (`.github/skills/`), and Windsurf
+(`.windsurf/skills/`) that are newer than this file's own "No/No/No" rows for
+those tools — plausible (skill-style conventions have been spreading), but
+sourced from one library maintainer's adoption guide, not those vendors'
+own docs, so not folded into the table above as verified fact.
+
+**4. Cross-repo corroboration.** `pragsmike/cyberneutics` (HEAD `c9aef26`),
+a repo actively used day-to-day with Claude Code, keeps its 8 skills —
+several sharing this repo's own names (`committee`, `handoff`, `probe`,
+`review`, `scenarios`, `string-diagram`) — at `.claude/skills/`, and uses
+`.agents/` for something else entirely (five persona files: `frankie.md`,
+`joe.md`, `maya.md`, `tammy.md`, `vic.md` — not skills). One namespace,
+two unrelated live conventions across pragsmike's own repos.
+
+**Bottom line:** `.agents/skills/` is not a Claude Code discovery path in
+this environment. `ehr-testing-tools`'s own 11-skill directory there is
+invisible to Claude Code today — a fact inherited unmodified from sim's
+original bootstrap (`notes/ADRs.md`, the workspace-formation ADR's R8:
+"Sim's own copy of `.agents/skills/` is dropped as a duplicate — the
+workspace's live `.agents/skills/` already carries that content forward"),
+never independently checked against real tool behavior until this pass.
+Whether/how to fix that for this repo (dual registration, a `.claude/skills`
+compat layer, or something else) is a migration-report decision, not this
+skill file's to make — see `.agents/plans/2026-08-01-migration-report.md`.
 
 ## Compatibility strategies
 

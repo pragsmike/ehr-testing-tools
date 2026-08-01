@@ -51,6 +51,16 @@ saying so. ADR-0007's own amendment carries the full list of ceremony
 safeguards this default now carries (staged-scope check, personal-info
 scan, commit-message-via-file, session record before final push).
 
+**Amendment, 2026-08-01 (skill-adaptation session, `notes/ADRs.md`
+ADR-0007's own second dated amendment).** One more safeguard joins the
+list above: **after every push, verify the pushed commit message**
+(`git log --format=%B -1`) **against the message file that produced
+it.** Motivated by a known failure class — the WSL wrapper has
+silently dropped backticked literals or raw control bytes from a
+commit message en route to the remote. A mismatch is never fixed by
+amending a pushed commit; it gets a fix-forward note in that session's
+own session record instead.
+
 **Reaching WSL from a Windows-launched agent session.** If your shell
 is Git Bash/MINGW64, do not run git natively and do not invoke
 `wsl.exe <command>` inline with untrusted interpolation — MSYS path
