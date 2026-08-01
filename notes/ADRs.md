@@ -4700,6 +4700,19 @@ skill -- see notes/ADRs.md ADR-0007's own third dated amendment and
 `docs/dev/way-of-working.md`'s matching note, for the full disposition.
 Full account: `.agents/session-records/2026-08-02-migration-session-5.md`.
 
+**Correction, same session (C3).** The `:onboarding` figure in the
+paragraph above (695) was measured before this same session's own C3
+indexed its new session-record and prompt-archive filenames in
+`.agents/session-records/README.md` and `.agents/prompts/README.md` --
+both already-cited `:onboarding` paths, per the same mechanism migration
+session 4's own correction note (above) first caught. Measured actual
+after C3: **`:onboarding` 697**. `.agents/reading-sets.edn` carries the
+corrected number; the migration report's own "RULED 2026-08-02
+(migration session 5)" paragraph still reads 695, left as originally
+written (a same-commit fix-forward for the enforced data file, not a
+rewrite of already-pushed prose) -- this note is that fix-forward's
+own record.
+
 ---
 
 ## ADR-0024 — `.claude/skills/` carved out of the untracked-`.claude/` ruling; mirror-with-gate lands the Claude Code discovery fix

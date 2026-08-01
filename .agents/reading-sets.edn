@@ -53,7 +53,14 @@
   ;; because that's a different audience from "a cold task-class session",
   ;; and forcing every onboarding read to carry its cost would budget for an
   ;; activity most onboarding sessions never do (migration session 5, AR-3).
-  :budget-lines 695}
+  ;; corrected 2026-08-02 (migration session 5, C3, same session as the
+  ;; 695 figure): indexing this session's own new session-record and
+  ;; prompt-archive filenames in their own READMEs (both already-cited
+  ;; onboarding paths) added 2 more lines after C2 already committed
+  ;; 695 -- caught measuring the real total while writing this
+  ;; checkpoint, fixed forward here rather than amending C2 (see
+  ;; `notes/ADRs.md` ADR-0023's own correction note)
+  :budget-lines 697}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one
