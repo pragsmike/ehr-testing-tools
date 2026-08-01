@@ -43,7 +43,29 @@
   as `ehrt.tools.` above, not scoped to a prefix or suffix pattern.
   `notes/`'s own historical citations of the old name (pre-rename
   prompts, ADR context) are untouched, out of this test's scan scope,
-  same as every other entry in this family."
+  same as every other entry in this family.
+
+  2026-08-02 addendum (migration session 2, item 12): a third,
+  independent tripwire in the family, forbidding *current-tense
+  instruction* that (new) session prompts archive to the now-frozen
+  `notes/prompts/` (item 1's own ruling: `.agents/prompts/` is the only
+  live destination going forward). Deliberately narrower than a bare
+  substring ban on `notes/prompts/` -- the directory's own history is
+  legitimately narrated in prose that must keep citing it by name
+  (`docs/dev/way-of-working.md`'s own '...the archived session prompt
+  under `notes/prompts/` once step 12 lands it' is exactly this: past-
+  participle narration of one already-completed session's own
+  archival, not an instruction). The line this addendum draws is verb
+  tense/mood, not the path token: present-tense/imperative verbs
+  (archive(s), land(s), go(es)) immediately governing `notes/prompts/`
+  are forbidden; past-participle narration (`archived`) and citations
+  of a specific file under the directory are untouched. Scanned over a
+  wider source set than the family above (`AGENTS.md` and every
+  `.agents/skills/**/SKILL.md` join `docs/**/*.md`) since those, not
+  just `docs/`, are this workspace's own current-tense instructional
+  surfaces (`.agents/plans/`, `.agents/session-records/`,
+  `.agents/prompts/`, and `notes/` itself stay out of scope, same
+  narrative-legitimacy reasoning as the family above)."
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.java.io :as io]
             [clojure.string :as str]))
@@ -138,3 +160,46 @@
     (is (empty? (register-code-violations "<!-- ADR-0012 predates this rename -->"))))
   (testing "the same code outside both exemptions still trips it"
     (is (= ["ADR-0012"] (register-code-violations "predates ADR-0012, unlike the comment above")))))
+
+;; notes/prompts/ archive-instruction tripwire (2026-08-02, item 12) --
+;; separate again: different source set (docs/**/*.md + AGENTS.md +
+;; every skill's SKILL.md), different shape (a verb-tense-scoped
+;; pattern, not a path-prefix or exact-string ban).
+
+(defn- skill-md-files []
+  (->> (file-seq (io/file ".agents/skills"))
+       (filter #(.isFile %))
+       (filter #(= "SKILL.md" (.getName %)))
+       (map #(.getPath %))))
+
+(defn- notes-prompts-archive-sources []
+  (concat (markdown-files) ["AGENTS.md"] (skill-md-files)))
+
+(def ^:private archive-instruction-re
+  #"(?i)\barchives?\s+(?:to|in)\s+notes/prompts|\blands?\s+(?:in|at)\s+notes/prompts|\bgoes?\s+to\s+notes/prompts")
+
+(defn- archives-to-notes-prompts?
+  "True when `content` gives a present-tense/imperative instruction that
+  (new) work archives, lands, or goes to notes/prompts/ -- the retired
+  destination, per item 1's ruling. Past-participle narration
+  ('archived ... under notes/prompts/') and citations of a specific
+  file under the directory do not trip this."
+  [content]
+  (boolean (re-find archive-instruction-re content)))
+
+(deftest no-current-instruction-archives-to-notes-prompts-test
+  (doseq [path (notes-prompts-archive-sources)]
+    (let [content (slurp path)]
+      (is (not (archives-to-notes-prompts? content))
+          (str path " instructs archiving to the retired notes/prompts/ destination -- .agents/prompts/ is the only live one (item 1, 2026-08-02)")))))
+
+(deftest archive-instruction-pattern-is-actually-caught-test
+  (testing "present-tense/imperative instruction trips it"
+    (is (archives-to-notes-prompts? "New session prompts archive to notes/prompts/ from here on."))
+    (is (archives-to-notes-prompts? "Prompts land in notes/prompts/ going forward.")))
+  (testing "past-participle narration of one already-completed session's own archival does not trip it"
+    (is (not (archives-to-notes-prompts?
+               "see the archived session prompt under `notes/prompts/` once step 12 lands it"))))
+  (testing "a citation of a specific file does not trip it"
+    (is (not (archives-to-notes-prompts?
+               "see notes/prompts/2026-07-30-ehr-testing-doctor-rendering.md for the prompt")))))
