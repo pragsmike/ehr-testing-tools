@@ -5,13 +5,13 @@
             [ehrt.corpus-io.er7 :as er7]
             ;; simhospital-corpus is a test fixture helper, not a
             ;; moved src namespace -- it wasn't in AR-1's 17-file scope
-            ;; and stayed in components/tools/test (corpus-io stage 2,
+            ;; and stayed in components/corpus/test (corpus-io stage 2,
             ;; 2026-07-31). Both projects that compose this test
-            ;; (conformance) also declare poly/tools, so its test dir
+            ;; (conformance) also declare poly/corpus, so its test dir
             ;; is on the classpath alongside this one.
-            [ehrt.tools.corpus.simhospital-corpus :as simhospital]))
+            [ehrt.corpus.simhospital-corpus :as simhospital]))
 
-(def ^:private fixture-dir "components/tools/test-fixtures/v2")
+(def ^:private fixture-dir "components/corpus/test-fixtures/v2")
 
 (defn- fixture [name] (slurp (io/file fixture-dir name)))
 

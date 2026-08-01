@@ -2,7 +2,7 @@
   "Test-first (ADR-0006; SS-4b Step 3): written before
   ehrt.corpus-io.operation-manifest existed. Schema-level
   coverage only -- write-side wiring (ehrt.corpus-io.sink-write)
-  and intake-side recognition (ehrt.tools.corpus.intake) each own
+  and intake-side recognition (ehrt.corpus.intake) each own
   their own test namespaces."
   (:require [clojure.test :refer [deftest is testing]]
             [ehrt.corpus-io.operation-manifest :as om]))

@@ -15,12 +15,12 @@ all of them) and [cli.md](cli.md#ehrt-corpus-mutate) or
 
 This page describes what the parsers in
 [`ehrt.kernel.locator`](../components/kernel/src/ehrt/kernel/locator.clj)
-and [`ehrt.tools.corpus.er7`](../components/tools/src/ehrt/tools/corpus/er7.clj)
+and [`ehrt.corpus-io.er7`](../components/corpus-io/src/ehrt/corpus_io/er7.clj)
 actually accept — those files are authoritative, and every example
 below is pinned to them by
-[`ehrt.tools.locators-doc-test`](../components/tools/test/ehrt/tools/locators_doc_test.clj)
-(kept in `components/tools/test/` rather than kernel's own, since it
-also pins `ehrt.tools.corpus.er7` — ADR-0008's own deviation record),
+[`ehrt.corpus.locators-doc-test`](../components/corpus/test/ehrt/corpus/locators_doc_test.clj)
+(kept in `components/corpus/test/` rather than kernel's own, since it
+also pins `ehrt.corpus-io.er7` — ADR-0008's own deviation record),
 which runs in the ordinary `make test`. If a grammar changes and this
 page doesn't, that test fails.
 
@@ -259,10 +259,10 @@ resolution failure on a specific file.
 |---|---|
 | FHIR path grammar, and what it rejects | `ehrt.kernel.locator/fhir-data-path` |
 | v2 path grammar, and what it rejects | `ehrt.kernel.locator/v2-data-path` |
-| The `MSH` off-by-one, and field positions generally | `ehrt.tools.corpus.er7/field-index` |
-| Segment occurrence and resolution against a message | `ehrt.tools.corpus.er7/resolve-locator` |
-| Field granularity of the v2 substrate | `ehrt.tools.corpus.er7` namespace docstring |
-| Every example on this page | `components/tools/test/ehrt/tools/locators_doc_test.clj` |
+| The `MSH` off-by-one, and field positions generally | `ehrt.corpus-io.er7/field-index` |
+| Segment occurrence and resolution against a message | `ehrt.corpus-io.er7/resolve-locator` |
+| Field granularity of the v2 substrate | `ehrt.corpus-io.er7` namespace docstring |
+| Every example on this page | `components/corpus/test/ehrt/corpus/locators_doc_test.clj` |
 
 Related: [operators.md](operators.md) (which operator to pair a locator
 with), [cli.md](cli.md#ehrt-corpus-mutate) (the flags around it),

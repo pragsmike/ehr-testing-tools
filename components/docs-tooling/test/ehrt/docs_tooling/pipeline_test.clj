@@ -54,13 +54,13 @@
 ;; validate against this schema -- the point of pattern #13's trial ----
 
 (deftest committed-pipeline-edn-is-valid-test
-  (let [data (edn/read-string (slurp "components/tools/docs/pipeline.edn"))]
+  (let [data (edn/read-string (slurp "components/corpus/docs/pipeline.edn"))]
     (is (pipeline/valid? data))))
 
 (deftest committed-pipeline-edn-has-every-stage-built-test
   ;; P5: Intake, Gate, and Report all move from stub/planned to built.
   ;; P6: Check joins them, also built from the start.
-  (let [data (edn/read-string (slurp "components/tools/docs/pipeline.edn"))
+  (let [data (edn/read-string (slurp "components/corpus/docs/pipeline.edn"))
         by-id (into {} (map (juxt :id identity)) (:stages data))]
     (is (= :built (:status (by-id :generate))))
     (is (= :built (:status (by-id :normalize))))
@@ -73,7 +73,7 @@
 (deftest committed-pipeline-edn-check-stage-consumes-datum-test
   ;; Check is the second judge alongside Gate (docs/notation.md) --
   ;; both consume the same union resource.
-  (let [data (edn/read-string (slurp "components/tools/docs/pipeline.edn"))
+  (let [data (edn/read-string (slurp "components/corpus/docs/pipeline.edn"))
         by-id (into {} (map (juxt :id identity)) (:stages data))]
     (is (= :judge (:kind (by-id :check))))
     (is (some #{"datum"} (:inputs (by-id :check))))))
@@ -174,7 +174,7 @@
 ;; either a stage output or a declared union resource. ----
 
 (deftest committed-pipeline-edn-gate-input-datum-has-a-producer-test
-  (let [data (edn/read-string (slurp "components/tools/docs/pipeline.edn"))
+  (let [data (edn/read-string (slurp "components/corpus/docs/pipeline.edn"))
         stage-outputs (mapcat :outputs (:stages data))
         union-resources (map :resource (:resources data))]
     (is (some #{"datum"} (concat stage-outputs union-resources)))))

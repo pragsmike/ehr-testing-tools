@@ -1,12 +1,12 @@
 (ns ehrt.corpus-io.source-sink-url-test
-  "Test-first (ruling 4, SS-1 Step 3): written before ehrt.tools.
-  corpus.source-sink-url existed. Covers the URL<->map parser's
+  "Test-first (ruling 4, SS-1 Step 3): written before ehrt.corpus-io.
+  source-sink-url existed. Covers the URL<->map parser's
   sink-side surface (print-sink-designator/parse-sink-designator, both
   still owned by this namespace) plus path-designator->path (also
   unmoved -- no domain edge). Source-side coverage (parse-source-
   designator and everything that calls it, including the non-
   generator :dir/:file/:stdin/:blaze cases) moved whole to
-  ehrt.tools.corpus.generator-source-test (corpus-io stage 2,
+  ehrt.corpus.generator-source-test (corpus-io stage 2,
   2026-07-31): the function itself relocated there, since its
   generator-kind branch is the one piece of this namespace's own
   parsing surface with a real edge into the domain's generator

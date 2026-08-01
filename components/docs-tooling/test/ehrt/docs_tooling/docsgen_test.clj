@@ -11,10 +11,10 @@
   Split out of the former ehrt.tools.docsgen-test (docs-tooling
   extraction, 2026-07-31, refactoring-review stage 1) alongside the
   namespace it covers: the operators.md half of the original test file
-  moved to components/tools/test/ehrt/tools/operators_doc_test.clj
-  instead, since the renderer it covers stayed behind in
-  components/tools (ehrt.tools.operators-doc) -- see that namespace's
-  own docstring and ehrt.tools.interface's for why the split happened.
+  moved to components/corpus/test/ehrt/corpus/operators_doc_test.clj
+  instead, since the renderer it covers stayed behind in the domain
+  component (ehrt.corpus.operators-doc) -- see that namespace's own
+  docstring and ADR-0016 for why the split happened.
   escape-cell/banner are covered again here, against this component's
   own duplicate copy of those two helpers, not because the assertions
   themselves changed."

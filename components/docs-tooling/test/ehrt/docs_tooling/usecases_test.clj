@@ -72,7 +72,7 @@
 ;; ---- dogfooding: the committed docs/use-cases.edn must itself validate ----
 
 (deftest committed-use-cases-edn-is-valid-test
-  (let [data (edn/read-string (slurp "components/tools/docs/use-cases.edn"))]
+  (let [data (edn/read-string (slurp "components/corpus/docs/use-cases.edn"))]
     (is (usecases/valid? data))))
 
 (deftest committed-use-cases-edn-has-twenty-cases-test
@@ -92,11 +92,11 @@
   ;; 19 -> 20, ADR-0015 CLI trial-UX session, step 5:
   ;; :profile-tier-hl7v2-conformance-gating, the `gate v2-nist` strip
   ;; against the committed CDC fixture, verified for real and timed.
-  (let [data (edn/read-string (slurp "components/tools/docs/use-cases.edn"))]
+  (let [data (edn/read-string (slurp "components/corpus/docs/use-cases.edn"))]
     (is (= 20 (count (:cases data))))))
 
 (deftest committed-use-cases-edn-has-unique-ids-test
-  (let [data (edn/read-string (slurp "components/tools/docs/use-cases.edn"))
+  (let [data (edn/read-string (slurp "components/corpus/docs/use-cases.edn"))
         ids (map :id (:cases data))]
     (is (= (count ids) (count (set ids))))))
 

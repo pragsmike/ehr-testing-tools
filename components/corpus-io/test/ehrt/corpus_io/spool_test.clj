@@ -1,6 +1,6 @@
 (ns ehrt.corpus-io.spool-test
-  "Test-first (ruling 4, SS-3 Step 5): written before ehrt.tools.
-  corpus.spool existed. Hermetic throughout -- every :in is an injected
+  "Test-first (ruling 4, SS-3 Step 5): written before ehrt.corpus-io.
+  spool existed. Hermetic throughout -- every :in is an injected
   ByteArrayInputStream, never a real stdin or subprocess; the real-pipe
   case is test-integration-tier (Step 6)."
   (:require [clojure.test :refer [deftest is testing]]

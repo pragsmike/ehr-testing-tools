@@ -1,6 +1,6 @@
 (ns ehrt.corpus-io.spool-source-test
-  "Test-first (ruling 5, SS-3 Step 6): written before ehrt.tools.
-  corpus.spool-source existed. Hermetic throughout -- every :in-override
+  "Test-first (ruling 5, SS-3 Step 6): written before ehrt.corpus-io.
+  spool-source existed. Hermetic throughout -- every :in-override
   is an injected ByteArrayInputStream, never real stdin; the real-pipe
   case (printf ... | bin/ehr corpus intake 'stdin:?...') is
   test-integration-tier (this step's own real-pipe test)."

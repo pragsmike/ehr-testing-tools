@@ -9,7 +9,7 @@ the pipeline's ingredient list, one entry per resource. Every dated or
 legal fact here either cites an F-row in
 [`notes/facts-register.md`](../../notes/facts-register.md) or carries its
 own verification date. Depth beyond this lives in
-[`components/tools/docs/research/`](../../components/tools/docs/research/); the checklist a new engine wrapper must
+[`components/corpus/docs/research/`](../../components/corpus/docs/research/); the checklist a new engine wrapper must
 satisfy before one of these is trusted lives in
 [`engine-onboarding.md`](engine-onboarding.md).
 
@@ -29,7 +29,7 @@ run as a pinned subprocess; its distribution, module sets, and our
 properties files are artifacts or repo-authored config per ADR-0005.
 Native outputs are FHIR (R4/STU3/DSTU2), bulk ndjson, C-CDA, CSV, CPCDS
 — not HL7 v2 and not OMOP (facts register F4 in the guide repo; mirrored
-evidence in `components/tools/docs/research/`). Its CLI exposes two independent RNG
+evidence in `components/corpus/docs/research/`). Its CLI exposes two independent RNG
 seeds, not one — `-s` (patient generation) and `-cs`
 (clinician/practitioner assignment, defaulting unpinned to wall-clock
 time) — both of which `corpus.generate` requires explicitly (facts
@@ -71,7 +71,7 @@ mutation operates on `corpus.er7`'s own delimiter-split data instead;
 **Deliberately not used for.** Profile conformance beyond the classic
 HL7 Message Profile XML — its conformance module predates and does not
 enforce conformance statements, predicates, or co-constraints
-(`components/tools/docs/research/` D2).
+(`components/corpus/docs/research/` D2).
 
 ## HAPI FHIR
 
@@ -92,11 +92,11 @@ configuration — `resource.id` is dropped from every Bundle entry when
 `entry.fullUrl` is a `urn:uuid:` value, a known upstream defect distinct
 from the documented (and otherwise configurable) fullUrl-overrides-id
 behavior. This is why mutation itself operates on plain-data JSON
-instead (see `../../components/tools/docs/experiments/EXP-B2-results.md`).
+instead (see `../../components/corpus/docs/experiments/EXP-B2-results.md`).
 
 **Deliberately not used for.** Authoritative gate verdicts — the
 official validator (below) is canonical where they diverge
-(`components/tools/docs/research/` C6). Never the mutation substrate itself, per the
+(`components/corpus/docs/research/` C6). Never the mutation substrate itself, per the
 caveat above.
 
 ## Official FHIR validator (`validator_cli` / `org.hl7.fhir.core`)
@@ -116,7 +116,7 @@ packages resolve as locked `:profile`-kind artifacts when a caller
 supplies them (the `-ig` machinery is built; none is pinned yet).
 Verdicts are consumed as OperationOutcome data and normalized by
 `judge.report`. Known operational constraints that shape our wrapper,
-confirmed directly by EXP-C5 (`../../components/tools/docs/experiments/EXP-C5-results.md`),
+confirmed directly by EXP-C5 (`../../components/corpus/docs/experiments/EXP-C5-results.md`),
 not merely anticipated: offline/no-terminology operation has open
 upstream bugs (locally packaged ValueSets can still fail to validate a
 code), so verdict policy classifies rather than trusts raw pass/fail;
@@ -184,7 +184,7 @@ review — facts register [F10](../../notes/facts-register.md)).
 
 **Role in pipeline.** Evaluated as a candidate runtime for the full
 `judge.v2` tier (EXP-SBOM classifies; it does not decide —
-`../../components/tools/docs/experiments/EXP-SBOM-results.md`); **not adopted** —
+`../../components/corpus/docs/experiments/EXP-SBOM-results.md`); **not adopted** —
 ADR-0012 (2026-07-30) chose to depend on the underlying NIST engine
 directly instead, for three reasons recorded there: this wrapper's own
 `ProfileManager.filterAndConvert` silently drops 75.6% of raw findings
@@ -215,7 +215,7 @@ this doesn't license the whole repository (facts register
 **Role in pipeline.** Upstream authoring tool only, never embedded; its
 exports enter as artifacts of kind `:profile` per ADR-0005, pinned with
 export date and IGAMT version. Exports feed NIST's validation ecosystem
-— not HAPI's classic profile format (`components/tools/docs/research/` D1).
+— not HAPI's classic profile format (`components/corpus/docs/research/` D1).
 
 **Deliberately not used for.** Anything beyond profile authoring — never
 embedded or run as part of this repo's own pipeline.

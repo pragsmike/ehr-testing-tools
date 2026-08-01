@@ -25,7 +25,7 @@ projects compose them, and where the theory docs live. Then:
 - [`notation.md`](notation.md) — the resource-equation notation
   `pipeline.md` and sim's own theory docs are written in.
 - [`pipeline.md`](pipeline.md) — the generated pipeline diagram
-  (`make pipeline` from `components/tools/docs/pipeline.edn`).
+  (`make pipeline` from `components/corpus/docs/pipeline.edn`).
 - [`components.md`](components.md) — the external tools/artifacts this
   workspace builds on, at decision-informing depth.
 - [`engine-onboarding.md`](engine-onboarding.md) — the checklist a new
@@ -56,7 +56,7 @@ component-adjacent instead of moving here, is `notes/docs-audit.md`.
   GMF interpreter, patient-state model, operational models, trajectory
   computation), its own theory docs (`sim-theory.*`), research
   (`research/`), and demo fixtures (`demos/`).
-- `components/tools/docs/` — `palgebra-design.md`, the experiments
+- `components/corpus/docs/` — `palgebra-design.md`, the experiments
   evidence trail (`experiments/`), research (`research/`), and the
   hand-authored docsgen sources (`pipeline.edn`, `use-cases.edn`,
   `signature.edn`).

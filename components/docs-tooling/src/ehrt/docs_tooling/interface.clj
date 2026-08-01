@@ -2,9 +2,10 @@
   "Thin, deliberately narrow (AR-1, docs-tooling extraction, 2026-07-31,
   refactoring-review stage 1): re-exports exactly what a sibling brick
   calls from outside this component's own namespaces -- one entry.
-  `ehrt.tools.interface`'s own `write-cli-md!` delegates through here
-  (bases/cli/help.clj's own wrapper is the real, live caller; not a
-  grep false positive -- see that interface's own docstring). Every
+  `bases/cli/help.clj`'s own `write-cli-md!` wrapper is the one real,
+  live caller (not a grep false positive) -- it calls this directly,
+  never through the retired tools façade; see ADR-0016 on the
+  circular-dependency finding that ruled a relay out. Every
   other -X-invokable entry point this component carries
   (write-equations-txt!/write-pipeline-md!/write-case-equations!/
   write-use-cases-md!/quickstart-fresh!/lint-pipeline!) is invoked

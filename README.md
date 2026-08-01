@@ -39,11 +39,11 @@ the actual contract with readers, not a formality.
 
 | Capability | Maturity | Evidence |
 |---|---|---|
-| **Generate** (sim; `corpus.generate`) | **Usable** | Clean-environment byte-reproducibility proven — [EXP-A4](components/tools/docs/experiments/EXP-A4-results.md). |
-| **Mutate** (`corpus.mutate`) | **Experimental** | FHIR and v2 both work (v2: locator grammar, `corpus.er7` substrate, seed operators, contract-pairing proof against `judge.v2`); interfaces may still move — [EXP-B2](components/tools/docs/experiments/EXP-B2-results.md). |
-| **Intake** (`corpus.intake`) | **Experimental** | Foreign-corpus cataloging; same content-hash lineage as generated corpora — [intake tests](components/tools/test/ehrt/tools/corpus/intake_test.clj). |
-| **Gate** (`judge.fhir` / `judge.v2` / `judge.v2-nist`) | **Experimental** | Base-spec (FHIR, official validator) / base-structural (v2, HAPI); offline verdict policy; no implementation guide pinned yet; baseline-relative mode for real-world corpora — [EXP-C5](components/tools/docs/experiments/EXP-C5-results.md), [judge calibration](docs/judge-calibration.md). Profile-tier NIST gating (`gate v2-nist`) also landed (ADR-0012) — full conformance-profile semantics, direct engine, no CDC wrapper; runs against a stand-in fixture profile pending a project-owned one, and its license posture is confirmation-pending, not confirmed — treat it as **Experimental** on both counts, not yet a general-purpose replacement for the base-structural v2 tier. |
-| **Check** (`ehrt.tools.check`) | **Experimental** | Dataset-vs-expectations judge alongside Gate: golden equivalence plus a small per-file assertion vocabulary — [check tests](components/tools/test/ehrt/tools/check_test.clj). |
+| **Generate** (sim; `corpus.generate`) | **Usable** | Clean-environment byte-reproducibility proven — [EXP-A4](components/corpus/docs/experiments/EXP-A4-results.md). |
+| **Mutate** (`corpus.mutate`) | **Experimental** | FHIR and v2 both work (v2: locator grammar, `corpus.er7` substrate, seed operators, contract-pairing proof against `judge.v2`); interfaces may still move — [EXP-B2](components/corpus/docs/experiments/EXP-B2-results.md). |
+| **Intake** (`corpus.intake`) | **Experimental** | Foreign-corpus cataloging; same content-hash lineage as generated corpora — [intake tests](components/corpus/test/ehrt/corpus/intake_test.clj). |
+| **Gate** (`judge.fhir` / `judge.v2` / `judge.v2-nist`) | **Experimental** | Base-spec (FHIR, official validator) / base-structural (v2, HAPI); offline verdict policy; no implementation guide pinned yet; baseline-relative mode for real-world corpora — [EXP-C5](components/corpus/docs/experiments/EXP-C5-results.md), [judge calibration](docs/judge-calibration.md). Profile-tier NIST gating (`gate v2-nist`) also landed (ADR-0012) — full conformance-profile semantics, direct engine, no CDC wrapper; runs against a stand-in fixture profile pending a project-owned one, and its license posture is confirmation-pending, not confirmed — treat it as **Experimental** on both counts, not yet a general-purpose replacement for the base-structural v2 tier. |
+| **Check** (`ehrt.corpus.check`) | **Experimental** | Dataset-vs-expectations judge alongside Gate: golden equivalence plus a small per-file assertion vocabulary — [check tests](components/corpus/test/ehrt/corpus/check_test.clj). |
 
 **Status: pre-release.** No version tag, nothing published to Clojars
 or Maven Central, interfaces may still move. See
@@ -83,7 +83,7 @@ bin/ehrt corpus mutate $PATIENT_FILE \
   --out-dir out/demo-mutants
 
 bin/ehrt artifact fetch --name fhir-validator-cli --version 6.9.12
-bin/ehrt gate v2 components/tools/test-fixtures/v2
+bin/ehrt gate v2 components/corpus/test-fixtures/v2
 # gate fhir exits 1 here -- a genuine defect in the mutant, correctly caught
 bin/ehrt gate fhir out/demo-mutants --report out/demo-mutants-report.edn
 

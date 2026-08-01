@@ -6,30 +6,32 @@
  :mvn/repos {"nist-hit" {:url "https://hit-nexus.nist.gov/repository/releases/"}}
 
  :deps {;; poly/sim: notes/tools/ADRs.md ADR-0013's subprocess-only rule
-        ;; is superseded (ADR-0004, 2026-07-28) -- ehrt.tools.sim now
+        ;; is superseded (ADR-0004, 2026-07-28) -- ehrt.corpus.sim-adapter now
         ;; calls ehrt.sim.interface/run-command in-process, so this
         ;; project's sim_harness.clj and its five sim_*_test.clj
         ;; consumers need sim on the classpath like any other component
         ;; this project exercises. See ADR-0004 for why the
         ;; notes/tools/ADRs.md ADR-0013-era reasons (private-repo split,
         ;; cross-repo version lockstep) no longer hold.
-        ;; poly/kernel, poly/judge (ADR-0008): tools' own src requires
+        ;; poly/kernel, poly/judge (ADR-0008): corpus' own src requires
         ;; both directly now.
         poly/kernel   {:local/root "../../components/kernel"}
         poly/judge    {:local/root "../../components/judge"}
         ;; poly/judge-v2-hapi, poly/judge-fhir-official (ADR-0011): the
-        ;; per-engine judge split -- ehrt.tools.interface now requires
+        ;; per-engine judge split -- required by this project's own judge-
+        ;; parity and v2 gate-loop suites (stage 3, ADR-0018: no domain
+        ;; relay requires
         ;; both directly too.
         poly/judge-v2-hapi        {:local/root "../../components/judge-v2-hapi"}
         poly/judge-fhir-official  {:local/root "../../components/judge-fhir-official"}
         ;; poly/judge-v2-nist (ADR-0012): the third judge engine,
-        ;; profile-tier NIST v2-validation -- ehrt.tools.interface now
+        ;; profile-tier NIST v2-validation -- the parity suite now
         ;; requires it too.
         poly/judge-v2-nist        {:local/root "../../components/judge-v2-nist"}
-        poly/tools    {:local/root "../../components/tools"}
+        poly/corpus   {:local/root "../../components/corpus"}
         ;; poly/corpus-io (2026-07-31, corpus-io split stage 2,
-        ;; ADR-0017): the transport/IO seam extracted out of tools --
-        ;; ehrt.tools.interface's own domain namespaces now require it
+        ;; ADR-0017): the transport/IO seam extracted out of the domain component --
+        ;; ehrt.corpus' own domain namespaces now require it
         ;; directly (mutate/operators/intake/generator-source), and
         ;; this project hosts corpus-io's own moved tests too.
         poly/corpus-io {:local/root "../../components/corpus-io"}
@@ -37,10 +39,10 @@
         ;; default placement): hosts docs-tooling's own moved tests
         ;; (docsgen/usecases/pipeline/quickstart-fresh/lint/stale-path/
         ;; structure-currency) -- needed for that, and for docs-tooling's
-        ;; own real requirement of ehrt.tools.interface (lint.clj's
+        ;; own real requirement of ehrt.corpus.interface (lint.clj's
         ;; operator/framing/schema registry lookups); nothing in this
         ;; project's own composed bricks requires docs-tooling directly
-        ;; (tools deliberately does not -- see ehrt.tools.interface's own
+        ;; (corpus deliberately does not -- see ADR-0016's own
         ;; docstring), so this entry is a :necessary override candidate,
         ;; same class as palgebra below (Step 3 re-derivation).
         poly/docs-tooling {:local/root "../../components/docs-tooling"}
@@ -48,7 +50,7 @@
         poly/sim      {:local/root "../../components/sim"}
         org.clojure/clojure {:mvn/version "1.12.5"}}
 
- :aliases {;; Base-less project (R15): sim + tools + palgebra, test-only.
+ :aliases {;; Base-less project (R15): sim + corpus + palgebra, test-only.
            ;; This project's own "test" dir (was ehr-testing-tools'
            ;; test-integration/) is where the actual test files live,
            ;; unlike a base-having project's near-empty :test alias.

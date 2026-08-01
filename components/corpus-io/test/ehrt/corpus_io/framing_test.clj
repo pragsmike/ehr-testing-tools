@@ -9,9 +9,9 @@
             [ehrt.kernel.interface :as kernel]
             [ehrt.corpus-io.framing :as framing]
             ;; simhospital-corpus is a test fixture helper that stayed
-            ;; in components/tools/test (corpus-io stage 2, 2026-07-31
+            ;; in components/corpus/test (corpus-io stage 2, 2026-07-31
             ;; -- not one of AR-1's 17 moved src namespaces).
-            [ehrt.tools.corpus.simhospital-corpus :as simhospital])
+            [ehrt.corpus.simhospital-corpus :as simhospital])
   (:import [java.nio.file Files]
            [java.util Arrays]))
 
@@ -262,7 +262,7 @@
 
 ;; ---- lookup -- the registry-lookup shape ehrt.docs-tooling.lint's own
 ;; target-4 framing-codec classification checks against (Step 7, via
-;; ehrt.tools.interface/framing-lookup since the docs-tooling split,
+;; ehrt.corpus-io.interface/lookup since the corpus-io split,
 ;; 2026-07-31) ----
 
 (deftest lookup-test

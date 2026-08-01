@@ -33,7 +33,7 @@
   ;; of them (ADR-0005's 2026-07-24 amendment). Consumed directly by
   ;; components/judge-v2-nist (ADR-0012, 2026-07-30, landed via :mvn/repos
   ;; in each project's own deps.edn, not vendored) -- EXP-D3
-  ;; (components/tools/docs/experiments/EXP-D3-results.md) recorded this
+  ;; (components/corpus/docs/experiments/EXP-D3-results.md) recorded this
   ;; inventory ahead of that landing.
   ;;
   ;; RULED 2026-07-31 (P2-3, review finding 8/AR-2): these six rows were

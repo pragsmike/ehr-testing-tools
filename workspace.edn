@@ -18,21 +18,31 @@
             ;; :require edge from the project's base, or from another
             ;; brick the same project declares -- it does not see a
             ;; project's own ad hoc test-tree requires). Re-derived
-            ;; 2026-07-31 (docs-tooling split, finding 14) via
-            ;; `clojure -M:poly deps`/`check` with every entry temporarily
-            ;; cleared, per brick, per project; re-derived AGAIN 2026-07-31
-            ;; (corpus-io split stage 2, ADR-0017), same method, after
-            ;; corpus-io joined all three projects. "ehrt-cli" needs no
-            ;; override at all: bases/cli directly requires
-            ;; ehrt.tools.interface, ehrt.corpus-io.interface, and
-            ;; ehrt.docs-tooling.interface, and every other declared brick
-            ;; (including palgebra) is real-edge-reachable transitively
-            ;; through those three. "integration" ALSO needs no override
-            ;; now (a change from the docs-tooling-split-era table, which
-            ;; had `tools` here): with :necessary [] on this project,
-            ;; `poly check` reports zero warnings -- confirmed empirically,
-            ;; not just carried forward from the prior table.
+            ;; 2026-07-31 (docs-tooling split, finding 14), AGAIN the
+            ;; same day (corpus-io split stage 2, ADR-0017), and a
+            ;; FOURTH time the same day (split stage 3, ADR-0018: tools
+            ;; renamed corpus and retired), each time via `clojure
+            ;; -M:poly deps`/`check` with every entry temporarily
+            ;; cleared. "ehrt-cli" needs no override: bases/cli now
+            ;; requires every interface it consumes directly (kernel,
+            ;; judge, all three engines, corpus, corpus-io,
+            ;; docs-tooling) -- palgebra is reachable transitively
+            ;; through docs-tooling. "conformance" keeps the
+            ;; docs-tooling entry it has carried since stage 1 (the
+            ;; brick is there solely to host its own moved tests) and
+            ;; gains judge-fhir-official + judge-v2-nist: only this
+            ;; project's own test tree (parity/gate-loop suites)
+            ;; consumes them now that the retired facade's every-engine
+            ;; src relay is gone. NOT judge-v2-hapi, empirically: the
+            ;; corpus brick's own test tree (v2_contract_pairing_test)
+            ;; requires that engine's interface, a test-context brick
+            ;; edge poly's reachability DOES count, unlike a project's
+            ;; own ad hoc test-tree requires -- which is exactly why
+            ;; "integration" needs judge-fhir-official listed (consumed
+            ;; only by its project test tree) while conformance's
+            ;; v2-hapi needs nothing (see ADR-0018's table).
             "ehrt-cli" {:alias "ehrt-cli"}
             "conformance" {:alias "conformance"
-                           :necessary ["docs-tooling"]}
-            "integration" {:alias "integration"}}}
+                           :necessary ["docs-tooling" "judge-fhir-official" "judge-v2-nist"]}
+            "integration" {:alias "integration"
+                           :necessary ["judge-fhir-official"]}}}

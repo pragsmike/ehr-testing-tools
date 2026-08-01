@@ -178,7 +178,7 @@ Gate against HL7 v2 PROFILE-tier conformance (the direct NIST engine, ADR-0012):
 | `--report` | — | write the report EDN to this path |
 | `--baseline` | — | baseline-relative mode: path to a previous --report EDN; only genuinely new findings count |
 | `--treat-no-verdict-as` | — | "pass" or "rejected" -- folds :no-verdict into an existing polarity (ADR-0010) |
-| `--profile` | — | REQUIRED: a conformance-profile bundle (Π) directory -- PROFILE.xml required, CONSTRAINTS.xml/VALUESETS.xml/VALUESETBINDINGS.xml/COCONSTRAINTS.xml/SLICINGS.xml optional. No default is assumed -- try components/tools/test-fixtures/v2-nist/COVID19_ELR-v2.3.1, the CDC COVID19_ELR-v2.3.1 fixture, this repo's own documented try-it bundle |
+| `--profile` | — | REQUIRED: a conformance-profile bundle (Π) directory -- PROFILE.xml required, CONSTRAINTS.xml/VALUESETS.xml/VALUESETBINDINGS.xml/COCONSTRAINTS.xml/SLICINGS.xml optional. No default is assumed -- try components/corpus/test-fixtures/v2-nist/COVID19_ELR-v2.3.1, the CDC COVID19_ELR-v2.3.1 fixture, this repo's own documented try-it bundle |
 
 ## `ehrt check`
 

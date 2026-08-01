@@ -84,7 +84,7 @@
     (is (kernel/rejected? (ss/file-sink {:format :fhir-json})))))
 
 ;; generator-source's own tests (SS-2 Step 4) moved whole to
-;; ehrt.tools.corpus.generator-source-test (corpus-io stage 2,
+;; ehrt.corpus.generator-source-test (corpus-io stage 2,
 ;; 2026-07-31) -- the constructor itself relocated there, the only
 ;; piece of this namespace with a real edge into the domain's
 ;; generators registry.

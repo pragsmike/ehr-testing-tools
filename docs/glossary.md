@@ -110,7 +110,7 @@ emerges from capacity pressure rather than being scripted. See
 **Catalog.** The index `corpus.intake` builds over a corpus: one entry
 per item, carrying id, layer, format, a lineage ref where one exists,
 and tags. Meaning lives in the data, not in filenames. Register:
-`ehrt.tools.corpus.intake` (`CatalogEntry`).
+`ehrt.corpus.intake` (`CatalogEntry`).
 
 **Catalytic (resource).** In the resource-theory notation: something a
 pipeline stage *uses without consuming* — a code table, a dependency,
@@ -165,7 +165,7 @@ own tests could not see.
 **Corpus layer.** The `:layer` field on a catalog entry, naming a
 corpus item's provenance kind — currently `:foreign`, the tag intake
 gives every entry from a corpus this workspace did not generate.
-Register: `ehrt.tools.corpus.intake` (`CatalogEntry`'s `:layer`).
+Register: `ehrt.corpus.intake` (`CatalogEntry`'s `:layer`).
 
 **CPT.** Procedures for billing; **AMA-licensed, deliberately excluded
 from this workspace** — see the constraints in
@@ -317,7 +317,7 @@ alike, the concepts don't share a register.
 this workspace or foreign to it — and, when a manifest sidecar is
 present and valid, enriches every catalog entry in that same directory
 with the manifest's own provenance. Register:
-`ehrt.tools.corpus.intake`.
+`ehrt.corpus.intake`.
 
 **Interface engine.** Middleware that routes, transforms, and monitors
 HL7 traffic between hospital systems (e.g. Mirth Connect). A primary
@@ -347,7 +347,7 @@ not act on what it decided — that's the Gate's job. Register:
 tracing a mutant back to its parent's content hash, the operator and
 locator applied, and the contract violated — content-addressed and
 append-only, so a directory of lineage records is the real derivation
-graph. Register: `ehrt.tools.lineage` (`LineageRecord`),
+graph. Register: `ehrt.corpus.lineage` (`LineageRecord`),
 [`formats.md`](formats.md).
 
 **LOINC.** Lab tests and observations; Regenstrief Institute; free to
@@ -359,9 +359,9 @@ generation is deterministic, *(config + seed + version) is the
 corpus* — the manifest is enough to regenerate the data exactly.
 
 **Manifest sidecar.** A `manifest.edn` file beside a generated (or
-intaken) corpus, validating against `ehrt.tools.corpus.manifest/ManifestV1_1`,
+intaken) corpus, validating against `ehrt.corpus.manifest/ManifestV1_1`,
 naming the generator, seed, and settings that produced the corpus it
-sits beside. Register: `ehrt.tools.corpus.intake`, [`formats.md`](formats.md).
+sits beside. Register: `ehrt.corpus.intake`, [`formats.md`](formats.md).
 
 **MLLP.** Minimal Lower Layer Protocol — the thin TCP framing HL7v2
 messages travel over. Transport only; below this workspace's level of
@@ -375,7 +375,7 @@ internal patient-id.
 **Mutant.** The file an operator produces — a deliberately broken
 variant of a base bundle, with a lineage record tracing it back to
 where it came from. Register: [`formats.md`](formats.md) ("The lineage
-record"), `ehrt.tools.corpus.operators`.
+record"), `ehrt.corpus.operators`.
 
 **NPI / NPPES.** National Provider Identifier — the US 10-digit
 provider ID (Luhn check-digit over an `80840` prefix) — and the public

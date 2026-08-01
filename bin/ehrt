@@ -13,7 +13,7 @@
 # A bare `clojure -M:ehrt` would carry the contract fine too; this wrapper
 # exists so a relative path in an argument always means the same thing
 # regardless of the caller's own cwd -- it `cd`s to the workspace root
-# first, same as `artifacts.lock.edn`/`config/`/`components/tools/test-fixtures/**` (all
+# first, same as `artifacts.lock.edn`/`config/`/`components/corpus/test-fixtures/**` (all
 # cwd-relative literal paths, not classpath resources) require.
 #
 # ehr-testing-tools' own `Makefile`/`make ehr` compatibility spelling did

@@ -2,7 +2,7 @@
   "The spool (ruling 4, docs/source-sink-design.md Part I.2/D1): the
   second unification. Just as a generator source resolves to a `dir`
   Source by executing its engine into a fresh directory (SS-2's
-  ehrt.tools.corpus.generator-source), a streaming or
+  ehrt.corpus.generator-source), a streaming or
   multi-item input resolves to a `dir` Source by decoding its framing
   and spooling one file per item into a derived capture directory,
   plus a capture-manifest.edn sidecar -- one mechanism, no special
@@ -77,7 +77,7 @@
 
 (def ^:private format->extension
   "File extension per :format, for the one-file-per-item write below --
-  same vocabulary as ehrt.tools.cli's own format-file-extension,
+  same vocabulary as ehrt.cli.core's own format-file-extension,
   applied to spooled items rather than mutate's input/output files."
   {:v2-er7 "hl7" :fhir-json "json" :inferred "dat"})
 

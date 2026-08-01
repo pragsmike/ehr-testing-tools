@@ -172,7 +172,7 @@ exactly the declared locator/contract target and nothing else — true
 of this particular `transform`, not of `transform` stages in general).
 
 **Judge, and the derived `gate`** (ADR-0009,
-[`palgebra-design.md`](../../components/tools/docs/palgebra-design.md)): the kind's own law is
+[`palgebra-design.md`](../../components/corpus/docs/palgebra-design.md)): the kind's own law is
 the judge law above — a `judge` stage never acts on the verdict it
 produces. Gate's own three-way output split (pass / rejected /
 indeterminate) is not part of the kind's floor; it is the derived,

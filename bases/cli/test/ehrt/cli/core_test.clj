@@ -3,12 +3,13 @@
             [clojure.edn]
             [clojure.java.io :as io]
             [clojure.string]
-            [ehrt.tools.interface :as result]
-            [ehrt.tools.interface :as artifact]
-            [ehrt.tools.interface :as report]
-            [ehrt.tools.interface :as operators]
-            [ehrt.tools.interface :as generators]
-            [ehrt.tools.interface :as gate-v2-nist]
+            [ehrt.kernel.interface :as result]
+            [ehrt.kernel.interface :as artifact]
+            [ehrt.judge.interface :as report]
+            [ehrt.corpus.interface :as operators]
+            [ehrt.corpus.interface :as generators]
+            [ehrt.corpus.interface :as generate]
+            [ehrt.judge-v2-nist.interface :as gate-v2-nist]
             [ehrt.cli.core :as cli])
   (:import [java.io File]))
 
@@ -274,8 +275,8 @@
     (is (= :out-dir-exists (:category r)))))
 
 (deftest generate-sim-command-default-out-dir-matches-registrys-own-out-dir-fn-test
-  (let [entry (generators/generators-lookup :sim)
-        params-result (generators/generators-resolve-params :sim {:seed 3 :patients 4})
+  (let [entry (generators/generator-lookup :sim)
+        params-result (generators/generator-resolve-params :sim {:seed 3 :patients 4})
         expected-out-dir ((:out-dir-fn entry) (:payload params-result))]
     (is (= "out/corpus/sim-s3-p4" expected-out-dir))))
 
@@ -376,10 +377,10 @@
 
 (deftest dispatch-routes-gate-v2-test
   (let [called (atom nil)
-        r (cli/dispatch ["gate" "v2"] {:path "components/tools/test-fixtures/v2"}
+        r (cli/dispatch ["gate" "v2"] {:path "components/corpus/test-fixtures/v2"}
                          {:gate-v2-fn (fn [opts] (reset! called opts) (result/ok {:totals {}}))})]
     (is (result/ok? r))
-    (is (= {:path "components/tools/test-fixtures/v2"} @called))))
+    (is (= {:path "components/corpus/test-fixtures/v2"} @called))))
 
 (deftest dispatch-routes-gate-fhir-test
   (let [called (atom nil)
@@ -392,10 +393,10 @@
   ;; `ehrt gate v2 PATH` -- PATH is the third positional arg, not a
   ;; --path flag, matching the CLI contract as specified.
   (let [called (atom nil)
-        r (cli/dispatch ["gate" "v2" "components/tools/test-fixtures/v2"] {}
+        r (cli/dispatch ["gate" "v2" "components/corpus/test-fixtures/v2"] {}
                          {:gate-v2-fn (fn [opts] (reset! called opts) (result/ok {:totals {}}))})]
     (is (result/ok? r))
-    (is (= "components/tools/test-fixtures/v2" (:path @called)))))
+    (is (= "components/corpus/test-fixtures/v2" (:path @called)))))
 
 (deftest dispatch-gate-explicit-path-opt-not-overridden-by-positional-test
   (let [called (atom nil)
@@ -806,18 +807,18 @@
 (defn- with-fake-default-locator-operator
   "Registers a fake :fhir operator declaring :default-locator, runs f,
   then restores the real registry -- same snapshot/restore convention
-  ehrt.tools.interface's own tests use."
+  the corpus component's own tests use."
   [f]
-  (let [snapshot (operators/registry-snapshot)]
+  (let [snapshot (operators/operator-registry-snapshot)]
     (try
-      (operators/register!
+      (operators/operator-register!
        {:id :fake-default-locator-op :version "1" :format :fhir
         :contract {:type :violates :target "test contract"}
         :locator-required? true
         :default-locator "entry[0].resource.gender"
         :fn (fn [data _locator] (result/ok {:mutant data :lineage {:id "fake-lineage"}}))})
       (f)
-      (finally (operators/reset-registry! snapshot)))))
+      (finally (operators/operator-registry-reset! snapshot)))))
 
 (deftest mutate-command-falls-back-to-operators-default-locator-test
   (with-fake-default-locator-operator
@@ -866,7 +867,7 @@
 ;; instead of *.json through plain FHIR data. ----
 
 (def ^:private admit-content
-  (delay (slurp (io/file "components/tools/test-fixtures/v2/adt-a01-admit.hl7"))))
+  (delay (slurp (io/file "components/corpus/test-fixtures/v2/adt-a01-admit.hl7"))))
 
 (deftest mutate-command-v2-happy-path-writes-mutant-and-lineage-test
   (let [in-dir (temp-dir*)
@@ -989,7 +990,7 @@
 ;; ---- intake-command accepts a generator URL in place of PATH (SS-2
 ;; Step 4, ruling 6): the one-command generate-and-catalog path.
 ;; Hermetic via a temporarily swapped-in :sim registry entry (restored
-;; in a finally, since ehrt.tools.interface is a single
+;; in a finally, since the corpus generator registry is a single
 ;; shared, process-wide registry -- other test namespaces' own :sim
 ;; coverage depends on the real entry surviving this test). ----
 
@@ -997,18 +998,18 @@
   "Swaps the real :sim generator entry for a hermetic fake for the
   duration of thunk, then restores the real one -- even on failure."
   [thunk]
-  (let [real-entry (generators/generators-lookup :sim)]
+  (let [real-entry (generators/generator-lookup :sim)]
     (try
       (thunk)
       (finally
-        (generators/generators-register! real-entry)))))
+        (generators/generator-register! real-entry)))))
 
 (deftest intake-command-generator-url-resolves-and-catalogs-test
   (with-fake-sim-entry
     (fn []
       (let [corpus-dir (str (temp-dir*) "/corpus")
             out-dir (str (temp-dir*) "/out")]
-        (generators/generators-register!
+        (generators/generator-register!
          {:kind :sim
           :default-params {:seed 1}
           :params-schema [:map [:seed {:optional true} :int]]
@@ -1029,7 +1030,7 @@
       (let [corpus-dir (temp-dir*) ; already exists and non-empty
             _ (spit (io/file corpus-dir "leftover.txt") "from a previous run")
             out-dir (str (temp-dir*) "/out")]
-        (generators/generators-register!
+        (generators/generator-register!
          {:kind :sim
           :default-params {:seed 1}
           :params-schema [:map [:seed {:optional true} :int]]
@@ -1137,12 +1138,12 @@
 ;; right thing once gate-command itself signals :gate-rejected). ----
 
 (deftest gate-v2-command-gates-a-single-passing-file-test
-  (let [r (cli/gate-v2-command {:path "components/tools/test-fixtures/v2/adt-a01-admit.hl7"})]
+  (let [r (cli/gate-v2-command {:path "components/corpus/test-fixtures/v2/adt-a01-admit.hl7"})]
     (is (result/ok? r))
     (is (= {:pass 1 :rejected 0 :indeterminate 0 :no-verdict 0} (:totals (:payload r))))))
 
 (deftest gate-v2-command-gates-a-directory-test
-  (let [r (cli/gate-v2-command {:path "components/tools/test-fixtures/v2"})]
+  (let [r (cli/gate-v2-command {:path "components/corpus/test-fixtures/v2"})]
     (is (result/ok? r))
     (is (= 5 (count (:files (:payload r)))))))
 
@@ -1156,7 +1157,7 @@
 
 (deftest gate-v2-command-writes-report-file-when-requested-test
   (let [out-file (str (temp-dir*) "/report.edn")
-        r (cli/gate-v2-command {:path "components/tools/test-fixtures/v2/adt-a01-admit.hl7" :report out-file})]
+        r (cli/gate-v2-command {:path "components/corpus/test-fixtures/v2/adt-a01-admit.hl7" :report out-file})]
     (is (result/ok? r))
     (is (.exists (io/file out-file)))
     (is (= (:payload r) (clojure.edn/read-string (slurp out-file))))))
@@ -1170,7 +1171,7 @@
 
 (deftest gate-v2-command-report-creates-missing-parent-directories-test
   (let [out-file (str (temp-dir*) "/nested/deeper/report.edn")
-        r (cli/gate-v2-command {:path "components/tools/test-fixtures/v2/adt-a01-admit.hl7" :report out-file})]
+        r (cli/gate-v2-command {:path "components/corpus/test-fixtures/v2/adt-a01-admit.hl7" :report out-file})]
     (is (result/ok? r))
     (is (.exists (io/file out-file)))
     (is (= (:payload r) (clojure.edn/read-string (slurp out-file))))))
@@ -1184,7 +1185,7 @@
   (let [blocker (str (temp-dir*) "/not-a-directory")
         _ (spit blocker "i am a file, not a directory")
         out-file (str blocker "/report.edn")
-        r (cli/gate-v2-command {:path "components/tools/test-fixtures/v2/adt-a01-admit.hl7" :report out-file})]
+        r (cli/gate-v2-command {:path "components/corpus/test-fixtures/v2/adt-a01-admit.hl7" :report out-file})]
     (is (result/error? r))
     (is (= :report-write-failed (:category r)))
     (is (= out-file (:path (:payload r))))
@@ -1200,7 +1201,7 @@
 
 (deftest fhir-gate-command-propagates-unknown-artifact-when-validator-not-in-lockfile-test
   (let [lockfile (temp-lockfile [])
-        r (cli/fhir-gate-command {:path "components/tools/test-fixtures/v2/adt-a01-admit.hl7" :lockfile lockfile})]
+        r (cli/fhir-gate-command {:path "components/corpus/test-fixtures/v2/adt-a01-admit.hl7" :lockfile lockfile})]
     (is (result/rejected? r))
     (is (= :unknown-artifact (:category r)))))
 
@@ -1230,7 +1231,7 @@
 
 (deftest gate-v2-command-baseline-mode-still-rejects-a-genuinely-new-finding-test
   (let [in-dir (temp-dir*)
-        _ (spit (io/file in-dir "ok.hl7") (slurp "components/tools/test-fixtures/v2/adt-a01-admit.hl7"))
+        _ (spit (io/file in-dir "ok.hl7") (slurp "components/corpus/test-fixtures/v2/adt-a01-admit.hl7"))
         baseline-run (cli/gate-v2-command {:path in-dir})
         baseline-file (str (temp-dir*) "/baseline.edn")
         _ (spit baseline-file (pr-str (:payload baseline-run)))
@@ -1317,7 +1318,7 @@
              :sha256 (apply str (repeat 64 "c")) :source "https://example.invalid/v.jar"
              :acquired "2026-07-24" :license-status :verified}
         lockfile (temp-lockfile [art])
-        r (cli/fhir-gate-command {:path "components/tools/test-fixtures/v2/adt-a01-admit.hl7" :lockfile lockfile
+        r (cli/fhir-gate-command {:path "components/corpus/test-fixtures/v2/adt-a01-admit.hl7" :lockfile lockfile
                                    :treat-no-verdict-as "bogus"
                                    :java-bin "/fake/java"})]
     (is (result/rejected? r))
@@ -1325,14 +1326,14 @@
 
 ;; ---- ADR-0015: `ehrt gate v2-nist` -- the profile-tier NIST engine
 ;; reaches the CLI. Real, engine-in-the-loop coverage against the
-;; committed CDC fixture (components/tools/test-fixtures/v2-nist/) --
+;; committed CDC fixture (components/corpus/test-fixtures/v2-nist/) --
 ;; hermetic in the sense that it touches no network (the jars already
 ;; resolved into ~/.m2 for every other v2-nist test in this workspace)
 ;; but genuinely runs the validator, matching ADR-0012's own measured
 ;; numbers exactly (473 findings, :no-verdict/:profile-spec-error). ----
 
-(def ^:private v2-nist-profile-dir "components/tools/test-fixtures/v2-nist/COVID19_ELR-v2.3.1")
-(def ^:private v2-nist-message-file "components/tools/test-fixtures/v2-nist/covidELR/231HL7TestFilewithHHSData.txt")
+(def ^:private v2-nist-profile-dir "components/corpus/test-fixtures/v2-nist/COVID19_ELR-v2.3.1")
+(def ^:private v2-nist-message-file "components/corpus/test-fixtures/v2-nist/covidELR/231HL7TestFilewithHHSData.txt")
 
 (deftest v2-nist-gate-command-requires-profile-test
   (let [r (cli/v2-nist-gate-command {:path v2-nist-message-file})]
@@ -1376,7 +1377,7 @@
            {:path dir :profile v2-nist-profile-dir
             :make-validator-fn (fn [profile]
                                   (swap! build-calls inc)
-                                  (gate-v2-nist/v2-nist-make-validator profile))})]
+                                  (gate-v2-nist/make-validator profile))})]
     (is (result/rejected? r))
     (is (= :gate-no-verdict (:category r)))
     (is (= 2 (count (:files (:payload r)))) "both files in the directory were gated")
@@ -1397,7 +1398,7 @@
 
 (deftest gate-v2-command-baseline-mode-writes-the-baseline-relative-report-when-requested-test
   (let [in-dir (temp-dir*)
-        _ (spit (io/file in-dir "a.hl7") (slurp "components/tools/test-fixtures/v2/adt-a01-admit.hl7"))
+        _ (spit (io/file in-dir "a.hl7") (slurp "components/corpus/test-fixtures/v2/adt-a01-admit.hl7"))
         baseline-file (str (temp-dir*) "/baseline.edn")
         _ (spit baseline-file (pr-str (:payload (cli/gate-v2-command {:path in-dir}))))
         out-file (str (temp-dir*) "/relative-report.edn")
@@ -1410,7 +1411,7 @@
   ;; --baseline mode is its own write site (the payload's shape differs);
   ;; it gets the same parent creation, not a second convention.
   (let [in-dir (temp-dir*)
-        _ (spit (io/file in-dir "a.hl7") (slurp "components/tools/test-fixtures/v2/adt-a01-admit.hl7"))
+        _ (spit (io/file in-dir "a.hl7") (slurp "components/corpus/test-fixtures/v2/adt-a01-admit.hl7"))
         baseline-file (str (temp-dir*) "/baseline.edn")
         _ (spit baseline-file (pr-str (:payload (cli/gate-v2-command {:path in-dir}))))
         out-file (str (temp-dir*) "/nested/deeper/relative-report.edn")
@@ -1421,7 +1422,7 @@
 
 ;; ---- check-command (`ehrt check`): reads --assertions as an EDN file,
 ;; parses --canonicalizers "id@v,..." into ordered [id version] pairs,
-;; delegates to ehrt.tools.interface/check-corpus. ----
+;; delegates to ehrt.corpus.interface/check-corpus. ----
 
 (deftest check-command-matches-expected-happy-path-test
   (let [cand-dir (temp-dir*) exp-dir (temp-dir*)
@@ -1547,11 +1548,11 @@
 
 (deftest dispatch-gate-bare-path-sniffs-v2-test
   (let [v2-called (atom nil) fhir-called (atom nil)
-        r (cli/dispatch ["gate" "components/tools/test-fixtures/v2/adt-a01-admit.hl7"] {}
+        r (cli/dispatch ["gate" "components/corpus/test-fixtures/v2/adt-a01-admit.hl7"] {}
                          {:gate-v2-fn (fn [opts] (reset! v2-called opts) (result/ok {:totals {}}))
                           :gate-fhir-fn (fn [opts] (reset! fhir-called opts) (result/ok {:totals {}}))})]
     (is (result/ok? r))
-    (is (= "components/tools/test-fixtures/v2/adt-a01-admit.hl7" (:path @v2-called)))
+    (is (= "components/corpus/test-fixtures/v2/adt-a01-admit.hl7" (:path @v2-called)))
     (is (nil? @fhir-called) "must not also call the fhir gate")))
 
 (deftest dispatch-gate-bare-path-sniffs-fhir-test
@@ -1569,22 +1570,22 @@
   ;; `gate v2`/`gate fhir` remain explicit overrides -- unaffected by
   ;; the sniffing dispatch added for the no-verb, bare-path case.
   (let [v2-called (atom nil)
-        r (cli/dispatch ["gate" "v2" "components/tools/test-fixtures/v2"] {}
+        r (cli/dispatch ["gate" "v2" "components/corpus/test-fixtures/v2"] {}
                          {:gate-v2-fn (fn [opts] (reset! v2-called opts) (result/ok {:totals {}}))
                           :gate-fhir-fn (fn [_] (throw (ex-info "must not be called" {})))})]
     (is (result/ok? r))
-    (is (= "components/tools/test-fixtures/v2" (:path @v2-called)))))
+    (is (= "components/corpus/test-fixtures/v2" (:path @v2-called)))))
 
 (deftest dispatch-gate-bare-with-explicit-path-opt-sniffs-test
   ;; `ehrt gate --path X` (no positional at all) must still sniff --
   ;; the sniffing dispatch is keyed on there being no recognized verb,
   ;; not on how :path got into opts.
   (let [v2-called (atom nil)
-        r (cli/dispatch ["gate"] {:path "components/tools/test-fixtures/v2/adt-a01-admit.hl7"}
+        r (cli/dispatch ["gate"] {:path "components/corpus/test-fixtures/v2/adt-a01-admit.hl7"}
                          {:gate-v2-fn (fn [opts] (reset! v2-called opts) (result/ok {:totals {}}))
                           :gate-fhir-fn (fn [_] (throw (ex-info "must not be called" {})))})]
     (is (result/ok? r))
-    (is (= "components/tools/test-fixtures/v2/adt-a01-admit.hl7" (:path @v2-called)))))
+    (is (= "components/corpus/test-fixtures/v2/adt-a01-admit.hl7" (:path @v2-called)))))
 
 (deftest dispatch-gate-bare-invocation-still-errors-test
   ;; `ehrt gate` with no verb, no positional, and no --path is still an
@@ -1596,7 +1597,7 @@
 (deftest sniff-gate-command-rejects-mixed-format-directory-test
   (let [in-dir (temp-dir*)
         _ (spit (io/file in-dir "a.json") sample-bundle-json)
-        _ (spit (io/file in-dir "b.hl7") (slurp "components/tools/test-fixtures/v2/adt-a01-admit.hl7"))
+        _ (spit (io/file in-dir "b.hl7") (slurp "components/corpus/test-fixtures/v2/adt-a01-admit.hl7"))
         r (cli/sniff-gate-command {:path in-dir} cli/gate-v2-command cli/fhir-gate-command)]
     (is (result/error? r))
     (is (= :gate-format-ambiguous (:category r)))
@@ -1892,7 +1893,7 @@
   ;; The shared helper itself (both generate! and generate-sim-command
   ;; raise it identically) -- rm -rf and the --out-dir alternative,
   ;; both named literally, not just "remove the directory."
-  (let [r (result/out-dir-exists-error "out/corpus/sim-s1-p1")]
+  (let [r (generate/out-dir-exists-error "out/corpus/sim-s1-p1")]
     (is (result/error? r))
     (is (clojure.string/includes? (:hint (:payload r)) "rm -rf out/corpus/sim-s1-p1"))
     (is (clojure.string/includes? (:hint (:payload r)) "--out-dir"))))
@@ -1922,7 +1923,7 @@
 
 (deftest mutate-command-directory-write-carries-a-gate-breadcrumb-test
   (let [in-dir (temp-dir*)
-        _ (spit (io/file in-dir "a.hl7") (slurp "components/tools/test-fixtures/v2/adt-a01-admit.hl7"))
+        _ (spit (io/file in-dir "a.hl7") (slurp "components/corpus/test-fixtures/v2/adt-a01-admit.hl7"))
         out-dir (str (temp-dir*) "/out")
         r (cli/mutate-command {:path in-dir :operator-id "blank-required-field" :locator-path "MSH-9" :out-dir out-dir})
         text (cli/render-pretty r nil)]
@@ -2004,7 +2005,7 @@
 ;; ---- ADR-0013: `ehrt show` -- pretty-always, joins D11's own sniff
 ;; dispatch, never consults --pretty/--edn/--json/:tty?-fn. ----
 
-(def ^:private v2-fixture-dir "components/tools/test-fixtures/v2")
+(def ^:private v2-fixture-dir "components/corpus/test-fixtures/v2")
 
 (deftest show-command-renders-a-single-v2-file-test
   (let [r (cli/show-command {:path (str v2-fixture-dir "/adt-a01-admit.hl7")})]
@@ -2014,7 +2015,7 @@
     (is (clojure.string/includes? (:text (:payload r)) "MSH"))))
 
 (deftest show-command-path-not-found-test
-  (let [r (cli/show-command {:path "components/tools/test-fixtures/v2/no-such-file.hl7"})]
+  (let [r (cli/show-command {:path "components/corpus/test-fixtures/v2/no-such-file.hl7"})]
     (is (result/error? r))
     (is (= :gate-path-not-found (:category r)))))
 
@@ -2077,7 +2078,7 @@
     (is (= "some/file.hl7" (:path @captured)))))
 
 (deftest play-command-path-not-found-test
-  (let [r (cli/play-command {:path "components/tools/test-fixtures/v2/no-such-file.hl7"})]
+  (let [r (cli/play-command {:path "components/corpus/test-fixtures/v2/no-such-file.hl7"})]
     (is (result/error? r))
     (is (= :gate-path-not-found (:category r)))))
 

@@ -25,7 +25,7 @@
 ;; present -- a changed verdict, an appeared/disappeared finding code, or
 ;; a different file set is a sim-side change surfacing here, not a
 ;; failure of this test. Regenerate deliberately, like
-;; components/tools/test-fixtures/reports/pre-split-baseline.edn, never hand-edit.
+;; components/corpus/test-fixtures/reports/pre-split-baseline.edn, never hand-edit.
 ;;
 ;; NOTE this loop is now the LEGACY-FLOOR baseline (see ADR-0015): it
 ;; exercises only the plain default pathway (ADT^A01/A02/A03 plus churn's

@@ -4,9 +4,9 @@
   (ehrt.judge.report) and finding-valid?/worst-of (ehrt.judge.finding).
   The gate functions themselves moved to ehrt.judge-v2-hapi.interface
   and ehrt.judge-fhir-official.interface -- this interface no longer
-  re-exports them; ehrt.tools.interface now requires all three
-  interfaces directly and re-applies its own qualified names
-  (`v2-gate-file`, `fhir-gate-file`, etc.) at that layer instead.
+  re-exports them; every consumer (bases/cli, the project test trees)
+  requires each engine's own interface directly since stage 3 retired
+  the tools facade's qualified relays (ADR-0018).
 
   report-valid?/finding-valid? were already qualified before this split
   (ADR-0008) -- they collide with EACH OTHER (not with anything that

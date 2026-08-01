@@ -36,9 +36,9 @@
   Source-side generator schemes (:synthea/:sim) split out (corpus-io
   stage 2, 2026-07-31): `finish-source`, `parse-source-designator`,
   and the generator-query coercion helpers stayed behind in
-  `ehrt.tools.corpus.generator-source` -- the only piece of this
+  `ehrt.corpus.generator-source` -- the only piece of this
   namespace's own parsing surface with a real edge into the domain's
-  generator registry (ehrt.tools.corpus.generators). This
+  generator registry (ehrt.corpus.generators). This
   namespace's `parse-designator` (below) is the shared skeleton both
   the sink-side parser here and the domain-side source parser call --
   now `defn`, not `defn-`, and re-exported through this component's
@@ -136,7 +136,7 @@
 
 (defn parse-designator
   "Shared parse skeleton for parse-sink-designator (below) and, cross-
-  brick, ehrt.tools.corpus.generator-source's own
+  brick, ehrt.corpus.generator-source's own
   parse-source-designator: differ only in which scheme table,
   implemented-kind set, finisher, and error-category prefix they use.
   Public (not `defn-`) and re-exported through this component's own
@@ -165,7 +165,7 @@
                         {:url url :hint "expected scheme:... e.g. dir:./corpus"}))))
 
 (defn parse-sink-designator
-  "Sink twin of ehrt.tools.corpus.generator-source's own
+  "Sink twin of ehrt.corpus.generator-source's own
   parse-source-designator (relocated there, corpus-io stage 2,
   2026-07-31 -- the source-side parser needs the generator-kind
   branch's domain edge; the sink grammar has no generator schemes, so

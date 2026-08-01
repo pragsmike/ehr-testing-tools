@@ -7,9 +7,9 @@
   disambiguate against ehrt.judge.fhir's own `gate-file`/`gate-dir` at
   ONE shared interface (ADR-0002/ADR-0008) -- now that each engine has
   its own interface, there is nothing left to qualify against here.
-  ehrt.tools.interface re-applies its own `v2-gate-file`/`v2-gate-dir`
-  qualification at its own re-export layer, unchanged, for zero
-  behavior change to its downstream callers."
+  (The tools facade re-applied `v2-gate-file`/`v2-gate-dir` at its own
+  re-export layer until stage 3 dissolved those relays -- consumers
+  call this interface's own names directly now, ADR-0018.)"
   (:require [ehrt.judge-v2-hapi.v2 :as v2]))
 
 (def gate-file v2/gate-file)

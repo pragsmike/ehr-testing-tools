@@ -43,32 +43,32 @@
             [clojure.set :as set]
             [ehrt.kernel.interface :as kernel]
             ;; docs-tooling split (2026-07-31): this namespace no longer
-            ;; lives inside components/tools, so it can no longer reach
-            ;; corpus.operators/check.schemas directly -- those are
-            ;; tools-internal, non-interface namespaces in a sibling
-            ;; brick. Routed through ehrt.tools.interface instead,
-            ;; which re-exports lookup/check-schemas-lookup for these
-            ;; two. corpus.framing moved on again, corpus-io stage 2
-            ;; (2026-07-31): now reached directly via
+            ;; lives inside the corpus domain component, so it can no
+            ;; longer reach the operator/check-schema registries
+            ;; directly -- those are component-internal, non-interface
+            ;; namespaces in a sibling brick. Routed through
+            ;; ehrt.corpus.interface (stage 3, ADR-0018: the retired
+            ;; ehrt.tools.interface's operator-lookup/
+            ;; check-schemas-lookup exports live there now, the
+            ;; docs-tooling -> corpus edge stage 1 established, same
+            ;; direction). corpus.framing moved to its own component at
+            ;; corpus-io stage 2 (2026-07-31): reached directly via
             ;; ehrt.corpus-io.interface, per AR-4's repoint-forward
-            ;; rule (this namespace can reach corpus-io directly rather
-            ;; than relaying through tools, since corpus-io has no
-            ;; edge back into tools to create a cycle the way tools'
-            ;; own domain registries would). corpus.canonicalizers also
-            ;; moved to corpus-io -- its own kernel/register! load-time
-            ;; side effect (this namespace's :canonical target-4 check
-            ;; depends on it having fired) now transitively follows
-            ;; from this same require instead of tools/interface's.
-            [ehrt.tools.interface :as tools]
+            ;; rule (corpus-io has no edge back into the domain, so no
+            ;; cycle). corpus.canonicalizers also moved to corpus-io --
+            ;; its own kernel/register! load-time side effect (this
+            ;; namespace's :canonical target-4 check depends on it
+            ;; having fired) transitively follows from that require.
+            [ehrt.corpus.interface :as corpus]
             [ehrt.corpus-io.interface :as corpus-io]
             [ehrt.palgebra.interface :as palgebra-lint]))
 
 (def registry-lookup-fns
   "Dispatch table for target-4 (in-repo code registry) verification:
   registry keyword -> its [id version] lookup fn."
-  {:corpus.operators tools/lookup
+  {:corpus.operators corpus/operator-lookup
    :canonical kernel/lookup
-   :check.schemas tools/check-schemas-lookup
+   :check.schemas corpus/check-schemas-lookup
    :framing corpus-io/lookup})
 
 (def catalytic-resource-targets
@@ -116,16 +116,18 @@
 
 (def target-2-deps-edn-paths
   "Every brick deps.edn a target-2 (deps.edn coordinate) catalytic
-  resource might name its ref against. Was components/tools/deps.edn
-  alone before ADR-0008 moved the HAPI HL7v2 coordinate to
-  components/judge/deps.edn along with judge.v2, its real consumer --
-  checked across both rather than re-hardcoded to judge's alone, since
-  a future target-2 entry could name either brick's own coordinate.
-  ADR-0011 moved the HAPI HL7v2 and HAPI FHIR coordinates on again, to
-  components/judge-v2-hapi/deps.edn and
-  components/judge-fhir-official/deps.edn respectively, alongside their
-  own engines -- added here rather than re-narrowed, same rationale."
-  ["components/tools/deps.edn" "components/judge/deps.edn" "components/kernel/deps.edn"
+  resource might name its ref against. Was the corpus domain
+  component's deps.edn alone before ADR-0008 moved the HAPI HL7v2
+  coordinate to components/judge/deps.edn along with judge.v2, its
+  real consumer -- checked across both rather than re-hardcoded to
+  judge's alone, since a future target-2 entry could name either
+  brick's own coordinate. ADR-0011 moved the HAPI HL7v2 and HAPI FHIR
+  coordinates on again, to components/judge-v2-hapi/deps.edn and
+  components/judge-fhir-official/deps.edn respectively, alongside
+  their own engines -- added here rather than re-narrowed, same
+  rationale. The tools deps.edn entry became corpus's at stage 3
+  (ADR-0018, the rename)."
+  ["components/corpus/deps.edn" "components/judge/deps.edn" "components/kernel/deps.edn"
    "components/judge-v2-hapi/deps.edn" "components/judge-fhir-official/deps.edn"])
 
 (defn- verify-target-2
@@ -193,7 +195,7 @@
   :unresolved (classified, but verification failed)."
   ([] (lint {}))
   ([{:keys [pipeline-edn use-cases-edn]
-     :or {pipeline-edn "components/tools/docs/pipeline.edn" use-cases-edn "components/tools/docs/use-cases.edn"}}]
+     :or {pipeline-edn "components/corpus/docs/pipeline.edn" use-cases-edn "components/corpus/docs/use-cases.edn"}}]
    (let [resources (set/union (pipeline-catalytic-resources pipeline-edn)
                                (use-cases-catalytic-resources use-cases-edn))]
      (palgebra-lint/lint {:resources resources

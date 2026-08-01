@@ -116,7 +116,7 @@
                      {:flag "--no-verdict-cache" :doc "skip the content-addressed verdict cache (ADR-0016); always re-runs the validator subprocess" :default "false (caching on)"}])}
       {:verb "v2-nist" :doc "Gate against HL7 v2 PROFILE-tier conformance (the direct NIST engine, ADR-0012): profile usage/cardinality/length, conformance statements, co-constraints, slicing, and value-set bindings -- what the v2 (HAPI) tier structurally cannot check. Complementary to `gate v2`, not a replacement. The validator is built once per invocation and reused across every file (context construction dominates this engine's own cost) -- never rebuilt per file."
        :flags (into gate-common-flags
-                    [{:flag "--profile" :doc "REQUIRED: a conformance-profile bundle (Π) directory -- PROFILE.xml required, CONSTRAINTS.xml/VALUESETS.xml/VALUESETBINDINGS.xml/COCONSTRAINTS.xml/SLICINGS.xml optional. No default is assumed -- try components/tools/test-fixtures/v2-nist/COVID19_ELR-v2.3.1, the CDC COVID19_ELR-v2.3.1 fixture, this repo's own documented try-it bundle"}])}]}
+                    [{:flag "--profile" :doc "REQUIRED: a conformance-profile bundle (Π) directory -- PROFILE.xml required, CONSTRAINTS.xml/VALUESETS.xml/VALUESETBINDINGS.xml/COCONSTRAINTS.xml/SLICINGS.xml optional. No default is assumed -- try components/corpus/test-fixtures/v2-nist/COVID19_ELR-v2.3.1, the CDC COVID19_ELR-v2.3.1 fixture, this repo's own documented try-it bundle"}])}]}
 
     {:group "check"
      :doc "Check a candidate corpus against an expected corpus and/or explicit per-file assertions -- the corpus's second judge, alongside Gate. DIR may also be spelled as a dir: URL designator (ruling 7) instead of a bare path."
@@ -250,7 +250,7 @@
 (defn write-cli-md!
   "-X-invokable: regenerates docs/cli.md from this namespace's own
   cli-spec (the Makefile's `cli-doc` target passes docs/cli.md, moved
-  out of components/tools/docs/ to the root user path, ADR-0010).
+  out of components/corpus/docs/ to the root user path, ADR-0010).
   Lives here, not in components/docs-tooling/.../docsgen, because only
   this base can supply the real spec without inverting Polylith's
   base -> component dependency direction (ADR-0002's own deviation

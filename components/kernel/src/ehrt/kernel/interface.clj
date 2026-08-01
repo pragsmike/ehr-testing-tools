@@ -1,8 +1,9 @@
 (ns ehrt.kernel.interface
   "The foundation layer shared by judge and corpus (ADR-0002 R14, named
   hole H4; ADR-0008 closes it). Delegation surface sized by grep of
-  actual external callers -- judge, tools' own corpus/check/lint, and
-  (transitively, via ehrt.tools.interface) the CLI -- not a copy of
+  actual external callers -- judge, the corpus domain's own
+  corpus/check/lint, and the CLI (directly, since stage 3 retired the
+  tools facade, ADR-0018) -- not a copy of
   each source namespace's full public API. A function private to
   `ehrt.kernel.artifact`/`.canonical`/`.invocation` with no caller
   outside this component stays unexported; see ADR-0008's own census
@@ -10,8 +11,8 @@
 
   `resolve-artifact` (not `resolve`, `ehrt.kernel.artifact/resolve`'s
   own name) avoids shadowing `clojure.core/resolve` the same way
-  `ehrt.tools.interface/resolve-artifact` already did before this
-  extraction (ADR-0002) -- same discipline, carried forward, not
+  the pre-extraction tools facade's `resolve-artifact` already did
+  (ADR-0002) -- same discipline, carried forward, not
   reinvented. `run-invocation!` (not `run!`, `ehrt.kernel.invocation/run!`'s
   own name) avoids shadowing `clojure.core/run!` the same way -- caught
   by this extraction's own verification run (a WARNING on every

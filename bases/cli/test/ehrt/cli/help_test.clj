@@ -3,7 +3,7 @@
             [clojure.string :as str]
             [ehrt.cli.help :as help]
             [ehrt.cli.core :as cli]
-            [ehrt.tools.interface :as result]))
+            [ehrt.kernel.interface :as result]))
 
 (deftest render-top-level-lists-every-group-test
   (let [text (help/render-top-level help/cli-spec)]

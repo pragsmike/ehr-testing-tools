@@ -37,11 +37,11 @@
   "Kinds with an actual constructor. SS-1 built :dir/:file (the two
   reader kinds with no engine, D1's 'no per-source adapters'
   unification target); SS-2 Step 4 adds :synthea/:sim (the two
-  generator kinds, via `ehrt.tools.corpus.generator-source/
+  generator kinds, via `ehrt.corpus.generator-source/
   generator-source` -- corpus-io stage 2, 2026-07-31: the generator-
   kind Source constructor stayed behind in `tools`, the only piece of
   this namespace with a real edge into the domain's generator
-  registry, backed by the registry in ehrt.tools.corpus.generators);
+  registry, backed by the registry in ehrt.corpus.generators);
   SS-3 Step 6 adds :stdin (`stdin-source` below -- resolved to a real
   :dir Source via ehrt.corpus-io.spool-source, never executed here).
   `printable-source-kinds` below stays narrower: no session yet builds

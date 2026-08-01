@@ -7,7 +7,7 @@ this document; build sessions SS-1..SS-5
 or receives EHR corpus bytes in this repo — unifying `corpus.generate`'s
 Synthea-specific engine, `corpus.intake`'s directory-specific ingestion,
 the sim consumer loop's harness-only subprocess seam
-(`projects/conformance/test/ehrt/tools/sim_harness.clj`, tools/ADR-0013), and
+(`projects/conformance/test/ehrt/conformance/sim_harness.clj`, tools/ADR-0013), and
 today's bare output-path sinks under one typed, registry-open surface.
 **Companion:** ADR-0017 (`notes/ADRs.md`) is the reasoning-of-record for
 the decision to formalize; `.agents/plans/corpus-foundations.md`'s
@@ -19,11 +19,11 @@ SS-1..SS-5 rows are the build-session sequencing. This document is the
 Every fact asserted below about the current codebase was re-read from
 source while writing this record (pre-Polylith paths at the time; homes
 below are the Polylith equivalents, added in the 2026-07-31 errata
-pass): `components/tools/src/ehrt/tools/corpus/intake.clj`,
-`components/tools/src/ehrt/tools/corpus/generate.clj`,
+pass): `components/corpus/src/ehrt/corpus/intake.clj`,
+`components/corpus/src/ehrt/corpus/generate.clj`,
 `components/kernel/src/ehrt/kernel/artifact.clj`,
 `components/kernel/src/ehrt/kernel/invocation.clj`,
-`projects/conformance/test/ehrt/tools/sim_harness.clj`, tools/ADR-0013,
+`projects/conformance/test/ehrt/conformance/sim_harness.clj`, tools/ADR-0013,
 tools/ADR-0014, `docs/notation.md`, `docs/pipeline.edn`.
 
 ---
@@ -109,7 +109,7 @@ spool, not the wire.
 ## Part II — Framing (D2)
 
 File ≠ item. The vendored SimHospital corpus is 1,013 messages in one
-file (`components/tools/test-fixtures/v2/simhospital/`, ADR-0011); NDJSON and FHIR
+file (`components/corpus/test-fixtures/v2/simhospital/`, ADR-0011); NDJSON and FHIR
 Bundles pack many resources per file; MLLP frames a byte stream. Every
 source (and sink) carries `:framing` as an axis independent of
 `:format`:
@@ -130,7 +130,7 @@ time with tests (SS-3), not assumed away.
 
 **`:er7-multi` grammar, probed (2026-07-28, SS-3 build session, ruling
 3).** Re-measured directly against the vendored fixture
-(`components/tools/test-fixtures/v2/simhospital/messages.out`), independently of the
+(`components/corpus/test-fixtures/v2/simhospital/messages.out`), independently of the
 existing `simhospital-corpus` test helper's own docstring (which
 records the same finding, citing facts-register F25): 1,013 messages,
 1,013 `MSH` occurrences (one per message, none embedded elsewhere),
@@ -375,7 +375,7 @@ of bug, caught before it ships rather than after.
   half — the two-step pattern (execute, then interpret) is unchanged;
   see the `EngineExecute`/`Generate` correspondence in the equations
   below.
-- **`sim-harness`** (`projects/conformance/test/ehrt/tools/sim_harness.clj`)
+- **`sim-harness`** (`projects/conformance/test/ehrt/conformance/sim_harness.clj`)
   grows up: its subprocess seam becomes the `sim` generator source in
   `src/`, with the harness delegating to it; the cross-repo consumer
   loop keeps testing through it, unchanged in spirit (tools/ADR-0013's
@@ -463,7 +463,7 @@ item-seq → framed-bytes  [EncodeFraming]  {catalytic: framing-codec}          
 ;; law: DecodeFraming composed with EncodeFraming recovers the identical
 ;; framed-bytes, for :er7-multi / :ndjson / :bundle-entries / :mllp --
 ;; round-trip property-tested per framing kind (SS-3). The vendored
-;; SimHospital fixture (components/tools/test-fixtures/v2/simhospital/, ADR-0011) is the
+;; SimHospital fixture (components/corpus/test-fixtures/v2/simhospital/, ADR-0011) is the
 ;; :er7-multi witness. v2's MSH-18 and FHIR's UTF-8 assumption are this
 ;; codec's own edge conditions, resolved with tests, not assumed away (D2).
 
@@ -576,7 +576,7 @@ The zero-flag happy path:
 byte-reproducible across machines given the same pinned artifacts (the
 shipped `resources/` properties file, the locked Synthea/JDK artifact
 versions) — the same claim EXP-A4 already proved for an explicit-flags
-invocation (`../../components/tools/docs/experiments/EXP-A4-results.md`), now extended to the
+invocation (`../../components/corpus/docs/experiments/EXP-A4-results.md`), now extended to the
 zero-flag case specifically because it is what a first-time reader
 actually runs. This makes the quickstart's first command a
 reproducibility demonstration, not merely a convenience.

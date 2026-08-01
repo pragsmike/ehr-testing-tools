@@ -14,13 +14,14 @@
   Split out of the former ehrt.tools.docsgen (docs-tooling extraction,
   2026-07-31, refactoring-review stage 1): that namespace's other
   half, docs/operators.md's renderer, genuinely reached into
-  components/tools' own corpus.operators registry, which would have
-  made this component and tools require each other -- a real circular
-  component dependency (tools already needs this file's own
-  write-cli-md! back), a hard Clojure compile error, not a style
-  question. This half is pure (spec argument in, string out), so it
-  moved whole; the operators.md half stayed in components/tools,
-  renamed ehrt.tools.operators-doc.
+  the domain component's own corpus.operators registry, which would
+  have made this component and that one require each other -- a real
+  circular component dependency (it needed this file's own
+  write-cli-md! back at the time), a hard Clojure compile error, not a
+  style question. This half is pure (spec argument in, string out), so
+  it moved whole; the operators.md half stayed in the domain component
+  (components/tools then, components/corpus since stage 3), renamed
+  ehrt.corpus.operators-doc.
 
   The output is WHOLLY generated (author ruling, DOC-3): every word in
   docs/cli.md comes from here or from the spec this function is given.
@@ -32,7 +33,7 @@
 
   This file carries its own private copy of banner/escape-cell/table/
   exit-code-table -- the same handful of pure markdown-table helpers
-  ehrt.tools.operators-doc also carries, from the original docsgen.clj
+  ehrt.corpus.operators-doc also carries, from the original docsgen.clj
   the two halves split from. Duplicated rather than shared through an
   interface, since sharing them would reintroduce exactly the
   cross-brick coupling the split exists to avoid, for four small pure

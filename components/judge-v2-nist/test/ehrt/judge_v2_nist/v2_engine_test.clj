@@ -2,7 +2,7 @@
   "Engine-in-the-loop coverage for judge-v2-nist (v2_test.clj's own
   docstring named this gap): the real gov.nist:hl7-v2-validation
   1.7.3 SyncHL7Validator, built from CDC's vendored COVID19_ELR-v2.3.1
-  Π fixture (components/tools/test-fixtures/v2-nist/, see that
+  Π fixture (components/corpus/test-fixtures/v2-nist/, see that
   directory's own NOTICE.md for provenance), gating the fixture's one
   companion ER7 message.
 
@@ -43,8 +43,8 @@
             [ehrt.judge.finding :as finding]
             [ehrt.judge-v2-nist.interface :as v2nist]))
 
-(def ^:private bundle-dir "components/tools/test-fixtures/v2-nist/COVID19_ELR-v2.3.1")
-(def ^:private message-file "components/tools/test-fixtures/v2-nist/covidELR/231HL7TestFilewithHHSData.txt")
+(def ^:private bundle-dir "components/corpus/test-fixtures/v2-nist/COVID19_ELR-v2.3.1")
+(def ^:private message-file "components/corpus/test-fixtures/v2-nist/covidELR/231HL7TestFilewithHHSData.txt")
 
 (deftest make-validator-wires-exactly-the-recognized-bundle-files-test
   (testing "PROFILE.xml + CONSTRAINTS.xml are wired; VALUESETS-disabled.xml's

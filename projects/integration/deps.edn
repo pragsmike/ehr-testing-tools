@@ -1,34 +1,35 @@
-{;; NIST v2-validation engine (judge-v2-nist, ADR-0012): its three
- ;; gov.nist coordinates resolve from NIST's own Nexus, not Maven
- ;; Central. Root deps.edn's own :mvn/repos isn't inherited here --
- ;; `poly test :all` resolves each project's own deps.edn
- ;; independently, so this repeats the same entry.
- :mvn/repos {"nist-hit" {:url "https://hit-nexus.nist.gov/repository/releases/"}}
-
- :deps {;; poly/sim: not because this project's own tests reference
+{:deps {;; poly/sim: not because this project's own tests reference
         ;; ehrt.sim.* directly (they don't -- ADR-0004's own R19
         ;; disposition is why the five sim_*_test.clj namespaces stayed
         ;; in projects/conformance instead of moving here), but because
-        ;; poly/tools' own src now requires ehrt.sim.interface
+        ;; poly/corpus' own src now requires ehrt.sim.interface
         ;; transitively (ADR-0005, the ehr-sim-mount) -- any project
-        ;; that includes poly/tools needs sim on the classpath now.
-        ;; poly/kernel, poly/judge (ADR-0008): poly/tools' own src
+        ;; that includes poly/corpus needs sim on the classpath now.
+        ;; poly/kernel, poly/judge (ADR-0008): poly/corpus' own src
         ;; requires both directly now -- any project including
-        ;; poly/tools needs them on the classpath too.
+        ;; poly/corpus needs them on the classpath too.
         poly/kernel   {:local/root "../../components/kernel"}
         poly/judge    {:local/root "../../components/judge"}
-        ;; poly/judge-v2-hapi, poly/judge-fhir-official (ADR-0011): the
-        ;; per-engine judge split -- ehrt.tools.interface now requires
-        ;; both directly too.
+        ;; poly/judge-fhir-official (ADR-0011): required directly by
+        ;; this project's own test tree (baseline_gating/
+        ;; contract_pairing/smoke gate through the official validator).
+        ;; poly/judge-v2-hapi stays for a different reason (ADR-0018):
+        ;; the corpus BRICK's own test tree (v2_contract_pairing_test)
+        ;; requires that engine's interface, and poly runs a declared
+        ;; brick's tests in every composing project -- dropping it here
+        ;; broke this lane's own run before commit, not a hypothetical.
+        ;; poly/judge-v2-nist DROPPED here (2026-07-31, split stage 3,
+        ;; ADR-0018, same rule as palgebra's drop below): it was only
+        ;; ever here because the retired ehrt.tools.interface required
+        ;; every engine; grep confirms nothing on this project's
+        ;; classpath requires it. The nist-hit :mvn/repos entry left
+        ;; with it. If a future change reintroduces a real need,
+        ;; re-add then, with its own earning edge named.
         poly/judge-v2-hapi        {:local/root "../../components/judge-v2-hapi"}
         poly/judge-fhir-official  {:local/root "../../components/judge-fhir-official"}
-        ;; poly/judge-v2-nist (ADR-0012): the third judge engine,
-        ;; profile-tier NIST v2-validation -- ehrt.tools.interface now
-        ;; requires it too.
-        poly/judge-v2-nist        {:local/root "../../components/judge-v2-nist"}
-        poly/tools    {:local/root "../../components/tools"}
+        poly/corpus   {:local/root "../../components/corpus"}
         ;; poly/corpus-io (2026-07-31, corpus-io split stage 2,
-        ;; ADR-0017): poly/tools' own src now requires it directly
+        ;; ADR-0017): poly/corpus' own src now requires it directly
         ;; (transport seam), and this project's own
         ;; zero_flag_reproducibility_test.clj requires it directly too
         ;; (canonicalizers, repointed from ehrt.tools.interface).

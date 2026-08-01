@@ -3,7 +3,7 @@
   segments split on the segment terminator, fields split on MSH-1's own
   field separator -- never a HAPI-parsed tree. Same applied decision
   rule EXP-B2 imposed on FHIR (docs/experiments/EXP-B2-results.md,
-  applied to FHIR by ehrt.tools.corpus.mutate): HAPI HL7v2's
+  applied to FHIR by ehrt.corpus.mutate): HAPI HL7v2's
   PipeParser round-trip is faithful for realistically-populated
   messages but silently canonicalizes away trailing empty fields on a
   message crafted to end a segment that way -- exactly the hazard a
@@ -28,7 +28,7 @@
   Field granularity only: components/repeats/subcomponents are carried
   verbatim inside a field's string value, never further decomposed
   here -- no seed operator this session needs component-level access
-  (ehrt.tools.locator's v2 grammar supports naming one, for
+  (ehrt.kernel.locator's v2 grammar supports naming one, for
   future operators that do). This mirrors the FHIR locator's own
   scope note: a genuinely fuller substrate is future work, not
   required by what exists to consume it today.
@@ -65,7 +65,7 @@
   "content (a raw ER7 string) -> {:delimiters {...} :segments [[field
   field ...] ...]}, each segment a vector of field strings with the
   segment name itself at index 0 (so field N sits at index N for every
-  segment except MSH -- see ehrt.tools.locator's v2 grammar
+  segment except MSH -- see ehrt.kernel.locator's v2 grammar
   docstring for MSH's own off-by-one, which this function's
   field-index-per-segment-name split already produces correctly without
   any MSH special-case: MSH's field separator immediately follows the

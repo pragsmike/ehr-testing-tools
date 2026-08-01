@@ -110,7 +110,7 @@ page doesn't teach it as a path.
   `out/corpus/synthea-s1-p5` first, or pass a different `--out-dir`,
   to regenerate.
 - **A `WARNING: run! already refers to...` line appears on stdout.**
-  Harmless namespace-shadowing warning from `ehrt.tools.sim`; it
+  Harmless namespace-shadowing warning from `ehrt.corpus.sim-adapter`; it
   doesn't affect the exit code and can be ignored.
 - **`bin/ehrt gate ... --report <file>` still prints the full result to
   stdout.** `--report` writes the file but doesn't suppress the console

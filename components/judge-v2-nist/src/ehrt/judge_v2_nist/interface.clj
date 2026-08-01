@@ -3,8 +3,10 @@
   third judge engine, sibling of ehrt.judge-v2-hapi (base-structural
   tier) and ehrt.judge-fhir-official. Unqualified gate-file/gate-dir,
   same reasoning as judge-v2-hapi's interface: per-engine interfaces
-  have nothing to qualify against; ehrt.tools.interface applies its own
-  qualification (`v2-nist-gate-file` suggested) at its re-export layer.
+  have nothing to qualify against. (The tools facade applied its own
+  `v2-nist-*` qualification at its re-export layer until stage 3
+  dissolved those relays, ADR-0018 -- consumers call this interface's
+  own names directly now.)
 
   This engine validates against an IGAMT-exported conformance-profile
   bundle (Π): PROFILE.xml required; CONSTRAINTS.xml, VALUESETS.xml,

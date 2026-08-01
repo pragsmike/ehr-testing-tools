@@ -15,8 +15,8 @@
 # `expect` wrapper below instead of `-e`.
 #
 # The block between the BEGIN/END markers is read by `make quickstart-fresh`
-# (`ehrt.tools.quickstart-fresh`, its poly-era replacement, green in the
-# per-push lane -- components/tools/test/ehrt/tools/quickstart_fresh_test.clj)
+# (`ehrt.docs-tooling.quickstart-fresh`, its poly-era replacement, green in the
+# per-push lane -- components/docs-tooling/test/ehrt/docs_tooling/quickstart_fresh_test.clj)
 # to prove this script and README.md's fence teach the identical commands,
 # in the identical order. Keep every taught line inside that block, one
 # statement per README command, and do not "improve" a command here -- an
@@ -86,7 +86,7 @@ expect 0 bin/ehrt corpus mutate $PATIENT_FILE \
   --out-dir out/demo-mutants
 
 expect 0 bin/ehrt artifact fetch --name fhir-validator-cli --version 6.9.12
-expect 0 bin/ehrt gate v2 components/tools/test-fixtures/v2
+expect 0 bin/ehrt gate v2 components/corpus/test-fixtures/v2
 expect 1 bin/ehrt gate fhir out/demo-mutants --report out/demo-mutants-report.edn
 
 expect 0 bin/ehrt check out/corpus/synthea-s1-p5/fhir --expected out/corpus/synthea-s1-p5/fhir

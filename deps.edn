@@ -9,38 +9,41 @@
                   :extra-deps {org.clojure/clojure {:mvn/version "1.12.5"}
                                poly/sim      {:local/root "components/sim"}
                                poly/sim-cli  {:local/root "bases/sim-cli"}
-                               ;; kernel/judge (ADR-0008): tools' own src
-                               ;; now requires both directly.
+                               ;; kernel/judge (ADR-0008): corpus' own
+                               ;; src requires both directly.
                                poly/kernel   {:local/root "components/kernel"}
                                poly/judge    {:local/root "components/judge"}
                                ;; judge-v2-hapi/judge-fhir-official
-                               ;; (ADR-0011): the per-engine judge split
-                               ;; -- tools' own interface now requires
-                               ;; both directly too.
+                               ;; (ADR-0011): the per-engine judge split.
+                               ;; Since stage 3 (ADR-0018) bases/cli
+                               ;; requires each engine interface
+                               ;; directly -- the corpus domain itself
+                               ;; has no judge-engine edge.
                                poly/judge-v2-hapi        {:local/root "components/judge-v2-hapi"}
                                poly/judge-fhir-official  {:local/root "components/judge-fhir-official"}
                                ;; judge-v2-nist (ADR-0012): the third
                                ;; judge engine, profile-tier NIST
                                ;; v2-validation, direct (no CDC wrapper).
                                poly/judge-v2-nist        {:local/root "components/judge-v2-nist"}
-                               poly/tools    {:local/root "components/tools"}
+                               ;; corpus (2026-07-31, split stage 3,
+                               ;; ADR-0018): the corpus domain -- the
+                               ;; former tools component, renamed and
+                               ;; narrowed to a designed interface.
+                               poly/corpus   {:local/root "components/corpus"}
                                ;; corpus-io (2026-07-31, refactoring-
                                ;; review split stage 2, ADR-0017):
-                               ;; transport/IO seam extracted out of
-                               ;; tools -- tools' own domain namespaces
-                               ;; (mutate/operators/intake/generator-
-                               ;; source) and bases/cli require it
-                               ;; directly now.
+                               ;; transport/IO seam -- corpus' own
+                               ;; domain namespaces (mutate/operators/
+                               ;; intake/generator-source) and bases/cli
+                               ;; require it directly.
                                poly/corpus-io {:local/root "components/corpus-io"}
                                ;; docs-tooling (2026-07-31, refactoring-
                                ;; review split stage 1): dev-time-only
-                               ;; doc/lint tooling, extracted out of
-                               ;; tools. bases/cli/help.clj requires it
-                               ;; directly (write-cli-md!) -- NOT tools'
-                               ;; own interface, which deliberately does
-                               ;; not re-export it (a real circular
-                               ;; component dependency otherwise, see
-                               ;; ehrt.tools.interface's own docstring).
+                               ;; doc/lint tooling. bases/cli/help.clj
+                               ;; requires it directly (write-cli-md!)
+                               ;; -- never through a domain relay (see
+                               ;; ADR-0016's circular-dependency
+                               ;; finding).
                                poly/docs-tooling {:local/root "components/docs-tooling"}
                                poly/palgebra {:local/root "components/palgebra"}
                                poly/cli      {:local/root "bases/cli"}}}
@@ -52,7 +55,7 @@
                                   "components/judge-v2-hapi/test"
                                   "components/judge-fhir-official/test"
                                   "components/judge-v2-nist/test"
-                                  "components/tools/test"
+                                  "components/corpus/test"
                                   "components/corpus-io/test"
                                   "components/docs-tooling/test"
                                   "components/palgebra/test"
@@ -65,8 +68,8 @@
             ;; future payload-EHR tooling, ADR-0009). Runs from the
             ;; workspace root (not a project subdirectory) because
             ;; artifacts.lock.edn, config/, resources/synthea-default.properties,
-            ;; and components/tools/test-fixtures/** are all cwd-relative
-            ;; literal paths in ehrt.tools.* code (not classpath
+            ;; and components/corpus/test-fixtures/** are all cwd-relative
+            ;; literal paths in ehrt.corpus.* code (not classpath
             ;; resources) -- landing-session finding, see notes/ADRs.md
             ;; ADR-0002.
             :ehrt {:extra-deps {org.clojure/clojure {:mvn/version "1.12.5"}
@@ -75,10 +78,10 @@
                                 poly/judge-v2-hapi        {:local/root "components/judge-v2-hapi"}
                                 poly/judge-fhir-official  {:local/root "components/judge-fhir-official"}
                                 poly/judge-v2-nist        {:local/root "components/judge-v2-nist"}
-                                poly/tools    {:local/root "components/tools"}
-                                ;; corpus-io (2026-07-31, stage 2): tools'
-                                ;; own src and bases/cli both require it
-                                ;; directly now.
+                                poly/corpus   {:local/root "components/corpus"}
+                                ;; corpus-io (2026-07-31, stage 2):
+                                ;; corpus' own src and bases/cli both
+                                ;; require it directly.
                                 poly/corpus-io {:local/root "components/corpus-io"}
                                 ;; docs-tooling (2026-07-31): bases/cli/
                                 ;; help.clj requires it directly

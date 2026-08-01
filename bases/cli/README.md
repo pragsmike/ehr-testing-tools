@@ -1,6 +1,6 @@
 # bases/cli
 
-Thin CLI dispatch for `components/tools` — the `ehrt` command
+Thin CLI dispatch for the corpus/judge workspace — the `ehrt` command
 ("e-heart", R32/ADR-0009; `ehr` stays reserved for future payload-EHR
 tooling). `ehrt sim run` dispatches straight into `components/sim`,
 in-process, no subprocess (the `ehrt sim` mount, ADR-0005).

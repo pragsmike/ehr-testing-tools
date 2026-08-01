@@ -15,11 +15,11 @@ components/sim/docs/demos/**/messages*.txt -text
 # actually added here until the discipline-parity session's own
 # fixture relocation (2026-07-28) surfaced the gap: these files sat
 # unprotected at their old root test/fixtures/v2/ path since the carve.
-components/tools/test-fixtures/v2/*.hl7 -text
-components/tools/test-fixtures/v2/simhospital/messages.out -text
+components/corpus/test-fixtures/v2/*.hl7 -text
+components/corpus/test-fixtures/v2/simhospital/messages.out -text
 
 # judge-v2-nist's committed Π fixture (CDC's COVID19_ELR-v2.3.1 bundle,
 # stand-in until a project-authored IGAMT export replaces it -- see
-# components/tools/test-fixtures/v2-nist/NOTICE.md): the companion ER7
+# components/corpus/test-fixtures/v2-nist/NOTICE.md): the companion ER7
 # message carries literal \r segment separators, same hazard as above.
-components/tools/test-fixtures/v2-nist/covidELR/*.txt -text
+components/corpus/test-fixtures/v2-nist/covidELR/*.txt -text

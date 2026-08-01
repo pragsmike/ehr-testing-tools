@@ -3,7 +3,7 @@
   docs/source-sink-design.md Part III.5): a distinct, independently-
   versioned schema for a dir/file sink's own transformation lineage --
   written as operation-manifest.edn, never manifest.edn, never sharing
-  a field name with ehrt.tools.corpus.manifest/ManifestV1_1 (that
+  a field name with ehrt.corpus.manifest/ManifestV1_1 (that
   generator-provenance schema stayed in tools, corpus-io stage 2,
   2026-07-31 -- domain provenance, not transport). A generator
   manifest states engine provenance (which artifact, which config,
@@ -13,11 +13,11 @@
   never reconciled into one schema.
 
   :producer carries this repo's own honest identity (the `ehr version`
-  machinery -- ehrt.tools.cli/repo-identity,
-  ehrt.tools.cli/real-git-describe) with no :sha256 field: an
+  machinery -- ehrt.cli.core/repo-identity,
+  ehrt.cli.core/real-git-describe) with no :sha256 field: an
   absent field is honest, a fabricated one is not. :items[].input-hash
   is per-item optional, present iff the producer actually held it --
-  ehrt.tools.corpus.mutate always does (its own lineage record's
+  ehrt.corpus.mutate always does (its own lineage record's
   :parent); a hypothetical future plain write might not."
   (:require [malli.core :as m]))
 

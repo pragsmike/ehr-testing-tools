@@ -199,7 +199,7 @@ touching caches, generated files, or filesystem layout.
 
 **(c) Tests and tools run with cwd = workspace root.** Every
 cwd-relative literal path in this workspace (`artifacts.lock.edn`,
-`config/synthea/synthea.properties`, `components/tools/test-fixtures/**`, etc. — see
+`config/synthea/synthea.properties`, `components/corpus/test-fixtures/**`, etc. — see
 `notes/ADRs.md` ADR-0002's own deviation record) resolves against the
 JVM process's actual working directory, which `poly test` and `bin/ehrt`
 both fix at the workspace root, not a project or component
@@ -218,9 +218,9 @@ this method again before any future large drop, not just this one.
 (`notes/ADRs.md` ADR-0004.)
 
 **(e) Dependency direction is poly-enforced at brick level.** The rule
-("`components/tools`/`projects/conformance` may depend on
+("`components/corpus`/`projects/conformance` may depend on
 `components/sim`; `components/sim` must never depend on anything
-tools-derived") is not a convention to remember — `poly check` fails
+corpus-derived") is not a convention to remember — `poly check` fails
 the build if it's violated, the same way a brick reaching into another
 brick's non-interface namespace fails. `clojure -M:poly ws
 get:components:keys` and the `poly deps` matrix are the first place to

@@ -10,12 +10,12 @@
   interface-design ideal.
 
   Directional rule (AR-2, the one that matters more than the file
-  list): this component may NEVER require `ehrt.tools.*`,
+  list): this component may NEVER require `ehrt.corpus.*` (né `ehrt.tools.*`),
   `ehrt.docs-tooling.*`, or any judge component -- the domain
   implements or consumes this component's protocols/constructors, never
   the reverse. Two real edges into the domain's generator registry
   were found during characterization and resolved by keeping the
-  domain-touching code behind in `ehrt.tools.corpus.generator-source`
+  domain-touching code behind in `ehrt.corpus.generator-source`
   rather than routing it through here (author-ruled, both
   escalations): the generator-kind Source constructor (`source-sink`'s
   own `generator-source`, relocated whole) and the generator-URL
@@ -23,7 +23,7 @@
   `parse-source-designator`, relocated whole). `parse-designator`
   below is the shared grammar skeleton that split enabled -- it's
   public and re-exported here specifically so
-  `ehrt.tools.corpus.generator-source` can supply its own
+  `ehrt.corpus.generator-source` can supply its own
   domain-aware `finish` callback without this component ever
   depending on tools."
   (:require [ehrt.corpus-io.framing :as framing]
@@ -70,14 +70,14 @@
 
 ;; corpus-io.source-sink-url. `parse-designator` is the shared parse
 ;; skeleton (see namespace docstring) -- its own cross-brick caller is
-;; ehrt.tools.corpus.generator-source/parse-source-designator.
+;; ehrt.corpus.generator-source/parse-source-designator.
 (def parse-designator source-sink-url/parse-designator)
 (def source-schemes source-sink-url/source-schemes)
 (def parse-sink-designator source-sink-url/parse-sink-designator)
 (def path-designator->path source-sink-url/path-designator->path)
 ;; print-source-designator has no domain edge (only :dir/:file are
 ;; printable, SS-1/SS-2) but is a real cross-brick caller:
-;; ehrt.tools.corpus.generator-source-test's own round-trip property
+;; ehrt.corpus.generator-source-test's own round-trip property
 ;; test pairs it with that namespace's parse-source-designator.
 (def print-source-designator source-sink-url/print-source-designator)
 
@@ -88,7 +88,7 @@
 ;; corpus-io.operation-manifest (the sink-write lineage sidecar --
 ;; corpus-io stage 2, 2026-07-31: moved here from tools, since it has
 ;; no domain edges of its own and sink-write, its most demanding
-;; consumer, is transport, not domain; ehrt.tools.corpus.intake's
+;; consumer, is transport, not domain; ehrt.corpus.intake's
 ;; own manifest-sidecar recognizer is the one domain consumer,
 ;; repointed here per AR-4)
 (def OperationManifestV1 operation-manifest/OperationManifestV1)

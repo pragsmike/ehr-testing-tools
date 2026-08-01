@@ -19,33 +19,37 @@
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
-            [ehrt.tools.interface :as result]
-            [ehrt.tools.interface :as artifact]
+            ;; tools split stage 3 (2026-07-31, ADR-0018): the tools
+            ;; façade retired -- every alias below now names the owning
+            ;; interface directly. kernel's result/artifact/locator
+            ;; vocabulary, judge's report vocabulary, and the three
+            ;; gate engines were relay re-exports in ehrt.tools.interface;
+            ;; the corpus domain itself is ehrt.corpus.interface.
+            [ehrt.kernel.interface :as result]
+            [ehrt.kernel.interface :as artifact]
+            [ehrt.kernel.interface :as locator]
             [ehrt.cli.help :as help]
-            [ehrt.tools.interface :as generate]
-            [ehrt.tools.interface :as generators]
-            [ehrt.tools.interface :as mutate]
-            [ehrt.tools.interface :as intake]
-            [ehrt.tools.interface :as operators]
-            [ehrt.tools.interface :as generator-source]
-            ;; corpus-io stage 2 (2026-07-31, ADR-0017): the seam
-            ;; these four used to reach through ehrt.tools.interface
-            ;; moved to its own component -- repointed directly per
-            ;; AR-4, same alias names, so every call site below is
-            ;; unchanged.
+            [ehrt.corpus.interface :as generate]
+            [ehrt.corpus.interface :as generators]
+            [ehrt.corpus.interface :as mutate]
+            [ehrt.corpus.interface :as intake]
+            [ehrt.corpus.interface :as operators]
+            [ehrt.corpus.interface :as generator-source]
+            [ehrt.corpus.interface :as check]
+            [ehrt.corpus.interface :as sim]
+            [ehrt.corpus.interface :as display]
+            [ehrt.corpus.interface :as player]
+            ;; corpus-io stage 2 (2026-07-31, ADR-0017): the transport
+            ;; seam, required directly since that stage -- same alias
+            ;; names as before it moved.
             [ehrt.corpus-io.interface :as spool-source]
             [ehrt.corpus-io.interface :as source-sink]
             [ehrt.corpus-io.interface :as source-sink-url]
             [ehrt.corpus-io.interface :as sink-write]
-            [ehrt.tools.interface :as locator]
-            [ehrt.tools.interface :as check]
-            [ehrt.tools.interface :as gate-v2]
-            [ehrt.tools.interface :as gate-fhir]
-            [ehrt.tools.interface :as gate-v2-nist]
-            [ehrt.tools.interface :as report]
-            [ehrt.tools.interface :as sim]
-            [ehrt.tools.interface :as display]
-            [ehrt.tools.interface :as player])
+            [ehrt.judge-v2-hapi.interface :as gate-v2]
+            [ehrt.judge-fhir-official.interface :as gate-fhir]
+            [ehrt.judge-v2-nist.interface :as gate-v2-nist]
+            [ehrt.judge.interface :as report])
   (:import [java.time LocalDate]
            [java.lang ProcessBuilder$Redirect]))
 
@@ -381,7 +385,13 @@
   :producer field, this repo's honest identity via the same `ehrt
   version` machinery version-command already uses. git-describe-fn is
   injectable (mirrors version-command's own parameter) so hermetic
-  tests never shell out to a real git process."
+  tests never shell out to a real git process.
+
+  :name stays the literal \"ehrt.tools\" after the tools component
+  retired (ADR-0018): it is an identity string in an emitted output
+  format (operation-manifest.edn), and stage 3's own AR-6 requires the
+  seam commands byte-identical -- changing it is an output-format
+  change needing its own ruling, recorded as a named-future there."
   [git-describe-fn]
   {:name "ehrt.tools" :identity repo-identity :git (git-describe-fn)})
 
@@ -409,7 +419,7 @@
   "The write-stdout!-ready shape for one mutant, per the sink's own
   :framing -- :bundle-entries wants the mutant's own parsed data
   directly (only sensible when format is :fhir, whose mutant already
-  IS a data map, ehrt.tools.interface's own item shape for
+  IS a data map, ehrt.corpus-io.interface's own item shape for
   that codec); every other framing wants bytes, the same UTF-8
   serialization write-mutant already produces to a file, taken here in
   memory instead of spit to disk."
@@ -472,7 +482,7 @@
 ;; unchanged). No generation logic of its own: resolves CLI opts
 ;; against the :sim generator registry entry's own :default-params,
 ;; then drives that same entry's :out-dir-fn/:execute-fn -- the
-;; registry (ehrt.tools.corpus.generators) stays the single source of
+;; registry (ehrt.corpus.generators) stays the single source of
 ;; what :sim generation does. ----
 
 (defn generate-sim-command
@@ -482,7 +492,7 @@
   command, sharing generate/default-seed with :synthea's own zero-flag
   default), merged params -> that entry's own :out-dir-fn for the
   derived out-dir, then its own :execute-fn. Rejects up front with the
-  shared :out-dir-exists guard (ehrt.tools.interface/out-dir-exists?/
+  shared :out-dir-exists guard (ehrt.corpus.interface/out-dir-exists?/
   out-dir-exists-error) when the resolved out-dir already exists and is
   non-empty -- the same determinism guard corpus.generate/generate!
   enforces for :synthea: a second zero-flag run must never silently
@@ -495,10 +505,10 @@
                  emit (assoc :emit emit)
                  reference-date (assoc :reference-date reference-date)
                  config (assoc :config config))
-        resolved-result (generators/generators-resolve-params :sim params)]
+        resolved-result (generators/generator-resolve-params :sim params)]
     (if-not (result/ok? resolved-result)
       resolved-result
-      (let [entry (generators/generators-lookup :sim)
+      (let [entry (generators/generator-lookup :sim)
             merged (:payload resolved-result)
             resolved-out-dir (or out-dir ((:out-dir-fn entry) merged))]
         (if (generate/out-dir-exists? resolved-out-dir)
@@ -564,11 +574,11 @@
            git-describe-fn now-fn]
     :or {operator-version "1" git-describe-fn real-git-describe
          now-fn #(str (LocalDate/now))}}]
-  (let [operator (operators/lookup (keyword operator-id) operator-version)]
+  (let [operator (operators/operator-lookup (keyword operator-id) operator-version)]
     (if-not operator
       (result/rejected :unknown-operator
                         {:id operator-id :version operator-version
-                         :valid-options (sort (map :id (operators/entries)))
+                         :valid-options (sort (map :id (operators/operator-entries)))
                          :hint "run: ehrt corpus operators"})
       (let [format (:format operator)
             stdout-result (stdout-out-dir-result out-dir)
@@ -657,14 +667,14 @@
   directory -- the generate-and-catalog path in one command. Tried
   first via generator-source/parse-source-designator; a generator-kind
   result resolves the generator for real
-  (ehrt.tools.interface/resolve!, executing its
+  (ehrt.corpus.interface/resolve-generator-source!, executing its
   engine and yielding a dir Source) before intaking it via intake/
   intake-via-source!.
 
   SS-3 Step 6 (ruling 5): :path may also be a stdin designator
   (\"stdin:?format=v2-er7&framing=er7-multi\") -- read (real System/in,
   or :in-override for tests), spooled
-  (ehrt.tools.interface/resolve!, :captured-at the
+  (ehrt.corpus-io.interface/spool-resolve!, :captured-at the
   CLI's own wall-clock-now, the impure boundary matching :received's
   own discipline), then intaken via intake/intake-via-source! exactly
   like a resolved generator Source.
@@ -682,7 +692,7 @@
     (cond
       (generator-url? designator-result)
       (let [source (:payload designator-result)
-            resolved-result (generator-source/resolve! (:kind source) (dissoc source :kind))]
+            resolved-result (generator-source/resolve-generator-source! (:kind source) (dissoc source :kind))]
         (if-not (result/ok? resolved-result)
           resolved-result
           (intake/intake-via-source! {:source (:payload resolved-result)
@@ -721,7 +731,7 @@
   violates. A reader choosing an operator wants the first; a reader
   explaining a gate's finding wants the second."
   [{:keys [format]}]
-  (let [entries (operators/entries)
+  (let [entries (operators/operator-entries)
         filtered (if format
                    (filter #(= (keyword format) (:format %)) entries)
                    entries)
@@ -794,7 +804,7 @@
 
 (defn gate-command
   "Builds an `ehrt gate <format>` command function from that format's
-  gate-file/gate-dir functions (ehrt.tools.interface, and
+  gate-file/gate-dir functions (an engine interface, e.g. ehrt.judge-v2-hapi.interface, and
   eventually judge.fhir -- same shape). :path may name a single file or
   a directory; either way the result is normalized into one
   judge.report (gate-label identifies which gate ran, in :run). Writes
@@ -805,7 +815,7 @@
   is an operational failure, not a judgment.
 
   :baseline (P6, a path to a previously-written --report EDN file)
-  switches to baseline-relative mode (ehrt.tools.interface/
+  switches to baseline-relative mode (ehrt.judge.interface/
   baseline-relative-report): the written/returned payload becomes
   {:absolute :relative} instead of a bare Report, and the exit-code
   decision below follows :relative's totals, not :absolute's -- see
@@ -857,7 +867,7 @@
                   (or write-error (decision->result decision rpt)))))))))))
 
 (def gate-v2-command
-  (gate-command gate-v2/v2-gate-file gate-v2/v2-gate-dir :v2))
+  (gate-command gate-v2/gate-file gate-v2/gate-dir :v2))
 
 (def default-fhir-gate-out-dir
   "out/scratch/gate-fhir")
@@ -886,15 +896,15 @@
                                 :out-dir (or out-dir default-fhir-gate-out-dir)}
                         java-bin (assoc :java-bin java-bin)
                         no-verdict-cache (assoc :verdict-cache? false))
-            gate-fn (gate-command #(gate-fhir/fhir-gate-file % fhir-opts)
-                                  #(gate-fhir/fhir-gate-dir % fhir-opts)
+            gate-fn (gate-command #(gate-fhir/gate-file % fhir-opts)
+                                  #(gate-fhir/gate-dir % fhir-opts)
                                   :fhir)]
         (gate-fn {:path path :report report :baseline baseline
                   :treat-no-verdict-as treat-no-verdict-as})))))
 
 ;; ---- ADR-0015: `ehrt gate v2-nist` -- picks up ADR-0012's own
 ;; skipped CLI expansion. As of the judge-family parity pass (P2-2,
-;; ruled 2026-07-31), ehrt.tools.interface/v2-nist-gate-file/-gate-dir
+;; ruled 2026-07-31), ehrt.judge-v2-nist.interface/gate-file/-dir
 ;; return the same kernel/ok {:verdict :findings :path [:cause]} /
 ;; kernel/error envelope judge-v2-hapi's own engine does, and walk
 ;; recursively like judge-v2-hapi's own gate-dir now does too -- these
@@ -910,7 +920,7 @@
                        ex-data-map)))
 
 (defn- v2-nist-gate-file*
-  "Delegates to ehrt.tools.interface/v2-nist-gate-file, which now
+  "Delegates to ehrt.judge-v2-nist.interface/gate-file, which now
   returns the kernel envelope directly, including kernel/error
   :file-not-found for a missing path (parity pass, ruled 2026-07-31) --
   catches the engine's own :ambiguous-msg-id ex-info (ADR-0012's
@@ -920,27 +930,27 @@
   a recognized, named condition at this seam."
   [validator-state path]
   (try
-    (gate-v2-nist/v2-nist-gate-file validator-state (io/file path))
+    (gate-v2-nist/gate-file validator-state (io/file path))
     (catch clojure.lang.ExceptionInfo e
       (if (= :ambiguous-msg-id (:type (ex-data e)))
         (v2-nist-wrap-ambiguous-msg-id path (ex-data e))
         (throw e)))))
 
 (defn- v2-nist-gate-dir*
-  "Delegates to ehrt.tools.interface/v2-nist-gate-dir, itself now
+  "Delegates to ehrt.judge-v2-nist.interface/gate-dir, itself now
   kernel-enveloped and recursive like judge-v2-hapi's own gate-dir
   (parity pass, ruled 2026-07-31) -- catches :ambiguous-msg-id exactly
   like v2-nist-gate-file* above."
   [validator-state dir]
   (try
-    (gate-v2-nist/v2-nist-gate-dir validator-state dir)
+    (gate-v2-nist/gate-dir validator-state dir)
     (catch clojure.lang.ExceptionInfo e
       (if (= :ambiguous-msg-id (:type (ex-data e)))
         (v2-nist-wrap-ambiguous-msg-id dir (ex-data e))
         (throw e)))))
 
 (def default-v2-nist-profile-hint
-  "components/tools/test-fixtures/v2-nist/COVID19_ELR-v2.3.1 -- the CDC COVID19_ELR-v2.3.1 fixture, this repo's own documented try-it bundle (ADR-0012/ADR-0015)")
+  "components/corpus/test-fixtures/v2-nist/COVID19_ELR-v2.3.1 -- the CDC COVID19_ELR-v2.3.1 fixture, this repo's own documented try-it bundle (ADR-0012/ADR-0015)")
 
 (defn v2-nist-gate-command
   "`ehrt gate v2-nist PATH --profile BUNDLE_DIR` (ADR-0015): the
@@ -950,7 +960,7 @@
   profile\" disclosure), so an absent --profile is a named rejection,
   never a silently-assumed bundle. The validator is built exactly ONCE
   per invocation (:make-validator-fn, defaulting to
-  ehrt.tools.interface/v2-nist-make-validator, injectable so a test can
+  ehrt.judge-v2-nist.interface/make-validator, injectable so a test can
   count calls) -- context construction dominates this engine's own
   cost (ADR-0012), so gate-command's own gate-file-fn/gate-dir-fn
   closures below close over one already-built validator-state, never
@@ -960,7 +970,7 @@
   violation per ADR-0012) is caught here and surfaced as a named
   operational error, not an uncaught stack trace."
   [{:keys [path report profile baseline treat-no-verdict-as make-validator-fn]
-    :or {make-validator-fn gate-v2-nist/v2-nist-make-validator}}]
+    :or {make-validator-fn gate-v2-nist/make-validator}}]
   (if (str/blank? profile)
     (result/rejected :v2-nist-profile-required
                       {:hint (str "ehrt gate v2-nist requires --profile BUNDLE_DIR -- try " default-v2-nist-profile-hint)})
@@ -1062,7 +1072,7 @@
 ;; ---- ADR-0013: `ehrt show` -- the pretty-always display verb. Joins
 ;; D11's own sniff dispatch (gate-candidate-files-in/sniff-path-format
 ;; above) rather than inventing a second one; rendering itself lives in
-;; ehrt.tools.display, required here as `display`. ----
+;; ehrt.corpus.display, required here as `display`. ----
 
 (defn- show-ambiguous-error
   [path payload]
@@ -1102,7 +1112,7 @@
   and a mixed or unclassifiable set is the same operational-error shape
   D11 already uses for gate -- naming what confused it, never a silent
   per-file split. Read-only by construction: this never writes
-  anything -- ehrt.tools.display's own functions only ever read the
+  anything -- ehrt.corpus.display's own functions only ever read the
   string content this function already slurped."
   [{:keys [path]}]
   (let [f (io/file path)]
@@ -1139,7 +1149,7 @@
 ;; ---- ADR-0014: `ehrt play`'s executor -- folds player/plan's own
 ;; emission plan through an injected :sleep-fn and one sink function.
 ;; This is the only place in this file that ever sleeps for the
-;; player's own sake; the plan itself (ehrt.tools.player) never does. ----
+;; player's own sake; the plan itself (ehrt.corpus.player) never does. ----
 
 (defn real-sleep!
   "Thread/sleep ms, skipped entirely for a non-positive wait -- the
@@ -1387,7 +1397,7 @@
 
 (defn- parse-canonicalizer-steps
   "\"id@v,id2@v2\" -> [[:id \"v\"] [:id2 \"v2\"]] -- the ordered
-  [id version] pairs ehrt.tools.interface/apply-canonicalizers
+  [id version] pairs ehrt.kernel.interface/apply-canonicalizers
   expects. Blank/nil -> []."
   [s]
   (if (str/blank? s)
@@ -1401,7 +1411,7 @@
   "`ehrt check DIR --expected DIR --assertions FILE
   [--canonicalizers id@v,...] [--pair-by path|hash] [--report ...]`.
   :assertions names an EDN file holding a vector of assertion maps
-  (ehrt.tools.interface/Assertion) -- read here, the CLI's own
+  (see check-corpus's own docstring for the shape) -- read here, the CLI's own
   impure boundary; omitted entirely (with :expected given) delegates
   straight to check/check-corpus's own default
   ([{:kind :matches-expected}]). :canonicalizers is a comma-separated

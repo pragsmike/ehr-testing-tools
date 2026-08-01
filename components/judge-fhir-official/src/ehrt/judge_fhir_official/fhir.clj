@@ -36,7 +36,7 @@
 (def default-fhir-version "4.0")
 
 (def verdict-mapping-version "v2")
-(def verdict-mapping-cited-to "components/tools/docs/experiments/EXP-C5-results.md")
+(def verdict-mapping-cited-to "components/corpus/docs/experiments/EXP-C5-results.md")
 
 ;; verdict-mapping-version bumped v1 -> v2 (ADR-0010, O2): the
 ;; EXP-C5-derived classification logic itself did not change (the same

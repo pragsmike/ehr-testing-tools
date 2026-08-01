@@ -4,10 +4,12 @@
   interface.clj, but Polylith's own dependency-direction enforcement
   (poly check: a brick that reaches into another brick's
   implementation namespace, not its interface, fails check) requires
-  one the moment palgebra becomes its own component -- components/tools'
-  lint.clj and pipeline.clj both genuinely require palgebra (two real
-  :require sites, confirmed by grep against the pre-carve repo, not a
-  hypothetical). Re-exports exactly what components/tools calls."
+  one the moment palgebra becomes its own component -- lint.clj and
+  pipeline.clj (components/docs-tooling since the stage-1 split, in
+  the corpus domain component before that) both genuinely require
+  palgebra (two real :require sites, confirmed by grep against the
+  pre-carve repo, not a hypothetical). Re-exports exactly what
+  components/docs-tooling calls."
   (:require [ehrt.palgebra.lint :as lint]
             [ehrt.palgebra.signature :as signature]))
 

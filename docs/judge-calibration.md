@@ -2,9 +2,9 @@
 
 One page, honest, cited -- exactly the question a team gating its own
 ingestion-pipeline output against this repo's gates needs answered
-before it trusts a green run. Source: `../components/tools/docs/experiments/EXP-C5-results.md`
+before it trusts a green run. Source: `../components/corpus/docs/experiments/EXP-C5-results.md`
 (the offline validator-behavior classification) and P5's contract-pairing
-suite (`projects/integration/test/ehrt/tools/contract_pairing_test.clj`,
+suite (`projects/integration/test/ehrt/integration/contract_pairing_test.clj`,
 tagged `^:integration`, run explicitly against the real official FHIR
 validator -- not simulated).
 
@@ -39,7 +39,7 @@ not three -- `fatal` alongside `error`/`warning`/`information`.
 ## v2 judge (`judge.v2`), base-structural only
 
 Mutation operators exist for HL7 v2 as of P7's seed catalog
-(`ehrt.tools.corpus.operators`, five `:v2` entries). What's
+(`ehrt.corpus.operators`, five `:v2` entries). What's
 calibrated here is the tier itself: HAPI's `defaultValidation` context
 wires primitive-type checking into parsing, so message-structure-
 resolution failures, encoding/delimiter failures, and primitive
@@ -55,8 +55,8 @@ this tier, so there is no check this judge can only partially resolve.
 ### Calibration: what the seed catalog convicts, and what P7 found it can't (2026-07-25, CAL-1)
 
 Every seed operator below was verified empirically against
-`components/tools/test-fixtures/v2/adt-a01-admit.hl7` before being registered --
-`components/tools/test/ehrt/tools/v2_contract_pairing_test.clj` is where that
+`components/corpus/test-fixtures/v2/adt-a01-admit.hl7` before being registered --
+`components/corpus/test/ehrt/corpus/v2_contract_pairing_test.clj` is where that
 claim gets a regression, not just a one-off session probe.
 
 | Defect operator | Locator used | Verdict / finding | Notes |

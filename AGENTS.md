@@ -30,12 +30,12 @@ running, but the user path never mentions it and this dev path marks
 it deprecated here. **Retirement trigger:** retire `bases/sim-cli` and
 `projects/sim` when a review finds no use outside their own tests —
 not scheduled, just named, per `notes/facts-register.md`.
-`components/tools` + `components/palgebra`
+`components/corpus` + `components/palgebra`
 + `bases/cli` (from `ehr-testing-tools`) — corpus construction
 (generation, mutation, provenance) and conformance gating (HL7 v2,
 FHIR); `components/kernel` + `components/judge` (ADR-0008) — the
 shared foundation layer and the conformance-judging code, extracted out
-of `components/tools`' own named hole H4 (ADR-0002 R14).
+of the then-`components/tools`' own named hole H4 (ADR-0002 R14).
 `components/judge-v2-hapi` + `components/judge-fhir-official`
 (ADR-0011) — the two gate engines themselves, extracted out of
 `components/judge` in turn; `judge` now keeps only the verdict
@@ -55,21 +55,33 @@ usecases, pipeline, quickstart-fresh, lint), extracted out of
 transport/IO seam (sources, sinks, spooling, framing codecs, wire
 wrappers: `framing`, `er7`, `spool`, `spool-source`, `source-sink`,
 `source-sink-url`, `sink-write`, `operation-manifest`,
-`canonicalizers`), extracted out of `components/tools`; `tools`' own
-domain namespaces (`mutate`/`operators`/`intake`/`generator-source`)
-and `bases/cli` now require it directly. Stage 3 (narrowing `tools` to
-its domain, retiring the façade) is ruled but not yet executed.
+`canonicalizers`), extracted out of `components/tools`; the domain
+namespaces (`mutate`/`operators`/`intake`/`generator-source`)
+and `bases/cli` now require it directly. **Updated a fourth time
+2026-07-31** (split stage 3, `notes/ADRs.md` ADR-0018): the `tools`
+component is RETIRED — what remained after stages 1–2 was the corpus
+domain, renamed `components/corpus` (`ehrt.corpus.*`, sim adapter
+`ehrt.corpus.sim-adapter`) with an interface designed from live
+consumers (38 defs from the façade's 64: kernel/judge/engine relays
+dissolved, consumers repointed to the owning interfaces directly);
+`bases/cli` now composes component interfaces directly and the corpus
+domain has no judge-engine edge at all.
 `projects/ehrt-cli` composes kernel + judge + judge-v2-hapi +
-judge-fhir-official + judge-v2-nist + tools + corpus-io + docs-tooling
+judge-fhir-official + judge-v2-nist + corpus + corpus-io + docs-tooling
 + palgebra + cli + sim, `projects/conformance` and `projects/integration`
-are the two base-less projects exercising sim + tools + corpus-io
-(+ kernel/judge/judge-v2-hapi/judge-fhir-official/judge-v2-nist
-transitively) + palgebra together, split by artifact-fetch dependency
+are the two base-less projects exercising sim + corpus + corpus-io
+(+ kernel/judge and, in `conformance` only, all three engines)
++ palgebra together, split by artifact-fetch dependency
 (see `notes/ADRs.md` ADR-0002, closing named holes H1–H3, and ADR-0004
 R19); `conformance` additionally composes `docs-tooling`, hosting its
 moved tests (ADR-0002's own AR-3 placement rule, `notes/ADRs.md`
-ADR-0016), and now also hosts `corpus-io`'s own moved tests (same
-placement rule, ADR-0017).
+ADR-0016), and also hosts `corpus-io`'s own moved tests (same
+placement rule, ADR-0017); `integration` dropped `judge-v2-nist` at
+stage 3 (nothing on its classpath consumes it once the façade's
+every-engine relay retired — its own tests gate through the official
+FHIR validator only; `judge-v2-hapi` stays, because the corpus
+brick's own contract-pairing test requires it and poly runs a
+declared brick's tests in every composing project).
 
 **The CLI is `ehrt`** ("e-heart", R32/ADR-0009, 2026-07-29) —
 `bin/ehrt`, renamed from `ehr`; `ehr` stays reserved for future
@@ -166,11 +178,12 @@ should be decomposed into more than one component later — that's a
 future, author-ruled extraction session's call, not a standing
 invitation for cleanup.
 
-The same discipline, same disclosure, applies to `components/tools`'
-`ehrt.tools.interface` and `components/palgebra`'s
-`ehrt.palgebra.interface` (ADR-0002, R13) — judge/corpus foundation
-extraction is a future, ruled session's call (ADR-0002, R14), not
-something this width hints at.
+The same discipline, same disclosure, applies to `components/palgebra`'s
+`ehrt.palgebra.interface` (ADR-0002, R13). `components/corpus`'
+`ehrt.corpus.interface` is the exception, deliberately: stage 3 of the
+tools split (`notes/ADRs.md` ADR-0018, 2026-07-31) was the ruled
+session that redesigned it from live consumers — its 38 defs ARE
+design intent, the one sanctioned improvement of that stage.
 
 ## Discipline inherited from sim (ADR-0001, R4)
 
@@ -195,14 +208,15 @@ sim's own discipline, unchanged by the move:
 
 ## Constraints
 
-- **Dependency direction**: `components/tools`/`projects/conformance`
+- **Dependency direction**: `components/corpus`/`projects/conformance`
   may depend on `components/sim`; `components/sim` must never depend
-  on anything tools-derived (inherited from sim's own ADR-0001; still
-  the rule inside one workspace, enforced now by `poly check` rather
-  than by being a separate repo). In practice `projects/conformance`
-  consumes sim by subprocess only, never a classpath dependency
-  (`tools/ADR-0013`, carried forward as provenance) — `poly/sim` does
-  not appear in its `deps.edn`.
+  on anything corpus-derived (inherited from sim's own ADR-0001, where
+  the rule named the then-`tools` component; still the rule inside one
+  workspace, enforced now by `poly check` rather than by being a
+  separate repo). The old subprocess-only consumption rule
+  (`tools/ADR-0013`) is superseded: since the in-process `ehrt sim`
+  mount (ADR-0004/ADR-0005) `poly/sim` is a real classpath dependency
+  of `ehrt-cli`, `conformance`, and `integration` alike.
 - **No PHI, no real-person data, ever** — including in test fixtures
   and docs.
 - **No CPT codes** (AMA-licensed). SNOMED CT, LOINC, RxNorm, ICD-10-CM,

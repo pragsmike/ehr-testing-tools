@@ -137,7 +137,7 @@ Free-form by design, so it differs:
 
 ```clojure
 ;; ehrt gate v2 / ehrt gate fhir
-{:gate :v2, :path "components/tools/test-fixtures/v2/adt-a01-admit.hl7"}
+{:gate :v2, :path "components/corpus/test-fixtures/v2/adt-a01-admit.hl7"}
 
 ;; ehrt check
 {:check {:name "check", :version "v1"},
@@ -241,7 +241,7 @@ Written as `manifest.edn` in a generated corpus's `--out-dir`. It is
 the provenance record: everything that was pinned when this corpus was
 made, so someone else can make the same one.
 
-Schema: `ehrt.tools.corpus.manifest/ManifestV1_1` — the version
+Schema: `ehrt.corpus.manifest/ManifestV1_1` — the version
 `ehrt corpus generate` produces today.
 
 | Field | Type | Meaning |
@@ -302,7 +302,7 @@ Written one per mutant, as `<output-dir>/lineage/<filename>.lineage.edn`
 — a subdirectory rather than sidecars interleaved with the data, so you
 can glob the data and the provenance separately.
 
-Schema: `ehrt.tools.lineage/LineageRecord`.
+Schema: `ehrt.corpus.lineage/LineageRecord`.
 
 | Field | Type | Meaning |
 |---|---|---|
@@ -350,7 +350,7 @@ artifact ran, under which config); this one states *transformation*
 lineage (these input hashes, this operator, these output hashes) for an
 in-process write that never ran an external engine at all.
 
-Schema: `ehrt.tools.corpus.operation-manifest/OperationManifestV1`.
+Schema: `ehrt.corpus-io.operation-manifest/OperationManifestV1`.
 
 | Field | Type | Meaning |
 |---|---|---|
@@ -533,10 +533,10 @@ read it from a shell instead of a REPL.
 | Report, totals, file entry | `ehrt.judge.report/Report` | live `ehrt gate v2` runs, passing and rejected, 2026-07-25 |
 | Verdicts, causes, findings | `ehrt.judge.finding/Finding`, `/Verdict`, `/Cause` | the same runs |
 | FHIR findings' `:disposition` / `:cause` | `ehrt.judge.fhir/interpret` | a live `ehrt gate fhir` run against a real mutant bundle, 2026-07-25 — 6554 findings, all three dispositions present |
-| Check report and its codes | `ehrt.tools.check` | live `ehrt check` runs in both golden-equivalence and per-file-assertion modes, 2026-07-25 |
-| Corpus manifest | `ehrt.tools.corpus.manifest/ManifestV1_1` | a real generated corpus's `manifest.edn` |
-| Lineage record | `ehrt.tools.lineage/LineageRecord` | a real mutant's lineage sidecar |
-| Operation manifest | `ehrt.tools.corpus.operation-manifest/OperationManifestV1` | a real `corpus mutate` batch's `operation-manifest.edn`, 2026-07-28 |
+| Check report and its codes | `ehrt.corpus.check` | live `ehrt check` runs in both golden-equivalence and per-file-assertion modes, 2026-07-25 |
+| Corpus manifest | `ehrt.corpus.manifest/ManifestV1_1` | a real generated corpus's `manifest.edn` |
+| Lineage record | `ehrt.corpus.lineage/LineageRecord` | a real mutant's lineage sidecar |
+| Operation manifest | `ehrt.corpus-io.operation-manifest/OperationManifestV1` | a real `corpus mutate` batch's `operation-manifest.edn`, 2026-07-28 |
 | The `--json` mapping | — | the captured JSON output of the runs above, not inferred from the projection's source |
 
 Semantics cited, never restated here: [ADR-0009](../notes/ADRs.md)
