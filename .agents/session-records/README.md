@@ -53,3 +53,30 @@ Does not replace or outrank:
 
 Empty at instantiation (2026-07-28, discipline-parity session, R25) —
 this session's own record will be its first entry, written at close.
+
+## Gap, 2026-07-29..2026-08-01 (recorded 2026-08-01, agent-ux capture session)
+
+The ritual lapsed for eight sessions between `2026-07-29-wsl-clone-igamt-hygiene.md`
+and this entry — nothing gated it, and it stopped the week velocity
+spiked (`.agents/plans/2026-08-01-agent-ux-charter.md` §2.1, the
+diagnosis this session's own charter-adoption work exists to close).
+**No retroactive record is fabricated for that gap.** Each of those
+eight sessions' own archived prompt under `notes/prompts/` carries a
+deviation record documenting what actually happened and what judgment
+calls it made; the design-channel conversation that drove them holds
+whatever isn't in those deviation records. This entry exists so a
+future reader doesn't mistake the gap for sessions that did nothing
+notable, or search here first and stop looking.
+
+## Records
+
+Files in this directory:
+
+  * 2026-07-28-discipline-parity.md
+  * 2026-07-29-development-resumption.md
+  * 2026-07-29-exp-d3-nist-validator.md
+  * 2026-07-29-judge-engine-extraction.md
+  * 2026-07-29-sim-sibling-errata-sweep.md
+  * 2026-07-29-storefront-polish.md
+  * 2026-07-29-wsl-clone-igamt-hygiene.md
+  * 2026-08-01-agent-ux-capture.md
