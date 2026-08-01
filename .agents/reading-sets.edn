@@ -13,12 +13,24 @@
 ;; every future session of that class is expected to read cold -- the budget
 ;; test makes that cost visible and conscious forever after, so each entry
 ;; below is justified, not just plausible. AGENTS.md is in every set (it is
-;; the entry point regardless of task class). No `.agents/skills/` entry
-;; appears in any task-class set below -- none of the ten skills indexed at
-;; `.agents/skills/README.md` are specific to corpus, sim, judge, or docs-
+;; the entry point regardless of task class).
+;;
+;; Migration session 5 (2026-08-02, item 5, AR-3) added exactly one skill
+;; file to every set below: `.agents/skills/build-session/SKILL.md` -- the
+;; ceremony it encodes (WSL-only git, staging hygiene, commit-message-via-
+;; file, post-push verification) applies to a session of ANY task class, not
+;; a specific domain, so unlike the other skills it earns its way into every
+;; set rather than staying index-only. `session-prompt` is deliberately NOT
+;; a :paths entry anywhere -- it is for the design channel authoring a
+;; session's own prompt, a different audience than a task-class session
+;; reading cold to do the task itself; see its own mention in :onboarding's
+;; comments below. `capture-session`/`extraction-stage`/`errata-sweep` stay
+;; excluded from every set below, same reasoning as the other nine
+;; unqualified skills: none of the ten pre-existing skills indexed at
+;; `.agents/skills/README.md` were specific to corpus, sim, judge, or docs-
 ;; tooling work (they are session-mechanics/meta skills: committee, handoff,
-;; probe, scenarios, etc.) -- so "the skills relevant to it" is the empty set
-;; for all four, honestly, not an omission.
+;; probe, scenarios, etc.) -- so "the skills relevant to it" stays the empty
+;; set for all four task classes, honestly, not an omission.
 
 {:onboarding
  {:paths ["AGENTS.md"
@@ -31,8 +43,17 @@
           ".agents/prompts/README.md"
           ".agents/memory/README.md"
           ;; the living plan -- what's landed, what's next, milestone grain
-          ".agents/plans/roadmap.md"]
-  :budget-lines 538}
+          ".agents/plans/roadmap.md"
+          ;; the checkpoint/COMMIT/AUTHOR-ACTION ceremony every session runs,
+          ;; regardless of task class (migration session 5, AR-3)
+          ".agents/skills/build-session/SKILL.md"]
+  ;; a session about to author a NEW session prompt (the design channel's
+  ;; own role, not a task-class session's) additionally reads
+  ;; `.agents/skills/session-prompt/SKILL.md` cold -- not listed above
+  ;; because that's a different audience from "a cold task-class session",
+  ;; and forcing every onboarding read to carry its cost would budget for an
+  ;; activity most onboarding sessions never do (migration session 5, AR-3).
+  :budget-lines 695}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one
@@ -54,8 +75,11 @@
           "components/corpus-io/src/ehrt/corpus_io/interface.clj"
           "docs/dev/pipeline.md"
           "docs/dev/notation.md"
-          "docs/dev/source-sink-design.md"]
-  :budget-lines 1519}
+          "docs/dev/source-sink-design.md"
+          ;; the checkpoint ceremony, applies regardless of task class
+          ;; (migration session 5, AR-3)
+          ".agents/skills/build-session/SKILL.md"]
+  :budget-lines 1640}
 
  ;; components/sim is the deterministic generator engine wrapping Synthea
  ;; (ADR-0005) -- engine-onboarding.md is the checklist every engine wrapper
@@ -71,8 +95,11 @@
  {:paths ["AGENTS.md"
           "components/sim/src/ehrt/sim/interface.clj"
           "docs/dev/engine-onboarding.md"
-          "docs/dev/components.md"]
-  :budget-lines 574}
+          "docs/dev/components.md"
+          ;; the checkpoint ceremony, applies regardless of task class
+          ;; (migration session 5, AR-3)
+          ".agents/skills/build-session/SKILL.md"]
+  :budget-lines 695}
 
  ;; components/judge (verdict vocabulary) plus its three gate engines
  ;; (judge-v2-hapi, judge-fhir-official, judge-v2-nist, ADR-0011's per-engine
@@ -90,8 +117,11 @@
           "components/judge-fhir-official/src/ehrt/judge_fhir_official/interface.clj"
           "components/judge-v2-nist/src/ehrt/judge_v2_nist/interface.clj"
           "docs/dev/engine-onboarding.md"
-          "docs/dev/components.md"]
-  :budget-lines 644}
+          "docs/dev/components.md"
+          ;; the checkpoint ceremony, applies regardless of task class
+          ;; (migration session 5, AR-3)
+          ".agents/skills/build-session/SKILL.md"]
+  :budget-lines 765}
 
  ;; components/docs-tooling (dev-time-only doc/lint tooling) generates and
  ;; lints docs/cli.md, docs/pipeline.md-equivalents, and docs/use-cases.md, and
@@ -103,5 +133,8 @@
  {:paths ["AGENTS.md"
           "components/docs-tooling/src/ehrt/docs_tooling/interface.clj"
           "docs/dev/architecture.md"
-          "docs/dev/README.md"]
-  :budget-lines 433}}
+          "docs/dev/README.md"
+          ;; the checkpoint ceremony, applies regardless of task class
+          ;; (migration session 5, AR-3)
+          ".agents/skills/build-session/SKILL.md"]
+  :budget-lines 554}}

@@ -1619,6 +1619,25 @@ about R30's application beyond this record's own existence.
   enforces — `AUTHORS-GUIDE.md` §1 and `docs/dev/way-of-working.md` §1
   carry matching dated notes.
 
+### Amendment (2026-08-02, migration session 5 — fix-forward, dated, not a revert)
+
+- **The `[A]`/`[C]` provenance-tag convention (this record's own
+  "Decision" section above) has gone unused since it was adopted.**
+  Distilling this record into `.agents/skills/session-prompt/SKILL.md`
+  (migration item 5) required checking real practice against the
+  written rule, and the check found that none of the five session
+  prompts written since this convention's adoption
+  (`.agents/prompts/2026-08-01-migration-session-1.md` through this
+  session's own prompt) tag any Author-ruling `[A]` or `[C]`. Not
+  silently fixed by retroactively tagging those five prompts (which
+  would fabricate a provenance judgment after the fact — the opposite
+  of what the tags are for) or by quietly dropping the convention from
+  the new skill (which would let the lapse read as if it had been
+  ratified). The skill documents the convention as this record states
+  it; the lapse itself is named here and in
+  `docs/dev/way-of-working.md`'s own matching dated note, for the
+  author to rule on.
+
 ---
 
 ## ADR-0008 — Kernel and judge extraction: ADR-0002 R14 (named hole H4) closed
@@ -4647,6 +4666,39 @@ below) added lines to `.agents/plans/roadmap.md` — itself one of
 cite `roadmap.md`). `.agents/reading-sets.edn` carries the corrected
 number; this note is a same-session fix-forward, not an edit to the
 paragraph above.
+
+**Dated note, 2026-08-02 (migration session 5).** Item 5 landed
+(`.agents/plans/2026-08-01-migration-report.md` item 5, sequenced
+after item 9 per that report's own recommendation, item 9 itself
+closed the same session on the author's own confirmation -- see that
+report's own dated `CONFIRMED`/`RULED` paragraphs): five repo-local
+skills under `.agents/skills/` -- `build-session`, `capture-session`,
+`extraction-stage`, `errata-sweep`, `session-prompt` (the fifth beyond
+this item's own original four-skill scope, added by this session's own
+ratifying prompt) -- each distilled from `AGENTS.md`,
+`AUTHORS-GUIDE.md`, `docs/dev/way-of-working.md`, this ADR, and the
+session records/ADRs each skill's own `SKILL.md` cites by name.
+Mirrored to `.claude/skills/`; `ehrt.docs-tooling.readme-presence-test`,
+`index-completeness-test`, and `skill-mirror-currency-test` all green.
+`build-session` was additionally added to every `.agents/reading-
+sets.edn` set (AR-3: the ceremony it encodes applies regardless of task
+class) -- the resulting budget deltas, this session's own measured
+actuals: **`:onboarding` 538 to 695, `:corpus` 1519 to 1640, `:sim` 574
+to 695, `:judge` 644 to 765, `:docs` 433 to 554** (each non-onboarding
+set's delta is exactly `build-session/SKILL.md`'s own 121 lines;
+`:onboarding` additionally absorbed this session's own growth to
+`.agents/skills/README.md` and `.agents/plans/roadmap.md`, both of
+which it already cites). `ehrt.docs-tooling.reading-set-budget-test`
+green against the corrected numbers.
+
+**Divergence found, named not resolved.** Writing `session-prompt`
+required checking this record's own `[A]`/`[C]` provenance-tag
+convention against actual practice: none of the five session prompts
+written since this convention's adoption tag any Author-ruling `[A]` or
+`[C]`. Not retroactively fixed and not silently dropped from the new
+skill -- see notes/ADRs.md ADR-0007's own third dated amendment and
+`docs/dev/way-of-working.md`'s matching note, for the full disposition.
+Full account: `.agents/session-records/2026-08-02-migration-session-5.md`.
 
 ---
 

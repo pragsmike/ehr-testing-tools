@@ -4,6 +4,14 @@
 **Date:** 2026-08-01
 **Mode:** assessment (per `.agents/skills/repo-adaptation/SKILL.md` Steps 1–3; no implementation this session — see AR-4 fence, `.agents/prompts/2026-08-01-skill-adaptation.md`)
 **Produced by:** the adapted repo-adaptation skill's own assessment mode, run against this repo, per charter §7 item 3 (`.agents/plans/2026-08-01-agent-ux-charter.md`)
+**Status (2026-08-02, migration session 5):** of the fourteen items in
+Part B below, only item 14 (the use-cases split) remains open -- items
+1-13 are all executed or ruled-closed as of this session (item 5 by
+this session itself; item 9 by the author's own fresh-session
+confirmation, this session's own dated note). See each item's own
+`RULED`/`CONFIRMED` paragraph below and `.agents/plans/roadmap.md` for
+the live picture; this report's Part A/B prose is left as originally
+written, annotated in place rather than rewritten.
 
 This report has two parts. **Part A** is the skill's own template output (Steps 1–2: inspect and classify). **Part B** is this session's actual deliverable: every charter §4 migration-table row and §5 gate not yet executed, as an approvable work item with its co-landed gate, sequenced, session-sized, and with open questions named rather than resolved. Charter rows already closed by the 2026-08-01 capture session (ADR-0023) or by this session's own skill-adaptation checkpoint are listed too, marked done, so this report is a complete picture of the table — not just the gaps.
 
@@ -134,6 +142,21 @@ Session size: **one session**, small — this is a writing task, not a design on
 
 Status: **not started.** No `build-session`, `capture-session`, `extraction-stage`, or `errata-sweep` skill exists under `.agents/skills/` (confirmed by directory listing: the 11 existing skills are `committee`, `find-skills`, `handoff`, `probe`, `repo-adaptation`, `review`, `scenarios`, `shared-skill-layout`, `string-diagram`, `wsl-windows-git-hygiene` — none match). `way-of-working.md` itself is intact and current (it received this session's own ceremony-rider amendment, C1).
 
+**RULED 2026-08-02 (migration session 5): executed.** Five skills
+landed under `.agents/skills/` -- `build-session`, `capture-session`,
+`extraction-stage`, `errata-sweep`, and a fifth not named in this
+item's own original scope, `session-prompt` (charter R-B's own
+design-channel preflight, added by the session prompt that ratified
+this execution) -- each citing its provenance in `AGENTS.md`,
+`AUTHORS-GUIDE.md`, `notes/ADRs.md`, and the session records named in
+its own `SKILL.md`. Mirrored to `.claude/skills/`, indexed in both
+`.agents/skills/README.md` and the mirror's own copy, all three
+affected gates (`readme-presence`, `index-completeness`,
+`skill-mirror-currency`) green. `engine-onboarding` was not added as a
+sixth skill, per this item's own already-ratified answer (RULED
+2026-08-01, ruling 3: stays a doc). Full account:
+`.agents/session-records/2026-08-02-migration-session-5.md`.
+
 Work: four new skills, each an operational encoding of a pattern `way-of-working.md` currently only narrates:
 - `build-session` — the checkpoint/COMMIT/AUTHOR-ACTION model, staging hygiene, R30/R-F ceremony **including today's post-push message-verification rider** (this session's own C1 addition is exactly the kind of accreted safeguard a `build-session` skill should encode so the next session doesn't have to re-read three files to reconstruct it).
 - `capture-session` — turning a ratified design doc into ADR + doc updates (this session's own predecessor, the 2026-08-01 agent-ux capture session, is the worked example).
@@ -220,6 +243,19 @@ fix-forward-with-disclosure rule (`AGENTS.md` Constraints, ADR-0001
 R10): stopped, recorded here, asked the author rather than silently
 overriding or silently choosing (c). **Item 9 remains open pending that
 answer** — see the session record for the exact question posed.
+
+**CONFIRMED 2026-08-02 (migration session 5), closing the open
+question.** The blocking condition named above was answered, not by
+this session but by the author directly: a fresh, non-nested Claude
+Code session's own Skill listing showed `wsl-windows-git-hygiene`
+(from `.claude/skills/`, mirror-with-gate, ADR-0024) with its full
+description intact. Reading (a) (mirror-with-gate, not symlinks) is
+confirmed working as landed migration session 1. No further mechanism
+work follows from this confirmation -- ADR-0024's mirror already
+satisfies it; the only remaining action is the paired, separate AUTHOR
+ACTION (fast-forward the `/mnt/c` clone), tracked on
+`.agents/plans/roadmap.md`'s own Externals section, not this item.
+Item 9 is closed.
 
 **10. Index-completeness gate (`.agents/` and `notes/`)**
 
@@ -377,6 +413,26 @@ all 38 frozen sim rows, the four miscitation bugs found and fixed
 (distinct from the citations freshly added), and the larger
 bare-ADR-docstring finding in `components/sim/src` named as future work
 rather than swept exhaustively this session.
+
+## RULED 2026-08-02 (migration session 5)
+
+This session (per its own author rulings AR-1..AR-5) executed item 5
+(five skills landed under `.agents/skills/`: `build-session`,
+`capture-session`, `extraction-stage`, `errata-sweep`, and
+`session-prompt` -- the fifth added by this session's own ratifying
+prompt, not this report's original scope) and closed item 9's open
+question (#5 in the consolidated list above) on the author's own
+confirmation, outside this session's own doing, that the mirror-with-
+gate reading already works. It also raised the `.agents/reading-sets.edn`
+budgets that adding `build-session` to every set forced (AR-3, old to
+new: `:onboarding` 538 to 695, `:corpus` 1519 to 1640, `:sim` 574 to
+695, `:judge` 644 to 765, `:docs` 433 to 554), and named -- not
+resolved -- a practice-vs-narrative divergence found while writing
+`session-prompt`: no session prompt since ADR-0007's `[A]`/`[C]`
+provenance-tag convention was adopted has actually used it. Item 14
+remains the only open item after this session -- see
+`.agents/session-records/2026-08-02-migration-session-5.md` for the
+full account.
 
 ## Urgent items
 

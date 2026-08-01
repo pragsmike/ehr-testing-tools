@@ -131,3 +131,36 @@ judgment concentrated where context was richest.
   checkpoint it just passed authorized. Defense: the COMMIT/AUTHOR
   ACTION convention (§1), and the fact that a delegated git-permission
   grant is read as scoped to its own session, not a standing change.
+
+## 6. Operationally encoded in skills (migration session 5, 2026-08-02)
+
+This document stays the human-readable narrative; the mechanics above
+are also encoded as repo-local skills a session loads on demand instead
+of re-deriving them from a close prose reading each time —
+`.agents/skills/build-session/` (§1, the checkpoint/COMMIT/AUTHOR-ACTION
+ceremony), `.agents/skills/capture-session/` (turning a ratified
+decision into `notes/ADRs.md` law), `.agents/skills/extraction-stage/`
+(the characterize→extract→verify→records split-stage discipline),
+`.agents/skills/errata-sweep/` (§2's fix-forward-with-disclosure pattern
+applied to stale doc claims), and `.agents/skills/session-prompt/`
+(charter R-B's design-channel preflight and the canonical prompt
+anatomy). Skills cite this document and `notes/ADRs.md`; they do not
+restate them — this document remains what outranks a skill's own prose
+if the two ever read differently.
+
+**Amendment, 2026-08-02 (migration session 5) — practice-vs-narrative
+divergence, named not resolved.** `notes/ADRs.md` ADR-0007 states that
+"every author-ruling list in a session prompt or ADR... marks each
+ruling `[A]` or `[C]`" (the provenance-tag convention). Checking every
+session prompt written since that convention's adoption
+(`2026-08-01-migration-session-1.md` through this session's own prompt,
+five prompts total) found **none** of their Author-rulings lists
+actually carry an `[A]`/`[C]` tag on any ruling — the convention has
+been silently unused since the day it was adopted, not merely applied
+inconsistently. `.agents/skills/session-prompt/SKILL.md` documents the
+convention as ADR-0007 states it (encoding the rule, not the five-prompt
+lapse) rather than quietly dropping it, since dropping it silently would
+defeat the audit-recoverability the tags exist for. Not resolved here —
+named for the author to rule on: retroactively tag the five prompts,
+rule the convention retired, or simply start applying it going forward.
+Matching note: `notes/ADRs.md` ADR-0007's own third dated amendment.

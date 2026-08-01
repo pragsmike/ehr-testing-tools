@@ -5,8 +5,6 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (approved migration, sequenced — .agents/plans/2026-08-01-migration-report.md)
-- Item 5: way-of-working → skills distillation (build-session incl. full ceremony,
-  capture-session, extraction-stage, errata-sweep, session-prompt) — after item 9
 - Item 14: use-cases split per review P3-1 (notes/2026-07-30-refactoring-review.md §5.2)
 
 ## Next (backlog, no session scheduled)
@@ -30,11 +28,10 @@ per item; done items move to the bottom of their section with a date and sha.
 - SETUP rewalk by an unspoiled human reader (F3 superseded-pending-rewalk)
 - Upstream the adapted repo-adaptation skill to pragsmike/skills (and cyberneutics
   if wanted) — AUTHOR ACTION named 2026-08-01
-- Item 9 (ADR-0024, landed 2026-08-01 as mirror-with-gate, not symlinks): run a
-  fresh, non-nested `claude -p`/session and confirm a previously-invisible skill
-  now appears in its listing (this session couldn't self-administer that check);
-  fast-forward the /mnt/c clone to pick up .claude/skills/ (and the several
-  commits it was already behind) — AUTHOR ACTION named 2026-08-01
+- Item 9 (ADR-0024, landed 2026-08-01 as mirror-with-gate, not symlinks): the
+  fresh-session discovery probe is DONE — see Done section below. Remaining:
+  fast-forward the /mnt/c clone to origin/main (several commits behind,
+  including .claude/skills/) — AUTHOR ACTION named 2026-08-01
 
 ## Deferred (explicitly, with revisit triggers)
 - P2-5 intake staging-dir behavior (deferred 2026-07-31)
@@ -88,3 +85,26 @@ per item; done items move to the bottom of their section with a date and sha.
   two further wrong-file-path miscitations also fixed; docstring/comment/
   fixture-remark edits only, zero behavior change; full one-to-one
   accounting in the session record (72f5542)
+
+## Done (this session, 2026-08-02, migration session 5)
+- Item 5: way-of-working session mechanics distilled into five repo-local
+  skills -- `build-session`, `capture-session`, `extraction-stage`,
+  `errata-sweep`, `session-prompt` -- each citing its own provenance in
+  AGENTS.md/AUTHORS-GUIDE.md/notes/ADRs.md/named session records;
+  mirrored to `.claude/skills/`, indexed in both READMEs, all three
+  affected gates (readme-presence, index-completeness,
+  skill-mirror-currency) green (60b9f87)
+- Item 9's fresh-session discovery probe: CONFIRMED 2026-08-02 (external
+  observation, no commit) -- a fresh, non-nested Claude Code session's
+  own Skill listing showed `wsl-windows-git-hygiene` with its full
+  description, closing the acceptance test migration session 1 could
+  not self-administer. The paired AUTHOR ACTION (fast-forward `/mnt/c`)
+  remains open, see Externals above.
+- `build-session` added to all five `.agents/reading-sets.edn` sets
+  (AR-3: ceremony applies regardless of task class); `session-prompt`
+  named in `:onboarding`'s own comments for design-channel
+  prompt-authoring sessions, not added as a budgeted path;
+  `capture-session`/`extraction-stage`/`errata-sweep` stay excluded from
+  every set, same reason the existing ten skills are (session-type, not
+  domain-task-class). Budget deltas in the session record and
+  `notes/ADRs.md` ADR-0023's own dated-note thread.
