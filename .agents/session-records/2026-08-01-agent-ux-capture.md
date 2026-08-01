@@ -131,7 +131,12 @@ what this record itself adds to `.agents/plans/`'s status line (C1).
 
 **AGENTS.md line count:** 276 → 204 (down 72 lines, 26%).
 
-**HEAD landed:** this record's own commit, immediately pushed per R30
-— the fourth and final checkpoint. Per-checkpoint shas: C1 `e868aae`,
-C2 `3a5ca06`, C3 `163194e`, C4 this commit (see `git log -1` at push
-time).
+**HEAD landed:** the commit this record's own checkpoint produces
+(`docs: session-record ritual resumes -- .agents/prompts created, this
+session's record and the 07-30..08-01 gap note landed`), pushed
+immediately after per R30 — the fourth and final checkpoint, same
+convention `2026-07-29-storefront-polish.md`'s own record used for the
+same self-reference problem (a commit's sha can't be known before it
+exists, so a record produced in that same commit cites the commit by
+its own message instead). Per-checkpoint shas for the three prior,
+already-existing commits: C1 `e868aae`, C2 `3a5ca06`, C3 `163194e`.
