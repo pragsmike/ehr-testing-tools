@@ -1,0 +1,107 @@
+;; Reading sets (migration item 8, charter R-D, .agents/plans/2026-08-01-agent-ux-charter.md).
+;; Named path lists a cold session of a given task class should read before
+;; starting work, plus a `:budget-lines` integer -- `ehrt.docs-tooling.reading-
+;; set-budget-test` resolves every path (a missing file is red -- a reading set
+;; can't cite a ghost), sums real line counts, and fails any set that exceeds
+;; its own budget. Every `:budget-lines` value below is the MEASURED ACTUAL of
+;; the set as composed this session (2026-08-02) -- not a target. Charter §6
+;; defers the real budget ruling to the author, after real sizes exist to rule
+;; against; these numbers are that baseline, dated in
+;; `.agents/session-records/2026-08-02-migration-session-4.md`.
+;;
+;; Composition principle (AR-1): prefer omission. A path added here is a path
+;; every future session of that class is expected to read cold -- the budget
+;; test makes that cost visible and conscious forever after, so each entry
+;; below is justified, not just plausible. AGENTS.md is in every set (it is
+;; the entry point regardless of task class). No `.agents/skills/` entry
+;; appears in any task-class set below -- none of the ten skills indexed at
+;; `.agents/skills/README.md` are specific to corpus, sim, judge, or docs-
+;; tooling work (they are session-mechanics/meta skills: committee, handoff,
+;; probe, scenarios, etc.) -- so "the skills relevant to it" is the empty set
+;; for all four, honestly, not an omission.
+
+{:onboarding
+ {:paths ["AGENTS.md"
+          ;; the .agents/ index layer: one README per durable-context
+          ;; subdirectory, so a cold session knows what each holds and where
+          ;; to look further without reading every file in every one
+          ".agents/plans/README.md"
+          ".agents/skills/README.md"
+          ".agents/session-records/README.md"
+          ".agents/prompts/README.md"
+          ".agents/memory/README.md"
+          ;; the living plan -- what's landed, what's next, milestone grain
+          ".agents/plans/roadmap.md"]
+  :budget-lines 523}
+
+ ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
+ ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one
+ ;; task class from a session's perspective -- corpus work routinely touches
+ ;; the I/O boundary. docs/dev/pipeline.md + notation.md are the pipeline's own
+ ;; resource-equation description and the notation it's written in (pipeline.md
+ ;; is unreadable without notation.md alongside it). source-sink-design.md is
+ ;; large (732 lines) but is the load-bearing design record for corpus-io's
+ ;; Source/Sink types -- cited pervasively by notes/ADRs.md and still carrying
+ ;; open decisions (D-b, OPEN-4/5/6) a corpus-io session needs to know about;
+ ;; corpus-io's own interface.clj is signatures only, no rationale, so the
+ ;; design doc is not optional context here. docs/dev/components.md (the
+ ;; external-tool catalog: Synthea, HAPI, NIST, IGAMT, FSH) is deliberately
+ ;; NOT included -- it's organized by engine, not by corpus's own domain logic,
+ ;; and belongs to :sim/:judge below instead.
+ :corpus
+ {:paths ["AGENTS.md"
+          "components/corpus/src/ehrt/corpus/interface.clj"
+          "components/corpus-io/src/ehrt/corpus_io/interface.clj"
+          "docs/dev/pipeline.md"
+          "docs/dev/notation.md"
+          "docs/dev/source-sink-design.md"]
+  :budget-lines 1519}
+
+ ;; components/sim is the deterministic generator engine wrapping Synthea
+ ;; (ADR-0005) -- engine-onboarding.md is the checklist every engine wrapper
+ ;; (generator/mutator/gate) must satisfy, directly load-bearing for sim work;
+ ;; components.md's Synthea section is the external-tool reference sim wraps.
+ ;; components/sim's own deep theory docs (components/sim/docs/: sim-theory,
+ ;; patient-state-model, trajectory-computation, event-sourcing, ...) are
+ ;; deliberately NOT included -- nine files, component-owned, discoverable via
+ ;; `poly ws get` and the component's own tree, well beyond what a lean
+ ;; orientation budget can carry; a sim session doing deep theory work reads
+ ;; those directly, not via this set.
+ :sim
+ {:paths ["AGENTS.md"
+          "components/sim/src/ehrt/sim/interface.clj"
+          "docs/dev/engine-onboarding.md"
+          "docs/dev/components.md"]
+  :budget-lines 574}
+
+ ;; components/judge (verdict vocabulary) plus its three gate engines
+ ;; (judge-v2-hapi, judge-fhir-official, judge-v2-nist, ADR-0011's per-engine
+ ;; split) -- a judge task session usually needs to know all four interfaces
+ ;; even when touching one engine, since judge's own Report/finding vocabulary
+ ;; is the shared contract. engine-onboarding.md and components.md (HAPI/NIST/
+ ;; validator/CDC sections) are the same two docs/dev files :sim carries, for
+ ;; the same reason: judge's engines are the "gate engine" half of the same
+ ;; engine-wrapper checklist and external-tool catalog sim's generator half
+ ;; uses.
+ :judge
+ {:paths ["AGENTS.md"
+          "components/judge/src/ehrt/judge/interface.clj"
+          "components/judge-v2-hapi/src/ehrt/judge_v2_hapi/interface.clj"
+          "components/judge-fhir-official/src/ehrt/judge_fhir_official/interface.clj"
+          "components/judge-v2-nist/src/ehrt/judge_v2_nist/interface.clj"
+          "docs/dev/engine-onboarding.md"
+          "docs/dev/components.md"]
+  :budget-lines 644}
+
+ ;; components/docs-tooling (dev-time-only doc/lint tooling) generates and
+ ;; lints docs/cli.md, docs/pipeline.md-equivalents, and docs/use-cases.md, and
+ ;; gates docs/dev/architecture.md's own currency against AGENTS.md
+ ;; (ehrt.docs-tooling.structure-currency-test) -- so architecture.md is this
+ ;; task class's own doc, not a workspace-wide add. docs/dev/README.md is the
+ ;; maintainer-docs-tree index docs-tooling sessions work within.
+ :docs
+ {:paths ["AGENTS.md"
+          "components/docs-tooling/src/ehrt/docs_tooling/interface.clj"
+          "docs/dev/architecture.md"
+          "docs/dev/README.md"]
+  :budget-lines 433}}

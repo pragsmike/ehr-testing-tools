@@ -51,13 +51,16 @@ only the author does) stay author-only in every mode.
 ## Reading this repo
 
 Per-task-class reading sets (onboarding / corpus / sim / judge / docs,
-each a budgeted path list) are **forthcoming — a build session lands
-`.agents/reading-sets.edn`** per the agent-UX charter
-(`.agents/plans/2026-08-01-agent-ux-charter.md` R-D, adopted
-`notes/ADRs.md` ADR-0023). Until then, start from this file's own
-Structure section below, `docs/dev/architecture.md` for the fuller
-workspace map, and `.agents/` (routing below) for durable session
-context.
+each a budgeted path list) live in
+[`.agents/reading-sets.edn`](.agents/reading-sets.edn) (charter R-D,
+`.agents/plans/2026-08-01-agent-ux-charter.md`, landed migration
+session 4, 2026-08-02) — `ehrt.docs-tooling.reading-set-budget-test`
+gates every path resolving and every set's real line count staying
+within its own `:budget-lines`. Budget numbers are the measured
+actuals of each set as composed, not yet author-ruled targets (charter
+§6). Also start from this file's own Structure section below,
+`docs/dev/architecture.md` for the fuller workspace map, and
+`.agents/` (routing below) for durable session context.
 
 ## Structure
 
