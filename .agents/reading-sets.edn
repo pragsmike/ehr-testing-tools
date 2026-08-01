@@ -60,7 +60,13 @@
   ;; 695 -- caught measuring the real total while writing this
   ;; checkpoint, fixed forward here rather than amending C2 (see
   ;; `notes/ADRs.md` ADR-0023's own correction note)
-  :budget-lines 697}
+  ;; raised 2026-08-02 (migration session 6, C3, the ceremony's own
+  ;; measured actual): the migration report's fully-executed retirement
+  ;; plus item 14's own roadmap Done entry (`.agents/plans/roadmap.md`)
+  ;; and this session's own session-record/prompt-archive index lines
+  ;; (both already-cited onboarding paths) brought the real total from
+  ;; 697 to 715
+  :budget-lines 715}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one
