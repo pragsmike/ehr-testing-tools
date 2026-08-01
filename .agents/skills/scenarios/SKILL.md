@@ -2,7 +2,7 @@
 name: scenarios
 description: >
   Run divergent scenario generation (the fan operation) using the roster
-  defined in agent/scenario-roster.md. Takes a situation description and
+  defined in .agents/skills/scenarios/roster.md. Takes a situation description and
   produces a set of distinct narrative scenarios exploring different
   possible futures. Every run writes a scenario record to
   <situation-dir>/scenarios/ (00–03 files). Use when the user types
@@ -48,7 +48,7 @@ Once the situation directory is resolved:
   ```
 - Write scenario output to `<situation-dir>/scenarios/`.
 
-**Rosters** (`agent/scenario-roster.md`) are always read from the cyberneutics repo — they are part of the methodology, not the situation output.
+**Rosters** (`.agents/skills/scenarios/roster.md`) are always read from this repo — they are part of the methodology, not the situation output.
 
 ## When to use
 
@@ -70,18 +70,18 @@ Once the situation directory is resolved:
 
 ## The Scenario Roster
 
-**Read the roster from `agent/scenario-roster.md`.** That file contains the
+**Read the roster from `.agents/skills/scenarios/roster.md`.** That file contains the
 core character definitions (4 narrative lenses) and the extension mechanism
 for domain-specific characters.
 
-If `agent/scenario-roster.md` does not exist or is unreadable, tell the user
+If `.agents/skills/scenarios/roster.md` does not exist or is unreadable, tell the user
 and stop. Do not fall back to a hardcoded roster.
 
 ## What the skill does
 
 When invoked, the skill:
 
-1. **Reads the roster** from `agent/scenario-roster.md` to get core characters
+1. **Reads the roster** from `.agents/skills/scenarios/roster.md` to get core characters
 2. **Parses extensions** if the user provided a `with:` clause
 3. **Frames the situation** (Phase 0) — structures the user's input into a
    situation with explicit ambiguity markers
@@ -172,7 +172,7 @@ Body: narrative framing of the situation (2–3 paragraphs).
 
 ### 01-roster.md
 
-Copy the YAML front matter from `agent/scenario-roster.md`, plus any
+Copy the YAML front matter from `.agents/skills/scenarios/roster.md`, plus any
 user-specified extensions. Records which roster was used for this run.
 
 ### 01-parameters.md
@@ -391,7 +391,7 @@ which one is materializing.
 
 ## Files reference
 
-- **Operational roster**: `agent/scenario-roster.md`
+- **Operational roster**: `.agents/skills/scenarios/roster.md`
 - **Theoretical grounding**: `palgebra/duality-and-composition.md`
 - **Composition workflow**: `artifacts/deliberated-choice-workflow.md`
 - **Practitioner guide**: `artifacts/scenario-generation.md`

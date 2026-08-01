@@ -36,7 +36,7 @@ Once the situation directory is resolved:
 - Write probe output to `<situation-dir>/probes/`.
 - Each run's self-contained artifacts go in `<situation-dir>/probes/run-0N/`.
 
-**Rosters** (`agent/roster.md`, `agent/scenario-roster.md`) are always read from the cyberneutics repo — they are part of the methodology, not the situation output.
+**Rosters** (`.agents/skills/committee/roster.md`, `.agents/skills/scenarios/roster.md`) are always read from this repo — they are part of the methodology, not the situation output.
 
 ## When to use
 

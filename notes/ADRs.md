@@ -4552,4 +4552,18 @@ scope (charter §7, sequencing amendment above).
 
 None.
 
+**Dated note, 2026-08-01 (migration session 1).** Two items this ADR's
+own fence named as ruled-but-unexecuted landed this session, per the
+migration report's own sequencing (`.agents/plans/2026-08-01-migration-report.md`
+items 6/7/13, all eight open questions ruled by the author — see that
+report's own "RULED 2026-08-01" section for the verbatim rulings): the
+`agent/scenario-roster.md` → `.agents/skills/scenarios/roster.md` merge
+and `agent/` retirement (items 6+7), and `.agents/plans/roadmap.md`
+landed from the design channel's ledger handover (item 13). The
+Claude-Code skill-discovery fix (item 9, this ADR's charter did not
+separately name it) was attempted and re-blocked this session on a
+standing conflict with this file's own `.claude/`-untracked ruling
+(carve-loss audit, 2026-07-28) — not resolved, referred back to the
+author. Full account: `.agents/session-records/2026-08-01-migration-session-1.md`.
+
 ---

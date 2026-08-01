@@ -156,7 +156,7 @@ After scoring the five rubrics, assess these structural qualities. These don't g
 
 **Charter fitness**: Did the deliberation actually address the stated problem? Or did it drift to adjacent/easier questions?
 
-**Character calibration**: Read the roster from `agent/roster.md`. For each character, check whether they stayed true to their documented propensity and avoided their documented failure mode. Use the calibration examples (good/bad) from the roster file as reference points. Were they well-calibrated (evidence-based, not caricatures)?
+**Character calibration**: Read the roster from `.agents/skills/committee/roster.md`. For each character, check whether they stayed true to their documented propensity and avoided their documented failure mode. Use the calibration examples (good/bad) from the roster file as reference points. Were they well-calibrated (evidence-based, not caricatures)?
 
 **Engagement depth**: Did the debate evolve? Did characters actually change the terms of the argument, or did they repeat their opening positions?
 
@@ -323,6 +323,6 @@ All paths under cyberneutics only:
 - **Evaluation rubrics detail**: `artifacts/evaluation-rubrics-reference.md`
 - **Independent evaluation theory**: `artifacts/independent-evaluation.md`
 - **Committee skill**: `.agents/skills/committee/SKILL.md`
-- **Operational roster**: `agent/roster.md`
+- **Operational roster**: `.agents/skills/committee/roster.md`
 - **Extended character reference**: `artifacts/character-propensity-reference.md`
 - **Deliberation record layout**: `examples/deliberations/README.md`, `agent/archive/augmentation-plan.md`

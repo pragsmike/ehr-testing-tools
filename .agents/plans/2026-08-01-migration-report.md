@@ -114,7 +114,21 @@ Session size: **one session** for all four skills together (they share a source 
 
 **6. `agent/scenario-roster.md` → `.agents/skills/scenarios/` (merge)**
 
-Status: **not started, and more than tidiness** — this is a live functional gap, not just a stray file. `.agents/skills/scenarios/SKILL.md` exists but is the *only* file in that skill directory; the roster data it presumably needs (`agent/scenario-roster.md`, the actual member list — Continuity, Disruption, Opportunity, etc. — copied verbatim from `pragsmike/cyberneutics` 2026-07-23) still sits in the stray singular `agent/` dir, never merged in. If the `scenarios` skill's own instructions reference a roster file at a `.agents/skills/scenarios/`-relative path, it's currently broken (not verified this session whether it's referenced by relative path or expected to be supplied ad hoc — worth checking in the build session, not this one).
+**RULED 2026-08-01 (migration session 1): executed.** Moved to
+`.agents/skills/scenarios/roster.md` (committee's own precedent —
+`.agents/skills/committee/roster.md` sits directly under the skill dir,
+not under `references/`); every current-tense `agent/scenario-roster.md`
+and `agent/roster.md` reference swept across `.agents/skills/{scenarios,probe,review}/SKILL.md`,
+plus the moved file's own stale header citation
+(`.agents/prompts/archive/...` → `notes/tools/prompts/2026-07-24-exp-sbom.md`,
+the file that citation actually names). Dated/historical docs (this
+report, the charter, session records) were left uncited-through per the
+existing tripwire-test precedent for narration. `agent/` (singular) is
+retired — the five-minute check (open question 4 below) found the
+`scenarios` `SKILL.md` referenced the roster by the stray relative path
+in six places; it was in fact broken as suspected, now fixed.
+
+Status (as assessed this session, superseded above): **not started, and more than tidiness** — this is a live functional gap, not just a stray file. `.agents/skills/scenarios/SKILL.md` exists but is the *only* file in that skill directory; the roster data it presumably needs (`agent/scenario-roster.md`, the actual member list — Continuity, Disruption, Opportunity, etc. — copied verbatim from `pragsmike/cyberneutics` 2026-07-23) still sits in the stray singular `agent/` dir, never merged in. If the `scenarios` skill's own instructions reference a roster file at a `.agents/skills/scenarios/`-relative path, it's currently broken (not verified this session whether it's referenced by relative path or expected to be supplied ad hoc — worth checking in the build session, not this one).
 
 Work: move `agent/scenario-roster.md` into `.agents/skills/scenarios/references/` (or wherever `SKILL.md`'s own instructions expect it — read that file first), update any relative citation, retire the now-empty `agent/` directory.
 
@@ -124,7 +138,9 @@ Session size: **one session**, small — bundle with item 7 (`agent/` retirement
 
 **7. `agent/` (singular) directory retirement**
 
-Status: **not started**, but trivially closes once item 6 lands — `agent/` has exactly one file, and moving it empties the directory. Not a separate session; listed separately here only because the charter table lists it separately.
+**RULED 2026-08-01: executed**, as a side effect of item 6 landing (predicted correctly above). `agent/` no longer exists in the tree.
+
+Status (as assessed this session, superseded above): **not started**, but trivially closes once item 6 lands — `agent/` has exactly one file, and moving it empties the directory. Not a separate session; listed separately here only because the charter table lists it separately.
 
 **8. `.agents/reading-sets.edn`**
 
@@ -150,6 +166,24 @@ Work: the charter's own AR-2 instruction is explicit that a repo-change implicat
 Gate: none named in §5 directly; would need its own drift-prevention test (symlink-integrity or content-hash-match between the two copies) if (a) is chosen.
 
 Session size: **one session** for (a) or (c); **one to two** for (b), given 11 directories to move and re-verify.
+
+**RULED 2026-08-01, conditional, then re-blocked (migration session 1).** The
+ruling was (a)/(b) conditional on an empirical symlink-discovery probe
+— see the session record for the probe attempt. Before executing
+either reading, this session found a **standing conflict neither the
+ruling nor this report anticipated**: `AGENTS.md` §`.claude/` carries an
+explicit, author-ruled, standing prohibition — *"`.claude/` stays
+untracked... Do not `git add` anything under it"* (carve-loss audit,
+2026-07-28) — and every option this item names ((a) symlink or mirror
+committed at `.claude/skills/`, (b) relocate skills there as the real
+location) requires committing content under `.claude/`. This is a
+repo-law conflict, not a mechanism choice this session's own delegated
+judgment covers (AR-1 delegated symlink-vs-mirror, not whether to breach
+a separate standing ruling to do either). Per this repo's own
+fix-forward-with-disclosure rule (`AGENTS.md` Constraints, ADR-0001
+R10): stopped, recorded here, asked the author rather than silently
+overriding or silently choosing (c). **Item 9 remains open pending that
+answer** — see the session record for the exact question posed.
 
 **10. Index-completeness gate (`.agents/` and `notes/`)**
 
@@ -185,7 +219,9 @@ Session size: folds into item 1's session.
 
 **13. `.agents/memory/`, `.agents/plans/` — filled or explicitly deferred**
 
-Status: **arguably already satisfied, pending author confirmation — not a build item.** `.agents/memory/README.md` already states, in its own words, why it's empty and what would end that ("this workspace hasn't yet accumulated its own durable design lineage distinct from what `notes/ADRs.md` already records") — that reads as exactly the "deliberately empty until X" language the charter row asks for. `.agents/plans/` is not empty at all — it holds `2026-08-01-agent-ux-charter.md` and, as of this session, `2026-08-01-migration-report.md` itself.
+**RULED 2026-08-01: `roadmap.md` specifically wanted, and landed** — `.agents/plans/roadmap.md`, seeded from Appendix A of the design channel's ledger handover, indexed in `plans/README.md`. `.agents/memory/` stays closed-as-is (no ruling needed there — only the roadmap question was live).
+
+Status (as assessed this session, superseded above): **arguably already satisfied, pending author confirmation — not a build item.** `.agents/memory/README.md` already states, in its own words, why it's empty and what would end that ("this workspace hasn't yet accumulated its own durable design lineage distinct from what `notes/ADRs.md` already records") — that reads as exactly the "deliberately empty until X" language the charter row asks for. `.agents/plans/` is not empty at all — it holds `2026-08-01-agent-ux-charter.md` and, as of this session, `2026-08-01-migration-report.md` itself.
 
 **Open question:** does the charter consider this row closed as-is, or does "filled" mean something more specific (e.g., a `roadmap.md`, which `plans/README.md` names as the not-yet-created rolling-plan file distinct from one-off plan docs like the charter)? Recommend closing this row with a one-line ADR note rather than scheduling work, unless the author wants `roadmap.md` created now.
 
@@ -229,6 +265,21 @@ Rough total: **7–9 sessions** if every open question resolves toward the cheap
 6. Item 11 — are frozen `notes/sim/` and `notes/tools/` exempt from the README-presence gate?
 7. Item 13 — does the charter consider `.agents/memory/`+`.agents/plans/` already closed, or is `roadmap.md` specifically wanted?
 8. Item 14 — what concretely is "the use-cases split"?
+
+## RULED 2026-08-01 (migration session 1)
+
+The author ruled all eight open questions above before this session began work. Recorded verbatim:
+
+1. `notes/prompts/` stays frozen in place; the landed pointer is the whole migration (second reading ratified; R8 precedent).
+2. Register merge: (a) citation-only — the tools precedent extends to sim; the work item becomes adding the missing `sim/F`-citation stubs where live claims repeat frozen rows, plus the notes index.
+3. `engine-onboarding` stays a doc.
+4. Scenarios roster path check: do it at item 6's start (this session) — done; the reference was in fact broken (six relative-path citations to a file that had never been merged in), confirmed and fixed this session.
+5. Discovery fix: report's (a), conditional on the empirical probe (AR-1) — probe attempted this session; see item 9's own body above for the standing-conflict finding that re-opened this question rather than closing it.
+6. Frozen `notes/sim/`, `notes/tools/` are exempt from the README-presence gate.
+7. `roadmap.md` is wanted; created this session from Appendix A — see `.agents/plans/roadmap.md`.
+8. "Use-cases split" = review P3-1 (`notes/2026-07-30-refactoring-review.md` §5.2): split `docs/use-cases.md` at the `use-cases.edn` source into index + per-use-case files, generation/anchors/freshness-gate intact. Item 14 is hereby scoped.
+
+This session (per its own author rulings AR-1..AR-5) executed items 9 (blocked, see above), 6, 7, and 13, and left items 1, 3(a), 4 (the underlying work, not the roster path-check), 5, 8, 10, 11, 12, 14 fenced for later sessions (AR-5) — see `.agents/session-records/2026-08-01-migration-session-1.md` for the full account.
 
 ## Urgent items
 

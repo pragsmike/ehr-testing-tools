@@ -23,17 +23,16 @@ wrong; a workspace that later wants several concurrently-tracked plans
 can still use tools' shape for that specific need without contradicting
 this default.
 
-Empty at instantiation (2026-07-28, discipline-parity session, R25) —
-this workspace's own roadmap doesn't exist yet; `notes/ADRs.md`'s own
-"named holes" sections currently carry that function. The first session
-that wants a rolling plan distinct from the ADR file's own holes should
-create `roadmap.md` here rather than growing it inside an ADR. Sim's and
-tools' own pre-merge plans stay frozen at `notes/sim/agents/plans/` and
-`notes/tools/agents/plans/`.
+`roadmap.md` landed 2026-08-01 (migration session 1, item 13), seeded
+from the design channel's own chat-resident ledger (which it retires as
+of that date) — see the file's own header for the update-in-same-commit
+rule. Sim's and tools' own pre-merge plans stay frozen at
+`notes/sim/agents/plans/` and `notes/tools/agents/plans/`.
 
 ## Plan list
 
 Files in this directory:
 
+  * roadmap.md — the rolling plan (milestone grain, updated same-commit as work)
   * 2026-08-01-agent-ux-charter.md
   * 2026-08-01-migration-report.md

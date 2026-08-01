@@ -1,4 +1,4 @@
-<!-- Copied verbatim from https://github.com/pragsmike/cyberneutics/blob/main/agent/scenario-roster.md (commit d2a475c), fetched 2026-07-23. Ruling: copy now, adapt at first real use — see .agents/prompts/archive/2026-07-24-exp-sbom.md. -->
+<!-- Copied verbatim from https://github.com/pragsmike/cyberneutics/blob/main/agent/scenario-roster.md (commit d2a475c), fetched 2026-07-23. Ruling: copy now, adapt at first real use — see notes/tools/prompts/2026-07-24-exp-sbom.md. Moved from agent/scenario-roster.md to here 2026-08-01 (migration session 1, item 6/7). -->
 ---
 roster:
   roster_name: "Cyberneutics Scenario Roster"
@@ -27,7 +27,7 @@ it at invocation time to get the fixed core of narrative lenses. To change the
 core composition, edit this file. For problem-specific extensions, see the
 Extension Mechanism section below.
 
-**This roster is distinct from the committee roster** (`agent/roster.md`).
+**This roster is distinct from the committee roster** (`.agents/skills/committee/roster.md`).
 The committee roster creates convergent friction (characters argue).
 The scenario roster creates divergent exploration (characters narrate
 independently). Conflating them collapses the fan/funnel duality.
