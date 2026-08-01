@@ -164,3 +164,14 @@ defeat the audit-recoverability the tags exist for. Not resolved here —
 named for the author to rule on: retroactively tag the five prompts,
 rule the convention retired, or simply start applying it going forward.
 Matching note: `notes/ADRs.md` ADR-0007's own third dated amendment.
+
+**Resolved, 2026-08-02 (provenance-adoption rider session).** Ruled
+`[A]`: adopted, applying going forward, not retroactively tagged — the
+five prompts named above stay untagged. `.agents/skills/session-prompt/SKILL.md`
+now states tagging as a required step of its Author-rulings anatomy
+(mirrored to `.claude/skills/session-prompt/SKILL.md`), with escalation
+semantics stated for the first time: a `[C]` ruling conflicting with the
+live tree is a default to fix-forward and reconcile; an `[A]` ruling
+conflicting with the live tree always escalates. Full ruling and its
+precedent citation: `notes/ADRs.md` ADR-0007's own fourth dated
+amendment.

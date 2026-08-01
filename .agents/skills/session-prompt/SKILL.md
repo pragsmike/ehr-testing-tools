@@ -65,10 +65,23 @@ observed consistently across every session prompt from
      fast-forward and record HEAD; other clone untouched; roadmap rows
      land same-commit).
    - **Author rulings** — numbered `AR-1`, `AR-2`, ...; each one
-     concrete and actionable, not a restatement of background. Tag `[A]`
-     (author-ruled) or `[C]` (channel-inferred) per ADR-0007's own
-     provenance convention when a future audit might need to tell which
-     is which.
+     concrete and actionable, not a restatement of background. **Every
+     ruling is tagged** `[A]` (author-ruled, verbatim or a direct
+     paraphrase the author would recognize as their own) or `[C]`
+     (channel-inferred: a reasonable default this workspace's own
+     tooling or a prior session supplied, not something the author said
+     in so many words) — per ADR-0007's own provenance convention
+     (ratified `[A]`, 2026-08-02, provenance-adoption rider session).
+     This is required, not a when-it-matters annotation: the tag decides
+     what the executing session does if the ruling conflicts with the
+     live tree at build time. A `[C]` ruling that conflicts is a default
+     to fix-forward and reconcile without stopping — the precedent is
+     the refactoring review's own R-1 vocabulary reconciliation
+     (`notes/2026-07-30-refactoring-review.md`'s header), where an
+     unverified claim was corrected against live code rather than
+     escalated. An `[A]` ruling that conflicts always escalates instead
+     — author intent vs. the tree's current state is never the
+     executing session's call to make silently.
    - **Checkpoints** — numbered `C1`, `C2`, ...; each names its intended
      commit message *verbatim*, so the session doesn't improvise scope
      at commit time.
@@ -90,12 +103,13 @@ observed consistently across every session prompt from
 ## Output
 
 A session prompt with a HEAD-cited preflight, numbered author rulings
-(provenance-tagged where it matters), checkpoints with verbatim commit
-messages, and a stated close-out and fence.
+each tagged `[A]`/`[C]`, checkpoints with verbatim commit messages, and
+a stated close-out and fence.
 
 ## Done when
 
 - [ ] The prompt's context paragraph states the HEAD sha it was read at.
 - [ ] Every ruling traces to a real roadmap row, ADR, or prior record.
+- [ ] Every ruling is tagged `[A]` or `[C]`.
 - [ ] Checkpoints name their commit messages verbatim.
 - [ ] The prompt states what it deliberately does not authorize.

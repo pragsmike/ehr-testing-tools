@@ -1638,6 +1638,37 @@ about R30's application beyond this record's own existence.
   `docs/dev/way-of-working.md`'s own matching dated note, for the
   author to rule on.
 
+### Amendment (2026-08-02, provenance-adoption rider session — fix-forward, dated, not a revert)
+
+- **Ruled `[A]` (ADR-0007 provenance tag): adopted, not retired, not
+  retroactively applied.** The `[A]`/`[C]` convention is active law,
+  effective from the item-14 prompt onward
+  (`.agents/prompts/2026-08-02-migration-session-6.md`, which ran
+  tagged as the demonstration). The five prompts written before that
+  one stay untagged — migration session 5's own amendment above already
+  declined to fabricate the judgment after the fact, and this ruling
+  doesn't reopen that choice.
+- **Escalation semantics, stated for the first time.** A `[C]`-tagged
+  ruling conflicting with the live tree is a default the executing
+  session may fix-forward and reconcile without stopping — the
+  precedent is the refactoring review's own vocabulary reconciliation
+  (`notes/2026-07-30-refactoring-review.md`'s header, "Vocabulary
+  reconciliation (R-1, applied via R-7)"), where a review brief's own
+  unverified phrasing was corrected against live code rather than
+  escalated back to the author. An `[A]`-tagged ruling conflicting with
+  the live tree always escalates instead, unconditionally — whether the
+  author's stated intent or the tree's current state is the thing to
+  trust is never the executing session's call to make silently.
+- **Enactment mechanics.** `.agents/skills/session-prompt/SKILL.md`
+  (mirrored to `.claude/skills/session-prompt/SKILL.md`, skill-mirror-
+  currency gate covers it) gains tagging as a required step of its
+  Author-rulings anatomy — not an optional when-it-matters annotation as
+  it read before this ruling — carrying this escalation semantics and a
+  one-line pointer to the R-1 incident above as the motivating case;
+  `docs/dev/way-of-working.md`'s own divergence note (§6) is resolved
+  with this ruling and its date. No `.agents/plans/roadmap.md` row is
+  touched — the finding never had one to close.
+
 ---
 
 ## ADR-0008 — Kernel and judge extraction: ADR-0002 R14 (named hole H4) closed
