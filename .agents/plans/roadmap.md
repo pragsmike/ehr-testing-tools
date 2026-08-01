@@ -35,7 +35,11 @@ per item; done items move to the bottom of their section with a date and sha.
 - SETUP rewalk by an unspoiled human reader (F3 superseded-pending-rewalk)
 - Upstream the adapted repo-adaptation skill to pragsmike/skills (and cyberneutics
   if wanted) — AUTHOR ACTION named 2026-08-01
-- If migration item 9 landed symlinks: verify the /mnt/c clone checks out sanely
+- Item 9 (ADR-0024, landed 2026-08-01 as mirror-with-gate, not symlinks): run a
+  fresh, non-nested `claude -p`/session and confirm a previously-invisible skill
+  now appears in its listing (this session couldn't self-administer that check);
+  fast-forward the /mnt/c clone to pick up .claude/skills/ (and the several
+  commits it was already behind) — AUTHOR ACTION named 2026-08-01
 
 ## Deferred (explicitly, with revisit triggers)
 - P2-5 intake staging-dir behavior (deferred 2026-07-31)
@@ -45,4 +49,9 @@ per item; done items move to the bottom of their section with a date and sha.
 
 ## Done (this session, 2026-08-01, migration session 1)
 - Items 6+7: `agent/scenario-roster.md` merged into `.agents/skills/scenarios/roster.md`,
-  `agent/` (singular) retired
+  `agent/` (singular) retired (47c815c)
+- Item 13: `.agents/plans/roadmap.md` (this file) lands from the design-channel
+  ledger handover (47c815c)
+- Item 9: `.claude/skills/` mirror-with-gate lands (ADR-0024); end-to-end proof
+  and the /mnt/c fast-forward are AUTHOR ACTION, see Externals above (a9e5be6,
+  8df3cf3)
