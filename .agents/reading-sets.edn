@@ -66,7 +66,11 @@
   ;; and this session's own session-record/prompt-archive index lines
   ;; (both already-cited onboarding paths) brought the real total from
   ;; 697 to 715
-  :budget-lines 715}
+  ;; raised 2026-08-02 (provenance-adoption rider session, C2, caught by
+  ;; the budget test itself before commit): this session's own
+  ;; session-record/prompt-archive index lines (same two already-cited
+  ;; onboarding paths) brought the real total from 715 to 717
+  :budget-lines 717}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one

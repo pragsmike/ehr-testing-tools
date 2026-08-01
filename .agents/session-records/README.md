@@ -87,3 +87,4 @@ Files in this directory:
   * 2026-08-02-migration-session-4.md
   * 2026-08-02-migration-session-5.md
   * 2026-08-02-migration-session-6.md
+  * 2026-08-02-provenance-adoption-rider.md
