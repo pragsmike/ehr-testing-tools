@@ -30,3 +30,9 @@ that wants a rolling plan distinct from the ADR file's own holes should
 create `roadmap.md` here rather than growing it inside an ADR. Sim's and
 tools' own pre-merge plans stay frozen at `notes/sim/agents/plans/` and
 `notes/tools/agents/plans/`.
+
+## Plan list
+
+Files in this directory:
+
+  * 2026-08-01-agent-ux-charter.md
