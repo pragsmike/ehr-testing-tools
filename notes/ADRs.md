@@ -300,6 +300,55 @@ silently resolved by whatever shape was locally convenient.
   `test/`, `poly test :project` green including the real sim-sibling
   gate-loop and full-capability-gate suites.
 
+### Amendments (2026-07-31, gate-hardening session — fix-forward, dated, not a revert)
+
+- **`ehrt.palgebra.deps-lint`'s D9/R16 rule became an allowlist.**
+  ADR-0018's split renamed `tools` to `corpus`, and its own named-future
+  list (item 5) recorded that this lint's denylist (`ehrt.tools.*`/
+  `ehrt.sim.*`) had gone half-vacuous the moment `ehrt.tools.*` stopped
+  naming anything real — nothing can require a namespace that no longer
+  exists, so that half of the rule silently stopped doing work. A
+  denylist of forbidden prefixes rots on every rename; this session
+  replaced it with the equivalent allowlist (any `ehrt.*` require from
+  `components/palgebra` outside `ehrt.palgebra.*` fails, whatever its
+  name), derived empirically from palgebra's real require set (`ehrt.palgebra.*`
+  only, confirmed by grep over every src/test `ns` form — no escalation
+  needed, self-containment held). Forbids future components by default,
+  with no maintenance edit here when one is renamed or added. Red→green
+  evidence: a temporary `ehrt.kernel.interface` require seeded into
+  `components/palgebra/src/ehrt/palgebra/lint.clj` failed
+  `the-real-palgebra-tree-passes-deps-lint-test` (`violations:
+  [{:required "ehrt.kernel.interface" ...}]`), reverted, re-confirmed
+  green; a permanent fixture-based test
+  (`lint-catches-an-arbitrary-future-component-outside-the-allowlist-test`)
+  now proves the same property against a name that never existed
+  (`ehrt.some-future-component.core`), not just the two historical
+  denylist names.
+- **`ehrt.docs-tooling.structure-currency-test` now checks exact tokens,
+  both directions.** ADR-0018's own AR-6 recorded that this gate "never
+  went red" for the `corpus` rename (named-future item 3): its presence
+  check used raw substring matching, so `corpus` passed trivially as a
+  substring of `corpus-io` before either doc named the new brick, and
+  it checked presence only — a retired brick's row had no way to trip
+  it. Rewritten with two independent checks: presence now matches each
+  real brick's exact backtick-delimited path token (`` `components/x` ``
+  / `` `bases/x` ``), substring-immune by construction; absence now
+  extracts every brick named as the *first cell* of a structure-table
+  row (line-anchored, so a row's own prose — e.g. architecture.md's
+  kernel/corpus rows citing `` `components/tools` `` as extraction
+  history — is never mistaken for a live row naming a retired brick)
+  and asserts it exists on disk. Red→green evidence, both directions:
+  removing the `` `components/corpus` `` token from AGENTS.md while
+  `` `components/corpus-io` `` stayed (the exact stage-3 vacuous case)
+  failed the presence test citing `` `components/corpus` `` by name;
+  adding a `` `components/tools` `` row to architecture.md's bricks
+  table failed the absence test citing that exact row; both reverted,
+  both re-confirmed green.
+- Both fixes close ADR-0018's post-split named-futures list items 3 and
+  5; full verification detail (derived require set, exact red→green
+  transcripts, per-push lane confirmation) in `notes/facts-register.md`
+  F17.
+
 ---
 
 ## ADR-0002 — Land `ehr-testing-tools`: components/tools + components/palgebra + bases/ehr-cli, close H1/H2/H3
