@@ -82,3 +82,4 @@ Files in this directory:
   * 2026-08-01-agent-ux-capture.md
   * 2026-08-01-skill-adaptation.md
   * 2026-08-01-migration-session-1.md
+  * 2026-08-02-migration-session-2.md

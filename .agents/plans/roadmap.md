@@ -62,4 +62,4 @@ per item; done items move to the bottom of their section with a date and sha.
   indexed, zone-marked); `.agents/skills/README.md` plus all 10 skill-directory
   READMEs land (mirrored to `.claude/skills/`); `ehrt.docs-tooling.readme-presence-test`
   enforces both trees going forward, `notes/sim/`/`notes/tools/` exempt
-  (ruling 6) (sha: this checkpoint's own, filled in by the session record)
+  (ruling 6) (ab9fe5e)
