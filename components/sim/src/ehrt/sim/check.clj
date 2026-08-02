@@ -438,10 +438,14 @@
 (defn clinical-content-only-when-admitted
   "Therapeutic-intent class, extended to M5b's compiled clinical content:
   :procedure/:observation/:medication-order are legal only when the
-  patient's prior state is :admitted."
+  patient's prior state is :admitted. GMF coverage Wave D stage D1
+  (ADR-0029): :diagnostic-report joins the set -- the same
+  therapeutic-intent-class scoping every other compiled clinical event
+  type already gets."
   [ground-truth]
   (for [{:keys [event before patient-id]} (engine/replay ground-truth)
-        :when (and (#{:procedure :observation :medication-order} (:event event)) (not= :admitted (:status before)))]
+        :when (and (#{:procedure :observation :medication-order :diagnostic-report} (:event event))
+                   (not= :admitted (:status before)))]
     {:invariant :clinical-content-only-when-admitted :patient-id patient-id :at (:t event)}))
 
 (defn medication-end-references-existing-order-and-follows-it-in-time

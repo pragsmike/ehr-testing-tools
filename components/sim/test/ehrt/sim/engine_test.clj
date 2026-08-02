@@ -788,6 +788,40 @@
     (is (= 38.2 (:value (first events))))
     (is (= "Cel" (:unit (first events))))))
 
+;; --- GMF coverage Wave D stage D1 (2026-08-02, ADR-0029 P5): :diagnostic-report --
+
+(def ^:private a-value-code {:system :snomed :code "10828004" :display "Positive (qualifier value)"})
+
+(deftest observation-decide-carries-value-code-and-category-through
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+        world1 (admit world0 0 "P1" "Renal")
+        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1"
+                                        {:type :observation :codes [a-concept] :value-code a-value-code
+                                         :category "laboratory" :citation a-citation})]
+    (is (= a-value-code (:value-code (first events))))
+    (is (= "laboratory" (:category (first events))))
+    (is (not (contains? (first events) :value)))))
+
+(deftest diagnostic-report-decide-emits-one-event-with-report-codes-and-observations
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+        world1 (admit world0 0 "P1" "Renal")
+        observations [{:codes [a-concept] :value-code a-value-code :category "laboratory"}]
+        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1"
+                                        {:type :diagnostic-report :codes [a-concept] :observations observations
+                                         :citation a-citation})]
+    (is (= 1 (count events)))
+    (is (= :diagnostic-report (:event (first events))))
+    (is (= [a-concept] (:codes (first events))))
+    (is (= observations (:observations (first events))))
+    (is (= a-citation (:citation (first events))))))
+
+(deftest diagnostic-report-decide-with-no-report-level-codes-omits-the-key
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+        world1 (admit world0 0 "P1" "Renal")
+        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1"
+                                        {:type :diagnostic-report :observations [{:codes [a-concept]}]})]
+    (is (not (contains? (first events) :codes)))))
+
 (deftest medication-order-then-end-references-the-order-by-citation-match
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
@@ -863,6 +897,25 @@
         world2 (fold-events world1 events)]
     (is (= [{:codes [a-concept] :t 10 :value 38.2 :unit "Cel"}]
            (:observations (get-in world2 [:patients "P1"]))))))
+
+(deftest diagnostic-report-flattens-every-child-into-its-own-observation-record
+  (testing "ADR-0029 P5: the SAME per-analyte flattening pattern
+            :result-available's own evolve already establishes, reused"
+    (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+          world1 (admit world0 0 "P1" "Renal")
+          observations [{:codes [a-concept] :value 92.0 :unit "mm[Hg]" :category "vital-signs"
+                         :reference-range {:low 90 :high 120} :interpretation :normal}
+                        {:codes [a-concept] :value-code a-value-code :category "laboratory"}]
+          {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1"
+                                          {:type :diagnostic-report :codes [a-concept] :observations observations})
+          world2 (fold-events world1 events)
+          folded (:observations (get-in world2 [:patients "P1"]))]
+      (is (= 2 (count folded)))
+      (is (= {:codes [a-concept] :t 10 :value 92.0 :unit "mm[Hg]" :category "vital-signs"
+              :reference-range {:low 90 :high 120} :interpretation :normal}
+             (first folded)))
+      (is (= {:codes [a-concept] :t 10 :value-code a-value-code :category "laboratory"}
+             (second folded))))))
 
 (deftest result-available-folds-every-analyte-into-patient-observations
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})

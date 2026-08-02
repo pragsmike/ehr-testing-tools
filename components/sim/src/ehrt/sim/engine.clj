@@ -93,10 +93,16 @@
    [:end-t {:optional true} :int]])
 
 (def ObservationRecord
-  "One observation -- either a GMF `:observation` event (:codes/:value/
-  :unit only) or a single analyte flattened out of a `:result-available`
-  event's own :results (order-profiles' richer shape: adds
-  :reference-range/:interpretation, the computed abnormal flag).
+  "One observation -- a GMF `:observation` event, a single analyte
+  flattened out of a `:result-available` event's own :results
+  (order-profiles' richer shape: adds :reference-range/:interpretation,
+  the computed abnormal flag), or a single child flattened out of a
+  GMF coverage Wave D `:diagnostic-report` event's own :observations
+  (ADR-0029 P5 -- the SAME per-analyte flattening pattern, reused, not
+  a third accumulator shape). :value-code/:category are new this wave
+  (D1a schema RULING P2/Q1); :reference-range/:interpretation, already
+  present for :result-available, are now also populated for a
+  vital-sign-reference-table-sourced :diagnostic-report child (Q2+Q3).
   Optional fields absent rather than nil for the plain-GMF case -- 'no
   invented fields' (M6 Task 1)."
   [:map
@@ -104,6 +110,8 @@
    [:t :int]
    [:value {:optional true} number?]
    [:unit {:optional true} :string]
+   [:value-code {:optional true} sim-model/Concept]
+   [:category {:optional true} :string]
    [:reference-range {:optional true} [:map [:low number?] [:high number?]]]
    [:interpretation {:optional true} [:enum :normal :low :high]]])
 
@@ -668,12 +676,43 @@
                      (citation-fields step))]
      :advance 0}))
 
+(defn- observation-value-fields
+  "value/unit/value-code/category/reference-range/interpretation,
+  verbatim (code passthrough law) -- GMF coverage Wave D stage D1
+  (ADR-0029 P2, D1a schema RULING Q1/Q2+Q3): shared by `decide
+  :observation` and `decide :diagnostic-report` (one per child, below),
+  the SAME reuse `ehrt.sim-trajectory.compile-trajectory/observation-
+  fields` already establishes one layer down -- never re-derived, only
+  carried through."
+  [{:keys [value unit value-code category reference-range interpretation]}]
+  (cond-> {}
+    (some? value) (assoc :value value)
+    unit (assoc :unit unit)
+    value-code (assoc :value-code value-code)
+    category (assoc :category category)
+    reference-range (assoc :reference-range reference-range)
+    interpretation (assoc :interpretation interpretation)))
+
 (defmethod decide :observation
-  [_rng t world patient-id {:keys [codes value unit] :as step}]
+  [_rng t world patient-id {:keys [codes] :as step}]
   (let [patient (get-in world [:patients patient-id])]
     {:events [(merge {:event :observation :t t :active-mrn (:active-mrn patient) :codes codes}
-                     (when (some? value) {:value value})
-                     (when unit {:unit unit})
+                     (observation-value-fields step)
+                     {:participants [{:patient-id patient-id :role :subject}]}
+                     (citation-fields step))]
+     :advance 0}))
+
+;; --- GMF coverage Wave D stage D1 (2026-08-02, ADR-0029 P5): both
+;; MultiObservation and DiagnosticReport compile to this SAME step type
+;; -- ONE ground-truth event for the whole state, carrying the full
+;; :observations vector, mirroring how the compiled IR step itself
+;; bundles children (never one event per child).
+
+(defmethod decide :diagnostic-report
+  [_rng t world patient-id {:keys [codes observations] :as step}]
+  (let [patient (get-in world [:patients patient-id])]
+    {:events [(merge {:event :diagnostic-report :t t :active-mrn (:active-mrn patient) :observations observations}
+                     (when codes {:codes codes})
                      {:participants [{:patient-id patient-id :role :subject}]}
                      (citation-fields step))]
      :advance 0}))
@@ -888,9 +927,20 @@
 ;; the log.
 
 (defmethod evolve :observation
-  [patient {:keys [t codes value unit]}]
+  [patient {:keys [t codes] :as event}]
   (update patient :observations (fnil conj [])
-          (cond-> {:codes codes :t t} (some? value) (assoc :value value) unit (assoc :unit unit))))
+          (merge {:codes codes :t t} (observation-value-fields event))))
+
+;; --- GMF coverage Wave D stage D1 (2026-08-02, ADR-0029 P5): FLATTENS
+;; each child into its own ObservationRecord -- the IDENTICAL pattern
+;; :result-available's own per-analyte flattening already establishes
+;; (below), reused rather than a third accumulator shape invented.
+
+(defmethod evolve :diagnostic-report
+  [patient {:keys [t observations]}]
+  (update patient :observations (fnil into [])
+          (mapv (fn [{:keys [codes] :as entry}] (merge {:codes codes :t t} (observation-value-fields entry)))
+                observations)))
 
 (defmethod evolve :medication-order
   [patient {:keys [t codes citation]}]
