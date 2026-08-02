@@ -52,13 +52,19 @@
              (:codes procedure))))))
 
 (def deferred-state-type-json
-  "A deliberately malformed module: uses CallSubmodule (docs/gmf-
-  interpreter.md's own deferred-type table) -- must be rejected, never
-  thrown, never silently skipped."
+  "A deliberately malformed module: uses MultiObservation (docs/gmf-
+  interpreter.md's own deferred-type table, still deferred -- Wave D's
+  own scope) -- must be rejected, never thrown, never silently skipped.
+  GMF coverage Wave B (2026-08-02, ADR-0027, D3): this test USED to name
+  CallSubmodule as its own still-deferred example -- CallSubmodule joins
+  v1 as a loadable state type this session (the loader now recognizes
+  it and can discover its own :submodule call-paths, `gmf/load-closure`
+  below); swapped to a type that is still genuinely deferred so this
+  test keeps testing what its own docstring claims, not a stale premise."
   (str "{\"name\": \"Bad Module\","
        " \"states\": {"
        "   \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Recurse\"},"
-       "   \"Recurse\": {\"type\": \"CallSubmodule\", \"submodule\": \"other\", \"direct_transition\": \"Done\"},"
+       "   \"Recurse\": {\"type\": \"MultiObservation\", \"direct_transition\": \"Done\"},"
        "   \"Done\": {\"type\": \"Terminal\"}"
        " }}"))
 
@@ -67,7 +73,7 @@
     (is (result/rejected? loaded))
     (is (= :unsupported-state-type (:category loaded)))
     (is (= :recurse (:state (:payload loaded))))
-    (is (= "CallSubmodule" (:raw-type (:payload loaded))))))
+    (is (= "MultiObservation" (:raw-type (:payload loaded))))))
 
 (def reserved-attribute-collision-json
   "A deliberately malformed module: SetAttribute writes the bare,
@@ -112,3 +118,109 @@
           re-register (gmf/register registry "fixture-clinic" module)]
       (is (result/rejected? re-register))
       (is (= :module-id-collision (:category re-register))))))
+
+;; --- GMF coverage Wave B (2026-08-02, ADR-0027, D3): loader closure
+;; resolution -- gmf/load-closure ---------------------------------------
+
+(def leaf-json
+  (str "{\"name\": \"Leaf\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(def calls-leaf-json
+  (str "{\"name\": \"Caller\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Call\"},"
+       "  \"Call\": {\"type\": \"CallSubmodule\", \"submodule\": \"leaf\", \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(defn- resolver [paths] (fn [call-path] (get paths call-path)))
+
+(deftest load-closure-resolves-root-plus-one-submodule
+  (let [loaded (gmf/load-closure "caller" calls-leaf-json (resolver {"leaf" leaf-json}))]
+    (is (result/ok? loaded))
+    (is (= "caller" (:root (:payload loaded))))
+    (is (= #{"caller" "leaf"} (into #{} (keys (:modules (:payload loaded))))))
+    (is (= "leaf" (:id (get (:modules (:payload loaded)) "leaf"))))))
+
+(def two-callers-share-leaf-json
+  "Two DIFFERENT CallSubmodule states in the SAME module both name the
+  SAME call-path -- confirms the shared/deduped resolution `resolve-
+  closure`'s own docstring claims (Synthea's own Module.getModuleByPath
+  cache, D3's own characterization)."
+  (str "{\"name\": \"Caller\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"CallA\"},"
+       "  \"CallA\": {\"type\": \"CallSubmodule\", \"submodule\": \"leaf\", \"direct_transition\": \"CallB\"},"
+       "  \"CallB\": {\"type\": \"CallSubmodule\", \"submodule\": \"leaf\", \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest load-closure-shares-a-submodule-called-from-two-places
+  (let [resolve-calls (atom 0)
+        resolve-fn (fn [call-path] (swap! resolve-calls inc) (get {"leaf" leaf-json} call-path))
+        loaded (gmf/load-closure "caller" two-callers-share-leaf-json resolve-fn)]
+    (is (result/ok? loaded))
+    (is (= #{"caller" "leaf"} (into #{} (keys (:modules (:payload loaded))))))
+    (is (= 1 @resolve-calls) "leaf is resolved once, not twice, despite two callers")))
+
+(def calls-transitive-json
+  (str "{\"name\": \"Mid\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Call\"},"
+       "  \"Call\": {\"type\": \"CallSubmodule\", \"submodule\": \"leaf\", \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(def calls-mid-json
+  (str "{\"name\": \"Root\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Call\"},"
+       "  \"Call\": {\"type\": \"CallSubmodule\", \"submodule\": \"mid\", \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest load-closure-resolves-transitively-two-levels-deep
+  (let [loaded (gmf/load-closure "root" calls-mid-json (resolver {"mid" calls-transitive-json "leaf" leaf-json}))]
+    (is (result/ok? loaded))
+    (is (= #{"root" "mid" "leaf"} (into #{} (keys (:modules (:payload loaded))))))))
+
+(deftest load-closure-rejects-when-a-submodule-is-not-found
+  (let [loaded (gmf/load-closure "caller" calls-leaf-json (resolver {}))]
+    (is (result/rejected? loaded))
+    (is (= :submodule-not-found (:category loaded)))
+    (is (= "leaf" (:call-path (:payload loaded))))))
+
+(def calls-deferred-leaf-json
+  (str "{\"name\": \"Leaf\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Bad\"},"
+       "  \"Bad\": {\"type\": \"MultiObservation\", \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest load-closure-all-or-nothing-gate-extends-to-a-transitively-called-submodule
+  (testing "D6/D3: a deferred-type use ANYWHERE in the closure rejects
+            the WHOLE closure, citing which call-path failed"
+    (let [loaded (gmf/load-closure "caller" calls-leaf-json (resolver {"leaf" calls-deferred-leaf-json}))]
+      (is (result/rejected? loaded))
+      (is (= :submodule-rejected (:category loaded)))
+      (is (= "leaf" (:call-path (:payload loaded))))
+      (is (= :unsupported-state-type (:category (:reason (:payload loaded))))))))
+
+(def cyclic-a-json
+  (str "{\"name\": \"A\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Call\"},"
+       "  \"Call\": {\"type\": \"CallSubmodule\", \"submodule\": \"b\", \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(def cyclic-b-json
+  (str "{\"name\": \"B\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Call\"},"
+       "  \"Call\": {\"type\": \"CallSubmodule\", \"submodule\": \"a\", \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest load-closure-rejects-a-cyclic-call-graph
+  (testing "D3: a cyclic real-world closure is an ESCALATION with
+            evidence, not a relaxation -- never silently broken by
+            dropping an edge"
+    (let [loaded (gmf/load-closure "a" cyclic-a-json (resolver {"a" cyclic-a-json "b" cyclic-b-json}))]
+      (is (result/rejected? loaded))
+      (is (= :cyclic-closure (:category loaded)))
+      (is (= ["a" "b" "a"] (:cycle (:payload loaded)))))))
+
+(deftest load-closure-with-no-call-submodule-states-is-just-the-root
+  (let [loaded (gmf/load-closure "fixture-clinic" fixture-clinic-json (resolver {}))]
+    (is (result/ok? loaded))
+    (is (= #{"fixture-clinic"} (into #{} (keys (:modules (:payload loaded))))))))

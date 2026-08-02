@@ -95,7 +95,13 @@
    "MedicationOrder" :medication-order
    "MedicationEnd" :medication-end
    "Device" :device
-   "DeviceEnd" :device-end})
+   "DeviceEnd" :device-end
+   ;; GMF coverage Wave B (2026-08-02, ADR-0027, D3): CallSubmodule joins
+   ;; v1 as a LOADABLE state type -- the loader can now discover a
+   ;; module's own :submodule call-paths (`call-submodule-paths`,
+   ;; below), but the interpreter's own call/return mechanism (D1-D4)
+   ;; is a separate, later commit.
+   "CallSubmodule" :call-submodule})
 
 (def ^:private code-system->keyword
   "GMF's own code-system strings -> sim-model/Concept's
@@ -323,7 +329,14 @@
    ;; own docstring note. :code is singular (GMF's own Device shape, one
    ;; equipment concept per state -- unlike :codes' plural elsewhere).
    [:device (with-transitions [:type [:= :device]] [:code {:optional true} sim-model/Concept])]
-   [:device-end (with-transitions [:type [:= :device-end]] [:device {:optional true} :keyword])]])
+   [:device-end (with-transitions [:type [:= :device-end]] [:device {:optional true} :keyword])]
+   ;; GMF coverage Wave B (D3): :submodule is the raw call-path string
+   ;; verbatim from the module's own JSON (e.g. "medications/
+   ;; ear_infection_antibiotic") -- never kebab-slugged, since it is a
+   ;; relative FILE PATH (the search path this document's own D3
+   ;; establishes, `sim/modules/<call-path>.json`), not a semantic
+   ;; identifier this loader normalizes elsewhere.
+   [:call-submodule (with-transitions [:type [:= :call-submodule]] [:submodule :string])]])
 
 (def GmfModule
   [:map
@@ -377,6 +390,102 @@
         (if (valid-module? module)
           (result/ok module)
           (result/rejected :schema-invalid {:explain (explain-module module)}))))))
+
+;; --- GMF coverage Wave B (2026-08-02, ADR-0027, D3): loader closure
+;; resolution -- CallSubmodule's own transitive closure, resolved and
+;; gated at load time, before any interpretation happens ------------------
+
+(defn- call-submodule-paths
+  "Every DISTINCT :submodule call-path `module`'s own CallSubmodule
+  states name -- the module's own direct out-edges in the closure's
+  call graph (D3)."
+  [module]
+  (into #{} (keep (fn [[_ state]] (when (= :call-submodule (:type state)) (:submodule state))))
+        (:states module)))
+
+(defn- resolve-closure
+  "DFS worklist over the call graph rooted at `module`'s own
+  CallSubmodule out-edges, extending `modules` (call-path -> loaded
+  module, seeded by the caller with whatever is already resolved) and
+  checking `stack` (the current DFS path's own call-paths) for a repeat
+  -- D3's own acyclicity check. A call-path already IN `modules` is
+  shared/deduped, not re-resolved -- the same caching-by-path behavior
+  Synthea's own `Module.getModuleByPath` establishes (confirmed by
+  direct read of `CallSubmodule.process()`, Wave B's own D5/D7
+  characterization step) -- a submodule called from two different
+  places in the closure loads exactly once. Returns a Result: :ok with
+  the fully-extended `modules` map, or the FIRST rejection encountered
+  (this function's own docstring on `load-closure`, below, names each
+  category)."
+  [resolve-fn stack modules module]
+  (reduce
+   (fn [result call-path]
+     (let [modules (:payload result)]
+       (cond
+         ;; `stack` (the DFS path CURRENTLY in progress) must be checked
+         ;; BEFORE `modules` (everything RESOLVED so far, root included
+         ;; from the very start) -- root is pre-seeded into `modules`
+         ;; before its own children ever resolve, so a cycle back to
+         ;; root would otherwise be masked as "already resolved, dedup"
+         ;; instead of caught as a cycle. A bug found live by this
+         ;; commit's own red test (`load-closure-rejects-a-cyclic-call-
+         ;; graph`), not merely anticipated.
+         (some #{call-path} stack)
+         (reduced (result/rejected :cyclic-closure {:cycle (conj (vec stack) call-path)}))
+
+         (contains? modules call-path) result
+
+         :else
+         (let [json-text (resolve-fn call-path)]
+           (if (nil? json-text)
+             (reduced (result/rejected :submodule-not-found {:call-path call-path}))
+             (let [loaded (load-module call-path json-text)]
+               (if-not (result/ok? loaded)
+                 (reduced (result/rejected :submodule-rejected {:call-path call-path :reason loaded}))
+                 (let [sub (resolve-closure resolve-fn (conj stack call-path)
+                                            (assoc modules call-path (:payload loaded))
+                                            (:payload loaded))]
+                   (if (result/ok? sub) sub (reduced sub))))))))))
+   (result/ok modules)
+   (call-submodule-paths module)))
+
+(defn load-closure
+  "Resolves `root-id`'s own TRANSITIVE CallSubmodule closure (D3): loads
+  `root-json-text` as `root-id`, then recursively resolves every
+  :submodule call-path it (or any transitively-called submodule) names,
+  fetching each one's own JSON text via `(resolve-fn call-path)` --
+  caller-supplied so this stays pure/testable over inline JSON strings,
+  the same discipline `load-module` already establishes (no
+  clojure.java.io dependency here; a real caller's own resolve-fn is a
+  thin `io/resource` wrapper over the D3 search path,
+  `sim/modules/<call-path>.json`).
+
+  Returns a Result: :ok with {:root root-id :modules {root-id -> ...,
+  call-path -> ...}} -- every call-path key is the submodule's own raw
+  call-path string (also its own :id, section 5's own attribute-
+  namespacing scope for LOAD-time declared-write collision checking --
+  distinct from D1's own RUNTIME root-scoping, gmf-interpreter.md
+  section 5's own dated note). The all-or-nothing gate (this
+  namespace's own docstring, ADR-0013 point 4) extends over the WHOLE
+  closure: :unsupported-state-type / :attribute-collision /
+  :schema-invalid from ANY transitively-called submodule rejects the
+  WHOLE closure (:rejected :submodule-rejected, payload {:call-path
+  :reason}, `:reason` the submodule's own rejection Result -- always
+  names which call-path failed and why, never silently which-one-of-
+  many). :rejected :submodule-not-found (payload {:call-path}) when
+  `resolve-fn` returns nil for a named call-path. :rejected
+  :cyclic-closure (payload {:cycle [...]}) when the static call graph
+  contains a cycle -- an ESCALATION-worthy finding (D3), never silently
+  resolved by dropping an edge."
+  [root-id root-json-text resolve-fn]
+  (let [root-loaded (load-module root-id root-json-text)]
+    (if-not (result/ok? root-loaded)
+      root-loaded
+      (let [root-module (:payload root-loaded)
+            closure (resolve-closure resolve-fn [root-id] {root-id root-module} root-module)]
+        (if (result/ok? closure)
+          (result/ok {:root root-id :modules (:payload closure)})
+          closure)))))
 
 ;; --- M5b: per-patient module assignment -- SimHospital's own percentage_of_
 ;; patients analogue, the SAME shape sim-model/PathwaysConfig
