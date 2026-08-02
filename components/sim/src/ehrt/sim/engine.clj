@@ -154,7 +154,12 @@
    [:patient-id :string]
    [:mrns [:set :string]]
    [:active-mrn :string]
-   [:status [:enum :new :admitted :discharged :merged]]
+   ;; GMF coverage Wave C (2026-08-02, ADR-0028, C3): :expired lands for
+   ;; real -- docs/patient-state-model.md's own accumulator table has
+   ;; named this value since M2b-era design, but no code path could
+   ;; produce, read, or check it until now (this wave's own gap table,
+   ;; components/sim-trajectory/docs/gmf-interpreter.md section 10).
+   [:status [:enum :new :admitted :discharged :merged :expired]]
    [:class {:optional true} [:enum :inpatient :emergency :outpatient
                               :preadmit :recurring :obstetrics]]
    [:home-ward {:optional true} [:maybe :string]]
@@ -356,22 +361,40 @@
                        alloc)]
        :advance 0})))
 
+(defn- death-disposition-fields
+  "Wave C (2026-08-02, ADR-0028, C3): :disposition/:codes ride onto the
+  ground-truth :discharge event ONLY when the compiled step actually
+  carries them (compile-trajectory.clj's own death->step, the two new
+  optional fields sim-model/pathway.clj's :discharge schema gained) --
+  the same nil-dropping merge `citation-fields` already establishes,
+  applied to this step type's own two new fields."
+  [step]
+  (into {} (filter val) (select-keys step [:disposition :codes])))
+
 (defmethod decide :discharge
   [_rng t world patient-id step]
   (let [patient (get-in world [:patients patient-id])
+        ;; C3: an expired-disposition discharge vacates NO bed --
+        ;; patient-state-model.md's own "clinically absorbing but
+        ;; operationally alive" fact -- so the bed-ready-transfer
+        ;; coupling below MUST NOT fire; unguarded, it would double-
+        ;; occupy a bed no-double-occupancy already forbids.
+        expired? (= :expired (:disposition step))
         discharge-event (merge {:event :discharge :t t :active-mrn (:active-mrn patient)
                                  :location (:location patient) :attending (:attending patient)
                                  :participants [{:patient-id patient-id :role :subject}]}
-                                (citation-fields step))
+                                (citation-fields step)
+                                (death-disposition-fields step))
         vacated-ward (get-in patient [:location :ward])
         vacated-location (:location patient)
-        waiting-id (->> (:patients world)
-                        (remove (fn [[pid _]] (= pid patient-id)))
-                        (filter (fn [[_ p]] (and (= :admitted (:status p))
-                                                  (not= (:home-ward p) (get-in p [:location :ward]))
-                                                  (= vacated-ward (:home-ward p)))))
-                        (sort-by (fn [[pid p]] [(:admitted-at p) pid]))
-                        ffirst)]
+        waiting-id (when-not expired?
+                     (->> (:patients world)
+                          (remove (fn [[pid _]] (= pid patient-id)))
+                          (filter (fn [[_ p]] (and (= :admitted (:status p))
+                                                    (not= (:home-ward p) (get-in p [:location :ward]))
+                                                    (= vacated-ward (:home-ward p)))))
+                          (sort-by (fn [[pid p]] [(:admitted-at p) pid]))
+                          ffirst))]
     {:events (cond-> [discharge-event]
                waiting-id
                (conj {:event :transfer :t t
@@ -750,8 +773,19 @@
   (assoc patient :location location :home-ward home-ward))
 
 (defmethod evolve :discharge
-  [patient {:keys [t]}]
-  (assoc patient :status :discharged :location nil :discharged-at t))
+  ;; Wave C (2026-08-02, ADR-0028, C3): an expired-disposition discharge
+  ;; sets :status :expired, never :discharged -- and, unlike an ordinary
+  ;; discharge, leaves :location/:attending UNCHANGED: the body remains
+  ;; wherever it was at the moment of death (patient-state-model.md's
+  ;; own "clinically absorbing but operationally alive" fact), a LATER
+  ;; morgue transfer or final disposition-20 discharge (donor/post-
+  ;; mortem administrative content, out of this wave's own minimal
+  ;; scope) is what would eventually move or discharge it, not this
+  ;; event.
+  [patient {:keys [t disposition]}]
+  (if (= :expired disposition)
+    (assoc patient :status :expired)
+    (assoc patient :status :discharged :location nil :discharged-at t)))
 
 ;; --- M2b: churn family evolves -------------------------------------------
 

@@ -916,6 +916,60 @@
     (is (= 30 (:discharged-at (get-in world2 [:patients "P1"]))))
     (is (= 40 (:discharged-at (get-in world4 [:patients "P2"]))))))
 
+;; --- GMF coverage Wave C (2026-08-02, ADR-0028, C3): :expired --------------
+
+(def ^:private death-codes [{:system :snomed :code "230690007" :display "Cerebrovascular accident (disorder)"}])
+
+(deftest expired-disposition-discharge-sets-expired-status-and-retains-location
+  (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+        world1 (admit world0 0 "P1" "Renal")
+        location-before (get-in world1 [:patients "P1" :location])
+        {:keys [events]} (engine/decide (Random. 1) 30 world1 "P1"
+                                        {:type :discharge :disposition :expired :codes death-codes})
+        world2 (fold-events world1 events)
+        after (get-in world2 [:patients "P1"])]
+    (is (= 1 (count events)) "no bed-ready transfer -- no bed was vacated")
+    (is (= :discharge (:event (first events))))
+    (is (= :expired (:disposition (first events))))
+    (is (= death-codes (:codes (first events))))
+    (is (= :expired (:status after)))
+    (is (= location-before (:location after)) "the body stays where it was, patient-state-model.md's own fact")
+    (is (some? (:attending after)))
+    (is (nil? (:discharged-at after)) "not a real discharge yet -- the final disposition-20 discharge is out of scope")))
+
+(deftest expired-disposition-discharge-suppresses-the-bed-ready-transfer-coupling
+  (testing "unlike an ordinary discharge, no bed was vacated -- a boarding
+            patient waiting for the SAME ward must NOT be relieved"
+    (let [world0 {:patients {"P1" (engine/initial-patient "P1" "MRN000001")
+                              "P2" (engine/initial-patient "P2" "MRN000002")}
+                  :facility crowded-facility
+                  :providers test-providers}
+          rng (Random. 1)
+          {a-events :events} (engine/decide rng 0 world0 "P1" {:type :admission :location "Renal"})
+          world1 (update-in world0 [:patients "P1"] #(reduce engine/evolve % a-events))
+          {b-events :events} (engine/decide rng 10 world1 "P2" {:type :admission :location "Renal"})
+          world2 (update-in world1 [:patients "P2"] #(reduce engine/evolve % b-events))]
+      (is (boarding? (get-in world2 [:patients "P2"])) "P2 boards in ED surge, waiting for Renal")
+      (let [{:keys [events]} (engine/decide rng 100 world2 "P1"
+                                            {:type :discharge :disposition :expired :codes death-codes})]
+        (is (= 1 (count events)))
+        (is (not-any? #(= :transfer (:event %)) events))))))
+
+(deftest expired-disposition-discharge-satisfies-its-own-new-invariant
+  (testing "the structural check, over a scripted log directly -- the
+            full engine/check-all catalog needs a real :registered-
+            prepended run (a bare admission/discharge script like this
+            one predates :registered, the same scaffold gap every other
+            world-of/admit/fold-events test in this file already has);
+            the end-to-end proof through a real Death-bearing walk is
+            Step 3's own vendored-fixture test"
+    (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+          world1 (admit world0 0 "P1" "Renal")
+          {:keys [events]} (engine/decide (Random. 1) 30 world1 "P1"
+                                          {:type :discharge :disposition :expired :codes death-codes})
+          world2 (fold-events world1 events)]
+      (is (empty? (check/expired-patient-retains-location (:ground-truth world2)))))))
+
 ;; --- M5b Task 4: end-to-end module wiring (persona -> run-module ->
 ;; CompileTrajectory -> IR), composing with :pathways -----------------------
 

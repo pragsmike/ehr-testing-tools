@@ -174,6 +174,32 @@
   (is (empty? (check/outpatient-patients-occupy-no-bed
                [{:event :outpatient-visit :t 0 :participants (subject "P1")}]))))
 
+;; --- GMF coverage Wave C (2026-08-02, ADR-0028, C3): :expired ------------
+
+(deftest expired-patient-retains-location-detects-a-nil-location
+  (testing "evolve's own :discharge handling never nils :location for an
+            :expired disposition -- this scenario (a patient who reaches
+            an expired-disposition discharge with no location fold ever
+            set) is not reachable through the engine as built, but the
+            invariant checks the FOLDED state structurally, independent
+            of whether decide/evolve themselves already enforce it"
+    (let [log [{:event :discharge :t 30 :disposition :expired :participants (subject "P1")}]]
+      (is (seq (check/expired-patient-retains-location log))))))
+
+(deftest expired-patient-retains-location-holds-when-the-body-stays-put
+  (let [log [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
+              :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
+             {:event :discharge :t 30 :disposition :expired :participants (subject "P1")}]]
+    (is (empty? (check/expired-patient-retains-location log)))))
+
+(deftest expired-patient-retains-location-ignores-an-ordinary-discharge
+  (testing "an ordinary discharge legitimately nils :location -- this
+            invariant is scoped to the :expired disposition alone"
+    (let [log [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
+                :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
+               {:event :discharge :t 30 :participants (subject "P1")}]]
+      (is (empty? (check/expired-patient-retains-location log))))))
+
 ;; --- M5b: :procedure/:observation/:medication-order/:medication-end ------
 
 (def ^:private a-citation {:module "sinusitis" :state :doctor-visit})

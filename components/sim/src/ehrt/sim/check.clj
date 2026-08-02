@@ -195,6 +195,23 @@
         :when (and (= class :outpatient) (some? location))]
     {:invariant :outpatient-patients-occupy-no-bed :patient-id patient-id :at (:t event)}))
 
+;; --- GMF coverage Wave C (2026-08-02, ADR-0028, C3): :expired --------------
+
+(defn expired-patient-retains-location
+  "The converse of admitted-occupies-one-slot: an :expired patient
+  (docs/patient-state-model.md's own 'clinically absorbing but
+  operationally alive' fact) retains its :location -- the body stays
+  wherever it was at the moment of death until a LATER, out-of-this-
+  wave's-scope administrative event (morgue transfer, final
+  disposition-20 discharge) moves it. Checked at the exact moment an
+  expired-disposition :discharge fires (ehrt.sim.engine's own
+  :disposition field, riding the compiled step through, sim-model/
+  pathway.clj) -- never nil immediately after."
+  [ground-truth]
+  (for [{:keys [event patient-id after]} (engine/replay ground-truth)
+        :when (and (= :discharge (:event event)) (= :expired (:disposition event)) (nil? (:location after)))]
+    {:invariant :expired-patient-retains-location :patient-id patient-id :at (:t event)}))
+
 (defn occupancy-within-capacity
   "Occupancy never exceeds a ward's declared capacity (licensed +
   surge slots)."
@@ -338,16 +355,16 @@
 ;; --- M3: order/result (docs/patient-state-model.md's event-validity
 ;; table's therapeutic-intent-class row -- orders/results illegal when
 ;; :status = :expired; written here as "legal only when :admitted", the
-;; strict generalization that's testable today since :expired isn't a
-;; landed status yet -- once it lands, :expired != :admitted makes this
-;; row cover it automatically, no new invariant needed then) ---------------
+;; strict generalization -- GMF coverage Wave C (2026-08-02, ADR-0028)
+;; landed :expired for real (engine.clj's own PatientState status enum);
+;; this row now covers it automatically, by construction, exactly as
+;; anticipated below, no new invariant needed) -----------------------------
 
 (defn order-only-when-admitted
   "Therapeutic-intent class (docs/patient-state-model.md's event-
   validity table): :order-placed is legal only when the patient's prior
-  state is :admitted -- covers :new/:discharged/:merged today, and
-  (once that status lands) :expired too, since :expired is never
-  :admitted either.
+  state is :admitted -- covers :new/:discharged/:merged/:expired, since
+  none of the four is ever :admitted.
 
   Deliberately NOT extended to :result-available: a result's own
   turnaround is asynchronous to the rest of the patient's pathway (the
@@ -494,7 +511,8 @@
    #'outpatient-visit-only-when-new
    #'outpatient-patients-occupy-no-bed
    #'clinical-content-only-when-admitted
-   #'medication-end-references-existing-order-and-follows-it-in-time])
+   #'medication-end-references-existing-order-and-follows-it-in-time
+   #'expired-patient-retains-location])
 
 (def facility-catalog
   "Invariants that need the facility config, not just the log (checked
