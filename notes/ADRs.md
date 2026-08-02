@@ -5520,7 +5520,17 @@ session).
 
 ### Execution record
 
-Filled Step 4 — see the session record
+Session executed same day as ruled, all seven checkpoints (Step 0
+through Step 4) landed. Commits, in order: `7e4204b` (Step 0, this ADR
++ coverage-plan payoff riders), `ed4f7bd` (Step 1, characterization —
+Death forms, stroke's own closure survey, the `:expired` gap table, the
+`stroke_risk` finding and its own escalation ruling), `a900f99` (Step
+2a, Death state and terminal contract), `47d0f66` (Step 2b, compile-
+trajectory death mapping), `380a3e2` (Step 2c, engine/check minimal
+path), `66005ae` (Step 3, the hand-authored death-fixture proof, stroke
+deferred). Full account, with source citations:
+`components/sim-trajectory/docs/gmf-interpreter.md` section 10 and this
+session's own session record
 (`.agents/session-records/2026-08-02-gmf-coverage-wave-c.md`).
 
 ### Fence

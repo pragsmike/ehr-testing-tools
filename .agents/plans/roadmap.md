@@ -5,10 +5,7 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- GMF coverage Wave C — `Death` wired to the existing `:expired`/post-
-  mortem machinery (deferred-table's own instruction), no new mechanism —
-  `.agents/plans/2026-08-02-gmf-coverage-plan.md`; `notes/ADRs.md`
-  ADR-0028. Completes `stroke`, contributes to `sepsis`/MI/CHF.
+- (none — see Done below for GMF coverage Wave C)
 
 ## Next (backlog, no session scheduled)
 - Pairing-as-data (review P3-3): mutate↔judge conviction registry — design pass in
@@ -233,3 +230,57 @@ per item; done items move to the bottom of their section with a date and sha.
   confirmed at close; full workspace `poly test :all skip:integration`
   green (a self-caught `.agents/reading-sets.edn` budget bump along the
   way, the same shape Wave A's own close-out already hit).
+
+## Done (this session, 2026-08-02, GMF coverage Wave C)
+- `Death` lands as real, terminal, trajectory-event-producing v1 state
+  (loader + interpreter, `notes/ADRs.md` ADR-0028 C1/C2) — three time
+  forms grounded against `State.java`'s own real `Death` class at the
+  pinned commit (immediate/exact/range, `range` reusing the same
+  fixed-consumption helper `Delay`/`Procedure` duration already share);
+  only the `:codes` cause-of-death form is built (`:condition-onset`/
+  `:referenced-by-attribute` named unbuilt, no vendored module needs
+  either). The walk terminates AT `:death` — a disclosed departure from
+  real Synthea's own continue-past-Death semantics — property-tested
+  (`no-trajectory-event-ever-follows-death`, 200 seeds).
+- `:death` compiles into the pathway WITHOUT a new IR step type (C4) —
+  `:discharge` (`sim-model/pathway.clj`) gains two new optional fields,
+  `:disposition`/`:codes`; real HL7v2 already models a death this way
+  (an ordinary ADT^A03 whose PV1-36 carries an expired disposition
+  code). Death inside an encounter attaches as its own terminal
+  disposition; death outside any encounter closes the pathway without
+  fabricating a discharge from an admission that never happened.
+- `:expired` lands in CODE for the first time (C3) — `PatientState`'s
+  own `:status` enum, `docs/patient-state-model.md`'s own accumulator
+  claim, docs-only until this session (checked directly: `:expired`
+  existed nowhere in `components/sim/src` except three lines of prose).
+  `ehrt.sim.engine`'s own `:discharge` decide/evolve fold an
+  expired-disposition discharge to `:status :expired`, location/
+  attending UNCHANGED (the body stays where it was), and suppress the
+  existing bed-ready-transfer coupling (a finding the docs' own gap
+  table didn't name — no bed is actually vacated). One new structural
+  invariant, `expired-patient-retains-location`; `order-only-when-
+  admitted`/`clinical-content-only-when-admitted` already generalize to
+  cover `:expired` automatically, zero code change, confirmed by the
+  green suite.
+- **Payoff-map correction: `stroke.json` is NOT vendored this wave.**
+  Real-closure characterization found `Chance_of_Stroke`'s own
+  `distributed_transition` gates onset on `{"attribute": "stroke_risk",
+  "default": 0}` — a real Synthea engine attribute (Framingham
+  cardiovascular risk, `CardiovascularDiseaseModule`) this project has
+  no source for, whose own JSON default makes onset structurally
+  unreachable if honored literally. Escalated and ruled (design
+  channel, 2026-08-02): deferred, D6-style, revisit trigger named
+  (`docs/gmf-interpreter.md` section 10; ADR-0028's own Deviation
+  record). `Death` is proven instead against this project's own hand-
+  authored `death-fixture.json` — interpreter, compile-trajectory, and
+  a full 200-patient engine/check round trip, both outcomes present,
+  the full invariant catalog holds.
+- Commits, in order: `7e4204b` (Step 0, ADR + coverage-plan riders),
+  `ed4f7bd` (Step 1, characterization), `a900f99` (Step 2a, Death state/
+  terminal contract), `47d0f66` (Step 2b, compile-trajectory mapping),
+  `380a3e2` (Step 2c, engine/check minimal path), `66005ae` (Step 3,
+  death-fixture proof). `notes/ADRs.md` ADR-0028.
+- Regression oracle (fixed-seed `sinusitis`/`appendicitis`/
+  `sore_throat`/`ear_infections` walks) byte-identical across every
+  commit this session, confirmed at close; full workspace `poly test
+  :all skip:integration` and `poly check` green throughout.
