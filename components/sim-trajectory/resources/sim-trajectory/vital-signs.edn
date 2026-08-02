@@ -1,0 +1,68 @@
+;; Vital-sign reference table (GMF coverage Wave D stage D1, ADR-0029's
+;; own D1a schema RULING, Q2+Q3): a small, hand-curated table answering
+;; BOTH open questions the D1a characterization left standing --
+;; `VitalSign`'s own compile-mapping has no source-given code (Q2, a
+;; FUTURE consumer, not exercised by sepsis.json) and the `vital_sign`
+;; FIELD's own real upstream source (`LifecycleModule.java`, D1a-4) is a
+;; hardcoded Java module this project has never ported and has no
+;; physiology-simulation equivalent for (Q3, P4's own Option A, RULED
+;; IN) -- at once. `ehrt.sim-trajectory.gmf-interpreter/sample-
+;; observation-extra`'s own `vital_sign` branch looks a name up here and
+;; samples ONE uniform draw within `:reference-range` (the SAME
+;; mechanism the pre-existing `range` branch already uses, P4's own
+;; "documented approximation of a real continuous physiology model this
+;; project does not have" framing) -- never a two-range categorical
+;; distribution (`ehrt.sim.order-profiles`' own richer shape stays where
+;; it is, the lab-order layer; this table is deliberately simpler).
+;; Because the sampled value is drawn FROM `:reference-range` by
+;; construction, the abnormal-flag this same range also supports
+;; (Q2+Q3's own "supplies the OBX reference-range/abnormal-flag inputs"
+;; ruling) is always :normal for a vital_sign-sourced observation -- an
+;; honest, computed consequence of the simplification, not a fabricated
+;; excursion; a real continuous physiology model (unbuilt, this same
+;; finding) is what would ever produce an abnormal draw here.
+;;
+;; :code is {:system :loinc :code ...} per sim-model/Concept -- real
+;; LOINC codes, cross-checked against HL7 FHIR's own public Vital Signs
+;; profile examples (hl7.org/fhir/bp.html for the two blood-pressure
+;; components; hl7.org/fhir/observation-example-satO2.json.html for
+;; oxygen saturation), loinc.org itself returning 403 to automated
+;; fetch at verification time -- the same "real codes, cross-checked
+;; against a citable public source" discipline order-profiles.edn's own
+;; header already establishes (notes/facts-register.md F21). Table keys
+;; are the vital-sign NAME STRING verbatim as `sepsis.json`'s own
+;; `vital_sign` field spells it (D1a-3) -- the interpreter looks the
+;; field's own raw string up directly, no slug/keywordize pass (unlike
+;; attribute/symptom names, a vital-sign name is a closed, curated
+;; vocabulary this table itself defines, not a free-form module-authored
+;; identifier). :units/:reference-range are typical adult values
+;; (representative clinical ranges, the same "plausibility, not
+;; diagnostic precision" goal order-profiles.edn's own header states),
+;; NOT independently source-verified beyond the LOINC code itself.
+;;
+;; Home explicitly NAMED-NOT-FINAL (F2, the D1b session prompt): this
+;; table currently lives under sim-trajectory (the interpreter that
+;; consumes it); a future session may relocate it once a second
+;; consumer (e.g. a real VitalSign STATE implementation, or
+;; sim-emit-fhir) makes a shared home's shape clearer than it is today.
+;;
+;; Grows by evidence, not speculation (P4's own "the same discipline
+;; this project's own condition/state vocabularies already follow"): a
+;; future candidate closure needing an unlisted vital-sign name is a
+;; real, visible rejection at the interpreter (`:unrecognized-vital-
+;; sign`), never a silent wrong answer -- add a row here when that
+;; happens, cited the same way these three are.
+{"Systolic Blood Pressure"
+ {:code {:system :loinc :code "8480-6" :display "Systolic blood pressure"}
+  :units "mm[Hg]"
+  :reference-range {:low 90 :high 120}}
+
+ "Diastolic Blood Pressure"
+ {:code {:system :loinc :code "8462-4" :display "Diastolic blood pressure"}
+  :units "mm[Hg]"
+  :reference-range {:low 60 :high 80}}
+
+ "Oxygen Saturation"
+ {:code {:system :loinc :code "59408-5" :display "Oxygen saturation in Arterial blood by Pulse oximetry"}
+  :units "%"
+  :reference-range {:low 95 :high 100}}}
