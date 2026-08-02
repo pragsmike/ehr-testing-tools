@@ -526,6 +526,41 @@
       (interp/evaluate-condition "m" ctx {:condition-type :or :conditions sub-conds})
       (= 0 @calls))))
 
+;; --- GMF coverage Wave A: Date (2026-08-02) --------------------------------
+;; A calendar-year comparison against ctx's own virtual clock (:t, an
+;; epoch-day anchored to the persona's real DOB since M5a -- already-
+;; existing data, no new state home). Semantics grounded against Synthea's
+;; own Logic.java Date class at the docs/gmf-interpreter.md pinned commit
+;; (currentyear = Utilities.getYear(time), compared via :operator). Not
+;; used by sore_throat.json itself -- named in AR-2 because it unlocks
+;; most of stroke.json in a later wave (Wave A+C, per the wave plan).
+
+(deftest date-condition-compares-the-calendar-year-of-ctxs-own-virtual-clock
+  (let [ctx (assoc (ctx-for (persona-at 1)) :t (.toEpochDay (java.time.LocalDate/of 1999 6 15)))]
+    (is (true? (interp/evaluate-condition "m" ctx {:condition-type :date :operator ">" :year 1997})))
+    (is (false? (interp/evaluate-condition "m" ctx {:condition-type :date :operator ">" :year 1999})))
+    (is (true? (interp/evaluate-condition "m" ctx {:condition-type :date :operator "<=" :year 1999})))))
+
+(deftest date-condition-consumes-no-rng
+  (let [calls (atom 0)
+        rng (proxy [Random] [(long 1)]
+              (nextDouble [] (swap! calls inc) (proxy-super nextDouble))
+              (nextInt ([n] (swap! calls inc) (proxy-super nextInt n))))]
+    (interp/evaluate-condition "m" (ctx-for (persona-at 1)) {:condition-type :date :operator ">" :year 1997})
+    (is (= 0 @calls))))
+
+(defspec date-condition-never-touches-rng-state 100
+  (prop/for-all [seed gen/large-integer
+                 year (gen/choose 1950 2030)
+                 target (gen/choose 1950 2030)]
+    (let [ctx (assoc (ctx-for (persona-at 1)) :t (.toEpochDay (java.time.LocalDate/of year 1 1)))
+          calls (atom 0)
+          rng (proxy [Random] [(long seed)]
+                (nextDouble [] (swap! calls inc) (proxy-super nextDouble))
+                (nextInt ([n] (swap! calls inc) (proxy-super nextInt n))))]
+      (interp/evaluate-condition "m" ctx {:condition-type :date :operator ">" :year target})
+      (= 0 @calls))))
+
 ;; --- M5b: Device/DeviceEnd -- consumed-internally, like :simple -----------
 
 (def device-module

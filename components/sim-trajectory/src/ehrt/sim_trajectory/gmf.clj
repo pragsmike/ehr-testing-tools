@@ -141,7 +141,7 @@
    ;; (sore_throat.json's Determine_if_Bacterial); see
    ;; ehrt.sim-trajectory.gmf-interpreter/symptom-condition-holds?'s own
    ;; docstring for the full account.
-   "Symptom" :symptom "Or" :or "At Least" :at-least})
+   "Symptom" :symptom "Or" :or "At Least" :at-least "Date" :date})
 
 (defn- normalize-code
   "GMF's own code triplet -> sim-model/Concept. M5b: :code

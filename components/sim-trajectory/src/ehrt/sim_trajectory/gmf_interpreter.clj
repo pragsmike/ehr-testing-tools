@@ -125,6 +125,19 @@
       "!=" (not= actual value)
       (= actual value))))
 
+(defn- date-condition-holds?
+  "GMF coverage Wave A (2026-08-02): Synthea's own Logic.java Date class
+  (`currentyear = Utilities.getYear(time); compare(currentyear, year,
+  operator)`) -- this project's own equivalent of 'the simulated calendar
+  year' is `ctx`'s own virtual clock (:t, an epoch-day anchored to the
+  persona's real DOB since M5a), already-threaded data, no new state
+  home. v1 scope: :year only (real Synthea's own Date condition also
+  supports :month/:date variants -- not observed on any candidate module's
+  own mandatory path this session, so out of scope per this project's own
+  narrow-per-need curation discipline, sim/ADR-0013 point 4)."
+  [{:keys [operator year]} ^long t]
+  (compare-op operator (.getYear (LocalDate/ofEpochDay t)) year))
+
 (defn- symptom-condition-holds?
   "GMF coverage Wave A (2026-08-02): the log-query family's own attribute-
   read shape, applied to a Symptom's OWN severity write -- reads the SAME
@@ -256,6 +269,7 @@
     :and (and-condition-holds? module-id ctx condition)
     :or (or-condition-holds? module-id ctx condition)
     :at-least (at-least-condition-holds? module-id ctx condition)
+    :date (date-condition-holds? condition (:t ctx))
     :symptom (symptom-condition-holds? module-id ctx condition)
     (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: unsupported condition type"
                      {:condition-type (:condition-type condition)}))))
