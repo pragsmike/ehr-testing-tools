@@ -92,3 +92,4 @@ Files in this directory:
   * 2026-08-02-gmf-coverage-wave-a.md
   * 2026-08-02-gmf-coverage-wave-b.md
   * 2026-08-02-gmf-coverage-wave-c.md
+  * 2026-08-02-sim-split-s3-wave-d-d0.md

@@ -129,7 +129,14 @@
   ;; above already established): AGENTS.md's own growth (Components list
   ;; and Dependency-direction bullet naming `components/sim-emit-hl7`)
   ;; brought the real total from 897 to 903.
-  :budget-lines 903}
+  ;; raised again 2026-08-02 (sim split S3 / Wave D stage D0, Step 4,
+  ;; caught by the budget test itself, same shape every prior self-catch
+  ;; above already established): `.agents/plans/roadmap.md`'s own "Now"
+  ;; row retired and its own new "Done" section landed, plus indexing
+  ;; this session's own session-record/prompt-archive filenames in their
+  ;; own already-cited onboarding READMEs, brought the real total from
+  ;; 903 to 925.
+  :budget-lines 925}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one

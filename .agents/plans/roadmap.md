@@ -5,11 +5,7 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- Sim split S3 / GMF coverage Wave D stage D0 (`sim-emit-hl7`:
-  `emit-hl7`, `v2-replay`, `site-profile`, extracted from `sim`) —
-  satisfied-by-D0, fired per ADR-0029 R1 (`.agents/plans/2026-08-02-
-  sim-split-plan.md`'s own S3 row, `.agents/plans/2026-08-02-gmf-
-  coverage-plan.md`'s Wave D restructure)
+- (none — see Done below for sim split S3 / GMF coverage Wave D stage D0)
 
 ## Next (backlog, no session scheduled)
 - Pairing-as-data (review P3-3): mutate↔judge conviction registry — design pass in
@@ -285,3 +281,27 @@ per item; done items move to the bottom of their section with a date and sha.
   `sore_throat`/`ear_infections` walks) byte-identical across every
   commit this session, confirmed at close; full workspace `poly test
   :all skip:integration` and `poly check` green throughout.
+
+## Done (this session, 2026-08-02, sim split S3 / GMF coverage Wave D stage D0)
+- Sim split S3: `components/sim-emit-hl7` extracted from `components/sim`
+  (`emit-hl7`/`v2-replay`/`site-profile`), fired now per ADR-0029 R1
+  rather than waiting on its own named trigger — front-running
+  deliberately, the same session that ruled Wave D's own design (R1–R7).
+  `ehrt.sim-emit-hl7.interface` re-exports `emit` (3/5/6-arg only),
+  `control-id-for`, `default-reference-date`, `default-utc-offset`;
+  `v2-replay`/`site-profile` have no real external caller and stay fully
+  internal. `notes/ADRs.md` ADR-0025 (dated S3-executed note) and
+  ADR-0029 (Wave D design, D0 execution note).
+- `poly check` clean; `poly test :all skip:integration` 0 failures/0
+  errors; golden run (seed 42, 5 patients, `--emit hl7`) byte-identical
+  except the manifest's `:generator :sha256` (tracks HEAD, expected);
+  deftest+defspec parity 281 = 206 residual + 75 `sim-emit-hl7`.
+- Wave D itself (D1–D3: observation family, CarePlan family,
+  `lookup_table_transition`) is not started — named in ADR-0029 and
+  `.agents/plans/2026-08-02-gmf-coverage-plan.md`'s own restructure,
+  each its own future session.
+- Commits, in order: `7935b71`/`7a3dd58` (Step 0, ADR-0029 + plan
+  restructure, plus a same-session fix-forward for an ADR
+  insertion-order mistake caught before Step 1), `ccce1fc` (Step 1,
+  characterization), `e38e232` (Step 2, extraction), and this session's
+  own closing records commit.

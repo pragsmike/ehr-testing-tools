@@ -75,7 +75,21 @@
   `ehrt.tools.` (stage 3). Scoped the same as the family above (`docs/`
   plus `components/corpus/docs/use-cases.edn` only); `notes/sim/`'s own
   historical citations of the pre-split namespace stay out of this
-  test's scan scope, confirmed before this addendum landed."
+  test's scan scope, confirmed before this addendum landed.
+
+  2026-08-02 addendum (sim split S3 / GMF coverage Wave D stage D0,
+  `notes/ADRs.md` ADR-0029 R1): `ehrt.sim.emit-hl7`, `ehrt.sim.v2-replay`,
+  and `ehrt.sim.site-profile` join the retired-namespace family above --
+  all three moved to `ehrt.sim-emit-hl7.*` this session, same denylist
+  shape as the S2 addendum immediately above. Two REAL violations
+  existed under `docs/` this time (`docs/site-profiles.md`,
+  `docs/simulate-your-facility.md` -- both bare-cited `ehrt.sim.site-
+  profile`/`ehrt.sim.emit-hl7` as the root user-facing doc's own
+  explanation of the site-profiles feature), fixed forward to the
+  `ehrt.sim-emit-hl7.*` form in the same commit this addendum lands in,
+  confirmed clean before this addendum's own patterns were added --
+  same scope and same fix-before-gate discipline as every entry in this
+  family."
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.java.io :as io]
             [clojure.string :as str]))
@@ -104,7 +118,13 @@
     (str/includes? content "ehrt.sim.gmf")
     (conj :retired-ehrt-sim-gmf-namespace)
     (str/includes? content "ehrt.sim.compile-trajectory")
-    (conj :retired-ehrt-sim-compile-trajectory-namespace)))
+    (conj :retired-ehrt-sim-compile-trajectory-namespace)
+    (str/includes? content "ehrt.sim.emit-hl7")
+    (conj :retired-ehrt-sim-emit-hl7-namespace)
+    (str/includes? content "ehrt.sim.v2-replay")
+    (conj :retired-ehrt-sim-v2-replay-namespace)
+    (str/includes? content "ehrt.sim.site-profile")
+    (conj :retired-ehrt-sim-site-profile-namespace)))
 
 (deftest no-stale-path-family-anywhere-in-docs-or-use-cases-edn-test
   (doseq [path (scan-sources)]
@@ -130,7 +150,15 @@
     (is (empty? (violations "see ehrt.corpus.manifest/ManifestV1_1"))))
   (is (= [:retired-positioning-filename] (violations "see docs/dev/positioning.md for the audience register")))
   (testing "the post-rename citation form does not trip the retired-filename pattern"
-    (is (empty? (violations "see docs/dev/AUDIENCES.md for the audience register")))))
+    (is (empty? (violations "see docs/dev/AUDIENCES.md for the audience register"))))
+  (is (= [:retired-ehrt-sim-emit-hl7-namespace] (violations "see ehrt.sim.emit-hl7/emit")))
+  (is (= [:retired-ehrt-sim-v2-replay-namespace] (violations "see ehrt.sim.v2-replay/fold-message")))
+  (is (= [:retired-ehrt-sim-site-profile-namespace] (violations "see ehrt.sim.site-profile/code-for")))
+  (testing "the sim-emit-hl7 citation form does not trip any retired-prefix pattern"
+    (is (empty? (violations "see ehrt.sim-emit-hl7.emit-hl7/emit")))
+    (is (empty? (violations "see ehrt.sim-emit-hl7.v2-replay/fold-message")))
+    (is (empty? (violations "see ehrt.sim-emit-hl7.site-profile/code-for")))
+    (is (empty? (violations "see ehrt.sim-emit-hl7.interface/emit")))))
 
 ;; README register tripwire (2026-08-01, AR-3) -- separate from the scan
 ;; above: different source (README.md only), different exemptions (link

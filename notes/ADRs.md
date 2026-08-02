@@ -5009,18 +5009,20 @@ sim-trajectory); `ehrt help`/`ehrt help sim` byte-identical throughout.
 
 ### Fence
 
-This ADR covers S1+S2 only. S3 (`sim-emit-hl7`: `emit-hl7`, `v2-replay`,
-`site-profile`) and S4 (`sim-engine`: `engine`, `churn`,
-`order-profiles`, triggered by a second `engine` consumer appearing or
-engine work itself needing the boundary) are not started — the residual
-`sim` after this session is `run`, `check`, `engine`+`churn`+
-`order-profiles`, `emit-hl7`, `emit-state`, `site-profile`,
-`identifiers`, `manifest`, `version`, and the unchanged façade
-`ehrt.sim.interface`. `config`'s final home (model for now, per AR-2)
-is unrevisited. The GMF coverage gap itself (CallSubmodule,
-condition-vocabulary gaps) — the plan's own stated motivation for
-sequencing S2 first — is explicitly not started; it is the payoff
-milestone this extraction unblocks, not part of it (R-4).
+This ADR originally covered S1+S2 only; **S3 is now executed too**
+(2026-08-02, GMF coverage Wave D stage D0, `notes/ADRs.md` ADR-0029 R1 —
+see the dated S3-executed note above for the full account). S4
+(`sim-engine`: `engine`, `churn`, `order-profiles`, triggered by a
+second `engine` consumer appearing or engine work itself needing the
+boundary) is not started — the residual `sim` after S3 is `run`,
+`check`, `engine`+`churn`+`order-profiles`, `emit-state`, `identifiers`,
+`manifest`, `version`, and the unchanged façade `ehrt.sim.interface`.
+`config`'s final home (model for now, per AR-2) is unrevisited. The GMF
+coverage gap itself (CallSubmodule, condition-vocabulary gaps) — the
+plan's own stated motivation for sequencing S2 first — was closed by
+Waves A–C (ADR-0026/0027/0028); Wave D's own state-type/emitter-home
+work (ADR-0029 R2, stages D1–D3) is the remaining payoff, not part of
+this ADR.
 
 ### Deviation record
 
@@ -5078,6 +5080,53 @@ stage's first edit).
 > 75 `sim-emit-hl7` = 281. `poly check` clean; `poly test :all
 > skip:integration` 0 failures/0 errors, captured to a file (not piped,
 > per this workspace's own caught-before lesson).
+
+> **S3 executed (dated note, 2026-08-02, Wave D stage D0, ADR-0029 R1).**
+> `emit-hl7`, `v2-replay`, `site-profile` moved to `components/sim-emit-hl7`
+> as `ehrt.sim-emit-hl7.*`, bodies byte-identical except the `ns` form and
+> the three files' own cross-references to each other (both diff-audited
+> — git's own rename detection reported 92–99% similarity on all six
+> moved files). **Interface** (AR-6 discipline, grep evidence only):
+> `ehrt.sim-emit-hl7.interface` re-exports `emit` (the 3/5/6-arg forms
+> only — the 2-arg form has zero real external callers, confirmed by the
+> Step-1 characterization above, and stays unexported), `control-id-for`,
+> `default-reference-date`, `default-utc-offset`. `v2-replay` and
+> `site-profile` have NO real external caller at all (confirmed by the
+> same grep) and are fully internal to the new component — narrower than
+> either S1 or S2's own interface, and the first of the three split
+> stages where an entire moved namespace stays unexported end to end.
+> Residual sim's `identifiers.clj`/`run.clj` and its own
+> `churn_scenarios_test.clj`/`emit_state_test.clj`/
+> `emitter_order_independence_test.clj`/`identifiers_test.clj` repointed
+> their `:require` to the new interface (same local alias `emit-hl7`, so
+> call-site syntax is unchanged); six further docstring-only citations of
+> the old namespace names (`identifiers.clj`, `run.clj`,
+> `emit_state.clj`/`emit_state_test.clj`, `engine.clj`, `engine_test.clj`,
+> `run_test.clj`, `persona.clj` in `sim-model`) were repointed to the new
+> namespace for self-consistency — none of these files require the moved
+> code, so the fix is prose-only. **Dependency directions, poly-enforced,
+> forbidden-forever the reverse:** `sim-emit-hl7 → sim-model` only (no
+> `kernel` edge — measured, not carried forward from the S1/S2 pattern).
+> `sim → {kernel, sim-model, sim-trajectory, sim-emit-hl7}` unchanged
+> otherwise. Any cycle among `{sim-model, sim-trajectory, sim-emit-hl7,
+> sim}` is forbidden. **Verification, all met:** `poly check` clean;
+> `poly test :all skip:integration` 0 failures/0 errors; golden run
+> (seed 42, 5 patients, `--emit hl7`) byte-identical on `ground-truth.edn`
+> (`--format ground-truth`), `messages.txt` (`--format er7`),
+> `identifiers.edn`, `ehrt help`, and `ehrt help sim` — `run.edn`'s only
+> diff was the manifest's `:generator :sha256` field, explained by the
+> real HEAD change between the two captures (several commits landed in
+> between), never by a code change; deftest+defspec count 206 residual +
+> 75 `sim-emit-hl7` = 281, exactly matching the pre-move total (zero test
+> loss, zero duplication). **Deviation record:** none in the code
+> extraction itself — no `poly test` compile-time surprise this time,
+> unlike S1/S2's own fixture-path/`ns`-form misses. A real, unrelated
+> deviation DID occur in this session's own Step 0: this ADR's sibling,
+> ADR-0029, was first inserted between ADR-0027 and ADR-0028 (an `Edit`
+> anchor matched Wave B's Fence text instead of Wave C's, both similarly
+> worded) and was fixed forward in its own commit before Step 1 began —
+> full account in the session record, not restated here since it touches
+> ADR-0029's own placement, not S3's design or execution.
 
 ---
 
@@ -5695,9 +5744,22 @@ record when it runs. R2's IR additions are ruled in shape only here; no
 schema, compile-trajectory mapping, or engine code exists yet for any of
 them.
 
-> **D0 execution note (filled Step 4, 2026-08-02):** placeholder —
-> filled by this session's own Step 4 with the caller map, golden
-> baseline, and verification summary once the extraction lands.
+> **D0 execution note (filled Step 4, 2026-08-02).** D0 executed same
+> day as ruled: `components/sim-emit-hl7` extracted from `sim`
+> (`emit-hl7`/`v2-replay`/`site-profile`), `poly check` clean, `poly
+> test :all skip:integration` 0 failures/0 errors, golden run
+> byte-identical, deftest+defspec parity (281 = 206 + 75) held. Full
+> caller map, interface design, dependency directions, and verification
+> baselines are recorded in `notes/ADRs.md` ADR-0025's own dated
+> "S3 executed" note (this ADR's own sibling extraction record) rather
+> than restated here — this ADR is Wave D's design record, ADR-0025 is
+> the sim-split arc's own execution record, and D0 is the point where
+> the two meet. Commits, in order: `7935b71`/`7a3dd58` (Step 0, this
+> ADR + plan restructure, plus a same-session fix-forward for an ADR
+> insertion-order mistake caught before Step 1), `ccce1fc` (Step 1,
+> characterization), `e38e232` (Step 2, extraction), this commit (Step
+> 4, records). Session record:
+> `.agents/session-records/2026-08-02-sim-split-s3-wave-d-d0.md`.
 
 > **D1/D2/D3 characterization notes:** not yet filled — each stage's own
 > session fills its own note here when it runs, per R6's own sequencing.

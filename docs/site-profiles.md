@@ -55,14 +55,14 @@ citizen's pattern gets a name and a home for what comes next.
 
 ## What this layer designs — landed
 
-Four components (`ehrt.sim.site-profile`), each extending an
+Four components (`ehrt.sim-emit-hl7.site-profile`), each extending an
 existing idea rather than inventing a new mechanism:
 
 1. **MSH dialect.** A site profile's `:msh` supplies MSH-12 (HL7
    version id), MSH-3/4/5/6 (sending/receiving app+facility), and
    MSH-11 (processing id — post-M6, ADR-0014's own Task 4 addition),
    defaulting field-by-field to today's hard-coded values when absent
-   (`ehrt.sim.site-profile/default-msh`). Version changes the
+   (`ehrt.sim-emit-hl7.site-profile/default-msh`). Version changes the
    MSH-12 literal only — this layer does not restructure segments per
    version (see the today/future table below for that honest scope
    line). SimHospital issue #17's own citation (a HL7v2.6 consumer who
@@ -100,12 +100,12 @@ existing idea rather than inventing a new mechanism:
    substitution**: the underlying state value (`:class :inpatient`, a
    disposition concept) doesn't change: only which code string an
    emitter writes for it does, per the site profile in effect
-   (`ehrt.sim.site-profile/code-for`) — the site's own code
+   (`ehrt.sim-emit-hl7.site-profile/code-for`) — the site's own code
    plus an optional coding-system suffix, standard values otherwise.
    This is `:surge-format`'s pattern applied to code tables instead of
    bed-naming strings.
 3. **Naming: `:surge-format` migrates to the profile.** A config-level
-   compatibility shim (`ehrt.sim.site-profile/apply-naming`), not
+   compatibility shim (`ehrt.sim-emit-hl7.site-profile/apply-naming`), not
    an emit-time dialect like the other three — surge bed ids are
    already baked into ground truth at DECIDE time
    (`ehrt.sim.facility/surge-slot-ids`, pre-dating this layer),
@@ -121,7 +121,7 @@ existing idea rather than inventing a new mechanism:
    :type]`, `[:location :ward]`) — most naturally, paths into the
    reserved `:attributes` map once M5's interpreter writes to it, but
    not limited to it: any path into the per-render context
-   (`ehrt.sim.emit-hl7`'s own event map plus the patient's
+   (`ehrt.sim-emit-hl7.emit-hl7`'s own event map plus the patient's
    persona) resolves today. A template is a declarative mapping
    (`:segment`, `:trigger` — the event types it attaches to — and
    `:fields`, each `:path` or a `:literal` fallback) the emitter reads
@@ -181,7 +181,7 @@ layer has shipped or will ever ship belongs to exactly one:
    `ground-truth-log` itself contains, because the fact it touches was
    already decided at `decide`-time before this layer existed to
    configure it. `:naming :surge-format`'s migration to the profile
-   (`ehrt.sim.site-profile/apply-naming`) is this class's first
+   (`ehrt.sim-emit-hl7.site-profile/apply-naming`) is this class's first
    citizen — surge bed ids are baked into ground truth at `decide`-time
    (`ehrt.sim.facility/surge-slot-ids`), so a naming knob for
    them cannot live at emit time the way the other three do without
@@ -240,7 +240,7 @@ when the demo was generated.
 
 **Exists today:** all four landed components above (MSH dialect,
 code-table overrides, the `:surge-format` naming migration, Z-segment
-templates), the `ehrt.sim.site-profile/SiteProfile` schema
+templates), the `ehrt.sim-emit-hl7.site-profile/SiteProfile` schema
 bundling them into one named, swappable `:site-profile` config value
 (threaded through `ehrt.sim.run/run-command` via `--config`, no
 CLI flag of its own — the same data-heavy-key passthrough
