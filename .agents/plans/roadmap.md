@@ -8,13 +8,6 @@ per item; done items move to the bottom of their section with a date and sha.
 - (none — the fourteen-item migration report is fully executed as of
   migration session 6; see Done below)
 
-## Now (GMF coverage expansion — .agents/plans/2026-08-02-gmf-coverage-plan.md)
-- Wave A — condition vocabulary (`At Least`, `Or`, `Date`, `Observation`-as-
-  condition, `Active Allergy`, per data-source characterization) plus
-  `Symptom` as a consumed-internally write; vendors `sore_throat.json`.
-  Sim split S2's own payoff milestone (roadmap's prior Deferred row,
-  below), started this session.
-
 ## Next (backlog, no session scheduled)
 - Pairing-as-data (review P3-3): mutate↔judge conviction registry — design pass in
   the design channel first; vocabulary is load-bearing
@@ -178,3 +171,27 @@ per item; done items move to the bottom of their section with a date and sha.
   with their trigger conditions; the GMF coverage-expansion payoff
   milestone S2 unblocks is deferred alongside them, explicitly not
   started this session (plan's own R-4).
+
+## Done (this session, 2026-08-02, GMF coverage Wave A)
+- Condition vocabulary v1→v1.1: `:or`/`:at-least` (compound wrappers),
+  `:date` (calendar-year vs. `ctx`'s own virtual clock), `:observation`-
+  as-a-condition-type (log query over already-emitted `:observation`
+  events), and `:symptom`-as-a-condition-type (an emergent finding, not
+  one of AR-2's five named candidates — required for `:at-least`'s only
+  real vendored use). `Active Allergy` needed no new work (already M5b).
+  `Vital Sign`/`Active CarePlan` confirmed still OUT (AR-2's pre-ruling,
+  neither appears in `sore_throat.json`). `notes/ADRs.md` ADR-0026.
+  Commits: `0b2c1b2` (wave plan), `9176250` (`:symptom`), `f99e87a`
+  (`:at-least`+`:or`), `5e3e72c` (`:date`), `6a35492` (`:observation`),
+  `6a3e11b` (docs).
+- `sore_throat.json` vendored (`a2cf68d`) — the wave's own payoff module,
+  state-type clean since M5-prep, blocked at every prior survey by
+  exactly the condition-vocabulary gap this wave closed. Real branch
+  coverage through `Determine_if_Bacterial`'s `At Least` compound
+  (`vendored_sore_throat_test.clj`, both threshold branches).
+  `stroke.json`'s own `Date` gap is also resolved, but the module stays
+  deferred (its `Death` state-type gap, AR-6 — Wave C's own trigger).
+- Regression oracle (fixed-seed `sinusitis`/`appendicitis` walks)
+  byte-identical across every commit this session, confirmed at close.
+  Full accounting in the session record and ADR-0026's own Decision
+  section.

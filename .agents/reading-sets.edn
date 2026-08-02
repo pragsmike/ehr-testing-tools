@@ -93,7 +93,13 @@
   ;; coverage expansion)" section, the amended S3-trigger wording, and
   ;; the Wave B/C/D rows replacing the single deferred GMF row (24 net
   ;; lines) brought the real total from 760 to 784.
-  :budget-lines 784}
+  ;; raised 2026-08-02 (GMF coverage Wave A, Step 4 close-out, caught by
+  ;; the budget test itself): `.agents/plans/roadmap.md`'s own Wave A
+  ;; "Now" row retired and its own new "Done" section landed, plus
+  ;; indexing this session's own session-record/prompt-archive filenames
+  ;; in their own already-cited onboarding READMEs, net +19 lines,
+  ;; brought the real total from 784 to 803.
+  :budget-lines 803}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one
