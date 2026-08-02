@@ -220,7 +220,16 @@
     (:direct-transition state) (update :direct-transition (fn [t] (keyword (slug t))))
     (:distributed-transition state) (update :distributed-transition #(mapv normalize-transition-entry %))
     (:conditional-transition state) (update :conditional-transition #(mapv normalize-transition-entry %))
-    (:complex-transition state) (update :complex-transition #(mapv normalize-transition-entry %))))
+    (:complex-transition state) (update :complex-transition #(mapv normalize-transition-entry %))
+    ;; GMF coverage Wave B (2026-08-02, ADR-0027, D5): the fifth
+    ;; transition kind -- a fixed {:ambulatory :emergency :telemedicine}
+    ;; map, each value a raw target-state-name string (never a weight --
+    ;; real Synthea's own weights live entirely in an external resource
+    ;; this project has no analog for, docs/gmf-interpreter.md section
+    ;; 9's own D5 account) -- normalized the SAME way :direct-transition
+    ;; already is, one key at a time.
+    (:type-of-care-transition state)
+    (update :type-of-care-transition #(into {} (map (fn [[k t]] [k (keyword (slug t))])) %))))
 
 (defn- normalize-state
   [state]
@@ -320,7 +329,15 @@
     [:vector [:map [:transition {:optional true} :keyword] [:condition {:optional true} [:map-of :keyword :any]]]]]
    [:complex-transition {:optional true}
     [:vector [:map [:condition {:optional true} [:map-of :keyword :any]]
-              [:distributions [:vector [:map [:transition :keyword] [:distribution number?]]]]]]]])
+              [:distributions [:vector [:map [:transition :keyword] [:distribution number?]]]]]]]
+   ;; GMF coverage Wave B (D5): no weights of its own (see
+   ;; normalize-transitions' own comment) -- each of the three keys is
+   ;; optional (a module may omit :telemedicine on an older care-
+   ;; pathway authoring, real Synthea's own shape).
+   [:type-of-care-transition {:optional true}
+    [:map [:ambulatory {:optional true} :keyword]
+     [:emergency {:optional true} :keyword]
+     [:telemedicine {:optional true} :keyword]]]])
 
 (defn- with-transitions [& kvs] (into [:map] (into (vec kvs) TransitionFields)))
 

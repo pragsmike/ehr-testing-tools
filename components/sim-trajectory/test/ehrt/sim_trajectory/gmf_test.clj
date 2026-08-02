@@ -263,3 +263,21 @@
       (let [visit (get-in (:payload loaded) [:states :visit])]
         (is (= :wellness (:encounter-class visit)))
         (is (not (contains? visit :codes)))))))
+
+;; --- GMF coverage Wave B (2026-08-02, ADR-0027, D5): the fifth
+;; transition kind, type_of_care_transition -- loader normalization ----
+
+(def type-of-care-transition-json
+  (str "{\"name\": \"CarePathways\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Pick\"},"
+       "  \"Pick\": {\"type\": \"Simple\", \"type_of_care_transition\":"
+       "            {\"ambulatory\": \"Ambulatory\", \"emergency\": \"ED\", \"telemedicine\": \"Telemedicine\"}},"
+       "  \"Ambulatory\": {\"type\": \"Terminal\"},"
+       "  \"ED\": {\"type\": \"Terminal\"},"
+       "  \"Telemedicine\": {\"type\": \"Terminal\"}}}"))
+
+(deftest type-of-care-transition-targets-normalize-to-state-name-keywords
+  (let [loaded (gmf/load-module "care-pathways" type-of-care-transition-json)]
+    (is (result/ok? loaded))
+    (is (= {:ambulatory :ambulatory :emergency :ed :telemedicine :telemedicine}
+           (:type-of-care-transition (get-in (:payload loaded) [:states :pick]))))))

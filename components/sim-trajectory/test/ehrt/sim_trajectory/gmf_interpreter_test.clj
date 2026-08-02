@@ -834,3 +834,53 @@
           r1 (interp/walk-module calls-med-leaf-module (Random. seed) (ctx-for p1) med-closure)
           r2 (interp/walk-module calls-med-leaf-module (Random. seed) (ctx-for p2) med-closure)]
       (= (:trajectory r1) (:trajectory r2)))))
+
+;; --- GMF coverage Wave B (2026-08-02, ADR-0027, D5): the fifth
+;; transition kind, type_of_care_transition -------------------------------
+
+(def type-of-care-module
+  {:id "toc-mod" :name "CarePathways"
+   :states {:initial {:type :initial :direct-transition :pick}
+            :pick {:type :simple
+                   :type-of-care-transition {:ambulatory :ambulatory :emergency :ed :telemedicine :telemedicine}}
+            :ambulatory {:type :terminal}
+            :ed {:type :terminal}
+            :telemedicine {:type :terminal}}})
+
+(defn- ctx-at-year [year]
+  (assoc (ctx-for (persona-at 1)) :current :pick :t (.toEpochDay (java.time.LocalDate/of ^int year 6 1))))
+
+(defn- well-mixed-seeds
+  "Sequential small `Random` seeds are famously clustered on their OWN
+  first `.nextDouble()` draw (confirmed live below: seeds 0-9 all land
+  within 0.7301-0.7311, a documented Java Random quirk) -- a separate
+  mixer RNG generating well-distributed longs is this project's own
+  established fix (`vendored_sore_throat_test.clj`'s own `well-mixed-
+  candidate-seeds`), reused here rather than re-solved."
+  [n mixer-seed]
+  (let [mixer (Random. mixer-seed)]
+    (repeatedly n #(.nextLong mixer))))
+
+(deftest type-of-care-transition-never-picks-telemedicine-before-2020
+  (testing "D5: real Synthea's own telemedicine_config.json start_year --
+            no telemedicine option exists before it, this project's own
+            virtual clock (:t) answers the year honestly"
+    (let [ctx (ctx-at-year 2010)
+          picks (into #{} (map (fn [seed] (:next (interp/step type-of-care-module (Random. seed) ctx))))
+                      (well-mixed-seeds 500 20260802))]
+      (is (not (contains? picks :telemedicine)))
+      (is (= #{:ambulatory :ed} picks) "500 draws should see both branches of a 0.75/0.25 split"))))
+
+(deftest type-of-care-transition-can-pick-telemedicine-from-2020-onward
+  (let [ctx (ctx-at-year 2021)
+        picks (into #{} (map (fn [seed] (:next (interp/step type-of-care-module (Random. seed) ctx))))
+                    (well-mixed-seeds 500 20260802))]
+    (is (= #{:ambulatory :ed :telemedicine} picks) "500 draws should see all three branches of the during-telemedicine split")))
+
+(deftest type-of-care-transition-consumes-exactly-one-draw
+  (let [ctx (ctx-at-year 2021)
+        calls (atom 0)
+        rng (proxy [Random] [(long 1)]
+              (nextDouble [] (swap! calls inc) (proxy-super nextDouble)))]
+    (interp/step type-of-care-module rng ctx)
+    (is (= 1 @calls))))

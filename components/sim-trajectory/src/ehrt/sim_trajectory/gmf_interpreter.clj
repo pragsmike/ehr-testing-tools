@@ -398,11 +398,53 @@
   (first (filter (fn [{:keys [condition]}] (or (nil? condition) (evaluate-condition module-id ctx condition)))
                  entries)))
 
+(defn- type-of-care-weights
+  "GMF coverage Wave B (2026-08-02, ADR-0027, D5): Synthea's own
+  TypeOfCareTransition dispatch, characterized against Transition.java
+  and the external telemedicine_config.json resource it reads at
+  construction (docs/gmf-interpreter.md section 9's own D5 account,
+  full source citations there). Real Synthea keys on BOTH the
+  simulated calendar year (before/from telemedicine_config.json's own
+  `start_year: 2020`) and the person's current insurance-payer name
+  (`high_emergency_use_insurance_names`) -- this project's persona has
+  no payer concept, the identical gap shape `:active-allergy`'s own
+  documented simplification already establishes. Simplification:
+  always the `typical_emergency_distribution` branch (never
+  `high_emergency_distribution`), since no data exists to tell which
+  synthetic patients would qualify; the year-gated half is NOT
+  simplified away -- `ctx`'s own `:t`, the same mechanism `:date`
+  condition already uses, answers it honestly. Weights cited verbatim
+  from `telemedicine_config.json`'s own `typical_emergency_distribution`
+  rows at both branches."
+  [^long year]
+  (if (< year 2020)
+    {:ambulatory 0.75 :emergency 0.25}
+    {:ambulatory 0.56 :emergency 0.2 :telemedicine 0.24}))
+
+(defn- type-of-care-entries
+  "Pairs each year-gated weight (`type-of-care-weights`) with the
+  module's OWN declared target state for that key (`toc-targets`,
+  `state`'s own `:type-of-care-transition` map) -- a key the weight
+  table names but the module doesn't declare (pre-2020, a module that
+  happens to still carry a `:telemedicine` target -- moot, since
+  `type-of-care-weights` itself omits `:telemedicine` before 2020) is
+  simply not offered."
+  [toc-targets weights]
+  (keep (fn [[k w]] (when-let [target (get toc-targets k)] {:transition target :distribution w})) weights))
+
 (defn- resolve-transition
-  "The shared 4-kind transition dispatcher every non-Terminal v1 state
+  "The shared 5-kind transition dispatcher every non-Terminal v1 state
   type resolves its own :next through -- one mechanism, reused by every
   state type's own `step` handling below, rather than duplicated per
-  type."
+  type. GMF coverage Wave B (D5) adds `:type-of-care-transition` as a
+  fifth kind, the same `weighted-pick-transition` mechanism
+  `:distributed-transition`/`:complex-transition` already share (one
+  `.nextDouble` draw, fixed consumption regardless of which member is
+  chosen) -- a zero-rng weight lookup (`type-of-care-weights`, a pure
+  function of `ctx`'s own `:t`) followed by the SAME one-draw pick,
+  joining this namespace's own descend-run-return order contract at
+  the position every other transition-resolving draw already
+  occupies."
   [module-id ctx ^Random rng state]
   (cond
     (:direct-transition state) (:direct-transition state)
@@ -410,6 +452,9 @@
     (:conditional-transition state) (:transition (first-matching-entry module-id ctx (:conditional-transition state)))
     (:complex-transition state) (weighted-pick-transition
                                   rng (:distributions (first-matching-entry module-id ctx (:complex-transition state))))
+    (:type-of-care-transition state)
+    (weighted-pick-transition rng (type-of-care-entries (:type-of-care-transition state)
+                                                          (type-of-care-weights (.getYear (LocalDate/ofEpochDay (:t ctx))))))
     :else nil))
 
 ;; --- step --------------------------------------------------------------
