@@ -192,6 +192,34 @@
                                 condition-codes))
                  event-codes)))
 
+(defn- latest-observation-value
+  "The :value of the most recent :observation trajectory event whose own
+  :codes match `condition-codes` (`code-matches?`, above -- already shared
+  with :active-condition/:active-medication) -- most-recent-first, the
+  same 'most recent' rule PriorState/Active Condition already establish."
+  [ctx condition-codes]
+  (some (fn [event] (when (and (= :observation (:event event)) (code-matches? (:codes event) condition-codes))
+                       (:value event)))
+        (rseq (vec (:trajectory ctx)))))
+
+(defn- observation-condition-holds?
+  "GMF coverage Wave A (2026-08-02): Synthea's own Logic.java Observation
+  class -- the most recent matching-code observation's value, compared via
+  :operator. Already-existing data: the accumulating :trajectory (the
+  value itself was sampled and carried by the already-built :observation
+  STATE type, M5a). Mirrors upstream's own required-precondition design:
+  THROWS when no matching observation was ever recorded, the same
+  'module-authoring-shape bug, not this interpreter's problem' disposition
+  unsupported condition types and the max-steps backstop already get -- v1
+  scope omits the 'is nil'/'is not nil' operators real Synthea also
+  supports for exactly this case, since no candidate module this session
+  needs them."
+  [module-id ctx {:keys [operator codes value]}]
+  (if-let [obs-value (latest-observation-value ctx codes)]
+    (compare-op operator obs-value value)
+    (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: Observation condition has no matching prior observation"
+                     {:module-id module-id :codes codes}))))
+
 (defn- active-onset-condition-holds?
   "Does `ctx`'s own trajectory contain an `onset-event-type` event whose
   :codes match `condition`'s own :codes, with no LATER `end-event-type`
@@ -270,6 +298,7 @@
     :or (or-condition-holds? module-id ctx condition)
     :at-least (at-least-condition-holds? module-id ctx condition)
     :date (date-condition-holds? condition (:t ctx))
+    :observation (observation-condition-holds? module-id ctx condition)
     :symptom (symptom-condition-holds? module-id ctx condition)
     (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: unsupported condition type"
                      {:condition-type (:condition-type condition)}))))

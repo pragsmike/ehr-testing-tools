@@ -561,6 +561,71 @@
       (interp/evaluate-condition "m" ctx {:condition-type :date :operator ">" :year target})
       (= 0 @calls))))
 
+;; --- GMF coverage Wave A: Observation-as-condition (2026-08-02) ----------
+;; A log query over already-emitted :observation trajectory events by
+;; concept, the same shape :active-condition/:active-medication already
+;; establish -- already-existing data (the accumulating :trajectory), no
+;; new state home; the value itself was already sampled and carried by the
+;; already-built :observation STATE type (M5a). Semantics grounded against
+;; Synthea's own Logic.java Observation class at the docs/gmf-interpreter.md
+;; pinned commit: most recent matching-code observation's value, compared
+;; via :operator; THROWS if no matching observation was ever recorded (the
+;; SAME "required precondition, module author's own responsibility"
+;; design Synthea itself uses -- v1 scope omits the "is nil"/"is not nil"
+;; operators real Synthea also supports for exactly this case, since no
+;; candidate module this session needs them). Real use: sore_throat.json's
+;; Determine_if_Bacterial (Step 3), whose only two predecessor states
+;; (Take_Temperature_High/Low) are BOTH Observation states citing the same
+;; LOINC code -- confirmed by reading the vendored file directly, so the
+;; throw-on-missing path is never live on that module's own real walk.
+
+(def temp-concept {:system :loinc :code "8310-5" :display "Body temperature"})
+
+(defn- ctx-with-observation [p value]
+  (assoc (ctx-for p) :trajectory [{:module "m" :state :take-temp :event :observation :t 0
+                                   :codes [temp-concept] :value value}]))
+
+(deftest observation-condition-compares-the-most-recent-matching-observations-value
+  (let [ctx (ctx-with-observation (persona-at 1) 38.5)]
+    (is (true? (interp/evaluate-condition "m" ctx {:condition-type :observation :codes [temp-concept] :operator ">" :value 38})))
+    (is (false? (interp/evaluate-condition "m" ctx {:condition-type :observation :codes [temp-concept] :operator "<" :value 38})))))
+
+(deftest observation-condition-uses-the-most-recent-of-several-matching-observations
+  (let [ctx (update (ctx-with-observation (persona-at 1) 37.0) :trajectory conj
+                    {:module "m" :state :take-temp-2 :event :observation :t 1 :codes [temp-concept] :value 39.0})]
+    (is (true? (interp/evaluate-condition "m" ctx {:condition-type :observation :codes [temp-concept] :operator ">" :value 38})))))
+
+(deftest observation-condition-throws-when-no-matching-observation-was-ever-recorded
+  (testing "the same required-precondition design Synthea's own Logic.java
+            Observation class uses -- a module reaching this condition
+            without ever recording the observation it queries is a module-
+            authoring-shape bug this interpreter surfaces rather than
+            silently defaults, the same disposition unsupported condition
+            types and the max-steps backstop already get"
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (interp/evaluate-condition "m" (ctx-for (persona-at 1))
+                                             {:condition-type :observation :codes [temp-concept] :operator ">" :value 38})))))
+
+(deftest observation-condition-consumes-no-rng
+  (let [calls (atom 0)
+        rng (proxy [Random] [(long 1)]
+              (nextDouble [] (swap! calls inc) (proxy-super nextDouble))
+              (nextInt ([n] (swap! calls inc) (proxy-super nextInt n))))]
+    (interp/evaluate-condition "m" (ctx-with-observation (persona-at 1) 38.5)
+                               {:condition-type :observation :codes [temp-concept] :operator ">" :value 38})
+    (is (= 0 @calls))))
+
+(defspec observation-condition-never-touches-rng-state 100
+  (prop/for-all [seed gen/large-integer
+                 value (gen/double* {:min 30 :max 45 :NaN? false :infinite? false})]
+    (let [ctx (ctx-with-observation (persona-at 1) value)
+          calls (atom 0)
+          rng (proxy [Random] [(long seed)]
+                (nextDouble [] (swap! calls inc) (proxy-super nextDouble))
+                (nextInt ([n] (swap! calls inc) (proxy-super nextInt n))))]
+      (interp/evaluate-condition "m" ctx {:condition-type :observation :codes [temp-concept] :operator ">" :value 38})
+      (= 0 @calls))))
+
 ;; --- M5b: Device/DeviceEnd -- consumed-internally, like :simple -----------
 
 (def device-module
