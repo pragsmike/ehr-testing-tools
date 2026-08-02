@@ -1178,3 +1178,258 @@ implements directly (Tasks 1–3, below the roadmap's M5a scope); items
 and item 6's validity-table row specifically), recorded here as
 ratified so M5b's own session opens against decided design, not a
 still-open recommendation.
+
+---
+
+## 9. GMF coverage Wave B: closure survey and characterization findings (2026-08-02)
+
+Step 1 of the Wave B session (ADR-0027; `.agents/plans/2026-08-02-gmf-
+coverage-plan.md`) — real closures fetched and read at the SAME pinned
+commit every prior GMF citation in this document uses,
+`7e08387c68a7f0e21d13076609a159fd473fc902` of
+[`synthetichealth/synthea`](https://github.com/synthetichealth/synthea)
+(`master`). D6's own bar ("modest deferred-type surface" per ADR-0013
+point 4) applies to each candidate closure as a unit; D7's hidden-
+import check is run per closure; D5's `type_of_care_transition`
+dispatch rule is characterized against real Synthea source, below —
+this section is the fix-forward fill-in ADR-0027's own D5 placeholder
+points to.
+
+### `ear_infections.json` closure survey — VENDORED this session
+
+| Module | States | State-type gap | Condition-vocab gap | Other findings |
+|---|---:|---|---|---|
+| `ear_infections.json` (root) | 16 | `CallSubmodule` ×2 (Wave B's own headline target) | none | mandatory-path `Attribute` `is not nil` operator (`End_Ear_Infection_Medications`); mandatory-path `encounter_class: "outpatient"` (`Ear_Infection_Encounter`, the module's OWN primary encounter); mandatory-path `wellness: true` boolean idiom with no `codes` key (`Next_Wellness_Encounter`, the module's own unconditional post-medication fallback) |
+| `medications/ear_infection_antibiotic.json` | 19 | none | none (`Age`/`Date`/`Active Allergy`, all v1) | mandatory-path `Attribute` `is nil` operator (`Initial`, an idempotency gate); every `MedicationOrder` (11 of them) carries `assign_to_attribute: antibiotic_prescription` |
+| `medications/otc_pain_reliever.json` | 12 | none | none (`Age`/`Date`/`Active Allergy`, all v1) | same shape as the antibiotic submodule: mandatory `is nil` gate on `Initial`, every `MedicationOrder` (6 of them) carries `assign_to_attribute: otc_pain_reliever` |
+
+**Verdict: closure surveys clean of Wave-D-scoped deferred types** (no
+`DiagnosticReport`/`MultiObservation`/`CarePlanStart`/`ImagingStudy`
+anywhere in the closure) — the ONLY state-type gap is `CallSubmodule`
+itself, Wave B's own reason for existing. Four real, previously-
+uncharacterized findings surfaced by reading the actual closure rather
+than the top-level module alone (the same "survey proposes, the real
+loader disposes" pattern section 8's own M5b findings already
+established, repeated here for a NEW module):
+
+1. **`MedicationOrder`'s own `assign_to_attribute` field, and
+   `MedicationEnd`'s own `referenced_by_attribute` field, are both
+   unbuilt.** `GmfState`'s `:medication-order` schema variant carries
+   no attribute-assignment field at all (a module using it still loads
+   — Malli's `:map` is open by default, so the extra key is silently
+   ignored — but the interpreter never WRITES the attribute, so a
+   downstream `is not nil` check on it would always read nil). This is
+   the SAME reference shape M5b's own finding 6 already named for
+   `ConditionEnd`'s `referenced_by_attribute` ("a reference shape v1's
+   interpreter does not resolve") — that finding judged it harmless
+   for `sinusitis.json` because nothing on that module's own control
+   flow ever consulted the missing reference; here it is load-bearing:
+   every patient who is ever prescribed a medication through EITHER
+   called submodule reaches `End_Ear_Infection_Medications`, which
+   gates on exactly this attribute.
+2. **The `Attribute` condition type supports only `!=`/`=` operators
+   today — `is nil`/`is not nil` are unbuilt.** Confirmed mandatory-
+   path: the root module's own post-medication cleanup state and both
+   submodules' own idempotency-gating `Initial` states all use one of
+   these two operators, never `!=`/`=`.
+3. **`encounter_class: "outpatient"` is a real GMF value this loader's
+   4-entry `encounter-class->keyword` map (section 1) doesn't
+   recognize** — `Ear_Infection_Encounter`, the module's own PRIMARY
+   encounter (every patient who ever gets an ear infection reaches
+   it), uses it. Falls through to `(keyword (slug c))` at
+   normalization (no throw there) but then fails `GmfState`'s
+   `:encounter` schema variant, whose `:encounter-class` enum is
+   closed to `#{:wellness :ambulatory :emergency :inpatient}` —
+   `:schema-invalid` at load. Resolution (Step 2, disclosed as a
+   loader-normalization commit, not a new interpreter mechanism):
+   `encounter-class->keyword` gains `"outpatient" -> :ambulatory` —
+   `ehrt.sim-trajectory.compile-trajectory`'s own `encounter->step`
+   (confirmed by direct read, lines ~97–102) already treats `:wellness`
+   and `:ambulatory` identically (both compile to `:outpatient-visit`),
+   so this is a genuine same-concept vocabulary alias, not an invented
+   mapping — and it needs no `compile-trajectory` change, keeping this
+   ADR's own fence (interpreter/loader only) intact.
+4. **The already-documented `wellness: true` boolean idiom (section 8,
+   "M7 survey," "A second GMF wellness-encounter encoding this loader
+   doesn't recognize") is confirmed MANDATORY-path here, not an
+   excludable tail the way that survey's own five prior instances
+   (`mTBI`/`atrial_fibrillation`/`osteoporosis`/`epilepsy`/`med_rec`)
+   were.** `Next_Wellness_Encounter` is `End_Ear_Infection_Medications`'s
+   own unconditional fallback arm (reached by every patient once both
+   medication attributes are cleared) — every ear-infection walk
+   reaches it. A second wrinkle beyond the boolean-vs-string encoding
+   itself: this state carries NO `codes` key at all (Synthea's own real
+   wellness-encounter concept is auto-filled by engine machinery this
+   project's own GMF port never carried, not authored per-module) —
+   `GmfState`'s `:encounter` variant currently requires `:codes`.
+   Resolution (Step 2): the SAME loader normalization the M7 finding
+   already named (`:wellness true` + absent `:encounter-class` ->
+   `:encounter-class :wellness`), plus `:codes` becomes
+   `{:optional true}` on `:encounter` — the identical "don't fabricate
+   what was never actually said" disposition M5b's finding 6 already
+   established for `ConditionAnnotation`'s own `:codes` field.
+   `compile-trajectory`'s own `encounter->step` never reads `:codes`
+   for an encounter event (confirmed by direct read) — safe to loosen
+   at the schema layer with zero downstream impact.
+
+**D7 hidden-import check, `ear_infections` closure: empty (clean),
+confirmed by exhaustive scan of every `Attribute` condition and every
+`SetAttribute`/`assign_to_attribute` write across all three files.**
+`antibiotic_prescription` and `otc_pain_reliever` are each READ in a
+DIFFERENT module than at least one of their own WRITES — the root
+module (`ear_infections.json`) reads what its own called submodule
+writes (`assign_to_attribute`), and the root module later WRITES the
+same key back to nil (`Unset_Antibiotic_Prescription_Attribute`/
+`Unset_Non_Opioid_Prescription_Attribute`) that the submodule's own
+`Initial` state later reads again on any subsequent call. This is
+concrete, load-bearing evidence for D1's own root-scoping design — not
+a hypothetical the closure happens not to exercise.
+
+### `urinary_tract_infections.json` closure survey — DEFERRED this session (D6)
+
+The design session's own framing named this module's payoff as
+"contingent on its closure surveying clean" — Step 1's own real-closure
+read found it does not. The top-level module's own survey row (this
+document's own M7 appendix, "`CallSubmodule` ×3... deferred") already
+undercounted the closure's real depth: three named path submodules
+(`uti/telemed_path`, `uti/ambulatory_path`, `uti/ed_path`) themselves
+transitively call EIGHT more (`uti/hpi`, `uti/gu_pregnancy_check`,
+`uti/abx_tx`, `uti/labs`, `uti/lab_follow_up`, `uti/ambulatory_eval`,
+`uti/ed_eval`, `uti/ed_bundle`) — twelve real files, not four.
+
+| Module | States | State-type gap | Other findings |
+|---|---:|---|---|
+| `urinary_tract_infections.json` (root) | 29 | `CallSubmodule` ×3 | **TWO transition kinds outside this document's own four (§2), both new findings**: `type_of_care_transition` (`Care Pathways`, D5, characterized below and built this session) and `lookup_table_transition` — a SIXTH real GMF transition kind this document's own brief never named, on the module's own entry path (`Urinary Tract Infection`, selecting Cystitis vs. Pyelonephritis; `Recurrent UTI`, its own recurrence analogue) |
+| `uti/telemed_path.json` | 31 | `CallSubmodule` ×7 | none beyond the calls themselves |
+| `uti/ambulatory_path.json` | 18 | `CallSubmodule` ×4 | none beyond the calls themselves |
+| `uti/ed_path.json` | 7 | `CallSubmodule` ×2 | none beyond the calls themselves |
+| `uti/hpi.json` | 12 | none (`Symptom` ×8) | none |
+| `uti/gu_pregnancy_check.json` | 6 | none (`Observation` ×2) | none |
+| `uti/abx_tx.json` | 30 | none (`MedicationOrder` ×19) | none |
+| `uti/labs.json` | 19 | **`DiagnosticReport` ×2 (Wave-D-scoped)** | none |
+| `uti/lab_follow_up.json` | 10 | `CallSubmodule` ×1 (-> `uti/abx_tx`) | none |
+| `uti/ambulatory_eval.json` | 7 | `CallSubmodule` ×3 (-> `uti/gu_pregnancy_check`, `uti/labs`, `uti/abx_tx`) | confirmed by direct transition-graph read: its own `complex_transition` sends 100% of patients to `uti/labs` (20% direct, 80% via `uti/gu_pregnancy_check` first) — `DiagnosticReport` is unconditionally reached on this path, not a tail |
+| `uti/ed_eval.json` | 7 | `CallSubmodule` ×2 (-> `uti/ed_bundle`, `uti/abx_tx`) | |
+| `uti/ed_bundle.json` | 56 | **`DiagnosticReport` ×6, `MultiObservation` ×4 (both Wave-D-scoped)**, `CallSubmodule` ×1 (-> `uti/labs`, a second path into the same deferred type) | |
+
+**Verdict: DEFERRED (D6) — dirty in every branch, not an excludable
+tail.** All three of the top-level module's own care pathways
+(`Telemedicine`/`Ambulatory`/`ED`) route into either `uti/ambulatory_eval`
+(confirmed-mandatory `uti/labs`, `DiagnosticReport`) or `uti/ed_eval`
+(`uti/ed_bundle`, `DiagnosticReport` + `MultiObservation`) — both
+deferred types this project's own wave plan already scopes to Wave D
+("state types needing IR + emitter homes"), not a cheap mechanical
+extension the way `ear_infections`' own four findings (above) are. Per
+D6: this closure member is dirty, so the WHOLE root module drops from
+this wave's vendoring — the payoff shrinks from two closures to one,
+honestly, exactly as the session prompt's own "contingent on its
+closure surveying clean" framing anticipated. `type_of_care_transition`
+(D5) is still characterized and built this session regardless (Wave
+B's own structural scope, not conditioned on any one module vendoring)
+— `lookup_table_transition` is a genuinely new, unplanned finding and
+is NOT built this session: it would need real design (an external
+lookup-table CSV mechanism this project has no analog for, `uti.csv`/
+`uti_recurrence.csv` are never fetched or vendored here) and nothing
+in this wave's own scope depends on it, since `urinary_tract_infections.json`
+is deferred regardless of whether it's ever resolved. Named here as a
+finding for a future wave, not an escalation this session blocks on
+(the outcome — UTI deferred — does not change either way it's
+eventually resolved).
+
+**D7 hidden-import check: not run to completion for this closure** —
+moot once the closure itself is deferred under D6 (D7 exists to
+falsify D1's OWN scoping design against a closure this session is
+about to vendor; a closure that never vendors this wave carries no
+such obligation).
+
+**Encounter-derivation wrinkle (Step 1(f)), read-only, no engine
+change:** confirmed directly against the fetched closure —
+`urinary_tract_infections.json` itself has NO `Encounter` state; every
+`Encounter`/`EncounterEnd` pair in this closure lives inside the THREE
+path submodules (`uti/telemed_path.json` ×6, `uti/ambulatory_path.json`
+×3, `uti/ed_path.json` ×1), exactly the cross-boundary-encounter shape
+D2's own provenance citation exists to cover. Where the residual sim's
+own encounter handling would consume such an event: `ehrt.sim-
+trajectory.compile-trajectory`'s `encounter->step`/`encounter-end->step`
+(section 8's own "Multi-encounter-per-episode" finding already reads
+this code path directly, lines ~97–117) — no new consumption point
+would be needed, the same `:encounter`/`:encounter-end` trajectory
+event shape a root-level `Encounter` state already produces, just
+carrying a longer `:module`-citation call path (D2) once emitted from
+inside a call. Not exercised by any vendored test this session, since
+`urinary_tract_infections.json` itself is deferred (D6) — recorded here
+so a future Wave-D session revisiting UTI does not have to re-derive
+it.
+
+### D5 — `type_of_care_transition` dispatch-rule characterization
+
+Grounded against `Transition.java`'s own `TypeOfCareTransition` class
+and `TypeOfCareTransitionOptions` (Synthea source, same pinned commit),
+plus the external `telemedicine_config.json` resource that class reads
+at construction time (`TypeOfCareTransition(TypeOfCareTransitionOptions
+options)` calls `TelemedicineConfig.fromJSON()`).
+
+**Real Synthea's own dispatch, as read:** `Care Pathways`'s own JSON
+carries only three target STATE NAMES (`ambulatory`/`emergency`/
+`telemedicine` -> `"Ambulatory"`/`"ED"`/`"Telemedicine"` in
+`urinary_tract_infections.json` — no weights of any kind in the module
+JSON itself). The actual selection weights live entirely in
+`telemedicine_config.json`, keyed on: (a) whether `time` (the simulated
+instant) is before or after `start_year: 2020`
+(`config.getTelemedicineStartTime()`), and (b) whether the person's
+CURRENT insurance payer's name is in `high_emergency_use_insurance_
+names` (`["Medicaid", "Dual Eligible", "NO_INSURANCE"]`) — four
+`EnumeratedDistribution`s total (pre/during-telemedicine ×
+high/typical-emergency), one `person.randLong()`-reseeded sample drawn
+from whichever one applies.
+
+**This project's own persona (`ehrt.sim-model.interface/persona`) has
+no insurance/payer concept anywhere** — the payer-name half of real
+Synthea's own dispatch cannot be evaluated against this project's own
+data, the identical shape of gap `Active Allergy`'s own documented
+simplification already established (no allergy concept exists to
+query either). **Simplification, documented here per D5's own
+instruction, not left as a silent assumption:** this interpreter always
+uses the `typical_emergency_distribution` branch (never
+`high_emergency_distribution`) — the majority-case default, since this
+project cannot determine which synthetic patients would fall into the
+three named high-emergency-use payer categories. The pre/during-2020
+split, by contrast, IS honestly implementable — this project's own
+virtual clock (`ctx`'s `:t`) already answers "what calendar year is
+it," the identical mechanism `:date` condition (Wave A) already uses —
+so that half of the real dispatch rule is NOT simplified away:
+
+- `t`'s own calendar year `< 2020`: `{:ambulatory 0.75 :emergency 0.25}`
+  (`pre_telemedicine.typical_emergency_distribution` — no telemedicine
+  option exists pre-2020 in Synthea's own real data either, consistent
+  with `:ambulatory`/`:emergency` being the module's only two targets
+  reachable before that year).
+- `t`'s own calendar year `>= 2020`:
+  `{:ambulatory 0.56 :emergency 0.2 :telemedicine 0.24}`
+  (`during_telemedicine.typical_emergency_distribution`).
+
+**RNG consumption: exactly one `.nextDouble` draw, the SAME fixed-
+consumption weighted-pick mechanism `distributed_transition` already
+uses** (`weighted-pick-transition`) — `type_of_care_transition` is
+implemented as a transition KIND (a 5th sibling of `direct`/
+`distributed`/`conditional`/`complex`), not a new state type, since
+real Synthea's own `Care Pathways` state is itself a plain `Simple`
+carrying this field, exactly like `distributed_transition` already
+attaches to any state type. Joins the interpreter ns docstring's own
+order contract (Step 2) as: descend into the year-gated weight table
+(zero rng, a pure function of `ctx`'s own `:t`), then one weighted-pick
+draw — same position in the per-state draw order every other
+transition-resolving draw already occupies.
+
+### Regression baseline (Step 1(e))
+
+Fixed-seed walks of the three currently-vendored modules
+(`sinusitis.json`, `appendicitis.json`, `sore_throat.json`) — 6 seeds
+(`1 2 3 42 20260802 999999`) × 2 sexes each, `run-module` to a 10-year-
+bounded horizon from a 25-year history offset (the same shape
+`vendored_sore_throat_test.clj`'s own property test already uses),
+hashing `(:status result)` and `(hash (:trajectory result))` —
+captured before any Wave B code change. Re-run and diffed at every
+Step 2/3 checkpoint per ADR-0027's own verification-baselines section;
+byte-identical at every one (confirmed one final time at session
+close, Step 4).

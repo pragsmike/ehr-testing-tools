@@ -5231,7 +5231,29 @@ fix-forward note with the source citation, then implemented to match.
 If selection consumes rng, its draw joins the documented order
 contract.
 
-> **D5 characterization note — filled Step 1, see below.**
+> **D5 characterization note (filled Step 1, 2026-08-02):** real
+> Synthea's own dispatch (`Transition.java`'s `TypeOfCareTransition`,
+> same pinned commit) keys on the simulated calendar year (before/from
+> `telemedicine_config.json`'s own `start_year: 2020`) AND the person's
+> current insurance-payer name (`high_emergency_use_insurance_names`) —
+> this project's persona carries no payer concept, the identical gap
+> shape `Active Allergy`'s own documented simplification already
+> established. Simplification: always the `typical_emergency_
+> distribution` branch (never `high_emergency_distribution`), since no
+> data exists to tell which synthetic patients would qualify; the
+> year-gated half is NOT simplified away (`ctx`'s own `:t`, the same
+> mechanism `:date` condition already uses, answers it honestly):
+> `< 2020` -> `{:ambulatory 0.75 :emergency 0.25}`; `>= 2020` ->
+> `{:ambulatory 0.56 :emergency 0.2 :telemedicine 0.24}` (both cited
+> verbatim from `telemedicine_config.json`'s own
+> `typical_emergency_distribution` rows). One `.nextDouble` draw, the
+> same fixed-consumption weighted-pick `distributed_transition` already
+> uses — implemented as a 5th TRANSITION kind (a `Simple` state's own
+> field, not a new state type), joining the interpreter's own
+> descend-run-return order contract as a zero-rng weight lookup
+> followed by one weighted-pick draw. Full account, with source
+> citations: `components/sim-trajectory/docs/gmf-interpreter.md` §9's
+> own "D5 — `type_of_care_transition` dispatch-rule characterization."
 
 **D6 — Curation per closure: ADR-0013 point 4's "modest deferred-type
 surface" bar applies to the closure as a unit.** Each closure member
