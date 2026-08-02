@@ -5808,11 +5808,14 @@ them.
 > evidence is recorded immediately below, marked PROPOSED — awaiting a
 > design-channel ruling, not yet decided.**
 
-> **D1a schema PROPOSAL (drafted Step 2, 2026-08-02) — PROPOSED, NOT
-> YET RULED. Every claim below is drawn from D1a's own characterization
-> (§11); marked PROPOSED throughout, not decided text — a design-channel
-> ruling is what would move any of this into R2(a)/(c)'s own Decision
-> section.**
+> **D1a schema PROPOSAL (drafted Step 2, 2026-08-02) — RULED (design
+> channel, 2026-08-02, stage D1b's own Step 0; see the dated ruling note
+> immediately after Q4, below, for the resolution). Every claim below is
+> drawn from D1a's own characterization (§11); left standing verbatim as
+> drafted (append-don't-erase, this document's own convention for
+> resolved questions) — the ruling note is what moved this from PROPOSED
+> into R2(a)/(c)'s own Decision section, not an edit to the proposal
+> text itself.**
 >
 > **P1 — one new IR step, `:diagnostic-report`, children reuse the
 > EXISTING `:observation` step shape verbatim (R2(a)'s own "observation-
@@ -5984,6 +5987,52 @@ them.
 >   `colorectal_cancer`, all cited but none closure-read this session) —
 >   this session's own budget did not extend to a second closure fetch,
 >   named here rather than silently assumed adequate.**
+
+> **D1a schema RULING (design channel, 2026-08-02, stage D1b's own Step
+> 0).** The PROPOSAL above (P1–P6) is ACCEPTED AS DRAFTED. Q1–Q4
+> resolved:
+>
+> - **Q1 — RULED IN.** `:category` is added now, optional, on
+>   `:observation`/`ObservationEntry` entries — P1's own OMIT
+>   recommendation is not followed; the author judged a future
+>   `sim-emit-fhir` `Observation.category`/`DiagnosticReport.category`
+>   consumer worth carrying through now rather than reconstructing later
+>   from a field this session would otherwise have dropped on the floor.
+> - **Q2 + Q3 — ONE mechanism answers both.** A single curated
+>   vital-sign reference table (vital-sign name -> LOINC code, units,
+>   reference range) closes Q2 (`VitalSign`'s own compile-mapping has no
+>   source-given code — the table supplies one, author-curated, per P3's
+>   own sketch) AND Q3 (P4's own Option A, the documented-simplification
+>   default-range sample) AT ONCE, and additionally supplies the
+>   reference-range/abnormal-flag inputs D1a-7 found no GMF-derived
+>   observation carries — one table, three consumers, not three separate
+>   mechanisms. Built as content (F2, below), not code.
+> - **Q4 — ruled on THIS session's own engine-source evidence, no second
+>   closure fetched.** D1a-2's grounding against `State.java`'s own
+>   `ObservationGroup` class hierarchy (both `MultiObservation` and
+>   `DiagnosticReport` extend it identically, embedded-only children,
+>   confirmed structurally, not merely by reading `sepsis.json` alone) is
+>   sufficient to rule P1/P2/P5/P6 now. The confirmation duty Q4 itself
+>   named does not lapse: the first future `MultiObservation`/
+>   `DiagnosticReport`-bearing module vendored after this session must
+>   note, in its own closure survey, whether this design held against it
+>   — recorded here so a future session knows the check is owed (F4).
+>
+> **Governing principle (recorded here for the record, applied
+> throughout stage D1b's own implementation):** never override what the
+> vendored artifact specifies; freely supply what it delegates to the
+> engine. Stroke's own `default: 0` (ADR-0028's own escalated
+> `stroke_risk` finding) is SPECIFIED content — it stays blocked, no
+> supplied replacement, since overriding a real authored value would
+> silently misrepresent the vendored module itself. Sepsis's own
+> `vital_sign` values are DELEGATED to an unported engine module
+> (`LifecycleModule.java`, D1a-4) that supplies them at runtime rather
+> than specifying them in the module's own JSON — supplying an
+> in-project, provenance-cited replacement for a delegated mechanism is
+> this simulator's own already-established pattern (Persona replacing
+> Synthea's own demographics-generation engine), carried out here under
+> the same full content-provenance discipline (F2's own hashed,
+> source-cited table), not a new kind of liberty.
 
 > **D2/D3 characterization notes:** not yet filled — each stage's own
 > session fills its own note here when it runs, per R6's own sequencing.

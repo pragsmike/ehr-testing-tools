@@ -8,9 +8,10 @@ per item; done items move to the bottom of their section with a date and sha.
 - GMF coverage Wave D, stage D1 (ADR-0029 R6) — observation family
   (`MultiObservation`/`DiagnosticReport`/`VitalSign`-as-observation, one new
   `:diagnostic-report` IR step). D1a (characterization + schema PROPOSAL,
-  session started 2026-08-02) halts for a design-channel ruling before any
-  implementation lands — see this ADR's own D1 characterization note and
-  PROPOSED section.
+  2026-08-02) halted for a design-channel ruling; RULED same day (ADR-0029's
+  own dated ruling note, Q1–Q4 resolved) — D1b (implementation: reference
+  table, IR/loader/interpreter/compile/engine/emit chain, sepsis.json
+  vendoring) is IN PROGRESS, session started 2026-08-02.
 
 ## Next (backlog, no session scheduled)
 - Pairing-as-data (review P3-3): mutate↔judge conviction registry — design pass in
