@@ -8,10 +8,12 @@ per item; done items move to the bottom of their section with a date and sha.
 - GMF coverage Wave D stage D2 (ADR-0029 R6; D0/D1 done, see Done below)
   -- CarePlan family: paired IR span (`:care-plan-start`/
   `:care-plan-end`) mirroring `:medication-order`/`:medication-end`,
-  `Active CarePlan` condition iff a declared-scope module exercises it
-  (G2), CarePlan itself stays v2-silent (R3) -- payoff: `myocardial_
-  infarction`/`total_joint_replacement`, scope gated on Step 1's own
-  characterization.
+  CarePlan itself stays v2-silent (R3). Step 1 characterization done
+  (gmf-interpreter.md sec13): declared scope `total_joint_replacement`
+  only (`myocardial_infarction` deferred, three independent D3/R5/new-
+  type blockers found in its real 27-file closure); `Active CarePlan`
+  condition stays design-ruled, implementation-deferred per G2 (TJR's
+  own closure exercises zero `Active CarePlan` conditions).
 
 ## Next (backlog, no session scheduled)
 - Pairing-as-data (review P3-3): mutate↔judge conviction registry — design pass in

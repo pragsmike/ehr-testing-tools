@@ -6128,10 +6128,75 @@ them.
 >   taken BECAUSE a care plan is active; MI additionally re-proves the
 >   Wave C death machinery inside a closure walk.
 >
-> Scope (which of `myocardial_infarction.json`/`total_joint_
-> replacement.json` this stage actually vendors) is TBD, gated on
-> Step 1's own characterization — filled in by this same dated note
-> once Step 1 runs.
+> **D2 characterization (filled Step 1, 2026-08-02).** Full account,
+> source-cited against both real closures at the same pin and
+> Synthea's own `State.java` (`CarePlanStart`/`CarePlanEnd` classes):
+> `components/sim-trajectory/docs/gmf-interpreter.md` §13. Headline
+> findings: (a) `myocardial_infarction.json`'s real closure is 27 files
+> (root + 26 transitively-called submodules through its own CABG
+> surgical pathway), not the single-file top-level count the prior
+> survey implied — dirty with THREE independent, each-sufficient
+> blockers (`lookup_table_transition` ×39, D3's own scope;
+> `ImagingStudy` ×5, R5, explicitly out of Wave D; `SupplyList` ×6, a
+> genuinely new, never-before-named state type) — **deferred, not
+> vendored**, same disposition `urinary_tract_infections.json` already
+> has; (b) `total_joint_replacement.json`'s real closure is only 4
+> files and surveys CLEAN of every Wave-D-scoped type except
+> `CarePlanStart`/`CarePlanEnd` itself (zero D3-scoped transition
+> kinds, D7 hidden-import check clean); (c) `CarePlanEnd`'s own
+> `careplan` field (grounded against `State.java`) is a same-module
+> state-NAME reference, structurally identical to `MedicationEnd`'s own
+> `medication_order` field — R2(b)'s pair-mirror confirmed directly
+> against source, no attribute-based cross-module linkage needed for
+> this closure (real Synthea's own `assign_to_attribute`/
+> `referenced_by_attribute` mechanism exists on both CarePlan states
+> too, per source, but stays unbuilt this session per G2 — TJR doesn't
+> exercise it); (d) `total_joint_replacement.json`'s own mandatory
+> `Joint_Replacement_Guard` requires an attribute, `joint_replacement`,
+> that no state in the closure ever writes — the module's own `remarks`
+> field discloses why: it is triggered by two SIBLING root modules
+> (`osteoarthritis.json`/`rheumatoid_arthritis.json`), architecturally
+> outside this project's root-scoped CallSubmodule contract and outside
+> this session's own scope to vendor.
+>
+> **Ruling (self-ruled at the characterization gate, precedented by
+> D1a's own governing principle: "never override what the vendored
+> artifact specifies; freely supply what it delegates to the engine").**
+> `joint_replacement` is DELEGATED content (no default value anywhere
+> in the module JSON, unlike `stroke_risk`'s own specified `default:
+> 0`) — `ehrt.sim-trajectory.gmf-interpreter/run-module` gains one new,
+> purely-additive, backward-compatible trailing arity accepting an
+> `initial-attributes` map (every existing call site unaffected, `{}`
+> implied); the vendored test supplies `joint_replacement` as an
+> authored, provenance-cited starting attribute, citing the module's
+> own `remarks` block. This is narrower than vendoring
+> `osteoarthritis`/`rheumatoid_arthritis` themselves (out of scope,
+> unowned).
+>
+> **Declared D2 vendoring scope: `total_joint_replacement.json` only.**
+> `myocardial_infarction.json` deferred; its own finding is recorded in
+> `components/sim-trajectory/docs/gmf-interpreter.md` §9's own
+> prioritization table (dated note) and the coverage plan's own payoff
+> map (Step 4 fix-forward), the same disclosure discipline
+> `urinary_tract_infections.json`'s own D6 finding already established.
+>
+> **Regression-oracle method, disclosed (a deviation from a literal
+> SHA-256-digest-across-a-disposable-worktree, the D1b precedent):**
+> this stage's own regression proof is the full non-integration test
+> suite (`clojure -M:poly test :all skip:integration`) run at this
+> commit's own pre-Step-2 HEAD and compared, namespace-by-namespace,
+> test-count-and-assertion-count-and-zero-failures, against the same
+> suite re-run at Step 4's own close-out HEAD, for every one of the six
+> PRE-EXISTING vendored-root test namespaces (sinusitis, appendicitis,
+> sore_throat, ear_infections, sepsis, death-fixture) — each of those
+> namespaces already carries property-based (`defspec`, 100-200
+> iterations) and fixed-seed determinism assertions exercising far more
+> seeds than a single digest would, the same practical regression
+> guarantee through a stronger, already-built mechanism. Full baseline
+> captured at HEAD `a41d8c2` (Step 0's own commit), before any D2 code
+> change: `poly check` clean; full suite 0 failures/0 errors across
+> every namespace (log retained in this session's own scratch, not
+> committed).
 
 > **D3 characterization notes:** not yet filled — D3's own session
 > fills its own note here when it runs, per R6's own sequencing.

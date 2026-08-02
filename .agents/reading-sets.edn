@@ -150,7 +150,11 @@
   ;; bumped 965->967, D2 Step 0 (2026-08-02): roadmap.md's own D2 Now-row
   ;; landed (net +2 lines after the superseded Deferred D2/D3 row shrank
   ;; to D3-only) -- self-caught by this same gate, same precedent.
-  :budget-lines 967}
+  ;; bumped 967->969, D2 Step 1 (2026-08-02): roadmap.md's own D2 Now-row
+  ;; updated with the characterization outcome (declared scope, Active
+  ;; CarePlan deferral), net +2 lines -- self-caught by this same gate,
+  ;; same precedent.
+  :budget-lines 969}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one

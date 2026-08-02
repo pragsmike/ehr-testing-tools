@@ -1111,6 +1111,26 @@ transparency but not double-verified by a full read the way the
 formal ten were — treat the parenthetical as directional, not as
 precise as the formal-ten figures.*
 
+**Dated note, GMF coverage Wave D stage D2 (2026-08-02, ADR-0029, §13
+has the full account): both `myocardial_infarction.json` and
+`total_joint_replacement.json` real closures now fetched and read in
+full, undercounted by this table the same way `urinary_tract_infections.json`
+already was.** `myocardial_infarction.json`'s real closure is 27 files
+(not the single-file top-level count this table's own histogram-scout
+implied) and is dirty with THREE separate deferred/out-of-scope
+findings at once — `lookup_table_transition` (D3), `ImagingStudy` (R5),
+and a genuinely NEW state type this document has never named,
+`SupplyList` — deferred, not vendored. `total_joint_replacement.json`'s
+real closure is only 4 files and surveys CLEAN of every Wave-D-scoped
+type except `CarePlanStart`/`CarePlanEnd` itself — **vendored this
+session**, unblocked by a small, disclosed `run-module` extension (§13)
+for a real, delegated-content gap (`joint_replacement`, sourced from
+two sibling modules, `osteoarthritis`/`rheumatoid_arthritis`, neither
+in scope). Both rows' own `CarePlanStart`/`CarePlanEnd` cell entries
+stay accurate; `total_joint_replacement` should be read as the ONE
+confirmed-vendorable instance in that row now, not merely histogram-
+scouted.
+
 **Headline: `CallSubmodule` blocks more real content than every other
 deferred feature combined**, confirming and sharpening
 `docs/gmf-interpreter.md`'s own prior finding on `ear_infections.json`
@@ -2111,3 +2131,189 @@ reader would otherwise expect this gap to have closed).
 Full field-by-field diffs, test coverage, and the sepsis.json vendoring
 payoff are in the D1b session record and the commits it names (ADR-0029
 execution note).
+
+---
+
+## 13. GMF coverage Wave D stage D2: closure survey and characterization findings (2026-08-02)
+
+Step 1 of the D2 session (ADR-0029 R6; the CarePlan family). Both
+candidate closures (`myocardial_infarction.json`,
+`total_joint_replacement.json`) fetched IN FULL — every transitively
+`CallSubmodule`-reachable file, not the top-level module alone — at the
+SAME pinned commit every prior GMF citation in this document uses,
+`7e08387c68a7f0e21d13076609a159fd473fc902` of
+[`synthetichealth/synthea`](https://github.com/synthetichealth/synthea)
+(`master`).
+
+### `myocardial_infarction.json` closure survey — DEFERRED this session
+
+The top-level survey (section 8, "`total_joint_replacement`... 4
+transition kinds all appear in one module") and the prioritization
+table's own MI row both undercounted this closure's real depth, the
+SAME shape the UTI finding (ADR-0028) already established: MI's own
+five root-level `CallSubmodule` targets (`heart/stemi_pathway`,
+`heart/nsteacs_pathway`, `heart/acs_discharge_meds`,
+`heart/acs_arrival_medications`, `heart/cardiac_labs`) expand
+transitively — through the CABG (coronary artery bypass graft) surgical
+pathway alone — into **27 real files total** (root + 26 submodules;
+full closure fetched and read, not sampled): `heart/cabg_sequence` ->
+`heart/cabg/{outcomes,operation,cabg_referral,postop}` and
+`heart/operative_status`; `heart/cabg/operation` itself calls
+`surgery/general_anesthesia`, `heart/cabg/{or_labs_meds,or_intraop,details}`;
+`heart/cabg/or_labs_meds` calls `heart/or_blood`;
+`heart/cabg/{cabg_referral,postop,preoperative}` chain into
+`heart/cabg/{preoperative,labs_common,icu_meds_devices,postop_blood}`;
+`heart/acs_discharge_meds` calls `medications/{beta_blocker,statin,ace_arb}`
+(each 1000+ lines, real drug-class submodules). D7 hidden-import check
+not pursued to completion — moot once the state-type census (below)
+disqualifies the closure outright, the same "not run to completion,
+moot once deferred" disposition UTI's own D7 entry (section 9) already
+uses.
+
+**State-type census, full 27-file closure (direct count against every
+state's own `type` key):** `MedicationOrder` ×185, `Simple` ×107,
+`Procedure` ×68, `SetAttribute` ×42, `CallSubmodule` ×33, `Observation`
+×29, `Terminal` ×27, `Initial` ×27, `Delay` ×21, `DiagnosticReport` ×17,
+`ConditionOnset` ×15, `MedicationEnd` ×14, `EncounterEnd` ×10,
+`Encounter` ×10, **`SupplyList` ×6** (a state type this document has
+never named — genuinely new, entirely unbuilt, no schema/loader entry
+exists), **`ImagingStudy` ×5** (R5 — explicitly OUT of Wave D, a named
+CHF-triggered hole, unowned by D0–D3), `Death` ×5, `Device` ×4,
+`DeviceEnd` ×3, **`Counter` ×2** (named in this document's own original
+brief as deferred, still unowned by any wave), `ConditionEnd` ×2,
+`CarePlanStart` ×2 (this stage's own scope — present, but moot),
+`MultiObservation` ×1. `DiagnosticReport`/`MultiObservation` are D1
+scope, already landed — not a blocker on their own.
+
+**Transition-kind sweep, against the six real GMF kinds this
+document's own §2 names:** `direct_transition` ×473,
+**`lookup_table_transition` ×39** (D3's own scope, ADR-0027's D6
+finding — a SIXTH kind this loader does not build), `conditional_transition`
+×37, `distributed_transition` ×32, `complex_transition` ×27, ZERO
+`type_of_care_transition`.
+
+**Verdict: MI is disqualified from D2's own vendoring scope by THREE
+independent, each-individually-sufficient reasons** — `lookup_table_transition`
+(D3-scoped, not this stage's), `ImagingStudy` (R5, explicitly out of
+Wave D), and `SupplyList`/`Counter` (never-owned deferred types, one of
+them genuinely new). The loader's own all-or-nothing gate means the
+closure fails to LOAD at all regardless of where any of these states
+sit in the module's own probability distribution (the same disposition
+`spina_bifida.json`'s low-probability `Death` state already
+established — reachability is irrelevant to a load-time schema gate).
+**MI stays deferred, not vendored, resequenced honestly per G4** — its
+own real blocker set (D3 kind + R5 type + two never-owned deferred
+types) is a DIFFERENT, and larger, set than the CarePlan gap D2 itself
+was framed around; CarePlan's own presence in this closure (×2) is
+real but moot.
+
+### `total_joint_replacement.json` closure survey — VENDORED this session
+
+Four files total, fully resolved (root + `medications/moderate_opioid_pain_reliever`,
+`total_joint_replacement/functional_status_assessments`,
+`dme/wheelchair_end`) — no further `CallSubmodule` targets found at any
+depth, confirmed by exhaustive cross-check of every `"submodule"` key
+against every fetched file.
+
+| Module | States | State-type gap | Condition-vocab gap | Other findings |
+|---|---:|---|---|---|
+| `total_joint_replacement.json` (root) | 33 | `CallSubmodule` ×4 (Wave B, already built), `CarePlanStart` ×1, `CarePlanEnd` ×1 (D2's own reason for existing) | none (`Age`/`And`/`Attribute`/`Date`, all v1) | `Joint_Replacement_Guard`'s own mandatory `joint_replacement is not nil` gate has no in-closure source (below) |
+| `total_joint_replacement/functional_status_assessments.json` | 20 | none | none (`Attribute` only) | idempotency-gating `assessment_done` attribute, root-scoped, same shape ear_infections' own `Initial` gates |
+| `medications/moderate_opioid_pain_reliever.json` | 12 | none | none | `assign_to_attribute: opioid_prescription`, read via a plain `Attribute` condition elsewhere in the root (not a `MedicationEnd` citation) — already-built v1 mechanism, no gap |
+| `dme/wheelchair_end.json` | 4 | none | none | two `DeviceEnd` states, `referenced_by_attribute` pointing at attributes never written anywhere in this closure — harmless: `:device-end`'s own interpreter case is unconditional pass-through (`gmf_interpreter.clj` line 767), never resolves the reference |
+
+**State-type census (full 4-file closure):** `SetAttribute` ×10,
+`Delay` ×8, `Simple` ×6, `MultiObservation` ×6 (D1 scope, already
+landed), `Terminal` ×4, `Initial` ×4, `CallSubmodule` ×4,
+`MedicationOrder` ×3, `EncounterEnd` ×3, `Encounter` ×3, `DeviceEnd` ×3
+(no matching `Device` state anywhere in the closure — confirmed
+harmless, `:device-end` never resolves its own reference either way),
+`Procedure` ×2, `Guard` ×1 (already v1, `gmf.clj` line 89),
+`ConditionOnset` ×1, `CarePlanStart` ×1, `CarePlanEnd` ×1. Every type
+OTHER than `CarePlanStart`/`CarePlanEnd` is already v1 — **the closure
+surveys clean of every Wave-D-scoped type except the one D2 itself
+exists to build.**
+
+**Transition-kind sweep:** `direct_transition` ×42,
+`conditional_transition` ×8, `distributed_transition` ×5,
+`complex_transition` ×1 — ZERO `type_of_care_transition`, ZERO
+`lookup_table_transition`. No D3 dependency; D2's own payoff is not
+resequenced or shrunk on this axis.
+
+**D7 hidden-import check: clean.** Every `SetAttribute`/`assign_to_attribute`
+write and every `Attribute`-condition/`referenced_by_attribute` read
+across all four files resolves within the closure's own root-scoped
+namespace (`joint_replacement`'s own gap, below, is a MISSING source,
+not a hidden cross-module wiring bug — the attribute name itself is
+consistent everywhere it appears). `assessment_done` (submodule-local
+idempotency gate) and `opioid_prescription`
+(`assign_to_attribute`/plain-`Attribute`-read pair) both resolve
+correctly under this project's existing root-scoping contract (Wave B,
+D1), no new interpreter mechanism needed.
+
+**`Guard`'s own mandatory `joint_replacement is not nil` gate — a
+real, load-bearing, specify-vs-delegate finding, grounded directly
+against the module's own text.** `Joint_Replacement_Guard` (the
+closure's own second state, reached unconditionally from `Initial`)
+requires `joint_replacement is not nil` before ANY further content —
+including the `CarePlanStart`/`CarePlanEnd` pair D2 exists to build —
+is ever reached. No state anywhere in this four-file closure ever
+WRITES `joint_replacement` (confirmed by exhaustive `SetAttribute`
+scan, above). The module's OWN top-level `remarks` field states the
+reason plainly: *"This is not a standalone module. Currently joint
+replacements are triggered by the 'joint_replacement' attribute set by
+the osteoarthritis and rheumatoid arthritis modules. Possible values...
+are 'hip' and 'knee'."* Real Synthea runs `osteoarthritis.json`/
+`rheumatoid_arthritis.json` as INDEPENDENT sibling root modules per
+patient, sharing one un-namespaced `person.attributes` map —
+architecturally different from this project's own root-scoped
+CallSubmodule contract (Wave B, D1), and neither sibling module is any
+part of this closure or this session's own scope to vendor.
+
+**Ruling (self-ruled at this characterization gate, precedented
+directly by D1a's own Q2+Q3 governing principle: "never override what
+the vendored artifact specifies; freely supply what it delegates to
+the engine" — the SAME pattern Persona already establishes for
+Synthea's own demographics engine, and the vital-signs reference table
+already establishes for `LifecycleModule.java`'s own unported
+physiology).** `joint_replacement` is DELEGATED content (no default
+value anywhere in the module JSON, unlike `stroke_risk`'s own
+specified `default: 0`) — sourced from two sibling modules this
+project has no reason to vendor just to unblock one attribute. Rather
+than defer `total_joint_replacement.json` outright (the `stroke.json`
+disposition), this session supplies the gap the SAME documented-
+simplification way: `ehrt.sim-trajectory.gmf-interpreter/run-module`
+gains one new, purely-additive, backward-compatible trailing arity
+accepting an `initial-attributes` map (defaults `{}` on every existing
+call site — zero behavior change for appendicitis/sinusitis/sore_throat/
+ear_infections/sepsis/death-fixture), and the vendored TJR test
+supplies `joint_replacement` (`"knee"`/`"hip"`, both walked) as an
+authored, provenance-cited starting attribute — citing this module's
+own `remarks` block as the source of truth for why no in-project origin
+exists, the same disclosure discipline the vital-signs table's own
+citation already models. This is a narrower, more surgical fix than
+building `osteoarthritis.json`/`rheumatoid_arthritis.json` themselves
+(out of scope, unowned by any wave).
+
+**The multi-encounter-per-episode compile-time truncation gap (section
+9's own prioritization table row) still applies to this module exactly
+as that row already documents** — `Pre_Procedure_Encounter_End` (the
+module's own FIRST `:encounter-end`) sets `compile-trajectory`'s own
+`encounter-closed?` before `Joint_Replacement_Encounter` (the real
+surgical encounter, and everything inside it including
+`CarePlanStart`/`CarePlanEnd`) ever opens — confirmed by direct
+transition-graph read this session, not merely re-cited. **This does
+NOT block D2's own vendoring**, for the same reason it never blocked
+ear_infections/sepsis: this project's vendored-CLOSURE tests prove the
+INTERPRETER's own raw trajectory (`run-module`), never the compiled
+`compile-trajectory` -> pathway-IR -> engine -> emit-hl7 pipeline — that
+fuller pipeline is proven only for single-file, non-closure modules
+(appendicitis, sinusitis) to date, and remains a real, still-open,
+already-named gap standing between ANY closure-having module and a
+full engine/emission demonstration of its own actual surgical content.
+
+**Declared D2 vendoring scope: `total_joint_replacement.json` only.**
+`myocardial_infarction.json` deferred (three independent, each-
+sufficient blockers, none of them CarePlan-shaped — named above, own
+row added to section 9's own prioritization table, fix-forward at Step
+4).
