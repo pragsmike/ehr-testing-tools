@@ -709,3 +709,128 @@
 (deftest walk-module-throws-past-the-max-steps-backstop-on-a-zero-advance-cycle
   (is (thrown? clojure.lang.ExceptionInfo
                (interp/walk-module infinite-loop-module (Random. 1) (ctx-for (persona-at 1))))))
+
+;; --- GMF coverage Wave B (2026-08-02, ADR-0027, D1-D4): CallSubmodule
+;; call/return ---------------------------------------------------------
+
+(def not-nil-attribute-module
+  {:id "nn-mod" :name "NotNil"
+   :states {:initial {:type :initial :direct-transition :check}
+            :check {:type :guard
+                    :allow {:condition-type :attribute :attribute "x" :operator "is not nil"}
+                    :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest attribute-guard-supports-is-nil-and-is-not-nil-operators
+  (testing "Step 1's own characterization, ear_infections.json's mandatory
+            path (docs/gmf-interpreter.md section 9)"
+    (let [ctx-set (assoc (ctx-for (persona-at 1)) :current :check :attributes {:nn-mod/x true})
+          ctx-unset (assoc (ctx-for (persona-at 1)) :current :check)]
+      (is (false? (:blocked? (interp/step not-nil-attribute-module (Random. 1) ctx-set))))
+      (is (true? (:blocked? (interp/step not-nil-attribute-module (Random. 1) ctx-unset)))))))
+
+(def med-leaf-module
+  "The submodule side of a call/return pair: one MedicationOrder,
+  assigned to a root-scoped attribute, then Terminal."
+  {:id "med-leaf" :name "MedLeaf"
+   :states {:initial {:type :initial :direct-transition :prescribe}
+            :prescribe {:type :medication-order :assign-to-attribute "rx"
+                        :codes [{:system :rxnorm :code "308191" :display "Amoxicillin 500 MG Oral Capsule"}]
+                        :direct-transition :done}
+            :done {:type :terminal}}})
+
+(def calls-med-leaf-module
+  "The root/caller side: calls med-leaf, then ends the medication the
+  callee assigned -- the exact ear_infections.json shape (assign-to-
+  attribute inside the callee, referenced-by-attribute back in the
+  root), Step 1's own characterization."
+  {:id "caller-mod" :name "Caller"
+   :states {:initial {:type :initial :direct-transition :call}
+            :call {:type :call-submodule :submodule "med-leaf" :direct-transition :end-med}
+            :end-med {:type :medication-end :referenced-by-attribute "rx" :direct-transition :done}
+            :done {:type :terminal}}})
+
+(def med-closure {"caller-mod" calls-med-leaf-module "med-leaf" med-leaf-module})
+
+(deftest call-submodule-descends-runs-and-returns-to-the-callers-own-transition
+  (let [result (interp/walk-module calls-med-leaf-module (Random. 1) (ctx-for (persona-at 1)) med-closure)]
+    (is (= :terminal (:status result)))
+    (is (= [:medication-order :medication-end] (mapv :event (:trajectory result))))))
+
+(deftest call-submodule-assign-to-attribute-crosses-the-call-boundary-root-scoped
+  (testing "D1: the callee's own MedicationOrder writes rx under the
+            ROOT's namespace (caller-mod, not med-leaf), so the caller's
+            own MedicationEnd resolves the SAME attribute back to the
+            order's own trajectory index"
+    (let [result (interp/walk-module calls-med-leaf-module (Random. 1) (ctx-for (persona-at 1)) med-closure)
+          [order-event end-event] (:trajectory result)]
+      (is (= 0 (get (:attributes result) :caller-mod/rx)))
+      (is (not (contains? (:attributes result) :med-leaf/rx)))
+      (is (= 0 (:references end-event)))
+      (is (= (:codes order-event) (:codes (get-in med-leaf-module [:states :prescribe])))))))
+
+(deftest call-submodule-events-carry-the-root-first-call-path-citation
+  (testing "D2: the callee's own event cites the full call path; the
+            caller's own events (before/after the call) carry no
+            :call-path at all -- backward-compatible representation for
+            the non-calling case"
+    (let [result (interp/walk-module calls-med-leaf-module (Random. 1) (ctx-for (persona-at 1)) med-closure)
+          [order-event end-event] (:trajectory result)]
+      (is (= ["caller-mod" "med-leaf"] (:call-path order-event)))
+      (is (= "med-leaf" (:module order-event)))
+      (is (not (contains? end-event :call-path)) "the caller's own event, not inside any active call")
+      (is (= "caller-mod" (:module end-event))))))
+
+(deftest call-submodule-throws-when-the-closure-is-missing-the-callees-call-path
+  (testing "loader/interpreter mismatch -- gmf/load-closure should have
+            caught this at load time; a programmer-error throw here, not
+            a silent misbehavior"
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (interp/walk-module calls-med-leaf-module (Random. 1) (ctx-for (persona-at 1))
+                                      {"caller-mod" calls-med-leaf-module})))))
+
+(def calls-blocking-leaf-module
+  {:id "blocks-forever" :name "BlocksForever"
+   :states {:initial {:type :initial
+                       :direct-transition :check}
+            :check {:type :guard :allow {:condition-type :attribute :attribute "never" :operator "is not nil"}
+                    :direct-transition :done}
+            :done {:type :terminal}}})
+
+(def calls-blocking-module
+  {:id "caller-blocks" :name "CallerBlocks"
+   :states {:initial {:type :initial :direct-transition :call}
+            :call {:type :call-submodule :submodule "blocks-forever" :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest call-submodule-throws-when-the-callee-blocks-on-a-guard
+  (testing "disclosed, out-of-scope limitation this session (ns docstring's
+            own note) -- no resume-across-a-call mechanism yet"
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (interp/walk-module calls-blocking-module (Random. 1) (ctx-for (persona-at 1))
+                                      {"caller-blocks" calls-blocking-module "blocks-forever" calls-blocking-leaf-module})))))
+
+;; D3's own defensive call-depth backstop: a long CHAIN (not a cycle --
+;; gmf/load-closure's own acyclicity check already covers cycles at load
+;; time) exceeding max-call-depth throws, a bug signal per that
+;; invariant's own docstring.
+(defn- chain-module [id next-id]
+  {:id id :name id
+   :states {:initial {:type :initial :direct-transition (if next-id :call :done)}
+            :call {:type :call-submodule :submodule next-id :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest call-submodule-throws-past-the-max-call-depth-backstop-on-a-long-chain
+  (let [ids (mapv #(str "chain-" %) (range 150))
+        modules (into {} (map (fn [[id next-id]] [id (chain-module id next-id)])
+                               (map vector ids (concat (rest ids) [nil]))))
+        root (get modules (first ids))]
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (interp/walk-module root (Random. 1) (ctx-for (persona-at 1)) modules)))))
+
+(defspec call-submodule-walk-is-deterministic-for-the-same-inputs 100
+  (prop/for-all [seed gen/large-integer]
+    (let [p1 (persona-at seed) p2 (persona-at seed)
+          r1 (interp/walk-module calls-med-leaf-module (Random. seed) (ctx-for p1) med-closure)
+          r2 (interp/walk-module calls-med-leaf-module (Random. seed) (ctx-for p2) med-closure)]
+      (= (:trajectory r1) (:trajectory r2)))))

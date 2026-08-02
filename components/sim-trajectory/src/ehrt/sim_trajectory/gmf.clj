@@ -322,9 +322,21 @@
    [:observation (with-transitions [:type [:= :observation]] [:codes [:vector sim-model/Concept]]
                    [:category {:optional true} :string] [:unit {:optional true} :string]
                    [:range {:optional true} Range])]
+   ;; GMF coverage Wave B (2026-08-02, ADR-0027): :assign-to-attribute /
+   ;; :referenced-by-attribute -- an alternative to the fixed state-name
+   ;; citation (:medication-order below) for when the SAME MedicationEnd
+   ;; could be ending any one of several polymorphic orders (Step 1's
+   ;; own characterization, ear_infections.json's closure) -- the
+   ;; interpreter (ehrt.sim-trajectory.gmf-interpreter, its own
+   ;; :medication-order/:medication-end step handling) resolves both,
+   ;; this loader only declares the fields (kebab-cased automatically by
+   ;; `kebab-key`, the raw string VALUE left untouched -- it names an
+   ;; attribute, slug-normalized at INTERPRETER time same as :attribute/
+   ;; :symptom already are, not at load time).
    [:medication-order (with-transitions [:type [:= :medication-order]] [:codes [:vector sim-model/Concept]]
-                        [:reason {:optional true} :string])]
-   [:medication-end (with-transitions [:type [:= :medication-end]] [:medication-order {:optional true} :keyword])]
+                        [:reason {:optional true} :string] [:assign-to-attribute {:optional true} :string])]
+   [:medication-end (with-transitions [:type [:= :medication-end]] [:medication-order {:optional true} :keyword]
+                       [:referenced-by-attribute {:optional true} :string])]
    ;; M5b: consumed-internally, like :simple -- see gmf-type->keyword's
    ;; own docstring note. :code is singular (GMF's own Device shape, one
    ;; equipment concept per state -- unlike :codes' plural elsewhere).

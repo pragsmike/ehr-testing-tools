@@ -45,7 +45,37 @@
   (or a non-`>=` age comparison) simply halts progress -- a module
   author's own responsibility to route around (the same responsibility
   real Synthea's own Delay-then-Guard idiom already carries), not
-  something this interpreter resolves for them."
+  something this interpreter resolves for them.
+
+  GMF coverage Wave B (2026-08-02, ADR-0027): CallSubmodule call/return
+  and D4's own determinism-threading order contract. ONE clock (`:t`)
+  and ONE rng stream are shared across an entire walk, callee included
+  -- `step`'s own optional 4th argument, `modules` (call-path -> loaded
+  module, `ehrt.sim-trajectory.gmf/load-closure`'s own return shape),
+  is consulted ONLY by the `:call-submodule` case. Consumption order is
+  DESCEND-RUN-RETURN: reaching a CallSubmodule state descends into the
+  callee's own `:initial` state immediately (`run-submodule`), runs it
+  to ITS OWN Terminal -- consuming rng in exactly the order the
+  callee's own states would consume it standalone, since it IS run
+  standalone, just with a shared clock/rng/attributes/trajectory
+  (D1's own three-compartment ctx, section 5's own dated note) --  then
+  RETURNS control to the caller's own CallSubmodule state, which
+  resolves ITS OWN transition using the POST-CALL ctx (attributes as
+  the callee left them). A called submodule that itself BLOCKS on a
+  Guard is a disclosed, out-of-scope limitation this session (throws,
+  loudly, rather than silently mishandling a resume this interpreter
+  has no mechanism for yet) -- neither vendored Wave B closure ever
+  exercises it (confirmed: zero Guard states in either of
+  `ear_infections.json`'s own two called submodules, Step 1's own
+  characterization). D2's own cross-boundary citation: every trajectory
+  event emitted while `ctx`'s own `:call-stack` is active (root-first,
+  the callee always last) carries `:call-path` in addition to `:module`
+  -- absent entirely for a non-calling walk, the same trajectory shape
+  this project's pre-Wave-B regression oracle already fixes (backward-
+  compatible representation, D2's own latitude). A defensive
+  `max-call-depth` backstop (D3) throws if the call stack ever exceeds
+  it -- a bug signal (e.g. a static-acyclicity gap `gmf/load-closure`'s
+  own D3 check should have caught), never a legitimate result."
   (:require [ehrt.sim-trajectory.gmf :as gmf])
   (:import [java.time LocalDate Period]
            [java.util Random]))
@@ -135,11 +165,18 @@
   (or (:root ctx) module-id))
 
 (defn- attribute-condition-holds?
+  "GMF coverage Wave B (2026-08-02, ADR-0027): `is nil`/`is not nil`
+  join `!=`/`=` -- confirmed mandatory-path by Step 1's own
+  characterization (`ear_infections.json`'s own `End_Ear_Infection_
+  Medications`, and both called submodules' own idempotency-gating
+  `Initial` states, docs/gmf-interpreter.md section 9)."
   [module-id ctx {:keys [attribute operator value]}]
   (let [k (keyword (root-id ctx module-id) (gmf/slug attribute))
         actual (get (:attributes ctx) k)]
     (case operator
       "!=" (not= actual value)
+      "is nil" (nil? actual)
+      "is not nil" (some? actual)
       (= actual value))))
 
 (defn- date-condition-holds?
@@ -406,8 +443,17 @@
         (blocked-outcome ctx)))))
 
 (defn- trajectory-event
+  "GMF coverage Wave B (2026-08-02, ADR-0027, D2): `:call-path` (root-
+  first, the currently-executing module last) is added ONLY while
+  `ctx`'s own `:call-stack` is active (length > 1 -- root plus at least
+  one callee) -- absent entirely for a non-calling walk, so this
+  project's pre-Wave-B trajectory shape (and its own regression oracle)
+  stays byte-identical (D2's own 'representation may stay backward-
+  compatible' latitude for the one-element-path case)."
   [module-id ctx event-type extra]
-  (merge {:module module-id :state (:current ctx) :t (:t ctx) :event event-type} extra))
+  (let [call-stack (:call-stack ctx)]
+    (cond-> (merge {:module module-id :state (:current ctx) :t (:t ctx) :event event-type} extra)
+      (> (count call-stack) 1) (assoc :call-path call-stack))))
 
 (defn- index-of-citation
   "Where in `trajectory` the event citing `{:module :state target-state}`
@@ -448,6 +494,96 @@
       {:codes codes :value (round1 (rand-double-in rng low high)) :unit (:unit state)}
       {:codes codes})))
 
+;; --- GMF coverage Wave B (2026-08-02, ADR-0027, D1-D4): CallSubmodule
+;; call/return -- descend-run-return, ns docstring's own order contract --
+
+(def ^:private max-steps
+  "A runaway-loop backstop, not a design limit: a real v1 module always
+  terminates or blocks in far fewer steps than this. Exceeding it means a
+  module authoring bug (a zero-time-advance transition cycle), a
+  programmer error this project's own conventions reserve exceptions
+  for -- never a result-not-throw outcome, since no legitimate module
+  should ever reach it."
+  10000)
+
+(def ^:private max-call-depth
+  "D3's own defensive runtime call-depth invariant -- a real v1 closure
+  never nests anywhere close to this deep; exceeding it is a bug signal
+  (e.g. a static-acyclicity gap `ehrt.sim-trajectory.gmf/load-closure`'s
+  own D3 check should have caught at LOAD time), never a legitimate
+  result this interpreter silently absorbs at RUN time."
+  100)
+
+;; Mutual recursion with `step` (a CallSubmodule state's own handling
+;; calls `run-submodule`, which drives the callee via `step` itself,
+;; the SAME function -- one interpreter, not two) -- forward-declared so
+;; this namespace reads top-to-bottom, the same shape `evaluate-
+;; condition`/`and-condition-holds?` already establish above.
+(declare step)
+
+(defn- run-submodule
+  "Drives `callee-module` from ITS OWN `:initial` state to Terminal,
+  sharing `rng`/`:t`/`:attributes`/`:trajectory` with the CALLER's own
+  `ctx` (D1: one clock, one rng stream, descend-run-return) -- `call-
+  stack` is the FULL root-first path INCLUDING the callee itself (D2),
+  threaded into the callee's own nested ctx so every event it emits
+  carries `:call-path` (`trajectory-event`, above). A called submodule
+  that itself BLOCKS on a Guard is a disclosed, out-of-scope limitation
+  this session -- throws, loudly, rather than silently mishandling a
+  resume-across-a-call mechanism this interpreter does not have yet
+  (ns docstring's own note; neither vendored Wave B closure exercises
+  this path)."
+  [modules ^Random rng ctx callee-module call-stack]
+  (when (> (count call-stack) max-call-depth)
+    (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: CallSubmodule call depth exceeded max-call-depth -- likely a bug (a static-acyclicity gap gmf/load-closure's own D3 check should have caught)"
+                     {:call-stack call-stack})))
+  (loop [callee-ctx (assoc ctx :current :initial :call-stack call-stack) n 0]
+    (when (>= n max-steps)
+      (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: run-submodule exceeded max-steps -- likely a module authoring bug (a zero-time-advance transition cycle)"
+                       {:call-stack call-stack :current (:current callee-ctx)})))
+    (let [outcome (step callee-module rng callee-ctx modules)
+          ctx' (-> callee-ctx
+                   (assoc :attributes (:attributes outcome))
+                   (update :trajectory into (:events outcome))
+                   (update :t + (:advance outcome)))]
+      (cond
+        (:terminal? outcome) (assoc ctx' :status :terminal)
+        (:blocked? outcome)
+        (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: a called submodule blocked on a Guard -- no resume-across-a-call mechanism this session (Wave B's own disclosed scope limitation, ADR-0027)"
+                         {:call-stack call-stack :current (:current ctx')}))
+        :else (recur (assoc ctx' :current (:next outcome)) (inc n))))))
+
+(defn- call-submodule-step
+  "The CallSubmodule state's own `step` handling: looks up `modules`
+  (the resolved closure, `ehrt.sim-trajectory.gmf/load-closure`'s own
+  return shape) for the call-path `state`'s own `:submodule` names,
+  descends via `run-submodule`, then resolves the CALLER's OWN
+  transition using the POST-CALL ctx (attributes as the callee left
+  them -- exactly what lets `ear_infections.json`'s own `End_Ear_
+  Infection_Medications`, reached AFTER the call returns, see what the
+  callee wrote). A `nil` lookup is a loader/interpreter mismatch (`gmf/
+  load-closure`'s own all-or-nothing gate should already have rejected
+  a closure with a missing call-path) -- a programmer-error throw, not
+  a result-not-throw outcome, the same disposition `evaluate-condition`
+  already establishes for a genuinely unsupported condition type."
+  [modules module-id ctx ^Random rng state]
+  (let [callee-id (:submodule state)
+        callee-module (get modules callee-id)]
+    (when (nil? callee-module)
+      (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: CallSubmodule names a call-path missing from the resolved closure -- loader/interpreter mismatch (gmf/load-closure should have caught this at load time)"
+                       {:call-path callee-id :caller module-id})))
+    (let [call-stack (conj (or (:call-stack ctx) [(or (:root ctx) module-id)]) callee-id)
+          pre-call-trajectory-count (count (:trajectory ctx))
+          result (run-submodule modules rng ctx callee-module call-stack)
+          new-events (vec (drop pre-call-trajectory-count (:trajectory result)))
+          post-call-ctx (assoc result :call-stack (:call-stack ctx))]
+      {:events new-events
+       :attributes (:attributes post-call-ctx)
+       :advance (- (:t post-call-ctx) (:t ctx))
+       :next (resolve-transition module-id post-call-ctx rng state)
+       :terminal? false
+       :blocked? false})))
+
 (defn step
   "Advances ONE state from `ctx`'s own `:current` -- consuming `rng` only
   in this function's own documented order (per-state-type below). Returns
@@ -458,10 +594,20 @@
   establishes (sim/ADR-0008), scaled down to this interpreter's own single-
   function `step`, since a GMF state's own effect and its own transition
   are never independently interesting the way decide/evolve's
-  cross-patient split is."
-  [module rng ctx]
-  (let [module-id (:id module)
-        state (get-in module [:states (:current ctx)])]
+  cross-patient split is.
+
+  GMF coverage Wave B (2026-08-02, ADR-0027, D1/D3): the optional 4th
+  argument, `modules` (`ehrt.sim-trajectory.gmf/load-closure`'s own
+  return shape, call-path -> loaded module), is consulted ONLY by the
+  `:call-submodule` case (`call-submodule-step`, above) -- every other
+  case is unaffected, and every pre-Wave-B 3-argument call site (this
+  namespace's own `walk-module`/`run-module`, and every test that calls
+  `step` directly) keeps working unchanged: a single module IS its own
+  one-module closure."
+  ([module rng ctx] (step module rng ctx {(:id module) module}))
+  ([module rng ctx modules]
+   (let [module-id (:id module)
+         state (get-in module [:states (:current ctx)])]
     (case (:type state)
       :terminal {:events [] :attributes (:attributes ctx) :advance 0 :next nil :terminal? true :blocked? false}
       :initial (pass-through-outcome module-id ctx rng state 0 [])
@@ -496,21 +642,34 @@
                                         {:references (index-of-last-open-encounter (:trajectory ctx) module-id)})
       :procedure (emit-and-advance module-id ctx rng state :procedure {:codes (:codes state)})
       :observation (emit-and-advance module-id ctx rng state :observation (sample-observation-extra rng state))
-      :medication-order (emit-and-advance module-id ctx rng state :medication-order {:codes (:codes state)})
-      :medication-end (emit-and-advance module-id ctx rng state :medication-end
-                                         {:references (index-of-citation (:trajectory ctx) module-id
-                                                                          :medication-order (:medication-order state))}))))
+      ;; GMF coverage Wave B (2026-08-02, ADR-0027): assign-to-attribute
+      ;; / referenced-by-attribute -- a mandatory-path finding, Step 1's
+      ;; own characterization (docs/gmf-interpreter.md section 9):
+      ;; ear_infections.json's own called submodules assign EVERY
+      ;; MedicationOrder to a root-scoped attribute holding its own
+      ;; trajectory index (the same index-based reference `:references`
+      ;; already carries elsewhere), and the ROOT module's own
+      ;; MedicationEnd states resolve that attribute back to the SAME
+      ;; index -- cross-module by construction, exactly D1's own root-
+      ;; scoping contract.
+      :medication-order
+      (let [event-idx (count (:trajectory ctx))
+            outcome (emit-and-advance module-id ctx rng state :medication-order {:codes (:codes state)})]
+        (if-let [attr (:assign-to-attribute state)]
+          (update outcome :attributes assoc (keyword (root-id ctx module-id) (gmf/slug attr)) event-idx)
+          outcome))
+      :medication-end
+      (let [references (if-let [attr (:referenced-by-attribute state)]
+                          (get (:attributes ctx) (keyword (root-id ctx module-id) (gmf/slug attr)))
+                          (index-of-citation (:trajectory ctx) module-id
+                                              :medication-order (:medication-order state)))]
+        (emit-and-advance module-id ctx rng state :medication-end {:references references}))
+      ;; GMF coverage Wave B (D1-D4): CallSubmodule's own handling is
+      ;; `call-submodule-step`, above -- it needs `modules` (this arity's
+      ;; own 4th argument), the ONE case that does.
+      :call-submodule (call-submodule-step modules module-id ctx rng state)))))
 
 ;; --- walk-module: drives `step` from :initial to Terminal or blocked ------
-
-(def ^:private max-steps
-  "A runaway-loop backstop, not a design limit: a real v1 module always
-  terminates or blocks in far fewer steps than this. Exceeding it means a
-  module authoring bug (a zero-time-advance transition cycle), a
-  programmer error this project's own conventions reserve exceptions
-  for -- never a result-not-throw outcome, since no legitimate module
-  should ever reach it."
-  10000)
 
 (defn walk-module
   "Drives `step` from `ctx`'s own `:current` until the module reaches a
@@ -528,21 +687,30 @@
   the SAME `:root` still in place). Defaults to `(:id module)` when
   `ctx` doesn't already carry one -- correct for a fresh, non-calling
   walk (root = self) and a no-op when `ctx` already has one (a resumed
-  blocked walk, or a submodule ctx a future recursive call passes in)."
-  [module rng ctx]
-  (loop [ctx (update ctx :root #(or % (:id module))) n 0]
-    (when (>= n max-steps)
-      (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: walk-module exceeded max-steps -- likely a module authoring bug (a zero-time-advance transition cycle)"
-                       {:module (:id module) :current (:current ctx)})))
-    (let [outcome (step module rng ctx)
-          ctx' (-> ctx
-                   (assoc :attributes (:attributes outcome))
-                   (update :trajectory into (:events outcome))
-                   (update :t + (:advance outcome)))]
-      (cond
-        (:terminal? outcome) (assoc ctx' :status :terminal)
-        (:blocked? outcome) (assoc ctx' :status :blocked)
-        :else (recur (assoc ctx' :current (:next outcome)) (inc n))))))
+  blocked walk, or a submodule ctx a future recursive call passes in).
+
+  GMF coverage Wave B (2026-08-02, ADR-0027, D3): the optional 4th
+  argument, `modules` (`ehrt.sim-trajectory.gmf/load-closure`'s own
+  return shape), is threaded straight through to `step` -- needed only
+  if `module` itself (or anything it transitively calls) contains a
+  CallSubmodule state. Omitted, `step`'s own 3-arity default (a
+  single-module closure) applies, unchanged from every pre-Wave-B call
+  site."
+  ([module rng ctx] (walk-module module rng ctx {(:id module) module}))
+  ([module rng ctx modules]
+   (loop [ctx (update ctx :root #(or % (:id module))) n 0]
+     (when (>= n max-steps)
+       (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: walk-module exceeded max-steps -- likely a module authoring bug (a zero-time-advance transition cycle)"
+                        {:module (:id module) :current (:current ctx)})))
+     (let [outcome (step module rng ctx modules)
+           ctx' (-> ctx
+                    (assoc :attributes (:attributes outcome))
+                    (update :trajectory into (:events outcome))
+                    (update :t + (:advance outcome)))]
+       (cond
+         (:terminal? outcome) (assoc ctx' :status :terminal)
+         (:blocked? outcome) (assoc ctx' :status :blocked)
+         :else (recur (assoc ctx' :current (:next outcome)) (inc n)))))))
 
 ;; --- run-module: the history/horizon two-phase run (Task 3, docs/gmf-
 ;; interpreter.md section 3) -------------------------------------------------
@@ -576,16 +744,19 @@
   GMF coverage Wave B (2026-08-02, ADR-0027, D1): `ctx`'s own `:root`
   is set to `(:id module)` here, once -- see `walk-module`'s own
   docstring note for why one normalization at the walk's true entry
-  point is enough for the whole walk."
-  ([module rng persona registration-t] (run-module module rng persona registration-t nil))
-  ([module rng persona registration-t horizon-end-t]
+  point is enough for the whole walk. The optional trailing `modules`
+  argument (D3) is threaded straight through to `step`, same as
+  `walk-module`'s own -- omitted, a single-module closure applies."
+  ([module rng persona registration-t] (run-module module rng persona registration-t nil {(:id module) module}))
+  ([module rng persona registration-t horizon-end-t] (run-module module rng persona registration-t horizon-end-t {(:id module) module}))
+  ([module rng persona registration-t horizon-end-t modules]
    (loop [ctx (assoc (initial-context persona) :root (:id module)) n 0]
      (when (>= n max-steps)
        (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: run-module exceeded max-steps -- likely a module authoring bug (a zero-time-advance transition cycle)"
                         {:module (:id module) :current (:current ctx)})))
      (if (and horizon-end-t (>= (:t ctx) horizon-end-t))
        (assoc ctx :status :horizon-complete)
-       (let [outcome (step module rng ctx)
+       (let [outcome (step module rng ctx modules)
              marked-events (mapv #(assoc % :pre-horizon (< (:t %) registration-t)) (:events outcome))
              ctx' (-> ctx
                       (assoc :attributes (:attributes outcome))
