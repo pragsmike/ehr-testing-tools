@@ -8,6 +8,13 @@ per item; done items move to the bottom of their section with a date and sha.
 - (none — the fourteen-item migration report is fully executed as of
   migration session 6; see Done below)
 
+## Now (GMF coverage Wave B, ruled 2026-08-02 — ADR-0027)
+- GMF coverage Wave B — `CallSubmodule` (loader recursion, interpreter
+  call/return, root-scoped workflow attributes, the fifth
+  `type_of_care_transition` transition kind) — design ruled, session in
+  flight (ADR-0027, `.agents/plans/2026-08-02-gmf-coverage-plan.md`);
+  moved here from Deferred (Wave A's own session budget is spent).
+
 ## Next (backlog, no session scheduled)
 - Pairing-as-data (review P3-3): mutate↔judge conviction registry — design pass in
   the design channel first; vocabulary is load-bearing
@@ -50,12 +57,6 @@ per item; done items move to the bottom of their section with a date and sha.
   trigger: a second `engine` consumer appears (the FHIR emitter is the
   likely one) or engine work itself needs the emit-state/check boundary
   designed, same plan
-- GMF coverage Wave B — `CallSubmodule` (loader recursion, interpreter
-  call/return, the fifth `type_of_care_transition` transition kind) —
-  trigger: Wave A lands and its own session budget is spent; unlocks
-  `ear_infections`' therapeutic content, UTI, MI past ECG, most of
-  `total_joint_replacement` (`.agents/plans/2026-08-02-gmf-coverage-
-  plan.md`)
 - GMF coverage Wave C — `Death` wired to the existing `:expired`/post-
   mortem machinery, no new mechanism — trigger: Wave A (stroke's other
   gap) or donor/post-mortem content otherwise lands; completes `stroke`,

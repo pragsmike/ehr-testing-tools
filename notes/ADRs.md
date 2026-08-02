@@ -5157,4 +5157,117 @@ AR-3) without excluding a condition-side reading; recorded here as the
 finding it is, per Step 1's own "if characterization shows a gap the
 survey missed, record it" instruction — this is that record.
 
+**[A] ratified 2026-08-02 (design channel), retro-ratification rider
+(Wave B D8, ADR-0027): the `:symptom`-as-condition inclusion is
+confirmed within AR-2's admission criterion.** Fix-forward note, no
+body rewrite — the deviation record above stands as written; this
+rider only settles, after the fact and by direct author ruling, that
+the deviation it already disclosed was the right call, not merely an
+authorized-but-unreviewed one.
+
+---
+
+## ADR-0027 — GMF coverage Wave B: `CallSubmodule` — three-compartment person record, root-scoped scratch, closure loading
+
+**Status:** Accepted (author-ruled 2026-08-02, design channel, D1–D8 of
+the Wave B session prompt; session executed same day).
+
+### Context
+
+Wave B (`.agents/plans/2026-08-02-gmf-coverage-plan.md`, roadmap's own
+Wave B row) is the GMF coverage arc's structural lift after Wave A
+(ADR-0026, condition vocabulary only): `CallSubmodule` — loader closure
+resolution, interpreter call/return, root-scoped workflow attributes,
+cross-boundary provenance — plus `type_of_care_transition`, a fifth
+transition kind. Design was ruled 2026-08-02 in the design channel,
+recorded verbatim below (D1–D7); this ADR is that record, not a
+narrative retelling of it. D8, above (appended to ADR-0026), is this
+same ruling session's retro-ratification rider for a Wave A deviation.
+
+### Decision
+
+**D1 — Three-compartment person record; root-scoped scratch.** The
+interpreter ctx is the person record with three compartments of
+distinct character: persona (fixed characteristics, immutable input),
+clinical state (derived only by folding the trajectory — the event log
+is ground truth; guards that need clinical facts read the log, as
+`:observation` already does), and workflow attributes (module
+control-flow scratch only). `CallSubmodule` shares the THIRD
+compartment across a call tree by scoping it to the walk's ROOT
+module: caller and callee resolve the same bare attribute name in the
+root's namespace. Non-calling walks are byte-identical by construction
+(root = self). Nothing is shared between separate top-level walks:
+cross-storyline interaction, when it comes, goes through clinical
+state, never through scratch. Implementation latitude on representation
+(root-qualified keys vs. nested-by-root map) — the semantic contract
+and the regression oracle are what's fixed.
+
+**D2 — Provenance: every event emitted inside a submodule cites the
+full call path, root-first.** Invariant, co-landed: every citation
+path's head equals the walk's root module; single-module walks cite
+the one-element path (representation may stay backward-compatible for
+that case — same oracle applies).
+
+**D3 — Loader closure: submodules resolve on the search path
+`sim/modules/<call-path>.json`; the loader resolves the transitive
+closure at load time; the all-or-nothing gate extends to the closure**
+(a module is loadable iff every transitively-called submodule loads
+clean and in-vocabulary). The static call graph must be acyclic — a
+cyclic real-world closure is an ESCALATION with evidence, not a
+relaxation. A defensive runtime call-depth invariant co-lands (limit
+generous, violation is a bug signal, not a semantic).
+
+**D4 — Determinism threading: one clock, one rng stream; consumption
+order is descend-run-return**, documented in the interpreter ns
+docstring's order contract; the whole-walk reproducibility property
+extends over closures (property test: walk with closure, twice,
+identical).
+
+**D5 — `type_of_care_transition` semantics are characterized from
+Synthea source at the pinned commit BEFORE implementation** — the
+dispatch rule (how a care-setting path is selected, what it consumes
+from the person record or rng) is recorded in this ADR's own
+fix-forward note with the source citation, then implemented to match.
+If selection consumes rng, its draw joins the documented order
+contract.
+
+> **D5 characterization note — filled Step 1, see below.**
+
+**D6 — Curation per closure: ADR-0013 point 4's "modest deferred-type
+surface" bar applies to the closure as a unit.** Each closure member
+gets its own survey row. A dirty closure member (deferred types, or a
+new gap) drops its whole root module from this wave's vendoring —
+recorded as a finding with the evidence, payoff shrinks honestly.
+
+**D7 — Hidden-import check (D1's falsifier):** for each candidate
+closure, compute the set of attributes READ anywhere in the closure but
+WRITTEN nowhere in it (excluding persona-backed builtins). Expected:
+empty. Non-empty is an ESCALATION naming the attribute and its upstream
+writer — do not restore a global channel to make it pass, and do not
+seed it silently.
+
+**D8 — Retro-ratification rider:** see ADR-0026's own deviation record,
+above — this ADR's own D8 is that rider, not a Wave-B-scoped decision
+of its own.
+
+### Verification baselines
+
+Fixed-seed walks of all three currently vendored modules (`sinusitis`,
+`appendicitis`, `sore_throat` — 6 seeds × 2 sexes each, hashed
+trajectory + `:status`) proven identical before and after every
+commit — the D1 root-scoping restructure must be invisible to
+non-calling walks by construction, and this oracle is what proves it.
+`poly check` and `poly test :all skip:integration` clean at every
+checkpoint.
+
+### Fence
+
+This ADR covers Wave B's design only. Its own characterization
+(Step 1, D5/D6/D7's actual findings) and build record (Step 2–4) are
+recorded in `components/sim-trajectory/docs/gmf-interpreter.md` and
+this session's own session record, not restated here. Wave C
+(`Death`) and Wave D (state types needing IR + emitter homes) are not
+started — see `.agents/plans/2026-08-02-gmf-coverage-plan.md` and
+`.agents/plans/roadmap.md`'s own Deferred rows.
+
 ---
