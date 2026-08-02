@@ -125,6 +125,20 @@
       "!=" (not= actual value)
       (= actual value))))
 
+(defn- symptom-condition-holds?
+  "GMF coverage Wave A (2026-08-02): the log-query family's own attribute-
+  read shape, applied to a Symptom's OWN severity write -- reads the SAME
+  module-namespaced key the already-built :symptom STATE type writes
+  (gmf-interpreter's own `step`), defaulting to 0 when never sampled,
+  exactly mirroring Synthea's own `Person.getSymptom` default (grounded
+  against Logic.java/Person.java at docs/gmf-interpreter.md's own pinned
+  commit) -- a module may check a symptom before ever writing it on some
+  branch, and 0 (never happened yet) is the correct default, not a missing-
+  key error."
+  [module-id ctx {:keys [symptom operator value]}]
+  (let [k (keyword module-id (gmf/slug symptom))]
+    (compare-op operator (get (:attributes ctx) k 0) value)))
+
 (defn- window-days
   [{:keys [quantity unit]}]
   (case unit "weeks" (* 7 quantity) "months" (* 30 quantity) "years" (* 365 quantity) quantity))
@@ -201,7 +215,17 @@
   architecturally the same shape :prior-state already establishes),
   :and (recursive compound), and :active-allergy (always false -- this
   namespace's own docstring note on why: no allergy concept exists
-  anywhere in this project's Persona for a query to find)."
+  anywhere in this project's Persona for a query to find). GMF coverage
+  Wave A (2026-08-02, `.agents/plans/2026-08-02-gmf-coverage-plan.md`)
+  adds :symptom (an emergent finding, not one of that session's own named
+  candidates -- required for :at-least's only real vendored use,
+  sore_throat.json's Determine_if_Bacterial, whose sub-conditions are
+  Symptom/Observation/Age; see `symptom-condition-holds?`'s own
+  docstring), :at-least/:or (compound wrappers, the same recursive shape
+  :and already establishes), :date (a calendar-year comparison against
+  `ctx`'s own `:t`, no new state needed), and :observation (a log query
+  over already-emitted :observation trajectory events by concept, the
+  same shape :active-condition/:active-medication already establish)."
   [module-id ctx condition]
   (case (:condition-type condition)
     :age (age-condition-holds? condition (:persona ctx) (:t ctx))
@@ -212,6 +236,7 @@
     :active-medication (active-onset-condition-holds? :medication-order :medication-end ctx condition)
     :active-allergy false
     :and (and-condition-holds? module-id ctx condition)
+    :symptom (symptom-condition-holds? module-id ctx condition)
     (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: unsupported condition type"
                      {:condition-type (:condition-type condition)}))))
 

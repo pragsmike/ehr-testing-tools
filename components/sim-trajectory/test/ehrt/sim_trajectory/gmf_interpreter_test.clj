@@ -407,6 +407,58 @@
     (is (true? (interp/evaluate-condition "m" ctx {:condition-type :and
                                                    :conditions [{:condition-type :active-condition :codes [onset-concept]}]})))))
 
+;; --- GMF coverage Wave A: Symptom-as-condition (2026-08-02) --------------
+;; Not one of AR-2's five named candidates -- an emergent finding, Step 1's
+;; own characterization: `At Least`'s only real vendored use
+;; (sore_throat.json's Determine_if_Bacterial) wraps Symptom sub-conditions
+;; exclusively alongside Observation/Age, so building `At Least` for real
+;; branch coverage requires this too. Data source clears AR-2's own
+;; membership bar regardless: the already-accumulating `:attributes` map,
+;; written by the already-built `:symptom` STATE type (M5a) -- no new state
+;; home. Semantics grounded in Synthea's own Logic.java/Person.java at the
+;; docs/gmf-interpreter.md pinned commit (7e08387c...): `Person.getSymptom`
+;; defaults to 0 when the symptom was never sampled, compared via the same
+;; operator vocabulary `:attribute`'s own condition already uses.
+
+(deftest symptom-condition-compares-the-namespaced-severity-attribute
+  (let [ctx (assoc (ctx-for (persona-at 1)) :attributes {:m/cough 45})]
+    (is (true? (interp/evaluate-condition "m" ctx {:condition-type :symptom :symptom "Cough" :operator ">" :value 30})))
+    (is (false? (interp/evaluate-condition "m" ctx {:condition-type :symptom :symptom "Cough" :operator "<" :value 30})))))
+
+(deftest symptom-condition-defaults-to-zero-when-never-sampled
+  (testing "mirrors Synthea's own Person.getSymptom default (0), not a
+            missing-key error -- a module may check a symptom before ever
+            writing it on some branch"
+    (let [ctx (ctx-for (persona-at 1))]
+      (is (true? (interp/evaluate-condition "m" ctx {:condition-type :symptom :symptom "Cough" :operator "<" :value 30})))
+      (is (false? (interp/evaluate-condition "m" ctx {:condition-type :symptom :symptom "Cough" :operator ">" :value 0}))))))
+
+(deftest symptom-condition-consumes-no-rng
+  (let [calls (atom 0)
+        rng (proxy [Random] [(long 1)]
+              (nextDouble [] (swap! calls inc) (proxy-super nextDouble))
+              (nextInt ([n] (swap! calls inc) (proxy-super nextInt n))))
+        ctx (assoc (ctx-for (persona-at 1)) :attributes {:m/cough 45})]
+    (interp/evaluate-condition "m" ctx {:condition-type :symptom :symptom "Cough" :operator ">" :value 30})
+    (is (= 0 @calls))))
+
+(defspec symptom-condition-never-touches-rng-state 100
+  (prop/for-all [seed gen/large-integer
+                 severity (gen/choose 0 100)
+                 threshold (gen/choose 0 100)]
+    (let [ctx (assoc (ctx-for (persona-at 1)) :attributes {:m/x severity})
+          calls (atom 0)
+          rng (proxy [Random] [(long seed)]
+                (nextDouble [] (swap! calls inc) (proxy-super nextDouble))
+                (nextInt ([n] (swap! calls inc) (proxy-super nextInt n))))]
+      ;; evaluate-condition takes no rng at all (the whole function's own
+      ;; signature never accepts one) -- this property exercises the SAME
+      ;; shared rng a real Guard/conditional-transition step would pass
+      ;; downstream, proving no OTHER code path this condition's own
+      ;; evaluation touches taps it either.
+      (interp/evaluate-condition "m" ctx {:condition-type :symptom :symptom "x" :operator ">" :value threshold})
+      (= 0 @calls))))
+
 ;; --- M5b: Device/DeviceEnd -- consumed-internally, like :simple -----------
 
 (def device-module

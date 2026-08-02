@@ -133,7 +133,15 @@
   patient who ever onsets, not merely fails to cover a rare branch."
   {"Age" :age "Gender" :gender "Attribute" :attribute "PriorState" :prior-state
    "Active Condition" :active-condition "Active Medication" :active-medication
-   "Active Allergy" :active-allergy "And" :and})
+   "Active Allergy" :active-allergy "And" :and
+   ;; GMF coverage Wave A (2026-08-02, .agents/plans/2026-08-02-gmf-
+   ;; coverage-plan.md): :symptom is an emergent finding, not one of that
+   ;; session's own named candidates (At Least/Or/Date/Observation/Active
+   ;; Allergy) -- required for :at-least's only real vendored use
+   ;; (sore_throat.json's Determine_if_Bacterial); see
+   ;; ehrt.sim-trajectory.gmf-interpreter/symptom-condition-holds?'s own
+   ;; docstring for the full account.
+   "Symptom" :symptom})
 
 (defn- normalize-code
   "GMF's own code triplet -> sim-model/Concept. M5b: :code
