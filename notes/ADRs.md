@@ -5033,6 +5033,52 @@ re-exported by the façade, and a require-graph edge contradicting the
 plan's own audit — came back empty, confirmed by grep before either
 stage's first edit).
 
+> **S3 characterization (filled Step 1, 2026-08-02, Wave D stage D0,
+> ADR-0029 R1).** Caller map, grepped against the full workspace, not
+> judgment: real `:require` edges onto `ehrt.sim.emit-hl7`/
+> `ehrt.sim.v2-replay`/`ehrt.sim.site-profile` are `identifiers.clj` and
+> `run.clj` (residual-sim src, both requiring `emit-hl7` only) and, in
+> residual-sim's own test tree, `churn_scenarios_test.clj`,
+> `emit_state_test.clj`, `emitter_order_independence_test.clj`, and
+> `identifiers_test.clj` (all four requiring `emit-hl7` directly — a
+> same-component test-tree edge Polylith permits today, which becomes a
+> cross-component edge once `emit-hl7` leaves and must repoint to
+> `ehrt.sim-emit-hl7.interface`). `emitter_order_independence_test.clj`
+> stays in residual `sim` per this session's own driving prompt (its own
+> subject is a structural property of the emitter's callER, not the
+> emitter's own internals). Every other live hit
+> (`persona.clj`/`emit_state.clj`/`engine.clj`/`engine_test.clj`/
+> `run_test.clj`) is docstring/comment prose, not a `:require` — verified
+> line-by-line, not assumed from the grep alone. `ehrt.sim.interface`
+> requires exactly `check`/`identifiers`/`run`/`version`, none of the
+> three moving namespaces — unchanged by this move, confirmed before any
+> edit (AR-3 holds). Internal-to-the-trio edges move together:
+> `v2-replay` requires `emit-hl7`; `emit-hl7` requires `site-profile` and
+> `ehrt.sim-model.interface` (the one cross-component edge the new
+> component keeps, per the plan's own prediction — no `kernel` edge:
+> none of the three files requires it). Third-party deps split by real
+> usage, not carried wholesale: `org.clojars.cmiles74/clojure-hl7-parser`
+> is required ONLY by `emit_hl7.clj`/`v2_replay.clj` (moves entirely to
+> the new component's own `deps.edn`, removed from residual sim's); malli
+> is required by `site_profile.clj` AND by four residual-sim files
+> (`churn`/`engine`/`manifest`/`order_profiles`) — stays in both;
+> `org.clojure/data.json` is required only by residual `emit_state.clj`
+> — untouched. Golden baseline, seed 42/5 patients/`--emit hl7`, captured
+> before any edit: `run.edn` sha256 `6b48814e…a40a5`, `ground-truth.edn`
+> (`--format ground-truth`) sha256 `7617d9ca…4f7a3c`, `messages.txt`
+> (`--format er7`) sha256 `f8b15266…d391aa`, `identifiers.edn` sha256
+> `4473833f…e190ef3`, `ehrt help` sha256 `1cb4de99…1cac6bdac05d`, `ehrt
+> help sim` sha256 `34b35f54…dea8d1c35195`. deftest+defspec count,
+> recounted live (AR-7's own "recount at session start" instruction,
+> supersedes ADR-0025's own 274-post-S2 figure — seven tests landed in
+> residual `components/sim/test` across Waves A/B/C since): **281**
+> today, of which the three moving test files carry **75**
+> (`emit_hl7_test.clj` 53, `v2_replay_test.clj` 9,
+> `site_profile_test.clj` 13) — predicted post-move split 206 residual +
+> 75 `sim-emit-hl7` = 281. `poly check` clean; `poly test :all
+> skip:integration` 0 failures/0 errors, captured to a file (not piped,
+> per this workspace's own caught-before lesson).
+
 ---
 
 ## ADR-0026 — GMF coverage Wave A: condition vocabulary v1→v1.1, `sore_throat.json` vendored
