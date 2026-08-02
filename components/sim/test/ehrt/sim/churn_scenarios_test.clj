@@ -30,7 +30,7 @@
   needs to move to engine/run, just this scripted fleet."
   (:require [clojure.test :refer [deftest is testing]]
             [ehrt.sim.engine :as engine]
-            [ehrt.sim.emit-hl7 :as emit-hl7]
+            [ehrt.sim-emit-hl7.interface :as emit-hl7]
             [com.nervestaple.hl7-parser.parser :as parser]
             [com.nervestaple.hl7-parser.message :as message]))
 

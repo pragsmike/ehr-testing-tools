@@ -1,4 +1,4 @@
-(ns ehrt.sim.v2-replay-test
+(ns ehrt.sim-emit-hl7.v2-replay-test
   "Task 2 (M6): the v2-replay accumulator and the emitter-coherence
   property it exists to check -- 'the law graduates' (docs/sim-theory.md's
   global emitter-coherence law becomes a real property test once a
@@ -12,7 +12,7 @@
   runs over churn EXCLUDING bed-swap/merge (cancel-admit/cancel-transfer/
   cancel-discharge/transfer-in-error only), the same 'deferred with a
   contract note, not silently stubbed' treatment EmitState's own CDA arm
-  gets. `ehrt.sim.v2-replay/unsupported-trigger` documents the
+  gets. `ehrt.sim-emit-hl7.v2-replay/unsupported-trigger` documents the
   same boundary from the accumulator's own side."
   (:require [clojure.java.io :as io]
             [clojure.test :refer [deftest is testing]]
@@ -20,9 +20,9 @@
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
             [ehrt.sim.engine :as engine]
-            [ehrt.sim.emit-hl7 :as emit-hl7]
+            [ehrt.sim-emit-hl7.emit-hl7 :as emit-hl7]
             [ehrt.sim-trajectory.interface :as sim-trajectory]
-            [ehrt.sim.v2-replay :as v2-replay]))
+            [ehrt.sim-emit-hl7.v2-replay :as v2-replay]))
 
 (def ref-date "2024-01-01")
 (def utc-offset "+00:00")

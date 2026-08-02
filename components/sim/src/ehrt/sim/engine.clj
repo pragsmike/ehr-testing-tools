@@ -805,7 +805,7 @@
   ;; index` doesn't gate on current status) strips :class via cancel-
   ;; admit's own dissoc; a following cancel-discharge that omitted :class
   ;; would leave an :admitted patient with no class at all, while the
-  ;; wire (ehrt.sim.emit-hl7's own single-subject-message) always
+  ;; wire (ehrt.sim-emit-hl7.emit-hl7's own single-subject-message) always
   ;; renders PV1-2 :inpatient for this event family regardless -- a real
   ;; wire/truth disagreement the emitter-coherence property surfaced.
   ;; :inpatient is the only value ever legal here: :discharge (unlike
@@ -1220,7 +1220,7 @@
   ...]} :facility .. :providers [materialized-provider ...]}. The
   facility and MATERIALIZED providers (real NPIs, not just templates)
   are echoed back so a caller rendering this run's log
-  (ehrt.sim.emit-hl7/emit needs facility + providers for PV1)
+  (ehrt.sim-emit-hl7.emit-hl7/emit needs facility + providers for PV1)
   uses the EXACT config this run allocated against, not a fresh default
   that might not even share ward names. ground-truth is format-free,
   ordered by [t seq-no]; emitters consume it and test assertions target

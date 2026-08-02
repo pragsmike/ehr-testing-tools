@@ -17,7 +17,7 @@
 
   A PROJECTION over `ehrt.sim.engine/run`'s own output, reusing
   this project's existing single-sourced id-derivation functions
-  (`ehrt.sim.emit-hl7/control-id-for`, `ehrt.sim.emit-
+  (`ehrt.sim-emit-hl7.interface/control-id-for`, `ehrt.sim.emit-
   state/bundle-run`'s own resource ids) rather than re-deriving any of
   them independently, and reusing `ehrt.sim.run`'s own config-
   merging/module-resolution/incompatible-assignment plumbing (the same
@@ -26,7 +26,7 @@
   a real emission of the SAME run actually contains, because it reads
   the exact functions that produce it."
   (:require [ehrt.kernel.interface :as result]
-            [ehrt.sim.emit-hl7 :as emit-hl7]
+            [ehrt.sim-emit-hl7.interface :as emit-hl7]
             [ehrt.sim.emit-state :as emit-state]
             [ehrt.sim.engine :as engine]
             [ehrt.sim.run :as run]))

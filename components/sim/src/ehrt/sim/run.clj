@@ -5,7 +5,7 @@
 
   v0 returns the ground-truth log directly in the payload. Message
   emission (HL7v2 via the ER7 emitter over org.clojars.cmiles74/
-  clojure-hl7-parser structures, ehrt.sim.emit-hl7) attaches
+  clojure-hl7-parser structures, ehrt.sim-emit-hl7.emit-hl7) attaches
   here as an output stage consuming the log -- the log is primary,
   messages are a rendering, and emission is opt-in (:emit \"hl7\").
   Milestone M1: engine/run echoes back the :facility and materialized
@@ -29,7 +29,7 @@
             [ehrt.sim.engine :as engine]
             [ehrt.sim.check :as check]
             [ehrt.sim.churn :as churn]
-            [ehrt.sim.emit-hl7 :as emit-hl7]
+            [ehrt.sim-emit-hl7.interface :as emit-hl7]
             [ehrt.sim.emit-state :as emit-state]
             [ehrt.sim-trajectory.interface :as sim-trajectory]
             [ehrt.sim.manifest :as manifest]
@@ -232,7 +232,7 @@
   CLI-invisible despite reaching `engine/run` from a direct API caller;
   never again silently, per that test).
 
-  Milestone site-profiles: `:site-profile` (ehrt.sim.site-profile/
+  Milestone site-profiles: `:site-profile` (ehrt.sim-emit-hl7.site-profile/
   SiteProfile) is threaded straight to `emit-hl7/emit`, the SAME
   rendering/manifest-only treatment `:utc-offset` already gets -- it is
   NOT a member of `engine/config-keys` and never reaches `engine/run` at

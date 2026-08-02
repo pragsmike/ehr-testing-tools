@@ -51,6 +51,9 @@
         ;; poly/sim-trajectory (sim split S2): poly/sim's own src now
         ;; requires ehrt.sim-trajectory.interface transitively.
         poly/sim-trajectory {:local/root "../../components/sim-trajectory"}
+        ;; poly/sim-emit-hl7 (sim split S3 / Wave D stage D0): poly/sim's
+        ;; own src now requires ehrt.sim-emit-hl7.interface transitively.
+        poly/sim-emit-hl7 {:local/root "../../components/sim-emit-hl7"}
         org.clojure/clojure {:mvn/version "1.12.5"}}
 
  :aliases {;; Base-less project (R19, ADR-0004): the artifact-fetch-

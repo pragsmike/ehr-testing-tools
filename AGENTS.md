@@ -105,7 +105,10 @@ and rendering); `components/sim-model` (pathway/facility/persona/config
 schemas and sampling, extracted from `components/sim`, sim split S1,
 `.agents/plans/2026-08-02-sim-split-plan.md`); `components/sim-trajectory`
 (GMF module loading/interpretation and CompileTrajectory, extracted from
-`components/sim`, sim split S2, same plan); `components/sim`
+`components/sim`, sim split S2, same plan); `components/sim-emit-hl7`
+(the HL7v2 emitter, the v2-replay wire-side accumulator, and site
+profiles, extracted from `components/sim`, sim split S3 / GMF coverage
+Wave D stage D0, `notes/ADRs.md` ADR-0029); `components/sim`
 (deterministic, seeded generator of synthetic hospital traffic).
 **Bases:** `bases/cli` — thin CLI dispatch, `bin/ehrt` ("e-heart",
 `ehr` stays reserved for future payload-EHR tooling).
@@ -176,10 +179,13 @@ library in its own right.
   kernel is not corpus-derived, so this is a new edge, not an
   exception. `components/sim` also depends on `components/sim-model`
   and `components/sim-trajectory` (sim split S1/S2, `notes/ADRs.md`
-  ADR-0025) — `components/sim-model` must never depend on anything but
+  ADR-0025), and `components/sim-emit-hl7` (sim split S3, ADR-0029) —
+  `components/sim-model` must never depend on anything but
   `components/kernel`; `components/sim-trajectory` must never depend on
-  anything but `components/sim-model` and `components/kernel` (never on
-  `components/sim` itself).
+  anything but `components/sim-model` and `components/kernel`;
+  `components/sim-emit-hl7` must never depend on anything but
+  `components/sim-model` (never on `components/sim` or
+  `components/sim-trajectory` themselves).
 - **No PHI, no real-person data, ever** — including in test fixtures
   and docs.
 - **No CPT codes** (AMA-licensed). SNOMED CT, LOINC, RxNorm, ICD-10-CM,

@@ -23,10 +23,10 @@
      namespace and a dispatch key, not by extending this one.
   3. Cross-emitter id sub-law (the GLOBAL emitter-coherence law, docs/
      sim-theory.md): every resource id/reference here derives from the
-     SAME identifiers ehrt.sim.emit-hl7 renders -- Patient.id is
+     SAME identifiers ehrt.sim-emit-hl7.emit-hl7 renders -- Patient.id is
      the patient-id ehrt.sim.engine/patient-id-for assigns
      (never a fresh UUID), Patient.identifier carries the active-mrn
-     ehrt.sim.emit-hl7 renders as PID-3, and every other
+     ehrt.sim-emit-hl7.emit-hl7 renders as PID-3, and every other
      resource's own id is a deterministic, patient-id-scoped ordinal
      (Encounter/Condition/Observation/MedicationRequest), never
      invented independently of state. Property-tested in
@@ -98,7 +98,7 @@
 (def ^:private iso-formatter java.time.format.DateTimeFormatter/ISO_LOCAL_DATE_TIME)
 
 (defn- iso-timestamp
-  "The same pinned-clock arithmetic ehrt.sim.emit-hl7/hl7-timestamp
+  "The same pinned-clock arithmetic ehrt.sim-emit-hl7.emit-hl7/hl7-timestamp
   uses (reference-date + seconds, suffixed with the pinned utc-offset) --
   rendered in ISO-8601 (FHIR's own dateTime shape) instead of HL7's
   colon-free zone convention. Kept independent of emit-hl7's own

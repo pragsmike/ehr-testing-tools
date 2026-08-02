@@ -1,7 +1,7 @@
-(ns ehrt.sim.v2-replay
+(ns ehrt.sim-emit-hl7.v2-replay
   "Task 2 (M6): the v2-replay accumulator -- parses a run's own emitted
   ER7 stream (the SAME org.clojars.cmiles74/clojure-hl7-parser structures
-  ehrt.sim.emit-hl7 renders through, plus that namespace's own
+  ehrt.sim-emit-hl7.emit-hl7 renders through, plus that namespace's own
   unescape-er7) and folds it through `fold-message`, an INDEPENDENT
   reconstruction of patient state built ONLY from what a real downstream
   consumer could ever see on the wire -- never touching ground-truth,
@@ -15,7 +15,7 @@
 
   Keyed by :active-mrn, not :patient-id -- the wire's only identity.
   Bootstrap-from-empty: a patient's first message self-initializes
-  (every message carries full PID enrichment, ehrt.sim.emit-hl7's
+  (every message carries full PID enrichment, ehrt.sim-emit-hl7.emit-hl7's
   own uniform-PID law), so no separate 'this mrn is new' step is needed.
 
   Scope boundary, documented not silent (the same 'deferred with a
@@ -25,12 +25,12 @@
   active mid-run. Reconstructing wire identity across either is real,
   separate engineering scope. `fold-message` raises a clear
   `:unsupported-trigger` on either, rather than silently mis-folding --
-  ehrt.sim.v2-replay-test's own property runs churn EXCLUDING
+  ehrt.sim-emit-hl7.v2-replay-test's own property runs churn EXCLUDING
   both for exactly this reason."
   (:require [clojure.string :as str]
             [com.nervestaple.hl7-parser.parser :as parser]
             [com.nervestaple.hl7-parser.message :as message]
-            [ehrt.sim.emit-hl7 :as emit-hl7]))
+            [ehrt.sim-emit-hl7.emit-hl7 :as emit-hl7]))
 
 ;; --- Reading the pinned clock backwards ------------------------------------
 
@@ -38,7 +38,7 @@
   (java.time.format.DateTimeFormatter/ofPattern "yyyyMMddHHmmss"))
 
 (defn- hl7-instant->seconds
-  "The inverse of ehrt.sim.emit-hl7/hl7-timestamp: an HL7
+  "The inverse of ehrt.sim-emit-hl7.emit-hl7/hl7-timestamp: an HL7
   timestamp (\"yyyyMMddHHmmss+ZZZZ\") anchored to `reference-date` ->
   seconds since that reference instant. Only the first 14 characters
   (the naive local timestamp) are read -- the zone suffix is always the
@@ -51,7 +51,7 @@
 
 (defn- hl7-date->iso
   "\"yyyyMMdd\" -> \"yyyy-MM-dd\" -- the inverse of
-  ehrt.sim.emit-hl7/pid-segment's own dash-stripping."
+  ehrt.sim-emit-hl7.emit-hl7/pid-segment's own dash-stripping."
   [raw]
   (str (subs raw 0 4) "-" (subs raw 4 6) "-" (subs raw 6 8)))
 
@@ -78,7 +78,7 @@
 ;; --- PID/PV1/IN1 reconstruction ---------------------------------------------
 
 (defn- parse-persona
-  "Every message carries this uniformly (ehrt.sim.emit-hl7/
+  "Every message carries this uniformly (ehrt.sim-emit-hl7.emit-hl7/
   pid-segment's own docstring) -- PID-13/:ssn/:age are never rendered,
   the same exclusion `project-to-wire-visible-fields` states from the
   ground-truth side."
@@ -91,7 +91,7 @@
    :phone (blank->nil (message/get-field-first-value parsed "PID" 13))})
 
 (defn- parse-payer
-  "IN1 rides admission alone (ehrt.sim.emit-hl7/in1-segment's own
+  "IN1 rides admission alone (ehrt.sim-emit-hl7.emit-hl7/in1-segment's own
   docstring) -- nil on every other message, the wire-side mirror of
   `project-to-wire-visible-fields`'s own admitted-at gate."
   [parsed]
@@ -118,7 +118,7 @@
 
 (defn- seg-field-components
   "The full component vector at STANDARD (1-based) HL7 `field-index` of
-  one already-fetched segment (ehrt.sim.v2-replay's own callers
+  one already-fetched segment (ehrt.sim-emit-hl7.v2-replay's own callers
   use this for OBX repetitions -- message/get-segments returns one
   segment per analyte; the whole-message get-field-component API
   addresses only 'the first' repetition). `get-segment-field`'s own
@@ -147,7 +147,7 @@
   "OBX-3 concept (code^display^system, a CWE field -- the SECOND
   component is the concept's own display text, dropped by a plain
   `seg-field` first-component read), OBX-5 value, OBX-6 units, OBX-7
-  reference range, OBX-8 abnormal flag -- ehrt.sim.emit-hl7/
+  reference range, OBX-8 abnormal flag -- ehrt.sim-emit-hl7.emit-hl7/
   obx-segment's own field layout, standard HL7 numbering."
   [t seg]
   (let [[code display] (seg-field-components seg 3)]
@@ -225,7 +225,7 @@
   accumulator, OR this namespace's own reconstructed entry -- the SAME
   function applies to both sides of the emitter-coherence property, by
   design, so the comparison is never two independently hand-tuned
-  shapes) down to exactly what ehrt.sim.emit-hl7's own rendering
+  shapes) down to exactly what ehrt.sim-emit-hl7.emit-hl7's own rendering
   choices make visible on the wire.
 
   Excluded, and why -- each a real, load-bearing reason, not merely
@@ -239,34 +239,34 @@
   - :location's own :placement -- no PV1 field distinguishes licensed
     from surge (docs/operational-models.md); only the physical
     ward/bed strings are wire-visible.
-  - :conditions, :medication-orders -- ehrt.sim.emit-hl7 renders
+  - :conditions, :medication-orders -- ehrt.sim-emit-hl7.emit-hl7 renders
     NO segment for either (DG1 is gated on the snomed-icd10-map
     catalytic, docs/sim-theory.md's Catalytic resolution table, not
     built; :medication-order/:medication-end carry no message-type-
     registry entry at all, that namespace's own comment). Genuinely
     truth-only, not a gap this property should paper over.
   - :persona's own :ssn/:age -- PID never carries either
-    (ehrt.sim.emit-hl7/pid-segment's own fixed field list).
+    (ehrt.sim-emit-hl7.emit-hl7/pid-segment's own fixed field list).
   - :persona's own :payer -- wire-visible ONLY once an :admission
     message has actually carried IN1 (IN1 rides admission alone) --
     gated here on `:admitted-at` being non-nil, the real wire's own
     gate, not a static field selector.
   - Every :observations entry's :codes is narrowed to its FIRST concept
     only, with :system normalized to :loinc -- a genuine, PRE-EXISTING
-    ehrt.sim.emit-hl7 finding, not introduced by this property:
+    ehrt.sim-emit-hl7.emit-hl7 finding, not introduced by this property:
     `cwe-field` renders every CWE field's 3rd component as the literal
     \"LN\" regardless of a concept's actual :system, and
     `observation-obx-segment` reads only `(first codes)`, for ANY
     observation. Triaged as the emitter under-rendering, not this
     projection over-claiming -- recorded here as a documented scope
-    boundary (a real future ehrt.sim.emit-hl7 fix, out of this
+    boundary (a real future ehrt.sim-emit-hl7.emit-hl7 fix, out of this
     session's own test-first seam), not silently patched over.
   - Events with no message-type-registry entry at all (:step-rejected,
     :registered's own pre-horizon facts, :outpatient-visit-end's own
     missing closing message, :procedure) never generate a message
     boundary for this property to check -- a structural consequence of
     the property iterating ONLY over
-    ehrt.sim.emit-hl7/message-type-registry-covered events,
+    ehrt.sim-emit-hl7.emit-hl7/message-type-registry-covered events,
     exactly the boundary set a real downstream consumer would ever see,
     not a separate exclusion this function has to state."
   [{:keys [active-mrn status class location attending admitted-at discharged-at persona observations]}]

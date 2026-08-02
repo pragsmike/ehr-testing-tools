@@ -10,14 +10,14 @@
   Cross-emitter id property (M6 Task 1 point 3): FHIR ids/references
   derive from the SAME identifiers EmitHL7 uses -- patient-id,
   active-mrn in Patient.identifier -- checked here as a property over
-  random runs, comparing against ehrt.sim.emit-hl7's own PID-3."
+  random runs, comparing against ehrt.sim-emit-hl7.emit-hl7's own PID-3."
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
             [clojure.data.json :as json]
             [ehrt.sim.emit-state :as emit-state]
-            [ehrt.sim.emit-hl7 :as emit-hl7]
+            [ehrt.sim-emit-hl7.interface :as emit-hl7]
             [ehrt.sim.engine :as engine]
             [com.nervestaple.hl7-parser.parser :as parser]
             [com.nervestaple.hl7-parser.message :as message]))

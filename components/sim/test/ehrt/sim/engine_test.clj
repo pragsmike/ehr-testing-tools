@@ -366,7 +366,7 @@
             restore :class too, or the patient ends up admitted with no
             class at all -- surfaced by the v2-replay emitter-coherence
             property (a :discharge-family patient's own PV1-2 always
-            renders :inpatient, ehrt.sim.emit-hl7's own
+            renders :inpatient, ehrt.sim-emit-hl7.emit-hl7's own
             single-subject-message; ground truth must actually agree)"
     (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
           world1 (admit world0 0 "P1" "Renal")

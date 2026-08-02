@@ -1,13 +1,13 @@
-(ns ehrt.sim.site-profile
+(ns ehrt.sim-emit-hl7.site-profile
   "Site profiles (docs/site-profiles.md): the 'simulate MY hospital'
   config layer. A site profile changes HOW a fact is said at emit time
   (MSH dialect, code-table overrides, Z-segment content) -- never WHAT
   happened (sim/ADR-0002; docs/site-profiles.md's own applied-at-the-
-  emitter argument: all three bind at ehrt.sim.emit-hl7's render
+  emitter argument: all three bind at ehrt.sim-emit-hl7.emit-hl7's render
   call sites, never inside decide/evolve or the ground-truth log).
 
   Every key is optional; the default profile is the ABSENT profile
-  (nil) -- ehrt.sim.emit-hl7 renders identically whether no
+  (nil) -- ehrt.sim-emit-hl7.emit-hl7 renders identically whether no
   profile arg is passed, an explicit nil is passed, or {} is passed.
   That three-way agreement is this milestone's own determinism anchor,
   property-tested in emit-hl7-test alongside the stronger two-profile
@@ -23,7 +23,7 @@
   the other three components, a site profile's naming override
   (`apply-naming`, below) is a FACILITY-CONFIG TRANSFORM a caller
   applies to `:facility` BEFORE ehrt.sim.engine/run, not
-  something ehrt.sim.emit-hl7 ever reads. Calling it a
+  something ehrt.sim-emit-hl7.emit-hl7 ever reads. Calling it a
   'config-level compatibility shim' (docs/site-profiles.md,
   .agents/plans/roadmap.md) is exactly this distinction: config-level,
   not emit-time -- it is never auto-wired into `run`, so a caller who
@@ -42,7 +42,7 @@
    [:processing-id {:optional true} [:enum "P" "T" "D"]]])
 
 (def default-msh
-  "Today's hard-coded MSH values (ehrt.sim.emit-hl7, pre-site-
+  "Today's hard-coded MSH values (ehrt.sim-emit-hl7.emit-hl7, pre-site-
   profiles) -- what an absent/empty profile's MSH dialect renders,
   byte-identical to always (SimHospital issue #17's own citation,
   .agents/plans/roadmap.md, is why :version in particular is now a
@@ -152,7 +152,7 @@
 (def ZFieldBinding
   "One field of a Z-segment template: `:path` (a vector of keywords,
   looked up via get-in against a per-render context assembled by
-  ehrt.sim.emit-hl7 -- state/persona/event paths, e.g. [:persona
+  ehrt.sim-emit-hl7.emit-hl7 -- state/persona/event paths, e.g. [:persona
   :payer :type] or [:location :ward]) or `:literal` (a fixed string
   fallback). `:path` wins when both are present. An unbound path (nil
   at any step, or missing entirely) renders an EMPTY field, never

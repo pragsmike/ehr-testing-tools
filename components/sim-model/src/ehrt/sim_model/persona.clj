@@ -126,7 +126,7 @@
   "The fixed, documented anchor 'today' is relative to when computing a
   birth year from a sampled age -- deliberately NOT wall-clock (the
   determinism law: no unseeded entropy anywhere in the output path).
-  2024 matches ehrt.sim.emit-hl7/default-reference-date's own
+  2024 matches ehrt.sim-emit-hl7.emit-hl7/default-reference-date's own
   year, so DOB and rendered message timestamps stay mutually plausible
   for a run using the default reference date; a caller who overrides
   :reference-date and needs exact DOB-vs-encounter-date coherence is

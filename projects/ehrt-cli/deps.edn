@@ -48,6 +48,9 @@
         ;; poly/sim-trajectory (sim split S2): sim's own src now requires
         ;; ehrt.sim-trajectory.interface directly.
         poly/sim-trajectory {:local/root "../../components/sim-trajectory"}
+        ;; poly/sim-emit-hl7 (sim split S3 / Wave D stage D0): sim's own
+        ;; src now requires ehrt.sim-emit-hl7.interface directly.
+        poly/sim-emit-hl7 {:local/root "../../components/sim-emit-hl7"}
         org.clojure/clojure {:mvn/version "1.12.5"}}
 
  :aliases {:test {:extra-paths []
@@ -71,6 +74,7 @@
            :coverage {:extra-paths ["../../components/kernel/test"
                                      "../../components/sim-model/test"
                                      "../../components/sim-trajectory/test"
+                                     "../../components/sim-emit-hl7/test"
                                      "../../components/judge/test"
                                      "../../components/judge-v2-hapi/test"
                                      "../../components/judge-fhir-official/test"
@@ -87,6 +91,7 @@
                                   "-p" "../../components/kernel/src"
                                   "-p" "../../components/sim-model/src"
                                   "-p" "../../components/sim-trajectory/src"
+                                  "-p" "../../components/sim-emit-hl7/src"
                                   "-p" "../../components/judge/src"
                                   "-p" "../../components/judge-v2-hapi/src"
                                   "-p" "../../components/judge-fhir-official/src"
@@ -99,6 +104,7 @@
                                   "-s" "../../components/kernel/test"
                                   "-s" "../../components/sim-model/test"
                                   "-s" "../../components/sim-trajectory/test"
+                                  "-s" "../../components/sim-emit-hl7/test"
                                   "-s" "../../components/judge/test"
                                   "-s" "../../components/judge-v2-hapi/test"
                                   "-s" "../../components/judge-fhir-official/test"

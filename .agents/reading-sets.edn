@@ -124,7 +124,12 @@
   ;; were restructured (S3 retired from Deferred, Wave D's row split into
   ;; D1-D3 with the ADR-0029 citation), net +1 line, brought the real
   ;; total from 896 to 897.
-  :budget-lines 897}
+  ;; raised again 2026-08-02 (sim split S3 / Wave D stage D0, Step 2,
+  ;; caught by the budget test itself, same shape every prior self-catch
+  ;; above already established): AGENTS.md's own growth (Components list
+  ;; and Dependency-direction bullet naming `components/sim-emit-hl7`)
+  ;; brought the real total from 897 to 903.
+  :budget-lines 903}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one
@@ -154,7 +159,9 @@
   ;; (above) brought the real total from 1640 to 1644.
   ;; raised 2026-08-02 (sim split S2 session): AGENTS.md's own further
   ;; growth (above) brought the real total from 1644 to 1649.
-  :budget-lines 1649}
+  ;; raised again 2026-08-02 (sim split S3 / Wave D stage D0): AGENTS.md's
+  ;; own further growth (above) brought the real total from 1649 to 1655.
+  :budget-lines 1655}
 
  ;; components/sim is the deterministic generator engine wrapping Synthea
  ;; (ADR-0005) -- engine-onboarding.md is the checklist every engine wrapper
@@ -178,7 +185,9 @@
   ;; (above) brought the real total from 695 to 699.
   ;; raised 2026-08-02 (sim split S2 session): AGENTS.md's own further
   ;; growth (above) brought the real total from 699 to 704.
-  :budget-lines 704}
+  ;; raised again 2026-08-02 (sim split S3 / Wave D stage D0): AGENTS.md's
+  ;; own further growth (above) brought the real total from 704 to 710.
+  :budget-lines 710}
 
  ;; components/judge (verdict vocabulary) plus its three gate engines
  ;; (judge-v2-hapi, judge-fhir-official, judge-v2-nist, ADR-0011's per-engine
@@ -204,7 +213,9 @@
   ;; (above) brought the real total from 765 to 769.
   ;; raised 2026-08-02 (sim split S2 session): AGENTS.md's own further
   ;; growth (above) brought the real total from 769 to 774.
-  :budget-lines 774}
+  ;; raised again 2026-08-02 (sim split S3 / Wave D stage D0): AGENTS.md's
+  ;; own further growth (above) brought the real total from 774 to 780.
+  :budget-lines 780}
 
  ;; components/docs-tooling (dev-time-only doc/lint tooling) generates and
  ;; lints docs/cli.md, docs/pipeline.md-equivalents, and docs/use-cases.md
@@ -230,4 +241,8 @@
   ;; growth (5 lines) plus docs/dev/architecture.md's own further growth
   ;; (5 lines, `components/sim-trajectory`'s own mermaid/bricks/projects
   ;; rows) brought the real total from 562 to 572.
-  :budget-lines 572}}
+  ;; raised again 2026-08-02 (sim split S3 / Wave D stage D0): AGENTS.md's
+  ;; own further growth (6 lines) plus docs/dev/architecture.md's own
+  ;; further growth (4 lines, `components/sim-emit-hl7`'s own
+  ;; mermaid/bricks/projects rows) brought the real total from 572 to 582.
+  :budget-lines 582}}

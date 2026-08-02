@@ -56,6 +56,9 @@
         ;; poly/sim-trajectory (sim split S2): sim's own src now requires
         ;; ehrt.sim-trajectory.interface directly.
         poly/sim-trajectory {:local/root "../../components/sim-trajectory"}
+        ;; poly/sim-emit-hl7 (sim split S3 / Wave D stage D0): sim's own
+        ;; src now requires ehrt.sim-emit-hl7.interface directly.
+        poly/sim-emit-hl7 {:local/root "../../components/sim-emit-hl7"}
         org.clojure/clojure {:mvn/version "1.12.5"}}
 
  :aliases {;; Base-less project (R15): sim + corpus + palgebra, test-only.

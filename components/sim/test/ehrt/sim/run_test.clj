@@ -130,7 +130,7 @@
 ;; at all.
 
 (deftest run-command-threads-site-profile-into-emitted-messages
-  (testing "a :site-profile reaches ehrt.sim.emit-hl7/emit (its own
+  (testing "a :site-profile reaches ehrt.sim-emit-hl7.emit-hl7/emit (its own
             MSH dialect renders) without being a member of
             ehrt.sim.engine/config-keys"
     (is (not (contains? (set engine/config-keys) :site-profile)))

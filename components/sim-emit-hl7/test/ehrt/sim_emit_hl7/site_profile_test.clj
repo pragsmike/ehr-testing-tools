@@ -1,10 +1,10 @@
-(ns ehrt.sim.site-profile-test
+(ns ehrt.sim-emit-hl7.site-profile-test
   "docs/site-profiles.md: the site-profile schema (Task 1), MSH dialect
   and code-table override helpers (Task 2). Written before
-  ehrt.sim.site-profile exists (sim/ADR-0004 test-first)."
+  ehrt.sim-emit-hl7.site-profile exists (sim/ADR-0004 test-first)."
   (:require [clojure.test :refer [deftest is testing]]
             [ehrt.sim-model.interface :as sim-model]
-            [ehrt.sim.site-profile :as site-profile]))
+            [ehrt.sim-emit-hl7.site-profile :as site-profile]))
 
 ;; --- Task 1: schema, all keys optional, absent profile is legal ----------
 

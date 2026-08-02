@@ -21,6 +21,12 @@
                                ;; these only through
                                ;; ehrt.sim-trajectory.interface.
                                poly/sim-trajectory {:local/root "components/sim-trajectory"}
+                               ;; sim-emit-hl7 (sim split S3 / Wave D stage
+                               ;; D0, ADR-0029/ADR-0025): emit-hl7/v2-replay/
+                               ;; site-profile, extracted out of sim -- sim's
+                               ;; own src now reaches these only through
+                               ;; ehrt.sim-emit-hl7.interface.
+                               poly/sim-emit-hl7 {:local/root "components/sim-emit-hl7"}
                                ;; kernel/judge (ADR-0008): corpus' own
                                ;; src requires both directly; sim's own
                                ;; src requires kernel directly too
@@ -67,6 +73,7 @@
             :test {:extra-paths ["components/sim/test"
                                   "components/sim-model/test"
                                   "components/sim-trajectory/test"
+                                  "components/sim-emit-hl7/test"
                                   "components/kernel/test"
                                   "components/judge/test"
                                   "components/judge-v2-hapi/test"
@@ -117,7 +124,11 @@
                                 poly/sim-model {:local/root "components/sim-model"}
                                 ;; sim-trajectory (sim split S2): sim's own
                                 ;; src requires ehrt.sim-trajectory.interface.
-                                poly/sim-trajectory {:local/root "components/sim-trajectory"}}
+                                poly/sim-trajectory {:local/root "components/sim-trajectory"}
+                                ;; sim-emit-hl7 (sim split S3 / Wave D stage
+                                ;; D0): sim's own src requires
+                                ;; ehrt.sim-emit-hl7.interface.
+                                poly/sim-emit-hl7 {:local/root "components/sim-emit-hl7"}}
                    :main-opts ["-m" "ehrt.cli.core"]}
 
             :poly {:main-opts ["-m" "polylith.clj.core.poly-cli.core"]

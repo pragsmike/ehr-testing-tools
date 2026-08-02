@@ -1,8 +1,8 @@
-(ns ehrt.sim.emit-hl7-test
+(ns ehrt.sim-emit-hl7.emit-hl7-test
   "The EmitHL7 stage's laws (docs/sim-theory.edn): bidirectional
   derivability, determinism, round-trip through an independent parser,
   and timestamp anchoring to a pinned :reference-date. Written before
-  ehrt.sim.emit-hl7 exists (sim/ADR-0004 test-first).
+  ehrt.sim-emit-hl7.emit-hl7 exists (sim/ADR-0004 test-first).
 
   M2a (sim/ADR-0011): timestamps are SECONDS from run start (was minutes),
   and every rendered timestamp carries the pinned :utc-offset's HL7-
@@ -15,8 +15,8 @@
             [clojure.test.check.properties :as prop]
             [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim.engine :as engine]
-            [ehrt.sim.emit-hl7 :as emit-hl7]
-            [ehrt.sim.site-profile :as site-profile]
+            [ehrt.sim-emit-hl7.emit-hl7 :as emit-hl7]
+            [ehrt.sim-emit-hl7.site-profile :as site-profile]
             [com.nervestaple.hl7-parser.parser :as parser]
             [com.nervestaple.hl7-parser.message :as message])
   (:import [java.time LocalDate LocalDateTime]

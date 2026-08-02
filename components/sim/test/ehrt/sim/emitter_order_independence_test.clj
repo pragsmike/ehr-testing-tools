@@ -19,7 +19,7 @@
   mining notes) precisely because a hash-order-dependent bug, if one were
   ever introduced, might not fail every single run."
   (:require [clojure.test :refer [deftest is testing]]
-            [ehrt.sim.emit-hl7 :as emit-hl7]
+            [ehrt.sim-emit-hl7.interface :as emit-hl7]
             [ehrt.sim.engine :as engine]))
 
 (def ref-date "2024-01-01")

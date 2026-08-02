@@ -1,4 +1,4 @@
-(ns ehrt.sim.emit-hl7
+(ns ehrt.sim-emit-hl7.emit-hl7
   "EmitHL7 (docs/sim-theory.edn): pure log -> ER7 messages, the thin
   vertical slice from ground-truth-log to hl7v2-stream. v0 scope was
   ADT^A01 (admission) and ADT^A03 (discharge) only; Milestone M1
@@ -25,7 +25,7 @@
   (:require [com.nervestaple.hl7-parser.parser :as parser]
             [clojure.string :as str]
             [ehrt.sim-model.interface :as sim-model]
-            [ehrt.sim.site-profile :as site-profile]))
+            [ehrt.sim-emit-hl7.site-profile :as site-profile]))
 
 (def default-reference-date
   "Pinned default for the :reference-date run-config input (an ISO
@@ -138,7 +138,7 @@
 (defn- msh-segment
   "MSH-3/4/5/6/12 (sending/receiving app+facility, version id) render
   `site-profile`'s :msh dialect, defaulting field-by-field to today's
-  hard-coded values (ehrt.sim.site-profile/default-msh) when
+  hard-coded values (ehrt.sim-emit-hl7.site-profile/default-msh) when
   `site-profile` is nil, {}, or simply doesn't override that field --
   Milestone site-profiles Task 2 (SimHospital issue #17's own citation,
   .agents/plans/roadmap.md: a configured field, not a hard-coded
