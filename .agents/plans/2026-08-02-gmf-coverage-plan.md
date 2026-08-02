@@ -49,3 +49,21 @@ mechanism this project has no analog for; the outcome — UTI deferred —
 does not change either way it is eventually resolved). Wave D is named
 here as this finding's own wave-home so it has a named owner rather than
 sitting only in a session record.
+
+**Second dated fix-forward note (2026-08-02, GMF coverage Wave C,
+`notes/ADRs.md` ADR-0028).** This plan's own "A+C → stroke" payoff line
+is superseded, not struck: Wave C built `Death` in full (loader,
+interpreter, compile-trajectory, engine/check — ADR-0028's own C1-C4),
+closing the gap this plan originally named as stroke's own last
+blocker, but a NEW, unrelated gap surfaced by real-closure
+characterization now blocks it instead — `Chance_of_Stroke`'s own
+`distributed_transition` reads an upstream attribute (`stroke_risk`,
+real Synthea's own Framingham cardiovascular-risk score) this project
+has no source for, whose own JSON-specified default makes stroke onset
+structurally unreachable if honored literally
+(`components/sim-trajectory/docs/gmf-interpreter.md` section 10 has the
+full account). Escalated and ruled: `stroke.json` stays deferred this
+wave, `Death` proven instead against this project's own hand-authored
+test fixture. `A+C → stroke` has no scheduled wave until an
+attribute-sourced transition-weight mechanism and a stroke-risk-
+equivalent data source both land — named, not scoped, here.

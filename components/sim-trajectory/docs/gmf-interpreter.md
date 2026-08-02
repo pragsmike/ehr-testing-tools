@@ -892,7 +892,7 @@ erase convention, not silently edited above.
 | `congestive_heart_failure.json` | 115 | `CallSubmodule` ×7, `Counter` ×5, `Death` ×4, `ImagingStudy` ×4, `DiagnosticReport` ×3, `CarePlanStart`/`CarePlanEnd` ×3+1, `MultiObservation` ×1 (28/115 ≈ 24% deferred) | `Vital Sign`, `Date`, `Or`, `Active CarePlan` — four more gaps | ambulatory ×3, emergency, hospice, inpatient ×2 | Far over ADR-0013 point 4's "modest surface" bar — **deferred, cited for prioritization data only** |
 | `sepsis.json` | 37 | `MultiObservation` ×2, `DiagnosticReport` ×1, `Death` ×1 | none new (`Active Allergy`/`Age`/`Observation`, all recognized keywords — `Observation`-as-condition-type is itself the sore_throat-shared gap) | emergency | `DiagnosticReport` (`Blood_Cultures`) is the FIRST state after the encounter opens, unconditional; `MultiObservation` (`Record_Blood_Pressure`) fires on both the vasopressor and ICU-survival branches — both MANDATORY, not tails — **deferred** |
 | `myocardial_infarction.json` | 26 | `CallSubmodule` ×5, `Death` ×2, `CarePlanStart` ×1 | none | emergency | `ACS_Arrival_Meds`/`Cardiac_Labs`/`NSTEACS`/`STEMI` are all `CallSubmodule` and ALL reachable unconditionally past `ECG` — the module's entire post-ECG therapeutic content is opaque — **deferred**. **Dated note, GMF coverage Wave B (2026-08-02, ADR-0027): `CallSubmodule` is REMOVED from this module's own blocker list**, same caveat as `total_joint_replacement.json`'s own note above — the mechanism landed, but this module's own five call-paths were never fetched or characterized this session. `Death`/`CarePlanStart` still block it (Wave C/Wave D respectively) — matching the wave plan's own "B+C → MI" sequencing (`.agents/plans/2026-08-02-gmf-coverage-plan.md`), not reopened or accelerated by this note |
-| `stroke.json` | 12 | `Death` ×1 (an excludable ~17.5% procedural-mortality tail — the ONLY sinusitis-precedent-shaped gap found this session) | **`Date`** — `Emergency_Encounter`'s own `conditional_transition` gates Clopidogrel/Alteplase on simulated year, evaluated immediately on encounter entry, for every patient — **condition-vocabulary gap RESOLVED, GMF coverage Wave A, 2026-08-02** (`:date` now v1, `.agents/plans/2026-08-02-gmf-coverage-plan.md`) | emergency | Smallest, cleanest STATE-type surface surveyed after appendicitis — the `Date` gap that blocked it is closed, but the `Death` state-type gap (this row's own second column) still does, per AR-6 (same plan): `Death` stays a load-bearing, semantically-real state (unlike `Device`, never a safe consumed-internally pass-through) — waits for Wave C's own `:expired`/post-mortem wiring — **deferred, revisit trigger: Wave C** |
+| `stroke.json` | 12 | `Death` ×1 (an excludable ~17.5% procedural-mortality tail — the ONLY sinusitis-precedent-shaped gap found this session) | **`Date`** — `Emergency_Encounter`'s own `conditional_transition` gates Clopidogrel/Alteplase on simulated year, evaluated immediately on encounter entry, for every patient — **condition-vocabulary gap RESOLVED, GMF coverage Wave A, 2026-08-02** (`:date` now v1, `.agents/plans/2026-08-02-gmf-coverage-plan.md`) | emergency | Smallest, cleanest STATE-type surface surveyed after appendicitis — the `Date` gap that blocked it is closed, but the `Death` state-type gap (this row's own second column) still does, per AR-6 (same plan): `Death` stays a load-bearing, semantically-real state (unlike `Device`, never a safe consumed-internally pass-through) — waits for Wave C's own `:expired`/post-mortem wiring — **deferred, revisit trigger: Wave C**. **Dated note, GMF coverage Wave C (2026-08-02, ADR-0028): `Death` is REMOVED from this module's own blocker list, but a NEW, worse gap replaces it — still deferred, revisit trigger changed.** `Death` itself landed this wave (section 10) and this module's own `Death` state (the `range`+`codes` form) is now fully expressible. But real-closure characterization (section 10's own C5 survey) found `Chance_of_Stroke`'s own `distributed_transition` gates the "Stroke" branch on `{"attribute": "stroke_risk", "default": 0}` — a real Synthea engine attribute (`CardiovascularDiseaseModule`'s own Framingham risk score) this project has no source for, whose own JSON default is exactly 0, making onset (and therefore `Death`) structurally unreachable if honored literally. Escalated and ruled (design channel, 2026-08-02): `stroke.json` stays deferred — revisit trigger is now an attribute-sourced `distributed_transition` weight mechanism (unbuilt) AND a stroke-risk-equivalent data source (out of this project's own persona model), both landing together, not scoped this session |
 | `self_harm.json` | 35 | `Death` ×1 (excludable ~1.6–5.5% fatal-attempt tail), `CarePlanStart` ×1 (in the SECOND, ambulatory follow-up encounter — moot regardless, see "Multi-encounter" below) | none (`And`/`Attribute`/`Gender`/`Race`, all v1) | ambulatory ×2, emergency | Both deferred states are structurally isolated exactly like `sinusitis.json`'s own `Device`/`DeviceEnd` precedent — but the loader's all-or-nothing gate rejects on PRESENCE, not reachability, so isolation doesn't save it under the loader AS BUILT — **deferred, but the strongest evidence yet for a reachability-aware load gate (prioritization table, below)** |
 | `gallstones.json` | ~50 | `CallSubmodule` ×2, `Death` ×2, `CarePlanStart`/`CarePlanEnd` ×1 each, `DiagnosticReport` ×2, `ImagingStudy` ×1, **`Physiology`** ×1 (a NEW deferred type — an ECG-waveform physiological model, nested `type: line`/`type: Attribute` chart config that is NOT itself a state-type gap, verified by direct inspection so it isn't miscounted) | `Race` (already v1) | ambulatory ×2, emergency | Six distinct deferred-type families in one module — **deferred, cited for prioritization data only** |
 
@@ -1488,3 +1488,184 @@ captured before any Wave B code change. Re-run and diffed at every
 Step 2/3 checkpoint per ADR-0027's own verification-baselines section;
 byte-identical at every one (confirmed one final time at session
 close, Step 4).
+
+---
+
+## 10. GMF coverage Wave C: `Death` characterization (2026-08-02)
+
+Step 1 of the Wave C session prompt (`notes/ADRs.md` ADR-0028; C1/C3/C5
+of that ADR's own decision record). Read at the SAME pinned commit
+every prior GMF citation in this document uses,
+`7e08387c68a7f0e21d13076609a159fd473fc902` of
+[`synthetichealth/synthea`](https://github.com/synthetichealth/synthea)
+(`master`) — `stroke.json` itself, and `State.java`'s own `Death` inner
+class (the real Synthea engine source, not inferred from the module
+JSON alone).
+
+### C1 — Death forms, grounded against `State.java`
+
+Real Synthea's `Death` state (`State.java`, class `Death`) declares five
+fields: `codes` (cause-of-death concept list), `conditionOnset` (a
+state-name citation), `referencedByAttribute` (an attribute-name
+citation), `range`, and `exact` (both time-delay shapes, the SAME
+`{low high unit}` / `{quantity unit}` shapes `Delay`/`Procedure`'s own
+duration already use). `process(person, time)`, quoted verbatim:
+
+```java
+long deathTime = time;
+if (exact != null) {
+  deathTime = time + Utilities.convertTime(exact.unit, exact.quantity);
+} else if (range != null) {
+  double delayInDays = person.rand(range.low, range.high);
+  deathTime = time + Utilities.convertTime(range.unit, delayInDays);
+}
+Code causeOfDeath = null;
+if (conditionOnset != null) { /* resolve via person.record's own open condition named conditionOnset */ }
+else if (referencedByAttribute != null && person.attributes.containsKey(referencedByAttribute)) { /* resolve via the attribute */ }
+else if (codes != null && codes.size() > 0) { causeOfDeath = codes.get(0); }
+person.recordDeath(deathTime, causeOfDeath);
+return true;
+```
+
+Three time forms (immediate — neither `range` nor `exact` present, no
+rng draw; `exact` — deterministic, no rng draw; `range` — exactly ONE
+`person.rand` draw, the SAME fixed-consumption law this project's own
+`resolve-time-advance` already implements for `Delay`/`Procedure`
+duration — `{low high unit}` is literally the same shape, so `Death`'s
+own time resolution needs no new helper, only a new case dispatching
+into the existing one). Three cause-of-death resolution forms, in
+priority order: `conditionOnset` (a log query against the state that
+onset the condition), `referencedByAttribute` (an attribute read), and
+`codes` (verbatim, code-passthrough law) — Synthea's own docstring
+explicitly notes real Synthea's module CONTINUES past a `Death` state to
+whatever it `direct_transition`s to next ("the module will continue to
+progress to the next state(s)... typically... to a Terminal state") —
+this project's own C2 ruling (ADR-0028) deliberately departs from that:
+the walk terminates AT `:death`, so `Death`'s own declared transition is
+never followed. **This is a disclosed, ruled simplification, not an
+oversight** — donor/post-mortem content (what a real module's own
+post-Death states like `stroke.json`'s own `End_Encounter`/
+`End_Stroke_Condition` would otherwise represent) is exactly the
+"remains future work" the deferred-table's own instruction and C2 both
+already name.
+
+**`stroke.json`'s own Death state uses exactly one of each family** —
+the `range` time form (`{low: 1, high: 30, unit: "days"}`) and the
+`codes` cause form (one SNOMED concept, the stroke diagnosis itself,
+repeated verbatim from the module's own `Stroke` ConditionOnset state).
+Neither `exact`, `conditionOnset`, nor `referencedByAttribute` is used
+by this module. Per C1's own instruction, only the range time-form and
+the `codes` cause-form are built this wave; `conditionOnset`/
+`referencedByAttribute` are UNBUILT, named here (not silently
+mishandled) — the interpreter throws a `programmer-error` ex-info if a
+future module's own `Death` state uses either, the same disposition
+`evaluate-condition`'s own unsupported-condition-type case already
+establishes. `exact`/immediate are built anyway (the SAME code path
+`resolve-time-advance` already provides for `range`, at zero marginal
+cost — not "speculative" in ADR-0013 point 4's sense, since no new
+mechanism is added, only an existing one's `:death` case wires to it).
+
+### C5 — `stroke.json`'s own closure survey
+
+| Module | States | State-type gap | Condition-vocab gap | Transition-kind sweep | Other findings |
+|---|---:|---|---|---|---|
+| `stroke.json` (root, no CallSubmodule — trivial one-file closure) | 12 | `Death` ×1 (this wave's own reason for existing) | none (`Date`, resolved Wave A) | `direct_transition`, `distributed_transition` ×1, `conditional_transition` ×1 — 3 of the now-six known kinds; no `complex_transition`, `type_of_care_transition`, or `lookup_table_transition` | **NEW, mandatory-path gap** (below): `Chance_of_Stroke`'s own `distributed_transition` entry for `"Stroke"` carries `"distribution": {"attribute": "stroke_risk", "default": 0}` — an ATTRIBUTE-SOURCED weight, not a literal number. `GmfState`'s own `TransitionFields` schema requires `[:distribution number?]`; unmodified, this module fails `:schema-invalid` at load, before `Death` is ever reached |
+
+**D7 hidden-import check: vacuous (clean by construction) — a one-file
+closure has no cross-module attribute reference to check**, the D7
+falsifier's own precondition (D1's root-scoping design) never
+applies to a non-calling walk.
+
+### The `stroke_risk` finding — escalated, ruled
+
+`stroke_risk` is set by real Synthea's `CardiovascularDiseaseModule`
+(`calculateStrokeRisk`, `src/main/java/org/mitre/synthea/modules/
+CardiovascularDiseaseModule.java`, same pin) — a hard-coded ENGINE
+module (not a GMF JSON, not part of `stroke.json`'s own closure),
+recalculated every simulated timestep from a Framingham 10-year stroke-
+risk score (age, sex, smoking status, and comorbidities including
+diabetes/coronary heart disease/atrial fibrillation). This project's
+persona carries none of that — the same gap SHAPE `type_of_care_
+transition`'s payer attribute and `Active Allergy` already established
+(a real Synthea data source this project has no analog for), but a
+materially WORSE consequence: those two precedents both left a real,
+useful DEFAULT branch reachable (the "typical" emergency-use
+distribution; a conservative always-false allergy check on an
+excludable tail). Here the JSON's own specified fallback is **`default:
+0`** — honored literally (this project's own code-passthrough/no-
+fabrication discipline leaves no principled alternative), `Chance_of_
+Stroke`'s own monthly gate would pick the "keep waiting" branch with
+probability 1, every seed, forever: stroke onset — and the `Death`
+branch this wave exists to unlock — becomes STRUCTURALLY unreachable,
+not merely rare, under a bare vendored run.
+
+**Escalated to the author (design channel, 2026-08-02) rather than
+silently resolved, per C3's own escalate-with-evidence spirit
+generalized to a gap this consequential to the wave's own payoff
+claim.** Three options were named (defer `stroke.json` this wave;
+substitute a documented nonzero constant, breaking no-fabrication
+discipline; port a minimal, disclosed stroke-risk approximation as its
+own scoped design). **Ruled: defer `stroke.json` this wave**, the same
+D6 treatment ADR-0027 already gave `urinary_tract_infections.json` — a
+module whose own mandatory path can't be honestly resolved within this
+wave's own scope drops from vendoring, and the payoff shrinks honestly
+rather than being papered over. `Death` itself is built fully this wave
+regardless (C1/C2/C3/C4 are not conditioned on any one module vendoring
+— the same "the mechanism landed either way" framing ADR-0027's own D5
+account already used for `type_of_care_transition`) and proven against
+the project's own hand-authored test fixture instead of a real vendored
+module's own death branch (Step 3's own revised scope, ADR-0028's
+deviation record). `stroke.json`'s own survey row (the M7 appendix
+table, above) is updated fix-forward: **deferred, revisit trigger — an
+attribute-sourced `distributed_transition` weight mechanism (unbuilt,
+not needed by any other candidate module read to date) AND a
+stroke-risk-equivalent data source (out of this project's own persona
+model entirely) both landing together**, not decided or scoped this
+session.
+
+### C3 — the `:expired` gap table
+
+Every claim `components/sim/docs/patient-state-model.md`'s `:status`
+accumulator row and `components/sim/docs/clinical-realities.md`'s
+post-mortem entry make, checked against the LIVE code (not the docs'
+own prose) as of this session's own starting commit (`d8447e6`):
+
+| Captured claim | Implemented where | Status |
+|---|---|---|
+| `:status` includes `:expired` as a real value | `ehrt.sim.engine/PatientState`'s `:status` enum, `[:enum :new :admitted :discharged :merged]` | **Docs-only.** `:expired` appears NOWHERE in `components/sim/src` except three lines of PROSE inside `ehrt.sim.check`'s own comments (`check.clj` lines 340-349) explaining why `order-only-when-admitted` is written as a strict generalization — no code path can produce, read, or check this value today |
+| `:expired` reached via a death event OR an expired discharge disposition | — | **Docs-only.** No `:death`/disposition-carrying event type exists in `ehrt.sim.engine`'s `decide`/`evolve` multimethods |
+| Therapeutic-intent event classes illegal when `:expired` | `ehrt.sim.check/order-only-when-admitted`, `/clinical-content-only-when-admitted` | **Partially implemented, by construction rather than by design.** Both invariants already read `(not= :admitted (:status before))` — the STRICT generalization patient-state-model.md's own note anticipates ("already covers it once `:expired` lands, without inventing an unfalsifiable invariant"). Once `:expired` is a real, distinct value, these two invariants automatically extend to cover it with ZERO code change — confirmed by direct read, not merely asserted |
+| Morgue/funeral-home transfer, autopsy/specimen, donor-management/procurement legal while `:expired` | — | **Docs-only, and explicitly OUT of this wave's own minimal-path scope** (C3: "donor pathways... named finding, not built") |
+| A final disposition-20 discharge later moves `:expired` -> `:discharged` | — | **Docs-only, out of scope** — the same donor/post-mortem administrative content C2 already defers |
+
+**Declared minimal coherent path (C3):** (1) `:expired` joins
+`PatientState`'s `:status` enum for real. (2) `Death` maps into the
+compiled pathway via the EXISTING `:discharge` IR step (C4 — no new IR
+step type), carrying two new optional fields: `:disposition [:enum
+:expired]` and `:codes` (cause of death, verbatim). (3) `ehrt.sim.
+engine`'s `:discharge` `decide`/`evolve` branch on `:disposition`: an
+`:expired`-disposition discharge sets `:status :expired` (never
+`:discharged`), leaves `:location`/`:attending` UNCHANGED (the
+"clinically absorbing but operationally alive" fact — patient-state-
+model.md's own words — requires the bed to stay occupied, not vacated),
+and — a genuinely NEW piece the gap table above didn't name, found by
+tracing `:discharge`'s own decide method directly — the existing
+bed-ready-transfer coupling (a `:discharge`'s own decide call searches
+for a boarding patient at the same vacated ward and conjoins a
+`:transfer` relieving them) MUST NOT fire for an `:expired`-disposition
+discharge, since no bed is actually vacated; unguarded, it would double-
+occupy a bed no-double-occupancy already forbids. (4) One new,
+directly-named structural invariant (mirroring `no-events-after-merged-
+terminal`'s own existing shape): a location co-occupancy check specific
+to the expired case (`expired-patient-retains-location` — never nil
+immediately after an expired-disposition discharge, the converse of
+`admitted-occupies-one-slot`'s own "never nil while admitted" rule,
+stated explicitly rather than left to fall out of the generalization
+above by accident). No IR/`sim-model` schema change beyond `:discharge`'s
+two new optional fields is needed — both are additive, and `:discharge`'s
+existing zero-field call sites (every hand-authored pathway that predates
+this wave) are unaffected by construction (Malli's open-map + `{:optional
+true}` fields, the same backward-compatibility shape `citation-fields`
+already establishes elsewhere in `engine.clj`). **No escalation triggered
+by this table** — the minimal path touches no pathway-IR step-TYPE and no
+`sim-model` schema beyond two optional fields on an existing step.
