@@ -33,11 +33,9 @@
   below)."
   (:require [clojure.set]
             [ehrt.kernel.interface :as result]
-            [ehrt.sim.config :as config]
+            [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim.engine :as engine]
-            [ehrt.sim.facility :as facility]
-            [ehrt.sim.order-profiles :as order-profiles]
-            [ehrt.sim.persona :as persona]))
+            [ehrt.sim.order-profiles :as order-profiles]))
 
 (defn- events-by-patient
   "Every event each patient-id participates in, in log order -- the
@@ -188,7 +186,7 @@
   "The structural half of item 6's conditional validity row: `:class
   :outpatient => :location nil`, for the visit's entire duration -- an
   outpatient patient was never a candidate for the occupancy board to
-  include in the first place (`ehrt.sim.facility/occupancy-board`
+  include in the first place (`sim-model/occupancy-board`
   already only folds patients with a `:bed` present, so this is checked
   here directly rather than assumed from that board's own omission)."
   [ground-truth]
@@ -216,15 +214,15 @@
   licensed) exhausted; rung 4 (boarding, target is a DIFFERENT,
   ED-class ward) requires rungs 1-3 all exhausted."
   [facility-config board home-ward-name target-ward-name]
-  (let [home-ward (facility/ward-by-name facility-config home-ward-name)
-        home-licensed-free? (boolean (seq (remove board (facility/licensed-bed-ids home-ward))))
-        home-surge-free? (boolean (seq (remove board (facility/surge-slot-ids home-ward))))]
+  (let [home-ward (sim-model/ward-by-name facility-config home-ward-name)
+        home-licensed-free? (boolean (seq (remove board (sim-model/licensed-bed-ids home-ward))))
+        home-surge-free? (boolean (seq (remove board (sim-model/surge-slot-ids home-ward))))]
     (if (= home-ward-name target-ward-name)
       (not home-licensed-free?)
       (let [other-inpatient (remove #(= (:id %) (:id home-ward))
                                      (filter #(= :inpatient (:class %)) (:wards facility-config)))
             other-licensed-free? (boolean
-                                   (some #(seq (remove board (facility/licensed-bed-ids %))) other-inpatient))]
+                                   (some #(seq (remove board (sim-model/licensed-bed-ids %))) other-inpatient))]
         (and (not home-licensed-free?) (not home-surge-free?) (not other-licensed-free?))))))
 
 (defn surge-only-when-earlier-rungs-exhausted
@@ -237,7 +235,7 @@
                    (= :surge (get-in event [:location :placement]))
                    (not (:forced event))
                    (not (earlier-rungs-exhausted? facility-config
-                                                  (facility/occupancy-board world-before)
+                                                  (sim-model/occupancy-board world-before)
                                                   (:home-ward event)
                                                   (get-in event [:location :ward]))))]
     {:invariant :surge-only-when-earlier-rungs-exhausted :patient-id patient-id :at (:t event)}))
@@ -464,11 +462,11 @@
 
 (defn registered-persona-is-schema-valid
   "Every :registered event's :persona validates against
-  ehrt.sim.persona/Persona -- the schema round-trip co-landing
+  sim-model/Persona -- the schema round-trip co-landing
   invariant for M4's new persona resource type."
   [ground-truth]
   (for [event ground-truth
-        :when (and (= :registered (:event event)) (not (persona/valid-persona? (:persona event))))]
+        :when (and (= :registered (:event event)) (not (sim-model/valid-persona? (:persona event))))]
     {:invariant :registered-persona-is-schema-valid :at (:t event)}))
 
 (def catalog
@@ -517,13 +515,13 @@
 
 (defn check-all
   "Runs every invariant in the catalog over a ground-truth log.
-  `facility-config` (default config/default-facility) is needed by the
+  `facility-config` (default sim-model/default-facility) is needed by the
   capacity/surge-ladder invariants; `warm-up-seconds` (default 0) is
   needed by the warm-up-mark invariant; `order-profiles-config`
   (default ehrt.sim.order-profiles/default-profiles, Milestone
   M3) is needed by result-analytes-match-order-profile. Existing
   1-arg/2-arg/3-arg call sites are unaffected."
-  ([ground-truth] (check-all ground-truth config/default-facility 0 order-profiles/default-profiles))
+  ([ground-truth] (check-all ground-truth sim-model/default-facility 0 order-profiles/default-profiles))
   ([ground-truth facility-config] (check-all ground-truth facility-config 0 order-profiles/default-profiles))
   ([ground-truth facility-config warm-up-seconds]
    (check-all ground-truth facility-config warm-up-seconds order-profiles/default-profiles))

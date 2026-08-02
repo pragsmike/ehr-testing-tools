@@ -8,6 +8,12 @@
 
                   :extra-deps {org.clojure/clojure {:mvn/version "1.12.5"}
                                poly/sim      {:local/root "components/sim"}
+                               ;; sim-model (sim split S1, .agents/plans/
+                               ;; 2026-08-02-sim-split-plan.md): pathway/
+                               ;; facility/persona/config, extracted out of
+                               ;; sim -- sim's own src now reaches these
+                               ;; only through ehrt.sim-model.interface.
+                               poly/sim-model {:local/root "components/sim-model"}
                                ;; kernel/judge (ADR-0008): corpus' own
                                ;; src requires both directly; sim's own
                                ;; src requires kernel directly too
@@ -52,6 +58,7 @@
                                poly/cli      {:local/root "bases/cli"}}}
 
             :test {:extra-paths ["components/sim/test"
+                                  "components/sim-model/test"
                                   "components/kernel/test"
                                   "components/judge/test"
                                   "components/judge-v2-hapi/test"
@@ -96,7 +103,10 @@
                                 ;; fulfilled) -- in-process, no subprocess.
                                 ;; sim's own src requires poly/kernel
                                 ;; directly too (ADR-0022, 2026-08-01).
-                                poly/sim      {:local/root "components/sim"}}
+                                poly/sim      {:local/root "components/sim"}
+                                ;; sim-model (sim split S1): sim's own src
+                                ;; requires ehrt.sim-model.interface.
+                                poly/sim-model {:local/root "components/sim-model"}}
                    :main-opts ["-m" "ehrt.cli.core"]}
 
             :poly {:main-opts ["-m" "polylith.clj.core.poly-cli.core"]

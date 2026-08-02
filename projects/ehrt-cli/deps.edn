@@ -41,6 +41,10 @@
         ;; -- ehrt.corpus.sim-adapter calls ehrt.sim.interface/run-command
         ;; in-process, no subprocess. Real dependency, not test-only.
         poly/sim      {:local/root "../../components/sim"}
+        ;; poly/sim-model (sim split S1, .agents/plans/2026-08-02-sim-
+        ;; split-plan.md): sim's own src now requires
+        ;; ehrt.sim-model.interface directly.
+        poly/sim-model {:local/root "../../components/sim-model"}
         org.clojure/clojure {:mvn/version "1.12.5"}}
 
  :aliases {:test {:extra-paths []
@@ -62,6 +66,7 @@
            ;; --fail-threshold did not carry forward -- see
            ;; notes/ADRs.md ADR-0002 for why).
            :coverage {:extra-paths ["../../components/kernel/test"
+                                     "../../components/sim-model/test"
                                      "../../components/judge/test"
                                      "../../components/judge-v2-hapi/test"
                                      "../../components/judge-fhir-official/test"
@@ -76,6 +81,7 @@
                                    org.slf4j/slf4j-nop {:mvn/version "2.0.17"}}
                       :main-opts ["-m" "cloverage.coverage"
                                   "-p" "../../components/kernel/src"
+                                  "-p" "../../components/sim-model/src"
                                   "-p" "../../components/judge/src"
                                   "-p" "../../components/judge-v2-hapi/src"
                                   "-p" "../../components/judge-fhir-official/src"
@@ -86,6 +92,7 @@
                                   "-p" "../../components/palgebra/src"
                                   "-p" "../../bases/cli/src"
                                   "-s" "../../components/kernel/test"
+                                  "-s" "../../components/sim-model/test"
                                   "-s" "../../components/judge/test"
                                   "-s" "../../components/judge-v2-hapi/test"
                                   "-s" "../../components/judge-fhir-official/test"

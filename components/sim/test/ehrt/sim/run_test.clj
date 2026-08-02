@@ -1,7 +1,7 @@
 (ns ehrt.sim.run-test
   "The `sim run` capability's result-not-throw contract. Milestone M2b,
   Task 0: allocation-ladder exhaustion is a structured outcome, not a
-  thrown exception -- ehrt.sim.facility/allocate returns
+  thrown exception -- ehrt.sim-model.facility/allocate returns
   {:exhausted true ...} instead of throwing, ehrt.sim.engine/run
   halts the loop and echoes it back, and run-command surfaces it as
   :error :capacity-exhausted with the patient, ward, and census in the
@@ -23,7 +23,7 @@
             [clojure.test :refer [deftest is testing]]
             [ehrt.kernel.interface :as result]
             [ehrt.sim.engine :as engine]
-            [ehrt.sim.pathway :as pathway]
+            [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim.run :as run]))
 
 (def ^:private one-bed-no-ed-facility
@@ -170,7 +170,7 @@
             documented module-only-patient pattern) -- only ordinal 0
             is reported"
     (let [r (run/run-command {:seed 1 :patients 2
-                              :pathways [{:patient-ordinal 0 :pathway pathway/sample-admission-discharge}
+                              :pathways [{:patient-ordinal 0 :pathway sim-model/sample-admission-discharge}
                                          {:patient-ordinal 1 :pathway {:name "module-only" :steps []}}]
                               :module-assignment [{:patient-ordinal 0 :module-id "sinusitis"}
                                                   {:patient-ordinal 1 :module-id "sinusitis"}]})]

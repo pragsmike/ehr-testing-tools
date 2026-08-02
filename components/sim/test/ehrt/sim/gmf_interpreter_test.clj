@@ -16,7 +16,7 @@
             [clojure.test.check.properties :as prop]
             [ehrt.sim.gmf :as gmf]
             [ehrt.sim.gmf-interpreter :as interp]
-            [ehrt.sim.persona :as persona])
+            [ehrt.sim-model.interface :as sim-model])
   (:import [java.util Random]))
 
 (def fixture-clinic-json
@@ -26,7 +26,7 @@
   (:payload (gmf/load-module "fixture-clinic" fixture-clinic-json)))
 
 (defn- persona-at [seed & [config]]
-  (persona/persona (Random. seed) (or config {})))
+  (sim-model/persona (Random. seed) (or config {})))
 
 (defn- ctx-for [p] (interp/initial-context p))
 

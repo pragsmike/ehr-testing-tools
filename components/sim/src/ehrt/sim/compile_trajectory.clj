@@ -81,7 +81,7 @@
   `registration-t` and the first compiled step, and between each
   subsequent pair of compiled (non-annotation) steps, whenever that gap
   is nonzero."
-  (:require [ehrt.sim.facility :as facility]))
+  (:require [ehrt.sim-model.interface :as sim-model]))
 
 (def ^:private minutes-per-day
   "The durations rule's own day clause: interpreter epoch-days -> engine
@@ -187,7 +187,7 @@
   `registration-t` (the same epoch-day instant `run-module` was called
   with, the anchor the FIRST compiled step's own bridging delay is
   measured from) -> {:steps [pathway-ir-step ...] :registration-facts
-  [...]}. `:steps` is real pathway IR (`ehrt.sim.pathway/valid?`
+  [...]}. `:steps` is real pathway IR (`ehrt.sim-model.pathway/valid?`
   holds for `{:name ... :steps steps}`, any real facility); `:registration-
   facts` is this namespace's own resolution of ratified item 5 -- see
   this namespace's own docstring."

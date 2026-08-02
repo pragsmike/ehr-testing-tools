@@ -24,7 +24,7 @@
   merge exists is always the patient's one and only MRN)."
   (:require [com.nervestaple.hl7-parser.parser :as parser]
             [clojure.string :as str]
-            [ehrt.sim.config :as config]
+            [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim.site-profile :as site-profile]))
 
 (def default-reference-date
@@ -225,7 +225,7 @@
 
 (defn- xpn-field
   "XPN (Extended Person Name), PID-5: family^given. Free text from
-  ehrt.sim.persona -- escaped per ER7 (see this file's Task 4
+  ehrt.sim-model.persona -- escaped per ER7 (see this file's Task 4
   section) before it ever reaches a field, since the library itself
   never will."
   [{:keys [family given]}]
@@ -244,7 +244,7 @@
   "PID-1/2/3 unconditionally (Set ID, blank, the active MRN); PID-4/6/9/10/12
   stay blank placeholders so positional fields (5/7/8/11/13) land correctly.
   M4: when `persona` is present (every real ehrt.sim.engine/run output,
-  post the :registered event -- ehrt.sim.persona/Persona), PID gains
+  post the :registered event -- ehrt.sim-model.persona/Persona), PID gains
   demographic enrichment: PID-5 (XPN name), PID-7 (DOB, HL7 date), PID-8 (sex,
   Table 0001 F/M), PID-11 (XAD address), PID-13 (phone). nil persona (hand-
   built test worlds that never processed a :registered step) falls back to
@@ -672,7 +672,7 @@
   lower arities). A real run threads back its OWN materialized
   providers (ehrt.sim.engine/run's :providers) instead, so its
   messages' PV1-7 matches its own ground-truth log's :attending ids."
-  (config/materialize-providers (java.util.Random. 0) config/default-provider-templates))
+  (sim-model/materialize-providers (java.util.Random. 0) sim-model/default-provider-templates))
 
 (defn emit
   "The stage function: ground-truth log -> vector of ER7 message
@@ -690,9 +690,9 @@
   stage but this one's own render call sites, never ground-truth-log or
   check.clj (ehrt.sim.engine/config-keys has no such key)."
   ([ground-truth reference-date]
-   (emit ground-truth reference-date default-utc-offset config/default-facility default-providers))
+   (emit ground-truth reference-date default-utc-offset sim-model/default-facility default-providers))
   ([ground-truth reference-date utc-offset]
-   (emit ground-truth reference-date utc-offset config/default-facility default-providers))
+   (emit ground-truth reference-date utc-offset sim-model/default-facility default-providers))
   ([ground-truth reference-date utc-offset facility providers]
    (emit ground-truth reference-date utc-offset facility providers nil))
   ([ground-truth reference-date utc-offset facility providers site-profile]

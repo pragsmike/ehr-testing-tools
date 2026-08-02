@@ -101,8 +101,10 @@ generate/mutate/intake/operators, interface designed from live
 consumers); `components/corpus-io` (transport/IO: sources, sinks,
 spooling, framing codecs); `components/docs-tooling` (dev-time-only
 doc/lint tooling); `components/palgebra` (conformance-gating notation
-and rendering); `components/sim` (deterministic, seeded generator of
-synthetic hospital traffic).
+and rendering); `components/sim-model` (pathway/facility/persona/config
+schemas and sampling, extracted from `components/sim`, sim split S1,
+`.agents/plans/2026-08-02-sim-split-plan.md`); `components/sim`
+(deterministic, seeded generator of synthetic hospital traffic).
 **Bases:** `bases/cli` — thin CLI dispatch, `bin/ehrt` ("e-heart",
 `ehr` stays reserved for future payload-EHR tooling).
 **Projects:** `projects/ehrt-cli` composes every component and the
@@ -170,7 +172,9 @@ library in its own right.
   on anything corpus-derived, enforced by `poly check`.
   `components/sim` also depends on `components/kernel` (ADR-0022) —
   kernel is not corpus-derived, so this is a new edge, not an
-  exception.
+  exception. `components/sim` also depends on `components/sim-model`
+  (sim split S1, `notes/ADRs.md` ADR-0025) — `components/sim-model`
+  must never depend on anything but `components/kernel`.
 - **No PHI, no real-person data, ever** — including in test fixtures
   and docs.
 - **No CPT codes** (AMA-licensed). SNOMED CT, LOINC, RxNorm, ICD-10-CM,

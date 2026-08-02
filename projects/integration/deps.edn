@@ -44,6 +44,10 @@
         ;; ehrt.palgebra either. If a future change reintroduces a real
         ;; need, re-add it then, with its own earning edge named.
         poly/sim      {:local/root "../../components/sim"}
+        ;; poly/sim-model (sim split S1, .agents/plans/2026-08-02-sim-
+        ;; split-plan.md): poly/sim's own src now requires
+        ;; ehrt.sim-model.interface transitively.
+        poly/sim-model {:local/root "../../components/sim-model"}
         org.clojure/clojure {:mvn/version "1.12.5"}}
 
  :aliases {;; Base-less project (R19, ADR-0004): the artifact-fetch-

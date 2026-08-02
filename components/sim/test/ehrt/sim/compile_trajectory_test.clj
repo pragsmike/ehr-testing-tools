@@ -22,14 +22,12 @@
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
             [ehrt.sim.compile-trajectory :as ct]
-            [ehrt.sim.config :as config]
+            [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim.gmf :as gmf]
-            [ehrt.sim.gmf-interpreter :as interp]
-            [ehrt.sim.pathway :as pathway]
-            [ehrt.sim.persona :as persona])
+            [ehrt.sim.gmf-interpreter :as interp])
   (:import [java.util Random]))
 
-(def ^:private facility config/default-facility)
+(def ^:private facility sim-model/default-facility)
 
 (defn- ev
   "Test-fixture convenience: a trajectory event, defaults filled in."
@@ -210,7 +208,7 @@
                     (ev :medication-end {:t 103 :state :end-rx :references 2})
                     (ev :encounter-end {:t 104 :references 0})]
         {:keys [steps]} (ct/compile-trajectory trajectory facility 100)]
-    (is (pathway/valid? {:name "compiled" :steps steps}))))
+    (is (sim-model/valid? {:name "compiled" :steps steps}))))
 
 ;; --- End-to-end property tests, against the REAL interpreter output ------
 
@@ -220,7 +218,7 @@
 (def sinusitis
   (:payload (gmf/load-module "sinusitis" (slurp (io/resource "sim/modules/sinusitis.json")))))
 
-(defn- adult [seed] (assoc (persona/persona (Random. seed) {}) :sex :female))
+(defn- adult [seed] (assoc (sim-model/persona (Random. seed) {}) :sex :female))
 (defn- registration-t-for [p] (+ (interp/dob-epoch-day p) (* 365 20)))
 
 (defn- accounted-for?
@@ -255,7 +253,7 @@
     (let [p (adult seed)
           reg-t (registration-t-for p)
           {:keys [trajectory]} (interp/run-module fixture-clinic (Random. seed) p reg-t)
-          compiled (ct/compile-trajectory trajectory config/default-facility reg-t)]
+          compiled (ct/compile-trajectory trajectory sim-model/default-facility reg-t)]
       (accounted-for? trajectory compiled))))
 
 (defspec clinical-content-preservation-sinusitis 150
@@ -263,7 +261,7 @@
     (let [p (adult seed)
           reg-t (registration-t-for p)
           {:keys [trajectory]} (interp/run-module sinusitis (Random. seed) p reg-t (+ reg-t 90))]
-      (accounted-for? trajectory (ct/compile-trajectory trajectory config/default-facility reg-t)))))
+      (accounted-for? trajectory (ct/compile-trajectory trajectory sim-model/default-facility reg-t)))))
 
 (defspec every-compiled-step-cites-a-real-trajectory-event
   150
@@ -271,7 +269,7 @@
     (let [p (adult seed)
           reg-t (registration-t-for p)
           {:keys [trajectory]} (interp/run-module fixture-clinic (Random. seed) p reg-t)
-          {:keys [steps]} (ct/compile-trajectory trajectory config/default-facility reg-t)
+          {:keys [steps]} (ct/compile-trajectory trajectory sim-model/default-facility reg-t)
           trajectory-citations (into #{} (map (fn [e] {:module (:module e) :state (:state e)})) trajectory)]
       (every? (fn [step] (or (nil? (:citation step)) (contains? trajectory-citations (:citation step)))) steps))))
 
@@ -280,5 +278,5 @@
     (let [p (adult seed)
           reg-t (registration-t-for p)
           {:keys [trajectory]} (interp/run-module sinusitis (Random. seed) p reg-t (+ reg-t 90))
-          {:keys [steps]} (ct/compile-trajectory trajectory config/default-facility reg-t)]
-      (pathway/valid? {:name "compiled" :steps steps}))))
+          {:keys [steps]} (ct/compile-trajectory trajectory sim-model/default-facility reg-t)]
+      (sim-model/valid? {:name "compiled" :steps steps}))))

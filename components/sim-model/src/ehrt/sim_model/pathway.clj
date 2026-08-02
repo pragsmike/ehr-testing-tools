@@ -1,4 +1,4 @@
-(ns ehrt.sim.pathway
+(ns ehrt.sim-model.pathway
   "The intermediate pathway representation (IR): the single format that
   both hand-authored scenario scripts and generated trajectories
   compile to, and the only format the engine executes.

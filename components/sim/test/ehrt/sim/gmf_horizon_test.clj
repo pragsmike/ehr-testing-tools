@@ -18,14 +18,14 @@
             [clojure.test.check.properties :as prop]
             [ehrt.sim.gmf :as gmf]
             [ehrt.sim.gmf-interpreter :as interp]
-            [ehrt.sim.persona :as persona])
+            [ehrt.sim-model.interface :as sim-model])
   (:import [java.time LocalDate]
            [java.util Random]))
 
 (def fixture-clinic-json (slurp (io/resource "ehrt/sim/fixtures/fixture-clinic.json")))
 (def fixture-clinic (:payload (gmf/load-module "fixture-clinic" fixture-clinic-json)))
 
-(defn- adult [seed] (assoc (persona/persona (Random. seed) {}) :sex :female))
+(defn- adult [seed] (assoc (sim-model/persona (Random. seed) {}) :sex :female))
 
 ;; A registration instant well past DOB, so the module has room to run
 ;; both an onset (history) and an encounter+observation (horizon).

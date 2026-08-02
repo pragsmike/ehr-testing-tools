@@ -3,7 +3,7 @@
   and code-table override helpers (Task 2). Written before
   ehrt.sim.site-profile exists (sim/ADR-0004 test-first)."
   (:require [clojure.test :refer [deftest is testing]]
-            [ehrt.sim.config :as config]
+            [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim.site-profile :as site-profile]))
 
 ;; --- Task 1: schema, all keys optional, absent profile is legal ----------
@@ -79,12 +79,12 @@
 ;; --- Task 2: :naming :surge-format facility-config transform --------------
 
 (deftest apply-naming-is-identity-when-no-naming-key
-  (is (= config/default-facility (site-profile/apply-naming nil config/default-facility)))
-  (is (= config/default-facility (site-profile/apply-naming {} config/default-facility))))
+  (is (= sim-model/default-facility (site-profile/apply-naming nil sim-model/default-facility)))
+  (is (= sim-model/default-facility (site-profile/apply-naming {} sim-model/default-facility))))
 
 (deftest apply-naming-overrides-every-wards-surge-format-when-present
   (let [profile {:naming {:surge-format "%s-OVERFLOW-%d"}}
-        result (site-profile/apply-naming profile config/default-facility)]
+        result (site-profile/apply-naming profile sim-model/default-facility)]
     (is (every? #(= "%s-OVERFLOW-%d" (:surge-format %)) (:wards result)))
     (testing "profile wins over the ward's own facility-level surge-format"
-      (is (not= config/default-facility result)))))
+      (is (not= sim-model/default-facility result)))))

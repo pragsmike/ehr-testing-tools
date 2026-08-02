@@ -13,10 +13,9 @@
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
-            [ehrt.sim.config :as config]
+            [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim.engine :as engine]
             [ehrt.sim.emit-hl7 :as emit-hl7]
-            [ehrt.sim.persona :as persona]
             [ehrt.sim.site-profile :as site-profile]
             [com.nervestaple.hl7-parser.parser :as parser]
             [com.nervestaple.hl7-parser.message :as message])
@@ -510,10 +509,10 @@
   (testing "old test worlds that never processed a :registered step (e.g. churn-scenarios-style
             hand-driven decide/evolve) still emit the pre-M4 3-field PID -- no persona, no crash"
     (let [world0 {:patients {"P1" (engine/initial-patient "P1" "MRN000001")}
-                  :facility config/default-facility :providers config/default-provider-templates
+                  :facility sim-model/default-facility :providers sim-model/default-provider-templates
                   :ground-truth []}
           {:keys [events]} (engine/decide (Random. 1) 0 world0 "P1" {:type :admission :location "Renal"})
-          messages (emit-hl7/emit events ref-date utc-offset config/default-facility config/default-provider-templates)
+          messages (emit-hl7/emit events ref-date utc-offset sim-model/default-facility sim-model/default-provider-templates)
           parsed (parser/parse (first messages))]
       (is (= "MRN000001" (message/get-field-first-value parsed "PID" 3)))
       (is (= "" (message/get-field-first-value parsed "PID" 5)))
@@ -534,7 +533,7 @@
 
 (defn- persona-with-family-name
   [family-name]
-  (assoc (persona/persona (Random. 1) {}) :name {:family family-name :given "Pat"}))
+  (assoc (sim-model/persona (Random. 1) {}) :name {:family family-name :given "Pat"}))
 
 (defn- pid5-round-trip
   "Builds a minimal admission-shaped world with `persona`, emits it, parses
@@ -542,14 +541,14 @@
   the ^ component separator)."
   [persona]
   (let [world0 {:patients {"P1" (assoc (engine/initial-patient "P1" "MRN000001") :persona persona)}
-                :facility config/default-facility :providers config/default-provider-templates
+                :facility sim-model/default-facility :providers sim-model/default-provider-templates
                 :ground-truth []}
         registered-event {:event :registered :t 0 :active-mrn "MRN000001" :persona persona
                           :participants [{:patient-id "P1" :role :subject}]}
         world1 (update-in world0 [:patients "P1"] engine/evolve registered-event)
         {:keys [events]} (engine/decide (Random. 1) 0 world1 "P1" {:type :admission :location "Renal"})
         ground-truth (into [registered-event] events)
-        messages (emit-hl7/emit ground-truth ref-date utc-offset config/default-facility config/default-provider-templates)
+        messages (emit-hl7/emit ground-truth ref-date utc-offset sim-model/default-facility sim-model/default-provider-templates)
         parsed (parser/parse (first messages))
         pid5 (message/get-field-first-value parsed "PID" 5)]
     (first (str/split pid5 #"\^"))))

@@ -31,7 +31,7 @@
             [ehrt.kernel.interface :as result]
             [ehrt.sim.gmf :as gmf]
             [ehrt.sim.gmf-interpreter :as interp]
-            [ehrt.sim.persona :as persona])
+            [ehrt.sim-model.interface :as sim-model])
   (:import [java.util Random]))
 
 (def appendicitis-json (slurp (io/resource "sim/modules/appendicitis.json")))
@@ -63,7 +63,7 @@
 
 (def ^:private appendicitis (:payload (gmf/load-module "appendicitis" appendicitis-json)))
 
-(defn- person [seed sex] (assoc (persona/persona (Random. seed) {}) :sex sex))
+(defn- person [seed sex] (assoc (sim-model/persona (Random. seed) {}) :sex sex))
 
 ;; Old enough that every age-bracket branch (1-17/18-44/45-64/65+) has had
 ;; room to fire and, per-branch, the appendectomy's own recovery delay

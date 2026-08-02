@@ -70,7 +70,16 @@
   ;; the budget test itself before commit): this session's own
   ;; session-record/prompt-archive index lines (same two already-cited
   ;; onboarding paths) brought the real total from 715 to 717
-  :budget-lines 717}
+  ;; raised 2026-08-02 (sim split S1 session, caught by the budget test
+  ;; itself): AGENTS.md's own Structure/Constraints sections grew by 4
+  ;; lines naming the new `components/sim-model` brick (sim split S1,
+  ;; `.agents/plans/2026-08-02-sim-split-plan.md`), brought the real
+  ;; total from 717 to 721
+  ;; raised 2026-08-02 (sim split S1 session, second self-catch): indexing
+  ;; that same plan file in `.agents/plans/README.md` (an already-cited
+  ;; onboarding path, the index-completeness gate's own finding) added 1
+  ;; more line, 721 to 722.
+  :budget-lines 722}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one
@@ -96,7 +105,9 @@
           ;; the checkpoint ceremony, applies regardless of task class
           ;; (migration session 5, AR-3)
           ".agents/skills/build-session/SKILL.md"]
-  :budget-lines 1640}
+  ;; raised 2026-08-02 (sim split S1 session): AGENTS.md's own growth
+  ;; (above) brought the real total from 1640 to 1644.
+  :budget-lines 1644}
 
  ;; components/sim is the deterministic generator engine wrapping Synthea
  ;; (ADR-0005) -- engine-onboarding.md is the checklist every engine wrapper
@@ -116,7 +127,9 @@
           ;; the checkpoint ceremony, applies regardless of task class
           ;; (migration session 5, AR-3)
           ".agents/skills/build-session/SKILL.md"]
-  :budget-lines 695}
+  ;; raised 2026-08-02 (sim split S1 session): AGENTS.md's own growth
+  ;; (above) brought the real total from 695 to 699.
+  :budget-lines 699}
 
  ;; components/judge (verdict vocabulary) plus its three gate engines
  ;; (judge-v2-hapi, judge-fhir-official, judge-v2-nist, ADR-0011's per-engine
@@ -138,7 +151,9 @@
           ;; the checkpoint ceremony, applies regardless of task class
           ;; (migration session 5, AR-3)
           ".agents/skills/build-session/SKILL.md"]
-  :budget-lines 765}
+  ;; raised 2026-08-02 (sim split S1 session): AGENTS.md's own growth
+  ;; (above) brought the real total from 765 to 769.
+  :budget-lines 769}
 
  ;; components/docs-tooling (dev-time-only doc/lint tooling) generates and
  ;; lints docs/cli.md, docs/pipeline.md-equivalents, and docs/use-cases.md
@@ -156,4 +171,8 @@
           ;; the checkpoint ceremony, applies regardless of task class
           ;; (migration session 5, AR-3)
           ".agents/skills/build-session/SKILL.md"]
-  :budget-lines 554}}
+  ;; raised 2026-08-02 (sim split S1 session): AGENTS.md's own growth (4
+  ;; lines) plus docs/dev/architecture.md's own growth (4 lines, the
+  ;; mermaid diagram plus bricks/projects table rows naming
+  ;; `components/sim-model`) brought the real total from 554 to 562.
+  :budget-lines 562}}

@@ -1,4 +1,4 @@
-(ns ehrt.sim.config
+(ns ehrt.sim-model.config
   "Config schemas and shipped defaults for the operational resource
   models (docs/operational-models.md): facility (beds -- exclusive),
   providers (shared). Payers land with Persona (M4); not here.

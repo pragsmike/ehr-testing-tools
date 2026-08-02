@@ -1,4 +1,4 @@
-(ns ehrt.sim.persona
+(ns ehrt.sim-model.persona
   "Persona (docs/sim-theory.edn's `:persona` stage): seeded, pure
   sampling of a patient's demographic identity plus payer -- name, DOB
   (age from a configured distribution), sex, address, a US-format

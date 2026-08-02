@@ -1,4 +1,4 @@
-(ns ehrt.sim.facility
+(ns ehrt.sim-model.facility
   "The occupancy board and the four-rung allocation ladder
   (docs/operational-models.md). The board is NEVER an independent
   structure the engine writes to -- it is a pure fold over patient

@@ -33,7 +33,7 @@
             [ehrt.sim.emit-state :as emit-state]
             [ehrt.sim.gmf :as gmf]
             [ehrt.sim.manifest :as manifest]
-            [ehrt.sim.pathway :as pathway]))
+            [ehrt.sim-model.interface :as sim-model]))
 
 (defn resolve-modules
   "M5b: `:modules` at the config/CLI-facing layer is a vector of NAME
@@ -91,7 +91,7 @@
   "Whether ordinal `i` is CERTAIN to receive an encounter-opening
   pathway, given only the config's own structure -- never the RNG. No
   `:pathways` override means every ordinal gets the plain `:pathway`
-  (engine/run's own default when absent, ehrt.sim.pathway/
+  (engine/run's own default when absent, sim-model/
   sample-admission-discharge, mirrored here since this check runs
   before engine/run supplies it). With `:pathways` present: an explicit
   `:patient-ordinal` entry decides outright; otherwise a non-empty
@@ -127,7 +127,7 @@
   "The full check: every ordinal (0-indexed, `patients` of them,
   default 1) certain to receive BOTH an encounter-opening pathway and a
   module. Guarded by each config's OWN schema validity
-  (`ehrt.sim.pathway/valid-pathways-config?`/`valid?`,
+  (`sim-model/valid-pathways-config?`/`valid?`,
   `ehrt.sim.gmf/valid-modules-config?`) so a structurally
   malformed config (this namespace's own plumbing-completeness test's
   sentinel opts) is silently skipped here -- never misdiagnosed as a
@@ -137,13 +137,13 @@
   [{:keys [pathway pathways patients module-assignment]}]
   (when (and module-assignment
              (gmf/valid-modules-config? module-assignment)
-             (or (nil? pathways) (pathway/valid-pathways-config? pathways))
-             (pathway/valid? (or pathway pathway/sample-admission-discharge)))
+             (or (nil? pathways) (sim-model/valid-pathways-config? pathways))
+             (sim-model/valid? (or pathway sim-model/sample-admission-discharge)))
     (into []
           (keep (fn [i]
                   (when (and (ordinal-guaranteed-module? module-assignment i)
                              (ordinal-guaranteed-admission-bearing?
-                              (or pathway pathway/sample-admission-discharge) pathways i))
+                              (or pathway sim-model/sample-admission-discharge) pathways i))
                     {:patient-ordinal i
                      :pathway-source (if pathways :pathways :pathway)
                      :module-source :module-assignment})))

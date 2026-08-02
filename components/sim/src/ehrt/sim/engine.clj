@@ -59,14 +59,11 @@
   M1's :transfer (docs/operational-models.md's allocation ladder).
   Emission to HL7v2 is a separate namespace consuming the ground-truth
   log -- events here are format-free."
-  (:require [ehrt.sim.pathway :as pathway]
-            [ehrt.sim.config :as config]
+  (:require [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim.churn :as churn]
             [ehrt.sim.compile-trajectory :as compile-trajectory]
-            [ehrt.sim.facility :as facility]
             [ehrt.sim.gmf-interpreter :as gmf-interpreter]
             [ehrt.sim.order-profiles :as order-profiles]
-            [ehrt.sim.persona :as persona]
             [malli.core :as m])
   (:import [java.util Random]))
 
@@ -82,7 +79,7 @@
 
 (def ConditionRecord
   "One condition, folded from a compiled encounter step's own
-  :conditions annotations (ehrt.sim.pathway/ConditionAnnotation,
+  :conditions annotations (sim-model/ConditionAnnotation,
   ehrt.sim.compile-trajectory's own annotate-condition). Scope
   note: only conditions attached to an OPERATIONAL encounter step
   (:admission/:outpatient-visit) are folded here -- :registered's own
@@ -90,8 +87,8 @@
   documented v1 scope boundary, not yet accumulated (CDA-style: deferred
   with a contract note, not silently dropped)."
   [:map
-   [:codes {:optional true} [:maybe [:vector pathway/Concept]]]
-   [:citation pathway/Citation]
+   [:codes {:optional true} [:maybe [:vector sim-model/Concept]]]
+   [:citation sim-model/Citation]
    [:onset-t :int]
    [:clinical-status [:enum :active :resolved]]
    [:end-t {:optional true} :int]])
@@ -104,7 +101,7 @@
   Optional fields absent rather than nil for the plain-GMF case -- 'no
   invented fields' (M6 Task 1)."
   [:map
-   [:codes [:vector pathway/Concept]]
+   [:codes [:vector sim-model/Concept]]
    [:t :int]
    [:value {:optional true} number?]
    [:unit {:optional true} :string]
@@ -117,8 +114,8 @@
   citation-based resolution ehrt.sim.compile-trajectory already
   uses throughout, extended to fold time instead of compile time)."
   [:map
-   [:codes {:optional true} [:maybe [:vector pathway/Concept]]]
-   [:citation pathway/Citation]
+   [:codes {:optional true} [:maybe [:vector sim-model/Concept]]]
+   [:citation sim-model/Citation]
    [:ordered-t :int]
    [:status [:enum :active :completed]]
    [:ended-t {:optional true} :int]])
@@ -135,7 +132,7 @@
   :admitted-at are populated at admission; :attributes remains
   reserved, unused until M5.
 
-  Milestone M4: `:persona` (ehrt.sim.persona/Persona -- name,
+  Milestone M4: `:persona` (sim-model/Persona -- name,
   DOB, sex, address, phone, SSN-shaped id, and payer, ALL of it,
   including payer) is populated once, by the `:registered` event every
   patient's step queue is now prepended with (`run`'s own docstring),
@@ -167,7 +164,7 @@
                                          [:bed :string]
                                          [:placement [:enum :licensed :surge]]]]]
    [:attending {:optional true} [:maybe :string]]
-   [:persona {:optional true} [:maybe persona/Persona]]
+   [:persona {:optional true} [:maybe sim-model/Persona]]
    [:admitted-at {:optional true} [:maybe :int]]
    [:discharged-at {:optional true} [:maybe :int]]
    [:conditions {:optional true} [:vector ConditionRecord]]
@@ -177,7 +174,7 @@
 
 (defn valid-patient?
   "Validates a patient accumulator against PatientState -- the same
-  valid?/explain convention ehrt.sim.pathway already uses."
+  valid?/explain convention ehrt.sim-model.pathway already uses."
   [patient]
   (m/validate PatientState patient))
 
@@ -246,21 +243,21 @@
 
 (defn- exhausted-outcome
   "Task 0: result-not-throw for allocation-ladder exhaustion --
-  facility/allocate no longer throws, so decide translates its
+  sim-model/allocate no longer throws, so decide translates its
   structured {:exhausted true} into a decide-level outcome the run loop
   halts on and run-command (ehrt.sim.run) surfaces as :error
   :capacity-exhausted, payload {:patient-id :ward :census}."
   [patient-id home-ward-name facility board]
   {:events [] :advance 0
    :exhausted {:patient-id patient-id :ward home-ward-name
-               :census (facility/ward-census facility board)}})
+               :census (sim-model/ward-census facility board)}})
 
 ;; --- M4: Persona (docs/sim-theory.edn's :persona stage) -------------------
 ;; :registered is engine-internal, never authorable pathway IR -- the same
 ;; treatment :result-followup already gets (pathway.clj's own docstring):
 ;; `run` prepends it to every patient's step queue itself, so no
-;; ehrt.sim.pathway/Step schema entry exists for it and it never
-;; passes through pathway/valid?. Its decide call is the ACTUAL Persona
+;; sim-model/Step schema entry exists for it and it never
+;; passes through sim-model/valid?. Its decide call is the ACTUAL Persona
 ;; stage boundary; folding it into Execute's own step-queue mechanism
 ;; rather than a separate pipeline stage is this milestone's own documented
 ;; theory-flip note (docs/sim-theory.edn, docs/sim-theory.md) -- the
@@ -277,7 +274,7 @@
 ;; the main loop) is nil for the (default, opt-in) case of no module
 ;; assignment -- byte-identical to pre-M5b :registered output, no new draw,
 ;; the same "absent means untouched" law :pathways/:churn-profile already
-;; establish. `registration-t` is `persona/reference-today-epoch-day` --
+;; establish. `registration-t` is `sim-model/reference-today-epoch-day` --
 ;; docs/gmf-interpreter.md section 3's own "that patient's own :registered
 ;; event time," expressed in the SAME calendar anchor every persona's own
 ;; DOB is already computed against (persona.clj's own docstring note).
@@ -297,9 +294,9 @@
   ;; reason (a convention this event must honor, not just a rendering
   ;; nicety), or `replay`'s own bootstrap (and every check.clj invariant
   ;; built on it) silently seeds `:mrns #{nil}`.
-  (let [persona (persona/persona rng (:persona-config world))
+  (let [persona (sim-model/persona rng (:persona-config world))
         compiled (when module
-                   (let [reg-t (persona/reference-today-epoch-day)
+                   (let [reg-t (sim-model/reference-today-epoch-day)
                          horizon-end-t (+ reg-t (:module-horizon-days world))
                          {:keys [trajectory]} (gmf-interpreter/run-module module rng persona reg-t horizon-end-t)]
                      (compile-trajectory/compile-trajectory trajectory (:facility world) reg-t)))]
@@ -325,12 +322,12 @@
 (defmethod decide :admission
   [rng t world patient-id {:keys [location reason force-placement] :as step}]
   (let [{:keys [facility providers patients]} world
-        board (facility/occupancy-board patients)
-        alloc (facility/allocate rng facility board location force-placement)]
+        board (sim-model/occupancy-board patients)
+        alloc (sim-model/allocate rng facility board location force-placement)]
     (if (:exhausted alloc)
       (exhausted-outcome patient-id location facility board)
-      (let [ward-id (:id (facility/ward-by-name facility (:home-ward alloc)))
-            attending (facility/choose-attending rng providers ward-id)
+      (let [ward-id (:id (sim-model/ward-by-name facility (:home-ward alloc)))
+            attending (sim-model/choose-attending rng providers ward-id)
             active-mrn (get-in patients [patient-id :active-mrn])]
         {:events [(merge {:event :admission :t t :active-mrn active-mrn :reason reason :attending attending
                           :participants [{:patient-id patient-id :role :subject}]}
@@ -349,9 +346,9 @@
 (defmethod decide :transfer
   [rng t world patient-id {:keys [location force-placement]}]
   (let [{:keys [facility patients]} world
-        board (facility/occupancy-board patients)
+        board (sim-model/occupancy-board patients)
         patient (get patients patient-id)
-        alloc (facility/allocate rng facility board location force-placement)]
+        alloc (sim-model/allocate rng facility board location force-placement)]
     (if (:exhausted alloc)
       (exhausted-outcome patient-id location facility board)
       {:events [(merge {:event :transfer :t t :active-mrn (:active-mrn patient) :from (:location patient)
@@ -460,9 +457,9 @@
 (defmethod decide :transfer-in-error
   [rng t world patient-id {:keys [location force-placement]}]
   (let [{:keys [facility patients ground-truth]} world
-        board (facility/occupancy-board patients)
+        board (sim-model/occupancy-board patients)
         patient (get patients patient-id)
-        alloc (facility/allocate rng facility board location force-placement)]
+        alloc (sim-model/allocate rng facility board location force-placement)]
     (if (:exhausted alloc)
       (exhausted-outcome patient-id location facility board)
       ;; Both events are decided ATOMICALLY, in the same decide call --
@@ -609,7 +606,7 @@
 
 (defmethod decide :outpatient-visit
   [rng t world patient-id {:keys [reason] :as step}]
-  ;; Item 5: NO facility/allocate call -- an outpatient encounter occupies
+  ;; Item 5: NO sim-model/allocate call -- an outpatient encounter occupies
   ;; no bed, so there is no ladder to consult. Still gets an attending
   ;; (real ambulatory visits have a treating provider) -- chosen uniformly
   ;; among ALL providers, not ward-filtered (there is no ward), the same
@@ -694,7 +691,7 @@
 
 (defn- fold-condition-annotation
   "One step in folding a compiled encounter step's own :conditions
-  vector (ehrt.sim.pathway/ConditionAnnotation) into `conditions`
+  vector (sim-model/ConditionAnnotation) into `conditions`
   (a patient's own ConditionRecord vector) -- an onset OPENS a new
   record; an end CLOSES the most recent still-:active record with the
   SAME :codes (compile-trajectory's own annotate-condition already
@@ -933,7 +930,7 @@
   -- the same board :admission/:transfer already consult."
   [world patient-id location]
   (when-let [bed (:bed location)]
-    (let [occupant (get (facility/occupancy-board (:patients world)) bed)]
+    (let [occupant (get (sim-model/occupancy-board (:patients world)) bed)]
       (and (some? occupant) (not= occupant patient-id)))))
 
 (defmethod decide :cancel-transfer
@@ -976,7 +973,7 @@
   maps) -- cumulative-weight bucketing, falling through to the last
   member on any floating-point-boundary edge case rather than nil.
   `value-key` is which field names the resolved value -- :pathway for
-  ehrt.sim.pathway/PathwaysConfig, :module-id for M5b's own
+  sim-model/PathwaysConfig, :module-id for M5b's own
   ehrt.sim.gmf/ModulesConfig -- the same pool shape, two resource
   kinds."
   [pool draw value-key]
@@ -991,7 +988,7 @@
           (recur more acc'))))))
 
 (defn assign-pathway
-  "Resolves the pathway `pathways-config` (ehrt.sim.pathway/
+  "Resolves the pathway `pathways-config` (sim-model/
   PathwaysConfig) assigns to patient ordinal `i` (0-indexed arrival
   order): an explicit {:patient-ordinal i :pathway ...} entry when one
   names this ordinal, otherwise a weighted pick among the config's
@@ -1071,8 +1068,8 @@
   "Runs the simulation. config:
     :seed             long (required)
     :patients         number of patients (default 1)
-    :pathway          a pathway IR map (default pathway/sample-admission-discharge)
-    :pathways         M3-adjacent: ehrt.sim.pathway/PathwaysConfig
+    :pathway          a pathway IR map (default sim-model/sample-admission-discharge)
+    :pathways         M3-adjacent: sim-model/PathwaysConfig
                       -- a vector of weighted-pool ({:pathway :weight})
                       and/or explicit ({:patient-ordinal :pathway})
                       entries, `assign-pathway`'s own input. When
@@ -1096,7 +1093,7 @@
                       :delay's dwell times (minutes*60) stayed
                       comparatively huge, so arrivals clustered far
                       faster than patients discharged and blew past
-                      config/default-facility's real usable capacity
+                      sim-model/default-facility's real usable capacity
                       (16 concurrent, not its nominal 18 -- Cardiology's
                       surge sits unused when every patient's home-ward
                       is Renal) at patient counts the property tests
@@ -1106,8 +1103,8 @@
     :warm-up-seconds  events with :t less than this get :warm-up true
                       (default 0; sim/ADR-0011 -- the log stays complete,
                       no trimming here)
-    :facility         facility config (default config/default-facility)
-    :providers        provider templates (default config/default-provider-templates;
+    :facility         facility config (default sim-model/default-facility)
+    :providers        provider templates (default sim-model/default-provider-templates;
                        NPIs are generated from THIS run's seed -- sim/ADR-0007)
     :order-profiles   M3: ehrt.sim.order-profiles/OrderProfiles map
                       (default order-profiles/default-profiles) -- :order
@@ -1126,7 +1123,7 @@
                        pinned fixture; churn is opt-in, sim/ADR-0009's
                        accept-and-record policy doesn't even apply here
                        since nothing about this path changed).
-    :persona-config   M4: ehrt.sim.persona/persona's own config
+    :persona-config   M4: sim-model/persona's own config
                       map ({:age-min :age-max :payers-under-65
                       :payers-65-plus}, all optional -- see that
                       function's docstring for defaults). EVERY
@@ -1175,7 +1172,7 @@
                       second-guess-the-author posture InjectChurn already
                       takes toward whatever pathway it's handed.
     :module-horizon-days M5b: how many days past this run's own
-                      registration instant (persona/reference-today-
+                      registration instant (sim-model/reference-today-
                       epoch-day) an assigned module's own walk runs
                       before stopping (`ehrt.sim.gmf-interpreter/
                       run-module`'s own optional `horizon-end-t` bound)
@@ -1205,23 +1202,23 @@
   [{:keys [seed patients pathway pathways arrival-gap warm-up-seconds facility providers churn-profile order-profiles
            persona-config modules module-assignment module-horizon-days]
     :or {patients 1
-         pathway pathway/sample-admission-discharge
+         pathway sim-model/sample-admission-discharge
          arrival-gap 60
          warm-up-seconds 0
-         facility config/default-facility
-         providers config/default-provider-templates
+         facility sim-model/default-facility
+         providers sim-model/default-provider-templates
          order-profiles order-profiles/default-profiles
          persona-config {}
          modules []
          module-horizon-days 90}}]
-  {:pre [(some? seed) (pathway/valid? pathway)
-         (or (nil? pathways) (pathway/valid-pathways-config? pathways))]}
+  {:pre [(some? seed) (sim-model/valid? pathway)
+         (or (nil? pathways) (sim-model/valid-pathways-config? pathways))]}
   (let [rng (Random. ^long seed)
         ;; Provider NPIs are generated from this run's seed (sim/ADR-0007),
         ;; drawn once up front -- before arrival staggering -- so
         ;; provider identity is as deterministic and as fixed-order as
         ;; everything else this RNG produces.
-        materialized-providers (config/materialize-providers rng providers)
+        materialized-providers (sim-model/materialize-providers rng providers)
         ;; Stagger arrivals: :arrival-gap is authored in MINUTES (same
         ;; carve-out as :delay's IR, and for the same calibration
         ;; reason -- see `run`'s docstring); the engine converts to

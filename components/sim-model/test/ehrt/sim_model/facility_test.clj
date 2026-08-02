@@ -1,14 +1,14 @@
-(ns ehrt.sim.facility-test
+(ns ehrt.sim-model.facility-test
   "The occupancy board (a derived projection, never written directly --
   sim/ADR-0008/docs/operational-models.md) and the four-rung allocation
-  ladder. Written before ehrt.sim.facility exists (sim/ADR-0004
+  ladder. Written before ehrt.sim-model.facility exists (sim/ADR-0004
   test-first)."
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
-            [ehrt.sim.config :as config]
-            [ehrt.sim.facility :as facility])
+            [ehrt.sim-model.config :as config]
+            [ehrt.sim-model.facility :as facility])
   (:import [java.util Random]))
 
 (def renal-ward

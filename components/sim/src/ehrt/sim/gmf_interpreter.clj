@@ -85,7 +85,7 @@
   (.getYears (Period/between (parse-dob persona) (LocalDate/ofEpochDay t))))
 
 ;; --- RNG primitives (fixed-consumption law, per ehrt.sim.engine/
-;; ehrt.sim.persona's own precedent) ----------------------------------
+;; ehrt.sim-model.persona's own precedent) ----------------------------------
 
 (defn- rand-int-in [^Random rng lo hi] (+ lo (.nextInt rng (inc (- hi lo)))))
 (defn- rand-double-in [^Random rng lo hi] (+ lo (* (.nextDouble rng) (- hi lo))))

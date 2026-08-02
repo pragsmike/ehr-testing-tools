@@ -10,7 +10,7 @@
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
             [ehrt.sim.churn :as churn]
-            [ehrt.sim.pathway :as pathway])
+            [ehrt.sim-model.interface :as sim-model])
   (:import [java.util Random]))
 
 (def ^:private sample-pathway
@@ -45,7 +45,7 @@
 ;; --- IR endomorphism ------------------------------------------------------
 
 (deftest inject-output-is-valid-pathway-ir
-  (is (pathway/valid? (churn/inject sample-pathway always-everything (Random. 1)))))
+  (is (sim-model/valid? (churn/inject sample-pathway always-everything (Random. 1)))))
 
 (defspec inject-always-produces-valid-ir 100
   (prop/for-all [seed gen/large-integer
@@ -58,7 +58,7 @@
     (let [profile {:cancel-admit cancel-admit-p :cancel-transfer cancel-transfer-p
                    :cancel-discharge cancel-discharge-p :transfer-in-error tie-p
                    :bed-swap swap-p :merge merge-p}]
-      (pathway/valid? (churn/inject sample-pathway profile (Random. ^long seed))))))
+      (sim-model/valid? (churn/inject sample-pathway profile (Random. ^long seed))))))
 
 ;; --- clinical-steps invariant: only inserts, strip recovers the input -----
 

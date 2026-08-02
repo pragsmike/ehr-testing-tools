@@ -39,7 +39,7 @@
   anything, for ANY sequence of draws -- the identity-transform
   property this stage's `zero-profile-is-the-identity-transform`
   property test confirms directly, not merely by inspection."
-  (:require [ehrt.sim.pathway :as pathway]
+  (:require [ehrt.sim-model.interface :as sim-model]
             [malli.core :as m])
   (:import [java.util Random]))
 
@@ -178,7 +178,7 @@
   rolls the full `step-type-order` (see `roll-gap`). Pure given `rng`;
   never removes, reorders, or alters the input's own steps."
   [pathway churn-profile rng]
-  {:pre [(pathway/valid? pathway)]}
+  {:pre [(sim-model/valid? pathway)]}
   (loop [steps (:steps pathway) state initial-applicability-state out (transient [])]
     (let [[state' inserted] (roll-gap rng churn-profile state (empty? steps))
           out' (reduce conj! out inserted)]

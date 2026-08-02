@@ -3,7 +3,7 @@
   section 1). Parses a Synthea Generic Module Framework JSON module,
   normalizes it to this project's own idiom (kebab-case keyword keys and
   state-name references, code systems as :snomed/:loinc/:rxnorm/:icd10cm/
-  :cvx keywords per ehrt.sim.pathway/Concept), and validates it
+  :cvx keywords per sim-model/Concept), and validates it
   against the v1 subset docs/gmf-interpreter.md section 1 defines.
 
   Load-time enforcement, result-not-throw (ehrt.kernel.result):
@@ -31,7 +31,7 @@
   (:require [clojure.data.json :as json]
             [clojure.string :as str]
             [ehrt.kernel.interface :as result]
-            [ehrt.sim.pathway :as pathway]
+            [ehrt.sim-model.interface :as sim-model]
             [malli.core :as m]))
 
 ;; --- Normalization: JSON's snake_case/CamelCase -> this project's kebab
@@ -98,7 +98,7 @@
    "DeviceEnd" :device-end})
 
 (def ^:private code-system->keyword
-  "GMF's own code-system strings -> ehrt.sim.pathway/Concept's
+  "GMF's own code-system strings -> sim-model/Concept's
   :system keyword vocabulary (architecture.md's Terminology decisions:
   :snomed :loinc :rxnorm :icd10cm :cvx)."
   {"SNOMED-CT" :snomed
@@ -136,11 +136,11 @@
    "Active Allergy" :active-allergy "And" :and})
 
 (defn- normalize-code
-  "GMF's own code triplet -> ehrt.sim.pathway/Concept. M5b: :code
+  "GMF's own code triplet -> sim-model/Concept. M5b: :code
   is coerced to a string regardless of its own JSON type -- the vendored
   sinusitis.json carries at least one unquoted-JSON-number code value
   (Prescribe_Alternative_Antibiotic's own RxNorm code), and
-  pathway/Concept requires a string. This is a representation
+  sim-model/Concept requires a string. This is a representation
   normalization, the same kind `slug`/keywordizing already apply to
   every other GMF field this loader touches -- the code's own digits
   pass through unchanged (code passthrough law), only their Clojure
@@ -290,26 +290,26 @@
    [:set-attribute (with-transitions [:type [:= :set-attribute]] [:attribute :string] [:value {:optional true} :any])]
    [:symptom (with-transitions [:type [:= :symptom]] [:symptom :string]
                [:range {:optional true} Range] [:exact {:optional true} Exact])]
-   [:condition-onset (with-transitions [:type [:= :condition-onset]] [:codes [:vector pathway/Concept]]
+   [:condition-onset (with-transitions [:type [:= :condition-onset]] [:codes [:vector sim-model/Concept]]
                         [:target-encounter {:optional true} :keyword])]
    [:condition-end (with-transitions [:type [:= :condition-end]] [:condition-onset {:optional true} :keyword])]
    [:encounter (with-transitions [:type [:= :encounter]]
                  [:encounter-class [:enum :wellness :ambulatory :emergency :inpatient]]
-                 [:codes [:vector pathway/Concept]] [:reason {:optional true} :string])]
+                 [:codes [:vector sim-model/Concept]] [:reason {:optional true} :string])]
    [:encounter-end (into [:map [:type [:= :encounter-end]]] TransitionFields)]
-   [:procedure (with-transitions [:type [:= :procedure]] [:codes [:vector pathway/Concept]]
+   [:procedure (with-transitions [:type [:= :procedure]] [:codes [:vector sim-model/Concept]]
                  [:target-encounter {:optional true} :keyword] [:reason {:optional true} :string]
                  [:duration {:optional true} Range])]
-   [:observation (with-transitions [:type [:= :observation]] [:codes [:vector pathway/Concept]]
+   [:observation (with-transitions [:type [:= :observation]] [:codes [:vector sim-model/Concept]]
                    [:category {:optional true} :string] [:unit {:optional true} :string]
                    [:range {:optional true} Range])]
-   [:medication-order (with-transitions [:type [:= :medication-order]] [:codes [:vector pathway/Concept]]
+   [:medication-order (with-transitions [:type [:= :medication-order]] [:codes [:vector sim-model/Concept]]
                         [:reason {:optional true} :string])]
    [:medication-end (with-transitions [:type [:= :medication-end]] [:medication-order {:optional true} :keyword])]
    ;; M5b: consumed-internally, like :simple -- see gmf-type->keyword's
    ;; own docstring note. :code is singular (GMF's own Device shape, one
    ;; equipment concept per state -- unlike :codes' plural elsewhere).
-   [:device (with-transitions [:type [:= :device]] [:code {:optional true} pathway/Concept])]
+   [:device (with-transitions [:type [:= :device]] [:code {:optional true} sim-model/Concept])]
    [:device-end (with-transitions [:type [:= :device-end]] [:device {:optional true} :keyword])]])
 
 (def GmfModule
@@ -366,7 +366,7 @@
           (result/rejected :schema-invalid {:explain (explain-module module)}))))))
 
 ;; --- M5b: per-patient module assignment -- SimHospital's own percentage_of_
-;; patients analogue, the SAME shape ehrt.sim.pathway/PathwaysConfig
+;; patients analogue, the SAME shape sim-model/PathwaysConfig
 ;; already established for authored pathways (docs/gmf-interpreter.md's own
 ;; Task 4: module assignment composes with :pathways, both just IR entering
 ;; the union). ehrt.sim.engine/assign-module is this schema's own

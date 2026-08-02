@@ -1,13 +1,13 @@
-(ns ehrt.sim.config-test
+(ns ehrt.sim-model.config-test
   "docs/operational-models.md's config schemas, defaults, and the
   synthetic-NPI Luhn math (sim/ADR-0007 decision (a): Luhn-valid, not
-  obviously-fake). Written before ehrt.sim.config exists
+  obviously-fake). Written before ehrt.sim-model.config exists
   (sim/ADR-0004 test-first)."
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
-            [ehrt.sim.config :as config])
+            [ehrt.sim-model.config :as config])
   (:import [java.util Random]))
 
 (deftest npi-check-digit-hand-computed

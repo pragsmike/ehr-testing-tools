@@ -49,6 +49,10 @@
         poly/docs-tooling {:local/root "../../components/docs-tooling"}
         poly/palgebra {:local/root "../../components/palgebra"}
         poly/sim      {:local/root "../../components/sim"}
+        ;; poly/sim-model (sim split S1, .agents/plans/2026-08-02-sim-
+        ;; split-plan.md): sim's own src now requires
+        ;; ehrt.sim-model.interface directly.
+        poly/sim-model {:local/root "../../components/sim-model"}
         org.clojure/clojure {:mvn/version "1.12.5"}}
 
  :aliases {;; Base-less project (R15): sim + corpus + palgebra, test-only.

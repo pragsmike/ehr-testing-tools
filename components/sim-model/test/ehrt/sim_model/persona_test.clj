@@ -1,4 +1,4 @@
-(ns ehrt.sim.persona-test
+(ns ehrt.sim-model.persona-test
   "Persona (docs/sim-theory.edn's `:persona` stage, Milestone M4):
   seeded/pure sampling, the fixed-RNG-consumption law, and the
   age-linked payer co-landing invariant (docs/operational-models.md --
@@ -7,7 +7,7 @@
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
-            [ehrt.sim.persona :as persona])
+            [ehrt.sim-model.persona :as persona])
   (:import [java.util Random]))
 
 (deftest persona-is-deterministic-for-a-fixed-seed

@@ -8,7 +8,7 @@
   reference ranges, and a per-analyte value distribution.
 
   Concepts ride as {:system :loinc :code :display} triplets, the same
-  coded-triplet shape ehrt.sim.pathway/Concept already
+  coded-triplet shape sim-model/Concept already
   establishes (`sim/ADR-0002`'s code-provenance law) -- no CPT anywhere
   (docs/third-party-sources.md's standing constraint).
 
@@ -22,7 +22,7 @@
   order/result step types (engine.clj) just call it)."
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
-            [ehrt.sim.pathway :as pathway]
+            [ehrt.sim-model.interface :as sim-model]
             [malli.core :as m])
   (:import [java.util Random]))
 
@@ -40,7 +40,7 @@
 
 (def Analyte
   [:map
-   [:concept pathway/Concept]
+   [:concept sim-model/Concept]
    [:units :string]
    [:precision :int]
    [:reference-range Range]
@@ -54,7 +54,7 @@
 
 (def OrderProfile
   [:map
-   [:concept pathway/Concept]
+   [:concept sim-model/Concept]
    [:turnaround-minutes Turnaround]
    [:analytes [:vector Analyte]]])
 

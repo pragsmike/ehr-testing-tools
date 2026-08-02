@@ -34,7 +34,7 @@
             [ehrt.kernel.interface :as result]
             [ehrt.sim.gmf :as gmf]
             [ehrt.sim.gmf-interpreter :as interp]
-            [ehrt.sim.persona :as persona])
+            [ehrt.sim-model.interface :as sim-model])
   (:import [java.util Random]))
 
 (def sinusitis-json (slurp (io/resource "sim/modules/sinusitis.json")))
@@ -61,7 +61,7 @@
 
 (def ^:private sinusitis (:payload (gmf/load-module "sinusitis" sinusitis-json)))
 
-(defn- adult [seed] (assoc (persona/persona (Random. seed) {}) :sex :female))
+(defn- adult [seed] (assoc (sim-model/persona (Random. seed) {}) :sex :female))
 
 ;; A registration instant old enough that the module has had real room
 ;; to onset at least once (Potential_Onset's own 1%-ish per-month-tick

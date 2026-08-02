@@ -17,10 +17,9 @@
             [clojure.test.check.properties :as prop]
             [ehrt.kernel.interface :as result]
             [ehrt.sim.check :as check]
-            [ehrt.sim.config :as config]
+            [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim.engine :as engine]
-            [ehrt.sim.order-profiles :as order-profiles]
-            [ehrt.sim.persona :as persona]))
+            [ehrt.sim.order-profiles :as order-profiles]))
 
 (def test-facility
   {:id :t :wards [{:id :ed :name "ED" :beds 0 :surge-slots 4
@@ -418,7 +417,7 @@
 ;; --- M4: Persona ------------------------------------------------------
 
 (def ^:private a-persona
-  (persona/persona (java.util.Random. 1) {}))
+  (sim-model/persona (java.util.Random. 1) {}))
 
 (deftest registered-is-every-patients-first-event-holds-for-legit-log
   (is (empty? (check/registered-is-every-patients-first-event

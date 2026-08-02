@@ -21,7 +21,7 @@
             [clojure.java.io :as io]
             [ehrt.sim.engine :as engine]
             [ehrt.sim.gmf :as gmf]
-            [ehrt.sim.pathway :as pathway]
+            [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim.order-profiles :as order-profiles]
             [ehrt.sim.check :as check]
             [ehrt.kernel.interface :as result])
@@ -531,7 +531,7 @@
 (def ^:private pathway-a
   "Two clinical events (admission, discharge) once rendered -- :delay
   itself emits none."
-  pathway/sample-admission-discharge)
+  sim-model/sample-admission-discharge)
 
 (def ^:private pathway-b
   "One clinical event -- distinguishable from pathway-a by shape alone."
@@ -695,7 +695,7 @@
 ;; section 4's sketch, items 5-7) -------------------------------------------
 
 (deftest outpatient-visit-admits-with-no-bed-no-ward-no-allocation-ladder
-  (testing "item 5: no ehrt.sim.facility/allocate call at all --
+  (testing "item 5: no ehrt.sim-model.facility/allocate call at all --
             :status :new -> :admitted, :class :outpatient, :location stays
             nil for the visit's duration"
     (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})

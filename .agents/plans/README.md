@@ -36,3 +36,4 @@ Files in this directory:
   * roadmap.md — the rolling plan (milestone grain, updated same-commit as work)
   * 2026-08-01-agent-ux-charter.md
   * 2026-08-01-migration-report.md
+  * 2026-08-02-sim-split-plan.md — staged extraction of components/sim into sim-model/sim-trajectory/sim-emit-hl7/sim-engine
