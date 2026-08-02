@@ -5,8 +5,13 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- Nothing in progress at end of session (GMF coverage Wave D stage D1
-  closed same day it started, D1a through D1b -- see Done, below).
+- GMF coverage Wave D stage D2 (ADR-0029 R6; D0/D1 done, see Done below)
+  -- CarePlan family: paired IR span (`:care-plan-start`/
+  `:care-plan-end`) mirroring `:medication-order`/`:medication-end`,
+  `Active CarePlan` condition iff a declared-scope module exercises it
+  (G2), CarePlan itself stays v2-silent (R3) -- payoff: `myocardial_
+  infarction`/`total_joint_replacement`, scope gated on Step 1's own
+  characterization.
 
 ## Next (backlog, no session scheduled)
 - Pairing-as-data (review P3-3): mutate↔judge conviction registry — design pass in
@@ -47,11 +52,8 @@ per item; done items move to the bottom of their section with a date and sha.
   trigger: a second `engine` consumer appears (the FHIR emitter is the
   likely one) or engine work itself needs the emit-state/check boundary
   designed, same plan
-- GMF coverage Wave D, stages D2–D3 (ADR-0029 R6; D0 done, D1 is in Now
-  above) — D2: CarePlan family (paired IR span, `Active CarePlan`
-  condition; CarePlan itself stays v2-silent, R3) — payoff: MI,
-  `total_joint_replacement`, closures permitting. D3:
-  `lookup_table_transition` (sixth transition kind) + attribute-weighted
+- GMF coverage Wave D, stage D3 (ADR-0029 R6; D0/D1 done, D2 is in Now
+  above) — `lookup_table_transition` (sixth transition kind) + attribute-weighted
   `distributed_transition` weights + UTI closure re-characterization —
   payoff: UTI. `ImagingStudy` (R5, CHF trigger) and the stroke-risk data
   source (R7) are named in ADR-0029/the coverage plan but unowned by

@@ -6088,7 +6088,52 @@ them.
 > unaffected) is the Q2+Q3 ruling's own explicit instruction, not an
 > unruled deviation.
 
-> **D2/D3 characterization notes:** not yet filled — each stage's own
-> session fills its own note here when it runs, per R6's own sequencing.
+> **D2 session start (design channel, 2026-08-02).** Stage D2 (the
+> CarePlan family) begins. Author rulings for this stage, recorded
+> verbatim:
+>
+> - **G1** — the implementation spec is R2(b)'s pair-mirror:
+>   `:care-plan-start`/`:care-plan-end` shaped on the
+>   `:medication-order`/`:medication-end` precedent (`pathway.clj`) —
+>   codes plus whatever start/end linkage the upstream semantics
+>   actually use (`assign_to_attribute`/`referenced_by_attribute`, the
+>   mechanism Wave B already built for medications, is the expected
+>   shape). Exact CarePlanStart/CarePlanEnd field semantics (activities,
+>   reason codes, end-reference mechanism) are pinned by Step 1's fetch
+>   of Synthea source at the pin and recorded here BEFORE Step 2
+>   implements them. A field the medication mirror cannot represent is
+>   an ESCALATION with evidence, not an improvised schema extension.
+> - **G2** — installed ≠ used, as D1's F3 already established: the
+>   `Active CarePlan` CONDITION is built only if a module in this
+>   session's declared vendoring scope exercises it; otherwise it stays
+>   design-ruled, implementation-deferred, with a docs note. Same rule
+>   for any CarePlan field (activities, reason) no in-scope module
+>   exercises.
+> - **G3** — R3's v2 silence is implemented as a `message-type-registry`
+>   NON-ENTRY plus the disclosed comment beside the
+>   `:procedure`/`:medication-*` precedent (`emit_hl7.clj`), AND
+>   asserted: the vendored test proves care-plan events produce zero
+>   messages.
+> - **G4** — the Step 1 characterization gate: fetch both closures in
+>   full at the pin; survey row per member; transition-kind sweep
+>   against all seven known kinds (a D3 kind's presence drops that root
+>   from D2's scope, resequenced honestly); D7 hidden-import check per
+>   closure; specify-vs-delegate audit for any attribute/value source
+>   found. Declare the vendoring scope from the evidence — zero, one, or
+>   both roots are acceptable outcomes.
+> - **G5** — vendored tests prove the span: a walk containing
+>   `:care-plan-start` and its matching `:care-plan-end` with correct
+>   linkage; the engine fold carrying the active span in patient state;
+>   the G3 silence assertion; if the condition is built per G2, a branch
+>   taken BECAUSE a care plan is active; MI additionally re-proves the
+>   Wave C death machinery inside a closure walk.
+>
+> Scope (which of `myocardial_infarction.json`/`total_joint_
+> replacement.json` this stage actually vendors) is TBD, gated on
+> Step 1's own characterization — filled in by this same dated note
+> once Step 1 runs.
+
+> **D3 characterization notes:** not yet filled — D3's own session
+> fills its own note here when it runs, per R6's own sequencing.
 
 ---
