@@ -96,7 +96,24 @@
             [:to :int]]]
    [:discharge [:map
                 [:type [:= :discharge]]
-                [:citation {:optional true} Citation]]]
+                [:citation {:optional true} Citation]
+                ;; GMF coverage Wave C (2026-08-02, ADR-0028, C4): a
+                ;; `:death` trajectory event maps into the compiled
+                ;; pathway via THIS existing step -- no new IR step type
+                ;; (C4's own rebuttable default). `:disposition` distin-
+                ;; guishes an ordinary discharge from a death-disposition
+                ;; one -- real HL7v2 already models exactly this
+                ;; (PV1-36's own expired disposition codes on an ordinary
+                ;; ADT^A03, `components/sim/docs/clinical-realities.md`'s
+                ;; wire-truth section), so this is not a special case
+                ;; bolted onto the wire vocabulary, it's the same message
+                ;; type real hospitals already use. `:codes` (cause of
+                ;; death, verbatim -- code passthrough law) rides along
+                ;; only when `:disposition` is present; a hand-authored
+                ;; pathway that predates this wave carries neither field,
+                ;; unaffected by construction (both optional).
+                [:disposition {:optional true} [:enum :expired]]
+                [:codes {:optional true} [:vector Concept]]]]
    [:transfer [:map
                [:type [:= :transfer]]
                [:location :string]

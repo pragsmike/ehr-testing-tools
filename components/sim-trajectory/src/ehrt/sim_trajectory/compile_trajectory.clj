@@ -46,6 +46,18 @@
     step: a log-only fact, the same shape `:step-rejected` (sim/ADR-0012)
     already established for 'real, worth keeping, not worth inventing an
     attachment point for.'
+  - `:death` -- GMF coverage Wave C (ADR-0028, C4): NO new IR step type.
+    Death inside an encounter (a compiled `:admission`/`:outpatient-visit`
+    step already exists, no terminal disposition compiled for it yet)
+    reuses the EXISTING `:discharge` step, carrying two new optional
+    fields (`:disposition :expired`, `:codes` -- cause of death, verbatim)
+    -- real HL7v2 already models a death this way (an ordinary ADT^A03
+    whose PV1-36 carries an expired disposition code, `docs/clinical-
+    realities.md`'s own wire-truth section). Death outside any encounter
+    closes the pathway at that timestamp without fabricating a discharge
+    from an admission that never happened -- the same 'no attachment
+    point, don't invent one' precedent the condition-annotation case
+    above already establishes.
 
   Pre-horizon handling (docs/gmf-interpreter.md section 3, ratified item
   5; this session's own resolution of a real gap between that section's
@@ -132,11 +144,44 @@
     (cond-> {:type :medication-end :citation (citation event)}
       order-event (assoc :order-citation (citation order-event)))))
 
+;; --- GMF coverage Wave C (2026-08-02, ADR-0028, C4): :death ----------------
+;; No new IR step type (C4's own rebuttable default) -- reuses :discharge,
+;; the existing "close this encounter" primitive, carrying two new optional
+;; fields (`ehrt.sim-model.pathway`'s own :discharge schema). Real HL7v2
+;; already models a death this way (an ordinary ADT^A03 whose PV1-36
+;; carries an expired disposition code, docs/clinical-realities.md's own
+;; wire-truth section) -- this is not a workaround, it's the wire shape.
+
+(defn- death->step
+  [event]
+  (cond-> {:type :discharge :disposition :expired :citation (citation event)}
+    (:codes event) (assoc :codes (:codes event))))
+
+(defn- encounter-currently-open?
+  "Whether `steps` already carries a compiled encounter-mapped step
+  (:admission/:outpatient-visit) with no compiled terminal disposition
+  of its own yet -- C4's own 'death inside an encounter' test. Since
+  `compile-trajectory`'s own loop already short-circuits everything
+  once `encounter-closed?` is true (the cond's own first clause,
+  below), reaching this check at all already means no :encounter-end
+  has fired -- this only needs to ask whether an encounter was ever
+  OPENED, which `encounter-closed?` alone can't answer (C2's own
+  synthetic Death-only fixture opens none at all)."
+  [steps]
+  (boolean (some #(#{:admission :outpatient-visit} (:type %)) steps)))
+
 (def ^:private pre-horizon-dropped-types
   "docs/gmf-interpreter.md section 3's own 'no operational trajectory
   event... during history' -- enforced here (see this namespace's own
-  docstring for why the interpreter itself doesn't already do this)."
-  #{:encounter :encounter-end :procedure :observation})
+  docstring for why the interpreter itself doesn't already do this).
+  GMF coverage Wave C (ADR-0028): `:death` joins this set -- a patient
+  whose module-driven death fell entirely before this run's own
+  registration instant is exactly as irrelevant to THIS run's own
+  operational content as a pre-horizon procedure already is; the
+  engine-level 'this patient never actually registers' consequence is
+  out of this wave's own minimal-path scope (C3), named here rather
+  than silently mishandled."
+  #{:encounter :encounter-end :procedure :observation :death})
 
 (def ^:private pre-horizon-fact-types
   "The ratified item 5 condensed set: ConditionOnset/ConditionEnd/
@@ -257,6 +302,23 @@
 
           (#{:condition-onset :condition-end} event-type)
           (recur more (annotate-condition steps trajectory idx event) registration-facts last-t encounter-closed?)
+
+          ;; GMF coverage Wave C (2026-08-02, ADR-0028, C4): death inside
+          ;; an encounter attaches as that encounter's own terminal
+          ;; disposition (death->step, above); death outside any
+          ;; encounter closes the pathway at that timestamp WITHOUT
+          ;; fabricating a discharge from an admission that never
+          ;; happened (compile-trajectory's own established "no
+          ;; attachment point, don't invent one" precedent, the same
+          ;; treatment a condition event with no open encounter already
+          ;; gets, above). Either way `encounter-closed?` becomes true --
+          ;; nothing legitimately follows a death (C2's own terminal
+          ;; contract, already enforced one layer down; this is belt-
+          ;; and-suspenders, not a new leniency).
+          (= :death event-type)
+          (if (encounter-currently-open? steps)
+            (recur more (emit-with-delay steps last-t event (death->step event)) registration-facts (:t event) true)
+            (recur more steps registration-facts last-t true))
 
           :else
           (recur more steps registration-facts last-t encounter-closed?))))))

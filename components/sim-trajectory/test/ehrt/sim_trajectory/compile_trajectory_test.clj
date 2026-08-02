@@ -151,6 +151,41 @@
           {:keys [steps]} (ct/compile-trajectory trajectory facility 100)]
       (is (empty? steps)))))
 
+;; --- GMF coverage Wave C (2026-08-02, ADR-0028, C4): :death ----------------
+
+(def ^:private death-codes [{:system :snomed :code "230690007" :display "Cerebrovascular accident (disorder)"}])
+
+(deftest death-inside-an-encounter-attaches-as-its-terminal-disposition
+  (testing "no new IR step type -- reuses :discharge, carrying :disposition
+            :expired and the cause-of-death codes verbatim"
+    (let [trajectory [(ev :encounter {:t 100 :encounter-class :emergency
+                                      :codes [{:system :snomed :code "50849002" :display "ED"}]})
+                      (ev :death {:t 110 :codes death-codes})]
+          {:keys [steps]} (ct/compile-trajectory trajectory facility 100)
+          death-step (last steps)]
+      (is (= [:admission :delay :discharge] (mapv :type steps)) "a genuinely delayed death bridges via :delay, the same as any other gap")
+      (is (= :expired (:disposition death-step)))
+      (is (= death-codes (:codes death-step)))
+      (is (= {:module "m" :state :s} (:citation death-step))))))
+
+(deftest death-outside-any-encounter-closes-the-pathway-without-fabricating-a-discharge
+  (testing "the same 'no attachment point, don't invent one' precedent
+            condition-onset-with-no-prior-encounter already establishes"
+    (let [trajectory [(ev :death {:t 100 :codes death-codes})]
+          {:keys [steps]} (ct/compile-trajectory trajectory facility 100)]
+      (is (empty? steps)))))
+
+(deftest nothing-compiles-after-death-even-if-the-trajectory-somehow-carries-more
+  (testing "belt-and-suspenders -- C2 already guarantees this never happens
+            in a real interpreter-produced trajectory, checked here anyway
+            since compile-trajectory takes a bare vector, not a proof"
+    (let [trajectory [(ev :encounter {:t 100 :encounter-class :emergency
+                                      :codes [{:system :snomed :code "50849002" :display "ED"}]})
+                      (ev :death {:t 100 :codes death-codes})
+                      (ev :procedure {:t 120 :state :p :codes []})]
+          {:keys [steps]} (ct/compile-trajectory trajectory facility 100)]
+      (is (= [:admission :discharge] (mapv :type steps))))))
+
 ;; --- Pre-horizon handling: the day -> seconds/minutes boundary is where
 ;; ratified item 5 (registration-time facts) actually lands -------------
 
