@@ -138,7 +138,10 @@
   ;; 903 to 925.
   ;; bumped 925->932, D1a rider (2026-08-02): roadmap.md/ADR-0001 growth
   ;; (Clojars ruling note, D1 Now-row) -- self-caught by this same gate.
-  :budget-lines 932}
+  ;; bumped 932->935, D1b Step 0 (2026-08-02): roadmap.md's own D1 Now-row
+  ;; grew (halted-for-ruling -> in-progress implementation) -- self-caught
+  ;; by this same gate, same precedent.
+  :budget-lines 935}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one
