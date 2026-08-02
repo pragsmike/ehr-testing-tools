@@ -117,9 +117,26 @@
   [{:keys [gender]} persona]
   (= (:sex persona) (case gender "F" :female "M" :male gender)))
 
+(defn- root-id
+  "GMF coverage Wave B (2026-08-02, ADR-0027, D1): the walk's own ROOT
+  module id -- workflow attributes (SetAttribute/Symptom writes,
+  Attribute/Symptom condition reads -- ctx's own THIRD compartment, D1's
+  own three-compartment person record) are namespaced under THIS,
+  never `module-id` (the module CURRENTLY executing, which
+  `CallSubmodule`, once built, can differ from) -- so a callee and its
+  caller resolve the same bare attribute name in one shared namespace.
+  Defaults to `module-id` when `ctx` carries no explicit `:root` --
+  correct for every non-calling walk (root = self, byte-identical to
+  this project's pre-Wave-B behavior by construction) and for a `ctx`
+  built directly against `step` without going through
+  `walk-module`/`run-module`'s own one-time `:root` normalization (both
+  test fixtures and this namespace's own docstring examples do this)."
+  [ctx module-id]
+  (or (:root ctx) module-id))
+
 (defn- attribute-condition-holds?
   [module-id ctx {:keys [attribute operator value]}]
-  (let [k (keyword module-id (gmf/slug attribute))
+  (let [k (keyword (root-id ctx module-id) (gmf/slug attribute))
         actual (get (:attributes ctx) k)]
     (case operator
       "!=" (not= actual value)
@@ -147,9 +164,11 @@
   against Logic.java/Person.java at docs/gmf-interpreter.md's own pinned
   commit) -- a module may check a symptom before ever writing it on some
   branch, and 0 (never happened yet) is the correct default, not a missing-
-  key error."
+  key error. GMF coverage Wave B (2026-08-02, ADR-0027, D1): reads the
+  ROOT-namespaced key (`root-id`), not `module-id` -- symptom severity
+  is workflow scratch, the same third compartment SetAttribute shares."
   [module-id ctx {:keys [symptom operator value]}]
-  (let [k (keyword module-id (gmf/slug symptom))]
+  (let [k (keyword (root-id ctx module-id) (gmf/slug symptom))]
     (compare-op operator (get (:attributes ctx) k 0) value)))
 
 (defn- window-days
@@ -455,13 +474,16 @@
       :delay (let [t' (resolve-time-advance rng (:t ctx) state)]
                (pass-through-outcome module-id ctx rng state (- t' (:t ctx)) []))
       :guard (guard-step module-id ctx rng state)
-      :set-attribute (let [k (keyword module-id (gmf/slug (:attribute state)))
+      ;; GMF coverage Wave B (2026-08-02, ADR-0027, D1): both writes are
+      ;; ROOT-namespaced (`root-id`), not `module-id` -- workflow scratch
+      ;; is shared across a CallSubmodule call tree by construction.
+      :set-attribute (let [k (keyword (root-id ctx module-id) (gmf/slug (:attribute state)))
                            ctx' (update ctx :attributes assoc k (:value state))]
                        (pass-through-outcome module-id ctx' rng state 0 []))
       :symptom (let [severity (cond (:exact state) (:quantity (:exact state))
                                      (:range state) (rand-int-in rng (:low (:range state)) (:high (:range state)))
                                      :else nil)
-                     k (keyword module-id (gmf/slug (:symptom state)))
+                     k (keyword (root-id ctx module-id) (gmf/slug (:symptom state)))
                      ctx' (update ctx :attributes assoc k severity)]
                  (pass-through-outcome module-id ctx' rng state 0 []))
       :condition-onset (emit-and-advance module-id ctx rng state :condition-onset {:codes (:codes state)})
@@ -496,9 +518,19 @@
   condition does not hold (`:status :blocked`, `ctx`'s own `:current`
   left AT the blocked Guard, ready for a caller -- Task 3's history/
   horizon two-phase run -- to resume the SAME walk later with more
-  virtual time or more attributes available)."
+  virtual time or more attributes available).
+
+  GMF coverage Wave B (2026-08-02, ADR-0027, D1): normalizes `ctx`'s own
+  `:root` ONCE, here, before the loop starts -- `assoc`/`update` never
+  touch unrelated keys, so once set it survives every fold this loop's
+  own `ctx'` construction performs, all the way to `walk-module`'s next
+  call (a future `CallSubmodule` recursion, once built, descends with
+  the SAME `:root` still in place). Defaults to `(:id module)` when
+  `ctx` doesn't already carry one -- correct for a fresh, non-calling
+  walk (root = self) and a no-op when `ctx` already has one (a resumed
+  blocked walk, or a submodule ctx a future recursive call passes in)."
   [module rng ctx]
-  (loop [ctx ctx n 0]
+  (loop [ctx (update ctx :root #(or % (:id module))) n 0]
     (when (>= n max-steps)
       (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: walk-module exceeded max-steps -- likely a module authoring bug (a zero-time-advance transition cycle)"
                        {:module (:id module) :current (:current ctx)})))
@@ -539,10 +571,15 @@
   holds by construction: the SAME accumulating `:attributes` map and
   `:trajectory` are threaded across the registration boundary, so a Guard
   blocked on an attribute set earlier in the SAME walk sees it, whichever
-  side of `registration-t` each state happens to fall on."
+  side of `registration-t` each state happens to fall on.
+
+  GMF coverage Wave B (2026-08-02, ADR-0027, D1): `ctx`'s own `:root`
+  is set to `(:id module)` here, once -- see `walk-module`'s own
+  docstring note for why one normalization at the walk's true entry
+  point is enough for the whole walk."
   ([module rng persona registration-t] (run-module module rng persona registration-t nil))
   ([module rng persona registration-t horizon-end-t]
-   (loop [ctx (initial-context persona) n 0]
+   (loop [ctx (assoc (initial-context persona) :root (:id module)) n 0]
      (when (>= n max-steps)
        (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: run-module exceeded max-steps -- likely a module authoring bug (a zero-time-advance transition cycle)"
                         {:module (:id module) :current (:current ctx)})))

@@ -257,6 +257,64 @@
     (is (<= 10 severity 40))
     (is (= [] (:events outcome)) "Symptom is consumed internally -- no trajectory event, docs/gmf-interpreter.md section 1")))
 
+;; --- GMF coverage Wave B (2026-08-02, ADR-0027, D1): root-scoped
+;; workflow attributes -- exercised directly against `step`/`ctx`'s own
+;; `:root` here, ahead of real CallSubmodule recursion (Step 2c), the
+;; same "prove the mechanism via ctx manipulation before the caller
+;; that will actually drive it exists" shape this namespace's own
+;; condition-onset/condition-end tests already use for :references.
+
+(deftest set-attribute-writes-under-ctx-root-not-the-executing-module-id
+  (testing "a ctx carrying an explicit :root different from the
+            executing module's own id -- the shape a CallSubmodule
+            callee's own ctx will have once Step 2c lands -- writes
+            SetAttribute under the ROOT namespace"
+    (let [ctx (-> (ctx-for (persona-at 1)) (assoc :current :log-onset-attribute :root "some-root-module"))
+          outcome (interp/step fixture-clinic (Random. 1) ctx)]
+      (is (= true (get-in outcome [:attributes :some-root-module/onset-logged])))
+      (is (not (contains? (:attributes outcome) :fixture-clinic/onset-logged))))))
+
+(deftest symptom-writes-under-ctx-root-not-the-executing-module-id
+  (let [ctx (-> (ctx-for (persona-at 1)) (assoc :current :nasal-congestion-symptom :root "some-root-module"))
+        outcome (interp/step fixture-clinic (Random. 5) ctx)]
+    (is (some? (get-in outcome [:attributes :some-root-module/nasal-congestion])))
+    (is (not (contains? (:attributes outcome) :fixture-clinic/nasal-congestion)))))
+
+(def root-scoped-attribute-guard-module
+  {:id "callee-mod"
+   :name "Callee"
+   :states {:initial {:type :initial :direct-transition :check}
+            :check {:type :guard
+                    :allow {:condition-type :attribute :attribute "ready" :operator "==" :value true}
+                    :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest attribute-condition-reads-are-also-root-scoped-not-module-scoped
+  (testing "a value written under the ROOT namespace (as if a sibling
+            state upstream in the SAME walk, possibly in a different
+            module, already wrote it) is visible to a Guard evaluated
+            while THIS module is the one executing -- the read side of
+            D1's own root-scoping contract, symmetric with the write
+            side above"
+    (let [ctx (-> (ctx-for (persona-at 1))
+                  (assoc :current :check :root "caller-mod")
+                  (assoc :attributes {:caller-mod/ready true}))
+          outcome (interp/step root-scoped-attribute-guard-module (Random. 1) ctx)]
+      (is (= :done (:next outcome))
+          "the Guard's own bare :attribute \"ready\" resolved under :root (caller-mod), not module-id (callee-mod)"))))
+
+(deftest walk-module-and-run-module-normalize-root-from-the-module-they-walk
+  (testing "when ctx carries no explicit :root (every existing test
+            fixture, and every real non-calling walk today), both real
+            entry points default :root to the SAME module being walked
+            -- root = self, byte-identical to this project's pre-Wave-B
+            behavior by construction"
+    (let [walked (interp/walk-module direct-only-module (Random. 1) (ctx-for (persona-at 1)))]
+      (is (= "direct-mod" (:root walked))))
+    (let [p (persona-at 1)
+          result (interp/run-module direct-only-module (Random. 1) p (interp/dob-epoch-day p))]
+      (is (= "direct-mod" (:root result))))))
+
 ;; --- Trajectory events: citations, code passthrough, references -----------
 
 (deftest condition-onset-emits-a-cited-event-with-verbatim-codes

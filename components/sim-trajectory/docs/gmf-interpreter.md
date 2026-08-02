@@ -435,6 +435,33 @@ corollary already rules out for always-on execution, and there is no
 principled reason data coupling should get a pass execution coupling
 doesn't.
 
+**Dated note, GMF coverage Wave B (2026-08-02, ADR-0027, D1): this
+section's own "namespaced by the writing module's own id" claim now
+has two distinct senses, not one — disambiguated here, not silently
+narrowed.** LOAD-TIME declared-write namespacing (`ehrt.sim-
+trajectory.gmf/declared-attributes`, the reserved-key collision check
+this section's own next paragraph describes) is UNCHANGED — a static
+property of each module's own JSON, computed per-module regardless of
+whether that module is ever called as a submodule. RUNTIME attribute
+namespacing DURING A WALK (`gmf-interpreter`'s own `step`, the
+SetAttribute/Symptom write path and the Attribute/Symptom condition
+read path) is now root-scoped, not module-scoped: a `CallSubmodule`
+callee and its caller share one namespace (the walk's own root module
+id), by design (D1's own three-compartment person record, `docs/gmf-
+interpreter.md`'s own §9). This is intentional sharing, not a
+regression of the collision-freedom property below — but it DOES open
+a distinct risk the load-time check does not cover: two different
+closure members writing the SAME bare attribute name for UNRELATED
+reasons would now collide at RUNTIME (not caught at load), whereas two
+STANDALONE top-level modules never could. Not observed in either Wave
+B closure this session (`ear_infections.json`'s own two called
+submodules write disjoint bare keys) — named here as a real,
+considered gap a future closure-wide write-collision check could close
+(the same shape the existing reserved-key check already establishes,
+widened from "one module vs. the engine's own reserved keys" to "every
+closure member vs. every other"), not built this session since no
+candidate closure has yet needed it.
+
 **Because every write is namespaced by its own module, cross-module
 collisions are structurally impossible in v1** — two different modules
 can never produce the same namespaced key, since each module's own id
