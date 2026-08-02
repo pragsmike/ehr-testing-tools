@@ -1041,6 +1041,49 @@
           "the compiled encounter step carries its module/state citation into ground truth")
       (is (result/ok? (check/check-all ground-truth (:facility result)))))))
 
+;; --- GMF coverage Wave C (2026-08-02, ADR-0028, C6): the full engine/check
+;; round trip for a real Death-bearing walk -- interpreter -> compile-
+;; trajectory -> :registered's own module wiring -> a real run -> the full
+;; invariant catalog, including expired-patient-retains-location. Uses this
+;; project's own hand-authored death-fixture.json (stroke.json stays
+;; deferred, docs/gmf-interpreter.md section 10), the same "vendored"-
+;; module-shaped wiring test the sinusitis-module test above already
+;; establishes.
+
+(def ^:private death-fixture-module
+  (:payload (sim-trajectory/load-module "death-fixture"
+                            (slurp (io/resource "ehrt/sim/fixtures/death-fixture.json")))))
+
+(deftest a-run-with-the-death-fixture-configured-lands-expired-status-for-real
+  (testing "engine.clj's own :registered anchors registration-t at a
+            FIXED calendar instant (persona/reference-today-epoch-day),
+            not DOB -- most sampled personas carry decades of history-
+            phase content ahead of it, and Chance_of_Encounter's own
+            first successful escape (whichever life-stage it falls in)
+            only has a fraction of a chance of landing specifically
+            within the post-registration horizon window; a large enough
+            population makes both outcomes reliable for a fixed seed,
+            confirmed empirically (200 patients, this seed: 26 in-window
+            encounters, 6 died, 20 recovered)"
+    (let [{:keys [ground-truth] :as result}
+          (engine/run {:seed 20260802 :patients 200
+                       :pathway {:name "module-only" :steps []}
+                       :modules [death-fixture-module]
+                       :module-assignment [{:module-id "death-fixture" :weight 1}]
+                       :module-horizon-days 3650})
+          discharges (filter #(= :discharge (:event %)) ground-truth)
+          expired-discharges (filter #(= :expired (:disposition %)) discharges)
+          ordinary-discharges (remove #(= :expired (:disposition %)) discharges)]
+      (is (seq expired-discharges) "expected at least one patient to reach the death branch across 40")
+      (is (seq ordinary-discharges) "expected at least one patient to reach the recover branch across 40")
+      (is (every? #(= [{:system :snomed :code "230690007" :display "Cerebrovascular accident (disorder)"}] (:codes %))
+                  expired-discharges))
+      (is (result/ok? (check/check-all ground-truth (:facility result)))
+          "the full catalog, including expired-patient-retains-location, holds for a real run")
+      (is (some (fn [[_ p]] (= :expired (:status p)))
+                (:world-after (last (engine/replay ground-truth))))
+          "at least one patient's final folded state is genuinely :expired"))))
+
 (deftest modules-absent-entirely-draws-no-extra-rng-byte-identical-to-pre-m5b
   (testing "the SAME opt-in law :pathways/:churn-profile already establish"
     (is (= (engine/run {:seed 42 :patients 5})
