@@ -104,7 +104,12 @@
   ;; `.agents/plans/roadmap.md`'s own Wave B row moved from Deferred to
   ;; a new "Now" section (Step 0), net +1 line, brought the real total
   ;; from 803 to 804.
-  :budget-lines 804}
+  ;; raised again 2026-08-02 (GMF coverage Wave B, Step 4 close-out,
+  ;; caught by the budget test itself, same shape both prior self-
+  ;; catches above already established): `.agents/plans/roadmap.md`'s
+  ;; own Wave B "Now" row retired and its own new "Done" section
+  ;; landed, net +41 lines, brought the real total from 804 to 845.
+  :budget-lines 845}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one

@@ -8,13 +8,6 @@ per item; done items move to the bottom of their section with a date and sha.
 - (none — the fourteen-item migration report is fully executed as of
   migration session 6; see Done below)
 
-## Now (GMF coverage Wave B, ruled 2026-08-02 — ADR-0027)
-- GMF coverage Wave B — `CallSubmodule` (loader recursion, interpreter
-  call/return, root-scoped workflow attributes, the fifth
-  `type_of_care_transition` transition kind) — design ruled, session in
-  flight (ADR-0027, `.agents/plans/2026-08-02-gmf-coverage-plan.md`);
-  moved here from Deferred (Wave A's own session budget is spent).
-
 ## Next (backlog, no session scheduled)
 - Pairing-as-data (review P3-3): mutate↔judge conviction registry — design pass in
   the design channel first; vocabulary is load-bearing
@@ -196,3 +189,49 @@ per item; done items move to the bottom of their section with a date and sha.
   byte-identical across every commit this session, confirmed at close.
   Full accounting in the session record and ADR-0026's own Decision
   section.
+
+## Done (this session, 2026-08-02, GMF coverage Wave B)
+- `CallSubmodule` — loader closure resolution (D3, `gmf/load-closure`,
+  the all-or-nothing gate extended over a whole closure, a cyclic-graph
+  check with a real bug found and fixed by its own red test),
+  interpreter call/return (D1/D4, descend-run-return, root-scoped
+  workflow attributes, a defensive call-depth backstop), and D2's own
+  cross-boundary `:call-path` citations. The fifth transition kind,
+  `type_of_care_transition` (D5, characterized against Synthea's own
+  `Transition.java` + `telemedicine_config.json` before
+  implementation — a real Java `Random` sequential-seed clustering bug
+  found and fixed in the test suite itself). `notes/ADRs.md` ADR-0027.
+  Commits: `a92254b` (ADR + roadmap), `f596a37` (closure survey, D5/D7),
+  `9a2f0cd` (D1 refactor), `599fa47` (D3 closure loading), `cc9e0d6`
+  (D1-D4 call/return), `13b924e` (encounter-class normalizations,
+  disclosed addition), `3adf974` (D5).
+- `ear_infections.json` closure vendored (`01eb56b`) — the fourth real
+  vendored module and this project's first CLOSURE (root plus two
+  called submodules, `resources/modules/NOTICE`'s own new rows), state-
+  type clean of every Wave-D-scoped deferred type once its real closure
+  was read, at the cost of two Step 2c mandatory-path findings
+  (`assign_to_attribute`/`referenced_by_attribute`, `is nil`/`is not
+  nil` operators) plus two Step 2e loader normalizations. A real,
+  end-to-end vendored walk reaches through a called submodule with
+  correct call-path citations and cross-module `referenced_by_attribute`
+  resolution (`vendored_ear_infections_test.clj`).
+- **Payoff-map update: `urinary_tract_infections.json` is NOT vendored
+  this wave (D6).** Its own real closure (twelve files, not the four
+  the wave plan's own top-level survey assumed) is dirty in EVERY
+  branch with `DiagnosticReport`/`MultiObservation`, both Wave D's own
+  scope — the payoff shrinks from two closures to one, honestly, per
+  the session prompt's own "contingent on its closure surveying clean"
+  framing. A genuinely new, unplanned finding along the way:
+  `lookup_table_transition`, a SIXTH GMF transition kind, on that
+  module's own entry path — named, not built (ADR-0027's own Deviation
+  record). `total_joint_replacement.json`/`myocardial_infarction.json`
+  had `CallSubmodule` removed from their own blocker lists
+  (`docs/gmf-interpreter.md`'s own dated notes) but neither was
+  re-characterized this session — both still need a real closure read
+  before any vendoring claim, and MI still needs Wave C (`Death`) per
+  the wave plan's own "B+C → MI" sequencing either way.
+- Regression oracle (fixed-seed `sinusitis`/`appendicitis`/
+  `sore_throat` walks) byte-identical across every commit this session,
+  confirmed at close; full workspace `poly test :all skip:integration`
+  green (a self-caught `.agents/reading-sets.edn` budget bump along the
+  way, the same shape Wave A's own close-out already hit).

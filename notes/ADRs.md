@@ -5280,7 +5280,68 @@ trajectory + `:status`) proven identical before and after every
 commit — the D1 root-scoping restructure must be invisible to
 non-calling walks by construction, and this oracle is what proves it.
 `poly check` and `poly test :all skip:integration` clean at every
-checkpoint.
+checkpoint, confirmed one final time at session close (Step 4) across
+the FULL workspace, not just `sim-trajectory`.
+
+### Execution record
+
+Session executed same day as ruled, all eight checkpoints (Step 0
+through Step 4) landed. Commits, in order: `a92254b` (Step 0, this ADR
++ ADR-0026's own D8 rider), `f596a37` (Step 1, closure survey + D5/D7
+findings), `9a2f0cd` (Step 2a, D1 root-scoping refactor), `599fa47`
+(Step 2b, D3 loader closure resolution — a real cycle-detection bug
+found and fixed by its own red test), `cc9e0d6` (Step 2c, CallSubmodule
+call/return, D1-D4), `13b924e` (Step 2e, encounter-class loader
+normalizations — see Deviation record), `3adf974` (Step 2d,
+`type_of_care_transition`, D5 — a real Java `Random` sequential-seed
+clustering bug found and fixed in the test suite itself), `01eb56b`
+(Step 3, `ear_infections.json` closure vendored — the real end-to-end
+proof this Wave's own machinery works, not just synthetic unit-test
+fixtures).
+
+### Deviation record
+
+Three disclosed deviations from the session prompt's own literal Step
+2 checkpoint list (a-d), each the same "characterization surfaces a
+real, in-spirit-authorized finding" shape ADR-0026's own deviation
+record already established a precedent for:
+
+1. **Step 2e (encounter-class loader normalizations) is an ADDITIONAL
+   commit, not named in D1-D8.** Step 1's own characterization of
+   `ear_infections.json`'s real closure found two more mandatory-path
+   gaps beyond `CallSubmodule` itself: an unrecognized `encounter_class:
+   "outpatient"` value on the module's own primary encounter, and the
+   already-documented `wellness: true` boolean idiom (section 8's own
+   M7 finding) confirmed mandatory here for the first time. Both are
+   cheap, mechanical, narrowly-scoped v1.1 extensions in the same
+   spirit as every prior wave's own emergent findings (`:symptom`-as-
+   condition, Wave A) — landed rather than dropped, since dropping
+   `ear_infections.json` over two loader normalizations this project's
+   own established discipline already has a template for would have
+   been the wrong trade.
+2. **Two more mandatory-path findings folded into Step 2c rather than
+   their own commits:** `MedicationOrder`'s own `assign_to_attribute` /
+   `MedicationEnd`'s own `referenced_by_attribute`, and the `Attribute`
+   condition's own `is nil`/`is not nil` operators. Both are tightly
+   coupled to CallSubmodule's own cross-module reference shape (the
+   whole reason they're load-bearing is that ear_infections.json's own
+   closure crosses a call boundary) — splitting them into separate
+   commits would have been an artificial cut through one coherent
+   change, the same reasoning ADR-0026's own `:at-least`/`:or` combined
+   commit already used.
+3. **`lookup_table_transition` — a genuinely new, unplanned SIXTH
+   transition kind, found on `urinary_tract_infections.json`'s own
+   entry path, is named as a finding and NOT built.** Not an escalation
+   this session blocked on: the outcome (UTI deferred, D6) does not
+   change either way it's eventually resolved, and building it would
+   need real design (an external lookup-table CSV mechanism this
+   project has no analog for) outside D1-D8's own scope. Section 9 and
+   §2 both carry the full account.
+
+None of the three changes this ADR's own D1-D8 decisions — each is an
+IMPLEMENTATION-level finding Step 1's own characterization surfaced,
+resolved per that step's own "extend v1 with a documented reason, or
+defer" standing option, not a design reopening.
 
 ### Fence
 
