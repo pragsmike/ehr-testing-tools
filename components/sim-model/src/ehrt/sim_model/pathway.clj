@@ -236,7 +236,37 @@
                      ;; index, which churn/other IR transforms could
                      ;; invalidate by inserting steps around it).
                      [:order-citation {:optional true} Citation]
-                     [:citation {:optional true} Citation]]]])
+                     [:citation {:optional true} Citation]]]
+   ;; GMF coverage Wave D stage D2 (2026-08-02, ADR-0029 R2(b), G1): a
+   ;; paired span mirroring :medication-order/:medication-end verbatim,
+   ;; grounded directly against Synthea's own State.java
+   ;; (CarePlanStart/CarePlanEnd classes, gmf-interpreter.md section 13)
+   ;; -- :codes/:activities are real, sourced content the closure
+   ;; (total_joint_replacement.json) actually authors; :reason stays
+   ;; UNPROPAGATED here, the SAME "declared at the loader, dead past the
+   ;; interpreter's own trajectory-event emission" treatment
+   ;; :medication-order's own :reason field already establishes (its
+   ;; real upstream resolution is a three-way attribute/PriorState/
+   ;; ConditionOnset lookup this project does not port). CarePlan itself
+   ;; is v2-silent (R3) -- these fields exist for the engine fold and a
+   ;; future sim-emit-fhir, not this stage's own emission.
+   [:care-plan-start [:map
+                      [:type [:= :care-plan-start]]
+                      [:codes [:vector Concept]]
+                      [:activities {:optional true} [:vector Concept]]
+                      [:citation {:optional true} Citation]]]
+   [:care-plan-end [:map
+                    [:type [:= :care-plan-end]]
+                    ;; the compiled :care-plan-start STEP's own
+                    ;; citation -- the SAME glass-box, position-
+                    ;; independent resolution :order-citation already
+                    ;; models (State.java's own "careplan" field: the
+                    ;; name of the CarePlanStart state, not an
+                    ;; attribute -- G1's own source-grounded finding,
+                    ;; this closure exercises no attribute-based
+                    ;; linkage).
+                    [:care-plan-citation {:optional true} Citation]
+                    [:citation {:optional true} Citation]]]])
 
 (def Pathway
   [:map
