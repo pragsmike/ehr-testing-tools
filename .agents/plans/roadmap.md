@@ -4,9 +4,11 @@ Updated by sessions in the same commit as work that changes a row. Successor to 
 design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one line
 per item; done items move to the bottom of their section with a date and sha.
 
-## Now (approved migration, sequenced — .agents/plans/2026-08-01-migration-report.md)
-- (none — the fourteen-item migration report is fully executed as of
-  migration session 6; see Done below)
+## Now (in progress)
+- GMF coverage Wave C — `Death` wired to the existing `:expired`/post-
+  mortem machinery (deferred-table's own instruction), no new mechanism —
+  `.agents/plans/2026-08-02-gmf-coverage-plan.md`; `notes/ADRs.md`
+  ADR-0028. Completes `stroke`, contributes to `sepsis`/MI/CHF.
 
 ## Next (backlog, no session scheduled)
 - Pairing-as-data (review P3-3): mutate↔judge conviction registry — design pass in
@@ -50,10 +52,6 @@ per item; done items move to the bottom of their section with a date and sha.
   trigger: a second `engine` consumer appears (the FHIR emitter is the
   likely one) or engine work itself needs the emit-state/check boundary
   designed, same plan
-- GMF coverage Wave C — `Death` wired to the existing `:expired`/post-
-  mortem machinery, no new mechanism — trigger: Wave A (stroke's other
-  gap) or donor/post-mortem content otherwise lands; completes `stroke`,
-  contributes to `sepsis`/MI/CHF (same plan)
 - GMF coverage Wave D — state types needing IR + emitter homes
   (`DiagnosticReport`, `MultiObservation`, `CarePlanStart`/`CarePlanEnd`,
   `ImagingStudy`, plus any Wave A drops) — trigger: a session willing to

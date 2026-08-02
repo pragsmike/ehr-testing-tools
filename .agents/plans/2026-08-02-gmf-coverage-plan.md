@@ -29,3 +29,23 @@ co-landing (state type + invariants same change), rng-consumption order
 documented and property-tested for every new sampling state, every
 vendored module gets survey row + vendored test, sim/ADR-0013 point 4
 curation per module, survey updated fix-forward.
+
+**Dated fix-forward note (2026-08-02, GMF coverage Wave C, C7(a)/(b),
+`notes/ADRs.md` ADR-0028).** Wave B's own payoff yielded exactly one
+vendored module, `ear_infections.json` — `urinary_tract_infections.json`
+stayed deferred (D6, ADR-0027): its own real closure (twelve files, not
+the four this plan's own top-level survey assumed) is dirty with
+`DiagnosticReport`/`MultiObservation`, both already this plan's own Wave
+D scope. UTI therefore moves fully into **Wave D's** payoff list (the "B
+→ UTI" line above is superseded, not struck — Wave B's own structural
+mechanism, `CallSubmodule`, is still a prerequisite UTI needed and now
+has; what UTI still lacks is Wave D's own scope, not Wave B's). Wave D
+also gains a second, genuinely new item: `lookup_table_transition` — a
+SIXTH GMF transition kind (beyond this plan's own four originally-named
+plus Wave B's `type_of_care_transition`), found on
+`urinary_tract_infections.json`'s own entry path, named as a finding and
+not built in Wave B (it would need an external lookup-table CSV
+mechanism this project has no analog for; the outcome — UTI deferred —
+does not change either way it is eventually resolved). Wave D is named
+here as this finding's own wave-home so it has a named owner rather than
+sitting only in a session record.
