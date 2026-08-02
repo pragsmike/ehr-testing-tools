@@ -120,6 +120,46 @@
         {:keys [steps]} (ct/compile-trajectory trajectory facility 100)]
     (is (not (contains? (first steps) :value)))))
 
+;; --- GMF coverage Wave D stage D1 (2026-08-02, ADR-0029): :observation's
+;; new fields, and :diagnostic-report -----------------------------------
+
+(deftest observation-compiles-with-value-code-category-and-reference-range
+  (let [value-code {:system :snomed :code "10828004" :display "Positive (qualifier value)"}
+        trajectory [(ev :observation {:t 100 :codes [] :value-code value-code :category "laboratory"
+                                      :reference-range {:low 95 :high 100} :interpretation :normal})]
+        {:keys [steps]} (ct/compile-trajectory trajectory facility 100)
+        step (first steps)]
+    (is (= value-code (:value-code step)))
+    (is (= "laboratory" (:category step)))
+    (is (= {:low 95 :high 100} (:reference-range step)))
+    (is (= :normal (:interpretation step)))))
+
+(deftest diagnostic-report-compiles-with-report-codes-and-flattened-children
+  (let [report-codes [{:system :loinc :code "600-7" :display "Bacteria identified in Blood by Culture"}]
+        value-code {:system :snomed :code "10828004" :display "Positive (qualifier value)"}
+        trajectory [(ev :diagnostic-report
+                        {:t 100 :codes report-codes
+                         :observations [{:category "laboratory" :codes [] :value-code value-code}]})]
+        {:keys [steps]} (ct/compile-trajectory trajectory facility 100)
+        step (first steps)]
+    (is (= :diagnostic-report (:type step)))
+    (is (= report-codes (:codes step)))
+    (is (= {:module "m" :state :s} (:citation step)))
+    (is (= [{:codes [] :value-code value-code :category "laboratory"}] (:observations step)))))
+
+(deftest diagnostic-report-with-no-report-level-codes-omits-the-key
+  (let [trajectory [(ev :diagnostic-report {:t 100 :observations [{:codes []}]})]
+        {:keys [steps]} (ct/compile-trajectory trajectory facility 100)]
+    (is (not (contains? (first steps) :codes)))))
+
+(deftest diagnostic-report-child-with-a-numeric-value-compiles-value-and-unit
+  (let [trajectory [(ev :diagnostic-report
+                        {:t 100 :observations [{:codes [] :value 92.0 :unit "mm[Hg]"}]})]
+        {:keys [steps]} (ct/compile-trajectory trajectory facility 100)
+        child (first (:observations (first steps)))]
+    (is (= 92.0 (:value child)))
+    (is (= "mm[Hg]" (:unit child)))))
+
 (deftest medication-order-then-end-carries-a-matching-order-citation
   (let [codes [{:system :rxnorm :code "308191" :display "Amoxicillin"}]
         trajectory [(ev :medication-order {:t 100 :state :rx :codes codes})
@@ -195,7 +235,8 @@
             HERE, since the M5a interpreter itself does not discriminate"
     (let [trajectory [(ev :encounter {:t 10 :pre-horizon true :encounter-class :ambulatory :codes []})
                       (ev :procedure {:t 11 :pre-horizon true :codes []})
-                      (ev :observation {:t 12 :pre-horizon true :codes []})]
+                      (ev :observation {:t 12 :pre-horizon true :codes []})
+                      (ev :diagnostic-report {:t 13 :pre-horizon true :observations [{:codes []}]})]
           {:keys [steps registration-facts]} (ct/compile-trajectory trajectory facility 100)]
       (is (empty? steps))
       (is (empty? registration-facts)))))

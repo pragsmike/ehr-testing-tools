@@ -346,6 +346,122 @@
     (is (<= 37.5 (:value event) 39.5))
     (is (= 1 @calls))))
 
+;; --- GMF coverage Wave D stage D1 (2026-08-02, ADR-0029): observation
+;; family -- value_code/vital_sign sourcing, :category pass-through,
+;; MultiObservation/DiagnosticReport -> :diagnostic-report -------------------
+
+(def ^:private a-value-code {:system :snomed :code "10828004" :display "Positive (qualifier value)"})
+(def ^:private a-loinc-code {:system :loinc :code "88262-1" :display "Gram positive blood culture panel"})
+
+(def value-code-observation-module
+  {:id "obs-mod"
+   :name "Observation"
+   :states {:initial {:type :initial :direct-transition :finding}
+            :finding {:type :observation :codes [a-loinc-code] :value-code a-value-code :category "laboratory"
+                      :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest observation-with-value-code-carries-it-verbatim-and-consumes-no-rng
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :finding)
+        calls (atom 0)
+        rng (proxy [Random] [(long 1)]
+              (nextDouble [] (swap! calls inc) (proxy-super nextDouble)))
+        outcome (interp/step value-code-observation-module rng ctx)
+        [event] (:events outcome)]
+    (is (= a-value-code (:value-code event)))
+    (is (= "laboratory" (:category event)))
+    (is (nil? (:value event)))
+    (is (zero? @calls))))
+
+(def vital-sign-observation-module
+  {:id "vital-mod"
+   :name "Vital"
+   :states {:initial {:type :initial :direct-transition :spo2}
+            :spo2 {:type :observation :codes [{:system :loinc :code "59408-5"}] :unit "%"
+                   :vital-sign "Oxygen Saturation" :category "vital-signs" :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest observation-with-vital-sign-samples-within-the-reference-table-range-consuming-one-draw
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :spo2)
+        calls (atom 0)
+        rng (proxy [Random] [(long 1)]
+              (nextDouble [] (swap! calls inc) (proxy-super nextDouble)))
+        outcome (interp/step vital-sign-observation-module rng ctx)
+        [event] (:events outcome)]
+    (is (<= 95 (:value event) 100))
+    (is (= "%" (:unit event)))
+    (is (= {:low 95 :high 100} (:reference-range event)))
+    (is (= :normal (:interpretation event)))
+    (is (= 1 @calls))))
+
+(deftest observation-with-an-unrecognized-vital-sign-name-throws
+  (let [bad-module (assoc-in vital-sign-observation-module [:states :spo2 :vital-sign] "Respiratory Rate")
+        ctx (assoc (ctx-for (persona-at 1)) :current :spo2)]
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"unrecognized vital-sign"
+                           (interp/step bad-module (Random. 1) ctx)))))
+
+(def diagnostic-report-module
+  {:id "dr-mod"
+   :name "DiagnosticReport"
+   :states {:initial {:type :initial :direct-transition :blood-cultures}
+            :blood-cultures {:type :diagnostic-report
+                              :codes [{:system :loinc :code "600-7" :display "Bacteria identified in Blood by Culture"}]
+                              :observations [{:category "laboratory" :codes [a-loinc-code] :value-code a-value-code}]
+                              :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest diagnostic-report-state-emits-one-event-carrying-report-codes-and-observations
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :blood-cultures)
+        outcome (interp/step diagnostic-report-module (Random. 1) ctx)
+        [event] (:events outcome)]
+    (is (= 1 (count (:events outcome))) "ONE event for the whole state, not one per child (P5)")
+    (is (= :diagnostic-report (:event event)))
+    (is (= [{:system :loinc :code "600-7" :display "Bacteria identified in Blood by Culture"}] (:codes event)))
+    (is (= [{:category "laboratory" :codes [a-loinc-code] :value-code a-value-code}] (:observations event)))))
+
+(def multi-observation-module
+  {:id "mo-mod"
+   :name "MultiObservation"
+   :states {:initial {:type :initial :direct-transition :bp}
+            :bp {:type :multi-observation :category "vital-signs"
+                 :codes [{:system :loinc :code "85354-9" :display "Blood pressure panel with all children optional"}]
+                 :observations [{:category "vital-signs" :unit "mm[Hg]"
+                                  :codes [{:system :loinc :code "8480-6" :display "Systolic Blood Pressure"}]
+                                  :range {:low 90 :high 120}}
+                                 {:category "vital-signs" :unit "mm[Hg]"
+                                  :codes [{:system :loinc :code "8462-4" :display "Diastolic Blood Pressure"}]
+                                  :vital-sign "Diastolic Blood Pressure"}]
+                 :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest multi-observation-state-also-compiles-to-a-diagnostic-report-event-consuming-two-draws
+  (testing "R2(a)/D1a-2: MultiObservation and DiagnosticReport are two
+            distinct loadable state TYPES that compile to the SAME
+            trajectory event type -- 'one step type, both compile into
+            it'; two children, one range-sourced (one draw) and one
+            vital_sign-sourced (one draw), consuming exactly two draws
+            total, in vector order"
+    (let [ctx (assoc (ctx-for (persona-at 1)) :current :bp)
+          calls (atom 0)
+          rng (proxy [Random] [(long 1)]
+                (nextDouble [] (swap! calls inc) (proxy-super nextDouble)))
+          outcome (interp/step multi-observation-module rng ctx)
+          [event] (:events outcome)]
+      (is (= :diagnostic-report (:event event)))
+      (is (= 2 (count (:observations event))))
+      (is (<= 90 (:value (first (:observations event))) 120))
+      (is (<= 60 (:value (second (:observations event))) 80))
+      (is (= 2 @calls)))))
+
+(deftest diagnostic-report-state-with-no-report-level-codes-omits-the-key
+  (testing "D1a-2: :codes is optional on a MultiObservation/DiagnosticReport
+            state -- absent, never a fabricated empty vector"
+    (let [module (update-in diagnostic-report-module [:states :blood-cultures] dissoc :codes)
+          ctx (assoc (ctx-for (persona-at 1)) :current :blood-cultures)
+          outcome (interp/step module (Random. 1) ctx)
+          [event] (:events outcome)]
+      (is (not (contains? event :codes))))))
+
 ;; --- Properties (Task 2.4, THE seam) ---------------------------------------
 
 (defn- run-fixture [seed persona-config]

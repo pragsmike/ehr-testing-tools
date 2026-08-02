@@ -2004,3 +2004,84 @@ already covers it. **No `message-type-registry` change beyond a new
 trigger `:result-available`/`:observation` already use, since a real
 DiagnosticReport panel IS an ORU^R01, ORC+OBR present (unlike the
 order-less `:observation` shape).
+
+## 12. GMF coverage Wave D stage D1b: observation family implementation (2026-08-02)
+
+D1a's own schema PROPOSAL (P1–P6) was RULED (`notes/ADRs.md` ADR-0029's
+own dated ruling note, Q1–Q4 resolved) and landed this session, per-layer,
+each co-landing schema + compile-trajectory mapping + engine handling +
+emission decision, this project's own standing co-landing convention.
+
+**Loader (`ehrt.sim-trajectory.gmf`).** `MultiObservation`/
+`DiagnosticReport` join v1 as two distinct loadable state types
+(`gmf-type->keyword`), both extending Synthea's own private
+`ObservationGroup` — grounded directly against the real, fetched
+`sepsis.json` (D1a-2's own citations): embedded children carry NO
+`:type`/transitions of their own, only `:category`/`:unit`/`:codes` plus
+exactly one of `:range`/`:value-code`/`:vital-sign` (`ObservationChild`,
+new). `:observation`'s own GmfState gains the same two new optional
+fields (`:value-code`/`:vital-sign`) a standalone Observation state can
+carry (Capillary_Refill/Pulse_Oximetry, D1a-3). `:vital-sign`'s raw
+string value is left untouched at load time — a lookup key into the
+reference table below, never a module-authored identifier to
+slug/namespace the way `:attribute`/`:symptom` are.
+
+**Interpreter (`ehrt.sim-trajectory.gmf-interpreter`).**
+`sample-observation-extra` gains `value_code`/`vital_sign` branches
+alongside the pre-existing `range` branch (D1a-3's three mechanisms,
+side by side), plus `:category` pass-through (Q1's own ruling). The
+`vital_sign` branch (`vital-sign-extra`) draws ONE uniform value from
+`sim-trajectory/vital-signs.edn`'s own `:reference-range` for the named
+vital sign — the SAME plain-range mechanism `range` already uses (P4's
+own Option A, RULED); because the value is drawn FROM that range by
+construction, the OBX abnormal-flag this same range supports (Q2+Q3)
+is always `:normal`, an honest computed consequence of the
+simplification. An unrecognized vital-sign name throws
+(`:unrecognized-vital-sign`) — a real, visible rejection, the table's
+own "grows by evidence" rule. `MultiObservation`/`DiagnosticReport`
+both compile to ONE trajectory event type, `:diagnostic-report`,
+carrying the report-level `:codes` (optional, D1a-2) and the full
+`:observations` vector — each child sampled via the SAME
+`sample-observation-extra`, reused verbatim, never a parallel
+child-sampling implementation, consuming RNG per child in vector order.
+
+**Compile-trajectory.** `observation-fields` extracted (value/unit/
+value-code/category/reference-range/interpretation) and shared by both
+the top-level `:observation` step compile and each `:diagnostic-report`
+child (`diagnostic-report->step`) — P1/P2's own "no third type" applied
+literally in code, not merely in schema. `:diagnostic-report` joins
+`pre-horizon-dropped-types` (the same treatment `:observation` already
+gets).
+
+**Engine (`ehrt.sim.engine`).** `decide`/`evolve :diagnostic-report`
+follow P5's own recommendation exactly: `decide` emits ONE
+`:diagnostic-report` ground-truth event (codes + the full observations
+vector, mirroring how the compiled IR step itself bundles children);
+`evolve` FLATTENS each child into its own `ObservationRecord` appended
+to `:observations` — the identical pattern `:result-available`'s own
+per-analyte flattening already establishes, reused rather than a third
+accumulator shape invented. `ObservationRecord` gains `:value-code`/
+`:category`; `:reference-range`/`:interpretation` already existed
+(`:result-available`'s own fields, now shared). `check.clj`'s
+`clinical-content-only-when-admitted` invariant extends its own event
+set to include `:diagnostic-report` — the same therapeutic-intent-class
+scoping `:procedure`/`:observation`/`:medication-order` already get.
+
+**Emission (`ehrt.sim-emit-hl7.emit-hl7`).** `report-obx-segment` (new)
+shares `observation-obx-segment`'s field set but branches OBX-2
+`"CWE"`/`"NM"` on whether the child carries `:value-code`, rendering a
+SNOMED CT-coded finding via a new system-aware `coded-value-field`
+(`cwe-field` itself stays LOINC-hardcoded and untouched — every
+pre-existing call site is a LOINC panel/analyte concept) — plus, beyond
+P6's own base sketch, OPTIONAL reference-range/abnormal-flag rendering
+when the child carries them (Q2+Q3's own ruling), blank otherwise, never
+fabricated. `diagnostic-report-message` (new): MSH/PID/PV1/`orc-segment`
+(reused unchanged)/`obr-segment` (reused unchanged, report-level codes)/
+one `report-obx-segment` per child via `map-indexed`, the same shape
+`oru-message` already establishes for `:results`. One new
+`message-type-registry` entry, `:diagnostic-report -> {:type "ORU"
+:trigger "R01"}`; `control-id-for` needed no change (P6's own finding).
+
+Full field-by-field diffs, test coverage, and the sepsis.json vendoring
+payoff are in the D1b session record and the commits it names (ADR-0029
+execution note).

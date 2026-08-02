@@ -75,8 +75,24 @@
   compatible representation, D2's own latitude). A defensive
   `max-call-depth` backstop (D3) throws if the call stack ever exceeds
   it -- a bug signal (e.g. a static-acyclicity gap `gmf/load-closure`'s
-  own D3 check should have caught), never a legitimate result."
-  (:require [ehrt.sim-trajectory.gmf :as gmf])
+  own D3 check should have caught), never a legitimate result.
+
+  GMF coverage Wave D stage D1 (2026-08-02, ADR-0029, D1a schema
+  RULING): `:multi-observation`/`:diagnostic-report` both compile to
+  ONE trajectory event type, `:diagnostic-report` (D1a-2's own shared-
+  ObservationGroup-parent grounding, R2(a)) -- `sample-observation-
+  extra` gains `value_code`/`vital_sign` branches (D1a-3's other two
+  value-sourcing mechanisms) alongside the pre-existing `range` branch,
+  applied identically whether sampling a standalone `:observation`
+  state or one embedded `:diagnostic-report` child. RNG order contract,
+  extended: a `:multi-observation`/`:diagnostic-report` state consumes
+  its children's own draws, IN VECTOR ORDER, each exactly as
+  `sample-observation-extra`'s own per-branch rule already states
+  (`range`/`vital_sign`: one draw; `value_code`/neither: zero) -- no
+  draw of the parent state's own, beyond what its children need."
+  (:require [clojure.edn :as edn]
+            [clojure.java.io :as io]
+            [ehrt.sim-trajectory.gmf :as gmf])
   (:import [java.time LocalDate Period]
            [java.util Random]))
 
@@ -532,12 +548,75 @@
 
 (defn- round1 [^double v] (/ (Math/round (* v 10.0)) 10.0))
 
+;; --- GMF coverage Wave D stage D1 (2026-08-02, ADR-0029, D1a-4, D1a
+;; schema RULING Q2+Q3): the vital-sign reference table -- this
+;; project's own documented simplification for a real upstream mechanism
+;; (Synthea's `LifecycleModule.java`) it has never ported, D1a-4's own
+;; finding. Loaded once at namespace load time, the same "small,
+;; hand-curated, hashed content" treatment ehrt.sim.order-profiles' own
+;; resources/order-profiles.edn already establishes for the analogous
+;; lab-analyte table.
+(def ^:private vital-sign-reference-table
+  (edn/read-string (slurp (io/resource "sim-trajectory/vital-signs.edn"))))
+
+(defn- vital-sign-extra
+  "One uniform draw within the named vital-sign's own :reference-range
+  (the SAME plain-range mechanism the pre-existing `range` branch
+  already uses, P4's own 'documented approximation of a real continuous
+  physiology model this project does not have') -- because the value is
+  drawn FROM :reference-range by construction, the abnormal-flag this
+  same range also supports (Q2+Q3's own 'supplies the OBX reference-
+  range/abnormal-flag inputs' ruling) is always :normal, an honest
+  computed consequence of the simplification, never a fabricated
+  excursion. An unrecognized name is a real, visible rejection
+  (:unrecognized-vital-sign) -- this table's own header comment's
+  'grows by evidence, not speculation' rule -- never a silent nil."
+  [^Random rng codes vital-sign-name]
+  (if-let [{:keys [reference-range units]} (get vital-sign-reference-table vital-sign-name)]
+    (let [{:keys [low high]} reference-range]
+      {:codes codes :value (round1 (rand-double-in rng low high)) :unit units
+       :reference-range reference-range :interpretation :normal})
+    (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: unrecognized vital-sign name -- not in sim-trajectory/vital-signs.edn"
+                     {:unrecognized-vital-sign vital-sign-name}))))
+
 (defn- sample-observation-extra
+  "The three value-sourcing mechanisms D1a-3 found side by side in one
+  closure, in the same order that document enumerates them: `range`
+  (legacy, M5a), `value_code` (a coded/qualitative finding, verbatim --
+  code passthrough law), `vital_sign` (`vital-sign-extra`, above).
+  Neither present -> codes only, unchanged M5a behavior. `:category`
+  (Q1's own ruling: added now) rides along whenever the state carries
+  one, independent of which value mechanism (or none) fired -- reused
+  identically whether `state` is a full top-level GmfState or one bare
+  ObservationChild map (`gmf/ObservationChild`'s own shape), since both
+  carry exactly the same field names."
   [^Random rng state]
-  (let [codes (:codes state)]
-    (if-let [{:keys [low high]} (:range state)]
-      {:codes codes :value (round1 (rand-double-in rng low high)) :unit (:unit state)}
-      {:codes codes})))
+  (let [codes (:codes state)
+        base (cond
+               (:range state)
+               (let [{:keys [low high]} (:range state)]
+                 {:codes codes :value (round1 (rand-double-in rng low high)) :unit (:unit state)})
+
+               (:value-code state)
+               {:codes codes :value-code (:value-code state)}
+
+               (:vital-sign state)
+               (vital-sign-extra rng codes (:vital-sign state))
+
+               :else {:codes codes})]
+    (cond-> base (:category state) (assoc :category (:category state)))))
+
+(defn- diagnostic-report-extra
+  "R2(a)/P5: ONE trajectory event for the whole state, carrying the
+  report-level :codes (when present, D1a-2: optional) and the full
+  :observations vector -- each child sampled the SAME way a standalone
+  Observation state is (`sample-observation-extra`, reused verbatim,
+  never a parallel child-sampling implementation), in the state's own
+  vector order (this namespace's own docstring RNG order-contract
+  note)."
+  [^Random rng state]
+  (cond-> {:observations (mapv (partial sample-observation-extra rng) (:observations state))}
+    (:codes state) (assoc :codes (:codes state))))
 
 ;; --- GMF coverage Wave B (2026-08-02, ADR-0027, D1-D4): CallSubmodule
 ;; call/return -- descend-run-return, ns docstring's own order contract --
@@ -711,6 +790,12 @@
                                         {:references (index-of-last-open-encounter (:trajectory ctx) module-id)})
       :procedure (emit-and-advance module-id ctx rng state :procedure {:codes (:codes state)})
       :observation (emit-and-advance module-id ctx rng state :observation (sample-observation-extra rng state))
+      ;; GMF coverage Wave D stage D1 (2026-08-02, ADR-0029 R2(a)): both
+      ;; state TYPES compile to the SAME trajectory event type,
+      ;; :diagnostic-report -- D1a-2's own shared-ObservationGroup-parent
+      ;; grounding, "one step type, both compile into it."
+      (:multi-observation :diagnostic-report)
+      (emit-and-advance module-id ctx rng state :diagnostic-report (diagnostic-report-extra rng state))
       ;; GMF coverage Wave B (2026-08-02, ADR-0027): assign-to-attribute
       ;; / referenced-by-attribute -- a mandatory-path finding, Step 1's
       ;; own characterization (docs/gmf-interpreter.md section 9):

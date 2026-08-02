@@ -8,10 +8,11 @@
 
   Load-time enforcement, result-not-throw (ehrt.kernel.result):
   a module using a state type OUTSIDE v1's subset (Counter,
-  MultiObservation, CarePlanStart/CarePlanEnd, DiagnosticReport,
-  ImagingStudy -- section 1's own deferred-type table; CallSubmodule/
-  Device/DeviceEnd/Death all joined v1 across M5b and the GMF coverage
-  waves) is REJECTED with
+  CarePlanStart/CarePlanEnd, ImagingStudy -- section 1's own
+  deferred-type table; CallSubmodule/Device/DeviceEnd/Death all joined
+  v1 across M5b and the GMF coverage waves, MultiObservation/
+  DiagnosticReport joined v1 at GMF coverage Wave D stage D1, ADR-0029)
+  is REJECTED with
   :unsupported-state-type, never silently skipped and never thrown -- this
   is a stricter, mechanical gate than the informal 'read past what you
   don't execute' survey-reading section 1 also describes (that describes
@@ -111,7 +112,16 @@
    ;; (:expired, docs/patient-state-model.md). The interpreter's own
    ;; handling (gmf-interpreter.clj) is the C1/C2 build; this loader
    ;; only makes the state TYPE loadable and validates its own shape.
-   "Death" :death})
+   "Death" :death
+   ;; GMF coverage Wave D stage D1 (2026-08-02, ADR-0029 R2(a)): the
+   ;; observation family joins v1 -- both extend Synthea's own private
+   ;; ObservationGroup class (D1a-2, docs/gmf-interpreter.md section 11)
+   ;; and compile into ONE shared pathway-IR step (:diagnostic-report),
+   ;; but stay TWO distinct loadable state types here (this loader's own
+   ;; job is validating the module JSON as authored, not the later
+   ;; compile-time union).
+   "MultiObservation" :multi-observation
+   "DiagnosticReport" :diagnostic-report})
 
 (def ^:private code-system->keyword
   "GMF's own code-system strings -> sim-model/Concept's
@@ -241,6 +251,19 @@
     (:type-of-care-transition state)
     (update :type-of-care-transition #(into {} (map (fn [[k t]] [k (keyword (slug t))])) %))))
 
+(defn- normalize-observation-child
+  "GMF coverage Wave D stage D1 (2026-08-02, ADR-0029): one embedded
+  MultiObservation/DiagnosticReport child -- :codes (same as every
+  other state's own) and :value-code (a single Concept, the same
+  normalize-code as :codes' own elements) normalized; :range/:vital-
+  sign carry no code system of their own, untouched. `:vital-sign`'s
+  raw value stays exactly as authored (this table's own lookup key,
+  see gmf-interpreter's own sample-observation-extra), never slugged."
+  [child]
+  (cond-> child
+    (:codes child) (update :codes #(mapv normalize-code %))
+    (:value-code child) (update :value-code normalize-code)))
+
 (defn- normalize-state
   [state]
   (let [raw-type (:type state)
@@ -271,7 +294,14 @@
                   (:condition-onset state) (update :condition-onset (fn [t] (keyword (slug t))))
                   (:medication-order state) (update :medication-order (fn [t] (keyword (slug t))))
                   (:device state) (update :device (fn [t] (keyword (slug t))))
-                  (:target-encounter state) (update :target-encounter (fn [t] (keyword (slug t)))))
+                  (:target-encounter state) (update :target-encounter (fn [t] (keyword (slug t))))
+                  ;; GMF coverage Wave D stage D1 (2026-08-02, ADR-0029):
+                  ;; :value-code on a standalone :observation state
+                  ;; (Capillary_Refill's own top-level shape); :observations
+                  ;; on a :multi-observation/:diagnostic-report state (its
+                  ;; own embedded children, D1a-2).
+                  (:value-code state) (update :value-code normalize-code)
+                  (:observations state) (update :observations #(mapv normalize-observation-child %)))
           normalize-transitions))))
 
 (defn- normalize-states
@@ -331,6 +361,23 @@
 (def ^:private Range [:map [:low number?] [:high number?] [:unit {:optional true} :string]])
 (def ^:private Exact [:map [:quantity number?] [:unit {:optional true} :string]])
 
+;; GMF coverage Wave D stage D1 (2026-08-02, ADR-0029 R2(a), D1a-2): a
+;; MultiObservation/DiagnosticReport state's own :observations array is
+;; a list of EMBEDDED, INLINE observation content -- confirmed directly
+;; against real sepsis.json JSON (Blood_Cultures/Record_Blood_Pressure):
+;; each entry carries :category/:unit/:codes and exactly one of
+;; :range/:value-code/:vital-sign, but NO :type and NO transitions of
+;; its own (unlike a standalone Observation state) -- children are
+;; never separately-cited states, only content the parent state carries.
+(def ^:private ObservationChild
+  [:map
+   [:category {:optional true} :string]
+   [:unit {:optional true} :string]
+   [:codes [:vector sim-model/Concept]]
+   [:range {:optional true} Range]
+   [:value-code {:optional true} sim-model/Concept]
+   [:vital-sign {:optional true} :string]])
+
 (def ^:private TransitionFields
   [[:direct-transition {:optional true} :keyword]
    [:distributed-transition {:optional true}
@@ -381,9 +428,39 @@
    [:procedure (with-transitions [:type [:= :procedure]] [:codes [:vector sim-model/Concept]]
                  [:target-encounter {:optional true} :keyword] [:reason {:optional true} :string]
                  [:duration {:optional true} Range])]
+   ;; GMF coverage Wave D stage D1 (2026-08-02, ADR-0029, D1a-3/D1a-RULING
+   ;; Q2+Q3): :value-code (a coded/qualitative finding) and :vital-sign
+   ;; (a named-vital-sign lookup, the raw JSON string left UNTOUCHED --
+   ;; unlike :attribute/:symptom, this is a lookup key into this
+   ;; project's own curated reference table, sim-trajectory/vital-
+   ;; signs.edn, never a module-authored identifier to slug/namespace)
+   ;; join :range as the three value-sourcing mechanisms this closure
+   ;; needs, side by side on the same state type (D1a-3's own finding:
+   ;; real Synthea authors mix idioms even within one module).
    [:observation (with-transitions [:type [:= :observation]] [:codes [:vector sim-model/Concept]]
                    [:category {:optional true} :string] [:unit {:optional true} :string]
-                   [:range {:optional true} Range])]
+                   [:range {:optional true} Range]
+                   [:value-code {:optional true} sim-model/Concept]
+                   [:vital-sign {:optional true} :string])]
+   ;; GMF coverage Wave D stage D1 (2026-08-02, ADR-0029 R2(a), D1a-2):
+   ;; both extend Synthea's own private ObservationGroup class -- :codes
+   ;; optional (a MultiObservation/DiagnosticReport state with no
+   ;; report-level code is real, source-grounded, D1a-2), :category
+   ;; MultiObservation-only at the Java level but declared here on both
+   ;; for uniformity (harmless when absent, the same tolerant-map
+   ;; convention this schema already follows elsewhere) -- no
+   ;; :number-of-observations-equivalent field (D1a-2: DEAD JSON, the
+   ;; children vector's own count already is the count; the loaded
+   ;; module map still carries the raw key verbatim, unvalidated,
+   ;; harmless, same disposition :assign-to-attribute's own unused-field
+   ;; precedent already establishes).
+   [:multi-observation (with-transitions [:type [:= :multi-observation]]
+                          [:codes {:optional true} [:vector sim-model/Concept]]
+                          [:category {:optional true} :string]
+                          [:observations [:vector ObservationChild]])]
+   [:diagnostic-report (with-transitions [:type [:= :diagnostic-report]]
+                          [:codes {:optional true} [:vector sim-model/Concept]]
+                          [:observations [:vector ObservationChild]])]
    ;; GMF coverage Wave B (2026-08-02, ADR-0027): :assign-to-attribute /
    ;; :referenced-by-attribute -- an alternative to the fixed state-name
    ;; citation (:medication-order below) for when the SAME MedicationEnd

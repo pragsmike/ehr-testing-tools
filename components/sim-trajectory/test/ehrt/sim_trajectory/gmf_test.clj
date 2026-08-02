@@ -52,19 +52,24 @@
              (:codes procedure))))))
 
 (def deferred-state-type-json
-  "A deliberately malformed module: uses MultiObservation (docs/gmf-
-  interpreter.md's own deferred-type table, still deferred -- Wave D's
-  own scope) -- must be rejected, never thrown, never silently skipped.
+  "A deliberately malformed module: uses ImagingStudy (docs/gmf-
+  interpreter.md's own deferred-type table, still deferred -- ADR-0029
+  R5, named OUT of GMF coverage Wave D with its own CHF trigger) --
+  must be rejected, never thrown, never silently skipped.
   GMF coverage Wave B (2026-08-02, ADR-0027, D3): this test USED to name
   CallSubmodule as its own still-deferred example -- CallSubmodule joins
   v1 as a loadable state type this session (the loader now recognizes
   it and can discover its own :submodule call-paths, `gmf/load-closure`
   below); swapped to a type that is still genuinely deferred so this
-  test keeps testing what its own docstring claims, not a stale premise."
+  test keeps testing what its own docstring claims, not a stale premise.
+  GMF coverage Wave D stage D1 (2026-08-02, ADR-0029): swapped AGAIN,
+  from MultiObservation (this session's own example, now supported) to
+  ImagingStudy, for the same reason -- a stale premise, not silently
+  left to test what it no longer tests."
   (str "{\"name\": \"Bad Module\","
        " \"states\": {"
        "   \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Recurse\"},"
-       "   \"Recurse\": {\"type\": \"MultiObservation\", \"direct_transition\": \"Done\"},"
+       "   \"Recurse\": {\"type\": \"ImagingStudy\", \"direct_transition\": \"Done\"},"
        "   \"Done\": {\"type\": \"Terminal\"}"
        " }}"))
 
@@ -73,7 +78,7 @@
     (is (result/rejected? loaded))
     (is (= :unsupported-state-type (:category loaded)))
     (is (= :recurse (:state (:payload loaded))))
-    (is (= "MultiObservation" (:raw-type (:payload loaded))))))
+    (is (= "ImagingStudy" (:raw-type (:payload loaded))))))
 
 (def reserved-attribute-collision-json
   "A deliberately malformed module: SetAttribute writes the bare,
@@ -115,6 +120,62 @@
     (is (= :death (get-in (:payload loaded) [:states :die :type])))
     (is (= [{:system :snomed :code "230690007" :display "Cerebrovascular accident (disorder)"}]
            (get-in (:payload loaded) [:states :die :codes])))))
+
+;; --- GMF coverage Wave D stage D1 (2026-08-02, ADR-0029): the
+;; observation family -- MultiObservation/DiagnosticReport, plus
+;; :observation's own new :value-code/:vital-sign fields -------------------
+
+(def observation-family-json
+  "A minimal closure exercising all three value-sourcing mechanisms
+  (D1a-3) plus both ObservationGroup state types, the same field shapes
+  sepsis.json's own Blood_Cultures/Record_Blood_Pressure/Record_Blood_
+  Pressure_2/Pulse_Oximetry use -- proves the real JSON->schema path."
+  (str "{\"name\": \"Observation Family Fixture\","
+       " \"states\": {"
+       "   \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Pulse_Oximetry\"},"
+       "   \"Pulse_Oximetry\": {\"type\": \"Observation\", \"category\": \"vital-signs\", \"unit\": \"%\","
+       "             \"codes\": [{\"system\": \"LOINC\", \"code\": \"59408-5\", \"display\": \"Oxygen saturation in Arterial blood by Pulse oximetry\"}],"
+       "             \"vital_sign\": \"Oxygen Saturation\", \"direct_transition\": \"Blood_Cultures\"},"
+       "   \"Blood_Cultures\": {\"type\": \"DiagnosticReport\","
+       "             \"codes\": [{\"system\": \"LOINC\", \"code\": \"600-7\", \"display\": \"Bacteria identified in Blood by Culture\"}],"
+       "             \"observations\": [{\"category\": \"laboratory\", \"unit\": \"\","
+       "                 \"codes\": [{\"system\": \"LOINC\", \"code\": \"88262-1\", \"display\": \"Gram positive blood culture panel\"}],"
+       "                 \"value_code\": {\"system\": \"SNOMED-CT\", \"code\": \"10828004\", \"display\": \"Positive (qualifier value)\"}}],"
+       "             \"direct_transition\": \"Record_Blood_Pressure\"},"
+       "   \"Record_Blood_Pressure\": {\"type\": \"MultiObservation\", \"category\": \"vital-signs\", \"number_of_observations\": 0,"
+       "             \"codes\": [{\"system\": \"LOINC\", \"code\": \"85354-9\", \"display\": \"Blood pressure panel\"}],"
+       "             \"observations\": [{\"category\": \"vital-signs\", \"unit\": \"mm[Hg]\","
+       "                 \"codes\": [{\"system\": \"LOINC\", \"code\": \"8480-6\", \"display\": \"Systolic Blood Pressure\"}],"
+       "                 \"range\": {\"low\": 90, \"high\": 120}}],"
+       "             \"direct_transition\": \"Terminal\"},"
+       "   \"Terminal\": {\"type\": \"Terminal\"}"
+       " }}"))
+
+(deftest observation-family-module-loads-and-validates
+  (let [loaded (gmf/load-module "observation-family-fixture" observation-family-json)]
+    (is (result/ok? loaded))))
+
+(deftest standalone-observation-vital-sign-field-normalizes-verbatim
+  (let [loaded (:payload (gmf/load-module "observation-family-fixture" observation-family-json))]
+    (is (= "Oxygen Saturation" (get-in loaded [:states :pulse-oximetry :vital-sign]))
+        "the raw vital-sign name is left untouched, no slug transform")))
+
+(deftest diagnostic-report-state-normalizes-to-diagnostic-report-type-with-a-value-code-child
+  (let [loaded (:payload (gmf/load-module "observation-family-fixture" observation-family-json))
+        blood-cultures (get-in loaded [:states :blood-cultures])]
+    (is (= :diagnostic-report (:type blood-cultures)))
+    (is (= [{:system :loinc :code "600-7" :display "Bacteria identified in Blood by Culture"}]
+           (:codes blood-cultures)))
+    (is (= {:system :snomed :code "10828004" :display "Positive (qualifier value)"}
+           (:value-code (first (:observations blood-cultures)))))))
+
+(deftest multi-observation-state-normalizes-to-multi-observation-type-with-a-range-child
+  (let [loaded (:payload (gmf/load-module "observation-family-fixture" observation-family-json))
+        rbp (get-in loaded [:states :record-blood-pressure])]
+    (is (= :multi-observation (:type rbp)))
+    (is (= {:low 90 :high 120} (:range (first (:observations rbp)))))
+    (is (= [{:system :loinc :code "8480-6" :display "Systolic Blood Pressure"}]
+           (:codes (first (:observations rbp)))))))
 
 (deftest loaded-modules-is-listable-no-hidden-modules
   (testing "docs/gmf-interpreter.md section 5's no-hidden-modules corollary"
@@ -208,9 +269,12 @@
     (is (= "leaf" (:call-path (:payload loaded))))))
 
 (def calls-deferred-leaf-json
+  "GMF coverage Wave D stage D1 (2026-08-02, ADR-0029): swapped from
+  MultiObservation (now supported) to ImagingStudy (R5, still deferred),
+  same reason as deferred-state-type-json above."
   (str "{\"name\": \"Leaf\", \"states\": {"
        "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Bad\"},"
-       "  \"Bad\": {\"type\": \"MultiObservation\", \"direct_transition\": \"Done\"},"
+       "  \"Bad\": {\"type\": \"ImagingStudy\", \"direct_transition\": \"Done\"},"
        "  \"Done\": {\"type\": \"Terminal\"}}}"))
 
 (deftest load-closure-all-or-nothing-gate-extends-to-a-transitively-called-submodule

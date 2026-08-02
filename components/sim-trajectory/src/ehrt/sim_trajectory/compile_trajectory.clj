@@ -130,11 +130,38 @@
 
 (defn- procedure->step [event] {:type :procedure :codes (:codes event) :citation (citation event)})
 
+(defn- observation-fields
+  "Value/unit/value-code/category/reference-range/interpretation,
+  verbatim (code passthrough law) -- GMF coverage Wave D stage D1
+  (ADR-0029 P1/P2, D1a schema RULING): shared by the top-level
+  :observation step compile (its own :citation attached separately,
+  below) and each :diagnostic-report child (`diagnostic-report->step`,
+  below) -- no citation of its own, embedded, never a separately-cited
+  state (D1a-2)."
+  [entry]
+  (cond-> {:codes (:codes entry)}
+    (some? (:value entry)) (assoc :value (:value entry))
+    (:unit entry) (assoc :unit (:unit entry))
+    (:value-code entry) (assoc :value-code (:value-code entry))
+    (:category entry) (assoc :category (:category entry))
+    (:reference-range entry) (assoc :reference-range (:reference-range entry))
+    (:interpretation entry) (assoc :interpretation (:interpretation entry))))
+
 (defn- observation->step
   [event]
-  (cond-> {:type :observation :codes (:codes event) :citation (citation event)}
-    (some? (:value event)) (assoc :value (:value event))
-    (:unit event) (assoc :unit (:unit event))))
+  (assoc (observation-fields event) :type :observation :citation (citation event)))
+
+;; --- GMF coverage Wave D stage D1 (2026-08-02, ADR-0029 R2(a)): both
+;; MultiObservation and DiagnosticReport interpret to the SAME
+;; trajectory event type (:diagnostic-report, gmf-interpreter.clj), so
+;; ONE compile function covers both -- D1a-2's own "one step type, both
+;; compile into it."
+
+(defn- diagnostic-report->step
+  [event]
+  (cond-> {:type :diagnostic-report :observations (mapv observation-fields (:observations event))
+           :citation (citation event)}
+    (:codes event) (assoc :codes (:codes event))))
 
 (defn- medication-order->step [event] {:type :medication-order :codes (:codes event) :citation (citation event)})
 
@@ -180,8 +207,11 @@
   operational content as a pre-horizon procedure already is; the
   engine-level 'this patient never actually registers' consequence is
   out of this wave's own minimal-path scope (C3), named here rather
-  than silently mishandled."
-  #{:encounter :encounter-end :procedure :observation :death})
+  than silently mishandled. GMF coverage Wave D stage D1 (ADR-0029):
+  `:diagnostic-report` joins this set -- a pre-horizon MultiObservation/
+  DiagnosticReport is exactly as irrelevant to THIS run's own
+  operational content as a pre-horizon :observation already is."
+  #{:encounter :encounter-end :procedure :observation :death :diagnostic-report})
 
 (def ^:private pre-horizon-fact-types
   "The ratified item 5 condensed set: ConditionOnset/ConditionEnd/
@@ -290,6 +320,10 @@
 
           (= :observation event-type)
           (recur more (emit-with-delay steps last-t event (observation->step event))
+                 registration-facts (:t event) encounter-closed?)
+
+          (= :diagnostic-report event-type)
+          (recur more (emit-with-delay steps last-t event (diagnostic-report->step event))
                  registration-facts (:t event) encounter-closed?)
 
           (= :medication-order event-type)
