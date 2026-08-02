@@ -359,12 +359,102 @@
         {:keys [ground-truth facility providers]} (engine/run {:seed 1 :patients 1 :pathways [{:pathway pathway :weight 1}]})
         messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
         oru (first (filter #(re-find #"\^R01" %) messages))
-        parsed (parser/parse oru)]
+        parsed (parser/parse oru)
+        obx-line (first (filter #(str/starts-with? % "OBX") (str/split oru #"\r")))]
     (is (some? oru))
     (is (= "8310-5" (first (str/split (message/get-field-first-value parsed "OBX" 3) #"\^"))))
     (is (= "38.2" (message/get-field-first-value parsed "OBX" 5)))
     (is (= "Cel" (message/get-field-first-value parsed "OBX" 6)))
-    (is (= "" (or (message/get-field-first-value parsed "ORC" 1) "")) "no order context -- unsolicited observation")))
+    (is (= "" (or (message/get-field-first-value parsed "ORC" 1) "")) "no order context -- unsolicited observation")
+    (testing "GMF coverage Wave D stage D1 (ADR-0029): byte-identical to
+              pre-D1 output -- no reference-range/abnormal-flag fields
+              appended when the observation carries neither"
+      (is (= 7 (count (str/split obx-line #"\|" -1)))))))
+
+;; --- GMF coverage Wave D stage D1 (2026-08-02, ADR-0029 P6): observation's
+;; new fields (value-code/reference-range/abnormal-flag), and
+;; :diagnostic-report -> ORU^R01 with ORC+OBR present -----------------------
+
+(def ^:private a-value-code {:system :snomed :code "10828004" :display "Positive (qualifier value)"})
+
+(deftest observation-with-value-code-emits-cwe-obx2-and-a-system-aware-obx5
+  (let [pathway {:name "finding" :steps [{:type :admission :location "Renal"}
+                                         {:type :observation :codes [a-concept] :value-code a-value-code}]}
+        {:keys [ground-truth facility providers]} (engine/run {:seed 1 :patients 1 :pathways [{:pathway pathway :weight 1}]})
+        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+        oru (first (filter #(re-find #"\^R01" %) messages))
+        parsed (parser/parse oru)]
+    (is (= "CWE" (message/get-field-first-value parsed "OBX" 2)))
+    (is (= "10828004^Positive (qualifier value)^SCT" (message/get-field-first-value parsed "OBX" 5)))))
+
+(deftest observation-with-reference-range-emits-obx7-and-obx8
+  (let [pathway {:name "vitals" :steps [{:type :admission :location "Renal"}
+                                        {:type :observation :codes [a-concept] :value 98.0 :unit "%"
+                                         :reference-range {:low 95 :high 100} :interpretation :normal}]}
+        {:keys [ground-truth facility providers]} (engine/run {:seed 1 :patients 1 :pathways [{:pathway pathway :weight 1}]})
+        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+        oru (first (filter #(re-find #"\^R01" %) messages))
+        parsed (parser/parse oru)]
+    (is (= "95-100" (message/get-field-first-value parsed "OBX" 7)))
+    (is (= "N" (message/get-field-first-value parsed "OBX" 8)))))
+
+(def ^:private a-report-concept {:system :loinc :code "600-7" :display "Bacteria identified in Blood by Culture"})
+(def ^:private an-analyte-concept {:system :loinc :code "88262-1" :display "Gram positive blood culture panel"})
+
+(deftest message-type-registry-has-diagnostic-report
+  (is (= {:type "ORU" :trigger "R01"} (emit-hl7/message-type-registry :diagnostic-report))))
+
+(deftest diagnostic-report-emits-oru-with-orc-and-obr-and-one-obx-per-child
+  (let [pathway {:name "panel" :steps [{:type :admission :location "Renal"}
+                                       {:type :diagnostic-report :codes [a-report-concept]
+                                        :observations [{:codes [an-analyte-concept] :value-code a-value-code}]}]}
+        {:keys [ground-truth facility providers]} (engine/run {:seed 1 :patients 1 :pathways [{:pathway pathway :weight 1}]})
+        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+        oru (first (filter #(re-find #"\^R01" %) messages))
+        parsed (parser/parse oru)]
+    (is (some? oru))
+    (testing "ORC-1: new order, PRESENT -- unlike :observation's own order-less shape"
+      (is (= "NW" (message/get-field-first-value parsed "ORC" 1))))
+    (testing "OBR-4: the report-level codes"
+      (is (= "600-7^Bacteria identified in Blood by Culture^LN" (message/get-field-first-value parsed "OBR" 4))))
+    (testing "one OBX for the one child, sharing observation-obx-segment's own field set"
+      (is (= 1 (count (message/get-segments parsed "OBX"))))
+      (is (= "CWE" (message/get-field-first-value parsed "OBX" 2)))
+      (is (= "88262-1^Gram positive blood culture panel^LN" (message/get-field-first-value parsed "OBX" 3)))
+      (is (= "10828004^Positive (qualifier value)^SCT" (message/get-field-first-value parsed "OBX" 5))))))
+
+(deftest diagnostic-report-with-multiple-children-emits-one-obx-per-child-in-order
+  (let [pathway {:name "bp-panel"
+                 :steps [{:type :admission :location "Renal"}
+                         {:type :diagnostic-report
+                          :observations [{:codes [{:system :loinc :code "8480-6" :display "Systolic Blood Pressure"}]
+                                          :value 92.0 :unit "mm[Hg]"}
+                                         {:codes [{:system :loinc :code "8462-4" :display "Diastolic Blood Pressure"}]
+                                          :value 64.0 :unit "mm[Hg]"}]}]}
+        {:keys [ground-truth facility providers]} (engine/run {:seed 1 :patients 1 :pathways [{:pathway pathway :weight 1}]})
+        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+        oru (first (filter #(re-find #"\^R01" %) messages))
+        parsed (parser/parse oru)
+        obx-segments (message/get-segments parsed "OBX")]
+    (is (= 2 (count obx-segments)))
+    (let [field #(parser/pr-field (:delimiters parsed) (message/get-segment-field-raw %1 %2))]
+      (is (= "1" (field (first obx-segments) 1)))
+      (is (= "92.0" (field (first obx-segments) 5)))
+      (is (= "2" (field (second obx-segments) 1)))
+      (is (= "64.0" (field (second obx-segments) 5))))))
+
+(deftest diagnostic-report-with-no-report-level-codes-emits-a-degenerate-obr4
+  (testing "no report-level :codes -> obr-segment receives nil, the same
+            degenerate-but-legal CWE cwe-field already renders for any
+            nil concept -- blank code/display, coding-system still LN,
+            never a crash"
+    (let [pathway {:name "panel" :steps [{:type :admission :location "Renal"}
+                                         {:type :diagnostic-report :observations [{:codes [an-analyte-concept] :value 1.0}]}]}
+          {:keys [ground-truth facility providers]} (engine/run {:seed 1 :patients 1 :pathways [{:pathway pathway :weight 1}]})
+          messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+          oru (first (filter #(re-find #"\^R01" %) messages))
+          parsed (parser/parse oru)]
+      (is (= "^^LN" (message/get-field-first-value parsed "OBR" 4))))))
 
 (deftest procedure-and-medication-events-render-no-message
   (let [pathway {:name "clinical" :steps [{:type :admission :location "Renal"}

@@ -83,7 +83,12 @@
    ;; already gets (gated on snomed-icd10-map landing, not built yet): a
    ;; real message shape for procedures/medications is its own future
    ;; catalytic/segment-design work, not a same-session add.
-   :observation {:type "ORU" :trigger "R01"}})
+   :observation {:type "ORU" :trigger "R01"}
+   ;; GMF coverage Wave D stage D1 (2026-08-02, ADR-0029 P6): a real
+   ;; DiagnosticReport panel IS an ORU^R01 with ORC+OBR present (unlike
+   ;; :observation's own order-less shape) -- the same trigger
+   ;; :result-available/:observation already use.
+   :diagnostic-report {:type "ORU" :trigger "R01"}})
 
 (def ^:private hl7-timestamp-formatter
   (java.time.format.DateTimeFormatter/ofPattern "yyyyMMddHHmmss"))
@@ -512,9 +517,29 @@
 (defn- cwe-field
   "CWE (Coded With Exceptions): identifier^text^coding-system. \"LN\" is
   LOINC's own HL7v2 Table 0396 coding-system abbreviation -- the coded-
-  triplet's :system rendered natively (sim/ADR-0002), not translated."
+  triplet's :system rendered natively (sim/ADR-0002), not translated.
+  Every existing call site (OBR-4/OBX-3) is always a LOINC panel/
+  analyte concept, so this stays hardcoded -- `coded-value-field`,
+  below, is the system-aware sibling a value_code-sourced OBX-5 needs."
   [{:keys [code display]}]
   (parser/create-field [code display "LN"]))
+
+;; GMF coverage Wave D stage D1 (2026-08-02, ADR-0029 P6): a value_code-
+;; sourced observation (Blood_Cultures' own embedded child, Capillary_
+;; Refill) is this project's first field ever to carry a SNOMED CT-coded
+;; VALUE, not just a LOINC-coded concept -- `cwe-field` itself stays
+;; LOINC-hardcoded and untouched.
+(def ^:private code-system->hl7-table-0396
+  "HL7v2 Table 0396 coding-system abbreviations for sim-model/Concept's
+  own :system vocabulary (sim/ADR-0002)."
+  {:loinc "LN" :snomed "SCT" :rxnorm "RXNORM" :icd10cm "I10" :cvx "CVX"})
+
+(defn- coded-value-field
+  "OBX-5 for a value_code-sourced observation: identifier^text^coding-
+  system, the SAME CWE shape `cwe-field` renders for OBR-4/OBX-3, but
+  system-aware."
+  [{:keys [system code display]}]
+  (parser/create-field [code display (get code-system->hl7-table-0396 system (name system))]))
 
 (defn- orc-segment
   "ORC-1: order control -- \"NW\" (new order) is the only value this
@@ -609,18 +634,36 @@
   "OBX-3 is the FIRST of :codes (components/sim-trajectory/docs/gmf-interpreter.md section 1: a GMF
   Observation's own concept), OBX-5 the sampled :value when present
   (some Observation states carry no :range, hence no value -- an empty
-  field, never a fabricated one), OBX-6 :unit. No reference-range/
-  abnormal-flag -- those are order-profiles' own computed-truth concept
-  (Milestone M3), not part of a GMF Observation's own shape."
-  [set-id {:keys [codes value unit]}]
-  (parser/create-segment
+  field, never a fabricated one), OBX-6 :unit. GMF coverage Wave D
+  stage D1 (2026-08-02, ADR-0029 P6, extended past its own base sketch
+  per the D1a schema RULING's Q2+Q3): OBX-2 branches \"CWE\"/\"NM\" on
+  whether the observation carries :value-code (rendered via
+  `coded-value-field`, OBX-5), and OBX-7/OBX-8 (reference-range/
+  abnormal-flag) are appended ONLY when the observation carries them
+  (the vital-sign reference table's own contribution, D1 F2) -- byte-
+  identical to every pre-existing call (range-sourced or codes-only,
+  neither field ever present) when absent, this stage's OWN emitter-
+  extension discipline (never a positional pad for a field nothing
+  supplies)."
+  [set-id {:keys [codes value unit value-code reference-range interpretation]}]
+  (apply parser/create-segment
    "OBX"
-   (parser/create-field [(str set-id)])
-   (parser/create-field ["NM"])
-   (cwe-field (first codes))
-   (parser/create-field [])
-   (parser/create-field (if (some? value) [(str value)] []))
-   (parser/create-field (if unit [unit] []))))
+   (concat
+    [(parser/create-field [(str set-id)])
+     (parser/create-field [(if value-code "CWE" "NM")])
+     (cwe-field (first codes))
+     (parser/create-field [])
+     (if value-code (coded-value-field value-code) (parser/create-field (if (some? value) [(str value)] [])))
+     (parser/create-field (if unit [unit] []))]
+    (when (or reference-range interpretation)
+      [(parser/create-field (if reference-range [(str (:low reference-range) "-" (:high reference-range))] []))
+       (parser/create-field (if interpretation [(case interpretation :normal "N" :low "L" :high "H")] []))]))))
+
+;; GMF coverage Wave D stage D1 (2026-08-02, ADR-0029 P6): a real
+;; DiagnosticReport panel's own OBX shares `observation-obx-segment`'s
+;; own field set verbatim ("sharing observation-obx-segment's simpler
+;; field set" -- P6's own text) -- reused directly, not a near-duplicate
+;; builder.
 
 (defn- observation-message
   "ORU^R01 with a SINGLE OBX and no ORC/OBR -- a legal, real HL7v2 shape
@@ -643,6 +686,33 @@
       (observation-obx-segment 1 ev)
       (z-segments-for site-profile personas ev)))))
 
+;; GMF coverage Wave D stage D1 (2026-08-02, ADR-0029 P6): ORC+OBR
+;; present (unlike :observation's own order-less shape) -- a real
+;; DiagnosticReport panel IS an ORU^R01 with order context, D1a-7's own
+;; account. ORC-1/ORC-2/OBR-4 reused unchanged (both already generic on
+;; control-id/concept); ONE `observation-obx-segment` per embedded
+;; child, `set-id` from vector position, the SAME `map-indexed` shape
+;; `oru-message` already uses for :results.
+
+(defn- diagnostic-report-message
+  [reference-date utc-offset facility providers personas site-profile
+   {:keys [t active-mrn location attending codes observations participants] :as ev}]
+  (let [type+trigger (message-type-registry :diagnostic-report)
+        ts (hl7-timestamp reference-date t utc-offset)
+        control-id (control-id-for ev)
+        facility-name (name (:id facility))
+        provider (provider-by-id providers attending)
+        obx-segments (map-indexed (fn [i o] (observation-obx-segment (inc i) o)) observations)]
+    (parser/str-message
+     (apply parser/create-message
+      parser/DEFAULT-DELIMITERS
+      (msh-segment site-profile type+trigger control-id ts)
+      (pid-segment active-mrn (get personas (:patient-id (first participants))))
+      (pv1-segment site-profile :inpatient facility-name location nil provider nil)
+      (orc-segment control-id)
+      (obr-segment 1 (first codes))
+      (concat obx-segments (z-segments-for site-profile personas ev))))))
+
 (defn event->messages
   "Renders one ground-truth event to a vector of 0+ ER7 message strings
   -- most types render exactly one message; M2b's genuinely two-
@@ -664,6 +734,7 @@
      (= :order-placed event) [(orm-message reference-date utc-offset facility providers personas site-profile ev)]
      (= :result-available event) [(oru-message reference-date utc-offset facility providers personas site-profile ev)]
      (= :observation event) [(observation-message reference-date utc-offset facility providers personas site-profile ev)]
+     (= :diagnostic-report event) [(diagnostic-report-message reference-date utc-offset facility providers personas site-profile ev)]
      :else [(single-subject-message reference-date utc-offset facility providers personas site-profile ev)])))
 
 (def ^:private default-providers
