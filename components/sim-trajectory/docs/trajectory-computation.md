@@ -3,9 +3,9 @@
 This is the cross-cutting explainer for a question no single document
 answers on its own: given a seed and a config, how does one patient's
 worth of traffic actually get computed, step by step, from nothing to
-a ground-truth log? [`patient-state-model.md`](patient-state-model.md),
-[`event-sourcing.md`](event-sourcing.md), and
-[`sim-theory.md`](sim-theory.md)/[`.edn`](sim-theory.edn) each hold a
+a ground-truth log? [`patient-state-model.md`](../../sim/docs/patient-state-model.md),
+[`event-sourcing.md`](../../sim/docs/event-sourcing.md), and
+[`sim-theory.md`](../../sim/docs/sim-theory.md)/[`.edn`](../../sim/docs/sim-theory.edn) each hold a
 piece of this — the accumulator's shape, the architectural argument for
 why the log is primary, the pipeline as a formal resource theory. This
 document is the synthesis that walks the pieces in the order execution
@@ -25,21 +25,21 @@ confusing them is the classic error this domain invites.
 **The GMF module machine** — when a patient is assigned a disease
 module — walks a MITRE-authored clinical script (`ConditionOnset`,
 `Delay`, `Encounter`, …) under the run's single seeded RNG
-(`ehrt.sim.gmf-interpreter`). This is **script-space**: it
+(`ehrt.sim-trajectory.gmf-interpreter`). This is **script-space**: it
 computes what a disease *should* do to a patient, in the abstract,
 the way a screenwriter's draft says a character enters a room — never
 which physical room, never which extra is standing in it.
 
 **The patient lifecycle machine** is driven *only* by
 `ehrt.sim.engine/evolve` folding ground-truth events
-(ADR-0008, [`event-sourcing.md`](event-sourcing.md)). This is
+(ADR-0008, [`event-sourcing.md`](../../sim/docs/event-sourcing.md)). This is
 **operational truth-space**: it computes what actually happened to a
 real patient-id in a real, capacity-constrained hospital — which bed,
 which attending, whether the transfer got cancelled.
 
 The architecture makes the distinction structural, not a matter of
 authorial discipline: **nothing in script-space can write truth.**
-`ehrt.sim.gmf-interpreter/step`/`walk-module`/`run-module`
+`ehrt.sim-trajectory.gmf-interpreter/step`/`walk-module`/`run-module`
 never touch `ehrt.sim.engine/PatientState`, never call
 `evolve`, and carry no reference to `world`. A module walk produces a
 `clinical-trajectory` — plain data, a vector of cited events — and
@@ -58,12 +58,12 @@ cancelled. Those are truth-space questions, section 4.
 samples a fixed 13 draws from the run's RNG — name, DOB, sex, address,
 phone, an SSN-shaped id, and payer — regardless of which pool or
 decade-bucket any weighted pick lands in
-([`sim-theory.edn`](sim-theory.edn)'s own `:persona` stage law). This
+([`sim-theory.edn`](../../sim/docs/sim-theory.edn)'s own `:persona` stage law). This
 happens inside the engine-internal `:registered` step every patient's
 queue is prepended with (`ehrt.sim.engine/run`), which is also
 where script-space begins for any patient carrying a module assignment.
 
-**The module walk, in two phases** (`ehrt.sim.gmf-interpreter/run-module`,
+**The module walk, in two phases** (`ehrt.sim-trajectory.gmf-interpreter/run-module`,
 [`gmf-interpreter.md`](gmf-interpreter.md) section 3). Because this
 project's own scope is an encounter horizon, not a lifetime
 (ADR-0007 point 3), a module assigned to a 45-year-old patient can't
@@ -83,7 +83,7 @@ continuous walk runs from the persona's own DOB on a virtual clock
   "mark, don't trim" choice ADR-0011 already made for warm-up traffic)
   and, at `CompileTrajectory`, promoted into **registration-time
   facts** riding the patient's own `:registered` event rather than a
-  pathway step (`ehrt.sim.compile-trajectory`'s own
+  pathway step (`ehrt.sim-trajectory.compile-trajectory`'s own
   `:registration-facts` output) — a condition or medication a patient
   already has *at* registration, with no operational event pretending
   it happened inside this run's own window.
@@ -94,7 +94,7 @@ continuous walk runs from the persona's own DOB on a virtual clock
   :state}` (glass-box traceability) and carrying its own concept
   triplets verbatim (code passthrough).
 
-**`CompileTrajectory`** (`ehrt.sim.compile-trajectory`) turns
+**`CompileTrajectory`** (`ehrt.sim-trajectory.compile-trajectory`) turns
 that trajectory into pathway IR, one state-type mapping at a time
 ([`gmf-interpreter.md`](gmf-interpreter.md) section 1's table — this
 document does not repeat it): `Encounter`/`EncounterEnd` become
@@ -109,7 +109,7 @@ rendered message all the way to the exact JSON state that produced it.
 
 **The IR union with authored pathways.** `pathway-ir` is the declared
 union of `compiled-pathway` and `authored-pathway`
-([`sim-theory.md`](sim-theory.md)'s own reading of ADR-0002 clause 1,
+([`sim-theory.md`](../../sim/docs/sim-theory.md)'s own reading of ADR-0002 clause 1,
 algebraically) — once compiled module steps and hand-authored pathway
 steps both sit in a patient's own step queue, the engine's `decide`
 multimethod dispatches purely on a step's `:type`; nothing about a
@@ -136,10 +136,10 @@ know it never reaches compiled module content today.
 insertion of operational-noise steps (cancel-admit, cancel-transfer,
 cancel-discharge, transfer-in-error, bed-swap, merge) into whatever
 pathway it's handed, never a removal, reorder, or alteration of a
-clinical step (property-tested, `docs/sim-theory.edn`'s own
+clinical step (property-tested, `components/sim/docs/sim-theory.edn`'s own
 `:churn` laws). Its applicability oracle — where in a pathway a given
 churn step is even legal to insert — is
-[`patient-state-model.md`](patient-state-model.md)'s own event-validity
+[`patient-state-model.md`](../../sim/docs/patient-state-model.md)'s own event-validity
 table, doing double duty (the same table `check.clj`'s invariant
 catalog implements as a post-hoc check on what a run actually did).
 
@@ -161,7 +161,7 @@ truth-space's alone.
 ## 4. Truth space — computing what DID happen
 
 The loop's sacred asymmetry, restated for this document's own purpose
-(the full argument is [`event-sourcing.md`](event-sourcing.md)'s):
+(the full argument is [`event-sourcing.md`](../../sim/docs/event-sourcing.md)'s):
 **`decide` proposes, `evolve` disposes.**
 
 `decide (rng, t, world, patient-id, step) → {:events :advance}`
@@ -192,7 +192,7 @@ boarding (`:home-ward ≠ :location.ward`, ED-class), outpatient
 (`:class :outpatient`), leave-of-absence once it lands — are **derived
 conditions over folded state**, recomputed on every read, never stored
 as their own flag
-([`patient-state-model.md`](patient-state-model.md)'s own worked
+([`patient-state-model.md`](../../sim/docs/patient-state-model.md)'s own worked
 example).
 
 ## 5. Two consequences worth the ceremony
@@ -243,10 +243,10 @@ exact state that shapes the very next decision.
 ## 7. The diagram
 
 The pipeline-computation view — complementary to
-[`sim-theory-diagram.md`](sim-theory-diagram.md)'s formal resource-theory
+[`sim-theory-diagram.md`](../../sim/docs/sim-theory-diagram.md)'s formal resource-theory
 diagram (which stage consumes/produces which typed resource, mechanically
-regenerated from [`sim-theory.edn`](sim-theory.edn)) and
-[`patient-state-model.md`](patient-state-model.md)'s own lifecycle
+regenerated from [`sim-theory.edn`](../../sim/docs/sim-theory.edn)) and
+[`patient-state-model.md`](../../sim/docs/patient-state-model.md)'s own lifecycle
 `stateDiagram-v2` (the authoritative statuses and their transitions,
 including its own honest note that `:expired` is designed but not yet
 drawn there) — duplicating neither. Its own lifecycle strip below is
@@ -314,20 +314,20 @@ arrive at it having taken different paths). And the lifecycle strip
 shows only the three
 landed, always-reachable statuses plus `Merged` (ADR-0010) —
 `:expired` is deliberately omitted here, the same honest omission
-[`patient-state-model.md`](patient-state-model.md)'s own diagram
-already makes, because it is designed (`docs/clinical-realities.md`'s
+[`patient-state-model.md`](../../sim/docs/patient-state-model.md)'s own diagram
+already makes, because it is designed (`components/sim/docs/clinical-realities.md`'s
 post-mortem entry, this document's own event-validity table) but not
 yet a value `ehrt.sim.engine/PatientState`'s `:status` enum
 actually carries.
 
 ## See also
 
-[`patient-state-model.md`](patient-state-model.md) for the accumulator
+[`patient-state-model.md`](../../sim/docs/patient-state-model.md) for the accumulator
 `evolve` folds into, the full event-validity table, and the
-authoritative lifecycle diagram. [`event-sourcing.md`](event-sourcing.md)
+authoritative lifecycle diagram. [`event-sourcing.md`](../../sim/docs/event-sourcing.md)
 for the architectural argument this document's section 4 restates only
-enough of to stay self-contained. [`sim-theory.md`](sim-theory.md) and
-[`sim-theory.edn`](sim-theory.edn) for the formal stage-by-stage theory
+enough of to stay self-contained. [`sim-theory.md`](../../sim/docs/sim-theory.md) and
+[`sim-theory.edn`](../../sim/docs/sim-theory.edn) for the formal stage-by-stage theory
 this document's script-space section walks in execution order rather
 than resource-theory order.
 [`gmf-interpreter.md`](gmf-interpreter.md) for the interpreter's own

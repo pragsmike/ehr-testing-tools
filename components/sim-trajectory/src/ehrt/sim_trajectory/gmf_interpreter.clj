@@ -1,4 +1,4 @@
-(ns ehrt.sim.gmf-interpreter
+(ns ehrt.sim-trajectory.gmf-interpreter
   "The GMF interpreter core (Milestone M5a Task 2, docs/gmf-interpreter.md
   sections 1, 2, and 6). Pure, seeded, engine-free: one module instance
   per patient. `step` advances exactly one state -- evaluates that
@@ -9,7 +9,7 @@
   `walk-module` drives `step` repeatedly from a patient's current state
   until the module reaches a Terminal state or BLOCKS on a Guard whose
   condition does not (yet) hold; Milestone M5a's own history/horizon
-  two-phase run (Task 3, `ehrt.sim.gmf-interpreter.horizon` or
+  two-phase run (Task 3, `ehrt.sim-trajectory.gmf-interpreter.horizon` or
   this namespace's own `run-module`) is what resumes a blocked walk
   across a phase boundary.
 
@@ -46,7 +46,7 @@
   author's own responsibility to route around (the same responsibility
   real Synthea's own Delay-then-Guard idiom already carries), not
   something this interpreter resolves for them."
-  (:require [ehrt.sim.gmf :as gmf])
+  (:require [ehrt.sim-trajectory.gmf :as gmf])
   (:import [java.time LocalDate Period]
            [java.util Random]))
 
@@ -212,7 +212,7 @@
     :active-medication (active-onset-condition-holds? :medication-order :medication-end ctx condition)
     :active-allergy false
     :and (and-condition-holds? module-id ctx condition)
-    (throw (ex-info "ehrt.sim.gmf-interpreter: unsupported condition type"
+    (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: unsupported condition type"
                      {:condition-type (:condition-type condition)}))))
 
 (defn- age-guard-jump-days
@@ -412,7 +412,7 @@
   [module rng ctx]
   (loop [ctx ctx n 0]
     (when (>= n max-steps)
-      (throw (ex-info "ehrt.sim.gmf-interpreter: walk-module exceeded max-steps -- likely a module authoring bug (a zero-time-advance transition cycle)"
+      (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: walk-module exceeded max-steps -- likely a module authoring bug (a zero-time-advance transition cycle)"
                        {:module (:id module) :current (:current ctx)})))
     (let [outcome (step module rng ctx)
           ctx' (-> ctx
@@ -456,7 +456,7 @@
   ([module rng persona registration-t horizon-end-t]
    (loop [ctx (initial-context persona) n 0]
      (when (>= n max-steps)
-       (throw (ex-info "ehrt.sim.gmf-interpreter: run-module exceeded max-steps -- likely a module authoring bug (a zero-time-advance transition cycle)"
+       (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: run-module exceeded max-steps -- likely a module authoring bug (a zero-time-advance transition cycle)"
                         {:module (:id module) :current (:current ctx)})))
      (if (and horizon-end-t (>= (:t ctx) horizon-end-t))
        (assoc ctx :status :horizon-complete)

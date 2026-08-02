@@ -251,8 +251,8 @@ whose name binds to nothing is malformed. Bindings, with build status:
 |---|---|---|
 | `sim-config` | Malli, `ehrt.sim.config` (black-box Inputs, problem statement) | partial |
 | `persona` | Malli, `ehrt.sim.persona/Persona` | v1 built |
-| `clinical-trajectory` | de-facto built as data, no formal Malli type yet — dated clinical events, each citing `{module, state}`, codes as `{:system :code :display}` (`ehrt.sim.gmf-interpreter/run-module`'s own `:trajectory` output) | de-facto built |
-| `compiled-pathway`, `authored-pathway`, `pathway-ir`, `operational-pathway` | Malli, `ehrt.sim.pathway` — the union binds to `[:or …]` of its members per the notation; `operational-pathway`'s type IS the IR type (the endomorphism law). `compiled-pathway` is real as of M5b (`ehrt.sim.compile-trajectory`, six new step types plus the `:citation`/`:conditions` provenance fields) | v1 built |
+| `clinical-trajectory` | de-facto built as data, no formal Malli type yet — dated clinical events, each citing `{module, state}`, codes as `{:system :code :display}` (`ehrt.sim-trajectory.gmf-interpreter/run-module`'s own `:trajectory` output) | de-facto built |
+| `compiled-pathway`, `authored-pathway`, `pathway-ir`, `operational-pathway` | Malli, `ehrt.sim.pathway` — the union binds to `[:or …]` of its members per the notation; `operational-pathway`'s type IS the IR type (the endomorphism law). `compiled-pathway` is real as of M5b (`ehrt.sim-trajectory.compile-trajectory`, six new step types plus the `:citation`/`:conditions` provenance fields) | v1 built |
 | `ground-truth-log` | Malli, planned as data; shape established by `engine/run` and consumed by `check` | de-facto built |
 | `state-history` | Malli, planned — per-patient `[t → state]`; today implicit in the pure fold, the want makes it a first-class output | planned |
 | `hl7v2-stream` | ER7 messages over the parser's structures | v1 built |
@@ -271,7 +271,7 @@ targets; unresolved is a gap, not an oversight:
 | Catalytic | Target | Note |
 |---|---|---|
 | `demographics-tables` | 3 — hashed repo-authored config | vendored US tables, `resources/demographics/` -- SMALL and hand-curated this milestone (no Synthea checkout available; NOTICE records why), same schema shape a real extraction would use |
-| `gmf-module-set` | 3 — hashed repo-authored/derived config | **RESOLVED, ADR-0013** (author-ratified 2026-07-27): a small, curated subset vendored into `resources/modules/`, hashed and provenance-tracked per-module in a `resources/modules/NOTICE` file (the same role `resources/demographics/NOTICE` plays), not a lockfile (target 1) — ADR-0003's own trigger, decided once `docs/gmf-interpreter.md`'s candidate-module survey gave the question something concrete to be decided against. Explicit revisit trigger: a lockfile, if the vendored set ever grows past roughly ten modules |
+| `gmf-module-set` | 3 — hashed repo-authored/derived config | **RESOLVED, ADR-0013** (author-ratified 2026-07-27): a small, curated subset vendored into `resources/modules/`, hashed and provenance-tracked per-module in a `resources/modules/NOTICE` file (the same role `resources/demographics/NOTICE` plays), not a lockfile (target 1) — ADR-0003's own trigger, decided once `components/sim-trajectory/docs/gmf-interpreter.md`'s candidate-module survey gave the question something concrete to be decided against. Explicit revisit trigger: a lockfile, if the vendored set ever grows past roughly ten modules |
 | `gmf-interpreter` | 4 — in-repo code registry | the GMF interpreter, versioned like data |
 | `invariant-catalog` | 4 — in-repo code registry | `ehrt.sim.check/catalog`, versioned; the co-landing law couples it to Execute's step set |
 | `hl7-parser-dep` | 2 — deps.edn | `org.clojars.cmiles74/clojure-hl7-parser 3.5.1` (facts-register) |
@@ -376,7 +376,7 @@ Recorded here rather than silently decided:
    (ADR-0008) already established:** target 3, vendor a small curated
    subset into `resources/modules/`, hashed and provenance-tracked
    per-module — see the Catalytic resolution table above for the full
-   citation. `docs/gmf-interpreter.md`'s own candidate-module survey
+   citation. `components/sim-trajectory/docs/gmf-interpreter.md`'s own candidate-module survey
    (its appendix) names the first module recommended to vendor under
    ADR-0013's own curation criterion, for author ratification alongside
    the ADR.

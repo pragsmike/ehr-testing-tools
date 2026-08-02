@@ -132,7 +132,7 @@
   :reference-date and needs exact DOB-vs-encounter-date coherence is
   out of this milestone's scope (recorded here, not silently assumed).
   Public as of M5b: ehrt.sim.engine's own :registered decide
-  method needs this SAME anchor as `docs/gmf-interpreter.md`'s own
+  method needs this SAME anchor as `components/sim-trajectory/docs/gmf-interpreter.md`'s own
   `registration-t` -- 'that patient's own :registered event time' is,
   in THIS project's calendar terms, this fixed reference date, the same
   one every persona's own age is already computed against -- rather

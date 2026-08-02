@@ -65,7 +65,17 @@
   just `docs/`, are this workspace's own current-tense instructional
   surfaces (`.agents/plans/`, `.agents/session-records/`,
   `.agents/prompts/`, and `notes/` itself stay out of scope, same
-  narrative-legitimacy reasoning as the family above)."
+  narrative-legitimacy reasoning as the family above).
+
+  2026-08-02 addendum (sim split S2, `.agents/plans/2026-08-02-sim-
+  split-plan.md`, R-5): `ehrt.sim.gmf` (also catches `ehrt.sim.gmf-
+  interpreter` as a substring, intentionally) and `ehrt.sim.compile-
+  trajectory` join the retired-namespace family above -- both moved to
+  `ehrt.sim-trajectory.*` this session, same denylist shape as
+  `ehrt.tools.` (stage 3). Scoped the same as the family above (`docs/`
+  plus `components/corpus/docs/use-cases.edn` only); `notes/sim/`'s own
+  historical citations of the pre-split namespace stay out of this
+  test's scan scope, confirmed before this addendum landed."
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.java.io :as io]
             [clojure.string :as str]))
@@ -90,7 +100,11 @@
     (str/includes? content "ehrt.tools.")
     (conj :retired-ehrt-tools-namespace)
     (str/includes? content "positioning.md")
-    (conj :retired-positioning-filename)))
+    (conj :retired-positioning-filename)
+    (str/includes? content "ehrt.sim.gmf")
+    (conj :retired-ehrt-sim-gmf-namespace)
+    (str/includes? content "ehrt.sim.compile-trajectory")
+    (conj :retired-ehrt-sim-compile-trajectory-namespace)))
 
 (deftest no-stale-path-family-anywhere-in-docs-or-use-cases-edn-test
   (doseq [path (scan-sources)]
@@ -106,6 +120,12 @@
   (is (= [:test-integration-path] (violations "lives on the test-integration/ path")))
   (is (= [:docs-experiments-missing-corpus-prefix] (violations "see docs/experiments/EXP-A4-results.md")))
   (is (= [:retired-ehrt-tools-namespace] (violations "see ehrt.tools.corpus.manifest/ManifestV1_1")))
+  (is (= [:retired-ehrt-sim-gmf-namespace] (violations "see ehrt.sim.gmf/load-module")))
+  (is (= [:retired-ehrt-sim-gmf-namespace] (violations "see ehrt.sim.gmf-interpreter/run-module")))
+  (is (= [:retired-ehrt-sim-compile-trajectory-namespace] (violations "see ehrt.sim.compile-trajectory/compile-trajectory")))
+  (testing "the sim-trajectory citation form does not trip either retired-prefix pattern"
+    (is (empty? (violations "see ehrt.sim-trajectory.gmf/load-module")))
+    (is (empty? (violations "see ehrt.sim-trajectory.compile-trajectory/compile-trajectory"))))
   (testing "the stage-3 citation form does not trip the retired-prefix pattern"
     (is (empty? (violations "see ehrt.corpus.manifest/ManifestV1_1"))))
   (is (= [:retired-positioning-filename] (violations "see docs/dev/positioning.md for the audience register")))

@@ -60,9 +60,8 @@
   Emission to HL7v2 is a separate namespace consuming the ground-truth
   log -- events here are format-free."
   (:require [ehrt.sim-model.interface :as sim-model]
+            [ehrt.sim-trajectory.interface :as sim-trajectory]
             [ehrt.sim.churn :as churn]
-            [ehrt.sim.compile-trajectory :as compile-trajectory]
-            [ehrt.sim.gmf-interpreter :as gmf-interpreter]
             [ehrt.sim.order-profiles :as order-profiles]
             [malli.core :as m])
   (:import [java.util Random]))
@@ -80,7 +79,7 @@
 (def ConditionRecord
   "One condition, folded from a compiled encounter step's own
   :conditions annotations (sim-model/ConditionAnnotation,
-  ehrt.sim.compile-trajectory's own annotate-condition). Scope
+  ehrt.sim-trajectory.compile-trajectory's own annotate-condition). Scope
   note: only conditions attached to an OPERATIONAL encounter step
   (:admission/:outpatient-visit) are folded here -- :registered's own
   :pre-horizon-facts (registration-time, pre-run history) are a
@@ -111,7 +110,7 @@
 (def MedicationOrderRecord
   "One medication order, folded from :medication-order and closed by a
   citation-matching :medication-end (the SAME position-independent,
-  citation-based resolution ehrt.sim.compile-trajectory already
+  citation-based resolution ehrt.sim-trajectory.compile-trajectory already
   uses throughout, extended to fold time instead of compile time)."
   [:map
    [:codes {:optional true} [:maybe [:vector sim-model/Concept]]]
@@ -275,12 +274,12 @@
 ;; assignment -- byte-identical to pre-M5b :registered output, no new draw,
 ;; the same "absent means untouched" law :pathways/:churn-profile already
 ;; establish. `registration-t` is `sim-model/reference-today-epoch-day` --
-;; docs/gmf-interpreter.md section 3's own "that patient's own :registered
+;; components/sim-trajectory/docs/gmf-interpreter.md section 3's own "that patient's own :registered
 ;; event time," expressed in the SAME calendar anchor every persona's own
 ;; DOB is already computed against (persona.clj's own docstring note).
 ;; `:module-horizon-days` bounds the walk (`run-module`'s own optional
 ;; `horizon-end-t`) -- REQUIRED for any real vendored module (M5b's own
-;; finding, docs/gmf-interpreter.md section 8 item 5: a module with no
+;; finding, components/sim-trajectory/docs/gmf-interpreter.md section 8 item 5: a module with no
 ;; Terminal state and no Guard to block on would otherwise run until the
 ;; interpreter's own max-steps backstop throws).
 
@@ -298,8 +297,8 @@
         compiled (when module
                    (let [reg-t (sim-model/reference-today-epoch-day)
                          horizon-end-t (+ reg-t (:module-horizon-days world))
-                         {:keys [trajectory]} (gmf-interpreter/run-module module rng persona reg-t horizon-end-t)]
-                     (compile-trajectory/compile-trajectory trajectory (:facility world) reg-t)))]
+                         {:keys [trajectory]} (sim-trajectory/run-module module rng persona reg-t horizon-end-t)]
+                     (sim-trajectory/compile-trajectory trajectory (:facility world) reg-t)))]
     {:events [(cond-> {:event :registered :t t
                        :active-mrn (get-in world [:patients patient-id :active-mrn])
                        :persona persona
@@ -311,7 +310,7 @@
 (defn- citation-fields
   "M5b: :citation/:conditions ride through onto the ground-truth event
   ONLY when the compiled step actually carries them (glass-box
-  traceability, docs/gmf-interpreter.md section 6 obligations 1/3) --
+  traceability, components/sim-trajectory/docs/gmf-interpreter.md section 6 obligations 1/3) --
   `select-keys` + a nil-dropping `into {}` keeps a hand-authored step
   (never compiled, carries neither key) producing the EXACT same event
   shape it always has, byte-identical, no perturbation for any pathway
@@ -601,7 +600,7 @@
   [_rng _t _world _patient-id {:keys [result-event]}]
   {:events [result-event] :advance 0})
 
-;; --- M5b: :outpatient-visit / :outpatient-visit-end (docs/gmf-interpreter.md
+;; --- M5b: :outpatient-visit / :outpatient-visit-end (components/sim-trajectory/docs/gmf-interpreter.md
 ;; section 4's sketch, items 5-7) --------------------------------------------
 
 (defmethod decide :outpatient-visit
@@ -974,7 +973,7 @@
   member on any floating-point-boundary edge case rather than nil.
   `value-key` is which field names the resolved value -- :pathway for
   sim-model/PathwaysConfig, :module-id for M5b's own
-  ehrt.sim.gmf/ModulesConfig -- the same pool shape, two resource
+  ehrt.sim-trajectory.gmf/ModulesConfig -- the same pool shape, two resource
   kinds."
   [pool draw value-key]
   (let [total (reduce + (map :weight pool))
@@ -1014,13 +1013,13 @@
       (:pathway explicit)
       (weighted-pick (filterv :weight pathways-config) draw :pathway))))
 
-;; --- M5b: per-patient module assignment (ehrt.sim.gmf/
+;; --- M5b: per-patient module assignment (ehrt.sim-trajectory.gmf/
 ;; ModulesConfig) -- the SAME shape/law as assign-pathway just above,
-;; extended to modules per docs/gmf-interpreter.md's own Task 4 (module
+;; extended to modules per components/sim-trajectory/docs/gmf-interpreter.md's own Task 4 (module
 ;; assignment composes with :pathways -- both just IR entering the union).
 
 (defn assign-module
-  "Resolves the module id `modules-config` (ehrt.sim.gmf/
+  "Resolves the module id `modules-config` (ehrt.sim-trajectory.gmf/
   ModulesConfig) assigns to patient ordinal `i` -- an explicit
   {:patient-ordinal i :module-id ...} entry when one names this ordinal,
   otherwise a weighted pick among the config's {:module-id :weight} pool
@@ -1139,13 +1138,13 @@
                       and documented (sim/ADR-0009 policy), not guarded
                       against the way M2b/M3's opt-in additions were.
     :modules          M5b: a vector of ALREADY-LOADED GMF module maps
-                      (ehrt.sim.gmf/load-module's own :payload
+                      (ehrt.sim-trajectory.gmf/load-module's own :payload
                       shape -- this namespace does no file I/O of its
                       own, ehrt.sim.run's job, the same layering
                       :facility/:providers/:order-profiles already
                       follow). Looked up by :id against
                       :module-assignment's own resolution.
-    :module-assignment M5b: ehrt.sim.gmf/ModulesConfig -- the
+    :module-assignment M5b: ehrt.sim-trajectory.gmf/ModulesConfig -- the
                       SAME weighted-pool/explicit-ordinal shape
                       :pathways already establishes, `assign-module`'s
                       own input, ONE additional fixed RNG draw per
@@ -1174,10 +1173,10 @@
     :module-horizon-days M5b: how many days past this run's own
                       registration instant (sim-model/reference-today-
                       epoch-day) an assigned module's own walk runs
-                      before stopping (`ehrt.sim.gmf-interpreter/
+                      before stopping (`ehrt.sim-trajectory.gmf-interpreter/
                       run-module`'s own optional `horizon-end-t` bound)
                       -- REQUIRED to be finite for any real module walk
-                      to terminate (docs/gmf-interpreter.md section 8
+                      to terminate (components/sim-trajectory/docs/gmf-interpreter.md section 8
                       item 5's own finding: a vendored module may have
                       no Terminal state and no Guard to block on).
                       Ignored entirely when no patient has an assigned

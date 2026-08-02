@@ -14,6 +14,13 @@
                                ;; sim -- sim's own src now reaches these
                                ;; only through ehrt.sim-model.interface.
                                poly/sim-model {:local/root "components/sim-model"}
+                               ;; sim-trajectory (sim split S2, .agents/plans/
+                               ;; 2026-08-02-sim-split-plan.md): gmf/gmf-
+                               ;; interpreter/compile-trajectory, extracted
+                               ;; out of sim -- sim's own src now reaches
+                               ;; these only through
+                               ;; ehrt.sim-trajectory.interface.
+                               poly/sim-trajectory {:local/root "components/sim-trajectory"}
                                ;; kernel/judge (ADR-0008): corpus' own
                                ;; src requires both directly; sim's own
                                ;; src requires kernel directly too
@@ -59,6 +66,7 @@
 
             :test {:extra-paths ["components/sim/test"
                                   "components/sim-model/test"
+                                  "components/sim-trajectory/test"
                                   "components/kernel/test"
                                   "components/judge/test"
                                   "components/judge-v2-hapi/test"
@@ -106,7 +114,10 @@
                                 poly/sim      {:local/root "components/sim"}
                                 ;; sim-model (sim split S1): sim's own src
                                 ;; requires ehrt.sim-model.interface.
-                                poly/sim-model {:local/root "components/sim-model"}}
+                                poly/sim-model {:local/root "components/sim-model"}
+                                ;; sim-trajectory (sim split S2): sim's own
+                                ;; src requires ehrt.sim-trajectory.interface.
+                                poly/sim-trajectory {:local/root "components/sim-trajectory"}}
                    :main-opts ["-m" "ehrt.cli.core"]}
 
             :poly {:main-opts ["-m" "polylith.clj.core.poly-cli.core"]

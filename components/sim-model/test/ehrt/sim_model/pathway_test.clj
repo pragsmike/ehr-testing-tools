@@ -79,7 +79,7 @@
 (deftest order-without-profile-is-invalid
   (is (not (pathway/valid? {:name "t" :steps [{:type :order}]}))))
 
-;; --- M5b: outpatient-visit / outpatient-visit-end (docs/gmf-interpreter.md
+;; --- M5b: outpatient-visit / outpatient-visit-end (components/sim-trajectory/docs/gmf-interpreter.md
 ;; section 4's sketch, items 5-7) -- no :location field at all -----------
 
 (deftest outpatient-visit-pair-is-valid-ir-with-and-without-a-reason
@@ -90,7 +90,7 @@
                                            :reason {:system :snomed :code "36971009" :display "Sinusitis (disorder)"}}
                                           {:type :outpatient-visit-end}]})))
 
-;; --- M5b: CompileTrajectory's new step types (docs/gmf-interpreter.md
+;; --- M5b: CompileTrajectory's new step types (components/sim-trajectory/docs/gmf-interpreter.md
 ;; section 1's table) -- :procedure/:observation/:medication-order/
 ;; :medication-end, plus :citation/:conditions on compiled steps -------
 

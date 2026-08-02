@@ -39,6 +39,18 @@ per item; done items move to the bottom of their section with a date and sha.
 - Reading-set budget numbers (charter §6: rule after real sizes are measured)
 - Verdict-cache placement revisit (ADR-0011 note: second consumer, or never)
 - Sim-manifest interop design between sim and corpus (pre-review open thread)
+- Sim split S3 (`sim-emit-hl7`: `emit-hl7`, `v2-replay`, `site-profile`) —
+  trigger: a second state-based emitter (`sim-emit-fhir`/`sim-emit-cda`)
+  actually lands, per `.agents/plans/2026-08-02-sim-split-plan.md`'s own
+  rendering-accents-over-ground-truth argument
+- Sim split S4 (`sim-engine`: `engine`, `churn`, `order-profiles`) —
+  trigger: a second `engine` consumer appears (the FHIR emitter is the
+  likely one) or engine work itself needs the emit-state/check boundary
+  designed, same plan
+- GMF coverage expansion (CallSubmodule, condition-vocabulary gaps,
+  `components/sim-trajectory/docs/gmf-interpreter.md`'s own survey) —
+  the payoff milestone sim split S2 unblocked; starts now that S2 has
+  landed, not part of the split itself (plan's own R-4)
 
 ## Done (this session, 2026-08-01, migration session 1)
 - Items 6+7: `agent/scenario-roster.md` merged into `.agents/skills/scenarios/roster.md`,
@@ -124,3 +136,22 @@ per item; done items move to the bottom of their section with a date and sha.
   the index. Every repo citation of `docs/use-cases.md#<case>` swept to
   its per-case file. Full accounting in the session record (ceca0f7,
   plus this checkpoint's own commit).
+
+## Done (this session, 2026-08-02, sim split S1+S2)
+- Sim split S1: `components/sim-model` extracted from `components/sim`
+  (`pathway`/`facility`/`persona`/`config`), `.agents/plans/2026-08-02-
+  sim-split-plan.md`'s AR-1..AR-4, `notes/ADRs.md` ADR-0025. Committed
+  and pushed by the author (8d5c86c) before S2 began.
+- Sim split S2: `components/sim-trajectory` extracted from
+  `components/sim` (`gmf`/`gmf-interpreter`/`compile-trajectory`, their
+  three docs and vendored-module fixtures), same plan, same ADR.
+  poly check clean, poly test 0 failures/0 errors, golden run
+  byte-identical, deftest+defspec parity (403=403=403) at every stage.
+  Full caller map, verification baselines, and the one fixed-forward
+  deviation (fixture resource-path/`ns`-form misses, caught by `poly
+  test` before commit) in the session record and ADR-0025's own
+  Decision section.
+- S3 (`sim-emit-hl7`)/S4 (`sim-engine`) rows moved to Deferred above
+  with their trigger conditions; the GMF coverage-expansion payoff
+  milestone S2 unblocks is deferred alongside them, explicitly not
+  started this session (plan's own R-4).

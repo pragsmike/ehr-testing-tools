@@ -79,7 +79,16 @@
   ;; that same plan file in `.agents/plans/README.md` (an already-cited
   ;; onboarding path, the index-completeness gate's own finding) added 1
   ;; more line, 721 to 722.
-  :budget-lines 722}
+  ;; raised 2026-08-02 (sim split S2 session, caught by the budget test
+  ;; itself): AGENTS.md's own Structure/Constraints sections grew by 5
+  ;; more lines naming the new `components/sim-trajectory` brick (sim
+  ;; split S2, same plan), brought the real total from 722 to 727.
+  ;; raised 2026-08-02 (sim split S1+S2 records step, caught by the
+  ;; budget test itself): `.agents/plans/roadmap.md`'s own Deferred/Done
+  ;; rows for the split (31 lines) plus indexing this session's own
+  ;; record/prompt filenames in their own already-cited onboarding
+  ;; READMEs (1 line each) brought the real total from 727 to 760.
+  :budget-lines 760}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one
@@ -107,7 +116,9 @@
           ".agents/skills/build-session/SKILL.md"]
   ;; raised 2026-08-02 (sim split S1 session): AGENTS.md's own growth
   ;; (above) brought the real total from 1640 to 1644.
-  :budget-lines 1644}
+  ;; raised 2026-08-02 (sim split S2 session): AGENTS.md's own further
+  ;; growth (above) brought the real total from 1644 to 1649.
+  :budget-lines 1649}
 
  ;; components/sim is the deterministic generator engine wrapping Synthea
  ;; (ADR-0005) -- engine-onboarding.md is the checklist every engine wrapper
@@ -129,7 +140,9 @@
           ".agents/skills/build-session/SKILL.md"]
   ;; raised 2026-08-02 (sim split S1 session): AGENTS.md's own growth
   ;; (above) brought the real total from 695 to 699.
-  :budget-lines 699}
+  ;; raised 2026-08-02 (sim split S2 session): AGENTS.md's own further
+  ;; growth (above) brought the real total from 699 to 704.
+  :budget-lines 704}
 
  ;; components/judge (verdict vocabulary) plus its three gate engines
  ;; (judge-v2-hapi, judge-fhir-official, judge-v2-nist, ADR-0011's per-engine
@@ -153,7 +166,9 @@
           ".agents/skills/build-session/SKILL.md"]
   ;; raised 2026-08-02 (sim split S1 session): AGENTS.md's own growth
   ;; (above) brought the real total from 765 to 769.
-  :budget-lines 769}
+  ;; raised 2026-08-02 (sim split S2 session): AGENTS.md's own further
+  ;; growth (above) brought the real total from 769 to 774.
+  :budget-lines 774}
 
  ;; components/docs-tooling (dev-time-only doc/lint tooling) generates and
  ;; lints docs/cli.md, docs/pipeline.md-equivalents, and docs/use-cases.md
@@ -175,4 +190,8 @@
   ;; lines) plus docs/dev/architecture.md's own growth (4 lines, the
   ;; mermaid diagram plus bricks/projects table rows naming
   ;; `components/sim-model`) brought the real total from 554 to 562.
-  :budget-lines 562}}
+  ;; raised 2026-08-02 (sim split S2 session): AGENTS.md's own further
+  ;; growth (5 lines) plus docs/dev/architecture.md's own further growth
+  ;; (5 lines, `components/sim-trajectory`'s own mermaid/bricks/projects
+  ;; rows) brought the real total from 562 to 572.
+  :budget-lines 572}}

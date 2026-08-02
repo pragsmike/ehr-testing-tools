@@ -1,4 +1,4 @@
-(ns ehrt.sim.gmf
+(ns ehrt.sim-trajectory.gmf
   "The GMF module loader (Milestone M5a Task 1, docs/gmf-interpreter.md
   section 1). Parses a Synthea Generic Module Framework JSON module,
   normalizes it to this project's own idiom (kebab-case keyword keys and
@@ -43,7 +43,7 @@
   and 'Nasal Congestion' both become the same shape ('check-age-guard',
   'nasal-congestion'), so state-map keys, transition-target references,
   and attribute names all compare and namespace uniformly. Public: also
-  reused by ehrt.sim.gmf-interpreter to turn a Guard/conditional's
+  reused by ehrt.sim-trajectory.gmf-interpreter to turn a Guard/conditional's
   raw :attribute name into the SAME module-namespaced key this loader's
   own `declared-attributes` computes (one transform, one place)."
   [s]
@@ -122,7 +122,7 @@
   PriorState's own query, just keyed on a concept rather than a module
   state name'), `And` as a recursive compound wrapper, and `Active
   Allergy` as a documented, always-false simplification (this project's
-  Persona has no allergy concept to query yet -- see ehrt.sim.gmf-
+  Persona has no allergy concept to query yet -- see ehrt.sim-trajectory.gmf-
   interpreter/evaluate-condition's own docstring note). Discovered
   load-bearing, not merely convenient: the ratified vendored module
   (sinusitis.json) uses `And`/`Active Medication`/`Active Condition` on

@@ -31,7 +31,7 @@
             [ehrt.sim.churn :as churn]
             [ehrt.sim.emit-hl7 :as emit-hl7]
             [ehrt.sim.emit-state :as emit-state]
-            [ehrt.sim.gmf :as gmf]
+            [ehrt.sim-trajectory.interface :as sim-trajectory]
             [ehrt.sim.manifest :as manifest]
             [ehrt.sim-model.interface :as sim-model]))
 
@@ -56,7 +56,7 @@
             res (io/resource (str "sim/modules/" module-name ".json"))]
         (if (nil? res)
           (result/error :module-not-found {:module module-name})
-          (let [loaded (gmf/load-module module-name (slurp res))]
+          (let [loaded (sim-trajectory/load-module module-name (slurp res))]
             (if (result/ok? loaded)
               (recur (rest names) (conj acc (:payload loaded)))
               (result/error :module-load-failed
@@ -128,7 +128,7 @@
   default 1) certain to receive BOTH an encounter-opening pathway and a
   module. Guarded by each config's OWN schema validity
   (`sim-model/valid-pathways-config?`/`valid?`,
-  `ehrt.sim.gmf/valid-modules-config?`) so a structurally
+  `sim-trajectory/valid-modules-config?`) so a structurally
   malformed config (this namespace's own plumbing-completeness test's
   sentinel opts) is silently skipped here -- never misdiagnosed as a
   conflict, never thrown on -- rather than validated twice; a
@@ -136,7 +136,7 @@
   for real (`engine/run`'s own `:pre` assertions), not this check."
   [{:keys [pathway pathways patients module-assignment]}]
   (when (and module-assignment
-             (gmf/valid-modules-config? module-assignment)
+             (sim-trajectory/valid-modules-config? module-assignment)
              (or (nil? pathways) (sim-model/valid-pathways-config? pathways))
              (sim-model/valid? (or pathway sim-model/sample-admission-discharge)))
     (into []

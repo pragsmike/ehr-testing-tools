@@ -1,7 +1,7 @@
-(ns ehrt.sim.gmf-interpreter-test
+(ns ehrt.sim-trajectory.gmf-interpreter-test
   "Red tests for the GMF interpreter core (M5a Task 2, docs/gmf-
   interpreter.md sections 1-2 and 6) -- written before
-  ehrt.sim.gmf-interpreter exists (sim/ADR-0004 test-first). Pure,
+  ehrt.sim-trajectory.gmf-interpreter exists (sim/ADR-0004 test-first). Pure,
   seeded, engine-free: `step` advances one state at a time, consuming
   the passed rng only in documented order; transitions (direct,
   distributed, conditional, complex) and the v1 condition vocabulary
@@ -14,8 +14,8 @@
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
-            [ehrt.sim.gmf :as gmf]
-            [ehrt.sim.gmf-interpreter :as interp]
+            [ehrt.sim-trajectory.gmf :as gmf]
+            [ehrt.sim-trajectory.gmf-interpreter :as interp]
             [ehrt.sim-model.interface :as sim-model])
   (:import [java.util Random]))
 

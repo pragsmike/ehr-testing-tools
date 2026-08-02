@@ -1,4 +1,4 @@
-(ns ehrt.sim.compile-trajectory
+(ns ehrt.sim-trajectory.compile-trajectory
   "CompileTrajectory (docs/sim-theory.edn): clinical-trajectory ->
   compiled-pathway, per docs/gmf-interpreter.md section 1's own per-
   state-type mapping table. Pure and RNG-free: every value this stage
@@ -73,7 +73,7 @@
 
   The day -> minutes boundary (docs/patient-state-model.md's durations
   rule, extended): every trajectory event's own `:t` is an interpreter-
-  internal EPOCH DAY (ehrt.sim.gmf-interpreter); pathway IR's own
+  internal EPOCH DAY (ehrt.sim-trajectory.gmf-interpreter); pathway IR's own
   `:delay` is authored in MINUTES. This namespace is the ONE place that
   conversion happens for compiled content -- a `:delay {:from :to}` step
   (both bounds equal -- deterministic; the elapsed time was already
@@ -181,7 +181,7 @@
 
 (defn compile-trajectory
   "clinical-trajectory (a vector of GMF-interpreter trajectory events,
-  ehrt.sim.gmf-interpreter/run-module's own `:trajectory`) x
+  ehrt.sim-trajectory.gmf-interpreter/run-module's own `:trajectory`) x
   `facility` (this run's own facility config -- where a concrete ward
   name for an emergency/inpatient encounter class comes from) x
   `registration-t` (the same epoch-day instant `run-module` was called

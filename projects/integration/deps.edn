@@ -48,6 +48,9 @@
         ;; split-plan.md): poly/sim's own src now requires
         ;; ehrt.sim-model.interface transitively.
         poly/sim-model {:local/root "../../components/sim-model"}
+        ;; poly/sim-trajectory (sim split S2): poly/sim's own src now
+        ;; requires ehrt.sim-trajectory.interface transitively.
+        poly/sim-trajectory {:local/root "../../components/sim-trajectory"}
         org.clojure/clojure {:mvn/version "1.12.5"}}
 
  :aliases {;; Base-less project (R19, ADR-0004): the artifact-fetch-

@@ -159,7 +159,7 @@
   M5b: EXCEPT an outpatient (`:class :outpatient`) -- docs/patient-
   state-model.md's event-validity table's own conditional row (`:location
   = nil` is legal exactly when `:class = :outpatient`), the named,
-  narrowly-gated exception to this rule (docs/gmf-interpreter.md section
+  narrowly-gated exception to this rule (components/sim-trajectory/docs/gmf-interpreter.md section
   4's item 6). `outpatient-patients-occupy-no-bed`, below, is this same
   fact's own converse: an outpatient patient's :location must ALWAYS be
   nil, never merely may be."
@@ -170,7 +170,7 @@
                    (or (nil? location) (nil? (:bed location))))]
     {:invariant :admitted-occupies-one-slot :patient-id patient-id :at (:t event)}))
 
-;; --- M5b: :outpatient-visit / :outpatient-visit-end (docs/gmf-interpreter.md
+;; --- M5b: :outpatient-visit / :outpatient-visit-end (components/sim-trajectory/docs/gmf-interpreter.md
 ;; section 4's sketch, item 8's own invariant list) --------------------------
 
 (defn outpatient-visit-only-when-new
@@ -410,7 +410,7 @@
         :when (not= abnormal-flag (order-profiles/abnormal-flag value reference-range))]
     {:invariant :abnormal-flags-consistent-with-value-vs-range :profile (:profile event) :at (:t event)}))
 
-;; --- M5b: CompileTrajectory's new event types (docs/gmf-interpreter.md
+;; --- M5b: CompileTrajectory's new event types (components/sim-trajectory/docs/gmf-interpreter.md
 ;; section 1's table) -- :procedure/:observation/:medication-order are the
 ;; therapeutic-intent class (docs/patient-state-model.md's event-validity
 ;; table row), the same "legal only when :admitted" scoping :order-placed

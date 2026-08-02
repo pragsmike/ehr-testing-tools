@@ -1,4 +1,4 @@
-(ns ehrt.sim.vendored-appendicitis-test
+(ns ehrt.sim-trajectory.vendored-appendicitis-test
   "M7 Task 2: the SECOND real vendored module (resources/modules/
   appendicitis.json, docs/gmf-interpreter.md's own M7 survey
   recommendation -- the only one of 26 modules read that session with
@@ -18,7 +18,7 @@
   appendicitis.json's real inpatient/surgical content: the vendored
   module's own interpreter-level trajectory carries the inpatient
   encounter and Appendectomy procedure in full (interpreter-level
-  evidence, this file), while ehrt.sim.compile-trajectory-test's
+  evidence, this file), while ehrt.sim-trajectory.compile-trajectory-test's
   own synthetic-event test proves the compiled IR stops at the first
   discharge (compile-time evidence, that file) -- two independent tests
   at two different layers, for the same real gap."
@@ -29,8 +29,8 @@
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
             [ehrt.kernel.interface :as result]
-            [ehrt.sim.gmf :as gmf]
-            [ehrt.sim.gmf-interpreter :as interp]
+            [ehrt.sim-trajectory.gmf :as gmf]
+            [ehrt.sim-trajectory.gmf-interpreter :as interp]
             [ehrt.sim-model.interface :as sim-model])
   (:import [java.util Random]))
 

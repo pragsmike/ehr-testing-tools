@@ -77,7 +77,7 @@ invariant below (no double-occupancy, capacity bound, transfer-from
 matches current state) is a check on the *projection*, not a
 separate thing the engine has to keep in sync by discipline.
 
-**Scope qualifier, M5b (`docs/gmf-interpreter.md` section 4 item 8):**
+**Scope qualifier, M5b (`components/sim-trajectory/docs/gmf-interpreter.md` section 4 item 8):**
 "every patient's current state," above, means every **inpatient/ED**
 patient's — an outpatient (`:class :outpatient`) was never a candidate
 for this board to include in the first place, not an exception carved

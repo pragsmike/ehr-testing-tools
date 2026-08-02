@@ -53,6 +53,9 @@
         ;; split-plan.md): sim's own src now requires
         ;; ehrt.sim-model.interface directly.
         poly/sim-model {:local/root "../../components/sim-model"}
+        ;; poly/sim-trajectory (sim split S2): sim's own src now requires
+        ;; ehrt.sim-trajectory.interface directly.
+        poly/sim-trajectory {:local/root "../../components/sim-trajectory"}
         org.clojure/clojure {:mvn/version "1.12.5"}}
 
  :aliases {;; Base-less project (R15): sim + corpus + palgebra, test-only.

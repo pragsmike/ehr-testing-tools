@@ -1,6 +1,6 @@
-(ns ehrt.sim.gmf-horizon-test
+(ns ehrt.sim-trajectory.gmf-horizon-test
   "Red tests for the history/horizon two-phase run (M5a Task 3, docs/gmf-
-  interpreter.md section 3) -- written before ehrt.sim.gmf-
+  interpreter.md section 3) -- written before ehrt.sim-trajectory.gmf-
   interpreter/run-module exists (sim/ADR-0004 test-first). The ratified
   design: ONE continuous walk from the persona's own DOB (Task 2's
   `initial-context`) through registration and on to a (caller-supplied)
@@ -16,8 +16,8 @@
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
-            [ehrt.sim.gmf :as gmf]
-            [ehrt.sim.gmf-interpreter :as interp]
+            [ehrt.sim-trajectory.gmf :as gmf]
+            [ehrt.sim-trajectory.gmf-interpreter :as interp]
             [ehrt.sim-model.interface :as sim-model])
   (:import [java.time LocalDate]
            [java.util Random]))

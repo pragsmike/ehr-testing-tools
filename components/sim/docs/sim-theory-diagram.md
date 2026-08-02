@@ -24,7 +24,7 @@
      one, an artifact of a since-added header line changing the
      equations file's own line count, not a structural or convention
 
-     M5-PREP NOTE (docs/gmf-interpreter.md, ADR-0013): this session's
+     M5-PREP NOTE (components/sim-trajectory/docs/gmf-interpreter.md, ADR-0013): this session's
      sim-theory.edn edit was prose-only (:contract notes on :trajectory/
      :compile; gmf-module-set's catalytic TARGET resolving from OPEN to
      3 -- a Catalytic-resolution-table fact, not a wire) -- `gmf-module-

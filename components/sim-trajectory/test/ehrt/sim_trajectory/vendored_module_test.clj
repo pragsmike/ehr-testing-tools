@@ -1,4 +1,4 @@
-(ns ehrt.sim.vendored-module-test
+(ns ehrt.sim-trajectory.vendored-module-test
   "M5b Task 1: the FIRST real vendored module (resources/modules/
   sinusitis.json, sim/ADR-0013's own curation criterion, docs/gmf-
   interpreter.md's own recommendation) loads and validates against the
@@ -7,7 +7,7 @@
   many seeds without throwing.
 
   Written test-first (sim/ADR-0004): the FIRST version of this file (before
-  ehrt.sim.gmf/ehrt.sim.gmf-interpreter were extended this
+  ehrt.sim-trajectory.gmf/ehrt.sim-trajectory.gmf-interpreter were extended this
   session) asserted the same success shape below and went RED for real
   reasons -- `gmf/load-module` rejected the file outright with
   :unsupported-state-type (the vendored file's own Device/DeviceEnd
@@ -32,8 +32,8 @@
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
             [ehrt.kernel.interface :as result]
-            [ehrt.sim.gmf :as gmf]
-            [ehrt.sim.gmf-interpreter :as interp]
+            [ehrt.sim-trajectory.gmf :as gmf]
+            [ehrt.sim-trajectory.gmf-interpreter :as interp]
             [ehrt.sim-model.interface :as sim-model])
   (:import [java.util Random]))
 

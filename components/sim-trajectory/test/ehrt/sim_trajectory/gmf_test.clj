@@ -1,6 +1,6 @@
-(ns ehrt.sim.gmf-test
+(ns ehrt.sim-trajectory.gmf-test
   "Red tests for the GMF module loader (M5a Task 1, docs/gmf-interpreter.md
-  section 1, sim/ADR-0013 point 6) -- written before ehrt.sim.gmf exists
+  section 1, sim/ADR-0013 point 6) -- written before ehrt.sim-trajectory.gmf exists
   (sim/ADR-0004 test-first). Covers: the hand-written fixture module loads and
   validates against the v1 subset; a module using a deferred state type is
   REJECTED with :unsupported-state-type (result-not-throw, never a throw);
@@ -10,7 +10,7 @@
   (:require [clojure.java.io :as io]
             [clojure.test :refer [deftest is testing]]
             [ehrt.kernel.interface :as result]
-            [ehrt.sim.gmf :as gmf]))
+            [ehrt.sim-trajectory.gmf :as gmf]))
 
 (def fixture-clinic-json
   (slurp (io/resource "ehrt/sim/fixtures/fixture-clinic.json")))

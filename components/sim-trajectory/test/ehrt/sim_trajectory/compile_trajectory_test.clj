@@ -1,7 +1,7 @@
-(ns ehrt.sim.compile-trajectory-test
+(ns ehrt.sim-trajectory.compile-trajectory-test
   "Red tests for CompileTrajectory (M5b Task 3, docs/gmf-interpreter.md
   section 1's per-state-type mapping table and section 6's own build-
-  session test obligations) -- written before ehrt.sim.compile-
+  session test obligations) -- written before ehrt.sim-trajectory.compile-
   trajectory exists (sim/ADR-0004 test-first). Pure, RNG-free: every value
   CompileTrajectory ever touches was already sampled by the GMF
   interpreter (M5a); this stage only re-shapes already-decided content
@@ -21,10 +21,10 @@
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
-            [ehrt.sim.compile-trajectory :as ct]
+            [ehrt.sim-trajectory.compile-trajectory :as ct]
             [ehrt.sim-model.interface :as sim-model]
-            [ehrt.sim.gmf :as gmf]
-            [ehrt.sim.gmf-interpreter :as interp])
+            [ehrt.sim-trajectory.gmf :as gmf]
+            [ehrt.sim-trajectory.gmf-interpreter :as interp])
   (:import [java.util Random]))
 
 (def ^:private facility sim-model/default-facility)

@@ -57,7 +57,7 @@ on the state that asserts them — a `ConditionOnset`'s own SNOMED code,
 an `Observation`'s own LOINC code, a `MedicationOrder`'s own RxNorm
 code — never in a separate table a state merely references. This is
 exactly what makes **code passthrough** (this project's own law,
-[`sim-theory.edn`](sim-theory.edn)'s `:trajectory` stage) a
+[`sim-theory.edn`](../../sim/docs/sim-theory.edn)'s `:trajectory` stage) a
 near-mechanical carry-forward rather than a translation: the source
 data already arrives shaped the way this project's own
 `{:system :code :display}` triplet wants it.
@@ -68,7 +68,7 @@ Distinct from the JSON's own shape, and worth stating separately: how
 the *real* Synthea Java engine executes this content, mined from
 `Person.java`/`HealthRecord.java` and the Generic Module Framework wiki
 (`.agents/memory/architecture.md`; independently re-verified via
-[`docs/research/SimHospital-Synthea-limitations-considered.md`](research/SimHospital-Synthea-limitations-considered.md)'s
+[`docs/research/SimHospital-Synthea-limitations-considered.md`](../../sim/docs/research/SimHospital-Synthea-limitations-considered.md)'s
 own source-level citations — cited here rather than re-fetched fresh,
 per this document's own provenance discipline).
 
@@ -80,7 +80,7 @@ per this document's own provenance discipline).
   own current-state pointer keyed by its own module name inside
   `Person.attributes` — there is no separate per-module state object.
 - **A fixed tick loop, roughly seven days, from birth to death**
-  ([`patient-state-model.md`](patient-state-model.md#design-inputs-mined-from-upstream)'s
+  ([`patient-state-model.md`](../../sim/docs/patient-state-model.md#design-inputs-mined-from-upstream)'s
   own mining record) — because Synthea's own horizon is a whole
   simulated lifetime, not one encounter, a polling loop is how *every*
   active module gets a chance to advance, whether or not anything
@@ -88,19 +88,19 @@ per this document's own provenance discipline).
 - **Guards query a mutable visit-history trail, `Person.history`,**
   rather than a durable, replayable log — the person's own recorded
   trail of visited module states, walked to answer "was I in state X
-  recently" ([`event-sourcing.md`](event-sourcing.md#the-upstream-contrasts-what-happens-without-this-made-explicit)'s
+  recently" ([`event-sourcing.md`](../../sim/docs/event-sourcing.md#the-upstream-contrasts-what-happens-without-this-made-explicit)'s
   own retelling of the same mining record).
 - **Every module a person's life makes eligible runs concurrently**
   against that same shared `Person`, coordinating only through
   attributes one module writes and another reads
-  ([`patient-state-model.md`](patient-state-model.md)'s own mining
+  ([`patient-state-model.md`](../../sim/docs/patient-state-model.md)'s own mining
   section) — out of a real catalog large enough (85 modules,
   `notes/facts-register.md` F2) that many can plausibly be active for
   one person at once.
 
 **Composition pain, documented by Synthea's own maintainers and users,
 not inferred.**
-[`docs/research/SimHospital-Synthea-limitations-considered.md`](research/SimHospital-Synthea-limitations-considered.md)
+[`docs/research/SimHospital-Synthea-limitations-considered.md`](../../sim/docs/research/SimHospital-Synthea-limitations-considered.md)
 §4.2 mines three separate, citable instances: bare-string attribute
 keys mean nothing stops one module from silently reading (or
 colliding with) another's own convention-only namespace; hard-coded
@@ -127,7 +127,7 @@ that each made one piece of it:
 | A whole simulated lifetime | The history/horizon split: a fast-forwarded pre-registration history compresses a persona's full life into attributes and pre-horizon facts, then a bounded horizon phase emits real trajectory events inside this run's own encounter-horizon scope (ADR-0007 point 3) |
 | `Person.history`, a mutable visit-trail approximation of a log | `PriorState` compiles directly to a query over this project's own ground-truth log — "the log IS `person.history`, done right" ([`gmf-interpreter.md`](gmf-interpreter.md) section 2) |
 | `Person.attributes`, one flat, bare-string map shared by convention | A module-namespaced `:attributes` registry — every write auto-namespaced by its own module id, so cross-module collisions are structurally impossible, not merely avoided by discipline ([`gmf-interpreter.md`](gmf-interpreter.md) section 5) |
-| Hidden, always-on Java lifecycle modules | No hidden modules: every module this project ever runs is an explicit, listable load (`ehrt.sim.gmf/loaded-modules`) — [`sim-theory.md`](sim-theory.md)'s own IR-transforms-as-composition-layer corollary, restated at the M5 roadmap entry |
+| Hidden, always-on Java lifecycle modules | No hidden modules: every module this project ever runs is an explicit, listable load (`ehrt.sim-trajectory.gmf/loaded-modules`) — [`sim-theory.md`](../../sim/docs/sim-theory.md)'s own IR-transforms-as-composition-layer corollary, restated at the M5 roadmap entry |
 
 ## Part B — why so many modules block here, with the evidence
 
@@ -139,7 +139,7 @@ per-module tables (cited by section below, not reproduced).
 
 ### Wall 1 — the loader's all-or-nothing gate
 
-`ehrt.sim.gmf/load-module` rejects a module on the bare
+`ehrt.sim-trajectory.gmf/load-module` rejects a module on the bare
 **presence** of any state type outside v1's recognized set, full stop
 — not on whether that state is actually *reachable* by a real patient.
 This is not a hypothetical worst case; it is the single best-evidenced
@@ -195,15 +195,15 @@ roughly 6.1% day-1-survival, 2% post-op, 1% under-age-5, 0.5%
 living-with-SB) looked exactly like the `sinusitis.json` `Device`/
 `DeviceEnd` precedent that *had* already cleared v1. It hadn't:
 `Device`/`DeviceEnd` were promoted into
-`ehrt.sim.gmf`'s own recognized state-type set at M5b; `Death`
+`ehrt.sim-trajectory.gmf`'s own recognized state-type set at M5b; `Death`
 never was — attempting to vendor `spina_bifida.json` test-first caught
 the loader's own `:unsupported-state-type` rejection immediately,
 before any commit. The design lesson this near-miss sharpens for
 Part C rung 2, below: `Death` cannot be given the same *consumed-
 internally, no trajectory event* treatment `Device`/`DeviceEnd`
 received — a real death has to actually **mint** a transition into
-this project's own `:expired` status (`patient-state-model.md`'s
-accumulator, `clinical-realities.md`'s post-mortem entry), not pass
+this project's own `:expired` status (`components/sim/docs/patient-state-model.md`'s
+accumulator, `components/sim/docs/clinical-realities.md`'s post-mortem entry), not pass
 through inertly the way an untracked piece of equipment can. `Death`
 is deliberately deferred to that captured expired/post-mortem
 machinery rather than ported as its own standalone mechanism
@@ -231,7 +231,7 @@ alone: a clean-looking state-type score is necessary but not
 sufficient evidence a module will actually load and run. Two
 compounders sit alongside this wall, neither a state-type or
 condition-vocabulary gap of its own: the **multi-encounter-per-episode
-compile-time truncation** — `ehrt.sim.compile-trajectory`'s own
+compile-time truncation** — `ehrt.sim-trajectory.compile-trajectory`'s own
 `encounter-closed?` mechanism (built to stop a module recurring across
 a whole lifetime from minting a second admission, ADR-0007 point 3's
 own encounter-horizon scope) also silently drops a real, same-episode
@@ -253,7 +253,7 @@ not this session's own scope.
 
 ### Rung 1 — a reachability-aware load gate (loader-only)
 
-**What it is.** `ehrt.sim.gmf/load-module` stops rejecting a
+**What it is.** `ehrt.sim-trajectory.gmf/load-module` stops rejecting a
 module on the bare *presence* of a deferred-type state and starts
 asking whether that state is actually reachable. **The semantics
 question that has to be ruled on before any code:**
@@ -291,7 +291,7 @@ states (the `Death` tail, and a `CarePlanStart` inside a second
 encounter — moot regardless under Wall 4's own truncation gap) are
 exactly the shape this rung targets.
 
-**Cost class:** loader-local. Touches `ehrt.sim.gmf`'s own
+**Cost class:** loader-local. Touches `ehrt.sim-trajectory.gmf`'s own
 state-type gate and nothing else — no interpreter change, no engine
 change, no provenance-chain change.
 
@@ -305,7 +305,7 @@ equipment-tracking concept for them to write into. `Death` cannot: a
 real death has to **mint** the transition into this project's own
 `:expired` status, activating the post-mortem event-validity rows
 already captured and waiting
-([`patient-state-model.md`](patient-state-model.md)'s event-validity
+([`patient-state-model.md`](../../sim/docs/patient-state-model.md)'s event-validity
 table — morgue/funeral-home transfer, autopsy/specimen events, and,
 gated on a `:donor` attribute, donor-management/procurement) and
 terminating that module's own walk for the patient (a death is not a
@@ -325,15 +325,15 @@ genuinely excludable tail, never once on a mandatory path — and
 `spina_bifida.json` (Wall 3's own near-miss) is ready to vendor the
 day this rung lands, no further survey work needed. It is also the
 rung that finally opens the door to the donor-management pathway
-content `clinical-realities.md`'s own post-mortem entry already
+content `components/sim/docs/clinical-realities.md`'s own post-mortem entry already
 describes in full but has never had a real module to source from.
 
 **Cost class:** interpreter plus a real new step type. Touches
-`ehrt.sim.gmf-interpreter` (a new `:death` case in `step`),
-`ehrt.sim.compile-trajectory` (mapping a death trajectory event
+`ehrt.sim-trajectory.gmf-interpreter` (a new `:death` case in `step`),
+`ehrt.sim-trajectory.compile-trajectory` (mapping a death trajectory event
 to whatever ground-truth event mints `:expired`), and the engine's own
 event-validity enforcement for the post-mortem rows that already exist
-on paper but are not yet checkable in code (`patient-state-model.md`'s
+on paper but are not yet checkable in code (`components/sim/docs/patient-state-model.md`'s
 own note that this row "is not yet checkable in code, since `:expired`
 isn't a landed `:status` value yet").
 
@@ -345,7 +345,7 @@ additions. Mechanics: a simulated-date predicate evaluated against the
 run's own reference-date and the interpreter's own virtual clock — the
 same `persona`-anchored calendar this project already uses for DOB and
 age arithmetic
-(`ehrt.sim.gmf-interpreter`'s own `epoch-day` clock,
+(`ehrt.sim-trajectory.gmf-interpreter`'s own `epoch-day` clock,
 [`gmf-interpreter.md`](gmf-interpreter.md)'s own time-model note), just
 compared against a year threshold rather than an age one. Once `Date`
 exists, the survey's own remaining observed condition-vocabulary gaps
@@ -376,7 +376,7 @@ loads a *second* module JSON file, whose own states the walk enters
 and whose own transitions it follows until returning to the caller.
 The scope sketch worth preserving, not built or estimated in detail
 here: the called submodule joins the attribute registry under **its
-own** namespace (`ehrt.sim.gmf`'s existing per-module namespacing
+own** namespace (`ehrt.sim-trajectory.gmf`'s existing per-module namespacing
 discipline, section 5, extended one level deeper); the interpreter's
 own cursor/state-folding logic has to fold correctly across the call
 boundary (entering a submodule, and returning from one back into the

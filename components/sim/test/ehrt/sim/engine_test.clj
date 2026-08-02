@@ -20,7 +20,7 @@
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [ehrt.sim.engine :as engine]
-            [ehrt.sim.gmf :as gmf]
+            [ehrt.sim-trajectory.interface :as sim-trajectory]
             [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim.order-profiles :as order-profiles]
             [ehrt.sim.check :as check]
@@ -691,7 +691,7 @@
           {:keys [ground-truth]} (engine/run {:seed seed :patients 3 :pathways [{:pathway pathway :weight 1}]})]
       (result/ok? (check/check-all ground-truth)))))
 
-;; --- M5b: :outpatient-visit / :outpatient-visit-end (docs/gmf-interpreter.md
+;; --- M5b: :outpatient-visit / :outpatient-visit-end (components/sim-trajectory/docs/gmf-interpreter.md
 ;; section 4's sketch, items 5-7) -------------------------------------------
 
 (deftest outpatient-visit-admits-with-no-bed-no-ward-no-allocation-ladder
@@ -920,11 +920,11 @@
 ;; CompileTrajectory -> IR), composing with :pathways -----------------------
 
 (def ^:private clinic-module
-  (:payload (gmf/load-module "fixture-clinic"
+  (:payload (sim-trajectory/load-module "fixture-clinic"
                             (slurp (io/resource "ehrt/sim/fixtures/fixture-clinic.json")))))
 
 (def ^:private sinusitis-module
-  (:payload (gmf/load-module "sinusitis" (slurp (io/resource "sim/modules/sinusitis.json")))))
+  (:payload (sim-trajectory/load-module "sinusitis" (slurp (io/resource "sim/modules/sinusitis.json")))))
 
 (deftest config-keys-includes-the-module-wiring-keys
   (is (every? (set engine/config-keys) [:modules :module-assignment :module-horizon-days])))
@@ -951,7 +951,7 @@
             fixture regression, below, is that same guarantee). Uses the
             REAL vendored sinusitis.json, deliberately, not the hand-
             written fixture: sinusitis.json's own Potential_Onset loop
-            recurs across a patient's whole life (docs/gmf-interpreter.md),
+            recurs across a patient's whole life (components/sim-trajectory/docs/gmf-interpreter.md),
             so it reliably produces horizon-phase content against THIS
             engine's own FIXED registration anchor (persona/reference-
             today-epoch-day) regardless of a patient's randomly sampled
@@ -993,7 +993,7 @@
            (engine/run {:seed 42 :patients 5})))))
 
 (defspec mixed-authored-and-compiled-run-satisfies-the-full-invariant-catalog 150
-  (testing "docs/gmf-interpreter.md section 4's own central theory claim:
+  (testing "components/sim-trajectory/docs/gmf-interpreter.md section 4's own central theory claim:
             authored pathways and compiled trajectories are BOTH just IR
             entering the union -- some patients on an explicit authored
             pathway, others on a compiled module, one run, one invariant

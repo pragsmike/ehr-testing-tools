@@ -2,7 +2,7 @@
 
 M7's own module-curation session vendored a second real Synthea module
 (`appendicitis.json`, alongside the existing `sinusitis.json`) —
-`docs/gmf-interpreter.md`'s M7 section has the full survey. This demo
+`components/sim-trajectory/docs/gmf-interpreter.md`'s M7 section has the full survey. This demo
 is the population-scale proof: both vendored modules assigned across a
 mixed patient population by weight, churn active, rendered to real
 ER7 wire bytes.
@@ -25,7 +25,7 @@ before being dropped as a pre-horizon fact.
 
 ## What this demo does NOT show, honestly
 
-`docs/gmf-interpreter.md`'s M7 survey found no vendorable
+`components/sim-trajectory/docs/gmf-interpreter.md`'s M7 survey found no vendorable
 `Observation`-bearing module this session (every real candidate —
 `sore_throat.json`, `sepsis.json`, `osteoporosis.json`,
 `hypothyroidism.json`, and others — is blocked by a mandatory-path
@@ -36,7 +36,7 @@ not quietly dropped, per this session's own seam checkpoint. Neither
 vendored module carries an `Observation` state.
 
 This demo also cannot show `appendicitis.json`'s own inpatient/surgical
-half — `docs/gmf-interpreter.md`'s M7 section documents why
+half — `components/sim-trajectory/docs/gmf-interpreter.md`'s M7 section documents why
 (`compile-trajectory`'s multi-encounter-per-episode truncation): the
 excerpt below shows the real emergency admission and the discharge
 that follows it, and stops there, exactly as the real engine output
@@ -73,7 +73,7 @@ merely a description of it.
   for `appendicitis` because — realistically — only a fraction of
   patients ever assigned the module actually onset appendicitis within
   their own lifetime and this run's horizon window (`appendicitis.json`'s
-  own real lifetime incidence, ~7–8%, `docs/gmf-interpreter.md`'s
+  own real lifetime incidence, ~7–8%, `components/sim-trajectory/docs/gmf-interpreter.md`'s
   appendix). The 10 "neither" patients are registrations too young, or
   otherwise unlucky, for their assigned module to have produced a
   fact-bearing event yet within this run's own window — a real,

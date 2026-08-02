@@ -1,6 +1,6 @@
 # The GMF interpreter: v1 semantics
 
-The design doc for Milestone M5's `RunModules` (`docs/sim-theory.edn`)
+The design doc for Milestone M5's `RunModules` (`components/sim/docs/sim-theory.edn`)
 — the Synthea Generic Module Framework (GMF) interpreter port. This
 document specifies what `RunModules` actually does: which GMF state
 and transition types v1 executes, how it turns a module walk into
@@ -60,15 +60,15 @@ it can't yet be *vendored*.
 | `Delay` | v1, consumed internally | none — advances simulated time only. Compiles to the same `:advance N` shape every other step type's `decide` already returns (`ehrt.sim.engine`); the interpreter samples the delay's own authored range from the run's single RNG, same determinism law every other stochastic draw already follows |
 | `Guard` | v1, consumed internally | none — blocks until its condition holds, re-checked each time its module is next due; no clinical or administrative fact of its own |
 | `SetAttribute` | v1, consumed internally | none — writes into `:attributes` (§5, module-namespaced) |
-| `ConditionOnset` | v1, trajectory event | a clinical fact — code triplet carried verbatim (code-passthrough law). Compiles at `CompileTrajectory` to a diagnosis annotation on the enclosing (or most recently opened) `Encounter`-mapped IR step, **not** a standalone IR step type — this project's pathway IR has no diagnosis-list step today, and DG1/billing rendering is separately gated on `snomed-icd10-map` landing (`docs/sim-theory.md`'s Catalytic resolution table, still target 1/not built) |
-| `ConditionEnd` | v1, trajectory event | references its `ConditionOnset` trajectory event (the same "references an existing prior event" shape `:cancel-*`/`:result-available` already establish, `docs/patient-state-model.md`). If no encounter is open when it fires, it is still a real trajectory event (glass-box traceability doesn't lapse just because nothing is rendering to wire right now) but compiles to no IR step — a log-only fact, the same shape `:step-rejected` already established for "real, worth keeping, not worth a message" |
+| `ConditionOnset` | v1, trajectory event | a clinical fact — code triplet carried verbatim (code-passthrough law). Compiles at `CompileTrajectory` to a diagnosis annotation on the enclosing (or most recently opened) `Encounter`-mapped IR step, **not** a standalone IR step type — this project's pathway IR has no diagnosis-list step today, and DG1/billing rendering is separately gated on `snomed-icd10-map` landing (`components/sim/docs/sim-theory.md`'s Catalytic resolution table, still target 1/not built) |
+| `ConditionEnd` | v1, trajectory event | references its `ConditionOnset` trajectory event (the same "references an existing prior event" shape `:cancel-*`/`:result-available` already establish, `components/sim/docs/patient-state-model.md`). If no encounter is open when it fires, it is still a real trajectory event (glass-box traceability doesn't lapse just because nothing is rendering to wire right now) but compiles to no IR step — a log-only fact, the same shape `:step-rejected` already established for "real, worth keeping, not worth a message" |
 | `Encounter` | v1, trajectory event | the state type that drives the encounter mapping (§4) — becomes `:admission` (A01), the new `:outpatient-visit` (A04), or an ED-admission via the existing ladder, depending on the module's own encounter class |
 | `EncounterEnd` | v1, trajectory event | mirrors its opening `Encounter` — `:discharge` (A03) for inpatient/ED-class, the new `:outpatient-visit-end` (no message, §4) for outpatient-class |
 | `Procedure` | v1, trajectory event | compiles to a new `:procedure` IR step (does not exist in `ehrt.sim.pathway` today — M5b build scope) |
 | `Observation` | v1, trajectory event | compiles to a new, lighter-weight `:observation` IR step — **not** `:order`/`:result-followup` (order-profiles' panel/turnaround-time semantics don't fit a same-encounter vitals or exam finding, `sore_throat.json`'s `Take_Temperature_High`/`Take_Temperature_Low` being the read example); M5b build scope |
 | `MedicationOrder` | v1, trajectory event | compiles to a new `:medication-order` IR step (M5b build scope, distinct from `:order`'s lab-panel semantics) |
 | `MedicationEnd` | v1, trajectory event | references its `MedicationOrder` trajectory event; compiles to a new `:medication-end` IR step |
-| `Device` / `DeviceEnd` | v1, consumed internally **(M5b finding, moved here from the Deferred table below)** | none — structurally identical to `Simple`: no equipment-tracking home exists anywhere in `docs/patient-state-model.md`'s accumulator or the pathway IR, so these states pass through (ordinary transition resolution, no attribute write, no trajectory event) rather than mint anything. Discovered load-bearing, not merely convenient: the ratified vendored module (`sinusitis.json`) uses them for its Nebulizer content, exactly where this document's own appendix already predicted (confined to the module's rare chronic-surgical tail) — but the M5a loader's own all-or-nothing gate ("any deferred-type use fails it, full stop") rejected the WHOLE module for two states, not merely that tail, since the loader has no partial-compile mechanism to "simply not compile that one branch's terminal states" the way the appendix's prose imagined. Consumed-internally is the minimal, disciplined resolution — see the M5b findings section below for the full account |
+| `Device` / `DeviceEnd` | v1, consumed internally **(M5b finding, moved here from the Deferred table below)** | none — structurally identical to `Simple`: no equipment-tracking home exists anywhere in `components/sim/docs/patient-state-model.md`'s accumulator or the pathway IR, so these states pass through (ordinary transition resolution, no attribute write, no trajectory event) rather than mint anything. Discovered load-bearing, not merely convenient: the ratified vendored module (`sinusitis.json`) uses them for its Nebulizer content, exactly where this document's own appendix already predicted (confined to the module's rare chronic-surgical tail) — but the M5a loader's own all-or-nothing gate ("any deferred-type use fails it, full stop") rejected the WHOLE module for two states, not merely that tail, since the loader has no partial-compile mechanism to "simply not compile that one branch's terminal states" the way the appendix's prose imagined. Consumed-internally is the minimal, disciplined resolution — see the M5b findings section below for the full account |
 
 **Deferred, with reasons:**
 
@@ -77,7 +77,7 @@ it can't yet be *vendored*.
 | `CallSubmodule` | Recursion into a second module JSON file the interpreter would also have to load, namespace, and fold state from — real complexity the v1 interpreter doesn't yet carry. Confirmed load-bearing by the survey: `ear_infections.json`'s entire medication-prescribing pathway (both its antibiotic and OTC-painkiller branches) routes through `CallSubmodule`, not an inline `MedicationOrder` — a module using it is not merely "missing one state," it is opaque past that point without submodule support |
 | `Counter` | Named in this document's own brief as deferred; not observed in any of the four modules read this session, so its omission carries no survey evidence either way — carried forward as originally scoped |
 | `MultiObservation` | Named in this document's own brief as deferred; not observed in any of the four modules read this session — same status as `Counter` |
-| `Death` | Defers to the expired-state machinery this project has already captured (`:expired` status, `docs/patient-state-model.md`'s accumulator table; the post-mortem event-validity rows, `docs/clinical-realities.md`) rather than being ported as its own mechanism — wire it to that machinery when donor/post-mortem content lands, not before. Not observed in any of the four modules read this session (all four are acute, non-fatal illness modules by design of the candidate search) |
+| `Death` | Defers to the expired-state machinery this project has already captured (`:expired` status, `components/sim/docs/patient-state-model.md`'s accumulator table; the post-mortem event-validity rows, `components/sim/docs/clinical-realities.md`) rather than being ported as its own mechanism — wire it to that machinery when donor/post-mortem content lands, not before. Not observed in any of the four modules read this session (all four are acute, non-fatal illness modules by design of the candidate search) |
 | `CarePlanStart` / `CarePlanEnd` | **Discovered spot-checking `bronchitis.json`** (read while scouting a urinary-tract-infection candidate that turned out not to exist as its own module, below) — not present in any of the three formally surveyed candidates. Deferred for the same reason as `Device`/`DeviceEnd` was originally deferred here (no accumulator or IR home yet, and no formal candidate needs it) — unlike `Device`/`DeviceEnd`, no vendored module has yet forced this one to be reconsidered, so it stays deferred |
 
 **A recommendation, flagged for author review: add `Symptom` to v1 as
@@ -117,7 +117,7 @@ defer any of them:
 - **`distributed_transition`** — a weighted distribution over target
   states, sampled from the run's single seeded RNG (the same
   determinism law every other weighted pick in this project already
-  follows — `docs/sim-theory.edn`'s global determinism law).
+  follows — `components/sim/docs/sim-theory.edn`'s global determinism law).
 - **`conditional_transition`** — an ordered list of
   (condition, target) pairs, first match wins.
 - **`complex_transition`** — `conditional_transition` and
@@ -141,18 +141,18 @@ chosen because they cover every module's *entry* logic (age/sex-gated
 onset) and the one compilation decision worth making carefully up front:
 
 **`PriorState` compiles to a ground-truth-log query — the log IS
-`person.history`, done right.** `docs/patient-state-model.md`'s own
+`person.history`, done right.** `components/sim/docs/patient-state-model.md`'s own
 mining section already stated this as the plan: Synthea's GMF guards
 conditional transitions like "prior state X, within window" by walking
 `Person.history`, a mutable-world approximation of an event log built
 because the GMF interpreter had no primitive log to query instead
-(`.agents/memory/architecture.md`'s Synthea entry; `docs/event-sourcing.md`'s
+(`.agents/memory/architecture.md`'s Synthea entry; `components/sim/docs/event-sourcing.md`'s
 own retelling). This project has the log already, typed, timestamped,
 and authoritative (ADR-0008) — so `PriorState` compiles directly to a
 query over it, never to a second history structure the interpreter
 would have to build and keep in sync, the same "one authoritative
 record, everything else a projection" discipline this project applies
-everywhere else (`docs/event-sourcing.md`'s three-deep authority
+everywhere else (`components/sim/docs/event-sourcing.md`'s three-deep authority
 hierarchy).
 
 **This fixes the interpreter's own guard-evaluation shape, and — the
@@ -161,7 +161,7 @@ good news — no engine signature change is required to support it.**
 `engine.clj`) already carries what a `PriorState` guard needs: `world`
 has carried a `:ground-truth` key — "a persistent mirror of the
 log-so-far threaded through `world` specifically so `decide` can query
-it directly" — since M2b (`docs/patient-state-model.md`'s "deterministic
+it directly" — since M2b (`components/sim/docs/patient-state-model.md`'s "deterministic
 event id" section), landed for the cancel family and
 `:transfer-in-error`'s own prior-location lookups. `engine.clj` already
 ships the query primitive, too: `events-for-patient` (`ground-truth,
@@ -188,7 +188,7 @@ recent first, optionally bounded by a time window computed from `t`.
 Synthea; this project's own scope is an encounter horizon
 (ADR-0007 point 3: "hospital-operations traffic across a single
 encounter... not a patient's lifelong longitudinal history"). Persona
-already assigns every patient a DOB (`docs/patient-state-model.md`,
+already assigns every patient a DOB (`components/sim/docs/patient-state-model.md`,
 Milestone M4) — which means a patient can arrive at age 45, and a
 GMF-driven trajectory needs *some* answer for what 45 years of module
 activity produced by the time they walk in, without this project
@@ -228,7 +228,7 @@ crossed — including `Encounter`/`Procedure`/`MedicationOrder`/
 table, that `CompileTrajectory` turns into real IR steps. This is the
 phase this project's existing laws (code passthrough, glass-box
 traceability, clinical-content-preserving compilation,
-`docs/sim-theory.edn`'s `:trajectory`/`:compile` laws) actually govern
+`components/sim/docs/sim-theory.edn`'s `:trajectory`/`:compile` laws) actually govern
 day to day.
 
 **Determinism.** Both phases draw from the run's single seeded RNG, in
@@ -246,7 +246,7 @@ regression to chase.
 
 1. **Granularity of the history-phase fast-forward.** Real Synthea
    advances in fixed weekly ticks because its own horizon is a
-   lifetime (`docs/patient-state-model.md`'s mining section already
+   lifetime (`components/sim/docs/patient-state-model.md`'s mining section already
    notes this, "for completeness rather than as a design constraint").
    **Recommendation: no fixed tick at all.** The history phase should
    reuse the exact same per-state transition-sampling logic the
@@ -256,7 +256,7 @@ regression to chase.
    instant — rather than looping at an artificial fixed interval. This
    is not a new idea for this project: `engine.clj`'s own header
    already states "this project's encounter-horizon discrete-event
-   engine has no equivalent tick loop" (`docs/patient-state-model.md`'s
+   engine has no equivalent tick loop" (`components/sim/docs/patient-state-model.md`'s
    mining section), and a fixed-tick history phase would be exactly
    the tick loop this project's own discrete-event architecture was
    built to avoid, reintroduced only for the part of a patient's life
@@ -279,8 +279,8 @@ regression to chase.
    state at registration is always auditable back to *why*, not merely
    asserted. This is a direct application of the same lesson this
    project already drew from Synthea's own export-window confusion
-   (issues #1465/#1040, `docs/research/SimHospital-Synthea-limitations-
-   considered.md` §4.1/§4.2, already cited in `docs/patient-state-
+   (issues #1465/#1040, `components/sim/docs/research/SimHospital-Synthea-limitations-
+   considered.md` §4.1/§4.2, already cited in `components/sim/docs/patient-state-
    model.md`'s warm-up section): content that silently doesn't appear,
    with no marker explaining why, is a documented failure mode this
    project has already committed not to reproduce. `check.clj` and any
@@ -298,8 +298,8 @@ new step-type pair:
 
 | GMF encounter class | Maps to | Notes |
 |---|---|---|
-| `wellness` / `ambulatory` | **new `:outpatient-visit` step, A04** | Activates `:class :outpatient`, already a value in `docs/patient-state-model.md`'s `:class` enum but with no allocation path or message type wired to it yet — this milestone is that wiring |
-| `emergency` | ED admission via the existing allocation ladder | No new step type — an `:admission` targeting a `:class :ed` ward is already this project's existing shape (`docs/operational-models.md`) |
+| `wellness` / `ambulatory` | **new `:outpatient-visit` step, A04** | Activates `:class :outpatient`, already a value in `components/sim/docs/patient-state-model.md`'s `:class` enum but with no allocation path or message type wired to it yet — this milestone is that wiring |
+| `emergency` | ED admission via the existing allocation ladder | No new step type — an `:admission` targeting a `:class :ed` ward is already this project's existing shape (`components/sim/docs/operational-models.md`) |
 | `inpatient` | `:admission`, A01 | No new step type — this project's existing, `:built` shape |
 
 **The new step types, sketched for M5b build scope (not built this
@@ -322,11 +322,11 @@ appendix):**
   (already a legal value).
 - **(Item 6.)** `:location` stays **deliberately nil** for
   the visit's duration — a **named exception**, gated on `:class
-  :outpatient`, to `docs/patient-state-model.md`'s existing "never
+  :outpatient`, to `components/sim/docs/patient-state-model.md`'s existing "never
   nil-bed, even while boarding" rule for `:location`, which was written
   before this project had a class of patient with no bed to be nil
   *about*. **Ratification note:** this exception is not merely prose —
-  it lands, M5b, as a genuine row in `docs/patient-state-model.md`'s
+  it lands, M5b, as a genuine row in `components/sim/docs/patient-state-model.md`'s
   event-validity table (the same status × event-class ×
   attribute-conditions shape that table's post-mortem/donor rows
   already use, not a special-cased sentence bolted alongside it):
@@ -357,7 +357,7 @@ appendix):**
   `outpatient-patients-occupy-no-bed` check (`:class :outpatient =>
   :location nil`, for the visit's duration — the same fact item 6's
   validity-table row states, checked mechanically here); and the
-  occupancy board's own consistency law (`docs/operational-models.md`'s
+  occupancy board's own consistency law (`components/sim/docs/operational-models.md`'s
   "board ≡ fold over patient locations") gains an explicit scope
   qualifier — *inpatient/ED* patient locations, not every patient's —
   since an outpatient patient was never a candidate for the board to
@@ -371,7 +371,7 @@ record.
 
 ## 5. Attributes registry
 
-`docs/patient-state-model.md`'s reserved `:attributes` map
+`components/sim/docs/patient-state-model.md`'s reserved `:attributes` map
 (`[:map-of :keyword :any]`, unused until M5) is where every module's
 `SetAttribute`/`Symptom` writes land. **v1 discipline: every write is
 auto-namespaced by the writing module's own id.** A module's raw
@@ -382,7 +382,7 @@ project's `:attributes` map, never a bare keyword. This is a deliberate
 departure from Synthea's own flat `Person.attributes` map, where every
 module shares one namespace by convention rather than by any enforced
 boundary — and it is this project's own no-hidden-modules corollary
-(`docs/sim-theory.md`'s IR-transforms section, restated at the M5
+(`components/sim/docs/sim-theory.md`'s IR-transforms section, restated at the M5
 roadmap entry) applied to *data* coupling, not just *execution*
 coupling: a module silently reading another module's bare attribute
 key is exactly the kind of invisible cross-module coordination that
@@ -397,8 +397,8 @@ is part of the key. **"Collisions are a validation error at module
 load," per this milestone's own scope, therefore names a narrower,
 real check: a vendored module writing a bare (non-namespaced) key that
 collides with an engine-reserved attribute.** `:donor`
-(`docs/patient-state-model.md`'s post-mortem entry,
-`docs/clinical-realities.md`) is the one such reserved key that exists
+(`components/sim/docs/patient-state-model.md`'s post-mortem entry,
+`components/sim/docs/clinical-realities.md`) is the one such reserved key that exists
 today, written by engine-internal logic rather than any module — a
 future vendored module whose own raw Synthea key happens to be
 `donor` (none of the three surveyed modules use this key; noted as a
@@ -411,7 +411,7 @@ needed for it.
 
 **No hidden modules, restated for attributes specifically:** lifecycle
 behavior this project runs is explicit and listable
-(`docs/sim-theory.md`'s corollary, restated at the M5 roadmap entry) —
+(`components/sim/docs/sim-theory.md`'s corollary, restated at the M5 roadmap entry) —
 namespacing makes that listability concrete for state, not just for
 execution: `grep`-ing `:attributes` for a module's own namespace
 segment is how a reader finds everything that module ever wrote,
@@ -420,7 +420,7 @@ without reading its JSON.
 ## 6. Trajectory event shape
 
 Restated here as the build session's own test obligations — each is
-already a stated law on `docs/sim-theory.edn`'s `:trajectory`/
+already a stated law on `components/sim/docs/sim-theory.edn`'s `:trajectory`/
 `:compile` stages; this section exists so a future red-test author has
 them in one place, phrased as obligations rather than as prose laws:
 
@@ -455,14 +455,14 @@ them in one place, phrased as obligations rather than as prose laws:
 ## 7. Implementation status (M5a, as built)
 
 `RunModules` the *library* is `:built` as of Milestone M5a
-(`ehrt.sim.gmf` — the loader, §1/§5; `ehrt.sim.gmf-
+(`ehrt.sim-trajectory.gmf` — the loader, §1/§5; `ehrt.sim-trajectory.gmf-
 interpreter` — `step`/`walk-module`/`run-module`, §1–§3): every v1 state
 type and all four transition kinds land exactly as specified above,
 tested against `test/ehrt/sim/fixtures/fixture-clinic.json`
 (ADR-0013 point 6's own hand-written fixture — placed there, not
 `resources/modules/`, per that point's own reasoning: this project's
 authored test content carries no NOTICE obligation and is not vendored
-upstream data). `docs/sim-theory.edn`'s own `:trajectory` stage stays
+upstream data). `components/sim/docs/sim-theory.edn`'s own `:trajectory` stage stays
 `:planned` regardless — see that file's own updated `:contract` note —
 because a library existing is not the same as the pipeline actually
 wiring persona → modules → trajectory inside a run; that wiring is
@@ -477,7 +477,7 @@ divergence from anything ratified:
    under the "no fixed tick" design — real Synthea's own answer (a global
    simulation tick re-checking every blocked module) is exactly the
    mechanism §3 rejects reproducing. This session's own resolution,
-   `ehrt.sim.gmf-interpreter/guard-step`: a failing `:age`
+   `ehrt.sim-trajectory.gmf-interpreter/guard-step`: a failing `:age`
    condition with operator `>=` resolves ANALYTICALLY — the interpreter
    computes the exact virtual-clock advance (a `java.time.LocalDate`
    computation, zero rng draws) until the persona's age reaches the
@@ -504,7 +504,7 @@ divergence from anything ratified:
 3. **`EncounterEnd`'s own reference is "the most recently opened
    Encounter for this module," not tracked open/closed.** Real GMF
    modules occasionally have more than one Encounter conceptually
-   "pending" at once (the same gap `docs/patient-state-model.md`'s own
+   "pending" at once (the same gap `components/sim/docs/patient-state-model.md`'s own
    mining section already names for `VisitID`/pending encounters,
    pre-existing and unrelated to this session). v1's interpreter does
    not track which encounters are still open versus already closed — it
@@ -542,7 +542,7 @@ itself (Task 3):
    own prose imagined.** The appendix's recommendation reasoned that
    `sinusitis.json`'s `Device`/`DeviceEnd` gap was safe because it is
    "reachable by simply not compiling that one branch's terminal
-   states" — but `ehrt.sim.gmf/load-module` has no partial-
+   states" — but `ehrt.sim-trajectory.gmf/load-module` has no partial-
    compile mechanism at all: ANY deferred-type state anywhere in a
    module rejects the WHOLE module, by design (section 1's own
    docstring, ADR-0013 point 4). Resolved by extending v1: `Device`/
@@ -554,7 +554,7 @@ itself (Task 3):
    building.
 2. **A real, previously-unexercised loader bug: a module with no
    top-level `:remarks` field failed schema validation.**
-   `ehrt.sim.gmf`'s own module constructor always assigned an
+   `ehrt.sim-trajectory.gmf`'s own module constructor always assigned an
    explicit `:remarks` key (nil when absent from the source JSON); an
    `{:optional true}` schema key permits the key's ABSENCE, not an
    explicit nil value, so this fails `[:vector :string]` — never
@@ -568,7 +568,7 @@ itself (Task 3):
    string.** `sinusitis.json`'s `Prescribe_Alternative_Antibiotic` state
    carries its RxNorm code as an unquoted JSON number
    (`"code": 1649987`), and `ehrt.sim.pathway/Concept` requires a
-   string. Fixed at the normalization layer (`ehrt.sim.gmf/
+   string. Fixed at the normalization layer (`ehrt.sim-trajectory.gmf/
    normalize-code` now coerces `:code` to a string unconditionally) —
    the code's own digits pass through unchanged (code passthrough law
    unweakened), only their Clojure type changes, the same kind of
@@ -614,7 +614,7 @@ itself (Task 3):
    lifetime under Synthea's own fixed-tick engine and are not authored
    to "finish" the way this project's hand-written fixture (purpose-
    built to demonstrate every v1 state type, including `Terminal`) does.
-   `ehrt.sim.gmf-interpreter/walk-module`/`run-module` loop until
+   `ehrt.sim-trajectory.gmf-interpreter/walk-module`/`run-module` loop until
    `:terminal?` or `:blocked?` (or, for `run-module`, an optional
    `horizon-end-t` bound); a module that never reaches Terminal and never
    blocks on a Guard (this module has none) would otherwise run until
@@ -636,7 +636,7 @@ itself (Task 3):
    `referenced_by_attribute` (an attribute-tracked condition, not a fixed
    state name) — a reference shape v1's interpreter does not resolve, so
    the trajectory event's own `:references` (and therefore its `:codes`,
-   `ehrt.sim.compile-trajectory`'s own resolution path) comes back
+   `ehrt.sim-trajectory.compile-trajectory`'s own resolution path) comes back
    nil. This turned out NOT to break the interpreter's own walk for this
    module (every place this state's condition is actually EVALUATED
    happens before this specific end event ever fires, so the missing
@@ -651,7 +651,7 @@ itself (Task 3):
 None of these six findings changes `resources/modules/sinusitis.json`
 itself — the vendored file on disk is byte-verbatim against upstream
 (`resources/modules/NOTICE`'s own hash record); every resolution above
-lives in the interpreter/loader (`ehrt.sim.gmf`/`ehrt.sim.
+lives in the interpreter/loader (`ehrt.sim-trajectory.gmf`/`ehrt.sim.
 gmf-interpreter`) or in how M5b's own engine wiring calls it, never in
 the vendored data.
 
@@ -838,7 +838,7 @@ histograms (zero or one deferred-type state):
   most consistent evidence in this entire survey for a specific,
   cheap v1.1 extension (promoting `Death` to a consumed-internally
   state exactly the way `Device`/`DeviceEnd` already were, wired to
-  the existing `:expired` machinery per `docs/clinical-realities.md`'s
+  the existing `:expired` machinery per `components/sim/docs/clinical-realities.md`'s
   post-mortem entry) — `spina_bifida.json` itself becomes the FIRST
   module ready to vendor the moment that lands.
 - **`epilepsy.json` — clean but for the wellness-encoding gap, DEFERRED.**
@@ -905,14 +905,14 @@ recognize.** `docs/gmf-interpreter.md`'s (this document's) own §1/§4
 assume every `Encounter` state names its class via a string field,
 `"encounter_class": "wellness"` — the encoding `sinusitis.json`/
 `sore_throat.json`/`ear_infections.json` all use, and the only one
-`ehrt.sim.gmf`'s `GmfState` schema accepts (`:encounter-class`
+`ehrt.sim-trajectory.gmf`'s `GmfState` schema accepts (`:encounter-class`
 is a REQUIRED key for the `:encounter` variant, no `{:optional true}`).
 `osteoporosis.json`'s `Wellness_Encounter` state instead carries a bare
 `"wellness": true` boolean and NO `encounter_class` key at all — this
 is confirmed a real, recurring upstream idiom, not a one-off: the SAME
 `wellness: true` shape appears in `mTBI.json` and
 `atrial_fibrillation.json` (both histogram-scouted this session), three
-independent modules. A module using it fails `ehrt.sim.gmf`'s
+independent modules. A module using it fails `ehrt.sim-trajectory.gmf`'s
 schema validation outright (`:schema-invalid`) — a DIFFERENT rejection
 category than `:unsupported-state-type`, surfacing only once a real
 `Encounter` state is checked against the v1 schema, not caught by the
@@ -939,7 +939,7 @@ authoring style.
 #### Multi-encounter-per-episode: a compile-time gap, not a state-type or condition gap
 
 **A new, load-bearing finding, verified by reading
-`ehrt.sim.compile-trajectory` directly (`compile-trajectory`,
+`ehrt.sim-trajectory.compile-trajectory` directly (`compile-trajectory`,
 lines ~194–262), not merely inferred from the JSON.** M5b's own
 `encounter-closed?` mechanism (docs/gmf-interpreter.md §8, "M5b
 findings," item 7) was built to stop `sinusitis.json`'s
@@ -991,7 +991,7 @@ evidence for (`ear_infections.json`, `sinusitis.json` itself):
 |---|---:|---|
 | `CallSubmodule` | 20 — `ear_infections`, `urinary_tract_infections`, `total_joint_replacement`, `myocardial_infarction`, `dermatitis`, `allergic_rhinitis`, `food_allergies`, `contraceptive_maintenance`, `dialysis`, `hiv_diagnosis`, `hypertension`, `osteoarthritis`, `covid19`, `stable_ischemic_heart_disease`, `lupus`, `allergies`, `lung_cancer`, `colorectal_cancer`, `hypothyroidism`, `diabetic_retinopathy_treatment`, `breast_cancer`, `cystic_fibrosis`, `anemia___unknown_etiology`, `home_hospice_snf` (24, corrected count — see note) | By far the largest single blocker: shared medication-regimen and referral submodules (`medications/*`, `heart/*`, `dme/*`, `total_joint_replacement/*`, `anemia/*`) are how modern Synthea authors factor out repeated therapeutic content — this is THE headline finding, not a tie. `hypothyroidism.json` is the SECOND confirmed instance (after `self_harm.json`) of a module blocked by exactly ONE otherwise-unreachable-by-default `CallSubmodule` — real, repeated evidence for a reachability-aware load gate as a cheap, high-value v1.1 extension |
 | `CarePlanStart`/`CarePlanEnd` | 11 — `total_joint_replacement`, `congestive_heart_failure`, `dermatitis`, `food_allergies`, `myocardial_infarction`, `attention_deficit_disorder`, `gout`, `fibromyalgia`, `self_harm`, `dementia`, `lung_cancer`, `lupus`, `veteran_ptsd` (13, see note) | Structured chronic-disease/post-procedure care-management plans (physical therapy, psychiatric follow-up, home health) — almost always paired with `CallSubmodule` in the same module |
-| `Death` | 12+ confirmed — `congestive_heart_failure`, `sepsis`, `myocardial_infarction`, `stroke`, `self_harm`, `gallstones`, `epilepsy`, `spina_bifida`, `cystic_fibrosis`, `breast_cancer`, plus several histogram-only hits (`chronic_kidney_disease`, `hiv_diagnosis`, `stable_ischemic_heart_disease`, `colorectal_cancer`, `lung_cancer`) | **The single strongest, most consistent finding in this table.** Every one of the 12+ modules above has its `Death` state on a genuinely excludable, low-probability tail — NEVER once on a mandatory path, across all 41 modules this session read at any depth. `spina_bifida.json` (above) is the concrete, empirically-confirmed proof: a module this session first mis-characterized as vendorable specifically BECAUSE its `Death` state looked safely isolated — it IS safely isolated, the loader's all-or-nothing gate is what still blocks it. Promoting `Death` to a `Device`/`DeviceEnd`-style consumed-internally state (wired to the existing `:expired` machinery, `docs/clinical-realities.md`'s post-mortem entry) is, on this session's own evidence, the cheapest, highest-confidence, most immediately-productive v1.1 extension in this entire table — `spina_bifida.json` alone is ready to vendor the day it lands |
+| `Death` | 12+ confirmed — `congestive_heart_failure`, `sepsis`, `myocardial_infarction`, `stroke`, `self_harm`, `gallstones`, `epilepsy`, `spina_bifida`, `cystic_fibrosis`, `breast_cancer`, plus several histogram-only hits (`chronic_kidney_disease`, `hiv_diagnosis`, `stable_ischemic_heart_disease`, `colorectal_cancer`, `lung_cancer`) | **The single strongest, most consistent finding in this table.** Every one of the 12+ modules above has its `Death` state on a genuinely excludable, low-probability tail — NEVER once on a mandatory path, across all 41 modules this session read at any depth. `spina_bifida.json` (above) is the concrete, empirically-confirmed proof: a module this session first mis-characterized as vendorable specifically BECAUSE its `Death` state looked safely isolated — it IS safely isolated, the loader's all-or-nothing gate is what still blocks it. Promoting `Death` to a `Device`/`DeviceEnd`-style consumed-internally state (wired to the existing `:expired` machinery, `components/sim/docs/clinical-realities.md`'s post-mortem entry) is, on this session's own evidence, the cheapest, highest-confidence, most immediately-productive v1.1 extension in this entire table — `spina_bifida.json` alone is ready to vendor the day it lands |
 | **Wellness-encounter `wellness: true` encoding** (new this session) | 5 confirmed (`mTBI`, `atrial_fibrillation`, `osteoporosis`, `epilepsy`, `med_rec`) of a ~41-module scouted sample — likely still under-counted, not systematically checked across all 85 | Blocks an entire v1 ENCOUNTER CLASS (`:wellness`) via this idiom specifically — the cheapest fix in this table (a loader normalization, not new interpreter machinery); `epilepsy.json` and `med_rec.json` are otherwise FULLY clean, making this the single highest-confidence "would vendor immediately if fixed" row in this table |
 | **Mandatory-path `Date` condition** (new this session) | 3 confirmed (`stroke`, `atrial_fibrillation`, `osteoporosis`), 1 more histogram-only (`attention_deficit_disorder`) | Calendar-year-gated treatment-protocol logic (older vs. newer drug availability) — narrow, mechanical (a numeric year comparison against `sim-config`'s own `reference-date`), likely the SECOND-cheapest fix in this table |
 | `MultiObservation` | 3 — `congestive_heart_failure`, `sepsis`, `wellness_encounters` | Combined multi-panel vitals reads (blood pressure systolic+diastolic in one panel) — clusters with `DiagnosticReport` |
@@ -1095,7 +1095,7 @@ roadmap's own M5a-opens-by-confirming-these convention,
    `:new -> :admitted`, `:class -> :outpatient` (§4 sketch).
 6. `:outpatient-visit`'s `:location` stays deliberately `nil` for the
    visit's duration — a named, narrowly-gated exception to
-   `docs/patient-state-model.md`'s "never nil-bed" rule for
+   `components/sim/docs/patient-state-model.md`'s "never nil-bed" rule for
    `:location`. **This item does not stay prose-only:** it is scheduled
    to land, M5b, as a genuine conditional row in that document's
    event-validity table (mechanism: status × event-class ×
