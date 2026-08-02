@@ -5809,7 +5809,181 @@ them.
 > design-channel ruling, not yet decided.**
 
 > **D1a schema PROPOSAL (drafted Step 2, 2026-08-02) — PROPOSED, NOT
-> YET RULED.** [placeholder — filled by this same session's own Step 2]
+> YET RULED. Every claim below is drawn from D1a's own characterization
+> (§11); marked PROPOSED throughout, not decided text — a design-channel
+> ruling is what would move any of this into R2(a)/(c)'s own Decision
+> section.**
+>
+> **P1 — one new IR step, `:diagnostic-report`, children reuse the
+> EXISTING `:observation` step shape verbatim (R2(a)'s own "observation-
+> shaped children," now concrete):**
+> ```clojure
+> [:diagnostic-report
+>  (with-transitions [:type [:= :diagnostic-report]]
+>    [:codes {:optional true} [:vector sim-model/Concept]]
+>    [:observations [:vector ObservationEntry]]
+>    [:citation {:optional true} Citation])]
+> ```
+> `:codes` optional (D1a-2: `DiagnosticReport` always carries report-level
+> codes in practice, but `MultiObservation` compiles into the SAME step
+> and real Synthea's own `ObservationGroup.codes` is itself just a
+> `List<Code>`, not required to be non-empty at the Java level — optional
+> here follows the same "don't require what source doesn't" discipline
+> `:observation`'s own optional `:category`/`:unit` already set). NO
+> `:category`/`:number-of-observations`-equivalent field — D1a-2 found
+> `category` is `MultiObservation`-only at the Java level and consumed
+> by nothing this project's own emission survey (D1a-7) found a use for,
+> and `number_of_observations` is dead JSON (the children vector's own
+> count already is the count) — proposed OMITTED under this project's
+> own minimal-schema discipline, flagged as Q1 below in case the author
+> weighs it differently.
+>
+> **P2 — `:observation`'s own shape (and `ehrt.sim.engine/ObservationRecord`)
+> gain ONE new optional field, `:value-code`, closing the value_code gap
+> for BOTH standalone `Observation` states (`sepsis.json`'s own
+> `Capillary_Refill`) and `:diagnostic-report`'s embedded children —
+> one field, two consumers, not a bespoke child-only shape:**
+> ```clojure
+> ;; pathway.clj, :observation step (existing step, ONE field added):
+> [:observation (with-transitions [:type [:= :observation]] [:codes [:vector sim-model/Concept]]
+>                 [:category {:optional true} :string] [:unit {:optional true} :string]
+>                 [:value {:optional true} number?]
+>                 [:value-code {:optional true} sim-model/Concept]   ;; NEW
+>                 [:range {:optional true} Range])]
+> ;; engine.clj, ObservationRecord (existing accumulator shape, same field added):
+> [:value-code {:optional true} sim-model/Concept]                   ;; NEW
+> ```
+> `ObservationEntry` (P1's own children shape) IS this same amended
+> `:observation` step shape — no third type. `sample-observation-extra`
+> (`gmf_interpreter.clj`) gains a `value_code` branch (`{:codes codes
+> :value-code (normalize-code value_code)}`, the same `normalize-code`
+> helper `:codes` itself already uses) alongside its existing `:range`
+> branch.
+>
+> **P3 — compile-mapping sketch, all three GMF states, confidence levels
+> stated plainly (not uniform — VitalSign is NOT sepsis-grounded):**
+> - **`MultiObservation`/`DiagnosticReport` -> `:diagnostic-report`**
+>   (HIGH confidence, D1a-2/D1a-3 direct source grounding): one compile
+>   function, shared — `:codes` from the state's own top-level `codes`
+>   (absent on `MultiObservation` states with no report-level code,
+>   present on `DiagnosticReport`'s own `Blood_Cultures`-shaped states);
+>   `:observations` = one compiled `ObservationEntry` PER embedded child,
+>   via the SAME per-child sampling `sample-observation-extra` already
+>   does for a standalone `Observation` state (reuse, not a parallel
+>   implementation) — `range`/`value_code` both resolve; `vital_sign`
+>   resolves per P4's own open question, below.
+> - **`VitalSign` -> observation-flavored event (R2(c)'s own ruling)**
+>   (LOW confidence — sketched from R2(c)'s own text alone, NOT grounded
+>   in any fetched real module this session, since `sepsis.json` doesn't
+>   exercise it; the first session vendoring a real VitalSign-bearing
+>   candidate should re-derive this against source, not treat this
+>   sketch as settled). A real `VitalSign` state (`State.java`) has NO
+>   `codes` field at all — it is an internal generator-setter, not an
+>   observable clinical event, so "dissolves into an observation-flavored
+>   event" has no source-given LOINC/SNOMED code to carry verbatim (code-
+>   passthrough law has nothing to pass through). Sketch: sample ONE
+>   point value at entry time from the state's own `exact`/`range` (this
+>   project's existing sampling infra already covers both forms), category
+>   `"vital-signs"`, and — the open gap — an AUTHOR-SUPPLIED or convention-
+>   derived code (e.g. a fixed LOINC keyed off the named vital sign,
+>   `"Systolic Blood Pressure"` -> `8480-6`, the same code `sepsis.json`'s
+>   own `vital_sign`-typed Observations already use) rather than one read
+>   from the module JSON, since none exists there. **Flagged as Q2,
+>   below — this is a real gap R2(c)'s own ruling text left unstated,
+>   surfaced by trying to actually draft the mapping, not assumed away.**
+>
+> **P4 — the `vital_sign`-field gap (D1a-4): engine has no physiology
+> source, so NO real value can be computed from this project's own
+> state today. Two options, RECOMMENDATION marked:**
+> - **Option A (RECOMMENDED): documented simplification, the SAME shape
+>   `Active Allergy`/D5's payer gap already established.** Author a
+>   small static default-range table for the handful of named vital
+>   signs real candidate closures are known to need so far (`sepsis.json`
+>   alone needs `"Systolic Blood Pressure"`/`"Diastolic Blood Pressure"`/
+>   `"Oxygen Saturation"`) — `sample-observation-extra` gains a
+>   `vital_sign` branch that looks up the name in this table and samples
+>   a plain uniform range, same mechanism `range` already uses, clearly
+>   commented as a documented approximation of a real continuous
+>   physiology model this project does not have. Table grows by
+>   evidence (a future candidate needing an unlisted vital sign is a
+>   real, visible `:unrecognized-vital-sign`-shaped rejection, not a
+>   silent wrong answer) — the same "grows by evidence, not
+>   speculation" discipline this project's own condition/state
+>   vocabularies already follow.
+> - **Option B: leave unbuilt, matching TODAY's accidental behavior,
+>   made deliberate.** `vital_sign`-sourced children compile with no
+>   `:value`/`:value-code` at all (an `ObservationEntry` carrying only
+>   `:codes`) — real, honestly incomplete, but SILENT (no gap surfaces
+>   without reading the output closely). `Pulse_Oximetry`/`Record_Blood_
+>   Pressure_2` would vendor with a real fidelity hole, undisclosed at
+>   the wire level.
+>
+> **P5 — engine handling: RECOMMEND pass-through, no new accumulator
+> field.** Grounded directly against `ehrt.sim.engine`'s own existing
+> cases: `:observation`'s `decide` emits one `:event :observation`
+> ground-truth event and its `evolve` appends an `ObservationRecord` to
+> `patient`'s own `:observations` accumulator (a pure historical list,
+> no status/location impact); `:procedure`'s `evolve` is a bare no-op.
+> Neither pattern needs inventing for `:diagnostic-report`: `decide`
+> emits ONE `:event :diagnostic-report` event carrying `:codes` and the
+> full `:observations` vector (mirroring how the compiled IR step itself
+> bundles children — one event, not N); `evolve` FLATTENS each child
+> into its own `ObservationRecord` appended to `:observations` — the
+> IDENTICAL pattern `ObservationRecord`'s own docstring already
+> describes for `:result-available`'s per-analyte flattening ("a single
+> analyte flattened out of a `:result-available` event's own
+> `:results`"), reused rather than a third accumulator shape invented.
+> No `PatientState` schema change beyond `ObservationRecord`'s own P2
+> `:value-code` field addition.
+>
+> **P6 — emission sketch (D1a-7's own field-by-field account, condensed
+> to the concrete diff):** `message-type-registry` gains
+> `:diagnostic-report {:type "ORU" :trigger "R01"}` (the same trigger
+> `:result-available`/`:observation` already use). ONE new OBX-builder —
+> call it `report-obx-segment` — sharing `observation-obx-segment`'s
+> field set (codes/value/unit, no reference-range/abnormal-flag) but
+> branching on `:value-code` vs. `:value` for OBX-2 (`"CWE"` + `cwe-field`
+> vs. `"NM"` + the numeric string, the SAME `cwe-field` helper
+> `obr-segment` already uses for OBR-4). A new `diagnostic-report-
+> message` function: MSH/PID/PV1/`orc-segment` (control-id, reused
+> unchanged)/`obr-segment` (`:codes`, reused unchanged)/one
+> `report-obx-segment` per `:observations` entry via `map-indexed`, the
+> SAME shape `oru-message` already uses for `:results`. No change to
+> `control-id-for` — the existing single-subject fallback already
+> covers a `:diagnostic-report` event.
+>
+> **Open questions (Q), enumerated per E5, none decided here:**
+> - **Q1 — keep or drop `:category`/report-level metadata on
+>   `:diagnostic-report`?** P1 recommends OMIT (unused by anything this
+>   session's own emission survey found); the author may know a future
+>   FHIR `DiagnosticReport.category`/`Observation.category` consumer
+>   (`sim-emit-fhir`, not yet built) that would want it carried through
+>   now rather than added later.
+> - **Q2 — `VitalSign`'s own compile-mapping (P3) has no source-given
+>   code to pass through.** Author-supplied code table (P3's own
+>   sketch), a required-`:codes`-on-authoring-time convention (the
+>   author who VENDORS a VitalSign-bearing module supplies the code,
+>   not the interpreter), or something else — genuinely open, and
+>   arguably not even THIS wave's decision if no VitalSign-bearing
+>   candidate is vendored before some future wave forces the question.
+> - **Q3 — P4's own Option A vs. B** (documented simplification vs.
+>   leave unbuilt) for the `vital_sign` FIELD gap — P4 recommends A: a
+>   disclosed, evidence-grown default-range table beats a silent fidelity
+>   hole, but it is new authored content (a data table) this project has
+>   not needed anywhere else in the GMF interpreter to date, worth the
+>   author's own judgment on whether it's worth building now versus
+>   deferring `vital_sign`-sourced children specifically (independent of
+>   whether `:diagnostic-report` itself lands) until a second closure
+>   needs the same table, proving it's not a one-module special case.
+> - **Q4 — is D1a's own evidence (one closure, `sepsis.json`) sufficient
+>   to rule P1/P2/P5/P6 (the MultiObservation/DiagnosticReport-proper
+>   design, HIGH confidence per P3), or should D1b's own implementation
+>   session first re-confirm against the OTHER corpus-known
+>   `MultiObservation`/`DiagnosticReport` modules (`congestive_heart_
+>   failure`/`gallstones`/`wellness_encounters`/`dialysis`/`lung_cancer`/
+>   `colorectal_cancer`, all cited but none closure-read this session) —
+>   this session's own budget did not extend to a second closure fetch,
+>   named here rather than silently assumed adequate.**
 
 > **D2/D3 characterization notes:** not yet filled — each stage's own
 > session fills its own note here when it runs, per R6's own sequencing.
