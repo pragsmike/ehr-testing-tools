@@ -116,8 +116,20 @@
 (def ^:private encounter-class->keyword
   "GMF's own encounter-class strings (docs/gmf-interpreter.md section 4) --
   kept as their own map (distinct from `slug`'s generic transform) since
-  these are a CLOSED v1 vocabulary, not free-form names."
-  {"wellness" :wellness "ambulatory" :ambulatory "emergency" :emergency "inpatient" :inpatient})
+  these are a CLOSED v1 vocabulary, not free-form names.
+
+  GMF coverage Wave B (2026-08-02, ADR-0027): \"outpatient\" is a real,
+  distinct GMF encounter-class STRING (`ear_infections.json`'s own
+  primary encounter, Step 1's own characterization) this project's own
+  §4 table never separately named -- aliased onto the SAME `:ambulatory`
+  keyword `\"ambulatory\"` already maps to, not a new keyword of its
+  own: `ehrt.sim-trajectory.compile-trajectory`'s own `encounter->step`
+  (confirmed by direct read) already treats `:wellness`/`:ambulatory`
+  identically (both compile to `:outpatient-visit`), so this is a
+  genuine same-concept vocabulary alias, not an invented mapping, and
+  needs no `compile-trajectory` change."
+  {"wellness" :wellness "ambulatory" :ambulatory "emergency" :emergency "inpatient" :inpatient
+   "outpatient" :ambulatory})
 
 (def ^:private condition-type->keyword
   "v1's condition predicates (docs/gmf-interpreter.md section 2): age,
@@ -221,6 +233,20 @@
           (cond-> (:codes state) (update :codes #(mapv normalize-code %))
                   (:code state) (update :code normalize-code)
                   (:allow state) (update :allow normalize-condition)
+                  ;; GMF coverage Wave B (2026-08-02, ADR-0027): a second
+                  ;; GMF wellness-encounter encoding this loader didn't
+                  ;; recognize (docs/gmf-interpreter.md section 8's own
+                  ;; M7 finding, mTBI/atrial_fibrillation/osteoporosis/
+                  ;; epilepsy/med_rec -- now confirmed MANDATORY-path on
+                  ;; ear_infections.json too, Step 1's own
+                  ;; characterization): `"wellness": true` with no
+                  ;; `encounter_class` key at all -> :encounter-class
+                  ;; :wellness, the loader normalization that document's
+                  ;; own prioritization table already named as "the
+                  ;; cheapest fix in this table."
+                  (and (= :encounter kw-type) (:wellness state) (not (:encounter-class state)))
+                  (assoc :encounter-class :wellness)
+
                   (:encounter-class state) (update :encounter-class
                                                     (fn [c] (get encounter-class->keyword c (keyword (slug c)))))
                   (:condition-onset state) (update :condition-onset (fn [t] (keyword (slug t))))
@@ -312,9 +338,18 @@
    [:condition-onset (with-transitions [:type [:= :condition-onset]] [:codes [:vector sim-model/Concept]]
                         [:target-encounter {:optional true} :keyword])]
    [:condition-end (with-transitions [:type [:= :condition-end]] [:condition-onset {:optional true} :keyword])]
+   ;; GMF coverage Wave B (2026-08-02, ADR-0027): :codes is {:optional
+   ;; true} -- a real `"wellness": true`-idiom Encounter (above) can
+   ;; carry NO codes key at all (`ear_infections.json`'s own
+   ;; Next_Wellness_Encounter, Step 1's own characterization); the same
+   ;; "don't fabricate what was never actually said" disposition M5b's
+   ;; own finding 6 already established for ConditionAnnotation's own
+   ;; :codes field. Safe: `compile-trajectory`'s own encounter->step
+   ;; (confirmed by direct read) never reads :codes off an encounter
+   ;; event at all.
    [:encounter (with-transitions [:type [:= :encounter]]
                  [:encounter-class [:enum :wellness :ambulatory :emergency :inpatient]]
-                 [:codes [:vector sim-model/Concept]] [:reason {:optional true} :string])]
+                 [:codes {:optional true} [:vector sim-model/Concept]] [:reason {:optional true} :string])]
    [:encounter-end (into [:map [:type [:= :encounter-end]]] TransitionFields)]
    [:procedure (with-transitions [:type [:= :procedure]] [:codes [:vector sim-model/Concept]]
                  [:target-encounter {:optional true} :keyword] [:reason {:optional true} :string]

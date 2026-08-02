@@ -224,3 +224,42 @@
   (let [loaded (gmf/load-closure "fixture-clinic" fixture-clinic-json (resolver {}))]
     (is (result/ok? loaded))
     (is (= #{"fixture-clinic"} (into #{} (keys (:modules (:payload loaded))))))))
+
+;; --- GMF coverage Wave B (2026-08-02, ADR-0027): encounter-class loader
+;; normalizations, disclosed addition -- both mandatory-path on
+;; ear_infections.json's own closure (Step 1's own characterization) --
+
+(def outpatient-encounter-class-json
+  (str "{\"name\": \"Outpatient\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Visit\"},"
+       "  \"Visit\": {\"type\": \"Encounter\", \"encounter_class\": \"outpatient\","
+       "              \"codes\": [{\"system\": \"SNOMED-CT\", \"code\": \"185345009\", \"display\": \"Encounter for symptom\"}],"
+       "              \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest encounter-class-outpatient-is-aliased-onto-ambulatory
+  (testing "a real GMF encounter_class value (ear_infections.json's own
+            primary encounter) this loader's original 4-entry map didn't
+            recognize -- same clinical concept :ambulatory already
+            covers, per compile-trajectory's own encounter->step"
+    (let [loaded (gmf/load-module "outpatient-mod" outpatient-encounter-class-json)]
+      (is (result/ok? loaded))
+      (is (= :ambulatory (:encounter-class (get-in (:payload loaded) [:states :visit])))))))
+
+(def wellness-true-idiom-json
+  (str "{\"name\": \"Wellness\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Visit\"},"
+       "  \"Visit\": {\"type\": \"Encounter\", \"wellness\": true, \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest wellness-true-boolean-idiom-normalizes-to-encounter-class-wellness-with-no-codes
+  (testing "docs/gmf-interpreter.md section 8's own M7 finding
+            (mTBI/atrial_fibrillation/osteoporosis/epilepsy/med_rec),
+            confirmed MANDATORY-path on ear_infections.json too --
+            :codes stays absent (code passthrough: never fabricate a
+            concept the source module never carried)"
+    (let [loaded (gmf/load-module "wellness-mod" wellness-true-idiom-json)]
+      (is (result/ok? loaded))
+      (let [visit (get-in (:payload loaded) [:states :visit])]
+        (is (= :wellness (:encounter-class visit)))
+        (is (not (contains? visit :codes)))))))
