@@ -5770,7 +5770,48 @@ them.
 > 4, records). Session record:
 > `.agents/session-records/2026-08-02-sim-split-s3-wave-d-d0.md`.
 
-> **D1/D2/D3 characterization notes:** not yet filled — each stage's own
+> **D1a characterization note (filled Step 1, 2026-08-02, stage D1a —
+> characterization only, E1: no schema/compile-mapping/engine code lands
+> this session).** Full account, source-cited against `sepsis.json` and
+> four real Synthea engine files (`State.java`/`HealthRecord.java`/
+> `Person.java`/`LifecycleModule.java`) at the same pinned commit every
+> prior GMF citation in this document uses:
+> `components/sim-trajectory/docs/gmf-interpreter.md` §11. Headline
+> findings, for the record: (a) `sepsis.json` is a single-file closure
+> (zero `CallSubmodule`) exercising only 3 of the 7 known transition
+> kinds, none D3-scoped — D1 carries no D3 dependency via transitions,
+> shrinking nothing; (b) `MultiObservation`/`DiagnosticReport` share one
+> Java parent (`ObservationGroup`) and take children ONLY as embedded,
+> inline `Observation`-shaped definitions — never a reference to a
+> preceding state, never coupled to each other — grounding R2(a)'s own
+> "one step type, both compile into it" directly against source, not
+> inference; the module JSON's own `number_of_observations` field is
+> DEAD (never read — the real count is the children vector's own
+> length); (c) sepsis's own `Observation`/`MultiObservation`-children use
+> THREE value-sourcing mechanisms side by side (`range`, ALREADY BUILT;
+> `value_code`, a coded/qualitative finding, UNBUILT; `vital_sign`, a
+> named-vital-sign lookup, UNBUILT) — the `vital_sign` case's own real
+> upstream source, `LifecycleModule.java`, is a hardcoded Java module
+> this project has never ported and has no persona/clinical-state
+> equivalent for, a genuine, load-bearing gap distinct from (and not
+> resolved by) R2(c)'s own dissolution design; (d) the `VitalSign` STATE
+> TYPE and `Vital Sign` CONDITION TYPE R2(c) actually names are BOTH
+> absent from sepsis's own closure — R2(c) is neither confirmed nor
+> contradicted by this session's evidence, a negative result recorded
+> plainly, not silently treated as a pass; (e) neither existing ORU
+> builder (`oru-message`/`observation-message`) can render a
+> `value_code`-sourced qualitative finding today (both hardcode OBX-2
+> `"NM"`), and `oru-message`'s own `obx-segment` requires reference-
+> range/abnormal-flag fields no GMF-derived observation carries — a real
+> gap the emission design must close, detailed with a concrete field-by-
+> field account in §11's own D1a-7. **A schema PROPOSAL drawn from this
+> evidence is recorded immediately below, marked PROPOSED — awaiting a
+> design-channel ruling, not yet decided.**
+
+> **D1a schema PROPOSAL (drafted Step 2, 2026-08-02) — PROPOSED, NOT
+> YET RULED.** [placeholder — filled by this same session's own Step 2]
+
+> **D2/D3 characterization notes:** not yet filled — each stage's own
 > session fills its own note here when it runs, per R6's own sequencing.
 
 ---

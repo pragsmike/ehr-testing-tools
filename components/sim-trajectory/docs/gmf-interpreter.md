@@ -1669,3 +1669,338 @@ true}` fields, the same backward-compatibility shape `citation-fields`
 already establishes elsewhere in `engine.clj`). **No escalation triggered
 by this table** — the minimal path touches no pathway-IR step-TYPE and no
 `sim-model` schema beyond two optional fields on an existing step.
+
+---
+
+## 11. GMF coverage Wave D stage D1a: observation-family characterization (2026-08-02)
+
+Step 1 of the D1a session prompt (`notes/ADRs.md` ADR-0029 R2(a)/(c),
+R6). **This session is characterization only (E1) — no schema, compile-
+mapping, or engine code lands here; the PROPOSAL this characterization
+feeds is recorded separately in ADR-0029's own D1 placeholder, marked
+PROPOSED, awaiting a design-channel ruling.** Read at the SAME pinned
+commit every prior GMF citation in this document uses,
+`7e08387c68a7f0e21d13076609a159fd473fc902` of
+[`synthetichealth/synthea`](https://github.com/synthetichealth/synthea)
+(`master`) — `sepsis.json` itself, plus four real engine source files:
+`State.java` (`MultiObservation`/`DiagnosticReport`/`ObservationGroup`/
+`Observation`/`VitalSign` inner classes), `HealthRecord.java`
+(`multiObservation`/`report`/`Observation`/`Report`), `Person.java`
+(`getVitalSign`/`setVitalSign`), and `LifecycleModule.java` (the
+built-in, non-GMF module that actually populates the vital signs
+`sepsis.json` reads).
+
+### D1a-1 — `sepsis.json` closure: single file, no `CallSubmodule`
+
+`sepsis.json` has **zero `CallSubmodule` states** (confirmed by direct
+state-type census, below) — unlike Wave B/C's own closures
+(`ear_infections`/`urinary_tract_infections`), there is no second file
+to fetch or characterize. The existing survey row (Appendix, above,
+M7 survey) already named this module's disposition; this session adds
+the closure-level and source-level detail that row's own format didn't
+carry.
+
+| Module | States | State-type gap | Condition-vocab gap | Other findings |
+|---|---:|---|---|---|
+| `sepsis.json` (root, no `CallSubmodule` — trivial one-file closure) | 37 | `MultiObservation` ×2, `DiagnosticReport` ×1 (Wave D's own reason for existing) | none (`Active Allergy`/`Age`/`Observation`, all v1 — `Observation`-as-condition-type resolved Wave A) | see D1a-3 through D1a-7, below, for the full account |
+
+**State-type census** (direct count against every state's own `type`
+key): `ConditionOnset` ×3, `Death` ×1, `Delay` ×3, `DiagnosticReport`
+×1, `Encounter` ×1, `EncounterEnd` ×2, `Guard` ×1, `Initial` ×1,
+`MedicationOrder` ×4, `MultiObservation` ×2, `Observation` ×6,
+`Procedure` ×6, `Simple` ×5, `Terminal` ×1 (sums to the survey row's
+own 37). Every type OTHER than `MultiObservation`/`DiagnosticReport`
+is already v1 — `Death` (Wave C), the four original trajectory-event
+types (`ConditionOnset`/`MedicationOrder`/`Observation`/`Procedure`),
+and the five consumed-internally types (`Initial`/`Terminal`/`Simple`/
+`Delay`/`Guard`) — confirming this closure is EXACTLY as clean as the
+prioritization table already claimed: the two Wave-D-scoped types are
+the module's only real blocker.
+
+**Transition-kind sweep, against all seven known kinds (§2):**
+`direct_transition` ×28, `distributed_transition` ×6,
+`conditional_transition` ×2 — **zero** `complex_transition`, **zero**
+`type_of_care_transition`, **zero** `lookup_table_transition`, and —
+checked directly against every one of the six `distributed_transition`
+states' own distribution values (`0.06`/`0.94`/`0.6`/`0.4`/`0.125`/
+`0.875`/`0.2`/`0.8`/`0.18`/`0.82`/`0.5`/`0.5`) — **zero** attribute-
+sourced weights (every value is a literal number, unlike `stroke.json`'s
+own `stroke_risk` finding, ADR-0028). **This is a real, honest finding
+against the prompt's own anticipated shrinkage:** sepsis needs NONE of
+the three D3-scoped transition kinds — D1 carries no D3 dependency via
+transitions, and D1's own payoff is not resequenced or shrunk on this
+axis.
+
+### D1a-2 — `MultiObservation`/`DiagnosticReport`: one shared parent, embedded-only children, no cross-state coupling
+
+Grounded against `State.java`'s own class hierarchy, not the module
+JSON alone. `MultiObservation` and `DiagnosticReport` both extend a
+private abstract class, `ObservationGroup`:
+
+```java
+private abstract static class ObservationGroup extends State {
+  protected List<Code> codes;
+  protected List<Observation> observations;
+  ...
+}
+public static class MultiObservation extends ObservationGroup {
+  private String category;
+  public boolean process(Person person, long time) {
+    for (Observation o : observations) { o.process(person, time); }
+    ...
+    HealthRecord.Observation observation =
+        person.record.multiObservation(time, primaryCode, observations.size());
+    ...
+    observation.category = category;
+    return true;
+  }
+}
+public static class DiagnosticReport extends ObservationGroup {
+  public boolean process(Person person, long time) {
+    for (Observation o : observations) { o.process(person, time); }
+    ...
+    Report report = person.record.report(time, primaryCode, observations.size());
+    ...
+    return true;
+  }
+}
+```
+
+**Children are EMBEDDED, never referenced.** `observations` is a
+Gson-bound `List<Observation>` — the JSON `"observations"` array is a
+list of FULL, INLINE `Observation` STATE definitions (the same shape
+`sepsis.json`'s own standalone `Lactate_Level`/`Pulse_Oximetry` states
+use), not a count or a set of names pointing at other states. There is
+no field on `ObservationGroup`, `MultiObservation`, or
+`DiagnosticReport` that names a preceding state — the Java type itself
+forecloses a reference-based authoring shape, this is not merely what
+`sepsis.json` happens to do. `sepsis.json`'s own `Record_Blood_Pressure`
+(two embedded children, `range`-sourced) and `Blood_Cultures` (one
+embedded child, `value_code`-sourced) both confirm this directly.
+
+**`number_of_observations` (JSON) is DEAD — grepped for across the
+whole of `State.java`, zero hits under any camelCase binding.** The
+`int numberOfObservations` parameter `multiObservation`/`report` (below)
+actually consume is the JAVA LIST's own `.size()` at the `process()`
+call site (`observations.size()`, quoted above) — NOT anything read
+from the module's own JSON. `sepsis.json`'s `Record_Blood_Pressure`
+carries `"number_of_observations": 0` and it is never read; the real
+count is 2, the length of its own `"observations"` array. This project's
+own schema needs no `number_of_observations`-equivalent field at all —
+the children VECTOR's own count already is the count.
+
+**`category` is `MultiObservation`-only at the Java level —
+`DiagnosticReport` (and `ObservationGroup` itself) declare no
+`category` field.** Confirmed both by the class bodies above and by
+direct inspection: `sepsis.json`'s `Blood_Cultures` (`DiagnosticReport`)
+carries no top-level `category` key; `Record_Blood_Pressure`/
+`Record_Blood_Pressure_2` (`MultiObservation`) both carry
+`"category": "vital-signs"`. Each CHILD observation carries its own
+`category` regardless (`Observation`'s own field, per-child) — the
+top-level `category` is a MultiObservation-only convenience, not a
+report-level concept `DiagnosticReport` shares.
+
+**No coupling between the two state TYPES exists anywhere — structural
+or referential.** In `sepsis.json`: `Blood_Cultures` (`DiagnosticReport`)
+fires exactly once, unconditionally, the FIRST state after
+`Sepsis_ED_Encounter` opens — reached by 100% of sepsis-onset patients.
+`Record_Blood_Pressure`/`Record_Blood_Pressure_2` (`MultiObservation`)
+fire 0, 1, or 2 times depending on path (patients who reach `Normal_MAP`
+then `Discharge_to_Home` directly — the majority path — never reach
+either) — confirmed by full transition-graph trace, below. **Neither
+ever names or reads the other; they are two independent state types
+that share an implementation parent and a JSON authoring shape, nothing
+more.** Consistent with this document's own existing prioritization
+table (Appendix): of the modules already read across Waves A–C,
+`gallstones`/`dialysis`/`lung_cancer`/`colorectal_cancer` all carry
+`DiagnosticReport` with no `MultiObservation` anywhere — the reverse
+(a `MultiObservation`-only module) was not found in the 41-module
+corpus already surveyed, though that survey was never run looking
+specifically for this combination and this session did not re-run it —
+named as a gap in the existing evidence, not claimed as a negative
+proof.
+
+**Full reachability trace (for the record):** `Sepsis_ED_Encounter` ->
+`Blood_Cultures` -> `Administer_Broad_Spectrum_Abx` -> {`Aztreonam` |
+`Piperacillin_Tazobactam`} -> `Vancomycin` -> `Vitals_and_Labs` ->
+`Capillary_Refill` -> `Pulse_Oximetry` -> `Lactate_Level1` ->
+`Fluid_Resuscitation` -> `Check_Septic_Shock` -> {0.2 `Low_MAP` ->
+`Septic_Shock` -> `Admit_to_ICU` | 0.8 `Normal_MAP` ->
+`Admit_to_Inpatient`} -> ... -> `Fluid_Resuscitation2` -> `Lactate_Level`
+-> {value>=2: `Administer_Vasopressors` -> `Norepinephrine` ->
+`Record_Blood_Pressure` | else: `Record_Blood_Pressure` directly} ->
+`Check_ARDS` -> {0.18 ARDS branch -> `Ventilator`/`Ventilator_Weaning`
+-> `Delay_in_ICU` or `Death` | 0.82 `Delay_in_ICU` directly} ->
+`Delay_in_ICU` -> {0.125 `Death` | 0.875 `Record_Blood_Pressure_2`} ->
+`Admit_to_Inpatient` -> `Delay_3-10_days` -> {0.6 `Discharge_to_Home` |
+0.4 `Admit_to_ICU`, a genuine relapse CYCLE back into the ICU branch —
+noted for completeness, not itself a GMF anomaly; Synthea's own
+`distributed_transition` graphs are not required to be acyclic the way
+D3's own closure call-graph is}. `Record_Blood_Pressure` is reached on
+the `Low_MAP`/vasopressor branch AND on the ICU-relapse branch;
+`Record_Blood_Pressure_2` is reached only via `Delay_in_ICU`'s own
+0.875 branch — both MANDATORY once on their own branch (the existing
+survey row's own characterization stands, confirmed rather than merely
+repeated).
+
+### D1a-3 — Observation value-sourcing: three real mechanisms in this one closure, only one built today
+
+`State.java`'s `Observation.process()` (non-legacy branch, quoted in
+full) tries, in order: `distribution`, `attribute` (a person-attribute
+read), `vitalSign` (`person.getVitalSign(vitalSign, time)`), `valueCode`,
+`expression` (CQL), `sampledData`, `attachment`. The LEGACY branch
+(`isLegacyGmf()` — true whenever `exact`/`range` is present on THAT
+STATE, a per-state check, not a module-wide `gmf_version` flag despite
+`sepsis.json`'s own top-level `"gmf_version": 2` key) supports only
+`exact`/`range`. `sepsis.json` exercises exactly THREE of these:
+
+1. **`range`** (legacy path, ALREADY BUILT) — `Lactate_Level`,
+   `Lactate_Level1`, `Low_MAP`, `Normal_MAP`, plus `Record_Blood_
+   Pressure`'s two embedded children. Matches this project's own
+   `sample-observation-extra` (`gmf_interpreter.clj` lines 535-540)
+   exactly: `(rand-double-in rng low high)`, one draw, unit carried
+   verbatim.
+2. **`value_code`** (a coded/qualitative finding, e.g. `Capillary_
+   Refill`'s "Increased capillary filling time" and `Blood_Cultures`'
+   own embedded child, "Positive (qualifier value)") — **UNBUILT.**
+   `sample-observation-extra` has no branch for it; a `value_code`-only
+   Observation (no `range`) compiles today to `{:codes codes}` with no
+   value at all — the qualitative finding is silently dropped, not
+   fabricated, but also not carried.
+3. **`vital_sign`** (a named-vital-sign lookup, e.g. `Pulse_Oximetry`'s
+   `"vital_sign": "Oxygen Saturation"` and `Record_Blood_Pressure_2`'s
+   two embedded children, `"Systolic Blood Pressure"`/`"Diastolic Blood
+   Pressure"`) — **UNBUILT, and its real upstream source has NO analog
+   anywhere in this project (D1a-4, below).** Same silent-drop
+   consequence as `value_code`.
+
+**Real texture, worth naming plainly: the SAME clinical concept (blood
+pressure) is authored via BOTH mechanisms side by side in one module** —
+`Record_Blood_Pressure`'s children use `range` (a flat 40-120 mm[Hg]
+sample), `Record_Blood_Pressure_2`'s children use `vital_sign` (reads a
+continuously-trending physiological value). Real Synthea authors mix
+idioms even within a single module; a `:diagnostic-report`/`:observation`
+child schema that only accepts ONE of the three value-sourcing shapes
+would reject real, mandatory-path content this closure already proves
+exists.
+
+### D1a-4 — `vital_sign`'s real source: `LifecycleModule.java`, a hardcoded Java module this project has never ported
+
+`Person.getVitalSign` THROWS if the named vital sign was never set
+(`vitalSigns.get(vitalSign)` returns null -> `IllegalStateException`,
+`Person.java` lines ~551-556) — there is no silent default at the
+`Person` level. Real Synthea supplies `SYSTOLIC_BLOOD_PRESSURE`/
+`DIASTOLIC_BLOOD_PRESSURE`/`OXYGEN_SATURATION` (among many others) via
+`LifecycleModule.java`, a Java class registered as one of Synthea's
+CORE modules (run for every patient, same as any GMF module, but
+authored in Java, not JSON — entirely outside this project's GMF
+loader/interpreter and outside its own module-vendoring surface):
+
+```java
+person.setVitalSign(VitalSign.SYSTOLIC_BLOOD_PRESSURE,
+    new BloodPressureValueGenerator(person, SysDias.SYSTOLIC));
+person.setVitalSign(VitalSign.DIASTOLIC_BLOOD_PRESSURE,
+    new BloodPressureValueGenerator(person, SysDias.DIASTOLIC));
+...
+person.setVitalSign(VitalSign.OXYGEN_SATURATION, oxygenSaturation); // age/hypoxemia-conditioned
+```
+
+**This project's persona/clinical-state model has NO equivalent
+continuous physiology simulation for blood pressure, oxygen saturation,
+or any other `LifecycleModule`-sourced vital** — the identical shape of
+gap `Active Allergy`'s own documented simplification and D5's own
+payer-name gap already established (a real upstream mechanism this
+project's own data model has nothing to evaluate against). **A `vital_
+sign`-typed Observation value therefore cannot be honestly computed
+from this project's own state today, by construction, not by omission**
+— this is the concrete, evidence-grounded finding the session prompt's
+own E4(b) asked for, though it lands on the `vital_sign` FIELD (an
+`Observation`/`MultiObservation`-child property), not on the `VitalSign`
+STATE TYPE or the `Vital Sign` CONDITION TYPE R2(c) actually names
+(D1a-5, next).
+
+### D1a-5 — `VitalSign` (state type) and `Vital Sign` (condition type): both ABSENT from `sepsis.json`'s own closure
+
+Checked directly, exhaustively: `sepsis.json` has zero states of type
+`VitalSign` and zero conditions of `condition_type: "Vital Sign"`
+anywhere in its closure. **R2(c)'s own dissolution design
+(`VitalSign` state -> observation-flavored events, `Vital Sign`
+condition -> a log query) is therefore NEITHER confirmed NOR
+contradicted by sepsis — this closure simply does not exercise either
+mechanism, a negative result, not evidence either way, recorded
+plainly per E4(b)'s own instruction rather than silently treated as a
+pass.** The RELATED-but-distinct `vital_sign` FIELD gap (D1a-4) is real
+and load-bearing for D1's own scope (it blocks two of this closure's
+own `Observation`/`MultiObservation`-child values); R2(c)'s own STATE-
+and CONDITION-type claims remain untested by any vendored-candidate
+evidence gathered to date, across Waves A–D. `VitalSign`'s own real
+semantics (`State.java`, class `VitalSign`, quoted for the record):
+`process` calls `person.setVitalSign(vitalSign, ...)` with either a
+constant (`exact`), a uniform range (`range`, legacy), or a
+`Distribution`/CQL expression (non-legacy) — establishing a
+CONTINUOUSLY-READABLE generator, not a one-time point value, over
+however long until a later state (or another `VitalSign` state)
+overwrites it. This is a materially different shape than this project's
+existing `:observation` step (a single point-in-time sample) — worth
+flagging for whichever future session actually builds `VitalSign`
+support, not resolved here.
+
+### D1a-6 — D7 hidden-import check and encounter-bearing check
+
+**D7 (ADR-0027's own falsifier), applied to this single-file closure:**
+zero `Attribute`-condition reads, zero `Observation.attribute`-sourced
+reads, anywhere in `sepsis.json` — grepped exhaustively. The module's
+ONE `assign_to_attribute` write (`Acute_Respiratory_Distress_Syndrome_
+ARDS` -> `ARDS`, a `ConditionOnset` state — note this field is not even
+in this project's own `:condition-onset` schema variant today,
+`gmf.clj` line 365, only `:medication-order`'s carries `:assign-to-
+attribute`; harmless here since nothing reads it back) is never read
+anywhere in this closure. **Clean, but trivially so — a single-file
+closure has no cross-module read/write pair to falsify at all**, a
+different reason than `ear_infections`' own real cross-module D7 pass
+(§9).
+
+**Encounter-bearing check:** `sepsis.json` HAS its own root-level
+`Encounter` state (`Sepsis_ED_Encounter`, `encounter_class: "emergency"`)
+— unlike `urinary_tract_infections.json`'s own root module (§9), sepsis
+does not depend on any called submodule to open an encounter.
+
+### D1a-7 — Emission-side inventory: what today's ORU rendering carries, and the gap a `:diagnostic-report` step must close
+
+Read directly against `ehrt.sim-emit-hl7.emit-hl7` (the message-type
+registry and both existing ORU builders). **`:result-available` ->
+`oru-message`** (MSH, PID, PV1, ORC, ONE `obr-segment` keyed on
+`:concept`, one `obx-segment` PER entry in `:results`) — `obx-segment`
+REQUIRES `:reference-range`/`:abnormal-flag` (`order-profiles`' own
+computed truth, OBX-7/OBX-8) and hardcodes OBX-2 `"NM"` (numeric) —
+neither field exists anywhere on a GMF-derived observation, and OBX-2
+`"NM"` is wrong for a `value_code`-sourced result (needs `"CWE"`, HL7's
+coded-value-with-exceptions type). **`:observation` -> `observation-
+message`** (MSH, PID, PV1, ONE `observation-obx-segment`, NO ORC/OBR) —
+closer in shape (OBX-3 from `:codes`, OBX-5 the numeric `:value` when
+present, OBX-6 `:unit`) but (a) it is SINGLE-OBX only, no panel/group
+shape, and (b) it shares the same `"NM"`-only, numeric-only limitation
+— no path renders a `value_code`-sourced qualitative finding today,
+in EITHER builder.
+
+**What a `:diagnostic-report` step's real, legal ORU^R01-with-OBR
+rendering needs, concretely:** (1) `obr-segment` reused as-is for OBR-4
+— it is already generic on `concept`, and the report-level `:codes` this
+step's own top-level carries (`Blood_Cultures`' own panel LOINC, D1a-2)
+is exactly what it wants. (2) A NEW OBX-builder — `observation-obx-
+segment`'s simpler field set (codes/value/unit, no reference-range/
+abnormal-flag — GMF data has neither), but able to render EITHER a
+numeric value (OBX-2 `"NM"`) OR a `value_code` (OBX-2 `"CWE"`, OBX-5 the
+code's own display/code, the same `cwe-field` helper `obr-segment`
+already uses for OBR-4) — today's code has no branch for the second
+case in either builder. (3) One OBX per embedded child (D1a-2's own
+embedding finding — never a reference to resolve), `set-id` from
+position, the same `map-indexed` shape `oru-message` already uses for
+`:results`. (4) ORC-1/ORC-2 reused unchanged (`orc-segment`, already
+generic on `control-id`) — a `:diagnostic-report`'s own control-id needs
+no new `control-id-for` case, the existing single-subject fallback
+already covers it. **No `message-type-registry` change beyond a new
+`:diagnostic-report -> {:type "ORU" :trigger "R01"}` entry** — the same
+trigger `:result-available`/`:observation` already use, since a real
+DiagnosticReport panel IS an ORU^R01, ORC+OBR present (unlike the
+order-less `:observation` shape).
