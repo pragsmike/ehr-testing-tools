@@ -206,6 +206,24 @@
   [module-id ctx {:keys [conditions]}]
   (every? #(evaluate-condition module-id ctx %) conditions))
 
+(defn- or-condition-holds?
+  "GMF coverage Wave A (2026-08-02): the boolean-disjunction mirror of
+  :and, Synthea's own Logic.java Or class -- true iff ANY sub-condition
+  holds. Same recursive shape, same zero-rng property."
+  [module-id ctx {:keys [conditions]}]
+  (boolean (some #(evaluate-condition module-id ctx %) conditions)))
+
+(defn- at-least-condition-holds?
+  "GMF coverage Wave A (2026-08-02): Synthea's own Logic.java AtLeast
+  class -- true iff at least :minimum of :conditions evaluate true (the
+  N-of-M generalization of :and (minimum = count) and :or (minimum = 1)).
+  Real use: sore_throat.json's Determine_if_Bacterial (Step 3), a
+  modified-Centor-criteria gate whose own sub-conditions are :symptom/
+  :observation/:age -- confirmed by reading the vendored file directly,
+  not inferred."
+  [module-id ctx {:keys [minimum conditions]}]
+  (>= (count (filter #(evaluate-condition module-id ctx %) conditions)) minimum))
+
 (defn evaluate-condition
   "The interpreter's own guard evaluator (docs/gmf-interpreter.md section 2:
   '(evaluate-condition condition patient-state (:ground-truth world)
@@ -236,6 +254,8 @@
     :active-medication (active-onset-condition-holds? :medication-order :medication-end ctx condition)
     :active-allergy false
     :and (and-condition-holds? module-id ctx condition)
+    :or (or-condition-holds? module-id ctx condition)
+    :at-least (at-least-condition-holds? module-id ctx condition)
     :symptom (symptom-condition-holds? module-id ctx condition)
     (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: unsupported condition type"
                      {:condition-type (:condition-type condition)}))))

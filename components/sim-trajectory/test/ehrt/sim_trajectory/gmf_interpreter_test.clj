@@ -348,14 +348,17 @@
     (is (true? (:blocked? (interp/step not-equal-attribute-module (Random. 1) ctx-closed))))))
 
 (deftest evaluate-condition-throws-on-an-unrecognized-condition-type
-  (testing ":at-least (Synthea's own compound N-of wrapper) is still outside
-            v1's vocabulary -- docs/gmf-interpreter.md section 2's own gap
-            note, unlike :active-allergy/:active-condition/:active-medication/
-            :and, which joined v1 at M5b (this namespace's own updated tests,
-            below)"
+  (testing ":vital-sign (AR-2, GMF coverage Wave A, pre-ruled OUT -- needs a
+            state home this project's accumulator doesn't have yet) is
+            still outside v1's vocabulary, docs/gmf-interpreter.md section
+            2's own gap note -- unlike :active-allergy/:active-condition/
+            :active-medication/:and (M5b) and :symptom/:at-least/:or/:date/
+            :observation (Wave A, this namespace's own updated tests,
+            below), all of which joined v1 because their data source
+            already existed"
     (is (thrown? clojure.lang.ExceptionInfo
                  (interp/evaluate-condition "any-mod" (ctx-for (persona-at 1))
-                                             {:condition-type :at-least})))))
+                                             {:condition-type :vital-sign})))))
 
 ;; --- M5b: Active Condition / Active Medication / Active Allergy / And ----
 ;; (docs/gmf-interpreter.md section 2's own condition-vocabulary-gap note,
@@ -457,6 +460,70 @@
       ;; downstream, proving no OTHER code path this condition's own
       ;; evaluation touches taps it either.
       (interp/evaluate-condition "m" ctx {:condition-type :symptom :symptom "x" :operator ">" :value threshold})
+      (= 0 @calls))))
+
+;; --- GMF coverage Wave A: At Least (2026-08-02) ---------------------------
+;; A count-filter N-of-M compound wrapper, the same shape :and/:or share --
+;; semantics grounded against Synthea's own Logic.java AtLeast class at the
+;; docs/gmf-interpreter.md pinned commit: true iff at least :minimum of
+;; :conditions evaluate true. Real use: sore_throat.json's own
+;; Determine_if_Bacterial (Step 3).
+
+(deftest at-least-condition-holds-once-minimum-sub-conditions-are-true
+  (let [ctx (assoc (ctx-for (persona-at 1)) :attributes {:m/cough 45 :m/fatigue 45 :m/fever 0})
+        cond3 {:condition-type :at-least :minimum 2
+               :conditions [{:condition-type :symptom :symptom "Cough" :operator ">" :value 30}
+                            {:condition-type :symptom :symptom "Fatigue" :operator ">" :value 30}
+                            {:condition-type :symptom :symptom "Fever" :operator ">" :value 30}]}]
+    (is (true? (interp/evaluate-condition "m" ctx cond3)) "exactly 2 of 3 hold, minimum is 2")
+    (is (false? (interp/evaluate-condition "m" ctx (assoc cond3 :minimum 3))) "only 2 of 3 hold, minimum is 3")))
+
+(deftest at-least-condition-consumes-no-rng
+  (let [calls (atom 0)
+        rng (proxy [Random] [(long 1)]
+              (nextDouble [] (swap! calls inc) (proxy-super nextDouble))
+              (nextInt ([n] (swap! calls inc) (proxy-super nextInt n))))
+        ctx (assoc (ctx-for (persona-at 1)) :attributes {:m/a 50})]
+    (interp/evaluate-condition "m" ctx {:condition-type :at-least :minimum 1
+                                        :conditions [{:condition-type :symptom :symptom "a" :operator ">" :value 10}]})
+    (is (= 0 @calls))))
+
+;; --- GMF coverage Wave A: Or (2026-08-02) ---------------------------------
+;; Boolean disjunction, mirroring :and's own recursive shape -- Synthea's
+;; own Logic.java Or class: true iff ANY sub-condition holds.
+
+(deftest or-condition-is-true-when-any-sub-condition-holds
+  (let [ctx (assoc (ctx-for (persona-at 1)) :attributes {:m/a 5})
+        cond {:condition-type :or
+              :conditions [{:condition-type :symptom :symptom "a" :operator ">" :value 100}
+                           {:condition-type :symptom :symptom "a" :operator "<" :value 100}]}]
+    (is (true? (interp/evaluate-condition "m" ctx cond)))
+    (is (false? (interp/evaluate-condition "m" ctx {:condition-type :or
+                                                     :conditions [{:condition-type :symptom :symptom "a" :operator ">" :value 100}]})))))
+
+(deftest or-condition-consumes-no-rng
+  (let [calls (atom 0)
+        rng (proxy [Random] [(long 1)]
+              (nextDouble [] (swap! calls inc) (proxy-super nextDouble))
+              (nextInt ([n] (swap! calls inc) (proxy-super nextInt n))))]
+    (interp/evaluate-condition "m" (ctx-for (persona-at 1))
+                               {:condition-type :or :conditions [{:condition-type :active-allergy}]})
+    (is (= 0 @calls))))
+
+(defspec at-least-and-or-never-touch-rng-state 100
+  (prop/for-all [seed gen/large-integer
+                 minimum (gen/choose 1 3)
+                 vals (gen/vector (gen/choose 0 100) 3)]
+    (let [ctx (assoc (ctx-for (persona-at 1)) :attributes {:m/a (nth vals 0) :m/b (nth vals 1) :m/c (nth vals 2)})
+          sub-conds [{:condition-type :symptom :symptom "a" :operator ">" :value 50}
+                     {:condition-type :symptom :symptom "b" :operator ">" :value 50}
+                     {:condition-type :symptom :symptom "c" :operator ">" :value 50}]
+          calls (atom 0)
+          rng (proxy [Random] [(long seed)]
+                (nextDouble [] (swap! calls inc) (proxy-super nextDouble))
+                (nextInt ([n] (swap! calls inc) (proxy-super nextInt n))))]
+      (interp/evaluate-condition "m" ctx {:condition-type :at-least :minimum minimum :conditions sub-conds})
+      (interp/evaluate-condition "m" ctx {:condition-type :or :conditions sub-conds})
       (= 0 @calls))))
 
 ;; --- M5b: Device/DeviceEnd -- consumed-internally, like :simple -----------

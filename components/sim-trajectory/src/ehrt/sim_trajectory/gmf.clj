@@ -141,7 +141,7 @@
    ;; (sore_throat.json's Determine_if_Bacterial); see
    ;; ehrt.sim-trajectory.gmf-interpreter/symptom-condition-holds?'s own
    ;; docstring for the full account.
-   "Symptom" :symptom})
+   "Symptom" :symptom "Or" :or "At Least" :at-least})
 
 (defn- normalize-code
   "GMF's own code triplet -> sim-model/Concept. M5b: :code
@@ -181,7 +181,12 @@
         (:codes condition)
         (update :codes #(mapv normalize-code %))
 
-        (and (= :and condition-type) (:conditions condition))
+        ;; GMF coverage Wave A (2026-08-02): :or/:at-least share :and's own
+        ;; recursive sub-condition shape -- without this, a nested
+        ;; sub-condition's own :condition-type stays an un-normalized raw
+        ;; string, and evaluate-condition's case dispatch (keywords only)
+        ;; would never match it.
+        (and (#{:and :or :at-least} condition-type) (:conditions condition))
         (update :conditions #(mapv normalize-condition %))))))
 
 (defn- normalize-transition-entry
