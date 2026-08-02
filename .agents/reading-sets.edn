@@ -99,7 +99,12 @@
   ;; indexing this session's own session-record/prompt-archive filenames
   ;; in their own already-cited onboarding READMEs, net +19 lines,
   ;; brought the real total from 784 to 803.
-  :budget-lines 803}
+  ;; raised again 2026-08-02 (GMF coverage Wave B, Step 3, caught by the
+  ;; budget test itself, same as Wave A's own self-catch above):
+  ;; `.agents/plans/roadmap.md`'s own Wave B row moved from Deferred to
+  ;; a new "Now" section (Step 0), net +1 line, brought the real total
+  ;; from 803 to 804.
+  :budget-lines 804}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one

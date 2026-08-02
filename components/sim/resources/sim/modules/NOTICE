@@ -33,6 +33,31 @@ prioritization table).
 | `sinusitis.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/sinusitis.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `3f321ffadebc0731f10b6d1a59b603862fa079bd203fd7cf7d43ea230c79d0af` | 2026-07-27 |
 | `appendicitis.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/appendicitis.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `2bdb7d712c146e04fb2a0b2e10452f38930e055e20e63410be0c4d8d59a1d876` | 2026-07-27 |
 | `sore_throat.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/sore_throat.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `946debafe925f55e3613177f4fb4d8f6f7b21cb00fbb2575396e3024b636ba34` | 2026-08-02 |
+| `ear_infections.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/ear_infections.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `55d95cb2f9b7f0160a40fe9671d484695608ee628139220564c088146e727f80` | 2026-08-02 |
+| `medications/ear_infection_antibiotic.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/medications/ear_infection_antibiotic.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `fbbfe224292e9a90a0c125bae17c0721363939c56ef267bad0dc2579d6bb7d3c` | 2026-08-02 |
+| `medications/otc_pain_reliever.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/medications/otc_pain_reliever.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `d8f5f1a4885adfece1a8aef9a5ea0bf3172cab7e0d30fda00cae102b6b6b75ef` | 2026-08-02 |
+
+**GMF coverage Wave B payoff (2026-08-02): the FOURTH root entry,
+`ear_infections.json`, and this directory's first CLOSURE.** Unlike
+every prior entry (a single self-contained file), `ear_infections.json`
+routes its entire therapeutic content through `CallSubmodule` -- both
+called submodules (`medications/ear_infection_antibiotic.json`,
+`medications/otc_pain_reliever.json`) are vendored alongside it, at
+the SAME pinned commit, under the SAME `medications/` search path Wave
+B's own loader closure resolution (D3,
+`ehrt.sim-trajectory.gmf/load-closure`) expects
+(`sim/modules/<call-path>.json`). Step 1's own characterization found
+the closure clean of every Wave-D-scoped deferred type (the only
+state-type gap anywhere in the three files is `CallSubmodule` itself,
+Wave B's own reason for existing) -- see `docs/gmf-interpreter.md`
+section 9 for the full survey, the four mandatory-path interpreter/
+loader findings this vendoring needed (`assign_to_attribute`/
+`referenced_by_attribute`, `is nil`/`is not nil` operators, and two
+encounter-class normalizations), and why `urinary_tract_infections.json`
+-- named as this Wave's OTHER target payoff, contingent on its own
+closure surveying clean -- is NOT vendored (a real closure twelve files
+deep, dirty in every branch with `DiagnosticReport`/`MultiObservation`,
+both Wave D's own scope).
 
 **GMF coverage Wave A payoff (2026-08-02): a third entry,
 `sore_throat.json`.** Named as a candidate at the very first M5-prep
@@ -52,10 +77,11 @@ its state-type surface was already fully v1-expressible.
 
 License: Apache-2.0 (`synthetichealth/synthea`, `notes/facts-register.md`
 F2) -- the same license terms already govern every Synthea-derived
-source this project cites. Both files on disk are byte-verbatim against
-the URLs above (re-verified: `sha256sum` on each equals the table's own
-hash) -- no reformatting, no re-indentation, no correction of either
-upstream file's own idiosyncrasies. `sinusitis.json` carries at least
+source this project cites. Every file on disk (all seven, as of Wave B)
+is byte-verbatim against the URL above its own table row (re-verified:
+`sha256sum` on each equals the table's own hash) -- no reformatting, no
+re-indentation, no correction of any upstream file's own idiosyncrasies.
+`sinusitis.json` carries at least
 one unquoted-JSON-number code value and a `Device`/`DeviceEnd` state
 pair outside this project's ORIGINAL v1 scope; see `docs/gmf-
 interpreter.md` section 1's own updated table and its M5b findings for

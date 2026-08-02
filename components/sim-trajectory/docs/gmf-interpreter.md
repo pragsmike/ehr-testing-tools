@@ -818,6 +818,16 @@ disqualifies its actual clinical content, not merely 2 of its 16
 states, per the gap-detail note above — vendoring it in v1 would ship
 a module whose two therapeutic branches both silently do nothing.
 
+**Dated note, GMF coverage Wave B (2026-08-02, ADR-0027): superseded,
+not reopened.** `CallSubmodule` support is exactly what Wave B built —
+`ear_infections.json`'s own real closure (root plus its two called
+submodules) surveyed clean of every Wave-D-scoped deferred type once
+read in full (section 9, below), and is now vendored
+(`resources/modules/NOTICE`'s own Wave B table rows). This entry's own
+"silently does nothing" risk was the correct call AT THE TIME it was
+written — no CallSubmodule support existed yet — left standing per this
+document's own append-don't-erase convention, not silently corrected.
+
 ---
 
 ### M7 survey (this session, 2026-07-27): ten formal candidates plus an
