@@ -136,7 +136,9 @@
   ;; this session's own session-record/prompt-archive filenames in their
   ;; own already-cited onboarding READMEs, brought the real total from
   ;; 903 to 925.
-  :budget-lines 925}
+  ;; bumped 925->932, D1a rider (2026-08-02): roadmap.md/ADR-0001 growth
+  ;; (Clojars ruling note, D1 Now-row) -- self-caught by this same gate.
+  :budget-lines 932}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one

@@ -78,8 +78,9 @@
 ;; STANDARD dialect (the same default MSH/PV1/code-table rendering every
 ;; other loop in this repo already sees), not a site profile's own
 ;; declared surfaces. A dialect-variant loop (gating the SAME corpus
-;; rendered under a second site profile, per docs/demos/site-profiles/)
-;; is a candidate future addition -- explicitly NOT this session's scope.
+;; rendered under a second site profile, per
+;; components/sim-emit-hl7/docs/demos/site-profiles/) is a candidate
+;; future addition -- explicitly NOT this session's scope.
 {:pathways
  [{:pathway {:name "cbc-order"
              :steps [{:type :admission :location "Renal"}

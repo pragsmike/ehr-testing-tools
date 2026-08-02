@@ -266,7 +266,16 @@ silently resolved by whatever shape was locally convenient.
   fixes escaping — after H2.
 - **H5. Published-artifact coordinates** (Clojars verified-group vs.
   Maven Central; group likely `io.github.pragsmike` or an owned
-  domain) — author's call, unblocked by nothing in this repo.
+  domain) — author's call, unblocked by nothing in this repo. **Dated
+  note (D1a rider, 2026-08-02, ADR-0029, design channel): the
+  Clojars-vs-Maven-Central half of H5 is RULED — Clojars — by the
+  author 2026-07-31 (`.agents/plans/roadmap.md`'s own Externals row,
+  "Clojars publish, when satisfied with the product"), previously
+  unrecorded against this ADR's own H5 entry; landed here on
+  discovery.** The group/coordinates naming half (`io.github.pragsmike`
+  vs. an owned domain) stays open, as does publication itself
+  (`.agents/plans/roadmap.md`'s own Externals row: parked until the
+  product is judged ready).
 - **H6. Workspace CI — CLOSED, 2026-07-28.** The `poly check` + `poly
   test :all` workflow landed this session (`53d76b0`,
   `.github/workflows/test.yml`), then all three of its own trigger

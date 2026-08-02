@@ -232,9 +232,20 @@ a deliverable of this claim, not merely test scaffolding: it is the
 precise, executable enumeration of what a dialect may touch, and
 nothing more — a vaguer masking (blanking whole segments, say) would
 prove a weaker, less useful claim. A CLI-produced two-profile demo
-(`docs/demos/site-profiles/`) shows the same event rendered under both
-profiles side by side, ground-truth identity verified programmatically
-when the demo was generated.
+(`components/sim-emit-hl7/docs/demos/site-profiles/`) shows the same
+event rendered under both profiles side by side, ground-truth identity
+verified programmatically when the demo was generated.
+
+**Dated note (D1a rider, 2026-08-02, ADR-0029): this citation was
+broken from `c0b5b0a` (the sim-repo merge that landed
+`components/sim`) until today** — the path was valid at its
+pre-merge home, `docs/demos/site-profiles/` relative to the standalone
+sim repo's own root (`474aa5f`'s own docs layout), but the merge
+nested everything under `components/sim/` without correcting this
+cross-reference, and the sim-emit-hl7 extraction (Wave D stage D0)
+then moved the demo again without this file being swept. Repaired here
+to the demo's current real location, fix-forward — no history
+rewritten.
 
 ## Honest split: today vs. future
 

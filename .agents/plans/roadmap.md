@@ -5,7 +5,12 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- (none — see Done below for sim split S3 / GMF coverage Wave D stage D0)
+- GMF coverage Wave D, stage D1 (ADR-0029 R6) — observation family
+  (`MultiObservation`/`DiagnosticReport`/`VitalSign`-as-observation, one new
+  `:diagnostic-report` IR step). D1a (characterization + schema PROPOSAL,
+  session started 2026-08-02) halts for a design-channel ruling before any
+  implementation lands — see this ADR's own D1 characterization note and
+  PROPOSED section.
 
 ## Next (backlog, no session scheduled)
 - Pairing-as-data (review P3-3): mutate↔judge conviction registry — design pass in
@@ -24,7 +29,11 @@ per item; done items move to the bottom of their section with a date and sha.
 - IG pinning: choose and commit the profile-tier conformance target (Gate row's
   other caveat)
 - Clojars publish, when satisfied with the product (ruled 2026-07-31; ends the
-  greenfield era — output formats freeze harder after first tag)
+  greenfield era — output formats freeze harder after first tag). **Dated note
+  (D1a rider, 2026-08-02): this row IS the Clojars-vs-Maven-Central ruling —
+  cross-referenced into `notes/ADRs.md` ADR-0001's own H5 entry today, closing
+  that half of H5 as an open gate; the group/coordinates naming half and
+  publication itself both stay open/parked, unchanged by this note.**
 - SETUP rewalk by an unspoiled human reader (F3 superseded-pending-rewalk)
 - Upstream the adapted repo-adaptation skill to pragsmike/skills (and cyberneutics
   if wanted) — AUTHOR ACTION named 2026-08-01
@@ -42,12 +51,10 @@ per item; done items move to the bottom of their section with a date and sha.
   trigger: a second `engine` consumer appears (the FHIR emitter is the
   likely one) or engine work itself needs the emit-state/check boundary
   designed, same plan
-- GMF coverage Wave D, stages D1–D3 (ADR-0029 R6; D0 is in Now above) —
-  D1: observation family (`DiagnosticReport`/`MultiObservation`, one new
-  `:diagnostic-report` IR step, ORU^R01 emission) — payoff: sepsis,
-  closures permitting. D2: CarePlan family (paired IR span, `Active
-  CarePlan` condition; CarePlan itself stays v2-silent, R3) — payoff:
-  MI, `total_joint_replacement`, closures permitting. D3:
+- GMF coverage Wave D, stages D2–D3 (ADR-0029 R6; D0 done, D1 is in Now
+  above) — D2: CarePlan family (paired IR span, `Active CarePlan`
+  condition; CarePlan itself stays v2-silent, R3) — payoff: MI,
+  `total_joint_replacement`, closures permitting. D3:
   `lookup_table_transition` (sixth transition kind) + attribute-weighted
   `distributed_transition` weights + UTI closure re-characterization —
   payoff: UTI. `ImagingStudy` (R5, CHF trigger) and the stroke-risk data
