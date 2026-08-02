@@ -8,6 +8,13 @@ per item; done items move to the bottom of their section with a date and sha.
 - (none — the fourteen-item migration report is fully executed as of
   migration session 6; see Done below)
 
+## Now (GMF coverage expansion — .agents/plans/2026-08-02-gmf-coverage-plan.md)
+- Wave A — condition vocabulary (`At Least`, `Or`, `Date`, `Observation`-as-
+  condition, `Active Allergy`, per data-source characterization) plus
+  `Symptom` as a consumed-internally write; vendors `sore_throat.json`.
+  Sim split S2's own payoff milestone (roadmap's prior Deferred row,
+  below), started this session.
+
 ## Next (backlog, no session scheduled)
 - Pairing-as-data (review P3-3): mutate↔judge conviction registry — design pass in
   the design channel first; vocabulary is load-bearing
@@ -40,17 +47,33 @@ per item; done items move to the bottom of their section with a date and sha.
 - Verdict-cache placement revisit (ADR-0011 note: second consumer, or never)
 - Sim-manifest interop design between sim and corpus (pre-review open thread)
 - Sim split S3 (`sim-emit-hl7`: `emit-hl7`, `v2-replay`, `site-profile`) —
-  trigger: a second state-based emitter (`sim-emit-fhir`/`sim-emit-cda`)
-  actually lands, per `.agents/plans/2026-08-02-sim-split-plan.md`'s own
-  rendering-accents-over-ground-truth argument
+  trigger: starting any second state-based emitter (`sim-emit-fhir`/
+  `sim-emit-cda`) — S3 is that arc's first step (author ruling
+  2026-08-02, closing the build-then-extract loophole; wording amended
+  from the prior "actually lands" phrasing,
+  `.agents/plans/2026-08-02-sim-split-plan.md`'s own rendering-accents-
+  over-ground-truth argument)
 - Sim split S4 (`sim-engine`: `engine`, `churn`, `order-profiles`) —
   trigger: a second `engine` consumer appears (the FHIR emitter is the
   likely one) or engine work itself needs the emit-state/check boundary
   designed, same plan
-- GMF coverage expansion (CallSubmodule, condition-vocabulary gaps,
-  `components/sim-trajectory/docs/gmf-interpreter.md`'s own survey) —
-  the payoff milestone sim split S2 unblocked; starts now that S2 has
-  landed, not part of the split itself (plan's own R-4)
+- GMF coverage Wave B — `CallSubmodule` (loader recursion, interpreter
+  call/return, the fifth `type_of_care_transition` transition kind) —
+  trigger: Wave A lands and its own session budget is spent; unlocks
+  `ear_infections`' therapeutic content, UTI, MI past ECG, most of
+  `total_joint_replacement` (`.agents/plans/2026-08-02-gmf-coverage-
+  plan.md`)
+- GMF coverage Wave C — `Death` wired to the existing `:expired`/post-
+  mortem machinery, no new mechanism — trigger: Wave A (stroke's other
+  gap) or donor/post-mortem content otherwise lands; completes `stroke`,
+  contributes to `sepsis`/MI/CHF (same plan)
+- GMF coverage Wave D — state types needing IR + emitter homes
+  (`DiagnosticReport`, `MultiObservation`, `CarePlanStart`/`CarePlanEnd`,
+  `ImagingStudy`, plus any Wave A drops) — trigger: a session willing to
+  rule the compile-trajectory mapping + `sim-model` schema addition +
+  engine handling + emission decision per state type; the emission
+  decision for `DiagnosticReport` doubles as sim split S3's own trigger
+  (same plan)
 
 ## Done (this session, 2026-08-01, migration session 1)
 - Items 6+7: `agent/scenario-roster.md` merged into `.agents/skills/scenarios/roster.md`,

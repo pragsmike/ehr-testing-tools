@@ -37,3 +37,4 @@ Files in this directory:
   * 2026-08-01-agent-ux-charter.md
   * 2026-08-01-migration-report.md
   * 2026-08-02-sim-split-plan.md — staged extraction of components/sim into sim-model/sim-trajectory/sim-emit-hl7/sim-engine
+  * 2026-08-02-gmf-coverage-plan.md — Wave A-D plan for GMF coverage expansion (condition vocabulary, CallSubmodule, Death, IR-homed state types)
