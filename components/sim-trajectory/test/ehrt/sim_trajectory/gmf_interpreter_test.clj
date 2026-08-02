@@ -884,3 +884,103 @@
               (nextDouble [] (swap! calls inc) (proxy-super nextDouble)))]
     (interp/step type-of-care-module rng ctx)
     (is (= 1 @calls))))
+
+;; --- GMF coverage Wave C (2026-08-02, ADR-0028, C1/C2): Death --------------
+
+(def death-cause-codes [{:system :snomed :code "1" :display "Test cause"}])
+
+(def immediate-death-module
+  {:id "death-mod"
+   :name "Death"
+   :states {:initial {:type :initial :direct-transition :die}
+            :die {:type :death :codes death-cause-codes :direct-transition :end-encounter}
+            :end-encounter {:type :terminal}}})
+
+(deftest death-with-no-range-or-exact-fires-immediately-with-no-rng-draw
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :die)
+        calls (atom 0)
+        rng (proxy [Random] [(long 1)]
+              (nextInt ([n] (swap! calls inc) (proxy-super nextInt n))))
+        outcome (interp/step immediate-death-module rng ctx)]
+    (is (= 0 @calls))
+    (is (= 0 (:advance outcome)))
+    (is (true? (:terminal? outcome)))
+    (is (false? (:blocked? outcome)))
+    (is (nil? (:next outcome)) "Death's own declared transition is never resolved -- C2's terminal contract")
+    (is (= 1 (count (:events outcome))))
+    (is (= :death (:event (first (:events outcome)))))
+    (is (= death-cause-codes (:codes (first (:events outcome)))) "cause of death carried verbatim -- code passthrough law")))
+
+(def exact-death-module
+  {:id "exact-death-mod"
+   :name "ExactDeath"
+   :states {:initial {:type :initial :direct-transition :die}
+            :die {:type :death :exact {:quantity 3 :unit "days"} :codes death-cause-codes}
+            :terminal {:type :terminal}}})
+
+(deftest death-with-exact-advances-deterministically-with-no-rng-draw
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :die)
+        calls (atom 0)
+        rng (proxy [Random] [(long 1)]
+              (nextInt ([n] (swap! calls inc) (proxy-super nextInt n))))
+        outcome (interp/step exact-death-module rng ctx)]
+    (is (= 0 @calls))
+    (is (= 3 (:advance outcome)))
+    (is (true? (:terminal? outcome)))))
+
+(def range-death-module
+  {:id "range-death-mod"
+   :name "RangeDeath"
+   :states {:initial {:type :initial :direct-transition :die}
+            :die {:type :death :range {:low 1 :high 30 :unit "days"} :codes death-cause-codes}
+            :terminal {:type :terminal}}})
+
+(deftest death-with-range-consumes-exactly-one-draw-and-advances-within-range
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :die)
+        calls (atom 0)
+        rng (proxy [Random] [(long 1)]
+              (nextInt ([n] (swap! calls inc) (proxy-super nextInt n))))
+        outcome (interp/step range-death-module rng ctx)]
+    (is (= 1 @calls))
+    (is (<= 1 (:advance outcome) 30))
+    (is (true? (:terminal? outcome)))))
+
+(deftest death-events-own-t-is-the-computed-death-time-not-the-states-own-entry-time
+  (testing "a :range death is genuinely delayed -- the emitted event
+            cites the COMPUTED death time, not entry time (stroke.json's
+            own Death state, docs/gmf-interpreter.md section 10)"
+    (let [ctx (assoc (ctx-for (persona-at 1)) :current :die :t 1000)
+          outcome (interp/step range-death-module (Random. 1) ctx)
+          event (first (:events outcome))]
+      (is (= (+ 1000 (:advance outcome)) (:t event)))
+      (is (not= 1000 (:t event)) "a nonzero range draw is expected for this fixed seed"))))
+
+(deftest death-throws-on-unbuilt-condition-onset-cause-form
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :die)
+        module (assoc-in immediate-death-module [:states :die]
+                          {:type :death :condition-onset :some-state})]
+    (is (thrown? clojure.lang.ExceptionInfo (interp/step module (Random. 1) ctx)))))
+
+(deftest death-throws-on-unbuilt-referenced-by-attribute-cause-form
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :die)
+        module (assoc-in immediate-death-module [:states :die]
+                          {:type :death :referenced-by-attribute "some-attr"})]
+    (is (thrown? clojure.lang.ExceptionInfo (interp/step module (Random. 1) ctx)))))
+
+(deftest walk-module-terminates-at-death-no-trajectory-event-follows-it
+  (testing "C2's own terminal contract, at the walk-module layer -- Death's
+            own declared transition (:end-encounter, a real Terminal
+            state in this fixture) is never reached"
+    (let [result (interp/walk-module immediate-death-module (Random. 1) (ctx-for (persona-at 1)))]
+      (is (= :terminal (:status result)))
+      (is (= 1 (count (:trajectory result))))
+      (is (= :death (:event (last (:trajectory result))))))))
+
+(defspec no-trajectory-event-ever-follows-death 200
+  (prop/for-all [seed gen/large-integer]
+    (let [p (persona-at seed)
+          reg-t (interp/dob-epoch-day p)
+          result (interp/run-module range-death-module (Random. seed) p reg-t (+ reg-t 3650))
+          trajectory (:trajectory result)
+          death-idx (first (keep-indexed (fn [i e] (when (= :death (:event e)) i)) trajectory))]
+      (or (nil? death-idx) (= death-idx (dec (count trajectory)))))))

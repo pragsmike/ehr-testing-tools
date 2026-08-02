@@ -93,6 +93,29 @@
     (is (= :attribute-collision (:category loaded)))
     (is (= "donor" (:attribute (:payload loaded))))))
 
+;; --- GMF coverage Wave C (2026-08-02, ADR-0028, C1): Death -----------------
+
+(def death-json
+  "A minimal Death-bearing module, the range time-form + codes cause-form
+  stroke.json's own Death state uses (docs/gmf-interpreter.md section
+  10) -- proves the real JSON->schema path, not just a hand-rolled map."
+  (str "{\"name\": \"Death Fixture\","
+       " \"states\": {"
+       "   \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Die\"},"
+       "   \"Die\": {\"type\": \"Death\","
+       "             \"range\": {\"low\": 1, \"high\": 30, \"unit\": \"days\"},"
+       "             \"codes\": [{\"system\": \"SNOMED-CT\", \"code\": \"230690007\", \"display\": \"Cerebrovascular accident (disorder)\"}],"
+       "             \"direct_transition\": \"Terminal\"},"
+       "   \"Terminal\": {\"type\": \"Terminal\"}"
+       " }}"))
+
+(deftest death-module-loads-and-validates
+  (let [loaded (gmf/load-module "death-fixture" death-json)]
+    (is (result/ok? loaded))
+    (is (= :death (get-in (:payload loaded) [:states :die :type])))
+    (is (= [{:system :snomed :code "230690007" :display "Cerebrovascular accident (disorder)"}]
+           (get-in (:payload loaded) [:states :die :codes])))))
+
 (deftest loaded-modules-is-listable-no-hidden-modules
   (testing "docs/gmf-interpreter.md section 5's no-hidden-modules corollary"
     (let [registry (-> (gmf/empty-registry)

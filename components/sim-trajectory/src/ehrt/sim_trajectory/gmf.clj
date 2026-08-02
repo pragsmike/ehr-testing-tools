@@ -7,9 +7,11 @@
   against the v1 subset docs/gmf-interpreter.md section 1 defines.
 
   Load-time enforcement, result-not-throw (ehrt.kernel.result):
-  a module using a state type OUTSIDE v1's subset (CallSubmodule, Counter,
-  MultiObservation, Death, Device/DeviceEnd, CarePlanStart/CarePlanEnd --
-  section 1's own deferred-type table) is REJECTED with
+  a module using a state type OUTSIDE v1's subset (Counter,
+  MultiObservation, CarePlanStart/CarePlanEnd, DiagnosticReport,
+  ImagingStudy -- section 1's own deferred-type table; CallSubmodule/
+  Device/DeviceEnd/Death all joined v1 across M5b and the GMF coverage
+  waves) is REJECTED with
   :unsupported-state-type, never silently skipped and never thrown -- this
   is a stricter, mechanical gate than the informal 'read past what you
   don't execute' survey-reading section 1 also describes (that describes
@@ -101,7 +103,15 @@
    ;; module's own :submodule call-paths (`call-submodule-paths`,
    ;; below), but the interpreter's own call/return mechanism (D1-D4)
    ;; is a separate, later commit.
-   "CallSubmodule" :call-submodule})
+   "CallSubmodule" :call-submodule
+   ;; GMF coverage Wave C (2026-08-02, ADR-0028, C1/C2): Death joins v1
+   ;; as a real, terminal trajectory-event-producing state -- unlike
+   ;; Device/DeviceEnd (consumed-internally, no home for the content),
+   ;; Death IS a real event the accumulator now has a home for
+   ;; (:expired, docs/patient-state-model.md). The interpreter's own
+   ;; handling (gmf-interpreter.clj) is the C1/C2 build; this loader
+   ;; only makes the state TYPE loadable and validates its own shape.
+   "Death" :death})
 
 (def ^:private code-system->keyword
   "GMF's own code-system strings -> sim-model/Concept's
@@ -400,7 +410,21 @@
    ;; relative FILE PATH (the search path this document's own D3
    ;; establishes, `sim/modules/<call-path>.json`), not a semantic
    ;; identifier this loader normalizes elsewhere.
-   [:call-submodule (with-transitions [:type [:= :call-submodule]] [:submodule :string])]])
+   [:call-submodule (with-transitions [:type [:= :call-submodule]] [:submodule :string])]
+   ;; GMF coverage Wave C (2026-08-02, ADR-0028, C1): three time forms
+   ;; (:range/:exact -- the SAME shapes :delay/:procedure duration
+   ;; already use -- or neither, meaning immediate) and, of the three
+   ;; real cause-of-death forms State.java's own Death class declares,
+   ;; only :codes (verbatim, code passthrough law) -- :condition-onset/
+   ;; :referenced-by-attribute are accepted here (an open map, no schema
+   ;; failure) but UNBUILT at the interpreter (gmf-interpreter.clj's own
+   ;; :death case throws, the same disposition an unsupported condition
+   ;; type already gets) -- no vendored module needs either yet
+   ;; (docs/gmf-interpreter.md section 10's own C1 account).
+   [:death (with-transitions [:type [:= :death]] [:codes {:optional true} [:vector sim-model/Concept]]
+             [:range {:optional true} Range] [:exact {:optional true} Exact]
+             [:condition-onset {:optional true} :keyword]
+             [:referenced-by-attribute {:optional true} :string])]])
 
 (def GmfModule
   [:map

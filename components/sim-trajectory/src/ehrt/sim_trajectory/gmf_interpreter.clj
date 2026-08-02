@@ -629,6 +629,30 @@
        :terminal? false
        :blocked? false})))
 
+(defn- death-step
+  "GMF coverage Wave C (2026-08-02, ADR-0028, C1/C2): `state`'s own
+  :range/:exact resolve the SAME way `resolve-time-advance` already
+  resolves a `:delay`'s -- Death's own real Synthea fields (`State.
+  java`'s `range`/`exact`, docs/gmf-interpreter.md section 10) are
+  literally the same `{low high unit}`/`{quantity unit}` shape. Only
+  the `:codes` cause-of-death form is built (verbatim, code-passthrough
+  law) -- `:condition-onset`/`:referenced-by-attribute` are named
+  UNBUILT (no vendored module needs either), a programmer-error throw,
+  the same disposition `evaluate-condition`'s own unsupported condition
+  type already gets, never a silently-wrong nil cause. The emitted
+  event cites the COMPUTED death time (`death-t`, not the state's own
+  entry time -- a `:range` death is genuinely delayed); the outcome is
+  `:terminal? true`/`:next nil` -- C2's own terminal contract, Death's
+  own declared transition is never resolved."
+  [module-id ctx ^Random rng state]
+  (when (or (:condition-onset state) (:referenced-by-attribute state))
+    (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: Death's own condition-onset/referenced-by-attribute cause-of-death forms are unsupported -- no vendored module needs them yet (docs/gmf-interpreter.md section 10)"
+                     {:module-id module-id :state (:current ctx)})))
+  (let [death-t (resolve-time-advance rng (:t ctx) state)
+        event (trajectory-event module-id (assoc ctx :t death-t) :death {:codes (:codes state)})]
+    {:events [event] :attributes (:attributes ctx) :advance (- death-t (:t ctx))
+     :next nil :terminal? true :blocked? false}))
+
 (defn step
   "Advances ONE state from `ctx`'s own `:current` -- consuming `rng` only
   in this function's own documented order (per-state-type below). Returns
@@ -712,7 +736,21 @@
       ;; GMF coverage Wave B (D1-D4): CallSubmodule's own handling is
       ;; `call-submodule-step`, above -- it needs `modules` (this arity's
       ;; own 4th argument), the ONE case that does.
-      :call-submodule (call-submodule-step modules module-id ctx rng state)))))
+      :call-submodule (call-submodule-step modules module-id ctx rng state)
+      ;; GMF coverage Wave C (2026-08-02, ADR-0028, C1/C2): Death's own
+      ;; time resolution reuses `resolve-time-advance` unchanged --
+      ;; :range/:exact are the SAME shape :delay/:procedure duration
+      ;; already use, so no new time-sampling helper is needed, only a
+      ;; new case wiring to the existing one (:range costs exactly one
+      ;; rng draw, the same fixed-consumption law every other stochastic
+      ;; choice in this project follows; :exact/neither cost none).
+      ;; C2's own terminal contract: the event cites the COMPUTED death
+      ;; time (not the state's own entry time -- a `:range` death is
+      ;; genuinely delayed), then the walk ends here, `:terminal? true`,
+      ;; `:next nil` -- Death's own declared transition (real Synthea
+      ;; continues past it) is never resolved, by design (ns docstring's
+      ;; own note, docs/gmf-interpreter.md section 10's own C1 account).
+      :death (death-step module-id ctx rng state)))))
 
 ;; --- walk-module: drives `step` from :initial to Terminal or blocked ------
 
