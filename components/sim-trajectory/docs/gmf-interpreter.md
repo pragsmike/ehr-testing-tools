@@ -71,13 +71,13 @@ it can't yet be *vendored*.
 | `Device` / `DeviceEnd` | v1, consumed internally **(M5b finding, moved here from the Deferred table below)** | none — structurally identical to `Simple`: no equipment-tracking home exists anywhere in `components/sim/docs/patient-state-model.md`'s accumulator or the pathway IR, so these states pass through (ordinary transition resolution, no attribute write, no trajectory event) rather than mint anything. Discovered load-bearing, not merely convenient: the ratified vendored module (`sinusitis.json`) uses them for its Nebulizer content, exactly where this document's own appendix already predicted (confined to the module's rare chronic-surgical tail) — but the M5a loader's own all-or-nothing gate ("any deferred-type use fails it, full stop") rejected the WHOLE module for two states, not merely that tail, since the loader has no partial-compile mechanism to "simply not compile that one branch's terminal states" the way the appendix's prose imagined. Consumed-internally is the minimal, disciplined resolution — see the M5b findings section below for the full account |
 | `CallSubmodule` | v1, trajectory-adjacent **(GMF coverage Wave B, ADR-0027, moved here from the Deferred table below — the same "move, not duplicate" treatment `Device`/`DeviceEnd` already got at M5b)** | none of its own — recursion into a second module JSON file, loaded/namespaced/gated as part of the SAME closure (§1's own loader gate now extends to it, `ehrt.sim-trajectory.gmf/load-closure`, D3) and run via descend-run-return (`ehrt.sim-trajectory.gmf-interpreter`'s own D1-D4 order contract, ns docstring). Every trajectory event a called submodule itself emits carries the normal event-type mapping this table already assigns it (a `MedicationOrder` inside a callee is still a `:medication-order` event) PLUS a `:call-path` citation (D2) — see §9 for the full account |
 | `Death` | v1, terminal trajectory event **(GMF coverage Wave C, ADR-0028, moved here from the Deferred table below — the same "move, not duplicate" treatment `Device`/`DeviceEnd`/`CallSubmodule` already got)** | ends the walk (`:terminal? true`, `:next nil` — the module's own declared post-Death transition is never resolved, a disclosed departure from real Synthea's own continue-past-Death semantics). Compiles at `CompileTrajectory` to the EXISTING `:discharge` IR step, no new step type — death inside a still-open encounter attaches as that encounter's own terminal disposition (`:disposition :expired`, `:codes` the cause of death verbatim); death outside any encounter closes the pathway without fabricating a discharge from an admission that never happened. `ehrt.sim.engine`'s own `:discharge` decide/evolve fold this to `:status :expired` (`components/sim/docs/patient-state-model.md`'s accumulator table, real for the first time) — see §10 for the full account |
+| `MultiObservation` / `DiagnosticReport` | v1, trajectory event **(GMF coverage Wave D stage D1, ADR-0029, moved here from the Deferred table below — the same "move, not duplicate" treatment `Device`/`DeviceEnd`/`CallSubmodule`/`Death` already got; `DiagnosticReport` enters this table for the first time — it was never in this document's own original brief at all)** | both extend Synthea's own private `ObservationGroup` class and compile to the SAME new `:diagnostic-report` IR step (embedded, inline `Observation`-shaped children, never a reference — §11's own D1a-2 grounding against `State.java`). `:observation`'s own IR step gains `:value-code`/`:category`/`:reference-range`/`:interpretation` alongside it, closing the `value_code`/`vital_sign` value-sourcing gap a standalone Observation state can also carry — see §12 for the full per-layer account |
 
 **Deferred, with reasons:**
 
 | State type | Why deferred |
 |---|---|
 | `Counter` | Named in this document's own brief as deferred; not observed in any of the four modules read this session, so its omission carries no survey evidence either way — carried forward as originally scoped |
-| `MultiObservation` | Named in this document's own brief as deferred; not observed in any of the four modules read this session — same status as `Counter` |
 | `CarePlanStart` / `CarePlanEnd` | **Discovered spot-checking `bronchitis.json`** (read while scouting a urinary-tract-infection candidate that turned out not to exist as its own module, below) — not present in any of the three formally surveyed candidates. Deferred for the same reason as `Device`/`DeviceEnd` was originally deferred here (no accumulator or IR home yet, and no formal candidate needs it) — unlike `Device`/`DeviceEnd`, no vendored module has yet forced this one to be reconsidered, so it stays deferred |
 
 **A recommendation, flagged for author review: add `Symptom` to v1 as
@@ -890,7 +890,7 @@ erase convention, not silently edited above.
 | `urinary_tract_infections.json` | 29 | `CallSubmodule` ×3 | n/a (module has no `Encounter` state of its own) | none directly — delegates via `type_of_care_transition` (a FIFTH transition kind, outside this document's four, §2) to `uti/ambulatory_path`\|`ed_path`\|`telemed_path` submodules | Not encounter-bearing at its own top level AND `CallSubmodule`-blocked — **deferred** |
 | `total_joint_replacement.json` | 31 | `CallSubmodule` ×4, `CarePlanStart`/`CarePlanEnd` ×1 each | none (`Age`/`And`/`Attribute`, all v1) | ambulatory (pre-op) → inpatient (surgery) → ambulatory (follow-up) | Rejected at LOAD (deferred types scattered through pre-op assessment AND post-op pain management AND post-op careplan — not an excludable tail) — **deferred**. **Dated note, GMF coverage Wave B (2026-08-02, ADR-0027): `CallSubmodule` is REMOVED from this module's own blocker list** — Wave B built the mechanism this row's own gap column names, though this module's OWN four call-paths were never fetched or characterized this session (unlike `ear_infections.json`/`urinary_tract_infections.json`, §9) — this row's own `CarePlanStart`/`CarePlanEnd` gap alone still blocks it, Wave D's own scope, and this module's real closure could still hide further gaps a real characterization pass would need to surface before any vendoring claim |
 | `congestive_heart_failure.json` | 115 | `CallSubmodule` ×7, `Counter` ×5, `Death` ×4, `ImagingStudy` ×4, `DiagnosticReport` ×3, `CarePlanStart`/`CarePlanEnd` ×3+1, `MultiObservation` ×1 (28/115 ≈ 24% deferred) | `Vital Sign`, `Date`, `Or`, `Active CarePlan` — four more gaps | ambulatory ×3, emergency, hospice, inpatient ×2 | Far over ADR-0013 point 4's "modest surface" bar — **deferred, cited for prioritization data only** |
-| `sepsis.json` | 37 | `MultiObservation` ×2, `DiagnosticReport` ×1, `Death` ×1 | none new (`Active Allergy`/`Age`/`Observation`, all recognized keywords — `Observation`-as-condition-type is itself the sore_throat-shared gap) | emergency | `DiagnosticReport` (`Blood_Cultures`) is the FIRST state after the encounter opens, unconditional; `MultiObservation` (`Record_Blood_Pressure`) fires on both the vasopressor and ICU-survival branches — both MANDATORY, not tails — **deferred** |
+| `sepsis.json` | 37 | `MultiObservation` ×2, `DiagnosticReport` ×1, `Death` ×1 | none new (`Active Allergy`/`Age`/`Observation`, all recognized keywords — `Observation`-as-condition-type is itself the sore_throat-shared gap) | emergency | `DiagnosticReport` (`Blood_Cultures`) is the FIRST state after the encounter opens, unconditional; `MultiObservation` (`Record_Blood_Pressure`) fires on both the vasopressor and ICU-survival branches — both MANDATORY, not tails — deferred at M7 time. **VENDORED, GMF coverage Wave D stage D1 (2026-08-02, ADR-0029) — `resources/modules/NOTICE`'s own table; `Death` was already v1 by Wave C, `MultiObservation`/`DiagnosticReport` closed this wave, §11/§12 for the full account** |
 | `myocardial_infarction.json` | 26 | `CallSubmodule` ×5, `Death` ×2, `CarePlanStart` ×1 | none | emergency | `ACS_Arrival_Meds`/`Cardiac_Labs`/`NSTEACS`/`STEMI` are all `CallSubmodule` and ALL reachable unconditionally past `ECG` — the module's entire post-ECG therapeutic content is opaque — **deferred**. **Dated note, GMF coverage Wave B (2026-08-02, ADR-0027): `CallSubmodule` is REMOVED from this module's own blocker list**, same caveat as `total_joint_replacement.json`'s own note above — the mechanism landed, but this module's own five call-paths were never fetched or characterized this session. `Death`/`CarePlanStart` still block it (Wave C/Wave D respectively) — matching the wave plan's own "B+C → MI" sequencing (`.agents/plans/2026-08-02-gmf-coverage-plan.md`), not reopened or accelerated by this note |
 | `stroke.json` | 12 | `Death` ×1 (an excludable ~17.5% procedural-mortality tail — the ONLY sinusitis-precedent-shaped gap found this session) | **`Date`** — `Emergency_Encounter`'s own `conditional_transition` gates Clopidogrel/Alteplase on simulated year, evaluated immediately on encounter entry, for every patient — **condition-vocabulary gap RESOLVED, GMF coverage Wave A, 2026-08-02** (`:date` now v1, `.agents/plans/2026-08-02-gmf-coverage-plan.md`) | emergency | Smallest, cleanest STATE-type surface surveyed after appendicitis — the `Date` gap that blocked it is closed, but the `Death` state-type gap (this row's own second column) still does, per AR-6 (same plan): `Death` stays a load-bearing, semantically-real state (unlike `Device`, never a safe consumed-internally pass-through) — waits for Wave C's own `:expired`/post-mortem wiring — **deferred, revisit trigger: Wave C**. **Dated note, GMF coverage Wave C (2026-08-02, ADR-0028): `Death` is REMOVED from this module's own blocker list, but a NEW, worse gap replaces it — still deferred, revisit trigger changed.** `Death` itself landed this wave (section 10) and this module's own `Death` state (the `range`+`codes` form) is now fully expressible. But real-closure characterization (section 10's own C5 survey) found `Chance_of_Stroke`'s own `distributed_transition` gates the "Stroke" branch on `{"attribute": "stroke_risk", "default": 0}` — a real Synthea engine attribute (`CardiovascularDiseaseModule`'s own Framingham risk score) this project has no source for, whose own JSON default is exactly 0, making onset (and therefore `Death`) structurally unreachable if honored literally. Escalated and ruled (design channel, 2026-08-02): `stroke.json` stays deferred — revisit trigger is now an attribute-sourced `distributed_transition` weight mechanism (unbuilt) AND a stroke-risk-equivalent data source (out of this project's own persona model), both landing together, not scoped this session |
 | `self_harm.json` | 35 | `Death` ×1 (excludable ~1.6–5.5% fatal-attempt tail), `CarePlanStart` ×1 (in the SECOND, ambulatory follow-up encounter — moot regardless, see "Multi-encounter" below) | none (`And`/`Attribute`/`Gender`/`Race`, all v1) | ambulatory ×2, emergency | Both deferred states are structurally isolated exactly like `sinusitis.json`'s own `Device`/`DeviceEnd` precedent — but the loader's all-or-nothing gate rejects on PRESENCE, not reachability, so isolation doesn't save it under the loader AS BUILT — **deferred, but the strongest evidence yet for a reachability-aware load gate (prioritization table, below)** |
@@ -2067,20 +2067,46 @@ accumulator shape invented. `ObservationRecord` gains `:value-code`/
 set to include `:diagnostic-report` — the same therapeutic-intent-class
 scoping `:procedure`/`:observation`/`:medication-order` already get.
 
-**Emission (`ehrt.sim-emit-hl7.emit-hl7`).** `report-obx-segment` (new)
-shares `observation-obx-segment`'s field set but branches OBX-2
-`"CWE"`/`"NM"` on whether the child carries `:value-code`, rendering a
-SNOMED CT-coded finding via a new system-aware `coded-value-field`
-(`cwe-field` itself stays LOINC-hardcoded and untouched — every
-pre-existing call site is a LOINC panel/analyte concept) — plus, beyond
-P6's own base sketch, OPTIONAL reference-range/abnormal-flag rendering
-when the child carries them (Q2+Q3's own ruling), blank otherwise, never
-fabricated. `diagnostic-report-message` (new): MSH/PID/PV1/`orc-segment`
-(reused unchanged)/`obr-segment` (reused unchanged, report-level codes)/
-one `report-obx-segment` per child via `map-indexed`, the same shape
+**Emission (`ehrt.sim-emit-hl7.emit-hl7`).** `observation-obx-segment`
+itself is EXTENDED in place, then reused directly at both call sites
+(`observation-message` AND the new `diagnostic-report-message`) rather
+than duplicated into a separate `report-obx-segment` builder — P6's own
+"sharing observation-obx-segment's field set" is realized here as
+literal reuse, one function, not a near-duplicate sibling. It now
+branches OBX-2 `"CWE"`/`"NM"` on whether the observation carries
+`:value-code`, rendering a SNOMED CT-coded finding via a new system-
+aware `coded-value-field` (`cwe-field` itself stays LOINC-hardcoded and
+untouched — every pre-existing call site is a LOINC panel/analyte
+concept) — plus, beyond P6's own base sketch, OPTIONAL reference-range/
+abnormal-flag rendering when the observation carries them (Q2+Q3's own
+ruling, so a table-sourced STANDALONE `:observation` event — e.g.
+Pulse_Oximetry — renders them too, not only a `:diagnostic-report`
+child), appended ONLY when present (a variadic trailing-field build,
+never a positional pad) — byte-identical to every pre-existing call
+when absent, confirmed by field-count assertion. `diagnostic-report-
+message` (new): MSH/PID/PV1/`orc-segment` (reused unchanged)/
+`obr-segment` (reused unchanged, report-level codes)/one
+`observation-obx-segment` per child via `map-indexed`, the same shape
 `oru-message` already establishes for `:results`. One new
 `message-type-registry` entry, `:diagnostic-report -> {:type "ORU"
 :trigger "R01"}`; `control-id-for` needed no change (P6's own finding).
+
+**`VitalSign` (state type) / `Vital Sign` (condition type) — design-
+ruled (R2(c)), implementation-deferred, unchanged by this stage.**
+Neither is built this session, per F3's own explicit fence (D1b's own
+session prompt): no vendored module across Waves A–D exercises either
+mechanism (D1a-5's own negative result, §11, still the current
+evidence), and this workspace does not build unexercised machinery.
+The vital-sign reference table (D1 F2) already carries what a future
+`VitalSign` implementation will need (LOINC code/units/reference-range
+per named vital sign); the design itself (`VitalSign` state ->
+observation-flavored event, `Vital Sign` condition -> a log query,
+R2(c)'s own ruling) stands as recorded, untested against real evidence.
+The next session vendoring a real `VitalSign`-bearing or `Vital Sign`-
+condition-bearing candidate should re-derive against source at that
+point, not treat D1a-5/P3's own sketch as settled (D1a-5's own closing
+note, restated here since D1b's own implementation pass is where a
+reader would otherwise expect this gap to have closed).
 
 Full field-by-field diffs, test coverage, and the sepsis.json vendoring
 payoff are in the D1b session record and the commits it names (ADR-0029

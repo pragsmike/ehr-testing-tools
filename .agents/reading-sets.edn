@@ -141,7 +141,13 @@
   ;; bumped 932->935, D1b Step 0 (2026-08-02): roadmap.md's own D1 Now-row
   ;; grew (halted-for-ruling -> in-progress implementation) -- self-caught
   ;; by this same gate, same precedent.
-  :budget-lines 935}
+  ;; bumped 935->965, D1b Step 4 close-out (2026-08-02): roadmap.md's own
+  ;; D1 Done section landed (shas, payoff) and both the session-records/
+  ;; prompts READMEs gained one index line each -- self-caught by this
+  ;; same gate, same precedent, folded into the Step 4 records commit
+  ;; itself (not a separate fix-forward, since it's this commit's own
+  ;; direct consequence, not an earlier checkpoint's).
+  :budget-lines 965}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one

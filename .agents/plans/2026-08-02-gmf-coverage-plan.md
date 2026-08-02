@@ -77,7 +77,12 @@ running deliberately, since emitter growth inside fat `sim` is the
 anti-pattern S3 exists to prevent. **D1** — the observation family
 (`DiagnosticReport`/`MultiObservation`, one new `:diagnostic-report` IR
 step, ORU^R01-with-OBR emission) — payoff: sepsis, closures permitting.
-**D2** — the CarePlan family (a paired IR span mirroring `:medication-
+**DONE, 2026-08-02 (stage D1b, ADR-0029's own dated ruling note and
+execution note): sepsis.json vendored for real** (`resources/modules/
+NOTICE`) — the closure surveyed clean at D1a (§11), the schema RULED
+same day, and the full chain (loader/interpreter/compile-trajectory/
+engine/emission) landed, oracle-fenced against every prior vendored
+root (byte-identical). **D2** — the CarePlan family (a paired IR span mirroring `:medication-
 order`/`:medication-end`, the `Active CarePlan` condition type; CarePlan
 itself stays v2-silent per R3, its natural rendering deferred to a
 future `sim-emit-fhir`) — payoff: MI and `total_joint_replacement`,

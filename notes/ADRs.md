@@ -6034,6 +6034,60 @@ them.
 > the same full content-provenance discipline (F2's own hashed,
 > source-cited table), not a new kind of liberty.
 
+> **D1b execution note (filled Step 4, 2026-08-02).** D1b executed same
+> day as ruled: the vital-sign reference table (D1 F2, `components/
+> sim-trajectory/resources/sim-trajectory/vital-signs.edn`, LOINC codes
+> cross-checked against HL7 FHIR's own public examples, `notes/facts-
+> register.md` F21); `ehrt.sim-model.pathway`'s new `:diagnostic-report`
+> step and `ObservationEntry` schema; `ehrt.sim-trajectory.gmf`'s two new
+> loadable state types and `:observation`'s own `:value-code`/
+> `:vital-sign` fields; `ehrt.sim-trajectory.gmf-interpreter`'s
+> `value_code`/`vital_sign` sampling branches and the shared
+> `:diagnostic-report` trajectory-event compile for both state types;
+> `ehrt.sim-trajectory.compile-trajectory`'s `observation-fields`
+> extraction and `diagnostic-report->step`; `ehrt.sim.engine`'s
+> decide/evolve pass-through (P5's own per-child flattening, reused from
+> `:result-available`); `ehrt.sim.check`'s therapeutic-intent-class
+> extension; `ehrt.sim-emit-hl7.emit-hl7`'s extended `observation-obx-
+> segment` (reused directly at both call sites, never duplicated) and
+> new `diagnostic-report-message`; `sepsis.json` vendored
+> (`resources/modules/NOTICE`). `poly check` clean; the full non-
+> integration suite green throughout (188 `Testing ehrt.*` namespace
+> announcements at this session's own HEAD, 0 failures/0 errors); the
+> byte-identical oracle held for all five pre-existing vendored roots
+> (sinusitis/appendicitis/sore_throat/ear_infections-closure/death-
+> fixture) — SHA-256 digests of a fixed-seed engine run's own emitted
+> HL7 (interpreter-trajectory digest for the closure, no full-engine
+> emission path existing for a real CallSubmodule closure yet) compared
+> byte-for-byte between this session's own pre-Step-0 HEAD (`dce2086`)
+> and its post-Step-3 HEAD (`870a1ab`) in a disposable worktree: all
+> five identical. Commits, in order: `297e337` (Step 0, RULED + roadmap),
+> `917e9cf` (a same-session fix-forward: Step 0's own roadmap.md growth
+> self-tripped the reading-set budget gate, caught and bumped the same
+> way twice before), `5974fd2` (Step 1, vital-sign table), `f4a4e99`
+> (Step 2a, sim-model), `acd49f5` (Step 2b, sim-trajectory),
+> `7a13de5` (Step 2c, sim), `e345f13` (Step 2d, sim-emit-hl7), `870a1ab`
+> (Step 3, sepsis vendored), this commit (Step 4, records). Session
+> record: `.agents/session-records/2026-08-02-gmf-coverage-wave-d-stage-
+> d1b.md`.
+>
+> **Deviation record.** Two pre-existing `gmf_test.clj` fixtures
+> (`deferred-state-type-json`, `calls-deferred-leaf-json`) used
+> `MultiObservation` as their own "still deferred" negative-test
+> example — this session's own change made that premise false, caught
+> live by the affected-test run (4 failures, all citing the same stale
+> assumption), fixed forward to `ImagingStudy` (R5, genuinely still
+> deferred) rather than left to silently test something it no longer
+> tested — the same "swapped again, for the same reason" disclosure
+> those fixtures' own docstrings already carry from an earlier such
+> swap (CallSubmodule, GMF coverage Wave B). No schema or design
+> deviation from the RULED proposal (P1–P6) occurred — F1's own "no
+> silent additions beyond it" held throughout; the one addition beyond
+> P6's own literal text (reference-range/abnormal-flag rendering on
+> `observation-obx-segment`, plain-value-observation determinism
+> unaffected) is the Q2+Q3 ruling's own explicit instruction, not an
+> unruled deviation.
+
 > **D2/D3 characterization notes:** not yet filled — each stage's own
 > session fills its own note here when it runs, per R6's own sequencing.
 

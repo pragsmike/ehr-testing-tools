@@ -5,13 +5,8 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- GMF coverage Wave D, stage D1 (ADR-0029 R6) — observation family
-  (`MultiObservation`/`DiagnosticReport`/`VitalSign`-as-observation, one new
-  `:diagnostic-report` IR step). D1a (characterization + schema PROPOSAL,
-  2026-08-02) halted for a design-channel ruling; RULED same day (ADR-0029's
-  own dated ruling note, Q1–Q4 resolved) — D1b (implementation: reference
-  table, IR/loader/interpreter/compile/engine/emit chain, sepsis.json
-  vendoring) is IN PROGRESS, session started 2026-08-02.
+- Nothing in progress at end of session (GMF coverage Wave D stage D1
+  closed same day it started, D1a through D1b -- see Done, below).
 
 ## Next (backlog, no session scheduled)
 - Pairing-as-data (review P3-3): mutate↔judge conviction registry — design pass in
@@ -313,3 +308,36 @@ per item; done items move to the bottom of their section with a date and sha.
   insertion-order mistake caught before Step 1), `ccce1fc` (Step 1,
   characterization), `e38e232` (Step 2, extraction), and this session's
   own closing records commit.
+
+## Done (this session, 2026-08-02, GMF coverage Wave D stage D1 -- D1a + D1b)
+- D1a (characterization + schema PROPOSAL, same-day prior session):
+  `sepsis.json`'s own closure surveyed clean of every D3-scoped
+  transition kind; `MultiObservation`/`DiagnosticReport`'s shared
+  `ObservationGroup` parent grounded against real Synthea source; three
+  value-sourcing mechanisms found side by side (`range` built,
+  `value_code`/`vital_sign` not); the `vital_sign` field's own real
+  upstream source (`LifecycleModule.java`) found unported, with no
+  physiology-simulation equivalent in this project. Schema PROPOSAL
+  (P1–P6) drafted, awaiting ruling.
+- D1b (implementation, this session): the PROPOSAL RULED AS DRAFTED,
+  Q1–Q4 resolved (`:category` added now; one curated vital-sign
+  reference table answers both the code gap and the value gap and
+  supplies OBX reference-range/abnormal-flag; ruled on this session's
+  own engine-source evidence, confirmation duty carried forward to the
+  next MultiObservation/DiagnosticReport module vendored) — full chain
+  landed: `sim-model`'s `:diagnostic-report` step, `sim-trajectory`'s
+  loader/interpreter/compile-trajectory, `sim`'s engine pass-through and
+  invariant extension, `sim-emit-hl7`'s ORU rendering, `sepsis.json`
+  vendored for real. `poly check` clean; full non-integration suite
+  green (188 namespaces, 0 failures/0 errors); the byte-identical oracle
+  held for all five pre-existing vendored roots. `VitalSign`/`Vital
+  Sign` stay design-ruled, implementation-deferred (F3) -- no vendored
+  module exercises either yet.
+- Commits, in order: `297e337` (Step 0, RULED + roadmap), `917e9cf`
+  (reading-set budget self-catch, fix-forward), `5974fd2` (Step 1,
+  vital-sign table), `f4a4e99` (Step 2a, sim-model), `acd49f5` (Step 2b,
+  sim-trajectory), `7a13de5` (Step 2c, sim), `e345f13` (Step 2d,
+  sim-emit-hl7), `870a1ab` (Step 3, sepsis vendored), and this session's
+  own closing records commit. `notes/ADRs.md` ADR-0029's own D1a schema
+  RULING and D1b execution note; `.agents/session-records/2026-08-02-
+  gmf-coverage-wave-d-stage-d1b.md`.
