@@ -116,7 +116,15 @@
   ;; landed, plus indexing this session's own session-record/prompt-
   ;; archive filenames in their own already-cited onboarding READMEs,
   ;; net +51 lines, brought the real total from 845 to 896.
-  :budget-lines 896}
+  ;; raised again 2026-08-02 (GMF coverage Wave D design pass / sim split
+  ;; S3 stage D0, Step 0, caught by the budget test itself, same shape
+  ;; every prior self-catch above already established):
+  ;; `.agents/plans/roadmap.md`'s own "Now" section gained the sim-split
+  ;; S3/Wave-D-D0 row and its own Deferred section's S3/S4/Wave-D rows
+  ;; were restructured (S3 retired from Deferred, Wave D's row split into
+  ;; D1-D3 with the ADR-0029 citation), net +1 line, brought the real
+  ;; total from 896 to 897.
+  :budget-lines 897}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one

@@ -5355,6 +5355,120 @@ started — see `.agents/plans/2026-08-02-gmf-coverage-plan.md` and
 
 ---
 
+## ADR-0029 — GMF coverage Wave D: design (R1–R7) — IR additions, CarePlan v2-silence, closure data files, D0–D3 sequencing
+
+**Status:** Accepted (author-ruled 2026-08-02, design channel, R1–R7
+below; recorded verbatim, attributed, per `notes/ADRs.md` ADR-0007's
+own provenance-tag convention). D0 (this ADR's own executing session)
+runs same day; D1–D3 are named here as placeholders, not yet run.
+
+### Context
+
+Wave D is the GMF coverage arc's fourth wave (`.agents/plans/2026-08-02-
+gmf-coverage-plan.md`), the wave named to hold every state type this
+project's own module survey found needing BOTH a new IR shape and a new
+emitter/emission-decision home — `DiagnosticReport`, `MultiObservation`,
+`CarePlanStart`/`CarePlanEnd`, `ImagingStudy`, plus Wave A's own two
+named-but-excluded drops (`Vital Sign`, `Active CarePlan`). Two Wave C
+dated fix-forward notes (ADR-0028) already redirected work into this
+wave: `urinary_tract_infections.json`'s own real closure (UTI, twelve
+files, `DiagnosticReport`/`MultiObservation`-dirty) and the newly-found
+sixth GMF transition kind, `lookup_table_transition`. Separately, the
+live sim-split plan (`.agents/plans/2026-08-02-sim-split-plan.md`) names
+S3 (`sim-emit-hl7` extraction) as triggered by "starting any second
+state-based emitter" or, per the coverage plan's own cross-reference, by
+Wave D's own `DiagnosticReport` emission decision. This session's design
+pass (R1–R7 below) rules Wave D's own shape and, per R1, fires the S3
+trigger NOW rather than waiting — front-running deliberately, not
+accidentally, since emitter growth inside the still-fat `sim` component
+is exactly the anti-pattern S3 exists to prevent.
+
+### Decision
+
+Ruled 2026-08-02, design channel, recorded verbatim:
+
+**R1 — S3 executes now, as Wave D's own stage D0**, front-running its
+own named trigger deliberately: emitter growth inside fat `sim` is the
+anti-pattern the split exists to prevent, and the move is oracle-guarded
+(fixed-seed byte-identity, the strongest form this codebase has). This
+ADR's own executing session IS D0. Component name `sim-emit-hl7` (AR-1
+family, ADR-0025's own naming convention).
+
+**R2 — Wave D's IR additions**, ruled now for the record, built in D1/D2
+not D0: (a) ONE new pathway-IR step type, `:diagnostic-report`, for the
+observation family — optional report codes plus a vector of
+observation-shaped children; both `MultiObservation` and
+`DiagnosticReport` compile into it, the exact upstream coupling pinned
+by D1's own characterization against Synthea source at the pin; (b)
+`:care-plan-start`/`:care-plan-end` as a paired span, mirroring the
+existing `:medication-order`/`:medication-end` precedent; (c)
+`VitalSign` dissolves into observation-flavored events (a vital-sign
+category) — vitals live in the ground-truth log, and the `Vital Sign`
+condition type reads clinical state from there; NO new persona
+compartment is added for it. Every IR addition co-lands its full chain
+in the same change: schema + compile-trajectory mapping + engine
+handling (or an explicit pass-through ruling) + an emission decision +
+invariants — the same co-landing convention this project's every prior
+wave has followed.
+
+**R3 — CarePlan is deliberately v2-silent**: a registry non-entry with a
+disclosed comment, the same precedent `:procedure`/`:medication-*`
+already set (M3/M5b's own truth-only-facts treatment). Its natural
+rendering is a FHIR CarePlan resource, once `sim-emit-fhir` exists — not
+a same-session HL7v2 shape invented for a format that has no real
+CarePlan-equivalent segment.
+
+**R4 — Closures may carry DATA-FILE members**, not only module JSON:
+lookup-table CSVs (the `lookup_table_transition` finding's own
+prerequisite). The loader closure, `resources/modules/NOTICE`, its
+provenance-header convention, and the content-hash lineage this project
+already carries for vendored modules all extend to cover them. Built in
+D3.
+
+**R5 — `ImagingStudy` is OUT of Wave D**: named in the coverage plan
+with a CHF trigger, not built this wave. A named hole, not a silent
+omission — CHF's own prioritization-table row (`components/sim-
+trajectory/docs/gmf-interpreter.md`) is where it is revisited.
+
+**R6 — Wave D sequencing**: **D0** (this session — the sim-split S3
+emitter extraction, front-run per R1). **D1** (observation family:
+`DiagnosticReport`/`MultiObservation`, the `:diagnostic-report` IR step,
+ORU^R01-with-OBR emission — unlocks sepsis, closures permitting). **D2**
+(CarePlan family: the paired IR span, the `Active CarePlan` condition
+type — unlocks MI and `total_joint_replacement`, closures permitting).
+**D3** (`lookup_table_transition`, attribute-weighted
+`distributed_transition` weights, the UTI closure re-characterization —
+unlocks UTI). Each stage is its own session, its own characterization
+gate, its own payoff declared from fetched evidence — the same
+discipline every prior wave (A/B/C) has run under.
+
+**R7 — The stroke-risk data source is NOT Wave D scope**: a
+calibration/content-provenance item (ADR-0028's own escalated finding —
+`Chance_of_Stroke`'s `stroke_risk` attribute has no source in this
+project), named in the coverage plan with its own row, unowned by any
+wave until a future session rules it.
+
+### Fence
+
+This ADR covers the DESIGN pass (R1–R7) only. D0's own execution record
+(caller map, golden baseline, extraction accounting, verification) is
+recorded in this same document as a dated addendum once D0's own Step 4
+lands (see below), not restated in this Decision section. D1, D2, and
+D3 are not started — each gets its own characterization note filled
+into `.agents/plans/2026-08-02-gmf-coverage-plan.md` and its own session
+record when it runs. R2's IR additions are ruled in shape only here; no
+schema, compile-trajectory mapping, or engine code exists yet for any of
+them.
+
+> **D0 execution note (filled Step 4, 2026-08-02):** placeholder —
+> filled by this session's own Step 4 with the caller map, golden
+> baseline, and verification summary once the extraction lands.
+
+> **D1/D2/D3 characterization notes:** not yet filled — each stage's own
+> session fills its own note here when it runs, per R6's own sequencing.
+
+---
+
 ## ADR-0028 — GMF coverage Wave C: `Death` — terminal contract, `:expired` status lands in code
 
 **Status:** Accepted (author-ruled 2026-08-02, design channel, C1–C7 of

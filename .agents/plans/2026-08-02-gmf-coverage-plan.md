@@ -67,3 +67,26 @@ wave, `Death` proven instead against this project's own hand-authored
 test fixture. `A+C → stroke` has no scheduled wave until an
 attribute-sourced transition-weight mechanism and a stroke-risk-
 equivalent data source both land — named, not scoped, here.
+
+**Third dated fix-forward note (2026-08-02, GMF coverage Wave D design
+pass, `notes/ADRs.md` ADR-0029, R1–R7).** Wave D is restructured into
+four stages, sequenced (R6): **D0** — the sim-split S3 emitter
+extraction (`sim-emit-hl7`: `emit-hl7`/`v2-replay`/`site-profile`),
+fired now rather than waiting on its own named trigger (R1) — front-
+running deliberately, since emitter growth inside fat `sim` is the
+anti-pattern S3 exists to prevent. **D1** — the observation family
+(`DiagnosticReport`/`MultiObservation`, one new `:diagnostic-report` IR
+step, ORU^R01-with-OBR emission) — payoff: sepsis, closures permitting.
+**D2** — the CarePlan family (a paired IR span mirroring `:medication-
+order`/`:medication-end`, the `Active CarePlan` condition type; CarePlan
+itself stays v2-silent per R3, its natural rendering deferred to a
+future `sim-emit-fhir`) — payoff: MI and `total_joint_replacement`,
+closures permitting. **D3** — `lookup_table_transition` (the sixth GMF
+transition kind, ADR-0027's own D6 finding), attribute-weighted
+`distributed_transition` weights, and the UTI closure re-characterization
+— payoff: UTI. Two items are named here as explicitly OUT of this
+restructuring, not silently dropped: **`ImagingStudy`** (R5) waits on a
+CHF trigger, unowned by D0–D3; the **stroke-risk data source** (R7,
+`Chance_of_Stroke`'s own `stroke_risk` attribute, ADR-0028's escalated
+finding) is a calibration/content-provenance item, unowned by any wave
+until a future session rules it.

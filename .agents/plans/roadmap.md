@@ -5,7 +5,11 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- (none — see Done below for GMF coverage Wave C)
+- Sim split S3 / GMF coverage Wave D stage D0 (`sim-emit-hl7`:
+  `emit-hl7`, `v2-replay`, `site-profile`, extracted from `sim`) —
+  satisfied-by-D0, fired per ADR-0029 R1 (`.agents/plans/2026-08-02-
+  sim-split-plan.md`'s own S3 row, `.agents/plans/2026-08-02-gmf-
+  coverage-plan.md`'s Wave D restructure)
 
 ## Next (backlog, no session scheduled)
 - Pairing-as-data (review P3-3): mutate↔judge conviction registry — design pass in
@@ -38,24 +42,21 @@ per item; done items move to the bottom of their section with a date and sha.
 - Reading-set budget numbers (charter §6: rule after real sizes are measured)
 - Verdict-cache placement revisit (ADR-0011 note: second consumer, or never)
 - Sim-manifest interop design between sim and corpus (pre-review open thread)
-- Sim split S3 (`sim-emit-hl7`: `emit-hl7`, `v2-replay`, `site-profile`) —
-  trigger: starting any second state-based emitter (`sim-emit-fhir`/
-  `sim-emit-cda`) — S3 is that arc's first step (author ruling
-  2026-08-02, closing the build-then-extract loophole; wording amended
-  from the prior "actually lands" phrasing,
-  `.agents/plans/2026-08-02-sim-split-plan.md`'s own rendering-accents-
-  over-ground-truth argument)
 - Sim split S4 (`sim-engine`: `engine`, `churn`, `order-profiles`) —
   trigger: a second `engine` consumer appears (the FHIR emitter is the
   likely one) or engine work itself needs the emit-state/check boundary
   designed, same plan
-- GMF coverage Wave D — state types needing IR + emitter homes
-  (`DiagnosticReport`, `MultiObservation`, `CarePlanStart`/`CarePlanEnd`,
-  `ImagingStudy`, plus any Wave A drops) — trigger: a session willing to
-  rule the compile-trajectory mapping + `sim-model` schema addition +
-  engine handling + emission decision per state type; the emission
-  decision for `DiagnosticReport` doubles as sim split S3's own trigger
-  (same plan)
+- GMF coverage Wave D, stages D1–D3 (ADR-0029 R6; D0 is in Now above) —
+  D1: observation family (`DiagnosticReport`/`MultiObservation`, one new
+  `:diagnostic-report` IR step, ORU^R01 emission) — payoff: sepsis,
+  closures permitting. D2: CarePlan family (paired IR span, `Active
+  CarePlan` condition; CarePlan itself stays v2-silent, R3) — payoff:
+  MI, `total_joint_replacement`, closures permitting. D3:
+  `lookup_table_transition` (sixth transition kind) + attribute-weighted
+  `distributed_transition` weights + UTI closure re-characterization —
+  payoff: UTI. `ImagingStudy` (R5, CHF trigger) and the stroke-risk data
+  source (R7) are named in ADR-0029/the coverage plan but unowned by
+  D0–D3.
 
 ## Done (this session, 2026-08-01, migration session 1)
 - Items 6+7: `agent/scenario-roster.md` merged into `.agents/skills/scenarios/roster.md`,
