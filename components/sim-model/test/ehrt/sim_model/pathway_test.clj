@@ -105,6 +105,34 @@
   (is (pathway/valid? {:name "t" :steps [{:type :observation :codes [a-concept] :value 38.2 :unit "Cel"
                                            :citation a-citation}]})))
 
+;; --- GMF coverage Wave D stage D1 (ADR-0029 P1/P2, D1a schema RULING):
+;; :observation's new optional fields, and :diagnostic-report -------------
+
+(def ^:private a-value-code {:system :snomed :code "10828004" :display "Positive (qualifier value)"})
+
+(deftest observation-step-is-valid-ir-with-value-code-category-and-reference-range
+  (is (pathway/valid? {:name "t" :steps [{:type :observation :codes [a-concept] :value-code a-value-code
+                                           :category "laboratory" :reference-range {:low 90 :high 120}
+                                           :interpretation :normal :citation a-citation}]})))
+
+(deftest diagnostic-report-step-is-valid-ir-with-mixed-child-value-mechanisms
+  (is (pathway/valid?
+       {:name "t"
+        :steps [{:type :diagnostic-report :codes [a-concept] :citation a-citation
+                 :observations [{:codes [a-concept] :value 92.0 :unit "mm[Hg]"}
+                                {:codes [a-concept] :value-code a-value-code}
+                                {:codes [a-concept] :value 98.0 :unit "%" :category "vital-signs"
+                                 :reference-range {:low 95 :high 100} :interpretation :normal}]}]})))
+
+(deftest diagnostic-report-step-is-valid-ir-without-report-level-codes
+  (testing "D1a-2: :codes is optional -- a MultiObservation/DiagnosticReport
+            state with no report-level code is real, source-grounded, not
+            an authoring error"
+    (is (pathway/valid? {:name "t" :steps [{:type :diagnostic-report :observations [{:codes [a-concept]}]}]}))))
+
+(deftest diagnostic-report-step-without-observations-key-is-invalid
+  (is (not (pathway/valid? {:name "t" :steps [{:type :diagnostic-report :codes [a-concept]}]}))))
+
 (deftest medication-order-and-end-are-valid-ir
   (is (pathway/valid? {:name "t" :steps [{:type :medication-order :codes [a-concept] :citation a-citation}
                                           {:type :medication-end :order-citation a-citation :citation a-citation}]})))

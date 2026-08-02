@@ -70,6 +70,34 @@
    [:citation Citation]
    [:references {:optional true} [:maybe :int]]])
 
+(def ObservationEntry
+  "GMF coverage Wave D stage D1 (ADR-0029 P1/P2, D1a schema RULING): the
+  value/unit/codes/category/value-code/reference-range/interpretation
+  shape a compiled Observation-family event carries -- extracted so the
+  :observation step below and each :diagnostic-report child (below)
+  share exactly one definition ('ObservationEntry IS this same amended
+  :observation step shape -- no third type', P1/P2). :value-code (a
+  coded/qualitative finding, e.g. 'Positive (qualifier value)') and
+  :category are new this wave (Q1's own ruling: :category added now,
+  not deferred); :reference-range/:interpretation are new alongside
+  them -- the vital-sign reference table's own contribution (D1a schema
+  RULING Q2+Q3: 'supplies the OBX reference-range/abnormal-flag
+  inputs'), populated only for a table-sourced (`vital_sign`-field)
+  value, absent otherwise, the SAME optional-field shape
+  ehrt.sim.engine/ObservationRecord already establishes for
+  :result-available's own richer per-analyte record. Every field but
+  :codes is optional, so a hand-authored :observation step written
+  before this wave (:codes only, or :codes+:value+:unit) validates
+  completely unchanged."
+  [:map
+   [:codes [:vector Concept]]
+   [:value {:optional true} number?]
+   [:unit {:optional true} :string]
+   [:value-code {:optional true} Concept]
+   [:category {:optional true} :string]
+   [:reference-range {:optional true} [:map [:low number?] [:high number?]]]
+   [:interpretation {:optional true} [:enum :normal :low :high]]])
+
 (def Step
   [:multi {:dispatch :type}
    [:admission [:map
@@ -178,12 +206,21 @@
                 [:type [:= :procedure]]
                 [:codes [:vector Concept]]
                 [:citation {:optional true} Citation]]]
-   [:observation [:map
-                  [:type [:= :observation]]
-                  [:codes [:vector Concept]]
-                  [:value {:optional true} number?]
-                  [:unit {:optional true} :string]
-                  [:citation {:optional true} Citation]]]
+   [:observation (into [:map [:type [:= :observation]] [:citation {:optional true} Citation]]
+                       (rest ObservationEntry))]
+   ;; GMF coverage Wave D stage D1 (ADR-0029 R2(a), P1): ONE new step for
+   ;; the observation family -- both MultiObservation and DiagnosticReport
+   ;; compile into this same step (the exact upstream coupling D1a-2
+   ;; pinned against Synthea's own ObservationGroup class hierarchy:
+   ;; embedded-only children, never a reference). :codes optional
+   ;; (D1a-2: category is MultiObservation-only, but report-level codes
+   ;; are absent on neither state type this project has seen so far --
+   ;; optional per source, not required by authoring convenience).
+   [:diagnostic-report [:map
+                        [:type [:= :diagnostic-report]]
+                        [:codes {:optional true} [:vector Concept]]
+                        [:observations [:vector ObservationEntry]]
+                        [:citation {:optional true} Citation]]]
    [:medication-order [:map
                        [:type [:= :medication-order]]
                        [:codes [:vector Concept]]
