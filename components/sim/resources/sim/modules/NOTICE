@@ -32,6 +32,23 @@ prioritization table).
 |---|---|---|---|---|
 | `sinusitis.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/sinusitis.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `3f321ffadebc0731f10b6d1a59b603862fa079bd203fd7cf7d43ea230c79d0af` | 2026-07-27 |
 | `appendicitis.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/appendicitis.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `2bdb7d712c146e04fb2a0b2e10452f38930e055e20e63410be0c4d8d59a1d876` | 2026-07-27 |
+| `sore_throat.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/sore_throat.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `946debafe925f55e3613177f4fb4d8f6f7b21cb00fbb2575396e3024b636ba34` | 2026-08-02 |
+
+**GMF coverage Wave A payoff (2026-08-02): a third entry,
+`sore_throat.json`.** Named as a candidate at the very first M5-prep
+survey (this file's own "prior session's own placeholder text," below)
+and again at M7 (`docs/gmf-interpreter.md`'s own appendix), but blocked
+both times by a mandatory-path condition-vocabulary gap on
+`Determine_if_Bacterial`'s own `At Least`-N-of compound (a modified-
+Centor-criteria gate over `Symptom`/`Observation`/`Age` sub-conditions)
+-- state-type clean (44/44 v1 types, with the already-ratified `Symptom`
+state) the whole time. Vendored below, verbatim, at the SAME pinned
+commit every prior entry uses (re-fetched 2026-08-02 to confirm current;
+no drift from the original 2026-07-27 fetch), once Wave A's own five
+condition-type commits (`:symptom`/`:at-least`/`:or`/`:date`/
+`:observation`) closed the gap -- see `docs/gmf-interpreter.md` section 2
+for the full account. This module needed no OTHER interpreter extension:
+its state-type surface was already fully v1-expressible.
 
 License: Apache-2.0 (`synthetichealth/synthea`, `notes/facts-register.md`
 F2) -- the same license terms already govern every Synthea-derived
