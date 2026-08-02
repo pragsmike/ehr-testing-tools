@@ -107,6 +107,20 @@ real complexity out, not to reject cheap wins.
 
 *Ratified 2026-07-26 (item 1 of 8, this document's closing list, below).*
 
+**Dated note, GMF coverage Wave A (2026-08-02, AR-3,
+`.agents/plans/2026-08-02-gmf-coverage-plan.md`): reconfirmed, and
+disambiguated from a same-named but distinct addition.** This flag's own
+"no `Symptom`-typed guard condition exists in v1's own condition
+vocabulary" line (above) was true when written and stayed true through
+M5a/M5b — but Wave A's own characterization step found a real, mandatory-
+path need for exactly that: `sore_throat.json`'s `Determine_if_Bacterial`
+(§ appendix, below) wraps `At Least`-compound sub-conditions of type
+`Symptom` (reading the severity a `Symptom` STATE already writes). Wave A
+therefore adds `Symptom` to §2's own condition vocabulary too — a
+distinct v1.1 addition to the ALREADY-RATIFIED `Symptom` STATE this flag
+covers, not a reopening of this flag's own recommendation. See §2, below,
+for the condition-side addition and its own citation.
+
 ## 2. Transitions, v1
 
 All four of Synthea's transition kinds are v1 scope — every module
@@ -136,7 +150,7 @@ below for the full account of all four, including why `Active Allergy`
 could NOT be built the same log-query way the other two were). Synthea's
 own condition vocabulary is still larger than this (the three formally
 surveyed modules alone also use compound `At Least`-N-of wrappers — see
-the appendix's own gap notes, still deferred); the original four were
+the appendix's own gap notes, still deferred at M5b); the original four were
 chosen because they cover every module's *entry* logic (age/sex-gated
 onset) and the one compilation decision worth making carefully up front:
 
@@ -181,6 +195,37 @@ parameter engine.clj has to grow. `PriorState`'s own "target state,
 within window" semantics become a `filter` over that patient's own
 event subsequence for the target module/state citation (§6), most
 recent first, optionally bounded by a time window computed from `t`.
+
+**GMF coverage Wave A (2026-08-02,
+`.agents/plans/2026-08-02-gmf-coverage-plan.md`) adds five more
+predicates, each ruled in because its data source already exists —
+Step 1's own membership bar (AR-2) — with no new state home:**
+`Or`/`At Least` (boolean-disjunction and N-of-M compound wrappers, the
+same recursive shape `And` already establishes — Synthea's own
+Logic.java `Or`/`AtLeast` classes); `Date` (a calendar-year comparison
+against the interpreter's own virtual clock, `ctx`'s `:t`, already
+threaded since M5a); `Observation`-as-a-condition-type (a log query over
+already-emitted `:observation` trajectory events by concept, the same
+shape `Active Condition`/`Active Medication` already establish — the
+value itself was already sampled and carried by the already-built
+`Observation` STATE type); and `Symptom`-as-a-condition-type (an
+emergent finding, not one of AR-2's five NAMED candidates, but required
+for `At Least`'s only real vendored use — see the flag's own dated note,
+§1, above, for the disambiguation from the already-ratified `Symptom`
+STATE). `Active Allergy` was ALSO one of AR-2's five named candidates,
+but needed no new work: it already joined v1 at M5b (above), and
+`sore_throat.json`'s own `Active Allergy` checks (appendix, below) use
+the identical RxNorm-7984-Penicillin-V shape `sinusitis.json`'s already
+does. `Vital Sign`/`Active CarePlan` stay OUT (AR-2, pre-ruled — no
+accumulator or IR home exists for either yet); real, confirmed by this
+session's own characterization: neither appears anywhere in
+`sore_throat.json`. Semantics for all five grounded against Synthea's
+own `Logic.java`/`Person.java` at this document's own pinned commit
+(`ehrt.sim-trajectory.gmf-interpreter`'s own per-predicate docstrings
+carry the full citation); `Observation`'s own v1 scope omits the "is
+nil"/"is not nil" operators real Synthea also supports, and `Date`'s own
+v1 scope omits the `:month`/`:date` variants — neither needed by any
+candidate module this session read.
 
 ## 3. The history/horizon design
 
