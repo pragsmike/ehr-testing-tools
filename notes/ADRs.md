@@ -6274,7 +6274,72 @@ them.
 > the CarePlan mechanism itself matches the ruled pair-mirror exactly;
 > the ONLY deviation is in what got vendored, not in what got built.
 
-> **D3 characterization notes:** not yet filled — D3's own session
-> fills its own note here when it runs, per R6's own sequencing.
+> **D2 rider (dated note, ruled 2026-08-02, D3's own Step 0 — H7):** the
+> `initial-attributes` arity D2 added to `ehrt.sim-trajectory.gmf-
+> interpreter/run-module` (above) is SCOPED here, in the record, before
+> a second session reaches for it: it is for WALK-ENTRY inputs standing
+> in for an out-of-closure writer (`total_joint_replacement.json`'s own
+> `joint_replacement`, sourced from two sibling root modules this
+> project does not vendor) — an authored, provenance-cited starting
+> value the vendored TEST supplies and discloses per-use, never a
+> general cross-module communication channel. Cross-module facts still
+> travel through clinical state, exactly as ADR-0027's own D1 already
+> established (root-scoped workflow attributes share a call tree; they
+> do not reach across separate top-level walks) — `initial-attributes`
+> does not change that, it only seeds one walk's own starting point.
+>
+> **D3 session start (design channel, 2026-08-02).** Stage D3 (the
+> arc's own closing stage: `lookup_table_transition`, attribute-weighted
+> `distributed_transition` weights, the UTI closure re-characterization,
+> and TJR's own compound-Guard blocker) begins. Author rulings for this
+> stage, recorded verbatim:
+>
+> - **H1** — each mechanism's semantics are pinned from Synthea source
+>   at the pin BEFORE its implementation commit, recorded here: the
+>   dispatch rule for `LookupTableTransition` (key columns, row
+>   matching, the probability draw), the attribute-weight resolution
+>   rule (`NamedDistribution`: when the attribute is read, fallback
+>   semantics), and the compound-Guard forms TJR actually exercises.
+>   Any rng draw any mechanism adds joins the documented order contract.
+>   One commit per mechanism.
+> - **H2** — lookup-table CSVs are closure DATA MEMBERS per R4: resolved
+>   by `load-closure` from the module's own table references, vendored
+>   beside the modules with sha256 lineage recorded in the NOTICE and a
+>   facts-register entry. The specify-vs-delegate audit applies to table
+>   KEY COLUMNS: a table keyed on person fields the persona genuinely
+>   supplies is buildable; one keyed on fields the persona lacks is an
+>   ESCALATION with the column named.
+> - **H3** — the attribute-weight mechanism landing does NOT unblock
+>   stroke; the survey note must say so in so many words: stroke's own
+>   artifact SPECIFIES `default: 0` with no in-project source for
+>   `stroke_risk` — per the specify-vs-delegate principle that stays
+>   blocked until the risk-source item is ruled. The mechanism is built
+>   for schema honesty and for whatever module exercises it legitimately,
+>   proven with a fixture test, not stroke.
+> - **H4** — compound-Guard resolution extends `age-guard-jump-days`
+>   under a sound-jump-or-escalate rule: a compound containing an Age
+>   condition may be jumped only to a bound provably no later than the
+>   earliest time the compound could become true (then re-evaluated);
+>   any form where no sound bound exists is an escalation with the form
+>   quoted, not a heuristic jump. Installed ≠ used: build the forms TJR
+>   exercises; name the rest.
+> - **H5** — gates. UTI: FULL re-characterization — a fresh fetch of the
+>   complete closure at the pin (not trusting the D2-era file list),
+>   survey rows, an all-seven-kind sweep, D7, the specify-vs-delegate
+>   audit including every lookup table's own key columns; declared scope
+>   from the evidence. TJR: re-verify the D2 fetch by hash (re-fetch only
+>   on mismatch); its gate is H4 landing plus its D2 survey standing.
+> - **H6** — vendored tests. UTI: entry-path lookup dispatch proven BOTH
+>   ways (a seed reaching Cystitis, a seed reaching Pyelonephritis), a
+>   `type_of_care_transition` path taken, cross-boundary encounter events
+>   asserted, a full engine/check run. TJR: a walk that provably ADVANCES
+>   past the compound age guard, the care-plan span with G3's silence
+>   assertion, the `initial-attributes` seeding disclosed in the test's
+>   own docstring, a full engine/check run. Mixer-RNG seed discipline
+>   throughout.
+> - **H7** — the D2 rider, above: `initial-attributes` scoping.
+> - **H8** — D3 closes the wave: a Wave D retrospective note lands in
+>   the coverage plan (the payoff tally as it actually happened, the
+>   standing named items, an S4-trigger status line).
 
 ---

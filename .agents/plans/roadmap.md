@@ -5,8 +5,12 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- Nothing in progress at end of session (GMF coverage Wave D stage D2
-  closed same day it started -- see Done, below).
+- GMF coverage Wave D stage D3 (ADR-0029 R6, closing stage): H1-H8
+  ruled (`notes/ADRs.md` ADR-0029's own D3 session-start note) --
+  `lookup_table_transition`, attribute-weighted `distributed_transition`
+  weights, compound-Guard analytical resolution, UTI closure
+  re-characterization -- payoff: `urinary_tract_infections.json` and/or
+  `total_joint_replacement.json`, gates deciding scope.
 
 ## Next (backlog, no session scheduled)
 - Pairing-as-data (review P3-3): mutate↔judge conviction registry — design pass in
@@ -47,20 +51,10 @@ per item; done items move to the bottom of their section with a date and sha.
   trigger: a second `engine` consumer appears (the FHIR emitter is the
   likely one) or engine work itself needs the emit-state/check boundary
   designed, same plan
-- GMF coverage Wave D, stage D3 (ADR-0029 R6; D0/D1/D2 done, see Done
-  below) — `lookup_table_transition` (sixth transition kind) + attribute-weighted
-  `distributed_transition` weights + UTI closure re-characterization —
-  payoff: UTI. `ImagingStudy` (R5, CHF trigger) and the stroke-risk data
-  source (R7) are named in ADR-0029/the coverage plan but unowned by
-  D0–D3.
-- `ehrt.sim-trajectory.gmf-interpreter/age-guard-jump-days`/`guard-step`
-  extension: a compound (`:and`-wrapped) or non-`>=` Age Guard
-  currently blocks a walk permanently at age 0, no periodic re-tick —
-  found live, D2 (2026-08-02, `total_joint_replacement.json`'s own
-  `Joint_Replacement_Guard`, gmf-interpreter.md §13's own fix-forward
-  finding) — trigger: the first future session vendoring
-  `total_joint_replacement.json` or any other compound-Age-Guard-gated
-  module.
+- `ImagingStudy` (R5, CHF trigger) and the stroke-risk data source (R7)
+  are named in ADR-0029/the coverage plan but unowned by D0–D3, and stay
+  unowned by D3 (see Now, above) too — neither is that stage's own
+  scope.
 
 ## Done (this session, 2026-08-01, migration session 1)
 - Items 6+7: `agent/scenario-roster.md` merged into `.agents/skills/scenarios/roster.md`,
