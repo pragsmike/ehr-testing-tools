@@ -371,6 +371,26 @@
                   ;; :wellness, the loader normalization that document's
                   ;; own prioritization table already named as "the
                   ;; cheapest fix in this table."
+                  ;;
+                  ;; DATED DISCLOSURE (2026-08-03, notes/ADRs.md ADR-0031
+                  ;; AR-5(b)): this normalization is a TIMING SUBSTITUTION,
+                  ;; not a vocabulary alias -- a live probe against
+                  ;; Synthea source at the interpreter doc's own pin
+                  ;; (7e08387c68a7f0e21d13076609a159fd473fc902,
+                  ;; State.java's Encounter.process wellness branch) found
+                  ;; upstream's own `wellness: true` creates nothing and
+                  ;; BLOCKS until the engine's hardcoded EncounterModule
+                  ;; opens its own next separately-scheduled wellness
+                  ;; encounter, potentially months later on Synthea's own
+                  ;; age-banded cadence -- this clause instead fires an
+                  ;; immediate :outpatient-visit. Live in the vendored
+                  ;; ear_infections.json walk (Next_Wellness_Encounter):
+                  ;; legal under specify-vs-delegate (the artifact
+                  ;; delegates timing; the sim supplies an answer) but not
+                  ;; the same-concept alias this comment's own prior text
+                  ;; claimed. No code change here -- superseded by Wave
+                  ;; G's wait-semantics implementation (ADR-0031 AR-2)
+                  ;; once ruled and built.
                   (and (= :encounter kw-type) (:wellness state) (not (:encounter-class state)))
                   (assoc :encounter-class :wellness)
 
