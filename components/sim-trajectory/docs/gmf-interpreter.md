@@ -1128,6 +1128,18 @@ built this session.
 
 #### Prioritization table: which deferred feature blocks the most content
 
+**Superseded, 2026-08-03 (ADR-0034 — the GMF census tool, `.agents/
+plans/2026-08-02-gmf-parity-plan.md` §3).** This table was built by
+hand-reading a scouted sample (26–41 of 85 modules, depending on the
+row) — exactly the survey method the parity plan's own §3 named as
+twice-overturned by fetched evidence (`urinary_tract_infections.json`'s
+"×3 closure" was really 12 files; `myocardial_infarction.json`'s was
+27). §15, below, is the mechanical census that walks and digests the
+FULL catalog at this document's own pin: it is now the frontier of
+record. This table stays as read (not deleted — a real, dated snapshot
+of what a hand survey found and got partly wrong, itself useful
+provenance), but any future prioritization call reads §15 first.
+
 Counting across all 26 modules inspected this session (10 formal reads
 + 16 histogram-scouted) plus the two modules this project already had
 evidence for (`ear_infections.json`, `sinusitis.json` itself):
@@ -2970,6 +2982,122 @@ not a ported mechanism):**
    sound jump exists merely from advancing `:t`, unchanged from today).
    Installed ≠ used (H4's own words): only the form TJR actually
    exercises is built.
+
+---
+
+## 15. GMF census (2026-08-03, ADR-0034): the frontier converted to data
+
+`.agents/plans/2026-08-02-gmf-parity-plan.md` §3, ADR-0031 AR-1/AR-4:
+the census tool (`ehrt.sim-trajectory.census`, a `sim-trajectory` dev
+entry point under `development/src`, not a CLI verb) walks and
+smoke-digests the FULL upstream catalog at this document's own pin —
+superseding the hand-scouted prioritization table above (its own
+superseded note, §8) as the frontier of record. Full artifact:
+[`components/sim-trajectory/docs/census/2026-08-03-synthea-7e08387.edn`](census/2026-08-03-synthea-7e08387.edn).
+
+**Run parameters (re-runnable to the byte, all recorded in the
+artifact's own `:header`):** pin `7e08387c68a7f0e21d13076609a159fd473fc902`,
+verified via `git rev-parse HEAD` against the checkout (not the
+sha256-content fallback — a real git checkout was available); 85
+top-level modules discovered; 3 seeds/module, mixer-seed `20260803`
+(the same `java.util.Random`-mixer derivation
+`bin/oracle-src/ehrt/oracle/digest.clj` uses); registration at age 30,
+horizon 50 further years (age 30→80), uniform persona sampling
+(`{}` config) — one fixed, global choice, not tuned per module.
+
+### Verdict counts
+
+| Verdict | Count |
+|---|---:|
+| `:ok-walked` | 40 |
+| `:load-failed` | 39 |
+| `:walk-failed` | 6 |
+| `:out-of-scope-by-ruling` | 0 (the category stays reserved, ADR-0031 AR-4 — empty is fine) |
+| **Total** | **85** |
+
+19 of 85 modules carry AR-3's `:disclosed-substitutions [:wellness-timing]`
+tag — the mechanical `wellness: true`/no-`encounter_class` scan, applied
+regardless of verdict. This is nearly 4× ADR-0031 AR-5(a)'s own hand-
+survey count of five (`mTBI`, `atrial_fibrillation`, `osteoporosis`,
+`epilepsy`, `med_rec`) — all five are among the 19 (confirmed
+individually), so AR-5(a)'s finding stands, but was itself an
+undercount by exactly the mechanism the parity plan's §3 predicted:
+a scouted sample missing real instances a full mechanical sweep finds.
+Of the 19: 12 `:ok-walked` (including the already-vendored
+`ear_infections`, whose own timing-substitution disclosure is
+`gmf.clj`'s own `normalize-state` docstring note, ADR-0031 AR-5(b)),
+1 `:walk-failed` (`med_rec`, a max-steps runaway — see below), 6
+`:load-failed` (a different, unrelated gap blocks each before the
+wellness idiom itself would ever run).
+
+### Sanity anchors (Step 2's own STOP-AND-ESCALATE gate)
+
+**All SEVEN currently-vendored roots census `:ok-walked`** —
+`appendicitis`, `ear-infections`, `sepsis`, `sinusitis`, `sore-throat`,
+`total-joint-replacement`, `urinary-tract-infections`. (This session's
+own driving prompt named "eight" vendored roots; the actual count, both
+by direct listing of `components/sim/resources/sim/modules/*.json` and
+by this document's own D3f regression-baseline prose above, is SEVEN —
+a small premise correction, disclosed here and in the session record,
+not blocking: no ruling anywhere in `notes/ADRs.md` or the parity plan
+ever said eight.) No STOP-AND-ESCALATE fired.
+
+**All five of ADR-0031 AR-5(a)'s named wellness modules carry the
+AR-3 tag**, confirming the anchor: `epilepsy`/`mTBI`/
+`atrial_fibrillation`/`osteoporosis` census `:ok-walked` (with the
+tag), `med_rec` census `:walk-failed` (with the tag — AR-3 is
+verdict-independent by design).
+
+### Top gap mechanisms (`:load-failed`, by modules blocked)
+
+| Mechanism | Modules blocked |
+|---|---:|
+| `Counter` (deferred state type) | 11 |
+| `ImagingStudy` (deferred state type) | 10 |
+| `gmf_version 2` timing, `EXPONENTIAL` distribution kind (loader THROWS — new finding, below) | 7 |
+| `gmf_version 2` timing, `GAUSSIAN` distribution kind (loader THROWS — new finding, below) | 4 |
+| `SupplyList` (deferred state type) | 3 |
+| `AllergyOnset` / `VitalSign` / `Vaccine` (deferred state types) | 1 each |
+| Unrecognized lookup-table column (`time`, real Synthea's own `LookupTableTransition` special case, D3a's own "unbuilt" note) | 1 |
+
+**New finding, this session: `ehrt.sim-trajectory.gmf`'s own
+`gmf-v2-timing->v1` (D3c finding 1's own translation function) is not
+exception-free.** Its `case` over a `gmf_version 2` distribution `:kind`
+has clauses for `UNIFORM`/`EXACT` only; a real `GAUSSIAN` or
+`EXPONENTIAL` kind (11 modules combined) throws a raw
+`IllegalArgumentException` at load time rather than a `:rejected`
+Result — a genuine loader robustness gap the census's own full-catalog
+sweep surfaced (no hand survey ever read enough `gmf_version 2` modules
+to find it). Per this session's own fence, NOT fixed here (`gmf.clj` is
+the thing being observed, not touched); `census.clj`'s own `census-one`
+wraps `load-closure` in `try`/`catch` so this one finding does not abort
+the whole run (`ehrt.sim-trajectory.census`'s own docstring on
+`census-one` has the full account). Named for a future defect-fix or
+Wave I session: extending `gmf-v2-timing->v1`'s vocabulary is a small,
+mechanical, high-leverage fix (11 modules, tied for the single largest
+census bucket after `Counter`/`ImagingStudy`).
+
+### `:walk-failed` mechanisms
+
+| Mechanism | Modules |
+|---|---|
+| Unrecognized condition type `Race` (real Synthea condition type, ADR-0031's §2 vocabulary never named it) | `anemia-unknown-etiology`, `cystic-fibrosis`, `self-harm` |
+| Unrecognized condition type `Not` (boolean negation — real Synthea's `Logic.java` `Not` class, never in this project's v1 compound-wrapper set alongside `And`/`Or`/`At Least`) | `allergic-rhinitis` |
+| `max-steps` runaway (a real zero-time-advance transition cycle this interpreter's own backstop catches, per its own docstring — either a module-authoring idiom this interpreter doesn't yet resolve, or a genuine authoring bug upstream) | `med-rec`, `veteran-substance-abuse-treatment` |
+
+Two NEW condition-vocabulary gaps (`Race`, `Not`) neither §2 nor any
+prior wave named — real, mechanically found, each blocking 1–3 modules;
+smaller than the state-type gaps above but genuinely new information
+this table did not have before.
+
+### Reading this census
+
+Zero `:load-failed` (minus `:out-of-scope-by-ruling`, currently empty)
+is parity's own countable definition (parity plan §1/§3). This run: 39
+non-out-of-scope `:load-failed` plus 6 `:walk-failed` stand between here
+and that line — the ranked mechanisms above are the E/F/G/H/I sequencing
+input the parity plan's own §4 deferred to "the census ranking," a
+design-channel read this session does not make (fence, below).
 
 ### D3f — regression baseline (Step 1)
 

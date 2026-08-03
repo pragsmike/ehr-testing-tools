@@ -261,13 +261,30 @@
   closure loaded -- runs `seed-count` smoke walks (AR-4). Never throws;
   a smoke walk that throws is caught inside `walk-one` and turns the
   module's own verdict into `:walk-failed`, not a census-aborting
-  exception."
+  exception.
+
+  A full-catalog sweep (Step 2, this session) found `load-closure`
+  itself is NOT actually exception-free for every real module: a
+  `gmf_version 2` `GAUSSIAN` timing distribution (a real kind this
+  loader's own `gmf-v2-timing->v1` `case` has no clause for, unlike
+  `UNIFORM`/`EXACT`) throws a raw `IllegalArgumentException` rather than
+  a `:rejected` Result -- a genuine `ehrt.sim-trajectory.gmf` robustness
+  gap the census's own full-sweep evidence surfaced (named, not fixed,
+  per this session's own fence: the census OBSERVES the loader as it
+  stands). `load-closure` is therefore ALSO wrapped in try/catch here,
+  the same discipline `walk-one` already applies one layer down --
+  otherwise this one module would crash the whole census run, exactly
+  the failure mode AR-2's 'never aborts on a module's failure' rules
+  out."
   [checkout-dir {:keys [seed-count mixer-seed registration-offset-years horizon-years]} {:keys [id ^java.io.File file]}]
   (let [root-json-text (slurp file)
         fetched (atom {id root-json-text})
         resolve-fn (make-resolve-fn checkout-dir fetched)
         table-resolve-fn (make-table-resolve-fn checkout-dir)
-        closure (gmf/load-closure id root-json-text resolve-fn table-resolve-fn)
+        closure (try
+                  (gmf/load-closure id root-json-text resolve-fn table-resolve-fn)
+                  (catch Throwable e
+                    {:status :error :category :loader-exception :payload (exception-detail e)}))
         substitutions (cond-> [] (wellness-substitution? @fetched) (conj :wellness-timing))]
     (if-not (result/ok? closure)
       {:id id :file (.getName file) :verdict :load-failed
