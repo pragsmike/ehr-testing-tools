@@ -183,7 +183,14 @@
   ;; bumped 1118->1137, same session (ADR-0030 J4d): build-session/
   ;; SKILL.md's own new preflight-clone-resolution step (19 net lines)
   ;; brought the real total from 1118 to 1137.
-  :budget-lines 1137}
+  ;; bumped 1137->1201, same session (Step 5 close-out): roadmap.md's
+  ;; own Now-row retired and its own new Done section landed (net +64
+  ;; lines) brought the real total from 1137 to 1201.
+  ;; bumped 1201->1210, same session (Step 5 close-out): indexing this
+  ;; session's own session-record/prompt-archive filenames in their own
+  ;; already-cited onboarding READMEs (1 line each) plus roadmap.md's
+  ;; own final wording tweaks brought the real total from 1201 to 1210.
+  :budget-lines 1210}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one

@@ -6623,8 +6623,63 @@ prior lesson — vigilance is not working as a mitigation.
 
 ### Execution note (filled Step 5, 2026-08-02)
 
-See the dated notes appended to ADR-0029's own D2 and D3 sections (J1),
-and this session's own session record for the full digest tables,
-guard-firing proofs, and closure round-trip findings.
+All five rulings executed same day. J1: `bin/regression-oracle` built
+and run across `bbeceb6`->`d23fa9b`->`7257775` (D2's span and D3's
+required span both), IDENTICAL on all six roots both times — dated
+notes on ADR-0029's own D2/D3 sections have the full digest citations.
+J2: `build-session/SKILL.md` (both mirrors) gained its VERIFICATION
+section; `AGENTS.md` its pointer. J3: three new round-trip tests
+(`components/sim-emit-hl7/test/`) each PIN a confirmed, real engine
+gap rather than proving the round trip works — H6's own instruction,
+tried for real for the first time, found genuinely broken (`engine.clj`
+never threads a closure's own submodule registry, tables, or
+`initial-attributes` through to `run-module`); not fixed, per this
+ruling's own tests-only fence. J4: all five parts landed and each
+mechanical guard demonstrated firing for real — a blocked `Edit`
+(`EPERM`) against the locked `/mnt/c` tree, a blocked `git commit`
+(`REJECTED`, exit 1) against its own reject-all hook, the pre-push
+hook firing standalone too; `bin/sync-mnt-c` already run once to
+fast-forward `/mnt/c` and bootstrap the lock. J5: roadmap rows entered
+and exited within this session (see `.agents/plans/roadmap.md`'s own
+"Done (2026-08-02, post-Wave-D cleanup)" section); H8's own
+standing-items list untouched.
+
+`poly check` clean throughout; the full non-integration suite green at
+every checkpoint (0 failures/0 errors, including the three new
+round-trip tests passing as designed — pinning known-broken behavior,
+not proving success).
+
+Commits, in order: `64e250f` (Step 0), `56c7cef` (Step 1, oracle
+harness + verification), `31e8460`/`4eecd3f` (same-session exec-bit
+fix-forwards, `core.fileMode=false` hiding a filesystem chmod from the
+index — `ehrt.cli.executable-bits-test`'s own established bug class),
+`cd76334` (a genuine concurrent write from another process using this
+same author identity on the SAME ext4 clone mid-session — landed
+directly, bundling this session's own in-progress J2 doctrine edits
+with an unrelated new plan file under one non-ceremony message; kept
+intact rather than force-pushed over once already public on `origin`,
+a small fix-forward commit added on top instead — full account in the
+session record), `71093d5` (the fix-forward), `00c32f8` (Step 3,
+dual-clone guardrails), `9a2514f`/`46f066d`/`093d321` (Step 4, one
+closure round-trip test per root), this commit (Step 5, records).
+Session record: `.agents/session-records/2026-08-02-post-wave-d-
+cleanup.md`.
+
+### Deviation record
+
+One deviation from the ruled plan, disclosed at the point it occurred:
+mid-session, `git push` was rejected because `origin/main` already
+carried `cd76334` — a commit this session did not make, landed by
+another process sharing this clone and this author's own git identity
+while Step 2 was in flight. Not anticipated by J1-J5 (which assume
+this session has the ext4 clone to itself). Resolved per the author's
+own live ruling (asked in chat, mid-session): kept `cd76334` intact on
+`origin` rather than force-pushing a locally-rewritten "clean split"
+history over it, and landed the small delta as its own fix-forward
+commit instead. No J1-J5 ruling itself was reopened — this is a
+process/concurrency finding, not a design one. Worth a standing note
+for whoever schedules future R30 sessions: this clone is not always
+exclusively this session's own, R30's own "unattended" framing
+notwithstanding.
 
 ---

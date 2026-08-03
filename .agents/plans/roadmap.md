@@ -5,10 +5,8 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- Post-Wave-D cleanup session (2026-08-02, `notes/ADRs.md` ADR-0030,
-  J1-J5): oracle byte-verification (J1), oracle doctrine capture (J2),
-  dual-clone guardrails (J4), closure engine round-trips (J3), roadmap
-  bookkeeping (J5, this row).
+- Nothing in progress at end of session (post-Wave-D cleanup closed
+  same day it started -- see Done, below).
 
 ## Next (backlog, no session scheduled)
 - Pairing-as-data (review P3-3): mutate↔judge conviction registry — design pass in
@@ -36,9 +34,17 @@ per item; done items move to the bottom of their section with a date and sha.
 - Upstream the adapted repo-adaptation skill to pragsmike/skills (and cyberneutics
   if wanted) — AUTHOR ACTION named 2026-08-01
 - Item 9 (ADR-0024, landed 2026-08-01 as mirror-with-gate, not symlinks): the
-  fresh-session discovery probe is DONE — see Done section below. Remaining:
-  fast-forward the /mnt/c clone to origin/main (several commits behind,
-  including .claude/skills/) — AUTHOR ACTION named 2026-08-01
+  fresh-session discovery probe is DONE — see Done section below. The
+  "fast-forward /mnt/c" remainder is SUPERSEDED (2026-08-02, post-Wave-D
+  cleanup): /mnt/c is now kept read-only and synced only via
+  `bin/sync-mnt-c`, see the dual-clone-guardrails Done entry below.
+- Post-Wave-D cleanup (2026-08-02, ADR-0030 J4): does the `/mnt/c`
+  clone still earn its keep at all, now that it's read-only and
+  synced only via `bin/sync-mnt-c`, or should it be removed outright?
+  The guardrails are sound either way — this is a standing-cost
+  question (a second checkout to keep in sync, however mechanically),
+  not a correctness one. Named, not decided, this session (J4's own
+  explicit fence) — AUTHOR ACTION.
 
 ## Deferred (explicitly, with revisit triggers)
 - P2-5 intake staging-dir behavior (deferred 2026-07-31)
@@ -70,12 +76,19 @@ per item; done items move to the bottom of their section with a date and sha.
   own D3c finding 1) — unowned, touches every vendored root's own
   regression behavior, not scoped to any one session yet.
 - The compile-trajectory/engine/emit full-pipeline gap for closure-
-  having modules: no closure-having vendored root (`ear_infections`/
-  `urinary_tract_infections`/`total_joint_replacement`) has ever been
-  proven past the interpreter layer — `run-module`'s own raw trajectory
-  is what every closure vendored test proves, never the compiled
-  pathway-IR → engine → emit-hl7 pipeline. Unowned; the first session
-  wiring a closure through `compile-trajectory` inherits this gap.
+  having modules — **UPGRADED from "unproven" to "confirmed broken"
+  (2026-08-02, post-Wave-D cleanup, ADR-0030 J3):** `engine.clj`'s own
+  `:registered` decide method calls `run-module` at a bare arity that
+  never threads a closure's own submodule registry through
+  (`ear_infections`/`urinary_tract_infections`: any walk reaching a
+  `CallSubmodule` state throws) nor an `initial-attributes` seed
+  (`total_joint_replacement`: the walk blocks permanently at age 0,
+  silently producing zero compiled content). Pinned live by
+  `components/sim-emit-hl7/test/`'s three new round-trip tests, one
+  per root. Unowned; the first session wiring `engine.clj` to carry a
+  closure's own `modules`/`tables`/`initial-attributes` through to
+  `run-module` inherits this gap AND must update those three tests
+  (they are designed to fail loudly the moment this lands).
 
 ## Done (this session, 2026-08-01, migration session 1)
 - Items 6+7: `agent/scenario-roster.md` merged into `.agents/skills/scenarios/roster.md`,
@@ -462,3 +475,61 @@ per item; done items move to the bottom of their section with a date and sha.
   and this session's own closing records commit. `notes/ADRs.md`
   ADR-0029's own D3 characterization/execution/deviation/H8 notes;
   `.agents/session-records/2026-08-02-gmf-coverage-wave-d-stage-d3.md`.
+
+## Done (this session, 2026-08-02, post-Wave-D cleanup)
+- **Oracle byte-verification (J1) — CLOSED, upgraded to byte-verified.**
+  `bin/regression-oracle` (standing equipment, `bin/oracle-src/ehrt/
+  oracle/digest.clj`) built and run against three commits in disposable
+  worktrees: `bbeceb6` (D1b close-out) -> `d23fa9b` (D2 close-out) ->
+  `7257775` (D3/Wave-D close-out). IDENTICAL SHA-256 digests on all six
+  pre-existing vendored roots across BOTH spans -- the required D3
+  check and the optional D2 extension both ran, since the D2 baseline
+  was cheaply reproducible. Dated notes on `notes/ADRs.md` ADR-0029's
+  own D2 and D3 sections upgrade both stages' regression-oracle claim
+  from count-verified to byte-verified; the byte-verified chain now
+  runs unbroken from D1b's own literal digest through `7257775`.
+- **Oracle doctrine (J2) — CLOSED.** `build-session/SKILL.md` (both
+  `.agents/` and `.claude/` mirrors) gains a VERIFICATION section:
+  a regression-oracle claim means `bin/regression-oracle`'s own
+  output, never a test/assertion-count comparison. `AGENTS.md` gets
+  the one-line pointer.
+- **Dual-clone guardrails (J4) — CLOSED, all five parts.** `/mnt/c`
+  (`C:\Users\prags\Documents\ehr-testing-tools`) is now read-only
+  (attrib.exe +R, whole tree including `.git`) with reject-all
+  pre-commit/pre-push hooks in its own `.git/hooks` (per-clone,
+  uncommitted, `core.hooksPath` unset there so they actually fire).
+  `bin/sync-mnt-c` is the ONLY sanctioned way that clone moves --
+  already run once to fast-forward it and bootstrap the lock.
+  `build-session/SKILL.md` gains a preflight step (resolve both clone
+  roots, edit target must resolve under the ext4 root). Every guard
+  demonstrated firing for real: a blocked `Edit` (`EPERM`), a blocked
+  `git commit` (`REJECTED`, exit 1), the pre-push hook standalone.
+  Whether `/mnt/c` still earns its keep at all is named as an author
+  question in Externals, above -- not decided this session.
+- **Closure engine round-trips (J3) — CLOSED, three findings, no
+  fixes.** `components/sim-emit-hl7/test/`'s three new vendored round-
+  trip tests (`ear_infections`/`urinary_tract_infections`/
+  `total_joint_replacement`) each PIN a confirmed, real engine gap
+  rather than proving the round trip works: `engine.clj`'s own
+  `:registered` decide method calls `run-module` at a bare arity that
+  never threads a closure's own submodule registry through (ear_
+  infections/UTI: every walk that reaches a `CallSubmodule` state
+  throws) nor an `initial-attributes` seed (TJR: the walk blocks
+  permanently at age 0, silently producing zero compiled content).
+  H6's own "a full engine/check run" instruction, disclosed as never
+  fulfilled since Wave B, was actually TRIED this session for the
+  first time -- and found genuinely broken, not merely untested. Named
+  in Deferred, below; NOT fixed under this session's own tests-only
+  ruling (ADR-0030 J3).
+- `notes/ADRs.md` ADR-0030 (this session's own rulings J1-J5, execution
+  note, dated notes on ADR-0029's D2/D3).
+- Commits, in order: `64e250f` (Step 0, ADR-0030 + roadmap), `56c7cef`
+  (Step 1, oracle harness + verification), `31e8460`/`4eecd3f`
+  (exec-bit fix-forwards), `cd76334` (concurrent author commit,
+  bundled J2's own doctrine changes plus an unrelated new plan file --
+  split apart per staging hygiene rather than force-pushed over, see
+  the session record), `71093d5` (small index/budget fix-forward),
+  `00c32f8` (Step 3, dual-clone guardrails), `9a2514f`/`46f066d`/
+  `093d321` (Step 4, one closure round-trip test per root), and this
+  session's own closing records commit. Session record:
+  `.agents/session-records/2026-08-02-post-wave-d-cleanup.md`.
