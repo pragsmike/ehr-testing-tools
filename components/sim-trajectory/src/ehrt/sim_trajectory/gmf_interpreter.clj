@@ -390,6 +390,25 @@
 
 ;; --- Transition resolution (direct, distributed, conditional, complex) ----
 
+(defn- resolve-distribution-value
+  "GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3b, H3): a
+  distributed_transition entry's own :distribution may be a plain
+  number (v1, unchanged, passed through) or a NamedDistribution map
+  (`{:attribute name :default n}`, Transition.java's own field names
+  verbatim, D3b) -- real Synthea's own attribute-sourced weight, read
+  from the SAME root-scoped, slugged key `attribute-condition-holds?`
+  already resolves, falling back to the JSON-declared :default when the
+  attribute is absent (stroke.json's own Chance_of_Stroke gate,
+  ADR-0028 -- the mechanism landing does NOT unblock stroke itself,
+  D3b's own disclosed note: stroke_risk stays SPECIFIED, unsourceable
+  content). Zero rng: a pure lookup, the same property every other
+  attribute-condition read already has."
+  [module-id ctx d]
+  (if (map? d)
+    (let [k (keyword (root-id ctx module-id) (gmf/slug (:attribute d)))]
+      (get (:attributes ctx) k (:default d)))
+    d))
+
 (defn- weighted-pick-transition
   "distributed_transition (and complex_transition's own nested
   distributions): a cumulative-weight pick over `entries`
@@ -509,11 +528,19 @@
   transition` as a sixth kind (`resolve-lookup-table-transition`,
   above) -- the only kind that consults `tables` (`ehrt.sim-trajectory.
   gmf/load-closure`'s own `:tables` return shape, threaded through the
-  SAME way `modules` already is for `:call-submodule`)."
+  SAME way `modules` already is for `:call-submodule`). D3b (H3):
+  `:distributed-transition`'s own entries resolve each :distribution
+  through `resolve-distribution-value` BEFORE the pick -- a plain
+  number passes through unchanged, a NamedDistribution map resolves to
+  an attribute-sourced weight. `:complex-transition`'s own nested
+  distributions do NOT gain this resolution -- no candidate module this
+  session exercises a NamedDistribution there (installed ≠ used, H1)."
   [module-id ctx ^Random rng state tables]
   (cond
     (:direct-transition state) (:direct-transition state)
-    (:distributed-transition state) (weighted-pick-transition rng (:distributed-transition state))
+    (:distributed-transition state)
+    (weighted-pick-transition
+     rng (mapv #(update % :distribution (partial resolve-distribution-value module-id ctx)) (:distributed-transition state)))
     (:conditional-transition state) (:transition (first-matching-entry module-id ctx (:conditional-transition state)))
     (:complex-transition state) (weighted-pick-transition
                                   rng (:distributions (first-matching-entry module-id ctx (:complex-transition state))))

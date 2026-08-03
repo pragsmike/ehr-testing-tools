@@ -405,10 +405,19 @@
    [:value-code {:optional true} sim-model/Concept]
    [:vital-sign {:optional true} :string]])
 
+;; GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3b, H3): a
+;; distributed_transition entry's own :distribution may be a plain
+;; number (v1, unchanged) or a NamedDistribution map -- real Synthea's
+;; own attribute-sourced weight with a JSON-specified fallback
+;; (Transition.java's own `attribute`/`default` field names verbatim,
+;; D3b's own source citation -- stroke.json's own Chance_of_Stroke gate,
+;; ADR-0028, byte-confirmed against source here).
+(def ^:private Distribution [:or number? [:map [:attribute :string] [:default number?]]])
+
 (def ^:private TransitionFields
   [[:direct-transition {:optional true} :keyword]
    [:distributed-transition {:optional true}
-    [:vector [:map [:transition :keyword] [:distribution number?]]]]
+    [:vector [:map [:transition :keyword] [:distribution Distribution]]]]
    [:conditional-transition {:optional true}
     [:vector [:map [:transition {:optional true} :keyword] [:condition {:optional true} [:map-of :keyword :any]]]]]
    [:complex-transition {:optional true}

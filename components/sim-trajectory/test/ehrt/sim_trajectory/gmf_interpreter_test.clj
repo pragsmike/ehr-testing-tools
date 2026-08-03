@@ -1054,6 +1054,55 @@
     (let [ctx (ctx-aged (assoc (persona-at 1) :sex :female) 20)]
       (is (= :b (:next (interp/step lookup-table-module (Random. 1) ctx)))))))
 
+;; --- GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3b, H3):
+;; attribute-weighted distributed_transition (NamedDistribution) --------
+;; stroke.json's own Chance_of_Stroke shape (byte-confirmed against
+;; source, D3b) -- proven against a hand-authored fixture per H3's own
+;; instruction ("not stroke"): the mechanism landing does NOT unblock
+;; stroke.json itself (stroke_risk stays SPECIFIED, unsourceable).
+
+(def named-distribution-module
+  "wait's own weight is 0 (not 1): weighted-pick-transition's cumulative
+  walk always resolves to the LAST entry when every acc' stays at or
+  below target (D3b's own test needs this -- with wait=1, a present
+  attribute of 1.0 would still lose to wait on roughly half of all
+  draws, since onset is no longer the trailing arm; 0 makes onset's own
+  1.0 win deterministically, and the fallback-to-default case (0/0
+  total) still resolves to wait, the trailing entry, unconditionally)."
+  {:id "named-dist-mod"
+   :name "NamedDist"
+   :states {:initial {:type :initial :direct-transition :roll}
+            :roll {:type :simple
+                   :distributed-transition [{:transition :onset :distribution {:attribute "risk" :default 0}}
+                                             {:transition :wait :distribution 0}]}
+            :onset {:type :terminal}
+            :wait {:type :terminal}}})
+
+(deftest named-distribution-uses-the-attribute-value-when-present
+  (testing "a root-scoped attribute of 1.0, the entry's own complement
+            of 0 (no rng draw could ever pick the other branch)"
+    (let [ctx (-> (ctx-for (persona-at 1))
+                  (assoc :current :roll)
+                  (update :attributes assoc :named-dist-mod/risk 1.0))]
+      (dotimes [seed 5]
+        (is (= :onset (:next (interp/step named-distribution-module (Random. seed) ctx))))))))
+
+(deftest named-distribution-falls-back-to-the-json-declared-default-when-absent
+  (testing "stroke.json's own real gap (ADR-0028): default 0 means the
+            named-distribution branch is never picked when the
+            attribute was never written"
+    (let [ctx (assoc (ctx-for (persona-at 1)) :current :roll)]
+      (dotimes [seed 5]
+        (is (= :wait (:next (interp/step named-distribution-module (Random. seed) ctx))))))))
+
+(deftest named-distribution-consumes-no-extra-rng-beyond-the-single-pick
+  (let [ctx (-> (ctx-for (persona-at 1)) (assoc :current :roll) (update :attributes assoc :named-dist-mod/risk 0.5))
+        calls (atom 0)
+        rng (proxy [Random] [(long 1)]
+              (nextDouble [] (swap! calls inc) (proxy-super nextDouble)))]
+    (interp/step named-distribution-module rng ctx)
+    (is (= 1 @calls) "the attribute read is a pure lookup, zero rng -- only the pick itself draws")))
+
 ;; --- GMF coverage Wave C (2026-08-02, ADR-0028, C1/C2): Death --------------
 
 (def death-cause-codes [{:system :snomed :code "1" :display "Test cause"}])

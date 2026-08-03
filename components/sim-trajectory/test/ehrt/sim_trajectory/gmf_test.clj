@@ -427,3 +427,24 @@
   (let [loaded (gmf/load-closure "fixture-clinic" fixture-clinic-json (resolver {}))]
     (is (result/ok? loaded))
     (is (= {} (:tables (:payload loaded))))))
+
+;; --- GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3b, H3):
+;; attribute-weighted distributed_transition (NamedDistribution) --------
+
+(def named-distribution-json
+  "stroke.json's own Chance_of_Stroke shape, byte-confirmed against
+  source (D3b): a distributed_transition entry's own :distribution is a
+  NamedDistribution map, not a plain number."
+  (str "{\"name\": \"NamedDist\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Roll\"},"
+       "  \"Roll\": {\"type\": \"Simple\", \"distributed_transition\": ["
+       "    {\"transition\": \"Onset\", \"distribution\": {\"attribute\": \"stroke_risk\", \"default\": 0}},"
+       "    {\"transition\": \"Wait\", \"distribution\": 1}]},"
+       "  \"Onset\": {\"type\": \"Terminal\"},"
+       "  \"Wait\": {\"type\": \"Terminal\"}}}"))
+
+(deftest named-distribution-loads-and-validates
+  (let [loaded (gmf/load-module "named-dist" named-distribution-json)]
+    (is (result/ok? loaded))
+    (is (= {:attribute "stroke_risk" :default 0}
+           (:distribution (first (get-in (:payload loaded) [:states :roll :distributed-transition])))))))
