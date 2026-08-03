@@ -209,7 +209,13 @@
   ;; and indexing this session's own session-record/prompt-archive
   ;; filenames brought the real total from 1283 to 1301 -- self-caught,
   ;; the same pattern every prior session touching this file has hit.
-  :budget-lines 1301}
+  ;; bumped 1301->1361, 2026-08-03 (GMF census session, ADR-0034, Step 3
+  ;; close-out): roadmap.md's own Next-row rewrite/Deferred-row/Done-
+  ;; section growth, the parity plan's own Wave H dated pointer, and
+  ;; indexing this session's own session-record/prompt-archive filenames
+  ;; brought the real total from 1301 to 1361 -- self-caught, the same
+  ;; pattern every prior session touching this file has hit.
+  :budget-lines 1361}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one

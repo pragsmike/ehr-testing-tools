@@ -101,3 +101,4 @@ Files in this directory:
   * 2026-08-03-rulings-capture.md
   * 2026-08-03-procedure-duration-fix.md
   * 2026-08-03-engine-closure-context.md
+  * 2026-08-03-gmf-census.md

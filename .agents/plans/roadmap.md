@@ -9,11 +9,12 @@ per item; done items move to the bottom of their section with a date and sha.
   same day it started -- see Done, below).
 
 ## Next (backlog, no session scheduled)
-- **Census session** (2026-08-03, ADR-0031, sequenced third, after both defect
-  fixes): `gmf survey`, a `sim-trajectory` dev entry point (AR-1) performing a
-  seeded interpreter-layer smoke walk per module with digest recorded, not
-  merely a load verdict (AR-4) — see `.agents/plans/2026-08-02-gmf-parity-plan.md`
-  §3. Enters `Next`, not `Now`, per ADR-0031 AR-7's amended approval act.
+- **E/F/G/H/I sequencing** (`.agents/plans/2026-08-02-gmf-parity-plan.md`
+  §4's own "provisional order," now with real ranking data to read: the
+  GMF census, `components/sim-trajectory/docs/census/2026-08-03-synthea-
+  7e08387.edn` — see Done, below). Which wave goes first is a
+  design-channel read of the census's own ranked gap mechanisms, not
+  this session's call (ADR-0034's own fence).
 - Pairing-as-data (review P3-3): mutate↔judge conviction registry — design pass in
   the design channel first; vocabulary is load-bearing
 - Storefront demo fixture: minimal clean-gating FHIR fixture so the README's mutate
@@ -108,6 +109,63 @@ per item; done items move to the bottom of their section with a date and sha.
   designed to fail loudly the moment this lands). **FIXED (2026-08-03,
   ADR-0031 AR-6's second defect-fix session, `notes/ADRs.md` ADR-0033)
   — see Done, below.**
+- `bin/regression-oracle`'s own "always read `digest.clj` from the
+  CURRENT checkout" design (ADR-0030 J2's own precedent) is incompatible
+  with a session that changes the PRODUCER FUNCTIONS' own call shape
+  mid-span — found live, ADR-0033's own execution note: ADR-0033 AR-2's
+  hard `:modules` shape switch made `sinusitis`/`death-fixture`/`sepsis`'s
+  own oracle producers call `gmf/singleton-closure` (absent before that
+  session), a compile error against the BASELINE worktree, not a digest
+  difference, when run through the script literally/unmodified. Worked
+  around by hand that session (each commit's own `digest.clj` against its
+  own worktree/classpath); not a fix this session (ADR-0034, GMF census)
+  owns either — named here as a real, standing limitation of the oracle
+  harness itself. Revisit trigger: a future defect-fix or refactor
+  session that again changes an oracle-covered producer's own call
+  shape should expect the same workaround, or this row graduates into
+  an actual `bin/regression-oracle` enhancement (e.g. an opt-in "run
+  each commit's own digest.clj against its own worktree" mode).
+
+## Done (this session, 2026-08-03, GMF census — ADR-0034)
+- `ehrt.sim-trajectory.census` (`development/src`, a dev entry point per
+  ADR-0031 AR-1) lands: pin verification, closure resolution over an
+  external Synthea checkout, AR-2's verdict vocabulary with gap
+  extraction, AR-3's mechanical wellness-substitution tag, AR-4's 3-seed
+  smoke walk + sha256 digest. 5 co-landing tests, one per verdict class
+  plus the substitution tag, green — disclosed not run by
+  `clojure -M:poly test :all skip:integration` (poly test is per-project
+  against a project's own bricks; the `dev` project carries none),
+  verified instead by direct `clojure -M:dev:test` invocation.
+- First census run at the interpreter doc's own pin
+  (`7e08387c68a7f0e21d13076609a159fd473fc902`), committed:
+  `components/sim-trajectory/docs/census/2026-08-03-synthea-7e08387.edn`
+  — 85 modules, 40 `:ok-walked`, 39 `:load-failed`, 6 `:walk-failed`, 0
+  `:out-of-scope-by-ruling`, 19 carrying the wellness-timing tag. Sanity
+  anchors held (all seven vendored roots `:ok-walked`; all five of
+  ADR-0031 AR-5(a)'s named wellness modules tagged) — no
+  STOP-AND-ESCALATE.
+- Two real, disclosed findings the full-catalog sweep surfaced that no
+  hand survey had: `ehrt.sim-trajectory.gmf/gmf-v2-timing->v1` throws a
+  raw `IllegalArgumentException` (not a `:rejected` Result) on a real
+  `GAUSSIAN`/`EXPONENTIAL` `gmf_version 2` distribution kind (11 modules
+  combined — the census tool itself now wraps `load-closure` in
+  try/catch so this doesn't abort the run); two new unrecognized
+  condition types, `Race` (3 modules) and `Not` (1 module), neither ever
+  named in `docs/gmf-interpreter.md` §2. Both named, not fixed — the
+  census observes, per its own fence.
+- `docs/gmf-interpreter.md` §15 (new, dated) carries the full
+  verdict/gap breakdown and supersedes §8's own hand-scouted
+  prioritization table (kept, annotated, not deleted) as the frontier of
+  record.
+- `notes/ADRs.md` ADR-0034 records this session's own rulings (mirrored
+  from the driving prompt's author rulings) and execution note.
+  AR-6 bookkeeping: the `bin/regression-oracle` checkout-only limitation
+  (Deferred, above) and a dated pointer at Wave H's own row
+  (`.agents/plans/2026-08-02-gmf-parity-plan.md` §4) to the UTI
+  pre-horizon straddle finding (ADR-0033's own execution note).
+- Session record: `.agents/session-records/2026-08-03-gmf-census.md`.
+  Commits: `6392363` (Step 1, tool + tests), `41c86a0` (Step 2, census
+  run + doc summary), and this session's own closing records commit.
 
 ## Done (this session, 2026-08-03, engine closure-context fix)
 - ADR-0031 AR-6's second (and final) defect-fix session, ADR-0030 J3
