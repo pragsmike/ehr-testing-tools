@@ -139,6 +139,69 @@
   [persona ^long t]
   (.getYears (Period/between (parse-dob persona) (LocalDate/ofEpochDay t))))
 
+(defn- age-months-at
+  "Total whole months since DOB (years*12 + months, remaining days
+  ignored) -- `java.time.Period/toTotalMonths`, the SAME `Period/between`
+  this namespace's own `age-years-at` already computes, just read a
+  different way. Only the wellness cadence table's own months-tier
+  (below) needs this; every other age check in this namespace is
+  years-only."
+  ^long [persona ^long t]
+  (.toTotalMonths (Period/between (parse-dob persona) (LocalDate/ofEpochDay t))))
+
+;; --- GMF coverage Wave G (2026-08-03, ADR-0037 AR-1/AR-2): wellness
+;; cadence -- a PURE, ZERO-DRAW schedule function synthesizing Synthea's
+;; own periodic-tick wellness cycle (`EncounterModule.process`'s own
+;; daily re-check against `recommendedTimeBetweenWellnessVisits`, source-
+;; grounded, `resources/sim-trajectory/wellness-cadence.edn`'s own
+;; header), since this interpreter has no fixed tick of its own
+;; (docs/gmf-interpreter.md section 3's own no-fixed-tick design). -------
+
+(def ^:private wellness-cadence-table
+  (edn/read-string (slurp (io/resource "sim-trajectory/wellness-cadence.edn"))))
+
+(defn- band-lookup
+  "The first row (table order) whose own `:max-age` the query `age`
+  satisfies, or a trailing `nil`-`:max-age` row (the source's own final
+  `else`) -- never falls through to nil, `wellness-cadence.edn`'s own
+  two vectors both end in one."
+  [rows ^long age]
+  (some (fn [{:keys [max-age quantity unit]}]
+          (when (or (nil? max-age) (<= age max-age))
+            {:quantity quantity :unit unit}))
+        rows))
+
+(defn- wellness-cadence-band
+  "AR-1's own table: age <= 3 years dispatches on MONTHS
+  (`:under-3-by-age-months`), otherwise on YEARS
+  (`:three-plus-by-age-years`) -- the source's own two-tier `if
+  (ageInYears <= 3)`, EXCLUDING that method's own chronic-medications
+  cap (AR-1's own named deferral, the calibration register)."
+  [persona ^long t]
+  (if (<= (age-years-at persona t) 3)
+    (band-lookup (:under-3-by-age-months wellness-cadence-table) (age-months-at persona t))
+    (band-lookup (:three-plus-by-age-years wellness-cadence-table) (age-years-at persona t))))
+
+(defn next-wellness-tick
+  "AR-2: the first Synthea-cadence wellness-visit tick >= `t`, a PURE
+  function of `persona`'s own DOB and `t` -- ZERO rng draws (load-bearing
+  for AR-6: every non-wellness walk's own rng stream is untouched by
+  this function's own existence). Anchored at DOB (`tick0` = DOB itself
+  -- upstream's own very first wellness check, before any wellness
+  encounter has ever happened, passes immediately, since `person.record.
+  timeSinceLastWellnessEncounter` starts effectively infinite); each
+  subsequent tick is the PREVIOUS tick plus THAT tick's own age-banded
+  interval (`wellness-cadence-band`, above) -- AR-2's own ratified
+  recurrence, 'next = previous + band(age)', re-expressing upstream's
+  own daily re-check as a closed iteration since this interpreter has no
+  fixed tick to re-check on."
+  ^long [persona ^long t]
+  (loop [tick (dob-epoch-day persona)]
+    (if (>= tick t)
+      tick
+      (let [{:keys [quantity unit]} (wellness-cadence-band persona tick)]
+        (recur (advance-date tick unit quantity))))))
+
 ;; --- RNG primitives (fixed-consumption law, per ehrt.sim.engine/
 ;; ehrt.sim-model.persona's own precedent) ----------------------------------
 

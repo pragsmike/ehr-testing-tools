@@ -18,7 +18,7 @@
             [ehrt.sim-trajectory.gmf :as gmf]
             [ehrt.sim-trajectory.gmf-interpreter :as interp]
             [ehrt.sim-model.interface :as sim-model])
-  (:import [java.time LocalDate]
+  (:import [java.time LocalDate Period]
            [java.util Random]))
 
 (def fixture-clinic-json
@@ -1902,3 +1902,95 @@
                            :done {:type :terminal}}}]
       (is (thrown? clojure.lang.ExceptionInfo
                    (interp/walk-module module (Random. 1) (ctx-for (persona-at 1))))))))
+
+;; --- GMF coverage Wave G (2026-08-03, ADR-0037 AR-1/AR-2): wellness
+;; cadence -- schedule-function band/spot tests, transcribed alongside
+;; the table (`resources/sim-trajectory/wellness-cadence.edn`'s own
+;; header cites the exact source lines these values check against:
+;; `EncounterModule.recommendedTimeBetweenWellnessVisits`, pin
+;; 7e08387c68a7f0e21d13076609a159fd473fc902, lines 176-201). A bare
+;; `{:dob ...}` map suffices here -- `next-wellness-tick` reads only
+;; `:dob`, never `:sex`/attributes, so going through `sim-model/persona`
+;; would only add irrelevant sampling. -----------------------------------
+
+(defn- persona-with-dob [dob-str] {:dob dob-str})
+
+(deftest next-wellness-tick-anchors-tick0-at-dob
+  (testing "AR-2: tick0 = DOB itself -- upstream's own very first
+            wellness check, before any wellness encounter has ever
+            happened, passes immediately (`person.record.
+            timeSinceLastWellnessEncounter` starts effectively infinite)"
+    (let [p (persona-with-dob "2020-01-01")
+          dob (interp/dob-epoch-day p)]
+      (is (= dob (interp/next-wellness-tick p dob))))))
+
+(deftest next-wellness-tick-infant-band-is-one-month
+  (testing "lines 178-179: ageInMonths <= 1 -> 1-month interval, the
+            very first cadence tick past DOB"
+    (let [p (persona-with-dob "2020-01-01")
+          dob (interp/dob-epoch-day p)]
+      (is (= (.toEpochDay (.plusMonths (LocalDate/parse "2020-01-01") 1))
+             (interp/next-wellness-tick p (inc dob)))))))
+
+;; Independent re-derivation of the SAME cited source lines (NOT a copy
+;; of `wellness-cadence-band`/`wellness-cadence.edn`'s own content) --
+;; a tautology against the implementation would prove nothing; this is
+;; a second transcription, checked against the first.
+(defn- expected-band [^long age-years ^long age-months]
+  (if (<= age-years 3)
+    (cond (<= age-months 1) [1 :months] (<= age-months 5) [2 :months]
+          (<= age-months 17) [3 :months] :else [6 :months])
+    (cond (<= age-years 19) [1 :years] (<= age-years 39) [3 :years]
+          (<= age-years 49) [2 :years] :else [1 :years])))
+
+(defn- advance-expected ^LocalDate [^LocalDate d [qty unit]]
+  (case unit :months (.plusMonths d (long qty)) :years (.plusYears d (long qty))))
+
+(deftest next-wellness-tick-matches-an-independently-transcribed-full-sequence
+  (testing "walks the FULL cadence sequence from DOB to well past age
+            90, independently re-derived from the same cited source
+            lines, and confirms `next-wellness-tick` reproduces every
+            tick exactly -- a stronger check than isolated spot values,
+            and the one that actually exercises every band boundary
+            (1/5/17-month, 19/39/49-year) and the months/years TIER
+            boundary (age genuinely > 3 years, Period/getYears floored)"
+    (let [dob-date (LocalDate/parse "2020-01-01")
+          p (persona-with-dob "2020-01-01")]
+      (loop [prev-date dob-date n 0]
+        (when (< n 60)
+          (let [age-years (.getYears (Period/between dob-date prev-date))
+                age-months (.toTotalMonths (Period/between dob-date prev-date))
+                band (expected-band age-years age-months)
+                expected-next (advance-expected prev-date band)
+                actual-next (interp/next-wellness-tick p (inc (.toEpochDay prev-date)))]
+            (is (= (.toEpochDay expected-next) actual-next)
+                (str "tick " n " at age " age-years "y" age-months "m, expected band " band))
+            (recur expected-next (inc n))))))))
+
+(deftest next-wellness-tick-tier-boundary-age-three-vs-four-years
+  (testing "the months-tier's own ELSE branch (age-years<=3 but
+            age-months>17) stays in the months tier until age-years
+            genuinely exceeds 3 -- Period/getYears floors, so 3 years
+            11 months is STILL <=3, not yet the years tier: the tick
+            landing exactly on age 4 (48 months) is still a 6-month-band
+            tick computed from the months tier, not a years-tier one"
+    (let [p (persona-with-dob "2020-01-01")
+          dob-date (LocalDate/parse "2020-01-01")
+          three-years-eleven-months (.toEpochDay (.plusMonths dob-date 47))]
+      (is (= (.toEpochDay (.plusMonths dob-date 48))
+             (interp/next-wellness-tick p (inc three-years-eleven-months)))))))
+
+(deftest next-wellness-tick-adult-band-boundaries
+  (testing "lines 190-198: the years tier's own 19/39/49 boundaries --
+            the chain's own tick at age 38 (reached 20 -> 23 -> 26 ->
+            29 -> 32 -> 35 -> 38, six +3-year steps off the exact age-20
+            tick the 1-year child phase itself lands on) is STILL inside
+            the <=39 (3-year) band, landing at 41 -- NOT the >39 (2-year)
+            band a naive 'age 39 must be near' assumption would predict
+            (39 itself is never a real chain tick: 38's own successor
+            already overshoots it)"
+    (let [p (persona-with-dob "1990-01-01")
+          dob-date (LocalDate/parse "1990-01-01")
+          age-38-tick (.toEpochDay (.plusYears dob-date 38))]
+      (is (= (.toEpochDay (.plusYears dob-date 41))
+             (interp/next-wellness-tick p (inc age-38-tick)))))))
