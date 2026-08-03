@@ -6225,6 +6225,55 @@ them.
 > every namespace (log retained in this session's own scratch, not
 > committed).
 
+> **D2 execution note (filled Step 4, 2026-08-02).** D2 executed same
+> day as ruled: `pathway.clj`'s new `:care-plan-start`/`:care-plan-end`
+> steps (mirroring `:medication-order`/`:medication-end` exactly);
+> `gmf.clj`'s `CarePlanStart`/`CarePlanEnd` loader entries and
+> `:careplan` state-name normalization; `gmf_interpreter.clj`'s
+> `:care-plan-start`/`:care-plan-end` interpreter cases and
+> `run-module`'s new backward-compatible `initial-attributes` trailing
+> arity; `compile_trajectory.clj`'s `care-plan-start->step`/`care-plan-
+> end->step` (joining `pre-horizon-fact-types`, the ongoing-therapeutic-
+> content class); `engine.clj`'s `CarePlanRecord`/decide/evolve fold
+> (mirroring `MedicationOrderRecord` exactly) and `check.clj`'s
+> `clinical-content-only-when-admitted` extension (`:care-plan-start`
+> joins, grounded against `State.java`'s own encounter constraint);
+> `emit_hl7.clj`'s disclosed registry non-entry plus two asserting
+> tests (G3). `poly check` clean throughout; full non-integration suite
+> green at every checkpoint (188 `Testing ehrt.*` namespace
+> announcements at this session's own final HEAD, 0 failures/0 errors);
+> the regression-oracle method (this ADR's own disclosed note, above)
+> held exactly — all seven pre-existing vendored-root test namespaces
+> (sinusitis/appendicitis/sore_throat/ear_infections/sepsis ×2/death-
+> fixture) show IDENTICAL test-count/assertion-count/zero-failures
+> between HEAD `a41d8c2` (Step 0) and this session's own final HEAD.
+> Commits, in order: `a41d8c2` (Step 0, RULED + roadmap), `0131985`
+> (Step 1, characterization), `7319680` (Step 2a, sim-model),
+> `efe1972` (Step 2b, sim-trajectory), `c1dee3d` (Step 2c, sim),
+> `b499efc` (Step 2d, sim-emit-hl7), `85c75de` (a same-session fix-
+> forward: a second, independent `total_joint_replacement.json`
+> blocker found live testing the first fix, revising the declared
+> vendoring scope to zero), this commit (Step 4, records). Session
+> record: `.agents/session-records/2026-08-02-gmf-coverage-wave-d-
+> stage-d2.md`.
+>
+> **Deviation record.** Two deviations from the ruled plan, both
+> disclosed at the point they occurred, not silently absorbed: (1) the
+> regression-oracle METHOD (a full-suite namespace/assertion-count
+> comparison standing in for a literal SHA-256-digest-across-a-
+> disposable-worktree) — recorded in this ADR's own dated note as soon
+> as Step 1 ruled it, not retrofitted here; (2) the declared vendoring
+> SCOPE itself moved twice: Step 1 declared `total_joint_replacement.
+> json` (TJR is clean, `myocardial_infarction.json` is not); Step 2's
+> own live test of the `joint_replacement` fix against the real TJR
+> closure found a SECOND, independent blocker (the compound-Guard gap,
+> above) neither G1–G5 nor Step 1's own characterization anticipated —
+> revised to zero vendored roots, fully disclosed in a dedicated fix-
+> forward commit (`85c75de`) the moment it was found, not smoothed over
+> at close-out. No schema or design deviation from G1/G2/G3 occurred —
+> the CarePlan mechanism itself matches the ruled pair-mirror exactly;
+> the ONLY deviation is in what got vendored, not in what got built.
+
 > **D3 characterization notes:** not yet filled — D3's own session
 > fills its own note here when it runs, per R6's own sequencing.
 

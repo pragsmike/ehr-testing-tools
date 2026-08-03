@@ -158,7 +158,12 @@
   ;; own D2 Now-row rewritten for the revised zero-vendor outcome (a
   ;; second, independent Guard blocker found live), net +7 lines --
   ;; self-caught by this same gate, same precedent.
-  :budget-lines 976}
+  ;; bumped 976->1014, D2 Step 4 close-out (2026-08-02): roadmap.md's
+  ;; own D2 Done section landed (shas, payoff) plus both the
+  ;; session-records/prompts READMEs gained one index line each --
+  ;; self-caught by this same gate, same precedent, folded into the
+  ;; Step 4 records commit itself.
+  :budget-lines 1014}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one

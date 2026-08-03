@@ -72,13 +72,13 @@ it can't yet be *vendored*.
 | `CallSubmodule` | v1, trajectory-adjacent **(GMF coverage Wave B, ADR-0027, moved here from the Deferred table below — the same "move, not duplicate" treatment `Device`/`DeviceEnd` already got at M5b)** | none of its own — recursion into a second module JSON file, loaded/namespaced/gated as part of the SAME closure (§1's own loader gate now extends to it, `ehrt.sim-trajectory.gmf/load-closure`, D3) and run via descend-run-return (`ehrt.sim-trajectory.gmf-interpreter`'s own D1-D4 order contract, ns docstring). Every trajectory event a called submodule itself emits carries the normal event-type mapping this table already assigns it (a `MedicationOrder` inside a callee is still a `:medication-order` event) PLUS a `:call-path` citation (D2) — see §9 for the full account |
 | `Death` | v1, terminal trajectory event **(GMF coverage Wave C, ADR-0028, moved here from the Deferred table below — the same "move, not duplicate" treatment `Device`/`DeviceEnd`/`CallSubmodule` already got)** | ends the walk (`:terminal? true`, `:next nil` — the module's own declared post-Death transition is never resolved, a disclosed departure from real Synthea's own continue-past-Death semantics). Compiles at `CompileTrajectory` to the EXISTING `:discharge` IR step, no new step type — death inside a still-open encounter attaches as that encounter's own terminal disposition (`:disposition :expired`, `:codes` the cause of death verbatim); death outside any encounter closes the pathway without fabricating a discharge from an admission that never happened. `ehrt.sim.engine`'s own `:discharge` decide/evolve fold this to `:status :expired` (`components/sim/docs/patient-state-model.md`'s accumulator table, real for the first time) — see §10 for the full account |
 | `MultiObservation` / `DiagnosticReport` | v1, trajectory event **(GMF coverage Wave D stage D1, ADR-0029, moved here from the Deferred table below — the same "move, not duplicate" treatment `Device`/`DeviceEnd`/`CallSubmodule`/`Death` already got; `DiagnosticReport` enters this table for the first time — it was never in this document's own original brief at all)** | both extend Synthea's own private `ObservationGroup` class and compile to the SAME new `:diagnostic-report` IR step (embedded, inline `Observation`-shaped children, never a reference — §11's own D1a-2 grounding against `State.java`). `:observation`'s own IR step gains `:value-code`/`:category`/`:reference-range`/`:interpretation` alongside it, closing the `value_code`/`vital_sign` value-sourcing gap a standalone Observation state can also carry — see §12 for the full per-layer account |
+| `CarePlanStart` / `CarePlanEnd` | v1, trajectory event **(GMF coverage Wave D stage D2, ADR-0029, moved here from the Deferred table below — the same "move, not duplicate" treatment every prior wave's own state-type additions already got)** | a paired span structurally identical to `MedicationOrder`/`MedicationEnd` (State.java's own `CarePlanStart extends AttributeAssignableState`/`CarePlanEnd` classes, §13's own grounding) — compiles to new `:care-plan-start`/`:care-plan-end` IR steps, `:care-plan-citation` resolved the same `:references`-index way `:order-citation` already is. CarePlan itself stays v2-silent (R3) — no HL7v2 message shape, its natural rendering is a future FHIR CarePlan resource. The mechanism is built and tested; NO real vendored module exercises it yet as of this table's own writing (§13's own fix-forward: both D2 candidates deferred for unrelated reasons, one a compound-Guard interpreter gap) |
 
 **Deferred, with reasons:**
 
 | State type | Why deferred |
 |---|---|
 | `Counter` | Named in this document's own brief as deferred; not observed in any of the four modules read this session, so its omission carries no survey evidence either way — carried forward as originally scoped |
-| `CarePlanStart` / `CarePlanEnd` | **Discovered spot-checking `bronchitis.json`** (read while scouting a urinary-tract-infection candidate that turned out not to exist as its own module, below) — not present in any of the three formally surveyed candidates. Deferred for the same reason as `Device`/`DeviceEnd` was originally deferred here (no accumulator or IR home yet, and no formal candidate needs it) — unlike `Device`/`DeviceEnd`, no vendored module has yet forced this one to be reconsidered, so it stays deferred |
 
 **A recommendation, flagged for author review: add `Symptom` to v1 as
 a write-only, consumed-internally state — not deferred.** `Symptom` is
@@ -2372,3 +2372,19 @@ independent of whether any real module exercises it yet — the SAME
 `VitalSign` disposition and this wave's own `ImagingStudy`/`lookup_
 table_transition` rows already establish, not a partial or half-
 finished implementation.
+
+**`Active CarePlan` (condition type) — design-ruled, implementation-
+deferred per G2, unchanged by this stage.** Not built this session: no
+vendored module across Waves A–D exercises it (`total_joint_
+replacement.json`'s own closure — the only D2 candidate whose
+condition vocabulary was fully surveyed — uses `Age`/`And`/`Attribute`/
+`Date` only, zero `Active CarePlan`, confirmed by exhaustive scan), and
+this workspace does not build unexercised machinery (the SAME fence
+D1's own `Vital Sign` condition disposition already states). The
+design itself (a log-query over `:care-plan-start`/`:care-plan-end`
+trajectory events, architecturally the same shape `active-onset-
+condition-holds?` already establishes for `Active Medication` — one
+function, a different event-type pair) is straightforward to build the
+day a real candidate needs it; the next session vendoring one should
+build it fresh against that module's own real usage, not treat this
+sketch as settled.

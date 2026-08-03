@@ -95,3 +95,32 @@ CHF trigger, unowned by D0–D3; the **stroke-risk data source** (R7,
 `Chance_of_Stroke`'s own `stroke_risk` attribute, ADR-0028's escalated
 finding) is a calibration/content-provenance item, unowned by any wave
 until a future session rules it.
+
+**Fourth dated fix-forward note (2026-08-02, GMF coverage Wave D
+stage D2, `notes/ADRs.md` ADR-0029's own D2 note; full account:
+`components/sim-trajectory/docs/gmf-interpreter.md` §13).** D2's own
+mechanism (paired IR span, all four layers -- sim-model/sim-trajectory/
+sim/sim-emit-hl7) landed in full, real and tested. **The payoff line
+above ("MI and `total_joint_replacement`, closures permitting") did
+NOT land as a vendored root this stage -- REVISED to ZERO, an outcome
+ADR-0029's own G4 explicitly permits.** `myocardial_infarction.json`'s
+real closure (27 files, fetched in full) is dirty with three
+independent, each-sufficient blockers unrelated to CarePlan
+(`lookup_table_transition`/D3, `ImagingStudy`/R5, a genuinely new
+state type `SupplyList`) -- deferred, same shape UTI already has.
+`total_joint_replacement.json`'s real closure (4 files) surveys clean
+of every Wave-D-scoped type except CarePlan itself; its own
+`joint_replacement` attribute gap was resolved live (a small,
+disclosed `run-module` extension), but a SECOND, independent blocker
+surfaced testing that fix against the real closure: `Joint_Replacement_
+Guard`'s own compound Age condition (`Age > 50` AND'd with an
+attribute check) is outside this interpreter's own `age-guard-jump-
+days` analytical-resolution shape (bare `:age >= N years` only) -- the
+walk blocks permanently at age 0, confirmed empirically. Extending
+Guard's own condition-resolution machinery is real interpreter-core
+work touching every vendored root's own Guard/Delay behavior, outside
+this stage's own ruled scope -- escalated, not improvised. Named here
+as a live gap: the FIRST future session vendoring `total_joint_
+replacement.json` (or any other compound-Age-Guard-gated module) needs
+`age-guard-jump-days`/`guard-step` extended first; unowned by any wave
+until then.

@@ -5,22 +5,8 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- GMF coverage Wave D stage D2 (ADR-0029 R6; D0/D1 done, see Done below)
-  -- CarePlan family mechanism LANDS in full (sim-model schema,
-  sim-trajectory loader/interpreter/compile, sim engine fold,
-  sim-emit-hl7 disclosed silence -- all four layers, tested, green),
-  mirroring `:medication-order`/`:medication-end`; CarePlan itself
-  stays v2-silent (R3); `Active CarePlan` condition stays design-ruled,
-  implementation-deferred per G2. Vendoring payoff REVISED to ZERO
-  roots this session (gmf-interpreter.md sec13, G4's own permitted
-  outcome): `myocardial_infarction` deferred (three independent D3/R5/
-  new-type blockers in its real 27-file closure); `total_joint_
-  replacement` ALSO deferred -- its own `joint_replacement` attribute
-  gap was resolved, but a second blocker surfaced testing that fix
-  live: `Joint_Replacement_Guard`'s compound Age condition
-  (`age-guard-jump-days` only resolves a bare `:age >= N years` Guard)
-  blocks the walk permanently at age 0, an interpreter-core gap outside
-  this stage's own ruled scope, escalated not improvised.
+- Nothing in progress at end of session (GMF coverage Wave D stage D2
+  closed same day it started -- see Done, below).
 
 ## Next (backlog, no session scheduled)
 - Pairing-as-data (review P3-3): mutate↔judge conviction registry — design pass in
@@ -61,12 +47,20 @@ per item; done items move to the bottom of their section with a date and sha.
   trigger: a second `engine` consumer appears (the FHIR emitter is the
   likely one) or engine work itself needs the emit-state/check boundary
   designed, same plan
-- GMF coverage Wave D, stage D3 (ADR-0029 R6; D0/D1 done, D2 is in Now
-  above) — `lookup_table_transition` (sixth transition kind) + attribute-weighted
+- GMF coverage Wave D, stage D3 (ADR-0029 R6; D0/D1/D2 done, see Done
+  below) — `lookup_table_transition` (sixth transition kind) + attribute-weighted
   `distributed_transition` weights + UTI closure re-characterization —
   payoff: UTI. `ImagingStudy` (R5, CHF trigger) and the stroke-risk data
   source (R7) are named in ADR-0029/the coverage plan but unowned by
   D0–D3.
+- `ehrt.sim-trajectory.gmf-interpreter/age-guard-jump-days`/`guard-step`
+  extension: a compound (`:and`-wrapped) or non-`>=` Age Guard
+  currently blocks a walk permanently at age 0, no periodic re-tick —
+  found live, D2 (2026-08-02, `total_joint_replacement.json`'s own
+  `Joint_Replacement_Guard`, gmf-interpreter.md §13's own fix-forward
+  finding) — trigger: the first future session vendoring
+  `total_joint_replacement.json` or any other compound-Age-Guard-gated
+  module.
 
 ## Done (this session, 2026-08-01, migration session 1)
 - Items 6+7: `agent/scenario-roster.md` merged into `.agents/skills/scenarios/roster.md`,
@@ -352,3 +346,45 @@ per item; done items move to the bottom of their section with a date and sha.
   own closing records commit. `notes/ADRs.md` ADR-0029's own D1a schema
   RULING and D1b execution note; `.agents/session-records/2026-08-02-
   gmf-coverage-wave-d-stage-d1b.md`.
+
+## Done (this session, 2026-08-02, GMF coverage Wave D stage D2)
+- Step 1 characterization: both closures fetched in full at the pin
+  (27 files for `myocardial_infarction.json`, through its own CABG
+  surgical pathway; 4 for `total_joint_replacement.json`). MI dirty
+  with three independent blockers (`lookup_table_transition`/D3,
+  `ImagingStudy`/R5, a genuinely new state type `SupplyList`) —
+  deferred. TJR's own `CarePlanEnd.careplan` field grounded directly
+  against `State.java` as a same-module state-name reference,
+  structurally identical to `MedicationEnd.medication_order` — R2(b)'s
+  pair-mirror confirmed against source.
+- Step 2 implementation: the full CarePlan chain landed and stayed
+  green throughout — `:care-plan-start`/`:care-plan-end` pathway-IR
+  steps (sim-model); loader/interpreter/compile-trajectory mapping
+  (sim-trajectory), including a new backward-compatible `run-module`
+  `initial-attributes` arity; `CarePlanRecord`/decide/evolve fold and
+  a `clinical-content-only-when-admitted` extension (sim); a disclosed
+  registry non-entry plus two asserting tests (sim-emit-hl7, G3).
+  `Active CarePlan` condition stays design-ruled, implementation-
+  deferred per G2 (zero exercising modules).
+- Fix-forward (same session): testing the `joint_replacement` fix live
+  against the real `total_joint_replacement.json` closure surfaced a
+  SECOND, independent blocker — `Joint_Replacement_Guard`'s own
+  compound Age condition is outside this interpreter's own
+  `age-guard-jump-days` analytical-resolution shape (bare `:age >= N
+  years` only), so the walk blocks permanently at age 0. Declared D2
+  vendoring scope revised to ZERO roots (ADR-0029's own G4 explicitly
+  permits this outcome) — the CarePlan mechanism itself stands as
+  real, tested infrastructure regardless, the same "build the
+  mechanism, defer the vendoring target" shape `VitalSign` (D1a)
+  already established.
+- Regression oracle: all seven pre-existing vendored-root test
+  namespaces held byte-for-byte identical test/assertion counts across
+  every checkpoint (a disclosed full-suite comparison method, not a
+  literal SHA-256 digest — ADR-0029's own dated note has the reasoning).
+- Commits, in order: `a41d8c2` (Step 0), `0131985` (Step 1),
+  `7319680` (Step 2a, sim-model), `efe1972` (Step 2b, sim-trajectory),
+  `c1dee3d` (Step 2c, sim), `b499efc` (Step 2d, sim-emit-hl7),
+  `85c75de` (fix-forward, revised scope), and this session's own
+  closing records commit. `notes/ADRs.md` ADR-0029's own D2
+  characterization/execution/deviation notes; `.agents/session-records/
+  2026-08-02-gmf-coverage-wave-d-stage-d2.md`.
