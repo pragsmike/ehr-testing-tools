@@ -69,7 +69,20 @@
   for this census, not a bug in the census itself."
   50)
 
-(def default-persona-config {})
+;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-8): fixed, disclosed race/
+;; socioeconomic weight pools -- NOT a demographic-accuracy claim (equal
+;; weights across Synthea's own closed vocabularies, Logic.java's own
+;; Race/SocioeconomicStatus classes, source-grounded), only enough to
+;; exercise the new Race/Socioeconomic Status condition guards during
+;; this census's own smoke walks. `persona`'s own AR-5 conditional-draw
+;; law means every OTHER field/draw in this census is byte-identical to
+;; every pre-Wave-F run -- these two keys are the only header delta.
+(def default-persona-config
+  {:race-weights [{:race "White" :weight 1.0} {:race "Black" :weight 1.0}
+                  {:race "Hispanic" :weight 1.0} {:race "Asian" :weight 1.0}
+                  {:race "Native" :weight 1.0} {:race "Other" :weight 1.0}]
+   :socioeconomic-weights [{:category "High" :weight 1.0} {:category "Middle" :weight 1.0}
+                           {:category "Low" :weight 1.0}]})
 
 ;; --- Pin verification (AR-1) --------------------------------------------
 
