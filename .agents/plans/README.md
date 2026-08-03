@@ -38,4 +38,4 @@ Files in this directory:
   * 2026-08-01-migration-report.md
   * 2026-08-02-sim-split-plan.md — staged extraction of components/sim into sim-model/sim-trajectory/sim-emit-hl7/sim-engine
   * 2026-08-02-gmf-coverage-plan.md — Wave A-D plan for GMF coverage expansion (condition vocabulary, CallSubmodule, Death, IR-homed state types)
-  * 2026-08-02-gmf-parity-plan.md — PROPOSED successor plan: full Synthea module parity, gated on this session's own J1 oracle verdict
+  * 2026-08-02-gmf-parity-plan.md — APPROVED 2026-08-03 (ADR-0031): full Synthea module parity plan, J1 oracle gate cleared, §6 rulings folded

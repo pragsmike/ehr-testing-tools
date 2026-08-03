@@ -1,11 +1,28 @@
 # 2026-08-02 — sim split plan: staged extraction of components/sim
 
-Status: PROPOSED (design channel, 2026-08-02). Becomes approved when the
-author rules on AR-1..AR-4 below and moves the S1+S2 row from roadmap
-`Next` to `Now`. Precedent: `.agents/plans/2026-08-01-migration-report.md`
-(a dated, sequenced plan referenced from roadmap rows); method precedent:
-the three-stage tools split (`notes/prompts/2026-07-31-ehr-testing-split-*`,
-characterize → extract → verify → records, escalate once with edges named).
+Status: PROPOSED (design channel, 2026-08-02). Precedent:
+`.agents/plans/2026-08-01-migration-report.md` (a dated, sequenced plan
+referenced from roadmap rows); method precedent: the three-stage tools
+split (`notes/prompts/2026-07-31-ehr-testing-split-*`, characterize →
+extract → verify → records, escalate once with edges named).
+
+**Dated status note (2026-08-03, fix-forward, stale-header hygiene).**
+S1–S3 are EXECUTED, not merely proposed: S1 (`sim-model`) and S2
+(`sim-trajectory`) landed same session (`8d5c86c` for S1; S2 same
+session, same commit lineage — `.agents/plans/roadmap.md`'s own "Done
+(2026-08-02, sim split S1+S2)" entry has the full verification account,
+poly check clean, deftest+defspec parity 403=403=403). S3
+(`sim-emit-hl7`) landed front-run as GMF coverage Wave D's own stage D0
+(`notes/ADRs.md` ADR-0029 R1; commits `7935b71`/`7a3dd58`, `ccce1fc`,
+`e38e232` — roadmap's own "Done (2026-08-02, sim split S3 / GMF
+coverage Wave D stage D0)" entry). **S4 (`sim-engine`) stays
+DEFERRED**, its trigger unfired as of the 2026-08-03 rulings-capture
+session (`notes/ADRs.md` ADR-0031 AR-6's own defect-fix sequencing
+does not fire it either — neither defect fix adds a second `engine`
+consumer) — see `.agents/plans/roadmap.md`'s own Deferred section for
+the live trigger condition. This plan's own sequencing/rulings text
+below is left as originally written, not rewritten, per this project's
+own annotate-not-rewrite convention.
 
 ## Context
 

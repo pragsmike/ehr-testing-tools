@@ -1,5 +1,12 @@
 # 2026-08-02 — GMF coverage expansion: wave plan
 
+**Dated status note (2026-08-03, fix-forward, stale-header hygiene):
+Waves A–D CLOSED 2026-08-02, superseded by
+`.agents/plans/2026-08-02-gmf-parity-plan.md`** (APPROVED 2026-08-03,
+`notes/ADRs.md` ADR-0031) for all work beyond this plan's own scope.
+This file's own close-out detail at its tail (the Wave D retrospective,
+payoff tally, and standing named items) stays put, unchanged.
+
 Ruled 2026-08-02 (design channel; ratified via the Wave A prompt, AR-1).
 Source analysis: the module survey in
 `components/sim-trajectory/docs/gmf-interpreter.md`. Wave A — condition
