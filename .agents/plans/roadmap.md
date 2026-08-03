@@ -9,12 +9,14 @@ per item; done items move to the bottom of their section with a date and sha.
   same day it started -- see Done, below).
 
 ## Next (backlog, no session scheduled)
-- **E/F/G/H/I sequencing** (`.agents/plans/2026-08-02-gmf-parity-plan.md`
-  §4's own "provisional order," now with real ranking data to read: the
-  GMF census, `components/sim-trajectory/docs/census/2026-08-03-synthea-
-  7e08387.edn` — see Done, below). Which wave goes first is a
-  design-channel read of the census's own ranked gap mechanisms, not
-  this session's call (ADR-0034's own fence).
+- **Wave F** (`.agents/plans/2026-08-02-gmf-parity-plan.md` §4, ratified
+  order 2026-08-03, ADR-0035 AR-8 — F0 now landed, see Done below):
+  `Counter`/`ImagingStudy`/`SupplyList` (24 modules) plus the
+  `:race`/`:not` condition-type rider (4 more, the census's own
+  `:walk-failed` mechanisms table). G (wellness) and H (pre-roll) follow
+  in sequence, then I (bulk vendoring). Wave E (risk-attribute register)
+  is RE-SCOPED — calibration content on demand, not in the leverage
+  queue (`stroke.json` already censuses `:ok-walked`).
 - Pairing-as-data (review P3-3): mutate↔judge conviction registry — design pass in
   the design channel first; vocabulary is load-bearing
 - Storefront demo fixture: minimal clean-gating FHIR fixture so the README's mutate
@@ -125,6 +127,58 @@ per item; done items move to the bottom of their section with a date and sha.
   shape should expect the same workaround, or this row graduates into
   an actual `bin/regression-oracle` enhancement (e.g. an opt-in "run
   each commit's own digest.clj against its own worktree" mode).
+
+## Done (this session, 2026-08-03, Wave F0 — distributions — ADR-0035)
+- GAUSSIAN/EXPONENTIAL/TRIANGULAR join the v2 distribution vocabulary
+  (loader, `ced1c06`) across Delay/Symptom timing, Procedure duration,
+  and SetAttribute value; an unrecognized `:kind` rejects cleanly
+  (`:unsupported-distribution-kind`) instead of throwing — structurally
+  closes the `gmf_version 2` loader-exception class ADR-0034's census
+  found. Single-draw interpreter sampling (`c5cde06`): `sample-
+  distribution` + `probit-approx` (Acklam's rational inverse-CDF
+  approximation, source-cited, spot-checked against known standard-
+  normal quantiles), fixed-consumption law throughout. SetAttribute's
+  own silent-nil gap fixed (`c9de204`): a state whose only value source
+  was `:distribution` used to write `nil` — invisible to the census's
+  own walk-verification, since a module still loads and walks clean
+  with `nil` attributes feeding its guards.
+- Real bug found and fixed mid-session (Step 2): `emit-and-advance` is
+  the shared helper every trajectory-event-producing state type calls,
+  not Procedure-only — an ungated `:distribution` check crashed on
+  `uti/ed_bundle.json`'s own O2-saturation Observation states (a
+  pre-existing, out-of-scope, never-normalized raw v2 field). Gated on
+  `(= :procedure (:type state))`; a regression test pins the exact
+  shape.
+- Oracle bracket (`d9545c9` → `c9de204`, `bin/regression-oracle`,
+  9 root batches incl. the three engine-layer closures ADR-0033 AR-4b
+  added): IDENTICAL — pure identity held, byte-verified.
+- Census re-run (`c80c5c5`,
+  `components/sim-trajectory/docs/census/2026-08-03-synthea-7e08387-
+  wave-f0.edn`, committed alongside the original): `:ok-walked` 40→42,
+  `:load-failed` 39→34, `:walk-failed` 6→9. All 11 originally-loader-
+  exception modules traced individually — 2 resolve, 3 surface a next
+  blocker, 6 stay `:load-failed` on an unrelated, earlier-in-key-order
+  gap (the loader's own first-found short-circuit never reached their
+  fixed content at all). Zero SetAttribute-distribution digest movement
+  among already-`:ok-walked` modules — `hypertension.json` (this
+  session's own cited example) stays `:load-failed` on `Counter`,
+  blocked before its own GAUSSIAN SetAttribute state is ever reached; an
+  honest negative result, not a gap in the fix (proven directly by unit
+  tests instead). All seven vendored roots unmoved. Found live: the
+  census tool's own filename has no same-calendar-day disambiguation —
+  disclosed in `docs/gmf-interpreter.md`'s own new §15 subsection, not
+  fixed (out of this session's fence).
+- `notes/ADRs.md` ADR-0035 (AR-1 through AR-8, execution note with the
+  full oracle table and census delta classification). AR-8's ratified
+  resequencing captured in `.agents/plans/2026-08-02-gmf-parity-plan.md`
+  §4 (a new F0 row; Wave E kept in the table, annotated RE-SCOPED, not
+  deleted) and this roadmap's own Next section (below).
+- Commits, in order: `ced1c06` (Step 1, loader), `c5cde06` (Step 2,
+  interpreter timing sampling + the `emit-and-advance` scoping fix),
+  `c9de204` (Step 3, SetAttribute), `c80c5c5` (Step 5, census re-run +
+  doc delta note), and this session's own closing records commit.
+  Session record: `.agents/session-records/2026-08-03-wave-f0-
+  distributions.md`.
 
 ## Done (this session, 2026-08-03, GMF census — ADR-0034)
 - `ehrt.sim-trajectory.census` (`development/src`, a dev entry point per

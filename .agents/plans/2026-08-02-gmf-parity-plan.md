@@ -142,19 +142,35 @@ Sequencing is by leverage, not by module count. Session estimates are
 estimates.
 
 **Dated note (2026-08-03, ADR-0031 AR-6): two defect-fix sessions
-precede the census**, inserted below as rows above Census. The E/F/G
-sequence after the census is PROVISIONAL, pending the census's own
-ranking (AR-1/AR-4) — leverage-by-module-count only becomes real data
-once the census runs.
+precede the census**, inserted below as rows above Census.
+
+**Dated note (2026-08-03, ADR-0035 AR-8): the census ranking read is
+IN, resequencing the provisional E/F/G/H/I order below.** Ratified
+order: **F0** (GAUSSIAN/EXPONENTIAL/TRIANGULAR distributions, ADR-0035
+— DONE, see roadmap) → **F** (Counter/ImagingStudy/SupplyList, 24
+modules, plus the `:race`/`:not` condition-type rider found by the
+census's own `:walk-failed` mechanisms table, 4 more) → **G** (wellness
+— ledger is 19 tagged modules plus the two max-steps loop walk-
+failures, `med-rec`/`veteran-substance-abuse-treatment`, expected to
+resolve as substitution artifacts once G lands) → **H** → **I**
+(singleton tail: `AllergyOnset`, `VitalSign`, `Vaccine`, the
+lookup-column `time` gap). **Wave E is RE-SCOPED**: `stroke.json`
+already censuses `:ok-walked` (the `distributed_transition`
+attribute-weighted mechanism, H3, already unblocks its own onset gate,
+falling back to the JSON-declared `:default` in the absence of a real
+`stroke_risk` source) — E is therefore calibration CONTENT (the
+risk-attribute register, §2), not an unlock wave, and is scheduled on
+demand rather than in the leverage queue below.
 
 | Wave | Content | Sessions | Unlocks |
 |---|---|---|---|
 | **Defect fix 1** (ADR-0031 AR-6) | Procedure-duration fix — `resolve-time-advance`'s flat-map/nested-key mismatch, mechanical, semantics pinned from Synthea source before the fix commit. Full oracle-bracketed re-baseline (virtual time shifts for every root). | 1 | unblocks every vendored root's own Procedure timing; re-records the digest baseline once |
 | **Defect fix 2** (ADR-0031 AR-6) | Engine closure-context fix — `engine.clj`'s `:registered` decide method threads a closure's own submodule registry and `initial-attributes` through to `run-module` (ADR-0030 J3's two gaps). Flips the three pinned round-trip tests. Oracle-bracketed: the five non-closure roots stay byte-identical; closure roots gain NEW engine-layer baselines. | 1 | the closure engine round trip, for real, for the first time |
 | **Census** | `gmf survey` dev entry point + first census artifact (AR-1, AR-4: walk-verified, not load-verified) | 1 | scope for everything below |
-| **E** *(provisional order)* | Risk-attribute register (§2) + stroke as first consumer + incidence-band property test | 1 | `stroke`; sets the Tier 3 precedent |
-| **F** *(provisional order)* | `Counter`, `SupplyList` (interpreter-only, small), then `ImagingStudy` (reverses ADR-0029 R5; full four-layer chain + emission ruling: radiology ORM/ORU or disclosed silence) | 2 | `myocardial_infarction` + a census-named cluster |
-| **G** *(provisional order)* | **Wellness cycle** — design session first. Ruled IN SCOPE (2026-08-03, ADR-0031 AR-2): `wellness: true` becomes a genuine WAIT state (parks the walk until the next scheduled cycle visit, then attaches downstream states), cadence ported from Synthea's own age-banded schedule (`EncounterModule.recommendedTimeBetweenWellnessVisits`) as provenance-cited content under the vital-sign table's discipline, cycle anchor is a seeded per-patient phase offset until Wave H's pre-roll supersedes it. Remaining design questions (schedule-state home, multi-module attachment/churn composition, chronic-meds cap) are the G design session's own scope. | 1 design + 1–2 impl | the chronic cluster; highest module count behind one decision — now NAMED: `epilepsy`, `med_rec`, `mTBI`, `atrial_fibrillation`, `osteoporosis` (ADR-0031 AR-5(a), the wellness-overturn finding) |
+| **E** *(RE-SCOPED 2026-08-03, ADR-0035 AR-8 — see dated note above; kept, annotated, not deleted)* | Risk-attribute register (§2) — calibration CONTENT now, not an unlock wave; `stroke` already censuses `:ok-walked` via H3's own attribute-weighted mechanism | on demand | none — dropped out of the leverage queue |
+| **F0** (ADR-0035, ratified order) | GAUSSIAN/EXPONENTIAL/TRIANGULAR distributions — loader normalization + clean rejection, single-draw interpreter sampling (Delay/Procedure timing, Symptom severity), SetAttribute's own silent-nil fix. Oracle-bracketed: pure identity (no vendored root uses the new content). | 1 | 11 census-blocked modules resolve or surface their next blocker (2 `:ok-walked`, 3 `:walk-failed`, 6 stay `:load-failed` on an unrelated, earlier gap); structurally closes the loader-exception rejection class |
+| **F** *(ratified next, was provisional)* | `Counter`, `SupplyList` (interpreter-only, small), then `ImagingStudy` (reverses ADR-0029 R5; full four-layer chain + emission ruling: radiology ORM/ORU or disclosed silence); the `:race`/`:not` condition-type rider (4 more modules, the census's own `:walk-failed` mechanisms table) | 2 | `myocardial_infarction` + a census-named cluster |
+| **G** *(ratified next, was provisional)* | **Wellness cycle** — design session first. Ruled IN SCOPE (2026-08-03, ADR-0031 AR-2): `wellness: true` becomes a genuine WAIT state (parks the walk until the next scheduled cycle visit, then attaches downstream states), cadence ported from Synthea's own age-banded schedule (`EncounterModule.recommendedTimeBetweenWellnessVisits`) as provenance-cited content under the vital-sign table's discipline, cycle anchor is a seeded per-patient phase offset until Wave H's pre-roll supersedes it. Remaining design questions (schedule-state home, multi-module attachment/churn composition, chronic-meds cap) are the G design session's own scope. | 1 design + 1–2 impl | the chronic cluster; highest module count behind one decision — now NAMED: `epilepsy`, `med_rec`, `mTBI`, `atrial_fibrillation`, `osteoporosis` (ADR-0031 AR-5(a), the wellness-overturn finding) |
 | **H** *(provisional order)* | **Pre-roll** — design session first. Walk modules deterministically from onset to registration; fold pre-window history into initial patient state; emit only in-window events. Open questions: what folds vs. what is discarded; concurrent-comorbidity interaction (ADR-0027 D1 already rules the channel: clinical state, never scratch); composition with churn and the horizon model. **Ruled (2026-08-03, ADR-0031 AR-3): emit-nothing REAFFIRMED — no backloaded-history mode in the sim; the backload need is a named TOOLS-SIDE future (a corpus construction over sim output), revisit trigger: a real consumer for pre-window messages appears.** **Dated pointer (2026-08-03, ADR-0033's own execution note, carried here by ADR-0034 AR-6 for H's own design session to read): UTI's mandatory Encounter (Care Pathways) straddles `engine.clj`'s own fixed registration-t anchor for most seeds — 8 of 10 sampled trip `check/check-all`'s `:clinical-content-only-when-admitted` invariant (opens pre-horizon, folded only into `:pre-horizon-facts`; closes post-horizon as a real, discrete `:outpatient-visit-end` event). The UTI engine round-trip test dodges this empirically (seed 777, chosen because it doesn't trip it) rather than resolving the boundary — that dodge is a standing, disclosed workaround, not a fix; it retires the moment H's own pre-horizon/post-horizon fold boundary design lands and actually resolves straddling encounters, at which point the round-trip test should be revisited too (does it still need a hand-picked seed, or does any seed now work).** | 1 design + 1–2 impl | the chronic/lifetime catalog; acute-episode → population-scale simulator |
 | **I** *(provisional order)* | Bulk vendoring, batched by closure family; per-module cost by then is characterization + test | N (batched) | parity in the vendored sense |
 

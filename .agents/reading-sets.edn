@@ -215,7 +215,13 @@
   ;; indexing this session's own session-record/prompt-archive filenames
   ;; brought the real total from 1301 to 1361 -- self-caught, the same
   ;; pattern every prior session touching this file has hit.
-  :budget-lines 1361}
+  ;; bumped 1361->1417, 2026-08-03 (Wave F0 distributions session,
+  ;; ADR-0035, Step 6 close-out): roadmap.md's own Next-row rewrite plus
+  ;; a new Done-section entry, and indexing this session's own
+  ;; session-record/prompt-archive filenames, brought the real total
+  ;; from 1361 to 1417 -- self-caught, the same pattern every prior
+  ;; session touching this file has hit.
+  :budget-lines 1417}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one

@@ -7383,3 +7383,269 @@ and `ehrt.sim-trajectory.gmf-interpreter` are untouched by this
 session's own product-brick diff.
 
 ---
+
+## ADR-0035 — Wave F0: GAUSSIAN/EXPONENTIAL/TRIANGULAR distributions land; SetAttribute's silent-nil gap closes (`.agents/plans/2026-08-02-gmf-parity-plan.md` §4 resequencing, ADR-0034's own `gmf_version 2` loader-exception finding)
+
+**Status:** Accepted (author-ruled 2026-08-03, design channel, AR-1
+through AR-8 below, recorded verbatim, attributed, per ADR-0007's own
+provenance-tag convention — every ruling below is `[A]`); executed
+same day.
+
+### Context
+
+The first census (ADR-0034) ranked the frontier; the design channel's
+ranking read (2026-08-03) inserted a new small wave, F0, ahead of the
+provisional E/F/G/H/I sequence: 11 modules blocked by
+`EXPONENTIAL`/`GAUSSIAN` timing distributions (tied with `Counter` for
+the largest single-mechanism unlock), plus a real loader-robustness bug
+(unknown kinds THREW uncaught instead of rejecting cleanly, ADR-0034's
+own execution note). The design channel additionally found a silent
+correctness gap the census could not see: `:set-attribute` read only
+`:value`/`:value-code`, so upstream SetAttribute states carrying
+distributions (e.g. `hypertension.json`'s own GAUSSIAN onset ages)
+silently set `nil` — a module could census `:ok-walked` while walking
+with `nil` attributes feeding its guards. This session owns three
+contexts: Delay timing, Procedure duration, SetAttribute values.
+Semantics are pinned from Synthea source at the pin
+(`7e08387c68a7f0e21d13076609a159fd473fc902`,
+`src/main/java/org/mitre/synthea/engine/Distribution.java`).
+
+### Decision
+
+Ruled 2026-08-03, design channel, recorded verbatim:
+
+**AR-1 (semantics pin — port faithfully, cite verbatim).** From
+`Distribution.java` at the pin: GAUSSIAN = `standardDeviation *
+gaussian() + mean`, then CLAMP to optional `min`/`max` parameters
+(clamping, not resampling). EXPONENTIAL = `1.0 + ln(1 - u) / (-1/mean)`
+— i.e. an exponential with the stated mean SHIFTED by +1; port the
+shift verbatim, it is upstream content truth. TRIANGULAR = the standard
+inverse-CDF over `min`/`mode`/`max` (port the two-branch formula
+verbatim). A `round: true` flag on any kind rounds the sampled value to
+the nearest integer. Required parameters per kind follow upstream
+`validate()`: EXACT `value`; UNIFORM `low`,`high`; GAUSSIAN
+`mean`,`standardDeviation`; EXPONENTIAL `mean`; TRIANGULAR
+`min`,`mode`,`max`.
+
+**AR-2 (coverage + robustness).** Implement GAUSSIAN, EXPONENTIAL, and
+TRIANGULAR (TRIANGULAR has zero census-blocked modules at the pin but
+closes upstream's enum — one trivial single-draw formula) across all
+three contexts: Delay timing, Procedure duration, SetAttribute value.
+An UNKNOWN kind becomes a clean load-time rejection (Result value
+naming module/state/kind — the same rejection family the loader already
+uses), NEVER a thrown exception. This structurally closes the census's
+`:loader-exception` category.
+
+**AR-3 (draw law — fixed consumption, disclosed divergence).** Every
+distribution sample consumes EXACTLY ONE uniform draw from the walk
+rng. GAUSSIAN samples via a single-draw inverse-CDF (a standard rational
+approximation of the probit function — e.g. Acklam's — cited in the
+code comment), which is NUMERICALLY DIVERGENT from
+`java.util.Random/nextGaussian` BY DESIGN: `nextGaussian` consumes a
+variable number of draws and caches state, both incompatible with the
+fixed-consumption law. Mean, sd, clamps, and rounding are preserved —
+fitness-for-purpose, not bit-parity with upstream. EXPONENTIAL and
+TRIANGULAR are already single-draw inverse-CDF upstream; port verbatim.
+Time-context samples: sample a double in unit space, convert through
+the SAME unit path the Range shape uses, with a deterministic
+rounding-to-granularity choice STATED in the ADR.
+
+**AR-4 (SetAttribute silent-nil fix + census blind-spot disclosure).**
+`:set-attribute` gains distribution sampling per AR-1/AR-3 (honoring
+`round`); precedence `:value-code` > `:distribution` > `:value` is NOT
+the ruling — upstream precedence is: a `distribution` present means
+sample it (SetAttribute's value_code/value/distribution are mutually
+exclusive in practice; if a state carries several, record a load-time
+rejection rather than guessing). Record in the ADR that this gap was
+INVISIBLE to the census (loads and walks complete with nil attributes)
+— a named limitation of walk-verification: digests attest determinism,
+not value correctness.
+
+**AR-5 (internal shape).** UNIFORM/EXACT keep their existing v1-collapse
+normalization untouched (no churn). The three new kinds survive loading
+as a normalized `:distribution {:kind :gaussian|:exponential|
+:triangular, ...}` with keyword kind and normalized parameter keys,
+schema-validated; the interpreter samples them where `:range`/`:exact`
+are read today and in `:set-attribute`.
+
+**AR-6 (oracle bracket — pure identity).** No vendored root uses the
+new kinds or SetAttribute distributions, so EVERY oracle-covered root
+must come out byte-identical across the bracket. Any change is a
+STOP-AND-ESCALATE.
+
+**AR-7 (census re-run).** After the fix, re-run the census with the
+SAME header parameters (pin, seeds, persona, horizon) and commit the
+new dated artifact alongside the old (dated history, never overwrite)
+plus a delta note in the interpreter doc's §15: expected movement is
+the 11 `:loader-exception` modules resolving to `:ok-walked` or
+surfacing their NEXT blocker (either is a finding, record which), and
+previously-`:ok-walked` modules with SetAttribute distributions
+changing walk digests (now sampling real values — expected, disclosed).
+Anything else that moves: record it; a vendored root moving is a
+STOP-AND-ESCALATE.
+
+**AR-8 (capture the ratified resequencing — currently chat-only).** Add
+a dated note to the parity plan §4 and matching roadmap rows: ratified
+order is F0 (this session) → F (Counter/ImagingStudy/SupplyList, 24
+modules, with the `:race`/`:not` condition-type rider, 4 more) → G
+(wellness; ledger is 19 tagged modules plus the two max-steps loop
+walk-failures, `med-rec` and `veteran-substance-abuse-treatment`, which
+are substitution artifacts expected to resolve with G) → H → I
+(singleton tail: AllergyOnset, VitalSign, Vaccine, lookup-column
+`time`). Wave E is RE-SCOPED: `stroke` already censuses `:ok-walked`,
+so E is calibration content (the risk-attribute register), not an
+unlock wave — scheduled on demand, not in the leverage queue.
+
+### Execution note (filled same day, 2026-08-03)
+
+**Step 1 (loader, `ced1c06`).** `ehrt.sim-trajectory.gmf` gains a
+five-kind `distribution-kind->keyword` vocabulary, a
+`normalize-distribution`/`normalize-distribution-parameters` pair
+(AR-1's parameter table kebab-renamed, e.g. `standardDeviation` →
+`:standard-deviation`), and two new load-time rejection categories
+matching the existing `:unsupported-state-type` family:
+`:unsupported-distribution-kind` (payload `{:state :kind}`, AR-2) and
+`:set-attribute-value-conflict` (payload `{:state :sources}`, AR-4).
+`normalize-state` gained two early-return branches ahead of its
+existing one (`invalid-distribution-kind?`/`set-attribute-value-
+conflict?`), a `cond` replacing the original `if`. UNIFORM/EXACT's own
+existing v1-collapse guard clauses (`apply-gmf-v2-timing`/`apply-gmf-v2-
+procedure-duration`) are now restricted to `v1-collapse-kinds`
+(AR-5, "no churn" — same call, narrower guard); two new clauses handle
+the three new kinds on Delay/Symptom/Procedure (kept as a normalized
+`:distribution` map, `apply-new-timing-distribution`) and all five
+kinds on SetAttribute (`normalize-set-attribute-distribution`). Schema:
+a new `SampledDistribution` `:multi` dispatch on `:kind` (the same
+pattern `GmfState` itself already uses), enforcing AR-1's own required-
+parameter table per kind via malli — a missing required parameter is
+`:schema-invalid`, the existing catch-all. 7 new tests (`gmf_test.clj`):
+each new kind normalizes correctly (Delay/Procedure/Symptom), an
+unrecognized kind rejects cleanly (never throws — proven red/green by
+stashing the fix: 5 failures/5 errors before, 0/0 after, the exact
+`IllegalArgumentException` ADR-0034 found), a missing required GAUSSIAN
+parameter is `:schema-invalid`, SetAttribute's own distribution
+normalizes, and the value-conflict rejection fires.
+
+**Step 2 (interpreter timing, `c5cde06`).** `sample-distribution`
+dispatches by kind: EXACT (zero draws, double passthrough), UNIFORM
+(one `.nextDouble`, existing `rand-double-in`), GAUSSIAN (one draw
+through `probit-approx`, Acklam's rational approximation of the
+standard-normal inverse CDF, source-cited in the code comment — spot-
+checked against known quantiles: Phi(1.959964) ≈ 0.975, symmetric
+around 0, accurate to 1e-5 or better against a 6-decimal reference),
+then clamped to `:min`/`:max` when present, EXPONENTIAL (the `1 +
+ln(1-u)/(-1/mean)` shift, a fixed-seed golden-value test), TRIANGULAR
+(the two-branch inverse-CDF, a fixed-seed golden-value test). `:round`
+rounds the sampled value AFTER any GAUSSIAN clamp, matching source
+order. `resolve-time-advance` gains a third `:distribution` branch
+(alongside `:range`/`:exact`) that converts the sampled double to a
+whole unit-count via `Math/round` (round-half-up) AT the unit-
+conversion boundary — the deterministic rounding-to-granularity choice
+AR-3 asked this ADR to state: a double duration always needs a `long`
+day-count regardless of the distribution's own `:round` flag, which
+governs the sampled VALUE for non-timing consumers. Wired into Delay
+(`resolve-time-advance` already reads the whole state), Procedure
+(`emit-and-advance`'s own `:duration`-then-`:distribution` cond,
+GATED on `(= :procedure (:type state))`, below), and Symptom (a new
+`:distribution` branch in `step`'s own `:symptom` case, alongside the
+existing `:exact`/`:range` — Symptom shares the loader's own new-kind
+dispatch with Delay, D3c's original grouping, so leaving it unwired
+would reintroduce the exact silent-nil class this ADR exists to close,
+for Symptom instead of SetAttribute). 9 new tests, proven red (a
+compile error — `probit-approx` did not exist) before the fix, green
+after.
+
+**Real bug found and fixed mid-step, not merely anticipated:**
+`emit-and-advance` is the SHARED helper every trajectory-event-
+producing state type calls (Encounter, Observation, ConditionOnset,
+Procedure, ...), not a Procedure-only function. The full non-
+integration suite caught it live: `uti/ed_bundle.json`'s own O2-
+saturation Observation states carry a `gmf_version 2` `:distribution`
+this loader has NEVER normalized (Observation is not one of this
+session's three contexts) — a stray, still-raw, string-keyed field an
+ungated `(:distribution state)` check handed straight to
+`sample-distribution`, crashing on `"No matching clause: UNIFORM"` (the
+raw string, never keywordized). Fixed by gating the check on `(=
+:procedure (:type state))` — only Procedure states ever carry a REAL,
+normalized timing `:distribution`; a regression test
+(`emit-and-advance-ignores-a-stray-raw-distribution-on-a-non-procedure-
+state`) pins the exact `uti/ed_bundle.json` shape. Observation's own v2
+distribution encoding stays exactly as unnormalized/out-of-scope as it
+was before this session — a pre-existing gap, disclosed, not built.
+
+**Step 3 (SetAttribute, `c9de204`).** The `:set-attribute` case in
+`step` gains a `:distribution` branch ahead of `:value-code`/`:value`
+(AR-4's own precedence — a `cond` naming the intent, not merely relying
+on the loader's own mutual-exclusion invariant silently). 4 new tests,
+proven red (3 failures/2 errors, including the exact silent-nil
+behavior this ADR fixes) before, green after.
+
+**Step 4 (oracle bracket).** `bin/regression-oracle d9545c9 c9de204`
+(the tip before Step 1 → the Step 3 tip) — `digest.clj` now covers
+NINE root batches (the six original plus the three engine-layer
+closures ADR-0033 AR-4b added):
+
+| root | changed? |
+|---|---|
+| `appendicitis` | no |
+| `death-fixture` | no |
+| `ear-infections` | no |
+| `ear-infections-engine` | no |
+| `sepsis` | no |
+| `sinusitis` | no |
+| `sore-throat` | no |
+| `total-joint-replacement-engine` | no |
+| `urinary-tract-infections-engine` | no |
+
+`IDENTICAL: every root's digest matches between d9545c9 and c9de204` —
+AR-6's pure-identity claim holds, byte-verified (not a count
+comparison), the real `bin/regression-oracle` script's own output.
+
+**Step 5 (census re-run, `c80c5c5`).** Same header parameters (pin,
+3 seeds/module, mixer-seed `20260803`, registration age 30, 50-year
+horizon, `{}` persona config). Verdict counts: `:ok-walked` 40→42,
+`:load-failed` 39→34, `:walk-failed` 6→9, total 85→85 (unchanged).
+All 11 originally-`:loader-exception` modules traced individually: 2
+resolve to `:ok-walked` (`copd`, `opioid-addiction`); 3 surface their
+NEXT blocker as `:walk-failed` (`contraceptives`/`dementia` — an
+unsupported condition type; `wellness-encounters` — an unrecognized
+vital-sign name); 6 stay `:load-failed` on a genuinely DIFFERENT,
+EARLIER-in-key-order gap (`Counter`/`SupplyList`/an unrecognized
+lookup-table column, `race`, a new finding) — the loader's own
+deterministic first-found short-circuit never reached their now-fixed
+distribution content at all. **Zero digest movement** among modules
+`:ok-walked` in both runs, including this session's own cited example:
+`hypertension.json` stays `:load-failed` on `Counter`, blocked before
+its own `Black_Onset_Age` SetAttribute state is ever reached — an
+honest negative result within this census's 85-module top-level scope,
+not a gap in the SetAttribute fix (which IS proven directly, by the
+Step 3 tests above). All seven vendored roots stayed `:ok-walked`,
+byte-identical, matching the oracle bracket. No module outside the 11
+traced moved; no STOP-AND-ESCALATE. New artifact:
+`components/sim-trajectory/docs/census/2026-08-03-synthea-7e08387-
+wave-f0.edn`, committed alongside the original (never overwritten).
+Full classification, and a disclosed census-tool same-day filename-
+collision finding (worked around by hand, not fixed — out of this
+session's own loader-plus-interpreter fence), in
+`docs/gmf-interpreter.md`'s own §15 dated subsection.
+
+**Step 6 (records, this commit).** AR-8's resequencing captured in
+`.agents/plans/2026-08-02-gmf-parity-plan.md` §4 (Wave F0 row → the
+sequence stated above) and `.agents/plans/roadmap.md`.
+
+`clojure -M:poly check`: OK, every checkpoint. `clojure -M:poly test
+:all skip:integration`: 0 failures / 0 errors throughout (274
+assertions in `gmf-interpreter-test`, 130 in `gmf-test`, both up from
+their ADR-0034-era counts). `gitleaks git --staged -v`: clean, every
+commit.
+
+### Fence
+
+No Wave F work (Counter/ImagingStudy/SupplyList), no condition-type
+work (the `:race`/`:not` rider), no Wave G (wellness) work — however
+small any looks from here. `engine.clj` untouched — this wave is loader
+plus interpreter only. AR-6's identity claim is absolute; AR-7's census
+movement is recorded, not judged — the ranking read on the new census
+is the design channel's own next move, not this session's.
+
+---
