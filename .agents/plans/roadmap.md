@@ -5,12 +5,8 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- GMF coverage Wave D stage D3 (ADR-0029 R6, closing stage): H1-H8
-  ruled (`notes/ADRs.md` ADR-0029's own D3 session-start note) --
-  `lookup_table_transition`, attribute-weighted `distributed_transition`
-  weights, compound-Guard analytical resolution, UTI closure
-  re-characterization -- payoff: `urinary_tract_infections.json` and/or
-  `total_joint_replacement.json`, gates deciding scope.
+- Nothing in progress at end of session (GMF coverage Wave D closed
+  same day D3 started -- see Done, below).
 
 ## Next (backlog, no session scheduled)
 - Pairing-as-data (review P3-3): mutate↔judge conviction registry — design pass in
@@ -52,9 +48,32 @@ per item; done items move to the bottom of their section with a date and sha.
   likely one) or engine work itself needs the emit-state/check boundary
   designed, same plan
 - `ImagingStudy` (R5, CHF trigger) and the stroke-risk data source (R7)
-  are named in ADR-0029/the coverage plan but unowned by D0–D3, and stay
-  unowned by D3 (see Now, above) too — neither is that stage's own
-  scope.
+  — GMF coverage Wave D closed 2026-08-02 (D0-D3, see Done below)
+  without owning either; H3's own attribute-weighted `distributed_
+  transition` mechanism landed D3 but is only half of stroke's own
+  revisit trigger (`stroke.json` stays deferred).
+- `myocardial_infarction.json` — three independent blockers, none
+  touched by Wave D (`ImagingStudy`/R5, a genuinely new `SupplyList`
+  state type, `Counter`); its own 27-file closure is fully surveyed
+  (`docs/gmf-interpreter.md` §13), just not buildable this wave.
+- `Active CarePlan` (condition type) — design-ruled, implementation-
+  deferred (Wave D stage D2's own G2): no vendored module exercises it
+  yet; build fresh against the first real candidate's own usage.
+- `ehrt.sim-trajectory.gmf-interpreter/resolve-time-advance`'s own
+  Procedure-duration gap: `:duration` is passed as a flat map but
+  `resolve-time-advance` destructures nested `:range`/`:exact` keys
+  from it, finding neither — EVERY vendored Procedure state's own
+  duration silently never advances virtual time, v1 or v2 gmf_version
+  alike (found live, Wave D stage D3, `docs/gmf-interpreter.md` §14's
+  own D3c finding 1) — unowned, touches every vendored root's own
+  regression behavior, not scoped to any one session yet.
+- The compile-trajectory/engine/emit full-pipeline gap for closure-
+  having modules: no closure-having vendored root (`ear_infections`/
+  `urinary_tract_infections`/`total_joint_replacement`) has ever been
+  proven past the interpreter layer — `run-module`'s own raw trajectory
+  is what every closure vendored test proves, never the compiled
+  pathway-IR → engine → emit-hl7 pipeline. Unowned; the first session
+  wiring a closure through `compile-trajectory` inherits this gap.
 
 ## Done (this session, 2026-08-01, migration session 1)
 - Items 6+7: `agent/scenario-roster.md` merged into `.agents/skills/scenarios/roster.md`,
@@ -382,3 +401,62 @@ per item; done items move to the bottom of their section with a date and sha.
   closing records commit. `notes/ADRs.md` ADR-0029's own D2
   characterization/execution/deviation notes; `.agents/session-records/
   2026-08-02-gmf-coverage-wave-d-stage-d2.md`.
+
+## Done (this session, 2026-08-02, GMF coverage Wave D stage D3 -- Wave D CLOSED)
+- Three named mechanisms, H1-H8 ruled and landed in full: `lookup_
+  table_transition` (the sixth GMF transition kind, H2) plus closure
+  DATA-FILE members (R4, `ehrt.sim-trajectory.gmf/load-closure`'s own
+  `table-resolve-fn`); attribute-weighted `distributed_transition`
+  weights (H3, proven against a hand-authored fixture -- `stroke.json`
+  stays deferred, the mechanism landing is only half its own revisit
+  trigger); `age-guard-jump-days` extended under a sound-jump-or-
+  escalate rule (H4, `total_joint_replacement.json`'s own compound
+  `Joint_Replacement_Guard` unblocked, permanently blocked at age 0
+  since Wave D stage D2's own fix-forward finding).
+- **Both stages' own outstanding payoffs land as vendored roots**:
+  `urinary_tract_infections.json` (the SEVENTH vendored module, this
+  project's SECOND closure -- twelve files -- and FIRST data-file
+  closure members, two lookup-table CSVs) and `total_joint_replacement.
+  json` (the EIGHTH vendored module, THIRD closure -- four files).
+  Interpreter-layer proof only for both (`ehrt.sim-trajectory.vendored-
+  uti-test`/`vendored-tjr-test`) -- the SAME standing, already-
+  disclosed full-pipeline gap `ear_infections.json`'s own vendored test
+  already carries (confirmed by direct search: no full compile-
+  trajectory/engine/emit round trip exists for ANY closure-having
+  module vendored to date), not newly introduced this session.
+- Three disclosed deviations, each a real finding surfaced testing the
+  ruled mechanisms/vendoring against real content, none reopening H1-H8's
+  own design: four cheap mechanical loader/interpreter additions
+  (`gmf_version` 2 timing encoding, `SetAttribute` `value_code`, a
+  fourth observation value mechanism `:exact`, seven new vital-sign
+  table rows); a real interpreter BUG fix (`first-matching-entry`'s own
+  missing fallback-to-last-entry semantic, matching real Synthea's
+  `ConditionalTransition`/`ComplexTransition.follow` exactly -- isolated
+  into its own commit since it changes shared dispatch logic, confirmed
+  to change nothing for any already-vendored root); three more
+  UTI-specific loader findings (a new `virtual` encounter-class value,
+  `complex_transition`'s own either/or, a real upstream CSV
+  byte-order-mark).
+- Regression oracle: the full non-integration suite (192 namespaces)
+  green at every checkpoint, 0 failures/0 errors; every pre-existing
+  vendored-root test namespace (sinusitis/appendicitis/sore_throat/
+  ear_infections/sepsis/death-fixture, plus sim-emit-hl7's own
+  emission-layer suites, HL7 bytes included) held IDENTICAL test-count/
+  assertion-count/zero-failures throughout, the same disclosed
+  full-suite comparison method ADR-0029's own D2 note first established.
+- **GMF coverage Wave D is CLOSED as of this session** (D0 sim-split
+  S3 extraction, D1 observation family + `sepsis.json`, D2 CarePlan
+  mechanism, D3 this entry) -- full retrospective, payoff tally, and
+  standing named items in `.agents/plans/2026-08-02-gmf-coverage-
+  plan.md`'s own close-out section. S4 (`sim-engine` split) trigger
+  status: NOT fired -- `emit-state` remains the sole direct reader of
+  `PatientState` across every Wave D stage.
+- Commits, in order: `07ff1d5` (Step 0, H1-H8 + roadmap), `074d4d7`
+  (Step 1, characterization), `ea85852` (Step 2a, H2), `af89d0e`
+  (Step 2b, H3), `91c9bfd` (Step 2c, H4), `5d87388` (disclosed
+  mechanical additions), `fdd0644` (disclosed bug fix,
+  `first-matching-entry`), `4d9178b` (disclosed UTI loader findings),
+  `8dcec56` (Step 3, UTI vendored), `430edbb` (Step 3, TJR vendored),
+  and this session's own closing records commit. `notes/ADRs.md`
+  ADR-0029's own D3 characterization/execution/deviation/H8 notes;
+  `.agents/session-records/2026-08-02-gmf-coverage-wave-d-stage-d3.md`.

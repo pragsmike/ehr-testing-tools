@@ -138,23 +138,47 @@ lack of a payer/insurance concept requires).
   states, sampled from the run's single seeded RNG (the same
   determinism law every other weighted pick in this project already
   follows — `components/sim/docs/sim-theory.edn`'s global determinism law).
+  **GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3b, H3):** an
+  entry's own `:distribution` may ALSO be a NamedDistribution map
+  (`{:attribute name :default n}`, an attribute-sourced weight with a
+  JSON-specified fallback, `Transition.java`'s own field names
+  verbatim) — `stroke.json`'s own `Chance_of_Stroke` gate, ADR-0028;
+  the mechanism is built, but stroke itself stays deferred (§10's own
+  dated note: `stroke_risk` is SPECIFIED, unsourceable content, not
+  resolved by the mechanism landing).
 - **`conditional_transition`** — an ordered list of
-  (condition, target) pairs, first match wins.
+  (condition, target) pairs, first match wins; if NO condition matches
+  and none is condition-less, the LAST entry is used unconditionally
+  (§14's own D3f finding — this project's own port did not implement
+  this fallback until `urinary_tract_infections.json`'s real closure
+  exercised the gap).
 - **`complex_transition`** — `conditional_transition` and
   `distributed_transition` composed: an ordered list of conditions,
-  each guarding its own nested distribution.
+  each guarding EITHER a direct `:transition` OR its own nested
+  `:distributions` list (§14's own D3f finding — real Synthea's
+  `ComplexTransitionOption` allows either per branch; this loader's own
+  schema previously required `:distributions` unconditionally), same
+  first-match/last-entry-fallback rule as `conditional_transition`.
 - **`type_of_care_transition`** (Wave B) — a fixed
   `{ambulatory, emergency, telemedicine}` map of target states, no
   weights of its own in the module JSON; this interpreter resolves it
   via the SAME weighted-pick mechanism `distributed_transition` already
   uses (one `.nextDouble` draw), against a year-gated weight table
   (§9's own D5 account has the full characterization and citation).
-  Real Synthea's own `lookup_table_transition` — a SIXTH kind this
-  document's own brief never named, discovered on
-  `urinary_tract_infections.json`'s own entry path (§9) — is NOT v1
-  scope: no candidate module this session vendors needs it, and it
-  would need real design (an external lookup-table CSV mechanism this
-  project has no analog for) this session did not do.
+- **`lookup_table_transition`** (GMF coverage Wave D stage D3,
+  2026-08-02, ADR-0029, D3a, H2) — the SIXTH kind, discovered on
+  `urinary_tract_infections.json`'s own entry path (§9) and NAMED, not
+  built, at Wave B (it needed an external lookup-table CSV mechanism
+  this project had no analog for). Landed this session: closures may
+  carry DATA-FILE members (lookup-table CSVs) alongside JSON modules
+  (R4, `ehrt.sim-trajectory.gmf/load-closure`'s own `table-resolve-fn`);
+  a zero-rng row lookup (age range + a curated set of other recognized
+  attribute columns, H2's own specify-vs-delegate audit) against the
+  resolved table, then ONE weighted-pick draw over the matched row's
+  own weights, falling back to each entry's own JSON-declared
+  `default_probability` on no match (real Synthea's own
+  `defaultTransitions` mirror). Full characterization and both
+  vendored tables (`uti.csv`/`uti_recurrence.csv`): §14.
 
 **Condition predicates, v1 as originally scoped: age, sex, attribute,
 and `PriorState`** — plus, **M5b finding**, `Active Condition`/`Active
@@ -1137,6 +1161,31 @@ condition-resolution machinery. Both rows' own `CarePlanStart`/
 CarePlan MECHANISM itself is real, built, and tested regardless (§13),
 awaiting a clean closure to prove it against.
 
+**Dated note, GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, §14
+has the full account): both `urinary_tract_infections.json` and
+`total_joint_replacement.json` are now VENDORED (`resources/modules/
+NOTICE`'s own new rows), closing this table's own last two open Wave D
+payoff rows.** `urinary_tract_infections.json` is REMOVED from the
+`CallSubmodule` row above — its own real blocker (`DiagnosticReport`/
+`MultiObservation`, D6) is now v1 (Wave D stage D1), and the genuinely
+new sixth transition kind this table's own D2 note first flagged,
+`lookup_table_transition`, is now built (H2) and no longer names an
+unowned gap; the two lookup tables it needs (`uti.csv`/
+`uti_recurrence.csv`) are this project's own first closure DATA-FILE
+members (R4). `total_joint_replacement.json` is REMOVED from the
+`CarePlanStart`/`CarePlanEnd` row above — its own compound-Guard
+blocker (D2's own fix-forward finding) is resolved (H4:
+`age-guard-jump-days` extended under a sound-jump-or-escalate rule).
+`myocardial_infarction.json` stays deferred (its own three independent
+blockers — `lookup_table_transition` landing does not by itself unblock
+it, since `ImagingStudy`/R5 and the genuinely-new `SupplyList` state
+type are still unowned). `stroke.json` stays deferred too: D3 also
+lands the attribute-weighted `distributed_transition` mechanism (H3,
+`stroke.json`'s own `Chance_of_Stroke` shape byte-confirmed against
+source) but this does NOT unblock stroke — `stroke_risk` stays
+SPECIFIED, unsourceable content (§10's own dated note, unchanged);
+Wave D's own three named stages (D1/D2/D3) are now all closed.
+
 **Headline: `CallSubmodule` blocks more real content than every other
 deferred feature combined**, confirming and sharpening
 `docs/gmf-interpreter.md`'s own prior finding on `ear_infections.json`
@@ -1643,11 +1692,22 @@ the project's own hand-authored test fixture instead of a real vendored
 module's own death branch (Step 3's own revised scope, ADR-0028's
 deviation record). `stroke.json`'s own survey row (the M7 appendix
 table, above) is updated fix-forward: **deferred, revisit trigger — an
-attribute-sourced `distributed_transition` weight mechanism (unbuilt,
-not needed by any other candidate module read to date) AND a
-stroke-risk-equivalent data source (out of this project's own persona
-model entirely) both landing together**, not decided or scoped this
-session.
+attribute-sourced `distributed_transition` weight mechanism AND a
+stroke-risk-equivalent data source both landing together**, not decided
+or scoped this session.
+
+> **Dated note, GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, H3):
+> the attribute-sourced `distributed_transition` weight mechanism named
+> above is now BUILT** (`ehrt.sim-trajectory.gmf-interpreter/resolve-
+> distribution-value`, a `{:attribute name :default n}` NamedDistribution
+> map, byte-confirmed against `stroke.json`'s own `Chance_of_Stroke`
+> shape) — but this does NOT unblock `stroke.json`: the revisit trigger
+> was always BOTH halves landing together, and the second half
+> (a stroke-risk-equivalent data source) remains entirely unowned. The
+> mechanism is proven instead against a hand-authored fixture (§14's
+> own D3b account), the same "build the mechanism, prove it against a
+> fixture, defer the vendoring target" shape `VitalSign` (D1a) and the
+> CarePlan mechanism (D2) already established.
 
 ### C3 — the `:expired` gap table
 

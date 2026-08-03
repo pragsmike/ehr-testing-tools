@@ -163,7 +163,13 @@
   ;; session-records/prompts READMEs gained one index line each --
   ;; self-caught by this same gate, same precedent, folded into the
   ;; Step 4 records commit itself.
-  :budget-lines 1014}
+  ;; bumped 1014->1088, D3 Step 4 close-out / Wave D close (2026-08-02):
+  ;; roadmap.md's own D3 Now-row retired and its own new "Done" section
+  ;; landed (Wave D marked closed, full commit list, expanded Deferred
+  ;; entries) plus both the session-records/prompts READMEs gained one
+  ;; index line each -- self-caught by this same gate, same precedent,
+  ;; folded into the Step 4 records commit itself.
+  :budget-lines 1088}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one

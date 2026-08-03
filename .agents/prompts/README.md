@@ -44,3 +44,4 @@ Files in this directory:
   * 2026-08-02-gmf-coverage-wave-d-d1a.md
   * 2026-08-02-gmf-coverage-wave-d-stage-d1b.md
   * 2026-08-02-gmf-coverage-wave-d-stage-d2.md
+  * 2026-08-02-gmf-coverage-wave-d-stage-d3.md

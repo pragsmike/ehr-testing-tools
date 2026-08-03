@@ -124,3 +124,69 @@ as a live gap: the FIRST future session vendoring `total_joint_
 replacement.json` (or any other compound-Age-Guard-gated module) needs
 `age-guard-jump-days`/`guard-step` extended first; unowned by any wave
 until then.
+
+**Fifth dated fix-forward note (2026-08-02, GMF coverage Wave D stage
+D3, `notes/ADRs.md` ADR-0029's own D3 execution/deviation/H8 notes;
+full account: `components/sim-trajectory/docs/gmf-interpreter.md`
+§14).** D3's own three named mechanisms all landed: `lookup_table_
+transition` (the sixth GMF transition kind, H2, plus closure DATA-FILE
+members, R4); attribute-weighted `distributed_transition` weights (H3,
+proven against a fixture, `stroke.json` stays deferred); and
+`age-guard-jump-days` extended under a sound-jump-or-escalate rule
+(H4). **Both stages' own outstanding payoffs land as vendored roots
+this stage**: `urinary_tract_infections.json` (D2's own predecessor,
+deferred at Wave B for `DiagnosticReport`/`MultiObservation`, both now
+v1) and `total_joint_replacement.json` (D2's own compound-Guard
+blocker, now resolved). Three further disclosed findings surfaced
+live vendoring UTI (a real interpreter bug in `first-matching-entry`'s
+own missing fallback-to-last-entry semantic, a new `virtual`
+encounter-class value, `complex_transition`'s own either/or, and a
+real upstream CSV byte-order-mark) — full account in the ADR's own
+deviation record.
+
+#### Wave D retrospective (closed 2026-08-02, D3's own close-out)
+
+Payoff tally, predicted vs. actual, stage by stage:
+
+| Stage | Predicted payoff | Actual payoff |
+|---|---|---|
+| D0 | sim-split S3 extraction (no vendoring payoff of its own) | Landed exactly as ruled |
+| D1 | `sepsis.json`, closures permitting | Landed — `sepsis.json` vendored, closure clean |
+| D2 | MI and `total_joint_replacement`, closures permitting | ZERO roots that stage (MI: three independent blockers; TJR: a second, independent compound-Guard blocker found live) — the CarePlan mechanism itself landed regardless |
+| D3 | UTI (`lookup_table_transition` + UTI re-characterization) | BOTH D2's own deferred payoff (`total_joint_replacement.json`, once H4 landed) AND D3's own named payoff (`urinary_tract_infections.json`) vendored — a larger payoff than either stage's own prompt predicted alone, since H4 unblocked D2's own carry-over target in the same session that built D3's own named mechanisms |
+
+**What moved, and why**: the wave's own original stage boundaries
+(D1/D2/D3, each named for a mechanism family) did NOT line up one-to-
+one with vendoring payoffs — D2 built a real, tested mechanism with
+zero roots to show for it, and D3 inherited that stage's own deferred
+target alongside its own. This is the SAME "build the mechanism, defer
+the vendoring target" shape `VitalSign` (D1a) first established,
+scaled up: a mechanism landing and a real module vendoring are
+genuinely separate events, and this wave's own record keeps both
+honest rather than conflating "the CarePlan mechanism works" with
+"a CarePlan-bearing module is vendored."
+
+**Standing named items, unowned by any wave** (carried forward, not
+resolved by Wave D's own close): `myocardial_infarction.json`
+(`ImagingStudy`/R5, a genuinely new `SupplyList` state type, `Counter`
+— three independent blockers, none touched by D0-D3); `stroke.json`
+(the stroke-risk data source, R7 — H3's own mechanism landing was only
+half of this row's own revisit trigger); `ImagingStudy` itself (R5, a
+named CHF trigger); `Active CarePlan` (the condition type, design-
+ruled/implementation-deferred, no exercising module yet); a disclosed,
+pre-existing `Procedure`-duration bug (found D3, out of scope to fix);
+the standing full-pipeline gap (no compile-trajectory/engine/emit round
+trip exists for ANY closure-having module vendored to date — `ear_
+infections.json`/`urinary_tract_infections.json`/`total_joint_
+replacement.json` all share this same, already-disclosed limitation).
+
+**S4-trigger status**: NOT fired. `ehrt.sim.engine`'s own `emit-state`
+remains the sole direct reader of `PatientState` across every Wave D
+stage — no stage introduced a second consumer of the engine/order-
+profiles boundary the sim-split plan's own S4 row names as its trigger.
+S4 (`sim-engine`: `engine`/`churn`/`order-profiles`) stays deferred,
+unchanged by this wave.
+
+**GMF coverage Wave D is CLOSED as of 2026-08-02** (D0 through D3, all
+four stages executed). This plan's own future revisions are scoped to
+the standing named items above, not a reopening of Wave D itself.

@@ -6366,4 +6366,131 @@ them.
 > mechanism) — both UTI and TJR declared BUILDABLE, pending the named
 > mechanisms/findings landing in Step 2.
 
+> **D3 execution note (filled Step 4, 2026-08-02).** D3 executed same
+> day as ruled: `ehrt.sim-trajectory.gmf/load-closure`'s own closure
+> DATA-FILE member extension (H2, R4) plus `lookup_table_transition`
+> (the sixth transition kind, `resolve-lookup-table-transition`);
+> `resolve-distribution-value` (H3, attribute-weighted `distributed_
+> transition`, proven against a fixture, stroke stays blocked);
+> `age-guard-jump-days` extended under a sound-jump-or-escalate rule
+> (H4, unblocking TJR's own compound `Joint_Replacement_Guard`). Both
+> declared payoffs vendored: `urinary_tract_infections.json` (twelve
+> files, this project's SECOND closure and FIRST data-file closure
+> members) and `total_joint_replacement.json` (four files, THIRD
+> closure). `poly check` clean throughout; the full non-integration
+> suite green at every checkpoint (192 `Testing ehrt.*` namespace
+> announcements at this session's own final HEAD, 0 failures/0 errors);
+> the regression-oracle method (ADR-0029's own D2 dated note, a full-
+> suite namespace/assertion-count comparison, disclosed there as a
+> standing alternative to a literal SHA-256-digest-across-a-disposable-
+> worktree) held exactly — every one of the eight pre-existing vendored-
+> root test namespaces (sinusitis/appendicitis/sore_throat/
+> ear_infections/sepsis/death-fixture, plus sim-emit-hl7's own emission-
+> layer suites) shows IDENTICAL test-count/assertion-count/zero-failures
+> between this session's own pre-Step-2 HEAD and its final HEAD, HL7
+> emission bytes included (`ehrt.sim-emit-hl7.vendored-sepsis-test`'s
+> own determinism assertion, unchanged, held throughout). Commits, in
+> order: `07ff1d5` (Step 0, H1-H8 + roadmap), `074d4d7` (Step 1,
+> characterization), `ea85852` (Step 2a, H2), `af89d0e` (Step 2b, H3),
+> `91c9bfd` (Step 2c, H4), `5d87388` (a same-session disclosed addition:
+> four mechanical findings from Step 1's own fuller characterization —
+> `gmf_version` 2 timing encoding, `SetAttribute` `value_code`, an
+> observation-child `exact` mechanism, vital-sign table growth),
+> `fdd0644` (a same-session disclosed bug fix found live vendoring UTI:
+> `first-matching-entry`'s own missing fallback-to-last-entry
+> semantic), `4d9178b` (a same-session disclosed addition: three more
+> UTI-specific loader findings — a new `virtual` encounter-class value,
+> `complex_transition`'s own either/or, a real upstream CSV
+> byte-order-mark), `8dcec56` (Step 3, UTI vendored), `430edbb` (Step 3,
+> TJR vendored), this commit (Step 4, records). Session record:
+> `.agents/session-records/2026-08-02-gmf-coverage-wave-d-stage-d3.md`.
+>
+> **Deviation record.** Three disclosed deviations from H1-H8's own
+> literal text, each the same "characterization/vendoring surfaces a
+> real, in-spirit-authorized finding" shape ADR-0027's own deviation
+> record first established a precedent for (and ADR-0029's own D1/D2
+> dated notes have each repeated since):
+>
+> 1. **Four mechanical loader/interpreter additions (`5d87388`), named
+>    in Step 1's own characterization but not among H1-H8's own three
+>    named mechanisms** — `gmf_version` 2's uniform stochastic-timing
+>    encoding (a loader normalization, not a new interpreter mechanism,
+>    the same disposition Wave B's own encounter-class/wellness findings
+>    already established; a disclosed, unrelated, PRE-EXISTING
+>    `Procedure`-duration bug was found along the way and is NAMED, not
+>    fixed, since repairing it would touch every vendored root's own
+>    regression behavior, outside this session's own ruled scope),
+>    `SetAttribute`'s own `value_code` field, a fourth observation
+>    value-sourcing mechanism (`exact`), and seven new vital-sign
+>    reference-table rows (LOINC-verified against a live public FHIR
+>    terminology server, `notes/facts-register.md` F22) — all four cheap,
+>    narrowly-scoped, and load-bearing for the declared payoffs.
+> 2. **A real interpreter BUG found live vendoring UTI, fixed in its own
+>    commit (`fdd0644`), outside H1-H8's own named scope**:
+>    `first-matching-entry` (shared by `conditional_transition`/
+>    `complex_transition` dispatch) returned `nil` when no entry's own
+>    condition held and none was condition-less, crashing its own
+>    callers — real Synthea's own `ConditionalTransition.follow`/
+>    `ComplexTransition.follow` both fall back to the LAST entry
+>    unconditionally in that case, a real semantic this project's own
+>    port never implemented because no previously-vendored module's own
+>    mandatory path ever exercised it. Isolated into its own commit,
+>    ahead of the three D3f loader findings, since it is a genuine
+>    behavior-changing bug fix touching shared dispatch logic, not a
+>    schema-widening addition — the regression oracle (above) confirms
+>    it changes nothing for any already-vendored root.
+> 3. **Three more UTI-specific loader findings (`4d9178b`)**, each
+>    confirmed against Synthea source before building, the same
+>    discipline H1 names for the three named mechanisms: a new,
+>    genuinely distinct `virtual` encounter-class value (NOT aliased
+>    onto `:ambulatory`, unlike `outpatient`'s own Wave B precedent — a
+>    remote encounter is a different clinical modality, and this
+>    session's own interpreter-layer-only fence means `compile-
+>    trajectory`'s own encounter mapping is never exercised for this
+>    closure anyway); `complex_transition`'s own per-branch either/or
+>    (a direct `:transition` OR a weighted `:distributions` list,
+>    confirmed against `Transition.java`'s own `ComplexTransitionOption`
+>    — this loader's schema previously required `:distributions`
+>    unconditionally); and a real upstream UTF-8 byte-order-mark in
+>    `uti_recurrence.csv` (verbatim from Synthea; `uti.csv` carries
+>    none), stripped before parsing.
+>
+> None of the three changes H1-H8's own ruled DESIGN — each is an
+> IMPLEMENTATION-level finding Step 2/3's own build surfaced, resolved
+> per this project's own standing "extend v1 with a documented reason,
+> or defer" option, not a design reopening. **Interpreter-layer proof
+> only for both vendored payoffs** (`ehrt.sim-trajectory.vendored-uti-
+> test`/`vendored-tjr-test`) is NOT a deviation — it is the SAME
+> standing, already-disclosed limitation `ear_infections.json`'s own
+> vendored test already carries (confirmed by direct search this
+> session: no full compile-trajectory/engine/emit round-trip test
+> exists for ANY closure-having module vendored to date), named here
+> for completeness, not newly introduced.
+>
+> **H8 — Wave D close-out.** This session closes GMF coverage Wave D in
+> full: **D0** (sim-split S3, `sim-emit-hl7` extraction, ADR-0025/
+> ADR-0029), **D1** (observation family, `sepsis.json` vendored),
+> **D2** (CarePlan family mechanism landed, zero roots vendored that
+> stage), **D3** (this session — three mechanisms, two roots vendored).
+> Payoff tally, as it actually happened against the wave's own original
+> plan (`.agents/plans/2026-08-02-gmf-coverage-plan.md`): **landed** —
+> `sepsis.json` (D1), `urinary_tract_infections.json` and
+> `total_joint_replacement.json` (D3); the CarePlan mechanism itself
+> (D2) landed as real, tested infrastructure with no vendored root to
+> show for it yet. **Standing named items, unowned by any wave**:
+> `myocardial_infarction.json` (three independent blockers —
+> `ImagingStudy`/R5, a genuinely new `SupplyList` state type, and
+> `Counter`, none touched by D0-D3); `stroke.json` (the stroke-risk data
+> source, R7 — the attribute-weighted `distributed_transition` mechanism
+> landed this session, H3, but the revisit trigger was always both
+> halves together); `ImagingStudy` itself (R5, a named CHF trigger);
+> `Active CarePlan` (the condition type, design-ruled/implementation-
+> deferred per D2's own G2, no exercising module yet); the pre-existing
+> `Procedure`-duration bug (D3c finding 1, disclosed not fixed). **S4
+> trigger status**: NOT fired by any Wave D work — `emit-state`
+> (`ehrt.sim.engine`) remains the sole direct reader of `PatientState`;
+> no Wave D stage introduced a second consumer of the engine/order-
+> profiles boundary the sim-split plan's own S4 row names as its
+> trigger. S4 stays deferred, unchanged.
+
 ---
