@@ -55,47 +55,64 @@ actually runs.
    itself commits/pushes/merges/`gh`s). Whichever mode applies, it is
    scoped to this session only — the next session starts back at
    whichever mode its own prompt states.
-2. **All git operations from WSL, never native Windows** —
+2. **Preflight: resolve both clone roots before any edit** (ADR-0030
+   J4d, post-Wave-D cleanup session, 2026-08-02 — two live clones exist
+   on this machine, `feedback-dual-clone-edit-hazard`). At session
+   start, resolve the ext4 clone (the clone of record,
+   `~/src/ehr-testing-tools`, UNC `\\wsl.localhost\Ubuntu\home\mg\src\
+   ehr-testing-tools`) and note the `/mnt/c` clone's location too
+   (`C:\Users\prags\Documents\ehr-testing-tools`, kept read-only by
+   design — J4a). Every real edit target this session touches must
+   resolve under the ext4 root; if a Read/Edit/Write call would land
+   under `/mnt/c` (or any other clone) instead, that is a STOP-AND-
+   REPORT, not a silent copy-and-revert — say so and ask, don't fix it
+   quietly. `/mnt/c`'s own read-only state and reject-all commit/push
+   hooks (J4a/b) make a misdirected write fail loudly (`EPERM`/
+   `REJECTED`) rather than silently — treat that failure as the
+   preflight working as intended, not as an unrelated error to route
+   around. The ONLY sanctioned way `/mnt/c` ever moves is
+   `bin/sync-mnt-c`, run from the ext4 clone.
+3. **All git operations from WSL, never native Windows** —
    `.githooks/pre-commit`/`pre-push` enforce this once `git config
    core.hooksPath .githooks` is set per clone. If working from a
    Windows-launched session, route git through `wsl -e bash -lc "cd
    <repo-path> && <command>"`, one command per invocation — not an
    inline `wsl.exe` call with untrusted interpolation.
-3. **Staging hygiene, before every commit.** Run `git diff --cached
+4. **Staging hygiene, before every commit.** Run `git diff --cached
    --stat`, record its output. Anything staged outside the checkpoint
    currently in flight gets unstaged (`git restore --staged <path>`)
    before committing — never folded in silently because it happened to
    already be there (`AUTHORS-GUIDE.md` §1, "Staging hygiene between
    checkpoints", R26e).
-4. **Personal-info/secrets scan before each commit** — the same
+5. **Personal-info/secrets scan before each commit** — the same
    discipline the pre-push hook's `gitleaks detect` applies, run earlier
    at stage time (`gitleaks git --staged -v`, or `protect --staged`).
-5. **Commit message via file, never an inline heredoc through the WSL
+6. **Commit message via file, never an inline heredoc through the WSL
    wrapper.** Nested quoting and backticks have silently mangled
    messages crossing Bash-tool → `wsl.exe` → bash — write the message to
    a plain file with a non-shell tool, then `git commit -F <path>` as
    its own simple call.
-6. **Push, then verify.** After every push: `git log --format=%B -1`
+7. **Push, then verify.** After every push: `git log --format=%B -1`
    against the pushed commit, diffed against the message file that
    produced it. A diff whose only delta is one trailing blank line is
    `git log --format=%B`'s own formatting artifact, not a failure. Any
    other mismatch is never fixed by amending a pushed commit — add a
    fix-forward note to this session's own session record naming what
    the wrapper dropped.
-7. **AUTHOR ACTION checkpoints stay author-only in every mode** — tags
+8. **AUTHOR ACTION checkpoints stay author-only in every mode** — tags
    (the `stable-*` tag is the actual trust boundary, ADR-0003), and
    repo-level `gh` mutations (create/delete/settings/visibility). Git
    surgery and placing external documents are AUTHOR ACTION too. Stop
    and hand these to the author regardless of ceremony mode.
-8. **Fix-forward with disclosure on premise mismatch.** When a
+9. **Fix-forward with disclosure on premise mismatch.** When a
    checkpoint's stated premise doesn't hold against the live tree, stop,
    record the finding, and ask — don't silently adapt or guess
    (`docs/dev/way-of-working.md` §2; worked examples: the JDK/Temurin
    premise, the gitleaks-hook premise, both in that document).
-9. **Red→green for every gate touched.** If a checkpoint adds or edits
+10. **Red→green for every gate touched.** If a checkpoint adds or edits
    an enforcement test, prove it fails before the fix and passes after
    — don't just assert green.
-10. **Session record before the final push (R-A).** The last checkpoint
+11. **Session record before the final push (R-A).** The last checkpoint
     of any non-trivial session writes `.agents/session-records/<date>-
     <slug>.md` and archives its own driving prompt to
     `.agents/prompts/<date>-<slug>.md`, both indexed in their own
@@ -133,6 +150,8 @@ and prompt archive.
 
 - [ ] Ceremony mode was determined from the session's own prompt, not
       assumed.
+- [ ] Both clone roots were resolved at session start; every edit
+      target resolved under the ext4 root.
 - [ ] `git diff --cached --stat` was reviewed before every commit.
 - [ ] Every commit message came from a file, not an inline heredoc.
 - [ ] `gitleaks` and `clojure -M:poly check` are green before every push.

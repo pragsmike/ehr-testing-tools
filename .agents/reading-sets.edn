@@ -180,7 +180,10 @@
   ;; 2026-08-02-gmf-parity-plan.md in .agents/plans/README.md (an
   ;; already-cited onboarding path, the index-completeness gate's own
   ;; requirement) added 1 more line.
-  :budget-lines 1118}
+  ;; bumped 1118->1137, same session (ADR-0030 J4d): build-session/
+  ;; SKILL.md's own new preflight-clone-resolution step (19 net lines)
+  ;; brought the real total from 1118 to 1137.
+  :budget-lines 1137}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one
@@ -216,7 +219,10 @@
   ;; new pointer (5 lines) plus build-session/SKILL.md's own new
   ;; VERIFICATION section (22 lines) brought the real total from 1655 to
   ;; 1682.
-  :budget-lines 1682}
+  ;; raised 2026-08-02 (post-Wave-D cleanup, ADR-0030 J4d): build-session/
+  ;; SKILL.md's own new preflight-clone-resolution step (19 net lines)
+  ;; brought the real total from 1682 to 1701.
+  :budget-lines 1701}
 
  ;; components/sim is the deterministic generator engine wrapping Synthea
  ;; (ADR-0005) -- engine-onboarding.md is the checklist every engine wrapper
@@ -246,7 +252,10 @@
   ;; new pointer (5 lines) plus build-session/SKILL.md's own new
   ;; VERIFICATION section (22 lines) brought the real total from 710 to
   ;; 737.
-  :budget-lines 737}
+  ;; raised 2026-08-02 (post-Wave-D cleanup, ADR-0030 J4d): build-session/
+  ;; SKILL.md's own new preflight-clone-resolution step (19 net lines)
+  ;; brought the real total from 737 to 756.
+  :budget-lines 756}
 
  ;; components/judge (verdict vocabulary) plus its three gate engines
  ;; (judge-v2-hapi, judge-fhir-official, judge-v2-nist, ADR-0011's per-engine
@@ -278,7 +287,10 @@
   ;; new pointer (5 lines) plus build-session/SKILL.md's own new
   ;; VERIFICATION section (22 lines) brought the real total from 780 to
   ;; 807.
-  :budget-lines 807}
+  ;; raised 2026-08-02 (post-Wave-D cleanup, ADR-0030 J4d): build-session/
+  ;; SKILL.md's own new preflight-clone-resolution step (19 net lines)
+  ;; brought the real total from 807 to 826.
+  :budget-lines 826}
 
  ;; components/docs-tooling (dev-time-only doc/lint tooling) generates and
  ;; lints docs/cli.md, docs/pipeline.md-equivalents, and docs/use-cases.md
@@ -312,4 +324,7 @@
   ;; new pointer (5 lines) plus build-session/SKILL.md's own new
   ;; VERIFICATION section (22 lines) brought the real total from 582 to
   ;; 609.
-  :budget-lines 609}}
+  ;; raised 2026-08-02 (post-Wave-D cleanup, ADR-0030 J4d): build-session/
+  ;; SKILL.md's own new preflight-clone-resolution step (19 net lines)
+  ;; brought the real total from 609 to 628.
+  :budget-lines 628}}
