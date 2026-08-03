@@ -818,6 +818,20 @@
                           (index-of-citation (:trajectory ctx) module-id
                                               :medication-order (:medication-order state)))]
         (emit-and-advance module-id ctx rng state :medication-end {:references references}))
+      ;; GMF coverage Wave D stage D2 (2026-08-02, ADR-0029 R2(b)): the
+      ;; SAME shape :medication-order/:medication-end establish, two
+      ;; cases up -- no attribute-based cross-module linkage this
+      ;; session (the declared vendoring scope, total_joint_replacement.json,
+      ;; exercises only the fixed state-name citation, gmf-interpreter.md
+      ;; section 13's own G1 finding).
+      :care-plan-start
+      (emit-and-advance module-id ctx rng state :care-plan-start
+                         (cond-> {:codes (:codes state)}
+                           (:activities state) (assoc :activities (:activities state))))
+      :care-plan-end
+      (emit-and-advance module-id ctx rng state :care-plan-end
+                         {:references (index-of-citation (:trajectory ctx) module-id
+                                                          :care-plan-start (:careplan state))})
       ;; GMF coverage Wave B (D1-D4): CallSubmodule's own handling is
       ;; `call-submodule-step`, above -- it needs `modules` (this arity's
       ;; own 4th argument), the ONE case that does.
@@ -914,11 +928,25 @@
   docstring note for why one normalization at the walk's true entry
   point is enough for the whole walk. The optional trailing `modules`
   argument (D3) is threaded straight through to `step`, same as
-  `walk-module`'s own -- omitted, a single-module closure applies."
+  `walk-module`'s own -- omitted, a single-module closure applies.
+
+  GMF coverage Wave D stage D2 (2026-08-02, ADR-0029): the optional
+  8th argument, `initial-attributes`, seeds `ctx`'s own `:attributes`
+  map before the walk starts -- omitted, `{}` applies (`initial-
+  context`'s own default, unchanged for every pre-D2 call site). Real,
+  narrow need: `total_joint_replacement.json`'s own mandatory
+  `Joint_Replacement_Guard` reads an attribute (`joint_replacement`)
+  no state in its own closure ever writes -- delegated to two sibling
+  root modules this project does not vendor (gmf-interpreter.md
+  section 13's own G1 finding, D1a's governing principle: freely
+  supply what a vendored artifact delegates to the engine). A purely
+  additive arity, not a change to any existing one."
   ([module rng persona registration-t] (run-module module rng persona registration-t nil {(:id module) module}))
   ([module rng persona registration-t horizon-end-t] (run-module module rng persona registration-t horizon-end-t {(:id module) module}))
   ([module rng persona registration-t horizon-end-t modules]
-   (loop [ctx (assoc (initial-context persona) :root (:id module)) n 0]
+   (run-module module rng persona registration-t horizon-end-t modules {}))
+  ([module rng persona registration-t horizon-end-t modules initial-attributes]
+   (loop [ctx (-> (initial-context persona) (assoc :root (:id module)) (update :attributes into initial-attributes)) n 0]
      (when (>= n max-steps)
        (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: run-module exceeded max-steps -- likely a module authoring bug (a zero-time-advance transition cycle)"
                         {:module (:id module) :current (:current ctx)})))

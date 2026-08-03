@@ -35,6 +35,12 @@
     index -- glass-box, position-independent resolution, the same
     reason `docs/patient-state-model.md`'s deterministic-event-id
     section already prefers citing by identity over a fragile position.
+  - `:care-plan-start`/`:care-plan-end` -- GMF coverage Wave D stage D2
+    (ADR-0029 R2(b)): the SAME standalone-IR-step/citation-resolution
+    shape as `:medication-order`/`:medication-end`, one function-pair
+    down (`care-plan-start->step`/`care-plan-end->step`) -- `:codes`/
+    `:activities` verbatim, `:care-plan-citation` resolved the same
+    `:references`-index way `:order-citation` already is.
   - `:condition-onset`/`:condition-end` -- compile to an ANNOTATION on
     the most recently compiled Encounter-mapped step (`:conditions`, a
     vector pathway.clj's Citation/ConditionAnnotation schemas define),
@@ -171,6 +177,22 @@
     (cond-> {:type :medication-end :citation (citation event)}
       order-event (assoc :order-citation (citation order-event)))))
 
+;; --- GMF coverage Wave D stage D2 (2026-08-02, ADR-0029 R2(b)): the
+;; paired CarePlan span -- SAME shape :medication-order/:medication-end
+;; already establish one function-pair up (standalone IR step,
+;; :references-based back-citation via referenced-event).
+
+(defn- care-plan-start->step
+  [event]
+  (cond-> {:type :care-plan-start :codes (:codes event) :citation (citation event)}
+    (:activities event) (assoc :activities (:activities event))))
+
+(defn- care-plan-end->step
+  [trajectory event]
+  (let [start-event (referenced-event trajectory event)]
+    (cond-> {:type :care-plan-end :citation (citation event)}
+      start-event (assoc :care-plan-citation (citation start-event)))))
+
 ;; --- GMF coverage Wave C (2026-08-02, ADR-0028, C4): :death ----------------
 ;; No new IR step type (C4's own rebuttable default) -- reuses :discharge,
 ;; the existing "close this encounter" primitive, carrying two new optional
@@ -216,8 +238,16 @@
 (def ^:private pre-horizon-fact-types
   "The ratified item 5 condensed set: ConditionOnset/ConditionEnd/
   MedicationOrder/MedicationEnd, the only pre-horizon events that ever
-  become a REGISTRATION-TIME fact rather than being dropped outright."
-  #{:condition-onset :condition-end :medication-order :medication-end})
+  become a REGISTRATION-TIME fact rather than being dropped outright.
+  GMF coverage Wave D stage D2 (ADR-0029): :care-plan-start/
+  :care-plan-end join this set -- a care plan prescribed years before
+  registration and still open is exactly as clinically relevant as an
+  active medication already is, the same 'ongoing therapeutic content'
+  class :medication-order/:medication-end already establish (never the
+  ephemeral-clinical-event class :observation/:procedure/:encounter
+  sit in)."
+  #{:condition-onset :condition-end :medication-order :medication-end
+    :care-plan-start :care-plan-end})
 
 (defn- annotate-condition
   "Finds the most recently COMPILED encounter-mapped step whose citation
@@ -332,6 +362,14 @@
 
           (= :medication-end event-type)
           (recur more (emit-with-delay steps last-t event (medication-end->step trajectory event))
+                 registration-facts (:t event) encounter-closed?)
+
+          (= :care-plan-start event-type)
+          (recur more (emit-with-delay steps last-t event (care-plan-start->step event))
+                 registration-facts (:t event) encounter-closed?)
+
+          (= :care-plan-end event-type)
+          (recur more (emit-with-delay steps last-t event (care-plan-end->step trajectory event))
                  registration-facts (:t event) encounter-closed?)
 
           (#{:condition-onset :condition-end} event-type)

@@ -8,10 +8,11 @@
 
   Load-time enforcement, result-not-throw (ehrt.kernel.result):
   a module using a state type OUTSIDE v1's subset (Counter,
-  CarePlanStart/CarePlanEnd, ImagingStudy -- section 1's own
-  deferred-type table; CallSubmodule/Device/DeviceEnd/Death all joined
-  v1 across M5b and the GMF coverage waves, MultiObservation/
-  DiagnosticReport joined v1 at GMF coverage Wave D stage D1, ADR-0029)
+  ImagingStudy -- section 1's own deferred-type table;
+  CallSubmodule/Device/DeviceEnd/Death all joined v1 across M5b and the
+  GMF coverage waves, MultiObservation/DiagnosticReport joined v1 at
+  GMF coverage Wave D stage D1, CarePlanStart/CarePlanEnd joined v1 at
+  GMF coverage Wave D stage D2, ADR-0029)
   is REJECTED with
   :unsupported-state-type, never silently skipped and never thrown -- this
   is a stricter, mechanical gate than the informal 'read past what you
@@ -121,7 +122,13 @@
    ;; job is validating the module JSON as authored, not the later
    ;; compile-time union).
    "MultiObservation" :multi-observation
-   "DiagnosticReport" :diagnostic-report})
+   "DiagnosticReport" :diagnostic-report
+   ;; GMF coverage Wave D stage D2 (2026-08-02, ADR-0029 R2(b)): the
+   ;; CarePlan family joins v1 -- a paired span structurally identical
+   ;; to MedicationOrder/MedicationEnd (State.java's own
+   ;; CarePlanStart/CarePlanEnd classes, gmf-interpreter.md section 13).
+   "CarePlanStart" :care-plan-start
+   "CarePlanEnd" :care-plan-end})
 
 (def ^:private code-system->keyword
   "GMF's own code-system strings -> sim-model/Concept's
@@ -295,6 +302,15 @@
                   (:medication-order state) (update :medication-order (fn [t] (keyword (slug t))))
                   (:device state) (update :device (fn [t] (keyword (slug t))))
                   (:target-encounter state) (update :target-encounter (fn [t] (keyword (slug t))))
+                  ;; GMF coverage Wave D stage D2 (2026-08-02, ADR-0029):
+                  ;; :careplan (CarePlanEnd's own state-name reference to
+                  ;; the CarePlanStart it closes, State.java's own field
+                  ;; name verbatim) normalizes the SAME way :medication-
+                  ;; order/:device already do; :activities (CarePlanStart's
+                  ;; own Concept vector) the same way top-level :codes
+                  ;; already does, above.
+                  (:careplan state) (update :careplan (fn [t] (keyword (slug t))))
+                  (:activities state) (update :activities #(mapv normalize-code %))
                   ;; GMF coverage Wave D stage D1 (2026-08-02, ADR-0029):
                   ;; :value-code on a standalone :observation state
                   ;; (Capillary_Refill's own top-level shape); :observations
@@ -476,6 +492,25 @@
                         [:reason {:optional true} :string] [:assign-to-attribute {:optional true} :string])]
    [:medication-end (with-transitions [:type [:= :medication-end]] [:medication-order {:optional true} :keyword]
                        [:referenced-by-attribute {:optional true} :string])]
+   ;; GMF coverage Wave D stage D2 (2026-08-02, ADR-0029 R2(b), G1): the
+   ;; SAME paired-span shape as :medication-order/:medication-end, one
+   ;; entry up -- grounded directly against Synthea's own State.java
+   ;; (CarePlanStart/CarePlanEnd classes, gmf-interpreter.md section
+   ;; 13). :reason declared here for VALIDATION only (a real GMF field,
+   ;; the vendored closure authors it) -- the SAME "declared at the
+   ;; loader, dead past this loader" treatment :medication-order's own
+   ;; :reason field already establishes (its real three-way attribute/
+   ;; PriorState/ConditionOnset resolution is not ported). :assign-to-
+   ;; attribute/:referenced-by-attribute (real fields on CarePlanStart/
+   ;; CarePlanEnd per source) stay UNDECLARED here -- the declared D2
+   ;; vendoring scope (total_joint_replacement.json) exercises neither,
+   ;; the same "declare only when a real closure needs it" discipline
+   ;; :medication-order's own :assign-to-attribute field followed at
+   ;; Wave B.
+   [:care-plan-start (with-transitions [:type [:= :care-plan-start]] [:codes [:vector sim-model/Concept]]
+                       [:activities {:optional true} [:vector sim-model/Concept]]
+                       [:reason {:optional true} :string])]
+   [:care-plan-end (with-transitions [:type [:= :care-plan-end]] [:careplan {:optional true} :keyword])]
    ;; M5b: consumed-internally, like :simple -- see gmf-type->keyword's
    ;; own docstring note. :code is singular (GMF's own Device shape, one
    ;; equipment concept per state -- unlike :codes' plural elsewhere).
