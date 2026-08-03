@@ -2740,20 +2740,27 @@ in-spirit-authorized finding," landed rather than dropped):**
    `:duration` fields already use (confirmed against `appendicitis.json`/
    `sepsis.json`) — deliberately NOT a `{:range {...}}`-wrapped shape,
    matching the pre-existing v1 encoding exactly rather than inventing a
-   new one. **Disclosed, not fixed, pre-existing gap found along the
-   way:** `ehrt.sim-trajectory.gmf-interpreter/resolve-time-advance` is
-   called with `(:duration state)` as its own argument and destructures
-   `{:keys [range exact]}` FROM that argument — but `:duration` (both v1-
-   and, after this normalization, v2-authored) is a FLAT `{:low :high
-   :unit}`/`{:quantity :unit}` map, never `{:range {...}}`/`{:exact
-   {...}}`-wrapped, so `range`/`exact` are always nil and `resolve-time-
-   advance` silently falls to `:else t` (zero advance) for EVERY
-   `Procedure` state's own `:duration`, in every vendored module, v1 or
-   v2, confirmed by direct read. Out of D3's own ruled scope (H1-H8 name
-   three mechanisms and a re-characterization, not a `Procedure`-timing
-   fix touching all six existing vendored roots' own regression
-   behavior) — named here as a live, pre-existing, unowned gap, not
-   silently repaired or silently left uncited.
+   new one. **FIXED (2026-08-03, `notes/ADRs.md` ADR-0032, commit
+   `1ea1f4a`) — was disclosed, not fixed, pre-existing gap found along
+   the way:** `ehrt.sim-trajectory.gmf-interpreter/resolve-time-advance`
+   was called with `(:duration state)` as its own argument and
+   destructured `{:keys [range exact]}` FROM that argument — but
+   `:duration` (both v1- and, after this normalization, v2-authored) is
+   a FLAT `{:low :high :unit}`/`{:quantity :unit}` map, never `{:range
+   {...}}`/`{:exact {...}}`-wrapped, so `range`/`exact` were always nil
+   and `resolve-time-advance` silently fell to `:else t` (zero advance)
+   for EVERY `Procedure` state's own `:duration`, in every vendored
+   module, v1 or v2, confirmed by direct read. Was out of D3's own ruled
+   scope (H1-H8 name three mechanisms and a re-characterization, not a
+   `Procedure`-timing fix) — named there as a live, unowned gap; fixed
+   by ADR-0032 (ADR-0031 AR-6's first defect-fix session): the call site
+   (`emit-and-advance`, gmf-interpreter.clj) now wraps the flat
+   `:duration` as `{:range duration}` before calling `resolve-time-
+   advance`. Oracle-bracketed against `bin/regression-oracle` — the
+   census discovered by that same bracket that the hand-authored
+   `death-fixture.json` ALSO carries a duration-bearing Procedure,
+   correcting this session's own survey (ADR-0032's own AR-4 dated
+   note has the full account).
 2. **`SetAttribute`'s own `value_code` field (a Concept, the same shape
    `:observation`'s own `value_code`/`:diagnostic-report`'s own children
    already carry) is unbuilt** — confirmed on TJR's root file (below,

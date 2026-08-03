@@ -6899,6 +6899,37 @@ only inside walks that reach a duration-bearing Procedure. A digest
 change in any of the five identity roots is a STOP-AND-ESCALATE (the
 fix did something the ruling says it cannot), not a re-baseline.
 
+> **Dated correction (2026-08-03, author-ruled at Step 3's own
+> STOP-AND-ESCALATE): AR-4's own survey was incomplete, not the fix.**
+> Running `bin/regression-oracle` (`dc7b371` -> `1ea1f4a`) found
+> `death-fixture`'s own digest changed — triggering this paragraph's
+> own escalation clause literally, since `death-fixture` is named
+> above as a "must stay identical" root. Reading `death-fixture.json`
+> directly: its `Stabilization_Procedure` state carries `"duration":
+> {"low": 30, "high": 30, "unit": "minutes"}` — a real duration-bearing
+> Procedure this ruling's own survey (three roots named above) never
+> enumerated (a hand-authored fixture, not a vendored module, so it sat
+> outside the "vendored roots" framing AR-4 was scoped to). The fix did
+> exactly what AR-2/AR-3 specify — advance time for ANY Procedure
+> carrying `:duration` — so this is a corrected census, not a fix
+> defect: **`death-fixture` moves from the five-root identity set into
+> the duration-bearing set (now four: `appendicitis`, `sepsis`,
+> `death-fixture`, the UTI closure)**; the identity set shrinks to
+> `sinusitis`/`sore_throat`/`ear_infections`/`total_joint_replacement`.
+> `death-fixture`'s new digest is accepted as its baseline going
+> forward — author-ruled, not silently re-baselined by this session on
+> its own initiative. Separately, ALSO found at Step 3: `bin/oracle-src/
+> ehrt/oracle/digest.clj` (the post-Wave-D cleanup session's own J1
+> equipment) hardcodes exactly six roots and has never covered
+> `total_joint_replacement` or the UTI closure at all — a pre-existing
+> gap, not introduced by this session, but it means AR-4's own "both
+> halves" byte-digest claim is UNVERIFIABLE for those two roots with
+> current tooling. Author-ruled: disclose only this session (see the
+> execution note and session record for the corroborating,
+> non-oracle evidence used instead); extending `digest.clj` to cover
+> `total_joint_replacement`/UTI is named, not built, its own small
+> follow-up.
+
 **AR-5 (test posture).** Co-landing: the fix lands with its invariant
 — at minimum a focused test proving a duration-bearing Procedure
 advances virtual time by an amount inside `[low, high]` of its unit
@@ -6922,11 +6953,39 @@ gaps this session does not enter).
 > stayed 0 failures/0 errors throughout — no existing test encoded the
 > zero-advance behavior, so AR-5's own test-triage clause needed no
 > action; the three J3 round-trip pins were not touched (this session
-> never entered `engine.clj`). `bin/regression-oracle`'s own digest
-> table against `dc7b371` (tip before this session's fix commit,
-> `1ea1f4a`) is recorded below, confirming AR-4's partition exactly:
-> [FILLED Step 3 — see the digest table in
-> `.agents/session-records/2026-08-03-procedure-duration-fix.md`].
+> never entered `engine.clj`).
+>
+> `bin/regression-oracle dc7b371 1ea1f4a` (tip before this session's
+> fix commit -> the fix commit) — the six roots `digest.clj` actually
+> covers:
+>
+> | root | changed? | duration-bearing Procedure reached? |
+> |---|---|---|
+> | `appendicitis` | YES | yes (Appendectomy) |
+> | `sepsis` | YES | yes (7 states) |
+> | `death-fixture` | YES | yes (`Stabilization_Procedure`, found this session — AR-4's dated correction, above) |
+> | `ear-infections` | no | no |
+> | `sinusitis` | no | no |
+> | `sore-throat` | no | no |
+>
+> Full digest table in `.agents/session-records/
+> 2026-08-03-procedure-duration-fix.md`. Every changed root has a
+> duration-bearing Procedure on the batch/pair `digest.clj` exercises;
+> every unchanged root does not — the partition AR-4 predicted, once
+> corrected for the fixture AR-4's own survey missed. `total_joint_
+> replacement` and the UTI closure are NOT in `digest.clj` (a
+> pre-existing six-root scope from the post-Wave-D cleanup session,
+> not this session's own gap) — the corroborating evidence for those
+> two instead: (1) `clojure -M:poly test :all skip:integration` stayed
+> 0 failures/0 errors both before and after the fix, including
+> `vendored-uti-test`/`vendored-tjr-test`'s own interpreter-layer walks
+> and the three J3 round-trip pins (untouched, still failing the same
+> documented way — this session never entered `engine.clj`); (2) TJR's
+> own vendored closure was read directly and confirmed to contain no
+> Procedure state with a `:duration` field, so it has no mechanism to
+> be affected regardless of oracle coverage. This is disclosure, not a
+> byte-digest oracle claim for those two roots — the build-session
+> skill's own VERIFICATION section names exactly this distinction.
 
 ### Fence
 

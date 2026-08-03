@@ -199,7 +199,12 @@
   ;; session's own session-record/prompt-archive filenames in their own
   ;; already-cited onboarding READMEs (1 line each) brought the real
   ;; total from 1243 to 1245.
-  :budget-lines 1245}
+  ;; bumped 1245->1283, 2026-08-03 (procedure-duration-fix session, Step
+  ;; 4 close-out): roadmap.md's own Next-row removal/Done-section growth
+  ;; and indexing this session's own session-record/prompt-archive
+  ;; filenames brought the real total from 1245 to 1283 -- self-caught,
+  ;; the same pattern every prior session touching this file has hit.
+  :budget-lines 1283}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one

@@ -9,12 +9,6 @@ per item; done items move to the bottom of their section with a date and sha.
   same day it started -- see Done, below).
 
 ## Next (backlog, no session scheduled)
-- **Procedure-duration fix session** (2026-08-03, `notes/ADRs.md` ADR-0031 AR-6,
-  sequenced first): `resolve-time-advance`'s flat-map/nested-key mismatch —
-  mechanical, semantics pinned from Synthea source before the fix commit; see
-  its own Deferred row below for the full finding. Requires a full
-  oracle-bracketed re-baseline (`bin/regression-oracle`), since virtual time
-  shifts for every vendored root.
 - **Engine closure-context fix session** (2026-08-03, ADR-0031 AR-6, sequenced
   second, after the duration fix): `engine.clj`'s `:registered` decide method
   threads a closure's own submodule registry and `initial-attributes` through
@@ -104,8 +98,8 @@ per item; done items move to the bottom of their section with a date and sha.
   from it, finding neither — EVERY vendored Procedure state's own
   duration silently never advances virtual time, v1 or v2 gmf_version
   alike (found live, Wave D stage D3, `docs/gmf-interpreter.md` §14's
-  own D3c finding 1). **Now scheduled: see the "Procedure-duration fix
-  session" row in Next, above (2026-08-03, ADR-0031 AR-6).**
+  own D3c finding 1). **FIXED (2026-08-03, ADR-0031 AR-6's first
+  defect-fix session, `notes/ADRs.md` ADR-0032) — see Done, below.**
 - The compile-trajectory/engine/emit full-pipeline gap for closure-
   having modules — **UPGRADED from "unproven" to "confirmed broken"
   (2026-08-02, post-Wave-D cleanup, ADR-0030 J3):** `engine.clj`'s own
@@ -566,3 +560,45 @@ per item; done items move to the bottom of their section with a date and sha.
   `093d321` (Step 4, one closure round-trip test per root), and this
   session's own closing records commit. Session record:
   `.agents/session-records/2026-08-02-post-wave-d-cleanup.md`.
+
+## Done (this session, 2026-08-03, Procedure-duration fix — ADR-0031 AR-6, first defect-fix)
+- **The fix (D3c finding 1, closed):** `emit-and-advance`
+  (gmf-interpreter.clj) now wraps a Procedure's flat `{:low :high
+  :unit}` `:duration` as `{:range duration}` before calling
+  `resolve-time-advance` — the one-line call-site fix ADR-0032 AR-2
+  ruled, proven red (0 advance, 0 draws) before and green after by a
+  focused test (`gmf_interpreter_test.clj`). Full non-integration suite
+  (`clojure -M:poly test :all skip:integration`) stayed 0 failures/0
+  errors throughout; no existing test encoded the zero-advance
+  behavior, so no test triage was needed. `engine.clj` and the three
+  J3 pinned round-trip tests were not touched — that is AR-6's SECOND,
+  separate defect-fix session.
+- **Oracle bracket, with a real escalation resolved mid-session:**
+  `bin/regression-oracle dc7b371 1ea1f4a` found `appendicitis`/
+  `sepsis` changed as predicted (AR-4), but ALSO found `death-fixture`
+  changed — one of AR-4's own five "must stay identical" roots,
+  triggering that paragraph's own STOP-AND-ESCALATE clause literally.
+  Root cause, found reading the fixture directly: `death-fixture.json`'s
+  own `Stabilization_Procedure` state carries a genuine duration-bearing
+  `:duration` (`{:low 30 :high 30 :unit "minutes"}`) that AR-4's own
+  three-root survey never enumerated — the fix behaved exactly as
+  designed; the pre-session survey was incomplete. Author-ruled
+  (mid-session): `death-fixture` reclassified from the identity set
+  into the duration-bearing set (now four), its new digest accepted as
+  baseline — a dated correction on ADR-0032's own AR-4, not a silent
+  re-baseline. Separately found: `bin/oracle-src/ehrt/oracle/digest.clj`
+  (the post-Wave-D cleanup session's own equipment) has never covered
+  `total_joint_replacement`/the UTI closure at all (a pre-existing
+  six-root scope, not this session's own gap) — author-ruled to
+  disclose only this session, corroborated instead by the green full
+  suite (including both roots' own vendored tests and the three J3
+  pins) and a direct read confirming TJR has no duration-bearing
+  Procedure state at all (v1 or v2). Full digest table in the session
+  record.
+- `notes/ADRs.md` ADR-0032 (this session's own AR-1 through AR-5
+  rulings, the AR-4 dated correction, and the execution note).
+- Commits, in order: `1ea1f4a` (Step 1, the fix + focused test),
+  `7587d1d` (Step 2, ADR-0032 capture), and this session's own closing
+  records commit (Step 4 — the oracle bracket, Step 3, made no commit
+  of its own, evidence only). Session record:
+  `.agents/session-records/2026-08-03-procedure-duration-fix.md`.
