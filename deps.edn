@@ -85,7 +85,13 @@
                                   "components/palgebra/test"
                                   "bases/cli/test"
                                   "projects/conformance/test"
-                                  "projects/integration/test"]}
+                                  "projects/integration/test"
+                                  ;; ADR-0034: the census tool's own
+                                  ;; co-landing tests -- `development/src`
+                                  ;; already carries `ehrt.sim-trajectory.
+                                  ;; census` itself (:dev alias, above);
+                                  ;; `clojure -M:dev:test` combines both.
+                                  "development/test"]}
 
             ;; `bin/ehrt`'s own invocation alias (R32: the CLI tool is
             ;; renamed ehr -> ehrt, "e-heart" -- ehr stays reserved for

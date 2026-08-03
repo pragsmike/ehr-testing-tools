@@ -1,0 +1,347 @@
+(ns ehrt.sim-trajectory.census
+  "GMF census tool (parity plan `.agents/plans/2026-08-02-gmf-parity-plan.md`
+  §3, ADR-0031 AR-1, ADR-0034). A `sim-trajectory` DEV ENTRY POINT, not a
+  CLI verb (AR-1: promotable later as a curation decision once the
+  verdict vocabulary stabilizes) -- lives under `development/src` because
+  walking an arbitrary external Synthea checkout on disk is a dev-tool
+  concern, not something `components/sim-trajectory`'s own product
+  interface should carry.
+
+  Invocation: `clojure -M:dev -m ehrt.sim-trajectory.census
+  <synthea-checkout-dir> <out-dir>` from the workspace root. Reads
+  `<synthea-checkout-dir>/src/main/resources/modules/**` -- no network at
+  run time, no vendoring of the catalog (installed != used, AR-1).
+  Writes one dated EDN artifact into `<out-dir>`.
+
+  Verdict vocabulary (AR-2): `:ok-walked` (closure loaded AND every
+  smoke-walk seed completed without throwing -- terminal, blocked, or
+  horizon-complete all count; only a THROW fails a module),
+  `:load-failed` (`ehrt.sim-trajectory.gmf/load-closure` itself
+  rejected), `:walk-failed` (closure loaded, at least one smoke-walk
+  seed threw), `:out-of-scope-by-ruling` (reserved, currently unused --
+  AR-2 emptied its largest bucket; the category stays for a future
+  ruling, per AR-4 -- 'empty is fine'). A module that throws never
+  aborts the census: the throw is caught, recorded, and the walk for
+  that module moves on (AR-2's own 'the census itself NEVER aborts on a
+  module's failure')."
+  (:require [clojure.data.json :as json]
+            [clojure.java.io :as io]
+            [clojure.java.shell :refer [sh]]
+            [clojure.pprint :as pprint]
+            [clojure.string :as str]
+            [ehrt.kernel.interface :as result]
+            [ehrt.sim-model.interface :as sim-model]
+            [ehrt.sim-trajectory.gmf :as gmf]
+            [ehrt.sim-trajectory.gmf-interpreter :as interp])
+  (:import [java.security MessageDigest]
+           [java.util Random]))
+
+;; --- Census parameters (AR-4/AR-5): every one of these lands in the
+;; artifact header verbatim -- the census must be re-runnable to the
+;; byte. Fixed, global, not tuned per module (a per-module-tuned bound
+;; would not be one census). ---------------------------------------------
+
+(def synthea-pin
+  "The pin `docs/gmf-interpreter.md` and `notes/ADRs.md` ADR-0031/-0032/
+  -0033 all cite: `synthetichealth/synthea`, master, fetched 2026-07-27."
+  "7e08387c68a7f0e21d13076609a159fd473fc902")
+
+(def tool-version "1.0.0")
+(def default-seed-count 3)
+(def default-mixer-seed 20260803)
+
+(def default-registration-offset-years
+  "Registration at age 30 -- old enough that most acute/chronic onset
+  conditions gating this catalog's modules have had a chance to fire
+  during the history-phase fast-forward, per `docs/gmf-interpreter.md`
+  §3's own no-fixed-tick design (RNG consumption scales with transitions
+  crossed, not elapsed calendar time -- age 30 is cheap even though it
+  is 30 simulated years)."
+  30)
+
+(def default-horizon-years
+  "50 more years past registration (age 30 -> 80): large enough to give
+  a module's own horizon-phase content (Encounters, Procedures,
+  wellness-cycle onsets) real room to fire, small enough that a
+  genuinely runaway module (a zero-time-advance transition cycle) still
+  hits `gmf-interpreter`'s own `max-steps` backstop well inside a smoke
+  walk's budget -- that backstop firing IS a real `:walk-failed` finding
+  for this census, not a bug in the census itself."
+  50)
+
+(def default-persona-config {})
+
+;; --- Pin verification (AR-1) --------------------------------------------
+
+(defn- sha256-hex [^String s]
+  (let [digest (MessageDigest/getInstance "SHA-256")]
+    (apply str (map #(format "%02x" %) (.digest digest (.getBytes s "UTF-8"))))))
+
+(defn- content-hash
+  "Fallback pin evidence when `checkout-dir` carries no `.git` (a tarball
+  extract, AR-1): sha256 over the sorted relative-path + content of the
+  whole modules tree. Not proof of a SPECIFIC upstream commit -- only of
+  what this run actually read -- which is why `verify-pin` marks it
+  `:pin-unverified-by-git` rather than treating it as equivalent."
+  [checkout-dir]
+  (let [root (io/file checkout-dir "src" "main" "resources" "modules")
+        root-path (.getPath ^java.io.File root)
+        files (->> (file-seq root)
+                   (filter #(.isFile ^java.io.File %))
+                   (sort-by #(.getPath ^java.io.File %)))]
+    (sha256-hex
+     (str/join "\n"
+                (map (fn [^java.io.File f]
+                       (str (subs (.getPath f) (inc (count root-path))) ":" (slurp f)))
+                     files)))))
+
+(defn verify-pin
+  "A census is a claim AT a pin (parity plan §1); an artifact that
+  cannot name its pin is not a census. `checkout-dir` a git checkout:
+  the ONLY acceptable outcome is `git rev-parse HEAD` matching
+  `expected-pin` EXACTLY -- a mismatch REFUSES the run (`:error`,
+  never silently censusing the wrong commit). No `.git` at all: falls
+  back to `content-hash`, `:ok` with `:pin-unverified-by-git true`
+  disclosed in the payload for the artifact header to carry forward."
+  [checkout-dir expected-pin]
+  (let [git-dir (io/file checkout-dir ".git")]
+    (if (.exists git-dir)
+      (let [{:keys [exit out]} (sh "git" "rev-parse" "HEAD" :dir (str checkout-dir))
+            actual (str/trim out)]
+        (if (and (zero? exit) (= actual expected-pin))
+          (result/ok {:method :git :pin actual})
+          (result/error :pin-mismatch
+                        {:expected expected-pin
+                         :actual (if (zero? exit) actual :git-rev-parse-failed)})))
+      (result/ok {:method :sha256-content
+                   :pin (content-hash checkout-dir)
+                   :pin-unverified-by-git true
+                   :expected-pin expected-pin}))))
+
+;; --- Catalog discovery + closure resolution ------------------------------
+
+(defn discover-root-modules
+  "Every top-level module JSON directly under `modules/` -- NOT
+  recursing into a subdirectory (those are submodules/lookup tables,
+  resolved only via a closure that actually calls them, per D3's own
+  search-path discipline) and not `lookup_tables/`'s own CSV siblings.
+  `:id` is `gmf/slug` of the filename minus `.json` -- the same
+  transform every vendored module's own id already uses
+  (`ear_infections.json` -> `\"ear-infections\"`)."
+  [checkout-dir]
+  (let [dir (io/file checkout-dir "src" "main" "resources" "modules")]
+    (->> (.listFiles dir)
+         (filter (fn [^java.io.File f] (and (.isFile f) (str/ends-with? (.getName f) ".json"))))
+         (map (fn [^java.io.File f]
+                {:id (gmf/slug (str/replace (.getName f) #"\.json$" "")) :file f}))
+         (sort-by :id)
+         vec)))
+
+(defn- checkout-modules-file ^java.io.File [checkout-dir & parts]
+  (apply io/file checkout-dir "src" "main" "resources" "modules" parts))
+
+(defn- slurp-if-exists [^java.io.File f]
+  (when (.exists f) (slurp f)))
+
+(defn- make-resolve-fn
+  "`gmf/load-closure`'s own caller-supplied `resolve-fn`
+  (call-path -> json-text|nil), wrapping a thin `io/file` read over the
+  D3 search path (`modules/<call-path>.json`) -- and, additively,
+  recording every call-path it actually reads into `fetched` (an atom),
+  regardless of whether the loader goes on to accept or reject that
+  text. `wellness-substitution?` (below) scans `fetched`, not the
+  loader's own normalized output, so a `:load-failed` closure still
+  gets AR-3's substitution tag from whatever it managed to read before
+  failing."
+  [checkout-dir fetched]
+  (fn [call-path]
+    (when-let [text (slurp-if-exists (checkout-modules-file checkout-dir (str call-path ".json")))]
+      (swap! fetched assoc call-path text)
+      text)))
+
+(defn- make-table-resolve-fn [checkout-dir]
+  (fn [table-name]
+    (slurp-if-exists (checkout-modules-file checkout-dir "lookup_tables" table-name))))
+
+;; --- Substitution tagging (AR-3) -----------------------------------------
+
+(defn wellness-substitution?
+  "AR-3, load-bearing regardless of verdict: does ANY closure member
+  actually fetched (root included) carry a raw Encounter state with a
+  bare `wellness: true` and no `encounter_class` key -- exactly
+  `ehrt.sim-trajectory.gmf`'s own load-time substitution trigger
+  (`normalize-state`'s `(and (= :encounter kw-type) (:wellness state)
+  (not (:encounter-class state)))` clause, ADR-0031 AR-5(b))? Scanned
+  against RAW json (string keys, unnormalized) because a loaded module
+  can no longer be told apart from one that genuinely authored
+  `encounter_class: wellness` once normalized."
+  [raw-texts]
+  (boolean
+   (some (fn [text]
+           (let [raw (json/read-str text)]
+             (some (fn [state]
+                     (and (map? state)
+                          (= "Encounter" (get state "type"))
+                          (true? (get state "wellness"))
+                          (not (contains? state "encounter_class"))))
+                   (vals (get raw "states")))))
+         (vals raw-texts))))
+
+;; --- Verdict + gap extraction (AR-2) --------------------------------------
+
+(defn- flatten-rejection
+  "A `:submodule-rejected` rejection's own `:payload :reason` is itself
+  a full Result -- possibly ANOTHER `:submodule-rejected`, arbitrarily
+  deep down a closure's own call graph. Walks that chain to the root
+  cause; gap extraction reads whichever categories it recognizes off
+  EVERY link, not just the outermost one."
+  [rejection]
+  (->> rejection (iterate #(get-in % [:payload :reason])) (take-while some?)))
+
+(def ^:private recognized-gap-categories
+  #{:unsupported-state-type :submodule-not-found :lookup-table-not-found
+    :unrecognized-lookup-table-column :attribute-collision :cyclic-closure
+    :submodule-rejected})
+
+(defn- extract-load-gap [rejection]
+  (let [links (flatten-rejection rejection)
+        by-cat (fn [cat k] (into #{} (keep (fn [{:keys [category payload]}]
+                                             (when (= cat category) (get payload k))) links)))]
+    {:unrecognized-state-types (by-cat :unsupported-state-type :raw-type)
+     :unresolved-submodules (by-cat :submodule-not-found :call-path)
+     :unresolved-tables (by-cat :lookup-table-not-found :table-name)
+     :unrecognized-lookup-table-columns (by-cat :unrecognized-lookup-table-column :column)
+     :attribute-collisions (by-cat :attribute-collision :attribute)
+     :cyclic-closure (some (fn [{:keys [category payload]}] (when (= :cyclic-closure category) (:cycle payload))) links)
+     :other-rejections (into [] (keep (fn [{:keys [category payload]}]
+                                        (when-not (recognized-gap-categories category) {:category category :payload payload}))
+                                      links))}))
+
+(defn- exception-detail [^Throwable e]
+  {:message (.getMessage e) :data (ex-data e) :class (.getSimpleName (class e))})
+
+;; --- Smoke walks + digests (AR-4) ----------------------------------------
+
+(defn- mixed-seeds
+  "The same mixer-RNG derivation `bin/oracle-src/ehrt/oracle/digest.clj`
+  uses (docstring cited, per this session's own read-first discipline):
+  sequential small `java.util.Random` seeds are NOT well-distributed for
+  their own first draw, so seeds are derived from one mixer RNG's own
+  `.nextLong` stream instead of counting up."
+  [n mixer-seed]
+  (let [mixer (Random. mixer-seed)]
+    (repeatedly n #(.nextLong mixer))))
+
+(defn- walk-one
+  "One smoke-walk seed: a fresh persona at `seed` (uniform sampling,
+  `default-persona-config`), registered at
+  `default-registration-offset-years`, horizon-bounded at
+  `default-horizon-years` further. Never throws past this function --
+  `run-module` blowing up (max-steps, an unresolved condition/vital-sign,
+  a blocked-submodule-call, ...) is caught and returned as data, per
+  AR-2's own 'the census itself NEVER aborts.'"
+  [root-module modules tables seed reg-offset-years horizon-years]
+  (try
+    (let [persona (sim-model/persona (Random. seed) default-persona-config)
+          reg-t (+ (interp/dob-epoch-day persona) (* 365 reg-offset-years))
+          end-t (+ reg-t (* 365 horizon-years))
+          ctx (interp/run-module root-module (Random. seed) persona reg-t end-t modules {} tables)
+          canon (pr-str {:status (:status ctx) :trajectory (:trajectory ctx)})]
+      {:seed seed :ok? true :status (:status ctx)
+       :event-count (count (:trajectory ctx)) :digest (sha256-hex canon)})
+    (catch Throwable e
+      {:seed seed :ok? false :error (exception-detail e)})))
+
+;; --- Per-module census -----------------------------------------------------
+
+(defn census-one
+  "Censuses one top-level module: resolves its closure (AR-1's no-
+  network read over `checkout-dir`), tags AR-3's wellness substitution
+  off whatever was fetched regardless of outcome, and -- ONLY if the
+  closure loaded -- runs `seed-count` smoke walks (AR-4). Never throws;
+  a smoke walk that throws is caught inside `walk-one` and turns the
+  module's own verdict into `:walk-failed`, not a census-aborting
+  exception."
+  [checkout-dir {:keys [seed-count mixer-seed registration-offset-years horizon-years]} {:keys [id ^java.io.File file]}]
+  (let [root-json-text (slurp file)
+        fetched (atom {id root-json-text})
+        resolve-fn (make-resolve-fn checkout-dir fetched)
+        table-resolve-fn (make-table-resolve-fn checkout-dir)
+        closure (gmf/load-closure id root-json-text resolve-fn table-resolve-fn)
+        substitutions (cond-> [] (wellness-substitution? @fetched) (conj :wellness-timing))]
+    (if-not (result/ok? closure)
+      {:id id :file (.getName file) :verdict :load-failed
+       :disclosed-substitutions substitutions
+       :gap (assoc (extract-load-gap closure) :closure-file-count (count @fetched))
+       :walks []}
+      (let [{:keys [modules tables]} (:payload closure)
+            root-module (get modules id)
+            seeds (mixed-seeds seed-count mixer-seed)
+            walks (mapv #(walk-one root-module modules tables % registration-offset-years horizon-years) seeds)
+            failed (remove :ok? walks)]
+        {:id id :file (.getName file)
+         :verdict (if (seq failed) :walk-failed :ok-walked)
+         :disclosed-substitutions substitutions
+         :gap {:closure-file-count (count modules)
+               :walk-errors (mapv #(select-keys % [:seed :error]) failed)}
+         :walks (mapv #(dissoc % :ok?) walks)}))))
+
+;; --- Summary (AR-5: appended to the interpreter doc as a dated section) --
+
+(defn summarize [modules]
+  {:total (count modules)
+   :by-verdict (frequencies (map :verdict modules))
+   :substitution-count (count (filter (comp seq :disclosed-substitutions) modules))
+   :top-gap-mechanisms
+   (->> modules
+        (filter #(= :load-failed (:verdict %)))
+        (mapcat (fn [m] (map (fn [t] [:unrecognized-state-type t]) (get-in m [:gap :unrecognized-state-types]))))
+        frequencies
+        (sort-by (comp - val))
+        (into []))})
+
+;; --- Top-level run + artifact emission (AR-5) ----------------------------
+
+(defn run-census
+  "Returns a Result: `:error :pin-mismatch` (verify-pin refused, no
+  modules censused) or `:ok` with `{:header {...} :modules [...]
+  :summary {...}}` -- the full re-runnable artifact payload, `:header`
+  carrying every AR-4/AR-5 parameter this run actually used."
+  [checkout-dir]
+  (let [pin-result (verify-pin checkout-dir synthea-pin)]
+    (if-not (result/ok? pin-result)
+      pin-result
+      (let [opts {:seed-count default-seed-count :mixer-seed default-mixer-seed
+                  :registration-offset-years default-registration-offset-years
+                  :horizon-years default-horizon-years}
+            roots (discover-root-modules checkout-dir)
+            modules (mapv #(census-one checkout-dir opts %) roots)]
+        (result/ok
+         {:header (merge opts
+                         {:tool-version tool-version
+                          :synthea-pin synthea-pin
+                          :pin-verification (:payload pin-result)
+                          :census-date (str (java.time.LocalDate/now))
+                          :module-count (count modules)
+                          :persona-config default-persona-config
+                          :checkout-dir (str checkout-dir)})
+          :modules modules
+          :summary (summarize modules)})))))
+
+(defn -main
+  "`clojure -M:dev -m ehrt.sim-trajectory.census <synthea-checkout-dir>
+  <out-dir>`. Writes `<out-dir>/<census-date>-synthea-<pin7>.edn` and
+  prints the summary; a refused pin verification exits non-zero and
+  writes nothing."
+  [checkout-dir out-dir]
+  (let [result (run-census checkout-dir)]
+    (if-not (result/ok? result)
+      (do (println "CENSUS REFUSED:" (pr-str result))
+          (System/exit 1))
+      (let [payload (:payload result)
+            pin7 (subs synthea-pin 0 7)
+            out-file (io/file out-dir (str (:census-date (:header payload)) "-synthea-" pin7 ".edn"))]
+        (.mkdirs (io/file out-dir))
+        (spit out-file (with-out-str (pprint/pprint payload)))
+        (println "wrote" (.getPath out-file))
+        (println "summary:" (pr-str (:summary payload)))))))
