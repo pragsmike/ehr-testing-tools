@@ -6274,6 +6274,25 @@ them.
 > the CarePlan mechanism itself matches the ruled pair-mirror exactly;
 > the ONLY deviation is in what got vendored, not in what got built.
 
+> **Oracle byte-verification (dated note, ruled 2026-08-02, post-Wave-D
+> cleanup session — ADR-0030 J1):** the disclosed full-suite comparison
+> method (above) is UPGRADED to byte-verified for this stage's own
+> span. `bin/regression-oracle bbeceb6 d23fa9b` (a disposable worktree
+> per commit, `bin/oracle-src/ehrt/oracle/digest.clj`'s own fixed-seed
+> golden runs for all six pre-existing vendored roots — appendicitis/
+> sinusitis/sore_throat/ear_infections-closure/death-fixture/sepsis,
+> HL7 emission bytes included for the three engine-layer roots):
+> IDENTICAL SHA-256 digests on every root between `bbeceb6` (D1b's own
+> close-out commit) and `d23fa9b` (this stage's own close-out) — this
+> was the optional D2-span extension J1 itself named ("if
+> `d23fa9b`->`d8447e6`-era baselines are cheaply reproducible"), run
+> because it was: same harness, same two-worktree diff, no separate
+> mechanism needed. Digest table in this session's own session record
+> (`.agents/session-records/2026-08-02-post-wave-d-cleanup.md`). D2's
+> own regression-oracle claim is therefore byte-verified, not merely
+> count-verified — the deviation this ADR's own dated note above
+> disclosed is now closed.
+
 > **D2 rider (dated note, ruled 2026-08-02, D3's own Step 0 — H7):** the
 > `initial-attributes` arity D2 added to `ehrt.sim-trajectory.gmf-
 > interpreter/run-module` (above) is SCOPED here, in the record, before
@@ -6466,6 +6485,28 @@ them.
 > session: no full compile-trajectory/engine/emit round-trip test
 > exists for ANY closure-having module vendored to date), named here
 > for completeness, not newly introduced.
+>
+> **Oracle byte-verification (dated note, ruled 2026-08-02, post-Wave-D
+> cleanup session — ADR-0030 J1):** the disclosed full-suite comparison
+> method (ADR-0029's own D2 dated note, reused for D3 above) is
+> UPGRADED to byte-verified for this stage's own span, the session
+> prompt's own required check. `bin/regression-oracle d23fa9b 7257775`
+> (a disposable worktree per commit, `bin/oracle-src/ehrt/oracle/
+> digest.clj`'s own fixed-seed golden runs for all six pre-existing
+> vendored roots — appendicitis/sinusitis/sore_throat/ear_infections-
+> closure/death-fixture/sepsis, HL7 emission bytes included for the
+> three engine-layer roots): IDENTICAL SHA-256 digests on every root
+> between `d23fa9b` (pre-D3, D2's own close-out) and `7257775` (post-D3,
+> Wave D's own close-out) — H1-H8's own three named mechanisms and all
+> three disclosed additions, including `fdd0644`'s own shared-dispatch
+> bug fix, change nothing observable for any of the six pre-existing
+> roots at these seeds/populations. Digest table in this session's own
+> session record (`.agents/session-records/2026-08-02-post-wave-d-
+> cleanup.md`). D3's own regression-oracle claim is therefore
+> byte-verified, not merely count-verified — combined with the dated
+> note on ADR-0029's own D2 section (above), the byte-verified chain
+> now runs unbroken from D1b's own literal digest (`dce2086`-
+> `870a1ab`) through `7257775`.
 >
 > **H8 — Wave D close-out.** This session closes GMF coverage Wave D in
 > full: **D0** (sim-split S3, `sim-emit-hl7` extraction, ADR-0025/

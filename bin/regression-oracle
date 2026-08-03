@@ -1,0 +1,86 @@
+#!/usr/bin/env bash
+# Regression-oracle harness (post-Wave-D cleanup session, 2026-08-02,
+# J1/J2, notes/ADRs.md ADR-0030): runs bin/oracle-src/ehrt/oracle/digest.clj
+# -- fixed-seed golden runs for the six pre-existing vendored roots --
+# against two commits' own component code in disposable git worktrees,
+# SHA-256-digests every output file, and diffs the two digest manifests
+# byte-for-byte. THIS is what a regression-oracle claim means in this
+# repo (build-session skill's own VERIFICATION section, J2): a
+# test-count or assertion-count comparison is NOT an oracle and may
+# not be reported as one.
+#
+# digest.clj is always read from THIS checkout (bin/oracle-src, never
+# from either worktree) -- a synthetic, from-scratch classpath points
+# its :local/root component deps at whichever commit's own worktree is
+# under test, so the same calling code exercises two different
+# component-code versions and hashing happens here, in the shell, not
+# in-process.
+#
+# Usage: bin/regression-oracle <baseline-ref> <target-ref>
+#
+# Prints both manifests, then either "IDENTICAL" (exit 0) or "DIFFERS"
+# (exit 1, with a diff of the two manifests on stderr) -- a DIFFERS
+# result is a real finding: STOP and escalate with the evidence, per
+# this session's own J1 ruling, never patched under this script's own
+# invocation.
+set -euo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+baseline_ref="${1:?usage: bin/regression-oracle <baseline-ref> <target-ref>}"
+target_ref="${2:?usage: bin/regression-oracle <baseline-ref> <target-ref>}"
+
+work="$(mktemp -d)"
+cleanup() {
+  rm -rf "$work"
+  git -C "$repo_root" worktree prune >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
+
+run_one() {
+  local ref="$1" label="$2"
+  local wt="$work/wt-$label"
+  local out="$work/out-$label"
+  git -C "$repo_root" worktree add --detach "$wt" "$ref" >/dev/null
+  local deps
+  deps=$(cat <<EOF
+{:paths ["$repo_root/bin/oracle-src"]
+ :deps {org.clojure/clojure {:mvn/version "1.12.5"}
+        poly/kernel {:local/root "$wt/components/kernel"}
+        poly/sim {:local/root "$wt/components/sim"}
+        poly/sim-model {:local/root "$wt/components/sim-model"}
+        poly/sim-trajectory {:local/root "$wt/components/sim-trajectory"}
+        poly/sim-emit-hl7 {:local/root "$wt/components/sim-emit-hl7"}}
+ :aliases {:oracle-run {:extra-paths ["$wt/components/sim-trajectory/test"]}}}
+EOF
+)
+  mkdir -p "$out"
+  (cd "$repo_root" && clojure -Sdeps "$deps" -M:oracle-run -m ehrt.oracle.digest "$out")
+  git -C "$repo_root" worktree remove --force "$wt"
+}
+
+manifest_for() {
+  local out="$1"
+  (cd "$out" && sha256sum -- *.edn | sort -k2)
+}
+
+echo "== running oracle at baseline ($baseline_ref) ==" >&2
+run_one "$baseline_ref" baseline
+echo "== running oracle at target ($target_ref) ==" >&2
+run_one "$target_ref" target
+
+manifest_for "$work/out-baseline" > "$work/baseline.sha256"
+manifest_for "$work/out-target" > "$work/target.sha256"
+
+echo "--- baseline ($baseline_ref) ---"
+cat "$work/baseline.sha256"
+echo "--- target ($target_ref) ---"
+cat "$work/target.sha256"
+
+if diff -u "$work/baseline.sha256" "$work/target.sha256" > "$work/diff.txt"; then
+  echo "IDENTICAL: every root's digest matches between $baseline_ref and $target_ref"
+  exit 0
+else
+  echo "DIFFERS: digests diverge between $baseline_ref and $target_ref -- STOP, escalate (do not fix under this script)" >&2
+  cat "$work/diff.txt" >&2
+  exit 1
+fi
