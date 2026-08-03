@@ -1,17 +1,25 @@
 # 2026-08-02 — GMF parity plan: from Wave D to full Synthea module parity
 
-Status: PROPOSED (design channel, 2026-08-02). Successor to
-`.agents/plans/2026-08-02-gmf-coverage-plan.md`, whose Waves A–D are
+Status: **APPROVED (2026-08-03, `notes/ADRs.md` ADR-0031).** Successor
+to `.agents/plans/2026-08-02-gmf-coverage-plan.md`, whose Waves A–D are
 complete (`297e337`…`7257775`) and whose H8 retrospective enumerates the
-standing items this plan schedules. Becomes approved when the author
-rules the open questions in §6 and moves the census row to roadmap `Now`.
+standing items this plan schedules.
 
-Prerequisite, unscheduled here: the post-Wave-D cleanup session
-(`.agents/prompts/2026-08-02-…-postwave-cleanup.md`, J1–J5 —
+**Dated note (2026-08-03, ADR-0031).** The gate paragraph below is
+SATISFIED — J1 returned IDENTICAL SHA-256 digests on both spans
+(`56c7cef`), no escalation. §6's own four open questions are RULED
+(ADR-0031 AR-1 through AR-4); the approval act named in this header's
+original text ("moves the census row to roadmap `Now`") is AMENDED
+by ADR-0031 AR-7: AR-6 inserts two defect-fix sessions ahead of the
+census, so the approval act is ADR-0031 landing + this status flip,
+and the census row enters roadmap `Next` with its sequence position,
+not `Now` — see `.agents/plans/roadmap.md`.
+
+Prerequisite, now executed: the post-Wave-D cleanup session
+(`.agents/session-records/2026-08-02-post-wave-d-cleanup.md`, J1–J5 —
 byte-digest oracle verification, closure engine round-trips,
-dual-clone guardrails). That session's J1 verdict is a gate on this
-plan: if the oracle verification escalates, resolve it before any
-wave below starts.
+dual-clone guardrails). That session's J1 verdict was this plan's own
+gate; it returned clean (above).
 
 ## 1. What parity means
 
@@ -95,35 +103,64 @@ modules, and top-level survey rows were overturned twice (UTI's
 that mechanically loaded UTI's whole closure and reported gaps. That
 script should become committed equipment.
 
-**`gmf survey`** — a CLI verb (or `sim-trajectory` entry point) that
-walks the entire upstream catalog at the pin and emits a computed
-census: per module and per closure, the unrecognized state types,
-transition kinds, condition types, unresolved attributes, closure
-file count, and load verdict. Output is data (EDN), committed as a
-dated census artifact.
+**`gmf survey`** — **ruled (2026-08-03, ADR-0031 AR-1): a
+`sim-trajectory` DEV ENTRY POINT, not a CLI verb** — promotable to a
+CLI verb later as a curation decision, once the census verdict
+vocabulary stabilizes, the same walkable-vs-vendored logic this plan
+applies to modules. It walks the entire upstream catalog at the pin
+and emits a computed census: per module and per closure, the
+unrecognized state types, transition kinds, condition types,
+unresolved attributes, closure file count, and load verdict. Output is
+data (EDN), committed as a dated census artifact.
+
+**Dated addition (2026-08-03, ADR-0031 AR-4): parity means WALKABLE,
+and walkable means WALK-VERIFIED, not merely load-verified.** The
+census performs a seeded interpreter-layer smoke walk per module (N
+small) with digest recorded, not only a load verdict — the three
+overturned survey rows this project's census work has found to date
+(UTI's "×3 closure" was 12 files; MI's was 27; the `wellness: true`
+"cheapest fix" claim, ADR-0031 AR-5) were all semantic gaps loading
+alone would not catch. The verdict vocabulary keeps an
+`:out-of-scope-by-ruling` category (populated even after AR-2 emptied
+its largest bucket — the five wellness-cycle modules move to Wave G's
+ledger rather than out of scope entirely). Boundary: census
+walk-verification is INTERPRETER-LAYER — a capability claim about the
+interpreter, surveying modules the engine will never see; engine round
+trips remain per-vendored-root tests, ADR-0030 J3's established shape,
+not something the census itself performs.
 
 Value: converts the frontier from narrative into data; ranks
 mechanisms by modules-unlocked-per-unit-work; and gives parity a
-countable definition — **the census shows zero load failures**. One
-session. Every wave below takes its scope from the census rather than
-from a read survey.
+countable definition — **the census shows zero load failures and every
+walked module's own smoke-walk digest recorded**. One session. Every
+wave below takes its scope from the census rather than from a read
+survey.
 
 ## 4. Projected waves
 
 Sequencing is by leverage, not by module count. Session estimates are
 estimates.
 
+**Dated note (2026-08-03, ADR-0031 AR-6): two defect-fix sessions
+precede the census**, inserted below as rows above Census. The E/F/G
+sequence after the census is PROVISIONAL, pending the census's own
+ranking (AR-1/AR-4) — leverage-by-module-count only becomes real data
+once the census runs.
+
 | Wave | Content | Sessions | Unlocks |
 |---|---|---|---|
-| **Census** | `gmf survey` tool + first census artifact | 1 | scope for everything below |
-| **E** | Risk-attribute register (§2) + stroke as first consumer + incidence-band property test | 1 | `stroke`; sets the Tier 3 precedent |
-| **F** | `Counter`, `SupplyList` (interpreter-only, small), then `ImagingStudy` (reverses ADR-0029 R5; full four-layer chain + emission ruling: radiology ORM/ORU or disclosed silence) | 2 | `myocardial_infarction` + a census-named cluster |
-| **G** | **Wellness cycle** — design session first. Chronic modules hang progression on engine-generated wellness encounters the sim has no equivalent for. Synthesize a calibrated periodic outpatient cycle (the existing `outpatient-visit` machinery is the landing pad), or rule those modules out of scope. | 1 design + 1–2 impl | the chronic cluster; highest module count behind one decision |
-| **H** | **Pre-roll** — design session first. Walk modules deterministically from onset to registration; fold pre-window history into initial patient state; emit only in-window events. Open questions: what folds vs. what is discarded; concurrent-comorbidity interaction (ADR-0027 D1 already rules the channel: clinical state, never scratch); composition with churn and the horizon model. | 1 design + 1–2 impl | the chronic/lifetime catalog; acute-episode → population-scale simulator |
-| **I** | Bulk vendoring, batched by closure family; per-module cost by then is characterization + test | N (batched) | parity in the vendored sense |
+| **Defect fix 1** (ADR-0031 AR-6) | Procedure-duration fix — `resolve-time-advance`'s flat-map/nested-key mismatch, mechanical, semantics pinned from Synthea source before the fix commit. Full oracle-bracketed re-baseline (virtual time shifts for every root). | 1 | unblocks every vendored root's own Procedure timing; re-records the digest baseline once |
+| **Defect fix 2** (ADR-0031 AR-6) | Engine closure-context fix — `engine.clj`'s `:registered` decide method threads a closure's own submodule registry and `initial-attributes` through to `run-module` (ADR-0030 J3's two gaps). Flips the three pinned round-trip tests. Oracle-bracketed: the five non-closure roots stay byte-identical; closure roots gain NEW engine-layer baselines. | 1 | the closure engine round trip, for real, for the first time |
+| **Census** | `gmf survey` dev entry point + first census artifact (AR-1, AR-4: walk-verified, not load-verified) | 1 | scope for everything below |
+| **E** *(provisional order)* | Risk-attribute register (§2) + stroke as first consumer + incidence-band property test | 1 | `stroke`; sets the Tier 3 precedent |
+| **F** *(provisional order)* | `Counter`, `SupplyList` (interpreter-only, small), then `ImagingStudy` (reverses ADR-0029 R5; full four-layer chain + emission ruling: radiology ORM/ORU or disclosed silence) | 2 | `myocardial_infarction` + a census-named cluster |
+| **G** *(provisional order)* | **Wellness cycle** — design session first. Ruled IN SCOPE (2026-08-03, ADR-0031 AR-2): `wellness: true` becomes a genuine WAIT state (parks the walk until the next scheduled cycle visit, then attaches downstream states), cadence ported from Synthea's own age-banded schedule (`EncounterModule.recommendedTimeBetweenWellnessVisits`) as provenance-cited content under the vital-sign table's discipline, cycle anchor is a seeded per-patient phase offset until Wave H's pre-roll supersedes it. Remaining design questions (schedule-state home, multi-module attachment/churn composition, chronic-meds cap) are the G design session's own scope. | 1 design + 1–2 impl | the chronic cluster; highest module count behind one decision — now NAMED: `epilepsy`, `med_rec`, `mTBI`, `atrial_fibrillation`, `osteoporosis` (ADR-0031 AR-5(a), the wellness-overturn finding) |
+| **H** *(provisional order)* | **Pre-roll** — design session first. Walk modules deterministically from onset to registration; fold pre-window history into initial patient state; emit only in-window events. Open questions: what folds vs. what is discarded; concurrent-comorbidity interaction (ADR-0027 D1 already rules the channel: clinical state, never scratch); composition with churn and the horizon model. **Ruled (2026-08-03, ADR-0031 AR-3): emit-nothing REAFFIRMED — no backloaded-history mode in the sim; the backload need is a named TOOLS-SIDE future (a corpus construction over sim output), revisit trigger: a real consumer for pre-window messages appears.** | 1 design + 1–2 impl | the chronic/lifetime catalog; acute-episode → population-scale simulator |
+| **I** *(provisional order)* | Bulk vendoring, batched by closure family; per-module cost by then is characterization + test | N (batched) | parity in the vendored sense |
 
-Rough total: **8–12 sessions**, front-loaded with two design decisions
-(G and H) that dominate the outcome.
+Rough total: **10–14 sessions** (the original 8–12 plus the two
+defect-fix sessions AR-6 inserts), front-loaded with two design
+decisions (G and H) that dominate the outcome.
 
 ## 5. Cross-cutting expectations
 
@@ -146,14 +183,29 @@ Rough total: **8–12 sessions**, front-loaded with two design decisions
 
 ## 6. Open questions for the author
 
+**All four RULED 2026-08-03, `notes/ADRs.md` ADR-0031 — see AR-1
+through AR-4 there for the full text; summarized below with the
+pointer.**
+
 1. Census tool home: a `gmf survey` CLI verb under the existing CLI
    base, or a `sim-trajectory` dev entry point not exposed as a
-   product surface?
+   product surface? **Ruled (ADR-0031 AR-1): dev entry point, not a
+   CLI verb — promotable later as a curation decision.**
 2. Wave G: is a synthesized wellness cycle in scope for a *hospital*
    traffic simulator at all, or are chronic-progression modules
    correctly out of scope, capping parity below 100% by design?
+   **Ruled (ADR-0031 AR-2): IN SCOPE for Wave G — `wellness: true`
+   becomes a genuine WAIT state on Synthea's own age-banded schedule,
+   ported as provenance-cited content; interim per-patient phase-offset
+   anchor until Wave H supersedes it.**
 3. Wave H: does pre-roll emit nothing before the window (proposed), or
    should pre-window events be emitted as backloaded history for
-   systems that ingest it?
+   systems that ingest it? **Ruled (ADR-0031 AR-3): emit-nothing
+   REAFFIRMED; the backload need is a named tools-side future, not a
+   sim mode.**
 4. Does parity mean *walkable* (this plan's definition) or *vendored*?
-   The plan assumes walkable, with curation separate.
+   The plan assumes walkable, with curation separate. **Ruled
+   (ADR-0031 AR-4): walkable, and walkable means WALK-VERIFIED (a
+   seeded interpreter-layer smoke walk with digest, not merely a load
+   verdict) — the three overturned survey rows to date were all
+   semantic gaps loading alone would not catch.**
