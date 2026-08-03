@@ -154,9 +154,23 @@
   (confirmed by direct read) already treats `:wellness`/`:ambulatory`
   identically (both compile to `:outpatient-visit`), so this is a
   genuine same-concept vocabulary alias, not an invented mapping, and
-  needs no `compile-trajectory` change."
+  needs no `compile-trajectory` change.
+
+  GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3f finding,
+  found vendoring uti/ambulatory_path.json's own Telephone_Encounter):
+  \"virtual\" is a real, distinct GMF encounter-class STRING -- a
+  genuinely NEW keyword, `:virtual`, NOT aliased onto `:ambulatory`
+  (unlike \"outpatient\"): a phone/remote encounter is a different
+  clinical modality from an in-person one, and this session's own
+  vendoring never exercises `compile-trajectory`'s encounter mapping
+  for this closure (the standing, disclosed interpreter-layer-only
+  fence, `ehrt.sim-trajectory.vendored-uti-test`'s own docstring) --
+  whether `:virtual` compiles the SAME way `:ambulatory` does, or needs
+  its own IR treatment, is a decision for whichever future session
+  first exercises a closure through the full compile-trajectory
+  pipeline, not this one."
   {"wellness" :wellness "ambulatory" :ambulatory "emergency" :emergency "inpatient" :inpatient
-   "outpatient" :ambulatory})
+   "outpatient" :ambulatory "virtual" :virtual})
 
 (def ^:private condition-type->keyword
   "v1's condition predicates (docs/gmf-interpreter.md section 2): age,
@@ -490,9 +504,18 @@
     [:vector [:map [:transition :keyword] [:distribution Distribution]]]]
    [:conditional-transition {:optional true}
     [:vector [:map [:transition {:optional true} :keyword] [:condition {:optional true} [:map-of :keyword :any]]]]]
+   ;; GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3f finding,
+   ;; found vendoring uti/ambulatory_path.json): a complex_transition
+   ;; entry is EITHER a direct :transition OR a weighted :distributions
+   ;; list, never both required -- confirmed against Transition.java's
+   ;; own ComplexTransitionOption/ComplexTransition.follow (`option.
+   ;; transition != null ? ... : option.distributions`), a real
+   ;; either/or this loader's schema previously required :distributions
+   ;; on every entry, unconditionally.
    [:complex-transition {:optional true}
     [:vector [:map [:condition {:optional true} [:map-of :keyword :any]]
-              [:distributions [:vector [:map [:transition :keyword] [:distribution number?]]]]]]]
+              [:transition {:optional true} :keyword]
+              [:distributions {:optional true} [:vector [:map [:transition :keyword] [:distribution number?]]]]]]]
    ;; GMF coverage Wave B (D5): no weights of its own (see
    ;; normalize-transitions' own comment) -- each of the three keys is
    ;; optional (a module may omit :telemedicine on an older care-
@@ -543,7 +566,7 @@
    ;; (confirmed by direct read) never reads :codes off an encounter
    ;; event at all.
    [:encounter (with-transitions [:type [:= :encounter]]
-                 [:encounter-class [:enum :wellness :ambulatory :emergency :inpatient]]
+                 [:encounter-class [:enum :wellness :ambulatory :emergency :inpatient :virtual]]
                  [:codes {:optional true} [:vector sim-model/Concept]] [:reason {:optional true} :string])]
    [:encounter-end (into [:map [:type [:= :encounter-end]]] TransitionFields)]
    [:procedure (with-transitions [:type [:= :procedure]] [:codes [:vector sim-model/Concept]]
@@ -799,9 +822,22 @@
   never guessed from cell contents or column position. An attribute
   column outside `age`/`recognized-lookup-table-columns` is REJECTED
   (H2's own specify-vs-delegate audit), the same 'never silently
-  skipped' disposition `:unsupported-state-type` already establishes."
+  skipped' disposition `:unsupported-state-type` already establishes.
+
+  GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3f finding,
+  found vendoring `uti_recurrence.csv`): a leading UTF-8 byte-order-mark
+  (U+FEFF, confirmed byte-for-byte in the upstream file itself, verbatim
+  -- `uti.csv` carries none) is stripped from `csv-text` before parsing
+  -- `slurp`'s own UTF-8 decoding does NOT auto-strip a BOM the way some
+  other language runtimes do, and Java's own `CSVReader`/`SimpleCSV`
+  utilities (confirmed by Synthea's own `Utilities.readResource`, D3a)
+  are exactly what a real Synthea run relies on to handle this
+  transparently. Stripping it here is a representation fix, the same
+  kind `slug`/`normalize-code`'s own type-coercion already establish --
+  never a change to any real cell value."
   [csv-text transition-keywords]
-  (let [lines (remove str/blank? (str/split-lines csv-text))
+  (let [csv-text (cond-> csv-text (= 0xFEFF (int (first csv-text))) (subs 1))
+        lines (remove str/blank? (str/split-lines csv-text))
         header (parse-csv-line (first lines))
         weight-cols (filter #(contains? transition-keywords (keyword (slug %))) header)
         attr-cols (remove (set weight-cols) header)

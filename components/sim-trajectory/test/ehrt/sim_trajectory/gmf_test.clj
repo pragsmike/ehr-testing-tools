@@ -533,3 +533,56 @@
     (is (result/ok? loaded))
     (is (= {:quantity 1}
            (:exact (first (get-in (:payload loaded) [:states :assess :observations])))))))
+
+;; --- GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3f findings,
+;; found vendoring urinary_tract_infections.json's own real closure) --
+
+(def virtual-encounter-json
+  "uti/ambulatory_path.json's own Telephone_Encounter shape, byte-
+  confirmed against source (D3f): \"virtual\" is a real, distinct GMF
+  encounter-class string, a genuinely new keyword (NOT aliased onto
+  :ambulatory the way \"outpatient\" already is)."
+  (str "{\"name\": \"Virtual\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Call\"},"
+       "  \"Call\": {\"type\": \"Encounter\", \"encounter_class\": \"virtual\","
+       "            \"codes\": [{\"system\": \"SNOMED-CT\", \"code\": \"185347001\", \"display\": \"Encounter for problem\"}],"
+       "            \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest virtual-encounter-class-loads-and-validates-as-its-own-keyword
+  (let [loaded (gmf/load-module "virtual" virtual-encounter-json)]
+    (is (result/ok? loaded))
+    (is (= :virtual (get-in (:payload loaded) [:states :call :encounter-class])))))
+
+(def complex-transition-either-or-json
+  "uti/ambulatory_path.json's own risk-check shape, byte-confirmed
+  against source (D3f): a complex_transition entry may carry a direct
+  :transition instead of :distributions -- Transition.java's own
+  ComplexTransitionOption either/or, confirmed against source."
+  (str "{\"name\": \"ComplexEither\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Branch\"},"
+       "  \"Branch\": {\"type\": \"Simple\", \"complex_transition\": ["
+       "    {\"condition\": {\"condition_type\": \"Gender\", \"gender\": \"F\"}, \"transition\": \"Direct_Arm\"},"
+       "    {\"distributions\": [{\"transition\": \"A\", \"distribution\": 0.5}, {\"transition\": \"B\", \"distribution\": 0.5}]}]},"
+       "  \"Direct_Arm\": {\"type\": \"Terminal\"}, \"A\": {\"type\": \"Terminal\"}, \"B\": {\"type\": \"Terminal\"}}}"))
+
+(deftest complex-transition-entry-with-a-bare-transition-loads-and-validates
+  (let [loaded (gmf/load-module "complex-either" complex-transition-either-or-json)]
+    (is (result/ok? loaded))
+    (let [entries (get-in (:payload loaded) [:states :branch :complex-transition])]
+      (is (= :direct-arm (:transition (first entries))))
+      (is (nil? (:distributions (first entries))))
+      (is (nil? (:transition (second entries))))
+      (is (= [{:transition :a :distribution 0.5} {:transition :b :distribution 0.5}]
+             (:distributions (second entries)))))))
+
+(deftest lookup-table-csv-with-a-leading-bom-parses-identically-to-one-without
+  (testing "uti_recurrence.csv's own real upstream byte-order-mark
+            (D3f) -- stripped, never a change to any real cell value"
+    (let [bom-csv (str (char 0xFEFF) t-csv)
+          loaded (gmf/load-closure "lookup-caller" lookup-table-transition-json (resolver {})
+                                    (table-resolver {"t.csv" bom-csv}))]
+      (is (result/ok? loaded))
+      (is (= [{:age-range [15 24] :attributes {"gender" "F"} :weights {:a 0.9 :b 0.1}}
+              {:age-range [15 24] :attributes {"gender" "M"} :weights {:a 0.2 :b 0.8}}]
+             (get (:tables (:payload loaded)) "t.csv"))))))

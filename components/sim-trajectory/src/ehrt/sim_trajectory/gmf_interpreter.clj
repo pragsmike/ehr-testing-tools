@@ -613,8 +613,15 @@
     (weighted-pick-transition
      rng (mapv #(update % :distribution (partial resolve-distribution-value module-id ctx)) (:distributed-transition state)))
     (:conditional-transition state) (:transition (first-matching-entry module-id ctx (:conditional-transition state)))
-    (:complex-transition state) (weighted-pick-transition
-                                  rng (:distributions (first-matching-entry module-id ctx (:complex-transition state))))
+    ;; GMF coverage Wave D stage D3 (D3f finding, found vendoring
+    ;; uti/ambulatory_path.json): a matched complex_transition entry is
+    ;; EITHER a direct :transition OR a weighted :distributions list,
+    ;; never both required -- Transition.java's own ComplexTransition.
+    ;; follow mirrored exactly (`option.transition != null ? ... :
+    ;; option.distributions`).
+    (:complex-transition state)
+    (let [entry (first-matching-entry module-id ctx (:complex-transition state))]
+      (if (:transition entry) (:transition entry) (weighted-pick-transition rng (:distributions entry))))
     (:type-of-care-transition state)
     (weighted-pick-transition rng (type-of-care-entries (:type-of-care-transition state)
                                                           (type-of-care-weights (.getYear (LocalDate/ofEpochDay (:t ctx))))))
