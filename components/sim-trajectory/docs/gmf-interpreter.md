@@ -3109,3 +3109,90 @@ session's own pre-Step-2 HEAD, before any D3 code change; re-run and
 diffed at every subsequent checkpoint per this document's own established
 method, byte-identical/count-identical at every one (confirmed one final
 time at session close, Step 4).
+
+### Census re-run (2026-08-03, ADR-0035 AR-7): the `gmf_version 2`
+loader-exception class closes
+
+Wave F0 (ADR-0035) ports GAUSSIAN/EXPONENTIAL/TRIANGULAR into the loader
+and interpreter, structurally closing the `gmf_version 2` loader-
+exception finding this section's own "New finding" paragraph (above)
+named but did not fix. Re-run with the SAME header parameters (pin
+`7e08387c68a7f0e21d13076609a159fd473fc902`, 3 seeds/module, mixer-seed
+`20260803`, registration age 30, 50-year horizon, `{}` persona config) —
+new artifact:
+[`components/sim-trajectory/docs/census/2026-08-03-synthea-7e08387-wave-f0.edn`](census/2026-08-03-synthea-7e08387-wave-f0.edn),
+committed alongside the original rather than overwriting it (a same-
+calendar-day re-run — see the tooling-gap disclosure below).
+
+**Verdict counts, before → after:**
+
+| Verdict | Before | After | Δ |
+|---|---:|---:|---:|
+| `:ok-walked` | 40 | 42 | +2 |
+| `:load-failed` | 39 | 34 | −5 |
+| `:walk-failed` | 6 | 9 | +3 |
+| `:out-of-scope-by-ruling` | 0 | 0 | 0 |
+| **Total** | **85** | **85** | 0 |
+
+**Movement classification (AR-7).** All 11 modules the original
+`gmf_version 2` loader-exception finding named were traced individually,
+byte-confirmed against both census artifacts:
+
+- **Resolved to `:ok-walked`** (2): `copd`, `opioid-addiction`.
+- **Surfaced their NEXT blocker, now `:walk-failed`** (3):
+  `contraceptives` and `dementia` (an unsupported condition type — the
+  same `Race`/`Not` gap class this section's own `:walk-failed`
+  mechanisms table already names), `wellness-encounters` (an
+  unrecognized vital-sign name, `sim-trajectory/vital-signs.edn`'s own
+  curated-table boundary).
+- **Stayed `:load-failed`, on a genuinely DIFFERENT gap** (6):
+  `acute-myeloid-leukemia` (an unrecognized lookup-table column,
+  `race` — H2's own `recognized-lookup-table-columns` boundary, a new
+  finding this census run surfaced), `bone-marrow-transplant`/
+  `colorectal-cancer`/`pregnancy` (`Counter`), `dental-and-oral-
+  examination`/`metabolic-syndrome-care` (`SupplyList`) — each blocked
+  by an EARLIER state in the module's own JSON key order than the
+  distribution content, so the loader's deterministic first-found
+  short-circuit (`normalize-states`' own docstring) never reached the
+  now-fixed gap for these six at all; the fix did not regress them, it
+  simply never touched them.
+
+Net arithmetic: 11 moved out of the loader-exception category (2 + 3 +
+6, all traced above); 6 of those 6 land BACK in `:load-failed` for an
+unrelated reason, so the net `:load-failed` delta is −5, not −11 — the
+6-module offset the raw verdict-count table alone could not explain
+without this trace.
+
+**SetAttribute digest movement (AR-4/AR-7): zero, and why.** AR-7
+anticipated previously-`:ok-walked` modules with SetAttribute
+distributions changing walk digests now that they sample real values.
+Empirically: **zero** `:ok-walked`-in-both-runs module changed digest
+(every one of the 40 modules `:ok-walked` in both censuses byte-matches
+across all 3 seeds). Traced to source: `hypertension.json` — the
+module this session's own driving prompt cited by name
+(`Black_Onset_Age`'s GAUSSIAN onset-age SetAttribute) — census
+`:load-failed` in BOTH runs, blocked by `Counter`, a state earlier in
+its own JSON key order than `Black_Onset_Age`. The SetAttribute fix is
+real and tested directly (`gmf_interpreter_test.clj`'s own
+`set-attribute-gaussian-*` tests, `ADR-0035` AR-4) — this census's own
+85-module top-level scope simply does not currently walk far enough
+into any module that exercises it, an honest negative result, not a
+gap in the fix.
+
+**Sanity anchors held.** All SEVEN currently-vendored roots stayed
+`:ok-walked` with byte-identical digests across both censuses (matching
+Step 4's own oracle-bracket verdict, above); no module outside the 11
+traced above moved at all.
+
+**Tooling gap, disclosed not fixed:** the census tool's own artifact
+filename (`<census-date>-synthea-<pin7>.edn`,
+`ehrt.sim-trajectory.census/-main`) has no same-calendar-day
+disambiguation — a second run on the SAME date as a prior one collides
+on the SAME path and silently overwrites it (found live, this session:
+the first re-run attempt overwrote the original artifact before this
+disclosure caught it via `git status`, restored from git before commit).
+Worked around by hand-appending a `-wave-f0` suffix to this run's own
+filename rather than the tool's own naming scheme; a same-day-safe
+naming scheme (e.g. a run-sequence suffix or a full timestamp) is named
+here for a future session, not built — out of this session's own
+loader-plus-interpreter fence.
