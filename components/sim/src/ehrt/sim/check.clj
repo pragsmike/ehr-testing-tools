@@ -441,10 +441,16 @@
   patient's prior state is :admitted. GMF coverage Wave D stage D1
   (ADR-0029): :diagnostic-report joins the set -- the same
   therapeutic-intent-class scoping every other compiled clinical event
-  type already gets."
+  type already gets. GMF coverage Wave D stage D2 (ADR-0029): :care-plan-
+  start joins too -- grounded directly against Synthea's own State.java
+  ('CarePlanStart states may only be processed during an Encounter'),
+  the SAME real constraint :procedure's own doc comment already states;
+  :care-plan-end is deliberately NOT included, same reason
+  :medication-end isn't -- a care plan legitimately continues (and
+  ends) after discharge."
   [ground-truth]
   (for [{:keys [event before patient-id]} (engine/replay ground-truth)
-        :when (and (#{:procedure :observation :medication-order :diagnostic-report} (:event event))
+        :when (and (#{:procedure :observation :medication-order :diagnostic-report :care-plan-start} (:event event))
                    (not= :admitted (:status before)))]
     {:invariant :clinical-content-only-when-admitted :patient-id patient-id :at (:t event)}))
 

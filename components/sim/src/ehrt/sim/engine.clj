@@ -127,6 +127,21 @@
    [:status [:enum :active :completed]]
    [:ended-t {:optional true} :int]])
 
+(def CarePlanRecord
+  "GMF coverage Wave D stage D2 (2026-08-02, ADR-0029 R2(b)): one care
+  plan, folded from :care-plan-start and closed by a citation-matching
+  :care-plan-end -- the SAME position-independent, citation-based
+  resolution MedicationOrderRecord already establishes one step up.
+  CarePlan itself is v2-silent (R3) -- this record exists for the fold
+  and a future sim-emit-fhir consumer, no HL7v2 rendering reads it."
+  [:map
+   [:codes {:optional true} [:maybe [:vector sim-model/Concept]]]
+   [:activities {:optional true} [:maybe [:vector sim-model/Concept]]]
+   [:citation sim-model/Citation]
+   [:started-t :int]
+   [:status [:enum :active :completed]]
+   [:ended-t {:optional true} :int]])
+
 (def PatientState
   "The engine's per-patient accumulator -- what folding `evolve` over a
   patient's own event subsequence produces (docs/patient-state-model.md
@@ -182,6 +197,7 @@
    [:conditions {:optional true} [:vector ConditionRecord]]
    [:observations {:optional true} [:vector ObservationRecord]]
    [:medication-orders {:optional true} [:vector MedicationOrderRecord]]
+   [:care-plans {:optional true} [:vector CarePlanRecord]]
    [:attributes {:optional true} [:map-of :keyword :any]]])
 
 (defn valid-patient?
@@ -750,6 +766,37 @@
                      (citation-fields step))]
      :advance 0}))
 
+;; GMF coverage Wave D stage D2 (2026-08-02, ADR-0029 R2(b)): the SAME
+;; decide/evolve shape :medication-order/:medication-end establish,
+;; two defmethod-pairs up.
+
+(defmethod decide :care-plan-start
+  [_rng t world patient-id {:keys [codes activities] :as step}]
+  (let [patient (get-in world [:patients patient-id])]
+    {:events [(merge {:event :care-plan-start :t t :active-mrn (:active-mrn patient) :codes codes}
+                     (when activities {:activities activities})
+                     {:participants [{:patient-id patient-id :role :subject}]}
+                     (citation-fields step))]
+     :advance 0}))
+
+(defmethod decide :care-plan-end
+  [_rng t world patient-id {:keys [care-plan-citation] :as step}]
+  ;; Resolved by CITATION match against ground-truth, never a pathway-
+  ;; position index -- the same glass-box, position-independent
+  ;; resolution :medication-end already models.
+  (let [{:keys [ground-truth patients]} world
+        patient (get patients patient-id)
+        start-event-id (when care-plan-citation
+                         (last (keep-indexed (fn [i ev] (when (and (= :care-plan-start (:event ev))
+                                                                   (= care-plan-citation (:citation ev)))
+                                                          i))
+                                             ground-truth)))]
+    {:events [(merge {:event :care-plan-end :t t :active-mrn (:active-mrn patient)
+                      :start-event-id start-event-id :care-plan-citation care-plan-citation
+                      :participants [{:patient-id patient-id :role :subject}]}
+                     (citation-fields step))]
+     :advance 0}))
+
 (defn- fold-condition-annotation
   "One step in folding a compiled encounter step's own :conditions
   vector (sim-model/ConditionAnnotation) into `conditions`
@@ -962,6 +1009,25 @@
                  (last (keep-indexed (fn [i m] (when (and (= :active (:status m)) (= order-citation (:citation m))) i))
                                      (:medication-orders patient))))]
     (update-in patient [:medication-orders idx] assoc :status :completed :ended-t t)
+    patient))
+
+;; GMF coverage Wave D stage D2 (2026-08-02, ADR-0029 R2(b)): the SAME
+;; fold shape :medication-order/:medication-end establish, one
+;; defmethod-pair up -- CarePlan itself is v2-silent (R3), this record
+;; exists for the fold and a future sim-emit-fhir consumer.
+
+(defmethod evolve :care-plan-start
+  [patient {:keys [t codes activities citation]}]
+  (update patient :care-plans (fnil conj [])
+          (cond-> {:codes codes :citation citation :started-t t :status :active}
+            activities (assoc :activities activities))))
+
+(defmethod evolve :care-plan-end
+  [patient {:keys [t care-plan-citation]}]
+  (if-let [idx (when care-plan-citation
+                 (last (keep-indexed (fn [i m] (when (and (= :active (:status m)) (= care-plan-citation (:citation m))) i))
+                                     (:care-plans patient))))]
+    (update-in patient [:care-plans idx] assoc :status :completed :ended-t t)
     patient))
 
 (defn replay
