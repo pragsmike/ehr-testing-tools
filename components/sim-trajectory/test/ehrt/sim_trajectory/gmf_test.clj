@@ -52,10 +52,12 @@
              (:codes procedure))))))
 
 (def deferred-state-type-json
-  "A deliberately malformed module: uses ImagingStudy (docs/gmf-
-  interpreter.md's own deferred-type table, still deferred -- ADR-0029
-  R5, named OUT of GMF coverage Wave D with its own CHF trigger) --
-  must be rejected, never thrown, never silently skipped.
+  "A deliberately malformed module: uses VitalSign (docs/gmf-
+  interpreter.md's own deferred-type table, still deferred -- ADR-0036
+  AR-7, explicitly named OUT of GMF coverage Wave F, a calibration-
+  content gap distinct from the condition-vocabulary `:vital-sign`
+  ADR-0036 also defers) -- must be rejected, never thrown, never
+  silently skipped.
   GMF coverage Wave B (2026-08-02, ADR-0027, D3): this test USED to name
   CallSubmodule as its own still-deferred example -- CallSubmodule joins
   v1 as a loadable state type this session (the loader now recognizes
@@ -64,12 +66,14 @@
   test keeps testing what its own docstring claims, not a stale premise.
   GMF coverage Wave D stage D1 (2026-08-02, ADR-0029): swapped AGAIN,
   from MultiObservation (this session's own example, now supported) to
-  ImagingStudy, for the same reason -- a stale premise, not silently
-  left to test what it no longer tests."
+  ImagingStudy, for the same reason. GMF coverage Wave F (2026-08-03,
+  ADR-0036): swapped AGAIN, from ImagingStudy (this session's own
+  example, now supported) to VitalSign, for the same reason -- a stale
+  premise, not silently left to test what it no longer tests."
   (str "{\"name\": \"Bad Module\","
        " \"states\": {"
        "   \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Recurse\"},"
-       "   \"Recurse\": {\"type\": \"ImagingStudy\", \"direct_transition\": \"Done\"},"
+       "   \"Recurse\": {\"type\": \"VitalSign\", \"direct_transition\": \"Done\"},"
        "   \"Done\": {\"type\": \"Terminal\"}"
        " }}"))
 
@@ -78,7 +82,7 @@
     (is (result/rejected? loaded))
     (is (= :unsupported-state-type (:category loaded)))
     (is (= :recurse (:state (:payload loaded))))
-    (is (= "ImagingStudy" (:raw-type (:payload loaded))))))
+    (is (= "VitalSign" (:raw-type (:payload loaded))))))
 
 (def reserved-attribute-collision-json
   "A deliberately malformed module: SetAttribute writes the bare,
@@ -271,10 +275,12 @@
 (def calls-deferred-leaf-json
   "GMF coverage Wave D stage D1 (2026-08-02, ADR-0029): swapped from
   MultiObservation (now supported) to ImagingStudy (R5, still deferred),
-  same reason as deferred-state-type-json above."
+  same reason as deferred-state-type-json above. GMF coverage Wave F
+  (2026-08-03, ADR-0036): swapped again, from ImagingStudy (now
+  supported) to VitalSign (AR-7, still deferred)."
   (str "{\"name\": \"Leaf\", \"states\": {"
        "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Bad\"},"
-       "  \"Bad\": {\"type\": \"ImagingStudy\", \"direct_transition\": \"Done\"},"
+       "  \"Bad\": {\"type\": \"VitalSign\", \"direct_transition\": \"Done\"},"
        "  \"Done\": {\"type\": \"Terminal\"}}}"))
 
 (deftest load-closure-all-or-nothing-gate-extends-to-a-transitively-called-submodule
@@ -715,3 +721,89 @@
     (is (= :set-attribute-value-conflict (:category loaded)))
     (is (= :ambiguous (:state (:payload loaded))))
     (is (= #{:distribution :value} (:sources (:payload loaded))))))
+
+;; --- GMF coverage Wave F (2026-08-03, ADR-0036 AR-1): Counter --------------
+
+(def counter-json
+  "bone_marrow_transplant.json's own Recovery shape, byte-confirmed
+  against source: no :amount at all (legacy default to 1)."
+  (str "{\"name\": \"CounterMod\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Recovery\"},"
+       "  \"Recovery\": {\"type\": \"Counter\", \"attribute\": \"bone_marrow_transplant_los\","
+       "                \"action\": \"decrement\", \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest counter-loads-with-action-normalized-to-a-keyword
+  (let [loaded (gmf/load-module "counter-mod" counter-json)]
+    (is (result/ok? loaded))
+    (let [recovery (get-in (:payload loaded) [:states :recovery])]
+      (is (= :decrement (:action recovery)))
+      (is (= "bone_marrow_transplant_los" (:attribute recovery)))
+      (is (not (contains? recovery :amount))))))
+
+(def counter-reserved-attribute-json
+  "The SAME section-5 collision Counter is now a third leaf-writer for."
+  (str "{\"name\": \"CounterBad\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Mark\"},"
+       "  \"Mark\": {\"type\": \"Counter\", \"attribute\": \"donor\", \"action\": \"increment\", \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest counter-writing-a-reserved-attribute-name-is-rejected
+  (let [loaded (gmf/load-module "counter-bad" counter-reserved-attribute-json)]
+    (is (result/rejected? loaded))
+    (is (= :attribute-collision (:category loaded)))
+    (is (= "donor" (:attribute (:payload loaded))))))
+
+;; --- GMF coverage Wave F (2026-08-03, ADR-0036 AR-2): ImagingStudy ---------
+
+(def imaging-study-json
+  "congestive_heart_failure.json's own CXR_ED shape, byte-confirmed
+  against the vendored Synthea checkout at the pin."
+  (str "{\"name\": \"ImagingMod\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"CXR_ED\"},"
+       "  \"CXR_ED\": {\"type\": \"ImagingStudy\","
+       "              \"procedure_code\": {\"system\": \"SNOMED-CT\", \"code\": \"399208008\","
+       "                                  \"display\": \"Plain X-ray of chest (procedure)\"},"
+       "              \"series\": [{\"body_site\": {\"system\": \"SNOMED-CT\", \"code\": \"51185008\","
+       "                                          \"display\": \"Thoracic structure (body structure)\"},"
+       "                          \"modality\": {\"system\": \"DICOM-DCM\", \"code\": \"CR\","
+       "                                       \"display\": \"Computed Radiography\"},"
+       "                          \"instances\": [{\"title\": \"Title of this image\","
+       "                                        \"sop_class\": {\"system\": \"DICOM-SOP\","
+       "                                                       \"code\": \"1.2.840.10008.5.1.4.1.1.1.1\","
+       "                                                       \"display\": \"Digital X-Ray Image Storage\"}}]}],"
+       "              \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest imaging-study-loads-with-concept-triplets-normalized-throughout
+  (let [loaded (gmf/load-module "imaging-mod" imaging-study-json)]
+    (is (result/ok? loaded))
+    (let [cxr (get-in (:payload loaded) [:states :cxr-ed])]
+      (is (= {:system :snomed :code "399208008" :display "Plain X-ray of chest (procedure)"}
+             (:procedure-code cxr)))
+      (is (= {:system :dicom-dcm :code "CR" :display "Computed Radiography"}
+             (:modality (first (:series cxr)))))
+      (is (= {:system :dicom-sop :code "1.2.840.10008.5.1.4.1.1.1.1"
+              :display "Digital X-Ray Image Storage"}
+             (:sop-class (first (:instances (first (:series cxr))))))))))
+
+;; --- GMF coverage Wave F (2026-08-03, ADR-0036 AR-3): SupplyList -----------
+
+(def supply-list-json
+  "sleep_apnea.json's own Nasal Mask Supplies shape, byte-confirmed
+  against source (trimmed to one component)."
+  (str "{\"name\": \"SupplyMod\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Supplies\"},"
+       "  \"Supplies\": {\"type\": \"SupplyList\","
+       "                \"supplies\": [{\"quantity\": 1, \"code\": {\"system\": \"SNOMED-CT\","
+       "                                                        \"code\": \"467645007\","
+       "                                                        \"display\": \"CPAP nasal cannula\"}}],"
+       "                \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest supply-list-loads-with-each-components-code-normalized
+  (let [loaded (gmf/load-module "supply-mod" supply-list-json)]
+    (is (result/ok? loaded))
+    (let [supplies (get-in (:payload loaded) [:states :supplies])]
+      (is (= [{:quantity 1 :code {:system :snomed :code "467645007" :display "CPAP nasal cannula"}}]
+             (:supplies supplies))))))

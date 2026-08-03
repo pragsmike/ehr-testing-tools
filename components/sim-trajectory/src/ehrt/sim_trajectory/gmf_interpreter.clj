@@ -916,6 +916,50 @@
   (cond-> {:observations (mapv (partial sample-observation-extra rng) (:observations state))}
     (:codes state) (assoc :codes (:codes state))))
 
+;; --- GMF coverage Wave F (2026-08-03, ADR-0036 AR-2): ImagingStudy --------
+;; State.java's own `process`/`duplicateSeries`/`duplicateInstances`
+;; (source-grounded, pin 7e08387c68a7f0e21d13076609a159fd473fc902):
+;; series count is drawn ONCE for the whole study when :min-number-series/
+;; :max-number-series are both present (a single `rand-int-in`, equivalent
+;; to upstream's own `(int) rand(min, max+1)`); each MATERIALIZED series
+;; then draws its own instance count independently, when THAT series (the
+;; authored one, or the shared reference series every materialized copy
+;; clones) carries :min-number-instances/:max-number-instances -- one
+;; draw per materialized series, upstream's own `duplicateInstances` loop
+;; verbatim. Neither bound present on a given series/study level means
+;; zero draws at that level (the authored :series/:instances vector is
+;; used as-is) -- consumption is fully deterministic GIVEN a module's own
+;; authored bounds, the same branching-consumption family distributed
+;; transitions already establish (a module-authoring-time-fixed branch,
+;; never a runtime-outcome-dependent one).
+
+(defn- imaging-series-instance-count
+  [^Random rng {:keys [instances min-number-instances max-number-instances]}]
+  (if (and min-number-instances max-number-instances
+           (>= max-number-instances min-number-instances) (seq instances))
+    (rand-int-in rng min-number-instances max-number-instances)
+    (count instances)))
+
+(defn- imaging-study-extra
+  "One trajectory event's own :codes/:modality/:series (glass-box: the
+  drawn counts, never full per-instance content -- AR-2's own ruling).
+  `:codes` wraps the single :procedure-code Concept in a vector, the
+  SAME shape a standalone Procedure's own :codes already is, so
+  `compile-trajectory`'s own `procedure->step` (unchanged) compiles this
+  event exactly as it would a Procedure's."
+  [^Random rng state]
+  (let [{:keys [series min-number-series max-number-series procedure-code]} state
+        materialized (if (and min-number-series max-number-series
+                              (>= max-number-series min-number-series) (seq series))
+                       (repeat (rand-int-in rng min-number-series max-number-series) (first series))
+                       series)
+        series-out (mapv (fn [s] {:modality (:modality s)
+                                  :instance-count (imaging-series-instance-count rng s)})
+                         materialized)]
+    {:codes [procedure-code]
+     :modality (:modality (first series-out))
+     :series series-out}))
+
 ;; --- GMF coverage Wave B (2026-08-02, ADR-0027, D1-D4): CallSubmodule
 ;; call/return -- descend-run-return, ns docstring's own order contract --
 
@@ -1192,7 +1236,45 @@
       ;; `:next nil` -- Death's own declared transition (real Synthea
       ;; continues past it) is never resolved, by design (ns docstring's
       ;; own note, docs/gmf-interpreter.md section 10's own C1 account).
-      :death (death-step module-id ctx rng state)))))
+      :death (death-step module-id ctx rng state)
+      ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-1): Counter --
+      ;; SetAttribute-shaped attribute arithmetic (State.java's own
+      ;; Counter class, source-grounded). :amount absent OR authored as
+      ;; 0 both mean "default to 1" -- upstream's own legacy-compat
+      ;; default (a Java primitive `int` field left at 0 either way, so
+      ;; the two cases are indistinguishable at the source and stay
+      ;; indistinguishable here). Reads/writes go through the SAME
+      ;; root-namespaced key SetAttribute/Symptom already use -- Counter
+      ;; is a third workflow-scratch writer, not a new namespace. Zero
+      ;; draws, zero advance, no trajectory event (`pass-through-outcome`
+      ;; with an empty events vector, identical to :set-attribute).
+      :counter
+      (let [k (keyword (root-id ctx module-id) (gmf/slug (:attribute state)))
+            current (or (get (:attributes ctx) k) 0)
+            amount (:amount state)
+            delta (if (or (nil? amount) (zero? amount)) 1 amount)
+            v (if (= :increment (:action state)) (+ current delta) (- current delta))
+            ctx' (update ctx :attributes assoc k v)]
+        (pass-through-outcome module-id ctx' rng state 0 [] tables))
+      ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-2): ImagingStudy --
+      ;; one trajectory event carrying the procedure code, primary
+      ;; modality, and drawn series/instance counts (glass-box,
+      ;; `imaging-study-extra`, above `step`) -- compiles to the SAME IR
+      ;; step family a :procedure produces (`compile-trajectory`'s own
+      ;; :imaging-study clause, upstream's own companion-procedure move,
+      ;; the 30-minute stop left as record metadata, never a clock
+      ;; advance: `emit-and-advance`'s own advance `cond` only fires on
+      ;; :duration or a :procedure-typed :distribution, neither of which
+      ;; ImagingStudy ever carries, so `advance` is 0 here with zero
+      ;; extra code).
+      :imaging-study (emit-and-advance module-id ctx rng state :imaging-study (imaging-study-extra rng state) tables)
+      ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-3): SupplyList --
+      ;; a log-only trajectory fact (State.java's own SupplyList class,
+      ;; source-grounded) -- a REAL event, glass-box traceable, that
+      ;; `compile-trajectory`'s own explicit :supply-list clause compiles
+      ;; to NO IR step (the ConditionEnd no-open-encounter precedent
+      ;; verbatim, unconditional here rather than encounter-gated).
+      :supply-list (emit-and-advance module-id ctx rng state :supply-list {:components (:supplies state)} tables)))))
 
 ;; --- walk-module: drives `step` from :initial to Terminal or blocked ------
 

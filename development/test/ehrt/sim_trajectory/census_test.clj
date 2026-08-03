@@ -27,13 +27,18 @@
        " }}"))
 
 (def ^:private load-failed-json
-  "ImagingStudy is a real, still-deferred v1 state type
-  (docs/gmf-interpreter.md's own deferred-type table, ADR-0029 R5) --
-  gmf/load-closure REJECTS this at load time, before any walk."
+  "VitalSign is a real, still-deferred v1 state type (docs/gmf-
+  interpreter.md's own deferred-type table, ADR-0036 AR-7 -- a
+  calibration-content gap, distinct from the also-deferred `:vital-sign`
+  CONDITION type `walk-failed-json` below exercises) -- gmf/load-closure
+  REJECTS this at load time, before any walk. GMF coverage Wave F
+  (2026-08-03, ADR-0036): swapped from ImagingStudy (ADR-0029 R5, now
+  supported) to VitalSign, the same 'stale premise, not silently left'
+  treatment `gmf-test`'s own deferred-type fixtures already document."
   (str "{\"name\": \"Census Load-Failed Fixture\","
        " \"states\": {"
        "   \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Scan\"},"
-       "   \"Scan\": {\"type\": \"ImagingStudy\", \"direct_transition\": \"Done\"},"
+       "   \"Scan\": {\"type\": \"VitalSign\", \"direct_transition\": \"Done\"},"
        "   \"Done\": {\"type\": \"Terminal\"}"
        " }}"))
 
@@ -88,7 +93,7 @@
         entry (census/census-one dir census-opts {:id "census-load-failed-fixture" :file file})]
     (is (= :load-failed (:verdict entry)))
     (is (= [] (:walks entry)))
-    (is (contains? (get-in entry [:gap :unrecognized-state-types]) "ImagingStudy"))))
+    (is (contains? (get-in entry [:gap :unrecognized-state-types]) "VitalSign"))))
 
 (deftest walk-failed-module-names-every-throwing-seed
   (let [dir (io/file (System/getProperty "java.io.tmpdir") "census-test-walk-failed")

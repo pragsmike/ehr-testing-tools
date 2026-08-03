@@ -128,7 +128,13 @@
    ;; to MedicationOrder/MedicationEnd (State.java's own
    ;; CarePlanStart/CarePlanEnd classes, gmf-interpreter.md section 13).
    "CarePlanStart" :care-plan-start
-   "CarePlanEnd" :care-plan-end})
+   "CarePlanEnd" :care-plan-end
+   ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-1/AR-2/AR-3): Counter/
+   ;; ImagingStudy/SupplyList join v1 -- this document's own original
+   ;; Deferred table entries (section 1), now built.
+   "Counter" :counter
+   "ImagingStudy" :imaging-study
+   "SupplyList" :supply-list})
 
 (def ^:private code-system->keyword
   "GMF's own code-system strings -> sim-model/Concept's
@@ -295,6 +301,25 @@
   (cond-> child
     (:codes child) (update :codes #(mapv normalize-code %))
     (:value-code child) (update :value-code normalize-code)))
+
+(defn- normalize-imaging-instance
+  "GMF coverage Wave F (2026-08-03, ADR-0036 AR-2): :sop-class is a
+  Concept triplet, the same normalize-code every other coded field
+  already gets; :title stays verbatim (a free-text label, not a code)."
+  [instance]
+  (cond-> instance
+    (:sop-class instance) (update :sop-class normalize-code)))
+
+(defn- normalize-imaging-series
+  "GMF coverage Wave F (2026-08-03, ADR-0036 AR-2): :body-site/:modality
+  are Concept triplets; :instances recurses one level, the same nested-
+  vector shape :observations already establishes for MultiObservation/
+  DiagnosticReport children."
+  [series]
+  (cond-> series
+    (:body-site series) (update :body-site normalize-code)
+    (:modality series) (update :modality normalize-code)
+    (:instances series) (update :instances #(mapv normalize-imaging-instance %))))
 
 ;; --- GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3c finding 1):
 ;; gmf_version 2's own uniform stochastic-timing encoding -- a
@@ -573,6 +598,20 @@
                   ;; already does, above.
                   (:careplan state) (update :careplan (fn [t] (keyword (slug t))))
                   (:activities state) (update :activities #(mapv normalize-code %))
+                  ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-1): Counter's
+                  ;; own :action ("increment"/"decrement") normalizes to a
+                  ;; keyword the SAME way every other closed two-value GMF
+                  ;; vocabulary already does here (:encounter-class, above).
+                  (:action state) (update :action (fn [a] (keyword (slug a))))
+                  ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-2): ImagingStudy's
+                  ;; own :procedure-code (a single Concept) and :series (embedded,
+                  ;; recursively normalized).
+                  (:procedure-code state) (update :procedure-code normalize-code)
+                  (:series state) (update :series #(mapv normalize-imaging-series %))
+                  ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-3): SupplyList's
+                  ;; own :supplies -- each component's :code normalized, :quantity
+                  ;; untouched (already a plain int).
+                  (:supplies state) (update :supplies #(mapv (fn [c] (update c :code normalize-code)) %))
                   ;; GMF coverage Wave D stage D1 (2026-08-02, ADR-0029):
                   ;; :value-code on a standalone :observation state
                   ;; (Capillary_Refill's own top-level shape); :observations
@@ -667,6 +706,10 @@
           (case (:type state)
             :set-attribute (:attribute state)
             :symptom (:symptom state)
+            ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-1): Counter is a
+            ;; third attribute-writing leaf, section 5's own collision check
+            ;; extended the same way Symptom already joined SetAttribute.
+            :counter (:attribute state)
             nil))
         states))
 
@@ -710,6 +753,31 @@
    [:exact {:optional true} Exact]
    [:value-code {:optional true} sim-model/Concept]
    [:vital-sign {:optional true} :string]])
+
+;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-2): ImagingStudy's own
+;; embedded Series/Instance content -- State.java's own `HealthRecord.
+;; ImagingStudy.Series`/`.Instance` classes, source-grounded and
+;; confirmed against real module JSON (`congestive_heart_failure.json`,
+;; `lung_cancer.json`). :title/:sop-class ride along, declared for
+;; validation only -- the interpreter's own `imaging-study-extra` never
+;; reads either (glass-box scope: procedure code, modality, drawn
+;; counts, AR-2's own ruling), the same "declared, dead past the
+;; loader" treatment several other v1 fields already establish.
+(def ^:private ImagingInstance
+  [:map [:title {:optional true} :string] [:sop-class {:optional true} sim-model/Concept]])
+
+(def ^:private ImagingSeries
+  [:map
+   [:body-site {:optional true} sim-model/Concept]
+   [:modality sim-model/Concept]
+   [:instances [:vector ImagingInstance]]
+   [:min-number-instances {:optional true} :int]
+   [:max-number-instances {:optional true} :int]])
+
+;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-3): SupplyList's own
+;; per-component shape -- State.java's own private `SupplyComponent`
+;; class (source-grounded, confirmed against `sleep_apnea.json`).
+(def ^:private SupplyComponent [:map [:code sim-model/Concept] [:quantity :int]])
 
 ;; GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3b, H3): a
 ;; distributed_transition entry's own :distribution may be a plain
@@ -922,7 +990,38 @@
    [:death (with-transitions [:type [:= :death]] [:codes {:optional true} [:vector sim-model/Concept]]
              [:range {:optional true} Range] [:exact {:optional true} Exact]
              [:condition-onset {:optional true} :keyword]
-             [:referenced-by-attribute {:optional true} :string])]])
+             [:referenced-by-attribute {:optional true} :string])]
+   ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-1): Counter -- a third
+   ;; attribute-writing leaf state, structurally SetAttribute-shaped
+   ;; (State.java's own Counter class, source-grounded): :amount is
+   ;; optional -- absent OR authored as 0 both mean "default to 1, legacy
+   ;; compatibility" (the interpreter's own concern, `gmf-interpreter.clj`'s
+   ;; :counter case; this schema only validates the field's own TYPE, not
+   ;; its runtime default).
+   [:counter (with-transitions [:type [:= :counter]] [:attribute :string]
+               [:action [:enum :increment :decrement]] [:amount {:optional true} number?])]
+   ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-2): ImagingStudy --
+   ;; State.java's own ImagingStudy class (source-grounded, real modules
+   ;; confirmed against `congestive_heart_failure.json`/`lung_cancer.json`
+   ;; at the pin). :min-number-series/:max-number-series bound a single
+   ;; series-count draw over the WHOLE study (`gmf-interpreter.clj`'s own
+   ;; `imaging-study-extra`); each series' own :min-number-instances/
+   ;; :max-number-instances bound a separate, independent draw PER
+   ;; materialized series -- no vendored module this session exercises the
+   ;; study-level bounds (disclosed, ADR-0036's own execution note), only
+   ;; the per-series ones.
+   [:imaging-study
+    (with-transitions [:type [:= :imaging-study]]
+      [:procedure-code sim-model/Concept]
+      [:series [:vector ImagingSeries]]
+      [:min-number-series {:optional true} :int]
+      [:max-number-series {:optional true} :int])]
+   ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-3): SupplyList --
+   ;; State.java's own SupplyList class (source-grounded). Compiles to a
+   ;; log-only trajectory fact, never an IR step (`compile-trajectory`'s
+   ;; own explicit :supply-list clause, the ConditionEnd no-open-encounter
+   ;; precedent verbatim, ADR-0036's own AR-3).
+   [:supply-list (with-transitions [:type [:= :supply-list]] [:supplies [:vector SupplyComponent]])]])
 
 (def GmfModule
   [:map

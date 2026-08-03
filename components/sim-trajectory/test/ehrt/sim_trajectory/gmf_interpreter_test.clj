@@ -14,6 +14,7 @@
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
+            [ehrt.sim-trajectory.compile-trajectory :as ct]
             [ehrt.sim-trajectory.gmf :as gmf]
             [ehrt.sim-trajectory.gmf-interpreter :as interp]
             [ehrt.sim-model.interface :as sim-model])
@@ -1604,3 +1605,206 @@
           trajectory (:trajectory result)
           death-idx (first (keep-indexed (fn [i e] (when (= :death (:event e)) i)) trajectory))]
       (or (nil? death-idx) (= death-idx (dec (count trajectory)))))))
+
+;; --- GMF coverage Wave F (2026-08-03, ADR-0036 AR-1): Counter --------------
+
+(def counter-increment-module
+  {:id "counter-mod" :name "Counter"
+   :states {:initial {:type :initial :direct-transition :bump}
+            :bump {:type :counter :attribute "los" :action :increment :amount 2}
+            :done {:type :terminal}}})
+
+(deftest counter-increment-writes-current-plus-amount-under-a-root-namespaced-key
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :bump
+                   :attributes {:counter-mod/los 3})
+        outcome (interp/step counter-increment-module (Random. 1) ctx)]
+    (is (= 5 (get-in outcome [:attributes :counter-mod/los])))
+    (is (= [] (:events outcome)) "Counter is consumed internally -- no trajectory event")))
+
+(def counter-decrement-module
+  {:id "counter-mod" :name "Counter"
+   :states {:initial {:type :initial :direct-transition :bump}
+            :bump {:type :counter :attribute "los" :action :decrement :amount 2}
+            :done {:type :terminal}}})
+
+(deftest counter-decrement-subtracts-amount
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :bump
+                   :attributes {:counter-mod/los 3})
+        outcome (interp/step counter-decrement-module (Random. 1) ctx)]
+    (is (= 1 (get-in outcome [:attributes :counter-mod/los])))))
+
+(deftest counter-defaults-a-missing-attribute-to-zero
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :bump)
+        outcome (interp/step counter-increment-module (Random. 1) ctx)]
+    (is (= 2 (get-in outcome [:attributes :counter-mod/los])))))
+
+(def counter-no-amount-module
+  {:id "counter-mod" :name "Counter"
+   :states {:initial {:type :initial :direct-transition :bump}
+            :bump {:type :counter :attribute "los" :action :increment}
+            :done {:type :terminal}}})
+
+(deftest counter-defaults-amount-to-one-when-absent-legacy-compatibility
+  (testing "State.java's own Counter.initialize: amount == 0 (absent or
+            authored 0, indistinguishable at the source) defaults to 1"
+    (let [ctx (assoc (ctx-for (persona-at 1)) :current :bump
+                     :attributes {:counter-mod/los 3})
+          outcome (interp/step counter-no-amount-module (Random. 1) ctx)]
+      (is (= 4 (get-in outcome [:attributes :counter-mod/los]))))))
+
+(def counter-explicit-zero-amount-module
+  {:id "counter-mod" :name "Counter"
+   :states {:initial {:type :initial :direct-transition :bump}
+            :bump {:type :counter :attribute "los" :action :increment :amount 0}
+            :done {:type :terminal}}})
+
+(deftest counter-defaults-an-explicitly-authored-zero-amount-to-one-too
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :bump
+                   :attributes {:counter-mod/los 3})
+        outcome (interp/step counter-explicit-zero-amount-module (Random. 1) ctx)]
+    (is (= 4 (get-in outcome [:attributes :counter-mod/los])))))
+
+(defspec counter-consumes-zero-rng-draws 100
+  (prop/for-all [seed gen/large-integer]
+    (let [ctx (assoc (ctx-for (persona-at 1)) :current :bump)
+          calls (atom 0)
+          rng (proxy [Random] [(long seed)]
+                (nextDouble ([] (swap! calls inc) (proxy-super nextDouble)))
+                (nextInt ([n] (swap! calls inc) (proxy-super nextInt n))))]
+      (interp/step counter-increment-module rng ctx)
+      (= 0 @calls))))
+
+;; --- GMF coverage Wave F (2026-08-03, ADR-0036 AR-2): ImagingStudy ---------
+
+(def chest-xray-code {:system :snomed :code "399208008" :display "Plain X-ray of chest (procedure)"})
+(def cr-modality {:system :dicom-dcm :code "CR" :display "Computed Radiography"})
+
+(def imaging-study-fixed-module
+  "congestive_heart_failure.json's own CXR_ED shape -- no series/instance
+  bounds, the real project-relevant path (byte-confirmed against the
+  vendored Synthea checkout at the pin: no module this project's own
+  census walks authors study-level or instance-level bounds today)."
+  {:id "imaging-mod" :name "Imaging"
+   :states {:initial {:type :initial :direct-transition :xray}
+            :xray {:type :imaging-study
+                   :procedure-code chest-xray-code
+                   :series [{:modality cr-modality :instances [{:title "Title of this image"}]}]
+                   :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest imaging-study-emits-one-event-with-procedure-code-and-primary-modality
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :xray)
+        outcome (interp/step imaging-study-fixed-module (Random. 1) ctx)
+        event (first (:events outcome))]
+    (is (= 1 (count (:events outcome))))
+    (is (= [chest-xray-code] (:codes event)))
+    (is (= cr-modality (:modality event)))
+    (is (= [{:modality cr-modality :instance-count 1}] (:series event)))))
+
+(deftest imaging-study-with-no-bounds-consumes-zero-rng-draws
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :xray)
+        calls (atom 0)
+        rng (proxy [Random] [1]
+              (nextInt ([n] (swap! calls inc) (proxy-super nextInt n))))]
+    (interp/step imaging-study-fixed-module rng ctx)
+    (is (= 0 @calls))))
+
+(deftest imaging-study-never-advances-the-virtual-clock
+  (testing "AR-2: upstream's own process() returns immediately -- no
+            module-clock advance, unlike a duration-bearing Procedure"
+    (let [ctx (assoc (ctx-for (persona-at 1)) :current :xray)
+          outcome (interp/step imaging-study-fixed-module (Random. 1) ctx)]
+      (is (= 0 (:advance outcome))))))
+
+(def imaging-study-bounded-module
+  "lung_cancer.json's own per-series instance-count bounds shape --
+  min/max-number-instances present, no study-level min/max-number-series
+  (real Synthea's own more common bounded form, byte-confirmed)."
+  {:id "imaging-bounded-mod" :name "ImagingBounded"
+   :states {:initial {:type :initial :direct-transition :ct}
+            :ct {:type :imaging-study
+                 :procedure-code {:system :snomed :code "16335031000119103"
+                                  :display "High resolution computed tomography of chest without contrast (procedure)"}
+                 :series [{:modality {:system :dicom-dcm :code "CT" :display "Computed Tomography"}
+                           :min-number-instances 300 :max-number-instances 500
+                           :instances [{:title "CT Image Storage"}]}]
+                 :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest imaging-study-draws-one-instance-count-within-its-bounds-when-a-series-declares-them
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :ct)
+        calls (atom 0)
+        rng (proxy [Random] [1]
+              (nextInt ([n] (swap! calls inc) (proxy-super nextInt n))))
+        outcome (interp/step imaging-study-bounded-module rng ctx)
+        event (first (:events outcome))]
+    (is (= 1 @calls))
+    (is (<= 300 (:instance-count (first (:series event))) 500))))
+
+(def imaging-study-series-count-bounded-module
+  "State.java's own study-level min_number_series/max_number_series --
+  not observed on any real module this project's own census walks
+  (disclosed, ADR-0036's own execution note), but a real, source-grounded
+  path (Distribution.java-adjacent State.java field, byte-confirmed)."
+  {:id "imaging-series-bounded-mod" :name "ImagingSeriesBounded"
+   :states {:initial {:type :initial :direct-transition :ct}
+            :ct {:type :imaging-study
+                 :procedure-code chest-xray-code
+                 :series [{:modality cr-modality :instances [{:title "one"}]}]
+                 :min-number-series 2 :max-number-series 4
+                 :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest imaging-study-materializes-a-drawn-number-of-series-all-cloning-the-first
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :ct)
+        outcome (interp/step imaging-study-series-count-bounded-module (Random. 1) ctx)
+        event (first (:events outcome))]
+    (is (<= 2 (count (:series event)) 4))
+    (is (every? #(= cr-modality (:modality %)) (:series event)))))
+
+(deftest imaging-study-compiles-to-a-procedure-shaped-ir-step
+  (let [result (interp/walk-module imaging-study-fixed-module (Random. 1) (ctx-for (persona-at 1)))
+        compiled (ct/compile-trajectory (:trajectory result) sim-model/default-facility (interp/dob-epoch-day (persona-at 1)))
+        step (first (filter #(= :procedure (:type %)) (:steps compiled)))]
+    (is (some? step))
+    (is (= [chest-xray-code] (:codes step)))))
+
+;; --- GMF coverage Wave F (2026-08-03, ADR-0036 AR-3): SupplyList -----------
+
+(def supply-list-module
+  "sleep_apnea.json's own Nasal Mask Supplies shape (byte-confirmed)."
+  {:id "supply-mod" :name "Supply"
+   :states {:initial {:type :initial :direct-transition :supplies}
+            :supplies {:type :supply-list
+                       :supplies [{:code {:system :snomed :code "467645007"
+                                          :display "Continuous positive airway pressure nasal oxygen cannula (physical object)"}
+                                   :quantity 1}]
+                       :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest supply-list-emits-one-event-carrying-its-components-verbatim
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :supplies)
+        outcome (interp/step supply-list-module (Random. 1) ctx)
+        event (first (:events outcome))]
+    (is (= 1 (count (:events outcome))))
+    (is (= 1 (count (:components event))))
+    (is (= "467645007" (:code (:code (first (:components event))))))))
+
+(deftest supply-list-consumes-zero-rng-and-zero-advance
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :supplies)
+        calls (atom 0)
+        rng (proxy [Random] [1]
+              (nextDouble ([] (swap! calls inc) (proxy-super nextDouble)))
+              (nextInt ([n] (swap! calls inc) (proxy-super nextInt n))))
+        outcome (interp/step supply-list-module rng ctx)]
+    (is (= 0 @calls))
+    (is (= 0 (:advance outcome)))))
+
+(deftest supply-list-compiles-to-no-ir-step-log-only-fact
+  (testing "AR-3: the ConditionEnd no-open-encounter precedent verbatim
+            -- a real trajectory event, unconditionally no IR step"
+    (let [result (interp/walk-module supply-list-module (Random. 1) (ctx-for (persona-at 1)))
+          compiled (ct/compile-trajectory (:trajectory result) sim-model/default-facility (interp/dob-epoch-day (persona-at 1)))]
+      (is (= 1 (count (:trajectory result))))
+      (is (= :supply-list (:event (first (:trajectory result)))))
+      (is (= [] (:steps compiled))))))

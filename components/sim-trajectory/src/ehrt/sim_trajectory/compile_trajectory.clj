@@ -232,8 +232,15 @@
   than silently mishandled. GMF coverage Wave D stage D1 (ADR-0029):
   `:diagnostic-report` joins this set -- a pre-horizon MultiObservation/
   DiagnosticReport is exactly as irrelevant to THIS run's own
-  operational content as a pre-horizon :observation already is."
-  #{:encounter :encounter-end :procedure :observation :death :diagnostic-report})
+  operational content as a pre-horizon :observation already is. GMF
+  coverage Wave F (2026-08-03, ADR-0036): `:imaging-study` joins this
+  set -- it compiles to the SAME IR step family as :procedure (above),
+  so a pre-horizon one is exactly as irrelevant as a pre-horizon
+  :procedure already is. `:supply-list` does NOT join this set -- it
+  never compiles to a step at all, any phase (its own explicit
+  unconditional clause, above), so there is nothing for pre-horizon
+  dropping to add."
+  #{:encounter :encounter-end :procedure :observation :death :diagnostic-report :imaging-study})
 
 (def ^:private pre-horizon-fact-types
   "The ratified item 5 condensed set: ConditionOnset/ConditionEnd/
@@ -344,9 +351,21 @@
           (recur more (emit-with-delay steps last-t event (encounter-end->step trajectory event))
                  registration-facts (:t event) true)
 
-          (= :procedure event-type)
+          ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-2): ImagingStudy's
+          ;; own trajectory event compiles to the SAME IR step family a
+          ;; Procedure does -- `procedure->step` reads only :codes/citation,
+          ;; both of which an :imaging-study event already carries the
+          ;; identical shape of (upstream's own companion-procedure move).
+          (#{:procedure :imaging-study} event-type)
           (recur more (emit-with-delay steps last-t event (procedure->step event))
                  registration-facts (:t event) encounter-closed?)
+
+          ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-3): SupplyList --
+          ;; a log-only trajectory fact, unconditionally (never an IR step,
+          ;; any phase) -- the ConditionEnd no-open-encounter precedent
+          ;; verbatim, without that precedent's own encounter-open gate.
+          (= :supply-list event-type)
+          (recur more steps registration-facts last-t encounter-closed?)
 
           (= :observation event-type)
           (recur more (emit-with-delay steps last-t event (observation->step event))
