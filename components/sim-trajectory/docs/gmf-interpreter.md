@@ -73,12 +73,19 @@ it can't yet be *vendored*.
 | `Death` | v1, terminal trajectory event **(GMF coverage Wave C, ADR-0028, moved here from the Deferred table below — the same "move, not duplicate" treatment `Device`/`DeviceEnd`/`CallSubmodule` already got)** | ends the walk (`:terminal? true`, `:next nil` — the module's own declared post-Death transition is never resolved, a disclosed departure from real Synthea's own continue-past-Death semantics). Compiles at `CompileTrajectory` to the EXISTING `:discharge` IR step, no new step type — death inside a still-open encounter attaches as that encounter's own terminal disposition (`:disposition :expired`, `:codes` the cause of death verbatim); death outside any encounter closes the pathway without fabricating a discharge from an admission that never happened. `ehrt.sim.engine`'s own `:discharge` decide/evolve fold this to `:status :expired` (`components/sim/docs/patient-state-model.md`'s accumulator table, real for the first time) — see §10 for the full account |
 | `MultiObservation` / `DiagnosticReport` | v1, trajectory event **(GMF coverage Wave D stage D1, ADR-0029, moved here from the Deferred table below — the same "move, not duplicate" treatment `Device`/`DeviceEnd`/`CallSubmodule`/`Death` already got; `DiagnosticReport` enters this table for the first time — it was never in this document's own original brief at all)** | both extend Synthea's own private `ObservationGroup` class and compile to the SAME new `:diagnostic-report` IR step (embedded, inline `Observation`-shaped children, never a reference — §11's own D1a-2 grounding against `State.java`). `:observation`'s own IR step gains `:value-code`/`:category`/`:reference-range`/`:interpretation` alongside it, closing the `value_code`/`vital_sign` value-sourcing gap a standalone Observation state can also carry — see §12 for the full per-layer account |
 | `CarePlanStart` / `CarePlanEnd` | v1, trajectory event **(GMF coverage Wave D stage D2, ADR-0029, moved here from the Deferred table below — the same "move, not duplicate" treatment every prior wave's own state-type additions already got)** | a paired span structurally identical to `MedicationOrder`/`MedicationEnd` (State.java's own `CarePlanStart extends AttributeAssignableState`/`CarePlanEnd` classes, §13's own grounding) — compiles to new `:care-plan-start`/`:care-plan-end` IR steps, `:care-plan-citation` resolved the same `:references`-index way `:order-citation` already is. CarePlan itself stays v2-silent (R3) — no HL7v2 message shape, its natural rendering is a future FHIR CarePlan resource. The mechanism is built and tested; NO real vendored module exercises it yet as of this table's own writing (§13's own fix-forward: both D2 candidates deferred for unrelated reasons, one a compound-Guard interpreter gap) |
+| `Counter` | v1, consumed internally **(GMF coverage Wave F, ADR-0036 AR-1, moved here from the Deferred table below — the same "move, not duplicate" treatment every prior wave's own state-type additions already got)** | none — SetAttribute-shaped attribute arithmetic (State.java's own `Counter` class): reads the module-namespaced attribute (missing → 0), increments or decrements by `:amount` (default 1 when absent or authored 0 — upstream's own indistinguishable-at-the-source legacy default), writes back. Zero draws, no trajectory event |
+| `ImagingStudy` | v1, trajectory event **(GMF coverage Wave F, ADR-0036 AR-2, reverses this document's own original R5 deferral)** | one `:imaging-study` trajectory event carrying the procedure code, primary modality, and drawn series/instance counts (glass-box — no per-instance content, DICOM UID synthesis not ported). Compiles to the SAME IR step family a `:procedure` produces (`compile-trajectory`'s own `procedure->step`, unchanged) — upstream's own companion-procedure move, the 30-minute stop left as record metadata, never a clock advance. Series-count/instance-count bounds each cost one draw when a module declares them (upstream's own `rand(min, max+1)` int-cast, ≡ `rand-int-in`); no vendored-corpus module this session's own census touches declares study-level bounds, only per-series instance bounds (`lung_cancer.json`) |
+| `SupplyList` | v1, trajectory event (log-only) **(GMF coverage Wave F, ADR-0036 AR-3, newly built — never previously vendored or tabled)** | a log-only trajectory fact (`:supply-list`, carrying each `{code quantity}` component verbatim) compiling to NO IR step, unconditionally — the `ConditionEnd` no-open-encounter precedent verbatim (above), without that precedent's own encounter-open gate. Zero draws, zero clock advance. Wire rendering of supplies (an HL7v2 shape, a FHIR SupplyDelivery resource, or similar) is out of scope for hospital-traffic v1, disclosed |
 
 **Deferred, with reasons:**
 
 | State type | Why deferred |
 |---|---|
-| `Counter` | Named in this document's own brief as deferred; not observed in any of the four modules read this session, so its omission carries no survey evidence either way — carried forward as originally scoped |
+| `VitalSign` | **(GMF coverage Wave F, ADR-0036 AR-7, newly disclosed here — not previously named in this table)** requires a vital-sign REGISTER with baseline values (State.java's own `VitalSign` class writes a person-level vital-sign baseline other states later read) — engine-delegated content upstream (Synthea's lifecycle engine sets baselines before any module runs), which is authored calibration content this project does not yet supply, not an interpreter mechanism gap. Distinct from the ALSO-deferred `:vital-sign` CONDITION type (§2) — same underlying register gap, two separate vocabulary items. Named roadmap item: "vital-sign channel (calibration content + `VitalSign` state + `:vital-sign` condition)," pairing naturally with the re-scoped Wave E (risk-attribute register, §2's own citation) |
+
+*Every state type this document's own original brief named as deferred
+(`Counter`) has now been built (ADR-0036); this table's remaining row
+(`VitalSign`) is a NEW disclosure, not a survivor of the original list.*
 
 **A recommendation, flagged for author review: add `Symptom` to v1 as
 a write-only, consumed-internally state — not deferred.** `Symptom` is
@@ -268,6 +275,31 @@ carry the full citation); `Observation`'s own v1 scope omits the "is
 nil"/"is not nil" operators real Synthea also supports, and `Date`'s own
 v1 scope omits the `:month`/`:date` variants — neither needed by any
 candidate module this session read.
+
+**GMF coverage Wave F (2026-08-03, ADR-0036 AR-4) adds `Not`, `Race`,
+and `Socioeconomic Status` — the census's own `:walk-failed` mechanisms
+table (§15) named all three as real, mechanically-found gaps blocking
+1–3 modules each.** `Not` (Logic.java's own `Not` class) is recursive
+negation over a SINGLE nested condition — a distinct recursive shape
+from `And`/`Or`/`At Least`'s own plural `:conditions` vector (Logic.java's
+own field name, singular `:condition`; `ehrt.sim-trajectory.gmf`'s own
+`normalize-condition` gained a parallel recursive clause, since the
+existing one was gated on the plural key and would never have recursed
+into a `Not`'s own nested condition). `Race` (Logic.java's own `Race`
+class, case-insensitive match) and `Socioeconomic Status` (Logic.java's
+own `SocioeconomicStatus` class, case-SENSITIVE match) test the
+persona's own `:race`/`:socioeconomic-category` — new OPTIONAL persona
+fields (`ehrt.sim-model.persona`), sampled only when a run's own persona
+config supplies category weights (a deliberate, narrow, documented
+exception to this project's fixed-RNG-consumption law — persona.clj's
+own docstring has the full reasoning). Evaluating either against a
+persona carrying NEITHER field is a WALK ERROR, not a silent false: the
+interpreter throws a distinctly-marked exception `walk-module`/
+`run-module`'s own loop catches and converts into a recorded
+`:walk-error` status — never propagating past the walk boundary, and
+never downgrading any OTHER exception (an unsupported condition type,
+an unrecognized vital-sign name, ...), which stay loud, uncaught
+crashes exactly as before.
 
 ## 3. The history/horizon design
 
@@ -3196,3 +3228,124 @@ filename rather than the tool's own naming scheme; a same-day-safe
 naming scheme (e.g. a run-sequence suffix or a full timestamp) is named
 here for a future session, not built — out of this session's own
 loader-plus-interpreter fence.
+
+### Census re-run (2026-08-03, ADR-0036 AR-8): Counter/ImagingStudy/
+SupplyList/condition-rider class closes
+
+Wave F (ADR-0036) lands `Counter`/`ImagingStudy`/`SupplyList` plus the
+`Not`/`Race`/`Socioeconomic Status` condition rider, closing the three
+largest single-mechanism gaps this section's own F0 subsection (above)
+left standing (`Counter` 14, `ImagingStudy` 10, `SupplyList` 5) and the
+two condition-vocabulary gaps its own `:walk-failed` mechanisms table
+named (`Race` 3 modules, `Not` 1 module). Re-run with the SAME header
+parameters (pin, 3 seeds/module, mixer-seed `20260803`, registration
+age 30, 50-year horizon) plus AR-8's own disclosed persona-config
+delta — fixed, equal-weighted `:race-weights`/`:socioeconomic-weights`
+pools (Synthea's own closed Race/SocioeconomicStatus vocabularies,
+Logic.java-grounded), so the walks actually exercise the new guards.
+New artifact:
+[`components/sim-trajectory/docs/census/2026-08-03-synthea-7e08387-wave-f.edn`](census/2026-08-03-synthea-7e08387-wave-f.edn),
+committed alongside both prior artifacts (never overwriting), same
+filename-disambiguation workaround F0 already used.
+
+**Verdict counts, before → after:**
+
+| Verdict | Before | After | Δ |
+|---|---:|---:|---:|
+| `:ok-walked` | 42 | 60 | +18 |
+| `:load-failed` | 34 | 18 | −16 |
+| `:walk-failed` | 9 | 7 | −2 |
+| `:out-of-scope-by-ruling` | 0 | 0 | 0 |
+| **Total** | **85** | **85** | 0 |
+
+`Counter`/`ImagingStudy`/`SupplyList` are GONE from the top-gap-
+mechanisms table entirely (were 14/10/5); the remaining mechanisms are
+`VitalSign` ×2, `AllergyOnset` ×1, `Physiology` ×1, `Vaccine` ×1.
+
+**Movement classification (AR-8), every one of the 20 verdict changes
+traced individually, byte-confirmed against both artifacts:**
+
+- **`Counter`-blocked, resolved fully to `:ok-walked`** (10):
+  `bone-marrow-transplant`, `breast-cancer`, `colorectal-cancer`,
+  `homelessness`, `hypertension`, `lung-cancer`,
+  `metabolic-syndrome-disease`, `pregnancy`,
+  `prescribing-opioids-for-chronic-pain-and-treatment-of-oud`,
+  `veteran-lung-cancer`.
+- **`Counter`-blocked, surfaced a NEXT blocker** (1): `mend-program` →
+  `:walk-failed` (a `max-steps` runaway — a real zero-time-advance
+  transition cycle, the same wellness-cycle-adjacent substitution
+  artifact class the parity plan's own G row already names for
+  `med-rec`/`veteran-substance-abuse-treatment`, now a third instance).
+- **`SupplyList`-blocked, resolved fully to `:ok-walked`** (4):
+  `dental-and-oral-examination`, `dentures`, `kidney-transplant`,
+  `sleep-apnea`.
+- **`SupplyList`-blocked, surfaced a NEXT blocker** (1):
+  `metabolic-syndrome-care` → `:walk-failed` (the same `max-steps`
+  mechanism as `mend-program`, above).
+- **`ImagingStudy`-blocked, ALL 10 surfaced a next blocker, ZERO
+  resolved fully and ZERO regressed** — `ImagingStudy` was never the
+  ONLY gap on any of its 10 F0-blocked modules: `congestive-heart-
+  failure` → `VitalSign` (ADR-0036 AR-7's own explicit deferral),
+  `gallstones` → `Physiology` (a genuinely new, out-of-scope deferred
+  type), seven modules (`diabetic-retinopathy-treatment`,
+  `myocardial-infarction`, `stable-ischemic-heart-disease`,
+  `vhd-aortic`, `vhd-mitral`, `vhd-pulmonic`, `vhd-tricuspid`) → each
+  its own distinct unrecognized lookup-table column (`diabetic_retinopathy_stage`, `state`, `operative_status`,
+  `cardiac_surgery`, `vhd_mr_risk`, `vhd_ps_risk`, `vhd_tr_risk` — H2's
+  own `recognized-lookup-table-columns` boundary, AR-7's own deferred
+  Wave-I item), and `injuries` → a `:schema-invalid` rejection on a
+  PRE-EXISTING, unrelated gap: a `complex_transition` entry's own
+  nested `:distributions` carrying a NamedDistribution map
+  (`{:attribute :default}`), which `TransitionFields`'s own
+  `:complex-transition` schema declares `:distribution number?` only
+  (D3b/H3's own documented scope: `distributed_transition` gained
+  NamedDistribution resolution, `complex_transition`'s nested form did
+  not — `resolve-transition`'s own docstring already names this
+  exact gap as "no candidate module this session exercises a
+  NamedDistribution there," now confirmed a real, if still out-of-
+  scope, instance).
+- **`Race`/`Not`-blocked (the `:walk-failed` mechanisms table above),
+  ALL 4 resolved to `:ok-walked`**: `allergic-rhinitis` (`Not`),
+  `cystic-fibrosis`, `dementia`, `self-harm` (`Race`).
+
+Net arithmetic: 20 verdict changes total (10+1+4+1+4 = 20, all traced
+above); the raw −16 `:load-failed` delta is NOT simply
+`14+10+5=29` modules moving, because `ImagingStudy` never resolved a
+module on its own and several `Counter`/`SupplyList` modules carried
+more than one blocker — the same "fail-fast masking" the F0 subsection
+above already documented, now demonstrated a second time.
+
+**Sanity anchors held.** All seven currently-vendored roots stayed
+`:ok-walked`, byte-identical across all three census artifacts
+(F0/original and this run), matching the AR-6 oracle bracket above; no
+module outside the 20 traced moved at all.
+
+**Substance note (AR-8b): walk-verification attests determinism, not
+richness, for a large slice of this catalog.** Of the 42 modules
+`:ok-walked` in the PRE-Wave-F census, **26 produce zero trajectory
+events on every one of their 3 smoke-walk seeds** — an immediate-
+terminal on an absent persona attribute, a cross-module attribute
+block, or an empty horizon-complete (byte-confirmed by direct query
+against the F0 artifact's own `:walks` data): `ais-from-school-
+screening-to-sosort-recommendations`, `atopy`, `atrial-fibrillation`,
+`cerebral-palsy`, `chronic-kidney-disease`, `contraceptive-
+maintenance`, `copd`, `dialysis`, `epilepsy`, `female-reproduction`,
+`food-allergies`, `gout`, `lupus`, `mtbi`, `opioid-addiction`,
+`sexual-activity`, `spina-bifida`, **`stroke`**, `total-joint-
+replacement`, `trigger-bone-marrow-transplant`, `veteran`,
+`veteran-mdd`, `veteran-prostate-cancer`, `veteran-ptsd`,
+`veteran-self-harm`, `veteran-substance-abuse-conditions`. `stroke`'s
+own presence on this list is a load-bearing confirmation of §10's
+already-ratified E-rescoping account (`stroke_risk` falls back to its
+JSON-declared `:default`, never sourced — the walk completes, but
+touches no real content). This is not a Wave F finding about Wave F's
+own additions — it is a standing property of walk-verification itself
+(the census's own AR-2 definition: "loads AND every smoke-walk seed
+completed without throwing," never a claim about event RICHNESS) that
+Wave F's own re-run makes newly countable for the first time: for the
+gated chronic-disease cluster specifically, `:ok-walked` currently
+means "deterministically produces nothing," for over 60% of that
+cluster's pre-F membership. Named for whichever future session ranks
+Wave G/H's own priority — not a defect in this session's own scope,
+a property of the frontier this session's own re-run happened to make
+visible.

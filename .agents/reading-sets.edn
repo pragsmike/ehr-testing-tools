@@ -221,7 +221,17 @@
   ;; session-record/prompt-archive filenames, brought the real total
   ;; from 1361 to 1417 -- self-caught, the same pattern every prior
   ;; session touching this file has hit.
-  :budget-lines 1417}
+  ;; bumped 1417->1547, 2026-08-03 (GMF coverage Wave F session,
+  ;; ADR-0036, Step 7 close-out): roadmap.md's own Next-row rewrite
+  ;; (Wave F -> Wave G design session), a new Done-section entry, and
+  ;; four new Deferred rows (the stale myocardial_infarction.json claim
+  ;; corrected, census tool refinements, the UTI Observation raw-
+  ;; :distribution gap, the vital-sign channel, lookup-table columns
+  ;; race/time), plus indexing this session's own session-record/
+  ;; prompt-archive filenames, brought the real total from 1417 to
+  ;; 1547 -- self-caught, the same pattern every prior session touching
+  ;; this file has hit.
+  :budget-lines 1547}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one

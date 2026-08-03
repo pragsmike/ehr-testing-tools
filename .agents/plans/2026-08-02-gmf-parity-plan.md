@@ -149,10 +149,12 @@ IN, resequencing the provisional E/F/G/H/I order below.** Ratified
 order: **F0** (GAUSSIAN/EXPONENTIAL/TRIANGULAR distributions, ADR-0035
 — DONE, see roadmap) → **F** (Counter/ImagingStudy/SupplyList, 24
 modules, plus the `:race`/`:not` condition-type rider found by the
-census's own `:walk-failed` mechanisms table, 4 more) → **G** (wellness
-— ledger is 19 tagged modules plus the two max-steps loop walk-
-failures, `med-rec`/`veteran-substance-abuse-treatment`, expected to
-resolve as substitution artifacts once G lands) → **H** → **I**
+census's own `:walk-failed` mechanisms table, 4 more — **DONE, ADR-0036,
+see roadmap**) → **G** (wellness — ledger is 19 tagged modules plus
+now FOUR max-steps loop walk-failures, `med-rec`/`veteran-substance-
+abuse-treatment`/`mend-program`/`metabolic-syndrome-care` (the last two
+newly surfaced by Wave F's own census re-run), expected to resolve as
+substitution artifacts once G lands) → **H** → **I**
 (singleton tail: `AllergyOnset`, `VitalSign`, `Vaccine`, the
 lookup-column `time` gap). **Wave E is RE-SCOPED**: `stroke.json`
 already censuses `:ok-walked` (the `distributed_transition`

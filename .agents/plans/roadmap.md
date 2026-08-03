@@ -9,14 +9,17 @@ per item; done items move to the bottom of their section with a date and sha.
   same day it started -- see Done, below).
 
 ## Next (backlog, no session scheduled)
-- **Wave F** (`.agents/plans/2026-08-02-gmf-parity-plan.md` §4, ratified
-  order 2026-08-03, ADR-0035 AR-8 — F0 now landed, see Done below):
-  `Counter`/`ImagingStudy`/`SupplyList` (24 modules) plus the
-  `:race`/`:not` condition-type rider (4 more, the census's own
-  `:walk-failed` mechanisms table). G (wellness) and H (pre-roll) follow
-  in sequence, then I (bulk vendoring). Wave E (risk-attribute register)
-  is RE-SCOPED — calibration content on demand, not in the leverage
-  queue (`stroke.json` already censuses `:ok-walked`).
+- **Wave G design session** (`.agents/plans/2026-08-02-gmf-parity-plan.md`
+  §4, ratified order 2026-08-03, ADR-0035 AR-8 — F0 and F both now
+  landed, see Done below): wellness cycle — design session first
+  (ADR-0031 AR-2 ruled it IN SCOPE; ledger is 19 tagged modules plus
+  now FOUR max-steps loop walk-failures — `med-rec`,
+  `veteran-substance-abuse-treatment`, and Wave F's own newly-surfaced
+  `mend-program`/`metabolic-syndrome-care`, all expected to resolve as
+  substitution artifacts once G lands). H (pre-roll) follows, then I
+  (bulk vendoring). Wave E (risk-attribute register) is RE-SCOPED —
+  calibration content on demand, not in the leverage queue
+  (`stroke.json` already censuses `:ok-walked`).
 - Pairing-as-data (review P3-3): mutate↔judge conviction registry — design pass in
   the design channel first; vocabulary is load-bearing
 - Storefront demo fixture: minimal clean-gating FHIR fixture so the README's mutate
@@ -80,10 +83,61 @@ per item; done items move to the bottom of their section with a date and sha.
   a ported calculation). This row's remaining substance is Wave E
   scheduling (stroke as the register's first consumer), not an open
   design question.
-- `myocardial_infarction.json` — three independent blockers, none
-  touched by Wave D (`ImagingStudy`/R5, a genuinely new `SupplyList`
-  state type, `Counter`); its own 27-file closure is fully surveyed
-  (`docs/gmf-interpreter.md` §13), just not buildable this wave.
+- `myocardial_infarction.json` — the three independent blockers this
+  row originally named (`ImagingStudy`/R5, `SupplyList`, `Counter`) are
+  ALL now built (GMF coverage Wave F, ADR-0036) — this row's own
+  original claim is stale, corrected here rather than left to drift.
+  The Wave F census re-run (`docs/gmf-interpreter.md` §15) traced it
+  directly: `ImagingStudy` was never the module's ONLY gap — it now
+  surfaces an unrecognized lookup-table column, `state` (H2's own
+  `recognized-lookup-table-columns` boundary), a pre-existing,
+  unrelated gap Wave F did not touch. Its own 27-file closure is fully
+  surveyed (`docs/gmf-interpreter.md` §13); the lookup-table-column gap
+  is Wave I's own named tail item (see the new row below).
+- **Census tool refinements** (ADR-0035/ADR-0036's own disclosed, not-
+  fixed findings, `ehrt.sim-trajectory.census`): (a) no substance
+  qualifier on a `:ok-walked` verdict — a module that produces zero
+  trajectory events on every seed censuses identically to one with rich
+  content (`docs/gmf-interpreter.md` §15's own AR-8b substance note: 26
+  of 42 pre-Wave-F `:ok-walked` modules produce zero events on every
+  seed); (b) no per-module census-seed override (every module shares
+  the SAME global seed count); (c) the artifact filename has no same-
+  calendar-day disambiguation (worked around by hand-appending a wave
+  suffix in both the F0 and F re-runs, not fixed in the tool itself).
+  Revisit trigger: whichever future session next re-runs the census and
+  hits the filename collision again, or needs to distinguish "walks but
+  produces nothing" from "walks and produces real content" for ranking
+  purposes.
+- UTI's own `ed_bundle.json` O2-saturation Observation states carry a
+  `gmf_version 2` `:distribution` this loader has NEVER normalized
+  (Observation is not one of ADR-0035's three ported contexts) — a
+  stray, still-raw, string-keyed field `emit-and-advance`'s own
+  `(= :procedure (:type state))` gate correctly ignores (ADR-0035's own
+  execution note, Step 2's "real bug found and fixed mid-step"). The
+  raw field itself stays unnormalized, disclosed, not built — revisit
+  trigger: a future session that needs Observation's own v2 timing/
+  value distributions for real (no vendored-corpus module currently
+  reads the sampled value back).
+- **Vital-sign channel** (ADR-0036 AR-7, GMF coverage Wave F's own
+  explicit deferral): the `VitalSign` STATE type and the `:vital-sign`
+  CONDITION type both require a vital-sign REGISTER with baseline
+  values (State.java: Synthea's lifecycle engine sets these before any
+  module runs) — engine-delegated content this project does not yet
+  supply, authored calibration content pairing naturally with the
+  re-scoped Wave E (risk-attribute register, above). Blocks
+  `congestive_heart_failure`/`contraceptives`/`covid19` directly
+  (census-confirmed). Revisit trigger: Wave E's own design session, or
+  whichever session first needs a real vital-sign baseline.
+- **Lookup-table columns `race`/`time`** (ADR-0036 AR-7, deferred to
+  Wave I): `acute-myeloid-leukemia` (`race`), `hiv-diagnosis` (`time`),
+  plus the seven modules Wave F's own census re-run newly surfaced
+  behind `ImagingStudy` (`diabetic_retinopathy_stage`, `state`,
+  `operative_status`, `cardiac_surgery`, `vhd_mr_risk`, `vhd_ps_risk`,
+  `vhd_tr_risk`, `docs/gmf-interpreter.md` §15's own AR-8 trace) —
+  `race` shares this wave's own persona-race prerequisite (`ehrt.sim-
+  model.persona`'s new optional `:race` field, ADR-0036 AR-4/AR-5).
+  H2's own `recognized-lookup-table-columns` boundary; revisit trigger:
+  Wave I's own bulk-vendoring session.
 - `Active CarePlan` (condition type) — design-ruled, implementation-
   deferred (Wave D stage D2's own G2): no vendored module exercises it
   yet; build fresh against the first real candidate's own usage.
@@ -179,6 +233,80 @@ per item; done items move to the bottom of their section with a date and sha.
   doc delta note), and this session's own closing records commit.
   Session record: `.agents/session-records/2026-08-03-wave-f0-
   distributions.md`.
+
+## Done (this session, 2026-08-03, GMF coverage Wave F — Counter/ImagingStudy/SupplyList/condition rider — ADR-0036)
+- `Counter` (SetAttribute-shaped attribute arithmetic, legacy amount-
+  default-to-1, zero draws), `ImagingStudy` (one glass-box trajectory
+  event carrying procedure code/primary modality/drawn series+instance
+  counts, compiling to the SAME IR step family a Procedure produces via
+  `compile-trajectory`'s own `procedure->step`, no clock advance), and
+  `SupplyList` (a log-only trajectory fact, the ConditionEnd
+  no-open-encounter precedent verbatim, unconditional) all land
+  together (`98f53ad`) — this document's own original Deferred table's
+  last remaining row (`Counter`) is now built, and `ImagingStudy`
+  reverses its own R5 deferral (ADR-0029).
+- Condition rider + persona (`c9b2bbf`): `Not` (recursive negation —
+  fixed `normalize-condition`'s own recursive-normalization gap, gated
+  on the plural `:conditions` key, never firing for `Not`'s singular
+  `:condition`), `Race` (case-insensitive), `Socioeconomic Status`
+  (case-sensitive) join the condition vocabulary. Persona gains
+  optional `:race`/`:socioeconomic-category` fields, sampled ONLY when
+  config supplies category weights — a deliberate, narrow, DOCUMENTED
+  exception to the fixed-RNG-consumption law (`persona.clj`'s own
+  docstring has the full reasoning: config-time variation, the same
+  class `age-min`/`age-max` already are, never a runtime-outcome-
+  dependent branch), proven by a direct draw-count test (13 unconfigured,
+  15 with both weights, 14 with one). Evaluating Race/Socioeconomic
+  Status against a persona missing the field is a WALK ERROR, not a
+  silent false and not an escaping exception — `step` still throws a
+  distinctly-marked exception (propagating through and/or/at-least/
+  guard/transition recursion exactly like every other exception this
+  namespace throws); `walk-module`/`run-module`'s own loop is the ONE
+  place that specific marker is caught and converted into a recorded
+  `:walk-error` status, proven NOT to catch any other exception class
+  by a dedicated test.
+- Oracle bracket (`e26c9c1` → `c9b2bbf`, `bin/regression-oracle`, all 9
+  root batches): IDENTICAL — pure identity held, byte-verified, the
+  real script's own output.
+- Census re-run (`83f7858`,
+  `components/sim-trajectory/docs/census/2026-08-03-synthea-7e08387-
+  wave-f.edn`, committed alongside both prior artifacts): `:ok-walked`
+  42→60, `:load-failed` 34→18, `:walk-failed` 9→7. `Counter`/
+  `ImagingStudy`/`SupplyList` vanish from top-gap-mechanisms entirely.
+  All 20 verdict changes traced individually (`docs/gmf-interpreter.md`
+  §15's own AR-8 subsection has the full account): 10 `Counter`-blocked
+  and 4 `SupplyList`-blocked modules resolve fully, 2 more surface a
+  `max-steps` runaway (a wellness-cycle-adjacent substitution artifact,
+  joining `med-rec`/`veteran-substance-abuse-treatment` in the Wave G
+  ledger); all 4 `Race`/`Not`-blocked modules resolve fully; all 10
+  `ImagingStudy`-blocked modules surface a next blocker (never resolved
+  alone, never regressed) — `VitalSign` (1), `Physiology` (1, a
+  genuinely new deferred type), an unrecognized lookup-table column (7,
+  each distinct), and a pre-existing `complex_transition`/
+  NamedDistribution schema gap (1, `injuries.json`). All seven vendored
+  roots unmoved. Substance note (AR-8b, found live): 26 of 42 pre-Wave-F
+  `:ok-walked` modules — including `stroke` — produce ZERO trajectory
+  events on every census seed; walk-verification attests determinism of
+  what a walk touches, which for the gated chronic cluster is currently
+  almost nothing (named for a future ranking session, not a Wave F
+  defect).
+- `notes/ADRs.md` ADR-0036 (AR-1 through AR-8, execution note with the
+  oracle table and full census movement classification).
+  `docs/gmf-interpreter.md` §1 (Counter/ImagingStudy/SupplyList moved
+  from Deferred to the main table; `VitalSign` newly disclosed in
+  Deferred), §2 (Not/Race/Socioeconomic Status prose paragraph), §15
+  (the Wave F census re-run subsection + AR-8b substance note). This
+  roadmap's own Deferred section gains four rows (the stale
+  `myocardial_infarction.json` claim corrected; census tool
+  refinements; the UTI Observation raw-`:distribution` gap; the
+  vital-sign channel; lookup-table columns `race`/`time` for Wave I)
+  and this Next section moves Wave F to Done, entering Wave G's own
+  design session in its place.
+- Commits, in order: `98f53ad` (Steps 1-3, Counter/ImagingStudy/
+  SupplyList), `c9b2bbf` (Step 4, condition rider + persona), `83f7858`
+  (Step 6, census re-run), and this session's own closing records
+  commit. Session record: `.agents/session-records/2026-08-03-gmf-
+  coverage-wave-f.md`.
 
 ## Done (this session, 2026-08-03, GMF census — ADR-0034)
 - `ehrt.sim-trajectory.census` (`development/src`, a dev entry point per
