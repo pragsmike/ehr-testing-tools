@@ -88,17 +88,38 @@
           (is (= (get sentinel-opts k) (get @captured k))
               (str k " was not forwarded from run-command to engine/run")))))))
 
-;; --- M5b: :modules (names) -> loaded module maps -------------------------
+;; --- M5b: :modules (names) -> closure-shaped entries ----------------------
+;; ADR-0033 AR-2: engine-facing :modules entries are now ALWAYS closure-
+;; shaped (`load-closure`'s own :ok payload), whether or not the named
+;; module actually calls a submodule.
 
 (deftest run-command-resolves-module-names-against-the-real-vendored-directory
   (testing "the config/CLI-facing :modules (names) translates to engine/
-            run's own :modules (already-loaded module maps) -- the SAME
-            kind of translation :churn/:churn-profile already does"
+            run's own :modules (already-loaded, closure-shaped entries,
+            ADR-0033 AR-2) -- the SAME kind of translation :churn/
+            :churn-profile already does"
     (let [captured (atom nil)
           stub-engine-run (fn [engine-opts] (reset! captured engine-opts) {:ground-truth [] :facility nil :providers nil})]
       (run/run-command {:seed 1 :modules ["sinusitis"]} {:engine-run-fn stub-engine-run})
       (is (= 1 (count (:modules @captured))))
-      (is (= "sinusitis" (:id (first (:modules @captured))))))))
+      (let [closure (first (:modules @captured))]
+        (is (= "sinusitis" (:root closure)))
+        (is (= "sinusitis" (:id (get (:modules closure) "sinusitis"))))
+        (is (= {} (:tables closure)))
+        (is (not (contains? closure :initial-attributes))
+            "absent :module-initial-attributes means no :initial-attributes key at all, byte-identical to pre-ADR-0033")))))
+
+(deftest run-command-threads-module-initial-attributes-onto-the-resolved-closure
+  (testing "ADR-0033 AR-1: :module-initial-attributes, keyed by module
+            name, attaches per-entry onto the resolved closure -- a
+            scenario-authoring seed the engine only ever threads, never
+            invents"
+    (let [captured (atom nil)
+          stub-engine-run (fn [engine-opts] (reset! captured engine-opts) {:ground-truth [] :facility nil :providers nil})]
+      (run/run-command {:seed 1 :modules ["sinusitis"]
+                        :module-initial-attributes {"sinusitis" {:some-attr 1}}}
+                       {:engine-run-fn stub-engine-run})
+      (is (= {:some-attr 1} (:initial-attributes (first (:modules @captured))))))))
 
 (deftest run-command-surfaces-an-unresolvable-module-name-as-a-structured-error
   (let [r (run/run-command {:seed 1 :modules ["not-a-real-module"]})]

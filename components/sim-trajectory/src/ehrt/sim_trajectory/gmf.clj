@@ -952,6 +952,17 @@
            (let [modules (:payload closure)]
              (resolve-tables table-resolve-fn modules (lookup-table-transition-names modules) root-id))))))))
 
+(defn singleton-closure
+  "Wraps an already-loaded, standalone `module` (no closure resolution
+  performed or needed) in `load-closure`'s own `:ok` payload shape --
+  `{:root (:id module) :modules {id module} :tables {}}` -- so an
+  engine-facing `:modules` entry is ALWAYS closure-shaped (ADR-0033
+  AR-2), whether or not the module actually calls a submodule. Plain
+  data, not a Result: there is nothing here that can fail (the module
+  is already loaded and validated)."
+  [module]
+  {:root (:id module) :modules {(:id module) module} :tables {}})
+
 ;; --- M5b: per-patient module assignment -- SimHospital's own percentage_of_
 ;; patients analogue, the SAME shape sim-model/PathwaysConfig
 ;; already established for authored pathways (docs/gmf-interpreter.md's own

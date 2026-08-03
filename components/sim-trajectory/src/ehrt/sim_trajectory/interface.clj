@@ -14,11 +14,25 @@
 (defn load-module [module-name json-string] (gmf/load-module module-name json-string))
 (defn valid-modules-config? [modules-config] (gmf/valid-modules-config? modules-config))
 
+(defn load-closure
+  ([root-id root-json-text resolve-fn]
+   (gmf/load-closure root-id root-json-text resolve-fn))
+  ([root-id root-json-text resolve-fn table-resolve-fn]
+   (gmf/load-closure root-id root-json-text resolve-fn table-resolve-fn)))
+
+(defn singleton-closure [module] (gmf/singleton-closure module))
+
 (defn run-module
   ([module rng persona registration-t]
    (gmf-interpreter/run-module module rng persona registration-t))
   ([module rng persona registration-t horizon-end-t]
-   (gmf-interpreter/run-module module rng persona registration-t horizon-end-t)))
+   (gmf-interpreter/run-module module rng persona registration-t horizon-end-t))
+  ;; ADR-0033 AR-3: the full arity, purely additive -- `:registered`'s
+  ;; own decide method (ehrt.sim.engine) now calls this one, threading a
+  ;; closure's own `modules`/`tables` maps and an optional per-patient
+  ;; `initial-attributes` seed straight through to the interpreter.
+  ([module rng persona registration-t horizon-end-t modules initial-attributes tables]
+   (gmf-interpreter/run-module module rng persona registration-t horizon-end-t modules initial-attributes tables)))
 
 (defn compile-trajectory [trajectory facility registration-t]
   (compile-trajectory/compile-trajectory trajectory facility registration-t))

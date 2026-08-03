@@ -35,32 +35,59 @@
             [ehrt.sim.manifest :as manifest]
             [ehrt.sim-model.interface :as sim-model]))
 
+(defn- module-resolve-fn
+  "D3's own real caller shape -- a thin `io/resource` wrapper over the
+  search path `sim/modules/<call-path>.json`."
+  [call-path]
+  (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
+
+(defn- module-table-resolve-fn
+  "D3a/H2's own real caller shape -- a thin `io/resource` wrapper over
+  `sim/modules/lookup_tables/<table-name>` (the table name already
+  carries its own `.csv` extension, unlike a module call-path)."
+  [table-name]
+  (some-> (io/resource (str "sim/modules/lookup_tables/" table-name)) slurp))
+
 (defn resolve-modules
   "M5b: `:modules` at the config/CLI-facing layer is a vector of NAME
   STRINGS (resolving to `resources/modules/<name>.json` -- test code may
   point at other fixture paths via a lower-level API, per this
   function's own callers, but `run-command`'s own surface only ever
-  resolves the real vendored directory); `ehrt.sim.engine/run`'s
-  OWN `:modules` key wants already-loaded module maps instead (engine.clj
-  does no file I/O of its own, the same layering `:facility`/`:providers`
-  already follow). This is THIS namespace's own translation step, the
-  same role `:churn`/`:churn-profile`'s own translation already plays.
+  resolves the real vendored directory); `ehrt.sim.engine/run`'s OWN
+  `:modules` key wants already-loaded, CLOSURE-shaped entries instead
+  (ADR-0033 AR-2 -- `sim-trajectory/load-closure`'s own `:ok` payload,
+  `{:root :modules :tables}`, engine.clj does no file I/O of its own,
+  the same layering `:facility`/`:providers` already follow). This is
+  THIS namespace's own translation step, the same role
+  `:churn`/`:churn-profile`'s own translation already plays.
   Result-not-throw: a missing or invalid module name in a caller's own
   config is an operational error (`:module-not-found`/
-  `:module-load-failed`), never a thrown exception."
-  [names]
-  (loop [names names acc []]
-    (if (empty? names)
-      (result/ok acc)
-      (let [module-name (first names)
-            res (io/resource (str "sim/modules/" module-name ".json"))]
-        (if (nil? res)
-          (result/error :module-not-found {:module module-name})
-          (let [loaded (sim-trajectory/load-module module-name (slurp res))]
-            (if (result/ok? loaded)
-              (recur (rest names) (conj acc (:payload loaded)))
-              (result/error :module-load-failed
-                            {:module module-name :category (:category loaded) :payload (:payload loaded)}))))))))
+  `:module-load-failed`), never a thrown exception.
+
+  ADR-0033 AR-1: `initial-attributes-by-name` (optional, default `{}`)
+  -- `{module-name {attr value}}`, this namespace's own `:module-
+  initial-attributes` opts key -- attaches each name's own seed map
+  onto its resolved closure as `:initial-attributes`, when non-empty
+  (absent-means-untouched, the same opt-in law every other engine-
+  facing key here already follows). A scenario-authoring knob, not
+  engine machinery: the engine only ever threads what it's handed."
+  ([names] (resolve-modules names {}))
+  ([names initial-attributes-by-name]
+   (loop [names names acc []]
+     (if (empty? names)
+       (result/ok acc)
+       (let [module-name (first names)
+             res (io/resource (str "sim/modules/" module-name ".json"))]
+         (if (nil? res)
+           (result/error :module-not-found {:module module-name})
+           (let [loaded (sim-trajectory/load-closure module-name (slurp res) module-resolve-fn module-table-resolve-fn)]
+             (if (result/ok? loaded)
+               (let [closure (:payload loaded)
+                     ia (get initial-attributes-by-name module-name)]
+                 (recur (rest names)
+                        (conj acc (cond-> closure (seq ia) (assoc :initial-attributes ia)))))
+               (result/error :module-load-failed
+                             {:module module-name :category (:category loaded) :payload (:payload loaded)})))))))))
 
 ;; --- M6 Task 0: config-reachable :self-check-failed, recategorized -------
 ;; The tools full-capability session (`tools/ADR-0015`, this project's
@@ -251,6 +278,14 @@
   surfaced BEFORE `engine/run` is ever called, the same
   fail-fast-on-a-bad-config posture `--seed` missing already gets.
 
+  ADR-0033 AR-1: `:module-initial-attributes` (optional,
+  `{module-name {attr value}}`) rides `:config` the same passthrough
+  way -- a scenario-authoring knob for a module walk-entry seed
+  (`resolve-modules`'s own docstring has the full attachment rule).
+  Absent entirely -- the default -- every resolved closure carries no
+  `:initial-attributes` at all, byte-identical to a run that never
+  named this key.
+
   `opts`'s second, injectable arity follows the SAME -fn convention
   `ehrt.sim-cli.core/dispatch-action` already uses (`:engine-run-fn`,
   defaulting to the real `ehrt.sim.engine/run`) -- the seam the
@@ -259,9 +294,10 @@
   ([opts] (run-command opts {}))
   ([raw-opts {:keys [engine-run-fn] :or {engine-run-fn engine/run}}]
    (let [opts (merge-config-file raw-opts)
-         {:keys [seed patients emit at reference-date utc-offset warm-up-seconds churn churn-profile site-profile modules]} opts
+         {:keys [seed patients emit at reference-date utc-offset warm-up-seconds churn churn-profile site-profile
+                 modules module-initial-attributes]} opts
          conflicts (incompatible-assignments opts)
-         resolved-modules (when modules (resolve-modules modules))]
+         resolved-modules (when modules (resolve-modules modules (or module-initial-attributes {})))]
      (cond
        (nil? seed)
        (result/error :missing-required-opt

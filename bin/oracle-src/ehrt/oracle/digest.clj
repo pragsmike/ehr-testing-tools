@@ -95,19 +95,19 @@
 (defn- sinusitis-pair []
   (let [module (:payload (gmf/load-module "sinusitis" (slurp (io/resource "sim/modules/sinusitis.json"))))]
     (engine-pair {:seed 1 :patients 30 :pathway {:name "module-only" :steps []}
-                  :modules [module] :module-assignment [{:module-id "sinusitis" :weight 1}]
+                  :modules [(gmf/singleton-closure module)] :module-assignment [{:module-id "sinusitis" :weight 1}]
                   :module-horizon-days 3650})))
 
 (defn- death-fixture-pair []
   (let [module (:payload (gmf/load-module "death-fixture" (slurp (io/resource "ehrt/sim/fixtures/death-fixture.json"))))]
     (engine-pair {:seed 20260802 :patients 200 :pathway {:name "module-only" :steps []}
-                  :modules [module] :module-assignment [{:module-id "death-fixture" :weight 1}]
+                  :modules [(gmf/singleton-closure module)] :module-assignment [{:module-id "death-fixture" :weight 1}]
                   :module-horizon-days 3650})))
 
 (defn- sepsis-pair []
   (let [module (:payload (gmf/load-module "sepsis" (slurp (io/resource "sim/modules/sepsis.json"))))]
     (engine-pair {:seed 20260802 :patients 500 :pathway {:name "module-only" :steps []}
-                  :modules [module] :module-assignment [{:module-id "sepsis" :weight 1}]
+                  :modules [(gmf/singleton-closure module)] :module-assignment [{:module-id "sepsis" :weight 1}]
                   :module-horizon-days 36500})))
 
 (def ^:private roots

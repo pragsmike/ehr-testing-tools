@@ -1081,7 +1081,7 @@
                        ;; fresh :new patient) -- a real caller wanting
                        ;; module-only patients must do the same.
                        :pathway {:name "module-only" :steps []}
-                       :modules [sinusitis-module]
+                       :modules [(sim-trajectory/singleton-closure sinusitis-module)]
                        :module-assignment [{:module-id "sinusitis" :weight 1}]
                        :module-horizon-days 3650})
           kinds (into #{} (map :event) ground-truth)
@@ -1121,7 +1121,7 @@
     (let [{:keys [ground-truth] :as result}
           (engine/run {:seed 20260802 :patients 200
                        :pathway {:name "module-only" :steps []}
-                       :modules [death-fixture-module]
+                       :modules [(sim-trajectory/singleton-closure death-fixture-module)]
                        :module-assignment [{:module-id "death-fixture" :weight 1}]
                        :module-horizon-days 3650})
           discharges (filter #(= :discharge (:event %)) ground-truth)
@@ -1165,7 +1165,7 @@
                                     {:patient-ordinal 1 :pathway pathway}
                                     {:patient-ordinal 2 :pathway empty-pathway}
                                     {:patient-ordinal 3 :pathway empty-pathway}]
-                         :modules [clinic-module]
+                         :modules [(sim-trajectory/singleton-closure clinic-module)]
                          :module-assignment [{:patient-ordinal 2 :module-id "fixture-clinic"}
                                              {:patient-ordinal 3 :module-id "fixture-clinic"}]
                          :module-horizon-days 3650})]

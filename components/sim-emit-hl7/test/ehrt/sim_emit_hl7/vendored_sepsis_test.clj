@@ -41,7 +41,7 @@
 ;; docstring records for its own module.
 (def ^:private run-config
   {:seed 20260802 :patients 500 :pathway {:name "module-only" :steps []}
-   :modules [sepsis-module] :module-assignment [{:module-id "sepsis" :weight 1}]
+   :modules [(gmf/singleton-closure sepsis-module)] :module-assignment [{:module-id "sepsis" :weight 1}]
    :module-horizon-days 36500})
 
 (deftest a-run-with-the-sepsis-module-configured-produces-diagnostic-report-content-for-real

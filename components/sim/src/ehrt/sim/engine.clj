@@ -296,7 +296,7 @@
 ;; RunModules/CompileTrajectory stage boundary, folded into THIS SAME
 ;; engine-internal step for the same reason Persona itself was (M4's own
 ;; documented theory-flip note): a patient's assigned module is consumed at
-;; the same init moment this event already owns. `step`'s own :module (set,
+;; the same init moment this event already owns. `step`'s own :closure (set,
 ;; per patient, by `run`'s eager `registered-steps-for` -- mirroring how
 ;; :pathways' own per-patient resolution already happens eagerly, ahead of
 ;; the main loop) is nil for the (default, opt-in) case of no module
@@ -312,8 +312,22 @@
 ;; Terminal state and no Guard to block on would otherwise run until the
 ;; interpreter's own max-steps backstop throws).
 
+;; ADR-0033 AR-2/AR-3 (2026-08-03, J3 closed): `:closure` -- ALWAYS
+;; closure-shaped when present (`ehrt.sim-trajectory.gmf/load-closure`'s
+;; own :ok payload, `{:root :modules :tables}`, plus an optional
+;; :initial-attributes an authoring-time config may attach, AR-1) --
+;; replaces the pre-ADR-0033 bare :module. `run-module` is now called at
+;; its FULL 7-arity, threading the closure's own `:modules` (submodule
+;; registry) and `:tables` (lookup-table members) straight through to the
+;; interpreter -- the previous bare 5-arity call defaulted `modules` to
+;; `{root root-module}` (the root alone) and `tables`/`initial-attributes`
+;; to `{}`, which is EXACTLY the singleton-closure/no-seed case: this
+;; change is draw-neutral and byte-neutral for every pre-ADR-0033 run
+;; (AR-4), and only NEWLY reaches a closure's own called submodules/
+;; tables/seed for a root that actually has them.
+
 (defmethod decide :registered
-  [rng t world patient-id {:keys [module]}]
+  [rng t world patient-id {:keys [closure]}]
   ;; :active-mrn is REQUIRED here, not merely conventional: :registered
   ;; is now every patient's FIRST event, and `replay` (below) bootstraps
   ;; a never-yet-seen participant's initial state via `(initial-patient
@@ -323,10 +337,15 @@
   ;; nicety), or `replay`'s own bootstrap (and every check.clj invariant
   ;; built on it) silently seeds `:mrns #{nil}`.
   (let [persona (sim-model/persona rng (:persona-config world))
-        compiled (when module
-                   (let [reg-t (sim-model/reference-today-epoch-day)
+        compiled (when closure
+                   (let [root-module (get (:modules closure) (:root closure))
+                         reg-t (sim-model/reference-today-epoch-day)
                          horizon-end-t (+ reg-t (:module-horizon-days world))
-                         {:keys [trajectory]} (sim-trajectory/run-module module rng persona reg-t horizon-end-t)]
+                         {:keys [trajectory]} (sim-trajectory/run-module
+                                                root-module rng persona reg-t horizon-end-t
+                                                (:modules closure)
+                                                (or (:initial-attributes closure) {})
+                                                (or (:tables closure) {}))]
                      (sim-trajectory/compile-trajectory trajectory (:facility world) reg-t)))]
     {:events [(cond-> {:event :registered :t t
                        :active-mrn (get-in world [:patients patient-id :active-mrn])
@@ -1287,13 +1306,21 @@
                       milestone's own fixture regeneration is expected
                       and documented (sim/ADR-0009 policy), not guarded
                       against the way M2b/M3's opt-in additions were.
-    :modules          M5b: a vector of ALREADY-LOADED GMF module maps
-                      (ehrt.sim-trajectory.gmf/load-module's own :payload
-                      shape -- this namespace does no file I/O of its
-                      own, ehrt.sim.run's job, the same layering
-                      :facility/:providers/:order-profiles already
-                      follow). Looked up by :id against
-                      :module-assignment's own resolution.
+    :modules          M5b, hard-switched at ADR-0033 (AR-2): a vector of
+                      ALREADY-LOADED, CLOSURE-SHAPED entries
+                      (ehrt.sim-trajectory.gmf/load-closure's own :ok
+                      payload -- {:root :modules :tables}, plus an
+                      optional :initial-attributes a caller's own config
+                      may attach, AR-1) -- this namespace does no file
+                      I/O of its own, ehrt.sim.run's job, the same
+                      layering :facility/:providers/:order-profiles
+                      already follow. Looked up by :root against
+                      :module-assignment's own resolution. A standalone
+                      module with no CallSubmodule embeds as the
+                      singleton closure ({:root id :modules {id module}
+                      :tables {}}, ehrt.sim-trajectory.gmf/singleton-
+                      closure) -- draw-neutral and byte-neutral versus
+                      the pre-ADR-0033 bare-module shape (AR-4).
     :module-assignment M5b: ehrt.sim-trajectory.gmf/ModulesConfig -- the
                       SAME weighted-pool/explicit-ordinal shape
                       :pathways already establishes, `assign-module`'s
@@ -1302,7 +1329,7 @@
                       consumption, sim/ADR-0009, law, extended). ABSENT
                       ENTIRELY (not merely nil or []) -- the default --
                       means no patient ever walks a module: no draw, no
-                      :module carried on any :registered step, BYTE-
+                      :closure carried on any :registered step, BYTE-
                       IDENTICAL to pre-M5b output (the pinned fixture;
                       the same opt-in law :pathways/:churn-profile
                       already establish). A patient's own compiled
@@ -1396,20 +1423,24 @@
         ;; `run`'s own docstring)). The MODULE WALK itself (persona-
         ;; dependent -- an unbounded number of draws) stays at :registered
         ;; decide-time, below, the same place persona sampling already is.
-        modules-by-id (into {} (map (fn [m] [(:id m) m])) modules)
+        ;; ADR-0033 AR-2: `:modules` entries are closure-shaped -- keyed
+        ;; by each closure's own `:root`, not a bare module's `:id`
+        ;; (byte-identical for a singleton closure, whose :root IS the
+        ;; module's own :id).
+        closures-by-root (into {} (map (fn [c] [(:root c) c])) modules)
         module-for (if module-assignment
-                     (fn [i] (get modules-by-id (assign-module rng module-assignment i)))
+                     (fn [i] (get closures-by-root (assign-module rng module-assignment i)))
                      (fn [_i] nil))
         ;; M4: :registered is prepended to EVERY patient's step queue,
         ;; ahead of whatever InjectChurn produced -- engine-internal,
         ;; never seen by InjectChurn's own applicability oracle (it
         ;; operates on `pathway-for`'s output, before this prepend), the
         ;; same "not authorable IR" treatment :result-followup gets. M5b:
-        ;; carries this patient's own resolved module (nil, absent
+        ;; carries this patient's own resolved closure (nil, absent
         ;; :module-assignment) -- :registered's own decide method is
         ;; where the actual walk + compile happens (this namespace's own
         ;; comment there).
-        registered-steps-for (fn [i] (into [{:type :registered :module (module-for i)}] (steps-for i)))
+        registered-steps-for (fn [i] (into [{:type :registered :closure (module-for i)}] (steps-for i)))
         init-queue (into (sorted-map)
                          (map-indexed
                           (fn [i arrival-t]

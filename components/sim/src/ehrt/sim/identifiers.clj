@@ -98,9 +98,9 @@
   ([opts] (identifiers-command opts {}))
   ([raw-opts {:keys [engine-run-fn] :or {engine-run-fn engine/run}}]
    (let [opts (run/merge-config-file raw-opts)
-         {:keys [seed reference-date utc-offset modules]} opts
+         {:keys [seed reference-date utc-offset modules module-initial-attributes]} opts
          conflicts (run/incompatible-assignments opts)
-         resolved-modules (when modules (run/resolve-modules modules))]
+         resolved-modules (when modules (run/resolve-modules modules (or module-initial-attributes {})))]
      (cond
        (nil? seed)
        (result/error :missing-required-opt

@@ -164,8 +164,9 @@
     (let [{:keys [ground-truth facility providers]}
           (engine/run {:seed seed :patients 5
                        :pathway {:name "module-only" :steps []}
-                       :modules [(:payload (sim-trajectory/load-module
-                                            "sinusitis" (slurp (io/resource "sim/modules/sinusitis.json"))))]
+                       :modules [(sim-trajectory/singleton-closure
+                                  (:payload (sim-trajectory/load-module
+                                             "sinusitis" (slurp (io/resource "sim/modules/sinusitis.json")))))]
                        :module-assignment [{:module-id "sinusitis" :weight 1}]
                        :module-horizon-days 3650})
           messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)]
