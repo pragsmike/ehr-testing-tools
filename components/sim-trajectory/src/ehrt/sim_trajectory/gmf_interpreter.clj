@@ -715,22 +715,28 @@
                      {:unrecognized-vital-sign vital-sign-name}))))
 
 (defn- sample-observation-extra
-  "The three value-sourcing mechanisms D1a-3 found side by side in one
-  closure, in the same order that document enumerates them: `range`
-  (legacy, M5a), `value_code` (a coded/qualitative finding, verbatim --
-  code passthrough law), `vital_sign` (`vital-sign-extra`, above).
-  Neither present -> codes only, unchanged M5a behavior. `:category`
-  (Q1's own ruling: added now) rides along whenever the state carries
-  one, independent of which value mechanism (or none) fired -- reused
-  identically whether `state` is a full top-level GmfState or one bare
-  ObservationChild map (`gmf/ObservationChild`'s own shape), since both
-  carry exactly the same field names."
+  "The value-sourcing mechanisms D1a-3/D3d found side by side in one
+  closure: `range` (legacy, M5a), `value_code` (a coded/qualitative
+  finding, verbatim -- code passthrough law), `vital_sign` (`vital-
+  sign-extra`, above), and `exact` (D3d finding 2, GMF coverage Wave D
+  stage D3, ADR-0029 -- a literal, SPECIFIED value, TJR's own
+  `PROMIS29_Total_Assessment`, zero rng, mirroring `Delay`'s own
+  `:exact` handling). Neither present -> codes only, unchanged M5a
+  behavior. `:category` (Q1's own ruling: added now) rides along
+  whenever the state carries one, independent of which value mechanism
+  (or none) fired -- reused identically whether `state` is a full
+  top-level GmfState or one bare ObservationChild map (`gmf/
+  ObservationChild`'s own shape), since both carry exactly the same
+  field names."
   [^Random rng state]
   (let [codes (:codes state)
         base (cond
                (:range state)
                (let [{:keys [low high]} (:range state)]
                  {:codes codes :value (round1 (rand-double-in rng low high)) :unit (:unit state)})
+
+               (:exact state)
+               {:codes codes :value (:quantity (:exact state)) :unit (:unit state)}
 
                (:value-code state)
                {:codes codes :value-code (:value-code state)}
@@ -921,8 +927,15 @@
       ;; GMF coverage Wave B (2026-08-02, ADR-0027, D1): both writes are
       ;; ROOT-namespaced (`root-id`), not `module-id` -- workflow scratch
       ;; is shared across a CallSubmodule call tree by construction.
+      ;; GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3d finding
+      ;; 1): :value-code (a Concept, TJR's own Pre_Procedure_Encounter_
+      ;; Reason/Home_Health_Reason_Knee/Hip states) takes precedence
+      ;; over :value when present -- the SAME "coded value instead of a
+      ;; plain one" shape :observation's own value_code branch already
+      ;; establishes.
       :set-attribute (let [k (keyword (root-id ctx module-id) (gmf/slug (:attribute state)))
-                           ctx' (update ctx :attributes assoc k (:value state))]
+                           v (if (:value-code state) (:value-code state) (:value state))
+                           ctx' (update ctx :attributes assoc k v)]
                        (pass-through-outcome module-id ctx' rng state 0 [] tables))
       :symptom (let [severity (cond (:exact state) (:quantity (:exact state))
                                      (:range state) (rand-int-in rng (:low (:range state)) (:high (:range state)))

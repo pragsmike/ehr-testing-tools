@@ -350,6 +350,24 @@
     (is (= true (get-in outcome [:attributes :fixture-clinic/onset-logged])))
     (is (= [] (:events outcome)) "SetAttribute is consumed internally -- no trajectory event")))
 
+;; GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3d finding 1):
+;; SetAttribute's own :value-code field, TJR's own Pre_Procedure_
+;; Encounter_Reason/Home_Health_Reason_Knee/Hip shape.
+(def set-attribute-value-code-module
+  {:id "value-code-mod"
+   :name "ValueCode"
+   :states {:initial {:type :initial :direct-transition :set}
+            :set {:type :set-attribute :attribute "reason"
+                  :value-code {:system :snomed :code "110466009" :display "Pre-surgery evaluation (procedure)"}
+                  :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest set-attribute-writes-value-code-when-present-taking-precedence-over-value
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :set)
+        outcome (interp/step set-attribute-value-code-module (Random. 1) ctx)]
+    (is (= {:system :snomed :code "110466009" :display "Pre-surgery evaluation (procedure)"}
+           (get-in outcome [:attributes :value-code-mod/reason])))))
+
 (deftest symptom-writes-a-module-namespaced-key-with-a-sampled-severity
   (let [ctx (assoc (ctx-for (persona-at 1)) :current :nasal-congestion-symptom)
         outcome (interp/step fixture-clinic (Random. 5) ctx)
@@ -494,11 +512,45 @@
     (is (= :normal (:interpretation event)))
     (is (= 1 @calls))))
 
+;; GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3c finding 4):
+;; seven new vital-sign-table rows, `uti/ed_bundle.json`'s own real
+;; BMP/CMP need -- LOINC-verified this session (notes/facts-register.md
+;; F22).
+(deftest observation-with-a-d3c-vital-sign-name-samples-within-its-reference-range
+  (let [module (assoc-in vital-sign-observation-module [:states :spo2 :vital-sign] "Glucose")
+        ctx (assoc (ctx-for (persona-at 1)) :current :spo2)
+        outcome (interp/step module (Random. 1) ctx)
+        [event] (:events outcome)]
+    (is (<= 70 (:value event) 100))))
+
 (deftest observation-with-an-unrecognized-vital-sign-name-throws
   (let [bad-module (assoc-in vital-sign-observation-module [:states :spo2 :vital-sign] "Respiratory Rate")
         ctx (assoc (ctx-for (persona-at 1)) :current :spo2)]
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"unrecognized vital-sign"
                            (interp/step bad-module (Random. 1) ctx)))))
+
+;; GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3d finding 2): a
+;; FOURTH value-sourcing mechanism, :exact -- TJR's own PROMIS29_Total_
+;; Assessment shape (a literal, SPECIFIED value, zero rng).
+(def exact-observation-module
+  {:id "exact-mod"
+   :name "Exact"
+   :states {:initial {:type :initial :direct-transition :pain}
+            :pain {:type :observation :codes [{:system :loinc :code "71962-5"}] :unit "{score}"
+                   :category "survey" :exact {:quantity 1} :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest observation-with-exact-carries-the-literal-value-and-consumes-no-rng
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :pain)
+        calls (atom 0)
+        rng (proxy [Random] [(long 1)]
+              (nextDouble [] (swap! calls inc) (proxy-super nextDouble))
+              (nextInt ([n] (swap! calls inc) (proxy-super nextInt n))))
+        outcome (interp/step exact-observation-module rng ctx)
+        [event] (:events outcome)]
+    (is (= 1 (:value event)))
+    (is (= "{score}" (:unit event)))
+    (is (zero? @calls))))
 
 (def diagnostic-report-module
   {:id "dr-mod"

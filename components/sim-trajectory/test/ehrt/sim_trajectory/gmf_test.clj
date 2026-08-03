@@ -448,3 +448,88 @@
     (is (result/ok? loaded))
     (is (= {:attribute "stroke_risk" :default 0}
            (:distribution (first (get-in (:payload loaded) [:states :roll :distributed-transition])))))))
+
+;; --- GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3c finding
+;; 1): gmf_version 2's own distribution+unit timing encoding, a
+;; disclosed loader-normalization addition (not one of H1-H4's own
+;; three named mechanisms, the same "cheap, mechanical" precedent
+;; ADR-0027's own Step 2e already established) --------------------------
+
+(def gmf-v2-delay-json
+  "uti/hpi.json's own History Taking / Dysuria shape, byte-confirmed
+  against source (D3c finding 1): UNIFORM -> Delay's own top-level
+  :range; EXACT -> Delay's own top-level :exact (no unit -- Symptom's
+  own unitless severity)."
+  (str "{\"name\": \"GmfV2\", \"gmf_version\": 2, \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Wait\"},"
+       "  \"Wait\": {\"type\": \"Delay\", \"distribution\": {\"kind\": \"UNIFORM\", \"parameters\": {\"low\": 5, \"high\": 15}},"
+       "            \"unit\": \"minutes\", \"direct_transition\": \"Sev\"},"
+       "  \"Sev\": {\"type\": \"Symptom\", \"symptom\": \"Pain\","
+       "           \"distribution\": {\"kind\": \"EXACT\", \"parameters\": {\"value\": 0.5}},"
+       "           \"direct_transition\": \"Proc\"},"
+       "  \"Proc\": {\"type\": \"Procedure\", \"codes\": [{\"system\": \"SNOMED-CT\", \"code\": \"1\", \"display\": \"Test\"}],"
+       "            \"distribution\": {\"kind\": \"EXACT\", \"parameters\": {\"value\": 15}},"
+       "            \"unit\": \"minutes\", \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest gmf-v2-delay-uniform-translates-to-the-v1-range-shape
+  (let [loaded (gmf/load-module "gmf-v2" gmf-v2-delay-json)]
+    (is (result/ok? loaded))
+    (let [wait (get-in (:payload loaded) [:states :wait])]
+      (is (= {:low 5 :high 15 :unit "minutes"} (:range wait)))
+      (is (not (contains? wait :distribution)))
+      (is (not (contains? wait :unit))))))
+
+(deftest gmf-v2-symptom-exact-translates-to-the-v1-exact-shape-no-unit
+  (let [loaded (gmf/load-module "gmf-v2" gmf-v2-delay-json)]
+    (is (result/ok? loaded))
+    (is (= {:quantity 0.5} (:exact (get-in (:payload loaded) [:states :sev]))))))
+
+(deftest gmf-v2-procedure-exact-translates-to-a-degenerate-duration-range
+  (testing "Procedure's own :duration schema stays Range-only -- EXACT
+            becomes :low = :high, not a widened schema (D3c finding 1)"
+    (let [loaded (gmf/load-module "gmf-v2" gmf-v2-delay-json)]
+      (is (result/ok? loaded))
+      (is (= {:low 15 :high 15 :unit "minutes"} (:duration (get-in (:payload loaded) [:states :proc])))))))
+
+;; --- GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3d finding
+;; 1): SetAttribute's own :value-code field, a disclosed addition -----
+
+(def set-attribute-value-code-json
+  "TJR's own Pre_Procedure_Encounter_Reason shape, byte-confirmed
+  against source (D3d finding 1)."
+  (str "{\"name\": \"ValueCode\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Set\"},"
+       "  \"Set\": {\"type\": \"SetAttribute\", \"attribute\": \"reason\","
+       "           \"value_code\": {\"system\": \"SNOMED-CT\", \"code\": \"110466009\", \"display\": \"Pre-surgery evaluation (procedure)\"},"
+       "           \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest set-attribute-value-code-loads-and-normalizes-as-a-concept
+  (let [loaded (gmf/load-module "value-code" set-attribute-value-code-json)]
+    (is (result/ok? loaded))
+    (is (= {:system :snomed :code "110466009" :display "Pre-surgery evaluation (procedure)"}
+           (:value-code (get-in (:payload loaded) [:states :set]))))))
+
+;; --- GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3d finding
+;; 2): an embedded observation child's own :exact value mechanism -----
+
+(def observation-child-exact-json
+  "TJR's own PROMIS29_Total_Assessment shape, byte-confirmed against
+  source (D3d finding 2): a FOURTH value-sourcing mechanism alongside
+  range/value_code/vital_sign."
+  (str "{\"name\": \"ChildExact\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Assess\"},"
+       "  \"Assess\": {\"type\": \"MultiObservation\", \"category\": \"survey\","
+       "              \"codes\": [{\"system\": \"LOINC\", \"code\": \"1\", \"display\": \"Test panel\"}],"
+       "              \"observations\": [{\"category\": \"survey\", \"unit\": \"{score}\","
+       "                \"codes\": [{\"system\": \"LOINC\", \"code\": \"2\", \"display\": \"Test item\"}],"
+       "                \"exact\": {\"quantity\": 1}}],"
+       "              \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest observation-child-exact-loads-and-validates
+  (let [loaded (gmf/load-module "child-exact" observation-child-exact-json)]
+    (is (result/ok? loaded))
+    (is (= {:quantity 1}
+           (:exact (first (get-in (:payload loaded) [:states :assess :observations])))))))

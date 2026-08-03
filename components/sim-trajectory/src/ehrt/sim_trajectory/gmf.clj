@@ -282,6 +282,59 @@
     (:codes child) (update :codes #(mapv normalize-code %))
     (:value-code child) (update :value-code normalize-code)))
 
+;; --- GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3c finding 1):
+;; gmf_version 2's own uniform stochastic-timing encoding -- a
+;; top-level `distribution: {kind: EXACT|UNIFORM, parameters: {...}}`
+;; plus a sibling top-level `unit`, replacing Delay's own top-level
+;; range/exact keys, Procedure's own duration field, and Symptom's own
+;; top-level range/exact severity keys, one state at a time, author's
+;; choice (confirmed field-by-field against both v1 and v2 examples of
+;; the SAME state type, docs/gmf-interpreter.md section 14's own D3c
+;; finding 1). A loader normalization, not a new interpreter mechanism
+;; -- the same disposition Wave B's own encounter-class/wellness
+;; findings already established. ------------------------------------------
+
+(defn- gmf-v2-timing->v1
+  "UNIFORM -> the existing Range shape; EXACT -> the existing Exact
+  shape (`unit` absent for Symptom's own unitless severity)."
+  [{:keys [kind parameters]} unit]
+  (case kind
+    "UNIFORM" (cond-> {:low (:low parameters) :high (:high parameters)} unit (assoc :unit unit))
+    "EXACT" (cond-> {:quantity (:value parameters)} unit (assoc :unit unit))))
+
+(defn- apply-gmf-v2-timing
+  "Delay/Symptom: the translated shape writes to the SAME top-level
+  :range/:exact key `resolve-time-advance`/the :symptom interpreter
+  case already read (`:range` for UNIFORM, `:exact` for EXACT)."
+  [state]
+  (let [dist (:distribution state)
+        v1-shape (gmf-v2-timing->v1 dist (:unit state))
+        target-key (if (= "UNIFORM" (:kind dist)) :range :exact)]
+    (assoc (dissoc state :distribution :unit) target-key v1-shape)))
+
+(defn- apply-gmf-v2-procedure-duration
+  "Procedure's own :duration field is declared Range-only ({:low :high
+  :unit}) in this loader's own schema -- unlike Delay/Symptom, it has
+  no separate Exact form. An EXACT-kind v2 duration translates into a
+  DEGENERATE Range (:low = :high = the exact value) rather than
+  widening the schema -- numerically identical to a true exact
+  quantity, and consistent with the pre-existing v1 flat-:duration
+  encoding (`appendicitis.json`/`sepsis.json`), bug and all: this
+  loader's own disclosed, unrelated `resolve-time-advance`/:duration
+  gap (D3c finding 1's own dated note -- `:duration` is passed to
+  `resolve-time-advance` as a flat map, which destructures :range/:exact
+  KEYS from it and finds neither, silently never advancing time for ANY
+  Procedure, v1 or v2 -- out of this session's own ruled scope to fix,
+  named here so v2's own translation does not introduce a NEW,
+  inconsistent v1/v2 asymmetry)."
+  [state]
+  (let [{:keys [kind parameters]} (:distribution state)
+        unit (:unit state)
+        shape (case kind
+                "UNIFORM" {:low (:low parameters) :high (:high parameters)}
+                "EXACT" {:low (:value parameters) :high (:value parameters)})]
+    (assoc (dissoc state :distribution :unit) :duration (cond-> shape unit (assoc :unit unit)))))
+
 (defn- normalize-state
   [state]
   (let [raw-type (:type state)
@@ -328,7 +381,18 @@
                   ;; on a :multi-observation/:diagnostic-report state (its
                   ;; own embedded children, D1a-2).
                   (:value-code state) (update :value-code normalize-code)
-                  (:observations state) (update :observations #(mapv normalize-observation-child %)))
+                  (:observations state) (update :observations #(mapv normalize-observation-child %))
+                  ;; GMF coverage Wave D stage D3 (D3c finding 1): the
+                  ;; gmf_version 2 timing encoding -- dispatched on
+                  ;; kw-type, BEFORE normalize-transitions (a state's
+                  ;; own top-level :distribution, never the DIFFERENT,
+                  ;; nested :distribution H3 already handles inside
+                  ;; :distributed-transition's own entries).
+                  (and (map? (:distribution state)) (:kind (:distribution state)) (#{:delay :symptom} kw-type))
+                  apply-gmf-v2-timing
+
+                  (and (map? (:distribution state)) (:kind (:distribution state)) (= :procedure kw-type))
+                  apply-gmf-v2-procedure-duration)
           normalize-transitions))))
 
 (defn- normalize-states
@@ -396,12 +460,18 @@
 ;; :range/:value-code/:vital-sign, but NO :type and NO transitions of
 ;; its own (unlike a standalone Observation state) -- children are
 ;; never separately-cited states, only content the parent state carries.
+;; GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3d finding 2): a
+;; FOURTH value-sourcing mechanism, `:exact` -- a literal, SPECIFIED
+;; value (TJR's own `PROMIS29_Total_Assessment`, `functional_status_
+;; assessments.json`), the same shape Delay/Death's own `:exact` field
+;; already uses. Zero rng, mirroring `Delay`'s own `:exact` handling.
 (def ^:private ObservationChild
   [:map
    [:category {:optional true} :string]
    [:unit {:optional true} :string]
    [:codes [:vector sim-model/Concept]]
    [:range {:optional true} Range]
+   [:exact {:optional true} Exact]
    [:value-code {:optional true} sim-model/Concept]
    [:vital-sign {:optional true} :string]])
 
@@ -451,7 +521,13 @@
    [:delay (with-transitions [:type [:= :delay]]
              [:range {:optional true} Range] [:exact {:optional true} Exact])]
    [:guard (with-transitions [:type [:= :guard]] [:allow [:map-of :keyword :any]])]
-   [:set-attribute (with-transitions [:type [:= :set-attribute]] [:attribute :string] [:value {:optional true} :any])]
+   ;; GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3d finding 1):
+   ;; :value-code (TJR's own Pre_Procedure_Encounter_Reason/Home_Health_
+   ;; Reason_Knee/Hip states) -- a Concept, the same normalize-code as
+   ;; :observation's own :value-code already gets (the generic
+   ;; normalize-state clause already handles it, no new loader code).
+   [:set-attribute (with-transitions [:type [:= :set-attribute]] [:attribute :string] [:value {:optional true} :any]
+                     [:value-code {:optional true} sim-model/Concept])]
    [:symptom (with-transitions [:type [:= :symptom]] [:symptom :string]
                [:range {:optional true} Range] [:exact {:optional true} Exact])]
    [:condition-onset (with-transitions [:type [:= :condition-onset]] [:codes [:vector sim-model/Concept]]

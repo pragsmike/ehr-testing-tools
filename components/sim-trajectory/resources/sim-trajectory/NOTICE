@@ -39,3 +39,17 @@ a silent wrong answer, `vital-signs.edn`'s own header comment).
 Recorded: 2026-08-02. All content is synthetic reference data; no PHI,
 no real-person data, by construction (this repo's standing constraint,
 `docs/problem-statement.md` / `AGENTS.md`).
+
+**GMF coverage Wave D stage D3 addendum (2026-08-02, ADR-0029, D3c
+finding 4).** Seven new rows (`Glucose`/`Urea Nitrogen`/`Calcium`/
+`Sodium`/`Potassium`/`Chloride`/`Carbon Dioxide`) -- `uti/ed_bundle.json`'s
+own real need, a repeated Basic/Comprehensive Metabolic Panel
+`DiagnosticReport`. The seven LOINC codes (`2345-7`/`3094-0`/`17861-6`/
+`2951-2`/`2823-3`/`2075-0`/`2028-9`) were verified ACTIVE this session
+against a live public FHIR terminology server's own `$lookup` operation
+(`r4.ontoserver.csiro.au`, CSIRO) -- `loinc.org` again returning HTTP
+403 to automated fetch, the same discipline the original three rows
+already establish; this table's own citation is `notes/facts-
+register.md` F22. `:units`/`:reference-range` are author-curated
+typical-adult values, NOT independently source-verified beyond the
+LOINC code itself, the same bar the original three rows already set.

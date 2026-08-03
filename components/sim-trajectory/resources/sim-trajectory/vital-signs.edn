@@ -52,6 +52,18 @@
 ;; real, visible rejection at the interpreter (`:unrecognized-vital-
 ;; sign`), never a silent wrong answer -- add a row here when that
 ;; happens, cited the same way these three are.
+;;
+;; GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3c finding 4):
+;; seven new rows, `uti/ed_bundle.json`'s own real need -- a repeated
+;; Basic/Comprehensive Metabolic Panel `DiagnosticReport`, each analyte
+;; a `vital_sign`-sourced child. LOINC codes verified active this
+;; session against a live public FHIR terminology server's own
+;; `$lookup` operation (`r4.ontoserver.csiro.au`, CSIRO -- `loinc.org`
+;; again returning 403 to automated fetch), `notes/facts-register.md`
+;; F22. Reference ranges are author-curated typical-adult values, the
+;; SAME "plausibility, not diagnostic precision" bar the table's own
+;; original three rows already set -- NOT independently source-verified
+;; beyond the LOINC code itself.
 {"Systolic Blood Pressure"
  {:code {:system :loinc :code "8480-6" :display "Systolic blood pressure"}
   :units "mm[Hg]"
@@ -65,4 +77,39 @@
  "Oxygen Saturation"
  {:code {:system :loinc :code "59408-5" :display "Oxygen saturation in Arterial blood by Pulse oximetry"}
   :units "%"
-  :reference-range {:low 95 :high 100}}}
+  :reference-range {:low 95 :high 100}}
+
+ "Glucose"
+ {:code {:system :loinc :code "2345-7" :display "Glucose [Mass/volume] in Serum or Plasma"}
+  :units "mg/dL"
+  :reference-range {:low 70 :high 100}}
+
+ "Urea Nitrogen"
+ {:code {:system :loinc :code "3094-0" :display "Urea nitrogen [Mass/volume] in Serum or Plasma"}
+  :units "mg/dL"
+  :reference-range {:low 7 :high 20}}
+
+ "Calcium"
+ {:code {:system :loinc :code "17861-6" :display "Calcium [Mass/volume] in Serum or Plasma"}
+  :units "mg/dL"
+  :reference-range {:low 8.5 :high 10.2}}
+
+ "Sodium"
+ {:code {:system :loinc :code "2951-2" :display "Sodium [Moles/volume] in Serum or Plasma"}
+  :units "mmol/L"
+  :reference-range {:low 135 :high 145}}
+
+ "Potassium"
+ {:code {:system :loinc :code "2823-3" :display "Potassium [Moles/volume] in Serum or Plasma"}
+  :units "mmol/L"
+  :reference-range {:low 3.5 :high 5.0}}
+
+ "Chloride"
+ {:code {:system :loinc :code "2075-0" :display "Chloride [Moles/volume] in Serum or Plasma"}
+  :units "mmol/L"
+  :reference-range {:low 96 :high 106}}
+
+ "Carbon Dioxide"
+ {:code {:system :loinc :code "2028-9" :display "Carbon dioxide, total [Moles/volume] in Serum or Plasma"}
+  :units "mmol/L"
+  :reference-range {:low 23 :high 29}}}
