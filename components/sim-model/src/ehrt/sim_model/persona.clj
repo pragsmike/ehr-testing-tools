@@ -32,7 +32,11 @@
   which branch any weighted pick lands in) -- the same fixed-consumption
   law `ehrt.sim.engine/assign-pathway` and `ehrt.sim.churn`
   already establish for this project's other probabilistic choices (see
-  `persona`'s own docstring for the exact sequence)."
+  `persona`'s own docstring for the exact sequence). GMF coverage Wave F
+  (2026-08-03, ADR-0036 AR-4/AR-5) adds two further, CONFIG-GATED draws
+  (:race/:socioeconomic-category) -- a deliberate, narrow, documented
+  exception to 'always,' not a silent violation (`persona`'s own
+  docstring has the full reasoning)."
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [malli.core :as m])
@@ -96,7 +100,20 @@
    [:address [:map [:street :string] [:city :string] [:state :string] [:zip :string]]]
    [:phone [:re #"^\d{3}-\d{3}-\d{4}$"]]
    [:ssn [:re #"^\d{3}-\d{2}-\d{4}$"]]
-   [:payer Payer]])
+   [:payer Payer]
+   ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-4): optional, sampled
+   ;; ONLY when `persona`'s own config supplies category weights (AR-5) --
+   ;; the ONE persona field pair whose presence is config-time-gated
+   ;; rather than always-present. Real Synthea's own closed vocabularies
+   ;; (Logic.java Race/SocioeconomicStatus, source-grounded): race in
+   ;; {"White" "Native" "Hispanic" "Black" "Asian" "Other"}, category in
+   ;; {"High" "Middle" "Low"} -- not enforced here (the weighted pool a
+   ;; caller supplies is this project's own scenario-authored content,
+   ;; the same "declared, not validated against a closed set" treatment
+   ;; `:payer`'s own :type enum is the one exception to, and only because
+   ;; that enum backs real payer-mix modeling, docs/operational-models.md).
+   [:race {:optional true} :string]
+   [:socioeconomic-category {:optional true} :string]])
 
 (defn valid-persona? [p] (m/validate Persona p))
 (defn explain-persona [p] (m/explain Persona p))
@@ -204,8 +221,35 @@
   weighted pick lands in (the same `sim/ADR-0009`-derived law
   ehrt.sim.engine/assign-pathway and ehrt.sim.churn/
   roll-gap already state for this project's other probabilistic
-  choices)."
-  [^Random rng {:keys [age-min age-max payers-under-65 payers-65-plus]
+  choices).
+
+  GMF coverage Wave F (2026-08-03, ADR-0036 AR-4/AR-5): TWO further
+  draws, each CONFIG-GATED rather than always-on --
+
+    14. race, weighted over `:race-weights` -- ONLY drawn when `config`
+        supplies a non-empty pool; omitted (both the draw AND the
+        :race key) otherwise
+    15. socioeconomic-category, weighted over `:socioeconomic-weights`
+        -- same conditional shape as 14
+
+  This is a DELIBERATE, narrow exception to 'fixed regardless of
+  content,' not a violation of it: the law above guards against draw
+  COUNT depending on a runtime OUTCOME within one persona's own
+  sampling (which bucket a weighted pick lands in must never change how
+  many draws happen). `:race-weights`/`:socioeconomic-weights` presence
+  is a CONFIG-time decision -- the same class of variation `age-min`/
+  `age-max` already are, a caller-supplied input that shapes what gets
+  sampled, not a value THIS function chooses partway through. The
+  identity-preservation reason this exception exists: adding these
+  fields must not perturb the RNG stream for every EXISTING (unconfigured)
+  caller -- an unconditional 14th/15th draw would shift every subsequent
+  draw for every persona this project has ever sampled, the actual
+  concern the fixed-consumption law exists to prevent. `persona-test`'s
+  own `counting-random` proves both halves: 13 draws with no config
+  supplied (byte-identical to every persona sampled before this ADR), 15
+  with both weights supplied."
+  [^Random rng {:keys [age-min age-max payers-under-65 payers-65-plus
+                       race-weights socioeconomic-weights]
                 :or {age-min 0 age-max 90
                      payers-under-65 under-65-payers
                      payers-65-plus sixty-five-plus-payers}}]
@@ -226,11 +270,23 @@
         ssn-serial (rand-int-in rng 1 9999)
         payer-pool (if (>= age 65) payers-65-plus payers-under-65)
         payer (dissoc (weighted-pick payer-pool (.nextDouble rng)) :weight)]
-    {:name {:family surname :given given-name}
-     :sex sex
-     :dob (format "%04d-%02d-%02d" birth-year birth-month birth-day)
-     :age age
-     :address (select-keys place [:street :city :state :zip])
-     :phone (format "%03d-%03d-%04d" area-code exchange subscriber)
-     :ssn (format "%s-%02d-%04d" ssn-area-prefix ssn-group ssn-serial)
-     :payer payer}))
+    (cond-> {:name {:family surname :given given-name}
+             :sex sex
+             :dob (format "%04d-%02d-%02d" birth-year birth-month birth-day)
+             :age age
+             :address (select-keys place [:street :city :state :zip])
+             :phone (format "%03d-%03d-%04d" area-code exchange subscriber)
+             :ssn (format "%s-%02d-%04d" ssn-area-prefix ssn-group ssn-serial)
+             :payer payer}
+      ;; GMF coverage Wave F (ADR-0036 AR-4/AR-5): draws 14/15, config-
+      ;; gated -- `(seq pool)` is both the presence check and the guard
+      ;; against an accidentally-empty pool (weighted-pick divides by
+      ;; the pool's own total weight; an empty pool would divide by
+      ;; zero, the same silent-crash class every other weighted-pick
+      ;; call site already avoids by only calling it over a real pool).
+      (seq race-weights)
+      (assoc :race (:race (weighted-pick race-weights (.nextDouble rng))))
+
+      (seq socioeconomic-weights)
+      (assoc :socioeconomic-category
+             (:category (weighted-pick socioeconomic-weights (.nextDouble rng)))))))

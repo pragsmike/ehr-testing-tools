@@ -206,7 +206,16 @@
    ;; (sore_throat.json's Determine_if_Bacterial); see
    ;; ehrt.sim-trajectory.gmf-interpreter/symptom-condition-holds?'s own
    ;; docstring for the full account.
-   "Symptom" :symptom "Or" :or "At Least" :at-least "Date" :date "Observation" :observation})
+   "Symptom" :symptom "Or" :or "At Least" :at-least "Date" :date "Observation" :observation
+   ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-4): `Not` (recursive
+   ;; negation), `Race`, and `Socioeconomic Status` -- Logic.java's own
+   ;; Race/SocioeconomicStatus classes (source-grounded), and the boolean
+   ;; wrapper `And`/`Or`/`At Least` already establish the recursive shape
+   ;; for. Listed here EXPLICITLY even though the slug fallback below
+   ;; would already produce the same keywords -- this map is this
+   ;; project's own grep-able vocabulary registry, not merely a
+   ;; convenience transform."
+   "Not" :not "Race" :race "Socioeconomic Status" :socioeconomic-status})
 
 (defn- normalize-code
   "GMF's own code triplet -> sim-model/Concept. M5b: :code
@@ -252,7 +261,17 @@
         ;; string, and evaluate-condition's case dispatch (keywords only)
         ;; would never match it.
         (and (#{:and :or :at-least} condition-type) (:conditions condition))
-        (update :conditions #(mapv normalize-condition %))))))
+        (update :conditions #(mapv normalize-condition %))
+
+        ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-4): `Not` wraps a
+        ;; SINGLE nested condition under :condition (singular -- Logic.
+        ;; java's own field name, source-grounded), never the plural
+        ;; :conditions vector And/Or/At-Least share -- a distinct
+        ;; recursive clause, the same reason those three already needed
+        ;; their own (without this, a nested Not condition's own
+        ;; :condition-type stays an un-normalized raw string).
+        (and (= :not condition-type) (:condition condition))
+        (update :condition normalize-condition)))))
 
 (defn- normalize-transition-entry
   [{:keys [transition condition distributions] :as entry}]

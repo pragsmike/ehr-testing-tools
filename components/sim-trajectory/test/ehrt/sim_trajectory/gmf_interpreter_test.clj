@@ -1808,3 +1808,97 @@
       (is (= 1 (count (:trajectory result))))
       (is (= :supply-list (:event (first (:trajectory result)))))
       (is (= [] (:steps compiled))))))
+
+;; --- GMF coverage Wave F (2026-08-03, ADR-0036 AR-4): condition rider ------
+
+(def not-prior-state-guard-module
+  {:id "not-mod" :name "Not"
+   :states {:initial {:type :initial :direct-transition :check}
+            :check {:type :guard
+                    :allow {:condition-type :not
+                            :condition {:condition-type :prior-state :name :some-state}}
+                    :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest not-condition-blocks-when-the-nested-condition-holds
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :check
+                   :trajectory [{:module "not-mod" :state :some-state :t 0}])
+        outcome (interp/step not-prior-state-guard-module (Random. 1) ctx)]
+    (is (true? (:blocked? outcome)))))
+
+(deftest not-condition-passes-when-the-nested-condition-does-not-hold
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :check)
+        outcome (interp/step not-prior-state-guard-module (Random. 1) ctx)]
+    (is (false? (:blocked? outcome)))))
+
+(def race-guard-module
+  {:id "race-mod" :name "Race"
+   :states {:initial {:type :initial :direct-transition :check}
+            :check {:type :guard :allow {:condition-type :race :race "Native"}
+                    :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest race-condition-matches-case-insensitively
+  (let [ctx (assoc (ctx-for (assoc (persona-at 1) :race "native")) :current :check)
+        outcome (interp/step race-guard-module (Random. 1) ctx)]
+    (is (false? (:blocked? outcome)))))
+
+(deftest race-condition-blocks-on-a-non-matching-race
+  (let [ctx (assoc (ctx-for (assoc (persona-at 1) :race "Asian")) :current :check)
+        outcome (interp/step race-guard-module (Random. 1) ctx)]
+    (is (true? (:blocked? outcome)))))
+
+(def ses-guard-module
+  {:id "ses-mod" :name "Ses"
+   :states {:initial {:type :initial :direct-transition :check}
+            :check {:type :guard :allow {:condition-type :socioeconomic-status :category "High"}
+                    :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest socioeconomic-status-condition-matches-case-sensitively
+  (let [ctx (assoc (ctx-for (assoc (persona-at 1) :socioeconomic-category "High")) :current :check)
+        outcome (interp/step ses-guard-module (Random. 1) ctx)]
+    (is (false? (:blocked? outcome)))))
+
+(deftest socioeconomic-status-condition-does-not-match-a-different_case
+  (testing "Logic.java's own category.equals(...) -- unlike Race, no
+            case-folding"
+    (let [ctx (assoc (ctx-for (assoc (persona-at 1) :socioeconomic-category "high")) :current :check)
+          outcome (interp/step ses-guard-module (Random. 1) ctx)]
+      (is (true? (:blocked? outcome))))))
+
+(deftest race-condition-against-a-persona-missing-race-is-a-walk-error-not-a-silent-false
+  (testing "AR-4's own honest-absence rule -- `step` itself still throws
+            (evaluate-condition's own internal contract, propagating
+            through guard-step unchanged); `walk-module` is where it
+            becomes a recorded result"
+    (let [ctx (ctx-for (persona-at 1))]
+      (is (thrown? clojure.lang.ExceptionInfo (interp/step race-guard-module (Random. 1) (assoc ctx :current :check)))))
+    (let [result (interp/walk-module race-guard-module (Random. 1) (ctx-for (persona-at 1)))]
+      (is (= :walk-error (:status result)))
+      (is (= :race (:condition-type (:walk-error result))))
+      (is (= :race (:missing-field (:walk-error result)))))))
+
+(deftest socioeconomic-status-condition-against-a-persona-missing-the-field-is-a-walk-error
+  (let [result (interp/walk-module ses-guard-module (Random. 1) (ctx-for (persona-at 1)))]
+    (is (= :walk-error (:status result)))
+    (is (= :socioeconomic-status (:condition-type (:walk-error result))))
+    (is (= :socioeconomic-category (:missing-field (:walk-error result))))))
+
+(deftest run-module-also-converts-honest-absence-into-a-walk-error-status
+  (let [p (persona-at 1)
+        reg-t (interp/dob-epoch-day p)
+        result (interp/run-module race-guard-module (Random. 1) p reg-t)]
+    (is (= :walk-error (:status result)))))
+
+(deftest a-genuinely-unsupported-condition-type-still-throws-uncaught-never-a-walk-error
+  (testing "the honest-absence catch is scoped to exactly its own marker
+            -- every other exception this namespace throws stays a loud,
+            uncaught crash, not silently downgraded into a soft result"
+    (let [module {:id "bad-cond-mod" :name "BadCond"
+                  :states {:initial {:type :initial :direct-transition :check}
+                           :check {:type :guard :allow {:condition-type :nonexistent-condition}
+                                   :direct-transition :done}
+                           :done {:type :terminal}}}]
+      (is (thrown? clojure.lang.ExceptionInfo
+                   (interp/walk-module module (Random. 1) (ctx-for (persona-at 1))))))))

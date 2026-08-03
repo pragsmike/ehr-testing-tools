@@ -447,6 +447,60 @@
   [module-id ctx {:keys [minimum conditions]}]
   (>= (count (filter #(evaluate-condition module-id ctx %) conditions)) minimum))
 
+(defn- not-condition-holds?
+  "GMF coverage Wave F (2026-08-03, ADR-0036 AR-4): Synthea's own
+  Logic.java Not class -- recursive negation of a single nested
+  condition, the same dispatcher every other compound already goes
+  through (`evaluate-condition`, below)."
+  [module-id ctx {:keys [condition]}]
+  (not (evaluate-condition module-id ctx condition)))
+
+(defn- honest-absence
+  "GMF coverage Wave F (2026-08-03, ADR-0036 AR-4): the exception
+  `race-condition-holds?`/`socioeconomic-status-condition-holds?` throw
+  when the persona carries no `field` at all -- a distinct marker
+  (`::honest-absence` in ex-data) `walk-module`/`run-module`'s own loop
+  catches AND ONLY THIS, converting it into a `:walk-error` RESULT
+  (never propagating as an exception past the walk boundary, result-
+  not-throw at the layer a caller actually observes) -- deliberately
+  NOT the same disposition an unsupported condition type/vital-sign
+  name/observation-precondition gap already get (a genuine, expected,
+  worth-recording outcome, not a module-authoring-shape bug this
+  interpreter refuses to run at all). Every OTHER throw in this
+  namespace stays an uncaught, loud exception -- this catch is scoped to
+  exactly this marker, never a blanket try/catch that would silently
+  downgrade a real programmer-error throw into a soft result."
+  [condition-type missing-field]
+  (ex-info (str "ehrt.sim-trajectory.gmf-interpreter: " (name condition-type)
+                " condition evaluated against a persona missing " (name missing-field))
+           {::honest-absence true :condition-type condition-type :missing-field missing-field}))
+
+(defn- race-condition-holds?
+  "GMF coverage Wave F (2026-08-03, ADR-0036 AR-4): Synthea's own
+  Logic.java Race class -- case-insensitive match (source-grounded:
+  `race.equalsIgnoreCase(...)`) against the persona's own :race
+  (`ehrt.sim-model.persona`'s own optional field, AR-4/AR-5). A persona
+  carrying no :race at all is a WALK ERROR (`honest-absence`, above),
+  never a silent false -- the honest-absence rule this ADR's own ruling
+  states, distinguishing 'this persona was never configured with race
+  data' from 'this persona's race genuinely does not match.'"
+  [{:keys [race]} persona]
+  (if (contains? persona :race)
+    (.equalsIgnoreCase ^String race (:race persona))
+    (throw (honest-absence :race :race))))
+
+(defn- socioeconomic-status-condition-holds?
+  "GMF coverage Wave F (2026-08-03, ADR-0036 AR-4): Synthea's own
+  Logic.java SocioeconomicStatus class -- case-SENSITIVE equality
+  (source-grounded: `category.equals(...)`, unlike Race's own
+  case-insensitive match) against the persona's own
+  :socioeconomic-category. Honest-absence, the same rule
+  `race-condition-holds?` (above) already establishes."
+  [{:keys [category]} persona]
+  (if (contains? persona :socioeconomic-category)
+    (= category (:socioeconomic-category persona))
+    (throw (honest-absence :socioeconomic-status :socioeconomic-category))))
+
 (defn evaluate-condition
   "The interpreter's own guard evaluator (docs/gmf-interpreter.md section 2:
   '(evaluate-condition condition patient-state (:ground-truth world)
@@ -466,7 +520,15 @@
   :and already establishes), :date (a calendar-year comparison against
   `ctx`'s own `:t`, no new state needed), and :observation (a log query
   over already-emitted :observation trajectory events by concept, the
-  same shape :active-condition/:active-medication already establish)."
+  same shape :active-condition/:active-medication already establish).
+  GMF coverage Wave F (2026-08-03, ADR-0036 AR-4) adds :not (recursive
+  negation, `not-condition-holds?`), :race, and :socioeconomic-status
+  (persona demographic predicates, `race-condition-holds?`/
+  `socioeconomic-status-condition-holds?`) -- the latter two THROW
+  `honest-absence` (above) when the persona carries no matching field
+  at all, a distinct marker `walk-module`/`run-module`'s own loop
+  catches and converts into a `:walk-error` RESULT, never a silent
+  false and never an escaping exception."
   [module-id ctx condition]
   (case (:condition-type condition)
     :age (age-condition-holds? condition (:persona ctx) (:t ctx))
@@ -482,6 +544,9 @@
     :date (date-condition-holds? condition (:t ctx))
     :observation (observation-condition-holds? module-id ctx condition)
     :symptom (symptom-condition-holds? module-id ctx condition)
+    :not (not-condition-holds? module-id ctx condition)
+    :race (race-condition-holds? condition (:persona ctx))
+    :socioeconomic-status (socioeconomic-status-condition-holds? condition (:persona ctx))
     (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: unsupported condition type"
                      {:condition-type (:condition-type condition)}))))
 
@@ -1276,6 +1341,31 @@
       ;; verbatim, unconditional here rather than encounter-gated).
       :supply-list (emit-and-advance module-id ctx rng state :supply-list {:components (:supplies state)} tables)))))
 
+;; --- GMF coverage Wave F (2026-08-03, ADR-0036 AR-4): honest-absence, at
+;; the walk boundary -- `step` itself still THROWS `honest-absence` (the
+;; internal signal that propagates unchanged through and/or/at-least/
+;; guard/transition recursion, exactly like every other exception in this
+;; namespace); `step-safely` is the ONE place that narrow exception gets
+;; caught and turned into a recorded `:walk-error` outcome, at the SAME
+;; layer `:terminal?`/`:blocked?` already surface to a caller -- result-
+;; not-throw at the boundary a walk's own caller actually observes,
+;; without touching `step`'s own existing throw-based contract for every
+;; other exception.
+
+(defn- honest-absence?
+  [e]
+  (::honest-absence (ex-data e)))
+
+(defn- step-safely
+  [module rng ctx modules tables]
+  (try
+    (step module rng ctx modules tables)
+    (catch clojure.lang.ExceptionInfo e
+      (if (honest-absence? e)
+        {:events [] :attributes (:attributes ctx) :advance 0 :next nil
+         :terminal? false :blocked? false :walk-error (ex-data e)}
+        (throw e)))))
+
 ;; --- walk-module: drives `step` from :initial to Terminal or blocked ------
 
 (defn walk-module
@@ -1317,12 +1407,13 @@
      (when (>= n max-steps)
        (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: walk-module exceeded max-steps -- likely a module authoring bug (a zero-time-advance transition cycle)"
                         {:module (:id module) :current (:current ctx)})))
-     (let [outcome (step module rng ctx modules tables)
+     (let [outcome (step-safely module rng ctx modules tables)
            ctx' (-> ctx
                     (assoc :attributes (:attributes outcome))
                     (update :trajectory into (:events outcome))
                     (update :t + (:advance outcome)))]
        (cond
+         (:walk-error outcome) (assoc ctx' :status :walk-error :walk-error (:walk-error outcome))
          (:terminal? outcome) (assoc ctx' :status :terminal)
          (:blocked? outcome) (assoc ctx' :status :blocked)
          :else (recur (assoc ctx' :current (:next outcome)) (inc n)))))))
@@ -1393,13 +1484,14 @@
                         {:module (:id module) :current (:current ctx)})))
      (if (and horizon-end-t (>= (:t ctx) horizon-end-t))
        (assoc ctx :status :horizon-complete)
-       (let [outcome (step module rng ctx modules tables)
+       (let [outcome (step-safely module rng ctx modules tables)
              marked-events (mapv #(assoc % :pre-horizon (< (:t %) registration-t)) (:events outcome))
              ctx' (-> ctx
                       (assoc :attributes (:attributes outcome))
                       (update :trajectory into marked-events)
                       (update :t + (:advance outcome)))]
          (cond
+           (:walk-error outcome) (assoc ctx' :status :walk-error :walk-error (:walk-error outcome))
            (:terminal? outcome) (assoc ctx' :status :terminal)
            (:blocked? outcome) (assoc ctx' :status :blocked)
            :else (recur (assoc ctx' :current (:next outcome)) (inc n))))))))

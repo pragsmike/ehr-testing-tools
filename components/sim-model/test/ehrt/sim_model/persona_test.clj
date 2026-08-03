@@ -81,3 +81,44 @@
 (deftest payer-never-carries-its-own-pool-weight
   (testing "the sampled payer is carried, rendered, never re-tracked -- no :weight leaking into patient/message-facing data"
     (is (not (contains? (:payer (persona/persona (Random. 1) {})) :weight)))))
+
+;; --- GMF coverage Wave F (2026-08-03, ADR-0036 AR-4/AR-5): race/ses ----
+
+(def ^:private race-weights [{:race "White" :weight 60.0} {:race "Black" :weight 40.0}])
+(def ^:private ses-weights [{:category "High" :weight 30.0} {:category "Middle" :weight 70.0}])
+
+(deftest race-and-socioeconomic-category-are-absent-with-no-config
+  (let [p (persona/persona (Random. 1) {})]
+    (is (not (contains? p :race)))
+    (is (not (contains? p :socioeconomic-category)))))
+
+(deftest race-and-socioeconomic-category-are-sampled-when-config-supplies-weights
+  (let [p (persona/persona (Random. 1) {:race-weights race-weights :socioeconomic-weights ses-weights})]
+    (is (contains? #{"White" "Black"} (:race p)))
+    (is (contains? #{"High" "Middle"} (:socioeconomic-category p)))))
+
+(deftest race-only-config-samples-race-without-socioeconomic-category
+  (let [p (persona/persona (Random. 1) {:race-weights race-weights})]
+    (is (contains? p :race))
+    (is (not (contains? p :socioeconomic-category)))))
+
+(deftest race-and-socioeconomic-category-are-conditionally-drawn
+  (testing "AR-5's own identity hazard: absent config draws zero extra
+            beyond the pre-existing 13; present config draws exactly 2
+            more, 15 total -- the SAME direct method-call-counting
+            technique the pre-existing fixed-consumption spec above
+            uses, not a value-replay guess"
+    (let [{:keys [rng calls]} (counting-random 1)]
+      (persona/persona rng {})
+      (is (= 13 @calls) "no config supplied -- byte-identical to every persona sampled before this ADR"))
+    (let [{:keys [rng calls]} (counting-random 1)]
+      (persona/persona rng {:race-weights race-weights :socioeconomic-weights ses-weights})
+      (is (= 15 @calls) "both weights supplied -- exactly two more draws"))
+    (let [{:keys [rng calls]} (counting-random 1)]
+      (persona/persona rng {:race-weights race-weights})
+      (is (= 14 @calls) "only :race-weights supplied -- exactly one more draw"))))
+
+(defspec every-sampled-persona-with-race-and-ses-config-is-schema-valid 100
+  (prop/for-all [seed gen/large-integer]
+    (persona/valid-persona? (persona/persona (Random. seed) {:race-weights race-weights
+                                                              :socioeconomic-weights ses-weights}))))

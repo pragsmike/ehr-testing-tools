@@ -807,3 +807,60 @@
     (let [supplies (get-in (:payload loaded) [:states :supplies])]
       (is (= [{:quantity 1 :code {:system :snomed :code "467645007" :display "CPAP nasal cannula"}}]
              (:supplies supplies))))))
+
+;; --- GMF coverage Wave F (2026-08-03, ADR-0036 AR-4): condition rider ------
+
+(def not-guard-json
+  "wellness_encounters.json's own Not-wrapping-PriorState shape,
+  byte-confirmed against source -- proves the recursive normalization
+  fix (`:condition` singular, not `:conditions` plural)."
+  (str "{\"name\": \"NotMod\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Check\"},"
+       "  \"Check\": {\"type\": \"Guard\","
+       "             \"allow\": {\"condition_type\": \"Not\","
+       "                        \"condition\": {\"condition_type\": \"PriorState\", \"name\": \"Some_State\"}},"
+       "             \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest not-condition-recursively-normalizes-its-nested-condition
+  (let [loaded (gmf/load-module "not-mod" not-guard-json)]
+    (is (result/ok? loaded))
+    (let [allow (:allow (get-in (:payload loaded) [:states :check]))]
+      (is (= :not (:condition-type allow)))
+      (is (= :prior-state (:condition-type (:condition allow))))
+      (is (= :some-state (:name (:condition allow)))
+          "the nested condition's own :name must ALSO be slugged -- proof
+           the recursion actually re-entered normalize-condition, not
+           merely keywordized the top-level :condition-type"))))
+
+(def race-condition-json
+  "gallstones.json's own Race guard shape, byte-confirmed against
+  source."
+  (str "{\"name\": \"RaceMod\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Check\"},"
+       "  \"Check\": {\"type\": \"Guard\","
+       "             \"allow\": {\"condition_type\": \"Race\", \"race\": \"Native\"},"
+       "             \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest race-condition-loads-with-condition-type-recognized-via-the-explicit-registry
+  (let [loaded (gmf/load-module "race-mod" race-condition-json)]
+    (is (result/ok? loaded))
+    (is (= {:condition-type :race :race "Native"}
+           (:allow (get-in (:payload loaded) [:states :check]))))))
+
+(def socioeconomic-status-condition-json
+  "opioid_addiction.json's own Socioeconomic Status guard shape,
+  byte-confirmed against source."
+  (str "{\"name\": \"SesMod\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Check\"},"
+       "  \"Check\": {\"type\": \"Guard\","
+       "             \"allow\": {\"condition_type\": \"Socioeconomic Status\", \"category\": \"High\"},"
+       "             \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest socioeconomic-status-condition-loads-with-condition-type-recognized
+  (let [loaded (gmf/load-module "ses-mod" socioeconomic-status-condition-json)]
+    (is (result/ok? loaded))
+    (is (= {:condition-type :socioeconomic-status :category "High"}
+           (:allow (get-in (:payload loaded) [:states :check]))))))
