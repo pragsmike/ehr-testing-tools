@@ -241,6 +241,14 @@
     condition (assoc :condition (normalize-condition condition))
     distributions (assoc :distributions (mapv #(update % :transition (fn [t] (keyword (slug t)))) distributions))))
 
+(defn- normalize-lookup-table-entry
+  "GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3a, H2):
+  :transition normalizes the SAME way every other transition-entry
+  target already does (`normalize-transition-entry`); :lookup-table-name
+  stays verbatim (a CSV filename, D3a's own citation)."
+  [{:keys [transition] :as entry}]
+  (cond-> entry transition (assoc :transition (keyword (slug transition)))))
+
 (defn- normalize-transitions
   [state]
   (cond-> state
@@ -256,7 +264,10 @@
     ;; 9's own D5 account) -- normalized the SAME way :direct-transition
     ;; already is, one key at a time.
     (:type-of-care-transition state)
-    (update :type-of-care-transition #(into {} (map (fn [[k t]] [k (keyword (slug t))])) %))))
+    (update :type-of-care-transition #(into {} (map (fn [[k t]] [k (keyword (slug t))])) %))
+    ;; GMF coverage Wave D stage D3 (D3a, H2): the sixth kind.
+    (:lookup-table-transition state)
+    (update :lookup-table-transition #(mapv normalize-lookup-table-entry %))))
 
 (defn- normalize-observation-child
   "GMF coverage Wave D stage D1 (2026-08-02, ADR-0029): one embedded
@@ -410,7 +421,16 @@
    [:type-of-care-transition {:optional true}
     [:map [:ambulatory {:optional true} :keyword]
      [:emergency {:optional true} :keyword]
-     [:telemedicine {:optional true} :keyword]]]])
+     [:telemedicine {:optional true} :keyword]]]
+   ;; GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3a, H2): the
+   ;; sixth transition kind -- :lookup-table-name is a relative CSV
+   ;; filename verbatim (never slugged, the same "file reference, not a
+   ;; semantic identifier" disposition :submodule already established,
+   ;; D3), resolved as a closure DATA-FILE member (R4) by
+   ;; `load-closure`'s own `table-resolve-fn`.
+   [:lookup-table-transition {:optional true}
+    [:vector [:map [:transition :keyword] [:default-probability number?]
+              [:lookup-table-name :string]]]]])
 
 (defn- with-transitions [& kvs] (into [:map] (into (vec kvs) TransitionFields)))
 
@@ -649,6 +669,90 @@
    (result/ok modules)
    (call-submodule-paths module)))
 
+;; --- GMF coverage Wave D stage D3 (2026-08-02, ADR-0029 R4, D3a, H2):
+;; closure DATA-FILE members -- lookup-table CSVs, resolved and parsed
+;; alongside the module closure, not only JSON submodules -------------------
+
+(def ^:private recognized-lookup-table-columns
+  "The only lookup-table attribute-column names this loader resolves
+  (H2's own specify-vs-delegate audit, D3a): both vendored tables
+  (`uti.csv`/`uti_recurrence.csv`) declare only `age`/`gender`, both
+  persona-backed and buildable. Real Synthea's own `LookupTableTransition`
+  also special-cases a `time` column (a date range) -- unexercised by
+  either vendored table, NAMED UNBUILT here rather than silently
+  generalized (installed ≠ used, H1)."
+  #{"gender"})
+
+(defn- lookup-table-transition-names
+  "Every closure member's own :lookup-table-transition entries, gathered
+  into {table-name -> #{declared transition keyword}} -- the data-file
+  analogue of `call-submodule-paths` (D3a: which CSV a state names,
+  paired with the transition SET its own JSON entries declare, so a
+  table's own header can be split into attribute columns vs. weight
+  columns by NAME, not by position)."
+  [modules]
+  (reduce (fn [acc [_ module]]
+            (reduce (fn [acc [_ state]]
+                      (reduce (fn [acc {:keys [transition lookup-table-name]}]
+                                (update acc lookup-table-name (fnil conj #{}) transition))
+                              acc (:lookup-table-transition state)))
+                    acc (:states module)))
+          {} modules))
+
+(defn- parse-csv-line [line] (str/split line #","))
+
+(defn- parse-lookup-table
+  "Parses `csv-text` (a small, plain-comma, unquoted lookup table -- the
+  same shape both vendored UTI tables use, real Synthea's own
+  `SimpleCSV.parse`'s ordinary case; a small in-house splitter rather
+  than a new external dependency for two trivial files, D3a) into a
+  vector of rows: {:age-range [low high]|nil, :attributes {column
+  value}, :weights {transition-kw number}}. `transition-keywords` (this
+  table's own declared entry set, `lookup-table-transition-names`,
+  above) is what tells a header column apart as a WEIGHT column (its
+  slugged name is one of these keywords) versus an ATTRIBUTE column --
+  never guessed from cell contents or column position. An attribute
+  column outside `age`/`recognized-lookup-table-columns` is REJECTED
+  (H2's own specify-vs-delegate audit), the same 'never silently
+  skipped' disposition `:unsupported-state-type` already establishes."
+  [csv-text transition-keywords]
+  (let [lines (remove str/blank? (str/split-lines csv-text))
+        header (parse-csv-line (first lines))
+        weight-cols (filter #(contains? transition-keywords (keyword (slug %))) header)
+        attr-cols (remove (set weight-cols) header)
+        bad-col (first (remove #(or (= % "age") (recognized-lookup-table-columns %)) attr-cols))]
+    (if bad-col
+      (result/rejected :unrecognized-lookup-table-column {:column bad-col})
+      (result/ok
+       (mapv (fn [line]
+               (let [row (zipmap header (parse-csv-line line))]
+                 {:age-range (when-let [v (get row "age")]
+                               (mapv #(Long/parseLong %) (str/split v #"-")))
+                  :attributes (into {} (map (fn [c] [c (get row c)])) (remove #(= % "age") attr-cols))
+                  :weights (into {} (map (fn [c] [(keyword (slug c)) (Double/parseDouble (get row c))])) weight-cols)}))
+             (rest lines))))))
+
+(defn- resolve-tables
+  "Resolves every distinct lookup-table name `table-name->transitions`
+  (`lookup-table-transition-names`) names, via `table-resolve-fn`
+  (caller-supplied, the SAME pure/testable discipline `resolve-fn`
+  already establishes for submodules) -- the all-or-nothing gate (D3)
+  extends to data-file members: an unresolvable name (:rejected
+  :lookup-table-not-found) or an unparseable table (`parse-lookup-
+  table`'s own rejection) rejects the WHOLE closure."
+  [table-resolve-fn modules table-name->transitions root-id]
+  (reduce
+   (fn [result [table-name transition-kws]]
+     (let [tables (:tables (:payload result))]
+       (if-let [csv-text (table-resolve-fn table-name)]
+         (let [parsed (parse-lookup-table csv-text transition-kws)]
+           (if (result/ok? parsed)
+             (result/ok {:root root-id :modules modules :tables (assoc tables table-name (:payload parsed))})
+             (reduced parsed)))
+         (reduced (result/rejected :lookup-table-not-found {:table-name table-name})))))
+   (result/ok {:root root-id :modules modules :tables {}})
+   table-name->transitions))
+
 (defn load-closure
   "Resolves `root-id`'s own TRANSITIVE CallSubmodule closure (D3): loads
   `root-json-text` as `root-id`, then recursively resolves every
@@ -660,32 +764,50 @@
   thin `io/resource` wrapper over the D3 search path,
   `sim/modules/<call-path>.json`).
 
+  GMF coverage Wave D stage D3 (2026-08-02, ADR-0029 R4, D3a, H2): the
+  optional trailing `table-resolve-fn` argument (purely additive -- the
+  3-arity delegates to this one with a resolve-fn that always returns
+  nil, so a closure naming no lookup tables never invokes it) resolves
+  the closure's own DATA-FILE members the same way `resolve-fn` resolves
+  its JSON ones -- a real caller's own table-resolve-fn is a thin
+  `io/resource` wrapper over `sim/modules/lookup_tables/<table-name>`
+  (the table name already carries its own `.csv` extension, D3a).
+
   Returns a Result: :ok with {:root root-id :modules {root-id -> ...,
-  call-path -> ...}} -- every call-path key is the submodule's own raw
-  call-path string (also its own :id, section 5's own attribute-
-  namespacing scope for LOAD-time declared-write collision checking --
-  distinct from D1's own RUNTIME root-scoping, gmf-interpreter.md
-  section 5's own dated note). The all-or-nothing gate (this
+  call-path -> ...} :tables {table-name -> parsed-table}} -- every
+  call-path key is the submodule's own raw call-path string (also its
+  own :id, section 5's own attribute-namespacing scope for LOAD-time
+  declared-write collision checking -- distinct from D1's own RUNTIME
+  root-scoping, gmf-interpreter.md section 5's own dated note); `:tables`
+  is empty when the closure names none. The all-or-nothing gate (this
   namespace's own docstring, ADR-0013 point 4) extends over the WHOLE
-  closure: :unsupported-state-type / :attribute-collision /
-  :schema-invalid from ANY transitively-called submodule rejects the
-  WHOLE closure (:rejected :submodule-rejected, payload {:call-path
-  :reason}, `:reason` the submodule's own rejection Result -- always
-  names which call-path failed and why, never silently which-one-of-
-  many). :rejected :submodule-not-found (payload {:call-path}) when
-  `resolve-fn` returns nil for a named call-path. :rejected
+  closure, JSON and data-file members alike: :unsupported-state-type /
+  :attribute-collision / :schema-invalid from ANY transitively-called
+  submodule rejects the WHOLE closure (:rejected :submodule-rejected,
+  payload {:call-path :reason}, `:reason` the submodule's own rejection
+  Result -- always names which call-path failed and why, never silently
+  which-one-of-many). :rejected :submodule-not-found (payload {:call-
+  path}) when `resolve-fn` returns nil for a named call-path. :rejected
   :cyclic-closure (payload {:cycle [...]}) when the static call graph
   contains a cycle -- an ESCALATION-worthy finding (D3), never silently
-  resolved by dropping an edge."
-  [root-id root-json-text resolve-fn]
-  (let [root-loaded (load-module root-id root-json-text)]
-    (if-not (result/ok? root-loaded)
-      root-loaded
-      (let [root-module (:payload root-loaded)
-            closure (resolve-closure resolve-fn [root-id] {root-id root-module} root-module)]
-        (if (result/ok? closure)
-          (result/ok {:root root-id :modules (:payload closure)})
-          closure)))))
+  resolved by dropping an edge. :rejected :lookup-table-not-found
+  (payload {:table-name}) when `table-resolve-fn` returns nil for a
+  named table; :rejected :unrecognized-lookup-table-column (payload
+  {:column}) when a table's own header names an attribute column
+  outside `age`/`recognized-lookup-table-columns` (H2's own specify-vs-
+  delegate audit)."
+  ([root-id root-json-text resolve-fn]
+   (load-closure root-id root-json-text resolve-fn (constantly nil)))
+  ([root-id root-json-text resolve-fn table-resolve-fn]
+   (let [root-loaded (load-module root-id root-json-text)]
+     (if-not (result/ok? root-loaded)
+       root-loaded
+       (let [root-module (:payload root-loaded)
+             closure (resolve-closure resolve-fn [root-id] {root-id root-module} root-module)]
+         (if-not (result/ok? closure)
+           closure
+           (let [modules (:payload closure)]
+             (resolve-tables table-resolve-fn modules (lookup-table-transition-names modules) root-id))))))))
 
 ;; --- M5b: per-patient module assignment -- SimHospital's own percentage_of_
 ;; patients analogue, the SAME shape sim-model/PathwaysConfig

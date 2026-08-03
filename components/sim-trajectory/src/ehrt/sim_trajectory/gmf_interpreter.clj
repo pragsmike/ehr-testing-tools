@@ -448,8 +448,53 @@
   [toc-targets weights]
   (keep (fn [[k w]] (when-let [target (get toc-targets k)] {:transition target :distribution w})) weights))
 
+(defn- lookup-table-row-matches?
+  "GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3a, H2): does
+  `row` (`ehrt.sim-trajectory.gmf/parse-lookup-table`'s own shape) match
+  `persona` at virtual time `t`? Mirrors `LookupTableKey.equals`'s own
+  age-range-contains-age rule (Synthea source, D3a) plus a string-equal
+  `gender` check (the only other recognized column, H2's own audit) --
+  an ABSENT column on the row (a table with no age or no gender column)
+  matches vacuously, the same 'no constraint on that axis' semantics
+  Java's own key carries when one side supplies no range."
+  [persona ^long t {:keys [age-range attributes]}]
+  (and (or (nil? age-range)
+           (let [age (age-years-at persona t)] (<= (long (first age-range)) age (long (second age-range)))))
+       (or (nil? (get attributes "gender"))
+           (= (get attributes "gender") (case (:sex persona) :female "F" :male "M" (:sex persona))))))
+
+(defn- lookup-table-weights
+  "GMF coverage Wave D stage D3 (D3a, H2): the FIRST row (table order,
+  deterministic) matching `persona`/`t` (above), or nil (no match --
+  `resolve-lookup-table-transition` falls back to each entry's own
+  `:default-probability`, Java's own `defaultTransitions` mirror)."
+  [table persona t]
+  (some #(when (lookup-table-row-matches? persona t %) %) table))
+
+(defn- resolve-lookup-table-transition
+  "GMF coverage Wave D stage D3 (D3a, H2): the sixth transition kind.
+  Zero-rng row lookup against `tables`' own resolved entry for this
+  state's own declared `:lookup-table-name` (`ehrt.sim-trajectory.gmf/
+  load-closure`'s own `:tables` return shape), then ONE `weighted-pick-
+  transition` draw over each entry's own weight -- the matched row's
+  `:weights` value for that entry's own `:transition` keyword when
+  present, else the entry's own JSON-declared `:default-probability`
+  (real Synthea's own `defaultTransitions` mirror, D3a) -- the SAME
+  fixed-consumption weighted pick `:distributed-transition`/`:complex-
+  transition`/`:type-of-care-transition` already share, joining this
+  namespace's own descend-run-return order contract at the position
+  every other transition-resolving draw already occupies."
+  [^Random rng ctx tables entries]
+  (let [table (get tables (:lookup-table-name (first entries)))
+        row (lookup-table-weights table (:persona ctx) (:t ctx))]
+    (weighted-pick-transition
+     rng (mapv (fn [{:keys [transition default-probability]}]
+                 {:transition transition
+                  :distribution (get (:weights row) transition default-probability)})
+               entries))))
+
 (defn- resolve-transition
-  "The shared 5-kind transition dispatcher every non-Terminal v1 state
+  "The shared 6-kind transition dispatcher every non-Terminal v1 state
   type resolves its own :next through -- one mechanism, reused by every
   state type's own `step` handling below, rather than duplicated per
   type. GMF coverage Wave B (D5) adds `:type-of-care-transition` as a
@@ -460,8 +505,12 @@
   function of `ctx`'s own `:t`) followed by the SAME one-draw pick,
   joining this namespace's own descend-run-return order contract at
   the position every other transition-resolving draw already
-  occupies."
-  [module-id ctx ^Random rng state]
+  occupies. GMF coverage Wave D stage D3 (D3a, H2) adds `:lookup-table-
+  transition` as a sixth kind (`resolve-lookup-table-transition`,
+  above) -- the only kind that consults `tables` (`ehrt.sim-trajectory.
+  gmf/load-closure`'s own `:tables` return shape, threaded through the
+  SAME way `modules` already is for `:call-submodule`)."
+  [module-id ctx ^Random rng state tables]
   (cond
     (:direct-transition state) (:direct-transition state)
     (:distributed-transition state) (weighted-pick-transition rng (:distributed-transition state))
@@ -471,16 +520,18 @@
     (:type-of-care-transition state)
     (weighted-pick-transition rng (type-of-care-entries (:type-of-care-transition state)
                                                           (type-of-care-weights (.getYear (LocalDate/ofEpochDay (:t ctx))))))
+    (:lookup-table-transition state)
+    (resolve-lookup-table-transition rng ctx tables (:lookup-table-transition state))
     :else nil))
 
 ;; --- step --------------------------------------------------------------
 
 (defn- pass-through-outcome
-  [module-id ctx rng state advance events]
+  [module-id ctx rng state advance events tables]
   {:events events
    :attributes (:attributes ctx)
    :advance advance
-   :next (resolve-transition module-id ctx rng state)
+   :next (resolve-transition module-id ctx rng state tables)
    :terminal? false
    :blocked? false})
 
@@ -489,10 +540,10 @@
   {:events [] :attributes (:attributes ctx) :advance 0 :next nil :terminal? false :blocked? true})
 
 (defn- guard-step
-  [module-id ctx ^Random rng state]
+  [module-id ctx ^Random rng state tables]
   (let [condition (:allow state)]
     (if (evaluate-condition module-id ctx condition)
-      (pass-through-outcome module-id ctx rng state 0 [])
+      (pass-through-outcome module-id ctx rng state 0 [] tables)
       (if-let [jump (age-guard-jump-days condition (:persona ctx) (:t ctx))]
         ;; `age-guard-jump-days` computes the EXACT day the condition
         ;; starts holding -- re-evaluating after the jump would always
@@ -500,7 +551,7 @@
         ;; branch to handle here (a scenario that can't happen gets no
         ;; defensive code for it, this project's own convention).
         (let [ctx' (update ctx :t + jump)]
-          (update (pass-through-outcome module-id ctx' rng state 0 []) :advance + jump))
+          (update (pass-through-outcome module-id ctx' rng state 0 [] tables) :advance + jump))
         (blocked-outcome ctx)))))
 
 (defn- trajectory-event
@@ -540,11 +591,11 @@
   verbatim -- code passthrough law) into the event, append it to the
   accumulating trajectory, then resolve the ORDINARY transition
   (optionally after its own sampled `:duration`, Procedure's own case)."
-  [module-id ctx ^Random rng state event-type extra]
+  [module-id ctx ^Random rng state event-type extra tables]
   (let [event (trajectory-event module-id ctx event-type extra)
         ctx' (update ctx :trajectory conj event)
         advance (if-let [duration (:duration state)] (- (resolve-time-advance rng (:t ctx) duration) (:t ctx)) 0)]
-    (pass-through-outcome module-id ctx' rng state advance [event])))
+    (pass-through-outcome module-id ctx' rng state advance [event] tables)))
 
 (defn- round1 [^double v] (/ (Math/round (* v 10.0)) 10.0))
 
@@ -657,7 +708,7 @@
   resume-across-a-call mechanism this interpreter does not have yet
   (ns docstring's own note; neither vendored Wave B closure exercises
   this path)."
-  [modules ^Random rng ctx callee-module call-stack]
+  [modules tables ^Random rng ctx callee-module call-stack]
   (when (> (count call-stack) max-call-depth)
     (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: CallSubmodule call depth exceeded max-call-depth -- likely a bug (a static-acyclicity gap gmf/load-closure's own D3 check should have caught)"
                      {:call-stack call-stack})))
@@ -665,7 +716,7 @@
     (when (>= n max-steps)
       (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: run-submodule exceeded max-steps -- likely a module authoring bug (a zero-time-advance transition cycle)"
                        {:call-stack call-stack :current (:current callee-ctx)})))
-    (let [outcome (step callee-module rng callee-ctx modules)
+    (let [outcome (step callee-module rng callee-ctx modules tables)
           ctx' (-> callee-ctx
                    (assoc :attributes (:attributes outcome))
                    (update :trajectory into (:events outcome))
@@ -690,7 +741,7 @@
   a closure with a missing call-path) -- a programmer-error throw, not
   a result-not-throw outcome, the same disposition `evaluate-condition`
   already establishes for a genuinely unsupported condition type."
-  [modules module-id ctx ^Random rng state]
+  [modules tables module-id ctx ^Random rng state]
   (let [callee-id (:submodule state)
         callee-module (get modules callee-id)]
     (when (nil? callee-module)
@@ -698,13 +749,13 @@
                        {:call-path callee-id :caller module-id})))
     (let [call-stack (conj (or (:call-stack ctx) [(or (:root ctx) module-id)]) callee-id)
           pre-call-trajectory-count (count (:trajectory ctx))
-          result (run-submodule modules rng ctx callee-module call-stack)
+          result (run-submodule modules tables rng ctx callee-module call-stack)
           new-events (vec (drop pre-call-trajectory-count (:trajectory result)))
           post-call-ctx (assoc result :call-stack (:call-stack ctx))]
       {:events new-events
        :attributes (:attributes post-call-ctx)
        :advance (- (:t post-call-ctx) (:t ctx))
-       :next (resolve-transition module-id post-call-ctx rng state)
+       :next (resolve-transition module-id post-call-ctx rng state tables)
        :terminal? false
        :blocked? false})))
 
@@ -751,51 +802,68 @@
   case is unaffected, and every pre-Wave-B 3-argument call site (this
   namespace's own `walk-module`/`run-module`, and every test that calls
   `step` directly) keeps working unchanged: a single module IS its own
-  one-module closure."
-  ([module rng ctx] (step module rng ctx {(:id module) module}))
-  ([module rng ctx modules]
+  one-module closure.
+
+  GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3a, H2): the
+  optional 5th argument, `tables` (`ehrt.sim-trajectory.gmf/load-
+  closure`'s own `:tables` return shape), is a SEPARATE, parallel
+  closure-wide argument alongside `modules` (not folded into it --
+  `modules` keeps its own existing documented shape unchanged) --
+  consulted ONLY by `resolve-transition`'s own `:lookup-table-
+  transition` case, reached from every state type's own transition
+  resolution (not only `:call-submodule`), since a lookup-table
+  transition can attach to any simple-transitioning state, the same way
+  `:distributed-transition`/`:complex-transition` already can. Defaults
+  to `{}` (no tables available) at every existing arity -- zero
+  behavior change for every state type and every pre-D3 call site,
+  none of which ever declare a `lookup_table_transition`."
+  ([module rng ctx] (step module rng ctx {(:id module) module} {}))
+  ([module rng ctx modules] (step module rng ctx modules {}))
+  ([module rng ctx modules tables]
    (let [module-id (:id module)
          state (get-in module [:states (:current ctx)])]
     (case (:type state)
       :terminal {:events [] :attributes (:attributes ctx) :advance 0 :next nil :terminal? true :blocked? false}
-      :initial (pass-through-outcome module-id ctx rng state 0 [])
-      :simple (pass-through-outcome module-id ctx rng state 0 [])
+      :initial (pass-through-outcome module-id ctx rng state 0 [] tables)
+      :simple (pass-through-outcome module-id ctx rng state 0 [] tables)
       ;; M5b: consumed-internally, like :simple -- gmf/gmf-type->keyword's
       ;; own docstring note (no equipment-tracking home yet, no trajectory
       ;; event, no attribute write).
-      :device (pass-through-outcome module-id ctx rng state 0 [])
-      :device-end (pass-through-outcome module-id ctx rng state 0 [])
+      :device (pass-through-outcome module-id ctx rng state 0 [] tables)
+      :device-end (pass-through-outcome module-id ctx rng state 0 [] tables)
       :delay (let [t' (resolve-time-advance rng (:t ctx) state)]
-               (pass-through-outcome module-id ctx rng state (- t' (:t ctx)) []))
-      :guard (guard-step module-id ctx rng state)
+               (pass-through-outcome module-id ctx rng state (- t' (:t ctx)) [] tables))
+      :guard (guard-step module-id ctx rng state tables)
       ;; GMF coverage Wave B (2026-08-02, ADR-0027, D1): both writes are
       ;; ROOT-namespaced (`root-id`), not `module-id` -- workflow scratch
       ;; is shared across a CallSubmodule call tree by construction.
       :set-attribute (let [k (keyword (root-id ctx module-id) (gmf/slug (:attribute state)))
                            ctx' (update ctx :attributes assoc k (:value state))]
-                       (pass-through-outcome module-id ctx' rng state 0 []))
+                       (pass-through-outcome module-id ctx' rng state 0 [] tables))
       :symptom (let [severity (cond (:exact state) (:quantity (:exact state))
                                      (:range state) (rand-int-in rng (:low (:range state)) (:high (:range state)))
                                      :else nil)
                      k (keyword (root-id ctx module-id) (gmf/slug (:symptom state)))
                      ctx' (update ctx :attributes assoc k severity)]
-                 (pass-through-outcome module-id ctx' rng state 0 []))
-      :condition-onset (emit-and-advance module-id ctx rng state :condition-onset {:codes (:codes state)})
+                 (pass-through-outcome module-id ctx' rng state 0 [] tables))
+      :condition-onset (emit-and-advance module-id ctx rng state :condition-onset {:codes (:codes state)} tables)
       :condition-end (emit-and-advance module-id ctx rng state :condition-end
                                         {:references (index-of-citation (:trajectory ctx) module-id
-                                                                         :condition-onset (:condition-onset state))})
+                                                                         :condition-onset (:condition-onset state))}
+                                        tables)
       :encounter (emit-and-advance module-id ctx rng state :encounter
-                                    {:codes (:codes state) :encounter-class (:encounter-class state)})
+                                    {:codes (:codes state) :encounter-class (:encounter-class state)} tables)
       :encounter-end (emit-and-advance module-id ctx rng state :encounter-end
-                                        {:references (index-of-last-open-encounter (:trajectory ctx) module-id)})
-      :procedure (emit-and-advance module-id ctx rng state :procedure {:codes (:codes state)})
-      :observation (emit-and-advance module-id ctx rng state :observation (sample-observation-extra rng state))
+                                        {:references (index-of-last-open-encounter (:trajectory ctx) module-id)}
+                                        tables)
+      :procedure (emit-and-advance module-id ctx rng state :procedure {:codes (:codes state)} tables)
+      :observation (emit-and-advance module-id ctx rng state :observation (sample-observation-extra rng state) tables)
       ;; GMF coverage Wave D stage D1 (2026-08-02, ADR-0029 R2(a)): both
       ;; state TYPES compile to the SAME trajectory event type,
       ;; :diagnostic-report -- D1a-2's own shared-ObservationGroup-parent
       ;; grounding, "one step type, both compile into it."
       (:multi-observation :diagnostic-report)
-      (emit-and-advance module-id ctx rng state :diagnostic-report (diagnostic-report-extra rng state))
+      (emit-and-advance module-id ctx rng state :diagnostic-report (diagnostic-report-extra rng state) tables)
       ;; GMF coverage Wave B (2026-08-02, ADR-0027): assign-to-attribute
       ;; / referenced-by-attribute -- a mandatory-path finding, Step 1's
       ;; own characterization (docs/gmf-interpreter.md section 9):
@@ -808,7 +876,7 @@
       ;; scoping contract.
       :medication-order
       (let [event-idx (count (:trajectory ctx))
-            outcome (emit-and-advance module-id ctx rng state :medication-order {:codes (:codes state)})]
+            outcome (emit-and-advance module-id ctx rng state :medication-order {:codes (:codes state)} tables)]
         (if-let [attr (:assign-to-attribute state)]
           (update outcome :attributes assoc (keyword (root-id ctx module-id) (gmf/slug attr)) event-idx)
           outcome))
@@ -817,7 +885,7 @@
                           (get (:attributes ctx) (keyword (root-id ctx module-id) (gmf/slug attr)))
                           (index-of-citation (:trajectory ctx) module-id
                                               :medication-order (:medication-order state)))]
-        (emit-and-advance module-id ctx rng state :medication-end {:references references}))
+        (emit-and-advance module-id ctx rng state :medication-end {:references references} tables))
       ;; GMF coverage Wave D stage D2 (2026-08-02, ADR-0029 R2(b)): the
       ;; SAME shape :medication-order/:medication-end establish, two
       ;; cases up -- no attribute-based cross-module linkage this
@@ -827,15 +895,17 @@
       :care-plan-start
       (emit-and-advance module-id ctx rng state :care-plan-start
                          (cond-> {:codes (:codes state)}
-                           (:activities state) (assoc :activities (:activities state))))
+                           (:activities state) (assoc :activities (:activities state)))
+                         tables)
       :care-plan-end
       (emit-and-advance module-id ctx rng state :care-plan-end
                          {:references (index-of-citation (:trajectory ctx) module-id
-                                                          :care-plan-start (:careplan state))})
+                                                          :care-plan-start (:careplan state))}
+                         tables)
       ;; GMF coverage Wave B (D1-D4): CallSubmodule's own handling is
-      ;; `call-submodule-step`, above -- it needs `modules` (this arity's
-      ;; own 4th argument), the ONE case that does.
-      :call-submodule (call-submodule-step modules module-id ctx rng state)
+      ;; `call-submodule-step`, above -- it needs `modules`/`tables`
+      ;; (this arity's own 4th/5th arguments), the ONE case that does.
+      :call-submodule (call-submodule-step modules tables module-id ctx rng state)
       ;; GMF coverage Wave C (2026-08-02, ADR-0028, C1/C2): Death's own
       ;; time resolution reuses `resolve-time-advance` unchanged --
       ;; :range/:exact are the SAME shape :delay/:procedure duration
@@ -877,14 +947,22 @@
   if `module` itself (or anything it transitively calls) contains a
   CallSubmodule state. Omitted, `step`'s own 3-arity default (a
   single-module closure) applies, unchanged from every pre-Wave-B call
-  site."
-  ([module rng ctx] (walk-module module rng ctx {(:id module) module}))
-  ([module rng ctx modules]
+  site.
+
+  GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3a, H2): the
+  optional 5th argument, `tables` (`ehrt.sim-trajectory.gmf/load-
+  closure`'s own `:tables` return shape), threads straight through to
+  `step` the same way -- needed only if `module` (or anything it
+  transitively calls) contains a `lookup_table_transition`. Omitted,
+  `{}` applies, unchanged from every pre-D3 call site."
+  ([module rng ctx] (walk-module module rng ctx {(:id module) module} {}))
+  ([module rng ctx modules] (walk-module module rng ctx modules {}))
+  ([module rng ctx modules tables]
    (loop [ctx (update ctx :root #(or % (:id module))) n 0]
      (when (>= n max-steps)
        (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: walk-module exceeded max-steps -- likely a module authoring bug (a zero-time-advance transition cycle)"
                         {:module (:id module) :current (:current ctx)})))
-     (let [outcome (step module rng ctx modules)
+     (let [outcome (step module rng ctx modules tables)
            ctx' (-> ctx
                     (assoc :attributes (:attributes outcome))
                     (update :trajectory into (:events outcome))
@@ -940,19 +1018,27 @@
   root modules this project does not vendor (gmf-interpreter.md
   section 13's own G1 finding, D1a's governing principle: freely
   supply what a vendored artifact delegates to the engine). A purely
-  additive arity, not a change to any existing one."
+  additive arity, not a change to any existing one.
+
+  GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3a, H2): the
+  optional 9th argument, `tables` (`ehrt.sim-trajectory.gmf/load-
+  closure`'s own `:tables` return shape), threads straight through to
+  `step` the same way `modules` already does -- omitted, `{}` applies,
+  unchanged for every pre-D3 call site."
   ([module rng persona registration-t] (run-module module rng persona registration-t nil {(:id module) module}))
   ([module rng persona registration-t horizon-end-t] (run-module module rng persona registration-t horizon-end-t {(:id module) module}))
   ([module rng persona registration-t horizon-end-t modules]
    (run-module module rng persona registration-t horizon-end-t modules {}))
   ([module rng persona registration-t horizon-end-t modules initial-attributes]
+   (run-module module rng persona registration-t horizon-end-t modules initial-attributes {}))
+  ([module rng persona registration-t horizon-end-t modules initial-attributes tables]
    (loop [ctx (-> (initial-context persona) (assoc :root (:id module)) (update :attributes into initial-attributes)) n 0]
      (when (>= n max-steps)
        (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: run-module exceeded max-steps -- likely a module authoring bug (a zero-time-advance transition cycle)"
                         {:module (:id module) :current (:current ctx)})))
      (if (and horizon-end-t (>= (:t ctx) horizon-end-t))
        (assoc ctx :status :horizon-complete)
-       (let [outcome (step module rng ctx modules)
+       (let [outcome (step module rng ctx modules tables)
              marked-events (mapv #(assoc % :pre-horizon (< (:t %) registration-t)) (:events outcome))
              ctx' (-> ctx
                       (assoc :attributes (:attributes outcome))

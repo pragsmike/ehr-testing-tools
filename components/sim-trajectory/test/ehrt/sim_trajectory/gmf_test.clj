@@ -368,3 +368,62 @@
     (is (result/ok? loaded))
     (is (= {:ambulatory :ambulatory :emergency :ed :telemedicine :telemedicine}
            (:type-of-care-transition (get-in (:payload loaded) [:states :pick]))))))
+
+;; --- GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3a, H2): the
+;; sixth transition kind, lookup_table_transition -- loader normalization
+;; plus closure DATA-FILE members (R4) -------------------------------------
+
+(def lookup-table-transition-json
+  (str "{\"name\": \"LookupCaller\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Pick\"},"
+       "  \"Pick\": {\"type\": \"Simple\", \"lookup_table_transition\": ["
+       "    {\"transition\": \"A\", \"default_probability\": 0.5, \"lookup_table_name\": \"t.csv\"},"
+       "    {\"transition\": \"B\", \"default_probability\": 0.5, \"lookup_table_name\": \"t.csv\"}]},"
+       "  \"A\": {\"type\": \"Terminal\"},"
+       "  \"B\": {\"type\": \"Terminal\"}}}"))
+
+(deftest lookup-table-transition-entries-normalize-transition-targets
+  (let [loaded (gmf/load-module "lookup-caller" lookup-table-transition-json)]
+    (is (result/ok? loaded))
+    (is (= [{:transition :a :default-probability 0.5 :lookup-table-name "t.csv"}
+            {:transition :b :default-probability 0.5 :lookup-table-name "t.csv"}]
+           (:lookup-table-transition (get-in (:payload loaded) [:states :pick]))))))
+
+(def t-csv "age,gender,A,B\n15-24,F,0.9,0.1\n15-24,M,0.2,0.8\n")
+
+(defn- table-resolver [tables] (fn [table-name] (get tables table-name)))
+
+(deftest load-closure-resolves-a-lookup-table-data-file-member
+  (let [loaded (gmf/load-closure "lookup-caller" lookup-table-transition-json (resolver {})
+                                  (table-resolver {"t.csv" t-csv}))]
+    (is (result/ok? loaded))
+    (is (= #{"t.csv"} (into #{} (keys (:tables (:payload loaded))))))
+    (let [rows (get (:tables (:payload loaded)) "t.csv")]
+      (is (= 2 (count rows)))
+      (is (= [15 24] (:age-range (first rows))))
+      (is (= {"gender" "F"} (:attributes (first rows))))
+      (is (= {:a 0.9 :b 0.1} (:weights (first rows))))
+      (is (= {:a 0.2 :b 0.8} (:weights (second rows)))))))
+
+(deftest load-closure-rejects-a-missing-lookup-table
+  (let [loaded (gmf/load-closure "lookup-caller" lookup-table-transition-json (resolver {})
+                                  (table-resolver {}))]
+    (is (result/rejected? loaded))
+    (is (= :lookup-table-not-found (:category loaded)))
+    (is (= "t.csv" (:table-name (:payload loaded))))))
+
+(def bad-column-t-csv "age,eye_color,A,B\n15-24,brown,0.9,0.1\n")
+
+(deftest load-closure-rejects-an-unrecognized-lookup-table-column
+  (testing "H2's own specify-vs-delegate audit: a column outside
+            age/gender is an ESCALATION, never silently generalized"
+    (let [loaded (gmf/load-closure "lookup-caller" lookup-table-transition-json (resolver {})
+                                    (table-resolver {"t.csv" bad-column-t-csv}))]
+      (is (result/rejected? loaded))
+      (is (= :unrecognized-lookup-table-column (:category loaded)))
+      (is (= "eye_color" (:column (:payload loaded)))))))
+
+(deftest load-closure-with-no-lookup-table-transition-has-empty-tables
+  (let [loaded (gmf/load-closure "fixture-clinic" fixture-clinic-json (resolver {}))]
+    (is (result/ok? loaded))
+    (is (= {} (:tables (:payload loaded))))))

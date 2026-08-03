@@ -1001,6 +1001,59 @@
     (interp/step type-of-care-module rng ctx)
     (is (= 1 @calls))))
 
+;; --- GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3a, H2): the
+;; sixth transition kind, lookup_table_transition ---------------------------
+
+(def lookup-table-module
+  {:id "lookup-mod"
+   :name "Lookup"
+   :states {:initial {:type :initial :direct-transition :pick}
+            :pick {:type :simple
+                   :lookup-table-transition [{:transition :a :default-probability 0.0 :lookup-table-name "t.csv"}
+                                              {:transition :b :default-probability 1.0 :lookup-table-name "t.csv"}]}
+            :a {:type :terminal}
+            :b {:type :terminal}}})
+
+(def lookup-tables
+  "Deliberately extreme, opposite-of-default weights (D3a): a matching
+  row always picks :a (weight 1.0/0.0); the entries' own JSON-declared
+  :default-probability (above) always picks :b -- proves the ROW's own
+  weight is what's consulted, not merely `weighted-pick-transition`
+  falling through to defaults regardless."
+  {"t.csv" [{:age-range [15 24] :attributes {"gender" "F"} :weights {:a 1.0 :b 0.0}}]})
+
+(defn- ctx-aged [persona years]
+  (-> (ctx-for persona) (assoc :current :pick) (update :t + (* 365 years))))
+
+(deftest lookup-table-transition-uses-the-matching-row-s-own-weights
+  (let [female-20 (assoc (persona-at 1) :sex :female)
+        ctx (ctx-aged female-20 20)]
+    (dotimes [seed 5]
+      (is (= :a (:next (interp/step lookup-table-module (Random. seed) ctx
+                                     {(:id lookup-table-module) lookup-table-module} lookup-tables)))
+          "the female 15-24 row's own 1.0 weight for :a always wins, any seed"))))
+
+(deftest lookup-table-transition-falls-back-to-default-probability-on-no-match
+  (testing "no row matches (wrong gender) -- real Synthea's own
+            defaultTransitions mirror, D3a"
+    (let [male-20 (assoc (persona-at 1) :sex :male)
+          ctx (ctx-aged male-20 20)]
+      (dotimes [seed 5]
+        (is (= :b (:next (interp/step lookup-table-module (Random. seed) ctx
+                                       {(:id lookup-table-module) lookup-table-module} lookup-tables)))
+            "no matching row -- falls back to the entries' own default-probability (0.0/1.0), always :b"))))
+  (testing "no row matches (age outside every range) -- same fallback"
+    (let [female-5 (assoc (persona-at 1) :sex :female)
+          ctx (ctx-aged female-5 5)]
+      (is (= :b (:next (interp/step lookup-table-module (Random. 1) ctx
+                                     {(:id lookup-table-module) lookup-table-module} lookup-tables)))))))
+
+(deftest lookup-table-transition-with-no-tables-argument-falls-back-to-defaults
+  (testing "the optional trailing `tables` argument defaults to {} --
+            zero behavior change for every pre-D3 call site"
+    (let [ctx (ctx-aged (assoc (persona-at 1) :sex :female) 20)]
+      (is (= :b (:next (interp/step lookup-table-module (Random. 1) ctx)))))))
+
 ;; --- GMF coverage Wave C (2026-08-02, ADR-0028, C1/C2): Death --------------
 
 (def death-cause-codes [{:system :snomed :code "1" :display "Test cause"}])
