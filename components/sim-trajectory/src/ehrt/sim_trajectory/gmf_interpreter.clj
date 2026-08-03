@@ -145,17 +145,118 @@
 (defn- rand-int-in [^Random rng lo hi] (+ lo (.nextInt rng (inc (- hi lo)))))
 (defn- rand-double-in [^Random rng lo hi] (+ lo (* (.nextDouble rng) (- hi lo))))
 
+;; --- ADR-0035 (Wave F0) AR-1/AR-3: GAUSSIAN/EXPONENTIAL/TRIANGULAR
+;; sampling -- ehrt.sim-trajectory.gmf's own normalized SampledDistribution
+;; shape, sampled here with EXACTLY ONE rng draw per kind (EXACT: zero),
+;; the fixed-consumption law every other stochastic choice in this
+;; project already follows. -------------------------------------------------
+
+(def ^:private probit-a
+  [-3.969683028665376e+01 2.209460984245205e+02 -2.759285104469687e+02
+   1.383577518672690e+02 -3.066479806614716e+01 2.506628277459239e+00])
+(def ^:private probit-b
+  [-5.447609879822406e+01 1.615858368580409e+02 -1.556989798598866e+02
+   6.680131188771972e+01 -1.328068155288572e+01])
+(def ^:private probit-c
+  [-7.784894002430293e-03 -3.223964580411365e-01 -2.400758277161838e+00
+   -2.549732539343734e+00 4.374664141464968e+00 2.938163982698783e+00])
+(def ^:private probit-d
+  [7.784695709041462e-03 3.224671290700398e-01 2.445134137142996e+00
+   3.754408661907416e+00])
+
+(defn- horner ^double [coeffs ^double x]
+  (reduce (fn [^double acc ^double c] (+ (* acc x) c)) 0.0 coeffs))
+
+(defn- probit-approx
+  "ADR-0035 AR-3: a single-draw substitute for `java.util.Random/
+  nextGaussian` -- `nextGaussian` consumes a VARIABLE number of draws
+  (the polar Box-Muller method, retrying on rejection) and caches a
+  spare value across calls, both incompatible with this project's
+  fixed-consumption law. Peter Acklam's rational approximation of the
+  standard-normal inverse CDF (public domain; source: https://
+  web.archive.org/web/20151030215612/http://home.online.no/~pjacklam/
+  notes/invnorm/), claimed accuracy ~1.15e-9 absolute error, no
+  refinement step needed. `p` in (0, 1) -> the z such that Phi(z) = p;
+  GAUSSIAN sampling below calls this with exactly one `.nextDouble`
+  draw as `p`."
+  ^double [^double p]
+  (let [p-low 0.02425 p-high (- 1.0 p-low)]
+    (cond
+      (< p p-low)
+      (let [q (Math/sqrt (* -2.0 (Math/log p)))]
+        (/ (horner probit-c q) (inc (* q (horner probit-d q)))))
+
+      (<= p p-high)
+      (let [q (- p 0.5) r (* q q)]
+        (/ (* q (horner probit-a r)) (inc (* r (horner probit-b r)))))
+
+      :else
+      (let [q (Math/sqrt (* -2.0 (Math/log (- 1.0 p))))]
+        (- (/ (horner probit-c q) (inc (* q (horner probit-d q)))))))))
+
+(defn- sample-distribution
+  "ADR-0035 AR-1/AR-3: samples `ehrt.sim-trajectory.gmf`'s own normalized
+  SampledDistribution shape -- the values Distribution.java's own
+  `generate` computes (fetched-source pin
+  7e08387c68a7f0e21d13076609a159fd473fc902), ported verbatim except
+  GAUSSIAN's own draw (`probit-approx`, above -- a DISCLOSED numeric
+  divergence from `nextGaussian`, fitness-for-purpose not bit-parity,
+  AR-3's own ruling). EXACT: zero draws (mirrors Distribution.java's own
+  EXACT branch, which never calls `person.rand()` either). UNIFORM/
+  GAUSSIAN/EXPONENTIAL/TRIANGULAR: exactly one `.nextDouble` draw,
+  regardless of which branch, the same fixed-consumption law
+  `weighted-pick-transition`/`rand-int-in` already establish. `:round`
+  (when true) rounds the SAMPLED VALUE to the nearest integer, per
+  Distribution.java's own trailing `Math.round` -- applied AFTER any
+  GAUSSIAN clamp, matching source order."
+  ^double [^Random rng {:keys [kind parameters round]}]
+  (let [value
+        (case kind
+          :exact (double (:value parameters))
+          :uniform (rand-double-in rng (:low parameters) (:high parameters))
+          :gaussian
+          (let [{:keys [mean standard-deviation min max]} parameters
+                raw (+ mean (* standard-deviation (probit-approx (.nextDouble rng))))]
+            (cond-> raw
+              (some? min) (clojure.core/max min)
+              (some? max) (clojure.core/min max)))
+          :exponential
+          (let [mean (:mean parameters) lambda (/ -1.0 mean)]
+            (+ 1.0 (/ (Math/log (- 1.0 (.nextDouble rng))) lambda)))
+          :triangular
+          (let [{:keys [min mode max]} parameters
+                f (/ (- mode min) (- max min))
+                r (.nextDouble rng)]
+            (if (< r f)
+              (+ min (Math/sqrt (* r (- max min) (- mode min))))
+              (- max (Math/sqrt (* (- 1.0 r) (- max min) (- max mode)))))))]
+    (if round (double (Math/round ^double value)) value)))
+
 (defn- resolve-time-advance
   "How much virtual time a Delay (or a Procedure's own :duration) advances
   from `t`: `:exact` is deterministic, NO rng draw; `:range` samples
   exactly one uniform integer draw, the same fixed-consumption law every
   other stochastic choice in this project already follows. Neither
   present -> no advance, no draw (a state with no timing info of its
-  own)."
-  [^Random rng ^long t {:keys [range exact]}]
+  own).
+
+  ADR-0035 AR-3: a `:distribution` (GAUSSIAN/EXPONENTIAL/TRIANGULAR,
+  `sample-distribution` above -- UNIFORM/EXACT never reach here as
+  :distribution, D3c's own v1-collapse already turns those into :range/
+  :exact before this function ever sees them) samples a DOUBLE in unit
+  space, then converts to a whole unit-count via `Math/round` (round-
+  half-up) AT THIS conversion boundary -- `advance-date` needs a `long`
+  day/week/month/year count regardless of the distribution's own :round
+  flag (which governs the SAMPLED VALUE for non-timing consumers, e.g.
+  SetAttribute's :round true -- a double duration always needs a long
+  day-count here, independent of whether the state's own author asked
+  for value-level rounding too). The deterministic rounding-to-
+  granularity choice this ADR's own AR-3 names."
+  [^Random rng ^long t {:keys [range exact distribution]}]
   (cond
     exact (advance-date t (:unit exact) (long (:quantity exact)))
     range (advance-date t (:unit range) (rand-int-in rng (long (:low range)) (long (:high range))))
+    distribution (advance-date t (:unit distribution) (Math/round (sample-distribution rng distribution)))
     :else t))
 
 ;; --- Condition evaluation (v1's four predicates, section 2) ----------------
@@ -708,13 +809,33 @@
   all stay unchanged (AR-2's own ruling: the flat map IS Procedure's
   canonical shape, upstream GMF 1.0's own encoding; the mismatch was
   never a shape this function's argument needed translating, only a
-  wrapper this call site was missing)."
+  wrapper this call site was missing).
+
+  ADR-0035 AR-2/AR-3: a GAUSSIAN/EXPONENTIAL/TRIANGULAR Procedure
+  duration normalizes to a state-level `:distribution` instead of
+  `:duration` (`ehrt.sim-trajectory.gmf`'s own `apply-new-timing-
+  distribution` -- no Range/Exact collapse exists for these three
+  kinds), so this call site checks BOTH: `:duration` first (the v1/
+  UNIFORM/EXACT path, untouched), `:distribution` second (wrapped as
+  `{:distribution duration}`, the SAME 'wrap at the call site' shape
+  AR-2 above already established for `:duration`) -- GATED on `(= :procedure
+  (:type state))`, since `emit-and-advance` is the shared helper EVERY
+  trajectory-event-producing state type calls, and this project's own
+  loader leaves an Observation state's own v2 :distribution field
+  (a pre-existing, out-of-scope encoding this session's own fence does
+  not cover) completely unnormalized -- found live, full-catalog UTI
+  closure sweep (`uti/ed_bundle.json`'s own O2-saturation Observation
+  states): an ungated check here would hand that RAW, still-string-
+  keyed map to `sample-distribution`, crashing. Only `:procedure`
+  states ever carry a real, normalized timing `:distribution`."
   [module-id ctx ^Random rng state event-type extra tables]
   (let [event (trajectory-event module-id ctx event-type extra)
         ctx' (update ctx :trajectory conj event)
-        advance (if-let [duration (:duration state)]
-                  (- (resolve-time-advance rng (:t ctx) {:range duration}) (:t ctx))
-                  0)]
+        advance (cond
+                  (:duration state) (- (resolve-time-advance rng (:t ctx) {:range (:duration state)}) (:t ctx))
+                  (and (= :procedure (:type state)) (:distribution state))
+                  (- (resolve-time-advance rng (:t ctx) {:distribution (:distribution state)}) (:t ctx))
+                  :else 0)]
     (pass-through-outcome module-id ctx' rng state advance [event] tables)))
 
 (defn- round1 [^double v] (/ (Math/round (* v 10.0)) 10.0))
@@ -973,8 +1094,16 @@
                            v (if (:value-code state) (:value-code state) (:value state))
                            ctx' (update ctx :attributes assoc k v)]
                        (pass-through-outcome module-id ctx' rng state 0 [] tables))
+      ;; ADR-0035 AR-2/AR-5: a GAUSSIAN/EXPONENTIAL/TRIANGULAR Symptom
+      ;; severity normalizes to the SAME state-level :distribution key
+      ;; Delay/Procedure's new kinds do (gmf/apply-new-timing-
+      ;; distribution groups Delay+Symptom together, D3c's own original
+      ;; :range/:exact collapse precedent) -- sampled directly via
+      ;; `sample-distribution` (no unit conversion: severity is
+      ;; unitless, `gmf-v2-timing->v1`'s own docstring note).
       :symptom (let [severity (cond (:exact state) (:quantity (:exact state))
                                      (:range state) (rand-int-in rng (:low (:range state)) (:high (:range state)))
+                                     (:distribution state) (sample-distribution rng (:distribution state))
                                      :else nil)
                      k (keyword (root-id ctx module-id) (gmf/slug (:symptom state)))
                      ctx' (update ctx :attributes assoc k severity)]

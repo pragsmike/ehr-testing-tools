@@ -689,6 +689,153 @@
       (interp/step procedure-with-duration-module rng ctx)
       (= 1 @calls))))
 
+;; --- ADR-0035 (Wave F0): GAUSSIAN/EXPONENTIAL/TRIANGULAR sampling,
+;; Delay/Procedure timing + Symptom severity (AR-1/AR-3/AR-5) -------------
+
+(deftest probit-approx-matches-known-standard-normal-quantiles
+  (testing "ADR-0035 AR-3: Acklam's rational approximation, source-cited
+            in gmf_interpreter.clj -- checked against well-known
+            standard-normal quantiles and its own symmetry invariant"
+    (let [probit @#'interp/probit-approx]
+      (is (< (Math/abs (- 0.0 (probit 0.5))) 1e-9))
+      (is (< (Math/abs (- 1.959964 (probit 0.975))) 1e-5))
+      (is (< (Math/abs (- -1.959964 (probit 0.025))) 1e-5))
+      (is (< (Math/abs (- 1.0 (probit 0.8413447))) 1e-5))
+      (is (< (Math/abs (+ (probit 0.025) (probit 0.975))) 1e-9)))))
+
+(deftest exponential-sample-applies-the-plus-one-shift-verbatim
+  (testing "AR-1: value = 1 + ln(1-u)/(-1/mean) -- a fixed-seed golden
+            value, byte-confirmed against Distribution.java's own
+            EXPONENTIAL branch (mean 10, seed 1's own first .nextDouble
+            draw, 0.7308781907032909)"
+    (let [sample-distribution @#'interp/sample-distribution]
+      (is (< (Math/abs (- 14.125911792091946
+                          (sample-distribution (Random. 1) {:kind :exponential :parameters {:mean 10} :round false})))
+             1e-9)))))
+
+(deftest triangular-sample-matches-the-two-branch-inverse-cdf
+  (testing "AR-1: the two-branch triangular inverse-CDF, ported verbatim
+            -- a fixed-seed golden value (min 0, mode 5, max 10, seed 7)"
+    (let [sample-distribution @#'interp/sample-distribution]
+      (is (< (Math/abs (- 6.330524847202547
+                          (sample-distribution (Random. 7) {:kind :triangular :parameters {:min 0 :mode 5 :max 10} :round false})))
+             1e-9)))))
+
+(def gaussian-delay-module
+  {:id "gaussian-delay-mod" :name "GaussianDelay"
+   :states {:initial {:type :initial :direct-transition :wait}
+            :wait {:type :delay
+                   :distribution {:kind :gaussian :parameters {:mean 30 :standard-deviation 5 :min 10 :max 40}
+                                  :round true :unit "days"}
+                   :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest gaussian-delay-advances-within-its-clamped-range
+  (dotimes [seed 20]
+    (let [ctx (assoc (ctx-for (persona-at seed)) :current :wait)
+          outcome (interp/step gaussian-delay-module (Random. seed) ctx)]
+      (is (<= 10 (:advance outcome) 40))
+      (is (= :done (:next outcome))))))
+
+(defspec gaussian-delay-consumes-a-fixed-single-rng-draw 100
+  (prop/for-all [seed gen/large-integer]
+    (let [ctx (assoc (ctx-for (persona-at 1)) :current :wait)
+          calls (atom 0)
+          rng (proxy [Random] [(long seed)]
+                (nextDouble
+                  ([] (swap! calls inc) (proxy-super nextDouble))))]
+      (interp/step gaussian-delay-module rng ctx)
+      (= 1 @calls))))
+
+(def clamped-gaussian-delay-module
+  {:id "clamp-mod" :name "Clamp"
+   :states {:initial {:type :initial :direct-transition :wait}
+            :wait {:type :delay
+                   :distribution {:kind :gaussian :parameters {:mean 1000 :standard-deviation 1 :min 10 :max 40}
+                                  :round false :unit "days"}
+                   :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest gaussian-clamps-to-max-when-mean-is-far-above-it
+  (testing "AR-1: clamping, not resampling -- a mean this far outside
+            [min, max] clamps on effectively every draw"
+    (dotimes [seed 20]
+      (let [ctx (assoc (ctx-for (persona-at seed)) :current :wait)
+            outcome (interp/step clamped-gaussian-delay-module (Random. seed) ctx)]
+        (is (= 40 (:advance outcome)))))))
+
+(def exponential-procedure-module
+  {:id "exp-proc-mod" :name "ExpProcedure"
+   :states {:initial {:type :initial :direct-transition :do-it}
+            :do-it {:type :procedure
+                    :codes [{:system :snomed :code "1" :display "Test"}]
+                    :distribution {:kind :exponential :parameters {:mean 5} :round false :unit "days"}
+                    :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest exponential-procedure-advances-virtual-time-and-consumes-one-draw
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :do-it)
+        calls (atom 0)
+        rng (proxy [Random] [42]
+              (nextDouble
+                ([] (swap! calls inc) (proxy-super nextDouble))))
+        outcome (interp/step exponential-procedure-module rng ctx)]
+    (is (<= 1 (:advance outcome)))
+    (is (= :done (:next outcome)))
+    (is (= 1 @calls))))
+
+(def triangular-symptom-module
+  {:id "tri-symptom-mod" :name "TriSymptom"
+   :states {:initial {:type :initial :direct-transition :sev}
+            :sev {:type :symptom :symptom "Pain"
+                  :distribution {:kind :triangular :parameters {:min 0 :mode 5 :max 10} :round false}
+                  :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest triangular-symptom-sets-severity-within-its-bounds
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :sev)
+        outcome (interp/step triangular-symptom-module (Random. 7) ctx)
+        severity (get (:attributes outcome) :tri-symptom-mod/pain)]
+    (is (<= 0 severity 10))))
+
+(defspec triangular-symptom-consumes-a-fixed-single-rng-draw 100
+  (prop/for-all [seed gen/large-integer]
+    (let [ctx (assoc (ctx-for (persona-at 1)) :current :sev)
+          calls (atom 0)
+          rng (proxy [Random] [(long seed)]
+                (nextDouble
+                  ([] (swap! calls inc) (proxy-super nextDouble))))]
+      (interp/step triangular-symptom-module rng ctx)
+      (= 1 @calls))))
+
+(def observation-with-a-stray-raw-v2-distribution-module
+  "uti/ed_bundle.json's own O2-saturation Observation states, byte-
+  confirmed against the real vendored closure -- a v2 :distribution the
+  LOADER never normalizes (Observation is not one of ADR-0035's own
+  three contexts, an out-of-scope encoding this session's fence does not
+  cover), left raw and string-keyed on the state map. `emit-and-advance`
+  is the shared helper every trajectory-event-producing state type
+  calls -- this regression guards that its own :distribution check stays
+  gated on `(= :procedure (:type state))`, never firing for this
+  unrelated, still-raw field."
+  {:id "obs-stray-dist-mod" :name "ObsStrayDist"
+   :states {:initial {:type :initial :direct-transition :o2}
+            :o2 {:type :observation
+                 :codes [{:system :loinc :code "2708-6" :display "Oxygen saturation"}]
+                 :distribution {:kind "UNIFORM" :round false :parameters {:low 90 :high 100}}
+                 :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest emit-and-advance-ignores-a-stray-raw-distribution-on-a-non-procedure-state
+  (testing "ADR-0035: found live during the full non-integration suite
+            run (uti/ed_bundle.json's own O2 Observation states) -- an
+            ungated :distribution check here crashed on the raw,
+            string-keyed leftover"
+    (let [ctx (assoc (ctx-for (persona-at 1)) :current :o2)
+          outcome (interp/step observation-with-a-stray-raw-v2-distribution-module (Random. 1) ctx)]
+      (is (= 0 (:advance outcome)))
+      (is (= :done (:next outcome))))))
+
 (def not-equal-attribute-module
   {:id "ne-mod" :name "NotEqual"
    :states {:initial {:type :initial :direct-transition :check}
