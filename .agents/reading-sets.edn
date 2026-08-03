@@ -190,7 +190,12 @@
   ;; session's own session-record/prompt-archive filenames in their own
   ;; already-cited onboarding READMEs (1 line each) plus roadmap.md's
   ;; own final wording tweaks brought the real total from 1201 to 1210.
-  :budget-lines 1210}
+  ;; bumped 1210->1243, rulings-capture session (2026-08-03, Step 5):
+  ;; roadmap.md's own three new Next rows (defect-fix sessions + census,
+  ;; ADR-0031 AR-6), the backload-named-future Deferred row (AR-3), and
+  ;; the two dated cross-references on existing Deferred rows brought
+  ;; the real total from 1210 to 1243.
+  :budget-lines 1243}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one

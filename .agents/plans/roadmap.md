@@ -9,6 +9,25 @@ per item; done items move to the bottom of their section with a date and sha.
   same day it started -- see Done, below).
 
 ## Next (backlog, no session scheduled)
+- **Procedure-duration fix session** (2026-08-03, `notes/ADRs.md` ADR-0031 AR-6,
+  sequenced first): `resolve-time-advance`'s flat-map/nested-key mismatch —
+  mechanical, semantics pinned from Synthea source before the fix commit; see
+  its own Deferred row below for the full finding. Requires a full
+  oracle-bracketed re-baseline (`bin/regression-oracle`), since virtual time
+  shifts for every vendored root.
+- **Engine closure-context fix session** (2026-08-03, ADR-0031 AR-6, sequenced
+  second, after the duration fix): `engine.clj`'s `:registered` decide method
+  threads a closure's own submodule registry and `initial-attributes` through
+  to `run-module` — owns both `notes/ADRs.md` ADR-0030 J3 gaps; see the
+  closure-engine-round-trips Deferred row below. Flips the three pinned
+  round-trip tests (`components/sim-emit-hl7/test/`). Oracle-bracketed: the
+  five non-closure roots must stay byte-identical; closure roots gain NEW
+  engine-layer baselines.
+- **Census session** (2026-08-03, ADR-0031, sequenced third, after both defect
+  fixes): `gmf survey`, a `sim-trajectory` dev entry point (AR-1) performing a
+  seeded interpreter-layer smoke walk per module with digest recorded, not
+  merely a load verdict (AR-4) — see `.agents/plans/2026-08-02-gmf-parity-plan.md`
+  §3. Enters `Next`, not `Now`, per ADR-0031 AR-7's amended approval act.
 - Pairing-as-data (review P3-3): mutate↔judge conviction registry — design pass in
   the design channel first; vocabulary is load-bearing
 - Storefront demo fixture: minimal clean-gating FHIR fixture so the README's mutate
@@ -47,6 +66,12 @@ per item; done items move to the bottom of their section with a date and sha.
   explicit fence) — AUTHOR ACTION.
 
 ## Deferred (explicitly, with revisit triggers)
+- **Backload named future** (2026-08-03, `notes/ADRs.md` ADR-0031 AR-3):
+  pre-roll stays emit-nothing, reaffirmed — no backloaded-history mode
+  in the sim. The backload need (pre-window messages for systems that
+  ingest historical loads) is a TOOLS-SIDE construction over sim
+  output, fault-injection's own sibling, not a sim feature. Revisit
+  trigger: a real consumer for pre-window messages appears.
 - P2-5 intake staging-dir behavior (deferred 2026-07-31)
 - Reading-set budget numbers (charter §6: rule after real sizes are measured)
 - Verdict-cache placement revisit (ADR-0011 note: second consumer, or never)
@@ -59,7 +84,13 @@ per item; done items move to the bottom of their section with a date and sha.
   — GMF coverage Wave D closed 2026-08-02 (D0-D3, see Done below)
   without owning either; H3's own attribute-weighted `distributed_
   transition` mechanism landed D3 but is only half of stroke's own
-  revisit trigger (`stroke.json` stays deferred).
+  revisit trigger (`stroke.json` stays deferred). **Dated
+  cross-reference (2026-08-03, ADR-0031):** the stroke-risk DATA-SOURCE
+  question is RULED — `.agents/plans/2026-08-02-gmf-parity-plan.md` §2
+  (the risk-attribute register, curated calibration content rather than
+  a ported calculation). This row's remaining substance is Wave E
+  scheduling (stroke as the register's first consumer), not an open
+  design question.
 - `myocardial_infarction.json` — three independent blockers, none
   touched by Wave D (`ImagingStudy`/R5, a genuinely new `SupplyList`
   state type, `Counter`); its own 27-file closure is fully surveyed
@@ -73,8 +104,8 @@ per item; done items move to the bottom of their section with a date and sha.
   from it, finding neither — EVERY vendored Procedure state's own
   duration silently never advances virtual time, v1 or v2 gmf_version
   alike (found live, Wave D stage D3, `docs/gmf-interpreter.md` §14's
-  own D3c finding 1) — unowned, touches every vendored root's own
-  regression behavior, not scoped to any one session yet.
+  own D3c finding 1). **Now scheduled: see the "Procedure-duration fix
+  session" row in Next, above (2026-08-03, ADR-0031 AR-6).**
 - The compile-trajectory/engine/emit full-pipeline gap for closure-
   having modules — **UPGRADED from "unproven" to "confirmed broken"
   (2026-08-02, post-Wave-D cleanup, ADR-0030 J3):** `engine.clj`'s own
@@ -85,10 +116,12 @@ per item; done items move to the bottom of their section with a date and sha.
   (`total_joint_replacement`: the walk blocks permanently at age 0,
   silently producing zero compiled content). Pinned live by
   `components/sim-emit-hl7/test/`'s three new round-trip tests, one
-  per root. Unowned; the first session wiring `engine.clj` to carry a
-  closure's own `modules`/`tables`/`initial-attributes` through to
-  `run-module` inherits this gap AND must update those three tests
-  (they are designed to fail loudly the moment this lands).
+  per root. The session wiring `engine.clj` to carry a closure's own
+  `modules`/`tables`/`initial-attributes` through to `run-module`
+  inherits this gap AND must update those three tests (they are
+  designed to fail loudly the moment this lands). **Now scheduled: see
+  the "Engine closure-context fix session" row in Next, above
+  (2026-08-03, ADR-0031 AR-6).**
 
 ## Done (this session, 2026-08-01, migration session 1)
 - Items 6+7: `agent/scenario-roster.md` merged into `.agents/skills/scenarios/roster.md`,
