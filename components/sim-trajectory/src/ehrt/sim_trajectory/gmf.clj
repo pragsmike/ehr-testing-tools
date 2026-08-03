@@ -351,12 +351,174 @@
                 "EXACT" {:low (:value parameters) :high (:value parameters)})]
     (assoc (dissoc state :distribution :unit) :duration (cond-> shape unit (assoc :unit unit)))))
 
+;; --- ADR-0035 (Wave F0): GAUSSIAN/EXPONENTIAL/TRIANGULAR join the v2
+;; distribution vocabulary alongside UNIFORM/EXACT -- ported verbatim
+;; from Synthea's own Distribution.java (fetched-source pin
+;; 7e08387c68a7f0e21d13076609a159fd473fc902, ADR-0035 AR-1), across THREE
+;; contexts (Delay/Symptom timing, Procedure duration, SetAttribute
+;; value, ADR-0035 AR-2) rather than D3c's original two. UNIFORM/EXACT
+;; keep their existing v1-collapse (`gmf-v2-timing->v1`/`apply-gmf-v2-
+;; procedure-duration`, above) completely untouched (AR-5, "no churn")
+;; -- the three new kinds, and SetAttribute's own (all-five) distribution
+;; field, normalize instead into ONE self-contained shape,
+;; `SampledDistribution` (schema section, below): `{:kind :exact|
+;; :uniform|:gaussian|:exponential|:triangular :parameters {...kebab-
+;; keyed...} :round bool :unit {:optional}}` -- sampled at INTERPRETER
+;; time (`ehrt.sim-trajectory.gmf-interpreter`'s own `sample-
+;; distribution`), never collapsed into Range/Exact (no such shape
+;; exists for a Gaussian/Exponential/Triangular draw). ---------------------
+
+(def ^:private v1-collapse-kinds
+  "UNIFORM/EXACT -- the two kinds `gmf-v2-timing->v1`/`apply-gmf-v2-
+  procedure-duration` already translate into the pre-existing Range/
+  Exact shapes (D3c finding 1, untouched by this ADR)."
+  #{"UNIFORM" "EXACT"})
+
+(def ^:private distribution-kind->keyword
+  "Every kind this loader recognizes at ALL (ADR-0035 AR-1's five-kind
+  closed vocabulary, Distribution.java's own `Kind` enum, source-
+  confirmed) -- a raw :kind string outside this map's own keys is what
+  `invalid-distribution-kind?` (below) catches and rejects cleanly
+  (AR-2), never a fall-through `case` throw."
+  {"EXACT" :exact "UNIFORM" :uniform "GAUSSIAN" :gaussian
+   "EXPONENTIAL" :exponential "TRIANGULAR" :triangular})
+
+(defn- normalize-distribution-parameters
+  "Distribution.java's own per-kind `parameters` map (AR-1's required-
+  parameters table, `validate()` source-confirmed) -- kebab-keyed onto
+  this project's own idiom (`standarddeviation`, `kebab-key`'s own
+  camelCase-blind transform of JSON's `standardDeviation`, renamed here
+  to the readable `:standard-deviation` this project's other kebab keys
+  already use). Optional keys (:min/:max on GAUSSIAN) are OMITTED, never
+  assoc'd as an explicit nil -- `load-module`'s own :remarks precedent:
+  'optional means the KEY may be absent, not that a present value may be
+  nil.' A required key genuinely absent from the raw JSON stays nil here
+  -- `SampledDistribution`'s own per-kind schema (below) is what turns
+  that into a real :schema-invalid rejection, the same disposition every
+  other structural gap in this loader already gets."
+  [kind-kw {:keys [value low high mean standarddeviation min max mode]}]
+  (case kind-kw
+    :exact {:value value}
+    :uniform {:low low :high high}
+    :gaussian (cond-> {:mean mean :standard-deviation standarddeviation}
+                (some? min) (assoc :min min)
+                (some? max) (assoc :max max))
+    :exponential {:mean mean}
+    :triangular {:min min :mode mode :max max}))
+
+(defn- normalize-distribution
+  "The raw v2 `:distribution` map (`:kind` a raw string, `:parameters` a
+  raw kebab-keyed-by-`kebab-key` map, `:round` a raw boolean or absent)
+  -> `SampledDistribution`'s own shape (below): :kind keywordized,
+  :parameters normalized (`normalize-distribution-parameters`), :round
+  ALWAYS a boolean (missing/nil coerced to `false`, never left absent --
+  the interpreter's own `sample-distribution` reads it unconditionally),
+  :unit folded in only when the caller supplies one (Delay/Procedure's
+  own top-level :unit field -- SetAttribute has none)."
+  [{:keys [kind round parameters]} & [unit]]
+  (let [kind-kw (get distribution-kind->keyword kind)]
+    (cond-> {:kind kind-kw
+             :parameters (normalize-distribution-parameters kind-kw parameters)
+             :round (boolean round)}
+      unit (assoc :unit unit))))
+
+(defn- state-distribution-kind
+  "The raw :kind string on `state`'s own top-level :distribution, or nil
+  when `state` carries no such field -- the one predicate both
+  `invalid-distribution-kind?` and `normalize-state`'s own dispatch
+  clauses below share."
+  [state]
+  (get-in state [:distribution :kind]))
+
+(def ^:private distribution-timing-state-types
+  "The state TYPES a top-level v2 :distribution can appear on as a TIMING
+  value, this session's own three timing contexts (ADR-0035 AR-2) --
+  SetAttribute is checked separately below (not a timing context: no
+  :unit folding, and it competes with :value/:value-code, guarded by
+  `set-attribute-value-conflict?`, not this set)."
+  #{:delay :symptom :procedure})
+
+(defn- invalid-distribution-kind?
+  "ADR-0035 AR-2: a state carrying a top-level :distribution whose own
+  :kind is OUTSIDE `distribution-kind->keyword`'s five-kind vocabulary
+  -- on any of this session's own four contexts (the three timing types
+  plus :set-attribute) -- is a clean, load-time REJECTION candidate
+  (`normalize-state`'s own early-return branch), never a `case` fall-
+  through throw the way `gmf-v2-timing->v1`/`apply-gmf-v2-procedure-
+  duration` used to (the census's own `gmf_version 2` loader-exception
+  finding, ADR-0034's execution note, this ADR's own Context)."
+  [state kw-type]
+  (when-let [kind (state-distribution-kind state)]
+    (and (or (distribution-timing-state-types kw-type) (= :set-attribute kw-type))
+         (nil? (get distribution-kind->keyword kind)))))
+
+(defn- attribute-value-sources
+  "Which of SetAttribute's three mutually-exclusive-in-practice value
+  sources `state` actually carries -- :distribution/:value/:value-code,
+  any present (ADR-0035 AR-4: upstream's own real precedent is 'a
+  distribution present means sample it,' never a silent priority order
+  among the three; `contains?` for :value/:value-code since a legitimate
+  authored value can be falsy -- `false`, `0`, `\"\"` -- and must not be
+  mistaken for absence)."
+  [state]
+  (into #{} (keep identity)
+        [(when (map? (:distribution state)) :distribution)
+         (when (contains? state :value) :value)
+         (when (contains? state :value-code) :value-code)]))
+
+(defn- set-attribute-value-conflict?
+  "ADR-0035 AR-4: a SetAttribute state carrying :distribution ALONGSIDE
+  :value or :value-code is a load-time REJECTION (`normalize-state`'s
+  own early-return branch) -- 'record a load-time rejection rather than
+  guessing,' never a silently-chosen precedence order. (:value and
+  :value-code coexisting WITHOUT :distribution is pre-existing,
+  untouched behavior -- `step`'s own :set-attribute case already
+  prioritizes :value-code there, unrelated to this session's own fence.)"
+  [state kw-type]
+  (and (= :set-attribute kw-type)
+       (map? (:distribution state))
+       (or (contains? state :value) (contains? state :value-code))))
+
+(defn- apply-new-timing-distribution
+  "GAUSSIAN/EXPONENTIAL/TRIANGULAR on Delay/Symptom/Procedure (ADR-0035
+  AR-2/AR-5): normalized into `SampledDistribution`'s own shape, kept
+  as its own :distribution key (never collapsed into Range/Exact -- no
+  such shape exists for these three kinds) -- the state's own top-level
+  :unit (Delay/Procedure; Symptom carries none, its own severity is
+  unitless, `gmf-v2-timing->v1`'s own docstring precedent) folds INTO
+  the distribution map and is dissoc'd from the state, the same 'unit
+  travels with its own timing shape, never left as a stray top-level
+  field' discipline the v1-collapse path already establishes."
+  [state]
+  (assoc (dissoc state :unit) :distribution (normalize-distribution (:distribution state) (:unit state))))
+
+(defn- normalize-set-attribute-distribution
+  "SetAttribute's own :distribution (ADR-0035 AR-2/AR-4): normalized the
+  SAME way `apply-new-timing-distribution` normalizes Delay/Symptom/
+  Procedure's, minus :unit folding (SetAttribute carries none -- the
+  110+-instance catalog survey behind this ADR confirmed none exist).
+  All FIVE kinds pass through here (unlike the timing contexts' own v1-
+  collapse split) -- SetAttribute never had a pre-existing UNIFORM/EXACT
+  translation to leave untouched; this is entirely new code, free to
+  normalize uniformly."
+  [state]
+  (update state :distribution normalize-distribution))
+
 (defn- normalize-state
   [state]
   (let [raw-type (:type state)
         kw-type (get gmf-type->keyword raw-type)]
-    (if (nil? kw-type)
+    (cond
+      (nil? kw-type)
       {:unsupported-state-type {:raw-type raw-type}}
+
+      (invalid-distribution-kind? state kw-type)
+      {:invalid-distribution-kind {:kind (state-distribution-kind state)}}
+
+      (set-attribute-value-conflict? state kw-type)
+      {:set-attribute-value-conflict {:sources (attribute-value-sources state)}}
+
+      :else
       (-> state
           (assoc :type kw-type)
           (cond-> (:codes state) (update :codes #(mapv normalize-code %))
@@ -423,25 +585,63 @@
                   ;; kw-type, BEFORE normalize-transitions (a state's
                   ;; own top-level :distribution, never the DIFFERENT,
                   ;; nested :distribution H3 already handles inside
-                  ;; :distributed-transition's own entries).
-                  (and (map? (:distribution state)) (:kind (:distribution state)) (#{:delay :symptom} kw-type))
+                  ;; :distributed-transition's own entries). ADR-0035:
+                  ;; restricted to `v1-collapse-kinds` (UNIFORM/EXACT)
+                  ;; now that a THIRD sibling clause (below) exists for
+                  ;; the other three kinds -- by the time normalize-state
+                  ;; reaches this cond-> (past the invalid-distribution-
+                  ;; kind? early return, above), :kind is guaranteed one
+                  ;; of the five recognized strings, so "not a v1-collapse
+                  ;; kind" below correctly means "one of the three new
+                  ;; ones," never an unrecognized one.
+                  (and (map? (:distribution state)) (v1-collapse-kinds (:kind (:distribution state))) (#{:delay :symptom} kw-type))
                   apply-gmf-v2-timing
 
-                  (and (map? (:distribution state)) (:kind (:distribution state)) (= :procedure kw-type))
-                  apply-gmf-v2-procedure-duration)
+                  (and (map? (:distribution state)) (v1-collapse-kinds (:kind (:distribution state))) (= :procedure kw-type))
+                  apply-gmf-v2-procedure-duration
+
+                  ;; ADR-0035 AR-2/AR-5: GAUSSIAN/EXPONENTIAL/TRIANGULAR
+                  ;; on Delay/Symptom/Procedure -- kept as a normalized
+                  ;; :distribution map, never collapsed (no Range/Exact
+                  ;; equivalent exists for these three kinds).
+                  (and (map? (:distribution state)) (distribution-timing-state-types kw-type)
+                       (not (v1-collapse-kinds (:kind (:distribution state)))))
+                  apply-new-timing-distribution
+
+                  ;; ADR-0035 AR-2/AR-4: SetAttribute's own :distribution
+                  ;; -- all five kinds, `set-attribute-value-conflict?`
+                  ;; (above) already gated out the ambiguous case.
+                  (and (map? (:distribution state)) (= :set-attribute kw-type))
+                  normalize-set-attribute-distribution)
           normalize-transitions))))
 
 (defn- normalize-states
   "Normalizes every state; short-circuits with the FIRST deferred-type
   state found (deterministic -- iterates in the module's own key order),
   since a module using even one deferred type fails load, full stop
-  (this namespace's own docstring)."
+  (this namespace's own docstring). ADR-0035: two more short-circuiting
+  categories join :unsupported-state-type here, the SAME 'first found,
+  deterministic order' discipline -- an unrecognized v2 distribution
+  :kind (:invalid-distribution-kind) and a SetAttribute state carrying
+  more than one of :distribution/:value/:value-code
+  (:set-attribute-value-conflict)."
   [raw-states]
   (reduce (fn [acc [state-name raw-state]]
             (let [normalized (normalize-state raw-state)]
-              (if (:unsupported-state-type normalized)
+              (cond
+                (:unsupported-state-type normalized)
                 (reduced {:unsupported {:state state-name
                                         :raw-type (:raw-type (:unsupported-state-type normalized))}})
+
+                (:invalid-distribution-kind normalized)
+                (reduced {:invalid-distribution {:state state-name
+                                                  :kind (:kind (:invalid-distribution-kind normalized))}})
+
+                (:set-attribute-value-conflict normalized)
+                (reduced {:value-conflict {:state state-name
+                                           :sources (:sources (:set-attribute-value-conflict normalized))}})
+
+                :else
                 (update acc :states assoc state-name normalized))))
           {:states {}}
           raw-states))
@@ -558,13 +758,41 @@
 
 (defn- with-transitions [& kvs] (into [:map] (into (vec kvs) TransitionFields)))
 
+;; ADR-0035 (Wave F0) AR-1/AR-5: SampledDistribution -- the normalized
+;; shape `normalize-distribution` (above) produces for GAUSSIAN/
+;; EXPONENTIAL/TRIANGULAR on Delay/Symptom/Procedure, and for ALL FIVE
+;; kinds on SetAttribute. A `:multi` dispatch on :kind, the SAME pattern
+;; `GmfState` itself already uses one level up -- each branch declares
+;; ONLY its own kind's required parameters (AR-1's own table,
+;; Distribution.java's `validate()`, source-confirmed), so a distribution
+;; missing a required parameter fails as :schema-invalid, the same
+;; disposition every other structural gap in this loader already gets.
+(def ^:private ExactParams [:map [:value number?]])
+(def ^:private UniformParams [:map [:low number?] [:high number?]])
+(def ^:private GaussianParams
+  [:map [:mean number?] [:standard-deviation number?]
+   [:min {:optional true} number?] [:max {:optional true} number?]])
+(def ^:private ExponentialParams [:map [:mean number?]])
+(def ^:private TriangularParams [:map [:min number?] [:mode number?] [:max number?]])
+
+(defn- with-round-and-unit [& kvs] (into [:map] (into (vec kvs) [[:round :boolean] [:unit {:optional true} :string]])))
+
+(def ^:private SampledDistribution
+  [:multi {:dispatch :kind}
+   [:exact (with-round-and-unit [:kind [:= :exact]] [:parameters ExactParams])]
+   [:uniform (with-round-and-unit [:kind [:= :uniform]] [:parameters UniformParams])]
+   [:gaussian (with-round-and-unit [:kind [:= :gaussian]] [:parameters GaussianParams])]
+   [:exponential (with-round-and-unit [:kind [:= :exponential]] [:parameters ExponentialParams])]
+   [:triangular (with-round-and-unit [:kind [:= :triangular]] [:parameters TriangularParams])]])
+
 (def GmfState
   [:multi {:dispatch :type}
    [:initial (into [:map [:type [:= :initial]]] TransitionFields)]
    [:terminal [:map [:type [:= :terminal]]]]
    [:simple (into [:map [:type [:= :simple]]] TransitionFields)]
    [:delay (with-transitions [:type [:= :delay]]
-             [:range {:optional true} Range] [:exact {:optional true} Exact])]
+             [:range {:optional true} Range] [:exact {:optional true} Exact]
+             [:distribution {:optional true} SampledDistribution])]
    [:guard (with-transitions [:type [:= :guard]] [:allow [:map-of :keyword :any]])]
    ;; GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3d finding 1):
    ;; :value-code (TJR's own Pre_Procedure_Encounter_Reason/Home_Health_
@@ -572,9 +800,16 @@
    ;; :observation's own :value-code already gets (the generic
    ;; normalize-state clause already handles it, no new loader code).
    [:set-attribute (with-transitions [:type [:= :set-attribute]] [:attribute :string] [:value {:optional true} :any]
-                     [:value-code {:optional true} sim-model/Concept])]
+                     [:value-code {:optional true} sim-model/Concept]
+                     ;; ADR-0035 AR-2/AR-4: SetAttribute's own :distribution
+                     ;; -- `set-attribute-value-conflict?` (above) already
+                     ;; gates out ambiguous co-occurrence with :value/
+                     ;; :value-code at LOAD time, before this schema is
+                     ;; ever checked.
+                     [:distribution {:optional true} SampledDistribution])]
    [:symptom (with-transitions [:type [:= :symptom]] [:symptom :string]
-               [:range {:optional true} Range] [:exact {:optional true} Exact])]
+               [:range {:optional true} Range] [:exact {:optional true} Exact]
+               [:distribution {:optional true} SampledDistribution])]
    [:condition-onset (with-transitions [:type [:= :condition-onset]] [:codes [:vector sim-model/Concept]]
                         [:target-encounter {:optional true} :keyword])]
    [:condition-end (with-transitions [:type [:= :condition-end]] [:condition-onset {:optional true} :keyword])]
@@ -593,7 +828,8 @@
    [:encounter-end (into [:map [:type [:= :encounter-end]]] TransitionFields)]
    [:procedure (with-transitions [:type [:= :procedure]] [:codes [:vector sim-model/Concept]]
                  [:target-encounter {:optional true} :keyword] [:reason {:optional true} :string]
-                 [:duration {:optional true} Range])]
+                 [:duration {:optional true} Range]
+                 [:distribution {:optional true} SampledDistribution])]
    ;; GMF coverage Wave D stage D1 (2026-08-02, ADR-0029, D1a-3/D1a-RULING
    ;; Q2+Q3): :value-code (a coded/qualitative finding) and :vital-sign
    ;; (a named-vital-sign lookup, the raw JSON string left UNTOUCHED --
@@ -710,16 +946,29 @@
   Returns a Result: :ok with the normalized module map ({:id :name
   :remarks :states}); :rejected :unsupported-state-type (payload {:state
   :raw-type}) for a module using a deferred GMF state type; :rejected
+  :unsupported-distribution-kind (payload {:state :kind}, ADR-0035 AR-2)
+  for a state whose top-level v2 :distribution names a :kind outside
+  the five Distribution.java defines -- a clean rejection where the
+  loader used to THROW (the census's own `gmf_version 2` loader-
+  exception finding, ADR-0034); :rejected :set-attribute-value-conflict
+  (payload {:state :sources}, ADR-0035 AR-4) for a SetAttribute state
+  carrying more than one of :distribution/:value/:value-code; :rejected
   :attribute-collision (payload {:attribute name}) for a module whose own
   SetAttribute/Symptom writes a bare engine-reserved attribute name;
   :rejected :schema-invalid (payload {:explain ...}) for any other v1
   structural mismatch."
   [id json-text]
   (let [raw (json/read-str json-text :key-fn kebab-key)
-        {:keys [states unsupported]} (normalize-states (:states raw))]
+        {:keys [states unsupported invalid-distribution value-conflict]} (normalize-states (:states raw))]
     (cond
       unsupported
       (result/rejected :unsupported-state-type unsupported)
+
+      invalid-distribution
+      (result/rejected :unsupported-distribution-kind invalid-distribution)
+
+      value-conflict
+      (result/rejected :set-attribute-value-conflict value-conflict)
 
       (reserved-attribute-collision states)
       (result/rejected :attribute-collision {:attribute (reserved-attribute-collision states)})

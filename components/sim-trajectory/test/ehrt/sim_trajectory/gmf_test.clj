@@ -586,3 +586,132 @@
       (is (= [{:age-range [15 24] :attributes {"gender" "F"} :weights {:a 0.9 :b 0.1}}
               {:age-range [15 24] :attributes {"gender" "M"} :weights {:a 0.2 :b 0.8}}]
              (get (:tables (:payload loaded)) "t.csv"))))))
+
+;; --- ADR-0035 (Wave F0): GAUSSIAN/EXPONENTIAL/TRIANGULAR join the v2
+;; distribution vocabulary alongside UNIFORM/EXACT, across Delay/Symptom
+;; timing, Procedure duration, and (new) SetAttribute value -----------------
+
+(def gmf-v2-new-kinds-json
+  "A synthetic module exercising all three new kinds -- GAUSSIAN (Delay),
+  EXPONENTIAL (Procedure), TRIANGULAR (Symptom) -- parameter names ported
+  verbatim from Distribution.java (AR-1: mean/standardDeviation/min/max;
+  mean; min/mode/max)."
+  (str "{\"name\": \"GmfV2New\", \"gmf_version\": 2, \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Wait\"},"
+       "  \"Wait\": {\"type\": \"Delay\", \"distribution\": {\"kind\": \"GAUSSIAN\", \"round\": true,"
+       "            \"parameters\": {\"mean\": 42, \"standardDeviation\": 14, \"min\": 0, \"max\": 90}},"
+       "            \"unit\": \"years\", \"direct_transition\": \"Proc\"},"
+       "  \"Proc\": {\"type\": \"Procedure\", \"codes\": [{\"system\": \"SNOMED-CT\", \"code\": \"1\", \"display\": \"Test\"}],"
+       "            \"distribution\": {\"kind\": \"EXPONENTIAL\", \"parameters\": {\"mean\": 10}},"
+       "            \"unit\": \"days\", \"direct_transition\": \"Sev\"},"
+       "  \"Sev\": {\"type\": \"Symptom\", \"symptom\": \"Pain\","
+       "           \"distribution\": {\"kind\": \"TRIANGULAR\", \"parameters\": {\"min\": 0, \"mode\": 5, \"max\": 10}},"
+       "           \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest gmf-v2-gaussian-delay-normalizes-into-a-distribution-map-not-a-range
+  (let [loaded (gmf/load-module "gmf-v2-new" gmf-v2-new-kinds-json)]
+    (is (result/ok? loaded))
+    (let [wait (get-in (:payload loaded) [:states :wait])]
+      (is (= {:kind :gaussian :parameters {:mean 42 :standard-deviation 14 :min 0 :max 90}
+              :round true :unit "years"}
+             (:distribution wait)))
+      (is (not (contains? wait :range)))
+      (is (not (contains? wait :exact)))
+      (is (not (contains? wait :unit))))))
+
+(deftest gmf-v2-exponential-procedure-normalizes-into-a-distribution-map-not-a-duration
+  (let [loaded (gmf/load-module "gmf-v2-new" gmf-v2-new-kinds-json)]
+    (is (result/ok? loaded))
+    (let [proc (get-in (:payload loaded) [:states :proc])]
+      (is (= {:kind :exponential :parameters {:mean 10} :round false :unit "days"}
+             (:distribution proc)))
+      (is (not (contains? proc :duration))))))
+
+(deftest gmf-v2-triangular-symptom-normalizes-with-no-unit
+  (let [loaded (gmf/load-module "gmf-v2-new" gmf-v2-new-kinds-json)]
+    (is (result/ok? loaded))
+    (let [sev (get-in (:payload loaded) [:states :sev])]
+      (is (= {:kind :triangular :parameters {:min 0 :mode 5 :max 10} :round false}
+             (:distribution sev)))
+      (is (not (contains? sev :unit))))))
+
+(def gmf-v2-unknown-kind-json
+  "A well-formed v2 distribution naming a SIXTH kind, outside
+  Distribution.java's own five-member enum (AR-1) -- before this ADR,
+  `gmf-v2-timing->v1`'s own `case` had no default clause and this
+  THREW a raw IllegalArgumentException (the census's own `gmf_version 2`
+  loader-exception finding, ADR-0034)."
+  (str "{\"name\": \"GmfV2Bad\", \"gmf_version\": 2, \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Wait\"},"
+       "  \"Wait\": {\"type\": \"Delay\", \"distribution\": {\"kind\": \"WEIBULL\", \"parameters\": {\"scale\": 1}},"
+       "            \"unit\": \"days\", \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest unrecognized-distribution-kind-rejects-cleanly-never-throws
+  (testing "ADR-0035 AR-2: a clean :rejected naming the state and the raw
+            kind string, never a thrown exception"
+    (let [loaded (gmf/load-module "gmf-v2-bad" gmf-v2-unknown-kind-json)]
+      (is (result/rejected? loaded))
+      (is (= :unsupported-distribution-kind (:category loaded)))
+      (is (= :wait (:state (:payload loaded))))
+      (is (= "WEIBULL" (:kind (:payload loaded)))))))
+
+(def gmf-v2-gaussian-missing-required-param-json
+  "GAUSSIAN with no `standardDeviation` -- AR-1's own required-parameters
+  table (Distribution.java's `validate()`) makes this a genuine
+  structural gap, not a robustness-only concern; `SampledDistribution`'s
+  own per-kind schema (gmf.clj) rejects it as :schema-invalid, the same
+  disposition every other structural mismatch already gets."
+  (str "{\"name\": \"GmfV2Incomplete\", \"gmf_version\": 2, \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Wait\"},"
+       "  \"Wait\": {\"type\": \"Delay\", \"distribution\": {\"kind\": \"GAUSSIAN\", \"parameters\": {\"mean\": 42}},"
+       "            \"unit\": \"years\", \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest gaussian-missing-standard-deviation-is-schema-invalid
+  (let [loaded (gmf/load-module "gmf-v2-incomplete" gmf-v2-gaussian-missing-required-param-json)]
+    (is (result/rejected? loaded))
+    (is (= :schema-invalid (:category loaded)))))
+
+;; --- ADR-0035 AR-4: SetAttribute samples its own :distribution --------
+
+(def set-attribute-gaussian-json
+  "hypertension.json's own Black_Onset_Age shape, byte-confirmed against
+  source: a SetAttribute state whose value is a GAUSSIAN draw, no :value
+  or :value-code at all -- the silent-nil gap this ADR fixes (AR-4)."
+  (str "{\"name\": \"SetAttrDist\", \"gmf_version\": 2, \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Onset_Age\"},"
+       "  \"Onset_Age\": {\"type\": \"SetAttribute\", \"attribute\": \"years_until_onset\","
+       "                 \"distribution\": {\"kind\": \"GAUSSIAN\", \"round\": true,"
+       "                                   \"parameters\": {\"mean\": 42, \"standardDeviation\": 14}},"
+       "                 \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest set-attribute-distribution-normalizes-the-same-way-timing-does
+  (let [loaded (gmf/load-module "set-attr-dist" set-attribute-gaussian-json)]
+    (is (result/ok? loaded))
+    (let [onset (get-in (:payload loaded) [:states :onset-age])]
+      (is (= {:kind :gaussian :parameters {:mean 42 :standard-deviation 14} :round true}
+             (:distribution onset)))
+      (is (not (contains? onset :value)))
+      (is (not (contains? onset :value-code))))))
+
+(def set-attribute-value-and-distribution-conflict-json
+  "A deliberately malformed module: SetAttribute carries BOTH a
+  :distribution and a :value -- AR-4's own ruling: 'if a state carries
+  several, record a load-time rejection rather than guessing,' never a
+  silent precedence order."
+  (str "{\"name\": \"SetAttrConflict\", \"gmf_version\": 2, \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Ambiguous\"},"
+       "  \"Ambiguous\": {\"type\": \"SetAttribute\", \"attribute\": \"foo\", \"value\": 1,"
+       "                 \"distribution\": {\"kind\": \"EXACT\", \"parameters\": {\"value\": 1}},"
+       "                 \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest set-attribute-value-and-distribution-together-rejects-cleanly
+  (let [loaded (gmf/load-module "set-attr-conflict" set-attribute-value-and-distribution-conflict-json)]
+    (is (result/rejected? loaded))
+    (is (= :set-attribute-value-conflict (:category loaded)))
+    (is (= :ambiguous (:state (:payload loaded))))
+    (is (= #{:distribution :value} (:sources (:payload loaded))))))
