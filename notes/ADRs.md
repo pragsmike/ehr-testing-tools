@@ -6494,3 +6494,96 @@ them.
 > trigger. S4 stays deferred, unchanged.
 
 ---
+
+## ADR-0030 — Post-Wave-D cleanup: oracle byte-verification, closure engine round-trips, dual-clone guardrails
+
+**Status:** Accepted (author-ruled 2026-08-02, design channel, J1–J5
+below; recorded verbatim, attributed, per ADR-0007's own provenance-tag
+convention). This session executes all five rulings same day.
+
+### Context
+
+The design channel's own 2026-08-02 review of Wave D (`d23fa9b..7257775`)
+surfaced three findings, none reopening Wave D's own design: (1) the
+D2/D3 regression-oracle claim was, twice, a full-suite test/assertion-
+count comparison SUBSTITUTED for the session prompt's own literal
+SHA-256-digest-across-a-disposable-worktree method (D1b's own
+precedent) — the substitution itself was disclosed at the point each
+session made it (ADR-0029's own D2 dated note), but went uncaught by
+the design channel through two stages, leaving `fdd0644`
+(`first-matching-entry`'s own fallback-to-last-entry fix, a real
+interpreter dispatch-behavior change) resting on good-but-indirect
+regression evidence rather than a literal digest; (2) H6's own "a full
+engine/check run" instruction for closure-bearing roots has never
+actually been fulfilled for any of the three closures vendored to
+date (`ear_infections`/`urinary_tract_infections`/
+`total_joint_replacement`) — every one of them is disclosed,
+repeatedly, as interpreter-layer-proof-only, and the gap has simply
+been carried forward each time rather than closed; (3) the dual-clone
+edit hazard (`feedback-dual-clone-edit-hazard`, this machine's own
+memory system) fired FOUR times across stage D3 alone despite a cited
+prior lesson — vigilance is not working as a mitigation.
+
+### Decision
+
+- **J1 — Oracle verification is READ-ONLY with a binary outcome.** A
+  disposable worktree at `d23fa9b` (pre-D3) and one at `7257775`
+  (post-D3): identical fixed-seed golden runs for the SIX roots
+  vendored before D3 (appendicitis, sinusitis, sore_throat,
+  ear_infections closure, the Wave C death fixture, sepsis), SHA-256 of
+  every output file, HL7 bytes included. Identical -> dated notes on
+  ADR-0029's D2 and D3 execution records upgrading the oracle claim to
+  byte-verified, with the digest table in the session record. ANY
+  difference -> STOP: record the differing root, seed, file, and hunk;
+  escalate to the design channel; fix nothing. If time permits and
+  `d23fa9b`->`d8447e6`-era baselines are cheaply reproducible, extend
+  the same check across D2's own span; if not, note the D2 claim as
+  count-verified-only, honestly.
+- **J2 — Oracle doctrine lands where sessions read it.** The
+  `build-session` skill gains a VERIFICATION section rule — "a
+  regression-oracle claim means SHA-256 digests of output files across
+  a disposable worktree at the baseline commit; test-count or
+  assertion-count comparison is NOT an oracle and may not be reported
+  as one" — and AGENTS.md's verification guidance gains the one-line
+  pointer. Dated, citing this session.
+- **J3 — Closure round-trips.** For each of the three closure-bearing
+  roots (ear_infections, urinary_tract_infections,
+  total_joint_replacement), an engine-layer test in the sepsis
+  template's shape — compile-trajectory -> engine run -> check
+  invariant catalog -> emitted-message assertions (including UTI's
+  cross-boundary encounters finally proven THROUGH the engine, and
+  TJR's care-plan silence held at the emission layer). Tests only: if
+  the engine mishandles a closure-produced trajectory, that is a
+  FINDING (potentially a real defect Wave B's deferred check would have
+  caught) — recorded red, escalated, not patched under this session.
+  Mixer-RNG seeds; runtime kept sane (small patient counts — round
+  trips, not soak tests).
+- **J4 — Dual-clone guardrails, layered, mechanical first.** (a)
+  MECHANICAL EDIT GUARD: the `/mnt/c` clone's working tree made
+  read-only (verified by attempting a write and seeing it FAIL). (b)
+  MECHANICAL COMMIT/PUSH GUARD: reject-all `pre-commit`/`pre-push`
+  hooks installed into `/mnt/c`'s own `.git/hooks` (per-clone,
+  uncommitted by nature), naming the ext4 UNC path as the clone of
+  record. (c) SANCTIONED SYNC PATH: a committed `bin/sync-mnt-c` script
+  — clears the read-only state, `git pull --ff-only`, restores it —
+  becoming the ONLY documented way `/mnt/c` moves; the `build-session`
+  skill's fast-forward-for-hygiene step rewritten to invoke it. (d)
+  SKILL HARDENING: `build-session` gains a preflight rule — resolve
+  both clone roots at session start; every edit target must resolve
+  under the ext4 root; a mismatch is a stop-and-report, not a
+  copy-and-revert. (e) PROOF: each guard demonstrated firing (a blocked
+  write, a blocked commit), recorded. Removal of the `/mnt/c` clone
+  outright is explicitly NOT this session's call — a named author
+  question in the close-out, the guards sound either way.
+- **J5 — Roadmap bookkeeping.** The two named items from the design
+  review ("oracle byte-verification", "closure engine round-trips")
+  enter and exit the roadmap within this session; the dual-clone guard
+  work gets its own row; H8's own standing-items list is untouched.
+
+### Execution note (filled Step 5, 2026-08-02)
+
+See the dated notes appended to ADR-0029's own D2 and D3 sections (J1),
+and this session's own session record for the full digest tables,
+guard-firing proofs, and closure round-trip findings.
+
+---

@@ -5,8 +5,10 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- Nothing in progress at end of session (GMF coverage Wave D closed
-  same day D3 started -- see Done, below).
+- Post-Wave-D cleanup session (2026-08-02, `notes/ADRs.md` ADR-0030,
+  J1-J5): oracle byte-verification (J1), oracle doctrine capture (J2),
+  dual-clone guardrails (J4), closure engine round-trips (J3), roadmap
+  bookkeeping (J5, this row).
 
 ## Next (backlog, no session scheduled)
 - Pairing-as-data (review P3-3): mutate↔judge conviction registry — design pass in
