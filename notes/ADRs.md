@@ -6341,5 +6341,29 @@ them.
 > - **H8** — D3 closes the wave: a Wave D retrospective note lands in
 >   the coverage plan (the payoff tally as it actually happened, the
 >   standing named items, an S4-trigger status line).
+>
+> **D3 characterization note (filled Step 1, 2026-08-02).** Full account,
+> source-cited against `Transition.java`'s own `LookupTableTransition`/
+> `NamedDistribution` classes, the fresh-fetched UTI closure (all twelve
+> files plus both lookup-table CSVs, hashed), and TJR's own re-verified
+> fetch: `components/sim-trajectory/docs/gmf-interpreter.md` section 14.
+> Headline findings: (a) both `LookupTableTransition` mechanisms (H2) and
+> `NamedDistribution` (H3) grounded directly against source, both key-
+> column audits pass (age/gender, persona-backed); (b) UTI's full closure
+> re-survey confirms Wave B's own headline finding still holds
+> (`lookup_table_transition` the only remaining gap) but surfaces FOUR
+> new mechanical findings section 9's own type-only census could not
+> have caught — a `gmf_version: 2` distribution-wrapper encoding
+> (pervasive, mechanical, a pre-existing `Procedure`-duration bug found
+> and DISCLOSED not fixed along the way), `SetAttribute`'s own `value_code`
+> field, an embedded-observation-child `exact` value mechanism, and seven
+> new vital-sign-table rows (LOINC-verified against a live public FHIR
+> terminology server, `notes/facts-register.md` F22); (c) TJR's D2 fetch
+> re-verified by hash, its own two additional findings (`value_code`,
+> `exact`) confirmed harmless-but-buildable; (d) H4's compound-Guard
+> resolution designed (sound-jump-or-escalate), no Synthea source citation
+> applies (this project's own analytical extension, not a ported
+> mechanism) — both UTI and TJR declared BUILDABLE, pending the named
+> mechanisms/findings landing in Step 2.
 
 ---

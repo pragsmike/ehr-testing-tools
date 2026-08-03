@@ -2388,3 +2388,480 @@ function, a different event-type pair) is straightforward to build the
 day a real candidate needs it; the next session vendoring one should
 build it fresh against that module's own real usage, not treat this
 sketch as settled.
+
+## 14. GMF coverage Wave D stage D3: closure survey and characterization findings (2026-08-02)
+
+Step 1 of the D3 session (ADR-0029 R6, H1/H5: `lookup_table_transition`,
+attribute-weighted `distributed_transition`, TJR's own compound-Guard
+blocker, the UTI closure re-characterization). Per H5, UTI's own closure
+is FRESH-fetched in full (not trusting the D2-era file list — there was
+none anyway, UTI was last characterized at Wave B, ADR-0027, section 9)
+and TJR's own D2 fetch is re-verified by hash, all at the SAME pinned
+commit every prior GMF citation in this document uses,
+`7e08387c68a7f0e21d13076609a159fd473fc902` of
+[`synthetichealth/synthea`](https://github.com/synthetichealth/synthea)
+(`master`).
+
+### D3a — `LookupTableTransition` dispatch-rule characterization
+
+Grounded against `Transition.java`'s own `LookupTableTransition`,
+`LookupTableTransitionOption`, `LookupTableKey`, `DistributedTransition-
+Option`, and `NamedDistribution` classes (Synthea source, same pinned
+commit).
+
+**JSON shape, read directly off `urinary_tract_infections.json`'s own
+`Urinary Tract Infection`/`Recurrent UTI` states:** `lookup_table_
+transition` is a vector of `{transition, default_probability, lookup_
+table_name}` entries — a SIXTH transition kind, sibling to `direct`/
+`distributed`/`conditional`/`complex`/`type_of_care`. `lookup_table_name`
+is a relative CSV filename (`"uti.csv"`/`"uti_recurrence.csv"`), never
+slugged — the same "file reference, not a semantic identifier"
+disposition `:submodule` already established (Wave B, D3).
+
+**Real Synthea's own dispatch (`LookupTableTransition.follow`):** the
+CSV's own column headers, minus its LAST N columns (N = the JSON's own
+`lookup_table_transition` entry count), are the table's ATTRIBUTE
+columns; the remaining N columns are the transition-name columns, one
+per declared entry (`createDistributedTransitionOptions` throws if a
+CSV column name doesn't match a declared JSON transition — a load-time
+consistency check, not a runtime one). Per attribute column: `"age"` is
+special-cased — parsed as an inclusive `low-high` integer range
+(`Range.between`, Apache Commons, BOTH ends inclusive) and matched
+against `person.ageInYears(time)` (an Integer falling inside the row's
+own range); `"time"` is special-cased the same way for a date range
+(unused by either UTI table — no `"time"` column in either CSV, NOT
+built this session, named unbuilt/unneeded); every OTHER column name is
+matched by exact STRING equality against `person.attributes.get(name).
+toString()`. A row match is looked up in a `HashMap<LookupTableKey,
+List<DistributedTransitionOption>>` (`LookupTableKey`'s own overridden
+`equals`, lines ~505-570: an Integer age matches a stored Range via
+`Range.contains`, never Range-to-Range unless both sides are ranges);
+NO row match falls back to `defaultTransitions` — a `Distributed
+TransitionOption` list built directly from each entry's own JSON
+`default_probability` (`loadDefaultTransitions`). Either way, the
+FINAL pick is `pickDistributedTransition`: one `person.rand()` draw
+(`[0,1)`), a cumulative-weight walk over whichever option list applies
+— the SAME fixed-consumption weighted-pick shape this project's own
+`weighted-pick-transition` already implements (row lookup itself is a
+pure, zero-rng key match; exactly one draw follows, win or fallback).
+
+**Key-column audit (H2's own specify-vs-delegate bar), both tables:**
+`uti.csv`/`uti_recurrence.csv` (below) each declare exactly TWO
+attribute columns, `age`/`gender` — both fields this project's own
+Persona genuinely supplies (`age-years-at`, already built; `:sex`,
+already read by `gender-condition-holds?`). BUILDABLE, no escalation:
+neither table names a field outside this project's persona model, the
+same audit `stroke_risk`/`joint_replacement` FAILED (ADR-0028/ADR-0029's
+own D2 note) and vital-sign names PASSED (D1a). No table this session
+fetched declares a `"time"` column — that half of real Synthea's own
+mechanism stays NAMED, UNBUILT (installed ≠ used, H1's own instruction),
+not silently assumed general.
+
+**Vendored content (fetched, hashed, this session — Step 3's own
+vendoring target):**
+
+| Table | Columns | Rows | SHA-256 |
+|---|---|---|---|
+| `lookup_tables/uti.csv` | `age,gender,Cystitis,Pyelonephritis,Wait_for_UTI` | 10 (5 age bands × 2 sexes) | `c3eec06429961a4484d1ab5f14973b778e59b0b80bbdad3fa2629329c8dbf231` |
+| `lookup_tables/uti_recurrence.csv` | `age,gender,Cystitis,Pyelonephritis` | 10 | `baf597d27a7c139f962b7a100ff02abfcdc616c540478c7867e888305965aeda` |
+
+Both tables' own rows sum to 1.0 per row (confirmed by direct read) —
+this project's own `weighted-pick-transition` (normalizes by the
+entries' own summed total before drawing) and real Synthea's own
+`pickDistributedTransition` (an unnormalized cumulative walk against a
+raw `[0,1)` draw, DistributedTransition's own docstring: values not
+summing to 1.0 shift weight onto the last entry) are behaviorally
+IDENTICAL whenever weights already sum to 1.0, as both vendored tables'
+own rows do — no divergence for this vendoring, the existing helper is
+reused unchanged.
+
+**Design (H1, pinned before implementation): closure DATA-FILE members
+(R4/H2).** `ehrt.sim-trajectory.gmf/load-closure` gains a SEPARATE,
+optional trailing `table-resolve-fn` argument (purely additive — every
+existing 3-arg call site is unaffected, the same "optional trailing
+arity" shape `run-module`'s own `initial-attributes` addition already
+established, D2) and a parallel `lookup-table-names` collector (mirrors
+`call-submodule-paths` exactly: every distinct `lookup_table_name` any
+state's own `:lookup-table-transition` entries name). The all-or-
+nothing gate (D3, ADR-0027) extends to table members: an unresolvable
+name, an unparseable CSV, or a table declaring an attribute column
+outside `#{"age" "gender"}` rejects the WHOLE closure (a NEW rejection
+reason, `:unrecognized-lookup-table-column`, the same "REJECTED, never
+silently skipped" disposition `:unsupported-state-type` already
+establishes) — never a silent partial table. `load-closure`'s own
+return shape gains `:tables` (call-path-shaped table name -> parsed
+table), parallel to `:modules`, empty when a closure names none. CSV
+parsing is a small, in-house line/comma splitter (both vendored tables
+are header-plus-plain-numeric-rows, no quoting/escaping needed) — the
+same "SimpleCSV, a lightweight ad hoc parser" shape real Synthea's own
+`Utilities.readResource`/`SimpleCSV.parse` pairing already uses, not a
+new external dependency for two trivial files.
+
+`tables` threads through the interpreter as a SEPARATE, parallel
+optional trailing argument to `step`/`walk-module`/`run-module`
+alongside `modules` (not folded into it — `modules` keeps its own
+existing documented shape, call-path -> loaded module, unchanged),
+defaulting to `{}` (no tables available) at every existing call site —
+zero behavior change for every one of the six already-vendored roots,
+none of which ever declare a `lookup_table_transition`. `resolve-
+transition` (and therefore `pass-through-outcome`, threaded through
+every state-type case in `step`, not only `:call-submodule`) gains the
+new kind: a zero-rng row lookup (`age-years-at` + persona `:sex` mapped
+to `"F"`/`"M"`, the same map `gender-condition-holds?` already uses,
+inverted) against the resolved table, falling back to the entries' own
+`default-probability` list on no match, then ONE `weighted-pick-
+transition` draw — joining the interpreter's own descend-run-return
+order contract at the same position every other transition-resolving
+draw already occupies.
+
+### D3b — attribute-weighted `distributed_transition` (`NamedDistribution`)
+
+Grounded against `Transition.java`'s own `DistributedTransitionOption`/
+`NamedDistribution`/`processDistributedTransition` (lines ~79-106,
+~707-773). A `distributed_transition` entry's own `distribution` field
+is `Object` at the Java level: a plain `Double` (this project's own
+already-built v1 case) OR a JSON object `{"attribute": name, "default":
+n}, ` deserialized into `NamedDistribution` (`this.attribute`/`this.
+defaultDistribution`, field names verbatim). `pickDistributedTransition`
+resolves it at DRAW time: `dist = person.attributes.containsKey(nd.
+attribute) ? (Double) person.attributes.get(nd.attribute) :
+nd.defaultDistribution` — an attribute-sourced weight with a JSON-
+specified fallback, read from the SAME flat `person.attributes` bag
+every other attribute reference resolves against (this project's own
+root-scoped equivalent, `attribute-condition-holds?`'s own `root-id`
+mechanism). This is EXACTLY `stroke.json`'s own `Chance_of_Stroke` gap,
+byte-confirmed here against source rather than re-derived from ADR-0028's
+own prose: `{"attribute": "stroke_risk", "default": 0}` (`docs/gmf-
+interpreter.md` section 10, this document, unchanged).
+
+**H3's own disposition, restated for the record: this mechanism landing
+does NOT unblock stroke.** `stroke_risk` is SPECIFIED content (the
+JSON's own literal `default: 0`) whose real upstream source
+(`CardiovascularDiseaseModule.calculateStrokeRisk`, an engine module,
+not a GMF JSON) this project has no persona equivalent for — honoring
+`default: 0` literally (this project's own no-fabrication discipline
+leaves no other principled reading) still makes `Chance_of_Stroke`'s own
+`"Stroke"` branch structurally unreachable. Building the MECHANISM does
+not change that; `stroke.json` stays deferred until BOTH the mechanism
+(this session) AND a stroke-risk-equivalent data source (unowned, ADR-
+0028/ADR-0029 R7) land together, exactly as section 10's own dated note
+already named. Proven instead against a hand-authored fixture (Step 2,
+H3), the same "build the mechanism, prove it against a fixture" shape
+`Death`'s own C1/C2 build already used before `death-fixture.json`
+existed.
+
+**Design (H1): a `:distributed-transition` entry's own `:distribution`
+field becomes `[:or number? [:map [:attribute :string] [:default
+number?]]]` (schema); `weighted-pick-transition` resolves EITHER shape
+per entry — a plain number unchanged, or `(if (contains? (:attributes
+ctx) k) (get (:attributes ctx) k) default)` where `k` is the SAME root-
+scoped, slugged keyword every other attribute read already computes.
+Zero new rng draw beyond the existing one-per-pick; the attribute READ
+itself is a pure lookup, the same "zero-rng" property every other
+attribute-condition read already has.**
+
+### D3c — UTI closure re-survey (full 12-file, H5's own fresh fetch)
+
+Every file re-fetched this session (not trusted from Wave B's own
+prose) at the pinned commit; SHA-256 recorded per file, below. State-
+type census, transition-kind sweep, and condition-vocabulary sweep
+confirm Wave B's own headline finding (section 9) still holds — the
+closure's ONLY state-type gap, once `DiagnosticReport`/`MultiObservation`
+(D1) and `CarePlanStart`/`CarePlanEnd` (D2, present in this closure only
+incidentally via shared call structure — confirmed NOT present, see
+below) are counted as v1, is `lookup_table_transition` itself, this
+stage's own reason for existing — plus several new, MECHANICAL
+findings this session's fuller (field-level, not just type-level) read
+surfaces that section 9's own type-census-only survey could not have
+caught.
+
+| File | States | SHA-256 |
+|---|---:|---|
+| `urinary_tract_infections.json` (root) | 29 | `18de2b8e30d41ef1770fcb10aaf5912bfdb15dbe459cec18730029a37cf9ef7b` |
+| `uti/telemed_path.json` | 31 | `5f176628fb9209291dcae24ae78b76337cc5768dd9743975926c300026dde78c` |
+| `uti/ambulatory_path.json` | 18 | `c6a65a8da02f240f41fab61300594e0be04eb2a9b077b579daf0b8c6d47adddb` |
+| `uti/ed_path.json` | 7 | `184ce09969461a6409e990cac2e688ef84699daa1a2120a76afa4c59d0846c92` |
+| `uti/hpi.json` | 12 | `eb789dabf6ad72896be1c089775d282b73a4653cff8736013bbac954f98b6242` |
+| `uti/gu_pregnancy_check.json` | 6 | `945e01345cf9c32d8ed5740fa3ca1de81303c94bf0f75d7ea8dcd9d359506f77` |
+| `uti/abx_tx.json` | 30 | `4a67624e9bb7a755022f758efff1f9240d22cd2149d19e18c79f79fc9f9a0d05` |
+| `uti/labs.json` | 19 | `a85e6f7d81e2fe673f08d39253b4de4de600a50a1f829c85a43abbc3723b2b04` |
+| `uti/lab_follow_up.json` | 10 | `ba89f931feaa0bc89bdf37909661c93d55fd7ef7fe87d5e37b65414890c3d58a` |
+| `uti/ambulatory_eval.json` | 7 | `117c7462c39549af328d0d17889058c09fc1002b9516fb6a71f95cd0976cae93` |
+| `uti/ed_eval.json` | 7 | `24b7e6173b8c4da9782f2e04c50d3c098121def9efb1d933b9d729d93cc767a1` |
+| `uti/ed_bundle.json` | 56 | `d9b85e669c1ac1f49bb04ed00d5e2a73260284c01a743fca23290680a61f7927` |
+
+**State-type census (232 states total): every type is ALREADY v1
+(`SetAttribute`, `Terminal`, `ConditionEnd`, `ConditionOnset`, `Delay`,
+`MedicationEnd`, `Simple`, `CallSubmodule`, `Initial`, `Guard`,
+`MedicationOrder`, `Procedure`, `Encounter`, `EncounterEnd`,
+`Observation`, `DiagnosticReport`, `MultiObservation`, `Symptom`) — ZERO
+`CarePlanStart`/`CarePlanEnd`/`ImagingStudy`/`SupplyList`/`Counter`/any
+other deferred type anywhere in the closure.**
+
+**Transition-kind sweep, all seven known kinds:** `direct_transition`
+(every file), `conditional_transition` (16), `complex_transition` (21),
+`distributed_transition` (7), `type_of_care_transition` (1, root's own
+`Care Pathways`, already built Wave B), **`lookup_table_transition` (2,
+both root: `Urinary Tract Infection` -> `uti.csv`, `Recurrent UTI` ->
+`uti_recurrence.csv`)** — ZERO occurrences of any kind beyond these six;
+no eighth kind found.
+
+**Condition-vocabulary sweep:** `Age`, `Gender`, `And`, `Or`, `At Least`,
+`Attribute`, `Active Condition` — ALL already v1 (Wave A/B). Zero new
+condition types.
+
+**D7 hidden-import check: clean.** Every cross-module attribute flow
+confirmed root-scoped and correctly resolving under the existing Wave B
+mechanism: `uti/abx_tx.json`'s own 18 `MedicationOrder` states all
+`assign_to_attribute: "UTI_Tx"`; the ROOT's own `End UTI Tx` reads it
+via `referenced_by_attribute: "UTI_Tx"` — write in a different closure
+member than the read, exactly D7's own falsifier target, resolving
+correctly by construction (root-scoped keys, D1).
+
+**Specify-vs-delegate audit:** every attribute/value source found
+(`uti.csv`/`uti_recurrence.csv`'s own age/gender columns, D3a above) is
+persona-backed and buildable; no SPECIFIED-but-unsourceable value
+(the `stroke_risk`/`joint_replacement` shape) appears anywhere in this
+closure.
+
+**New mechanical findings (field-level, not caught by section 9's own
+type-only census) — each cheap, narrowly-scoped, the SAME "loader
+normalization, not a new interpreter mechanism" disposition Wave B's own
+D6 `encounter_class`/`wellness` findings already established (ADR-0027's
+own Deviation record precedent for "characterization surfaces a real,
+in-spirit-authorized finding," landed rather than dropped):**
+
+1. **`gmf_version: 2` — every one of the twelve files carries this tag
+   (`urinary_tract_infections.json` through `uti/ed_bundle.json`), the
+   FIRST time this project's own vendored-module survey has encountered
+   it.** It is additive, not a wholesale format replacement: the SAME
+   file freely mixes the OLD per-field `range`/`exact`/`duration` shapes
+   (already v1) alongside a NEW, uniform encoding — a top-level
+   `"distribution": {"kind": "EXACT"|"UNIFORM", "parameters": {...}}`
+   plus a sibling top-level `"unit"` — replacing `Delay`'s own top-level
+   `range`/`exact` keys, `Procedure`'s own `duration` field, and
+   `Symptom`'s own top-level `range`/`exact` severity keys, one state at
+   a time, author's choice. 52 occurrences across the closure (34
+   `EXACT`, 18 `UNIFORM`, confirmed by direct scan); ZERO third `kind`
+   value found. Mechanical translation, confirmed field-by-field against
+   both v1 and v2 examples of the SAME state type (`hpi.json`'s own
+   `History Taking`/`Dysuria` states, `ambulatory_eval.json`'s own `Eval
+   Procedure`): `UNIFORM` -> the existing `Range` shape (`{:low
+   parameters.low :high parameters.high :unit unit}`); `EXACT` -> the
+   existing `Exact` shape (`{:quantity parameters.value :unit unit}`,
+   `unit` absent for unitless Symptom severity). Loader normalization
+   (`gmf.clj`'s `normalize-state`), dispatched on the state's own
+   already-normalized `:type`: `:delay`/`:symptom` write the translated
+   shape to their own existing TOP-LEVEL `:range`/`:exact` keys (the
+   exact keys `resolve-time-advance`/the `:symptom` interpreter case
+   already read); `:procedure` writes it to its own existing `:duration`
+   key, in the SAME flat `{:low :high :unit}` shape v1-authored
+   `:duration` fields already use (confirmed against `appendicitis.json`/
+   `sepsis.json`) — deliberately NOT a `{:range {...}}`-wrapped shape,
+   matching the pre-existing v1 encoding exactly rather than inventing a
+   new one. **Disclosed, not fixed, pre-existing gap found along the
+   way:** `ehrt.sim-trajectory.gmf-interpreter/resolve-time-advance` is
+   called with `(:duration state)` as its own argument and destructures
+   `{:keys [range exact]}` FROM that argument — but `:duration` (both v1-
+   and, after this normalization, v2-authored) is a FLAT `{:low :high
+   :unit}`/`{:quantity :unit}` map, never `{:range {...}}`/`{:exact
+   {...}}`-wrapped, so `range`/`exact` are always nil and `resolve-time-
+   advance` silently falls to `:else t` (zero advance) for EVERY
+   `Procedure` state's own `:duration`, in every vendored module, v1 or
+   v2, confirmed by direct read. Out of D3's own ruled scope (H1-H8 name
+   three mechanisms and a re-characterization, not a `Procedure`-timing
+   fix touching all six existing vendored roots' own regression
+   behavior) — named here as a live, pre-existing, unowned gap, not
+   silently repaired or silently left uncited.
+2. **`SetAttribute`'s own `value_code` field (a Concept, the same shape
+   `:observation`'s own `value_code`/`:diagnostic-report`'s own children
+   already carry) is unbuilt** — confirmed on TJR's root file (below,
+   D3f), not this closure; noted here for one combined build decision.
+3. **An embedded `MultiObservation`/`DiagnosticReport` child's own
+   `exact` value-sourcing mechanism (a fourth, alongside D1a-3's `range`/
+   `value_code`/`vital_sign`) is unbuilt** — confirmed on TJR's own
+   `functional_status_assessments.json` (below, D3f), not this closure;
+   noted here for one combined build decision.
+4. **Six new vital-sign names, unlisted in `sim-trajectory/vital-
+   signs.edn`** (`uti/ed_bundle.json`'s own BMP/CMP `DiagnosticReport`
+   children, 4 occurrences each across the file's own repeated lab
+   panels): `Glucose`, `Urea Nitrogen`, `Calcium`, `Sodium`, `Potassium`,
+   `Chloride`, `Carbon Dioxide` — SEVEN names, not six (corrected count:
+   Glucose/Urea Nitrogen/Calcium/Sodium/Potassium/Chloride/Carbon
+   Dioxide). LOINC codes verified this session against a live public FHIR
+   terminology server (`r4.ontoserver.csiro.au`, CSIRO — a citable public
+   $lookup endpoint, the same "real codes, cross-checked against a
+   citable public source" discipline F21 already establishes, loinc.org
+   itself still returning 403 to automated fetch): `Glucose` 2345-7,
+   `Urea Nitrogen` 3094-0, `Calcium` 17861-6, `Sodium` 2951-2,
+   `Potassium` 2823-3, `Chloride` 2075-0, `Carbon Dioxide` 2028-9 — all
+   confirmed active. Reference ranges are author-curated typical-adult
+   values (mg/dL for Glucose/Urea Nitrogen/Calcium, mmol/L for
+   Sodium/Potassium/Chloride/Carbon Dioxide), the SAME "plausibility, not
+   diagnostic precision" bar the table's own existing three rows already
+   set — NOT independently source-verified beyond the LOINC code itself,
+   disclosed the same way. Table grows by evidence (this closure's own
+   real need), not speculation.
+
+**Encounter-derivation wrinkle:** unlike Wave B's own UTI survey note
+(section 9), THIS closure's own three path submodules
+(`telemed_path`/`ambulatory_path`/`ed_path`) still carry every
+`Encounter`/`EncounterEnd` pair themselves — confirmed unchanged,
+exercised by this session's own vendored test (H6's own cross-boundary
+encounter-event assertion, deferred at Wave B, closed here).
+
+**Declared D3 vendoring scope for UTI (H5): BUILDABLE, pending H2's own
+mechanism landing plus the four mechanical findings above** —
+`lookup_table_transition` is the closure's only remaining gap once
+`gmf_version 2`'s translation lands; every other prior blocker
+(`CallSubmodule`, `DiagnosticReport`/`MultiObservation`, `type_of_care_
+transition`) is already v1. Scope is the FULL twelve-file closure plus
+its two lookup tables — no branch dropped.
+
+### D3d — TJR fetch re-verification and new findings (H5)
+
+`total_joint_replacement.json`'s own 4-file closure re-fetched fresh
+this session (not trusted from D2's own prose — D2 never vendored it,
+so no prior hash existed to diff against; this session's own fetch is
+the first hash-anchored record). D2's own characterization (section 13)
+holds exactly: 4 files, `CarePlanStart`/`CarePlanEnd` the only Wave-D-
+scoped gap, D7 clean, `joint_replacement` delegated (`initial-
+attributes`, already landed D2).
+
+| File | States | SHA-256 |
+|---|---:|---|
+| `total_joint_replacement.json` (root) | 33 | `1666dfc39a3a2266ccc8c5937a0de317a4330489fb315e36b9d55c6dd6bb3d8b` |
+| `medications/moderate_opioid_pain_reliever.json` | 12 | `e48546e9250ec9d76408d3aa76898d3f30b7e49ee81bed692dc830acb4a4efba` |
+| `total_joint_replacement/functional_status_assessments.json` | 20 | `7fd8e6f27f75718628529448d078c87ddf0849b19014d4e4f854935a97c5fe6c` |
+| `dme/wheelchair_end.json` | 4 | `e24ea11f2c9cdf830e06ce10eee411368194ab15890a1e0dec8ab5939be1aea9` |
+
+Root and `functional_status_assessments.json` carry `gmf_version: 1`;
+`moderate_opioid_pain_reliever.json` carries `gmf_version: 1`;
+`wheelchair_end.json` carries `gmf_version: 2` but exercises none of
+its new fields (confirmed by direct scan) — TJR's own exercised paths
+need NO gmf_version-2 translation, unlike UTI's.
+
+**Two new, previously-uncharacterized field-level findings (D2's own
+state-TYPE census could not have caught either), byte-confirmed against
+the fresh fetch:**
+
+1. **`SetAttribute`'s own `value_code` field** (`Pre_Procedure_Encounter_
+   Reason` sets `pre_procedure_encounter_reason`; `Home Health Reason
+   Knee`/`Home Health Reason Hip` set `home_health_reason`, all three via
+   `value_code`, never `value`) — unbuilt (`GmfState`'s own `:set-
+   attribute` schema variant declares only `:value {:optional true}
+   :any`; the extra key is silently tolerated by Malli's open-by-default
+   `:map`, so the module still LOADS, but `:set-attribute`'s own
+   interpreter case reads only `(:value state)`, so BOTH attributes would
+   write `nil` today). **Confirmed harmless for THIS closure regardless**
+   (direct read, all four files): `pre_procedure_encounter_reason` feeds
+   only an `Encounter` state's own `:reason` field, which `compile-
+   trajectory`'s own `encounter->step` never reads (already-dead JSON,
+   the same disposition `:reason`/`number_of_observations` already have);
+   `home_health_reason` is written twice and read NOWHERE in this
+   closure's own four files. Building it anyway (cheap, mirrors `:value-
+   code`'s own already-built `:observation`/`ObservationEntry` precedent
+   exactly, avoids a silently-wrong `nil` for any FUTURE consumer) is
+   this session's own choice, not a load-bearing requirement of TJR's own
+   vendoring.
+2. **An embedded `MultiObservation` child's own `exact` value-sourcing
+   mechanism** (`functional_status_assessments.json`'s own `PROMIS29_
+   Total_Assessment`, one child: `"exact": {"quantity": 1}`, no unit) —
+   D1a-3 characterized THREE value-sourcing mechanisms (`range`/
+   `value_code`/`vital_sign`); `exact` is a FOURTH, not previously seen
+   on any embedded child. `ObservationChild`'s own schema has no `:exact`
+   field at all — Malli's open-by-default `:map` tolerates the extra
+   key, so the module still loads, but `sample-observation-extra`'s own
+   `cond` chain falls to its `:else {:codes codes}` branch, SILENTLY
+   dropping the value (not a load failure — a wrong-answer risk).
+   **Load-bearing for TJR: `PROMIS29_Total_Assessment` is reached
+   whenever `Perform_Functional_Status_Assessment_Hip`'s own `assessment_
+   done` branch selects `"PROMIS-29"` (one of five `distributed_
+   transition`-free, i.e. author-selected, arms) — a real, reachable
+   path, not an excludable tail.** Built this session: `exact` is
+   SPECIFIED content (a literal, `quantity: 1` here) — the SAME
+   "specify, don't fabricate" governing principle D1a/D2 already applied
+   to `stroke_risk`/`joint_replacement`'s own opposite case (DELEGATED
+   content) makes this the easy branch, zero rng, mirroring `Delay`'s
+   own `:exact` handling exactly: `sample-observation-extra` gains an
+   `:exact` branch, `{:codes codes :value (:quantity exact) :unit (:unit
+   state)}`, checked ahead of the existing `:else` fallback.
+
+**Declared D3 vendoring scope for TJR (H5): BUILDABLE, pending H4's own
+compound-Guard resolution landing plus the two findings above** — every
+other D2-era finding stands unchanged (D7 clean, `joint_replacement`
+delegated and already resolved).
+
+### D3e — compound-Guard analytical resolution (H4)
+
+`Joint_Replacement_Guard`'s own exact condition, re-confirmed byte-for-
+byte against the fresh fetch (D3d): `{:and [{:condition-type :attribute
+:attribute "joint_replacement" :operator "is not nil"} {:condition-type
+:age :operator ">" :quantity 50 :unit "years"}]}`. `age-guard-jump-days`'s
+existing v1 boundary (bare `:age` condition, operator `>=` only) does not
+recognize this shape at all — neither the `:and` wrapper nor the strict
+`>` operator.
+
+**Design (H1, sound-jump-or-escalate, no Synthea source citation applies
+here — real Synthea resolves this via a ticked simulation clock this
+project's own no-fixed-tick design (section 3) deliberately does not
+have; this is this project's OWN interpreter-core analytical extension,
+not a ported mechanism):**
+
+1. **Bare `:age` conditions gain the strict `>` operator**, alongside
+   the existing `>=`: the exact day-vs-year integer-age-flooring
+   boundary (`age-years-at`'s own `Period/between... .getYears()`,
+   floored whole years) means `age > N` first becomes true on the SAME
+   day `age >= (N+1)` first becomes true (a floored age of exactly `N`
+   does not satisfy strict `>`; the jump target for `>` is therefore
+   `dob.plusYears(N+1)`, computed by the SAME `age-guard-jump-days`
+   arithmetic already used for `>=`, `quantity` bumped by one). Other
+   operators (`<`, `<=`, `==`) stay OUT — a failing `<`/`<=`/`==` age
+   condition is already true-then-permanently-false or a point condition
+   the passage of time cannot make MORE true, so no sound forward jump
+   exists (correctly blocks, unchanged, the SAME disposition a non-`>=`
+   bare condition already has today).
+2. **A compound `:and` condition may be jumped when it contains EXACTLY
+   ONE `:age` sub-condition (operator `>=` or `>`, per (1)) and every
+   OTHER sibling is a condition type that does not itself read `ctx`'s
+   own `:t` (i.e. not `:age`/`:date` — the only two v1 condition types
+   whose truth value can change merely from the passage of time) AND
+   already holds, evaluated against the CURRENT ctx, before the jump.**
+   Soundness: the ONLY thing time can change between now and the jump
+   target is the age sub-condition itself (by construction, the jump
+   advances `:t` alone — no attribute is cleared, no trajectory event is
+   un-emitted, and a non-`:age`/`:date` sibling's truth value is a pure
+   function of persona/attributes/trajectory, none of which the jump
+   touches) — so a sibling true now is still true at the jump target,
+   and the age sub-condition is true at the jump target BY the same
+   construction `age-guard-jump-days` already proves for the bare case.
+   `Joint_Replacement_Guard`'s own two siblings satisfy this exactly:
+   `Attribute joint_replacement is-not-nil` (seeded via `initial-
+   attributes` before the walk starts, never cleared anywhere in TJR's
+   own closure, D2's own D7 scan) holds from `:t` = DOB onward; `Age >
+   50 years` is the sole blocking condition. `guard-step`'s own existing
+   "no second, still-blocked branch" comment (trust-by-construction,
+   never a redundant re-check) extends unchanged to the compound case —
+   the proof above is what licenses that trust, not a new runtime check.
+3. **Named, NOT built (no sound bound, or genuinely not exercised by
+   TJR) — an ESCALATION shape, not a heuristic jump, per H4's own
+   instruction:** more than one `:age` sub-condition in one `:and`
+   (ambiguous which bound governs, unexercised); an `:and` containing
+   `:date` alongside `:age` (two time-dependent siblings interacting,
+   unexercised); `:or`/`:at-least` wrapping an `:age` condition (a
+   different logical combinator, unexercised); any sibling that does
+   NOT already hold at evaluation time (correctly stays BLOCKED — no
+   sound jump exists merely from advancing `:t`, unchanged from today).
+   Installed ≠ used (H4's own words): only the form TJR actually
+   exercises is built.
+
+### D3f — regression baseline (Step 1)
+
+Fixed-seed walks of all SEVEN currently-vendored roots (`sinusitis`,
+`appendicitis`, `sore_throat`, `ear_infections`-closure, `sepsis`,
+`death-fixture`, plus the CarePlan mechanism's own fixture coverage) —
+`poly check` clean, full non-integration suite green, captured at this
+session's own pre-Step-2 HEAD, before any D3 code change; re-run and
+diffed at every subsequent checkpoint per this document's own established
+method, byte-identical/count-identical at every one (confirmed one final
+time at session close, Step 4).
