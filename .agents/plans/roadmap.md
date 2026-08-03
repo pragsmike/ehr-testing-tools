@@ -9,14 +9,6 @@ per item; done items move to the bottom of their section with a date and sha.
   same day it started -- see Done, below).
 
 ## Next (backlog, no session scheduled)
-- **Engine closure-context fix session** (2026-08-03, ADR-0031 AR-6, sequenced
-  second, after the duration fix): `engine.clj`'s `:registered` decide method
-  threads a closure's own submodule registry and `initial-attributes` through
-  to `run-module` — owns both `notes/ADRs.md` ADR-0030 J3 gaps; see the
-  closure-engine-round-trips Deferred row below. Flips the three pinned
-  round-trip tests (`components/sim-emit-hl7/test/`). Oracle-bracketed: the
-  five non-closure roots must stay byte-identical; closure roots gain NEW
-  engine-layer baselines.
 - **Census session** (2026-08-03, ADR-0031, sequenced third, after both defect
   fixes): `gmf survey`, a `sim-trajectory` dev entry point (AR-1) performing a
   seeded interpreter-layer smoke walk per module with digest recorded, not
@@ -113,9 +105,33 @@ per item; done items move to the bottom of their section with a date and sha.
   per root. The session wiring `engine.clj` to carry a closure's own
   `modules`/`tables`/`initial-attributes` through to `run-module`
   inherits this gap AND must update those three tests (they are
-  designed to fail loudly the moment this lands). **Now scheduled: see
-  the "Engine closure-context fix session" row in Next, above
-  (2026-08-03, ADR-0031 AR-6).**
+  designed to fail loudly the moment this lands). **FIXED (2026-08-03,
+  ADR-0031 AR-6's second defect-fix session, `notes/ADRs.md` ADR-0033)
+  — see Done, below.**
+
+## Done (this session, 2026-08-03, engine closure-context fix)
+- ADR-0031 AR-6's second (and final) defect-fix session, ADR-0030 J3
+  closed: `engine.clj`'s `:registered` decide now calls `run-module` at
+  the full arity, threading a closure's own `:modules`/`:tables`/
+  `:initial-attributes` through — `notes/ADRs.md` ADR-0033 AR-2/AR-3
+  (`74be432`). The three pinned round-trip tests
+  (`components/sim-emit-hl7/test/`) converted from asserting the broken
+  behavior to asserting the real round trip, one commit per root
+  (`5ac9382`, `16b3b57`, `0f9c827`).
+- Oracle bracket: the six pre-existing roots stayed byte-identical
+  (ADR-0033 AR-4, proven via a disclosed per-worktree-`digest.clj`
+  deviation, not the one-liner unmodified — `notes/ADRs.md` ADR-0033's
+  own execution note has the full reasoning and both digest tables);
+  `digest.clj` extended with three engine-layer FIRST BASELINES for the
+  closure roots (AR-4b, `ba6910a`) — closes ADR-0032's own oracle-gap
+  disclosure.
+- Real finding, disclosed not fixed: the UTI round-trip test's own
+  original seed trips an already-documented, separate v1 scope boundary
+  (`:pre-horizon-facts` not feeding the engine's patient-state fold when
+  an Encounter straddles the fixed registration-t anchor) — resolved by
+  an empirically-chosen seed for the test, per ADR-0033's own execution
+  note; the underlying fold-boundary gap itself is NOT this session's
+  own scope.
 
 ## Done (this session, 2026-08-01, migration session 1)
 - Items 6+7: `agent/scenario-roster.md` merged into `.agents/skills/scenarios/roster.md`,

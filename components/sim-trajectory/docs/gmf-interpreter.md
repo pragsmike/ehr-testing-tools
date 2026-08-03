@@ -2382,6 +2382,19 @@ citation already models. This is a narrower, more surgical fix than
 building `osteoarthritis.json`/`rheumatoid_arthritis.json` themselves
 (out of scope, unowned by any wave).
 
+> **Dated note (2026-08-03, ADR-0033): the ENGINE-layer half of this
+> rider (H7) is now resolved too.** At this stage (D2), `initial-
+> attributes` reached only `run-module`'s own interpreter-layer arity —
+> `engine.clj` had no config surface to seed it at all, a gap this
+> paragraph did not yet own (it was found and pinned two sessions later,
+> ADR-0030 J3). ADR-0033's own AR-1 adds that config surface
+> (`:module-initial-attributes`, or a closure's own `:initial-
+> attributes` for a direct API caller) and AR-3 threads it through
+> `:registered`'s decide method — the SAME `"knee"` value this
+> paragraph's own citation supplies, reused verbatim, now also proven
+> through a real engine run (`vendored_tjr_test.clj`'s own seeded
+> round-trip test, `components/sim-emit-hl7/test/`).
+
 **The multi-encounter-per-episode compile-time truncation gap (section
 9's own prioritization table row) still applies to this module exactly
 as that row already documents** — `Pre_Procedure_Encounter_End` (the
@@ -2398,6 +2411,21 @@ fuller pipeline is proven only for single-file, non-closure modules
 (appendicitis, sinusitis) to date, and remains a real, still-open,
 already-named gap standing between ANY closure-having module and a
 full engine/emission demonstration of its own actual surgical content.
+
+> **Dated note (2026-08-03, ADR-0031 AR-6's second defect-fix session,
+> `notes/ADRs.md` ADR-0033): CLOSED.** `engine.clj`'s `:registered`
+> decide method now threads a closure's own `:modules`/`:tables` maps
+> and this section's own `initial-attributes` seed through to
+> `run-module`'s full arity (ADR-0033 AR-2/AR-3) — the full compile-
+> trajectory/engine/emit round trip this paragraph names is proven for
+> TJR (and the other two closure roots) by
+> `components/sim-emit-hl7/test/vendored_tjr_test.clj`'s own seeded
+> round-trip test, and by `bin/oracle-src/ehrt/oracle/digest.clj`'s own
+> `total-joint-replacement-engine` first baseline (AR-4b). The multi-
+> encounter-per-episode compile-time truncation gap itself (this
+> paragraph's own first half) is UNCHANGED by that fix — a separate,
+> still-open `compile-trajectory` gap, not touched by ADR-0033's own
+> registration-wiring scope.
 
 **Fix-forward finding (dated note, filled Step 2, 2026-08-02): a
 SECOND, independent blocker found empirically AFTER Step 1's own
