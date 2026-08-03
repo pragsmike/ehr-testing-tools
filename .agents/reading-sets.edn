@@ -176,7 +176,11 @@
   ;; brought the real total from 1088 to 1117 -- self-caught by this same
   ;; gate, same precedent, folded into the J2 commit itself (this set is
   ;; the only one of the five carrying roadmap.md too).
-  :budget-lines 1117}
+  ;; bumped 1117->1118, same session: indexing the concurrently-authored
+  ;; 2026-08-02-gmf-parity-plan.md in .agents/plans/README.md (an
+  ;; already-cited onboarding path, the index-completeness gate's own
+  ;; requirement) added 1 more line.
+  :budget-lines 1118}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one
