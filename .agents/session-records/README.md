@@ -98,3 +98,4 @@ Files in this directory:
   * 2026-08-02-gmf-coverage-wave-d-stage-d2.md
   * 2026-08-02-gmf-coverage-wave-d-stage-d3.md
   * 2026-08-02-post-wave-d-cleanup.md
+  * 2026-08-03-rulings-capture.md
