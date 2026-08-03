@@ -368,6 +368,79 @@
     (is (= {:system :snomed :code "110466009" :display "Pre-surgery evaluation (procedure)"}
            (get-in outcome [:attributes :value-code-mod/reason])))))
 
+;; --- ADR-0035 AR-4: SetAttribute samples its own :distribution --------
+;; (hypertension.json's own Black_Onset_Age shape -- the silent-nil gap
+;; the census design channel found: before this ADR, a state whose ONLY
+;; value source was :distribution wrote nil.)
+
+(def set-attribute-gaussian-module
+  {:id "onset-age-mod" :name "OnsetAge"
+   :states {:initial {:type :initial :direct-transition :set}
+            :set {:type :set-attribute :attribute "years_until_onset"
+                  :distribution {:kind :gaussian :parameters {:mean 42 :standard-deviation 14} :round true}
+                  :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest set-attribute-gaussian-writes-a-non-nil-rounded-value
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :set)
+        outcome (interp/step set-attribute-gaussian-module (Random. 1) ctx)
+        v (get-in outcome [:attributes :onset-age-mod/years-until-onset])]
+    (is (some? v))
+    (is (= v (double (Math/round ^double v))) "round: true -- an integer-valued double")))
+
+(defspec set-attribute-gaussian-consumes-a-fixed-single-rng-draw 100
+  (prop/for-all [seed gen/large-integer]
+    (let [ctx (assoc (ctx-for (persona-at 1)) :current :set)
+          calls (atom 0)
+          rng (proxy [Random] [(long seed)]
+                (nextDouble
+                  ([] (swap! calls inc) (proxy-super nextDouble))))]
+      (interp/step set-attribute-gaussian-module rng ctx)
+      (= 1 @calls))))
+
+(def set-attribute-gaussian-unrounded-module
+  {:id "unrounded-mod" :name "Unrounded"
+   :states {:initial {:type :initial :direct-transition :set}
+            :set {:type :set-attribute :attribute "raw_value"
+                  :distribution {:kind :gaussian :parameters {:mean 42 :standard-deviation 14} :round false}
+                  :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest set-attribute-gaussian-round-false-can-write-a-non-integer-value
+  (testing "AR-1/AR-3: :round governs the SAMPLED VALUE -- distinguishable
+            here (unlike the Delay/Procedure timing path, where
+            resolve-time-advance's own unit-conversion boundary always
+            rounds to a long regardless of the flag)"
+    (let [non-integer? (fn [seed]
+                          (let [ctx (assoc (ctx-for (persona-at 1)) :current :set)
+                                outcome (interp/step set-attribute-gaussian-unrounded-module (Random. seed) ctx)
+                                v (get-in outcome [:attributes :unrounded-mod/raw-value])]
+                            (not= v (double (Math/round ^double v)))))]
+      (is (some non-integer? (range 50))))))
+
+(def set-attribute-exact-distribution-module
+  "EXACT-kind :distribution on SetAttribute -- unlike Delay/Procedure/
+  Symptom (where EXACT always v1-collapses into :exact, D3c), SetAttribute
+  never had a pre-existing collapse, so EXACT reaches the interpreter as
+  a real :distribution here (gmf/normalize-set-attribute-distribution's
+  own docstring: 'all FIVE kinds pass through')."
+  {:id "exact-dist-mod" :name "ExactDist"
+   :states {:initial {:type :initial :direct-transition :set}
+            :set {:type :set-attribute :attribute "fixed_value"
+                  :distribution {:kind :exact :parameters {:value 7} :round false}
+                  :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest set-attribute-exact-distribution-writes-the-value-with-zero-draws
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :set)
+        calls (atom 0)
+        rng (proxy [Random] [1]
+              (nextDouble
+                ([] (swap! calls inc) (proxy-super nextDouble))))
+        outcome (interp/step set-attribute-exact-distribution-module rng ctx)]
+    (is (= 7.0 (get-in outcome [:attributes :exact-dist-mod/fixed-value])))
+    (is (= 0 @calls))))
+
 (deftest symptom-writes-a-module-namespaced-key-with-a-sampled-severity
   (let [ctx (assoc (ctx-for (persona-at 1)) :current :nasal-congestion-symptom)
         outcome (interp/step fixture-clinic (Random. 5) ctx)

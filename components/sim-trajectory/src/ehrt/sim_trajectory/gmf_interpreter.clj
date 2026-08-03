@@ -1089,9 +1089,20 @@
       ;; Reason/Home_Health_Reason_Knee/Hip states) takes precedence
       ;; over :value when present -- the SAME "coded value instead of a
       ;; plain one" shape :observation's own value_code branch already
-      ;; establishes.
+      ;; establishes. ADR-0035 AR-4: :distribution takes precedence over
+      ;; BOTH -- `ehrt.sim-trajectory.gmf`'s own `set-attribute-value-
+      ;; conflict?` already rejects a state carrying more than one of
+      ;; the three at LOAD time, so at most one is ever present here;
+      ;; this `cond` names the intended precedence rather than relying
+      ;; on that invariant silently. Fixes the silent-nil gap the census
+      ;; design channel found: before this ADR, a state whose ONLY value
+      ;; source was :distribution wrote `nil` (`:value-code`/`:value`
+      ;; both absent, the pre-existing `if` fell through to `(:value
+      ;; state)`, itself nil).
       :set-attribute (let [k (keyword (root-id ctx module-id) (gmf/slug (:attribute state)))
-                           v (if (:value-code state) (:value-code state) (:value state))
+                           v (cond (:distribution state) (sample-distribution rng (:distribution state))
+                                   (:value-code state) (:value-code state)
+                                   :else (:value state))
                            ctx' (update ctx :attributes assoc k v)]
                        (pass-through-outcome module-id ctx' rng state 0 [] tables))
       ;; ADR-0035 AR-2/AR-5: a GAUSSIAN/EXPONENTIAL/TRIANGULAR Symptom
