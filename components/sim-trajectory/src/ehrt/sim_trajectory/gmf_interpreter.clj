@@ -485,10 +485,24 @@
   complex_transition's own first-matching-condition's distribution list --
   an entry with NO :condition at all is the trailing 'else' arm. Consumes
   NO rng: purely a walk over already-known state (persona/attributes/
-  trajectory), never a stochastic choice of its own."
+  trajectory), never a stochastic choice of its own.
+
+  GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3f finding,
+  found vendoring `uti/ambulatory_path.json`'s own `risk-check` state):
+  when NO entry's own condition holds (and none is condition-less), the
+  LAST entry is returned UNCONDITIONALLY -- Transition.java's own
+  `ConditionalTransition.follow`/`ComplexTransition.follow` both share
+  this exact fallback ('if none of the conditions evaluated to true...
+  the module will transition to the last transition defined'), a real
+  semantic this function's own prior form never implemented (it simply
+  returned nil, which `resolve-transition`'s own callers then crashed
+  on -- no previously-vendored module's own mandatory path ever hit a
+  branch where every condition failed with no explicit trailing
+  else-arm, until this closure's real content did)."
   [module-id ctx entries]
-  (first (filter (fn [{:keys [condition]}] (or (nil? condition) (evaluate-condition module-id ctx condition)))
-                 entries)))
+  (or (first (filter (fn [{:keys [condition]}] (or (nil? condition) (evaluate-condition module-id ctx condition)))
+                      entries))
+      (last entries)))
 
 (defn- type-of-care-weights
   "GMF coverage Wave B (2026-08-02, ADR-0027, D5): Synthea's own
