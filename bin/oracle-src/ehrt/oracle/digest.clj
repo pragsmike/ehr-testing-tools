@@ -25,7 +25,37 @@
   across GMF coverage waves), sinusitis/death-fixture/sepsis
   (engine-layer: engine/run plus emit-hl7/emit, ground truth AND
   emitted HL7 both captured, the exact run-configs each root's own
-  vendored/engine test already established as producing real content)."
+  vendored/engine test already established as producing real content).
+
+  Dated note (2026-08-03, ADR-0033 AR-4b): three more roots join at the
+  ENGINE layer -- ear-infections-engine/urinary-tract-infections-engine/
+  total-joint-replacement-engine -- now that `engine.clj` threads a
+  closure's own `:modules`/`:tables`/`:initial-attributes` through to
+  `run-module` for real (J3 closed, `notes/ADRs.md` ADR-0033 AR-2/AR-3).
+  This closes ADR-0032's own oracle-gap disclosure (its AR-4 dated
+  correction: `total_joint_replacement` and the UTI closure could not be
+  engine-layer digested before this session -- they threw or silenced).
+  `ear-infections` (bare) stays the pre-existing INTERPRETER-layer batch,
+  unchanged; `ear-infections-engine` is a genuinely new, separate root,
+  not a replacement. These three are FIRST BASELINES, not a regression
+  check against a prior digest -- there is no 'before' to compare
+  against, since the round trip never completed before this session.
+  Verifying this session's own claim that the SIX pre-existing roots
+  stayed byte-identical across the ADR-0033 commits could not use this
+  script directly, unmodified, across the baseline/target commit pair:
+  this script's own header, above, documents that it is ALWAYS read
+  from the current checkout (never a worktree's own copy) specifically
+  so the SAME test code exercises two different component-code
+  versions -- an assumption ADR-0033's own hard `:modules` shape switch
+  (AR-2) falsified for the pre-existing `sinusitis`/`death-fixture`/
+  `sepsis` producer functions, which now call `gmf/singleton-closure`
+  (a function that does not exist before ADR-0033 -- a compile error at
+  the baseline worktree, not a digest difference). The six-root identity
+  check that session instead ran EACH commit's OWN `digest.clj` against
+  its OWN worktree/classpath (not this file, fixed, across both) --
+  disclosed as a deviation, not silently routed around; both digest
+  tables are in that session's own record,
+  `.agents/session-records/2026-08-03-engine-closure-context.md`."
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [ehrt.sim-trajectory.gmf :as gmf]
@@ -110,13 +140,53 @@
                   :modules [(gmf/singleton-closure module)] :module-assignment [{:module-id "sepsis" :weight 1}]
                   :module-horizon-days 36500})))
 
+;; --- ADR-0033 AR-4b: engine-layer digest pairs for the three closure
+;; roots -- FIRST BASELINES (see this namespace's own dated docstring
+;; note, above), not a regression check against a prior digest. Same
+;; `engine-pair` helper, same seed/population/horizon each root's own
+;; `components/sim-emit-hl7/test/` round-trip test already established
+;; as producing real content (the J3 pin conversions, ADR-0033).
+
+(defn- ear-infections-engine-pair []
+  (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
+        closure (:payload (gmf/load-closure "ear-infections" (slurp (io/resource "sim/modules/ear_infections.json")) resolve-call-path))]
+    (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
+                  :modules [closure] :module-assignment [{:module-id "ear-infections" :weight 1}]
+                  :module-horizon-days 3650})))
+
+(defn- urinary-tract-infections-engine-pair []
+  (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
+        resolve-table-name (fn [table-name] (some-> (io/resource (str "sim/modules/lookup_tables/" table-name)) slurp))
+        closure (:payload (gmf/load-closure "urinary-tract-infections"
+                                            (slurp (io/resource "sim/modules/urinary_tract_infections.json"))
+                                            resolve-call-path resolve-table-name))]
+    (engine-pair {:seed 777 :patients 300 :pathway {:name "module-only" :steps []}
+                  :modules [closure] :module-assignment [{:module-id "urinary-tract-infections" :weight 1}]
+                  :module-horizon-days 36500})))
+
+(defn- total-joint-replacement-engine-pair []
+  (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
+        closure (:payload (gmf/load-closure "total-joint-replacement"
+                                            (slurp (io/resource "sim/modules/total_joint_replacement.json"))
+                                            resolve-call-path))
+        ;; D2 H7's own authored, provenance-cited seed (ehrt.sim-trajectory.
+        ;; vendored-tjr-test's own docstring) -- reused verbatim, not
+        ;; re-derived, the same value the sim-emit-hl7 round-trip test uses.
+        seeded-closure (assoc closure :initial-attributes {:total-joint-replacement/joint-replacement "knee"})]
+    (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
+                  :modules [seeded-closure] :module-assignment [{:module-id "total-joint-replacement" :weight 1}]
+                  :module-horizon-days 21900})))
+
 (def ^:private roots
-  {"appendicitis"   appendicitis-batch
-   "sore-throat"    sore-throat-batch
-   "ear-infections" ear-infections-batch
-   "sinusitis"      sinusitis-pair
-   "death-fixture"  death-fixture-pair
-   "sepsis"         sepsis-pair})
+  {"appendicitis"                       appendicitis-batch
+   "sore-throat"                        sore-throat-batch
+   "ear-infections"                     ear-infections-batch
+   "sinusitis"                          sinusitis-pair
+   "death-fixture"                      death-fixture-pair
+   "sepsis"                             sepsis-pair
+   "ear-infections-engine"              ear-infections-engine-pair
+   "urinary-tract-infections-engine"    urinary-tract-infections-engine-pair
+   "total-joint-replacement-engine"     total-joint-replacement-engine-pair})
 
 (defn -main
   "Writes one <root>.edn per root into out-dir (pr-str of the batch or
