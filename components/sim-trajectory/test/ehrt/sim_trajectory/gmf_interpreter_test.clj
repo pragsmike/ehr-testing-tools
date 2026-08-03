@@ -659,6 +659,36 @@
     (is (<= 28 (:advance (interp/step (module-for "months") (Random. 1) ctx)) 31))
     (is (<= 365 (:advance (interp/step (module-for "years") (Random. 1) ctx)) 366))))
 
+;; --- Procedure duration (ADR-0032, D3c finding 1 fix) -----------------------
+
+(def procedure-with-duration-module
+  {:id "procedure-mod" :name "Procedure"
+   :states {:initial {:type :initial :direct-transition :do-it}
+            :do-it {:type :procedure
+                    :codes [{:system :snomed :code "80146002" :display "Appendectomy"}]
+                    :duration {:low 1 :high 5 :unit "days"}
+                    :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest procedure-duration-advances-virtual-time-within-its-range
+  (testing "before ADR-0032's fix, a Procedure's own flat {:low :high :unit}
+            :duration silently never advanced time -- resolve-time-advance
+            destructured :range/:exact keys from it and found neither"
+    (let [ctx (assoc (ctx-for (persona-at 1)) :current :do-it)
+          outcome (interp/step procedure-with-duration-module (Random. 42) ctx)]
+      (is (<= 1 (:advance outcome) 5))
+      (is (= :done (:next outcome))))))
+
+(defspec procedure-duration-consumes-a-fixed-single-rng-draw 100
+  (prop/for-all [seed gen/large-integer]
+    (let [ctx (assoc (ctx-for (persona-at 1)) :current :do-it)
+          calls (atom 0)
+          rng (proxy [Random] [(long seed)]
+                (nextInt
+                  ([n] (swap! calls inc) (proxy-super nextInt n))))]
+      (interp/step procedure-with-duration-module rng ctx)
+      (= 1 @calls))))
+
 (def not-equal-attribute-module
   {:id "ne-mod" :name "NotEqual"
    :states {:initial {:type :initial :direct-transition :check}

@@ -333,14 +333,16 @@
   DEGENERATE Range (:low = :high = the exact value) rather than
   widening the schema -- numerically identical to a true exact
   quantity, and consistent with the pre-existing v1 flat-:duration
-  encoding (`appendicitis.json`/`sepsis.json`), bug and all: this
-  loader's own disclosed, unrelated `resolve-time-advance`/:duration
-  gap (D3c finding 1's own dated note -- `:duration` is passed to
-  `resolve-time-advance` as a flat map, which destructures :range/:exact
-  KEYS from it and finds neither, silently never advancing time for ANY
-  Procedure, v1 or v2 -- out of this session's own ruled scope to fix,
-  named here so v2's own translation does not introduce a NEW,
-  inconsistent v1/v2 asymmetry)."
+  encoding (`appendicitis.json`/`sepsis.json`).
+
+  FIXED (2026-08-03, notes/ADRs.md ADR-0032 AR-2): this loader's own
+  disclosed, unrelated `resolve-time-advance`/:duration gap (D3c finding
+  1's own dated note -- `:duration` was passed to `resolve-time-advance`
+  as a flat map, which destructures :range/:exact KEYS from it and found
+  neither, silently never advancing time for ANY Procedure, v1 or v2) is
+  now fixed at `emit-and-advance`'s own call site (gmf-interpreter.clj),
+  not here -- this translation's own flat-map output was already
+  correct, the bug was downstream of it."
   [state]
   (let [{:keys [kind parameters]} (:distribution state)
         unit (:unit state)

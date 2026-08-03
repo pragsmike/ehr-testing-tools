@@ -695,11 +695,26 @@
   `{:module :state :t}` (glass-box law), carry `extra` (typically :codes,
   verbatim -- code passthrough law) into the event, append it to the
   accumulating trajectory, then resolve the ORDINARY transition
-  (optionally after its own sampled `:duration`, Procedure's own case)."
+  (optionally after its own sampled `:duration`, Procedure's own case).
+
+  FIXED (2026-08-03, notes/ADRs.md ADR-0032 AR-2, D3c finding 1): a
+  Procedure's own `:duration` is the FLAT `{:low :high :unit}` shape
+  (the loader's own Range schema, not a nested `{:range {...}}`/
+  `{:exact {...}}` wrapper) -- `resolve-time-advance` destructures
+  `:range`/`:exact` KEYS, so passing `duration` straight through always
+  missed both, silently never advancing time for ANY Procedure. Wrapped
+  here, at the call site, as `{:range duration}` -- `resolve-time-
+  advance`'s own contract, Delay's nested shape, and the loader schema
+  all stay unchanged (AR-2's own ruling: the flat map IS Procedure's
+  canonical shape, upstream GMF 1.0's own encoding; the mismatch was
+  never a shape this function's argument needed translating, only a
+  wrapper this call site was missing)."
   [module-id ctx ^Random rng state event-type extra tables]
   (let [event (trajectory-event module-id ctx event-type extra)
         ctx' (update ctx :trajectory conj event)
-        advance (if-let [duration (:duration state)] (- (resolve-time-advance rng (:t ctx) duration) (:t ctx)) 0)]
+        advance (if-let [duration (:duration state)]
+                  (- (resolve-time-advance rng (:t ctx) {:range duration}) (:t ctx))
+                  0)]
     (pass-through-outcome module-id ctx' rng state advance [event] tables)))
 
 (defn- round1 [^double v] (/ (Math/round (* v 10.0)) 10.0))
