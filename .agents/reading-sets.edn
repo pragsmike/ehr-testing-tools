@@ -154,7 +154,11 @@
   ;; updated with the characterization outcome (declared scope, Active
   ;; CarePlan deferral), net +2 lines -- self-caught by this same gate,
   ;; same precedent.
-  :budget-lines 969}
+  ;; bumped 969->976, D2 Step 2 fix-forward (2026-08-02): roadmap.md's
+  ;; own D2 Now-row rewritten for the revised zero-vendor outcome (a
+  ;; second, independent Guard blocker found live), net +7 lines --
+  ;; self-caught by this same gate, same precedent.
+  :budget-lines 976}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one

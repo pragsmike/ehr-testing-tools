@@ -6173,12 +6173,39 @@ them.
 > `osteoarthritis`/`rheumatoid_arthritis` themselves (out of scope,
 > unowned).
 >
-> **Declared D2 vendoring scope: `total_joint_replacement.json` only.**
-> `myocardial_infarction.json` deferred; its own finding is recorded in
+> **Fix-forward finding (dated note, filled Step 2, 2026-08-02): a
+> SECOND, independent `total_joint_replacement.json` blocker, found
+> empirically testing the `joint_replacement` fix against the real
+> closure.** `Joint_Replacement_Guard`'s own `allow` is a COMPOUND
+> condition (`{:and [Attribute is-not-nil, Age > 50 years]}`);
+> `age-guard-jump-days` (the analytical jump that resolves a failing
+> BARE `:age >= N years` Guard) only recognizes that one shape, a
+> KNOWN, deliberate v1 boundary per its own docstring — this Guard is
+> neither bare nor `>=`, so the walk blocks PERMANENTLY at age 0
+> (confirmed empirically: `joint_replacement` seeded, 60-year
+> registration offset, `:status :blocked`, zero trajectory events; full
+> account: `components/sim-trajectory/docs/gmf-interpreter.md` §13).
+> Extending Guard's own analytical-resolution machinery to handle a
+> compound condition correctly is real interpreter-core work outside
+> G1–G5's own ruled scope (the CarePlan chain, not Guard/condition
+> resolution) touching every other vendored root's own Guard/Delay
+> behavior — an ESCALATION with evidence (G1's own instruction), not
+> improvised this session.
+>
+> **Declared D2 vendoring scope, REVISED: ZERO roots vendored this
+> session** — an outcome G4 explicitly names as acceptable.
+> `myocardial_infarction.json` deferred (three independent blockers,
+> unrelated to CarePlan); `total_joint_replacement.json` ALSO deferred
+> (the compound-Guard blocker, above) despite the `joint_replacement`
+> attribute gap being genuinely resolved. Both findings recorded in
 > `components/sim-trajectory/docs/gmf-interpreter.md` §9's own
 > prioritization table (dated note) and the coverage plan's own payoff
 > map (Step 4 fix-forward), the same disclosure discipline
 > `urinary_tract_infections.json`'s own D6 finding already established.
+> The CarePlan mechanism itself (sim-model/sim-trajectory/sim/sim-
+> emit-hl7, all four layers) is real, fully co-landed, tested
+> infrastructure regardless — the same "build the mechanism, defer the
+> vendoring target" shape `VitalSign` (D1a) already established.
 >
 > **Regression-oracle method, disclosed (a deviation from a literal
 > SHA-256-digest-across-a-disposable-worktree, the D1b precedent):**

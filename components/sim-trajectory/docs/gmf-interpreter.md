@@ -1122,14 +1122,20 @@ findings at once — `lookup_table_transition` (D3), `ImagingStudy` (R5),
 and a genuinely NEW state type this document has never named,
 `SupplyList` — deferred, not vendored. `total_joint_replacement.json`'s
 real closure is only 4 files and surveys CLEAN of every Wave-D-scoped
-type except `CarePlanStart`/`CarePlanEnd` itself — **vendored this
-session**, unblocked by a small, disclosed `run-module` extension (§13)
-for a real, delegated-content gap (`joint_replacement`, sourced from
-two sibling modules, `osteoarthritis`/`rheumatoid_arthritis`, neither
-in scope). Both rows' own `CarePlanStart`/`CarePlanEnd` cell entries
-stay accurate; `total_joint_replacement` should be read as the ONE
-confirmed-vendorable instance in that row now, not merely histogram-
-scouted.
+type except `CarePlanStart`/`CarePlanEnd` itself — its own
+`joint_replacement` attribute gap was resolved this session (a small,
+disclosed `run-module` extension, §13), but a SECOND, independent
+blocker surfaced testing that fix against the real closure: a compound
+`Joint_Replacement_Guard` (`Age > 50` AND'd with an attribute check)
+this interpreter's own `age-guard-jump-days` cannot analytically
+resolve (bare `:age >= N years` only) — the walk blocks permanently at
+age 0, confirmed empirically. **NOT vendored this session either** —
+named as this closure's own next prerequisite (§13's own fix-forward
+finding), unowned until a future session extends Guard's own
+condition-resolution machinery. Both rows' own `CarePlanStart`/
+`CarePlanEnd` cell entries stay accurate as prioritization data; the
+CarePlan MECHANISM itself is real, built, and tested regardless (§13),
+awaiting a clean closure to prove it against.
 
 **Headline: `CallSubmodule` blocks more real content than every other
 deferred feature combined**, confirming and sharpening
@@ -2207,7 +2213,7 @@ types) is a DIFFERENT, and larger, set than the CarePlan gap D2 itself
 was framed around; CarePlan's own presence in this closure (×2) is
 real but moot.
 
-### `total_joint_replacement.json` closure survey — VENDORED this session
+### `total_joint_replacement.json` closure survey — DEFERRED this session (a second blocker found at Step 2, below)
 
 Four files total, fully resolved (root + `medications/moderate_opioid_pain_reliever`,
 `total_joint_replacement/functional_status_assessments`,
@@ -2312,8 +2318,57 @@ fuller pipeline is proven only for single-file, non-closure modules
 already-named gap standing between ANY closure-having module and a
 full engine/emission demonstration of its own actual surgical content.
 
-**Declared D2 vendoring scope: `total_joint_replacement.json` only.**
+**Fix-forward finding (dated note, filled Step 2, 2026-08-02): a
+SECOND, independent blocker found empirically AFTER Step 1's own
+characterization closed, testing the `initial-attributes` fix against
+the real closure.** `Joint_Replacement_Guard`'s own `allow` is `{:and
+[Attribute joint_replacement is-not-nil, Age > 50 years]}` — a
+COMPOUND condition. `ehrt.sim-trajectory.gmf-interpreter/age-guard-
+jump-days` (the analytical short-circuit that lets a failing bare
+`:age >= N years` Guard jump forward in virtual time rather than block
+forever) only recognizes a BARE `:age` condition with operator `>=` —
+its own docstring states this plainly ("any other failing condition...
+returns nil... the walk blocks instead"), a KNOWN, deliberate v1
+boundary, not an accidental gap. `Joint_Replacement_Guard`'s condition
+is neither bare (`:and`-wrapped) nor `>=` (`>`) — `guard-step` cannot
+resolve it, and this interpreter has no periodic re-tick mechanism (a
+walk is one continuous recursive descent, not Synthea's own ticked
+simulation clock): the walk BLOCKS PERMANENTLY at `:t` = DOB (age 0),
+before `Joint_Replacement_Guard`'s own second child (Attribute) is
+ever even reached, confirmed empirically (a throwaway probe test:
+`joint_replacement` seeded via the new `initial-attributes` arg,
+registration 60 years post-DOB, 20-year horizon — `:status :blocked`,
+zero trajectory events). This is a genuinely new, previously-
+uncharacterized interpreter gap (compound/non-`>=`-operator Age
+Guards), outside G1–G5's own ruled scope (the CarePlan pair's schema/
+interpreter/engine/emit chain, not Guard/condition analytical-
+resolution machinery) — extending `age-guard-jump-days` to handle a
+compound condition and a strict `>` correctly (verifying every OTHER
+`:and` sibling already holds, plus getting the day-vs-year integer-
+age-flooring boundary right for a strict inequality) is real
+interpreter-core work, not a data-seeding simplification the D1a
+governing principle already covers — an ESCALATION with evidence
+(G1's own instruction), not improvised this session under time
+pressure against core walk-time-advance logic that every other
+vendored root's own Guard/Delay behavior also depends on staying
+byte-identical.
+
+**Declared D2 vendoring scope, REVISED: ZERO roots vendored this
+session** — an outcome G4 explicitly names as acceptable.
 `myocardial_infarction.json` deferred (three independent, each-
 sufficient blockers, none of them CarePlan-shaped — named above, own
-row added to section 9's own prioritization table, fix-forward at Step
-4).
+row added to section 9's own prioritization table). `total_joint_
+replacement.json` ALSO deferred — the `joint_replacement` attribute
+gap alone was resolved (the `run-module` `initial-attributes`
+extension, real and kept), but the newly-found compound-Guard
+blocker stands unresolved, named here as this closure's own next
+prerequisite, unowned by any wave until a future session extends
+`age-guard-jump-days`/`guard-step`. The CarePlan mechanism itself
+(sim-model schema, sim-trajectory loader/interpreter/compile mapping,
+sim engine fold, sim-emit-hl7 disclosed silence — all four layers,
+Steps 2a–2d) is real, fully co-landed, GREEN infrastructure,
+independent of whether any real module exercises it yet — the SAME
+"build the mechanism, defer the vendoring target" shape D1a's own
+`VitalSign` disposition and this wave's own `ImagingStudy`/`lookup_
+table_transition` rows already establish, not a partial or half-
+finished implementation.

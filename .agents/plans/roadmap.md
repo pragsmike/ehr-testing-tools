@@ -6,14 +6,21 @@ per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
 - GMF coverage Wave D stage D2 (ADR-0029 R6; D0/D1 done, see Done below)
-  -- CarePlan family: paired IR span (`:care-plan-start`/
-  `:care-plan-end`) mirroring `:medication-order`/`:medication-end`,
-  CarePlan itself stays v2-silent (R3). Step 1 characterization done
-  (gmf-interpreter.md sec13): declared scope `total_joint_replacement`
-  only (`myocardial_infarction` deferred, three independent D3/R5/new-
-  type blockers found in its real 27-file closure); `Active CarePlan`
-  condition stays design-ruled, implementation-deferred per G2 (TJR's
-  own closure exercises zero `Active CarePlan` conditions).
+  -- CarePlan family mechanism LANDS in full (sim-model schema,
+  sim-trajectory loader/interpreter/compile, sim engine fold,
+  sim-emit-hl7 disclosed silence -- all four layers, tested, green),
+  mirroring `:medication-order`/`:medication-end`; CarePlan itself
+  stays v2-silent (R3); `Active CarePlan` condition stays design-ruled,
+  implementation-deferred per G2. Vendoring payoff REVISED to ZERO
+  roots this session (gmf-interpreter.md sec13, G4's own permitted
+  outcome): `myocardial_infarction` deferred (three independent D3/R5/
+  new-type blockers in its real 27-file closure); `total_joint_
+  replacement` ALSO deferred -- its own `joint_replacement` attribute
+  gap was resolved, but a second blocker surfaced testing that fix
+  live: `Joint_Replacement_Guard`'s compound Age condition
+  (`age-guard-jump-days` only resolves a bare `:age >= N years` Guard)
+  blocks the walk permanently at age 0, an interpreter-core gap outside
+  this stage's own ruled scope, escalated not improvised.
 
 ## Next (backlog, no session scheduled)
 - Pairing-as-data (review P3-3): mutate↔judge conviction registry — design pass in
