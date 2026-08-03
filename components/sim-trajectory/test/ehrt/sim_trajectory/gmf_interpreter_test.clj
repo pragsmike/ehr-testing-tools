@@ -17,7 +17,8 @@
             [ehrt.sim-trajectory.gmf :as gmf]
             [ehrt.sim-trajectory.gmf-interpreter :as interp]
             [ehrt.sim-model.interface :as sim-model])
-  (:import [java.util Random]))
+  (:import [java.time LocalDate]
+           [java.util Random]))
 
 (def fixture-clinic-json
   (slurp (io/resource "ehrt/sim/fixtures/fixture-clinic.json")))
@@ -241,6 +242,105 @@
         outcome (interp/step age-guard-module (Random. 1) ctx)]
     (is (false? (:blocked? outcome)))
     (is (= 0 (:advance outcome)))))
+
+;; --- GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3e, H4):
+;; compound-Guard analytical resolution (sound-jump-or-escalate) --------
+
+(def strict-age-guard-module
+  {:id "strict-age-mod"
+   :name "StrictAge"
+   :states {:initial {:type :initial :direct-transition :check}
+            :check {:type :guard
+                    :allow {:condition-type :age :operator ">" :quantity 50 :unit "years"}
+                    :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest bare-age-guard-with-strict-operator-jumps-one-year-past-the-quantity
+  (testing "the day-vs-year integer-age-flooring boundary: age exactly
+            50 does NOT satisfy > 50, so the jump target is age 51, not
+            age 50 (D3e's own account)"
+    (let [dob "2000-01-01"
+          p (assoc (persona-at 1) :dob dob)
+          ctx (assoc (ctx-for p) :current :check)
+          calls (atom 0)
+          rng (proxy [Random] [(long 1)]
+                (nextDouble [] (swap! calls inc) (proxy-super nextDouble))
+                (nextInt ([n] (swap! calls inc) (proxy-super nextInt n))))
+          outcome (interp/step strict-age-guard-module rng ctx)
+          expected-t (.toEpochDay (.plusYears (LocalDate/parse dob) 51))]
+      (is (false? (:blocked? outcome)))
+      (is (= 0 @calls) "deterministic computation, not an rng draw")
+      (is (= expected-t (+ (:t ctx) (:advance outcome)))
+          "lands EXACTLY on dob+51 years, not dob+50 -- the +1-year strict-inequality boundary"))))
+
+(def joint-replacement-guard-module
+  "total_joint_replacement.json's own Joint_Replacement_Guard, byte-
+  confirmed against the fresh D3d fetch (gmf-interpreter.md section 14):
+  {:and [Attribute joint_replacement is-not-nil, Age > 50 years]}."
+  {:id "tjr-guard-mod"
+   :name "TjrGuard"
+   :states {:initial {:type :initial :direct-transition :check}
+            :check {:type :guard
+                    :allow {:condition-type :and
+                            :conditions [{:condition-type :attribute :attribute "joint_replacement"
+                                          :operator "is not nil"}
+                                         {:condition-type :age :operator ">" :quantity 50 :unit "years"}]}
+                    :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest compound-guard-jumps-forward-when-the-non-age-sibling-already-holds
+  (testing "the exact TJR shape: joint_replacement seeded, only Age
+            blocks -- sound to jump (D3e's own soundness proof)"
+    (let [p (persona-at 1)
+          ctx (-> (ctx-for p) (assoc :current :check)
+                  (update :attributes assoc :tjr-guard-mod/joint-replacement "knee"))
+          outcome (interp/step joint-replacement-guard-module (Random. 1) ctx)]
+      (is (false? (:blocked? outcome)) "no longer permanently blocked at age 0 (D2's own fix-forward finding)")
+      (is (pos? (:advance outcome))))))
+
+(deftest compound-guard-stays-blocked-when-the-non-age-sibling-does-not-hold
+  (testing "joint_replacement never seeded -- no sound jump exists
+            merely from advancing the clock, correctly blocks"
+    (let [ctx (assoc (ctx-for (persona-at 1)) :current :check)
+          outcome (interp/step joint-replacement-guard-module (Random. 1) ctx)]
+      (is (true? (:blocked? outcome))))))
+
+(def two-age-conditions-guard-module
+  "An :and with TWO Age sub-conditions -- ambiguous which bound
+  governs, an ESCALATION shape (D3e), not built: stays blocked, the
+  same disposition an unresolvable condition already has."
+  {:id "two-age-mod"
+   :name "TwoAge"
+   :states {:initial {:type :initial :direct-transition :check}
+            :check {:type :guard
+                    :allow {:condition-type :and
+                            :conditions [{:condition-type :age :operator ">=" :quantity 20 :unit "years"}
+                                         {:condition-type :age :operator "<" :quantity 30 :unit "years"}]}
+                    :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest compound-guard-with-two-age-conditions-is-not-resolved-stays-blocked
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :check)
+        outcome (interp/step two-age-conditions-guard-module (Random. 1) ctx)]
+    (is (true? (:blocked? outcome)))))
+
+(def date-alongside-age-guard-module
+  "An :and pairing Age with Date -- a second time-dependent sibling,
+  an ESCALATION shape (D3e), not built: stays blocked."
+  {:id "date-age-mod"
+   :name "DateAge"
+   :states {:initial {:type :initial :direct-transition :check}
+            :check {:type :guard
+                    :allow {:condition-type :and
+                            :conditions [{:condition-type :date :operator ">=" :year 2000}
+                                         {:condition-type :age :operator ">=" :quantity 50 :unit "years"}]}
+                    :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest compound-guard-with-date-alongside-age-is-not-resolved-stays-blocked
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :check)
+        outcome (interp/step date-alongside-age-guard-module (Random. 1) ctx)]
+    (is (true? (:blocked? outcome)))))
 
 ;; --- SetAttribute / Symptom -------------------------------------------------
 

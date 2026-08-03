@@ -33,19 +33,28 @@
 
   A documented v1 simplification, recorded here rather than left as a
   silent assumption: a Guard whose condition currently fails BLOCKS the
-  walk (no progress) UNLESS the condition is `:age` with operator `>=` --
-  in that one case, `step` computes the exact virtual-clock advance
-  needed to satisfy it (a deterministic date computation, consuming NO
-  rng draw) and proceeds, rather than blocking. This is the mechanism
-  that lets 'wait until old enough' Guards make progress under this
+  walk (no progress) UNLESS the condition is analytically resolvable --
+  in that case, `step` computes the exact virtual-clock advance needed
+  to satisfy it (a deterministic date computation, consuming NO rng
+  draw) and proceeds, rather than blocking. This is the mechanism that
+  lets 'wait until old enough' Guards make progress under this
   project's own 'no fixed tick' design (docs/gmf-interpreter.md section 3)
   without reintroducing the tick loop that design deliberately rejects:
   the jump is exactly as much virtual time as the one age threshold
   needs, not a polling interval. A Guard blocked on any other condition
-  (or a non-`>=` age comparison) simply halts progress -- a module
-  author's own responsibility to route around (the same responsibility
-  real Synthea's own Delay-then-Guard idiom already carries), not
-  something this interpreter resolves for them.
+  simply halts progress -- a module author's own responsibility to
+  route around (the same responsibility real Synthea's own Delay-then-
+  Guard idiom already carries), not something this interpreter resolves
+  for them. v1 (M5a): a bare `:age` condition, operator `>=` only. GMF
+  coverage Wave D stage D3 (2026-08-02, ADR-0029, D3e, H4, sound-jump-
+  or-escalate): extended to bare `:age` with operator `>` (the day-vs-
+  year integer-age-flooring boundary a strict inequality needs), and to
+  an `:and` compound containing exactly one Age sub-condition whose
+  every OTHER sibling is non-time-dependent and already holds (`age-
+  guard-jump-days`'s own docstring has the full soundness argument) --
+  any other compound shape (two Age conditions, `:date` alongside
+  `:age`, `:or`/`:at-least` wrapping one) is a named, unbuilt
+  escalation, not a heuristic jump.
 
   GMF coverage Wave B (2026-08-02, ADR-0027): CallSubmodule call/return
   and D4's own determinism-threading order contract. ONE clock (`:t`)
@@ -375,18 +384,66 @@
     (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: unsupported condition type"
                      {:condition-type (:condition-type condition)}))))
 
+(defn- bare-age-jump-days
+  "GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3e, H4): a
+  FAILING bare `:age` condition with operator `>=` OR `>` resolves
+  analytically -- the exact number of days until the persona's age
+  reaches :quantity `:unit`s, a deterministic java.time computation, NO
+  rng draw. `>`'s own jump target is `quantity + 1` years, not
+  `quantity` -- the day-vs-year integer-age-flooring boundary a strict
+  inequality needs: a floored age of exactly `quantity` does not
+  satisfy `>`, so the exact day floored-age first becomes STRICTLY
+  greater than `quantity` is the same `>=`-style boundary one year
+  later. Any other operator (`<`/`<=`/`==`) returns nil -- age only
+  ever increases, so a condition that is already true, or already
+  permanently false, is never 'about to become true'; no sound forward
+  jump exists (D3e's own account)."
+  [{:keys [operator quantity unit]} persona ^long t]
+  (when (and (#{">=" ">"} operator) (= unit "years"))
+    (let [target-years (if (= operator ">") (inc (long quantity)) (long quantity))
+          target-day (.toEpochDay (.plusYears (parse-dob persona) target-years))]
+      (when (> target-day t) (- target-day t)))))
+
 (defn- age-guard-jump-days
   "The v1 simplification this namespace's own docstring names: a FAILING
-  `:age` condition with operator `>=` resolves analytically -- the exact
-  number of days until the persona's age reaches :quantity `:unit`s, a
-  deterministic java.time computation, NO rng draw. Any other failing
-  condition (a different operator, a non-age condition type) returns nil
-  -- 'not analytically resolvable', the walk blocks instead (`guard-step`,
-  below)."
-  [{:keys [condition-type operator quantity unit]} persona ^long t]
-  (when (and (= condition-type :age) (= operator ">=") (= unit "years"))
-    (let [target-day (.toEpochDay (.plusYears (parse-dob persona) (long quantity)))]
-      (when (> target-day t) (- target-day t)))))
+  `:age` condition resolves analytically via `bare-age-jump-days`
+  (above) -- the exact virtual-clock advance needed, NO rng draw.
+
+  GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3e, H4,
+  sound-jump-or-escalate): a compound `:and` condition ALSO resolves,
+  when -- and only when -- it contains EXACTLY ONE `:age` sub-condition
+  (bare-resolvable per above) and every OTHER sibling is a condition
+  type that does not itself read `ctx`'s own `:t` (i.e. not `:age`/
+  `:date`, the only two v1 condition types whose truth value the mere
+  passage of time can change) AND already holds, evaluated against the
+  CURRENT ctx, before the jump. Soundness: the jump advances `:t` alone
+  -- no attribute is cleared, no trajectory event is un-emitted -- so a
+  non-`:age`/`:date` sibling true now stays true at the jump target
+  (a pure function of persona/attributes/trajectory, none of which the
+  jump touches), and the age sub-condition becomes true at the jump
+  target by the SAME construction the bare case already proves;
+  `guard-step`'s own 'no second, still-blocked branch' trust-by-
+  construction (below) extends unchanged to this compound case, since
+  this proof is what licenses it. Any OTHER form -- more than one Age
+  sub-condition, an `:and` also containing `:date`, `:or`/`:at-least`
+  wrapping an Age condition, or a sibling that does NOT already hold --
+  is an ESCALATION with no sound bound, correctly returning nil (the
+  walk blocks, unchanged); installed ≠ used (H1/H4): only the form
+  `total_joint_replacement.json`'s own `Joint_Replacement_Guard`
+  exercises (`{:and [Attribute is-not-nil, Age > 50 years]}`, ADR-0029's
+  own D2/D3d finding) is built, the rest named, not guessed at."
+  [module-id ctx condition]
+  (let [persona (:persona ctx) t (:t ctx)]
+    (case (:condition-type condition)
+      :age (bare-age-jump-days condition persona t)
+      :and (let [subs (:conditions condition)
+                 age-subs (filter #(= :age (:condition-type %)) subs)
+                 other-subs (remove #(= :age (:condition-type %)) subs)]
+             (when (and (= 1 (count age-subs))
+                        (every? #(not (#{:age :date} (:condition-type %))) other-subs)
+                        (every? #(evaluate-condition module-id ctx %) other-subs))
+               (bare-age-jump-days (first age-subs) persona t)))
+      nil)))
 
 ;; --- Transition resolution (direct, distributed, conditional, complex) ----
 
@@ -571,7 +628,7 @@
   (let [condition (:allow state)]
     (if (evaluate-condition module-id ctx condition)
       (pass-through-outcome module-id ctx rng state 0 [] tables)
-      (if-let [jump (age-guard-jump-days condition (:persona ctx) (:t ctx))]
+      (if-let [jump (age-guard-jump-days module-id ctx condition)]
         ;; `age-guard-jump-days` computes the EXACT day the condition
         ;; starts holding -- re-evaluating after the jump would always
         ;; pass by construction, so there is no second, still-blocked
