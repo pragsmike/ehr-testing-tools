@@ -37,6 +37,40 @@ prioritization table).
 | `medications/ear_infection_antibiotic.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/medications/ear_infection_antibiotic.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `fbbfe224292e9a90a0c125bae17c0721363939c56ef267bad0dc2579d6bb7d3c` | 2026-08-02 |
 | `medications/otc_pain_reliever.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/medications/otc_pain_reliever.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `d8f5f1a4885adfece1a8aef9a5ea0bf3172cab7e0d30fda00cae102b6b6b75ef` | 2026-08-02 |
 | `sepsis.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/sepsis.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `92b8f881d96f3a6a7d55d9a05dcdf25649aaee317b7524effffbd9655199a272` | 2026-08-02 |
+| `urinary_tract_infections.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/urinary_tract_infections.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `18de2b8e30d41ef1770fcb10aaf5912bfdb15dbe459cec18730029a37cf9ef7b` | 2026-08-02 |
+| `uti/telemed_path.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/uti/telemed_path.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `5f176628fb9209291dcae24ae78b76337cc5768dd9743975926c300026dde78c` | 2026-08-02 |
+| `uti/ambulatory_path.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/uti/ambulatory_path.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `c6a65a8da02f240f41fab61300594e0be04eb2a9b077b579daf0b8c6d47adddb` | 2026-08-02 |
+| `uti/ed_path.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/uti/ed_path.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `184ce09969461a6409e990cac2e688ef84699daa1a2120a76afa4c59d0846c92` | 2026-08-02 |
+| `uti/hpi.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/uti/hpi.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `eb789dabf6ad72896be1c089775d282b73a4653cff8736013bbac954f98b6242` | 2026-08-02 |
+| `uti/gu_pregnancy_check.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/uti/gu_pregnancy_check.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `945e01345cf9c32d8ed5740fa3ca1de81303c94bf0f75d7ea8dcd9d359506f77` | 2026-08-02 |
+| `uti/abx_tx.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/uti/abx_tx.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `4a67624e9bb7a755022f758efff1f9240d22cd2149d19e18c79f79fc9f9a0d05` | 2026-08-02 |
+| `uti/labs.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/uti/labs.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `a85e6f7d81e2fe673f08d39253b4de4de600a50a1f829c85a43abbc3723b2b04` | 2026-08-02 |
+| `uti/lab_follow_up.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/uti/lab_follow_up.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `ba89f931feaa0bc89bdf37909661c93d55fd7ef7fe87d5e37b65414890c3d58a` | 2026-08-02 |
+| `uti/ambulatory_eval.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/uti/ambulatory_eval.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `117c7462c39549af328d0d17889058c09fc1002b9516fb6a71f95cd0976cae93` | 2026-08-02 |
+| `uti/ed_eval.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/uti/ed_eval.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `24b7e6173b8c4da9782f2e04c50d3c098121def9efb1d933b9d729d93cc767a1` | 2026-08-02 |
+| `uti/ed_bundle.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/uti/ed_bundle.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `d9b85e669c1ac1f49bb04ed00d5e2a73260284c01a743fca23290680a61f7927` | 2026-08-02 |
+| `lookup_tables/uti.csv` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/lookup_tables/uti.csv` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `c3eec06429961a4484d1ab5f14973b778e59b0b80bbdad3fa2629329c8dbf231` | 2026-08-02 |
+| `lookup_tables/uti_recurrence.csv` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/lookup_tables/uti_recurrence.csv` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `baf597d27a7c139f962b7a100ff02abfcdc616c540478c7867e888305965aeda` | 2026-08-02 |
+
+**GMF coverage Wave D stage D3 payoff (2026-08-02, ADR-0029): the
+SEVENTH root entry, `urinary_tract_infections.json`, and this
+directory's SECOND closure (twelve files) and FIRST data-file members
+(two lookup-table CSVs, `resources/modules/lookup_tables/`).** Deferred
+at Wave B (D6, `ear_infections.json`'s own NOTICE paragraph, above) for
+being dirty with `DiagnosticReport`/`MultiObservation` (both landed
+Wave D stage D1) and a genuinely new, sixth GMF transition kind,
+`lookup_table_transition` (landed this session, D3a/H2, `ehrt.sim-
+trajectory.gmf/load-closure`'s own data-file-member extension, R4).
+Full closure re-survey, every mechanism this vendoring needed, and
+three additional D3f findings surfaced testing it against the real
+closure (a new encounter-class value, `complex_transition`'s own
+either/or, and a real upstream CSV byte-order-mark): `docs/gmf-
+interpreter.md` section 14. Interpreter-layer proof only
+(`ehrt.sim-trajectory.vendored-uti-test`) -- the full compile-
+trajectory/engine/emit round trip is a standing, already-disclosed gap
+for EVERY closure-having module vendored to date (`ear_infections.json`
+included, confirmed by direct search: no such test exists for it
+either), not newly introduced by this vendoring.
 
 **GMF coverage Wave D stage D1 payoff (2026-08-02): the SIXTH root
 entry, `sepsis.json`.** D1a's own closure survey
@@ -99,10 +133,13 @@ its state-type surface was already fully v1-expressible.
 
 License: Apache-2.0 (`synthetichealth/synthea`, `notes/facts-register.md`
 F2) -- the same license terms already govern every Synthea-derived
-source this project cites. Every file on disk (all eight, as of Wave D
-stage D1) is byte-verbatim against the URL above its own table row (re-verified:
-`sha256sum` on each equals the table's own hash) -- no reformatting, no
-re-indentation, no correction of any upstream file's own idiosyncrasies.
+source this project cites, CSVs included (`lookup_tables/uti.csv`/
+`uti_recurrence.csv`, D3a/H2 -- data-file closure members, the same
+upstream repository, same license). Every file on disk (twenty-one, as
+of Wave D stage D3) is byte-verbatim against the URL above its own
+table row (re-verified: `sha256sum` on each equals the table's own
+hash) -- no reformatting, no re-indentation, no correction of any
+upstream file's own idiosyncrasies.
 `sinusitis.json` carries at least
 one unquoted-JSON-number code value and a `Device`/`DeviceEnd` state
 pair outside this project's ORIGINAL v1 scope; see `docs/gmf-
