@@ -83,6 +83,12 @@
    ;; already gets (gated on snomed-icd10-map landing, not built yet): a
    ;; real message shape for procedures/medications is its own future
    ;; catalytic/segment-design work, not a same-session add.
+   ;; GMF coverage Wave D stage D2 (2026-08-02, ADR-0029 R3): :care-plan-
+   ;; start/:care-plan-end deliberately get NO entry here either, same
+   ;; precedent -- CarePlan's own natural rendering is a FHIR CarePlan
+   ;; resource, once sim-emit-fhir exists, not an HL7v2 shape invented
+   ;; for a format with no real CarePlan-equivalent segment (M3/M5b's
+   ;; own truth-only-facts treatment, R3's own ruling text verbatim).
    :observation {:type "ORU" :trigger "R01"}
    ;; GMF coverage Wave D stage D1 (2026-08-02, ADR-0029 P6): a real
    ;; DiagnosticReport panel IS an ORU^R01 with ORC+OBR present (unlike

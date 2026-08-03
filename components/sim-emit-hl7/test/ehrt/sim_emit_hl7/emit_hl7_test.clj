@@ -466,6 +466,25 @@
       (is (= [] (emit-hl7/event->messages ref-date utc-offset facility providers event))
           (str (:event event) " should render no message")))))
 
+;; GMF coverage Wave D stage D2 (2026-08-02, ADR-0029 R3/G3): the SAME
+;; truth-only, no-registry-entry, no-message treatment
+;; :procedure/:medication-order/:medication-end already establish,
+;; asserted the same way (G3's own "deliberate silence is an invariant,
+;; not an absence").
+
+(deftest message-type-registry-has-no-care-plan-entries
+  (is (nil? (emit-hl7/message-type-registry :care-plan-start)))
+  (is (nil? (emit-hl7/message-type-registry :care-plan-end))))
+
+(deftest care-plan-events-render-no-message
+  (let [pathway {:name "post-op" :steps [{:type :admission :location "Renal"}
+                                         {:type :care-plan-start :codes [a-concept]}
+                                         {:type :care-plan-end}]}
+        {:keys [ground-truth facility providers]} (engine/run {:seed 1 :patients 1 :pathways [{:pathway pathway :weight 1}]})]
+    (doseq [event (filter #(#{:care-plan-start :care-plan-end} (:event %)) ground-truth)]
+      (is (= [] (emit-hl7/event->messages ref-date utc-offset facility providers event))
+          (str (:event event) " should render no message")))))
+
 ;; --- M3: ORM^O01 + ORU^R01 --------------------------------------------
 
 (def ^:private cbc-order-pathway
