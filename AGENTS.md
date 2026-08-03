@@ -27,6 +27,11 @@ scan and `clojure -M:poly check` being green -- tests are CI's job, not
 the push gate's (`notes/ADRs.md` ADR-0003). See `AUTHORS-GUIDE.md` §1
 for the full rationale and gitleaks install instructions.
 
+**A "regression-oracle" claim means `bin/regression-oracle`'s own
+SHA-256 digests across a disposable worktree, never a test-count or
+assertion-count comparison** (`notes/ADRs.md` ADR-0030 J2, the
+`build-session` skill's own VERIFICATION section has the full rule).
+
 **The standing default is R30: a session commits and pushes at each
 checkpoint, unattended** (`notes/ADRs.md` ADR-0007, R-F ratified by
 ADR-0023, 2026-08-01) — the staging-hygiene ritual (`AUTHORS-GUIDE.md`

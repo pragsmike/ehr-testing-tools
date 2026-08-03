@@ -103,6 +103,26 @@ actually runs.
     (`ehrt.docs-tooling.index-completeness-test`) fails the build on a
     missing or ghost entry.
 
+## VERIFICATION
+
+**A regression-oracle claim means SHA-256 digests of output files
+across a disposable worktree at the baseline commit — a test-count or
+assertion-count comparison is NOT an oracle and may not be reported as
+one** (`notes/ADRs.md` ADR-0030, J2, ratified 2026-08-02 after finding
+that exact substitution had gone uncaught through two prior sessions'
+own dated notes, ADR-0029's D2/D3). `bin/regression-oracle
+<baseline-ref> <target-ref>` is the standing harness — two disposable
+`git worktree`s, a synthetic from-scratch classpath per worktree
+(`:local/root` pointed at that worktree, never a historical commit's
+own `deps.edn`), `bin/oracle-src/ehrt/oracle/digest.clj`'s own
+fixed-seed golden runs for the vendored-root set current at the time
+it runs. A session whose own prompt or ADR entry asserts "the
+regression oracle held" or "byte-identical" without naming this
+script's own output is making a claim it has not actually verified —
+fix the claim (run the script) or fix the wording (name the weaker
+method actually used, disclosed as a deviation the way ADR-0029's own
+D2 dated note did), never leave it unlabeled.
+
 ## Output
 
 Commits landed (or staged, in prepare-only mode) at each checkpoint,
@@ -118,4 +138,6 @@ and prompt archive.
 - [ ] `gitleaks` and `clojure -M:poly check` are green before every push.
 - [ ] Every push was verified against its message file.
 - [ ] AUTHOR ACTION items were named and left to the author, not taken.
+- [ ] Any regression-oracle claim this session made names
+      `bin/regression-oracle`'s own output, not a count comparison.
 - [ ] The session record and prompt archive land before the final push.
