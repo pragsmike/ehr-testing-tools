@@ -51,6 +51,24 @@ prioritization table).
 | `uti/ed_bundle.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/uti/ed_bundle.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `d9b85e669c1ac1f49bb04ed00d5e2a73260284c01a743fca23290680a61f7927` | 2026-08-02 |
 | `lookup_tables/uti.csv` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/lookup_tables/uti.csv` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `c3eec06429961a4484d1ab5f14973b778e59b0b80bbdad3fa2629329c8dbf231` | 2026-08-02 |
 | `lookup_tables/uti_recurrence.csv` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/lookup_tables/uti_recurrence.csv` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `baf597d27a7c139f962b7a100ff02abfcdc616c540478c7867e888305965aeda` | 2026-08-02 |
+| `total_joint_replacement.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/total_joint_replacement.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `1666dfc39a3a2266ccc8c5937a0de317a4330489fb315e36b9d55c6dd6bb3d8b` | 2026-08-02 |
+| `medications/moderate_opioid_pain_reliever.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/medications/moderate_opioid_pain_reliever.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `e48546e9250ec9d76408d3aa76898d3f30b7e49ee81bed692dc830acb4a4efba` | 2026-08-02 |
+| `total_joint_replacement/functional_status_assessments.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/total_joint_replacement/functional_status_assessments.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `7fd8e6f27f75718628529448d078c87ddf0849b19014d4e4f854935a97c5fe6c` | 2026-08-02 |
+| `dme/wheelchair_end.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/dme/wheelchair_end.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `e24ea11f2c9cdf830e06ce10eee411368194ab15890a1e0dec8ab5939be1aea9` | 2026-08-02 |
+
+**GMF coverage Wave D stage D3 payoff, second entry (2026-08-02,
+ADR-0029): the EIGHTH root entry, `total_joint_replacement.json`, and
+this directory's THIRD closure (four files).** Deferred at Wave D stage
+D2 (its own `joint_replacement` attribute gap resolved that stage via
+`run-module`'s own `initial-attributes` arity, but a SECOND, independent
+blocker found live -- `Joint_Replacement_Guard`'s own compound Age
+condition, outside `age-guard-jump-days`'s own v1 analytical-resolution
+shape). Landed this session (D3e/H4: `age-guard-jump-days` extended
+under a sound-jump-or-escalate rule). Full closure re-verification (by
+hash) and the compound-Guard design: `docs/gmf-interpreter.md` section
+14. Interpreter-layer proof only (`ehrt.sim-trajectory.vendored-tjr-
+test`) -- the SAME standing, already-disclosed full-pipeline gap named
+in the UTI payoff paragraph above applies here too.
 
 **GMF coverage Wave D stage D3 payoff (2026-08-02, ADR-0029): the
 SEVENTH root entry, `urinary_tract_infections.json`, and this
@@ -135,7 +153,7 @@ License: Apache-2.0 (`synthetichealth/synthea`, `notes/facts-register.md`
 F2) -- the same license terms already govern every Synthea-derived
 source this project cites, CSVs included (`lookup_tables/uti.csv`/
 `uti_recurrence.csv`, D3a/H2 -- data-file closure members, the same
-upstream repository, same license). Every file on disk (twenty-one, as
+upstream repository, same license). Every file on disk (twenty-five, as
 of Wave D stage D3) is byte-verbatim against the URL above its own
 table row (re-verified: `sha256sum` on each equals the table's own
 hash) -- no reformatting, no re-indentation, no correction of any
