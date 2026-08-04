@@ -5,38 +5,28 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- Nothing in progress at end of session (post-Wave-D cleanup closed
-  same day it started -- see Done, below).
+- Nothing in progress at end of session (Wave I2 closed same day it
+  started -- see Done, below; PARITY ACHIEVED, Wave H is now the sole
+  remaining wave).
 
 ## Next (backlog, no session scheduled)
-- **Wave I's own two unmasked findings** (ADR-0040 AR-7, found live
-  re-running the census after Wave I's own six mechanisms landed —
-  NOT fixed, real design/scope work): `congestive-heart-failure`'s own
-  `Dead_within_28_days` state uses Death's `:condition-onset`/
-  `:referenced-by-attribute` cause-of-death forms, a named, disclosed,
-  UNBUILT limitation from Wave C (ADR-0028 C1/C2 — "no vendored module
-  needs them yet"; one now does). `wellness-encounters` uses an
-  unsupported condition type, `:active-careplan` (Active CarePlan) — a
-  log-query family member (the same shape `:active-condition`/
-  `:active-medication` already establish) never built. Census after
-  Wave I: 82/85 walking (not 84), 1 out-of-scope, these 2 walk-failed —
-  no parity declaration lands until both close. Fold into Wave H's own
-  scope or a short follow-up wave first — author's call
-  (`.agents/plans/2026-08-02-gmf-parity-plan.md` §4's own dated note).
 - The lookup-column `time` gap (named in the schema-invalid family
   backlog since ADR-0039, still untouched — Wave I's own six
   mechanisms didn't cover it). Bulk vendoring (batched by closure
   family) follows once the catalog fully walks.
-- **Wave H design session** (moves LAST per the re-ordering above):
-  pre-roll — walk modules deterministically from onset to registration,
-  fold pre-window history into initial patient state, emit only
-  in-window events. Emit-nothing REAFFIRMED for the history phase
-  generally (ADR-0031 AR-3); this Wave's own design session owns the
-  actual fold-boundary mechanism, including the UTI pre-horizon
-  straddle finding (ADR-0033/ADR-0034 AR-6, the round-trip test's own
-  seed-777 dodge retires when H resolves it) AND a new, Wave-G-sourced
-  obligation: `:wellness-wait` reached during a future history-phase
-  fast-forward must FOLD state without emitting (ADR-0037 AR-2(c),
+- **Wave H design session — the SOLE remaining wave** (ADR-0041 AR-4:
+  PARITY ACHIEVED, the catalog fully walks now, see Done below — the
+  prior caveat here, "Wave H does NOT yet run against the complete
+  walking catalog," no longer applies): pre-roll — walk modules
+  deterministically from onset to registration, fold pre-window
+  history into initial patient state, emit only in-window events.
+  Emit-nothing REAFFIRMED for the history phase generally (ADR-0031
+  AR-3); this Wave's own design session owns the actual fold-boundary
+  mechanism, including the UTI pre-horizon straddle finding
+  (ADR-0033/ADR-0034 AR-6, the round-trip test's own seed-777 dodge
+  retires when H resolves it) AND a new, Wave-G-sourced obligation:
+  `:wellness-wait` reached during a future history-phase fast-forward
+  must FOLD state without emitting (ADR-0037 AR-2(c),
   `.agents/plans/2026-08-02-gmf-parity-plan.md`'s own H row carries the
   dated note). Wave E (risk-attribute register) is RE-SCOPED —
   calibration content on demand, not in the leverage queue (`stroke.json`
@@ -223,6 +213,32 @@ per item; done items move to the bottom of their section with a date and sha.
   shape should expect the same workaround, or this row graduates into
   an actual `bin/regression-oracle` enhancement (e.g. an opt-in "run
   each commit's own digest.clj against its own worktree" mode).
+
+## Done (this session, 2026-08-04, GMF coverage Wave I2 — the last two — ADR-0041, PARITY ACHIEVED)
+- **Death cause forms + `:active-careplan` (Step 1+2, one commit,
+  `14e8dce`).** Landed together, disclosed — the same shared-file-
+  region shape ADR-0040 AR-5 already took. `death-cause-codes`
+  resolves `:codes`/`:condition-onset`/`:referenced-by-attribute` per
+  `State.java`'s own REAL priority order (source re-read fresh: codes
+  first — CORRECTS docs/gmf-interpreter.md section 10's own backwards
+  paraphrase). `:condition-onset` gains `:assign-to-attribute` (found
+  live, necessary for `congestive_heart_failure.json`'s own `chf`
+  attribute to ever be written). `active-careplan-condition-holds?`
+  reuses `active-onset-condition-holds?` over `:care-plan-start`/
+  `:care-plan-end` for the `:codes` form (`depression_screening.json`'s
+  own real use); `:referenced-by-attribute` installed, fixture-proven,
+  not yet vendored-exercised. 13 new tests (net +11), full
+  sim-trajectory-adjacent suite green (299 tests, 802 assertions).
+- **Oracle bracket (Step 3).** `bin/regression-oracle dd6a9d4 14e8dce`
+  — all 9 vendored root batches IDENTICAL.
+- **Census re-run (Step 4).** `:ok-walked` 82→84, `:walk-failed` 2→0.
+  **84/85 `:ok-walked` + 1 `:out-of-scope-by-ruling` + ZERO
+  `:load-failed`/`:walk-failed` — parity plan §1/§3's own countable
+  definition MET. PARITY ACHIEVED**, pin
+  `7e08387c68a7f0e21d13076609a159fd473fc902`, 2026-08-04
+  (`.agents/plans/2026-08-02-gmf-parity-plan.md`'s own Status header;
+  `components/sim-trajectory/docs/gmf-interpreter.md` §15's own new
+  census-re-run subsection). **Wave H is now the SOLE remaining wave.**
 
 ## Done (this session, 2026-08-04, GMF coverage Wave I — the singleton tail — ADR-0040)
 - **NamedDistribution in `complex_transition` + encounter-class

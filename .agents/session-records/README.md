@@ -108,3 +108,4 @@ Files in this directory:
   * 2026-08-03-gmf-coverage-wave-lc.md
   * 2026-08-04-gmf-coverage-wave-vs.md
   * 2026-08-04-gmf-coverage-wave-i.md
+  * 2026-08-04-gmf-coverage-wave-i2.md

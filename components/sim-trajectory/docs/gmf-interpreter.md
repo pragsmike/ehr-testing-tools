@@ -1724,6 +1724,29 @@ establishes. `exact`/immediate are built anyway (the SAME code path
 cost — not "speculative" in ADR-0013 point 4's sense, since no new
 mechanism is added, only an existing one's `:death` case wires to it).
 
+> **Dated resolution note (2026-08-04, GMF coverage Wave I2, ADR-0041
+> AR-1): both UNBUILT forms above are now BUILT** (`ehrt.sim-
+> trajectory.gmf-interpreter/death-cause-codes`) — `congestive_heart_
+> failure.json`'s own four Death states all use `referencedByAttribute`.
+> This ALSO corrects this section's own "priority order: conditionOnset,
+> referencedByAttribute, codes" claim two paragraphs up, and the quoted
+> pseudocode's own `if (conditionOnset != null) ... else if
+> (referencedByAttribute...) ... else if (codes...)` shape — both were
+> paraphrases, not a verbatim quote, and both had the real order
+> backwards. `State.java`'s own `Death.process`, re-read fresh at the
+> same pin for ADR-0041: `Code reason = null; if (codes != null) {
+> reason = codes.get(0); } else if (conditionOnset != null) { ... }
+> else if (referencedByAttribute != null) { ... }` — `codes` is checked
+> FIRST. `conditionOnset`'s own real resolution is also more layered
+> than the paraphrase above states: `person.hadPriorState(...)` gates a
+> first branch (the condition's own PRESENT entry, matched by name);
+> failing that, a SECOND fallback reads the named state's own
+> JSON-declared codes directly off the module, regardless of whether it
+> ever fired. This project's own port implements only the first branch
+> (a trajectory citation query, ADR-0041's own `death-cause-codes`) —
+> the second fallback is a disclosed, NOT-ported simplification, named
+> in ADR-0041's own Fence.
+
 ### C5 — `stroke.json`'s own closure survey
 
 | Module | States | State-type gap | Condition-vocab gap | Transition-kind sweep | Other findings |
@@ -2560,6 +2583,24 @@ function, a different event-type pair) is straightforward to build the
 day a real candidate needs it; the next session vendoring one should
 build it fresh against that module's own real usage, not treat this
 sketch as settled.
+
+> **Dated resolution note (2026-08-04, GMF coverage Wave I2, ADR-0041
+> AR-2): the sketch above is now BUILT, `active-careplan-condition-
+> holds?`** (`ehrt.sim-trajectory.gmf-interpreter`) — the real
+> candidate this paragraph anticipated turned out to be
+> `wellness-encounters.json`'s own closure member, `encounter/
+> depression_screening.json` (`Check Eligibility`'s own At-Least
+> guard), not `total_joint_replacement.json`. The design matches the
+> sketch's own prediction almost exactly (`active-onset-condition-
+> holds?` reused over `:care-plan-start`/`:care-plan-end`, one function,
+> a different event-type pair) — grounded, this time, against
+> `Logic.java`'s own `ActiveLogic` parent class (`ActiveCarePlan`'s own
+> four-method override alone does not show the dispatch: `:codes`
+> checked first, `:referenced-by-attribute` only when `:codes` is
+> absent, re-testing the referenced entry's own active status, never
+> merely "the attribute exists"). Only the `:codes` form is vendored-
+> exercised; `:referenced-by-attribute` is installed, proven by a
+> hand-built fixture, per ADR-0041's own execution record.
 
 ## 14. GMF coverage Wave D stage D3: closure survey and characterization findings (2026-08-02)
 
@@ -3508,6 +3549,34 @@ hit exactly the boundary case the inclusive design didn't cover. Fixed,
 re-verified (the oracle bracket above and this section's own numbers
 are the POST-fix, correct run), and its own dedicated commit's message
 carries the full account."
+
+### Census re-run (2026-08-04, ADR-0041 AR-4): PARITY ACHIEVED
+
+Wave I2 (ADR-0041) closes the tail Wave I's own six-mechanism landing
+left unmasked (ADR-0040 AR-7): `congestive-heart-failure`'s Death
+states (`:condition-onset`/`:referenced-by-attribute` cause forms) and
+`wellness-encounters`' `:active-careplan` condition. Re-run with the
+SAME header parameters every wave since Wave F has used. New artifact:
+[`components/sim-trajectory/docs/census/2026-08-04-synthea-7e08387-wave-i2.edn`](census/2026-08-04-synthea-7e08387-wave-i2.edn).
+
+| Verdict | Post-I | Post-I2 |
+|---|---:|---:|
+| `:ok-walked` | 82 | **84** |
+| `:out-of-scope-by-ruling` | 1 | 1 |
+| `:walk-failed` | 2 | **0** |
+| `:load-failed` | 0 | 0 |
+| **Total** | **85** | **85** |
+
+Both `congestive-heart-failure` and `wellness-encounters` move to
+`:ok-walked` (`:walk-errors []`); no other module's own verdict or
+digest shifted — confirmed by direct comparison against the post-I
+artifact, not merely a count match. Zero `:load-failed` and zero
+`:walk-failed`, with every `:ok-walked` module's own smoke-walk digest
+recorded: **this is parity plan §1/§3's own countable definition, MET.
+PARITY ACHIEVED, at pin `7e08387c68a7f0e21d13076609a159fd473fc902`,
+2026-08-04.** `notes/ADRs.md` ADR-0041 has the full mechanism account;
+`.agents/plans/roadmap.md` retires this row and names Wave H the sole
+remaining wave.
 
 ## 16. GMF coverage Wave VS: the vital-sign channel (2026-08-04, ADR-0039)
 

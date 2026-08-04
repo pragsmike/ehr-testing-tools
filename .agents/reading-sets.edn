@@ -256,7 +256,14 @@
   ;; record/prompt-archive filenames brought the real total from 1753
   ;; to 1806 -- self-caught, the same pattern every prior session
   ;; touching this file has hit.
-  :budget-lines 1806}
+  ;;
+  ;; GMF coverage Wave I2 (2026-08-04, ADR-0041): the roadmap's own new
+  ;; Done section, the Next section's own two-finding retirement, the
+  ;; parity plan's own PARITY ACHIEVED Status amendment and dated note,
+  ;; and this session's own session-record/prompt-archive filenames
+  ;; brought the real total from 1806 to 1824 -- self-caught, the same
+  ;; pattern every prior session touching this file has hit.
+  :budget-lines 1824}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one

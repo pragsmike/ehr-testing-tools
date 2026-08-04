@@ -1,6 +1,19 @@
 # 2026-08-02 — GMF parity plan: from Wave D to full Synthea module parity
 
-Status: **APPROVED (2026-08-03, `notes/ADRs.md` ADR-0031).** Successor
+Status: **APPROVED (2026-08-03, `notes/ADRs.md` ADR-0031). PARITY
+ACHIEVED (2026-08-04, ADR-0041 AR-4), at pin
+`7e08387c68a7f0e21d13076609a159fd473fc902`.** §1's own countable
+definition (below) is MET: the census
+([`2026-08-04-synthea-7e08387-wave-i2.edn`](../../components/sim-trajectory/docs/census/2026-08-04-synthea-7e08387-wave-i2.edn))
+shows 84/85 top-level modules `:ok-walked`, 1 `:out-of-scope-by-ruling`
+(`gallstones`, a ruled Physiology exclusion, ADR-0037 AR-5), ZERO
+`:load-failed`, ZERO `:walk-failed` — every walked module's own
+smoke-walk digest recorded, zero load failures. Parity is a
+pinned-commit claim, not a permanent one (§1's own second bullet below
+still holds — upstream adds modules); this status records that the
+claim held, verified, at the pin every citation in this plan already
+uses. Wave H (`.agents/plans/roadmap.md`) is now the sole remaining
+wave. Successor
 to `.agents/plans/2026-08-02-gmf-coverage-plan.md`, whose Waves A–D are
 complete (`297e337`…`7257775`) and whose H8 retrospective enumerates the
 standing items this plan schedules.
@@ -188,6 +201,16 @@ short follow-up wave, author's call. **Wave H does NOT yet run against
 the complete walking catalog** — its own history-phase design should
 account for these two modules still being closed out, not assume they
 already walk.
+
+**Dated note (2026-08-04, ADR-0041): Wave I2 closes both findings —
+PARITY ACHIEVED, see this file's own Status header, above.** A short
+follow-up wave, not a Wave H scope fold: Death's own `:condition-
+onset`/`:referenced-by-attribute` cause forms and `:active-careplan`
+both land (ADR-0041 AR-1/AR-2). Census moves 82→84 `:ok-walked`, 2→0
+`:walk-failed` — the countable definition this plan's §1/§3 states is
+now MET. **Wave H now DOES run against the complete walking catalog**
+— the caveat two paragraphs up no longer applies, and Wave H is the
+sole remaining wave.
 
 **Dated note (2026-08-03, author ruling, recorded ADR-0039 AR-7): Wave
 H moves LAST, after the schema-invalid family and the Wave I tail** —
