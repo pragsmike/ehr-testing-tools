@@ -2506,7 +2506,15 @@
 ;; exercises.
 
 (def wave-i-vital-sign-names
-  ["Weight" "Heart Rate" "Respiration Rate" "Head Circumference" "Head Circumference Percentile"])
+  ["Weight" "Heart Rate" "Respiration Rate" "Head Circumference" "Head Circumference Percentile"
+   ;; FOUND LIVE, FIXED (2026-08-04, same session, AR-7's own census re-run
+   ;; step): these six carry `category: "laboratory"` upstream, not
+   ;; "vital-signs" -- the category-gated enumeration above missed them;
+   ;; the interpreter's own `vital_sign` branch never gated on category
+   ;; at all (`sim-trajectory/vital-signs.edn`'s own dated note has the
+   ;; full account). congestive_heart_failure.json's own Creatinine
+   ;; reader is the real closure this unblocks.
+   "Creatinine" "Blood Glucose" "EGFR" "LDL" "Microalbumin Creatinine Ratio" "Total Cholesterol"])
 
 (deftest every-wave-i-vital-sign-name-resolves-via-the-observation-reader
   (doseq [vs-name wave-i-vital-sign-names]
