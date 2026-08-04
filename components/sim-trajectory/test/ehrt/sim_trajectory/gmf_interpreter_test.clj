@@ -1257,15 +1257,23 @@
 ;; already-built :observation STATE type (M5a). Semantics grounded against
 ;; Synthea's own Logic.java Observation class at the docs/gmf-interpreter.md
 ;; pinned commit: most recent matching-code observation's value, compared
-;; via :operator; THROWS if no matching observation was ever recorded (the
-;; SAME "required precondition, module author's own responsibility"
-;; design Synthea itself uses -- v1 scope omits the "is nil"/"is not nil"
-;; operators real Synthea also supports for exactly this case, since no
-;; candidate module this session needs them). Real use: sore_throat.json's
-;; Determine_if_Bacterial (Step 3), whose only two predecessor states
-;; (Take_Temperature_High/Low) are BOTH Observation states citing the same
-;; LOINC code -- confirmed by reading the vendored file directly, so the
-;; throw-on-missing path is never live on that module's own real walk.
+;; via :operator.
+;;
+;; FIXED (2026-08-04, ADR-0040 AR-3): used to THROW when no matching
+;; observation was ever recorded -- corrected to FALSE, upstream's own
+;; issue-774 band-aid (`Logic.java`'s `exporter.split_records=true`
+;; branch), adopted unconditionally since this project has no split-
+;; records/lossOfCare axis of its own for a config flag to gate. "is
+;; nil"/"is not nil" (real Synthea's own explicit absence tests) stay
+;; OUT of v1 scope, unchanged -- no candidate module this session needs
+;; them. Real use: sore_throat.json's Determine_if_Bacterial (Step 3),
+;; whose only two predecessor states (Take_Temperature_High/Low) are
+;; BOTH Observation states citing the same LOINC code (confirmed by
+;; reading the vendored file directly, so the absent-on-missing path is
+;; never live on that module's own real walk); anemia___unknown_
+;; etiology.json's own `anemia_sub` submodule is the real closure this
+;; session's fix unblocks (a Hematocrit condition reached before any
+;; Hematocrit was ever recorded on some branch).
 
 (def temp-concept {:system :loinc :code "8310-5" :display "Body temperature"})
 
@@ -1283,16 +1291,12 @@
                     {:module "m" :state :take-temp-2 :event :observation :t 1 :codes [temp-concept] :value 39.0})]
     (is (true? (interp/evaluate-condition "m" ctx {:condition-type :observation :codes [temp-concept] :operator ">" :value 38})))))
 
-(deftest observation-condition-throws-when-no-matching-observation-was-ever-recorded
-  (testing "the same required-precondition design Synthea's own Logic.java
-            Observation class uses -- a module reaching this condition
-            without ever recording the observation it queries is a module-
-            authoring-shape bug this interpreter surfaces rather than
-            silently defaults, the same disposition unsupported condition
-            types and the max-steps backstop already get"
-    (is (thrown? clojure.lang.ExceptionInfo
-                 (interp/evaluate-condition "m" (ctx-for (persona-at 1))
-                                             {:condition-type :observation :codes [temp-concept] :operator ">" :value 38})))))
+(deftest observation-condition-is-false-when-no-matching-observation-was-ever-recorded
+  (testing "ADR-0040 AR-3: absence is what this condition TESTS -- false,
+            never a thrown module-authoring-shape-bug error, upstream's
+            own issue-774 band-aid adopted unconditionally"
+    (is (false? (interp/evaluate-condition "m" (ctx-for (persona-at 1))
+                                            {:condition-type :observation :codes [temp-concept] :operator ">" :value 38})))))
 
 (deftest observation-condition-consumes-no-rng
   (let [calls (atom 0)

@@ -546,18 +546,48 @@
   class -- the most recent matching-code observation's value, compared via
   :operator. Already-existing data: the accumulating :trajectory (the
   value itself was sampled and carried by the already-built :observation
-  STATE type, M5a). Mirrors upstream's own required-precondition design:
-  THROWS when no matching observation was ever recorded, the same
-  'module-authoring-shape bug, not this interpreter's problem' disposition
-  unsupported condition types and the max-steps backstop already get -- v1
-  scope omits the 'is nil'/'is not nil' operators real Synthea also
-  supports for exactly this case, since no candidate module this session
-  needs them."
-  [module-id ctx {:keys [operator codes value]}]
+  STATE type, M5a).
+
+  FIXED (2026-08-04, ADR-0040 AR-3): used to THROW when no matching
+  observation was ever recorded, the 'module-authoring-shape bug'
+  disposition -- corrected against the pin (`Logic.java`'s own
+  `Observation.test`, source-grounded): upstream's DEFAULT path
+  (`exporter.split_records` unset, the standing config value in every
+  context this project's own census runs under) also throws a
+  NullPointerException here for a comparison operator with no matching
+  observation, the SAME 'required precondition, module-authoring bug'
+  reading this project's own prior throw already had right. What
+  changes is the RULING, not the source: upstream's `exporter.
+  split_records=true` branch instead returns `false` (its own
+  documented issue-774 band-aid) -- this project deliberately ADOPTS
+  that band-aid's behavior unconditionally, since this project has no
+  split-records/lossOfCare concept of its own for the config to
+  meaningfully gate (the same 'simplify a upstream config axis this
+  project doesn't model' disposition `:active-allergy`'s own
+  always-false simplification and `type-of-care-weights`'s own
+  always-typical-emergency branch already establish) -- a deliberate
+  simplification the ADR discloses, not a misreading of the band-aid as
+  upstream's only behavior. `anemia___unknown_etiology.json`'s own
+  `anemia_sub` submodule is the real, found gap this session's AR-3
+  closes (a Hematocrit Observation condition reached before any
+  Hematocrit was ever recorded on some branch).
+
+  Absence is what THIS CONDITION TESTS -- 'no matching observation yet'
+  is real, expected module state on some branches, not a programmer
+  error, so `false` is the correct semantics here, not a silent
+  default: distinguished from this namespace's own `honest-absence`
+  doctrine (`race`/`socioeconomic-status`/`vital-sign`/lookup-table-
+  column), which reserves a WALK-ERROR result for a genuinely
+  unconfigured field a module's author had every reason to expect
+  present. `is nil`/`is not nil` (upstream's own explicit absence
+  tests, handled BEFORE this null-check on the pin) stay OUT of v1
+  scope, unchanged -- no candidate module this session needs them
+  either (the same omission this function's own docstring already
+  named, pre-dating this fix)."
+  [{:keys [operator codes value]} ctx]
   (if-let [obs-value (latest-observation-value ctx codes)]
     (compare-op operator obs-value value)
-    (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: Observation condition has no matching prior observation"
-                     {:module-id module-id :codes codes}))))
+    false))
 
 (defn- active-onset-condition-holds?
   "Does `ctx`'s own trajectory contain an `onset-event-type` event whose
@@ -729,7 +759,7 @@
     :or (or-condition-holds? module-id ctx condition)
     :at-least (at-least-condition-holds? module-id ctx condition)
     :date (date-condition-holds? condition (:t ctx))
-    :observation (observation-condition-holds? module-id ctx condition)
+    :observation (observation-condition-holds? condition ctx)
     :symptom (symptom-condition-holds? module-id ctx condition)
     :not (not-condition-holds? module-id ctx condition)
     :race (race-condition-holds? condition (:persona ctx))
