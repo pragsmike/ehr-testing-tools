@@ -138,3 +138,31 @@
           (is (every? (fn [e] (some? (:references e))) end-events))
           (is (every? (fn [e] (nil? (:call-path e))) end-events)
               "MedicationEnd runs in the ROOT module, outside any active call"))))))
+
+;; --- GMF coverage Wave G (2026-08-03, ADR-0037 AR-3/AR-7): the
+;; create-now substitution retired -- Next_Wellness_Encounter now waits
+;; for a real cadence tick rather than firing the instant medications
+;; end. -----------------------------------------------------------------
+
+(defn- wellness-events [trajectory]
+  (filter #(and (= :encounter (:event %)) (= :wellness (:encounter-class %))) trajectory))
+
+(deftest next-wellness-encounter-now-resolves-at-a-real-cadence-tick-not-immediately
+  (testing "ADR-0037 AR-3: End_Ear_Infection_Medications' own zero-time
+            fallback transition to Next_Wellness_Encounter used to fire
+            an :outpatient-visit AT THE SAME instant medications ended
+            (the retired create-now substitution, ADR-0031 AR-5(b)) --
+            it now waits for next-wellness-tick, strictly later"
+    (let [seed (first (keep (fn [seed]
+                               (let [result (walk-result seed :male)]
+                                 (when (seq (wellness-events (:trajectory result)))
+                                   seed)))
+                             (well-mixed-candidate-seeds 2000 20260803)))]
+      (is (some? seed) "expected at least one well-mixed candidate seed to reach the wellness encounter")
+      (let [result (walk-result seed :male)
+            trajectory (:trajectory result)
+            wellness-event (first (wellness-events trajectory))
+            last-med-end-t (apply max (map :t (medication-end-events trajectory)))]
+        (is (some? wellness-event))
+        (is (> (:t wellness-event) last-med-end-t)
+            "the wellness encounter now fires strictly AFTER the last medication ends, never at the same instant")))))

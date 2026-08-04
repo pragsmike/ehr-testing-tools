@@ -1994,3 +1994,136 @@
           age-38-tick (.toEpochDay (.plusYears dob-date 38))]
       (is (= (.toEpochDay (.plusYears dob-date 41))
              (interp/next-wellness-tick p (inc age-38-tick)))))))
+
+;; --- GMF coverage Wave G (2026-08-03, ADR-0037 AR-3/AR-7): the
+;; :wellness-wait interpreter case -- advance-to-tick, reason
+;; attachment, horizon parking (Delay's own mechanism, reused
+;; unchanged), and the loop-bounding acceptance evidence. Inline
+;; fixtures ONLY (AR-7's own fence) -- the four real upstream loop
+;; modules this Wave unblocks (med-rec/mend-program/metabolic-syndrome-
+;; care/veteran-substance-abuse-treatment) are census-level evidence
+;; (AR-8), never a test dependency. --------------------------------------
+
+(def wellness-wait-module
+  {:id "wellness-wait-mod"
+   :name "WellnessWait"
+   :states {:initial {:type :initial :direct-transition :wait}
+            :wait {:type :wellness-wait :reason "checkup" :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest wellness-wait-advances-the-clock-to-the-next-cadence-tick-and-attaches-reason
+  (testing "AR-3: the module clock advances to next-wellness-tick, and
+            the emitted event attaches the state's own :reason -- a
+            NEW thread, unlike every other Encounter-shaped state's
+            own validation-only :reason (gmf.clj's own D2 disclosure)"
+    (let [p (persona-at 1)
+          ctx (-> (ctx-for p) (assoc :current :wait) (update :t + 10))
+          expected-tick (interp/next-wellness-tick p (:t ctx))
+          outcome (interp/step wellness-wait-module (Random. 1) ctx)]
+      (is (pos? (:advance outcome)) "a genuine forward advance, not a zero-time pass-through")
+      (is (= (- expected-tick (:t ctx)) (:advance outcome)))
+      (is (= :done (:next outcome)))
+      (is (false? (:blocked? outcome)))
+      (let [event (first (:events outcome))]
+        (is (= :encounter (:event event)))
+        (is (= :wellness (:encounter-class event)))
+        (is (= "checkup" (:reason event)))
+        (is (= expected-tick (:t event)))))))
+
+(deftest wellness-wait-consumes-zero-rng-draws
+  (testing "AR-2: next-wellness-tick is pure -- confirmed via the same
+            call-counting proxy discipline
+            exact-delay-advances-deterministically-with-no-rng-draw
+            already establishes"
+    (let [ctx (-> (ctx-for (persona-at 1)) (assoc :current :wait) (update :t + 10))
+          calls (atom 0)
+          rng (proxy [Random] [(long 1)]
+                (nextInt ([n] (swap! calls inc) (proxy-super nextInt n))))]
+      (interp/step wellness-wait-module rng ctx)
+      (is (= 0 @calls)))))
+
+(def wellness-wait-no-reason-module
+  {:id "wellness-wait-no-reason-mod"
+   :name "WellnessWaitNoReason"
+   :states {:initial {:type :initial :direct-transition :wait}
+            :wait {:type :wellness-wait :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest wellness-wait-with-no-reason-never-fabricates-one
+  (testing "code-passthrough discipline: :reason absent on the state ->
+            absent on the event, never a nil-valued key"
+    (let [ctx (assoc (ctx-for (persona-at 1)) :current :wait)
+          outcome (interp/step wellness-wait-no-reason-module (Random. 1) ctx)
+          event (first (:events outcome))]
+      (is (not (contains? event :reason))))))
+
+(def wellness-wait-then-encounter-module
+  {:id "wellness-then-mod"
+   :name "WellnessThen"
+   :states {:initial {:type :initial :direct-transition :warm-up}
+            ;; a small warm-up delay so :wait is reached STRICTLY after
+            ;; DOB -- reached exactly at DOB, `next-wellness-tick`'s own
+            ;; tick0 = DOB would return zero advance (the test's own
+            ;; premise needs a nonzero jump to bound the horizon inside)
+            :warm-up {:type :delay :exact {:quantity 15 :unit "days"} :direct-transition :wait}
+            :wait {:type :wellness-wait :direct-transition :after}
+            :after {:type :encounter :encounter-class :ambulatory
+                    :codes [{:system :snomed :code "999999" :display "After"}]
+                    :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest wellness-wait-parks-past-the-horizon-the-same-way-delay-does
+  (testing "AR-3: bounded by horizon-end-t exactly as Delay is -- NOT
+            by anything inside wellness-wait-step itself (it never
+            receives horizon-end-t), but by run-module's own loop,
+            which re-checks :t against horizon-end-t BEFORE every step.
+            The wellness event's own step already started (entry :t
+            was still < horizon-end-t), so it still lands in the
+            trajectory even though its own computed tick overshoots the
+            horizon -- exactly the same mechanism that lets a Delay's
+            own advance overshoot in one step. The STATE AFTER
+            wellness-wait, though, never executes: :horizon-complete,
+            not an exception, not :blocked"
+    (let [p (persona-at 1)
+          dob (interp/dob-epoch-day p)
+          horizon-end-t (+ dob 20)
+          result (interp/run-module wellness-wait-then-encounter-module (Random. 1) p dob horizon-end-t)]
+      (is (= :horizon-complete (:status result)))
+      (is (some #(and (= :encounter (:event %)) (= :wellness (:encounter-class %))) (:trajectory result))
+          "the wellness-wait's own event still landed")
+      (is (not-any? #(and (= :encounter (:event %)) (= :ambulatory (:encounter-class %))) (:trajectory result))
+          "the AFTER state's own encounter never fired -- the walk parked before reaching it"))))
+
+(def wellness-wait-act-loop-module
+  {:id "wellness-loop-mod"
+   :name "WellnessLoop"
+   :states {:initial {:type :initial :direct-transition :wait}
+            :wait {:type :wellness-wait :direct-transition :act}
+            :act {:type :counter :attribute "visits" :action :increment :direct-transition :nudge}
+            ;; a 1-day nudge between one wellness-wait and the next --
+            ;; without it, looping straight back into :wellness-wait
+            ;; would re-query next-wellness-tick AT the exact tick just
+            ;; landed on, which (correctly, per AR-2's own "first tick
+            ;; >= t") returns that SAME tick again, zero advance. A real
+            ;; module's own loop body always does SOMETHING (an
+            ;; assessment, a Delay) between visits; this nudge is that,
+            ;; minimally.
+            :nudge {:type :delay :exact {:quantity 1 :unit "days"} :direct-transition :wait}}})
+
+(deftest wellness-wait-act-loop-terminates-horizon-bounded-not-max-steps
+  (testing "AR-7: the four real upstream loop modules this Wave
+            unblocks (med-rec/mend-program/metabolic-syndrome-care/
+            veteran-substance-abuse-treatment) spin under the RETIRED
+            create-now substitution -- a zero-time-advance wellness
+            encounter never let the horizon check catch up, so the
+            walk ran to max-steps and threw. Genuine wait semantics
+            make EVERY iteration advance a real cadence interval, so
+            the horizon bounds iterations the same way it already
+            bounds every other module's own walk"
+    (let [p (persona-at 1)
+          dob (interp/dob-epoch-day p)
+          horizon-end-t (+ dob (* 365 5))
+          result (interp/run-module wellness-wait-act-loop-module (Random. 1) p dob horizon-end-t)]
+      (is (= :horizon-complete (:status result)))
+      (is (>= (count (filter #(= :encounter (:event %)) (:trajectory result))) 2)
+          "multiple wellness ticks fired over the 5-year horizon -- genuine iteration, not a single pass"))))

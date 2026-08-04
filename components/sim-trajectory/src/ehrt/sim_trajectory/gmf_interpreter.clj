@@ -1178,6 +1178,40 @@
        :terminal? false
        :blocked? false})))
 
+(defn- wellness-wait-step
+  "GMF coverage Wave G (2026-08-03, ADR-0037 AR-3): advances the module
+  clock to `next-wellness-tick` (a PURE function of persona+t, zero rng
+  draws -- AR-2), opens a wellness `:outpatient-visit`-family `:encounter`
+  event AT the tick -- `death-step`'s own 'the event cites the COMPUTED
+  time, never entry time' precedent is the shape this borrows -- attaches
+  `state`'s own `:reason` when present (a NEW thread: unlike every other
+  Encounter-shaped state, whose own `:reason` field is validation-only
+  dead weight, `gmf.clj`'s own D2 disclosure), then resolves the
+  ORDINARY transition via `pass-through-outcome`, the same helper
+  `emit-and-advance` already reuses for every other event-then-advance
+  state.
+
+  Bounded by `horizon-end-t` exactly as Delay is -- NOT by anything in
+  THIS function, which never receives it: `run-module`'s own loop
+  already re-checks `:t` against `horizon-end-t` before every `step`
+  call, the SAME mechanism that already lets a Delay's own advance
+  overshoot the horizon in one step and get caught on the NEXT loop
+  iteration ('parking past the horizon ends the walk in the same status
+  Delay uses'). This is also the loop-bounding mechanism AR-7's own
+  four upstream loop modules rely on: each `:wellness-wait` -> ... ->
+  Guard -> `:wellness-wait` cycle now advances a FULL cadence interval
+  per iteration (never zero, unlike the retired create-now
+  substitution), so the horizon bounds iterations the same way it
+  already bounds every other module's own walk."
+  [module-id ctx ^Random rng state tables]
+  (let [t' (next-wellness-tick (:persona ctx) (:t ctx))
+        event (trajectory-event module-id (assoc ctx :t t') :encounter
+                                 (cond-> {:encounter-class :wellness}
+                                   (:codes state) (assoc :codes (:codes state))
+                                   (:reason state) (assoc :reason (:reason state))))
+        ctx' (update ctx :trajectory conj event)]
+    (pass-through-outcome module-id ctx' rng state (- t' (:t ctx)) [event] tables)))
+
 (defn- death-step
   "GMF coverage Wave C (2026-08-02, ADR-0028, C1/C2): `state`'s own
   :range/:exact resolve the SAME way `resolve-time-advance` already
@@ -1402,7 +1436,13 @@
       ;; `compile-trajectory`'s own explicit :supply-list clause compiles
       ;; to NO IR step (the ConditionEnd no-open-encounter precedent
       ;; verbatim, unconditional here rather than encounter-gated).
-      :supply-list (emit-and-advance module-id ctx rng state :supply-list {:components (:supplies state)} tables)))))
+      :supply-list (emit-and-advance module-id ctx rng state :supply-list {:components (:supplies state)} tables)
+      ;; GMF coverage Wave G (2026-08-03, ADR-0037 AR-3): wellness-wait
+      ;; -- loader-distinct from :encounter (gmf.clj's own
+      ;; `effective-state-type` override) since it is a genuine
+      ;; BLOCK-then-attach cycle, not an immediate creation -- retiring
+      ;; Wave B's own create-now substitution (ADR-0031 AR-5(b)).
+      :wellness-wait (wellness-wait-step module-id ctx rng state tables)))))
 
 ;; --- GMF coverage Wave F (2026-08-03, ADR-0036 AR-4): honest-absence, at
 ;; the walk boundary -- `step` itself still THROWS `honest-absence` (the

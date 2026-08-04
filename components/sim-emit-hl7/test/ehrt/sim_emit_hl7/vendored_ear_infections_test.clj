@@ -13,7 +13,24 @@
   `:modules`/`:tables` maps through to `run-module`'s full arity
   (`engine.clj`'s own `:registered` defmethod) -- this file now proves
   the round trip works for real, replacing the pin with the working
-  assertion its own docstring always said it would become."
+  assertion its own docstring always said it would become.
+
+  **Dated note (2026-08-03, `notes/ADRs.md` ADR-0037 AR-3/AR-7): the
+  module's own `Next_Wellness_Encounter` no longer fires instantly --
+  it waits for a real cadence tick (`next-wellness-tick`).** This
+  file's own assertions (real `:outpatient-visit` content lands, the
+  invariant catalog holds, HL7 renders) are unaffected and re-confirmed
+  green under the new timing -- the `:outpatient-visit` step type is
+  shared by BOTH the primary (ambulatory) and the wellness encounter
+  once compiled, so this engine-layer round trip cannot distinguish
+  which produced a given step. The NEW-timing claim itself (the
+  wellness encounter fires strictly after the last medication ends, not
+  at the same instant) is proven at the INTERPRETER layer instead
+  (`ehrt.sim-trajectory.vendored-ear-infections-test`'s own
+  `next-wellness-encounter-now-resolves-at-a-real-cadence-tick-not-immediately`),
+  per AR-4's own boundary ruling that semantic walk claims are an
+  interpreter-layer concern, engine round-trips a narrower
+  does-it-still-work-end-to-end one."
   (:require [clojure.java.io :as io]
             [clojure.test :refer [deftest is testing]]
             [ehrt.kernel.interface :as result]
