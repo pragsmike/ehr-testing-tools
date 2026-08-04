@@ -548,6 +548,22 @@
   [state]
   (update state :distribution normalize-distribution))
 
+(defn- effective-state-type
+  "GMF coverage Wave G (2026-08-03, ADR-0037 AR-3): `kw-type` (the raw
+  `gmf-type->keyword` lookup) UNLESS `state` is the `wellness: true`,
+  no-`:encounter-class` Encounter idiom (Wave B's own M7 finding) -- in
+  which case the loaded STATE TYPE is `:wellness-wait`, not `:encounter`.
+  A distinct type, not a synthesized `:encounter-class`, because it is a
+  genuine BLOCK-then-attach cycle at the interpreter layer (`gmf-
+  interpreter.clj`'s own `wellness-wait-step`), not an ordinary
+  Encounter with a class value -- retiring Wave B's own create-now
+  substitution (`normalize-state`'s own dated retirement comment, where
+  this override is applied)."
+  [kw-type state]
+  (if (and (= :encounter kw-type) (:wellness state) (not (:encounter-class state)))
+    :wellness-wait
+    kw-type))
+
 (defn- normalize-state
   [state]
   (let [raw-type (:type state)
@@ -564,44 +580,37 @@
 
       :else
       (-> state
-          (assoc :type kw-type)
+          ;; GMF coverage Wave B (2026-08-02, ADR-0027): a second GMF
+          ;; wellness-encounter encoding this loader didn't recognize
+          ;; (docs/gmf-interpreter.md section 8's own M7 finding,
+          ;; mTBI/atrial_fibrillation/osteoporosis/epilepsy/med_rec --
+          ;; confirmed MANDATORY-path on ear_infections.json too, Step
+          ;; 1's own characterization): `"wellness": true` with no
+          ;; `encounter_class` key at all. Originally normalized to
+          ;; `:encounter-class :wellness` on an ordinary `:encounter`
+          ;; state (a create-now substitution: this loader fired an
+          ;; IMMEDIATE :outpatient-visit where upstream's own
+          ;; `State.java` Encounter.process wellness branch, pin
+          ;; 7e08387c68a7f0e21d13076609a159fd473fc902, creates nothing
+          ;; and BLOCKS until the engine's hardcoded EncounterModule
+          ;; opens its own next separately-scheduled wellness encounter
+          ;; -- ADR-0031 AR-5(b)'s dated disclosure, live in the
+          ;; vendored ear_infections.json walk's own Next_Wellness_
+          ;; Encounter).
+          ;;
+          ;; RETIRED (2026-08-03, notes/ADRs.md ADR-0037 AR-3): the
+          ;; substitution above is GONE -- `effective-state-type`
+          ;; (below) now maps this same raw shape onto its own DISTINCT
+          ;; state type, `:wellness-wait` (schema section, above), which
+          ;; the interpreter's own `wellness-wait-step` genuinely waits
+          ;; on (`next-wellness-tick`, ADR-0037 AR-1/AR-2) rather than
+          ;; creating an encounter on the spot. Kept as history, not
+          ;; deleted outright, per this project's own fix-forward-with-
+          ;; disclosure discipline.
+          (assoc :type (effective-state-type kw-type state))
           (cond-> (:codes state) (update :codes #(mapv normalize-code %))
                   (:code state) (update :code normalize-code)
                   (:allow state) (update :allow normalize-condition)
-                  ;; GMF coverage Wave B (2026-08-02, ADR-0027): a second
-                  ;; GMF wellness-encounter encoding this loader didn't
-                  ;; recognize (docs/gmf-interpreter.md section 8's own
-                  ;; M7 finding, mTBI/atrial_fibrillation/osteoporosis/
-                  ;; epilepsy/med_rec -- now confirmed MANDATORY-path on
-                  ;; ear_infections.json too, Step 1's own
-                  ;; characterization): `"wellness": true` with no
-                  ;; `encounter_class` key at all -> :encounter-class
-                  ;; :wellness, the loader normalization that document's
-                  ;; own prioritization table already named as "the
-                  ;; cheapest fix in this table."
-                  ;;
-                  ;; DATED DISCLOSURE (2026-08-03, notes/ADRs.md ADR-0031
-                  ;; AR-5(b)): this normalization is a TIMING SUBSTITUTION,
-                  ;; not a vocabulary alias -- a live probe against
-                  ;; Synthea source at the interpreter doc's own pin
-                  ;; (7e08387c68a7f0e21d13076609a159fd473fc902,
-                  ;; State.java's Encounter.process wellness branch) found
-                  ;; upstream's own `wellness: true` creates nothing and
-                  ;; BLOCKS until the engine's hardcoded EncounterModule
-                  ;; opens its own next separately-scheduled wellness
-                  ;; encounter, potentially months later on Synthea's own
-                  ;; age-banded cadence -- this clause instead fires an
-                  ;; immediate :outpatient-visit. Live in the vendored
-                  ;; ear_infections.json walk (Next_Wellness_Encounter):
-                  ;; legal under specify-vs-delegate (the artifact
-                  ;; delegates timing; the sim supplies an answer) but not
-                  ;; the same-concept alias this comment's own prior text
-                  ;; claimed. No code change here -- superseded by Wave
-                  ;; G's wait-semantics implementation (ADR-0031 AR-2)
-                  ;; once ruled and built.
-                  (and (= :encounter kw-type) (:wellness state) (not (:encounter-class state)))
-                  (assoc :encounter-class :wellness)
-
                   (:encounter-class state) (update :encounter-class
                                                     (fn [c] (get encounter-class->keyword c (keyword (slug c)))))
                   (:condition-onset state) (update :condition-onset (fn [t] (keyword (slug t))))
@@ -912,6 +921,21 @@
    [:encounter (with-transitions [:type [:= :encounter]]
                  [:encounter-class [:enum :wellness :ambulatory :emergency :inpatient :virtual]]
                  [:codes {:optional true} [:vector sim-model/Concept]] [:reason {:optional true} :string])]
+   ;; GMF coverage Wave G (2026-08-03, ADR-0037 AR-3): a `wellness: true`
+   ;; Encounter with no `:encounter-class` loads as this DISTINCT state
+   ;; type, `:wellness-wait` -- not `:encounter` with a synthesized
+   ;; `:encounter-class :wellness` (Wave B's own create-now
+   ;; normalization, `normalize-state`'s own dated retirement comment,
+   ;; below). :codes stays optional for the same real-content reason the
+   ;; Wave B comment already gave (`ear_infections.json`'s own
+   ;; `Next_Wellness_Encounter` carries none); :reason is NOT
+   ;; validation-only dead weight here the way it is on every other
+   ;; Encounter-shaped state (gmf.clj's own D2 disclosure) -- the
+   ;; interpreter's own `wellness-wait-step` genuinely threads it into
+   ;; the emitted event.
+   [:wellness-wait (with-transitions [:type [:= :wellness-wait]]
+                     [:codes {:optional true} [:vector sim-model/Concept]]
+                     [:reason {:optional true} :string])]
    [:encounter-end (into [:map [:type [:= :encounter-end]]] TransitionFields)]
    [:procedure (with-transitions [:type [:= :procedure]] [:codes [:vector sim-model/Concept]]
                  [:target-encounter {:optional true} :keyword] [:reason {:optional true} :string]

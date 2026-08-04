@@ -442,6 +442,17 @@ substitution for it, are captured where the loader clause lives
 (`gmf.clj`'s own dated comment, ADR-0031 AR-5(b)) rather than rewritten
 into this table.
 
+**Dated note (2026-08-03, `notes/ADRs.md` ADR-0037 AR-3): the timing
+substitution above is RETIRED.** Case (2)'s `wellness: true` idiom no
+longer normalizes onto an ordinary `:encounter` state with a
+synthesized `:encounter-class :wellness` — it loads as its own state
+type, `:wellness-wait`, and the interpreter genuinely waits for the
+patient's own next cadence-scheduled visit (`next-wellness-tick`,
+ADR-0037 AR-1/AR-2) before opening the encounter, rather than creating
+one immediately. `gmf.clj`'s own dated comment (where the retired
+clause used to live) and `gmf-interpreter.clj`'s own `wellness-wait-step`
+are the build.
+
 **The new step types, sketched for M5b build scope (not built this
 session):** `:outpatient-visit` / `:outpatient-visit-end`, paired
 directly (like `:admission`/`:discharge`, not auto-paired like
@@ -1466,6 +1477,16 @@ established, repeated here for a NEW module):
    `compile-trajectory`'s own `encounter->step` never reads `:codes`
    for an encounter event (confirmed by direct read) — safe to loosen
    at the schema layer with zero downstream impact.
+
+   **Dated note (2026-08-03, `notes/ADRs.md` ADR-0037 AR-3): this
+   resolution is RETIRED.** `Next_Wellness_Encounter` no longer
+   normalizes onto `:encounter-class :wellness` — it loads as its own
+   `:wellness-wait` state type and the interpreter genuinely waits for
+   the patient's own next cadence-scheduled visit before opening the
+   encounter (`next-wellness-tick`, ADR-0037 AR-1/AR-2), retiring the
+   create-now substitution ADR-0031 AR-5(b) disclosed. The ear-
+   infections episode itself now resolves at the next cadence tick,
+   not immediately after medications end.
 
 **D7 hidden-import check, `ear_infections` closure: empty (clean),
 confirmed by exhaustive scan of every `Attribute` condition and every

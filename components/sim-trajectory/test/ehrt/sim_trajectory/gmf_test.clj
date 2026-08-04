@@ -345,16 +345,21 @@
        "  \"Visit\": {\"type\": \"Encounter\", \"wellness\": true, \"direct_transition\": \"Done\"},"
        "  \"Done\": {\"type\": \"Terminal\"}}}"))
 
-(deftest wellness-true-boolean-idiom-normalizes-to-encounter-class-wellness-with-no-codes
+(deftest wellness-true-boolean-idiom-normalizes-to-wellness-wait-with-no-codes
   (testing "docs/gmf-interpreter.md section 8's own M7 finding
             (mTBI/atrial_fibrillation/osteoporosis/epilepsy/med_rec),
             confirmed MANDATORY-path on ear_infections.json too --
-            :codes stays absent (code passthrough: never fabricate a
-            concept the source module never carried)"
+            GMF coverage Wave G (2026-08-03, ADR-0037 AR-3) retires the
+            Wave B create-now substitution: this idiom now loads as its
+            own DISTINCT state type, :wellness-wait, never :encounter
+            with a synthesized :encounter-class. :codes stays absent
+            (code passthrough: never fabricate a concept the source
+            module never carried)"
     (let [loaded (gmf/load-module "wellness-mod" wellness-true-idiom-json)]
       (is (result/ok? loaded))
       (let [visit (get-in (:payload loaded) [:states :visit])]
-        (is (= :wellness (:encounter-class visit)))
+        (is (= :wellness-wait (:type visit)))
+        (is (not (contains? visit :encounter-class)))
         (is (not (contains? visit :codes)))))))
 
 ;; --- GMF coverage Wave B (2026-08-02, ADR-0027, D5): the fifth
