@@ -1578,7 +1578,32 @@
       ;; `effective-state-type` override) since it is a genuine
       ;; BLOCK-then-attach cycle, not an immediate creation -- retiring
       ;; Wave B's own create-now substitution (ADR-0031 AR-5(b)).
-      :wellness-wait (wellness-wait-step module-id ctx rng state tables)))))
+      :wellness-wait (wellness-wait-step module-id ctx rng state tables)
+      ;; GMF coverage Wave VS (2026-08-04, ADR-0039 AR-1/AR-2): VitalSign
+      ;; -- sample ONCE (exact: zero draws; range: one uniform draw,
+      ;; round1'd the SAME way vital-sign-extra's own independent
+      ;; Observation draw already is; distribution: one draw via
+      ;; sample-distribution, ADR-0035's own general-purpose value
+      ;; sampler, honoring the module's own :round when present) and
+      ;; STORE the value in ctx's own :vital-signs register, keyed the
+      ;; SAME `gmf/slug` way :attribute/:symptom already are -- never a
+      ;; trajectory event of its own (no vendored consumer this wave
+      ;; reads a VitalSign write off the log, only off the register).
+      ;; `validate-vital-sign-name` (above) rejects a name outside
+      ;; sim-trajectory/vital-signs.edn's own closed vocabulary, the
+      ;; SAME disposition the pre-existing Observation reader already
+      ;; gets for the identical gap.
+      :vital-sign
+      (let [name (:vital-sign state)]
+        (validate-vital-sign-name name)
+        (let [v (cond
+                  (:exact state) (double (:quantity (:exact state)))
+                  (:range state) (round1 (rand-double-in rng (:low (:range state)) (:high (:range state))))
+                  (:distribution state) (sample-distribution rng (:distribution state))
+                  :else (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: VitalSign state has no exact/range/distribution"
+                                         {:module-id module-id :state (:current ctx)})))
+              ctx' (update ctx :vital-signs assoc (vital-sign-key name) v)]
+          (pass-through-outcome module-id ctx' rng state 0 [] tables)))))))
 
 ;; --- GMF coverage Wave F (2026-08-03, ADR-0036 AR-4): honest-absence, at
 ;; the walk boundary -- `step` itself still THROWS `honest-absence` (the

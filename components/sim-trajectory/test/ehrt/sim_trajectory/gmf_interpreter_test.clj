@@ -2275,3 +2275,89 @@
             outcome (interp/step module (Random. 1) ctx)
             [event] (:events outcome)]
         (is (= :normal (:interpretation event)) (str name " should sample cleanly"))))))
+
+;; --- GMF coverage Wave VS (2026-08-04, ADR-0039 AR-1/AR-2): the
+;; VitalSign STATE -- sample-once into the register, never a trajectory
+;; event of its own. ---------------------------------------------------
+
+(def lvef-range-module
+  {:id "lvef-mod" :name "Lvef"
+   :states {:initial {:type :initial :direct-transition :lvef}
+            :lvef {:type :vital-sign :vital-sign "Left ventricular Ejection fraction" :unit ""
+                   :range {:low 50 :high 100} :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest vital-sign-state-with-range-writes-the-register-consuming-one-draw
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :lvef)
+        calls (atom 0)
+        rng (proxy [Random] [(long 1)]
+              (nextDouble [] (swap! calls inc) (proxy-super nextDouble)))
+        outcome (interp/step lvef-range-module rng ctx)]
+    (is (<= 50 (:left-ventricular-ejection-fraction (:vital-signs outcome)) 100))
+    (is (= 1 @calls))
+    (is (= [] (:events outcome)) "register-only, never a trajectory event")
+    (is (= :done (:next outcome)))))
+
+(def lvef-exact-module
+  {:id "lvef-mod" :name "Lvef"
+   :states {:initial {:type :initial :direct-transition :lvef}
+            :lvef {:type :vital-sign :vital-sign "Left ventricular Ejection fraction"
+                   :exact {:quantity 62} :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest vital-sign-state-with-exact-writes-the-literal-value-and-consumes-no-rng
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :lvef)
+        calls (atom 0)
+        rng (proxy [Random] [(long 1)]
+              (nextDouble [] (swap! calls inc) (proxy-super nextDouble))
+              (nextInt ([n] (swap! calls inc) (proxy-super nextInt n))))
+        outcome (interp/step lvef-exact-module rng ctx)]
+    (is (= 62.0 (:left-ventricular-ejection-fraction (:vital-signs outcome))))
+    (is (zero? @calls))))
+
+(def spo2-distribution-module
+  {:id "spo2-mod" :name "Spo2"
+   :states {:initial {:type :initial :direct-transition :spo2}
+            :spo2 {:type :vital-sign :vital-sign "Oxygen Saturation"
+                   :distribution {:kind :gaussian :parameters {:mean 97 :standard-deviation 1} :round false}
+                   :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest vital-sign-state-with-a-distribution-consumes-exactly-one-draw
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :spo2)
+        calls (atom 0)
+        rng (proxy [Random] [(long 1)]
+              (nextDouble [] (swap! calls inc) (proxy-super nextDouble)))
+        outcome (interp/step spo2-distribution-module rng ctx)]
+    (is (number? (:oxygen-saturation (:vital-signs outcome))))
+    (is (= 1 @calls))))
+
+(deftest vital-sign-state-overwrites-a-baseline-value
+  (testing "AR-3: later write wins, the same semantics :attributes'
+            SetAttribute already establishes"
+    (let [ctx (assoc (ctx-for (persona-at 1)) :current :spo2)]
+      (is (= 98 (:oxygen-saturation (:vital-signs ctx))) "the baseline, before the state runs")
+      (let [outcome (interp/step spo2-distribution-module (Random. 1) ctx)]
+        (is (not= 98 (:oxygen-saturation (:vital-signs outcome))))))))
+
+(def unrecognized-vital-sign-state-module
+  {:id "bad-mod" :name "Bad"
+   :states {:initial {:type :initial :direct-transition :x}
+            :x {:type :vital-sign :vital-sign "Respiratory Rate" :range {:low 12 :high 20} :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest vital-sign-state-with-an-unrecognized-name-throws
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :x)]
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"unrecognized vital-sign"
+                           (interp/step unrecognized-vital-sign-state-module (Random. 1) ctx)))))
+
+(def vital-sign-no-value-source-module
+  {:id "empty-mod" :name "Empty"
+   :states {:initial {:type :initial :direct-transition :x}
+            :x {:type :vital-sign :vital-sign "Oxygen Saturation" :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest vital-sign-state-with-no-exact-range-or-distribution-throws
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :x)]
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (interp/step vital-sign-no-value-source-module (Random. 1) ctx)))))

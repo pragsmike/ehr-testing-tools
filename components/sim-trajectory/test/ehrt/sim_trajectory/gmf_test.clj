@@ -68,12 +68,20 @@
   from MultiObservation (this session's own example, now supported) to
   ImagingStudy, for the same reason. GMF coverage Wave F (2026-08-03,
   ADR-0036): swapped AGAIN, from ImagingStudy (this session's own
-  example, now supported) to VitalSign, for the same reason -- a stale
-  premise, not silently left to test what it no longer tests."
+  example, now supported) to VitalSign, for the same reason. GMF
+  coverage Wave VS (2026-08-04, ADR-0039): swapped AGAIN, from VitalSign
+  (this session's own example, now supported -- the deferred table's
+  own last remaining row, docs/gmf-interpreter.md section 1) to
+  AllergyOnset, State.java's own class this project has never
+  registered at all (this project's Persona carries no allergy concept
+  anywhere, the same gap `:active-allergy`'s own always-false condition
+  simplification already documents -- genuinely, not merely
+  provisionally, deferred) -- a stale premise, not silently left to
+  test what it no longer tests."
   (str "{\"name\": \"Bad Module\","
        " \"states\": {"
        "   \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Recurse\"},"
-       "   \"Recurse\": {\"type\": \"VitalSign\", \"direct_transition\": \"Done\"},"
+       "   \"Recurse\": {\"type\": \"AllergyOnset\", \"direct_transition\": \"Done\"},"
        "   \"Done\": {\"type\": \"Terminal\"}"
        " }}"))
 
@@ -82,7 +90,7 @@
     (is (result/rejected? loaded))
     (is (= :unsupported-state-type (:category loaded)))
     (is (= :recurse (:state (:payload loaded))))
-    (is (= "VitalSign" (:raw-type (:payload loaded))))))
+    (is (= "AllergyOnset" (:raw-type (:payload loaded))))))
 
 (def reserved-attribute-collision-json
   "A deliberately malformed module: SetAttribute writes the bare,
@@ -277,10 +285,12 @@
   MultiObservation (now supported) to ImagingStudy (R5, still deferred),
   same reason as deferred-state-type-json above. GMF coverage Wave F
   (2026-08-03, ADR-0036): swapped again, from ImagingStudy (now
-  supported) to VitalSign (AR-7, still deferred)."
+  supported) to VitalSign (AR-7, still deferred). GMF coverage Wave VS
+  (2026-08-04, ADR-0039): swapped again, from VitalSign (now supported)
+  to AllergyOnset, same reason as deferred-state-type-json above."
   (str "{\"name\": \"Leaf\", \"states\": {"
        "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Bad\"},"
-       "  \"Bad\": {\"type\": \"VitalSign\", \"direct_transition\": \"Done\"},"
+       "  \"Bad\": {\"type\": \"AllergyOnset\", \"direct_transition\": \"Done\"},"
        "  \"Done\": {\"type\": \"Terminal\"}}}"))
 
 (deftest load-closure-all-or-nothing-gate-extends-to-a-transitively-called-submodule
@@ -915,3 +925,78 @@
     (is (result/ok? loaded))
     (is (= {:condition-type :socioeconomic-status :category "High"}
            (:allow (get-in (:payload loaded) [:states :check]))))))
+
+;; --- GMF coverage Wave VS (2026-08-04, ADR-0039 AR-1/AR-2): VitalSign ------
+
+(def vital-sign-state-json
+  "congestive_heart_failure.json's own `LVEF HFpEF` shape, byte-confirmed
+  against source at the pin -- a range-encoded VitalSign state, no
+  :codes of its own (unlike every trajectory-event-producing state
+  type)."
+  (str "{\"name\": \"LvefMod\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Lvef\"},"
+       "  \"Lvef\": {\"type\": \"VitalSign\", \"vital_sign\": \"Left ventricular Ejection fraction\", \"unit\": \"\","
+       "            \"range\": {\"low\": 50, \"high\": 100},"
+       "            \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest vital-sign-state-loads-and-validates
+  (let [loaded (gmf/load-module "lvef-mod" vital-sign-state-json)]
+    (is (result/ok? loaded))
+    (is (= :vital-sign (get-in (:payload loaded) [:states :lvef :type])))
+    (is (= "Left ventricular Ejection fraction" (get-in (:payload loaded) [:states :lvef :vital-sign])))
+    (is (= {:low 50 :high 100} (get-in (:payload loaded) [:states :lvef :range])))))
+
+(def vital-sign-distribution-json
+  "A GAUSSIAN-encoded VitalSign state -- no vendored candidate this wave
+  authors one (all six real VitalSign states use `range`), but AR-2
+  rules distribution support in regardless; proves the loader-side
+  normalization path, the SAME `normalize-value-distribution` SetAttribute
+  already shares."
+  (str "{\"name\": \"VsDistMod\", \"gmf_version\": 2, \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Spo2\"},"
+       "  \"Spo2\": {\"type\": \"VitalSign\", \"vital_sign\": \"Oxygen Saturation\", \"unit\": \"%\","
+       "            \"distribution\": {\"kind\": \"GAUSSIAN\", \"parameters\": {\"mean\": 97, \"standardDeviation\": 1}},"
+       "            \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest vital-sign-state-with-a-v2-distribution-normalizes-the-same-way-set-attribute-does
+  (let [loaded (gmf/load-module "vs-dist-mod" vital-sign-distribution-json)]
+    (is (result/ok? loaded))
+    (is (= {:kind :gaussian :parameters {:mean 97 :standard-deviation 1} :round false}
+           (get-in (:payload loaded) [:states :spo2 :distribution])))
+    (is (= "%" (get-in (:payload loaded) [:states :spo2 :unit]))
+        "VitalSign's own :unit stays a separate top-level field, never folded into :distribution")))
+
+(def vital-sign-unknown-distribution-kind-json
+  "AR-2: :vital-sign joins the SAME five-kind gate :set-attribute already
+  has -- a sixth, unrecognized kind rejects cleanly here too."
+  (str "{\"name\": \"VsBadDistMod\", \"gmf_version\": 2, \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Spo2\"},"
+       "  \"Spo2\": {\"type\": \"VitalSign\", \"vital_sign\": \"Oxygen Saturation\","
+       "            \"distribution\": {\"kind\": \"WEIBULL\", \"parameters\": {\"scale\": 1}},"
+       "            \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest vital-sign-state-with-an-unrecognized-distribution-kind-rejects-cleanly
+  (let [loaded (gmf/load-module "vs-bad-dist-mod" vital-sign-unknown-distribution-kind-json)]
+    (is (result/rejected? loaded))
+    (is (= :unsupported-distribution-kind (:category loaded)))
+    (is (= "WEIBULL" (:kind (:payload loaded))))))
+
+(def vital-sign-expression-json
+  "AR-2: the CQL :expression branch (State.java's own VitalSign.process,
+  source-grounded) is a NAMED, unbuilt feature -- a clean load rejection,
+  never a silent drop or a runtime throw."
+  (str "{\"name\": \"VsExprMod\", \"gmf_version\": 2, \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Spo2\"},"
+       "  \"Spo2\": {\"type\": \"VitalSign\", \"vital_sign\": \"Oxygen Saturation\","
+       "            \"expression\": \"#{OxygenSaturationBaseline} - 2\","
+       "            \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest vital-sign-state-with-an-expression-rejects-cleanly-naming-the-feature
+  (let [loaded (gmf/load-module "vs-expr-mod" vital-sign-expression-json)]
+    (is (result/rejected? loaded))
+    (is (= :vital-sign-expression-unsupported (:category loaded)))
+    (is (= :spo2 (:state (:payload loaded))))))

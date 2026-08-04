@@ -135,7 +135,15 @@
    ;; Deferred table entries (section 1), now built.
    "Counter" :counter
    "ImagingStudy" :imaging-study
-   "SupplyList" :supply-list})
+   "SupplyList" :supply-list
+   ;; GMF coverage Wave VS (2026-08-04, ADR-0039 AR-1/AR-2): VitalSign --
+   ;; State.java's own VitalSign class (source-grounded) writes ctx's own
+   ;; new `:vital-signs` register (gmf-interpreter.clj's own `step`
+   ;; handling) rather than emitting a trajectory event of its own --
+   ;; the register is the home this project's own accumulator never had
+   ;; for a REAL vital-sign VALUE (as opposed to the pre-existing,
+   ;; independent-draw Observation reader, D1a-4).
+   "VitalSign" :vital-sign})
 
 (def ^:private code-system->keyword
   "GMF's own code-system strings -> sim-model/Concept's
@@ -491,11 +499,29 @@
   (`normalize-state`'s own early-return branch), never a `case` fall-
   through throw the way `gmf-v2-timing->v1`/`apply-gmf-v2-procedure-
   duration` used to (the census's own `gmf_version 2` loader-exception
-  finding, ADR-0034's execution note, this ADR's own Context)."
+  finding, ADR-0034's execution note, this ADR's own Context). GMF
+  coverage Wave VS (2026-08-04, ADR-0039 AR-2): `:vital-sign` joins
+  `:set-attribute` here -- a VALUE distribution, the same five-kind gate,
+  not a sixth context of its own."
   [state kw-type]
   (when-let [kind (state-distribution-kind state)]
-    (and (or (distribution-timing-state-types kw-type) (= :set-attribute kw-type))
+    (and (or (distribution-timing-state-types kw-type) (#{:set-attribute :vital-sign} kw-type))
          (nil? (get distribution-kind->keyword kind)))))
+
+(defn- vital-sign-expression?
+  "GMF coverage Wave VS (2026-08-04, ADR-0039 AR-2): a VitalSign state
+  carrying an `:expression` field (upstream's own CQL-evaluation branch,
+  `State.java`'s `VitalSign.process`, source-grounded at the pin) is a
+  clean, NAMED load-time REJECTION -- no candidate closure this wave
+  vendors ever authors one (all six real `VitalSign` states found use
+  `range`; confirmed by direct read, not merely anticipated), and this
+  project has no CQL expression evaluator to run one against (the same
+  'no home for this content' disposition Device/DeviceEnd's own
+  consumed-internally treatment predates, but a REJECTION rather than a
+  silent no-op here -- an authored expression is real intended clinical
+  content this loader would otherwise silently drop)."
+  [state kw-type]
+  (and (= :vital-sign kw-type) (contains? state :expression)))
 
 (defn- attribute-value-sources
   "Which of SetAttribute's three mutually-exclusive-in-practice value
@@ -537,15 +563,19 @@
   [state]
   (assoc (dissoc state :unit) :distribution (normalize-distribution (:distribution state) (:unit state))))
 
-(defn- normalize-set-attribute-distribution
-  "SetAttribute's own :distribution (ADR-0035 AR-2/AR-4): normalized the
-  SAME way `apply-new-timing-distribution` normalizes Delay/Symptom/
-  Procedure's, minus :unit folding (SetAttribute carries none -- the
-  110+-instance catalog survey behind this ADR confirmed none exist).
-  All FIVE kinds pass through here (unlike the timing contexts' own v1-
-  collapse split) -- SetAttribute never had a pre-existing UNIFORM/EXACT
-  translation to leave untouched; this is entirely new code, free to
-  normalize uniformly."
+(defn- normalize-value-distribution
+  "SetAttribute's own :distribution (ADR-0035 AR-2/AR-4), and GMF
+  coverage Wave VS's VitalSign :distribution (ADR-0039 AR-2): normalized
+  the SAME way `apply-new-timing-distribution` normalizes Delay/Symptom/
+  Procedure's, minus :unit folding -- SetAttribute carries no :unit at
+  all (the 110+-instance catalog survey behind ADR-0035 confirmed none
+  exist), and VitalSign's own :unit is display-only metadata (upstream's
+  `LegacyStateWithUnitlessRV`, source-grounded), never a per-value
+  conversion factor the way Delay/Procedure's timing :unit is -- both
+  states keep :unit as a separate top-level schema field instead. All
+  FIVE distribution kinds pass through here for both state types (unlike
+  the timing contexts' own v1-collapse split) -- neither ever had a
+  pre-existing UNIFORM/EXACT translation to leave untouched."
   [state]
   (update state :distribution normalize-distribution))
 
@@ -578,6 +608,9 @@
 
       (set-attribute-value-conflict? state kw-type)
       {:set-attribute-value-conflict {:sources (attribute-value-sources state)}}
+
+      (vital-sign-expression? state kw-type)
+      {:vital-sign-expression-unsupported {}}
 
       :else
       (-> state
@@ -679,8 +712,11 @@
                   ;; ADR-0035 AR-2/AR-4: SetAttribute's own :distribution
                   ;; -- all five kinds, `set-attribute-value-conflict?`
                   ;; (above) already gated out the ambiguous case.
-                  (and (map? (:distribution state)) (= :set-attribute kw-type))
-                  normalize-set-attribute-distribution)
+                  ;; GMF coverage Wave VS (2026-08-04, ADR-0039 AR-2):
+                  ;; VitalSign's own :distribution -- the SAME value-
+                  ;; distribution normalization, no :unit folding.
+                  (and (map? (:distribution state)) (#{:set-attribute :vital-sign} kw-type))
+                  normalize-value-distribution)
           normalize-transitions))))
 
 (defn- normalize-states
@@ -708,6 +744,9 @@
                 (:set-attribute-value-conflict normalized)
                 (reduced {:value-conflict {:state state-name
                                            :sources (:sources (:set-attribute-value-conflict normalized))}})
+
+                (:vital-sign-expression-unsupported normalized)
+                (reduced {:vital-sign-expression {:state state-name}})
 
                 :else
                 (update acc :states assoc state-name normalized))))
@@ -1065,7 +1104,24 @@
    ;; log-only trajectory fact, never an IR step (`compile-trajectory`'s
    ;; own explicit :supply-list clause, the ConditionEnd no-open-encounter
    ;; precedent verbatim, ADR-0036's own AR-3).
-   [:supply-list (with-transitions [:type [:= :supply-list]] [:supplies [:vector SupplyComponent]])]])
+   [:supply-list (with-transitions [:type [:= :supply-list]] [:supplies [:vector SupplyComponent]])]
+   ;; GMF coverage Wave VS (2026-08-04, ADR-0039 AR-1/AR-2): VitalSign --
+   ;; `:vital-sign` is the raw vital-sign NAME string, left UNTOUCHED the
+   ;; SAME way Observation's own `:vital-sign` field already is (a lookup
+   ;; key into `sim-trajectory/vital-signs.edn`, never a module-authored
+   ;; identifier to slug at load time). `:unit` stays a separate,
+   ;; display-only top-level field (`normalize-value-distribution`'s own
+   ;; docstring note) -- never folded into `:distribution`. `:exact`/
+   ;; :range/:distribution are all optional at the SCHEMA layer (the same
+   ;; latitude Delay/Symptom already have); the interpreter's own
+   ;; `step` throws when a real state carries none of the three (no
+   ;; vendored candidate this wave ever does). `:expression` is
+   ;; DELIBERATELY UNDECLARED -- `vital-sign-expression?` (above) rejects
+   ;; it at load time, before this schema is ever checked.
+   [:vital-sign (with-transitions [:type [:= :vital-sign]] [:vital-sign :string]
+                  [:unit {:optional true} :string]
+                  [:range {:optional true} Range] [:exact {:optional true} Exact]
+                  [:distribution {:optional true} SampledDistribution])]])
 
 (def GmfModule
   [:map
@@ -1098,11 +1154,14 @@
   carrying more than one of :distribution/:value/:value-code; :rejected
   :attribute-collision (payload {:attribute name}) for a module whose own
   SetAttribute/Symptom writes a bare engine-reserved attribute name;
-  :rejected :schema-invalid (payload {:explain ...}) for any other v1
-  structural mismatch."
+  :rejected :vital-sign-expression-unsupported (payload {:state}, ADR-0039
+  AR-2) for a VitalSign state carrying a CQL :expression, a real upstream
+  branch this loader has no evaluator for; :rejected :schema-invalid
+  (payload {:explain ...}) for any other v1 structural mismatch."
   [id json-text]
   (let [raw (json/read-str json-text :key-fn kebab-key)
-        {:keys [states unsupported invalid-distribution value-conflict]} (normalize-states (:states raw))]
+        {:keys [states unsupported invalid-distribution value-conflict vital-sign-expression]}
+        (normalize-states (:states raw))]
     (cond
       unsupported
       (result/rejected :unsupported-state-type unsupported)
@@ -1112,6 +1171,9 @@
 
       value-conflict
       (result/rejected :set-attribute-value-conflict value-conflict)
+
+      vital-sign-expression
+      (result/rejected :vital-sign-expression-unsupported vital-sign-expression)
 
       (reserved-attribute-collision states)
       (result/rejected :attribute-collision {:attribute (reserved-attribute-collision states)})
