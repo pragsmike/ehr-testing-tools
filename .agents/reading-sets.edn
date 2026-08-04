@@ -297,7 +297,11 @@
   ;; bumped 1931->1966, same session (Step 4 close-out): roadmap.md's
   ;; own new M2 Done section, "Now" section rewrite, and S4 Deferred-
   ;; row EXECUTED note brought the real total from 1931 to 1966.
-  :budget-lines 1966}
+  ;; bumped 1966->1968, same session (Step 5 close-out): indexing this
+  ;; session's own session-record/prompt-archive filenames in their own
+  ;; already-cited onboarding READMEs (1 line each) brought the real
+  ;; total from 1966 to 1968.
+  :budget-lines 1968}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one
