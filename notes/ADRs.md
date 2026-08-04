@@ -9323,3 +9323,243 @@ yields no in-window wire traffic) is subsumed by the carry-across named future
 body text stands as written.
 
 ---
+
+## ADR-0043 — Sim split B, M1: `provenance` component lands, sim's manifest mirror retires, the intake front door is written down
+
+**Status:** Accepted (design-channel ruling 2026-08-04,
+`.agents/plans/2026-08-04-sim-split-b-plan.md` AR-1..AR-6, and this
+session's own driving prompt's AR-M1-1..AR-M1-7, both recorded
+verbatim below); M1 executed 2026-08-04, M2–M4 PLANNED (not yet
+executed — this ADR states the full ratified dependency-direction
+structure ahead of the sessions that build it, same precedent
+ADR-0025 set for sim split S1–S3; subsequent M-stage sessions append
+dated execution records here rather than opening a new ADR).
+
+### Context
+
+`components/sim` after the first sim split (ADR-0025, S1–S3) still
+held nine source namespaces plus the façade. The 2026-08-04 design
+session (`.agents/plans/2026-08-04-sim-split-b-plan.md`) ruled Option
+B, full decomposition: `sim-engine`, `sim-emit-fhir`, `sim-check`, a
+shared `provenance` component, and a thinned orchestration-only
+residual `sim`. This ADR's own M1 stage lands the first, independent,
+de-risking piece: `provenance`.
+
+**The manifest cycle proof (why a shared home is forced, not
+stylistic).** `components/sim/src/ehrt/sim/manifest.clj` mirrored
+`ehrt.corpus.manifest`'s `ManifestV1_1` schema locally, "without
+depending on it" — a dependency-direction rule inherited from the
+separate-repo era (tools → sim only, sim's own ADR-0001), now a
+fossil: both live in one workspace, and corpus → sim already exists
+(`ehrt.corpus.sim-adapter` requires the sim façade, ADR-0012) —
+therefore sim → corpus for the schema would be a cycle. The only
+acyclic single home for `ManifestV1_1` is a component both depend on
+and that depends on neither: `provenance`.
+
+**The mirror's own lesson (M3 Task 0, quoted verbatim — the citation
+this ADR's own retirement rests on).** *"This mirror once omitted
+:schema-version entirely — both here and in `build` — and its own
+tripwire test (manifest-test) stayed green throughout, because a
+mirror validates its OWN output against its OWN copy of the schema; it
+agreed with itself perfectly while both disagreed with the
+authoritative source. A mirror cannot catch itself agreeing with its
+own mistake."* Drift becomes impossible by construction once both
+sides read the same var — the structural argument for `provenance`
+over "mirror harder."
+
+### Decision — the plan's own rulings (`.agents/plans/2026-08-04-sim-split-b-plan.md`, recorded verbatim)
+
+- **AR-1 (scope).** Option B — full decomposition: `sim-engine`,
+  `sim-emit-fhir`, `sim-check`, shared `provenance` component,
+  orchestration residual `sim`. (Option A, engine-only, was the
+  considered-and-declined fallback.)
+- **AR-2 (shared schema home).** Component name `provenance`
+  (`ehrt.provenance.interface`), holding ManifestV0/V1/V1_1 schemas +
+  `valid?` predicates moved from `corpus/manifest.clj`. Builders stay
+  producer-side: corpus keeps `build`/`build-v1-1`, sim keeps its
+  `build` (validating against the shared schema). Name chosen over
+  bare `manifest` to avoid three-things-called-manifest ambiguity
+  during migration; leaves room for the schema family to grow (e.g.
+  `corpus-io`'s operation manifest — noted, not proposed).
+- **AR-3 (FHIR emitter).** Component `sim-emit-fhir`; namespace
+  renamed `ehrt.sim-emit-fhir.emit-fhir` (the one sanctioned
+  improvement, S3 precedent). Sibling to `sim-emit-hl7`; `sim-emit-cda`
+  is the named-future third sibling per emit-state's own contract note.
+  Sibling means peer rendering accent, not same input shape: hl7
+  renders from the event log, fhir (and future cda) render from folded
+  state — the two consume different sim-engine interface surfaces.
+- **AR-4 (S4 trigger reconciliation — framing (b), author override,
+  plainly stated).** The dated notes on the roadmap's S4 row and the
+  08-02 plan read: author rules the split proceeds ahead of the
+  recorded trigger (cleanup-arc scoping, 2026-08-04). The trigger's
+  reasoning — don't design a boundary with one consumer — is honored
+  in substance: M3 (`sim-emit-fhir`) is committed scope in the same
+  sequence, so M2's boundary is designed against two known consumer
+  surfaces even though the second lands a session later. Not claimed:
+  that the trigger "fired" — at M2's execution the second consumer is
+  promised, not present.
+- **AR-5 (contract-test fate — option (b), convert).** The
+  test-integration `sim-manifest-contract-test`'s drift-detection
+  purpose retires with dated disclosure citing the mirror docstring's
+  own lesson (a mirror validating its own output against its own
+  schema copy agrees with its own mistakes); drift becomes impossible
+  by construction once both sides read the same var. Its
+  builder-validity purpose survives as a plain unit test next to sim's
+  `build`: the built manifest validates against `provenance`'s
+  ManifestV1_1. The M1 session record states explicitly which purpose
+  died and which moved.
+- **AR-6 (sequencing).** Approved as proposed: M1 → M2 → M3 → M4.
+  M2-before-{M3,M4} is forced (both depend on interfaces M2 designs);
+  M3 before M4 so AR-4's committed-second-consumer claim discharges
+  early.
+
+### Decision — this session's own driving prompt rulings (AR-M1-1..AR-M1-7, recorded verbatim)
+
+1. **AR-M1-1 (what moves).** ManifestV0, ManifestV1, ManifestV1_1 and
+   their `valid?`/`valid-v1?`/`valid-v1-1?` predicates move verbatim
+   from `ehrt.corpus.manifest` to `ehrt.provenance.manifest`, exposed
+   through `ehrt.provenance.interface`. Builders stay producer-side:
+   corpus keeps `build`/`build-v1-1`; sim keeps `build`. The frozen
+   V0/V1 history moves with the schemas (it is schema history, not
+   builder history) — docstrings intact.
+2. **AR-M1-2 (mirror retirement).** `MirroredManifest` and
+   `components/sim/test/ehrt/sim/manifest_test.clj`'s tripwire tests
+   retire. The retirement disclosure (dated, in the ADR and the
+   session record) quotes the mirror docstring's own lesson: a mirror
+   validating its own output against its own schema copy agrees with
+   its own mistakes. `ehrt.sim.manifest/valid?` repoints to
+   `ehrt.provenance.interface/valid-v1-1?` or retires if nothing
+   requires it — decide from fresh grep, record which.
+3. **AR-M1-3 (contract test, AR-5(b) refined).** The conformance test
+   survives, repointed to `ehrt.provenance.interface/ManifestV1_1`;
+   its docstring is rewritten with a dated note: the binding-half
+   rationale retires with the mirror, the end-to-end
+   run-sim-validate-manifest substance is the test's continuing
+   purpose. Additionally, one plain unit test lands next to sim's
+   `build`: `(provenance/valid-v1-1? (manifest/build <minimal args>))`
+   — fast-lane builder validity without the harness.
+4. **AR-M1-4 (intake front door).** The split ADR records the
+   doctrine: sim runs enter `ehr corpus intake` as if foreign; the
+   discipline has caught real defects and survives the consolidation
+   deliberately. No code change — this is a written-down rule.
+5. **AR-M1-5 (AR-4 notes).** Roadmap S4 row and the 08-02 plan each
+   get a dated note, framing (b) verbatim from the plan's AR-4: author
+   override plainly stated, trigger's reasoning honored in substance
+   (M3 committed scope), no claim the trigger fired.
+6. **AR-M1-6 (sweep scope).** Vestige sweep touches current-tense
+   surfaces only: `components/corpus/src/ehrt/corpus/sim_adapter.clj`,
+   its test, `intake_test.clj`,
+   `bases/cli/src/ehrt/cli/core.clj`, `docs/dev/way-of-working.md`,
+   plus docstring-level cross-repo/pack-push language found by fresh
+   grep (`ehr-testing-sim`, `pack-push`, `make pack`). Frozen archives
+   (`notes/`, `.agents/session-records/`, sealed prompts) untouched.
+   Each file: per-file judgment, dated note where meaning changes,
+   silent fix only for mechanically stale paths.
+7. **AR-M1-7 (pairing gate).** The prompt/record pairing invariant —
+   every session record paired with its archived prompt, ADR-0023's
+   own convention — gets enforcement: a docs-tooling deftest, both
+   directions, the seven pre-cutover session-record slugs allowlisted
+   (their prompts live in frozen `notes/prompts/` under the older
+   `ehr-testing-` prefix, and that directory can never receive renamed
+   copies — `notes_prompts_frozen_test` pins its set). Until now every
+   session remembered to archive; nothing made forgetting fail.
+
+### Dependency directions (ratified now, only M1's edges live today)
+
+- **`provenance` ← {`corpus`, `sim`}** — LIVE as of M1. Forbidden
+  forever: `provenance` depends on nothing but `malli` — not
+  `kernel`, not `corpus`, not `sim`, not any other brick in this
+  workspace. It is a leaf schema component by design; a future PR
+  adding any `ehrt.*` require to `ehrt.provenance.*` is itself the
+  violation, not something to accommodate.
+- **`sim-engine` ← {`sim-check`, `sim-emit-fhir`, residual `sim`}** —
+  PLANNED, M2/M3/M4 scope, not yet built. Named here so M1 states the
+  full ratified shape ahead of execution, per the plan's own "What
+  lands where" instruction. `sim-engine` itself depends on `sim-model`
+  and `kernel` only (unchanged from today's `components/sim`'s own
+  forbidden-forever rule on those two upstream deps); forbidden
+  forever from depending on anything corpus-derived, same as every
+  sim-side brick since ADR-0025.
+
+### The intake-front-door doctrine (AR-M1-4, no code — a written-down rule)
+
+A sim run enters `ehr corpus intake` as if it were a foreign
+pipeline's output, not a privileged first-party producer — the same
+generator-agnostic path any team's own corpus takes (`ehrt.corpus.
+intake`'s own docstring: "generator-agnostic... any pipeline that
+drops a ManifestV1_1-shaped manifest.edn beside its output gets the
+same treatment"). This is deliberate, not an oversight to eventually
+special-case: the discipline of treating sim's own output as unprivileged
+input has caught real defects before (the manifest's :generator :name
+staleness the original contract test caught, ADR-0005's own dated
+finding) precisely because nothing about the intake path assumes the
+producer is trustworthy or well-formed. Consolidating sim and corpus
+into one workspace does not relax this — sim's own manifest still has
+to earn its way through the same validating door every other corpus
+does.
+
+### Execution record (M1)
+
+Five commits, in order, `git log` `83304c1..9ec8360`:
+
+1. `83304c1` — `feat(provenance): manifest schemas move to their
+   single home` (Step 1): `components/provenance` created;
+   ManifestV0/V1/V1_1 + validators moved verbatim; schema/validator
+   tests split into provenance's own test tree (9 of 15, using literal
+   fixture maps rather than corpus's builders); workspace bookkeeping
+   (root + three project `deps.edn`, `workspace.edn`'s temporary
+   `:necessary` overrides, `AGENTS.md`/`architecture.md` structure-
+   currency). Self-caught by the reading-set budget gate and the
+   index-completeness gate (this session's own driving plan file had
+   never been indexed) — both fixed forward in the same commit.
+2. `ab8a50c` — `refactor(corpus): manifest schemas resolve from
+   provenance; builders stay home` (Step 2): `ehrt.corpus.manifest`
+   drops its own copies, requires `ehrt.provenance.interface`, relays
+   each schema/validator (same vars, not copies) so every existing
+   consumer (`generate.clj`, `intake.clj`, their tests) needed zero
+   changes; `ehrt.corpus.interface`'s `ManifestV1_1` re-export
+   repoints directly to provenance. `workspace.edn`'s temporary
+   overrides re-derived and dropped.
+3. `46fef14` — `test: contract test repoints to provenance` (Step 3,
+   AR-5(b) refined): conformance's own contract test requires
+   provenance directly; docstring rewritten with the dated note; the
+   sim-side fast-lane builder-validity unit test added ahead of the
+   mirror's own retirement.
+4. `dff47fb` — `refactor(sim): manifest mirror retires` (Step 4,
+   AR-M1-2): `MirroredManifest` and `valid?` deleted (fresh grep found
+   no real caller of `valid?` outside its own now-retired test, so it
+   retires rather than repoints); the mirror's own tripwire test
+   retires with the disclosure quoting the M3-Task-0 lesson verbatim.
+5. `9ec8360` — `docs: two-repo vestige sweep + prompt/record pairing
+   gate` (Step 5, AR-M1-6/7): per-file sweep found one real
+   mechanically-stale path (`bases/cli/core.clj`'s broken
+   `notes/ehr-testing-sim-mounting-note.md` citation, missing the
+   `tools/` segment) and otherwise confirmed the named files already
+   describe the pre-merge history correctly, not as live drift; the
+   new prompt/record pairing gate (`ehrt.docs-tooling.prompt-record-
+   pairing-test`) proven red→green live against the real file tree.
+
+`clojure -M:poly check` clean and the full local suite green (0
+failures, 0 errors) after every one of the five commits above.
+Deftest/defspec parity: 212 (`components/sim/test`, this session's own
+authoritative count, superseding the plan's provisional 229) — retired
+1 (the mirror tripwire), gained 1 (the provenance-validity fast lane),
+net unchanged; `components/corpus/test` dropped 9 (moved to
+provenance) and `components/provenance/test` gained 9 — net workspace-
+wide unchanged, plus the 5 new pairing-gate deftests
+(`ehrt.docs-tooling.prompt-record-pairing-test`), a real net addition
+(a new gate, not a moved one). Façade seam (`ehr sim run`/`check`,
+`ehr help`) untouched by any of the five commits — no CLI-surface
+change in this stage.
+
+### Fence
+
+No engine/check/emit-state moves (M2–M4, not this ADR's own execution
+yet — only its ratified shape). No schema field changes anywhere — the
+move is verbatim; nothing here is a redesign. No CLI surface changes.
+No interface narrowing anywhere. `bin/regression-oracle`'s own
+read-from-current-checkout limitation (ADR-0030 J2 / plan R-11) is
+unaffected by M1 (no producer call-shape changed) — not exercised this
+stage since M1 touches no oracle-covered producer.
+
+---

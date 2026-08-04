@@ -24,6 +24,24 @@ the live trigger condition. This plan's own sequencing/rulings text
 below is left as originally written, not rewritten, per this project's
 own annotate-not-rewrite convention.
 
+**Dated status note (2026-08-04, sim split B M1 session, AR-M1-5 /
+plan AR-4, framing (b), author override plainly stated).** S4
+(`sim-engine`) is SUPERSEDED-BY-CITATION here, not fired by its own
+named trigger: `.agents/plans/2026-08-04-sim-split-b-plan.md` (RULED,
+AR-1..AR-6) proceeds with the full decomposition ahead of a second
+`engine` consumer actually appearing, as M2 (`sim-engine`) in a
+four-stage sequence (M1 provenance → M2 sim-engine → M3 sim-emit-fhir
+→ M4 sim-check). The trigger's own reasoning — don't design a boundary
+with one consumer — is honored in substance, not overridden blindly:
+M3 (`sim-emit-fhir`) is committed scope in the same sequence, so M2's
+interfaces are designed against two known consumer surfaces even
+though the second lands a session later. Not claimed: that the
+trigger fired at M2's execution — the second consumer is promised,
+not present, when M2 runs. `notes/ADRs.md` ADR-0043 (M1's own split
+ADR) records this ruling verbatim; this plan's own text above stays as
+written, annotated not rewritten, per this project's own
+annotate-not-rewrite convention.
+
 ## Context
 
 `components/sim` is the pre-merge simulator landed as one fat component

@@ -5,12 +5,13 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- Nothing in progress at end of session (Wave H closed same day it
-  started -- see Done, below; **GMF parity arc COMPLETE** — Wave H was
-  the sole remaining wave; no further GMF-coverage wave is scheduled.
-  Roadmap attention moves to the non-GMF fronts already listed below:
-  the census tool refinements, Wave G's own attachment deferral, and
-  the standing tooling/design backlog).
+- Nothing in progress at end of session (sim split B M1 landed same
+  day it started -- see Done, below. GMF parity arc stays COMPLETE,
+  unaffected by this front). `.agents/plans/2026-08-04-sim-split-b-
+  plan.md`'s own forced sequence (AR-6: M1 → M2 → M3 → M4) has M2
+  (`sim-engine`), M3 (`sim-emit-fhir`), and M4 (`sim-check` + residual
+  thinning) next, each its own session, prompt authored in the design
+  channel per stage once scheduled -- not yet in progress.
 
 ## Next (backlog, no session scheduled)
 - The lookup-column `time` gap (named in the schema-invalid family
@@ -89,11 +90,25 @@ per item; done items move to the bottom of their section with a date and sha.
 - P2-5 intake staging-dir behavior (deferred 2026-07-31)
 - Reading-set budget numbers (charter §6: rule after real sizes are measured)
 - Verdict-cache placement revisit (ADR-0011 note: second consumer, or never)
-- Sim-manifest interop design between sim and corpus (pre-review open thread)
+- Sim-manifest interop design between sim and corpus (pre-review open
+  thread). **RESOLVED (2026-08-04, sim split B M1, `notes/ADRs.md`
+  ADR-0043):** `components/provenance` is the interop design —
+  ManifestV0/V1/V1_1 + validators moved to the single acyclic home
+  both corpus and sim depend on; the sim manifest mirror
+  (`MirroredManifest`) retired with it. See Done, below.
 - Sim split S4 (`sim-engine`: `engine`, `churn`, `order-profiles`) —
   trigger: a second `engine` consumer appears (the FHIR emitter is the
   likely one) or engine work itself needs the emit-state/check boundary
-  designed, same plan
+  designed, same plan. **Dated note (2026-08-04, sim split B M1
+  session, AR-M1-5 / plan AR-4, framing (b)):** superseded-by-citation,
+  not fired — `.agents/plans/2026-08-04-sim-split-b-plan.md` (RULED)
+  proceeds with S4's scope as M2 (`sim-engine`) ahead of this trigger
+  firing, author override plainly stated; the trigger's own reasoning
+  is honored in substance (M3/`sim-emit-fhir` is committed scope in the
+  same sequence, so M2 is designed against two known consumers) — not
+  claimed that the trigger fired. `.agents/plans/2026-08-02-sim-split-
+  plan.md`'s own dated status note carries the same ruling; `notes/
+  ADRs.md` ADR-0043 records it verbatim.
 - `ImagingStudy` (R5, CHF trigger) and the stroke-risk data source (R7)
   — GMF coverage Wave D closed 2026-08-02 (D0-D3, see Done below)
   without owning either; H3's own attribute-weighted `distributed_
@@ -206,6 +221,42 @@ per item; done items move to the bottom of their section with a date and sha.
   shape should expect the same workaround, or this row graduates into
   an actual `bin/regression-oracle` enhancement (e.g. an opt-in "run
   each commit's own digest.clj against its own worktree" mode).
+
+## Done (this session, 2026-08-04, sim split B M1 — provenance lands, mirror retires — ADR-0043)
+- `.agents/plans/2026-08-04-sim-split-b-plan.md` (RULED, AR-1..AR-6)
+  M1 of four executed: `components/provenance` created
+  (ManifestV0/V1/V1_1 + validators moved verbatim out of
+  `corpus/manifest.clj`, exposed via `ehrt.provenance.interface`;
+  builders stay producer-side, corpus's `build`/`build-v1-1` and sim's
+  `build`). `83304c1`.
+- `ehrt.corpus.manifest` repoints to provenance (relay, zero consumer
+  churn — `generate.clj`/`intake.clj`/their tests needed no changes);
+  `ehrt.corpus.interface`'s `ManifestV1_1` re-export repoints directly.
+  `ab8a50c`.
+- Conformance's `sim-manifest-contract-test` repoints to provenance
+  directly, docstring rewritten with a dated note (AR-5(b) refined):
+  the binding-half/mirror-drift framing retires with the mirror, the
+  end-to-end builder-validity substance continues. Fast-lane companion
+  unit test added sim-side. `46fef14`.
+- `ehrt.sim.manifest`'s `MirroredManifest` and its own `valid?` retire
+  entirely (fresh grep found no real caller outside the retired
+  tripwire test) — docstring carries the retirement disclosure, quoting
+  the mirror's own M3-Task-0 lesson verbatim. `dff47fb`.
+- Two-repo vestige sweep (per-file judgment; one real mechanically-
+  stale path fixed, `bases/cli/core.clj`'s broken `notes/ehr-testing-
+  sim-mounting-note.md` citation) + a new docs-tooling gate enforcing
+  the session-record/prompt pairing invariant both directions, seven
+  pre-cutover records allowlisted (derived fresh, red→green proven
+  live). `9ec8360`.
+- Intake-front-door doctrine written down (no code change): sim runs
+  enter `ehr corpus intake` as if foreign, deliberately, the discipline
+  having caught real defects before.
+- S4's own Deferred row (above) and the 2026-08-02 sim-split plan get
+  AR-4's dated note (framing (b), author override plainly stated); the
+  sim-manifest-interop Deferred row (above) marked RESOLVED.
+- `clojure -M:poly check` clean and full suite green at every one of
+  the five commits above; regression-oracle / façade-seam / deftest-
+  parity verification recorded in the session record.
 
 ## Done (this session, 2026-08-04, Wave H — pre-roll — ADR-0042, GMF PARITY ARC COMPLETE)
 - **Config + interpreter phase boundary (Step 1, `98f099b`).** New
