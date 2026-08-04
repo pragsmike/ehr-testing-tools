@@ -9,17 +9,24 @@ per item; done items move to the bottom of their section with a date and sha.
   same day it started -- see Done, below).
 
 ## Next (backlog, no session scheduled)
-- **The schema-invalid family + Wave I tail** (`.agents/plans/2026-08-02-
-  gmf-parity-plan.md` §4, dated note 2026-08-03, ADR-0039 AR-7 — Wave H
-  RE-ORDERED to run LAST, after these): `injuries`/hospice's own
-  `complex_transition` NamedDistribution gap; `congestive-heart-failure`'s
-  newly-unmasked `SetAttribute` `:value`/`:distribution` conflict
-  (`Inpatient LOS`, ADR-0039's own Step 5 finding); `wellness-encounters`'
-  own `Weight` vocabulary gap (the state immediately after `Height` on
-  its mandatory path, ADR-0039's own scope discipline left it out);
-  `AllergyOnset`/`Vaccine` (still-unrecognized state types); the
-  lookup-column `time` gap. Bulk vendoring (batched by closure family)
-  follows once these close.
+- **Wave I's own two unmasked findings** (ADR-0040 AR-7, found live
+  re-running the census after Wave I's own six mechanisms landed —
+  NOT fixed, real design/scope work): `congestive-heart-failure`'s own
+  `Dead_within_28_days` state uses Death's `:condition-onset`/
+  `:referenced-by-attribute` cause-of-death forms, a named, disclosed,
+  UNBUILT limitation from Wave C (ADR-0028 C1/C2 — "no vendored module
+  needs them yet"; one now does). `wellness-encounters` uses an
+  unsupported condition type, `:active-careplan` (Active CarePlan) — a
+  log-query family member (the same shape `:active-condition`/
+  `:active-medication` already establish) never built. Census after
+  Wave I: 82/85 walking (not 84), 1 out-of-scope, these 2 walk-failed —
+  no parity declaration lands until both close. Fold into Wave H's own
+  scope or a short follow-up wave first — author's call
+  (`.agents/plans/2026-08-02-gmf-parity-plan.md` §4's own dated note).
+- The lookup-column `time` gap (named in the schema-invalid family
+  backlog since ADR-0039, still untouched — Wave I's own six
+  mechanisms didn't cover it). Bulk vendoring (batched by closure
+  family) follows once the catalog fully walks.
 - **Wave H design session** (moves LAST per the re-ordering above):
   pre-roll — walk modules deterministically from onset to registration,
   fold pre-window history into initial patient state, emit only
@@ -216,6 +223,50 @@ per item; done items move to the bottom of their section with a date and sha.
   shape should expect the same workaround, or this row graduates into
   an actual `bin/regression-oracle` enhancement (e.g. an opt-in "run
   each commit's own digest.clj against its own worktree" mode).
+
+## Done (this session, 2026-08-04, GMF coverage Wave I — the singleton tail — ADR-0040)
+- **NamedDistribution in `complex_transition` + encounter-class
+  vocabulary (Step 1, `d779cd6`).** AR-1's "4 modules" claim corrected
+  live (only `injuries.json` was actually NamedDistribution; the other
+  3 needed `:hospice`/`:home`/`:urgentcare` encounter-class values,
+  AR-1b, author-approved mid-session). `complex_transition`'s nested
+  `:distributions` gains the SAME resolution `distributed_transition`'s
+  top-level field already had.
+- **SetAttribute source precedence (Step 2, `93de2c0`).** The F0
+  conflict rejection retired — upstream's own chain (range >
+  distribution > valueCode > valueAttribute > value) is legal, ordered
+  co-presence, not a conflict. `:range`/`:value-attribute` join.
+- **Observation-condition absence → false (Step 3, `f99dff9`).**
+  Corrected against the pin: upstream's own issue-774 band-aid, adopted
+  unconditionally (this project has no split-records axis to gate it).
+- **Vital-sign vocabulary completed (Step 4, `24f0184`; follow-up,
+  `d7f5003`).** First pass: 5 rows from the category-gated enumeration
+  AR-4 named. Found live re-running the census: the category gate was
+  narrower than the actual mechanism (which doesn't gate on category at
+  all) — 6 more rows, `category: "laboratory"` upstream. Fixed same
+  session.
+- **AllergyOnset + Vaccine (Step 5, `959b0bc`).** Both follow the
+  nearest existing state's own shape (`ConditionOnset` for
+  AllergyOnset's own established M5a simplification; Vaccine simpler
+  still, no target-encounter distinction upstream at all). Found live:
+  a `:series` key collision with ImagingStudy's own field, fixed with a
+  `kw-type` guard — full 325-test sim-trajectory suite re-run green.
+- **Oracle bracket (Step 6).** `bin/regression-oracle 3d85fa0 HEAD`,
+  run twice (after Step 5 and after the Step 4 follow-up) — all 9
+  vendored root batches IDENTICAL both times.
+- **Census re-run (Step 7, `8ab71e7`).** `:ok-walked` 75→82 (not 84).
+  7 of 9 originally-blocked modules resolve fully. 2 unmask NEW,
+  unrelated, unfixed gaps — see Next, above, and ADR-0040 AR-7.
+- `notes/ADRs.md` ADR-0040 (AR-1 through AR-7, AR-1b addendum, the
+  AR-4 follow-up, AR-5's read findings, the oracle table, full census
+  classification). `.agents/plans/2026-08-02-gmf-parity-plan.md` §4
+  gains the Wave I execution note.
+- **Deviation, disclosed (twice):** AR-1's own "4 modules" claim didn't
+  hold against the live tree (AR-1b, escalated via AskUserQuestion
+  before any code was written). AR-7's own "parity achieved" framing
+  didn't hold either — recorded honestly in the Step 7 commit and
+  ADR-0040's own Fence, not silently adopted; no PARITY ACHIEVED note
+  was written anywhere.
 
 ## Done (this session, 2026-08-04, GMF coverage Wave VS — the vital-sign channel — ADR-0039)
 - **Register + baselines + vocabulary (Step 1, `60c8bb1`).** Ctx's own

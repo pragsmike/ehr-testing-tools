@@ -165,7 +165,29 @@ state (`Height`→`Weight`), `metabolic-syndrome-care` unchanged/
 latent**) → **H** → **I** (singleton tail: `AllergyOnset`, `Vaccine`,
 `Weight` (wellness-encounters' own next vocabulary gap, ADR-0039), the
 lookup-column `time` gap, `congestive-heart-failure`'s own newly
-unmasked `SetAttribute` conflict).
+unmasked `SetAttribute` conflict — **DONE, ADR-0040, see roadmap: 7 of
+9 originally-blocked modules resolve; `congestive-heart-failure`/
+`wellness-encounters` unmask two NEW, unrelated, unfixed gaps (Death's
+own cause-of-death forms; the `:active-careplan` condition type) — the
+lookup-column `time` gap is untouched, still open**).
+
+**Dated note (2026-08-04, ADR-0040): Wave I (the singleton tail)
+executed — 7 of 9 originally-blocked modules resolve, 2 unmask new,
+unrelated gaps, NO parity declaration.** `AllergyOnset`/`Vaccine`,
+`complex_transition` NamedDistribution, the Observation-condition
+absence throw, `wellness-encounters`' own `Weight`/laboratory-category
+vocabulary gaps, and `congestive-heart-failure`'s own `SetAttribute`
+conflict (ADR-0040 AR-1 through AR-5) all land; census moves 75→82
+`:ok-walked` (not 84). `congestive-heart-failure` unmasks Death's own
+unbuilt cause-of-death forms (`:condition-onset`/`:referenced-by-
+attribute`, a Wave C limitation, ADR-0028); `wellness-encounters`
+unmasks an unbuilt condition type, `:active-careplan`. Neither is
+fixed (ADR-0040's own Fence) — both are named, open findings for
+whichever session picks up next, folded into Wave H's own scope or a
+short follow-up wave, author's call. **Wave H does NOT yet run against
+the complete walking catalog** — its own history-phase design should
+account for these two modules still being closed out, not assume they
+already walk.
 
 **Dated note (2026-08-03, author ruling, recorded ADR-0039 AR-7): Wave
 H moves LAST, after the schema-invalid family and the Wave I tail** —
