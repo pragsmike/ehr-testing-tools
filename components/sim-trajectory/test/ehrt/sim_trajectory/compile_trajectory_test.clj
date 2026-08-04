@@ -356,3 +356,62 @@
           {:keys [trajectory]} (interp/run-module sinusitis (Random. seed) p reg-t (+ reg-t 90))
           {:keys [steps]} (ct/compile-trajectory trajectory sim-model/default-facility reg-t)]
       (sim-model/valid? {:name "compiled" :steps steps}))))
+
+;; --- Wave H pre-roll, Step 2 (2026-08-04, ADR-0042 AR-1/AR-2): the
+;; `history?` true path -- uniform drop by `:phase`, no dropped-types/
+;; fact-types bucketing, and the straddle rule (an `:encounter-end`
+;; trusts whatever `:phase` the interpreter already inherited onto it,
+;; never re-derived here -- `ehrt.sim-trajectory.gmf-interpreter/mark-
+;; phase` is where AR-2 itself lives; this namespace only filters).
+
+(defn- ev-h
+  "Test-fixture convenience for the history? true path -- `:phase`
+  instead of `:pre-horizon` (the legacy `ev` helper's own field, above,
+  irrelevant once `history?` is true)."
+  [event overrides]
+  (merge {:module "m" :state :s :t 0 :event event} overrides))
+
+(deftest history-mode-drops-every-history-phase-event-uniformly-no-registration-facts
+  (testing "unlike legacy history?=false, condition/medication/care-plan
+            content does NOT become a registration-fact under history?
+            true -- AR-1's own 'compile step DROPS them, generalized to
+            a phase'"
+    (let [trajectory [(ev-h :encounter {:t 10 :phase :history :encounter-class :ambulatory :codes []})
+                      (ev-h :condition-onset {:t 10 :phase :history :codes []})
+                      (ev-h :medication-order {:t 10 :phase :history :codes []})
+                      (ev-h :procedure {:t 10 :phase :history :codes []})
+                      (ev-h :observation {:t 10 :phase :history :codes []})
+                      (ev-h :diagnostic-report {:t 10 :phase :history :observations [{:codes []}]})
+                      (ev-h :care-plan-start {:t 10 :phase :history :codes []})
+                      (ev-h :encounter-end {:t 10 :phase :history :references 0})]
+          {:keys [steps registration-facts]} (ct/compile-trajectory trajectory facility 100 true)]
+      (is (empty? steps))
+      (is (empty? registration-facts)))))
+
+(deftest history-mode-straddling-encounter-emits-nothing-and-nothing-orphaned
+  (testing "AR-2: an encounter that opens in history claims its own close
+            too, even though the close's own raw :t (150) is well past
+            registration-t (100) -- the interpreter already resolved
+            this via inheritance before this namespace ever sees the
+            event; this test proves the FILTER trusts that mark and
+            drops the whole span, leaving no orphaned :discharge (and no
+            admission either) in :steps"
+    (let [trajectory [(ev-h :encounter {:t 50 :phase :history :encounter-class :inpatient :codes []})
+                      (ev-h :procedure {:t 90 :phase :history :codes []})
+                      (ev-h :encounter-end {:t 150 :phase :history :references 0})]
+          {:keys [steps registration-facts]} (ct/compile-trajectory trajectory facility 100 true)]
+      (is (empty? steps))
+      (is (empty? registration-facts)))))
+
+(deftest history-mode-post-straddle-horizon-encounter-still-compiles-normally
+  (let [trajectory [(ev-h :encounter {:t 50 :phase :history :encounter-class :inpatient :codes []})
+                    (ev-h :procedure {:t 90 :phase :history :codes []})
+                    (ev-h :encounter-end {:t 150 :phase :history :references 0})
+                    (ev-h :encounter {:t 200 :phase :horizon :encounter-class :ambulatory :codes []})
+                    (ev-h :encounter-end {:t 210 :phase :horizon :references 3})]
+        {:keys [steps]} (ct/compile-trajectory trajectory facility 100 true)]
+    (is (= [:outpatient-visit :outpatient-visit-end]
+           (mapv :type (remove #(= :delay (:type %)) steps)))
+        "the dropped straddling encounter never sets encounter-closed?, so
+         the loop finds the NEXT (fully horizon) encounter and compiles
+         it as this run's own operational one")))

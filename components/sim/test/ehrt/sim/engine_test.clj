@@ -1181,3 +1181,54 @@
                     (slurp (io/resource "ehrt/sim/fixtures/pinned_seed_42_patients_5.edn")))
           current (select-keys (engine/run {:seed 42 :patients 5}) [:ground-truth])]
       (is (= baseline current)))))
+
+;; --- Wave H pre-roll, Step 2 (2026-08-04, ADR-0042 AR-1/AR-2): the
+;; straddle rule at engine scale -- a hand-authored module whose own
+;; Encounter opens at DOB and closes 500 days later, run at
+;; `:persona-config {:age-min 0 :age-max 0}` -- persona/reference-
+;; today-epoch-day (this engine's own FIXED registration anchor) is
+;; ALWAYS somewhere between ~4 and ~365 days after an age-0 persona's
+;; own DOB (persona.clj's own birth-year/month/day derivation: DOB
+;; falls anywhere within `reference-birth-year`, reg-t is Jan 1 of the
+;; year after), so THIS encounter's own 500-day span straddles
+;; registration-t for EVERY seed, not merely a hand-picked one -- the
+;; deterministic analog of the UTI closure's own empirical straddle
+;; (ADR-0033/0034 dated notes), used here to prove the mechanism itself
+;; rather than lean on a real vendored root's own incidental one.
+
+(def ^:private straddle-module
+  {:id "straddle-mod" :name "Straddle"
+   :states {:initial {:type :initial :direct-transition :visit-one}
+            :visit-one {:type :encounter :encounter-class :ambulatory
+                        :codes [{:system :snomed :code "185345009" :display "Encounter for symptom"}]
+                        :direct-transition :procedure-one}
+            :procedure-one {:type :procedure
+                            :codes [{:system :snomed :code "80146002" :display "Excision of appendix"}]
+                            :direct-transition :wait-one}
+            :wait-one {:type :delay :exact {:quantity 500 :unit "days"} :direct-transition :end-one}
+            :end-one {:type :encounter-end :direct-transition :gap}
+            :gap {:type :delay :exact {:quantity 1 :unit "days"} :direct-transition :visit-two}
+            :visit-two {:type :encounter :encounter-class :ambulatory
+                        :codes [{:system :snomed :code "185345009" :display "Encounter for symptom"}]
+                        :direct-transition :observe-two}
+            :observe-two {:type :observation :category "vital-signs" :unit "Cel"
+                          :codes [{:system :loinc :code "8310-5" :display "Body temperature"}]
+                          :range {:low 37.5 :high 38.0}
+                          :direct-transition :end-two}
+            :end-two {:type :encounter-end :direct-transition :done}
+            :done {:type :terminal}}})
+
+(defspec history-mode-straddling-encounter-drops-in-full-post-straddle-content-lands-invariant-holds 150
+  (prop/for-all [seed gen/large-integer]
+    (let [{:keys [ground-truth] :as result}
+          (engine/run {:seed seed :patients 3
+                       :pathway {:name "module-only" :steps []}
+                       :persona-config {:age-min 0 :age-max 0}
+                       :modules [(sim-trajectory/singleton-closure straddle-module)]
+                       :module-assignment [{:module-id "straddle-mod" :weight 1}]
+                       :module-horizon-days 1000
+                       :history true})
+          kinds (into #{} (map :event) ground-truth)]
+      (and (result/ok? (check/check-all ground-truth (:facility result)))
+           (not (contains? kinds :procedure))
+           (some kinds #{:outpatient-visit :observation})))))

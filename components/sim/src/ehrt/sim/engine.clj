@@ -348,16 +348,12 @@
                                                 (or (:initial-attributes closure) {})
                                                 (or (:tables closure) {})
                                                 history?)]
-                     ;; Step 1 (ADR-0042): compile-trajectory's own new
-                     ;; 4-arity lands in Step 2 -- calling it unconditionally
-                     ;; here, even at `history?` false, would ArityException
-                     ;; every pre-H run before that arity exists. `history?`
-                     ;; false stays the plain 3-arg call (untouched, byte-
-                     ;; identical); `history?` true opts into the 4-arg call
-                     ;; Step 2 adds.
-                     (if history?
-                       (sim-trajectory/compile-trajectory trajectory (:facility world) reg-t history?)
-                       (sim-trajectory/compile-trajectory trajectory (:facility world) reg-t))))]
+                     ;; ADR-0042 AR-1/AR-3: `history?` threads straight
+                     ;; through to compile-trajectory's own new 4-arity --
+                     ;; false stays the plain legacy path (byte-identical
+                     ;; to every pre-H run, since that arity's own body is
+                     ;; nothing but a call to the unchanged 3-arg one).
+                     (sim-trajectory/compile-trajectory trajectory (:facility world) reg-t history?)))]
     {:events [(cond-> {:event :registered :t t
                        :active-mrn (get-in world [:patients patient-id :active-mrn])
                        :persona persona

@@ -87,7 +87,42 @@
   5's own 'enters the ground-truth log... as registration-time facts' is
   realized by a caller (M5b Task 4's own engine wiring) riding these on
   the SAME engine-internal `:registered` event every patient already
-  gets (M4), never inventing a new IR step type for it.
+  gets (M4), never inventing a new IR step type for it. THIS PARAGRAPH
+  DESCRIBES THE LEGACY PATH ONLY -- `history?` false (the default, every
+  pre-H caller), byte-identical to every pre-H run. See the next
+  paragraph for `history?` true.
+
+  Wave H pre-roll (2026-08-04, ADR-0042 AR-1/AR-2): `history?` true
+  swaps the paragraph above for a SINGLE uniform rule -- any event whose
+  own `:phase` (`ehrt.sim-trajectory.gmf-interpreter/run-module`'s own
+  AR-2 encounter-anchored mark, minted only when `history?` was ALSO
+  true at the interpreter) is `:history` compiles to NOTHING, no
+  dropped-types/fact-types bucketing, no `:registration-facts` entry --
+  the ConditionEnd-with-no-open-encounter precedent this namespace
+  already establishes elsewhere ('real, worth keeping, not worth a
+  message'), generalized to a whole phase. Glass-box traceability keeps
+  every history-phase event inspectable on the raw, uncompiled
+  `trajectory` this function's own caller still has in full (AR-1's own
+  'no second interpreter, no fold-only mode' ruling) -- there is nothing
+  left for a condensed registration-time-fact summary to add, so
+  `:registration-facts` stays empty under `history?` true (AR-6's own
+  reconciliation: `:pre-horizon-facts`, riding the SAME engine-internal
+  `:registered` event, is simply never populated in this mode, not
+  retired as a mechanism -- `history?` false still lands there exactly
+  as before). Because `:phase` is INHERITED from an encounter's own
+  opening phase (interpreter-level, not re-derived here), a straddling
+  encounter's own `:encounter-end` drops together with its own
+  `:encounter` -- `encounter-closed?` never becomes true for it, so this
+  loop's own 'first encounter, then stop' scoping naturally continues
+  past a fully-dropped straddling encounter to the next one, exactly as
+  it already skips past any other pre-horizon-dropped encounter today.
+  `check.clj`'s own `:clinical-content-only-when-admitted` invariant
+  needs no change for this: it reads compiled IR step types
+  (`:procedure`/`:observation`/`:medication-order`/`:diagnostic-report`/
+  `:care-plan-start`) replayed through folded engine state, never
+  `:pre-horizon-facts` or the raw trajectory directly, and AR-2
+  guarantees a straddling encounter's own contents never reach `:steps`
+  at all, in either mode.
 
   The day -> minutes boundary (docs/patient-state-model.md's durations
   rule, extended): every trajectory event's own `:t` is an interpreter-
@@ -303,7 +338,8 @@
   holds for `{:name ... :steps steps}`, any real facility); `:registration-
   facts` is this namespace's own resolution of ratified item 5 -- see
   this namespace's own docstring."
-  [trajectory facility registration-t]
+  ([trajectory facility registration-t] (compile-trajectory trajectory facility registration-t false))
+  ([trajectory facility registration-t history?]
   (loop [events (map-indexed vector trajectory)
          steps []
          registration-facts []
@@ -334,10 +370,21 @@
           encounter-closed?
           (recur more steps registration-facts last-t encounter-closed?)
 
-          (and (:pre-horizon event) (pre-horizon-dropped-types event-type))
+          ;; Wave H pre-roll (ADR-0042 AR-1/AR-2): history? true -- a
+          ;; single uniform drop by the interpreter's own AR-2 phase
+          ;; mark (encounter-anchored inheritance already resolved
+          ;; there), no dropped-types/fact-types bucketing, no
+          ;; :registration-facts entry. See this namespace's own
+          ;; docstring, above.
+          (and history? (= :history (:phase event)))
           (recur more steps registration-facts last-t encounter-closed?)
 
-          (and (:pre-horizon event) (pre-horizon-fact-types event-type))
+          ;; LEGACY (history? false -- the default, every pre-H caller):
+          ;; unchanged, byte-identical to every pre-H run.
+          (and (not history?) (:pre-horizon event) (pre-horizon-dropped-types event-type))
+          (recur more steps registration-facts last-t encounter-closed?)
+
+          (and (not history?) (:pre-horizon event) (pre-horizon-fact-types event-type))
           (recur more steps
                  (conj registration-facts {:event event-type :codes (:codes event)
                                            :citation (citation event) :references (:references event)})
@@ -412,4 +459,4 @@
             (recur more steps registration-facts last-t true))
 
           :else
-          (recur more steps registration-facts last-t encounter-closed?))))))
+          (recur more steps registration-facts last-t encounter-closed?)))))))
