@@ -28,7 +28,7 @@
   (:require [ehrt.kernel.interface :as result]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]
             [ehrt.sim.emit-state :as emit-state]
-            [ehrt.sim.engine :as engine]
+            [ehrt.sim-engine.interface :as engine]
             [ehrt.sim.run :as run]))
 
 (defn- final-world

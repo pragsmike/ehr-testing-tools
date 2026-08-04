@@ -14,7 +14,7 @@
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
             [ehrt.sim-model.interface :as sim-model]
-            [ehrt.sim.engine :as engine]
+            [ehrt.sim-engine.engine :as engine]
             [ehrt.sim-emit-hl7.emit-hl7 :as emit-hl7]
             [ehrt.sim-emit-hl7.site-profile :as site-profile]
             [com.nervestaple.hl7-parser.parser :as parser]

@@ -1,4 +1,4 @@
-(ns ehrt.sim.engine-test
+(ns ehrt.sim-engine.engine-test
   "Determinism and invariants over the engine. The properties here are
   the executable form of the problem statement's Guarantees section:
   same inputs + seed => identical output; every run satisfies the
@@ -19,7 +19,7 @@
             [clojure.test.check.properties :as prop]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
-            [ehrt.sim.engine :as engine]
+            [ehrt.sim-engine.engine :as engine]
             [ehrt.sim-trajectory.interface :as sim-trajectory]
             [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim-engine.order-profiles :as order-profiles]

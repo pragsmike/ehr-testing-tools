@@ -79,7 +79,7 @@
             [ehrt.sim-trajectory.gmf :as gmf]
             [ehrt.sim-trajectory.gmf-interpreter :as interp]
             [ehrt.sim-model.interface :as sim-model]
-            [ehrt.sim.engine :as engine]
+            [ehrt.sim-engine.engine :as engine]
             [ehrt.sim-emit-hl7.interface :as emit-hl7])
   (:import [java.util Random]))
 

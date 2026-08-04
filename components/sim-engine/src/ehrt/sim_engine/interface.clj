@@ -12,32 +12,46 @@
   (Polylith permits reaching implementation from test), never through
   this seam.
 
-  Step 1 landing (leaf slice, churn + order-profiles only -- engine.clj
-  itself, and the vars it alone needs, move in Step 2): the
-  orchestration surface (run.clj's own churn wiring) and the acceptance
-  surface (check.clj's own order-profiles defaults). `inject` and
-  `sample-analyte-value` are here ONLY as a transitional accommodation
-  for residual sim's own `engine.clj`, which reaches this component's
-  churn/order-profiles from src scope for this one commit before moving
-  itself in Step 2 (AR-M2-1) -- re-derived (and, here, removed) once
-  that move lands, since no OTHER src-scope caller outside this
-  component ever needed them."
+  Step 2 landing (engine.clj moves in, completing this component):
+  `inject` and `sample-analyte-value`, Step 1's transitional
+  accommodation for residual sim's own `engine.clj`, are REMOVED here
+  -- engine.clj now lives inside this component and reaches churn/
+  order-profiles as sibling internal namespaces, not through this seam
+  (no OTHER src-scope caller outside this component ever needed
+  either var, so nothing else repoints). Three documented sections
+  below, each named for the residual-sim caller(s) it serves:
+
+  - orchestration surface -- what `run.clj` (and, for `config-keys`,
+    `identifiers.clj`, which mirrors run's own config-forwarding) drive
+    the engine with: `run`, `config-keys`, `default-churn-profile`,
+    `sample-profile`.
+  - state-reader surface -- what `emit-state.clj` and `identifiers.clj`
+    fold over the engine's own output: `replay` (also read by `check`,
+    below -- one def, several callers, not duplicated per section).
+  - acceptance surface -- what `check.clj` validates a run's
+    ground-truth log against: `documented-step-rejection-reasons`,
+    `default-profiles`, `abnormal-flag` (plus `replay`, shared with the
+    state-reader surface above)."
   (:require [ehrt.sim-engine.churn :as churn]
+            [ehrt.sim-engine.engine :as engine]
             [ehrt.sim-engine.order-profiles :as order-profiles]))
 
-;; --- orchestration surface (run.clj's own churn wiring) -------------------
+;; --- orchestration surface (run.clj's own engine + churn wiring;
+;; config-keys is also read by identifiers.clj, mirroring run's own
+;; config-forwarding) --------------------------------------------------------
 
+(def run engine/run)
+(def config-keys engine/config-keys)
 (def default-churn-profile churn/default-churn-profile)
 (def sample-profile churn/sample-profile)
 
-;; --- acceptance surface (check.clj's own order-profiles defaults) ---------
+;; --- state-reader surface (emit-state.clj and identifiers.clj folding
+;; the engine's own output) --------------------------------------------------
 
+(def replay engine/replay)
+
+;; --- acceptance surface (check.clj's own invariant catalog) ----------------
+
+(def documented-step-rejection-reasons engine/documented-step-rejection-reasons)
 (def default-profiles order-profiles/default-profiles)
 (def abnormal-flag order-profiles/abnormal-flag)
-
-;; --- transitional only: residual sim's engine.clj, until Step 2 moves it
-;; into this component and these two entries are removed again (see the
-;; namespace docstring's own note) ------------------------------------------
-
-(def inject churn/inject)
-(def sample-analyte-value order-profiles/sample-analyte-value)

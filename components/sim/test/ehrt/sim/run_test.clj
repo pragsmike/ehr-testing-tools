@@ -22,7 +22,7 @@
   (:require [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
             [ehrt.kernel.interface :as result]
-            [ehrt.sim.engine :as engine]
+            [ehrt.sim-engine.engine :as engine]
             [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim.run :as run]))
 

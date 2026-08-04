@@ -1,4 +1,4 @@
-(ns ehrt.sim.engine
+(ns ehrt.sim-engine.engine
   "The discrete-event simulation core: a priority queue of pending
   events ordered by simulated time, a world of patient states (plus,
   from Milestone M1 on, the static facility/provider config decide
@@ -61,8 +61,8 @@
   log -- events here are format-free."
   (:require [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim-trajectory.interface :as sim-trajectory]
-            [ehrt.sim-engine.interface :as churn]
-            [ehrt.sim-engine.interface :as order-profiles]
+            [ehrt.sim-engine.churn :as churn]
+            [ehrt.sim-engine.order-profiles :as order-profiles]
             [malli.core :as m])
   (:import [java.util Random]))
 

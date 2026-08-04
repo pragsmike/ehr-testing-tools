@@ -34,7 +34,7 @@
   (:require [clojure.set]
             [ehrt.kernel.interface :as result]
             [ehrt.sim-model.interface :as sim-model]
-            [ehrt.sim.engine :as engine]
+            [ehrt.sim-engine.interface :as engine]
             [ehrt.sim-engine.interface :as order-profiles]))
 
 (defn- events-by-patient

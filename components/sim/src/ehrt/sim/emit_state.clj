@@ -58,7 +58,7 @@
      would violate law 4 above (\"populated ONLY from fields the fold
      already carries\") for a concern that has nothing to do with
      clinical content."
-  (:require [ehrt.sim.engine :as engine]))
+  (:require [ehrt.sim-engine.interface :as engine]))
 
 ;; --- Law 1: snapshot-at-instant -------------------------------------------
 

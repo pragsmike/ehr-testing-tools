@@ -1,4 +1,4 @@
-(ns ehrt.sim.churn-scenarios-test
+(ns ehrt.sim-engine.churn-scenarios-test
   "M2b's scripted regression fleet: authored, hand-driven scenarios
   exercising the compound cases the catalog names --
   docs/clinical-realities.md's newborn-merge entry (merge-while-
@@ -29,7 +29,7 @@
   regression, per the roadmap's own migration note -- not everything
   needs to move to engine/run, just this scripted fleet."
   (:require [clojure.test :refer [deftest is testing]]
-            [ehrt.sim.engine :as engine]
+            [ehrt.sim-engine.engine :as engine]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]
             [com.nervestaple.hl7-parser.parser :as parser]
             [com.nervestaple.hl7-parser.message :as message]))

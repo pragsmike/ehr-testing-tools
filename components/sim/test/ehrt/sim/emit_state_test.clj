@@ -18,7 +18,7 @@
             [clojure.data.json :as json]
             [ehrt.sim.emit-state :as emit-state]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]
-            [ehrt.sim.engine :as engine]
+            [ehrt.sim-engine.engine :as engine]
             [com.nervestaple.hl7-parser.parser :as parser]
             [com.nervestaple.hl7-parser.message :as message]))
 

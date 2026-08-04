@@ -18,7 +18,7 @@
             [ehrt.kernel.interface :as result]
             [ehrt.sim.check :as check]
             [ehrt.sim-model.interface :as sim-model]
-            [ehrt.sim.engine :as engine]
+            [ehrt.sim-engine.engine :as engine]
             [ehrt.sim-engine.order-profiles :as order-profiles]))
 
 (def test-facility

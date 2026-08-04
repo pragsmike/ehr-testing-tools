@@ -35,7 +35,7 @@
             [clojure.test :refer [deftest is testing]]
             [ehrt.kernel.interface :as result]
             [ehrt.sim-trajectory.gmf :as gmf]
-            [ehrt.sim.engine :as engine]
+            [ehrt.sim-engine.engine :as engine]
             [ehrt.sim.check :as check]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]))
 

@@ -26,7 +26,7 @@
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [ehrt.kernel.interface :as result]
-            [ehrt.sim.engine :as engine]
+            [ehrt.sim-engine.interface :as engine]
             [ehrt.sim.check :as check]
             [ehrt.sim-engine.interface :as churn]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]

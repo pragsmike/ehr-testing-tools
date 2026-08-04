@@ -20,7 +20,7 @@
   ever introduced, might not fail every single run."
   (:require [clojure.test :refer [deftest is testing]]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]
-            [ehrt.sim.engine :as engine]))
+            [ehrt.sim-engine.engine :as engine]))
 
 (def ref-date "2024-01-01")
 (def utc-offset "+00:00")

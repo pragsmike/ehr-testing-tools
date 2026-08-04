@@ -19,7 +19,7 @@
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
-            [ehrt.sim.engine :as engine]
+            [ehrt.sim-engine.engine :as engine]
             [ehrt.sim-emit-hl7.emit-hl7 :as emit-hl7]
             [ehrt.sim-trajectory.interface :as sim-trajectory]
             [ehrt.sim-emit-hl7.v2-replay :as v2-replay]))
