@@ -9,17 +9,29 @@ per item; done items move to the bottom of their section with a date and sha.
   same day it started -- see Done, below).
 
 ## Next (backlog, no session scheduled)
-- **Wave G design session** (`.agents/plans/2026-08-02-gmf-parity-plan.md`
-  §4, ratified order 2026-08-03, ADR-0035 AR-8 — F0 and F both now
-  landed, see Done below): wellness cycle — design session first
-  (ADR-0031 AR-2 ruled it IN SCOPE; ledger is 19 tagged modules plus
-  now FOUR max-steps loop walk-failures — `med-rec`,
-  `veteran-substance-abuse-treatment`, and Wave F's own newly-surfaced
-  `mend-program`/`metabolic-syndrome-care`, all expected to resolve as
-  substitution artifacts once G lands). H (pre-roll) follows, then I
-  (bulk vendoring). Wave E (risk-attribute register) is RE-SCOPED —
-  calibration content on demand, not in the leverage queue
-  (`stroke.json` already censuses `:ok-walked`).
+- **Wave H design session** (`.agents/plans/2026-08-02-gmf-parity-plan.md`
+  §4, ratified order 2026-08-03, ADR-0035 AR-8 — F0, F, and G all now
+  landed, see Done below): pre-roll — walk modules deterministically
+  from onset to registration, fold pre-window history into initial
+  patient state, emit only in-window events. Emit-nothing REAFFIRMED
+  for the history phase generally (ADR-0031 AR-3); this Wave's own
+  design session owns the actual fold-boundary mechanism, including the
+  UTI pre-horizon straddle finding (ADR-0033/ADR-0034 AR-6, the
+  round-trip test's own seed-777 dodge retires when H resolves it) AND
+  a new, Wave-G-sourced obligation: `:wellness-wait` reached during a
+  future history-phase fast-forward must FOLD state without emitting
+  (ADR-0037 AR-2(c), `.agents/plans/2026-08-02-gmf-parity-plan.md`'s own
+  H row carries the dated note). I (bulk vendoring) follows. Wave E
+  (risk-attribute register) is RE-SCOPED — calibration content on
+  demand, not in the leverage queue (`stroke.json` already censuses
+  `:ok-walked`).
+- **Wave G attachment deferral** (ADR-0037 AR-4, named trigger "multi-
+  module assignment per patient"): upstream's own all-waiting-modules-
+  attach-to-one-visit semantics only diverges from this project's
+  per-module wait when one patient runs multiple modules concurrently —
+  the engine's current one-module-per-patient assignment never
+  exercises this, so it is deferred, not built. Revisit trigger: a
+  future session that assigns more than one module to the same patient.
 - Pairing-as-data (review P3-3): mutate↔judge conviction registry — design pass in
   the design channel first; vocabulary is load-bearing
 - Storefront demo fixture: minimal clean-gating FHIR fixture so the README's mutate
@@ -58,6 +70,17 @@ per item; done items move to the bottom of their section with a date and sha.
   explicit fence) — AUTHOR ACTION.
 
 ## Deferred (explicitly, with revisit triggers)
+- **Wellness cadence chronic-meds cap** (2026-08-03, `notes/ADRs.md`
+  ADR-0037 AR-1): `EncounterModule.recommendedTimeBetweenWellnessVisits`'s
+  own chronic-medications annual cap ("if hasChronicMeds && interval >
+  1 year, interval = 1 year", lines 209-211 at the pin) is EXCLUDED from
+  `next-wellness-tick` by ruling, not omitted by oversight —
+  `active-chronic-medications` exists in this project's own persona/
+  attribute model with no input cascade, so wiring the cap in is a
+  register item, not a design question. Revisit trigger: a future
+  session ranking calibration fidelity for the chronic cluster, or a
+  finding that the cap's absence materially skews a census/corpus
+  result.
 - **Backload named future** (2026-08-03, `notes/ADRs.md` ADR-0031 AR-3):
   pre-roll stays emit-nothing, reaffirmed — no backloaded-history mode
   in the sim. The backload need (pre-window messages for systems that
@@ -181,6 +204,84 @@ per item; done items move to the bottom of their section with a date and sha.
   shape should expect the same workaround, or this row graduates into
   an actual `bin/regression-oracle` enhancement (e.g. an opt-in "run
   each commit's own digest.clj against its own worktree" mode).
+
+## Done (this session, 2026-08-03, GMF coverage Wave G — wellness cycle — ADR-0037)
+- **The wellness cadence table + pure schedule function (Step 1,
+  `d209267`).** `EncounterModule.recommendedTimeBetweenWellnessVisits`
+  transcribed verbatim from the pinned Synthea source (lines 176-201)
+  into `resources/sim-trajectory/wellness-cadence.edn`, the
+  chronic-meds annual cap EXCLUDED by ruling (see Deferred, above).
+  `next-wellness-tick` is a pure, zero-draw function anchoring the
+  cycle at DOB — no stored schedule state anywhere, load-bearing for
+  the oracle bracket below.
+- **Loader: `wellness: true` loads as `:wellness-wait` (Step 2,
+  `23974ba`).** Retires the Wave B create-now substitution
+  (`normalize-state`'s own dated retirement comment; `docs/gmf-
+  interpreter.md` sections 4 and 9 gain matching dated notes) — a
+  distinct state type, not a synthesized `:encounter-class`.
+- **Interpreter wait semantics (Step 3, `cbf5330`).** `wellness-wait-
+  step` advances the module clock to `next-wellness-tick`, opens the
+  wellness encounter AT the tick (attaching `:reason`, a new thread),
+  and is bounded by `horizon-end-t` exactly as Delay is — no code
+  change needed there, the existing loop-level horizon check already
+  covers it. `ear_infections`' own interpreter test gains a new-timing
+  assertion (the wellness encounter now fires strictly after the last
+  medication ends); the sim-emit-hl7 engine round-trip test's docstring
+  records the round trip stays green under the new timing.
+- **Live finding, found running this Wave's own census, fixed same
+  session (`203ed9f`): `next-wellness-tick`'s boundary semantics
+  refined from inclusive `>=` to strict `>`.** The real `med_rec.json`
+  has ZERO delay anywhere in its own wellness-wait loop body — an
+  inclusive first call at `t` = DOB returned DOB unchanged, and every
+  re-entry at that same unchanged `t` returned the same tick again, an
+  infinite zero-advance spin into `max-steps`. Strict `>` guarantees
+  every call returns a tick strictly later than its own `t`, matching
+  upstream's own never-fires-twice-at-the-same-instant guarantee.
+  Verified directly: a standalone trace of `med_rec.json` now completes
+  at `:horizon-complete` with 269 real events, where it previously
+  threw.
+- **Oracle bracket (`58fdd9c` → `203ed9f`, `bin/regression-oracle`, all
+  9 root batches): IDENTICAL except `ear-infections`/`ear-infections-
+  engine`, exactly the two batches ADR-0037 AR-6 predicted** — the
+  ear-infections episode now resolves at a real cadence tick instead of
+  immediately after medications end, by design. Every other batch
+  (`appendicitis`, `death-fixture`, `sepsis`, `sinusitis`, `sore-
+  throat`, `total-joint-replacement-engine`, `urinary-tract-infections-
+  engine`) byte-identical. The `next-wellness-tick` fix itself changed
+  NEITHER ear-infections digest from what the pre-fix oracle run
+  already recorded — the fix never touches ear_infections' own real
+  seeded walks (verified, not assumed).
+- **Census re-run (Step 5, `8fc4b03`,
+  `components/sim-trajectory/docs/census/2026-08-03-synthea-7e08387-
+  wave-g.edn`): `:ok-walked` 60→64, `:load-failed` 18→17, `:walk-failed`
+  7→3, `:out-of-scope-by-ruling` 0→1, total 85→85 unchanged.** The
+  `:wellness-timing` detector retires (`ehrt.sim-trajectory.census`,
+  kept as history, no longer called); a new `out-of-scope-by-ruling?`
+  classifier reclassifies `gallstones` (its own sole gap, `Physiology`,
+  the census's first ruled exclusion). All four real upstream loop
+  modules (`med-rec`/`mend-program`/`metabolic-syndrome-care`/
+  `veteran-substance-abuse-treatment`) resolve fully to `:ok-walked`.
+  Of the 19 formerly-tagged modules: 7 stay `:ok-walked` but change walk
+  digest (a wait now times the encounter differently — expected); 8
+  show no observable difference (their own seeds/horizon never cross
+  the wellness-wait path differently). No module outside these 19
+  moved at all — full classification in `docs/gmf-interpreter.md`'s own
+  new dated subsection.
+- `notes/ADRs.md` ADR-0037 (AR-1 through AR-8, the mid-session
+  `next-wellness-tick` deviation record, execution note with the full
+  oracle table and census movement classification).
+  `.agents/plans/2026-08-02-gmf-parity-plan.md` §4 (Wave G row marked
+  DONE in the dated note above the table; Wave H's own row gains the
+  wellness-wait-during-history-phase dated note). This roadmap's own
+  Deferred section gains two rows (the chronic-meds cadence cap; the
+  Wave G attachment deferral) and Next moves to Wave H's own design
+  session.
+- Commits, in order: `d209267` (Step 1, cadence table + schedule
+  function), `23974ba` (Step 2, loader), `cbf5330` (Step 3, interpreter
+  + tests), `203ed9f` (live fix, `next-wellness-tick` strict `>`),
+  `8fc4b03` (Step 5, census re-run), and this session's own closing
+  records commit. Session record: `.agents/session-records/2026-08-03-
+  gmf-coverage-wave-g.md`.
 
 ## Done (this session, 2026-08-03, Wave F0 — distributions — ADR-0035)
 - GAUSSIAN/EXPONENTIAL/TRIANGULAR join the v2 distribution vocabulary

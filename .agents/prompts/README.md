@@ -52,3 +52,4 @@ Files in this directory:
   * 2026-08-03-gmf-census.md
   * 2026-08-03-wave-f0-distributions.md
   * 2026-08-03-gmf-coverage-wave-f.md
+  * 2026-08-03-gmf-coverage-wave-g.md

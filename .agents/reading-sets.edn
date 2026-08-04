@@ -231,7 +231,13 @@
   ;; prompt-archive filenames, brought the real total from 1417 to
   ;; 1547 -- self-caught, the same pattern every prior session touching
   ;; this file has hit.
-  :budget-lines 1547}
+  ;;
+  ;; GMF coverage Wave G (2026-08-03, ADR-0037): notes/ADRs.md's own
+  ;; new ADR-0037 entry, the roadmap's own Done section + two new
+  ;; Deferred rows, and this session's own session-record/prompt-archive
+  ;; filenames brought the real total from 1547 to 1650 -- self-caught,
+  ;; the same pattern every prior session touching this file has hit.
+  :budget-lines 1650}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one
