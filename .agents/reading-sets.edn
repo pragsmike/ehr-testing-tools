@@ -237,7 +237,13 @@
   ;; Deferred rows, and this session's own session-record/prompt-archive
   ;; filenames brought the real total from 1547 to 1650 -- self-caught,
   ;; the same pattern every prior session touching this file has hit.
-  :budget-lines 1650}
+  ;;
+  ;; GMF coverage Wave LC (2026-08-03, ADR-0038): the roadmap's own new
+  ;; Done section, two Deferred rows marked RESOLVED, and this session's
+  ;; own session-record/prompt-archive filenames brought the real total
+  ;; from 1650 to 1701 -- self-caught, the same pattern every prior
+  ;; session touching this file has hit.
+  :budget-lines 1701}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one

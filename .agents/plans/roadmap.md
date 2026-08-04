@@ -111,12 +111,12 @@ per item; done items move to the bottom of their section with a date and sha.
   ALL now built (GMF coverage Wave F, ADR-0036) — this row's own
   original claim is stale, corrected here rather than left to drift.
   The Wave F census re-run (`docs/gmf-interpreter.md` §15) traced it
-  directly: `ImagingStudy` was never the module's ONLY gap — it now
-  surfaces an unrecognized lookup-table column, `state` (H2's own
+  directly: `ImagingStudy` was never the module's ONLY gap — it surfaced
+  an unrecognized lookup-table column, `state` (H2's own
   `recognized-lookup-table-columns` boundary), a pre-existing,
-  unrelated gap Wave F did not touch. Its own 27-file closure is fully
-  surveyed (`docs/gmf-interpreter.md` §13); the lookup-table-column gap
-  is Wave I's own named tail item (see the new row below).
+  unrelated gap Wave F did not touch. **RESOLVED 2026-08-03 (GMF
+  coverage Wave LC, ADR-0038):** the whitelist itself retired; this
+  module now censuses `:ok-walked` — see Done, below.
 - **Census tool refinements** (ADR-0035/ADR-0036's own disclosed, not-
   fixed findings, `ehrt.sim-trajectory.census`): (a) no substance
   qualifier on a `:ok-walked` verdict — a module that produces zero
@@ -159,8 +159,11 @@ per item; done items move to the bottom of their section with a date and sha.
   `vhd_tr_risk`, `docs/gmf-interpreter.md` §15's own AR-8 trace) —
   `race` shares this wave's own persona-race prerequisite (`ehrt.sim-
   model.persona`'s new optional `:race` field, ADR-0036 AR-4/AR-5).
-  H2's own `recognized-lookup-table-columns` boundary; revisit trigger:
-  Wave I's own bulk-vendoring session.
+  H2's own `recognized-lookup-table-columns` boundary. **RESOLVED
+  2026-08-03 (GMF coverage Wave LC, ADR-0038), pulled forward from
+  Wave I:** the boundary itself retired (generalized to attribute
+  resolution, not a bigger whitelist) — all 9 modules move to
+  `:ok-walked` — see Done, below.
 - `Active CarePlan` (condition type) — design-ruled, implementation-
   deferred (Wave D stage D2's own G2): no vendored module exercises it
   yet; build fresh against the first real candidate's own usage.
@@ -204,6 +207,52 @@ per item; done items move to the bottom of their section with a date and sha.
   shape should expect the same workaround, or this row graduates into
   an actual `bin/regression-oracle` enhancement (e.g. an opt-in "run
   each commit's own digest.clj against its own worktree" mode).
+
+## Done (this session, 2026-08-03, GMF coverage Wave LC — lookup-column generalization — ADR-0038)
+- **Loader generalization (Step 1, `26f280a`).** H2's own
+  `recognized-lookup-table-columns` whitelist retired — never a mirror
+  of anything upstream does (read directly against the pin,
+  `LookupTableTransition`'s own `loadLookupTable`/`follow`: no closed
+  column vocabulary at all). Any non-weight column other than `age`/
+  `time` now loads unconditionally; load-time rejection narrows to a
+  structurally malformed `age`/`time` cell
+  (`:malformed-lookup-table-range`). `time`'s own two accepted forms
+  (`Utilities.parseDateRange`, transcribed from the pin) convert to
+  this project's own epoch-day unit.
+- **Walk-time resolution (Step 2, `6af4dc0`).** `lookup-column-value`
+  resolves a column module-attribute-first, then a persona-field
+  mapping (`gender`/`race`/`state`/`socioeconomic_category`), else
+  honest absence (ADR-0036 AR-4's own guard-layer precedent, reused
+  verbatim) — case-sensitive value comparison, `LookupTableKey.equals`'s
+  own `List<String>.equals`, deliberately NOT the `:race` CONDITION
+  type's case-insensitive match. `:time-range` containment joins
+  `:age-range`.
+- **Persona `:state` (Step 3, `50f7efd`).** A third config-gated draw
+  (16), ADR-0036's own race/SES pattern verbatim — deliberately
+  distinct from the pre-existing `:address :state` (a USPS
+  abbreviation; the lookup-table CSVs key on full state names).
+- **Oracle bracket (Step 4).** `bin/regression-oracle 4d868df 50f7efd`
+  — all 9 vendored root batches IDENTICAL. Pure identity, byte-verified.
+- **Census re-run (Step 5, `a12c911`).** `:ok-walked` 64→73,
+  `:load-failed` 17→8 (−9, exactly the 9 lookup-column-blocked
+  modules), every other verdict category unchanged. All 9 predicted
+  modules (`acute-myeloid-leukemia`, `diabetic-retinopathy-treatment`,
+  `hiv-diagnosis`, `myocardial-infarction`,
+  `stable-ischemic-heart-disease`, `vhd-aortic`, `vhd-mitral`,
+  `vhd-pulmonic`, `vhd-tricuspid`) move `:load-failed` → `:ok-walked`
+  cleanly — zero surfaced a next blocker, zero regressed.
+- `notes/ADRs.md` ADR-0038 (AR-1 through AR-5, execution note with the
+  oracle table and full census movement classification). This
+  roadmap's own Deferred section: the `myocardial_infarction.json` row
+  and the `race`/`time` lookup-column row both marked RESOLVED, pointing
+  here.
+- **Next frontier (post-LC, undecided):** the schema-invalid family
+  (`injuries`/hospice's own `complex_transition` NamedDistribution
+  gap), the vital-sign channel (ADR-0036 AR-7, still unmoved), and the
+  8 modules remaining `:load-failed` on unrelated gaps
+  (`VitalSign`/`AllergyOnset`/`Vaccine`) — awaiting the design
+  channel's own post-LC read of the new census artifact before a next
+  wave is scheduled.
 
 ## Done (this session, 2026-08-03, GMF coverage Wave G — wellness cycle — ADR-0037)
 - **The wellness cadence table + pure schedule function (Step 1,

@@ -2631,6 +2631,15 @@ fetched declares a `"time"` column — that half of real Synthea's own
 mechanism stays NAMED, UNBUILT (installed ≠ used, H1's own instruction),
 not silently assumed general.
 
+**BUILT (2026-08-03, GMF coverage Wave LC, ADR-0038 AR-1(b)):** both
+the `time` column and the age/gender-only whitelist above are retired
+history — `time` is now special-cased exactly like `age` (both accepted
+`Utilities.parseDateRange` forms, transcribed from the pin), and every
+OTHER attribute column resolves generically (module attribute first,
+then a persona-field mapping), never validated against a closed set.
+The "H2's own specify-vs-delegate audit" language in this subsection
+describes the ORIGINAL D3a scope decision, not current behavior.
+
 **Vendored content (fetched, hashed, this session — Step 3's own
 vendoring target):**
 
@@ -2662,7 +2671,21 @@ name, an unparseable CSV, or a table declaring an attribute column
 outside `#{"age" "gender"}` rejects the WHOLE closure (a NEW rejection
 reason, `:unrecognized-lookup-table-column`, the same "REJECTED, never
 silently skipped" disposition `:unsupported-state-type` already
-establishes) — never a silent partial table. `load-closure`'s own
+establishes) — never a silent partial table.
+
+**RETIRED (2026-08-03, GMF coverage Wave LC, ADR-0038 AR-1):** this
+whitelist never mirrored anything upstream does (read directly against
+the pin, `LookupTableTransition`'s own `loadLookupTable`/`follow` has
+no closed column vocabulary at all) and was blocking real attribute
+columns. Any non-weight column other than `age`/`time` now loads
+unconditionally; `:unrecognized-lookup-table-column` no longer exists
+as a rejection reason (`:malformed-lookup-table-range` — a structurally
+invalid `age`/`time` cell — is the only load-time rejection a table's
+own content can still trigger). This section's own account of the
+ORIGINAL D3a design stays below, unedited, as the historical record of
+what was built then; do not read it as the current behavior.
+
+`load-closure`'s own
 return shape gains `:tables` (call-path-shaped table name -> parsed
 table), parallel to `:modules`, empty when a closure names none. CSV
 parsing is a small, in-house line/comma splitter (both vendored tables
@@ -3201,7 +3224,9 @@ byte-confirmed against both census artifacts:
 - **Stayed `:load-failed`, on a genuinely DIFFERENT gap** (6):
   `acute-myeloid-leukemia` (an unrecognized lookup-table column,
   `race` — H2's own `recognized-lookup-table-columns` boundary, a new
-  finding this census run surfaced), `bone-marrow-transplant`/
+  finding this census run surfaced; **RESOLVED 2026-08-03, GMF coverage
+  Wave LC, ADR-0038 — the boundary itself retired, this module now
+  censuses `:ok-walked`**), `bone-marrow-transplant`/
   `colorectal-cancer`/`pregnancy` (`Counter`), `dental-and-oral-
   examination`/`metabolic-syndrome-care` (`SupplyList`) — each blocked
   by an EARLIER state in the module's own JSON key order than the
@@ -3314,7 +3339,10 @@ traced individually, byte-confirmed against both artifacts:**
   its own distinct unrecognized lookup-table column (`diabetic_retinopathy_stage`, `state`, `operative_status`,
   `cardiac_surgery`, `vhd_mr_risk`, `vhd_ps_risk`, `vhd_tr_risk` — H2's
   own `recognized-lookup-table-columns` boundary, AR-7's own deferred
-  Wave-I item), and `injuries` → a `:schema-invalid` rejection on a
+  Wave-I item; **RESOLVED 2026-08-03, GMF coverage Wave LC, ADR-0038,
+  pulled forward from Wave I — the boundary itself retired, all seven
+  modules now census `:ok-walked`**), and `injuries` → a
+  `:schema-invalid` rejection on a
   PRE-EXISTING, unrelated gap: a `complex_transition` entry's own
   nested `:distributions` carrying a NamedDistribution map
   (`{:attribute :default}`), which `TransitionFields`'s own
