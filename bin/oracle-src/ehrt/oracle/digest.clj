@@ -55,7 +55,25 @@
   its OWN worktree/classpath (not this file, fixed, across both) --
   disclosed as a deviation, not silently routed around; both digest
   tables are in that session's own record,
-  `.agents/session-records/2026-08-03-engine-closure-context.md`."
+  `.agents/session-records/2026-08-03-engine-closure-context.md`.
+
+  Dated note (2026-08-04, ADR-0042 AR-5, Wave H pre-roll): two MORE
+  roots join, both FIRST BASELINES (`urinary-tract-infections-history-
+  engine`/`ear-infections-history-engine`, below) -- `:history true`
+  on the SAME closures/populations their own legacy (`:history`
+  absent) siblings already digest, proving the opt-in path produces
+  real, recordable content rather than re-checking an existing one.
+  Unlike ADR-0033's own three, THIS session's own baseline/target pair
+  IS runnable through `bin/regression-oracle` unmodified across both
+  commits -- no hard API shape switch this time, `:history` is a purely
+  additive config key and arity, absent at baseline (silently ignored,
+  not read) and present at target -- so the nine PRE-EXISTING roots'
+  own byte-identity is the real regression-oracle claim this session
+  makes (AR-3's own gating argument, empirically confirmed, not merely
+  asserted); the two NEW roots are EXPECTED to differ (baseline has no
+  `:history` support to gate under, target does) and that difference is
+  not a regression -- see the session record for the full manifest and
+  this note's own disambiguation."
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [ehrt.sim-trajectory.gmf :as gmf]
@@ -177,6 +195,41 @@
                   :modules [seeded-closure] :module-assignment [{:module-id "total-joint-replacement" :weight 1}]
                   :module-horizon-days 21900})))
 
+;; --- Wave H pre-roll (2026-08-04, ADR-0042 AR-5): the first two
+;; history-mode baselines -- FIRST BASELINES exactly like AR-4b's own
+;; three above (there is no 'before' to diff against; `:history` is
+;; new this session). `:history` false (every root above) is the
+;; identity-bracketed set AR-5 argues stays byte-identical BY THE
+;; GATING ITSELF (engine.clj's own `:history` default `false` never
+;; reaches this new code at all) -- these two are the opt-in, ordinary-
+;; seed proof that turning it ON produces real, recordable content.
+;; UTI: the SAME closure/population/horizon as the legacy
+;; `urinary-tract-infections-engine` batch above (which keeps its own
+;; seed 777 unchanged -- that batch is the byte-identity witness for
+;; the LEGACY path, not touched by this addition), now `:history true`
+;; with the ORDINARY seed ADR-0042 AR-4's own vendored-test retirement
+;; already established (the straddle resolves by design, no seed-
+;; picking needed). Ear-infections: same closure/horizon as its own
+;; legacy `ear-infections-engine` batch, `:history true` -- the wellness-
+;; tick-folding proof at oracle scale.
+
+(defn- urinary-tract-infections-history-engine-pair []
+  (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
+        resolve-table-name (fn [table-name] (some-> (io/resource (str "sim/modules/lookup_tables/" table-name)) slurp))
+        closure (:payload (gmf/load-closure "urinary-tract-infections"
+                                            (slurp (io/resource "sim/modules/urinary_tract_infections.json"))
+                                            resolve-call-path resolve-table-name))]
+    (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
+                  :modules [closure] :module-assignment [{:module-id "urinary-tract-infections" :weight 1}]
+                  :module-horizon-days 36500 :history true})))
+
+(defn- ear-infections-history-engine-pair []
+  (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
+        closure (:payload (gmf/load-closure "ear-infections" (slurp (io/resource "sim/modules/ear_infections.json")) resolve-call-path))]
+    (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
+                  :modules [closure] :module-assignment [{:module-id "ear-infections" :weight 1}]
+                  :module-horizon-days 3650 :history true})))
+
 (def ^:private roots
   {"appendicitis"                       appendicitis-batch
    "sore-throat"                        sore-throat-batch
@@ -186,7 +239,9 @@
    "sepsis"                             sepsis-pair
    "ear-infections-engine"              ear-infections-engine-pair
    "urinary-tract-infections-engine"    urinary-tract-infections-engine-pair
-   "total-joint-replacement-engine"     total-joint-replacement-engine-pair})
+   "total-joint-replacement-engine"     total-joint-replacement-engine-pair
+   "urinary-tract-infections-history-engine" urinary-tract-infections-history-engine-pair
+   "ear-infections-history-engine"      ear-infections-history-engine-pair})
 
 (defn -main
   "Writes one <root>.edn per root into out-dir (pr-str of the batch or
