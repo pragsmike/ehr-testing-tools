@@ -21,6 +21,9 @@
         ;; profile-tier NIST v2-validation -- bases/cli now
         ;; requires it too.
         poly/judge-v2-nist        {:local/root "../../components/judge-v2-nist"}
+        ;; poly/provenance (sim split B, M1, 2026-08-04): poly/corpus'
+        ;; own src now requires ehrt.provenance.interface directly.
+        poly/provenance {:local/root "../../components/provenance"}
         poly/corpus   {:local/root "../../components/corpus"}
         ;; poly/corpus-io (2026-07-31, corpus-io split stage 2,
         ;; ADR-0017): bases/cli's own core.clj requires it directly for
@@ -79,6 +82,7 @@
                                      "../../components/judge-v2-hapi/test"
                                      "../../components/judge-fhir-official/test"
                                      "../../components/judge-v2-nist/test"
+                                     "../../components/provenance/test"
                                      "../../components/corpus/test"
                                      "../../components/corpus-io/test"
                                      "../../components/docs-tooling/test"
@@ -96,6 +100,7 @@
                                   "-p" "../../components/judge-v2-hapi/src"
                                   "-p" "../../components/judge-fhir-official/src"
                                   "-p" "../../components/judge-v2-nist/src"
+                                  "-p" "../../components/provenance/src"
                                   "-p" "../../components/corpus/src"
                                   "-p" "../../components/corpus-io/src"
                                   "-p" "../../components/docs-tooling/src"
@@ -109,6 +114,7 @@
                                   "-s" "../../components/judge-v2-hapi/test"
                                   "-s" "../../components/judge-fhir-official/test"
                                   "-s" "../../components/judge-v2-nist/test"
+                                  "-s" "../../components/provenance/test"
                                   "-s" "../../components/corpus/test"
                                   "-s" "../../components/corpus-io/test"
                                   "-s" "../../components/docs-tooling/test"

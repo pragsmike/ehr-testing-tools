@@ -29,6 +29,12 @@
         ;; profile-tier NIST v2-validation -- the parity suite now
         ;; requires it too.
         poly/judge-v2-nist        {:local/root "../../components/judge-v2-nist"}
+        ;; poly/provenance (sim split B, M1, 2026-08-04): the manifest
+        ;; contract test (sim_manifest_contract_test) validates sim's
+        ;; run output against ehrt.provenance.interface/ManifestV1_1
+        ;; directly now (AR-M1-3), and poly/corpus' own src requires it
+        ;; transitively too.
+        poly/provenance {:local/root "../../components/provenance"}
         poly/corpus   {:local/root "../../components/corpus"}
         ;; poly/corpus-io (2026-07-31, corpus-io split stage 2,
         ;; ADR-0017): the transport/IO seam extracted out of the domain component --

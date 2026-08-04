@@ -271,7 +271,18 @@
   ;; both READMEs brought the real total from 1824 to 1869 -- self-
   ;; caught, the same pattern every prior session touching this file
   ;; has hit.
-  :budget-lines 1869}
+  ;;
+  ;; bumped 1869->1873, sim split B M1 session (2026-08-04, Step 1):
+  ;; AGENTS.md's own Components-list growth naming the new
+  ;; `components/provenance` brick (4 lines) brought the real total
+  ;; from 1869 to 1873 -- self-caught, the same pattern every prior
+  ;; session touching this file has hit.
+  ;; bumped 1873->1874, same session, same step: indexing this
+  ;; session's own plan file (2026-08-04-sim-split-b-plan.md, authored
+  ;; by the design channel ahead of this session) in
+  ;; `.agents/plans/README.md` (an already-cited onboarding path, the
+  ;; index-completeness gate's own finding) added 1 more line.
+  :budget-lines 1874}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one
@@ -310,7 +321,10 @@
   ;; raised 2026-08-02 (post-Wave-D cleanup, ADR-0030 J4d): build-session/
   ;; SKILL.md's own new preflight-clone-resolution step (19 net lines)
   ;; brought the real total from 1682 to 1701.
-  :budget-lines 1701}
+  ;; bumped 1701->1705, sim split B M1 session (2026-08-04, Step 1):
+  ;; AGENTS.md's own Components-list growth (above) brought the real
+  ;; total from 1701 to 1705.
+  :budget-lines 1705}
 
  ;; components/sim is the deterministic generator engine wrapping Synthea
  ;; (ADR-0005) -- engine-onboarding.md is the checklist every engine wrapper
@@ -343,7 +357,10 @@
   ;; raised 2026-08-02 (post-Wave-D cleanup, ADR-0030 J4d): build-session/
   ;; SKILL.md's own new preflight-clone-resolution step (19 net lines)
   ;; brought the real total from 737 to 756.
-  :budget-lines 756}
+  ;; bumped 756->760, sim split B M1 session (2026-08-04, Step 1):
+  ;; AGENTS.md's own Components-list growth (above) brought the real
+  ;; total from 756 to 760.
+  :budget-lines 760}
 
  ;; components/judge (verdict vocabulary) plus its three gate engines
  ;; (judge-v2-hapi, judge-fhir-official, judge-v2-nist, ADR-0011's per-engine
@@ -378,7 +395,10 @@
   ;; raised 2026-08-02 (post-Wave-D cleanup, ADR-0030 J4d): build-session/
   ;; SKILL.md's own new preflight-clone-resolution step (19 net lines)
   ;; brought the real total from 807 to 826.
-  :budget-lines 826}
+  ;; bumped 826->830, sim split B M1 session (2026-08-04, Step 1):
+  ;; AGENTS.md's own Components-list growth (above) brought the real
+  ;; total from 826 to 830.
+  :budget-lines 830}
 
  ;; components/docs-tooling (dev-time-only doc/lint tooling) generates and
  ;; lints docs/cli.md, docs/pipeline.md-equivalents, and docs/use-cases.md
@@ -415,4 +435,8 @@
   ;; raised 2026-08-02 (post-Wave-D cleanup, ADR-0030 J4d): build-session/
   ;; SKILL.md's own new preflight-clone-resolution step (19 net lines)
   ;; brought the real total from 609 to 628.
-  :budget-lines 628}}
+  ;; bumped 628->633, sim split B M1 session (2026-08-04, Step 1):
+  ;; AGENTS.md's own Components-list growth (4 lines) plus
+  ;; docs/dev/architecture.md's own new `components/provenance`
+  ;; bricks-table row (1 line) brought the real total from 628 to 633.
+  :budget-lines 633}}

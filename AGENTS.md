@@ -101,7 +101,11 @@ not a code review.
 `ehrt.kernel.result` — the result-not-throw envelope); `components/judge`
 (the verdict vocabulary: report/finding/verdict-cache); the three gate
 engines behind it — `components/judge-v2-hapi`, `components/judge-fhir-official`,
-`components/judge-v2-nist`; `components/corpus` (corpus domain:
+`components/judge-v2-nist`; `components/provenance` (the ManifestV0/V1/
+V1_1 schema family, moved out of `components/corpus` -- sim split B,
+M1, 2026-08-04, `.agents/plans/2026-08-04-sim-split-b-plan.md`; the
+single acyclic home both corpus and sim depend on, depending on
+neither itself); `components/corpus` (corpus domain:
 generate/mutate/intake/operators, interface designed from live
 consumers); `components/corpus-io` (transport/IO: sources, sinks,
 spooling, framing codecs); `components/docs-tooling` (dev-time-only

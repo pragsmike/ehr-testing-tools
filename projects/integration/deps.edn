@@ -28,6 +28,10 @@
         ;; re-add then, with its own earning edge named.
         poly/judge-v2-hapi        {:local/root "../../components/judge-v2-hapi"}
         poly/judge-fhir-official  {:local/root "../../components/judge-fhir-official"}
+        ;; poly/provenance (sim split B, M1, 2026-08-04): poly/corpus'
+        ;; own src now requires ehrt.provenance.interface directly --
+        ;; any project including poly/corpus needs it on the classpath.
+        poly/provenance {:local/root "../../components/provenance"}
         poly/corpus   {:local/root "../../components/corpus"}
         ;; poly/corpus-io (2026-07-31, corpus-io split stage 2,
         ;; ADR-0017): poly/corpus' own src now requires it directly

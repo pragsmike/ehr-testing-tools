@@ -1,4 +1,12 @@
 (ns ehrt.corpus.manifest-test
+  "Builder tests only (sim split B, M1, 2026-08-04,
+  `.agents/plans/2026-08-04-sim-split-b-plan.md` AR-2 / this session's
+  own AR-M1-1): the schema/validator tests (valid?/valid-v1?/
+  valid-v1-1? against hand-shaped maps) moved to
+  `ehrt.provenance.manifest-test` alongside the schemas themselves.
+  What stays here tests `build`/`build-v1`/`build-v1-1` -- the
+  producer-side functions that did not move -- using `valid?` still
+  where a builder test's own assertion needs it."
   (:require [clojure.test :refer [deftest is]]
             [ehrt.corpus.manifest :as manifest]))
 
@@ -22,15 +30,6 @@
     (is (= [] (:canonicalizers-applied m)))
     (is (manifest/valid? m))))
 
-(deftest valid-rejects-missing-required-fields-test
-  (is (not (manifest/valid? (dissoc (manifest/build sample-fields) :seed))))
-  (is (not (manifest/valid? (dissoc (manifest/build sample-fields) :clinician-seed))))
-  (is (not (manifest/valid? (dissoc (manifest/build sample-fields) :generator))))
-  (is (not (manifest/valid? {:schema-version 0}))))
-
-(deftest valid-rejects-wrong-schema-version-test
-  (is (not (manifest/valid? (assoc (manifest/build sample-fields) :schema-version 1)))))
-
 ;; ---- schema v1 (EXP-A4's upgrade: adds :reference-date, the one
 ;; pinned-input field the v0 hypothesis omitted as an explicit,
 ;; top-level field -- it was only recoverable indirectly via the
@@ -45,17 +44,6 @@
     (is (= "20260101" (:reference-date m)))
     (is (= 43 (:clinician-seed m)))
     (is (manifest/valid-v1? m))))
-
-(deftest valid-v1-rejects-missing-reference-date-test
-  (is (not (manifest/valid-v1? (dissoc (manifest/build-v1 sample-fields-v1) :reference-date)))))
-
-(deftest valid-v1-rejects-schema-version-0-test
-  (is (not (manifest/valid-v1? (assoc (manifest/build-v1 sample-fields-v1) :schema-version 0)))))
-
-(deftest v0-manifest-is-not-a-valid-v1-manifest-test
-  ;; The schemas are genuinely distinct -- a v0 manifest (no
-  ;; reference-date, schema-version 0) must not pass as v1.
-  (is (not (manifest/valid-v1? (manifest/build sample-fields)))))
 
 ;; ---- schema v1.1 (P4: :stage, :seeds map, :engine-params map,
 ;; :runtime -- engine-shaped fields (seed, clinician-seed,
@@ -97,21 +85,3 @@
     (is (= [] (:canonicalizers-applied m)))
     (is (manifest/valid-v1-1? m))))
 
-(deftest valid-v1-1-rejects-missing-required-fields-test
-  (is (not (manifest/valid-v1-1? (dissoc (manifest/build-v1-1 sample-fields-v1-1) :stage))))
-  (is (not (manifest/valid-v1-1? (dissoc (manifest/build-v1-1 sample-fields-v1-1) :seeds))))
-  (is (not (manifest/valid-v1-1? (dissoc (manifest/build-v1-1 sample-fields-v1-1) :engine-params))))
-  (is (not (manifest/valid-v1-1? (dissoc (manifest/build-v1-1 sample-fields-v1-1) :generator)))))
-
-(deftest valid-v1-1-rejects-wrong-schema-version-test
-  (is (not (manifest/valid-v1-1? (assoc (manifest/build-v1-1 sample-fields-v1-1) :schema-version 1))))
-  (is (not (manifest/valid-v1-1? (assoc (manifest/build-v1-1 sample-fields-v1-1) :schema-version "2")))))
-
-(deftest v1-manifest-is-not-a-valid-v1-1-manifest-test
-  ;; Pre-v1.1 manifests remain valid *historical records* (schema
-  ;; versioning, not migration) -- but they are genuinely a different
-  ;; shape and must not pass as v1.1.
-  (is (not (manifest/valid-v1-1? (manifest/build-v1 sample-fields-v1)))))
-
-(deftest v1-1-manifest-is-not-a-valid-v1-manifest-test
-  (is (not (manifest/valid-v1? (manifest/build-v1-1 sample-fields-v1-1)))))

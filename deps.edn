@@ -47,6 +47,12 @@
                                ;; judge engine, profile-tier NIST
                                ;; v2-validation, direct (no CDC wrapper).
                                poly/judge-v2-nist        {:local/root "components/judge-v2-nist"}
+                               ;; provenance (sim split B, M1, 2026-08-04,
+                               ;; .agents/plans/2026-08-04-sim-split-b-plan.md
+                               ;; AR-2): ManifestV0/V1/V1_1 schemas +
+                               ;; validators, the single acyclic home
+                               ;; both corpus and sim depend on now.
+                               poly/provenance {:local/root "components/provenance"}
                                ;; corpus (2026-07-31, split stage 3,
                                ;; ADR-0018): the corpus domain -- the
                                ;; former tools component, renamed and
@@ -79,6 +85,7 @@
                                   "components/judge-v2-hapi/test"
                                   "components/judge-fhir-official/test"
                                   "components/judge-v2-nist/test"
+                                  "components/provenance/test"
                                   "components/corpus/test"
                                   "components/corpus-io/test"
                                   "components/docs-tooling/test"
@@ -108,6 +115,10 @@
                                 poly/judge-v2-hapi        {:local/root "components/judge-v2-hapi"}
                                 poly/judge-fhir-official  {:local/root "components/judge-fhir-official"}
                                 poly/judge-v2-nist        {:local/root "components/judge-v2-nist"}
+                                ;; provenance (sim split B, M1, 2026-08-04):
+                                ;; corpus' own src requires
+                                ;; ehrt.provenance.interface directly.
+                                poly/provenance {:local/root "components/provenance"}
                                 poly/corpus   {:local/root "components/corpus"}
                                 ;; corpus-io (2026-07-31, stage 2):
                                 ;; corpus' own src and bases/cli both
