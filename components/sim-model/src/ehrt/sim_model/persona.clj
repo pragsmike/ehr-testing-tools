@@ -30,7 +30,7 @@
 
   RNG consumption is FIXED per persona (13 draws, always, regardless of
   which branch any weighted pick lands in) -- the same fixed-consumption
-  law `ehrt.sim.engine/assign-pathway` and `ehrt.sim.churn`
+  law `ehrt.sim-engine.engine/assign-pathway` and `ehrt.sim-engine.churn`
   already establish for this project's other probabilistic choices (see
   `persona`'s own docstring for the exact sequence). GMF coverage Wave F
   (2026-08-03, ADR-0036 AR-4/AR-5) adds two further, CONFIG-GATED draws
@@ -148,7 +148,7 @@
 (defn- weighted-pick
   "Which member of `pool` (a seq of maps carrying :weight) `draw` (a
   uniform double in [0,1), already consumed) falls into -- cumulative-
-  weight bucketing, the same shape ehrt.sim.engine's own private
+  weight bucketing, the same shape ehrt.sim-engine.engine's own private
   weighted-pick uses, kept as an independent small copy here rather
   than a shared dependency (persona.clj must stay engine-independent --
   the engine calls INTO persona at patient-init, so the reverse
@@ -169,7 +169,7 @@
   for a run using the default reference date; a caller who overrides
   :reference-date and needs exact DOB-vs-encounter-date coherence is
   out of this milestone's scope (recorded here, not silently assumed).
-  Public as of M5b: ehrt.sim.engine's own :registered decide
+  Public as of M5b: ehrt.sim-engine.engine's own :registered decide
   method needs this SAME anchor as `components/sim-trajectory/docs/gmf-interpreter.md`'s own
   `registration-t` -- 'that patient's own :registered event time' is,
   in THIS project's calendar terms, this fixed reference date, the same
@@ -189,7 +189,7 @@
   produce, for any age from 0 up. Every persona's DOB is computed
   relative to `reference-birth-year`, so THIS date is also the correct,
   patient-independent `registration-t` for a real engine run's own GMF
-  module walk (M5b, ehrt.sim.engine's :registered decide method)."
+  module walk (M5b, ehrt.sim-engine.engine's :registered decide method)."
   []
   (.toEpochDay (java.time.LocalDate/of ^int (inc reference-birth-year) 1 1)))
 
@@ -240,7 +240,7 @@
 
   13 draws total, always -- fixed regardless of which pool/bucket any
   weighted pick lands in (the same `sim/ADR-0009`-derived law
-  ehrt.sim.engine/assign-pathway and ehrt.sim.churn/
+  ehrt.sim-engine.engine/assign-pathway and ehrt.sim-engine.churn/
   roll-gap already state for this project's other probabilistic
   choices).
 

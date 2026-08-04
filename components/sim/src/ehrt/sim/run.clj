@@ -53,7 +53,7 @@
   STRINGS (resolving to `resources/modules/<name>.json` -- test code may
   point at other fixture paths via a lower-level API, per this
   function's own callers, but `run-command`'s own surface only ever
-  resolves the real vendored directory); `ehrt.sim.engine/run`'s OWN
+  resolves the real vendored directory); `ehrt.sim-engine.engine/run`'s OWN
   `:modules` key wants already-loaded, CLOSURE-shaped entries instead
   (ADR-0033 AR-2 -- `sim-trajectory/load-closure`'s own `:ok` payload,
   `{:root :modules :tables}`, engine.clj does no file I/O of its own,
@@ -98,7 +98,7 @@
 ;; up as :self-check-failed -- a config-reachable outcome wearing the
 ;; "bug in us" category. The module's own compiled trajectory is
 ;; PREPENDED ahead of whatever pathway already queued
-;; (ehrt.sim.engine/run's own :registered decide method), so the
+;; (ehrt.sim-engine.engine/run's own :registered decide method), so the
 ;; pathway's own encounter-opening step finds an already-non-:new
 ;; patient -- illegal under this project's single-encounter-horizon
 ;; scope (sim/ADR-0007 point 3). The combination stays illegal; this makes
@@ -140,7 +140,7 @@
 (defn- ordinal-guaranteed-module?
   "Whether ordinal `i` is CERTAIN to receive SOME module. An explicit
   `:patient-ordinal` entry decides outright; otherwise
-  `ehrt.sim.engine/assign-module` always resolves a NON-EMPTY
+  `ehrt.sim-engine.engine/assign-module` always resolves a NON-EMPTY
   pool to some pool member for any ordinal no explicit entry covers --
   there is no 'opt out' of a present pool -- so a non-empty pool alone
   is already certain, independent of which module the RNG eventually
@@ -237,11 +237,11 @@
   caught the resulting double encounter).
 
   M2b: `:churn` (bare boolean, \"turn churn on with sensible defaults\"
-  -- ehrt.sim.churn/sample-profile) or `:churn-profile` (an
-  explicit ehrt.sim.churn/ChurnProfile map, merged OVER
+  -- ehrt.sim-engine.churn/sample-profile) or `:churn-profile` (an
+  explicit ehrt.sim-engine.churn/ChurnProfile map, merged OVER
   churn/default-churn-profile so a caller only needs to name the rates
   they want to change) activates InjectChurn between IR and execution
-  (ehrt.sim.engine/run's own :churn-profile wiring). Neither
+  (ehrt.sim-engine.engine/run's own :churn-profile wiring). Neither
   key present -- the default -- means no :churn-profile reaches
   engine/run at all, the opt-in path Task 0's pinned-fixture
   expectation depends on.
@@ -252,7 +252,7 @@
   caller wants the full map rather than the bare `--churn` toggle) --
   read once, merged UNDER the rest of opts (explicit flag-driven keys
   win on any overlap; the file supplies what flags can't express) --
-  see `merge-config-file`. Every key in `ehrt.sim.engine/config-
+  see `merge-config-file`. Every key in `ehrt.sim-engine.engine/config-
   keys` reaches `engine/run` unconditionally, whether it arrived via a
   flag or via `:config` -- that completeness is this function's own
   plumbing-completeness test's whole point (M3's `:pathways` shipped
@@ -288,12 +288,12 @@
 
   ADR-0042 AR-3: `:history` (optional boolean) rides `:config` the same
   passthrough way -- forwarded verbatim, no translation, no flag of its
-  own (`ehrt.sim.engine/run`'s own docstring has the mechanism this
+  own (`ehrt.sim-engine.engine/run`'s own docstring has the mechanism this
   gates).
 
   `opts`'s second, injectable arity follows the SAME -fn convention
   `ehrt.sim-cli.core/dispatch-action` already uses (`:engine-run-fn`,
-  defaulting to the real `ehrt.sim.engine/run`) -- the seam the
+  defaulting to the real `ehrt.sim-engine.engine/run`) -- the seam the
   plumbing-completeness test uses to capture exactly what reaches the
   engine without running a real simulation against sentinel data."
   ([opts] (run-command opts {}))

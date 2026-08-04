@@ -6,7 +6,7 @@
   docs/gmf-interpreter.md section 10). Mirrors the vendored-module test
   shape (vendored_appendicitis_test.clj's own well-mixed-candidate-seeds
   pattern) at the interpreter and compile-trajectory layers; the full
-  engine/check round trip is proven in ehrt.sim.engine-test alongside the
+  engine/check round trip is proven in ehrt.sim-engine.engine-test alongside the
   sinusitis-module wiring test, the same split that file already uses."
   (:require [clojure.java.io :as io]
             [clojure.test :refer [deftest is testing]]

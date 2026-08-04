@@ -89,7 +89,24 @@
   `ehrt.sim-emit-hl7.*` form in the same commit this addendum lands in,
   confirmed clean before this addendum's own patterns were added --
   same scope and same fix-before-gate discipline as every entry in this
-  family."
+  family.
+
+  2026-08-04 addendum (sim split B stage M2, `notes/ADRs.md` ADR-0043,
+  AR-M2-6): `ehrt.sim.engine`, `ehrt.sim.churn`, and `ehrt.sim.order-
+  profiles` join the retired-namespace family above -- all three moved
+  to `ehrt.sim-engine.*` this session, same denylist shape as the S2/S3
+  addenda immediately above (a leading-dot form so `ehrt.sim-engine.
+  engine` etc. never trip the retired-prefix pattern the way
+  `ehrt.corpus.` never trips `ehrt.tools.` -- confirmed both directions
+  below). The path-form citations (`ehrt/sim/engine` etc., the way a doc
+  might cite the pre-move file path) join too, same scope. Two REAL
+  violations existed under `docs/` this time (`docs/site-profiles.md`,
+  bare-citing `ehrt.sim.engine/run` and `ehrt.sim.engine/config-keys`
+  in its own naming-transform and dialect-selection sections), fixed
+  forward to the `ehrt.sim-engine.engine` form in the same commit this
+  addendum lands in, confirmed clean before this addendum's own
+  patterns were added -- same scope and same fix-before-gate discipline
+  as every entry in this family."
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.java.io :as io]
             [clojure.string :as str]))
@@ -124,7 +141,19 @@
     (str/includes? content "ehrt.sim.v2-replay")
     (conj :retired-ehrt-sim-v2-replay-namespace)
     (str/includes? content "ehrt.sim.site-profile")
-    (conj :retired-ehrt-sim-site-profile-namespace)))
+    (conj :retired-ehrt-sim-site-profile-namespace)
+    (str/includes? content "ehrt.sim.engine")
+    (conj :retired-ehrt-sim-engine-namespace)
+    (str/includes? content "ehrt.sim.churn")
+    (conj :retired-ehrt-sim-churn-namespace)
+    (str/includes? content "ehrt.sim.order-profiles")
+    (conj :retired-ehrt-sim-order-profiles-namespace)
+    (re-find #"ehrt/sim/engine\b" content)
+    (conj :retired-ehrt-sim-engine-path)
+    (re-find #"ehrt/sim/churn\b" content)
+    (conj :retired-ehrt-sim-churn-path)
+    (re-find #"ehrt/sim/order_profiles\b" content)
+    (conj :retired-ehrt-sim-order-profiles-path)))
 
 (deftest no-stale-path-family-anywhere-in-docs-or-use-cases-edn-test
   (doseq [path (scan-sources)]
@@ -158,7 +187,19 @@
     (is (empty? (violations "see ehrt.sim-emit-hl7.emit-hl7/emit")))
     (is (empty? (violations "see ehrt.sim-emit-hl7.v2-replay/fold-message")))
     (is (empty? (violations "see ehrt.sim-emit-hl7.site-profile/code-for")))
-    (is (empty? (violations "see ehrt.sim-emit-hl7.interface/emit")))))
+    (is (empty? (violations "see ehrt.sim-emit-hl7.interface/emit"))))
+  (is (= [:retired-ehrt-sim-engine-namespace] (violations "see ehrt.sim.engine/run")))
+  (is (= [:retired-ehrt-sim-churn-namespace] (violations "see ehrt.sim.churn/inject")))
+  (is (= [:retired-ehrt-sim-order-profiles-namespace] (violations "see ehrt.sim.order-profiles/default-profiles")))
+  (is (= [:retired-ehrt-sim-engine-path] (violations "components/sim/src/ehrt/sim/engine.clj")))
+  (is (= [:retired-ehrt-sim-churn-path] (violations "components/sim/src/ehrt/sim/churn.clj")))
+  (is (= [:retired-ehrt-sim-order-profiles-path] (violations "components/sim/src/ehrt/sim/order_profiles.clj")))
+  (testing "the sim-engine citation form does not trip any retired-prefix or retired-path pattern"
+    (is (empty? (violations "see ehrt.sim-engine.engine/run")))
+    (is (empty? (violations "see ehrt.sim-engine.churn/inject")))
+    (is (empty? (violations "see ehrt.sim-engine.order-profiles/default-profiles")))
+    (is (empty? (violations "see ehrt.sim-engine.interface/run")))
+    (is (empty? (violations "components/sim-engine/src/ehrt/sim_engine/engine.clj")))))
 
 ;; README register tripwire (2026-08-01, AR-3) -- separate from the scan
 ;; above: different source (README.md only), different exemptions (link

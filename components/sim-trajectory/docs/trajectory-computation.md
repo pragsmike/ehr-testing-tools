@@ -31,7 +31,7 @@ the way a screenwriter's draft says a character enters a room — never
 which physical room, never which extra is standing in it.
 
 **The patient lifecycle machine** is driven *only* by
-`ehrt.sim.engine/evolve` folding ground-truth events
+`ehrt.sim-engine.engine/evolve` folding ground-truth events
 (ADR-0008, [`event-sourcing.md`](../../sim/docs/event-sourcing.md)). This is
 **operational truth-space**: it computes what actually happened to a
 real patient-id in a real, capacity-constrained hospital — which bed,
@@ -40,7 +40,7 @@ which attending, whether the transfer got cancelled.
 The architecture makes the distinction structural, not a matter of
 authorial discipline: **nothing in script-space can write truth.**
 `ehrt.sim-trajectory.gmf-interpreter/step`/`walk-module`/`run-module`
-never touch `ehrt.sim.engine/PatientState`, never call
+never touch `ehrt.sim-engine.engine/PatientState`, never call
 `evolve`, and carry no reference to `world`. A module walk produces a
 `clinical-trajectory` — plain data, a vector of cited events — and
 that data has to pass through `CompileTrajectory` and then the
@@ -60,7 +60,7 @@ phone, an SSN-shaped id, and payer — regardless of which pool or
 decade-bucket any weighted pick lands in
 ([`sim-theory.edn`](../../sim/docs/sim-theory.edn)'s own `:persona` stage law). This
 happens inside the engine-internal `:registered` step every patient's
-queue is prepended with (`ehrt.sim.engine/run`), which is also
+queue is prepended with (`ehrt.sim-engine.engine/run`), which is also
 where script-space begins for any patient carrying a module assignment.
 
 **The module walk, in two phases** (`ehrt.sim-trajectory.gmf-interpreter/run-module`,
@@ -121,7 +121,7 @@ patient's authored/assigned pathway is resolved and (if a
 `:registered`'s own `decide` call ever resolves and compiles that
 patient's module, if one is assigned. The compiled module steps are
 then spliced onto the **front** of the (already-churned) authored
-steps at that point (`ehrt.sim.engine/run`'s own
+steps at that point (`ehrt.sim-engine.engine/run`'s own
 `:prepend-steps` handling). The two pathways genuinely are just IR
 entering one queue, as `.agents/plans/roadmap.md`'s own M5b entry
 states — but `InjectChurn` itself only ever sees the authored half of
@@ -132,7 +132,7 @@ once both are in the queue — the union is real at that point — but a
 reader tracing *where* churn could have touched a given step should
 know it never reaches compiled module content today.
 
-**`InjectChurn`** (`ehrt.sim.churn`) is an IR→IR transform:
+**`InjectChurn`** (`ehrt.sim-engine.churn`) is an IR→IR transform:
 insertion of operational-noise steps (cancel-admit, cancel-transfer,
 cancel-discharge, transfer-in-error, bed-swap, merge) into whatever
 pathway it's handed, never a removal, reorder, or alteration of a
@@ -146,7 +146,7 @@ catalog implements as a post-hoc check on what a run actually did).
 ## 3. The wall
 
 The step queue is a `sorted-map` keyed by `[t seq-no]`
-(`ehrt.sim.engine/pop-min`) — every patient's own queued steps,
+(`ehrt.sim-engine.engine/pop-min`) — every patient's own queued steps,
 merged into one global ordering. The `seq-no` tiebreak is what makes
 this ordering *total*, not merely chronological: two steps due at the
 same simulated instant still have one deterministic pop order. This is
@@ -213,7 +213,7 @@ checkable, not so the claim is true.
 `:discharge` fires, `decide` folds B's own event and, in the *same*
 decide call, may also emit a `:transfer` event for a different,
 already-boarding patient A whose home-ward just freed up
-(`ehrt.sim.engine`'s own `:discharge` method, scanning `world`'s
+(`ehrt.sim-engine.engine`'s own `:discharge` method, scanning `world`'s
 patient-state map for the longest-waiting boarder). B's own state and
 A's own state each still change only by folding an event through
 `evolve`; the coupling between them is B's discharge *deciding* that
@@ -317,7 +317,7 @@ landed, always-reachable statuses plus `Merged` (ADR-0010) —
 [`patient-state-model.md`](../../sim/docs/patient-state-model.md)'s own diagram
 already makes, because it is designed (`components/sim/docs/clinical-realities.md`'s
 post-mortem entry, this document's own event-validity table) but not
-yet a value `ehrt.sim.engine/PatientState`'s `:status` enum
+yet a value `ehrt.sim-engine.engine/PatientState`'s `:status` enum
 actually carries.
 
 ## See also

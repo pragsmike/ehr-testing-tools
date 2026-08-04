@@ -13,7 +13,7 @@
     "so this fixture proves Death's own terminal contract and compile-",
     "trajectory/engine wiring without stroke.json's own stroke_risk gap",
     "(components/sim-trajectory/docs/gmf-interpreter.md section 10). The",
-    "monthly-tick loop is load-bearing, not decorative: ehrt.sim.engine's",
+    "monthly-tick loop is load-bearing, not decorative: ehrt.sim-engine.engine's",
     "own :registered event anchors registration-t at a FIXED calendar",
     "instant (persona/reference-today-epoch-day), not at DOB -- a single",
     "near-birth event (this fixture's own first draft) is pre-horizon-",

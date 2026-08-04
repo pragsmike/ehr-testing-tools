@@ -253,7 +253,7 @@ schedule, decoupled from the encounter's own ADT lifecycle.
 
 **Our model.** `:order`'s `decide` samples its paired `:result-
 available` event's full turnaround atomically at order-time but rides
-`:schedule-followup` (`ehrt.sim.engine`) to enter the log at its
+`:schedule-followup` (`ehrt.sim-engine.engine`) to enter the log at its
 own correct future position — nothing in that mechanism blocks the
 patient's other steps, including `:discharge`, on the pending result.
 This surfaced as a real finding during M3's own integration testing,

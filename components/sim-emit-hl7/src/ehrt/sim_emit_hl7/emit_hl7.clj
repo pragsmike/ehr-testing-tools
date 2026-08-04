@@ -254,7 +254,7 @@
 (defn- pid-segment
   "PID-1/2/3 unconditionally (Set ID, blank, the active MRN); PID-4/6/9/10/12
   stay blank placeholders so positional fields (5/7/8/11/13) land correctly.
-  M4: when `persona` is present (every real ehrt.sim.engine/run output,
+  M4: when `persona` is present (every real ehrt.sim-engine.engine/run output,
   post the :registered event -- ehrt.sim-model.persona/Persona), PID gains
   demographic enrichment: PID-5 (XPN name), PID-7 (DOB, HL7 date), PID-8 (sex,
   Table 0001 F/M), PID-11 (XAD address), PID-13 (phone). nil persona (hand-
@@ -394,7 +394,7 @@
   docs/site-profiles.md's own examples name) plus :persona -- looked up
   off the SAME `personas` map `emit` computes once per call, the primary
   (first) participant's persona for a genuinely multi-participant event
-  (bed-swap, merge), the same simplification `ehrt.sim.engine/
+  (bed-swap, merge), the same simplification `ehrt.sim-engine.engine/
   replay`'s own :patient-id convenience view already makes."
   [personas event]
   (assoc event :persona (get personas (:patient-id (first (:participants event))))))
@@ -575,7 +575,7 @@
   catalytic's starter set is a numeric lab value, no other value types
   needed yet. OBX-7 renders the reference range as \"low-high\"; OBX-8
   the abnormal flag, HL7v2's own N/L/H vocabulary (Table 0078) -- a
-  direct rendering of ehrt.sim.order-profiles/abnormal-flag's
+  direct rendering of ehrt.sim-engine.order-profiles/abnormal-flag's
   own :normal/:low/:high, computed truth carried straight from the log,
   never re-derived at emit time (the log already has the answer)."
   [set-id {:keys [concept units value reference-range abnormal-flag]}]
@@ -613,7 +613,7 @@
 (defn- oru-message
   "ORU^R01: result available -- OBR (order context) plus one OBX per
   analyte, in the same order the profile's own :results carries them
-  (derived straight from the log, ehrt.sim.order-profiles'
+  (derived straight from the log, ehrt.sim-engine.order-profiles'
   sampling order -- no re-sorting here)."
   [reference-date utc-offset facility providers personas site-profile
    {:keys [t active-mrn location attending concept results participants] :as ev}]
@@ -747,7 +747,7 @@
   "A fixed, arbitrary reference-seed provider pool -- purely a fallback
   default for callers that don't care about exact NPI values (`emit`'s
   lower arities). A real run threads back its OWN materialized
-  providers (ehrt.sim.engine/run's :providers) instead, so its
+  providers (ehrt.sim-engine.engine/run's :providers) instead, so its
   messages' PV1-7 matches its own ground-truth log's :attending ids."
   (sim-model/materialize-providers (java.util.Random. 0) sim-model/default-provider-templates))
 
@@ -765,7 +765,7 @@
   -- the default-profile identity property (docs/site-profiles.md, this
   milestone's own determinism anchor) -- since :site-profile reaches no
   stage but this one's own render call sites, never ground-truth-log or
-  check.clj (ehrt.sim.engine/config-keys has no such key)."
+  check.clj (ehrt.sim-engine.engine/config-keys has no such key)."
   ([ground-truth reference-date]
    (emit ground-truth reference-date default-utc-offset sim-model/default-facility default-providers))
   ([ground-truth reference-date utc-offset]

@@ -14,7 +14,7 @@
     out of a churned pathway recovers the original exactly.
   - all stochastic choices draw from the run's single seeded RNG:
     `inject` takes the run's own `java.util.Random` (the SAME instance
-    ehrt.sim.engine/run already threads through decide, not a
+    ehrt.sim-engine.engine/run already threads through decide, not a
     derived or isolated stream) -- the same reasoning sim/ADR-0009 gives
     for NPI generation, extended here.
 
@@ -122,7 +122,7 @@
   decide-time for a reason InjectChurn has no way to predict statically
   -- the bed it would reinstate into may have been legitimately
   reclaimed by someone else's admission by the time it actually runs
-  (ehrt.sim.engine's bed-reoccupied-by-someone-else? guard).
+  (ehrt.sim-engine.engine's bed-reoccupied-by-someone-else? guard).
   Optimistically assuming success and chaining a further :admitted?-
   requiring insertion (a :transfer-in-error/:bed-swap/:merge) after it
   would produce an ILLEGAL step whenever that rejection actually fires

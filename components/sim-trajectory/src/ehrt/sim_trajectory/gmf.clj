@@ -1649,7 +1649,7 @@
 ;; patients analogue, the SAME shape sim-model/PathwaysConfig
 ;; already established for authored pathways (docs/gmf-interpreter.md's own
 ;; Task 4: module assignment composes with :pathways, both just IR entering
-;; the union). ehrt.sim.engine/assign-module is this schema's own
+;; the union). ehrt.sim-engine.engine/assign-module is this schema's own
 ;; resolver -- kept there, not here, mirroring assign-pathway's own placement
 ;; (the resolver needs a seeded RNG; the schema doesn't) -------------------
 

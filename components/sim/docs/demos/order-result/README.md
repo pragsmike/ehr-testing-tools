@@ -58,5 +58,5 @@ PID is enriched with the same patient's Persona-sampled demographics as
 every other message type — order/result messages are not a special
 case (`ehrt.sim.emit-hl7/pid-segment` applies uniformly). Note
 OBX-8 `H` (abnormal-high) on the leukocyte and hemoglobin results —
-computed truth from `ehrt.sim.order-profiles/abnormal-flag`,
+computed truth from `ehrt.sim-engine.order-profiles/abnormal-flag`,
 never a re-derivation at emit time.

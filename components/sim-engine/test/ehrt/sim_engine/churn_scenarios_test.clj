@@ -6,7 +6,7 @@
   bed-swap between a licensed and a surge occupant.
 
   M3-adjacent (roadmap.md's per-patient pathway assignment): migrated to
-  run end-to-end through `ehrt.sim.engine/run`'s :pathways option
+  run end-to-end through `ehrt.sim-engine.engine/run`'s :pathways option
   -- each scenario is now an explicit {:patient-ordinal :pathway}
   assignment per participant, exercising the REAL event loop (arrivals,
   the work queue, decide/evolve folding) rather than hand-driving
@@ -23,7 +23,7 @@
   its ORIGINAL arrival (seq < patient count); any patient's second step
   is re-queued with a freshly assigned seq (>= patient count, monotonic)
   by construction, so it can never be processed before any first-round
-  arrival. See ehrt.sim.engine-test's own
+  arrival. See ehrt.sim-engine.engine-test's own
   bed-ready-transfer-scripted-two-patients for the ONE test this session
   deliberately keeps as a direct decide/evolve-driven API-level
   regression, per the roadmap's own migration note -- not everything

@@ -2,7 +2,7 @@
   "The `sim run` capability's result-not-throw contract. Milestone M2b,
   Task 0: allocation-ladder exhaustion is a structured outcome, not a
   thrown exception -- ehrt.sim-model.facility/allocate returns
-  {:exhausted true ...} instead of throwing, ehrt.sim.engine/run
+  {:exhausted true ...} instead of throwing, ehrt.sim-engine.engine/run
   halts the loop and echoes it back, and run-command surfaces it as
   :error :capacity-exhausted with the patient, ward, and census in the
   payload (docs/clinical-realities.md's ED-diversion stub names the
@@ -10,10 +10,10 @@
 
   Milestone M4, Task 0: the plumbing-completeness test below is the red
   test that reproduces the tools consumer-loop's own finding -- M3's
-  `:pathways` reached `ehrt.sim.engine/run` from a direct API
+  `:pathways` reached `ehrt.sim-engine.engine/run` from a direct API
   caller (engine-test exercises it directly) but never from
   `run-command`, so it was invisible to every CLI invocation despite
-  181 green tests and a demo. `ehrt.sim.engine/config-keys` is
+  181 green tests and a demo. `ehrt.sim-engine.engine/config-keys` is
   now the canonical, documented list of every key `engine/run` accepts;
   this test asserts `run-command` forwards ALL of them, not just the
   ones already known to work, using the injectable `:engine-run-fn`
@@ -48,7 +48,7 @@
 ;; --- M4 Task 0: plumbing completeness -------------------------------------
 
 (def ^:private sentinel-opts
-  "One sentinel value per ehrt.sim.engine/config-keys entry --
+  "One sentinel value per ehrt.sim-engine.engine/config-keys entry --
   distinguishable from any real default so a dropped key reads as a
   clear mismatch, not a coincidental match. :churn-profile is a MAP
   sentinel, not a bare keyword: run-command's own effective-churn-
@@ -71,7 +71,7 @@
    :history ::history-sentinel})
 
 (deftest run-command-forwards-every-engine-config-key
-  (testing "the FULL ehrt.sim.engine/config-keys set reaches
+  (testing "the FULL ehrt.sim-engine.engine/config-keys set reaches
             engine/run, not just the keys already known to work -- red
             today on :pathway/:pathways/:order-profiles (M3's
             :pathways was the tools consumer-loop's own finding; this
@@ -154,7 +154,7 @@
 (deftest run-command-threads-site-profile-into-emitted-messages
   (testing "a :site-profile reaches ehrt.sim-emit-hl7.emit-hl7/emit (its own
             MSH dialect renders) without being a member of
-            ehrt.sim.engine/config-keys"
+            ehrt.sim-engine.engine/config-keys"
     (is (not (contains? (set engine/config-keys) :site-profile)))
     (let [r (run/run-command {:seed 42 :patients 1 :emit "hl7"
                               :site-profile {:msh {:sending-app "ALDRIC-EHR"}}})

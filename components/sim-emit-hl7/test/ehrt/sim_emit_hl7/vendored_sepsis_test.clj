@@ -2,7 +2,7 @@
   "GMF coverage Wave D stage D1 payoff (2026-08-02, ADR-0029): the full
   engine/check/emit round trip for sepsis.json (resources/modules/
   sepsis.json), the same 'vendored'-module-shaped wiring test
-  ehrt.sim.engine-test's own sinusitis-module/death-fixture tests
+  ehrt.sim-engine.engine-test's own sinusitis-module/death-fixture tests
   already establish (docs/gmf-interpreter.md section 12) -- interpreter-
   layer coverage (load-clean, the diagnostic-report emission itself,
   determinism) is ehrt.sim-trajectory.vendored-sepsis-test.

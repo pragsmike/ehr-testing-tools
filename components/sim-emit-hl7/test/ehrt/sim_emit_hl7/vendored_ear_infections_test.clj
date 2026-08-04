@@ -5,7 +5,7 @@
   Wave B (`ehrt.sim-trajectory.vendored-ear-infections-test`'s own
   docstring, ADR-0029's D2/D3 dated notes), PINNED broken by
   `ehrt.sim-emit-hl7.vendored-ear-infections-test`'s own previous
-  version (ADR-0030 J3: `ehrt.sim.engine`'s own `:registered` decide
+  version (ADR-0030 J3: `ehrt.sim-engine.engine`'s own `:registered` decide
   method called `run-module` at the bare 5-arity, defaulting the
   interpreter's own submodule registry to the root alone -- any walk
   reaching this closure's own mandatory `CallSubmodule` medication path

@@ -7,7 +7,7 @@
   consumer could ever see on the wire -- never touching ground-truth,
   the engine, or the RNG. This is the wire-side half of the global
   emitter-coherence law (docs/sim-theory.md): at every message boundary,
-  this accumulator's own state must agree with ehrt.sim.engine's
+  this accumulator's own state must agree with ehrt.sim-engine.engine's
   log-folded state, once both are passed through
   `project-to-wire-visible-fields` (below) -- the SAME projection
   applied to both sides, so 'what does the wire carry' is answered once,
@@ -175,7 +175,7 @@
 
 (defn- evolve-entry
   "(entry, trigger, parsed, t) -> entry'. Pure and total, mirroring
-  ehrt.sim.engine/evolve's own shape one layer up the wire --
+  ehrt.sim-engine.engine/evolve's own shape one layer up the wire --
   dispatch on the message's own trigger, never mutate anything but the
   ONE mrn-keyed entry this message is about."
   [entry trigger parsed t]
@@ -221,7 +221,7 @@
 ;; site-profile's masking function) ------------------------------------------
 
 (defn project-to-wire-visible-fields
-  "Projects a folded PatientState (ehrt.sim.engine's own
+  "Projects a folded PatientState (ehrt.sim-engine.engine's own
   accumulator, OR this namespace's own reconstructed entry -- the SAME
   function applies to both sides of the emitter-coherence property, by
   design, so the comparison is never two independently hand-tuned

@@ -110,7 +110,7 @@ existing idea rather than inventing a new mechanism:
    already baked into ground truth at DECIDE time
    (`ehrt.sim.facility/surge-slot-ids`, pre-dating this layer),
    so a site profile's `:naming :surge-format` is a facility-config
-   TRANSFORM a caller applies BEFORE `ehrt.sim.engine/run`, never
+   TRANSFORM a caller applies BEFORE `ehrt.sim-engine.engine/run`, never
    auto-wired into it and never read by the emitter. Facility-level
    `:surge-format` is still honored when a profile carries no `:naming`
    key; the profile wins when both are present. Generalizing naming
@@ -219,7 +219,7 @@ provably, about what actually happened to the patient.
 
 Checked two ways, not one: the **strong half** (ground truth)
 structurally — `:site-profile` is not a member of
-`ehrt.sim.engine/config-keys`, so it is structurally incapable
+`ehrt.sim-engine.engine/config-keys`, so it is structurally incapable
 of reaching `Execute` at all, not merely untested against it
 (`emit-hl7-test/site-profile-never-reaches-the-engine`). The **weak
 half** (messages) as a property test over 100 random seeds/patient

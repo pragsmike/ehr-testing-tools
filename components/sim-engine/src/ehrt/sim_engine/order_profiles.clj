@@ -88,7 +88,7 @@
   otherwise), rounded to the analyte's own :precision. Consumes exactly
   two draws from `rng` (one categorical, one uniform) regardless of
   which branch is taken -- fixed consumption, the same law
-  ehrt.sim.engine/assign-pathway and ehrt.sim.churn
+  ehrt.sim-engine.engine/assign-pathway and ehrt.sim-engine.churn
   already establish for this project's other categorical/probabilistic
   choices."
   [^Random rng {:keys [reference-range distribution precision]}]

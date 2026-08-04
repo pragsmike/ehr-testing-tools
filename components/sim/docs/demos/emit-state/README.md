@@ -81,7 +81,7 @@ The same patient's `Patient` and one `Observation` resource, from
 
 Resolving across both:
 
-- **`Patient.id` ("PID-000000-918175ce") is `ehrt.sim.engine/patient-id-for`'s
+- **`Patient.id` ("PID-000000-918175ce") is `ehrt.sim-engine.engine/patient-id-for`'s
   own internal id for patient ordinal 0** — never rendered on the wire
   itself (HL7 has no field for it), but the SAME id `ehrt.sim.emit-hl7`
   uses internally to know which patient a message is about; the
@@ -95,6 +95,6 @@ Resolving across both:
   twice: OBX-8 `H` in the ORU^R01 message (`messages.txt`, not shown
   above — see `../order-result/README.md`'s own excerpt for the full
   ORU), and `interpretation[0].coding[0].code "H"` here — both derived
-  from the identical `ehrt.sim.order-profiles/abnormal-flag`
+  from the identical `ehrt.sim-engine.order-profiles/abnormal-flag`
   computation over the identical sampled value, never re-derived
   independently by either emitter.

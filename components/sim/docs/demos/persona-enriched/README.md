@@ -2,7 +2,7 @@
 
 A plain default run — no `--config` needed, since every patient is
 now unconditionally prepended with a `:registered` step
-(`ehrt.sim.engine/run`'s own docstring) that samples a persona
+(`ehrt.sim-engine.engine/run`'s own docstring) that samples a persona
 (name, DOB, sex, address, phone, SSN-shaped id, payer). Seed 41 was
 picked because it happens to produce a patient named `O'Brien`, giving
 this demo a real, naturally-occurring apostrophe to show alongside

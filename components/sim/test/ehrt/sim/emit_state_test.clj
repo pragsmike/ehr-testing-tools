@@ -2,7 +2,7 @@
   "EmitState (docs/sim-theory.edn): state-history -> FHIR R4 Bundle.
   Written test-first (sim/ADR-0004). snapshot-at is the literal
   snapshot-at-instant law (a pure function of REPLAY RECORDS --
-  ehrt.sim.engine/replay's own output, the fold, sim/ADR-0008 -- at
+  ehrt.sim-engine.engine/replay's own output, the fold, sim/ADR-0008 -- at
   an instant t; no log access beyond the fold). The resource builders
   are pure functions of one patient's own folded state; `bundle-run` is
   the convenience that ties both to a real ground-truth log.

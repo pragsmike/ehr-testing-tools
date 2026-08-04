@@ -12,7 +12,7 @@
 ;; mechanism the pre-existing `range` branch already uses, P4's own
 ;; "documented approximation of a real continuous physiology model this
 ;; project does not have" framing) -- never a two-range categorical
-;; distribution (`ehrt.sim.order-profiles`' own richer shape stays where
+;; distribution (`ehrt.sim-engine.order-profiles`' own richer shape stays where
 ;; it is, the lab-order layer; this table is deliberately simpler).
 ;; Because the sampled value is drawn FROM `:reference-range` by
 ;; construction, the abnormal-flag this same range also supports

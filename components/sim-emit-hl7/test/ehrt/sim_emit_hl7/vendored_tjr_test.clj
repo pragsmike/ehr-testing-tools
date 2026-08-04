@@ -9,7 +9,7 @@
   rider; `ehrt.sim-trajectory.vendored-tjr-test`'s own docstring has
   the full delegated-content disclosure) or the walk blocks PERMANENTLY
   at age 0. This file's own previous version PINNED that silent-empty
-  failure (`ehrt.sim.engine`'s own `:registered` decide method called
+  failure (`ehrt.sim-engine.engine`'s own `:registered` decide method called
   `run-module` at the bare 5-arity, which never reaches the
   `initial-attributes` parameter at all, and there was no config
   surface on `engine/run` to seed one). ADR-0033 AR-1 gives run-time

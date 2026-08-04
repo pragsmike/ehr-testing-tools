@@ -28,7 +28,7 @@
   ([module rng persona registration-t horizon-end-t]
    (gmf-interpreter/run-module module rng persona registration-t horizon-end-t))
   ;; ADR-0033 AR-3: the full arity, purely additive -- `:registered`'s
-  ;; own decide method (ehrt.sim.engine) now calls this one, threading a
+  ;; own decide method (ehrt.sim-engine.engine) now calls this one, threading a
   ;; closure's own `modules`/`tables` maps and an optional per-patient
   ;; `initial-attributes` seed straight through to the interpreter.
   ([module rng persona registration-t horizon-end-t modules initial-attributes tables]

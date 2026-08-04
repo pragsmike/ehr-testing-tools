@@ -1281,10 +1281,10 @@
     :facility         facility config (default sim-model/default-facility)
     :providers        provider templates (default sim-model/default-provider-templates;
                        NPIs are generated from THIS run's seed -- sim/ADR-0007)
-    :order-profiles   M3: ehrt.sim.order-profiles/OrderProfiles map
+    :order-profiles   M3: ehrt.sim-engine.order-profiles/OrderProfiles map
                       (default order-profiles/default-profiles) -- :order
                       steps look up their :profile key here.
-    :churn-profile    ehrt.sim.churn/ChurnProfile map (default nil
+    :churn-profile    ehrt.sim-engine.churn/ChurnProfile map (default nil
                        -- churn OFF). M2b: when present, InjectChurn runs
                        ONCE PER PATIENT (in arrival-ordinal order, a fixed
                        point in the draw sequence) against THIS run's own

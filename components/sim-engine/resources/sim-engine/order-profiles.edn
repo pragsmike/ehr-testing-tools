@@ -17,7 +17,7 @@
 ;;
 ;; Each analyte's :distribution is a 3-way categorical draw
 ;; (:normal/:low/:high weights) then a uniform sample within whichever
-;; range is chosen -- ehrt.sim.order-profiles/sample-analyte-value
+;; range is chosen -- ehrt.sim-engine.order-profiles/sample-analyte-value
 ;; is the sampler this data feeds. :precision is decimal places for
 ;; rendering (matching typical lab-report precision per analyte).
 {:cbc

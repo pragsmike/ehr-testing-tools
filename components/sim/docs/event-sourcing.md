@@ -24,7 +24,7 @@ primitive, state is derived, and "what happened" and "what is true
 now" can never silently disagree, because there is only one function
 that produces the second from the first.
 
-This simulator's engine (`ehrt.sim.engine`) implements exactly
+This simulator's engine (`ehrt.sim-engine.engine`) implements exactly
 that inversion, decided at [ADR-0008](../notes/ADRs.md#adr-0008) and
 specified in full at
 [`docs/patient-state-model.md`](patient-state-model.md). Three pieces
@@ -122,7 +122,7 @@ had two emitters to check against each other at all.
 state, built the wire-consumer's way: parse a run's own emitted ER7
 stream (the same `org.clojars.cmiles74/clojure-hl7-parser` structures
 `EmitHL7` renders through) and fold it, message by message
-(`fold-message`), into state — never touching `ehrt.sim.engine`,
+(`fold-message`), into state — never touching `ehrt.sim-engine.engine`,
 the ground-truth log, or the RNG. This is the same shape `EmitState`'s
 own `snapshot-at` embodies from the log-fold side (ADR-0008's `replay`),
 mirrored from the wire side: two independent folds of two independent
@@ -154,7 +154,7 @@ degenerate but structurally legal churn sequence (a cancel-admit against
 an already-discharged patient's original admission, followed by a
 cancel-discharge) left ground truth's own `:class` field absent, while
 `EmitHL7`'s own PV1-2 rendering always asserts `:inpatient` for that
-message family regardless. The fix landed in `ehrt.sim.engine`'s
+message family regardless. The fix landed in `ehrt.sim-engine.engine`'s
 own `:cancel-discharge` fold (restoring `:class` as part of what it
 reinstates) — the property caught a real gap in ground truth, and the
 fix closed the gap rather than loosening what the projection would
@@ -165,7 +165,7 @@ originally a named gap this document's own determinism table below
 flagged as open) is checked the same way, from the other direction:
 `ehrt.sim.emit-state-test/fhir-patient-id-and-active-mrn-resolve-to-the-same-hl7-identity`
 asserts that a FHIR `Patient.id` is the same `patient-id`
-`ehrt.sim.engine/patient-id-for` assigns, and `Patient.identifier`
+`ehrt.sim-engine.engine/patient-id-for` assigns, and `Patient.identifier`
 carries the same active MRN that patient's own HL7 messages render as
 PID-3 — over 150 random runs, not merely by construction of one
 hand-picked demo.

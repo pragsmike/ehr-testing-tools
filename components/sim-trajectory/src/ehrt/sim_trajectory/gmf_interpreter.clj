@@ -147,7 +147,7 @@
 ;; documented simplification for a real upstream mechanism (Synthea's
 ;; `LifecycleModule.java`) it has never ported, D1a-4's own finding.
 ;; Loaded once at namespace load time, the same "small, hand-curated,
-;; hashed content" treatment ehrt.sim.order-profiles' own resources/
+;; hashed content" treatment ehrt.sim-engine.order-profiles' own resources/
 ;; order-profiles.edn already establishes for the analogous lab-analyte
 ;; table. Relocated here (2026-08-04, ADR-0039) from beside its own
 ;; original sole consumer, `vital-sign-extra` (below) -- the NEW
@@ -279,7 +279,7 @@
       (let [{:keys [quantity unit]} (wellness-cadence-band persona tick)]
         (recur (advance-date tick unit quantity))))))
 
-;; --- RNG primitives (fixed-consumption law, per ehrt.sim.engine/
+;; --- RNG primitives (fixed-consumption law, per ehrt.sim-engine.engine/
 ;; ehrt.sim-model.persona's own precedent) ----------------------------------
 
 (defn- rand-int-in [^Random rng lo hi] (+ lo (.nextInt rng (inc (- hi lo)))))
@@ -911,8 +911,8 @@
   distributions): a cumulative-weight pick over `entries`
   ({:transition :distribution}), consuming EXACTLY one `.nextDouble` --
   fixed consumption regardless of which member is chosen, the same law
-  ehrt.sim.engine/assign-pathway and
-  ehrt.sim.order-profiles/sample-analyte-value already establish."
+  ehrt.sim-engine.engine/assign-pathway and
+  ehrt.sim-engine.order-profiles/sample-analyte-value already establish."
   [^Random rng entries]
   (let [total (reduce + (map :distribution entries))
         target (* (.nextDouble rng) total)]
@@ -1580,7 +1580,7 @@
   {:events [...] :attributes {...} :advance seconds :next state-or-nil
   :terminal? bool :blocked? bool}; NEVER mutates `ctx` -- the caller
   (`walk-module`, below) is what folds an outcome back into a new ctx,
-  the same decide/evolve-style separation ehrt.sim.engine already
+  the same decide/evolve-style separation ehrt.sim-engine.engine already
   establishes (sim/ADR-0008), scaled down to this interpreter's own single-
   function `step`, since a GMF state's own effect and its own transition
   are never independently interesting the way decide/evolve's

@@ -10,7 +10,7 @@
   `materialize-providers` is the one place a run turns the static,
   id-less `default-provider-templates` into a real provider pool by
   drawing NPIs; called once per run, before the main event loop
-  (ehrt.sim.engine/run), so provider identity is as deterministic
+  (ehrt.sim-engine.engine/run), so provider identity is as deterministic
   as everything else in the theory."
   (:require [malli.core :as m]))
 

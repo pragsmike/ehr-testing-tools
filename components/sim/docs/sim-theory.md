@@ -35,7 +35,7 @@ One file describes three systems:
   `:procedure`/`:observation`/`:medication-order`/`:medication-end`) and
   EmitHL7 gains A04 (outpatient visit) and a second ORU^R01 rendering
   (an unsolicited Observation, no order context). As of Milestone M6,
-  `ehrt.sim.engine`'s own fold (`PatientState`) grows a
+  `ehrt.sim-engine.engine`'s own fold (`PatientState`) grows a
   clinical-content accumulator (`:conditions`/`:observations`/
   `:medication-orders`/`:discharged-at`) so EmitState can render from
   folded state alone, never the log directly — the concrete mechanism
@@ -131,7 +131,7 @@ two site profiles over one seed produce the same ground truth in two
 accents — is the dialect-invariance law now stated directly on
 `EmitHL7`'s own equation entry (`sim-theory.edn`), property-tested
 alongside the structural guarantee that `site-profile` never reaches
-`Execute` at all (not a member of `ehrt.sim.engine/config-keys`).
+`Execute` at all (not a member of `ehrt.sim-engine.engine/config-keys`).
 `:naming :surge-format`'s migration to the profile is the one
 documented exception bound at config-construction time rather than
 emit time (`ehrt.sim.site-profile/apply-naming`, a facility-
@@ -165,7 +165,7 @@ the M2a session's own plan; M2b does not depend on it.
 
 `order-profiles` was already a declared catalytic on `Execute` (the
 previous section) before this milestone — Milestone M3 makes it real
-(`ehrt.sim.order-profiles`, a small hand-curated CBC+BMP starter
+(`ehrt.sim-engine.order-profiles`, a small hand-curated CBC+BMP starter
 set, real LOINC codes verified against loinc.org,
 `notes/facts-register.md` F7) and lands the two new step types it
 feeds: `:order` (author-facing IR, `{:type :order :profile :cbc}`) and
@@ -192,7 +192,7 @@ Unlike M2a/M3 above (additions under an ALREADY-`:built` Execute),
 Persona genuinely flips from `:planned` to `:built` this milestone --
 a new stage, not an addition to one already landed. Its equation
 (`sim-config -> persona`) is satisfied by an engine-internal
-`:registered` event `ehrt.sim.engine/run` prepends to every
+`:registered` event `ehrt.sim-engine.engine/run` prepends to every
 patient's step queue (never authorable IR, the same treatment
 `:result-followup` already gets) -- persona is folded into Execute's
 own step-queue mechanism because a patient's persona is needed at the
@@ -259,7 +259,7 @@ whose name binds to nothing is malformed. Bindings, with build status:
 | `state-document` | FHIR R4 JSON (`ehrt.sim.emit-state`) now; CDA XML deferred with a contract note | M6 built (FHIR arm) |
 | `run-manifest` | Malli, `ehrt.sim.manifest/MirroredManifest` (tools' ManifestV1_1 mirror) | built |
 | `sim-corpus` | directory layout + manifest, planned | planned |
-| `churn-profile` | Malli, `ehrt.sim.churn/ChurnProfile` — step-type → per-insertion-point probability | v1 built |
+| `churn-profile` | Malli, `ehrt.sim-engine.churn/ChurnProfile` — step-type → per-insertion-point probability | v1 built |
 | `feed-statistics` | Malli, planned; site-supplied summary statistics — never raw feed content (see global laws) | planned |
 | `invariant-catalog` | not a wire resource — catalytic, see below | v0 built |
 
@@ -340,7 +340,7 @@ development: a degenerate but structurally legal churn sequence
 (cancel-admit against an already-discharged patient's original
 admission, followed by cancel-discharge) left ground truth's own
 `:class` absent while the wire always asserts `:inpatient` for that
-message family regardless — `ehrt.sim.engine/evolve`'s own
+message family regardless — `ehrt.sim-engine.engine/evolve`'s own
 `:cancel-discharge` method now restores `:class` as part of its
 reinstatement, closing the gap in ground truth rather than loosening
 the projection to hide it.
@@ -354,7 +354,7 @@ that could drift from another emitter's choice for the same event.
 PROPERTY-TESTED alongside the law above:
 `ehrt.sim.emit-state-test/fhir-patient-id-and-active-mrn-resolve-to-the-same-hl7-identity`
 (150 trials, green 2026-07-27) — FHIR `Patient.id` is the same
-`patient-id` `ehrt.sim.engine/patient-id-for` assigns, and
+`patient-id` `ehrt.sim-engine.engine/patient-id-for` assigns, and
 `Patient.identifier`'s MRN matches PID-3 on that same patient's own
 HL7 messages, over random runs.
 

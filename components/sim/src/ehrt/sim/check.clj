@@ -20,7 +20,7 @@
   event-validity rows from docs/patient-state-model.md (admission only
   when :new, transfer only when :admitted, a transfer's declared
   :from matches the fold). These read patient/world state via
-  ehrt.sim.engine/replay -- the same fold `evolve` always was,
+  ehrt.sim-engine.engine/replay -- the same fold `evolve` always was,
   reused rather than reimplemented (sim/ADR-0008).
 
   M2a (sim/ADR-0010) adds two structural invariants over :participants
@@ -204,7 +204,7 @@
   wherever it was at the moment of death until a LATER, out-of-this-
   wave's-scope administrative event (morgue transfer, final
   disposition-20 discharge) moves it. Checked at the exact moment an
-  expired-disposition :discharge fires (ehrt.sim.engine's own
+  expired-disposition :discharge fires (ehrt.sim-engine.engine's own
   :disposition field, riding the compiled step through, sim-model/
   pathway.clj) -- never nil immediately after."
   [ground-truth]
@@ -338,11 +338,11 @@
 
 ;; --- sim/ADR-0012: :step-rejected -- truth about the run, checked structurally
 ;; (never a message-bearing event -- no message-type-registry entry, by
-;; design; see ehrt.sim.engine/documented-step-rejection-reasons) --
+;; design; see ehrt.sim-engine.engine/documented-step-rejection-reasons) --
 
 (defn step-rejected-reason-is-documented
   "sim/ADR-0012's own invariant: every :step-rejected event's :reason is one
-  of the documented enum (ehrt.sim.engine/documented-step-
+  of the documented enum (ehrt.sim-engine.engine/documented-step-
   rejection-reasons) -- a rejection with an undocumented reason would
   mean a new decide-time rejection path shipped without updating the
   enum, the co-landing convention extended to this event type."
@@ -402,7 +402,7 @@
 (defn result-analytes-match-order-profile
   "Every :result-available event's :results analyte-concept set is
   EXACTLY its own :profile's analyte set (`order-profiles` -- default
-  ehrt.sim.order-profiles/default-profiles, the same 'needs more
+  ehrt.sim-engine.order-profiles/default-profiles, the same 'needs more
   than just the log' pattern facility-catalog/warmup-catalog already
   follow) -- catches a result that dropped, added, or substituted an
   analyte relative to what its own profile declares."
@@ -417,7 +417,7 @@
 (defn abnormal-flags-consistent-with-value-vs-range
   "The computed-truth mini-law (Milestone M3 Task 4), checked from the
   log directly: every result entry's :abnormal-flag equals
-  ehrt.sim.order-profiles/abnormal-flag applied to its own value
+  ehrt.sim-engine.order-profiles/abnormal-flag applied to its own value
   and reference-range -- a flag that disagrees with its own value is a
   bug, not a legitimate finding."
   [ground-truth]
@@ -477,9 +477,9 @@
 (defn registered-is-every-patients-first-event
   "docs/sim-theory.edn's :persona stage lands as the engine-internal
   :registered event, prepended to every patient's step queue
-  (ehrt.sim.engine/run) -- structurally, that means it must be
+  (ehrt.sim-engine.engine/run) -- structurally, that means it must be
   the FIRST event naming any given patient-id, every time, or
-  ehrt.sim.engine/replay's own bootstrap (which seeds a
+  ehrt.sim-engine.engine/replay's own bootstrap (which seeds a
   never-yet-seen participant's initial state off the first event
   naming them, sim/ADR-0010) would silently seed from the wrong event."
   [ground-truth]
@@ -546,7 +546,7 @@
   `facility-config` (default sim-model/default-facility) is needed by the
   capacity/surge-ladder invariants; `warm-up-seconds` (default 0) is
   needed by the warm-up-mark invariant; `order-profiles-config`
-  (default ehrt.sim.order-profiles/default-profiles, Milestone
+  (default ehrt.sim-engine.order-profiles/default-profiles, Milestone
   M3) is needed by result-analytes-match-order-profile. Existing
   1-arg/2-arg/3-arg call sites are unaffected."
   ([ground-truth] (check-all ground-truth sim-model/default-facility 0 order-profiles/default-profiles))

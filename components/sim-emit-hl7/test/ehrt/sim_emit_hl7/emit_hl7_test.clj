@@ -900,7 +900,7 @@
 (deftest site-profile-never-reaches-the-engine
   (testing "the invariance property's OWN strong half, stated structurally
             (docs/site-profiles.md): :site-profile is not a member of
-            ehrt.sim.engine/config-keys, so it is structurally
+            ehrt.sim-engine.engine/config-keys, so it is structurally
             incapable of perturbing ground-truth -- not merely untested"
     (is (not (contains? (set engine/config-keys) :site-profile)))))
 
