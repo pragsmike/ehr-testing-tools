@@ -36,7 +36,8 @@
             [clojure.string :as str]
             [ehrt.kernel.interface :as result]
             [ehrt.sim-model.interface :as sim-model]
-            [malli.core :as m]))
+            [malli.core :as m])
+  (:import [java.time LocalDate]))
 
 ;; --- Normalization: JSON's snake_case/CamelCase -> this project's kebab
 ;; keyword idiom -----------------------------------------------------------
@@ -1194,15 +1195,22 @@
 ;; closure DATA-FILE members -- lookup-table CSVs, resolved and parsed
 ;; alongside the module closure, not only JSON submodules -------------------
 
-(def ^:private recognized-lookup-table-columns
-  "The only lookup-table attribute-column names this loader resolves
-  (H2's own specify-vs-delegate audit, D3a): both vendored tables
-  (`uti.csv`/`uti_recurrence.csv`) declare only `age`/`gender`, both
-  persona-backed and buildable. Real Synthea's own `LookupTableTransition`
-  also special-cases a `time` column (a date range) -- unexercised by
-  either vendored table, NAMED UNBUILT here rather than silently
-  generalized (installed ≠ used, H1)."
-  #{"gender"})
+;; GMF coverage Wave LC (2026-08-03, ADR-0038 AR-1): the H2 whitelist
+;; (`recognized-lookup-table-columns`, formerly just `#{"gender"}`) is
+;; RETIRED -- read directly against the pin
+;; (`7e08387c68a7f0e21d13076609a159fd473fc902`, `Transition.java`'s own
+;; `LookupTableTransition.loadLookupTable`/`follow`), upstream never
+;; validates attribute-column NAMES at all: `this.attributes` is every
+;; header column that ISN'T `age`/`time`/a declared transition-state
+;; name, full stop -- no closed vocabulary, no per-column allowlist.
+;; H2's own whitelist was this project's OWN invention, not a mirror of
+;; anything upstream does, and it was blocking real, ordinary attribute
+;; columns (`operative_status`, `cardiac_surgery`, `diabetic_retinopathy_
+;; stage`, the `vhd_*_risk` trio) that resolve exactly like any
+;; module-set SetAttribute value already does. Load-time rejection now
+;; covers only what upstream ALSO rejects at load: a malformed `age`/
+;; `time` range cell (`parse-age-range`/`parse-time-range`, below) --
+;; never an unrecognized column name.
 
 (defn- lookup-table-transition-names
   "Every closure member's own :lookup-table-transition entries, gathered
@@ -1222,20 +1230,94 @@
 
 (defn- parse-csv-line [line] (str/split line #","))
 
+;; GMF coverage Wave LC (2026-08-03, ADR-0038 AR-1(b)): `age`/`time` are
+;; upstream's own TWO specials (`LookupTableTransition.loadLookupTable`'s
+;; own `if (this.attributes.contains("age"))` / `contains("time")`
+;; branches) -- both removed from the row's own header BEFORE the
+;; remaining columns become `rowAttributes`, exactly mirrored below:
+;; `attr-cols` (every non-weight column) still carries `age`/`time` for
+;; `parse-lookup-table`'s own row loop to pull by key, but neither ever
+;; lands in a row's own `:attributes` map.
+
+(defn- parse-age-range
+  "`age`'s own malformed-format check, transcribed from
+  `loadLookupTable`'s own guard (`!value.contains(\"-\") || <either half
+  empty>`) PLUS the actual `Integer.parseInt` upstream performs after --
+  nil on either failure (the caller's own 'first bad value, reject'
+  scan, `parse-lookup-table` below), else `[low high]` (unchanged
+  shape, `age-years-at`'s own inclusive-both-ends containment check
+  applies exactly as it already did before this wave)."
+  [value]
+  (let [parts (str/split value #"-")]
+    (when (and (= 2 (count parts)) (every? #(re-matches #"\d+" %) parts))
+      (mapv #(Long/parseLong %) parts))))
+
+(def ^:private iso-date-range-pattern
+  "Utilities.parseDateRange's own ISO form, transcribed verbatim
+  (`^(\\d{4}-\\d{2}-\\d{2})-(\\d{4}-\\d{2}-\\d{2})$`) -- READ at the pin,
+  not assumed (AR-1(b)'s own named session-read)."
+  #"^(\d{4}-\d{2}-\d{2})-(\d{4}-\d{2}-\d{2})$")
+
+(defn- parse-time-range
+  "`time`'s own two accepted forms, transcribed from `Utilities.
+  parseDateRange` (Synthea source at the pin, AR-1(b)'s own named
+  session-read -- the design channel's own ruling flagged this as
+  UNVERIFIED and required a real read before transcribing it, done
+  here): an ISO date-date range (`iso-date-range-pattern`, above,
+  inclusive of the FULL calendar day at both ends -- upstream's own
+  low = start-of-day UTC millis, high = end-of-day-minus-1ms UTC
+  millis) or a raw epoch-millisecond range (`millis-millis`, split at
+  the FIRST hyphen only -- upstream's own `substring(0, indexOf(\"-\"))`
+  shape, deliberately NOT `str/split`, since the ISO form's own low/high
+  halves each contain internal hyphens the millis form's split must not
+  be confused by).
+
+  Converted to this project's own epoch-DAY unit (`ehrt.sim-trajectory.
+  gmf-interpreter`'s virtual clock, `:t`) rather than kept as millis:
+  every real `time` column this session found (`covid19_prob.csv`,
+  `hiv_stage.csv`, `hiv_care.csv`, `hiv_diagnosis_early.csv`) already
+  encodes whole-UTC-day boundaries in millis form (confirmed by direct
+  read -- each low/high pair is exactly a start-of-day/end-of-day-minus-
+  1ms pair, the same shape the ISO form produces directly), so
+  `Math/floorDiv` by one day's millisecond count recovers the identical
+  `[low-day high-day]` pair either form denotes -- the SAME `[:low :high]`
+  inclusive-both-ends containment shape `:age-range` already carries,
+  reused unchanged by `lookup-table-row-matches?`
+  (`ehrt.sim-trajectory.gmf-interpreter`) rather than inventing a
+  second range representation. nil on malformed input (missing hyphen,
+  an ISO-shaped string with an invalid calendar date, or a non-numeric
+  millis half) -- the caller's own 'first bad value, reject' scan."
+  [value]
+  (when (str/includes? value "-")
+    (if-let [[_ lo hi] (re-matches iso-date-range-pattern value)]
+      (try [(.toEpochDay (LocalDate/parse lo)) (.toEpochDay (LocalDate/parse hi))]
+           (catch Exception _ nil))
+      (let [idx (str/index-of value "-")]
+        (try
+          [(Math/floorDiv (Long/parseLong (subs value 0 idx)) 86400000)
+           (Math/floorDiv (Long/parseLong (subs value (inc idx))) 86400000)]
+          (catch NumberFormatException _ nil))))))
+
 (defn- parse-lookup-table
   "Parses `csv-text` (a small, plain-comma, unquoted lookup table -- the
   same shape both vendored UTI tables use, real Synthea's own
   `SimpleCSV.parse`'s ordinary case; a small in-house splitter rather
-  than a new external dependency for two trivial files, D3a) into a
-  vector of rows: {:age-range [low high]|nil, :attributes {column
-  value}, :weights {transition-kw number}}. `transition-keywords` (this
-  table's own declared entry set, `lookup-table-transition-names`,
-  above) is what tells a header column apart as a WEIGHT column (its
-  slugged name is one of these keywords) versus an ATTRIBUTE column --
-  never guessed from cell contents or column position. An attribute
-  column outside `age`/`recognized-lookup-table-columns` is REJECTED
-  (H2's own specify-vs-delegate audit), the same 'never silently
-  skipped' disposition `:unsupported-state-type` already establishes.
+  than a new external dependency, D3a) into a vector of rows:
+  {:age-range [low high]|nil, :time-range [low-day high-day]|nil,
+  :attributes {column value}, :weights {transition-kw number}}.
+  `transition-keywords` (this table's own declared entry set,
+  `lookup-table-transition-names`, above) is what tells a header column
+  apart as a WEIGHT column (its slugged name is one of these keywords)
+  versus an ATTRIBUTE column -- never guessed from cell contents or
+  column position.
+
+  GMF coverage Wave LC (2026-08-03, ADR-0038 AR-1): every non-weight
+  column that ISN'T `age`/`time` is now an ATTRIBUTE column, generalized
+  (H2's own whitelist retired, above) -- the only load-time rejection
+  left is a STRUCTURALLY malformed `age`/`time` cell (`parse-age-range`/
+  `parse-time-range`, above both returning nil), the same class of gap
+  upstream ALSO rejects at load (`loadLookupTable`'s own
+  `RuntimeException`s), never an unrecognized column name.
 
   GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3f finding,
   found vendoring `uti_recurrence.csv`): a leading UTF-8 byte-order-mark
@@ -1254,17 +1336,23 @@
         header (parse-csv-line (first lines))
         weight-cols (filter #(contains? transition-keywords (keyword (slug %))) header)
         attr-cols (remove (set weight-cols) header)
-        bad-col (first (remove #(or (= % "age") (recognized-lookup-table-columns %)) attr-cols))]
-    (if bad-col
-      (result/rejected :unrecognized-lookup-table-column {:column bad-col})
+        rows (mapv #(zipmap header (parse-csv-line %)) (rest lines))
+        age-values (keep #(get % "age") rows)
+        time-values (keep #(get % "time") rows)
+        bad-age (first (remove (comp some? parse-age-range) age-values))
+        bad-time (first (remove (comp some? parse-time-range) time-values))]
+    (cond
+      bad-age (result/rejected :malformed-lookup-table-range {:column "age" :value bad-age})
+      bad-time (result/rejected :malformed-lookup-table-range {:column "time" :value bad-time})
+      :else
       (result/ok
-       (mapv (fn [line]
-               (let [row (zipmap header (parse-csv-line line))]
-                 {:age-range (when-let [v (get row "age")]
-                               (mapv #(Long/parseLong %) (str/split v #"-")))
-                  :attributes (into {} (map (fn [c] [c (get row c)])) (remove #(= % "age") attr-cols))
-                  :weights (into {} (map (fn [c] [(keyword (slug c)) (Double/parseDouble (get row c))])) weight-cols)}))
-             (rest lines))))))
+       (mapv (fn [row]
+               {:age-range (some-> (get row "age") parse-age-range)
+                :time-range (some-> (get row "time") parse-time-range)
+                :attributes (into {} (map (fn [c] [c (get row c)]))
+                                   (remove #(or (= % "age") (= % "time")) attr-cols))
+                :weights (into {} (map (fn [c] [(keyword (slug c)) (Double/parseDouble (get row c))])) weight-cols)})
+             rows)))))
 
 (defn- resolve-tables
   "Resolves every distinct lookup-table name `table-name->transitions`
@@ -1326,10 +1414,11 @@
   contains a cycle -- an ESCALATION-worthy finding (D3), never silently
   resolved by dropping an edge. :rejected :lookup-table-not-found
   (payload {:table-name}) when `table-resolve-fn` returns nil for a
-  named table; :rejected :unrecognized-lookup-table-column (payload
-  {:column}) when a table's own header names an attribute column
-  outside `age`/`recognized-lookup-table-columns` (H2's own specify-vs-
-  delegate audit)."
+  named table; :rejected :malformed-lookup-table-range (payload
+  {:column :value}) when a table's own `age`/`time` cell doesn't parse
+  (GMF coverage Wave LC, ADR-0038 AR-1 -- the ONLY load-time rejection
+  a lookup table's own header content can trigger now that H2's column
+  whitelist is retired, above)."
   ([root-id root-json-text resolve-fn]
    (load-closure root-id root-json-text resolve-fn (constantly nil)))
   ([root-id root-json-text resolve-fn table-resolve-fn]

@@ -412,6 +412,7 @@
     (let [rows (get (:tables (:payload loaded)) "t.csv")]
       (is (= 2 (count rows)))
       (is (= [15 24] (:age-range (first rows))))
+      (is (nil? (:time-range (first rows))))
       (is (= {"gender" "F"} (:attributes (first rows))))
       (is (= {:a 0.9 :b 0.1} (:weights (first rows))))
       (is (= {:a 0.2 :b 0.8} (:weights (second rows)))))))
@@ -423,16 +424,61 @@
     (is (= :lookup-table-not-found (:category loaded)))
     (is (= "t.csv" (:table-name (:payload loaded))))))
 
-(def bad-column-t-csv "age,eye_color,A,B\n15-24,brown,0.9,0.1\n")
+;; GMF coverage Wave LC (2026-08-03, ADR-0038 AR-1): H2's own column
+;; whitelist is RETIRED -- any header column other than a declared
+;; transition or `age`/`time` is now a generic ATTRIBUTE column, loaded
+;; unconditionally (no allowlist to escalate against, see gmf.clj's own
+;; docstring note on `parse-lookup-table`).
 
-(deftest load-closure-rejects-an-unrecognized-lookup-table-column
-  (testing "H2's own specify-vs-delegate audit: a column outside
-            age/gender is an ESCALATION, never silently generalized"
+(def any-column-t-csv "age,operative_status,A,B\n15-24,elective,0.9,0.1\n")
+
+(deftest load-closure-resolves-a-lookup-table-with-any-attribute-column-name
+  (let [loaded (gmf/load-closure "lookup-caller" lookup-table-transition-json (resolver {})
+                                  (table-resolver {"t.csv" any-column-t-csv}))]
+    (is (result/ok? loaded))
+    (let [row (first (get (:tables (:payload loaded)) "t.csv"))]
+      (is (= {"operative_status" "elective"} (:attributes row))))))
+
+(def malformed-age-t-csv "age,gender,A,B\nbogus,F,0.9,0.1\n")
+
+(deftest load-closure-rejects-a-malformed-age-range
+  (testing "upstream ALSO rejects a malformed age cell at load
+            (loadLookupTable's own RuntimeException) -- the ONE load-time
+            rejection a lookup table's own cell content can still trigger"
     (let [loaded (gmf/load-closure "lookup-caller" lookup-table-transition-json (resolver {})
-                                    (table-resolver {"t.csv" bad-column-t-csv}))]
+                                    (table-resolver {"t.csv" malformed-age-t-csv}))]
       (is (result/rejected? loaded))
-      (is (= :unrecognized-lookup-table-column (:category loaded)))
-      (is (= "eye_color" (:column (:payload loaded)))))))
+      (is (= :malformed-lookup-table-range (:category loaded)))
+      (is (= {:column "age" :value "bogus"} (:payload loaded))))))
+
+(def malformed-time-t-csv "time,gender,A,B\nnotarange,F,0.9,0.1\n")
+
+(deftest load-closure-rejects-a-malformed-time-range
+  (let [loaded (gmf/load-closure "lookup-caller" lookup-table-transition-json (resolver {})
+                                  (table-resolver {"t.csv" malformed-time-t-csv}))]
+    (is (result/rejected? loaded))
+    (is (= :malformed-lookup-table-range (:category loaded)))
+    (is (= {:column "time" :value "notarange"} (:payload loaded)))))
+
+(def iso-time-t-csv "time,gender,A,B\n2020-01-22-2020-01-22,F,0.9,0.1\n")
+(def millis-time-t-csv "time,gender,A,B\n1579651200000-1579737599999,F,0.9,0.1\n")
+
+(deftest load-closure-parses-both-time-range-forms-to-the-same-epoch-day-pair
+  (testing "Utilities.parseDateRange's own two forms (AR-1(b)'s own
+            source read): a millis pair that is a real UTC start-of-
+            day/end-of-day-minus-1ms boundary (covid19_prob.csv's own
+            shape) floorDivs to the SAME [low-day high-day] pair the
+            ISO form of the same calendar day produces directly"
+    (let [iso (gmf/load-closure "lookup-caller" lookup-table-transition-json (resolver {})
+                                 (table-resolver {"t.csv" iso-time-t-csv}))
+          millis (gmf/load-closure "lookup-caller" lookup-table-transition-json (resolver {})
+                                    (table-resolver {"t.csv" millis-time-t-csv}))]
+      (is (result/ok? iso)) (is (result/ok? millis))
+      (let [iso-range (:time-range (first (get (:tables (:payload iso)) "t.csv")))
+            millis-range (:time-range (first (get (:tables (:payload millis)) "t.csv")))]
+        (is (= 2 (count iso-range)))
+        (is (= (first iso-range) (second iso-range)) "one calendar day, inclusive both ends")
+        (is (= iso-range millis-range))))))
 
 (deftest load-closure-with-no-lookup-table-transition-has-empty-tables
   (let [loaded (gmf/load-closure "fixture-clinic" fixture-clinic-json (resolver {}))]
@@ -594,8 +640,8 @@
           loaded (gmf/load-closure "lookup-caller" lookup-table-transition-json (resolver {})
                                     (table-resolver {"t.csv" bom-csv}))]
       (is (result/ok? loaded))
-      (is (= [{:age-range [15 24] :attributes {"gender" "F"} :weights {:a 0.9 :b 0.1}}
-              {:age-range [15 24] :attributes {"gender" "M"} :weights {:a 0.2 :b 0.8}}]
+      (is (= [{:age-range [15 24] :time-range nil :attributes {"gender" "F"} :weights {:a 0.9 :b 0.1}}
+              {:age-range [15 24] :time-range nil :attributes {"gender" "M"} :weights {:a 0.2 :b 0.8}}]
              (get (:tables (:payload loaded)) "t.csv"))))))
 
 ;; --- ADR-0035 (Wave F0): GAUSSIAN/EXPONENTIAL/TRIANGULAR join the v2

@@ -162,19 +162,19 @@
     (is (true? (census/out-of-scope-by-ruling?
                 {:unrecognized-state-types #{"Physiology"}
                  :unresolved-submodules #{} :unresolved-tables #{}
-                 :unrecognized-lookup-table-columns #{} :attribute-collisions #{}
+                 :malformed-lookup-table-ranges #{} :attribute-collisions #{}
                  :cyclic-closure nil :other-rejections []}))
         "the clean case: the ENTIRE gap is the ruled-out type")
     (is (false? (census/out-of-scope-by-ruling?
                  {:unrecognized-state-types #{"Physiology" "VitalSign"}
                   :unresolved-submodules #{} :unresolved-tables #{}
-                  :unrecognized-lookup-table-columns #{} :attribute-collisions #{}
+                  :malformed-lookup-table-ranges #{} :attribute-collisions #{}
                   :cyclic-closure nil :other-rejections []}))
         "a SECOND, non-ruled unrecognized type keeps it :load-failed")
     (is (false? (census/out-of-scope-by-ruling?
                  {:unrecognized-state-types #{"Physiology"}
                   :unresolved-submodules #{"some/missing"} :unresolved-tables #{}
-                  :unrecognized-lookup-table-columns #{} :attribute-collisions #{}
+                  :malformed-lookup-table-ranges #{} :attribute-collisions #{}
                   :cyclic-closure nil :other-rejections []}))
         "a genuinely unrelated gap (a missing submodule) alongside the
          ruled-out type ALSO keeps it :load-failed, never silently

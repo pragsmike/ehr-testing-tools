@@ -237,7 +237,7 @@
         (every? out-of-scope-state-types (:unrecognized-state-types gap))
         (empty? (:unresolved-submodules gap))
         (empty? (:unresolved-tables gap))
-        (empty? (:unrecognized-lookup-table-columns gap))
+        (empty? (:malformed-lookup-table-ranges gap))
         (empty? (:attribute-collisions gap))
         (nil? (:cyclic-closure gap))
         (empty? (:other-rejections gap)))))
@@ -253,9 +253,15 @@
   [rejection]
   (->> rejection (iterate #(get-in % [:payload :reason])) (take-while some?)))
 
+;; GMF coverage Wave LC (2026-08-03, ADR-0038 AR-1): H2's own
+;; `:unrecognized-lookup-table-column` rejection is RETIRED (the column
+;; whitelist it named is gone, gmf.clj's own docstring) -- replaced by
+;; `:malformed-lookup-table-range` (a structurally invalid `age`/`time`
+;; cell, the ONLY load-time rejection a lookup table's own content can
+;; still trigger).
 (def ^:private recognized-gap-categories
   #{:unsupported-state-type :submodule-not-found :lookup-table-not-found
-    :unrecognized-lookup-table-column :attribute-collision :cyclic-closure
+    :malformed-lookup-table-range :attribute-collision :cyclic-closure
     :submodule-rejected})
 
 (defn- extract-load-gap [rejection]
@@ -265,7 +271,9 @@
     {:unrecognized-state-types (by-cat :unsupported-state-type :raw-type)
      :unresolved-submodules (by-cat :submodule-not-found :call-path)
      :unresolved-tables (by-cat :lookup-table-not-found :table-name)
-     :unrecognized-lookup-table-columns (by-cat :unrecognized-lookup-table-column :column)
+     :malformed-lookup-table-ranges (into #{} (keep (fn [{:keys [category payload]}]
+                                                       (when (= :malformed-lookup-table-range category) payload))
+                                                     links))
      :attribute-collisions (by-cat :attribute-collision :attribute)
      :cyclic-closure (some (fn [{:keys [category payload]}] (when (= :cyclic-closure category) (:cycle payload))) links)
      :other-rejections (into [] (keep (fn [{:keys [category payload]}]
