@@ -9312,4 +9312,14 @@ parity arc's own final wave — **the roadmap's own "Wave H" row and the
 parity plan's own H row both close here; no further GMF-coverage wave
 is scheduled.**
 
+Ratification note (author-ruled 2026-08-04, design channel review). The Step 3
+finding's one-hop extension of AR-2's phase inheritance along the :references
+back-edge (history-phase?, compile_trajectory.clj) is RATIFIED as within AR-2's
+own stated principle — "no orphaned reference to something dropped" — applied to
+end-events whose antecedent was dropped as history. Not a new rule: the same
+edge, one hop further. The disclosed v1 cost (a straddle-adjacent end-event
+yields no in-window wire traffic) is subsumed by the carry-across named future
+(roadmap Deferred, unchanged trigger). This closes the disclosure above; AR-2's
+body text stands as written.
+
 ---
