@@ -5,13 +5,13 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- Nothing in progress at end of session (sim split B M1 landed same
+- Nothing in progress at end of session (sim split B M2 landed same
   day it started -- see Done, below. GMF parity arc stays COMPLETE,
   unaffected by this front). `.agents/plans/2026-08-04-sim-split-b-
-  plan.md`'s own forced sequence (AR-6: M1 → M2 → M3 → M4) has M2
-  (`sim-engine`), M3 (`sim-emit-fhir`), and M4 (`sim-check` + residual
-  thinning) next, each its own session, prompt authored in the design
-  channel per stage once scheduled -- not yet in progress.
+  plan.md`'s own forced sequence (AR-6: M1 → M2 → M3 → M4) has M3
+  (`sim-emit-fhir`) and M4 (`sim-check` + residual thinning) next, each
+  its own session, prompt authored in the design channel per stage once
+  scheduled -- not yet in progress.
 
 ## Next (backlog, no session scheduled)
 - The lookup-column `time` gap (named in the schema-invalid family
@@ -108,7 +108,9 @@ per item; done items move to the bottom of their section with a date and sha.
   same sequence, so M2 is designed against two known consumers) — not
   claimed that the trigger fired. `.agents/plans/2026-08-02-sim-split-
   plan.md`'s own dated status note carries the same ruling; `notes/
-  ADRs.md` ADR-0043 records it verbatim.
+  ADRs.md` ADR-0043 records it verbatim. **EXECUTED (2026-08-04, sim
+  split B M2, same day):** `components/sim-engine` landed for real —
+  see Done, above.
 - `ImagingStudy` (R5, CHF trigger) and the stroke-risk data source (R7)
   — GMF coverage Wave D closed 2026-08-02 (D0-D3, see Done below)
   without owning either; H3's own attribute-weighted `distributed_
@@ -221,6 +223,39 @@ per item; done items move to the bottom of their section with a date and sha.
   shape should expect the same workaround, or this row graduates into
   an actual `bin/regression-oracle` enhancement (e.g. an opt-in "run
   each commit's own digest.clj against its own worktree" mode).
+
+## Done (this session, 2026-08-04, sim split B M2 — `sim-engine` lands — ADR-0043)
+- `.agents/plans/2026-08-04-sim-split-b-plan.md` (RULED, AR-1..AR-6) M2
+  of four executed: `components/sim-engine` created, `engine.clj`/
+  `churn.clj`/`order_profiles.clj` (1,883 LOC) moved verbatim out of
+  `components/sim`, `ehrt.sim-engine.interface` designed from fresh
+  caller-evidence grep (both-direction deltas recorded in ADR-0043's
+  own M2 section — `patient-id-for` has no real src-scope caller and
+  stays OUT of the interface, contra the design-channel candidate
+  list). `9ccc04f`, `701d0be`.
+- `order-profiles.edn`'s resource moves with its loader (the one
+  disclosed behavior-adjacent edit this stage licenses), load path
+  updated. Residual sim's `run`/`check`/`emit-state`/`identifiers`
+  repoint to the interface; test-scope callers (sim's own five test
+  files, sim-emit-hl7's six vendored/replay tests, `bin/oracle-src/
+  ehrt/oracle/digest.clj`) repoint mechanically to `ehrt.sim-engine.
+  engine` internals.
+- Stale-path sweep: two real violations in `docs/site-profiles.md`
+  fixed forward, `ehrt.docs-tooling.stale-path-test`'s retired-
+  namespace family gains `ehrt.sim.engine`/`churn`/`order-profiles`
+  (namespace and path form), watched red→green live. `0543043`.
+- ADR-0043's own M1-era "Dependency directions" note corrected by
+  dated addendum, not rewrite: `sim-engine` depends on `sim-model` AND
+  `sim-trajectory` (the engine's own `:registered` decide method calls
+  `run-module`/`compile-trajectory`), never on `kernel` at all — the
+  M1-time plan text guessed kernel; fresh M2 grep found otherwise.
+- M1's three disclosed judgment calls (corpus relay design, the 9/6
+  schema/builder test split, `valid?`'s retirement) ratified by the
+  author, dated note appended to ADR-0043.
+- `clojure -M:poly check` clean and full suite green at every one of
+  the three commits above (0 failures, 0 errors, both projects);
+  split-mode regression-oracle bracket / façade-seam / deftest-parity
+  verification recorded in the session record.
 
 ## Done (this session, 2026-08-04, sim split B M1 — provenance lands, mirror retires — ADR-0043)
 - `.agents/plans/2026-08-04-sim-split-b-plan.md` (RULED, AR-1..AR-6)

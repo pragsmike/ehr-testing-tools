@@ -294,7 +294,10 @@
   ;; bumped 1927->1931, sim split B M2 session (2026-08-04, Step 1):
   ;; AGENTS.md's own Components-list growth (`components/sim-engine`,
   ;; net +4 lines) brought the real total from 1927 to 1931.
-  :budget-lines 1931}
+  ;; bumped 1931->1966, same session (Step 4 close-out): roadmap.md's
+  ;; own new M2 Done section, "Now" section rewrite, and S4 Deferred-
+  ;; row EXECUTED note brought the real total from 1931 to 1966.
+  :budget-lines 1966}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one

@@ -9562,4 +9562,142 @@ read-from-current-checkout limitation (ADR-0030 J2 / plan R-11) is
 unaffected by M1 (no producer call-shape changed) — not exercised this
 stage since M1 touches no oracle-covered producer.
 
+### M1 ratification (dated note, 2026-08-04, design channel, post-verification)
+
+The author ratified M1's three disclosed judgment calls (the "Judgment
+calls and their ratification status" section of
+`.agents/session-records/2026-08-04-sim-split-m1-provenance.md`),
+verbatim: **`ehrt.corpus.manifest`'s relay design** (Step 2 — the
+namespace relays provenance's own vars rather than repointing every
+consumer directly, so `generate.clj`/`intake.clj`/their tests needed
+zero changes); **the 9/6 schema/builder split** of
+`corpus/manifest_test.clj` (Step 1 — 9 tests classified schema/
+validator and moved to provenance against literal fixture maps, 6
+classified builder and stayed, still reaching `manifest/valid*?` via
+the Step 2 relay); and **`valid?`'s retirement** (AR-M1-2's "repoint or
+retire, decide from fresh grep" resolved to retire — no real caller
+existed outside the mirror's own now-retired tripwire test). No code
+change; this note closes the "not yet ratified explicitly" disclosure
+the M1 session record left open.
+
+### M2 execution record — `sim-engine` lands
+
+**Status:** M2 executed 2026-08-04 (same design-channel session as
+M1's ratification above), `.agents/plans/2026-08-04-sim-split-b-
+plan.md` AR-1/AR-6 and this session's own driving prompt's AR-M2-1..
+AR-M2-6 (recorded verbatim in the session's own archived prompt,
+`.agents/prompts/2026-08-04-sim-split-m2-engine.md`). M3/M4 remain
+PLANNED, not yet executed.
+
+**What moved.** `engine.clj` (1573 LOC — the discrete-event core,
+`decide`/`evolve`, the seeded RNG-threaded run loop), `churn.clj` (197
+LOC — InjectChurn), and `order_profiles.clj` (113 LOC — the order/
+result catalytic) move verbatim from `components/sim/src/ehrt/sim/` to
+`components/sim-engine/src/ehrt/sim_engine/` as `ehrt.sim-engine.
+{engine,churn,order-profiles}` — ns-form/require diffs only, verified
+byte-identical otherwise (`diff` against each pre-move blob, recorded
+in the session record). Their tests move with them, classified by real
+consumer per Step 0's fresh grep, not by filename: `engine_test.clj`,
+`churn_test.clj`, `order_profiles_test.clj` (obvious), plus
+`churn_scenarios_test.clj` — despite its name, it never requires
+`ehrt.sim.churn` at all; every deftest drives `engine/run`/`engine/
+patient-id-for` end-to-end, exercising the engine's own churn-family
+step types, not `InjectChurn`. `emitter_order_independence_test.clj`
+was the one genuinely ambiguous file (uses `engine/run` only as a
+fixture generator to test a `sim-emit-hl7` property) — classified
+STAYS since it tests neither engine/churn/order-profiles semantics,
+disclosed as a judgment call in the session record. Deftest/defspec
+count: 212 at `978c54f` (Step 0's own authoritative recount, matching
+M1's own 212 — a pure wash, nothing retired or added this stage) split
+103 MOVES / 109 STAYS, verified summing back to 212.
+
+One resource moves: `components/sim/resources/sim/order-profiles.edn`
+→ `components/sim-engine/resources/sim-engine/order-profiles.edn`,
+`order_profiles.clj`'s own load path updated to match — confirmed by
+grep the ONLY loader of that resource, the single disclosed
+behavior-adjacent edit this stage licenses (AR-M2-1), proven inert by
+the Step 5 oracle bracket (below).
+
+**Interface union — evidence, not judgment (AR-M2-2).** Fresh
+var-level grep of every real call site (not the design-channel
+candidate list, cross-check only) found the true src-scope union:
+`run.clj` reaches `engine/run` (as an injectable default),
+`engine/config-keys`, `churn/default-churn-profile`,
+`churn/sample-profile`; `identifiers.clj` reaches `engine/run` (same
+pattern), `engine/config-keys`, `engine/replay`; `check.clj` reaches
+`engine/documented-step-rejection-reasons`, `order-profiles/
+abnormal-flag`, `order-profiles/default-profiles`; `emit_state.clj`
+reaches `engine/replay`. `ehrt.sim-engine.interface` carries exactly
+this union, three documented sections (orchestration/state-reader/
+acceptance). **Deltas found, both directions, per AR-M2-2's
+unearned-specificity discipline:** the design-channel list's own
+`patient-id-for` has NO real src-scope caller anywhere (only test-scope
+callers, which repoint to `ehrt.sim-engine.engine` directly per
+AR-M2-3) — it does NOT enter the interface, contra the list's
+inclusion of it under "state-reader surface". The list also missed
+`config-keys` sharing between `run.clj` and `identifiers.clj`, and
+missed that `churn/inject` and `order-profiles/sample-analyte-value`
+are needed transitionally (Step 1 only, by residual sim's own
+pre-move `engine.clj`) — both landed in the Step 1 interface, then
+removed in Step 2 once `engine.clj` itself moved in and reaches them as
+sibling internals instead.
+
+**Dependency-direction correction (disclosed delta from this ADR's own
+M1-era planned note).** The "Dependency directions" section above,
+written at M1 time, stated the PLANNED shape as "`sim-engine` itself
+depends on `sim-model` and `kernel` only." Fresh grep at M2's own Step
+0 found this wrong: `engine.clj` requires `ehrt.sim-trajectory.
+interface` directly (the `:registered` decide method's own
+`run-module`/`compile-trajectory` calls) and requires kernel NOT AT
+ALL — no `ehrt.kernel.*` require anywhere in `engine.clj`, `churn.clj`,
+or `order_profiles.clj`. The real, `poly check`-verified shape is
+**`sim-engine` ← {residual `sim`}, depends on `sim-model` and
+`sim-trajectory` only** — corrected here rather than left standing
+uncorrected, per this workspace's fix-forward-with-disclosure rule.
+`sim-check`/`sim-emit-fhir`'s own eventual dependency on `sim-engine`
+(M3/M4, still planned) is unaffected by this correction.
+
+**Split-mode oracle bracket — plan (AR-M2-4, executed in Step 5).**
+`bin/oracle-src/ehrt/oracle/digest.clj`'s own `ehrt.sim.engine` require
+is repointed to `ehrt.sim-engine.engine` in Step 2's own commit (the
+only edit digest.clj needs). Because the oracle script is read from the
+current checkout (ADR-0030 J2), the pre-M2 baseline (`978c54f`) cannot
+compile the post-M2 digest.clj and vice versa — the bracket runs in
+split mode: the pre-M2 side digested by `978c54f`'s own digest.clj
+against a `978c54f` worktree, the post-M2 side by this stage's own
+landing-tip digest.clj against its own worktree, the two manifests
+diffed. Soundness condition, asserted in Step 5: digest.clj's own
+cross-side diff must be ns/require-only (any logic diff is
+STOP-AND-ESCALATE, voiding the comparison). Expected result: all eleven
+batches (nine legacy + `ear-infections-history-engine` +
+`urinary-tract-infections-history-engine`) byte-identical, expected-
+change set NONE — the resource-path move must be invisible in output.
+
+**Commits so far** (Steps 1–3, `git log` `9ccc04f..0543043`):
+
+1. `9ccc04f` — `refactor(sim-engine): churn and order-profiles move --
+   leaf slice first (M2 step 1, AR-M2-1)`.
+2. `701d0be` — `refactor(sim-engine): engine moves -- interface
+   complete, residual repoints (M2 step 2, AR-M2-1/2/3)`.
+3. `0543043` — `docs: sim-engine stale-path sweep -- tripwire learns
+   the old names (M2 step 3, AR-M2-6)` — two real violations
+   (`docs/site-profiles.md` bare-citing `ehrt.sim.engine/run` and
+   `ehrt.sim.engine/config-keys`) fixed forward before the tripwire
+   patterns landed; watched red (1 failure) then green (0 failures).
+
+`clojure -M:poly check` clean and the full suite green (0 failures, 0
+errors, both projects) after each of the three commits above. Step 4
+(this entry) and Step 5 (oracle bracket, façade-seam check, deftest
+parity ledger, session record) follow.
+
+### Fence (M2)
+
+No check/emit-state moves (M4, not this stage). No behavior change —
+the resource path move is the single disclosed behavior-adjacent edit,
+proven inert by the Step 5 bracket. No oracle redesign (split-mode
+invocation only). Façade (`ehrt.sim.interface`) byte-untouched. No
+interface vars beyond the src-caller union (both-direction deltas
+recorded above). No engine logic edits of any kind. Frozen archives
+untouched.
+
 ---
