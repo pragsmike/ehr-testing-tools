@@ -6,7 +6,8 @@
   classpath (see ehrt.sim.manifest's docstring)."
   (:require [clojure.test :refer [deftest is]]
             [ehrt.sim.manifest :as manifest]
-            [ehrt.sim.version :as version]))
+            [ehrt.sim.version :as version]
+            [ehrt.provenance.interface :as provenance]))
 
 (deftest built-manifest-validates
   (let [m (manifest/build {:seed 42
@@ -22,6 +23,26 @@
     (is (= :simulated (:stage m)))
     (is (= {:primary 42} (:seeds m)))
     (is (= "ehrt.sim" (get-in m [:generator :name])))))
+
+;; --- sim split B, M1 step 3 (2026-08-04, plan AR-5(b) / AR-M1-3) ---------
+;; The fast-lane companion to the conformance project's own
+;; sim-manifest-contract-test: same builder-validity claim (what
+;; `build` produces conforms to the real ManifestV1_1), checked
+;; directly against ehrt.provenance.interface without the harness
+;; (no sim-harness/run!, no subprocess/in-process boundary). This is
+;; the replacement AR-5(b) names for the mirror tripwire's own
+;; builder-validity purpose -- `built-manifest-validates` above still
+;; exercises the mirror for now (Step 4 retires MirroredManifest and
+;; that test together).
+(deftest built-manifest-validates-against-provenance-test
+  (let [m (manifest/build {:seed 42
+                           :engine-params {:patients 5}
+                           :config {:path "config.edn"
+                                    :sha256 (apply str (repeat 64 "a"))}
+                           :invocation {:verb "run" :opts {:seed 42}}})]
+    (is (provenance/valid-v1-1? m)
+        "sim's own build() output must conform to provenance's real
+         ManifestV1_1 -- no mirror in between")))
 
 ;; --- go-public Task 2: version single-sourced, manifest honest -----------
 
