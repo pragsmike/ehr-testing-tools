@@ -925,17 +925,17 @@
     (is (true? (:blocked? (interp/step not-equal-attribute-module (Random. 1) ctx-closed))))))
 
 (deftest evaluate-condition-throws-on-an-unrecognized-condition-type
-  (testing ":vital-sign (AR-2, GMF coverage Wave A, pre-ruled OUT -- needs a
-            state home this project's accumulator doesn't have yet) is
-            still outside v1's vocabulary, docs/gmf-interpreter.md section
-            2's own gap note -- unlike :active-allergy/:active-condition/
-            :active-medication/:and (M5b) and :symptom/:at-least/:or/:date/
-            :observation (Wave A, this namespace's own updated tests,
-            below), all of which joined v1 because their data source
-            already existed"
+  (testing ":true (Logic.java's own trivial always-true constant class,
+            source-grounded, `pin 7e08387c68a7f0e21d13076609a159fd473fc902`)
+            is still outside v1's vocabulary -- this test's own example
+            has swapped several times as each named example joined v1
+            (most recently :vital-sign, GMF coverage Wave VS, ADR-0039
+            AR-1/AR-4, this namespace's own updated tests, below) -- picked
+            fresh here because it is GENUINELY unbuilt, not merely the
+            latest gap"
     (is (thrown? clojure.lang.ExceptionInfo
                  (interp/evaluate-condition "any-mod" (ctx-for (persona-at 1))
-                                             {:condition-type :vital-sign})))))
+                                             {:condition-type :true})))))
 
 ;; --- M5b: Active Condition / Active Medication / Active Allergy / And ----
 ;; (docs/gmf-interpreter.md section 2's own condition-vocabulary-gap note,
@@ -2361,3 +2361,85 @@
   (let [ctx (assoc (ctx-for (persona-at 1)) :current :x)]
     (is (thrown? clojure.lang.ExceptionInfo
                  (interp/step vital-sign-no-value-source-module (Random. 1) ctx)))))
+
+;; --- GMF coverage Wave VS (2026-08-04, ADR-0039 AR-1/AR-4): the
+;; :vital-sign CONDITION -- register read, honest absence, operators. --
+
+(def sbp-guard-module
+  {:id "sbp-mod" :name "SbpGuard"
+   :states {:initial {:type :initial :direct-transition :check}
+            :check {:type :guard
+                    :allow {:condition-type :vital-sign :vital-sign "Systolic Blood Pressure"
+                            :operator "<" :value 90}
+                    :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest vital-sign-condition-reads-the-baseline-when-nothing-has-set-it
+  (testing "AR-3/AR-4: the baseline (110) is already a STORED register
+            value from patient creation onward -- 110 is not < 90, so
+            the guard blocks"
+    (is (true? (:blocked? (interp/step sbp-guard-module (Random. 1) (assoc (ctx-for (persona-at 1)) :current :check)))))))
+
+(def sbp-guard-module-ge
+  {:id "sbp-mod" :name "SbpGuardGe"
+   :states {:initial {:type :initial :direct-transition :check}
+            :check {:type :guard
+                    :allow {:condition-type :vital-sign :vital-sign "Systolic Blood Pressure"
+                            :operator ">=" :value 100}
+                    :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest vital-sign-condition-supports-every-operator-the-real-candidates-use
+  (testing "compare-op already matches Utilities.compare's own Double
+            dispatch for <, <=, >=, > -- no new operator code needed"
+    (is (false? (:blocked? (interp/step sbp-guard-module-ge (Random. 1) (assoc (ctx-for (persona-at 1)) :current :check)))))))
+
+(def lvef-set-then-test-module
+  {:id "chf-mod" :name "ChfLike"
+   :states {:initial {:type :initial :direct-transition :set-lvef}
+            :set-lvef {:type :vital-sign :vital-sign "Left ventricular Ejection fraction"
+                       :exact {:quantity 30} :direct-transition :check}
+            :check {:type :guard
+                    :allow {:condition-type :vital-sign :vital-sign "Left ventricular Ejection fraction"
+                            :operator "<=" :value 35}
+                    :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest vital-sign-condition-reads-a-value-the-vital-sign-state-just-wrote
+  (testing "the real congestive_heart_failure.json shape: an LVEF
+            VitalSign state always precedes the condition that reads it"
+    (let [p (persona-at 1)
+          result (interp/run-module lvef-set-then-test-module (Random. 1) p (interp/dob-epoch-day p))]
+      (is (= :terminal (:status result))))))
+
+(def lvef-guard-without-a-set-module
+  {:id "chf-bad-mod" :name "ChfLikeBad"
+   :states {:initial {:type :initial :direct-transition :check}
+            :check {:type :guard
+                    :allow {:condition-type :vital-sign :vital-sign "Left ventricular Ejection fraction"
+                            :operator "<=" :value 35}
+                    :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest vital-sign-condition-against-a-genuinely-unset-name-is-a-walk-error
+  (testing "AR-4: Left ventricular Ejection fraction is the ONE
+            deliberately baseline-less name (AR-3) -- reading it before
+            any VitalSign state has set it is honest absence, never a
+            silent false"
+    (let [p (persona-at 1)
+          result (interp/run-module lvef-guard-without-a-set-module (Random. 1) p (interp/dob-epoch-day p))]
+      (is (= :walk-error (:status result)))
+      (is (= :vital-sign (:condition-type (:walk-error result)))))))
+
+(def unrecognized-vital-sign-condition-module
+  {:id "bad-cond-mod" :name "BadCond"
+   :states {:initial {:type :initial :direct-transition :check}
+            :check {:type :guard
+                    :allow {:condition-type :vital-sign :vital-sign "Respiratory Rate"
+                            :operator "<" :value 20}
+                    :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest vital-sign-condition-with-an-unrecognized-name-throws
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo #"unrecognized vital-sign"
+                         (interp/step unrecognized-vital-sign-condition-module (Random. 1) (assoc (ctx-for (persona-at 1)) :current :check)))))

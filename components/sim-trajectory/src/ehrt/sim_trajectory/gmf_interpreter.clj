@@ -142,6 +142,33 @@
   []
   (into {} (map (fn [[name value]] [(vital-sign-key name) value])) vital-sign-baseline-table))
 
+;; GMF coverage Wave D stage D1 (2026-08-02, ADR-0029, D1a-4, D1a schema
+;; RULING Q2+Q3): the vital-sign reference table -- this project's own
+;; documented simplification for a real upstream mechanism (Synthea's
+;; `LifecycleModule.java`) it has never ported, D1a-4's own finding.
+;; Loaded once at namespace load time, the same "small, hand-curated,
+;; hashed content" treatment ehrt.sim.order-profiles' own resources/
+;; order-profiles.edn already establishes for the analogous lab-analyte
+;; table. Relocated here (2026-08-04, ADR-0039) from beside its own
+;; original sole consumer, `vital-sign-extra` (below) -- the NEW
+;; `VitalSign` state and `:vital-sign` condition (both Steps this same
+;; wave) need it BEFORE this file's own top-to-bottom definition order
+;; would otherwise reach it (evaluate-condition, above initial-context
+;; even, is defined well before `vital-sign-extra`'s own prior home)."
+(def ^:private vital-sign-reference-table
+  (edn/read-string (slurp (io/resource "sim-trajectory/vital-signs.edn"))))
+
+;; GMF coverage Wave VS (2026-08-04, ADR-0039 AR-1): the closed-
+;; vocabulary check, shared by THREE consumers -- the pre-existing
+;; Observation-family reader (`vital-sign-extra`, below), the NEW
+;; `VitalSign` state, and the NEW `:vital-sign` condition -- one table,
+;; one disposition (a real, visible rejection, never a silent nil).
+(defn- validate-vital-sign-name
+  [vital-sign-name]
+  (when-not (contains? vital-sign-reference-table vital-sign-name)
+    (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: unrecognized vital-sign name -- not in sim-trajectory/vital-signs.edn"
+                     {:unrecognized-vital-sign vital-sign-name}))))
+
 (defn initial-context
   "The patient-ctx a fresh module walk starts from: current state
   `:initial` (every GMF module's own entry-point convention), virtual
@@ -614,6 +641,31 @@
     (= category (:socioeconomic-category persona))
     (throw (honest-absence :socioeconomic-status :socioeconomic-category))))
 
+(defn- vital-sign-condition-holds?
+  "GMF coverage Wave VS (2026-08-04, ADR-0039 AR-1/AR-4): Synthea's own
+  Logic.java VitalSign class (`Utilities.compare(person.getVitalSign(...),
+  value, operator)`, source-grounded) -- reads ctx's own `:vital-signs`
+  register (a plain, GLOBAL lookup, never root-namespaced the way
+  `:attribute`/`:symptom`'s workflow-scratch keys are). A recognized
+  name with a stored value uses it; `initial-context`'s own baseline
+  seeding (AR-3) already means every baseline-covered name IS a stored
+  value from patient creation onward, so no separate baseline-table
+  fallback is needed here -- only a name this session's own baseline
+  table deliberately omits (`Left ventricular Ejection fraction`) can
+  ever be genuinely unset, and THAT is `honest-absence` (ADR-0036 AR-4's
+  own rule, extended here), never a silent false. `compare-op` (above)
+  already matches every operator this wave's real candidate closures use
+  (`<` `<=` `>=` `>`) -- the SAME dispatch Utilities.compare's own Double
+  branch defines for them; `!=`/`is nil`/`is not nil` are unbuilt,
+  installed ≠ used (no vendored candidate needs them, grows-by-evidence
+  discipline)."
+  [ctx {:keys [vital-sign operator value]}]
+  (validate-vital-sign-name vital-sign)
+  (let [k (vital-sign-key vital-sign)]
+    (if (contains? (:vital-signs ctx) k)
+      (compare-op operator (get (:vital-signs ctx) k) value)
+      (throw (honest-absence :vital-sign k)))))
+
 (defn evaluate-condition
   "The interpreter's own guard evaluator (docs/gmf-interpreter.md section 2:
   '(evaluate-condition condition patient-state (:ground-truth world)
@@ -641,7 +693,12 @@
   `honest-absence` (above) when the persona carries no matching field
   at all, a distinct marker `walk-module`/`run-module`'s own loop
   catches and converts into a `:walk-error` RESULT, never a silent
-  false and never an escaping exception."
+  false and never an escaping exception. GMF coverage Wave VS
+  (2026-08-04, ADR-0039 AR-1/AR-4) adds :vital-sign (`vital-sign-
+  condition-holds?`, above) -- reads ctx's own new `:vital-signs`
+  register, honest-absence again when a name is genuinely unset (the
+  ONE deliberately baseline-less name, `Left ventricular Ejection
+  fraction`)."
   [module-id ctx condition]
   (case (:condition-type condition)
     :age (age-condition-holds? condition (:persona ctx) (:t ctx))
@@ -660,6 +717,7 @@
     :not (not-condition-holds? module-id ctx condition)
     :race (race-condition-holds? condition (:persona ctx))
     :socioeconomic-status (socioeconomic-status-condition-holds? condition (:persona ctx))
+    :vital-sign (vital-sign-condition-holds? ctx condition)
     (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: unsupported condition type"
                      {:condition-type (:condition-type condition)}))))
 
@@ -1089,30 +1147,10 @@
 
 (defn- round1 [^double v] (/ (Math/round (* v 10.0)) 10.0))
 
-;; --- GMF coverage Wave D stage D1 (2026-08-02, ADR-0029, D1a-4, D1a
-;; schema RULING Q2+Q3): the vital-sign reference table -- this
-;; project's own documented simplification for a real upstream mechanism
-;; (Synthea's `LifecycleModule.java`) it has never ported, D1a-4's own
-;; finding. Loaded once at namespace load time, the same "small,
-;; hand-curated, hashed content" treatment ehrt.sim.order-profiles' own
-;; resources/order-profiles.edn already establishes for the analogous
-;; lab-analyte table.
-(def ^:private vital-sign-reference-table
-  (edn/read-string (slurp (io/resource "sim-trajectory/vital-signs.edn"))))
-
-;; GMF coverage Wave VS (2026-08-04, ADR-0039 AR-1): the closed-
-;; vocabulary check, factored out of `vital-sign-extra` (below) so the
-;; NEW `VitalSign` state and `:vital-sign` condition (gmf.clj's own
-;; loader-side `"VitalSign"`/`"Vital Sign"` registrations) share the
-;; SAME single source of truth this table already is for the pre-
-;; existing Observation-family reader -- one unrecognized-name
-;; disposition, one table, three consumers.
-(defn- validate-vital-sign-name
-  [vital-sign-name]
-  (when-not (contains? vital-sign-reference-table vital-sign-name)
-    (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: unrecognized vital-sign name -- not in sim-trajectory/vital-signs.edn"
-                     {:unrecognized-vital-sign vital-sign-name}))))
-
+;; GMF coverage Wave D stage D1 (2026-08-02, ADR-0029, D1a-4, D1a schema
+;; RULING Q2+Q3): the observation-family value-sourcing reader --
+;; `vital-sign-reference-table`/`validate-vital-sign-name` now live near
+;; `initial-context` (2026-08-04, ADR-0039's own relocation note there).
 (defn- vital-sign-extra
   "One uniform draw within the named vital-sign's own :reference-range
   (the SAME plain-range mechanism the pre-existing `range` branch

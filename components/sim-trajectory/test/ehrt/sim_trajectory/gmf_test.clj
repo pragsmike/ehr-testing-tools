@@ -1000,3 +1000,20 @@
     (is (result/rejected? loaded))
     (is (= :vital-sign-expression-unsupported (:category loaded)))
     (is (= :spo2 (:state (:payload loaded))))))
+
+(def vital-sign-condition-json
+  "congestive_heart_failure.json's own Admit_Discharge Transition shape,
+  byte-confirmed against source at the pin."
+  (str "{\"name\": \"SbpGuardMod\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Check\"},"
+       "  \"Check\": {\"type\": \"Guard\","
+       "             \"allow\": {\"condition_type\": \"Vital Sign\", \"vital_sign\": \"Systolic Blood Pressure\","
+       "                        \"operator\": \"<\", \"value\": 90},"
+       "             \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest vital-sign-condition-loads-with-condition-type-recognized
+  (let [loaded (gmf/load-module "sbp-guard-mod" vital-sign-condition-json)]
+    (is (result/ok? loaded))
+    (is (= {:condition-type :vital-sign :vital-sign "Systolic Blood Pressure" :operator "<" :value 90}
+           (:allow (get-in (:payload loaded) [:states :check]))))))

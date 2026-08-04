@@ -224,7 +224,17 @@
    ;; would already produce the same keywords -- this map is this
    ;; project's own grep-able vocabulary registry, not merely a
    ;; convenience transform."
-   "Not" :not "Race" :race "Socioeconomic Status" :socioeconomic-status})
+   "Not" :not "Race" :race "Socioeconomic Status" :socioeconomic-status
+   ;; GMF coverage Wave VS (2026-08-04, ADR-0039 AR-1/AR-4): Logic.java's
+   ;; own VitalSign class -- reads ctx's own new :vital-signs register
+   ;; (gmf-interpreter.clj's own `vital-sign-condition-holds?`), falling
+   ;; back to the authored baseline table, else a walk error (ADR-0036
+   ;; AR-4's own honest-absence rule, extended here). Listed here
+   ;; EXPLICITLY per this map's own "grep-able vocabulary registry, not
+   ;; merely a convenience transform" discipline (Not/Race/Socioeconomic
+   ;; Status's own precedent, above) -- the slug fallback would already
+   ;; produce the same keyword.
+   "Vital Sign" :vital-sign})
 
 (defn- normalize-code
   "GMF's own code triplet -> sim-model/Concept. M5b: :code
