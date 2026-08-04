@@ -256,6 +256,16 @@
    ;; ehrt.sim-trajectory.gmf-interpreter/symptom-condition-holds?'s own
    ;; docstring for the full account.
    "Symptom" :symptom "Or" :or "At Least" :at-least "Date" :date "Observation" :observation
+   ;; GMF coverage Wave I2 (2026-08-04, ADR-0041 AR-2): Logic.java's own
+   ;; ActiveCarePlan class (ActiveLogic's own parent, source-grounded at
+   ;; the pin) -- the SAME log-query family :active-condition/:active-
+   ;; medication already establish, keyed on a careplan concept rather
+   ;; than a condition/medication one. Listed here EXPLICITLY per this
+   ;; map's own "grep-able vocabulary registry" discipline (Not/Race/
+   ;; Vital Sign's own precedent, below) -- the slug fallback would
+   ;; already produce the same keyword (`depression_screening.json`'s
+   ;; own census error, pre-this-session, confirmed it).
+   "Active CarePlan" :active-careplan
    ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-4): `Not` (recursive
    ;; negation), `Race`, and `Socioeconomic Status` -- Logic.java's own
    ;; Race/SocioeconomicStatus classes (source-grounded), and the boolean
@@ -1040,8 +1050,22 @@
    [:symptom (with-transitions [:type [:= :symptom]] [:symptom :string]
                [:range {:optional true} Range] [:exact {:optional true} Exact]
                [:distribution {:optional true} SampledDistribution])]
+   ;; GMF coverage Wave I2 (2026-08-04, ADR-0041 AR-1): :assign-to-
+   ;; attribute -- found LIVE, necessary (not merely convenient) to make
+   ;; Death's own :referenced-by-attribute cause form resolve to
+   ;; anything real: `congestive_heart_failure.json`'s own `CHF
+   ;; Condition Start` state authors it (`OnsetState`'s own real field,
+   ;; the SAME one `ConditionOnset`'s sibling `AllergyOnset` already
+   ;; declared-but-never-wired at ADR-0040 AR-5, and `MedicationOrder`
+   ;; already wires below) -- without this, the `chf` attribute Death's
+   ;; four states all reference would never be written by this
+   ;; interpreter, and the referenced-by-attribute form would always
+   ;; see an absent attribute. The SAME "declared at the loader,
+   ;; slug-normalized at INTERPRETER time" treatment :medication-order's
+   ;; own field already establishes.
    [:condition-onset (with-transitions [:type [:= :condition-onset]] [:codes [:vector sim-model/Concept]]
-                        [:target-encounter {:optional true} :keyword])]
+                        [:target-encounter {:optional true} :keyword]
+                        [:assign-to-attribute {:optional true} :string])]
    [:condition-end (with-transitions [:type [:= :condition-end]] [:condition-onset {:optional true} :keyword])]
    ;; GMF coverage Wave B (2026-08-02, ADR-0027): :codes is {:optional
    ;; true} -- a real `"wellness": true`-idiom Encounter (above) can
@@ -1160,14 +1184,16 @@
    [:call-submodule (with-transitions [:type [:= :call-submodule]] [:submodule :string])]
    ;; GMF coverage Wave C (2026-08-02, ADR-0028, C1): three time forms
    ;; (:range/:exact -- the SAME shapes :delay/:procedure duration
-   ;; already use -- or neither, meaning immediate) and, of the three
-   ;; real cause-of-death forms State.java's own Death class declares,
-   ;; only :codes (verbatim, code passthrough law) -- :condition-onset/
-   ;; :referenced-by-attribute are accepted here (an open map, no schema
-   ;; failure) but UNBUILT at the interpreter (gmf-interpreter.clj's own
-   ;; :death case throws, the same disposition an unsupported condition
-   ;; type already gets) -- no vendored module needs either yet
-   ;; (docs/gmf-interpreter.md section 10's own C1 account).
+   ;; already use -- or neither, meaning immediate). GMF coverage Wave
+   ;; I2 (2026-08-04, ADR-0041 AR-1): all THREE of State.java's own
+   ;; cause-of-death forms now resolve at the interpreter (`gmf-
+   ;; interpreter.clj`'s own `death-cause-codes`) -- :condition-onset/
+   ;; :referenced-by-attribute schema shape unchanged from Wave C
+   ;; (already declared here, an open map, no schema failure); only the
+   ;; interpreter-side UNBUILT throw is retired (`congestive_heart_
+   ;; failure.json`'s own four Death states all use
+   ;; :referenced-by-attribute, docs/gmf-interpreter.md section 10's own
+   ;; dated resolution note).
    [:death (with-transitions [:type [:= :death]] [:codes {:optional true} [:vector sim-model/Concept]]
              [:range {:optional true} Range] [:exact {:optional true} Exact]
              [:condition-onset {:optional true} :keyword]

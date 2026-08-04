@@ -1080,6 +1080,51 @@
     (let [ended (update ctx :trajectory conj {:module "m" :state :end-rx :event :medication-end :t 5 :references 0})]
       (is (false? (interp/evaluate-condition "m" ended {:condition-type :active-medication :codes [onset-concept]}))))))
 
+;; --- GMF coverage Wave I2 (2026-08-04, ADR-0041 AR-2): Active CarePlan ----
+;; Logic.java's own ActiveCarePlan class -- :codes dispatches through the
+;; SAME onset/end log query :active-condition/:active-medication already
+;; establish (:care-plan-start/:care-plan-end, the paired span ADR-0029
+;; R2(b) built); :referenced-by-attribute is installed but not yet used by
+;; any vendored candidate (no closure writes a careplan-index attribute for
+;; it to read), proven here by a hand-built ctx.
+
+(defn- ctx-with-careplan-onset [p]
+  (assoc (ctx-for p) :trajectory [{:module "m" :state :cp-onset :event :care-plan-start :t 0 :codes [onset-concept]}]))
+
+(deftest active-careplan-codes-form-holds-after-an-uncancelled-care-plan-start-of-the-matching-concept
+  (is (true? (interp/evaluate-condition "m" (ctx-with-careplan-onset (persona-at 1))
+                                        {:condition-type :active-careplan :codes [onset-concept]}))))
+
+(deftest active-careplan-codes-form-is-false-for-a-different-concept
+  (is (false? (interp/evaluate-condition "m" (ctx-with-careplan-onset (persona-at 1))
+                                         {:condition-type :active-careplan :codes [other-concept]}))))
+
+(deftest active-careplan-codes-form-is-false-once-a-referencing-care-plan-end-exists
+  (let [ctx (update (ctx-with-careplan-onset (persona-at 1)) :trajectory conj
+                    {:module "m" :state :cp-end :event :care-plan-end :t 10 :references 0})]
+    (is (false? (interp/evaluate-condition "m" ctx {:condition-type :active-careplan :codes [onset-concept]})))))
+
+(deftest active-careplan-codes-form-is-false-when-no-matching-careplan-was-ever-started
+  (testing "the natural answer, not honest-absence -- activity is what this
+            condition tests, ADR-0040 AR-3's own observation-condition
+            distinction applies verbatim, ADR-0041 AR-2"
+    (is (false? (interp/evaluate-condition "m" (ctx-for (persona-at 1))
+                                           {:condition-type :active-careplan :codes [onset-concept]})))))
+
+(deftest active-careplan-referenced-by-attribute-form-is-false-when-the-attribute-was-never-written
+  (is (false? (interp/evaluate-condition "m" (ctx-for (persona-at 1))
+                                         {:condition-type :active-careplan :referenced-by-attribute "cp"}))))
+
+(deftest active-careplan-referenced-by-attribute-form-holds-for-an-active-referenced-entry
+  (let [ctx (assoc (ctx-with-careplan-onset (persona-at 1)) :attributes {:m/cp 0})]
+    (is (true? (interp/evaluate-condition "m" ctx {:condition-type :active-careplan :referenced-by-attribute "cp"})))))
+
+(deftest active-careplan-referenced-by-attribute-form-is-false-once-the-referenced-entry-is-ended
+  (let [ctx (-> (ctx-with-careplan-onset (persona-at 1))
+                (assoc :attributes {:m/cp 0})
+                (update :trajectory conj {:module "m" :state :cp-end :event :care-plan-end :t 10 :references 0}))]
+    (is (false? (interp/evaluate-condition "m" ctx {:condition-type :active-careplan :referenced-by-attribute "cp"})))))
+
 (deftest active-allergy-is-always-false
   (testing "documented simplification -- no allergy concept exists anywhere
             in this project's Persona for a query to find (gmf-
@@ -1800,17 +1845,81 @@
       (is (= (+ 1000 (:advance outcome)) (:t event)))
       (is (not= 1000 (:t event)) "a nonzero range draw is expected for this fixed seed"))))
 
-(deftest death-throws-on-unbuilt-condition-onset-cause-form
-  (let [ctx (assoc (ctx-for (persona-at 1)) :current :die)
-        module (assoc-in immediate-death-module [:states :die]
-                          {:type :death :condition-onset :some-state})]
-    (is (thrown? clojure.lang.ExceptionInfo (interp/step module (Random. 1) ctx)))))
+;; --- GMF coverage Wave I2 (2026-08-04, ADR-0041 AR-1): Death's own
+;; condition-onset/referenced-by-attribute cause forms -----------------------
 
-(deftest death-throws-on-unbuilt-referenced-by-attribute-cause-form
-  (let [ctx (assoc (ctx-for (persona-at 1)) :current :die)
-        module (assoc-in immediate-death-module [:states :die]
-                          {:type :death :referenced-by-attribute "some-attr"})]
-    (is (thrown? clojure.lang.ExceptionInfo (interp/step module (Random. 1) ctx)))))
+(def death-onset-concept {:system :snomed :code "42343007" :display "Congestive heart failure"})
+
+(deftest death-condition-onset-cause-resolves-the-named-onset-events-codes
+  (let [ctx (-> (ctx-for (persona-at 1))
+                (assoc :current :die)
+                (assoc :trajectory [{:module "death-mod" :state :onset :event :condition-onset :t 0
+                                     :codes [death-onset-concept]}]))
+        module (assoc-in immediate-death-module [:states :die] {:type :death :condition-onset :onset})
+        outcome (interp/step module (Random. 1) ctx)]
+    (is (= [death-onset-concept] (:codes (first (:events outcome)))))))
+
+(deftest death-condition-onset-cause-is-nil-when-the-named-state-never-onset
+  (testing "a disclosed simplification -- upstream's own second fallback
+            (reading the named state's own JSON-declared codes even when
+            it never fired) is NOT ported, ADR-0041 AR-1"
+    (let [ctx (assoc (ctx-for (persona-at 1)) :current :die)
+          module (assoc-in immediate-death-module [:states :die] {:type :death :condition-onset :onset})
+          outcome (interp/step module (Random. 1) ctx)]
+      (is (nil? (:codes (first (:events outcome))))))))
+
+(deftest death-referenced-by-attribute-cause-resolves-the-attributes-condition-entry
+  (testing "congestive_heart_failure.json's own real shape -- ConditionOnset's
+            :assign-to-attribute writes the index, Death's own
+            :referenced-by-attribute reads it back, ADR-0041 AR-1"
+    (let [ctx (-> (ctx-for (persona-at 1))
+                  (assoc :current :die)
+                  (assoc :trajectory [{:module "death-mod" :state :onset :event :condition-onset :t 0
+                                       :codes [death-onset-concept]}])
+                  (assoc :attributes {:death-mod/chf 0}))
+          module (assoc-in immediate-death-module [:states :die] {:type :death :referenced-by-attribute "chf"})
+          outcome (interp/step module (Random. 1) ctx)]
+      (is (= [death-onset-concept] (:codes (first (:events outcome))))))))
+
+(deftest death-referenced-by-attribute-cause-is-nil-when-the-attribute-was-never-written
+  (testing "a disclosed departure from upstream's own throw ('referenced but
+            not set') -- Death's own cause is supplementary content, never a
+            walk-gating precondition, ADR-0041 AR-1"
+    (let [ctx (assoc (ctx-for (persona-at 1)) :current :die)
+          module (assoc-in immediate-death-module [:states :die] {:type :death :referenced-by-attribute "chf"})
+          outcome (interp/step module (Random. 1) ctx)]
+      (is (nil? (:codes (first (:events outcome))))))))
+
+(deftest death-cause-codes-outranks-condition-onset-and-referenced-by-attribute
+  (testing "State.java's own Death.process if/else-if chain -- :codes checked
+            FIRST, source re-read fresh this session (ADR-0041 AR-1's own
+            correction of docs/gmf-interpreter.md section 10's paraphrase)"
+    (let [ctx (-> (ctx-for (persona-at 1))
+                  (assoc :current :die)
+                  (assoc :trajectory [{:module "death-mod" :state :onset :event :condition-onset :t 0
+                                       :codes [death-onset-concept]}])
+                  (assoc :attributes {:death-mod/chf 0}))
+          module (assoc-in immediate-death-module [:states :die]
+                            {:type :death :codes death-cause-codes :condition-onset :onset
+                             :referenced-by-attribute "chf"})
+          outcome (interp/step module (Random. 1) ctx)]
+      (is (= death-cause-codes (:codes (first (:events outcome))))))))
+
+;; --- GMF coverage Wave I2 (2026-08-04, ADR-0041 AR-1): ConditionOnset's own
+;; :assign-to-attribute -- the SAME index-based indirection MedicationOrder's
+;; own field already establishes, ported here so Death's own referenced-by-
+;; attribute form (above) has a real attribute to read. ---------------------
+
+(deftest condition-onset-with-assign-to-attribute-writes-a-root-scoped-index
+  (let [ctx (ctx-for (persona-at 1))
+        module {:id "onset-mod" :name "Onset"
+                :states {:initial {:type :initial :direct-transition :onset}
+                         :onset {:type :condition-onset :assign-to-attribute "chf"
+                                 :codes [death-onset-concept] :direct-transition :done}
+                         :done {:type :terminal}}}
+        outcome (interp/step module (Random. 1) (assoc ctx :current :onset))]
+    (is (= 0 (get (:attributes outcome) :onset-mod/chf))
+        "the FIRST trajectory event's own index -- this is that event")))
 
 (deftest walk-module-terminates-at-death-no-trajectory-event-follows-it
   (testing "C2's own terminal contract, at the walk-module layer -- Death's

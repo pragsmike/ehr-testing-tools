@@ -606,6 +606,59 @@
                   (not (some (fn [ev] (and (= end-event-type (:event ev)) (= onset-idx (:references ev))))
                             trajectory))))))
 
+;; GMF coverage Wave I2 (2026-08-04, ADR-0041 AR-2): :active-careplan --
+;; Synthea's own Logic.java ActiveCarePlan class (ActiveLogic's own
+;; parent `test`, source-grounded at the pin: :codes checked first,
+;; :referenced-by-attribute only when :codes is absent, a bare condition
+;; with neither throwing upstream -- READ the parent, not merely the
+;; ActiveCarePlan subclass, since the dispatch itself lives there).
+
+(defn- careplan-active-by-reference?
+  "Does ctx's own trajectory carry NO :care-plan-end event whose own
+  :references cites `idx` (a trajectory index, the SAME index-based
+  reference :care-plan-end's own :references field already carries,
+  `index-of-citation`'s shape) -- the referenced-by-attribute form's own
+  'is THIS specific entry still active' check (ActiveLogic's own
+  `checkAttribute`, which re-tests the referenced entry, never merely
+  'the attribute exists'). `idx` nil (the attribute was never written)
+  is FALSE -- nothing to check, the same 'no active careplan' answer the
+  :codes form gives when it finds no matching onset at all."
+  [ctx idx]
+  (boolean (and idx
+                (not (some (fn [ev] (and (= :care-plan-end (:event ev)) (= idx (:references ev))))
+                          (:trajectory ctx))))))
+
+(defn- active-careplan-condition-holds?
+  "GMF coverage Wave I2 (2026-08-04, ADR-0041 AR-2): :codes dispatches
+  through the SAME onset/end log-query `active-onset-condition-holds?`
+  already establishes for :active-condition/:active-medication
+  (:care-plan-start/:care-plan-end, the SAME paired-span shape ADR-0029
+  R2(b) built) -- confirmed the real vendored use, `depression_
+  screening.json`'s own `Check Eligibility` At-Least guard, uses only
+  this form. :referenced-by-attribute reads the attribute's own stored
+  trajectory index (the SAME index-based indirection :medication-order/
+  :medication-end's own :assign-to-attribute/:referenced-by-attribute
+  pair already establishes) and checks THAT entry's own active status
+  (`careplan-active-by-reference?`, above) -- installed, not yet used by
+  any vendored candidate (no closure this session writes a careplan-
+  index attribute for this form to read; proven by a hand-built ctx in
+  this namespace's own tests, the same 'mechanism built, fixture-proven,
+  target not-yet-vendored' shape stroke.json's own NamedDistribution
+  mechanism already established, ADR-0028/ADR-0029 H3). Neither form
+  present: FALSE, not upstream's own throw ('must be specified by code
+  or attribute') -- 'is a careplan currently active' is this
+  condition's own question, and a malformed condition map missing both
+  is a module-authoring-shape concern this project's own evaluate-
+  condition already has a dedicated unsupported-condition-type throw
+  for, one layer up; a second, narrower throw here would be defensive
+  code for a shape no real closure authors."
+  [module-id ctx {:keys [codes referenced-by-attribute] :as condition}]
+  (cond
+    codes (active-onset-condition-holds? :care-plan-start :care-plan-end ctx condition)
+    referenced-by-attribute
+    (careplan-active-by-reference? ctx (get (:attributes ctx) (keyword (root-id ctx module-id) (gmf/slug referenced-by-attribute))))
+    :else false))
+
 ;; Mutual recursion with evaluate-condition (And's own sub-conditions are
 ;; evaluated through the SAME dispatcher, below) -- forward-declared so
 ;; this namespace reads top-to-bottom without reordering evaluate-condition
@@ -745,7 +798,9 @@
   condition-holds?`, above) -- reads ctx's own new `:vital-signs`
   register, honest-absence again when a name is genuinely unset (the
   ONE deliberately baseline-less name, `Left ventricular Ejection
-  fraction`)."
+  fraction`). GMF coverage Wave I2 (2026-08-04, ADR-0041 AR-2) adds
+  :active-careplan (`active-careplan-condition-holds?`, above) -- the
+  log-query family's third member, keyed on a careplan concept."
   [module-id ctx condition]
   (case (:condition-type condition)
     :age (age-condition-holds? condition (:persona ctx) (:t ctx))
@@ -754,6 +809,7 @@
     :prior-state (prior-state-condition-holds? module-id ctx condition)
     :active-condition (active-onset-condition-holds? :condition-onset :condition-end ctx condition)
     :active-medication (active-onset-condition-holds? :medication-order :medication-end ctx condition)
+    :active-careplan (active-careplan-condition-holds? module-id ctx condition)
     :active-allergy false
     :and (and-condition-holds? module-id ctx condition)
     :or (or-condition-holds? module-id ctx condition)
@@ -1443,27 +1499,78 @@
         ctx' (update ctx :trajectory conj event)]
     (pass-through-outcome module-id ctx' rng state (- t' (:t ctx)) [event] tables)))
 
+(defn- death-cause-codes
+  "ADR-0041 AR-1: `State.java`'s own `Death.process` (source re-read
+  fresh this session, at the pin) resolves cause-of-death through an
+  ordered if/else-if chain -- :codes FIRST, then :condition-onset, then
+  :referenced-by-attribute. This CORRECTS docs/gmf-interpreter.md
+  section 10's own C1 account, which paraphrased the chain in the
+  OPPOSITE order (condition-onset, referenced-by-attribute, codes) --
+  a dated resolution note lands on section 10 itself. No vendored Death
+  state this project has ever combines more than one form
+  (`stroke.json`'s own Death: :codes alone; `congestive_heart_
+  failure.json`'s own four Death states: :referenced-by-attribute
+  alone), so this ordering is proven by the fixture tests below, not by
+  any real closure's own co-presence.
+
+  :condition-onset -- a citation query over ctx's own trajectory for the
+  named ConditionOnset event (`index-of-citation`, the SAME shape
+  ConditionEnd's own :condition-onset field already resolves), that
+  event's own :codes when found. Absent (the named state never onset on
+  this walk) resolves to nil, NOT upstream's own second fallback
+  (`person.hadPriorState` false -> read the named state's own JSON-
+  declared codes directly off the module, regardless of whether it ever
+  fired) -- a disclosed, NOT-ported simplification: no vendored module
+  needs it, and this project's own trajectory-query idiom (PriorState/
+  Active Condition/Active Medication) has no existing 'read a state's
+  own declared content without having walked it' mechanism to reuse.
+
+  :referenced-by-attribute -- the SAME index-based indirection
+  :medication-order/:medication-end's own :assign-to-attribute/
+  :referenced-by-attribute pair already establishes (this session ALSO
+  ports that mechanism onto :condition-onset, `step`'s own
+  :condition-onset case, above), read back the identical way
+  :medication-end already does: the attribute's own stored trajectory
+  index, that event's own :codes. Absent (the attribute was never
+  written) resolves to nil -- a disclosed departure from upstream's own
+  behavior (a RuntimeException, 'referenced but not set') -- chosen
+  because this project's own SetAttribute/assign-to-attribute family
+  already treats a not-yet-written attribute as an honest, non-fatal
+  absence everywhere else it reads one (`:value-attribute`'s own
+  containsKey guard, ADR-0040 AR-2), and Death's own cause is
+  supplementary content (feeds a terminal event's own :codes field,
+  never gates the walk's own progress the way a Guard's condition
+  does)."
+  [module-id ctx {:keys [codes condition-onset referenced-by-attribute]}]
+  (cond
+    codes codes
+    condition-onset
+    (when-let [idx (index-of-citation (:trajectory ctx) module-id :condition-onset condition-onset)]
+      (:codes (nth (:trajectory ctx) idx)))
+    referenced-by-attribute
+    (when-let [idx (get (:attributes ctx) (keyword (root-id ctx module-id) (gmf/slug referenced-by-attribute)))]
+      (:codes (nth (:trajectory ctx) idx)))
+    :else nil))
+
 (defn- death-step
   "GMF coverage Wave C (2026-08-02, ADR-0028, C1/C2): `state`'s own
   :range/:exact resolve the SAME way `resolve-time-advance` already
   resolves a `:delay`'s -- Death's own real Synthea fields (`State.
   java`'s `range`/`exact`, docs/gmf-interpreter.md section 10) are
-  literally the same `{low high unit}`/`{quantity unit}` shape. Only
-  the `:codes` cause-of-death form is built (verbatim, code-passthrough
-  law) -- `:condition-onset`/`:referenced-by-attribute` are named
-  UNBUILT (no vendored module needs either), a programmer-error throw,
-  the same disposition `evaluate-condition`'s own unsupported condition
-  type already gets, never a silently-wrong nil cause. The emitted
-  event cites the COMPUTED death time (`death-t`, not the state's own
-  entry time -- a `:range` death is genuinely delayed); the outcome is
-  `:terminal? true`/`:next nil` -- C2's own terminal contract, Death's
-  own declared transition is never resolved."
+  literally the same `{low high unit}`/`{quantity unit}` shape. The
+  emitted event cites the COMPUTED death time (`death-t`, not the
+  state's own entry time -- a `:range` death is genuinely delayed); the
+  outcome is `:terminal? true`/`:next nil` -- C2's own terminal
+  contract, Death's own declared transition is never resolved.
+
+  ADR-0041 AR-1: all THREE of State.java's own cause-of-death forms now
+  resolve (`death-cause-codes`, above) -- `:condition-onset`/
+  `:referenced-by-attribute` no longer throw (Wave C's own disclosed
+  UNBUILT limitation, retired here: `congestive_heart_failure.json`'s
+  own four Death states all use `:referenced-by-attribute`)."
   [module-id ctx ^Random rng state]
-  (when (or (:condition-onset state) (:referenced-by-attribute state))
-    (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: Death's own condition-onset/referenced-by-attribute cause-of-death forms are unsupported -- no vendored module needs them yet (docs/gmf-interpreter.md section 10)"
-                     {:module-id module-id :state (:current ctx)})))
   (let [death-t (resolve-time-advance rng (:t ctx) state)
-        event (trajectory-event module-id (assoc ctx :t death-t) :death {:codes (:codes state)})]
+        event (trajectory-event module-id (assoc ctx :t death-t) :death {:codes (death-cause-codes module-id ctx state)})]
     {:events [event] :attributes (:attributes ctx) :vital-signs (:vital-signs ctx) :advance (- death-t (:t ctx))
      :next nil :terminal? true :blocked? false}))
 
@@ -1569,7 +1676,18 @@
                      k (keyword (root-id ctx module-id) (gmf/slug (:symptom state)))
                      ctx' (update ctx :attributes assoc k severity)]
                  (pass-through-outcome module-id ctx' rng state 0 [] tables))
-      :condition-onset (emit-and-advance module-id ctx rng state :condition-onset {:codes (:codes state)} tables)
+      ;; ADR-0041 AR-1: :assign-to-attribute -- the SAME index-based
+      ;; indirection :medication-order's own case already establishes
+      ;; (found live, necessary: `congestive_heart_failure.json`'s own
+      ;; `CHF Condition Start` authors it, and Death's own :referenced-
+      ;; by-attribute cause form -- `death-cause-codes`, below -- has
+      ;; nothing to resolve without it).
+      :condition-onset
+      (let [event-idx (count (:trajectory ctx))
+            outcome (emit-and-advance module-id ctx rng state :condition-onset {:codes (:codes state)} tables)]
+        (if-let [attr (:assign-to-attribute state)]
+          (update outcome :attributes assoc (keyword (root-id ctx module-id) (gmf/slug attr)) event-idx)
+          outcome))
       :condition-end (emit-and-advance module-id ctx rng state :condition-end
                                         {:references (index-of-citation (:trajectory ctx) module-id
                                                                          :condition-onset (:condition-onset state))}
