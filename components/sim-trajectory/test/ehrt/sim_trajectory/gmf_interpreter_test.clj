@@ -1457,6 +1457,83 @@
     (let [ctx (ctx-aged (assoc (persona-at 1) :sex :female) 20)]
       (is (= :b (:next (interp/step lookup-table-module (Random. 1) ctx)))))))
 
+;; --- GMF coverage Wave LC (2026-08-03, ADR-0038 AR-1/AR-2): the H2
+;; whitelist retires -- module-set attributes, persona-field columns
+;; (race/state), :time-range containment, and honest-absence at the
+;; walk boundary, extended from conditions to lookup-table columns ---------
+
+(def module-attr-lookup-tables
+  {"t.csv" [{:age-range nil :time-range nil :attributes {"operative_status" "elective"} :weights {:a 1.0 :b 0.0}}]})
+
+(deftest lookup-table-transition-resolves-a-module-set-attribute-column
+  (testing "AR-1(c): a lookup-table attribute column resolves against
+            the module's OWN namespaced attributes first -- the SAME
+            root-namespaced key attribute-condition-holds?/resolve-
+            distribution-value already read"
+    (let [ctx (assoc (ctx-aged (persona-at 1) 20) :attributes {:lookup-mod/operative-status "elective"})]
+      (is (= :a (:next (interp/step lookup-table-module (Random. 1) ctx
+                                     {(:id lookup-table-module) lookup-table-module} module-attr-lookup-tables)))))))
+
+(deftest lookup-table-transition-does-not-match-a-different-module-attribute-value
+  (let [ctx (assoc (ctx-aged (persona-at 1) 20) :attributes {:lookup-mod/operative-status "emergent"})]
+    (is (= :b (:next (interp/step lookup-table-module (Random. 1) ctx
+                                   {(:id lookup-table-module) lookup-table-module} module-attr-lookup-tables))))))
+
+(deftest lookup-table-transition-still-consumes-exactly-one-draw
+  (let [ctx (assoc (ctx-aged (persona-at 1) 20) :attributes {:lookup-mod/operative-status "elective"})
+        calls (atom 0)
+        rng (proxy [Random] [(long 1)]
+              (nextDouble [] (swap! calls inc) (proxy-super nextDouble)))]
+    (interp/step lookup-table-module rng ctx {(:id lookup-table-module) lookup-table-module} module-attr-lookup-tables)
+    (is (= 1 @calls))))
+
+(def race-lookup-tables
+  {"t.csv" [{:age-range nil :time-range nil :attributes {"race" "Black"} :weights {:a 1.0 :b 0.0}}]})
+
+(deftest lookup-table-transition-resolves-a-persona-race-column
+  (testing "AR-1(c): falls back to the persona-field mapping when the
+            module has never set the same-named attribute"
+    (let [ctx (ctx-aged (assoc (persona-at 1) :race "Black") 20)]
+      (is (= :a (:next (interp/step lookup-table-module (Random. 1) ctx
+                                     {(:id lookup-table-module) lookup-table-module} race-lookup-tables)))))))
+
+(deftest lookup-table-transition-module-attribute-wins-over-a-same-named-persona-field
+  (testing "AR-1(c)'s own module-attribute-first ordering -- a module-
+            set column and a persona column resolve from DIFFERENT
+            stores; the module store wins whenever both could apply"
+    (let [ctx (assoc (ctx-aged (assoc (persona-at 1) :race "Black") 20)
+                      :attributes {:lookup-mod/race "White"})]
+      (is (= :b (:next (interp/step lookup-table-module (Random. 1) ctx
+                                     {(:id lookup-table-module) lookup-table-module} race-lookup-tables)))
+          "the module's own :race attribute ('White') never matches the row's 'Black', even though persona :race would have"))))
+
+(deftest lookup-table-transition-against-a-persona-missing-a-referenced-field-is-a-walk-error
+  (testing "AR-1(c)'s own honest-absence rule, extended from conditions
+            (ADR-0036 AR-4) to lookup-table attribute columns -- `step`
+            itself still throws; `walk-module` converts it"
+    (is (thrown? clojure.lang.ExceptionInfo
+                 (interp/step lookup-table-module (Random. 1) (assoc (ctx-for (persona-at 1)) :current :pick)
+                               {(:id lookup-table-module) lookup-table-module} race-lookup-tables)))
+    (let [result (interp/walk-module lookup-table-module (Random. 1) (ctx-for (persona-at 1))
+                                      {(:id lookup-table-module) lookup-table-module} race-lookup-tables)]
+      (is (= :walk-error (:status result)))
+      (is (= :lookup-table-column (:condition-type (:walk-error result))))
+      (is (= :race (:missing-field (:walk-error result)))))))
+
+(deftest lookup-table-transition-time-range-containment
+  (testing "AR-1(b)/AR-2: :time-range is the SAME inclusive-both-ends
+            containment :age-range already performs, checked against
+            ctx's own epoch-day :t"
+    (let [ctx (ctx-aged (persona-at 1) 20)
+          in-range {"t.csv" [{:age-range nil :time-range [(- (:t ctx) 5) (+ (:t ctx) 5)]
+                               :attributes {} :weights {:a 1.0 :b 0.0}}]}
+          out-of-range {"t.csv" [{:age-range nil :time-range [(+ (:t ctx) 100) (+ (:t ctx) 200)]
+                                   :attributes {} :weights {:a 1.0 :b 0.0}}]}]
+      (is (= :a (:next (interp/step lookup-table-module (Random. 1) ctx
+                                     {(:id lookup-table-module) lookup-table-module} in-range))))
+      (is (= :b (:next (interp/step lookup-table-module (Random. 1) ctx
+                                     {(:id lookup-table-module) lookup-table-module} out-of-range)))))))
+
 ;; --- GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3b, H3):
 ;; attribute-weighted distributed_transition (NamedDistribution) --------
 ;; stroke.json's own Chance_of_Stroke shape (byte-confirmed against

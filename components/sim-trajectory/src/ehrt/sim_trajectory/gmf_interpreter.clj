@@ -784,28 +784,86 @@
   [toc-targets weights]
   (keep (fn [[k w]] (when-let [target (get toc-targets k)] {:transition target :distribution w})) weights))
 
+(defn- lookup-column-value
+  "GMF coverage Wave LC (2026-08-03, ADR-0038 AR-1(c)): resolves the
+  CURRENT string value a lookup-table ATTRIBUTE column (`column`, the
+  CSV's own raw header name -- never `age`/`time`, those are the two
+  specials `lookup-table-row-matches?` handles separately, below) is
+  compared against -- mirrors Transition.java's own `follow` loop body
+  (`person.attributes.get(currentAttribute)`) plus this project's own
+  persona-field extensions, MODULE-ATTRIBUTE-FIRST (AR-1(c)'s own
+  ruling: a module-set column, e.g. `operative_status`, and a persona
+  column, e.g. `race`, resolve from DIFFERENT stores -- the module
+  store wins whenever both could apply, checked first, always; this is
+  a real, disclosed divergence from upstream's own single flat
+  attribute namespace, this project's own module-namespacing tradeoff).
+  `gender` is this project's own PRE-EXISTING special (persona `:sex`,
+  F/M-translated -- upstream never special-cases it at all, it is
+  simply always a real Person attribute; this project's persona has no
+  attribute-map entry for sex, only a top-level field, so a translation
+  is needed here the same way it already was before this wave, now
+  folded into this one dispatcher rather than hardcoded at the row-
+  match call site). HONEST ABSENCE (`honest-absence`, above) when
+  NEITHER store has the column -- upstream throws unconditionally here
+  (`!person.attributes.containsKey(currentAttribute)`); this project
+  returns the error as a value at the walk boundary, the SAME rule
+  ADR-0036 AR-4 established for :race/:socioeconomic-status CONDITIONS,
+  extended here to lookup-table ATTRIBUTE columns (the SAME
+  `honest-absence` helper, reused verbatim -- `:condition-type
+  :lookup-table-column`, `:missing-field` the slugged column name)."
+  [module-id ctx column]
+  (let [k (keyword (root-id ctx module-id) (gmf/slug column))
+        persona (:persona ctx)]
+    (cond
+      (contains? (:attributes ctx) k) (get (:attributes ctx) k)
+      (= column "gender") (case (:sex persona) :female "F" :male "M" (name (:sex persona)))
+      (= column "race") (if (contains? persona :race) (:race persona)
+                             (throw (honest-absence :lookup-table-column :race)))
+      (= column "state") (if (contains? persona :state) (:state persona)
+                              (throw (honest-absence :lookup-table-column :state)))
+      (= column "socioeconomic_category")
+      (if (contains? persona :socioeconomic-category) (:socioeconomic-category persona)
+          (throw (honest-absence :lookup-table-column :socioeconomic-category)))
+      :else (throw (honest-absence :lookup-table-column (keyword (gmf/slug column)))))))
+
 (defn- lookup-table-row-matches?
   "GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3a, H2): does
   `row` (`ehrt.sim-trajectory.gmf/parse-lookup-table`'s own shape) match
-  `persona` at virtual time `t`? Mirrors `LookupTableKey.equals`'s own
-  age-range-contains-age rule (Synthea source, D3a) plus a string-equal
-  `gender` check (the only other recognized column, H2's own audit) --
-  an ABSENT column on the row (a table with no age or no gender column)
+  `ctx`'s own persona/attributes at virtual time `t`? Mirrors
+  `LookupTableKey.equals`'s own age-range-contains-age rule (Synthea
+  source, D3a) -- an ABSENT `:age-range`/`:time-range` on the row
   matches vacuously, the same 'no constraint on that axis' semantics
-  Java's own key carries when one side supplies no range."
-  [persona ^long t {:keys [age-range attributes]}]
-  (and (or (nil? age-range)
-           (let [age (age-years-at persona t)] (<= (long (first age-range)) age (long (second age-range)))))
-       (or (nil? (get attributes "gender"))
-           (= (get attributes "gender") (case (:sex persona) :female "F" :male "M" (:sex persona))))))
+  Java's own key carries when one side supplies no range.
+
+  GMF coverage Wave LC (2026-08-03, ADR-0038 AR-1(b)/AR-2): adds
+  `:time-range` containment (the SAME inclusive-both-ends check
+  `:age-range` already performs, `ehrt.sim-trajectory.gmf/parse-time-
+  range`'s own epoch-day pair, compared against `ctx`'s own epoch-day
+  `:t`) and generalizes EVERY remaining `:attributes` column (formerly
+  only `gender`, hardcoded) through `lookup-column-value` (above) --
+  CASE-SENSITIVE string equality against the row's own raw cell value,
+  mirroring `LookupTableKey.equals`'s own `this.attributes.equals(that.
+  attributes)` (`List<String>.equals`, plain `.equals()` per element --
+  READ at the pin, not assumed: this is NOT the same case-INsensitive
+  match `race-condition-holds?`'s own `:race` CONDITION type performs;
+  a lookup-table `race` COLUMN is an ordinary attribute cell to
+  upstream, sharing no special-case code with the `Race` Logic class at
+  all)."
+  [module-id ctx {:keys [age-range time-range attributes]}]
+  (let [persona (:persona ctx) t (:t ctx)]
+    (and (or (nil? age-range)
+             (let [age (age-years-at persona t)] (<= (long (first age-range)) age (long (second age-range)))))
+         (or (nil? time-range)
+             (<= (long (first time-range)) t (long (second time-range))))
+         (every? (fn [[column value]] (= value (lookup-column-value module-id ctx column))) attributes))))
 
 (defn- lookup-table-weights
   "GMF coverage Wave D stage D3 (D3a, H2): the FIRST row (table order,
-  deterministic) matching `persona`/`t` (above), or nil (no match --
+  deterministic) matching `ctx` (above), or nil (no match --
   `resolve-lookup-table-transition` falls back to each entry's own
   `:default-probability`, Java's own `defaultTransitions` mirror)."
-  [table persona t]
-  (some #(when (lookup-table-row-matches? persona t %) %) table))
+  [module-id ctx table]
+  (some #(when (lookup-table-row-matches? module-id ctx %) %) table))
 
 (defn- resolve-lookup-table-transition
   "GMF coverage Wave D stage D3 (D3a, H2): the sixth transition kind.
@@ -819,10 +877,14 @@
   fixed-consumption weighted pick `:distributed-transition`/`:complex-
   transition`/`:type-of-care-transition` already share, joining this
   namespace's own descend-run-return order contract at the position
-  every other transition-resolving draw already occupies."
-  [^Random rng ctx tables entries]
+  every other transition-resolving draw already occupies. Zero rng in
+  the row lookup itself (`lookup-table-weights`, above) -- a possible
+  `honest-absence` throw during that lookup (GMF coverage Wave LC,
+  ADR-0038 AR-1(c)) happens BEFORE the one draw, so a walk-error never
+  leaves a partial/inconsistent rng-consumption count."
+  [module-id ^Random rng ctx tables entries]
   (let [table (get tables (:lookup-table-name (first entries)))
-        row (lookup-table-weights table (:persona ctx) (:t ctx))]
+        row (lookup-table-weights module-id ctx table)]
     (weighted-pick-transition
      rng (mapv (fn [{:keys [transition default-probability]}]
                  {:transition transition
@@ -845,7 +907,15 @@
   transition` as a sixth kind (`resolve-lookup-table-transition`,
   above) -- the only kind that consults `tables` (`ehrt.sim-trajectory.
   gmf/load-closure`'s own `:tables` return shape, threaded through the
-  SAME way `modules` already is for `:call-submodule`). D3b (H3):
+  SAME way `modules` already is for `:call-submodule`). GMF coverage
+  Wave LC (2026-08-03, ADR-0038 AR-1) generalizes the row-matching this
+  kind performs from a two-column (`age`/`gender`) whitelist to ANY
+  attribute column (`lookup-table-row-matches?`/`lookup-column-value`,
+  above) -- a purely internal change to HOW a row is chosen, this
+  dispatcher's own call shape unchanged except threading `module-id`
+  through (module-namespaced attribute resolution needs it, the same
+  way `resolve-distribution-value`/`attribute-condition-holds?` already
+  do). D3b (H3):
   `:distributed-transition`'s own entries resolve each :distribution
   through `resolve-distribution-value` BEFORE the pick -- a plain
   number passes through unchanged, a NamedDistribution map resolves to
@@ -872,7 +942,7 @@
     (weighted-pick-transition rng (type-of-care-entries (:type-of-care-transition state)
                                                           (type-of-care-weights (.getYear (LocalDate/ofEpochDay (:t ctx))))))
     (:lookup-table-transition state)
-    (resolve-lookup-table-transition rng ctx tables (:lookup-table-transition state))
+    (resolve-lookup-table-transition module-id rng ctx tables (:lookup-table-transition state))
     :else nil))
 
 ;; --- step --------------------------------------------------------------
