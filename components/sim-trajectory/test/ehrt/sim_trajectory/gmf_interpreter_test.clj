@@ -2498,6 +2498,27 @@
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"unrecognized vital-sign"
                            (interp/step unrecognized-vital-sign-state-module (Random. 1) ctx)))))
 
+;; --- GMF coverage Wave I (2026-08-04, ADR-0040 AR-4): the five names
+;; the catalog-wide Observation category vital-signs enumeration added --
+;; each resolves (no :unrecognized-vital-sign throw) via the Observation
+;; reader's own `vital_sign` value-sourcing branch, exactly the path the
+;; census's real found gap (`wellness_encounters.json`'s own "Weight")
+;; exercises.
+
+(def wave-i-vital-sign-names
+  ["Weight" "Heart Rate" "Respiration Rate" "Head Circumference" "Head Circumference Percentile"])
+
+(deftest every-wave-i-vital-sign-name-resolves-via-the-observation-reader
+  (doseq [vs-name wave-i-vital-sign-names]
+    (let [module {:id "vs-mod" :name "VsMod"
+                   :states {:initial {:type :initial :direct-transition :obs}
+                            :obs {:type :observation :codes [] :vital-sign vs-name :direct-transition :done}
+                            :done {:type :terminal}}}
+          ctx (assoc (ctx-for (persona-at 1)) :current :obs)
+          outcome (interp/step module (Random. 1) ctx)]
+      (is (= :normal (:interpretation (first (:events outcome))))
+          (str vs-name " -- resolves via the Observation reader, no :unrecognized-vital-sign throw")))))
+
 (def vital-sign-no-value-source-module
   {:id "empty-mod" :name "Empty"
    :states {:initial {:type :initial :direct-transition :x}
