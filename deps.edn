@@ -8,6 +8,14 @@
 
                   :extra-deps {org.clojure/clojure {:mvn/version "1.12.5"}
                                poly/sim      {:local/root "components/sim"}
+                               ;; sim-engine (sim split B, M2, 2026-08-04,
+                               ;; .agents/plans/2026-08-04-sim-split-b-
+                               ;; plan.md, notes/ADRs.md ADR-0043): the
+                               ;; discrete-event engine plus churn/order-
+                               ;; profiles, extracted out of sim -- sim's
+                               ;; own src now reaches these only through
+                               ;; ehrt.sim-engine.interface.
+                               poly/sim-engine {:local/root "components/sim-engine"}
                                ;; sim-model (sim split S1, .agents/plans/
                                ;; 2026-08-02-sim-split-plan.md): pathway/
                                ;; facility/persona/config, extracted out of
@@ -77,6 +85,7 @@
                                poly/cli      {:local/root "bases/cli"}}}
 
             :test {:extra-paths ["components/sim/test"
+                                  "components/sim-engine/test"
                                   "components/sim-model/test"
                                   "components/sim-trajectory/test"
                                   "components/sim-emit-hl7/test"
@@ -136,6 +145,10 @@
                                 ;; sim's own src requires poly/kernel
                                 ;; directly too (ADR-0022, 2026-08-01).
                                 poly/sim      {:local/root "components/sim"}
+                                ;; sim-engine (sim split B, M2, 2026-08-04):
+                                ;; sim's own src requires
+                                ;; ehrt.sim-engine.interface.
+                                poly/sim-engine {:local/root "components/sim-engine"}
                                 ;; sim-model (sim split S1): sim's own src
                                 ;; requires ehrt.sim-model.interface.
                                 poly/sim-model {:local/root "components/sim-model"}

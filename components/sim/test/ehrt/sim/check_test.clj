@@ -19,7 +19,7 @@
             [ehrt.sim.check :as check]
             [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim.engine :as engine]
-            [ehrt.sim.order-profiles :as order-profiles]))
+            [ehrt.sim-engine.order-profiles :as order-profiles]))
 
 (def test-facility
   {:id :t :wards [{:id :ed :name "ED" :beds 0 :surge-slots 4

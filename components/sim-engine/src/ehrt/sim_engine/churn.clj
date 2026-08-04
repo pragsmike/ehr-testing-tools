@@ -1,4 +1,4 @@
-(ns ehrt.sim.churn
+(ns ehrt.sim-engine.churn
   "InjectChurn (docs/sim-theory.edn): the pathway-ir x churn-profile ->
   operational-pathway transform. M2b's second half -- Task 1 landed the
   churn STEP TYPES the engine can execute; this namespace decides WHERE

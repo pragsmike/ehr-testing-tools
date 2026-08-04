@@ -112,7 +112,11 @@ spooling, framing codecs); `components/docs-tooling` (dev-time-only
 doc/lint tooling); `components/palgebra` (conformance-gating notation
 and rendering); `components/sim-model` (pathway/facility/persona/config
 schemas and sampling, extracted from `components/sim`, sim split S1,
-`.agents/plans/2026-08-02-sim-split-plan.md`); `components/sim-trajectory`
+`.agents/plans/2026-08-02-sim-split-plan.md`); `components/sim-engine`
+(the discrete-event simulation core plus its churn/order-profiles
+catalytics, extracted from `components/sim`, sim split B stage M2,
+2026-08-04, `.agents/plans/2026-08-04-sim-split-b-plan.md`,
+`notes/ADRs.md` ADR-0043); `components/sim-trajectory`
 (GMF module loading/interpretation and CompileTrajectory, extracted from
 `components/sim`, sim split S2, same plan); `components/sim-emit-hl7`
 (the HL7v2 emitter, the v2-replay wire-side accumulator, and site

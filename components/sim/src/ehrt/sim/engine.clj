@@ -61,8 +61,8 @@
   log -- events here are format-free."
   (:require [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim-trajectory.interface :as sim-trajectory]
-            [ehrt.sim.churn :as churn]
-            [ehrt.sim.order-profiles :as order-profiles]
+            [ehrt.sim-engine.interface :as churn]
+            [ehrt.sim-engine.interface :as order-profiles]
             [malli.core :as m])
   (:import [java.util Random]))
 

@@ -35,7 +35,7 @@
             [ehrt.kernel.interface :as result]
             [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim.engine :as engine]
-            [ehrt.sim.order-profiles :as order-profiles]))
+            [ehrt.sim-engine.interface :as order-profiles]))
 
 (defn- events-by-patient
   "Every event each patient-id participates in, in log order -- the

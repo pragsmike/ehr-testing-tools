@@ -291,7 +291,10 @@
   ;; session's own session-record/prompt-archive filenames in their own
   ;; already-cited onboarding READMEs (1 line each) brought the real
   ;; total from 1925 to 1927.
-  :budget-lines 1927}
+  ;; bumped 1927->1931, sim split B M2 session (2026-08-04, Step 1):
+  ;; AGENTS.md's own Components-list growth (`components/sim-engine`,
+  ;; net +4 lines) brought the real total from 1927 to 1931.
+  :budget-lines 1931}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one
@@ -337,7 +340,10 @@
   ;; own ManifestV1_1 re-export repointed to provenance directly, with
   ;; a short dated comment explaining the relay (net +5 lines) brought
   ;; the real total from 1705 to 1710.
-  :budget-lines 1710}
+  ;; bumped 1710->1714, sim split B M2 session (2026-08-04, Step 1):
+  ;; AGENTS.md's own Components-list growth (`components/sim-engine`,
+  ;; net +4 lines) brought the real total from 1710 to 1714.
+  :budget-lines 1714}
 
  ;; components/sim is the deterministic generator engine wrapping Synthea
  ;; (ADR-0005) -- engine-onboarding.md is the checklist every engine wrapper
@@ -373,7 +379,10 @@
   ;; bumped 756->760, sim split B M1 session (2026-08-04, Step 1):
   ;; AGENTS.md's own Components-list growth (above) brought the real
   ;; total from 756 to 760.
-  :budget-lines 760}
+  ;; bumped 760->764, sim split B M2 session (2026-08-04, Step 1):
+  ;; AGENTS.md's own Components-list growth (`components/sim-engine`,
+  ;; net +4 lines) brought the real total from 760 to 764.
+  :budget-lines 764}
 
  ;; components/judge (verdict vocabulary) plus its three gate engines
  ;; (judge-v2-hapi, judge-fhir-official, judge-v2-nist, ADR-0011's per-engine
@@ -411,7 +420,10 @@
   ;; bumped 826->830, sim split B M1 session (2026-08-04, Step 1):
   ;; AGENTS.md's own Components-list growth (above) brought the real
   ;; total from 826 to 830.
-  :budget-lines 830}
+  ;; bumped 830->834, sim split B M2 session (2026-08-04, Step 1):
+  ;; AGENTS.md's own Components-list growth (`components/sim-engine`,
+  ;; net +4 lines) brought the real total from 830 to 834.
+  :budget-lines 834}
 
  ;; components/docs-tooling (dev-time-only doc/lint tooling) generates and
  ;; lints docs/cli.md, docs/pipeline.md-equivalents, and docs/use-cases.md
@@ -452,4 +464,9 @@
   ;; AGENTS.md's own Components-list growth (4 lines) plus
   ;; docs/dev/architecture.md's own new `components/provenance`
   ;; bricks-table row (1 line) brought the real total from 628 to 633.
-  :budget-lines 633}}
+  ;; bumped 633->641, sim split B M2 session (2026-08-04, Step 1):
+  ;; AGENTS.md's own Components-list growth (`components/sim-engine`,
+  ;; net +4 lines) plus docs/dev/architecture.md's own new
+  ;; `components/sim-engine` diagram node/edges and bricks-table row
+  ;; (net +4 lines) brought the real total from 633 to 641.
+  :budget-lines 641}}

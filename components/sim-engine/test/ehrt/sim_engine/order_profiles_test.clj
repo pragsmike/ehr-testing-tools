@@ -1,4 +1,4 @@
-(ns ehrt.sim.order-profiles-test
+(ns ehrt.sim-engine.order-profiles-test
   "Schema validity and sampling laws for the order-profiles catalytic
   (docs/sim-theory.edn's `order-profiles`, target 3 -- hashed repo-
   authored config). Written before ehrt.sim.order-profiles
@@ -7,7 +7,7 @@
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
-            [ehrt.sim.order-profiles :as order-profiles])
+            [ehrt.sim-engine.order-profiles :as order-profiles])
   (:import [java.util Random]))
 
 (deftest default-order-profiles-loads-and-validates

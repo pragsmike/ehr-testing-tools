@@ -1,4 +1,4 @@
-(ns ehrt.sim.order-profiles
+(ns ehrt.sim-engine.order-profiles
   "The order-profiles catalytic (docs/sim-theory.edn's `:execute` stage,
   target 3 -- hashed repo-authored config, docs/sim-theory.md's
   Catalytic resolution table): a small, hand-curated starter set of lab
@@ -69,7 +69,7 @@
   "Loaded once at namespace load: resources/order-profiles.edn, this
   repo's own hashed-config catalytic content (target 3 -- committed,
   repo-authored, not fetched or generated)."
-  (edn/read-string (slurp (io/resource "sim/order-profiles.edn"))))
+  (edn/read-string (slurp (io/resource "sim-engine/order-profiles.edn"))))
 
 (defn- round-to
   [^double v ^long precision]

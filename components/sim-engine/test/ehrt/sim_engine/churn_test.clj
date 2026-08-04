@@ -1,4 +1,4 @@
-(ns ehrt.sim.churn-test
+(ns ehrt.sim-engine.churn-test
   "InjectChurn (docs/sim-theory.edn): the pathway-ir x churn-profile ->
   operational-pathway IR->IR transform. Written before
   ehrt.sim.churn exists (sim/ADR-0004 test-first). The stage's own
@@ -9,7 +9,7 @@
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
-            [ehrt.sim.churn :as churn]
+            [ehrt.sim-engine.churn :as churn]
             [ehrt.sim-model.interface :as sim-model])
   (:import [java.util Random]))
 

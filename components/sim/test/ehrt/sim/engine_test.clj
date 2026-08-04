@@ -22,7 +22,7 @@
             [ehrt.sim.engine :as engine]
             [ehrt.sim-trajectory.interface :as sim-trajectory]
             [ehrt.sim-model.interface :as sim-model]
-            [ehrt.sim.order-profiles :as order-profiles]
+            [ehrt.sim-engine.order-profiles :as order-profiles]
             [ehrt.sim.check :as check]
             [ehrt.kernel.interface :as result])
   (:import [java.util Random]))

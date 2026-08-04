@@ -28,7 +28,7 @@
             [ehrt.kernel.interface :as result]
             [ehrt.sim.engine :as engine]
             [ehrt.sim.check :as check]
-            [ehrt.sim.churn :as churn]
+            [ehrt.sim-engine.interface :as churn]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]
             [ehrt.sim.emit-state :as emit-state]
             [ehrt.sim-trajectory.interface :as sim-trajectory]
