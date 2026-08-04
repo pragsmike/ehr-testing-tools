@@ -124,6 +124,20 @@
   guarantees a straddling encounter's own contents never reach `:steps`
   at all, in either mode.
 
+  Step 3 finding (2026-08-04, running the real UTI closure under an
+  ordinary seed, AR-4's own proof obligation): open-encounter
+  inheritance alone is NOT sufficient. `:medication-end`/`:care-plan-
+  end`/`:condition-end` can legitimately fire OUTSIDE any encounter (a
+  medication started during a dropped history-phase encounter,
+  ended after discharge, in horizon, with nothing open to inherit
+  from) -- `history-phase?` (below) closes this the same way AR-2
+  closes the encounter case: an event whose own `:references`
+  antecedent was itself dropped is dropped too, one hop along the
+  SAME back-edge `referenced-event` already resolves for citation
+  purposes. This is not a new rule, only AR-2's own 'no orphaned
+  reference to something dropped' principle applied to the other kind
+  of back-reference this namespace already has.
+
   The day -> minutes boundary (docs/patient-state-model.md's durations
   rule, extended): every trajectory event's own `:t` is an interpreter-
   internal EPOCH DAY (ehrt.sim-trajectory.gmf-interpreter); pathway IR's own
@@ -319,6 +333,34 @@
           steps))
       steps)))
 
+(defn- history-phase?
+  "Wave H pre-roll, Step 3 finding (2026-08-04, ADR-0042): AR-2's own
+  encounter-anchored inheritance covers an event INSIDE an open
+  encounter, but `:medication-end`/`:care-plan-end`/`:condition-end`
+  can legitimately fire OUTSIDE any encounter -- a medication or care
+  plan started during a (dropped) history-phase encounter but ended
+  after that encounter closed, in horizon, with no encounter open at
+  all at the moment it ends (this namespace's own docstring already
+  states the reason such spans exist: 'a medication legitimately
+  continues... after discharge'). Left unchecked, THAT event's own
+  `:phase` reads `:horizon` (nothing open to inherit from) while its
+  own `:medication-order`/`:care-plan-start`/`:condition-onset` was
+  dropped as history -- an orphaned `:medication-end` etc., found live
+  running the real UTI closure under an ordinary seed (AR-4's own
+  proof obligation), tripping `check.clj`'s own
+  `medication-end-references-existing-order-and-follows-it-in-time`.
+  Generalizes AR-2's own 'no orphaned reference to something dropped'
+  principle one hop further, along the SAME `:references` back-edge
+  `referenced-event` (below) already resolves: an event whose own
+  antecedent was itself history-phase is ALSO history-phase, regardless
+  of open-encounter state. A no-op for `:encounter-end` (already
+  correctly phased by interpreter-level inheritance, so `(:phase
+  event)` alone already agrees) and for anything with no `:references`
+  at all."
+  [trajectory event]
+  (or (= :history (:phase event))
+      (= :history (:phase (referenced-event trajectory event)))))
+
 (defn- emit-with-delay
   [steps last-t event new-step]
   (let [gap-minutes (* minutes-per-day (- (:t event) last-t))]
@@ -370,13 +412,15 @@
           encounter-closed?
           (recur more steps registration-facts last-t encounter-closed?)
 
-          ;; Wave H pre-roll (ADR-0042 AR-1/AR-2): history? true -- a
-          ;; single uniform drop by the interpreter's own AR-2 phase
-          ;; mark (encounter-anchored inheritance already resolved
-          ;; there), no dropped-types/fact-types bucketing, no
-          ;; :registration-facts entry. See this namespace's own
-          ;; docstring, above.
-          (and history? (= :history (:phase event)))
+          ;; Wave H pre-roll (ADR-0042 AR-1/AR-2, Step 3 finding): history?
+          ;; true -- a single uniform drop by `history-phase?` (above):
+          ;; the interpreter's own AR-2 phase mark, generalized one
+          ;; :references hop further so a :medication-end/:care-plan-end/
+          ;; :condition-end whose own antecedent was dropped drops too,
+          ;; even when it fires outside any open encounter. No dropped-
+          ;; types/fact-types bucketing, no :registration-facts entry.
+          ;; See this namespace's own docstring, above.
+          (and history? (history-phase? trajectory event))
           (recur more steps registration-facts last-t encounter-closed?)
 
           ;; LEGACY (history? false -- the default, every pre-H caller):

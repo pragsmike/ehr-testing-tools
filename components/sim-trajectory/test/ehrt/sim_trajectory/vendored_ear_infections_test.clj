@@ -24,6 +24,7 @@
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
             [ehrt.kernel.interface :as result]
+            [ehrt.sim-trajectory.compile-trajectory :as ct]
             [ehrt.sim-trajectory.gmf :as gmf]
             [ehrt.sim-trajectory.gmf-interpreter :as interp]
             [ehrt.sim-model.interface :as sim-model])
@@ -166,3 +167,47 @@
         (is (some? wellness-event))
         (is (> (:t wellness-event) last-med-end-t)
             "the wellness encounter now fires strictly AFTER the last medication ends, never at the same instant")))))
+
+;; --- Wave H pre-roll, Step 3 (2026-08-04, ADR-0042 AR-1): pre-
+;; registration wellness ticks fold state without riding the wire --
+;; ":wellness-wait needs no special handling... pre-registration ticks
+;; are history events like any other." -----------------------------------
+
+(defn- walk-result-history
+  "The SAME `walk-result` shape above, `history? true` -- the only
+  difference this session's own mechanism makes."
+  [seed sex]
+  (let [p (person seed sex)
+        reg-t (registration-t-for p)]
+    (interp/run-module ear-infections (Random. seed) p reg-t (+ reg-t horizon-window-days) modules {} {} true)))
+
+(deftest a-pre-registration-wellness-tick-folds-state-without-riding-the-wire
+  (testing "no special handling for :wellness-wait -- the SAME well-mixed
+            seed search the create-now-retirement test above already
+            establishes, now under history? true. registration-t here
+            is dob+25yrs (registration-t-for, above), so a wellness tick
+            this childhood-onset module reaches falls in HISTORY for
+            essentially every candidate seed."
+    (let [seed (first (keep (fn [seed]
+                               (let [result (walk-result-history seed :male)]
+                                 (when (seq (wellness-events (:trajectory result)))
+                                   seed)))
+                             (well-mixed-candidate-seeds 2000 20260804)))]
+      (is (some? seed) "expected at least one well-mixed candidate seed to reach the wellness encounter")
+      (let [p (person seed :male)
+            reg-t (registration-t-for p)
+            result (walk-result-history seed :male)
+            trajectory (:trajectory result)
+            wellness-event (first (wellness-events trajectory))]
+        (is (some? wellness-event))
+        (is (true? (:pre-horizon wellness-event))
+            "the tick this search finds falls well before registration-t=dob+25yrs")
+        (is (= :history (:phase wellness-event))
+            "AR-1: minted with a :phase mark, exactly like any other history-phase event")
+        (testing "the walk's own state continuity past this point is unaffected -- no special-casing, no crash"
+          (is (contains? #{:terminal :blocked :horizon-complete} (:status result))))
+        (testing "compile-trajectory drops it -- folded state, no wire step for this tick"
+          (let [{:keys [steps]} (ct/compile-trajectory trajectory sim-model/default-facility reg-t true)
+                wellness-citation {:module (:module wellness-event) :state (:state wellness-event)}]
+            (is (not-any? #(= wellness-citation (:citation %)) steps)
+                "no compiled step cites this history-phase wellness encounter")))))))

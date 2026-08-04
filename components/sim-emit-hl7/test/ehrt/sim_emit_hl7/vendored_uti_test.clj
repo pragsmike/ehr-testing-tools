@@ -14,7 +14,26 @@
   `engine.clj`'s bare 5-arity `run-module` call never threaded a
   `tables` map through either. This session's own AR-2/AR-3 close
   BOTH: the closure's real `:modules` AND `:tables` maps now reach
-  `run-module`'s full arity."
+  `run-module`'s full arity.
+
+  Dated note (2026-08-04, ADR-0042 AR-4, Wave H pre-roll -- closes the
+  ADR-0033/0034 straddle linkage below, RETIRING seed 777): this
+  closure's own mandatory Care Pathways Encounter reliably straddles
+  `engine.clj`'s own fixed registration-t anchor for most seeds (opens
+  in history, closes in horizon) -- a real, disclosed gap in the LEGACY
+  (`:history` absent) path, where a straddling encounter's own opening
+  drops as a pre-horizon fact but its closing compiles for real, an
+  orphaned `:encounter-end`/`:discharge` that `check/check-all`'s own
+  `:clinical-content-only-when-admitted` invariant trips. Seed 777 was
+  chosen empirically as one that happens not to trigger it. ADR-0042
+  AR-2 resolves the straddle at the ROOT instead: with `:history true`,
+  an event's phase is inherited from its own encounter's OPENING phase,
+  so a straddling encounter's own close drops together with its own
+  open -- no orphan, ever, for any seed. This file now runs with
+  `:history true` and an ORDINARY seed (this project's own `20260802`
+  config default, the same value most other vendored-closure oracle
+  batches already use) to prove exactly that: the straddle resolves by
+  design, not by seed-picking."
   (:require [clojure.java.io :as io]
             [clojure.test :refer [deftest is testing]]
             [ehrt.kernel.interface :as result]
@@ -48,28 +67,15 @@
 ;; FIRST onset any patient reached, so this population/horizon was
 ;; already enough to pin the failure and stays enough to prove the fix.
 ;;
-;; Seed empirically chosen (777, not the pin's own 20260802): this
-;; closure's own mandatory Care Pathways CallSubmodule opens a real
-;; Encounter, and `Wait_for_UTI`'s long self-looping Delay makes it
-;; common for SOME patient's own Encounter to straddle engine.clj's own
-;; FIXED registration-t anchor (opens in the pre-horizon history phase,
-;; closes in the post-horizon one) -- `:pre-horizon-facts` is a
-;; documented, ALREADY-DISCLOSED v1 scope boundary (engine.clj's own
-;; `ConditionRecord` docstring: pre-horizon content is not yet folded
-;; into engine patient-state), so a straddling Encounter's own opening
-;; never reaches `check/check-all`'s `:clinical-content-only-when-
-;; admitted` invariant while its closing does -- a real, separate,
-;; already-known gap, not a defect ADR-0033's own closure-wiring scope
-;; introduces or is meant to fix (confirmed empirically: most seeds hit
-;; it for this closure's own long-tailed Delay; the sinusitis/sepsis
-;; engine-round-trip tests' own docstrings already document the same
-;; class of fixed-anchor interaction). 777 is one of the seeds this
-;; population/horizon does NOT trip it for, while still landing real
-;; cross-boundary CallSubmodule content.
+;; ADR-0042 AR-4: `:history true`, an ORDINARY seed (this project's own
+;; `20260802` config default) -- the straddle this closure's own
+;; mandatory Care Pathways Encounter reliably hits (this namespace's
+;; own docstring, above) now resolves by design (AR-2's encounter-
+;; anchored inheritance), not by seed-picking.
 (def ^:private run-config
-  {:seed 777 :patients 300 :pathway {:name "module-only" :steps []}
+  {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
    :modules [uti-closure] :module-assignment [{:module-id "urinary-tract-infections" :weight 1}]
-   :module-horizon-days 36500})
+   :module-horizon-days 36500 :history true})
 
 (deftest engine-run-completes-real-uti-closure-content
   (testing "load-clean sanity -- root plus all eleven called submodules AND both lookup tables"
@@ -79,14 +85,15 @@
             lookup-table entry path (H2) resolves correctly through the
             engine too -- real compiled clinical content lands"
     (let [{:keys [ground-truth] :as result} (engine/run run-config)
-          kinds (into #{} (map :event) ground-truth)
-          registered (filter #(= :registered (:event %)) ground-truth)]
+          kinds (into #{} (map :event) ground-truth)]
       (is (some #{:condition-onset :encounter :encounter-end :medication-order} kinds)
           (str "expected real compiled clinical content across 300 patients, got " kinds))
-      (is (some :pre-horizon-facts registered)
-          "expected at least one patient's own history-phase content to ride :registered")
-      (is (result/ok? (check/check-all ground-truth (:facility result)))
-          "the full invariant catalog holds for a real closure-driven run")
+      (testing "ADR-0042 AR-2/AR-4: the straddle this closure's own Care
+                Pathways Encounter reliably hits resolves by design under
+                :history true -- the full invariant catalog holds for an
+                ORDINARY seed, no hand-picked dodge needed"
+        (is (result/ok? (check/check-all ground-truth (:facility result)))
+            "the full invariant catalog holds for a real closure-driven run"))
       (testing "content emitted inside a called care-pathway submodule renders real HL7"
         (let [messages (emit-hl7/emit ground-truth "2024-01-01" "+00:00" (:facility result) (:providers result))]
           (is (seq messages) "expected at least one HL7 message rendered from real clinical content"))))))
