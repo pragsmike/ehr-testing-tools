@@ -1,39 +1,21 @@
 (ns ehrt.sim.manifest-test
-  "Tripwire for the corpus-manifest bridge: what `build` produces
-  validates against the mirrored schema. The BINDING contract test --
-  validating against ehr-testing-tools' actual ManifestV1_1 -- lives in
-  that repo's test-integration tree, where both codebases share a
-  classpath (see ehrt.sim.manifest's docstring)."
+  "Builder tests for the corpus-manifest bridge (sim split B, M1 step
+  4, 2026-08-04, `.agents/plans/2026-08-04-sim-split-b-plan.md`
+  AR-M1-2): the mirror tripwire test (`built-manifest-validates`,
+  which asserted `manifest/valid?` against the now-retired
+  `MirroredManifest`) retired in this same step -- see
+  `ehrt.sim.manifest`'s own docstring for the retirement disclosure
+  (quotes the M3-Task-0 lesson verbatim). Its builder-validity purpose
+  is carried forward by `built-manifest-validates-against-provenance-
+  test` below (landed Step 3, ahead of this retirement, so builder
+  validity was never left uncovered). What remains besides that:
+  build()'s own version/sha256-defaulting behavior, unrelated to the
+  mirror either way."
   (:require [clojure.test :refer [deftest is]]
             [ehrt.sim.manifest :as manifest]
             [ehrt.sim.version :as version]
             [ehrt.provenance.interface :as provenance]))
 
-(deftest built-manifest-validates
-  (let [m (manifest/build {:seed 42
-                           :engine-params {:patients 5}
-                           :config {:path "config.edn"
-                                    :sha256 (apply str (repeat 64 "a"))}
-                           :invocation {:verb "run" :opts {:seed 42}}})]
-    (is (manifest/valid? m))
-    (is (= "1.1" (:schema-version m))
-        "mirrors tools' ManifestV1_1 :schema-version exactly -- a mirror
-         that omits this key can't self-detect the drift; the binding
-         check lives in tools' own sim-manifest-contract-test")
-    (is (= :simulated (:stage m)))
-    (is (= {:primary 42} (:seeds m)))
-    (is (= "ehrt.sim" (get-in m [:generator :name])))))
-
-;; --- sim split B, M1 step 3 (2026-08-04, plan AR-5(b) / AR-M1-3) ---------
-;; The fast-lane companion to the conformance project's own
-;; sim-manifest-contract-test: same builder-validity claim (what
-;; `build` produces conforms to the real ManifestV1_1), checked
-;; directly against ehrt.provenance.interface without the harness
-;; (no sim-harness/run!, no subprocess/in-process boundary). This is
-;; the replacement AR-5(b) names for the mirror tripwire's own
-;; builder-validity purpose -- `built-manifest-validates` above still
-;; exercises the mirror for now (Step 4 retires MirroredManifest and
-;; that test together).
 (deftest built-manifest-validates-against-provenance-test
   (let [m (manifest/build {:seed 42
                            :engine-params {:patients 5}

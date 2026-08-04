@@ -1,52 +1,40 @@
 (ns ehrt.sim.manifest
   "The corpus-manifest bridge: a `sim run` emits a provenance manifest
-  shaped for ehr-testing-tools' corpus conventions (its
-  corpus/manifest.clj ManifestV1_1: :stage, :generator, :seeds,
-  :engine-params, :config, :invocation, :canonicalizers-applied,
-  :environment), so `ehr corpus intake` can ingest a sim run like any
-  other pinned-input corpus.
+  shaped for ehr-testing-tools' corpus conventions (ManifestV1_1:
+  :stage, :generator, :seeds, :engine-params, :config, :invocation,
+  :canonicalizers-applied, :environment), so `ehr corpus intake` can
+  ingest a sim run like any other pinned-input corpus.
 
-  The authoritative schema lives in ehr-testing-tools; this namespace
-  mirrors the *shape* without depending on it (dependency arrow points
-  tools -> sim only, sim/ADR-0001). The mirrored schema here is a tripwire,
-  not the contract: the binding contract test belongs in
-  ehr-testing-tools' test-integration tree, where both codebases are on
-  the classpath and drift becomes a failing test rather than a latent
-  incompatibility."
-  (:require [malli.core :as m]
-            [ehrt.sim.version :as version]))
+  MIRROR RETIRED (sim split B, M1 step 4, 2026-08-04,
+  `.agents/plans/2026-08-04-sim-split-b-plan.md` AR-M1-2): this
+  namespace used to carry `MirroredManifest`, a structural copy of the
+  authoritative schema, as a drift tripwire -- dependency-direction
+  doctrine from the separate-repo era (tools -> sim only, sim/ADR-0001),
+  now a fossil: both live in one workspace, and corpus -> sim already
+  exists (`ehrt.corpus.sim-adapter` requires the sim façade,
+  ADR-0012), so the acyclic single home for the real schema is
+  `ehrt.provenance.interface`, depended on directly here now instead
+  of copied.
 
-(def MirroredManifest
-  "Structural mirror of tools' ManifestV1_1 (verified against its
-  source 2026-07-26; re-verify on tools schema changes).
-
-  LESSON (M3 Task 0): this mirror once omitted :schema-version entirely
-  -- both here and in `build` -- and its own tripwire test
-  (manifest-test) stayed green throughout, because a mirror validates
-  its OWN output against its OWN copy of the schema; it agreed with
-  itself perfectly while both disagreed with the authoritative source.
-  A mirror cannot catch itself agreeing with its own mistake. That is
-  exactly why the BINDING contract test lives host-side, in tools'
-  test-integration tree (sim-manifest-contract-test), where the real
-  ManifestV1_1 is on the classpath to validate against -- not here."
-  [:map
-   [:schema-version [:= "1.1"]]
-   [:stage :keyword]
-   [:generator [:map
-                [:name :string]
-                [:version :string]
-                [:sha256 [:re #"^[0-9a-f]{64}$"]]]]
-   [:seeds [:map-of :keyword :int]]
-   [:engine-params [:map-of :keyword :any]]
-   [:config [:map
-             [:path :string]
-             [:sha256 [:re #"^[0-9a-f]{64}$"]]]]
-   [:invocation :map]
-   [:canonicalizers-applied [:vector [:tuple :keyword :string]]]
-   [:environment [:map
-                  [:locale :string]
-                  [:timezone :string]
-                  [:jvm-version :string]]]])
+  LESSON (M3 Task 0, quoted verbatim from the retired mirror's own
+  docstring, the citation this retirement's disclosure rests on): 'this
+  mirror once omitted :schema-version entirely -- both here and in
+  `build` -- and its own tripwire test (manifest-test) stayed green
+  throughout, because a mirror validates its OWN output against its
+  OWN copy of the schema; it agreed with itself perfectly while both
+  disagreed with the authoritative source. A mirror cannot catch
+  itself agreeing with its own mistake.' Drift is impossible by
+  construction now that `build`'s own validity is checked directly
+  against provenance's real ManifestV1_1 (no copy in between) --
+  `ehrt.sim.manifest-test/built-manifest-validates` (the mirror's own
+  tripwire test) retires with it; its builder-validity purpose moved
+  to `built-manifest-validates-against-provenance-test`, landed ahead
+  of this retirement in Step 3. `valid?` retires too, undefined here
+  now -- fresh grep at retirement time found no real caller outside
+  its own now-retired test (`ehrt.provenance.interface/valid-v1-1?` is
+  the real predicate; `build`'s own callers never validated its
+  output, they just used it)."
+  (:require [ehrt.sim.version :as version]))
 
 (defn environment
   []
@@ -83,5 +71,3 @@
    :invocation invocation
    :canonicalizers-applied []
    :environment (environment)})
-
-(defn valid? [manifest] (m/validate MirroredManifest manifest))
