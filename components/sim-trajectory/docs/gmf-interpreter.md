@@ -76,16 +76,14 @@ it can't yet be *vendored*.
 | `Counter` | v1, consumed internally **(GMF coverage Wave F, ADR-0036 AR-1, moved here from the Deferred table below — the same "move, not duplicate" treatment every prior wave's own state-type additions already got)** | none — SetAttribute-shaped attribute arithmetic (State.java's own `Counter` class): reads the module-namespaced attribute (missing → 0), increments or decrements by `:amount` (default 1 when absent or authored 0 — upstream's own indistinguishable-at-the-source legacy default), writes back. Zero draws, no trajectory event |
 | `ImagingStudy` | v1, trajectory event **(GMF coverage Wave F, ADR-0036 AR-2, reverses this document's own original R5 deferral)** | one `:imaging-study` trajectory event carrying the procedure code, primary modality, and drawn series/instance counts (glass-box — no per-instance content, DICOM UID synthesis not ported). Compiles to the SAME IR step family a `:procedure` produces (`compile-trajectory`'s own `procedure->step`, unchanged) — upstream's own companion-procedure move, the 30-minute stop left as record metadata, never a clock advance. Series-count/instance-count bounds each cost one draw when a module declares them (upstream's own `rand(min, max+1)` int-cast, ≡ `rand-int-in`); no vendored-corpus module this session's own census touches declares study-level bounds, only per-series instance bounds (`lung_cancer.json`) |
 | `SupplyList` | v1, trajectory event (log-only) **(GMF coverage Wave F, ADR-0036 AR-3, newly built — never previously vendored or tabled)** | a log-only trajectory fact (`:supply-list`, carrying each `{code quantity}` component verbatim) compiling to NO IR step, unconditionally — the `ConditionEnd` no-open-encounter precedent verbatim (above), without that precedent's own encounter-open gate. Zero draws, zero clock advance. Wire rendering of supplies (an HL7v2 shape, a FHIR SupplyDelivery resource, or similar) is out of scope for hospital-traffic v1, disclosed |
+| `VitalSign` | v1, consumed internally **(GMF coverage Wave VS, ADR-0039 AR-1/AR-2, moved here from the Deferred table below — the same "move, not duplicate" treatment every prior wave's own state-type additions already got)** | none of its own — writes into ctx's own new `:vital-signs` register (§16, GLOBAL over the whole walk, never root-scoped the way `:attributes` is), never a trajectory event. Samples ONCE (exact: zero draws; range: one uniform draw; distribution: one draw via the Wave F0 samplers) — a disclosed divergence from upstream's own per-read re-sampling generator (§16's own AR-2 account). `expression` (CQL) is a clean, named load rejection, not built — no candidate closure needs it |
 
 **Deferred, with reasons:**
 
-| State type | Why deferred |
-|---|---|
-| `VitalSign` | **(GMF coverage Wave F, ADR-0036 AR-7, newly disclosed here — not previously named in this table)** requires a vital-sign REGISTER with baseline values (State.java's own `VitalSign` class writes a person-level vital-sign baseline other states later read) — engine-delegated content upstream (Synthea's lifecycle engine sets baselines before any module runs), which is authored calibration content this project does not yet supply, not an interpreter mechanism gap. Distinct from the ALSO-deferred `:vital-sign` CONDITION type (§2) — same underlying register gap, two separate vocabulary items. Named roadmap item: "vital-sign channel (calibration content + `VitalSign` state + `:vital-sign` condition)," pairing naturally with the re-scoped Wave E (risk-attribute register, §2's own citation) |
-
-*Every state type this document's own original brief named as deferred
-(`Counter`) has now been built (ADR-0036); this table's remaining row
-(`VitalSign`) is a NEW disclosure, not a survivor of the original list.*
+*This table is currently empty — `VitalSign` (above) was its last
+remaining row (ADR-0036 AR-7's own disclosure); Wave VS (ADR-0039)
+built it. Every state type this document has ever named as deferred,
+original brief or later disclosure, is now built.*
 
 **A recommendation, flagged for author review: add `Symptom` to v1 as
 a write-only, consumed-internally state — not deferred.** `Symptom` is
@@ -3510,3 +3508,75 @@ hit exactly the boundary case the inclusive design didn't cover. Fixed,
 re-verified (the oracle bracket above and this section's own numbers
 are the POST-fix, correct run), and its own dedicated commit's message
 carries the full account."
+
+## 16. GMF coverage Wave VS: the vital-sign channel (2026-08-04, ADR-0039)
+
+The post-LC census (§15) ranked the vital-sign family as the largest
+remaining frontier — `VitalSign` was §1's own last remaining Deferred-
+table row (moved into the main table this Wave, §1 above). Full
+ruling record: `notes/ADRs.md` ADR-0039 (AR-1 through AR-7, verbatim);
+this section carries the two named session reads (AR-6) and points
+back to the ADR for everything else, the same division of labor §9's
+own D5 characterization note and §13's own closure survey already
+establish.
+
+**AR-6(a): `Person.getVitalSign` on an unset vital.** `Person.java`
+(~line 551, pin `7e08387c68a7f0e21d13076609a159fd473fc902`):
+
+```java
+public Double getVitalSign(VitalSign vitalSign, long time) {
+  ValueGenerator valueGenerator = vitalSigns.get(vitalSign);
+  if (valueGenerator == null) {
+    throw new NullPointerException(
+        "Vital sign '" + vitalSign + "' not set. Valid vital signs: " + vitalSigns.keySet());
+  }
+  ...
+}
+```
+
+Upstream THROWS — a crashed simulation run, not a recorded, continuable
+outcome. This project's own honest-absence rule (ADR-0036 AR-4,
+extended to `:vital-sign` by ADR-0039 AR-4) is a deliberate, disclosed
+divergence: a genuinely-unset vital reading becomes a `:walk-error`
+RESULT at the walk boundary (`walk-module`/`run-module`'s own catch),
+never an escaping exception — the same result-not-throw discipline
+this project's own `honest-absence` mechanism already applies to
+`:race`/`:socioeconomic-status`/lookup-table columns.
+
+**AR-6(b): covid19's O2-sat `VitalSign` encoding.**
+`covid19/infection.json` (~line 1237, same pin):
+
+```json
+"Poor Oxygen Saturation": {
+  "type": "VitalSign",
+  "vital_sign": "Oxygen Saturation",
+  "unit": "%",
+  "range": { "low": 75, "high": 89 },
+  "direct_transition": "Record Vitals"
+}
+```
+
+LEGACY exact/range encoding (`isLegacyGmf()`'s own branch,
+`State.java`'s `VitalSign.process`), not a `gmf_version 2`
+`distribution` — this is what selects the range-sampling path (AR-2's
+own `round1`'d uniform draw), not the distribution path, for covid19's
+own real content. Confirmed by direct read before Step 2's own
+implementation began, per AR-6's own instruction (not implemented
+first, then checked).
+
+**Register vs. Observation reader — two independently-existing
+mechanisms, never conflated.** `sample-observation-extra`'s own
+`vital_sign`-sourced branch (§11/§12, D1a-3) draws independently from
+`sim-trajectory/vital-signs.edn`'s own reference-range table — a
+pre-existing, disclosed simplification (P4/Q3, D1a-4) this Wave does
+NOT touch. The NEW register (`:vital-signs`, `gmf-interpreter.clj`'s
+own `initial-context`) is a SEPARATE compartment the `VitalSign` state
+writes and the `:vital-sign` condition reads; a `VitalSign`-state write
+and an Observation's own independent `vital_sign`-sourced draw for the
+SAME name can disagree in value — an accepted, disclosed consequence
+of keeping the pre-existing Observation mechanism's own scope
+untouched (ADR-0039's own fence), not a bug.
+
+Full ruling record, module-by-module characterization, baseline table
+provenance, and the post-Wave census movement classification: `notes/
+ADRs.md` ADR-0039.

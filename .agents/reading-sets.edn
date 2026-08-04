@@ -243,7 +243,13 @@
   ;; own session-record/prompt-archive filenames brought the real total
   ;; from 1650 to 1701 -- self-caught, the same pattern every prior
   ;; session touching this file has hit.
-  :budget-lines 1701}
+  ;;
+  ;; GMF coverage Wave VS (2026-08-04, ADR-0039): the roadmap's own new
+  ;; Done section, the Next section's own Wave-H-reordering rewrite, and
+  ;; this session's own session-record/prompt-archive filenames brought
+  ;; the real total from 1701 to 1753 -- self-caught, the same pattern
+  ;; every prior session touching this file has hit.
+  :budget-lines 1753}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one

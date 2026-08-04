@@ -9,22 +9,31 @@ per item; done items move to the bottom of their section with a date and sha.
   same day it started -- see Done, below).
 
 ## Next (backlog, no session scheduled)
-- **Wave H design session** (`.agents/plans/2026-08-02-gmf-parity-plan.md`
-  §4, ratified order 2026-08-03, ADR-0035 AR-8 — F0, F, and G all now
-  landed, see Done below): pre-roll — walk modules deterministically
-  from onset to registration, fold pre-window history into initial
-  patient state, emit only in-window events. Emit-nothing REAFFIRMED
-  for the history phase generally (ADR-0031 AR-3); this Wave's own
-  design session owns the actual fold-boundary mechanism, including the
-  UTI pre-horizon straddle finding (ADR-0033/ADR-0034 AR-6, the
-  round-trip test's own seed-777 dodge retires when H resolves it) AND
-  a new, Wave-G-sourced obligation: `:wellness-wait` reached during a
-  future history-phase fast-forward must FOLD state without emitting
-  (ADR-0037 AR-2(c), `.agents/plans/2026-08-02-gmf-parity-plan.md`'s own
-  H row carries the dated note). I (bulk vendoring) follows. Wave E
-  (risk-attribute register) is RE-SCOPED — calibration content on
-  demand, not in the leverage queue (`stroke.json` already censuses
-  `:ok-walked`).
+- **The schema-invalid family + Wave I tail** (`.agents/plans/2026-08-02-
+  gmf-parity-plan.md` §4, dated note 2026-08-03, ADR-0039 AR-7 — Wave H
+  RE-ORDERED to run LAST, after these): `injuries`/hospice's own
+  `complex_transition` NamedDistribution gap; `congestive-heart-failure`'s
+  newly-unmasked `SetAttribute` `:value`/`:distribution` conflict
+  (`Inpatient LOS`, ADR-0039's own Step 5 finding); `wellness-encounters`'
+  own `Weight` vocabulary gap (the state immediately after `Height` on
+  its mandatory path, ADR-0039's own scope discipline left it out);
+  `AllergyOnset`/`Vaccine` (still-unrecognized state types); the
+  lookup-column `time` gap. Bulk vendoring (batched by closure family)
+  follows once these close.
+- **Wave H design session** (moves LAST per the re-ordering above):
+  pre-roll — walk modules deterministically from onset to registration,
+  fold pre-window history into initial patient state, emit only
+  in-window events. Emit-nothing REAFFIRMED for the history phase
+  generally (ADR-0031 AR-3); this Wave's own design session owns the
+  actual fold-boundary mechanism, including the UTI pre-horizon
+  straddle finding (ADR-0033/ADR-0034 AR-6, the round-trip test's own
+  seed-777 dodge retires when H resolves it) AND a new, Wave-G-sourced
+  obligation: `:wellness-wait` reached during a future history-phase
+  fast-forward must FOLD state without emitting (ADR-0037 AR-2(c),
+  `.agents/plans/2026-08-02-gmf-parity-plan.md`'s own H row carries the
+  dated note). Wave E (risk-attribute register) is RE-SCOPED —
+  calibration content on demand, not in the leverage queue (`stroke.json`
+  already censuses `:ok-walked`).
 - **Wave G attachment deferral** (ADR-0037 AR-4, named trigger "multi-
   module assignment per patient"): upstream's own all-waiting-modules-
   attach-to-one-visit semantics only diverges from this project's
@@ -207,6 +216,47 @@ per item; done items move to the bottom of their section with a date and sha.
   shape should expect the same workaround, or this row graduates into
   an actual `bin/regression-oracle` enhancement (e.g. an opt-in "run
   each commit's own digest.clj against its own worktree" mode).
+
+## Done (this session, 2026-08-04, GMF coverage Wave VS — the vital-sign channel — ADR-0039)
+- **Register + baselines + vocabulary (Step 1, `60c8bb1`).** Ctx's own
+  new `:vital-signs` compartment — GLOBAL over the whole walk, never
+  root-scoped the way workflow `:attributes` is (ADR-0027 D1's own
+  third compartment) — threaded through every outcome-producing site.
+  Seeded from a new authored-constants table
+  (`vital-sign-baselines.edn`) at patient creation, zero rng draws.
+  `vital-signs.edn` gains five rows (LVEF, BMI, HDL, Triglycerides,
+  Height), LOINC codes copied verbatim from the real candidate closures.
+- **`VitalSign` state (Step 2, `6141d6c`).** Loader + interpreter:
+  samples once (exact/range/distribution) into the register, never a
+  trajectory event; a carried CQL `:expression` is a clean, named load
+  rejection. `VitalSign` was the last row in
+  `components/sim-trajectory/docs/gmf-interpreter.md`'s own Deferred
+  table (§1) — now empty.
+- **`:vital-sign` condition (Step 3, `f04218d`).** Reads the register,
+  honest absence (ADR-0036 AR-4's rule, extended) when a name is
+  genuinely unset — only `Left ventricular Ejection fraction`
+  (deliberately baseline-less) can ever be.
+- **Oracle bracket (Step 4).** `bin/regression-oracle b396c2c f04218d`
+  — all 9 vendored root batches IDENTICAL. Pure identity, byte-verified.
+- **Census re-run (Step 5, `3e83390`).** `:ok-walked` 73→75. `covid19`/
+  `contraceptives` resolve fully. `congestive-heart-failure` STAYS
+  `:load-failed`, on a different, newly-unmasked gap (a `SetAttribute`
+  `:value`/`:distribution` conflict, `Inpatient LOS`). `wellness-
+  encounters` STAYS `:walk-failed` — `Height` now resolves, the very
+  next state (`Record_Weight`) needs `Weight`, outside this Wave's own
+  8-name scope. `metabolic-syndrome-care` unchanged, `:ok-walked`, its
+  own VS conditions still latent.
+- `notes/ADRs.md` ADR-0039 (AR-1 through AR-7, execution note with the
+  oracle table and full census movement classification, AR-6's two
+  recorded source reads). `.agents/plans/2026-08-02-gmf-parity-plan.md`
+  §4 gains LC/VS table rows and the dated H-reordering note (H now
+  runs LAST). `components/sim-trajectory/docs/gmf-interpreter.md` §1's
+  Deferred table empties; new §16 carries AR-6's findings.
+- **Deviation, disclosed:** the session prompt's own suggested
+  "vital-sign family closed" framing does not hold — two of four
+  originally-blocked modules resolve fully, one unmasks an unrelated
+  gap, one advances its own frontier by one state. Recorded honestly
+  in the Step 5 commit and ADR-0039's own Fence, not silently adopted.
 
 ## Done (this session, 2026-08-03, GMF coverage Wave LC — lookup-column generalization — ADR-0038)
 - **Loader generalization (Step 1, `26f280a`).** H2's own
