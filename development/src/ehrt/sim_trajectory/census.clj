@@ -18,9 +18,12 @@
   horizon-complete all count; only a THROW fails a module),
   `:load-failed` (`ehrt.sim-trajectory.gmf/load-closure` itself
   rejected), `:walk-failed` (closure loaded, at least one smoke-walk
-  seed threw), `:out-of-scope-by-ruling` (reserved, currently unused --
-  AR-2 emptied its largest bucket; the category stays for a future
-  ruling, per AR-4 -- 'empty is fine'). A module that throws never
+  seed threw), `:out-of-scope-by-ruling` (AR-2 emptied its largest
+  bucket at the time, but the category was always meant to fill again;
+  it now does -- a `:load-failed` closure whose ENTIRE gap is a RULED
+  exclusion, `Physiology` the first, `notes/ADRs.md` ADR-0037 AR-5,
+  `out-of-scope-by-ruling?` below the single-cause classifier). A
+  module that throws never
   aborts the census: the throw is caught, recorded, and the walk for
   that module moves on (AR-2's own 'the census itself NEVER aborts on a
   module's failure')."
@@ -177,17 +180,23 @@
     (slurp-if-exists (checkout-modules-file checkout-dir "lookup_tables" table-name))))
 
 ;; --- Substitution tagging (AR-3) -----------------------------------------
+;;
+;; RETIRED (2026-08-03, notes/ADRs.md ADR-0037 AR-5): `wellness-
+;; substitution?` scanned for the loader's own create-now substitution
+;; clause (ADR-0031 AR-5(b)) -- that clause no longer exists (ADR-0037
+;; AR-3 retired it; `wellness: true` now loads as its own distinct
+;; `:wellness-wait` state type and the interpreter genuinely waits).
+;; Kept as history, not deleted outright, per this project's own
+;; fix-forward-with-disclosure discipline. The `:disclosed-
+;; substitutions` tag VECTOR stays -- extensible for a future
+;; substitution this census finds, never itself the thing retired.
 
 (defn wellness-substitution?
-  "AR-3, load-bearing regardless of verdict: does ANY closure member
-  actually fetched (root included) carry a raw Encounter state with a
-  bare `wellness: true` and no `encounter_class` key -- exactly
-  `ehrt.sim-trajectory.gmf`'s own load-time substitution trigger
-  (`normalize-state`'s `(and (= :encounter kw-type) (:wellness state)
-  (not (:encounter-class state)))` clause, ADR-0031 AR-5(b))? Scanned
-  against RAW json (string keys, unnormalized) because a loaded module
-  can no longer be told apart from one that genuinely authored
-  `encounter_class: wellness` once normalized."
+  "RETIRED (see comment above) -- no longer called from `census-one`.
+  Kept as a historical record of what the substitution trigger looked
+  like; scanned against RAW json (string keys, unnormalized) because a
+  loaded module could not be told apart from one that genuinely
+  authored `encounter_class: wellness` once normalized."
   [raw-texts]
   (boolean
    (some (fn [text]
@@ -199,6 +208,39 @@
                           (not (contains? state "encounter_class"))))
                    (vals (get raw "states")))))
          (vals raw-texts))))
+
+;; --- Out-of-scope-by-ruling classification (AR-5) -------------------------
+
+(def ^:private out-of-scope-state-types
+  "GMF coverage Wave G (2026-08-03, ADR-0037 AR-5): state types the
+  census classifies as `:out-of-scope-by-ruling` rather than
+  `:load-failed` -- a RULED exclusion (this project has no equivalent,
+  by author decision), not a genuine load gap still to close.
+  `Physiology` (Synthea's own ODE-based physiology engine, found in
+  `gallstones.json`) is the first entry, citing this ADR. Grows by
+  ruling, never by convenience -- adding a type here without a matching
+  author ruling is not this set's own discipline."
+  #{"Physiology"})
+
+(defn out-of-scope-by-ruling?
+  "AR-5: a `:load-failed` closure reclassifies to `:out-of-scope-by-
+  ruling` ONLY when its ENTIRE load gap is explained by ruled-out state
+  types -- every other gap category empty, so this stays a clean,
+  single-cause classification rather than papering over a genuinely
+  mixed gap. Public (like `wellness-substitution?`, above) so it is
+  directly testable against hand-built gap maps -- `load-module`'s own
+  short-circuiting `cond` (first bad state wins) makes a genuinely
+  mixed gap hard to construct honestly through the loader alone."
+  [gap]
+  (boolean
+   (and (seq (:unrecognized-state-types gap))
+        (every? out-of-scope-state-types (:unrecognized-state-types gap))
+        (empty? (:unresolved-submodules gap))
+        (empty? (:unresolved-tables gap))
+        (empty? (:unrecognized-lookup-table-columns gap))
+        (empty? (:attribute-collisions gap))
+        (nil? (:cyclic-closure gap))
+        (empty? (:other-rejections gap)))))
 
 ;; --- Verdict + gap extraction (AR-2) --------------------------------------
 
@@ -298,12 +340,17 @@
                   (gmf/load-closure id root-json-text resolve-fn table-resolve-fn)
                   (catch Throwable e
                     {:status :error :category :loader-exception :payload (exception-detail e)}))
-        substitutions (cond-> [] (wellness-substitution? @fetched) (conj :wellness-timing))]
+        ;; :wellness-timing retired (ADR-0037 AR-5, see the comment
+        ;; above wellness-substitution?) -- the tag vocabulary stays
+        ;; extensible, this census just has none active right now.
+        substitutions []]
     (if-not (result/ok? closure)
-      {:id id :file (.getName file) :verdict :load-failed
-       :disclosed-substitutions substitutions
-       :gap (assoc (extract-load-gap closure) :closure-file-count (count @fetched))
-       :walks []}
+      (let [gap (assoc (extract-load-gap closure) :closure-file-count (count @fetched))]
+        {:id id :file (.getName file)
+         :verdict (if (out-of-scope-by-ruling? gap) :out-of-scope-by-ruling :load-failed)
+         :disclosed-substitutions substitutions
+         :gap gap
+         :walks []})
       (let [{:keys [modules tables]} (:payload closure)
             root-module (get modules id)
             seeds (mixed-seeds seed-count mixer-seed)

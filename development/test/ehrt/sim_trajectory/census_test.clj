@@ -61,19 +61,32 @@
        " }}"))
 
 (def ^:private wellness-json
-  "A bare `wellness: true` Encounter with no `encounter_class` key --
-  ADR-0031 AR-5(b)'s own timing-substitution trigger. Loads and walks
-  fine under the CURRENT (Wave-B-era) loader normalization (rewritten to
-  an immediate ambulatory-shaped encounter, not a genuine wait -- Wave G
-  supersedes this), so this fixture proves the tag fires on an
-  `:ok-walked` module; AR-3 itself is verdict-independent, exercised
-  directly below via `wellness-substitution?` rather than re-proven
-  against a second, load-failed fixture."
+  "A bare `wellness: true` Encounter with no `encounter_class` key.
+  ADR-0031 AR-5(b)'s own timing-substitution trigger -- GMF coverage
+  Wave G (2026-08-03, ADR-0037 AR-3) retires the substitution this
+  fixture used to prove the tag fired on: `wellness: true` now loads as
+  its own `:wellness-wait` state type and the interpreter genuinely
+  waits (`next-wellness-tick`), still landing `:ok-walked` (a real wait
+  is well within this census's own 50-year horizon)."
   (str "{\"name\": \"Census Wellness Fixture\","
        " \"states\": {"
        "   \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Visit\"},"
        "   \"Visit\": {\"type\": \"Encounter\", \"wellness\": true, \"direct_transition\": \"End\"},"
        "   \"End\": {\"type\": \"EncounterEnd\", \"direct_transition\": \"Done\"},"
+       "   \"Done\": {\"type\": \"Terminal\"}"
+       " }}"))
+
+(def ^:private physiology-json
+  "GMF coverage Wave G (2026-08-03, ADR-0037 AR-5): `Physiology` is a
+  real, unsupported v1 state type (Synthea's own ODE-based physiology
+  engine, found in `gallstones.json`) -- RULED out of scope, not a
+  load gap still to close. This fixture's ENTIRE load gap is exactly
+  this one unrecognized type, nothing else -- the single-cause shape
+  `out-of-scope-by-ruling?` classifies."
+  (str "{\"name\": \"Census Physiology Fixture\","
+       " \"states\": {"
+       "   \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Model\"},"
+       "   \"Model\": {\"type\": \"Physiology\", \"direct_transition\": \"Done\"},"
        "   \"Done\": {\"type\": \"Terminal\"}"
        " }}"))
 
@@ -106,17 +119,67 @@
       (is (every? #(= :vital-sign (get-in % [:error :data :condition-type]))
                   (get-in entry [:gap :walk-errors]))))))
 
-(deftest wellness-substitution-tag-fires-regardless-of-verdict
-  (testing "directly against the mechanical scan (AR-3's own claim: verdict-independent)"
+(deftest wellness-substitution-detector-is-retired-no-tag-ever-emitted
+  (testing "GMF coverage Wave G (2026-08-03, ADR-0037 AR-5): the
+            substitution `wellness-substitution?` scanned for is GONE
+            (ADR-0037 AR-3 retired it) -- `census-one` no longer calls
+            it, so `:disclosed-substitutions` stays empty even against
+            the SAME raw shape that used to trigger the tag. The
+            underlying scan function itself is kept as history, not
+            deleted, and still behaves exactly as documented if called
+            directly"
     (is (true? (census/wellness-substitution? {"root" wellness-json})))
     (is (false? (census/wellness-substitution? {"root" ok-json})))
     (is (false? (census/wellness-substitution? {"root" load-failed-json}))))
-  (testing "and on a real censused (:ok-walked) module"
+  (testing "but a real censused module -- even one carrying the old
+            trigger shape -- emits NO substitution tag anymore"
     (let [dir (io/file (System/getProperty "java.io.tmpdir") "census-test-wellness")
           file (write-fixture! dir "census-wellness-fixture" wellness-json)
           entry (census/census-one dir census-opts {:id "census-wellness-fixture" :file file})]
       (is (= :ok-walked (:verdict entry)))
-      (is (= [:wellness-timing] (:disclosed-substitutions entry))))))
+      (is (= [] (:disclosed-substitutions entry))))))
+
+(deftest physiology-only-gap-classifies-as-out-of-scope-by-ruling
+  (testing "GMF coverage Wave G (2026-08-03, ADR-0037 AR-5): a
+            :load-failed closure whose ENTIRE gap is the ruled-out
+            Physiology type reclassifies to :out-of-scope-by-ruling,
+            never :load-failed -- a genuine load gap this project has
+            no equivalent for BY RULING, not one still to close"
+    (let [dir (io/file (System/getProperty "java.io.tmpdir") "census-test-physiology")
+          file (write-fixture! dir "census-physiology-fixture" physiology-json)
+          entry (census/census-one dir census-opts {:id "census-physiology-fixture" :file file})]
+      (is (= :out-of-scope-by-ruling (:verdict entry)))
+      (is (= [] (:walks entry)))
+      (is (contains? (get-in entry [:gap :unrecognized-state-types]) "Physiology")))))
+
+(deftest out-of-scope-by-ruling-predicate-requires-a-single-clean-cause
+  (testing "out-of-scope-by-ruling? is a single-cause classifier --
+            proven directly against hand-built gap maps, since
+            `load-module`'s own short-circuiting `cond` (first bad
+            state wins) makes a genuinely mixed gap hard to construct
+            honestly through the loader alone (only one unrecognized
+            state type can ever surface from a single root file)"
+    (is (true? (census/out-of-scope-by-ruling?
+                {:unrecognized-state-types #{"Physiology"}
+                 :unresolved-submodules #{} :unresolved-tables #{}
+                 :unrecognized-lookup-table-columns #{} :attribute-collisions #{}
+                 :cyclic-closure nil :other-rejections []}))
+        "the clean case: the ENTIRE gap is the ruled-out type")
+    (is (false? (census/out-of-scope-by-ruling?
+                 {:unrecognized-state-types #{"Physiology" "VitalSign"}
+                  :unresolved-submodules #{} :unresolved-tables #{}
+                  :unrecognized-lookup-table-columns #{} :attribute-collisions #{}
+                  :cyclic-closure nil :other-rejections []}))
+        "a SECOND, non-ruled unrecognized type keeps it :load-failed")
+    (is (false? (census/out-of-scope-by-ruling?
+                 {:unrecognized-state-types #{"Physiology"}
+                  :unresolved-submodules #{"some/missing"} :unresolved-tables #{}
+                  :unrecognized-lookup-table-columns #{} :attribute-collisions #{}
+                  :cyclic-closure nil :other-rejections []}))
+        "a genuinely unrelated gap (a missing submodule) alongside the
+         ruled-out type ALSO keeps it :load-failed, never silently
+         absorbed into the ruled-out bucket")
+    (is (false? (census/out-of-scope-by-ruling? {:unrecognized-state-types #{}})) "an empty gap is not this classifier's business")))
 
 (deftest verify-pin-falls-back-to-content-hash-with-no-git-checkout
   (let [dir (io/file (System/getProperty "java.io.tmpdir") "census-test-no-git")]

@@ -3370,3 +3370,115 @@ cluster's pre-F membership. Named for whichever future session ranks
 Wave G/H's own priority — not a defect in this session's own scope,
 a property of the frontier this session's own re-run happened to make
 visible.
+
+### Census re-run (2026-08-03, ADR-0037 AR-8): wellness cycle lands --
+substitution retired, four loop modules resolve, Physiology out-of-scope
+
+Wave G (ADR-0037) retires the create-now wellness substitution (AR-3)
+and lands the real cadence-anchored wait (AR-1/AR-2), the design gap
+this document's own §4 dated note and this section's own AR-3's
+"5 confirmed... likely still under-counted" wellness row named since
+ADR-0031. Re-run with the SAME header parameters as Wave F (pin, 3
+seeds/module, mixer-seed `20260803`, registration age 30, 50-year
+horizon, the same disclosed persona-config delta) — no NEW header
+parameter this wave, since AR-2's own schedule function draws zero rng
+and needs no config of its own. New artifact:
+[`components/sim-trajectory/docs/census/2026-08-03-synthea-7e08387-wave-g.edn`](census/2026-08-03-synthea-7e08387-wave-g.edn),
+committed alongside all three prior artifacts (never overwriting), same
+filename-disambiguation workaround F0 first used.
+
+**Verdict counts, before → after:**
+
+| Verdict | Before | After | Δ |
+|---|---:|---:|---:|
+| `:ok-walked` | 60 | 64 | +4 |
+| `:load-failed` | 18 | 17 | −1 |
+| `:walk-failed` | 7 | 3 | −4 |
+| `:out-of-scope-by-ruling` | 0 | 1 | +1 |
+| **Total** | **85** | **85** | 0 |
+
+`Physiology` drops off the top-gap-mechanisms table entirely (was 1,
+`gallstones`' own blocker) — reclassified, not resolved; the remaining
+mechanisms are `VitalSign` ×2, `AllergyOnset` ×1, `Vaccine` ×1.
+
+**Movement classification (AR-8), every verdict change and every
+digest change among the 19 formerly `:wellness-timing`-tagged modules
+traced individually, byte-confirmed against both artifacts:**
+
+- **The four real upstream loop modules this Wave unblocks, ALL
+  resolved fully to `:ok-walked`**: `med-rec`, `mend-program`,
+  `metabolic-syndrome-care`, `veteran-substance-abuse-treatment` — each
+  was the exact `max-steps` "zero-time-advance transition cycle"
+  signature the retired substitution's own zero-advance wellness
+  encounter produced (`mend-program`/`metabolic-syndrome-care` first
+  surfaced this class at Wave F, `docs/gmf-interpreter.md`'s own AR-8
+  account there; `med-rec`/`veteran-substance-abuse-treatment` were
+  named in the parity plan's own unlock ledger from the start, ADR-0031
+  AR-5(a)). Verified directly (not merely by census verdict): a
+  standalone trace of `med_rec.json` through `run-module` at the
+  census's own seed/registration/horizon parameters now completes at
+  `:horizon-complete` with 269 real trajectory events, where it
+  previously threw at `max-steps` inside its own `Wellness_Encounter`
+  state.
+- **`gallstones` reclassifies `:load-failed` → `:out-of-scope-by-
+  ruling`** (AR-5): its own sole load gap, the `Physiology` state type,
+  is now the census's first ruled exclusion, not a load gap still to
+  close.
+- **7 of the 19 formerly-tagged modules stay `:ok-walked` in both
+  runs, but their own walk digest CHANGES** (a wait now times the
+  encounter differently than the retired immediate-fire substitution
+  did — expected, per AR-8's own prediction): `asthma`, `bronchitis`,
+  `dementia`, `ear-infections`, `osteoporosis`, `sleep-apnea`,
+  `veteran-hyperlipidemia`.
+- **8 of the 19 formerly-tagged modules show NO observable difference**
+  (still `:ok-walked`, byte-identical digest across both runs):
+  `atrial-fibrillation`, `copd`, `epilepsy`, `hypertension`, `mtbi`,
+  `stable-ischemic-heart-disease`, `veteran-prostate-cancer`,
+  `wellness-encounters` — their own particular 3 seeds/50-year horizon
+  never happen to cross the wellness-wait path differently between the
+  two timing mechanisms (a module-specific gating fact, not a gap in
+  the fix; `wellness-encounters` itself stays `:walk-failed` in BOTH
+  runs regardless, for a wholly unrelated, pre-existing reason — see
+  below).
+- **No module OUTSIDE these 19 changed verdict or digest at all** —
+  every one of the other 66 modules is byte-identical across both
+  artifacts, confirmed by a full per-module diff, not merely a verdict-
+  count comparison.
+
+Net arithmetic: 5 verdict changes (4 loop modules + `gallstones`) plus
+7 digest-only changes = 12 of the 19 formerly-tagged modules show SOME
+observable movement; the remaining 7 stay entirely unmoved.
+
+**Two `:walk-failed` modules stayed `:walk-failed`, for reasons wholly
+unrelated to this Wave's own fence** (disclosed, not a regression):
+`anemia-unknown-etiology` ("Observation condition has no matching prior
+observation," a pre-existing observation-linkage gap) and `wellness-
+encounters` ("unrecognized vital-sign name -- not in sim-trajectory/
+vital-signs.edn", `"Height"` — a vital-sign reference-table gap,
+`docs/gmf-interpreter.md` section 11's own `vital_sign` line, unrelated
+to the wellness CYCLE this Wave lands despite the module's own name).
+Both errors are byte-identical to the Wave F census's own record for
+the same two modules — genuinely untouched by this Wave, not silently
+re-caused.
+
+**Sanity anchors held.** All seven currently-vendored roots stayed
+`:ok-walked` across every census artifact to date, matching the AR-6
+oracle bracket above (`ear-infections`' own digest changes there are
+the SAME timing change this census's own movement classification
+names, not a second, independent divergence).
+
+**Chronic-meds cadence cap: deferred, not implemented** (AR-1's own
+ruling) — recorded as a named register item ("wellness cadence
+chronic-meds cap"), not built this session.
+
+**A live finding, disclosed (`notes/ADRs.md` ADR-0037's own deviation
+record has the full account): `next-wellness-tick`'s own boundary
+semantics were REFINED mid-session** from an inclusive "first tick >= t"
+to a strict "first tick > t" after this census's own FIRST run (against
+the inclusive version) showed `med-rec`/`mend-program`/`metabolic-
+syndrome-care`/`veteran-substance-abuse-treatment` STILL `:walk-failed`
+at `max-steps` — the real modules' own zero-delay wellness-wait loops
+hit exactly the boundary case the inclusive design didn't cover. Fixed,
+re-verified (the oracle bracket above and this section's own numbers
+are the POST-fix, correct run), and its own dedicated commit's message
+carries the full account."
