@@ -52,11 +52,11 @@
             [ehrt.corpus.generators :as generators]
             [ehrt.corpus.golden-comparison :as golden-comparison]
             [ehrt.corpus.intake :as intake]
-            [ehrt.corpus.manifest :as manifest]
             [ehrt.corpus.mutate :as mutate]
             [ehrt.corpus.operators :as operators]
             [ehrt.corpus.player :as player]
-            [ehrt.corpus.sim-adapter :as sim-adapter]))
+            [ehrt.corpus.sim-adapter :as sim-adapter]
+            [ehrt.provenance.interface :as provenance]))
 
 ;; ---- generate ----
 (def generate! generate/generate!)
@@ -100,7 +100,12 @@
 (def operator-registry-reset! operators/reset-registry!)     ; test-consumer only (bases/cli tests)
 
 ;; ---- manifest ----
-(def ManifestV1_1 manifest/ManifestV1_1)                 ; test-consumer only (conformance)
+;; Repointed to provenance directly (sim split B, M1 step 2, 2026-08-04):
+;; ehrt.provenance.interface is the schema's real home now; this
+;; interface names that dependency explicitly rather than relaying
+;; through ehrt.corpus.manifest (which keeps its own relay too, for
+;; its builder-side callers -- see that namespace's own docstring).
+(def ManifestV1_1 provenance/ManifestV1_1)                 ; test-consumer only (conformance)
 
 ;; ---- check ----
 (def check-corpus check/check-corpus)

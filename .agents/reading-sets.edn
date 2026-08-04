@@ -324,7 +324,11 @@
   ;; bumped 1701->1705, sim split B M1 session (2026-08-04, Step 1):
   ;; AGENTS.md's own Components-list growth (above) brought the real
   ;; total from 1701 to 1705.
-  :budget-lines 1705}
+  ;; bumped 1705->1710, same session, Step 2: corpus/interface.clj's
+  ;; own ManifestV1_1 re-export repointed to provenance directly, with
+  ;; a short dated comment explaining the relay (net +5 lines) brought
+  ;; the real total from 1705 to 1710.
+  :budget-lines 1710}
 
  ;; components/sim is the deterministic generator engine wrapping Synthea
  ;; (ADR-0005) -- engine-onboarding.md is the checklist every engine wrapper

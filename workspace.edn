@@ -44,16 +44,16 @@
             ;; "integration" needs judge-fhir-official listed (consumed
             ;; only by its project test tree) while conformance's
             ;; v2-hapi needs nothing (see ADR-0018's table).
-            ;; provenance (sim split B, M1 step 1, 2026-08-04): landed
-            ;; ahead of the real :require edge (Step 2 repoints corpus
-            ;; to it) -- every :necessary list below carries it as an
-            ;; interim override, R-9's own "three manifests during M1"
-            ;; transient. Re-derived at Step 2 once corpus' own src
-            ;; reaches it for real; expect these three entries to drop
-            ;; "provenance" again then.
-            "ehrt-cli" {:alias "ehrt-cli"
-                        :necessary ["provenance"]}
+            ;; provenance (sim split B, M1, 2026-08-04): Step 1 carried
+            ;; a temporary "provenance" :necessary override on all
+            ;; three entries below (landed ahead of the real :require
+            ;; edge, R-9's "three manifests during M1" transient); Step
+            ;; 2 repoints corpus' own src to it for real
+            ;; (ehrt.corpus.manifest, ehrt.corpus.interface), so every
+            ;; project including corpus reaches it transitively now --
+            ;; re-derived here, override dropped again.
+            "ehrt-cli" {:alias "ehrt-cli"}
             "conformance" {:alias "conformance"
-                           :necessary ["docs-tooling" "judge-fhir-official" "judge-v2-nist" "provenance"]}
+                           :necessary ["docs-tooling" "judge-fhir-official" "judge-v2-nist"]}
             "integration" {:alias "integration"
-                           :necessary ["judge-fhir-official" "provenance"]}}}
+                           :necessary ["judge-fhir-official"]}}}
