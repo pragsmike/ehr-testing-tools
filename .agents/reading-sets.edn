@@ -287,7 +287,11 @@
   ;; M2-M4 rewrite, and the new M1 Done section (shas, payoff) brought
   ;; the real total from 1874 to 1925 -- self-caught, the same pattern
   ;; every prior session touching this file has hit.
-  :budget-lines 1925}
+  ;; bumped 1925->1927, Step 7 close-out (2026-08-04): indexing this
+  ;; session's own session-record/prompt-archive filenames in their own
+  ;; already-cited onboarding READMEs (1 line each) brought the real
+  ;; total from 1925 to 1927.
+  :budget-lines 1927}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one
