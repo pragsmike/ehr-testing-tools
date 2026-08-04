@@ -143,7 +143,32 @@
    ;; the register is the home this project's own accumulator never had
    ;; for a REAL vital-sign VALUE (as opposed to the pre-existing,
    ;; independent-draw Observation reader, D1a-4).
-   "VitalSign" :vital-sign})
+   "VitalSign" :vital-sign
+   ;; GMF coverage Wave I (2026-08-04, ADR-0040 AR-5): AllergyOnset --
+   ;; State.java's own AllergyOnset class (extends the SAME OnsetState
+   ;; ConditionOnset already extends, source-grounded). This project's
+   ;; own ConditionOnset never modeled OnsetState's own diagnose/target-
+   ;; encounter-deferral/assign-to-attribute machinery (an M5a
+   ;; simplification predating this wave: `step`'s own :condition-onset
+   ;; case emits unconditionally, ignoring :target-encounter) -- AllergyOnset
+   ;; follows the identical, ALREADY-established simplification
+   ;; (`allergies.json`'s own Allergy_Unspecified: :target-encounter/
+   ;; :assign-to-attribute both authored but never downstream-read on
+   ;; this closure's own mandatory path, confirmed by direct grep;
+   ;; :reactions is an empty list on that same state, and no closure
+   ;; member this session vendors ever reads a reaction severity back --
+   ;; installed ≠ used, grows-by-evidence).
+   "AllergyOnset" :allergy-onset
+   ;; GMF coverage Wave I (2026-08-04, ADR-0040 AR-5): Vaccine --
+   ;; State.java's own Vaccine class (source-grounded): an unconditional
+   ;; leaf write, simpler than ConditionOnset/AllergyOnset (no target-
+   ;; encounter/diagnose distinction at all upstream -- `process` always
+   ;; records the immunization). :series is upstream's own primitive
+   ;; `int` field (always some value, JSON-authored or Java's own
+   ;; zero-default); this loader leaves it optional and lets the
+   ;; interpreter supply the same zero-default `Counter`'s own :amount
+   ;; field already establishes for an absent primitive-int JSON field.
+   "Vaccine" :vaccine})
 
 (def ^:private code-system->keyword
   "GMF's own code-system strings -> sim-model/Concept's
@@ -699,9 +724,15 @@
                   (:action state) (update :action (fn [a] (keyword (slug a))))
                   ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-2): ImagingStudy's
                   ;; own :procedure-code (a single Concept) and :series (embedded,
-                  ;; recursively normalized).
+                  ;; recursively normalized). GMF coverage Wave I (2026-08-04,
+                  ;; ADR-0040 AR-5): kw-type-GATED -- Vaccine's own :series is a
+                  ;; genuinely DIFFERENT field sharing this same bare key name
+                  ;; (a plain int, State.java's own primitive `series` field),
+                  ;; found live (this session's own red test): the pre-existing
+                  ;; ungated `(:series state)` clause crashed trying to `mapv`
+                  ;; over Vaccine's int.
                   (:procedure-code state) (update :procedure-code normalize-code)
-                  (:series state) (update :series #(mapv normalize-imaging-series %))
+                  (and (:series state) (= :imaging-study kw-type)) (update :series #(mapv normalize-imaging-series %))
                   ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-3): SupplyList's
                   ;; own :supplies -- each component's :code normalized, :quantity
                   ;; untouched (already a plain int).
@@ -1188,7 +1219,18 @@
    [:vital-sign (with-transitions [:type [:= :vital-sign]] [:vital-sign :string]
                   [:unit {:optional true} :string]
                   [:range {:optional true} Range] [:exact {:optional true} Exact]
-                  [:distribution {:optional true} SampledDistribution])]])
+                  [:distribution {:optional true} SampledDistribution])]
+   ;; GMF coverage Wave I (2026-08-04, ADR-0040 AR-5): AllergyOnset --
+   ;; the SAME shape :condition-onset already declares (`gmf-type->
+   ;; keyword`'s own dated note has the full simplification rationale).
+   [:allergy-onset (with-transitions [:type [:= :allergy-onset]] [:codes [:vector sim-model/Concept]]
+                     [:target-encounter {:optional true} :keyword])]
+   ;; GMF coverage Wave I (2026-08-04, ADR-0040 AR-5): Vaccine -- :series
+   ;; is upstream's own primitive `int` field, optional here (the
+   ;; interpreter's own :vaccine case supplies the same zero-default a
+   ;; genuinely absent primitive int carries upstream).
+   [:vaccine (with-transitions [:type [:= :vaccine]] [:codes [:vector sim-model/Concept]]
+               [:series {:optional true} :int])]])
 
 (def GmfModule
   [:map

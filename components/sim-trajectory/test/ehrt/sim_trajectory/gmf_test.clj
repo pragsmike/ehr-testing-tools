@@ -77,11 +77,17 @@
   anywhere, the same gap `:active-allergy`'s own always-false condition
   simplification already documents -- genuinely, not merely
   provisionally, deferred) -- a stale premise, not silently left to
-  test what it no longer tests."
+  test what it no longer tests.
+  GMF coverage Wave I (2026-08-04, ADR-0040 AR-5): swapped AGAIN, from
+  AllergyOnset (this session's own example, now supported) to
+  Physiology, State.java's own class this project has never registered
+  at all and has no plan to (a full PK/PD physiology-simulation engine,
+  source-grounded -- no analog anywhere in this project's own
+  architecture, unlike AllergyOnset/Vaccine's mechanical ports)."
   (str "{\"name\": \"Bad Module\","
        " \"states\": {"
        "   \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Recurse\"},"
-       "   \"Recurse\": {\"type\": \"AllergyOnset\", \"direct_transition\": \"Done\"},"
+       "   \"Recurse\": {\"type\": \"Physiology\", \"direct_transition\": \"Done\"},"
        "   \"Done\": {\"type\": \"Terminal\"}"
        " }}"))
 
@@ -90,7 +96,7 @@
     (is (result/rejected? loaded))
     (is (= :unsupported-state-type (:category loaded)))
     (is (= :recurse (:state (:payload loaded))))
-    (is (= "AllergyOnset" (:raw-type (:payload loaded))))))
+    (is (= "Physiology" (:raw-type (:payload loaded))))))
 
 (def reserved-attribute-collision-json
   "A deliberately malformed module: SetAttribute writes the bare,
@@ -287,10 +293,13 @@
   (2026-08-03, ADR-0036): swapped again, from ImagingStudy (now
   supported) to VitalSign (AR-7, still deferred). GMF coverage Wave VS
   (2026-08-04, ADR-0039): swapped again, from VitalSign (now supported)
-  to AllergyOnset, same reason as deferred-state-type-json above."
+  to AllergyOnset, same reason as deferred-state-type-json above.
+  GMF coverage Wave I (2026-08-04, ADR-0040 AR-5): swapped again, from
+  AllergyOnset (now supported) to Physiology, same reason as
+  deferred-state-type-json above."
   (str "{\"name\": \"Leaf\", \"states\": {"
        "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Bad\"},"
-       "  \"Bad\": {\"type\": \"AllergyOnset\", \"direct_transition\": \"Done\"},"
+       "  \"Bad\": {\"type\": \"Physiology\", \"direct_transition\": \"Done\"},"
        "  \"Done\": {\"type\": \"Terminal\"}}}"))
 
 (deftest load-closure-all-or-nothing-gate-extends-to-a-transitively-called-submodule
@@ -1117,3 +1126,63 @@
     (is (result/ok? loaded))
     (is (= {:condition-type :vital-sign :vital-sign "Systolic Blood Pressure" :operator "<" :value 90}
            (:allow (get-in (:payload loaded) [:states :check]))))))
+
+;; --- GMF coverage Wave I (2026-08-04, ADR-0040 AR-5): AllergyOnset ------
+
+(def allergy-onset-json
+  "allergies.json's own Allergy_Unspecified shape, byte-confirmed
+  against source: :target-encounter/:assign-to-attribute/:reactions all
+  authored but never downstream-read on this closure's own mandatory
+  path -- the same simplification :condition-onset already establishes."
+  (str "{\"name\": \"Allergies\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Onset\"},"
+       "  \"Onset\": {\"type\": \"AllergyOnset\", \"allergy_type\": \"allergy\", \"category\": \"environment\","
+       "             \"target_encounter\": \"Allergist_Initial_Visit\","
+       "             \"codes\": [{\"system\": \"SNOMED-CT\", \"code\": \"609328004\", \"display\": \"Allergic disposition (finding)\"}],"
+       "             \"reactions\": [], \"assign_to_attribute\": \"allergy_unspecified\","
+       "             \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest allergy-onset-loads-and-validates
+  (let [loaded (gmf/load-module "allergies" allergy-onset-json)]
+    (is (result/ok? loaded))
+    (let [onset (get-in (:payload loaded) [:states :onset])]
+      (is (= :allergy-onset (:type onset)))
+      (is (= [{:system :snomed :code "609328004" :display "Allergic disposition (finding)"}] (:codes onset)))
+      (is (= :allergist-initial-visit (:target-encounter onset))))))
+
+;; --- GMF coverage Wave I (2026-08-04, ADR-0040 AR-5): Vaccine -----------
+
+(def vaccine-json
+  "hiv_care.json's own Administer Tdap shape, byte-confirmed against
+  source."
+  (str "{\"name\": \"HivCare\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Tdap\"},"
+       "  \"Tdap\": {\"type\": \"Vaccine\", \"series\": 1,"
+       "            \"codes\": [{\"system\": \"CVX\", \"code\": 115, \"display\": \"Tdap vaccine\"}],"
+       "            \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest vaccine-loads-and-validates
+  (let [loaded (gmf/load-module "hiv-care" vaccine-json)]
+    (is (result/ok? loaded))
+    (let [tdap (get-in (:payload loaded) [:states :tdap])]
+      (is (= :vaccine (:type tdap)))
+      (is (= 1 (:series tdap)))
+      (is (= [{:system :cvx :code "115" :display "Tdap vaccine"}] (:codes tdap))))))
+
+(def vaccine-no-series-json
+  "State.java's own :series is a primitive int -- a real module could
+  in principle omit it; this loader leaves it optional rather than
+  requiring a JSON field upstream doesn't require either."
+  (str "{\"name\": \"NoSeries\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Shot\"},"
+       "  \"Shot\": {\"type\": \"Vaccine\","
+       "            \"codes\": [{\"system\": \"CVX\", \"code\": 33, \"display\": \"PPSV23\"}],"
+       "            \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest vaccine-with-no-series-loads-and-validates
+  (let [loaded (gmf/load-module "no-series" vaccine-no-series-json)]
+    (is (result/ok? loaded))
+    (is (not (contains? (get-in (:payload loaded) [:states :shot]) :series)))))

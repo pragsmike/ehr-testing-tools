@@ -2611,3 +2611,72 @@
 (deftest vital-sign-condition-with-an-unrecognized-name-throws
   (is (thrown-with-msg? clojure.lang.ExceptionInfo #"unrecognized vital-sign"
                          (interp/step unrecognized-vital-sign-condition-module (Random. 1) (assoc (ctx-for (persona-at 1)) :current :check)))))
+
+;; --- GMF coverage Wave I (2026-08-04, ADR-0040 AR-5): AllergyOnset --
+;; the SAME unconditional emit :condition-onset already performs.
+
+(def allergy-codes [{:system :snomed :code "609328004" :display "Allergic disposition (finding)"}])
+
+(def allergy-onset-module
+  {:id "allergy-mod" :name "Allergy"
+   :states {:initial {:type :initial :direct-transition :onset}
+            :onset {:type :allergy-onset :codes allergy-codes :target-encounter :allergist-visit
+                    :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest allergy-onset-emits-a-trajectory-event-citing-its-own-codes
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :onset)
+        outcome (interp/step allergy-onset-module (Random. 1) ctx)]
+    (is (= 1 (count (:events outcome))))
+    (is (= :allergy-onset (:event (first (:events outcome)))))
+    (is (= allergy-codes (:codes (first (:events outcome)))))
+    (is (= 0 (:advance outcome)))
+    (is (= :done (:next outcome)))))
+
+(deftest allergy-onset-ignores-target-encounter-the-same-way-condition-onset-already-does
+  (testing "M5a's own pre-existing simplification, extended unchanged --
+            emits unconditionally regardless of :target-encounter"
+    (let [ctx (assoc (ctx-for (persona-at 1)) :current :onset)
+          outcome (interp/step allergy-onset-module (Random. 1) ctx)]
+      (is (= 1 (count (:events outcome)))))))
+
+;; --- GMF coverage Wave I (2026-08-04, ADR-0040 AR-5): Vaccine -- an
+;; unconditional leaf write, no target-encounter/diagnose distinction
+;; upstream at all.
+
+(def vaccine-codes [{:system :cvx :code "115" :display "Tdap vaccine"}])
+
+(def vaccine-module
+  {:id "vaccine-mod" :name "Vaccine"
+   :states {:initial {:type :initial :direct-transition :tdap}
+            :tdap {:type :vaccine :codes vaccine-codes :series 1 :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest vaccine-emits-a-trajectory-event-citing-its-own-codes-and-series
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :tdap)
+        outcome (interp/step vaccine-module (Random. 1) ctx)]
+    (is (= 1 (count (:events outcome))))
+    (is (= :vaccine (:event (first (:events outcome)))))
+    (is (= vaccine-codes (:codes (first (:events outcome)))))
+    (is (= 1 (:series (first (:events outcome)))))
+    (is (= 0 (:advance outcome)))))
+
+(def vaccine-no-series-module
+  {:id "vaccine-no-series-mod" :name "VaccineNoSeries"
+   :states {:initial {:type :initial :direct-transition :shot}
+            :shot {:type :vaccine :codes vaccine-codes :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest vaccine-with-no-series-defaults-to-zero
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :shot)
+        outcome (interp/step vaccine-no-series-module (Random. 1) ctx)]
+    (is (= 0 (:series (first (:events outcome)))))))
+
+(deftest vaccine-consumes-no-rng
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :tdap)
+        calls (atom 0)
+        rng (proxy [Random] [(long 1)]
+              (nextDouble [] (swap! calls inc) (proxy-super nextDouble))
+              (nextInt ([n] (swap! calls inc) (proxy-super nextInt n))))]
+    (interp/step vaccine-module rng ctx)
+    (is (= 0 @calls))))
