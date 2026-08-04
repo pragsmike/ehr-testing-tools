@@ -36,7 +36,14 @@
   (2026-08-03, ADR-0036 AR-4/AR-5) adds two further, CONFIG-GATED draws
   (:race/:socioeconomic-category) -- a deliberate, narrow, documented
   exception to 'always,' not a silent violation (`persona`'s own
-  docstring has the full reasoning)."
+  docstring has the full reasoning). GMF coverage Wave LC (2026-08-03,
+  ADR-0038 AR-3) adds a THIRD config-gated draw, :state -- the SAME
+  pattern verbatim, a US-state-name value vocabulary the lookup-table
+  column family's own CSVs key on (`myocardial_infarction.json`'s own
+  closure), deliberately distinct from the EXISTING `:address :state`
+  field (a USPS two-letter abbreviation, `places.edn`'s own vocabulary
+  -- a real, disclosed divergence: two different :state-shaped fields
+  for two different real-world vocabularies, never unified)."
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [malli.core :as m])
@@ -113,7 +120,21 @@
    ;; `:payer`'s own :type enum is the one exception to, and only because
    ;; that enum backs real payer-mix modeling, docs/operational-models.md).
    [:race {:optional true} :string]
-   [:socioeconomic-category {:optional true} :string]])
+   [:socioeconomic-category {:optional true} :string]
+   ;; GMF coverage Wave LC (2026-08-03, ADR-0038 AR-3): optional,
+   ;; sampled ONLY when persona config supplies `:state-weights` -- the
+   ;; SAME config-gated pattern :race/:socioeconomic-category (above)
+   ;; already establish. Deliberately NOT the same field as
+   ;; `:address :state` (a USPS abbreviation) -- the lookup-table CSVs
+   ;; this field exists to unblock key on full US state NAMES
+   ;; (`myocardial_infarction.json`'s own closure, e.g.
+   ;; `ace_arb_*_product_distribution.csv`'s own `state` column,
+   ;; "Alabama"/"Alaska"/... -- confirmed by direct read against the
+   ;; pin), a genuinely different vocabulary from `places.edn`'s own
+   ;; two-letter codes, not enforced here (same "declared, not
+   ;; validated against a closed set" treatment `:race`/
+   ;; `:socioeconomic-category` already get).
+   [:state {:optional true} :string]])
 
 (defn valid-persona? [p] (m/validate Persona p))
 (defn explain-persona [p] (m/explain Persona p))
@@ -232,24 +253,30 @@
     15. socioeconomic-category, weighted over `:socioeconomic-weights`
         -- same conditional shape as 14
 
+  GMF coverage Wave LC (2026-08-03, ADR-0038 AR-3): a THIRD config-gated
+  draw, the SAME pattern verbatim --
+
+    16. state, weighted over `:state-weights` -- same conditional shape
+        as 14/15, ONLY drawn when `config` supplies a non-empty pool
+
   This is a DELIBERATE, narrow exception to 'fixed regardless of
   content,' not a violation of it: the law above guards against draw
   COUNT depending on a runtime OUTCOME within one persona's own
   sampling (which bucket a weighted pick lands in must never change how
-  many draws happen). `:race-weights`/`:socioeconomic-weights` presence
-  is a CONFIG-time decision -- the same class of variation `age-min`/
-  `age-max` already are, a caller-supplied input that shapes what gets
-  sampled, not a value THIS function chooses partway through. The
-  identity-preservation reason this exception exists: adding these
-  fields must not perturb the RNG stream for every EXISTING (unconfigured)
-  caller -- an unconditional 14th/15th draw would shift every subsequent
-  draw for every persona this project has ever sampled, the actual
-  concern the fixed-consumption law exists to prevent. `persona-test`'s
-  own `counting-random` proves both halves: 13 draws with no config
-  supplied (byte-identical to every persona sampled before this ADR), 15
-  with both weights supplied."
+  many draws happen). `:race-weights`/`:socioeconomic-weights`/
+  `:state-weights` presence is a CONFIG-time decision -- the same class
+  of variation `age-min`/`age-max` already are, a caller-supplied input
+  that shapes what gets sampled, not a value THIS function chooses
+  partway through. The identity-preservation reason this exception
+  exists: adding these fields must not perturb the RNG stream for every
+  EXISTING (unconfigured) caller -- an unconditional 14th/15th/16th draw
+  would shift every subsequent draw for every persona this project has
+  ever sampled, the actual concern the fixed-consumption law exists to
+  prevent. `persona-test`'s own `counting-random` proves the pattern:
+  13 draws with no config supplied (byte-identical to every persona
+  sampled before ADR-0036), 16 with all three weights supplied."
   [^Random rng {:keys [age-min age-max payers-under-65 payers-65-plus
-                       race-weights socioeconomic-weights]
+                       race-weights socioeconomic-weights state-weights]
                 :or {age-min 0 age-max 90
                      payers-under-65 under-65-payers
                      payers-65-plus sixty-five-plus-payers}}]
@@ -289,4 +316,10 @@
 
       (seq socioeconomic-weights)
       (assoc :socioeconomic-category
-             (:category (weighted-pick socioeconomic-weights (.nextDouble rng)))))))
+             (:category (weighted-pick socioeconomic-weights (.nextDouble rng))))
+
+      ;; GMF coverage Wave LC (ADR-0038 AR-3): draw 16, the SAME
+      ;; config-gated pattern as 14/15 -- `:state`, not `:address
+      ;; :state` (a genuinely different field, above).
+      (seq state-weights)
+      (assoc :state (:state (weighted-pick state-weights (.nextDouble rng)))))))

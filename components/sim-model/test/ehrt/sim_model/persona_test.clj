@@ -122,3 +122,44 @@
   (prop/for-all [seed gen/large-integer]
     (persona/valid-persona? (persona/persona (Random. seed) {:race-weights race-weights
                                                               :socioeconomic-weights ses-weights}))))
+
+;; --- GMF coverage Wave LC (2026-08-03, ADR-0038 AR-3): persona :state --
+;; the SAME config-gated pattern verbatim, a third field -------------------
+
+(def ^:private state-weights [{:state "Alabama" :weight 60.0} {:state "Alaska" :weight 40.0}])
+
+(deftest state-is-absent-with-no-config
+  (is (not (contains? (persona/persona (Random. 1) {}) :state))))
+
+(deftest state-is-sampled-when-config-supplies-weights
+  (let [p (persona/persona (Random. 1) {:state-weights state-weights})]
+    (is (contains? #{"Alabama" "Alaska"} (:state p)))))
+
+(deftest state-is-distinct-from-address-state
+  (testing "the NEW :state field (full US state names, myocardial_
+            infarction.json's own closure vocabulary) is never the same
+            key as the PRE-EXISTING :address :state (a USPS
+            abbreviation, places.edn's own vocabulary)"
+    (let [p (persona/persona (Random. 1) {:state-weights state-weights})]
+      (is (not= (:state p) (get-in p [:address :state])))
+      (is (= 2 (count (get-in p [:address :state])))
+          "the pre-existing field stays a two-letter abbreviation, untouched"))))
+
+(deftest state-is-conditionally-drawn
+  (testing "absent config draws zero extra beyond the pre-existing 13
+            (or 15 with race/ses also configured); present config draws
+            exactly one more -- the SAME direct method-call-counting
+            technique ADR-0036's own spec already uses"
+    (let [{:keys [rng calls]} (counting-random 1)]
+      (persona/persona rng {})
+      (is (= 13 @calls) "no config supplied -- byte-identical to every persona sampled before this ADR"))
+    (let [{:keys [rng calls]} (counting-random 1)]
+      (persona/persona rng {:state-weights state-weights})
+      (is (= 14 @calls) "only :state-weights supplied -- exactly one more draw"))
+    (let [{:keys [rng calls]} (counting-random 1)]
+      (persona/persona rng {:race-weights race-weights :socioeconomic-weights ses-weights :state-weights state-weights})
+      (is (= 16 @calls) "all three weights supplied -- exactly three more draws, 16 total"))))
+
+(defspec every-sampled-persona-with-state-config-is-schema-valid 100
+  (prop/for-all [seed gen/large-integer]
+    (persona/valid-persona? (persona/persona (Random. seed) {:state-weights state-weights}))))
