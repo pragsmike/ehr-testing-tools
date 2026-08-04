@@ -67,7 +67,8 @@
    :churn-profile {::churn-profile-sentinel true}
    :order-profiles ::order-profiles-sentinel
    :module-assignment ::module-assignment-sentinel
-   :module-horizon-days ::module-horizon-days-sentinel})
+   :module-horizon-days ::module-horizon-days-sentinel
+   :history ::history-sentinel})
 
 (deftest run-command-forwards-every-engine-config-key
   (testing "the FULL ehrt.sim.engine/config-keys set reaches

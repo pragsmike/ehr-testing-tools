@@ -337,6 +337,7 @@
   ;; nicety), or `replay`'s own bootstrap (and every check.clj invariant
   ;; built on it) silently seeds `:mrns #{nil}`.
   (let [persona (sim-model/persona rng (:persona-config world))
+        history? (boolean (:history world))
         compiled (when closure
                    (let [root-module (get (:modules closure) (:root closure))
                          reg-t (sim-model/reference-today-epoch-day)
@@ -345,8 +346,18 @@
                                                 root-module rng persona reg-t horizon-end-t
                                                 (:modules closure)
                                                 (or (:initial-attributes closure) {})
-                                                (or (:tables closure) {}))]
-                     (sim-trajectory/compile-trajectory trajectory (:facility world) reg-t)))]
+                                                (or (:tables closure) {})
+                                                history?)]
+                     ;; Step 1 (ADR-0042): compile-trajectory's own new
+                     ;; 4-arity lands in Step 2 -- calling it unconditionally
+                     ;; here, even at `history?` false, would ArityException
+                     ;; every pre-H run before that arity exists. `history?`
+                     ;; false stays the plain 3-arg call (untouched, byte-
+                     ;; identical); `history?` true opts into the 4-arg call
+                     ;; Step 2 adds.
+                     (if history?
+                       (sim-trajectory/compile-trajectory trajectory (:facility world) reg-t history?)
+                       (sim-trajectory/compile-trajectory trajectory (:facility world) reg-t))))]
     {:events [(cond-> {:event :registered :t t
                        :active-mrn (get-in world [:patients patient-id :active-mrn])
                        :persona persona
@@ -1230,7 +1241,7 @@
   (caught only by the tools consumer loop, after the fact)."
   [:seed :patients :pathway :pathways :arrival-gap :warm-up-seconds
    :facility :providers :churn-profile :order-profiles :persona-config
-   :modules :module-assignment :module-horizon-days])
+   :modules :module-assignment :module-horizon-days :history])
 
 (defn run
   "Runs the simulation. config:
@@ -1358,6 +1369,19 @@
                       no Terminal state and no Guard to block on).
                       Ignored entirely when no patient has an assigned
                       module.
+    :history          Wave H pre-roll (2026-08-04, ADR-0042 AR-3): opt-
+                      in gate for the interpreter's own `:phase` mint
+                      and CompileTrajectory's new uniform-drop/straddle-
+                      inheritance path (`ehrt.sim-trajectory.gmf-
+                      interpreter/run-module`'s and `ehrt.sim-trajectory.
+                      compile-trajectory/compile-trajectory`'s own
+                      docstrings have the mechanism). Default `false` --
+                      absent, the pre-H `:pre-horizon`/`:registration-
+                      facts` mechanics run unchanged, byte-identical to
+                      every pre-H run (ADR-0042 AR-5's own pure-identity
+                      bracket). Ignored entirely when no patient has an
+                      assigned module (there is no history phase to gate
+                      without one).
 
   Returns {:ground-truth [event ...] :state-history {patient-id [state
   ...]} :facility .. :providers [materialized-provider ...]}. The
@@ -1376,7 +1400,7 @@
   loop below because decide needs live world state to make its next
   decision, not because it's a second source of truth."
   [{:keys [seed patients pathway pathways arrival-gap warm-up-seconds facility providers churn-profile order-profiles
-           persona-config modules module-assignment module-horizon-days]
+           persona-config modules module-assignment module-horizon-days history]
     :or {patients 1
          pathway sim-model/sample-admission-discharge
          arrival-gap 60
@@ -1386,7 +1410,8 @@
          order-profiles order-profiles/default-profiles
          persona-config {}
          modules []
-         module-horizon-days 90}}]
+         module-horizon-days 90
+         history false}}]
   {:pre [(some? seed) (sim-model/valid? pathway)
          (or (nil? pathways) (sim-model/valid-pathways-config? pathways))]}
   (let [rng (Random. ^long seed)
@@ -1454,6 +1479,7 @@
                     :order-profiles order-profiles
                     :persona-config persona-config
                     :module-horizon-days module-horizon-days
+                    :history history
                     ;; Task 1 (M2b): cancel-family/transfer-in-error decide
                     ;; methods query the log directly for the event they
                     ;; reinstate from (docs/patient-state-model.md's

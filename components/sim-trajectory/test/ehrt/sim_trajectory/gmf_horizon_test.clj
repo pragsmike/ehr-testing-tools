@@ -185,3 +185,62 @@
         early-end (+ (interp/dob-epoch-day p) 1)
         result (interp/run-module fixture-clinic (Random. 1) p early-end early-end)]
     (is (= :horizon-complete (:status result)))))
+
+;; --- Wave H pre-roll, Step 1 (2026-08-04, ADR-0042 AR-1/AR-3): the
+;; config-gated `:phase` mark, minted ALONGSIDE the pre-existing
+;; `:pre-horizon` boolean, never in its place -- `history?` false stays
+;; the exact pre-H call, `history?` true adds `:phase` without
+;; disturbing `:pre-horizon`, draw counts, or any other event field.
+;; AR-2's own encounter-anchored inheritance (the straddle rule) is
+;; Step 2's own scope (compile_trajectory_test.clj) -- these fixtures
+;; are chosen so no encounter straddles registration-t, keeping this
+;; step's own claim narrow: the mark itself is correct and additive.
+
+(defspec history-flag-off-is-byte-identical-to-the-pre-h-call 150
+  (prop/for-all [seed gen/large-integer]
+    (let [p (adult seed)
+          reg-t (registration-t-for p)
+          pre-h (interp/run-module fixture-clinic (Random. seed) p reg-t)
+          gated-off (interp/run-module fixture-clinic (Random. seed) p reg-t nil
+                                        {(:id fixture-clinic) fixture-clinic} {} {} false)]
+      (and (= pre-h gated-off)
+           (not-any? #(contains? % :phase) (:trajectory gated-off))))))
+
+(deftest history-flag-on-marks-history-phase-content-and-leaves-pre-horizon-untouched
+  (testing "the SAME seed/registration-t as the onset-in-history/encounter-in-
+            horizon scripted test above, now with history? true: every event
+            keeps its own pre-existing :pre-horizon value, and gains a :phase
+            mark agreeing with it (no encounter here straddles, so :phase and
+            :pre-horizon never diverge in this fixture)"
+    (let [seed 1
+          p (adult seed)
+          onset-run (interp/run-module fixture-clinic (Random. seed) p (+ (interp/dob-epoch-day p) 1))
+          onset-event (first (filter #(= :condition-onset (:event %)) (:trajectory onset-run)))
+          reg-t (inc (:t onset-event))
+          result (interp/run-module fixture-clinic (Random. seed) p reg-t nil
+                                     {(:id fixture-clinic) fixture-clinic} {} {} true)
+          phases (mapv (fn [e] {:event (:event e) :pre-horizon (:pre-horizon e) :phase (:phase e)})
+                       (:trajectory result))]
+      (is (= [{:event :condition-onset :pre-horizon true :phase :history}
+              {:event :encounter :pre-horizon false :phase :horizon}
+              {:event :observation :pre-horizon false :phase :horizon}
+              {:event :medication-order :pre-horizon false :phase :horizon}
+              {:event :encounter-end :pre-horizon false :phase :horizon}
+              {:event :medication-end :pre-horizon false :phase :horizon}
+              {:event :condition-end :pre-horizon false :phase :horizon}]
+             phases)))))
+
+(deftest history-flag-on-shares-state-across-the-phase-boundary-same-as-pre-horizon-does
+  (testing "the SAME shared-state-module/registration-t as the pre-existing
+            guard-blocking-on-an-attribute-set-only-in-history-passes-in-
+            horizon test, now asserting :phase agrees with :pre-horizon for
+            the resulting encounter -- history? doesn't change WHAT folds,
+            only whether :phase rides along"
+    (let [p (adult 7)
+          reg-t (+ (interp/dob-epoch-day p) 100)
+          result (interp/run-module shared-state-module (Random. 1) p reg-t nil
+                                     {(:id shared-state-module) shared-state-module} {} {} true)]
+      (is (true? (get-in result [:attributes :shared-mod/seen-doctor])))
+      (let [visit-event (first (filter #(= :encounter (:event %)) (:trajectory result)))]
+        (is (false? (:pre-horizon visit-event)))
+        (is (= :horizon (:phase visit-event)))))))

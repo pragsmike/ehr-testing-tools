@@ -286,6 +286,11 @@
   `:initial-attributes` at all, byte-identical to a run that never
   named this key.
 
+  ADR-0042 AR-3: `:history` (optional boolean) rides `:config` the same
+  passthrough way -- forwarded verbatim, no translation, no flag of its
+  own (`ehrt.sim.engine/run`'s own docstring has the mechanism this
+  gates).
+
   `opts`'s second, injectable arity follows the SAME -fn convention
   `ehrt.sim-cli.core/dispatch-action` already uses (`:engine-run-fn`,
   defaulting to the real `ehrt.sim.engine/run`) -- the seam the

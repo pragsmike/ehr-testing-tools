@@ -1926,6 +1926,39 @@
 ;; --- run-module: the history/horizon two-phase run (Task 3, docs/gmf-
 ;; interpreter.md section 3) -------------------------------------------------
 
+(defn- mark-phase
+  "ADR-0042 AR-1/AR-2 (2026-08-04, Wave H pre-roll): folds ONE
+  trajectory event onto `[open-encounter-phase accumulated-events]`,
+  returning the pair updated for the next event. `:pre-horizon` -- the
+  event's own raw `t < registration-t` -- is attached unconditionally,
+  unchanged from every pre-H run (byte-identical when `history?` is
+  false, since no OTHER key is ever added -- load-bearing for
+  ADR-0042 AR-5's pure-identity bracket). `:phase` (`:history`/
+  `:horizon`) is attached only `when history?`: AR-2's own encounter-
+  anchored inheritance -- an `:encounter` event's phase is its own raw
+  one (the first event of a span has nothing to inherit from); every
+  event between an `:encounter` and its matching `:encounter-end` (the
+  `:encounter-end` itself included) inherits THAT encounter's own
+  opening phase instead of its own raw timestamp, so a straddling
+  encounter's close never reads as horizon content on its own account
+  (ADR-0042's own worked example, the UTI Care Pathways straddle,
+  ADR-0033/0034 dated notes). `open-phase` clears back to nil once the
+  matching `:encounter-end` has consumed it -- encounters never nest in
+  this project's own GMF subset, so one in-flight phase is always
+  enough. Events outside any open encounter (before the first, between
+  two, or after the last) fall back to their own raw phase, per AR-2's
+  own closing clause."
+  [registration-t history? open-phase acc event]
+  (let [pre-horizon? (< (:t event) registration-t)
+        own-phase (if pre-horizon? :history :horizon)
+        inherited-phase (or open-phase own-phase)
+        event' (cond-> (assoc event :pre-horizon pre-horizon?)
+                 history? (assoc :phase inherited-phase))]
+    (case (:event event)
+      :encounter [own-phase (conj acc event')]
+      :encounter-end [nil (conj acc event')]
+      [open-phase (conj acc event')])))
+
 (defn run-module
   "The ratified history/horizon design (section 3): ONE continuous walk
   from `persona`'s own DOB (Task 2's `initial-context`) -- no fixed tick,
@@ -1975,7 +2008,19 @@
   optional 9th argument, `tables` (`ehrt.sim-trajectory.gmf/load-
   closure`'s own `:tables` return shape), threads straight through to
   `step` the same way `modules` already does -- omitted, `{}` applies,
-  unchanged for every pre-D3 call site."
+  unchanged for every pre-D3 call site.
+
+  Wave H pre-roll (2026-08-04, ADR-0042 AR-1/AR-3): the optional 10th
+  argument, `history?` (default `false`, every pre-H call site
+  unchanged), gates a SECOND per-event mark, `:phase`, minted
+  alongside the existing `:pre-horizon` boolean by `mark-phase`
+  (above) -- see that function's own docstring for AR-2's encounter-
+  anchored inheritance rule. `history?` false stays byte-identical to
+  every pre-H run: `:pre-horizon` is still unconditional and unchanged,
+  `:phase` is never attached, and `ctx`'s own new `:open-encounter-
+  phase` bookkeeping never reaches `:trajectory` (an oracle digest
+  never serializes bare `ctx`, only `:trajectory`, per every existing
+  batch)."
   ([module rng persona registration-t] (run-module module rng persona registration-t nil {(:id module) module}))
   ([module rng persona registration-t horizon-end-t] (run-module module rng persona registration-t horizon-end-t {(:id module) module}))
   ([module rng persona registration-t horizon-end-t modules]
@@ -1983,6 +2028,8 @@
   ([module rng persona registration-t horizon-end-t modules initial-attributes]
    (run-module module rng persona registration-t horizon-end-t modules initial-attributes {}))
   ([module rng persona registration-t horizon-end-t modules initial-attributes tables]
+   (run-module module rng persona registration-t horizon-end-t modules initial-attributes tables false))
+  ([module rng persona registration-t horizon-end-t modules initial-attributes tables history?]
    (loop [ctx (-> (initial-context persona) (assoc :root (:id module)) (update :attributes into initial-attributes)) n 0]
      (when (>= n max-steps)
        (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: run-module exceeded max-steps -- likely a module authoring bug (a zero-time-advance transition cycle)"
@@ -1990,10 +2037,14 @@
      (if (and horizon-end-t (>= (:t ctx) horizon-end-t))
        (assoc ctx :status :horizon-complete)
        (let [outcome (step-safely module rng ctx modules tables)
-             marked-events (mapv #(assoc % :pre-horizon (< (:t %) registration-t)) (:events outcome))
+             [open-encounter-phase' marked-events]
+             (reduce (fn [[open-phase acc] event] (mark-phase registration-t history? open-phase acc event))
+                     [(:open-encounter-phase ctx) []]
+                     (:events outcome))
              ctx' (-> ctx
                       (assoc :attributes (:attributes outcome))
                       (assoc :vital-signs (:vital-signs outcome))
+                      (assoc :open-encounter-phase open-encounter-phase')
                       (update :trajectory into marked-events)
                       (update :t + (:advance outcome)))]
          (cond
