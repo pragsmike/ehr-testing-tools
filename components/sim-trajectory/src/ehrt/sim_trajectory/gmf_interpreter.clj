@@ -1010,9 +1010,16 @@
   `:distributed-transition`'s own entries resolve each :distribution
   through `resolve-distribution-value` BEFORE the pick -- a plain
   number passes through unchanged, a NamedDistribution map resolves to
-  an attribute-sourced weight. `:complex-transition`'s own nested
-  distributions do NOT gain this resolution -- no candidate module this
-  session exercises a NamedDistribution there (installed ≠ used, H1)."
+  an attribute-sourced weight.
+
+  GMF coverage Wave I (2026-08-04, ADR-0040 AR-1): `:complex-transition`'s
+  own nested :distributions now gain the SAME resolution -- Transition.
+  java's own ComplexTransitionOption shares one `List<NamedDistribution>
+  distributions` field type with DistributedTransition (source-
+  confirmed), so this was always the identical mechanism, never a
+  distinct one H1 correctly deferred until a real candidate needed it
+  (injuries.json's own Elderly_Incidence_Rates, this session's own
+  found gap)."
   [module-id ctx ^Random rng state tables]
   (cond
     (:direct-transition state) (:direct-transition state)
@@ -1028,7 +1035,10 @@
     ;; option.distributions`).
     (:complex-transition state)
     (let [entry (first-matching-entry module-id ctx (:complex-transition state))]
-      (if (:transition entry) (:transition entry) (weighted-pick-transition rng (:distributions entry))))
+      (if (:transition entry)
+        (:transition entry)
+        (weighted-pick-transition
+         rng (mapv #(update % :distribution (partial resolve-distribution-value module-id ctx)) (:distributions entry)))))
     (:type-of-care-transition state)
     (weighted-pick-transition rng (type-of-care-entries (:type-of-care-transition state)
                                                           (type-of-care-weights (.getYear (LocalDate/ofEpochDay (:t ctx))))))

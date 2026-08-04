@@ -1583,6 +1583,38 @@
     (interp/step named-distribution-module rng ctx)
     (is (= 1 @calls) "the attribute read is a pure lookup, zero rng -- only the pick itself draws")))
 
+;; --- GMF coverage Wave I (2026-08-04, ADR-0040 AR-1): the SAME
+;; NamedDistribution resolution, now inside a complex_transition entry's
+;; own nested :distributions -- injuries.json's own Elderly_Incidence_
+;; Rates shape, byte-confirmed against source. --------------------------
+
+(def complex-named-distribution-module
+  "The SAME 0/1-weight construction `named-distribution-module` (above)
+  uses, one level down inside a single complex_transition entry with no
+  :condition (an unconditional 'else' arm) -- deterministic regardless
+  of draw."
+  {:id "complex-named-dist-mod"
+   :name "ComplexNamedDist"
+   :states {:initial {:type :initial :direct-transition :branch}
+            :branch {:type :simple
+                     :complex-transition
+                     [{:distributions [{:transition :fall :distribution {:attribute "risk" :default 0}}
+                                       {:transition :no-fall :distribution 0}]}]}
+            :fall {:type :terminal}
+            :no-fall {:type :terminal}}})
+
+(deftest complex-transition-named-distribution-uses-the-attribute-value-when-present
+  (let [ctx (-> (ctx-for (persona-at 1))
+                (assoc :current :branch)
+                (update :attributes assoc :complex-named-dist-mod/risk 1.0))]
+    (dotimes [seed 5]
+      (is (= :fall (:next (interp/step complex-named-distribution-module (Random. seed) ctx)))))))
+
+(deftest complex-transition-named-distribution-falls-back-to-the-json-declared-default-when-absent
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :branch)]
+    (dotimes [seed 5]
+      (is (= :no-fall (:next (interp/step complex-named-distribution-module (Random. seed) ctx)))))))
+
 ;; --- GMF coverage Wave C (2026-08-02, ADR-0028, C1/C2): Death --------------
 
 (def death-cause-codes [{:system :snomed :code "1" :display "Test cause"}])

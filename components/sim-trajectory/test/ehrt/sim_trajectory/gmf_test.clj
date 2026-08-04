@@ -621,6 +621,39 @@
     (is (result/ok? loaded))
     (is (= :virtual (get-in (:payload loaded) [:states :call :encounter-class])))))
 
+;; --- GMF coverage Wave I (2026-08-04, ADR-0040 AR-1b): four more real
+;; EncounterType values -- the census's own found gap, byte-confirmed
+;; against hospice_treatment.json/home_hospice_snf.json/home_health_
+;; treatment.json directly. ------------------------------------------------
+
+(def hospice-encounter-json
+  "hospice_treatment.json's own Hospice_Admission shape, byte-confirmed
+  against source: \"hospice\" is a real, distinct GMF encounter-class
+  string, previously outside the closed enum."
+  (str "{\"name\": \"Hospice\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Admit\"},"
+       "  \"Admit\": {\"type\": \"Encounter\", \"encounter_class\": \"hospice\","
+       "             \"codes\": [{\"system\": \"SNOMED-CT\", \"code\": \"305336008\", \"display\": \"Admission to hospice (procedure)\"}],"
+       "             \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest hospice-encounter-class-loads-and-validates-as-its-own-keyword
+  (let [loaded (gmf/load-module "hospice" hospice-encounter-json)]
+    (is (result/ok? loaded))
+    (is (= :hospice (get-in (:payload loaded) [:states :admit :encounter-class])))))
+
+(deftest home-and-urgentcare-and-snf-encounter-classes-load-and-validate
+  (doseq [[raw kw] [["home" :home] ["urgentcare" :urgent-care] ["snf" :snf]]]
+    (let [json (str "{\"name\": \"EC\", \"states\": {"
+                     "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Visit\"},"
+                     "  \"Visit\": {\"type\": \"Encounter\", \"encounter_class\": \"" raw "\","
+                     "             \"codes\": [{\"system\": \"SNOMED-CT\", \"code\": \"185347001\", \"display\": \"Encounter for problem\"}],"
+                     "             \"direct_transition\": \"Done\"},"
+                     "  \"Done\": {\"type\": \"Terminal\"}}}")
+          loaded (gmf/load-module "ec" json)]
+      (is (result/ok? loaded) raw)
+      (is (= kw (get-in (:payload loaded) [:states :visit :encounter-class])) raw))))
+
 (def complex-transition-either-or-json
   "uti/ambulatory_path.json's own risk-check shape, byte-confirmed
   against source (D3f): a complex_transition entry may carry a direct
@@ -642,6 +675,31 @@
       (is (nil? (:transition (second entries))))
       (is (= [{:transition :a :distribution 0.5} {:transition :b :distribution 0.5}]
              (:distributions (second entries)))))))
+
+;; --- GMF coverage Wave I (2026-08-04, ADR-0040 AR-1): a complex_transition
+;; entry's own nested :distributions may ALSO carry a NamedDistribution
+;; map -- injuries.json's own Elderly_Incidence_Rates shape, byte-
+;; confirmed against source. ------------------------------------------------
+
+(def complex-transition-named-distribution-json
+  "injuries.json's own Elderly_Incidence_Rates shape, byte-confirmed
+  against source (ADR-0040 AR-1): a complex_transition entry's own
+  :distributions list may mix a NamedDistribution map alongside plain
+  numbers -- Transition.java's own ComplexTransitionOption shares the
+  SAME field type DistributedTransition already does."
+  (str "{\"name\": \"ComplexNamed\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Branch\"},"
+       "  \"Branch\": {\"type\": \"Simple\", \"complex_transition\": ["
+       "    {\"distributions\": ["
+       "      {\"transition\": \"Fall\", \"distribution\": {\"attribute\": \"probability_of_fall_injury\", \"default\": 0.06}},"
+       "      {\"transition\": \"No_Fall\", \"distribution\": 1}]}]},"
+       "  \"Fall\": {\"type\": \"Terminal\"}, \"No_Fall\": {\"type\": \"Terminal\"}}}"))
+
+(deftest complex-transition-named-distribution-loads-and-validates
+  (let [loaded (gmf/load-module "complex-named" complex-transition-named-distribution-json)]
+    (is (result/ok? loaded))
+    (is (= {:attribute "probability_of_fall_injury" :default 0.06}
+           (:distribution (first (:distributions (first (get-in (:payload loaded) [:states :branch :complex-transition])))))))))
 
 (deftest lookup-table-csv-with-a-leading-bom-parses-identically-to-one-without
   (testing "uti_recurrence.csv's own real upstream byte-order-mark

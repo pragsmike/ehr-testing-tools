@@ -183,9 +183,24 @@
   whether `:virtual` compiles the SAME way `:ambulatory` does, or needs
   its own IR treatment, is a decision for whichever future session
   first exercises a closure through the full compile-trajectory
-  pipeline, not this one."
+  pipeline, not this one.
+
+  GMF coverage Wave I (2026-08-04, ADR-0040 AR-1b, a dated addendum to
+  AR-1 -- the census's own found gap, not a NamedDistribution case):
+  `urgentcare`/`hospice`/`home`/`snf` are FOUR more real, distinct
+  HealthRecord.EncounterType values (source-confirmed, the pin's own
+  full ten-value enum) this table never carried -- `home_health_
+  treatment.json`'s own `urgentcare`/`home`, `hospice_treatment.json`/
+  `home_hospice_snf.json`'s own `hospice`, byte-confirmed against the
+  vendored JSON directly. Mechanically completed to the FULL remaining
+  enum (including `snf`, not yet exercised by any candidate closure this
+  session) rather than added one name at a time -- the same 'kill the
+  name-at-a-time unmasking pattern in one step' discipline AR-4's own
+  vocabulary completion already applies, extended here since the whole
+  enum is equally closed and equally cheap to read at once."
   {"wellness" :wellness "ambulatory" :ambulatory "emergency" :emergency "inpatient" :inpatient
-   "outpatient" :ambulatory "virtual" :virtual})
+   "outpatient" :ambulatory "virtual" :virtual
+   "urgentcare" :urgent-care "hospice" :hospice "home" :home "snf" :snf})
 
 (def ^:private condition-type->keyword
   "v1's condition predicates (docs/gmf-interpreter.md section 2): age,
@@ -880,10 +895,19 @@
    ;; transition != null ? ... : option.distributions`), a real
    ;; either/or this loader's schema previously required :distributions
    ;; on every entry, unconditionally.
+   ;; GMF coverage Wave I (2026-08-04, ADR-0040 AR-1): a complex_transition
+   ;; entry's own nested :distributions may ALSO carry a NamedDistribution
+   ;; map, the SAME `Distribution` shape :distributed-transition's own
+   ;; top-level :distribution already accepts (D3b/H3) -- Transition.java's
+   ;; own ComplexTransitionOption shares ONE `List<NamedDistribution>
+   ;; distributions` field type with DistributedTransition, source-
+   ;; confirmed, so this was always the same field, never two. Real use:
+   ;; injuries.json's own Elderly_Incidence_Rates (byte-confirmed against
+   ;; source), the census's own found gap this session's AR-1 closes.
    [:complex-transition {:optional true}
     [:vector [:map [:condition {:optional true} [:map-of :keyword :any]]
               [:transition {:optional true} :keyword]
-              [:distributions {:optional true} [:vector [:map [:transition :keyword] [:distribution number?]]]]]]]
+              [:distributions {:optional true} [:vector [:map [:transition :keyword] [:distribution Distribution]]]]]]]
    ;; GMF coverage Wave B (D5): no weights of its own (see
    ;; normalize-transitions' own comment) -- each of the three keys is
    ;; optional (a module may omit :telemedicine on an older care-
@@ -968,8 +992,12 @@
    ;; :codes field. Safe: `compile-trajectory`'s own encounter->step
    ;; (confirmed by direct read) never reads :codes off an encounter
    ;; event at all.
+   ;; GMF coverage Wave I (2026-08-04, ADR-0040 AR-1b): four more real
+   ;; EncounterType values join the enum (`encounter-class->keyword`'s
+   ;; own dated note, above, has the full source citation).
    [:encounter (with-transitions [:type [:= :encounter]]
-                 [:encounter-class [:enum :wellness :ambulatory :emergency :inpatient :virtual]]
+                 [:encounter-class [:enum :wellness :ambulatory :emergency :inpatient :virtual
+                                     :urgent-care :hospice :home :snf]]
                  [:codes {:optional true} [:vector sim-model/Concept]] [:reason {:optional true} :string])]
    ;; GMF coverage Wave G (2026-08-03, ADR-0037 AR-3): a `wellness: true`
    ;; Encounter with no `:encounter-class` loads as this DISTINCT state
