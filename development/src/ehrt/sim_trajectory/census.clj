@@ -80,12 +80,27 @@
 ;; this census's own smoke walks. `persona`'s own AR-5 conditional-draw
 ;; law means every OTHER field/draw in this census is byte-identical to
 ;; every pre-Wave-F run -- these two keys are the only header delta.
+;; GMF coverage Wave LC (2026-08-03, ADR-0038 AR-3): a THIRD, fixed,
+;; disclosed key -- `:state-weights`, a SINGLE-option pool (unlike
+;; race/ses's own multi-option closed vocabularies above, real Synthea
+;; has no closed :state enumeration to exercise, only the ~50-entry US
+;; state-name vocabulary the lookup-table CSVs themselves key on) so
+;; every census persona deterministically carries the SAME value, "Alabama"
+;; -- transcribed verbatim from a real row,
+;; `ace_arb_amlodipine_benazepril_product_distribution.csv`'s own first
+;; data row (`26-35,M,Alabama,...`, confirmed by direct read at the pin,
+;; reached via myocardial_infarction.json's own closure). A single-
+;; option pool still draws (the SAME fixed-consumption law, AR-3), only
+;; its OUTCOME is fixed -- exercises the new module-set-attribute-vs-
+;; persona-field resolution path (AR-1(c)) without needing all ~50
+;; states represented.
 (def default-persona-config
   {:race-weights [{:race "White" :weight 1.0} {:race "Black" :weight 1.0}
                   {:race "Hispanic" :weight 1.0} {:race "Asian" :weight 1.0}
                   {:race "Native" :weight 1.0} {:race "Other" :weight 1.0}]
    :socioeconomic-weights [{:category "High" :weight 1.0} {:category "Middle" :weight 1.0}
-                           {:category "Low" :weight 1.0}]})
+                           {:category "Low" :weight 1.0}]
+   :state-weights [{:state "Alabama" :weight 1.0}]})
 
 ;; --- Pin verification (AR-1) --------------------------------------------
 
