@@ -57,3 +57,4 @@ Files in this directory:
   * 2026-08-04-gmf-coverage-wave-vs.md
   * 2026-08-04-gmf-coverage-wave-i.md
   * 2026-08-04-gmf-coverage-wave-i2.md
+  * 2026-08-04-gmf-coverage-wave-h.md

@@ -5,32 +5,18 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- Nothing in progress at end of session (Wave I2 closed same day it
-  started -- see Done, below; PARITY ACHIEVED, Wave H is now the sole
-  remaining wave).
+- Nothing in progress at end of session (Wave H closed same day it
+  started -- see Done, below; **GMF parity arc COMPLETE** — Wave H was
+  the sole remaining wave; no further GMF-coverage wave is scheduled.
+  Roadmap attention moves to the non-GMF fronts already listed below:
+  the census tool refinements, Wave G's own attachment deferral, and
+  the standing tooling/design backlog).
 
 ## Next (backlog, no session scheduled)
 - The lookup-column `time` gap (named in the schema-invalid family
   backlog since ADR-0039, still untouched — Wave I's own six
   mechanisms didn't cover it). Bulk vendoring (batched by closure
   family) follows once the catalog fully walks.
-- **Wave H design session — the SOLE remaining wave** (ADR-0041 AR-4:
-  PARITY ACHIEVED, the catalog fully walks now, see Done below — the
-  prior caveat here, "Wave H does NOT yet run against the complete
-  walking catalog," no longer applies): pre-roll — walk modules
-  deterministically from onset to registration, fold pre-window
-  history into initial patient state, emit only in-window events.
-  Emit-nothing REAFFIRMED for the history phase generally (ADR-0031
-  AR-3); this Wave's own design session owns the actual fold-boundary
-  mechanism, including the UTI pre-horizon straddle finding
-  (ADR-0033/ADR-0034 AR-6, the round-trip test's own seed-777 dodge
-  retires when H resolves it) AND a new, Wave-G-sourced obligation:
-  `:wellness-wait` reached during a future history-phase fast-forward
-  must FOLD state without emitting (ADR-0037 AR-2(c),
-  `.agents/plans/2026-08-02-gmf-parity-plan.md`'s own H row carries the
-  dated note). Wave E (risk-attribute register) is RE-SCOPED —
-  calibration content on demand, not in the leverage queue (`stroke.json`
-  already censuses `:ok-walked`).
 - **Wave G attachment deferral** (ADR-0037 AR-4, named trigger "multi-
   module assignment per patient"): upstream's own all-waiting-modules-
   attach-to-one-visit semantics only diverges from this project's
@@ -76,6 +62,13 @@ per item; done items move to the bottom of their section with a date and sha.
   explicit fence) — AUTHOR ACTION.
 
 ## Deferred (explicitly, with revisit triggers)
+- **Carry-across emission** (2026-08-04, `notes/ADRs.md` ADR-0042
+  AR-2): a straddling encounter (opens history, closes horizon) yields
+  NO in-window wire traffic for that patient under Wave H's own pre-
+  roll — real hospital censuses DO show patients mid-stay at window
+  open, but building that emission is out of this session's own scope.
+  Revisit trigger: a test scenario needs mid-stay-at-window-open
+  realism.
 - **Wellness cadence chronic-meds cap** (2026-08-03, `notes/ADRs.md`
   ADR-0037 AR-1): `EncounterModule.recommendedTimeBetweenWellnessVisits`'s
   own chronic-medications annual cap ("if hasChronicMeds && interval >
@@ -213,6 +206,56 @@ per item; done items move to the bottom of their section with a date and sha.
   shape should expect the same workaround, or this row graduates into
   an actual `bin/regression-oracle` enhancement (e.g. an opt-in "run
   each commit's own digest.clj against its own worktree" mode).
+
+## Done (this session, 2026-08-04, Wave H — pre-roll — ADR-0042, GMF PARITY ARC COMPLETE)
+- **Config + interpreter phase boundary (Step 1, `98f099b`).** New
+  opt-in `:history` run-config flag (absent = pre-existing behavior,
+  byte-identical). The interpreter's `mark-phase` mints a `:phase`
+  mark (`:history`/`:horizon`) alongside the existing `:pre-horizon`
+  boolean, via AR-2's own encounter-anchored inheritance — additive
+  arities throughout (`run-module`, the `sim-trajectory` interface),
+  zero change to any pre-H call site.
+- **Compile filter + straddle inheritance (Step 2, `73bb26f`).**
+  `compile-trajectory`'s new `history?` path drops every `:phase
+  :history` event uniformly (no dropped-types/fact-types bucketing).
+  A property test running 150 random seeds against a purpose-built
+  module with a GUARANTEED straddle (`:persona-config {:age-min 0
+  :age-max 0}` bounds the DOB-to-registration-t gap to 3–365 days,
+  the module's own Encounter closes 500 days after opening) proves the
+  invariant catalog never trips, for any seed.
+- **Seed-777 retirement + a second straddle class, found live (Step 3,
+  `9240db8`).** The UTI engine round-trip test now runs the config-
+  default ORDINARY seed (20260802) under `:history true` — the hand-
+  picked seed 777 dodge (ADR-0033/0034's own dated notes) retires.
+  Running the real closure surfaced a narrower, unanticipated gap:
+  `:medication-end`/`:care-plan-end`/`:condition-end` can fire OUTSIDE
+  any encounter, orphaning a reference to a dropped antecedent —
+  closed by `history-phase?`, one `:references` hop past AR-2's own
+  encounter-anchored rule, the SAME "no orphaned reference to
+  something dropped" principle applied one step further, not a new
+  one. The ear-infections wellness-fold interpreter-layer proof lands
+  alongside (`:wellness-wait` needs no special handling, confirmed).
+- **Oracle (Step 4, `6a587ff`).** `bin/regression-oracle 537f954
+  6a587ff`: all NINE pre-existing vendored root batches IDENTICAL —
+  AR-3's own gating argument holds, byte-verified. `digest.clj` gains
+  two FIRST history-mode baselines (`ear-infections-history-engine`,
+  `urinary-tract-infections-history-engine`).
+- `notes/ADRs.md` ADR-0042 (AR-1 through AR-6, AR-6's own
+  reconciliation read recorded in full — `:pre-horizon-facts` and
+  `check.clj`'s own `:clinical-content-only-when-admitted` invariant
+  are CLEANLY SUBSUMED, no conflict — plus the Step 3 finding above,
+  the full oracle identity bracket and the two new baselines).
+  `.agents/plans/2026-08-02-gmf-parity-plan.md`'s own H row and Status
+  header both close, dated. `components/sim-trajectory/docs/gmf-
+  interpreter.md` §3 gains an IMPLEMENTED dated note.
+- **This was the SOLE remaining GMF-coverage wave — the parity arc
+  (Waves A through H) is COMPLETE.** Carry-across (mid-stay-at-window-
+  open emission) is the one named future this wave leaves open, moved
+  to Deferred above with its own revisit trigger. Roadmap attention
+  moves to the non-GMF fronts: census tool refinements, Wave G's own
+  attachment deferral, and the standing tooling/design backlog.
+- Session record: `.agents/session-records/2026-08-04-gmf-coverage-
+  wave-h.md`.
 
 ## Done (this session, 2026-08-04, GMF coverage Wave I2 — the last two — ADR-0041, PARITY ACHIEVED)
 - **Death cause forms + `:active-careplan` (Step 1+2, one commit,

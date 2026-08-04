@@ -404,6 +404,23 @@ regression to chase.
    consumer can filter `:pre-horizon` events the same way `:warm-up`
    events are already filterable today.
 
+**Dated note (2026-08-04, ADR-0042, Wave H pre-roll — IMPLEMENTED).**
+This section's own design landed, config-gated: a NEW opt-in `:history`
+run-config flag (absent = the pre-existing behavior above, unchanged,
+byte-identical) additionally mints a `:phase` mark (`:history`/
+`:horizon`) alongside the `:pre-horizon` boolean this section
+describes — encounter-anchored, not per-event-timestamp (an event's
+phase is inherited from its own currently-open encounter's opening
+phase, resolving the straddle a fixed registration-t anchor can create
+against a real vendored closure's own Encounter span, ADR-0033/0034's
+own dated notes). `CompileTrajectory` drops every `:phase :history`
+event uniformly under this flag — condition/medication/care-plan
+content included, unlike the legacy `:pre-horizon-facts` condensation
+this section's own ratified item 5 describes, which stays exactly as
+written above for `:history` absent. Full mechanism, the AR-6
+reconciliation against `:pre-horizon-facts`, and the oracle identity
+bracket: `notes/ADRs.md` ADR-0042.
+
 ## 4. Encounter mapping
 
 GMF's own encounter classes — `wellness`, `ambulatory`, `emergency`,

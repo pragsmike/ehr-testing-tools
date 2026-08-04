@@ -263,7 +263,15 @@
   ;; and this session's own session-record/prompt-archive filenames
   ;; brought the real total from 1806 to 1824 -- self-caught, the same
   ;; pattern every prior session touching this file has hit.
-  :budget-lines 1824}
+  ;;
+  ;; Wave H pre-roll (2026-08-04, ADR-0042, GMF parity arc COMPLETE):
+  ;; the roadmap's own new Wave H Done section, the Now/Next retirement
+  ;; of the Wave H design-session row, the carry-across Deferred entry,
+  ;; and this session's own session-record/prompt-archive filenames in
+  ;; both READMEs brought the real total from 1824 to 1869 -- self-
+  ;; caught, the same pattern every prior session touching this file
+  ;; has hit.
+  :budget-lines 1869}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one
