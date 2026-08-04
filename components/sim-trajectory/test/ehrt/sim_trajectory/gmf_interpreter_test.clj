@@ -1915,14 +1915,23 @@
 
 (defn- persona-with-dob [dob-str] {:dob dob-str})
 
-(deftest next-wellness-tick-anchors-tick0-at-dob
-  (testing "AR-2: tick0 = DOB itself -- upstream's own very first
-            wellness check, before any wellness encounter has ever
-            happened, passes immediately (`person.record.
-            timeSinceLastWellnessEncounter` starts effectively infinite)"
+(deftest next-wellness-tick-is-always-strictly-later-than-its-own-query-time
+  (testing "AR-2 (refined live against med_rec.json's own real, zero-
+            delay wellness-wait loop, this Wave's own session): every
+            call returns a tick STRICTLY AFTER `t`, even when `t` is
+            DOB itself (the recurrence's own tick0) -- an inclusive
+            `>=` would return DOB unchanged on the very first call,
+            and the SAME tick again on every re-entry at that
+            unchanged `t`, an infinite zero-advance spin real modules
+            with no delay between wellness visits (med_rec.json) hit
+            in practice, not merely a hypothetical"
     (let [p (persona-with-dob "2020-01-01")
           dob (interp/dob-epoch-day p)]
-      (is (= dob (interp/next-wellness-tick p dob))))))
+      (is (> (interp/next-wellness-tick p dob) dob))
+      (is (> (interp/next-wellness-tick p (interp/next-wellness-tick p dob))
+             (interp/next-wellness-tick p dob))
+          "re-querying AT a tick just returned still advances -- the
+           property a zero-delay wait-loop depends on"))))
 
 (deftest next-wellness-tick-infant-band-is-one-month
   (testing "lines 178-179: ageInMonths <= 1 -> 1-month interval, the
@@ -2060,12 +2069,7 @@
 (def wellness-wait-then-encounter-module
   {:id "wellness-then-mod"
    :name "WellnessThen"
-   :states {:initial {:type :initial :direct-transition :warm-up}
-            ;; a small warm-up delay so :wait is reached STRICTLY after
-            ;; DOB -- reached exactly at DOB, `next-wellness-tick`'s own
-            ;; tick0 = DOB would return zero advance (the test's own
-            ;; premise needs a nonzero jump to bound the horizon inside)
-            :warm-up {:type :delay :exact {:quantity 15 :unit "days"} :direct-transition :wait}
+   :states {:initial {:type :initial :direct-transition :wait}
             :wait {:type :wellness-wait :direct-transition :after}
             :after {:type :encounter :encounter-class :ambulatory
                     :codes [{:system :snomed :code "999999" :display "After"}]
@@ -2083,7 +2087,11 @@
             horizon -- exactly the same mechanism that lets a Delay's
             own advance overshoot in one step. The STATE AFTER
             wellness-wait, though, never executes: :horizon-complete,
-            not an exception, not :blocked"
+            not an exception, not :blocked. :wait is reached exactly at
+            DOB here -- next-wellness-tick's own strict `>` guarantee
+            (AR-2's own refinement) means even that first call already
+            returns a genuine, nonzero-advance future tick, which this
+            test's own horizon window (20 days) sits comfortably before"
     (let [p (persona-at 1)
           dob (interp/dob-epoch-day p)
           horizon-end-t (+ dob 20)
@@ -2097,18 +2105,17 @@
 (def wellness-wait-act-loop-module
   {:id "wellness-loop-mod"
    :name "WellnessLoop"
+   ;; ZERO delay anywhere in this loop body -- deliberately matching
+   ;; the REAL shape of med_rec.json (Wellness_Encounter -> ... ->
+   ;; EncounterEnd -> Initial -> ConditionOnset -> Wellness_Encounter
+   ;; again, no Delay anywhere): this is the actual regression case for
+   ;; next-wellness-tick's own strict-> fix, found live running this
+   ;; Wave's own census against the real catalog, not a hypothetical. A
+   ;; module author routinely relies on the wellness cycle ITSELF being
+   ;; the loop's only clock, exactly as upstream's own design intends.
    :states {:initial {:type :initial :direct-transition :wait}
             :wait {:type :wellness-wait :direct-transition :act}
-            :act {:type :counter :attribute "visits" :action :increment :direct-transition :nudge}
-            ;; a 1-day nudge between one wellness-wait and the next --
-            ;; without it, looping straight back into :wellness-wait
-            ;; would re-query next-wellness-tick AT the exact tick just
-            ;; landed on, which (correctly, per AR-2's own "first tick
-            ;; >= t") returns that SAME tick again, zero advance. A real
-            ;; module's own loop body always does SOMETHING (an
-            ;; assessment, a Delay) between visits; this nudge is that,
-            ;; minimally.
-            :nudge {:type :delay :exact {:quantity 1 :unit "days"} :direct-transition :wait}}})
+            :act {:type :counter :attribute "visits" :action :increment :direct-transition :wait}}})
 
 (deftest wellness-wait-act-loop-terminates-horizon-bounded-not-max-steps
   (testing "AR-7: the four real upstream loop modules this Wave
@@ -2117,9 +2124,12 @@
             create-now substitution -- a zero-time-advance wellness
             encounter never let the horizon check catch up, so the
             walk ran to max-steps and threw. Genuine wait semantics
-            make EVERY iteration advance a real cadence interval, so
-            the horizon bounds iterations the same way it already
-            bounds every other module's own walk"
+            make EVERY iteration advance a real cadence interval (even
+            with ZERO delay anywhere else in the loop body, med_rec.
+            json's own real shape -- next-wellness-tick's own strict
+            `>` guarantee, not merely `>=`), so the horizon bounds
+            iterations the same way it already bounds every other
+            module's own walk"
     (let [p (persona-at 1)
           dob (interp/dob-epoch-day p)
           horizon-end-t (+ dob (* 365 5))

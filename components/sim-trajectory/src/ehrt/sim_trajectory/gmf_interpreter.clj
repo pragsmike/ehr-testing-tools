@@ -183,21 +183,38 @@
     (band-lookup (:three-plus-by-age-years wellness-cadence-table) (age-years-at persona t))))
 
 (defn next-wellness-tick
-  "AR-2: the first Synthea-cadence wellness-visit tick >= `t`, a PURE
-  function of `persona`'s own DOB and `t` -- ZERO rng draws (load-bearing
-  for AR-6: every non-wellness walk's own rng stream is untouched by
-  this function's own existence). Anchored at DOB (`tick0` = DOB itself
-  -- upstream's own very first wellness check, before any wellness
-  encounter has ever happened, passes immediately, since `person.record.
+  "AR-2: the first Synthea-cadence wellness-visit tick STRICTLY AFTER
+  `t`, a PURE function of `persona`'s own DOB and `t` -- ZERO rng draws
+  (load-bearing for AR-6: every non-wellness walk's own rng stream is
+  untouched by this function's own existence). Anchored at DOB (the
+  recurrence's own tick0 is DOB itself, upstream's own very first
+  wellness check passing immediately since `person.record.
   timeSinceLastWellnessEncounter` starts effectively infinite); each
   subsequent tick is the PREVIOUS tick plus THAT tick's own age-banded
   interval (`wellness-cadence-band`, above) -- AR-2's own ratified
   recurrence, 'next = previous + band(age)', re-expressing upstream's
   own daily re-check as a closed iteration since this interpreter has no
-  fixed tick to re-check on."
+  fixed tick to re-check on.
+
+  STRICT, not `>=` -- a live finding (found running this Wave's own
+  census against the real `med_rec.json`, not merely anticipated): its
+  own wellness-wait loop has ZERO delay anywhere in the loop body
+  (Wellness_Encounter -> ... -> EncounterEnd -> Initial ->
+  ConditionOnset -> Wellness_Encounter again, all zero-time states). An
+  inclusive `>=` first-call at `t` = DOB returns DOB itself (zero
+  advance); re-entering the SAME wellness-wait state at that same
+  unchanged `t` then returns the SAME tick again, forever -- an
+  infinite zero-advance spin into `max-steps`, exactly upstream's own
+  never-fires-twice-at-the-same-instant guarantee (its own
+  `timeSinceLastWellnessEncounter` resets to zero the moment an
+  encounter fires, so the NEXT check always needs a genuinely NEW
+  interval to elapse). Strict `>` guarantees every call returns a tick
+  strictly later than its own `t` argument, so even a zero-delay loop
+  body genuinely advances on every iteration -- the property AR-7's own
+  loop-bounding acceptance evidence depends on."
   ^long [persona ^long t]
   (loop [tick (dob-epoch-day persona)]
-    (if (>= tick t)
+    (if (> tick t)
       tick
       (let [{:keys [quantity unit]} (wellness-cadence-band persona tick)]
         (recur (advance-date tick unit quantity))))))
