@@ -1,0 +1,46 @@
+;; GMF coverage Wave VS (2026-08-04, ADR-0039 AR-3): the vital-sign
+;; register's own baseline table -- FLAT AUTHORED CONSTANTS for the six
+;; names this session's four candidate closures TEST via a `:vital-sign`
+;; condition but never SET via a `VitalSign` state anywhere in their own
+;; mandatory content (`congestive_heart_failure.json`'s own `Systolic
+;; Blood Pressure`/`Oxygen Saturation` reads; `wellness_encounters.json`'s
+;; own `BMI` read, `Obese_Check`; `metabolic_syndrome_care.json`'s own
+;; `Glucose`/`HDL`/`Triglycerides` reads) -- confirmed by direct read of
+;; each closure's own state graph, not assumed (session characterization
+;; step, ADR-0039's own Context). `Left ventricular Ejection fraction` is
+;; DELIBERATELY ABSENT: `congestive_heart_failure.json`'s own five `LVEF
+;; ...` VitalSign states always set it before any `:vital-sign` condition
+;; ever reads it (every path into `Maintaining CHF` passes through
+;; exactly one), so a baseline here would silently mask a real gap if
+;; that ever stopped being true -- honest absence (ADR-0036 AR-4's own
+;; rule, extended here) is the correct behavior for a genuinely-unset
+;; vital, never a value this table manufactures for it.
+;;
+;; `ehrt.sim-trajectory.gmf-interpreter/initial-context` seeds the fresh
+;; per-patient register from this table VERBATIM at patient creation,
+;; ZERO rng draws (constants, not samples) -- a `VitalSign` state
+;; occurring later in a walk simply overwrites its own name's entry, the
+;; same "later write wins" semantics `:attributes`/`:set-attribute`
+;; already establish.
+;;
+;; Upstream real Synthea computes these via `LifecycleModule.java`'s own
+;; growth/physiology curves (age/sex-banded, continuously reassessed) --
+;; a hardcoded Java module this project has never ported and has no
+;; physiology-simulation equivalent for (the SAME documented gap
+;; `sim-trajectory/vital-signs.edn`'s own header already names for the
+;; Observation-family reference-range mechanism, D1a-4). Porting that
+;; curve set is the Framingham anti-pattern this project's own
+;; ADR-0031 Tier-3 ruling already forecloses. These are CALIBRATION
+;; KNOBS, not a physiology model: clinically-unremarkable, single-point
+;; adult values (never age/sex-banded), authored and dated here, making
+;; no clinical-fidelity claim -- config overridability is a named
+;; future, not built (ADR-0039 AR-3). Values chosen as ordinary
+;; midpoints of `sim-trajectory/vital-signs.edn`'s own reference ranges
+;; for the same names (that table's own LOINC-cited, source-grounded
+;; rows), not independently re-derived.
+{"Systolic Blood Pressure" 110
+ "Oxygen Saturation" 98
+ "BMI" 22.0
+ "Glucose" 90
+ "HDL" 50
+ "Triglycerides" 100}

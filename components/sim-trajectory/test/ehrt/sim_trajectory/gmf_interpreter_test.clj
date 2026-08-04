@@ -2214,3 +2214,64 @@
       (is (= :horizon-complete (:status result)))
       (is (>= (count (filter #(= :encounter (:event %)) (:trajectory result))) 2)
           "multiple wellness ticks fired over the 5-year horizon -- genuine iteration, not a single pass"))))
+
+;; --- GMF coverage Wave VS (2026-08-04, ADR-0039 AR-1/AR-3/AR-4): the
+;; vital-sign register -- Step 1: baseline seeding, global (non-root-
+;; scoped) threading through a walk, and the shared closed-vocabulary
+;; check `VitalSign`/`:vital-sign` (Steps 2/3) will reuse. -------------
+
+(deftest initial-context-seeds-the-register-from-the-baseline-table
+  (testing "AR-3: flat authored constants, zero rng draws (initial-
+            context takes no rng argument at all -- structurally
+            impossible to consume one)"
+    (let [vital-signs (:vital-signs (ctx-for (persona-at 1)))]
+      (is (= 110 (:systolic-blood-pressure vital-signs)))
+      (is (= 98 (:oxygen-saturation vital-signs)))
+      (is (= 22.0 (:bmi vital-signs)))
+      (is (= 90 (:glucose vital-signs)))
+      (is (= 50 (:hdl vital-signs)))
+      (is (= 100 (:triglycerides vital-signs))))))
+
+(deftest initial-context-carries-no-baseline-for-a-name-the-table-omits
+  (testing "AR-3: Left ventricular Ejection fraction is DELIBERATELY
+            absent -- congestive_heart_failure.json's own VitalSign
+            states always set it before any :vital-sign condition
+            reads it, so a baseline would silently mask a real gap"
+    (is (not (contains? (:vital-signs (ctx-for (persona-at 1))) :left-ventricular-ejection-fraction)))))
+
+(deftest vital-signs-register-survives-an-ordinary-walk-unchanged
+  (testing "no state type writes the register yet (Step 2) -- every
+            outcome-producing site threads :vital-signs through
+            unmodified, the same pass-through :attributes already gets"
+    (let [ctx (ctx-for (persona-at 1))
+          outcome (interp/step direct-only-module (Random. 1) ctx)]
+      (is (= (:vital-signs ctx) (:vital-signs outcome))))))
+
+(deftest vital-signs-register-survives-a-callsubmodule-round-trip
+  (testing "the register is ctx's own GLOBAL compartment (ADR-0027 D1),
+            never root-scoped the way workflow :attributes is -- a
+            CallSubmodule call/return must thread it through exactly
+            the same way (call-submodule-step's own post-call-ctx)"
+    (let [callee {:id "callee-mod" :name "Callee"
+                   :states {:initial {:type :initial :direct-transition :done}
+                            :done {:type :terminal}}}
+          caller {:id "caller-mod" :name "Caller"
+                   :states {:initial {:type :initial :direct-transition :call}
+                            :call {:type :call-submodule :submodule "callee-mod" :direct-transition :done}
+                            :done {:type :terminal}}}
+          ctx (assoc (ctx-for (persona-at 1)) :root "caller-mod" :current :call)
+          outcome (interp/step caller (Random. 1) ctx {"caller-mod" caller "callee-mod" callee})]
+      (is (= (:vital-signs ctx) (:vital-signs outcome))))))
+
+(deftest vital-sign-vocabulary-accepts-every-wave-vs-register-name-via-the-observation-reader
+  (testing "AR-4: the same table backs all three consumers -- an
+            Observation's own vital_sign field (pre-existing reader)
+            now recognizes the five names this wave adds, proving the
+            shared vital-signs.edn extension rather than a parallel
+            vocabulary"
+    (doseq [name ["Left ventricular Ejection fraction" "BMI" "HDL" "Triglycerides" "Height"]]
+      (let [module (assoc-in vital-sign-observation-module [:states :spo2 :vital-sign] name)
+            ctx (assoc (ctx-for (persona-at 1)) :current :spo2)
+            outcome (interp/step module (Random. 1) ctx)
+            [event] (:events outcome)]
+        (is (= :normal (:interpretation event)) (str name " should sample cleanly"))))))

@@ -116,13 +116,46 @@
   [persona]
   (.toEpochDay (parse-dob persona)))
 
+;; GMF coverage Wave VS (2026-08-04, ADR-0039 AR-1/AR-3): the vital-sign
+;; register -- a per-patient `:vital-signs` compartment, `{keyword
+;; current-value}`, GLOBAL over the whole walk (never root-scoped the
+;; way workflow `:attributes` is, ADR-0027 D1's own third compartment --
+;; a vital-sign reading is a clinical fact, not CallSubmodule workflow
+;; scratch). Written once per name by the `VitalSign` state (sample-
+;; once, AR-2); read by the `:vital-sign` condition. Seeded at patient
+;; creation from `vital-sign-baselines.edn`'s own flat authored
+;; constants (AR-3) -- ZERO rng draws, so this seeding never touches the
+;; rng stream (a fixed-consumption-law no-op, same as every other
+;; constant-only initialization in this namespace). Keys are the SAME
+;; `gmf/slug` transform every other free-form GMF name already goes
+;; through (:attribute/:symptom's own keying), applied to the vital-
+;; sign's own raw name string -- "mapped alongside" `sim-trajectory/
+;; vital-signs.edn`'s own string-keyed vocabulary by construction (one
+;; transform, not a hand-maintained second mapping table).
+(def ^:private vital-sign-baseline-table
+  (edn/read-string (slurp (io/resource "sim-trajectory/vital-sign-baselines.edn"))))
+
+(defn- vital-sign-key
+  [name] (keyword (gmf/slug name)))
+
+(defn- baseline-vital-signs
+  []
+  (into {} (map (fn [[name value]] [(vital-sign-key name) value])) vital-sign-baseline-table))
+
 (defn initial-context
   "The patient-ctx a fresh module walk starts from: current state
   `:initial` (every GMF module's own entry-point convention), virtual
   time at the persona's own DOB, an empty attributes map, and an empty
-  accumulating trajectory."
+  accumulating trajectory.
+
+  GMF coverage Wave VS (2026-08-04, ADR-0039 AR-3): `:vital-signs`
+  seeds from `vital-sign-baseline-table` (above) -- every OTHER name
+  (e.g. `Left ventricular Ejection fraction`, deliberately absent from
+  that table) starts genuinely unset, honest-absence territory until a
+  `VitalSign` state writes it (AR-4)."
   [persona]
-  {:current :initial :t (dob-epoch-day persona) :attributes {} :persona persona :trajectory []})
+  {:current :initial :t (dob-epoch-day persona) :attributes {} :persona persona :trajectory []
+   :vital-signs (baseline-vital-signs)})
 
 (defn- advance-date
   "epoch-day `t` advanced by `n` `unit`s -- day/week arithmetic is a plain
@@ -951,6 +984,7 @@
   [module-id ctx rng state advance events tables]
   {:events events
    :attributes (:attributes ctx)
+   :vital-signs (:vital-signs ctx)
    :advance advance
    :next (resolve-transition module-id ctx rng state tables)
    :terminal? false
@@ -958,7 +992,7 @@
 
 (defn- blocked-outcome
   [ctx]
-  {:events [] :attributes (:attributes ctx) :advance 0 :next nil :terminal? false :blocked? true})
+  {:events [] :attributes (:attributes ctx) :vital-signs (:vital-signs ctx) :advance 0 :next nil :terminal? false :blocked? true})
 
 (defn- guard-step
   [module-id ctx ^Random rng state tables]
@@ -1066,6 +1100,19 @@
 (def ^:private vital-sign-reference-table
   (edn/read-string (slurp (io/resource "sim-trajectory/vital-signs.edn"))))
 
+;; GMF coverage Wave VS (2026-08-04, ADR-0039 AR-1): the closed-
+;; vocabulary check, factored out of `vital-sign-extra` (below) so the
+;; NEW `VitalSign` state and `:vital-sign` condition (gmf.clj's own
+;; loader-side `"VitalSign"`/`"Vital Sign"` registrations) share the
+;; SAME single source of truth this table already is for the pre-
+;; existing Observation-family reader -- one unrecognized-name
+;; disposition, one table, three consumers.
+(defn- validate-vital-sign-name
+  [vital-sign-name]
+  (when-not (contains? vital-sign-reference-table vital-sign-name)
+    (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: unrecognized vital-sign name -- not in sim-trajectory/vital-signs.edn"
+                     {:unrecognized-vital-sign vital-sign-name}))))
+
 (defn- vital-sign-extra
   "One uniform draw within the named vital-sign's own :reference-range
   (the SAME plain-range mechanism the pre-existing `range` branch
@@ -1076,15 +1123,15 @@
   range/abnormal-flag inputs' ruling) is always :normal, an honest
   computed consequence of the simplification, never a fabricated
   excursion. An unrecognized name is a real, visible rejection
-  (:unrecognized-vital-sign) -- this table's own header comment's
-  'grows by evidence, not speculation' rule -- never a silent nil."
+  (:unrecognized-vital-sign, `validate-vital-sign-name` above) -- this
+  table's own header comment's 'grows by evidence, not speculation'
+  rule -- never a silent nil."
   [^Random rng codes vital-sign-name]
-  (if-let [{:keys [reference-range units]} (get vital-sign-reference-table vital-sign-name)]
-    (let [{:keys [low high]} reference-range]
-      {:codes codes :value (round1 (rand-double-in rng low high)) :unit units
-       :reference-range reference-range :interpretation :normal})
-    (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: unrecognized vital-sign name -- not in sim-trajectory/vital-signs.edn"
-                     {:unrecognized-vital-sign vital-sign-name}))))
+  (validate-vital-sign-name vital-sign-name)
+  (let [{:keys [reference-range units]} (get vital-sign-reference-table vital-sign-name)
+        {:keys [low high]} reference-range]
+    {:codes codes :value (round1 (rand-double-in rng low high)) :unit units
+     :reference-range reference-range :interpretation :normal}))
 
 (defn- sample-observation-extra
   "The value-sourcing mechanisms D1a-3/D3d found side by side in one
@@ -1225,6 +1272,7 @@
     (let [outcome (step callee-module rng callee-ctx modules tables)
           ctx' (-> callee-ctx
                    (assoc :attributes (:attributes outcome))
+                   (assoc :vital-signs (:vital-signs outcome))
                    (update :trajectory into (:events outcome))
                    (update :t + (:advance outcome)))]
       (cond
@@ -1260,6 +1308,7 @@
           post-call-ctx (assoc result :call-stack (:call-stack ctx))]
       {:events new-events
        :attributes (:attributes post-call-ctx)
+       :vital-signs (:vital-signs post-call-ctx)
        :advance (- (:t post-call-ctx) (:t ctx))
        :next (resolve-transition module-id post-call-ctx rng state tables)
        :terminal? false
@@ -1320,7 +1369,7 @@
                      {:module-id module-id :state (:current ctx)})))
   (let [death-t (resolve-time-advance rng (:t ctx) state)
         event (trajectory-event module-id (assoc ctx :t death-t) :death {:codes (:codes state)})]
-    {:events [event] :attributes (:attributes ctx) :advance (- death-t (:t ctx))
+    {:events [event] :attributes (:attributes ctx) :vital-signs (:vital-signs ctx) :advance (- death-t (:t ctx))
      :next nil :terminal? true :blocked? false}))
 
 (defn step
@@ -1363,7 +1412,7 @@
    (let [module-id (:id module)
          state (get-in module [:states (:current ctx)])]
     (case (:type state)
-      :terminal {:events [] :attributes (:attributes ctx) :advance 0 :next nil :terminal? true :blocked? false}
+      :terminal {:events [] :attributes (:attributes ctx) :vital-signs (:vital-signs ctx) :advance 0 :next nil :terminal? true :blocked? false}
       :initial (pass-through-outcome module-id ctx rng state 0 [] tables)
       :simple (pass-through-outcome module-id ctx rng state 0 [] tables)
       ;; M5b: consumed-internally, like :simple -- gmf/gmf-type->keyword's
@@ -1552,7 +1601,7 @@
     (step module rng ctx modules tables)
     (catch clojure.lang.ExceptionInfo e
       (if (honest-absence? e)
-        {:events [] :attributes (:attributes ctx) :advance 0 :next nil
+        {:events [] :attributes (:attributes ctx) :vital-signs (:vital-signs ctx) :advance 0 :next nil
          :terminal? false :blocked? false :walk-error (ex-data e)}
         (throw e)))))
 
@@ -1600,6 +1649,7 @@
      (let [outcome (step-safely module rng ctx modules tables)
            ctx' (-> ctx
                     (assoc :attributes (:attributes outcome))
+                    (assoc :vital-signs (:vital-signs outcome))
                     (update :trajectory into (:events outcome))
                     (update :t + (:advance outcome)))]
        (cond
@@ -1678,6 +1728,7 @@
              marked-events (mapv #(assoc % :pre-horizon (< (:t %) registration-t)) (:events outcome))
              ctx' (-> ctx
                       (assoc :attributes (:attributes outcome))
+                      (assoc :vital-signs (:vital-signs outcome))
                       (update :trajectory into marked-events)
                       (update :t + (:advance outcome)))]
          (cond

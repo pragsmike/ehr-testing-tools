@@ -64,6 +64,29 @@
 ;; SAME "plausibility, not diagnostic precision" bar the table's own
 ;; original three rows already set -- NOT independently source-verified
 ;; beyond the LOINC code itself.
+;;
+;; GMF coverage Wave VS (2026-08-04, ADR-0039 AR-1/AR-4): five new rows
+;; -- the vital-sign register's own name vocabulary (a NEW consumer,
+;; `ehrt.sim-trajectory.gmf-interpreter`'s own `VitalSign` state and
+;; `:vital-sign` condition, both reading THIS SAME table for the closed-
+;; vocabulary check, alongside the pre-existing `vital_sign`-sourced
+;; Observation reader) plus the observation-family need Height itself
+;; unblocks (`wellness_encounters.json`'s own `Record_Height`). LOINC
+;; codes copied VERBATIM from the real candidate closures at the pinned
+;; commit -- `congestive_heart_failure.json`'s own `LVEF ...` VitalSign
+;; states site (10230-1, that module's own `Record_MetabolicPanel`-
+;; adjacent Observation reader), `wellness_encounters.json`'s own
+;; `Record_BMI`/`Record_Height`/lipid-panel Observation states (39156-5,
+;; 8302-2, 2085-9, 2571-8) -- the strongest provenance this table's own
+;; header discipline recognizes, stronger than an independent terminology-
+;; server lookup. Reference ranges are author-curated typical-ADULT-
+;; NORMAL values (the SAME "plausibility, not diagnostic precision" bar
+;; every prior row already sets) -- deliberately narrower than
+;; `congestive_heart_failure.json`'s own per-NYHA-stage LVEF ranges
+;; (5-100, disease-state content that module's own VitalSign states
+;; author directly), since this table backs the independent, always-
+;; :normal Observation draw (P4/Q3's pre-existing simplification), never
+;; the new VitalSign state's own module-authored range.
 {"Systolic Blood Pressure"
  {:code {:system :loinc :code "8480-6" :display "Systolic blood pressure"}
   :units "mm[Hg]"
@@ -112,4 +135,29 @@
  "Carbon Dioxide"
  {:code {:system :loinc :code "2028-9" :display "Carbon dioxide, total [Moles/volume] in Serum or Plasma"}
   :units "mmol/L"
-  :reference-range {:low 23 :high 29}}}
+  :reference-range {:low 23 :high 29}}
+
+ "Left ventricular Ejection fraction"
+ {:code {:system :loinc :code "10230-1" :display "Left ventricular Ejection fraction"}
+  :units "%"
+  :reference-range {:low 50 :high 70}}
+
+ "BMI"
+ {:code {:system :loinc :code "39156-5" :display "Body mass index (BMI) [Ratio]"}
+  :units "kg/m2"
+  :reference-range {:low 18.5 :high 24.9}}
+
+ "HDL"
+ {:code {:system :loinc :code "2085-9" :display "Cholesterol in HDL [Mass/volume] in Serum or Plasma"}
+  :units "mg/dL"
+  :reference-range {:low 40 :high 60}}
+
+ "Triglycerides"
+ {:code {:system :loinc :code "2571-8" :display "Triglyceride [Mass/volume] in Serum or Plasma"}
+  :units "mg/dL"
+  :reference-range {:low 50 :high 150}}
+
+ "Height"
+ {:code {:system :loinc :code "8302-2" :display "Body Height"}
+  :units "cm"
+  :reference-range {:low 150 :high 190}}}
