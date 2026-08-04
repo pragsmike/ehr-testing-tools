@@ -285,6 +285,23 @@
 (defn- rand-int-in [^Random rng lo hi] (+ lo (.nextInt rng (inc (- hi lo)))))
 (defn- rand-double-in [^Random rng lo hi] (+ lo (* (.nextDouble rng) (- hi lo))))
 
+;; ADR-0040 AR-2: SetAttribute's own :range value source -- `Person.rand
+;; (low, high, decimals)` semantics (`RandomNumberGenerator.java`, source-
+;; grounded): one uniform draw, then HALF-UP rounding to :decimals places
+;; when present (BigDecimal.setScale's own rounding mode, mirrored with
+;; plain double arithmetic -- this project's fixed-consumption law only
+;; constrains the DRAW count, never the post-draw arithmetic used to
+;; shape it, the same latitude `sample-distribution`'s own `:round`
+;; handling already takes).
+(defn- round-half-up ^double [^double v ^long decimals]
+  (let [factor (Math/pow 10.0 decimals)]
+    (/ (double (Math/round (* v factor))) factor)))
+
+(defn- sample-set-attribute-range
+  ^double [^Random rng {:keys [low high decimals]}]
+  (let [v (rand-double-in rng low high)]
+    (if decimals (round-half-up v decimals) v)))
+
 ;; --- ADR-0035 (Wave F0) AR-1/AR-3: GAUSSIAN/EXPONENTIAL/TRIANGULAR
 ;; sampling -- ehrt.sim-trajectory.gmf's own normalized SampledDistribution
 ;; shape, sampled here with EXACTLY ONE rng draw per kind (EXACT: zero),
@@ -1474,27 +1491,40 @@
       ;; GMF coverage Wave B (2026-08-02, ADR-0027, D1): both writes are
       ;; ROOT-namespaced (`root-id`), not `module-id` -- workflow scratch
       ;; is shared across a CallSubmodule call tree by construction.
-      ;; GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3d finding
-      ;; 1): :value-code (a Concept, TJR's own Pre_Procedure_Encounter_
-      ;; Reason/Home_Health_Reason_Knee/Hip states) takes precedence
-      ;; over :value when present -- the SAME "coded value instead of a
-      ;; plain one" shape :observation's own value_code branch already
-      ;; establishes. ADR-0035 AR-4: :distribution takes precedence over
-      ;; BOTH -- `ehrt.sim-trajectory.gmf`'s own `set-attribute-value-
-      ;; conflict?` already rejects a state carrying more than one of
-      ;; the three at LOAD time, so at most one is ever present here;
-      ;; this `cond` names the intended precedence rather than relying
-      ;; on that invariant silently. Fixes the silent-nil gap the census
-      ;; design channel found: before this ADR, a state whose ONLY value
-      ;; source was :distribution wrote `nil` (`:value-code`/`:value`
-      ;; both absent, the pre-existing `if` fell through to `(:value
-      ;; state)`, itself nil).
-      :set-attribute (let [k (keyword (root-id ctx module-id) (gmf/slug (:attribute state)))
-                           v (cond (:distribution state) (sample-distribution rng (:distribution state))
-                                   (:value-code state) (:value-code state)
-                                   :else (:value state))
-                           ctx' (update ctx :attributes assoc k v)]
-                       (pass-through-outcome module-id ctx' rng state 0 [] tables))
+      ;;
+      ;; ADR-0040 AR-2: the FULL upstream precedence chain (`State.java`'s
+      ;; SetAttribute.process, source-grounded) -- `ehrt.sim-trajectory.gmf`'s
+      ;; own `set-attribute-unsupported-source?` already rejects
+      ;; :expression/:series-data at LOAD time (this project has neither a
+      ;; CQL evaluator nor a time-series mechanism), so this `cond` covers
+      ;; exactly the five sources that reach here, in upstream's own
+      ;; order: :range (one draw, `sample-set-attribute-range`) >
+      ;; :distribution (`sample-distribution`, ADR-0035) > :value-code (a
+      ;; Concept, TJR's own Pre_Procedure_Encounter_Reason/Home_Health_
+      ;; Reason_Knee/Hip states) > :value-attribute (an existing root-
+      ;; scoped attribute's own current value, read the SAME way
+      ;; `:attribute`/`:symptom` conditions already do -- upstream's own
+      ;; `if (person.attributes.containsKey(valueAttribute))`: when the
+      ;; attribute was never written yet, this source does NOT fire,
+      ;; falling through to :value rather than writing nil) > :value (the
+      ;; literal GMF 1.0 fallback, congestive_heart_failure.json's own
+      ;; `Inpatient LOS` shape -- `\"value\": 0` alongside a real
+      ;; :distribution, now a legal co-present default the distribution
+      ;; draw overrides, RETIRED load-time-conflict dated note above).
+      ;; Retains the silent-nil fix ADR-0035 AR-4 already made: a state
+      ;; whose only value source is :distribution/:range never falls
+      ;; through to a bare, absent `:value`.
+      :set-attribute
+      (let [k (keyword (root-id ctx module-id) (gmf/slug (:attribute state)))
+            va-key (when (:value-attribute state) (keyword (root-id ctx module-id) (gmf/slug (:value-attribute state))))
+            v (cond
+                (:range state) (sample-set-attribute-range rng (:range state))
+                (:distribution state) (sample-distribution rng (:distribution state))
+                (:value-code state) (:value-code state)
+                (and va-key (contains? (:attributes ctx) va-key)) (get (:attributes ctx) va-key)
+                :else (:value state))
+            ctx' (update ctx :attributes assoc k v)]
+        (pass-through-outcome module-id ctx' rng state 0 [] tables))
       ;; ADR-0035 AR-2/AR-5: a GAUSSIAN/EXPONENTIAL/TRIANGULAR Symptom
       ;; severity normalizes to the SAME state-level :distribution key
       ;; Delay/Procedure's new kinds do (gmf/apply-new-timing-

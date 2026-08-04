@@ -442,6 +442,117 @@
     (is (= 7.0 (get-in outcome [:attributes :exact-dist-mod/fixed-value])))
     (is (= 0 @calls))))
 
+;; --- ADR-0040 AR-2: the full upstream SetAttribute precedence chain --
+;; range > distribution > value-code > value-attribute > literal value.
+;; congestive_heart_failure.json's own `Inpatient LOS` shape (a literal
+;; :value co-present with :distribution) is the census's own real found
+;; gap this closes.
+
+(def set-attribute-distribution-outranks-value-module
+  "congestive_heart_failure.json's own Inpatient LOS shape, byte-
+  confirmed against source: :value is a legacy-compat placeholder,
+  :distribution is what actually fires."
+  {:id "los-mod" :name "Los"
+   :states {:initial {:type :initial :direct-transition :set}
+            :set {:type :set-attribute :attribute "inpatient_los" :value 0
+                  :distribution {:kind :exact :parameters {:value 5} :round false}
+                  :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest set-attribute-distribution-outranks-a-co-present-literal-value
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :set)
+        outcome (interp/step set-attribute-distribution-outranks-value-module (Random. 1) ctx)]
+    (is (= 5.0 (get-in outcome [:attributes :los-mod/inpatient-los])))))
+
+(def set-attribute-range-module
+  {:id "range-mod" :name "Range"
+   :states {:initial {:type :initial :direct-transition :set}
+            :set {:type :set-attribute :attribute "roll" :range {:low 1 :high 2}
+                  :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest set-attribute-range-draws-within-bounds-with-exactly-one-rng-call
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :set)
+        calls (atom 0)
+        rng (proxy [Random] [(long 1)]
+              (nextDouble [] (swap! calls inc) (proxy-super nextDouble)))
+        outcome (interp/step set-attribute-range-module rng ctx)
+        v (get-in outcome [:attributes :range-mod/roll])]
+    (is (<= 1 v 2))
+    (is (= 1 @calls))))
+
+(def set-attribute-range-with-decimals-module
+  {:id "range-decimals-mod" :name "RangeDecimals"
+   :states {:initial {:type :initial :direct-transition :set}
+            :set {:type :set-attribute :attribute "roll" :range {:low 0 :high 100 :decimals 2}
+                  :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest set-attribute-range-decimals-rounds-half-up-to-that-many-places
+  (testing "Person.rand(low, high, decimals)'s own BigDecimal.setScale
+            HALF_UP semantics"
+    (dotimes [seed 20]
+      (let [ctx (assoc (ctx-for (persona-at 1)) :current :set)
+            outcome (interp/step set-attribute-range-with-decimals-module (Random. seed) ctx)
+            v (get-in outcome [:attributes :range-decimals-mod/roll])
+            scaled (* v 100.0)]
+        (is (< (Math/abs (- scaled (Math/round scaled))) 1e-6) (str "v=" v))))))
+
+(def set-attribute-range-outranks-distribution-module
+  {:id "range-vs-dist-mod" :name "RangeVsDist"
+   :states {:initial {:type :initial :direct-transition :set}
+            :set {:type :set-attribute :attribute "roll" :range {:low 9 :high 9}
+                  :distribution {:kind :exact :parameters {:value 1} :round false}
+                  :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest set-attribute-range-outranks-a-co-present-distribution
+  (let [ctx (assoc (ctx-for (persona-at 1)) :current :set)
+        outcome (interp/step set-attribute-range-outranks-distribution-module (Random. 1) ctx)]
+    (is (= 9.0 (get-in outcome [:attributes :range-vs-dist-mod/roll])))))
+
+;; ADR-0040 AR-2: :value-attribute -- hospice_treatment.json's own
+;; Eventual_Hospice_Reason shape, byte-confirmed against source: reads an
+;; EXISTING root-scoped attribute's own current value, falling through to
+;; :value (never writing nil) when that attribute was never set.
+
+(def set-attribute-value-attribute-module
+  {:id "hospice-reason-mod" :name "HospiceReason"
+   :states {:initial {:type :initial :direct-transition :set}
+            :set {:type :set-attribute :attribute "hospice_reason" :value-attribute "chf"
+                  :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest set-attribute-value-attribute-reads-the-named-attributes-current-value-when-present
+  (let [ctx (-> (ctx-for (persona-at 1)) (assoc :current :set)
+                (update :attributes assoc :hospice-reason-mod/chf "congestive heart failure"))
+        outcome (interp/step set-attribute-value-attribute-module (Random. 1) ctx)]
+    (is (= "congestive heart failure" (get-in outcome [:attributes :hospice-reason-mod/hospice-reason])))))
+
+(deftest set-attribute-value-attribute-falls-through-to-literal-value-when-the-named-attribute-is-absent
+  (testing "upstream's own `if (person.attributes.containsKey(valueAttribute))` --
+            absent means this source does NOT fire, never a nil write"
+    (let [module (assoc-in set-attribute-value-attribute-module [:states :set :value] "unknown")
+          ctx (assoc (ctx-for (persona-at 1)) :current :set)
+          outcome (interp/step module (Random. 1) ctx)]
+      (is (= "unknown" (get-in outcome [:attributes :hospice-reason-mod/hospice-reason]))))))
+
+(def set-attribute-value-code-outranks-value-attribute-module
+  {:id "vc-vs-va-mod" :name "VcVsVa"
+   :states {:initial {:type :initial :direct-transition :set}
+            :set {:type :set-attribute :attribute "reason"
+                  :value-code {:system :snomed :code "1" :display "Test"}
+                  :value-attribute "other"
+                  :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest set-attribute-value-code-outranks-a-co-present-value-attribute
+  (let [ctx (-> (ctx-for (persona-at 1)) (assoc :current :set)
+                (update :attributes assoc :vc-vs-va-mod/other "should not win"))
+        outcome (interp/step set-attribute-value-code-outranks-value-attribute-module (Random. 1) ctx)]
+    (is (= {:system :snomed :code "1" :display "Test"}
+           (get-in outcome [:attributes :vc-vs-va-mod/reason])))))
+
 (deftest symptom-writes-a-module-namespaced-key-with-a-sampled-severity
   (let [ctx (assoc (ctx-for (persona-at 1)) :current :nasal-congestion-symptom)
         outcome (interp/step fixture-clinic (Random. 5) ctx)

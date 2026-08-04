@@ -822,24 +822,66 @@
       (is (not (contains? onset :value)))
       (is (not (contains? onset :value-code))))))
 
-(def set-attribute-value-and-distribution-conflict-json
-  "A deliberately malformed module: SetAttribute carries BOTH a
-  :distribution and a :value -- AR-4's own ruling: 'if a state carries
-  several, record a load-time rejection rather than guessing,' never a
-  silent precedence order."
-  (str "{\"name\": \"SetAttrConflict\", \"gmf_version\": 2, \"states\": {"
-       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Ambiguous\"},"
-       "  \"Ambiguous\": {\"type\": \"SetAttribute\", \"attribute\": \"foo\", \"value\": 1,"
-       "                 \"distribution\": {\"kind\": \"EXACT\", \"parameters\": {\"value\": 1}},"
-       "                 \"direct_transition\": \"Done\"},"
+;; RETIRED (2026-08-04, ADR-0040 AR-2): the module below used to load-
+;; time REJECT (`set-attribute-value-conflict?`, gmf.clj's own dated
+;; retirement note) -- upstream's own read (`State.java`'s SetAttribute.
+;; process, source-grounded) shows :value alongside :distribution is a
+;; LEGAL, ORDERED co-presence (a legacy-compatibility default the
+;; distribution draw overrides), congestive_heart_failure.json's own
+;; real `Inpatient LOS` shape byte-confirmed against source. This test
+;; now proves the loader accepts it; `gmf-interpreter-test.clj`'s own
+;; `set-attribute-distribution-outranks-a-co-present-literal-value`
+;; proves the interpreter picks :distribution, per the chain.
+
+(def set-attribute-value-and-distribution-json
+  "congestive_heart_failure.json's own Inpatient LOS shape, byte-
+  confirmed against source (ADR-0040 AR-2): SetAttribute carries BOTH a
+  :distribution and a :value -- legal, ordered co-presence, not a
+  conflict."
+  (str "{\"name\": \"SetAttrCoPresent\", \"gmf_version\": 2, \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Los\"},"
+       "  \"Los\": {\"type\": \"SetAttribute\", \"attribute\": \"foo\", \"value\": 0,"
+       "           \"distribution\": {\"kind\": \"EXACT\", \"parameters\": {\"value\": 1}},"
+       "           \"direct_transition\": \"Done\"},"
        "  \"Done\": {\"type\": \"Terminal\"}}}"))
 
-(deftest set-attribute-value-and-distribution-together-rejects-cleanly
-  (let [loaded (gmf/load-module "set-attr-conflict" set-attribute-value-and-distribution-conflict-json)]
+(deftest set-attribute-value-and-distribution-together-loads-cleanly
+  (let [loaded (gmf/load-module "set-attr-copresent" set-attribute-value-and-distribution-json)]
+    (is (result/ok? loaded))
+    (let [los (get-in (:payload loaded) [:states :los])]
+      (is (= {:kind :exact :parameters {:value 1} :round false} (:distribution los)))
+      (is (= 0 (:value los))))))
+
+;; --- ADR-0040 AR-2: :expression/:series-data are the two upstream
+;; sources this loader has no evaluator/time-series mechanism for --
+;; clean, named load-time rejections, never silently dropped. ----------
+
+(def set-attribute-expression-json
+  (str "{\"name\": \"SetAttrExpr\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Calc\"},"
+       "  \"Calc\": {\"type\": \"SetAttribute\", \"attribute\": \"foo\", \"expression\": \"1 + 1\","
+       "            \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest set-attribute-expression-rejects-cleanly
+  (let [loaded (gmf/load-module "set-attr-expr" set-attribute-expression-json)]
     (is (result/rejected? loaded))
-    (is (= :set-attribute-value-conflict (:category loaded)))
-    (is (= :ambiguous (:state (:payload loaded))))
-    (is (= #{:distribution :value} (:sources (:payload loaded))))))
+    (is (= :set-attribute-unsupported-source (:category loaded)))
+    (is (= :calc (:state (:payload loaded))))
+    (is (= :expression (:source (:payload loaded))))))
+
+(def set-attribute-series-data-json
+  (str "{\"name\": \"SetAttrSeries\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Sample\"},"
+       "  \"Sample\": {\"type\": \"SetAttribute\", \"attribute\": \"foo\", \"series_data\": \"1 2 3\","
+       "              \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest set-attribute-series-data-rejects-cleanly
+  (let [loaded (gmf/load-module "set-attr-series" set-attribute-series-data-json)]
+    (is (result/rejected? loaded))
+    (is (= :set-attribute-unsupported-source (:category loaded)))
+    (is (= :series-data (:source (:payload loaded))))))
 
 ;; --- GMF coverage Wave F (2026-08-03, ADR-0036 AR-1): Counter --------------
 

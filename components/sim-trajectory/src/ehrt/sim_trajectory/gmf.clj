@@ -548,32 +548,38 @@
   [state kw-type]
   (and (= :vital-sign kw-type) (contains? state :expression)))
 
-(defn- attribute-value-sources
-  "Which of SetAttribute's three mutually-exclusive-in-practice value
-  sources `state` actually carries -- :distribution/:value/:value-code,
-  any present (ADR-0035 AR-4: upstream's own real precedent is 'a
-  distribution present means sample it,' never a silent priority order
-  among the three; `contains?` for :value/:value-code since a legitimate
-  authored value can be falsy -- `false`, `0`, `\"\"` -- and must not be
-  mistaken for absence)."
-  [state]
-  (into #{} (keep identity)
-        [(when (map? (:distribution state)) :distribution)
-         (when (contains? state :value) :value)
-         (when (contains? state :value-code) :value-code)]))
+;; RETIRED (2026-08-04, ADR-0040 AR-2): `attribute-value-sources`/
+;; `set-attribute-value-conflict?` used to reject a SetAttribute state
+;; carrying :distribution ALONGSIDE :value/:value-code as a load-time
+;; conflict. Read against the pin (`State.java`'s own `SetAttribute.
+;; process`, source-grounded): upstream defines an explicit, ORDERED
+;; precedence chain over co-present sources -- expression > range >
+;; seriesData > distribution > valueCode > valueAttribute > literal
+;; value -- so co-presence is legal and ordered, never ambiguous.
+;; ADR-0035 AR-4's own reading ("upstream's own real precedent is 'a
+;; distribution present means sample it'") was correct as far as it
+;; went but stricter than the pin: real Synthea modules DO author a
+;; placeholder literal `value` alongside a real `distribution` (a
+;; legacy-compatibility default, `congestive_heart_failure.json`'s own
+;; `Inpatient LOS`: `\"value\": 0, \"distribution\": {EXPONENTIAL}`),
+;; and the chain -- not a conflict -- is what upstream actually does
+;; with it. Kept as history, not deleted outright, per this project's
+;; own fix-forward-with-disclosure discipline; `set-attribute-value`
+;; (gmf-interpreter.clj, below `step`'s own :set-attribute case) is the
+;; chain that replaces this rejection.
 
-(defn- set-attribute-value-conflict?
-  "ADR-0035 AR-4: a SetAttribute state carrying :distribution ALONGSIDE
-  :value or :value-code is a load-time REJECTION (`normalize-state`'s
-  own early-return branch) -- 'record a load-time rejection rather than
-  guessing,' never a silently-chosen precedence order. (:value and
-  :value-code coexisting WITHOUT :distribution is pre-existing,
-  untouched behavior -- `step`'s own :set-attribute case already
-  prioritizes :value-code there, unrelated to this session's own fence.)"
+(defn- set-attribute-unsupported-source?
+  "ADR-0040 AR-2: of upstream's own seven-source precedence chain, this
+  loader supports five (range/distribution/valueCode/valueAttribute/
+  literal value) -- `:expression` (a CQL evaluator this project doesn't
+  have, the SAME gap `vital-sign-expression?` already names) and
+  `:series-data` (a time-series value source no candidate closure this
+  session authors) are clean, NAMED load-time REJECTIONS instead, the
+  same disposition `vital-sign-expression?` already establishes for the
+  identical CQL gap on VitalSign."
   [state kw-type]
   (and (= :set-attribute kw-type)
-       (map? (:distribution state))
-       (or (contains? state :value) (contains? state :value-code))))
+       (or (contains? state :expression) (contains? state :series-data))))
 
 (defn- apply-new-timing-distribution
   "GAUSSIAN/EXPONENTIAL/TRIANGULAR on Delay/Symptom/Procedure (ADR-0035
@@ -631,8 +637,9 @@
       (invalid-distribution-kind? state kw-type)
       {:invalid-distribution-kind {:kind (state-distribution-kind state)}}
 
-      (set-attribute-value-conflict? state kw-type)
-      {:set-attribute-value-conflict {:sources (attribute-value-sources state)}}
+      (set-attribute-unsupported-source? state kw-type)
+      {:set-attribute-unsupported-source
+       {:source (cond (contains? state :expression) :expression (contains? state :series-data) :series-data)}}
 
       (vital-sign-expression? state kw-type)
       {:vital-sign-expression-unsupported {}}
@@ -735,8 +742,10 @@
                   apply-new-timing-distribution
 
                   ;; ADR-0035 AR-2/AR-4: SetAttribute's own :distribution
-                  ;; -- all five kinds, `set-attribute-value-conflict?`
-                  ;; (above) already gated out the ambiguous case.
+                  ;; -- all five kinds (ADR-0040 AR-2: no longer gated
+                  ;; against a co-present :value/:value-code -- the
+                  ;; interpreter's own precedence chain, not this
+                  ;; loader, is what now orders co-present sources).
                   ;; GMF coverage Wave VS (2026-08-04, ADR-0039 AR-2):
                   ;; VitalSign's own :distribution -- the SAME value-
                   ;; distribution normalization, no :unit folding.
@@ -748,12 +757,14 @@
   "Normalizes every state; short-circuits with the FIRST deferred-type
   state found (deterministic -- iterates in the module's own key order),
   since a module using even one deferred type fails load, full stop
-  (this namespace's own docstring). ADR-0035: two more short-circuiting
-  categories join :unsupported-state-type here, the SAME 'first found,
+  (this namespace's own docstring). ADR-0035: one more short-circuiting
+  category joins :unsupported-state-type here, the SAME 'first found,
   deterministic order' discipline -- an unrecognized v2 distribution
-  :kind (:invalid-distribution-kind) and a SetAttribute state carrying
-  more than one of :distribution/:value/:value-code
-  (:set-attribute-value-conflict)."
+  :kind (:invalid-distribution-kind). ADR-0040 AR-2: a SetAttribute state
+  carrying :expression/:series-data (:set-attribute-unsupported-source)
+  joins the same discipline, replacing the RETIRED :value/:value-code
+  co-presence check (`set-attribute-value-conflict?`'s own dated
+  retirement note, above)."
   [raw-states]
   (reduce (fn [acc [state-name raw-state]]
             (let [normalized (normalize-state raw-state)]
@@ -766,9 +777,10 @@
                 (reduced {:invalid-distribution {:state state-name
                                                   :kind (:kind (:invalid-distribution-kind normalized))}})
 
-                (:set-attribute-value-conflict normalized)
-                (reduced {:value-conflict {:state state-name
-                                           :sources (:sources (:set-attribute-value-conflict normalized))}})
+                (:set-attribute-unsupported-source normalized)
+                (reduced {:set-attribute-unsupported-source
+                          {:state state-name
+                           :source (:source (:set-attribute-unsupported-source normalized))}})
 
                 (:vital-sign-expression-unsupported normalized)
                 (reduced {:vital-sign-expression {:state state-name}})
@@ -822,6 +834,14 @@
 ;; --- Schema (v1 subset, post-normalization) -------------------------------
 
 (def ^:private Range [:map [:low number?] [:high number?] [:unit {:optional true} :string]])
+
+;; ADR-0040 AR-2: SetAttribute's own :range value source -- `State.java`'s
+;; own `Range<Double> range` field, source-grounded: :decimals (upstream's
+;; own `person.rand(low, high, decimals)`, rounding the ONE draw to that
+;; many decimal places, or unrounded when absent) is a real field :range
+;; carries here that the timing-context Range above never does (a day/
+;; week/month/year count has no fractional-rounding concept of its own).
+(def ^:private SetAttributeRange [:map [:low number?] [:high number?] [:decimals {:optional true} :int]])
 (def ^:private Exact [:map [:quantity number?] [:unit {:optional true} :string]])
 
 ;; GMF coverage Wave D stage D1 (2026-08-02, ADR-0029 R2(a), D1a-2): a
@@ -971,12 +991,21 @@
    ;; normalize-state clause already handles it, no new loader code).
    [:set-attribute (with-transitions [:type [:= :set-attribute]] [:attribute :string] [:value {:optional true} :any]
                      [:value-code {:optional true} sim-model/Concept]
-                     ;; ADR-0035 AR-2/AR-4: SetAttribute's own :distribution
-                     ;; -- `set-attribute-value-conflict?` (above) already
-                     ;; gates out ambiguous co-occurrence with :value/
-                     ;; :value-code at LOAD time, before this schema is
-                     ;; ever checked.
-                     [:distribution {:optional true} SampledDistribution])]
+                     ;; ADR-0035 AR-2/AR-4: SetAttribute's own :distribution.
+                     ;; ADR-0040 AR-2: co-presence with :value/:value-code is
+                     ;; now LEGAL, ordered by the interpreter's own
+                     ;; precedence chain (the RETIRED load-time conflict
+                     ;; check's own dated note, above).
+                     [:distribution {:optional true} SampledDistribution]
+                     ;; ADR-0040 AR-2: :range (`person.rand(low, high,
+                     ;; decimals)` semantics, `set-attribute-unsupported-
+                     ;; source?`'s own docstring has the full seven-source
+                     ;; chain) and :value-attribute (a bare, later-slugged
+                     ;; attribute NAME string, resolved the SAME root-
+                     ;; namespaced way `:attribute`/`:symptom` reads
+                     ;; already are -- interpreter-time, not here).
+                     [:range {:optional true} SetAttributeRange]
+                     [:value-attribute {:optional true} :string])]
    [:symptom (with-transitions [:type [:= :symptom]] [:symptom :string]
                [:range {:optional true} Range] [:exact {:optional true} Exact]
                [:distribution {:optional true} SampledDistribution])]
@@ -1187,18 +1216,23 @@
   for a state whose top-level v2 :distribution names a :kind outside
   the five Distribution.java defines -- a clean rejection where the
   loader used to THROW (the census's own `gmf_version 2` loader-
-  exception finding, ADR-0034); :rejected :set-attribute-value-conflict
-  (payload {:state :sources}, ADR-0035 AR-4) for a SetAttribute state
-  carrying more than one of :distribution/:value/:value-code; :rejected
-  :attribute-collision (payload {:attribute name}) for a module whose own
-  SetAttribute/Symptom writes a bare engine-reserved attribute name;
-  :rejected :vital-sign-expression-unsupported (payload {:state}, ADR-0039
-  AR-2) for a VitalSign state carrying a CQL :expression, a real upstream
-  branch this loader has no evaluator for; :rejected :schema-invalid
-  (payload {:explain ...}) for any other v1 structural mismatch."
+  exception finding, ADR-0034); :rejected :set-attribute-unsupported-source
+  (payload {:state :source}, ADR-0040 AR-2) for a SetAttribute state
+  carrying :expression or :series-data, two of upstream's own seven
+  value sources this loader has no evaluator/time-series mechanism for
+  (co-presence of the FIVE supported sources -- range/distribution/
+  value-code/value-attribute/literal value -- is legal, ordered by
+  `gmf-interpreter.clj`'s own precedence chain, never a load-time
+  rejection); :rejected :attribute-collision (payload {:attribute name})
+  for a module whose own SetAttribute/Symptom writes a bare
+  engine-reserved attribute name; :rejected :vital-sign-expression-unsupported
+  (payload {:state}, ADR-0039 AR-2) for a VitalSign state carrying a CQL
+  :expression, a real upstream branch this loader has no evaluator for;
+  :rejected :schema-invalid (payload {:explain ...}) for any other v1
+  structural mismatch."
   [id json-text]
   (let [raw (json/read-str json-text :key-fn kebab-key)
-        {:keys [states unsupported invalid-distribution value-conflict vital-sign-expression]}
+        {:keys [states unsupported invalid-distribution set-attribute-unsupported-source vital-sign-expression]}
         (normalize-states (:states raw))]
     (cond
       unsupported
@@ -1207,8 +1241,8 @@
       invalid-distribution
       (result/rejected :unsupported-distribution-kind invalid-distribution)
 
-      value-conflict
-      (result/rejected :set-attribute-value-conflict value-conflict)
+      set-attribute-unsupported-source
+      (result/rejected :set-attribute-unsupported-source set-attribute-unsupported-source)
 
       vital-sign-expression
       (result/rejected :vital-sign-expression-unsupported vital-sign-expression)
