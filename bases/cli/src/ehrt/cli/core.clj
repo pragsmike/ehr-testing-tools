@@ -1603,8 +1603,8 @@
 ;; other -fn key dispatch already carries). Manifest schema changes
 ;; require a version bump, and the binding contract test lives in
 ;; projects/conformance/test/. Read ADR-0012 and ADR-0005 (and, for
-;; provenance, notes/ehr-testing-sim-mounting-note.md) before changing
-;; any of these.
+;; provenance, notes/tools/ehr-testing-sim-mounting-note.md) before
+;; changing any of these.
 
 (defn- resolve-path-designators
   "CLI acceptance is additive (ruling 7, docs/source-sink-design.md
