@@ -54,17 +54,17 @@
 (def given-names-by-sex-and-decade
   "Loaded once at namespace load: resources/demographics/given-names.edn
   -- {sex -> {decade -> [{:name :weight} ...]}}."
-  (edn/read-string (slurp (io/resource "sim/demographics/given-names.edn"))))
+  (edn/read-string (slurp (io/resource "sim-model/demographics/given-names.edn"))))
 
 (def surnames
   "Loaded once: resources/demographics/surnames.edn -- a flat weighted
   pool, [{:name :weight} ...]."
-  (edn/read-string (slurp (io/resource "sim/demographics/surnames.edn"))))
+  (edn/read-string (slurp (io/resource "sim-model/demographics/surnames.edn"))))
 
 (def places
   "Loaded once: resources/demographics/places.edn -- a flat weighted
   pool of full address rows, [{:street :city :state :zip :weight} ...]."
-  (edn/read-string (slurp (io/resource "sim/demographics/places.edn"))))
+  (edn/read-string (slurp (io/resource "sim-model/demographics/places.edn"))))
 
 ;; --- Payer pool (docs/operational-models.md's payers model; this
 ;; namespace is its real binding, per sim/ADR-0007 decision 4) -----------------
