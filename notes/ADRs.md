@@ -88,3 +88,4 @@ below updates only when an arc closes.
 - **ADR-0043** — Sim split B, M1: `provenance` component lands, sim's manifest mirror retires, the intake front door is written down — [`0043-sim-split-b-m1.md`](adr/0043-sim-split-b-m1.md) — Accepted
 - **ADR-0044** — Standing-equipment promotion: census enters `sim-trajectory`, the oracle digest becomes a component, J2 closes structurally — [`0044-standing-equipment-promotion.md`](adr/0044-standing-equipment-promotion.md) — Accepted
 - **ADR-0045** — Scaffolding compaction A: riders, vestige retirements, Deferred triage — [`0045-scaffolding-compaction-a.md`](adr/0045-scaffolding-compaction-a.md) — Accepted
+- **ADR-0046** — Scaffolding compaction B: the ADR split and the roadmap rotation — [`0046-scaffolding-compaction-b.md`](adr/0046-scaffolding-compaction-b.md) — Accepted

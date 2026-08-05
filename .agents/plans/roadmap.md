@@ -202,3 +202,4 @@ Rows here are LIVE. Closed rows move to Done with their notes.
 `.agents/plans/roadmap-done-2026-07.md` and `.agents/plans/roadmap-done-2026-08.md`,
 scaffolding compaction B, `notes/ADRs.md` ADR-0046)
 - 2026-08-05 — scaffolding-compaction-a — ADR-0045
+- 2026-08-05 — scaffolding-compaction-b — ADR-0046
