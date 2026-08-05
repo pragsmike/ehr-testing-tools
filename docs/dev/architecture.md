@@ -29,6 +29,7 @@ flowchart LR
     judgev2hapi[judge-v2-hapi]
     judgefhirofficial[judge-fhir-official]
     judgev2nist[judge-v2-nist]
+    provenance[provenance]
     corpus[corpus]
     corpusio[corpus-io]
     docstooling[docs-tooling]
@@ -52,6 +53,8 @@ flowchart LR
     corpus --> judge
     corpus --> sim
     corpus --> corpusio
+    corpus --> provenance
+    sim --> provenance
     simmodel --> kernel
     simengine --> simmodel
     simtrajectory --> simmodel

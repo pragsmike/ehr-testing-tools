@@ -86,10 +86,20 @@
            ;; (ADR-0006 posture: measure and report; the 85%
            ;; --fail-threshold did not carry forward -- see
            ;; notes/ADRs.md ADR-0002 for why).
+           ;; sim/sim-engine/sim-emit-fhir/sim-check joined this alias
+           ;; (sim split B, M4, 2026-08-04, .agents/plans/2026-08-04-
+           ;; sim-split-b-plan.md AR-M4-5b): a pre-existing gap since M2
+           ;; (neither `sim` nor `sim-engine` was ever in this list
+           ;; either -- M2's/M3's own disclosed finding), closed this
+           ;; session rather than left standing another stage.
            :coverage {:extra-paths ["../../components/kernel/test"
+                                     "../../components/sim/test"
+                                     "../../components/sim-engine/test"
                                      "../../components/sim-model/test"
                                      "../../components/sim-trajectory/test"
                                      "../../components/sim-emit-hl7/test"
+                                     "../../components/sim-emit-fhir/test"
+                                     "../../components/sim-check/test"
                                      "../../components/judge/test"
                                      "../../components/judge-v2-hapi/test"
                                      "../../components/judge-fhir-official/test"
@@ -105,9 +115,13 @@
                                    org.slf4j/slf4j-nop {:mvn/version "2.0.17"}}
                       :main-opts ["-m" "cloverage.coverage"
                                   "-p" "../../components/kernel/src"
+                                  "-p" "../../components/sim/src"
+                                  "-p" "../../components/sim-engine/src"
                                   "-p" "../../components/sim-model/src"
                                   "-p" "../../components/sim-trajectory/src"
                                   "-p" "../../components/sim-emit-hl7/src"
+                                  "-p" "../../components/sim-emit-fhir/src"
+                                  "-p" "../../components/sim-check/src"
                                   "-p" "../../components/judge/src"
                                   "-p" "../../components/judge-v2-hapi/src"
                                   "-p" "../../components/judge-fhir-official/src"
@@ -119,9 +133,13 @@
                                   "-p" "../../components/palgebra/src"
                                   "-p" "../../bases/cli/src"
                                   "-s" "../../components/kernel/test"
+                                  "-s" "../../components/sim/test"
+                                  "-s" "../../components/sim-engine/test"
                                   "-s" "../../components/sim-model/test"
                                   "-s" "../../components/sim-trajectory/test"
                                   "-s" "../../components/sim-emit-hl7/test"
+                                  "-s" "../../components/sim-emit-fhir/test"
+                                  "-s" "../../components/sim-check/test"
                                   "-s" "../../components/judge/test"
                                   "-s" "../../components/judge-v2-hapi/test"
                                   "-s" "../../components/judge-fhir-official/test"

@@ -1,4 +1,4 @@
-(ns ehrt.sim.emitter-order-independence-test
+(ns ehrt.sim-emit-hl7.emitter-order-independence-test
   "Guard test, mining group B (docs/research/SimHospital-Synthea-limitations-
   considered.md, its own mining notes' determinism-threat table): Synthea's
   own reproducibility saga (issues #682/#1342, PR #1237) shows unordered-

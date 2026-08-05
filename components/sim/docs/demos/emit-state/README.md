@@ -83,8 +83,9 @@ Resolving across both:
 
 - **`Patient.id` ("PID-000000-918175ce") is `ehrt.sim-engine.engine/patient-id-for`'s
   own internal id for patient ordinal 0** — never rendered on the wire
-  itself (HL7 has no field for it), but the SAME id `ehrt.sim.emit-hl7`
-  uses internally to know which patient a message is about; the
+  itself (HL7 has no field for it), but the SAME id
+  `ehrt.sim-emit-hl7.emit-hl7` uses internally to know which patient a
+  message is about; the
   cross-emitter id property test
   (`ehrt.sim-emit-fhir.emit-fhir-test/fhir-patient-id-and-active-mrn-resolve-to-the-same-hl7-identity`)
   checks exactly this correspondence.

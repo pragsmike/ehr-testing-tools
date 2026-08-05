@@ -521,4 +521,9 @@
   ;; check` diagram node/edges and bricks-table row, plus its sim row's
   ;; own dependency-list rewrite (net +6 lines) brought the real total
   ;; from 654 to 668.
-  :budget-lines 668}}
+  ;; bumped 668->671, same session, Step 2 (AR-M4-5c): docs/dev/
+  ;; architecture.md's own new `provenance` diagram node plus its
+  ;; `corpus --> provenance`/`sim --> provenance` edges (a pre-existing
+  ;; gap since M1, disclosed and closed this session rather than left
+  ;; standing another stage) brought the real total from 668 to 671.
+  :budget-lines 671}}
