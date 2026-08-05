@@ -34,6 +34,20 @@ per item; done items move to the bottom of their section with a date and sha.
 - generator-source three-concerns split (ADR-0017 named-future)
 - ehrt.corpus.display placement — presentation-leaning (ADR-0018 named-future)
 - Markdown-table helper dedup (ADR-0018 named-future)
+- **Corpus player: bed board / census sink** (`notes/adr/0014-corpus-
+  player.md`) — a state-snapshot-at-intervals surface, named in
+  ADR-0014's own Context as explicitly deferred alongside the
+  accumulator wiring and input adapter below; that session built only
+  the pacer, the ticker sink, and paced file emission.
+- **Corpus player: accumulator wiring** (`notes/adr/0014-corpus-
+  player.md`) — an accumulator (the M6 v2-replay state fold) already
+  lives in the sim arc; ADR-0014 named wiring it into the player
+  itself as remaining work, not built that session.
+- **Corpus player: sim event-log input adapter** (`notes/adr/0014-
+  corpus-player.md`) — an input adapter reading the sim's own event
+  log directly, as opposed to the HL7 v2 file/directory input the
+  player accepts today; named in ADR-0014's own Context as remaining
+  work, not built.
 
 ## Externals (author-only)
 - NIST licensing inquiry: send the drafted gist (retires the confirmation-pending
@@ -64,6 +78,20 @@ per item; done items move to the bottom of their section with a date and sha.
 
 ## Deferred (explicitly, with revisit triggers)
 Rows here are LIVE. Closed rows move to Done with their notes.
+- **Corpus player `:mllp` transport sink** (`notes/adr/0014-corpus-
+  player.md`, deferred whole per that session's own bail-out
+  procedure): `:mllp` already exists as a *framing* (byte-level
+  0x0B/0x1C 0x0D envelope, `ehrt.tools.corpus.framing`) but there is
+  no `:mllp` *sink kind* in `ehrt.tools.corpus.source-sink`'s own
+  `known-sink-kinds` (`#{:dir :file :stdout :blaze}`) — a real network
+  socket write. Building one properly touches three namespaces at once
+  (a new canonical schema and constructor in `source-sink.clj`, a new
+  scheme in `source-sink-url.clj`'s grammar, and a new write function
+  in `sink-write.clj`), not a single isolated extension point —
+  assessed against the bail-out procedure and judged to balloon past
+  "lands small." Deferred whole, not half-built: the player ships
+  `--sink dir:`/`file:` only. Revisit trigger: a session needs wire
+  transport and a lands-small shape is identified.
 - **Carry-across emission** (2026-08-04, `notes/ADRs.md` ADR-0042
   AR-2): a straddling encounter (opens history, closes horizon) yields
   NO in-window wire traffic for that patient under Wave H's own pre-
@@ -101,17 +129,6 @@ Rows here are LIVE. Closed rows move to Done with their notes.
   a ported calculation). This row's remaining substance is Wave E
   scheduling (stroke as the register's first consumer), not an open
   design question.
-- `myocardial_infarction.json` — the three independent blockers this
-  row originally named (`ImagingStudy`/R5, `SupplyList`, `Counter`) are
-  ALL now built (GMF coverage Wave F, ADR-0036) — this row's own
-  original claim is stale, corrected here rather than left to drift.
-  The Wave F census re-run (`docs/gmf-interpreter.md` §15) traced it
-  directly: `ImagingStudy` was never the module's ONLY gap — it surfaced
-  an unrecognized lookup-table column, `state` (H2's own
-  `recognized-lookup-table-columns` boundary), a pre-existing,
-  unrelated gap Wave F did not touch. **RESOLVED 2026-08-03 (GMF
-  coverage Wave LC, ADR-0038):** the whitelist itself retired; this
-  module now censuses `:ok-walked` — see Done, below.
 - **Census tool refinements** (ADR-0035/ADR-0036's own disclosed, not-
   fixed findings, `ehrt.sim-trajectory.census`): (a) no substance
   qualifier on a `:ok-walked` verdict — a module that produces zero

@@ -1339,3 +1339,28 @@ Attic file — every entry below is an exact byte-for-byte relocation from the l
   records commit (Step 4 — the oracle bracket, Step 3, made no commit
   of its own, evidence only). Session record:
   `.agents/session-records/2026-08-03-procedure-duration-fix.md`.
+
+## Done (this session, 2026-08-05, alignment riders — ADR-0048)
+- **Stray Deferred row relocated (AR-R-4).** One row already carrying
+  its own closure note, relocated verbatim from the live roadmap's
+  Deferred section (notes intact, relocation not rewrite — the same
+  AR-A-5 discipline applied to a row AR-A-5's own sweep missed). The
+  drift was originally disclosed 2026-08-05 in `notes/adr/0047-
+  scaffolding-compaction-c.md` finding 5 and `.agents/state.md`: this
+  row carried an in-place "RESOLVED... see Done, below" note rather
+  than having actually been relocated, a pre-existing drift from
+  2026-08-03 predating compaction A's own AR-A-5 sweep (the closure
+  note sat mid-paragraph, not as a standalone closed-with-note row the
+  way AR-A-5's four did relocate).
+
+- `myocardial_infarction.json` — the three independent blockers this
+  row originally named (`ImagingStudy`/R5, `SupplyList`, `Counter`) are
+  ALL now built (GMF coverage Wave F, ADR-0036) — this row's own
+  original claim is stale, corrected here rather than left to drift.
+  The Wave F census re-run (`docs/gmf-interpreter.md` §15) traced it
+  directly: `ImagingStudy` was never the module's ONLY gap — it surfaced
+  an unrecognized lookup-table column, `state` (H2's own
+  `recognized-lookup-table-columns` boundary), a pre-existing,
+  unrelated gap Wave F did not touch. **RESOLVED 2026-08-03 (GMF
+  coverage Wave LC, ADR-0038):** the whitelist itself retired; this
+  module now censuses `:ok-walked` — see Done, below.
