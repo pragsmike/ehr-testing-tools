@@ -1,28 +1,32 @@
 #!/usr/bin/env bash
 # Regression-oracle harness (post-Wave-D cleanup session, 2026-08-02,
 # J1/J2, notes/ADRs.md ADR-0030): runs ehrt.oracle.digest -- fixed-seed
-# golden runs for the six pre-existing vendored roots -- against two
-# commits' own component code in disposable git worktrees, SHA-256-
-# digests every output file, and diffs the two digest manifests
-# byte-for-byte. THIS is what a regression-oracle claim means in this
-# repo (build-session skill's own VERIFICATION section, J2): a
-# test-count or assertion-count comparison is NOT an oracle and may
-# not be reported as one.
+# golden runs for every vendored root -- against two commits' own
+# component code in disposable git worktrees, SHA-256-digests every
+# output file, and diffs the two digest manifests byte-for-byte. THIS
+# is what a regression-oracle claim means in this repo (build-session
+# skill's own VERIFICATION section, J2): a test-count or assertion-count
+# comparison is NOT an oracle and may not be reported as one.
 #
 # Dated note (2026-08-05, standing-equipment promotion, `notes/ADRs.md`
-# promotion ADR, AR-P-2): digest.clj retired out of `bin/oracle-src`
-# (deleted) into `components/oracle`, a real Polylith component -- the
-# synthetic classpath below now points `poly/oracle` at whichever
-# worktree is under test, the SAME way it already does for every other
-# component, closing this script's own former "digest.clj is always
-# read from THIS checkout, never from either worktree" design (J2).
-# This step alone makes the script unable to resolve a baseline ref
-# from BEFORE this promotion (no `components/oracle` in that worktree)
-# -- AR-P-3's own next commit adds the per-side fallback and the
-# cross-side soundness check this transitional gap needs; this comment
-# is not yet describing that commit's own mechanism.
+# promotion ADR, AR-P-2/AR-P-3): digest.clj retired out of
+# `bin/oracle-src` into `components/oracle`, a real Polylith component
+# -- J2's own "digest.clj is always read from THIS checkout, never from
+# either worktree" design is CLOSED here: each side now reads its OWN
+# worktree's own `components/oracle` (or, transitionally, that
+# worktree's own `bin/oracle-src`, for a ref from before the
+# promotion -- the FALLBACK branch in `oracle_deps_for`, below). Because
+# the two sides can now genuinely run two DIFFERENT digest.clj sources
+# (not just two different component versions under the SAME test code,
+# the pre-promotion design's whole premise), a SOUNDNESS CHECK runs
+# first: the two sides' own digest.clj is diffed outside its `(ns ...)`
+# form (docstring + requires) -- identical there, or entirely inside the
+# `(ns ...)` form, proceeds silently; any other diff demands
+# `--declared-digest-change` (recorded in the manifest header below) or
+# this script aborts rather than let an unsound comparison masquerade
+# as a byte-identity bracket.
 #
-# Usage: bin/regression-oracle <baseline-ref> <target-ref>
+# Usage: bin/regression-oracle <baseline-ref> <target-ref> [--declared-digest-change]
 #
 # Prints both manifests, then either "IDENTICAL" (exit 0) or "DIFFERS"
 # (exit 1, with a diff of the two manifests on stderr) -- a DIFFERS
@@ -32,8 +36,18 @@
 set -euo pipefail
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-baseline_ref="${1:?usage: bin/regression-oracle <baseline-ref> <target-ref>}"
-target_ref="${2:?usage: bin/regression-oracle <baseline-ref> <target-ref>}"
+
+declared_change="no"
+positional=()
+for arg in "$@"; do
+  if [ "$arg" = "--declared-digest-change" ]; then
+    declared_change="yes"
+  else
+    positional+=("$arg")
+  fi
+done
+baseline_ref="${positional[0]:?usage: bin/regression-oracle <baseline-ref> <target-ref> [--declared-digest-change]}"
+target_ref="${positional[1]:?usage: bin/regression-oracle <baseline-ref> <target-ref> [--declared-digest-change]}"
 
 work="$(mktemp -d)"
 cleanup() {
@@ -42,16 +56,84 @@ cleanup() {
 }
 trap cleanup EXIT
 
+# --- Per-side digest-source resolution (AR-P-3) -----------------------------
+#
+# Returns, on stdout, two lines: the digest.clj path relative to a
+# worktree root, and the main namespace to invoke it with. A worktree
+# carrying `components/oracle` (post-promotion) uses the real component
+# and its interface; one that does not (a ref from before 2026-08-05)
+# falls back to ITS OWN `bin/oracle-src` copy and digest.clj's own
+# `-main` directly (that tree has no `ehrt.oracle.interface` to call
+# through). RETIREMENT CONDITION: delete this function's `else` branch,
+# and `oracle_source_path_for`/the soundness-check plumbing below that
+# exists only to support it, once no bracket this repo runs still needs
+# a pre-promotion baseline.
+oracle_wiring_for() {
+  local wt="$1"
+  if [ -f "$wt/components/oracle/deps.edn" ]; then
+    echo "components/oracle/src/ehrt/oracle/digest.clj"
+    echo "ehrt.oracle.interface"
+  else
+    echo "bin/oracle-src/ehrt/oracle/digest.clj"
+    echo "ehrt.oracle.digest"
+  fi
+}
+
+# The digest.clj blob path for `ref` at the REPO's own object store (no
+# worktree needed for this lookup) -- used only by the soundness check,
+# which compares source text, not runtime behavior.
+oracle_source_path_for() {
+  local ref="$1"
+  if git -C "$repo_root" cat-file -e "$ref:components/oracle/src/ehrt/oracle/digest.clj" 2>/dev/null; then
+    echo "components/oracle/src/ehrt/oracle/digest.clj"
+  elif git -C "$repo_root" cat-file -e "$ref:bin/oracle-src/ehrt/oracle/digest.clj" 2>/dev/null; then
+    echo "bin/oracle-src/ehrt/oracle/digest.clj"
+  else
+    echo ""
+  fi
+}
+
+# Everything in a digest.clj file AFTER its own top `(ns ...)` form --
+# the first line starting `(defn` onward. Every digest.clj this repo has
+# ever had separates the ns form from the first defn this way; a future
+# digest.clj that breaks that convention makes this awk both sides
+# produce empty output, which the diff below still handles honestly (two
+# empty files diff identical, an unsound false pass) -- SO: also require
+# at least one `(defn` line matched, or STOP rather than silently trust
+# an empty comparison.
+digest_body_of() {
+  awk 'found{print} /^\(defn/{found=1; print}' "$1"
+}
+
 run_one() {
   local ref="$1" label="$2"
   local wt="$work/wt-$label"
   local out="$work/out-$label"
   git -C "$repo_root" worktree add --detach "$wt" "$ref" >/dev/null
+
+  local wiring path main_ns
+  wiring="$(oracle_wiring_for "$wt")"
+  path="$(echo "$wiring" | sed -n 1p)"
+  main_ns="$(echo "$wiring" | sed -n 2p)"
+
+  local oracle_deps oracle_paths
+  case "$path" in
+    components/oracle/*)
+      oracle_deps="poly/oracle {:local/root \"$wt/components/oracle\"}"
+      oracle_paths=""
+      ;;
+    bin/oracle-src/*)
+      oracle_deps=""
+      oracle_paths=":paths [\"$wt/bin/oracle-src\"]"
+      ;;
+  esac
+
   local deps
   deps=$(cat <<EOF
-{:deps {org.clojure/clojure {:mvn/version "1.12.5"}
+{$oracle_paths
+ :deps {org.clojure/clojure {:mvn/version "1.12.5"}
         poly/kernel {:local/root "$wt/components/kernel"}
-        poly/oracle {:local/root "$wt/components/oracle"}
+        $oracle_deps
         poly/sim {:local/root "$wt/components/sim"}
         poly/sim-engine {:local/root "$wt/components/sim-engine"}
         poly/sim-model {:local/root "$wt/components/sim-model"}
@@ -61,7 +143,7 @@ run_one() {
 EOF
 )
   mkdir -p "$out"
-  (cd "$repo_root" && clojure -Sdeps "$deps" -M:oracle-run -m ehrt.oracle.interface "$out")
+  (cd "$repo_root" && clojure -Sdeps "$deps" -M:oracle-run -m "$main_ns" "$out")
   git -C "$repo_root" worktree remove --force "$wt"
 }
 
@@ -69,6 +151,40 @@ manifest_for() {
   local out="$1"
   (cd "$out" && sha256sum -- *.edn | sort -k2)
 }
+
+# --- Soundness check (AR-P-3), before either side actually runs ------------
+
+baseline_source_path="$(oracle_source_path_for "$baseline_ref")"
+target_source_path="$(oracle_source_path_for "$target_ref")"
+[ -n "$baseline_source_path" ] || { echo "no digest.clj found at $baseline_ref (neither components/oracle nor bin/oracle-src) -- STOP" >&2; exit 1; }
+[ -n "$target_source_path" ] || { echo "no digest.clj found at $target_ref (neither components/oracle nor bin/oracle-src) -- STOP" >&2; exit 1; }
+
+git -C "$repo_root" show "$baseline_ref:$baseline_source_path" > "$work/digest-baseline.clj"
+git -C "$repo_root" show "$target_ref:$target_source_path" > "$work/digest-target.clj"
+digest_body_of "$work/digest-baseline.clj" > "$work/digest-baseline.body"
+digest_body_of "$work/digest-target.clj" > "$work/digest-target.body"
+
+if [ ! -s "$work/digest-baseline.body" ] || [ ! -s "$work/digest-target.body" ]; then
+  echo "soundness check could not find a (defn ...) boundary in one of the two digest.clj files -- STOP, this script's own convention assumption broke" >&2
+  exit 1
+fi
+
+sound="yes"
+if ! diff -q "$work/digest-baseline.body" "$work/digest-target.body" >/dev/null; then
+  sound="no"
+fi
+
+echo "== soundness check: digest.clj outside its own (ns ...) form ==" >&2
+if [ "$sound" = "yes" ]; then
+  echo "IDENTICAL outside the (ns ...) form -- proceeding" >&2
+elif [ "$declared_change" = "yes" ]; then
+  echo "DIFFERS outside the (ns ...) form -- --declared-digest-change asserted, proceeding anyway (see the session's own record for the soundness argument):" >&2
+  diff -u "$work/digest-baseline.body" "$work/digest-target.body" >&2 || true
+else
+  echo "DIFFERS outside the (ns ...) form -- STOP: pass --declared-digest-change to proceed anyway (and record why in the session's own ADR/record), or this comparison is unsound:" >&2
+  diff -u "$work/digest-baseline.body" "$work/digest-target.body" >&2 || true
+  exit 1
+fi
 
 echo "== running oracle at baseline ($baseline_ref) ==" >&2
 run_one "$baseline_ref" baseline
@@ -82,6 +198,7 @@ echo "--- baseline ($baseline_ref) ---"
 cat "$work/baseline.sha256"
 echo "--- target ($target_ref) ---"
 cat "$work/target.sha256"
+echo "--- declared-digest-change: $declared_change (soundness: $sound outside ns form) ---"
 
 if diff -u "$work/baseline.sha256" "$work/target.sha256" > "$work/diff.txt"; then
   echo "IDENTICAL: every root's digest matches between $baseline_ref and $target_ref"
