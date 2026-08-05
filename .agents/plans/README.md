@@ -41,5 +41,6 @@ Files in this directory:
   * 2026-08-02-gmf-parity-plan.md — APPROVED 2026-08-03 (ADR-0031): full Synthea module parity plan, J1 oracle gate cleared, §6 rulings folded
   * 2026-08-04-sim-split-b-plan.md — RULED 2026-08-04 (AR-1..AR-6): full decomposition of components/sim into provenance/sim-engine/sim-emit-fhir/sim-check/residual sim, sequenced M1-M4
   * 2026-08-05-alignment-audit-brief.md — working brief for the alignment & cleanup audit arc: cognitive-load reduction, evolution-seam readiness, publication readiness; seeded findings S1-S6
+  * 2026-08-05-alignment-audit-findings.md — the audit's findings register (`notes/ADRs.md` ADR-0049): probe/evidence/finding/recommendation/disposition rows for areas A-F, seeded rows S1-S7 updated with fresh evidence; findings-only, no fixes taken beyond Step 0's two pre-ruled acts
   * roadmap-done-2026-07.md — attic: July's slice of the Done history (empty — no July-dated Done rows existed at rotation time), moved 2026-08-05 by scaffolding compaction B
   * roadmap-done-2026-08.md — attic: August's slice of the Done history, moved verbatim 2026-08-05 by scaffolding compaction B (`notes/ADRs.md` ADR-0046)
