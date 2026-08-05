@@ -41,6 +41,7 @@ flowchart LR
     simemitfhir[sim-emit-fhir]
     simcheck[sim-check]
     sim[sim]
+    oracle[oracle]
     cli[bases/cli]
 
     judge --> kernel
@@ -71,6 +72,10 @@ flowchart LR
     sim --> simemithl7
     sim --> simemitfhir
     sim --> simcheck
+    oracle --> simmodel
+    oracle --> simengine
+    oracle --> simtrajectory
+    oracle --> simemithl7
     docstooling --> kernel
     docstooling --> palgebra
     docstooling --> corpus
@@ -104,6 +109,7 @@ flowchart LR
 | `components/sim-emit-fhir` | component | The state-based FHIR R4 Bundle emitter (`ehrt.sim-emit-fhir.interface`) — `sim-emit-hl7`'s own sibling as a rendering accent, but NOT same-shaped: it folds the ground-truth log via `ehrt.sim-engine.interface/replay` and renders from a snapshot of folded state, where `sim-emit-hl7` renders per-event from the log directly. Extracted from `components/sim` (sim split B stage M3, 2026-08-04, `.agents/plans/2026-08-04-sim-split-b-plan.md`, `notes/ADRs.md` ADR-0043) — a pure move plus the AR-3 namespace rename (EmitState's own former namespace becomes `ehrt.sim-emit-fhir.emit-fhir`); interface width (`bundle-run` only) derived the same grep-evidence way, residual sim's `run`/`identifiers` confirmed the only two real external callers — `snapshot-at` has no real external caller and stays fully internal. Depends on `sim-engine` only; forbidden-forever from depending on `components/sim`, `components/sim-model`, `components/sim-trajectory`, or anything corpus-derived. |
 | `components/sim-check` | component | The invariant catalog (`ehrt.sim-check.interface`) — internal-consistency claims a ground-truth log is checked against, runnable standalone as `sim check` and as the regression suite's own property-test target. Extracted from `components/sim` (sim split B stage M4, 2026-08-04, `.agents/plans/2026-08-04-sim-split-b-plan.md`, `notes/ADRs.md` ADR-0043) — a pure move, no logic change; interface width (`check-all`, all four arities) derived the same grep-evidence way, residual sim's `interface`/`run` confirmed the only two real external callers. Depends on `sim-engine`, `sim-model`, and kernel; forbidden-forever from depending on `components/sim`, either emitter, `components/corpus`, or `components/provenance`. |
 | `components/sim` | component | The simulation engine: deterministic, seeded hospital traffic (patients, encounters, GMF-driven pathways, churn, HL7 v2/FHIR emission). Depends on kernel (`ehrt.kernel.result`, adopted 2026-08-01, `notes/ADRs.md` ADR-0022 — retired its own copied result-not-throw envelope) and, since sim split S1/S2/S3/M2/M3/M4 (2026-08-02/2026-08-04, ADR-0025/ADR-0029/ADR-0043), `sim-model`, `sim-trajectory`, `sim-emit-hl7`, `sim-emit-fhir`, and `sim-check`; never depends on anything corpus-derived — the one dependency-direction rule that predates this workspace and is now poly-enforced rather than merely a convention (two separate repos used to make it structural; `poly check` does now). Residual `components/sim` is now pure orchestration ({run, identifiers, version, manifest-build}) behind its own unchanged façade (M4's own AR-M4-3, honoring `.agents/plans/2026-08-02-sim-split-plan.md` AR-3). |
+| `components/oracle` | component | The regression-oracle digest producer (`ehrt.oracle.digest`, fixed-seed golden runs for every vendored root `bin/regression-oracle` verifies against) — extracted from `bin/oracle-src` (standing-equipment promotion, 2026-08-05, `notes/ADRs.md` promotion ADR AR-P-2), closing ADR-0030 J2's own "always read from the current checkout" design: each worktree `bin/regression-oracle` stands up now carries its own copy. `ehrt.oracle.interface` re-exports `-main` only, the sole entry point its one real caller (`bin/regression-oracle`'s own per-worktree synthetic classpath) invokes. Depends on `sim-model`, `sim-engine`, `sim-trajectory`, and `sim-emit-hl7` (all through their interfaces); not composed into any shipped project — dev/build equipment, not product. |
 | `bases/cli` | base | Thin CLI dispatch — the `ehrt` command (ADR-0009; renamed from `ehr`, which stays reserved for future payload-EHR tooling). Composes component interfaces directly since stage 3 (kernel's result/artifact/locator vocabulary, judge's report vocabulary, each gate engine, corpus, corpus-io, docs-tooling — no façade between). `ehrt sim run`/`check`/`identifiers`/`version` dispatch straight into `components/sim`, in-process, no subprocess (the `ehrt sim` mount, ADR-0005; the latter three verbs mounted P3-6, 2026-08-01, closing the sim-cli retirement's own parity gap). |
 
 ## The projects

@@ -22,6 +22,15 @@
 
 (defn singleton-closure [module] (gmf/singleton-closure module))
 
+;; Standing-equipment promotion (2026-08-05, `notes/ADRs.md` promotion
+;; ADR, AR-P-2): the one var `components/oracle`'s own digest.clj needs
+;; that was not already here -- confirmed by a fresh call-position
+;; census of every digest.clj dependency, the only gap found. Every
+;; other var digest.clj calls (`load-module`/`load-closure`/
+;; `singleton-closure`/`run-module`, above) was already on this
+;; interface before this session.
+(defn dob-epoch-day [persona] (gmf-interpreter/dob-epoch-day persona))
+
 (defn run-module
   ([module rng persona registration-t]
    (gmf-interpreter/run-module module rng persona registration-t))

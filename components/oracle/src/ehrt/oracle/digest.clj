@@ -9,13 +9,38 @@
   down from without a second literal check, per this session's own
   finding).
 
+  Standing-equipment promotion (2026-08-05, `notes/ADRs.md` promotion
+  ADR, AR-P-2): moved from `bin/oracle-src/ehrt/oracle/digest.clj` into
+  this component, `components/oracle` -- each worktree `bin/
+  regression-oracle` stands up now carries its OWN copy of this
+  namespace, closing the J2 deferred row structurally (see the
+  promotion ADR's own J2-closure narrative). The one licensed
+  improvement this move makes: every require below repoints from a
+  foreign component's IMPLEMENTATION namespace to its INTERFACE --
+  `ehrt.sim-trajectory.gmf`/`gmf-interpreter` collapse into
+  `ehrt.sim-trajectory.interface` (gaining `dob-epoch-day`, the one var
+  not already there, added by the same session, evidenced by this
+  file's own call sites); `ehrt.sim-engine.engine` repoints to
+  `ehrt.sim-engine.interface` (already exposing `run` under the same
+  name, so the `engine/run` call sites below are byte-unchanged).
+  `run-walk`'s own 6-arg interpreter call becomes an 8-arg interface
+  call with the SAME `{}`/`{}` defaults the impl's own 6-arg arity was
+  already filling in internally (verified against
+  `gmf_interpreter.clj`'s own arity chain) -- spelled out explicitly
+  because the interface does not carry the 6-arg shorthand, not a
+  behavior change. Every OTHER line of digest logic below is verbatim;
+  Step 5 of the promotion session's own byte-identical oracle bracket
+  is the proof.
+
   Deliberately independent of `ehrt.kernel.digest` and of any
   deps.edn alias landing in a historical commit: `bin/regression-
-  oracle` runs THIS file (always read from the current checkout) with
-  a synthetic, from-scratch classpath pointing `:local/root` at
-  whichever commit's own worktree is under test -- so the SAME code
-  here exercises two different component-code versions, and hashing
-  itself happens in the calling shell (`sha256sum`), not in-process.
+  oracle` runs THIS component (read from whichever worktree is under
+  test, since the promotion -- previously always the current checkout,
+  never a worktree's own copy, ADR-0030's own J2 design) with a
+  synthetic, from-scratch classpath pointing every `:local/root` at
+  that worktree -- so the SAME code here exercises two different
+  component-code versions, and hashing itself happens in the calling
+  shell (`sha256sum`), not in-process.
 
   Six roots, matching this session's own J1 ruling verbatim:
   appendicitis/sore-throat/ear-infections (interpreter-layer batches,
@@ -76,10 +101,9 @@
   this note's own disambiguation."
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
-            [ehrt.sim-trajectory.gmf :as gmf]
-            [ehrt.sim-trajectory.gmf-interpreter :as interp]
+            [ehrt.sim-trajectory.interface :as sim-trajectory]
             [ehrt.sim-model.interface :as sim-model]
-            [ehrt.sim-engine.engine :as engine]
+            [ehrt.sim-engine.interface :as engine]
             [ehrt.sim-emit-hl7.interface :as emit-hl7])
   (:import [java.util Random]))
 
@@ -97,11 +121,18 @@
 (defn- run-walk
   [module modules seed sex reg-offset-years horizon-years]
   (let [p (person seed sex)
-        reg-t (+ (interp/dob-epoch-day p) (* 365 reg-offset-years))
+        reg-t (+ (sim-trajectory/dob-epoch-day p) (* 365 reg-offset-years))
         end-t (+ reg-t (* 365 horizon-years))]
     (:trajectory (if modules
-                   (interp/run-module module (Random. seed) p reg-t end-t modules)
-                   (interp/run-module module (Random. seed) p reg-t end-t)))))
+                   ;; the interface's own 8-arg arity, given the SAME
+                   ;; {}/{} defaults gmf-interpreter's own 6-arg arity
+                   ;; already filled in internally -- spelled out here
+                   ;; only because the interface does not carry that
+                   ;; shorthand; not a behavior change (this promotion
+                   ;; session's own interface-repoint, disclosed in the
+                   ;; namespace docstring above).
+                   (sim-trajectory/run-module module (Random. seed) p reg-t end-t modules {} {})
+                   (sim-trajectory/run-module module (Random. seed) p reg-t end-t)))))
 
 (defn- interpreter-batch
   "100 well-mixed seeds x both sexes = 200 walks, concatenated into one
@@ -117,16 +148,16 @@
      (run-walk module modules seed sex reg-offset-years horizon-years))))
 
 (defn- appendicitis-batch []
-  (let [module (:payload (gmf/load-module "appendicitis" (slurp (io/resource "sim/modules/appendicitis.json"))))]
+  (let [module (:payload (sim-trajectory/load-module "appendicitis" (slurp (io/resource "sim/modules/appendicitis.json"))))]
     (interpreter-batch module nil 20260727 70 80)))
 
 (defn- sore-throat-batch []
-  (let [module (:payload (gmf/load-module "sore-throat" (slurp (io/resource "sim/modules/sore_throat.json"))))]
+  (let [module (:payload (sim-trajectory/load-module "sore-throat" (slurp (io/resource "sim/modules/sore_throat.json"))))]
     (interpreter-batch module nil 20260802 25 10)))
 
 (defn- ear-infections-batch []
   (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
-        loaded (gmf/load-closure "ear-infections" (slurp (io/resource "sim/modules/ear_infections.json")) resolve-call-path)
+        loaded (sim-trajectory/load-closure "ear-infections" (slurp (io/resource "sim/modules/ear_infections.json")) resolve-call-path)
         modules (:modules (:payload loaded))
         root (get modules "ear-infections")]
     (interpreter-batch root modules 20260802 25 10)))
@@ -141,21 +172,21 @@
     {:ground-truth ground-truth :hl7 (vec messages)}))
 
 (defn- sinusitis-pair []
-  (let [module (:payload (gmf/load-module "sinusitis" (slurp (io/resource "sim/modules/sinusitis.json"))))]
+  (let [module (:payload (sim-trajectory/load-module "sinusitis" (slurp (io/resource "sim/modules/sinusitis.json"))))]
     (engine-pair {:seed 1 :patients 30 :pathway {:name "module-only" :steps []}
-                  :modules [(gmf/singleton-closure module)] :module-assignment [{:module-id "sinusitis" :weight 1}]
+                  :modules [(sim-trajectory/singleton-closure module)] :module-assignment [{:module-id "sinusitis" :weight 1}]
                   :module-horizon-days 3650})))
 
 (defn- death-fixture-pair []
-  (let [module (:payload (gmf/load-module "death-fixture" (slurp (io/resource "ehrt/sim/fixtures/death-fixture.json"))))]
+  (let [module (:payload (sim-trajectory/load-module "death-fixture" (slurp (io/resource "ehrt/sim/fixtures/death-fixture.json"))))]
     (engine-pair {:seed 20260802 :patients 200 :pathway {:name "module-only" :steps []}
-                  :modules [(gmf/singleton-closure module)] :module-assignment [{:module-id "death-fixture" :weight 1}]
+                  :modules [(sim-trajectory/singleton-closure module)] :module-assignment [{:module-id "death-fixture" :weight 1}]
                   :module-horizon-days 3650})))
 
 (defn- sepsis-pair []
-  (let [module (:payload (gmf/load-module "sepsis" (slurp (io/resource "sim/modules/sepsis.json"))))]
+  (let [module (:payload (sim-trajectory/load-module "sepsis" (slurp (io/resource "sim/modules/sepsis.json"))))]
     (engine-pair {:seed 20260802 :patients 500 :pathway {:name "module-only" :steps []}
-                  :modules [(gmf/singleton-closure module)] :module-assignment [{:module-id "sepsis" :weight 1}]
+                  :modules [(sim-trajectory/singleton-closure module)] :module-assignment [{:module-id "sepsis" :weight 1}]
                   :module-horizon-days 36500})))
 
 ;; --- ADR-0033 AR-4b: engine-layer digest pairs for the three closure
@@ -167,7 +198,7 @@
 
 (defn- ear-infections-engine-pair []
   (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
-        closure (:payload (gmf/load-closure "ear-infections" (slurp (io/resource "sim/modules/ear_infections.json")) resolve-call-path))]
+        closure (:payload (sim-trajectory/load-closure "ear-infections" (slurp (io/resource "sim/modules/ear_infections.json")) resolve-call-path))]
     (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
                   :modules [closure] :module-assignment [{:module-id "ear-infections" :weight 1}]
                   :module-horizon-days 3650})))
@@ -175,7 +206,7 @@
 (defn- urinary-tract-infections-engine-pair []
   (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
         resolve-table-name (fn [table-name] (some-> (io/resource (str "sim/modules/lookup_tables/" table-name)) slurp))
-        closure (:payload (gmf/load-closure "urinary-tract-infections"
+        closure (:payload (sim-trajectory/load-closure "urinary-tract-infections"
                                             (slurp (io/resource "sim/modules/urinary_tract_infections.json"))
                                             resolve-call-path resolve-table-name))]
     (engine-pair {:seed 777 :patients 300 :pathway {:name "module-only" :steps []}
@@ -184,7 +215,7 @@
 
 (defn- total-joint-replacement-engine-pair []
   (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
-        closure (:payload (gmf/load-closure "total-joint-replacement"
+        closure (:payload (sim-trajectory/load-closure "total-joint-replacement"
                                             (slurp (io/resource "sim/modules/total_joint_replacement.json"))
                                             resolve-call-path))
         ;; D2 H7's own authored, provenance-cited seed (ehrt.sim-trajectory.
@@ -216,7 +247,7 @@
 (defn- urinary-tract-infections-history-engine-pair []
   (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
         resolve-table-name (fn [table-name] (some-> (io/resource (str "sim/modules/lookup_tables/" table-name)) slurp))
-        closure (:payload (gmf/load-closure "urinary-tract-infections"
+        closure (:payload (sim-trajectory/load-closure "urinary-tract-infections"
                                             (slurp (io/resource "sim/modules/urinary_tract_infections.json"))
                                             resolve-call-path resolve-table-name))]
     (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
@@ -225,7 +256,7 @@
 
 (defn- ear-infections-history-engine-pair []
   (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
-        closure (:payload (gmf/load-closure "ear-infections" (slurp (io/resource "sim/modules/ear_infections.json")) resolve-call-path))]
+        closure (:payload (sim-trajectory/load-closure "ear-infections" (slurp (io/resource "sim/modules/ear_infections.json")) resolve-call-path))]
     (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
                   :modules [closure] :module-assignment [{:module-id "ear-infections" :weight 1}]
                   :module-horizon-days 3650 :history true})))

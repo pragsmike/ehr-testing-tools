@@ -131,7 +131,12 @@ from `components/sim`, sim split B stage M4, 2026-08-04, same plan,
 `notes/ADRs.md` ADR-0043 — the fifth and last brick of the
 decomposition; residual `components/sim` is now pure orchestration);
 `components/sim`
-(deterministic, seeded generator of synthetic hospital traffic).
+(deterministic, seeded generator of synthetic hospital traffic);
+`components/oracle` (the regression-oracle digest producer, extracted
+from `bin/oracle-src`, standing-equipment promotion, 2026-08-05,
+`notes/ADRs.md` promotion ADR AR-P-2 — no shipped project depends on
+it, `bin/regression-oracle`'s own per-worktree synthetic classpath is
+its only real caller).
 **Bases:** `bases/cli` — thin CLI dispatch, `bin/ehrt` ("e-heart",
 `ehr` stays reserved for future payload-EHR tooling).
 **Projects:** `projects/ehrt-cli` composes every component and the

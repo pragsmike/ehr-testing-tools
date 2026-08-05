@@ -96,7 +96,18 @@
                                ;; finding).
                                poly/docs-tooling {:local/root "components/docs-tooling"}
                                poly/palgebra {:local/root "components/palgebra"}
-                               poly/cli      {:local/root "bases/cli"}}}
+                               poly/cli      {:local/root "bases/cli"}
+                               ;; oracle (standing-equipment promotion,
+                               ;; 2026-08-05, `notes/ADRs.md` promotion
+                               ;; ADR, AR-P-2): the regression-oracle
+                               ;; digest producer, extracted out of
+                               ;; bin/oracle-src -- a real project
+                               ;; deploys nothing with it (its only real
+                               ;; caller is bin/regression-oracle's own
+                               ;; per-worktree synthetic classpath), but
+                               ;; the dev REPL carries it like every
+                               ;; other brick.
+                               poly/oracle   {:local/root "components/oracle"}}}
 
             ;; `components/sim-trajectory/test`, below, also carries the
             ;; census tool's own co-landing tests since the standing-

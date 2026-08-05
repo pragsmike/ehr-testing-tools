@@ -1,20 +1,26 @@
 #!/usr/bin/env bash
 # Regression-oracle harness (post-Wave-D cleanup session, 2026-08-02,
-# J1/J2, notes/ADRs.md ADR-0030): runs bin/oracle-src/ehrt/oracle/digest.clj
-# -- fixed-seed golden runs for the six pre-existing vendored roots --
-# against two commits' own component code in disposable git worktrees,
-# SHA-256-digests every output file, and diffs the two digest manifests
+# J1/J2, notes/ADRs.md ADR-0030): runs ehrt.oracle.digest -- fixed-seed
+# golden runs for the six pre-existing vendored roots -- against two
+# commits' own component code in disposable git worktrees, SHA-256-
+# digests every output file, and diffs the two digest manifests
 # byte-for-byte. THIS is what a regression-oracle claim means in this
 # repo (build-session skill's own VERIFICATION section, J2): a
 # test-count or assertion-count comparison is NOT an oracle and may
 # not be reported as one.
 #
-# digest.clj is always read from THIS checkout (bin/oracle-src, never
-# from either worktree) -- a synthetic, from-scratch classpath points
-# its :local/root component deps at whichever commit's own worktree is
-# under test, so the same calling code exercises two different
-# component-code versions and hashing happens here, in the shell, not
-# in-process.
+# Dated note (2026-08-05, standing-equipment promotion, `notes/ADRs.md`
+# promotion ADR, AR-P-2): digest.clj retired out of `bin/oracle-src`
+# (deleted) into `components/oracle`, a real Polylith component -- the
+# synthetic classpath below now points `poly/oracle` at whichever
+# worktree is under test, the SAME way it already does for every other
+# component, closing this script's own former "digest.clj is always
+# read from THIS checkout, never from either worktree" design (J2).
+# This step alone makes the script unable to resolve a baseline ref
+# from BEFORE this promotion (no `components/oracle` in that worktree)
+# -- AR-P-3's own next commit adds the per-side fallback and the
+# cross-side soundness check this transitional gap needs; this comment
+# is not yet describing that commit's own mechanism.
 #
 # Usage: bin/regression-oracle <baseline-ref> <target-ref>
 #
@@ -43,9 +49,9 @@ run_one() {
   git -C "$repo_root" worktree add --detach "$wt" "$ref" >/dev/null
   local deps
   deps=$(cat <<EOF
-{:paths ["$repo_root/bin/oracle-src"]
- :deps {org.clojure/clojure {:mvn/version "1.12.5"}
+{:deps {org.clojure/clojure {:mvn/version "1.12.5"}
         poly/kernel {:local/root "$wt/components/kernel"}
+        poly/oracle {:local/root "$wt/components/oracle"}
         poly/sim {:local/root "$wt/components/sim"}
         poly/sim-engine {:local/root "$wt/components/sim-engine"}
         poly/sim-model {:local/root "$wt/components/sim-model"}
@@ -55,7 +61,7 @@ run_one() {
 EOF
 )
   mkdir -p "$out"
-  (cd "$repo_root" && clojure -Sdeps "$deps" -M:oracle-run -m ehrt.oracle.digest "$out")
+  (cd "$repo_root" && clojure -Sdeps "$deps" -M:oracle-run -m ehrt.oracle.interface "$out")
   git -C "$repo_root" worktree remove --force "$wt"
 }
 
