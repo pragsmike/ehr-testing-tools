@@ -47,6 +47,7 @@ run_one() {
  :deps {org.clojure/clojure {:mvn/version "1.12.5"}
         poly/kernel {:local/root "$wt/components/kernel"}
         poly/sim {:local/root "$wt/components/sim"}
+        poly/sim-engine {:local/root "$wt/components/sim-engine"}
         poly/sim-model {:local/root "$wt/components/sim-model"}
         poly/sim-trajectory {:local/root "$wt/components/sim-trajectory"}
         poly/sim-emit-hl7 {:local/root "$wt/components/sim-emit-hl7"}}
