@@ -319,6 +319,103 @@ hospital doesn't fail a cancellation when the original bed is gone —
 it finds the patient a different one. Both pieces are captured here as
 design, scheduled M3-adjacent; no code lands with this session.
 
+## The history phase (GMF-sourced patients, ADR-0042)
+
+**Not to be confused with the "log is `Person.history` done right"
+discussion above.** That section describes how a GMF `PriorState`
+guard queries *this project's own ground-truth log* instead of a
+duplicated Synthea-style visit trail — a compilation decision about
+*queries*. What follows is a different thing entirely: an opt-in
+*temporal phase* a GMF-sourced patient's own module walk can run
+through, config-gated, landed at Wave H pre-roll
+(`components/sim-trajectory/docs/gmf-interpreter.md` §3's own dated
+note; full mechanism `notes/ADRs.md` ADR-0042).
+
+**Opt-in, DOB-anchored.** A run-config `:history` flag (absent by
+default — every pre-existing run stays byte-identical) makes a
+GMF-closure patient's module walk run as ONE continuous walk from the
+patient's own DOB through `horizon-end-t`, rather than starting at
+`:registered`-time. The walk crosses a phase boundary at
+`registration-t`: everything before is the *history* phase,
+everything from registration onward is the *horizon* phase — the
+phase this project's ordinary laws (code passthrough, glass-box
+traceability, `:steps` compilation) already govern.
+
+**Phase-marked events, one interpreter, no fold-only mode.** History-
+phase events are minted into the (uncompiled) clinical trajectory with
+a `:phase :history` mark; they fold state effects (conditions,
+medications, care plans, vitals, attributes, wellness state)
+identically to horizon events — there is no second, fold-only
+interpreter. `CompileTrajectory` drops every `:phase :history` event
+uniformly at compile time, so none of it reaches this accumulator's
+own `:conditions`/`:observations`/`:medication-orders`/`:care-plans`
+fields or a compiled `:steps` sequence — but the full 45-year walk
+stays inspectable in the uncompiled trajectory, the same glass-box
+guarantee every other event type already carries.
+
+**Encounter-anchored phase inheritance, not per-event timestamp.** An
+event's own `:phase` is inherited from its *encounter's* opening
+phase, not computed from the event's own `:t`. An encounter that opens
+during history is history in full — its contents and its own close
+event fold, never emit, regardless of where its close timestamp falls
+— which is what keeps a straddling encounter (one that opens before
+registration and closes after) from producing an orphaned close event
+with nothing open to reference. The same principle extends one
+`:references` hop further, ratified: a `:medication-end`/
+`:care-plan-end`/`:condition-end` outside any encounter inherits
+history phase from its own antecedent event when that antecedent was
+itself dropped as history, so it never becomes an orphaned reference
+either.
+
+**What this accumulator sees.** With `:history` absent (today's
+default), nothing here changes. With `:history` true, this
+accumulator's own clinical-content fields
+(`:conditions`/`:observations`/`:medication-orders`/`:care-plans`)
+still only ever fold from OPERATIONAL (horizon-phase, compiled)
+events — history-phase content never reaches them, by the drop rule
+above. This is the SAME v1 scope boundary `:pre-horizon-facts`
+already drew for the pre-existing (non-GMF) pre-horizon mechanism —
+`:history` is a strict, config-gated extension of that same
+"condense, don't fold" discipline over a full DOB-to-registration
+span, not a second one.
+
+## The vital-sign register (GMF Wave VS, ADR-0039)
+
+**Not part of this accumulator.** GMF-sourced patients carry a
+per-patient vital-sign register — `vital name → current value`
+(doubles) — but it lives at the GMF interpreter's own walk context
+(`ehrt.sim-trajectory.gmf-interpreter`'s `ctx`, its `:vital-signs`
+key), the same interpreter-scoped, not-yet-engine-integrated treatment
+this table's own `:attributes` row already carries: written by the
+`VitalSign` state, read by the `:vital-sign` condition, GLOBAL over
+the whole walk (never module-namespaced the way `:attributes` is,
+since a vital sign is a single physiological fact, not a per-module
+blackboard entry). Folding it into this accumulator, if a future
+milestone needs to, is the same open item `:attributes`' own table row
+already names.
+
+**Sample-once.** Unlike upstream's own re-sampling-on-every-read
+generator, this project samples a vital ONCE at `VitalSign`-state
+execution (an authored exact value draws nothing; a range or
+distribution draws once via the samplers GMF coverage Wave F0
+established) and stores the value — a `:vital-sign` condition reads
+the stored value, never re-drawing. The register starts pre-seeded
+from an authored baseline table
+(`components/sim-trajectory/resources/sim-trajectory/vital-sign-baselines.edn`)
+at patient creation, zero draws — flat, clinically-unremarkable adult
+constants, documented as calibration knobs (AR-3's own ruling), never
+a claim of clinical fidelity or a ported physiology curve. A
+`VitalSign` state's later write simply overwrites its own name's
+register entry, the same "later write wins" semantics `SetAttribute`
+already establishes for `:attributes`.
+
+**Honest absence.** A `:vital-sign` condition against a name the
+baseline table omits and no `VitalSign` state has yet written resolves
+to a recorded walk error — the same `honest-absence` precedent
+`ehrt.sim-trajectory.gmf`'s lookup-table/persona-field resolution
+already established (`components/sim-trajectory/docs/gmf-interpreter.md`
+§2), never a silent false or an upstream-style crash.
+
 ## States and transitions
 
 ```mermaid
