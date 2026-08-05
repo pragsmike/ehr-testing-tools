@@ -1,4 +1,4 @@
-.PHONY: help test integration quickstart quickstart-fresh ci-parity pipeline use-cases operators-doc cli-doc docsgen lint-pipeline
+.PHONY: help test integration quickstart quickstart-fresh ci-parity pipeline use-cases operators-doc cli-doc docsgen lint-pipeline mirror-nist verify-nist-lock
 
 # Thin, deliberately (R23, ADR-0004, 2026-07-28 carve-loss recovery
 # session): every target below is a named entry point to a poly/CLI
@@ -32,10 +32,13 @@ help:
 	@echo "  cli-doc      - regenerate docs/cli.md from bases/cli's own cli-spec"
 	@echo "  docsgen      - all four of the above"
 	@echo "  lint-pipeline - assert every catalytic resource in docs/pipeline.edn and docs/use-cases.edn resolves to one of the four catalytic targets (ehrt.docs-tooling.lint)"
+	@echo "  mirror-nist  - build ~/.ehrt/nist-mirror/ from this user's own ~/.m2 cache, sha256-verified against artifacts.lock.edn (ADR-0053) -- offline determinism without redistribution"
+	@echo "  verify-nist-lock - check every hit-nexus-sourced artifacts.lock.edn entry's sha256 against ~/.m2 (ADR-0053); also runs as part of 'test'"
 
 test:
 	clojure -M:poly check
 	clojure -M:poly test :all skip:integration
+	bin/verify-nist-lock
 
 integration:
 	clojure -M:poly test :all project:integration
@@ -94,6 +97,23 @@ docsgen: pipeline use-cases operators-doc cli-doc
 
 lint-pipeline:
 	clojure -X:dev ehrt.docs-tooling.lint/lint-pipeline!
+
+# Offline determinism without redistribution (ADR-0053, AR-F4-1/AR-F4-3):
+# ADR-0005's 2026-07-24 amendment (notes/tools/ADRs.md) forecloses
+# vendoring the NIST jars into this repo -- these two targets give the
+# lockfile's supply-chain claims mechanized teeth instead. `mirror-nist`
+# builds a Maven-layout mirror OUTSIDE this repo, on the invoking user's
+# own machine, from jars that user already fetched from NIST's own
+# official channel; `verify-nist-lock` is wired into `test` above (the
+# target where `projects/conformance`'s own classpath resolution --
+# it depends on `poly/judge-v2-nist` -- already pulls every one of these
+# coordinates into ~/.m2), so a sha256 drift there fails the per-push
+# lane. See components/judge-v2-nist/docs/nist-mirror.md.
+mirror-nist:
+	bin/mirror-nist
+
+verify-nist-lock:
+	bin/verify-nist-lock
 
 # ADR-0004's own generalized trap, made runnable: index modes, artifact
 # caches, and sibling checkouts have each masked a CI failure behind a

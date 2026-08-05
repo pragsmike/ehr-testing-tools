@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+# Gives artifacts.lock.edn teeth for the NIST engine (ADR-0053, AR-F4-3):
+# reads every hit-nexus-sourced lockfile entry (enumerated from
+# artifacts.lock.edn itself, never hardcoded here -- six coordinates
+# today, three gov.nist plus gov.nist.hit/hl7-v2-schemas and
+# com.github.hl7-tools/validation-report), locates each one's jar in a
+# Maven repository (--repo, default ~/.m2/repository), and compares its
+# sha256 against the lockfile's recorded value. This is the mechanized
+# check that makes a supply-chain claim ("the lockfile matches what's
+# actually on disk") auditable, not just narrated.
+#
+# Three distinct exits:
+#   0  every listed coordinate present and sha256-matching
+#   1  at least one coordinate's sha256 MISMATCHES the lockfile -- the
+#      alarm case; offending coordinate(s) named
+#   2  at least one coordinate is not present in --repo yet -- "not yet
+#      resolved", distinct from a mismatch: not itself a failure of the
+#      lockfile's own claims, just nothing to check yet
+#
+# Usage: bin/verify-nist-lock [--repo PATH]
+#   --repo  Maven local repository root to check against
+#           (default: ~/.m2/repository)
+#
+# Wired into `make test` (the per-push lane) right after
+# `clojure -M:poly test :all skip:integration`, the point where
+# `projects/conformance`'s own classpath resolution (it depends on
+# `poly/judge-v2-nist`, which declares the `nist-hit` :mvn/repos) has
+# already pulled every one of these coordinates into ~/.m2 -- so by the
+# time this script runs in that lane, "not yet resolved" should never
+# fire; a sha256 mismatch there is a real, actionable finding.
+set -euo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)" || exit 2
+cd -- "$repo_root" || exit 2
+
+repo="${HOME}/.m2/repository"
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --repo) repo="$2"; shift 2 ;;
+    *) echo "unknown argument: $1" >&2; exit 2 ;;
+  esac
+done
+
+# name<TAB>relpath<TAB>sha256, one line per hit-nexus-sourced lockfile
+# entry. relpath is derived from the entry's own :source URL (everything
+# after ".../releases/") -- exactly the path a Maven local repository
+# lays that same coordinate's jar at, so no group/artifact/version
+# parsing is needed here.
+clj_code=$(cat <<'CLJEOF'
+(require '[clojure.edn :as edn] '[clojure.string :as str])
+(let [{:keys [artifacts]} (edn/read-string (slurp "artifacts.lock.edn"))]
+  (doseq [{:keys [name sha256 source]} artifacts]
+    (when (str/includes? source "hit-nexus.nist.gov")
+      (let [relpath (second (re-find #".*/releases/(.*)" source))]
+        (println (str name "\t" relpath "\t" sha256))))))
+CLJEOF
+)
+entries="$(clojure -Sdeps '{}' -M -e "$clj_code")"
+
+[ -n "$entries" ] || { echo "no hit-nexus-sourced entries found in artifacts.lock.edn -- STOP, enumeration is broken" >&2; exit 2; }
+
+missing=()
+mismatched=()
+matched=()
+
+while IFS=$'\t' read -r name relpath sha256; do
+  jar="$repo/$relpath"
+  if [ ! -f "$jar" ]; then
+    missing+=("$name ($relpath)")
+    continue
+  fi
+  actual="$(sha256sum "$jar" | cut -d' ' -f1)"
+  if [ "$actual" != "$sha256" ]; then
+    mismatched+=("$name: expected $sha256, got $actual ($jar)")
+  else
+    matched+=("$name")
+  fi
+done <<< "$entries"
+
+if [ "${#mismatched[@]}" -gt 0 ]; then
+  echo "MISMATCH -- artifacts.lock.edn disagrees with $repo:" >&2
+  printf '  %s\n' "${mismatched[@]}" >&2
+  exit 1
+fi
+
+if [ "${#missing[@]}" -gt 0 ]; then
+  echo "not yet resolved -- run a full build first (missing from $repo):" >&2
+  printf '  %s\n' "${missing[@]}" >&2
+  exit 2
+fi
+
+echo "OK: ${#matched[@]} hit-nexus-sourced coordinate(s) match artifacts.lock.edn exactly"
+printf '  %s\n' "${matched[@]}"

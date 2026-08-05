@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+# User-side NIST jar mirror (ADR-0053, AR-F4-1): builds ~/.ehrt/nist-mirror/
+# in Maven repository layout from THIS USER'S OWN ~/.m2/repository cache,
+# covering every hit-nexus-sourced artifact listed in artifacts.lock.edn
+# (enumerated from the lockfile itself, never hardcoded here -- six
+# coordinates today, three gov.nist plus gov.nist.hit/hl7-v2-schemas and
+# com.github.hl7-tools/validation-report; jar AND pom per coordinate,
+# since Maven resolution needs both).
+#
+# Offline determinism WITHOUT redistribution (ADR-0005's 2026-07-24
+# amendment, notes/tools/ADRs.md; ADR-0053): this mirror is built from,
+# and lives entirely on, the machine of a user who has already fetched
+# these jars from NIST's own official channel (hit-nexus.nist.gov) at
+# their own initiative. This repo never touches, vendors, or ships a
+# NIST-origin byte -- this script only copies bytes that are already on
+# the invoking user's own disk, into a second directory on that same
+# disk.
+#
+# Each jar's sha256 is verified against its artifacts.lock.edn entry AT
+# COPY TIME. Three distinct exits, same shape as bin/verify-nist-lock:
+#   0  every coordinate present, sha256-verified, and mirrored
+#   1  at least one coordinate's sha256 MISMATCHES the lockfile -- the
+#      mirror build aborts, offending coordinate(s) named, nothing for
+#      that coordinate is copied
+#   2  at least one coordinate is not present in --m2 yet -- "not yet
+#      resolved, run a full build first", distinct from a mismatch
+#
+# Usage: bin/mirror-nist [--m2 PATH] [--dest PATH]
+#   --m2    Maven local repository root to mirror FROM
+#           (default: ~/.m2/repository)
+#   --dest  mirror destination, Maven repository layout
+#           (default: ~/.ehrt/nist-mirror)
+#
+# This script does not activate the mirror -- that is a separate,
+# author-only step (a <mirror> entry in the user's own ~/.m2/settings.xml,
+# never written by this script). See
+# components/judge-v2-nist/docs/nist-mirror.md for the exact XML and why.
+set -euo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)" || exit 2
+cd -- "$repo_root" || exit 2
+
+m2="${HOME}/.m2/repository"
+dest="${HOME}/.ehrt/nist-mirror"
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --m2) m2="$2"; shift 2 ;;
+    --dest) dest="$2"; shift 2 ;;
+    *) echo "unknown argument: $1" >&2; exit 2 ;;
+  esac
+done
+
+# name<TAB>relpath<TAB>sha256, one line per hit-nexus-sourced lockfile
+# entry -- same derivation as bin/verify-nist-lock (relpath comes from
+# the entry's own :source URL, everything after ".../releases/").
+clj_code=$(cat <<'CLJEOF'
+(require '[clojure.edn :as edn] '[clojure.string :as str])
+(let [{:keys [artifacts]} (edn/read-string (slurp "artifacts.lock.edn"))]
+  (doseq [{:keys [name sha256 source]} artifacts]
+    (when (str/includes? source "hit-nexus.nist.gov")
+      (let [relpath (second (re-find #".*/releases/(.*)" source))]
+        (println (str name "\t" relpath "\t" sha256))))))
+CLJEOF
+)
+entries="$(clojure -Sdeps '{}' -M -e "$clj_code")"
+
+[ -n "$entries" ] || { echo "no hit-nexus-sourced entries found in artifacts.lock.edn -- STOP, enumeration is broken" >&2; exit 2; }
+
+missing=()
+mismatched=()
+copied=()
+
+while IFS=$'\t' read -r name relpath sha256; do
+  jar_src="$m2/$relpath"
+  pom_relpath="${relpath%.jar}.pom"
+  pom_src="$m2/$pom_relpath"
+
+  if [ ! -f "$jar_src" ]; then
+    missing+=("$name ($relpath)")
+    continue
+  fi
+
+  actual="$(sha256sum "$jar_src" | cut -d' ' -f1)"
+  if [ "$actual" != "$sha256" ]; then
+    mismatched+=("$name: expected $sha256, got $actual ($jar_src)")
+    continue
+  fi
+
+  jar_dest="$dest/$relpath"
+  pom_dest="$dest/$pom_relpath"
+  mkdir -p "$(dirname "$jar_dest")"
+  cp -f "$jar_src" "$jar_dest"
+  if [ -f "$pom_src" ]; then
+    cp -f "$pom_src" "$pom_dest"
+  fi
+  copied+=("$name")
+done <<< "$entries"
+
+if [ "${#mismatched[@]}" -gt 0 ]; then
+  echo "sha256 MISMATCH -- mirror build aborted, offending coordinate(s):" >&2
+  printf '  %s\n' "${mismatched[@]}" >&2
+  exit 1
+fi
+
+if [ "${#missing[@]}" -gt 0 ]; then
+  echo "not yet resolved -- run a full build first (missing from $m2):" >&2
+  printf '  %s\n' "${missing[@]}" >&2
+  exit 2
+fi
+
+echo "mirror built at $dest: ${#copied[@]} coordinate(s) verified and copied"
+printf '  %s\n' "${copied[@]}"
