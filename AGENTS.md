@@ -43,12 +43,23 @@ tree and proposes commit messages, never itself running `git commit`,
 prompt must state explicitly, in that chat, at the start — a live,
 scoped choice for that session, not a rule either mode carries forward
 silently to the next one. Two classes of action stay the author's alone
-under either mode: **tags** (the `stable-*` tag is the actual trust
-boundary, ADR-0003) and **repo-level `gh` mutations**
+under either mode: **tags** other than the licensed continuity
+exception below (the `stable-*` tag is the actual trust boundary,
+ADR-0003) and **repo-level `gh` mutations**
 (create/delete/settings/visibility — the `pragsmike/packs` precedent,
-`sim's AUTHORS-GUIDE.md` §2). Agents working in this environment hold
-ambient authenticated `gh` credentials for exactly those repo-level
-mutations — the standing rule, unchanged by either mode, is that those
+`sim's AUTHORS-GUIDE.md` §2). **2026-08-05 amendment** (`notes/adr/
+0051-alignment-fixes-2.md` AR-F2-0, reconciling ADR-0049's AR-AU-0 onto
+this surface — the two had fallen out of sync from the moment AR-AU-0
+landed, a gap one session's own principled deferral correctly left
+unresolved rather than acted on ad hoc, ADR-0050 AR-F1-0): a session
+MAY create and push a `stable-*` continuity tag when — and only when —
+that session's own prompt licenses a SPECIFIC tag at a SPECIFIC commit,
+a license the design channel issues only after verifying the landing it
+names. The author may always tag directly, licensed or not. Every
+other tag class — release `v*` tags especially — stays AUTHOR ACTION,
+unchanged. Agents working in this environment hold ambient
+authenticated `gh` credentials for exactly the repo-level mutations
+above — the standing rule, unchanged by either mode, is that those
 credentials do not get used off an agent's own initiative. AUTHOR
 ACTION checkpoints (git surgery, placing external documents — things
 only the author does) stay author-only in every mode.
