@@ -163,7 +163,7 @@ tolerate.
 The cross-emitter id sub-law (`docs/sim-theory.md`'s global laws,
 originally a named gap this document's own determinism table below
 flagged as open) is checked the same way, from the other direction:
-`ehrt.sim.emit-state-test/fhir-patient-id-and-active-mrn-resolve-to-the-same-hl7-identity`
+`ehrt.sim-emit-fhir.emit-fhir-test/fhir-patient-id-and-active-mrn-resolve-to-the-same-hl7-identity`
 asserts that a FHIR `Patient.id` is the same `patient-id`
 `ehrt.sim-engine.engine/patient-id-for` assigns, and `Patient.identifier`
 carries the same active MRN that patient's own HL7 messages render as
@@ -297,7 +297,7 @@ checklist against this project's own defenses.
 | Unordered-collection iteration | Mostly defended (the engine's work queue is a `sorted-map`); gap closed this session — `emitter-order-independence-test` (`test/ehrt/sim/emitter_order_independence_test.clj`) guards that `emit-hl7` never depends on a map's or set's own iteration order when building segments |
 | Reference *date* vs full timestamp | Defended: relative seconds (ADR-0011) plus an explicit `:reference-date` and a fixed `:utc-offset`, both pinned in the run manifest, never a bare current-time reference |
 | Locale/OS differences | Partially defended (locale/timezone recorded in the manifest); revisit once CI exists (`.agents/plans/roadmap.md`'s CI trigger) |
-| Cross-format id divergence (CDA vs FHIR vs CSV) | Defended for HL7v2/FHIR, property-tested: `Patient.id`/`Patient.identifier` resolve to the SAME `patient-id`/active-mrn `EmitHL7` uses (`sim-theory.md`'s cross-emitter id sub-law, `emit-state-test/fhir-patient-id-and-active-mrn-resolve-to-the-same-hl7-identity`, 150 trials). CDA is out of scope until it's built (EmitState's own format-dispatch contract note) — not a gap in what's landed, a boundary of what hasn't |
+| Cross-format id divergence (CDA vs FHIR vs CSV) | Defended for HL7v2/FHIR, property-tested: `Patient.id`/`Patient.identifier` resolve to the SAME `patient-id`/active-mrn `EmitHL7` uses (`sim-theory.md`'s cross-emitter id sub-law, `emit-fhir-test/fhir-patient-id-and-active-mrn-resolve-to-the-same-hl7-identity`, 150 trials). CDA is out of scope until it's built (EmitState's own format-dispatch contract note) — not a gap in what's landed, a boundary of what hasn't |
 
 The structural defense behind the first four rows is already argued
 elsewhere in this document (`:patient-id`/`:mrns` generation, the

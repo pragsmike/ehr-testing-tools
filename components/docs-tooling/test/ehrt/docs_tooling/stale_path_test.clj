@@ -106,7 +106,23 @@
   forward to the `ehrt.sim-engine.engine` form in the same commit this
   addendum lands in, confirmed clean before this addendum's own
   patterns were added -- same scope and same fix-before-gate discipline
-  as every entry in this family."
+  as every entry in this family.
+
+  2026-08-04 addendum (sim split B stage M3, `notes/ADRs.md` ADR-0043,
+  AR-M3-6): `ehrt.sim.emit-state` joins the retired-namespace family
+  above -- moved to `ehrt.sim-emit-fhir.emit-fhir` this session, same
+  denylist shape as the S2/S3/M2 addenda immediately above (`ehrt.sim-
+  emit-fhir.` never trips the retired-prefix pattern, since
+  `ehrt.sim.emit-state` is not a substring of it -- confirmed below).
+  The path-form citation (`ehrt/sim/emit_state`) joins too, same scope.
+  This scan (`docs/**/*.md` plus `components/corpus/docs/use-cases.edn`)
+  found no real violations -- `components/sim/docs/`'s own deep theory
+  docs (sim-theory.md/.edn, event-sourcing.md, the emit-state demo's own
+  README) DO carry stale mentions, but that tree is component-owned,
+  outside this test's scan scope (same as every other entry in this
+  family); those were swept forward anyway, live, as part of this same
+  session's own current-tense-surface discipline, just not gated by
+  this test."
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.java.io :as io]
             [clojure.string :as str]))
@@ -153,7 +169,11 @@
     (re-find #"ehrt/sim/churn\b" content)
     (conj :retired-ehrt-sim-churn-path)
     (re-find #"ehrt/sim/order_profiles\b" content)
-    (conj :retired-ehrt-sim-order-profiles-path)))
+    (conj :retired-ehrt-sim-order-profiles-path)
+    (str/includes? content "ehrt.sim.emit-state")
+    (conj :retired-ehrt-sim-emit-state-namespace)
+    (re-find #"ehrt/sim/emit_state\b" content)
+    (conj :retired-ehrt-sim-emit-state-path)))
 
 (deftest no-stale-path-family-anywhere-in-docs-or-use-cases-edn-test
   (doseq [path (scan-sources)]
@@ -199,7 +219,13 @@
     (is (empty? (violations "see ehrt.sim-engine.churn/inject")))
     (is (empty? (violations "see ehrt.sim-engine.order-profiles/default-profiles")))
     (is (empty? (violations "see ehrt.sim-engine.interface/run")))
-    (is (empty? (violations "components/sim-engine/src/ehrt/sim_engine/engine.clj")))))
+    (is (empty? (violations "components/sim-engine/src/ehrt/sim_engine/engine.clj"))))
+  (is (= [:retired-ehrt-sim-emit-state-namespace] (violations "see ehrt.sim.emit-state/bundle-run")))
+  (is (= [:retired-ehrt-sim-emit-state-path] (violations "components/sim/src/ehrt/sim/emit_state.clj")))
+  (testing "the sim-emit-fhir citation form does not trip any retired-prefix or retired-path pattern"
+    (is (empty? (violations "see ehrt.sim-emit-fhir.emit-fhir/bundle-run")))
+    (is (empty? (violations "see ehrt.sim-emit-fhir.interface/bundle-run")))
+    (is (empty? (violations "components/sim-emit-fhir/src/ehrt/sim_emit_fhir/emit_fhir.clj")))))
 
 ;; README register tripwire (2026-08-01, AR-3) -- separate from the scan
 ;; above: different source (README.md only), different exemptions (link

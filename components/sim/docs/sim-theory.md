@@ -256,7 +256,7 @@ whose name binds to nothing is malformed. Bindings, with build status:
 | `ground-truth-log` | Malli, planned as data; shape established by `engine/run` and consumed by `check` | de-facto built |
 | `state-history` | Malli, planned — per-patient `[t → state]`; today implicit in the pure fold, the want makes it a first-class output | planned |
 | `hl7v2-stream` | ER7 messages over the parser's structures | v1 built |
-| `state-document` | FHIR R4 JSON (`ehrt.sim.emit-state`) now; CDA XML deferred with a contract note | M6 built (FHIR arm) |
+| `state-document` | FHIR R4 JSON (`ehrt.sim-emit-fhir.emit-fhir`) now; CDA XML deferred with a contract note | M6 built (FHIR arm) |
 | `run-manifest` | Malli, `ehrt.sim.manifest/MirroredManifest` (tools' ManifestV1_1 mirror) | built |
 | `sim-corpus` | directory layout + manifest, planned | planned |
 | `churn-profile` | Malli, `ehrt.sim-engine.churn/ChurnProfile` — step-type → per-insertion-point probability | v1 built |
@@ -352,7 +352,7 @@ divergence between CDA, FHIR, and CSV exports
 same ground-truth facts** — no format-local id scheme, no re-derivation
 that could drift from another emitter's choice for the same event.
 PROPERTY-TESTED alongside the law above:
-`ehrt.sim.emit-state-test/fhir-patient-id-and-active-mrn-resolve-to-the-same-hl7-identity`
+`ehrt.sim-emit-fhir.emit-fhir-test/fhir-patient-id-and-active-mrn-resolve-to-the-same-hl7-identity`
 (150 trials, green 2026-07-27) — FHIR `Patient.id` is the same
 `patient-id` `ehrt.sim-engine.engine/patient-id-for` assigns, and
 `Patient.identifier`'s MRN matches PID-3 on that same patient's own

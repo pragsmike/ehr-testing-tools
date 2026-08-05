@@ -25,7 +25,7 @@ clojure -M:cli run --seed 42 --patients 3 \
 - [`messages.txt`](messages.txt) — the HL7v2 stream (`--emit hl7`), same
   as `order-result/messages.txt`.
 - [`fhir-bundle-patient1.json`](fhir-bundle-patient1.json) — patient
-  1's own end-of-run FHIR Bundle (`--emit fhir`, `ehrt.sim.emit-state/bundle-run`):
+  1's own end-of-run FHIR Bundle (`--emit fhir`, `ehrt.sim-emit-fhir.interface/bundle-run`):
   `Patient`, `Encounter`, five `Observation`s (the CBC panel), and
   `Coverage` — no `Condition`/`MedicationRequest` here, since this
   patient's pathway is a plain admission + order + discharge (no module,
@@ -86,7 +86,7 @@ Resolving across both:
   itself (HL7 has no field for it), but the SAME id `ehrt.sim.emit-hl7`
   uses internally to know which patient a message is about; the
   cross-emitter id property test
-  (`ehrt.sim.emit-state-test/fhir-patient-id-and-active-mrn-resolve-to-the-same-hl7-identity`)
+  (`ehrt.sim-emit-fhir.emit-fhir-test/fhir-patient-id-and-active-mrn-resolve-to-the-same-hl7-identity`)
   checks exactly this correspondence.
 - **`Patient.identifier[0].value` ("MRN000001") is PID-3, verbatim** —
   the one identifier both formats actually put on the wire/document.
