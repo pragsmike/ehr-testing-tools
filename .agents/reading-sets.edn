@@ -312,7 +312,10 @@
   ;; own session-record/prompt-archive filenames in their own already-
   ;; cited onboarding READMEs (1 line each) brought the real total from
   ;; 2023 to 2025.
-  :budget-lines 2025}
+  ;; bumped 2025->2033, sim split B M4 session (2026-08-04, Step 1):
+  ;; AGENTS.md's own Components-list growth (`components/sim-check`,
+  ;; net +8 lines) brought the real total from 2025 to 2033.
+  :budget-lines 2033}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one
@@ -364,7 +367,10 @@
   ;; bumped 1714->1723, sim split B M3 session (2026-08-04, Step 1):
   ;; AGENTS.md's own Components-list growth (`components/sim-emit-fhir`,
   ;; net +9 lines) brought the real total from 1714 to 1723.
-  :budget-lines 1723}
+  ;; bumped 1723->1731, sim split B M4 session (2026-08-04, Step 1):
+  ;; AGENTS.md's own Components-list growth (`components/sim-check`,
+  ;; net +8 lines) brought the real total from 1723 to 1731.
+  :budget-lines 1731}
 
  ;; components/sim is the deterministic generator engine wrapping Synthea
  ;; (ADR-0005) -- engine-onboarding.md is the checklist every engine wrapper
@@ -406,7 +412,12 @@
   ;; bumped 764->773, sim split B M3 session (2026-08-04, Step 1):
   ;; AGENTS.md's own Components-list growth (`components/sim-emit-fhir`,
   ;; net +9 lines) brought the real total from 764 to 773.
-  :budget-lines 773}
+  ;; bumped 773->793, sim split B M4 session (2026-08-04, Step 1):
+  ;; AGENTS.md's own Components-list growth (`components/sim-check`, net
+  ;; +8 lines) plus components/sim/src/ehrt/sim/interface.clj's own new
+  ;; dated retirement note on the fat-component disclosure (AR-M4-3, net
+  ;; +12 lines) brought the real total from 773 to 793.
+  :budget-lines 793}
 
  ;; components/judge (verdict vocabulary) plus its three gate engines
  ;; (judge-v2-hapi, judge-fhir-official, judge-v2-nist, ADR-0011's per-engine
@@ -450,7 +461,10 @@
   ;; bumped 834->843, sim split B M3 session (2026-08-04, Step 1):
   ;; AGENTS.md's own Components-list growth (`components/sim-emit-fhir`,
   ;; net +9 lines) brought the real total from 834 to 843.
-  :budget-lines 843}
+  ;; bumped 843->851, sim split B M4 session (2026-08-04, Step 1):
+  ;; AGENTS.md's own Components-list growth (`components/sim-check`, net
+  ;; +8 lines) brought the real total from 843 to 851.
+  :budget-lines 851}
 
  ;; components/docs-tooling (dev-time-only doc/lint tooling) generates and
  ;; lints docs/cli.md, docs/pipeline.md-equivalents, and docs/use-cases.md
@@ -501,4 +515,10 @@
   ;; net +9 lines) plus docs/dev/architecture.md's own new
   ;; `components/sim-emit-fhir` diagram node/edges and bricks-table row
   ;; (net +4 lines) brought the real total from 641 to 654.
-  :budget-lines 654}}
+  ;; bumped 654->668, sim split B M4 session (2026-08-04, Step 1):
+  ;; AGENTS.md's own Components-list growth (`components/sim-check`, net
+  ;; +8 lines) plus docs/dev/architecture.md's own new `components/sim-
+  ;; check` diagram node/edges and bricks-table row, plus its sim row's
+  ;; own dependency-list rewrite (net +6 lines) brought the real total
+  ;; from 654 to 668.
+  :budget-lines 668}}

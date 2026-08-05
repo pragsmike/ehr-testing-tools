@@ -39,7 +39,7 @@
             [ehrt.kernel.interface :as result]
             [ehrt.sim-trajectory.gmf :as gmf]
             [ehrt.sim-engine.engine :as engine]
-            [ehrt.sim.check :as check]
+            [ehrt.sim-check.check :as check]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]))
 
 (def ^:private uti-json (slurp (io/resource "sim/modules/urinary_tract_infections.json")))

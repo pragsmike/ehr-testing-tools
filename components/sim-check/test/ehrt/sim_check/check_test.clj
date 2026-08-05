@@ -1,9 +1,9 @@
-(ns ehrt.sim.check-test
+(ns ehrt.sim-check.check-test
   "The invariant catalog's Milestone M1 additions (docs/operational-
   models.md, docs/patient-state-model.md's event-validity table):
   admission/transfer legality, transfer-from accuracy, no double
   occupancy, one-slot-per-admitted-patient, capacity, and surge-only-
-  when-earlier-rungs-exhausted. Written before ehrt.sim.check
+  when-earlier-rungs-exhausted. Written before ehrt.sim-check.check
   grows these (sim/ADR-0004 test-first).
 
   M2a (sim/ADR-0010) additions: every hand-written log below now carries
@@ -16,7 +16,7 @@
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
             [ehrt.kernel.interface :as result]
-            [ehrt.sim.check :as check]
+            [ehrt.sim-check.check :as check]
             [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim-engine.engine :as engine]
             [ehrt.sim-engine.order-profiles :as order-profiles]))

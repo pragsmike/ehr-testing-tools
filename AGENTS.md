@@ -126,7 +126,11 @@ Wave D stage D0, `notes/ADRs.md` ADR-0029); `components/sim-emit-fhir`
 a rendering accent over folded state rather than the event log,
 extracted from `components/sim`, sim split B stage M3, 2026-08-04,
 `.agents/plans/2026-08-04-sim-split-b-plan.md`, `notes/ADRs.md`
-ADR-0043); `components/sim`
+ADR-0043); `components/sim-check` (the invariant catalog, extracted
+from `components/sim`, sim split B stage M4, 2026-08-04, same plan,
+`notes/ADRs.md` ADR-0043 — the fifth and last brick of the
+decomposition; residual `components/sim` is now pure orchestration);
+`components/sim`
 (deterministic, seeded generator of synthetic hospital traffic).
 **Bases:** `bases/cli` — thin CLI dispatch, `bin/ehrt` ("e-heart",
 `ehr` stays reserved for future payload-EHR tooling).
@@ -207,7 +211,11 @@ library in its own right.
   `components/sim-trajectory` themselves); `components/sim-emit-fhir`
   must never depend on anything but `components/sim-engine` (never on
   `components/sim`, `components/sim-model`, or `components/sim-trajectory`
-  themselves).
+  themselves); `components/sim-check` (sim split B stage M4, ADR-0043)
+  must never depend on anything but `components/sim-engine`,
+  `components/sim-model`, and `components/kernel` (never on
+  `components/sim`, either emitter, `components/corpus`, or
+  `components/provenance`).
 - **No PHI, no real-person data, ever** — including in test fixtures
   and docs.
 - **No CPT codes** (AMA-licensed). SNOMED CT, LOINC, RxNorm, ICD-10-CM,

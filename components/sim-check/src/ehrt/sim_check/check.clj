@@ -1,4 +1,4 @@
-(ns ehrt.sim.check
+(ns ehrt.sim-check.check
   "The invariant catalog: internal-consistency claims about a
   ground-truth log, machine-checkable (validation program, claim #3 in
   docs/problem-statement.md). Runs standalone as `sim check` and in CI

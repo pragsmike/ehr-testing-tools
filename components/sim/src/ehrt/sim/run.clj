@@ -27,7 +27,7 @@
             [clojure.java.io :as io]
             [ehrt.kernel.interface :as result]
             [ehrt.sim-engine.interface :as engine]
-            [ehrt.sim.check :as check]
+            [ehrt.sim-check.interface :as check]
             [ehrt.sim-engine.interface :as churn]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]
             [ehrt.sim-emit-fhir.interface :as emit-fhir]

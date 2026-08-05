@@ -25,7 +25,7 @@
             [ehrt.kernel.interface :as result]
             [ehrt.sim-trajectory.gmf :as gmf]
             [ehrt.sim-engine.engine :as engine]
-            [ehrt.sim.check :as check]
+            [ehrt.sim-check.check :as check]
             [ehrt.sim-emit-hl7.emit-hl7 :as emit-hl7]
             [com.nervestaple.hl7-parser.parser :as parser]
             [com.nervestaple.hl7-parser.message :as message]))
