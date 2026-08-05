@@ -2,13 +2,22 @@
   "GMF census tool (parity plan `.agents/plans/2026-08-02-gmf-parity-plan.md`
   §3, ADR-0031 AR-1, ADR-0034). A `sim-trajectory` DEV ENTRY POINT, not a
   CLI verb (AR-1: promotable later as a curation decision once the
-  verdict vocabulary stabilizes) -- lives under `development/src` because
-  walking an arbitrary external Synthea checkout on disk is a dev-tool
-  concern, not something `components/sim-trajectory`'s own product
-  interface should carry.
+  verdict vocabulary stabilizes) -- walking an arbitrary external
+  Synthea checkout on disk is a dev-tool concern, not something
+  `components/sim-trajectory`'s own product interface should carry, so
+  this namespace is not re-exported there. Standing-equipment promotion
+  (2026-08-05, `notes/ADRs.md` promotion ADR, AR-P-1): moved INTO this
+  component from `development/src` -- equipment, not API, so gmf/
+  gmf-interpreter access is now an ordinary intra-component call rather
+  than the foreign-component reach `development/src` required; the
+  interface itself does not grow.
 
   Invocation: `clojure -M:dev -m ehrt.sim-trajectory.census
-  <synthea-checkout-dir> <out-dir>` from the workspace root. Reads
+  <synthea-checkout-dir> <out-dir>` from the workspace root (unchanged
+  by the move -- the `:dev` alias already wires `poly/sim-trajectory`
+  as a `:local/root` dep, which was already how this namespace's own
+  `gmf`/`gmf-interpreter` requires resolved even under `development/src`).
+  Reads
   `<synthea-checkout-dir>/src/main/resources/modules/**` -- no network at
   run time, no vendoring of the catalog (installed != used, AR-1).
   Writes one dated EDN artifact into `<out-dir>`.

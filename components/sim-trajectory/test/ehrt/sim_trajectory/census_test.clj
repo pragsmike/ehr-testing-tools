@@ -3,7 +3,16 @@
   own verdicts carry the properties AR-2/AR-3/AR-4 claim for them, proven
   against small inline fixture modules (never against the real Synthea
   catalog -- that is Step 2's own committed artifact, not a unit test's
-  job) -- one fixture per verdict class, plus the AR-3 substitution tag."
+  job) -- one fixture per verdict class, plus the AR-3 substitution tag.
+
+  Standing-equipment promotion (2026-08-05, `notes/ADRs.md` promotion
+  ADR, AR-P-1): moved verbatim (namespace unchanged) from
+  `development/test` into this component's own test tree -- equipment,
+  not API. This move is the first time these 7 tests ever actually ran
+  under `poly test` (the roadmap's own Wave I finding: `development`'s
+  own project wiring never reached them). Running them for real found
+  two fixtures had gone stale in the interim -- see `load-failed-json`
+  and `walk-failed-json`'s own dated notes below."
   (:require [clojure.java.io :as io]
             [clojure.test :refer [deftest is testing]]
             [ehrt.sim-trajectory.census :as census]))
@@ -27,35 +36,56 @@
        " }}"))
 
 (def ^:private load-failed-json
-  "VitalSign is a real, still-deferred v1 state type (docs/gmf-
-  interpreter.md's own deferred-type table, ADR-0036 AR-7 -- a
-  calibration-content gap, distinct from the also-deferred `:vital-sign`
-  CONDITION type `walk-failed-json` below exercises) -- gmf/load-closure
-  REJECTS this at load time, before any walk. GMF coverage Wave F
-  (2026-08-03, ADR-0036): swapped from ImagingStudy (ADR-0029 R5, now
-  supported) to VitalSign, the same 'stale premise, not silently left'
-  treatment `gmf-test`'s own deferred-type fixtures already document."
+  "Standing-equipment promotion (2026-08-05, `notes/ADRs.md` promotion
+  ADR): found live, moving this file under `poly test` for the first
+  time ever (the Wave I finding this promotion closes, see the
+  namespace docstring below) -- VitalSign, this fixture's own prior
+  'still-deferred v1 state type', was ITSELF landed for real by GMF
+  coverage Wave VS (2026-08-04, ADR-0039 AR-1) three sessions before
+  this test file was ever actually exercised, so the fixture had gone
+  stale silently: `census-one` now returns `:ok-walked` for it, not
+  `:load-failed`. Swapped to a deliberately FICTIONAL state type name
+  (`NoSuchStateType`, not upstream Synthea vocabulary, not a v1
+  candidate) rather than another real-but-currently-deferred type --
+  `gmf-type->keyword` (gmf.clj) is a closed whitelist by construction,
+  so any string that is not a key stays permanently unrecognized,
+  immune to the next coverage wave going stale the same way this one
+  did. The same 'stale premise, not silently left' treatment
+  `gmf-test`'s own deferred-type fixtures already document, one layer
+  more future-proof."
   (str "{\"name\": \"Census Load-Failed Fixture\","
        " \"states\": {"
        "   \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Scan\"},"
-       "   \"Scan\": {\"type\": \"VitalSign\", \"direct_transition\": \"Done\"},"
+       "   \"Scan\": {\"type\": \"NoSuchStateType\", \"direct_transition\": \"Done\"},"
        "   \"Done\": {\"type\": \"Terminal\"}"
        " }}"))
 
 (def ^:private walk-failed-json
   "Loads clean (no state-type/schema gate fires -- gmf.clj's own loader
   does not validate condition-type vocabulary, only state types) but a
-  Guard whose :allow names an unrecognized condition type
-  ('Vital Sign', ADR-0031's own §2 'stay OUT' predicate, never built)
-  throws at `evaluate-condition`'s own default case the moment the walk
-  reaches it -- every fixture seed reaches Initial's own unconditional
-  transition into the Guard first, so every seed throws."
+  Guard whose :allow names an unrecognized condition type throws at
+  `evaluate-condition`'s own default case the moment the walk reaches
+  it -- every fixture seed reaches Initial's own unconditional
+  transition into the Guard first, so every seed throws.
+
+  Standing-equipment promotion (2026-08-05, `notes/ADRs.md` promotion
+  ADR): the SAME staleness this file's `load-failed-json` fixture,
+  above, found live -- ':vital-sign' (raw JSON 'Vital Sign') was
+  ITSELF landed by GMF coverage Wave VS (2026-08-04, ADR-0039 AR-1/AR-4,
+  `vital-sign-condition-holds?`) before this test file was ever
+  actually exercised under `poly test`, so this fixture no longer
+  throws either -- it now walks clean to `:ok-walked`. Swapped to a
+  fictional condition type ('No Such Condition Type', slugging to
+  `:no-such-condition-type`) for the same reason: `evaluate-condition`'s
+  `case` dispatch (gmf_interpreter.clj) throws on its default branch for
+  ANY keyword not one of its named clauses, so a fictional name stays
+  permanently unrecognized rather than going stale at the next wave
+  that adds a condition type."
   (str "{\"name\": \"Census Walk-Failed Fixture\","
        " \"states\": {"
        "   \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Blocked\"},"
        "   \"Blocked\": {\"type\": \"Guard\","
-       "     \"allow\": {\"condition_type\": \"Vital Sign\", \"vital_sign\": \"Height\","
-       "                 \"operator\": \">\", \"value\": 0},"
+       "     \"allow\": {\"condition_type\": \"No Such Condition Type\"},"
        "     \"direct_transition\": \"Done\"},"
        "   \"Done\": {\"type\": \"Terminal\"}"
        " }}"))
@@ -106,7 +136,7 @@
         entry (census/census-one dir census-opts {:id "census-load-failed-fixture" :file file})]
     (is (= :load-failed (:verdict entry)))
     (is (= [] (:walks entry)))
-    (is (contains? (get-in entry [:gap :unrecognized-state-types]) "VitalSign"))))
+    (is (contains? (get-in entry [:gap :unrecognized-state-types]) "NoSuchStateType"))))
 
 (deftest walk-failed-module-names-every-throwing-seed
   (let [dir (io/file (System/getProperty "java.io.tmpdir") "census-test-walk-failed")
@@ -116,7 +146,7 @@
     (is (= 3 (count (:walks entry))))
     (testing "every seed throws on the same unrecognized condition type -- caught, recorded, not propagated"
       (is (= 3 (count (get-in entry [:gap :walk-errors]))))
-      (is (every? #(= :vital-sign (get-in % [:error :data :condition-type]))
+      (is (every? #(= :no-such-condition-type (get-in % [:error :data :condition-type]))
                   (get-in entry [:gap :walk-errors]))))))
 
 (deftest wellness-substitution-detector-is-retired-no-tag-ever-emitted

@@ -98,6 +98,13 @@
                                poly/palgebra {:local/root "components/palgebra"}
                                poly/cli      {:local/root "bases/cli"}}}
 
+            ;; `components/sim-trajectory/test`, below, also carries the
+            ;; census tool's own co-landing tests since the standing-
+            ;; equipment promotion (2026-08-05, `notes/ADRs.md` promotion
+            ;; ADR, AR-P-1) moved them in from `development/test` -- no
+            ;; separate `development/test` entry needed anymore;
+            ;; `development/test` itself is now empty (ADR-0034's own
+            ;; comment here, superseded).
             :test {:extra-paths ["components/sim/test"
                                   "components/sim-engine/test"
                                   "components/sim-model/test"
@@ -117,13 +124,7 @@
                                   "components/palgebra/test"
                                   "bases/cli/test"
                                   "projects/conformance/test"
-                                  "projects/integration/test"
-                                  ;; ADR-0034: the census tool's own
-                                  ;; co-landing tests -- `development/src`
-                                  ;; already carries `ehrt.sim-trajectory.
-                                  ;; census` itself (:dev alias, above);
-                                  ;; `clojure -M:dev:test` combines both.
-                                  "development/test"]}
+                                  "projects/integration/test"]}
 
             ;; `bin/ehrt`'s own invocation alias (R32: the CLI tool is
             ;; renamed ehr -> ehrt, "e-heart" -- ehr stays reserved for
