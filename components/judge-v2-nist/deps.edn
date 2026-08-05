@@ -6,12 +6,26 @@
  ;;
  ;;   :mvn/repos {"nist-hit" {:url "https://hit-nexus.nist.gov/repository/releases/"}}
  ;;
- ;; Determinism note (artifacts.lock.edn discipline): after first
- ;; resolution, record the jar sha256s; hit-nexus has no stated
- ;; availability SLA and just changed operators (NIST -> Prometheus
- ;; Computing, Aug 2026 transition), so vendoring the six resolved jars
- ;; into a file:// repo mirror is the safe end-state. CDC does exactly
- ;; this in gov.cdc:lib-hl7v2-nist-validator (lib/ as file:// repo).
+ ;; Determinism note (artifacts.lock.edn discipline; ADR-0053, AR-F4-4):
+ ;; jar sha256s are recorded in the root artifacts.lock.edn. hit-nexus
+ ;; has no stated availability SLA and just changed operators (NIST ->
+ ;; Prometheus Computing, Aug 2026 transition) -- but vendoring these
+ ;; jars into an IN-REPO file:// mirror is FORECLOSED (ADR-0005's
+ ;; 2026-07-24 amendment, notes/tools/ADRs.md): these coordinates are
+ ;; license-unstated at the coordinate level, use-permitted only as a
+ ;; user-initiated fetch from NIST's own official channel -- this repo
+ ;; redistributes none of them. The safe end-state instead is a
+ ;; USER-SIDE mirror, outside this repo: `bin/mirror-nist` / `make
+ ;; mirror-nist` builds ~/.ehrt/nist-mirror/ from the invoking user's
+ ;; own already-fetched ~/.m2 cache, sha256-verified against
+ ;; artifacts.lock.edn; `bin/verify-nist-lock` / `make verify-nist-lock`
+ ;; (wired into `make test`) checks the lockfile's own claims against
+ ;; ~/.m2 on every per-push run. See
+ ;; components/judge-v2-nist/docs/nist-mirror.md. (CDC's own
+ ;; gov.cdc:lib-hl7v2-nist-validator vendors these same six jars into an
+ ;; IN-REPO file:// mirror -- a legitimate design for a build CDC itself
+ ;; controls and redistributes; not available to this repo under the
+ ;; amendment above.)
  ;;
  ;; Transitive deps beyond these three (scala-library 2.13.10, typesafe
  ;; config 1.4.2, commons-lang3, xom 1.3.7, scala-xml_2.13 1.3.0,

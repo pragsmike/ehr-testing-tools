@@ -3,6 +3,20 @@
 > date, `notes/prompts/2026-07-30-ehr-testing-judge-v2-nist-landing.md`).
 > Below this header, unchanged from the session's own `NOTES.md`.
 
+**Dated annotation, 2026-08-05 (`notes/adr/0053-alignment-fixes-4.md`,
+AR-F4-4):** "Wiring into the workspace" item 4 below prescribes
+mirroring the resolved NIST jars into an in-repo `file://` repo, CDC's
+own pattern. That path is FORECLOSED, not merely superseded: ADR-0005's
+2026-07-24 amendment (`notes/tools/ADRs.md`) holds these coordinates to
+`:use-permitted--unstated--confirmation-pending` only as a
+user-initiated fetch from NIST's own official channel, never vendored
+or shipped by this repo. The safe end-state that actually landed is a
+USER-SIDE mirror outside this repo (`bin/mirror-nist`, `bin/verify-
+nist-lock`, `components/judge-v2-nist/docs/nist-mirror.md`) — this
+body is left as-is below, archived verbatim, per this repo's own
+frozen-archive discipline; the correction lives here, not in a rewrite
+of item 4's own prose.
+
 # judge-v2-nist — spike results and wiring notes
 
 2026-07-30, cloud session. Companion to `components/corpus/docs/research/NIST-HL7v2-dev-test-platform.md`.
