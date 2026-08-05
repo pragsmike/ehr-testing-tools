@@ -5,16 +5,13 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- Nothing in progress at end of session (sim split B M4 landed same
-  day M1-M3 did -- see Done, below. GMF parity arc stays COMPLETE,
-  unaffected by this front). `.agents/plans/2026-08-04-sim-split-b-
-  plan.md`'s own forced sequence (AR-6: M1 → M2 → M3 → M4) is fully
-  discharged -- the sim split B arc is COMPLETE, `notes/ADRs.md`
-  ADR-0043's own M4 execution record states the arc-complete claim.
-  Standing deferred items re-cited there (J2 oracle redesign,
-  carry-across emission, sim-cli retirement (closed), census-tool
-  refinements) stay Deferred, none re-opened. The docs coherence pass
-  named there is EXECUTED as of 2026-08-05 -- see Done, below.
+- Nothing in progress at end of session (the 2026-08-05 standing-
+  equipment promotion landed same day as the docs coherence pass --
+  see Done, below). Census and the oracle digest are both now inside
+  the tested tree; the J2 deferred row (below) closes structurally.
+  Standing deferred items re-cited there (carry-across emission,
+  sim-cli retirement (closed), census-tool refinements (a/b/c stand,
+  untouched)) stay Deferred, none re-opened.
 
 ## Next (backlog, no session scheduled)
 - The lookup-column `time` gap (named in the schema-invalid family
@@ -156,6 +153,16 @@ per item; done items move to the bottom of their section with a date and sha.
   hits the filename collision again, or needs to distinguish "walks but
   produces nothing" from "walks and produces real content" for ranking
   purposes.
+  **Dated note (2026-08-05, standing-equipment promotion, `notes/ADRs.md`
+  ADR-0044 AR-P-4): `ehrt.sim-trajectory.census` moved from
+  `development/src` into `components/sim-trajectory` — relocation and
+  test-exercise only, by ruling; all three triggers above (a/b/c) stand,
+  untouched, none fired by the move.** A different, real finding
+  surfaced INCIDENTALLY by the move (running the census's own 7 tests
+  under `poly test` for the first time ever): two test fixtures had gone
+  stale after GMF coverage Wave VS landed real `VitalSign`/`:vital-sign`
+  support, fixed forward (ADR-0044's own Step 1) — not one of this row's
+  own three named refinements, disclosed separately there.
 - UTI's own `ed_bundle.json` O2-saturation Observation states carry a
   `gmf_version 2` `:distribution` this loader has NEVER normalized
   (Observation is not one of ADR-0035's three ported contexts) — a
@@ -232,6 +239,17 @@ per item; done items move to the bottom of their section with a date and sha.
   shape should expect the same workaround, or this row graduates into
   an actual `bin/regression-oracle` enhancement (e.g. an opt-in "run
   each commit's own digest.clj against its own worktree" mode).
+  **CLOSED 2026-08-05 (standing-equipment promotion, `notes/ADRs.md`
+  ADR-0044 AR-P-3):** digest.clj is now `components/oracle`, a real
+  Polylith component -- `bin/regression-oracle` points each side's own
+  synthetic classpath at that worktree's own copy, so this row's own
+  workaround (hand-running each commit's own digest.clj against its own
+  worktree) is now the SCRIPT's own default behavior, not a manual
+  fallback. The revisit trigger above never fires again for this reason;
+  a NEW, narrower transitional gap replaces it (a bracket spanning a
+  ref from before this promotion, `components/oracle` absent there)
+  with its own fallback and retirement condition, `bin/regression-
+  oracle`'s own `oracle_wiring_for` function.
 - **Docs coherence pass** (2026-08-04, sim split B M4, `notes/ADRs.md`
   ADR-0043 AR-M4-7): the sim split B arc's own per-stage stale-path
   sweeps (S1-S4/M1-M4, each a manual, disclosed, live fix) have each
@@ -248,6 +266,44 @@ per item; done items move to the bottom of their section with a date and sha.
   trail) and its own sections 1-8 currency pass;
   `patient-state-model.md`'s history-phase/vital-register additive
   sections and errata sweep. See Done, below.
+
+## Done (this session, 2026-08-05, standing-equipment promotion — ADR-0044)
+- **Census promotion (Step 1, `a17fab1`, AR-P-1).** `ehrt.sim-trajectory.
+  census` and its 7-test co-landing suite move verbatim from
+  `development/{src,test}` into `components/sim-trajectory` — equipment,
+  not API, the interface unchanged. Real finding, disclosed, fixed
+  forward: running these tests under `poly test` for the first time
+  ever surfaced two stale fixtures (GMF coverage Wave VS had landed real
+  `VitalSign`/`:vital-sign` support since this test file was last
+  actually exercised) — swapped to deliberately fictional type names,
+  immune to the next coverage wave going stale the same way.
+- **Oracle component (Step 2, `c065cdd`, AR-P-2).** `components/oracle`
+  created; `ehrt.oracle.digest` moves out of `bin/oracle-src` (retired)
+  with four interface repoints (`ehrt.sim-trajectory.interface`, gaining
+  `dob-epoch-day`; `ehrt.sim-engine.interface`; unchanged
+  `ehrt.sim-model.interface`/`ehrt.sim-emit-hl7.interface`). Verified
+  byte-identical against the pre-promotion producer before committing.
+  Documented in `AGENTS.md`/`docs/dev/architecture.md` (structure-
+  currency gate caught its own absence, red then green, live).
+- **Script redesign (Step 3, `3da479e`, AR-P-3).** `bin/regression-
+  oracle` resolves each side's own worktree copy of `components/oracle`
+  now (J2 closes structurally, dated note above and on ADR-0030 J2
+  itself); a cross-side soundness check (diff outside the digest's own
+  `(ns ...)` form) gates any non-trivial producer change behind an
+  explicit `--declared-digest-change` flag; a transitional fallback
+  reads a pre-promotion worktree's own `bin/oracle-src` instead. Proven
+  red→green four ways (two same-ref brackets, a no-flag abort, the same
+  bracket with the flag) before committing.
+- **Verification (Step 5).** AR-P-5's own declared transitional split
+  bracket, `bin/regression-oracle f9830ec 3da479e --declared-digest-change`:
+  soundness check correctly reports DIFFERS outside the `(ns ...)` form
+  (the printed diff is exactly the AR-P-2 interface repoints, nothing
+  else); all ELEVEN batches byte-identical, expected-change set NONE.
+  `poly check` clean and the full suite green (204 `Test results:`
+  blocks, 0 failures/0 errors, both lanes) at every code commit.
+- `notes/ADRs.md` ADR-0044 (AR-P-1 through AR-P-5, full execution note,
+  a dated amendment on ADR-0030's own J2 entry). Session record:
+  `.agents/session-records/2026-08-05-standing-equipment-promotion.md`.
 
 ## Done (this session, 2026-08-05, docs coherence pass — ADR-0043 AR-D)
 - **AR-D-1 (the split).** `components/sim-trajectory/docs/gmf-
