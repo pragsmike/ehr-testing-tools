@@ -240,3 +240,24 @@ only ones that actually changed.
 
 ---
 
+**2026-08-05 dated amendment (alignment fixes 1, `notes/ADRs.md`
+ADR-0050, register row C-5).** This session's own decision named two
+engines; `judge-v2-nist` (ADR-0012) joined the family the next day,
+completing the trio this amendment is about. A side-by-side read of
+all three engines' `interface.clj` files (`judge-fhir-official`,
+`judge-v2-hapi`, `judge-v2-nist`) found an asymmetric surface:
+`judge-fhir-official` alone exports `gate-batch`; `judge-v2-nist`
+alone exports `make-validator`. Ruled here: this is intentional
+ROLE-siblinghood, not shape-siblinghood — the three engines share a
+role (gate a corpus against one named validator, return the shared
+verdict vocabulary) but not a capability surface, and the surface
+asymmetry reflects real, per-engine capability differences
+(`gate-batch` exists because FHIR validation genuinely batches;
+`make-validator` exists because the NIST wrapper genuinely needs
+constructed validator state HAPI/FHIR-official don't). No backfill is
+intended — a future session should not add a stub `gate-batch` to
+`judge-v2-hapi` or `judge-v2-nist` merely to make the three look
+uniform. Callers meaning to treat the three polymorphically already
+do so through the shared verdict vocabulary in `judge`, not through a
+uniform per-engine surface.
+

@@ -177,7 +177,14 @@
   "Never a semver -- this repo is pre-release (ADR-0008): no version
   tag has been cut. \"pre-release\" is the identity claim itself, not a
   placeholder for one; a real semver arrives with the first release
-  tag, a separate, later change."
+  tag, a separate, later change.
+
+  Clarified 2026-08-05 (alignment fixes 1, ADR-0050, register row F-5):
+  \"no version tag has been cut\" means no SEMVER release tag
+  (`^v[0-9].*`, workspace.edn's own :release pattern) -- it is
+  unaffected by the `stable-*` tags that exist from ADR-0048 onward.
+  Those are continuity/verification points (ADR-0003's own trust
+  boundary), a different kind of tag entirely, not a release."
   "pre-release")
 
 (defn real-git-describe

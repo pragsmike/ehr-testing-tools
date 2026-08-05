@@ -88,7 +88,15 @@
   adds :stdout (`stdout-sink` below -- no :path, no manifest sidecar,
   the byte-stream form of the composability law, docs/source-sink-
   design.md Part III). :blaze remains parser-recognized (D-a) but
-  rejected as not-yet-supported until SS-5 (D-b)."
+  rejected as not-yet-supported until SS-5 (D-b).
+
+  Export-for-symmetry, 2026-08-05 (alignment fixes 1, ADR-0050, register
+  row B-1): unlike its sibling `implemented-source-kinds`, this var has
+  no external caller today -- corpus's own sink-designator path doesn't
+  exist yet. Kept exported anyway, mirroring the source side exactly,
+  so the player's own sink slice has a ready-made answer to consume
+  once the sink-designator path lands, rather than a var to invent from
+  scratch."
   #{:dir :file :stdout})
 
 (def Source

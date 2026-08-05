@@ -164,6 +164,20 @@ first?*
   patterns, event-log/replay access idioms); if a third sibling would copy it
   a third time, that shared core is a pre-extraction candidate — *before* the
   sibling lands, not during.
+
+  > **Dated annotation, 2026-08-05 (alignment fixes 1, `notes/ADRs.md`
+  > ADR-0050, register row D-2) — corrects the framing above, does not
+  > rewrite it.** The audit found site-profile access and event-log/
+  > replay walking are `sim-emit-hl7`-specific, wire-STREAM-format
+  > idioms (`sim-emit-fhir` has none of this shape at all) — a
+  > document-shaped CDA sibling would not copy them a third time. The
+  > real pre-extraction candidate is `sim-emit-fhir`'s own
+  > `snapshot-at`/`bundle-run` DOCUMENT-snapshot pattern (CDA, like
+  > FHIR, is document-shaped), and the cross-emitter id-coherence law
+  > is a CONVENTION each emitter reimplements independently today, not
+  > shared code — a future CDA session reimplements it correctly a
+  > third time, verified by property tests, rather than extracting
+  > anything. See the register row for the full evidence.
 - **Pairing-as-data registry:** vocabulary is load-bearing and the design pass
   is design-channel-first (roadmap row). The audit's only job here: confirm
   where the vocabulary would live (`judge`? `kernel`? a new leaf like
