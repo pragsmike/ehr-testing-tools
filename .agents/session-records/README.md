@@ -113,3 +113,4 @@ Files in this directory:
   * 2026-08-04-sim-split-m1-provenance.md
   * 2026-08-04-sim-split-m2-engine.md
   * 2026-08-04-sim-split-m3-emit-fhir.md
+  * 2026-08-04-sim-split-m4-check.md

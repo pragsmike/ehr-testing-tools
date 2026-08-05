@@ -319,7 +319,11 @@
   ;; roadmap.md's own new M4 "Now" note, the new M4 Done section, and
   ;; the new docs-coherence-pass Deferred row (net +55 lines) brought
   ;; the real total from 2033 to 2088.
-  :budget-lines 2088}
+  ;; bumped 2088->2090, same session, Step 5 close-out: indexing this
+  ;; session's own session-record/prompt-archive filenames in their
+  ;; own already-cited onboarding READMEs (1 line each) brought the
+  ;; real total from 2088 to 2090.
+  :budget-lines 2090}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one
