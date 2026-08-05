@@ -308,7 +308,11 @@
   ;; Done section, the "Now" section rewrite, and the S4 Deferred-row
   ;; AR-4-discharge dated note brought the real total from 1977 to
   ;; 2023.
-  :budget-lines 2023}
+  ;; bumped 2023->2025, same session, Step 5: indexing this session's
+  ;; own session-record/prompt-archive filenames in their own already-
+  ;; cited onboarding READMEs (1 line each) brought the real total from
+  ;; 2023 to 2025.
+  :budget-lines 2025}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one
