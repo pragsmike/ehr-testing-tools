@@ -93,3 +93,4 @@ below updates only when an arc closes.
 - **ADR-0048** — Alignment riders: small debts paid, the audit brief lands, stable tags go live — [`0048-alignment-riders.md`](adr/0048-alignment-riders.md) — Accepted
 - **ADR-0049** — Alignment audit: the tree examined, findings registered, nothing moved — [`0049-alignment-audit.md`](adr/0049-alignment-audit.md) — Accepted
 - **ADR-0050** — Alignment fixes 1: the past stops leaking — staleness swept, tripwire hardened, conventions named — [`0050-alignment-fixes-1.md`](adr/0050-alignment-fixes-1.md) — Accepted
+- **ADR-0051** — Alignment fixes 2: the law reads the same everywhere, and three laws get teeth — [`0051-alignment-fixes-2.md`](adr/0051-alignment-fixes-2.md) — Accepted

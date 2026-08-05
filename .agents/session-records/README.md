@@ -122,3 +122,4 @@ Files in this directory:
   * 2026-08-05-alignment-riders.md
   * 2026-08-05-alignment-audit.md
   * 2026-08-05-alignment-fixes-1.md
+  * 2026-08-05-alignment-fixes-2.md

@@ -229,3 +229,4 @@ scaffolding compaction B, `notes/ADRs.md` ADR-0046)
 - 2026-08-05 — alignment-riders — ADR-0048
 - 2026-08-05 — alignment-audit — ADR-0049
 - 2026-08-05 — alignment-fixes-1 — ADR-0050
+- 2026-08-05 — alignment-fixes-2 — ADR-0051
