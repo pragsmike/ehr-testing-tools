@@ -11,7 +11,7 @@
   state as {:mrns :active-mrn}; every event carries :participants.
   M2a (sim/ADR-0011): the engine clock is seconds; :delay's IR stays
   minutes, converted at decide-time; a warm-up window marks early
-  events. See ehrt.sim.check-test for the invariant-catalog
+  events. See ehrt.sim-check.check-test for the invariant-catalog
   side of both."
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.test.check.clojure-test :refer [defspec]]

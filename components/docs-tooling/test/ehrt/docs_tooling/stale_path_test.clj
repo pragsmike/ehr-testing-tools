@@ -122,7 +122,22 @@
   outside this test's scan scope (same as every other entry in this
   family); those were swept forward anyway, live, as part of this same
   session's own current-tense-surface discipline, just not gated by
-  this test."
+  this test.
+
+  2026-08-04 addendum (sim split B stage M4, `notes/ADRs.md` ADR-0043,
+  AR-M4-6): `ehrt.sim.check` joins the retired-namespace family above --
+  moved to `ehrt.sim-check.check` this session, same denylist shape as
+  the S2/S3/M2/M3 addenda immediately above (`ehrt.sim-check.` never
+  trips the retired-prefix pattern, since `ehrt.sim.check` is not a
+  substring of it -- confirmed below). The path-form citation
+  (`ehrt/sim/check`) joins too, same scope. This scan (`docs/**/*.md`
+  plus `components/corpus/docs/use-cases.edn`) found no real
+  violations -- `components/sim/docs/` (sim-theory.md, patient-state-
+  model.md) and `components/sim-trajectory/docs/gmf-interpreter.md` DO
+  carry stale mentions, but that tree is component-owned, outside this
+  test's scan scope (same as every other entry in this family); those
+  were swept forward anyway, live, as part of this same session's own
+  current-tense-surface discipline, just not gated by this test."
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.java.io :as io]
             [clojure.string :as str]))
@@ -173,7 +188,11 @@
     (str/includes? content "ehrt.sim.emit-state")
     (conj :retired-ehrt-sim-emit-state-namespace)
     (re-find #"ehrt/sim/emit_state\b" content)
-    (conj :retired-ehrt-sim-emit-state-path)))
+    (conj :retired-ehrt-sim-emit-state-path)
+    (str/includes? content "ehrt.sim.check")
+    (conj :retired-ehrt-sim-check-namespace)
+    (re-find #"ehrt/sim/check\b" content)
+    (conj :retired-ehrt-sim-check-path)))
 
 (deftest no-stale-path-family-anywhere-in-docs-or-use-cases-edn-test
   (doseq [path (scan-sources)]
@@ -225,7 +244,13 @@
   (testing "the sim-emit-fhir citation form does not trip any retired-prefix or retired-path pattern"
     (is (empty? (violations "see ehrt.sim-emit-fhir.emit-fhir/bundle-run")))
     (is (empty? (violations "see ehrt.sim-emit-fhir.interface/bundle-run")))
-    (is (empty? (violations "components/sim-emit-fhir/src/ehrt/sim_emit_fhir/emit_fhir.clj")))))
+    (is (empty? (violations "components/sim-emit-fhir/src/ehrt/sim_emit_fhir/emit_fhir.clj"))))
+  (is (= [:retired-ehrt-sim-check-namespace] (violations "see ehrt.sim.check/check-all")))
+  (is (= [:retired-ehrt-sim-check-path] (violations "components/sim/src/ehrt/sim/check.clj")))
+  (testing "the sim-check citation form does not trip any retired-prefix or retired-path pattern"
+    (is (empty? (violations "see ehrt.sim-check.check/check-all")))
+    (is (empty? (violations "see ehrt.sim-check.interface/check-all")))
+    (is (empty? (violations "components/sim-check/src/ehrt/sim_check/check.clj")))))
 
 ;; README register tripwire (2026-08-01, AR-3) -- separate from the scan
 ;; above: different source (README.md only), different exemptions (link

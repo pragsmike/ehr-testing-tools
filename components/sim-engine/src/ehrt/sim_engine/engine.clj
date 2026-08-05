@@ -71,7 +71,7 @@
 ;; FHIR emitter touches NOTHING but folded state, never the log directly
 ;; -- so Condition/Observation/MedicationRequest content has to actually
 ;; LAND in the fold, the same way :location/:persona already do, rather
-;; than staying a log-only fact only ehrt.sim.check reads via
+;; than staying a log-only fact only ehrt.sim-check.check reads via
 ;; `replay`. Each record below is intentionally the smallest shape that
 ;; carries what the FHIR builders need, not a re-derivation of the whole
 ;; originating event.

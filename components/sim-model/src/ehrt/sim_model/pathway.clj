@@ -20,7 +20,7 @@
   :transfer, engine-assigned via the allocation ladder. The full
   Simulated-Hospital-derived vocabulary (bed-swap, *-in-error, cancel-*,
   merge, order, result, ...) lands step by step, each with its engine
-  decide/evolve methods and its invariants in ehrt.sim.check."
+  decide/evolve methods and its invariants in ehrt.sim-check.check."
   (:require [malli.core :as m]))
 
 (def Concept

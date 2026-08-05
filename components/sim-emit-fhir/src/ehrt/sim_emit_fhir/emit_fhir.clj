@@ -14,7 +14,7 @@
      fields, never the RNG, never the clock. `bundle-run` is the one
      convenience call site that also calls `replay` itself, so a caller
      never has to; it does not weaken the law, since `replay` IS the
-     fold this law is about, the same one ehrt.sim.check already
+     fold this law is about, the same one ehrt.sim-check.check already
      reuses rather than reimplementing (sim/ADR-0008's own precedent).
   2. Format dispatch: FHIR resources now. A CDA arm is real future
      scope (docs/sim-theory.edn's own equation names both), not stubbed
