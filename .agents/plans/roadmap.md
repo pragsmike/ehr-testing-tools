@@ -5,13 +5,13 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- Nothing in progress at end of session (sim split B M2 landed same
+- Nothing in progress at end of session (sim split B M3 landed same
   day it started -- see Done, below. GMF parity arc stays COMPLETE,
   unaffected by this front). `.agents/plans/2026-08-04-sim-split-b-
-  plan.md`'s own forced sequence (AR-6: M1 → M2 → M3 → M4) has M3
-  (`sim-emit-fhir`) and M4 (`sim-check` + residual thinning) next, each
-  its own session, prompt authored in the design channel per stage once
-  scheduled -- not yet in progress.
+  plan.md`'s own forced sequence (AR-6: M1 → M2 → M3 → M4) has M4
+  (`sim-check` + residual thinning) next, its own session, prompt
+  authored in the design channel once scheduled -- not yet in
+  progress.
 
 ## Next (backlog, no session scheduled)
 - The lookup-column `time` gap (named in the schema-invalid family
@@ -110,7 +110,13 @@ per item; done items move to the bottom of their section with a date and sha.
   plan.md`'s own dated status note carries the same ruling; `notes/
   ADRs.md` ADR-0043 records it verbatim. **EXECUTED (2026-08-04, sim
   split B M2, same day):** `components/sim-engine` landed for real —
-  see Done, above.
+  see Done, above. **AR-4 DISCHARGED (2026-08-04, sim split B M3, same
+  day, AR-M3-5):** `components/sim-emit-fhir` landed for real —
+  `sim-engine`'s boundary now serves two shipping consumers with
+  distinct surfaces (`sim-emit-hl7` reads the event log, `sim-emit-fhir`
+  reads folded state via `engine/replay`), discharging in substance the
+  "committed, not yet present" framing AR-4 stated at M2 time; see
+  Done, below.
 - `ImagingStudy` (R5, CHF trigger) and the stroke-risk data source (R7)
   — GMF coverage Wave D closed 2026-08-02 (D0-D3, see Done below)
   without owning either; H3's own attribute-weighted `distributed_
@@ -223,6 +229,46 @@ per item; done items move to the bottom of their section with a date and sha.
   shape should expect the same workaround, or this row graduates into
   an actual `bin/regression-oracle` enhancement (e.g. an opt-in "run
   each commit's own digest.clj against its own worktree" mode).
+
+## Done (this session, 2026-08-04, sim split B M3 — `sim-emit-fhir` lands — ADR-0043)
+- `.agents/plans/2026-08-04-sim-split-b-plan.md` (RULED, AR-1..AR-6) M3
+  of four executed: `components/sim-emit-fhir` created, `emit_state.clj`
+  (267 LOC) moved out of `components/sim` as `ehrt.sim-emit-fhir.
+  emit-fhir` — the AR-3 rename, the one sanctioned improvement this
+  stage licenses. `ehrt.sim-emit-fhir.interface` carries `bundle-run`
+  only, the src-caller union confirmed by fresh call-position grep
+  against `run.clj`/`identifiers.clj`; `snapshot-at` stays internal
+  (no real external caller). `ff82bf0`.
+- `org.clojure/data.json` moves to `components/sim-emit-fhir/deps.edn`
+  (test-scope, its only real user); drops from `components/sim/deps.edn`
+  in the same commit. Residual sim's two src-scope callers repoint to
+  the interface; `identifiers_test.clj` (test-scope) repoints
+  mechanically to `ehrt.sim-emit-fhir.emit-fhir` internals.
+- Oracle script fix (AR-M3-4): `bin/regression-oracle`'s synthetic
+  classpath heredoc learns `poly/sim-engine` (missing since M2 —
+  digest.clj has required `ehrt.sim-engine.engine` directly since then,
+  so normal-mode brackets could not resolve on any post-M2 ref).
+  Red→green proven with the same-ref bracket (`c037f37 c037f37`):
+  `FileNotFoundException` before, all eleven batches IDENTICAL after.
+  `438d762`.
+- Stale-path sweep: `ehrt.docs-tooling.stale-path-test`'s retired-
+  namespace family gains `ehrt.sim.emit-state` (namespace and path
+  form) — no real violations existed in the gate's own scan scope this
+  time, so the new pattern clauses were proven red→green directly
+  (temporarily removed, watched fail, restored, watched pass). Four
+  live current-tense surfaces outside the gate's scan scope
+  (`components/sim/docs/`) swept forward anyway: `sim-theory.md`,
+  `sim-theory.edn`, `event-sourcing.md`, the emit-state demo's own
+  README. `d5e4417`.
+- AR-4 discharged (AR-M3-5, see the S4 row above): `sim-engine`'s
+  boundary now serves two shipping consumers with distinct surfaces —
+  `sim-emit-hl7` reads the event log, `sim-emit-fhir` reads folded
+  state via `engine/replay` — the "committed, not yet present" framing
+  AR-4 stated at M2 time discharges in substance.
+- `clojure -M:poly check` clean and full suite green at every one of
+  the three commits above (0 failures, 0 errors, both projects, 202
+  Test-results blocks); normal-mode regression-oracle bracket / façade-
+  seam / deftest-parity verification recorded in the session record.
 
 ## Done (this session, 2026-08-04, sim split B M2 — `sim-engine` lands — ADR-0043)
 - `.agents/plans/2026-08-04-sim-split-b-plan.md` (RULED, AR-1..AR-6) M2

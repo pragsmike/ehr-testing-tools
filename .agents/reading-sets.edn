@@ -304,7 +304,11 @@
   ;; bumped 1968->1977, sim split B M3 session (2026-08-04, Step 1):
   ;; AGENTS.md's own Components-list growth (`components/sim-emit-fhir`,
   ;; net +9 lines) brought the real total from 1968 to 1977.
-  :budget-lines 1977}
+  ;; bumped 1977->2023, same session, Step 4: roadmap.md's own new M3
+  ;; Done section, the "Now" section rewrite, and the S4 Deferred-row
+  ;; AR-4-discharge dated note brought the real total from 1977 to
+  ;; 2023.
+  :budget-lines 2023}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one

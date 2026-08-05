@@ -9700,4 +9700,131 @@ interface vars beyond the src-caller union (both-direction deltas
 recorded above). No engine logic edits of any kind. Frozen archives
 untouched.
 
+### M3 execution record — `sim-emit-fhir` lands, AR-4 discharged
+
+**Status:** M3 executed 2026-08-04 (same day as M1/M2 above),
+`.agents/plans/2026-08-04-sim-split-b-plan.md` AR-1/AR-3/AR-6 and this
+session's own driving prompt's AR-M3-1..AR-M3-6 (recorded verbatim in
+the session's own archived prompt,
+`.agents/prompts/2026-08-04-sim-split-m3-emit-fhir.md`). M4 remains
+PLANNED, not yet executed. The smallest of the four stages: one
+namespace (267 LOC), one interface var, and the AR-3 rename.
+
+**What moved.** `emit_state.clj` (267 LOC — the state-based FHIR R4
+emitter: fold the ground-truth log via `ehrt.sim-engine.interface/
+replay`, snapshot at an instant, render Bundles) moves verbatim from
+`components/sim/src/ehrt/sim/` to `components/sim-emit-fhir/src/ehrt/
+sim_emit_fhir/` as `ehrt.sim-emit-fhir.emit-fhir` — plan AR-3's rename,
+the one sanctioned improvement this stage licenses (ns-form/require
+diffs and the two self-referential docstring mentions of the old
+test-namespace name only; verified byte-identical otherwise).
+`emit_state_test.clj` moves alongside as `emit_fhir_test.clj` (14
+deftest/defspec, ns-form/require/alias diffs only).
+`emitter_order_independence_test.clj` stays in `components/sim/test`
+— Step 0's fresh grep confirmed it exercises `sim-emit-hl7`'s own
+determinism, using `engine/run` only as a fixture generator, same
+classification the M2 prompt's own evidence already named.
+
+**Interface — evidence, not judgment (AR-M3-2).** Fresh call-position
+grep against `run.clj` (line 345, the real call) and `identifiers.clj`
+(line 128, the real call) found the true src-scope union: `bundle-run`
+only. `identifiers.clj`'s own two mentions of `snapshot-at` (lines 36,
+74) are docstring prose, not calls — confirmed by reading both sites
+before excluding it. `ehrt.sim-emit-fhir.interface` carries exactly
+`bundle-run`; `snapshot-at` stays fully internal, reached directly by
+test-scope. No delta from the design-channel's own candidate list in
+either direction this stage — the smallest interface of the four.
+
+**`data.json` relocation (AR-M3-3).** `org.clojure/data.json` was
+declared in `components/sim/deps.edn` but its only real user was
+`emit_state_test.clj` (a docstring mention in `emit_state.clj` itself
+— "JSON, via data.json -- no new dep" — was the only src-tree hit,
+confirmed by fresh grep before dropping). It moves to
+`components/sim-emit-fhir/deps.edn` as a `:test`-alias dep in the same
+commit the declaration drops from `components/sim/deps.edn` — no
+window where either side is wrong. `bases/cli`'s own independent
+declaration is unaffected.
+
+**Oracle script fix (AR-M3-4, minimal, not the J2 redesign).**
+`digest.clj` has required `ehrt.sim-engine.engine` directly since M2,
+but `bin/regression-oracle`'s own synthetic classpath heredoc was
+never updated — M2's own bracket ran in split mode and correctly left
+the script alone per its own fence, so the gap went unnoticed until
+this session's fresh Step 0 evidence. One line added: `poly/sim-engine
+{:local/root "$wt/components/sim-engine"}`. `poly/sim-emit-fhir`
+deliberately NOT added — `digest.clj` never requires it, so an unused
+classpath entry would be unearned. Proven red→green with the same-ref
+bracket (`bin/regression-oracle c037f37 c037f37`): before the fix,
+`FileNotFoundException` resolving `ehrt/sim_engine/engine` on the
+synthetic classpath (exit 1); after, `IDENTICAL` across all eleven
+batches (exit 0). Both runs recorded verbatim in the session record.
+The read-from-current-checkout limitation (ADR-0030 J2) stands
+untouched — this is the minimal fix AR-M3-4 licenses, not a redesign.
+
+**Stale-path sweep (AR-M3-6).** `ehrt.docs-tooling.stale-path-test`'s
+retired-namespace family gains `ehrt.sim.emit-state` (namespace form)
+and `ehrt/sim/emit_state` (path form). Fresh grep of the gate's own
+scan scope (`docs/**/*.md` plus `components/corpus/docs/use-cases.edn`)
+found no real violations this time — unlike M2's two real
+`site-profiles.md` hits — so the new pattern clauses were proven
+red→green directly instead (temporarily removed from `violations`, the
+two new fixture assertions failed as expected, restored, green again,
+both runs recorded). Four live current-tense surfaces outside the
+gate's own scan scope (`components/sim/docs/` is component-owned,
+deliberately uncovered by this test, same as every other entry in this
+family) were swept forward anyway: `sim-theory.md` (two hits),
+`sim-theory.edn` (the `:emit-state` node's own `:contract`, plus a new
+dated note recording this move), `event-sourcing.md` (two hits), and
+the emit-state demo's own `README.md` (two hits — the demo directory
+itself keeps its name, out of scope for a rename). One pre-existing,
+unrelated stale reference found and left untouched: the same demo
+README still bare-cites `ehrt.sim.emit-hl7` (the S3/Wave-D-D0 move's
+own gap, never swept at the time) — disclosed for a future session, not
+this addendum's named scope.
+
+**AR-4 discharge (AR-M3-5).** M2's own execution record above states
+AR-4's framing precisely: at M2 time, `sim-engine`'s boundary was
+designed against two known consumer *surfaces*, but the second
+(`sim-emit-fhir`) was "promised, not present." With this stage's
+landing, that promise is kept: `sim-engine` now serves two shipping
+consumers with genuinely distinct surfaces — `sim-emit-hl7` reads the
+event log per-event, `sim-emit-fhir` reads folded state via a single
+`engine/replay` call and snapshots it. AR-4's own trigger reasoning
+("don't design a boundary with one consumer") is honored in full
+substance, not merely in citation — the roadmap's own S4 row gets a
+dated line closing this loop (see roadmap.md).
+
+**Dependency direction (new entry).** `sim-emit-fhir` ← {residual
+`sim`} — LIVE as of M3. `sim-emit-fhir` itself depends on `sim-engine`
+only (confirmed: `emit_fhir.clj`'s sole require is
+`ehrt.sim-engine.interface`); forbidden forever from depending on
+`components/sim`, `components/sim-model`, `components/sim-trajectory`,
+or anything corpus-derived, same rule every sim-side brick has carried
+since ADR-0025.
+
+**Commits so far** (Steps 1–3, `git log` `ff82bf0..d5e4417`):
+
+1. `ff82bf0` — `refactor(sim-emit-fhir): the state-based FHIR emitter
+   becomes sim-emit-hl7's sibling (M3 step 1, AR-M3-1/2/3, plan AR-3)`.
+2. `438d762` — `fix(oracle): synthetic classpath learns sim-engine --
+   normal-mode brackets restored (M3 step 2, AR-M3-4)`.
+3. `d5e4417` — `docs: emit-state stale-path sweep -- tripwire learns
+   the old name (M3 step 3, AR-M3-6)`.
+
+`clojure -M:poly check` clean and the full suite green (0 failures, 0
+errors, both projects, 202 Test-results blocks) after each of the
+three commits above. Step 4 (this entry) and Step 5 (normal-mode
+oracle bracket, façade-seam check, deftest parity ledger, session
+record) follow.
+
+### Fence (M3)
+
+No check moves (M4, not this stage). No emit logic edits of any kind
+— rendering changes, if any looked wrong during the move, are FINDINGS
+for the record, never edits (none found). `snapshot-at` does not enter
+the interface. No oracle changes beyond AR-M3-4's one line (the J2
+redesign stays Deferred). Façade (`ehrt.sim.interface`) byte-untouched.
+`emitter_order_independence_test.clj` does not move. Frozen archives
+untouched.
+
 ---
