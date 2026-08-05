@@ -360,7 +360,7 @@ generation is deterministic, *(config + seed + version) is the
 corpus* — the manifest is enough to regenerate the data exactly.
 
 **Manifest sidecar.** A `manifest.edn` file beside a generated (or
-intaken) corpus, validating against `ehrt.corpus.manifest/ManifestV1_1`,
+intaken) corpus, validating against `ehrt.provenance.manifest/ManifestV1_1`,
 naming the generator, seed, and settings that produced the corpus it
 sits beside. Register: `ehrt.corpus.intake`, [`formats.md`](formats.md).
 

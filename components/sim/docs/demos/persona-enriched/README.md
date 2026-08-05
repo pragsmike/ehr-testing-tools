@@ -52,7 +52,7 @@ IN1|1||medicaid|Medicaid
 `messages.txt` uses `\r`, HL7v2's actual segment delimiter.)
 
 **PID-5** (`O'Brien^Jessica`) — the apostrophe passes through byte-
-faithfully; `ehrt.sim.emit-hl7/escape-er7` is the identity
+faithfully; `ehrt.sim-emit-hl7.emit-hl7/escape-er7` is the identity
 function on any string containing none of ER7's five reserved
 characters (`|^~\&`), which an apostrophe isn't one of
 (`escape-er7-is-identity-for-strings-with-no-delimiter-characters`,

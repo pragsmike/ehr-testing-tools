@@ -137,7 +137,41 @@
   carry stale mentions, but that tree is component-owned, outside this
   test's scan scope (same as every other entry in this family); those
   were swept forward anyway, live, as part of this same session's own
-  current-tense-surface discipline, just not gated by this test."
+  current-tense-surface discipline, just not gated by this test.
+
+  2026-08-05 addendum (alignment fixes 1, `notes/ADRs.md` ADR-0050,
+  register row S7): the alignment-audit session's own AR-AU-1 fix found
+  a stale `ehrt.tools.*` citation sitting in `.agents/plans/roadmap.md`
+  -- live, current-tense, frequently-edited, and yet outside every scan
+  root above (none of which cover `.agents/`). The gap S7 named: this
+  family's scope was drawn around 'frozen archive vs. live docs/' and
+  never anticipated a THIRD class -- live, current-tense, non-`docs/`
+  planning surfaces. Rather than open the scan to all of `.agents/plans/
+  *.md` (which would trip on dated one-shot session prompts and briefs
+  that deliberately freeze a moment's prose -- this file's own M2-M4
+  addenda document exactly that legitimacy class, and the audit brief
+  itself, `.agents/plans/2026-08-05-alignment-audit-brief.md`, quotes
+  the roadmap's own THEN-current stale text on purpose), the scope
+  widens by an EXPLICIT INCLUDE-LIST of four named files, not a
+  directory glob: `.agents/plans/roadmap.md`, `.agents/plans/README.md`,
+  `.agents/prompts/README.md`, `.agents/session-records/README.md`.
+  These four share one property the dated one-shot files don't: they
+  are perpetually-live indexes/plans, edited in place session after
+  session, never frozen at authoring time -- the same 'current-tense
+  instructional surface' reasoning the `notes/prompts/`-archive
+  addendum above already applies to `.agents/plans/`,
+  `.agents/session-records/`, and `.agents/prompts/` themselves (as
+  directories whose CONTENTS stay out of scope, while these four index/
+  plan FILES now join the scan directly). Attic files
+  (`.agents/plans/roadmap-done-*.md`) and every other dated one-shot
+  plan/prompt/brief file are deliberately NOT included -- they narrate
+  history at authoring time, the same legitimacy class `notes/` already
+  carries, and an include-list makes that boundary an explicit,
+  auditable list rather than an exclude-pattern someone has to reason
+  through. Same session: `ehrt.sim-cli.` joins the forbidden-prefix
+  family below (ADR-0021's base retirement, 2026-08-01, register row
+  E-7 -- never folded into this list before, though no live doc ever
+  violated it)."
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.java.io :as io]
             [clojure.string :as str]))
@@ -148,8 +182,20 @@
        (filter #(str/ends-with? (.getName %) ".md"))
        (map #(.getPath %))))
 
+(def ^:private live-agents-plan-files
+  "Explicit include-list (S7/AR-F1-3, 2026-08-05 addendum above) --
+  perpetually-live index/plan files under .agents/, never a directory
+  glob. Dated one-shot files (session prompts, briefs, the roadmap-done-
+  *.md attic) stay out of scope on purpose."
+  [".agents/plans/roadmap.md"
+   ".agents/plans/README.md"
+   ".agents/prompts/README.md"
+   ".agents/session-records/README.md"])
+
 (defn- scan-sources []
-  (conj (markdown-files) "components/corpus/docs/use-cases.edn"))
+  (concat (markdown-files)
+          ["components/corpus/docs/use-cases.edn"]
+          live-agents-plan-files))
 
 (defn- violations [content]
   (cond-> []
@@ -161,6 +207,8 @@
     (conj :docs-experiments-missing-corpus-prefix)
     (str/includes? content "ehrt.tools.")
     (conj :retired-ehrt-tools-namespace)
+    (str/includes? content "ehrt.sim-cli.")
+    (conj :retired-ehrt-sim-cli-namespace)
     (str/includes? content "positioning.md")
     (conj :retired-positioning-filename)
     (str/includes? content "ehrt.sim.gmf")
@@ -203,11 +251,23 @@
   (testing "components/corpus/docs/experiments/... is the correct citation form"
     (is (empty? (violations "see components/corpus/docs/experiments/EXP-A4-results.md")))))
 
+(deftest scan-sources-includes-exactly-the-ruled-live-agents-plan-files-test
+  (testing "the four named live .agents/ index/plan files are in scope (S7/AR-F1-3)"
+    (doseq [f live-agents-plan-files]
+      (is (some #{f} (scan-sources)) (str f " missing from scan-sources"))))
+  (testing "the attic and dated one-shot files stay out of scope, on purpose"
+    (is (not (some #{".agents/plans/roadmap-done-2026-08.md"} (scan-sources))))
+    (is (not (some #(str/includes? % "alignment-audit-brief") (scan-sources))))))
+
 (deftest each-forbidden-pattern-is-actually-caught-test
   (is (= [:ehr-testing-tools-underscore-path] (violations "test/ehr_testing_tools/foo_test.clj")))
   (is (= [:test-integration-path] (violations "lives on the test-integration/ path")))
   (is (= [:docs-experiments-missing-corpus-prefix] (violations "see docs/experiments/EXP-A4-results.md")))
   (is (= [:retired-ehrt-tools-namespace] (violations "see ehrt.tools.corpus.manifest/ManifestV1_1")))
+  (is (= [:retired-ehrt-sim-cli-namespace] (violations "see ehrt.sim-cli.core/-main")))
+  (testing "the retired sim-cli prefix does not trip on unrelated live sim-* citation forms"
+    (is (empty? (violations "see ehrt.sim-check.check/check-all")))
+    (is (empty? (violations "see ehrt.sim-engine.engine/run"))))
   (is (= [:retired-ehrt-sim-gmf-namespace] (violations "see ehrt.sim.gmf/load-module")))
   (is (= [:retired-ehrt-sim-gmf-namespace] (violations "see ehrt.sim.gmf-interpreter/run-module")))
   (is (= [:retired-ehrt-sim-compile-trajectory-namespace] (violations "see ehrt.sim.compile-trajectory/compile-trajectory")))

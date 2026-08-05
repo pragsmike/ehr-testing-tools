@@ -81,12 +81,14 @@ Rows here are LIVE. Closed rows move to Done with their notes.
 - **Corpus player `:mllp` transport sink** (`notes/adr/0014-corpus-
   player.md`, deferred whole per that session's own bail-out
   procedure): `:mllp` already exists as a *framing* (byte-level
-  0x0B/0x1C 0x0D envelope, `ehrt.tools.corpus.framing`) but there is
+  0x0B/0x1C 0x0D envelope, `ehrt.corpus-io.framing`) but there is
   no `:mllp` *sink kind* in `ehrt.corpus-io.source-sink`'s own
-  `known-sink-kinds` (`#{:dir :file :stdout :blaze}`) (ns corrected
-  2026-08-05, ADR-0049 — ADR-0014's text predates the tools→corpus
-  rename and corpus-io split; transcribed faithfully by ADR-0048,
-  corrected fix-forward here) — a real network socket write. Building
+  `known-sink-kinds` (`#{:dir :file :stdout :blaze}`) (both namespace
+  citations in this row corrected 2026-08-05 — the source-sink form at
+  ADR-0049, the framing form at ADR-0050 register row A-6 — ADR-0014's
+  text predates the tools→corpus rename and corpus-io split;
+  transcribed faithfully by ADR-0048, corrected fix-forward here) — a
+  real network socket write. Building
   one properly touches three namespaces at once (a new canonical
   schema and constructor in `source-sink.clj`, a new
   scheme in `source-sink-url.clj`'s grammar, and a new write function

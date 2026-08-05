@@ -108,8 +108,8 @@ Provenance obligation: cyberneutics → primitive palgebra → this design's emb
 **Observe → judge → act.** Observe/execute is criterion-free (run the tool, preserve native output); judge/interpret is where the criterion enters (pure, versioned — the repo already versions interpretation and not execution, which is this split avant la lettre); act consumes the verdict under a policy (pass, abort, park, alert, exit-code). The first two are component properties; the third is a workflow-position property. The same split recurs one level down inside the decider (execute vs. interpret) — the parameter arrives at each hinge: criterion at the second, policy at the third. Predicts: observations are reusable across criteria as judges are reusable across policies.
 
 Repo evidence that verdict and action are independent (not merely separable):
-- **Contract pairing** (`test-integration/contract_pairing_test.clj`): `:rejected` is *success* — same judge, opposite polarity, supplied by the workflow.
-- **Baseline-relative gating** (`test-integration/baseline_gating_test.clj`, `cli.clj --baseline`): identical findings, different action per baseline — pure policy layer, added in P6 without touching judges.
+- **Contract pairing** (`projects/integration/test/ehrt/integration/contract_pairing_test.clj`): `:rejected` is *success* — same judge, opposite polarity, supplied by the workflow.
+- **Baseline-relative gating** (`projects/integration/test/ehrt/integration/baseline_gating_test.clj`, `cli.clj --baseline`): identical findings, different action per baseline — pure policy layer, added in P6 without touching judges.
 
 ### II.2 The signature (D2)
 

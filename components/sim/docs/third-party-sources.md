@@ -12,9 +12,9 @@ Apache-2.0, archived (no longer receiving source changes) — [`notes/facts-regi
 
 - **Pathway step vocabulary**, including the churn family (Transfer, BedSwap, TransferInError, Cancel\*, Pending\*, Merge, DeleteVisit) — the documented lineage of this repo's IR step vocabulary (`ehrt.sim.pathway`) and, once churn lands, `InjectChurn` (`docs/sim-theory.edn`'s `:churn` stage — the session after this one's `;; NEXT` marker).
 - **Discrete-event core shape** — a priority queue of pending events plus a `RunNextEventIfDue`-style loop (`pkg/state` + `pkg/hospital`) — reduced to its functional essence in `ehrt.sim-engine.engine`: where the Go original mutates patient structs in place, this repo's engine is a pure fold, `(state, due-event) -> (state', emitted-events)`, retaining full per-patient state history (ADR-0002; [`sim-theory.md`](sim-theory.md)'s "the log is the waist" reading of `Execute`).
-- **Event→ADT mapping**, read as reference for the message-type registry (`ehrt.sim.emit-hl7/message-type-registry`) — not linked to or copied from; the emitter is built on `org.clojars.cmiles74/clojure-hl7-parser`'s own data structures instead.
+- **Event→ADT mapping**, read as reference for the message-type registry (`ehrt.sim-emit-hl7.emit-hl7/message-type-registry`) — not linked to or copied from; the emitter is built on `org.clojars.cmiles74/clojure-hl7-parser`'s own data structures instead.
 
-**Explicitly NOT taken:** the UK-centric config data (`configs/`: NHS numbers, mmol/L units, London ethnicities, order profiles) — US data comes from Synthea instead — and its HL7 emission layer (`pkg/hospital/messages.go`, `pkg/message`), superseded here by `ehrt.sim.emit-hl7`.
+**Explicitly NOT taken:** the UK-centric config data (`configs/`: NHS numbers, mmol/L units, London ethnicities, order profiles) — US data comes from Synthea instead — and its HL7 emission layer (`pkg/hospital/messages.go`, `pkg/message`), superseded here by `ehrt.sim-emit-hl7.emit-hl7`.
 
 ### Synthea
 
@@ -31,7 +31,7 @@ Synthea's peer-reviewed pedigree (Walonoski et al., JAMIA 2018) is what validati
 
 ### `org.clojars.cmiles74/clojure-hl7-parser` 3.5.1
 
-[`notes/facts-register.md` F1](../notes/facts-register.md). **The only runtime code dependency of the three** — everything above is design or data; this is a library this repo actually calls. `ehrt.sim.emit-hl7` builds ADT^A01/A03 messages directly on its `create-message`/`create-segment`/`create-field` structures and parses them back with its `parser`/`message` namespaces (round-trip law, `docs/sim-theory.edn`'s `:emit-hl7` laws) — the ER7 structures this stage's ADT^A01/A03 v0 slice is built on ([`sim-theory-diagram.md`](sim-theory-diagram.md)'s `EmitHL7` box, now `:built`). **A verified limitation** ([`notes/facts-register.md` F9](../notes/facts-register.md)): this library implements no ER7 escape-sequence handling in either direction — `ehrt.sim.emit-hl7/escape-er7`/`unescape-er7` (Milestone M4) are this repo's own documented workaround, needed once free-text persona content (names, addresses) could contain a literal delimiter character.
+[`notes/facts-register.md` F1](../notes/facts-register.md). **The only runtime code dependency of the three** — everything above is design or data; this is a library this repo actually calls. `ehrt.sim-emit-hl7.emit-hl7` builds ADT^A01/A03 messages directly on its `create-message`/`create-segment`/`create-field` structures and parses them back with its `parser`/`message` namespaces (round-trip law, `docs/sim-theory.edn`'s `:emit-hl7` laws) — the ER7 structures this stage's ADT^A01/A03 v0 slice is built on ([`sim-theory-diagram.md`](sim-theory-diagram.md)'s `EmitHL7` box, now `:built`). **A verified limitation** ([`notes/facts-register.md` F9](../notes/facts-register.md)): this library implements no ER7 escape-sequence handling in either direction — `ehrt.sim-emit-hl7.emit-hl7/escape-er7`/`unescape-er7` (Milestone M4) are this repo's own documented workaround, needed once free-text persona content (names, addresses) could contain a literal delimiter character.
 
 ### NLM SNOMED→ICD-10-CM map
 

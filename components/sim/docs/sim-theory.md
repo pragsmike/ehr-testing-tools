@@ -118,7 +118,7 @@ hospital" config layer — lands as a fourth catalytic input on
 `EmitHL7`, the same shape `order-profiles`/`provider-pool` joining
 `Execute` already established: no new stage, no new `:inputs`/
 `:outputs`, one new catalytic wire on a stage that was already
-`:built`. `site-profile` (`ehrt.sim.site-profile/SiteProfile`)
+`:built`. `site-profile` (`ehrt.sim-emit-hl7.site-profile/SiteProfile`)
 is an optional config value — absent, nil, or `{}` all render
 identically to the pre-milestone baseline, property-tested as this
 milestone's own determinism anchor — carrying an MSH dialect (version,
@@ -134,7 +134,7 @@ alongside the structural guarantee that `site-profile` never reaches
 `Execute` at all (not a member of `ehrt.sim-engine.engine/config-keys`).
 `:naming :surge-format`'s migration to the profile is the one
 documented exception bound at config-construction time rather than
-emit time (`ehrt.sim.site-profile/apply-naming`, a facility-
+emit time (`ehrt.sim-emit-hl7.site-profile/apply-naming`, a facility-
 config transform a caller applies before `Execute`, never auto-wired)
 — named here so it isn't mistaken for a second catalytic wire this
 stage doesn't actually carry.
@@ -318,21 +318,21 @@ up to *t*. This is the problem-statement guarantee "every message
 derivable from the log, and vice versa," extended across emitters —
 stated as a *want*-level law since this file's own earlier drafts, now
 a real property test:
-`ehrt.sim.v2-replay-test/emitter-coherence-reconstructed-state-matches-the-log-fold-at-every-boundary`
+`ehrt.sim-emit-hl7.v2-replay-test/emitter-coherence-reconstructed-state-matches-the-log-fold-at-every-boundary`
 (150 trials, pathways + order/result + non-two-participant churn) and
 its sibling `emitter-coherence-holds-for-module-driven-outpatient-trajectories`
 (150 trials, module-driven trajectories), both green 2026-07-27. The
-mechanism: `ehrt.sim.v2-replay` folds a run's own emitted ER7
+mechanism: `ehrt.sim-emit-hl7.v2-replay` folds a run's own emitted ER7
 stream through an independent reconstruction (`fold-message`), and
-`ehrt.sim.v2-replay/project-to-wire-visible-fields` — a
+`ehrt.sim-emit-hl7.v2-replay/project-to-wire-visible-fields` — a
 deliverable in its own right, the formal statement of what the wire
-actually carries, sibling of `ehrt.sim.site-profile`'s own
+actually carries, sibling of `ehrt.sim-emit-hl7.site-profile`'s own
 dialect-masking function — projects BOTH the reconstructed and the
 log-folded state down to the same comparable shape before comparing.
 Documented scope boundary, not silent: the property excludes bed-swap
 (A17) and merge (A40), genuinely two-participant messages whose own
 wire-identity reconstruction (a shared MRN reassigned mid-run) is real,
-separate engineering scope — `ehrt.sim.v2-replay`'s own header
+separate engineering scope — `ehrt.sim-emit-hl7.v2-replay`'s own header
 comment and `unsupported-triggers` name this precisely, the same
 "deferred with a contract note" treatment EmitState's own CDA arm gets.
 One genuine finding surfaced and fixed during this property's own

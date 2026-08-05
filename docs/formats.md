@@ -241,7 +241,7 @@ Written as `manifest.edn` in a generated corpus's `--out-dir`. It is
 the provenance record: everything that was pinned when this corpus was
 made, so someone else can make the same one.
 
-Schema: `ehrt.corpus.manifest/ManifestV1_1` — the version
+Schema: `ehrt.provenance.manifest/ManifestV1_1` — the version
 `ehrt corpus generate` produces today.
 
 | Field | Type | Meaning |
@@ -534,7 +534,7 @@ read it from a shell instead of a REPL.
 | Verdicts, causes, findings | `ehrt.judge.finding/Finding`, `/Verdict`, `/Cause` | the same runs |
 | FHIR findings' `:disposition` / `:cause` | `ehrt.judge.fhir/interpret` | a live `ehrt gate fhir` run against a real mutant bundle, 2026-07-25 — 6554 findings, all three dispositions present |
 | Check report and its codes | `ehrt.corpus.check` | live `ehrt check` runs in both golden-equivalence and per-file-assertion modes, 2026-07-25 |
-| Corpus manifest | `ehrt.corpus.manifest/ManifestV1_1` | a real generated corpus's `manifest.edn` |
+| Corpus manifest | `ehrt.provenance.manifest/ManifestV1_1` | a real generated corpus's `manifest.edn` |
 | Lineage record | `ehrt.corpus.lineage/LineageRecord` | a real mutant's lineage sidecar |
 | Operation manifest | `ehrt.corpus-io.operation-manifest/OperationManifestV1` | a real `corpus mutate` batch's `operation-manifest.edn`, 2026-07-28 |
 | The `--json` mapping | — | the captured JSON output of the runs above, not inferred from the projection's source |

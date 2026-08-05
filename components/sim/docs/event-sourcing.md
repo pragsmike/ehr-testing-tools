@@ -118,7 +118,7 @@ structure HL7v2 and FHIR were already, silently, two views of.
 Milestone M6 is where the paragraph above stops being an architectural
 argument and becomes a property test — the first time this project has
 had two emitters to check against each other at all.
-`ehrt.sim.v2-replay` is an INDEPENDENT reconstruction of patient
+`ehrt.sim-emit-hl7.v2-replay` is an INDEPENDENT reconstruction of patient
 state, built the wire-consumer's way: parse a run's own emitted ER7
 stream (the same `org.clojars.cmiles74/clojure-hl7-parser` structures
 `EmitHL7` renders through) and fold it, message by message
@@ -133,9 +133,9 @@ The comparison needs one more piece, because the two folds don't carry
 identical information by design — the wire is a lossy rendering of
 truth, on purpose (no PV1 field distinguishes a licensed bed from a
 surge slot; DG1/RXO segments for conditions and medications were never
-built). `ehrt.sim.v2-replay/project-to-wire-visible-fields` is
+built). `ehrt.sim-emit-hl7.v2-replay/project-to-wire-visible-fields` is
 the formal statement of exactly what's wire-visible and what isn't —
-sibling of `ehrt.sim.site-profile`'s own dialect-masking function
+sibling of `ehrt.sim-emit-hl7.site-profile`'s own dialect-masking function
 (that one states what a *dialect* may touch; this one states what the
 wire carries *at all*, truth-only or not) — applied identically to both
 the log-folded state and the message-reconstructed state before they're
@@ -143,7 +143,7 @@ compared, so "what the wire carries" is answered once, not maintained
 as two hand-tuned shapes that could drift from each other.
 
 The property
-(`ehrt.sim.v2-replay-test/emitter-coherence-reconstructed-state-matches-the-log-fold-at-every-boundary`,
+(`ehrt.sim-emit-hl7.v2-replay-test/emitter-coherence-reconstructed-state-matches-the-log-fold-at-every-boundary`,
 150 trials over pathways, order/result, and non-two-participant churn,
 plus a 150-trial sibling over module-driven trajectories) checks
 agreement at EVERY message boundary, not just end-of-run — the stronger

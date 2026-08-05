@@ -44,7 +44,7 @@ generating throwaway ones.
   seed as `order-result/`, rendered once as HL7v2 (`--emit hl7`) and
   once as FHIR R4 (`--emit fhir`) — two renderings, one truth, with
   `Patient.id`/`Patient.identifier` resolving to the same patient-id/MRN
-  `ehrt.sim.emit-hl7` uses, and the same computed LOINC/abnormal-
+  `ehrt.sim-emit-hl7.emit-hl7` uses, and the same computed LOINC/abnormal-
   flag truth visible in both an OBX segment and an `Observation`
   resource.
 

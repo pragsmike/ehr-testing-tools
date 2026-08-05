@@ -73,7 +73,7 @@ masked when comparing.)
 only MSH fields that differ. **PV1-2** (patient class) differs
 (`I` → `IN^99ALDRIC`) — the same underlying `:inpatient` state value,
 rendered through St. Aldric's own code-table override
-(`ehrt.sim.site-profile/code-for`). **ZPI** is new: a Z-segment
+(`ehrt.sim-emit-hl7.site-profile/code-for`). **ZPI** is new: a Z-segment
 this profile alone declares, bound to `[:persona :payer :id]` and
 `[:persona :payer :type]` (both resolve against the SAME `:registered`
 event's persona that produced the IN1 segment above — `commercial-hmo`
