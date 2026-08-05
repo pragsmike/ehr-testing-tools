@@ -13,7 +13,8 @@ per item; done items move to the bottom of their section with a date and sha.
   ADR-0043's own M4 execution record states the arc-complete claim.
   Standing deferred items re-cited there (J2 oracle redesign,
   carry-across emission, sim-cli retirement (closed), census-tool
-  refinements, the docs coherence pass) stay Deferred, none re-opened.
+  refinements) stay Deferred, none re-opened. The docs coherence pass
+  named there is EXECUTED as of 2026-08-05 -- see Done, below.
 
 ## Next (backlog, no session scheduled)
 - The lookup-column `time` gap (named in the schema-invalid family
@@ -242,6 +243,64 @@ per item; done items move to the bottom of their section with a date and sha.
   pass across every component's own `docs/` tree rather than
   continuing the per-extraction manual-sweep pattern — named as the
   cleanup arc's own likely next front, not committed or scoped here.
+  **EXECUTED (2026-08-05, docs coherence pass, ADR-0043's own tail):**
+  `gmf-interpreter.md` split (living reference / dated findings
+  trail) and its own sections 1-8 currency pass;
+  `patient-state-model.md`'s history-phase/vital-register additive
+  sections and errata sweep. See Done, below.
+
+## Done (this session, 2026-08-05, docs coherence pass — ADR-0043 AR-D)
+- **AR-D-1 (the split).** `components/sim-trajectory/docs/gmf-
+  interpreter.md` (3,668 lines, two strata) splits: sections 1-8 +
+  appendix + ratification record stay as the living reference (1,428
+  lines); sections 9-16 (eight dated GMF-coverage wave sections)
+  move VERBATIM to the new `gmf-interpreter-findings.md`, replaced by
+  a one-line-per-wave pointer index (extraction diff-verified byte-
+  identical). Sections 1-8's own currency pass found two genuinely
+  contradicted claims (the H2 lookup-table column whitelist, retired
+  Wave LC/ADR-0038; `Vital Sign`/`Active CarePlan` conditions, landed
+  Wave VS/ADR-0039 and Wave I2/ADR-0041) and fixed both with inline
+  dated notes, plus repointed 25 internal `§9`-`§16` self-citations
+  the split itself broke.
+- **AR-D-2 (patient-state-model.md).** Two additive sections: the
+  history phase (GMF-sourced patients, ADR-0042) and the vital-sign
+  register (GMF Wave VS, ADR-0039), explicitly disambiguated from this
+  document's own pre-existing "log is `Person.history` done right"
+  discussion. Errata-sweep procedure applied to Step 0's candidate
+  list; no contradicted claims found in this document itself (both
+  re-verified against live `engine.clj` code) — the two sections are
+  purely additive. The M6 accumulator-field gap (`:discharged-at`/
+  `:conditions`/`:observations`/`:medication-orders`/`:care-plans`/
+  `:merged`, present in code, absent from this document) is disclosed,
+  named a future, not fixed (out of AR-D-2's own scope).
+- **AR-D-3 (budget re-baseline).** Every reading set's budget
+  (previously the exact measured actual, bumped in place 14 times
+  across the arc) recomputed as actual × 1.15, rounded up to the
+  nearest 5, one dated note replacing the 14 accumulated bump
+  comments: `:onboarding` 2090→2405, `:corpus` 1731→1995, `:sim`
+  793→915, `:judge` 851→980, `:docs` 671→775. `:paths` membership
+  unchanged in every set.
+- **AR-D-4/5/6 (M4 verification riders).** `explain-profiles`
+  (`order_profiles.clj`, zero callers, fresh-grepped) deleted,
+  enforcing AR-M4-5(a) as originally ruled. `notes/ADRs.md` ADR-0043
+  gains two dated tail notes: the façade docstring's annotate-over-
+  delete treatment RATIFIED (AR-D-5); the M1-M3-vs-M4 parity-ledger
+  counting-definition gap disclosed, conservation verified under both
+  definitions (AR-D-6).
+- **Verification.** `bin/regression-oracle 0986a86 <session tip>`: all
+  ELEVEN vendored-root batches byte-identical. Deftest parity and the
+  sim façade seam: trivially unchanged (zero test files, zero façade
+  files touched this session — confirmed by diffstat, not merely
+  asserted). `clojure -M:poly check`: OK throughout; `clojure -M:poly
+  test`: 0 failures/0 errors, run fresh after every code-adjacent
+  step. `notes/ADRs.md` ADR-0043's own tail (AR-D-4/5/6 dated notes,
+  above).
+- Commits, in order: `e6a0b28` (Step 1, the split), `ed84c8d` (Step 2,
+  sections 1-8 currency pass), `66c98f4` (Step 3, patient-state-model
+  additive sections + errata sweep), `9e3709c` (Step 4, budget
+  re-baseline), `2a94144` (Step 5, the three riders), and this
+  session's own closing records commit (Step 6). Session record:
+  `.agents/session-records/2026-08-05-docs-coherence-pass.md`.
 
 ## Done (this session, 2026-08-04, sim split B M4 — `sim-check` lands, arc COMPLETE — ADR-0043)
 - `.agents/plans/2026-08-04-sim-split-b-plan.md` (RULED, AR-1..AR-6) M4
