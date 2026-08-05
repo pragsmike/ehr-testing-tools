@@ -10,8 +10,8 @@ did); cite through it, not this directory directly.
 **Naming convention:** every file here except this README is
 `NNNN-<slug>.md`, one per `notes/ADRs.md` index line, in the order
 that file's own index lists them (unchanged from this file's pre-split
-entry order — not renumbered). Not restated as a per-file list (46 of
-them, as of ADR-0048; see `notes/ADRs.md`'s own index instead of
+entry order — not renumbered). Not restated as a per-file list (47 of
+them, as of ADR-0049; see `notes/ADRs.md`'s own index instead of
 duplicating it here).
 
 New execution-record appends to an existing ADR (a dated amendment, a

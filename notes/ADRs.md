@@ -91,3 +91,4 @@ below updates only when an arc closes.
 - **ADR-0046** — Scaffolding compaction B: the ADR split and the roadmap rotation — [`0046-scaffolding-compaction-b.md`](adr/0046-scaffolding-compaction-b.md) — Accepted
 - **ADR-0047** — Scaffolding compaction C: the continuity register lands, `/mnt/c` retires, arc closes — [`0047-scaffolding-compaction-c.md`](adr/0047-scaffolding-compaction-c.md) — Accepted
 - **ADR-0048** — Alignment riders: small debts paid, the audit brief lands, stable tags go live — [`0048-alignment-riders.md`](adr/0048-alignment-riders.md) — Accepted
+- **ADR-0049** — Alignment audit: the tree examined, findings registered, nothing moved — [`0049-alignment-audit.md`](adr/0049-alignment-audit.md) — Accepted

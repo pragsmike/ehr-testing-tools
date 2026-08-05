@@ -120,3 +120,4 @@ Files in this directory:
   * 2026-08-05-scaffolding-compaction-b.md
   * 2026-08-05-scaffolding-compaction-c.md
   * 2026-08-05-alignment-riders.md
+  * 2026-08-05-alignment-audit.md
