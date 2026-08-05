@@ -49,6 +49,17 @@
 ;; session whose own edit pushes a set over its budget bumps that set's
 ;; number, with a dated comment recording what grew -- this note is a
 ;; re-baseline, not a suspension of the practice it replaces.
+;;
+;; Re-derivation (2026-08-05, scaffolding compaction B, AR-B-4,
+;; `notes/ADRs.md` ADR-0046): `.agents/plans/roadmap.md`'s own Done
+;; history rotated out to dated attic files this session (AR-B-3),
+;; shrinking it from 1342 lines to 204 -- the one path in any set
+;; whose size this session's own edit changed. `:onboarding` is the
+;; only set that carries `roadmap.md`; re-applying AR-D-3's own
+;; formula (actual x1.15, rounded up to the nearest 5) drops its
+;; budget from 2405 to 1095. No other set carries `roadmap.md` or
+;; `notes/ADRs.md` (neither is `:paths` in `:corpus`/`:sim`/`:judge`/
+;; `:docs`), so no other budget below changes.
 
 {:onboarding
  {:paths ["AGENTS.md"
@@ -71,7 +82,7 @@
   ;; because that's a different audience from "a cold task-class session",
   ;; and forcing every onboarding read to carry its cost would budget for an
   ;; activity most onboarding sessions never do (migration session 5, AR-3).
-  :budget-lines 2405}
+  :budget-lines 1095}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one
