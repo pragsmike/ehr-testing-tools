@@ -198,7 +198,7 @@ Rows here are LIVE. Closed rows move to Done with their notes.
   ADR-0031 AR-6's second defect-fix session, `notes/ADRs.md` ADR-0033)
   — see Done, below.**
 
-## Done (this session, 2026-08-05, scaffolding compaction A — riders, vestige retirements, Deferred triage — ADR-0044 appendix)
+## Done (this session, 2026-08-05, scaffolding compaction A — riders, vestige retirements, Deferred triage — ADR-0045)
 - **Riders (AR-A-1/AR-A-2).** `census_test.clj`'s two "the
   roadmap's own Wave I finding" citations (lines 12, 41) corrected
   to ADR-0044's own citation fix (the invisibility claim stands on

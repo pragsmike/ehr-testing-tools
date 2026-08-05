@@ -116,3 +116,4 @@ Files in this directory:
   * 2026-08-04-sim-split-m4-check.md
   * 2026-08-05-docs-coherence-pass.md
   * 2026-08-05-standing-equipment-promotion.md
+  * 2026-08-05-scaffolding-compaction-a.md
