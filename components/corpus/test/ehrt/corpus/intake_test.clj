@@ -193,7 +193,7 @@
   [seed]
   (manifest/build-v1-1
    {:stage :simulated
-    :generator {:name "ehr-testing-sim" :version "0.0.0-SNAPSHOT"
+    :generator {:name "ehrt.sim" :version "0.0.0-SNAPSHOT"
                 :sha256 (apply str (repeat 64 "0"))}
     :seeds {:primary seed}
     :engine-params {}

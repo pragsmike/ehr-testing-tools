@@ -41,10 +41,18 @@
   structurally, not just nominally, the same shape as this repo's own
   -- ADR-0012 property 3), so there is nothing left to unwrap, parse,
   or reshape the way the subprocess version had to. :out-dir (the old
-  subprocess stdout/stderr log location) and every discovery-related
-  key (:sim-dir, :env-sim-dir-fn, :default-dir) are accepted and
-  ignored -- harmless no-ops for any caller still passing them, rather
-  than a breaking signature change to every call site in one commit.
+  subprocess stdout/stderr log location) is accepted and ignored --
+  a harmless no-op for any caller still passing it, rather than a
+  breaking signature change to every call site in one commit.
+
+  Retired (2026-08-05, scaffolding compaction A, AR-A-3): the
+  sibling-checkout discovery keys (:sim-dir, :env-sim-dir-fn,
+  :default-dir) are no longer accepted-and-ignored -- ADR-0012's own
+  in-process mount (2026-07-28) made sibling-checkout discovery dead
+  code, and this session's own fresh grep found zero callers still
+  passing them. A caller that still passes them today gets no
+  special handling -- ordinary unused map entries, same as any other
+  unknown key.
 
   :run-command-fn is injectable, pulled out of the SAME opts map
   (defaults to sim/run-command, the real in-process engine call) --
@@ -58,7 +66,7 @@
   are correct."
   [opts]
   (let [run-command-fn (get opts :run-command-fn sim/run-command)]
-    (run-command-fn (dissoc opts :out-dir :sim-dir :env-sim-dir-fn :default-dir :run-command-fn))))
+    (run-command-fn (dissoc opts :out-dir :run-command-fn))))
 
 (defn check!
   "Delegates to ehrt.sim.interface/check-all, 1-arg arity (ground-truth

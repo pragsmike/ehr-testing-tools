@@ -20,14 +20,21 @@
     (is (= {:seed 42 :patients 3} @captured)
         "run-command-fn itself is stripped out before delegating, same as :out-dir")))
 
-(deftest run-strips-out-dir-and-discovery-keys-before-delegating-test
+(deftest run-strips-out-dir-before-delegating-test
   (let [captured (atom nil)
         fake (fn [opts] (reset! captured opts) (kernel/ok {}))]
-    (sim/run! {:seed 42 :out-dir "target/sim-harness" :sim-dir "/whatever"
-               :env-sim-dir-fn (fn [] nil) :default-dir "../ehr-testing-sim"
-               :run-command-fn fake})
+    (sim/run! {:seed 42 :out-dir "target/sim-harness" :run-command-fn fake})
     (is (= {:seed 42} @captured)
-        "the old subprocess-only opts never reach run-command -- it doesn't know them")))
+        "the old subprocess stdout/stderr log location never reaches run-command")))
+
+;; The legacy sibling-checkout discovery keys (:sim-dir,
+;; :env-sim-dir-fn, :default-dir) retired 2026-08-05 (scaffolding
+;; compaction A, AR-A-3) -- ADR-0012's own in-process mount
+;; (2026-07-28) already made sibling-checkout discovery dead code,
+;; and a fresh grep this session found zero callers still passing
+;; them. Nothing left to test: an unrecognized key is now ordinary
+;; opts-map noise, same as any other unknown key, not a case this
+;; namespace special-cases.
 
 (deftest run-passes-through-rejected-and-error-unchanged-test
   (let [rejected-fake (fn [_] (kernel/rejected :incompatible-assignment {:conflicts []}))
