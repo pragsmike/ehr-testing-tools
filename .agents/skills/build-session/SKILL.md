@@ -55,23 +55,22 @@ actually runs.
    itself commits/pushes/merges/`gh`s). Whichever mode applies, it is
    scoped to this session only — the next session starts back at
    whichever mode its own prompt states.
-2. **Preflight: resolve both clone roots before any edit** (ADR-0030
-   J4d, post-Wave-D cleanup session, 2026-08-02 — two live clones exist
-   on this machine, `feedback-dual-clone-edit-hazard`). At session
-   start, resolve the ext4 clone (the clone of record,
-   `~/src/ehr-testing-tools`, UNC `\\wsl.localhost\Ubuntu\home\mg\src\
-   ehr-testing-tools`) and note the `/mnt/c` clone's location too
-   (`C:\Users\prags\Documents\ehr-testing-tools`, kept read-only by
-   design — J4a). Every real edit target this session touches must
-   resolve under the ext4 root; if a Read/Edit/Write call would land
-   under `/mnt/c` (or any other clone) instead, that is a STOP-AND-
-   REPORT, not a silent copy-and-revert — say so and ask, don't fix it
-   quietly. `/mnt/c`'s own read-only state and reject-all commit/push
-   hooks (J4a/b) make a misdirected write fail loudly (`EPERM`/
-   `REJECTED`) rather than silently — treat that failure as the
-   preflight working as intended, not as an unrelated error to route
-   around. The ONLY sanctioned way `/mnt/c` ever moves is
-   `bin/sync-mnt-c`, run from the ext4 clone.
+2. **Preflight: confirm the session's edit root is the ext4 clone.**
+   **Retired 2026-08-05** (scaffolding compaction C, `notes/ADRs.md`
+   ADR-0047 AR-C-3): the second, Windows-mounted `/mnt/c` clone this
+   step used to guard against — read-only, reject-all-hooks, synced
+   only via the now-deleted `bin/sync-mnt-c` (ADR-0030 J4,
+   `feedback-dual-clone-edit-hazard`) — no longer exists as a live
+   working tree. The hazard class it guarded against is closed
+   structurally, not procedurally: Claude Code's own project root now
+   points at the ext4 clone by its UNC path
+   (`\\wsl.localhost\Ubuntu\home\mg\src\ehr-testing-tools`) directly,
+   so there is no second clone root left to resolve or mistarget. At
+   session start, simply confirm the working directory IS that ext4
+   clone (`~/src/ehr-testing-tools`) — if any Read/Edit/Write call ever
+   resolves somewhere else again, that is a NEW regression, not a
+   known, guarded-against hazard: STOP-AND-REPORT rather than treating
+   it as routine vigilance.
 3. **All git operations from WSL, never native Windows** —
    `.githooks/pre-commit`/`pre-push` enforce this once `git config
    core.hooksPath .githooks` is set per clone. If working from a
@@ -150,8 +149,9 @@ and prompt archive.
 
 - [ ] Ceremony mode was determined from the session's own prompt, not
       assumed.
-- [ ] Both clone roots were resolved at session start; every edit
-      target resolved under the ext4 root.
+- [ ] The session's working directory was confirmed as the ext4
+      clone at session start (the `/mnt/c` mirror retired 2026-08-05,
+      ADR-0047 AR-C-3 — no second clone root to resolve anymore).
 - [ ] `git diff --cached --stat` was reviewed before every commit.
 - [ ] Every commit message came from a file, not an inline heredoc.
 - [ ] `gitleaks` and `clojure -M:poly check` are green before every push.

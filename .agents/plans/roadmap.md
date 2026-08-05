@@ -51,16 +51,16 @@ per item; done items move to the bottom of their section with a date and sha.
   if wanted) — AUTHOR ACTION named 2026-08-01
 - Item 9 (ADR-0024, landed 2026-08-01 as mirror-with-gate, not symlinks): the
   fresh-session discovery probe is DONE — see Done section below. The
-  "fast-forward /mnt/c" remainder is SUPERSEDED (2026-08-02, post-Wave-D
-  cleanup): /mnt/c is now kept read-only and synced only via
-  `bin/sync-mnt-c`, see the dual-clone-guardrails Done entry below.
-- Post-Wave-D cleanup (2026-08-02, ADR-0030 J4): does the `/mnt/c`
-  clone still earn its keep at all, now that it's read-only and
-  synced only via `bin/sync-mnt-c`, or should it be removed outright?
-  The guardrails are sound either way — this is a standing-cost
-  question (a second checkout to keep in sync, however mechanically),
-  not a correctness one. Named, not decided, this session (J4's own
-  explicit fence) — AUTHOR ACTION.
+  "fast-forward /mnt/c" remainder is CLOSED (2026-08-05, scaffolding
+  compaction C, `notes/ADRs.md` ADR-0047 AR-C-3): `/mnt/c` itself
+  retired, so there is nothing left to fast-forward.
+- **RESOLVED 2026-08-05** (scaffolding compaction C, `notes/ADRs.md`
+  ADR-0047 AR-C-3): the standing-cost question this row posed — does
+  `/mnt/c` still earn its keep — is answered: retire it. `bin/sync-
+  mnt-c` deleted; the guarded-mirror doctrine retired from
+  `.agents/skills/build-session/SKILL.md` (both copies) with a dated
+  note. The physical directory's own deletion on the Windows side
+  stays the author's own act, per this ruling.
 
 ## Deferred (explicitly, with revisit triggers)
 Rows here are LIVE. Closed rows move to Done with their notes.
