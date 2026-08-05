@@ -3,11 +3,11 @@
 ;; starting work, plus a `:budget-lines` integer -- `ehrt.docs-tooling.reading-
 ;; set-budget-test` resolves every path (a missing file is red -- a reading set
 ;; can't cite a ghost), sums real line counts, and fails any set that exceeds
-;; its own budget. Every `:budget-lines` value below is the MEASURED ACTUAL of
-;; the set as composed this session (2026-08-02) -- not a target. Charter §6
-;; defers the real budget ruling to the author, after real sizes exist to rule
-;; against; these numbers are that baseline, dated in
-;; `.agents/session-records/2026-08-02-migration-session-4.md`.
+;; its own budget. Migration session 4 (2026-08-02) seeded every
+;; `:budget-lines` value to the exact measured actual of the set as composed
+;; that session -- zero headroom, by design, so day-one green proved the
+;; numbers were honest. Charter §6 deferred the real budget ruling to the
+;; author, after real sizes existed to rule against.
 ;;
 ;; Composition principle (AR-1): prefer omission. A path added here is a path
 ;; every future session of that class is expected to read cold -- the budget
@@ -31,6 +31,24 @@
 ;; tooling work (they are session-mechanics/meta skills: committee, handoff,
 ;; probe, scenarios, etc.) -- so "the skills relevant to it" stays the empty
 ;; set for all four task classes, honestly, not an omission.
+;;
+;; Budget re-baseline (2026-08-05, docs coherence pass, ADR-0043 AR-D-3).
+;; Between migration session 4's zero-headroom seed and this date, every
+;; set's budget was bumped in place, session by session, fourteen times
+;; total, each bump a dated comment recording exactly what grew and by how
+;; many lines -- an honest but increasingly illegible record, since a zero-
+;; headroom budget makes ROUTINE growth (AGENTS.md's Components list,
+;; roadmap.md's own Now/Done churn) indistinguishable from the unplanned
+;; growth the budget test exists to catch. This note supersedes all
+;; fourteen: every set's budget below is its own actual line count, measured
+;; fresh against the tip this note lands on, times 1.15, rounded up to the
+;; nearest 5 -- one formula, applied uniformly, replacing the accumulated
+;; per-session bump trail. `:paths` membership is UNCHANGED by this note;
+;; only `:budget-lines` values move and the bump-history comments retire.
+;; Future growth resumes the same discipline this file always used: a
+;; session whose own edit pushes a set over its budget bumps that set's
+;; number, with a dated comment recording what grew -- this note is a
+;; re-baseline, not a suspension of the practice it replaces.
 
 {:onboarding
  {:paths ["AGENTS.md"
@@ -53,277 +71,7 @@
   ;; because that's a different audience from "a cold task-class session",
   ;; and forcing every onboarding read to carry its cost would budget for an
   ;; activity most onboarding sessions never do (migration session 5, AR-3).
-  ;; corrected 2026-08-02 (migration session 5, C3, same session as the
-  ;; 695 figure): indexing this session's own new session-record and
-  ;; prompt-archive filenames in their own READMEs (both already-cited
-  ;; onboarding paths) added 2 more lines after C2 already committed
-  ;; 695 -- caught measuring the real total while writing this
-  ;; checkpoint, fixed forward here rather than amending C2 (see
-  ;; `notes/ADRs.md` ADR-0023's own correction note)
-  ;; raised 2026-08-02 (migration session 6, C3, the ceremony's own
-  ;; measured actual): the migration report's fully-executed retirement
-  ;; plus item 14's own roadmap Done entry (`.agents/plans/roadmap.md`)
-  ;; and this session's own session-record/prompt-archive index lines
-  ;; (both already-cited onboarding paths) brought the real total from
-  ;; 697 to 715
-  ;; raised 2026-08-02 (provenance-adoption rider session, C2, caught by
-  ;; the budget test itself before commit): this session's own
-  ;; session-record/prompt-archive index lines (same two already-cited
-  ;; onboarding paths) brought the real total from 715 to 717
-  ;; raised 2026-08-02 (sim split S1 session, caught by the budget test
-  ;; itself): AGENTS.md's own Structure/Constraints sections grew by 4
-  ;; lines naming the new `components/sim-model` brick (sim split S1,
-  ;; `.agents/plans/2026-08-02-sim-split-plan.md`), brought the real
-  ;; total from 717 to 721
-  ;; raised 2026-08-02 (sim split S1 session, second self-catch): indexing
-  ;; that same plan file in `.agents/plans/README.md` (an already-cited
-  ;; onboarding path, the index-completeness gate's own finding) added 1
-  ;; more line, 721 to 722.
-  ;; raised 2026-08-02 (sim split S2 session, caught by the budget test
-  ;; itself): AGENTS.md's own Structure/Constraints sections grew by 5
-  ;; more lines naming the new `components/sim-trajectory` brick (sim
-  ;; split S2, same plan), brought the real total from 722 to 727.
-  ;; raised 2026-08-02 (sim split S1+S2 records step, caught by the
-  ;; budget test itself): `.agents/plans/roadmap.md`'s own Deferred/Done
-  ;; rows for the split (31 lines) plus indexing this session's own
-  ;; record/prompt filenames in their own already-cited onboarding
-  ;; READMEs (1 line each) brought the real total from 727 to 760.
-  ;; raised 2026-08-02 (GMF coverage Wave A, Step 0, caught by the budget
-  ;; test itself): `.agents/plans/roadmap.md`'s own new "Now (GMF
-  ;; coverage expansion)" section, the amended S3-trigger wording, and
-  ;; the Wave B/C/D rows replacing the single deferred GMF row (24 net
-  ;; lines) brought the real total from 760 to 784.
-  ;; raised 2026-08-02 (GMF coverage Wave A, Step 4 close-out, caught by
-  ;; the budget test itself): `.agents/plans/roadmap.md`'s own Wave A
-  ;; "Now" row retired and its own new "Done" section landed, plus
-  ;; indexing this session's own session-record/prompt-archive filenames
-  ;; in their own already-cited onboarding READMEs, net +19 lines,
-  ;; brought the real total from 784 to 803.
-  ;; raised again 2026-08-02 (GMF coverage Wave B, Step 3, caught by the
-  ;; budget test itself, same as Wave A's own self-catch above):
-  ;; `.agents/plans/roadmap.md`'s own Wave B row moved from Deferred to
-  ;; a new "Now" section (Step 0), net +1 line, brought the real total
-  ;; from 803 to 804.
-  ;; raised again 2026-08-02 (GMF coverage Wave B, Step 4 close-out,
-  ;; caught by the budget test itself, same shape both prior self-
-  ;; catches above already established): `.agents/plans/roadmap.md`'s
-  ;; own Wave B "Now" row retired and its own new "Done" section
-  ;; landed, net +41 lines, brought the real total from 804 to 845.
-  ;; raised again 2026-08-02 (GMF coverage Wave C, Step 4 close-out,
-  ;; caught by the budget test itself, same shape every prior self-
-  ;; catch above already established): `.agents/plans/roadmap.md`'s
-  ;; own Wave C "Now" row retired and its own new "Done" section
-  ;; landed, plus indexing this session's own session-record/prompt-
-  ;; archive filenames in their own already-cited onboarding READMEs,
-  ;; net +51 lines, brought the real total from 845 to 896.
-  ;; raised again 2026-08-02 (GMF coverage Wave D design pass / sim split
-  ;; S3 stage D0, Step 0, caught by the budget test itself, same shape
-  ;; every prior self-catch above already established):
-  ;; `.agents/plans/roadmap.md`'s own "Now" section gained the sim-split
-  ;; S3/Wave-D-D0 row and its own Deferred section's S3/S4/Wave-D rows
-  ;; were restructured (S3 retired from Deferred, Wave D's row split into
-  ;; D1-D3 with the ADR-0029 citation), net +1 line, brought the real
-  ;; total from 896 to 897.
-  ;; raised again 2026-08-02 (sim split S3 / Wave D stage D0, Step 2,
-  ;; caught by the budget test itself, same shape every prior self-catch
-  ;; above already established): AGENTS.md's own growth (Components list
-  ;; and Dependency-direction bullet naming `components/sim-emit-hl7`)
-  ;; brought the real total from 897 to 903.
-  ;; raised again 2026-08-02 (sim split S3 / Wave D stage D0, Step 4,
-  ;; caught by the budget test itself, same shape every prior self-catch
-  ;; above already established): `.agents/plans/roadmap.md`'s own "Now"
-  ;; row retired and its own new "Done" section landed, plus indexing
-  ;; this session's own session-record/prompt-archive filenames in their
-  ;; own already-cited onboarding READMEs, brought the real total from
-  ;; 903 to 925.
-  ;; bumped 925->932, D1a rider (2026-08-02): roadmap.md/ADR-0001 growth
-  ;; (Clojars ruling note, D1 Now-row) -- self-caught by this same gate.
-  ;; bumped 932->935, D1b Step 0 (2026-08-02): roadmap.md's own D1 Now-row
-  ;; grew (halted-for-ruling -> in-progress implementation) -- self-caught
-  ;; by this same gate, same precedent.
-  ;; bumped 935->965, D1b Step 4 close-out (2026-08-02): roadmap.md's own
-  ;; D1 Done section landed (shas, payoff) and both the session-records/
-  ;; prompts READMEs gained one index line each -- self-caught by this
-  ;; same gate, same precedent, folded into the Step 4 records commit
-  ;; itself (not a separate fix-forward, since it's this commit's own
-  ;; direct consequence, not an earlier checkpoint's).
-  ;; bumped 965->967, D2 Step 0 (2026-08-02): roadmap.md's own D2 Now-row
-  ;; landed (net +2 lines after the superseded Deferred D2/D3 row shrank
-  ;; to D3-only) -- self-caught by this same gate, same precedent.
-  ;; bumped 967->969, D2 Step 1 (2026-08-02): roadmap.md's own D2 Now-row
-  ;; updated with the characterization outcome (declared scope, Active
-  ;; CarePlan deferral), net +2 lines -- self-caught by this same gate,
-  ;; same precedent.
-  ;; bumped 969->976, D2 Step 2 fix-forward (2026-08-02): roadmap.md's
-  ;; own D2 Now-row rewritten for the revised zero-vendor outcome (a
-  ;; second, independent Guard blocker found live), net +7 lines --
-  ;; self-caught by this same gate, same precedent.
-  ;; bumped 976->1014, D2 Step 4 close-out (2026-08-02): roadmap.md's
-  ;; own D2 Done section landed (shas, payoff) plus both the
-  ;; session-records/prompts READMEs gained one index line each --
-  ;; self-caught by this same gate, same precedent, folded into the
-  ;; Step 4 records commit itself.
-  ;; bumped 1014->1088, D3 Step 4 close-out / Wave D close (2026-08-02):
-  ;; roadmap.md's own D3 Now-row retired and its own new "Done" section
-  ;; landed (Wave D marked closed, full commit list, expanded Deferred
-  ;; entries) plus both the session-records/prompts READMEs gained one
-  ;; index line each -- self-caught by this same gate, same precedent,
-  ;; folded into the Step 4 records commit itself.
-  ;; bumped 1088->1117, post-Wave-D cleanup session (2026-08-02, ADR-0030
-  ;; J1/J2): Step 0's own roadmap.md "Now" row (2 lines) plus AGENTS.md's
-  ;; own new "regression-oracle claim" pointer (5 lines) plus
-  ;; build-session/SKILL.md's own new VERIFICATION section (22 lines)
-  ;; brought the real total from 1088 to 1117 -- self-caught by this same
-  ;; gate, same precedent, folded into the J2 commit itself (this set is
-  ;; the only one of the five carrying roadmap.md too).
-  ;; bumped 1117->1118, same session: indexing the concurrently-authored
-  ;; 2026-08-02-gmf-parity-plan.md in .agents/plans/README.md (an
-  ;; already-cited onboarding path, the index-completeness gate's own
-  ;; requirement) added 1 more line.
-  ;; bumped 1118->1137, same session (ADR-0030 J4d): build-session/
-  ;; SKILL.md's own new preflight-clone-resolution step (19 net lines)
-  ;; brought the real total from 1118 to 1137.
-  ;; bumped 1137->1201, same session (Step 5 close-out): roadmap.md's
-  ;; own Now-row retired and its own new Done section landed (net +64
-  ;; lines) brought the real total from 1137 to 1201.
-  ;; bumped 1201->1210, same session (Step 5 close-out): indexing this
-  ;; session's own session-record/prompt-archive filenames in their own
-  ;; already-cited onboarding READMEs (1 line each) plus roadmap.md's
-  ;; own final wording tweaks brought the real total from 1201 to 1210.
-  ;; bumped 1210->1243, rulings-capture session (2026-08-03, Step 5):
-  ;; roadmap.md's own three new Next rows (defect-fix sessions + census,
-  ;; ADR-0031 AR-6), the backload-named-future Deferred row (AR-3), and
-  ;; the two dated cross-references on existing Deferred rows brought
-  ;; the real total from 1210 to 1243.
-  ;; bumped 1243->1245, same session (Step 6 close-out): indexing this
-  ;; session's own session-record/prompt-archive filenames in their own
-  ;; already-cited onboarding READMEs (1 line each) brought the real
-  ;; total from 1243 to 1245.
-  ;; bumped 1245->1283, 2026-08-03 (procedure-duration-fix session, Step
-  ;; 4 close-out): roadmap.md's own Next-row removal/Done-section growth
-  ;; and indexing this session's own session-record/prompt-archive
-  ;; filenames brought the real total from 1245 to 1283 -- self-caught,
-  ;; the same pattern every prior session touching this file has hit.
-  ;; bumped 1283->1301, 2026-08-03 (engine-closure-context session, Step
-  ;; 6 close-out): roadmap.md's own Next-row removal/Done-section growth
-  ;; and indexing this session's own session-record/prompt-archive
-  ;; filenames brought the real total from 1283 to 1301 -- self-caught,
-  ;; the same pattern every prior session touching this file has hit.
-  ;; bumped 1301->1361, 2026-08-03 (GMF census session, ADR-0034, Step 3
-  ;; close-out): roadmap.md's own Next-row rewrite/Deferred-row/Done-
-  ;; section growth, the parity plan's own Wave H dated pointer, and
-  ;; indexing this session's own session-record/prompt-archive filenames
-  ;; brought the real total from 1301 to 1361 -- self-caught, the same
-  ;; pattern every prior session touching this file has hit.
-  ;; bumped 1361->1417, 2026-08-03 (Wave F0 distributions session,
-  ;; ADR-0035, Step 6 close-out): roadmap.md's own Next-row rewrite plus
-  ;; a new Done-section entry, and indexing this session's own
-  ;; session-record/prompt-archive filenames, brought the real total
-  ;; from 1361 to 1417 -- self-caught, the same pattern every prior
-  ;; session touching this file has hit.
-  ;; bumped 1417->1547, 2026-08-03 (GMF coverage Wave F session,
-  ;; ADR-0036, Step 7 close-out): roadmap.md's own Next-row rewrite
-  ;; (Wave F -> Wave G design session), a new Done-section entry, and
-  ;; four new Deferred rows (the stale myocardial_infarction.json claim
-  ;; corrected, census tool refinements, the UTI Observation raw-
-  ;; :distribution gap, the vital-sign channel, lookup-table columns
-  ;; race/time), plus indexing this session's own session-record/
-  ;; prompt-archive filenames, brought the real total from 1417 to
-  ;; 1547 -- self-caught, the same pattern every prior session touching
-  ;; this file has hit.
-  ;;
-  ;; GMF coverage Wave G (2026-08-03, ADR-0037): notes/ADRs.md's own
-  ;; new ADR-0037 entry, the roadmap's own Done section + two new
-  ;; Deferred rows, and this session's own session-record/prompt-archive
-  ;; filenames brought the real total from 1547 to 1650 -- self-caught,
-  ;; the same pattern every prior session touching this file has hit.
-  ;;
-  ;; GMF coverage Wave LC (2026-08-03, ADR-0038): the roadmap's own new
-  ;; Done section, two Deferred rows marked RESOLVED, and this session's
-  ;; own session-record/prompt-archive filenames brought the real total
-  ;; from 1650 to 1701 -- self-caught, the same pattern every prior
-  ;; session touching this file has hit.
-  ;;
-  ;; GMF coverage Wave VS (2026-08-04, ADR-0039): the roadmap's own new
-  ;; Done section, the Next section's own Wave-H-reordering rewrite, and
-  ;; this session's own session-record/prompt-archive filenames brought
-  ;; the real total from 1701 to 1753 -- self-caught, the same pattern
-  ;; every prior session touching this file has hit.
-  ;;
-  ;; GMF coverage Wave I (2026-08-04, ADR-0040): the roadmap's own new
-  ;; Done section, the Next section's own two-finding rewrite, the
-  ;; parity plan's own dated note, and this session's own session-
-  ;; record/prompt-archive filenames brought the real total from 1753
-  ;; to 1806 -- self-caught, the same pattern every prior session
-  ;; touching this file has hit.
-  ;;
-  ;; GMF coverage Wave I2 (2026-08-04, ADR-0041): the roadmap's own new
-  ;; Done section, the Next section's own two-finding retirement, the
-  ;; parity plan's own PARITY ACHIEVED Status amendment and dated note,
-  ;; and this session's own session-record/prompt-archive filenames
-  ;; brought the real total from 1806 to 1824 -- self-caught, the same
-  ;; pattern every prior session touching this file has hit.
-  ;;
-  ;; Wave H pre-roll (2026-08-04, ADR-0042, GMF parity arc COMPLETE):
-  ;; the roadmap's own new Wave H Done section, the Now/Next retirement
-  ;; of the Wave H design-session row, the carry-across Deferred entry,
-  ;; and this session's own session-record/prompt-archive filenames in
-  ;; both READMEs brought the real total from 1824 to 1869 -- self-
-  ;; caught, the same pattern every prior session touching this file
-  ;; has hit.
-  ;;
-  ;; bumped 1869->1873, sim split B M1 session (2026-08-04, Step 1):
-  ;; AGENTS.md's own Components-list growth naming the new
-  ;; `components/provenance` brick (4 lines) brought the real total
-  ;; from 1869 to 1873 -- self-caught, the same pattern every prior
-  ;; session touching this file has hit.
-  ;; bumped 1873->1874, same session, same step: indexing this
-  ;; session's own plan file (2026-08-04-sim-split-b-plan.md, authored
-  ;; by the design channel ahead of this session) in
-  ;; `.agents/plans/README.md` (an already-cited onboarding path, the
-  ;; index-completeness gate's own finding) added 1 more line.
-  ;; bumped 1874->1925, same session, Step 6: roadmap.md's own S4/
-  ;; sim-manifest-interop Deferred-row dated notes, the Now section's
-  ;; M2-M4 rewrite, and the new M1 Done section (shas, payoff) brought
-  ;; the real total from 1874 to 1925 -- self-caught, the same pattern
-  ;; every prior session touching this file has hit.
-  ;; bumped 1925->1927, Step 7 close-out (2026-08-04): indexing this
-  ;; session's own session-record/prompt-archive filenames in their own
-  ;; already-cited onboarding READMEs (1 line each) brought the real
-  ;; total from 1925 to 1927.
-  ;; bumped 1927->1931, sim split B M2 session (2026-08-04, Step 1):
-  ;; AGENTS.md's own Components-list growth (`components/sim-engine`,
-  ;; net +4 lines) brought the real total from 1927 to 1931.
-  ;; bumped 1931->1966, same session (Step 4 close-out): roadmap.md's
-  ;; own new M2 Done section, "Now" section rewrite, and S4 Deferred-
-  ;; row EXECUTED note brought the real total from 1931 to 1966.
-  ;; bumped 1966->1968, same session (Step 5 close-out): indexing this
-  ;; session's own session-record/prompt-archive filenames in their own
-  ;; already-cited onboarding READMEs (1 line each) brought the real
-  ;; total from 1966 to 1968.
-  ;; bumped 1968->1977, sim split B M3 session (2026-08-04, Step 1):
-  ;; AGENTS.md's own Components-list growth (`components/sim-emit-fhir`,
-  ;; net +9 lines) brought the real total from 1968 to 1977.
-  ;; bumped 1977->2023, same session, Step 4: roadmap.md's own new M3
-  ;; Done section, the "Now" section rewrite, and the S4 Deferred-row
-  ;; AR-4-discharge dated note brought the real total from 1977 to
-  ;; 2023.
-  ;; bumped 2023->2025, same session, Step 5: indexing this session's
-  ;; own session-record/prompt-archive filenames in their own already-
-  ;; cited onboarding READMEs (1 line each) brought the real total from
-  ;; 2023 to 2025.
-  ;; bumped 2025->2033, sim split B M4 session (2026-08-04, Step 1):
-  ;; AGENTS.md's own Components-list growth (`components/sim-check`,
-  ;; net +8 lines) brought the real total from 2025 to 2033.
-  ;; bumped 2033->2088, same session, Step 4 close-out (AR-M4-7):
-  ;; roadmap.md's own new M4 "Now" note, the new M4 Done section, and
-  ;; the new docs-coherence-pass Deferred row (net +55 lines) brought
-  ;; the real total from 2033 to 2088.
-  ;; bumped 2088->2090, same session, Step 5 close-out: indexing this
-  ;; session's own session-record/prompt-archive filenames in their
-  ;; own already-cited onboarding READMEs (1 line each) brought the
-  ;; real total from 2088 to 2090.
-  :budget-lines 2090}
+  :budget-lines 2405}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one
@@ -349,36 +97,7 @@
           ;; the checkpoint ceremony, applies regardless of task class
           ;; (migration session 5, AR-3)
           ".agents/skills/build-session/SKILL.md"]
-  ;; raised 2026-08-02 (sim split S1 session): AGENTS.md's own growth
-  ;; (above) brought the real total from 1640 to 1644.
-  ;; raised 2026-08-02 (sim split S2 session): AGENTS.md's own further
-  ;; growth (above) brought the real total from 1644 to 1649.
-  ;; raised again 2026-08-02 (sim split S3 / Wave D stage D0): AGENTS.md's
-  ;; own further growth (above) brought the real total from 1649 to 1655.
-  ;; raised 2026-08-02 (post-Wave-D cleanup, ADR-0030 J2): AGENTS.md's own
-  ;; new pointer (5 lines) plus build-session/SKILL.md's own new
-  ;; VERIFICATION section (22 lines) brought the real total from 1655 to
-  ;; 1682.
-  ;; raised 2026-08-02 (post-Wave-D cleanup, ADR-0030 J4d): build-session/
-  ;; SKILL.md's own new preflight-clone-resolution step (19 net lines)
-  ;; brought the real total from 1682 to 1701.
-  ;; bumped 1701->1705, sim split B M1 session (2026-08-04, Step 1):
-  ;; AGENTS.md's own Components-list growth (above) brought the real
-  ;; total from 1701 to 1705.
-  ;; bumped 1705->1710, same session, Step 2: corpus/interface.clj's
-  ;; own ManifestV1_1 re-export repointed to provenance directly, with
-  ;; a short dated comment explaining the relay (net +5 lines) brought
-  ;; the real total from 1705 to 1710.
-  ;; bumped 1710->1714, sim split B M2 session (2026-08-04, Step 1):
-  ;; AGENTS.md's own Components-list growth (`components/sim-engine`,
-  ;; net +4 lines) brought the real total from 1710 to 1714.
-  ;; bumped 1714->1723, sim split B M3 session (2026-08-04, Step 1):
-  ;; AGENTS.md's own Components-list growth (`components/sim-emit-fhir`,
-  ;; net +9 lines) brought the real total from 1714 to 1723.
-  ;; bumped 1723->1731, sim split B M4 session (2026-08-04, Step 1):
-  ;; AGENTS.md's own Components-list growth (`components/sim-check`,
-  ;; net +8 lines) brought the real total from 1723 to 1731.
-  :budget-lines 1731}
+  :budget-lines 1995}
 
  ;; components/sim is the deterministic generator engine wrapping Synthea
  ;; (ADR-0005) -- engine-onboarding.md is the checklist every engine wrapper
@@ -398,34 +117,7 @@
           ;; the checkpoint ceremony, applies regardless of task class
           ;; (migration session 5, AR-3)
           ".agents/skills/build-session/SKILL.md"]
-  ;; raised 2026-08-02 (sim split S1 session): AGENTS.md's own growth
-  ;; (above) brought the real total from 695 to 699.
-  ;; raised 2026-08-02 (sim split S2 session): AGENTS.md's own further
-  ;; growth (above) brought the real total from 699 to 704.
-  ;; raised again 2026-08-02 (sim split S3 / Wave D stage D0): AGENTS.md's
-  ;; own further growth (above) brought the real total from 704 to 710.
-  ;; raised 2026-08-02 (post-Wave-D cleanup, ADR-0030 J2): AGENTS.md's own
-  ;; new pointer (5 lines) plus build-session/SKILL.md's own new
-  ;; VERIFICATION section (22 lines) brought the real total from 710 to
-  ;; 737.
-  ;; raised 2026-08-02 (post-Wave-D cleanup, ADR-0030 J4d): build-session/
-  ;; SKILL.md's own new preflight-clone-resolution step (19 net lines)
-  ;; brought the real total from 737 to 756.
-  ;; bumped 756->760, sim split B M1 session (2026-08-04, Step 1):
-  ;; AGENTS.md's own Components-list growth (above) brought the real
-  ;; total from 756 to 760.
-  ;; bumped 760->764, sim split B M2 session (2026-08-04, Step 1):
-  ;; AGENTS.md's own Components-list growth (`components/sim-engine`,
-  ;; net +4 lines) brought the real total from 760 to 764.
-  ;; bumped 764->773, sim split B M3 session (2026-08-04, Step 1):
-  ;; AGENTS.md's own Components-list growth (`components/sim-emit-fhir`,
-  ;; net +9 lines) brought the real total from 764 to 773.
-  ;; bumped 773->793, sim split B M4 session (2026-08-04, Step 1):
-  ;; AGENTS.md's own Components-list growth (`components/sim-check`, net
-  ;; +8 lines) plus components/sim/src/ehrt/sim/interface.clj's own new
-  ;; dated retirement note on the fat-component disclosure (AR-M4-3, net
-  ;; +12 lines) brought the real total from 773 to 793.
-  :budget-lines 793}
+  :budget-lines 915}
 
  ;; components/judge (verdict vocabulary) plus its three gate engines
  ;; (judge-v2-hapi, judge-fhir-official, judge-v2-nist, ADR-0011's per-engine
@@ -447,32 +139,7 @@
           ;; the checkpoint ceremony, applies regardless of task class
           ;; (migration session 5, AR-3)
           ".agents/skills/build-session/SKILL.md"]
-  ;; raised 2026-08-02 (sim split S1 session): AGENTS.md's own growth
-  ;; (above) brought the real total from 765 to 769.
-  ;; raised 2026-08-02 (sim split S2 session): AGENTS.md's own further
-  ;; growth (above) brought the real total from 769 to 774.
-  ;; raised again 2026-08-02 (sim split S3 / Wave D stage D0): AGENTS.md's
-  ;; own further growth (above) brought the real total from 774 to 780.
-  ;; raised 2026-08-02 (post-Wave-D cleanup, ADR-0030 J2): AGENTS.md's own
-  ;; new pointer (5 lines) plus build-session/SKILL.md's own new
-  ;; VERIFICATION section (22 lines) brought the real total from 780 to
-  ;; 807.
-  ;; raised 2026-08-02 (post-Wave-D cleanup, ADR-0030 J4d): build-session/
-  ;; SKILL.md's own new preflight-clone-resolution step (19 net lines)
-  ;; brought the real total from 807 to 826.
-  ;; bumped 826->830, sim split B M1 session (2026-08-04, Step 1):
-  ;; AGENTS.md's own Components-list growth (above) brought the real
-  ;; total from 826 to 830.
-  ;; bumped 830->834, sim split B M2 session (2026-08-04, Step 1):
-  ;; AGENTS.md's own Components-list growth (`components/sim-engine`,
-  ;; net +4 lines) brought the real total from 830 to 834.
-  ;; bumped 834->843, sim split B M3 session (2026-08-04, Step 1):
-  ;; AGENTS.md's own Components-list growth (`components/sim-emit-fhir`,
-  ;; net +9 lines) brought the real total from 834 to 843.
-  ;; bumped 843->851, sim split B M4 session (2026-08-04, Step 1):
-  ;; AGENTS.md's own Components-list growth (`components/sim-check`, net
-  ;; +8 lines) brought the real total from 843 to 851.
-  :budget-lines 851}
+  :budget-lines 980}
 
  ;; components/docs-tooling (dev-time-only doc/lint tooling) generates and
  ;; lints docs/cli.md, docs/pipeline.md-equivalents, and docs/use-cases.md
@@ -490,48 +157,4 @@
           ;; the checkpoint ceremony, applies regardless of task class
           ;; (migration session 5, AR-3)
           ".agents/skills/build-session/SKILL.md"]
-  ;; raised 2026-08-02 (sim split S1 session): AGENTS.md's own growth (4
-  ;; lines) plus docs/dev/architecture.md's own growth (4 lines, the
-  ;; mermaid diagram plus bricks/projects table rows naming
-  ;; `components/sim-model`) brought the real total from 554 to 562.
-  ;; raised 2026-08-02 (sim split S2 session): AGENTS.md's own further
-  ;; growth (5 lines) plus docs/dev/architecture.md's own further growth
-  ;; (5 lines, `components/sim-trajectory`'s own mermaid/bricks/projects
-  ;; rows) brought the real total from 562 to 572.
-  ;; raised again 2026-08-02 (sim split S3 / Wave D stage D0): AGENTS.md's
-  ;; own further growth (6 lines) plus docs/dev/architecture.md's own
-  ;; further growth (4 lines, `components/sim-emit-hl7`'s own
-  ;; mermaid/bricks/projects rows) brought the real total from 572 to 582.
-  ;; raised 2026-08-02 (post-Wave-D cleanup, ADR-0030 J2): AGENTS.md's own
-  ;; new pointer (5 lines) plus build-session/SKILL.md's own new
-  ;; VERIFICATION section (22 lines) brought the real total from 582 to
-  ;; 609.
-  ;; raised 2026-08-02 (post-Wave-D cleanup, ADR-0030 J4d): build-session/
-  ;; SKILL.md's own new preflight-clone-resolution step (19 net lines)
-  ;; brought the real total from 609 to 628.
-  ;; bumped 628->633, sim split B M1 session (2026-08-04, Step 1):
-  ;; AGENTS.md's own Components-list growth (4 lines) plus
-  ;; docs/dev/architecture.md's own new `components/provenance`
-  ;; bricks-table row (1 line) brought the real total from 628 to 633.
-  ;; bumped 633->641, sim split B M2 session (2026-08-04, Step 1):
-  ;; AGENTS.md's own Components-list growth (`components/sim-engine`,
-  ;; net +4 lines) plus docs/dev/architecture.md's own new
-  ;; `components/sim-engine` diagram node/edges and bricks-table row
-  ;; (net +4 lines) brought the real total from 633 to 641.
-  ;; bumped 641->654, sim split B M3 session (2026-08-04, Step 1):
-  ;; AGENTS.md's own Components-list growth (`components/sim-emit-fhir`,
-  ;; net +9 lines) plus docs/dev/architecture.md's own new
-  ;; `components/sim-emit-fhir` diagram node/edges and bricks-table row
-  ;; (net +4 lines) brought the real total from 641 to 654.
-  ;; bumped 654->668, sim split B M4 session (2026-08-04, Step 1):
-  ;; AGENTS.md's own Components-list growth (`components/sim-check`, net
-  ;; +8 lines) plus docs/dev/architecture.md's own new `components/sim-
-  ;; check` diagram node/edges and bricks-table row, plus its sim row's
-  ;; own dependency-list rewrite (net +6 lines) brought the real total
-  ;; from 654 to 668.
-  ;; bumped 668->671, same session, Step 2 (AR-M4-5c): docs/dev/
-  ;; architecture.md's own new `provenance` diagram node plus its
-  ;; `corpus --> provenance`/`sim --> provenance` edges (a pre-existing
-  ;; gap since M1, disclosed and closed this session rather than left
-  ;; standing another stage) brought the real total from 668 to 671.
-  :budget-lines 671}}
+  :budget-lines 775}}
