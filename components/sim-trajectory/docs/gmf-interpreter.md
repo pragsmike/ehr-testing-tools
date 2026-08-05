@@ -69,14 +69,14 @@ it can't yet be *vendored*.
 | `MedicationOrder` | v1, trajectory event | compiles to a new `:medication-order` IR step (M5b build scope, distinct from `:order`'s lab-panel semantics) |
 | `MedicationEnd` | v1, trajectory event | references its `MedicationOrder` trajectory event; compiles to a new `:medication-end` IR step |
 | `Device` / `DeviceEnd` | v1, consumed internally **(M5b finding, moved here from the Deferred table below)** | none — structurally identical to `Simple`: no equipment-tracking home exists anywhere in `components/sim/docs/patient-state-model.md`'s accumulator or the pathway IR, so these states pass through (ordinary transition resolution, no attribute write, no trajectory event) rather than mint anything. Discovered load-bearing, not merely convenient: the ratified vendored module (`sinusitis.json`) uses them for its Nebulizer content, exactly where this document's own appendix already predicted (confined to the module's rare chronic-surgical tail) — but the M5a loader's own all-or-nothing gate ("any deferred-type use fails it, full stop") rejected the WHOLE module for two states, not merely that tail, since the loader has no partial-compile mechanism to "simply not compile that one branch's terminal states" the way the appendix's prose imagined. Consumed-internally is the minimal, disciplined resolution — see the M5b findings section below for the full account |
-| `CallSubmodule` | v1, trajectory-adjacent **(GMF coverage Wave B, ADR-0027, moved here from the Deferred table below — the same "move, not duplicate" treatment `Device`/`DeviceEnd` already got at M5b)** | none of its own — recursion into a second module JSON file, loaded/namespaced/gated as part of the SAME closure (§1's own loader gate now extends to it, `ehrt.sim-trajectory.gmf/load-closure`, D3) and run via descend-run-return (`ehrt.sim-trajectory.gmf-interpreter`'s own D1-D4 order contract, ns docstring). Every trajectory event a called submodule itself emits carries the normal event-type mapping this table already assigns it (a `MedicationOrder` inside a callee is still a `:medication-order` event) PLUS a `:call-path` citation (D2) — see §9 for the full account |
-| `Death` | v1, terminal trajectory event **(GMF coverage Wave C, ADR-0028, moved here from the Deferred table below — the same "move, not duplicate" treatment `Device`/`DeviceEnd`/`CallSubmodule` already got)** | ends the walk (`:terminal? true`, `:next nil` — the module's own declared post-Death transition is never resolved, a disclosed departure from real Synthea's own continue-past-Death semantics). Compiles at `CompileTrajectory` to the EXISTING `:discharge` IR step, no new step type — death inside a still-open encounter attaches as that encounter's own terminal disposition (`:disposition :expired`, `:codes` the cause of death verbatim); death outside any encounter closes the pathway without fabricating a discharge from an admission that never happened. `ehrt.sim-engine.engine`'s own `:discharge` decide/evolve fold this to `:status :expired` (`components/sim/docs/patient-state-model.md`'s accumulator table, real for the first time) — see §10 for the full account |
-| `MultiObservation` / `DiagnosticReport` | v1, trajectory event **(GMF coverage Wave D stage D1, ADR-0029, moved here from the Deferred table below — the same "move, not duplicate" treatment `Device`/`DeviceEnd`/`CallSubmodule`/`Death` already got; `DiagnosticReport` enters this table for the first time — it was never in this document's own original brief at all)** | both extend Synthea's own private `ObservationGroup` class and compile to the SAME new `:diagnostic-report` IR step (embedded, inline `Observation`-shaped children, never a reference — §11's own D1a-2 grounding against `State.java`). `:observation`'s own IR step gains `:value-code`/`:category`/`:reference-range`/`:interpretation` alongside it, closing the `value_code`/`vital_sign` value-sourcing gap a standalone Observation state can also carry — see §12 for the full per-layer account |
-| `CarePlanStart` / `CarePlanEnd` | v1, trajectory event **(GMF coverage Wave D stage D2, ADR-0029, moved here from the Deferred table below — the same "move, not duplicate" treatment every prior wave's own state-type additions already got)** | a paired span structurally identical to `MedicationOrder`/`MedicationEnd` (State.java's own `CarePlanStart extends AttributeAssignableState`/`CarePlanEnd` classes, §13's own grounding) — compiles to new `:care-plan-start`/`:care-plan-end` IR steps, `:care-plan-citation` resolved the same `:references`-index way `:order-citation` already is. CarePlan itself stays v2-silent (R3) — no HL7v2 message shape, its natural rendering is a future FHIR CarePlan resource. The mechanism is built and tested; NO real vendored module exercises it yet as of this table's own writing (§13's own fix-forward: both D2 candidates deferred for unrelated reasons, one a compound-Guard interpreter gap) |
+| `CallSubmodule` | v1, trajectory-adjacent **(GMF coverage Wave B, ADR-0027, moved here from the Deferred table below — the same "move, not duplicate" treatment `Device`/`DeviceEnd` already got at M5b)** | none of its own — recursion into a second module JSON file, loaded/namespaced/gated as part of the SAME closure (§1's own loader gate now extends to it, `ehrt.sim-trajectory.gmf/load-closure`, D3) and run via descend-run-return (`ehrt.sim-trajectory.gmf-interpreter`'s own D1-D4 order contract, ns docstring). Every trajectory event a called submodule itself emits carries the normal event-type mapping this table already assigns it (a `MedicationOrder` inside a callee is still a `:medication-order` event) PLUS a `:call-path` citation (D2) — see gmf-interpreter-findings.md §9 for the full account |
+| `Death` | v1, terminal trajectory event **(GMF coverage Wave C, ADR-0028, moved here from the Deferred table below — the same "move, not duplicate" treatment `Device`/`DeviceEnd`/`CallSubmodule` already got)** | ends the walk (`:terminal? true`, `:next nil` — the module's own declared post-Death transition is never resolved, a disclosed departure from real Synthea's own continue-past-Death semantics). Compiles at `CompileTrajectory` to the EXISTING `:discharge` IR step, no new step type — death inside a still-open encounter attaches as that encounter's own terminal disposition (`:disposition :expired`, `:codes` the cause of death verbatim); death outside any encounter closes the pathway without fabricating a discharge from an admission that never happened. `ehrt.sim-engine.engine`'s own `:discharge` decide/evolve fold this to `:status :expired` (`components/sim/docs/patient-state-model.md`'s accumulator table, real for the first time) — see gmf-interpreter-findings.md §10 for the full account |
+| `MultiObservation` / `DiagnosticReport` | v1, trajectory event **(GMF coverage Wave D stage D1, ADR-0029, moved here from the Deferred table below — the same "move, not duplicate" treatment `Device`/`DeviceEnd`/`CallSubmodule`/`Death` already got; `DiagnosticReport` enters this table for the first time — it was never in this document's own original brief at all)** | both extend Synthea's own private `ObservationGroup` class and compile to the SAME new `:diagnostic-report` IR step (embedded, inline `Observation`-shaped children, never a reference — gmf-interpreter-findings.md §11's own D1a-2 grounding against `State.java`). `:observation`'s own IR step gains `:value-code`/`:category`/`:reference-range`/`:interpretation` alongside it, closing the `value_code`/`vital_sign` value-sourcing gap a standalone Observation state can also carry — see gmf-interpreter-findings.md §12 for the full per-layer account |
+| `CarePlanStart` / `CarePlanEnd` | v1, trajectory event **(GMF coverage Wave D stage D2, ADR-0029, moved here from the Deferred table below — the same "move, not duplicate" treatment every prior wave's own state-type additions already got)** | a paired span structurally identical to `MedicationOrder`/`MedicationEnd` (State.java's own `CarePlanStart extends AttributeAssignableState`/`CarePlanEnd` classes, gmf-interpreter-findings.md §13's own grounding) — compiles to new `:care-plan-start`/`:care-plan-end` IR steps, `:care-plan-citation` resolved the same `:references`-index way `:order-citation` already is. CarePlan itself stays v2-silent (R3) — no HL7v2 message shape, its natural rendering is a future FHIR CarePlan resource. The mechanism is built and tested; NO real vendored module exercises it yet as of this table's own writing (gmf-interpreter-findings.md §13's own fix-forward: both D2 candidates deferred for unrelated reasons, one a compound-Guard interpreter gap) |
 | `Counter` | v1, consumed internally **(GMF coverage Wave F, ADR-0036 AR-1, moved here from the Deferred table below — the same "move, not duplicate" treatment every prior wave's own state-type additions already got)** | none — SetAttribute-shaped attribute arithmetic (State.java's own `Counter` class): reads the module-namespaced attribute (missing → 0), increments or decrements by `:amount` (default 1 when absent or authored 0 — upstream's own indistinguishable-at-the-source legacy default), writes back. Zero draws, no trajectory event |
 | `ImagingStudy` | v1, trajectory event **(GMF coverage Wave F, ADR-0036 AR-2, reverses this document's own original R5 deferral)** | one `:imaging-study` trajectory event carrying the procedure code, primary modality, and drawn series/instance counts (glass-box — no per-instance content, DICOM UID synthesis not ported). Compiles to the SAME IR step family a `:procedure` produces (`compile-trajectory`'s own `procedure->step`, unchanged) — upstream's own companion-procedure move, the 30-minute stop left as record metadata, never a clock advance. Series-count/instance-count bounds each cost one draw when a module declares them (upstream's own `rand(min, max+1)` int-cast, ≡ `rand-int-in`); no vendored-corpus module this session's own census touches declares study-level bounds, only per-series instance bounds (`lung_cancer.json`) |
 | `SupplyList` | v1, trajectory event (log-only) **(GMF coverage Wave F, ADR-0036 AR-3, newly built — never previously vendored or tabled)** | a log-only trajectory fact (`:supply-list`, carrying each `{code quantity}` component verbatim) compiling to NO IR step, unconditionally — the `ConditionEnd` no-open-encounter precedent verbatim (above), without that precedent's own encounter-open gate. Zero draws, zero clock advance. Wire rendering of supplies (an HL7v2 shape, a FHIR SupplyDelivery resource, or similar) is out of scope for hospital-traffic v1, disclosed |
-| `VitalSign` | v1, consumed internally **(GMF coverage Wave VS, ADR-0039 AR-1/AR-2, moved here from the Deferred table below — the same "move, not duplicate" treatment every prior wave's own state-type additions already got)** | none of its own — writes into ctx's own new `:vital-signs` register (§16, GLOBAL over the whole walk, never root-scoped the way `:attributes` is), never a trajectory event. Samples ONCE (exact: zero draws; range: one uniform draw; distribution: one draw via the Wave F0 samplers) — a disclosed divergence from upstream's own per-read re-sampling generator (§16's own AR-2 account). `expression` (CQL) is a clean, named load rejection, not built — no candidate closure needs it |
+| `VitalSign` | v1, consumed internally **(GMF coverage Wave VS, ADR-0039 AR-1/AR-2, moved here from the Deferred table below — the same "move, not duplicate" treatment every prior wave's own state-type additions already got)** | none of its own — writes into ctx's own new `:vital-signs` register (gmf-interpreter-findings.md §16, GLOBAL over the whole walk, never root-scoped the way `:attributes` is), never a trajectory event. Samples ONCE (exact: zero draws; range: one uniform draw; distribution: one draw via the Wave F0 samplers) — a disclosed divergence from upstream's own per-read re-sampling generator (gmf-interpreter-findings.md §16's own AR-2 account). `expression` (CQL) is a clean, named load rejection, not built — no candidate closure needs it |
 
 **Deferred, with reasons:**
 
@@ -134,7 +134,7 @@ no candidate-driven reason to defer any of them. **GMF coverage Wave B
 (2026-08-02, ADR-0027, D5) adds a fifth: `type_of_care_transition`**
 (below) — Synthea's own care-setting dispatcher, characterized against
 real source before implementation and built once `urinary_tract_
-infections.json`'s own survey named it (§9 has the full dispatch-rule
+infections.json`'s own survey named it (gmf-interpreter-findings.md §9 has the full dispatch-rule
 account, including the documented simplification this project's own
 lack of a payer/insurance concept requires).
 
@@ -148,19 +148,19 @@ lack of a payer/insurance concept requires).
   (`{:attribute name :default n}`, an attribute-sourced weight with a
   JSON-specified fallback, `Transition.java`'s own field names
   verbatim) — `stroke.json`'s own `Chance_of_Stroke` gate, ADR-0028;
-  the mechanism is built, but stroke itself stays deferred (§10's own
+  the mechanism is built, but stroke itself stays deferred (gmf-interpreter-findings.md §10's own
   dated note: `stroke_risk` is SPECIFIED, unsourceable content, not
   resolved by the mechanism landing).
 - **`conditional_transition`** — an ordered list of
   (condition, target) pairs, first match wins; if NO condition matches
   and none is condition-less, the LAST entry is used unconditionally
-  (§14's own D3f finding — this project's own port did not implement
+  (gmf-interpreter-findings.md §14's own D3f finding — this project's own port did not implement
   this fallback until `urinary_tract_infections.json`'s real closure
   exercised the gap).
 - **`complex_transition`** — `conditional_transition` and
   `distributed_transition` composed: an ordered list of conditions,
   each guarding EITHER a direct `:transition` OR its own nested
-  `:distributions` list (§14's own D3f finding — real Synthea's
+  `:distributions` list (gmf-interpreter-findings.md §14's own D3f finding — real Synthea's
   `ComplexTransitionOption` allows either per branch; this loader's own
   schema previously required `:distributions` unconditionally), same
   first-match/last-entry-fallback rule as `conditional_transition`.
@@ -169,10 +169,10 @@ lack of a payer/insurance concept requires).
   weights of its own in the module JSON; this interpreter resolves it
   via the SAME weighted-pick mechanism `distributed_transition` already
   uses (one `.nextDouble` draw), against a year-gated weight table
-  (§9's own D5 account has the full characterization and citation).
+  (gmf-interpreter-findings.md §9's own D5 account has the full characterization and citation).
 - **`lookup_table_transition`** (GMF coverage Wave D stage D3,
   2026-08-02, ADR-0029, D3a, H2) — the SIXTH kind, discovered on
-  `urinary_tract_infections.json`'s own entry path (§9) and NAMED, not
+  `urinary_tract_infections.json`'s own entry path (gmf-interpreter-findings.md §9) and NAMED, not
   built, at Wave B (it needed an external lookup-table CSV mechanism
   this project had no analog for). Landed this session: closures may
   carry DATA-FILE members (lookup-table CSVs) alongside JSON modules
@@ -183,7 +183,19 @@ lack of a payer/insurance concept requires).
   own weights, falling back to each entry's own JSON-declared
   `default_probability` on no match (real Synthea's own
   `defaultTransitions` mirror). Full characterization and both
-  vendored tables (`uti.csv`/`uti_recurrence.csv`): §14.
+  vendored tables (`uti.csv`/`uti_recurrence.csv`): gmf-interpreter-findings.md §14.
+  **Dated note (2026-08-03, GMF coverage Wave LC, `notes/ADRs.md`
+  ADR-0038): H2's own curated column whitelist RETIRES.** Read directly
+  against `Transition.java`'s own `LookupTableTransition`, upstream has
+  no closed column vocabulary — any header column that isn't `age`/
+  `time`/a declared transition-state name resolves as an ordinary
+  attribute. The resolver generalizes accordingly: `age`/`time` stay
+  special (unchanged); every other column resolves against the current
+  module's namespaced attributes first, then a persona-field mapping
+  (`gender`→`:sex`, `race`→`:race`, `socioeconomic_category`→
+  `:socioeconomic-category`, `state`→`:state`), else honest absence (a
+  recorded walk error, ADR-0036 AR-4's own precedent) — never a fixed
+  whitelist gate. Nine previously-blocked modules close on this change.
 
 **Condition predicates, v1 as originally scoped: age, sex, attribute,
 and `PriorState`** — plus, **M5b finding**, `Active Condition`/`Active
@@ -266,7 +278,17 @@ the identical RxNorm-7984-Penicillin-V shape `sinusitis.json`'s already
 does. `Vital Sign`/`Active CarePlan` stay OUT (AR-2, pre-ruled — no
 accumulator or IR home exists for either yet); real, confirmed by this
 session's own characterization: neither appears anywhere in
-`sore_throat.json`. Semantics for all five grounded against Synthea's
+`sore_throat.json`.
+**Dated note (2026-08-03/2026-08-04, `notes/ADRs.md` ADR-0039 AR-1/
+ADR-0041 AR-2): both landed, neither stays OUT.** `Vital Sign`-as-a-
+condition-type (`:vital-sign`) joined v1 at Wave VS, reading the new
+per-patient vital-sign register (`gmf-interpreter-findings.md` section
+16's own accumulator home). `Active
+CarePlan`-as-a-condition-type (`:active-careplan`) joined v1 at Wave
+I2, the same log-query family `Active Condition`/`Active Medication`
+already establish, dispatched off `Logic.java`'s own `ActiveLogic`
+parent (`:codes` first, else `:referenced-by-attribute`) rather than
+the `ActiveCarePlan` subclass alone. Semantics for all five grounded against Synthea's
 own `Logic.java`/`Person.java` at this document's own pinned commit
 (`ehrt.sim-trajectory.gmf-interpreter`'s own per-predicate docstrings
 carry the full citation); `Observation`'s own v1 scope omits the "is
@@ -276,7 +298,7 @@ candidate module this session read.
 
 **GMF coverage Wave F (2026-08-03, ADR-0036 AR-4) adds `Not`, `Race`,
 and `Socioeconomic Status` — the census's own `:walk-failed` mechanisms
-table (§15) named all three as real, mechanically-found gaps blocking
+table (gmf-interpreter-findings.md §15) named all three as real, mechanically-found gaps blocking
 1–3 modules each.** `Not` (Logic.java's own `Not` class) is recursive
 negation over a SINGLE nested condition — a distinct recursive shape
 from `And`/`Or`/`At Least`'s own plural `:conditions` vector (Logic.java's
@@ -569,7 +591,7 @@ SetAttribute/Symptom write path and the Attribute/Symptom condition
 read path) is now root-scoped, not module-scoped: a `CallSubmodule`
 callee and its caller share one namespace (the walk's own root module
 id), by design (D1's own three-compartment person record, `docs/gmf-
-interpreter.md`'s own §9). This is intentional sharing, not a
+interpreter.md`'s own gmf-interpreter-findings.md §9). This is intentional sharing, not a
 regression of the collision-freedom property below — but it DOES open
 a distinct risk the load-time check does not cover: two different
 closure members writing the SAME bare attribute name for UNRELATED
@@ -991,9 +1013,9 @@ erase convention, not silently edited above.
 | `appendicitis.json` | 35 | none — all 35 states are v1 types | none — only `Gender`/`PriorState`, both in v1's original four | emergency → inpatient (ED admission, then transfer to an inpatient surgical encounter) | **Expressible, VENDORED this session** |
 | `sore_throat.json` | 44 | none — all 44 states are v1 types (with the `Symptom` recommendation) | **`At Least`, `Symptom`, `Observation`** — an `At Least`-5-of compound on `Determine_if_Bacterial`, reached by EVERY patient who completes `Doctor_Visit` (not the excludable `Active Allergy` tail this document's own prior survey named as sore_throat's only gap) | ambulatory | State-type clean; blocked by a MANDATORY-path condition-vocabulary gap bigger than previously characterized — **RESOLVED and VENDORED, GMF coverage Wave A, 2026-08-02** (`.agents/plans/2026-08-02-gmf-coverage-plan.md`; `resources/modules/sore_throat.json`'s own NOTICE entry) |
 | `urinary_tract_infections.json` | 29 | `CallSubmodule` ×3 | n/a (module has no `Encounter` state of its own) | none directly — delegates via `type_of_care_transition` (a FIFTH transition kind, outside this document's four, §2) to `uti/ambulatory_path`\|`ed_path`\|`telemed_path` submodules | Not encounter-bearing at its own top level AND `CallSubmodule`-blocked — **deferred** |
-| `total_joint_replacement.json` | 31 | `CallSubmodule` ×4, `CarePlanStart`/`CarePlanEnd` ×1 each | none (`Age`/`And`/`Attribute`, all v1) | ambulatory (pre-op) → inpatient (surgery) → ambulatory (follow-up) | Rejected at LOAD (deferred types scattered through pre-op assessment AND post-op pain management AND post-op careplan — not an excludable tail) — **deferred**. **Dated note, GMF coverage Wave B (2026-08-02, ADR-0027): `CallSubmodule` is REMOVED from this module's own blocker list** — Wave B built the mechanism this row's own gap column names, though this module's OWN four call-paths were never fetched or characterized this session (unlike `ear_infections.json`/`urinary_tract_infections.json`, §9) — this row's own `CarePlanStart`/`CarePlanEnd` gap alone still blocks it, Wave D's own scope, and this module's real closure could still hide further gaps a real characterization pass would need to surface before any vendoring claim |
+| `total_joint_replacement.json` | 31 | `CallSubmodule` ×4, `CarePlanStart`/`CarePlanEnd` ×1 each | none (`Age`/`And`/`Attribute`, all v1) | ambulatory (pre-op) → inpatient (surgery) → ambulatory (follow-up) | Rejected at LOAD (deferred types scattered through pre-op assessment AND post-op pain management AND post-op careplan — not an excludable tail) — **deferred**. **Dated note, GMF coverage Wave B (2026-08-02, ADR-0027): `CallSubmodule` is REMOVED from this module's own blocker list** — Wave B built the mechanism this row's own gap column names, though this module's OWN four call-paths were never fetched or characterized this session (unlike `ear_infections.json`/`urinary_tract_infections.json`, gmf-interpreter-findings.md §9) — this row's own `CarePlanStart`/`CarePlanEnd` gap alone still blocks it, Wave D's own scope, and this module's real closure could still hide further gaps a real characterization pass would need to surface before any vendoring claim |
 | `congestive_heart_failure.json` | 115 | `CallSubmodule` ×7, `Counter` ×5, `Death` ×4, `ImagingStudy` ×4, `DiagnosticReport` ×3, `CarePlanStart`/`CarePlanEnd` ×3+1, `MultiObservation` ×1 (28/115 ≈ 24% deferred) | `Vital Sign`, `Date`, `Or`, `Active CarePlan` — four more gaps | ambulatory ×3, emergency, hospice, inpatient ×2 | Far over ADR-0013 point 4's "modest surface" bar — **deferred, cited for prioritization data only** |
-| `sepsis.json` | 37 | `MultiObservation` ×2, `DiagnosticReport` ×1, `Death` ×1 | none new (`Active Allergy`/`Age`/`Observation`, all recognized keywords — `Observation`-as-condition-type is itself the sore_throat-shared gap) | emergency | `DiagnosticReport` (`Blood_Cultures`) is the FIRST state after the encounter opens, unconditional; `MultiObservation` (`Record_Blood_Pressure`) fires on both the vasopressor and ICU-survival branches — both MANDATORY, not tails — deferred at M7 time. **VENDORED, GMF coverage Wave D stage D1 (2026-08-02, ADR-0029) — `resources/modules/NOTICE`'s own table; `Death` was already v1 by Wave C, `MultiObservation`/`DiagnosticReport` closed this wave, §11/§12 for the full account** |
+| `sepsis.json` | 37 | `MultiObservation` ×2, `DiagnosticReport` ×1, `Death` ×1 | none new (`Active Allergy`/`Age`/`Observation`, all recognized keywords — `Observation`-as-condition-type is itself the sore_throat-shared gap) | emergency | `DiagnosticReport` (`Blood_Cultures`) is the FIRST state after the encounter opens, unconditional; `MultiObservation` (`Record_Blood_Pressure`) fires on both the vasopressor and ICU-survival branches — both MANDATORY, not tails — deferred at M7 time. **VENDORED, GMF coverage Wave D stage D1 (2026-08-02, ADR-0029) — `resources/modules/NOTICE`'s own table; `Death` was already v1 by Wave C, `MultiObservation`/`DiagnosticReport` closed this wave, gmf-interpreter-findings.md §11/gmf-interpreter-findings.md §12 for the full account** |
 | `myocardial_infarction.json` | 26 | `CallSubmodule` ×5, `Death` ×2, `CarePlanStart` ×1 | none | emergency | `ACS_Arrival_Meds`/`Cardiac_Labs`/`NSTEACS`/`STEMI` are all `CallSubmodule` and ALL reachable unconditionally past `ECG` — the module's entire post-ECG therapeutic content is opaque — **deferred**. **Dated note, GMF coverage Wave B (2026-08-02, ADR-0027): `CallSubmodule` is REMOVED from this module's own blocker list**, same caveat as `total_joint_replacement.json`'s own note above — the mechanism landed, but this module's own five call-paths were never fetched or characterized this session. `Death`/`CarePlanStart` still block it (Wave C/Wave D respectively) — matching the wave plan's own "B+C → MI" sequencing (`.agents/plans/2026-08-02-gmf-coverage-plan.md`), not reopened or accelerated by this note |
 | `stroke.json` | 12 | `Death` ×1 (an excludable ~17.5% procedural-mortality tail — the ONLY sinusitis-precedent-shaped gap found this session) | **`Date`** — `Emergency_Encounter`'s own `conditional_transition` gates Clopidogrel/Alteplase on simulated year, evaluated immediately on encounter entry, for every patient — **condition-vocabulary gap RESOLVED, GMF coverage Wave A, 2026-08-02** (`:date` now v1, `.agents/plans/2026-08-02-gmf-coverage-plan.md`) | emergency | Smallest, cleanest STATE-type surface surveyed after appendicitis — the `Date` gap that blocked it is closed, but the `Death` state-type gap (this row's own second column) still does, per AR-6 (same plan): `Death` stays a load-bearing, semantically-real state (unlike `Device`, never a safe consumed-internally pass-through) — waits for Wave C's own `:expired`/post-mortem wiring — **deferred, revisit trigger: Wave C**. **Dated note, GMF coverage Wave C (2026-08-02, ADR-0028): `Death` is REMOVED from this module's own blocker list, but a NEW, worse gap replaces it — still deferred, revisit trigger changed.** `Death` itself landed this wave (section 10) and this module's own `Death` state (the `range`+`codes` form) is now fully expressible. But real-closure characterization (section 10's own C5 survey) found `Chance_of_Stroke`'s own `distributed_transition` gates the "Stroke" branch on `{"attribute": "stroke_risk", "default": 0}` — a real Synthea engine attribute (`CardiovascularDiseaseModule`'s own Framingham risk score) this project has no source for, whose own JSON default is exactly 0, making onset (and therefore `Death`) structurally unreachable if honored literally. Escalated and ruled (design channel, 2026-08-02): `stroke.json` stays deferred — revisit trigger is now an attribute-sourced `distributed_transition` weight mechanism (unbuilt) AND a stroke-risk-equivalent data source (out of this project's own persona model), both landing together, not scoped this session |
 | `self_harm.json` | 35 | `Death` ×1 (excludable ~1.6–5.5% fatal-attempt tail), `CarePlanStart` ×1 (in the SECOND, ambulatory follow-up encounter — moot regardless, see "Multi-encounter" below) | none (`And`/`Attribute`/`Gender`/`Race`, all v1) | ambulatory ×2, emergency | Both deferred states are structurally isolated exactly like `sinusitis.json`'s own `Device`/`DeviceEnd` precedent — but the loader's all-or-nothing gate rejects on PRESENCE, not reachability, so isolation doesn't save it under the loader AS BUILT — **deferred, but the strongest evidence yet for a reachability-aware load gate (prioritization table, below)** |
@@ -1192,11 +1214,11 @@ hand-reading a scouted sample (26–41 of 85 modules, depending on the
 row) — exactly the survey method the parity plan's own §3 named as
 twice-overturned by fetched evidence (`urinary_tract_infections.json`'s
 "×3 closure" was really 12 files; `myocardial_infarction.json`'s was
-27). §15, below, is the mechanical census that walks and digests the
+27). gmf-interpreter-findings.md §15, below, is the mechanical census that walks and digests the
 FULL catalog at this document's own pin: it is now the frontier of
 record. This table stays as read (not deleted — a real, dated snapshot
 of what a hand survey found and got partly wrong, itself useful
-provenance), but any future prioritization call reads §15 first.
+provenance), but any future prioritization call reads gmf-interpreter-findings.md §15 first.
 
 Counting across all 26 modules inspected this session (10 formal reads
 + 16 histogram-scouted) plus the two modules this project already had
@@ -1204,7 +1226,7 @@ evidence for (`ear_infections.json`, `sinusitis.json` itself):
 
 | Deferred feature | Modules blocked (of 28 total ever inspected) | Content class it would unlock |
 |---|---:|---|
-| `CallSubmodule` | 20 — `ear_infections`, `urinary_tract_infections`, `total_joint_replacement`, `myocardial_infarction`, `dermatitis`, `allergic_rhinitis`, `food_allergies`, `contraceptive_maintenance`, `dialysis`, `hiv_diagnosis`, `hypertension`, `osteoarthritis`, `covid19`, `stable_ischemic_heart_disease`, `lupus`, `allergies`, `lung_cancer`, `colorectal_cancer`, `hypothyroidism`, `diabetic_retinopathy_treatment`, `breast_cancer`, `cystic_fibrosis`, `anemia___unknown_etiology`, `home_hospice_snf` (24, corrected count — see note) | By far the largest single blocker: shared medication-regimen and referral submodules (`medications/*`, `heart/*`, `dme/*`, `total_joint_replacement/*`, `anemia/*`) are how modern Synthea authors factor out repeated therapeutic content — this is THE headline finding, not a tie. `hypothyroidism.json` is the SECOND confirmed instance (after `self_harm.json`) of a module blocked by exactly ONE otherwise-unreachable-by-default `CallSubmodule` — real, repeated evidence for a reachability-aware load gate as a cheap, high-value v1.1 extension. **Dated note, GMF coverage Wave B (2026-08-02, ADR-0027): the MECHANISM this row names is now built** (`ehrt.sim-trajectory.gmf/load-closure`, `ehrt.sim-trajectory.gmf-interpreter`'s own call/return, §9) — `ear_infections.json` is REMOVED from this list, vendored (`resources/modules/NOTICE`). `urinary_tract_infections.json` stays on it, but for a DIFFERENT reason now: its own real closure (twelve files, not the four this table's own count assumed) is dirty with `DiagnosticReport`/`MultiObservation`, both Wave D's own scope (§9's own full account) — `CallSubmodule` itself is no longer what blocks it. Every other module on this list was NOT re-characterized this session; each still needs its own real closure read before any vendoring claim, the same caveat this document's own MI/`total_joint_replacement.json` rows (above) now carry |
+| `CallSubmodule` | 20 — `ear_infections`, `urinary_tract_infections`, `total_joint_replacement`, `myocardial_infarction`, `dermatitis`, `allergic_rhinitis`, `food_allergies`, `contraceptive_maintenance`, `dialysis`, `hiv_diagnosis`, `hypertension`, `osteoarthritis`, `covid19`, `stable_ischemic_heart_disease`, `lupus`, `allergies`, `lung_cancer`, `colorectal_cancer`, `hypothyroidism`, `diabetic_retinopathy_treatment`, `breast_cancer`, `cystic_fibrosis`, `anemia___unknown_etiology`, `home_hospice_snf` (24, corrected count — see note) | By far the largest single blocker: shared medication-regimen and referral submodules (`medications/*`, `heart/*`, `dme/*`, `total_joint_replacement/*`, `anemia/*`) are how modern Synthea authors factor out repeated therapeutic content — this is THE headline finding, not a tie. `hypothyroidism.json` is the SECOND confirmed instance (after `self_harm.json`) of a module blocked by exactly ONE otherwise-unreachable-by-default `CallSubmodule` — real, repeated evidence for a reachability-aware load gate as a cheap, high-value v1.1 extension. **Dated note, GMF coverage Wave B (2026-08-02, ADR-0027): the MECHANISM this row names is now built** (`ehrt.sim-trajectory.gmf/load-closure`, `ehrt.sim-trajectory.gmf-interpreter`'s own call/return, gmf-interpreter-findings.md §9) — `ear_infections.json` is REMOVED from this list, vendored (`resources/modules/NOTICE`). `urinary_tract_infections.json` stays on it, but for a DIFFERENT reason now: its own real closure (twelve files, not the four this table's own count assumed) is dirty with `DiagnosticReport`/`MultiObservation`, both Wave D's own scope (gmf-interpreter-findings.md §9's own full account) — `CallSubmodule` itself is no longer what blocks it. Every other module on this list was NOT re-characterized this session; each still needs its own real closure read before any vendoring claim, the same caveat this document's own MI/`total_joint_replacement.json` rows (above) now carry |
 | `CarePlanStart`/`CarePlanEnd` | 11 — `total_joint_replacement`, `congestive_heart_failure`, `dermatitis`, `food_allergies`, `myocardial_infarction`, `attention_deficit_disorder`, `gout`, `fibromyalgia`, `self_harm`, `dementia`, `lung_cancer`, `lupus`, `veteran_ptsd` (13, see note) | Structured chronic-disease/post-procedure care-management plans (physical therapy, psychiatric follow-up, home health) — almost always paired with `CallSubmodule` in the same module |
 | `Death` | 12+ confirmed — `congestive_heart_failure`, `sepsis`, `myocardial_infarction`, `stroke`, `self_harm`, `gallstones`, `epilepsy`, `spina_bifida`, `cystic_fibrosis`, `breast_cancer`, plus several histogram-only hits (`chronic_kidney_disease`, `hiv_diagnosis`, `stable_ischemic_heart_disease`, `colorectal_cancer`, `lung_cancer`) | **The single strongest, most consistent finding in this table.** Every one of the 12+ modules above has its `Death` state on a genuinely excludable, low-probability tail — NEVER once on a mandatory path, across all 41 modules this session read at any depth. `spina_bifida.json` (above) is the concrete, empirically-confirmed proof: a module this session first mis-characterized as vendorable specifically BECAUSE its `Death` state looked safely isolated — it IS safely isolated, the loader's all-or-nothing gate is what still blocks it. Promoting `Death` to a `Device`/`DeviceEnd`-style consumed-internally state (wired to the existing `:expired` machinery, `components/sim/docs/clinical-realities.md`'s post-mortem entry) is, on this session's own evidence, the cheapest, highest-confidence, most immediately-productive v1.1 extension in this entire table — `spina_bifida.json` alone is ready to vendor the day it lands |
 | **Wellness-encounter `wellness: true` encoding** (new this session) | 5 confirmed (`mTBI`, `atrial_fibrillation`, `osteoporosis`, `epilepsy`, `med_rec`) of a ~41-module scouted sample — likely still under-counted, not systematically checked across all 85 | ~~Blocks an entire v1 ENCOUNTER CLASS (`:wellness`) via this idiom specifically — the cheapest fix in this table (a loader normalization, not new interpreter machinery); `epilepsy.json` and `med_rec.json` are otherwise FULLY clean, making this the single highest-confidence "would vendor immediately if fixed" row in this table~~ **OVERTURNED (2026-08-03, `notes/ADRs.md` ADR-0031 AR-5).** A live probe against Synthea source at this document's own pin (`7e08387c68a7f0e21d13076609a159fd473fc902`, `State.java`'s `Encounter.process` wellness branch) found `wellness: true` creates NOTHING and BLOCKS until the engine's hardcoded `EncounterModule` opens its own next separately-scheduled wellness encounter — not a loader-normalization gap at all, but the absence of a synthesized wellness CYCLE this sim has no equivalent for. The "cheapest fix" characterization above is RETIRED; the five modules move into Wave G's own unlock ledger (`.agents/plans/2026-08-02-gmf-parity-plan.md`), gated on the wellness-cycle design ADR-0031 AR-2 rules |
@@ -1226,7 +1248,7 @@ transparency but not double-verified by a full read the way the
 formal ten were — treat the parenthetical as directional, not as
 precise as the formal-ten figures.*
 
-**Dated note, GMF coverage Wave D stage D2 (2026-08-02, ADR-0029, §13
+**Dated note, GMF coverage Wave D stage D2 (2026-08-02, ADR-0029, gmf-interpreter-findings.md §13
 has the full account): both `myocardial_infarction.json` and
 `total_joint_replacement.json` real closures now fetched and read in
 full, undercounted by this table the same way `urinary_tract_infections.json`
@@ -1239,20 +1261,20 @@ and a genuinely NEW state type this document has never named,
 real closure is only 4 files and surveys CLEAN of every Wave-D-scoped
 type except `CarePlanStart`/`CarePlanEnd` itself — its own
 `joint_replacement` attribute gap was resolved this session (a small,
-disclosed `run-module` extension, §13), but a SECOND, independent
+disclosed `run-module` extension, gmf-interpreter-findings.md §13), but a SECOND, independent
 blocker surfaced testing that fix against the real closure: a compound
 `Joint_Replacement_Guard` (`Age > 50` AND'd with an attribute check)
 this interpreter's own `age-guard-jump-days` cannot analytically
 resolve (bare `:age >= N years` only) — the walk blocks permanently at
 age 0, confirmed empirically. **NOT vendored this session either** —
-named as this closure's own next prerequisite (§13's own fix-forward
+named as this closure's own next prerequisite (gmf-interpreter-findings.md §13's own fix-forward
 finding), unowned until a future session extends Guard's own
 condition-resolution machinery. Both rows' own `CarePlanStart`/
 `CarePlanEnd` cell entries stay accurate as prioritization data; the
-CarePlan MECHANISM itself is real, built, and tested regardless (§13),
+CarePlan MECHANISM itself is real, built, and tested regardless (gmf-interpreter-findings.md §13),
 awaiting a clean closure to prove it against.
 
-**Dated note, GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, §14
+**Dated note, GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, gmf-interpreter-findings.md §14
 has the full account): both `urinary_tract_infections.json` and
 `total_joint_replacement.json` are now VENDORED (`resources/modules/
 NOTICE`'s own new rows), closing this table's own last two open Wave D
@@ -1274,7 +1296,7 @@ type are still unowned). `stroke.json` stays deferred too: D3 also
 lands the attribute-weighted `distributed_transition` mechanism (H3,
 `stroke.json`'s own `Chance_of_Stroke` shape byte-confirmed against
 source) but this does NOT unblock stroke — `stroke_risk` stays
-SPECIFIED, unsourceable content (§10's own dated note, unchanged);
+SPECIFIED, unsourceable content (gmf-interpreter-findings.md §10's own dated note, unchanged);
 Wave D's own three named stages (D1/D2/D3) are now all closed.
 
 **Headline: `CallSubmodule` blocks more real content than every other
