@@ -10111,4 +10111,45 @@ retirement note (AR-M4-3). No check logic edits — invariant changes
 are FINDINGS, never edits (none found). No oracle redesign (J2 stays
 Deferred, re-cited above, not touched). Frozen archives untouched.
 
+### Docs coherence pass verification riders (2026-08-05, AR-D-4/5/6)
+
+Three author rulings from the design channel's own review of this
+ADR's M4 verification, executed as part of the 2026-08-05 docs
+coherence pass (the session AR-M4-7's own "docs coherence pass" named
+future above triggered):
+
+**AR-D-4 (explain-profiles retires as originally ruled).**
+`components/sim-engine/src/ehrt/sim_engine/order_profiles.clj`'s own
+`explain-profiles` def (previously line 66) had zero callers at
+AR-M4-5(a)'s original ruling time and still has zero callers, fresh-
+grepped this session before deletion. The M4 session's own conservative
+deviation — kept it, disclosed rather than removed — is overruled: the
+author enforces AR-M4-5(a) as written (zero callers = retire). Deleted
+outright, no dated retirement comment left at the site (nothing calls
+it; a "removed" comment would itself be dead weight) — this ADR line is
+the disclosure.
+
+**AR-D-5 (façade docstring annotation, ratified).** The author
+RATIFIES M4's own annotate-over-delete treatment of the façade's
+fat-component disclosure (`components/sim/src/ehrt/sim/interface.clj`
+lines 2–9, the original disclosure, left verbatim; lines 11–21, the
+2026-08-04 dated note above it, added alongside rather than replacing
+it). Annotate-not-rewrite applied to a docstring is the house
+discipline this project already applies to code comments and ADR
+entries alike — the docs-coherence-pass prompt's own word "retires"
+for this treatment was the design channel's imprecision, recorded as
+such; nothing about M4's own execution changes.
+
+**AR-D-6 (parity-ledger counting definitions, both verified).** M1–M3's
+own parity ledgers (this ADR's execution records) counted both
+`^(deftest ` and `^(defspec ` forms; M4's own ledger (above) counted
+`deftest` only. Conservation holds under EITHER definition — design-
+channel verified: pre-M4 residual `sim` was 95 tests under the
+both-forms definition, and M4's own split accounts for it in full
+either way (32 `sim-check` + 62 `sim-engine`/siblings + 1 residual
+orchestration, both-forms count). Every future parity ledger in this
+project states which definition (deftest-only, or deftest+defspec) it
+counts, explicitly, rather than leaving the reader to infer it from
+context the way this arc's own four stages did.
+
 ---

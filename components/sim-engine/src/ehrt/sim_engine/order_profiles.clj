@@ -63,8 +63,6 @@
 
 (defn valid-profiles? [profiles] (m/validate OrderProfiles profiles))
 
-(defn explain-profiles [profiles] (m/explain OrderProfiles profiles))
-
 (def default-profiles
   "Loaded once at namespace load: resources/order-profiles.edn, this
   repo's own hashed-config catalytic content (target 3 -- committed,
