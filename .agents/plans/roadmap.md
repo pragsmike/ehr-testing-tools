@@ -63,6 +63,7 @@ per item; done items move to the bottom of their section with a date and sha.
   explicit fence) — AUTHOR ACTION.
 
 ## Deferred (explicitly, with revisit triggers)
+Rows here are LIVE. Closed rows move to Done with their notes.
 - **Carry-across emission** (2026-08-04, `notes/ADRs.md` ADR-0042
   AR-2): a straddling encounter (opens history, closes horizon) yields
   NO in-window wire traffic for that patient under Wave H's own pre-
@@ -88,35 +89,7 @@ per item; done items move to the bottom of their section with a date and sha.
   output, fault-injection's own sibling, not a sim feature. Revisit
   trigger: a real consumer for pre-window messages appears.
 - P2-5 intake staging-dir behavior (deferred 2026-07-31)
-- Reading-set budget numbers (charter §6: rule after real sizes are measured)
 - Verdict-cache placement revisit (ADR-0011 note: second consumer, or never)
-- Sim-manifest interop design between sim and corpus (pre-review open
-  thread). **RESOLVED (2026-08-04, sim split B M1, `notes/ADRs.md`
-  ADR-0043):** `components/provenance` is the interop design —
-  ManifestV0/V1/V1_1 + validators moved to the single acyclic home
-  both corpus and sim depend on; the sim manifest mirror
-  (`MirroredManifest`) retired with it. See Done, below.
-- Sim split S4 (`sim-engine`: `engine`, `churn`, `order-profiles`) —
-  trigger: a second `engine` consumer appears (the FHIR emitter is the
-  likely one) or engine work itself needs the emit-state/check boundary
-  designed, same plan. **Dated note (2026-08-04, sim split B M1
-  session, AR-M1-5 / plan AR-4, framing (b)):** superseded-by-citation,
-  not fired — `.agents/plans/2026-08-04-sim-split-b-plan.md` (RULED)
-  proceeds with S4's scope as M2 (`sim-engine`) ahead of this trigger
-  firing, author override plainly stated; the trigger's own reasoning
-  is honored in substance (M3/`sim-emit-fhir` is committed scope in the
-  same sequence, so M2 is designed against two known consumers) — not
-  claimed that the trigger fired. `.agents/plans/2026-08-02-sim-split-
-  plan.md`'s own dated status note carries the same ruling; `notes/
-  ADRs.md` ADR-0043 records it verbatim. **EXECUTED (2026-08-04, sim
-  split B M2, same day):** `components/sim-engine` landed for real —
-  see Done, above. **AR-4 DISCHARGED (2026-08-04, sim split B M3, same
-  day, AR-M3-5):** `components/sim-emit-fhir` landed for real —
-  `sim-engine`'s boundary now serves two shipping consumers with
-  distinct surfaces (`sim-emit-hl7` reads the event log, `sim-emit-fhir`
-  reads folded state via `engine/replay`), discharging in substance the
-  "committed, not yet present" framing AR-4 stated at M2 time; see
-  Done, below.
 - `ImagingStudy` (R5, CHF trigger) and the stroke-risk data source (R7)
   — GMF coverage Wave D closed 2026-08-02 (D0-D3, see Done below)
   without owning either; H3's own attribute-weighted `distributed_
@@ -183,22 +156,23 @@ per item; done items move to the bottom of their section with a date and sha.
   `congestive_heart_failure`/`contraceptives`/`covid19` directly
   (census-confirmed). Revisit trigger: Wave E's own design session, or
   whichever session first needs a real vital-sign baseline.
-- **Lookup-table columns `race`/`time`** (ADR-0036 AR-7, deferred to
-  Wave I): `acute-myeloid-leukemia` (`race`), `hiv-diagnosis` (`time`),
-  plus the seven modules Wave F's own census re-run newly surfaced
-  behind `ImagingStudy` (`diabetic_retinopathy_stage`, `state`,
-  `operative_status`, `cardiac_surgery`, `vhd_mr_risk`, `vhd_ps_risk`,
-  `vhd_tr_risk`, `docs/gmf-interpreter.md` §15's own AR-8 trace) —
-  `race` shares this wave's own persona-race prerequisite (`ehrt.sim-
-  model.persona`'s new optional `:race` field, ADR-0036 AR-4/AR-5).
-  H2's own `recognized-lookup-table-columns` boundary. **RESOLVED
-  2026-08-03 (GMF coverage Wave LC, ADR-0038), pulled forward from
-  Wave I:** the boundary itself retired (generalized to attribute
-  resolution, not a bigger whitelist) — all 9 modules move to
-  `:ok-walked` — see Done, below.
-- `Active CarePlan` (condition type) — design-ruled, implementation-
-  deferred (Wave D stage D2's own G2): no vendored module exercises it
-  yet; build fresh against the first real candidate's own usage.
+- **Lookup-table column `time` — genuinely open, distinct from the
+  Wave LC column-resolution mechanism** (compaction A, AR-A-5
+  STALE-AUDIT disposition): Wave LC (ADR-0038 AR-1) DOES
+  special-case a `time` lookup-table COLUMN (age/time date-range
+  parsing) and the Wave LC census confirmed `hiv-diagnosis`
+  (originally blocked on this column) moved `:load-failed` →
+  `:ok-walked` — that evidence is real, recorded here rather than
+  hidden. The Next section's own separate "lookup-column `time`
+  gap" row (named since ADR-0039, schema-invalid family, still
+  untouched per that row's own text) is a DIFFERENT concern this
+  evidence does not resolve — author ruling (compaction A,
+  AR-A-5): this row's `time` component stays explicitly LIVE
+  regardless of the column-resolution evidence above, pending a
+  future session that reconciles the two. The `race` half of the
+  original combined row CLOSED this session — see Done, below.
+  Revisit trigger: whichever session next touches the
+  schema-invalid family's own `time` gap.
 - `ehrt.sim-trajectory.gmf-interpreter/resolve-time-advance`'s own
   Procedure-duration gap: `:duration` is passed as a flat map but
   `resolve-time-advance` destructures nested `:range`/`:exact` keys
@@ -223,6 +197,56 @@ per item; done items move to the bottom of their section with a date and sha.
   designed to fail loudly the moment this lands). **FIXED (2026-08-03,
   ADR-0031 AR-6's second defect-fix session, `notes/ADRs.md` ADR-0033)
   — see Done, below.**
+
+## Done (this session, 2026-08-05, scaffolding compaction A — riders, vestige retirements, Deferred triage — ADR-0044 appendix)
+- **Riders (AR-A-1/AR-A-2).** `census_test.clj`'s two "the
+  roadmap's own Wave I finding" citations (lines 12, 41) corrected
+  to ADR-0044's own citation fix (the invisibility claim stands on
+  live before/after `poly test` evidence, not a roadmap row that
+  was never found). Budget-numbers closure note added (below).
+- **Vestige retirements (AR-A-3/AR-A-4).** `ehrt.corpus.sim-
+  adapter`'s legacy discovery-key tolerance (`:sim-dir`,
+  `:env-sim-dir-fn`, `:default-dir`) retired — fresh grep this
+  session found zero external callers (the two `generators_test.clj`
+  hits are prose, not passed opts); `sim_adapter_test.clj` updated
+  to the current contract. `intake_test.clj`'s `sample-manifest`
+  fixture's `:generator :name` corrected from `"ehr-testing-sim"`
+  (the dead sibling repo) to `"ehrt.sim"` (`ehrt.sim.manifest/
+  build`'s own real stamp, confirmed by fresh read).
+- **Deferred triage (AR-A-5).** Four rows already carrying a
+  closure note relocated verbatim from Deferred (precedent: prior
+  sessions' own "S3/S4 rows moved to Deferred" pattern, now run in
+  reverse — closed rows move OUT of Deferred):
+
+- Sim-manifest interop design between sim and corpus (pre-review open
+  thread). **RESOLVED (2026-08-04, sim split B M1, `notes/ADRs.md`
+  ADR-0043):** `components/provenance` is the interop design —
+  ManifestV0/V1/V1_1 + validators moved to the single acyclic home
+  both corpus and sim depend on; the sim manifest mirror
+  (`MirroredManifest`) retired with it. See Done, below.
+
+- Sim split S4 (`sim-engine`: `engine`, `churn`, `order-profiles`) —
+  trigger: a second `engine` consumer appears (the FHIR emitter is the
+  likely one) or engine work itself needs the emit-state/check boundary
+  designed, same plan. **Dated note (2026-08-04, sim split B M1
+  session, AR-M1-5 / plan AR-4, framing (b)):** superseded-by-citation,
+  not fired — `.agents/plans/2026-08-04-sim-split-b-plan.md` (RULED)
+  proceeds with S4's scope as M2 (`sim-engine`) ahead of this trigger
+  firing, author override plainly stated; the trigger's own reasoning
+  is honored in substance (M3/`sim-emit-fhir` is committed scope in the
+  same sequence, so M2 is designed against two known consumers) — not
+  claimed that the trigger fired. `.agents/plans/2026-08-02-sim-split-
+  plan.md`'s own dated status note carries the same ruling; `notes/
+  ADRs.md` ADR-0043 records it verbatim. **EXECUTED (2026-08-04, sim
+  split B M2, same day):** `components/sim-engine` landed for real —
+  see Done, above. **AR-4 DISCHARGED (2026-08-04, sim split B M3, same
+  day, AR-M3-5):** `components/sim-emit-fhir` landed for real —
+  `sim-engine`'s boundary now serves two shipping consumers with
+  distinct surfaces (`sim-emit-hl7` reads the event log, `sim-emit-fhir`
+  reads folded state via `engine/replay`), discharging in substance the
+  "committed, not yet present" framing AR-4 stated at M2 time; see
+  Done, below.
+
 - `bin/regression-oracle`'s own "always read `digest.clj` from the
   CURRENT checkout" design (ADR-0030 J2's own precedent) is incompatible
   with a session that changes the PRODUCER FUNCTIONS' own call shape
@@ -250,6 +274,7 @@ per item; done items move to the bottom of their section with a date and sha.
   ref from before this promotion, `components/oracle` absent there)
   with its own fallback and retirement condition, `bin/regression-
   oracle`'s own `oracle_wiring_for` function.
+
 - **Docs coherence pass** (2026-08-04, sim split B M4, `notes/ADRs.md`
   ADR-0043 AR-M4-7): the sim split B arc's own per-stage stale-path
   sweeps (S1-S4/M1-M4, each a manual, disclosed, live fix) have each
@@ -266,6 +291,47 @@ per item; done items move to the bottom of their section with a date and sha.
   trail) and its own sections 1-8 currency pass;
   `patient-state-model.md`'s history-phase/vital-register additive
   sections and errata sweep. See Done, below.
+
+  Three STALE-AUDIT rows closed this session on fresh evidence
+  (grep/read commands recorded in the session record), not asserted:
+
+- **`Active CarePlan` (condition type)** — was design-ruled,
+  implementation-deferred (Wave D stage D2's own G2: no vendored
+  module exercised it yet). **CLOSED (compaction A, AR-A-5
+  STALE-AUDIT, fresh-grepped this session):** landed for real GMF
+  coverage Wave I2 (2026-08-04, `notes/ADRs.md` ADR-0041 AR-2,
+  commit `14e8dce`) — `ehrt.sim-trajectory.gmf-interpreter/active-
+  careplan-condition-holds?` implements Synthea's own `Logic.java`
+  `ActiveCarePlan` dispatch; confirmed present in the live
+  interpreter this session (`components/sim-trajectory/src/ehrt/
+  sim_trajectory/gmf_interpreter.clj` lines 609-812). This roadmap
+  row was the last place still calling it deferred — the docs
+  coherence pass (2026-08-05, ADR-0043 AR-D-1) had already fixed
+  the same stale claim in `gmf-interpreter.md`'s own sections 1-8;
+  this closure brings the roadmap into agreement.
+
+- **Lookup-table column `race`** (ADR-0036 AR-7, deferred to
+  Wave I). **CLOSED (compaction A, AR-A-5 STALE-AUDIT, fresh-
+  grepped this session):** `ehrt.sim-model.persona`'s optional
+  `:race` field is live (`components/sim-model/src/ehrt/sim_model/
+  persona.clj` line 122); GMF coverage Wave LC (2026-08-03,
+  ADR-0038) generalized the lookup-table column boundary and the
+  census confirmed `acute-myeloid-leukemia` (the race-blocked
+  module) moved `:load-failed` → `:ok-walked` along with the other
+  8 modules in that wave's own batch. The original row's `time`
+  component does NOT close alongside it — see the slimmed `time`
+  row still standing in Deferred, above, and its own author-ruling
+  note.
+
+- **Reading-set budget numbers** (charter §6: rule after real
+  sizes are measured). **CLOSED (2026-08-05, docs coherence pass,
+  `notes/ADRs.md` ADR-0043 AR-D-3, relocated compaction A AR-A-2):**
+  every reading set's budget recomputed as actual × 1.15 (rounded
+  up to the nearest 5), one dated note replacing 14 accumulated
+  bump comments: `:onboarding` 2090→2405, `:corpus` 1731→1995,
+  `:sim` 793→915, `:judge` 851→980, `:docs` 671→775. This Deferred
+  row had no closure note of its own until this session found the
+  gap and added one.
 
 ## Done (this session, 2026-08-05, standing-equipment promotion — ADR-0044)
 - **Census promotion (Step 1, `a17fab1`, AR-P-1).** `ehrt.sim-trajectory.
