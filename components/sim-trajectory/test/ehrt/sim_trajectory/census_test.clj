@@ -9,8 +9,14 @@
   ADR, AR-P-1): moved verbatim (namespace unchanged) from
   `development/test` into this component's own test tree -- equipment,
   not API. This move is the first time these 7 tests ever actually ran
-  under `poly test` (the roadmap's own Wave I finding: `development`'s
-  own project wiring never reached them). Running them for real found
+  under `poly test`. **Citation correction (2026-08-05, scaffolding
+  compaction A, `notes/ADRs.md` ADR-0044's own execution note):**
+  this was originally attributed here to \"the roadmap's own Wave I
+  finding\" -- no such row exists (GMF Wave I is a different, unrelated
+  arc); the invisibility claim itself was independently confirmed by a
+  live before/after `poly test` run (202 blocks before the promotion,
+  0 census assertions among them; 204 after), so it stands on that
+  evidence, not the retracted citation. Running them for real found
   two fixtures had gone stale in the interim -- see `load-failed-json`
   and `walk-failed-json`'s own dated notes below."
   (:require [clojure.java.io :as io]
@@ -38,9 +44,10 @@
 (def ^:private load-failed-json
   "Standing-equipment promotion (2026-08-05, `notes/ADRs.md` promotion
   ADR): found live, moving this file under `poly test` for the first
-  time ever (the Wave I finding this promotion closes, see the
-  namespace docstring below) -- VitalSign, this fixture's own prior
-  'still-deferred v1 state type', was ITSELF landed for real by GMF
+  time ever (the citation-corrected invisibility finding above, see
+  the namespace docstring's own 2026-08-05 dated note) -- VitalSign,
+  this fixture's own prior 'still-deferred v1 state type', was ITSELF
+  landed for real by GMF
   coverage Wave VS (2026-08-04, ADR-0039 AR-1) three sessions before
   this test file was ever actually exercised, so the fixture had gone
   stale silently: `census-one` now returns `:ok-walked` for it, not
