@@ -108,3 +108,34 @@ discipline `notes/ADRs.md` itself uses for ADRs.
   working directory again is encountering a NEW regression, not a
   known, guarded hazard — treat it as a fresh STOP-AND-REPORT, not
   routine vigilance.
+
+## From ADR-0048 (alignment riders)
+
+**Mid-arc append, author-licensed (see ADR-0048's own deviation
+note):** this register's stated contract (AR-C-2, above) is "appended
+at each arc close, by the design channel." Both rulings below land
+mid-arc instead, from a build session, because the author licensed it
+explicitly this session — a deviation-with-license, not a silent
+change to the contract itself.
+
+- **Transcript-witnessed is not repo-recorded** (from ADR-0048,
+  citing `notes/adr/0047-scaffolding-compaction-c.md` Step 0 as the
+  evidencing event): only repo artifacts are citable as established
+  fact. An event witnessed only in a chat transcript — a design-
+  channel claim, an author statement, a prior session's own summary —
+  is `[unverified]` until a repo artifact (a probe, a test, a file)
+  actually captures it. ADR-0047's own Step 0 is the standing proof
+  this discipline is load-bearing, not theoretical: re-probing a
+  design-channel-authored draft against the live tree caught it wrong
+  twice in one pass (a component-dependency claim — `sim-emit-hl7`
+  does not depend on `sim-engine` — and a "four-incident ledger"
+  naming session labels with zero supporting evidence in the named
+  records), both corrected in place rather than carried forward.
+- **Stable-tag discipline, adopted** (AR-R-2, STANDING, from
+  ADR-0048): live `stable-*` tagging is adopted. The author tags after
+  each design-channel-verified landing, format
+  `stable-YYYYMMDD-<session-slug>`, matching the existing `^stable-.*`
+  pattern in `workspace.edn` (no config change). The three legacy tags
+  (`stable-bootstrap`, `stable-ehrt-1`, `stable-pre-monorepo`) stay —
+  frozen history, superseded by the first new stable point. Tagging
+  remains the author's act alone (R30).
