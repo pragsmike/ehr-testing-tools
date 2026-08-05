@@ -7,7 +7,7 @@
   visit id today -- no separate encounter/visit-number field is landed
   yet, docs/GLOSSARY.md's own PV1-19 note), HL7 message control ids,
   FHIR resource ids, provider NPIs, and this run's own meta.tag run-id
-  (ehrt.sim.emit-state's HTEST/run-tag law).
+  (ehrt.sim-emit-fhir.interface's HTEST/run-tag law).
 
   Determinism makes synthetic data ENUMERABLE, not merely recognizable:
   if a run's own output ever reached a real system, this inventory --
@@ -27,13 +27,13 @@
   the exact functions that produce it."
   (:require [ehrt.kernel.interface :as result]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]
-            [ehrt.sim.emit-state :as emit-state]
+            [ehrt.sim-emit-fhir.interface :as emit-fhir]
             [ehrt.sim-engine.interface :as engine]
             [ehrt.sim.run :as run]))
 
 (defn- final-world
   "{patient-id -> patient-state} as it stood at the end of the run --
-  the same fold `ehrt.sim.emit-state/snapshot-at` computes for
+  the same fold `ehrt.sim-emit-fhir.emit-fhir/snapshot-at` computes for
   `:end`, taken directly off `replay`'s own last record rather than a
   second call (this namespace's own single-source-of-truth posture,
   applied to itself)."
@@ -71,12 +71,12 @@
   over the SAME run, not a parallel config dialect. Runs the simulation
   exactly once (`engine-run-fn`, injectable, the same -fn convention
   `run-command` uses), builds this run's own end-of-run FHIR Bundles
-  (`ehrt.sim.emit-state/bundle-run`, the SAME resource-id
+  (`ehrt.sim-emit-fhir.interface/bundle-run`, the SAME resource-id
   derivation `sim run --emit fhir` uses) so resource ids come from the
   one real builder, and returns Result-wrapped:
 
     {:run-id             this run's own seed, as a string -- the SAME
-                          value ehrt.sim.emit-state's meta.tag
+                          value ehrt.sim-emit-fhir's meta.tag
                           carries on every FHIR resource
      :patient-ids        [...], sorted
      :mrns               [...], sorted -- every MRN any patient-id ever
@@ -125,7 +125,7 @@
            (let [replay-records (engine/replay ground-truth)
                  world (final-world replay-records)
                  patient-ids (vec (sort (keys world)))
-                 fhir-bundles (emit-state/bundle-run ground-truth reference-date utc-offset seed :end)]
+                 fhir-bundles (emit-fhir/bundle-run ground-truth reference-date utc-offset seed :end)]
              (result/ok
               {:run-id (str seed)
                :patient-ids patient-ids

@@ -58,6 +58,10 @@
         ;; poly/sim-emit-hl7 (sim split S3 / Wave D stage D0): sim's own
         ;; src now requires ehrt.sim-emit-hl7.interface directly.
         poly/sim-emit-hl7 {:local/root "../../components/sim-emit-hl7"}
+        ;; poly/sim-emit-fhir (sim split B, M3, 2026-08-04, .agents/plans/
+        ;; 2026-08-04-sim-split-b-plan.md, notes/ADRs.md ADR-0043): sim's
+        ;; own src now requires ehrt.sim-emit-fhir.interface directly.
+        poly/sim-emit-fhir {:local/root "../../components/sim-emit-fhir"}
         org.clojure/clojure {:mvn/version "1.12.5"}}
 
  :aliases {:test {:extra-paths []

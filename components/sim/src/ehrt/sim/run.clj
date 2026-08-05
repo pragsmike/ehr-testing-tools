@@ -30,7 +30,7 @@
             [ehrt.sim.check :as check]
             [ehrt.sim-engine.interface :as churn]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]
-            [ehrt.sim.emit-state :as emit-state]
+            [ehrt.sim-emit-fhir.interface :as emit-fhir]
             [ehrt.sim-trajectory.interface :as sim-trajectory]
             [ehrt.sim.manifest :as manifest]
             [ehrt.sim-model.interface :as sim-model]))
@@ -221,7 +221,7 @@
    :messages [...]}} (:messages present only when :emit is \"hl7\").
 
   M6 Task 1: `:emit \"fhir\"` renders `:fhir-bundles`
-  ({patient-id -> Bundle}, ehrt.sim.emit-state/bundle-run)
+  ({patient-id -> Bundle}, ehrt.sim-emit-fhir.interface/bundle-run)
   instead of `:messages` -- end-of-run snapshots by default, or the
   instant `:at` (seconds from run start) names. `:site-profile` has no
   bearing here (FHIR has no dialect-config surface yet, docs/sim-
@@ -342,4 +342,4 @@
                                :events (count ground-truth)}}
               (= "hl7" emit) (assoc :messages (emit-hl7/emit ground-truth reference-date utc-offset facility providers site-profile))
               (= "fhir" emit) (assoc :fhir-bundles
-                                     (emit-state/bundle-run ground-truth reference-date utc-offset seed (or at :end)))))))))))
+                                     (emit-fhir/bundle-run ground-truth reference-date utc-offset seed (or at :end)))))))))))

@@ -1,4 +1,4 @@
-(ns ehrt.sim.emit-state
+(ns ehrt.sim-emit-fhir.emit-fhir
   "EmitState (docs/sim-theory.edn): state-history -> FHIR R4 Bundle
   (JSON, via data.json -- no new dep). Format dispatch: FHIR now, CDA is
   the dispatch's other arm, deferred with a contract note (below) rather
@@ -30,7 +30,7 @@
      resource's own id is a deterministic, patient-id-scoped ordinal
      (Encounter/Condition/Observation/MedicationRequest), never
      invented independently of state. Property-tested in
-     emit-state-test/fhir-patient-id-and-active-mrn-resolve-to-the-
+     emit-fhir-test/fhir-patient-id-and-active-mrn-resolve-to-the-
      same-hl7-identity.
   4. Minimal-but-valid, no invented fields: the rendered resource set is
      exactly Patient/Encounter/Condition/Observation/MedicationRequest/

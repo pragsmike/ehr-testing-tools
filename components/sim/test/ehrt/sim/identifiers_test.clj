@@ -14,7 +14,7 @@
             [clojure.test.check.properties :as prop]
             [ehrt.kernel.interface :as result]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]
-            [ehrt.sim.emit-state :as emit-state]
+            [ehrt.sim-emit-fhir.emit-fhir :as emit-fhir]
             [ehrt.sim-engine.engine :as engine]
             [ehrt.sim.identifiers :as identifiers]
             [com.nervestaple.hl7-parser.parser :as parser]
@@ -79,7 +79,7 @@
       (= (:payload r1) (:payload r2)))))
 
 ;; --- completeness: every id a real emission of THIS run carries is present,
-;; checked by independent extraction against emit-hl7/emit and emit-state/
+;; checked by independent extraction against emit-hl7/emit and emit-fhir/
 ;; bundle-run -- never by re-deriving from identifiers-command's own output.
 
 (defspec identifiers-command-is-complete-against-a-real-run 50
@@ -87,7 +87,7 @@
                  patients (gen/choose 1 5)]
     (let [{:keys [ground-truth facility providers]} (engine/run {:seed seed :patients patients})
           messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
-          bundles (emit-state/bundle-run ground-truth ref-date utc-offset seed :end)
+          bundles (emit-fhir/bundle-run ground-truth ref-date utc-offset seed :end)
           wire-mrns (into #{} (map #(message/get-field-first-value (parser/parse %) "PID" 3)) messages)
           wire-control-ids (into #{} (map #(message/get-field-first-value (parser/parse %) "MSH" 10)) messages)
           bundle-resource-ids (into #{} (mapcat (fn [[_ b]] (map (comp :id :resource) (:entry b)))) bundles)
