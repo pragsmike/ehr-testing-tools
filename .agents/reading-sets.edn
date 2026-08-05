@@ -315,7 +315,11 @@
   ;; bumped 2025->2033, sim split B M4 session (2026-08-04, Step 1):
   ;; AGENTS.md's own Components-list growth (`components/sim-check`,
   ;; net +8 lines) brought the real total from 2025 to 2033.
-  :budget-lines 2033}
+  ;; bumped 2033->2088, same session, Step 4 close-out (AR-M4-7):
+  ;; roadmap.md's own new M4 "Now" note, the new M4 Done section, and
+  ;; the new docs-coherence-pass Deferred row (net +55 lines) brought
+  ;; the real total from 2033 to 2088.
+  :budget-lines 2088}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one

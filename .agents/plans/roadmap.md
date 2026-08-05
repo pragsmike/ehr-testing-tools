@@ -5,13 +5,15 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- Nothing in progress at end of session (sim split B M3 landed same
-  day it started -- see Done, below. GMF parity arc stays COMPLETE,
+- Nothing in progress at end of session (sim split B M4 landed same
+  day M1-M3 did -- see Done, below. GMF parity arc stays COMPLETE,
   unaffected by this front). `.agents/plans/2026-08-04-sim-split-b-
-  plan.md`'s own forced sequence (AR-6: M1 → M2 → M3 → M4) has M4
-  (`sim-check` + residual thinning) next, its own session, prompt
-  authored in the design channel once scheduled -- not yet in
-  progress.
+  plan.md`'s own forced sequence (AR-6: M1 → M2 → M3 → M4) is fully
+  discharged -- the sim split B arc is COMPLETE, `notes/ADRs.md`
+  ADR-0043's own M4 execution record states the arc-complete claim.
+  Standing deferred items re-cited there (J2 oracle redesign,
+  carry-across emission, sim-cli retirement (closed), census-tool
+  refinements, the docs coherence pass) stay Deferred, none re-opened.
 
 ## Next (backlog, no session scheduled)
 - The lookup-column `time` gap (named in the schema-invalid family
@@ -229,6 +231,59 @@ per item; done items move to the bottom of their section with a date and sha.
   shape should expect the same workaround, or this row graduates into
   an actual `bin/regression-oracle` enhancement (e.g. an opt-in "run
   each commit's own digest.clj against its own worktree" mode).
+- **Docs coherence pass** (2026-08-04, sim split B M4, `notes/ADRs.md`
+  ADR-0043 AR-M4-7): the sim split B arc's own per-stage stale-path
+  sweeps (S1-S4/M1-M4, each a manual, disclosed, live fix) have each
+  individually found current-tense namespace citations in
+  component-owned `docs/` trees that `ehrt.docs-tooling.stale-path-
+  test` structurally cannot gate (component-owned docs are out of its
+  scan scope by design). No single session owns systematic coverage
+  of that surface. Revisit trigger: a future session that wants one
+  pass across every component's own `docs/` tree rather than
+  continuing the per-extraction manual-sweep pattern — named as the
+  cleanup arc's own likely next front, not committed or scoped here.
+
+## Done (this session, 2026-08-04, sim split B M4 — `sim-check` lands, arc COMPLETE — ADR-0043)
+- `.agents/plans/2026-08-04-sim-split-b-plan.md` (RULED, AR-1..AR-6) M4
+  of four executed, LAST stage: `components/sim-check` created,
+  `check.clj` (571 LOC — the invariant catalog) moved verbatim out of
+  `components/sim`, `ehrt.sim-check.interface` designed from fresh
+  call-position grep (`check-all`, all four arities — no delta from
+  the design channel's own candidate list). `c43f7cc`.
+- `ehrt.sim.interface`'s own fat-component disclosure docstring gains
+  a dated closing note: the extraction it disclosed (S1/S2/S3/M1/M2/
+  M3/M4) is complete, residual sim is pure orchestration behind the
+  SAME façade, unchanged in width or shape (08-02 plan AR-3, honored
+  not revisited).
+- Five parked findings disposed (AR-M4-5): `explain-profiles` (zero
+  callers, left in place, disposal not deletion); `:coverage` alias
+  gains sim/sim-engine/sim-emit-fhir/sim-check (a gap standing since
+  M2); `docs/dev/architecture.md`'s mermaid diagram gains the
+  `provenance` node/edges M1 missed; the emit-state demo README's
+  stale `ehrt.sim.emit-hl7` bare-cite (M3-disclosed) fixed forward;
+  `components/sim/deps.edn` drops malli/babashka.cli (fresh grep found
+  zero real users of either). `e948296`.
+- `emitter_order_independence_test.clj` moves to
+  `components/sim-emit-hl7/test` (AR-M4-4) — emit-hl7's own
+  determinism guard, misplaced only because check.clj hadn't moved out
+  yet when it was written.
+- Stale-path sweep: `ehrt.docs-tooling.stale-path-test`'s
+  retired-namespace family gains `ehrt.sim.check` (namespace and path
+  form) — no real violations in the gate's own scan scope; four
+  current-tense surfaces outside that scope (component-owned `docs/`,
+  plus four src/test docstrings) swept forward anyway. `56b62a7`.
+- **Arc COMPLETE**: the five-brick decomposition plan AR-1 named
+  (`sim-engine`, `sim-emit-fhir`, `sim-check`, `provenance`, residual
+  `sim`) is landed in full across M1-M4, all same-day, every stage
+  oracle-proven byte-identical. See `notes/ADRs.md` ADR-0043's own M4
+  execution record for the arc-complete statement and the standing
+  deferred items re-cited (J2 oracle redesign, carry-across emission,
+  sim-cli retirement (closed), census-tool refinements, the new docs
+  coherence pass row above) — none re-opened.
+- `clojure -M:poly check` clean and full suite green at every one of
+  the three commits above (0 failures, 0 errors, both projects, 202
+  Test-results blocks); normal-mode regression-oracle bracket / façade-
+  seam / deftest-parity verification recorded in the session record.
 
 ## Done (this session, 2026-08-04, sim split B M3 — `sim-emit-fhir` lands — ADR-0043)
 - `.agents/plans/2026-08-04-sim-split-b-plan.md` (RULED, AR-1..AR-6) M3

@@ -10,6 +10,18 @@ Method precedent: the three-stage tools split and the S1–S3 executions
 named; move-don't-improve with one sanctioned improvement per stage —
 the interface).
 
+**Dated close-out note (2026-08-04, M4 execution session, AR-M4-7):**
+EXECUTED IN FULL. M1 (`provenance`), M2 (`sim-engine`), M3
+(`sim-emit-fhir`), M4 (`sim-check` + residual thinning) all landed
+same-day, each oracle-proven byte-identical, `poly check` clean, full
+suite green throughout. This plan's own AR-6 sequence is fully
+discharged; the sim split B arc is COMPLETE. See `notes/ADRs.md`
+ADR-0043's M1–M4 execution records for what actually happened at each
+stage (this plan's own body text stands as written per the
+annotate-not-rewrite convention — it is the ratified DESIGN, not the
+execution log) and its own M4 record's arc-complete statement for the
+standing deferred items re-cited, none re-opened, by this close-out.
+
 ## Context
 
 `components/sim` after S1–S3 still holds nine source namespaces plus

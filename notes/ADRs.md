@@ -9828,3 +9828,287 @@ redesign stays Deferred). Façade (`ehrt.sim.interface`) byte-untouched.
 untouched.
 
 ---
+
+### M4 execution record — `sim-check` lands, sim split B arc complete
+
+**Status:** M4 executed 2026-08-04 (same day as M1/M2/M3 above),
+`.agents/plans/2026-08-04-sim-split-b-plan.md` AR-1/AR-3/AR-6 and this
+session's own driving prompt's AR-M4-1..AR-M4-7 (recorded verbatim
+below). The final stage: after this record, the five-brick
+decomposition plan AR-1 named is landed in full and this ADR's own
+sequence (AR-6: M1 → M2 → M3 → M4) is discharged.
+
+**Driving prompt rulings (AR-M4-1..AR-M4-7, recorded verbatim).**
+
+1. **AR-M4-1 (the move).** `check.clj` → `components/sim-check`, ns
+   `ehrt.sim-check.check`; `check_test.clj` moves alongside.
+   `ehrt.sim-check.interface` carries `check-all` only (all four
+   arities, thin delegation) — the call-position-verified union; the
+   both-directions delta discipline applies as in M2/M3. The
+   double-alias require moves unchanged. sim-check depends on
+   sim-engine, sim-model, kernel — and is forbidden from depending on
+   the residual sim, either emitter, corpus, or provenance.
+2. **AR-M4-2 (test-scope repoints).** `engine_test.clj` and the four
+   vendored sim-emit-hl7 tests repoint `ehrt.sim.check` →
+   `ehrt.sim-check.check` (internals, test-legal, mechanical).
+3. **AR-M4-3 (the façade).** `interface.clj`'s require repoints to
+   `ehrt.sim-check.interface`. The façade's SURFACE is frozen — var
+   list, names, arities byte-identical; the file diff is the require
+   line plus the docstring change licensed next: the fat-component
+   disclosure (the docstring's account of sim's nine-concern state)
+   RETIRES with a dated note — the split it disclosed is complete. The
+   08-02 plan's own AR-3 (façade permanence; corpus depends on it,
+   ADR-0012) is honored and explicitly NOT revisited; any future
+   façade thinning is a separate author ruling, cited as such in the
+   ADR.
+4. **AR-M4-4 (order-independence test).**
+   `emitter_order_independence_test.clj` moves to
+   `components/sim-emit-hl7/test` — it is emit-hl7's own determinism
+   guard (its docstring says so; its calls are `emit-hl7/emit` and
+   `engine/run`). Classification rationale recorded; ns renamed to the
+   sim-emit-hl7 test convention.
+5. **AR-M4-5 (findings disposition batch).** Each item disposed with
+   fresh-grep evidence, recorded per-item: (a) `explain-profiles`
+   RETIRES with dated disclosure (zero callers; if the session's fresh
+   grep finds one, KEEP and record the caller instead — evidence over
+   ruling). (b) Coverage alias gains `sim`, `sim-engine`,
+   `sim-emit-fhir`, `sim-check` test paths. (c) The architecture doc's
+   component DIAGRAM (the table row landed in M1 — the diagram is the
+   gap; locate it fresh) gains the `provenance` node, plus
+   `sim-engine`/`sim-emit-fhir`/`sim-check` if it predates them. (d)
+   The M3-disclosed stale demo-README reference: locate with ESCAPED-
+   dot grep (`ehrt\.sim\.emit-hl7` — unescaped dots false-match
+   `ehrt.sim-emit-hl7`; the design channel made exactly this error and
+   it is the recorded lesson), fix forward. (e) Residual deps hygiene:
+   for each dep declared in `components/sim/deps.edn`, find a real
+   require in src, test, or any project-level need; drop what nothing
+   uses (candidates: malli, babashka/cli), with per-dep disclosure.
+   Verify no project relied on the residual's declaration by leakage
+   (full suite + `poly check` after the drop is the proof).
+6. **AR-M4-6 (stale-path fan-out).** Tripwire learns `ehrt.sim.check`
+   and path-form `ehrt/sim/check`; current-tense docstring mentions
+   swept per fresh escaped-dot grep. Frozen archives untouched.
+   Red→green recorded.
+7. **AR-M4-7 (arc close-out).** ADR-0043's M4 execution record ends
+   with an arc-complete statement: the five-brick decomposition of
+   plan AR-1 is landed in full; the component graph now states the
+   doctrine (formats as sibling emitters over the state machine,
+   checker separate from doer, provenance as the shared contract).
+   Roadmap: M1–M4 rows to Done; the 08-04 plan gets a dated close-out
+   annotation (annotate-not-rewrite). Standing deferred items are
+   RE-CITED with their triggers intact, not re-opened: the J2 oracle
+   redesign, carry-across emission, sim-cli retirement,
+   census-tool promotion, the docs coherence pass (which is the
+   cleanup arc's next front, not this session's).
+
+**What moved.** `check.clj` (571 LOC — the invariant catalog: 24
+log-only invariants, 2 facility-config invariants, 1 warm-up
+invariant, 1 order-profiles invariant, `check-all`'s four-arity
+aggregator) moves verbatim from `components/sim/src/ehrt/sim/` to
+`components/sim-check/src/ehrt/sim_check/` as `ehrt.sim-check.check`
+— ns-form/require diffs only (move-don't-improve); the double
+`ehrt.sim-engine.interface` alias (`:as engine`, `:as order-profiles`,
+an M2-era artifact) moves unchanged, per AR-M4-1's own explicit
+instruction. `check_test.clj` moves alongside as
+`ehrt.sim-check.check-test` (ns-form/require diffs plus one
+self-referential docstring mention updated to the new namespace,
+same class of self-description accuracy M3's own emit_fhir.clj
+docstring update established).
+
+**Interface — evidence, not judgment (AR-M4-1).** Fresh call-position
+grep against `interface.clj`'s own façade delegation (all four
+`check-all` arities) and `run.clj` (line 329, the one real call, 3
+arities) found the true src-scope union: `check-all` only, every
+arity. `ehrt.sim-check.interface` carries exactly that, thin
+delegation, matching the interface `sim-engine`'s own M2 record built
+for this exact "acceptance surface" role. No delta from the design
+channel's own candidate list.
+
+**The façade docstring retirement (AR-M4-3).** `ehrt.sim.interface`'s
+own opening docstring — unchanged since the pre-Polylith migration,
+disclosing sim's interface as "deliberately wide... re-exports exactly
+what bases/sim-cli's own src calls... narrowing this surface... is a
+future, author-ruled extraction session's call" — gains a dated
+closing paragraph: that future session is this one (S1/S2/S3/M1/M2/M3/
+M4 in sequence), the extraction is complete, residual sim is pure
+orchestration behind this SAME unchanged façade. The 08-02 plan's own
+AR-3 (façade permanence, corpus depends on it via
+`ehrt.corpus.sim-adapter`, ADR-0012) is honored, not revisited — the
+var list, names, and arities the façade exposes are byte-identical to
+every prior stage; `ehr sim run`/`check`/`help` output byte-identical
+is the Step 5 proof. Any future thinning of the façade itself is
+named, explicitly, as a SEPARATE author-ruled decision this record
+does not make.
+
+**Findings disposition (AR-M4-5), each with fresh evidence.**
+
+(a) `explain-profiles` (`sim-engine/order_profiles.clj:66`) — fresh
+    grep found zero callers anywhere in the tree. Left in place, not
+    deleted: AR-M4-5a licenses disposing the finding, not a deletion
+    ruling; a future session's call if it stays dead.
+(b) `projects/ehrt-cli`'s `:coverage` alias gains `sim`/`sim-engine`/
+    `sim-emit-fhir`/`sim-check` test-path/src-path/`-p`/`-s` entries —
+    a gap standing since M2 (both M2's and M3's own session records
+    disclosed it, neither fixed it), closed here rather than carried
+    to a hypothetical future stage that would never come (M4 is the
+    last of the four).
+(c) `docs/dev/architecture.md`'s mermaid diagram gains a `provenance`
+    node plus `corpus --> provenance`/`sim --> provenance` edges — M1
+    landed the bricks-table row (the structure-currency-test's own
+    gate) but missed the diagram (untested, decorative); unnoticed
+    three stages running until this session's fresh AR-M4-5c grep.
+(d) `components/sim/docs/demos/emit-state/README.md:86`'s bare
+    `ehrt.sim.emit-hl7` citation (M3's own disclosed finding, S3/
+    Wave-D-D0-era staleness, 2026-08-02) fixed forward to
+    `ehrt.sim-emit-hl7.emit-hl7` — the same paragraph's sibling
+    citations (`ehrt.sim-engine.engine`, `ehrt.sim-emit-fhir.emit-
+    fhir-test`) were already current, confirming this was the one
+    remaining holdout, not a symptom of a wider gap.
+(e) `components/sim/deps.edn` drops `metosin/malli` and
+    `org.babashka/cli` — fresh grep found no require of either
+    anywhere in residual sim's src or test (malli's own last user,
+    `manifest.clj`, lost it during M1's own thinning to
+    `ehrt.provenance.interface`; `run.clj`/`identifiers.clj`/
+    `version.clj` never required babashka.cli). `poly check` clean and
+    the full suite green after the drop is the leakage proof nothing
+    else relied on the declaration.
+
+**Stale-path sweep (AR-M4-6).** `ehrt.docs-tooling.stale-path-test`'s
+retired-namespace family gains `ehrt.sim.check` (namespace form) and
+`ehrt/sim/check` (path form). Fresh grep of the gate's own scan scope
+(`docs/**/*.md` plus `components/corpus/docs/use-cases.edn`) found no
+real violations — clean on day one, same as M3's own emit-state
+addendum. Current-tense surfaces outside the gate's scan scope swept
+forward anyway, live: `components/sim/docs/sim-theory.md` and
+`patient-state-model.md` (one hit each), `components/sim-trajectory/
+docs/gmf-interpreter.md` (two hits), and four src/test docstring
+cross-references (`sim-model/pathway.clj`, `sim-engine/engine.clj`,
+`sim-engine/engine_test.clj`'s own citation of the moved test
+namespace, `sim-emit-fhir/emit_fhir.clj`). The 08-04 plan's own
+historical mention (`.agents/plans/2026-08-04-sim-split-b-plan.md:45`,
+describing pre-M2 state) is deliberately left untouched —
+annotate-not-rewrite; this record's own arc-complete statement below
+is the plan's dated close-out note, not a body rewrite.
+
+**Dependency direction (new entry).** `sim-check` ← {residual `sim`}
+— LIVE as of M4. `sim-check` itself depends on `sim-engine`,
+`sim-model`, and kernel only (confirmed: `check.clj`'s requires are
+exactly `clojure.set`, `ehrt.kernel.interface`,
+`ehrt.sim-model.interface`, `ehrt.sim-engine.interface` — the last
+aliased twice, an M2 artifact carried unchanged); forbidden forever
+from depending on `components/sim`, either emitter, `components/
+corpus`, or `components/provenance`, same rule every sim-side brick
+extracted this arc has carried since ADR-0025.
+
+**Commits** (Steps 1–3, `git log` `c43f7cc..56b62a7`):
+
+1. `c43f7cc` — `refactor(sim-check): the invariant catalog gets its
+   own home -- residual sim is pure orchestration (M4 step 1,
+   AR-M4-1/2/3)`.
+2. `e948296` — `chore: parked findings disposed -- coverage paths,
+   dead code, diagram, deps hygiene (M4 step 2, AR-M4-4/5)`.
+3. `56b62a7` — `docs: check stale-path sweep -- tripwire learns the
+   old name (M4 step 3, AR-M4-6)`.
+
+`clojure -M:poly check` clean and the full suite green (0 failures, 0
+errors, both projects, 202 Test-results blocks) after each of the
+three commits above. Step 4 (this entry) and Step 5 (normal-mode
+oracle bracket, façade-seam check, deftest parity ledger, session
+record) follow.
+
+### Arc-complete statement (AR-M4-7)
+
+The sim split B plan's own AR-1 ruling — Option B, full decomposition
+into `sim-engine`, `sim-emit-fhir`, `sim-check`, a shared `provenance`
+component, and an orchestration-only residual `sim` — is landed in
+full, four stages (M1–M4), all same-day (2026-08-04), every stage
+proven byte-identical by the regression oracle and left `poly check`
+clean with the full suite green. The component graph now states the
+decomposition's own doctrine directly, not merely as a historical
+narrative:
+
+- **Sibling emitters over one state machine.** `sim-emit-hl7` (per-
+  event, reads the log directly) and `sim-emit-fhir` (per-snapshot,
+  reads folded state via `sim-engine`'s own `replay`) are peers, not a
+  primary/secondary pair — both depend on `sim-engine`, neither on the
+  other, formalizing what emit-state's own contract note always said
+  informally.
+- **Checker separate from doer.** `sim-check`'s invariant catalog
+  depends on the same acceptance surface `sim-engine` built for it in
+  M2 (`documented-step-rejection-reasons`, `default-profiles`,
+  `abnormal-flag`, `replay`) and nothing else load-bearing — the
+  catalog validates the engine's own claims from outside, never
+  reaching into engine internals it doesn't own.
+- **Provenance as the shared contract.** Neither `sim` nor `corpus`
+  owns the manifest schema family; both depend on a component that
+  depends on neither, closing the cycle the pre-workspace tools/sim
+  split had structurally enforced by being two repos and this
+  workspace had only enforced by convention until M1.
+
+Residual `components/sim` is now exactly {`run`, `identifiers`,
+`version`, `manifest` (builder only, schema lives in `provenance`),
+`interface`} — pure orchestration behind one unchanged façade,
+composing seven sibling components (`kernel`, `sim-model`,
+`sim-trajectory`, `sim-engine`, `sim-emit-hl7`, `sim-emit-fhir`,
+`sim-check`, confirmed against `run.clj`'s own require list) it no
+longer contains any of. The plan's own "What lands where" section is
+fully discharged: this ADR's M1–M4 execution records stand as the
+citing sessions' dated account; the roadmap's M1–M4 rows move to Done
+in the same commit as this record (see `roadmap.md`); the 08-04 plan
+gets its own dated close-out annotation, appended not rewritten (see
+the plan file directly).
+
+**Standing deferred items, re-cited with their triggers intact — none
+re-opened by this record:**
+
+- **The J2 oracle redesign** (`roadmap.md`'s own Deferred row,
+  ADR-0030 J2's precedent): `bin/regression-oracle`'s "always read
+  `digest.clj` from the CURRENT checkout" design is a standing,
+  disclosed limitation, not touched by this arc's four stages beyond
+  M3's own one-line classpath fix (AR-M3-4, itself explicitly NOT the
+  redesign). Trigger unchanged: a future session that again changes an
+  oracle-covered producer's own call shape should expect the same
+  hand-worked-around pattern, or this graduates into a real harness
+  enhancement.
+- **Carry-across emission** (`roadmap.md`'s own Deferred row,
+  ADR-0042 AR-2): a straddling encounter yielding no in-window wire
+  traffic stays deferred, untouched by this arc — sim-check's own
+  extraction changed where the invariant catalog lives, never what it
+  checks. Trigger unchanged: a test scenario needing mid-stay-at-
+  window-open realism.
+- **`sim-cli` retirement** — CLOSED, historical (2026-08-01, `bases/
+  sim-cli` + `projects/sim` deleted for real, `notes/prompts/
+  2026-08-01-ehr-testing-retire-sim-cli.md`), cited here only because
+  this arc's own façade-permanence discipline (AR-M4-3) rests on the
+  same "the façade is what external callers actually use, not an
+  aspiration" evidence method that retirement session established.
+  Nothing to re-open.
+- **Census-tool refinements** (`roadmap.md`'s own Deferred row,
+  ADR-0035/ADR-0036's disclosed findings): no substance qualifier on
+  `:ok-walked`, no per-module seed override, no same-calendar-day
+  filename disambiguation — untouched by this arc, cited here as the
+  next front's own likely first stop once a GMF session next runs the
+  census tool. Trigger unchanged.
+- **The docs coherence pass** — NOT a pre-existing roadmap row; named
+  here for the first time, sourced from this session's own driving
+  prompt, as the cleanup arc's own next front rather than this
+  session's scope. Four component-owned doc trees (`components/sim/
+  docs/`, `sim-trajectory/docs/`, and by extension every future
+  extracted component's own `docs/`) now carry current-tense
+  namespace citations that the stale-path tripwire structurally cannot
+  gate (component-owned docs are out of its scan scope by design, the
+  same fact five prior addenda in that test's own family have each
+  disclosed and individually swept). A future session that wants
+  systematic coverage rather than per-stage manual sweeps is the
+  trigger — not raised by this record as urgent, only as the visible
+  next seam.
+
+### Fence (M4)
+
+No further sim-side extraction — this is the plan's own last stage
+(AR-6). No façade surface changes beyond the docstring's own dated
+retirement note (AR-M4-3). No check logic edits — invariant changes
+are FINDINGS, never edits (none found). No oracle redesign (J2 stays
+Deferred, re-cited above, not touched). Frozen archives untouched.
+
+---
