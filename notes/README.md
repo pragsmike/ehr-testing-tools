@@ -10,10 +10,15 @@ Three zones, by how a file is meant to change over time:
 
 ## Current-truth registers (live, edit freely)
 
-- **[`ADRs.md`](ADRs.md)** — every workspace architecture/authoring
-  decision, numbered sequentially (`^## ADR-`). Outranks inference
-  about why the workspace is organized a certain way — read it before
-  restructuring anything (`AUTHORS-GUIDE.md` §3).
+- **[`ADRs.md`](ADRs.md)** — the citation index for every workspace
+  architecture/authoring decision (became an index, not inline
+  entries, 2026-08-05 scaffolding compaction B, ADR-0046). Outranks
+  inference about why the workspace is organized a certain way — read
+  it before restructuring anything (`AUTHORS-GUIDE.md` §3).
+- **[`adr/`](adr/)** — the per-ADR attic: every entry `ADRs.md` used to
+  hold inline now lives here verbatim, one file per record, moved
+  byte-for-byte by scaffolding compaction B (2026-08-05). Cite via
+  `ADRs.md`, not directly — it is the index and citation target.
 - **[`facts-register.md`](facts-register.md)** — externally verifiable,
   load-bearing facts (a license, a release status, a dependency's
   capability), one F-row per claim with evidence and a last-verified
