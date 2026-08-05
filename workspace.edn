@@ -11,47 +11,21 @@
                  :shadow-cljs-ver "^3.2.1"}
  :validations {:inconsistent-lib-versions {:type :error
                                            :exclude []}}
- :projects {"development" {:alias "dev"}
+ :projects {"development" {:alias "dev"
+                           ;; oracle carries no real :require edge from
+                           ;; :dev's own composition -- REPL-uniformity
+                           ;; rationale (every brick reachable from the
+                           ;; one dev REPL, oracle no exception), not a
+                           ;; missed wiring. History: ADR-0050, register
+                           ;; row A-1.
+                           :necessary ["oracle"]}
             ;; :necessary overrides warning 207 (poly's own brick-graph
-            ;; reachability check: is a declared brick reached by a real
-            ;; :require edge from the project's base, or from another
-            ;; brick the same project declares -- it does not see a
-            ;; project's own ad hoc test-tree requires). Re-derived
-            ;; 2026-07-31 (docs-tooling split, finding 14), AGAIN the
-            ;; same day (corpus-io split stage 2, ADR-0017), a THIRD
-            ;; time the same day (split stage 3, ADR-0018: tools renamed
-            ;; corpus and retired), and a FIFTH time 2026-08-01
-            ;; (sim-cli retirement, P3-6, F2 fired -- the "sim" project
-            ;; entry above this comment is gone with it: it existed
-            ;; solely to compose sim + sim-cli into one deployable
-            ;; artifact, and had no :necessary entry of its own to carry
-            ;; forward), each time via `clojure -M:poly deps`/`check`
-            ;; with every entry temporarily cleared. "ehrt-cli" needs no
-            ;; override: bases/cli now requires every interface it
-            ;; consumes directly (kernel, judge, all three engines,
-            ;; corpus, corpus-io, docs-tooling) -- palgebra is reachable
-            ;; transitively through docs-tooling. "conformance" keeps
-            ;; the docs-tooling entry it has carried since stage 1 (the
-            ;; brick is there solely to host its own moved tests) and
-            ;; gains judge-fhir-official + judge-v2-nist: only this
-            ;; project's own test tree (parity/gate-loop suites)
-            ;; consumes them now that the retired facade's every-engine
-            ;; src relay is gone. NOT judge-v2-hapi, empirically: the
-            ;; corpus brick's own test tree (v2_contract_pairing_test)
-            ;; requires that engine's interface, a test-context brick
-            ;; edge poly's reachability DOES count, unlike a project's
-            ;; own ad hoc test-tree requires -- which is exactly why
-            ;; "integration" needs judge-fhir-official listed (consumed
-            ;; only by its project test tree) while conformance's
-            ;; v2-hapi needs nothing (see ADR-0018's table).
-            ;; provenance (sim split B, M1, 2026-08-04): Step 1 carried
-            ;; a temporary "provenance" :necessary override on all
-            ;; three entries below (landed ahead of the real :require
-            ;; edge, R-9's "three manifests during M1" transient); Step
-            ;; 2 repoints corpus' own src to it for real
-            ;; (ehrt.corpus.manifest, ehrt.corpus.interface), so every
-            ;; project including corpus reaches it transitively now --
-            ;; re-derived here, override dropped again.
+            ;; reachability check). Full re-derivation narrative (five
+            ;; dated events) relocated verbatim to ADR-0050 (alignment
+            ;; fixes 1, AR-F1-4/S3) -- re-derive via `poly deps`/`check`
+            ;; with every entry temporarily cleared whenever project
+            ;; composition changes; see the ADR trail for why each
+            ;; current entry below is here.
             "ehrt-cli" {:alias "ehrt-cli"}
             "conformance" {:alias "conformance"
                            :necessary ["docs-tooling" "judge-fhir-official" "judge-v2-nist"]}
