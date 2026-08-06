@@ -82,3 +82,4 @@ Files in this directory:
   * 2026-08-06-ux-fixes-2.md
   * 2026-08-06-ux-fixes-3.md
   * 2026-08-06-ux-fixes-4.md
+  * 2026-08-06-ux-fixes-5.md
