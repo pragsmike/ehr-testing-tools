@@ -1365,6 +1365,15 @@ Attic file — every entry below is an exact byte-for-byte relocation from the l
   coverage Wave LC, ADR-0038):** the whitelist itself retired; this
   module now censuses `:ok-walked` — see Done, below.
 
+## Scaffolding-compaction arc — closed 2026-08-05, rotated 2026-08-06 (ADR-0045–0047; rotation deferred at its own close, disclosed in ADR-0055)
+Relocated verbatim from the live roadmap's own Done section by this session's
+own rotation (`.agents/plans/2026-08-06-ux-arc-brief.md` R2; the leftover was
+named but not swept at the alignment arc's own close, `notes/adr/0055-
+alignment-arc-close.md`'s own scope-precision disclosure, AR-AC-5).
+- 2026-08-05 — scaffolding-compaction-a — ADR-0045
+- 2026-08-05 — scaffolding-compaction-b — ADR-0046
+- 2026-08-05 — scaffolding-compaction-c — ADR-0047
+
 ## Alignment arc — closed 2026-08-05 (ADR-0048–0055)
 Relocated verbatim from the live roadmap's own Done section by this arc's
 own close (`notes/adr/0055-alignment-arc-close.md` AR-AC-5); see that ADR

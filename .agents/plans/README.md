@@ -44,3 +44,4 @@ Files in this directory:
   * 2026-08-05-alignment-audit-findings.md — the audit's findings register (`notes/ADRs.md` ADR-0049): probe/evidence/finding/recommendation/disposition rows for areas A-F, seeded rows S1-S7 updated with fresh evidence; findings-only, no fixes taken beyond Step 0's two pre-ruled acts
   * roadmap-done-2026-07.md — attic: July's slice of the Done history (empty — no July-dated Done rows existed at rotation time), moved 2026-08-05 by scaffolding compaction B
   * roadmap-done-2026-08.md — attic: August's slice of the Done history, moved verbatim 2026-08-05 by scaffolding compaction B (`notes/ADRs.md` ADR-0046)
+  * 2026-08-06-ux-arc-brief.md — working brief for the UX arc: two-voices-two-homes principle, error-names-the-artifact, invocation-docs-gated; seeded findings U1-U5; residuals R1 (pending tags) and R2 (compaction-pointer rotation) folded into the opening session
