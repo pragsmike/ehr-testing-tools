@@ -102,3 +102,4 @@ below updates only when an arc closes.
 - **ADR-0057** — Tag law: the boundary moves to verification, where it always was — [`0057-tag-law.md`](adr/0057-tag-law.md) — Accepted
 - **ADR-0058** — UX audit: every stranger-facing surface surveyed, nothing moved — [`0058-ux-audit.md`](adr/0058-ux-audit.md) — Accepted
 - **ADR-0059** — UX fixes 1: every doc teaches the real invocation — swept, paired, gated — [`0059-ux-fixes-1.md`](adr/0059-ux-fixes-1.md) — Accepted
+- **ADR-0060** — UX fixes 2: errors that name their artifact — the config crash dies, and the fences actually run — [`0060-ux-fixes-2.md`](adr/0060-ux-fixes-2.md) — Accepted
