@@ -101,3 +101,4 @@ below updates only when an arc closes.
 - **ADR-0056** — UX riders: the arc opens — brief lands, tags licensed, the compaction pointers come home — [`0056-ux-riders.md`](adr/0056-ux-riders.md) — Accepted
 - **ADR-0057** — Tag law: the boundary moves to verification, where it always was — [`0057-tag-law.md`](adr/0057-tag-law.md) — Accepted
 - **ADR-0058** — UX audit: every stranger-facing surface surveyed, nothing moved — [`0058-ux-audit.md`](adr/0058-ux-audit.md) — Accepted
+- **ADR-0059** — UX fixes 1: every doc teaches the real invocation — swept, paired, gated — [`0059-ux-fixes-1.md`](adr/0059-ux-fixes-1.md) — Accepted
