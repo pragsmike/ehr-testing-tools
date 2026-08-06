@@ -14,14 +14,14 @@ untouched).
 ## Command
 
 ```bash
-clojure -M:cli run --seed 41 --patients 5 --emit hl7
+bin/ehrt sim run --seed 41 --patients 5 --emit hl7
 ```
 
 To see the same messages as bare wire bytes on stdout — nothing else,
 no EDN wrapper — add `--format er7` (go-public session, Task 1):
 
 ```bash
-clojure -M:cli run --seed 41 --patients 5 --emit hl7 --format er7
+bin/ehrt sim run --seed 41 --patients 5 --emit hl7 --format er7
 ```
 
 (`messages.txt` below predates this milestone's own site-profiles/M6

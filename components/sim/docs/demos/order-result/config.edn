@@ -2,7 +2,7 @@
 ;; (Milestone M4 Task 0) for a data-heavy key (:pathways) that has no CLI
 ;; flag of its own. Run with:
 ;;
-;;   clojure -M:cli run --seed 42 --patients 3 \
+;;   bin/ehrt sim run --seed 42 --patients 3 \
 ;;     --config docs/demos/order-result/config.edn --emit hl7
 ;;
 ;; This demo proves Task 0's own wiring fix end to end THROUGH the CLI --

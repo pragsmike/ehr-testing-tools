@@ -9,8 +9,8 @@ presence of a Z-segment).
 ## Commands
 
 ```bash
-clojure -M:cli run --seed 42 --patients 2 --emit hl7
-clojure -M:cli run --seed 42 --patients 2 --emit hl7 --config docs/demos/site-profiles/config-aldric.edn
+bin/ehrt sim run --seed 42 --patients 2 --emit hl7
+bin/ehrt sim run --seed 42 --patients 2 --emit hl7 --config docs/demos/site-profiles/config-aldric.edn
 ```
 
 The first run uses no site profile at all (the absent/default profile);

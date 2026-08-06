@@ -167,7 +167,7 @@ installing the three prerequisites and verifying they work — come
 back here once `clojure -X:test` passes.)
 
 ```bash
-clojure -M:cli run --seed 42 --patients 40 --churn \
+bin/ehrt sim run --seed 42 --patients 40 --churn \
         --config stmarys.edn --emit hl7
 ```
 

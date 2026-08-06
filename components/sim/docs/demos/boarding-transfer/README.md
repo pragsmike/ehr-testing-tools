@@ -14,7 +14,7 @@ relocates a boarder the moment a real bed frees.
 ## Command
 
 ```bash
-clojure -M:cli run --seed 1 --patients 25 --arrival-gap 20 --emit hl7 --format er7
+bin/ehrt sim run --seed 1 --patients 25 --arrival-gap 20 --emit hl7 --format er7
 ```
 
 (`--format er7`, go-public session Task 1, is what produced

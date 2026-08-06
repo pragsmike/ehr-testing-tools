@@ -11,10 +11,10 @@ SAME identifiers resolving across both.
 ## Commands
 
 ```bash
-clojure -M:cli run --seed 42 --patients 3 \
+bin/ehrt sim run --seed 42 --patients 3 \
   --config docs/demos/order-result/config.edn --emit hl7
 
-clojure -M:cli run --seed 42 --patients 3 \
+bin/ehrt sim run --seed 42 --patients 3 \
   --config docs/demos/order-result/config.edn --emit fhir
 ```
 

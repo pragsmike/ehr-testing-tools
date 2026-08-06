@@ -10,7 +10,7 @@ ER7 wire bytes.
 ## Command
 
 ```bash
-clojure -M:cli run --seed 71 --patients 100 --config docs/demos/module-mix/config.edn --churn --format er7
+bin/ehrt sim run --seed 71 --patients 100 --config docs/demos/module-mix/config.edn --churn --emit hl7 --format er7
 ```
 
 [`config.edn`](config.edn) is this session's own documented default

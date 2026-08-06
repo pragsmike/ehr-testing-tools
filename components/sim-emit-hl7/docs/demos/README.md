@@ -1,6 +1,6 @@
 # Demos
 
-Small, CLI-produced traces (`clojure -M:cli run ...` — never engine
+Small, CLI-produced traces (`bin/ehrt sim run ...` — never engine
 internals, per `AGENTS.md`'s M4 standing rule) captured as fixtures: the
 exact command, the resulting ground-truth log, and the rendered HL7v2
 messages, side by side.
