@@ -229,59 +229,110 @@
                    [[(:group g) nil]]))
                (:groups spec))))
 
+(def default-wrap-width
+  "Terminal columns a rendered line degrades gracefully at (AR-U5-1,
+  ADR-0063). A constant this session, deliberately -- no --width/COLUMNS
+  affordance; every render-* function below takes an optional trailing
+  width arg purely so the content-preservation property (AR-U5-2(b))
+  can compare a wrapped render against an effectively-unwrapped one in
+  tests, never as a user-facing knob."
+  80)
+
+(defn- wrap-lines
+  "Greedy word-wrap of s into lines of at most width columns, wrapping
+  on spaces only -- a single token longer than width still gets its own
+  line, unbroken, rather than split mid-token. Joining the result with
+  a single space reconstructs s exactly: wrapping only ever replaces an
+  existing inter-word space with a line break, never touches word
+  content (AR-U5-2(b))."
+  [s width]
+  (let [words (str/split s #" ")]
+    (reduce (fn [lines word]
+              (if (empty? lines)
+                [word]
+                (let [candidate (str (peek lines) " " word)]
+                  (if (<= (count candidate) width)
+                    (conj (pop lines) candidate)
+                    (conj lines word)))))
+            []
+            words)))
+
+(defn- wrap-with-hanging-indent
+  "Renders prefix followed by text, word-wrapped so no line exceeds
+  `width` total columns; continuation lines are indented to align under
+  where text starts on the first line (prefix's own length) -- flag
+  rows wrap under their description start, group/verb docs under their
+  own text start, per AR-U5-1's layout convention."
+  ([prefix text] (wrap-with-hanging-indent prefix text default-wrap-width))
+  ([prefix text width]
+   (let [prefix-len (count prefix)
+         avail (max 1 (- width prefix-len))
+         indent (apply str (repeat prefix-len \space))]
+     (str prefix (str/join (str "\n" indent) (wrap-lines text avail))))))
+
 (defn- render-flag
-  [{:keys [flag doc default]}]
-  (str "  " flag "  " doc (when default (str " (default: " default ")"))))
+  ([flag-spec] (render-flag flag-spec default-wrap-width))
+  ([{:keys [flag doc default]} width]
+   (wrap-with-hanging-indent (str "  " flag "  ")
+                              (str doc (when default (str " (default: " default ")")))
+                              width)))
 
 (defn- render-flags
-  [flags]
-  (if (seq flags)
-    (str/join "\n" (map render-flag flags))
-    "  (no flags)"))
+  ([flags] (render-flags flags default-wrap-width))
+  ([flags width]
+   (if (seq flags)
+     (str/join "\n" (map #(render-flag % width) flags))
+     "  (no flags)")))
 
 (defn- render-exit-codes
-  [exit-codes]
-  (str/join "\n" (map (fn [{:keys [code meaning]}] (str "  " code "  " meaning)) exit-codes)))
+  ([exit-codes] (render-exit-codes exit-codes default-wrap-width))
+  ([exit-codes width]
+   (str/join "\n" (map (fn [{:keys [code meaning]}]
+                          (wrap-with-hanging-indent (str "  " code "  ") meaning width))
+                        exit-codes))))
 
 (defn- render-verb
   "A verb's own :positional/:positional-doc (D10) render the same way a
   group's do (render-group below) -- declared per-verb rather than
   per-group because, unlike gate/check, not every verb in a group takes
   one (corpus generate/operators don't; corpus mutate/intake do)."
-  [group-name {:keys [verb doc flags positional positional-doc]}]
-  (str "ehrt " group-name " " verb "\n"
-       "  " doc "\n"
-       (when positional
-         (str "\nPositional: " positional " -- " positional-doc "\n"))
-       "\n"
-       "Flags:\n" (render-flags flags)))
+  ([group-name verb-spec] (render-verb group-name verb-spec default-wrap-width))
+  ([group-name {:keys [verb doc flags positional positional-doc]} width]
+   (str "ehrt " group-name " " verb "\n"
+        (wrap-with-hanging-indent "  " doc width) "\n"
+        (when positional
+          (str "\n" (wrap-with-hanging-indent (str "Positional: " positional " -- ") positional-doc width) "\n"))
+        "\n"
+        "Flags:\n" (render-flags flags width))))
 
 (defn render-group
   "Group usage text: `ehrt help <group>` and `ehrt <group> --help`. Returns
   nil for an unrecognized group name -- callers decide what that means."
-  [spec group-name]
-  (when-let [g (find-group spec group-name)]
-    (str "ehrt " group-name " -- " (:doc g) "\n"
-         (when (:positional g)
-           (str "\nPositional: " (:positional g) " -- " (:positional-doc g) "\n"))
-         "\n"
-         (if (:verbs g)
-           (str/join "\n\n" (map #(render-verb group-name %) (:verbs g)))
-           (str "Flags:\n" (render-flags (:flags g))))
-         "\n\nExit codes:\n" (render-exit-codes (:exit-codes spec)))))
+  ([spec group-name] (render-group spec group-name default-wrap-width))
+  ([spec group-name width]
+   (when-let [g (find-group spec group-name)]
+     (str (wrap-with-hanging-indent (str "ehrt " group-name " -- ") (:doc g) width) "\n"
+          (when (:positional g)
+            (str "\n" (wrap-with-hanging-indent (str "Positional: " (:positional g) " -- ") (:positional-doc g) width) "\n"))
+          "\n"
+          (if (:verbs g)
+            (str/join "\n\n" (map #(render-verb group-name % width) (:verbs g)))
+            (str "Flags:\n" (render-flags (:flags g) width)))
+          "\n\nExit codes:\n" (render-exit-codes (:exit-codes spec) width)))))
 
 (defn render-top-level
   "The top-level usage text: bare `ehrt`, `ehrt help`, `--help` with no
   group. Always succeeds (the spec is static data, not user input)."
-  [spec]
-  (str "Usage: " (:program spec) " <group> [<verb>] [flags]\n\n"
-       (when (:doc spec) (str (:doc spec) "\n\n"))
-       "Groups:\n"
-       (str/join "\n" (map (fn [g] (str "  " (:group g) "  " (:doc g))) (:groups spec)))
-       "\n\n"
-       "Run `" (:program spec) " help <group>` for a group's verbs and flags.\n\n"
-       "Global flags:\n" (render-flags (:global-flags spec))
-       "\n\nExit codes:\n" (render-exit-codes (:exit-codes spec))))
+  ([spec] (render-top-level spec default-wrap-width))
+  ([spec width]
+   (str "Usage: " (:program spec) " <group> [<verb>] [flags]\n\n"
+        (when (:doc spec) (str (wrap-with-hanging-indent "" (:doc spec) width) "\n\n"))
+        "Groups:\n"
+        (str/join "\n" (map (fn [g] (wrap-with-hanging-indent (str "  " (:group g) "  ") (:doc g) width)) (:groups spec)))
+        "\n\n"
+        "Run `" (:program spec) " help <group>` for a group's verbs and flags.\n\n"
+        "Global flags:\n" (render-flags (:global-flags spec) width)
+        "\n\nExit codes:\n" (render-exit-codes (:exit-codes spec) width))))
 
 ;; ---- impure shell (I/O) ----
 
