@@ -98,11 +98,21 @@ actually runs.
    other mismatch is never fixed by amending a pushed commit — add a
    fix-forward note to this session's own session record naming what
    the wrapper dropped.
-8. **AUTHOR ACTION checkpoints stay author-only in every mode** — tags
-   (the `stable-*` tag is the actual trust boundary, ADR-0003), and
-   repo-level `gh` mutations (create/delete/settings/visibility). Git
-   surgery and placing external documents are AUTHOR ACTION too. Stop
-   and hand these to the author regardless of ceremony mode.
+8. **`stable-*` tags are a session act, under license; everything
+   else below stays author-only regardless of ceremony mode.** A
+   session creates and pushes a `stable-*` continuity tag when (i) its
+   own prompt licenses a SPECIFIC tag at a SPECIFIC commit, or (ii) for
+   its own predecessor's design-channel-verified stable point, as
+   standing ceremony — deferring a licensed tag is now the deviation,
+   disclose why if you do (tag law, `notes/ADRs.md` ADR-0057 AR-T-1,
+   superseding ADR-0003's author-only scope for this one class of tag
+   only; ADR-0003's trust-boundary reasoning for every other AUTHOR
+   ACTION item below is otherwise unchanged). A tag already present at
+   the exact commit and message is verified and disclosed, never
+   re-created. **Release `v*` tags, repo-level `gh` mutations
+   (create/delete/settings/visibility), git surgery, and placing
+   external documents remain AUTHOR ACTION** — stop and hand these to
+   the author regardless of ceremony mode.
 9. **Fix-forward with disclosure on premise mismatch.** When a
    checkpoint's stated premise doesn't hold against the live tree, stop,
    record the finding, and ask — don't silently adapt or guess

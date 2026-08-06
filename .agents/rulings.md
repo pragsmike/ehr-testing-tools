@@ -138,7 +138,10 @@ change to the contract itself.
   pattern in `workspace.edn` (no config change). The three legacy tags
   (`stable-bootstrap`, `stable-ehrt-1`, `stable-pre-monorepo`) stay —
   frozen history, superseded by the first new stable point. Tagging
-  remains the author's act alone (R30).
+  remains the author's act alone (R30). **Superseded 2026-08-06 — this
+  ruling's own final sentence is out of date; see "From the tag-law
+  session (ADR-0057)," below, for the standing replacement.** The
+  format/legacy-tag substance above still holds, unedited.
 
 ## From the alignment arc (ADR-0048–0055)
 
@@ -160,3 +163,34 @@ change to the contract itself.
   archived spike-notes document) kept prescribing in-repo NIST-jar
   vendoring for eleven days after ADR-0005's 2026-07-24 amendment made
   that prescription unlawful, until ADR-0053 closed it.
+
+  **Third instance, 2026-08-06 (tag law, `notes/adr/0057-tag-law.md`
+  AR-T-1/AR-T-2):** this file's own AR-R-2, above, stated tagging as
+  "the author's act alone" nine sessions after ADR-0049's AR-AU-0 had
+  already amended the mechanic, and was never itself corrected when
+  ADR-0051's AR-F2-0 reconciled `AGENTS.md` alone — leaving
+  `AUTHORS-GUIDE.md`, both `build-session` `SKILL.md` copies,
+  `.agents/state.md`, and this file all stating or implying the retired
+  law until the tag-law session swept every surface at once and gated
+  the retired phrasing against recurrence
+  (`ehrt.docs-tooling.tag-law-test`).
+
+## From the tag-law session (ADR-0057)
+
+- **Stable-tag discipline, AMENDED 2026-08-06** (AR-T-1, STANDING,
+  superseding AR-R-2's final sentence above): `stable-*` continuity
+  tags are SESSION ACTS. A session creates and pushes one (i) when its
+  own prompt licenses a SPECIFIC tag at a SPECIFIC commit, a license
+  the design channel issues only after verifying the landing it names,
+  or (ii) for its own predecessor's design-channel-verified stable
+  point, as standing ceremony, without bouncing back to the author.
+  **Deferring a licensed tag is now the deviation** and needs a
+  disclosed reason — the inverse of AR-R-2's own default. The author
+  may always tag directly, licensed or not; a tag already present at
+  the exact commit and message a session would otherwise have created
+  is verified and disclosed, never re-created. Release `v*` tags stay
+  AUTHOR ACTION, unchanged — publication itself is author-gated, so its
+  tags are too. `notes/ADRs.md` ADR-0003's original author-only
+  trust-boundary reasoning is superseded in scope for this one class of
+  tag, not erased: the design channel's own landing verification is now
+  that boundary, and the tag is its mechanical consequence.

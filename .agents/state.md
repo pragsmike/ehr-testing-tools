@@ -174,22 +174,30 @@ session records for `mnt/c`/`dual-clone`/`clone stale` — zero hits).
 The three-cluster `/mnt/c` incident ledger the prior regeneration
 recorded stands, historical, unrevisited.
 
-**Tag mechanic, reconciled and exercised (this arc's own main
-structural theme).** `AGENTS.md`'s tag rule (alignment fixes 2, ADR-0051
-AR-F2-0) now states the same law `.agents/rulings.md`'s own AR-R-2 and
-ADR-0049's AR-AU-0 state: a session MAY create and push a `stable-*`
-continuity tag when its own prompt licenses a SPECIFIC tag at a
-SPECIFIC commit, issued by the design channel only after verifying that
-landing. **Six `stable-*` continuity tags live** as of this session's
-own Step 0 (confirmed, `git tag -l 'stable-*'`, excluding the three
-frozen legacy tags `stable-bootstrap`/`stable-ehrt-1`/`stable-pre-
-monorepo`): `stable-20260805-alignment-riders`, `-alignment-audit`,
-`-alignment-fixes-1`, `-alignment-fixes-2`, `-alignment-fixes-3`,
-`-alignment-fixes-4`. `-alignment-fixes-5` is licensed by this arc's
-own close but not yet tagged (AUTHOR ACTION, prepared not executed —
-see `notes/adr/0055-alignment-arc-close.md` AR-AC-0); `-alignment-close`
-itself is licensed only after design-channel verification of this
-session's own landing, per the standing after-landing sequence.
+**Tag mechanic, reconciled a third time and now gated (tag law,
+`notes/adr/0057-tag-law.md` AR-T-1/AR-T-2, 2026-08-06).** `stable-*`
+continuity tags are a SESSION ACT, not an author-only one: a session
+creates and pushes one (i) when its own prompt licenses a SPECIFIC tag
+at a SPECIFIC commit, issued by the design channel only after verifying
+that landing, or (ii) for its own predecessor's design-channel-verified
+stable point, as standing ceremony, without further license. Deferring
+a licensed tag is the deviation now, not the default. This is the third
+instance of the law-surface propagation lesson (`.agents/rulings.md`):
+ADR-0049's AR-AU-0 amended the mechanic; ADR-0051's AR-F2-0 reconciled
+`AGENTS.md` alone; `AUTHORS-GUIDE.md`, both `build-session` `SKILL.md`
+copies, this file, and `.agents/rulings.md`'s own AR-R-2 all still
+stated or implied the prior author-only law until this session's sweep
+landed on every surface at once, gated against recurrence
+(`ehrt.docs-tooling.tag-law-test`). **Eight `stable-*` continuity tags
+live** as of this session's own probe (`git tag -l 'stable-*'`,
+excluding the three frozen legacy tags
+`stable-bootstrap`/`stable-ehrt-1`/`stable-pre-monorepo`):
+`stable-20260805-alignment-riders`, `-alignment-audit`,
+`-alignment-fixes-1` through `-5`, and `-alignment-close` — the author
+tagged the last two directly between the alignment arc's own close and
+this session, exactly at the commits and messages ADR-0055/0056
+prepared (verified-and-disclosed by this session, not re-created, tag
+law's own carve-out for a tag pre-existing at the exact commit).
 
 **NIST supply-chain posture, mechanized (alignment fixes 4, ADR-0053).**
 `deps.edn`'s own `nist-hit` Nexus stays live-network at build time, but

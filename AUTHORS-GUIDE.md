@@ -35,8 +35,15 @@ session does exactly that, without confirming each individual push,
 because the confirmation already happened once, for the whole session,
 at the start. Either way, the next session starts back at whichever
 mode its own prompt states; no session's mode carries forward
-silently. Tags and repo-level `gh` mutations (create/delete/settings/
-visibility) are never delegated by either mode — see `AGENTS.md`.
+silently. Repo-level `gh` mutations (create/delete/settings/visibility), git
+surgery, and placing external documents are never delegated by either
+mode. `stable-*` continuity tags ARE delegated, under license — a
+session creates and pushes one when its own prompt licenses a specific
+tag at a specific commit, or for its own predecessor's
+design-channel-verified stable point as standing ceremony (tag law,
+`notes/ADRs.md` ADR-0057 AR-T-1). Every other tag class, release `v*`
+tags especially, stays undelegated. See `AGENTS.md`'s tag rule for the
+exact condition.
 
 **Amendment, 2026-08-01 (agent-UX charter, R-F ratified,
 `notes/ADRs.md` ADR-0007's own dated amendment).** The default

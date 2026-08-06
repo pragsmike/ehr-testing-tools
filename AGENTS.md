@@ -42,27 +42,36 @@ tree and proposes commit messages, never itself running `git commit`,
 `git push`, `git merge`, or `gh`) is the exception a session's own
 prompt must state explicitly, in that chat, at the start — a live,
 scoped choice for that session, not a rule either mode carries forward
-silently to the next one. Two classes of action stay the author's alone
-under either mode: **tags** other than the licensed continuity
-exception below (the `stable-*` tag is the actual trust boundary,
-ADR-0003) and **repo-level `gh` mutations**
+silently to the next one. One class of action stays the author's alone under either mode without
+exception: **repo-level `gh` mutations**
 (create/delete/settings/visibility — the `pragsmike/packs` precedent,
-`sim's AUTHORS-GUIDE.md` §2). **2026-08-05 amendment** (`notes/adr/
-0051-alignment-fixes-2.md` AR-F2-0, reconciling ADR-0049's AR-AU-0 onto
-this surface — the two had fallen out of sync from the moment AR-AU-0
-landed, a gap one session's own principled deferral correctly left
-unresolved rather than acted on ad hoc, ADR-0050 AR-F1-0): a session
-MAY create and push a `stable-*` continuity tag when — and only when —
-that session's own prompt licenses a SPECIFIC tag at a SPECIFIC commit,
-a license the design channel issues only after verifying the landing it
-names. The author may always tag directly, licensed or not. Every
-other tag class — release `v*` tags especially — stays AUTHOR ACTION,
-unchanged. Agents working in this environment hold ambient
-authenticated `gh` credentials for exactly the repo-level mutations
-above — the standing rule, unchanged by either mode, is that those
-credentials do not get used off an agent's own initiative. AUTHOR
-ACTION checkpoints (git surgery, placing external documents — things
-only the author does) stay author-only in every mode.
+`sim's AUTHORS-GUIDE.md` §2), **git surgery**, and **placing external
+documents**. **`stable-*` continuity tags are a SESSION ACT** (tag law,
+`notes/ADRs.md` ADR-0057 AR-T-1, 2026-08-06 — the law restated once,
+canonically, after two dated amendments, ADR-0049's AR-AU-0 and
+ADR-0051's AR-F2-0, had left this surface and others out of sync with
+each other and with `.agents/rulings.md`'s own AR-R-2; ADR-0003's
+original author-only trust-boundary reasoning is superseded in scope
+for this one class of tag, not erased — the design channel's own
+landing verification is now that boundary, and the tag is its
+mechanical consequence): a session creates and pushes a `stable-*` tag
+(i) when its own prompt licenses a SPECIFIC tag at a SPECIFIC commit, a
+license the design channel issues only after verifying the landing it
+names, and (ii) for its own predecessor's design-channel-verified
+stable point, as standing ceremony, without bouncing back to the
+author. **Deferring a licensed tag is now the deviation** and needs a
+disclosed reason — the inverse of the prior default. The author may
+always tag directly, licensed or not; a tag already present at the
+exact commit and message a session would otherwise have created is
+verified and disclosed, never re-created. Every other tag class —
+release `v*` tags especially — stays AUTHOR ACTION: publication itself
+is author-gated, so its tags are too. Agents working in this
+environment hold ambient authenticated `gh` credentials for exactly the
+repo-level mutations above — the standing rule, unchanged by either
+mode, is that those credentials do not get used off an agent's own
+initiative. Git surgery and placing external documents stay the
+author's alone, unchanged, regardless of ceremony mode — the
+`stable-*` carve-out above narrows nothing else.
 
 ## Reading this repo
 
