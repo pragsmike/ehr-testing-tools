@@ -139,3 +139,24 @@ change to the contract itself.
   (`stable-bootstrap`, `stable-ehrt-1`, `stable-pre-monorepo`) stay —
   frozen history, superseded by the first new stable point. Tagging
   remains the author's act alone (R30).
+
+## From the alignment arc (ADR-0048–0055)
+
+- **Dependency-review cadence, standing** (A-3, from ADR-0050 AR-F1-6a):
+  `clojure -M:poly libs :outdated` is report-only, run at each arc close
+  plus mandatory before any publish; upgrades are never taken as a side
+  effect of running it.
+- **Pairing-as-data registry landing spot, accepted** (D-3, from
+  ADR-0050 AR-F1-6b): `judge` is the accepted acyclic home for the
+  mutate↔judge conviction registry; the design pass starts from there.
+- **Law-surface propagation lesson, standing** (from ADR-0051 AR-F2-0
+  and ADR-0053 AR-F4-4): an amendment to standing law lands on every
+  surface that states the law, in the same session that rules it —
+  never left to a later session to notice the drift, and never resolved
+  ad hoc by a session that only notices the conflict in passing. Two
+  instances this arc: `AGENTS.md`'s tag rule lagged ADR-0049's AR-AU-0
+  by three sessions before ADR-0051 closed the gap; `components/
+  judge-v2-nist/deps.edn`'s own comment block (and its source, the
+  archived spike-notes document) kept prescribing in-repo NIST-jar
+  vendoring for eleven days after ADR-0005's 2026-07-24 amendment made
+  that prescription unlawful, until ADR-0053 closed it.
