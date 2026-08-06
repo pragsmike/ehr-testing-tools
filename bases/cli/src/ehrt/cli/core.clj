@@ -1469,20 +1469,30 @@
 
 (defn- bare-invocation-response
   "Bare `ehrt` (no group at all): prints the same top-level usage text
-  as `ehrt help`, but stays result/error (exit 2) -- an incomplete
-  invocation is operationally an error, not a help request, even
-  though the text shown is identical."
+  as `ehrt help`, and now exits the same way too (B-5, ux fixes 2,
+  `notes/adr/0060-ux-fixes-2.md`, author-ruled 2026-08-06): matching
+  the `--help`-exits-0 convention documented for --help itself --
+  asking for help by omission is still asking for help, not an
+  operational error."
   []
-  (result/error :cli-help {:text (help-text-for nil)}))
+  (assoc (result/ok {:text (help-text-for nil)}) :category :cli-help))
 
 (defn- unknown-command-error
   "An unrecognized group or verb: :unknown-command, extended (DOC-1's
   bounded error-message pass) with :valid-options (drawn from the help
   spec -- one source of truth with `ehrt help`'s own text, so the two
-  can't drift apart) and a fixed :hint pointing at the fuller help
-  surface."
+  can't drift apart) and a :hint pointing at the fuller help surface --
+  `run: ehrt help <group>` when the FIRST arg token is itself a real
+  group name (B-6/D-3, ux fixes 2, `notes/adr/0060-ux-fixes-2.md`:
+  `ehrt sim` with no verb knows it means the `sim` group, so its own
+  hint should say so, not point at the generic top-level listing); the
+  generic `run: ehrt help` for a genuinely-unrecognized token."
   [args valid-options]
-  (result/error :unknown-command {:args args :valid-options valid-options :hint "run: ehrt help"}))
+  (let [token (first args)
+        hint (if (contains? (set (help/group-names help/cli-spec)) token)
+               (str "run: ehrt help " token)
+               "run: ehrt help")]
+    (result/error :unknown-command {:args args :valid-options valid-options :hint hint})))
 
 (defn- sim-er7-requires-emit-hl7?
   [format opts]

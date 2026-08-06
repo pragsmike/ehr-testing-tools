@@ -38,6 +38,20 @@
       (is (result/rejected? r))
       (is (= :incompatible-assignment (:category r))))))
 
+(deftest identifiers-command-propagates-config-unreadable-unchanged
+  ;; C-1 (ux fixes 2, ADR-0060): `ehrt.sim.run/merge-config-file` is
+  ;; the SAME config-merging step run-command uses (this namespace's
+  ;; own docstring) -- a malformed :config file must surface here
+  ;; unchanged, not silently unwrapped or crash-until-caught.
+  (let [tmp (java.io.File/createTempFile "malformed-config" ".edn")
+        _ (spit tmp "not-even-a-map [")]
+    (try
+      (let [r (identifiers/identifiers-command {:seed 1 :patients 1 :config (.getPath tmp)})]
+        (is (result/error? r))
+        (is (= :config-unreadable (:category r)))
+        (is (= (.getPath tmp) (:path (:payload r)))))
+      (finally (.delete tmp)))))
+
 (deftest identifiers-command-surfaces-an-unresolvable-module-name
   (let [r (identifiers/identifiers-command {:seed 1 :modules ["not-a-real-module"]})]
     (is (result/error? r))

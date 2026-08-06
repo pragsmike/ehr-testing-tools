@@ -99,6 +99,16 @@
     (is (= :unknown-command (:category r)))
     (is (= #{"generate" "mutate" "intake" "operators"} (set (:valid-options (:payload r)))))))
 
+(deftest dispatch-unknown-verb-in-a-real-group-hints-that-groups-own-help-test
+  ;; B-6/D-3 (ux fixes 2, ADR-0060): args = ["sim"] -- "sim" is a real
+  ;; group missing its verb, not a genuinely-unrecognized token, so the
+  ;; hint should point at `ehrt help sim`, not the generic top-level
+  ;; listing (compare dispatch-unknown-group-names-the-valid-groups-test
+  ;; above, "bogus" isn't a real group and keeps the generic hint).
+  (let [r (cli/dispatch ["sim"] {} {})]
+    (is (= :unknown-command (:category r)))
+    (is (= "run: ehrt help sim" (:hint (:payload r))))))
+
 (deftest dispatch-unrecognized-gate-action-is-sniffed-as-a-path-test
   ;; D11: an action that isn't "v2"/"fhir" is no longer necessarily an
   ;; unknown-command error -- it's sniff-dispatched as a candidate PATH
@@ -143,11 +153,16 @@
     (is (= :cli-help (:category r)))
     (is (clojure.string/includes? (:text (:payload r)) "Usage:"))))
 
-(deftest dispatch-bare-invocation-is-an-error-with-usage-text-test
+(deftest dispatch-bare-invocation-succeeds-with-usage-text-test
+  ;; B-5 (ux fixes 2, ADR-0060, author-ruled 2026-08-06): bare
+  ;; invocation now matches help/--help's own exit-0 convention -- same
+  ;; text, same :category :cli-help, but result/ok now, not
+  ;; result/error (previously dispatch-bare-invocation-is-an-error-
+  ;; with-usage-text-test asserted exit 2 here).
   (let [r (cli/dispatch nil {} {})]
-    (is (result/error? r))
+    (is (result/ok? r))
     (is (= :cli-help (:category r)))
-    (is (= 2 (cli/result->exit-code r)))
+    (is (= 0 (cli/result->exit-code r)))
     (is (clojure.string/includes? (:text (:payload r)) "Usage:"))))
 
 (deftest dispatch-routes-artifact-fetch-test
@@ -1902,14 +1917,17 @@
     (is (clojure.string/includes? @printed "--treat-no-verdict-as") "ehrt gate --help --json still renders gate's own group usage")
     (is (not (clojure.string/includes? @printed "{")) "plain text, never a JSON/EDN projection, regardless of --json")))
 
-(deftest main-bang-bare-invocation-prints-usage-and-exits-two-test
+(deftest main-bang-bare-invocation-prints-usage-and-exits-zero-test
+  ;; B-5 (ux fixes 2, ADR-0060): previously main-bang-bare-invocation-
+  ;; prints-usage-and-exits-two-test, asserting exit 2 -- bare
+  ;; invocation now matches help/--help's own exit-0 convention.
   (let [printed (atom nil)
         exit-code (atom nil)
         code (cli/main! []
                          {:println-fn (fn [s] (reset! printed s))
                           :exit-fn (fn [c] (reset! exit-code c))})]
-    (is (= 2 code))
-    (is (= 2 @exit-code))
+    (is (= 0 code))
+    (is (= 0 @exit-code))
     (is (clojure.string/includes? @printed "Usage:"))))
 
 ;; ---- ADR-0013: TTY-default rendering -- render-pretty's own dispatch,

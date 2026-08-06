@@ -47,6 +47,7 @@ The same table every group's `ehrt help <group>` output ends with. These are the
 | Code | Meaning |
 |---|---|
 | `0` | ran and passed |
+| `0` | bare invocation, help, and --help all exit 0 too |
 | `1` | ran and legitimately rejected |
 | `2` | operational error (bad invocation, missing artifact, subprocess failure, etc.) |
 | `3` | a gate's aggregate contains :no-verdict under the default --treat-no-verdict-as policy (ADR-0010) |

@@ -257,3 +257,61 @@
         (let [r (run/run-command {:seed 1 :patients 1 :emit "hl7" :config (.getPath tmp)})]
           (is (str/includes? (first (:messages (:payload r))) "FROM-FILE")))
         (finally (.delete tmp))))))
+
+;; --- C-1/U4 (ux fixes 2, ADR-0060): --config crashes with a raw JVM
+;; exception today (`merge-config-file` does `(edn/read-string (slurp
+;; path))` with no exception handling at all) -- these tests pin the
+;; Result-wrapped replacement: a missing path is :config-not-found
+;; (U4: plus :did-you-mean when a same-stem sibling exists in the same
+;; directory), a present-but-malformed file is :config-unreadable, and
+;; either category propagates through run-command/identifiers-command
+;; unchanged, exactly as :missing-required-opt already does. ---------
+
+(defn- temp-dir-path* []
+  (let [f (java.io.File/createTempFile "merge-config-file-test" "")]
+    (.delete f)
+    (.mkdirs f)
+    (.getAbsolutePath f)))
+
+(deftest merge-config-file-returns-config-not-found-for-a-missing-path
+  (let [dir (temp-dir-path*)
+        path (str dir "/does-not-exist.edn")
+        r (run/merge-config-file {:config path})]
+    (is (result/error? r))
+    (is (= :config-not-found (:category r)))
+    (is (= path (:path (:payload r))))
+    (is (not (contains? (:payload r) :did-you-mean))
+        "no same-stem sibling exists in this fresh temp dir")))
+
+(deftest merge-config-file-returns-config-unreadable-for-malformed-edn
+  (let [tmp (java.io.File/createTempFile "malformed-config" ".edn")
+        _ (spit tmp "{:pathway {:name \"broken\"")] ;; deliberately truncated
+    (try
+      (let [r (run/merge-config-file {:config (.getPath tmp)})]
+        (is (result/error? r))
+        (is (= :config-unreadable (:category r)))
+        (is (= (.getPath tmp) (:path (:payload r))))
+        (is (string? (:message (:payload r))))
+        (is (seq (:message (:payload r)))))
+      (finally (.delete tmp)))))
+
+(deftest merge-config-file-suggests-a-same-stem-sibling-file
+  (testing "the founding incident's exact shape: config/busy-weekday.md
+            is a real, deliberately untouched pre-existing fixture in
+            this repo -- busy-weekday.edn does not exist alongside it"
+    (let [r (run/merge-config-file {:config "config/busy-weekday.edn"})]
+      (is (result/error? r))
+      (is (= :config-not-found (:category r)))
+      (is (= "config/busy-weekday.edn" (:path (:payload r))))
+      (is (= "config/busy-weekday.md" (:did-you-mean (:payload r)))))))
+
+(deftest merge-config-file-with-no-config-key-is-the-identity-on-opts
+  (is (= (result/ok {:seed 1 :patients 2}) (run/merge-config-file {:seed 1 :patients 2}))))
+
+(deftest run-command-propagates-config-not-found-unchanged
+  (let [dir (temp-dir-path*)
+        path (str dir "/does-not-exist.edn")
+        r (run/run-command {:seed 1 :patients 1 :config path})]
+    (is (result/error? r))
+    (is (= :config-not-found (:category r)))
+    (is (= path (:path (:payload r))))))

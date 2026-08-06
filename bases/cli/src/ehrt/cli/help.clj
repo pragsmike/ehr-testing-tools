@@ -16,6 +16,7 @@
   ADR-0010 for the no-verdict arm -- see `cli/result->exit-code`'s own
   docstring for the authoritative reasoning; this table only cites it."
   [{:code 0 :meaning "ran and passed"}
+   {:code 0 :meaning "bare invocation, help, and --help all exit 0 too"}
    {:code 1 :meaning "ran and legitimately rejected"}
    {:code 2 :meaning "operational error (bad invocation, missing artifact, subprocess failure, etc.)"}
    {:code 3 :meaning "a gate's aggregate contains :no-verdict under the default --treat-no-verdict-as policy (ADR-0010)"}])

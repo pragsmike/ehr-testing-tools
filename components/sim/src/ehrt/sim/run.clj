@@ -25,6 +25,7 @@
   was actually generated with."
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
+            [clojure.string :as str]
             [ehrt.kernel.interface :as result]
             [ehrt.sim-engine.interface :as engine]
             [ehrt.sim-check.interface :as check]
@@ -191,6 +192,31 @@
     churn churn/sample-profile
     :else nil))
 
+(defn- config-file-stem
+  [^String filename]
+  (str/replace filename #"\.[^./]+$" ""))
+
+(defn- similar-sibling-config
+  "U4 (ux fixes 2, `notes/adr/0060-ux-fixes-2.md`): when `:config` names
+  a path that doesn't exist, a same-directory file sharing its own
+  filename stem but a different extension is this arc's own founding
+  incident, made structural -- a `.md` sitting where a `.edn` was
+  named. `ehrt.kernel` has no existing similar-file/did-you-mean helper
+  (checked, confirmed absent this session) -- this is a small, local
+  fn, not a reusable one, since C-1's own fix is scoped to this
+  namespace. Returns the sibling's own path string, or nil."
+  [path]
+  (let [f (io/file path)
+        dir (or (.getParentFile f) (io/file "."))
+        stem (config-file-stem (.getName f))]
+    (when (.isDirectory dir)
+      (some-> (->> (.listFiles dir)
+                   (filter #(.isFile ^java.io.File %))
+                   (remove #(= (.getName ^java.io.File %) (.getName f)))
+                   (filter #(= stem (config-file-stem (.getName ^java.io.File %))))
+                   first)
+              .getPath))))
+
 (defn merge-config-file
   "M4 Task 0: `:config` (a path to an EDN file) supplies the data-heavy
   engine keys that have no CLI flag of their own (`:pathway`/
@@ -201,11 +227,27 @@
   default -- this is the identity function on opts, byte for byte.
   Public: `ehrt.sim.identifiers/identifiers-command` reuses this
   SAME config-merging step (a projection over the same run this
-  namespace's own `run-command` executes), rather than re-deriving it."
+  namespace's own `run-command` executes), rather than re-deriving it.
+
+  C-1 (ux fixes 2, `notes/adr/0060-ux-fixes-2.md`): Result-wrapped, the
+  same pattern this codebase's every other file-reading operational
+  boundary already uses (`ehrt.kernel.artifact/read-lockfile`'s own
+  positive control) -- a missing path is `result/error :config-not-found
+  {:path path}` (U4: plus `:did-you-mean` when a same-stem sibling
+  exists), and a present-but-unparseable file is `result/error
+  :config-unreadable {:path path :message ...}`, never a raw JVM
+  exception reaching the CLI shell. Callers must unwrap the Result."
   [opts]
   (if-let [path (:config opts)]
-    (merge (edn/read-string (slurp path)) (dissoc opts :config))
-    opts))
+    (if (.exists (io/file path))
+      (try
+        (result/ok (merge (edn/read-string (slurp path)) (dissoc opts :config)))
+        (catch Exception e
+          (result/error :config-unreadable {:path path :message (.getMessage e)})))
+      (let [sibling (similar-sibling-config path)]
+        (result/error :config-not-found
+                       (cond-> {:path path} sibling (assoc :did-you-mean sibling)))))
+    (result/ok opts)))
 
 (defn run-command
   "opts: :seed (required, long), :patients (long), :reference-date
@@ -298,48 +340,51 @@
   engine without running a real simulation against sentinel data."
   ([opts] (run-command opts {}))
   ([raw-opts {:keys [engine-run-fn] :or {engine-run-fn engine/run}}]
-   (let [opts (merge-config-file raw-opts)
-         {:keys [seed patients emit at reference-date utc-offset warm-up-seconds churn churn-profile site-profile
-                 modules module-initial-attributes]} opts
-         conflicts (incompatible-assignments opts)
-         resolved-modules (when modules (resolve-modules modules (or module-initial-attributes {})))]
-     (cond
-       (nil? seed)
-       (result/error :missing-required-opt
-                     {:message "--seed is required (determinism is a feature, not a default)"
-                      :opt :seed})
-
-       (seq conflicts)
-       (result/rejected :incompatible-assignment {:conflicts conflicts})
-
-       (and resolved-modules (not (result/ok? resolved-modules)))
-       resolved-modules
-
-       :else
-       (let [reference-date (or reference-date emit-hl7/default-reference-date)
-             utc-offset (or utc-offset emit-hl7/default-utc-offset)
-             warm-up-seconds (or warm-up-seconds 0)
-             effective-churn-profile (effective-churn-profile opts)
-             engine-params (-> (select-keys opts [:patients :arrival-gap :warm-up-seconds])
-                                (assoc :reference-date reference-date :utc-offset utc-offset))
-             engine-opts (cond-> (merge (select-keys opts engine/config-keys)
-                                        {:seed seed :churn-profile effective-churn-profile})
-                           resolved-modules (assoc :modules (:payload resolved-modules)))
-             {:keys [ground-truth facility providers exhausted]} (engine-run-fn engine-opts)
-             checked (when-not exhausted (check/check-all ground-truth facility warm-up-seconds))]
+   (let [config-result (merge-config-file raw-opts)]
+     (if-not (result/ok? config-result)
+       config-result
+       (let [opts (:payload config-result)
+             {:keys [seed patients emit at reference-date utc-offset warm-up-seconds churn churn-profile site-profile
+                     modules module-initial-attributes]} opts
+             conflicts (incompatible-assignments opts)
+             resolved-modules (when modules (resolve-modules modules (or module-initial-attributes {})))]
          (cond
-           exhausted (result/error :capacity-exhausted exhausted)
-           (not (result/ok? checked)) (result/error :self-check-failed (:payload checked))
+           (nil? seed)
+           (result/error :missing-required-opt
+                         {:message "--seed is required (determinism is a feature, not a default)"
+                          :opt :seed})
+
+           (seq conflicts)
+           (result/rejected :incompatible-assignment {:conflicts conflicts})
+
+           (and resolved-modules (not (result/ok? resolved-modules)))
+           resolved-modules
+
            :else
-           (result/ok
-            (cond-> {:ground-truth ground-truth
-                     :manifest (manifest/build {:seed seed
-                                                :engine-params engine-params
-                                                :config {:path "(inline)"
-                                                         :sha256 (apply str (repeat 64 "0"))}
-                                                :invocation {:verb "run" :opts opts}})
-                     :summary {:patients (or patients 1)
-                               :events (count ground-truth)}}
-              (= "hl7" emit) (assoc :messages (emit-hl7/emit ground-truth reference-date utc-offset facility providers site-profile))
-              (= "fhir" emit) (assoc :fhir-bundles
-                                     (emit-fhir/bundle-run ground-truth reference-date utc-offset seed (or at :end)))))))))))
+           (let [reference-date (or reference-date emit-hl7/default-reference-date)
+                 utc-offset (or utc-offset emit-hl7/default-utc-offset)
+                 warm-up-seconds (or warm-up-seconds 0)
+                 effective-churn-profile (effective-churn-profile opts)
+                 engine-params (-> (select-keys opts [:patients :arrival-gap :warm-up-seconds])
+                                    (assoc :reference-date reference-date :utc-offset utc-offset))
+                 engine-opts (cond-> (merge (select-keys opts engine/config-keys)
+                                            {:seed seed :churn-profile effective-churn-profile})
+                               resolved-modules (assoc :modules (:payload resolved-modules)))
+                 {:keys [ground-truth facility providers exhausted]} (engine-run-fn engine-opts)
+                 checked (when-not exhausted (check/check-all ground-truth facility warm-up-seconds))]
+             (cond
+               exhausted (result/error :capacity-exhausted exhausted)
+               (not (result/ok? checked)) (result/error :self-check-failed (:payload checked))
+               :else
+               (result/ok
+                (cond-> {:ground-truth ground-truth
+                         :manifest (manifest/build {:seed seed
+                                                    :engine-params engine-params
+                                                    :config {:path "(inline)"
+                                                             :sha256 (apply str (repeat 64 "0"))}
+                                                    :invocation {:verb "run" :opts opts}})
+                         :summary {:patients (or patients 1)
+                                   :events (count ground-truth)}}
+                  (= "hl7" emit) (assoc :messages (emit-hl7/emit ground-truth reference-date utc-offset facility providers site-profile))
+                  (= "fhir" emit) (assoc :fhir-bundles
+                                         (emit-fhir/bundle-run ground-truth reference-date utc-offset seed (or at :end)))))))))))))

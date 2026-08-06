@@ -97,40 +97,43 @@
   test/ehrt/sim/identifiers_test.clj)."
   ([opts] (identifiers-command opts {}))
   ([raw-opts {:keys [engine-run-fn] :or {engine-run-fn engine/run}}]
-   (let [opts (run/merge-config-file raw-opts)
-         {:keys [seed reference-date utc-offset modules module-initial-attributes]} opts
-         conflicts (run/incompatible-assignments opts)
-         resolved-modules (when modules (run/resolve-modules modules (or module-initial-attributes {})))]
-     (cond
-       (nil? seed)
-       (result/error :missing-required-opt
-                     {:message "--seed is required (determinism is a feature, not a default)"
-                      :opt :seed})
+   (let [config-result (run/merge-config-file raw-opts)]
+     (if-not (result/ok? config-result)
+       config-result
+       (let [opts (:payload config-result)
+             {:keys [seed reference-date utc-offset modules module-initial-attributes]} opts
+             conflicts (run/incompatible-assignments opts)
+             resolved-modules (when modules (run/resolve-modules modules (or module-initial-attributes {})))]
+         (cond
+           (nil? seed)
+           (result/error :missing-required-opt
+                         {:message "--seed is required (determinism is a feature, not a default)"
+                          :opt :seed})
 
-       (seq conflicts)
-       (result/rejected :incompatible-assignment {:conflicts conflicts})
+           (seq conflicts)
+           (result/rejected :incompatible-assignment {:conflicts conflicts})
 
-       (and resolved-modules (not (result/ok? resolved-modules)))
-       resolved-modules
+           (and resolved-modules (not (result/ok? resolved-modules)))
+           resolved-modules
 
-       :else
-       (let [reference-date (or reference-date emit-hl7/default-reference-date)
-             utc-offset (or utc-offset emit-hl7/default-utc-offset)
-             engine-opts (cond-> (merge (select-keys opts engine/config-keys)
-                                        {:seed seed :churn-profile (run/effective-churn-profile opts)})
-                           resolved-modules (assoc :modules (:payload resolved-modules)))
-             {:keys [ground-truth providers exhausted]} (engine-run-fn engine-opts)]
-         (if exhausted
-           (result/error :capacity-exhausted exhausted)
-           (let [replay-records (engine/replay ground-truth)
-                 world (final-world replay-records)
-                 patient-ids (vec (sort (keys world)))
-                 fhir-bundles (emit-fhir/bundle-run ground-truth reference-date utc-offset seed :end)]
-             (result/ok
-              {:run-id (str seed)
-               :patient-ids patient-ids
-               :mrns (vec (into (sorted-set) (mapcat :mrns) (vals world)))
-               :visit-beds (visit-beds replay-records patient-ids)
-               :control-ids (vec (control-ids ground-truth))
-               :fhir-resource-ids (vec (fhir-resource-ids fhir-bundles))
-               :provider-npis (vec (sort (map :id providers)))}))))))))
+           :else
+           (let [reference-date (or reference-date emit-hl7/default-reference-date)
+                 utc-offset (or utc-offset emit-hl7/default-utc-offset)
+                 engine-opts (cond-> (merge (select-keys opts engine/config-keys)
+                                            {:seed seed :churn-profile (run/effective-churn-profile opts)})
+                               resolved-modules (assoc :modules (:payload resolved-modules)))
+                 {:keys [ground-truth providers exhausted]} (engine-run-fn engine-opts)]
+             (if exhausted
+               (result/error :capacity-exhausted exhausted)
+               (let [replay-records (engine/replay ground-truth)
+                     world (final-world replay-records)
+                     patient-ids (vec (sort (keys world)))
+                     fhir-bundles (emit-fhir/bundle-run ground-truth reference-date utc-offset seed :end)]
+                 (result/ok
+                  {:run-id (str seed)
+                   :patient-ids patient-ids
+                   :mrns (vec (into (sorted-set) (mapcat :mrns) (vals world)))
+                   :visit-beds (visit-beds replay-records patient-ids)
+                   :control-ids (vec (control-ids ground-truth))
+                   :fhir-resource-ids (vec (fhir-resource-ids fhir-bundles))
+                   :provider-npis (vec (sort (map :id providers)))}))))))))))
