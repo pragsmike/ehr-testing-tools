@@ -10,7 +10,8 @@
             [ehrt.corpus.interface :as generators]
             [ehrt.corpus.interface :as generate]
             [ehrt.judge-v2-nist.interface :as gate-v2-nist]
-            [ehrt.cli.core :as cli])
+            [ehrt.cli.core :as cli]
+            [ehrt.cli.help :as help])
   (:import [java.io File]))
 
 (defn- sample-artifact []
@@ -117,6 +118,61 @@
   ;; not the old :unknown-command shape.
   (let [r (cli/dispatch ["gate" "bogus"] {} {})]
     (is (= :gate-path-not-found (:category r)))))
+
+;; ---- unknown flags (ux fixes 3, AR-U3-1/2/3/4, `notes/adr/0061-ux-
+;; fixes-3.md`): C-4's founding-adjacent defect -- a typo'd flag used to
+;; be silently absorbed into :opts and echoed back as if intended. Every
+;; flag token now has to be declared for its verb, or the command
+;; rejects it by name. ----
+
+(deftest dispatch-unknown-flag-is-rejected-by-name-test
+  ;; AR-U3-4a: the C-4 case itself -- `--patiens 200` used to succeed
+  ;; silently, absorbed into :opts with `--patients`'s own default
+  ;; quietly kept. Now named, exit 2, with a suggestion.
+  (let [r (cli/dispatch ["sim" "run"] {:patiens 200 :seed 1}
+                         {:sim-run-fn (constantly (result/ok {}))})]
+    (is (= :error (:status r)))
+    (is (= :unknown-flag (:category r)))
+    (is (= "--patiens" (:flag (:payload r))))
+    (is (= "sim run" (:verb (:payload r))))
+    (is (= "--patients" (:did-you-mean (:payload r))))
+    (is (= 2 (cli/result->exit-code r)))))
+
+(deftest dispatch-unknown-flag-with-no-near-match-has-no-did-you-mean-test
+  ;; AR-U3-4b: nothing declared for `sim run` is within Levenshtein
+  ;; distance 2 of this token -- :did-you-mean must be absent entirely,
+  ;; not present-and-nil.
+  (let [r (cli/dispatch ["sim" "run"] {:completely-unrelated-nonsense true :seed 1}
+                         {:sim-run-fn (constantly (result/ok {}))})]
+    (is (= :unknown-flag (:category r)))
+    (is (= "--completely-unrelated-nonsense" (:flag (:payload r))))
+    (is (not (contains? (:payload r) :did-you-mean)))))
+
+(deftest dispatch-every-declared-flag-of-every-verb-parses-without-unknown-flag-test
+  ;; AR-U3-4c, the acceptance property: spec-derived, so a future flag
+  ;; added to help/cli-spec is automatically covered -- iterate every
+  ;; [group verb] pair help/command-pairs enumerates, and every flag
+  ;; that pair's own spec entry declares (independently read straight
+  ;; off the raw spec structure here, not via the validator's own
+  ;; derivation helper -- otherwise a bug in that helper could never be
+  ;; caught by this test). Every -fn is stubbed to a no-op ok, so only
+  ;; the flag validator's own accept/reject behavior is under test.
+  (let [stub-fns (into {} (map (fn [k] [k (constantly (result/ok {}))]))
+                        [:fetch-fn :fetch-all-fn :resolve-fn :generate-fn :generate-sim-fn
+                         :mutate-fn :intake-fn :operators-fn :gate-v2-fn :gate-fhir-fn
+                         :gate-v2-nist-fn :check-fn :version-fn :doctor-fn :sim-run-fn
+                         :sim-check-fn :sim-identifiers-fn :sim-version-fn :show-fn :play-fn])]
+    (doseq [[group verb] (help/command-pairs help/cli-spec)
+            :let [g (help/find-group help/cli-spec group)
+                  declared (if verb
+                             (:flags (first (filter #(= verb (:verb %)) (:verbs g))))
+                             (:flags g))]
+            {:keys [flag]} declared]
+      (let [flag-kw (keyword (subs flag 2))
+            args (if verb [group verb] [group])
+            r (cli/dispatch args {flag-kw "x"} stub-fns)]
+        (is (not= :unknown-flag (:category r))
+            (str group " " verb " " flag " was rejected as unknown"))))))
 
 ;; ---- help / --help / bare ehrt (DOC-1 Step 2): a :category :cli-help
 ;; result short-circuits before any capability -fn runs. ----

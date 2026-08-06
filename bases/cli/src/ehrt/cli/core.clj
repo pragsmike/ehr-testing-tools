@@ -1643,6 +1643,139 @@
           opts
           [:path :out-dir :out]))
 
+;; ---- unknown flags (ux fixes 3, AR-U3-1/2/3/4, `notes/adr/0061-ux-
+;; fixes-3.md`): C-4's founding-adjacent defect -- an unrecognized flag
+;; used to be silently absorbed into :opts and echoed back in the
+;; manifest as if intended. Every flag token now has to be declared for
+;; its verb, or the run is rejected by name before any capability
+;; function ever sees it. ----
+
+(def ^:private gate-explicit-verbs
+  "The only verb names `ehrt gate` itself resolves to a real spec entry
+  for -- D11's bare, verb-less `ehrt gate PATH` is a fourth, unlisted
+  shape (sniff-dispatched into v2 or fhir, never v2-nist)."
+  #{"v2" "fhir" "v2-nist"})
+
+(defn- flag-key
+  "\"--out-dir\" -> :out-dir, babashka.cli's own key-munging (the
+  leading \"--\" dropped, the rest keywordized unchanged) -- see
+  `parse`/cli-spec above; never inverted."
+  [flag-str]
+  (keyword (subs flag-str 2)))
+
+(defn- declared-flag-keywords
+  "AR-U3-1: the flag universe derives straight from `help/cli-spec` --
+  no hand-maintained duplicate list. The spec's own :global-flags
+  (--json/--pretty/--edn/--help) plus a group's own :flags (a group
+  with no :verbs -- check/version/doctor/show/play) or one named verb's
+  own :flags (a group with :verbs -- artifact/corpus/gate/sim). nil
+  when the group has :verbs but names no verb entry matching `verb`
+  (the caller's cue to skip validation, not to validate against an
+  empty set)."
+  [group-spec verb]
+  (when-let [flags (if (:verbs group-spec)
+                      (:flags (first (filter #(= verb (:verb %)) (:verbs group-spec))))
+                      (:flags group-spec))]
+    (into (set (map (comp flag-key :flag) help/global-flags))
+          (map (comp flag-key :flag))
+          flags)))
+
+(defn- flag-validation-context
+  "The [valid-flag-keywords verb-label] pair `validate-known-flags`
+  checks `opts`'s own keys against, for one [group action] pair -- nil
+  when there's nothing to validate against yet, because dispatch's own
+  `case group` is about to produce its own :unknown-command error for
+  this same [group action] a moment later (an unrecognized group, or a
+  group that requires a verb and didn't get a recognized one) -- flag
+  validation steps aside rather than piling a second, more confusing
+  error on top of that one.
+
+  \"gate\" is the one named exception (D11, gate-explicit-verbs above):
+  its bare, verb-less invocation (`ehrt gate PATH`, action carrying the
+  path candidate, not a verb) sniff-dispatches into EITHER gate v2 or
+  gate fhir -- never gate v2-nist, which has no default profile to
+  sniff into -- so its own valid-flags target, absent an explicit
+  v2/fhir/v2-nist token, is the union of v2's and fhir's own declared
+  flags: the full reachable set before sniffing decides which one
+  actually runs. (Every v2-nist-only flag, --profile, is therefore not
+  independently checked against a bare `ehrt gate PATH` -- disclosed,
+  not an oversight: bare gate already never routes to v2-nist by
+  construction, D11, so a --profile alongside it is inert either way.)"
+  [group action]
+  (when-let [g (help/find-group help/cli-spec group)]
+    (cond
+      (= group "gate")
+      (if (contains? gate-explicit-verbs action)
+        [(declared-flag-keywords g action) (str group " " action)]
+        [(into (declared-flag-keywords g "v2") (declared-flag-keywords g "fhir")) group])
+
+      (:verbs g)
+      (when (contains? (set (help/verb-names g)) action)
+        [(declared-flag-keywords g action) (str group " " action)])
+
+      :else
+      [(declared-flag-keywords g nil) group])))
+
+(defn- levenshtein-distance
+  "Small, iterative edit-distance implementation -- `ehrt.kernel` has no
+  distance/similarity helper (checked, confirmed absent this session,
+  same discipline U4's own sibling-config check applied, ADR-0060) --
+  scoped locally to `nearest-declared-flag`'s own suggestion, not a
+  reusable API."
+  [a b]
+  (let [a (vec a) b (vec b)
+        m (count a) n (count b)
+        next-row (fn [prev i]
+                   (reduce (fn [row j]
+                             (conj row
+                                   (if (= (a (dec i)) (b (dec j)))
+                                     (nth prev (dec j))
+                                     (inc (min (nth prev j) (nth prev (dec j)) (peek row))))))
+                           [i]
+                           (range 1 (inc n))))]
+    (loop [prev (vec (range (inc n))) i 1]
+      (if (> i m)
+        (peek prev)
+        (recur (next-row prev i) (inc i))))))
+
+(defn- nearest-declared-flag
+  "AR-U3-2: the nearest declared flag name within Levenshtein distance
+  2 of `unknown-name`, ties broken alphabetically; nil when nothing is
+  that close (no :did-you-mean key at all, never a present-but-nil
+  one -- see `unknown-flag-error`)."
+  [unknown-name candidate-names]
+  (let [within (->> candidate-names
+                     (map (fn [c] [(levenshtein-distance unknown-name c) c]))
+                     (filter #(<= (first %) 2)))]
+    (when (seq within)
+      (second (first (sort-by (juxt first second) within))))))
+
+(defn- unknown-flag-error
+  [flag-kw verb-label valid-keywords]
+  (let [flag-name (name flag-kw)
+        suggestion (nearest-declared-flag flag-name (map name valid-keywords))]
+    (result/error :unknown-flag
+                  (cond-> {:flag (str "--" flag-name) :verb verb-label}
+                    suggestion (assoc :did-you-mean (str "--" suggestion))))))
+
+(defn- validate-known-flags
+  "AR-U3-2: at the point dispatch has resolved [group action] to a real
+  verb (or a no-verb group, or gate's own D11 bare-sniff target) --
+  every key `parse` put in `opts` (the parser's OWN flag-position
+  tokens, per babashka.cli's own arity-aware consumption; AR-U3-3: never
+  re-derived here, so a flag value that happens to start with \"-\" --
+  a negative --at/--arrival-gap, a --utc-offset offset -- is never at
+  risk of being reclassified, since it was never a key in `opts` to
+  begin with) must belong to that target's own valid set. Returns the
+  first unknown one as a :category :unknown-flag error (\"parsing stops
+  at the first unknown flag -- one clear error beats a cascade\"), or
+  nil when every key is accounted for (including when there's nothing
+  to validate against yet, per `flag-validation-context`)."
+  [group action opts]
+  (when-let [[valid-keywords verb-label] (flag-validation-context group action)]
+    (when-let [unknown-kw (first (remove valid-keywords (keys opts)))]
+      (unknown-flag-error unknown-kw verb-label valid-keywords))))
+
 (defn dispatch
   "Routes [group action] positional args to the corresponding capability
   function with opts. The -fn keys are injectable (tests use this
@@ -1699,7 +1832,9 @@
                     (and (= group "play") action (not (:path opts))) (assoc opts :path action)
                     :else opts)
              opts (resolve-path-designators opts)]
-         (case group
+         (or
+          (validate-known-flags group action opts)
+          (case group
            "artifact" (case action
                         "fetch" (if (:all opts) (fetch-all-fn opts) (fetch-fn opts))
                         "resolve" (resolve-fn opts)
@@ -1755,7 +1890,7 @@
                    (unknown-command-error args (help/verb-names (help/find-group help/cli-spec "sim"))))
            "show" (show-fn opts)
            "play" (play-fn opts)
-           (unknown-command-error args (help/group-names help/cli-spec))))))))
+           (unknown-command-error args (help/group-names help/cli-spec)))))))))
 
 (defn render
   [r json?]
