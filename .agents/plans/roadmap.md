@@ -232,3 +232,4 @@ scaffolding compaction B, `notes/ADRs.md` ADR-0046)
 - 2026-08-05 — alignment-fixes-2 — ADR-0051
 - 2026-08-05 — alignment-fixes-3 — ADR-0052
 - 2026-08-05 — alignment-fixes-4 — ADR-0053
+- 2026-08-05 — alignment-fixes-5 — ADR-0054
