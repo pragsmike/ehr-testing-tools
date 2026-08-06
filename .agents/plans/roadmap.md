@@ -231,3 +231,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-06 — ux-audit — ADR-0058
 - 2026-08-06 — ux-fixes-1 — ADR-0059
 - 2026-08-06 — ux-fixes-2 — ADR-0060
+- 2026-08-06 — ux-fixes-3 — ADR-0061
