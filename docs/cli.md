@@ -19,15 +19,15 @@ ehrt <group> [<verb>] [flags]
 
 | Group | What it covers |
 |---|---|
-| [`artifact`](#ehrt-artifact) | Fetch and resolve locked external engine/tool artifacts (ADR-0005). |
-| [`corpus`](#ehrt-corpus) | Generate, mutate, intake, and inspect synthetic corpora. Any PATH, --out-dir, or --out below may also be spelled as a dir:/file: URL designator (ruling 7, docs/source-sink-design.md D4) instead of a bare path -- bare paths remain the documented, common spelling. `corpus generate sim`/`corpus generate synthea` (ADR-0015) is the front door for generating a corpus; `corpus intake` additionally accepts a generator URL (sim:/synthea:) in place of PATH as its own compose form -- generate, then catalog, in one command (SS-2) -- or a stdin designator (stdin:?format=...&framing=...) -- read piped bytes, spool, then catalog, in one command (SS-3). |
-| [`gate`](#ehrt-gate) | Conformance-gate a file or directory against HL7 v2, FHIR, or (given --profile) a HL7 v2 conformance profile (NIST, ADR-0012). Bare `ehrt gate PATH` (no verb) sniffs the format via corpus.intake/sniff-format and dispatches between v2 and fhir only (D11, ADR-0019) -- it never dispatches to v2-nist, which has no default profile to sniff into; a directory mixing v2 and fhir, or containing a file the sniffer can't classify, is an error naming the explicit override (`gate v2 PATH` / `gate fhir PATH`), never a silent per-file split. PATH (and gate fhir's --out-dir) may also be spelled as a dir:/file: URL designator (ruling 7) instead of a bare path. |
-| [`check`](#ehrt-check) | Check a candidate corpus against an expected corpus and/or explicit per-file assertions -- the corpus's second judge, alongside Gate. DIR may also be spelled as a dir: URL designator (ruling 7) instead of a bare path. |
-| [`version`](#ehrt-version) | Prints this repo's own honestly-pre-release identity (never a fabricated semver, D13) plus every pinned artifact's name@version from the lockfile. |
-| [`doctor`](#ehrt-doctor) | Runs SETUP.md's verification checklist as checks (D13): java resolution via the artifact registry, artifact cache presence per lockfile entry, git hooksPath wiring, and platform support. Exit 0 every check passed; 1 at least one failed; 2 couldn't even read the lockfile to know what to check. |
-| [`sim`](#ehrt-sim) | Run the sim engine, mounted in-process (ADR-0005, ADR-0012 fulfilled) -- ehrt.sim.interface/run-command directly, no subprocess. |
-| [`show`](#ehrt-show) | Render a file (or a directory of files sharing one sniffed format) for a human: HL7 v2 (ER7) one segment per line, blank line between messages; FHIR JSON pretty-printed. Pretty-always -- no flags needed, `ehrt show FILE \| less` just works regardless of what stdout is attached to. Display is not wire format (ADR-0013): the rendered ER7 is deliberately nonconformant (LF-joined segments) and must never be piped anywhere a real HL7 v2 consumer sits. |
-| [`play`](#ehrt-play) | Paces a HL7 v2 (ER7) file's or directory's own messages against their MSH-7 timestamps and renders (or writes) them over time -- `ehrt show` plus time (ADR-0014). `ehrt play FILE` at an arbitrarily large --rate, the default ticker sink, is exactly `ehrt show FILE`. A directory's files must share the sniffed v2 format; they are concatenated in LEXICAL FILENAME ORDER before pacing (ADR-0015) -- that ordering is the contract: name your files so their sort order is their intended play order (the sim generator's own msg-%03d output already satisfies this). A FHIR JSON path, or a FHIR/mixed/unclassifiable directory, is a named, disclosed deferral (:play-input-unsupported). |
+| [`artifact`](#ehrt-artifact) | Fetch and resolve locked external engine/tool artifacts. |
+| [`corpus`](#ehrt-corpus) | Generate, mutate, intake, and inspect synthetic corpora. Any PATH, --out-dir, or --out also accepts a dir:/file: URL designator in place of a bare path; bare paths are the common spelling. `corpus generate` is the front door for new corpora; `corpus intake` catalogs existing ones -- and can generate-then-catalog, or read piped bytes, in one command (see intake). |
+| [`gate`](#ehrt-gate) | Conformance-gate a file or directory against HL7 v2, FHIR, or (with --profile) an HL7 v2 conformance profile. Bare `ehrt gate PATH` sniffs the format and dispatches between v2 and fhir only -- never v2-nist, which needs an explicit --profile. A directory mixing formats, or a file that can't be classified, is an error naming the explicit override (`gate v2 PATH` / `gate fhir PATH`), never a silent per-file split. PATH and --out-dir also accept dir:/file: URL designators. |
+| [`check`](#ehrt-check) | Check a candidate corpus against an expected corpus and/or explicit per-file assertions -- the corpus's second judge, alongside gate. DIR also accepts a dir: URL designator. |
+| [`version`](#ehrt-version) | Print this repo's own pre-release identity (it deliberately has no semver yet) plus every pinned artifact's name@version from the lockfile. |
+| [`doctor`](#ehrt-doctor) | Run SETUP.md's verification checklist as checks: java resolution via the artifact registry, artifact cache presence per lockfile entry, git hooksPath wiring, and platform support. Exit 0: every check passed; 1: at least one failed; 2: couldn't even read the lockfile to know what to check. |
+| [`sim`](#ehrt-sim) | Run the sim engine, in-process -- no subprocess, no fetched artifacts needed. |
+| [`show`](#ehrt-show) | Render a file (or a directory of files sharing one sniffed format) for a human: HL7 v2 (ER7) one segment per line, blank line between messages; FHIR JSON pretty-printed. Always pretty -- `ehrt show FILE \| less` just works. The rendered ER7 is display-only and deliberately nonconformant (LF-joined segments): never pipe it anywhere a real HL7 v2 consumer sits. |
+| [`play`](#ehrt-play) | Pace an HL7 v2 (ER7) file's or directory's messages against their own MSH-7 timestamps and render (or write) them over time -- `ehrt show` plus time. A directory's files must share the v2 format and are concatenated in LEXICAL FILENAME ORDER before pacing: that ordering is the contract, so name files so sort order is play order (the sim generator's msg-%03d output already is). FHIR or mixed input is a named deferral (:play-input-unsupported). |
 
 ## Global flags
 
@@ -36,8 +36,8 @@ Accepted anywhere in the command line, on any group or verb.
 | Flag | Default | Meaning |
 |---|---|---|
 | `--json` | — | project the EDN result to JSON (EDN remains canonical) |
-| `--pretty` | — | force a human-readable summary, even when stdout is piped -- the default at a real terminal already; ADR-0013 |
-| `--edn` | — | force the raw EDN envelope, even at a terminal -- the default when stdout is piped or redirected already; ADR-0013 |
+| `--pretty` | — | force a human-readable summary, even when stdout is piped -- already the default at a real terminal |
+| `--edn` | — | force the raw EDN envelope, even at a terminal -- already the default when stdout is piped or redirected |
 | `--help` | — | print this command's usage and exit 0 without running it |
 
 ## Exit codes
@@ -50,11 +50,11 @@ The same table every group's `ehrt help <group>` output ends with. These are the
 | `0` | bare invocation, help, and --help all exit 0 too |
 | `1` | ran and legitimately rejected |
 | `2` | operational error (bad invocation, missing artifact, subprocess failure, etc.) |
-| `3` | a gate's aggregate contains :no-verdict under the default --treat-no-verdict-as policy (ADR-0010) |
+| `3` | a gate found :no-verdict outcomes and the default --treat-no-verdict-as policy is in effect -- see that flag to fold them into pass or rejected |
 
 ## `ehrt artifact`
 
-Fetch and resolve locked external engine/tool artifacts (ADR-0005).
+Fetch and resolve locked external engine/tool artifacts.
 
 ### `ehrt artifact fetch`
 
@@ -65,7 +65,7 @@ Fetch a locked artifact into the local content-addressed cache.
 | `--name` | — | artifact name, e.g. "synthea" |
 | `--version` | — | artifact version, e.g. "4.0.0" |
 | `--lockfile` | `artifacts.lock.edn` | path to the lockfile |
-| `--all` | `false` | fetch every artifact the lockfile names (D13); collapses SETUP.md's multi-fetch walkthrough into one command -- --name/--version are ignored when given. One failing artifact does not abort the rest; the aggregate result is the worst-of every individual outcome. |
+| `--all` | `false` | fetch every artifact the lockfile names; --name/--version are ignored when given. One failing artifact does not abort the rest -- the overall result is the worst individual outcome. |
 
 ### `ehrt artifact resolve`
 
@@ -79,11 +79,11 @@ Resolve an already-fetched artifact to a filesystem path.
 
 ## `ehrt corpus`
 
-Generate, mutate, intake, and inspect synthetic corpora. Any PATH, --out-dir, or --out below may also be spelled as a dir:/file: URL designator (ruling 7, docs/source-sink-design.md D4) instead of a bare path -- bare paths remain the documented, common spelling. `corpus generate sim`/`corpus generate synthea` (ADR-0015) is the front door for generating a corpus; `corpus intake` additionally accepts a generator URL (sim:/synthea:) in place of PATH as its own compose form -- generate, then catalog, in one command (SS-2) -- or a stdin designator (stdin:?format=...&framing=...) -- read piped bytes, spool, then catalog, in one command (SS-3).
+Generate, mutate, intake, and inspect synthetic corpora. Any PATH, --out-dir, or --out also accepts a dir:/file: URL designator in place of a bare path; bare paths are the common spelling. `corpus generate` is the front door for new corpora; `corpus intake` catalogs existing ones -- and can generate-then-catalog, or read piped bytes, in one command (see intake).
 
 ### `ehrt corpus generate`
 
-Generate a deterministic synthetic corpus. Grows a source subcommand (ADR-0015): `corpus generate sim` (this workspace's own sim engine, ehrt.sim -- --patients/--churn/--emit/--config below) or `corpus generate synthea` (Synthea, the flags below); bare `corpus generate`, with no subcommand, is `generate sim` (ADR-0015 amendment, 2026-07-30: sim needs no fetched artifacts, so the cold first command succeeds unfetched) -- run `generate synthea` explicitly for that lane. Zero-flag defaults (D9, ADR-0019) make either source's bare command a byte-reproducible run -- re-running it into the same (derived) --out-dir without clearing it first is rejected (:out-dir-exists), not silently overwritten.
+Generate a deterministic synthetic corpus. Takes a source subcommand: `corpus generate sim` (this workspace's own engine; the flags marked sim:) or `corpus generate synthea` (the flags marked synthea:). Bare `corpus generate` means `generate sim`. Both bare commands are byte-reproducible as-is; re-running into an existing non-empty --out-dir is rejected (:out-dir-exists), never silently overwritten.
 
 | Flag | Default | Meaning |
 |---|---|---|
@@ -113,12 +113,12 @@ Apply one mutation operator at one locator to every matching file under PATH.
 | `--path` | — | alternative to the positional PATH |
 | `--operator-id` | — | registered operator id -- see `ehrt corpus operators` |
 | `--operator-version` | `1` | operator version |
-| `--locator-path` | — | format-specific locator string (FHIR data-path, or v2 segment/field grammar) -- falls back to the operator's own :default-locator when declared (D12); still required otherwise |
+| `--locator-path` | — | format-specific locator string (FHIR data-path, or v2 segment/field grammar) -- falls back to the operator's own :default-locator when it declares one; required otherwise |
 | `--out-dir` | `<PATH>-mutants/<operator-id>@<operator-version>/` | directory for mutants + a lineage/ sidecar subdirectory |
 
 ### `ehrt corpus intake`
 
-Catalog a foreign (not generated by this repo) corpus batch -- or, given a generator URL (sim:?seed=42, synthea:?seed=1&population=5) in place of PATH, generate the corpus first and then catalog it, in one command (SS-2); or, given a stdin designator (stdin:?format=v2-er7&framing=er7-multi) in place of PATH, read piped bytes, spool them one file per item, and catalog the spool (SS-3).
+Catalog a foreign corpus batch (one not generated by this repo). In place of PATH: a generator URL (sim:?seed=42, synthea:?seed=1&population=5) generates the corpus first and then catalogs it; a stdin designator (stdin:?format=v2-er7&framing=er7-multi) reads piped bytes, spools them one file per item, and catalogs the spool.
 
 **Positional argument `PATH`** — a directory of files to catalog, OR a generator URL (sim:/synthea:) naming a corpus to generate then catalog, OR a stdin designator (stdin:?format=...&framing=...) naming how to decode piped bytes before cataloging them, given as a trailing positional argument, not --path -- an explicit --path is never overridden by it
 
@@ -131,7 +131,7 @@ Catalog a foreign (not generated by this repo) corpus batch -- or, given a gener
 
 ### `ehrt corpus operators`
 
-List the registered mutation operator catalog (a pure registry read; dropped/unconvictable candidates are docstring prose -- see docs/judge-calibration.md, not this listing).
+List the registered mutation-operator catalog. Candidates that were considered and dropped are documented in docs/judge-calibration.md, not here.
 
 | Flag | Default | Meaning |
 |---|---|---|
@@ -139,7 +139,7 @@ List the registered mutation operator catalog (a pure registry read; dropped/unc
 
 ## `ehrt gate`
 
-Conformance-gate a file or directory against HL7 v2, FHIR, or (given --profile) a HL7 v2 conformance profile (NIST, ADR-0012). Bare `ehrt gate PATH` (no verb) sniffs the format via corpus.intake/sniff-format and dispatches between v2 and fhir only (D11, ADR-0019) -- it never dispatches to v2-nist, which has no default profile to sniff into; a directory mixing v2 and fhir, or containing a file the sniffer can't classify, is an error naming the explicit override (`gate v2 PATH` / `gate fhir PATH`), never a silent per-file split. PATH (and gate fhir's --out-dir) may also be spelled as a dir:/file: URL designator (ruling 7) instead of a bare path.
+Conformance-gate a file or directory against HL7 v2, FHIR, or (with --profile) an HL7 v2 conformance profile. Bare `ehrt gate PATH` sniffs the format and dispatches between v2 and fhir only -- never v2-nist, which needs an explicit --profile. A directory mixing formats, or a file that can't be classified, is an error naming the explicit override (`gate v2 PATH` / `gate fhir PATH`), never a silent per-file split. PATH and --out-dir also accept dir:/file: URL designators.
 
 **Positional argument `PATH`** — a file or directory, given as a trailing positional argument, not --path -- an explicit --path is never overridden by it
 
@@ -152,7 +152,7 @@ Gate against HL7 v2 base-structural conformance (HAPI).
 | `--path` | — | alternative to the positional PATH |
 | `--report` | — | write the report EDN to this path |
 | `--baseline` | — | baseline-relative mode: path to a previous --report EDN; only genuinely new findings count |
-| `--treat-no-verdict-as` | — | "pass" or "rejected" -- folds :no-verdict into an existing polarity (ADR-0010) |
+| `--treat-no-verdict-as` | — | "pass" or "rejected" -- folds :no-verdict into an existing polarity |
 
 ### `ehrt gate fhir`
 
@@ -163,27 +163,27 @@ Gate against FHIR base-spec conformance (the official validator).
 | `--path` | — | alternative to the positional PATH |
 | `--report` | — | write the report EDN to this path |
 | `--baseline` | — | baseline-relative mode: path to a previous --report EDN; only genuinely new findings count |
-| `--treat-no-verdict-as` | — | "pass" or "rejected" -- folds :no-verdict into an existing polarity (ADR-0010) |
+| `--treat-no-verdict-as` | — | "pass" or "rejected" -- folds :no-verdict into an existing polarity |
 | `--lockfile` | `artifacts.lock.edn` | path to the lockfile |
 | `--out-dir` | `out/scratch/gate-fhir` | validator scratch directory |
 | `--java-bin` | — | java executable to invoke |
-| `--no-verdict-cache` | `false (caching on)` | skip the content-addressed verdict cache (ADR-0016); always re-runs the validator subprocess |
+| `--no-verdict-cache` | `false (caching on)` | skip the content-addressed verdict cache; always re-run the validator subprocess |
 
 ### `ehrt gate v2-nist`
 
-Gate against HL7 v2 PROFILE-tier conformance (the direct NIST engine, ADR-0012): profile usage/cardinality/length, conformance statements, co-constraints, slicing, and value-set bindings -- what the v2 (HAPI) tier structurally cannot check. Complementary to `gate v2`, not a replacement. The validator is built once per invocation and reused across every file (context construction dominates this engine's own cost) -- never rebuilt per file.
+Gate against HL7 v2 profile-tier conformance (the NIST engine): profile usage, cardinality, length, conformance statements, co-constraints, slicing, and value-set bindings -- what the structural v2 tier cannot check. Complementary to `gate v2`, not a replacement.
 
 | Flag | Default | Meaning |
 |---|---|---|
 | `--path` | — | alternative to the positional PATH |
 | `--report` | — | write the report EDN to this path |
 | `--baseline` | — | baseline-relative mode: path to a previous --report EDN; only genuinely new findings count |
-| `--treat-no-verdict-as` | — | "pass" or "rejected" -- folds :no-verdict into an existing polarity (ADR-0010) |
-| `--profile` | — | REQUIRED: a conformance-profile bundle (Π) directory -- PROFILE.xml required, CONSTRAINTS.xml/VALUESETS.xml/VALUESETBINDINGS.xml/COCONSTRAINTS.xml/SLICINGS.xml optional. No default is assumed -- try components/corpus/test-fixtures/v2-nist/COVID19_ELR-v2.3.1, the CDC COVID19_ELR-v2.3.1 fixture, this repo's own documented try-it bundle |
+| `--treat-no-verdict-as` | — | "pass" or "rejected" -- folds :no-verdict into an existing polarity |
+| `--profile` | — | REQUIRED: a conformance-profile bundle directory -- PROFILE.xml required; CONSTRAINTS.xml, VALUESETS.xml, VALUESETBINDINGS.xml, COCONSTRAINTS.xml, SLICINGS.xml optional. No default. To try one: components/corpus/test-fixtures/v2-nist/COVID19_ELR-v2.3.1 |
 
 ## `ehrt check`
 
-Check a candidate corpus against an expected corpus and/or explicit per-file assertions -- the corpus's second judge, alongside Gate. DIR may also be spelled as a dir: URL designator (ruling 7) instead of a bare path.
+Check a candidate corpus against an expected corpus and/or explicit per-file assertions -- the corpus's second judge, alongside gate. DIR also accepts a dir: URL designator.
 
 **Positional argument `DIR`** — check has no sub-verb: the second positional argument names the candidate directory directly
 
@@ -198,7 +198,7 @@ Check a candidate corpus against an expected corpus and/or explicit per-file ass
 
 ## `ehrt version`
 
-Prints this repo's own honestly-pre-release identity (never a fabricated semver, D13) plus every pinned artifact's name@version from the lockfile.
+Print this repo's own pre-release identity (it deliberately has no semver yet) plus every pinned artifact's name@version from the lockfile.
 
 | Flag | Default | Meaning |
 |---|---|---|
@@ -206,7 +206,7 @@ Prints this repo's own honestly-pre-release identity (never a fabricated semver,
 
 ## `ehrt doctor`
 
-Runs SETUP.md's verification checklist as checks (D13): java resolution via the artifact registry, artifact cache presence per lockfile entry, git hooksPath wiring, and platform support. Exit 0 every check passed; 1 at least one failed; 2 couldn't even read the lockfile to know what to check.
+Run SETUP.md's verification checklist as checks: java resolution via the artifact registry, artifact cache presence per lockfile entry, git hooksPath wiring, and platform support. Exit 0: every check passed; 1: at least one failed; 2: couldn't even read the lockfile to know what to check.
 
 | Flag | Default | Meaning |
 |---|---|---|
@@ -214,7 +214,7 @@ Runs SETUP.md's verification checklist as checks (D13): java resolution via the 
 
 ## `ehrt sim`
 
-Run the sim engine, mounted in-process (ADR-0005, ADR-0012 fulfilled) -- ehrt.sim.interface/run-command directly, no subprocess.
+Run the sim engine, in-process -- no subprocess, no fetched artifacts needed.
 
 ### `ehrt sim run`
 
@@ -232,7 +232,7 @@ Runs one deterministic simulation and returns its ground truth, manifest, and su
 | `--at` | — | with --emit fhir: seconds from run start to snapshot (integer, default: end of run) |
 | `--churn` | `false` | turn churn on with sensible defaults |
 | `--config` | — | path to an EDN file carrying the data-heavy engine keys with no flag of their own (:pathway/:pathways/:order-profiles/:churn-profile/:site-profile/:modules/...) |
-| `--format` | — | "er7" renders bare wire messages to stdout, nothing else (requires --emit hl7); "ground-truth" renders the bare EDN ground-truth vector to stdout, nothing else -- pipe straight into `ehrt sim check`. Default edn (the full envelope); --json also works, same as always. |
+| `--format` | — | "er7": bare wire messages to stdout (requires --emit hl7). "ground-truth": the bare ground-truth EDN vector -- pipe straight into `ehrt sim check`. Default: the full EDN envelope; --json works as always. |
 
 ### `ehrt sim check`
 
@@ -252,13 +252,13 @@ Config + seed -> the complete EDN inventory of every identifier this run's outpu
 
 ### `ehrt sim version`
 
-Prints sim's own library version and git SHA -- the SAME source the run manifest's :generator block stamps.
+Print sim's own library version and git SHA -- the same source the run manifest's :generator block stamps.
 
 _No flags._
 
 ## `ehrt show`
 
-Render a file (or a directory of files sharing one sniffed format) for a human: HL7 v2 (ER7) one segment per line, blank line between messages; FHIR JSON pretty-printed. Pretty-always -- no flags needed, `ehrt show FILE | less` just works regardless of what stdout is attached to. Display is not wire format (ADR-0013): the rendered ER7 is deliberately nonconformant (LF-joined segments) and must never be piped anywhere a real HL7 v2 consumer sits.
+Render a file (or a directory of files sharing one sniffed format) for a human: HL7 v2 (ER7) one segment per line, blank line between messages; FHIR JSON pretty-printed. Always pretty -- `ehrt show FILE | less` just works. The rendered ER7 is display-only and deliberately nonconformant (LF-joined segments): never pipe it anywhere a real HL7 v2 consumer sits.
 
 **Positional argument `PATH`** — a file, or a directory of files sharing one sniffed format, given as a trailing positional argument, not --path -- an explicit --path is never overridden by it
 
@@ -268,7 +268,7 @@ Render a file (or a directory of files sharing one sniffed format) for a human: 
 
 ## `ehrt play`
 
-Paces a HL7 v2 (ER7) file's or directory's own messages against their MSH-7 timestamps and renders (or writes) them over time -- `ehrt show` plus time (ADR-0014). `ehrt play FILE` at an arbitrarily large --rate, the default ticker sink, is exactly `ehrt show FILE`. A directory's files must share the sniffed v2 format; they are concatenated in LEXICAL FILENAME ORDER before pacing (ADR-0015) -- that ordering is the contract: name your files so their sort order is their intended play order (the sim generator's own msg-%03d output already satisfies this). A FHIR JSON path, or a FHIR/mixed/unclassifiable directory, is a named, disclosed deferral (:play-input-unsupported).
+Pace an HL7 v2 (ER7) file's or directory's messages against their own MSH-7 timestamps and render (or write) them over time -- `ehrt show` plus time. A directory's files must share the v2 format and are concatenated in LEXICAL FILENAME ORDER before pacing: that ordering is the contract, so name files so sort order is play order (the sim generator's msg-%03d output already is). FHIR or mixed input is a named deferral (:play-input-unsupported).
 
 **Positional argument `PATH`** — a HL7 v2 (ER7) file, or a directory of files sharing the sniffed v2 format (concatenated in lexical filename order), given as a trailing positional argument, not --path -- an explicit --path is never overridden by it
 
@@ -278,4 +278,4 @@ Paces a HL7 v2 (ER7) file's or directory's own messages against their MSH-7 time
 | `--rate` | `60` | stream-seconds per wallclock-second -- 1 is real time |
 | `--idle-cap` | `5` | wallclock cap, in seconds, on any single inter-event wait -- a capped wait emits a skip cue (never into a data sink) and is counted separately from a clamped one |
 | `--ticker` | `full` | "full" (a complete rendered block per message) or "line" (one compact MSH-7/MSH-9/PID-3 line per message) -- ignored when --sink is given |
-| `--sink` | — | a file: designator (ADR-0017's own vocabulary) to write paced, byte-identical-to-unpaced output to, instead of the ticker -- dir:/blaze: (and a future mllp: transport) are named, disclosed deferrals (ADR-0014) |
+| `--sink` | — | a file: destination designator -- write the paced output (byte-identical to unpaced) there instead of showing the ticker. dir:, blaze:, and mllp: are recognized but deferred. |

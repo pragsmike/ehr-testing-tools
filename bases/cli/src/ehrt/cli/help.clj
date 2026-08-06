@@ -15,16 +15,19 @@
   "0/1/2/3 per ADR-0004's ok/rejected/error mapping, extended by
   ADR-0010 for the no-verdict arm -- see `cli/result->exit-code`'s own
   docstring for the authoritative reasoning; this table only cites it."
+  ;; Mapping reasoning: ADR-0004 (ok/rejected/error), extended by ADR-0010
+  ;; (no-verdict arm). Authoritative logic: cli/result->exit-code.
   [{:code 0 :meaning "ran and passed"}
    {:code 0 :meaning "bare invocation, help, and --help all exit 0 too"}
    {:code 1 :meaning "ran and legitimately rejected"}
    {:code 2 :meaning "operational error (bad invocation, missing artifact, subprocess failure, etc.)"}
-   {:code 3 :meaning "a gate's aggregate contains :no-verdict under the default --treat-no-verdict-as policy (ADR-0010)"}])
+   {:code 3 :meaning "a gate found :no-verdict outcomes and the default --treat-no-verdict-as policy is in effect -- see that flag to fold them into pass or rejected"}])
 
 (def global-flags
+  ;; --pretty/--edn terminal-detection defaults: ADR-0013.
   [{:flag "--json" :doc "project the EDN result to JSON (EDN remains canonical)"}
-   {:flag "--pretty" :doc "force a human-readable summary, even when stdout is piped -- the default at a real terminal already; ADR-0013"}
-   {:flag "--edn" :doc "force the raw EDN envelope, even at a terminal -- the default when stdout is piped or redirected already; ADR-0013"}
+   {:flag "--pretty" :doc "force a human-readable summary, even when stdout is piped -- already the default at a real terminal"}
+   {:flag "--edn" :doc "force the raw EDN envelope, even at a terminal -- already the default when stdout is piped or redirected"}
    {:flag "--help" :doc "print this command's usage and exit 0 without running it"}])
 
 (def ^:private artifact-flags
@@ -32,11 +35,12 @@
    {:flag "--version" :doc "artifact version, e.g. \"4.0.0\""}
    {:flag "--lockfile" :doc "path to the lockfile" :default "artifacts.lock.edn"}])
 
+;; no-verdict folding policy: ADR-0010.
 (def ^:private gate-common-flags
   [{:flag "--path" :doc "alternative to the positional PATH"}
    {:flag "--report" :doc "write the report EDN to this path"}
    {:flag "--baseline" :doc "baseline-relative mode: path to a previous --report EDN; only genuinely new findings count"}
-   {:flag "--treat-no-verdict-as" :doc "\"pass\" or \"rejected\" -- folds :no-verdict into an existing polarity (ADR-0010)"}])
+   {:flag "--treat-no-verdict-as" :doc "\"pass\" or \"rejected\" -- folds :no-verdict into an existing polarity"}])
 
 (def top-level-doc
   "Surfaced by `ehrt help`/bare `ehrt`, above the group list (ADR-0013):
@@ -50,19 +54,26 @@
    :exit-codes exit-codes
    :global-flags global-flags
    :groups
-   [{:group "artifact"
-     :doc "Fetch and resolve locked external engine/tool artifacts (ADR-0005)."
+   [;; Artifact registry design: ADR-0005. --all introduced in D13,
+    ;; replacing SETUP.md's multi-fetch walkthrough.
+    {:group "artifact"
+     :doc "Fetch and resolve locked external engine/tool artifacts."
      :verbs
      [{:verb "fetch" :doc "Fetch a locked artifact into the local content-addressed cache."
        :flags (into artifact-flags
-                    [{:flag "--all" :doc "fetch every artifact the lockfile names (D13); collapses SETUP.md's multi-fetch walkthrough into one command -- --name/--version are ignored when given. One failing artifact does not abort the rest; the aggregate result is the worst-of every individual outcome." :default "false"}])}
+                    [{:flag "--all" :doc "fetch every artifact the lockfile names; --name/--version are ignored when given. One failing artifact does not abort the rest -- the overall result is the worst individual outcome." :default "false"}])}
       {:verb "resolve" :doc "Resolve an already-fetched artifact to a filesystem path."
        :flags artifact-flags}]}
 
+    ;; URL designators: ruling 7, docs/source-sink-design.md D4.
+    ;; generate front door + bare=sim: ADR-0015 (+ 2026-07-30 amendment:
+    ;; sim needs no fetched artifacts, so the cold first command succeeds).
+    ;; intake compose forms: SS-2 (generator URL), SS-3 (stdin designator).
+    ;; Zero-flag reproducible defaults: D9 / ADR-0019.
     {:group "corpus"
-     :doc "Generate, mutate, intake, and inspect synthetic corpora. Any PATH, --out-dir, or --out below may also be spelled as a dir:/file: URL designator (ruling 7, docs/source-sink-design.md D4) instead of a bare path -- bare paths remain the documented, common spelling. `corpus generate sim`/`corpus generate synthea` (ADR-0015) is the front door for generating a corpus; `corpus intake` additionally accepts a generator URL (sim:/synthea:) in place of PATH as its own compose form -- generate, then catalog, in one command (SS-2) -- or a stdin designator (stdin:?format=...&framing=...) -- read piped bytes, spool, then catalog, in one command (SS-3)."
+     :doc "Generate, mutate, intake, and inspect synthetic corpora. Any PATH, --out-dir, or --out also accepts a dir:/file: URL designator in place of a bare path; bare paths are the common spelling. `corpus generate` is the front door for new corpora; `corpus intake` catalogs existing ones -- and can generate-then-catalog, or read piped bytes, in one command (see intake)."
      :verbs
-     [{:verb "generate" :doc "Generate a deterministic synthetic corpus. Grows a source subcommand (ADR-0015): `corpus generate sim` (this workspace's own sim engine, ehrt.sim -- --patients/--churn/--emit/--config below) or `corpus generate synthea` (Synthea, the flags below); bare `corpus generate`, with no subcommand, is `generate sim` (ADR-0015 amendment, 2026-07-30: sim needs no fetched artifacts, so the cold first command succeeds unfetched) -- run `generate synthea` explicitly for that lane. Zero-flag defaults (D9, ADR-0019) make either source's bare command a byte-reproducible run -- re-running it into the same (derived) --out-dir without clearing it first is rejected (:out-dir-exists), not silently overwritten."
+     [{:verb "generate" :doc "Generate a deterministic synthetic corpus. Takes a source subcommand: `corpus generate sim` (this workspace's own engine; the flags marked sim:) or `corpus generate synthea` (the flags marked synthea:). Bare `corpus generate` means `generate sim`. Both bare commands are byte-reproducible as-is; re-running into an existing non-empty --out-dir is rejected (:out-dir-exists), never silently overwritten."
        :flags [{:flag "--config-path" :doc "synthea: Synthea properties file" :default "resources/synthea-default.properties"}
                {:flag "--seed" :doc "patient/master-generation seed (integer), shared by both sources" :default "1"}
                {:flag "--clinician-seed" :doc "synthea: clinician-generation seed (integer) -- Synthea defaults this to wall-clock time otherwise, which breaks reproducibility even with --seed pinned" :default "the resolved --seed value"}
@@ -84,43 +95,51 @@
                {:flag "--churn" :doc "sim: turn churn on with sensible defaults" :default "false"}
                {:flag "--emit" :doc "sim: message format to emit -- \"hl7\" produces a v2 corpus" :default "hl7"}
                {:flag "--config" :doc "sim: path to an EDN file carrying the data-heavy engine keys (:pathway/:pathways/:order-profiles/:churn-profile/:site-profile/:modules/...)" :default "none"}]}
+      ;; --locator-path default-locator fallback: D12.
       {:verb "mutate" :doc "Apply one mutation operator at one locator to every matching file under PATH."
        :flags [{:flag "--path" :doc "alternative to the positional PATH"}
                {:flag "--operator-id" :doc "registered operator id -- see `ehrt corpus operators`"}
                {:flag "--operator-version" :doc "operator version" :default "1"}
-               {:flag "--locator-path" :doc "format-specific locator string (FHIR data-path, or v2 segment/field grammar) -- falls back to the operator's own :default-locator when declared (D12); still required otherwise"}
+               {:flag "--locator-path" :doc "format-specific locator string (FHIR data-path, or v2 segment/field grammar) -- falls back to the operator's own :default-locator when it declares one; required otherwise"}
                {:flag "--out-dir" :doc "directory for mutants + a lineage/ sidecar subdirectory" :default "<PATH>-mutants/<operator-id>@<operator-version>/"}]
        :positional "PATH"
        :positional-doc "a file, or a directory of files sharing one locator's shape, given as a trailing positional argument, not --path -- an explicit --path is never overridden by it"}
-      {:verb "intake" :doc "Catalog a foreign (not generated by this repo) corpus batch -- or, given a generator URL (sim:?seed=42, synthea:?seed=1&population=5) in place of PATH, generate the corpus first and then catalog it, in one command (SS-2); or, given a stdin designator (stdin:?format=v2-er7&framing=er7-multi) in place of PATH, read piped bytes, spool them one file per item, and catalog the spool (SS-3)."
+      {:verb "intake" :doc "Catalog a foreign corpus batch (one not generated by this repo). In place of PATH: a generator URL (sim:?seed=42, synthea:?seed=1&population=5) generates the corpus first and then catalogs it; a stdin designator (stdin:?format=v2-er7&framing=er7-multi) reads piped bytes, spools them one file per item, and catalogs the spool."
        :flags [{:flag "--path" :doc "alternative to the positional PATH"}
                {:flag "--label" :doc "source label for the intake record"}
                {:flag "--out" :doc "catalog output path"}
                {:flag "--received" :doc "received date, YYYY-MM-DD" :default "today"}]
        :positional "PATH"
        :positional-doc "a directory of files to catalog, OR a generator URL (sim:/synthea:) naming a corpus to generate then catalog, OR a stdin designator (stdin:?format=...&framing=...) naming how to decode piped bytes before cataloging them, given as a trailing positional argument, not --path -- an explicit --path is never overridden by it"}
-      {:verb "operators" :doc "List the registered mutation operator catalog (a pure registry read; dropped/unconvictable candidates are docstring prose -- see docs/judge-calibration.md, not this listing)."
+      {:verb "operators" :doc "List the registered mutation-operator catalog. Candidates that were considered and dropped are documented in docs/judge-calibration.md, not here."
        :flags [{:flag "--format" :doc "\"fhir\" or \"v2\" -- narrow the listing to one format" :default "all"}]}]}
 
+    ;; Sniff dispatch: D11 / ADR-0019, via corpus.intake/sniff-format.
+    ;; NIST profile tier: ADR-0012. Designators: ruling 7.
     {:group "gate"
-     :doc "Conformance-gate a file or directory against HL7 v2, FHIR, or (given --profile) a HL7 v2 conformance profile (NIST, ADR-0012). Bare `ehrt gate PATH` (no verb) sniffs the format via corpus.intake/sniff-format and dispatches between v2 and fhir only (D11, ADR-0019) -- it never dispatches to v2-nist, which has no default profile to sniff into; a directory mixing v2 and fhir, or containing a file the sniffer can't classify, is an error naming the explicit override (`gate v2 PATH` / `gate fhir PATH`), never a silent per-file split. PATH (and gate fhir's --out-dir) may also be spelled as a dir:/file: URL designator (ruling 7) instead of a bare path."
+     :doc "Conformance-gate a file or directory against HL7 v2, FHIR, or (with --profile) an HL7 v2 conformance profile. Bare `ehrt gate PATH` sniffs the format and dispatches between v2 and fhir only -- never v2-nist, which needs an explicit --profile. A directory mixing formats, or a file that can't be classified, is an error naming the explicit override (`gate v2 PATH` / `gate fhir PATH`), never a silent per-file split. PATH and --out-dir also accept dir:/file: URL designators."
      :positional "PATH"
      :positional-doc "a file or directory, given as a trailing positional argument, not --path -- an explicit --path is never overridden by it"
      :verbs
      [{:verb "v2" :doc "Gate against HL7 v2 base-structural conformance (HAPI)."
        :flags gate-common-flags}
+      ;; verdict cache: ADR-0016.
       {:verb "fhir" :doc "Gate against FHIR base-spec conformance (the official validator)."
        :flags (into gate-common-flags
                     [{:flag "--lockfile" :doc "path to the lockfile" :default "artifacts.lock.edn"}
                      {:flag "--out-dir" :doc "validator scratch directory" :default "out/scratch/gate-fhir"}
                      {:flag "--java-bin" :doc "java executable to invoke"}
-                     {:flag "--no-verdict-cache" :doc "skip the content-addressed verdict cache (ADR-0016); always re-runs the validator subprocess" :default "false (caching on)"}])}
-      {:verb "v2-nist" :doc "Gate against HL7 v2 PROFILE-tier conformance (the direct NIST engine, ADR-0012): profile usage/cardinality/length, conformance statements, co-constraints, slicing, and value-set bindings -- what the v2 (HAPI) tier structurally cannot check. Complementary to `gate v2`, not a replacement. The validator is built once per invocation and reused across every file (context construction dominates this engine's own cost) -- never rebuilt per file."
+                     {:flag "--no-verdict-cache" :doc "skip the content-addressed verdict cache; always re-run the validator subprocess" :default "false (caching on)"}])}
+      ;; Engine perf note (validator built once per invocation, reused
+      ;; across files -- context construction dominates): ADR-0012.
+      ;; Π-bundle vocabulary + CDC fixture provenance: ADR-0012 / register.
+      {:verb "v2-nist" :doc "Gate against HL7 v2 profile-tier conformance (the NIST engine): profile usage, cardinality, length, conformance statements, co-constraints, slicing, and value-set bindings -- what the structural v2 tier cannot check. Complementary to `gate v2`, not a replacement."
        :flags (into gate-common-flags
-                    [{:flag "--profile" :doc "REQUIRED: a conformance-profile bundle (Π) directory -- PROFILE.xml required, CONSTRAINTS.xml/VALUESETS.xml/VALUESETBINDINGS.xml/COCONSTRAINTS.xml/SLICINGS.xml optional. No default is assumed -- try components/corpus/test-fixtures/v2-nist/COVID19_ELR-v2.3.1, the CDC COVID19_ELR-v2.3.1 fixture, this repo's own documented try-it bundle"}])}]}
+                    [{:flag "--profile" :doc "REQUIRED: a conformance-profile bundle directory -- PROFILE.xml required; CONSTRAINTS.xml, VALUESETS.xml, VALUESETBINDINGS.xml, COCONSTRAINTS.xml, SLICINGS.xml optional. No default. To try one: components/corpus/test-fixtures/v2-nist/COVID19_ELR-v2.3.1"}])}]}
 
+    ;; Designators: ruling 7.
     {:group "check"
-     :doc "Check a candidate corpus against an expected corpus and/or explicit per-file assertions -- the corpus's second judge, alongside Gate. DIR may also be spelled as a dir: URL designator (ruling 7) instead of a bare path."
+     :doc "Check a candidate corpus against an expected corpus and/or explicit per-file assertions -- the corpus's second judge, alongside gate. DIR also accepts a dir: URL designator."
      :positional "DIR"
      :positional-doc "check has no sub-verb: the second positional argument names the candidate directory directly"
      :flags [{:flag "--path" :doc "alternative to the positional DIR"}
@@ -130,16 +149,19 @@
              {:flag "--pair-by" :doc "\"path\" or \"hash\"" :default "path"}
              {:flag "--report" :doc "write the report EDN to this path"}]}
 
+    ;; Honest pre-release identity ruling: D13.
     {:group "version"
-     :doc "Prints this repo's own honestly-pre-release identity (never a fabricated semver, D13) plus every pinned artifact's name@version from the lockfile."
+     :doc "Print this repo's own pre-release identity (it deliberately has no semver yet) plus every pinned artifact's name@version from the lockfile."
      :flags [{:flag "--lockfile" :doc "path to the lockfile" :default "artifacts.lock.edn"}]}
 
     {:group "doctor"
-     :doc "Runs SETUP.md's verification checklist as checks (D13): java resolution via the artifact registry, artifact cache presence per lockfile entry, git hooksPath wiring, and platform support. Exit 0 every check passed; 1 at least one failed; 2 couldn't even read the lockfile to know what to check."
+     :doc "Run SETUP.md's verification checklist as checks: java resolution via the artifact registry, artifact cache presence per lockfile entry, git hooksPath wiring, and platform support. Exit 0: every check passed; 1: at least one failed; 2: couldn't even read the lockfile to know what to check."
      :flags [{:flag "--lockfile" :doc "path to the lockfile" :default "artifacts.lock.edn"}]}
 
+    ;; In-process mount: ADR-0005/ADR-0012 fulfilled; the entry point is
+    ;; ehrt.sim.interface/run-command.
     {:group "sim"
-     :doc "Run the sim engine, mounted in-process (ADR-0005, ADR-0012 fulfilled) -- ehrt.sim.interface/run-command directly, no subprocess."
+     :doc "Run the sim engine, in-process -- no subprocess, no fetched artifacts needed."
      :verbs
      [{:verb "run" :doc "Runs one deterministic simulation and returns its ground truth, manifest, and summary (plus --emit's rendered messages/bundles, when given)."
        :flags [{:flag "--seed" :doc "simulation seed (integer) -- required, determinism is a feature, not a default"}
@@ -152,31 +174,34 @@
                {:flag "--at" :doc "with --emit fhir: seconds from run start to snapshot (integer, default: end of run)"}
                {:flag "--churn" :doc "turn churn on with sensible defaults" :default "false"}
                {:flag "--config" :doc "path to an EDN file carrying the data-heavy engine keys with no flag of their own (:pathway/:pathways/:order-profiles/:churn-profile/:site-profile/:modules/...)"}
-               {:flag "--format" :doc "\"er7\" renders bare wire messages to stdout, nothing else (requires --emit hl7); \"ground-truth\" renders the bare EDN ground-truth vector to stdout, nothing else -- pipe straight into `ehrt sim check`. Default edn (the full envelope); --json also works, same as always."}]}
+               {:flag "--format" :doc "\"er7\": bare wire messages to stdout (requires --emit hl7). \"ground-truth\": the bare ground-truth EDN vector -- pipe straight into `ehrt sim check`. Default: the full EDN envelope; --json works as always."}]}
       {:verb "check" :doc "Runs the invariant catalog (capacity/surge-ladder, timestamp-monotone, and friends) over a ground-truth EDN vector read from stdin -- e.g. `ehrt sim run --format ground-truth | ehrt sim check`."
        :flags []}
       {:verb "identifiers" :doc "Config + seed -> the complete EDN inventory of every identifier this run's output would contain (patient-ids, MRNs, visit beds, HL7 control ids, FHIR resource ids, provider NPIs, run-id) -- how you'd find and remove synthetic data that ever reached a real system (docs/simulate-your-facility.md)."
        :flags [{:flag "--seed" :doc "RNG seed (required; same as `ehrt sim run`'s own --seed)"}
                {:flag "--patients" :doc "patient count (integer)" :default "1"}
                {:flag "--config" :doc "path to an EDN file supplying data-heavy engine keys (same as `ehrt sim run`)"}]}
-      {:verb "version" :doc "Prints sim's own library version and git SHA -- the SAME source the run manifest's :generator block stamps."
+      {:verb "version" :doc "Print sim's own library version and git SHA -- the same source the run manifest's :generator block stamps."
        :flags []}]}
 
+    ;; Display-vs-wire ruling: ADR-0013.
     {:group "show"
-     :doc "Render a file (or a directory of files sharing one sniffed format) for a human: HL7 v2 (ER7) one segment per line, blank line between messages; FHIR JSON pretty-printed. Pretty-always -- no flags needed, `ehrt show FILE | less` just works regardless of what stdout is attached to. Display is not wire format (ADR-0013): the rendered ER7 is deliberately nonconformant (LF-joined segments) and must never be piped anywhere a real HL7 v2 consumer sits."
+     :doc "Render a file (or a directory of files sharing one sniffed format) for a human: HL7 v2 (ER7) one segment per line, blank line between messages; FHIR JSON pretty-printed. Always pretty -- `ehrt show FILE | less` just works. The rendered ER7 is display-only and deliberately nonconformant (LF-joined segments): never pipe it anywhere a real HL7 v2 consumer sits."
      :positional "PATH"
      :positional-doc "a file, or a directory of files sharing one sniffed format, given as a trailing positional argument, not --path -- an explicit --path is never overridden by it"
      :flags [{:flag "--path" :doc "alternative to the positional PATH"}]}
 
+    ;; Pacer design: ADR-0014. Lexical-order contract: ADR-0015.
+    ;; --sink designator vocabulary: ADR-0017; deferred sinks: ADR-0014.
     {:group "play"
-     :doc "Paces a HL7 v2 (ER7) file's or directory's own messages against their MSH-7 timestamps and renders (or writes) them over time -- `ehrt show` plus time (ADR-0014). `ehrt play FILE` at an arbitrarily large --rate, the default ticker sink, is exactly `ehrt show FILE`. A directory's files must share the sniffed v2 format; they are concatenated in LEXICAL FILENAME ORDER before pacing (ADR-0015) -- that ordering is the contract: name your files so their sort order is their intended play order (the sim generator's own msg-%03d output already satisfies this). A FHIR JSON path, or a FHIR/mixed/unclassifiable directory, is a named, disclosed deferral (:play-input-unsupported)."
+     :doc "Pace an HL7 v2 (ER7) file's or directory's messages against their own MSH-7 timestamps and render (or write) them over time -- `ehrt show` plus time. A directory's files must share the v2 format and are concatenated in LEXICAL FILENAME ORDER before pacing: that ordering is the contract, so name files so sort order is play order (the sim generator's msg-%03d output already is). FHIR or mixed input is a named deferral (:play-input-unsupported)."
      :positional "PATH"
      :positional-doc "a HL7 v2 (ER7) file, or a directory of files sharing the sniffed v2 format (concatenated in lexical filename order), given as a trailing positional argument, not --path -- an explicit --path is never overridden by it"
      :flags [{:flag "--path" :doc "alternative to the positional PATH"}
              {:flag "--rate" :doc "stream-seconds per wallclock-second -- 1 is real time" :default "60"}
              {:flag "--idle-cap" :doc "wallclock cap, in seconds, on any single inter-event wait -- a capped wait emits a skip cue (never into a data sink) and is counted separately from a clamped one" :default "5"}
              {:flag "--ticker" :doc "\"full\" (a complete rendered block per message) or \"line\" (one compact MSH-7/MSH-9/PID-3 line per message) -- ignored when --sink is given" :default "full"}
-             {:flag "--sink" :doc "a file: designator (ADR-0017's own vocabulary) to write paced, byte-identical-to-unpaced output to, instead of the ticker -- dir:/blaze: (and a future mllp: transport) are named, disclosed deferrals (ADR-0014)"}]}]})
+             {:flag "--sink" :doc "a file: destination designator -- write the paced output (byte-identical to unpaced) there instead of showing the ticker. dir:, blaze:, and mllp: are recognized but deferred."}]}]})
 
 (defn group-names
   "Every group name in the spec, in declared order."
