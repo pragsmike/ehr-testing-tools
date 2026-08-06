@@ -99,3 +99,4 @@ below updates only when an arc closes.
 - **ADR-0054** — Alignment fixes 5: the license text travels with the content — F-4 closes, gated — [`0054-alignment-fixes-5.md`](adr/0054-alignment-fixes-5.md) — Accepted
 - **ADR-0055** — Alignment arc close: the register empties, the state regenerates, the law is appended — [`0055-alignment-arc-close.md`](adr/0055-alignment-arc-close.md) — Accepted
 - **ADR-0056** — UX riders: the arc opens — brief lands, tags licensed, the compaction pointers come home — [`0056-ux-riders.md`](adr/0056-ux-riders.md) — Accepted
+- **ADR-0057** — Tag law: the boundary moves to verification, where it always was — [`0057-tag-law.md`](adr/0057-tag-law.md) — Accepted

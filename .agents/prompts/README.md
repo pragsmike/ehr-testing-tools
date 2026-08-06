@@ -76,3 +76,4 @@ Files in this directory:
   * 2026-08-05-alignment-fixes-5.md
   * 2026-08-05-alignment-arc-close.md
   * 2026-08-06-ux-riders.md
+  * 2026-08-06-tag-law.md
