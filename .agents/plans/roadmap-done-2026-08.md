@@ -1364,3 +1364,15 @@ Attic file — every entry below is an exact byte-for-byte relocation from the l
   unrelated gap Wave F did not touch. **RESOLVED 2026-08-03 (GMF
   coverage Wave LC, ADR-0038):** the whitelist itself retired; this
   module now censuses `:ok-walked` — see Done, below.
+
+## Alignment arc — closed 2026-08-05 (ADR-0048–0055)
+Relocated verbatim from the live roadmap's own Done section by this arc's
+own close (`notes/adr/0055-alignment-arc-close.md` AR-AC-5); see that ADR
+for the arc's full disposition tally.
+- 2026-08-05 — alignment-riders — ADR-0048
+- 2026-08-05 — alignment-audit — ADR-0049
+- 2026-08-05 — alignment-fixes-1 — ADR-0050
+- 2026-08-05 — alignment-fixes-2 — ADR-0051
+- 2026-08-05 — alignment-fixes-3 — ADR-0052
+- 2026-08-05 — alignment-fixes-4 — ADR-0053
+- 2026-08-05 — alignment-fixes-5 — ADR-0054

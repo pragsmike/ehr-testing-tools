@@ -60,6 +60,21 @@
 ;; budget from 2405 to 1095. No other set carries `roadmap.md` or
 ;; `notes/ADRs.md` (neither is `:paths` in `:corpus`/`:sim`/`:judge`/
 ;; `:docs`), so no other budget below changes.
+;;
+;; Re-derivation (2026-08-05, alignment arc close, `notes/adr/
+;; 0055-alignment-arc-close.md` AR-AC-4): diffing every set's own
+;; `:paths` membership against `git log 89e327f..HEAD --name-only`
+;; (the alignment arc's own span) found five `:onboarding` members
+;; touched (`AGENTS.md`, the four `.agents/*/README.md` files) plus
+;; `.agents/plans/roadmap.md` itself, shrunk again this session by
+;; AR-AC-5's own Done-pointer rotation; no `:corpus`/`:sim`/`:judge`/
+;; `:docs` member path appears in that diff, so those four budgets are
+;; untouched. `:onboarding`'s fresh actual (`wc -l` sum across all
+;; eight `:paths`, matching this test's own `line-seq` count exactly):
+;; 275 (AGENTS.md) + 46 + 57 + 128 + 76 + 33 (the five READMEs) + 230
+;; (roadmap.md, post-rotation) + 162 (build-session/SKILL.md) = 1007.
+;; Re-applying the standing formula (actual x1.15, rounded up to the
+;; nearest 5): 1007 x 1.15 = 1158.05 -> 1160. Budget moves 1095 -> 1160.
 
 {:onboarding
  {:paths ["AGENTS.md"
@@ -82,7 +97,7 @@
   ;; because that's a different audience from "a cold task-class session",
   ;; and forcing every onboarding read to carry its cost would budget for an
   ;; activity most onboarding sessions never do (migration session 5, AR-3).
-  :budget-lines 1095}
+  :budget-lines 1160}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one

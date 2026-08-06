@@ -220,16 +220,11 @@ Rows here are LIVE. Closed rows move to Done with their notes.
   ADR-0031 AR-6's second defect-fix session, `notes/ADRs.md` ADR-0033)
   — see Done, below.**
 
-## Done (live — current compaction arc only; full history moved 2026-08-05 to
+## Done (live — current arc only; full history in the attic files,
 `.agents/plans/roadmap-done-2026-07.md` and `.agents/plans/roadmap-done-2026-08.md`,
-scaffolding compaction B, `notes/ADRs.md` ADR-0046)
+scaffolding compaction B, `notes/ADRs.md` ADR-0046 — each closed arc's own
+pointers rotate to a dated header in the attic at that arc's own close,
+`notes/adr/0055-alignment-arc-close.md` AR-AC-5)
 - 2026-08-05 — scaffolding-compaction-a — ADR-0045
 - 2026-08-05 — scaffolding-compaction-b — ADR-0046
 - 2026-08-05 — scaffolding-compaction-c — ADR-0047
-- 2026-08-05 — alignment-riders — ADR-0048
-- 2026-08-05 — alignment-audit — ADR-0049
-- 2026-08-05 — alignment-fixes-1 — ADR-0050
-- 2026-08-05 — alignment-fixes-2 — ADR-0051
-- 2026-08-05 — alignment-fixes-3 — ADR-0052
-- 2026-08-05 — alignment-fixes-4 — ADR-0053
-- 2026-08-05 — alignment-fixes-5 — ADR-0054
