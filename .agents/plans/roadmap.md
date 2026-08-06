@@ -195,30 +195,6 @@ Rows here are LIVE. Closed rows move to Done with their notes.
   original combined row CLOSED this session — see Done, below.
   Revisit trigger: whichever session next touches the
   schema-invalid family's own `time` gap.
-- `ehrt.sim-trajectory.gmf-interpreter/resolve-time-advance`'s own
-  Procedure-duration gap: `:duration` is passed as a flat map but
-  `resolve-time-advance` destructures nested `:range`/`:exact` keys
-  from it, finding neither — EVERY vendored Procedure state's own
-  duration silently never advances virtual time, v1 or v2 gmf_version
-  alike (found live, Wave D stage D3, `docs/gmf-interpreter.md` §14's
-  own D3c finding 1). **FIXED (2026-08-03, ADR-0031 AR-6's first
-  defect-fix session, `notes/ADRs.md` ADR-0032) — see Done, below.**
-- The compile-trajectory/engine/emit full-pipeline gap for closure-
-  having modules — **UPGRADED from "unproven" to "confirmed broken"
-  (2026-08-02, post-Wave-D cleanup, ADR-0030 J3):** `engine.clj`'s own
-  `:registered` decide method calls `run-module` at a bare arity that
-  never threads a closure's own submodule registry through
-  (`ear_infections`/`urinary_tract_infections`: any walk reaching a
-  `CallSubmodule` state throws) nor an `initial-attributes` seed
-  (`total_joint_replacement`: the walk blocks permanently at age 0,
-  silently producing zero compiled content). Pinned live by
-  `components/sim-emit-hl7/test/`'s three new round-trip tests, one
-  per root. The session wiring `engine.clj` to carry a closure's own
-  `modules`/`tables`/`initial-attributes` through to `run-module`
-  inherits this gap AND must update those three tests (they are
-  designed to fail loudly the moment this lands). **FIXED (2026-08-03,
-  ADR-0031 AR-6's second defect-fix session, `notes/ADRs.md` ADR-0033)
-  — see Done, below.**
 
 ## Done (live — current arc only; full history in the attic files,
 `.agents/plans/roadmap-done-2026-07.md` and `.agents/plans/roadmap-done-2026-08.md`,

@@ -1410,3 +1410,38 @@ ADR for the arc's full disposition tally.
 - 2026-08-06 — ux-fixes-3 — ADR-0061
 - 2026-08-06 — ux-fixes-4 — ADR-0062
 - 2026-08-06 — ux-fixes-5 — ADR-0063
+
+## Done (this session, 2026-08-06, ux epilogue — Deferred triage AR-EP-4 — ADR-0065)
+- **Deferred triage (AR-EP-4).** Two rows already carrying a
+  closure note relocated verbatim from Deferred, same sanctioned-append
+  class as compaction A's own AR-A-5 and ADR-0064's own AR-UC-5 — their
+  own "see Done, below" pointers had dangled since the Done rotation
+  (scaffolding compaction B, ADR-0046) moved the arcs they pointed at
+  out from under them:
+
+- `ehrt.sim-trajectory.gmf-interpreter/resolve-time-advance`'s own
+  Procedure-duration gap: `:duration` is passed as a flat map but
+  `resolve-time-advance` destructures nested `:range`/`:exact` keys
+  from it, finding neither — EVERY vendored Procedure state's own
+  duration silently never advances virtual time, v1 or v2 gmf_version
+  alike (found live, Wave D stage D3, `docs/gmf-interpreter.md` §14's
+  own D3c finding 1). **FIXED (2026-08-03, ADR-0031 AR-6's first
+  defect-fix session, `notes/ADRs.md` ADR-0032) — see Done, below.**
+  **Relocated 2026-08-06 (ux epilogue, AR-EP-4).**
+- The compile-trajectory/engine/emit full-pipeline gap for closure-
+  having modules — **UPGRADED from "unproven" to "confirmed broken"
+  (2026-08-02, post-Wave-D cleanup, ADR-0030 J3):** `engine.clj`'s own
+  `:registered` decide method calls `run-module` at a bare arity that
+  never threads a closure's own submodule registry through
+  (`ear_infections`/`urinary_tract_infections`: any walk reaching a
+  `CallSubmodule` state throws) nor an `initial-attributes` seed
+  (`total_joint_replacement`: the walk blocks permanently at age 0,
+  silently producing zero compiled content). Pinned live by
+  `components/sim-emit-hl7/test/`'s three new round-trip tests, one
+  per root. The session wiring `engine.clj` to carry a closure's own
+  `modules`/`tables`/`initial-attributes` through to `run-module`
+  inherits this gap AND must update those three tests (they are
+  designed to fail loudly the moment this lands). **FIXED (2026-08-03,
+  ADR-0031 AR-6's second defect-fix session, `notes/ADRs.md` ADR-0033)
+  — see Done, below.**
+  **Relocated 2026-08-06 (ux epilogue, AR-EP-4).**
