@@ -197,6 +197,21 @@
                                 poly/sim-check {:local/root "components/sim-check"}}
                    :main-opts ["-m" "ehrt.cli.core"]}
 
+            ;; :cli -- the retired pre-monorepo alias (AR-EP-1, ux
+            ;; epilogue, notes/adr/0065-ux-epilogue.md): `:cli` lived
+            ;; in the pre-monorepo standalone sim CLI's own deps.edn
+            ;; (`git show 906a954:.staging/deps.edn`, `:cli {:main-opts
+            ;; ["-m" "ehr-testing-sim.cli"]}`) and never carried over at
+            ;; consolidation. This is NOT a synonym for :ehrt -- a bare
+            ;; `clojure -M:cli` would resurrect the cwd-relative-path
+            ;; hazard `bin/ehrt`'s own header exists to prevent. It
+            ;; exists only to route the retired shape to
+            ;; ehrt.cli.retired, which prints a redirect to bin/ehrt and
+            ;; exits 2, an operational error, never runs anything.
+            :cli {:extra-deps {org.clojure/clojure {:mvn/version "1.12.5"}}
+                  :extra-paths ["bases/cli/src"]
+                  :main-opts ["-m" "ehrt.cli.retired"]}
+
             :poly {:main-opts ["-m" "polylith.clj.core.poly-cli.core"]
                    :jvm-opts ["--enable-native-access=ALL-UNNAMED"]
                    :extra-deps {polylith/clj-poly {:mvn/version "0.3.32"}}}}}
