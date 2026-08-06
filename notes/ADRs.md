@@ -97,3 +97,4 @@ below updates only when an arc closes.
 - **ADR-0052** — Alignment fixes 3: sim-model's resources take their own name, and the nesting rule gets its gate — [`0052-alignment-fixes-3.md`](adr/0052-alignment-fixes-3.md) — Accepted
 - **ADR-0053** — Alignment fixes 4: offline determinism without redistribution — the NIST mirror lives user-side, the lockfile grows teeth — [`0053-alignment-fixes-4.md`](adr/0053-alignment-fixes-4.md) — Accepted
 - **ADR-0054** — Alignment fixes 5: the license text travels with the content — F-4 closes, gated — [`0054-alignment-fixes-5.md`](adr/0054-alignment-fixes-5.md) — Accepted
+- **ADR-0055** — Alignment arc close: the register empties, the state regenerates, the law is appended — [`0055-alignment-arc-close.md`](adr/0055-alignment-arc-close.md) — Accepted

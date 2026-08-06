@@ -228,3 +228,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-05 — scaffolding-compaction-a — ADR-0045
 - 2026-08-05 — scaffolding-compaction-b — ADR-0046
 - 2026-08-05 — scaffolding-compaction-c — ADR-0047
+- 2026-08-05 — alignment-arc-close — ADR-0055
