@@ -1385,3 +1385,28 @@ for the arc's full disposition tally.
 - 2026-08-05 — alignment-fixes-3 — ADR-0052
 - 2026-08-05 — alignment-fixes-4 — ADR-0053
 - 2026-08-05 — alignment-fixes-5 — ADR-0054
+- 2026-08-05 — alignment-arc-close — ADR-0055
+
+**Appended 2026-08-06 (UX arc close, `notes/adr/0064-ux-arc-close.md`
+AR-UC-5):** this pointer was the live roadmap's own sole current Done
+entry from the alignment arc's own close until now — AR-AC-5's own
+ruling named only ADR-0048 through ADR-0054 for relocation, leaving
+ADR-0055's own pointer in place as "the sole current entry FOR THE
+ALIGNMENT ARC" at that session's own landing (`notes/adr/
+0055-alignment-arc-close.md`, its own AR-AC-5 disposition). It
+relocates here now, verbatim, at the next arc's own close — the same
+disclosed-leftover class ADR-0055 itself named for the
+scaffolding-compaction pointers above.
+
+## UX arc — closed 2026-08-06 (ADR-0056–0064)
+Relocated verbatim from the live roadmap's own Done section by this
+arc's own close (`notes/adr/0064-ux-arc-close.md` AR-UC-5); see that
+ADR for the arc's full disposition tally.
+- 2026-08-06 — ux-riders — ADR-0056
+- 2026-08-06 — tag-law — ADR-0057
+- 2026-08-06 — ux-audit — ADR-0058
+- 2026-08-06 — ux-fixes-1 — ADR-0059
+- 2026-08-06 — ux-fixes-2 — ADR-0060
+- 2026-08-06 — ux-fixes-3 — ADR-0061
+- 2026-08-06 — ux-fixes-4 — ADR-0062
+- 2026-08-06 — ux-fixes-5 — ADR-0063

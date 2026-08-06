@@ -75,6 +75,26 @@
 ;; (roadmap.md, post-rotation) + 162 (build-session/SKILL.md) = 1007.
 ;; Re-applying the standing formula (actual x1.15, rounded up to the
 ;; nearest 5): 1007 x 1.15 = 1158.05 -> 1160. Budget moves 1095 -> 1160.
+;;
+;; Re-derivation (2026-08-06, UX arc close, `notes/adr/
+;; 0064-ux-arc-close.md` AR-UC-4): diffing every set's own `:paths`
+;; membership against `git log 12d3aa3..HEAD --name-only` (12d3aa3 =
+;; the alignment arc's own closing commit, the base since which
+;; `state.md`/`reading-sets.edn` were last touched) found six
+;; `:onboarding` members touched this arc (`AGENTS.md`, ADR-0057's tag
+;; law; `.agents/plans/README.md`, `.agents/session-records/README.md`,
+;; `.agents/prompts/README.md` -- new session/ADR/prompt entries;
+;; `.agents/plans/roadmap.md` -- Now/Done churn across nine sessions,
+;; shrunk again this session by AR-UC-5's own Done-pointer rotation;
+;; `.agents/skills/build-session/SKILL.md` -- the tag-law sweep). No
+;; `:corpus`/`:sim`/`:judge`/`:docs` member path appears in that diff,
+;; so those four budgets stay untouched. `:onboarding`'s fresh actual
+;; (`wc -l` sum across all eight `:paths`, measured AFTER the rotation
+;; landed): 284 (AGENTS.md) + 49 + 57 + 137 + 85 + 33 (the five
+;; READMEs) + 228 (roadmap.md, post-rotation) + 172
+;; (build-session/SKILL.md) = 1045. Re-applying the standing formula
+;; (actual x1.15, rounded up to the nearest 5): 1045 x 1.15 = 1201.75
+;; -> 1205. Budget moves 1160 -> 1205.
 
 {:onboarding
  {:paths ["AGENTS.md"
@@ -97,7 +117,7 @@
   ;; because that's a different audience from "a cold task-class session",
   ;; and forcing every onboarding read to carry its cost would budget for an
   ;; activity most onboarding sessions never do (migration session 5, AR-3).
-  :budget-lines 1160}
+  :budget-lines 1205}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one
