@@ -193,3 +193,6 @@ data, not Synthea's). No PHI, no real-person data, by construction
 (this repo's standing constraint, docs/problem-statement.md /
 AGENTS.md) -- GMF module content is synthetic disease-progression
 logic, not patient records.
+
+2026-08-05: the complete Apache License 2.0 text is vendored at
+LICENSES/Apache-2.0.txt, added 2026-08-05 per ADR-0054 (register F-4).

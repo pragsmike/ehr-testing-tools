@@ -197,4 +197,5 @@ session discipline.
 
 ## License
 
-See [`LICENSE`](LICENSE).
+See [`LICENSE`](LICENSE). Third-party license texts live in
+[`LICENSES/`](LICENSES/).

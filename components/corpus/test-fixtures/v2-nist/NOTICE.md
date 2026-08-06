@@ -69,3 +69,8 @@ the engine-in-the-loop test that builds a validator from this bundle
 via `ehrt.judge-v2-nist.interface/make-validator` and gates the
 companion message through it, pinning the measured verdict, cause, and
 per-area finding counts.
+
+## License text
+
+2026-08-05: the complete Apache License 2.0 text is vendored at
+`LICENSES/Apache-2.0.txt`, added 2026-08-05 per ADR-0054 (register F-4).

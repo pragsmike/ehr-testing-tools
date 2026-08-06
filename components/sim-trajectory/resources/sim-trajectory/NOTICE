@@ -70,3 +70,15 @@ oversight -- deferred to the calibration register as a named item
 ("wellness cadence chronic-meds cap"); the table's own header comment
 carries the same disclosure. This table's own citation is
 `notes/facts-register.md` F23.
+
+**License text (2026-08-05, ADR-0054, register F-4).** This addendum's
+own opening paragraph, above, establishes that `wellness-cadence.edn`
+is genuinely extracted, verbatim, from Synthea's own source
+(`EncounterModule.java`) under ADR-0037 AR-1 -- unlike every other
+table in this file, which is hand-curated and carries no such
+obligation. Synthea is Apache-2.0-licensed (the same license terms
+`components/sim/resources/sim/modules/NOTICE` already establishes for
+every other Synthea-derived source this project vendors), so this
+extraction is under Apache-2.0. The complete Apache License 2.0 text
+is vendored at LICENSES/Apache-2.0.txt, added 2026-08-05 per ADR-0054
+(register F-4).

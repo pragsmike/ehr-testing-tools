@@ -71,3 +71,6 @@ content, under the terms available to US NLM/UMLS users
 of the SNOMED CT release itself, and this project's own code-provenance
 law (docs/sim-theory.md) forbids inventing a code that wasn't verified
 this way.
+
+2026-08-05: the complete Apache License 2.0 text is vendored at
+LICENSES/Apache-2.0.txt, added 2026-08-05 per ADR-0054 (register F-4).
