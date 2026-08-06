@@ -225,8 +225,4 @@ Rows here are LIVE. Closed rows move to Done with their notes.
 scaffolding compaction B, `notes/ADRs.md` ADR-0046 — each closed arc's own
 pointers rotate to a dated header in the attic at that arc's own close,
 `notes/adr/0055-alignment-arc-close.md` AR-AC-5)
-
-<!-- ADR-0064's own pointer lands in Step 3, alongside its own index
-line in notes/ADRs.md, in the same commit that makes the citation
-resolve -- the same sentinel-avoidance ADR-0055's own AR-AC-5 disclosed
-(`notes/adr/0055-alignment-arc-close.md`). -->
+- 2026-08-06 — ux-arc-close — ADR-0064

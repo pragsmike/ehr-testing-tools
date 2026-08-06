@@ -106,3 +106,4 @@ below updates only when an arc closes.
 - **ADR-0061** — UX fixes 3: the typo that succeeded — unknown flags rejected, near-misses named — [`0061-ux-fixes-3.md`](adr/0061-ux-fixes-3.md) — Accepted
 - **ADR-0062** — UX fixes 4: the help speaks to operators — the approved rewrite lands, gated — [`0062-ux-fixes-4.md`](adr/0062-ux-fixes-4.md) — Accepted
 - **ADR-0063** — UX fixes 5: the help wraps like it means it — hanging indents, width gated — [`0063-ux-fixes-5.md`](adr/0063-ux-fixes-5.md) — Accepted
+- **ADR-0064** — UX arc close: the founding incident is mechanically impossible — appended, regenerated, rotated — [`0064-ux-arc-close.md`](adr/0064-ux-arc-close.md) — Accepted
