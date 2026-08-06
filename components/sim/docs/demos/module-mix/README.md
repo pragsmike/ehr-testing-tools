@@ -10,7 +10,7 @@ ER7 wire bytes.
 ## Command
 
 ```bash
-bin/ehrt sim run --seed 71 --patients 100 --config docs/demos/module-mix/config.edn --churn --emit hl7 --format er7
+bin/ehrt sim run --seed 71 --patients 100 --config components/sim/docs/demos/module-mix/config.edn --churn --emit hl7 --format er7
 ```
 
 [`config.edn`](config.edn) is this session's own documented default
