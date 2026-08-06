@@ -87,7 +87,12 @@
    ;; documents above.
    :arrival-gap {:coerce :long}
    :at {:coerce :long}
-   :utc-offset {:coerce :string}})
+   :utc-offset {:coerce :string}
+   ;; --width (AR-EP-3, ux epilogue, `notes/adr/0065-ux-epilogue.md`):
+   ;; kept a string, not :coerce :long -- babashka.cli throws on a
+   ;; non-numeric :long value, which would crash before this flag's own
+   ;; reject-by-name validation (help/parse-width-flag) ever ran.
+   :width {:coerce :string}})
 
 (defn parse
   "Parses raw CLI args into {:args [positional...] :opts {...}}."
@@ -1454,18 +1459,23 @@
 (defn- help-text-for
   "Group usage text for a known group name, top-level usage text
   otherwise (nil group, or a name that isn't a real group -- e.g. a
-  bare `ehrt`, or `ehrt help bogus`)."
-  [group]
-  (or (and group (help/render-group help/cli-spec group))
-      (help/render-top-level help/cli-spec)))
+  bare `ehrt`, or `ehrt help bogus`). `width` (AR-EP-3, ux epilogue,
+  `notes/adr/0065-ux-epilogue.md`) defaults to help/default-wrap-width
+  for callers that don't care -- every real dispatch call site below
+  passes its own resolved width."
+  ([group] (help-text-for group help/default-wrap-width))
+  ([group width]
+   (or (and group (help/render-group help/cli-spec group width))
+       (help/render-top-level help/cli-spec width))))
 
 (defn- help-response
   "An explicit help request (`ehrt help`, `ehrt help <group>`, `--help`
   anywhere): result/ok (exit 0) carrying the plain-text usage under
   :payload's :text, marked :category :cli-help so main! prints it
   verbatim instead of through `render`."
-  [group]
-  (assoc (result/ok {:text (help-text-for group)}) :category :cli-help))
+  ([group] (help-response group help/default-wrap-width))
+  ([group width]
+   (assoc (result/ok {:text (help-text-for group width)}) :category :cli-help)))
 
 (defn- bare-invocation-response
   "Bare `ehrt` (no group at all): prints the same top-level usage text
@@ -1474,8 +1484,40 @@
   the `--help`-exits-0 convention documented for --help itself --
   asking for help by omission is still asking for help, not an
   operational error."
-  []
-  (assoc (result/ok {:text (help-text-for nil)}) :category :cli-help))
+  ([] (bare-invocation-response help/default-wrap-width))
+  ([width]
+   (assoc (result/ok {:text (help-text-for nil width)}) :category :cli-help)))
+
+(defn- resolved-help-width
+  "AR-EP-3: resolves the effective wrap width for a help render.
+  {:width n} in the common case; {:width-error result} when an
+  explicit --width was given and didn't parse to an integer >=
+  help/min-wrap-width (rejected by name, an operational error) --
+  COLUMNS itself never produces an error, per help/resolve-width's own
+  silent-fallback contract, so there is no :width-error arm for it.
+  `columns-env-fn` is injectable (default reads the real COLUMNS env
+  var) -- same shape as `main!`'s own :println-fn/:exit-fn/:tty?-fn,
+  for the same reason: a real env var can't be set for a running JVM,
+  so testing the COLUMNS arm at all needs a seam here."
+  [opts columns-env-fn]
+  (if-let [raw (:width opts)]
+    (let [{:keys [width error]} (help/parse-width-flag raw)]
+      (if width
+        {:width width}
+        {:width-error (result/error :invalid-width (merge {:flag "--width"} error))}))
+    {:width (help/resolve-width {:columns-env (columns-env-fn)})}))
+
+(defn- verb-name-groups
+  "Every group name in `spec` whose own verbs include `verb-name` --
+  used by `unknown-command-error` to catch a near-miss that crosses a
+  GROUP boundary (a bare top-level verb like `run`, not a group name
+  at all) rather than the within-group near-miss `ehrt sim` (missing
+  verb) already handles. `verb-name` nil or matching no group's own
+  verbs returns empty, same as no near miss existing."
+  [spec verb-name]
+  (->> (:groups spec)
+       (filter #(contains? (set (help/verb-names %)) verb-name))
+       (map :group)))
 
 (defn- unknown-command-error
   "An unrecognized group or verb: :unknown-command, extended (DOC-1's
@@ -1486,13 +1528,28 @@
   group name (B-6/D-3, ux fixes 2, `notes/adr/0060-ux-fixes-2.md`:
   `ehrt sim` with no verb knows it means the `sim` group, so its own
   hint should say so, not point at the generic top-level listing); the
-  generic `run: ehrt help` for a genuinely-unrecognized token."
+  generic `run: ehrt help` for a genuinely-unrecognized token.
+
+  AR-EP-2 (ux epilogue, `notes/adr/0065-ux-epilogue.md`): a token that
+  is itself a VERB name in exactly one group (`run`, sim's own -- not a
+  group name, so the check above never catches it) gets the same
+  treatment, plus a `:did-you-mean \"<group> <verb>\"` payload key the
+  group-name case never carries. A token matching a verb in more than
+  one group, or matching none, keeps the prior generic behavior --
+  ambiguous or genuinely unrecognized, nothing to point at."
   [args valid-options]
   (let [token (first args)
-        hint (if (contains? (set (help/group-names help/cli-spec)) token)
-               (str "run: ehrt help " token)
-               "run: ehrt help")]
-    (result/error :unknown-command {:args args :valid-options valid-options :hint hint})))
+        group-names (set (help/group-names help/cli-spec))
+        verb-owning-groups (when-not (contains? group-names token)
+                              (verb-name-groups help/cli-spec token))
+        hint (cond
+               (contains? group-names token) (str "run: ehrt help " token)
+               (= 1 (count verb-owning-groups)) (str "run: ehrt help " (first verb-owning-groups))
+               :else "run: ehrt help")]
+    (result/error :unknown-command
+                  (cond-> {:args args :valid-options valid-options :hint hint}
+                    (= 1 (count verb-owning-groups))
+                    (assoc :did-you-mean (str (first verb-owning-groups) " " token))))))
 
 (defn- sim-er7-requires-emit-hl7?
   [format opts]
@@ -1789,8 +1846,9 @@
   ([args opts] (dispatch args opts {}))
   ([args opts {:keys [fetch-fn fetch-all-fn resolve-fn generate-fn generate-sim-fn mutate-fn intake-fn operators-fn
                        gate-v2-fn gate-fhir-fn gate-v2-nist-fn check-fn version-fn doctor-fn
-                       sim-run-fn sim-check-fn sim-identifiers-fn sim-version-fn show-fn play-fn]
-               :or {fetch-fn fetch-command
+                       sim-run-fn sim-check-fn sim-identifiers-fn sim-version-fn show-fn play-fn columns-env-fn]
+               :or {columns-env-fn #(System/getenv "COLUMNS")
+                    fetch-fn fetch-command
                     fetch-all-fn fetch-all-command
                     resolve-fn resolve-command
                     generate-fn generate/generate!
@@ -1812,9 +1870,17 @@
                     play-fn play-command}}]
    (let [[group action path] args]
      (cond
-       (:help opts) (help-response group)
-       (= group "help") (help-response action)
-       (nil? group) (bare-invocation-response)
+       (:help opts)
+       (let [{:keys [width width-error]} (resolved-help-width opts columns-env-fn)]
+         (or width-error (help-response group width)))
+
+       (= group "help")
+       (let [{:keys [width width-error]} (resolved-help-width opts columns-env-fn)]
+         (or width-error (help-response action width)))
+
+       (nil? group)
+       (let [{:keys [width width-error]} (resolved-help-width opts columns-env-fn)]
+         (or width-error (bare-invocation-response width)))
 
        :else
        (let [;; `ehrt gate fhir PATH|DIR` / `ehrt gate v2 PATH|DIR` /

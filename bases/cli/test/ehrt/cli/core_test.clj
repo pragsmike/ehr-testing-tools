@@ -110,6 +110,25 @@
     (is (= :unknown-command (:category r)))
     (is (= "run: ehrt help sim" (:hint (:payload r))))))
 
+(deftest dispatch-unknown-top-level-verb-matching-one-groups-verb-suggests-it-test
+  ;; AR-EP-2 (ux epilogue, `notes/adr/0065-ux-epilogue.md`): the
+  ;; pre-monorepo top-level verb shape (`run --seed 1 ...`, no group)
+  ;; is a near-miss that crosses a GROUP boundary -- "run" is a verb
+  ;; name (sim's own), not a group name, so the plain "is this token a
+  ;; real group" check the existing hint already does can't catch it.
+  ;; "run" matches exactly one group's own verb (sim), so the hint
+  ;; should name that group, not the generic top-level listing.
+  (let [r (cli/dispatch ["run"] {} {})]
+    (is (= :unknown-command (:category r)))
+    (is (= "sim run" (:did-you-mean (:payload r))))
+    (is (= "run: ehrt help sim" (:hint (:payload r))))))
+
+(deftest dispatch-unknown-token-matching-no-verb-has-no-did-you-mean-test
+  (let [r (cli/dispatch ["bogus"] {} {})]
+    (is (= :unknown-command (:category r)))
+    (is (not (contains? (:payload r) :did-you-mean)))
+    (is (= "run: ehrt help" (:hint (:payload r))))))
+
 (deftest dispatch-unrecognized-gate-action-is-sniffed-as-a-path-test
   ;; D11: an action that isn't "v2"/"fhir" is no longer necessarily an
   ;; unknown-command error -- it's sniff-dispatched as a candidate PATH
@@ -220,6 +239,67 @@
     (is (= :cli-help (:category r)))
     (is (= 0 (cli/result->exit-code r)))
     (is (clojure.string/includes? (:text (:payload r)) "Usage:"))))
+
+;; ---- --width/COLUMNS (AR-EP-3, ux epilogue, `notes/adr/0065-ux-
+;; epilogue.md`): scoped to help rendering only -- the three help paths
+;; (bare, `help`/`help <group>`, `--help` anywhere) resolve an
+;; effective wrap width and thread it into the rendered text; every
+;; other command's own error/ok payload shape is untouched. ----
+
+(deftest dispatch-explicit-width-narrows-help-rendering-test
+  (let [r (cli/dispatch ["help"] {:width "40"} {})]
+    (is (result/ok? r))
+    (is (= :cli-help (:category r)))
+    (is (= (help/render-top-level help/cli-spec 40) (:text (:payload r))))))
+
+(deftest dispatch-explicit-width-narrows-group-help-rendering-test
+  (let [r (cli/dispatch ["help" "sim"] {:width "40"} {})]
+    (is (= (help/render-group help/cli-spec "sim" 40) (:text (:payload r))))))
+
+(deftest dispatch-explicit-width-narrows-double-dash-help-rendering-test
+  (let [r (cli/dispatch ["gate" "v2"] {:help true :width "40"} {})]
+    (is (= (help/render-group help/cli-spec "gate" 40) (:text (:payload r))))))
+
+(deftest dispatch-explicit-width-narrows-bare-invocation-rendering-test
+  (let [r (cli/dispatch nil {:width "40"} {})]
+    (is (= (help/render-top-level help/cli-spec 40) (:text (:payload r))))))
+
+(deftest dispatch-no-width-given-uses-columns-env-fn-test
+  (let [r (cli/dispatch ["help"] {} {:columns-env-fn (constantly "50")})]
+    (is (= (help/render-top-level help/cli-spec 50) (:text (:payload r))))))
+
+(deftest dispatch-explicit-width-beats-columns-env-fn-test
+  (let [r (cli/dispatch ["help"] {:width "60"} {:columns-env-fn (constantly "50")})]
+    (is (= (help/render-top-level help/cli-spec 60) (:text (:payload r))))))
+
+(deftest dispatch-unusable-columns-env-fn-falls-back-silently-to-default-test
+  (let [r (cli/dispatch ["help"] {} {:columns-env-fn (constantly "not-a-number")})]
+    (is (= (help/render-top-level help/cli-spec help/default-wrap-width) (:text (:payload r))))))
+
+(deftest dispatch-no-width-no-columns-uses-default-width-test
+  (let [r (cli/dispatch ["help"] {} {:columns-env-fn (constantly nil)})]
+    (is (= (help/render-top-level help/cli-spec help/default-wrap-width) (:text (:payload r))))))
+
+(deftest dispatch-invalid-width-is-rejected-by-name-test
+  (let [r (cli/dispatch ["help"] {:width "abc"} {})]
+    (is (result/error? r))
+    (is (= :invalid-width (:category r)))
+    (is (= "--width" (:flag (:payload r))))
+    (is (= "abc" (:value (:payload r))))
+    (is (= "an integer >= 40" (:expected (:payload r))))
+    (is (= 2 (cli/result->exit-code r)))))
+
+(deftest dispatch-width-below-the-floor-is-rejected-by-name-test
+  (let [r (cli/dispatch ["help"] {:width "10"} {})]
+    (is (= :invalid-width (:category r)))
+    (is (= "10" (:value (:payload r))))))
+
+(deftest dispatch-invalid-width-short-circuits-before-any-command-runs-test
+  (let [called (atom false)
+        r (cli/dispatch ["gate" "v2"] {:help true :width "abc"}
+                         {:gate-v2-fn (fn [_opts] (reset! called true) (result/ok {}))})]
+    (is (not @called) "an invalid --width must reject before any command function runs")
+    (is (= :invalid-width (:category r)))))
 
 (deftest dispatch-routes-artifact-fetch-test
   (let [called (atom nil)

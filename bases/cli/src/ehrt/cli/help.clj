@@ -25,10 +25,14 @@
 
 (def global-flags
   ;; --pretty/--edn terminal-detection defaults: ADR-0013.
+  ;; --width: AR-EP-3, ux epilogue -- help output only, not any other
+  ;; command's own rendering; scoped in its own :doc below since this
+  ;; is the one global flag that doesn't apply everywhere the others do.
   [{:flag "--json" :doc "project the EDN result to JSON (EDN remains canonical)"}
    {:flag "--pretty" :doc "force a human-readable summary, even when stdout is piped -- already the default at a real terminal"}
    {:flag "--edn" :doc "force the raw EDN envelope, even at a terminal -- already the default when stdout is piped or redirected"}
-   {:flag "--help" :doc "print this command's usage and exit 0 without running it"}])
+   {:flag "--help" :doc "print this command's usage and exit 0 without running it"}
+   {:flag "--width" :doc "wrap help output at this many columns (an integer, 40 or more) -- affects help text only, not any other command's own output" :default "the COLUMNS environment variable, or 80 if that is unset or unusable"}])
 
 (def ^:private artifact-flags
   [{:flag "--name" :doc "artifact name, e.g. \"synthea\""}
@@ -231,12 +235,60 @@
 
 (def default-wrap-width
   "Terminal columns a rendered line degrades gracefully at (AR-U5-1,
-  ADR-0063). A constant this session, deliberately -- no --width/COLUMNS
-  affordance; every render-* function below takes an optional trailing
-  width arg purely so the content-preservation property (AR-U5-2(b))
-  can compare a wrapped render against an effectively-unwrapped one in
-  tests, never as a user-facing knob."
+  ADR-0063) absent an explicit --width or a usable COLUMNS (AR-EP-3, ux
+  epilogue, `notes/adr/0065-ux-epilogue.md`) -- every render-* function
+  below takes an optional trailing width arg, both for the
+  content-preservation property (AR-U5-2(b), comparing a wrapped render
+  against an effectively-unwrapped one) and, since AR-EP-3, as the real
+  user-facing knob's own resolved value."
   80)
+
+(def min-wrap-width
+  "The floor `--width`/COLUMNS must clear (AR-EP-3): below this a
+  wrapped page stops being legible at all -- a flag's own two-space
+  indent plus its shortest value already needs more than a handful of
+  columns."
+  40)
+
+(defn- parse-integer
+  "s parsed as a base-10 whole number, or nil -- never throws, unlike
+  `Long/parseLong` directly, since both --width (user input) and
+  COLUMNS (ambient) need a non-throwing parse to build their own
+  differently-shaped fallback around. nil input (COLUMNS unset) is
+  also nil out, not an error."
+  [s]
+  (when (and s (re-matches #"-?\d+" s))
+    (try (Long/parseLong ^String s) (catch NumberFormatException _ nil))))
+
+(defn valid-width?
+  "True for an integer no smaller than min-wrap-width -- false for nil,
+  a non-integer, or anything under the floor."
+  [n]
+  (and (integer? n) (>= n min-wrap-width)))
+
+(defn parse-width-flag
+  "Validates a `--width` flag's raw string value (AR-EP-3): user input,
+  rejected by name rather than silently coerced. {:width n} when it
+  parses to an integer >= min-wrap-width; {:error {:value s :expected
+  \"an integer >= 40\"}} otherwise -- the caller decides how that
+  becomes an operational error."
+  [s]
+  (let [n (parse-integer s)]
+    (if (valid-width? n)
+      {:width n}
+      {:error {:value s :expected (str "an integer >= " min-wrap-width)}})))
+
+(defn resolve-width
+  "Resolution order (AR-EP-3): explicit-width (an already-validated
+  integer, from a parsed --width) beats columns-env (ambient -- COLUMNS
+  -- ANY value that doesn't parse to an integer >= min-wrap-width falls
+  back SILENTLY here, never an error: a broken terminal variable must
+  not break help) beats default-wrap-width."
+  [{:keys [explicit-width columns-env]}]
+  (cond
+    (some? explicit-width) explicit-width
+    (valid-width? (parse-integer columns-env)) (parse-integer columns-env)
+    :else default-wrap-width))
 
 (defn- wrap-lines
   "Greedy word-wrap of s into lines of at most width columns, wrapping
@@ -330,7 +382,8 @@
         "Groups:\n"
         (str/join "\n" (map (fn [g] (wrap-with-hanging-indent (str "  " (:group g) "  ") (:doc g) width)) (:groups spec)))
         "\n\n"
-        "Run `" (:program spec) " help <group>` for a group's verbs and flags.\n\n"
+        (wrap-with-hanging-indent "" (str "Run `" (:program spec) " help <group>` for a group's verbs and flags.") width)
+        "\n\n"
         "Global flags:\n" (render-flags (:global-flags spec) width)
         "\n\nExit codes:\n" (render-exit-codes (:exit-codes spec) width))))
 
