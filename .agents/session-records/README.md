@@ -145,3 +145,4 @@ Files in this directory:
   * 2026-08-07-vendoring-batch-2.md
   * 2026-08-07-vendoring-batch-3.md
   * 2026-08-07-demos-front-door.md
+  * 2026-08-07-vendoring-arc-close.md
