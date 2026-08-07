@@ -5,40 +5,24 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- Nothing in progress at this close (vendoring batch 3, ADR-0072,
-  2026-08-07 — the vendoring arc's fourth session. Rider AR-VB3-R1
-  first: the verbatim law gained a mechanical gate
-  (`ehrt.docs-tooling.notice-verbatim-test`) after a design-channel
-  probe found `lookup_tables/uti_recurrence.csv`'s committed blob had
-  been silently LF-normalized by the repo's own root `.gitattributes`
-  rule despite its NOTICE row always recording the true CRLF upstream
-  hash — a new `-text` rule protects the whole vendored-modules tree
-  now, and the file was re-vendored byte-true. Then four
-  content-producing modules landed — metabolic-syndrome-care,
-  vhd-pulmonic, vhd-tricuspid, med-rec; a fifth,
-  `colorectal_cancer.json`, assessed and deferred whole on the SAME
-  `:encounter-end` gap `anemia___unknown_etiology.json` already
-  surfaced (batch 2) — its own call into the shared `anemia_sub.json`
-  submodule sometimes lands outside an open encounter. Three
-  zero-substance family siblings (metabolic_syndrome_disease,
-  vhd_aortic, vhd_mitral) recorded not-vendorable-under-the-gate, not
-  vendored. Successor tag debt: `stable-20260807-vendoring-batch-3` at
-  this session's own closing tip, owed to the next session's own Step
-  0. The author's own next direction (design channel, 2026-08-07,
-  recorded verbatim ADR-0072 AR-VB3-3): practitioner-UX work next,
-  particularly the demos — moving sim demos to a top-level demo home
-  and featuring them in the intro materials; a design pass opens next,
-  nothing moved this session).
+- Nothing in progress at this close (demos front door, ADR-0073,
+  2026-08-07 — the vendoring arc's fifth session, a docs-relocation
+  session, not a vendoring batch. Executed the author's own AR-VB3-3
+  direction: `components/sim/docs/scenarios/`+`components/sim/docs/
+  demos/`+`components/sim-emit-hl7/docs/demos/site-profiles/` moved to
+  a new top-level `demos/scenarios/`+`demos/traces/`, byte-witnessed
+  (seven precious HL7v2 transcripts, sha256-identical before/after),
+  `.gitattributes`' `-text` pattern moved in the same commit as the
+  files it protects, three vacated component directories left with
+  pointer READMEs. The top-level README gained a "See it run" section
+  and `demos/` its own front-door README, both landed verbatim from
+  the design channel's own appendix and live-probed to a rendered bed
+  board in two commands. Oracle bracket `721adb6`→tip: all
+  twenty-seven roots identical, as expected for a docs-only move.
+  Successor tag debt: `stable-20260807-demos-front-door` at this
+  session's own closing tip, owed to the next session's own Step 0).
 
 ## Next (backlog, no session scheduled)
-- **Practitioner-UX / demos horizon** (author ruling, design channel
-  2026-08-07, recorded verbatim `notes/ADRs.md` ADR-0072 AR-VB3-3, not
-  acted on): "let's work more on the UX for practitioners, particularly
-  the demos. I want to move the sim demos to a top-level demo place,
-  and feature them in the intro materials." A design pass in the design
-  channel opens first — the demos'/scenarios' own homes, their relation
-  to the top-level README and SETUP, the fence-gate implications of
-  moving gated docs.
 - The lookup-column `time` gap (named in the schema-invalid family
   backlog since ADR-0039, still untouched — Wave I's own six
   mechanisms didn't cover it). Bulk vendoring (batched by closure
@@ -269,3 +253,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-07 — vendoring-batch-1 — ADR-0070
 - 2026-08-07 — vendoring-batch-2 — ADR-0071
 - 2026-08-07 — vendoring-batch-3 — ADR-0072
+- 2026-08-07 — demos-front-door — ADR-0073
