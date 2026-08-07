@@ -147,3 +147,4 @@ Files in this directory:
   * 2026-08-07-demos-front-door.md
   * 2026-08-07-vendoring-arc-close.md
   * 2026-08-07-ci-current.md
+  * 2026-08-07-quality-riders.md
