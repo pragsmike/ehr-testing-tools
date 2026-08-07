@@ -37,15 +37,6 @@ per item; done items move to the bottom of their section with a date and sha.
 - generator-source three-concerns split (ADR-0017 named-future)
 - ehrt.corpus.display placement — presentation-leaning (ADR-0018 named-future)
 - Markdown-table helper dedup (ADR-0018 named-future)
-- **Corpus player: bed board / census sink** (`notes/adr/0014-corpus-
-  player.md`) — a state-snapshot-at-intervals surface, named in
-  ADR-0014's own Context as explicitly deferred alongside the
-  accumulator wiring and input adapter below; that session built only
-  the pacer, the ticker sink, and paced file emission.
-- **Corpus player: accumulator wiring** (`notes/adr/0014-corpus-
-  player.md`) — an accumulator (the M6 v2-replay state fold) already
-  lives in the sim arc; ADR-0014 named wiring it into the player
-  itself as remaining work, not built that session.
 - **Corpus player: sim event-log input adapter** (`notes/adr/0014-
   corpus-player.md`) — an input adapter reading the sim's own event
   log directly, as opposed to the HL7 v2 file/directory input the
@@ -207,3 +198,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-06 — ux-arc-close — ADR-0064
 - 2026-08-06 — ux-epilogue — ADR-0065
 - 2026-08-06 — player-fold — ADR-0066
+- 2026-08-07 — player-board — ADR-0067
