@@ -392,6 +392,45 @@
                   :modules [closure] :module-assignment [{:module-id "dermatitis" :weight 1}]
                   :module-horizon-days 36500})))
 
+;; --- Vendoring batch 3 (2026-08-07, ADR-0072, AR-VB3-2): four new
+;; engine-layer roots -- FIRST BASELINES, same convention batches 1-2
+;; established.
+
+(defn- metabolic-syndrome-care-pair []
+  (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
+        closure (:payload (sim-trajectory/load-closure "metabolic-syndrome-care"
+                                            (slurp (io/resource "sim/modules/metabolic_syndrome_care.json"))
+                                            resolve-call-path))]
+    (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
+                  :modules [closure] :module-assignment [{:module-id "metabolic-syndrome-care" :weight 1}]
+                  :module-horizon-days 36500})))
+
+(defn- vhd-pulmonic-pair []
+  (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
+        resolve-table-name (fn [table-name] (some-> (io/resource (str "sim/modules/lookup_tables/" table-name)) slurp))
+        closure (:payload (sim-trajectory/load-closure "vhd-pulmonic"
+                                            (slurp (io/resource "sim/modules/vhd_pulmonic.json"))
+                                            resolve-call-path resolve-table-name))]
+    (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
+                  :modules [closure] :module-assignment [{:module-id "vhd-pulmonic" :weight 1}]
+                  :module-horizon-days 36500})))
+
+(defn- vhd-tricuspid-pair []
+  (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
+        resolve-table-name (fn [table-name] (some-> (io/resource (str "sim/modules/lookup_tables/" table-name)) slurp))
+        closure (:payload (sim-trajectory/load-closure "vhd-tricuspid"
+                                            (slurp (io/resource "sim/modules/vhd_tricuspid.json"))
+                                            resolve-call-path resolve-table-name))]
+    (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
+                  :modules [closure] :module-assignment [{:module-id "vhd-tricuspid" :weight 1}]
+                  :module-horizon-days 36500})))
+
+(defn- med-rec-pair []
+  (let [module (:payload (sim-trajectory/load-module "med-rec" (slurp (io/resource "sim/modules/med_rec.json"))))]
+    (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
+                  :modules [(sim-trajectory/singleton-closure module)] :module-assignment [{:module-id "med-rec" :weight 1}]
+                  :module-horizon-days 36500})))
+
 (def ^:private roots
   {"appendicitis"                       appendicitis-batch
    "sore-throat"                        sore-throat-batch
@@ -415,7 +454,11 @@
    "osteoporosis"                       osteoporosis-pair
    "attention-deficit-disorder"         attention-deficit-disorder-pair
    "allergic-rhinitis"                  allergic-rhinitis-pair
-   "dermatitis"                         dermatitis-pair})
+   "dermatitis"                         dermatitis-pair
+   "metabolic-syndrome-care"            metabolic-syndrome-care-pair
+   "vhd-pulmonic"                       vhd-pulmonic-pair
+   "vhd-tricuspid"                      vhd-tricuspid-pair
+   "med-rec"                            med-rec-pair})
 
 (defn -main
   "Writes one <root>.edn per root into out-dir (pr-str of the batch or
