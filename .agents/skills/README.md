@@ -31,6 +31,9 @@ own `SKILL.md` for the full trigger conditions and workflow.
   determines bootstrap vs. migration, proposes/creates an AGENTS.md +
   `.agents/` layout. This session's own migration report is one of its
   outputs.
+- **[`repo-review/`](repo-review/SKILL.md)** — periodic, rubric-driven
+  quality review: history scan, eight-dimension probe battery, dated
+  assessment register, mitigation plan for the author's ruling.
 - **[`review/`](review/SKILL.md)** — independent review of a committee
   deliberation transcript against the five core rubrics.
 - **[`scenarios/`](scenarios/SKILL.md)** — divergent scenario generation
