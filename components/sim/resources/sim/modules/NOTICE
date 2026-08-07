@@ -70,6 +70,93 @@ prioritization table).
 | `sleep_apnea.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/sleep_apnea.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `6cb8710e0ecc1ba9b360177b9fad6bf15434dabb203bd10ffb3a6cc0463a9784` | 2026-08-07 |
 | `fibromyalgia.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/fibromyalgia.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `c36d90950f7ccc5247d67db198c6d7bf43bc2c49efdaca36bd78f79cea050668` | 2026-08-07 |
 | `dementia.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/dementia.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `d20921be6ceb59e85e2a0c6ab0de4ece5b9ea7038d723b39b437cbb303d9fda1` | 2026-08-07 |
+| `hypothyroidism.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/hypothyroidism.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `a90ae9715cd89a3252ad3057ec74b1df32e19e11b20e34655ef8449ab65728a0` | 2026-08-07 |
+| `anemia/anemia_sub.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/anemia/anemia_sub.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `bde888cb3453636f42e2687c6e19b817213e2c1b256a32cf524d925d3867de15` | 2026-08-07 |
+| `rheumatoid_arthritis.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/rheumatoid_arthritis.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `e4372e26e68b66673acb017ae42f5730d2c8b982202f56af16fea8695e7a98ef` | 2026-08-07 |
+| `osteoarthritis.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/osteoarthritis.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `48a3950d55b3cc14e537df500612e9366700fb830de3c234b93e9b60ee308ac1` | 2026-08-07 |
+| `dme/wheelchair.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/dme/wheelchair.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `ea1f3e5282dd6818e63750f6b1c3d058e0c68787727df74736914e33afe6bbb7` | 2026-08-07 |
+| `osteoporosis.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/osteoporosis.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `127ef4bd9fcaf5eebc7de42b1b2ef4e1c16e401badd9f62673215cc97b56c81c` | 2026-08-07 |
+| `attention_deficit_disorder.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/attention_deficit_disorder.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `6d952a55104f99a97696c1cc59ec1b328b3f1dabe87937ecab33f6846e05ef9f` | 2026-08-07 |
+| `allergic_rhinitis.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/allergic_rhinitis.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `3603f7f195b7a1c1bc2678bdcd23c9236b59a028e73b35cfcfc02c837d76cea7` | 2026-08-07 |
+| `medications/otc_antihistamine.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/medications/otc_antihistamine.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `7080a9d5743d8356dfde9fd3ce84c0a757bf0a1bfbdc458d7fbaad2dd02a7926` | 2026-08-07 |
+| `dermatitis.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/dermatitis.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `7ca16ec4b1a90222dc3bc130c101c7838446d9982479cfb291b8e789607bc1a4` | 2026-08-07 |
+| `dermatitis/early_moderate_eczema_obs.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/dermatitis/early_moderate_eczema_obs.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `f287e11304a9cf74c3ef6768c68b815e9b53ab5744c7fa8433187edca07cfe1b` | 2026-08-07 |
+| `dermatitis/early_severe_eczema_obs.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/dermatitis/early_severe_eczema_obs.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `d25e1cf93c86962082b4e5b8de5631f4891cb9ebe1ab1a83dac0a6fcc46b9797` | 2026-08-07 |
+| `dermatitis/mid_moderate_eczema_obs.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/dermatitis/mid_moderate_eczema_obs.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `4bf4845682bbe9012a9433dbb9ba9d0963d21455e2def8489d9b3232e30c28b6` | 2026-08-07 |
+| `dermatitis/mid_severe_eczema_obs.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/dermatitis/mid_severe_eczema_obs.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `db066262b23c1a6f056bc8d41436fc96a0f4cce1b956f72a610e148b12aa94f7` | 2026-08-07 |
+| `dermatitis/moderate_cd_obs.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/dermatitis/moderate_cd_obs.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `8bf6c71b34bbb1329f447598c17e77087daafa4abfad77e7a870a6b3cae317a1` | 2026-08-07 |
+| `dermatitis/severe_cd_obs.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/dermatitis/severe_cd_obs.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `0c237d688549aacc9e1be16dbc96e93cf5dc8fc66a182ec0aa3b9522e7894360` | 2026-08-07 |
+
+**Vendoring batch 2 (2026-08-07, ADR-0071, AR-VB2-1/2): seven of the chronic
+clinic tail's eight modules land -- hypothyroidism, rheumatoid arthritis,
+osteoarthritis, osteoporosis, attention-deficit disorder, allergic
+rhinitis, dermatitis; the eighth, `anemia___unknown_etiology.json`, was
+assessed and DEFERRED WHOLE (below), not vendored.** The vendoring arc's
+third session, following batch 1 (ADR-0070). Fresh closure enumeration
+against the pin checkout (batch 1's own AR-VB1-2 lesson: the census
+substance artifact's `:closure-file-count` counts JSON modules only, not
+CSV lookup tables -- for these eight modules, unlike asthma, it happened
+to match exactly, no hidden data files) found SIXTEEN new files across
+seven landed modules (a two-file shared submodule, `anemia/anemia_sub.
+json`, called by both `hypothyroidism.json` and the deferred
+`anemia___unknown_etiology.json` -- vendored once, reused; `dme/
+wheelchair.json`, `osteoarthritis.json`'s own new closure member, joins
+`dme/wheelchair_end.json`, already vendored at this same pin from batch
+1's own `injuries.json` assessment and re-verified byte-identical here,
+not re-copied). Engine-layer round-trip proof (`ehrt.sim-emit-hl7.
+vendored-<module>-test`, `components/sim-emit-hl7/test/`), seed
+20260802, 300 patients (`allergic_rhinitis` at 3000, disclosed below), a
+100-year `:module-horizon-days` (36500) -- the same convention batch 1
+established. Two modules needed a real, disclosed test-configuration
+fix, neither a module nor interpreter defect: `attention_deficit_
+disorder.json`'s own `Behavior_Therapy` loop can keep a CarePlan/
+medication open for decades, straddling the fixed `registration-t`
+boundary for a real fraction of the population -- `:history true`
+(ADR-0042's own opt-in, unused by any prior vendored root because no
+prior closure's content ever straddled the boundary) resolves it, 0
+violations. `allergic_rhinitis.json`'s own low onset odds (2.9%) land
+in early childhood, which for a Persona-sampled ADULT always precedes
+the fixed registration instant -- at 300 patients every onset landed
+pre-horizon (real content, riding `:registered`'s own `:pre-horizon-
+facts`, but zero rendered HL7, since v2 wire traffic has nothing to say
+about a fact already true before the run's own window opens); at 3000
+patients (10x, disclosed as a population deviation) four patients'
+onsets land post-registration, producing real live-window content and
+real rendered HL7.
+
+**`anemia___unknown_etiology.json`: assessed, DEFERRED WHOLE, not
+vendored (2026-08-07, ADR-0071, the AR-VB1-6/AR-VB2-5 bail-out
+precedent, repeated).** This module's own `Initial` state is the first
+Race-gated branch this vendoring arc has landed (`White_Males`/
+`White_Females`/.../`Hispanic_Females`, each an And of `Gender`+`Race`)
+-- confirmed, and worked around cleanly, by supplying `:persona-config
+{:race-weights [...]}` (no prior vendored root needed one, since no
+prior root ever read `:race`). With that fix in place, real content
+lands (the shared `anemia/anemia_sub.json` submodule fires for real),
+but a SEPARATE, genuine `ehrt.sim-trajectory.gmf-interpreter` gap
+surfaces: `anemia_sub.json`'s own `End Any Active Encounter Just In
+Case` state -- an upstream Synthea idiom meaning "close the encounter
+IF one is open, otherwise no-op" -- compiles here as an UNCONDITIONAL
+`:encounter-end`/`:discharge`, `emit-and-advance`'s own `:encounter-end`
+case never checking `index-of-last-open-encounter` for a hit before
+emitting. Confirmed this session at 300 patients: 12 of 300 (4%) trip
+`ehrt.sim-check.check`'s own `:discharge-follows-admission` invariant
+with a dangling, no-encounter-open `:discharge`. At population size,
+per the SAME reasoning `injuries.json`'s own batch-1 finding already
+established (`(1-0.04)^300 ≈ 3×10⁻⁶` of avoiding it entirely), hitting
+this is a near-certainty, not a seed-tunable fluke -- three seeds tried
+(20260802 plus two others) all showed nonzero violation counts at 300
+patients. Per the AR-VB2-5 fence (no loader/interpreter/engine changes
+this session), `anemia___unknown_etiology.json` is NOT vendored -- no
+NOTICE row, no test, no oracle root. The shared `anemia/anemia_sub.
+json` submodule stays vendored, untouched, unaffected -- `hypothyroidism.
+json`'s own call path through it never reaches the hazardous state
+(confirmed clean at 3000 patients, well past this batch's own 300-
+patient convention). Revisit trigger: a future session willing to
+extend `emit-and-advance`'s own `:encounter-end` case to no-op (open
+question: silently drop the event, or attach a `:no-op true` marker)
+when no encounter is open -- tracked as a roadmap Deferred row,
+`.agents/plans/roadmap.md`.
 
 **Vendoring batch 1 (2026-08-07, ADR-0070, AR-VB1-2/3): five everyday
 ambulatory modules land -- asthma, bronchitis, sleep-apnea,
