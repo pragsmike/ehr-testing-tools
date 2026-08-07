@@ -261,6 +261,59 @@
                   :modules [closure] :module-assignment [{:module-id "ear-infections" :weight 1}]
                   :module-horizon-days 3650 :history true})))
 
+;; --- Vendoring batch 1 (2026-08-07, ADR-0070, AR-VB1-4): five NEW
+;; engine-layer roots -- FIRST BASELINES exactly like AR-4b's own three
+;; above (there is no 'before' to diff against; each module is newly
+;; vendored this session). Same `engine-pair` helper, same seed/
+;; population/horizon each root's own `components/sim-emit-hl7/test/`
+;; round-trip test already established as producing real content (this
+;; session's own empirical tuning, seed 20260802, 300 patients, a
+;; 100-year `:module-horizon-days`, 36500). `asthma-pair` follows the
+;; `urinary-tract-infections-engine-pair` shape (a resolve-table-name
+;; needed, its own closure's real therapeutic content is entirely
+;; lookup-table-driven); the other four are single-file closures, no
+;; CallSubmodule, no lookup tables -- `load-module`/`singleton-closure`,
+;; the same idiom `sinusitis-pair`/`death-fixture-pair`/`sepsis-pair`
+;; already establish for a bare, unclosed module. A sixth module,
+;; `injuries.json`, was assessed this session and DEFERRED WHOLE (a
+;; real `gmf-interpreter` max-steps gap the census's own narrow sample
+;; missed, `components/sim/resources/sim/modules/NOTICE`'s own dated
+;; entry) -- no root for it here, by design, not omission.
+
+(defn- asthma-pair []
+  (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
+        resolve-table-name (fn [table-name] (some-> (io/resource (str "sim/modules/lookup_tables/" table-name)) slurp))
+        closure (:payload (sim-trajectory/load-closure "asthma"
+                                            (slurp (io/resource "sim/modules/asthma.json"))
+                                            resolve-call-path resolve-table-name))]
+    (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
+                  :modules [closure] :module-assignment [{:module-id "asthma" :weight 1}]
+                  :module-horizon-days 36500})))
+
+(defn- bronchitis-pair []
+  (let [module (:payload (sim-trajectory/load-module "bronchitis" (slurp (io/resource "sim/modules/bronchitis.json"))))]
+    (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
+                  :modules [(sim-trajectory/singleton-closure module)] :module-assignment [{:module-id "bronchitis" :weight 1}]
+                  :module-horizon-days 36500})))
+
+(defn- sleep-apnea-pair []
+  (let [module (:payload (sim-trajectory/load-module "sleep-apnea" (slurp (io/resource "sim/modules/sleep_apnea.json"))))]
+    (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
+                  :modules [(sim-trajectory/singleton-closure module)] :module-assignment [{:module-id "sleep-apnea" :weight 1}]
+                  :module-horizon-days 36500})))
+
+(defn- fibromyalgia-pair []
+  (let [module (:payload (sim-trajectory/load-module "fibromyalgia" (slurp (io/resource "sim/modules/fibromyalgia.json"))))]
+    (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
+                  :modules [(sim-trajectory/singleton-closure module)] :module-assignment [{:module-id "fibromyalgia" :weight 1}]
+                  :module-horizon-days 36500})))
+
+(defn- dementia-pair []
+  (let [module (:payload (sim-trajectory/load-module "dementia" (slurp (io/resource "sim/modules/dementia.json"))))]
+    (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
+                  :modules [(sim-trajectory/singleton-closure module)] :module-assignment [{:module-id "dementia" :weight 1}]
+                  :module-horizon-days 36500})))
+
 (def ^:private roots
   {"appendicitis"                       appendicitis-batch
    "sore-throat"                        sore-throat-batch
@@ -272,7 +325,12 @@
    "urinary-tract-infections-engine"    urinary-tract-infections-engine-pair
    "total-joint-replacement-engine"     total-joint-replacement-engine-pair
    "urinary-tract-infections-history-engine" urinary-tract-infections-history-engine-pair
-   "ear-infections-history-engine"      ear-infections-history-engine-pair})
+   "ear-infections-history-engine"      ear-infections-history-engine-pair
+   "asthma"                             asthma-pair
+   "bronchitis"                         bronchitis-pair
+   "sleep-apnea"                        sleep-apnea-pair
+   "fibromyalgia"                       fibromyalgia-pair
+   "dementia"                           dementia-pair})
 
 (defn -main
   "Writes one <root>.edn per root into out-dir (pr-str of the batch or
