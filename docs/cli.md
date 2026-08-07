@@ -39,6 +39,7 @@ Accepted anywhere in the command line, on any group or verb.
 | `--pretty` | — | force a human-readable summary, even when stdout is piped -- already the default at a real terminal |
 | `--edn` | — | force the raw EDN envelope, even at a terminal -- already the default when stdout is piped or redirected |
 | `--help` | — | print this command's usage and exit 0 without running it |
+| `--width` | `the COLUMNS environment variable, or 80 if that is unset or unusable` | wrap help output at this many columns (an integer, 40 or more) -- affects help text only, not any other command's own output |
 
 ## Exit codes
 
@@ -277,5 +278,6 @@ Pace an HL7 v2 (ER7) file's or directory's messages against their own MSH-7 time
 | `--path` | — | alternative to the positional PATH |
 | `--rate` | `60` | stream-seconds per wallclock-second -- 1 is real time |
 | `--idle-cap` | `5` | wallclock cap, in seconds, on any single inter-event wait -- a capped wait emits a skip cue (never into a data sink) and is counted separately from a clamped one |
-| `--ticker` | `full` | "full" (a complete rendered block per message) or "line" (one compact MSH-7/MSH-9/PID-3 line per message) -- ignored when --sink is given |
+| `--ticker` | `full` | "full" (a complete rendered block per message) or "line" (one compact MSH-7/MSH-9/PID-3 line per message) -- ignored when --sink is given; --board wins over it when both are given |
+| `--board` | — | stream-minutes per snapshot -- shows the occupied beds, grouped by ward, instead of a message-by-message ticker. Wins over --ticker when both are given; ignored when --sink is given. |
 | `--sink` | — | a file: destination designator -- write the paced output (byte-identical to unpaced) there instead of showing the ticker. dir:, blaze:, and mllp: are recognized but deferred. |
