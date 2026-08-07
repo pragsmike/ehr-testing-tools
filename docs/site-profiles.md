@@ -232,7 +232,7 @@ a deliverable of this claim, not merely test scaffolding: it is the
 precise, executable enumeration of what a dialect may touch, and
 nothing more — a vaguer masking (blanking whole segments, say) would
 prove a weaker, less useful claim. A CLI-produced two-profile demo
-(`components/sim-emit-hl7/docs/demos/site-profiles/`) shows the same
+(`demos/traces/site-profiles/`) shows the same
 event rendered under both profiles side by side, ground-truth identity
 verified programmatically when the demo was generated.
 

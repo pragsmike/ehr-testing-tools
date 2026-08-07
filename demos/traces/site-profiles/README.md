@@ -10,7 +10,7 @@ presence of a Z-segment).
 
 ```bash
 bin/ehrt sim run --seed 42 --patients 2 --emit hl7
-bin/ehrt sim run --seed 42 --patients 2 --emit hl7 --config components/sim-emit-hl7/docs/demos/site-profiles/config-aldric.edn
+bin/ehrt sim run --seed 42 --patients 2 --emit hl7 --config demos/traces/site-profiles/config-aldric.edn
 ```
 
 The first run uses no site profile at all (the absent/default profile);

@@ -12,10 +12,10 @@ SAME identifiers resolving across both.
 
 ```bash
 bin/ehrt sim run --seed 42 --patients 3 \
-  --config components/sim/docs/demos/order-result/config.edn --emit hl7
+  --config demos/traces/order-result/config.edn --emit hl7
 
 bin/ehrt sim run --seed 42 --patients 3 \
-  --config components/sim/docs/demos/order-result/config.edn --emit fhir
+  --config demos/traces/order-result/config.edn --emit fhir
 ```
 
 ## What to look for

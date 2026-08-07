@@ -16,7 +16,7 @@ first, then play it back.
 
 ```bash
 bin/ehrt corpus generate sim --seed 20260807 --patients 200 \
-  --config components/sim/docs/scenarios/busy-tuesday/config.edn \
+  --config demos/scenarios/busy-tuesday/config.edn \
   --out-dir out/scenarios/busy-tuesday
 ```
 

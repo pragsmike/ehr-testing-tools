@@ -1,4 +1,4 @@
-;; components/sim/docs/scenarios/busy-tuesday/config.edn -- the vendoring
+;; demos/scenarios/busy-tuesday/config.edn -- the vendoring
 ;; batch 2 rider (AR-VB2-R, 2026-08-07): the scenarios/ home's first
 ;; entry, a busy weekday mix across the twelve everyday-ambulatory and
 ;; acute modules vendored across the vendoring arc's first two batches

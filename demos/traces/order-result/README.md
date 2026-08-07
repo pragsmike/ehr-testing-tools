@@ -13,7 +13,7 @@ anyone watching only the CLI.
 
 ```bash
 bin/ehrt sim run --seed 42 --patients 3 \
-  --config components/sim/docs/demos/order-result/config.edn --emit hl7
+  --config demos/traces/order-result/config.edn --emit hl7
 ```
 
 [`config.edn`](config.edn) supplies `:pathways` — the data-heavy key

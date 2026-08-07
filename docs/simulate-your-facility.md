@@ -157,7 +157,7 @@ This example is schema-checked against `ehrt.sim.config`,
 `ehrt.sim-emit-hl7.site-profile`'s malli schemas (2026-07-27,
 `notes/facts-register.md` F18) — every field name and value shape
 above is real, not just illustrative. The shipped examples in
-[demos/](../components/sim/docs/demos/) are always exact and runnable; start from one of
+[demos/](../demos/traces/) are always exact and runnable; start from one of
 those and edit.
 
 ## How do I run it, and get messages?

@@ -19,7 +19,12 @@ components/sim/resources/sim/modules/** -text
 # normalization so a checkout on any platform can't rewrite those
 # bytes -- same hazard and same fix as ehr-testing-tools' own
 # .gitattributes for its v2 fixtures.
-components/sim/docs/demos/**/messages*.txt -text
+#
+# Relocated (demos front door, AR-DM-1, 2026-08-07): the pattern moves
+# in the SAME commit as the files it protects -- moving the files
+# without the pattern is exactly the hazard class AR-VB3-R1 closed for
+# the vendored-modules tree, above.
+demos/traces/**/messages*.txt -text
 
 # The same hazard, for ehr-testing-tools' own v2 fixtures -- carried
 # over from tools' pre-carve .gitattributes (H2 landing) but never
