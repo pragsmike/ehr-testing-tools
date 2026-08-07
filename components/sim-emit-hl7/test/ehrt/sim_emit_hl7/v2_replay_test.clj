@@ -19,6 +19,7 @@
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
+            [ehrt.sim-engine.churn :as churn]
             [ehrt.sim-engine.engine :as engine]
             [ehrt.sim-emit-hl7.emit-hl7 :as emit-hl7]
             [ehrt.sim-trajectory.interface :as sim-trajectory]
@@ -80,6 +81,76 @@
       (is (some? reference-range))
       (is (some? interpretation)))))
 
+;; --- AR-BB1-1/2 red-first: the fold's NEW behavior on a REAL rendered
+;; A17/A40 (built via the emitter's own bed-swap-message/merge-message
+;; path -- churn_scenarios_test's own deterministic two-patient
+;; construction, reused here -- never a hand-typed message string).
+;; Both fail RED against the pre-fix fold (:unsupported-trigger, an
+;; uncaught ExceptionInfo) and must go GREEN once the fold extension
+;; lands -------------------------------------------------------------
+
+(deftest fold-message-folds-a-real-rendered-a17-into-two-participant-location-updates
+  (testing "AR-BB1-1: fold-message folds a real A17's own two PID/PV1
+            pairs independently, each as the A02 treatment onto its
+            own PID-3's entry -- bootstrap-from-empty holds for both,
+            since this test folds the A17 alone, from an empty
+            accumulator (foreign traffic opening mid-stream)"
+    (let [seed 100
+          p2-id (engine/patient-id-for seed 1)
+          {:keys [ground-truth facility providers]}
+          (engine/run {:seed seed :patients 2 :arrival-gap 0
+                       :pathways [{:patient-ordinal 0
+                                   :pathway {:name "p1" :steps [{:type :admission :location "Renal"}
+                                                                 {:type :bed-swap :with p2-id}]}}
+                                  {:patient-ordinal 1
+                                   :pathway {:name "p2" :steps [{:type :admission :location "Renal"}]}}]})
+          bed-swap-event (last ground-truth)
+          [p1-id p2-id*] (mapv :patient-id (:participants bed-swap-event))
+          mrn1 (get-in bed-swap-event [:swap p1-id :active-mrn])
+          mrn2 (get-in bed-swap-event [:swap p2-id* :active-mrn])
+          loc1 (get-in bed-swap-event [:swap p1-id :to])
+          loc2 (get-in bed-swap-event [:swap p2-id* :to])
+          a17 (last (emit-hl7/emit ground-truth ref-date utc-offset facility providers))
+          acc (v2-replay/fold-message {} a17 ref-date)]
+      (is (= 2 (count acc)))
+      (is (= {:ward (:ward loc1) :bed (:bed loc1)} (:location (get acc mrn1))))
+      (is (= {:ward (:ward loc2) :bed (:bed loc2)} (:location (get acc mrn2))))
+      (is (some? (:persona (get acc mrn1))))
+      (is (some? (:persona (get acc mrn2))))
+      (is (= mrn1 (:active-mrn (get acc mrn1))))
+      (is (= mrn2 (:active-mrn (get acc mrn2)))))))
+
+(deftest fold-message-folds-a-real-rendered-a40-into-a-survivor-and-a-tombstone
+  (testing "AR-BB1-2: fold-message folds a real A40 -- the surviving
+            entry (PID-3) absorbs per the engine's own merge semantics
+            (unchanged besides bootstrap), the merged-away entry
+            (MRG-1) becomes a :merged tombstone that keeps its own
+            last-known fields, mirroring ehrt.sim-engine.engine's own
+            evolve :merge :merged arm exactly (only :status changes)"
+    (let [seed 100
+          p2-id (engine/patient-id-for seed 1)
+          {:keys [ground-truth facility providers]}
+          (engine/run {:seed seed :patients 2 :arrival-gap 0
+                       :pathways [{:patient-ordinal 0
+                                   :pathway {:name "p1" :steps [{:type :admission :location "Renal"}
+                                                                 {:type :merge :with p2-id}]}}
+                                  {:patient-ordinal 1
+                                   :pathway {:name "p2" :steps [{:type :admission :location "Renal"}]}}]})
+          messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
+          [a01-p1 a01-p2 a40] messages
+          seeded-acc (-> {} (v2-replay/fold-message a01-p1 ref-date) (v2-replay/fold-message a01-p2 ref-date))
+          acc (v2-replay/fold-message seeded-acc a40 ref-date)
+          merge-event (last ground-truth)
+          survivor-mrn (:surviving-mrn merge-event)
+          merged-mrn (:merged-mrn merge-event)]
+      (is (= :admitted (:status (get acc survivor-mrn))))
+      (is (= :merged (:status (get acc merged-mrn))))
+      (is (= (:location (get seeded-acc merged-mrn)) (:location (get acc merged-mrn)))
+          "the tombstone keeps its own last-known location, only :status flips")
+      (is (= (:attending (get seeded-acc merged-mrn)) (:attending (get acc merged-mrn))))
+      (is (= (:location (get seeded-acc survivor-mrn)) (:location (get acc survivor-mrn)))
+          "the survivor's own entry is untouched by the wire (PV1 rides blank on A40)"))))
+
 ;; --- the projection function -----------------------------------------------
 
 (deftest projection-excludes-patient-id-mrns-home-ward-and-placement
@@ -113,12 +184,6 @@
 
 ;; --- the emitter-coherence property: reconstructed state == log-folded
 ;; state, projected, at EVERY message boundary --------------------------
-
-(def ^:private no-bed-swap-no-merge-churn
-  "This property's own documented scope boundary (this namespace's own
-  header comment): every churn type EXCEPT the genuinely two-participant
-  ones."
-  {:cancel-admit 0.08 :cancel-transfer 0.08 :cancel-discharge 0.08 :transfer-in-error 0.08})
 
 (defn- coherent-at-every-boundary?
   [ground-truth messages]
@@ -154,7 +219,7 @@
                                            {:type :delay :from 30 :to 30}
                                            {:type :discharge}]})
           config (cond-> {:seed seed :patients patients :pathways [{:pathway pathway :weight 1}]}
-                   use-churn (assoc :churn-profile no-bed-swap-no-merge-churn))
+                   use-churn (assoc :churn-profile churn/sample-profile))
           {:keys [ground-truth facility providers]} (engine/run config)
           messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)]
       (coherent-at-every-boundary? ground-truth messages))))
