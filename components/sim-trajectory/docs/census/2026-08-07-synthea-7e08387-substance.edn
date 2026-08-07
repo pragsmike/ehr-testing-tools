@@ -1,0 +1,1980 @@
+{:header
+ {:synthea-pin "7e08387c68a7f0e21d13076609a159fd473fc902",
+  :checkout-dir "/home/mg/synthea-checkout",
+  :tool-version "1.0.0",
+  :horizon-years 50,
+  :persona-config
+  {:race-weights
+   [{:race "White", :weight 1.0}
+    {:race "Black", :weight 1.0}
+    {:race "Hispanic", :weight 1.0}
+    {:race "Asian", :weight 1.0}
+    {:race "Native", :weight 1.0}
+    {:race "Other", :weight 1.0}],
+   :socioeconomic-weights
+   [{:category "High", :weight 1.0}
+    {:category "Middle", :weight 1.0}
+    {:category "Low", :weight 1.0}],
+   :state-weights [{:state "Alabama", :weight 1.0}]},
+  :seed-count 3,
+  :registration-offset-years 30,
+  :module-count 85,
+  :mixer-seed 20260803,
+  :census-date "2026-08-07",
+  :pin-verification
+  {:method :git, :pin "7e08387c68a7f0e21d13076609a159fd473fc902"}},
+ :modules
+ [{:id "acute-myeloid-leukemia",
+   :file "acute_myeloid_leukemia.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "ais-from-school-screening-to-sosort-recommendations",
+   :file "AIS_From_School_Screening_to_SOSORT_Recommendations.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed 2882682375045467138,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed -6911647670705203668,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "allergic-rhinitis",
+   :file "allergic_rhinitis.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 2, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 5,
+     :digest
+     "fdce391864e546aeb23c56f2da73392196cbc15c06ab0ae22e2648946dcc0078"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 5 0],
+   :substance :produces-content}
+  {:id "allergies",
+   :file "allergies.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 8, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :blocked,
+     :event-count 3,
+     :digest
+     "2d736be1fadff85b519e3e648fcabaee20e0217fd56484ea01c6ef5088ed0a0d"}
+    {:seed 2882682375045467138,
+     :status :blocked,
+     :event-count 2,
+     :digest
+     "0569fa0bef0cc3ef36370d99e3e89d419ef5061f0dcee9662b31aa10a57cc2cd"}
+    {:seed -6911647670705203668,
+     :status :blocked,
+     :event-count 1,
+     :digest
+     "3c1c786a457a51cdc4df9766e9828f45a00d00280d0900cbb5f4726da2906261"}],
+   :event-counts [3 2 1],
+   :substance :produces-content}
+  {:id "anemia-unknown-etiology",
+   :file "anemia___unknown_etiology.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 2, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 10,
+     :digest
+     "6b2b4c1d44535b91a8f30b24d0cd71d2007fee749e46d371f935355959c0054c"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 10 0],
+   :substance :produces-content}
+  {:id "appendicitis",
+   :file "appendicitis.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 10,
+     :digest
+     "eca4d991fa33f3ed111f53e5b68bc14797b0f38525eed46e71b0b6146801a657"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 10 0],
+   :substance :produces-content}
+  {:id "asthma",
+   :file "asthma.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 3, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :horizon-complete,
+     :event-count 87,
+     :digest
+     "038dc6cbff3f1c0eec63e46e03fc0e6bf562ba2e3e866abdb358575d89a32396"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 87 0],
+   :substance :produces-content}
+  {:id "atopy",
+   :file "atopy.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "atrial-fibrillation",
+   :file "atrial_fibrillation.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}
+    {:seed 2882682375045467138,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}
+    {:seed -6911647670705203668,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "attention-deficit-disorder",
+   :file "attention_deficit_disorder.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 6,
+     :digest
+     "92281b4c5dd75f5bb32ffbd5bd1bf52f93933712f6e14414c07eb2fab6cc75b9"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 6 0],
+   :substance :produces-content}
+  {:id "bone-marrow-transplant",
+   :file "bone_marrow_transplant.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed 2882682375045467138,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed -6911647670705203668,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "breast-cancer",
+   :file "breast_cancer.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 6, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "bronchitis",
+   :file "bronchitis.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :horizon-complete,
+     :event-count 21,
+     :digest
+     "da8edf3d78d8a92bfb54bc78ca09e5ae0b615489d03b38974d695524f119319a"}
+    {:seed 2882682375045467138,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}
+    {:seed -6911647670705203668,
+     :status :horizon-complete,
+     :event-count 22,
+     :digest
+     "6cb604bf61f0b23a82d50529c2767347009ed34e2688e1a9550f8fcf0866a7f5"}],
+   :event-counts [21 0 22],
+   :substance :produces-content}
+  {:id "cerebral-palsy",
+   :file "cerebral_palsy.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "chronic-kidney-disease",
+   :file "chronic_kidney_disease.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed 2882682375045467138,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed -6911647670705203668,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "colorectal-cancer",
+   :file "colorectal_cancer.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 2, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :horizon-complete,
+     :event-count 34,
+     :digest
+     "58fd16cb0f5167ca58a72bb7170847b4da3981727eb7e8a802a800405f2d05c7"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 34 0],
+   :substance :produces-content}
+  {:id "congestive-heart-failure",
+   :file "congestive_heart_failure.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 10, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 117,
+     :digest
+     "eb621a8fb469f7c7949df9ce0465610e535d73179f98c98c51f6daa96c289aea"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 117 0],
+   :substance :produces-content}
+  {:id "contraceptive-maintenance",
+   :file "contraceptive_maintenance.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 2, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "contraceptives",
+   :file "contraceptives.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 10, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 89,
+     :digest
+     "c9775f8755c2c4526656812651a8dc942b196be12eab8dd56fd7fbd48f424ce2"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 89 0],
+   :substance :produces-content}
+  {:id "copd",
+   :file "copd.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 4, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}
+    {:seed 2882682375045467138,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}
+    {:seed -6911647670705203668,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "covid19",
+   :file "covid19.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 20, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}
+    {:seed 2882682375045467138,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}
+    {:seed -6911647670705203668,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "cystic-fibrosis",
+   :file "cystic_fibrosis.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 2, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "dementia",
+   :file "dementia.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :horizon-complete,
+     :event-count 11,
+     :digest
+     "d910130697ba3c2337af535657daea025ffa6732e117e32a0ca4e61ef3280794"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 11 0],
+   :substance :produces-content}
+  {:id "dental-and-oral-examination",
+   :file "dental_and_oral_examination.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed 2882682375045467138,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed -6911647670705203668,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "dentures",
+   :file "dentures.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed 2882682375045467138,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed -6911647670705203668,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "dermatitis",
+   :file "dermatitis.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 7, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 6,
+     :digest
+     "2f4f03d081a59953dddbf1235545b9e91be6f0ece6b1a8e8ddc495dc5b05e6f8"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 6 0],
+   :substance :produces-content}
+  {:id "diabetic-retinopathy-treatment",
+   :file "diabetic_retinopathy_treatment.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 6, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed 2882682375045467138,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed -6911647670705203668,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "dialysis",
+   :file "dialysis.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 2, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed 2882682375045467138,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed -6911647670705203668,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "ear-infections",
+   :file "ear_infections.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 3, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :horizon-complete,
+     :event-count 8,
+     :digest
+     "5423cc3e2de4bed02061549cca935ddad0e1765559fd662e31fb3f39e57b95e8"}
+    {:seed 2882682375045467138,
+     :status :horizon-complete,
+     :event-count 18,
+     :digest
+     "a983e8b393fe405b072a8bdd269d897a6ec86841ca74d45678bebe020d49c850"}
+    {:seed -6911647670705203668,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}],
+   :event-counts [8 18 0],
+   :substance :produces-content}
+  {:id "epilepsy",
+   :file "epilepsy.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "female-reproduction",
+   :file "female_reproduction.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "fibromyalgia",
+   :file "fibromyalgia.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :horizon-complete,
+     :event-count 38,
+     :digest
+     "cb40e31427728c4c27d3dee5b78f0fdc85bec851cc56539d858a991b57576774"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 38 0],
+   :substance :produces-content}
+  {:id "food-allergies",
+   :file "food_allergies.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 3, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "gallstones",
+   :file "gallstones.json",
+   :verdict :out-of-scope-by-ruling,
+   :disclosed-substitutions [],
+   :gap
+   {:unrecognized-state-types #{"Physiology"},
+    :unresolved-submodules #{},
+    :unresolved-tables #{},
+    :malformed-lookup-table-ranges #{},
+    :attribute-collisions #{},
+    :cyclic-closure nil,
+    :other-rejections [],
+    :closure-file-count 1},
+   :walks []}
+  {:id "gout",
+   :file "gout.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "hiv-care",
+   :file "hiv_care.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 17, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed 2882682375045467138,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed -6911647670705203668,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "hiv-diagnosis",
+   :file "hiv_diagnosis.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 2, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed 2882682375045467138,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed -6911647670705203668,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "home-health-treatment",
+   :file "home_health_treatment.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed 2882682375045467138,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed -6911647670705203668,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "home-hospice-snf",
+   :file "home_hospice_snf.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 2, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}
+    {:seed 2882682375045467138,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}
+    {:seed -6911647670705203668,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "homelessness",
+   :file "homelessness.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}
+    {:seed 2882682375045467138,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}
+    {:seed -6911647670705203668,
+     :status :horizon-complete,
+     :event-count 2,
+     :digest
+     "44869afc3802465e99e089e06718c9730fee9486fb289ff4a75003c462cfe253"}],
+   :event-counts [0 0 2],
+   :substance :produces-content}
+  {:id "hospice-treatment",
+   :file "hospice_treatment.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed 2882682375045467138,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed -6911647670705203668,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "hypertension",
+   :file "hypertension.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 2, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}
+    {:seed 2882682375045467138,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}
+    {:seed -6911647670705203668,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "hypothyroidism",
+   :file "hypothyroidism.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 2, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 8,
+     :digest
+     "d9552b19d18e06d708ff53f9f0a8ddf552bee16233cbe3a1dcaf9a9d72e4dd60"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 8 0],
+   :substance :produces-content}
+  {:id "injuries",
+   :file "injuries.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 8, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :horizon-complete,
+     :event-count 31,
+     :digest
+     "3c05f71e916cbe381168f7102c81d2bb630ece2985d0e115d3aaddbd4f1ef65c"}
+    {:seed 2882682375045467138,
+     :status :horizon-complete,
+     :event-count 119,
+     :digest
+     "4acc859c151ed2020e2a70f104eb8035d07dde7e56870cae724be45af6097cdb"}
+    {:seed -6911647670705203668,
+     :status :horizon-complete,
+     :event-count 134,
+     :digest
+     "382601ccebf007f0dfc2b39c2861bfcf4d259abb8ca5797d2037288c65eb1f5a"}],
+   :event-counts [31 119 134],
+   :substance :produces-content}
+  {:id "kidney-transplant",
+   :file "kidney_transplant.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed 2882682375045467138,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed -6911647670705203668,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "lung-cancer",
+   :file "lung_cancer.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 3, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "lupus",
+   :file "lupus.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 2, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "med-rec",
+   :file "med_rec.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :horizon-complete,
+     :event-count 269,
+     :digest
+     "13784db2d86f54d25b3e15f3abb07c309e1b0c55325111e233a38377c7fe5965"}
+    {:seed 2882682375045467138,
+     :status :horizon-complete,
+     :event-count 273,
+     :digest
+     "8f781bfd6e456e3269bef3d04f87bbe0daa42246d32ba0fc929726dda4033bba"}
+    {:seed -6911647670705203668,
+     :status :horizon-complete,
+     :event-count 275,
+     :digest
+     "28d6b4e744c66ddc79cd774f409e80f1ceb1097627953670d4ab12f625dd2b2f"}],
+   :event-counts [269 273 275],
+   :substance :produces-content}
+  {:id "mend-program",
+   :file "mend_program.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 3, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :horizon-complete,
+     :event-count 139,
+     :digest
+     "18d6a2922e1f222a2568f0f7afe5d695d8b155e3cb32253f892a8e062b58ba6d"}
+    {:seed 2882682375045467138,
+     :status :horizon-complete,
+     :event-count 139,
+     :digest
+     "ccb91aa17f0238b6b3f2d6c83f1d6f1a6da40e173027f725ef3da8d5974d1018"}
+    {:seed -6911647670705203668,
+     :status :horizon-complete,
+     :event-count 139,
+     :digest
+     "eb3fd00b5a22251c120f5c019aa21b8a4af8c36c4a83c670ff2492c06d2c1e83"}],
+   :event-counts [139 139 139],
+   :substance :produces-content}
+  {:id "metabolic-syndrome-care",
+   :file "metabolic_syndrome_care.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 6, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :horizon-complete,
+     :event-count 139,
+     :digest
+     "1a62a19c1c3820d01810a72295fadd5a7f6f151280dcec85ea8b31630c4d8b06"}
+    {:seed 2882682375045467138,
+     :status :horizon-complete,
+     :event-count 139,
+     :digest
+     "8484b28e2e72ca67cc4fe683083123bc924d7f03fa42295c1b09070e2aae1d64"}
+    {:seed -6911647670705203668,
+     :status :horizon-complete,
+     :event-count 139,
+     :digest
+     "fe6ed13956d00a0512825a340d4586c66c2ae72ed7fe222668cde82d42e95004"}],
+   :event-counts [139 139 139],
+   :substance :produces-content}
+  {:id "metabolic-syndrome-disease",
+   :file "metabolic_syndrome_disease.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 2, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "mtbi",
+   :file "mTBI.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "myocardial-infarction",
+   :file "myocardial_infarction.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 27, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}
+    {:seed 2882682375045467138,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}
+    {:seed -6911647670705203668,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "opioid-addiction",
+   :file "opioid_addiction.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed 2882682375045467138,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed -6911647670705203668,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "osteoarthritis",
+   :file "osteoarthritis.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 3, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 6,
+     :digest
+     "b8b82a514dcd4653ab9e3d2bbc8664a9d3cab0fb2be7afda22cb165bef2976a1"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 6 0],
+   :substance :produces-content}
+  {:id "osteoporosis",
+   :file "osteoporosis.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 6,
+     :digest
+     "0b477ae85c8a5331b4ce7d1623ea002e7cb8cf74a180d32952c0dbfddb05b765"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 6 0],
+   :substance :produces-content}
+  {:id "pregnancy",
+   :file "pregnancy.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 2, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "prescribing-opioids-for-chronic-pain-and-treatment-of-oud",
+   :file
+   "prescribing_opioids_for_chronic_pain_and_treatment_of_oud.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed 2882682375045467138,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed -6911647670705203668,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "rheumatoid-arthritis",
+   :file "rheumatoid_arthritis.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 7,
+     :digest
+     "4018cd4a58cc4a076c4deda5ed355ef2b7650a34efbbea2b5912687448188d00"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 7 0],
+   :substance :produces-content}
+  {:id "self-harm",
+   :file "self_harm.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "sepsis",
+   :file "sepsis.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 12,
+     :digest
+     "0f0d58bff9a548edce6b867dd28e983c1ba4ab79469bd5357a15e481d03771c9"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 12 0],
+   :substance :produces-content}
+  {:id "sexual-activity",
+   :file "sexual_activity.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "sinusitis",
+   :file "sinusitis.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :horizon-complete,
+     :event-count 57,
+     :digest
+     "3f53fa0e11709b67d7c63ba1e4375196ce511a20867559d5aad0aabcae4d34de"}
+    {:seed 2882682375045467138,
+     :status :horizon-complete,
+     :event-count 27,
+     :digest
+     "6c37e2e2c40f6ad327a36d1a7490b92d41a547d038633179d9f4d6896e64ddfc"}
+    {:seed -6911647670705203668,
+     :status :horizon-complete,
+     :event-count 42,
+     :digest
+     "cdceb68d2411fa22242399496c2741da57572339251f5bb38c7487b3f89ccee8"}],
+   :event-counts [57 27 42],
+   :substance :produces-content}
+  {:id "sleep-apnea",
+   :file "sleep_apnea.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :horizon-complete,
+     :event-count 110,
+     :digest
+     "d47c91f170a357e3e3c698e18c4a576e8260c4d284fbfb7bb3e3a7f59cbcbdaa"}
+    {:seed -6911647670705203668,
+     :status :horizon-complete,
+     :event-count 116,
+     :digest
+     "b1a2751711e61c989a83daed210955323918c17bdc4a3f1eff51d0e31f71daca"}],
+   :event-counts [0 110 116],
+   :substance :produces-content}
+  {:id "sore-throat",
+   :file "sore_throat.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :horizon-complete,
+     :event-count 23,
+     :digest
+     "1d365d65287fd5d1705b813b2c9cbd58b08c94e068cdaad3fb2abd04eeed3798"}
+    {:seed 2882682375045467138,
+     :status :horizon-complete,
+     :event-count 11,
+     :digest
+     "262f312ac265abc93dd1080519b3c648e4e37a6b06acfb382323ad6158172289"}
+    {:seed -6911647670705203668,
+     :status :horizon-complete,
+     :event-count 51,
+     :digest
+     "9c85d58dfbca16401edf4b912523e7f5df8cce9d2276419a7fef03651bf32b8a"}],
+   :event-counts [23 11 51],
+   :substance :produces-content}
+  {:id "spina-bifida",
+   :file "spina_bifida.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "stable-ischemic-heart-disease",
+   :file "stable_ischemic_heart_disease.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 16, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}
+    {:seed 2882682375045467138,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}
+    {:seed -6911647670705203668,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "stroke",
+   :file "stroke.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}
+    {:seed 2882682375045467138,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}
+    {:seed -6911647670705203668,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "total-joint-replacement",
+   :file "total_joint_replacement.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 4, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed 2882682375045467138,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed -6911647670705203668,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "trigger-bone-marrow-transplant",
+   :file "trigger_bone_marrow_transplant.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "urinary-tract-infections",
+   :file "urinary_tract_infections.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 12, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 9,
+     :digest
+     "79923ef6e43bb2c40d3a5ab309f63e47a3ea94fcfcd4d0141ea1047dd94f1b72"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 24,
+     :digest
+     "e7d0a8db5ce2cf63a02f592146282e140f0c8ec97ef048293053a9ca3cf9bc2e"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 15,
+     :digest
+     "894fa9f3963de559c630ee6fb32af8ff75a37e5fe8ac30a23d98d27d4038e125"}],
+   :event-counts [9 24 15],
+   :substance :produces-content}
+  {:id "veteran",
+   :file "veteran.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "veteran-hyperlipidemia",
+   :file "veteran_hyperlipidemia.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :horizon-complete,
+     :event-count 201,
+     :digest
+     "b0a5531a721b2fd090a4f93c7b01651bd75144c09e3331d83d7c75b254f11b3f"}
+    {:seed -6911647670705203668,
+     :status :horizon-complete,
+     :event-count 81,
+     :digest
+     "25c5128b9b0bd473f3fae18895a285ef171d1a657b2404baa48ba3b01f0f7d1e"}],
+   :event-counts [0 201 81],
+   :substance :produces-content}
+  {:id "veteran-lung-cancer",
+   :file "veteran_lung_cancer.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed 2882682375045467138,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed -6911647670705203668,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "veteran-mdd",
+   :file "veteran_mdd.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 2, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "veteran-prostate-cancer",
+   :file "veteran_prostate_cancer.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "veteran-ptsd",
+   :file "veteran_ptsd.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 0,
+     :digest
+     "68db21e4168c73d69c55b1c9ef2a368581ae8e5f9d5355f249eb4adac7e259af"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "veteran-self-harm",
+   :file "veteran_self_harm.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 2, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed 2882682375045467138,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed -6911647670705203668,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "veteran-substance-abuse-conditions",
+   :file "veteran_substance_abuse_conditions.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed 2882682375045467138,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}
+    {:seed -6911647670705203668,
+     :status :blocked,
+     :event-count 0,
+     :digest
+     "a744e14ff4b9eab03f23613e500c0ef7de5557d9bdee467e21ebc889ccdc1fcd"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "veteran-substance-abuse-treatment",
+   :file "veteran_substance_abuse_treatment.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 1, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :horizon-complete,
+     :event-count 83,
+     :digest
+     "702e8d03a7f38668fa49cc2fb8da30c986cf24b8762750ab5336445aa2d57cdb"}
+    {:seed 2882682375045467138,
+     :status :horizon-complete,
+     :event-count 83,
+     :digest
+     "a63f65ca4f777259c33602ec15e6a43d1f6566862e8fdd1971be9986720b76c9"}
+    {:seed -6911647670705203668,
+     :status :horizon-complete,
+     :event-count 83,
+     :digest
+     "6487b04718a9caeced220639dbb8cc8bfb66f3c9232a0f85c8afcfbe6097a863"}],
+   :event-counts [83 83 83],
+   :substance :produces-content}
+  {:id "vhd-aortic",
+   :file "vhd_aortic.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 20, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}
+    {:seed 2882682375045467138,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}
+    {:seed -6911647670705203668,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "vhd-mitral",
+   :file "vhd_mitral.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 2, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}
+    {:seed 2882682375045467138,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}
+    {:seed -6911647670705203668,
+     :status :horizon-complete,
+     :event-count 0,
+     :digest
+     "3184206efb9deb7641b6a8f0c539ddc93064e6fd8094b2c623c7205cebfce24d"}],
+   :event-counts [0 0 0],
+   :substance :zero-on-every-seed}
+  {:id "vhd-pulmonic",
+   :file "vhd_pulmonic.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 2, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 3,
+     :digest
+     "6350f327ac02561bbb286b0195c1ca13822984844aef1eb10f5fdea47fc473c0"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 3,
+     :digest
+     "a66021b0f026c3872aa59159c6f8bf8d24d1248a03dc9c10dc2401d2ebc27136"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 3,
+     :digest
+     "a2e1e8a980753f4f8eb2c6ae421a3033dea80b0de30147f1d274b5ef4aca98f7"}],
+   :event-counts [3 3 3],
+   :substance :produces-content}
+  {:id "vhd-tricuspid",
+   :file "vhd_tricuspid.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 2, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :terminal,
+     :event-count 3,
+     :digest
+     "0710c6943db55f1059f8784ef5d82c9f20e9fefd41502d5c3d2339fb03bb634e"}
+    {:seed 2882682375045467138,
+     :status :terminal,
+     :event-count 3,
+     :digest
+     "9f2e062a6db4a42994a77f675bcee41678129e44362c8013bc95e1c1ca982a17"}
+    {:seed -6911647670705203668,
+     :status :terminal,
+     :event-count 3,
+     :digest
+     "cbf7e8b6df72fd1fb7639ec0d955bdc1bff6758104df18cdeb1be4deb52126df"}],
+   :event-counts [3 3 3],
+   :substance :produces-content}
+  {:id "wellness-encounters",
+   :file "wellness_encounters.json",
+   :verdict :ok-walked,
+   :disclosed-substitutions [],
+   :gap {:closure-file-count 7, :walk-errors []},
+   :walks
+   [{:seed 4951536406519275343,
+     :status :horizon-complete,
+     :event-count 1616,
+     :digest
+     "766d8acd4e715c681e38aa0e8b26c68de72d9a7fbdf47b6b4c548ac4746884d3"}
+    {:seed 2882682375045467138,
+     :status :horizon-complete,
+     :event-count 1628,
+     :digest
+     "980c8e273cdd9f778628d2f0e4015b030101407384edf7b95446a79563076465"}
+    {:seed -6911647670705203668,
+     :status :horizon-complete,
+     :event-count 1682,
+     :digest
+     "5a5100fcc1d12e60598aa487908a3dcd9e8bfdb63714d9a3b314aace2d9e725f"}],
+   :event-counts [1616 1628 1682],
+   :substance :produces-content}],
+ :summary
+ {:total 85,
+  :by-verdict {:ok-walked 84, :out-of-scope-by-ruling 1},
+  :substitution-count 0,
+  :ok-walked-by-substance
+  {:zero-on-every-seed 51, :produces-content 33},
+  :top-gap-mechanisms []}}

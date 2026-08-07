@@ -1444,6 +1444,7 @@ narrative. Index, in landing order:
 | Wave D stage D3 (findings section 14) | 2026-08-02 | `LookupTableTransition` and attribute-weighted `distributed_transition` characterized; UTI/TJR closures vendored; compound-`Guard` resolved | ADR-0029 |
 | GMF census (findings section 15) | 2026-08-03 through 2026-08-04 | The coverage frontier converted to data, plus four dated re-runs: the `gmf_version 2` distribution family, `Counter`/`ImagingStudy`/`SupplyList`, the wellness cycle, and the re-run recording PARITY ACHIEVED | ADR-0034 (re-runs: ADR-0035, ADR-0036, ADR-0037, ADR-0041) |
 | Wave VS (findings section 16) | 2026-08-04 | The vital-sign channel: the per-patient register, the `VitalSign` state, the `:vital-sign` condition | ADR-0039 |
+| Census substance (findings section 15, dated re-run) | 2026-08-07 | Vendoring arc opens: the `:substance`/`:event-counts`/`:ok-walked-by-substance` qualifier and the labeled-filename fix land; fresh census artifact ranks the 84 `:ok-walked` modules 51/33 zero-content/content-producing, zero verdict/digest movement from Wave I2 | ADR-0069 |
 
 Wave H (the history phase, ADR-0042 — the parity arc's closing wave)
 landed as an in-place update to section 3's design, not a new dated

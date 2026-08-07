@@ -2207,6 +2207,99 @@ PARITY ACHIEVED, at pin `7e08387c68a7f0e21d13076609a159fd473fc902`,
 `.agents/plans/roadmap.md` retires this row and names Wave H the sole
 remaining wave.
 
+### Census re-run (2026-08-07, ADR-0069 AR-VC-4): the substance qualifier lands, the catalog ranked for curation
+
+The vendoring arc opens (ratified `notes/adr/0066-player-fold.md`
+AR-BB1-R, sequenced per `notes/adr/0068-player-arc-close.md`'s own
+horizon note) with the census substance session: roadmap "Census tool
+refinements" items (a) and (c) close (`ehrt.sim-trajectory.census`'s own
+`census-one`/`summarize`/`artifact-filename`, ADR-0069). Re-run with the
+SAME header parameters every wave since Wave F has used (pin, 3
+seeds/module, mixer-seed `20260803`, registration age 30, 50-year
+horizon, the same disclosed race/socioeconomic/state persona-config
+delta) — no NEW header parameter this session, since the substance
+qualifier is derived entirely from each walk's own already-recorded
+`:event-count`, no new sampling. New artifact, its own filename
+DEMONSTRATING item (c)'s own fix (a real `-substance` label, not a
+hand-appended wave suffix):
+[`components/sim-trajectory/docs/census/2026-08-07-synthea-7e08387-substance.edn`](census/2026-08-07-synthea-7e08387-substance.edn).
+
+**Verdict counts, unchanged from Wave I2 — PARITY HELD, zero movement:**
+
+| Verdict | Post-I2 | This run | Δ |
+|---|---:|---:|---:|
+| `:ok-walked` | 84 | 84 | 0 |
+| `:out-of-scope-by-ruling` | 1 | 1 | 0 |
+| `:walk-failed` | 0 | 0 | 0 |
+| `:load-failed` | 0 | 0 | 0 |
+| **Total** | **85** | **85** | **0** |
+
+Every one of the 85 modules' own verdict AND every `:ok-walked`
+module's own per-seed digest were compared directly against the
+`2026-08-04-synthea-7e08387-wave-i2.edn` artifact, module by module —
+zero verdict diffs, zero digest diffs. No STOP-AND-ESCALATE (AR-VC-4's
+own gate): this run is evidence, not a regression.
+
+**Substance tally (AR-VC-2, `summarize`'s new `:ok-walked-by-substance`
+key): of the 84 `:ok-walked` modules, 51 produce zero trajectory events
+on every one of their 3 smoke-walk seeds (`:zero-on-every-seed`), 33
+produce real content (`:produces-content`)** — this run's own successor
+to the pre-Wave-F "26 of 42" figure §15's own AR-8b substance note
+recorded (above): the frontier has more than doubled since, and the
+zero-content SHARE has grown alongside it (51/84 ≈ 61%, close to
+AR-8b's own ~62% pre-Wave-F share), not shrunk — landing state types
+and condition mechanisms closes LOAD gaps, it does not by itself give a
+module richer content once loaded. The full `:zero-on-every-seed` list,
+this run's own first-class successor to AR-8b's hand-curated 26-name
+list (byte-confirmed by direct query against this artifact's own
+`:modules`, not copied from the summary alone):
+
+`acute-myeloid-leukemia`, `ais-from-school-screening-to-sosort-recommendations`,
+`atopy`, `atrial-fibrillation`, `bone-marrow-transplant`, `breast-cancer`,
+`cerebral-palsy`, `chronic-kidney-disease`, `contraceptive-maintenance`,
+`copd`, `covid19`, `cystic-fibrosis`, `dental-and-oral-examination`,
+`dentures`, `diabetic-retinopathy-treatment`, `dialysis`, `epilepsy`,
+`female-reproduction`, `food-allergies`, `gout`, `hiv-care`,
+`hiv-diagnosis`, `home-health-treatment`, `home-hospice-snf`,
+`hospice-treatment`, `hypertension`, `kidney-transplant`, `lung-cancer`,
+`lupus`, `metabolic-syndrome-disease`, `mtbi`, `myocardial-infarction`,
+`opioid-addiction`, `pregnancy`,
+`prescribing-opioids-for-chronic-pain-and-treatment-of-oud`, `self-harm`,
+`sexual-activity`, `spina-bifida`, `stable-ischemic-heart-disease`,
+`stroke`, `total-joint-replacement`, `trigger-bone-marrow-transplant`,
+`veteran`, `veteran-lung-cancer`, `veteran-mdd`, `veteran-prostate-cancer`,
+`veteran-ptsd`, `veteran-self-harm`, `veteran-substance-abuse-conditions`,
+`vhd-aortic`, `vhd-mitral`.
+
+`stroke`'s own presence is the same standing confirmation AR-8b already
+recorded (§10's E-rescoping account: `stroke_risk` falls back to its
+own JSON-declared default, never sourced). **New finding this run:
+`total-joint-replacement` — one of the SEVEN currently-vendored roots —
+is ALSO on this list.** Disclosed, not a regression: the vendored
+module's own real content (`CarePlanStart`/`CarePlanEnd`,
+`CallSubmodule` branches into pre-op/post-op content) simply never
+fires under THIS census's own fixed persona/seed/horizon parameters for
+any of its 3 seeds — the same "deterministic, not rich" property AR-8b
+named as a standing fact about walk-verification itself, now confirmed
+to reach even a shipped, vendored module. Named here for whichever
+future session tunes census parameters or corpus generation for this
+root specifically; not a defect in `total_joint_replacement.json`, the
+census tool, or this session's own fence (no gmf/loader/interpreter
+edit).
+
+**Sanity anchors held.** All seven currently-vendored roots
+(`appendicitis`, `ear-infections`, `sepsis`, `sinusitis`, `sore-throat`,
+`total-joint-replacement`, `urinary-tract-infections`) stayed
+`:ok-walked`, byte-identical digest across every 3 seeds, matching every
+prior census artifact back through the original 2026-08-03 run.
+
+**This artifact and this section are the curation pass's own input** —
+the ranked, substance-tagged catalog the design channel's next pass
+reads over (substance × closure-family × the recorded blockers: the
+vital-sign trio, stroke pending Wave E's register) to produce the
+batched vendoring plan named in ADR-0068's own horizon note. No
+vendoring choice is made here.
+
 ## 16. GMF coverage Wave VS: the vital-sign channel (2026-08-04, ADR-0039)
 
 The post-LC census (§15) ranked the vital-sign family as the largest

@@ -362,7 +362,16 @@
   the same discipline `walk-one` already applies one layer down --
   otherwise this one module would crash the whole census run, exactly
   the failure mode AR-2's 'never aborts on a module's failure' rules
-  out."
+  out.
+
+  Census substance (2026-08-07, ADR-0069, AR-VC-2): an `:ok-walked` row
+  ADDITIVELY carries `:event-counts` (the per-seed `:event-count` vector,
+  surfaced at row level so curation-time ranking never re-digs `:walks`)
+  and `:substance` (`:zero-on-every-seed` iff every seed's count is 0,
+  else `:produces-content`), derived from the walks' own already-recorded
+  counts -- no new sampling. Neither key is present on a `:load-failed`/
+  `:walk-failed`/`:out-of-scope-by-ruling` row; the verdict enum itself
+  does not change."
   [checkout-dir {:keys [seed-count mixer-seed registration-offset-years horizon-years]} {:keys [id ^java.io.File file]}]
   (let [root-json-text (slurp file)
         fetched (atom {id root-json-text})
@@ -387,13 +396,19 @@
             root-module (get modules id)
             seeds (mixed-seeds seed-count mixer-seed)
             walks (mapv #(walk-one root-module modules tables % registration-offset-years horizon-years) seeds)
-            failed (remove :ok? walks)]
-        {:id id :file (.getName file)
-         :verdict (if (seq failed) :walk-failed :ok-walked)
-         :disclosed-substitutions substitutions
-         :gap {:closure-file-count (count modules)
-               :walk-errors (mapv #(select-keys % [:seed :error]) failed)}
-         :walks (mapv #(dissoc % :ok?) walks)}))))
+            failed (remove :ok? walks)
+            ok-walked? (empty? failed)
+            event-counts (when ok-walked? (mapv :event-count walks))]
+        (cond-> {:id id :file (.getName file)
+                 :verdict (if ok-walked? :ok-walked :walk-failed)
+                 :disclosed-substitutions substitutions
+                 :gap {:closure-file-count (count modules)
+                       :walk-errors (mapv #(select-keys % [:seed :error]) failed)}
+                 :walks (mapv #(dissoc % :ok?) walks)}
+          ok-walked? (assoc :event-counts event-counts
+                             :substance (if (every? zero? event-counts)
+                                          :zero-on-every-seed
+                                          :produces-content)))))))
 
 ;; --- Summary (AR-5: appended to the interpreter doc as a dated section) --
 
@@ -401,6 +416,11 @@
   {:total (count modules)
    :by-verdict (frequencies (map :verdict modules))
    :substitution-count (count (filter (comp seq :disclosed-substitutions) modules))
+   ;; Census substance (2026-08-07, ADR-0069, AR-VC-2): a tally over
+   ;; `:ok-walked` rows' own additive `:substance` key -- `keep` rather
+   ;; than `map` since every non-`:ok-walked` row carries no `:substance`
+   ;; at all (nil, filtered out, never counted as a third bucket).
+   :ok-walked-by-substance (frequencies (keep :substance modules))
    :top-gap-mechanisms
    (->> modules
         (filter #(= :load-failed (:verdict %)))
@@ -437,20 +457,33 @@
           :modules modules
           :summary (summarize modules)})))))
 
+(defn artifact-filename
+  "Census substance (2026-08-07, ADR-0069, AR-VC-3), roadmap 'Census tool
+  refinements' item (c): the same-calendar-day collision two prior
+  re-runs (Wave F0, Wave F) worked around by hand-appending a wave
+  suffix -- now a real, tested, optional third segment. `label` nil or
+  blank leaves the filename shape byte-identical to every run before
+  this session; a non-blank label appends `-<label>` before the
+  extension."
+  [census-date pin7 label]
+  (str census-date "-synthea-" pin7 (when-not (str/blank? label) (str "-" label)) ".edn"))
+
 (defn -main
   "`clojure -M:dev -m ehrt.sim-trajectory.census <synthea-checkout-dir>
-  <out-dir>`. Writes `<out-dir>/<census-date>-synthea-<pin7>.edn` and
-  prints the summary; a refused pin verification exits non-zero and
-  writes nothing."
-  [checkout-dir out-dir]
-  (let [result (run-census checkout-dir)]
-    (if-not (result/ok? result)
-      (do (println "CENSUS REFUSED:" (pr-str result))
-          (System/exit 1))
-      (let [payload (:payload result)
-            pin7 (subs synthea-pin 0 7)
-            out-file (io/file out-dir (str (:census-date (:header payload)) "-synthea-" pin7 ".edn"))]
-        (.mkdirs (io/file out-dir))
-        (spit out-file (with-out-str (pprint/pprint payload)))
-        (println "wrote" (.getPath out-file))
-        (println "summary:" (pr-str (:summary payload)))))))
+  <out-dir> [label]`. Writes `<out-dir>/<census-date>-synthea-<pin7>.edn`
+  (or, with `label`, `<out-dir>/<census-date>-synthea-<pin7>-<label>.edn`,
+  `artifact-filename`, AR-VC-3) and prints the summary; a refused pin
+  verification exits non-zero and writes nothing."
+  ([checkout-dir out-dir] (-main checkout-dir out-dir nil))
+  ([checkout-dir out-dir label]
+   (let [result (run-census checkout-dir)]
+     (if-not (result/ok? result)
+       (do (println "CENSUS REFUSED:" (pr-str result))
+           (System/exit 1))
+       (let [payload (:payload result)
+             pin7 (subs synthea-pin 0 7)
+             out-file (io/file out-dir (artifact-filename (:census-date (:header payload)) pin7 label))]
+         (.mkdirs (io/file out-dir))
+         (spit out-file (with-out-str (pprint/pprint payload)))
+         (println "wrote" (.getPath out-file))
+         (println "summary:" (pr-str (:summary payload))))))))
