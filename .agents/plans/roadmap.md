@@ -235,3 +235,4 @@ scaffolding compaction B, `notes/ADRs.md` ADR-0046 — each closed arc's own
 pointers rotate to a dated header in the attic at that arc's own close,
 `notes/adr/0055-alignment-arc-close.md` AR-AC-5)
 - 2026-08-07 — vendoring-arc-close — ADR-0074
+- 2026-08-07 — ci-current — ADR-0075
