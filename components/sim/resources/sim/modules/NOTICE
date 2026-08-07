@@ -55,6 +55,78 @@ prioritization table).
 | `medications/moderate_opioid_pain_reliever.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/medications/moderate_opioid_pain_reliever.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `e48546e9250ec9d76408d3aa76898d3f30b7e49ee81bed692dc830acb4a4efba` | 2026-08-02 |
 | `total_joint_replacement/functional_status_assessments.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/total_joint_replacement/functional_status_assessments.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `7fd8e6f27f75718628529448d078c87ddf0849b19014d4e4f854935a97c5fe6c` | 2026-08-02 |
 | `dme/wheelchair_end.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/dme/wheelchair_end.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `e24ea11f2c9cdf830e06ce10eee411368194ab15890a1e0dec8ab5939be1aea9` | 2026-08-02 |
+| `asthma.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/asthma.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `bb25bb3581e42f66898251f88a1c17f279b4c91f8503aca006a22cacc1ff10cd` | 2026-08-07 |
+| `medications/emergency_inhaler.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/medications/emergency_inhaler.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `4a0ede3c259d0e224f21c5d9a51636bf514269899d70e1722c36bc50c4eb84c4` | 2026-08-07 |
+| `medications/maintenance_inhaler.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/medications/maintenance_inhaler.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `4c3915fe9cd303ac86c059b3bf604c8217e02d484e043ef80083b502dba8e02f` | 2026-08-07 |
+| `lookup_tables/emergency_inhaler_ingredient_distribution.csv` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/lookup_tables/emergency_inhaler_ingredient_distribution.csv` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `05bccc7399d46920d557e6a4570a4e6bb1a541ba1361819836cbc7b9cded29e8` | 2026-08-07 |
+| `lookup_tables/emergency_inhaler_albuterol_product_distribution.csv` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/lookup_tables/emergency_inhaler_albuterol_product_distribution.csv` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `1dfad2e68dc79a8431c2ebd200de3b2a365c2e777d8e119e98f4d8dd3372ef8b` | 2026-08-07 |
+| `lookup_tables/emergency_inhaler_levalbuterol_product_distribution.csv` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/lookup_tables/emergency_inhaler_levalbuterol_product_distribution.csv` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `580dca3c73b6d3afe28d6ae24dfe7876995be71acc30ef936765a731ef9766ea` | 2026-08-07 |
+| `lookup_tables/maintenance_inhaler_ingredient_distribution.csv` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/lookup_tables/maintenance_inhaler_ingredient_distribution.csv` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `21c0b8fa33a4e61b515eb8c8b500a81896dd224ad52cd1d807c8130e8c74b6ba` | 2026-08-07 |
+| `lookup_tables/maintenance_inhaler_beclomethasone_product_distribution.csv` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/lookup_tables/maintenance_inhaler_beclomethasone_product_distribution.csv` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `9b1cbfedea58bfbb1f7ddfd6c941e159fa3919a0453ec7a785c530deb4ce9a9c` | 2026-08-07 |
+| `lookup_tables/maintenance_inhaler_budesonide_product_distribution.csv` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/lookup_tables/maintenance_inhaler_budesonide_product_distribution.csv` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `61b1d2898da632aab113fee264a96e919477dbb54ace3c56f30125868b2c622b` | 2026-08-07 |
+| `lookup_tables/maintenance_inhaler_fluticasone_product_distribution.csv` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/lookup_tables/maintenance_inhaler_fluticasone_product_distribution.csv` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `0ab99d69a4e85b10b2f91277101bca745690d88946ce55a0087f8a73033ac502` | 2026-08-07 |
+| `lookup_tables/maintenance_inhaler_mometasone_product_distribution.csv` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/lookup_tables/maintenance_inhaler_mometasone_product_distribution.csv` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `bb05a73d457078b980ac01ec10846932bc455c13e7732ce193157b8197956aac` | 2026-08-07 |
+| `bronchitis.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/bronchitis.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `ed1a28c344732eba4d255d43a2dc4ad09e2bacb664698d548e842af3281ffc56` | 2026-08-07 |
+| `sleep_apnea.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/sleep_apnea.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `6cb8710e0ecc1ba9b360177b9fad6bf15434dabb203bd10ffb3a6cc0463a9784` | 2026-08-07 |
+| `fibromyalgia.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/fibromyalgia.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `c36d90950f7ccc5247d67db198c6d7bf43bc2c49efdaca36bd78f79cea050668` | 2026-08-07 |
+| `dementia.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/dementia.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `d20921be6ceb59e85e2a0c6ab0de4ece5b9ea7038d723b39b437cbb303d9fda1` | 2026-08-07 |
+
+**Vendoring batch 1 (2026-08-07, ADR-0070, AR-VB1-2/3): five everyday
+ambulatory modules land -- asthma, bronchitis, sleep-apnea,
+fibromyalgia, dementia; a sixth, `injuries.json`, was assessed and
+DEFERRED WHOLE (below), not vendored.** The vendoring arc's second
+session, following the substance census (ADR-0069) that ranked the
+catalog by which modules actually produce trajectory content. `asthma.json`
+is this directory's FOURTH closure (three files: root plus two called
+medication submodules, `medications/emergency_inhaler.json`/
+`medications/maintenance_inhaler.json`) and its first closure whose real
+therapeutic content is entirely `lookup_table_transition`-driven (eight
+product-distribution CSVs, the same D3a/H2 mechanism the UTI closure
+established) -- eleven files total. `bronchitis.json`/`sleep_apnea.json`/
+`fibromyalgia.json`/`dementia.json` are each single-file entries, no
+CallSubmodule, no lookup tables. All five: engine-layer round-trip proof
+(`ehrt.sim-emit-hl7.vendored-<module>-test`, `components/sim-emit-hl7/
+test/`), seed 20260802, 300 patients, a 100-year `:module-horizon-days`
+(36500) -- the same population/horizon convention this repo's own
+`vendored-sepsis-test`/`vendored-uti-test` already establish, confirmed
+empirically this session to produce real compiled clinical content and
+real rendered HL7 for every one of the five.
+
+**`injuries.json`: assessed, DEFERRED WHOLE, not vendored (2026-08-07,
+ADR-0070, AR-VB1-6's own bail-out precedent).** The census substance
+artifact's own closure (eight files: root plus seven called submodules,
+four of which -- `medications/ear_infection_antibiotic.json`,
+`medications/otc_pain_reliever.json`, `medications/moderate_opioid_
+pain_reliever.json`, `dme/wheelchair_end.json` -- are already vendored,
+byte-identical at this same pin, from the ear-infections and
+total-joint-replacement closures above) trips a REAL, standing
+`ehrt.sim-trajectory.gmf-interpreter` gap: `injuries/broken_jaw.json`'s
+own `Check for Dental Visit`/`Wait for Dental Visit` pair sets
+`dental_referral` once (`Dental Referral`'s own `SetAttribute`) and
+never clears it anywhere in the file, so any walk that ever reaches that
+branch loops for the rest of the patient's simulated life and eventually
+exceeds the interpreter's own 10,000-step `max-steps` backstop --
+confirmed this session BOTH through `engine/run` (300 patients, three
+different `:module-horizon-days` values, all three throwing) AND at the
+SAME interpreter layer the census itself walks (`run-module` directly,
+registration age 30, 50-year horizon, matching `census.clj`'s own
+parameters exactly): 4 of 120 well-mixed-seed walks throw the identical
+`max-steps` exception on `:check-for-dental-visit`. The census's own
+three-seed sample (`gap {:walk-errors []}` for `injuries`) simply never
+sampled this ~3.3%-of-walks branch -- a real gap the census's narrow
+sample missed, not a defect in the census itself, and not a config/
+horizon-tuning matter (three horizons tried, same failure every time).
+Per AR-VB1-6's own fence (no loader/interpreter/engine changes this
+session), `injuries.json` and its four genuinely NEW closure members
+(`injuries.json` itself, `injuries/broken_jaw.json`, `snf/skilled_
+nursing_facility.json`, `dme/wheelchair.json`) are NOT vendored -- no
+NOTICE row, no test, no oracle root. The four already-vendored SHARED
+submodules named above are untouched, unaffected, and stay exactly as
+they were. Revisit trigger: a future session willing to extend
+`ehrt.sim-trajectory.gmf-interpreter`'s own runaway-loop handling (e.g.
+detecting an attribute-gated self-transition pair that never clears its
+own gate) -- tracked as a roadmap Deferred row, `.agents/plans/
+roadmap.md`.
 
 **GMF coverage Wave D stage D3 payoff, second entry (2026-08-02,
 ADR-0029): the EIGHTH root entry, `total_joint_replacement.json`, and
