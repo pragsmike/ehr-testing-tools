@@ -17,7 +17,10 @@ per item; done items move to the bottom of their section with a date and sha.
 - The lookup-column `time` gap (named in the schema-invalid family
   backlog since ADR-0039, still untouched — Wave I's own six
   mechanisms didn't cover it). Bulk vendoring (batched by closure
-  family) follows once the catalog fully walks.
+  family) follows once the catalog fully walks. **Ratified as real**
+  (design channel, 2026-08-06, `notes/adr/0066-player-fold.md` AR-BB1-R)
+  — discharges the `[unverified]` intake note ADR-0064 carried for it;
+  scheduled after the player-fold arc, still not built.
 - **Wave G attachment deferral** (ADR-0037 AR-4, named trigger "multi-
   module assignment per patient"): upstream's own all-waiting-modules-
   attach-to-one-visit semantics only diverges from this project's
@@ -203,3 +206,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 `notes/adr/0055-alignment-arc-close.md` AR-AC-5)
 - 2026-08-06 — ux-arc-close — ADR-0064
 - 2026-08-06 — ux-epilogue — ADR-0065
+- 2026-08-06 — player-fold — ADR-0066

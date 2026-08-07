@@ -85,3 +85,4 @@ Files in this directory:
   * 2026-08-06-ux-fixes-5.md
   * 2026-08-06-ux-arc-close.md
   * 2026-08-06-ux-epilogue.md
+  * 2026-08-06-player-fold.md

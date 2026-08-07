@@ -108,3 +108,4 @@ below updates only when an arc closes.
 - **ADR-0063** — UX fixes 5: the help wraps like it means it — hanging indents, width gated — [`0063-ux-fixes-5.md`](adr/0063-ux-fixes-5.md) — Accepted
 - **ADR-0064** — UX arc close: the founding incident is mechanically impossible — appended, regenerated, rotated — [`0064-ux-arc-close.md`](adr/0064-ux-arc-close.md) — Accepted
 - **ADR-0065** — UX epilogue: muscle memory gets an answer, help gets a width — the retired `:cli` alias redirects, a sibling near-miss gets a real hint, `--width`/COLUMNS lands — [`0065-ux-epilogue.md`](adr/0065-ux-epilogue.md) — Accepted
+- **ADR-0066** — Player fold: the accumulator learns two-participant messages and absolute time — A17/A40 fold into the wire-side accumulator, MSH-7 reads an absolute epoch instant, the emitter-coherence property runs over the full churn family — [`0066-player-fold.md`](adr/0066-player-fold.md) — Accepted
