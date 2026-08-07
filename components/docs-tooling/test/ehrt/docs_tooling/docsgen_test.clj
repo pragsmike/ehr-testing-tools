@@ -1,12 +1,26 @@
 (ns ehrt.docs-tooling.docsgen-test
-  "Covers docs/cli.md's renderer (DOC-3). The real staleness guard is
-  CI's generated-doc freshness step (.github/workflows/test.yml's
-  \"generated-doc freshness (regen + diff)\" step, P1-2, 2026-07-31
-  review catch-up: `make docsgen` then `git diff --exit-code` on all
-  four generated docs, per push); these tests cover what that step
-  can't -- that the renderer actually emits every spec'd group/verb/
-  flag, rather than emitting a well-formed page that happens to be
-  missing half its data.
+  "Covers docs/cli.md's renderer (DOC-3). The staleness guard is now
+  two-layered (ci current, AR-CI-2): CI's generated-doc freshness step
+  (.github/workflows/test.yml's \"generated-doc freshness (regen +
+  diff)\" step, P1-2, 2026-07-31 review catch-up: `make docsgen` then
+  `git diff --exit-code` on all four generated docs, per push) covers
+  every generated doc, docs/cli.md included; a local, in-process half
+  covers docs/cli.md and docs/operators.md too -- but NOT from here.
+  render-cli-md is pure (spec -> string) with no compile-time knowledge
+  of the real cli-spec (components never depend on bases, see this
+  file's own next paragraph), so the live comparison genuinely has to
+  live where both the spec and the renderer are reachable without
+  inverting that direction: bases/cli/test/ehrt/cli/help_test.clj's own
+  cli-md-is-current-test. docs/operators.md's local half
+  (operators-md-is-current-test) has no such obstacle and lives beside
+  its own renderer's tests, components/corpus/test/ehrt/corpus/
+  operators_doc_test.clj. docs/dev/pipeline.md and docs/use-cases.md
+  stay CI-only -- their own renderers shell out to
+  components/palgebra/tools/resource_equations_to_mermaid.py, a
+  dependency this JVM test suite doesn't carry. The tests below cover
+  what neither freshness check can -- that the renderer actually emits
+  every spec'd group/verb/flag, rather than emitting a well-formed page
+  that happens to be missing half its data.
 
   Split out of the former ehrt.tools.docsgen-test (docs-tooling
   extraction, 2026-07-31, refactoring-review stage 1) alongside the
@@ -30,10 +44,11 @@
 ;; so these tests exercise the renderer against a small, representative
 ;; spec of the same shape rather than importing the live one. The real
 ;; spec's own freshness against docs/cli.md is CI's generated-doc
-;; freshness step (.github/workflows/test.yml, per this file's own top
-;; docstring) -- these tests were never that check; they prove the
-;; renderer doesn't silently drop a group/verb/flag/exit-code that
-;; *is* in whatever spec it's given.
+;; freshness step plus bases/cli/test/ehrt/cli/help_test.clj's own
+;; cli-md-is-current-test (per this file's own top docstring) -- these
+;; tests were never that check; they prove the renderer doesn't
+;; silently drop a group/verb/flag/exit-code that *is* in whatever spec
+;; it's given.
 
 (def test-cli-spec
   {:program "ehr"

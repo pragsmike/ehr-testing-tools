@@ -3,6 +3,7 @@
             [clojure.string :as str]
             [ehrt.cli.help :as help]
             [ehrt.cli.core :as cli]
+            [ehrt.docs-tooling.interface :as docs-tooling]
             [ehrt.kernel.interface :as result]))
 
 (deftest render-top-level-lists-every-group-test
@@ -103,3 +104,23 @@
 
 (deftest spec-command-pairs-match-dispatchs-known-routes-test
   (is (= known-dispatch-pairs (set (help/command-pairs help/cli-spec)))))
+
+;; ---- staleness guard, local half (ci current, AR-CI-2) ----
+;;
+;; The genuinely live comparison -- this base is the only brick that
+;; can see both `cli-spec` (here) and the renderer (docs-tooling, a
+;; component this base already depends on) without inverting
+;; Polylith's base -> component direction; components/docs-tooling's
+;; own docsgen-test can only exercise the renderer against a
+;; representative fixture spec, never this one. Goes through
+;; docs-tooling's own write-cli-md! (the one interface export,
+;; ehrt.docs-tooling.interface) rather than reaching into its internal
+;; render-cli-md, so this test respects the same interface boundary
+;; ehrt.cli.help/write-cli-md! itself does.
+(deftest cli-md-is-current-test
+  (let [tmp (java.io.File/createTempFile "cli-md-current-test" ".md")]
+    (try
+      (docs-tooling/write-cli-md! {:out (.getPath tmp) :spec help/cli-spec})
+      (is (= (slurp tmp) (slurp "docs/cli.md"))
+          "docs/cli.md is stale -- run `make cli-doc` (or `make docsgen`) to regenerate")
+      (finally (.delete tmp)))))

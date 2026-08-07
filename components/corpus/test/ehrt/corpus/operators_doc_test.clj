@@ -1,12 +1,21 @@
 (ns ehrt.corpus.operators-doc-test
-  "Covers docs/operators.md's renderer (DOC-3). The real staleness
-  guard is CI's generated-doc freshness step (.github/workflows/test.yml's
-  \"generated-doc freshness (regen + diff)\" step, P1-2, 2026-07-31
-  review catch-up: `make docsgen` then `git diff --exit-code` on all
-  four generated docs, per push); these tests cover what that step
-  can't -- that the renderer actually emits every registered operator,
-  rather than emitting a well-formed page that happens to be missing
-  half its data.
+  "Covers docs/operators.md's renderer (DOC-3). The staleness guard is
+  now two-layered (ci current, AR-CI-2): CI's generated-doc freshness
+  step (.github/workflows/test.yml's \"generated-doc freshness (regen +
+  diff)\" step, P1-2, 2026-07-31 review catch-up: `make docsgen` then
+  `git diff --exit-code` on all four generated docs, per push) covers
+  every generated doc, docs/operators.md included; operators-md-is-
+  current-test below covers the same ground locally, in-process, no
+  git or python involved -- this component owns both the live registry
+  and the renderer, so unlike docs/cli.md (whose local half needs a
+  base, bases/cli/test/ehrt/cli/help_test.clj's own cli-md-is-current-
+  test) there is no cross-brick obstacle here. docs/dev/pipeline.md and
+  docs/use-cases.md stay CI-only -- their own renderers shell out to
+  components/palgebra/tools/resource_equations_to_mermaid.py, a
+  dependency this JVM test suite doesn't carry. Most of the tests below
+  cover what neither freshness check can -- that the renderer actually
+  emits every registered operator, rather than emitting a well-formed
+  page that happens to be missing half its data.
 
   Split out of the former ehrt.tools.docsgen-test (docs-tooling
   extraction, 2026-07-31, refactoring-review stage 1) alongside the
@@ -71,3 +80,37 @@
   (let [entries (operators-doc/sorted-entries)]
     (is (= (operators-doc/render-operators-md entries)
            (operators-doc/render-operators-md entries)))))
+
+;; ---- staleness guard, local half (ci current, AR-CI-2) ----
+;;
+;; The genuinely live comparison, in-process, no git involved: this
+;; component owns both the live registry (corpus.operators) and the
+;; renderer, so unlike cli.md's guard (which needs a base -- see
+;; bases/cli/test/ehrt/cli/help_test.clj's own cli-md-is-current-test)
+;; this one has no cross-brick obstacle and lives right alongside the
+;; renderer tests above. It does have a same-brick one, found writing
+;; it this session: `poly test` runs every corpus test file in one
+;; shared JVM, and this suite's own registry-mechanics tests
+;; (ehrt.corpus.operators-test) register throwaway entries (:test-op,
+;; :e1, :no-doc-op) into the same atom at deftest-execution time, not
+;; namespace-load time -- so by the time this test runs, the registry
+;; may already carry entries docs/operators.md, generated from a clean
+;; `-X` process, never saw. Every OTHER test in this file is immune
+;; (it compares the render against `entries` live on both sides); this
+;; one compares against a frozen file, so it isn't. Reset-and-reload
+;; the seed catalog fresh (registry-snapshot/reset-registry! is this
+;; component's own save/restore convention, precedented in
+;; components/corpus/test/ehrt/corpus/check/schemas_test.clj) rather
+;; than trust whatever the shared atom currently holds; restore
+;; whatever was there after, so a test that runs after this one still
+;; sees what it expects.
+(deftest operators-md-is-current-test
+  (let [saved (operators/registry-snapshot)]
+    (try
+      (operators/reset-registry! {})
+      (require 'ehrt.corpus.operators :reload)
+      (is (= (operators-doc/render-operators-md (operators-doc/sorted-entries))
+             (slurp "docs/operators.md"))
+          "docs/operators.md is stale -- run `make operators-doc` (or `make docsgen`) to regenerate")
+      (finally
+        (operators/reset-registry! saved)))))
