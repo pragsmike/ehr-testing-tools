@@ -113,6 +113,30 @@
        "   \"Done\": {\"type\": \"Terminal\"}"
        " }}"))
 
+(def ^:private zero-content-json
+  "Same shape as `ok-json` (Initial -> Terminal, no event-producing state in
+  between) -- walks clean on every seed but emits no trajectory event at
+  all, the `:zero-on-every-seed` substance case (census substance, AR-VC-2)."
+  (str "{\"name\": \"Census Zero-Content Fixture\","
+       " \"states\": {"
+       "   \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Done\"},"
+       "   \"Done\": {\"type\": \"Terminal\"}"
+       " }}"))
+
+(def ^:private produces-content-json
+  "An unconditional, non-wellness ambulatory Encounter/EncounterEnd pair --
+  both direct transitions, no wait, no RNG-gated branch -- so every seed
+  deterministically emits two trajectory events, the `:produces-content`
+  substance case (census substance, AR-VC-2)."
+  (str "{\"name\": \"Census Content Fixture\","
+       " \"states\": {"
+       "   \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Visit\"},"
+       "   \"Visit\": {\"type\": \"Encounter\", \"encounter_class\": \"ambulatory\","
+       "     \"direct_transition\": \"End\"},"
+       "   \"End\": {\"type\": \"EncounterEnd\", \"direct_transition\": \"Done\"},"
+       "   \"Done\": {\"type\": \"Terminal\"}"
+       " }}"))
+
 (def ^:private physiology-json
   "GMF coverage Wave G (2026-08-03, ADR-0037 AR-5): `Physiology` is a
   real, unsupported v1 state type (Synthea's own ODE-based physiology
@@ -225,3 +249,59 @@
       (is (= :ok (:status result)))
       (is (= :sha256-content (:method (:payload result))))
       (is (true? (:pin-unverified-by-git (:payload result)))))))
+
+;; --- Census substance (2026-08-07, ADR-0069, AR-VC-2) ---------------------
+;;
+;; A module that produces zero trajectory events on every smoke-walk seed
+;; censuses `:ok-walked` identically to one with rich content (roadmap
+;; "Census tool refinements" row (a), `gmf-interpreter-findings.md` §15's
+;; own AR-8b substance note). `:substance` is ADDITIVE on an `:ok-walked`
+;; row only -- the verdict enum itself does not change.
+
+(deftest ok-walked-zero-content-module-carries-the-zero-on-every-seed-substance-tag
+  (let [dir (io/file (System/getProperty "java.io.tmpdir") "census-test-zero-content")
+        file (write-fixture! dir "census-zero-content-fixture" zero-content-json)
+        entry (census/census-one dir census-opts {:id "census-zero-content-fixture" :file file})]
+    (is (= :ok-walked (:verdict entry)))
+    (is (= :zero-on-every-seed (:substance entry)))
+    (is (= [0 0 0] (:event-counts entry)))))
+
+(deftest ok-walked-content-producing-module-carries-the-produces-content-substance-tag
+  (let [dir (io/file (System/getProperty "java.io.tmpdir") "census-test-produces-content")
+        file (write-fixture! dir "census-produces-content-fixture" produces-content-json)
+        entry (census/census-one dir census-opts {:id "census-produces-content-fixture" :file file})]
+    (is (= :ok-walked (:verdict entry)))
+    (is (= :produces-content (:substance entry)))
+    (is (= [2 2 2] (:event-counts entry)))))
+
+(deftest non-ok-walked-rows-carry-no-substance-tag
+  (let [dir (io/file (System/getProperty "java.io.tmpdir") "census-test-load-failed-substance")
+        file (write-fixture! dir "census-load-failed-fixture" load-failed-json)
+        entry (census/census-one dir census-opts {:id "census-load-failed-fixture" :file file})]
+    (is (= :load-failed (:verdict entry)))
+    (is (nil? (:substance entry)))
+    (is (nil? (:event-counts entry)))))
+
+(deftest summarize-tallies-ok-walked-by-substance
+  (let [dir (io/file (System/getProperty "java.io.tmpdir") "census-test-summarize-substance")
+        zero-file (write-fixture! dir "census-zero-content-fixture" zero-content-json)
+        content-file (write-fixture! dir "census-produces-content-fixture" produces-content-json)
+        modules [(census/census-one dir census-opts {:id "census-zero-content-fixture" :file zero-file})
+                 (census/census-one dir census-opts {:id "census-produces-content-fixture" :file content-file})]
+        summary (census/summarize modules)]
+    (is (= {:zero-on-every-seed 1 :produces-content 1} (:ok-walked-by-substance summary)))))
+
+;; --- Census artifact filename disambiguation (2026-08-07, ADR-0069, AR-VC-3) --
+;;
+;; Roadmap "Census tool refinements" row (c): the artifact filename has no
+;; same-calendar-day disambiguation -- worked around by hand-appending a
+;; wave suffix in both the F0 and F re-runs, never fixed in the tool. An
+;; optional label makes the filename disambiguate itself.
+
+(deftest artifact-filename-without-label-is-unchanged
+  (is (= "2026-08-07-synthea-7e08387.edn"
+         (census/artifact-filename "2026-08-07" "7e08387" nil))))
+
+(deftest artifact-filename-with-label-appends-it
+  (is (= "2026-08-07-synthea-7e08387-substance.edn"
+         (census/artifact-filename "2026-08-07" "7e08387" "substance"))))
