@@ -90,7 +90,9 @@ clojure -M:poly check     # expect: OK
 Per-project verification ladders and first-traffic walkthroughs get
 added here as each project lands — see the root
 [`README.md`](README.md#quickstart) for the canonical Quickstart
-(`bin/ehrt ...`) and `AGENTS.md` for what's landed so far.
+(`bin/ehrt ...`) and `AGENTS.md` for what's landed so far. Or skip
+straight to watching it run: [`demos/`](demos/) is a two-command path
+to a live bed board, no code required.
 Sim's own former standalone CLI (`bases/sim-cli`) was retired
 2026-08-01 once `bin/ehrt sim run`/`check`/`identifiers`/`version`
 (the in-process mount, ADR-0005/P3-6) reached full parity with it —

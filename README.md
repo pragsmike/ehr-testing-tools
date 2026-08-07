@@ -19,6 +19,22 @@ and get plain FHIR JSON, HL7 v2 text, and machine-readable reports out
 the other end — usable from Python, SQL, or anything else. Clojure
 inside; no Clojure skills required.
 
+## See it run
+
+A busy Tuesday at a 200-patient hospital, watched on a live bed board
+at an hour of hospital time per minute:
+
+```bash
+bin/ehrt corpus generate sim --seed 5 --patients 200 \
+  --reference-date 2026-08-04 --churn \
+  --config demos/scenarios/busy-tuesday/config.edn \
+  --out-dir out/corpus/busy-tuesday
+
+bin/ehrt play out/corpus/busy-tuesday --board 60 --rate 60
+```
+
+More scenarios and small, fully readable captured traces: `demos/`.
+
 ## The workflow it exists for
 
 Say you maintain a component that transforms EHR data from one format
