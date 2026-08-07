@@ -5,22 +5,8 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- Nothing in progress at this close (demos front door, ADR-0073,
-  2026-08-07 — the vendoring arc's fifth session, a docs-relocation
-  session, not a vendoring batch. Executed the author's own AR-VB3-3
-  direction: `components/sim/docs/scenarios/`+`components/sim/docs/
-  demos/`+`components/sim-emit-hl7/docs/demos/site-profiles/` moved to
-  a new top-level `demos/scenarios/`+`demos/traces/`, byte-witnessed
-  (seven precious HL7v2 transcripts, sha256-identical before/after),
-  `.gitattributes`' `-text` pattern moved in the same commit as the
-  files it protects, three vacated component directories left with
-  pointer READMEs. The top-level README gained a "See it run" section
-  and `demos/` its own front-door README, both landed verbatim from
-  the design channel's own appendix and live-probed to a rendered bed
-  board in two commands. Oracle bracket `721adb6`→tip: all
-  twenty-seven roots identical, as expected for a docs-only move.
-  Successor tag debt: `stable-20260807-demos-front-door` at this
-  session's own closing tip, owed to the next session's own Step 0).
+- Nothing in progress at this close (vendoring arc close, ADR-0074,
+  2026-08-07).
 
 ## Next (backlog, no session scheduled)
 - The lookup-column `time` gap (named in the schema-invalid family
@@ -248,9 +234,8 @@ Rows here are LIVE. Closed rows move to Done with their notes.
 scaffolding compaction B, `notes/ADRs.md` ADR-0046 — each closed arc's own
 pointers rotate to a dated header in the attic at that arc's own close,
 `notes/adr/0055-alignment-arc-close.md` AR-AC-5)
-- 2026-08-07 — player-arc-close — ADR-0068
-- 2026-08-07 — census-substance — ADR-0069
-- 2026-08-07 — vendoring-batch-1 — ADR-0070
-- 2026-08-07 — vendoring-batch-2 — ADR-0071
-- 2026-08-07 — vendoring-batch-3 — ADR-0072
-- 2026-08-07 — demos-front-door — ADR-0073
+<!-- ADR-0074's own Done pointer lands here at Step 3 (the closing ADR
+     itself), not this step -- the same dangling-reference
+     sentinel-avoidance every prior arc close has applied preemptively
+     (ADR-0055 AR-AC-5, ADR-0064 AR-UC-5, ADR-0068 AR-PC-5), per this
+     session's own AR-VAC-5. -->

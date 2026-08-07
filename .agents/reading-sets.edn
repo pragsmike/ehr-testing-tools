@@ -121,6 +121,28 @@
 ;; grown by the board re-exports) + 104 + 119 + 212 + 732 + 172
 ;; (build-session/SKILL.md) = 1773. Re-applying the standing formula:
 ;; 1773 x 1.15 = 2038.95 -> 2040. Budget moves 1995 -> 2040.
+;;
+;; Re-derivation (2026-08-07, vendoring arc close, `notes/adr/
+;; 0074-vendoring-arc-close.md` AR-VAC-4): diffing every set's own
+;; `:paths` membership against `git log b7ed686..HEAD --name-only`
+;; (b7ed686 = the player arc's own closing commit, the base since which
+;; `state.md`/`reading-sets.edn` were last touched) found one set with
+;; a touched member: `:onboarding` (`.agents/plans/roadmap.md` -- Now/
+;; Done churn across five vendoring-arc sessions, shrunk again this
+;; session by AR-VAC-5's own Done-pointer rotation; the five
+;; `.agents/*/README.md` files also grew, indexing those sessions' own
+;; records and prompts). No `:corpus`/`:sim`/`:judge`/`:docs` member
+;; path appears in that diff (the arc's own src/test edits touched
+;; `sim-trajectory`'s census tool and new gate/round-trip test files,
+;; none of them a `:paths` member of those four sets), so those four
+;; budgets stay untouched. `:onboarding`'s fresh actual (`wc -l` sum
+;; across all eight `:paths`, measured AFTER the rotation landed): 284
+;; (AGENTS.md) + 49 + 57 + 147 + 95 + 33 (the five READMEs) + 241
+;; (roadmap.md, post-rotation) + 172 (build-session/SKILL.md) = 1078.
+;; Re-applying the standing formula (actual x1.15, rounded up to the
+;; nearest 5): 1078 x 1.15 = 1239.7 -> 1240. Budget moves 1180 -> 1240
+;; (an increase -- five sessions' worth of index/Now/Done churn outpaced
+;; this close's own rotation, unlike the player close's own decrease).
 
 {:onboarding
  {:paths ["AGENTS.md"
@@ -143,7 +165,7 @@
   ;; because that's a different audience from "a cold task-class session",
   ;; and forcing every onboarding read to carry its cost would budget for an
   ;; activity most onboarding sessions never do (migration session 5, AR-3).
-  :budget-lines 1180}
+  :budget-lines 1240}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one

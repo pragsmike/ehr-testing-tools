@@ -1474,3 +1474,30 @@ epoch millis) and the board (ADR-0067, the `--board` whiteboard, the
 on a fresh clone for the first time since ADR-0060).
 - 2026-08-06 — player-fold — ADR-0066
 - 2026-08-07 — player-board — ADR-0067
+
+**Appended 2026-08-07 (vendoring arc close, `notes/adr/
+0074-vendoring-arc-close.md` AR-VAC-5):** this pointer was the live
+roadmap's own sole current Done entry from the player arc's own close
+until now — the same disclosed-leftover class every prior close has
+handled for its own predecessor. It relocates here now, verbatim, at
+the next arc's own close.
+- 2026-08-07 — player-arc-close — ADR-0068
+
+## Vendoring arc — closed 2026-08-07 (ADR-0069–0074)
+Relocated verbatim from the live roadmap's own Done section by this
+arc's own close (`notes/adr/0074-vendoring-arc-close.md` AR-VAC-5); see
+that ADR for the arc's full account. Five sessions: census substance
+(ADR-0069, the honest catalog — 51 zero-on-every-seed / 33
+produces-content), batch 1 (ADR-0070, five landed, `injuries.json`
+deferred whole), batch 2 (ADR-0071, seven landed, `anemia___unknown_
+etiology.json` deferred whole, the scenarios home born), batch 3
+(ADR-0072, four landed, `colorectal_cancer.json` deferred whole, the
+verbatim-law gate given teeth), demos front door (ADR-0073, the
+operator surface moved to the root, "See it run" in the README).
+Sixteen modules vendored, twenty-three ailments in-tree, oracle roots
+11→27.
+- 2026-08-07 — census-substance — ADR-0069
+- 2026-08-07 — vendoring-batch-1 — ADR-0070
+- 2026-08-07 — vendoring-batch-2 — ADR-0071
+- 2026-08-07 — vendoring-batch-3 — ADR-0072
+- 2026-08-07 — demos-front-door — ADR-0073
