@@ -2,6 +2,17 @@
 *.png binary
 *.jar binary
 
+# The vendored-modules tree is byte-verbatim BY LAW (NOTICE's own "no
+# reformatting, no re-indentation" clause) -- line-ending normalization
+# has no business anywhere in it. Found the hard way (vendoring batch
+# 3, AR-VB3-R1, notes/adr/0072-vendoring-batch-3.md): the root rule
+# above silently normalized `lookup_tables/uti_recurrence.csv` (CRLF
+# upstream) to LF on checkout while its NOTICE row kept recording the
+# true CRLF hash, so the row stayed honest while a fresh clone got the
+# wrong bytes. -text disables normalization entirely, the same fix
+# this file already uses for the HL7 ER7 fixtures below.
+components/sim/resources/sim/modules/** -text
+
 # HL7v2 ER7 messages use \r (not \n) as their segment separator; these
 # demo transcripts carry that wire format literally (blank-line-
 # separated messages, \r within each). -text disables line-ending
