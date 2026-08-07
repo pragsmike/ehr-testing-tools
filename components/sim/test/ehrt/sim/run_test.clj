@@ -296,14 +296,19 @@
       (finally (.delete tmp)))))
 
 (deftest merge-config-file-suggests-a-same-stem-sibling-file
-  (testing "the founding incident's exact shape: config/busy-weekday.md
-            is a real, deliberately untouched pre-existing fixture in
-            this repo -- busy-weekday.edn does not exist alongside it"
-    (let [r (run/merge-config-file {:config "config/busy-weekday.edn"})]
+  (testing "the founding incident's own shape, reproduced in a fixture
+            this test builds itself (player board, AR-BB2-R): a
+            same-stem .md sibling sits where the requested .edn was
+            named -- busy-weekday.edn does not exist alongside it"
+    (let [dir (temp-dir-path*)
+          md-path (str dir "/busy-weekday.md")
+          edn-path (str dir "/busy-weekday.edn")
+          _ (spit md-path "not actually config")
+          r (run/merge-config-file {:config edn-path})]
       (is (result/error? r))
       (is (= :config-not-found (:category r)))
-      (is (= "config/busy-weekday.edn" (:path (:payload r))))
-      (is (= "config/busy-weekday.md" (:did-you-mean (:payload r)))))))
+      (is (= edn-path (:path (:payload r))))
+      (is (= md-path (:did-you-mean (:payload r)))))))
 
 (deftest merge-config-file-with-no-config-key-is-the-identity-on-opts
   (is (= (result/ok {:seed 1 :patients 2}) (run/merge-config-file {:seed 1 :patients 2}))))
