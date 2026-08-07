@@ -212,3 +212,25 @@ change to the contract itself.
   source. Two same-arc instances of the cheaper method being wrong:
   AR-U2-R's non-resolving fences (ADR-0060) and the 38-vs-36 token
   count (ADR-0062).
+
+## From the player arc (ADR-0066–0068)
+
+- **Tests build their own directories, standing** [A] (from
+  ADR-0067 AR-BB2-R, its own append to this register explicitly
+  deferred to this arc's own close per this register's own contract):
+  *"Tests should build their own directories as needed."* Verbatim,
+  the author, 2026-08-07. A test that reads a live mutable repo
+  directory — depending on an untracked, author-held file's mere
+  presence or absence — is the violation; tracked test-fixtures
+  directories are fine, out of this rule's own scope (the same
+  carve-out ADR-0067's own enumeration drew for `config/synthea/` and
+  every lint test's own literal walk of the tracked tree).
+- **Folds stay strict, sinks stay lenient** [C] (channel-inferred,
+  generalized from ADR-0066's fold and ADR-0067's board-sink design —
+  the author may strike it): a coherence-law fold rejects what it
+  cannot faithfully reconstruct (`:unsupported-trigger` — total over a
+  documented trigger set, never silently partial); a display sink
+  absorbing foreign traffic skips-with-cue and counts what it skipped,
+  never crashes and never silently mis-folds. The two live side by
+  side deliberately: the fold is the coherence property's own spec,
+  the sink is what a stranger's real feed hits.
