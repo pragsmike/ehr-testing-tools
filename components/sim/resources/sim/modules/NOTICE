@@ -86,6 +86,98 @@ prioritization table).
 | `dermatitis/mid_severe_eczema_obs.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/dermatitis/mid_severe_eczema_obs.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `db066262b23c1a6f056bc8d41436fc96a0f4cce1b956f72a610e148b12aa94f7` | 2026-08-07 |
 | `dermatitis/moderate_cd_obs.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/dermatitis/moderate_cd_obs.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `8bf6c71b34bbb1329f447598c17e77087daafa4abfad77e7a870a6b3cae317a1` | 2026-08-07 |
 | `dermatitis/severe_cd_obs.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/dermatitis/severe_cd_obs.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `0c237d688549aacc9e1be16dbc96e93cf5dc8fc66a182ec0aa3b9522e7894360` | 2026-08-07 |
+| `metabolic_syndrome_care.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/metabolic_syndrome_care.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `4262a2de56c3257c5594ffa144548620f505bc33070b13c784ce3a9303f296c5` | 2026-08-07 |
+| `metabolic_syndrome/medications.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/metabolic_syndrome/medications.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `a37d47b6b7ad00aed3a09490f474321c07a6c598aee8f3f67c0f15437de4a55e` | 2026-08-07 |
+| `metabolic_syndrome/kidney_conditions.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/metabolic_syndrome/kidney_conditions.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `e5cfae6dfed0e68d4f0b1ec964501222a32d9c43c9915ad8cc88a2d2054d97b9` | 2026-08-07 |
+| `metabolic_syndrome/amputations.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/metabolic_syndrome/amputations.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `887bef3bd4913bdb1598121bc133cc187f9b1de8d3ec4d54f4c7ba8d36f93987` | 2026-08-07 |
+| `metabolic_syndrome/dme_supplies.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/metabolic_syndrome/dme_supplies.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `7ea5b2dd01fff46dac335aceb6cb9b9f01169add5575afe6e7a12a74a4bf9a2e` | 2026-08-07 |
+| `vhd_pulmonic.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/vhd_pulmonic.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `c3231a26cf5de1923c5fe560683fd631950c303fbcbb12e0a0dc23a6beae4cd4` | 2026-08-07 |
+| `heart/vhd_risks.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/heart/vhd_risks.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `a99fc0c6fe513a327ad41a2404d60403963fc615babf5578e498a3262d13a625` | 2026-08-07 |
+| `lookup_tables/vhd_ps.csv` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/lookup_tables/vhd_ps.csv` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `3d0cd9ca1959c3bcefa97275989eed16749a43877b5bb31f5a68a1fa85d58422` | 2026-08-07 |
+| `lookup_tables/vhd_pr.csv` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/lookup_tables/vhd_pr.csv` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `6a6591ca68b1b18355ecf99ad048e5670a9280a565cb74d2aa649ff012263d0c` | 2026-08-07 |
+| `vhd_tricuspid.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/vhd_tricuspid.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `73217eb766258836ace43902cc6a87a8e4214afe07fea0841d753ccc0876e045` | 2026-08-07 |
+| `lookup_tables/vhd_tr.csv` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/lookup_tables/vhd_tr.csv` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `76584a6157ad7beafabe2dbd92210389d0e69638107367d304f034eaf9448203` | 2026-08-07 |
+| `lookup_tables/vhd_ts.csv` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/lookup_tables/vhd_ts.csv` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `6cca76c0ec2391d70eceaeed20b16d17fa19d4b969d8299724b74bff16a33cb7` | 2026-08-07 |
+| `med_rec.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/med_rec.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `1698c9ddfc09d8e2fe9592b8f489c0db47b5ba070c30fa0d428a21a21e5e70c0` | 2026-08-07 |
+
+**Vendoring batch 3 (2026-08-07, ADR-0072, AR-VB3-1/2): four content-
+producing modules land -- metabolic-syndrome-care, vhd-pulmonic,
+vhd-tricuspid, med-rec; a fifth, `colorectal_cancer.json`, was assessed
+and DEFERRED WHOLE (below), not vendored.** The vendoring arc's fourth
+session, following batch 2 (ADR-0071) and this same session's own rider
+(AR-VB3-R1, above the table: `uti_recurrence.csv` re-vendored byte-true
+and gated). Composition is a DISCLOSED, channel-inferred refinement of
+the concurred curation plan's own "metabolic-syndrome pair, vhd
+quartet, colorectal-cancer, med-rec": the round-trip gate makes
+zero-substance modules unvendorable by this arc's own standard, and
+one-module-per-patient assignment gives family pairing no runtime
+meaning today, so this batch vendors the FIVE content-producers named
+in the family groupings and records the THREE zero-substance siblings
+(`metabolic_syndrome_disease.json`, `vhd_aortic.json`, `vhd_mitral.json`
+-- all `:zero-on-every-seed` in the census substance artifact) as
+not-vendorable-under-the-gate, joining the attribute-blocked set;
+revisit trigger: multi-module patient assignment (Wave G's own standing
+deferral) giving family pairing a runtime meaning, or the census
+register's own future word on either family. Fresh closure enumeration
+against the pin checkout found FOURTEEN new files across the four
+landed modules (all JSON-complete against the census substance
+artifact's own `:closure-file-count` for `metabolic-syndrome-care`
+(6) and `med-rec` (1); UNDERCOUNTED for `vhd-pulmonic`/`vhd-tricuspid`
+(each reports 2, JSON-only, missing two lookup-table CSVs apiece --
+the SAME `asthma.json`-class undercount ADR-0070's own AR-VB1-2 lesson
+named, repeated here) -- `heart/vhd_risks.json`, a called submodule
+shared by both `vhd_pulmonic.json` and `vhd_tricuspid.json`, vendored
+once via `vhd-pulmonic`, reused byte-identical for `vhd-tricuspid`; the
+shared `anemia/anemia_sub.json` submodule, already vendored at this
+pin from batch 2's own `hypothyroidism.json` closure, re-verified
+byte-identical before reuse in `metabolic-syndrome-care`'s own closure,
+not re-copied). Every new file confirmed LF upstream (none of this
+batch's own fourteen new files are CRLF at the source, unlike
+`uti_recurrence.csv`; the new `-text` rule protects them regardless).
+Engine-layer round-trip proof (`ehrt.sim-emit-hl7.vendored-<module>-
+test`, `components/sim-emit-hl7/test/`), seed 20260802, 300 patients, a
+100-year `:module-horizon-days` (36500) -- the same convention batches
+1-2 established, no population/horizon deviation needed this batch.
+`vhd-pulmonic`/`vhd-tricuspid` both compile to real content that is
+ENTIRELY `:outpatient-visit`/`:outpatient-visit-end` pairs at 300
+patients (no `:condition-onset`/`:medication-order` observed this
+session's own round trips) -- consistent with the census substance
+artifact's own tiny `:event-counts [3 3 3]` for both, the smallest
+content-producing closures vendored to date; both tests assert on the
+real observed kind set rather than the broader set most other vendored
+roots' tests assert on, disclosed here rather than silently narrowed.
+
+**`colorectal_cancer.json`: assessed, DEFERRED WHOLE, not vendored
+(2026-08-07, ADR-0072, the AR-VB1-6/AR-VB2-5 bail-out precedent,
+repeated a third time).** This module calls the SAME shared
+`anemia/anemia_sub.json` submodule `hypothyroidism.json` already calls
+cleanly (batch 2) -- but unlike `hypothyroidism`'s own call path,
+`colorectal_cancer.json`'s own call into `Anemia_Submodule` does NOT
+always land inside an open encounter, so `anemia_sub.json`'s own `End
+Any Active Encounter Just In Case` state (the SAME standing
+`ehrt.sim-trajectory.gmf-interpreter` gap `anemia___unknown_etiology.
+json` already surfaced in batch 2 -- an upstream "close if open, else
+no-op" idiom compiling here as an UNCONDITIONAL `:encounter-end`)
+sometimes fires with no encounter open, producing a dangling
+`:discharge` and tripping `ehrt.sim-check.check`'s own
+`:discharge-follows-admission`/`:clinical-content-only-when-admitted`
+invariants. Confirmed this session at 300 patients across three seeds
+(20260802, 1, 42): 2 of 3 seeds rejected (4 violations each), one
+clean -- not universal every seed the way `anemia___unknown_etiology.
+json`'s own three-for-three finding was, but still a real,
+non-negligible rate at population scale, the SAME root cause already
+disclosed and understood, not a new gap. Per this session's own
+AR-VB3-4 fence (no loader/interpreter/engine changes), `colorectal_
+cancer.json` is NOT vendored -- no NOTICE row, no test, no oracle root.
+Its own closure contributes ZERO new files regardless (the only
+genuinely new closure member is `colorectal_cancer.json` itself; the
+shared `anemia/anemia_sub.json` submodule was already vendored via
+`hypothyroidism.json`'s own closure and stays exactly as it is,
+untouched, unaffected). Revisit trigger: the SAME one
+`anemia___unknown_etiology.json` already named -- a future session
+willing to extend `emit-and-advance`'s own `:encounter-end` case to
+no-op when no encounter is open -- tracked as the SAME roadmap Deferred
+row, `.agents/plans/roadmap.md`.
 
 **Vendoring batch 2 (2026-08-07, ADR-0071, AR-VB2-1/2): seven of the chronic
 clinic tail's eight modules land -- hypothyroidism, rheumatoid arthritis,
