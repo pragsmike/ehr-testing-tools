@@ -5,16 +5,20 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- Nothing in progress at this close (vendoring batch 1, ADR-0070,
-  2026-08-07 — the vendoring arc's second session; five everyday
-  ambulatory modules landed — asthma, bronchitis, sleep-apnea,
-  fibromyalgia, dementia; a sixth, `injuries.json`, assessed and
-  deferred whole on a real `gmf-interpreter` gap. Successor tag debt:
-  `stable-20260807-vendoring-batch-1` at this session's own closing
-  tip, owed to the next session's own Step 0. Next: batch 2 — "the
-  chronic clinic tail" — awaits the author's own go and its own
-  prompt, per ADR-0070's own curation-plan record; wellness-encounters
-  waits its own design pass, never routine vendoring).
+- Nothing in progress at this close (vendoring batch 2, ADR-0071,
+  2026-08-07 — the vendoring arc's third session; seven of the chronic
+  clinic tail's eight modules landed — hypothyroidism,
+  rheumatoid-arthritis, osteoarthritis, osteoporosis,
+  attention-deficit-disorder, allergic-rhinitis, dermatitis; the
+  eighth, `anemia___unknown_etiology.json`, assessed and deferred
+  whole on a real dangling-`:encounter-end` `gmf-interpreter` gap. A
+  `scenarios/` home also landed this session (AR-VB2-R), sibling of
+  `demos/`, first entry `busy-tuesday`. Successor tag debt:
+  `stable-20260807-vendoring-batch-2` at this session's own closing
+  tip, owed to the next session's own Step 0. Next: batches 3-4 await
+  the author's own go and their own composition, per ADR-0070's own
+  curation-plan record; wellness-encounters waits its own design pass,
+  never routine vendoring).
 
 ## Next (backlog, no session scheduled)
 - The lookup-column `time` gap (named in the schema-invalid family
@@ -75,6 +79,24 @@ per item; done items move to the bottom of their section with a date and sha.
 
 ## Deferred (explicitly, with revisit triggers)
 Rows here are LIVE. Closed rows move to Done with their notes.
+- **`EncounterEnd` no-op-when-nothing-open** (2026-08-07, vendoring
+  batch 2, `notes/ADRs.md` ADR-0071, the `anemia___unknown_etiology.
+  json` bail-out finding): upstream Synthea's own `EncounterEnd` idiom
+  "close the encounter IF one is open, else no-op" (e.g. `anemia/
+  anemia_sub.json`'s own `End Any Active Encounter Just In Case`)
+  compiles here as an UNCONDITIONAL `:encounter-end` —
+  `ehrt.sim-trajectory.gmf-interpreter/emit-and-advance`'s own
+  `:encounter-end` case never checks whether `index-of-last-open-
+  encounter` actually found one before emitting, producing a dangling
+  `:discharge` that trips `ehrt.sim-check.check`'s own
+  `:discharge-follows-admission` invariant at population scale (12,
+  17, and 6 violations of 300 patients across three seeds tried).
+  Blocks `anemia___unknown_etiology.json` (deferred whole, not
+  vendored) and any future module whose own closure reaches this same
+  idiom. Revisit trigger: a future session willing to extend
+  `emit-and-advance`'s own `:encounter-end` case to no-op (open design
+  question: silently drop the event, or attach a `:no-op true` marker)
+  when no encounter is open.
 - **Corpus player `:mllp` transport sink** (`notes/adr/0014-corpus-
   player.md`, deferred whole per that session's own bail-out
   procedure): `:mllp` already exists as a *framing* (byte-level
@@ -142,6 +164,17 @@ Rows here are LIVE. Closed rows move to Done with their notes.
   and the labeled-filename fix (`artifact-filename`, `-main`'s optional
   third arg) both land — their own original text relocated verbatim
   into ADR-0069's own record, not restated here.**
+  **Dated intake (2026-08-07, vendoring batch 2, `notes/ADRs.md`
+  ADR-0071 AR-VB2-4, adjacent to (b), neither acted on): (i) the
+  `:closure-file-count` metric counts JSON modules only, never
+  lookup-table CSV data files (ADR-0070's own AR-VB1-2 lesson) — this
+  batch had zero CSVs so the metric held, but a future batch could
+  repeat the undercount; (ii) the three-seed sample can miss
+  population-scale failures a real round-trip catches —
+  `injuries.json` (batch 1) and `anemia___unknown_etiology.json`
+  (batch 2) are now two independent findings the census's own narrow
+  sample missed. Revisit trigger: a future session extending the
+  census tool itself, not a vendoring session.**
   **Dated note (2026-08-05, standing-equipment promotion, `notes/ADRs.md`
   ADR-0044 AR-P-4): `ehrt.sim-trajectory.census` moved from
   `development/src` into `components/sim-trajectory` — relocation and
@@ -208,3 +241,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-07 — player-arc-close — ADR-0068
 - 2026-08-07 — census-substance — ADR-0069
 - 2026-08-07 — vendoring-batch-1 — ADR-0070
+- 2026-08-07 — vendoring-batch-2 — ADR-0071
