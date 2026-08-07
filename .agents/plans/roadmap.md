@@ -167,6 +167,16 @@ Rows here are LIVE. Closed rows move to Done with their notes.
   `congestive_heart_failure`/`contraceptives`/`covid19` directly
   (census-confirmed). Revisit trigger: Wave E's own design session, or
   whichever session first needs a real vital-sign baseline.
+  **Dated note (2026-08-07, vendoring batch 1, AR-VB1-5):** the
+  substance census (ADR-0069's artifact,
+  `components/sim-trajectory/docs/census/2026-08-07-synthea-7e08387-substance.edn`)
+  shows this blockage is now partial, post-Wave-VS —
+  `congestive-heart-failure` walks `[0 117 0]` and `contraceptives`
+  walks `[0 89 0]`, both `:produces-content`; `covid19` alone walks
+  `[0 0 0]`, `:zero-on-every-seed`, still fully blocked. The trigger
+  above is unchanged (a real vital-sign baseline register, not yet
+  built) — only the "blocks all three directly" citation updates to
+  the current evidence.
 - **Lookup-table column `time` — genuinely open, distinct from the
   Wave LC column-resolution mechanism** (compaction A, AR-A-5
   STALE-AUDIT disposition): Wave LC (ADR-0038 AR-1) DOES
