@@ -162,14 +162,21 @@ and prompt archive.
 - [ ] The session's working directory was confirmed as the ext4
       clone at session start (the `/mnt/c` mirror retired 2026-08-05,
       ADR-0047 AR-C-3 — no second clone root to resolve anymore).
-- [ ] The latest CI conclusion for main was checked at session start
-      (one command, e.g. `gh run list --limit 2` or the equivalent
-      Actions API call) and disclosed in the session record — a red
-      CI at preflight is a finding to report before proceeding, never
-      silently passed (ci current, `notes/ADRs.md` ADR-0075 AR-CI-3:
-      CI ran red across many commits with nobody — neither a build
-      session nor the design channel's own verification loop —
-      watching, until a session finally checked).
+- [ ] The LAST FIVE runs' conclusions for main were checked at session
+      start (e.g. `gh run list --limit 5 --branch main`), not just the
+      latest — a probabilistic red (an intermittent failure) hides
+      behind any single green. All five are disclosed in the session
+      record; a red anywhere among them is a finding to report before
+      proceeding, never silently passed (ci current, `notes/ADRs.md`
+      ADR-0075 AR-CI-3: CI ran red across many commits with nobody —
+      neither a build session nor the design channel's own
+      verification loop — watching, until a session finally checked;
+      widened to five runs, quality riders AR-QR-3, after a session
+      found the flaky-test red hiding one run behind an all-green
+      "latest run" check). Watching a run TO CONCLUSION stays reserved
+      for a session whose own claim is about CI (the AR-CI-4
+      precedent) — an ordinary session discloses the five and
+      proceeds, never blocks waiting on one still running.
 - [ ] `git diff --cached --stat` was reviewed before every commit.
 - [ ] Every commit message came from a file, not an inline heredoc.
 - [ ] `gitleaks` and `clojure -M:poly check` are green before every push.

@@ -39,6 +39,10 @@ per item; done items move to the bottom of their section with a date and sha.
   work, not built.
 
 ## Externals (author-only)
+- Enable GitHub's workflow-failure notification email for this
+  repository (one settings toggle) — closes the nobody-watching gap
+  ADR-0075 named at zero session cost; named quality riders AR-QR-3,
+  2026-08-07.
 - NIST licensing inquiry: send the drafted gist (retires the confirmation-pending
   posture cited on the storefront Gate row)
 - IG pinning: choose and commit the profile-tier conformance target (Gate row's
