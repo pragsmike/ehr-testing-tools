@@ -314,6 +314,84 @@
                   :modules [(sim-trajectory/singleton-closure module)] :module-assignment [{:module-id "dementia" :weight 1}]
                   :module-horizon-days 36500})))
 
+;; --- Vendoring batch 2 (2026-08-07, ADR-0071, AR-VB2-3): seven NEW
+;; engine-layer roots -- FIRST BASELINES, same convention batch 1's own
+;; five established (seed 20260802, 300 patients, a 100-year
+;; `:module-horizon-days`, 36500), with two per-module deviations each
+;; `components/sim-emit-hl7/test/`'s own round-trip test already
+;; established empirically this session, disclosed in NOTICE's own
+;; dated batch-2 entry: `attention-deficit-disorder-pair` carries
+;; `:history true` (ADR-0042's own opt-in -- this closure's own
+;; `Behavior_Therapy` loop can straddle the fixed registration instant);
+;; `allergic-rhinitis-pair` runs 3000 patients, not 300 (this closure's
+;; own low onset odds land in early childhood, always pre-registration
+;; for an adult-sampled population at the batch convention's own
+;; population size -- 3000 is where real post-registration, message-
+;; rendering content first appears). `hypothyroidism-pair`/
+;; `osteoarthritis-pair`/`dermatitis-pair` follow the `ear-infections-
+;; engine-pair` shape (a resolve-call-path needed, no lookup tables);
+;; `rheumatoid-arthritis-pair`/`osteoporosis-pair`/`attention-deficit-
+;; disorder-pair` are single-file closures, the `bronchitis-pair`/etc.
+;; idiom. An eighth module, `anemia___unknown_etiology.json`, was
+;; assessed this session and DEFERRED WHOLE (a real `gmf-interpreter`
+;; dangling-`:encounter-end` gap the census's own narrow sample missed,
+;; `components/sim/resources/sim/modules/NOTICE`'s own dated entry) --
+;; no root for it here, by design, not omission.
+
+(defn- hypothyroidism-pair []
+  (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
+        closure (:payload (sim-trajectory/load-closure "hypothyroidism"
+                                            (slurp (io/resource "sim/modules/hypothyroidism.json"))
+                                            resolve-call-path))]
+    (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
+                  :modules [closure] :module-assignment [{:module-id "hypothyroidism" :weight 1}]
+                  :module-horizon-days 36500})))
+
+(defn- rheumatoid-arthritis-pair []
+  (let [module (:payload (sim-trajectory/load-module "rheumatoid-arthritis" (slurp (io/resource "sim/modules/rheumatoid_arthritis.json"))))]
+    (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
+                  :modules [(sim-trajectory/singleton-closure module)] :module-assignment [{:module-id "rheumatoid-arthritis" :weight 1}]
+                  :module-horizon-days 36500})))
+
+(defn- osteoarthritis-pair []
+  (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
+        closure (:payload (sim-trajectory/load-closure "osteoarthritis"
+                                            (slurp (io/resource "sim/modules/osteoarthritis.json"))
+                                            resolve-call-path))]
+    (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
+                  :modules [closure] :module-assignment [{:module-id "osteoarthritis" :weight 1}]
+                  :module-horizon-days 36500})))
+
+(defn- osteoporosis-pair []
+  (let [module (:payload (sim-trajectory/load-module "osteoporosis" (slurp (io/resource "sim/modules/osteoporosis.json"))))]
+    (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
+                  :modules [(sim-trajectory/singleton-closure module)] :module-assignment [{:module-id "osteoporosis" :weight 1}]
+                  :module-horizon-days 36500})))
+
+(defn- attention-deficit-disorder-pair []
+  (let [module (:payload (sim-trajectory/load-module "attention-deficit-disorder" (slurp (io/resource "sim/modules/attention_deficit_disorder.json"))))]
+    (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
+                  :modules [(sim-trajectory/singleton-closure module)] :module-assignment [{:module-id "attention-deficit-disorder" :weight 1}]
+                  :module-horizon-days 36500 :history true})))
+
+(defn- allergic-rhinitis-pair []
+  (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
+        closure (:payload (sim-trajectory/load-closure "allergic-rhinitis"
+                                            (slurp (io/resource "sim/modules/allergic_rhinitis.json"))
+                                            resolve-call-path))]
+    (engine-pair {:seed 20260802 :patients 3000 :pathway {:name "module-only" :steps []}
+                  :modules [closure] :module-assignment [{:module-id "allergic-rhinitis" :weight 1}]
+                  :module-horizon-days 36500})))
+
+(defn- dermatitis-pair []
+  (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
+        closure (:payload (sim-trajectory/load-closure "dermatitis"
+                                            (slurp (io/resource "sim/modules/dermatitis.json"))
+                                            resolve-call-path))]
+    (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
+                  :modules [closure] :module-assignment [{:module-id "dermatitis" :weight 1}]
+                  :module-horizon-days 36500})))
+
 (def ^:private roots
   {"appendicitis"                       appendicitis-batch
    "sore-throat"                        sore-throat-batch
@@ -330,7 +408,14 @@
    "bronchitis"                         bronchitis-pair
    "sleep-apnea"                        sleep-apnea-pair
    "fibromyalgia"                       fibromyalgia-pair
-   "dementia"                           dementia-pair})
+   "dementia"                           dementia-pair
+   "hypothyroidism"                     hypothyroidism-pair
+   "rheumatoid-arthritis"               rheumatoid-arthritis-pair
+   "osteoarthritis"                     osteoarthritis-pair
+   "osteoporosis"                       osteoporosis-pair
+   "attention-deficit-disorder"         attention-deficit-disorder-pair
+   "allergic-rhinitis"                  allergic-rhinitis-pair
+   "dermatitis"                         dermatitis-pair})
 
 (defn -main
   "Writes one <root>.edn per root into out-dir (pr-str of the batch or
