@@ -204,7 +204,8 @@
      :flags [{:flag "--path" :doc "alternative to the positional PATH"}
              {:flag "--rate" :doc "stream-seconds per wallclock-second -- 1 is real time" :default "60"}
              {:flag "--idle-cap" :doc "wallclock cap, in seconds, on any single inter-event wait -- a capped wait emits a skip cue (never into a data sink) and is counted separately from a clamped one" :default "5"}
-             {:flag "--ticker" :doc "\"full\" (a complete rendered block per message) or \"line\" (one compact MSH-7/MSH-9/PID-3 line per message) -- ignored when --sink is given" :default "full"}
+             {:flag "--ticker" :doc "\"full\" (a complete rendered block per message) or \"line\" (one compact MSH-7/MSH-9/PID-3 line per message) -- ignored when --sink is given; --board wins over it when both are given" :default "full"}
+             {:flag "--board" :doc "stream-minutes per snapshot -- shows the occupied beds, grouped by ward, instead of a message-by-message ticker. Wins over --ticker when both are given; ignored when --sink is given."}
              {:flag "--sink" :doc "a file: destination designator -- write the paced output (byte-identical to unpaced) there instead of showing the ticker. dir:, blaze:, and mllp: are recognized but deferred."}]}]})
 
 (defn group-names

@@ -39,6 +39,7 @@
             [ehrt.corpus.interface :as sim]
             [ehrt.corpus.interface :as display]
             [ehrt.corpus.interface :as player]
+            [ehrt.corpus.interface :as board]
             ;; corpus-io stage 2 (2026-07-31, ADR-0017): the transport
             ;; seam, required directly since that stage -- same alias
             ;; names as before it moved.
@@ -63,6 +64,9 @@
    ;; ADR-0014: ehrt play's own pacing flags.
    :rate {:coerce :double}
    :idle-cap {:coerce :double}
+   ;; --board (player board, ADR-0067): stream-minutes per snapshot,
+   ;; the same whole-count convention --seed already uses.
+   :board {:coerce :long}
    ;; Digit-only strings that are identifiers, not numbers -- must not be
    ;; auto-coerced to a long (which would break ProcessBuilder's String[]
    ;; args downstream in corpus.generate/invocation).
@@ -1249,6 +1253,58 @@
                     (.write ^java.io.OutputStream out ^bytes (:payload r)))))
      :close-fn (fn [] (.close ^java.io.OutputStream out))}))
 
+(defn- board-sink
+  "AR-BB2-3/4 (player board, `notes/ADRs.md` ADR-0067): the bed
+  board's own sink -- closes over a fold accumulator and the board's
+  own snapshot cadence. Each event folds via
+  `ehrt.corpus.interface/board-fold-event` (the exported
+  `ehrt.sim-emit-hl7.interface/fold-message`, wrapped); a message
+  whose own trigger is outside the emitter's handled set is SKIPPED
+  (the accumulator held unchanged) with a cue through the same
+  println-fn the ticker itself would use -- board IS the display, so
+  the cue prints inline, never routed to stderr (the cue rule,
+  ADR-0014). A snapshot renders the first time a message's own
+  timestamp crosses each successive board-minutes boundary measured
+  from the first parseable timestamp; a message with no parseable
+  timestamp neither advances that anchor nor crosses a boundary (the
+  same lenient posture the pacer itself takes). Returns {:sink-fn
+  :cue-fn :finalize-fn :snapshot-count-fn :unfolded-count-fn} --
+  play-command calls `finalize-fn` once after `run-plan!` completes (an
+  unconditional final snapshot at the last timestamp seen, regardless
+  of boundary position), then reads the two *-count-fn calls for the
+  result envelope."
+  [board-minutes println-fn]
+  (let [acc-atom (atom {})
+        first-ts (atom nil)
+        next-boundary-ms (atom nil)
+        last-ts (atom nil)
+        snapshot-count (atom 0)
+        unfolded-count (atom 0)
+        boundary-span-ms (* board-minutes 60000)
+        render! (fn [ts]
+                  (println-fn (board/board-render-snapshot @acc-atom ts))
+                  (swap! snapshot-count inc))
+        maybe-snapshot! (fn [ts]
+                          (when ts
+                            (reset! last-ts ts)
+                            (if (nil? @first-ts)
+                              (do (reset! first-ts ts)
+                                  (reset! next-boundary-ms (+ ts boundary-span-ms)))
+                              (when (>= ts @next-boundary-ms)
+                                (render! ts)
+                                (swap! next-boundary-ms + boundary-span-ms)))))]
+    {:cue-fn (fn [_idx] (println-fn "-- idle-skip: stream-time jumped --"))
+     :sink-fn (fn [event]
+                (let [{:keys [acc unfolded?]} (board/board-fold-event @acc-atom event)]
+                  (if unfolded?
+                    (do (println-fn "-- unfolded: unsupported message trigger, skipped --")
+                        (swap! unfolded-count inc))
+                    (reset! acc-atom acc)))
+                (maybe-snapshot! (player/message-timestamp-ms event)))
+     :finalize-fn (fn [] (when @last-ts (render! @last-ts)))
+     :snapshot-count-fn (fn [] @snapshot-count)
+     :unfolded-count-fn (fn [] @unfolded-count)}))
+
 (defn- validate-positive
   "opts's own numeric coercion (babashka.cli's :coerce :double on
   --rate/--idle-cap, same convention as --seed's :coerce :long) already
@@ -1350,32 +1406,34 @@
 
 (defn play-command
   "`ehrt play PATH [--rate R] [--idle-cap SECONDS] [--ticker full|line]
-  [--sink DESIGNATOR]` (ADR-0014, directories per ADR-0015): paces
-  PATH's own HL7 v2 (ER7) messages against their MSH-7 timestamps and
-  either renders them through a ticker (the default -- full blocks via
-  `render-er7-message`, or one compact `--ticker line` per event) or
-  writes them, byte-identically to an unpaced batch write, through a
-  `--sink` designator. `ehrt play PATH` at an arbitrarily large --rate,
-  ticker sink, is exactly `ehrt show PATH` (ADR-0013/ADR-0014's own
-  identity) -- ordinary division makes this true with no special-cased
-  rate value.
+  [--board N] [--sink DESIGNATOR]` (ADR-0014, directories per ADR-0015):
+  paces PATH's own HL7 v2 (ER7) messages against their MSH-7 timestamps
+  and either renders them through a ticker (the default -- full blocks
+  via `render-er7-message`, or one compact `--ticker line` per event),
+  renders a bed-board snapshot every N stream-minutes via `--board N`
+  (display-only, ADR-0067 -- wins over --ticker, ignored when --sink is
+  given), or writes them, byte-identically to an unpaced batch write,
+  through a `--sink` designator. `ehrt play PATH` at an arbitrarily
+  large --rate, ticker sink, is exactly `ehrt show PATH` (ADR-0013/
+  ADR-0014's own identity) -- ordinary division makes this true with no
+  special-cased rate value.
 
   PATH is a single HL7 v2 (ER7) file, or a directory of files sharing
   the sniffed v2 format (ADR-0015 -- concatenated in lexical filename
   order, see `play-events-from-dir`'s own docstring for the order
   contract). A FHIR JSON path, or a FHIR/mixed/unclassifiable
   directory, is :play-input-unsupported (a named, disclosed deferral --
-  a sim event-log adapter and a bed-board sink are future work,
-  ADR-0014).
+  a sim event-log adapter is future work, ADR-0014).
 
   :sleep-fn is injectable (defaults to real-sleep!, Thread/sleep) so
   hermetic tests never actually wait; :println-fn defaults to println.
   Returns the standard Result envelope (events emitted, stream-time
   span, wallclock elapsed, the resolved rate/idle-cap, and every count
-  player/plan itself computed) -- rendered through the ordinary
+  player/plan itself computed, plus :snapshot-count/:unfolded-count
+  when board mode ran) -- rendered through the ordinary
   TTY/--pretty/--edn/--json machinery, exactly like every other
   command; ADR-0014 does not add a second output convention."
-  [{:keys [path rate idle-cap ticker sink sleep-fn println-fn now-ms-fn]
+  [{:keys [path rate idle-cap ticker sink board sleep-fn println-fn now-ms-fn]
     :or {sleep-fn real-sleep! println-fn println now-ms-fn #(System/currentTimeMillis)}}]
   (let [rate-result (validate-positive :invalid-rate rate)]
     (if-not (result/ok? rate-result)
@@ -1383,8 +1441,12 @@
       (let [idle-cap-result (validate-positive :invalid-idle-cap idle-cap)]
         (if-not (result/ok? idle-cap-result)
           idle-cap-result
-          (let [resolved-rate (or (:payload rate-result) player/default-rate)
+          (let [board-result (validate-positive :invalid-board board)]
+            (if-not (result/ok? board-result)
+              board-result
+              (let [resolved-rate (or (:payload rate-result) player/default-rate)
                 resolved-idle-cap-ms (if-let [s (:payload idle-cap-result)] (long (* 1000 s)) player/default-idle-cap-ms)
+                resolved-board (:payload board-result)
                 f (io/file path)]
             (cond
               (not (.exists f))
@@ -1399,27 +1461,32 @@
                         plan-result (player/plan events {:rate resolved-rate :idle-cap-ms resolved-idle-cap-ms})
                         started-ms (now-ms-fn)
                         sink-result
-                        (if sink
-                          (resolve-play-sink sink println-fn)
-                          (result/ok {:sink-fn (case ticker
-                                                  "line" (ticker-line-sink println-fn)
-                                                  (ticker-full-sink println-fn))
-                                      :close-fn (fn [])
-                                      :cue-fn (ticker-cue-fn println-fn)}))]
+                        (cond
+                          sink (resolve-play-sink sink println-fn)
+                          resolved-board (result/ok (assoc (board-sink resolved-board println-fn) :close-fn (fn [])))
+                          :else (result/ok {:sink-fn (case ticker
+                                                        "line" (ticker-line-sink println-fn)
+                                                        (ticker-full-sink println-fn))
+                                            :close-fn (fn [])
+                                            :cue-fn (ticker-cue-fn println-fn)}))]
                     (if-not (result/ok? sink-result)
                       sink-result
-                      (let [{:keys [sink-fn close-fn cue-fn]} (:payload sink-result)
+                      (let [{:keys [sink-fn close-fn cue-fn finalize-fn snapshot-count-fn unfolded-count-fn]} (:payload sink-result)
                             run-result (run-plan! plan-result sleep-fn cue-fn sink-fn)
+                            _ (when finalize-fn (finalize-fn))
                             _ (close-fn)
                             ended-ms (now-ms-fn)
                             first-ts (some player/message-timestamp-ms events)
-                            last-ts (some player/message-timestamp-ms (reverse events))]
+                            last-ts (some player/message-timestamp-ms (reverse events))
+                            board-counts (when finalize-fn {:snapshot-count (snapshot-count-fn)
+                                                             :unfolded-count (unfolded-count-fn)})]
                         (result/ok (merge run-result
+                                           board-counts
                                            {:rate resolved-rate
                                             :idle-cap-ms resolved-idle-cap-ms
                                             :wallclock-ms (- ended-ms started-ms)
                                             :stream-span-ms (when (and first-ts last-ts) (- last-ts first-ts))
-                                            :sink (or sink "ticker")}))))))))))))))
+                                            :sink (or sink "ticker")}))))))))))))))))
 
 (defn- parse-canonicalizer-steps
   "\"id@v,id2@v2\" -> [[:id \"v\"] [:id2 \"v2\"]] -- the ordered

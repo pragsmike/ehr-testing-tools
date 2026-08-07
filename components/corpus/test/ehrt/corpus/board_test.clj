@@ -15,7 +15,7 @@
 
 (deftest render-snapshot-empty-accumulator-has-header-and-zero-tally-test
   (let [rendered (board/render-snapshot {} 1786060800000)]
-    (is (str/includes? rendered "2026-08-05T00:00:00Z")
+    (is (str/includes? rendered "2026-08-07T00:00:00Z")
         "the snapshot instant renders as ISO-8601 UTC")
     (is (str/includes? rendered "inpatients: 0"))
     (is (str/includes? rendered "active outpatients: 0"))
@@ -54,7 +54,11 @@
                     :status :admitted :class :outpatient :attending "9002"}
              "444" {:active-mrn "444" :persona {:name {:family "Delta" :given "D"}}
                     :status :discharged :location nil}
-             "555" {:active-mrn "555" :status :merged}}
+             ;; fold-merge absorbs into the survivor but never clears
+             ;; the merged-away entry's own stale :location -- a real
+             ;; tombstone can still carry one (live-probe-caught).
+             "555" {:active-mrn "555" :status :merged :class :inpatient
+                    :location {:ward "1E" :bed "9"}}}
         rendered (board/render-snapshot acc 1786060800000)]
     (testing "wards sorted, both wards present"
       (is (< (str/index-of rendered "1E") (str/index-of rendered "2W"))))
@@ -78,7 +82,7 @@
   split index, matched against the parser directly, not assumed."
   [dtm trigger mrn family given & {:keys [class ward bed attending mrg]}]
   (str "MSH|^~\\&|A|B|C|D|" dtm "||ADT^" trigger "^ADT_" trigger "|MSG|P|2.4\r"
-       "PID|1||" mrn "||" family "^" given "\r"
+       "PID|1||" mrn "||" family "^" given "||19800101\r"
        (when (or class ward attending)
          (str "PV1|1|" (or class "") "|" (or ward "") "^^" (or bed "") "||||" (or attending "") "\r"))
        (when mrg (str "MRG|" mrg "\r"))))

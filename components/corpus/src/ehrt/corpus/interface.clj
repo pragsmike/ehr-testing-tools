@@ -44,7 +44,8 @@
   2026-08-01, mounting `ehrt sim check`/`ehrt sim identifiers`/`ehrt
   sim version` -- a parity gap found ahead of the sim-cli retirement
   review, see notes/facts-register.md F2)."
-  (:require [ehrt.corpus.check :as check]
+  (:require [ehrt.corpus.board :as board]
+            [ehrt.corpus.check :as check]
             [ehrt.corpus.check.schemas :as schemas]
             [ehrt.corpus.display :as display]
             [ehrt.corpus.generate :as generate]
@@ -135,6 +136,12 @@
 (def message-type-trigger player/message-type-trigger)
 (def message-patient-id player/message-patient-id)
 (def frame-event player/frame-event)
+
+;; ---- board (`ehrt play --board`, player board, `notes/ADRs.md`
+;; ADR-0067): the bed board's fold-and-render pair, both pure -- the
+;; board sink (bases/cli) is the one named caller. ----
+(def board-fold-event board/fold-event)
+(def board-render-snapshot board/render-snapshot)
 
 ;; ---- the sim adapter (ADR-0005: in-process since 2026-07-28) ----
 (def sim-run! sim-adapter/run!)

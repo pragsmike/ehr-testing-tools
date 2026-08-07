@@ -2583,7 +2583,7 @@
   never populated here) to land attending at the right split index."
   [dtm trigger mrn family given & {:keys [class ward bed attending]}]
   (str "MSH|^~\\&|A|B|C|D|" dtm "||ADT^" trigger "^ADT_" trigger "|MSG|P|2.4\r"
-       "PID|1||" mrn "||" family "^" given "\r"
+       "PID|1||" mrn "||" family "^" given "||19800101\r"
        (when (or class ward attending)
          (str "PV1|1|" (or class "") "|" (or ward "") "^^" (or bed "") "||||" (or attending "") "\r"))))
 
