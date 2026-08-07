@@ -12,6 +12,12 @@ known-good, CLI-produced traces to replay — these are seeded now so
 that future work has real examples to start from rather than
 generating throwaway ones.
 
+**For a population-scale, run-it-yourself scenario instead of a small
+captured trace, see the sibling
+[`../scenarios/`](../scenarios/README.md)** (vendoring batch 2's own
+rider, `notes/ADRs.md` ADR-0071, AR-VB2-R) — a scenario is a runnable
+`config.edn` + `README.md`, not a fixture.
+
 ## Contents
 
 - [`boarding-transfer/`](boarding-transfer/) — the top-level README's own

@@ -1,0 +1,32 @@
+;; components/sim/docs/scenarios/busy-tuesday/config.edn -- the vendoring
+;; batch 2 rider (AR-VB2-R, 2026-08-07): the scenarios/ home's first
+;; entry, a busy weekday mix across the twelve everyday-ambulatory and
+;; acute modules vendored across the vendoring arc's first two batches
+;; (sore_throat/sinusitis/bronchitis/asthma/ear_infections/urinary_tract_
+;; infections/sleep_apnea/fibromyalgia/dementia/appendicitis/
+;; total_joint_replacement/sepsis) plus a five-minute arrival gap for a
+;; steady, busy stream. `:module-initial-attributes` seeds every
+;; total-joint-replacement walk to the knee variant (ADR-0033 AR-1's own
+;; attachment rule) so that closure's own content lands without relying
+;; on its default attribute distribution. Landed VERBATIM from the
+;; design channel's own authored copy (AR-VB2-R) -- see this directory's
+;; own README.md for the runnable command and the live-probe result.
+{:pathway {:name "busy-tuesday" :steps []}
+ :arrival-gap 5
+ :modules ["sore_throat" "sinusitis" "bronchitis" "asthma" "ear_infections"
+           "urinary_tract_infections" "sleep_apnea" "fibromyalgia" "dementia"
+           "appendicitis" "total_joint_replacement" "sepsis"]
+ :module-assignment [{:module-id "sore_throat" :weight 15}
+                      {:module-id "sinusitis" :weight 12}
+                      {:module-id "bronchitis" :weight 10}
+                      {:module-id "asthma" :weight 10}
+                      {:module-id "ear_infections" :weight 8}
+                      {:module-id "urinary_tract_infections" :weight 8}
+                      {:module-id "sleep_apnea" :weight 7}
+                      {:module-id "fibromyalgia" :weight 6}
+                      {:module-id "dementia" :weight 6}
+                      {:module-id "appendicitis" :weight 6}
+                      {:module-id "total_joint_replacement" :weight 6}
+                      {:module-id "sepsis" :weight 6}]
+ :module-initial-attributes {"total_joint_replacement" {:total-joint-replacement/joint-replacement "knee"}}
+ :module-horizon-days 3650}
