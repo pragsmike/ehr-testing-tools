@@ -5,13 +5,8 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- Nothing in progress at end of session (the 2026-08-05 standing-
-  equipment promotion landed same day as the docs coherence pass --
-  see Done, below). Census and the oracle digest are both now inside
-  the tested tree; the J2 deferred row (below) closes structurally.
-  Standing deferred items re-cited there (carry-across emission,
-  sim-cli retirement (closed), census-tool refinements (a/b/c stand,
-  untouched)) stay Deferred, none re-opened.
+- Nothing in progress at this close (player arc, ADR-0066–0068,
+  2026-08-07).
 
 ## Next (backlog, no session scheduled)
 - The lookup-column `time` gap (named in the schema-invalid family
@@ -195,7 +190,8 @@ Rows here are LIVE. Closed rows move to Done with their notes.
 scaffolding compaction B, `notes/ADRs.md` ADR-0046 — each closed arc's own
 pointers rotate to a dated header in the attic at that arc's own close,
 `notes/adr/0055-alignment-arc-close.md` AR-AC-5)
-- 2026-08-06 — ux-arc-close — ADR-0064
-- 2026-08-06 — ux-epilogue — ADR-0065
-- 2026-08-06 — player-fold — ADR-0066
-- 2026-08-07 — player-board — ADR-0067
+<!-- ADR-0064/0065/0066/0067 rotated to the attic (player arc close,
+     AR-PC-5); this arc's own Done pointer (ADR-0068) lands at Step 3,
+     after that ADR exists in notes/ADRs.md's own index -- the same
+     dangling-reference sentinel-avoidance ADR-0055's own AR-AC-5 and
+     ADR-0064's own AR-UC-5 both disclosed. -->

@@ -1411,6 +1411,24 @@ ADR for the arc's full disposition tally.
 - 2026-08-06 — ux-fixes-4 — ADR-0062
 - 2026-08-06 — ux-fixes-5 — ADR-0063
 
+**Appended 2026-08-07 (player arc close, `notes/adr/
+0068-player-arc-close.md` AR-PC-5):** this pointer was the live
+roadmap's own sole current Done entry from the UX arc's own close
+until now — the same disclosed-leftover class ADR-0055's own append
+(above) already named. It relocates here now, verbatim, at the next
+arc's own close.
+- 2026-08-06 — ux-arc-close — ADR-0064
+
+**Also appended 2026-08-07 (player arc close, AR-PC-5):** ADR-0065
+(the UX epilogue) joins this section too, not the player arc that
+follows it — it patched the UX arc's own surface (the `clojure -M:cli`
+runtime tombstone, the `--width`/COLUMNS affordance), so it rests with
+the arc it patched. Not a disclosed leftover of the same class as the
+row above — its own Done pointer is relocating from the live roadmap's
+Done section for the first time now, in the same commit as the player
+arc's own rotation.
+- 2026-08-06 — ux-epilogue — ADR-0065
+
 ## Done (this session, 2026-08-06, ux epilogue — Deferred triage AR-EP-4 — ADR-0065)
 - **Deferred triage (AR-EP-4).** Two rows already carrying a
   closure note relocated verbatim from Deferred, same sanctioned-append
@@ -1445,3 +1463,14 @@ ADR for the arc's full disposition tally.
   ADR-0031 AR-6's second defect-fix session, `notes/ADRs.md` ADR-0033)
   — see Done, below.**
   **Relocated 2026-08-06 (ux epilogue, AR-EP-4).**
+
+## Player arc — closed 2026-08-07 (ADR-0066–0068)
+Relocated verbatim from the live roadmap's own Done section by this
+arc's own close (`notes/adr/0068-player-arc-close.md` AR-PC-5); see
+that ADR for the arc's full account. Two sessions: the fold (ADR-0066,
+total over the emitter's real trigger set, self-anchored in absolute
+epoch millis) and the board (ADR-0067, the `--board` whiteboard, the
+`corpus`→`sim-emit-hl7` edge, and the rider that made the suite green
+on a fresh clone for the first time since ADR-0060).
+- 2026-08-06 — player-fold — ADR-0066
+- 2026-08-07 — player-board — ADR-0067

@@ -95,6 +95,32 @@
 ;; (build-session/SKILL.md) = 1045. Re-applying the standing formula
 ;; (actual x1.15, rounded up to the nearest 5): 1045 x 1.15 = 1201.75
 ;; -> 1205. Budget moves 1160 -> 1205.
+;;
+;; Re-derivation (2026-08-07, player arc close, `notes/adr/
+;; 0068-player-arc-close.md` AR-PC-4): diffing every set's own `:paths`
+;; membership against `git log 2e77096..HEAD --name-only` (2e77096 =
+;; the UX arc's own closing commit, the base since which `state.md`/
+;; `reading-sets.edn` were last touched) found two sets with a touched
+;; member: `:onboarding` (`.agents/plans/roadmap.md` -- Now/Done churn
+;; across the ux-epilogue/player-fold/player-board sessions, shrunk
+;; again this session by AR-PC-5's own Done-pointer rotation) and
+;; `:corpus` (`components/corpus/src/ehrt/corpus/interface.clj` -- the
+;; new `board-fold-event`/`board-render-snapshot` re-exports, player
+;; board, ADR-0067 AR-BB2-1). No `:sim`/`:judge`/`:docs` member path
+;; appears in that diff (the fold/board work touched `sim-emit-hl7`
+;; and `corpus`, neither carried by those three sets), so those three
+;; budgets stay untouched. `:onboarding`'s fresh actual (`wc -l` sum
+;; across all eight `:paths`, measured AFTER the rotation landed): 284
+;; (AGENTS.md) + 49 + 57 + 141 + 89 + 33 (the five READMEs) + 197
+;; (roadmap.md, post-rotation) + 172 (build-session/SKILL.md) = 1022.
+;; Re-applying the standing formula (actual x1.15, rounded up to the
+;; nearest 5): 1022 x 1.15 = 1175.3 -> 1180. Budget moves 1205 -> 1180
+;; (a DECREASE -- the rotation shrank roadmap.md faster than the arc's
+;; own churn grew it). `:corpus`'s fresh actual (`wc -l` sum across all
+;; seven `:paths`): 284 (AGENTS.md) + 150 (corpus/interface.clj,
+;; grown by the board re-exports) + 104 + 119 + 212 + 732 + 172
+;; (build-session/SKILL.md) = 1773. Re-applying the standing formula:
+;; 1773 x 1.15 = 2038.95 -> 2040. Budget moves 1995 -> 2040.
 
 {:onboarding
  {:paths ["AGENTS.md"
@@ -117,7 +143,7 @@
   ;; because that's a different audience from "a cold task-class session",
   ;; and forcing every onboarding read to carry its cost would budget for an
   ;; activity most onboarding sessions never do (migration session 5, AR-3).
-  :budget-lines 1205}
+  :budget-lines 1180}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one
@@ -143,7 +169,7 @@
           ;; the checkpoint ceremony, applies regardless of task class
           ;; (migration session 5, AR-3)
           ".agents/skills/build-session/SKILL.md"]
-  :budget-lines 1995}
+  :budget-lines 2040}
 
  ;; components/sim is the deterministic generator engine wrapping Synthea
  ;; (ADR-0005) -- engine-onboarding.md is the checklist every engine wrapper
