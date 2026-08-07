@@ -140,3 +140,4 @@ Files in this directory:
   * 2026-08-06-player-fold.md
   * 2026-08-07-player-board.md
   * 2026-08-07-player-arc-close.md
+  * 2026-08-07-census-substance.md

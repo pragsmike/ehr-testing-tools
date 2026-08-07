@@ -5,8 +5,11 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- Nothing in progress at this close (player arc, ADR-0066–0068,
-  2026-08-07).
+- Nothing in progress at this close (census substance, ADR-0069,
+  2026-08-07 — the vendoring arc's first session; a design-channel
+  curation pass over the ranked catalog is next, then vendoring
+  sessions batched by closure family, per ADR-0068's own horizon
+  note).
 
 ## Next (backlog, no session scheduled)
 - The lookup-column `time` gap (named in the schema-invalid family
@@ -124,29 +127,26 @@ Rows here are LIVE. Closed rows move to Done with their notes.
   scheduling (stroke as the register's first consumer), not an open
   design question.
 - **Census tool refinements** (ADR-0035/ADR-0036's own disclosed, not-
-  fixed findings, `ehrt.sim-trajectory.census`): (a) no substance
-  qualifier on a `:ok-walked` verdict — a module that produces zero
-  trajectory events on every seed censuses identically to one with rich
-  content (`docs/gmf-interpreter.md` §15's own AR-8b substance note: 26
-  of 42 pre-Wave-F `:ok-walked` modules produce zero events on every
-  seed); (b) no per-module census-seed override (every module shares
-  the SAME global seed count); (c) the artifact filename has no same-
-  calendar-day disambiguation (worked around by hand-appending a wave
-  suffix in both the F0 and F re-runs, not fixed in the tool itself).
-  Revisit trigger: whichever future session next re-runs the census and
-  hits the filename collision again, or needs to distinguish "walks but
-  produces nothing" from "walks and produces real content" for ranking
-  purposes.
+  fixed findings, `ehrt.sim-trajectory.census`): (b) no per-module
+  census-seed override (every module shares the SAME global seed
+  count) STANDS, untouched, its own trigger unfired: a future session
+  needing a per-module seed-count override. (a) and (c) **CLOSED
+  2026-08-07 (census substance, `notes/ADRs.md` ADR-0069 AR-VC-2/
+  AR-VC-3): the substance qualifier (`:substance`/`:event-counts` on an
+  `:ok-walked` row, `summarize`'s own `:ok-walked-by-substance` tally)
+  and the labeled-filename fix (`artifact-filename`, `-main`'s optional
+  third arg) both land — their own original text relocated verbatim
+  into ADR-0069's own record, not restated here.**
   **Dated note (2026-08-05, standing-equipment promotion, `notes/ADRs.md`
   ADR-0044 AR-P-4): `ehrt.sim-trajectory.census` moved from
   `development/src` into `components/sim-trajectory` — relocation and
-  test-exercise only, by ruling; all three triggers above (a/b/c) stand,
-  untouched, none fired by the move.** A different, real finding
-  surfaced INCIDENTALLY by the move (running the census's own 7 tests
-  under `poly test` for the first time ever): two test fixtures had gone
+  test-exercise only, by ruling; the triggers above stood, untouched,
+  none fired by the move.** A different, real finding surfaced
+  INCIDENTALLY by the move (running the census's own 7 tests under
+  `poly test` for the first time ever): two test fixtures had gone
   stale after GMF coverage Wave VS landed real `VitalSign`/`:vital-sign`
   support, fixed forward (ADR-0044's own Step 1) — not one of this row's
-  own three named refinements, disclosed separately there.
+  own named refinements, disclosed separately there.
 - UTI's own `ed_bundle.json` O2-saturation Observation states carry a
   `gmf_version 2` `:distribution` this loader has NEVER normalized
   (Observation is not one of ADR-0035's three ported contexts) — a
@@ -191,3 +191,4 @@ scaffolding compaction B, `notes/ADRs.md` ADR-0046 — each closed arc's own
 pointers rotate to a dated header in the attic at that arc's own close,
 `notes/adr/0055-alignment-arc-close.md` AR-AC-5)
 - 2026-08-07 — player-arc-close — ADR-0068
+- 2026-08-07 — census-substance — ADR-0069
