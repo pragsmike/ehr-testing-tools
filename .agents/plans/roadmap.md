@@ -5,22 +5,40 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- Nothing in progress at this close (vendoring batch 2, ADR-0071,
-  2026-08-07 — the vendoring arc's third session; seven of the chronic
-  clinic tail's eight modules landed — hypothyroidism,
-  rheumatoid-arthritis, osteoarthritis, osteoporosis,
-  attention-deficit-disorder, allergic-rhinitis, dermatitis; the
-  eighth, `anemia___unknown_etiology.json`, assessed and deferred
-  whole on a real dangling-`:encounter-end` `gmf-interpreter` gap. A
-  `scenarios/` home also landed this session (AR-VB2-R), sibling of
-  `demos/`, first entry `busy-tuesday`. Successor tag debt:
-  `stable-20260807-vendoring-batch-2` at this session's own closing
-  tip, owed to the next session's own Step 0. Next: batches 3-4 await
-  the author's own go and their own composition, per ADR-0070's own
-  curation-plan record; wellness-encounters waits its own design pass,
-  never routine vendoring).
+- Nothing in progress at this close (vendoring batch 3, ADR-0072,
+  2026-08-07 — the vendoring arc's fourth session. Rider AR-VB3-R1
+  first: the verbatim law gained a mechanical gate
+  (`ehrt.docs-tooling.notice-verbatim-test`) after a design-channel
+  probe found `lookup_tables/uti_recurrence.csv`'s committed blob had
+  been silently LF-normalized by the repo's own root `.gitattributes`
+  rule despite its NOTICE row always recording the true CRLF upstream
+  hash — a new `-text` rule protects the whole vendored-modules tree
+  now, and the file was re-vendored byte-true. Then four
+  content-producing modules landed — metabolic-syndrome-care,
+  vhd-pulmonic, vhd-tricuspid, med-rec; a fifth,
+  `colorectal_cancer.json`, assessed and deferred whole on the SAME
+  `:encounter-end` gap `anemia___unknown_etiology.json` already
+  surfaced (batch 2) — its own call into the shared `anemia_sub.json`
+  submodule sometimes lands outside an open encounter. Three
+  zero-substance family siblings (metabolic_syndrome_disease,
+  vhd_aortic, vhd_mitral) recorded not-vendorable-under-the-gate, not
+  vendored. Successor tag debt: `stable-20260807-vendoring-batch-3` at
+  this session's own closing tip, owed to the next session's own Step
+  0. The author's own next direction (design channel, 2026-08-07,
+  recorded verbatim ADR-0072 AR-VB3-3): practitioner-UX work next,
+  particularly the demos — moving sim demos to a top-level demo home
+  and featuring them in the intro materials; a design pass opens next,
+  nothing moved this session).
 
 ## Next (backlog, no session scheduled)
+- **Practitioner-UX / demos horizon** (author ruling, design channel
+  2026-08-07, recorded verbatim `notes/ADRs.md` ADR-0072 AR-VB3-3, not
+  acted on): "let's work more on the UX for practitioners, particularly
+  the demos. I want to move the sim demos to a top-level demo place,
+  and feature them in the intro materials." A design pass in the design
+  channel opens first — the demos'/scenarios' own homes, their relation
+  to the top-level README and SETUP, the fence-gate implications of
+  moving gated docs.
 - The lookup-column `time` gap (named in the schema-invalid family
   backlog since ADR-0039, still untouched — Wave I's own six
   mechanisms didn't cover it). Bulk vendoring (batched by closure
@@ -97,6 +115,14 @@ Rows here are LIVE. Closed rows move to Done with their notes.
   `emit-and-advance`'s own `:encounter-end` case to no-op (open design
   question: silently drop the event, or attach a `:no-op true` marker)
   when no encounter is open.
+  **Dated note (2026-08-07, vendoring batch 3, `notes/ADRs.md`
+  ADR-0072): a SECOND blocked module, `colorectal_cancer.json` —
+  unlike `hypothyroidism.json`'s own clean call path through the same
+  shared `anemia/anemia_sub.json` submodule, `colorectal_cancer.json`'s
+  own call sometimes lands outside an open encounter (2 of 3 seeds
+  tried rejected at 300 patients, not universal every seed the way the
+  first finding was, but a real, non-negligible population-scale rate)
+  — same root cause, not a new gap. Revisit trigger unchanged.**
 - **Corpus player `:mllp` transport sink** (`notes/adr/0014-corpus-
   player.md`, deferred whole per that session's own bail-out
   procedure): `:mllp` already exists as a *framing* (byte-level
@@ -242,3 +268,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-07 — census-substance — ADR-0069
 - 2026-08-07 — vendoring-batch-1 — ADR-0070
 - 2026-08-07 — vendoring-batch-2 — ADR-0071
+- 2026-08-07 — vendoring-batch-3 — ADR-0072

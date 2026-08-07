@@ -91,3 +91,4 @@ Files in this directory:
   * 2026-08-07-census-substance.md
   * 2026-08-07-vendoring-batch-1.md
   * 2026-08-07-vendoring-batch-2.md
+  * 2026-08-07-vendoring-batch-3.md
