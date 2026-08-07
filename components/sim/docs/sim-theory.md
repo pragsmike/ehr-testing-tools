@@ -319,23 +319,26 @@ derivable from the log, and vice versa," extended across emitters —
 stated as a *want*-level law since this file's own earlier drafts, now
 a real property test:
 `ehrt.sim-emit-hl7.v2-replay-test/emitter-coherence-reconstructed-state-matches-the-log-fold-at-every-boundary`
-(150 trials, pathways + order/result + non-two-participant churn) and
-its sibling `emitter-coherence-holds-for-module-driven-outpatient-trajectories`
-(150 trials, module-driven trajectories), both green 2026-07-27. The
-mechanism: `ehrt.sim-emit-hl7.v2-replay` folds a run's own emitted ER7
-stream through an independent reconstruction (`fold-message`), and
-`ehrt.sim-emit-hl7.v2-replay/project-to-wire-visible-fields` — a
-deliverable in its own right, the formal statement of what the wire
+(150 trials, pathways + order/result + the FULL churn family, bed-swap
+and merge included) and its sibling
+`emitter-coherence-holds-for-module-driven-outpatient-trajectories`
+(150 trials, module-driven trajectories), both green 2026-07-27, the
+former extended to the full churn family 2026-08-06 (player fold,
+ADR-0066). The mechanism: `ehrt.sim-emit-hl7.v2-replay` folds a run's
+own emitted ER7 stream through an independent reconstruction
+(`fold-message`), and `ehrt.sim-emit-hl7.v2-replay/project-to-wire-visible-fields`
+— a deliverable in its own right, the formal statement of what the wire
 actually carries, sibling of `ehrt.sim-emit-hl7.site-profile`'s own
 dialect-masking function — projects BOTH the reconstructed and the
 log-folded state down to the same comparable shape before comparing.
-Documented scope boundary, not silent: the property excludes bed-swap
-(A17) and merge (A40), genuinely two-participant messages whose own
-wire-identity reconstruction (a shared MRN reassigned mid-run) is real,
-separate engineering scope — `ehrt.sim-emit-hl7.v2-replay`'s own header
-comment and `unsupported-triggers` name this precisely, the same
-"deferred with a contract note" treatment EmitState's own CDA arm gets.
-One genuine finding surfaced and fixed during this property's own
+Bed-swap (A17) and merge (A40) — genuinely two-participant messages,
+two PID/PV1 pairs in one message for A17, a shared-MRN reassignment
+mid-run for A40 — fold too (ADR-0066): A17 pairs each PID with its own
+immediately-following PV1 and folds each pair independently (the A02
+treatment, per pair); A40's surviving entry absorbs (a no-op on the
+wire) while the merged-away entry becomes a `:status :merged` tombstone,
+mirroring `ehrt.sim-engine.engine`'s own `evolve :merge` `:merged` arm
+exactly. One genuine finding surfaced and fixed during this property's own
 development: a degenerate but structurally legal churn sequence
 (cancel-admit against an already-discharged patient's original
 admission, followed by cancel-discharge) left ground truth's own

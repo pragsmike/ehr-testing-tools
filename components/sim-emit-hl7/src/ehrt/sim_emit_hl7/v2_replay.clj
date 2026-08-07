@@ -18,36 +18,77 @@
   (every message carries full PID enrichment, ehrt.sim-emit-hl7.emit-hl7's
   own uniform-PID law), so no separate 'this mrn is new' step is needed.
 
-  Scope boundary, documented not silent (the same 'deferred with a
-  contract note' treatment EmitState's own CDA arm gets): bed-swap (A17)
-  and merge (A40) are genuinely two-participant messages -- two PID/PV1
-  pairs in ONE message, and merge additionally REASSIGNS which mrn is
-  active mid-run. Reconstructing wire identity across either is real,
-  separate engineering scope. `fold-message` raises a clear
-  `:unsupported-trigger` on either, rather than silently mis-folding --
-  ehrt.sim-emit-hl7.v2-replay-test's own property runs churn EXCLUDING
-  both for exactly this reason."
+  Two-participant messages, supported (player fold, ADR-0066, AR-BB1-1/2):
+  bed-swap (A17) carries two PID/PV1 pairs in ONE message -- `fold-message`
+  walks the message's own segments in order, pairing each PID with its
+  own immediately-following PV1, and folds each pair independently as a
+  location/attending update onto that PID-3's own entry (the A02
+  treatment, per pair). Merge (A40) carries the surviving mrn on PID-3
+  and the merged-away mrn on MRG-1 -- the surviving entry absorbs (a
+  no-op on the wire, since PV1 rides blank on A40 and :mrns is truth-
+  only, never wire-visible); the merged-away entry becomes a tombstone
+  (`:status :merged`, every other field held over unchanged), mirroring
+  ehrt.sim-engine.engine's own `evolve :merge` `:merged` arm exactly --
+  the wire-side fold is NOT an independent invention of this shape.
+  Bootstrap-from-empty holds for both: a never-seen mrn on either side of
+  an A17/A40 self-initializes (foreign traffic may open mid-stream).
+
+  General time (player fold, ADR-0066, AR-BB1-4): MSH-7 (and, via the
+  same `t`, every observation's own :t) parses to an ABSOLUTE epoch
+  instant read from the wire alone -- honoring an explicit trailing
+  offset (±ZZZZ or Z) when present, treating a naive timestamp as
+  UTC otherwise, lenient on truncated precision the same way
+  ehrt.corpus.player/parse-dtm-lenient already is. No reference-date
+  parameter travels through this namespace anymore -- a real downstream
+  consumer never has one either."
   (:require [clojure.string :as str]
             [com.nervestaple.hl7-parser.parser :as parser]
             [com.nervestaple.hl7-parser.message :as message]
             [ehrt.sim-emit-hl7.emit-hl7 :as emit-hl7]))
 
-;; --- Reading the pinned clock backwards ------------------------------------
+;; --- General time: an HL7 DTM read on its own terms (player fold,
+;; ADR-0066, AR-BB1-4) -- no reference-date, no pinned per-run offset
+;; assumption; the wire is the only source of truth. ------------------
 
-(def ^:private hl7-datetime-formatter
-  (java.time.format.DateTimeFormatter/ofPattern "yyyyMMddHHmmss"))
+(def ^:private dtm-prefix-pattern
+  "The SAME lenient YYYY[MM[DD[HH[MI[SS]]]]] prefix contract
+  ehrt.corpus.player/parse-dtm-lenient already implements (read there,
+  aligned here, never extracted across the component boundary this
+  session -- a shared helper, if ever wanted, is later scope,
+  disclosed as a finding not taken)."
+  #"^(\d{4})(\d{2})?(\d{2})?(\d{2})?(\d{2})?(\d{2})?")
 
-(defn- hl7-instant->seconds
-  "The inverse of ehrt.sim-emit-hl7.emit-hl7/hl7-timestamp: an HL7
-  timestamp (\"yyyyMMddHHmmss+ZZZZ\") anchored to `reference-date` ->
-  seconds since that reference instant. Only the first 14 characters
-  (the naive local timestamp) are read -- the zone suffix is always the
-  SAME pinned :utc-offset every message in one run shares, never
-  per-event, so it carries no information the fold needs (sim/ADR-0011)."
-  [reference-date ts]
-  (let [local (java.time.LocalDateTime/parse (subs ts 0 14) hl7-datetime-formatter)
-        reference (.atStartOfDay (java.time.LocalDate/parse reference-date))]
-    (.getSeconds (java.time.Duration/between reference local))))
+(def ^:private dtm-offset-pattern
+  "A trailing explicit zone offset (a sign followed by 4 digits, e.g.
+  \"+0000\"/\"-0500\") or the bare \"Z\" -- searched anywhere after the
+  date/time prefix (a fractional-seconds component, if present, may
+  sit between the two), anchored to the string's own end so it never
+  mismatches into the middle of a longer field."
+  #"([+-]\d{4}|Z)$")
+
+(defn- hl7-instant->millis
+  "An HL7 timestamp -> absolute epoch milliseconds, read from the wire
+  alone: an explicit trailing offset is honored when present, a naive
+  timestamp is treated as UTC otherwise. nil for nil/blank/garbage that
+  doesn't even start with a 4-digit year (parse-dtm-lenient's own
+  contract, matched here)."
+  [ts]
+  (when (and ts (seq ts))
+    (when-let [[_ y mo d h mi s] (re-find dtm-prefix-pattern ts)]
+      (try
+        (let [local (java.time.LocalDateTime/of (Integer/parseInt y)
+                                                  (if mo (Integer/parseInt mo) 1)
+                                                  (if d (Integer/parseInt d) 1)
+                                                  (if h (Integer/parseInt h) 0)
+                                                  (if mi (Integer/parseInt mi) 0)
+                                                  (if s (Integer/parseInt s) 0))
+              offset (if-let [[_ raw] (re-find dtm-offset-pattern ts)]
+                       (if (= raw "Z")
+                         java.time.ZoneOffset/UTC
+                         (java.time.ZoneOffset/of (str (subs raw 0 3) ":" (subs raw 3))))
+                       java.time.ZoneOffset/UTC)]
+          (.toEpochMilli (.toInstant (.atZone local offset))))
+        (catch Exception _ nil)))))
 
 (defn- hl7-date->iso
   "\"yyyyMMdd\" -> \"yyyy-MM-dd\" -- the inverse of
@@ -57,76 +98,27 @@
 
 ;; --- Safe field/component access -------------------------------------------
 
-(defn- component
-  "`get-field-component` is 0-based on its OWN component-index argument
-  (unlike every field-index argument in this library, which is 1-based
-  -- confirmed against the library directly, not assumed) and throws
-  IndexOutOfBoundsException past a field's actual component count (a
-  short/blank field, e.g. no bed on an outpatient PV1-3) rather than
-  returning nil. Normalized here to nil-safe, blank-safe access, and to
-  a plain string regardless of whether the library hands back a bare
-  value or a single-element seq (observed both, depending on the
-  underlying field's own shape)."
-  [parsed segment-id field-index component-index]
-  (let [v (try (message/get-field-component parsed segment-id field-index component-index)
-               (catch IndexOutOfBoundsException _ nil))
-        v (if (sequential? v) (first v) v)]
-    (when (seq v) (emit-hl7/unescape-er7 (str v)))))
-
-(defn- blank->nil [s] (when (seq s) s))
-
-;; --- PID/PV1/IN1 reconstruction ---------------------------------------------
-
-(defn- parse-persona
-  "Every message carries this uniformly (ehrt.sim-emit-hl7.emit-hl7/
-  pid-segment's own docstring) -- PID-13/:ssn/:age are never rendered,
-  the same exclusion `project-to-wire-visible-fields` states from the
-  ground-truth side."
-  [parsed]
-  {:name {:family (component parsed "PID" 5 0) :given (component parsed "PID" 5 1)}
-   :sex (case (blank->nil (message/get-field-first-value parsed "PID" 8)) "F" :female "M" :male nil)
-   :dob (hl7-date->iso (message/get-field-first-value parsed "PID" 7))
-   :address {:street (component parsed "PID" 11 0) :city (component parsed "PID" 11 2)
-             :state (component parsed "PID" 11 3) :zip (component parsed "PID" 11 4)}
-   :phone (blank->nil (message/get-field-first-value parsed "PID" 13))})
-
-(defn- parse-payer
-  "IN1 rides admission alone (ehrt.sim-emit-hl7.emit-hl7/in1-segment's own
-  docstring) -- nil on every other message, the wire-side mirror of
-  `project-to-wire-visible-fields`'s own admitted-at gate."
-  [parsed]
-  (when (seq (message/get-segments parsed "IN1"))
-    {:id (blank->nil (message/get-field-first-value parsed "IN1" 3))
-     :name (some-> (message/get-field-first-value parsed "IN1" 4) emit-hl7/unescape-er7)}))
-
-(defn- parse-location
-  [parsed]
-  (when-let [ward (component parsed "PV1" 3 0)]
-    {:ward ward :bed (component parsed "PV1" 3 2)}))
-
-(defn- parse-attending
-  [parsed]
-  (component parsed "PV1" 7 0))
-
-(def ^:private hl7-class->keyword {"I" :inpatient "O" :outpatient})
-
-(defn- parse-class
-  [parsed]
-  (get hl7-class->keyword (blank->nil (message/get-field-first-value parsed "PV1" 2))))
-
-;; --- OBX/observations reconstruction ----------------------------------------
-
 (defn- seg-field-components
   "The full component vector at STANDARD (1-based) HL7 `field-index` of
-  one already-fetched segment (ehrt.sim-emit-hl7.v2-replay's own callers
-  use this for OBX repetitions -- message/get-segments returns one
-  segment per analyte; the whole-message get-field-component API
-  addresses only 'the first' repetition). `get-segment-field`'s own
+  one already-fetched segment -- `message/get-segments` returns one
+  segment per repetition/participant (OBX's own analytes, A17's own two
+  PID/PV1 pairs), so this is the ONE primitive every segment-scoped
+  reader in this namespace builds on, never the whole-message
+  `get-field-component` API, which flattens across EVERY same-id
+  segment in the message and would silently mis-index a multi-segment
+  message (confirmed against the library directly: `get-field` maps
+  `get-segment-field` over `get-segments`, then `get-field-component`
+  flattens the result before indexing -- exactly the mis-indexing this
+  namespace's own A17 pairing must not risk). `get-segment-field`'s own
   indexing is the SAME convention its own docstring states for the
   whole-message API's MSH gotcha, confirmed directly (not assumed):
-  index 0 is the segment's own 3-letter id; field N is OBX-N in real
+  index 0 is the segment's own 3-letter id; field N is field N in real
   HL7 numbering, e.g. index 3 is OBX-3 (the concept), never a 0-based
-  position into the field vector."
+  position into the field vector. nil-safe on a nil `segment` too
+  (confirmed against the library's own `get-segment-field`: `(:id nil)`
+  and `(count (:fields nil))` both resolve to nil/0, never throw) --
+  every reader below stays total even when a message carries no PV1 at
+  all (e.g. A03/A11/R01)."
   [segment field-index]
   (try (message/get-segment-field segment field-index)
        (catch IndexOutOfBoundsException _ nil)))
@@ -134,6 +126,67 @@
 (defn- seg-field
   [segment field-index]
   (first (seg-field-components segment field-index)))
+
+(defn- segment-component
+  "The component-index equivalent of `seg-field`, at STANDARD (1-based)
+  HL7 `field-index`, 0-based `component-index` -- confirmed against the
+  library directly, not assumed. Normalized to nil-safe, blank-safe
+  access, and to a plain string regardless of whether the library hands
+  back a bare value or a single-element seq (observed both, depending
+  on the underlying field's own shape)."
+  [segment field-index component-index]
+  (let [v (nth (seg-field-components segment field-index) component-index nil)
+        v (if (sequential? v) (first v) v)]
+    (when (seq v) (emit-hl7/unescape-er7 (str v)))))
+
+(defn- first-segment
+  [parsed segment-id]
+  (first (message/get-segments parsed segment-id)))
+
+(defn- blank->nil [s] (when (seq s) s))
+
+;; --- PID/PV1/IN1 reconstruction: every reader below is SEGMENT-scoped
+;; (never whole-message-scoped) so the SAME reader serves both a
+;; single-PID/PV1 message and one pair out of A17's own two -----------------
+
+(defn- parse-persona
+  "Every message carries this uniformly (ehrt.sim-emit-hl7.emit-hl7/
+  pid-segment's own docstring) -- PID-13/:ssn/:age are never rendered,
+  the same exclusion `project-to-wire-visible-fields` states from the
+  ground-truth side."
+  [pid-seg]
+  {:name {:family (segment-component pid-seg 5 0) :given (segment-component pid-seg 5 1)}
+   :sex (case (blank->nil (seg-field pid-seg 8)) "F" :female "M" :male nil)
+   :dob (hl7-date->iso (seg-field pid-seg 7))
+   :address {:street (segment-component pid-seg 11 0) :city (segment-component pid-seg 11 2)
+             :state (segment-component pid-seg 11 3) :zip (segment-component pid-seg 11 4)}
+   :phone (blank->nil (seg-field pid-seg 13))})
+
+(defn- parse-payer
+  "IN1 rides admission alone (ehrt.sim-emit-hl7.emit-hl7/in1-segment's own
+  docstring) -- nil on every other message, the wire-side mirror of
+  `project-to-wire-visible-fields`'s own admitted-at gate. Whole-message
+  scoped (unlike every reader above): IN1 is never repeated in a message
+  this emitter renders (A17/A40 carry none at all)."
+  [parsed]
+  (when (seq (message/get-segments parsed "IN1"))
+    {:id (blank->nil (message/get-field-first-value parsed "IN1" 3))
+     :name (some-> (message/get-field-first-value parsed "IN1" 4) emit-hl7/unescape-er7)}))
+
+(defn- parse-location
+  [pv1-seg]
+  (when-let [ward (segment-component pv1-seg 3 0)]
+    {:ward ward :bed (segment-component pv1-seg 3 2)}))
+
+(defn- parse-attending
+  [pv1-seg]
+  (segment-component pv1-seg 7 0))
+
+(def ^:private hl7-class->keyword {"I" :inpatient "O" :outpatient})
+
+(defn- parse-class
+  [pv1-seg]
+  (get hl7-class->keyword (blank->nil (seg-field pv1-seg 2))))
 
 (defn- parse-range
   [raw]
@@ -163,58 +216,114 @@
 
 ;; --- fold-message: one ER7 message -> the accumulator's next state --------
 
-(def unsupported-triggers
-  "This accumulator's own documented scope boundary (this namespace's
-  own header comment) -- the genuinely two-participant message family."
-  #{"A17" "A40"})
-
 (defn- initial-entry
-  [parsed]
-  {:active-mrn (message/get-field-first-value parsed "PID" 3)
-   :persona (parse-persona parsed)})
+  [pid-seg]
+  {:active-mrn (seg-field pid-seg 3)
+   :persona (parse-persona pid-seg)})
 
 (defn- evolve-entry
   "(entry, trigger, parsed, t) -> entry'. Pure and total, mirroring
   ehrt.sim-engine.engine/evolve's own shape one layer up the wire --
   dispatch on the message's own trigger, never mutate anything but the
-  ONE mrn-keyed entry this message is about."
+  ONE mrn-keyed entry this message is about. Single-PID/PV1 triggers
+  only -- A17/A40 (genuinely two-participant) are dispatched by
+  `fold-message` directly to `fold-bed-swap`/`fold-merge`, never here."
   [entry trigger parsed t]
-  (case trigger
-    "A01" (cond-> (assoc entry :status :admitted :class :inpatient
-                         :location (parse-location parsed) :attending (parse-attending parsed)
-                         :admitted-at t)
-            (parse-payer parsed) (update :persona assoc :payer (parse-payer parsed)))
-    "A04" (assoc entry :status :admitted :class :outpatient :attending (parse-attending parsed))
-    "A02" (assoc entry :location (parse-location parsed) :attending (parse-attending parsed))
-    "A03" (assoc entry :status :discharged :location nil :discharged-at t)
-    "A11" (-> entry (assoc :status :new) (dissoc :class :location :attending :admitted-at))
-    "A12" (assoc entry :location (parse-location parsed))
-    "A13" (-> entry (assoc :status :admitted :class (or (parse-class parsed) (:class entry))
-                           :location (parse-location parsed) :attending (parse-attending parsed))
-              (dissoc :discharged-at))
-    "O01" entry
-    "R01" (update entry :observations (fnil into []) (parse-observations parsed t))
-    (throw (ex-info "v2-replay: unsupported message trigger (documented scope boundary)"
-                    {:trigger trigger}))))
+  (let [pv1-seg (first-segment parsed "PV1")]
+    (case trigger
+      "A01" (cond-> (assoc entry :status :admitted :class :inpatient
+                           :location (parse-location pv1-seg) :attending (parse-attending pv1-seg)
+                           :admitted-at t)
+              (parse-payer parsed) (update :persona assoc :payer (parse-payer parsed)))
+      "A04" (assoc entry :status :admitted :class :outpatient :attending (parse-attending pv1-seg))
+      "A02" (assoc entry :location (parse-location pv1-seg) :attending (parse-attending pv1-seg))
+      "A03" (assoc entry :status :discharged :location nil :discharged-at t)
+      "A11" (-> entry (assoc :status :new) (dissoc :class :location :attending :admitted-at))
+      "A12" (assoc entry :location (parse-location pv1-seg))
+      "A13" (-> entry (assoc :status :admitted :class (or (parse-class pv1-seg) (:class entry))
+                             :location (parse-location pv1-seg) :attending (parse-attending pv1-seg))
+                (dissoc :discharged-at))
+      "O01" entry
+      "R01" (update entry :observations (fnil into []) (parse-observations parsed t))
+      (throw (ex-info "v2-replay: unsupported message trigger" {:trigger trigger})))))
+
+(defn- pid-pv1-pairs
+  "Walks `parsed`'s own segments IN ORDER, pairing each PID with its own
+  immediately-following PV1 -- A17's own two PID/PV1 pairs (ADR-0066,
+  AR-BB1-1). Every other segment (MSH/EVN leading, Z-segments trailing)
+  is simply not paired, never aborts the walk -- a message with fewer
+  than two well-formed pairs yields fewer than two pairs, no error --
+  `fold-bed-swap` folds whatever pairs are actually present."
+  [parsed]
+  (loop [segs (:segments parsed) pairs []]
+    (cond
+      (empty? segs) pairs
+      (and (= "PID" (:id (first segs))) (= "PV1" (:id (second segs))))
+      (recur (drop 2 segs) (conj pairs [(first segs) (second segs)]))
+      :else (recur (rest segs) pairs))))
+
+(defn- fold-bed-swap
+  "A17: each PID/PV1 pair folds independently onto that pair's OWN
+  PID-3 -- the A02 treatment (location/attending), per pair.
+  Bootstrap-from-empty holds per pair (never-seen MRNs self-initialize
+  from that pair's own PID, exactly like every other trigger)."
+  [acc parsed]
+  (reduce
+   (fn [acc [pid-seg pv1-seg]]
+     (let [mrn (seg-field pid-seg 3)
+           entry (or (get acc mrn) (initial-entry pid-seg))]
+       (assoc acc mrn (assoc entry :location (parse-location pv1-seg) :attending (parse-attending pv1-seg)))))
+   acc (pid-pv1-pairs parsed)))
+
+(defn- fold-merge
+  "A40: PID-3 carries the surviving mrn, MRG-1 the merged-away one
+  (mirroring ehrt.sim-emit-hl7.emit-hl7/merge-message's own docstring).
+  The surviving entry absorbs -- bootstrap-or-keep, unchanged otherwise,
+  since PV1 rides blank on A40 and :mrns is truth-only (never
+  wire-visible). The merged-away entry becomes a tombstone: `:status
+  :merged`, every other field held over unchanged -- the wire-side
+  mirror of ehrt.sim-engine.engine's own `evolve :merge` `:merged` arm,
+  which touches `:status` alone. A merged-away mrn never seen before
+  (no persona to bootstrap from -- MRG-1 carries only the mrn string)
+  still gets a minimal tombstone; the engine's own merge eligibility
+  rule (`never-mergeable?`) means this path is never exercised by
+  legal traffic, only defensive for a genuinely foreign stream."
+  [acc parsed]
+  (let [pid-seg (first-segment parsed "PID")
+        survivor-mrn (seg-field pid-seg 3)
+        merged-mrn (message/get-field-first-value parsed "MRG" 1)
+        survivor-entry (or (get acc survivor-mrn) (initial-entry pid-seg))
+        merged-entry (-> (or (get acc merged-mrn) {:active-mrn merged-mrn})
+                         (assoc :status :merged))]
+    (-> acc
+        (assoc survivor-mrn survivor-entry)
+        (assoc merged-mrn merged-entry))))
 
 (defn fold-message
-  "acc x message x reference-date -> acc'. Parses `message`, extracts
-  its own trigger (MSH-9) and instant (MSH-7, via `hl7-instant->seconds`),
-  and folds it into `acc`'s entry for that message's own PID-3 -- a
-  never-yet-seen mrn self-initializes (bootstrap-from-empty)."
-  [acc message reference-date]
+  "acc x message -> acc'. Parses `message`, extracts its own trigger
+  (MSH-9) and instant (MSH-7, via `hl7-instant->millis` -- an absolute
+  epoch instant, no reference-date), and folds it into `acc`. A17/A40
+  are genuinely two-participant and dispatched directly to
+  `fold-bed-swap`/`fold-merge`; every other trigger folds onto `acc`'s
+  entry for that message's own PID-3 -- a never-yet-seen mrn
+  self-initializes (bootstrap-from-empty)."
+  [acc message]
   (let [parsed (parser/parse message)
         [_type trigger] (str/split (message/get-field-first-value parsed "MSH" 9) #"\^")
-        t (hl7-instant->seconds reference-date (message/get-field-first-value parsed "MSH" 7))
-        mrn (message/get-field-first-value parsed "PID" 3)
-        entry (or (get acc mrn) (initial-entry parsed))]
-    (assoc acc mrn (evolve-entry entry trigger parsed t))))
+        t (hl7-instant->millis (message/get-field-first-value parsed "MSH" 7))]
+    (case trigger
+      "A17" (fold-bed-swap acc parsed)
+      "A40" (fold-merge acc parsed)
+      (let [pid-seg (first-segment parsed "PID")
+            mrn (seg-field pid-seg 3)
+            entry (or (get acc mrn) (initial-entry pid-seg))]
+        (assoc acc mrn (evolve-entry entry trigger parsed t))))))
 
 (defn replay-messages
   "The stage function: a run's own emitted ER7 stream -> {mrn ->
   reconstructed-state}, folded left to right via `fold-message`."
-  [messages reference-date]
-  (reduce #(fold-message %1 %2 reference-date) {} messages))
+  [messages]
+  (reduce fold-message {} messages))
 
 ;; --- The projection function: the formal definition of what the wire
 ;; carries (M6 Task 2's own deliverable, sibling of ehrt.sim.

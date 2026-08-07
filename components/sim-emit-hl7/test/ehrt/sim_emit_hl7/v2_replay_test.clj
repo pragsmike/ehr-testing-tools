@@ -5,15 +5,19 @@
   second emitter exists to fold the wire back into state). Written
   test-first (sim/ADR-0004).
 
-  Scope boundary, documented not silent: bed-swap (A17) and merge (A40)
-  are genuinely two-participant messages (two PID/PV1 pairs in ONE
-  message, a shared-MRN reassignment mid-run) whose own wire-identity
-  reconstruction is real, separate engineering scope -- this property
-  runs over churn EXCLUDING bed-swap/merge (cancel-admit/cancel-transfer/
-  cancel-discharge/transfer-in-error only), the same 'deferred with a
-  contract note, not silently stubbed' treatment EmitState's own CDA arm
-  gets. `ehrt.sim-emit-hl7.v2-replay/unsupported-trigger` documents the
-  same boundary from the accumulator's own side."
+  Player fold (ADR-0066): bed-swap (A17) and merge (A40) -- genuinely
+  two-participant messages (two PID/PV1 pairs in ONE message, a
+  shared-MRN reassignment mid-run) -- are now IN scope. This property
+  runs over the FULL `ehrt.sim-engine.churn/sample-profile` churn set,
+  bed-swap/merge included; `coherent-at-every-boundary?` checks EVERY
+  participant named in an event's own :participants, not only the
+  primary one, so a bed-swap/merge boundary is checked twice (once per
+  participant) at the same message. `absolutize` is the test-side
+  adapter AR-BB1-4 licenses: the engine's own run-relative seconds ->
+  absolute epoch millis, anchored to this run's `ref-date` -- the SAME
+  anchoring `ehrt.sim-emit-hl7.v2-replay/hl7-instant->millis` performs
+  from the wire's own explicit or implied UTC offset, never a shape
+  `project-to-wire-visible-fields` itself has to know about."
   (:require [clojure.java.io :as io]
             [clojure.test :refer [deftest is testing]]
             [clojure.test.check.clojure-test :refer [defspec]]
@@ -38,7 +42,7 @@
             enrichment already"
     (let [{:keys [ground-truth facility providers]} (engine/run {:seed 42 :patients 1})
           messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
-          reconstructed (v2-replay/replay-messages (take 1 messages) ref-date)
+          reconstructed (v2-replay/replay-messages (take 1 messages))
           [mrn entry] (first reconstructed)]
       (is (= 1 (count reconstructed)))
       (is (string? mrn))
@@ -48,7 +52,7 @@
 (deftest replay-messages-reconstructs-admission-transfer-discharge
   (let [{:keys [ground-truth facility providers]} (engine/run {:seed 7 :patients 1})
         messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
-        reconstructed (v2-replay/replay-messages messages ref-date)
+        reconstructed (v2-replay/replay-messages messages)
         [_ entry] (first reconstructed)]
     (is (= :discharged (:status entry)))
     (is (nil? (:location entry)))
@@ -59,7 +63,7 @@
                                               {:type :cancel-admit}]}
         {:keys [ground-truth facility providers]} (engine/run {:seed 1 :patients 1 :pathways [{:pathway pathway :weight 1}]})
         messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
-        reconstructed (v2-replay/replay-messages messages ref-date)
+        reconstructed (v2-replay/replay-messages messages)
         [_ entry] (first reconstructed)]
     (is (= :new (:status entry)))
     (is (nil? (:location entry)))
@@ -71,7 +75,7 @@
                                            {:type :discharge}]}
         {:keys [ground-truth facility providers]} (engine/run {:seed 7 :patients 1 :pathways [{:pathway pathway :weight 1}]})
         messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
-        reconstructed (v2-replay/replay-messages messages ref-date)
+        reconstructed (v2-replay/replay-messages messages)
         [_ entry] (first reconstructed)]
     (is (= 5 (count (:observations entry))) "CBC's 5 analytes")
     (doseq [{:keys [codes value unit reference-range interpretation]} (:observations entry)]
@@ -111,7 +115,7 @@
           loc1 (get-in bed-swap-event [:swap p1-id :to])
           loc2 (get-in bed-swap-event [:swap p2-id* :to])
           a17 (last (emit-hl7/emit ground-truth ref-date utc-offset facility providers))
-          acc (v2-replay/fold-message {} a17 ref-date)]
+          acc (v2-replay/fold-message {} a17)]
       (is (= 2 (count acc)))
       (is (= {:ward (:ward loc1) :bed (:bed loc1)} (:location (get acc mrn1))))
       (is (= {:ward (:ward loc2) :bed (:bed loc2)} (:location (get acc mrn2))))
@@ -138,8 +142,8 @@
                                    :pathway {:name "p2" :steps [{:type :admission :location "Renal"}]}}]})
           messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
           [a01-p1 a01-p2 a40] messages
-          seeded-acc (-> {} (v2-replay/fold-message a01-p1 ref-date) (v2-replay/fold-message a01-p2 ref-date))
-          acc (v2-replay/fold-message seeded-acc a40 ref-date)
+          seeded-acc (-> {} (v2-replay/fold-message a01-p1) (v2-replay/fold-message a01-p2))
+          acc (v2-replay/fold-message seeded-acc a40)
           merge-event (last ground-truth)
           survivor-mrn (:surviving-mrn merge-event)
           merged-mrn (:merged-mrn merge-event)]
@@ -185,7 +189,36 @@
 ;; --- the emitter-coherence property: reconstructed state == log-folded
 ;; state, projected, at EVERY message boundary --------------------------
 
+(def ^:private ref-date-anchor-millis
+  "`ref-date`'s own start-of-day instant, UTC, as epoch millis -- the
+  SAME anchor `ehrt.sim-emit-hl7.emit-hl7/reference-instant` uses to
+  render every message's own MSH-7 in the first place."
+  (.toEpochMilli (.toInstant (.atStartOfDay (java.time.LocalDate/parse ref-date)) java.time.ZoneOffset/UTC)))
+
+(defn- absolutize
+  "The test-side adapter AR-BB1-4 licenses: a true (engine) PatientState
+  carries run-relative SECONDS on :admitted-at/:discharged-at/each
+  observation's own :t; the wire-reconstructed side now carries absolute
+  epoch MILLIS instead (`ehrt.sim-emit-hl7.v2-replay/hl7-instant->millis`).
+  Converts the true side's own seconds -> millis, anchored to THIS run's
+  `ref-date`, so both sides land in the SAME units before
+  `project-to-wire-visible-fields` (itself unchanged, reference-date-
+  agnostic) projects them."
+  [state]
+  (let [->millis (fn [seconds] (when (some? seconds) (+ ref-date-anchor-millis (* 1000 seconds))))]
+    (cond-> state
+      (:admitted-at state) (update :admitted-at ->millis)
+      (:discharged-at state) (update :discharged-at ->millis)
+      (seq (:observations state)) (update :observations (fn [obs] (mapv #(update % :t ->millis) obs))))))
+
 (defn- coherent-at-every-boundary?
+  "Checks EVERY participant named in an event's own :participants (not
+  only the primary one, ehrt.sim-engine.engine/replay's own doc) against
+  the SAME folded accumulator -- generalizes cleanly over single-
+  participant events (one participant, same check as before) and
+  bed-swap/merge (two, each keyed by that participant's OWN
+  post-event :active-mrn, which neither event ever reassigns -- ADR-0066
+  AR-BB1-1/2's own tombstone design)."
   [ground-truth messages]
   (let [records (engine/replay ground-truth)
         rendered (filterv #(emit-hl7/message-type-registry (:event (:event %))) records)]
@@ -195,13 +228,14 @@
              true
              (let [record (first rs)
                    message (first ms)
-                   mrn (:active-mrn (:event record))
-                   patient-id (:patient-id record)
-                   true-state (get (:world-after record) patient-id)
-                   acc' (v2-replay/fold-message acc message ref-date)
-                   reconstructed-state (get acc' mrn)]
-               (if (= (v2-replay/project-to-wire-visible-fields true-state)
-                      (v2-replay/project-to-wire-visible-fields reconstructed-state))
+                   participant-ids (mapv :patient-id (:participants (:event record)))
+                   acc' (v2-replay/fold-message acc message)]
+               (if (every? (fn [pid]
+                             (let [true-state (absolutize (get (:world-after record) pid))
+                                   mrn (:active-mrn true-state)]
+                               (= (v2-replay/project-to-wire-visible-fields true-state)
+                                  (v2-replay/project-to-wire-visible-fields (get acc' mrn)))))
+                           participant-ids)
                  (recur acc' (rest rs) (rest ms))
                  false)))))))
 
