@@ -140,11 +140,16 @@ guard, red), `b4c593f` (Step 2, the docs catch-up, green), `23935c7`
   docs, no digest-relevant path.
 - Tag verification: `stable-20260807-vendoring-close` peeled ref
   resolves to `cd6c56c` exactly (`git ls-remote --tags origin`).
-- AR-CI-4's own watched run: **[filled in a small follow-up commit
-  after this record's own push — the run being watched is this
-  commit's own Actions run, which cannot be known before the push
-  that triggers it; see that follow-up commit's own message and the
-  addendum below once it lands]**.
+- AR-CI-4's own watched run: [`31221343315`](https://github.com/pragsmike/ehr-testing-tools/actions/runs/31221343315),
+  commit `eb2319b` (this session's own ADR-0075/records commit) —
+  **conclusion: success**, every step green including "generated-doc
+  freshness (regen + diff)". Watched to completion (`gh run watch
+  31221343315 --exit-status`), not merely polled once. The two
+  preceding pushes this session (`b4c593f`, Step 2; `23935c7`, Step 3)
+  had also already come back green by the time this run was checked —
+  the flaky `merge-config-file` test named above did not fire on any
+  of this session's own three pushes. This is CI green on `main` for
+  the first time since ADR-0065 landed.
 
 ## Deviations, disclosed
 
