@@ -7,10 +7,17 @@
   interface-design judgment (sim split S3, `.agents/plans/2026-08-02-
   sim-split-plan.md`'s own AR-6 discipline, `notes/ADRs.md` ADR-0025).
   `emit-hl7`'s own 2-arg arity of `emit` has zero real external callers
-  (confirmed by that same grep) and stays unexported; `v2-replay` and
-  `site-profile` have NO real external caller at all -- both are fully
-  internal to this component, invisible from outside it."
-  (:require [ehrt.sim-emit-hl7.emit-hl7 :as emit-hl7]))
+  (confirmed by that same grep) and stays unexported; `site-profile`
+  has NO real external caller at all -- fully internal to this
+  component, invisible from outside it. `v2-replay` gains its first
+  real external caller here (player board, `notes/ADRs.md` ADR-0067,
+  AR-BB2-1): `corpus`'s own board sink calls `fold-message` to fold a
+  paced HL7 v2 stream into the same accumulator shape the emitter-
+  coherence property already reasons about -- `fold-message` is the
+  entire surface that caller needs, so it is the entire surface
+  exported here."
+  (:require [ehrt.sim-emit-hl7.emit-hl7 :as emit-hl7]
+            [ehrt.sim-emit-hl7.v2-replay :as v2-replay]))
 
 (def default-reference-date emit-hl7/default-reference-date)
 (def default-utc-offset emit-hl7/default-utc-offset)
@@ -24,3 +31,8 @@
    (emit-hl7/emit ground-truth reference-date utc-offset facility providers))
   ([ground-truth reference-date utc-offset facility providers site-profile]
    (emit-hl7/emit ground-truth reference-date utc-offset facility providers site-profile)))
+
+(defn fold-message
+  "acc x message -> acc'. See ehrt.sim-emit-hl7.v2-replay/fold-message."
+  [acc message]
+  (v2-replay/fold-message acc message))

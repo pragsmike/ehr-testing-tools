@@ -2569,3 +2569,86 @@
              :rate :idle-cap-ms :wallclock-ms :stream-span-ms :sink}
            (set (keys (:payload r)))))
     (is (= 4035000 (:stream-span-ms (:payload r))))))
+
+;; ---- player board (AR-BB2-2/3): --board N, a display-only sink that
+;; folds each paced event through the exported fold-message and
+;; renders a snapshot at every N-stream-minute boundary, plus one at
+;; stream end regardless of boundary position. A hermetic paced run,
+;; the same seams every other play-command test above already uses. ----
+
+(defn- board-message
+  "A synthetic ER7 message carrying exactly the fields v2-replay's own
+  readers touch. PV1-7 (attending) is real HL7 field 7 -- PV1-3
+  (location) is followed by four pipes (three empty fields, PV1-4/5/6,
+  never populated here) to land attending at the right split index."
+  [dtm trigger mrn family given & {:keys [class ward bed attending]}]
+  (str "MSH|^~\\&|A|B|C|D|" dtm "||ADT^" trigger "^ADT_" trigger "|MSG|P|2.4\r"
+       "PID|1||" mrn "||" family "^" given "\r"
+       (when (or class ward attending)
+         (str "PV1|1|" (or class "") "|" (or ward "") "^^" (or bed "") "||||" (or attending "") "\r"))))
+
+(deftest play-command-board-renders-a-snapshot-at-each-boundary-crossing-plus-a-final-one-test
+  (let [messages [(board-message "20260807000000" "A01" "1" "Alpha" "A" :class "I" :ward "W1" :bed "1")
+                  (board-message "20260807010500" "A01" "2" "Beta" "B" :class "I" :ward "W1" :bed "2")
+                  (board-message "20260807021000" "A01" "3" "Gamma" "C" :class "I" :ward "W1" :bed "3")]
+        printed (atom [])
+        r (cli/play-command {:path (temp-file-with-content (clojure.string/join "\n\n" messages))
+                              :rate 1e15 :board 60
+                              :sleep-fn (fn [_ms] nil)
+                              :println-fn (fn [s] (swap! printed conj s))})
+        rendered (clojure.string/join "\n" @printed)]
+    (is (result/ok? r))
+    (is (= 3 (:snapshot-count (:payload r)))
+        "two boundary crossings (65min, 130min from the first timestamp) plus one unconditional final snapshot")
+    (is (= 3 (count (re-seq #"-- board snapshot:" rendered))))))
+
+(deftest play-command-board-renders-exactly-one-final-snapshot-when-no-boundary-is-crossed-test
+  (let [messages [(board-message "20260807000000" "A01" "1" "Alpha" "A" :class "I" :ward "W1" :bed "1")
+                  (board-message "20260807003000" "A01" "2" "Beta" "B" :class "I" :ward "W1" :bed "2")]
+        r (cli/play-command {:path (temp-file-with-content (clojure.string/join "\n\n" messages))
+                              :rate 1e15 :board 60
+                              :sleep-fn (fn [_ms] nil)
+                              :println-fn (fn [_s] nil)})]
+    (is (result/ok? r))
+    (is (= 1 (:snapshot-count (:payload r)))
+        "both messages sit inside the same 60-minute window -- no boundary crossed, but the final snapshot always fires")))
+
+(deftest play-command-board-unfolded-trigger-is-a-counted-cued-skip-not-a-crash-test
+  (let [messages [(board-message "20260807000000" "A01" "1" "Alpha" "A" :class "I" :ward "W1" :bed "1")
+                  (board-message "20260807000100" "A08" "1" "Alpha" "A")
+                  (board-message "20260807000200" "A02" "1" "Alpha" "A" :ward "W1" :bed "2")]
+        printed (atom [])
+        r (cli/play-command {:path (temp-file-with-content (clojure.string/join "\n\n" messages))
+                              :rate 1e15 :board 100000
+                              :sleep-fn (fn [_ms] nil)
+                              :println-fn (fn [s] (swap! printed conj s))})]
+    (is (result/ok? r))
+    (is (= 3 (:emitted (:payload r))) "every event still reaches the sink, including the unfoldable one")
+    (is (= 1 (:unfolded-count (:payload r))))
+    (is (some #(clojure.string/includes? % "unfolded") @printed)
+        "the skip is cued through the display, never silent")))
+
+(deftest play-command-board-is-ignored-when-sink-is-given-test
+  (let [in-path (temp-file-with-content (two-message-blob))
+        out-path (str in-path ".board-out")
+        r (cli/play-command {:path in-path
+                              :rate 1e15 :board 1
+                              :sink (str "file:" out-path)
+                              :sleep-fn (fn [_ms] nil)
+                              :println-fn (fn [_s] nil)})]
+    (is (result/ok? r))
+    (is (= (str (two-message-blob) "\n\n") (slurp out-path))
+        "byte-identical to a plain --sink run -- --board changes nothing about the written bytes")
+    (is (not (contains? (:payload r) :snapshot-count)) "board never ran")
+    (is (not (contains? (:payload r) :unfolded-count)) "board never ran")))
+
+(deftest play-command-board-wins-over-ticker-when-both-are-given-test
+  (let [printed (atom [])
+        r (cli/play-command {:path (temp-file-with-content (two-message-blob))
+                              :rate 1e15 :board 100000 :ticker "line"
+                              :sleep-fn (fn [_ms] nil)
+                              :println-fn (fn [s] (swap! printed conj s))})]
+    (is (result/ok? r))
+    (is (contains? (:payload r) :snapshot-count) "board ran, not the ticker")
+    (is (not-any? #(clojure.string/includes? % "ADT^A0") @printed)
+        "the ticker's own compact line never rendered")))
