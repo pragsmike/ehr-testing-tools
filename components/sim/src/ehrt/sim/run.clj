@@ -204,18 +204,29 @@
   named. `ehrt.kernel` has no existing similar-file/did-you-mean helper
   (checked, confirmed absent this session) -- this is a small, local
   fn, not a reusable one, since C-1's own fix is scoped to this
-  namespace. Returns the sibling's own path string, or nil."
+  namespace. Returns the sibling's own path string, or nil.
+
+  Quality riders (AR-QR-2, ADR-0076): `.listFiles` returns nil on an
+  I/O failure (permission denied, directory removed mid-read) -- NOT
+  for an empty directory, which yields an empty array. Silently
+  treating both as 'no sibling' conflated a real failure with a
+  negative result. Retried once (a transient filesystem hiccup on a
+  CI runner self-heals); a still-nil result after the retry returns
+  nil exactly as before -- a did-you-mean is decoration and its
+  absence must never fail the error path it decorates -- but the
+  failure mode is now named here rather than absorbed silently."
   [path]
   (let [f (io/file path)
         dir (or (.getParentFile f) (io/file "."))
         stem (config-file-stem (.getName f))]
     (when (.isDirectory dir)
-      (some-> (->> (.listFiles dir)
-                   (filter #(.isFile ^java.io.File %))
-                   (remove #(= (.getName ^java.io.File %) (.getName f)))
-                   (filter #(= stem (config-file-stem (.getName ^java.io.File %))))
-                   first)
-              .getPath))))
+      (when-let [files (or (.listFiles dir) (.listFiles dir))]
+        (some-> (->> files
+                     (filter #(.isFile ^java.io.File %))
+                     (remove #(= (.getName ^java.io.File %) (.getName f)))
+                     (filter #(= stem (config-file-stem (.getName ^java.io.File %))))
+                     first)
+                .getPath)))))
 
 (defn merge-config-file
   "M4 Task 0: `:config` (a path to an EDN file) supplies the data-heavy

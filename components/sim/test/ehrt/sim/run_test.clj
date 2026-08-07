@@ -267,11 +267,16 @@
 ;; either category propagates through run-command/identifiers-command
 ;; unchanged, exactly as :missing-required-opt already does. ---------
 
-(defn- temp-dir-path* []
-  (let [f (java.io.File/createTempFile "merge-config-file-test" "")]
-    (.delete f)
-    (.mkdirs f)
-    (.getAbsolutePath f)))
+(defn- temp-dir-path*
+  "Quality riders (AR-QR-2, ADR-0076): the prior delete-then-mkdirs
+  sequence raced another process for the same temp name between
+  `createTempFile` and `.delete` -- both ignored-boolean calls, no
+  failure ever surfaced. `Files/createTempDirectory` creates the
+  directory in one atomic step and throws on failure instead."
+  []
+  (str (java.nio.file.Files/createTempDirectory
+        "merge-config-file-test"
+        (make-array java.nio.file.attribute.FileAttribute 0))))
 
 (deftest merge-config-file-returns-config-not-found-for-a-missing-path
   (let [dir (temp-dir-path*)
@@ -308,7 +313,12 @@
       (is (result/error? r))
       (is (= :config-not-found (:category r)))
       (is (= edn-path (:path (:payload r))))
-      (is (= md-path (:did-you-mean (:payload r)))))))
+      (is (= md-path (:did-you-mean (:payload r)))
+          (let [dir-file (java.io.File. ^String dir)
+                listed (.listFiles dir-file)]
+            (str "same-stem sibling lookup mismatch (quality riders, AR-QR-2) -- "
+                 "temp dir " dir ", .list() => " (pr-str (seq (.list dir-file)))
+                 ", raw .listFiles() => " (if (nil? listed) "nil" (pr-str (seq listed)))))))))
 
 (deftest merge-config-file-with-no-config-key-is-the-identity-on-opts
   (is (= (result/ok {:seed 1 :patients 2}) (run/merge-config-file {:seed 1 :patients 2}))))
