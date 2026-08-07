@@ -5,11 +5,16 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- Nothing in progress at this close (census substance, ADR-0069,
-  2026-08-07 — the vendoring arc's first session; a design-channel
-  curation pass over the ranked catalog is next, then vendoring
-  sessions batched by closure family, per ADR-0068's own horizon
-  note).
+- Nothing in progress at this close (vendoring batch 1, ADR-0070,
+  2026-08-07 — the vendoring arc's second session; five everyday
+  ambulatory modules landed — asthma, bronchitis, sleep-apnea,
+  fibromyalgia, dementia; a sixth, `injuries.json`, assessed and
+  deferred whole on a real `gmf-interpreter` gap. Successor tag debt:
+  `stable-20260807-vendoring-batch-1` at this session's own closing
+  tip, owed to the next session's own Step 0. Next: batch 2 — "the
+  chronic clinic tail" — awaits the author's own go and its own
+  prompt, per ADR-0070's own curation-plan record; wellness-encounters
+  waits its own design pass, never routine vendoring).
 
 ## Next (backlog, no session scheduled)
 - The lookup-column `time` gap (named in the schema-invalid family
@@ -202,3 +207,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 `notes/adr/0055-alignment-arc-close.md` AR-AC-5)
 - 2026-08-07 — player-arc-close — ADR-0068
 - 2026-08-07 — census-substance — ADR-0069
+- 2026-08-07 — vendoring-batch-1 — ADR-0070
