@@ -176,6 +176,29 @@
 ;; docs 727 x 1.15 = 836.05 -> 840 (775 -> 840). Every budget increases
 ;; -- the shared `build-session/SKILL.md` growth alone accounts for the
 ;; `:sim`/`:judge`/`:docs` moves (each carries no other touched path).
+;;
+;; Re-derivation (2026-08-08, fidelity arc close, `notes/adr/
+;; 0084-fidelity-arc-close.md` AR-FC-4): diffing every set's own
+;; `:paths` membership against `git log 42cd1e0..HEAD --name-only`
+;; (42cd1e0 = the quality-review arc's own closing tip, the base since
+;; which `state.md`/`reading-sets.edn` were last touched) found four
+;; `:onboarding` members touched (`.agents/plans/roadmap.md` -- Now/Done
+;; churn across three fidelity-arc sessions plus this close's own
+;; rotation; `.agents/plans/README.md`, `.agents/prompts/README.md`,
+;; `.agents/session-records/README.md` -- new session/prompt/plan
+;; entries). No `AGENTS.md`, no `.agents/skills/README.md`, no
+;; `.agents/memory/README.md`, and no `.agents/skills/build-session/
+;; SKILL.md` change in that diff (this arc touched no ceremony/skill
+;; surface) -- so only `:onboarding` moves; `:corpus`/`:sim`/`:judge`/
+;; `:docs` budgets stay untouched (this arc's own src/test edits
+;; touched `sim-trajectory`, `sim-emit-hl7`, and `oracle`, none of them
+;; a `:paths` member of those four sets). `:onboarding`'s fresh actual
+;; (`wc -l` sum across all eight `:paths`, measured AFTER the rotation
+;; landed): 284 (AGENTS.md) + 51 + 60 + 157 + 105 + 33 (the five
+;; READMEs) + 339 (roadmap.md, post-rotation) + 187
+;; (build-session/SKILL.md) = 1216. Re-applying the standing formula
+;; (actual x1.15, rounded up to the nearest 5): 1216 x 1.15 = 1398.4 ->
+;; 1400. Budget moves 1285 -> 1400.
 
 {:onboarding
  {:paths ["AGENTS.md"
@@ -198,7 +221,7 @@
   ;; because that's a different audience from "a cold task-class session",
   ;; and forcing every onboarding read to carry its cost would budget for an
   ;; activity most onboarding sessions never do (migration session 5, AR-3).
-  :budget-lines 1285}
+  :budget-lines 1400}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one

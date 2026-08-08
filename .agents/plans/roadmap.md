@@ -5,8 +5,8 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- Nothing in progress at this close (quality-review arc close,
-  ADR-0080, 2026-08-07/08).
+- Nothing in progress at this close (fidelity arc close, ADR-0084,
+  2026-08-08).
 
 ## Next (backlog, no session scheduled)
 - The lookup-column `time` gap (named in the schema-invalid family
@@ -334,7 +334,6 @@ Rows here are LIVE. Closed rows move to Done with their notes.
 scaffolding compaction B, `notes/ADRs.md` ADR-0046 — each closed arc's own
 pointers rotate to a dated header in the attic at that arc's own close,
 `notes/adr/0055-alignment-arc-close.md` AR-AC-5)
-- 2026-08-07 — quality-arc-close — ADR-0080
-- 2026-08-08 — fidelity-riders — ADR-0081
-- 2026-08-08 — encounterend-fix — ADR-0082
-- 2026-08-08 — fidelity-payoff — ADR-0083
+<!-- ADR-0084's own pointer lands here at Step 3 (sentinel-avoidance,
+the ADR-0055/0064/0068/0074/0080 pattern: a session's own closing ADR
+cannot cite its own not-yet-committed pointer). -->

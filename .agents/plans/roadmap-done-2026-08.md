@@ -1530,3 +1530,30 @@ can't hide, tests can't wander).
 - 2026-08-07 — repo-review-1 — ADR-0077
 - 2026-08-07 — result-or-loud — ADR-0078
 - 2026-08-07 — lint-family — ADR-0079
+
+**Appended 2026-08-08 (fidelity arc close, `notes/adr/
+0084-fidelity-arc-close.md` AR-FC-5):** this pointer was the live
+roadmap's own sole current Done entry from the quality-review arc's own
+close until now — the same disclosed-leftover class every prior close
+has handled for its own predecessor. It relocates here now, verbatim,
+at the next arc's own close.
+- 2026-08-07 — quality-arc-close — ADR-0080
+
+## Fidelity arc — closed 2026-08-08 (ADR-0081–0084)
+Relocated verbatim from the live roadmap's own Done section by this
+arc's own close (`notes/adr/0084-fidelity-arc-close.md` AR-FC-5); see
+that ADR for the arc's full account. Three sessions: fidelity riders
+(ADR-0081, the design brief re-verified field-for-field against
+upstream, three rulings recorded — R1 openness-only wellness arms, R2
+suppressed-end visibility, R3 the predict-then-confirm acceptance bar),
+encounterend fix (ADR-0082, the interpreter's five upstream arms
+collapse to the two this subset needs; a real, already-shipped
+dangling reference caught by the blast-radius probe BEFORE any fix
+code, traced, licensed, and fixed; a fifteen-minute CI-red window
+disclosed rather than smoothed over), fidelity payoff (ADR-0083,
+`anemia___unknown_etiology.json` vendors clean as the twenty-eighth
+oracle root, `colorectal_cancer.json`'s misdiagnosis-by-adjacency
+corrects to its own true, still-undiagnosed blocker).
+- 2026-08-08 — fidelity-riders — ADR-0081
+- 2026-08-08 — encounterend-fix — ADR-0082
+- 2026-08-08 — fidelity-payoff — ADR-0083
