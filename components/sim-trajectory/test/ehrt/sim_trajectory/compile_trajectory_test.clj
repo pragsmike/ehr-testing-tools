@@ -252,6 +252,86 @@
     (is (= #{:condition-onset :medication-order} (into #{} (map :event) registration-facts)))
     (is (every? :citation registration-facts))))
 
+;; --- The straddle fix (2026-08-08, ADR-0086, AR-SF-1): the legacy
+;; (`history?` false) path gains its own version of the back-reference
+;; principle Wave H's `history-phase?` already established -- a
+;; straddling encounter (opening pre-horizon, closing and/or
+;; intervening content post-horizon) receives the SAME disposition, in
+;; full, as a fully pre-horizon one -- the exact shape ADR-0085
+;; diagnosed (`clinical-content-only-when-admitted` tripping on a
+;; compiled terminal step with no matching compiled opening). These
+;; three tests are the legacy-path mirror of the pre-existing
+;; `history-mode-straddling-encounter-*` tests above (line 391 on),
+;; using `:pre-horizon` (the legacy field) rather than `:phase`.
+
+(deftest legacy-straddling-encounter-emits-nothing-and-nothing-orphaned
+  (testing "an encounter that opens pre-horizon claims its own close too,
+            even though the close's own raw :pre-horizon is false --
+            the whole span drops, leaving no orphaned :discharge/
+            :outpatient-visit-end (and no admission either) in :steps"
+    (let [trajectory [(ev :encounter {:t 50 :pre-horizon true :encounter-class :inpatient :codes []})
+                      (ev :procedure {:t 90 :pre-horizon true :codes []})
+                      (ev :observation {:t 95 :pre-horizon false :codes []})
+                      (ev :encounter-end {:t 150 :pre-horizon false :references 0})]
+          {:keys [steps registration-facts]} (ct/compile-trajectory trajectory facility 100)]
+      (is (empty? steps))
+      (is (empty? registration-facts)))))
+
+(deftest legacy-straddling-encounter-in-span-facts-still-become-registration-facts
+  (testing "a condition-onset/medication-order straddling INSIDE the span
+            (its own raw :pre-horizon false, but the span it belongs to
+            opened pre-horizon) still lands as a registration-time fact,
+            never a fabricated IR step"
+    (let [onset-codes [{:system :snomed :code "36971009" :display "Sinusitis"}]
+          trajectory [(ev :encounter {:t 50 :pre-horizon true :encounter-class :inpatient :codes []})
+                      (ev :condition-onset {:t 95 :pre-horizon false :state :onset :codes onset-codes})
+                      (ev :encounter-end {:t 150 :pre-horizon false :references 0})]
+          {:keys [steps registration-facts]} (ct/compile-trajectory trajectory facility 100)]
+      (is (empty? steps))
+      (is (= 1 (count registration-facts)))
+      (is (= :condition-onset (:event (first registration-facts)))))))
+
+(deftest legacy-post-straddle-horizon-encounter-still-compiles-normally
+  (let [trajectory [(ev :encounter {:t 50 :pre-horizon true :encounter-class :inpatient :codes []})
+                    (ev :procedure {:t 90 :pre-horizon true :codes []})
+                    (ev :encounter-end {:t 150 :pre-horizon false :references 0})
+                    (ev :encounter {:t 200 :pre-horizon false :encounter-class :ambulatory :codes []})
+                    (ev :encounter-end {:t 210 :pre-horizon false :references 3})]
+        {:keys [steps]} (ct/compile-trajectory trajectory facility 100)]
+    (is (= [:outpatient-visit :outpatient-visit-end]
+           (mapv :type (remove #(= :delay (:type %)) steps)))
+        "the dropped straddling encounter never sets encounter-closed?, so
+         the loop finds the NEXT (fully horizon) encounter and compiles
+         it normally -- byte-identical to the pre-existing history-mode
+         precedent's own proof")))
+
+(deftest legacy-non-straddling-fully-pre-horizon-encounter-unaffected
+  (testing "an encounter fully inside history (opening AND closing both
+            pre-horizon) is untouched by the straddle generalization --
+            still dropped whole, the pre-existing behavior, and NOT
+            counted as a suppressed straddle span"
+    (let [trajectory [(ev :encounter {:t 10 :pre-horizon true :encounter-class :ambulatory :codes []})
+                      (ev :procedure {:t 11 :pre-horizon true :codes []})
+                      (ev :encounter-end {:t 12 :pre-horizon true :references 0})]
+          {:keys [steps registration-facts suppressed-straddle-spans]}
+          (ct/compile-trajectory trajectory facility 100)]
+      (is (empty? steps))
+      (is (empty? registration-facts))
+      (is (= 0 suppressed-straddle-spans)))))
+
+(deftest suppressed-straddle-spans-counts-spans-not-events
+  (testing "AR-SF-7: a zero-cost additive diagnostic -- spans, not
+            events, and only genuine straddles (raw pre-horizon on the
+            opening, raw NOT-pre-horizon on the closing)"
+    (let [trajectory [(ev :encounter {:t 50 :pre-horizon true :encounter-class :inpatient :codes []})
+                      (ev :procedure {:t 90 :pre-horizon true :codes []})
+                      (ev :observation {:t 95 :pre-horizon false :codes []})
+                      (ev :observation {:t 96 :pre-horizon false :codes []})
+                      (ev :encounter-end {:t 150 :pre-horizon false :references 0})]
+          {:keys [suppressed-straddle-spans]} (ct/compile-trajectory trajectory facility 100)]
+      (is (= 1 suppressed-straddle-spans)
+          "one span, regardless of how many in-span events it swallowed"))))
+
 ;; --- The day -> minutes conversion, exactly once (durations rule) ---------
 
 (deftest the-gap-between-registration-and-the-first-horizon-event-becomes-a-delay-in-minutes

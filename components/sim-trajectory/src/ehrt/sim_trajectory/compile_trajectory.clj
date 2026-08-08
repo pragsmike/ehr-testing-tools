@@ -138,6 +138,40 @@
   reference to something dropped' principle applied to the other kind
   of back-reference this namespace already has.
 
+  The straddle fix (2026-08-08, ADR-0085/0086, AR-SF-1): the LEGACY
+  (`history?` false) path had no analogue of AR-2's own inheritance at
+  all -- its drop clauses (below) tested only an event's own raw
+  `:pre-horizon` flag, with no back-reference check against the
+  encounter it belongs to. A real, clinically ordinary shape (an
+  encounter admitted before 'today' and still open through it) then
+  compiled orphaned clinical content and a terminal step with no
+  matching opening, tripping `check.clj`'s own
+  `:clinical-content-only-when-admitted` (ADR-0085's own diagnosis).
+  Shape (b), the ruled fix (AR-SF-1): generalize AR-2's own principle
+  to the legacy path -- a `straddle-open?` fold state (mirroring
+  `gmf-interpreter/mark-phase`'s own `open-phase`, the SAME 'one
+  in-flight span, encounters never nest in this project's own GMF
+  subset' invariant, at compile time instead of interpreter time)
+  opens the moment a raw-pre-horizon `:encounter` is dropped, and every
+  subsequent event -- regardless of ITS OWN raw `:pre-horizon` -- gets
+  the EXISTING pre-horizon disposition (`pre-horizon-dropped-types`
+  drops, `pre-horizon-fact-types` becomes a registration fact) until
+  the matching `:encounter-end` closes the span. `:supply-list` needs
+  no change (already unconditional, any phase). `encounter-closed?`
+  stays untouched by a straddling `:encounter-end`'s own drop -- the
+  SAME 'existing disposition' a fully-pre-horizon `:encounter-end`
+  already got, letting a genuinely later horizon-phase encounter still
+  become 'the first' for this run's own single-encounter scope (the
+  post-straddle proof this session's own test suite adds, mirroring
+  the pre-existing `history-mode-post-straddle-horizon-encounter-
+  still-compiles-normally` test). `:suppressed-straddle-spans` (AR-SF-7)
+  counts SPANS, not events -- incremented once per span whose own
+  closing `:encounter-end` has raw `:pre-horizon` false (a genuine
+  straddle, not a fully-pre-horizon span that happens to close inside
+  history too), a purely additive key on this function's own return
+  map (every caller confirmed `:keys`-selective, AR-SF-7's own
+  friction test).
+
   The day -> minutes boundary (docs/patient-state-model.md's durations
   rule, extended): every trajectory event's own `:t` is an interpreter-
   internal EPOCH DAY (ehrt.sim-trajectory.gmf-interpreter); pathway IR's own
@@ -386,12 +420,20 @@
          steps []
          registration-facts []
          last-t registration-t
-         encounter-closed? false]
+         encounter-closed? false
+         straddle-open? false
+         suppressed-straddle-spans 0]
     (if (empty? events)
-      {:steps steps :registration-facts registration-facts}
+      {:steps steps :registration-facts registration-facts
+       :suppressed-straddle-spans suppressed-straddle-spans}
       (let [[idx event] (first events)
             more (rest events)
-            event-type (:event event)]
+            event-type (:event event)
+            ;; The straddle fix (AR-SF-1): an event's EFFECTIVE
+            ;; pre-horizon status is its own raw flag OR "a pre-horizon-
+            ;; opened span is still in flight" -- `straddle-open?` is the
+            ;; compile-time mirror of `mark-phase`'s own `open-phase`.
+            effective-pre-horizon? (or (:pre-horizon event) (and (not history?) straddle-open?))]
         (cond
           ;; This project's own encounter-horizon scope (sim/ADR-0007 point 3:
           ;; "hospital-operations traffic across a single encounter... not
@@ -410,7 +452,7 @@
           ;; shape this namespace's own docstring already establishes for
           ;; other drop cases.
           encounter-closed?
-          (recur more steps registration-facts last-t encounter-closed?)
+          (recur more steps registration-facts last-t encounter-closed? straddle-open? suppressed-straddle-spans)
 
           ;; Wave H pre-roll (ADR-0042 AR-1/AR-2, Step 3 finding): history?
           ;; true -- a single uniform drop by `history-phase?` (above):
@@ -421,26 +463,45 @@
           ;; types/fact-types bucketing, no :registration-facts entry.
           ;; See this namespace's own docstring, above.
           (and history? (history-phase? trajectory event))
-          (recur more steps registration-facts last-t encounter-closed?)
+          (recur more steps registration-facts last-t encounter-closed? straddle-open? suppressed-straddle-spans)
 
           ;; LEGACY (history? false -- the default, every pre-H caller):
-          ;; unchanged, byte-identical to every pre-H run.
-          (and (not history?) (:pre-horizon event) (pre-horizon-dropped-types event-type))
-          (recur more steps registration-facts last-t encounter-closed?)
+          ;; the straddle fix (above) -- `effective-pre-horizon?` replaces
+          ;; the event's own raw `:pre-horizon`, so a span opened by a
+          ;; genuinely pre-horizon `:encounter` claims every event up to
+          ;; and including its own `:encounter-end`, whatever THEIR own
+          ;; raw flags say. `:encounter` opens the span (only reachable
+          ;; here with its own raw flag true, since `effective-pre-
+          ;; horizon?` for `:encounter` can otherwise only be true via an
+          ;; already-open span, and encounters never nest); the matching
+          ;; `:encounter-end` closes it and, if its OWN raw flag was
+          ;; false, counts one genuine suppressed straddle (AR-SF-7) --
+          ;; a fully pre-horizon span (open AND close both raw-true)
+          ;; closes the same way, uncounted, byte-identical to every
+          ;; pre-H run for that case.
+          (and (not history?) effective-pre-horizon? (pre-horizon-dropped-types event-type))
+          (recur more steps registration-facts last-t encounter-closed?
+                 (case event-type
+                   :encounter true
+                   :encounter-end false
+                   straddle-open?)
+                 (if (and (= :encounter-end event-type) (not (:pre-horizon event)))
+                   (inc suppressed-straddle-spans)
+                   suppressed-straddle-spans))
 
-          (and (not history?) (:pre-horizon event) (pre-horizon-fact-types event-type))
+          (and (not history?) effective-pre-horizon? (pre-horizon-fact-types event-type))
           (recur more steps
                  (conj registration-facts {:event event-type :codes (:codes event)
                                            :citation (citation event) :references (:references event)})
-                 last-t encounter-closed?)
+                 last-t encounter-closed? straddle-open? suppressed-straddle-spans)
 
           (= :encounter event-type)
           (recur more (emit-with-delay steps last-t event (encounter->step facility event))
-                 registration-facts (:t event) encounter-closed?)
+                 registration-facts (:t event) encounter-closed? straddle-open? suppressed-straddle-spans)
 
           (= :encounter-end event-type)
           (recur more (emit-with-delay steps last-t event (encounter-end->step trajectory event))
-                 registration-facts (:t event) true)
+                 registration-facts (:t event) true straddle-open? suppressed-straddle-spans)
 
           ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-2): ImagingStudy's
           ;; own trajectory event compiles to the SAME IR step family a
@@ -449,41 +510,41 @@
           ;; identical shape of (upstream's own companion-procedure move).
           (#{:procedure :imaging-study} event-type)
           (recur more (emit-with-delay steps last-t event (procedure->step event))
-                 registration-facts (:t event) encounter-closed?)
+                 registration-facts (:t event) encounter-closed? straddle-open? suppressed-straddle-spans)
 
           ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-3): SupplyList --
           ;; a log-only trajectory fact, unconditionally (never an IR step,
           ;; any phase) -- the ConditionEnd no-open-encounter precedent
           ;; verbatim, without that precedent's own encounter-open gate.
           (= :supply-list event-type)
-          (recur more steps registration-facts last-t encounter-closed?)
+          (recur more steps registration-facts last-t encounter-closed? straddle-open? suppressed-straddle-spans)
 
           (= :observation event-type)
           (recur more (emit-with-delay steps last-t event (observation->step event))
-                 registration-facts (:t event) encounter-closed?)
+                 registration-facts (:t event) encounter-closed? straddle-open? suppressed-straddle-spans)
 
           (= :diagnostic-report event-type)
           (recur more (emit-with-delay steps last-t event (diagnostic-report->step event))
-                 registration-facts (:t event) encounter-closed?)
+                 registration-facts (:t event) encounter-closed? straddle-open? suppressed-straddle-spans)
 
           (= :medication-order event-type)
           (recur more (emit-with-delay steps last-t event (medication-order->step event))
-                 registration-facts (:t event) encounter-closed?)
+                 registration-facts (:t event) encounter-closed? straddle-open? suppressed-straddle-spans)
 
           (= :medication-end event-type)
           (recur more (emit-with-delay steps last-t event (medication-end->step trajectory event))
-                 registration-facts (:t event) encounter-closed?)
+                 registration-facts (:t event) encounter-closed? straddle-open? suppressed-straddle-spans)
 
           (= :care-plan-start event-type)
           (recur more (emit-with-delay steps last-t event (care-plan-start->step event))
-                 registration-facts (:t event) encounter-closed?)
+                 registration-facts (:t event) encounter-closed? straddle-open? suppressed-straddle-spans)
 
           (= :care-plan-end event-type)
           (recur more (emit-with-delay steps last-t event (care-plan-end->step trajectory event))
-                 registration-facts (:t event) encounter-closed?)
+                 registration-facts (:t event) encounter-closed? straddle-open? suppressed-straddle-spans)
 
           (#{:condition-onset :condition-end} event-type)
-          (recur more (annotate-condition steps trajectory idx event) registration-facts last-t encounter-closed?)
+          (recur more (annotate-condition steps trajectory idx event) registration-facts last-t encounter-closed? straddle-open? suppressed-straddle-spans)
 
           ;; GMF coverage Wave C (2026-08-02, ADR-0028, C4): death inside
           ;; an encounter attaches as that encounter's own terminal
@@ -499,8 +560,8 @@
           ;; and-suspenders, not a new leniency).
           (= :death event-type)
           (if (encounter-currently-open? steps)
-            (recur more (emit-with-delay steps last-t event (death->step event)) registration-facts (:t event) true)
-            (recur more steps registration-facts last-t true))
+            (recur more (emit-with-delay steps last-t event (death->step event)) registration-facts (:t event) true straddle-open? suppressed-straddle-spans)
+            (recur more steps registration-facts last-t true straddle-open? suppressed-straddle-spans))
 
           :else
-          (recur more steps registration-facts last-t encounter-closed?)))))))
+          (recur more steps registration-facts last-t encounter-closed? straddle-open? suppressed-straddle-spans)))))))
