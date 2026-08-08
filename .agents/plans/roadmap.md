@@ -135,7 +135,10 @@ Rows here are LIVE. Closed rows move to Done with their notes.
   R3 (acceptance bar) — all three ruled in ADR-0081. The fix session
   itself is licensed but not yet run.
   **Dated note (2026-08-08, `notes/ADRs.md` ADR-0082, the EncounterEnd
-  fix): the interpreter gap is CLOSED** — `open-encounter-index` (a pure
+  fix): the interpreter gap itself is CLOSED (see Done's own
+  `- 2026-08-08 — encounterend-fix — ADR-0082` pointer for the fix
+  landing; this row stays live, narrowed to colorectal's own remaining
+  blocker below)** — `open-encounter-index` (a pure
   walk-level fold, retiring `index-of-last-open-encounter`) plus the
   A1/A5 compile-arm split land; `anemia___unknown_etiology.json` is
   confirmed CLEAN post-fix (0 violations at all three of ADR-0071's own
@@ -297,3 +300,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 `notes/adr/0055-alignment-arc-close.md` AR-AC-5)
 - 2026-08-07 — quality-arc-close — ADR-0080
 - 2026-08-08 — fidelity-riders — ADR-0081
+- 2026-08-08 — encounterend-fix — ADR-0082

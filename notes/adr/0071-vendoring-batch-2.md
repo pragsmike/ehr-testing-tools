@@ -222,9 +222,27 @@ session), `anemia___unknown_etiology.json` is NOT vendored — no NOTICE
 row, no test, no oracle root. The shared `anemia/anemia_sub.json`
 submodule stays vendored (landed via `hypothyroidism`'s own closure,
 confirmed clean there at 3000 patients — its own call path never
-reaches the hazardous state). Revisit trigger: a future session willing
-to extend `emit-and-advance`'s own `:encounter-end` case to no-op when
-no encounter is open.
+reaches the hazardous state).
+
+**Dated erratum (2026-08-08, `notes/ADRs.md` ADR-0082, AR-EE-1c):** the
+sentence above is corrected, not erased. The 3000-patient check this
+paragraph cites verified CONTENT PRODUCTION (`:substance :produces-
+content`, the census-substance artifact's own metric) — a different
+property than "the call path never reaches the hazardous state," the
+claim it was later read to support. ADR-0082's own blast-radius probe
+(the EncounterEnd fix session, 300 patients, seed 20260802) found the
+hazardous state — `anemia/anemia_sub.json`'s own `End Any Active
+Encounter Just In Case` firing with no encounter open — reachable
+through `hypothyroidism.json`'s own closure at 5/300 (~1.7%), a real,
+already-shipped dangling `:encounter-end` this session's own fix
+closes. The audit-evidence-mechanism lesson: a check that verifies one
+property does not verify a different one later cited in its name.
+
+Revisit trigger: a future session willing to extend
+`emit-and-advance`'s own `:encounter-end` case to no-op when no
+encounter is open. **Closed 2026-08-08, ADR-0082** — see that record
+for the fix, the prediction-and-confirmation evidence, and the erratum
+above.
 
 ### Census-refinement intake (AR-VB2-4, next-close only, not acted on)
 
