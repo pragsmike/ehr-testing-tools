@@ -100,6 +100,40 @@ prioritization table).
 | `lookup_tables/vhd_ts.csv` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/lookup_tables/vhd_ts.csv` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `6cca76c0ec2391d70eceaeed20b16d17fa19d4b969d8299724b74bff16a33cb7` | 2026-08-07 |
 | `med_rec.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/med_rec.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `1698c9ddfc09d8e2fe9592b8f489c0db47b5ba070c30fa0d428a21a21e5e70c0` | 2026-08-07 |
 | `anemia___unknown_etiology.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/anemia___unknown_etiology.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `e954b7cb1fe81b301726baa82d5fa83124f64e052f100ebb87a0a6c5d5e5c896` | 2026-08-08 |
+| `colorectal_cancer.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/colorectal_cancer.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `10a2e4574332650e0bf0e6f466390c704111e525be6e425f85a87fdcccc74e51` | 2026-08-08 |
+
+**Colorectal payoff (2026-08-08, ADR-0087, AR-CP-1): `colorectal_cancer.
+json` comes home.** Deferred whole at vendoring batch 3 (ADR-0072) on
+what its own diagnosis named a dangling-`:encounter-end` gap shared with
+`anemia___unknown_etiology.json`; that diagnosis was overturned by the
+fidelity payoff's own trajectory scan (ADR-0083, AR-FP-2) -- colorectal's
+own violations sat byte-identical before and after the EncounterEnd fix,
+its real blocker a SEPARATE, undiagnosed `:clinical-content-only-when-
+admitted`/`:discharge-follows-admission` defect one compile layer
+downstream. The colorectal investigation (ADR-0085) diagnosed that real
+blocker to `compile-trajectory`'s own legacy pre-horizon drop clauses:
+a straddling encounter (opened pre-horizon, closed and/or containing
+clinical content post-horizon) produced compiled clinical-content and
+discharge steps with no matching compiled admission. The straddle fix
+(ADR-0086) closed the gap structurally, generalizing the Wave H
+`history-phase?` back-reference principle to the legacy path -- and
+this session vendors the module the fix was diagnosed against. No NEW
+closure member beyond the root file itself: `anemia/anemia_sub.json`
+(the closure's own only called submodule) has been vendored, byte-
+identical at this pin, since batch 2's own `hypothyroidism.json`
+closure -- re-verified byte-identical before reuse, not re-copied. No
+lookup tables, no other data files (confirmed by a fresh scan of the
+root file for both `CallSubmodule` and `LookupTableTransition`
+references). Round-trip proof (`ehrt.sim-emit-hl7.vendored-colorectal-
+test`) at the investigation's own three seeds (20260802, 1, 42), 300
+patients, a 100-year `:module-horizon-days` (36500), no `:persona-
+config` override (the module's own `Initial` state is not Race-gated,
+confirmed by inspection, ADR-0082): real compiled clinical content,
+zero invariant-catalog violations at every seed, real rendered HL7,
+plus a pinned interpreter-layer `:suppressed-straddle-spans` count
+across a well-mixed-seed sweep -- this module's own straddling
+patients are exactly what that counter (ADR-0086, AR-SF-7) exists to
+witness.
 
 **Fidelity payoff (2026-08-08, ADR-0083, AR-FP-1): `anemia___unknown_
 etiology.json` comes home.** Deferred whole at vendoring batch 2

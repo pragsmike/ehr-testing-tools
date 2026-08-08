@@ -453,6 +453,24 @@
                                                    {:race "Hispanic" :weight 1.0} {:race "Asian" :weight 1.0}
                                                    {:race "Native" :weight 1.0} {:race "Other" :weight 1.0}]}})))
 
+;; --- Colorectal payoff (2026-08-08, ADR-0087, AR-CP-3): the
+;; twenty-ninth root -- a FIRST BASELINE, deferred whole at vendoring
+;; batch 3 (ADR-0072) on a diagnosis later overturned (ADR-0083), then
+;; diagnosed to its true cause (ADR-0085) and fixed (ADR-0086, the
+;; straddle fix) -- this module's own in-session proof there found
+;; violations fully extinguished at this SAME seed/population. No
+;; `:persona-config` override -- unlike `anemia-pair`, this module's own
+;; `Initial` state is not Race-gated (confirmed by inspection, ADR-0082).
+
+(defn- colorectal-pair []
+  (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
+        closure (:payload (sim-trajectory/load-closure "colorectal-cancer"
+                                            (slurp (io/resource "sim/modules/colorectal_cancer.json"))
+                                            resolve-call-path))]
+    (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
+                  :modules [closure] :module-assignment [{:module-id "colorectal-cancer" :weight 1}]
+                  :module-horizon-days 36500})))
+
 (def ^:private roots
   {"appendicitis"                       appendicitis-batch
    "sore-throat"                        sore-throat-batch
@@ -481,7 +499,8 @@
    "vhd-pulmonic"                       vhd-pulmonic-pair
    "vhd-tricuspid"                      vhd-tricuspid-pair
    "med-rec"                            med-rec-pair
-   "anemia"                             anemia-pair})
+   "anemia"                             anemia-pair
+   "colorectal"                         colorectal-pair})
 
 (defn -main
   "Writes one <root>.edn per root into out-dir (pr-str of the batch or
