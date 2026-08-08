@@ -337,7 +337,14 @@
   `default-horizon-years` further. Never throws past this function --
   `run-module` blowing up (max-steps, an unresolved condition/vital-sign,
   a blocked-submodule-call, ...) is caught and returned as data, per
-  AR-2's own 'the census itself NEVER aborts.'"
+  AR-2's own 'the census itself NEVER aborts.'
+
+  EncounterEnd fix (2026-08-08, ADR-0082, R2/AR-EE-2(iv)): an `:ok?
+  true` row ADDITIVELY carries `:suppressed-encounter-ends` when
+  nonzero (`run-module`'s own ctx, R2's zero-cost diagnostic) -- absent
+  entirely when zero, the same 'no third bucket for the common case'
+  discipline `:substance`'s own `keep` (below, `census-one`'s summary)
+  already establishes."
   [root-module modules tables seed reg-offset-years horizon-years]
   (try
     (let [persona (sim-model/persona (Random. seed) default-persona-config)
@@ -345,8 +352,9 @@
           end-t (+ reg-t (* 365 horizon-years))
           ctx (interp/run-module root-module (Random. seed) persona reg-t end-t modules {} tables)
           canon (pr-str {:status (:status ctx) :trajectory (:trajectory ctx)})]
-      {:seed seed :ok? true :status (:status ctx)
-       :event-count (count (:trajectory ctx)) :digest (sha256-hex canon)})
+      (cond-> {:seed seed :ok? true :status (:status ctx)
+               :event-count (count (:trajectory ctx)) :digest (sha256-hex canon)}
+        (pos? (:suppressed-encounter-ends ctx)) (assoc :suppressed-encounter-ends (:suppressed-encounter-ends ctx))))
     (catch Throwable e
       {:seed seed :ok? false :error (exception-detail e)})))
 

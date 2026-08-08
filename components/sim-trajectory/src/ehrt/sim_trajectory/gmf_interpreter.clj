@@ -179,10 +179,24 @@
   seeds from `vital-sign-baseline-table` (above) -- every OTHER name
   (e.g. `Left ventricular Ejection fraction`, deliberately absent from
   that table) starts genuinely unset, honest-absence territory until a
-  `VitalSign` state writes it (AR-4)."
+  `VitalSign` state writes it (AR-4).
+
+  EncounterEnd fix (2026-08-08, ADR-0082, R2): `:suppressed-encounter-
+  ends` counts A5-arm `:encounter-end` states that fired with nothing
+  open (`step`'s own `:encounter-end` case, below) -- a legal upstream
+  no-op (docs/gmf-interpreter.md's own dated section 4 note), never an
+  error, but zero-cost-countable per the standing error-honesty lesson.
+  Threaded as a full-value passthrough exactly like `:attributes`/
+  `:vital-signs` (every outcome-constructing site in this namespace
+  carries it forward unchanged unless the `:encounter-end` A5 branch
+  bumps it) -- open-encounter STATE itself is NOT threaded here at all;
+  `open-encounter-index` (below, retiring `index-of-last-open-
+  encounter`) recomputes it by a pure fold over `ctx`'s own trajectory
+  on demand, cheap at this project's own walk sizes and simpler than
+  keeping a second piece of derived state in sync."
   [persona]
   {:current :initial :t (dob-epoch-day persona) :attributes {} :persona persona :trajectory []
-   :vital-signs (baseline-vital-signs)})
+   :vital-signs (baseline-vital-signs) :suppressed-encounter-ends 0})
 
 (defn- advance-date
   "epoch-day `t` advanced by `n` `unit`s -- day/week arithmetic is a plain
@@ -1156,6 +1170,7 @@
   {:events events
    :attributes (:attributes ctx)
    :vital-signs (:vital-signs ctx)
+   :suppressed-encounter-ends (:suppressed-encounter-ends ctx)
    :advance advance
    :next (resolve-transition module-id ctx rng state tables)
    :terminal? false
@@ -1163,7 +1178,9 @@
 
 (defn- blocked-outcome
   [ctx]
-  {:events [] :attributes (:attributes ctx) :vital-signs (:vital-signs ctx) :advance 0 :next nil :terminal? false :blocked? true})
+  {:events [] :attributes (:attributes ctx) :vital-signs (:vital-signs ctx)
+   :suppressed-encounter-ends (:suppressed-encounter-ends ctx)
+   :advance 0 :next nil :terminal? false :blocked? true})
 
 (defn- guard-step
   [module-id ctx ^Random rng state tables]
@@ -1206,10 +1223,33 @@
               i))
           (map-indexed vector trajectory))))
 
-(defn- index-of-last-open-encounter
-  [trajectory module-id]
-  (last (keep (fn [[i event]] (when (and (= module-id (:module event)) (= :encounter (:event event))) i))
-              (map-indexed vector trajectory))))
+(defn- open-encounter-index
+  "EncounterEnd fix (2026-08-08, ADR-0082): the trajectory index of the
+  currently-open `:encounter`, walk-level -- NOT module-scoped, RETIRING
+  `index-of-last-open-encounter`'s own openness-blind, module-filtered
+  guess (ADR-0081's own Context section has the full diagnosis). One
+  in-flight encounter is always enough for this project's own GMF
+  subset (Wave H's own `mark-phase` fold, above, already proves it by
+  construction: 'encounters never nest'), and module-agnostic matches
+  how `:references` is already CONSUMED downstream -- a plain trajectory
+  position (`ehrt.sim-trajectory.compile-trajectory`'s own
+  `referenced-event`), never re-checked against the citing event's own
+  module, so a CallSubmodule callee's own EncounterEnd correctly closes
+  an encounter its caller opened (or vice versa), exactly the cross-
+  module case the retired function's module-id filter silently
+  mishandled. A pure fold over `trajectory` -- no ctx state to keep in
+  sync (`initial-context`'s own dated note, above, has the full
+  rationale): `:encounter` opens (sets the index), any later
+  `:encounter-end` closes it (clears to nil), everything else passes
+  the running value through unchanged."
+  [trajectory]
+  (reduce (fn [open [i event]]
+            (case (:event event)
+              :encounter i
+              :encounter-end nil
+              open))
+          nil
+          (map-indexed vector trajectory)))
 
 (defn- emit-and-advance
   "Every v1 trajectory-event-producing state type shares this shape: cite
@@ -1424,6 +1464,7 @@
           ctx' (-> callee-ctx
                    (assoc :attributes (:attributes outcome))
                    (assoc :vital-signs (:vital-signs outcome))
+                   (assoc :suppressed-encounter-ends (:suppressed-encounter-ends outcome))
                    (update :trajectory into (:events outcome))
                    (update :t + (:advance outcome)))]
       (cond
@@ -1460,6 +1501,7 @@
       {:events new-events
        :attributes (:attributes post-call-ctx)
        :vital-signs (:vital-signs post-call-ctx)
+       :suppressed-encounter-ends (:suppressed-encounter-ends post-call-ctx)
        :advance (- (:t post-call-ctx) (:t ctx))
        :next (resolve-transition module-id post-call-ctx rng state tables)
        :terminal? false
@@ -1489,8 +1531,17 @@
   Guard -> `:wellness-wait` cycle now advances a FULL cadence interval
   per iteration (never zero, unlike the retired create-now
   substitution), so the horizon bounds iterations the same way it
-  already bounds every other module's own walk."
+  already bounds every other module's own walk.
+
+  EncounterEnd fix (2026-08-08, ADR-0082, R1): this is the OTHER site
+  that mints a raw `:encounter` event (the `:encounter` case in `step`'s
+  own dispatch, below, is the other) -- carries the SAME nesting assert
+  `open-encounter-index` gates there, since a wellness encounter closes
+  by openness alone, no separate wellness-vs-ordinary arm (R1's own
+  openness-only ruling)."
   [module-id ctx ^Random rng state tables]
+  (assert (nil? (open-encounter-index (:trajectory ctx)))
+          "ehrt.sim-trajectory.gmf-interpreter: nested :encounter (wellness) -- this project's GMF subset assumes encounters never nest (Wave H's own fold discipline, ADR-0042)")
   (let [t' (next-wellness-tick (:persona ctx) (:t ctx))
         event (trajectory-event module-id (assoc ctx :t t') :encounter
                                  (cond-> {:encounter-class :wellness}
@@ -1571,7 +1622,9 @@
   [module-id ctx ^Random rng state]
   (let [death-t (resolve-time-advance rng (:t ctx) state)
         event (trajectory-event module-id (assoc ctx :t death-t) :death {:codes (death-cause-codes module-id ctx state)})]
-    {:events [event] :attributes (:attributes ctx) :vital-signs (:vital-signs ctx) :advance (- death-t (:t ctx))
+    {:events [event] :attributes (:attributes ctx) :vital-signs (:vital-signs ctx)
+     :suppressed-encounter-ends (:suppressed-encounter-ends ctx)
+     :advance (- death-t (:t ctx))
      :next nil :terminal? true :blocked? false}))
 
 (defn step
@@ -1614,7 +1667,9 @@
    (let [module-id (:id module)
          state (get-in module [:states (:current ctx)])]
     (case (:type state)
-      :terminal {:events [] :attributes (:attributes ctx) :vital-signs (:vital-signs ctx) :advance 0 :next nil :terminal? true :blocked? false}
+      :terminal {:events [] :attributes (:attributes ctx) :vital-signs (:vital-signs ctx)
+                 :suppressed-encounter-ends (:suppressed-encounter-ends ctx)
+                 :advance 0 :next nil :terminal? true :blocked? false}
       :initial (pass-through-outcome module-id ctx rng state 0 [] tables)
       :simple (pass-through-outcome module-id ctx rng state 0 [] tables)
       ;; M5b: consumed-internally, like :simple -- gmf/gmf-type->keyword's
@@ -1692,11 +1747,34 @@
                                         {:references (index-of-citation (:trajectory ctx) module-id
                                                                          :condition-onset (:condition-onset state))}
                                         tables)
-      :encounter (emit-and-advance module-id ctx rng state :encounter
-                                    {:codes (:codes state) :encounter-class (:encounter-class state)} tables)
-      :encounter-end (emit-and-advance module-id ctx rng state :encounter-end
-                                        {:references (index-of-last-open-encounter (:trajectory ctx) module-id)}
-                                        tables)
+      ;; EncounterEnd fix (2026-08-08, ADR-0082, R1/R2/R3, ADR-0081's own
+      ;; rulings executed): the assert is the brief's own "one in-flight
+      ;; encounter" invariant made loud (Wave H's own fold already
+      ;; proves it holds for every vendored closure; a violation here is
+      ;; a genuinely new module shape, not a scenario to route around
+      ;; silently).
+      :encounter
+      (do (assert (nil? (open-encounter-index (:trajectory ctx)))
+                   "ehrt.sim-trajectory.gmf-interpreter: nested :encounter -- this project's GMF subset assumes encounters never nest (Wave H's own fold discipline, ADR-0042)")
+          (emit-and-advance module-id ctx rng state :encounter
+                             {:codes (:codes state) :encounter-class (:encounter-class state)} tables))
+      ;; A1 (open, ours): emit, referencing the TRACKED open index --
+      ;; unchanged observable behavior for every module whose walks
+      ;; never hit A5 below (every currently-vendored module but the
+      ;; hypothyroidism/anemia_sub case ADR-0082 catalogs). A5 (nothing
+      ;; open): upstream's own legal no-op -- NO EVENT, the ordinary
+      ;; transition taken instead, `:suppressed-encounter-ends`
+      ;; incremented (R2). A2/A3 (wellness arms) and A4 (blocked on
+      ;; another module's encounter) have no separate arm here by
+      ;; openness-only design (R1): a wellness encounter this module's
+      ;; own walk opened closes exactly like A1 above (its own emit
+      ;; site is `wellness-wait-step`, which shares this SAME openness
+      ;; state); A4 is unreachable under one-module-per-patient (Wave G's
+      ;; own standing scope) and disclosed, not dispatched.
+      :encounter-end
+      (if-let [open-idx (open-encounter-index (:trajectory ctx))]
+        (emit-and-advance module-id ctx rng state :encounter-end {:references open-idx} tables)
+        (pass-through-outcome module-id (update ctx :suppressed-encounter-ends inc) rng state 0 [] tables))
       :procedure (emit-and-advance module-id ctx rng state :procedure {:codes (:codes state)} tables)
       :observation (emit-and-advance module-id ctx rng state :observation (sample-observation-extra rng state) tables)
       ;; GMF coverage Wave D stage D1 (2026-08-02, ADR-0029 R2(a)): both
@@ -1866,7 +1944,9 @@
     (step module rng ctx modules tables)
     (catch clojure.lang.ExceptionInfo e
       (if (honest-absence? e)
-        {:events [] :attributes (:attributes ctx) :vital-signs (:vital-signs ctx) :advance 0 :next nil
+        {:events [] :attributes (:attributes ctx) :vital-signs (:vital-signs ctx)
+         :suppressed-encounter-ends (:suppressed-encounter-ends ctx)
+         :advance 0 :next nil
          :terminal? false :blocked? false :walk-error (ex-data e)}
         (throw e)))))
 
@@ -1915,6 +1995,7 @@
            ctx' (-> ctx
                     (assoc :attributes (:attributes outcome))
                     (assoc :vital-signs (:vital-signs outcome))
+                    (assoc :suppressed-encounter-ends (:suppressed-encounter-ends outcome))
                     (update :trajectory into (:events outcome))
                     (update :t + (:advance outcome)))]
        (cond
@@ -2044,6 +2125,7 @@
              ctx' (-> ctx
                       (assoc :attributes (:attributes outcome))
                       (assoc :vital-signs (:vital-signs outcome))
+                      (assoc :suppressed-encounter-ends (:suppressed-encounter-ends outcome))
                       (assoc :open-encounter-phase open-encounter-phase')
                       (update :trajectory into marked-events)
                       (update :t + (:advance outcome)))]

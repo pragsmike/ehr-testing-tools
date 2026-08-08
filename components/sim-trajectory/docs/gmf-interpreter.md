@@ -729,6 +729,35 @@ divergence from anything ratified:
    own state/transition scope) but would need real open/closed tracking
    before a future module with genuinely overlapping encounters could
    trust it.
+
+   **Dated resolution (2026-08-08, `notes/ADRs.md` ADR-0082, the
+   EncounterEnd fix).** RESOLVED, not merely revisited: real openness
+   tracking now lands (`ehrt.sim-trajectory.gmf-interpreter/open-
+   encounter-index`, a pure fold over the walk's own trajectory,
+   retiring `index-of-last-open-encounter`). Upstream `State.java`'s
+   `EncounterEnd.process` has five arms (own-encounter-open; wellness-
+   encounter-open, held by the shared `EncounterModule`; a stale
+   active-wellness attribute with nothing current; someone-else's-
+   encounter-open, which blocks and retries; nothing-open, a no-op) —
+   this subset's own compile rule collapses to two, by openness alone:
+   **A1 (open)** emits `:encounter-end` referencing the TRACKED open
+   index; **A5 (nothing open)** is upstream's own legal no-op — NO
+   EVENT, the ordinary transition taken instead, `:suppressed-
+   encounter-ends` incremented (a zero-cost diagnostic, never an
+   error). **Disclosed divergence (R1):** this subset runs one module
+   per walk and compiles wellness encounters as the module's own events
+   (Wave G, `wellness-wait-step`), so there is no cross-module wellness
+   context upstream's own A2/A3 distinguish — a wellness encounter this
+   module's own walk opened closes exactly like an ordinary one, by
+   openness alone, not by upstream's own shared-EncounterModule
+   ownership check. Upstream's own A4 (blocked on ANOTHER module's
+   encounter) has no compile arm here — unreachable under one-module-
+   per-patient (Wave G's own standing scope), the SAME multi-module
+   revisit trigger this document's own coverage-wave findings already
+   name. One in-flight encounter is asserted, not merely assumed
+   (`open-encounter-index`'s own callers) — Wave H's own fold already
+   proved it holds for every vendored closure; a violation is now a
+   loud `AssertionError`, not a silent overwrite.
 4. **Virtual time is an interpreter-internal `epoch-day`
    (`java.time.LocalDate/toEpochDay`), not the engine's own seconds-
    from-run-start clock (ADR-0011).** M5a is engine-free by design (the

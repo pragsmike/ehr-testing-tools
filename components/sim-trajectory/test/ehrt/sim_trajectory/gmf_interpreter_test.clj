@@ -2446,9 +2446,18 @@
    ;; Wave's own census against the real catalog, not a hypothetical. A
    ;; module author routinely relies on the wellness cycle ITSELF being
    ;; the loop's only clock, exactly as upstream's own design intends.
+   ;; EncounterEnd fix (2026-08-08, ADR-0082): `:end` closes each
+   ;; wellness encounter before the loop reopens the next one --
+   ;; matching real med_rec.json's own EncounterEnd-in-the-loop shape
+   ;; (this def's own header comment) faithfully; the interpreter's own
+   ;; new "encounters never nest" assert (open-encounter-index,
+   ;; gmf-interpreter.clj) caught this fixture's own prior omission,
+   ;; which never closed at all -- still zero Delay anywhere in the
+   ;; loop body, the property this test actually exercises.
    :states {:initial {:type :initial :direct-transition :wait}
             :wait {:type :wellness-wait :direct-transition :act}
-            :act {:type :counter :attribute "visits" :action :increment :direct-transition :wait}}})
+            :act {:type :counter :attribute "visits" :action :increment :direct-transition :end}
+            :end {:type :encounter-end :direct-transition :wait}}})
 
 (deftest wellness-wait-act-loop-terminates-horizon-bounded-not-max-steps
   (testing "AR-7: the four real upstream loop modules this Wave
@@ -2797,3 +2806,75 @@
               (nextInt ([n] (swap! calls inc) (proxy-super nextInt n))))]
     (interp/step vaccine-module rng ctx)
     (is (= 0 @calls))))
+
+;; --- EncounterEnd fix (2026-08-08, notes/ADRs.md ADR-0082, AR-EE-2/3):
+;; the interpreter learns openness -- A1 (open) emits referencing the
+;; TRACKED index; A5 (nothing open) is upstream's own legal no-op, NO
+;; EVENT, `:suppressed-encounter-ends` incremented instead (R2); one
+;; in-flight encounter is asserted, never silently allowed to nest.
+;; `encounter-end-fixture.json` (hand-authored, no NOTICE obligation,
+;; the fixture's own header has the full incident-record citation)
+;; reproduces the exact close-encounter-if-open idiom anemia/anemia_
+;; sub.json's own "End Any Active Encounter Just In Case" state authors,
+;; the shape ADR-0071/ADR-0072 deferred two modules whole on. -----------
+
+(def encounter-end-fixture-json
+  (slurp (io/resource "ehrt/sim/fixtures/encounter-end-fixture.json")))
+
+(def encounter-end-fixture
+  (:payload (gmf/load-module "encounter-end-fixture" encounter-end-fixture-json)))
+
+(deftest close-if-open-idiom-emits-once-and-suppresses-the-second-close
+  (testing "A1 emits with the tracked reference; A5 (Close_Again, nothing
+            open) is a silent no-op upstream -- no dangling :encounter-end,
+            the walk proceeds to Terminal, and the suppression is counted,
+            not merely absorbed"
+    (let [p (persona-at 1)
+          result (interp/run-module encounter-end-fixture (Random. 1) p
+                                     (interp/dob-epoch-day p) (+ (interp/dob-epoch-day p) 3650))
+          ends (filterv #(= :encounter-end (:event %)) (:trajectory result))]
+      (is (= :terminal (:status result)))
+      (is (= 1 (count ends)) "exactly one :encounter-end reaches the trajectory -- Close_Again emits nothing")
+      (is (= 0 (:references (first ends))) "the surviving end still references the tracked open index (A1)")
+      (is (= 1 (:suppressed-encounter-ends result))
+          "Close_Again's own no-op is counted, not silently dropped (R2)"))))
+
+(deftest open-close-open-close-sequence-tracks-each-encounter-independently
+  (testing "unit test on the tracking itself: two full open/close cycles,
+            each :encounter-end referencing ITS OWN encounter's own index,
+            never the other one's -- open-encounter-index is a pure fold
+            over the trajectory, re-derived fresh each call, not stale
+            cross-encounter state"
+    (let [two-cycle-module
+          {:id "two-cycle-mod" :name "TwoCycle"
+           :states {:initial {:type :initial :direct-transition :open1}
+                    :open1 {:type :encounter :encounter-class :ambulatory :direct-transition :close1}
+                    :close1 {:type :encounter-end :direct-transition :open2}
+                    :open2 {:type :encounter :encounter-class :ambulatory :direct-transition :close2}
+                    :close2 {:type :encounter-end :direct-transition :done}
+                    :done {:type :terminal}}}
+          p (persona-at 1)
+          result (interp/run-module two-cycle-module (Random. 1) p
+                                     (interp/dob-epoch-day p) (+ (interp/dob-epoch-day p) 3650))
+          ends (filterv #(= :encounter-end (:event %)) (:trajectory result))]
+      (is (= :terminal (:status result)))
+      (is (= 2 (count ends)))
+      (is (= 0 (:references (first ends))) "close1 references open1, index 0")
+      (is (= 2 (:references (second ends))) "close2 references open2, index 2 -- never open1 again")
+      (is (= 0 (:suppressed-encounter-ends result)) "both closes matched a real open -- nothing suppressed"))))
+
+(deftest nested-encounter-asserts-rather-than-silently-nesting
+  (testing "the subset's own invariant (encounters never nest, Wave H's
+            own fold discipline) made loud: a SECOND :encounter reached
+            while one is still open throws, rather than silently
+            overwriting the tracked index"
+    (let [nesting-module
+          {:id "nesting-mod" :name "Nesting"
+           :states {:initial {:type :initial :direct-transition :open1}
+                    :open1 {:type :encounter :encounter-class :ambulatory :direct-transition :open2}
+                    :open2 {:type :encounter :encounter-class :ambulatory :direct-transition :done}
+                    :done {:type :terminal}}}
+          p (persona-at 1)]
+      (is (thrown? AssertionError
+                   (interp/run-module nesting-module (Random. 1) p
+                                       (interp/dob-epoch-day p) (+ (interp/dob-epoch-day p) 3650)))))))
