@@ -193,6 +193,27 @@ Rows here are LIVE. Closed rows move to Done with their notes.
   dedicated investigation of this violation class against
   `colorectal_cancer.json`'s own closure — intake for the fidelity
   arc's own close (ADR-0084).
+  **Dated note (2026-08-08, colorectal investigation, `notes/ADRs.md`
+  ADR-0085): DIAGNOSED, not fixed — row stays LIVE.** The mechanism is
+  now named: `ehrt.sim-trajectory.compile-trajectory/compile-
+  trajectory`'s own legacy `:pre-horizon` drop gate tests only an
+  event's own flag, with no back-reference check against the encounter
+  it belongs to — an `:encounter` opened PRE-horizon (dropped) whose
+  own `:encounter-end` and intervening clinical content fire
+  POST-horizon (compiled normally) produces clinical-content and
+  terminal-discharge steps with no matching compiled admission step,
+  confirmed across 100% of the violating population (2 of 2 distinct
+  patients, both seeds, three-layer probe evidence in ADR-0085). The
+  truncation hypothesis ADR-0082 AR-EE-1a raised is CONFIRMED but
+  narrower than stated: the `:pre-horizon` gate is the real mechanism,
+  in a straddling-encounter shape that finding never exercised;
+  `encounter-closed?`'s own single-encounter scope plays no defective
+  role. Revisit trigger, narrowed to a fix session: two candidate fix
+  shapes named in ADR-0085 (synthesize a compiled opening step for a
+  straddling encounter, or generalize the Wave H `history-phase?`
+  back-reference principle to the legacy path) — a genuine design
+  choice for the design channel to rule on, not mechanical follow-
+  through.
 - **Corpus player `:mllp` transport sink** (`notes/adr/0014-corpus-
   player.md`, deferred whole per that session's own bail-out
   procedure): `:mllp` already exists as a *framing* (byte-level
