@@ -257,3 +257,27 @@ change to the contract itself.
   are not vendorable; a census verdict is evidence for curation, never
   a vendoring license (the `injuries`, `anemia___unknown_etiology`, and
   `colorectal_cancer` precedents, ADR-0070–0072).
+
+## From the quality-review arc (ADR-0075–0080)
+
+- **Multi-seed-once-flagged, standing** [A — ruled AR-RL-5(5)]: a
+  vendoring round-trip that flags a module re-runs at 2–3 well-mixed
+  seeds at population scale before any verdict — codifies ADR-0071/
+  ADR-0072's own followed practice (findings register D6-4), previously
+  precedent-only.
+- **The `defspec` seed policy, standing** [A — ruled AR-RL-5(3)]: seeds
+  stay unpinned repo-wide, for generator diversity; a spec that has
+  actually flaked pins or durably logs its seed (the engine spec,
+  ADR-0079); the printed-seed-plus-CI-retention default is sufficient
+  otherwise; revisited on the next flake.
+- **I/O speaks Result or fails loud, standing** [C — the arc's own
+  executed discipline; the author may strike it]: a production I/O
+  call that can fail routes through `ehrt.kernel.io` or handles its
+  failure mode by name; an I/O failure never impersonates an empty
+  result (ADR-0078, gated by `io_vocabulary_lint_test`).
+- **CI is watched, never waited on, and commits land green, standing**
+  [C — likewise]: preflight discloses the last five runs' conclusions;
+  watch-to-conclusion is reserved for sessions whose own claim is about
+  CI; no push carries a knowingly-failing test (ADR-0075/0076/0078's
+  own pattern shift, superseding the older red-checkpoint-commit
+  pattern).
