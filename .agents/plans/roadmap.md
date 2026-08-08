@@ -9,15 +9,6 @@ per item; done items move to the bottom of their section with a date and sha.
   2026-08-08).
 
 ## Next (backlog, no session scheduled)
-- **Colorectal vendoring payoff** (2026-08-08, straddle fix,
-  `notes/ADRs.md` ADR-0086): `colorectal_cancer.json` is clean at all
-  three seeds (20260802, 1, 42; the colorectal Deferred row closed
-  above) but NOT yet vendored — the fix session's own fence held
-  (`notes/adr/0086-straddle-fix.md`'s own scope, no `digest.clj` root
-  added, no NOTICE entry). Population-scale gate law: a fresh vendoring
-  rider's own committed test, `digest.clj`'s 29th root, the same
-  round-trip discipline every other vendored module already carries.
-  Revisit trigger: a session picks this up as its own vendoring payoff.
 - The lookup-column `time` gap (named in the schema-invalid family
   backlog since ADR-0039, still untouched — Wave I's own six
   mechanisms didn't cover it). Bulk vendoring (batched by closure
@@ -386,3 +377,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 `notes/adr/0055-alignment-arc-close.md` AR-AC-5)
 - 2026-08-08 — fidelity-arc-close — ADR-0084
 - 2026-08-08 — straddle-fix — ADR-0086
+- 2026-08-08 — colorectal-payoff — ADR-0087
