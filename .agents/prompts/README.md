@@ -97,3 +97,4 @@ Files in this directory:
   * 2026-08-07-ci-current.md
   * 2026-08-07-quality-riders.md
   * 2026-08-07-repo-review-1.md
+  * 2026-08-07-result-or-loud.md
