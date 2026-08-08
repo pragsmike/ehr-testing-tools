@@ -102,3 +102,4 @@ Files in this directory:
   * 2026-08-07-quality-arc-close.md
   * 2026-08-08-fidelity-riders.md
   * 2026-08-08-encounterend-fix.md
+  * 2026-08-08-fidelity-payoff.md

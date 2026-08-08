@@ -337,3 +337,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-07 — quality-arc-close — ADR-0080
 - 2026-08-08 — fidelity-riders — ADR-0081
 - 2026-08-08 — encounterend-fix — ADR-0082
+- 2026-08-08 — fidelity-payoff — ADR-0083
