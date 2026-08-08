@@ -243,3 +243,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-07 — quality-riders — ADR-0076
 - 2026-08-07 — repo-review-1 — ADR-0077
 - 2026-08-07 — result-or-loud — ADR-0078
+- 2026-08-07 — lint-family — ADR-0079
