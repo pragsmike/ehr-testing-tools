@@ -431,6 +431,28 @@
                   :modules [(sim-trajectory/singleton-closure module)] :module-assignment [{:module-id "med-rec" :weight 1}]
                   :module-horizon-days 36500})))
 
+;; --- Fidelity payoff (2026-08-08, ADR-0083, AR-FP-1/2): the
+;; twenty-eighth root -- a FIRST BASELINE, deferred whole at vendoring
+;; batch 2 (ADR-0071) on the same dangling-`:encounter-end` gap the
+;; EncounterEnd fix (ADR-0082) closed structurally; this module's own
+;; in-session proof there found violations fully extinguished at this
+;; SAME seed/population. `:persona-config` carries the race-weighting
+;; ADR-0071's own finding first required (no other root here reads
+;; `:race`) -- the same shape `ehrt.sim-trajectory.census/default-
+;; persona-config` and `vendored_anemia_test.clj` both already use.
+
+(defn- anemia-pair []
+  (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
+        closure (:payload (sim-trajectory/load-closure "anemia-unknown-etiology"
+                                            (slurp (io/resource "sim/modules/anemia___unknown_etiology.json"))
+                                            resolve-call-path))]
+    (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
+                  :modules [closure] :module-assignment [{:module-id "anemia-unknown-etiology" :weight 1}]
+                  :module-horizon-days 36500
+                  :persona-config {:race-weights [{:race "White" :weight 1.0} {:race "Black" :weight 1.0}
+                                                   {:race "Hispanic" :weight 1.0} {:race "Asian" :weight 1.0}
+                                                   {:race "Native" :weight 1.0} {:race "Other" :weight 1.0}]}})))
+
 (def ^:private roots
   {"appendicitis"                       appendicitis-batch
    "sore-throat"                        sore-throat-batch
@@ -458,7 +480,8 @@
    "metabolic-syndrome-care"            metabolic-syndrome-care-pair
    "vhd-pulmonic"                       vhd-pulmonic-pair
    "vhd-tricuspid"                      vhd-tricuspid-pair
-   "med-rec"                            med-rec-pair})
+   "med-rec"                            med-rec-pair
+   "anemia"                             anemia-pair})
 
 (defn -main
   "Writes one <root>.edn per root into out-dir (pr-str of the batch or

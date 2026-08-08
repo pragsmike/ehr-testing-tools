@@ -294,6 +294,31 @@ json` already named — a future session willing to extend
 `emit-and-advance`'s own `:encounter-end` case to no-op when no
 encounter is open — tracked as the SAME roadmap Deferred row.
 
+**Dated erratum (2026-08-08, `notes/ADRs.md` ADR-0083, append-don't-
+erase):** the diagnosis above — "the SAME standing `ehrt.sim-
+trajectory.gmf-interpreter` gap `anemia___unknown_etiology.json`
+already surfaced," "same root cause, not a new gap" — is CORRECTED,
+not erased. The EncounterEnd fix (ADR-0082) closed that gap and, as
+part of its own in-session proof, ran the same raw-trajectory scan
+against `colorectal_cancer.json`'s own 300 seed-42 walks that it ran
+for `anemia___unknown_etiology.json`: ZERO dangling `:encounter-end`
+references anywhere, and `colorectal_cancer.json`'s own violations sit
+BYTE-IDENTICAL before and after the fix landed — a fix with nothing to
+correct in this module's own walks. This session's own diagnosis was
+never itself probe-verified against a trajectory scan; it inferred the
+same cause from the same shared `anemia/anemia_sub.json` submodule and
+the same violation invariant family (`:discharge-follows-admission`/
+`:clinical-content-only-when-admitted`) — plausible by adjacency, not
+by evidence. `colorectal_cancer.json`'s real blocker is a separate,
+still-undiagnosed defect one compile layer downstream of the
+interpreter — see `.agents/plans/roadmap.md`'s own Deferred row, under
+its own true name, and ADR-0083 for the correcting record. The lesson,
+restated: a check (or an inference) that verifies one property does not
+verify a different one later cited in its name — the SAME lesson
+ADR-0082's own AR-EE-1c erratum (correcting ADR-0071) already named,
+now confirmed a second time by this session's own inference, not a
+check.
+
 ### Verification
 
 - `bin/regression-oracle 5d40d4e fc44369 --declared-digest-change`:

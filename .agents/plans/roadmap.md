@@ -157,6 +157,42 @@ Rows here are LIVE. Closed rows move to Done with their notes.
   `colorectal_cancer.json`'s own clinical-content-outside-admission gap
   needs its own diagnosis before it can vendor; `anemia___unknown_
   etiology.json` needs none.
+  **Dated note (2026-08-08, fidelity payoff, `notes/ADRs.md` ADR-0083):
+  this row CLOSED — see Done, below — both modules it ever blocked are
+  resolved, neither by extending this row's own revisit trigger.**
+  `anemia___unknown_etiology.json` vendors clean (AR-FP-1, this
+  session). `colorectal_cancer.json` — this row's ONLY erratum, dated
+  and append-don't-erase — was NEVER actually blocked by this gap: the
+  same in-session raw-trajectory scan that cleared `anemia___unknown_
+  etiology.json` (ADR-0082, cited two notes above) found ZERO dangling
+  `:encounter-end` references anywhere in `colorectal_cancer.json`'s
+  own 300 seed-42 walks, and its own violations sit BYTE-IDENTICAL
+  before and after the fix landed — a fix that had nothing to correct
+  there. ADR-0072's own diagnosis ("same root cause, not a new gap",
+  the dated note two above) was plausible BY ADJACENCY — the same
+  shared `anemia/anemia_sub.json` submodule, the same violation
+  invariant family — never itself probe-verified by a trajectory scan
+  the way `anemia___unknown_etiology.json`'s own finding always was;
+  this session's own probe is the first scan colorectal's blocker ever
+  received, and it overturns the inference. Colorectal's real blocker
+  moves to its own row, under its own true name, below.
+- **`colorectal_cancer.json`'s own `:clinical-content-only-when-
+  admitted` gap, true name, undiagnosed** (2026-08-08, fidelity payoff,
+  `notes/ADRs.md` ADR-0083, corrected from the closed `EncounterEnd`
+  row above): `colorectal_cancer.json` is deferred whole, NOT vendored
+  — not blocked by the (now-closed) EncounterEnd gap, per the erratum
+  above, but by a separate, still-undiagnosed defect one compile layer
+  downstream of the interpreter (`compile-trajectory` or the engine,
+  not yet localized): `ehrt.sim-check.check`'s own
+  `:clinical-content-only-when-admitted` invariant (plus one early
+  `:discharge-follows-admission`) rejects at 2 of 3 seeds tried
+  (20260802, 42; 300 patients each, ADR-0072's own original counts,
+  reconfirmed byte-identical post-fix by ADR-0082). Clinical content is
+  compiling or replaying as though outside an open encounter — the
+  mechanism is unknown. Revisit trigger: a future session's own
+  dedicated investigation of this violation class against
+  `colorectal_cancer.json`'s own closure — intake for the fidelity
+  arc's own close (ADR-0084).
 - **Corpus player `:mllp` transport sink** (`notes/adr/0014-corpus-
   player.md`, deferred whole per that session's own bail-out
   procedure): `:mllp` already exists as a *framing* (byte-level
