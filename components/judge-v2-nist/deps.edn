@@ -1,4 +1,4 @@
-{:paths ["src"]
+{:paths ["src" "resources"]
 
  ;; NIST v2-validation engine (profile-tier HL7 v2 judge). These
  ;; coordinates resolve from NIST's own Nexus, NOT Maven Central --

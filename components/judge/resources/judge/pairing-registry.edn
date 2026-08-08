@@ -1,0 +1,78 @@
+;; The mutate<->judge pairing registry (pairing-as-data, notes/ADRs.md
+;; ADR-0088; the design pass ruled AR-PD-0..6, review P3-3 D-3/D7-5): per-
+;; operator WITNESSED rows -- inject defect class X, expect finding class X,
+;; checked by execution instead of prose. A row lands only when this session
+;; actually ran the loop (mutate -> gate -> observe) against a real fixture;
+;; unwitnessed operator x judge cells simply do not appear here (ADR-0088's
+;; own tier-two coverage table records which cells that leaves open, report-
+;; only). Loaded and schema-validated by `ehrt.judge.pairing/load-registry`.
+;;
+;; :locator is this registry's own addition to the row shape the design pass
+;; named (:operator/:judge/:expected/:fixture/:witness) -- every v2 operator
+;; here is `:locator-required? true` (ehrt.corpus.operators), so a row that
+;; does not carry its own replay locator cannot actually be replayed by the
+;; tier-one per-row test; disclosed in ADR-0088 rather than silently added.
+;;
+;; :expected is the set of finding CLASSES this session observed becoming
+;; NEW (present in the mutant's findings, absent or less frequent in the
+;; unmutated baseline's own findings) after applying :operator at :locator
+;; and gating through :judge -- for judge-v2-hapi, the finding's own :code
+;; (the raising HAPI exception's kebab-cased class name); for judge-v2-nist,
+;; the finding's own :category (a name drawn from the engine's reference.conf
+;; taxonomy, judge-v2-nist/resources/judge-v2-nist/taxonomy.edn -- schema-
+;; checked, see judge-v2-nist's own currency-gate test).
+;;
+;; :profile is a second, judge-v2-nist-only addition (optional key): the
+;; conformance-profile bundle directory judge-v2-nist/make-validator needs
+;; alongside :fixture -- a base-structural (judge-v2-hapi) row needs no
+;; profile at all, so this key is absent there rather than always-present.
+[{:operator {:id :blank-required-field :version "1"}
+  :judge :judge-v2-hapi
+  :locator "MSH-9"
+  :expected #{"hl7-exception"}
+  :fixture "components/corpus/test-fixtures/v2/adt-a01-admit.hl7"
+  :witness {:adr "0088" :date "2026-08-08"}}
+
+ {:operator {:id :corrupt-encoding-characters :version "1"}
+  :judge :judge-v2-hapi
+  :locator "MSH-2"
+  :expected #{"hl7-exception"}
+  :fixture "components/corpus/test-fixtures/v2/adt-a01-admit.hl7"
+  :witness {:adr "0088" :date "2026-08-08"}}
+
+ {:operator {:id :malformed-datetime-value :version "1"}
+  :judge :judge-v2-hapi
+  :locator "PID-7"
+  :expected #{"data-type-exception"}
+  :fixture "components/corpus/test-fixtures/v2/adt-a01-admit.hl7"
+  :witness {:adr "0088" :date "2026-08-08"}}
+
+ {:operator {:id :truncate-segment-fields :version "1"}
+  :judge :judge-v2-hapi
+  :locator "MSH-9"
+  :expected #{"hl7-exception"}
+  :fixture "components/corpus/test-fixtures/v2/adt-a01-admit.hl7"
+  :witness {:adr "0088" :date "2026-08-08"}}
+
+ {:operator {:id :corrupt-segment-name :version "1"}
+  :judge :judge-v2-hapi
+  :locator "MSH"
+  :expected #{"encoding-not-supported-exception"}
+  :fixture "components/corpus/test-fixtures/v2/adt-a01-admit.hl7"
+  :witness {:adr "0088" :date "2026-08-08"}}
+
+ {:operator {:id :blank-required-field :version "1"}
+  :judge :judge-v2-nist
+  :locator "MSH-9"
+  :expected #{"Usage"}
+  :fixture "components/corpus/test-fixtures/v2-nist/covidELR/231HL7TestFilewithHHSData.txt"
+  :profile "components/corpus/test-fixtures/v2-nist/COVID19_ELR-v2.3.1"
+  :witness {:adr "0088" :date "2026-08-08"}}
+
+ {:operator {:id :truncate-segment-fields :version "1"}
+  :judge :judge-v2-nist
+  :locator "MSH-9"
+  :expected #{"Usage"}
+  :fixture "components/corpus/test-fixtures/v2-nist/covidELR/231HL7TestFilewithHHSData.txt"
+  :profile "components/corpus/test-fixtures/v2-nist/COVID19_ELR-v2.3.1"
+  :witness {:adr "0088" :date "2026-08-08"}}]

@@ -24,10 +24,15 @@
   finding/verdict-cache -- legal before this split (same brick), illegal
   after, fixed by routing through this interface instead of narrowing
   the call away. No collision with any existing export; left
-  unqualified."
+  unqualified.
+
+  ehrt.judge.pairing (ADR-0088, the pairing-as-data registry, AR-PD-1)
+  is the newest addition -- no collision with anything above; left
+  unqualified too."
   (:require [ehrt.judge.report :as report]
             [ehrt.judge.finding :as finding]
-            [ehrt.judge.verdict-cache :as verdict-cache]))
+            [ehrt.judge.verdict-cache :as verdict-cache]
+            [ehrt.judge.pairing :as pairing]))
 
 ;; judge.report (collides with judge.finding on valid? -- qualified report-*)
 (def Report report/Report)
@@ -46,3 +51,11 @@
 (def verdict-cache-lookup verdict-cache/lookup)
 (def verdict-cache-store! verdict-cache/store!)
 (def verdict-cache-default-dir verdict-cache/default-cache-dir)
+
+;; judge.pairing (ADR-0088, pairing-as-data): the mutate<->judge
+;; witnessed-row registry. No collision with anything above.
+(def PairingRow pairing/PairingRow)
+(def PairingRegistry pairing/Registry)
+(def PairingJudgeId pairing/JudgeId)
+(def load-pairing-registry pairing/load-registry)
+(def pairing-coverage pairing/coverage)

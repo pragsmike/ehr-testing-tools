@@ -1,0 +1,91 @@
+;; NAMES-ONLY snapshot of the NIST v2-validation engine's own finding
+;; vocabulary (pairing-as-data, ADR-0088, AR-PD-3): every `classification`
+;; and `category` display name `reference.conf` (packaged inside the
+;; resolved gov.nist:hl7-v2-validation jar) declares, and nothing else --
+;; no template text, no per-detection config bodies. The `notice_verbatim`
+;; discipline (.agents/rulings.md, vendoring arc) applied to a vocabulary
+;; rather than a byte-for-byte artifact: this file is factual reference,
+;; re-derived from the SAME resolved jar on every test run
+;; (components/judge-v2-nist/test/ehrt/judge_v2_nist/taxonomy_currency_test.clj)
+;; and the test fails on drift -- a version bump that adds, removes, or
+;; renames a classification or category breaks this gate rather than
+;; silently going stale.
+;;
+;; :engine records the jar version this snapshot was actually measured
+;; against (its own pom.properties-derived version, same provenance
+;; discipline docs/engine-onboarding.md names for every other engine
+;; measurement in this repo).
+;;
+;; Keys are reference.conf's own HOCON path segments (e.g. "r-usage"'s
+;; own `category = ${report.category.usage}` resolves the "usage" key
+;; below to display name "Usage"); values are the display-name strings
+;; that actually appear on a live Report Entry's own .getCategory()/
+;; .getClassification() -- ehrt.judge.pairing registry rows whose :judge
+;; is :judge-v2-nist draw every :expected member from this file's own
+;; :categories values (schema-checked by the currency test above, not by
+;; ehrt.judge.pairing itself -- see that namespace's own docstring for
+;; why the check lives at the test-tier boundary instead).
+{:engine {:name "nist-v2-validation" :version "1.7.3"}
+
+ :classifications
+ {"error" "Error"
+  "warning" "Warning"
+  "alert" "Alert"
+  "high-alert" "High Alert"
+  "informational" "Informational"
+  "affirmative" "Affirmative"
+  "spec-error" "Specification Error"}
+
+ :categories
+ {"usage" "Usage"
+  "o-usage" "O-Usage"
+  "cardinality" "Cardinality"
+  "length" "Length"
+  "length-spec-error" "Length Spec Error"
+  "format" "Format"
+  "extra" "Extra"
+  "unexpected" "Unexpected"
+  "invalid" "Invalid Content"
+  "unescaped" "Unescaped Separator"
+  "unresolved-field" "Unresolved Field Model"
+  "constant-value" "Constant Value"
+  "constant-value-spec-error" "Constant Value Spec Error"
+  "dynamic-mapping-match" "Dynamic Mapping Match"
+  "constraint-failure" "Constraint Failure"
+  "coconstraint-failure" "CoConstraint Failure"
+  "content-failure" "Content Failure"
+  "constraint-success" "Constraint Success"
+  "coconstraint-success" "CoConstraint Success"
+  "content-success" "Content Success"
+  "constraint-spec-error" "Constraint Spec Error"
+  "content-spec-error" "Content Spec Error"
+  "co-constraint" "Co-Constraint"
+  "co-constraint-spec-error" "Co-Constraint Spec Error"
+  "predicate-failure" "Predicate Failure"
+  "predicate-success" "Predicate Success"
+  "predicate-spec-error" "Predicate Spec Error"
+  "predicate-usage-selection" "Predicate Usage Selection"
+  "predicate-path-occurrence" "Predicate Path Occurrence"
+  "slicing-spec-error" "Slicing Spec Error"
+  "slicing" "Slicing"
+  "ubs" "Undetermined Binding Strength"
+  "evs" "EVS"
+  "pvs" "PVS"
+  "rvs" "RVS"
+  "code-not-found" "Code Not Found"
+  "vs-not-found" "VS Not Found"
+  "empty-vs" "Empty VS"
+  "proxied-valueset" "Proxied Value Set"
+  "vs-no-validation" "Excluded From Validation"
+  "coded-element" "Coded Element"
+  "coded-element-xor" "Coded Element"
+  "binding-location" "Binding Location"
+  "vs-spec-error" "Value Set Binding Spec Error"
+  "no-code-usage" "No Code Usage"
+  "dynamic-vs" "Dynamic Value Set"
+  "duplicate-code" "Duplicate Code"
+  "vs-0396" "ValueSet 0396"
+  "external-valueset-validation-disabled" "External Value Set Validation Disabled"
+  "external-vs-spec-error" "External Value Set Spec Error"
+  "single-code-failure" "Single Code Failure"
+  "single-code-success" "Single Code Success"}}
