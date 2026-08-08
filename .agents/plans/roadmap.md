@@ -37,6 +37,34 @@ per item; done items move to the bottom of their section with a date and sha.
   log directly, as opposed to the HL7 v2 file/directory input the
   player accepts today; named in ADR-0014's own Context as remaining
   work, not built.
+- **Fixture relocation** (2026-08-08, fidelity riders, `notes/ADRs.md`
+  ADR-0081, author backlog addition): move test fixtures out of
+  components — the `components/corpus/test-fixtures/v2/simhospital`
+  tree and its `components/corpus/test-fixtures/v2-nist` sibling,
+  named explicitly — to a top-level home, so demos can use them.
+  Flagged wrinkles: both trees are NOTICE/PROVENANCE-hashed and
+  `-text` protected in `.gitattributes` (`v2/*.hl7`,
+  `v2/simhospital/messages.out`, `v2/simhospital/LICENSE`,
+  `v2-nist/covidELR/*.txt`, `v2-nist/COVID19_ELR-v2.3.1/**`), so the
+  demos-front-door mechanic
+  applies (ADR-0073: same-commit `.gitattributes` moves, byte-
+  witnessing, pointer-README stubs) — and the live-path lint's
+  blessed roots (`components/docs-tooling/test/ehrt/docs_tooling/
+  test_source_live_path_lint_test.clj`'s `"test-fixtures"` allowlist
+  entry) update with the move. Not built; a design/landing session of
+  its own.
+- **ADR references in user-facing documentation** (2026-08-08,
+  fidelity riders, `notes/ADRs.md` ADR-0081, author backlog addition):
+  remove bare `ADR-NNNN` citations from the user path (`docs/` proper,
+  per ADR-0010's own audience fork — NOT `docs/dev/`; e.g. `docs/site-
+  profiles.md`, `docs/judge-calibration.md`, `docs/glossary.md`,
+  `docs/formats.md` all currently carry them) or convert them to
+  clickable footnote links. Unruled fork: strip to dev-docs only, vs.
+  footnotes that keep provenance. Prerequisite, not yet done by this
+  row: a full inventory of every citation across the user path per
+  ADR-0010's own three-way split (a fresh grep at design time will
+  turn up more than the four named here, including `docs/use-cases/`
+  siblings). Awaiting its own design moment, not built.
 
 ## Externals (author-only)
 - Enable GitHub's workflow-failure notification email for this
@@ -97,6 +125,15 @@ Rows here are LIVE. Closed rows move to Done with their notes.
   tried rejected at 300 patients, not universal every seed the way the
   first finding was, but a real, non-negligible population-scale rate)
   — same root cause, not a new gap. Revisit trigger unchanged.**
+  **Dated note (2026-08-08, fidelity riders, `notes/ADRs.md` ADR-0081):**
+  the revisit trigger fires — a design brief
+  (`.agents/plans/2026-08-08-encounterend-design.md`) proposes real
+  openness tracking in the walk state (an open-encounter index set on
+  `:encounter`, cleared on the matched `:encounter-end`) and a compile
+  rule that no-ops `:encounter-end` when nothing is open, gated by
+  author rulings R1 (wellness arms), R2 (suppressed-end visibility),
+  R3 (acceptance bar) — all three ruled in ADR-0081. The fix session
+  itself is licensed but not yet run.
 - **Corpus player `:mllp` transport sink** (`notes/adr/0014-corpus-
   player.md`, deferred whole per that session's own bail-out
   procedure): `:mllp` already exists as a *framing* (byte-level
