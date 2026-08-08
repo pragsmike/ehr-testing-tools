@@ -238,10 +238,4 @@ Rows here are LIVE. Closed rows move to Done with their notes.
 scaffolding compaction B, `notes/ADRs.md` ADR-0046 — each closed arc's own
 pointers rotate to a dated header in the attic at that arc's own close,
 `notes/adr/0055-alignment-arc-close.md` AR-AC-5)
-<!-- Quality-review arc close (ADR-0080) rotation, AR-QC-5: ADR-0074's
-own pointer plus ADR-0075-0079's own five pointers all relocated to
-.agents/plans/roadmap-done-2026-08.md this commit (Step 2). This ADR's
-own pointer (quality-arc-close, ADR-0080) lands here as the sole
-current entry in Step 3, once that file exists -- sentinel-avoidance,
-same disclosed pattern ADR-0055/0064/0068/0074 each used for their own
-closing pointer. -->
+- 2026-08-07 — quality-arc-close — ADR-0080

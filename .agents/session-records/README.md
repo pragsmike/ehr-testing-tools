@@ -151,3 +151,4 @@ Files in this directory:
   * 2026-08-07-repo-review-1.md
   * 2026-08-07-result-or-loud.md
   * 2026-08-07-lint-family.md
+  * 2026-08-07-quality-arc-close.md
