@@ -138,3 +138,12 @@ CI runs, tag verification) — not restated here.
   framing** ("anemia and colorectal vendor as a mini-batch") — disclosed
   in ADR-0082, the roadmap, and this record rather than silently
   narrowed without a trace.
+- **Step 3's own push (`deabbbd`) was CI-red for roughly 15 minutes** —
+  `ehrt.docs-tooling.roadmap-deferred-closure-lint-test` caught this
+  session's own roadmap dated note using a bare "CLOSED" with no
+  disclosed relocation, the exact pattern that lint exists to catch.
+  Not caught locally before that push (the full suite was last run
+  before Step 3's own roadmap edit); found by this session's own Step 4
+  pre-commit suite run, fixed forward in `eb214ea` (never by amending
+  `deabbbd`), CI re-watched green. Full account in ADR-0082's own
+  Confirmation section.

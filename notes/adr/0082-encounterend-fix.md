@@ -355,12 +355,31 @@ is not, on a different gap than the one this session closes.**
   hook's own re-scan clean on both pushes.
 - Post-push message verification: `dad2553` one delta (the known
   trailing-blank-line artifact); `deabbbd` the same, single delta.
-- CI: `dad2553`'s own push watched — run `31258259066`, success,
-  3m30s. Last-five on `main` at session start all green (`c2bcb67`,
-  `9eb7da9` [sic, see ADR-0081's own last-five], `9eb7da9`/`c9c3b3f`/
-  the scheduled Integration run/`8eeafb2` per ADR-0081's own disclosure
-  — this session's own preflight re-confirmed the SAME five plus
-  `c2bcb67` and `6cb4627`, all green, no red window).
+- CI: last-five on `main` at session start all green (`c2bcb67`,
+  `9eb7da9`, `c9c3b3f`, the scheduled Integration run, `8eeafb2`, per
+  ADR-0081's own disclosure — this session's own preflight found the
+  same, no red window at Step 0). `dad2553`'s own push (Step 2) watched
+  to conclusion: run `31258259066`, success, 3m30s.
+
+  **`deabbbd`'s own push (Step 3) was CI-RED, disclosed here rather
+  than smoothed over:** run `31258465363` failed at `poly test :all
+  skip:integration` — `ehrt.docs-tooling.roadmap-deferred-closure-
+  lint-test` flagged this session's own Step 3 roadmap dated note
+  ("the interpreter gap is CLOSED") as an in-place closure with no
+  disclosed relocation, the exact `myocardial_infarction.json` pattern
+  that lint exists to catch (this session's own note WAS the kind of
+  row it was written for). Not caught locally before pushing Step 3 —
+  `clojure -M:poly test :all` was run before the fix (Step 2) and
+  before drafting ADR-0082 (Step 4), but not re-run between staging
+  Step 3's own roadmap edit and its commit. Found by this session's own
+  Step 4 pre-commit full-suite run (the standing discipline, not CI);
+  fixed forward in the SAME Step 4 commit (`eb214ea`) by adding a "see
+  Done" disclosure phrase to the offending sentence — never by
+  amending the pushed `deabbbd`. `eb214ea`'s own push watched to
+  conclusion: run `31259032959`, success, 3m31s. The red window: one
+  commit, `deabbbd`, from its own push (12:58:35) to `eb214ea`'s own
+  push (13:13:11) — roughly 15 minutes, caught and closed within this
+  same session, not left for a future one to find.
 
 ### Successor tag debt, recorded here
 
