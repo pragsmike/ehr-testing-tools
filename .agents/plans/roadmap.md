@@ -334,6 +334,4 @@ Rows here are LIVE. Closed rows move to Done with their notes.
 scaffolding compaction B, `notes/ADRs.md` ADR-0046 — each closed arc's own
 pointers rotate to a dated header in the attic at that arc's own close,
 `notes/adr/0055-alignment-arc-close.md` AR-AC-5)
-<!-- ADR-0084's own pointer lands here at Step 3 (sentinel-avoidance,
-the ADR-0055/0064/0068/0074/0080 pattern: a session's own closing ADR
-cannot cite its own not-yet-committed pointer). -->
+- 2026-08-08 — fidelity-arc-close — ADR-0084
