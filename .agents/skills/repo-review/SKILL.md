@@ -101,7 +101,16 @@ own verification.
    disposition (fix-session candidate / ruling-needed / close-as-fine
    / intake). Include the dimension scoreboard with prior scores
    alongside. Nothing moves in this step — the register is a survey,
-   not an act (the ADR-0049/0058 discipline).
+   not an act (the ADR-0049/0058 discipline). Before drafting THIS
+   run's own register, re-derive the PRIOR assessment's own summary
+   arithmetic directly from its per-dimension disposition counts —
+   never trusted from its own summary line (repo review 1's own
+   summary claimed 44 rows/26 close-as-fine/6 ruling-needed; a direct
+   count came to 45/28/5, corrected fix-forward, `notes/adr/0078-
+   result-or-loud.md` AR-RL-R). A register's own arithmetic is exactly
+   the kind of claim this rubric says to re-derive, not trust — this
+   probe generalizes that lesson into a standing step rather than
+   leaving it a one-time correction.
 5. **The plan, for ruling.** From the register: batch fix-session
    candidates into proposed sessions (small, fenced, each with its
    co-landed gate); state the rulings needed with options and a

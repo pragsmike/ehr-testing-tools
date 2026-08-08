@@ -500,7 +500,22 @@
   {:cancel-admit 0.05 :cancel-transfer 0.1 :cancel-discharge 0.05
    :transfer-in-error 0.1 :bed-swap 0.1 :merge 0.05})
 
-(defspec every-churned-run-satisfies-the-invariant-catalog 150
+;; Lint family (AR-LF-5, D3-2's ruled middle path, `.agents/plans/
+;; 2026-08-07-repo-review-findings.md`): this is the one `defspec`
+;; repo-wide that has actually flaked (quality riders, AR-QR-4,
+;; `notes/adr/0076-quality-riders.md`) -- seed -60645, 12 patients,
+;; failed once, passed clean on an immediate re-run with an identical
+;; tree. Whether this is a real churn-profile invariant bug only a
+;; rare seed surfaces, or a property purely of test.check's own
+;; unpinned exploration, was never determined (ADR-0076 explicitly
+;; deferred that to this arc's own probe battery). Pinning the seed
+;; that already reproduced the failure once means a future session
+;; investigating it starts from a reproducible trial instead of
+;; re-hunting an unpinned seed from a CI log. The other 70 `defspec`s
+;; repo-wide stay unpinned (test.check's own printed-seed-on-failure
+;; plus CI log retention ruled sufficient for those, per AR-LF-5/D3-2).
+(defspec every-churned-run-satisfies-the-invariant-catalog
+  {:num-tests 150 :seed -60645}
   (prop/for-all [seed gen/large-integer
                  patients (gen/choose 2 12)]
     (let [{:keys [ground-truth]} (engine/run {:seed seed :patients patients

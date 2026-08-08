@@ -145,12 +145,16 @@ change to the contract itself.
 
 ## From the alignment arc (ADR-0048–0055)
 
-- **Dependency-review cadence, standing** (A-3, from ADR-0050 AR-F1-6a):
+- **Dependency-review cadence, standing** (A-3, from ADR-0050 AR-F1-6;
+  corrected 2026-08-07, lint family AR-LF-6, D7-1 -- this ruling had
+  cited invented sub-letters "AR-F1-6a"/"AR-F1-6b"; ADR-0050's own
+  source labels these two rulings `A-3`/`D-3` under one shared AR-F1-6
+  heading, the letter-suffix scheme never existed there):
   `clojure -M:poly libs :outdated` is report-only, run at each arc close
   plus mandatory before any publish; upgrades are never taken as a side
   effect of running it.
 - **Pairing-as-data registry landing spot, accepted** (D-3, from
-  ADR-0050 AR-F1-6b): `judge` is the accepted acyclic home for the
+  ADR-0050 AR-F1-6): `judge` is the accepted acyclic home for the
   mutate↔judge conviction registry; the design pass starts from there.
 - **Law-surface propagation lesson, standing** (from ADR-0051 AR-F2-0
   and ADR-0053 AR-F4-4): an amendment to standing law lands on every

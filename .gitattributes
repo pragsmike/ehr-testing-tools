@@ -39,3 +39,16 @@ components/corpus/test-fixtures/v2/simhospital/messages.out -text
 # components/corpus/test-fixtures/v2-nist/NOTICE.md): the companion ER7
 # message carries literal \r segment separators, same hazard as above.
 components/corpus/test-fixtures/v2-nist/covidELR/*.txt -text
+
+# Lint family (AR-LF-4, D3-3, .agents/plans/2026-08-07-repo-review-
+# findings.md): the SAME bundle's own XML profile members are sha256-
+# hashed in NOTICE.md above but were left unprotected (`text: auto`) --
+# the identical hazard class AR-VB3-R1 already found and fixed once for
+# uti_recurrence.csv, sitting open here. Hashes re-verified against
+# NOTICE.md's own table before and after this line landed.
+components/corpus/test-fixtures/v2-nist/COVID19_ELR-v2.3.1/** -text
+
+# The v2/simhospital LICENSE, sha256-hashed in this directory's own
+# PROVENANCE.md ("`LICENSE` is 11,357 bytes, sha256 `58d1e17f...`") --
+# same unprotected-hash-recorded-file hazard as above, same fix.
+components/corpus/test-fixtures/v2/simhospital/LICENSE -text
