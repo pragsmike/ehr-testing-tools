@@ -5,8 +5,8 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- Nothing in progress at this close (vendoring arc close, ADR-0074,
-  2026-08-07).
+- Nothing in progress at this close (quality-review arc close,
+  ADR-0080, 2026-08-07/08).
 
 ## Next (backlog, no session scheduled)
 - The lookup-column `time` gap (named in the schema-invalid family
@@ -238,9 +238,10 @@ Rows here are LIVE. Closed rows move to Done with their notes.
 scaffolding compaction B, `notes/ADRs.md` ADR-0046 — each closed arc's own
 pointers rotate to a dated header in the attic at that arc's own close,
 `notes/adr/0055-alignment-arc-close.md` AR-AC-5)
-- 2026-08-07 — vendoring-arc-close — ADR-0074
-- 2026-08-07 — ci-current — ADR-0075
-- 2026-08-07 — quality-riders — ADR-0076
-- 2026-08-07 — repo-review-1 — ADR-0077
-- 2026-08-07 — result-or-loud — ADR-0078
-- 2026-08-07 — lint-family — ADR-0079
+<!-- Quality-review arc close (ADR-0080) rotation, AR-QC-5: ADR-0074's
+own pointer plus ADR-0075-0079's own five pointers all relocated to
+.agents/plans/roadmap-done-2026-08.md this commit (Step 2). This ADR's
+own pointer (quality-arc-close, ADR-0080) lands here as the sole
+current entry in Step 3, once that file exists -- sentinel-avoidance,
+same disclosed pattern ADR-0055/0064/0068/0074 each used for their own
+closing pointer. -->

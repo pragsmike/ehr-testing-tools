@@ -143,6 +143,39 @@
 ;; nearest 5): 1078 x 1.15 = 1239.7 -> 1240. Budget moves 1180 -> 1240
 ;; (an increase -- five sessions' worth of index/Now/Done churn outpaced
 ;; this close's own rotation, unlike the player close's own decrease).
+;;
+;; Re-derivation (2026-08-07/08, quality-review arc close, `notes/adr/
+;; 0080-quality-arc-close.md` AR-QC-4): diffing every set's own
+;; `:paths` membership against `git log cd6c56c..HEAD --name-only`
+;; (cd6c56c = the vendoring arc's own closing tip, the base since which
+;; `state.md`/`reading-sets.edn` were last touched) found `.agents/
+;; skills/build-session/SKILL.md` touched -- a member of EVERY set --
+;; twice this arc (ADR-0075 AR-CI-3's CI-check Step-0 line, ADR-0076
+;; AR-QR-3's five-run-deep widening), plus `:onboarding`'s own five
+;; `.agents/*/README.md` files and `.agents/plans/roadmap.md` (Now/Done
+;; churn across five quality-review-arc sessions, shrunk again this
+;; session by AR-QC-5's own Done-pointer rotation). All FIVE sets
+;; re-derived this close, the first time every set has moved in the
+;; same regeneration. Fresh actuals (`wc -l` sum across each set's own
+;; `:paths`, measured AFTER the rotation landed): `:onboarding` 284
+;; (AGENTS.md) + 50 + 60 + 153 + 101 + 33 (the five READMEs) + 247
+;; (roadmap.md, post-rotation) + 187 (build-session/SKILL.md) = 1115;
+;; `:corpus` 284 (AGENTS.md) + 150 (corpus/interface.clj) + 104
+;; (corpus-io/interface.clj) + 119 (pipeline.md) + 212 (notation.md) +
+;; 732 (source-sink-design.md) + 187 (build-session/SKILL.md) = 1788;
+;; `:sim` 284 + 47 (sim/interface.clj) + 85 (engine-onboarding.md) +
+;; 240 (components.md) + 187 = 843; `:judge` 284 + 48
+;; (judge/interface.clj) + 16 (judge-v2-hapi) + 18
+;; (judge-fhir-official) + 23 (judge-v2-nist) + 85 + 240 + 187 = 901;
+;; `:docs` 284 + 19 (docs-tooling/interface.clj) + 183
+;; (architecture.md) + 54 (docs/dev/README.md) + 187 = 727. Re-applying
+;; the standing formula (actual x1.15, rounded up to the nearest 5) to
+;; each: onboarding 1115 x 1.15 = 1282.25 -> 1285 (1240 -> 1285); corpus
+;; 1788 x 1.15 = 2056.2 -> 2060 (2040 -> 2060); sim 843 x 1.15 = 969.45
+;; -> 970 (915 -> 970); judge 901 x 1.15 = 1036.15 -> 1040 (980 -> 1040);
+;; docs 727 x 1.15 = 836.05 -> 840 (775 -> 840). Every budget increases
+;; -- the shared `build-session/SKILL.md` growth alone accounts for the
+;; `:sim`/`:judge`/`:docs` moves (each carries no other touched path).
 
 {:onboarding
  {:paths ["AGENTS.md"
@@ -165,7 +198,7 @@
   ;; because that's a different audience from "a cold task-class session",
   ;; and forcing every onboarding read to carry its cost would budget for an
   ;; activity most onboarding sessions never do (migration session 5, AR-3).
-  :budget-lines 1240}
+  :budget-lines 1285}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one
@@ -191,7 +224,7 @@
           ;; the checkpoint ceremony, applies regardless of task class
           ;; (migration session 5, AR-3)
           ".agents/skills/build-session/SKILL.md"]
-  :budget-lines 2040}
+  :budget-lines 2060}
 
  ;; components/sim is the deterministic generator engine wrapping Synthea
  ;; (ADR-0005) -- engine-onboarding.md is the checklist every engine wrapper
@@ -211,7 +244,7 @@
           ;; the checkpoint ceremony, applies regardless of task class
           ;; (migration session 5, AR-3)
           ".agents/skills/build-session/SKILL.md"]
-  :budget-lines 915}
+  :budget-lines 970}
 
  ;; components/judge (verdict vocabulary) plus its three gate engines
  ;; (judge-v2-hapi, judge-fhir-official, judge-v2-nist, ADR-0011's per-engine
@@ -233,7 +266,7 @@
           ;; the checkpoint ceremony, applies regardless of task class
           ;; (migration session 5, AR-3)
           ".agents/skills/build-session/SKILL.md"]
-  :budget-lines 980}
+  :budget-lines 1040}
 
  ;; components/docs-tooling (dev-time-only doc/lint tooling) generates and
  ;; lints docs/cli.md, docs/pipeline.md-equivalents, and docs/use-cases.md
@@ -251,4 +284,4 @@
           ;; the checkpoint ceremony, applies regardless of task class
           ;; (migration session 5, AR-3)
           ".agents/skills/build-session/SKILL.md"]
-  :budget-lines 775}}
+  :budget-lines 840}}

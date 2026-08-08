@@ -1501,3 +1501,32 @@ Sixteen modules vendored, twenty-three ailments in-tree, oracle roots
 - 2026-08-07 — vendoring-batch-2 — ADR-0071
 - 2026-08-07 — vendoring-batch-3 — ADR-0072
 - 2026-08-07 — demos-front-door — ADR-0073
+
+**Appended 2026-08-07/08 (quality-review arc close, `notes/adr/
+0080-quality-arc-close.md` AR-QC-5):** this pointer was the live
+roadmap's own sole current Done entry from the vendoring arc's own
+close until now — the same disclosed-leftover class every prior close
+has handled for its own predecessor. It relocates here now, verbatim,
+at the next arc's own close.
+- 2026-08-07 — vendoring-arc-close — ADR-0074
+
+## Quality-review arc — closed 2026-08-07 (ADR-0075–0080)
+Relocated verbatim from the live roadmap's own Done section by this
+arc's own close (`notes/adr/0080-quality-arc-close.md` AR-QC-5); see
+that ADR for the arc's full account. Five sessions: ci current
+(ADR-0075, the bridge — 32 commits of unwatched red fixed, preflight
+learns to look; **this bridge session seeded the arc it rides with
+here, not the vendoring arc it followed** — the ux-epilogue precedent,
+inverted), quality riders (ADR-0076, the `repo-review` skill lands, the
+sibling flake gets its mechanism fix, preflight widens to five runs),
+repo review 1 (ADR-0077, the first survey — 45 rows, eight lenses, the
+baseline scoreboard), result or loud (ADR-0078, the highest-severity
+cluster closed — `ehrt.kernel.io`, eleven sites converted, the
+recurrence gate built), lint family (ADR-0079, four small gates land
+together — the state can't stale, the façade can't drift, closures
+can't hide, tests can't wander).
+- 2026-08-07 — ci-current — ADR-0075
+- 2026-08-07 — quality-riders — ADR-0076
+- 2026-08-07 — repo-review-1 — ADR-0077
+- 2026-08-07 — result-or-loud — ADR-0078
+- 2026-08-07 — lint-family — ADR-0079
