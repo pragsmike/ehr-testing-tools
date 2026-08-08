@@ -23,10 +23,11 @@ per item; done items move to the bottom of their section with a date and sha.
   the engine's current one-module-per-patient assignment never
   exercises this, so it is deferred, not built. Revisit trigger: a
   future session that assigns more than one module to the same patient.
-- Pairing-as-data (review P3-3): mutate↔judge conviction registry — design pass in
-  the design channel first; vocabulary is load-bearing
 - Storefront demo fixture: minimal clean-gating FHIR fixture so the README's mutate
-  demo shows a real accepted→rejected flip (2026-08-01 capture session finding)
+  demo shows a real accepted→rejected flip (2026-08-01 capture session finding).
+  Also the named landing spot for the pairing registry's own FHIR rows and the
+  tier-two coverage-to-gate promotion (2026-08-08, `notes/ADRs.md` ADR-0088,
+  AR-PD-2/AR-PD-4) — this session deliberately lands v2-only.
 - make quickstart → nightly integration workflow + single-```sh-fence guard in README
   (quickstart_fresh docstring corrected in same change)
 - generator-source three-concerns split (ADR-0017 named-future)
@@ -378,3 +379,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-08 — fidelity-arc-close — ADR-0084
 - 2026-08-08 — straddle-fix — ADR-0086
 - 2026-08-08 — colorectal-payoff — ADR-0087
+- 2026-08-08 — pairing-registry — ADR-0088
