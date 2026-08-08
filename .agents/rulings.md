@@ -281,3 +281,21 @@ change to the contract itself.
   CI; no push carries a knowingly-failing test (ADR-0075/0076/0078's
   own pattern shift, superseding the older red-checkpoint-commit
   pattern).
+
+## From the fidelity arc (ADR-0081–0084)
+
+- **Semantics changes are predicted before they are made, standing**
+  [C — the arc's own executed discipline; the author may strike it]: an
+  interpreter/engine/emitter semantics change runs a blast-radius probe
+  over every oracle root FIRST, lands a per-root identical-or-moves
+  prediction, and any mover is STOP-AND-REPORT for an explicit license
+  naming that mover alone; the post-change bracket must match the
+  prediction exactly (ADR-0082's own executed protocol, R3 as ruled and
+  exercised — including the trace-then-license resolution the author
+  ruled when the probe fired).
+- **Plausible-by-adjacency is not a diagnosis, standing** [C —
+  likewise]: a defect attributed to a shared mechanism without a direct
+  probe of the failing artifact is `[unverified]` until the probe
+  exists; ADR-0072's colorectal diagnosis was inference from a shared
+  submodule, overturned by the first trajectory scan (ADR-0082/0083's
+  own erratum chain).
