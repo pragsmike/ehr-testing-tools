@@ -134,6 +134,26 @@ Rows here are LIVE. Closed rows move to Done with their notes.
   author rulings R1 (wellness arms), R2 (suppressed-end visibility),
   R3 (acceptance bar) — all three ruled in ADR-0081. The fix session
   itself is licensed but not yet run.
+  **Dated note (2026-08-08, `notes/ADRs.md` ADR-0082, the EncounterEnd
+  fix): the interpreter gap is CLOSED** — `open-encounter-index` (a pure
+  walk-level fold, retiring `index-of-last-open-encounter`) plus the
+  A1/A5 compile-arm split land; `anemia___unknown_etiology.json` is
+  confirmed CLEAN post-fix (0 violations at all three of ADR-0071's own
+  seeds, in-session proof, ADR-0082) — ready for its own vendoring
+  rider. `colorectal_cancer.json` is NOT: its own residual violations
+  (`:clinical-content-only-when-admitted`, plus one early
+  `:discharge-follows-admission`) persist BYTE-IDENTICAL pre- and
+  post-fix at ADR-0072's own seeds — confirmed, via a raw-trajectory
+  scan, to be UNRELATED to the dangling-`:encounter-end` gap this fix
+  closes (the fixed interpreter's own raw walk is dangling-reference-
+  free for every one of colorectal's 300 seed-42 patients) — a NEW,
+  separate, still-open defect, one compile layer downstream
+  (`compile-trajectory` or the engine, not yet localized), found as a
+  byproduct of this session's own in-session proof and NOT fixed here
+  (this session's own fence, AR-EE-6). Revisit trigger, narrowed:
+  `colorectal_cancer.json`'s own clinical-content-outside-admission gap
+  needs its own diagnosis before it can vendor; `anemia___unknown_
+  etiology.json` needs none.
 - **Corpus player `:mllp` transport sink** (`notes/adr/0014-corpus-
   player.md`, deferred whole per that session's own bail-out
   procedure): `:mllp` already exists as a *framing* (byte-level

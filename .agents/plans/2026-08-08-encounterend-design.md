@@ -121,3 +121,17 @@ blocker row.
 - **R3 — the acceptance bar**: all 27 roots predicted-and-confirmed
   identical with any mover escalating (recommended), or tolerate
   declared movement with per-root evidence?
+
+## Executed (2026-08-08, `notes/ADRs.md` ADR-0082)
+
+R1/R2/R3 all ruled as recommended (ADR-0081); the fix session ran and
+found one nonzero blast-radius root before landing a line of code
+(`hypothyroidism`, STOP-AND-REPORT per R3's own bar), traced it,
+received an author ruling amending R3 to license that one mover
+(AR-EE-1a/b/c), then executed this brief's own proposed semantics
+exactly (`open-encounter-index`, a pure walk-level fold, retiring
+`index-of-last-open-encounter`; the A1/A5 compile-arm split;
+`:suppressed-encounter-ends`). Full record, including the surprise the
+prediction pass caught and a second, unrelated defect the in-session
+proof surfaced in `colorectal_cancer.json`: `notes/adr/0082-
+encounterend-fix.md`.
