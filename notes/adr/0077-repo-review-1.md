@@ -176,7 +176,17 @@ repo-review-findings.md` landed: 44 rows, the first-assessment
 scoreboard, the register summary naming the cross-dimension I/O
 pattern. Committed `ac6ef5f` ("docs: the first assessment lands --
 eight lenses, every probe recorded, nothing moved (repo review 1,
-AR-RR-1)"), pushed.
+AR-RR-1)"), pushed. **This commit left CI red for roughly ten
+minutes** (run `31230302344`, one failure: `index-completeness-test`,
+`.agents/plans/README.md` missing the register file's own index
+entry) — this session did not run the full suite again after Step 2's
+own commit before proceeding to Step 3, so the gap wasn't caught
+locally until Step 3's own full-suite re-run surfaced the identical
+class of gap for its OWN three new files and the fix (adding the
+missing `.agents/plans/README.md` entry, among the other two) closed
+both gaps in the same pass. Disclosed plainly rather than folded
+silently into Step 3's own account — see Verification, below, for the
+watched conclusion of Step 3's own closing run.
 
 **Step 3 (this entry) — ADR-0077 + record.** This file lands;
 `notes/ADRs.md` gains its index line; `notes/adr/README.md`'s own
@@ -255,6 +265,12 @@ root cause is plausibly one fix session, not four.
   path.
 - Tag verification: `stable-20260807-quality-riders` peeled ref
   resolves to `89c0d24` exactly (`git ls-remote --tags origin`).
+- CI, this session's own two pushes, watched directly (not assumed):
+  `ac6ef5f` **failure** (run `31230302344`, the index-completeness gap
+  disclosed above), `075db9b` **success** (run `31230768905`, watched
+  to conclusion) — the fix in the same push that landed this ADR
+  closed the gap `ac6ef5f` opened, confirmed green by the mechanism
+  the claim is about (a watched CI run), not merely a local re-run.
 
 ### Fences
 

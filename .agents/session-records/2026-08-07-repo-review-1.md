@@ -114,25 +114,40 @@ other sub-agent wrote to the tracked tree at all.
   all twenty-seven roots IDENTICAL, soundness "yes outside ns form."
 - Tag verification: `stable-20260807-quality-riders` peeled ref
   resolves to `89c0d24` exactly.
-- CI, this session's own commits, checked directly (not assumed): see
-  the closing commit's own Actions run.
+- CI, this session's own two pushes, watched directly (not assumed):
+  `ac6ef5f` failure (run `31230302344`, the index-completeness gap
+  above), `075db9b` success (run `31230768905`, watched to
+  conclusion).
 
 ## Deviations, disclosed
 
 No premise mismatch — the prompt's own stated tip (`89c0d24`) matched
 the live tree exactly at session start, unlike ADR-0076's own
-predecessor session. **One real, disclosed gate catch:** Step 3's own
-first draft of ADR-0077, the session record, and the prompt archive
-landed without adding their own filenames to the three directory-
-index READMEs (`.agents/plans/README.md`, `.agents/prompts/
-README.md`, `.agents/session-records/README.md`) that `index-
-completeness-test` requires — the full-suite re-run this ADR's own
-Verification section calls for caught it directly (3 failures, exactly
-the three missing entries named), fixed forward in the same step, full
-suite green again after. Not silently corrected — recorded here as
-the gate doing its own job, the same discipline this session's own
-D2-5 finding argues should exist for the Deferred-section contract
-too. Every fence AR-RR-4 named otherwise held: no src, no test, no
-doc-content fix, no gate change landed this session beyond the
-register itself, this ADR and its indexes, the roadmap Done pointer,
-and this record + the prompt archive.
+predecessor session. **Two real, disclosed gate catches, same root
+cause, caught at two different points:**
+
+1. Step 2's own commit (`ac6ef5f`, the register landing) omitted its
+   own file's entry in `.agents/plans/README.md` — this session did
+   not re-run the full suite locally before pushing that commit (the
+   push gate itself only runs `gitleaks`+`poly check`, per this
+   repo's own standing design, `AGENTS.md`/ADR-0003 — tests are CI's
+   job, not the push gate's), so the gap surfaced only in CI, which
+   went red for roughly ten minutes (run `31230302344`) until Step
+   3's own commit fixed it forward as a side effect of fixing the
+   next catch.
+2. Step 3's own first draft (ADR-0077, this record, the prompt
+   archive) made the identical mistake for its own three new files
+   across all three index READMEs — this time caught LOCALLY, because
+   this session did re-run the full suite before Step 3's own push
+   (3 failures, `index-completeness-test`, exactly the three missing
+   entries named). Fixed forward in the same step; full suite green
+   again after.
+
+Both are disclosed here as the gate doing its own job, not silently
+corrected — and as a process lesson for this session's own remaining
+steps and any future session: running the full suite before EVERY
+push, not just the closing one, would have caught #1 locally too.
+Every fence AR-RR-4 named otherwise held: no src, no test, no doc-
+content fix, no gate change landed this session beyond the register
+itself, this ADR and its indexes, the roadmap Done pointer, and this
+record + the prompt archive.
