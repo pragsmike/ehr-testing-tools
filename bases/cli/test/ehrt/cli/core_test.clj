@@ -1085,6 +1085,35 @@
                                 :locator-path "entry[0].resource.gender" :out-dir (temp-dir*)})]
     (is (result/ok? r))))
 
+;; ---- result or loud (ADR-0078, AR-RL-2/AR-RL-3): a missing :path
+;; names :file-not-found instead of falling into
+;; files-with-extension-in's own single-file branch and a raw,
+;; unhandled exception at read time; a real listing failure on an
+;; EXISTING directory (list-files-fn injected -- the same hermetic
+;; seam ehrt.kernel.io-test uses, since a real I/O failure can't be
+;; provoked hermetically) names :listing-failed instead of silently
+;; producing a clean, successful, wrong {:count 0} -- the demonstrated
+;; D4-1 silent-success path the repo-review register found live. ----
+
+(deftest mutate-command-missing-path-names-file-not-found-test
+  (let [missing (str (temp-dir*) "/does-not-exist")
+        r (cli/mutate-command {:path missing :operator-id "remove-required-element"
+                                :locator-path "entry[0].resource.gender" :out-dir (temp-dir*)})]
+    (is (result/error? r))
+    (is (= :file-not-found (:category r)))
+    (is (= missing (:path (:payload r))))))
+
+(deftest mutate-command-listing-failure-on-an-existing-dir-names-listing-failed-not-count-zero-test
+  (let [in-dir (temp-dir*)
+        _ (spit (io/file in-dir "a.json") sample-bundle-json)
+        r (cli/mutate-command {:path in-dir :operator-id "remove-required-element"
+                                :locator-path "entry[0].resource.gender" :out-dir (temp-dir*)
+                                :list-files-fn (fn [_] (result/error :listing-failed {:path in-dir}))})]
+    (is (result/error? r))
+    (is (= :listing-failed (:category r)))
+    (is (not (and (result/ok? r) (= 0 (:count (:payload r)))))
+        "the exact regression this fix closes: a listing failure must never surface as a clean {:count 0}")))
+
 ;; ---- D12 (docs/source-sink-design.md Part IX.5, ADR-0019): derived
 ;; --out-dir; a registry entry MAY declare :default-locator, consulted
 ;; when --locator-path is omitted. No seed-catalog operator declares

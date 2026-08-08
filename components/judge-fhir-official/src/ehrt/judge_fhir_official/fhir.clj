@@ -467,23 +467,33 @@
                                             paths)})))))))))
 
 (defn- json-files-in
+  "Result or loud (ADR-0078): result/ok a vector of *.json files under
+  dir (sorted, deterministic order), or result/error :listing-failed
+  on an I/O failure listing dir."
   [dir]
-  (->> (.listFiles (io/file dir))
-       (filter #(str/ends-with? (.getName ^File %) ".json"))
-       (sort-by #(.getName ^File %))))
+  (let [r (kernel/list-files (io/file dir))]
+    (if-not (kernel/ok? r)
+      r
+      (kernel/ok (->> (:payload r)
+                       (filter #(str/ends-with? (.getName ^File %) ".json"))
+                       (sort-by #(.getName ^File %)))))))
 
 (defn gate-dir
   "Gates every *.json file under dir (sorted, deterministic order),
   reusing opts for every file. Returns kernel/ok {:results [...]}, or
   the first file's failing result unchanged (fail-fast, matching
-  mutate-command's own batch discipline)."
+  mutate-command's own batch discipline), or (result or loud,
+  ADR-0078) json-files-in's own :listing-failed."
   [dir opts]
-  (reduce (fn [acc path]
-            (if-not (kernel/ok? acc)
-              (reduced acc)
-              (let [r (gate-file (str path) opts)]
-                (if-not (kernel/ok? r)
-                  (reduced r)
-                  (kernel/ok (update (:payload acc) :results conj (:payload r)))))))
-          (kernel/ok {:results []})
-          (json-files-in dir)))
+  (let [files-result (json-files-in dir)]
+    (if-not (kernel/ok? files-result)
+      files-result
+      (reduce (fn [acc path]
+                (if-not (kernel/ok? acc)
+                  (reduced acc)
+                  (let [r (gate-file (str path) opts)]
+                    (if-not (kernel/ok? r)
+                      (reduced r)
+                      (kernel/ok (update (:payload acc) :results conj (:payload r)))))))
+              (kernel/ok {:results []})
+              (:payload files-result)))))

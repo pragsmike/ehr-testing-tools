@@ -52,10 +52,13 @@
 (defn- non-empty-existing-dir?
   "Mirrors sink-write's own non-empty-existing-dir? (D3's fail-if-exists
   convention): an existing but EMPTY directory is fine to spool into; a
-  non-empty one is the fail-if-exists case."
+  non-empty one is the fail-if-exists case. Result or loud (ADR-0078):
+  delegates to ehrt.kernel.interface/existing-dir-nonempty? so an I/O
+  failure listing an EXISTING dir refuses the run instead of silently
+  reading as 'empty, safe to spool into.' Returns kernel/ok
+  true/false, or kernel/error :listing-failed; callers must unwrap."
   [dir]
-  (let [f (io/file dir)]
-    (and (.isDirectory f) (seq (.listFiles f)))))
+  (kernel/existing-dir-nonempty? dir))
 
 (defn- read-capped
   "Reads in (any clojure.java.io/input-stream-coercible value) up to
@@ -123,11 +126,17 @@
     propagated unchanged; nothing is written on this path either."
   [{:keys [in framing format origin captured-at out-dir max-bytes]
     :or {max-bytes default-max-bytes}}]
-  (let [out-dir (or out-dir (default-spool-out-dir captured-at))]
-    (if (non-empty-existing-dir? out-dir)
+  (let [out-dir (or out-dir (default-spool-out-dir captured-at))
+        exists-result (non-empty-existing-dir? out-dir)]
+    (cond
+      (not (kernel/ok? exists-result)) exists-result
+
+      (:payload exists-result)
       (kernel/rejected :spool-target-exists
                         {:out-dir out-dir
                          :hint "remove the directory, or pass a different :out-dir"})
+
+      :else
       (let [{:keys [bytes exceeded?]} (read-capped in max-bytes)]
         (if exceeded?
           (kernel/rejected :spool-cap-exceeded

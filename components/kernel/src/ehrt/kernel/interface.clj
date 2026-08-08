@@ -25,7 +25,8 @@
             [ehrt.kernel.artifact :as artifact]
             [ehrt.kernel.canonical :as canonical]
             [ehrt.kernel.locator :as locator]
-            [ehrt.kernel.invocation :as invocation]))
+            [ehrt.kernel.invocation :as invocation]
+            [ehrt.kernel.io :as kernel-io]))
 
 ;; result
 (def ok result/ok)
@@ -61,3 +62,8 @@
 
 ;; invocation
 (def run-invocation! invocation/run!)
+
+;; io (result or loud, ADR-0078)
+(def list-files kernel-io/list-files)
+(def existing-dir-nonempty? kernel-io/existing-dir-nonempty?)
+(def rename! kernel-io/rename!)

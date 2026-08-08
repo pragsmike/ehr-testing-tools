@@ -160,10 +160,13 @@
   "Mirrors corpus.generate's own non-empty-existing-dir? (D9's
   :out-dir-exists guard) -- an existing but EMPTY directory is fine to
   write into (mkdirs on an already-existing empty dir is a no-op), a
-  non-empty one is the fail-if-exists case."
+  non-empty one is the fail-if-exists case. Result or loud (ADR-0078):
+  delegates to ehrt.kernel.interface/existing-dir-nonempty? so an I/O
+  failure listing an EXISTING dir refuses the run instead of silently
+  reading as 'empty, safe to write into.' Returns kernel/ok
+  true/false, or kernel/error :listing-failed; callers must unwrap."
   [dir]
-  (let [f (io/file dir)]
-    (and (.isDirectory f) (seq (.listFiles f)))))
+  (kernel/existing-dir-nonempty? dir))
 
 (defn write-dir!
   "Writes files (a {relative-path content-string} map) under a :dir
@@ -202,10 +205,16 @@
                        :hint "dir sink append means catalog/manifest merge -- an OPEN item (docs/source-sink-design.md), not built this session"})
 
     :else
-    (let [{:keys [path]} sink]
-      (if (and (= :fail-if-exists mode) (non-empty-existing-dir? path))
+    (let [{:keys [path]} sink
+          exists-result (when (= :fail-if-exists mode) (non-empty-existing-dir? path))]
+      (cond
+        (and exists-result (not (kernel/ok? exists-result))) exists-result
+
+        (and exists-result (:payload exists-result))
         (kernel/rejected :sink-target-exists
                           {:path path :hint "remove the directory, or pass :mode :overwrite"})
+
+        :else
         (do
           (doseq [[relative-path content] files]
             (let [f (io/file path relative-path)]

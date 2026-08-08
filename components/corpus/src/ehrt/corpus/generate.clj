@@ -121,10 +121,14 @@
   "Public (ADR-0015): shared by `generate!` below and
   `ehrt.cli.core/generate-sim-command`, so the :out-dir-exists guard --
   and its own :hint text -- have exactly one place to change, not one
-  per generator source."
+  per generator source. Result or loud (ADR-0078): delegates to
+  ehrt.kernel.interface/existing-dir-nonempty? so an I/O failure
+  listing an EXISTING out-dir refuses the run instead of silently
+  reading as 'empty, safe to overwrite' -- the guard-defeat the
+  repo-review register (D3-4/D4-1) found live here. Returns kernel/ok
+  true/false, or kernel/error :listing-failed; callers must unwrap."
   [out-dir]
-  (let [f (io/file out-dir)]
-    (and (.isDirectory f) (seq (.listFiles f)))))
+  (kernel/existing-dir-nonempty? out-dir))
 
 (defn out-dir-exists-error
   "The shared :out-dir-exists rejection (D9's determinism law: a
@@ -253,9 +257,12 @@
          reference-date default-reference-date
          population default-population}}]
   (let [clinician-seed (or clinician-seed seed)
-        out-dir (or out-dir (default-out-dir seed population))]
-   (if (non-empty-existing-dir? out-dir)
-     (out-dir-exists-error out-dir)
+        out-dir (or out-dir (default-out-dir seed population))
+        exists-result (non-empty-existing-dir? out-dir)]
+   (cond
+    (not (kernel/ok? exists-result)) exists-result
+    (:payload exists-result) (out-dir-exists-error out-dir)
+    :else
     (let [lockfile-result (read-lockfile lockfile)]
      (if-not (kernel/ok? lockfile-result)
       lockfile-result

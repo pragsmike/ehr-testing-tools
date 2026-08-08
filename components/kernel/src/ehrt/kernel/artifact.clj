@@ -13,7 +13,8 @@
             [clojure.string :as str]
             [malli.core :as m]
             [ehrt.kernel.digest :as digest]
-            [ehrt.kernel.result :as result]))
+            [ehrt.kernel.result :as result]
+            [ehrt.kernel.io :as kernel-io]))
 
 (def ArtifactKind [:enum :engine :profile :module :runtime :other])
 ;; :use-permitted--unstated--confirmation-pending (ADR-0005's 2026-07-24
@@ -120,8 +121,20 @@
              (downloader source (.getAbsolutePath tmp))
              (let [actual (digest/sha256-file tmp)]
                (if (= actual sha256)
-                 (do (.renameTo tmp dest)
-                     (result/ok {:path (.getAbsolutePath dest) :cached false}))
+                 ;; Result or loud (ADR-0078, D3-4): .renameTo's boolean
+                 ;; return was previously unchecked -- a false (e.g. a
+                 ;; cross-filesystem rename, common on CI runners) left
+                 ;; tmp un-moved while this fn still claimed
+                 ;; {:cached false} success. tmp is deliberately left in
+                 ;; place on a rename failure (not deleted, unlike the
+                 ;; hash-mismatch/download-failed branches below) -- the
+                 ;; bytes are already hash-verified, so a fresh download
+                 ;; on retry would be wasted if the rename itself was
+                 ;; just a transient hiccup.
+                 (let [rename-result (kernel-io/rename! tmp dest)]
+                   (if-not (result/ok? rename-result)
+                     rename-result
+                     (result/ok {:path (.getAbsolutePath dest) :cached false})))
                  (do (.delete tmp)
                      (result/rejected :hash-mismatch {:expected sha256 :actual actual}))))
              (catch Exception e
@@ -189,10 +202,15 @@
 
 (defn- extracted-already?
   "True when dest-dir exists and is non-empty -- the idempotency check
-  that lets resolve-and-extract skip re-extracting on every call."
+  that lets resolve-and-extract skip re-extracting on every call.
+  Result or loud (ADR-0078): delegates to
+  ehrt.kernel.io/existing-dir-nonempty? so an I/O failure listing an
+  EXISTING dest-dir refuses (result/error :listing-failed) instead of
+  silently reading as 'not yet extracted, re-extract' -- the register's
+  D3-4/D4-1 guard-defeat. Returns result/ok true/false, or
+  result/error :listing-failed; callers must unwrap."
   [dest-dir]
-  (let [f (io/file dest-dir)]
-    (and (.exists f) (.isDirectory f) (seq (.listFiles f)))))
+  (kernel-io/existing-dir-nonempty? dest-dir))
 
 (defn resolve-and-extract
   "Resolves name+version like `resolve`, then ensures the cached
@@ -207,9 +225,15 @@
      (if-not (result/ok? resolve-result)
        resolve-result
        (let [{:keys [path artifact]} (:payload resolve-result)
-             dest (extracted-dir (:sha256 artifact) cache-dir-override)]
-         (if (extracted-already? dest)
+             dest (extracted-dir (:sha256 artifact) cache-dir-override)
+             extracted-result (extracted-already? dest)]
+         (cond
+           (not (result/ok? extracted-result)) extracted-result
+
+           (:payload extracted-result)
            (result/ok {:extracted-dir dest :artifact artifact})
+
+           :else
            (let [extract-result (extractor path dest)]
              (if-not (result/ok? extract-result)
                extract-result
@@ -219,17 +243,26 @@
   "Finds a file at relative-path (e.g. \"bin/java\") anywhere under a
   one-level subdirectory of root -- archives extract to a single
   version-named top directory whose exact name this deliberately
-  doesn't hardcode. Returns result/ok {:path} or result/rejected
-  :executable-not-found (carrying artifact-remedy-hint)."
+  doesn't hardcode. Returns result/ok {:path}, result/rejected
+  :executable-not-found (carrying artifact-remedy-hint), or (result or
+  loud, ADR-0078) result/error :listing-failed when root is a
+  directory but listing it fails -- previously indistinguishable in
+  code from root genuinely containing no matching subdirectory, and
+  misreported as the same :executable-not-found rejection either way."
   [root relative-path]
-  (let [root-file (io/file root)
-        candidates (when (.isDirectory root-file)
-                     (for [child (.listFiles root-file)
-                           :when (.isDirectory child)
-                           :let [candidate (apply io/file child (str/split relative-path #"/"))]
-                           :when (.exists candidate)]
-                       candidate))]
-    (if-let [found (clojure.core/first (sort-by str candidates))]
-      (result/ok {:path (.getAbsolutePath found)})
+  (let [root-file (io/file root)]
+    (if-not (.isDirectory root-file)
       (result/rejected :executable-not-found
-                        {:root root :relative-path relative-path :hint artifact-remedy-hint}))))
+                        {:root root :relative-path relative-path :hint artifact-remedy-hint})
+      (let [listing-result (kernel-io/list-files root-file)]
+        (if-not (result/ok? listing-result)
+          listing-result
+          (let [candidates (for [child (:payload listing-result)
+                                  :when (.isDirectory ^java.io.File child)
+                                  :let [candidate (apply io/file child (str/split relative-path #"/"))]
+                                  :when (.exists ^java.io.File candidate)]
+                              candidate)]
+            (if-let [found (clojure.core/first (sort-by str candidates))]
+              (result/ok {:path (.getAbsolutePath ^java.io.File found)})
+              (result/rejected :executable-not-found
+                                {:root root :relative-path relative-path :hint artifact-remedy-hint}))))))))

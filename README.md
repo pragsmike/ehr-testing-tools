@@ -72,7 +72,11 @@ runnable commands.
 
 ## What you get
 
-Introduce one defect into a generated patient, then gate the result:
+Introduce one defect into a generated patient, then gate the result
+(`patient.json` stands for a real FHIR patient bundle here -- the
+Quickstart below shows the exact `$PATIENT_FILE` command that
+produces one; a missing or unreadable path now names itself as a
+clean `:file-not-found` error rather than a raw stack trace):
 
 ```bash
 bin/ehrt corpus mutate patient.json \

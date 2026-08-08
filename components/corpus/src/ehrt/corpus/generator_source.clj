@@ -58,9 +58,14 @@
       (kernel/ok (assoc (:payload params-result) :kind kind)))))
 
 (defn- non-empty-existing-dir?
+  "Result or loud (ADR-0078): delegates to
+  ehrt.kernel.interface/existing-dir-nonempty? so an I/O failure
+  listing an EXISTING dir refuses the run instead of silently reading
+  as 'empty' -- the register's D3-4/D4-1 guard-defeat. Returns
+  kernel/ok true/false, or kernel/error :listing-failed; callers must
+  unwrap."
   [dir]
-  (let [f (io/file dir)]
-    (and (.isDirectory f) (seq (.listFiles f)))))
+  (kernel/existing-dir-nonempty? dir))
 
 (defn resolve!
   "kind -- a registered generator :kind (ehrt.corpus.
@@ -77,19 +82,28 @@
       params-result
       (let [merged-params (:payload params-result)
             entry (generators/lookup kind)
-            out-dir ((:out-dir-fn entry) merged-params)]
-        (if (non-empty-existing-dir? out-dir)
+            out-dir ((:out-dir-fn entry) merged-params)
+            pre-exists-result (non-empty-existing-dir? out-dir)]
+        (cond
+          (not (kernel/ok? pre-exists-result)) pre-exists-result
+
+          (:payload pre-exists-result)
           (kernel/error :out-dir-exists
                         {:kind kind :out-dir out-dir
                          :hint (str "same params always derive the same out-dir, so this run refused to silently overwrite the last one -- "
                                     "run `rm -rf " out-dir "` to regenerate in place, "
                                     "or pass different params (e.g. a different seed) to keep this run and start a new one")})
+
+          :else
           (let [execute-result ((:execute-fn entry) merged-params out-dir)]
             (if-not (kernel/ok? execute-result)
               execute-result
-              (if-not (non-empty-existing-dir? out-dir)
-                (kernel/error :generator-produced-no-output {:kind kind :out-dir out-dir})
-                (corpus-io/dir-source {:path out-dir})))))))))
+              (let [post-exists-result (non-empty-existing-dir? out-dir)]
+                (cond
+                  (not (kernel/ok? post-exists-result)) post-exists-result
+                  (not (:payload post-exists-result))
+                  (kernel/error :generator-produced-no-output {:kind kind :out-dir out-dir})
+                  :else (corpus-io/dir-source {:path out-dir}))))))))))
 
 (def ^:private generator-int-query-keys
   "Query-string params that must coerce string -> int before reaching

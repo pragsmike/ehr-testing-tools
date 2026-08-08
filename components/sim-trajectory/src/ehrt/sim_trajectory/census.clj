@@ -167,15 +167,26 @@
   search-path discipline) and not `lookup_tables/`'s own CSV siblings.
   `:id` is `gmf/slug` of the filename minus `.json` -- the same
   transform every vendored module's own id already uses
-  (`ear_infections.json` -> `\"ear-infections\"`)."
+  (`ear_infections.json` -> `\"ear-infections\"`).
+
+  Result or loud (ADR-0078): returns result/ok a vector of {:id :file}
+  maps, or result/error :listing-failed when the modules/ directory
+  can't be listed -- previously a nil `.listFiles` here silently
+  `filter`ed to zero root modules ((filter pred nil) => () in
+  Clojure), so an I/O failure and 'this checkout genuinely has no
+  root modules' were indistinguishable."
   [checkout-dir]
-  (let [dir (io/file checkout-dir "src" "main" "resources" "modules")]
-    (->> (.listFiles dir)
-         (filter (fn [^java.io.File f] (and (.isFile f) (str/ends-with? (.getName f) ".json"))))
-         (map (fn [^java.io.File f]
-                {:id (gmf/slug (str/replace (.getName f) #"\.json$" "")) :file f}))
-         (sort-by :id)
-         vec)))
+  (let [dir (io/file checkout-dir "src" "main" "resources" "modules")
+        listing-result (result/list-files dir)]
+    (if-not (result/ok? listing-result)
+      listing-result
+      (result/ok
+       (->> (:payload listing-result)
+            (filter (fn [^java.io.File f] (and (.isFile f) (str/ends-with? (.getName f) ".json"))))
+            (map (fn [^java.io.File f]
+                   {:id (gmf/slug (str/replace (.getName f) #"\.json$" "")) :file f}))
+            (sort-by :id)
+            vec)))))
 
 (defn- checkout-modules-file ^java.io.File [checkout-dir & parts]
   (apply io/file checkout-dir "src" "main" "resources" "modules" parts))
@@ -443,19 +454,22 @@
       (let [opts {:seed-count default-seed-count :mixer-seed default-mixer-seed
                   :registration-offset-years default-registration-offset-years
                   :horizon-years default-horizon-years}
-            roots (discover-root-modules checkout-dir)
-            modules (mapv #(census-one checkout-dir opts %) roots)]
-        (result/ok
-         {:header (merge opts
-                         {:tool-version tool-version
-                          :synthea-pin synthea-pin
-                          :pin-verification (:payload pin-result)
-                          :census-date (str (java.time.LocalDate/now))
-                          :module-count (count modules)
-                          :persona-config default-persona-config
-                          :checkout-dir (str checkout-dir)})
-          :modules modules
-          :summary (summarize modules)})))))
+            roots-result (discover-root-modules checkout-dir)]
+        (if-not (result/ok? roots-result)
+          roots-result
+          (let [roots (:payload roots-result)
+                modules (mapv #(census-one checkout-dir opts %) roots)]
+            (result/ok
+             {:header (merge opts
+                             {:tool-version tool-version
+                              :synthea-pin synthea-pin
+                              :pin-verification (:payload pin-result)
+                              :census-date (str (java.time.LocalDate/now))
+                              :module-count (count modules)
+                              :persona-config default-persona-config
+                              :checkout-dir (str checkout-dir)})
+              :modules modules
+              :summary (summarize modules)})))))))
 
 (defn artifact-filename
   "Census substance (2026-08-07, ADR-0069, AR-VC-3), roadmap 'Census tool
