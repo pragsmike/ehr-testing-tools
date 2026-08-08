@@ -9,6 +9,15 @@ per item; done items move to the bottom of their section with a date and sha.
   2026-08-08).
 
 ## Next (backlog, no session scheduled)
+- **Colorectal vendoring payoff** (2026-08-08, straddle fix,
+  `notes/ADRs.md` ADR-0086): `colorectal_cancer.json` is clean at all
+  three seeds (20260802, 1, 42; the colorectal Deferred row closed
+  above) but NOT yet vendored — the fix session's own fence held
+  (`notes/adr/0086-straddle-fix.md`'s own scope, no `digest.clj` root
+  added, no NOTICE entry). Population-scale gate law: a fresh vendoring
+  rider's own committed test, `digest.clj`'s 29th root, the same
+  round-trip discipline every other vendored module already carries.
+  Revisit trigger: a session picks this up as its own vendoring payoff.
 - The lookup-column `time` gap (named in the schema-invalid family
   backlog since ADR-0039, still untouched — Wave I's own six
   mechanisms didn't cover it). Bulk vendoring (batched by closure
@@ -214,6 +223,16 @@ Rows here are LIVE. Closed rows move to Done with their notes.
   back-reference principle to the legacy path) — a genuine design
   choice for the design channel to rule on, not mechanical follow-
   through.
+  **Dated note (2026-08-08, straddle fix, `notes/ADRs.md` ADR-0086):
+  this row CLOSED — see Done, below.** The author ruled shape (b) —
+  generalize `history-phase?`'s own back-reference principle to the
+  legacy path — accepted now, shape (a) recorded (see the carry-across
+  row, below). `colorectal_cancer.json` is clean (`:status :ok`, 0
+  violations) at all three seeds (20260802, 1, 42), 300 patients each.
+  The blast-radius probe's one predicted mover (`sleep-apnea`, a
+  latent, already-shipped defect the oracle's own byte-digest checks
+  could never catch) was licensed by name and confirmed exactly; all
+  27 other oracle roots stayed byte-identical.
 - **Corpus player `:mllp` transport sink** (`notes/adr/0014-corpus-
   player.md`, deferred whole per that session's own bail-out
   procedure): `:mllp` already exists as a *framing* (byte-level
@@ -240,6 +259,16 @@ Rows here are LIVE. Closed rows move to Done with their notes.
   open, but building that emission is out of this session's own scope.
   Revisit trigger: a test scenario needs mid-stay-at-window-open
   realism.
+  **Dated note (2026-08-08, straddle fix, `notes/ADRs.md` ADR-0086,
+  AR-SF-5):** this row's own compile-layer half, recorded, not built —
+  shape (a) from ADR-0085's own proposal (synthesize a compiled opening
+  step at the horizon boundary for a straddling encounter), the arm the
+  author did NOT rule for the legacy path this session (shape (b) was
+  ruled instead — see the colorectal row's own closure, above). The
+  straddle-detection machinery ADR-0086 lands (a fold-state tracking an
+  open pre-horizon-opened span) is the shared prerequisite this row's
+  own future emission work would build on. Row stays deferred, trigger
+  unchanged.
 - **Wellness cadence chronic-meds cap** (2026-08-03, `notes/ADRs.md`
   ADR-0037 AR-1): `EncounterModule.recommendedTimeBetweenWellnessVisits`'s
   own chronic-medications annual cap ("if hasChronicMeds && interval >
@@ -356,3 +385,4 @@ scaffolding compaction B, `notes/ADRs.md` ADR-0046 — each closed arc's own
 pointers rotate to a dated header in the attic at that arc's own close,
 `notes/adr/0055-alignment-arc-close.md` AR-AC-5)
 - 2026-08-08 — fidelity-arc-close — ADR-0084
+- 2026-08-08 — straddle-fix — ADR-0086

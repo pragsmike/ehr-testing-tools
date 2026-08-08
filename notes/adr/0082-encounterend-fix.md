@@ -431,3 +431,27 @@ catching a real, already-shipped defect before any code moved (the
 STOP-AND-REPORT), and once catching that the licensed correction, once
 made, turned out invisible at the oracle's own granularity for the
 reason AR-EE-1a's trace names precisely rather than leaves mysterious.
+
+### Erratum (2026-08-08, AR-SF-6, `notes/adr/0086-straddle-fix.md`)
+
+The seed-42 prose figure above (In-session proof, `colorectal_cancer.
+json`'s own table: `{:clinical-content-only-when-admitted 19,
+:discharge-follows-admission 1}`, 20 total) is CORRECTED, append-don't-
+erase: it is contradicted by its own summary table three lines earlier
+in this same section (`4/0/4`, matching ADR-0072's own original record
+verbatim), by ADR-0072's own record independently, and by ADR-0085's
+own fresh measurement (also `4/0/4` at seed 42) — two mutually
+consistent measurements (ADR-0072's, ADR-0085's) against one
+self-contradicting record. No commit between this ADR's own `dad2553`/
+`deabbbd` and ADR-0085's `45eb2f4` HEAD touches `check.clj`,
+`compile_trajectory.clj`, `gmf_interpreter.clj`, or `engine.clj` — so
+there is no code-drift explanation available; the `19` figure was most
+likely this session's own transcription slip while mid-fix, not a real
+measurement divergence. ADR-0085's own Reproduction section disclosed
+this discrepancy in full at the time; this erratum is that disclosure's
+own forward pointer, landing here where the disputed figure actually
+lives. The archived driving prompt for the colorectal-investigation
+session (`.agents/prompts/2026-08-08-colorectal-investigation.md`)
+itself propagated the disputed `19` figure — archived prompts are
+frozen provenance, per this repo's own standing law, and are noted
+here, never edited.
