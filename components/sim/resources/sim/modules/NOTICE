@@ -99,6 +99,30 @@ prioritization table).
 | `lookup_tables/vhd_tr.csv` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/lookup_tables/vhd_tr.csv` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `76584a6157ad7beafabe2dbd92210389d0e69638107367d304f034eaf9448203` | 2026-08-07 |
 | `lookup_tables/vhd_ts.csv` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/lookup_tables/vhd_ts.csv` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `6cca76c0ec2391d70eceaeed20b16d17fa19d4b969d8299724b74bff16a33cb7` | 2026-08-07 |
 | `med_rec.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/med_rec.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `1698c9ddfc09d8e2fe9592b8f489c0db47b5ba070c30fa0d428a21a21e5e70c0` | 2026-08-07 |
+| `anemia___unknown_etiology.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/anemia___unknown_etiology.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `e954b7cb1fe81b301726baa82d5fa83124f64e052f100ebb87a0a6c5d5e5c896` | 2026-08-08 |
+
+**Fidelity payoff (2026-08-08, ADR-0083, AR-FP-1): `anemia___unknown_
+etiology.json` comes home.** Deferred whole at vendoring batch 2
+(ADR-0071) on a real `gmf-interpreter` dangling-`:encounter-end` gap;
+the gap closed structurally at the EncounterEnd fix (ADR-0082), whose
+own in-session proof found this module's own violations fully
+extinguished (0 of 300 patients, at all three of the deferral's own
+seeds -- 20260802, 1, 42) rather than merely reduced. Two arcs
+deferred, one fix later: no NEW closure member lands (the shared
+`anemia/anemia_sub.json` submodule has been vendored, untouched, since
+batch 2's own `hypothyroidism.json` closure) -- only the root file
+itself, above, the one genuinely new byte on disk. Round-trip proof
+(`ehrt.sim-emit-hl7.vendored-anemia-test`) at the deferral's own three
+seeds, 300 patients, a 100-year `:module-horizon-days` (36500), the
+race-weighted `:persona-config` ADR-0071's own finding first required
+(no prior vendored root reads `:race`): real compiled clinical content,
+zero `:discharge-follows-admission`/`:clinical-content-only-when-
+admitted` violations, real rendered HL7, at every seed. A second,
+interpreter-layer test pins `:suppressed-encounter-ends` (the A5 arm's
+own zero-cost counter, ADR-0082 R2) at a well-mixed-seed 300-walk sweep
+per deferral seed -- real, run totals, not estimated -- so a future
+regression in the no-op arm moves a pinned integer rather than passing
+silently.
 
 **Vendoring batch 3 (2026-08-07, ADR-0072, AR-VB3-1/2): four content-
 producing modules land -- metabolic-syndrome-care, vhd-pulmonic,
