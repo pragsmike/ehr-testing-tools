@@ -283,3 +283,26 @@ probes. A single fix session scoped to "every I/O call in `src/` that
 can fail silently instead of through `Result`" would likely close all
 four rows at once, rather than four separate sessions each re-deriving
 the same pattern.
+
+---
+
+**Correction, 2026-08-07 (fix session 1, AR-RL-R, `notes/adr/0078-
+result-or-loud.md`):** this register's own summary arithmetic above
+does not match its own rows. Direct count, by disposition column,
+across all 8 dimension tables: **28 close-as-fine** (D1: 9, D2: 3, D3:
+1, D4: 3, D5: 3, D6: 3, D7: 3, D8: 3), **9 fix-session-candidate** (D2:
+3, D3: 2, D4: 1, D7: 1, D8: 2), **5 ruling-needed** (D2: 2, D3: 1, D6:
+1, D7: 1), **3 intake** (D3: 1, D6: 1, D7: 1) — **45 disposition-
+carrying rows**, not 44. The per-dimension row-count breakdown in the
+summary above (`D1: 9, D2: 8, ...`) is itself correct and sums to 46;
+the discrepancy is D7-4 (the aging-table pointer row, disposition
+"—"), which the summary's per-dimension counts include as a row but
+whose non-disposition placeholder was miscounted into the 44/26/6
+tally instead of excluded from it. fix-candidate (9) and intake (3)
+were already correct; only close-as-fine (26→28) and ruling-needed
+(6→5) drift. Same class as the alignment register's own disclosed
+51-vs-47 internal-arithmetic drift, caught at that arc's own close
+(`notes/adr/0064-ux-arc-close.md`) — an audit instrument's own summary
+line is exactly the kind of claim this repo's own rubric says to
+re-derive, not trust, and this correction was found by doing exactly
+that.
