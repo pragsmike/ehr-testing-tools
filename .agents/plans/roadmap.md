@@ -425,3 +425,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-08 — conviction-arc-close — ADR-0089
 - 2026-08-08 — vendoring-batch-4 — ADR-0090
 - 2026-08-09 — storefront-fixture — ADR-0091
+- 2026-08-09 — repo-review-2 — ADR-0092
