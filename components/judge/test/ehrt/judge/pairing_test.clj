@@ -13,7 +13,11 @@
   (let [rows (pairing/load-registry)]
     (is (seq rows))
     (is (every? #(re-matches #"\d{4}" (:adr (:witness %))) rows))
-    (is (every? #(contains? #{:judge-v2-hapi :judge-v2-nist} (:judge %)) rows))))
+    (is (every? #(contains? #{:judge-v2-hapi
+                               :judge-v2-nist
+                               :judge-fhir-official}
+                             (:judge %))
+                rows))))
 
 (deftest coverage-reports-every-supplied-operator-id-including-zero-witness-ones-test
   (let [rows [{:operator {:id :op-a :version "1"} :judge :judge-v2-hapi

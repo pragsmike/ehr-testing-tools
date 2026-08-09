@@ -1,0 +1,22 @@
+{
+  "resourceType": "Bundle",
+  "type": "collection",
+  "entry": [
+    {
+      "fullUrl": "urn:uuid:8f14e45f-ceea-467e-adc2-4e28c39185cf",
+      "resource": {
+        "resourceType": "Patient",
+        "id": "storefront-patient",
+        "gender": "female",
+        "birthDate": "1990-05-14",
+        "multipleBirthBoolean": false,
+        "name": [
+          {
+            "family": "Doe",
+            "given": ["Jane"]
+          }
+        ]
+      }
+    }
+  ]
+}

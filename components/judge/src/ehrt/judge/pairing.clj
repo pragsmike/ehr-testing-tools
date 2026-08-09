@@ -24,11 +24,16 @@
             [malli.core :as m]))
 
 (def JudgeId
-  "The two v2 judges this session witnessed rows against (AR-PD-2: v2
-  first, no FHIR rows this session). A future FHIR-rows session grows
-  this enum; it is not speculative pre-registration -- each of these
-  two entries has at least one witnessed row below."
-  [:enum :judge-v2-hapi :judge-v2-nist])
+  "The judges this registry witnesses rows against. The two v2 judges
+  landed first (ADR-0088, AR-PD-2: v2 first, no FHIR rows that
+  session); :judge-fhir-official joined with the storefront-fixture
+  session's own FHIR rows (ADR-0091, AR-SD-2). Not speculative
+  pre-registration -- each entry has at least one witnessed row
+  below."
+  [:enum
+   :judge-v2-hapi
+   :judge-v2-nist
+   :judge-fhir-official])
 
 (def PairingRow
   "One witnessed row (AR-PD-1's own shape, plus this registry's own

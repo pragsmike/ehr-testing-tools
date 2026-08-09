@@ -72,35 +72,83 @@ runnable commands.
 
 ## What you get
 
-Introduce one defect into a generated patient, then gate the result
-(`patient.json` stands for a real FHIR patient bundle here -- the
-Quickstart below shows the exact `$PATIENT_FILE` command that
-produces one; a missing or unreadable path now names itself as a
-clean `:file-not-found` error rather than a raw stack trace):
+A minimal, hand-authored FHIR fixture ships in this repo
+(`components/corpus/test-fixtures/fhir/storefront-patient.json`) --
+one `Patient`, no declared profile, gating clean against the real
+official validator, nothing broken yet:
 
 ```bash
-bin/ehrt corpus mutate patient.json \
+bin/ehrt gate fhir components/corpus/test-fixtures/fhir/storefront-patient.json
+```
+
+```clojure
+{:status :ok,
+ :payload
+ {:run {:gate :fhir, :path "components/corpus/test-fixtures/fhir/storefront-patient.json"},
+  :totals {:pass 1, :rejected 0, :indeterminate 0, :no-verdict 0},
+  :by-code {"invariant" 1},
+  :files
+  [{:path "components/corpus/test-fixtures/fhir/storefront-patient.json",
+    :verdict :pass,
+    :finding-count 1,
+    :findings
+    [{:severity :warning, :code "invariant",
+      :locator {:format :fhir, :path "Bundle.entry[0].resource"},
+      :message "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)",
+      :disposition :pass, ...}]}]}}
+```
+
+Now introduce one defect -- delete the resource's own `resourceType`,
+an element every FHIR resource genuinely requires (`Element.min >= 1`
+in the base spec, not a profile add-on) -- and gate again:
+
+```bash
+bin/ehrt corpus mutate components/corpus/test-fixtures/fhir/storefront-patient.json \
   --operator-id remove-required-element \
-  --locator-path entry[0].resource.gender \
+  --locator-path entry[0].resource.resourceType \
   --out-dir out/demo-mutants
 
 bin/ehrt gate fhir out/demo-mutants
 ```
 
+```clojure
+{:status :rejected, :category :gate-rejected,
+ :payload
+ {:run {:gate :fhir, :path "out/demo-mutants"},
+  :totals {:pass 0, :rejected 1, :indeterminate 0, :no-verdict 0},
+  :by-code {"invalid" 1, "invariant" 1},
+  :files
+  [{:path "out/demo-mutants/storefront-patient.json",
+    :verdict :rejected,
+    :finding-count 2,
+    :findings
+    [{:severity :fatal, :code "invalid",
+      :locator {:format :fhir, :path "Bundle.entry[0].resource"},
+      :message "Unable to find resourceType property",
+      :disposition :rejected, ...}
+     {:severity :error, :code "invariant",
+      :locator {:format :fhir, :path "Bundle.entry[0]"},
+      :message "Constraint failed: bdl-5: 'must be a resource unless there's a request or response'",
+      :disposition :rejected, ...}]}]}}
 ```
-rejected  out/demo-mutants/patient.json  (2560 findings)
 
-totals: pass=0, rejected=1, indeterminate=0, no-verdict=0
-by-code: unknown=2, code-invalid=635, structure=1086, not-found=398, informational=91, invariant=191, business-rule=90, invalid=67
-```
+That flip is earned by the mutation, and only the mutation: the clean
+fixture above carries exactly one finding (a `:warning`-severity,
+`:pass`-disposition best-practice note), and the mutant's two new
+findings are both genuine rejections a validator reading the base
+FHIR spec has to raise -- nothing inherited, nothing pre-existing.
+`docs/adr/0091-storefront-fixture.md` walks the fixture's own design
+(why `Patient` alone hosts every FHIR operator in the catalog, one
+locator per operator, each one measured against a real judge run) and
+`components/judge/resources/judge/pairing-registry.edn` is where each
+measurement is pinned as data.
 
-That's a real gate run against a real generated patient — and an honest
-one: base FHIR doesn't actually require `Patient.gender`, so this
-mutation isn't what earns the rejection above. A realistically
-generated patient carries hundreds of legitimate findings against a
-profile-aware validator before you break anything on purpose; picking
-a locator that's guaranteed to move the needle, and telling new
-findings from inherited ones, are exactly what
+A realistically **generated** patient tells a different, equally
+honest story: the Quickstart below mutates one straight out of
+Synthea, and that gate run carries hundreds of pre-existing,
+profile-driven findings before anything is broken on purpose --
+picking a locator that's guaranteed to move the needle, and telling
+new findings from inherited ones, are exactly what
 [`docs/judge-calibration.md`](docs/judge-calibration.md) and
 `--baseline` are for. Every command also takes `--json` for piping
 into `jq`, and `bin/ehrt show FILE` renders any v2 or FHIR file for a

@@ -75,4 +75,55 @@
   :expected #{"Usage"}
   :fixture "components/corpus/test-fixtures/v2-nist/covidELR/231HL7TestFilewithHHSData.txt"
   :profile "components/corpus/test-fixtures/v2-nist/COVID19_ELR-v2.3.1"
-  :witness {:adr "0088" :date "2026-08-08"}}]
+  :witness {:adr "0088" :date "2026-08-08"}}
+
+ ;; ---- FHIR rows (storefront-fixture session, ADR-0091, AR-SD-2):
+ ;; the pairing registry's own :judge-fhir-official rows, against the
+ ;; project-authored components/corpus/test-fixtures/fhir/storefront-
+ ;; patient.json fixture (a minimal Bundle+Patient, no meta.profile --
+ ;; the clean gate is :accepted, unlike a real Synthea file, which
+ ;; already carries hundreds of US-Core-driven findings before any
+ ;; mutation, EXP-C5). :expected draws from judge-fhir-official's own
+ ;; finding :code vocabulary (ehrt.judge-fhir-official.fhir's
+ ;; verdict-mapping, v2, EXP-C5); every value below is genuinely NEW
+ ;; relative to the clean baseline's own single finding (a :warning/
+ ;; :pass "invariant" dom-6 best-practice note -- none of the five
+ ;; rows' own :expected classes collide with it). Locators mirror the
+ ;; existing P5 precedent (projects/integration/test/ehrt/integration/
+ ;; contract_pairing_test.clj), re-measured here against this
+ ;; session's own clean fixture rather than assumed from that suite's
+ ;; own (noisy) Synthea baseline.
+ {:operator {:id :duplicate-element :version "1"}
+  :judge :judge-fhir-official
+  :locator "entry[0].resource.gender"
+  :expected #{"invalid"}
+  :fixture "components/corpus/test-fixtures/fhir/storefront-patient.json"
+  :witness {:adr "0091" :date "2026-08-09"}}
+
+ {:operator {:id :malformed-date :version "1"}
+  :judge :judge-fhir-official
+  :locator "entry[0].resource.birthDate"
+  :expected #{"invalid"}
+  :fixture "components/corpus/test-fixtures/fhir/storefront-patient.json"
+  :witness {:adr "0091" :date "2026-08-09"}}
+
+ {:operator {:id :wrong-type-value :version "1"}
+  :judge :judge-fhir-official
+  :locator "entry[0].resource.multipleBirthBoolean"
+  :expected #{"invalid"}
+  :fixture "components/corpus/test-fixtures/fhir/storefront-patient.json"
+  :witness {:adr "0091" :date "2026-08-09"}}
+
+ {:operator {:id :remove-required-element :version "1"}
+  :judge :judge-fhir-official
+  :locator "entry[0].resource.resourceType"
+  :expected #{"invalid"}
+  :fixture "components/corpus/test-fixtures/fhir/storefront-patient.json"
+  :witness {:adr "0091" :date "2026-08-09"}}
+
+ {:operator {:id :invalid-code-value :version "1"}
+  :judge :judge-fhir-official
+  :locator "entry[0].resource.gender"
+  :expected #{"code-invalid" "not-found"}
+  :fixture "components/corpus/test-fixtures/fhir/storefront-patient.json"
+  :witness {:adr "0091" :date "2026-08-09"}}]
