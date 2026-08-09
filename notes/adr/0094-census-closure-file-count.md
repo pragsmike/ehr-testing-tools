@@ -163,7 +163,14 @@ namespaces exercised, 0 failures, 0 errors, exit 0.
 - Last five `test`-lane runs (`gh run list --limit 5 --branch main`),
   checked at Step 0: all green (through ADR-0093's own close).
 - Post-push message verification and the ASCII check (AR-RL2-5,
-  `.agents/rulings.md`): [recorded at this commit's own push].
+  `.agents/rulings.md`): ASCII check (`git log --format=%B -1 |
+  LC_ALL=C grep -n '[^ -~]'`) run FIRST against `6dd7c80`, EMPTY.
+  Message diff against the source file: only delta is the trailing-
+  blank-line artifact `git log --format=%B` always adds, not a real
+  mismatch.
+- CI watched to conclusion (this session's own prompt named it):
+  `test` lane run `31328209204`, green, 3m57s — `poly check`, `poly
+  test :all skip:integration`, and generated-doc freshness all passed.
 - `git status --porcelain`: clean before this session's first tool
   call, clean at the commit boundary.
 
