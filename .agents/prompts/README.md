@@ -110,3 +110,4 @@ Files in this directory:
   * 2026-08-08-pairing-registry.md
   * 2026-08-08-conviction-close-a.md
   * 2026-08-08-conviction-close-b.md
+  * 2026-08-08-vendoring-batch-4.md
