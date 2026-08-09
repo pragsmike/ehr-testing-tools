@@ -317,3 +317,31 @@ change to the contract itself.
   deviation — a different root, a different walk set, a surprise
   identical — is a fresh STOP-AND-REPORT, never absorbed by the
   existing license.
+
+## From review 2's rulings (ADR-0092/0093)
+
+- **Measurements sample the claimed population, standing** [A, ruled
+  AR-RL2-2, 2026-08-09, citing ADR-0087 / ADR-0092 D6-2]: a sweep or
+  sample claiming to measure a population must draw from that
+  population's own RNG path/generation mechanism, never an independent
+  synthetic path assumed equivalent; a zero measured against a
+  known-nonzero branch is the tripwire (ADR-0087's own self-caught
+  miss — a synthetic sweep for `:suppressed-straddle-spans` drew from
+  an independent RNG path and measured zero against a real, disclosed
+  2-of-900 branch — is the precedent).
+- **Horizon items anchor in the roadmap, standing** [A, ruled AR-RL2-3,
+  2026-08-09, citing ADR-0092 D7-7/D7-8]: any item surviving past ONE
+  arc close purely in horizon-note prose gains a `roadmap.md` Deferred
+  or Next row in the SAME close that first restates it; horizon notes
+  narrate, the roadmap remembers (ADR-0092's own A/B evidence — the one
+  aged item with a roadmap anchor, the census undercount, self-healed
+  after a single missed restatement; the two without one, wellness-
+  encounters and the `notice_verbatim_test` coverage gap, did not
+  recover across three — is the precedent).
+- **Post-push verification includes the ASCII check, standing** [A,
+  ruled AR-RL2-5, 2026-08-09, citing ADR-0091 AR-SD-6 / ADR-0092 H-6]:
+  the standing post-push ceremony adds one mechanical line, `git log
+  --format=%B -1 | LC_ALL=C grep -n '[^ -~]'`, expected EMPTY; any hit
+  is disclosed in-session, not discovered by channel report later. This
+  is ceremony boilerplate for session prompts and session practice —
+  NO new repo test, NO workflow change, NO gate file.

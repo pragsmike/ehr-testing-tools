@@ -69,6 +69,15 @@ per item; done items move to the bottom of their section with a date and sha.
   ADR-0010's own three-way split (a fresh grep at design time will
   turn up more than the four named here, including `docs/use-cases/`
   siblings). Awaiting its own design moment, not built.
+- **Census tool: `:closure-file-count` fix, scheduled** (2026-08-09,
+  review 2 rulings landing, `notes/ADRs.md` ADR-0092/0093, ruling 6 =
+  D6-1): small session, extend `ehrt.sim-trajectory.census`'s closure-
+  file counting from the JSON-module resolver to the CSV lookup-table
+  resolver too — the fix is well-understood, not a design question.
+  Cites the 3x undercount record (`notes/ADRs.md` ADR-0074, register
+  D6-1: asthma, vhd-pulmonic, vhd-tricuspid) and review 1's own
+  "escalate priority" ask, unactioned since 2026-08-07. No src touched
+  by this row's own landing session.
 
 ## Externals (author-only)
 - Enable GitHub's workflow-failure notification email for this
@@ -416,6 +425,43 @@ Rows here are LIVE. Closed rows move to Done with their notes.
   original combined row CLOSED this session — see Done, below.
   Revisit trigger: whichever session next touches the
   schema-invalid family's own `time` gap.
+- **Wellness-encounters, roadmap anchor** (2026-08-09, review 2
+  rulings landing, `notes/ADRs.md` ADR-0092/0093, ruling 3's first
+  execution = D7-7): a NAMED DESIGN ITEM, never routine vendoring
+  (`notes/ADRs.md` ADR-0070) — it is upstream's own wellness machinery
+  and collides with this engine's own wellness-cadence design; waits
+  its own pass. Re-surfaced once (ADR-0080, D7-6), then survived three
+  consecutive closes (0089, 0090, 0091) only in `.agents/state.md`'s
+  own Live-work section — HELD, restated unchanged, no session touched
+  it — with no `roadmap.md` row of its own until now. This row is that
+  anchor. Revisit trigger: a future session ready to reconcile
+  upstream's own wellness machinery with this engine's own
+  wellness-cadence design.
+- **`notice_verbatim_test`'s own coverage gap, roadmap anchor**
+  (2026-08-09, review 2 rulings landing, `notes/ADRs.md` ADR-0092/0093,
+  ruling 3's second execution = D7-8): the v2-nist `NOTICE.md` table
+  (2-column, not the gate's 5-column shape) and the simhospital
+  `PROVENANCE.md` hash (prose, not a table, not named NOTICE) both sit
+  outside `notice_verbatim_test`'s own recognized shapes (`notes/
+  ADRs.md` ADR-0079); both hashes are still manually verified correct —
+  a coverage gap, not an active drift. Named at ADR-0079/0080/0084,
+  then absent from three consecutive closes (0089, 0090, 0091) with no
+  `roadmap.md` row of its own until now. Revisit trigger: a future
+  session willing to extend the gate's parser to the v2-nist 2-column
+  table shape and the simhospital prose-hash shape — judged at ADR-0080
+  to balloon past "lands small" for a routine session.
+- **Wave E (vital-sign/CHF/contraceptives/covid19 cluster), parked**
+  (2026-08-09, review 2 rulings landing, `notes/ADRs.md` ADR-0092/0093,
+  ruling 4 = D7-13): restated at four consecutive closes (0074, 0080,
+  0084, 0089) with zero movement on the genuinely blocked member —
+  `covid19` alone stays `:zero-on-every-seed`
+  (`congestive-heart-failure`/`contraceptives` are both
+  `:produces-content` post-Wave-VS, per the "Vital-sign channel" row
+  above, which names the underlying vital-sign-register blocker this
+  row does not restate). Parked rather than scheduled — four closes of
+  identical restatement with zero movement is evidence this is
+  backlog, not urgent. Revisit trigger: the next content-vendoring
+  session with a vital-sign-adjacent candidate.
 
 ## Done (live — current arc only; full history in the attic files,
 `.agents/plans/roadmap-done-2026-07.md` and `.agents/plans/roadmap-done-2026-08.md`,
@@ -426,3 +472,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-08 — vendoring-batch-4 — ADR-0090
 - 2026-08-09 — storefront-fixture — ADR-0091
 - 2026-08-09 — repo-review-2 — ADR-0092
+- 2026-08-09 — review-2-rulings-landing — ADR-0093
