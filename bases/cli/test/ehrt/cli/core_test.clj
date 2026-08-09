@@ -1103,6 +1103,23 @@
     (is (= :file-not-found (:category r)))
     (is (= missing (:path (:payload r))))))
 
+;; ---- ADR-0096, D4-5/D8-3: read-base-data's :fhir branch used to
+;; slurp+json/read-str with no guard -- a malformed file crashed the
+;; whole batch with a raw stack trace instead of a categorized
+;; rejection, the same class of gap AR-RL-3 already closed for a
+;; missing path just above. ----
+
+(deftest mutate-command-malformed-json-names-base-data-unreadable-test
+  (let [in-dir (temp-dir*)
+        bad-file (io/file in-dir "bad.json")
+        _ (spit bad-file "{not valid json")
+        r (cli/mutate-command {:path in-dir :operator-id "remove-required-element"
+                                :locator-path "entry[0].resource.gender" :out-dir (temp-dir*)})]
+    (is (result/error? r))
+    (is (= :base-data-unreadable (:category r)))
+    (is (= (.getPath bad-file) (:path (:payload r))))
+    (is (= 2 (cli/result->exit-code r)))))
+
 (deftest mutate-command-listing-failure-on-an-existing-dir-names-listing-failed-not-count-zero-test
   (let [in-dir (temp-dir*)
         _ (spit (io/file in-dir "a.json") sample-bundle-json)
@@ -1563,6 +1580,22 @@
     (is (= :rejected (:verdict (first (:files (:absolute (:payload r)))))))
     (is (= :pass (:verdict (first (:files (:relative (:payload r)))))))))
 
+;; ---- ADR-0096, D4-6: gate-command's --baseline read used to
+;; edn/read-string+slurp with no guard -- a corrupt/truncated baseline
+;; file (a plausible real mistake) crashed with a raw stack trace
+;; instead of a categorized rejection. ----
+
+(deftest gate-v2-command-malformed-baseline-names-baseline-unreadable-test
+  (let [in-dir (temp-dir*)
+        _ (spit (io/file in-dir "ok.hl7") (slurp "components/corpus/test-fixtures/v2/adt-a01-admit.hl7"))
+        baseline-file (str (temp-dir*) "/baseline.edn")
+        _ (spit baseline-file "{not valid edn")
+        r (cli/gate-v2-command {:path in-dir :baseline baseline-file})]
+    (is (result/error? r))
+    (is (= :baseline-unreadable (:category r)))
+    (is (= baseline-file (:path (:payload r))))
+    (is (= 2 (cli/result->exit-code r)))))
+
 (deftest gate-v2-command-baseline-mode-still-rejects-a-genuinely-new-finding-test
   (let [in-dir (temp-dir*)
         _ (spit (io/file in-dir "ok.hl7") (slurp "components/corpus/test-fixtures/v2/adt-a01-admit.hl7"))
@@ -1783,6 +1816,21 @@
         _ (spit assertions-file (pr-str [{:kind :present :locator {:format :fhir :path "resourceType"}}]))
         r (cli/check-command {:path cand-dir :assertions assertions-file})]
     (is (result/ok? r))))
+
+;; ---- ADR-0096, D4-7: check-command's --assertions read used to
+;; edn/read-string+slurp with no guard -- the same shape as D4-6, a
+;; different flag, crashing raw instead of a categorized rejection. ----
+
+(deftest check-command-malformed-assertions-names-assertions-unreadable-test
+  (let [cand-dir (temp-dir*)
+        _ (spit (io/file cand-dir "a.json") "{\"resourceType\":\"Bundle\"}")
+        assertions-file (str (temp-dir*) "/assertions.edn")
+        _ (spit assertions-file "{not valid edn")
+        r (cli/check-command {:path cand-dir :assertions assertions-file})]
+    (is (result/error? r))
+    (is (= :assertions-unreadable (:category r)))
+    (is (= assertions-file (:path (:payload r))))
+    (is (= 2 (cli/result->exit-code r)))))
 
 (deftest check-command-parses-canonicalizers-flag-test
   (let [cand-dir (temp-dir*) exp-dir (temp-dir*)

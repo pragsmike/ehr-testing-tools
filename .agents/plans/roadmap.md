@@ -465,3 +465,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-09 — review-2-rulings-landing — ADR-0093
 - 2026-08-09 — census-closure-file-count — ADR-0094
 - 2026-08-09 — cluster-a-gate-wiring — ADR-0095
+- 2026-08-09 — cluster-b-parse-guards — ADR-0096

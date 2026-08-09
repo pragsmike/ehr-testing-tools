@@ -385,11 +385,19 @@
 
 (defn- read-base-data
   "Reads a file into the shape corpus.mutate expects for format:
-  parsed JSON data for :fhir, the raw ER7 string for :v2."
+  parsed JSON data for :fhir, the raw ER7 string for :v2. Result or
+  loud (ADR-0078, ADR-0096, D4-5/D8-3): result/ok the read value, or
+  result/error :base-data-unreadable on a malformed or unreadable
+  file -- the same try/catch-around-the-read shape
+  ehrt.kernel.artifact/read-lockfile and ehrt.sim.run's config loader
+  already use. Callers must unwrap."
   [format file]
-  (case format
-    :fhir (json/read-str (slurp file))
-    :v2 (slurp file)))
+  (try
+    (result/ok (case format
+                 :fhir (json/read-str (slurp file))
+                 :v2 (slurp file)))
+    (catch Exception e
+      (result/error :base-data-unreadable {:path (str file) :message (.getMessage e)}))))
 
 (defn- write-mutant
   "Writes a mutant to file in the shape it needs to land on disk:
@@ -502,15 +510,17 @@
           (result/ok (assoc (:payload write-result) :stdout-sink? true))
           write-result))
       (let [f (first remaining)
-            base-data (read-base-data format f)
-            mutate-result (mutate/mutate base-data operator locator-envelope)]
-        (if-not (result/ok? mutate-result)
-          mutate-result
-          (recur (rest remaining)
-                 (conj items (mutant->stdout-item
-                              format
-                              (or (:framing sink) source-sink/default-framing)
-                              (:mutant (:payload mutate-result))))))))))
+            base-data-result (read-base-data format f)]
+        (if-not (result/ok? base-data-result)
+          base-data-result
+          (let [mutate-result (mutate/mutate (:payload base-data-result) operator locator-envelope)]
+            (if-not (result/ok? mutate-result)
+              mutate-result
+              (recur (rest remaining)
+                     (conj items (mutant->stdout-item
+                                  format
+                                  (or (:framing sink) source-sink/default-framing)
+                                  (:mutant (:payload mutate-result))))))))))))
 
 ;; ---- ADR-0015: `ehrt corpus generate sim` -- the sim source's own
 ;; generation front door, alongside bare `ehrt corpus generate`/`ehrt
@@ -678,17 +688,19 @@
                             (vary-meta (result/ok {:count (count processed) :files processed})
                                        assoc :breadcrumb (str "try: bin/ehrt gate " out-dir))))
                         (let [f (first remaining)
-                              base-data (read-base-data format f)
-                              mutate-result (mutate/mutate base-data operator locator-envelope)]
-                          (if-not (result/ok? mutate-result)
-                            mutate-result
-                            (let [{:keys [mutant lineage]} (:payload mutate-result)
-                                  basename (.getName f)]
-                              (write-mutant format (io/file out-dir basename) mutant)
-                              (spit (io/file out-dir "lineage" (str basename ".lineage.edn")) (pr-str lineage))
-                              (recur (rest remaining)
-                                     (conj processed {:file basename :lineage-id (:id lineage)
-                                                       :sha256 (:produced lineage) :input-hash (:parent lineage)})))))))))))))))))
+                              base-data-result (read-base-data format f)]
+                          (if-not (result/ok? base-data-result)
+                            base-data-result
+                            (let [mutate-result (mutate/mutate (:payload base-data-result) operator locator-envelope)]
+                              (if-not (result/ok? mutate-result)
+                                mutate-result
+                                (let [{:keys [mutant lineage]} (:payload mutate-result)
+                                      basename (.getName f)]
+                                  (write-mutant format (io/file out-dir basename) mutant)
+                                  (spit (io/file out-dir "lineage" (str basename ".lineage.edn")) (pr-str lineage))
+                                  (recur (rest remaining)
+                                         (conj processed {:file basename :lineage-id (:id lineage)
+                                                           :sha256 (:produced lineage) :input-hash (:parent lineage)})))))))))))))))))))
 
 (defn- generator-url?
   [designator-result]
@@ -908,11 +920,18 @@
             (let [results (:results (:payload results-result))
                   run {:gate gate-label :path path}]
               (if baseline
-                (let [baseline-report (edn/read-string (slurp baseline))
-                      br (report/baseline-relative-report results run baseline-report)
-                      decision (gate-decision (:totals (:relative br)) policy)
-                      write-error (when report (write-report! report br))]
-                  (or write-error (decision->result decision br)))
+                (let [baseline-result
+                      (try
+                        (result/ok (edn/read-string (slurp baseline)))
+                        (catch Exception e
+                          (result/error :baseline-unreadable
+                                         {:path baseline :message (.getMessage e)})))]
+                  (if-not (result/ok? baseline-result)
+                    baseline-result
+                    (let [br (report/baseline-relative-report results run (:payload baseline-result))
+                          decision (gate-decision (:totals (:relative br)) policy)
+                          write-error (when report (write-report! report br))]
+                      (or write-error (decision->result decision br)))))
                 (let [rpt (report/build-report results run)
                       decision (gate-decision (:totals rpt) policy)
                       write-error (when report (write-report! report rpt))]
@@ -1073,8 +1092,29 @@
   {:fhir-json :fhir :v2-er7 :v2})
 
 (defn- sniff-path-format
+  "Result or loud (ADR-0078, ADR-0096, D8-3): result/ok the sniffed
+  gate label (:fhir, :v2, or nil for unrecognized), or result/error
+  :path-unreadable on a read failure -- the same try/catch-around-the-
+  read shape ehrt.kernel.artifact/read-lockfile and ehrt.sim.run's
+  config loader already use. Callers must unwrap."
   [f]
-  (get sniffed-format->gate-label (intake/sniff-format (slurp f))))
+  (try
+    (result/ok (get sniffed-format->gate-label (intake/sniff-format (slurp f))))
+    (catch Exception e
+      (result/error :path-unreadable {:path (.getPath ^java.io.File f) :message (.getMessage e)}))))
+
+(defn- sniff-files
+  "Sniffs every file in `files` via sniff-path-format, short-circuiting
+  on the first read failure (ADR-0096, D8-3): result/ok a vector of
+  [filename gate-label] pairs, or the first result/error encountered."
+  [files]
+  (reduce (fn [acc-result file]
+            (let [r (sniff-path-format file)]
+              (if-not (result/ok? r)
+                (reduced r)
+                (result/ok (conj (:payload acc-result) [(.getName ^java.io.File file) (:payload r)])))))
+          (result/ok [])
+          files))
 
 (defn- ambiguous-format-error
   [path payload]
@@ -1102,10 +1142,13 @@
                       :hint "no such file or directory -- run: ehrt help gate"})
 
       (.isFile f)
-      (case (sniff-path-format f)
-        :fhir (gate-fhir-fn opts)
-        :v2 (gate-v2-fn opts)
-        (ambiguous-format-error path {:unrecognized-files [path]}))
+      (let [sniff-result (sniff-path-format f)]
+        (if-not (result/ok? sniff-result)
+          sniff-result
+          (case (:payload sniff-result)
+            :fhir (gate-fhir-fn opts)
+            :v2 (gate-v2-fn opts)
+            (ambiguous-format-error path {:unrecognized-files [path]}))))
 
       :else
       (let [files-result (gate-candidate-files-in path)]
@@ -1114,20 +1157,23 @@
           (let [files (:payload files-result)]
             (if (empty? files)
               (ambiguous-format-error path {:reason :no-candidate-files})
-              (let [sniffed (map (fn [file] [(.getName file) (sniff-path-format file)]) files)
-                    unrecognized (mapv first (filter (fn [[_ fmt]] (nil? fmt)) sniffed))]
-                (if (seq unrecognized)
-                  (ambiguous-format-error path {:unrecognized-files unrecognized})
-                  (let [formats (into #{} (map second) sniffed)]
-                    (if (> (count formats) 1)
-                      (ambiguous-format-error
-                       path
-                       {:counts (into {}
-                                      (map (fn [[fmt fs]] [(get {:fhir :fhir-json :v2 :v2-er7} fmt) (count fs)]))
-                                      (group-by second sniffed))})
-                      (case (first formats)
-                        :fhir (gate-fhir-fn opts)
-                        :v2 (gate-v2-fn opts)))))))))))))
+              (let [sniffed-result (sniff-files files)]
+                (if-not (result/ok? sniffed-result)
+                  sniffed-result
+                  (let [sniffed (:payload sniffed-result)
+                        unrecognized (mapv first (filter (fn [[_ fmt]] (nil? fmt)) sniffed))]
+                    (if (seq unrecognized)
+                      (ambiguous-format-error path {:unrecognized-files unrecognized})
+                      (let [formats (into #{} (map second) sniffed)]
+                        (if (> (count formats) 1)
+                          (ambiguous-format-error
+                           path
+                           {:counts (into {}
+                                          (map (fn [[fmt fs]] [(get {:fhir :fhir-json :v2 :v2-er7} fmt) (count fs)]))
+                                          (group-by second sniffed))})
+                          (case (first formats)
+                            :fhir (gate-fhir-fn opts)
+                            :v2 (gate-v2-fn opts)))))))))))))))
 
 ;; ---- ADR-0013: `ehrt show` -- the pretty-always display verb. Joins
 ;; D11's own sniff dispatch (gate-candidate-files-in/sniff-path-format
@@ -1149,10 +1195,16 @@
 
 (defn- show-file
   [f]
-  (let [gate-label (sniff-path-format f)]
-    (if (nil? gate-label)
-      (show-ambiguous-error (.getPath f) {:unrecognized-files [(.getPath f)]})
-      (render-sniffed-content gate-label (slurp f)))))
+  (let [sniff-result (sniff-path-format f)]
+    (if-not (result/ok? sniff-result)
+      sniff-result
+      (let [gate-label (:payload sniff-result)]
+        (if (nil? gate-label)
+          (show-ambiguous-error (.getPath f) {:unrecognized-files [(.getPath f)]})
+          (try
+            (render-sniffed-content gate-label (slurp f))
+            (catch Exception e
+              (result/error :path-unreadable {:path (.getPath f) :message (.getMessage e)}))))))))
 
 (defn- as-display-text
   [r]
@@ -1191,23 +1243,26 @@
           (let [files (:payload files-result)]
             (if (empty? files)
               (show-ambiguous-error path {:reason :no-candidate-files})
-              (let [sniffed (map (fn [file] [(.getName file) (sniff-path-format file)]) files)
-                    unrecognized (mapv first (filter (fn [[_ fmt]] (nil? fmt)) sniffed))]
-                (if (seq unrecognized)
-                  (show-ambiguous-error path {:unrecognized-files unrecognized})
-                  (let [formats (into #{} (map second) sniffed)]
-                    (if (> (count formats) 1)
-                      (show-ambiguous-error
-                       path
-                       {:counts (into {}
-                                      (map (fn [[gl fs]] [(get {:fhir :fhir-json :v2 :v2-er7} gl) (count fs)]))
-                                      (group-by second sniffed))})
-                      (let [rendered (map show-file files)
-                            failed (first (remove result/ok? rendered))]
-                        (if failed
-                          failed
-                          (as-display-text
-                       (result/ok (str/join "\n\n" (map :payload rendered)))))))))))))))))
+              (let [sniffed-result (sniff-files files)]
+                (if-not (result/ok? sniffed-result)
+                  sniffed-result
+                  (let [sniffed (:payload sniffed-result)
+                        unrecognized (mapv first (filter (fn [[_ fmt]] (nil? fmt)) sniffed))]
+                    (if (seq unrecognized)
+                      (show-ambiguous-error path {:unrecognized-files unrecognized})
+                      (let [formats (into #{} (map second) sniffed)]
+                        (if (> (count formats) 1)
+                          (show-ambiguous-error
+                           path
+                           {:counts (into {}
+                                          (map (fn [[gl fs]] [(get {:fhir :fhir-json :v2 :v2-er7} gl) (count fs)]))
+                                          (group-by second sniffed))})
+                          (let [rendered (map show-file files)
+                                failed (first (remove result/ok? rendered))]
+                            (if failed
+                              failed
+                              (as-display-text
+                               (result/ok (str/join "\n\n" (map :payload rendered)))))))))))))))))))
 
 ;; ---- ADR-0014: `ehrt play`'s executor -- folds player/plan's own
 ;; emission plan through an injected :sleep-fn and one sink function.
@@ -1386,10 +1441,13 @@
 
 (defn- play-events-from-file
   [f]
-  (if-not (= :v2 (sniff-path-format f))
-    (result/error :play-input-unsupported
-                  {:path (.getPath f) :hint "ehrt play only supports HL7 v2 (ER7) input this session -- FHIR is a named, disclosed deferral (ADR-0014)"})
-    (player/split-er7-multi (slurp f))))
+  (let [sniff-result (sniff-path-format f)]
+    (if-not (result/ok? sniff-result)
+      sniff-result
+      (if-not (= :v2 (:payload sniff-result))
+        (result/error :play-input-unsupported
+                      {:path (.getPath f) :hint "ehrt play only supports HL7 v2 (ER7) input this session -- FHIR is a named, disclosed deferral (ADR-0014)"})
+        (player/split-er7-multi (slurp f))))))
 
 (defn- play-events-from-dir
   "ADR-0015: a directory of files sharing the sniffed v2 format,
@@ -1415,30 +1473,33 @@
           (result/error :play-input-unsupported
                         {:path path :reason :no-candidate-files
                          :hint "ehrt play found no HL7 v2 (ER7) or FHIR JSON candidate files in this directory"})
-          (let [sniffed (map (fn [file] [(.getName file) (sniff-path-format file)]) files)
-                unrecognized (mapv first (filter (fn [[_ fmt]] (nil? fmt)) sniffed))
-                formats (into #{} (map second) sniffed)]
-            (cond
-              (seq unrecognized)
-              (result/error :play-input-unsupported
-                            {:path path :unrecognized-files unrecognized
-                             :hint "ehrt play only supports HL7 v2 (ER7) directories -- ambiguous format"})
+          (let [sniffed-result (sniff-files files)]
+            (if-not (result/ok? sniffed-result)
+              sniffed-result
+              (let [sniffed (:payload sniffed-result)
+                    unrecognized (mapv first (filter (fn [[_ fmt]] (nil? fmt)) sniffed))
+                    formats (into #{} (map second) sniffed)]
+                (cond
+                  (seq unrecognized)
+                  (result/error :play-input-unsupported
+                                {:path path :unrecognized-files unrecognized
+                                 :hint "ehrt play only supports HL7 v2 (ER7) directories -- ambiguous format"})
 
-              (> (count formats) 1)
-              (result/error :play-input-unsupported
-                            {:path path
-                             :hint "ehrt play only supports a directory of one format -- this one mixes HL7 v2 and FHIR JSON"})
+                  (> (count formats) 1)
+                  (result/error :play-input-unsupported
+                                {:path path
+                                 :hint "ehrt play only supports a directory of one format -- this one mixes HL7 v2 and FHIR JSON"})
 
-              (= :fhir (first formats))
-              (result/error :play-input-unsupported
-                            {:path path :hint "ehrt play only supports HL7 v2 (ER7) input this session -- a FHIR directory is a named, disclosed deferral (ADR-0014)"})
+                  (= :fhir (first formats))
+                  (result/error :play-input-unsupported
+                                {:path path :hint "ehrt play only supports HL7 v2 (ER7) input this session -- a FHIR directory is a named, disclosed deferral (ADR-0014)"})
 
-              :else
-              (let [per-file (map (fn [file] (player/split-er7-multi (slurp file))) files)
-                    failed (first (remove result/ok? per-file))]
-                (if failed
-                  failed
-                  (result/ok (vec (mapcat :payload per-file))))))))))))
+                  :else
+                  (let [per-file (map (fn [file] (player/split-er7-multi (slurp file))) files)
+                        failed (first (remove result/ok? per-file))]
+                    (if failed
+                      failed
+                      (result/ok (vec (mapcat :payload per-file))))))))))))))
 
 (defn play-command
   "`ehrt play PATH [--rate R] [--idle-cap SECONDS] [--ticker full|line]
@@ -1549,15 +1610,25 @@
   parents created, a residual IO failure returned as
   :report-write-failed instead of the check's own verdict."
   [{:keys [path expected assertions canonicalizers pair-by report]}]
-  (let [assertions-data (when assertions (edn/read-string (slurp assertions)))
-        opts (cond-> {:candidate-dir path}
-               expected (assoc :expected-dir expected)
-               assertions-data (assoc :assertions assertions-data)
-               canonicalizers (assoc :canonicalizers (parse-canonicalizer-steps canonicalizers))
-               pair-by (assoc :pair-by (keyword pair-by)))
-        r (check/check-corpus opts)
-        write-error (when report (write-report! report (:payload r)))]
-    (or write-error r)))
+  (let [assertions-result
+        (if assertions
+          (try
+            (result/ok (edn/read-string (slurp assertions)))
+            (catch Exception e
+              (result/error :assertions-unreadable
+                             {:path assertions :message (.getMessage e)})))
+          (result/ok nil))]
+    (if-not (result/ok? assertions-result)
+      assertions-result
+      (let [assertions-data (:payload assertions-result)
+            opts (cond-> {:candidate-dir path}
+                   expected (assoc :expected-dir expected)
+                   assertions-data (assoc :assertions assertions-data)
+                   canonicalizers (assoc :canonicalizers (parse-canonicalizer-steps canonicalizers))
+                   pair-by (assoc :pair-by (keyword pair-by)))
+            r (check/check-corpus opts)
+            write-error (when report (write-report! report (:payload r)))]
+        (or write-error r)))))
 
 (defn- help-text-for
   "Group usage text for a known group name, top-level usage text
