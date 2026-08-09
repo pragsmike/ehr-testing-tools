@@ -29,11 +29,6 @@ per item; done items move to the bottom of their section with a date and sha.
   the engine's current one-module-per-patient assignment never
   exercises this, so it is deferred, not built. Revisit trigger: a
   future session that assigns more than one module to the same patient.
-- Storefront demo fixture: minimal clean-gating FHIR fixture so the README's mutate
-  demo shows a real accepted→rejected flip (2026-08-01 capture session finding).
-  Also the named landing spot for the pairing registry's own FHIR rows and the
-  tier-two coverage-to-gate promotion (2026-08-08, `notes/ADRs.md` ADR-0088,
-  AR-PD-2/AR-PD-4) — this session deliberately lands v2-only.
 - make quickstart → nightly integration workflow + single-```sh-fence guard in README
   (quickstart_fresh docstring corrected in same change)
 - generator-source three-concerns split (ADR-0017 named-future)
@@ -49,7 +44,9 @@ per item; done items move to the bottom of their section with a date and sha.
   components — the `components/corpus/test-fixtures/v2/simhospital`
   tree and its `components/corpus/test-fixtures/v2-nist` sibling,
   named explicitly — to a top-level home, so demos can use them.
-  Flagged wrinkles: both trees are NOTICE/PROVENANCE-hashed and
+  `components/corpus/test-fixtures/fhir/` (2026-08-09, storefront
+  fixture, `notes/ADRs.md` ADR-0091) is a third member, noted not
+  preempted. Flagged wrinkles: both trees are NOTICE/PROVENANCE-hashed and
   `-text` protected in `.gitattributes` (`v2/*.hl7`,
   `v2/simhospital/messages.out`, `v2/simhospital/LICENSE`,
   `v2-nist/covidELR/*.txt`, `v2-nist/COVID19_ELR-v2.3.1/**`), so the
@@ -427,3 +424,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 `notes/adr/0055-alignment-arc-close.md` AR-AC-5)
 - 2026-08-08 — conviction-arc-close — ADR-0089
 - 2026-08-08 — vendoring-batch-4 — ADR-0090
+- 2026-08-09 — storefront-fixture — ADR-0091
