@@ -29,6 +29,18 @@
     (spit f json-text)
     f))
 
+(defn- write-module-file! ^java.io.File [checkout-dir call-path json-text]
+  (let [f (io/file checkout-dir "src" "main" "resources" "modules" (str call-path ".json"))]
+    (io/make-parents f)
+    (spit f json-text)
+    f))
+
+(defn- write-table-file! ^java.io.File [checkout-dir table-name csv-text]
+  (let [f (io/file checkout-dir "src" "main" "resources" "modules" "lookup_tables" table-name)]
+    (io/make-parents f)
+    (spit f csv-text)
+    f))
+
 (def ^:private census-opts
   {:seed-count 3 :mixer-seed 20260803
    :registration-offset-years 30 :horizon-years 50})
@@ -305,3 +317,86 @@
 (deftest artifact-filename-with-label-appends-it
   (is (= "2026-08-07-synthea-7e08387-substance.edn"
          (census/artifact-filename "2026-08-07" "7e08387" "substance"))))
+
+;; --- closure-file-count counts lookup tables too (ADR-0094, ruling 6 =
+;; D6-1, "a") -- both branches had converged on JSON-modules-only: the
+;; ok-walked branch's `(count modules)` never touched `tables`, the
+;; load-failed branch's `(count @fetched)` was populated only by
+;; `make-resolve-fn` (JSON module reads), never `make-table-resolve-fn`.
+;; Three real disclosed undercounts (asthma 3 vs 11, vhd-pulmonic and
+;; vhd-tricuspid 2 vs 4 each -- register D6-1, ADR-0074) motivate these
+;; gates. -----------------------------------------------------------------
+
+(def ^:private closure-count-leaf-json
+  (str "{\"name\": \"ClosureCountLeaf\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(def ^:private closure-count-good-table-csv
+  "age,gender,A,B\n15-24,F,0.9,0.1\n15-24,M,0.2,0.8\n")
+
+(deftest ok-walked-module-with-submodule-and-table-counts-all-distinct-files
+  (testing "1 root + 1 submodule + 1 lookup table = 3 -- the ok-walked
+            branch's own `:closure-file-count` must count `tables` too,
+            not only `modules`"
+    (let [dir (io/file (System/getProperty "java.io.tmpdir") "census-test-closure-count-ok")
+          root-json (str "{\"name\": \"ClosureCountRoot\", \"states\": {"
+                         "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Call\"},"
+                         "  \"Call\": {\"type\": \"CallSubmodule\", \"submodule\": \"closure-count-leaf\","
+                         "    \"direct_transition\": \"Pick\"},"
+                         "  \"Pick\": {\"type\": \"Simple\", \"lookup_table_transition\": ["
+                         "    {\"transition\": \"A\", \"default_probability\": 0.5,"
+                         "     \"lookup_table_name\": \"closure-count-good.csv\"},"
+                         "    {\"transition\": \"B\", \"default_probability\": 0.5,"
+                         "     \"lookup_table_name\": \"closure-count-good.csv\"}]},"
+                         "  \"A\": {\"type\": \"Terminal\"},"
+                         "  \"B\": {\"type\": \"Terminal\"}}}")
+          file (write-fixture! dir "closure-count-root" root-json)]
+      (write-module-file! dir "closure-count-leaf" closure-count-leaf-json)
+      (write-table-file! dir "closure-count-good.csv" closure-count-good-table-csv)
+      (let [entry (census/census-one dir census-opts {:id "closure-count-root" :file file})]
+        (is (= :ok-walked (:verdict entry)))
+        (is (= 3 (:closure-file-count (:gap entry)))
+            "1 root + 1 submodule + 1 table")))))
+
+(deftest load-failed-closure-counts-a-table-successfully-read-before-the-failure
+  (testing "root names two tables -- the first resolves, the second is
+            missing and fails the closure. The table read BEFORE the
+            failure must still be counted: `make-table-resolve-fn` must
+            record into the same `fetched` atom `make-resolve-fn` already
+            uses, under a collision-proof key so a table read and a
+            module read of the same call-path never collide"
+    (let [dir (io/file (System/getProperty "java.io.tmpdir") "census-test-closure-count-load-failed")
+          root-json (str "{\"name\": \"ClosureCountLoadFailedRoot\", \"states\": {"
+                         "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Pick\"},"
+                         "  \"Pick\": {\"type\": \"Simple\", \"lookup_table_transition\": ["
+                         "    {\"transition\": \"A\", \"default_probability\": 0.5,"
+                         "     \"lookup_table_name\": \"closure-count-good.csv\"},"
+                         "    {\"transition\": \"B\", \"default_probability\": 0.5,"
+                         "     \"lookup_table_name\": \"closure-count-missing.csv\"}]},"
+                         "  \"A\": {\"type\": \"Terminal\"},"
+                         "  \"B\": {\"type\": \"Terminal\"}}}")
+          file (write-fixture! dir "closure-count-load-failed-root" root-json)]
+      (write-table-file! dir "closure-count-good.csv" closure-count-good-table-csv)
+      (let [entry (census/census-one dir census-opts {:id "closure-count-load-failed-root" :file file})]
+        (is (= :load-failed (:verdict entry)))
+        (is (contains? (get-in entry [:gap :unresolved-tables]) "closure-count-missing.csv"))
+        (is (= 2 (:closure-file-count (:gap entry)))
+            "1 root + the 1 table successfully read before the failure")))))
+
+(deftest ok-walked-module-with-submodule-and-no-tables-still-counts-only-modules
+  (testing "regression guard: a closure naming no lookup tables reports
+            EXACTLY its module count (1 root + 1 submodule = 2), the
+            no-table case's own semantics staying unchanged by the fix"
+    (let [dir (io/file (System/getProperty "java.io.tmpdir") "census-test-closure-count-no-tables")
+          root-json (str "{\"name\": \"ClosureCountNoTablesRoot\", \"states\": {"
+                         "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Call\"},"
+                         "  \"Call\": {\"type\": \"CallSubmodule\", \"submodule\": \"closure-count-leaf\","
+                         "    \"direct_transition\": \"Done\"},"
+                         "  \"Done\": {\"type\": \"Terminal\"}}}")
+          file (write-fixture! dir "closure-count-no-tables-root" root-json)]
+      (write-module-file! dir "closure-count-leaf" closure-count-leaf-json)
+      (let [entry (census/census-one dir census-opts {:id "closure-count-no-tables-root" :file file})]
+        (is (= :ok-walked (:verdict entry)))
+        (is (= 2 (:closure-file-count (:gap entry)))
+            "1 root + 1 submodule, no tables")))))

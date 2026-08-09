@@ -69,16 +69,6 @@ per item; done items move to the bottom of their section with a date and sha.
   ADR-0010's own three-way split (a fresh grep at design time will
   turn up more than the four named here, including `docs/use-cases/`
   siblings). Awaiting its own design moment, not built.
-- **Census tool: `:closure-file-count` fix, scheduled** (2026-08-09,
-  review 2 rulings landing, `notes/ADRs.md` ADR-0092/0093, ruling 6 =
-  D6-1): small session, extend `ehrt.sim-trajectory.census`'s closure-
-  file counting from the JSON-module resolver to the CSV lookup-table
-  resolver too — the fix is well-understood, not a design question.
-  Cites the 3x undercount record (`notes/ADRs.md` ADR-0074, register
-  D6-1: asthma, vhd-pulmonic, vhd-tricuspid) and review 1's own
-  "escalate priority" ask, unactioned since 2026-08-07. No src touched
-  by this row's own landing session.
-
 ## Externals (author-only)
 - Enable GitHub's workflow-failure notification email for this
   repository (one settings toggle) — closes the nobody-watching gap
@@ -473,3 +463,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-09 — storefront-fixture — ADR-0091
 - 2026-08-09 — repo-review-2 — ADR-0092
 - 2026-08-09 — review-2-rulings-landing — ADR-0093
+- 2026-08-09 — census-closure-file-count — ADR-0094

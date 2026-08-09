@@ -210,9 +210,20 @@
       (swap! fetched assoc call-path text)
       text)))
 
-(defn- make-table-resolve-fn [checkout-dir]
+(defn- make-table-resolve-fn
+  "The table-reading twin of `make-resolve-fn`, above -- records every
+  table-name it actually reads into the SAME `fetched` atom, under the
+  collision-proof key `(str \"lookup_tables/\" table-name)` (matching the
+  on-disk relative path, disjoint by construction from a module
+  call-path key, which never contains a `/`) so `:closure-file-count`
+  (below) counts a table read before a `:load-failed` closure's own
+  failure, not only the JSON modules `make-resolve-fn` records (ADR-0094,
+  ruling 6 = D6-1, \"a\")."
+  [checkout-dir fetched]
   (fn [table-name]
-    (slurp-if-exists (checkout-modules-file checkout-dir "lookup_tables" table-name))))
+    (when-let [text (slurp-if-exists (checkout-modules-file checkout-dir "lookup_tables" table-name))]
+      (swap! fetched assoc (str "lookup_tables/" table-name) text)
+      text)))
 
 ;; --- Substitution tagging (AR-3) -----------------------------------------
 ;;
@@ -395,7 +406,7 @@
   (let [root-json-text (slurp file)
         fetched (atom {id root-json-text})
         resolve-fn (make-resolve-fn checkout-dir fetched)
-        table-resolve-fn (make-table-resolve-fn checkout-dir)
+        table-resolve-fn (make-table-resolve-fn checkout-dir fetched)
         closure (try
                   (gmf/load-closure id root-json-text resolve-fn table-resolve-fn)
                   (catch Throwable e
@@ -405,6 +416,11 @@
         ;; extensible, this census just has none active right now.
         substitutions []]
     (if-not (result/ok? closure)
+      ;; AR-D-6: same definition as the ok-walked branch, below -- every
+      ;; DISTINCT module/table file actually read before the failure.
+      ;; `fetched` already carries both kinds (`make-resolve-fn`/
+      ;; `make-table-resolve-fn` both record into it), so `count` alone
+      ;; needs no branch-specific arithmetic here.
       (let [gap (assoc (extract-load-gap closure) :closure-file-count (count @fetched))]
         {:id id :file (.getName file)
          :verdict (if (out-of-scope-by-ruling? gap) :out-of-scope-by-ruling :load-failed)
@@ -421,7 +437,10 @@
         (cond-> {:id id :file (.getName file)
                  :verdict (if ok-walked? :ok-walked :walk-failed)
                  :disclosed-substitutions substitutions
-                 :gap {:closure-file-count (count modules)
+                 ;; AR-D-6: :closure-file-count means the number of
+                 ;; DISTINCT files read into the closure -- root module +
+                 ;; transitively-called submodules + lookup-table CSVs.
+                 :gap {:closure-file-count (+ (count modules) (count tables))
                        :walk-errors (mapv #(select-keys % [:seed :error]) failed)}
                  :walks (mapv #(dissoc % :ok?) walks)}
           ok-walked? (assoc :event-counts event-counts
