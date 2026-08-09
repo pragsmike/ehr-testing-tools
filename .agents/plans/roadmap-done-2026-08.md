@@ -1557,3 +1557,37 @@ corrects to its own true, still-undiagnosed blocker).
 - 2026-08-08 — fidelity-riders — ADR-0081
 - 2026-08-08 — encounterend-fix — ADR-0082
 - 2026-08-08 — fidelity-payoff — ADR-0083
+
+**Appended 2026-08-08 (conviction arc close, `notes/adr/
+0089-conviction-arc-close.md` AR-CB-3):** this pointer was the live
+roadmap's own sole current Done entry from the fidelity arc's own close
+until now — the same disclosed-leftover class every prior close has
+handled for its own predecessor. It relocates here now, verbatim, at
+the next arc's own close.
+- 2026-08-08 — fidelity-arc-close — ADR-0084
+
+## Conviction arc — closed 2026-08-08 (ADR-0085–0089)
+Relocated verbatim from the live roadmap's own Done section by this
+arc's own close (`notes/adr/0089-conviction-arc-close.md` AR-CB-3); see
+that ADR for the arc's full account. Colorectal investigation
+(ADR-0085, diagnosis-only per its own ruled fence — no Done pointer of
+its own, the row it diagnosed stays in Deferred, closed in place with
+its own disclosed relocation) localizes `colorectal_cancer.json`'s own
+violations to `compile-trajectory`'s legacy pre-horizon drop gate, no
+back-reference check against the straddling encounter it belongs to.
+Straddle fix (ADR-0086) generalizes the Wave H `history-phase?`
+back-reference principle to that legacy path — one licensed mover,
+`sleep-apnea` (3 of 300 walks, a latent malformed compiled shape
+shipped since vendoring batch 1), STOP-AND-REPORTed and confirmed
+exactly; `colorectal_cancer.json` clean at all three seeds. Colorectal
+payoff (ADR-0087) vendors it as the oracle's 29th root, pinned by a
+committed test measuring the `:suppressed-straddle-spans` counter
+against the same real straddling patients the investigation traced by
+name. Pairing registry (ADR-0088) lands the mutate↔judge conviction
+registry as data — seven witnessed rows across two v2 judges, a
+names-only NIST taxonomy snapshot gated by a currency test, three
+skipped pairs honestly named. Colorectal's own four-ADR, three-session
+deferral (ADR-0072/0083/0085/0086/0087) closes.
+- 2026-08-08 — straddle-fix — ADR-0086
+- 2026-08-08 — colorectal-payoff — ADR-0087
+- 2026-08-08 — pairing-registry — ADR-0088

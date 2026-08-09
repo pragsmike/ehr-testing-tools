@@ -199,6 +199,39 @@
 ;; (build-session/SKILL.md) = 1216. Re-applying the standing formula
 ;; (actual x1.15, rounded up to the nearest 5): 1216 x 1.15 = 1398.4 ->
 ;; 1400. Budget moves 1285 -> 1400.
+;;
+;; Re-derivation (2026-08-08, conviction arc close, `notes/adr/
+;; 0089-conviction-arc-close.md` AR-CB-2): diffing every set's own
+;; `:paths` membership against `git log 45eb2f4..HEAD --name-only`
+;; (45eb2f4 = the fidelity arc's own closing tip, the base since which
+;; `state.md`/`reading-sets.edn` were last touched) found TWO sets with
+;; a touched member -- the first close since the quality-review arc's
+;; own "all five together" regeneration where more than one set moves.
+;; `:onboarding`: `.agents/plans/roadmap.md` (Now/Done churn across
+;; five conviction-arc sessions plus this close's own rotation),
+;; `.agents/prompts/README.md` and `.agents/session-records/README.md`
+;; (five sessions' worth of new prompt/record entries) all touched; no
+;; `AGENTS.md`, `.agents/plans/README.md`, `.agents/skills/README.md`,
+;; `.agents/memory/README.md`, or `.agents/skills/build-session/
+;; SKILL.md` change in that diff. `:judge`: `components/judge/src/ehrt/
+;; judge/interface.clj` touched (the pairing registry's five new
+;; re-exports, ADR-0088 AR-PD-4) -- the first time `:judge` has moved
+;; since the quality-review arc's own close. No `:corpus`/`:sim`/`:docs`
+;; member path appears in the diff (this arc's own src/test edits
+;; touched `sim-trajectory`, `sim-emit-hl7`, `oracle`, `judge`,
+;; `judge-v2-nist`, none of them a `:paths` member of those three
+;; sets), so those three budgets stay untouched. `:onboarding`'s fresh
+;; actual (`wc -l` sum across all eight `:paths`, measured AFTER the
+;; rotation landed): 284 (AGENTS.md) + 51 + 60 + 163 + 111 + 33 (the
+;; five READMEs) + 385 (roadmap.md, post-rotation) + 187
+;; (build-session/SKILL.md) = 1274. Re-applying the standing formula
+;; (actual x1.15, rounded up to the nearest 5): 1274 x 1.15 = 1465.1 ->
+;; 1470. Budget moves 1400 -> 1470. `:judge`'s fresh actual (`wc -l`
+;; sum across all eight `:paths`): 284 (AGENTS.md) + 61 (judge/
+;; interface.clj, grown by the pairing re-exports) + 16 + 18 + 23 (the
+;; three engine interfaces) + 85 + 240 + 187 (build-session/SKILL.md)
+;; = 914. Re-applying the standing formula: 914 x 1.15 = 1051.1 ->
+;; 1055. Budget moves 1040 -> 1055.
 
 {:onboarding
  {:paths ["AGENTS.md"
@@ -221,7 +254,7 @@
   ;; because that's a different audience from "a cold task-class session",
   ;; and forcing every onboarding read to carry its cost would budget for an
   ;; activity most onboarding sessions never do (migration session 5, AR-3).
-  :budget-lines 1400}
+  :budget-lines 1470}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one
@@ -289,7 +322,7 @@
           ;; the checkpoint ceremony, applies regardless of task class
           ;; (migration session 5, AR-3)
           ".agents/skills/build-session/SKILL.md"]
-  :budget-lines 1040}
+  :budget-lines 1055}
 
  ;; components/docs-tooling (dev-time-only doc/lint tooling) generates and
  ;; lints docs/cli.md, docs/pipeline.md-equivalents, and docs/use-cases.md
