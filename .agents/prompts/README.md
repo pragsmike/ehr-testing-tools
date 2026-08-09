@@ -108,3 +108,4 @@ Files in this directory:
   * 2026-08-08-straddle-fix.md
   * 2026-08-08-colorectal-payoff.md
   * 2026-08-08-pairing-registry.md
+  * 2026-08-08-conviction-close-a.md
