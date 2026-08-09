@@ -21,13 +21,21 @@
 #   --repo  Maven local repository root to check against
 #           (default: ~/.m2/repository)
 #
-# Wired into `make test` (the per-push lane) right after
+# Wired into two surfaces, both right after
 # `clojure -M:poly test :all skip:integration`, the point where
 # `projects/conformance`'s own classpath resolution (it depends on
 # `poly/judge-v2-nist`, which declares the `nist-hit` :mvn/repos) has
-# already pulled every one of these coordinates into ~/.m2 -- so by the
-# time this script runs in that lane, "not yet resolved" should never
-# fire; a sha256 mismatch there is a real, actionable finding.
+# already pulled every one of these coordinates into a Maven repo -- so
+# by the time this script runs at either surface, "not yet resolved"
+# should never fire; a sha256 mismatch there is a real, actionable
+# finding.
+#   - `make test`, the local convenience target (Makefile)
+#   - `test.yml`, the per-push lane every push and PR actually runs
+#     (ADR-0095, cluster A / D2-4: this script's own header previously
+#     claimed the `make test` wiring alone was the per-push lane, which
+#     was false -- `test.yml` never calls `make test`, it inlines the
+#     `poly` steps directly, so this check ran nowhere routinely
+#     watched until this step was added)
 set -euo pipefail
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)" || exit 2

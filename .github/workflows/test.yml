@@ -78,6 +78,9 @@ jobs:
       - name: poly test :all skip:integration
         run: clojure -M:poly test :all skip:integration
 
+      - name: verify-nist-lock (supply-chain integrity)
+        run: bin/verify-nist-lock
+
       - name: generated-doc freshness (regen + diff)
         run: |
           make docsgen
