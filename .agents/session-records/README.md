@@ -167,3 +167,4 @@ Files in this directory:
   * 2026-08-09-repo-review-2.md
   * 2026-08-09-review-2-rulings-landing.md
   * 2026-08-09-census-closure-file-count.md
+  * 2026-08-09-cluster-a-gate-wiring.md
