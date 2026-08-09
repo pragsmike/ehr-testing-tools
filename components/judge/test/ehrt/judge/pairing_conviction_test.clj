@@ -9,63 +9,64 @@
   (an engine upgrade changes its finding vocabulary, a fixture moves)
   fails HERE, not silently.
 
+  FHIR rows (`:judge-fhir-official`) are deliberately EXCLUDED from
+  this file's own tier-one loop (storefront-fixture session, ADR-0091,
+  AR-SD-2, a correction mid-session): `judge-fhir-official/gate-file`
+  needs the real `fhir-validator-cli` artifact fetched first
+  (`ehr artifact fetch`), and this file lives in `judge`'s own test
+  tree, composed by EVERY project including `conformance`/`ehrt-cli`
+  -- whose ordinary push-triggered CI lane never primes the artifact
+  cache (only the `integration` project's own scheduled/workflow_
+  dispatch lane does, AGENTS.md's hermetic-test-suite rule). A first
+  attempt put the FHIR arm here and passed locally (this session's own
+  artifact cache was already warm from manual measurement runs) but
+  failed in CI's fresh environment -- `:not-cached`, `fhir-validator-
+  cli`. `projects/integration/test/ehrt/integration/pairing_
+  conviction_fhir_test.clj` witnesses the FHIR rows instead, the same
+  placement `contract_pairing_test.clj`/`baseline_gating_test.clj`
+  already use for the same reason.
+
   Also gates tier two (storefront-fixture session, ADR-0091, AR-SD-3):
   `every-catalog-operator-has-at-least-one-witnessed-row-test` promotes
   `ehrt.judge.pairing/coverage` from ADR-0088's own report-only
   computation to a live gate against `ehrt.corpus.interface/operator-
   entries`'s own catalog -- every operator must have at least one
   witnessed row, any judge; a judge-specific skip does not count
-  against an operator witnessed elsewhere.
+  against an operator witnessed elsewhere. This tier stays here
+  (artifact-independent -- it only reads the registry and the live
+  catalog, never gates a mutant) even though it now counts FHIR rows
+  witnessed elsewhere.
 
-  Test context crossing into `corpus`, `judge-v2-hapi`, `judge-v2-nist`,
-  and (storefront-fixture session, ADR-0091, AR-SD-2) `judge-fhir-
-  official` from `judge`'s own test tree is deliberate and precedented
-  (`ehrt.judge-v2-nist.v2-engine-test` already crosses into `judge` the
-  same way, ADR-0012) -- none of these four gain a new `deps.edn` edge
-  from this file; `judge` itself stays free of them too
-  (`ehrt.judge.pairing` never requires any of the four). Every project
-  composing `judge` already carries `judge-fhir-official` on its own
-  classpath (ADR-0011), so this crossing needed no new project-level
-  edge either -- confirmed by grep across `projects/*/deps.edn` before
-  this row landed."
-  (:require [clojure.data.json :as json]
-            [clojure.java.io :as io]
+  Test context crossing into `corpus`, `judge-v2-hapi`, and
+  `judge-v2-nist` from `judge`'s own test tree is deliberate and
+  precedented (`ehrt.judge-v2-nist.v2-engine-test` already crosses into
+  `judge` the same way, ADR-0012) -- none of these three gain a new
+  `deps.edn` edge from this file; `judge` itself stays free of them
+  too (`ehrt.judge.pairing` never requires any of the three)."
+  (:require [clojure.java.io :as io]
             [clojure.test :refer [deftest is testing]]
             [ehrt.kernel.interface :as kernel]
             [ehrt.judge.interface :as judge]
             [ehrt.corpus.interface :as corpus]
             [ehrt.judge-v2-hapi.interface :as v2-hapi]
-            [ehrt.judge-v2-nist.interface :as v2-nist]
-            [ehrt.judge-fhir-official.interface :as v2-fhir]))
+            [ehrt.judge-v2-nist.interface :as v2-nist]))
 
 (def ^:private work-dir "target/pairing-conviction")
 
-(def ^:private lockfile-artifacts
-  (delay (:artifacts (:payload (kernel/read-lockfile "artifacts.lock.edn")))))
-
 (defn- mutant-content
-  "Returns {:format :content}: :content is corpus.mutate's own :mutant
-  payload, still format-dependent (a raw ER7 string for :v2, plain
-  parsed Clojure data for :fhir -- corpus.mutate's own docstring) --
-  `write-mutant!` below is what turns it back into file bytes."
   [{:keys [fixture locator] {:keys [id]} :operator}]
-  (let [operator (corpus/operator-lookup id "1")
-        format (:format operator)
-        base (case format
-               :fhir (json/read-str (slurp (io/file fixture)))
-               :v2 (slurp (io/file fixture)))
-        mutate-result (corpus/mutate base operator {:format format :path locator})]
+  (let [base (slurp (io/file fixture))
+        operator (corpus/operator-lookup id "1")
+        mutate-result (corpus/mutate base operator {:format :v2 :path locator})]
     (when-not (kernel/ok? mutate-result)
       (throw (ex-info "pairing-conviction: mutate failed" (assoc mutate-result :row fixture))))
-    {:format format :content (:mutant (:payload mutate-result))}))
+    (:mutant (:payload mutate-result))))
 
 (defn- write-mutant!
-  [{:keys [judge] {:keys [id]} :operator} {:keys [format content]}]
-  (let [ext (case format :fhir "json" :v2 "hl7")
-        path (str work-dir "/" (name judge) "-" (name id) "-mutant." ext)
-        text (case format :fhir (json/write-str content) :v2 content)]
+  [{:keys [judge] {:keys [id]} :operator} content]
+  (let [path (str work-dir "/" (name judge) "-" (name id) "-mutant.hl7")]
     (io/make-parents path)
-    (spit path text)
+    (spit path content)
     path))
 
 (defmulti ^:private gate-mutant (fn [row _path] (:judge row)))
@@ -83,14 +84,15 @@
     (when-not (kernel/ok? r) (throw (ex-info "pairing-conviction: nist gate failed" r)))
     (->> (:findings (:payload r)) (map (comp :category :native-ref)) set)))
 
-(defmethod gate-mutant :judge-fhir-official
-  [_row path]
-  (let [r (v2-fhir/gate-file path {:artifacts @lockfile-artifacts :out-dir work-dir})]
-    (when-not (kernel/ok? r) (throw (ex-info "pairing-conviction: fhir gate failed" r)))
-    (->> (:findings (:payload r)) (map :code) set)))
+(defn- hermetically-witnessable-rows
+  "Every registry row except :judge-fhir-official ones (see ns
+  docstring) -- those are witnessed by
+  ehrt.integration.pairing-conviction-fhir-test instead."
+  []
+  (remove #(= :judge-fhir-official (:judge %)) (judge/load-pairing-registry)))
 
 (deftest every-registry-row-witnesses-its-own-expected-class-test
-  (doseq [{:keys [operator judge expected] :as row} (judge/load-pairing-registry)]
+  (doseq [{:keys [operator judge expected] :as row} (hermetically-witnessable-rows)]
     (testing (str (:id operator) " x " judge)
       (let [path (write-mutant! row (mutant-content row))
             observed (gate-mutant row path)]
