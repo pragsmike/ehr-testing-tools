@@ -101,6 +101,97 @@ prioritization table).
 | `med_rec.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/med_rec.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `1698c9ddfc09d8e2fe9592b8f489c0db47b5ba070c30fa0d428a21a21e5e70c0` | 2026-08-07 |
 | `anemia___unknown_etiology.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/anemia___unknown_etiology.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `e954b7cb1fe81b301726baa82d5fa83124f64e052f100ebb87a0a6c5d5e5c896` | 2026-08-08 |
 | `colorectal_cancer.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/colorectal_cancer.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `10a2e4574332650e0bf0e6f466390c704111e525be6e425f85a87fdcccc74e51` | 2026-08-08 |
+| `veteran_lung_cancer.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/veteran_lung_cancer.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `84e474a85b39565585030773e0422a6bdfea142f15c07984da8c9425540cb082` | 2026-08-08 |
+| `veteran_prostate_cancer.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/veteran_prostate_cancer.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `c139ad49b26a0d2bdb0bd4d2d0ba03170e1a769c00abe652f7a196eabd0841f6` | 2026-08-08 |
+| `veteran_ptsd.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/veteran_ptsd.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `a0e04e01fe3d42f91326052887d6843d83e5a992f62ee5fb18ab4bd856e1e72a` | 2026-08-08 |
+| `veteran_self_harm.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/veteran_self_harm.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `ae5c651da3f405f7c0614577a72856d57c5310ce79eef0e13f616efa893abcea` | 2026-08-08 |
+| `veterans/veteran_suicide_probabilities.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/veterans/veteran_suicide_probabilities.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `593dcb98d9ebcd0fac26dc61f338a1af8ce76e28f8c86298338bba073ba87697` | 2026-08-08 |
+| `veteran_substance_abuse_treatment.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/veteran_substance_abuse_treatment.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `269091a80c76a3e9c05e007b7a98edfb29bfc20c6dc6cda5e04c633556b47541` | 2026-08-08 |
+
+**Vendoring batch 4 (2026-08-08, ADR-0090, AR-VB4-1/2/3): the veteran
+family comes home -- five content-producing modules land
+(`veteran_lung_cancer.json`, `veteran_prostate_cancer.json`,
+`veteran_ptsd.json`, `veteran_self_harm.json` plus its own called
+submodule `veterans/veteran_suicide_probabilities.json`,
+`veteran_substance_abuse_treatment.json`); four assessed and NOT
+vendored (below).** Nine candidates gated FRESH at the pin (the
+2026-08-03 wave-f census verdicts predate Waves G/I/VS/H and the
+straddle fix, ADR-0086 -- treated as a prior map only, never as current
+evidence). Every candidate's own `Initial`/guard chain was read first
+(AR-VB4-2): all nine gate on the upstream `veteran` Person attribute,
+which this project's own census never sets (hence the stale census's
+own uniform `:terminal`/`:blocked` 0-event verdicts across the whole
+family). **Correction, disclosed, not silently absorbed:** the
+session's driving prompt named `:persona-config` as "the established
+precedent for attribute-gated modules" -- that precedent is actually
+`:initial-attributes` (ADR-0033 AR-1, `total_joint_replacement.json`'s
+own `vendored_tjr_test.clj`), a closure-level seed keyed
+`{<root-id>/<attribute> value}`; `:persona-config` (`anemia`/
+`colorectal`'s own `:race-weights` shape) only reaches PERSONA-level
+condition types (`Race`/`Socioeconomic`/`State`), never the generic
+`Attribute` condition type these nine candidates all use
+(`gmf_interpreter.clj`'s own `attribute-condition-holds?` reads ONLY
+`(:attributes ctx)`, root-namespaced, never the persona map). Each
+vendorable module below is seeded `{<root-id>/veteran true}` via
+`:initial-attributes`, disclosed here and pinned in its own test and
+oracle root.
+
+Of the nine: **`veteran.json`** and **`veteran_substance_abuse_
+conditions.json`** walk clean at every seed but compile ZERO clinical
+content regardless of the `veteran` seed (SetAttribute/Simple states
+only, no Encounter/ConditionOnset/MedicationOrder/Procedure/
+Observation anywhere in either file) -- DEFERRED under the standing
+population-scale gate law (zero-substance modules are not vendorable),
+not a gating failure. **`veteran_hyperlipidemia.json`** DEFERRED WHOLE:
+seeded and walked clean of exceptions, but `ehrt.sim-check.check`'s own
+`:medication-end-references-existing-order-and-follows-it-in-time`
+invariant fails at population scale (20+ violations per 300 patients at
+seed 20260802, confirmed non-seed-tunable down to a 16000-day horizon)
+-- the module's own annual reassessment loop
+(`Record_LipidPanel_2`/`end old statin`/`Hyperlipidemia_medication_
+renewal`) re-checks `statin_initial is not nil` every year without ever
+clearing that attribute, so every year after the first re-fires a
+`MedicationEnd` against the SAME already-ended original order, a real
+upstream module-authoring pattern this project's interpreter compiles
+faithfully into a real, repeated invariant violation. **`veteran_mdd.
+json`** BLOCKED: `run-module` throws `ehrt.sim-trajectory.gmf-
+interpreter: run-module exceeded max-steps -- likely a module
+authoring bug (a zero-time-advance transition cycle)` at
+`:therapy-delay`/`:end-therapy-visit`, reproduced at every horizon
+tried (36500/18250/3650 days, the `injuries.json` bail-out precedent's
+own horizon-sweep method) -- the module's own recurring
+`therapy_delay`/`Therapy_Visit`/`Therapy_Note`/`end therapy visit`/
+`MDD_Re_evaluation Encounter` cycle never exits before a multi-decade
+horizon exhausts the interpreter's 10000-step runaway-loop backstop (a
+legitimate long-running follow-up schedule the backstop cannot
+distinguish from a true zero-advance spin). Per the standing fence, no
+interpreter/module-content edit lands to fix either gap this session;
+both are named under their true invariant/exception, not a euphemism.
+
+Old-census-verdict correction, evidence not guess (AR-VB4-5):
+`veteran_substance_abuse_treatment.json` itself was `:walk-failed` in
+the 2026-08-03 wave-f census (the SAME `run-module exceeded max-steps`
+exception, at `:alcoholism-post-treatment`/`:encounter-end`, on all
+three census seeds) but gates and walks CLEAN this session at three
+seeds (20260802/1/42), both with and without the `veteran` attribute
+seeded -- the module's own top-level guard is age-only (`Age > 18`),
+not itself veteran-gated, and the SAME clean result reproduces
+unseeded. Which fix (the EncounterEnd fix, ADR-0082, or the straddle
+fix, ADR-0086, both landed 2026-08-08 after the stale census) actually
+closed this module's own prior loop was NOT bisected this session --
+named `unknown`, per AR-VB4-5's own instruction, rather than an
+unearned attribution.
+
+Round-trip proof for all five landed modules (`ehrt.sim-emit-hl7.
+vendored-veteran-lung-cancer-test`/`vendored-veteran-prostate-cancer-
+test`/`vendored-veteran-ptsd-test`/`vendored-veteran-self-harm-test`/
+`vendored-veteran-substance-abuse-treatment-test`) at seed 20260802,
+300 patients, a 100-year `:module-horizon-days` (36500) -- three seeds
+(20260802/1/42) for `veteran-substance-abuse-treatment` given its own
+troubled census history, above-and-beyond this family's own 2-seed
+baseline, a disclosed in-session judgment call, not a rule requirement:
+real compiled clinical content, a clean invariant-catalog pass, and
+real rendered HL7 at every seed tried.
 
 **Colorectal payoff (2026-08-08, ADR-0087, AR-CP-1): `colorectal_cancer.
 json` comes home.** Deferred whole at vendoring batch 3 (ADR-0072) on

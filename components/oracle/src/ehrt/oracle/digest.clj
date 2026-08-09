@@ -471,6 +471,59 @@
                   :modules [closure] :module-assignment [{:module-id "colorectal-cancer" :weight 1}]
                   :module-horizon-days 36500})))
 
+;; --- Vendoring batch 4 (2026-08-08, ADR-0090, AR-VB4-3): five new
+;; engine-layer roots, the veteran family -- FIRST BASELINES, same
+;; convention prior batches established (seed 20260802, 300 patients, a
+;; 100-year `:module-horizon-days`, 36500). Every one of the five needs
+;; `:initial-attributes {<root-id>/veteran true}` -- NOTICE's own dated
+;; batch-4 entry has the full disclosed correction: `:persona-config`
+;; (the anemia/colorectal precedent) only reaches PERSONA-level
+;; condition types, never the generic `Attribute` condition type this
+;; family's own `veteran` gate uses; `:initial-attributes` (the
+;; `total-joint-replacement-engine-pair` precedent, above) is the real
+;; established mechanism. Four other candidates assessed this session
+;; were NOT vendored (two zero-substance, one a real population-scale
+;; invariant violation, one a real interpreter max-steps exhaustion) --
+;; no root for any of them here, by design, not omission.
+
+(defn- veteran-lung-cancer-pair []
+  (let [module (:payload (sim-trajectory/load-module "veteran-lung-cancer" (slurp (io/resource "sim/modules/veteran_lung_cancer.json"))))
+        seeded-closure (assoc (sim-trajectory/singleton-closure module) :initial-attributes {:veteran-lung-cancer/veteran true})]
+    (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
+                  :modules [seeded-closure] :module-assignment [{:module-id "veteran-lung-cancer" :weight 1}]
+                  :module-horizon-days 36500})))
+
+(defn- veteran-prostate-cancer-pair []
+  (let [module (:payload (sim-trajectory/load-module "veteran-prostate-cancer" (slurp (io/resource "sim/modules/veteran_prostate_cancer.json"))))
+        seeded-closure (assoc (sim-trajectory/singleton-closure module) :initial-attributes {:veteran-prostate-cancer/veteran true})]
+    (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
+                  :modules [seeded-closure] :module-assignment [{:module-id "veteran-prostate-cancer" :weight 1}]
+                  :module-horizon-days 36500})))
+
+(defn- veteran-ptsd-pair []
+  (let [module (:payload (sim-trajectory/load-module "veteran-ptsd" (slurp (io/resource "sim/modules/veteran_ptsd.json"))))
+        seeded-closure (assoc (sim-trajectory/singleton-closure module) :initial-attributes {:veteran-ptsd/veteran true})]
+    (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
+                  :modules [seeded-closure] :module-assignment [{:module-id "veteran-ptsd" :weight 1}]
+                  :module-horizon-days 36500})))
+
+(defn- veteran-self-harm-pair []
+  (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
+        closure (:payload (sim-trajectory/load-closure "veteran-self-harm"
+                                            (slurp (io/resource "sim/modules/veteran_self_harm.json"))
+                                            resolve-call-path))
+        seeded-closure (assoc closure :initial-attributes {:veteran-self-harm/veteran true})]
+    (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
+                  :modules [seeded-closure] :module-assignment [{:module-id "veteran-self-harm" :weight 1}]
+                  :module-horizon-days 36500})))
+
+(defn- veteran-substance-abuse-treatment-pair []
+  (let [module (:payload (sim-trajectory/load-module "veteran-substance-abuse-treatment" (slurp (io/resource "sim/modules/veteran_substance_abuse_treatment.json"))))
+        seeded-closure (assoc (sim-trajectory/singleton-closure module) :initial-attributes {:veteran-substance-abuse-treatment/veteran true})]
+    (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
+                  :modules [seeded-closure] :module-assignment [{:module-id "veteran-substance-abuse-treatment" :weight 1}]
+                  :module-horizon-days 36500})))
+
 (def ^:private roots
   {"appendicitis"                       appendicitis-batch
    "sore-throat"                        sore-throat-batch
@@ -500,7 +553,12 @@
    "vhd-tricuspid"                      vhd-tricuspid-pair
    "med-rec"                            med-rec-pair
    "anemia"                             anemia-pair
-   "colorectal"                         colorectal-pair})
+   "colorectal"                         colorectal-pair
+   "veteran-lung-cancer"                veteran-lung-cancer-pair
+   "veteran-prostate-cancer"            veteran-prostate-cancer-pair
+   "veteran-ptsd"                       veteran-ptsd-pair
+   "veteran-self-harm"                  veteran-self-harm-pair
+   "veteran-substance-abuse-treatment"  veteran-substance-abuse-treatment-pair})
 
 (defn -main
   "Writes one <root>.edn per root into out-dir (pr-str of the batch or
