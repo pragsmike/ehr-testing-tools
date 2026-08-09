@@ -5,8 +5,14 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- Nothing in progress at this close (fidelity arc close, ADR-0084,
-  2026-08-08).
+- Nothing in progress at this close (vendoring batch 4, ADR-0090,
+  2026-08-08 — the veteran family gated fresh at the pin; five
+  content-producing modules landed (lung cancer, prostate cancer,
+  ptsd, self harm, substance abuse treatment), four assessed and NOT
+  vendored — two zero-substance, one a real population-scale
+  invariant violation (hyperlipidemia), one a real interpreter
+  max-steps exhaustion (mdd), both named under their true invariant/
+  exception below).
 
 ## Next (backlog, no session scheduled)
 - The lookup-column `time` gap (named in the schema-invalid family
@@ -100,6 +106,49 @@ per item; done items move to the bottom of their section with a date and sha.
 
 ## Deferred (explicitly, with revisit triggers)
 Rows here are LIVE. Closed rows move to Done with their notes.
+- **`veteran_hyperlipidemia.json`'s own stale-`statin_initial`
+  reference, true name** (2026-08-08, vendoring batch 4, `notes/
+  ADRs.md` ADR-0090): deferred whole, not vendored. The module's own
+  annual reassessment loop (`Record_LipidPanel_2`/`end old statin`/
+  `Hyperlipidemia_medication_renewal`) re-checks `statin_initial is
+  not nil` every year without ever clearing that attribute, so every
+  year after the first re-fires a `MedicationEnd` against the SAME
+  already-ended original order — `ehrt.sim-check.check`'s own
+  `:medication-end-references-existing-order-and-follows-it-in-time`
+  invariant fails at population scale (20+ violations per 300
+  patients, seed 20260802, confirmed non-seed-tunable down to a
+  16000-day horizon), a real upstream module-authoring pattern this
+  project's interpreter compiles faithfully. Per the standing fence,
+  no interpreter/module-content edit lands this session. Revisit
+  trigger: a future session willing to characterize whether
+  `MedicationEnd`/`referenced_by_attribute` should itself become
+  idempotent (a no-op against an already-ended order) as a general
+  interpreter rule, or whether this is upstream-module-only and stays
+  out of scope.
+- **`veteran_mdd.json`'s own recurring-encounter max-steps
+  exhaustion, true name** (2026-08-08, vendoring batch 4, `notes/
+  ADRs.md` ADR-0090): deferred whole (BLOCKED), not vendored.
+  `run-module` throws `ehrt.sim-trajectory.gmf-interpreter: run-module
+  exceeded max-steps -- likely a module authoring bug (a zero-time-
+  advance transition cycle)` at `:therapy-delay`/`:end-therapy-visit`,
+  reproduced at every horizon tried (36500/18250/3650 days, the
+  `injuries.json` bail-out precedent's own horizon-sweep method,
+  ADR-0070) — the module's own recurring `therapy_delay`/`Therapy_
+  Visit`/`Therapy_Note`/`end therapy visit`/`MDD_Re_evaluation
+  Encounter` cycle genuinely advances real time each iteration (a
+  5-14 day Delay) but never exits before a multi-decade horizon
+  exhausts the interpreter's 10000-step runaway-loop backstop
+  (`gmf_interpreter.clj`'s own `max-steps`) — a legitimate
+  long-running follow-up schedule the backstop cannot distinguish
+  from a true zero-advance spin. Per the standing fence, no
+  interpreter/module-content edit lands this session. Revisit
+  trigger: a future session willing to extend the runaway-loop
+  backstop to distinguish a real-time-advancing cycle from a
+  zero-advance one (e.g. raising `max-steps` conditionally, or
+  detecting forward wall-clock progress alongside the step count) —
+  the SAME class of backstop-vs-legitimate-long-loop tension
+  `injuries.json`'s own dangling-`dental_referral` gap named first,
+  a different mechanism, same backstop.
 - **`EncounterEnd` no-op-when-nothing-open** (2026-08-07, vendoring
   batch 2, `notes/ADRs.md` ADR-0071, the `anemia___unknown_etiology.
   json` bail-out finding): upstream Synthea's own `EncounterEnd` idiom
@@ -377,3 +426,4 @@ scaffolding compaction B, `notes/ADRs.md` ADR-0046 — each closed arc's own
 pointers rotate to a dated header in the attic at that arc's own close,
 `notes/adr/0055-alignment-arc-close.md` AR-AC-5)
 - 2026-08-08 — conviction-arc-close — ADR-0089
+- 2026-08-08 — vendoring-batch-4 — ADR-0090
