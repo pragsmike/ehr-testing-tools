@@ -1,4 +1,11 @@
-{:deps {;; poly/sim: not because this project's own tests reference
+{;; NIST v2-validation engine (judge-v2-nist, ADR-0012): its three
+ ;; gov.nist coordinates resolve from NIST's own Nexus, not Maven
+ ;; Central. Root deps.edn's own :mvn/repos isn't inherited here --
+ ;; `poly test :all` resolves each project's own deps.edn
+ ;; independently, so this repeats the same entry.
+ :mvn/repos {"nist-hit" {:url "https://hit-nexus.nist.gov/repository/releases/"}}
+
+ :deps {;; poly/sim: not because this project's own tests reference
         ;; ehrt.sim.* directly (they don't -- ADR-0004's own R19
         ;; disposition is why the five sim_*_test.clj namespaces stayed
         ;; in projects/conformance instead of moving here), but because
@@ -19,15 +26,20 @@
         ;; requires that engine's interface, and poly runs a declared
         ;; brick's tests in every composing project -- dropping it here
         ;; broke this lane's own run before commit, not a hypothetical.
-        ;; poly/judge-v2-nist DROPPED here (2026-07-31, split stage 3,
-        ;; ADR-0018, same rule as palgebra's drop below): it was only
-        ;; ever here because the retired ehrt.tools.interface required
-        ;; every engine; grep confirms nothing on this project's
-        ;; classpath requires it. The nist-hit :mvn/repos entry left
-        ;; with it. If a future change reintroduces a real need,
-        ;; re-add then, with its own earning edge named.
         poly/judge-v2-hapi        {:local/root "../../components/judge-v2-hapi"}
         poly/judge-fhir-official  {:local/root "../../components/judge-fhir-official"}
+        ;; poly/judge-v2-nist RE-ADDED here (2026-08-09, fix-forward
+        ;; ahead of the storefront-fixture session): DROPPED 2026-07-31
+        ;; (split stage 3, ADR-0018) on the premise that nothing on this
+        ;; project's classpath required it. That premise broke silently
+        ;; when the pairing registry landed (948f5e5, 2026-08-08):
+        ;; components/judge/test/ehrt/judge/pairing_conviction_test.clj
+        ;; now requires ehrt.judge-v2-nist.interface directly, and any
+        ;; project composing brick judge runs judge's own test tree.
+        ;; This lane is scheduled/workflow_dispatch-only (see :test
+        ;; alias below), so the break wasn't caught until the next
+        ;; scheduled Integration run (2026-08-09), a day after landing.
+        poly/judge-v2-nist        {:local/root "../../components/judge-v2-nist"}
         ;; poly/provenance (sim split B, M1, 2026-08-04): poly/corpus'
         ;; own src now requires ehrt.provenance.interface directly --
         ;; any project including poly/corpus needs it on the classpath.
