@@ -376,10 +376,4 @@ Rows here are LIVE. Closed rows move to Done with their notes.
 scaffolding compaction B, `notes/ADRs.md` ADR-0046 — each closed arc's own
 pointers rotate to a dated header in the attic at that arc's own close,
 `notes/adr/0055-alignment-arc-close.md` AR-AC-5)
-<!-- ADR-0084's own pointer plus ADR-0086/0087/0088's own three pointers
-all relocated to .agents/plans/roadmap-done-2026-08.md this commit (Step
-1, conviction arc close, AR-CB-3). ADR-0089's own pointer lands here at
-Step 2, alongside its own index line in notes/ADRs.md, in the same
-commit that makes the citation resolve -- the same sentinel-avoidance
-every prior arc close (ADR-0055/0064/0068/0074/0080/0084) has applied
-preemptively. -->
+- 2026-08-08 — conviction-arc-close — ADR-0089
