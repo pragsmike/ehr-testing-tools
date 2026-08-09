@@ -299,3 +299,21 @@ change to the contract itself.
   exists; ADR-0072's colorectal diagnosis was inference from a shared
   submodule, overturned by the first trajectory scan (ADR-0082/0083's
   own erratum chain).
+
+## From the conviction arc (ADR-0085–0089)
+
+- **Witnessed rows only, standing** [A]: the pairing registry
+  (ADR-0088) holds per-operator rows that exist ONLY when the
+  mutate→judge loop was actually executed against a real fixture;
+  unwitnessed cells do not appear; every pinned expectation is
+  MEASURED before it is written (a wrong first measurement is
+  disclosed, never silently discarded — ADR-0087/0088's own
+  precedent); tier promotions (report-only → gating) happen only by
+  dated author ruling.
+- **Licenses bind at their own granularity, standing** [A]: a licensed
+  oracle mover is licensed by NAME and at the EVIDENCE GRANULARITY the
+  license states (ADR-0086: `sleep-apnea`, walks #17/#58/#269); the
+  post-change bracket must match at that granularity, and any
+  deviation — a different root, a different walk set, a surprise
+  identical — is a fresh STOP-AND-REPORT, never absorbed by the
+  existing license.
