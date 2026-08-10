@@ -132,15 +132,28 @@
 
 (defn- spool-sim-output!
   "Writes sim's own run! payload to out-dir: one .hl7 file per message
-  (:messages), plus sim's own :manifest verbatim as manifest.edn --
-  this repo writes no manifest of its own for sim output; provenance
-  is the generator's word (ruling 4, docs/source-sink-design.md D7).
-  Returns kernel/error :sim-produced-no-messages, writing NOTHING, when
-  the run's own payload carried no messages at all -- an all-metadata
-  directory (manifest.edn alone) would defeat generator-source/
-  resolve!'s own generic empty-output check, since manifest.edn alone
-  makes the directory non-empty."
-  [{:keys [messages manifest]} out-dir]
+  (:messages), sim's own :manifest verbatim as manifest.edn -- this
+  repo writes no manifest of its own for sim output; provenance is the
+  generator's word (ruling 4, docs/source-sink-design.md D7) -- and,
+  when the payload carries :ground-truth (Q2 a., ADR-0100), the run's
+  own ground-truth vector, pr-str'd, as events.edn: byte-identical to
+  `ehrt sim run --format ground-truth`'s own bare stdout
+  (bases/cli/core.clj's sim-ground-truth-bare-text), since both are
+  exactly `(pr-str ground-truth)`. events.edn is DATA, not provenance
+  -- it doesn't reopen ruling 4's manifest.edn scope. Byte-identity
+  with the bare-stdout format IS the test: it is what makes
+  `cat events.edn | ehrt sim check` an actual working pipe with zero
+  check-side code, the same property `ehrt sim run --format
+  ground-truth | ehrt sim check` already has. Returns kernel/error
+  :sim-produced-no-messages, writing NOTHING (not even events.edn),
+  when the run's own payload carried no messages at all -- an
+  all-metadata directory (manifest.edn alone) would defeat
+  generator-source/resolve!'s own generic empty-output check, since
+  manifest.edn alone makes the directory non-empty. events.edn only
+  ever spools alongside a non-empty :messages set (the hl7 path,
+  ADR-0100's own fence) -- a fhir/none-emit run still errors here
+  exactly as before, since it never reaches this branch."
+  [{:keys [messages manifest ground-truth]} out-dir]
   (if (empty? messages)
     (kernel/error :sim-produced-no-messages
                   {:hint (str "sim's own run produced no messages -- :emit \"hl7\" "
@@ -149,6 +162,8 @@
       (.mkdirs (io/file out-dir))
       (dorun (map-indexed (fn [i m] (spit (io/file out-dir (format "msg-%03d.hl7" i)) m)) messages))
       (spit (io/file out-dir "manifest.edn") (pr-str manifest))
+      (when ground-truth
+        (spit (io/file out-dir "events.edn") (pr-str ground-truth)))
       (kernel/ok {:out-dir out-dir}))))
 
 (register!

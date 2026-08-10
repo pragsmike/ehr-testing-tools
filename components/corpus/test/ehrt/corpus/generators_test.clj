@@ -169,9 +169,31 @@
     (let [r ((:execute-fn entry) (:payload params-result) out-dir)]
       (is (kernel/ok? r))
       (let [files (.listFiles (io/file out-dir))]
-        (is (= 3 (count files)) "two message files plus manifest.edn")
+        (is (= 4 (count files)) "two message files plus manifest.edn plus events.edn")
         (is (some #(= "manifest.edn" (.getName %)) files))
+        (is (some #(= "events.edn" (.getName %)) files))
         (is (= {:stage :simulated} (edn/read-string (slurp (io/file out-dir "manifest.edn")))))))))
+
+;; ---- ADR-0100, Q2 a.: spool-sim-output! also writes events.edn --
+;; the run's own :ground-truth vector, pr-str'd, byte-identical to
+;; `ehrt sim run --format ground-truth`'s own bare stdout (both are
+;; exactly `(pr-str ground-truth)`, proven at the CLI level too by
+;; bases/cli/test/ehrt/cli/core_test.clj's own
+;; generate-sim-command-events-edn-matches-format-ground-truth-bare-
+;; text-test, a real end-to-end run). ----
+
+(deftest sim-execute-fn-events-edn-is-pr-str-of-ground-truth-test
+  (let [out-dir (temp-dir)
+        entry (generators/lookup :sim)
+        ground-truth [{:type :admission :t 0 :location "ER"} {:type :discharge :t 3600}]
+        sim-payload {:ground-truth ground-truth :manifest {:stage :simulated} :messages ["MSH|1"]}
+        fake (fn [_] (kernel/ok sim-payload))
+        params-result (generators/resolve-params :sim {:run-command-fn fake})]
+    (is (kernel/ok? params-result))
+    (let [r ((:execute-fn entry) (:payload params-result) out-dir)]
+      (is (kernel/ok? r))
+      (is (= (pr-str ground-truth) (slurp (io/file out-dir "events.edn"))))
+      (is (= ground-truth (edn/read-string (slurp (io/file out-dir "events.edn"))))))))
 
 (deftest sim-execute-fn-no-messages-is-its-own-rejection-test
   (let [out-dir (temp-dir)

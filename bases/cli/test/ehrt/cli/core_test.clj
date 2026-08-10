@@ -472,6 +472,25 @@
         expected-out-dir ((:out-dir-fn entry) (:payload params-result))]
     (is (= "out/corpus/sim-s3-p4" expected-out-dir))))
 
+;; ---- ADR-0100, Q2 a.: `generate sim` also spools events.edn, the
+;; run's own :ground-truth vector pr-str'd -- proven here as a real,
+;; end-to-end byte-equality claim against `ehrt sim run --format
+;; ground-truth`'s own bare stdout for the SAME seed/patients, not
+;; just the unit-level pr-str assertion
+;; ehrt.corpus.generators-test/sim-execute-fn-events-edn-is-pr-str-of-
+;; ground-truth-test already makes. ----
+
+(deftest generate-sim-command-events-edn-matches-format-ground-truth-bare-text-test
+  (let [out-dir (str (temp-dir*) "/events")
+        opts {:seed 42 :patients 2 :emit "hl7"}
+        r (cli/generate-sim-command (assoc opts :out-dir out-dir))
+        format-r (cli/sim-run-command (assoc opts :format "ground-truth"))]
+    (is (result/ok? r))
+    (is (result/ok? format-r))
+    (is (.exists (io/file out-dir "events.edn")))
+    (is (= (:bare-text (meta format-r)) (slurp (io/file out-dir "events.edn")))
+        "events.edn is byte-identical to `ehrt sim run --format ground-truth`'s own bare stdout for the same run (ADR-0100)")))
+
 (deftest dispatch-routes-corpus-mutate-test
   (let [called (atom nil)
         r (cli/dispatch ["corpus" "mutate"] {:path "x.json"}
