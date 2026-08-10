@@ -1,5 +1,6 @@
 (ns ehrt.judge-v2-hapi.v2-test
   (:require [clojure.test :refer [deftest is testing]]
+            [clojure.java.shell :as shell]
             [clojure.string :as str]
             [ehrt.kernel.interface :as kernel]
             [ehrt.judge.finding :as finding]
@@ -120,7 +121,30 @@
 (deftest gate-file-missing-path-is-an-operational-error-test
   (let [r (gate/gate-file "/no/such/file.hl7")]
     (is (kernel/error? r))
-    (is (= :file-not-found (:category r)))))
+    (is (= :file-not-found (:category r)))
+    (is (not (contains? (:payload r) :reason)))))
+
+(deftest gate-file-permission-denied-path-is-a-categorized-error-test
+  ;; ADR-0098: the .isFile-only guard passed a chmod-000 path straight
+  ;; through to a bare `slurp`, which threw raw -- extended to check
+  ;; .canRead too, same :file-not-found category, a distinguishing
+  ;; :reason :permission-denied payload key.
+  (let [tmp (java.io.File/createTempFile "gate-v2-hapi-test" ".hl7")
+        path (.getAbsolutePath tmp)
+        _ (spit path "MSH|^~\\&|")
+        _ (shell/sh "chmod" "000" path)]
+    (if (.canRead tmp)
+      ;; root (or an equivalent environment) bypasses permission bits
+      ;; entirely -- skip rather than silently lie about reproducing
+      ;; the unreadable-file leg.
+      (println "SKIPPED gate-file-permission-denied-path-is-a-categorized-error-test: running as an environment where chmod 000 did not remove read access (root?)")
+      (let [r (gate/gate-file path)]
+        (is (kernel/error? r))
+        (is (= :file-not-found (:category r)))
+        (is (= path (:path (:payload r))))
+        (is (= :permission-denied (:reason (:payload r))))))
+    (.setReadable tmp true false)
+    (.delete tmp)))
 
 ;; ---- gate-dir: batch over every *.hl7 file ----
 

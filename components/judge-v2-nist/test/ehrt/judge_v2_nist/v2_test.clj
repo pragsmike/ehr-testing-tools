@@ -5,7 +5,9 @@
   classpath needed. Engine-in-the-loop coverage lives behind a profile
   bundle fixture (Π) -- add one under test-fixtures once a
   representative IGAMT export is committed (adoption plan step 1)."
-  (:require [clojure.test :refer [deftest is testing]]
+  (:require [clojure.java.shell :as shell]
+            [clojure.test :refer [deftest is testing]]
+            [ehrt.kernel.interface :as kernel]
             [ehrt.judge-v2-nist.v2 :as v2]))
 
 (def engine {:name "nist-v2-validation" :version "test"})
@@ -81,3 +83,36 @@
   (testing "a single-id profile defaults to it without an explicit :msg-id"
     (let [result (v2/execute {:msg-ids ["ORU_R01"] :bundle-sha256s {}} "MSH|...")]
       (is (= "ORU_R01" (:msg-id result))))))
+
+;; ---- gate-file entry guard (ADR-0098): the .isFile check runs before
+;; validator-state is ever touched, so a nil validator-state (same
+;; synthetic-style convention as the msg-id-contract tests above) is
+;; safe here too -- these tests never reach `execute`. ----
+
+(deftest gate-file-missing-path-is-a-categorized-error-test
+  (let [r (v2/gate-file nil "/no/such/file.hl7")]
+    (is (kernel/error? r))
+    (is (= :file-not-found (:category r)))
+    (is (not (contains? (:payload r) :reason)))))
+
+(deftest gate-file-permission-denied-path-is-a-categorized-error-test
+  ;; the .isFile-only guard passed a chmod-000 path straight through to
+  ;; a bare `slurp`, which threw raw -- extended to check .canRead too,
+  ;; same :file-not-found category, a distinguishing :reason
+  ;; :permission-denied payload key.
+  (let [tmp (java.io.File/createTempFile "gate-v2-nist-test" ".hl7")
+        path (.getAbsolutePath tmp)
+        _ (spit path "MSH|^~\\&|")
+        _ (shell/sh "chmod" "000" path)]
+    (if (.canRead tmp)
+      ;; root (or an equivalent environment) bypasses permission bits
+      ;; entirely -- skip rather than silently lie about reproducing
+      ;; the unreadable-file leg.
+      (println "SKIPPED gate-file-permission-denied-path-is-a-categorized-error-test: running as an environment where chmod 000 did not remove read access (root?)")
+      (let [r (v2/gate-file nil path)]
+        (is (kernel/error? r))
+        (is (= :file-not-found (:category r)))
+        (is (= path (:path (:payload r))))
+        (is (= :permission-denied (:reason (:payload r))))))
+    (.setReadable tmp true false)
+    (.delete tmp)))

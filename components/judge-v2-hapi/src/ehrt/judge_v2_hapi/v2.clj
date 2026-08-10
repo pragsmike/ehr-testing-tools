@@ -193,11 +193,18 @@
   modifies the datum it judges. Returns kernel/ok {:verdict :findings
   :path}, or kernel/error :file-not-found if path doesn't name a
   readable file -- an operational condition (ADR-0004: exceptions are
-  for programmer error, not for \"the caller passed a bad path\")."
+  for programmer error, not for \"the caller passed a bad path\").
+  :reason :permission-denied rides alongside :path when the file
+  exists but can't be read (ADR-0098: Java's own `.isFile` is true and
+  `.canRead` false on a chmod-000 path, so a missing-path check alone
+  let a bare `slurp` throw a raw FileNotFoundException past this
+  guard)."
   [path]
   (let [f (io/file path)]
-    (if-not (.isFile f)
-      (kernel/error :file-not-found {:path (str path)})
+    (cond
+      (not (.isFile f)) (kernel/error :file-not-found {:path (str path)})
+      (not (.canRead f)) (kernel/error :file-not-found {:path (str path) :reason :permission-denied})
+      :else
       (let [content (slurp f)
             raw (execute content)]
         (kernel/ok (assoc (interpret raw) :path (str path)))))))

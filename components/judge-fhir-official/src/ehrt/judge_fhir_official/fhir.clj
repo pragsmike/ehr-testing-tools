@@ -387,12 +387,36 @@
 
 ;; ---- gate: read (never mutate) -> execute -> interpret ----
 
+(defn- check-readable
+  "Entry guard shared by `gate-file` and `gate-batch` (ADR-0098): the
+  read this whole gate pipeline eventually does -- `verdict-cache-
+  lookup`'s own `kernel/sha256-file` call, three frames past either
+  caller -- previously had no guard at all, so a missing OR an
+  exists-but-unreadable path (chmod 000: Java's own `.isFile` is true,
+  `.canRead` false, and opening the stream throws a raw
+  `FileNotFoundException \"... (Permission denied)\"`) both escaped
+  uncaught across this component's own boundary. Returns kernel/ok nil
+  when path names a readable file; kernel/error :file-not-found
+  {:path} when path doesn't exist or isn't a file; kernel/error
+  :file-not-found {:path :reason :permission-denied} when it exists
+  and is a file but can't be read -- the same category, a
+  distinguishing payload key, per the family-parity ruling (Q2 a.,
+  2026-08-09)."
+  [path]
+  (let [f (io/file path)]
+    (cond
+      (not (.isFile f)) (kernel/error :file-not-found {:path (str path)})
+      (not (.canRead f)) (kernel/error :file-not-found {:path (str path) :reason :permission-denied})
+      :else (kernel/ok nil))))
+
 (defn gate-file
   "Gates one FHIR JSON file against opts (same shape execute takes,
   minus :input-path -- set here from path). Reads the file only to
-  confirm it exists; never writes to it -- the Judge stage kind's own
-  law (docs/notation.md). Returns kernel/ok {:verdict :findings
-  :path}, or the first failing execute step's result unchanged.
+  confirm it exists and is readable (`check-readable`, ADR-0098:
+  kernel/error :file-not-found, with :reason :permission-denied on an
+  exists-but-unreadable path); never writes to it -- the Judge stage
+  kind's own law (docs/notation.md). Returns kernel/ok {:verdict
+  :findings :path}, or the first failing step's result unchanged.
 
   Verdict cache (ADR-0016, session ruling 3): unless :verdict-cache?
   is false, a hit against the content-addressed cache (keyed on the
@@ -404,19 +428,22 @@
   and stores the interpret result under that same key for next time.
   :verdict-cache-dir defaults to ehrt.judge.interface/verdict-cache-default-dir."
   [path opts]
-  (let [{:keys [verdict-cache?] :or {verdict-cache? true}} opts
-        cache-dir (:verdict-cache-dir opts judge/verdict-cache-default-dir)
-        cache-lookup (when verdict-cache? (verdict-cache-lookup path opts))]
-    (if-let [hit (:hit cache-lookup)]
-      (kernel/ok (assoc hit :path (str path)))
-      (let [execute-result (execute (assoc opts :input-path path))]
-        (if-not (kernel/ok? execute-result)
-          execute-result
-          (let [{:keys [raw-outcome engine]} (:payload execute-result)
-                interpreted (interpret raw-outcome engine)]
-            (when (and verdict-cache? cache-lookup)
-              (judge/verdict-cache-store! cache-dir (:key cache-lookup) interpreted))
-            (kernel/ok (assoc interpreted :path (str path)))))))))
+  (let [readable (check-readable path)]
+    (if-not (kernel/ok? readable)
+      readable
+      (let [{:keys [verdict-cache?] :or {verdict-cache? true}} opts
+            cache-dir (:verdict-cache-dir opts judge/verdict-cache-default-dir)
+            cache-lookup (when verdict-cache? (verdict-cache-lookup path opts))]
+        (if-let [hit (:hit cache-lookup)]
+          (kernel/ok (assoc hit :path (str path)))
+          (let [execute-result (execute (assoc opts :input-path path))]
+            (if-not (kernel/ok? execute-result)
+              execute-result
+              (let [{:keys [raw-outcome engine]} (:payload execute-result)
+                    interpreted (interpret raw-outcome engine)]
+                (when (and verdict-cache? cache-lookup)
+                  (judge/verdict-cache-store! cache-dir (:key cache-lookup) interpreted))
+                (kernel/ok (assoc interpreted :path (str path)))))))))))
 
 (defn gate-batch
   "Gates every file in paths with ONE validator subprocess invocation
@@ -435,36 +462,45 @@
   in the SAME order as paths (not the validator's own Bundle order,
   though F29 found the two agree in practice) -- matched back to each
   path by `interpret-batch`'s own :source-arg (the exact argv string,
-  never position). Returns the first failing step's result unchanged,
-  or kernel/error :batch-attribution-missing if any path's own argv
-  string never appears in the Bundle (a validator-contract violation
-  this function refuses to paper over with a guessed match)."
+  never position). Returns the first failing step's result unchanged
+  (`check-readable`, ADR-0098, fails fast on the first bad path among
+  paths, matching this function's own first-failing-step contract for
+  every other step below), or kernel/error :batch-attribution-missing
+  if any path's own argv string never appears in the Bundle (a
+  validator-contract violation this function refuses to paper over
+  with a guessed match)."
   [paths opts]
-  (let [{:keys [verdict-cache?] :or {verdict-cache? true}} opts
-        cache-dir (:verdict-cache-dir opts judge/verdict-cache-default-dir)
-        lookups (into {} (map (fn [path] [path (when verdict-cache? (verdict-cache-lookup path opts))])
-                               paths))
-        hits (into {} (keep (fn [[path lookup]] (when-let [hit (:hit lookup)] [path hit])) lookups))
-        misses (vec (remove hits paths))]
-    (if (empty? misses)
-      (kernel/ok {:results (mapv (fn [path] (assoc (get hits path) :path (str path))) paths)})
-      (let [execute-result (execute-batch (assoc opts :input-paths misses))]
-        (if-not (kernel/ok? execute-result)
-          execute-result
-          (let [{:keys [raw-outcome engine]} (:payload execute-result)
-                by-arg (into {} (map (fn [{:keys [source-arg] :as r}] [source-arg (dissoc r :source-arg)])
-                                      (interpret-batch raw-outcome engine)))
-                missing (remove by-arg misses)]
-            (if (seq missing)
-              (kernel/error :batch-attribution-missing {:paths (vec missing)})
-              (do
-                (when verdict-cache?
-                  (doseq [path misses]
-                    (when-let [key (:key (get lookups path))]
-                      (judge/verdict-cache-store! cache-dir key (get by-arg path)))))
-                (kernel/ok {:results (mapv (fn [path]
-                                              (assoc (or (get hits path) (get by-arg path)) :path (str path)))
-                                            paths)})))))))))
+  (let [readable (first (keep (fn [path]
+                                 (let [r (check-readable path)]
+                                   (when-not (kernel/ok? r) r)))
+                               paths))]
+    (if readable
+      readable
+      (let [{:keys [verdict-cache?] :or {verdict-cache? true}} opts
+            cache-dir (:verdict-cache-dir opts judge/verdict-cache-default-dir)
+            lookups (into {} (map (fn [path] [path (when verdict-cache? (verdict-cache-lookup path opts))])
+                                   paths))
+            hits (into {} (keep (fn [[path lookup]] (when-let [hit (:hit lookup)] [path hit])) lookups))
+            misses (vec (remove hits paths))]
+        (if (empty? misses)
+          (kernel/ok {:results (mapv (fn [path] (assoc (get hits path) :path (str path))) paths)})
+          (let [execute-result (execute-batch (assoc opts :input-paths misses))]
+            (if-not (kernel/ok? execute-result)
+              execute-result
+              (let [{:keys [raw-outcome engine]} (:payload execute-result)
+                    by-arg (into {} (map (fn [{:keys [source-arg] :as r}] [source-arg (dissoc r :source-arg)])
+                                          (interpret-batch raw-outcome engine)))
+                    missing (remove by-arg misses)]
+                (if (seq missing)
+                  (kernel/error :batch-attribution-missing {:paths (vec missing)})
+                  (do
+                    (when verdict-cache?
+                      (doseq [path misses]
+                        (when-let [key (:key (get lookups path))]
+                          (judge/verdict-cache-store! cache-dir key (get by-arg path)))))
+                    (kernel/ok {:results (mapv (fn [path]
+                                                  (assoc (or (get hits path) (get by-arg path)) :path (str path)))
+                                                paths)})))))))))))
 
 (defn- json-files-in
   "Result or loud (ADR-0078): result/ok a vector of *.json files under

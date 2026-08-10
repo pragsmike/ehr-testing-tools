@@ -225,11 +225,17 @@
   :file-not-found if file doesn't name a readable file -- parity with
   judge-v2-hapi/gate-file (ruled 2026-07-31): an operational condition
   like a missing path is a result value, never a thrown
-  FileNotFoundException across the component interface."
+  FileNotFoundException across the component interface. :reason
+  :permission-denied rides alongside :path when the file exists but
+  can't be read (ADR-0098, the same chmod-000 leg judge-v2-hapi/gate-
+  file's own guard extends: `.isFile` true, `.canRead` false, a bare
+  `slurp` throwing raw past an `.isFile`-only check)."
   [validator-state file & opts]
   (let [f (io/file file)]
-    (if-not (.isFile f)
-      (kernel/error :file-not-found {:path (str file)})
+    (cond
+      (not (.isFile f)) (kernel/error :file-not-found {:path (str file)})
+      (not (.canRead f)) (kernel/error :file-not-found {:path (str file) :reason :permission-denied})
+      :else
       (let [content (slurp f)]
         (kernel/ok (assoc (interpret (apply execute validator-state content opts))
                            :path (str file)))))))

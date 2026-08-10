@@ -2,6 +2,7 @@
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.data.json :as json]
             [clojure.java.io :as io]
+            [clojure.java.shell :as shell]
             [clojure.string :as str]
             [ehrt.kernel.interface :as kernel]
             [ehrt.judge.finding :as finding]
@@ -528,3 +529,54 @@
     (is (kernel/error? r))
     (is (= :batch-attribution-missing (:category r)))
     (is (= [path-b] (:paths (:payload r))))))
+
+;; ---- gate-file/gate-batch entry guard (ADR-0098): missing and
+;; exists-but-unreadable paths were both previously unguarded --
+;; verdict-cache-lookup's own sha256-file call threw a raw
+;; FileNotFoundException three frames past this component's own
+;; boundary for either case. ----
+
+(deftest gate-file-missing-path-is-a-categorized-error-test
+  ;; fhir's own first-ever entry check (Finding 1, ADR-0096/ADR-0097):
+  ;; this leg was never guarded at all before this session -- the raw
+  ;; FileNotFoundException 2b's own red evidence captured is now a
+  ;; categorized rejection instead.
+  (let [r (gate/gate-file "/no/such/file.json" {:artifacts [validator-artifact]})]
+    (is (kernel/error? r))
+    (is (= :file-not-found (:category r)))
+    (is (= "/no/such/file.json" (:path (:payload r))))
+    (is (not (contains? (:payload r) :reason)))))
+
+(deftest gate-file-permission-denied-path-is-a-categorized-error-test
+  (let [out-dir (temp-dir)
+        path (str out-dir "/unreadable.json")
+        _ (spit path "{}")
+        _ (shell/sh "chmod" "000" path)
+        f (io/file path)]
+    (if (.canRead f)
+      ;; root (or an equivalent environment) bypasses permission bits
+      ;; entirely -- chmod 000 would silently lie about reproducing the
+      ;; unreadable-file leg here, so this test skips itself rather than
+      ;; fail (or worse, pass) for the wrong reason.
+      (println "SKIPPED gate-file-permission-denied-path-is-a-categorized-error-test: running as an environment where chmod 000 did not remove read access (root?)")
+      (let [r (gate/gate-file path {:artifacts [validator-artifact]})]
+        (is (kernel/error? r))
+        (is (= :file-not-found (:category r)))
+        (is (= path (:path (:payload r))))
+        (is (= :permission-denied (:reason (:payload r))))))))
+
+(deftest gate-batch-permission-denied-path-is-a-categorized-error-and-fails-fast-test
+  (let [out-dir (temp-dir)
+        path-a (str out-dir "/a.json")
+        path-b (str out-dir "/unreadable.json")
+        _ (spit path-a "{}")
+        _ (spit path-b "{}")
+        _ (shell/sh "chmod" "000" path-b)
+        f (io/file path-b)]
+    (if (.canRead f)
+      (println "SKIPPED gate-batch-permission-denied-path-is-a-categorized-error-and-fails-fast-test: running as an environment where chmod 000 did not remove read access (root?)")
+      (let [r (gate/gate-batch [path-a path-b] {:artifacts [validator-artifact]})]
+        (is (kernel/error? r))
+        (is (= :file-not-found (:category r)))
+        (is (= path-b (:path (:payload r))))
+        (is (= :permission-denied (:reason (:payload r))))))))
