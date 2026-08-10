@@ -299,6 +299,14 @@ Restated from ADR-0092's own "Carried to review 3" section, extended:
   with the allowlist stripped).
 - **D8-4, ruled.** "I choose a" — no longer an open call; it rides the
   gate-fhir fix session as a rider, not a review-3 carry.
+- **`state.md`'s own content staleness, newly found by this close
+  itself.** This close's own landing forced a citation-only fix-forward
+  (the Dated append, above) to keep the staleness tripwire green;
+  `state.md`'s own CONTENT still reflects its last full regeneration
+  (2026-08-08, ADR-0089) and does not yet account for ADR-0090 through
+  ADR-0097. A future session's own ruling should schedule the next full
+  regeneration, the same standing act AR-QC-3/AR-CB-1 each executed for
+  their own arc.
 
 ### Open Externals, restated unchanged
 
@@ -352,6 +360,31 @@ family/busy-board idea remains exactly what the driving prompt named
 it: an un-committed author aside, noted here without a roadmap row —
 no commitment was ruled, and none is invented by this close.
 
+### Dated append, 2026-08-09 — state.md's own citation, fix-forward
+
+This ADR's own file is named `*-arc-close.md` and is therefore the
+file `state_staleness_tripwire_test.clj`'s own regex tracks as the
+newest arc-close ADR on disk — landing it (Step 3's own commit)
+tripped that gate red at this session's own full-suite run, since
+`.agents/state.md`'s header still cited ADR-0089 (its last full
+regeneration, conviction arc close, 2026-08-08). This close's own
+driving prompt scoped no `state.md` ruling (docs-only, "nothing else
+moves" beyond the two named roadmap rows, the ADR itself, and
+ceremony) — a genuine, disclosed gap against this file's own standing
+regeneration contract (AR-C-1: "every `[V]` claim re-probed... at
+each arc close"), not a silent evasion of it. Resolved to the
+NARROWEST fix the gate itself demands: the tripwire's own docstring
+states it "checks CURRENCY... not CONTENT," so only `state.md`'s
+header citation sentence was updated to ADR-0097, fix-forward, landing
+in this close's own Step 4 commit (never amending Step 3's). Every
+section below `state.md`'s own updated header still reflects its LAST
+full regeneration (2026-08-08, tip `a9c3abf`) — six ADRs' worth of
+landings since (0090 through 0097) are NOT reflected there. Named here
+as a newly-found watch item for review 3's own inheritance and for
+whichever future session next rules a full `state.md` regeneration,
+the same way AR-QC-3 (ADR-0080) and AR-CB-1 (ADR-0089) each did for
+their own arc.
+
 ### Verification
 
 - `clojure -M:poly check`: OK, Step 0.
@@ -396,7 +429,13 @@ untouched). No law appends (`.agents/rulings.md` untouched this
 session). No scoreboard movement. No `docs/cli.md` touch. Roadmap: the
 two named rows (the gate-fhir `Next` row carrying the D8-4 rider, the
 `ehrt play` `Deferred` row) plus the Done pointer, nothing else moved
-— verified by `git diff --cached --stat` at commit time, below.
+— verified by `git diff --cached --stat` at commit time, below. **One
+disclosed exception, mechanically forced, not discretionary:**
+`.agents/state.md`'s own header citation sentence, updated to name
+this ADR (the Dated-append section, above) — the narrowest fix the
+staleness tripwire itself demands (currency, not content), landed
+because this ADR's own filename tripped that standing gate red at this
+session's own full-suite run; no other line in `state.md` touched.
 
 ### Index line
 
