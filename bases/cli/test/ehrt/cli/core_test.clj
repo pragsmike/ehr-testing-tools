@@ -2789,3 +2789,136 @@
     (is (contains? (:payload r) :snapshot-count) "board ran, not the ticker")
     (is (not-any? #(clojure.string/includes? % "ADT^A0") @printed)
         "the ticker's own compact line never rendered")))
+
+;; ---- sim event-log input adapter (ADR-0100): a single .edn file,
+;; recognized by extension in play's own dispatch -- a vector of
+;; ground-truth event maps (ehrt.sim-trajectory.compile-trajectory's
+;; own shape: :event, :t in seconds from the run's own epoch,
+;; optional :location/:citation), paced by :t via player/plan's own
+;; injectable :timestamp-fn (player/event-timestamp-ms), rendered
+;; through the compact event-line ticker -- both --ticker modes alike,
+;; since there is no wire-format "full" rendering for a compiled
+;; event. --board and --sink are both rejected by name on event
+;; input (ADR-0014's own bail-out style): the board's fold is
+;; wire-side and an event log has no wire framing to write. ----
+
+(defn- temp-edn-file-with-content
+  [content]
+  (let [f (File/createTempFile "ehrt-play-events-test" ".edn")]
+    (spit f content)
+    (.getAbsolutePath f)))
+
+(def ^:private synthetic-ground-truth
+  [{:event :registered :t 0 :active-mrn "MRN000001"}
+   {:event :admission :t 10 :active-mrn "MRN000001"
+    :location {:ward "Renal" :bed "RENAL-01"}
+    :citation {:module "urinary_tract_infections" :state "admit"}}
+   {:event :discharge :t 70 :active-mrn "MRN000001"
+    :location {:ward "Renal" :bed "RENAL-01"}}])
+
+(deftest play-command-event-log-paces-by-t-not-msh-7-test
+  (let [slept (atom [])
+        r (cli/play-command {:path (temp-edn-file-with-content (pr-str synthetic-ground-truth))
+                              :rate 1 :idle-cap 100000
+                              :sleep-fn (fn [ms] (swap! slept conj ms))
+                              :println-fn (fn [_s] nil)})]
+    (is (result/ok? r))
+    (is (= [0 10000 60000] @slept) "10s and 60s deltas, in ms, straight from :t -- no MSH-7 involved")
+    (is (= 3 (:emitted (:payload r))))
+    (is (= 0 (:clamped-count (:payload r)) (:unparseable-count (:payload r)) (:skip-count (:payload r))))))
+
+(deftest play-command-event-log-renders-the-compact-event-line-test
+  (let [printed (atom [])
+        r (cli/play-command {:path (temp-edn-file-with-content (pr-str synthetic-ground-truth))
+                              :rate 1e15 :idle-cap 100000
+                              :sleep-fn (fn [_ms] nil)
+                              :println-fn (fn [s] (swap! printed conj s))})]
+    (is (result/ok? r))
+    (is (= "0d 00:00:00  :registered" (first @printed)))
+    (is (= "0d 00:00:10  :admission  Renal/RENAL-01  [urinary_tract_infections/admit]" (second @printed)))
+    (is (= "0d 00:01:10  :discharge  Renal/RENAL-01" (nth @printed 2)))))
+
+(deftest play-command-event-log-both-ticker-modes-render-the-same-line-test
+  (let [printed-full (atom []) printed-line (atom [])
+        path (temp-edn-file-with-content (pr-str synthetic-ground-truth))
+        r-full (cli/play-command {:path path :rate 1e15 :idle-cap 100000 :ticker "full"
+                                   :sleep-fn (fn [_ms] nil) :println-fn (fn [s] (swap! printed-full conj s))})
+        r-line (cli/play-command {:path path :rate 1e15 :idle-cap 100000 :ticker "line"
+                                   :sleep-fn (fn [_ms] nil) :println-fn (fn [s] (swap! printed-line conj s))})]
+    (is (result/ok? r-full))
+    (is (result/ok? r-line))
+    (is (= @printed-full @printed-line)
+        "there is no wire-format \"full\" rendering for a compiled event -- both modes collapse to the same event line")))
+
+(deftest play-command-event-log-unparseable-t-paces-zero-and-is-counted-test
+  (let [events [{:event :registered :t 0} {:event :admission} {:event :discharge :t 5}]
+        r (cli/play-command {:path (temp-edn-file-with-content (pr-str events))
+                              :rate 1 :idle-cap 100000
+                              :sleep-fn (fn [_ms] nil) :println-fn (fn [_s] nil)})]
+    (is (result/ok? r))
+    (is (= 1 (:unparseable-count (:payload r))) "the missing-:t event counts, the same family unparseable MSH-7 already does")))
+
+(deftest play-command-event-log-malformed-edn-is-categorized-test
+  (let [r (cli/play-command {:path (temp-edn-file-with-content "{not valid edn")})]
+    (is (result/error? r))
+    (is (= :play-input-unreadable (:category r)))))
+
+(deftest play-command-event-log-empty-vector-is-unsupported-test
+  (let [r (cli/play-command {:path (temp-edn-file-with-content "[]")})]
+    (is (result/error? r))
+    (is (= :play-input-unsupported (:category r)))))
+
+(deftest play-command-event-log-wrong-shape-is-unsupported-test
+  (let [r (cli/play-command {:path (temp-edn-file-with-content (pr-str [{:foo 1} {:foo 2}]))})]
+    (is (result/error? r))
+    (is (= :play-input-unsupported (:category r)))))
+
+(deftest play-command-event-log-board-is-rejected-test
+  (let [r (cli/play-command {:path (temp-edn-file-with-content (pr-str synthetic-ground-truth))
+                              :rate 1e15 :board 60
+                              :sleep-fn (fn [_ms] nil) :println-fn (fn [_s] nil)})]
+    (is (result/error? r))
+    (is (= :play-board-unsupported-for-events (:category r)))))
+
+(deftest play-command-event-log-sink-is-rejected-test
+  (let [r (cli/play-command {:path (temp-edn-file-with-content (pr-str synthetic-ground-truth))
+                              :rate 1e15 :sink "file:/tmp/wherever.hl7"
+                              :sleep-fn (fn [_ms] nil) :println-fn (fn [_s] nil)})]
+    (is (result/error? r))
+    (is (= :play-sink-unsupported-for-events (:category r)))))
+
+(deftest play-command-event-log-summary-envelope-matches-the-message-shape-test
+  (let [r (cli/play-command {:path (temp-edn-file-with-content (pr-str synthetic-ground-truth))
+                              :rate 1 :idle-cap 100000
+                              :sleep-fn (fn [_ms] nil) :println-fn (fn [_s] nil)})]
+    (is (result/ok? r))
+    (is (= #{:emitted :clamped-count :unparseable-count :skip-count
+             :rate :idle-cap-ms :wallclock-ms :stream-span-ms :sink}
+           (set (keys (:payload r)))))
+    (is (= 70000 (:stream-span-ms (:payload r))) "70s of :t span, in ms")))
+
+(deftest play-command-directory-input-with-events-edn-present-still-plays-messages-test
+  (let [dir (temp-dir*)
+        _ (spit (io/file dir "msg-000.hl7") (fixture-content "adt-a01-admit.hl7"))
+        _ (spit (io/file dir "events.edn") (pr-str synthetic-ground-truth))
+        printed (atom [])
+        r (cli/play-command {:path dir :rate 1e15 :idle-cap 1e7
+                              :sleep-fn (fn [_ms] nil) :println-fn (fn [s] (swap! printed conj s))})]
+    (is (result/ok? r))
+    (is (= 1 (:emitted (:payload r))) "events.edn is invisible to the directory scan (gate-candidate-extensions has no .edn)")
+    (is (some #(clojure.string/includes? % "ADT^A01") @printed)
+        "the real message rendered -- directory input stayed message-mode, never picked up events.edn")))
+
+(deftest play-command-real-generated-events-edn-plays-end-to-end-test
+  (let [out-dir (str (temp-dir*) "/events-e2e")
+        gen-r (cli/generate-sim-command {:seed 11 :patients 2 :emit "hl7" :out-dir out-dir})
+        printed (atom [])
+        play-r (cli/play-command {:path (str out-dir "/events.edn") :rate 1e15 :idle-cap 1e7
+                                   :sleep-fn (fn [_ms] nil) :println-fn (fn [s] (swap! printed conj s))})]
+    (is (result/ok? gen-r))
+    (is (result/ok? play-r))
+    (is (pos? (:emitted (:payload play-r))))
+    (is (= 0 (:unparseable-count (:payload play-r)))
+        "every real sim ground-truth event carries a numeric :t")
+    (is (some #(clojure.string/includes? % ":registered") @printed)
+        "the real event log actually played through the event-line ticker")))

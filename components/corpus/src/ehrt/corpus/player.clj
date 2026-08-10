@@ -109,6 +109,17 @@
   [message]
   (parse-dtm-lenient (msh-field (first-segment message) 7)))
 
+(defn event-timestamp-ms
+  "event (a compiled ground-truth event map -- ehrt.sim-trajectory.
+  compile-trajectory's own shape, ADR-0100) -> its own :t (seconds
+  from the sim run's own epoch, sim/ADR-0011), scaled to ms -- or nil
+  when :t is missing or not a number. The sim event-log adapter's own
+  :timestamp-fn for `plan` (bases/cli), the event-input counterpart to
+  message-timestamp-ms above."
+  [event]
+  (when (number? (:t event))
+    (long (* 1000 (:t event)))))
+
 (defn message-type-trigger
   "message -> its MSH-9 value (e.g. \"ADT^A01^ADT_A01\"), or nil."
   [message]
@@ -149,24 +160,33 @@
 (defn plan
   "events (a seq of raw ER7 message strings, in their OWN order --
   never sorted here; order is a semantic property of the input) x
-  {:rate :idle-cap-ms} -> {:plan [[wait-ms event] ...]
+  {:rate :idle-cap-ms :timestamp-fn} -> {:plan [[wait-ms event] ...]
                            :clamped-count n :unparseable-count n
                            :skip-count n :capped-indices #{...}}.
+
+  :timestamp-fn (ADR-0100's own injectable timestamp-extraction seam,
+  continuing the :tty?-fn/:sleep-fn injection lineage rather than a
+  second pacer) defaults to message-timestamp-ms -- the original MSH-7
+  path, byte-identical for every existing caller. The sim event-log
+  adapter (bases/cli) injects event-timestamp-ms instead; `plan` itself
+  never inspects an event/message beyond calling this one function on
+  it, so the seam is the entire adaptation.
 
   wait-ms for the first event is always 0. For every later event, the
   wait is (delta-ms / rate) against the PRECEDING event's own effective
   timestamp (deltas compound across a run, exactly like real elapsed
   time would). A negative delta (an out-of-order or duplicate
-  timestamp) is clamped to zero and counted (:clamped-count). A
-  message whose own MSH-7 is missing or unparseable paces at zero delta
-  and is counted (:unparseable-count) -- its own timestamp is treated
-  as identical to its predecessor's for every LATER delta too, so one
-  bad timestamp doesn't corrupt every subsequent gap. Every wait is
-  capped to idle-cap-ms (applied AFTER dividing by rate, since \"wait\"
-  means wallclock wait); a wait that was actually capped is tallied
+  timestamp) is clamped to zero and counted (:clamped-count). An event
+  whose own timestamp-fn returns nil paces at zero delta and is counted
+  (:unparseable-count) -- its own timestamp is treated as identical to
+  its predecessor's for every LATER delta too, so one bad timestamp
+  doesn't corrupt every subsequent gap. Every wait is capped to
+  idle-cap-ms (applied AFTER dividing by rate, since \"wait\" means
+  wallclock wait); a wait that was actually capped is tallied
   separately (:skip-count, :capped-indices -- indices into :plan) from
   a clamped one -- a capped wait is never also a clamped one."
-  [events {:keys [rate idle-cap-ms] :or {rate default-rate idle-cap-ms default-idle-cap-ms}}]
+  [events {:keys [rate idle-cap-ms timestamp-fn]
+           :or {rate default-rate idle-cap-ms default-idle-cap-ms timestamp-fn message-timestamp-ms}}]
   (loop [remaining events
          idx 0
          prev-ts nil
@@ -179,7 +199,7 @@
       {:plan out :clamped-count clamped :unparseable-count unparseable
        :skip-count skipped :capped-indices capped-indices}
       (let [event (first remaining)
-            ts (message-timestamp-ms event)
+            ts (timestamp-fn event)
             unparseable? (nil? ts)
             delta (when (and prev-ts ts) (- ts prev-ts))
             clamped? (and delta (neg? delta))

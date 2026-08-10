@@ -198,15 +198,15 @@
     ;; Pacer design: ADR-0014. Lexical-order contract: ADR-0015.
     ;; --sink designator vocabulary: ADR-0017; deferred sinks: ADR-0014.
     {:group "play"
-     :doc "Pace an HL7 v2 (ER7) file's or directory's messages against their own MSH-7 timestamps and render (or write) them over time -- `ehrt show` plus time. A directory's files must share the v2 format and are concatenated in LEXICAL FILENAME ORDER before pacing: that ordering is the contract, so name files so sort order is play order (the sim generator's msg-%03d output already is). FHIR or mixed input is a named deferral (:play-input-unsupported)."
+     :doc "Pace a corpus's own events against their own timestamps and render (or write) them over time -- `ehrt show` plus time. PATH is an HL7 v2 (ER7) file or directory (paced by MSH-7), or a sim event log (a single .edn file, paced by each event's own :t) -- see the PATH description below for both shapes. A directory's files must share the v2 format and are concatenated in LEXICAL FILENAME ORDER before pacing: that ordering is the contract, so name files so sort order is play order (the sim generator's msg-%03d output already is). FHIR or mixed message input is a named deferral (:play-input-unsupported)."
      :positional "PATH"
-     :positional-doc "a HL7 v2 (ER7) file, or a directory of files sharing the sniffed v2 format (concatenated in lexical filename order), given as a trailing positional argument, not --path -- an explicit --path is never overridden by it"
+     :positional-doc "an HL7 v2 (ER7) file, a directory of files sharing the sniffed v2 format (concatenated in lexical filename order; a .edn event log sitting in that same directory is ignored), or a single .edn sim event log (a vector of ground-truth event maps -- `ehrt sim run --format ground-truth`'s own output, or `ehrt corpus generate sim`'s own events.edn), given as a trailing positional argument, not --path -- an explicit --path is never overridden by it"
      :flags [{:flag "--path" :doc "alternative to the positional PATH"}
              {:flag "--rate" :doc "stream-seconds per wallclock-second -- 1 is real time" :default "60"}
              {:flag "--idle-cap" :doc "wallclock cap, in seconds, on any single inter-event wait -- a capped wait emits a skip cue (never into a data sink) and is counted separately from a clamped one" :default "5"}
-             {:flag "--ticker" :doc "\"full\" (a complete rendered block per message) or \"line\" (one compact MSH-7/MSH-9/PID-3 line per message) -- ignored when --sink is given; --board wins over it when both are given" :default "full"}
-             {:flag "--board" :doc "stream-minutes per snapshot -- shows the occupied beds, grouped by ward, instead of a message-by-message ticker. Wins over --ticker when both are given; ignored when --sink is given."}
-             {:flag "--sink" :doc "a file: destination designator -- write the paced output (byte-identical to unpaced) there instead of showing the ticker. dir:, blaze:, and mllp: are recognized but deferred."}]}]})
+             {:flag "--ticker" :doc "message input: \"full\" (a complete rendered block per message) or \"line\" (one compact MSH-7/MSH-9/PID-3 line per message). Event-log input renders the same compact event line either way (timestamp, event kind, location, citation when present) -- ignored when --sink is given; --board wins over it when both are given" :default "full"}
+             {:flag "--board" :doc "stream-minutes per snapshot -- shows the occupied beds, grouped by ward, instead of a message-by-message ticker. Message input only (:play-board-unsupported-for-events on an event log). Wins over --ticker when both are given; ignored when --sink is given."}
+             {:flag "--sink" :doc "a file: destination designator -- write the paced output (byte-identical to unpaced) there instead of showing the ticker. Message input only (:play-sink-unsupported-for-events on an event log, which has no wire framing to write). dir:, blaze:, and mllp: are recognized but deferred."}]}]})
 
 (defn group-names
   "Every group name in the spec, in declared order."

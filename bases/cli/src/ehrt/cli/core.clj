@@ -1311,6 +1311,59 @@
                       (or (player/message-type-trigger event) "?")
                       (when-let [pid (player/message-patient-id event)] (str "  " pid))))))
 
+(defn- format-day-offset-hms
+  "seconds (a sim ground-truth event's own :t, sim/ADR-0011 -- already
+  an offset from the run's own epoch, no subtraction needed) -> \"Dd
+  HH:MM:SS\". The event-line ticker's own clock (ADR-0100)."
+  [seconds]
+  (let [total (long seconds)
+        days (quot total 86400)
+        rem-s (mod total 86400)]
+    (format "%dd %02d:%02d:%02d" days (quot rem-s 3600) (quot (mod rem-s 3600) 60) (mod rem-s 60))))
+
+(defn- render-event-location
+  "A ground-truth event's own :location ({:ward :bed ...}, compile-
+  trajectory's own admission/discharge/transfer shape) -> \"ward/bed\",
+  \"ward\" alone when no :bed, or nil when :location itself is absent
+  -- outpatient-visit/observation/etc. carry none."
+  [location]
+  (when location
+    (let [{:keys [ward bed]} location]
+      (cond
+        (and ward bed) (str ward "/" bed)
+        ward (str ward)
+        :else nil))))
+
+(defn- render-event-citation
+  "A ground-truth event's own :citation ({:module :state}, glass-box
+  traceability) -> \"[module/state]\", or nil when either half is
+  absent -- an engine-native churn event (:transfer, :bed-swap, ...)
+  carries no citation at all."
+  [citation]
+  (when citation
+    (let [{:keys [module state]} citation]
+      (when (and module state) (str "[" module "/" state "]")))))
+
+(defn- event-line-sink
+  "The compact event-line ticker for sim event-log input (ADR-0100):
+  one line per event -- :t as a day+HH:MM:SS offset from the run's own
+  epoch, the event kind (:event -- ehrt.sim-trajectory.compile-
+  trajectory's own key, NOT :type), :location when present, :citation
+  when present. Both --ticker full and --ticker line render this SAME
+  line for event input: there is no wire-format \"full\" rendering for
+  a compiled ground-truth event, so the mode distinction that matters
+  for message input collapses to one rendering here. A missing/
+  unparseable :t renders \"?\", the same never-throw convention
+  ticker-line-sink already applies to a missing MSH field."
+  [println-fn]
+  (fn [event]
+    (println-fn (str (if-let [ts-ms (player/event-timestamp-ms event)]
+                        (format-day-offset-hms (/ ts-ms 1000))
+                        "?")
+                      "  " (or (:event event) "?")
+                      (when-let [loc (render-event-location (:location event))] (str "  " loc))
+                      (when-let [cit (render-event-citation (:citation event))] (str "  " cit))))))
+
 (defn- stderr-cue-fn
   "The skip cue, routed to stderr -- used whenever the ticker itself
   isn't already the destination (a data sink owns stdout instead), so
@@ -1463,6 +1516,42 @@
             content-result
             (player/split-er7-multi (:payload content-result))))))))
 
+(defn- play-events-from-edn-file
+  "ADR-0100: the sim's own event log -- `ehrt sim run --format
+  ground-truth`'s own bare stdout, or `generate sim`'s own events.edn,
+  byte-identical (ADR-0100's own byte-equality claim). Recognized by
+  its own `.edn` extension in play's dispatch, never the shared
+  sniff-path-format (a channel-inferred ruling verified against that
+  helper's own caller set: widening the SHARED sniff would change
+  gate/show's own behavior on .edn files, which no ruling covers).
+  Guarded EDN read (result/error :play-input-unreadable on either an
+  IO failure or malformed EDN -- one try wraps both, the same shape
+  gate-command's own --baseline read already uses), then a shape check
+  on the parsed value: a non-empty vector of maps, the first of which
+  carries both :event and :t (the real ground-truth event shape,
+  ehrt.sim-trajectory.compile-trajectory -- NOT :type, a channel claim
+  this session's own live probe corrected, disclosed in ADR-0100).
+  Anything else is :play-input-unsupported, the same category play's
+  own message-input legs already use for an unsupported shape."
+  [f]
+  (let [content-result (slurp-play-input f)]
+    (if-not (result/ok? content-result)
+      content-result
+      (let [parse-result (try
+                            (result/ok (edn/read-string (:payload content-result)))
+                            (catch Exception e
+                              (result/error :play-input-unreadable
+                                            {:path (.getPath ^java.io.File f) :message (.getMessage e)})))]
+        (if-not (result/ok? parse-result)
+          parse-result
+          (let [parsed (:payload parse-result)]
+            (if (and (vector? parsed) (seq parsed) (map? (first parsed))
+                     (contains? (first parsed) :event) (contains? (first parsed) :t))
+              (result/ok parsed)
+              (result/error :play-input-unsupported
+                            {:path (.getPath ^java.io.File f)
+                             :hint "ehrt play only supports a sim event log shaped as a vector of ground-truth event maps carrying :event and :t -- run: ehrt sim run --format ground-truth, or ehrt corpus generate sim (ADR-0100)"}))))))))
+
 (defn- play-events-from-dir
   "ADR-0015: a directory of files sharing the sniffed v2 format,
   concatenated in lexical filename order -- the exact candidate set
@@ -1522,24 +1611,39 @@
 
 (defn play-command
   "`ehrt play PATH [--rate R] [--idle-cap SECONDS] [--ticker full|line]
-  [--board N] [--sink DESIGNATOR]` (ADR-0014, directories per ADR-0015):
-  paces PATH's own HL7 v2 (ER7) messages against their MSH-7 timestamps
-  and either renders them through a ticker (the default -- full blocks
-  via `render-er7-message`, or one compact `--ticker line` per event),
+  [--board N] [--sink DESIGNATOR]` (ADR-0014, directories per ADR-0015,
+  a sim event log per ADR-0100): paces PATH's own events -- HL7 v2
+  (ER7) messages against their MSH-7 timestamps, or a sim event log's
+  own ground-truth events against their :t (seconds from the run's own
+  epoch, sim/ADR-0011) -- and renders them through a ticker (the
+  default -- full ER7 blocks via `render-er7-message`, or one compact
+  `--ticker line` per message for message input; ONE compact event
+  line per event for event input, both --ticker modes alike, since
+  there is no wire-format \"full\" rendering for a compiled event),
   renders a bed-board snapshot every N stream-minutes via `--board N`
-  (display-only, ADR-0067 -- wins over --ticker, ignored when --sink is
-  given), or writes them, byte-identically to an unpaced batch write,
-  through a `--sink` designator. `ehrt play PATH` at an arbitrarily
-  large --rate, ticker sink, is exactly `ehrt show PATH` (ADR-0013/
-  ADR-0014's own identity) -- ordinary division makes this true with no
-  special-cased rate value.
+  (message input only, display-only, ADR-0067 -- wins over --ticker,
+  ignored when --sink is given; :play-board-unsupported-for-events on
+  event input, ADR-0100 -- the board's fold is wire-side and an event
+  log doesn't carry the emission parameters needed to synthesize ADT
+  traffic), or writes them, byte-identically to an unpaced batch write,
+  through a `--sink` designator (message input only;
+  :play-sink-unsupported-for-events on event input, ADR-0100 -- an
+  event log has no wire framing to write). `ehrt play PATH` at an
+  arbitrarily large --rate, ticker sink, is exactly `ehrt show PATH`
+  for message input (ADR-0013/ADR-0014's own identity) -- ordinary
+  division makes this true with no special-cased rate value.
 
-  PATH is a single HL7 v2 (ER7) file, or a directory of files sharing
-  the sniffed v2 format (ADR-0015 -- concatenated in lexical filename
+  PATH is a single HL7 v2 (ER7) file, a directory of files sharing the
+  sniffed v2 format (ADR-0015 -- concatenated in lexical filename
   order, see `play-events-from-dir`'s own docstring for the order
-  contract). A FHIR JSON path, or a FHIR/mixed/unclassifiable
-  directory, is :play-input-unsupported (a named, disclosed deferral --
-  a sim event-log adapter is future work, ADR-0014).
+  contract; a `.edn` sim event log sitting in that same directory is
+  ignored -- directory input stays message-only, ADR-0100), or a
+  single `.edn` file recognized as a sim event log (ADR-0100 --
+  `ehrt sim run --format ground-truth`'s own bare stdout, or `generate
+  sim`'s own events.edn, byte-identical; see
+  `play-events-from-edn-file`'s own docstring for the shape check). A
+  FHIR JSON path, or a FHIR/mixed/unclassifiable directory, is
+  :play-input-unsupported (a named, disclosed deferral, ADR-0014).
 
   :sleep-fn is injectable (defaults to real-sleep!, Thread/sleep) so
   hermetic tests never actually wait; :println-fn defaults to println.
@@ -1570,19 +1674,35 @@
                              {:path path :hint "no such file or directory -- run: ehrt help play"})
 
               :else
-              (let [events-result (if (.isDirectory f) (play-events-from-dir path) (play-events-from-file f))]
+              (let [event-input? (and (not (.isDirectory f)) (str/ends-with? (.getName f) ".edn"))
+                    events-result (cond
+                                    (.isDirectory f) (play-events-from-dir path)
+                                    event-input? (play-events-from-edn-file f)
+                                    :else (play-events-from-file f))]
                 (if-not (result/ok? events-result)
                   events-result
                   (let [events (:payload events-result)
-                        plan-result (player/plan events {:rate resolved-rate :idle-cap-ms resolved-idle-cap-ms})
+                        timestamp-fn (if event-input? player/event-timestamp-ms player/message-timestamp-ms)
+                        plan-result (player/plan events {:rate resolved-rate :idle-cap-ms resolved-idle-cap-ms
+                                                          :timestamp-fn timestamp-fn})
                         started-ms (now-ms-fn)
                         sink-result
                         (cond
+                          (and event-input? sink)
+                          (result/error :play-sink-unsupported-for-events
+                                        {:hint "ehrt play --sink only supports HL7 v2 message input -- a sim event log has no wire framing to write; pipe it through ehrt sim check instead (ADR-0100)"})
+
+                          (and event-input? resolved-board)
+                          (result/error :play-board-unsupported-for-events
+                                        {:hint "ehrt play --board only supports HL7 v2 message input -- the board's fold is wire-side and a sim event log doesn't carry the emission parameters (site/facility/providers) needed to synthesize ADT traffic (ADR-0014/ADR-0100)"})
+
                           sink (resolve-play-sink sink println-fn)
                           resolved-board (result/ok (assoc (board-sink resolved-board println-fn) :close-fn (fn [])))
-                          :else (result/ok {:sink-fn (case ticker
-                                                        "line" (ticker-line-sink println-fn)
-                                                        (ticker-full-sink println-fn))
+                          :else (result/ok {:sink-fn (if event-input?
+                                                        (event-line-sink println-fn)
+                                                        (case ticker
+                                                          "line" (ticker-line-sink println-fn)
+                                                          (ticker-full-sink println-fn)))
                                             :close-fn (fn [])
                                             :cue-fn (ticker-cue-fn println-fn)}))]
                     (if-not (result/ok? sink-result)
@@ -1592,8 +1712,8 @@
                             _ (when finalize-fn (finalize-fn))
                             _ (close-fn)
                             ended-ms (now-ms-fn)
-                            first-ts (some player/message-timestamp-ms events)
-                            last-ts (some player/message-timestamp-ms (reverse events))
+                            first-ts (some timestamp-fn events)
+                            last-ts (some timestamp-fn (reverse events))
                             board-counts (when finalize-fn {:snapshot-count (snapshot-count-fn)
                                                              :unfolded-count (unfolded-count-fn)})]
                         (result/ok (merge run-result

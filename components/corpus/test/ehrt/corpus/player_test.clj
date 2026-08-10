@@ -196,3 +196,42 @@
                                   (range (count epochs)))]
               (= expected (mapv first plan)))))]
     (is (:pass? check-result) (str check-result))))
+
+;; ---- ADR-0100: event-timestamp-ms (the sim event-log adapter's own
+;; :timestamp-fn) and plan's own injectable :timestamp-fn seam. The
+;; default (no :timestamp-fn given) stays message-timestamp-ms,
+;; byte-identical -- every test above, unmodified and green, is that
+;; witness; these tests exercise the seam itself, hermetically, on
+;; synthetic ground-truth-shaped events, never real messages. ----
+
+(deftest event-timestamp-ms-scales-t-seconds-to-ms-test
+  (is (= 12000 (player/event-timestamp-ms {:event :admission :t 12}))))
+
+(deftest event-timestamp-ms-zero-t-is-zero-ms-test
+  (is (= 0 (player/event-timestamp-ms {:event :registered :t 0}))))
+
+(deftest event-timestamp-ms-nil-for-missing-or-non-numeric-t-test
+  (is (nil? (player/event-timestamp-ms {:event :admission})))
+  (is (nil? (player/event-timestamp-ms {:event :admission :t nil})))
+  (is (nil? (player/event-timestamp-ms {:event :admission :t "12"}))))
+
+(deftest plan-with-event-timestamp-fn-paces-by-t-seconds-test
+  (let [events [{:event :registered :t 0} {:event :admission :t 10} {:event :discharge :t 70}]
+        {:keys [plan clamped-count unparseable-count skip-count]}
+        (player/plan events {:rate 1 :idle-cap-ms 1000000 :timestamp-fn player/event-timestamp-ms})]
+    (is (= [0 10000 60000] (mapv first plan)))
+    (is (= events (mapv second plan)))
+    (is (= 0 clamped-count unparseable-count skip-count))))
+
+(deftest plan-with-event-timestamp-fn-counts-unparseable-and-clamped-test
+  (let [events [{:event :registered :t 0} {:event :missing-t} {:event :discharge :t -5}]
+        {:keys [plan clamped-count unparseable-count]}
+        (player/plan events {:rate 1 :idle-cap-ms 1000000 :timestamp-fn player/event-timestamp-ms})]
+    (is (= [0 0 0] (mapv first plan)) "a missing :t paces at zero delta, same as an unparseable MSH-7")
+    (is (= 1 unparseable-count))
+    (is (= 1 clamped-count) "t -5 is a negative delta against the missing-t event's own effective (inherited) timestamp 0")))
+
+(deftest plan-default-timestamp-fn-is-message-timestamp-ms-test
+  (let [events [(msh "20260101000000") (msh "20260101000010")]]
+    (is (= (player/plan events {:rate 1})
+           (player/plan events {:rate 1 :timestamp-fn player/message-timestamp-ms})))))

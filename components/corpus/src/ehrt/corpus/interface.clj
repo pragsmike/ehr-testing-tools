@@ -133,6 +133,7 @@
 (def default-idle-cap-ms player/default-idle-cap-ms)
 (def plan player/plan)
 (def message-timestamp-ms player/message-timestamp-ms)
+(def event-timestamp-ms player/event-timestamp-ms)
 (def message-type-trigger player/message-type-trigger)
 (def message-patient-id player/message-patient-id)
 (def frame-event player/frame-event)

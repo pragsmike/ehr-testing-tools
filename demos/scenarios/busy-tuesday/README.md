@@ -33,6 +33,13 @@ Renders a bed-state snapshot every 60 stream-minutes instead of a
 message-by-message ticker (`ehrt play`'s own `--board`), at 100,000
 stream-seconds per wallclock-second.
 
+Or play the sim's own story directly, from its own event log rather
+than the emitted HL7 v2 messages:
+
+```bash
+bin/ehrt play out/scenarios/busy-tuesday/events.edn --rate 100000
+```
+
 ## What to look for
 
 Witnessed this session (seed 20260807, 200 patients, `--config` as
