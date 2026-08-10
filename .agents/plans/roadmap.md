@@ -69,6 +69,28 @@ per item; done items move to the bottom of their section with a date and sha.
   ADR-0010's own three-way split (a fresh grep at design time will
   turn up more than the four named here, including `docs/use-cases/`
   siblings). Awaiting its own design moment, not built.
+- **`ehrt gate fhir PATH`'s own permission-denied leg, true name**
+  (2026-08-09, review-2 arc close, `notes/ADRs.md` ADR-0096 Finding 1
+  / ADR-0097): a small fix session. On an exists-but-unreadable file,
+  `ehrt gate fhir PATH` still raises a raw `FileNotFoundException`
+  three frames past `core.clj`
+  (`ehrt.judge-fhir-official.fhir/gate-file` -> `verdict-cache-lookup`
+  -> `ehrt.kernel.digest/sha256-file`) — the same categorized-rejection
+  family cluster B already landed for the bare `gate`/`show` legs
+  (ADR-0096), applied where THIS read actually lives, a fence cluster
+  B could not cross (ruled mid-session, ADR-0096). Fix-forward: the
+  register's own D8-3 row cited line ranges (1097-1103, 1178-1184)
+  describe `sniff-gate-command`/`show-command`'s own sniff legs, both
+  already fixed — not this leg; this row corrects that citation, it
+  does not restate the already-closed one. **Rider (D8-4, ruled
+  2026-08-09, author verbatim "I choose a."):** bare/`help`-level
+  unknown flags — currently silently swallowed (help printed, exit 0)
+  while subcommands report `:unknown-flag` — route through the same
+  `:unknown-flag` category, in the SAME fix session (same file
+  family), with its own red->green evidence (a typo'd bare-level flag:
+  before, help printed and exit 0; after, `:unknown-flag`, the
+  subcommand exit semantics). `docs/cli.md` is not touched by this
+  anchor.
 ## Externals (author-only)
 - Enable GitHub's workflow-failure notification email for this
   repository (one settings toggle) — closes the nobody-watching gap
@@ -452,6 +474,18 @@ Rows here are LIVE. Closed rows move to Done with their notes.
   identical restatement with zero movement is evidence this is
   backlog, not urgent. Revisit trigger: the next content-vendoring
   session with a vital-sign-adjacent candidate.
+- **`ehrt play`'s own bare reads, true name** (2026-08-09, review-2 arc
+  close, `notes/ADRs.md` ADR-0096 Finding 2 / ADR-0097):
+  `play-events-from-file`/`play-events-from-dir` carry the identical
+  unguarded `slurp`/`sniff-path-format` shape cluster B fixed for
+  `mutate`/`gate`/`check`/`show` (ADR-0096), never charted by review 2
+  — allowlisted BY NAME in `cli_parse_guard_lint_test.clj` (the
+  allowlist entries are this row's own tripwire; removing them is the
+  fix's own co-landed gate, ready-made — confirmed non-vacuous,
+  ADR-0096: `[play-events-from-dir play-events-from-file]` reported
+  with the allowlist stripped). Revisit trigger: the next session
+  touching `ehrt play` or the corpus-player slices (`notes/adr/0014-
+  corpus-player.md`, the bed-board sink).
 
 ## Done (live — current arc only; full history in the attic files,
 `.agents/plans/roadmap-done-2026-07.md` and `.agents/plans/roadmap-done-2026-08.md`,
@@ -466,3 +500,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-09 — census-closure-file-count — ADR-0094
 - 2026-08-09 — cluster-a-gate-wiring — ADR-0095
 - 2026-08-09 — cluster-b-parse-guards — ADR-0096
+- 2026-08-09 — review-2-arc-close — ADR-0097
