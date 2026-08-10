@@ -7,7 +7,7 @@
 
 **You bring:** A seed.
 
-**You get:** A cataloged v2 corpus: HL7v2 messages plus sim's own manifest.edn sidecar, its provenance (generator name/version/sha256, seeds) attached to every catalog entry (ADR-0014) -- generated fresh at your own seed, in one command (SS-2, the generator registry).
+**You get:** A cataloged v2 corpus: HL7v2 messages plus sim's own manifest.edn sidecar, its provenance (generator name/version/sha256, seeds) attached to every catalog entry (ADR-0014[^adr-0014]) -- generated fresh at your own seed, in one command (SS-2, the generator registry).
 
 **Maturity:** usable
 
@@ -22,7 +22,10 @@ cat out/sim-intake/intake-record.edn
 cat out/sim-intake/catalog.edn
 ```
 
-This is the compose form -- generate, then catalog, in one command -- for when you want a cataloged batch, not a bare corpus; `bin/ehrt corpus generate sim` (ADR-0015, [Generate deterministic sim (HL7v2) traffic](generate-sim-traffic.md)) is the front door when you just want the corpus. Generator-URL params (seed, patients, churn, emit, reference-date, config) are sim's own `run` verb's flags, the same names `generate sim`'s own flags use; a bare `sim:` with no query string still works, at sim's own pinned one-patient/hl7 default (the determinism law of defaults, D8). Gate the result the same way any intaken corpus gates -- [Judge user-supplied data: intake -> gate -> report](judge-user-supplied-data.md). Synthea's own equivalent one-command compose path is `bin/ehrt corpus intake 'synthea:?seed=1&population=5'`, over the SAME generator registry (docs/source-sink-design.md), fronted the same way by `bin/ehrt corpus generate synthea` (ADR-0015 amendment, 2026-07-30: bare `corpus generate`, with no subcommand, means `generate sim` now, not synthea).
+This is the compose form -- generate, then catalog, in one command -- for when you want a cataloged batch, not a bare corpus; `bin/ehrt corpus generate sim` (ADR-0015[^adr-0015], [Generate deterministic sim (HL7v2) traffic](generate-sim-traffic.md)) is the front door when you just want the corpus. Generator-URL params (seed, patients, churn, emit, reference-date, config) are sim's own `run` verb's flags, the same names `generate sim`'s own flags use; a bare `sim:` with no query string still works, at sim's own pinned one-patient/hl7 default (the determinism law of defaults, D8). Gate the result the same way any intaken corpus gates -- [Judge user-supplied data: intake -> gate -> report](judge-user-supplied-data.md). Synthea's own equivalent one-command compose path is `bin/ehrt corpus intake 'synthea:?seed=1&population=5'`, over the SAME generator registry (docs/source-sink-design.md), fronted the same way by `bin/ehrt corpus generate synthea` (ADR-0015[^adr-0015] amendment, 2026-07-30: bare `corpus generate`, with no subcommand, means `generate sim` now, not synthea).
+
+[^adr-0014]: Design record [ADR-0014](../../notes/ADRs.md).
+[^adr-0015]: Design record [ADR-0015](../../notes/ADRs.md).
 
 ```
 generator-config × sim-engine → generated-corpus  [EngineExecute]

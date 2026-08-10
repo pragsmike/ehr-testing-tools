@@ -87,7 +87,7 @@ Vocabulary: `ehrt.judge.finding/Verdict`.
 purpose: "passed" is meant to mean *checked and clean*, not *clean on
 what we managed to check*. It gets its own CLI exit code (`3`) for the
 same reason — so no workflow silently inherits a policy for it. The
-reasoning is [ADR-0010](../notes/ADRs.md); this page does not restate it.
+reasoning is ADR-0010[^adr-0010]; this page does not restate it.
 
 Causes are `ehrt.judge.finding/Cause`, a deliberately small
 enum. Today it has exactly one member, `:terminology-suppressed`. Expect
@@ -123,7 +123,7 @@ the FHIR judge only. Don't expect them from `ehrt gate v2` or
 `:disposition` deliberately is not called `:policy`. It records a fact
 about the finding — what this issue contributes to the judgment — not a
 decision about what to *do* about it; the word `policy` is reserved for
-that layer. That distinction is [ADR-0009](../notes/ADRs.md); again, not
+that layer. That distinction is ADR-0009[^adr-0009]; again, not
 restated here.
 
 `:native-ref` differs by engine, because it is the engine's own words:
@@ -345,7 +345,7 @@ Written as `operation-manifest.edn` in a mutant batch's own `--out-dir`,
 alongside the mutants and their `lineage/` sidecars — written last, after
 every item in the batch. It is a *different* provenance record from the
 corpus manifest above, on purpose (D-d, `docs/source-sink-design.md` Part
-III.5; `ADR-0020`): the corpus manifest states *engine* provenance (which
+III.5; ADR-0020[^adr-0020]): the corpus manifest states *engine* provenance (which
 artifact ran, under which config); this one states *transformation*
 lineage (these input hashes, this operator, these output hashes) for an
 in-process write that never ran an external engine at all.
@@ -439,7 +439,7 @@ shell, not for a pipeline.
 
 ### Display is not wire format
 
-`ehrt show PATH` (ADR-0013) renders a file for a human — one thing this
+`ehrt show PATH` (ADR-0013[^adr-0013]) renders a file for a human — one thing this
 page doesn't otherwise cover, since it never emits a Result envelope at
 all. It's pretty-always: no flag, no TTY check, `ehrt show FILE | less`
 just works. HL7 v2 (ER7) renders one segment per line, a blank line
@@ -454,7 +454,7 @@ split here is structural — a distinct verb, not a flag on a
 wire-emitting path — precisely so that mistake isn't a flag away.
 `show` is read-only: it never modifies the file it renders.
 
-`ehrt play PATH` (ADR-0014) is `show` plus time: it paces the same
+`ehrt play PATH` (ADR-0014[^adr-0014]) is `show` plus time: it paces the same
 file's messages against their own MSH-7 timestamps (`--rate`
 stream-seconds per wallclock-second, `--idle-cap` capping any single
 wait) instead of rendering them all at once — at an arbitrarily large
@@ -465,7 +465,7 @@ designator would produce; pacing changes *when* bytes move, never
 *which* bytes — timing is the instrument's own concern, entirely
 outside this section's own artifact-vs-display doctrine.
 
-### Every other command also senses a terminal now (ADR-0013)
+### Every other command also senses a terminal now (ADR-0013[^adr-0013])
 
 Beyond `show`, every envelope-emitting command (`gate`, `generate`,
 `mutate`, `intake`, and kin) picks a **human summary** by default when
@@ -539,7 +539,13 @@ read it from a shell instead of a REPL.
 | Operation manifest | `ehrt.corpus-io.operation-manifest/OperationManifestV1` | a real `corpus mutate` batch's `operation-manifest.edn`, 2026-07-28 |
 | The `--json` mapping | — | the captured JSON output of the runs above, not inferred from the projection's source |
 
-Semantics cited, never restated here: [ADR-0009](../notes/ADRs.md)
+Semantics cited, never restated here: ADR-0009[^adr-0009]
 (judge vs. gate, and why the per-finding field is `:disposition` rather
-than `:policy`) and [ADR-0010](../notes/ADRs.md) (the `:no-verdict` arm,
+than `:policy`) and ADR-0010[^adr-0010] (the `:no-verdict` arm,
 its `:cause` channel, and its own exit code).
+
+[^adr-0009]: Design record [ADR-0009](../notes/ADRs.md).
+[^adr-0010]: Design record [ADR-0010](../notes/ADRs.md).
+[^adr-0013]: Design record [ADR-0013](../notes/ADRs.md).
+[^adr-0014]: Design record [ADR-0014](../notes/ADRs.md).
+[^adr-0020]: Design record [ADR-0020](../notes/ADRs.md).

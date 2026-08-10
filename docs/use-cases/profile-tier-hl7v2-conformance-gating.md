@@ -7,7 +7,7 @@
 
 **You bring:** A HL7 v2 (ER7) file or directory, and a conformance-profile bundle (Π): PROFILE.xml required, CONSTRAINTS.xml/VALUESETS.xml/VALUESETBINDINGS.xml/COCONSTRAINTS.xml/SLICINGS.xml optional.
 
-**You get:** A verdict per file (:pass/:rejected/:no-verdict, with :cause when the profile itself is defective or a value set is unavailable) -- the same Report shape and pretty summary every other gate produces (ADR-0004/ADR-0013).
+**You get:** A verdict per file (:pass/:rejected/:no-verdict, with :cause when the profile itself is defective or a value set is unavailable) -- the same Report shape and pretty summary every other gate produces (ADR-0004[^adr-0004]/ADR-0013[^adr-0013]).
 
 **Maturity:** usable
 
@@ -22,7 +22,11 @@ bin/ehrt gate v2-nist \
   --profile test-fixtures/v2-nist/COVID19_ELR-v2.3.1 --pretty
 ```
 
-This fixture message is a real, deliberately imperfect example: it comes back `:no-verdict`/`:profile-spec-error` (the bundle's own PROFILE.xml references value sets NIST's engine can't resolve -- a defect in the Π, not in the message), which is exactly the honest three-way verdict vocabulary D10/ADR-0010 exists for -- a `:pass` from `gate v2` doesn't mean `gate v2-nist` will agree, and vice versa; they check different things. Building the validator is the expensive part (context construction, not per-message checking) -- it happens once per invocation and is reused across every file in a directory, never rebuilt per file. `--profile` is required; there is no default bundle to fall back to silently. Flags: [cli.md](../cli.md#ehrt-gate-v2-nist), or `ehrt help gate` at the shell.
+This fixture message is a real, deliberately imperfect example: it comes back `:no-verdict`/`:profile-spec-error` (the bundle's own PROFILE.xml references value sets NIST's engine can't resolve -- a defect in the Π, not in the message), which is exactly the honest three-way verdict vocabulary D10/ADR-0010[^adr-0010] exists for -- a `:pass` from `gate v2` doesn't mean `gate v2-nist` will agree, and vice versa; they check different things. Building the validator is the expensive part (context construction, not per-message checking) -- it happens once per invocation and is reused across every file in a directory, never rebuilt per file. `--profile` is required; there is no default bundle to fall back to silently. Flags: [cli.md](../cli.md#ehrt-gate-v2-nist), or `ehrt help gate` at the shell.
+
+[^adr-0004]: Design record [ADR-0004](../../notes/ADRs.md).
+[^adr-0010]: Design record [ADR-0010](../../notes/ADRs.md).
+[^adr-0013]: Design record [ADR-0013](../../notes/ADRs.md).
 
 ```
 datum × profile-artifact → pass + rejected + no-verdict  [Gate]  {catalytic: profile-artifact}

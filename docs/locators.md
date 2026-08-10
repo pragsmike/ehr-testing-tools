@@ -20,7 +20,7 @@ actually accept — those files are authoritative, and every example
 below is pinned to them by
 [`ehrt.corpus.locators-doc-test`](../components/corpus/test/ehrt/corpus/locators_doc_test.clj)
 (kept in `components/corpus/test/` rather than kernel's own, since it
-also pins `ehrt.corpus-io.er7` — ADR-0008's own deviation record),
+also pins `ehrt.corpus-io.er7` — ADR-0008[^adr-0008]'s own deviation record),
 which runs in the ordinary `make test`. If a grammar changes and this
 page doesn't, that test fails.
 
@@ -268,3 +268,5 @@ Related: [operators.md](operators.md) (which operator to pair a locator
 with), [cli.md](cli.md#ehrt-corpus-mutate) (the flags around it),
 [formats.md](formats.md) (how a locator comes back to you in a report's
 findings).
+
+[^adr-0008]: Design record [ADR-0008](../notes/ADRs.md).
