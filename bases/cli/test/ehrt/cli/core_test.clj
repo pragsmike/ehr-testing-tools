@@ -240,6 +240,47 @@
     (is (= 0 (cli/result->exit-code r)))
     (is (clojure.string/includes? (:text (:payload r)) "Usage:"))))
 
+;; ---- bare/`help`-level unknown flags (D8-4, ADR-0098): before this
+;; fix, a typo'd flag at this level was silently absorbed into help
+;; text instead of rejected by name, unlike the identical typo one
+;; level down at a real [group verb] (dispatch-unknown-flag-is-
+;; rejected-by-name-test, above). `ehrt --help` alone (the `(:help
+;; opts)` branch, untouched by this rider) must keep working -- see
+;; dispatch-double-dash-help-with-no-group-returns-top-level-usage-
+;; test, above, for that regression guard. ----
+
+(deftest dispatch-bare-unknown-flag-is-rejected-by-name-test
+  ;; ehrt --hlep: before, help printed and exit 0; after, :unknown-flag
+  ;; with the subcommand exit semantics (exit 2) and a did-you-mean.
+  (let [r (cli/dispatch [] {:hlep true} {})]
+    (is (= :error (:status r)))
+    (is (= :unknown-flag (:category r)))
+    (is (= "--hlep" (:flag (:payload r))))
+    (is (= "ehrt" (:verb (:payload r))))
+    (is (= "--help" (:did-you-mean (:payload r))))
+    (is (= 2 (cli/result->exit-code r)))))
+
+(deftest dispatch-help-verb-unknown-flag-is-rejected-by-name-test
+  ;; ehrt help --hlep: identical shape, one level down.
+  (let [r (cli/dispatch ["help"] {:hlep true} {})]
+    (is (= :error (:status r)))
+    (is (= :unknown-flag (:category r)))
+    (is (= "--hlep" (:flag (:payload r))))
+    (is (= "help" (:verb (:payload r))))
+    (is (= "--help" (:did-you-mean (:payload r))))
+    (is (= 2 (cli/result->exit-code r)))))
+
+(deftest dispatch-bare-every-declared-global-flag-parses-without-unknown-flag-test
+  ;; AR-U3-4c's own acceptance property, applied one level up: every
+  ;; global flag help/global-flags declares must be accepted at the
+  ;; bare AND help-verb level, never rejected as unknown.
+  (doseq [{:keys [flag]} help/global-flags
+          :let [flag-kw (keyword (subs flag 2))]]
+    (let [r-bare (cli/dispatch [] {flag-kw "x"} {})
+          r-help (cli/dispatch ["help"] {flag-kw "x"} {})]
+      (is (not= :unknown-flag (:category r-bare)) (str flag " rejected at the bare level"))
+      (is (not= :unknown-flag (:category r-help)) (str flag " rejected at the help-verb level")))))
+
 ;; ---- --width/COLUMNS (AR-EP-3, ux epilogue, `notes/adr/0065-ux-
 ;; epilogue.md`): scoped to help rendering only -- the three help paths
 ;; (bare, `help`/`help <group>`, `--help` anywhere) resolve an

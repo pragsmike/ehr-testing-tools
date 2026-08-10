@@ -2007,6 +2007,27 @@
     (when-let [unknown-kw (first (remove valid-keywords (keys opts)))]
       (unknown-flag-error unknown-kw verb-label valid-keywords))))
 
+(defn- validate-top-level-flags
+  "D8-4 (ADR-0098): dispatch's bare (`(nil? group)`) and `help`-verb
+  (`(= group \"help\")`) short-circuits run BEFORE `validate-known-
+  flags` (which lives in the `:else` branch's own `(or ...)`), so a
+  typo'd flag at this level used to be silently absorbed into a help
+  render instead of rejected by name -- unlike the identical typo one
+  level down, at a real [group verb]. `help/global-flags` is the
+  complete declared surface at this level (`--json`/`--pretty`/`--edn`/
+  `--help`/`--width` -- confirmed by reading `help.clj` directly, not
+  assumed); every key `parse` put in opts must belong to it. Returns
+  the same :category :unknown-flag/did-you-mean shape
+  `unknown-flag-error` builds for a real subcommand, or nil when every
+  key is accounted for. `(:help opts)` itself (`--help` given anywhere,
+  including alongside a real group/verb) is a SEPARATE dispatch branch,
+  untouched by this rider -- deliberately out of D8-4's own named scope
+  (\"bare/`help`-level\"), and `ehrt --help` alone must keep working."
+  [verb-label opts]
+  (let [valid-keywords (set (map (comp flag-key :flag) help/global-flags))]
+    (when-let [unknown-kw (first (remove valid-keywords (keys opts)))]
+      (unknown-flag-error unknown-kw verb-label valid-keywords))))
+
 (defn dispatch
   "Routes [group action] positional args to the corresponding capability
   function with opts. The -fn keys are injectable (tests use this
@@ -2016,7 +2037,10 @@
   `opts`'s :help true) short-circuit before any capability function
   runs, returning a :category :cli-help result instead of routing to a
   command -- see `help-response`/`bare-invocation-response` and the ns
-  docstring's EDN-out exception."
+  docstring's EDN-out exception. A bare or `help`-level unknown flag
+  (D8-4, ADR-0098) is rejected by name (:category :unknown-flag,
+  `validate-top-level-flags`) before either short-circuit renders help
+  text -- `--help` itself is unaffected, only a typo'd sibling flag is."
   ([args opts] (dispatch args opts {}))
   ([args opts {:keys [fetch-fn fetch-all-fn resolve-fn generate-fn generate-sim-fn mutate-fn intake-fn operators-fn
                        gate-v2-fn gate-fhir-fn gate-v2-nist-fn check-fn version-fn doctor-fn
@@ -2049,12 +2073,14 @@
          (or width-error (help-response group width)))
 
        (= group "help")
-       (let [{:keys [width width-error]} (resolved-help-width opts columns-env-fn)]
-         (or width-error (help-response action width)))
+       (or (validate-top-level-flags "help" opts)
+           (let [{:keys [width width-error]} (resolved-help-width opts columns-env-fn)]
+             (or width-error (help-response action width))))
 
        (nil? group)
-       (let [{:keys [width width-error]} (resolved-help-width opts columns-env-fn)]
-         (or width-error (bare-invocation-response width)))
+       (or (validate-top-level-flags "ehrt" opts)
+           (let [{:keys [width width-error]} (resolved-help-width opts columns-env-fn)]
+             (or width-error (bare-invocation-response width))))
 
        :else
        (let [;; `ehrt gate fhir PATH|DIR` / `ehrt gate v2 PATH|DIR` /
