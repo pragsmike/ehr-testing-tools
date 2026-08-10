@@ -1439,6 +1439,17 @@
                         {:kind kind :path path
                          :hint "ehrt play only supports a file: sink this session -- dir:/blaze: (and a future mllp: transport) are named, disclosed deferrals (ADR-0014)"}))))))
 
+(defn- slurp-play-input
+  "Result or loud (ADR-0096 Finding 2, ADR-0100): result/ok the file's
+  content, or result/error :play-input-unreadable on a read failure --
+  the same try/catch-around-the-read shape sniff-path-format/read-
+  base-data already use. Callers must unwrap."
+  [f]
+  (try
+    (result/ok (slurp f))
+    (catch Exception e
+      (result/error :play-input-unreadable {:path (.getPath ^java.io.File f) :message (.getMessage e)}))))
+
 (defn- play-events-from-file
   [f]
   (let [sniff-result (sniff-path-format f)]
@@ -1447,7 +1458,10 @@
       (if-not (= :v2 (:payload sniff-result))
         (result/error :play-input-unsupported
                       {:path (.getPath f) :hint "ehrt play only supports HL7 v2 (ER7) input this session -- FHIR is a named, disclosed deferral (ADR-0014)"})
-        (player/split-er7-multi (slurp f))))))
+        (let [content-result (slurp-play-input f)]
+          (if-not (result/ok? content-result)
+            content-result
+            (player/split-er7-multi (:payload content-result))))))))
 
 (defn- play-events-from-dir
   "ADR-0015: a directory of files sharing the sniffed v2 format,
@@ -1495,7 +1509,12 @@
                                 {:path path :hint "ehrt play only supports HL7 v2 (ER7) input this session -- a FHIR directory is a named, disclosed deferral (ADR-0014)"})
 
                   :else
-                  (let [per-file (map (fn [file] (player/split-er7-multi (slurp file))) files)
+                  (let [per-file (map (fn [file]
+                                        (let [content-result (slurp-play-input file)]
+                                          (if-not (result/ok? content-result)
+                                            content-result
+                                            (player/split-er7-multi (:payload content-result)))))
+                                      files)
                         failed (first (remove result/ok? per-file))]
                     (if failed
                       failed

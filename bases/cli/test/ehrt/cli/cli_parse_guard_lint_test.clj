@@ -29,22 +29,12 @@
   words (\"inside a top-level defn with no enclosing try in that same
   form\").
 
-  Allowlist is BY FUNCTION NAME, disclosed rather than silent
-  (`ehrt.sim.run`'s own grandfather clause in the sibling lint is the
-  precedent for the shape, not the reason): `play-events-from-file`
-  and `play-events-from-dir` (`ehrt play`'s own file-reading helpers)
-  each carry the identical bare-`slurp`-on-an-operator-path shape
-  this gate exists to catch, discovered live while building this very
-  gate -- but `ehrt play` was never named in ADR-0092's D4-5/D4-6/
-  D4-7/D8-3 register rows, nor in this session's own charter (ADR-
-  0096's Cluster B), and fixing it would touch a fifth command this
-  session was never authorized to touch (build-session's own
-  STOP-AND-REPORT discipline for a live, unnamed site). Recorded here
-  as deferred, disclosed cargo for a future session's own register
-  row -- exempted BY NAME, not by path, so a future session that
-  fixes `ehrt play`'s own reads must also delete its two entries here
-  as part of that fix, the same closing-the-loop shape the sibling's
-  own `ehrt.sim.run` entry expects of whoever migrates it."
+  Retired allowlist (ADR-0100): `play-events-from-file` and
+  `play-events-from-dir` (`ehrt play`'s own file-reading helpers) were
+  allowlisted BY NAME here, disclosed as deferred cargo, from this
+  gate's own first landing (ADR-0096 Finding 2) until ADR-0100 fixed
+  their own bare reads the same way -- the two entries are gone; this
+  gate now covers every function in `core.clj` with no exemption."
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.java.io :as io]
             [clojure.string :as str]))
@@ -55,12 +45,6 @@
   aliases them (`[clojure.edn :as edn]`, `[clojure.data.json :as
   json]`), plus bare `slurp` (no alias needed, clojure.core)."
   '#{edn/read-string json/read-str slurp})
-
-(def ^:private allowlisted-fn-names
-  "Disclosed, deferred cargo -- see this namespace's own docstring.
-  `ehrt play`'s own file-reading helpers, not this session's own
-  charter (D4-5/D4-6/D4-7/D8-3)."
-  #{"play-events-from-file" "play-events-from-dir"})
 
 (defn- clj-files [^java.io.File root]
   (->> (file-seq root)
@@ -118,12 +102,12 @@
 
 (defn- violating-defn-names
   "Every `defn`/`defn-` top-level form's own name in `path` that
-  contains an unguarded forbidden-call-heads invocation, excluding
-  allowlisted-fn-names (disclosed above)."
+  contains an unguarded forbidden-call-heads invocation. No allowlist
+  (ADR-0100 retired the last two entries -- see this namespace's own
+  docstring)."
   [path]
   (->> (read-all-forms path)
        (filter defn-form?)
-       (remove #(contains? allowlisted-fn-names (defn-name %)))
        (filter #(unguarded-forbidden-call? % false))
        (map defn-name)))
 
@@ -246,3 +230,59 @@
   (testing "D8-3: sniff-path-format (bare gate + show's shared helper), pre-fix trips, post-fix does not"
     (is (unguarded-forbidden-call? (read-string pre-fix-sniff-path-format) false))
     (is (not (unguarded-forbidden-call? (read-string post-fix-sniff-path-format) false)))))
+
+;; ---- ADR-0100: the two former allowlist entries, reduced to their
+;; own structural essence the same way the four charter sites above
+;; are -- not the real docstrings, which the predicate never reads.
+;; play-command's own sniff-path-format call already guards the SAME
+;; permission-denied/missing-file leg upstream (confirmed live,
+;; ADR-0100), so neither function's own bare re-read of the same file
+;; is reachable via that trigger today -- this predicate-level proof
+;; is the real regression gate for the structural gap itself,
+;; independent of whether a live trigger exists this session. ----
+
+(def ^:private pre-fix-play-events-from-file
+  "(defn- play-events-from-file [f]
+     (let [sniff-result (sniff-path-format f)]
+       (if-not (result/ok? sniff-result)
+         sniff-result
+         (player/split-er7-multi (slurp f)))))")
+
+(def ^:private post-fix-play-events-from-file
+  "(defn- play-events-from-file [f]
+     (let [sniff-result (sniff-path-format f)]
+       (if-not (result/ok? sniff-result)
+         sniff-result
+         (let [content-result (try
+                                (result/ok (slurp f))
+                                (catch Exception e
+                                  (result/error :play-input-unreadable {:path (.getPath f) :message (.getMessage e)})))]
+           (if-not (result/ok? content-result)
+             content-result
+             (player/split-er7-multi (:payload content-result)))))))")
+
+(def ^:private pre-fix-play-events-from-dir
+  "(defn- play-events-from-dir [path]
+     (let [files (candidate-files path)]
+       (map (fn [file] (player/split-er7-multi (slurp file))) files)))")
+
+(def ^:private post-fix-play-events-from-dir
+  "(defn- play-events-from-dir [path]
+     (let [files (candidate-files path)]
+       (map (fn [file]
+              (let [content-result (try
+                                     (result/ok (slurp file))
+                                     (catch Exception e
+                                       (result/error :play-input-unreadable {:path (.getPath file) :message (.getMessage e)})))]
+                (if-not (result/ok? content-result)
+                  content-result
+                  (player/split-er7-multi (:payload content-result)))))
+            files)))")
+
+(deftest violation-predicate-reproduces-the-play-charter-sites-test
+  (testing "play-events-from-file's own bare re-read, pre-fix trips, post-fix does not"
+    (is (unguarded-forbidden-call? (read-string pre-fix-play-events-from-file) false))
+    (is (not (unguarded-forbidden-call? (read-string post-fix-play-events-from-file) false))))
+  (testing "play-events-from-dir's own per-file bare re-read, pre-fix trips, post-fix does not"
+    (is (unguarded-forbidden-call? (read-string pre-fix-play-events-from-dir) false))
+    (is (not (unguarded-forbidden-call? (read-string post-fix-play-events-from-dir) false)))))
