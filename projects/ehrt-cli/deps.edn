@@ -73,7 +73,7 @@
 
            ;; Not the real `ehrt` entry point -- see root deps.edn's own
            ;; :ehrt alias and bin/ehrt. ehrt.corpus.* reads
-           ;; artifacts.lock.edn/config/*/components/corpus/test-fixtures/** as
+           ;; artifacts.lock.edn/config/*/test-fixtures/** as
            ;; cwd-relative literal paths (ADR-0005, not classpath
            ;; resources), so those only resolve when cwd is the
            ;; workspace root -- invoking :run from *this* directory

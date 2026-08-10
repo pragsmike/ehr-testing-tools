@@ -139,7 +139,7 @@
       ;; Π-bundle vocabulary + CDC fixture provenance: ADR-0012 / register.
       {:verb "v2-nist" :doc "Gate against HL7 v2 profile-tier conformance (the NIST engine): profile usage, cardinality, length, conformance statements, co-constraints, slicing, and value-set bindings -- what the structural v2 tier cannot check. Complementary to `gate v2`, not a replacement."
        :flags (into gate-common-flags
-                    [{:flag "--profile" :doc "REQUIRED: a conformance-profile bundle directory -- PROFILE.xml required; CONSTRAINTS.xml, VALUESETS.xml, VALUESETBINDINGS.xml, COCONSTRAINTS.xml, SLICINGS.xml optional. No default. To try one: components/corpus/test-fixtures/v2-nist/COVID19_ELR-v2.3.1"}])}]}
+                    [{:flag "--profile" :doc "REQUIRED: a conformance-profile bundle directory -- PROFILE.xml required; CONSTRAINTS.xml, VALUESETS.xml, VALUESETBINDINGS.xml, COCONSTRAINTS.xml, SLICINGS.xml optional. No default. To try one: test-fixtures/v2-nist/COVID19_ELR-v2.3.1"}])}]}
 
     ;; Designators: ruling 7.
     {:group "check"

@@ -30,56 +30,56 @@
   :judge :judge-v2-hapi
   :locator "MSH-9"
   :expected #{"hl7-exception"}
-  :fixture "components/corpus/test-fixtures/v2/adt-a01-admit.hl7"
+  :fixture "test-fixtures/v2/adt-a01-admit.hl7"
   :witness {:adr "0088" :date "2026-08-08"}}
 
  {:operator {:id :corrupt-encoding-characters :version "1"}
   :judge :judge-v2-hapi
   :locator "MSH-2"
   :expected #{"hl7-exception"}
-  :fixture "components/corpus/test-fixtures/v2/adt-a01-admit.hl7"
+  :fixture "test-fixtures/v2/adt-a01-admit.hl7"
   :witness {:adr "0088" :date "2026-08-08"}}
 
  {:operator {:id :malformed-datetime-value :version "1"}
   :judge :judge-v2-hapi
   :locator "PID-7"
   :expected #{"data-type-exception"}
-  :fixture "components/corpus/test-fixtures/v2/adt-a01-admit.hl7"
+  :fixture "test-fixtures/v2/adt-a01-admit.hl7"
   :witness {:adr "0088" :date "2026-08-08"}}
 
  {:operator {:id :truncate-segment-fields :version "1"}
   :judge :judge-v2-hapi
   :locator "MSH-9"
   :expected #{"hl7-exception"}
-  :fixture "components/corpus/test-fixtures/v2/adt-a01-admit.hl7"
+  :fixture "test-fixtures/v2/adt-a01-admit.hl7"
   :witness {:adr "0088" :date "2026-08-08"}}
 
  {:operator {:id :corrupt-segment-name :version "1"}
   :judge :judge-v2-hapi
   :locator "MSH"
   :expected #{"encoding-not-supported-exception"}
-  :fixture "components/corpus/test-fixtures/v2/adt-a01-admit.hl7"
+  :fixture "test-fixtures/v2/adt-a01-admit.hl7"
   :witness {:adr "0088" :date "2026-08-08"}}
 
  {:operator {:id :blank-required-field :version "1"}
   :judge :judge-v2-nist
   :locator "MSH-9"
   :expected #{"Usage"}
-  :fixture "components/corpus/test-fixtures/v2-nist/covidELR/231HL7TestFilewithHHSData.txt"
-  :profile "components/corpus/test-fixtures/v2-nist/COVID19_ELR-v2.3.1"
+  :fixture "test-fixtures/v2-nist/covidELR/231HL7TestFilewithHHSData.txt"
+  :profile "test-fixtures/v2-nist/COVID19_ELR-v2.3.1"
   :witness {:adr "0088" :date "2026-08-08"}}
 
  {:operator {:id :truncate-segment-fields :version "1"}
   :judge :judge-v2-nist
   :locator "MSH-9"
   :expected #{"Usage"}
-  :fixture "components/corpus/test-fixtures/v2-nist/covidELR/231HL7TestFilewithHHSData.txt"
-  :profile "components/corpus/test-fixtures/v2-nist/COVID19_ELR-v2.3.1"
+  :fixture "test-fixtures/v2-nist/covidELR/231HL7TestFilewithHHSData.txt"
+  :profile "test-fixtures/v2-nist/COVID19_ELR-v2.3.1"
   :witness {:adr "0088" :date "2026-08-08"}}
 
  ;; ---- FHIR rows (storefront-fixture session, ADR-0091, AR-SD-2):
  ;; the pairing registry's own :judge-fhir-official rows, against the
- ;; project-authored components/corpus/test-fixtures/fhir/storefront-
+ ;; project-authored test-fixtures/fhir/storefront-
  ;; patient.json fixture (a minimal Bundle+Patient, no meta.profile --
  ;; the clean gate is :accepted, unlike a real Synthea file, which
  ;; already carries hundreds of US-Core-driven findings before any
@@ -97,33 +97,33 @@
   :judge :judge-fhir-official
   :locator "entry[0].resource.gender"
   :expected #{"invalid"}
-  :fixture "components/corpus/test-fixtures/fhir/storefront-patient.json"
+  :fixture "test-fixtures/fhir/storefront-patient.json"
   :witness {:adr "0091" :date "2026-08-09"}}
 
  {:operator {:id :malformed-date :version "1"}
   :judge :judge-fhir-official
   :locator "entry[0].resource.birthDate"
   :expected #{"invalid"}
-  :fixture "components/corpus/test-fixtures/fhir/storefront-patient.json"
+  :fixture "test-fixtures/fhir/storefront-patient.json"
   :witness {:adr "0091" :date "2026-08-09"}}
 
  {:operator {:id :wrong-type-value :version "1"}
   :judge :judge-fhir-official
   :locator "entry[0].resource.multipleBirthBoolean"
   :expected #{"invalid"}
-  :fixture "components/corpus/test-fixtures/fhir/storefront-patient.json"
+  :fixture "test-fixtures/fhir/storefront-patient.json"
   :witness {:adr "0091" :date "2026-08-09"}}
 
  {:operator {:id :remove-required-element :version "1"}
   :judge :judge-fhir-official
   :locator "entry[0].resource.resourceType"
   :expected #{"invalid"}
-  :fixture "components/corpus/test-fixtures/fhir/storefront-patient.json"
+  :fixture "test-fixtures/fhir/storefront-patient.json"
   :witness {:adr "0091" :date "2026-08-09"}}
 
  {:operator {:id :invalid-code-value :version "1"}
   :judge :judge-fhir-official
   :locator "entry[0].resource.gender"
   :expected #{"code-invalid" "not-found"}
-  :fixture "components/corpus/test-fixtures/fhir/storefront-patient.json"
+  :fixture "test-fixtures/fhir/storefront-patient.json"
   :witness {:adr "0091" :date "2026-08-09"}}]

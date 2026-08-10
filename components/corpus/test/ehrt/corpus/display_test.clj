@@ -6,7 +6,7 @@
             [ehrt.corpus-io.interface :as corpus-io]
             [ehrt.kernel.interface :as kernel]))
 
-(def ^:private fixture-dir "components/corpus/test-fixtures/v2")
+(def ^:private fixture-dir "test-fixtures/v2")
 
 (defn- fixture-content
   [name]

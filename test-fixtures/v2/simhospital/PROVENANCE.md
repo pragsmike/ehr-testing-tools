@@ -62,9 +62,9 @@ The file mixes two terminators, deliberately, and both are load-bearing:
 A checkout that normalizes line endings would rewrite every one of those
 bytes and silently invalidate every round-trip assertion this corpus
 exists to support. `.gitattributes` at the repo root carries
-`components/corpus/test-fixtures/v2/simhospital/messages.out -text` for exactly this
+`test-fixtures/v2/simhospital/messages.out -text` for exactly this
 reason, alongside the pre-existing rule for the hand-written
-`components/corpus/test-fixtures/v2/*.hl7` fixtures.
+`test-fixtures/v2/*.hl7` fixtures.
 
 ## Structural counts (reproduced 2026-07-26 against the vendored copy)
 
@@ -85,7 +85,7 @@ collections.
 Every one of the 1,013 `PID` segments carries a repeated `PID-3`
 (`<MRN>^^^SIMULATOR MRN^MRN~<NHS number>^^^NHSNBR^NHSNMBR`), which makes
 this corpus a direct exercise of the repetition-preservation property
-`components/corpus/test-fixtures/v2/adt-a01-admit-repeated-identifiers.hl7` was
+`test-fixtures/v2/adt-a01-admit-repeated-identifiers.hl7` was
 hand-written to check.
 
 **Event coverage is narrow, by construction of this particular run:** no

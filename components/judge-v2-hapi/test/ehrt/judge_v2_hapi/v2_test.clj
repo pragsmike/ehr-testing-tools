@@ -6,7 +6,7 @@
             [ehrt.judge.finding :as finding]
             [ehrt.judge-v2-hapi.v2 :as gate]))
 
-(def valid-message (slurp "components/corpus/test-fixtures/v2/adt-a01-admit.hl7"))
+(def valid-message (slurp "test-fixtures/v2/adt-a01-admit.hl7"))
 
 ;; ---- execute: raw capture, never throws ----
 
@@ -98,20 +98,20 @@
 ;; ---- gate-file: reads, executes, interprets; never mutates input ----
 
 (deftest gate-file-happy-path-test
-  (let [r (gate/gate-file "components/corpus/test-fixtures/v2/adt-a01-admit.hl7")]
+  (let [r (gate/gate-file "test-fixtures/v2/adt-a01-admit.hl7")]
     (is (kernel/ok? r))
     (is (= :pass (:verdict (:payload r))))
-    (is (= "components/corpus/test-fixtures/v2/adt-a01-admit.hl7" (:path (:payload r))))))
+    (is (= "test-fixtures/v2/adt-a01-admit.hl7" (:path (:payload r))))))
 
 (deftest gate-file-does-not-modify-its-input-test
-  (let [path "components/corpus/test-fixtures/v2/adt-a01-admit.hl7"
+  (let [path "test-fixtures/v2/adt-a01-admit.hl7"
         before (slurp path)
         _ (gate/gate-file path)
         after (slurp path)]
     (is (= before after))))
 
 (deftest gate-file-detects-the-hand-broken-fixture-test
-  (let [r (gate/gate-file "components/corpus/test-fixtures/v2/adt-a08-update-trailing-empty-fields.hl7")]
+  (let [r (gate/gate-file "test-fixtures/v2/adt-a08-update-trailing-empty-fields.hl7")]
     (is (kernel/ok? r))
     ;; This fixture is a legitimate v2 message (EXP-B2 already parsed it
     ;; successfully); it exercises the trailing-empty-fields
@@ -149,7 +149,7 @@
 ;; ---- gate-dir: batch over every *.hl7 file ----
 
 (deftest gate-dir-gates-every-hl7-file-test
-  (let [r (gate/gate-dir "components/corpus/test-fixtures/v2")]
+  (let [r (gate/gate-dir "test-fixtures/v2")]
     (is (kernel/ok? r))
     (is (= 5 (count (:results (:payload r)))))
     (is (every? #(contains? #{:pass :rejected} (:verdict %)) (:results (:payload r))))))

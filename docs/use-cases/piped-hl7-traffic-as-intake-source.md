@@ -5,7 +5,7 @@
 
 **Audience:** Teams with an existing HL7v2 feed (a file of many MSH-delimited messages, or anything nc/a real interface engine can pipe as bytes) who want it cataloged as a corpus without a separate file-splitting step.
 
-**You bring:** A byte stream framed as one of the SS-3 framing kinds (er7-multi here; ndjson/mllp/bundle-entries work the same way) -- this example pipes an excerpt of the vendored SimHospital corpus (components/corpus/test-fixtures/v2/simhospital/messages.out, ADR-0011), but any MSH-multi-message file or a real nc pipe works identically.
+**You bring:** A byte stream framed as one of the SS-3 framing kinds (er7-multi here; ndjson/mllp/bundle-entries work the same way) -- this example pipes an excerpt of the vendored SimHospital corpus (test-fixtures/v2/simhospital/messages.out, ADR-0011), but any MSH-multi-message file or a real nc pipe works identically.
 
 **You get:** A cataloged v2 corpus: one file per message (the spool, docs/source-sink-design.md Part I.2/D2), plus capture-manifest.edn recording when it was captured, its declared origin, framing, format, item count, and per-item sha256s -- generated in one command, no manual message-splitting step (SS-3).
 
@@ -18,7 +18,7 @@
 # straight into intake -- the framing (er7-multi: MSH-led messages
 # separated by a blank line) is decoded and spooled, one file per
 # message, before anything is cataloged.
-head -c 2464 components/corpus/test-fixtures/v2/simhospital/messages.out | \
+head -c 2464 test-fixtures/v2/simhospital/messages.out | \
   bin/ehrt corpus intake 'stdin:?format=v2-er7&framing=er7-multi' \
   --label simhospital-excerpt --out out/demo-stdin-intake
 

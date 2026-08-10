@@ -15,7 +15,7 @@
 
 ```sh
 # The delivered corpus, as received.
-VENDOR_CORPUS=components/corpus/test-fixtures/v2
+VENDOR_CORPUS=test-fixtures/v2
 
 # 1. Catalog before you accept: a content hash per file, and one
 #    batch record naming the source and the date you received it.

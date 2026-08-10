@@ -249,7 +249,7 @@
 ;; :cause entirely (docs/judge-calibration.md, ADR-0010) ----
 
 (def pre-split-baseline
-  (edn/read-string (slurp "components/corpus/test-fixtures/reports/pre-split-baseline.edn")))
+  (edn/read-string (slurp "test-fixtures/reports/pre-split-baseline.edn")))
 
 (deftest baseline-relative-report-reads-a-pre-split-three-valued-baseline-test
   (let [results [{:path "suppressed.json" :verdict :no-verdict :cause :terminology-suppressed

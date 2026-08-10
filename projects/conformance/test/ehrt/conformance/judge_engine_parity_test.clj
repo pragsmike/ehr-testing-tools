@@ -21,13 +21,13 @@
 (def ^:private nested-dir "projects/conformance/test-fixtures/gate-dir-nested")
 
 (def ^:private nist-bundle-dir
-  "components/corpus/test-fixtures/v2-nist/COVID19_ELR-v2.3.1")
+  "test-fixtures/v2-nist/COVID19_ELR-v2.3.1")
 
 (def ^:private nist-message-file
-  "components/corpus/test-fixtures/v2-nist/covidELR/231HL7TestFilewithHHSData.txt")
+  "test-fixtures/v2-nist/covidELR/231HL7TestFilewithHHSData.txt")
 
 (def ^:private hapi-message-file
-  "components/corpus/test-fixtures/v2/adt-a08-update-trailing-empty-fields.hl7")
+  "test-fixtures/v2/adt-a08-update-trailing-empty-fields.hl7")
 
 ;; ---- missing file: kernel error, never a throw ----
 

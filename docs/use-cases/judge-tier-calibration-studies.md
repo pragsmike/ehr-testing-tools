@@ -20,11 +20,11 @@ bin/ehrt corpus operators --format v2
 
 # Baseline: what does this tier say about the file BEFORE you
 # break it? On a real-world corpus this is not a formality.
-bin/ehrt gate v2 components/corpus/test-fixtures/v2/adt-a01-admit.hl7 \
+bin/ehrt gate v2 test-fixtures/v2/adt-a01-admit.hl7 \
   --report out/calibration/before.edn
 
 # One mutant per {operator, locator} cell you want filled in.
-bin/ehrt corpus mutate --path components/corpus/test-fixtures/v2/adt-a01-admit.hl7 \
+bin/ehrt corpus mutate --path test-fixtures/v2/adt-a01-admit.hl7 \
   --operator-id blank-required-field --locator-path MSH-9 \
   --out-dir out/calibration/blank-required-field
 

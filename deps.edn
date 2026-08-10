@@ -142,7 +142,7 @@
             ;; future payload-EHR tooling, ADR-0009). Runs from the
             ;; workspace root (not a project subdirectory) because
             ;; artifacts.lock.edn, config/, resources/synthea-default.properties,
-            ;; and components/corpus/test-fixtures/** are all cwd-relative
+            ;; and test-fixtures/** are all cwd-relative
             ;; literal paths in ehrt.corpus.* code (not classpath
             ;; resources) -- landing-session finding, see notes/ADRs.md
             ;; ADR-0002.

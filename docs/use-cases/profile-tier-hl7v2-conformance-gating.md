@@ -18,8 +18,8 @@
 # CDC COVID19_ELR-v2.3.1 bundle is this repo's own try-it Π,
 # vendored under test-fixtures/ with its own NOTICE.md provenance.
 bin/ehrt gate v2-nist \
-  components/corpus/test-fixtures/v2-nist/covidELR/231HL7TestFilewithHHSData.txt \
-  --profile components/corpus/test-fixtures/v2-nist/COVID19_ELR-v2.3.1 --pretty
+  test-fixtures/v2-nist/covidELR/231HL7TestFilewithHHSData.txt \
+  --profile test-fixtures/v2-nist/COVID19_ELR-v2.3.1 --pretty
 ```
 
 This fixture message is a real, deliberately imperfect example: it comes back `:no-verdict`/`:profile-spec-error` (the bundle's own PROFILE.xml references value sets NIST's engine can't resolve -- a defect in the Π, not in the message), which is exactly the honest three-way verdict vocabulary D10/ADR-0010 exists for -- a `:pass` from `gate v2` doesn't mean `gate v2-nist` will agree, and vice versa; they check different things. Building the validator is the expensive part (context construction, not per-message checking) -- it happens once per invocation and is reused across every file in a directory, never rebuilt per file. `--profile` is required; there is no default bundle to fall back to silently. Flags: [cli.md](../cli.md#ehrt-gate-v2-nist), or `ehrt help gate` at the shell.

@@ -84,22 +84,22 @@ runnable commands.
 ## What you get
 
 A minimal, hand-authored FHIR fixture ships in this repo
-(`components/corpus/test-fixtures/fhir/storefront-patient.json`) --
+(`test-fixtures/fhir/storefront-patient.json`) --
 one `Patient`, no declared profile, gating clean against the real
 official validator, nothing broken yet:
 
 ```bash
-bin/ehrt gate fhir components/corpus/test-fixtures/fhir/storefront-patient.json
+bin/ehrt gate fhir test-fixtures/fhir/storefront-patient.json
 ```
 
 ```clojure
 {:status :ok,
  :payload
- {:run {:gate :fhir, :path "components/corpus/test-fixtures/fhir/storefront-patient.json"},
+ {:run {:gate :fhir, :path "test-fixtures/fhir/storefront-patient.json"},
   :totals {:pass 1, :rejected 0, :indeterminate 0, :no-verdict 0},
   :by-code {"invariant" 1},
   :files
-  [{:path "components/corpus/test-fixtures/fhir/storefront-patient.json",
+  [{:path "test-fixtures/fhir/storefront-patient.json",
     :verdict :pass,
     :finding-count 1,
     :findings
@@ -114,7 +114,7 @@ an element every FHIR resource genuinely requires (`Element.min >= 1`
 in the base spec, not a profile add-on) -- and gate again:
 
 ```bash
-bin/ehrt corpus mutate components/corpus/test-fixtures/fhir/storefront-patient.json \
+bin/ehrt corpus mutate test-fixtures/fhir/storefront-patient.json \
   --operator-id remove-required-element \
   --locator-path entry[0].resource.resourceType \
   --out-dir out/demo-mutants
@@ -214,7 +214,7 @@ bin/ehrt corpus mutate $PATIENT_FILE \
   --out-dir out/demo-mutants
 
 bin/ehrt artifact fetch --name fhir-validator-cli --version 6.9.12
-bin/ehrt gate v2 components/corpus/test-fixtures/v2
+bin/ehrt gate v2 test-fixtures/v2
 # gate fhir exits 1 here -- rejected, but not because of this mutation:
 # a real Synthea patient already carries hundreds of legitimate profile
 # findings before you break anything (Patient.gender isn't required in

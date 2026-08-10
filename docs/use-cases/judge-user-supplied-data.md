@@ -17,7 +17,7 @@
 # Point this at your own corpus. This repo vendors one you can try
 # it on: five HL7 v2 messages, plus a synthetic 1,013-message corpus
 # under simhospital/ (ADR-0011).
-YOUR_CORPUS=components/corpus/test-fixtures/v2
+YOUR_CORPUS=test-fixtures/v2
 
 # Catalog it first. Intake recurses and records EVERY file it finds
 # -- content hash, sniffed format, source label, received date -- so

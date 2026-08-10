@@ -11,7 +11,7 @@
             ;; is on the classpath alongside this one.
             [ehrt.corpus.simhospital-corpus :as simhospital]))
 
-(def ^:private fixture-dir "components/corpus/test-fixtures/v2")
+(def ^:private fixture-dir "test-fixtures/v2")
 
 (defn- fixture [name] (slurp (io/file fixture-dir name)))
 

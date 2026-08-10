@@ -52,7 +52,7 @@
 ;; present -- a changed verdict, an appeared/disappeared finding code, or
 ;; a different file set is a sim-side change surfacing here, not a
 ;; failure of this test. Regenerate deliberately, like
-;; components/corpus/test-fixtures/reports/pre-split-baseline.edn, never hand-edit.
+;; test-fixtures/reports/pre-split-baseline.edn, never hand-edit.
 {:run
  {:gate :v2,
   :path "target/sim-full-capability-gate/corpus",

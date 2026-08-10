@@ -2,7 +2,7 @@
   "Register row F-4 / ADR-0054 (alignment fixes 5, 2026-08-05): Apache-2.0
   section 4(a) expects a copy of the license to travel with redistributed
   content, but of this repo's four Apache-2.0-sourced vendored roots only
-  `components/corpus/test-fixtures/v2/simhospital/` carried the actual
+  `test-fixtures/v2/simhospital/` carried the actual
   license TEXT -- the other three relied on NOTICE narrative alone. This
   gate has two parts: (a) `LICENSES/Apache-2.0.txt` exists and is
   byte-identical to that root's own `LICENSE`; (b) every NOTICE file in
@@ -32,7 +32,7 @@
 
 (def ^:private license-text-file "LICENSES/Apache-2.0.txt")
 (def ^:private canonical-source-file
-  "components/corpus/test-fixtures/v2/simhospital/LICENSE")
+  "test-fixtures/v2/simhospital/LICENSE")
 
 (def ^:private excluded-dir-names #{"target" ".git"})
 

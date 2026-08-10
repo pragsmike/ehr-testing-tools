@@ -109,7 +109,7 @@ spool, not the wire.
 ## Part II — Framing (D2)
 
 File ≠ item. The vendored SimHospital corpus is 1,013 messages in one
-file (`components/corpus/test-fixtures/v2/simhospital/`, ADR-0011); NDJSON and FHIR
+file (`test-fixtures/v2/simhospital/`, ADR-0011); NDJSON and FHIR
 Bundles pack many resources per file; MLLP frames a byte stream. Every
 source (and sink) carries `:framing` as an axis independent of
 `:format`:
@@ -130,7 +130,7 @@ time with tests (SS-3), not assumed away.
 
 **`:er7-multi` grammar, probed (2026-07-28, SS-3 build session, ruling
 3).** Re-measured directly against the vendored fixture
-(`components/corpus/test-fixtures/v2/simhospital/messages.out`), independently of the
+(`test-fixtures/v2/simhospital/messages.out`), independently of the
 existing `simhospital-corpus` test helper's own docstring (which
 records the same finding, citing facts-register F25): 1,013 messages,
 1,013 `MSH` occurrences (one per message, none embedded elsewhere),
@@ -463,7 +463,7 @@ item-seq → framed-bytes  [EncodeFraming]  {catalytic: framing-codec}          
 ;; law: DecodeFraming composed with EncodeFraming recovers the identical
 ;; framed-bytes, for :er7-multi / :ndjson / :bundle-entries / :mllp --
 ;; round-trip property-tested per framing kind (SS-3). The vendored
-;; SimHospital fixture (components/corpus/test-fixtures/v2/simhospital/, ADR-0011) is the
+;; SimHospital fixture (test-fixtures/v2/simhospital/, ADR-0011) is the
 ;; :er7-multi witness. v2's MSH-18 and FHIR's UTF-8 assumption are this
 ;; codec's own edge conditions, resolved with tests, not assumed away (D2).
 

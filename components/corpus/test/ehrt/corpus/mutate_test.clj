@@ -137,7 +137,7 @@
 
 (defn- v2-op [id] (operators/lookup id "1"))
 
-(def ^:private admit-fixture "components/corpus/test-fixtures/v2/adt-a01-admit.hl7")
+(def ^:private admit-fixture "test-fixtures/v2/adt-a01-admit.hl7")
 (defn- admit-content [] (slurp (io/file admit-fixture)))
 
 (deftest mutate-v2-happy-path-returns-mutant-string-and-lineage-test

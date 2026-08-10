@@ -62,7 +62,7 @@
 
 (defn- fixture
   [name]
-  (slurp (clojure.java.io/file "components/corpus/test-fixtures/v2" name)))
+  (slurp (clojure.java.io/file "test-fixtures/v2" name)))
 
 (deftest message-timestamp-ms-reads-real-fixture-msh-7-test
   (is (= (player/parse-dtm-lenient "20260715142300")

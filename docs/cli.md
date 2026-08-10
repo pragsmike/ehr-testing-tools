@@ -180,7 +180,7 @@ Gate against HL7 v2 profile-tier conformance (the NIST engine): profile usage, c
 | `--report` | — | write the report EDN to this path |
 | `--baseline` | — | baseline-relative mode: path to a previous --report EDN; only genuinely new findings count |
 | `--treat-no-verdict-as` | — | "pass" or "rejected" -- folds :no-verdict into an existing polarity |
-| `--profile` | — | REQUIRED: a conformance-profile bundle directory -- PROFILE.xml required; CONSTRAINTS.xml, VALUESETS.xml, VALUESETBINDINGS.xml, COCONSTRAINTS.xml, SLICINGS.xml optional. No default. To try one: components/corpus/test-fixtures/v2-nist/COVID19_ELR-v2.3.1 |
+| `--profile` | — | REQUIRED: a conformance-profile bundle directory -- PROFILE.xml required; CONSTRAINTS.xml, VALUESETS.xml, VALUESETBINDINGS.xml, COCONSTRAINTS.xml, SLICINGS.xml optional. No default. To try one: test-fixtures/v2-nist/COVID19_ELR-v2.3.1 |
 
 ## `ehrt check`
 

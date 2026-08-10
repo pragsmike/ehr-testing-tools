@@ -11,7 +11,7 @@ Polylith vocabulary (component, base, project, brick), no repository
 history to read first, and no discussion of this workspace's own
 internal directory layout as architecture. A `components/...` string
 still appears here and there as a literal filesystem path — real test
-fixtures a copy-pasted command needs (`components/corpus/test-fixtures/v2`,
+fixtures a copy-pasted command needs (`test-fixtures/v2`,
 the same path the root README's own Quickstart uses), or a hyperlink
 out to supplementary component-adjacent material for a reader who
 wants more depth than this page promises. Neither requires knowing

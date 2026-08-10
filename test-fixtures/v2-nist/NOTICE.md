@@ -55,8 +55,8 @@ stand-in with a real export knows where that obligation is recorded.
 
 `covidELR/231HL7TestFilewithHHSData.txt` is ER7 wire format: segments
 are `\r`-terminated, not `\n`. `.gitattributes` carries
-`components/corpus/test-fixtures/v2-nist/covidELR/*.txt -text` for
-exactly the reason `components/corpus/test-fixtures/v2/*.hl7` and
+`test-fixtures/v2-nist/covidELR/*.txt -text` for
+exactly the reason `test-fixtures/v2/*.hl7` and
 `demos/traces/**/messages*.txt` already do — a checkout
 that normalized line endings would silently rewrite those bytes and
 invalidate the engine-in-the-loop test's own pinned finding counts.

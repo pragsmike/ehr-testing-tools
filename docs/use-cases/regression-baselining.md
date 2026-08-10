@@ -15,14 +15,14 @@
 
 ```sh
 # The run you trust becomes the baseline. Keep this file.
-bin/ehrt gate v2 components/corpus/test-fixtures/v2 --report out/regression/baseline.edn
+bin/ehrt gate v2 test-fixtures/v2 --report out/regression/baseline.edn
 
 # ...later, the same corpus again -- but judged relative to that
 # baseline: a finding counts toward rejection only if its
 # {severity, code, locator-path} isn't already in the baseline for
 # that same file. The exit code follows the relative view, so a
 # corpus that is identically noisy to its baseline still exits 0.
-bin/ehrt gate v2 components/corpus/test-fixtures/v2 \
+bin/ehrt gate v2 test-fixtures/v2 \
   --report out/regression/today.edn \
   --baseline out/regression/baseline.edn
 ```

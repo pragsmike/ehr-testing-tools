@@ -1021,7 +1021,7 @@
         (throw e)))))
 
 (def default-v2-nist-profile-hint
-  "components/corpus/test-fixtures/v2-nist/COVID19_ELR-v2.3.1 -- the CDC COVID19_ELR-v2.3.1 fixture, this repo's own documented try-it bundle (ADR-0012/ADR-0015)")
+  "test-fixtures/v2-nist/COVID19_ELR-v2.3.1 -- the CDC COVID19_ELR-v2.3.1 fixture, this repo's own documented try-it bundle (ADR-0012/ADR-0015)")
 
 (defn v2-nist-gate-command
   "`ehrt gate v2-nist PATH --profile BUNDLE_DIR` (ADR-0015): the

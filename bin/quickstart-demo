@@ -86,7 +86,7 @@ expect 0 bin/ehrt corpus mutate $PATIENT_FILE \
   --out-dir out/demo-mutants
 
 expect 0 bin/ehrt artifact fetch --name fhir-validator-cli --version 6.9.12
-expect 0 bin/ehrt gate v2 components/corpus/test-fixtures/v2
+expect 0 bin/ehrt gate v2 test-fixtures/v2
 # gate fhir exits 1 here -- rejected, but not because of this mutation:
 # a real Synthea patient already carries hundreds of legitimate profile
 # findings before you break anything (Patient.gender isn't required in

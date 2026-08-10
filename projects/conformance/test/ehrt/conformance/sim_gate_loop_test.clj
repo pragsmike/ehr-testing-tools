@@ -28,7 +28,7 @@
   The gate's report is compared against a committed baseline artifact
   (projects/conformance/test-fixtures/reports/sim-v2-gate-baseline.edn, this
   repo's --baseline convention -- same shape as
-  components/corpus/test-fixtures/reports/pre-split-baseline.edn) via
+  test-fixtures/reports/pre-split-baseline.edn) via
   judge.report/diff-reports, so a sim-side fix (or regression) shows up
   as a verdict delta here instead of a silent no-op; a missing baseline
   is reported, not failed on (bootstrapping this suite on a machine
