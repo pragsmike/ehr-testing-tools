@@ -387,3 +387,27 @@ ruled 2026-08-09 the day before this session ran)
   `reports/` — the last unnamed in ADR-0081's own row, riding along by
   this ruling, disclosed in ADR-0099) — never split across sessions or
   left partially relocated.
+
+## From ADR-0100 (corpus player: sim event-log adapter, roadmap Next
+row named since ADR-0014; rulings taken this session's own driving
+prompt, author-ruled 2026-08-10, the session's own day)
+
+- **Sim event-log adapter semantics** [A, ruled 2026-08-10, author
+  verbatim "Q1 a."]: native event playback — events paced by `:t`
+  directly via an injectable timestamp-extraction seam on `plan`
+  (continuing the `:tty?-fn`/`:sleep-fn` injection lineage, not a
+  second pacer); a compact event-line ticker; `--board` under event
+  input REJECTED with a named-deferral hint (the board's fold is
+  wire-side; feeding it would need emission parameters the log does
+  not carry).
+- **Producer-side event log** [A, ruled 2026-08-10, author verbatim
+  "Q2 a."]: `corpus generate sim` also spools the ground-truth vector
+  as `events.edn` into out-dir, same `pr-str` bytes as `--format
+  ground-truth`'s bare text — disclosed against D7 ruling 4's
+  "provenance is the generator's word" (that ruling governed
+  manifests; `events.edn` is data, not provenance, so it does not
+  reopen that ruling's scope).
+- **Demo touch, scoped** [A, ruled 2026-08-10, author verbatim "Q3
+  a."]: busy-tuesday's README gains ONE "play the sim's own story"
+  example line once the adapter lands. Nothing else attaches — no
+  rows invented, no other demo asides committed.

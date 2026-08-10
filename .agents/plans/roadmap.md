@@ -34,11 +34,6 @@ per item; done items move to the bottom of their section with a date and sha.
 - generator-source three-concerns split (ADR-0017 named-future)
 - ehrt.corpus.display placement — presentation-leaning (ADR-0018 named-future)
 - Markdown-table helper dedup (ADR-0018 named-future)
-- **Corpus player: sim event-log input adapter** (`notes/adr/0014-
-  corpus-player.md`) — an input adapter reading the sim's own event
-  log directly, as opposed to the HL7 v2 file/directory input the
-  player accepts today; named in ADR-0014's own Context as remaining
-  work, not built.
 - **ADR references in user-facing documentation** (2026-08-08,
   fidelity riders, `notes/ADRs.md` ADR-0081, author backlog addition):
   remove bare `ADR-NNNN` citations from the user path (`docs/` proper,
@@ -446,6 +441,13 @@ Rows here are LIVE. Closed rows move to Done with their notes.
   with the allowlist stripped). Revisit trigger: the next session
   touching `ehrt play` or the corpus-player slices (`notes/adr/0014-
   corpus-player.md`, the bed-board sink).
+  **Dated note (2026-08-10, sim event-log adapter, `notes/ADRs.md`
+  ADR-0100): this row CLOSED — see Done, below.** The revisit trigger
+  fired (this session touched `ehrt play` directly, landing the sim
+  event-log adapter alongside). Both bare reads route through a
+  guarded `slurp-play-input` now; the row's own tripwire — the two
+  allowlist entries in `cli_parse_guard_lint_test.clj` — is gone, the
+  allowlist mechanism itself retired with them.
 
 ## Done (live — current arc only; full history in the attic files,
 `.agents/plans/roadmap-done-2026-07.md` and `.agents/plans/roadmap-done-2026-08.md`,
@@ -463,3 +465,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-09 — review-2-arc-close — ADR-0097
 - 2026-08-09 — permission-legs-and-bare-flags — ADR-0098
 - 2026-08-10 — fixture-relocation — ADR-0099
+- 2026-08-10 — sim-event-log-adapter — ADR-0100
