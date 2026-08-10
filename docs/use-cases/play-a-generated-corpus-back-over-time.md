@@ -5,9 +5,9 @@
 
 **Audience:** Teams wanting to watch, demo, or load-test against hospital traffic paced the way it actually happened, not delivered all at once.
 
-**You bring:** A directory of HL7 v2 (ER7) messages sharing one sniffed format -- a `corpus generate sim` out-dir is the natural source, its own `msg-%03d.hl7` filenames already in the intended play order (ADR-0015[^adr-0015]).
+**You bring:** A directory of HL7 v2 (ER7) messages sharing one sniffed format -- a `corpus generate sim` out-dir is the natural source, its own `msg-%03d.hl7` filenames already in the intended play order[^adr-0015].
 
-**You get:** The same messages, rendered (or, with --sink, written byte-identically to an unpaced batch write) at a chosen wallclock rate against their own MSH-7 timestamps -- `ehrt play PATH` at an arbitrarily large --rate is exactly `ehrt show PATH` (ADR-0013[^adr-0013]/ADR-0014[^adr-0014]'s own identity).
+**You get:** The same messages, rendered (or, with --sink, written byte-identically to an unpaced batch write) at a chosen wallclock rate against their own MSH-7 timestamps -- `ehrt play PATH` at an arbitrarily large --rate is exactly `ehrt show PATH` (the design record's own identity[^adr-0013][^adr-0014]).
 
 **Maturity:** usable
 

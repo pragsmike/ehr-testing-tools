@@ -7,7 +7,13 @@
   shape (file-seq over docs/, filtering by .md extension), narrowed by
   one more filter to drop docs/dev/.
 
-  Two independent checks:
+  ADR-0102 hardened this gate with a third check: the footnote form
+  itself is now marker-only (no visible ADR-NNNN token left in prose),
+  full user path, origin-qualified citations included -- see that ADR
+  for the conversion and the red witness this check produced against
+  the pre-conversion tree.
+
+  Three independent checks:
 
   1. Every relative markdown link `](...)` resolves to a real file on
      disk, anchors stripped before resolution, http(s)/mailto: links
@@ -21,7 +27,16 @@
      footnote definitions are identified by the anchored, start-of-
      line `[^id]:` form; usage markers are counted only on content
      with definition lines stripped out first, so a definition line's
-     own `[^id]` substring is never miscounted as a second usage."
+     own `[^id]` substring is never miscounted as a second usage.
+  3. No visible `ADR-NNNN` token (bare or origin-qualified -- the
+     token match doesn't care which) survives in prose: fenced code
+     blocks (triple-backtick, any info string) and footnote-
+     definition lines are exempted first, then the remainder is
+     scanned. A token surviving in a fenced code-comment is the one
+     disclosed, intentional exception (ADR-0101's own finding:
+     footnote markup cannot render inside a fence) -- exempting the
+     whole fence, not just the token, is what keeps that exception
+     from tripping this check."
   (:require [clojure.test :refer [deftest is]]
             [clojure.java.io :as io]
             [clojure.set :as set]
@@ -100,6 +115,40 @@
   [content]
   (set/difference (footnote-def-ids content) (footnote-usage-ids content)))
 
+(def ^:private adr-token-re
+  "Any visible ADR-NNNN token, bare or origin-qualified -- the regex
+  itself doesn't distinguish `ADR-0010` from `sim/ADR-0010`, since
+  ADR-0102's own ruling forbids the token in prose regardless of
+  qualification."
+  #"ADR-\d{4}")
+
+(def ^:private fenced-code-block-re
+  "A ``` ... ``` fenced block, any info string, non-greedy so adjacent
+  fences pair with their own nearest close rather than spanning past it."
+  #"(?s)```.*?```")
+
+(defn- strip-fenced-code
+  [content]
+  (str/replace content fenced-code-block-re ""))
+
+(def ^:private footnote-definition-line-re
+  #"(?m)^\[\^[A-Za-z0-9-]+\]:.*$")
+
+(defn- strip-footnote-definition-lines
+  [content]
+  (str/replace content footnote-definition-line-re ""))
+
+(defn- adr-tokens-in-prose
+  "Every ADR-NNNN token remaining once fenced code and footnote-
+  definition lines are stripped -- what's left is prose, and this
+  gate's own ADR-0102 ruling says none of it may still show the token."
+  [content]
+  (->> content
+       strip-fenced-code
+       strip-footnote-definition-lines
+       (re-seq adr-token-re)
+       set))
+
 (deftest every-relative-link-in-docs-proper-resolves-test
   (doseq [path (docs-proper-files)]
     (let [broken (broken-links path (slurp path))]
@@ -112,3 +161,8 @@
           orphans (orphan-definitions content)]
       (is (empty? undefined) (str path " has footnote marker(s) with no definition: " undefined))
       (is (empty? orphans) (str path " has footnote definition(s) with no usage: " orphans)))))
+
+(deftest no-visible-adr-token-in-prose-test
+  (doseq [path (docs-proper-files)]
+    (let [tokens (adr-tokens-in-prose (slurp path))]
+      (is (empty? tokens) (str path " has visible ADR-NNNN token(s) in prose: " tokens)))))

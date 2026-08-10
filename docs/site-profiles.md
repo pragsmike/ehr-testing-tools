@@ -60,7 +60,7 @@ existing idea rather than inventing a new mechanism:
 
 1. **MSH dialect.** A site profile's `:msh` supplies MSH-12 (HL7
    version id), MSH-3/4/5/6 (sending/receiving app+facility), and
-   MSH-11 (processing id — post-M6, ADR-0014[^adr-0014]'s own Task 4 addition),
+   MSH-11 (processing id — post-M6, the design record's own Task 4 addition[^adr-0014]),
    defaulting field-by-field to today's hard-coded values when absent
    (`ehrt.sim-emit-hl7.site-profile/default-msh`). Version changes the
    MSH-12 literal only — this layer does not restructure segments per
@@ -141,8 +141,8 @@ dialect** — with one documented exception. MSH dialect, code-table
 overrides, and Z-segment templates all bind at emit time
 (`docs/sim-theory.edn`'s `EmitHL7` stage — a real catalytic wire now,
 not a declared-ahead-of-time one), never inside `decide`/`evolve` or
-the ground-truth log, following directly from `sim/ADR-0002`'s separation of
-ground truth from wire format: a site profile changes how a fact is
+the ground-truth log, following directly from the design record's own separation of
+ground truth from wire format[^sim-adr-0002]: a site profile changes how a fact is
 *said*, never what fact is true — property-tested as this layer's own
 invariance claim, below. `:naming :surge-format`'s migration is the
 one exception (component 3, above): it binds at facility-config
@@ -171,7 +171,7 @@ layer has shipped or will ever ship belongs to exactly one:
    function's own declared surface (MSH-3/4/5/6/11/12, PV1-2/PV1-36,
    Z-segment lines) **is** the enumeration of every dialect knob this
    layer has shipped to date — MSH-11 (`:processing-id`) joined this
-   surface post-M6 (ADR-0014[^adr-0014]'s own Task 4), the fourth dialect knob the
+   surface post-M6 (the design record's own Task 4[^adr-0014]), the fourth dialect knob the
    paragraph below already anticipated; adding a fifth means
    extending that function in the same change, or the invariance
    property test stops actually covering it.
@@ -236,7 +236,7 @@ prove a weaker, less useful claim. A CLI-produced two-profile demo
 event rendered under both profiles side by side, ground-truth identity
 verified programmatically when the demo was generated.
 
-**Dated note (D1a rider, 2026-08-02, ADR-0029[^adr-0029]): this citation was
+**Dated note (D1a rider, 2026-08-02, [^adr-0029]): this citation was
 broken from `c0b5b0a` (the sim-repo merge that landed
 `components/sim`) until today** — the path was valid at its
 pre-merge home, `docs/demos/site-profiles/` relative to the standalone
@@ -270,8 +270,8 @@ segments with a different MSH-12 literal, never a genuinely different
 segment set) stays future — HL7v2's own version-to-version segment
 changes are a large surface this layer doesn't attempt. Generalized
 naming idioms beyond `:surge-format` (ward ids, provider id formats)
-stay future too. **A TEST-surname knob** (post-M6, ADR-0014[^adr-0014]'s own Task
-4) — an optional site-profile field forcing every persona's own
+stay future too. **A TEST-surname knob** (post-M6, the design record's own Task
+4[^adr-0014]) — an optional site-profile field forcing every persona's own
 rendered surname to a fixed, obviously-synthetic marker (e.g. "TEST" or
 "ZZTEST", the convention some real EHRs already reserve for exactly
 this purpose) — is designed, not built: it would be a fifth dialect
@@ -297,3 +297,4 @@ overrides.
 
 [^adr-0014]: Design record [ADR-0014](../notes/ADRs.md).
 [^adr-0029]: Design record [ADR-0029](../notes/ADRs.md).
+[^sim-adr-0002]: Design record [sim/ADR-0002](../notes/sim/ADRs.md).
