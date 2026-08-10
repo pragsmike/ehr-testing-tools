@@ -10,8 +10,8 @@ did); cite through it, not this directory directly.
 **Naming convention:** every file here except this README is
 `NNNN-<slug>.md`, one per `notes/ADRs.md` index line, in the order
 that file's own index lists them (unchanged from this file's pre-split
-entry order — not renumbered). Not restated as a per-file list (99 of
-them, as of ADR-0101 — a count that goes stale the moment the next ADR
+entry order — not renumbered). Not restated as a per-file list (100 of
+them, as of ADR-0102 — a count that goes stale the moment the next ADR
 lands, the exact pattern `.agents/state.md`'s own regeneration contract
 exists to catch; see `notes/ADRs.md`'s own index instead of duplicating
 it here).

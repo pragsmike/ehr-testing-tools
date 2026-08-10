@@ -254,6 +254,20 @@ Rows here are LIVE. Closed rows move to Done with their notes.
   "lands small." Deferred whole, not half-built: the player ships
   `--sink dir:`/`file:` only. Revisit trigger: a session needs wire
   transport and a lands-small shape is identified.
+  **Dated note (2026-08-10, marker-only footnotes / mllp ruling,
+  `notes/ADRs.md` ADR-0102): this row CLOSED — see Done, below.** The
+  author ruled `:mllp` abandoned for now, verbatim "Let's abandon
+  `:mllp` for now" — not merely still-deferred pending a lands-small
+  shape, as this row's own revisit trigger anticipated. No wire
+  transport work landed; the only code change is `bases/cli/src/ehrt/
+  cli/help.clj`'s `play --sink` doc line, which had claimed `mllp:` was
+  "recognized but deferred" (untrue on its own terms — `mllp:` was
+  never in the sink-URL grammar) and now names only `dir:`/`blaze:`.
+  `notes/adr/0014-corpus-player.md`'s own "future `:mllp` sink" framing
+  is ruled superseded in part by this closure, without editing that
+  frozen record; see `.agents/rulings.md`'s "From ADR-0102" section and
+  ADR-0102 itself for the full ruling and the three-place inventory of
+  where the old framing still lives.
 - **Carry-across emission** (2026-08-04, `notes/ADRs.md` ADR-0042
   AR-2): a straddling encounter (opens history, closes horizon) yields
   NO in-window wire traffic for that patient under Wave H's own pre-
@@ -455,3 +469,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-10 — fixture-relocation — ADR-0099
 - 2026-08-10 — sim-event-log-adapter — ADR-0100
 - 2026-08-10 — adr-footnotes — ADR-0101
+- 2026-08-10 — marker-only-footnotes — ADR-0102
