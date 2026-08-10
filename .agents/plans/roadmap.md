@@ -39,24 +39,6 @@ per item; done items move to the bottom of their section with a date and sha.
   log directly, as opposed to the HL7 v2 file/directory input the
   player accepts today; named in ADR-0014's own Context as remaining
   work, not built.
-- **Fixture relocation** (2026-08-08, fidelity riders, `notes/ADRs.md`
-  ADR-0081, author backlog addition): move test fixtures out of
-  components — the `components/corpus/test-fixtures/v2/simhospital`
-  tree and its `components/corpus/test-fixtures/v2-nist` sibling,
-  named explicitly — to a top-level home, so demos can use them.
-  `components/corpus/test-fixtures/fhir/` (2026-08-09, storefront
-  fixture, `notes/ADRs.md` ADR-0091) is a third member, noted not
-  preempted. Flagged wrinkles: both trees are NOTICE/PROVENANCE-hashed and
-  `-text` protected in `.gitattributes` (`v2/*.hl7`,
-  `v2/simhospital/messages.out`, `v2/simhospital/LICENSE`,
-  `v2-nist/covidELR/*.txt`, `v2-nist/COVID19_ELR-v2.3.1/**`), so the
-  demos-front-door mechanic
-  applies (ADR-0073: same-commit `.gitattributes` moves, byte-
-  witnessing, pointer-README stubs) — and the live-path lint's
-  blessed roots (`components/docs-tooling/test/ehrt/docs_tooling/
-  test_source_live_path_lint_test.clj`'s `"test-fixtures"` allowlist
-  entry) update with the move. Not built; a design/landing session of
-  its own.
 - **ADR references in user-facing documentation** (2026-08-08,
   fidelity riders, `notes/ADRs.md` ADR-0081, author backlog addition):
   remove bare `ADR-NNNN` citations from the user path (`docs/` proper,
@@ -480,3 +462,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-09 — cluster-b-parse-guards — ADR-0096
 - 2026-08-09 — review-2-arc-close — ADR-0097
 - 2026-08-09 — permission-legs-and-bare-flags — ADR-0098
+- 2026-08-10 — fixture-relocation — ADR-0099

@@ -171,3 +171,4 @@ Files in this directory:
   * 2026-08-09-cluster-b-parse-guards.md
   * 2026-08-09-review-2-arc-close.md
   * 2026-08-09-permission-legs-and-bare-flags.md
+  * 2026-08-10-fixture-relocation.md

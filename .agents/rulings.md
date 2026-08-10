@@ -372,3 +372,18 @@ into this register the same session it was made)
   Applies to any future component gaining this same missing-vs-
   unreadable distinction: extend the existing category with a `:reason`
   key, don't mint a new one.
+
+## From ADR-0099 (fixture relocation, backlog row licensed by ADR-0081
+AR-FR-2(a); rulings taken this session's own driving prompt, author-
+ruled 2026-08-09 the day before this session ran)
+
+- **Fixture relocation target home** [A, ruled 2026-08-09, author
+  verbatim "Q1 a."]: the new home for `components/corpus/test-
+  fixtures/` is a root-level `test-fixtures/` directory, sibling to
+  `demos/` — not nested under any component.
+- **Fixture relocation scope** [A, ruled 2026-08-09, author verbatim
+  "Q2 a."]: the ENTIRE tree moves as one subtree-whole `git mv`, all
+  four subtrees together (`v2/`, `v2-nist/`, `fhir/`, and
+  `reports/` — the last unnamed in ADR-0081's own row, riding along by
+  this ruling, disclosed in ADR-0099) — never split across sessions or
+  left partially relocated.
