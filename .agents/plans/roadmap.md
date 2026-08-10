@@ -34,18 +34,6 @@ per item; done items move to the bottom of their section with a date and sha.
 - generator-source three-concerns split (ADR-0017 named-future)
 - ehrt.corpus.display placement — presentation-leaning (ADR-0018 named-future)
 - Markdown-table helper dedup (ADR-0018 named-future)
-- **ADR references in user-facing documentation** (2026-08-08,
-  fidelity riders, `notes/ADRs.md` ADR-0081, author backlog addition):
-  remove bare `ADR-NNNN` citations from the user path (`docs/` proper,
-  per ADR-0010's own audience fork — NOT `docs/dev/`; e.g. `docs/site-
-  profiles.md`, `docs/judge-calibration.md`, `docs/glossary.md`,
-  `docs/formats.md` all currently carry them) or convert them to
-  clickable footnote links. Unruled fork: strip to dev-docs only, vs.
-  footnotes that keep provenance. Prerequisite, not yet done by this
-  row: a full inventory of every citation across the user path per
-  ADR-0010's own three-way split (a fresh grep at design time will
-  turn up more than the four named here, including `docs/use-cases/`
-  siblings). Awaiting its own design moment, not built.
 ## Externals (author-only)
 - Enable GitHub's workflow-failure notification email for this
   repository (one settings toggle) — closes the nobody-watching gap
@@ -466,3 +454,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-09 — permission-legs-and-bare-flags — ADR-0098
 - 2026-08-10 — fixture-relocation — ADR-0099
 - 2026-08-10 — sim-event-log-adapter — ADR-0100
+- 2026-08-10 — adr-footnotes — ADR-0101

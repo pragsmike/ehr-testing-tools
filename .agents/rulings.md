@@ -411,3 +411,20 @@ prompt, author-ruled 2026-08-10, the session's own day)
   a."]: busy-tuesday's README gains ONE "play the sim's own story"
   example line once the adapter lands. Nothing else attaches — no
   rows invented, no other demo asides committed.
+
+## From ADR-0101 (user-path ADR citations become footnotes; rulings
+taken this session's own driving prompt, author-ruled 2026-08-10, the
+session's own day)
+
+- **The footnote fork, resolved** [A, ruled 2026-08-10, author verbatim
+  "as clickable footnotes" then "a."]: every bare `ADR-NNNN` citation in
+  the user path (`docs/` proper, not `docs/dev/`) becomes a footnote
+  marker whose definition links the citation index (`notes/ADRs.md`),
+  never stripped. Superseded ADR-0081's own unruled fork
+  ("strip to dev-docs only, vs. footnotes that keep provenance").
+- **`--sink` ratification** [A, ruled 2026-08-10, author verbatim
+  "--sink call ok for now."]: ADR-0100's own disclosed judgment call —
+  rejecting `--sink` on event input, beyond Q1 a.'s own literal scope
+  which named only `--board`, categorized `:play-sink-unsupported-for-
+  events` — is RATIFIED as standing. No code change; this entry is the
+  record.

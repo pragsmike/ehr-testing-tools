@@ -121,3 +121,4 @@ Files in this directory:
   * 2026-08-09-permission-legs-and-bare-flags.md
   * 2026-08-10-fixture-relocation.md
   * 2026-08-10-sim-event-log-adapter.md
+  * 2026-08-10-adr-footnotes.md
