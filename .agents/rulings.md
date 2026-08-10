@@ -345,3 +345,30 @@ change to the contract itself.
   is disclosed in-session, not discovered by channel report later. This
   is ceremony boilerplate for session prompts and session practice —
   NO new repo test, NO workflow change, NO gate file.
+
+## From ADR-0098 (mid-arc append, author-licensed via this session's own
+driving prompt — the same license class ADR-0048's own mid-arc append
+used: not an arc close, but the author's own ruling explicitly directed
+into this register the same session it was made)
+
+- **Judge-family entry-guard charter width, ruled** (2026-08-09, author
+  verbatim "Q1 a.", citing ADR-0096 Finding 1 / ADR-0097 AR-AC-1 item
+  1): a permission-denied (or missing-path) entry-guard fix scoped by
+  its own driving prompt to one judge engine widens to every judge
+  engine sharing the identical defect shape (an `.isFile`-only, or
+  no, entry check that a chmod-000 path passes) IN THE SAME SESSION,
+  when the author rules it — not deferred to a future session per
+  engine. `judge-fhir-official`'s own Finding-1 fix widened to
+  `judge-v2-hapi`/`judge-v2-nist` on this ruling; not standing beyond
+  its own session unless a future author ruling re-confirms it for a
+  different defect class.
+- **Permission-denied category shape, standing** [A, ruled 2026-08-09,
+  author verbatim "Q2 a.", citing family parity ruled 2026-07-31]: a
+  missing-path and an exists-but-unreadable path share ONE category
+  (`:file-not-found` in this judge family; the category a component's
+  own existing missing-path convention already uses elsewhere) — never
+  a second, unreadable-specific category — distinguished by a
+  `:reason :permission-denied` payload key on the unreadable leg only.
+  Applies to any future component gaining this same missing-vs-
+  unreadable distinction: extend the existing category with a `:reason`
+  key, don't mint a new one.
