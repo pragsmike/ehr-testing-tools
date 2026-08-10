@@ -432,3 +432,18 @@ judge components and CLI-shell code, never sim/engine-path work.
 
 (appended to `.agents/plans/roadmap.md`'s own Done section, alongside
 the Next-row removal this same commit makes.)
+
+### Dated append, 2026-08-09 — a CI transient on the close-phase push, disclosed fix-forward
+
+The close-phase commit's own push (`104329f..10c4d0e`) triggered a
+`test`-lane run (`31351267585`) that FAILED at `poly check` in 12s —
+Maven Central returned 403 Forbidden resolving `org.clojure:clojure:
+pom:1.12.5`, a registry-side transient with nothing to do with this
+session's own diff (`deps.edn` untouched throughout). Investigated
+before disclosure: `gh run rerun`, watched to conclusion, passed clean
+on the identical commit, 3m53s, all four steps green. Full detail in
+this session's own session record
+(`.agents/session-records/2026-08-09-permission-legs-and-bare-flags.md`),
+its own dated append. No code change, no amended commit — this is a
+disclosure-only append, the same fix-forward discipline every other
+close in this repo applies to a post-push finding.

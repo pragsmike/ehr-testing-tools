@@ -102,6 +102,26 @@ close-phase commit never carried a knowingly-failing test.
 `558e6bf` (Step 1, this session), the successor-tag debt ADR-0097's
 own mechanical-debt section named — peeled ref verified.
 
-**HEAD landed:** [recorded after the combined push — see this
-record's own dated verification fill-in below, or the git log
-directly for the final SHA].
+**HEAD landed:** `10c4d0ef62b3d4bbfb15772d9829f16d7115cf49` (this
+close-phase commit, pushed).
+
+**Dated append, 2026-08-09 — CI transient, disclosed fix-forward, not
+amended into the pushed commit.** The close-phase commit's own push
+(`104329f..10c4d0e`) triggered a `test`-lane run
+(`31351267585`) that FAILED at `poly check` in 12s: `Could not
+transfer artifact org.clojure:clojure:pom:1.12.5 from/to central
+(https://repo1.maven.org/maven2/): status code: 403, reason phrase:
+Forbidden` — Maven Central rejecting the CI runner's own dependency
+fetch, nothing this session's diff touches (`deps.edn` untouched, no
+dependency-version change anywhere in this session). Investigated
+before disclosure, not merely reported (the same discipline ADR-0097's
+own Step 0 applied to the stale-scheduled-run red): `gh run rerun
+31351267585` re-triggered the identical commit's own CI run; watched
+to conclusion (`gh run watch`, this session's own claim IS about CI,
+the AR-CI-4 precedent); the SECOND attempt passed clean, all four
+steps green, 3m53s (`poly check`, `poly test :all skip:integration`,
+`verify-nist-lock`, generated-doc freshness). A registry-side
+transient, not a code regression — confirmed by the identical commit
+succeeding on retry with zero code changes between attempts. `gh run
+list --limit 6 --branch main` now shows all six of this session's own
+and its predecessor's runs `success`.
