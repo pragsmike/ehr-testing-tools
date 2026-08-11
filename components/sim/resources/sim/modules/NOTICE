@@ -107,6 +107,9 @@ prioritization table).
 | `veteran_self_harm.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/veteran_self_harm.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `ae5c651da3f405f7c0614577a72856d57c5310ce79eef0e13f616efa893abcea` | 2026-08-08 |
 | `veterans/veteran_suicide_probabilities.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/veterans/veteran_suicide_probabilities.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `593dcb98d9ebcd0fac26dc61f338a1af8ce76e28f8c86298338bba073ba87697` | 2026-08-08 |
 | `veteran_substance_abuse_treatment.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/veteran_substance_abuse_treatment.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `269091a80c76a3e9c05e007b7a98edfb29bfc20c6dc6cda5e04c633556b47541` | 2026-08-08 |
+| `injuries.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/injuries.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `d772845bf1420a0bd582e510e30e8411adbd3d08c322efbaac349fbf4eaf74d5` | 2026-08-11 |
+| `injuries/broken_jaw.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/injuries/broken_jaw.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `55e2c7eedfdfe02eca1044ac4d7069a5d9025fb2cd5eac7427eaf67de2e81f0c` | 2026-08-11 |
+| `snf/skilled_nursing_facility.json` | `https://raw.githubusercontent.com/synthetichealth/synthea/7e08387c68a7f0e21d13076609a159fd473fc902/src/main/resources/modules/snf/skilled_nursing_facility.json` | `7e08387c68a7f0e21d13076609a159fd473fc902` | `0631ed8af2fbe1905e4f67b58bebc7a26aab58930074c226ecc70814d91ac987` | 2026-08-11 |
 
 **Vendoring batch 4 (2026-08-08, ADR-0090, AR-VB4-1/2/3): the veteran
 family comes home -- five content-producing modules land
@@ -497,6 +500,50 @@ options with blast radius, no recommendation) in `notes/adr/
 0106-injuries-b2-assessment.md`. Revisit trigger: a future session
 ruling on and implementing one of ADR-0106's own four named design
 options.
+
+**Dated amendment (2026-08-11, ADR-0107): the nested-encounter leg
+CLOSES too -- the arc completes, this closure lands.** The author
+ruled option (i) of ADR-0106's own four named design options: the
+`:encounter` case's own assert (`gmf_interpreter.clj` ~1823) became a
+conditional auto-close, upstream-faithful (`State.java`'s own
+`Encounter.process`, same-module-reopen branch, source-confirmed at
+the pin) -- a reopen over a stale open now synthesizes an implicit
+`:encounter-end` for the stale one first, rather than throwing. Both
+deferral legs are now closed: max-steps (ADR-0105) and nested-
+encounter (this ADR). The 2 of 120 well-mixed-seed walks ADR-0106
+measured throwing (`-576131918266266247`/`-5690589783821964774`) now
+complete, `:status :horizon-complete`, each with exactly one
+synthesized `:encounter-end` present and correctly cited -- re-
+confirmed this session against the SAME pinned checkout and mixer
+derivation. This closure's true disposition (ADR-0106's own
+correction, re-confirmed unchanged this session): **5 already
+vendored** (`medications/ear_infection_antibiotic.json`,
+`medications/otc_pain_reliever.json`, `medications/
+moderate_opioid_pain_reliever.json`, `dme/wheelchair_end.json`, `dme/
+wheelchair.json` -- byte-identical at the pin, re-verified, not re-
+vendored, no new rows for them), **3 newly landed above**
+(`injuries.json`, `injuries/broken_jaw.json`, `snf/
+skilled_nursing_facility.json`). Engine-layer round-trip proof
+(`ehrt.sim-emit-hl7.vendored-injuries-test`), seed 20260802, 300
+patients, `:module-horizon-days` 18250 (50 years) -- NOT the 36500-day
+convention most engine-layer roots use: `broken_jaw.json`'s own `Wait
+for Dental Visit` loop needs the shorter, census-matching horizon
+(confirmed live this session: `engine/run` at 36500 days throws
+`run-submodule exceeded max-steps` at that branch, exactly ADR-0106's
+own dated finding [C] predicted -- mean ~9124 cycles to cross 100
+years, over the interpreter's 10000-step budget, versus mean ~4562
+cycles at 50 years, safely under it). `broken_jaw.json`'s own
+`dental_referral` attribute-gate (never cleared once set, ADR-0070's
+own original bail-out cause) is HANDLED by ADR-0105's horizon
+truncation at the census's own 50-year convention, not a disqualifying
+finding for this batch (re-confirmed: 0 of 120 walks throw `max-steps`
+at that branch at 50 years). A synthesized-`:encounter-end` counter
+(`:synthesized-encounter-ends`, mirroring `:suppressed-encounter-
+ends`'s own zero-cost-countable precedent) is pinned at 4 across the
+round-trip test's own 300-patient population -- the auto-close firing
+for real, at population scale, not merely in the two named seeds
+above. Full evidence (both phases, the counter decision, the closing
+narrative) in `notes/adr/0107-injuries-arc-close.md`.
 
 **GMF coverage Wave D stage D3 payoff, second entry (2026-08-02,
 ADR-0029): the EIGHTH root entry, `total_joint_replacement.json`, and

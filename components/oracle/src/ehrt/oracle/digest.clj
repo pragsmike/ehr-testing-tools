@@ -524,6 +524,23 @@
                   :modules [seeded-closure] :module-assignment [{:module-id "veteran-substance-abuse-treatment" :weight 1}]
                   :module-horizon-days 36500})))
 
+(defn- injuries-pair
+  "Injuries arc close (2026-08-11, ADR-0107): FIRST BASELINE, not a
+  regression check -- this closure never completed a round trip before
+  this session (deferred WHOLE by ADR-0070, re-deferred narrower by
+  ADR-0106). 18250-day (50-year) horizon, NOT the 36500-day convention
+  most engine-layer roots use -- `broken_jaw.json`'s own `Wait for
+  Dental Visit` loop needs the SHORTER, census-matching horizon
+  (`ehrt.sim-emit-hl7.vendored-injuries-test`'s own dated note has the
+  full arithmetic: a 100-year horizon crosses the interpreter's
+  max-steps budget on this closure's own loop, a 50-year one does not)."
+  []
+  (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
+        closure (:payload (sim-trajectory/load-closure "injuries" (slurp (io/resource "sim/modules/injuries.json")) resolve-call-path))]
+    (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
+                  :modules [closure] :module-assignment [{:module-id "injuries" :weight 1}]
+                  :module-horizon-days 18250})))
+
 (def ^:private roots
   {"appendicitis"                       appendicitis-batch
    "sore-throat"                        sore-throat-batch
@@ -558,7 +575,8 @@
    "veteran-prostate-cancer"            veteran-prostate-cancer-pair
    "veteran-ptsd"                       veteran-ptsd-pair
    "veteran-self-harm"                  veteran-self-harm-pair
-   "veteran-substance-abuse-treatment"  veteran-substance-abuse-treatment-pair})
+   "veteran-substance-abuse-treatment"  veteran-substance-abuse-treatment-pair
+   "injuries"                           injuries-pair})
 
 (defn -main
   "Writes one <root>.edn per root into out-dir (pr-str of the batch or
