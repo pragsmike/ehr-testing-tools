@@ -249,6 +249,24 @@
 ;; SKILL.md) = 1482. Re-applying the standing formula (actual x1.15,
 ;; rounded up to the nearest 5): 1482 x 1.15 = 1704.3 -> 1705. Budget
 ;; moves 1470 -> 1705.
+;;
+;; Re-derivation (2026-08-11, simulator architecture doc, `notes/adr/
+;; 0108-simulator-architecture.md`): `:sim` gains a new `:paths` member,
+;; `docs/dev/simulator-architecture.md` (ADR-0108's own charter: any
+;; session prompt fencing sim-family src carries this doc in Read-first,
+;; so a sim task-class session reading this set cold must read it too).
+;; `AGENTS.md` also grew by 8 lines this session (the doc's own pointer
+;; sentence, landed in the same commit). `:sim`'s fresh actual (`wc -l`
+;; sum across all six `:paths`): 294 (AGENTS.md) + 47 (sim/interface.clj)
+;; + 85 (engine-onboarding.md) + 240 (components.md) + 187
+;; (build-session/SKILL.md) + 269 (simulator-architecture.md) = 1122.
+;; Re-applying the standing formula (actual x1.15, rounded up to the
+;; nearest 5): 1122 x 1.15 = 1290.3 -> 1295. Budget moves 970 -> 1295.
+;; No other set carries `docs/dev/simulator-architecture.md` or any
+;; other path this session's own fences touched besides `AGENTS.md`
+;; (also an `:onboarding` member, re-measured at this session's own
+;; close phase alongside that set's own roadmap/README churn), so no
+;; other set's budget moves here.
 
 {:onboarding
  {:paths ["AGENTS.md"
@@ -314,10 +332,15 @@
           "components/sim/src/ehrt/sim/interface.clj"
           "docs/dev/engine-onboarding.md"
           "docs/dev/components.md"
+          ;; the decide/evolve doctrine, the mutable-state census, and
+          ;; the palgebra reading of the whole sim pipeline -- ADR-0108's
+          ;; own standing channel practice: any session prompt fencing
+          ;; sim-family src carries this doc in Read-first
+          "docs/dev/simulator-architecture.md"
           ;; the checkpoint ceremony, applies regardless of task class
           ;; (migration session 5, AR-3)
           ".agents/skills/build-session/SKILL.md"]
-  :budget-lines 970}
+  :budget-lines 1295}
 
  ;; components/judge (verdict vocabulary) plus its three gate engines
  ;; (judge-v2-hapi, judge-fhir-official, judge-v2-nist, ADR-0011's per-engine

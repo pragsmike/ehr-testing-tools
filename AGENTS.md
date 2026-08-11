@@ -157,6 +157,16 @@ from `bin/oracle-src`, standing-equipment promotion, 2026-08-05,
 `notes/ADRs.md` promotion ADR AR-P-2 — no shipped project depends on
 it, `bin/regression-oracle`'s own per-worktree synthetic classpath is
 its only real caller).
+
+**Working on any of the seven `sim`/`sim-*` bricks above:** read
+[`docs/dev/simulator-architecture.md`](docs/dev/simulator-architecture.md)
+first — the decide/evolve doctrine, the mutable-state census (gated by
+`ehrt.docs-tooling.sim-purity-lint-test`), and the palgebra reading of
+the whole pipeline, an aid to understanding and a guardrail against
+feature work drifting from the established theory (`notes/ADRs.md`
+ADR-0108). Standing channel practice from this ADR: any session prompt
+fencing sim-family `src` carries this doc in its own Read-first list.
+
 **Bases:** `bases/cli` — thin CLI dispatch, `bin/ehrt` ("e-heart",
 `ehr` stays reserved for future payload-EHR tooling).
 **Projects:** `projects/ehrt-cli` composes every component and the
