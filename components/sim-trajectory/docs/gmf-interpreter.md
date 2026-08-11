@@ -758,6 +758,40 @@ divergence from anything ratified:
    (`open-encounter-index`'s own callers) — Wave H's own fold already
    proved it holds for every vendored closure; a violation is now a
    loud `AssertionError`, not a silent overwrite.
+
+   **Dated resolution (2026-08-11, `notes/ADRs.md` ADR-0107, option
+   (i), superseding this item's own closing sentence).** The loud
+   `AssertionError` above characterized every reopen over a stale open
+   as a genuinely new module shape needing a future session's own
+   ruling — ADR-0106 (2026-08-11) found a real, vendorable closure
+   authoring exactly that shape (`injuries.json`'s own
+   `Spinal_Injury_Treatment_Encounter`, reopening while
+   `ED_Visit_For_Spinal_Injury`'s own encounter is still open, no
+   `EncounterEnd` state between them) and, source-probed at the pin
+   against `State.java`'s own `Encounter.process`, found upstream
+   itself never throws on this pattern: when the SAME module holds an
+   unreleased encounter, upstream auto-closes it (`person.record.
+   encounterEnd`), releases the lock, then opens the new one, quietly.
+   This session executes that option: `step`'s own `:encounter` case no
+   longer asserts nil-open — when `open-encounter-index` is non-nil, it
+   synthesizes an implicit `:encounter-end` for the stale one first
+   (referencing it, the same `:references` citation shape A1's own real
+   close already uses; `:t` equal to the new encounter's own `:t`,
+   end-before-open, matching upstream's own same-instant auto-close
+   timing) before emitting the new `:encounter`, counted via a new
+   `:synthesized-encounter-ends` diagnostic mirroring `:suppressed-
+   encounter-ends`'s own zero-cost-countable precedent. The single-
+   in-flight-encounter invariant this section's own prose and `mark-
+   phase`'s own fold both still assume is now satisfied BY
+   CONSTRUCTION rather than merely by every vendored closure's own good
+   authoring — there is still never more than one encounter open at
+   once, the auto-close guarantees it, so `mark-phase` itself needed no
+   change. `wellness-wait-step`'s own SEPARATE nesting assert (§4/this
+   section's own R1) is UNCHANGED by this fix — a disclosed, narrower
+   scope decision, not an oversight: ADR-0106's own full-graph sweep
+   found the hazard only in the ordinary `:encounter` case dispatch,
+   and the design option ADR-0106 recorded and the author ruled on
+   names that one case specifically.
 4. **Virtual time is an interpreter-internal `epoch-day`
    (`java.time.LocalDate/toEpochDay`), not the engine's own seconds-
    from-run-start clock (ADR-0011).** M5a is engine-free by design (the

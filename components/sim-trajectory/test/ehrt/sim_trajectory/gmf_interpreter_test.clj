@@ -2861,23 +2861,51 @@
       (is (= 2 (count ends)))
       (is (= 0 (:references (first ends))) "close1 references open1, index 0")
       (is (= 2 (:references (second ends))) "close2 references open2, index 2 -- never open1 again")
-      (is (= 0 (:suppressed-encounter-ends result)) "both closes matched a real open -- nothing suppressed"))))
+      (is (= 0 (:suppressed-encounter-ends result)) "both closes matched a real open -- nothing suppressed")
+      (is (= 0 (:synthesized-encounter-ends result)) "every close here is authored, none synthesized"))))
 
-(deftest nested-encounter-asserts-rather-than-silently-nesting
-  (testing "the subset's own invariant (encounters never nest, Wave H's
-            own fold discipline) made loud: a SECOND :encounter reached
-            while one is still open throws, rather than silently
-            overwriting the tracked index"
+;; --- Auto-close fix (2026-08-11, notes/ADRs.md ADR-0107, option (i)):
+;; a SECOND :encounter reached while one is still open no longer throws
+;; -- it auto-closes the stale one first, upstream-faithful (State.java's
+;; own Encounter.process, same-module-reopen branch, ADR-0106's own
+;; source citation). This fixture is byte-identical to the pre-fix
+;; nesting-module above (`injuries.json`'s own Spinal_Injury_Treatment_
+;; Encounter reopen shape, ADR-0106) -- it throws pre-fix, completes
+;; post-fix with the synthesized end present and correctly cited. -------
+
+(deftest nested-encounter-auto-closes-the-stale-one-rather-than-throwing
+  (testing "open1 never gets its own authored :encounter-end -- open2
+            reopens over it. Post-fix: the walk completes, an implicit
+            :encounter-end for open1 lands in the trajectory
+            IMMEDIATELY before open2's own :encounter event, referencing
+            open1's own index, timestamped at open2's own :t (end-before-
+            open, not a separate tick) -- matching upstream's own quiet
+            auto-close rather than dropping open1's own content or
+            throwing on an authored pattern upstream itself tolerates"
     (let [nesting-module
           {:id "nesting-mod" :name "Nesting"
            :states {:initial {:type :initial :direct-transition :open1}
                     :open1 {:type :encounter :encounter-class :ambulatory :direct-transition :open2}
                     :open2 {:type :encounter :encounter-class :ambulatory :direct-transition :done}
                     :done {:type :terminal}}}
-          p (persona-at 1)]
-      (is (thrown? AssertionError
-                   (interp/run-module nesting-module (Random. 1) p
-                                       (interp/dob-epoch-day p) (+ (interp/dob-epoch-day p) 3650)))))))
+          p (persona-at 1)
+          result (interp/run-module nesting-module (Random. 1) p
+                                     (interp/dob-epoch-day p) (+ (interp/dob-epoch-day p) 3650))
+          trajectory (:trajectory result)
+          encounters (filterv #(= :encounter (:event %)) trajectory)
+          ends (filterv #(= :encounter-end (:event %)) trajectory)
+          open1-idx (.indexOf trajectory (first encounters))
+          open2-idx (.indexOf trajectory (second encounters))
+          end-idx (.indexOf trajectory (first ends))]
+      (is (= :terminal (:status result)) "the walk completes -- no throw")
+      (is (= 2 (count encounters)) "both :encounter states still emit their own event")
+      (is (= 1 (count ends)) "exactly one :encounter-end reaches the trajectory -- the synthesized close for open1")
+      (is (= open1-idx (:references (first ends))) "the synthesized end references open1's own index, not open2's")
+      (is (= (:t (second encounters)) (:t (first ends)))
+          "the synthesized end's own :t equals open2's own :t -- end-before-open at the SAME instant, State.java's own timing")
+      (is (= (dec open2-idx) end-idx) "the synthesized end sits IMMEDIATELY before open2's own event -- end strictly before open, adjacent")
+      (is (= 1 (:synthesized-encounter-ends result)) "the auto-close is countable, not merely absorbed")
+      (is (= 0 (:suppressed-encounter-ends result)) "no A5 no-op fired here -- this is the reopen arm, a different mechanism"))))
 
 ;; --- ADR-0105: run-submodule horizon-blindness, and max-steps counting
 ;; every step regardless of advance -- the two coupled halves of the

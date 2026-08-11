@@ -193,10 +193,20 @@
   `open-encounter-index` (below, retiring `index-of-last-open-
   encounter`) recomputes it by a pure fold over `ctx`'s own trajectory
   on demand, cheap at this project's own walk sizes and simpler than
-  keeping a second piece of derived state in sync."
+  keeping a second piece of derived state in sync.
+
+  Auto-close fix (2026-08-11, ADR-0107, option (i)): `:synthesized-
+  encounter-ends` counts `:encounter` case reopens over a stale open
+  encounter (`step`'s own `:encounter` case, below) -- each one mints an
+  implicit `:encounter-end`, upstream-faithful (`State.java`'s own
+  `Encounter.process`, same-module-reopen branch), never an error.
+  Threaded as a full-value passthrough exactly like `:suppressed-
+  encounter-ends` -- every outcome-constructing site in this namespace
+  carries it forward unchanged unless the `:encounter` case's own
+  auto-close arm bumps it."
   [persona]
   {:current :initial :t (dob-epoch-day persona) :attributes {} :persona persona :trajectory []
-   :vital-signs (baseline-vital-signs) :suppressed-encounter-ends 0})
+   :vital-signs (baseline-vital-signs) :suppressed-encounter-ends 0 :synthesized-encounter-ends 0})
 
 (defn- advance-date
   "epoch-day `t` advanced by `n` `unit`s -- day/week arithmetic is a plain
@@ -1171,6 +1181,7 @@
    :attributes (:attributes ctx)
    :vital-signs (:vital-signs ctx)
    :suppressed-encounter-ends (:suppressed-encounter-ends ctx)
+   :synthesized-encounter-ends (:synthesized-encounter-ends ctx)
    :advance advance
    :next (resolve-transition module-id ctx rng state tables)
    :terminal? false
@@ -1180,6 +1191,7 @@
   [ctx]
   {:events [] :attributes (:attributes ctx) :vital-signs (:vital-signs ctx)
    :suppressed-encounter-ends (:suppressed-encounter-ends ctx)
+   :synthesized-encounter-ends (:synthesized-encounter-ends ctx)
    :advance 0 :next nil :terminal? false :blocked? true})
 
 (defn- guard-step
@@ -1507,6 +1519,7 @@
                        (assoc :attributes (:attributes outcome))
                        (assoc :vital-signs (:vital-signs outcome))
                        (assoc :suppressed-encounter-ends (:suppressed-encounter-ends outcome))
+                       (assoc :synthesized-encounter-ends (:synthesized-encounter-ends outcome))
                        (update :trajectory into (:events outcome))
                        (update :t + (:advance outcome)))]
           (cond
@@ -1558,6 +1571,7 @@
                 :attributes (:attributes post-call-ctx)
                 :vital-signs (:vital-signs post-call-ctx)
                 :suppressed-encounter-ends (:suppressed-encounter-ends post-call-ctx)
+                :synthesized-encounter-ends (:synthesized-encounter-ends post-call-ctx)
                 :advance (- (:t post-call-ctx) (:t ctx))
                 :terminal? false
                 :blocked? false}]
@@ -1682,6 +1696,7 @@
         event (trajectory-event module-id (assoc ctx :t death-t) :death {:codes (death-cause-codes module-id ctx state)})]
     {:events [event] :attributes (:attributes ctx) :vital-signs (:vital-signs ctx)
      :suppressed-encounter-ends (:suppressed-encounter-ends ctx)
+     :synthesized-encounter-ends (:synthesized-encounter-ends ctx)
      :advance (- death-t (:t ctx))
      :next nil :terminal? true :blocked? false}))
 
@@ -1736,6 +1751,7 @@
     (case (:type state)
       :terminal {:events [] :attributes (:attributes ctx) :vital-signs (:vital-signs ctx)
                  :suppressed-encounter-ends (:suppressed-encounter-ends ctx)
+                 :synthesized-encounter-ends (:synthesized-encounter-ends ctx)
                  :advance 0 :next nil :terminal? true :blocked? false}
       :initial (pass-through-outcome module-id ctx rng state 0 [] tables)
       :simple (pass-through-outcome module-id ctx rng state 0 [] tables)
@@ -1815,16 +1831,37 @@
                                                                          :condition-onset (:condition-onset state))}
                                         tables)
       ;; EncounterEnd fix (2026-08-08, ADR-0082, R1/R2/R3, ADR-0081's own
-      ;; rulings executed): the assert is the brief's own "one in-flight
-      ;; encounter" invariant made loud (Wave H's own fold already
-      ;; proves it holds for every vendored closure; a violation here is
-      ;; a genuinely new module shape, not a scenario to route around
-      ;; silently).
+      ;; rulings executed); auto-close fix (2026-08-11, ADR-0107, option
+      ;; (i), ADR-0106's own upstream citation executed): "one in-flight
+      ;; encounter" is still the invariant (Wave H's own fold relies on
+      ;; it, `mark-phase` above), but a reopen over a stale open no
+      ;; longer throws -- it synthesizes an implicit `:encounter-end` for
+      ;; the stale one FIRST (referencing it, the same `:references`
+      ;; citation shape the real A1 `:encounter-end` arm below uses, `:t`
+      ;; equal to this NEW encounter's own `:t` since no time has
+      ;; advanced yet -- end-before-open, `State.java`'s own
+      ;; `Encounter.process` same-module-reopen branch, source-confirmed
+      ;; at the pin, ADR-0106), THEN emits the new encounter -- matching
+      ;; upstream's own real, quiet auto-close exactly rather than
+      ;; throwing on an authored pattern upstream itself tolerates
+      ;; (`injuries.json`'s own `Spinal_Injury_Treatment_Encounter`
+      ;; reopen, the ADR-0106 hazard this fix closes). The invariant
+      ;; still holds by construction -- there is still never more than
+      ;; one encounter open at once -- so `mark-phase`'s own single-
+      ;; open-phase fold needs no change: the synthesized end closes the
+      ;; stale phase before the new encounter's own event opens a fresh
+      ;; one, both events landing in `:events`, in that order.
       :encounter
-      (do (assert (nil? (open-encounter-index (:trajectory ctx)))
-                   "ehrt.sim-trajectory.gmf-interpreter: nested :encounter -- this project's GMF subset assumes encounters never nest (Wave H's own fold discipline, ADR-0042)")
-          (emit-and-advance module-id ctx rng state :encounter
-                             {:codes (:codes state) :encounter-class (:encounter-class state)} tables))
+      (if-let [open-idx (open-encounter-index (:trajectory ctx))]
+        (let [end-event (trajectory-event module-id ctx :encounter-end {:references open-idx})
+              ctx' (-> ctx
+                       (update :trajectory conj end-event)
+                       (update :synthesized-encounter-ends inc))
+              outcome (emit-and-advance module-id ctx' rng state :encounter
+                                         {:codes (:codes state) :encounter-class (:encounter-class state)} tables)]
+          (update outcome :events #(into [end-event] %)))
+        (emit-and-advance module-id ctx rng state :encounter
+                           {:codes (:codes state) :encounter-class (:encounter-class state)} tables))
       ;; A1 (open, ours): emit, referencing the TRACKED open index --
       ;; unchanged observable behavior for every module whose walks
       ;; never hit A5 below (every currently-vendored module but the
@@ -2014,6 +2051,7 @@
        (if (honest-absence? e)
          {:events [] :attributes (:attributes ctx) :vital-signs (:vital-signs ctx)
           :suppressed-encounter-ends (:suppressed-encounter-ends ctx)
+          :synthesized-encounter-ends (:synthesized-encounter-ends ctx)
           :advance 0 :next nil
           :terminal? false :blocked? false :walk-error (ex-data e)}
          (throw e))))))
@@ -2064,6 +2102,7 @@
                     (assoc :attributes (:attributes outcome))
                     (assoc :vital-signs (:vital-signs outcome))
                     (assoc :suppressed-encounter-ends (:suppressed-encounter-ends outcome))
+                    (assoc :synthesized-encounter-ends (:synthesized-encounter-ends outcome))
                     (update :trajectory into (:events outcome))
                     (update :t + (:advance outcome)))]
        (cond
@@ -2096,7 +2135,18 @@
   this project's own GMF subset, so one in-flight phase is always
   enough. Events outside any open encounter (before the first, between
   two, or after the last) fall back to their own raw phase, per AR-2's
-  own closing clause."
+  own closing clause.
+
+  Auto-close fix (2026-08-11, ADR-0107): the single-in-flight-phase
+  assumption above is now SATISFIED BY CONSTRUCTION, not merely by every
+  vendored closure's own good behavior -- `step`'s own `:encounter` case
+  synthesizes an implicit `:encounter-end` for a stale open before ever
+  emitting a reopening `:encounter`, so this fold never sees two
+  `:encounter` events in a row with no `:encounter-end` between them,
+  even for a module (`injuries.json`'s own `Spinal_Injury_Treatment_
+  Encounter`) that itself never authors the close. This function's own
+  body is unchanged by that fix -- the invariant it already assumed is
+  simply true more often now."
   [registration-t history? open-phase acc event]
   (let [pre-horizon? (< (:t event) registration-t)
         own-phase (if pre-horizon? :history :horizon)
@@ -2194,6 +2244,7 @@
                       (assoc :attributes (:attributes outcome))
                       (assoc :vital-signs (:vital-signs outcome))
                       (assoc :suppressed-encounter-ends (:suppressed-encounter-ends outcome))
+                      (assoc :synthesized-encounter-ends (:synthesized-encounter-ends outcome))
                       (assoc :open-encounter-phase open-encounter-phase')
                       (update :trajectory into marked-events)
                       (update :t + (:advance outcome)))]
