@@ -592,3 +592,31 @@ driving prompt, author-ruled 2026-08-10, executed 2026-08-11)
   governs, never the footnote-citation discipline ADR-0101/ADR-0102
   established for `docs/` proper. Nothing guide-side or user-path
   landed this session.
+
+## From ADR-0109 (latency realism: the second clock; ruled 2026-08-11)
+
+- **The seam ruling** [A, ruled 2026-08-11, author verbatim "I like a.
+  go."]: the design channel offered option (a) -- the second clock
+  lives in the emitter seam, `GT × LatencyParams → TimedWire`, keeping
+  ground truth pure -- against the extension point ADR-0108's own
+  section 5 already named. Executed as two pure functions in
+  `ehrt.sim-emit-hl7.emit-hl7` (`plan-latency`, `emit-wire`), a
+  `LatencyProfile` schema in `ehrt.sim-model.config`, and an optional
+  `:latency` opt threaded through `ehrt.sim.run` the same emit-only,
+  never-reaches-`engine/run` way `:site-profile` already is. Plain
+  `emit`'s own output stays byte-frozen (the oracle bracket and the
+  identity property test are the dual witnesses).
+- **The chartering direction, restated (standing since ADR-0107)**
+  [A]: *"lab results take time to come back, providers take time to
+  log things in the EHR... we need to supply [downstream receivers]
+  with such cases"* -- their handling is not this workspace's problem
+  to solve, per the same ruling's own next sentence, restated verbatim
+  in ADR-0107's own rulings entry.
+- **The field-audit classifications, this session's own** [C,
+  driving-prompt-directed, verify-then-act]: MSH-7 is message/transmit
+  time; EVN-2 is event/clinical time; every other HL7v2 clinical-time
+  candidate field this project's standard would name (PV1-44/45,
+  ORC-9, OBR-7, OBX-14) is simply not rendered by this project's
+  emitter at all, found by direct inspection of every segment
+  builder's own parameter list, recorded in `notes/adr/0109-*.md`'s
+  own audit table.
