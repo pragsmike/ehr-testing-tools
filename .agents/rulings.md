@@ -479,3 +479,20 @@ session's own driving prompt, author-ruled 2026-08-10, executed
   redesign arc's own charter — no scenario, config, module, or content
   change accompanies this entry; the design pass that turns this
   direction into a plan is a future session's own work.
+
+## From ADR-0104 (ed-tuesday scenario; rulings taken this session's own
+driving prompt, author-ruled 2026-08-10, executed 2026-08-11)
+
+- **"C-with-A-first," standing until B lands** [A, ruled 2026-08-10,
+  author verbatim "c."]: the ED-weighted redesign direction (above)
+  splits into A (a new sibling scenario, `demos/scenarios/
+  ed-tuesday/`, landed this session) and B (vendoring upstream's
+  injuries family, a separate future batch under the standing
+  vendoring ceremony) — A executes first, B stays open, anchored in
+  `.agents/plans/roadmap.md`'s own Next section until a future session
+  runs it.
+- **Sibling-not-revision** [C, flagged to the author 2026-08-10,
+  un-vetoed]: `ed-tuesday/` is a NEW scenario directory;
+  `busy-tuesday/config.edn` — a ruled artifact, AR-VB2-R — stays
+  untouched; each scenario's own README gains exactly one
+  cross-reference line naming the other as its contrast.

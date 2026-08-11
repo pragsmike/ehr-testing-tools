@@ -124,3 +124,4 @@ Files in this directory:
   * 2026-08-10-adr-footnotes.md
   * 2026-08-10-marker-only-footnotes.md
   * 2026-08-11-board-boundary-fix.md
+  * 2026-08-11-ed-tuesday-scenario.md

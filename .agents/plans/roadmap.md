@@ -15,8 +15,8 @@ per item; done items move to the bottom of their section with a date and sha.
   exception below).
 
 ## Next (backlog, no session scheduled)
-- **Busy-tuesday/ED scenario redesign — AWAITING DESIGN PASS.**
-  Anchored to the author's own 2026-08-10 ED-direction ruling
+- **Busy-tuesday/ED scenario redesign — "A" HALF LANDED, "B" STILL
+  OPEN.** Anchored to the author's own 2026-08-10 ED-direction ruling
   (`.agents/rulings.md`, "From ADR-0103"), verbatim: *"Maybe weight
   the patient population toward immediate, emergent conditions like
   trauma/injuries? This would simulate an actual ED, which is where a
@@ -27,8 +27,15 @@ per item; done items move to the bottom of their section with a date and sha.
   sparse message traffic — 68 messages, 200 patients, a ten-year
   horizon — most of it intake/follow-up unfolding over months, not a
   single busy shift; an ED-weighted mix would exercise `--board`'s own
-  cadence far harder. This row records the charter, not a plan — the
-  design channel frames the actual redesign next.
+  cadence far harder. The author's own 2026-08-10 "C-with-A-first"
+  ruling split this into two halves: **A landed 2026-08-11**
+  (`notes/adr/0104-ed-tuesday-scenario.md`) — a NEW sibling scenario,
+  `demos/scenarios/ed-tuesday/`, a day-scale scripted single ED shift;
+  `busy-tuesday/config.edn` stays untouched, the population-scale
+  contrast. **B remains open**: vendoring upstream Synthea's own
+  injuries family, a separate future batch under the standing
+  vendoring ceremony (`notes/ADRs.md` ADR-0070's own mechanics) — not
+  a design pass, routine vendoring intake once scheduled.
 - The lookup-column `time` gap (named in the schema-invalid family
   backlog since ADR-0039, still untouched — Wave I's own six
   mechanisms didn't cover it). Bulk vendoring (batched by closure
@@ -485,3 +492,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-10 — adr-footnotes — ADR-0101
 - 2026-08-10 — marker-only-footnotes — ADR-0102
 - 2026-08-11 — board-boundary-fix — ADR-0103
+- 2026-08-11 — ed-tuesday-scenario — ADR-0104
