@@ -75,3 +75,9 @@ years, not everyone arriving on one shift.
 above was produced under a boundary-cadence bug (ADR-0103) — the
 snapshot count is corrected here; the seed, config, and every other
 figure in this block are unchanged by the fix.
+
+**Contrast with [`../ed-tuesday/`](../ed-tuesday/README.md)** (ADR-0104,
+2026-08-11): this scenario is population-scale incidence, sparse and
+outpatient-only by design; ed-tuesday is a day-scale, scripted single
+ED shift with real admissions, transfers, and discharges driving
+visible inpatient census on a `--board`.

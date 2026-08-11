@@ -32,3 +32,9 @@ artifact.
   total-joint-replacement seed so that closure's own content lands
   without relying on its default attribute distribution. Vendoring
   batch 2's own rider (AR-VB2-R, `notes/ADRs.md` ADR-0071).
+- [`ed-tuesday/`](ed-tuesday/) — a scripted single ED shift: five
+  weighted admission/transfer/discharge pathways driving real
+  inpatient census, plus a thin ambulatory module tail. Day-scale
+  contrast to busy-tuesday's own population-scale incidence; the "A"
+  half of the ED-redesign arc the author's own 2026-08-10 direction
+  chartered (`notes/ADRs.md` ADR-0104, citing ADR-0103).

@@ -1,0 +1,128 @@
+;; demos/scenarios/ed-tuesday/config.edn -- ADR-0104, the "A" half of
+;; the author's 2026-08-10 "c." ruling (ADR-0103): a scripted single ED
+;; shift, weighted toward quick emergent presentations, contrasted
+;; against busy-tuesday's own population-scale, ambulatory-heavy mix
+;; (demos/scenarios/busy-tuesday/, ten-year horizon, sparse traffic).
+;;
+;; The :pathways pool below is genuinely weighted/RNG-drawn -- five
+;; scripted ED trajectories, weighted toward the fast/common end (see
+;; the per-entry comments; roughly the real-world admission fraction,
+;; ~15%, tuned by live-probe below). The ambulatory module tail is
+;; authored as a DISJOINT cohort instead of a second weighted pool:
+;; ADR-0104's own verification step (`ehrt.sim.run/
+;; incompatible-assignments`, `ehrt.sim-engine.engine/assign-pathway`/
+;; `assign-module`) found that a SECOND weighted `:module-assignment`
+;; pool would apply to every ordinal the ED pool doesn't explicitly
+;; cover -- an RNG-coincident double-assignment (an admission-bearing ED
+;; pathway AND a module drawn for the same patient) that the static
+;; incompatible-assignment check cannot see coming, since it only
+;; reports CERTAIN conflicts. `ModuleAssignment`'s own pool member has
+;; no "no module" option (ehrt.sim-trajectory.gmf/ModuleAssignment), so
+;; a weighted module pool always resolves every uncovered ordinal to
+;; SOME module -- there is no way to make it apply to only a minority of
+;; patients. The sanctioned shape instead lists the module-tail ordinals
+;; explicitly, in BOTH :pathways (an empty override -- the documented
+;; module-only-patient pattern, engine.clj's own `run` docstring) and
+;; :module-assignment (an explicit {:patient-ordinal :module-id}): every
+;; ordinal not named here falls through to the ED pool alone, and every
+;; named ordinal never draws from it -- conflict-free by construction,
+;; not merely undetected by the static check.
+;;
+;; :facility bumps ONLY the Emergency ward's surge capacity (6 -> 16)
+;; versus sim-model/default-facility: with 0 regular ED beds, every ED
+;; admission boards on surge immediately (the ladder's own "surge only
+;; when full" rule is trivially satisfied at 0 beds), so surge IS the
+;; ED's real capacity -- a believable "busy shift" needs more of it than
+;; the small-on-purpose default ships. Renal/Cardiology stay at the
+;; default 4 beds + 2 surge; this file's own README has the live-probed
+;; numbers this pacing (:arrival-gap, the dwell ranges below) was tuned
+;; against to hold without capacity exhaustion.
+;;
+;; :module-horizon-days 90 (~3 months) is short relative to
+;; busy-tuesday's 3650 (10 years), by this session's own instruction,
+;; but a disclosed finding rides along: at THIS thin a tail (8
+;; patients), the chosen quick modules (sore_throat/sinusitis/
+;; bronchitis/ear_infections) produced ZERO live encounters at every
+;; horizon actually tried (14, 90, and even 3650 days -- live-probed,
+;; not asserted) with this seed. The mechanism, read from sore_throat's
+;; own source (`components/sim/resources/sim/modules/sore_throat.json`,
+;; the `Potential_Infection` state): onset is a monthly-Delay-gated
+;; complex_transition at roughly 0.5-1% probability per month, so most
+;; of a patient's simulated history -- and most of any short forward
+;; window -- produces nothing at all; busy-tuesday's own README
+;; discloses the same low-incidence shape at population scale (68
+;; messages from 200 patients over 10 years). This tail is authored
+;; anyway, at low weight, per the driving prompt's own ask for one --
+;; see this scenario's own README for the actual witnessed number, not
+;; silently retuned to force a nonzero result.
+{:facility {:id :general-hospital
+            :wards [{:id :ed :name "Emergency" :beds 0 :surge-slots 16
+                     :surge-format "%s-H%02d" :class :ed}
+                    {:id :renal :name "Renal" :beds 4 :surge-slots 2
+                     :surge-format "%s-H%02d" :class :inpatient}
+                    {:id :cardiology :name "Cardiology" :beds 4 :surge-slots 2
+                     :surge-format "%s-H%02d" :class :inpatient}]}
+ :arrival-gap 30
+ :pathways [;; Walk-in, quick turnaround -- the ED's own bread and butter.
+            {:pathway {:name "ed-fast-track"
+                       :steps [{:type :admission :location "Emergency" :reason "Minor laceration"}
+                               {:type :delay :from 30 :to 90}
+                               {:type :discharge}]}
+             :weight 55}
+            ;; Worked up, one lab panel, then home.
+            {:pathway {:name "ed-observe-and-discharge"
+                       :steps [{:type :admission :location "Emergency" :reason "Chest pain, low risk"}
+                               {:type :delay :from 60 :to 120}
+                               {:type :order :profile :cbc}
+                               {:type :delay :from 60 :to 150}
+                               {:type :discharge}]}
+             :weight 30}
+            ;; Admitted, short inpatient dwell.
+            {:pathway {:name "ed-admit-renal"
+                       :steps [{:type :admission :location "Emergency" :reason "Acute kidney injury"}
+                               {:type :delay :from 45 :to 120}
+                               {:type :transfer :location "Renal"}
+                               {:type :delay :from 240 :to 960}
+                               {:type :discharge}]}
+             :weight 8}
+            {:pathway {:name "ed-admit-cardiology"
+                       :steps [{:type :admission :location "Emergency" :reason "Chest pain, high risk"}
+                               {:type :delay :from 45 :to 120}
+                               {:type :transfer :location "Cardiology"}
+                               {:type :delay :from 240 :to 960}
+                               {:type :discharge}]}
+             :weight 5}
+            ;; The rare, resource-heavy trauma case -- imaging in the ED,
+            ;; then admitted for the longest dwell in the pool.
+            {:pathway {:name "ed-trauma-imaging-admit"
+                       :steps [{:type :admission :location "Emergency" :reason "Multi-system trauma"}
+                               {:type :delay :from 30 :to 90}
+                               {:type :order :profile :cbc}
+                               {:type :delay :from 45 :to 90}
+                               {:type :transfer :location "Renal"}
+                               {:type :delay :from 480 :to 1440}
+                               {:type :discharge}]}
+             :weight 2}
+            ;; The ambulatory module tail -- disjoint from the ED pool
+            ;; above by explicit ordinal, per this file's own header
+            ;; comment. Empty pathway: the module's own compiled content
+            ;; is the whole of this patient's queue (engine.clj's own
+            ;; module-only-patient pattern).
+            {:patient-ordinal 6 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 18 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 30 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 42 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 54 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 66 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 78 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 90 :pathway {:name "module-only" :steps []}}]
+ :modules ["sore_throat" "sinusitis" "bronchitis" "ear_infections"]
+ :module-assignment [{:patient-ordinal 6 :module-id "sore_throat"}
+                      {:patient-ordinal 18 :module-id "sinusitis"}
+                      {:patient-ordinal 30 :module-id "bronchitis"}
+                      {:patient-ordinal 42 :module-id "ear_infections"}
+                      {:patient-ordinal 54 :module-id "sore_throat"}
+                      {:patient-ordinal 66 :module-id "sinusitis"}
+                      {:patient-ordinal 78 :module-id "bronchitis"}
+                      {:patient-ordinal 90 :module-id "ear_infections"}]
+ :module-horizon-days 90}
