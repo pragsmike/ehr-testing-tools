@@ -5,13 +5,13 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- Nothing in progress at this close (injuries arc close, ADR-0107,
-  2026-08-11 — the `nested :encounter` gap ADR-0106 characterized gets
-  the author's own ruling, option (i), auto-close on reopen,
-  upstream-faithful; on that fix's own green, the injuries closure
-  itself lands: `injuries.json`, `injuries/broken_jaw.json`, `snf/
-  skilled_nursing_facility.json`. The arc ADR-0070 opened is fully
-  closed; see the Next section's own B row for the full narrative).
+- Nothing in progress at this close (simulator architecture doc,
+  ADR-0108, 2026-08-11 — `docs/dev/simulator-architecture.md` lands,
+  made load-bearing by a co-landed purity lint
+  (`ehrt.docs-tooling.sim-purity-lint-test`) and wired into the agent
+  reading path; zero src change anywhere, pure identity across all 35
+  oracle roots. See the Next section's own downstream-latency-realism
+  row for the ratified sequence this doc is the first step of).
 
 ## Next (backlog, no session scheduled)
 - **Busy-tuesday/ED scenario redesign — "A" LANDED, "B" CLOSED
@@ -92,6 +92,27 @@ per item; done items move to the bottom of their section with a date and sha.
   here as the anchor for a FUTURE design pass (the design channel's own
   next session on this topic) -- no interpreter/emitter/engine change,
   no scenario change, lands from this ruling alone.
+
+  **The ratified sequence (2026-08-11, `notes/ADRs.md` ADR-0108,
+  author-ratified "Good sequence"):** (1) the simulator architecture
+  doc lands first (`docs/dev/simulator-architecture.md`, ADR-0108,
+  DONE 2026-08-11) -- names this extension point in one sentence
+  (section 5: an arrow `GT -> TimedWire` between `engine` and the
+  emitters), builds nothing; (2) THIS latency design pass is next,
+  unscheduled; (3) a guide-side treatment (`docs/`, user path) derives
+  from the architecture doc afterward, in the author's own queue, not
+  chartered to any session yet; (4) the tool-specific user guide
+  (distinct from the generic EHR Testing Guide, permanently out of
+  this workspace, `AGENTS.md`) stays DEFERRED under its own named
+  trigger, author verbatim (`.agents/rulings.md`, "From ADR-0108"):
+  *"I've been deferring creating the tool-specific user guide in tools
+  repo (distinct from EHR Testing Guide, which is more generic) until
+  things settled down and the tools were able to produce the realistic
+  traffic I need. That remains to be seen, but it's getting more likely
+  to verifiably happen soon."* Trigger (channel-proposed, un-vetoed):
+  the latency-realism arc landed PLUS one witnessed end-to-end demo of
+  latency-realistic traffic played into a downstream-receiver
+  stand-in.
 - The lookup-column `time` gap (named in the schema-invalid family
   backlog since ADR-0039, still untouched — Wave I's own six
   mechanisms didn't cover it). Bulk vendoring (batched by closure
@@ -565,3 +586,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-11 — interpreter-horizon-budget — ADR-0105
 - 2026-08-11 — injuries-b2-assessment — ADR-0106
 - 2026-08-11 — injuries-arc-close — ADR-0107
+- 2026-08-11 — simulator-architecture-doc — ADR-0108

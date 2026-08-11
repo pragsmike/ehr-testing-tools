@@ -558,3 +558,37 @@ driving prompt, author-ruled 2026-08-10, executed 2026-08-11)
   interpreter, emitter, engine, or scenario change accompanies this
   entry; `.agents/plans/roadmap.md`'s own new Next row is the
   anchor.
+
+## From ADR-0108 (simulator architecture doc, purity lint; ruled 2026-08-11)
+
+- **The chartering ruling** [A, ruled 2026-08-11, author verbatim]:
+  *"I want to document this architecture in the tools repo, as that's
+  where the implementation is. This is more of an aid to understanding
+  the design, as well as a guide for agents to avoid departing too much
+  from the established theory when adding features. We might include a
+  treatment in the guide as well."* Ratified: *"Good sequence."*
+  Executed as `docs/dev/simulator-architecture.md` (dev-docs, R34) plus
+  a co-landed purity lint (`ehrt.docs-tooling.sim-purity-lint-test`)
+  making its own state-isolation claim checkable, not merely asserted;
+  wired into the agent reading path (`AGENTS.md`, `.agents/reading-
+  sets.edn`'s own `:sim` set). The guide-side treatment is the
+  author's own future authorship, not this session's (the dev-docs
+  scope ruling, below).
+- **The user-guide deferral, standing** [A, ruled 2026-08-11, author
+  verbatim]: *"I've been deferring creating the tool-specific user
+  guide in tools repo (distinct from EHR Testing Guide, which is more
+  generic) until things settled down and the tools were able to
+  produce the realistic traffic I need. That remains to be seen, but
+  it's getting more likely to verifiably happen soon."* Trigger
+  (channel-proposed, un-vetoed): the latency-realism arc landed PLUS
+  one witnessed end-to-end demo of latency-realistic traffic played
+  into a downstream-receiver stand-in. Recorded in `.agents/plans/
+  roadmap.md`'s own downstream-latency-realism Next row, alongside the
+  full ratified sequence (architecture doc landed -> latency design
+  pass next -> guide treatment in the author's own queue -> user guide
+  deferred under this trigger).
+- **Dev-docs scope, standing** [C, this session's own driving prompt]:
+  the architecture doc is dev-docs (`docs/dev/`), not user path -- R34
+  governs, never the footnote-citation discipline ADR-0101/ADR-0102
+  established for `docs/` proper. Nothing guide-side or user-path
+  landed this session.

@@ -128,3 +128,4 @@ Files in this directory:
   * 2026-08-11-interpreter-horizon-budget.md
   * 2026-08-11-injuries-b2-assessment.md
   * 2026-08-11-injuries-arc-close.md
+  * 2026-08-11-simulator-architecture-doc.md
