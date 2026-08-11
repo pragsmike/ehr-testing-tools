@@ -232,6 +232,23 @@
 ;; three engine interfaces) + 85 + 240 + 187 (build-session/SKILL.md)
 ;; = 914. Re-applying the standing formula: 914 x 1.15 = 1051.1 ->
 ;; 1055. Budget moves 1040 -> 1055.
+;;
+;; Re-derivation (2026-08-11, injuries arc close, `notes/adr/
+;; 0107-injuries-arc-close.md`): `reading-set-budget-test` went red
+;; this session, `:onboarding` measured 1480 lines against its own
+;; 1470-line budget -- growth accumulated across every session since
+;; the conviction-arc-close re-derivation (ADR-0089, 2026-08-08)
+;; through this one (`roadmap.md`'s own Now/Done/Next churn,
+;; `prompts/README.md`/`session-records/README.md`'s own new entries
+;; each session appends), never re-baselined in between. No other set
+;; carries `roadmap.md` or any other `:onboarding`-only path, so no
+;; other budget below changes. `:onboarding`'s fresh actual (`wc -l`
+;; sum across all eight `:paths`, measured AFTER this session's own
+;; close-phase edits landed): 284 (AGENTS.md) + 52 + 60 + 182 + 130 +
+;; 33 (the five READMEs) + 554 (roadmap.md) + 187 (build-session/
+;; SKILL.md) = 1482. Re-applying the standing formula (actual x1.15,
+;; rounded up to the nearest 5): 1482 x 1.15 = 1704.3 -> 1705. Budget
+;; moves 1470 -> 1705.
 
 {:onboarding
  {:paths ["AGENTS.md"
@@ -254,7 +271,7 @@
   ;; because that's a different audience from "a cold task-class session",
   ;; and forcing every onboarding read to carry its cost would budget for an
   ;; activity most onboarding sessions never do (migration session 5, AR-3).
-  :budget-lines 1470}
+  :budget-lines 1705}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one

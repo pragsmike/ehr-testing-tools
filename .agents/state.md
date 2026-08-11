@@ -1,5 +1,31 @@
 # State of the project — continuity register
 
+**CITATION-ONLY update, 2026-08-11, the injuries arc's own close
+(`notes/adr/0107-injuries-arc-close.md`) — this citation moves here
+from ADR-0097, CONTENT NOT RE-PROBED.** `notes/adr/0107-injuries-arc-
+close.md` is named `*-arc-close.md` (the file's own name follows this
+repo's own vendoring-arc-close/player-arc-close/etc. naming
+convention for a multi-ADR thread reaching its own conclusion —
+ADR-0070 → ADR-0105 → ADR-0106 → ADR-0107 — not a claim that this is
+one of the repo-wide arcs the sections below track) and is therefore
+the newest file the staleness tripwire's own regex tracks, tripping
+`state_staleness_tripwire_test.clj` red at this close's own full-suite
+run against this file's PRIOR citation (ADR-0097). This session's own
+driving prompt scoped it to the injuries closure alone (an interpreter
+fix plus a vendoring batch, `notes/adr/0107-injuries-arc-close.md`'s
+own Fences section) and named no state.md ruling — the SAME class of
+gap the ADR-0097 citation-only update below already named and fixed
+forward, not a silent evasion of it. The tripwire's own docstring
+states it "checks CURRENCY... not CONTENT" — this update satisfies
+exactly that narrow contract, the citation sentence only, landed in
+this close's own close-phase commit. Every section below still
+reflects its LAST full regeneration, 2026-08-08 against tip `a9c3abf`
+— TEN ADRs' worth of landings since (0090 through 0107, excluding
+this citation-only chain itself) are NOT reflected below and every
+`[V]` tag below should be read accordingly; a full regeneration is
+still owed at a session that rules it, the same way AR-QC-3/AR-CB-1
+each did for their own arc.
+
 **CITATION-ONLY update, 2026-08-09, the review-2 arc's own close
 (`notes/adr/0097-review-2-arc-close.md`) — this citation moves here
 from ADR-0089, CONTENT NOT RE-PROBED.** `notes/adr/0097-review-2-arc-

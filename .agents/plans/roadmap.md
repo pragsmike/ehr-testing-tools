@@ -5,19 +5,17 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- Nothing in progress at this close (vendoring batch 4, ADR-0090,
-  2026-08-08 — the veteran family gated fresh at the pin; five
-  content-producing modules landed (lung cancer, prostate cancer,
-  ptsd, self harm, substance abuse treatment), four assessed and NOT
-  vendored — two zero-substance, one a real population-scale
-  invariant violation (hyperlipidemia), one a real interpreter
-  max-steps exhaustion (mdd), both named under their true invariant/
-  exception below).
+- Nothing in progress at this close (injuries arc close, ADR-0107,
+  2026-08-11 — the `nested :encounter` gap ADR-0106 characterized gets
+  the author's own ruling, option (i), auto-close on reopen,
+  upstream-faithful; on that fix's own green, the injuries closure
+  itself lands: `injuries.json`, `injuries/broken_jaw.json`, `snf/
+  skilled_nursing_facility.json`. The arc ADR-0070 opened is fully
+  closed; see the Next section's own B row for the full narrative).
 
 ## Next (backlog, no session scheduled)
-- **Busy-tuesday/ED scenario redesign — "A" LANDED, "B" SPLIT INTO B1
-  (LANDED) + B2 (ASSESSED 2026-08-11, RE-ANCHORED on a nested-encounter
-  blocker — see below).** Anchored to the author's own
+- **Busy-tuesday/ED scenario redesign — "A" LANDED, "B" CLOSED
+  (B1 + B2 + B3, all landed 2026-08-11).** Anchored to the author's own
   2026-08-10 ED-direction ruling (`.agents/rulings.md`, "From
   ADR-0103"), verbatim: *"Maybe weight the patient population toward
   immediate, emergent conditions like trauma/injuries? This would
@@ -60,15 +58,40 @@ per item; done items move to the bottom of their section with a date and sha.
   second `Encounter` state before closing its first — at 2/120
   well-mixed seeds (direct interpreter) and on a full 300-patient
   `engine/run`, uncaught, at the round-trip test's own standard
-  parameters. Nothing vendored; the closure stays deferred, RE-
-  ANCHORED on this new blocker (`injuries.json` itself never had its
+  parameters. Nothing vendored; the closure stayed deferred,
+  RE-ANCHORED on this new blocker (`injuries.json` itself never had its
   own dedicated Deferred row below — only this Next-section B row and
   other modules' own Deferred rows cited its max-steps finding as
-  precedent; that finding is now closed, ADR-0105, and this row is the
-  anchor per AR-RL2-3). Revisit trigger: a future session ruling on
-  and implementing one of ADR-0106's own four named design options
-  (auto-close on reopen, an encounter stack, a suppressed-open
-  counter, or module-level exclusion).
+  precedent; that finding was already closed, ADR-0105, and this row
+  was the anchor per AR-RL2-3).
+
+  **B3 CLOSED 2026-08-11** (`notes/adr/0107-injuries-arc-close.md`,
+  the author's own verbatim "Let's do (i)" ruling): ADR-0106's option
+  (i), auto-close on reopen matching upstream exactly, landed in
+  `gmf-interpreter.clj`'s own `:encounter` case — a reopen over a
+  stale open now synthesizes an implicit `:encounter-end` for it
+  first, upstream-faithful, rather than throwing. ON ITS GREEN, the
+  injuries batch itself landed under the standing vendoring ceremony:
+  `injuries.json`, `injuries/broken_jaw.json`, `snf/
+  skilled_nursing_facility.json` (the 3 genuinely new closure members,
+  5 already vendored from prior batches, re-verified byte-identical).
+  This entire row's own arc (ADR-0070 deferral → ADR-0105 max-steps fix
+  → ADR-0106 nested-encounter characterization → ADR-0107 fix and
+  landing) is now FULLY CLOSED — no revisit trigger remains for this
+  closure.
+- **Downstream-latency realism -- AWAITING DESIGN PASS, nothing
+  executed yet.** New chartering direction, author verbatim,
+  2026-08-11 (`.agents/rulings.md`, "From ADR-0107"): *"I want to make
+  sure that the simulation faithfully simulates what happens in real
+  life: lab results take time to come back, providers take time to log
+  things in the EHR, etc. so it's possible that a downstream receiver
+  of the HL7 traffic will have incomplete encounter records for some
+  time. That's not our problem to solve, but in order to test that
+  such downstream receivers handle it properly (whatever that might
+  mean for them) we need to supply them with such cases."* Recorded
+  here as the anchor for a FUTURE design pass (the design channel's own
+  next session on this topic) -- no interpreter/emitter/engine change,
+  no scenario change, lands from this ruling alone.
 - The lookup-column `time` gap (named in the schema-invalid family
   backlog since ADR-0039, still untouched — Wave I's own six
   mechanisms didn't cover it). Bulk vendoring (batched by closure
@@ -528,3 +551,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-11 — ed-tuesday-scenario — ADR-0104
 - 2026-08-11 — interpreter-horizon-budget — ADR-0105
 - 2026-08-11 — injuries-b2-assessment — ADR-0106
+- 2026-08-11 — injuries-arc-close — ADR-0107
