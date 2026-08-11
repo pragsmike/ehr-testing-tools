@@ -2790,6 +2790,63 @@
     (is (not-any? #(clojure.string/includes? % "ADT^A0") @printed)
         "the ticker's own compact line never rendered")))
 
+;; ---- ADR-0103: the boundary grid catches up arithmetically past a
+;; stream-time jump, instead of lagging behind it (the pre-fix bug:
+;; advancing next-boundary-ms by exactly one span per render leaves it
+;; arbitrarily far behind after a jump, so every subsequent message --
+;; even one sharing the SAME board window as the message that just
+;; rendered -- also satisfies >= boundary and renders a duplicate). ----
+
+(deftest play-command-board-boundary-catches-up-past-a-stream-time-jump-test
+  (let [messages [(board-message "20260801000000" "A01" "1" "Alpha" "A" :class "I" :ward "W1" :bed "1")
+                  (board-message "20260806000000" "A01" "2" "Beta" "B" :class "I" :ward "W1" :bed "2")
+                  (board-message "20260806000030" "A01" "3" "Gamma" "C" :class "I" :ward "W1" :bed "3")]
+        printed (atom [])
+        r (cli/play-command {:path (temp-file-with-content (clojure.string/join "\n\n" messages))
+                              :rate 1e15 :board 60
+                              :sleep-fn (fn [_ms] nil)
+                              :println-fn (fn [s] (swap! printed conj s))})
+        rendered (clojure.string/join "\n" @printed)
+        snapshot-ts (map second (re-seq #"-- board snapshot: (\S+) --" rendered))]
+    (is (result/ok? r))
+    (is (= 2 (:snapshot-count (:payload r)))
+        "message 2 (5 days after message 1) crosses one boundary and renders; message 3, 30 stream-seconds later, sits in the SAME 60-minute board window and must not render again -- only the unconditional final snapshot follows it")
+    (is (= 2 (count snapshot-ts)))
+    (is (apply distinct? snapshot-ts)
+        "no duplicate, identical-timestamp snapshot pair -- the pre-fix bug's own observed shape")))
+
+(deftest play-command-board-grid-invariant-multiple-windows-with-gaps-and-multi-message-windows-test
+  (let [messages [(board-message "20260201000000" "A01" "1" "Alpha" "A" :class "I" :ward "W1" :bed "1")
+                  (board-message "20260201001000" "A01" "2" "Beta" "B" :class "I" :ward "W1" :bed "2")
+                  (board-message "20260201003500" "A01" "3" "Gamma" "C" :class "I" :ward "W1" :bed "3")
+                  (board-message "20260201021000" "A01" "4" "Delta" "D" :class "I" :ward "W1" :bed "4")
+                  (board-message "20260201022000" "A01" "5" "Epsilon" "E" :class "I" :ward "W1" :bed "5")
+                  (board-message "20260201022500" "A01" "6" "Zeta" "F" :class "I" :ward "W1" :bed "6")]
+        printed (atom [])
+        r (cli/play-command {:path (temp-file-with-content (clojure.string/join "\n\n" messages))
+                              :rate 1e15 :board 30
+                              :sleep-fn (fn [_ms] nil)
+                              :println-fn (fn [s] (swap! printed conj s))})
+        rendered (clojure.string/join "\n" @printed)
+        snapshot-ts (map second (re-seq #"-- board snapshot: (\S+) --" rendered))]
+    (is (result/ok? r))
+    (is (= 3 (:snapshot-count (:payload r)))
+        "occupied windows: [0,30) (msgs 1-2, anchor, renders when window [30,60) is entered), [30,60) (msg 3, one render); [60,90) and [90,120) are EMPTY (no messages, no snapshot); [120,150) (msgs 4-6, one render at msg 4, msgs 5/6 stay in the same window); plus one unconditional final snapshot")
+    (is (= 3 (count snapshot-ts)))
+    (is (apply distinct? snapshot-ts)
+        "each of the three snapshots renders at a distinct instant -- no same-window duplicate")))
+
+(deftest play-command-board-boundary-computed-arithmetically-across-a-years-long-gap-test
+  (let [messages [(board-message "20260101000000" "A01" "1" "Alpha" "A" :class "I" :ward "W1" :bed "1")
+                  (board-message "20360101000000" "A01" "2" "Beta" "B" :class "I" :ward "W1" :bed "2")]
+        r (cli/play-command {:path (temp-file-with-content (clojure.string/join "\n\n" messages))
+                              :rate 1e15 :board 60
+                              :sleep-fn (fn [_ms] nil)
+                              :println-fn (fn [_s] nil)})]
+    (is (result/ok? r))
+    (is (= 2 (:snapshot-count (:payload r)))
+        "a 10-year jump crosses exactly one boundary and lands one unconditional final snapshot, same shape as a small jump -- next-boundary-ms is computed as first-ts + k*span for the smallest k with a subtraction and a division, never by looping span-at-a-time across the gap (construction, not timing, is the proof -- see ADR-0103)")))
+
 ;; ---- sim event-log input adapter (ADR-0100): a single .edn file,
 ;; recognized by extension in play's own dispatch -- a vector of
 ;; ground-truth event maps (ehrt.sim-trajectory.compile-trajectory's

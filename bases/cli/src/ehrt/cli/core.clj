@@ -1404,16 +1404,24 @@
   (the accumulator held unchanged) with a cue through the same
   println-fn the ticker itself would use -- board IS the display, so
   the cue prints inline, never routed to stderr (the cue rule,
-  ADR-0014). A snapshot renders the first time a message's own
-  timestamp crosses each successive board-minutes boundary measured
-  from the first parseable timestamp; a message with no parseable
-  timestamp neither advances that anchor nor crosses a boundary (the
-  same lenient posture the pacer itself takes). Returns {:sink-fn
-  :cue-fn :finalize-fn :snapshot-count-fn :unfolded-count-fn} --
-  play-command calls `finalize-fn` once after `run-plan!` completes (an
-  unconditional final snapshot at the last timestamp seen, regardless
-  of boundary position), then reads the two *-count-fn calls for the
-  result envelope."
+  ADR-0014).
+
+  The boundary invariant (ADR-0103): boundaries live on a grid at
+  `first-ts + k*span`. At most one snapshot renders per grid window
+  that contains messages, rendered at the first message at or after
+  each crossed boundary; a message with no parseable timestamp
+  neither advances the anchor nor crosses a boundary (the pacer's own
+  lenient posture). After rendering at `ts`, the next boundary is the
+  smallest grid point strictly greater than `ts`, computed
+  arithmetically (`first-ts + span * (1 + floor((ts - first-ts) /
+  span))`) -- never by looping span-at-a-time, so an arbitrarily large
+  stream-time jump (an idle-skip) costs one division, not one
+  iteration per crossed span. Empty windows inside a gap render
+  nothing. Returns {:sink-fn :cue-fn :finalize-fn :snapshot-count-fn
+  :unfolded-count-fn} -- play-command calls `finalize-fn` once after
+  `run-plan!` completes (an unconditional final snapshot at the last
+  timestamp seen, regardless of boundary position), then reads the
+  two *-count-fn calls for the result envelope."
   [board-minutes println-fn]
   (let [acc-atom (atom {})
         first-ts (atom nil)
@@ -1425,6 +1433,9 @@
         render! (fn [ts]
                   (println-fn (board/board-render-snapshot @acc-atom ts))
                   (swap! snapshot-count inc))
+        next-boundary-after (fn [ts]
+                               (+ @first-ts (* boundary-span-ms
+                                                (inc (quot (- ts @first-ts) boundary-span-ms)))))
         maybe-snapshot! (fn [ts]
                           (when ts
                             (reset! last-ts ts)
@@ -1433,7 +1444,7 @@
                                   (reset! next-boundary-ms (+ ts boundary-span-ms)))
                               (when (>= ts @next-boundary-ms)
                                 (render! ts)
-                                (swap! next-boundary-ms + boundary-span-ms)))))]
+                                (reset! next-boundary-ms (next-boundary-after ts))))))]
     {:cue-fn (fn [_idx] (println-fn "-- idle-skip: stream-time jumped --"))
      :sink-fn (fn [event]
                 (let [{:keys [acc unfolded?]} (board/board-fold-event @acc-atom event)]

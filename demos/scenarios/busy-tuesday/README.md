@@ -54,16 +54,24 @@ climbing as the ten-year horizon plays out — e.g.:
 inpatients: 0  active outpatients: 2  discharged: 0  merged: 0
 ```
 
-The run's own closing summary: `{:snapshot-count 68, :skip-count 41,
-:rate 100000.0, :idle-cap-ms 5000, :wallclock-ms 218598, :stream-span-ms
-279155640000, :clamped-count 0, :emitted 68}` — every one of the 68
-messages rendered a snapshot (no coalescing at this `--board` width),
-41 of the 68 inter-message waits exceeded `--idle-cap`'s default 5
-seconds and were skipped rather than actually waited out (`-- idle-skip:
-stream-time jumped --`, printed immediately before the snapshot each
-time), and total wallclock time for the full ten-year stream was
-~3m39s. A denser population or a larger `--rate` shortens that; this
-scenario's own module mix and five-minute arrival gap, at 200 patients,
-is genuinely this sparse in message traffic — most of a "busy Tuesday"
-in this scenario's own patient population unfolds as intake and
-follow-up over months and years, not everyone arriving on one shift.
+The run's own closing summary: `{:unparseable-count 0, :snapshot-count
+48, :skip-count 41, :rate 100000.0, :idle-cap-ms 5000, :wallclock-ms
+218555, :stream-span-ms 279155640000, :clamped-count 0, :emitted 68,
+:unfolded-count 0, :sink "ticker"}` — 48 of the 68 messages rendered a
+snapshot; the other 20 landed in a board window a prior message had
+already opened (the same 60-minute grid cell, no coalescing beyond
+that — ADR-0103's boundary-catch-up fix). 41 of the 68 inter-message
+waits exceeded `--idle-cap`'s default 5 seconds and were skipped rather
+than actually waited out (`-- idle-skip: stream-time jumped --`,
+printed immediately before the snapshot each time), and total wallclock
+time for the full ten-year stream was ~3m39s. A denser population or a
+larger `--rate` shortens that; this scenario's own module mix and
+five-minute arrival gap, at 200 patients, is genuinely this sparse in
+message traffic — most of a "busy Tuesday" in this scenario's own
+patient population unfolds as intake and follow-up over months and
+years, not everyone arriving on one shift.
+
+**Re-witnessed 2026-08-11 (ADR-0103):** the original 68-of-68 figure
+above was produced under a boundary-cadence bug (ADR-0103) — the
+snapshot count is corrected here; the seed, config, and every other
+figure in this block are unchanged by the fix.

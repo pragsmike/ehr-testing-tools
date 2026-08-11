@@ -97,7 +97,7 @@ plainest default pathway — cheap, long-running, proves the judge still
 runs clean over the simplest traffic) and a **full-capability**
 baseline (a wider, deliberately-scoped reference corpus exercising the
 current breadth of message types). Neither supersedes the other.
-Register: `notes/ADRs.md`[^tools-adr-0013]/[^tools-adr-0015] (tools' pre-merge
+Register: the design record[^tools-adr-0013]/[^tools-adr-0015] (tools' pre-merge
 sequence, `notes/tools/ADRs.md`).
 
 **Boarding.** *In real hospitals:* holding an admitted patient in the
@@ -405,7 +405,7 @@ ICU care of a deceased donor before organ recovery — the reason
 even a payer change. See
 [`clinical-realities.md`](../components/sim/docs/clinical-realities.md).
 
-**Pack.** Retired mechanism (`notes/ADRs.md`[^tools-adr-0006]-era, tools'
+**Pack.** Retired mechanism (the design record[^tools-adr-0006]-era, tools'
 pre-merge sequence) — a single text file concatenating tracked files
 for a non-git chat surface. Not part of this workspace's own ritual;
 see `AUTHORS-GUIDE.md` §2 for why.
