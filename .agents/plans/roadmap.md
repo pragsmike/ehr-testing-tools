@@ -15,6 +15,20 @@ per item; done items move to the bottom of their section with a date and sha.
   exception below).
 
 ## Next (backlog, no session scheduled)
+- **Busy-tuesday/ED scenario redesign — AWAITING DESIGN PASS.**
+  Anchored to the author's own 2026-08-10 ED-direction ruling
+  (`.agents/rulings.md`, "From ADR-0103"), verbatim: *"Maybe weight
+  the patient population toward immediate, emergent conditions like
+  trauma/injuries? This would simulate an actual ED, which is where a
+  lot of the activity and churn would happen."* Chartering context
+  from `notes/adr/0103-board-boundary-catchup.md`: the busy-tuesday
+  scenario's own current module mix (twelve everyday-ambulatory/acute
+  modules, weighted toward milder complaints) produces genuinely
+  sparse message traffic — 68 messages, 200 patients, a ten-year
+  horizon — most of it intake/follow-up unfolding over months, not a
+  single busy shift; an ED-weighted mix would exercise `--board`'s own
+  cadence far harder. This row records the charter, not a plan — the
+  design channel frames the actual redesign next.
 - The lookup-column `time` gap (named in the schema-invalid family
   backlog since ADR-0039, still untouched — Wave I's own six
   mechanisms didn't cover it). Bulk vendoring (batched by closure
@@ -470,3 +484,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-10 — sim-event-log-adapter — ADR-0100
 - 2026-08-10 — adr-footnotes — ADR-0101
 - 2026-08-10 — marker-only-footnotes — ADR-0102
+- 2026-08-11 — board-boundary-fix — ADR-0103

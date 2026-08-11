@@ -461,3 +461,21 @@ driving prompt, author-ruled 2026-08-10, the session's own day)
   it actually names, under a distinctly-named marker
   (`[^sim-adr-NNNN]`/`[^tools-adr-NNNN]`) so it never collides with a
   same-numbered current-workspace record's own marker.
+
+## From ADR-0103 (board boundary catch-up; rulings taken this
+session's own driving prompt, author-ruled 2026-08-10, executed
+2026-08-11)
+
+- **Bugfix now, redesign later** [A, ruled 2026-08-10, author verbatim
+  "c."] — choosing both: this session executes the `--board` cadence
+  bugfix only; the busy-tuesday/ED scenario redesign is chartered as
+  its own, separate, not-yet-opened arc (see the ED-direction ruling,
+  below, and `.agents/plans/roadmap.md`'s own Next row).
+- **ED-weighted redesign direction, chartering context only, NOT
+  executed** [A, ruled 2026-08-10, author verbatim]: *"Maybe weight
+  the patient population toward immediate, emergent conditions like
+  trauma/injuries? This would simulate an actual ED, which is where a
+  lot of the activity and churn would happen."* Recorded here as the
+  redesign arc's own charter — no scenario, config, module, or content
+  change accompanies this entry; the design pass that turns this
+  direction into a plan is a future session's own work.
