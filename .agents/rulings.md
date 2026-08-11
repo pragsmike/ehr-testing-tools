@@ -509,3 +509,25 @@ driving prompt, author-ruled 2026-08-10, executed 2026-08-11)
   NOTICE rows, NO oracle-root additions, NO module content anywhere —
   `.agents/plans/roadmap.md`'s own B row records B2 as open, not
   scheduled.
+
+## From ADR-0106 (injuries B2 assessment; ruled 2026-08-11)
+
+- **The widened, assessment-first charter** [A, ruled 2026-08-11,
+  author verbatim "b"]: B2 (the injuries vendoring batch itself)
+  ATTEMPTS the batch under the standing vendoring ceremony, but if the
+  known pre-existing `nested :encounter` gap (ADR-0105's own finding,
+  2/120 well-mixed seeds, unaffected by that session's own fix) fires
+  at the round-trip gate, the session's own deliverable BECOMES the
+  full characterization of that gap (root cause, upstream semantics,
+  measured rate, design options with blast radius, no recommendation
+  required) under the ADR-0070 bail-out precedent, and NOTHING is
+  vendored. Either outcome — a landed batch or a full characterization
+  — is a successful session; this ruling licenses both branches in
+  advance, not only the one that actually fired. It fired: the fresh
+  gate found the assert tripping at both probe layers (2/120 direct
+  interpreter, and a full 300-patient `engine/run` throwing uncaught),
+  matching this session's own pre-stated ~99.4%-likely arithmetic; the
+  characterization landed in `notes/adr/0106-injuries-b2-assessment.
+  md`, nothing vendored, `injuries.json` remains deferred, re-anchored
+  on the nested-encounter blocker with a new revisit trigger (a future
+  session ruling on one of the four named design options).

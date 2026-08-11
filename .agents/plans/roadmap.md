@@ -16,7 +16,8 @@ per item; done items move to the bottom of their section with a date and sha.
 
 ## Next (backlog, no session scheduled)
 - **Busy-tuesday/ED scenario redesign — "A" LANDED, "B" SPLIT INTO B1
-  (LANDED) + B2 (OPEN, now unblocked).** Anchored to the author's own
+  (LANDED) + B2 (ASSESSED 2026-08-11, RE-ANCHORED on a nested-encounter
+  blocker — see below).** Anchored to the author's own
   2026-08-10 ED-direction ruling (`.agents/rulings.md`, "From
   ADR-0103"), verbatim: *"Maybe weight the patient population toward
   immediate, emergent conditions like trauma/injuries? This would
@@ -50,12 +51,24 @@ per item; done items move to the bottom of their section with a date and sha.
   `max-steps` runaway budget now counts only zero-time-advance steps
   (a second, coupled gap the same ADR's own arithmetic found: even a
   horizon-bounded LEGAL loop could trip the old every-step count on
-  volume alone). **B2 (the injuries vendoring batch itself) is now
-  UNBLOCKED, still not scheduled**: vendoring upstream Synthea's own
-  injuries family under the standing vendoring ceremony (`notes/
-  ADRs.md` ADR-0070's own mechanics), a real vendoring session once
-  scheduled — B1's own fix removes the gap that forced ADR-0070 to
-  defer it whole.
+  volume alone). **B2 (the injuries vendoring batch itself) ran
+  2026-08-11 under a WIDENED, assessment-first charter** (`notes/adr/
+  0106-injuries-b2-assessment.md`, the author's own "b" ruling): the
+  fresh gate found ADR-0105's own fix complete (0/120 max-steps
+  failures) but a SEPARATE, pre-existing `nested :encounter` assert
+  still fires — `injuries.json`'s own `Spinal_Injury` branch opens a
+  second `Encounter` state before closing its first — at 2/120
+  well-mixed seeds (direct interpreter) and on a full 300-patient
+  `engine/run`, uncaught, at the round-trip test's own standard
+  parameters. Nothing vendored; the closure stays deferred, RE-
+  ANCHORED on this new blocker (`injuries.json` itself never had its
+  own dedicated Deferred row below — only this Next-section B row and
+  other modules' own Deferred rows cited its max-steps finding as
+  precedent; that finding is now closed, ADR-0105, and this row is the
+  anchor per AR-RL2-3). Revisit trigger: a future session ruling on
+  and implementing one of ADR-0106's own four named design options
+  (auto-close on reopen, an encounter stack, a suppressed-open
+  counter, or module-level exclusion).
 - The lookup-column `time` gap (named in the schema-invalid family
   backlog since ADR-0039, still untouched — Wave I's own six
   mechanisms didn't cover it). Bulk vendoring (batched by closure
@@ -513,3 +526,5 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-10 — marker-only-footnotes — ADR-0102
 - 2026-08-11 — board-boundary-fix — ADR-0103
 - 2026-08-11 — ed-tuesday-scenario — ADR-0104
+- 2026-08-11 — interpreter-horizon-budget — ADR-0105
+- 2026-08-11 — injuries-b2-assessment — ADR-0106

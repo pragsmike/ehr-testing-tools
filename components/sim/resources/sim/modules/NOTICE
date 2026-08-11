@@ -456,6 +456,48 @@ detecting an attribute-gated self-transition pair that never clears its
 own gate) -- tracked as a roadmap Deferred row, `.agents/plans/
 roadmap.md`.
 
+**Dated amendment (2026-08-11, ADR-0105/ADR-0106): the max-steps leg
+CLOSES, a SEPARATE nested-encounter leg becomes the sole named
+blocker.** ADR-0105 (B1 of a two-session injuries arc) fixed the
+`max-steps`/horizon defect this entry names above -- `run-submodule`
+now respects the horizon, `max-steps` now counts only zero-advance
+steps -- closing this leg completely (0 of 120 well-mixed-seed walks
+throw `run-submodule exceeded max-steps` post-fix, at this entry's own
+probe parameters). ADR-0106 (B2) then re-gated the closure fresh and
+found the max-steps fix's own real-content probe surfaced a SEPARATE,
+pre-existing `ehrt.sim-trajectory.gmf-interpreter` gap, unaffected by
+the B1 fix: `injuries.json`'s own `Spinal_Injury` branch opens
+`ED_Visit_For_Spinal_Injury` (`Encounter`, emergency) and never closes
+it with an `EncounterEnd` before later opening `Spinal_Injury_
+Treatment_Encounter` (`Encounter`, ambulatory) on the SAME walk,
+tripping `step`'s own `nested :encounter` assert (`gmf_interpreter.clj`
+~1823, ADR-0082's own "one in-flight encounter" invariant made loud).
+Measured 2 of 120 well-mixed-seed walks at the direct-interpreter
+layer (mixer-seed 20260803, failing seeds `-576131918266266247`/
+`-5690589783821964774`) AND a full 300-patient `engine/run` throwing
+UNCAUGHT (no per-patient isolation at the engine layer, unlike the
+census's own `walk-one`) at the round-trip test's own standard
+parameters (seed 20260802, 300 patients, 36500-day horizon) --
+matching this closure's own ~99.4%-likely-to-fire arithmetic at
+population scale. ADR-0106's own closure-re-enumeration ALSO corrected
+this entry's own already-vendored count: `dme/wheelchair.json` (named
+above as one of the four genuinely NEW members) is actually a FIFTH
+already-vendored member -- it landed 2026-08-07 via `osteoarthritis.
+json`'s own closure in vendoring batch 2 (ADR-0071), the same day as
+this entry's own ADR-0070 but a later session, so ADR-0070's own
+count could not have known it. The closure's true current
+disposition: **5 already vendored** (the four above plus `dme/
+wheelchair.json`), **3 genuinely new** (`injuries.json` itself,
+`injuries/broken_jaw.json`, `snf/skilled_nursing_facility.json`).
+`injuries.json` and its 3 new closure members remain NOT vendored --
+still no NOTICE row, no test, no oracle root. Full characterization
+(the assert site, the exact module states, upstream Synthea's own
+real semantics for the identical authored pattern, four named design
+options with blast radius, no recommendation) in `notes/adr/
+0106-injuries-b2-assessment.md`. Revisit trigger: a future session
+ruling on and implementing one of ADR-0106's own four named design
+options.
+
 **GMF coverage Wave D stage D3 payoff, second entry (2026-08-02,
 ADR-0029): the EIGHTH root entry, `total_joint_replacement.json`, and
 this directory's THIRD closure (four files).** Deferred at Wave D stage
