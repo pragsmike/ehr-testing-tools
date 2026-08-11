@@ -496,3 +496,16 @@ driving prompt, author-ruled 2026-08-10, executed 2026-08-11)
   `busy-tuesday/config.edn` — a ruled artifact, AR-VB2-R — stays
   untouched; each scenario's own README gains exactly one
   cross-reference line naming the other as its contrast.
+
+## From ADR-0105 (interpreter horizon/budget fix; ruled 2026-08-11)
+
+- **The two-session plan** [A, ruled 2026-08-11, author verbatim
+  "yes"]: the injuries-batch prerequisite ADR-0070 named (a future
+  session willing to extend `gmf-interpreter`'s own runaway-loop
+  handling) splits into two sessions — **B1**, this session, the
+  interpreter fix itself (`run-submodule` horizon-awareness plus the
+  zero-advance-only runaway budget), and **B2**, a later session, the
+  injuries vendoring batch B1 unblocks. B1 lands NO vendoring, NO
+  NOTICE rows, NO oracle-root additions, NO module content anywhere —
+  `.agents/plans/roadmap.md`'s own B row records B2 as open, not
+  scheduled.

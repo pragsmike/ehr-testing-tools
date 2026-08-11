@@ -15,27 +15,47 @@ per item; done items move to the bottom of their section with a date and sha.
   exception below).
 
 ## Next (backlog, no session scheduled)
-- **Busy-tuesday/ED scenario redesign — "A" HALF LANDED, "B" STILL
-  OPEN.** Anchored to the author's own 2026-08-10 ED-direction ruling
-  (`.agents/rulings.md`, "From ADR-0103"), verbatim: *"Maybe weight
-  the patient population toward immediate, emergent conditions like
-  trauma/injuries? This would simulate an actual ED, which is where a
-  lot of the activity and churn would happen."* Chartering context
-  from `notes/adr/0103-board-boundary-catchup.md`: the busy-tuesday
-  scenario's own current module mix (twelve everyday-ambulatory/acute
-  modules, weighted toward milder complaints) produces genuinely
-  sparse message traffic — 68 messages, 200 patients, a ten-year
-  horizon — most of it intake/follow-up unfolding over months, not a
-  single busy shift; an ED-weighted mix would exercise `--board`'s own
-  cadence far harder. The author's own 2026-08-10 "C-with-A-first"
-  ruling split this into two halves: **A landed 2026-08-11**
-  (`notes/adr/0104-ed-tuesday-scenario.md`) — a NEW sibling scenario,
-  `demos/scenarios/ed-tuesday/`, a day-scale scripted single ED shift;
-  `busy-tuesday/config.edn` stays untouched, the population-scale
-  contrast. **B remains open**: vendoring upstream Synthea's own
-  injuries family, a separate future batch under the standing
-  vendoring ceremony (`notes/ADRs.md` ADR-0070's own mechanics) — not
-  a design pass, routine vendoring intake once scheduled.
+- **Busy-tuesday/ED scenario redesign — "A" LANDED, "B" SPLIT INTO B1
+  (LANDED) + B2 (OPEN, now unblocked).** Anchored to the author's own
+  2026-08-10 ED-direction ruling (`.agents/rulings.md`, "From
+  ADR-0103"), verbatim: *"Maybe weight the patient population toward
+  immediate, emergent conditions like trauma/injuries? This would
+  simulate an actual ED, which is where a lot of the activity and
+  churn would happen."* Chartering context from `notes/adr/0103-board-
+  boundary-catchup.md`: the busy-tuesday scenario's own current module
+  mix (twelve everyday-ambulatory/acute modules, weighted toward
+  milder complaints) produces genuinely sparse message traffic — 68
+  messages, 200 patients, a ten-year horizon — most of it
+  intake/follow-up unfolding over months, not a single busy shift; an
+  ED-weighted mix would exercise `--board`'s own cadence far harder.
+  The author's own 2026-08-10 "C-with-A-first" ruling split this into
+  two halves: **A landed 2026-08-11** (`notes/adr/0104-ed-tuesday-
+  scenario.md`) — a NEW sibling scenario, `demos/scenarios/
+  ed-tuesday/`, a day-scale scripted single ED shift; `busy-tuesday/
+  config.edn` stays untouched, the population-scale contrast.
+  **Correction (2026-08-11, `notes/adr/0105-interpreter-horizon-
+  budget.md`): this row's own prior "B" text mis-characterized what B
+  actually required.** It named B "a separate future batch under the
+  standing vendoring ceremony... not a design pass, routine vendoring
+  intake once scheduled" — but B's own cited mechanics, `notes/ADRs.md`
+  ADR-0070, had already deferred `injuries.json` WHOLE on a real
+  `gmf-interpreter` gap (`run-submodule` never receiving `horizon-
+  end-t`, tripping `max-steps` at every horizon tried), naming its own
+  revisit trigger as "a future session willing to extend gmf-
+  interpreter's own runaway-loop handling" — an interpreter fix, not
+  routine intake, was always B's own real prerequisite. **B1 (the
+  interpreter fix) landed 2026-08-11** (`notes/adr/0105-interpreter-
+  horizon-budget.md`): `run-submodule` now respects `horizon-end-t`
+  the same way `run-module`'s own top-level loop does, and the
+  `max-steps` runaway budget now counts only zero-time-advance steps
+  (a second, coupled gap the same ADR's own arithmetic found: even a
+  horizon-bounded LEGAL loop could trip the old every-step count on
+  volume alone). **B2 (the injuries vendoring batch itself) is now
+  UNBLOCKED, still not scheduled**: vendoring upstream Synthea's own
+  injuries family under the standing vendoring ceremony (`notes/
+  ADRs.md` ADR-0070's own mechanics), a real vendoring session once
+  scheduled — B1's own fix removes the gap that forced ADR-0070 to
+  defer it whole.
 - The lookup-column `time` gap (named in the schema-invalid family
   backlog since ADR-0039, still untouched — Wave I's own six
   mechanisms didn't cover it). Bulk vendoring (batched by closure
