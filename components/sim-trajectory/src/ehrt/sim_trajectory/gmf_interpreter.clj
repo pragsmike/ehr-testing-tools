@@ -1418,12 +1418,36 @@
 
 (def ^:private max-steps
   "A runaway-loop backstop, not a design limit: a real v1 module always
-  terminates or blocks in far fewer steps than this. Exceeding it means a
-  module authoring bug (a zero-time-advance transition cycle), a
-  programmer error this project's own conventions reserve exceptions
-  for -- never a result-not-throw outcome, since no legitimate module
-  should ever reach it."
+  terminates or blocks in far fewer ZERO-TIME-ADVANCE steps than this.
+  Exceeding it means a module authoring bug (a zero-time-advance
+  transition cycle), a programmer error this project's own conventions
+  reserve exceptions for -- never a result-not-throw outcome, since no
+  legitimate module should ever reach it.
+
+  ADR-0105 fix (2026-08-11): the budget counts ONLY steps whose own
+  `:advance` is zero -- a step that genuinely moves the module clock
+  forward does not consume it. Before this fix, EVERY step counted
+  regardless of advance, so a LEGAL time-advancing loop (e.g. a 1-7-day
+  Delay paired with a zero-advance re-check, `injuries/broken_jaw.
+  json`'s own Dental Referral shape, ADR-0070's own bail-out finding)
+  could trip this backstop purely by iterating enough times within a
+  long horizon, with no bug present -- `max-steps`'s own name and this
+  docstring's own prior wording already promised 'a zero-time-advance
+  transition cycle' as the target; the implementation now matches that
+  promise instead of merely aspiring to it."
   10000)
+
+(defn- consume-step-budget
+  "ADR-0105: `n`, the runaway-loop step counter every `max-steps`-
+  policed loop in this namespace threads through its own `recur` --
+  incremented only when `outcome`'s own `:advance` is zero (this is the
+  budget `max-steps` polices, per that var's own docstring), left
+  unchanged on any step that genuinely moves the module clock forward.
+  One shared rule, three call sites (`walk-module`/`run-submodule`/
+  `run-module`) -- see `max-steps`'s own docstring for the arithmetic
+  this fixes."
+  ^long [^long n outcome]
+  (if (zero? (long (:advance outcome))) (inc n) n))
 
 (def ^:private max-call-depth
   "D3's own defensive runtime call-depth invariant -- a real v1 closure
@@ -1451,28 +1475,47 @@
   this session -- throws, loudly, rather than silently mishandling a
   resume-across-a-call mechanism this interpreter does not have yet
   (ns docstring's own note; neither vendored Wave B closure exercises
-  this path)."
-  [modules tables ^Random rng ctx callee-module call-stack]
+  this path).
+
+  ADR-0105 fix (2026-08-11): `horizon-end-t` (optional, an epoch-day)
+  is now threaded in from `run-module`'s own call chain and re-checked
+  before EVERY step, mirroring `run-module`'s own top-of-loop check
+  exactly (`run-module`'s own docstring) -- previously this loop never
+  received it at all (horizon-BLIND, ADR-0070's own bail-out finding: a
+  time-advancing Delay loop inside a submodule iterated past the
+  horizon forever, tripping `max-steps` at ANY horizon). Crossing the
+  horizon here ends the WHOLE WALK in the SAME `:status :horizon-
+  complete` truncation the top-level Delay-overshoot path uses --
+  'parking past the horizon ends the walk in the same status Delay
+  uses' (`wellness-wait-step`'s own docstring, the mirror-site
+  contract this fix keeps) -- never a silent per-submodule status the
+  caller would have to notice and translate; `call-submodule-step`
+  (below) propagates it straight up to `run-module`'s own loop."
+  [modules tables ^Random rng ctx callee-module call-stack horizon-end-t]
   (when (> (count call-stack) max-call-depth)
     (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: CallSubmodule call depth exceeded max-call-depth -- likely a bug (a static-acyclicity gap gmf/load-closure's own D3 check should have caught)"
                      {:call-stack call-stack})))
   (loop [callee-ctx (assoc ctx :current :initial :call-stack call-stack) n 0]
-    (when (>= n max-steps)
-      (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: run-submodule exceeded max-steps -- likely a module authoring bug (a zero-time-advance transition cycle)"
-                       {:call-stack call-stack :current (:current callee-ctx)})))
-    (let [outcome (step callee-module rng callee-ctx modules tables)
-          ctx' (-> callee-ctx
-                   (assoc :attributes (:attributes outcome))
-                   (assoc :vital-signs (:vital-signs outcome))
-                   (assoc :suppressed-encounter-ends (:suppressed-encounter-ends outcome))
-                   (update :trajectory into (:events outcome))
-                   (update :t + (:advance outcome)))]
-      (cond
-        (:terminal? outcome) (assoc ctx' :status :terminal)
-        (:blocked? outcome)
-        (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: a called submodule blocked on a Guard -- no resume-across-a-call mechanism this session (Wave B's own disclosed scope limitation, ADR-0027)"
-                         {:call-stack call-stack :current (:current ctx')}))
-        :else (recur (assoc ctx' :current (:next outcome)) (inc n))))))
+    (if (and horizon-end-t (>= (:t callee-ctx) horizon-end-t))
+      (assoc callee-ctx :status :horizon-complete)
+      (do
+        (when (>= n max-steps)
+          (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: run-submodule exceeded max-steps -- likely a module authoring bug (a zero-time-advance transition cycle)"
+                           {:call-stack call-stack :current (:current callee-ctx)})))
+        (let [outcome (step callee-module rng callee-ctx modules tables horizon-end-t)
+              ctx' (-> callee-ctx
+                       (assoc :attributes (:attributes outcome))
+                       (assoc :vital-signs (:vital-signs outcome))
+                       (assoc :suppressed-encounter-ends (:suppressed-encounter-ends outcome))
+                       (update :trajectory into (:events outcome))
+                       (update :t + (:advance outcome)))]
+          (cond
+            (:horizon-complete? outcome) (assoc ctx' :status :horizon-complete)
+            (:terminal? outcome) (assoc ctx' :status :terminal)
+            (:blocked? outcome)
+            (throw (ex-info "ehrt.sim-trajectory.gmf-interpreter: a called submodule blocked on a Guard -- no resume-across-a-call mechanism this session (Wave B's own disclosed scope limitation, ADR-0027)"
+                             {:call-stack call-stack :current (:current ctx')}))
+            :else (recur (assoc ctx' :current (:next outcome)) (consume-step-budget n outcome))))))))
 
 (defn- call-submodule-step
   "The CallSubmodule state's own `step` handling: looks up `modules`
@@ -1486,8 +1529,21 @@
   load-closure`'s own all-or-nothing gate should already have rejected
   a closure with a missing call-path) -- a programmer-error throw, not
   a result-not-throw outcome, the same disposition `evaluate-condition`
-  already establishes for a genuinely unsupported condition type."
-  [modules tables module-id ctx ^Random rng state]
+  already establishes for a genuinely unsupported condition type.
+
+  ADR-0105 fix (2026-08-11): `horizon-end-t` threads straight through
+  to `run-submodule` (consulted only there). When the callee's own walk
+  parks on the horizon (`run-submodule`'s own `:status :horizon-
+  complete`), the caller's own transition is NEVER resolved -- the
+  events the callee emitted before parking still land (`new-events`,
+  unchanged), but this outcome carries `:horizon-complete? true` and
+  `:next nil` instead, which `run-module`'s own loop (the only caller
+  that ever supplies a non-nil `horizon-end-t`) recognizes and ends the
+  WHOLE walk on, the same `:status :horizon-complete` a top-level Delay
+  overshoot produces -- never resolving `state`'s own post-call
+  transition against a ctx whose clock has already run past the
+  horizon."
+  [modules tables module-id ctx ^Random rng state horizon-end-t]
   (let [callee-id (:submodule state)
         callee-module (get modules callee-id)]
     (when (nil? callee-module)
@@ -1495,17 +1551,19 @@
                        {:call-path callee-id :caller module-id})))
     (let [call-stack (conj (or (:call-stack ctx) [(or (:root ctx) module-id)]) callee-id)
           pre-call-trajectory-count (count (:trajectory ctx))
-          result (run-submodule modules tables rng ctx callee-module call-stack)
+          result (run-submodule modules tables rng ctx callee-module call-stack horizon-end-t)
           new-events (vec (drop pre-call-trajectory-count (:trajectory result)))
-          post-call-ctx (assoc result :call-stack (:call-stack ctx))]
-      {:events new-events
-       :attributes (:attributes post-call-ctx)
-       :vital-signs (:vital-signs post-call-ctx)
-       :suppressed-encounter-ends (:suppressed-encounter-ends post-call-ctx)
-       :advance (- (:t post-call-ctx) (:t ctx))
-       :next (resolve-transition module-id post-call-ctx rng state tables)
-       :terminal? false
-       :blocked? false})))
+          post-call-ctx (assoc result :call-stack (:call-stack ctx))
+          base {:events new-events
+                :attributes (:attributes post-call-ctx)
+                :vital-signs (:vital-signs post-call-ctx)
+                :suppressed-encounter-ends (:suppressed-encounter-ends post-call-ctx)
+                :advance (- (:t post-call-ctx) (:t ctx))
+                :terminal? false
+                :blocked? false}]
+      (if (= :horizon-complete (:status result))
+        (assoc base :next nil :horizon-complete? true)
+        (assoc base :next (resolve-transition module-id post-call-ctx rng state tables))))))
 
 (defn- wellness-wait-step
   "GMF coverage Wave G (2026-08-03, ADR-0037 AR-3): advances the module
@@ -1660,10 +1718,19 @@
   `:distributed-transition`/`:complex-transition` already can. Defaults
   to `{}` (no tables available) at every existing arity -- zero
   behavior change for every state type and every pre-D3 call site,
-  none of which ever declare a `lookup_table_transition`."
-  ([module rng ctx] (step module rng ctx {(:id module) module} {}))
-  ([module rng ctx modules] (step module rng ctx modules {}))
-  ([module rng ctx modules tables]
+  none of which ever declare a `lookup_table_transition`.
+
+  ADR-0105 fix (2026-08-11): the optional 6th argument, `horizon-end-t`
+  (an epoch-day, `run-module`'s own shape), is consulted ONLY by the
+  `:call-submodule` case, threaded straight through to `call-
+  submodule-step` -- `run-submodule`'s own horizon-awareness fix.
+  Defaults to `nil` (no horizon) at every existing arity -- zero
+  behavior change for `walk-module` and every pre-ADR-0105 call site,
+  none of which ever pass one."
+  ([module rng ctx] (step module rng ctx {(:id module) module} {} nil))
+  ([module rng ctx modules] (step module rng ctx modules {} nil))
+  ([module rng ctx modules tables] (step module rng ctx modules tables nil))
+  ([module rng ctx modules tables horizon-end-t]
    (let [module-id (:id module)
          state (get-in module [:states (:current ctx)])]
     (case (:type state)
@@ -1824,7 +1891,7 @@
       ;; GMF coverage Wave B (D1-D4): CallSubmodule's own handling is
       ;; `call-submodule-step`, above -- it needs `modules`/`tables`
       ;; (this arity's own 4th/5th arguments), the ONE case that does.
-      :call-submodule (call-submodule-step modules tables module-id ctx rng state)
+      :call-submodule (call-submodule-step modules tables module-id ctx rng state horizon-end-t)
       ;; GMF coverage Wave C (2026-08-02, ADR-0028, C1/C2): Death's own
       ;; time resolution reuses `resolve-time-advance` unchanged --
       ;; :range/:exact are the SAME shape :delay/:procedure duration
@@ -1939,16 +2006,17 @@
   (::honest-absence (ex-data e)))
 
 (defn- step-safely
-  [module rng ctx modules tables]
-  (try
-    (step module rng ctx modules tables)
-    (catch clojure.lang.ExceptionInfo e
-      (if (honest-absence? e)
-        {:events [] :attributes (:attributes ctx) :vital-signs (:vital-signs ctx)
-         :suppressed-encounter-ends (:suppressed-encounter-ends ctx)
-         :advance 0 :next nil
-         :terminal? false :blocked? false :walk-error (ex-data e)}
-        (throw e)))))
+  ([module rng ctx modules tables] (step-safely module rng ctx modules tables nil))
+  ([module rng ctx modules tables horizon-end-t]
+   (try
+     (step module rng ctx modules tables horizon-end-t)
+     (catch clojure.lang.ExceptionInfo e
+       (if (honest-absence? e)
+         {:events [] :attributes (:attributes ctx) :vital-signs (:vital-signs ctx)
+          :suppressed-encounter-ends (:suppressed-encounter-ends ctx)
+          :advance 0 :next nil
+          :terminal? false :blocked? false :walk-error (ex-data e)}
+         (throw e))))))
 
 ;; --- walk-module: drives `step` from :initial to Terminal or blocked ------
 
@@ -2002,7 +2070,7 @@
          (:walk-error outcome) (assoc ctx' :status :walk-error :walk-error (:walk-error outcome))
          (:terminal? outcome) (assoc ctx' :status :terminal)
          (:blocked? outcome) (assoc ctx' :status :blocked)
-         :else (recur (assoc ctx' :current (:next outcome)) (inc n)))))))
+         :else (recur (assoc ctx' :current (:next outcome)) (consume-step-budget n outcome)))))))
 
 ;; --- run-module: the history/horizon two-phase run (Task 3, docs/gmf-
 ;; interpreter.md section 3) -------------------------------------------------
@@ -2117,7 +2185,7 @@
                         {:module (:id module) :current (:current ctx)})))
      (if (and horizon-end-t (>= (:t ctx) horizon-end-t))
        (assoc ctx :status :horizon-complete)
-       (let [outcome (step-safely module rng ctx modules tables)
+       (let [outcome (step-safely module rng ctx modules tables horizon-end-t)
              [open-encounter-phase' marked-events]
              (reduce (fn [[open-phase acc] event] (mark-phase registration-t history? open-phase acc event))
                      [(:open-encounter-phase ctx) []]
@@ -2131,6 +2199,11 @@
                       (update :t + (:advance outcome)))]
          (cond
            (:walk-error outcome) (assoc ctx' :status :walk-error :walk-error (:walk-error outcome))
+           ;; ADR-0105: a called submodule's own walk crossed the horizon
+           ;; (run-submodule's own horizon-awareness fix) -- end the WHOLE
+           ;; walk here, the SAME :status :horizon-complete a top-level
+           ;; Delay overshoot produces (call-submodule-step's own docstring).
+           (:horizon-complete? outcome) (assoc ctx' :status :horizon-complete)
            (:terminal? outcome) (assoc ctx' :status :terminal)
            (:blocked? outcome) (assoc ctx' :status :blocked)
-           :else (recur (assoc ctx' :current (:next outcome)) (inc n))))))))
+           :else (recur (assoc ctx' :current (:next outcome)) (consume-step-budget n outcome))))))))

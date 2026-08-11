@@ -873,6 +873,31 @@ itself (Task 3):
    reach Terminal or block. Recorded here so a future module vendored
    without this same property doesn't silently reproduce the risk.
 
+   **Dated note (2026-08-11, ADR-0105): this finding's own "MUST supply
+   a bounded `horizon-end-t`" requirement had a gap `run-module`'s own
+   bound never actually covered.** `run-submodule` (the `CallSubmodule`
+   descend-run-return loop) never received `horizon-end-t` at all — a
+   time-advancing loop inside a CALLED submodule (not the root walk
+   this finding's own prose describes) iterated past the horizon
+   forever regardless of what bound the caller supplied, tripping
+   `max-steps` at ANY horizon (`injuries/broken_jaw.json`'s own Dental
+   Referral cycle, ADR-0070's own bail-out finding — the injuries batch
+   deferred whole pending exactly this fix). Fixed: `run-submodule` now
+   re-checks `:t` against `horizon-end-t` before every step, mirroring
+   `run-module`'s own top-of-loop check exactly, and a walk crossing
+   the horizon inside a submodule now ends in the SAME `:status
+   :horizon-complete` truncation the top-level Delay-overshoot path
+   uses (`ehrt.sim-trajectory.gmf-interpreter/call-submodule-step`'s
+   own docstring has the propagation mechanics). A SECOND, coupled gap
+   closed in the same fix: `max-steps` counted EVERY step regardless of
+   whether it advanced module time, so even a horizon-BOUNDED,
+   perfectly legal time-advancing loop (a small per-cycle Delay
+   repeated enough times to cross a long horizon) could trip the
+   10000-step backstop on volume alone, no bug present — the budget now
+   counts only ZERO-time-advance steps, the class `max-steps`'s own
+   docstring already named as its target. Both halves, reds, and the
+   oracle-identity bracket: `notes/ADRs.md` ADR-0105.
+
 6. **`ConditionEnd` can reference its own onset via `referenced_by_attribute`
    rather than a direct `condition_onset` state citation — harmless to
    the interpreter's own control flow, but leaves CompileTrajectory's own

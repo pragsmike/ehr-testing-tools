@@ -2878,3 +2878,138 @@
       (is (thrown? AssertionError
                    (interp/run-module nesting-module (Random. 1) p
                                        (interp/dob-epoch-day p) (+ (interp/dob-epoch-day p) 3650)))))))
+
+;; --- ADR-0105: run-submodule horizon-blindness, and max-steps counting
+;; every step regardless of advance -- the two coupled halves of the
+;; ADR-0070 injuries.json bail-out, reproduced hermetically (test-local
+;; fixtures, never under resources/sim/modules, never NOTICE'd). -------
+
+(def dental-referral-callee-module
+  "Mirrors injuries/broken_jaw.json's own Dental Referral shape (ADR-
+  0070's own bail-out finding, byte-confirmed against the pinned
+  synthea checkout): SetAttribute once, then a Delay<->conditional-
+  check cycle gated on that attribute staying set -- no state anywhere
+  in this closure ever clears it, so the cycle runs forever unless
+  something outside it stops the walk."
+  {:id "dental-callee" :name "DentalCallee"
+   :states {:initial {:type :initial :direct-transition :refer}
+            :refer {:type :set-attribute :attribute "referral" :value true :direct-transition :wait}
+            :wait {:type :delay :exact {:quantity 1 :unit "days"} :direct-transition :check}
+            :check {:type :simple
+                    :conditional-transition [{:condition {:condition-type :attribute :attribute "referral" :operator "is not nil"}
+                                               :transition :wait}
+                                              {:transition :done}]}
+            :done {:type :terminal}}})
+
+(def dental-referral-caller-module
+  {:id "dental-caller" :name "DentalCaller"
+   :states {:initial {:type :initial :direct-transition :call}
+            :call {:type :call-submodule :submodule "dental-callee" :direct-transition :after}
+            :after {:type :terminal}}})
+
+(def dental-referral-closure
+  {"dental-caller" dental-referral-caller-module "dental-callee" dental-referral-callee-module})
+
+(deftest run-submodule-respects-a-small-horizon-instead-of-running-to-max-steps
+  (testing "ADR-0105 fix, half 1: a walk crossing the horizon INSIDE a
+            submodule must park with :status :horizon-complete, the
+            SAME truncation status the top-level Delay-overshoot path
+            uses -- never throw. PRE-FIX (red): run-submodule never
+            receives horizon-end-t (ns docstring's own note), so this
+            SMALL horizon (30 days) does not stop the loop, which runs
+            until max-steps trips instead -- the SAME exception ADR-
+            0070 found at every horizon it tried (36500/18250/3650, all
+            threw identically: horizon-invariant, because the horizon
+            was never consulted at all)"
+    (let [p (persona-at 1)
+          dob (interp/dob-epoch-day p)
+          horizon-end-t (+ dob 30)
+          result (interp/run-module dental-referral-caller-module (Random. 1) p dob horizon-end-t
+                                     dental-referral-closure)]
+      (is (= :horizon-complete (:status result))))))
+
+(def perpetual-recheck-module
+  "A LEGAL, non-buggy, time-advancing loop -- a 1-day Delay paired with
+  a zero-advance re-check, forever (real long-running follow-up
+  schedules take exactly this shape, `components/sim/resources/sim/
+  modules/NOTICE`'s own veteran_mdd.json finding). Never terminates on
+  its own; only the horizon stops it -- exactly the class max-steps's
+  own docstring says must NOT trip ('a real v1 module always
+  terminates or blocks... [max-steps polices] a zero-time-advance
+  transition cycle')."
+  {:id "recheck-mod" :name "Recheck"
+   :states {:initial {:type :initial :direct-transition :wait}
+            :wait {:type :delay :exact {:quantity 1 :unit "days"} :direct-transition :check}
+            :check {:type :simple :direct-transition :wait}}})
+
+(deftest max-steps-counts-only-zero-advance-steps-a-legal-loop-reaches-horizon-complete
+  (testing "ADR-0105 fix, half 2, the counting arithmetic: max-steps
+            (10000) must count only ZERO-time-advance steps, not every
+            step -- this loop's own 1-day-delay/re-check cycle needs
+            ~12000 total steps to cross a 6000-day (~16-year) horizon,
+            but only ~6001 of those are zero-advance (the re-checks),
+            comfortably under budget. PRE-FIX (red): max-steps counts
+            EVERY step regardless of advance, so this purely legal loop
+            trips the backstop at n=10000 (~5000 days elapsed, well
+            short of the 6000-day horizon) even though the horizon
+            check itself is working correctly and nothing about this
+            loop is a bug"
+    (let [p (persona-at 1)
+          dob (interp/dob-epoch-day p)
+          horizon-end-t (+ dob 6000)
+          result (interp/run-module perpetual-recheck-module (Random. 1) p dob horizon-end-t)]
+      (is (= :horizon-complete (:status result))))))
+
+(deftest run-module-zero-advance-spin-still-throws-max-steps
+  (testing "ADR-0105: the counting fix narrows what counts toward the
+            budget -- it does not remove the backstop. A genuine
+            zero-advance transition cycle (infinite-loop-module's own
+            shape, driven via run-module instead of walk-module) still
+            trips max-steps, non-vacuous proof the fix didn't merely
+            raise the ceiling"
+    (let [p (persona-at 1)
+          dob (interp/dob-epoch-day p)]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"run-module exceeded max-steps"
+                             (interp/run-module infinite-loop-module (Random. 1) p dob (+ dob 100)))))))
+
+(def infinite-loop-callee-module
+  {:id "loop-callee" :name "LoopCallee"
+   :states {:initial {:type :initial :direct-transition :a}
+            :a {:type :simple :direct-transition :b}
+            :b {:type :simple :direct-transition :a}}})
+
+(def calls-infinite-loop-module
+  {:id "loop-caller" :name "LoopCaller"
+   :states {:initial {:type :initial :direct-transition :call}
+            :call {:type :call-submodule :submodule "loop-callee" :direct-transition :done}
+            :done {:type :terminal}}})
+
+(deftest run-submodule-zero-advance-spin-still-throws-max-steps
+  (testing "ADR-0105: the same non-vacuous backstop proof, one layer
+            down -- a genuine zero-advance cycle INSIDE a called
+            submodule still trips run-submodule's own max-steps, even
+            though the counting fix now ignores time-advancing steps"
+    (let [p (persona-at 1)
+          dob (interp/dob-epoch-day p)
+          closure {"loop-caller" calls-infinite-loop-module "loop-callee" infinite-loop-callee-module}]
+      (is (thrown-with-msg? clojure.lang.ExceptionInfo #"run-submodule exceeded max-steps"
+                             (interp/run-module calls-infinite-loop-module (Random. 1) p dob (+ dob 100) closure))))))
+
+(deftest submodule-horizon-truncation-matches-a-top-level-truncations-own-status-exactly
+  (testing "ADR-0105: 'a walk crossing the horizon inside a submodule
+            ends in the SAME truncation status the top-level Delay-
+            overshoot path uses' (run-submodule's own docstring, the
+            mirror-site contract this fix keeps) -- asserted by
+            EQUALITY against a REAL top-level truncation
+            (wellness-wait-parks-past-the-horizon-the-same-way-delay-
+            does's own module, above), not a literal keyword"
+    (let [p1 (persona-at 1)
+          dob (interp/dob-epoch-day p1)
+          top-level-truncation
+          (interp/run-module wellness-wait-then-encounter-module (Random. 1) p1 dob (+ dob 20))
+          p2 (persona-at 1)
+          submodule-truncation
+          (interp/run-module dental-referral-caller-module (Random. 1) p2 dob (+ dob 30)
+                              dental-referral-closure)]
+      (is (= (:status top-level-truncation) (:status submodule-truncation)))
+      (is (= :horizon-complete (:status top-level-truncation))))))
