@@ -267,3 +267,33 @@ instant can lag its clinical-event instant by a realistic, sampled
 delay. Named here as the one extension point this document already
 anticipates; nothing about it is built, designed, or scheduled by this
 session.
+
+**Addendum, 2026-08-11 (ADR-0109): the arrow now exists, HL7v2-side.**
+Author ruling (2026-08-11, verbatim "I like a. go", `.agents/
+rulings.md`): the second clock lives in `sim-emit-hl7`'s own emitter
+seam, `GT × LatencyParams → TimedWire`, keeping `engine`'s own `GT`
+pure — never a third RNG-consuming stage between `engine` and
+`emitH`. Two new pure functions, `emit-hl7/plan-latency` (`RNG × GT ×
+LatencyProfile → offsets`, fixed RNG consumption — exactly one draw
+per ground-truth event, draw-and-discard for a type the profile
+doesn't cover, the same law `assign-pathway`/`assign-module` already
+establish in `engine.clj`) and `emit-hl7/emit-wire` (`GT ×
+reference-date × utc-offset × facility × providers × site-profile ×
+offsets → TimedWire`, no RNG at all — sampling stays out of emit,
+this section's own doctrine, unchanged) — `plan-latency`'s own
+sampling is the ONLY new RNG consumption, and it is a second,
+independently-seeded `java.util.Random` (`ehrt.sim.run`'s own call
+site), never the engine's sealed stream, so `engine`'s own `GT` output
+is unperturbed by whether `:latency` is present at all. `emitH`'s
+plain `emit` is unchanged and stays byte-frozen (the identity property,
+`ehrt.sim-emit-hl7.latency-test`, is the proof); `emit-wire` is the
+split-clock sibling, returning messages sorted by TRANSMIT time (not
+log order) — out-of-order clinical arrival falls out of the sort, not
+a special case. The field audit behind the split (notes/adr/0109-*.md)
+found exactly two timestamp-bearing fields rendered by this project's
+emitter today: MSH-7 (message/transmit time, now shiftable) and EVN-2
+(event/clinical time, on ADT messages only, never shifted); every
+order/result/observation message type carries MSH-7 alone. `emitF`
+(FHIR) gets no such arrow this session — a named deferral (notes/
+adr/0109-*.md), since FHIR resources' own instant fields are a
+distinct rendering surface this session's own fence did not open.

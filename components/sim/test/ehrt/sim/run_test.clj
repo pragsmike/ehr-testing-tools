@@ -258,6 +258,56 @@
           (is (str/includes? (first (:messages (:payload r))) "FROM-FILE")))
         (finally (.delete tmp))))))
 
+;; --- ADR-0109: :latency is the SAME emit-only, config-passthrough
+;; treatment :site-profile already gets -- proven end to end via
+;; :emit "hl7", never via the engine-run-fn seam above, since :latency
+;; never reaches engine/run at all.
+
+(deftest run-command-threads-latency-into-emit-wire-transmit-time-ordering
+  (testing "a :latency profile reaches ehrt.sim-emit-hl7.emit-hl7/emit-wire
+            (transmit-time order, MSH-7 shifted) without being a member
+            of ehrt.sim-engine.engine/config-keys"
+    (is (not (contains? (set engine/config-keys) :latency)))
+    (let [pathway {:name "admission-transfer-discharge"
+                   :steps [{:type :admission :location "Renal"}
+                           {:type :delay :from 30 :to 30}
+                           {:type :transfer :location "Cardiology"}
+                           {:type :delay :from 30 :to 30}
+                           {:type :discharge}]}
+          latency {:admission {:from-minutes 6000 :to-minutes 6000}}
+          plain (run/run-command {:seed 1 :patients 1 :emit "hl7" :pathways [{:pathway pathway :weight 1}]})
+          wired (run/run-command {:seed 1 :patients 1 :emit "hl7" :pathways [{:pathway pathway :weight 1}]
+                                  :latency latency})]
+      (is (result/ok? plain))
+      (is (result/ok? wired))
+      (testing "log order: admission first"
+        (is (str/includes? (first (:messages (:payload plain))) "^A01")))
+      (testing "wire order: the huge-latency admission is pushed past its followers"
+        (is (not (str/includes? (first (:messages (:payload wired))) "^A01")))
+        (is (str/includes? (last (:messages (:payload wired))) "^A01"))))))
+
+(deftest run-command-without-latency-renders-plain-emit-byte-identical
+  (testing "absent :latency is the identity input -- :messages renders
+            byte-identical to a run that never named the key at all"
+    (let [without-key (run/run-command {:seed 42 :patients 3 :emit "hl7"})
+          with-nil (run/run-command {:seed 42 :patients 3 :emit "hl7" :latency nil})]
+      (is (= (:messages (:payload without-key)) (:messages (:payload with-nil)))))))
+
+(deftest run-command-config-file-passthrough-carries-latency
+  (testing ":latency is a data-heavy key with no CLI flag of its own --
+            the same :config passthrough vehicle :site-profile uses"
+    (let [pathway {:name "admission-only" :steps [{:type :admission :location "Renal"}]}
+          tmp (java.io.File/createTempFile "sim-config" ".edn")
+          _ (spit tmp (pr-str {:latency {:admission {:from-minutes 60 :to-minutes 60}}
+                               :pathways [{:pathway pathway :weight 1}]}))]
+      (try
+        (let [plain (run/run-command {:seed 1 :patients 1 :emit "hl7"
+                                      :pathways [{:pathway pathway :weight 1}]})
+              wired (run/run-command {:seed 1 :patients 1 :emit "hl7" :config (.getPath tmp)})]
+          (is (not= (first (:messages (:payload plain))) (first (:messages (:payload wired))))
+              "MSH-7 shifted by the config-file-supplied :latency profile"))
+        (finally (.delete tmp))))))
+
 ;; --- C-1/U4 (ux fixes 2, ADR-0060): --config crashes with a raw JVM
 ;; exception today (`merge-config-file` does `(edn/read-string (slurp
 ;; path))` with no exception handling at all) -- these tests pin the

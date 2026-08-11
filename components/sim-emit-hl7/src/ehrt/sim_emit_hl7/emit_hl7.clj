@@ -432,6 +432,19 @@
                 (map (partial z-segment-for context)))
           (:z-segments site-profile))))
 
+(defn- transmit-seconds
+  "ADR-0109's own second clock: `t` (the event's clinical instant, log-
+  relative seconds) shifted by `offsets`' own entry for this event's
+  `control-id`, or unshifted (offset 0) when `control-id` has no entry
+  -- absent/nil/{} `offsets` is therefore the identity input for every
+  event, the mechanism the identity property (emit-hl7-test) rests on.
+  `offsets` is plain data here (never an RNG) -- sampling stays out of
+  emit, per this namespace's own renders-only doctrine (docs/dev/
+  simulator-architecture.md section 5); `plan-latency` is the one place
+  offsets are ever sampled, upstream of this function."
+  [offsets control-id t]
+  (+ t (long (get offsets control-id 0))))
+
 (defn- single-subject-message
   "Renders one single-participant ground-truth event to an ER7 string,
   or nil when the event's :event isn't in `message-type-registry`. Every
@@ -445,12 +458,21 @@
   site-profiles: PV1-36 disposition rides ONLY :discharge (the same
   single-event-type gate IN1 already established for admission), and
   every segment renders through `site-profile`'s own dialect/code-table/
-  Z-segment surfaces -- `z-segments-for`'s own docstring."
-  [reference-date utc-offset facility providers personas site-profile
+  Z-segment surfaces -- `z-segments-for`'s own docstring.
+
+  ADR-0109's split clock (this session's own field audit, docs/dev/
+  simulator-architecture.md section 5 / notes/adr/0109-*.md): MSH-7 is
+  TRANSMIT time (`clinical-ts` shifted by `offsets`), EVN-2 is CLINICAL
+  time (`clinical-ts`, unshifted) -- the only two timestamp-bearing
+  fields this builder ever renders. `offsets` is {} at every plain-
+  `emit` call site, so `transmit-ts` = `clinical-ts` always there,
+  byte-identical to this builder's pre-ADR-0109 shape."
+  [reference-date utc-offset facility providers personas site-profile offsets
    {:keys [event t active-mrn location from attending participants] :as ev}]
   (when-let [type+trigger (message-type-registry event)]
-    (let [ts (hl7-timestamp reference-date t utc-offset)
-          control-id (control-id-for ev)
+    (let [control-id (control-id-for ev)
+          clinical-ts (hl7-timestamp reference-date t utc-offset)
+          transmit-ts (hl7-timestamp reference-date (transmit-seconds offsets control-id t) utc-offset)
           facility-name (name (:id facility))
           provider (provider-by-id providers attending)
           persona (get personas (:patient-id (first participants)))
@@ -462,8 +484,8 @@
       (parser/str-message
        (apply parser/create-message
         parser/DEFAULT-DELIMITERS
-        (msh-segment site-profile type+trigger control-id ts)
-        (evn-segment (:trigger type+trigger) ts)
+        (msh-segment site-profile type+trigger control-id transmit-ts)
+        (evn-segment (:trigger type+trigger) clinical-ts)
         (pid-segment active-mrn persona)
         (pv1-segment site-profile patient-class facility-name location from provider disposition-state)
         (concat (when (and (= :admission event) persona) [(in1-segment (:payer persona))])
@@ -475,21 +497,26 @@
   "A17 (swap patients): ONE message per ground-truth event, carrying
   BOTH patients' PID/PV1 pairs -- the real HL7v2 A17 shape, and why the
   emitter-derivability law now keys on the event's own log position
-  rather than a single :active-mrn (a bed-swap message has two)."
-  [reference-date utc-offset facility providers personas site-profile
+  rather than a single :active-mrn (a bed-swap message has two).
+  ADR-0109's split clock (see `single-subject-message`'s own docstring):
+  ONE `control-id` covers the whole event (`control-id-for`'s own
+  :bed-swap arm), so both patients' PID/PV1 pairs ride the SAME
+  transmit-shifted MSH-7 and the SAME unshifted EVN-2."
+  [reference-date utc-offset facility providers personas site-profile offsets
    {:keys [t participants swap] :as ev}]
   (let [type+trigger (message-type-registry :bed-swap)
-        ts (hl7-timestamp reference-date t utc-offset)
+        control-id (control-id-for ev)
+        clinical-ts (hl7-timestamp reference-date t utc-offset)
+        transmit-ts (hl7-timestamp reference-date (transmit-seconds offsets control-id t) utc-offset)
         facility-name (name (:id facility))
         [p1 p2] (mapv :patient-id participants)
         {mrn1 :active-mrn from1 :from to1 :to att1 :attending} (get swap p1)
-        {mrn2 :active-mrn from2 :from to2 :to att2 :attending} (get swap p2)
-        control-id (control-id-for ev)]
+        {mrn2 :active-mrn from2 :from to2 :to att2 :attending} (get swap p2)]
     (parser/str-message
      (apply parser/create-message
       parser/DEFAULT-DELIMITERS
-      (msh-segment site-profile type+trigger control-id ts)
-      (evn-segment (:trigger type+trigger) ts)
+      (msh-segment site-profile type+trigger control-id transmit-ts)
+      (evn-segment (:trigger type+trigger) clinical-ts)
       (pid-segment mrn1 (get personas p1))
       (pv1-segment site-profile :inpatient facility-name to1 from1 (provider-by-id providers att1) nil)
       (pid-segment mrn2 (get personas p2))
@@ -499,19 +526,22 @@
 (defn- merge-message
   "A40 (merge patient): PID carries the SURVIVING mrn, MRG-1 carries the
   prior (merged-away) one (docs/patient-state-model.md's identity
-  payoff) -- ONE message per merge event."
-  [reference-date utc-offset facility _providers personas site-profile
+  payoff) -- ONE message per merge event. ADR-0109's split clock (see
+  `single-subject-message`'s own docstring): `control-id-for`'s own
+  :merge arm keys on the surviving mrn."
+  [reference-date utc-offset facility _providers personas site-profile offsets
    {:keys [t surviving-mrn merged-mrn participants] :as ev}]
   (let [type+trigger (message-type-registry :merge)
-        ts (hl7-timestamp reference-date t utc-offset)
-        facility-name (name (:id facility))
         control-id (control-id-for ev)
+        clinical-ts (hl7-timestamp reference-date t utc-offset)
+        transmit-ts (hl7-timestamp reference-date (transmit-seconds offsets control-id t) utc-offset)
+        facility-name (name (:id facility))
         survivor-id (:patient-id (first (filter #(= :survivor (:role %)) participants)))]
     (parser/str-message
      (apply parser/create-message
       parser/DEFAULT-DELIMITERS
-      (msh-segment site-profile type+trigger control-id ts)
-      (evn-segment (:trigger type+trigger) ts)
+      (msh-segment site-profile type+trigger control-id transmit-ts)
+      (evn-segment (:trigger type+trigger) clinical-ts)
       (pid-segment surviving-mrn (get personas survivor-id))
       (pv1-segment site-profile :inpatient facility-name nil nil nil nil)
       (mrg-segment merged-mrn)
@@ -592,18 +622,24 @@
 
 (defn- orm-message
   "ORM^O01: order placed. No EVN segment -- EVN is an ADT-specific
-  segment (HL7v2 convention), not part of the order-message family."
-  [reference-date utc-offset facility providers personas site-profile
+  segment (HL7v2 convention), not part of the order-message family.
+  ADR-0109's split clock: MSH-7 is this builder's ONLY timestamp field
+  (this session's field audit: OBR-7 and ORC-9, HL7v2's own clinical-
+  time candidates for this message family, are not rendered by
+  `orc-segment`/`obr-segment` at all), so it is unconditionally
+  transmit time -- there is no clinical-time field here to keep
+  unshifted."
+  [reference-date utc-offset facility providers personas site-profile offsets
    {:keys [t active-mrn location attending concept participants] :as ev}]
   (let [type+trigger (message-type-registry :order-placed)
-        ts (hl7-timestamp reference-date t utc-offset)
         control-id (control-id-for ev)
+        transmit-ts (hl7-timestamp reference-date (transmit-seconds offsets control-id t) utc-offset)
         facility-name (name (:id facility))
         provider (provider-by-id providers attending)]
     (parser/str-message
      (apply parser/create-message
       parser/DEFAULT-DELIMITERS
-      (msh-segment site-profile type+trigger control-id ts)
+      (msh-segment site-profile type+trigger control-id transmit-ts)
       (pid-segment active-mrn (get personas (:patient-id (first participants))))
       (pv1-segment site-profile :inpatient facility-name location nil provider nil)
       (orc-segment control-id)
@@ -614,19 +650,23 @@
   "ORU^R01: result available -- OBR (order context) plus one OBX per
   analyte, in the same order the profile's own :results carries them
   (derived straight from the log, ehrt.sim-engine.order-profiles'
-  sampling order -- no re-sorting here)."
-  [reference-date utc-offset facility providers personas site-profile
+  sampling order -- no re-sorting here). ADR-0109's split clock: MSH-7
+  is this builder's ONLY timestamp field (this session's field audit:
+  OBR-7/OBX-14, HL7v2's own clinical-time candidates, are not rendered
+  by `obr-segment`/`obx-segment` at all), so it is unconditionally
+  transmit time."
+  [reference-date utc-offset facility providers personas site-profile offsets
    {:keys [t active-mrn location attending concept results participants] :as ev}]
   (let [type+trigger (message-type-registry :result-available)
-        ts (hl7-timestamp reference-date t utc-offset)
         control-id (control-id-for ev)
+        transmit-ts (hl7-timestamp reference-date (transmit-seconds offsets control-id t) utc-offset)
         facility-name (name (:id facility))
         provider (provider-by-id providers attending)
         obx-segments (map-indexed (fn [i r] (obx-segment (inc i) r)) results)]
     (parser/str-message
      (apply parser/create-message
       parser/DEFAULT-DELIMITERS
-      (msh-segment site-profile type+trigger control-id ts)
+      (msh-segment site-profile type+trigger control-id transmit-ts)
       (pid-segment active-mrn (get personas (:patient-id (first participants))))
       (pv1-segment site-profile :inpatient facility-name location nil provider nil)
       (orc-segment control-id)
@@ -675,18 +715,21 @@
   "ORU^R01 with a SINGLE OBX and no ORC/OBR -- a legal, real HL7v2 shape
   for an unsolicited observation not tied to any originating order
   (unlike :result-available's own order-linked ORU, docs/operational-
-  models.md)."
-  [reference-date utc-offset facility providers personas site-profile
+  models.md). ADR-0109's split clock: MSH-7 is this builder's ONLY
+  timestamp field (OBX-14 is not rendered by `observation-obx-segment`
+  -- this session's field audit), so it is unconditionally transmit
+  time."
+  [reference-date utc-offset facility providers personas site-profile offsets
    {:keys [t active-mrn location attending participants] :as ev}]
   (let [type+trigger (message-type-registry :observation)
-        ts (hl7-timestamp reference-date t utc-offset)
         control-id (control-id-for ev)
+        transmit-ts (hl7-timestamp reference-date (transmit-seconds offsets control-id t) utc-offset)
         facility-name (name (:id facility))
         provider (provider-by-id providers attending)]
     (parser/str-message
      (apply parser/create-message
       parser/DEFAULT-DELIMITERS
-      (msh-segment site-profile type+trigger control-id ts)
+      (msh-segment site-profile type+trigger control-id transmit-ts)
       (pid-segment active-mrn (get personas (:patient-id (first participants))))
       (pv1-segment site-profile :inpatient facility-name location nil provider nil)
       (observation-obx-segment 1 ev)
@@ -701,18 +744,22 @@
 ;; `oru-message` already uses for :results.
 
 (defn- diagnostic-report-message
-  [reference-date utc-offset facility providers personas site-profile
+  "ADR-0109's split clock: MSH-7 is this builder's ONLY timestamp field
+  (OBR-7/OBX-14 not rendered -- this session's field audit, same as
+  `orm-message`/`oru-message`/`observation-message`), so it is
+  unconditionally transmit time."
+  [reference-date utc-offset facility providers personas site-profile offsets
    {:keys [t active-mrn location attending codes observations participants] :as ev}]
   (let [type+trigger (message-type-registry :diagnostic-report)
-        ts (hl7-timestamp reference-date t utc-offset)
         control-id (control-id-for ev)
+        transmit-ts (hl7-timestamp reference-date (transmit-seconds offsets control-id t) utc-offset)
         facility-name (name (:id facility))
         provider (provider-by-id providers attending)
         obx-segments (map-indexed (fn [i o] (observation-obx-segment (inc i) o)) observations)]
     (parser/str-message
      (apply parser/create-message
       parser/DEFAULT-DELIMITERS
-      (msh-segment site-profile type+trigger control-id ts)
+      (msh-segment site-profile type+trigger control-id transmit-ts)
       (pid-segment active-mrn (get personas (:patient-id (first participants))))
       (pv1-segment site-profile :inpatient facility-name location nil provider nil)
       (orc-segment control-id)
@@ -727,21 +774,28 @@
   so this is 0-or-1 for every type today, but returns a vector (not a
   single nilable message) since a future many-messages-per-event type
   is now a shape this stage already accommodates. Events outside
-  `message-type-registry` render an empty vector, not an error."
+  `message-type-registry` render an empty vector, not an error.
+
+  ADR-0109: `offsets` ({control-id -> offset-seconds}, `plan-latency`'s
+  own output) threads to every builder for the split-clock rendering
+  (each builder's own docstring has the per-type field-audit detail);
+  the lower arities pass {} -- unconditionally the identity input,
+  since `transmit-seconds` (this namespace, private) falls back to a 0
+  offset for any control-id absent from the map."
   ([reference-date utc-offset facility providers ev]
-   (event->messages reference-date utc-offset facility providers {} nil ev))
+   (event->messages reference-date utc-offset facility providers {} nil {} ev))
   ([reference-date utc-offset facility providers personas ev]
-   (event->messages reference-date utc-offset facility providers personas nil ev))
-  ([reference-date utc-offset facility providers personas site-profile {:keys [event] :as ev}]
+   (event->messages reference-date utc-offset facility providers personas nil {} ev))
+  ([reference-date utc-offset facility providers personas site-profile offsets {:keys [event] :as ev}]
    (cond
      (not (message-type-registry event)) []
-     (= :bed-swap event) [(bed-swap-message reference-date utc-offset facility providers personas site-profile ev)]
-     (= :merge event) [(merge-message reference-date utc-offset facility providers personas site-profile ev)]
-     (= :order-placed event) [(orm-message reference-date utc-offset facility providers personas site-profile ev)]
-     (= :result-available event) [(oru-message reference-date utc-offset facility providers personas site-profile ev)]
-     (= :observation event) [(observation-message reference-date utc-offset facility providers personas site-profile ev)]
-     (= :diagnostic-report event) [(diagnostic-report-message reference-date utc-offset facility providers personas site-profile ev)]
-     :else [(single-subject-message reference-date utc-offset facility providers personas site-profile ev)])))
+     (= :bed-swap event) [(bed-swap-message reference-date utc-offset facility providers personas site-profile offsets ev)]
+     (= :merge event) [(merge-message reference-date utc-offset facility providers personas site-profile offsets ev)]
+     (= :order-placed event) [(orm-message reference-date utc-offset facility providers personas site-profile offsets ev)]
+     (= :result-available event) [(oru-message reference-date utc-offset facility providers personas site-profile offsets ev)]
+     (= :observation event) [(observation-message reference-date utc-offset facility providers personas site-profile offsets ev)]
+     (= :diagnostic-report event) [(diagnostic-report-message reference-date utc-offset facility providers personas site-profile offsets ev)]
+     :else [(single-subject-message reference-date utc-offset facility providers personas site-profile offsets ev)])))
 
 (def ^:private default-providers
   "A fixed, arbitrary reference-seed provider pool -- purely a fallback
@@ -765,7 +819,15 @@
   -- the default-profile identity property (docs/site-profiles.md, this
   milestone's own determinism anchor) -- since :site-profile reaches no
   stage but this one's own render call sites, never ground-truth-log or
-  check.clj (ehrt.sim-engine.engine/config-keys has no such key)."
+  check.clj (ehrt.sim-engine.engine/config-keys has no such key).
+
+  ADR-0109: this function's own output is BYTE-FROZEN -- always calls
+  `event->messages` with offsets {}, so every transmit instant equals
+  its own clinical instant and this function's bytes/order never move,
+  regardless of anything ADR-0109 added elsewhere in this namespace.
+  `emit-wire`, below, is the split-clock sibling that actually shifts
+  MSH-7; this function is the oracle `emit-wire`'s own identity
+  property is checked against."
   ([ground-truth reference-date]
    (emit ground-truth reference-date default-utc-offset sim-model/default-facility default-providers))
   ([ground-truth reference-date utc-offset]
@@ -774,5 +836,88 @@
    (emit ground-truth reference-date utc-offset facility providers nil))
   ([ground-truth reference-date utc-offset facility providers site-profile]
    (let [personas (personas-by-patient-id ground-truth)]
-     (into [] (mapcat (partial event->messages reference-date utc-offset facility providers personas site-profile))
+     (into [] (mapcat (partial event->messages reference-date utc-offset facility providers personas site-profile {}))
            ground-truth))))
+
+;; --- ADR-0109: the second clock -- GT x LatencyParams -> TimedWire -------
+;; The extension point docs/dev/simulator-architecture.md section 5 named
+;; and built nothing of: an arrow between `engine`'s own GT output and
+;; this namespace's own `emitH` consumption of it, so a message's own
+;; wire-emission instant can lag its clinical-event instant by a
+;; realistic, sampled delay. Sampling itself stays OUT of this namespace
+;; (this file's own renders-only doctrine, restated in that same
+;; section) -- `plan-latency` is a pure function of an explicitly-passed
+;; RNG, never an atom or a wall clock, and its OWN output (`offsets`) is
+;; the only thing `emit-wire` ever consumes; `emit-wire` itself takes no
+;; RNG at all.
+
+(defn plan-latency
+  "RNG x GT x LatencyProfile (ehrt.sim-model.config/LatencyProfile) ->
+  offsets ({control-id -> offset-seconds}). Fixed RNG consumption (the
+  RNG-path law, .agents/rulings.md, AR-RL2-2's own underlying
+  discipline; `ehrt.sim-engine.engine/assign-pathway`'s own worked
+  example, engine.clj:1165-1183, is the precedent this function
+  follows): ALWAYS consumes exactly one `.nextDouble` per ground-truth
+  event, in log order, regardless of whether that event's own :event
+  type is covered by `latency-profile` -- draw-and-discard for an
+  uncovered type, so adding one profile entry for event type X can
+  never shift any OTHER event's own draw, covered or not.
+
+  A covered event (`latency-profile` has an entry for its :event type)
+  samples its own offset uniformly from that entry's
+  {:from-minutes :to-minutes} range via the ALREADY-consumed draw,
+  converted to whole seconds (`sim/ADR-0011`'s own minutes-authored/
+  seconds-engine convention, mirrored here). An uncovered event, or one
+  with no `control-id-for` at all (outside `message-type-registry` --
+  :bed-swap/:merge's own two-participant control-ids are covered the
+  same as every single-subject one, since `control-id-for` already
+  handles both), contributes no entry to the returned map.
+
+  Absent/nil/{} `latency-profile` still draws (and discards) once per
+  event and returns {} -- `emit-wire` called with THIS function's own
+  {} output renders byte-identical to `emit` (the identity property,
+  emit-hl7-test), the same three-way absent/nil/{} agreement
+  `ehrt.sim-emit-hl7.site-profile`'s own default-profile identity
+  already established for site profiles."
+  [^java.util.Random rng ground-truth latency-profile]
+  (into {}
+        (keep (fn [ev]
+                (let [draw (.nextDouble rng)
+                      {:keys [from-minutes to-minutes]} (get latency-profile (:event ev))]
+                  (when (and from-minutes to-minutes)
+                    (when-let [control-id (control-id-for ev)]
+                      [control-id (long (Math/round (* 60.0 (+ from-minutes (* draw (- to-minutes from-minutes))))))])))))
+        ground-truth))
+
+(defn emit-wire
+  "GT x reference-date x utc-offset x facility x providers x
+  site-profile x offsets -> TimedWire: the SAME messages `emit` would
+  render, split-clock (each builder's own ADR-0109 docstring has the
+  per-type detail: MSH-7 shifted by `offsets`, every clinical-time
+  field -- EVN-2 where present -- unshifted), returned SORTED BY
+  TRANSMIT TIME rather than log order -- out-of-order clinical arrival
+  (a lagged admission whose transmit instant lands after a later
+  event's own) falls out of this sort, not out of any special-cased
+  reordering logic. Ties (equal transmit seconds) break on original log
+  position, stable -- the identity property's own mechanism: absent/
+  nil/{} `offsets` makes every transmit second equal its own log-order
+  `:t`, and since ground truth is already `:t`-nondecreasing
+  (`sim-engine`'s own priority-queue invariant), the stable tie-break
+  reproduces `emit`'s exact order, and therefore its exact bytes.
+
+  `offsets` is plain data (`plan-latency`'s own output, or hand-built)
+  -- this function takes no RNG at all, per this namespace's own
+  renders-only doctrine."
+  [ground-truth reference-date utc-offset facility providers site-profile offsets]
+  (let [personas (personas-by-patient-id ground-truth)
+        offsets (or offsets {})]
+    (->> ground-truth
+         (map-indexed
+          (fn [i ev]
+            (let [control-id (control-id-for ev)
+                  transmit-t (transmit-seconds offsets control-id (:t ev))]
+              (map (fn [message] [transmit-t i message])
+                   (event->messages reference-date utc-offset facility providers personas site-profile offsets ev)))))
+         (apply concat)
+         (sort-by (fn [[transmit-t i _]] [transmit-t i]))
+         (mapv peek))))

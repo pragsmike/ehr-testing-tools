@@ -321,6 +321,18 @@
   do (no `--site-profile` flag exists), never the plumbing-completeness
   test's own engine-facing set.
 
+  ADR-0109: `:latency` (ehrt.sim-model.config/LatencyProfile, optional)
+  is the SAME rendering-only treatment `:site-profile` already gets --
+  not a member of `engine/config-keys`, never reaches `engine/run`.
+  Present: this run's own ground-truth log and a FRESH `java.util.Random`
+  seeded from this same run's `:seed` (a second, independently-seeded
+  stream -- never the engine's own sealed RNG) feed `emit-hl7/plan-
+  latency`, and `:messages` renders via `emit-hl7/emit-wire` (transmit-
+  time order) instead of `emit-hl7/emit` (log order). Absent (the
+  default): `:messages` renders via `emit-hl7/emit` exactly as before
+  this ADR, byte-identical -- `:latency` rides `:config` the same
+  passthrough way `:site-profile` does (no `--latency` flag exists).
+
   M5b: `:modules` (a vector of NAME STRINGS, resolving against
   `resources/modules/<name>.json` -- `resolve-modules`'s own docstring)
   and `:module-assignment`/`:module-horizon-days` (forwarded verbatim,
@@ -356,7 +368,7 @@
        config-result
        (let [opts (:payload config-result)
              {:keys [seed patients emit at reference-date utc-offset warm-up-seconds churn churn-profile site-profile
-                     modules module-initial-attributes]} opts
+                     modules module-initial-attributes latency]} opts
              conflicts (incompatible-assignments opts)
              resolved-modules (when modules (resolve-modules modules (or module-initial-attributes {})))]
          (cond
@@ -396,6 +408,11 @@
                                                     :invocation {:verb "run" :opts opts}})
                          :summary {:patients (or patients 1)
                                    :events (count ground-truth)}}
-                  (= "hl7" emit) (assoc :messages (emit-hl7/emit ground-truth reference-date utc-offset facility providers site-profile))
+                  (= "hl7" emit)
+                  (assoc :messages
+                        (if latency
+                          (emit-hl7/emit-wire ground-truth reference-date utc-offset facility providers site-profile
+                                              (emit-hl7/plan-latency (java.util.Random. seed) ground-truth latency))
+                          (emit-hl7/emit ground-truth reference-date utc-offset facility providers site-profile)))
                   (= "fhir" emit) (assoc :fhir-bundles
                                          (emit-fhir/bundle-run ground-truth reference-date utc-offset seed (or at :end)))))))))))))

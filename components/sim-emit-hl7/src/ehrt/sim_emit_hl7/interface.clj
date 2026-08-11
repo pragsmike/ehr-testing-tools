@@ -36,3 +36,18 @@
   "acc x message -> acc'. See ehrt.sim-emit-hl7.v2-replay/fold-message."
   [acc message]
   (v2-replay/fold-message acc message))
+
+;; --- ADR-0109: the second clock -- ehrt.sim.run's own new call site -------
+
+(defn plan-latency
+  "RNG x GT x LatencyProfile -> offsets. See
+  ehrt.sim-emit-hl7.emit-hl7/plan-latency."
+  [rng ground-truth latency-profile]
+  (emit-hl7/plan-latency rng ground-truth latency-profile))
+
+(defn emit-wire
+  "GT x reference-date x utc-offset x facility x providers x
+  site-profile x offsets -> TimedWire. See
+  ehrt.sim-emit-hl7.emit-hl7/emit-wire."
+  [ground-truth reference-date utc-offset facility providers site-profile offsets]
+  (emit-hl7/emit-wire ground-truth reference-date utc-offset facility providers site-profile offsets))

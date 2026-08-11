@@ -145,3 +145,27 @@
   as arrival staggering and bed choice."
   [rng provider-templates]
   (mapv #(assoc % :id (generate-npi rng)) provider-templates))
+
+;; --- Latency (ADR-0109): the second-clock config surface ------------------
+;; A LatencyProfile is per-event-type sampling ranges, MINUTES-authored
+;; (sim/ADR-0011's own authoring-in-minutes/engine-in-seconds convention,
+;; mirrored here for the same ergonomic reason: a config author writes
+;; "15 to 45 minutes late", never a raw second count). `:from-minutes`
+;; and `:to-minutes` may be fractional (bare `number?`, not `:int`) so a
+;; sub-minute range is expressible without forcing a config author to
+;; scale everything into seconds by hand.
+
+(def LatencyRange
+  [:map
+   [:from-minutes number?]
+   [:to-minutes number?]])
+
+(def LatencyProfile
+  "Keyed by event-type keyword (ehrt.sim-emit-hl7.emit-hl7/message-type-
+  registry's own vocabulary -- :admission, :discharge, :transfer, etc.);
+  an event type absent from the map draws no latency at all (see
+  ehrt.sim-emit-hl7.emit-hl7/plan-latency's own draw-and-discard law)."
+  [:map-of :keyword LatencyRange])
+
+(defn valid-latency-profile? [profile] (m/validate LatencyProfile profile))
+(defn explain-latency-profile [profile] (m/explain LatencyProfile profile))

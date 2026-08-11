@@ -66,3 +66,16 @@
 (deftest materialize-providers-is-deterministic
   (is (= (config/materialize-providers (Random. 7) config/default-provider-templates)
          (config/materialize-providers (Random. 7) config/default-provider-templates))))
+
+;; --- ADR-0109: LatencyProfile -----------------------------------------
+
+(deftest latency-profile-validates-per-event-type-minute-ranges
+  (is (config/valid-latency-profile? {:admission {:from-minutes 5 :to-minutes 45}}))
+  (testing "fractional minutes are legal (bare number?, not :int)"
+    (is (config/valid-latency-profile? {:result-available {:from-minutes 0.5 :to-minutes 2.5}})))
+  (testing "the empty profile validates -- the identity input"
+    (is (config/valid-latency-profile? {})))
+  (testing "a non-keyword event-type key is invalid"
+    (is (not (config/valid-latency-profile? {"admission" {:from-minutes 5 :to-minutes 45}}))))
+  (testing "a range missing either bound is invalid"
+    (is (not (config/valid-latency-profile? {:admission {:from-minutes 5}})))))
