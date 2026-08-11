@@ -123,3 +123,12 @@ remote unmoved.
 
 **HEAD landed**: `7db2044` (phase 1 fix), `29392cd` (phase 2 batch),
 plus this close-phase commit (this record's own commit), all pushed.
+
+**A post-push, disclosed CI flake, unrelated to this session**: CI on
+`29392cd` reported `failure` on `ehrt.corpus.sink-composability-test`
+(a generator-exhaustion property-test flake, no fixed seed, last
+touched 2026-07-31). Confirmed not caused by this session (the next
+push's own full suite passed against the same code; a `gh run rerun
+--failed` of the exact failed job passed). Disclosed in ADR-0107's own
+dated append and given a roadmap Deferred row, not silently
+reconciled by the passing re-run.

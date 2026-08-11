@@ -144,6 +144,19 @@ per item; done items move to the bottom of their section with a date and sha.
 
 ## Deferred (explicitly, with revisit triggers)
 Rows here are LIVE. Closed rows move to Done with their notes.
+- **`ehrt.corpus.sink-composability-test`'s own generator-exhaustion
+  flake** (2026-08-11, injuries arc close, `notes/ADRs.md` ADR-0107,
+  dated append): `dir-sink-write-then-intake-hash-identity-property-
+  test`'s own `item-set-gen` draws up to 5 DISTINCT filenames via
+  `gen/vector-distinct` over a small-range `gen/nat`-derived
+  generator, no fixed seed — occasionally throws `Couldn't generate
+  enough distinct elements!` (witnessed once, CI run `31530741376`,
+  confirmed unrelated to that session's own changes and confirmed
+  non-reproducing on immediate re-run). Not fixed this session — out
+  of fence, the file untouched since 2026-07-31. Revisit trigger: a
+  future session willing to widen `:max-tries` or broaden
+  `safe-filename-gen`'s own range to make collision genuinely rare
+  rather than merely uncommon.
 - **`veteran_hyperlipidemia.json`'s own stale-`statin_initial`
   reference, true name** (2026-08-08, vendoring batch 4, `notes/
   ADRs.md` ADR-0090): deferred whole, not vendored. The module's own

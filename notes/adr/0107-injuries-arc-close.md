@@ -425,3 +425,28 @@ never committed, cleaned before this record's own commit.
 ```
 
 (appended to `.agents/plans/roadmap.md`'s own Done section.)
+
+### Dated append (2026-08-11, post-push): a pre-existing, unrelated CI flake, disclosed
+
+CI on the phase 2 commit (`29392cd`) reported `failure` — run `31530741376`,
+`ehrt.corpus.sink-composability-test`'s own `dir-sink-write-then-
+intake-hash-identity-property-test`: `Couldn't generate enough
+distinct elements!`, a `test.check` generator exhaustion inside
+`gen/vector-distinct` over a small-range `gen/nat`-derived filename
+generator, no fixed seed (`tc/quick-check` draws a fresh one every
+run) — a known, low-probability shape for that generator combinator,
+not a deterministic failure. Verified NOT caused by this session:
+(1) `git log` shows `sink_composability_test.clj` last touched
+2026-07-31, eleven days before this session, by an unrelated split
+session, never in either of this session's own fences; (2) the VERY
+NEXT push, the close-phase commit (`1b66fb7`, doc/register changes
+only, zero `src`/`test` files touched anywhere in the diff), ran the
+SAME full suite against the SAME phase-2 code and completed
+`success`; (3) `gh run rerun 31530741376 --failed` re-ran the
+identical commit's own failed job and it passed. This repo's own
+standing discipline (ADR-0105's own "no probabilistic flake hiding
+behind a single green" verification note) is why this is recorded
+here explicitly rather than silently reconciled by the next green —
+disclosed, not fixed (out of this session's own fence; the generator
+itself is untouched, a real fix would need `:max-tries` widened or the
+filename range broadened, a future session's own call).
