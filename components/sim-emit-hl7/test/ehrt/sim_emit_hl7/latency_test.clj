@@ -27,7 +27,7 @@
 ;; extended to offsets. -------------------------------------------------
 
 (defspec emit-wire-with-absent-nil-or-empty-offsets-is-byte-identical-to-emit 100
-  (prop/for-all [seed gen/large-integer
+  (prop/for-all [seed (gen/large-integer* {:min 0})
                  patients (gen/choose 1 8)
                  use-churn gen/boolean]
     (let [config (cond-> {:seed seed :patients patients}
@@ -39,7 +39,7 @@
       (= plain wire-nil-offsets wire-empty-offsets))))
 
 (defspec plan-latency-with-an-absent-profile-draws-and-discards-and-returns-empty 50
-  (prop/for-all [seed gen/large-integer
+  (prop/for-all [seed (gen/large-integer* {:min 0})
                  patients (gen/choose 1 8)
                  rng-seed gen/large-integer]
     (let [{:keys [ground-truth]} (engine/run {:seed seed :patients patients :churn-profile churn/sample-profile})]

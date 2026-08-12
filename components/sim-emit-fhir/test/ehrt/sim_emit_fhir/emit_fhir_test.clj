@@ -145,7 +145,7 @@
 ;; way in both emitters, over random runs -----------------------------------
 
 (defspec fhir-patient-id-and-active-mrn-resolve-to-the-same-hl7-identity 150
-  (prop/for-all [seed gen/large-integer
+  (prop/for-all [seed (gen/large-integer* {:min 0})
                  patients (gen/choose 1 8)]
     (let [{:keys [ground-truth]} (engine/run {:seed seed :patients patients})
           bundles (emit-fhir/bundle-run ground-truth ref-date utc-offset seed :end)
@@ -181,7 +181,7 @@
       (is (= [{:system "urn:ehrt.sim" :code "42"}] (:tag (:meta r)))))))
 
 (defspec every-resource-in-every-bundle-carries-htest-and-run-tag 100
-  (prop/for-all [seed gen/large-integer
+  (prop/for-all [seed (gen/large-integer* {:min 0})
                  patients (gen/choose 1 5)]
     (let [{:keys [ground-truth]} (engine/run {:seed seed :patients patients})
           bundles (emit-fhir/bundle-run ground-truth ref-date utc-offset seed :end)]

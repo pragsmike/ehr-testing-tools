@@ -235,7 +235,7 @@ Runs one deterministic simulation and returns its ground truth, manifest, and su
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `--seed` | — | simulation seed (integer) -- required, determinism is a feature, not a default |
+| `--seed` | — | simulation seed (integer, non-negative) -- required, determinism is a feature, not a default |
 | `--patients` | — | patient count (integer) |
 | `--arrival-gap` | `60` | max minutes between arrivals (integer) |
 | `--reference-date` | — | ISO date string, pinned input for HL7 timestamp anchoring |
@@ -259,7 +259,7 @@ Config + seed -> the complete EDN inventory of every identifier this run's outpu
 
 | Flag | Default | Meaning |
 |---|---|---|
-| `--seed` | — | RNG seed (required; same as `ehrt sim run`'s own --seed) |
+| `--seed` | — | RNG seed (required, non-negative; same as `ehrt sim run`'s own --seed) |
 | `--patients` | `1` | patient count (integer) |
 | `--config` | — | path to an EDN file supplying data-heavy engine keys (same as `ehrt sim run`) |
 

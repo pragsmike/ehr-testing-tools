@@ -240,7 +240,7 @@
                  false)))))))
 
 (defspec emitter-coherence-reconstructed-state-matches-the-log-fold-at-every-boundary 150
-  (prop/for-all [seed gen/large-integer
+  (prop/for-all [seed (gen/large-integer* {:min 0})
                  patients (gen/choose 1 10)
                  use-churn gen/boolean
                  use-order gen/boolean]
@@ -259,7 +259,7 @@
       (coherent-at-every-boundary? ground-truth messages))))
 
 (defspec emitter-coherence-holds-for-module-driven-outpatient-trajectories 150
-  (prop/for-all [seed gen/large-integer]
+  (prop/for-all [seed (gen/large-integer* {:min 0})]
     (let [{:keys [ground-truth facility providers]}
           (engine/run {:seed seed :patients 5
                        :pathway {:name "module-only" :steps []}

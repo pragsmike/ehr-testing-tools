@@ -393,9 +393,16 @@
                  engine-opts (cond-> (merge (select-keys opts engine/config-keys)
                                             {:seed seed :churn-profile effective-churn-profile})
                                resolved-modules (assoc :modules (:payload resolved-modules)))
-                 {:keys [ground-truth facility providers exhausted]} (engine-run-fn engine-opts)
-                 checked (when-not exhausted (check/check-all ground-truth facility warm-up-seconds))]
+                 engine-result (engine-run-fn engine-opts)
+                 {:keys [ground-truth facility providers exhausted]} engine-result
+                 checked (when (and (not exhausted) (not (result/error? engine-result)))
+                           (check/check-all ground-truth facility warm-up-seconds))]
              (cond
+               ;; sim/ADR-0116: engine/run now returns result/error :invalid-seed
+               ;; (rather than throwing or running) for an out-of-contract seed --
+               ;; propagate it as-is, the same error/result convention every other
+               ;; branch here already returns.
+               (result/error? engine-result) engine-result
                exhausted (result/error :capacity-exhausted exhausted)
                (not (result/ok? checked)) (result/error :self-check-failed (:payload checked))
                :else

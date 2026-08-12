@@ -57,13 +57,13 @@
       (is (= 3 (count (set (map (comp :patient-id first :participants) ground-truth))))))))
 
 (defspec every-run-satisfies-invariant-catalog 200
-  (prop/for-all [seed gen/large-integer
+  (prop/for-all [seed (gen/large-integer* {:min 0})
                  patients (gen/choose 1 20)]
     (let [{:keys [ground-truth]} (engine/run {:seed seed :patients patients})]
       (result/ok? (check/check-all ground-truth)))))
 
 (defspec determinism-holds-for-all-seeds 100
-  (prop/for-all [seed gen/large-integer
+  (prop/for-all [seed (gen/large-integer* {:min 0})
                  patients (gen/choose 1 10)]
     (= (engine/run {:seed seed :patients patients})
        (engine/run {:seed seed :patients patients}))))
@@ -71,7 +71,7 @@
 ;; --- sim/ADR-0008: the engine is event-sourced ------------------------------
 
 (defspec patient-state-is-a-fold-of-the-log 100
-  (prop/for-all [seed gen/large-integer
+  (prop/for-all [seed (gen/large-integer* {:min 0})
                  patients (gen/choose 1 15)]
     (let [{:keys [ground-truth state-history]} (engine/run {:seed seed :patients patients})
           by-patient-id (group-by (comp :patient-id first :participants) ground-truth)]
@@ -201,7 +201,7 @@
        (not= (:home-ward patient) (get-in patient [:location :ward]))))
 
 (defspec bed-ready-transfer-relieves-the-longest-waiting-boarder 150
-  (prop/for-all [seed gen/large-integer
+  (prop/for-all [seed (gen/large-integer* {:min 0})
                  patients (gen/choose 3 10)]
     (let [{:keys [ground-truth]} (engine/run {:seed seed :patients patients :facility crowded-facility})]
       (every?
@@ -516,7 +516,7 @@
 ;; plus CI log retention ruled sufficient for those, per AR-LF-5/D3-2).
 (defspec every-churned-run-satisfies-the-invariant-catalog
   {:num-tests 150 :seed -60645}
-  (prop/for-all [seed gen/large-integer
+  (prop/for-all [seed (gen/large-integer* {:min 0})
                  patients (gen/choose 2 12)]
     (let [{:keys [ground-truth]} (engine/run {:seed seed :patients patients
                                               :facility churn-facility :providers churn-providers
@@ -699,7 +699,7 @@
           (is (= 2 (:order-event-id result))))))))
 
 (defspec order-and-result-round-trip-through-run-for-any-seed 100
-  (prop/for-all [seed gen/large-integer]
+  (prop/for-all [seed (gen/large-integer* {:min 0})]
     (let [pathway {:name "cbc-order" :steps [{:type :admission :location "Renal"}
                                              {:type :order :profile :cbc}
                                              {:type :discharge}]}
@@ -754,7 +754,7 @@
     (is (result/ok? (check/check-all ground-truth (:facility result))))))
 
 (defspec outpatient-visits-never-occupy-a-bed-for-any-seed 150
-  (prop/for-all [seed gen/large-integer]
+  (prop/for-all [seed (gen/large-integer* {:min 0})]
     (let [pathway {:name "outpatient" :steps [{:type :outpatient-visit}
                                               {:type :delay :from 10 :to 30}
                                               {:type :outpatient-visit-end}]}
@@ -1169,7 +1169,7 @@
             encounter is a real, separate compositional question
             (whichever runs second finds the patient already discharged),
             not what this property is stated about."
-    (prop/for-all [seed gen/large-integer]
+    (prop/for-all [seed (gen/large-integer* {:min 0})]
       (let [pathway {:name "scripted" :steps [{:type :admission :location "Renal"}
                                               {:type :delay :from 30 :to 30}
                                               {:type :discharge}]}
@@ -1185,6 +1185,18 @@
                                              {:patient-ordinal 3 :module-id "fixture-clinic"}]
                          :module-horizon-days 3650})]
         (result/ok? (check/check-all ground-truth (:facility result)))))))
+
+(deftest run-rejects-negative-seed-with-clean-error
+  (testing "sim/ADR-0116 (R9): the seed contract is non-negative longs --
+            a negative :seed is rejected at entry with the standard
+            invalid-option envelope (ehrt.kernel.result), never run,
+            never a raw throw. The shrunk counterexample from the
+            engine-test flake investigation (R8) is the regression
+            case."
+    (let [r (engine/run {:seed -3377439408979484 :patients 1})]
+      (is (result/error? r))
+      (is (= :invalid-seed (:category r)))
+      (is (= -3377439408979484 (:value (:payload r)))))))
 
 (deftest pinned-seed-survives-decide-evolve-refactor
   (testing "the fixture pins the POST-M4 baseline (sim/ADR-0009 -- Persona's
@@ -1234,7 +1246,7 @@
             :done {:type :terminal}}})
 
 (defspec history-mode-straddling-encounter-drops-in-full-post-straddle-content-lands-invariant-holds 150
-  (prop/for-all [seed gen/large-integer]
+  (prop/for-all [seed (gen/large-integer* {:min 0})]
     (let [{:keys [ground-truth] :as result}
           (engine/run {:seed seed :patients 3
                        :pathway {:name "module-only" :steps []}

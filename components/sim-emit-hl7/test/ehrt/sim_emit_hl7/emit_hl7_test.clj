@@ -49,7 +49,7 @@
    (message/get-field-first-value parsed "MSH" 7)])
 
 (defspec bidirectional-derivability 100
-  (prop/for-all [seed gen/large-integer
+  (prop/for-all [seed (gen/large-integer* {:min 0})
                  patients (gen/choose 1 15)]
     (let [{:keys [ground-truth]} (engine/run {:seed seed :patients patients})
           events (admission-discharge-events ground-truth)
@@ -61,7 +61,7 @@
            (= (set expected-keys) (set actual-keys))))))
 
 (defspec determinism-is-a-pure-function-of-the-log 100
-  (prop/for-all [seed gen/large-integer
+  (prop/for-all [seed (gen/large-integer* {:min 0})
                  patients (gen/choose 1 15)]
     (let [{:keys [ground-truth]} (engine/run {:seed seed :patients patients})]
       (= (emit-hl7/emit ground-truth ref-date utc-offset)
@@ -549,7 +549,7 @@
            (emit-hl7/emit ground-truth ref-date utc-offset facility providers)))))
 
 (defspec order-and-result-messages-derive-bijectively-from-the-log 50
-  (prop/for-all [seed gen/large-integer]
+  (prop/for-all [seed (gen/large-integer* {:min 0})]
     (let [{:keys [ground-truth facility providers]} (run-with-order seed)
           order-result-events (filterv #(#{:order-placed :result-available} (:event %)) ground-truth)
           messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
@@ -719,7 +719,7 @@
 ;; below is untouched).
 
 (defspec default-profile-is-the-absent-profile 100
-  (prop/for-all [seed gen/large-integer
+  (prop/for-all [seed (gen/large-integer* {:min 0})
                  patients (gen/choose 1 8)]
     (let [{:keys [ground-truth facility providers]} (engine/run {:seed seed :patients patients})
           five-arg (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
@@ -905,7 +905,7 @@
     (is (not (contains? (set engine/config-keys) :site-profile)))))
 
 (defspec invariance-messages-agree-after-masking-dialect-surfaces 100
-  (prop/for-all [seed gen/large-integer
+  (prop/for-all [seed (gen/large-integer* {:min 0})
                  patients (gen/choose 1 6)]
     (let [{:keys [ground-truth facility providers]} (engine/run {:seed seed :patients patients})
           default-messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers nil)
@@ -931,7 +931,7 @@
 ;; against itself.
 
 (defspec control-id-for-matches-every-rendered-messages-own-msh-10 100
-  (prop/for-all [seed gen/large-integer
+  (prop/for-all [seed (gen/large-integer* {:min 0})
                  patients (gen/choose 1 6)]
     (let [{:keys [ground-truth facility providers]} (engine/run {:seed seed :patients patients})
           messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)

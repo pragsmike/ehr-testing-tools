@@ -431,7 +431,7 @@
     (is (result/ok? (check/check-all ground-truth)))))
 
 (defspec every-m1-run-satisfies-the-invariant-catalog 150
-  (prop/for-all [seed gen/large-integer
+  (prop/for-all [seed (gen/large-integer* {:min 0})
                  patients (gen/choose 1 12)]
     (let [facility {:id :t :wards [{:id :ed :name "ED" :beds 0 :surge-slots 15
                                      :surge-format "%s-H%02d" :class :ed}

@@ -179,7 +179,7 @@
      :doc "Run the sim engine, in-process -- no subprocess, no fetched artifacts needed."
      :verbs
      [{:verb "run" :doc "Runs one deterministic simulation and returns its ground truth, manifest, and summary (plus --emit's rendered messages/bundles, when given)."
-       :flags [{:flag "--seed" :doc "simulation seed (integer) -- required, determinism is a feature, not a default"}
+       :flags [{:flag "--seed" :doc "simulation seed (integer, non-negative) -- required, determinism is a feature, not a default"}
                {:flag "--patients" :doc "patient count (integer)"}
                {:flag "--arrival-gap" :doc "max minutes between arrivals (integer)" :default "60"}
                {:flag "--reference-date" :doc "ISO date string, pinned input for HL7 timestamp anchoring"}
@@ -193,7 +193,7 @@
       {:verb "check" :doc "Runs the invariant catalog (capacity/surge-ladder, timestamp-monotone, and friends) over a ground-truth EDN vector read from stdin -- e.g. `ehrt sim run --format ground-truth | ehrt sim check`."
        :flags []}
       {:verb "identifiers" :doc "Config + seed -> the complete EDN inventory of every identifier this run's output would contain (patient-ids, MRNs, visit beds, HL7 control ids, FHIR resource ids, provider NPIs, run-id) -- how you'd find and remove synthetic data that ever reached a real system (docs/simulate-your-facility.md)."
-       :flags [{:flag "--seed" :doc "RNG seed (required; same as `ehrt sim run`'s own --seed)"}
+       :flags [{:flag "--seed" :doc "RNG seed (required, non-negative; same as `ehrt sim run`'s own --seed)"}
                {:flag "--patients" :doc "patient count (integer)" :default "1"}
                {:flag "--config" :doc "path to an EDN file supplying data-heavy engine keys (same as `ehrt sim run`)"}]}
       {:verb "version" :doc "Print sim's own library version and git SHA -- the same source the run manifest's :generator block stamps."

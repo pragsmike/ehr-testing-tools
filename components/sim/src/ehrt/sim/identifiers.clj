@@ -122,9 +122,16 @@
                  engine-opts (cond-> (merge (select-keys opts engine/config-keys)
                                             {:seed seed :churn-profile (run/effective-churn-profile opts)})
                                resolved-modules (assoc :modules (:payload resolved-modules)))
-                 {:keys [ground-truth providers exhausted]} (engine-run-fn engine-opts)]
-             (if exhausted
+                 engine-result (engine-run-fn engine-opts)
+                 {:keys [ground-truth providers exhausted]} engine-result]
+             (cond
+               ;; sim/ADR-0116: engine/run now returns result/error :invalid-seed
+               ;; (rather than throwing or running) for an out-of-contract seed --
+               ;; propagate it as-is, the same convention run-command follows.
+               (result/error? engine-result) engine-result
+               exhausted
                (result/error :capacity-exhausted exhausted)
+               :else
                (let [replay-records (engine/replay ground-truth)
                      world (final-world replay-records)
                      patient-ids (vec (sort (keys world)))

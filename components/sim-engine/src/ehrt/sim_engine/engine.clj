@@ -63,6 +63,7 @@
             [ehrt.sim-trajectory.interface :as sim-trajectory]
             [ehrt.sim-engine.churn :as churn]
             [ehrt.sim-engine.order-profiles :as order-profiles]
+            [ehrt.kernel.interface :as result]
             [malli.core :as m])
   (:import [java.util Random]))
 
@@ -1241,7 +1242,9 @@
 
 (defn run
   "Runs the simulation. config:
-    :seed             long (required)
+    :seed             long (required, non-negative -- sim/ADR-0116: a
+                      negative :seed returns result/error :invalid-seed
+                      rather than running)
     :patients         number of patients (default 1)
     :pathway          a pathway IR map (default sim-model/sample-admission-discharge)
     :pathways         M3-adjacent: sim-model/PathwaysConfig
@@ -1410,7 +1413,13 @@
          history false}}]
   {:pre [(some? seed) (sim-model/valid? pathway)
          (or (nil? pathways) (sim-model/valid-pathways-config? pathways))]}
-  (let [rng (Random. ^long seed)
+  (if (neg? seed)
+    ;; sim/ADR-0116 (R9): the seed contract is non-negative longs -- a
+    ;; negative seed reaches the invariant catalog unvalidated otherwise
+    ;; (the engine-test flake investigation's own shrunk counterexample,
+    ;; R8/R9), so this is a guard clause at entry, not a throw.
+    (result/error :invalid-seed {:key :seed :value seed :expected "a non-negative integer"})
+    (let [rng (Random. ^long seed)
         ;; Provider NPIs are generated from this run's seed (sim/ADR-0007),
         ;; drawn once up front -- before arrival staggering -- so
         ;; provider identity is as deterministic and as fixed-order as
@@ -1570,4 +1579,4 @@
               (if (seq remaining')
                 (recur (assoc queue'' [(+ t advance) seq-no'] {:patient-id patient-id :steps remaining'})
                        (inc seq-no') world'' ground-truth' state-history')
-                (recur queue'' seq-no' world'' ground-truth' state-history')))))))))))
+                (recur queue'' seq-no' world'' ground-truth' state-history'))))))))))))

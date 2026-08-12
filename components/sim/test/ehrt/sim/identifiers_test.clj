@@ -85,7 +85,7 @@
 ;; --- determinism -----------------------------------------------------------
 
 (defspec identifiers-command-is-deterministic 50
-  (prop/for-all [seed gen/large-integer
+  (prop/for-all [seed (gen/large-integer* {:min 0})
                  patients (gen/choose 1 5)]
     (let [opts {:seed seed :patients patients}
           r1 (identifiers/identifiers-command opts)
@@ -97,7 +97,7 @@
 ;; bundle-run -- never by re-deriving from identifiers-command's own output.
 
 (defspec identifiers-command-is-complete-against-a-real-run 50
-  (prop/for-all [seed gen/large-integer
+  (prop/for-all [seed (gen/large-integer* {:min 0})
                  patients (gen/choose 1 5)]
     (let [{:keys [ground-truth facility providers]} (engine/run {:seed seed :patients patients})
           messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers)
