@@ -127,6 +127,29 @@ this session: every Read-first document matched this session's own
 characterization of it; the glossary collision check (Rider B) found
 neither term pre-existing, no STOP-AND-REPORT triggered.
 
+**A brief interim CI-red window on commit 2, self-caught and closed
+before this ADR's own push.** Commit 2 (`d0679e9`, the findings
+register) pushed before this session's own local `make test` gate ran
+in full — the driving prompt's own Gates section applies the full
+gate once, before Step 3's push, the same "run once, clean" precedent
+ADR-0113 set, not at every checkpoint. `make test`, first run at Step
+3, caught two gaps the register's own new file introduced:
+`notes/ADRs.md`'s own `done-pointer-adr-test` (the roadmap's Done line
+cited ADR-0114 before `notes/ADRs.md`'s own index carried it — resolved
+by writing this ADR before the roadmap Done line's own commit) and
+`.agents/plans/README.md`'s own `index-completeness-test` (the new
+register file needed its own index line, a fence surface this
+session's own driving prompt did not explicitly name but which the
+gate's own scope makes load-bearing). Both fixed locally before commit
+3; `main`'s own CI (`gh run list`) shows `d0679e9`
+(`31598555300`) `completed`/`failure` on exactly this gap, and
+`aeb45ab` (`31599697988`, this session's own close-phase commit)
+`completed`/`success` once both were fixed — confirmed by direct
+`gh run view` on both runs, not assumed clean. No tree state at any
+point contradicted a local `make test` run's own result; the gap was
+between commit 2's own push and the session's own full-gate run, not a
+false-green anywhere.
+
 ### Oracle bracket
 
 **Pre-analysis:** pure identity on all 35 roots — the riders are docs

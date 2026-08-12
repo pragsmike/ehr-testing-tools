@@ -94,6 +94,17 @@ OK. `gitleaks`: no leaks, staged or pre-push, across all three commits.
   headed entry for either "Oracle" or "Witness"** — confirmed by direct
   grep before writing, per the driving prompt's own STOP-AND-REPORT
   instruction for that case. No collision, no stop triggered.
+- **A brief interim CI-red window on commit 2, self-caught before this
+  session's own close.** `d0679e9` (the findings register) pushed
+  before this session's own full `make test` gate ran (the driving
+  prompt applies the gate once, before Step 3's push). `main`'s own CI
+  shows `d0679e9` (`31598555300`) `completed`/`failure` on two register
+  citation gaps (`notes/ADRs.md` not yet carrying ADR-0114; `.agents/
+  plans/README.md` missing the new register file's own index line),
+  both caught by this session's own Step-3 `make test` run and fixed
+  before commit 3. `aeb45ab` (`31599697988`) confirmed
+  `completed`/`success` by direct `gh run view`, not assumed. See
+  `notes/adr/0114-*.md`'s own Deviations section for the full record.
 
 ## Findings and HEAD landed
 
