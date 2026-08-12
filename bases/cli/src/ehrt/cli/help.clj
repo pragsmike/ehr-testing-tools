@@ -116,7 +116,18 @@
        :positional "PATH"
        :positional-doc "a directory of files to catalog, OR a generator URL (sim:/synthea:) naming a corpus to generate then catalog, OR a stdin designator (stdin:?format=...&framing=...) naming how to decode piped bytes before cataloging them, given as a trailing positional argument, not --path -- an explicit --path is never overridden by it"}
       {:verb "operators" :doc "List the registered mutation-operator catalog. Candidates that were considered and dropped are documented in docs/judge-calibration.md, not here."
-       :flags [{:flag "--format" :doc "\"fhir\" or \"v2\" -- narrow the listing to one format" :default "all"}]}]}
+       :flags [{:flag "--format" :doc "\"fhir\" or \"v2\" -- narrow the listing to one format" :default "all"}]}
+      ;; ADR-0111: a corpus-level tool, deliberately separate from the
+      ;; sim -- works on any directory of valid v2 message files,
+      ;; including a foreign corpus this repo never generated (author
+      ;; ruling, Q1 a). The HL7 v2 batch protocol's BHS/BTS wrapper
+      ;; lands as ehrt.corpus-io.framing's own :batch codec (Q2 a).
+      {:verb "batch" :doc "Partitions every HL7 v2 (ER7) message under DIR into schedule-aligned delivery batches, sorted by MSH-7 across every candidate file (never file order), and writes one BHS/BTS-wrapped batch-NNN.hl7 per occupied interval. DIR may be any directory of valid v2 message files, including a foreign corpus this repo never generated. Deterministic: no wall clock anywhere, byte-stable for the same input and --interval."
+       :flags [{:flag "--path" :doc "alternative to the positional DIR"}
+               {:flag "--interval" :doc "batch interval, in minutes (e.g. 60 for hourly, 1440 for daily) -- buckets align to the Unix epoch, so hourly batches align to the hour and daily batches to UTC midnight. REQUIRED: no default -- there is no universally sensible schedule to assume."}
+               {:flag "--out-dir" :doc "directory for the written batch-NNN.hl7 files -- rejected if it already exists and is non-empty" :default "<DIR>-batches/"}]
+       :positional "DIR"
+       :positional-doc "a directory of HL7 v2 (ER7) message files (multi-message files are split), given as a trailing positional argument, not --path -- an explicit --path is never overridden by it"}]}
 
     ;; Sniff dispatch: D11 / ADR-0019, via corpus.intake/sniff-format.
     ;; NIST profile tier: ADR-0012. Designators: ruling 7.

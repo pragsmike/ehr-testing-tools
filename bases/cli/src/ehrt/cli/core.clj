@@ -47,6 +47,9 @@
             [ehrt.corpus-io.interface :as source-sink]
             [ehrt.corpus-io.interface :as source-sink-url]
             [ehrt.corpus-io.interface :as sink-write]
+            ;; ADR-0111: the corpus batcher's own partition fn + the
+            ;; :batch framing codec, both corpus-io.
+            [ehrt.corpus-io.interface :as corpus-io]
             [ehrt.judge-v2-hapi.interface :as gate-v2]
             [ehrt.judge-fhir-official.interface :as gate-fhir]
             [ehrt.judge-v2-nist.interface :as gate-v2-nist]
@@ -91,6 +94,9 @@
    ;; documents above.
    :arrival-gap {:coerce :long}
    :at {:coerce :long}
+   ;; ADR-0111: ehrt corpus batch's own --interval, in minutes -- the
+   ;; same whole-count convention --seed/--board already use.
+   :interval {:coerce :long}
    :utc-offset {:coerce :string}
    ;; --width (AR-EP-3, ux epilogue, `notes/adr/0065-ux-epilogue.md`):
    ;; kept a string, not :coerce :long -- babashka.cli throws on a
@@ -775,6 +781,199 @@
       :else
       (intake/intake! {:source-dir (source-sink-url/path-designator->path path)
                         :source-label label :out out :received received}))))
+
+;; ---- ADR-0111: `ehrt corpus batch` -- a corpus-level tool,
+;; deliberately separate from the sim (author ruling, Q1 a): it works
+;; on any directory of valid v2 message files, including a foreign
+;; corpus this repo never generated. Reuses the exact machinery `ehrt
+;; play`'s own directory input already established: files-with-
+;; extension-in for candidate *.hl7 discovery, player/split-er7-multi
+;; (ehrt.corpus.interface, ADR-0100's own MSH-7-extraction seam's
+;; sibling) for multi-message-file splitting -- never a second
+;; implementation of either. The partitioning arithmetic itself is
+;; ehrt.corpus-io.interface/partition-messages, corpus-io per Part 1 of
+;; this session's own driving prompt; the wire wrapper is corpus-io's
+;; own :batch framing codec (Q2 a). ----
+
+(def ^:private batch-file-extension "hl7")
+
+(defn- batch-out-dir
+  "D12's own derived-out-dir pattern (docs/source-sink-design.md Part
+  IX.5), applied here: <DIR>-batches/, the corpus group's own
+  precedent (default-mutate-out-dir's sibling -- batch has no
+  operator-id/version to fold in, so the derivation is simpler)."
+  [path]
+  (str path "-batches/"))
+
+(defn- slurp-batch-input
+  "Result or loud (ADR-0078), the same try/catch-around-the-read shape
+  slurp-play-input already uses for directory input."
+  [f]
+  (try
+    (result/ok (slurp f))
+    (catch Exception e
+      (result/error :batch-input-unreadable {:path (.getPath ^java.io.File f) :message (.getMessage e)}))))
+
+(defn- read-batch-messages-from-file
+  "f -> result/ok [{:message :source} ...] (one map per message the
+  file contains, :source its own filename -- partition-messages' own
+  categorized-error-naming-the-file law reads this field), or a
+  categorized rejection: :batch-input-unreadable on an I/O failure, or
+  :batch-input-malformed (player/split-er7-multi's own
+  :malformed-er7-multi-frame rejection, re-categorized with :path
+  added -- a directory candidate file that isn't actually a valid v2
+  message is named by file, never a bare, file-less complaint)."
+  [f]
+  (let [content-result (slurp-batch-input f)]
+    (if-not (result/ok? content-result)
+      content-result
+      (let [split-result (player/split-er7-multi (:payload content-result))]
+        (if-not (result/ok? split-result)
+          (result/error :batch-input-malformed
+                        (assoc (:payload split-result) :path (.getPath ^java.io.File f)))
+          (result/ok (mapv (fn [m] {:message m :source (.getName ^java.io.File f)})
+                            (:payload split-result))))))))
+
+(defn- read-all-batch-messages
+  "files (sorted) -> result/ok [tagged messages across every file, in
+  file order] -- concatenation order is irrelevant to the eventual
+  batches (partition-messages sorts globally by MSH-7), but fail-fast
+  per-file order still determines WHICH file a read failure names
+  first, the same discipline mutate-command's own per-file loop uses."
+  [files]
+  (loop [remaining files acc []]
+    (if (empty? remaining)
+      (result/ok acc)
+      (let [r (read-batch-messages-from-file (first remaining))]
+        (if-not (result/ok? r)
+          r
+          (recur (rest remaining) (into acc (:payload r))))))))
+
+(defn- write-batch-file!
+  "Writes bs (a :batch-encoded byte array) to file, raw bytes, no
+  charset conversion -- the same .write-an-OutputStream shape
+  write-stdout! (corpus-io) already uses for byte-exact framed output,
+  applied here to a real file instead of a stream."
+  [^java.io.File file ^bytes bs]
+  (io/make-parents file)
+  (with-open [os (io/output-stream file)]
+    (.write os bs)))
+
+(defn- write-and-verify-batch!
+  "One occupied bucket -> writes out-dir/batch-NNN.hl7 in :batch
+  framing, then decodes what was just written straight back
+  (corpus-io/decode :batch, over the in-memory bytes -- no re-read)
+  to self-check BTS-1 against the real message count before ever
+  claiming success: the free transport-integrity check the codec's own
+  decode already performs, exercised here rather than merely trusted.
+  Returns result/ok a summary map, or result/error
+  :batch-self-check-failed (should never fire in practice -- encode's
+  own BTS-1 is always the true count by construction; this only guards
+  against a future encode/decode drift going undetected)."
+  [out-dir index {:keys [start-ms end-ms messages]}]
+  (let [items (mapv #(.getBytes ^String (:message %) "UTF-8") messages)
+        encoded (corpus-io/encode :batch items)
+        filename (format "batch-%03d.hl7" index)
+        file (io/file out-dir filename)]
+    (write-batch-file! file (:payload encoded))
+    (let [verify-result (corpus-io/decode :batch (:payload encoded))]
+      (if (and (result/ok? verify-result) (= (count messages) (count (:payload verify-result))))
+        (result/ok {:file filename :count (count messages)
+                    :start-ms start-ms :end-ms end-ms :verified true})
+        (result/error :batch-self-check-failed
+                      {:file filename :expected (count messages) :verify-result verify-result})))))
+
+(defn batch-command
+  "`ehrt corpus batch DIR --interval MINUTES --out-dir OUT` (ADR-0111):
+  reads every candidate *.hl7 file directly under DIR (multi-message
+  files split via player/split-er7-multi, the same machinery `ehrt
+  play`'s own directory input already uses), sorts EVERY message
+  across every file by its own MSH-7 (never file order -- the wire's
+  own transmit order is the batch order), partitions into --interval-
+  minute buckets aligned to the Unix epoch (so hourly batches align to
+  the hour, daily to UTC midnight -- ehrt.corpus-io.interface/
+  partition-messages's own law), and writes one batch-NNN.hl7 per
+  occupied bucket (empty buckets skipped, v1) in :batch (BHS/BTS)
+  framing, numbered sequentially over occupied buckets only (never the
+  bucket's own absolute epoch index).
+
+  DIR is deliberately corpus-agnostic (author ruling 2026-08-11, Q1 a):
+  any directory of valid v2 message files works, including a foreign
+  corpus this repo never generated -- nothing here reads a manifest,
+  a catalog, or anything sim/generator-specific.
+
+  :interval is REQUIRED (:interval-required when absent) -- there is
+  no universally sensible default schedule to assume (D8's
+  determinism law governs defaults, not requiredness; this mirrors
+  `sim run --seed`'s own \"determinism is a feature, not a default\"
+  reasoning). Must be positive (:interval-must-be-positive otherwise).
+  :out-dir defaults to (batch-out-dir path) when omitted (D12's derived-
+  out-dir pattern) and is rejected :out-dir-exists when it already
+  exists and is non-empty (the same guard generate-sim-command's own
+  zero-flag determinism story uses) -- never silently overwritten.
+
+  Missing :path names :file-not-found; a DIR with no *.hl7 candidate
+  files names :batch-input-empty; an unreadable or malformed candidate
+  file names :batch-input-unreadable/:batch-input-malformed, by path;
+  a message whose own MSH-7 doesn't parse propagates partition-
+  messages' own :unparseable-transmit-time, naming the file -- fail
+  fast, never a silent skip (the corpus is presumed foreign-but-valid).
+
+  :list-files-fn is injectable (defaults to result/list-files), the
+  same hermetic seam mutate-command's own directory read already uses."
+  [{:keys [path interval out-dir list-files-fn]
+    :or {list-files-fn result/list-files}}]
+  (cond
+    (not (.exists (io/file path)))
+    (result/error :file-not-found {:path path})
+
+    (nil? interval)
+    (result/rejected :interval-required
+                     {:hint "--interval MINUTES is required -- e.g. --interval 60 for hourly batches, 1440 for daily"})
+
+    (not (pos? interval))
+    (result/rejected :interval-must-be-positive {:value interval :hint "must be a positive number of minutes"})
+
+    :else
+    (let [resolved-out-dir (or out-dir (batch-out-dir path))
+          exists-result (generate/out-dir-exists? resolved-out-dir)]
+      (cond
+        (not (result/ok? exists-result)) exists-result
+        (:payload exists-result) (generate/out-dir-exists-error resolved-out-dir)
+
+        :else
+        (let [files-result (files-with-extension-in path batch-file-extension list-files-fn)]
+          (if-not (result/ok? files-result)
+            files-result
+            (let [files (:payload files-result)]
+              (if (empty? files)
+                (result/error :batch-input-empty
+                              {:path path :hint "ehrt corpus batch found no *.hl7 candidate files in this directory"})
+                (let [messages-result (read-all-batch-messages files)]
+                  (if-not (result/ok? messages-result)
+                    messages-result
+                    (let [partition-result (corpus-io/partition-messages
+                                            (:payload messages-result)
+                                            {:interval-ms (* 60000 (long interval))})]
+                      (if-not (result/ok? partition-result)
+                        partition-result
+                        (let [buckets (:buckets (:payload partition-result))]
+                          (.mkdirs (io/file resolved-out-dir))
+                          (loop [remaining (map-indexed vector buckets) written []]
+                            (if (empty? remaining)
+                              (let [span (when (seq written)
+                                           {:earliest-ms (:start-ms (first written))
+                                            :latest-ms (:end-ms (last written))})]
+                                (vary-meta (result/ok {:out-dir resolved-out-dir
+                                                       :interval-ms (* 60000 (long interval))
+                                                       :batches written
+                                                       :span span})
+                                          assoc :breadcrumb (str "try: bin/ehrt show " resolved-out-dir)))
+                              (let [[index bucket] (first remaining)
+                                    write-result (write-and-verify-batch! resolved-out-dir index bucket)]
+                                (if-not (result/ok? write-result)
+                                  write-result
+                                  (recur (rest remaining) (conj written (:payload write-result))))))))))))))))))))
 
 (defn operators-command
   "`ehrt corpus operators`: lists the registered mutation operator
@@ -2192,7 +2391,7 @@
   `validate-top-level-flags`) before either short-circuit renders help
   text -- `--help` itself is unaffected, only a typo'd sibling flag is."
   ([args opts] (dispatch args opts {}))
-  ([args opts {:keys [fetch-fn fetch-all-fn resolve-fn generate-fn generate-sim-fn mutate-fn intake-fn operators-fn
+  ([args opts {:keys [fetch-fn fetch-all-fn resolve-fn generate-fn generate-sim-fn mutate-fn intake-fn operators-fn batch-fn
                        gate-v2-fn gate-fhir-fn gate-v2-nist-fn check-fn version-fn doctor-fn
                        sim-run-fn sim-check-fn sim-identifiers-fn sim-version-fn show-fn play-fn columns-env-fn]
                :or {columns-env-fn #(System/getenv "COLUMNS")
@@ -2204,6 +2403,7 @@
                     mutate-fn mutate-command
                     intake-fn intake-command
                     operators-fn operators-command
+                    batch-fn batch-command
                     gate-v2-fn gate-v2-command
                     gate-fhir-fn fhir-gate-command
                     gate-v2-nist-fn v2-nist-gate-command
@@ -2242,7 +2442,7 @@
              ;; (bound above as `action`), not the third.
              opts (cond
                     (and (= group "gate") path (not (:path opts))) (assoc opts :path path)
-                    (and (= group "corpus") (#{"mutate" "intake"} action) path (not (:path opts))) (assoc opts :path path)
+                    (and (= group "corpus") (#{"mutate" "intake" "batch"} action) path (not (:path opts))) (assoc opts :path path)
                     (and (= group "check") action (not (:path opts))) (assoc opts :path action)
                     (and (= group "show") action (not (:path opts))) (assoc opts :path action)
                     (and (= group "play") action (not (:path opts))) (assoc opts :path action)
@@ -2274,6 +2474,7 @@
                       "mutate" (mutate-fn opts)
                       "intake" (intake-fn opts)
                       "operators" (operators-fn opts)
+                      "batch" (batch-fn opts)
                       (unknown-command-error args (help/verb-names (help/find-group help/cli-spec "corpus"))))
            "gate" (cond
                     (= action "v2") (gate-v2-fn opts)

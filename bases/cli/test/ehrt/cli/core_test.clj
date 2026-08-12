@@ -98,7 +98,7 @@
 (deftest dispatch-unknown-corpus-action-names-its-verbs-test
   (let [r (cli/dispatch ["corpus" "bogus"] {} {})]
     (is (= :unknown-command (:category r)))
-    (is (= #{"generate" "mutate" "intake" "operators"} (set (:valid-options (:payload r)))))))
+    (is (= #{"generate" "mutate" "intake" "operators" "batch"} (set (:valid-options (:payload r)))))))
 
 (deftest dispatch-unknown-verb-in-a-real-group-hints-that-groups-own-help-test
   ;; B-6/D-3 (ux fixes 2, ADR-0060): args = ["sim"] -- "sim" is a real
@@ -178,7 +178,7 @@
   ;; the flag validator's own accept/reject behavior is under test.
   (let [stub-fns (into {} (map (fn [k] [k (constantly (result/ok {}))]))
                         [:fetch-fn :fetch-all-fn :resolve-fn :generate-fn :generate-sim-fn
-                         :mutate-fn :intake-fn :operators-fn :gate-v2-fn :gate-fhir-fn
+                         :mutate-fn :intake-fn :operators-fn :batch-fn :gate-v2-fn :gate-fhir-fn
                          :gate-v2-nist-fn :check-fn :version-fn :doctor-fn :sim-run-fn
                          :sim-check-fn :sim-identifiers-fn :sim-version-fn :show-fn :play-fn])]
     (doseq [[group verb] (help/command-pairs help/cli-spec)
@@ -1490,6 +1490,167 @@
                                 :in-override piped})]
     (is (result/rejected? r))
     (is (= :malformed-er7-multi-frame (:category r)))))
+
+;; ---- batch-command (`ehrt corpus batch`, ADR-0111): a corpus-level
+;; tool, deliberately separate from the sim (author ruling, Q1 a) --
+;; works on any directory of valid v2 message files, including a
+;; foreign corpus this repo never generated. ----
+
+(defn- batch-msh
+  "A minimal synthetic v2 message carrying just MSH-7 (dtm) -- the same
+  shape ehrt.corpus.player-test's own `msh` helper builds."
+  [dtm]
+  (str "MSH|^~\\&|A|B|C|D|" dtm))
+
+(deftest batch-command-missing-path-names-file-not-found-test
+  (let [missing (str (temp-dir*) "/does-not-exist")
+        r (cli/batch-command {:path missing :interval 60})]
+    (is (result/error? r))
+    (is (= :file-not-found (:category r)))
+    (is (= missing (:path (:payload r))))))
+
+(deftest batch-command-interval-required-test
+  (let [in-dir (temp-dir*)
+        _ (spit (io/file in-dir "a.hl7") (batch-msh "20260101000000"))
+        r (cli/batch-command {:path in-dir})]
+    (is (result/rejected? r))
+    (is (= :interval-required (:category r)))))
+
+(deftest batch-command-interval-must-be-positive-test
+  (let [in-dir (temp-dir*)
+        _ (spit (io/file in-dir "a.hl7") (batch-msh "20260101000000"))
+        r (cli/batch-command {:path in-dir :interval 0})]
+    (is (result/rejected? r))
+    (is (= :interval-must-be-positive (:category r)))))
+
+(deftest batch-command-no-candidate-files-names-batch-input-empty-test
+  (let [in-dir (temp-dir*)
+        _ (spit (io/file in-dir "not-hl7.txt") "ignore me")
+        r (cli/batch-command {:path in-dir :interval 60})]
+    (is (result/error? r))
+    (is (= :batch-input-empty (:category r)))))
+
+(deftest batch-command-out-dir-exists-and-nonempty-is-rejected-test
+  (let [in-dir (temp-dir*)
+        out-dir (str (temp-dir*) "/out")
+        _ (spit (io/file in-dir "a.hl7") (batch-msh "20260101000000"))
+        _ (io/make-parents (io/file out-dir "already-here.txt"))
+        _ (spit (io/file out-dir "already-here.txt") "pre-existing")
+        r (cli/batch-command {:path in-dir :interval 60 :out-dir out-dir})]
+    (is (result/error? r))
+    (is (= :out-dir-exists (:category r)))))
+
+;; ---- ADR-0078-shaped categorized reads: unreadable file, unparseable
+;; MSH-7 -- both name the offending file, never a silent skip. An
+;; unreadable file is provoked hermetically the same way mutate-
+;; command-listing-failure-on-an-existing-dir-names-listing-failed-
+;; not-count-zero-test does: list-files-fn injected to name a file that
+;; doesn't actually exist at that path, so slurp throws for real. ----
+
+(deftest batch-command-unreadable-file-names-batch-input-unreadable-test
+  (let [in-dir (temp-dir*)
+        missing-but-listed (io/file in-dir "vanished.hl7")
+        r (cli/batch-command
+           {:path in-dir :interval 60
+            :list-files-fn (fn [_] (result/ok [missing-but-listed]))})]
+    (is (result/error? r))
+    (is (= :batch-input-unreadable (:category r)))
+    (is (= (.getPath missing-but-listed) (:path (:payload r))))))
+
+(deftest batch-command-malformed-candidate-file-names-batch-input-malformed-test
+  (let [in-dir (temp-dir*)
+        bad-file (io/file in-dir "not-a-message.hl7")
+        _ (spit bad-file "no MSH here at all")
+        r (cli/batch-command {:path in-dir :interval 60})]
+    (is (result/error? r))
+    (is (= :batch-input-malformed (:category r)))
+    (is (= (.getPath bad-file) (:path (:payload r))))))
+
+(deftest batch-command-unparseable-msh-7-names-the-file-test
+  (let [in-dir (temp-dir*)
+        bad-file (io/file in-dir "bad-timestamp.hl7")
+        _ (spit (io/file in-dir "good.hl7") (batch-msh "20260101000000"))
+        _ (spit bad-file "MSH|^~\\&|A|B|C|D|not-a-date")
+        r (cli/batch-command {:path in-dir :interval 60})]
+    (is (result/error? r))
+    (is (= :unparseable-transmit-time (:category r)))
+    (is (= "bad-timestamp.hl7" (:source (:payload r))))))
+
+;; ---- unknown-flag routing: spec-derived, exercised through dispatch
+;; the same way every other corpus verb's own unknown-flag test is. ----
+
+(deftest dispatch-corpus-batch-unknown-flag-is-rejected-by-name-test
+  (let [r (cli/dispatch ["corpus" "batch" "somedir"] {:bogus "x" :interval 60})]
+    (is (result/error? r))
+    (is (= :unknown-flag (:category r)))
+    (is (= "--bogus" (:flag (:payload r))))))
+
+;; ---- the happy path: multiple files, cross-file MSH-7 ordering,
+;; epoch-aligned buckets, each written batch's own BTS-1 self-verified. ----
+
+(deftest batch-command-happy-path-hourly-buckets-two-files-test
+  (let [in-dir (temp-dir*)
+        out-dir (str (temp-dir*) "/out")
+        ;; File a: two messages an hour apart (bucket 0, bucket 1).
+        ;; File b: one message landing in bucket 1 too, chronologically
+        ;; BEFORE file a's own bucket-1 message -- proves the sort is
+        ;; global (MSH-7), never file order or per-file order.
+        _ (spit (io/file in-dir "a.hl7")
+                (str (batch-msh "19700101000000") "\n\n" (batch-msh "19700101010500")))
+        _ (spit (io/file in-dir "b.hl7") (batch-msh "19700101010000"))
+        r (cli/batch-command {:path in-dir :interval 60 :out-dir out-dir})]
+    (is (result/ok? r))
+    (let [{:keys [batches]} (:payload r)]
+      (is (= 2 (count batches)))
+      (is (= ["batch-000.hl7" "batch-001.hl7"] (mapv :file batches)))
+      (is (= [1 2] (mapv :count batches)))
+      (is (every? :verified batches))
+      (is (.exists (io/file out-dir "batch-000.hl7")))
+      (is (.exists (io/file out-dir "batch-001.hl7")))
+      ;; bucket 1's own two messages: b.hl7 (01:00:00) sorts before
+      ;; a.hl7's second message (01:05:00) -- the file order was the
+      ;; reverse of that.
+      (let [bucket-1-content (slurp (io/file out-dir "batch-001.hl7"))
+            first-msg-idx (.indexOf bucket-1-content "19700101010000")
+            second-msg-idx (.indexOf bucket-1-content "19700101010500")]
+        (is (< first-msg-idx second-msg-idx))))))
+
+(deftest batch-command-skips-empty-interior-buckets-test
+  (let [in-dir (temp-dir*)
+        out-dir (str (temp-dir*) "/out")
+        _ (spit (io/file in-dir "a.hl7")
+                (str (batch-msh "19700101000000") "\n\n" (batch-msh "19700101020000")))
+        r (cli/batch-command {:path in-dir :interval 60 :out-dir out-dir})]
+    (is (result/ok? r))
+    ;; Two occupied buckets (0 and 2), sequentially numbered batch-000/
+    ;; batch-001 -- v1 never reflects the skipped interior bucket in
+    ;; the filename (a named deferral, ADR-0111).
+    (is (= ["batch-000.hl7" "batch-001.hl7"] (mapv :file (:batches (:payload r)))))))
+
+(deftest batch-command-derives-out-dir-when-omitted-test
+  (let [in-dir (temp-dir*)
+        _ (spit (io/file in-dir "a.hl7") (batch-msh "20260101000000"))
+        r (cli/batch-command {:path in-dir :interval 60})]
+    (is (result/ok? r))
+    (is (.isDirectory (io/file (str in-dir "-batches/"))))
+    (is (.isFile (io/file (str in-dir "-batches/") "batch-000.hl7")))))
+
+(deftest batch-command-accepts-a-single-file-as-input-test
+  (let [in-dir (temp-dir*)
+        f (io/file in-dir "one.hl7")
+        _ (spit f (batch-msh "20260101000000"))
+        r (cli/batch-command {:path (.getAbsolutePath f) :interval 60 :out-dir (str (temp-dir*) "/out")})]
+    (is (result/ok? r))
+    (is (= 1 (count (:batches (:payload r)))))))
+
+(deftest batch-command-multi-message-file-is-split-test
+  (let [in-dir (temp-dir*)
+        out-dir (str (temp-dir*) "/out")
+        _ (spit (io/file in-dir "multi.hl7")
+                (str (batch-msh "20260101000000") "\n\n" (batch-msh "20260101000010")))
+        r (cli/batch-command {:path in-dir :interval 60 :out-dir out-dir})]
+    (is (result/ok? r))
+    (is (= [2] (mapv :count (:batches (:payload r)))))))
 
 ;; ---- operators-command (`ehrt corpus operators`): a pure read of
 ;; corpus.operators' registry -- no filesystem, no subprocess, no

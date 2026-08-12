@@ -64,6 +64,7 @@
     ["corpus" "mutate"] :mutate-fn
     ["corpus" "intake"] :intake-fn
     ["corpus" "operators"] :operators-fn
+    ["corpus" "batch"] :batch-fn
     ["gate" "v2"] :gate-v2-fn
     ["gate" "fhir"] :gate-fhir-fn
     ["gate" "v2-nist"] :gate-v2-nist-fn
@@ -93,7 +94,7 @@
   verb added to dispatch's case without a matching spec entry (and an
   update here) is a discoverable gap rather than a silent one."
   #{["artifact" "fetch"] ["artifact" "resolve"]
-    ["corpus" "generate"] ["corpus" "mutate"] ["corpus" "intake"] ["corpus" "operators"]
+    ["corpus" "generate"] ["corpus" "mutate"] ["corpus" "intake"] ["corpus" "operators"] ["corpus" "batch"]
     ["gate" "v2"] ["gate" "fhir"] ["gate" "v2-nist"]
     ["check" nil]
     ["version" nil]

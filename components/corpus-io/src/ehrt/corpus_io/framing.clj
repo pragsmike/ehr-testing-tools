@@ -21,7 +21,23 @@
   parsing JSON text -- unavoidably a text operation. FHIR's own spec
   fixes JSON serialization as UTF-8, so that one codec alone reads/
   writes UTF-8 text; its law is item-level identity (entries survive,
-  the Bundle envelope does not), never byte-exact."
+  the Bundle envelope does not), never byte-exact.
+
+  :batch (ADR-0111, ruling Q2 a: 'Go.') is the HL7 v2 batch protocol's
+  BHS/BTS envelope around an :er7-multi-framed message block -- a
+  corpus-level delivery wrapper, not a Source/Sink framing kind (it is
+  deliberately absent from ehrt.corpus-io.source-sink/Framing's closed
+  enum, which docs/dev/source-sink-design.md Part II still names as
+  exactly five kinds; :batch is called directly via `decode`/`encode`
+  below, the same way this session's own corpus batcher calls it,
+  never through a Source/Sink map). Byte-exact like :er7-multi/:mllp/
+  :ndjson: BHS/BTS are read/written as fixed ASCII structural bytes
+  only ('BHS', 'BTS', '|', ASCII digits for BTS-1's own count) with no
+  java.lang.String conversion anywhere in encode-batch/decode-batch,
+  same charset law as this namespace's other byte-exact codecs. BTS-1
+  is a free transport-integrity check: decode verifies it against the
+  actual decoded message count and rejects :batch-count-mismatch on a
+  mismatch, rather than trusting a possibly-stale declared count."
   (:require [clojure.data.json :as json]
             [ehrt.kernel.interface :as kernel])
   (:import [java.util Arrays]
@@ -97,21 +113,29 @@
 (def ^:private lf (byte 0x0A))
 (def ^:private message-separator (byte-array [lf lf]))
 
-(defn- msh-line-start-offsets
-  "Every offset in bs where a line begins with MSH -- offset 0, or the
-  immediately preceding byte is a bare LF. Anchoring to a real message
-  start (rather than splitting wherever \\n\\n happens to occur) is
-  what makes this robust to a payload that happens to contain a
-  literal \\n\\n substring internally (ruling 3)."
-  [^bytes bs]
+(defn- line-start-offsets
+  "Every offset in bs where a line begins with marker (a 3-byte segment
+  marker, e.g. MSH/BHS/BTS) -- offset 0, or the immediately preceding
+  byte is a bare LF. Anchoring to a real segment start (rather than
+  splitting wherever \\n\\n happens to occur) is what makes this
+  robust to a payload that happens to contain a literal \\n\\n or
+  marker-like substring internally (ruling 3, generalized for :batch's
+  BHS/BTS markers, ADR-0111 -- msh-line-start-offsets below is this
+  fn's own original MSH instance, byte-identical, never reimplemented
+  a second time)."
+  [^bytes bs ^bytes marker]
   (loop [i 0 acc []]
-    (let [idx (index-of-bytes bs msh-marker i)]
+    (let [idx (index-of-bytes bs marker i)]
       (if (neg? idx)
         acc
         (recur (inc idx)
                (if (or (zero? idx) (= lf (aget bs (dec idx))))
                  (conj acc idx)
                  acc))))))
+
+(defn- msh-line-start-offsets
+  [^bytes bs]
+  (line-start-offsets bs msh-marker))
 
 (defn- strip-trailing-separator
   "Drops exactly one trailing \\n\\n from item-range, if present --
@@ -219,12 +243,106 @@
                                                   "entry" (mapv (fn [resource] {"resource" resource}) items)})
                          "UTF-8")))
 
+;; ---- :batch -- the HL7 v2 batch protocol's BHS/BTS envelope around
+;; an :er7-multi-framed message block (ADR-0111, ruling Q2 a). Fields
+;; kept deliberately minimal and deterministic (module docstring): BHS
+;; carries only its own field-separator/encoding-characters pair
+;; ("BHS|^~\&", the same minimal two-field shape MSH itself would have
+;; with no further fields populated) -- no creation-time field is
+;; populated at all, so the determinism law (no wall clock anywhere) is
+;; satisfied trivially rather than by threading a batch-window boundary
+;; time through this codec's own encode/items-only call shape. BTS
+;; carries exactly BTS-1, the true message count computed from items
+;; itself, never a caller-supplied number that could drift from
+;; reality. FHS/FTS (file-level wrappers) are a named deferral -- not
+;; built here. ----
+
+(def ^:private bhs-marker (byte-array (map (comp byte int) [\B \H \S])))
+(def ^:private bts-marker (byte-array (map (comp byte int) [\B \T \S])))
+(def ^:private bhs-bytes (byte-array (map (comp byte int) (seq "BHS|^~\\&"))))
+(def ^:private bts-prefix-bytes (byte-array (map (comp byte int) (seq "BTS|"))))
+
+(defn- digit-bytes->long
+  "A byte array of ASCII digit bytes ('0'-'9') -> the non-negative long
+  it spells out, or nil when empty or any byte isn't an ASCII digit --
+  byte-level only, no String conversion (the charset law, module
+  docstring): BTS-1 is read the same way every other byte-exact codec
+  in this namespace reads its structural bytes."
+  [^bytes bs]
+  (when (pos? (alength bs))
+    (reduce (fn [acc b]
+              (if (and (>= ^byte b (byte 48)) (<= ^byte b (byte 57)))
+                (+ (* 10 ^long acc) (- ^byte b 48))
+                (reduced nil)))
+            0
+            bs)))
+
+(defn- encode-batch
+  [items]
+  (let [messages-bytes (:payload (encode-er7-multi items))
+        bts-bytes (concat-bytes [bts-prefix-bytes
+                                  (byte-array (map (comp byte int) (seq (str (count items)))))])]
+    (kernel/ok (concat-bytes [bhs-bytes message-separator messages-bytes bts-bytes message-separator]))))
+
+(defn- decode-batch
+  [^bytes bs]
+  (if (not (bytes-at? bs bhs-marker 0))
+    (kernel/rejected :malformed-batch-frame
+                      {:hint "a :batch frame must begin with a BHS segment"})
+    (let [bhs-sep-idx (index-of-bytes bs message-separator 0)]
+      (if (neg? bhs-sep-idx)
+        (kernel/rejected :malformed-batch-frame
+                          {:hint "no separator found after the BHS segment"})
+        (let [messages-start (+ bhs-sep-idx (alength message-separator))
+              bts-starts (filterv #(>= ^long % ^long messages-start)
+                                   (line-start-offsets bs bts-marker))]
+          (if (empty? bts-starts)
+            (kernel/rejected :malformed-batch-frame
+                              {:hint "a :batch frame must end with a BTS segment"})
+            (let [bts-start (peek bts-starts)
+                  messages-region (strip-trailing-separator (slice bs messages-start bts-start))
+                  decoded-result (if (zero? (alength messages-region))
+                                   (kernel/ok [])
+                                   (decode-er7-multi messages-region))]
+              (if-not (kernel/ok? decoded-result)
+                decoded-result
+                (let [messages (:payload decoded-result)
+                      bts-region (strip-trailing-separator (slice bs bts-start (alength bs)))]
+                  (cond
+                    (< (alength bts-region) (alength bts-prefix-bytes))
+                    (kernel/rejected :malformed-batch-frame
+                                      {:hint "BTS segment is too short to carry BTS-1"})
+
+                    (not (bytes-at? bts-region bts-prefix-bytes 0))
+                    (kernel/rejected :malformed-batch-frame
+                                      {:hint "BTS segment must begin with \"BTS|\""})
+
+                    :else
+                    (let [declared-count (digit-bytes->long
+                                          (slice bts-region (alength bts-prefix-bytes) (alength bts-region)))]
+                      (cond
+                        (nil? declared-count)
+                        (kernel/rejected :malformed-batch-frame
+                                          {:hint "BTS-1 (message count) is missing or non-numeric"})
+
+                        (not= declared-count (count messages))
+                        (kernel/rejected :batch-count-mismatch
+                                          {:declared declared-count :actual (count messages)
+                                           :hint "BTS-1 does not match the number of messages actually present -- transport integrity check failed"})
+
+                        :else
+                        (kernel/ok messages)))))))))))))
+
 (def known-framings
   "Every framing kind decode/encode dispatch on below -- the in-repo
   'registry' ehrt.docs-tooling.lint's own framing-codec classification
   (target 4, docs/source-sink-design.md Part VIII: 'the same shape as
-  corpus.operators/corpus.canonicalizers') checks against via `lookup`."
-  #{:file-per-item :er7-multi :ndjson :bundle-entries :mllp})
+  corpus.operators/corpus.canonicalizers') checks against via `lookup`.
+  :batch (ADR-0111) included even though it is NOT one of
+  ehrt.corpus-io.source-sink/Framing's five closed-enum kinds (module
+  docstring) -- this set is this namespace's own dispatch registry, a
+  different thing from that schema's closed enum."
+  #{:file-per-item :er7-multi :ndjson :bundle-entries :mllp :batch})
 
 (defn lookup
   "id (a framing keyword) x version (ignored -- framing kinds aren't
@@ -243,17 +361,18 @@
 ;; ---- dispatch ----
 
 (defn decode
-  "framing (one of ehrt.corpus-io.source-sink/Framing's five
-  kinds) x bs (a byte array) -> kernel/ok [item byte-arrays...] (item
-  data-maps for :bundle-entries), or a framing-specific
-  kernel/rejected on malformed input."
+  "framing (one of ehrt.corpus-io.source-sink/Framing's five kinds, or
+  :batch -- module docstring) x bs (a byte array) -> kernel/ok [item
+  byte-arrays...] (item data-maps for :bundle-entries), or a
+  framing-specific kernel/rejected on malformed input."
   [framing bs]
   (case framing
     :file-per-item (decode-file-per-item bs)
     :er7-multi (decode-er7-multi bs)
     :ndjson (decode-ndjson bs)
     :bundle-entries (decode-bundle-entries bs)
-    :mllp (decode-mllp bs)))
+    :mllp (decode-mllp bs)
+    :batch (decode-batch bs)))
 
 (defn encode
   "The inverse of decode: framing x items -> kernel/ok a byte array."
@@ -263,4 +382,5 @@
     :er7-multi (encode-er7-multi items)
     :ndjson (encode-ndjson items)
     :bundle-entries (encode-bundle-entries items)
-    :mllp (encode-mllp items)))
+    :mllp (encode-mllp items)
+    :batch (encode-batch items)))

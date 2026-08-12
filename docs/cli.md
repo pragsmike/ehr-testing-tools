@@ -138,6 +138,18 @@ List the registered mutation-operator catalog. Candidates that were considered a
 |---|---|---|
 | `--format` | `all` | "fhir" or "v2" -- narrow the listing to one format |
 
+### `ehrt corpus batch`
+
+Partitions every HL7 v2 (ER7) message under DIR into schedule-aligned delivery batches, sorted by MSH-7 across every candidate file (never file order), and writes one BHS/BTS-wrapped batch-NNN.hl7 per occupied interval. DIR may be any directory of valid v2 message files, including a foreign corpus this repo never generated. Deterministic: no wall clock anywhere, byte-stable for the same input and --interval.
+
+**Positional argument `DIR`** — a directory of HL7 v2 (ER7) message files (multi-message files are split), given as a trailing positional argument, not --path -- an explicit --path is never overridden by it
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--path` | — | alternative to the positional DIR |
+| `--interval` | — | batch interval, in minutes (e.g. 60 for hourly, 1440 for daily) -- buckets align to the Unix epoch, so hourly batches align to the hour and daily batches to UTC midnight. REQUIRED: no default -- there is no universally sensible schedule to assume. |
+| `--out-dir` | `<DIR>-batches/` | directory for the written batch-NNN.hl7 files -- rejected if it already exists and is non-empty |
+
 ## `ehrt gate`
 
 Conformance-gate a file or directory against HL7 v2, FHIR, or (with --profile) an HL7 v2 conformance profile. Bare `ehrt gate PATH` sniffs the format and dispatches between v2 and fhir only -- never v2-nist, which needs an explicit --profile. A directory mixing formats, or a file that can't be classified, is an error naming the explicit override (`gate v2 PATH` / `gate fhir PATH`), never a silent per-file split. PATH and --out-dir also accept dir:/file: URL designators.

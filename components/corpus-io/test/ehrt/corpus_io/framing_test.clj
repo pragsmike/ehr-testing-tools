@@ -260,6 +260,78 @@
       (is (kernel/rejected? r))
       (is (= :malformed-mllp-frame (:category r))))))
 
+;; ---- :batch -- the HL7 v2 batch protocol's BHS/BTS envelope around an
+;; :er7-multi-framed message block (ADR-0111) ----
+
+(deftest batch-round-trip-property-test
+  (let [check-result
+        (tc/quick-check 100
+          (prop/for-all [items (gen/vector er7-message-gen 1 8)]
+            (let [encoded (framing/encode :batch items)]
+              (and (kernel/ok? encoded)
+                   (let [decoded (framing/decode :batch (:payload encoded))]
+                     (and (kernel/ok? decoded)
+                          (= (count items) (count (:payload decoded)))
+                          (every? true? (map #(Arrays/equals ^bytes %1 ^bytes %2)
+                                              items (:payload decoded)))))))))]
+    (is (:pass? check-result) (str check-result))))
+
+(deftest batch-empty-items-round-trip-test
+  (let [encoded (:payload (framing/encode :batch []))
+        decoded (framing/decode :batch encoded)]
+    (is (kernel/ok? decoded))
+    (is (= [] (:payload decoded)))))
+
+(deftest batch-concrete-example-test
+  (let [msg1 (byte-array (map byte "MSH|^~\\&|A"))
+        msg2 (byte-array (map byte "MSH|^~\\&|B"))
+        encoded (:payload (framing/encode :batch [msg1 msg2]))]
+    (is (= (concat (map int "BHS|^~\\&") [0x0A 0x0A]
+                   (map int "MSH|^~\\&|A") [0x0A 0x0A]
+                   (map int "MSH|^~\\&|B") [0x0A 0x0A]
+                   (map int "BTS|2") [0x0A 0x0A])
+           (map #(bit-and 0xff %) encoded))
+        "BHS, then each message er7-multi-framed, then BTS|<true count>, \\n\\n-separated throughout")
+    (let [decoded (:payload (framing/decode :batch encoded))]
+      (is (= 2 (count decoded)))
+      (is (every? true? (map #(Arrays/equals ^bytes %1 ^bytes %2) [msg1 msg2] decoded))))))
+
+(deftest batch-charset-law-test
+  (let [msg (byte-array (concat (seq (msg-bytes "|^~\\&|A"))
+                                 [(byte \|) latin1-o-umlaut (byte \|)]))
+        encoded (:payload (framing/encode :batch [msg]))
+        decoded (:payload (framing/decode :batch encoded))]
+    (is (= 1 (count decoded)))
+    (is (Arrays/equals ^bytes msg ^bytes (first decoded))
+        "the non-UTF-8 message byte survives -- :batch's own BHS/BTS bytes are
+         fixed ASCII structural bytes only, never touching message content")))
+
+(deftest batch-bts1-mismatch-is-categorized-test
+  (let [items [(byte-array (map byte "MSH|^~\\&|A")) (byte-array (map byte "MSH|^~\\&|B"))]
+        encoded (:payload (framing/encode :batch items))
+        ;; Tamper the declared count: "BTS|2" -> "BTS|9", same byte length.
+        tampered (byte-array (map (fn [b] (if (= (byte \2) b) (byte \9) b)) encoded))
+        r (framing/decode :batch tampered)]
+    (is (kernel/rejected? r))
+    (is (= :batch-count-mismatch (:category r)))
+    (is (= 9 (:declared (:payload r))))
+    (is (= 2 (:actual (:payload r))))))
+
+(deftest batch-malformed-missing-bhs-test
+  (let [r (framing/decode :batch (byte-array (map byte "MSH|^~\\&|A\n\nBTS|1\n\n")))]
+    (is (kernel/rejected? r))
+    (is (= :malformed-batch-frame (:category r)))))
+
+(deftest batch-malformed-missing-bts-test
+  (let [r (framing/decode :batch (byte-array (map byte "BHS|^~\\&\n\nMSH|^~\\&|A\n\n")))]
+    (is (kernel/rejected? r))
+    (is (= :malformed-batch-frame (:category r)))))
+
+(deftest batch-malformed-non-numeric-bts1-test
+  (let [r (framing/decode :batch (byte-array (map byte "BHS|^~\\&\n\nMSH|^~\\&|A\n\nBTS|abc\n\n")))]
+    (is (kernel/rejected? r))
+    (is (= :malformed-batch-frame (:category r)))))
+
 ;; ---- lookup -- the registry-lookup shape ehrt.docs-tooling.lint's own
 ;; target-4 framing-codec classification checks against (Step 7, via
 ;; ehrt.corpus-io.interface/lookup since the corpus-io split,

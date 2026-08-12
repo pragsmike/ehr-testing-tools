@@ -28,6 +28,8 @@
   depending on tools."
   (:require [ehrt.corpus-io.framing :as framing]
             [ehrt.corpus-io.er7 :as er7]
+            [ehrt.corpus-io.er7-fields :as er7-fields]
+            [ehrt.corpus-io.batch :as batch]
             [ehrt.corpus-io.spool-source :as spool-source]
             [ehrt.corpus-io.source-sink :as source-sink]
             [ehrt.corpus-io.source-sink-url :as source-sink-url]
@@ -49,6 +51,19 @@
 (def field-index er7/field-index)
 (def segment-occurrence-index er7/segment-occurrence-index)
 (def resolve-locator er7/resolve-locator)
+
+;; corpus-io.er7-fields (ADR-0111 move-don't-improve micro-relocation --
+;; moved down from ehrt.corpus.player, which re-exports these same four
+;; names unchanged; ehrt.corpus-io.batch/partition-messages is the new
+;; in-component caller this move exists for)
+(def parse-dtm-lenient er7-fields/parse-dtm-lenient)
+(def message-timestamp-ms er7-fields/message-timestamp-ms)
+(def message-type-trigger er7-fields/message-type-trigger)
+(def message-patient-id er7-fields/message-patient-id)
+
+;; corpus-io.batch (ADR-0111): the corpus batcher's own pure partition
+;; fn -- messages -> epoch-aligned, schedule-partitioned buckets.
+(def partition-messages batch/partition-messages)
 
 ;; corpus-io.spool-source (collided with corpus.generator-source on
 ;; `resolve!` back when both lived in one component, ADR-0002 -- kept
