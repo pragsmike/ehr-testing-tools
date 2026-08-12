@@ -41,4 +41,8 @@ artifact.
   config [`config-latency.edn`](ed-tuesday/config-latency.edn) plays
   the same shift onto a latency-realistic wire — same ground truth,
   a second, disordered clock (`notes/ADRs.md` ADR-0110); see
-  ed-tuesday's own README, "The second clock".
+  ed-tuesday's own README, "The second clock". `ehrt corpus batch`
+  then schedule-partitions that same latency wire into BHS/BTS-framed
+  delivery batches, a straddling encounter split across two of them
+  (`notes/ADRs.md` ADR-0111); see that README's own "Batched
+  delivery".

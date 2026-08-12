@@ -264,3 +264,115 @@ how, to do that is the receiver's own design question -- this
 workspace's job is only to supply the case (the author's own charter,
 quoted above), not to fix `fold-message` (ADR-0109's own named scope
 fence, unchanged here).
+
+## Batched delivery
+
+ADR-0111 lands a second, complementary transport realism: real EHR
+feeds are rarely delivered message-by-message forever -- most
+interfaces batch their traffic on a schedule (hourly, nightly) using
+HL7 v2's own batch protocol, BHS/BTS segments wrapping a block of
+messages with a declared message count. `ehrt corpus batch` is a
+corpus-level tool, deliberately separate from the sim (author ruling,
+2026-08-11, Q1 a: *"It should work on any corpus, even an existing
+directory of foreign (but valid) message files."*) -- it happens to run
+over this scenario's own latency out-dir below only because that
+out-dir is a directory of valid v2 messages like any other.
+
+**Run the batcher over the SAME latency wire the section above
+generates, hourly:**
+
+```bash
+bin/ehrt corpus batch out/scenarios/ed-tuesday-latency --interval 60 \
+  --out-dir out/scenarios/ed-tuesday-latency-batches
+```
+
+Witnessed this session (same seed-20260811 run as above, 283 messages
+across 34 occupied hourly buckets, `2026-08-11T00:00Z` through
+`2026-08-12T13:00Z`):
+
+```
+{:status :ok,
+ :payload
+ {:out-dir "out/scenarios/ed-tuesday-latency-batches",
+  :interval-ms 3600000,
+  :batches
+  [{:file "batch-000.hl7", :count 3,
+    :start-ms 1786406400000, :end-ms 1786410000000, :verified true}
+   {:file "batch-001.hl7", :count 4,
+    :start-ms 1786410000000, :end-ms 1786413600000, :verified true}
+   {:file "batch-002.hl7", :count 5,
+    :start-ms 1786413600000, :end-ms 1786417200000, :verified true}
+   ;; ... batch-003.hl7 through batch-030.hl7, one per occupied hour ...
+   {:file "batch-031.hl7", :count 1,
+    :start-ms 1786518000000, :end-ms 1786521600000, :verified true}
+   {:file "batch-032.hl7", :count 2,
+    :start-ms 1786528800000, :end-ms 1786532400000, :verified true}
+   {:file "batch-033.hl7", :count 1,
+    :start-ms 1786536000000, :end-ms 1786539600000, :verified true}],
+  :span {:earliest-ms 1786406400000, :latest-ms 1786539600000}}}
+```
+
+**Epoch-aligned, and the interior gap is real.** `batch-031` spans
+`[07:00Z, 08:00Z)` on 2026-08-12 and `batch-032` spans `[10:00Z,
+11:00Z)` -- the two hours in between (`08:00Z`-`10:00Z`) carried no
+traffic at all in this run's own tail and are simply absent, never
+written as empty files (ADR-0111's own named v1 deferral: an
+interior empty batch isn't represented, only skipped). Every one of
+the 34 written files self-verified: `write-and-verify-batch!`
+(`bases/cli`) decodes what it just wrote straight back and checks
+`BTS-1` against the real message count before ever reporting success
+-- `:verified true` on all 34 is that check, exercised, not merely
+claimed.
+
+**The wrapper itself**, `batch-000.hl7`, head and tail:
+
+```
+$ head -c 100 out/scenarios/ed-tuesday-latency-batches/batch-000.hl7
+BHS|^~\&
+
+MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811003026+0000||ADT^A01|MRN000002-A01-360|P|2.3EVN|A0
+$ tail -c 45 out/scenarios/ed-tuesday-latency-batches/batch-000.hl7 | cat -A
+dicare-advantage|Medicare Advantage^M$
+$
+BTS|3$
+$
+```
+
+`BHS|^~\&` opens the batch; `BTS|3` closes it, `BTS-1` naming the true
+count of 3 messages this file actually carries -- the minimal,
+deterministic field set ADR-0111 rules for v1 (no creation-time field
+populated at all, so the determinism law -- no wall clock anywhere --
+holds trivially rather than by threading one through).
+
+**A straddling encounter.** Smith, James (MRN000002, bed ED-H05):
+admitted (A01, MSH-7 transmit time `2026-08-11T00:30:26Z`) lands in
+`batch-000.hl7`; discharged (A03, MSH-7 transmit time
+`2026-08-11T01:34:19Z`) lands in `batch-001.hl7` -- one clock-hour
+later, the very next batch. A downstream receiver holding only
+`batch-000.hl7` has Smith's admission and nothing else for him: by
+every transport-level measure that receiver is looking at a complete,
+BTS-verified batch (3 of 3 messages present, exactly as declared) --
+and yet, clinically, his encounter is half there. Nothing in the batch
+protocol itself says otherwise; `batch-000.hl7`'s own `BTS-1` checks
+out whether or not any of the encounters it carries are clinically
+finished.
+
+**The lesson** (the author's own charter, ADR-0107/ADR-0109, quoted
+above, restated for batching specifically): transport-level
+completeness -- every `BTS-1` count checks out, exactly as this run's
+own 34-for-34 self-verification shows -- says nothing about
+clinical-level completeness -- whether an encounter's own full record
+set has actually arrived yet. A downstream receiver deciding "do I
+have all of this encounter?" gets exactly the case it needs to test
+that decision against: Smith's own admission and discharge, split
+across two adjacent, individually-clean batches.
+
+**A taxonomy note, for the record.** Transport realism -- delayed
+individual transmission (ADR-0109) and now schedule batching
+(ADR-0111) -- simulates CORRECT transport behaviors, deterministically;
+mutation (`ehrt corpus mutate`) injects INCORRECT content with an
+expected finding. Message loss and duplication sit on the boundary
+between the two (a real transport does both) -- a named future
+taxonomy question, not resolved here; its own origin is the author's
+"mutation as imperfect transport" framing from the driving
+conversation this session.
