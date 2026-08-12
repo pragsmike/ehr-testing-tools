@@ -1208,7 +1208,7 @@
 (def gate-v2-command
   (gate-command gate-v2/gate-file gate-v2/gate-dir :v2))
 
-(def default-fhir-gate-out-dir
+(def default-fhir-gate-scratch-dir
   "out/scratch/gate-fhir")
 
 (defn fhir-gate-command
@@ -1216,23 +1216,31 @@
   judge.fhir needs the lockfile's artifacts plus a scratch directory
   for the validator's raw OperationOutcome output and invocation logs
   -- resolved here, then judge.fhir/gate-file and gate-dir are curried
-  down to the 1-arity shape gate-command expects. :out-dir defaults to
-  `out/scratch/gate-fhir` (ADR-0013: the single tool-owned, gitignored
-  out/ root -- moved from a bare target/gate-fhir); :java-bin, when
-  given, bypasses registry
-  resolution exactly like corpus.generate's own :java-bin override.
-  :treat-no-verdict-as (ADR-0010) passes straight through to
-  gate-command. :no-verdict-cache (ADR-0016) disables the content-
-  addressed verdict cache at the validator seam for this invocation --
-  judge.fhir/gate-file's own :verdict-cache? false, the escape hatch
-  for when the cache's determinism assumption is ever suspect; caching
-  stays on by default."
-  [{:keys [path report lockfile out-dir java-bin baseline treat-no-verdict-as no-verdict-cache]}]
+  down to the 1-arity shape gate-command expects. :scratch-dir defaults
+  to `out/scratch/gate-fhir` (ADR-0013: the single tool-owned,
+  gitignored out/ root -- moved from a bare target/gate-fhir); :java-bin,
+  when given, bypasses registry resolution exactly like corpus.generate's
+  own :java-bin override. :treat-no-verdict-as (ADR-0010) passes straight
+  through to gate-command. :no-verdict-cache (ADR-0016) disables the
+  content-addressed verdict cache at the validator seam for this
+  invocation -- judge.fhir/gate-file's own :verdict-cache? false, the
+  escape hatch for when the cache's determinism assumption is ever
+  suspect; caching stays on by default.
+
+  F7 (R3-B1-1, RULED ADR-0115 RQ1, ADR-0117): this CLI option was
+  :out-dir/--out-dir; renamed to :scratch-dir/--scratch-dir, no
+  back-compat alias -- corpus generate/mutate/batch's own --out-dir
+  names a protected, collision-refused output artifact, an unrelated
+  concept this flag only happened to share a name with (a freely
+  reusable validator scratch directory, never an artifact). judge-fhir-
+  official's own internal :out-dir parameter name (in fhir-opts, below)
+  is untouched -- this rename is CLI-surface only."
+  [{:keys [path report lockfile scratch-dir java-bin baseline treat-no-verdict-as no-verdict-cache]}]
   (let [artifacts-result (default-lockfile-artifacts lockfile)]
     (if-not (result/ok? artifacts-result)
       artifacts-result
       (let [fhir-opts (cond-> {:artifacts (:payload artifacts-result)
-                                :out-dir (or out-dir default-fhir-gate-out-dir)}
+                                :out-dir (or scratch-dir default-fhir-gate-scratch-dir)}
                         java-bin (assoc :java-bin java-bin)
                         no-verdict-cache (assoc :verdict-cache? false))
             gate-fn (gate-command #(gate-fhir/gate-file % fhir-opts)
@@ -2311,22 +2319,25 @@
 (defn- resolve-path-designators
   "CLI acceptance is additive (ruling 7, docs/source-sink-design.md
   Part IX via SS-1 Step 6): wherever a positional PATH names an input,
-  or --out-dir/--out names an output, a dir:/file: URL designator is
-  now also accepted alongside the documented bare-path spelling --
-  parsed to the same path a bare spelling would have given
+  or --out-dir/--out/--scratch-dir names an output, a dir:/file: URL
+  designator is now also accepted alongside the documented bare-path
+  spelling -- parsed to the same path a bare spelling would have given
   (source-sink-url/path-designator->path), never the other way
   around. Applied once here, in dispatch, so every downstream command
   function keeps working with plain path strings exactly as before --
   this is CLI-shell-boundary sugar, not a new capability those
   functions need to know about. A key absent from opts is left absent
-  (most verbs use only one or two of these three)."
+  (most verbs use only one or two of these four). :scratch-dir added
+  F7 (ADR-0117), gate fhir's own renamed --out-dir -- preserves the
+  designator-acceptance behavior under the new flag name; a valid-input
+  behavior change is exactly what the fence forbids."
   [opts]
   (reduce (fn [opts k]
             (if (contains? opts k)
               (update opts k source-sink-url/path-designator->path)
               opts))
           opts
-          [:path :out-dir :out]))
+          [:path :out-dir :out :scratch-dir]))
 
 ;; ---- unknown flags (ux fixes 3, AR-U3-1/2/3/4, `notes/adr/0061-ux-
 ;; fixes-3.md`): C-4's founding-adjacent defect -- an unrecognized flag

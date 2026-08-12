@@ -21,7 +21,7 @@ ehrt <group> [<verb>] [flags]
 |---|---|
 | [`artifact`](#ehrt-artifact) | Fetch and resolve locked external engine/tool artifacts. |
 | [`corpus`](#ehrt-corpus) | Generate, mutate, intake, and inspect synthetic corpora. Any PATH, --out-dir, or --out also accepts a dir:/file: URL designator in place of a bare path; bare paths are the common spelling. `corpus generate` is the front door for new corpora; `corpus intake` catalogs existing ones -- and can generate-then-catalog, or read piped bytes, in one command (see intake). |
-| [`gate`](#ehrt-gate) | Conformance-gate a file or directory against HL7 v2, FHIR, or (with --profile) an HL7 v2 conformance profile. Bare `ehrt gate PATH` sniffs the format and dispatches between v2 and fhir only -- never v2-nist, which needs an explicit --profile. A directory mixing formats, or a file that can't be classified, is an error naming the explicit override (`gate v2 PATH` / `gate fhir PATH`), never a silent per-file split. PATH and --out-dir also accept dir:/file: URL designators. |
+| [`gate`](#ehrt-gate) | Conformance-gate a file or directory against HL7 v2, FHIR, or (with --profile) an HL7 v2 conformance profile. Bare `ehrt gate PATH` sniffs the format and dispatches between v2 and fhir only -- never v2-nist, which needs an explicit --profile. A directory mixing formats, or a file that can't be classified, is an error naming the explicit override (`gate v2 PATH` / `gate fhir PATH`), never a silent per-file split. PATH and --scratch-dir (gate fhir only) also accept dir:/file: URL designators. |
 | [`check`](#ehrt-check) | Check a candidate corpus against an expected corpus and/or explicit per-file assertions -- the corpus's second judge, alongside gate. DIR also accepts a dir: URL designator. |
 | [`version`](#ehrt-version) | Print this repo's own pre-release identity (it deliberately has no semver yet) plus every pinned artifact's name@version from the lockfile. |
 | [`doctor`](#ehrt-doctor) | Run SETUP.md's verification checklist as checks: java resolution via the artifact registry, artifact cache presence per lockfile entry, git hooksPath wiring, and platform support. Exit 0: every check passed; 1: at least one failed; 2: couldn't even read the lockfile to know what to check. |
@@ -89,7 +89,7 @@ Generate a deterministic synthetic corpus. Takes a source subcommand: `corpus ge
 | Flag | Default | Meaning |
 |---|---|---|
 | `--config-path` | `resources/synthea-default.properties` | synthea: Synthea properties file |
-| `--seed` | `1` | patient/master-generation seed (integer), shared by both sources |
+| `--seed` | `1` | patient/master-generation seed (integer; non-negative when --source sim), shared by both sources; defaulted here as the ergonomic front door -- the sim-tier verbs (sim run, sim identifiers) require a seed explicitly |
 | `--clinician-seed` | `the resolved --seed value` | synthea: clinician-generation seed (integer) -- Synthea defaults this to wall-clock time otherwise, which breaks reproducibility even with --seed pinned |
 | `--population` | `5` | synthea: population size (integer) |
 | `--reference-date` | `20260101` | generation reference date, shared by both sources -- YYYYMMDD for synthea; Synthea otherwise generates relative to wall-clock "now" |
@@ -152,7 +152,7 @@ Partitions every HL7 v2 (ER7) message under DIR into schedule-aligned delivery b
 
 ## `ehrt gate`
 
-Conformance-gate a file or directory against HL7 v2, FHIR, or (with --profile) an HL7 v2 conformance profile. Bare `ehrt gate PATH` sniffs the format and dispatches between v2 and fhir only -- never v2-nist, which needs an explicit --profile. A directory mixing formats, or a file that can't be classified, is an error naming the explicit override (`gate v2 PATH` / `gate fhir PATH`), never a silent per-file split. PATH and --out-dir also accept dir:/file: URL designators.
+Conformance-gate a file or directory against HL7 v2, FHIR, or (with --profile) an HL7 v2 conformance profile. Bare `ehrt gate PATH` sniffs the format and dispatches between v2 and fhir only -- never v2-nist, which needs an explicit --profile. A directory mixing formats, or a file that can't be classified, is an error naming the explicit override (`gate v2 PATH` / `gate fhir PATH`), never a silent per-file split. PATH and --scratch-dir (gate fhir only) also accept dir:/file: URL designators.
 
 **Positional argument `PATH`** — a file or directory, given as a trailing positional argument, not --path -- an explicit --path is never overridden by it
 
@@ -178,7 +178,7 @@ Gate against FHIR base-spec conformance (the official validator).
 | `--baseline` | — | baseline-relative mode: path to a previous --report EDN; only genuinely new findings count |
 | `--treat-no-verdict-as` | — | "pass" or "rejected" -- folds :no-verdict into an existing polarity |
 | `--lockfile` | `artifacts.lock.edn` | path to the lockfile |
-| `--out-dir` | `out/scratch/gate-fhir` | validator scratch directory |
+| `--scratch-dir` | `out/scratch/gate-fhir` | validator scratch directory |
 | `--java-bin` | — | java executable to invoke |
 | `--no-verdict-cache` | `false (caching on)` | skip the content-addressed verdict cache; always re-run the validator subprocess |
 

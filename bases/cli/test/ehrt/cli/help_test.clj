@@ -32,6 +32,18 @@
     (is (str/includes? text "intake"))
     (is (str/includes? text "--seed"))))
 
+;; F8 (R3-B1-4, RULED ADR-0115 RQ2, + the ADR-0116-inherited seed-row
+;; wording, ADR-0117): `corpus generate`'s --seed doc string states the
+;; two-tier design explicitly -- an ergonomic, defaulted front door
+;; here, versus sim run/sim identifiers's own required-explicitly
+;; tier -- rather than leaving the split silently undocumented.
+(deftest corpus-generate-seed-doc-states-the-ergonomic-front-door-tiering-test
+  (let [seed-flag (->> (help/find-group help/cli-spec "corpus")
+                       :verbs (filter #(= "generate" (:verb %))) first
+                       :flags (filter #(= "--seed" (:flag %))) first)]
+    (is (= "patient/master-generation seed (integer; non-negative when --source sim), shared by both sources; defaulted here as the ergonomic front door -- the sim-tier verbs (sim run, sim identifiers) require a seed explicitly"
+           (:doc seed-flag)))))
+
 (deftest render-group-unknown-group-returns-nil-test
   (is (nil? (help/render-group help/cli-spec "bogus"))))
 

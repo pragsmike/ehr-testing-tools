@@ -79,7 +79,7 @@
      :verbs
      [{:verb "generate" :doc "Generate a deterministic synthetic corpus. Takes a source subcommand: `corpus generate sim` (this workspace's own engine; the flags marked sim:) or `corpus generate synthea` (the flags marked synthea:). Bare `corpus generate` means `generate sim`. Both bare commands are byte-reproducible as-is; re-running into an existing non-empty --out-dir is rejected (:out-dir-exists), never silently overwritten."
        :flags [{:flag "--config-path" :doc "synthea: Synthea properties file" :default "resources/synthea-default.properties"}
-               {:flag "--seed" :doc "patient/master-generation seed (integer), shared by both sources" :default "1"}
+               {:flag "--seed" :doc "patient/master-generation seed (integer; non-negative when --source sim), shared by both sources; defaulted here as the ergonomic front door -- the sim-tier verbs (sim run, sim identifiers) require a seed explicitly" :default "1"}
                {:flag "--clinician-seed" :doc "synthea: clinician-generation seed (integer) -- Synthea defaults this to wall-clock time otherwise, which breaks reproducibility even with --seed pinned" :default "the resolved --seed value"}
                {:flag "--population" :doc "synthea: population size (integer)" :default "5"}
                {:flag "--reference-date" :doc "generation reference date, shared by both sources -- YYYYMMDD for synthea; Synthea otherwise generates relative to wall-clock \"now\"" :default "20260101"}
@@ -132,17 +132,22 @@
     ;; Sniff dispatch: D11 / ADR-0019, via corpus.intake/sniff-format.
     ;; NIST profile tier: ADR-0012. Designators: ruling 7.
     {:group "gate"
-     :doc "Conformance-gate a file or directory against HL7 v2, FHIR, or (with --profile) an HL7 v2 conformance profile. Bare `ehrt gate PATH` sniffs the format and dispatches between v2 and fhir only -- never v2-nist, which needs an explicit --profile. A directory mixing formats, or a file that can't be classified, is an error naming the explicit override (`gate v2 PATH` / `gate fhir PATH`), never a silent per-file split. PATH and --out-dir also accept dir:/file: URL designators."
+     :doc "Conformance-gate a file or directory against HL7 v2, FHIR, or (with --profile) an HL7 v2 conformance profile. Bare `ehrt gate PATH` sniffs the format and dispatches between v2 and fhir only -- never v2-nist, which needs an explicit --profile. A directory mixing formats, or a file that can't be classified, is an error naming the explicit override (`gate v2 PATH` / `gate fhir PATH`), never a silent per-file split. PATH and --scratch-dir (gate fhir only) also accept dir:/file: URL designators."
      :positional "PATH"
      :positional-doc "a file or directory, given as a trailing positional argument, not --path -- an explicit --path is never overridden by it"
      :verbs
      [{:verb "v2" :doc "Gate against HL7 v2 base-structural conformance (HAPI)."
        :flags gate-common-flags}
       ;; verdict cache: ADR-0016.
+      ;; F7 (R3-B1-1, RULED ADR-0115 RQ1, ADR-0117): --out-dir renamed
+      ;; --scratch-dir, NO back-compat alias -- corpus generate/mutate/
+      ;; batch's own --out-dir names a protected artifact (collision-
+      ;; refused); this flag names a freely-reusable validator working
+      ;; directory, an unrelated concept that happened to share a name.
       {:verb "fhir" :doc "Gate against FHIR base-spec conformance (the official validator)."
        :flags (into gate-common-flags
                     [{:flag "--lockfile" :doc "path to the lockfile" :default "artifacts.lock.edn"}
-                     {:flag "--out-dir" :doc "validator scratch directory" :default "out/scratch/gate-fhir"}
+                     {:flag "--scratch-dir" :doc "validator scratch directory" :default "out/scratch/gate-fhir"}
                      {:flag "--java-bin" :doc "java executable to invoke"}
                      {:flag "--no-verdict-cache" :doc "skip the content-addressed verdict cache; always re-run the validator subprocess" :default "false (caching on)"}])}
       ;; Engine perf note (validator built once per invocation, reused

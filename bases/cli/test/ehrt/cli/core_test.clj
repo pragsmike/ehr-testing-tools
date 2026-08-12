@@ -780,6 +780,39 @@
     (is (result/ok? r))
     (is (= "./corpus-out" (:out-dir @called)))))
 
+;; ---- F7 (R3-B1-1, RULED ADR-0115 RQ1, executed ADR-0117): `gate
+;; fhir`'s own `--out-dir` renamed to `--scratch-dir` -- one flag name
+;; (`--out-dir`) meant two unrelated things (a protected artifact on
+;; corpus generate/mutate/batch; a freely-reusable validator scratch
+;; directory here). Clean rename, NO back-compat alias (the tool is
+;; unpublished). ----
+
+(deftest dispatch-gate-fhir-accepts-scratch-dir-test
+  (let [called (atom nil)
+        r (cli/dispatch ["gate" "fhir" "x.json"] {:scratch-dir "some/scratch"}
+                         {:gate-fhir-fn (fn [opts] (reset! called opts) (result/ok {}))})]
+    (is (result/ok? r))
+    (is (= "some/scratch" (:scratch-dir @called)))))
+
+(deftest dispatch-gate-fhir-accepts-a-dir-url-scratch-dir-test
+  (let [called (atom nil)
+        r (cli/dispatch ["gate" "fhir" "x.json"] {:scratch-dir "dir:./scratch-out"}
+                         {:gate-fhir-fn (fn [opts] (reset! called opts) (result/ok {}))})]
+    (is (result/ok? r))
+    (is (= "./scratch-out" (:scratch-dir @called)))))
+
+(deftest dispatch-gate-fhir-rejects-the-old-out-dir-flag-test
+  (let [called (atom false)
+        r (cli/dispatch ["gate" "fhir" "x.json"] {:out-dir "some/scratch"}
+                         {:gate-fhir-fn (fn [_opts] (reset! called true) (result/ok {}))})]
+    (is (not @called) "no back-compat alias -- --out-dir must never reach fhir-gate-command")
+    (is (result/error? r))
+    (is (= :unknown-flag (:category r)))
+    (is (= "--out-dir" (:flag (:payload r))))))
+
+(deftest fhir-gate-command-defaults-to-the-standard-scratch-dir-test
+  (is (= "out/scratch/gate-fhir" cli/default-fhir-gate-scratch-dir)))
+
 (deftest dispatch-corpus-intake-accepts-a-dir-url-positional-path-and-out-test
   (let [called (atom nil)
         r (cli/dispatch ["corpus" "intake" "dir:./src"] {:out "dir:./catalog-out"}
