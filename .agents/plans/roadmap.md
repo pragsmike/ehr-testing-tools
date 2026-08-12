@@ -674,3 +674,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-11 — latency-second-clock — ADR-0109
 - 2026-08-11 — latency-demo — ADR-0110
 - 2026-08-11 — corpus-batching — ADR-0111
+- 2026-08-11 — batch-straddle-recording — ADR-0112

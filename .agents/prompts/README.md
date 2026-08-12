@@ -132,3 +132,4 @@ Files in this directory:
   * 2026-08-11-latency-second-clock.md
   * 2026-08-11-latency-demo.md
   * 2026-08-11-corpus-batching.md
+  * 2026-08-11-batch-straddle-recording.md
