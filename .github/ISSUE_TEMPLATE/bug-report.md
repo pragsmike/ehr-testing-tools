@@ -13,8 +13,8 @@ reproduction, reliably, on any machine. Please fill them in before
 anything else.
 -->
 
-**`sim version` output** (run `clojure -M:cli version` or `sim
-version` and paste the result):
+**`sim version` output** (run `bin/ehrt sim version` and paste the
+result):
 
 ```
 paste here

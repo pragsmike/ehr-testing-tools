@@ -105,7 +105,7 @@ side) is what `compile-trajectory` renders for the module's own
 `Transfer_To_Inpatient` state, since this project has no `:transfer`
 wire content wired to a same-episode encounter-class change yet (the
 gap documented above). No FHIR/state excerpt is included here — this
-demo did not additionally run `--emit fhir`; `docs/demos/emit-state/`
+demo did not additionally run `--emit fhir`; `demos/traces/emit-state/`
 already demonstrates that surface.
 
 ## Determinism

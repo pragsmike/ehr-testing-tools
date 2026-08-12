@@ -13,8 +13,18 @@
   components/*/docs/**. Frozen archives, `.agents/prompts/`,
   `.agents/session-records/`, dated one-shot plan files, and the audit
   registers are out of scope by construction -- none of them live under
-  any of the four scanned roots, same scoping discipline
-  `ehrt.docs-tooling.stale-path-test`'s own family uses throughout."
+  any of the scanned roots, same scoping discipline
+  `ehrt.docs-tooling.stale-path-test`'s own family uses throughout.
+
+  Widened to demos/** and .github/** (R3-B5-4, `.agents/plans/
+  2026-08-12-review-3-user-surface-findings.md`, ruled [C, un-vetoed],
+  ADR-0118): the demo tree relocated wholesale out of
+  components/*/docs/demos/ to a new top-level demos/ tree (ADR-0073)
+  after this gate's scan roots were last set, leaving the successor
+  tree unprotected; `.github/` is a genuinely operator-facing surface
+  (issue templates) this gate never covered at all -- same
+  recurrence-prevention logic as every other scanned root, not a new
+  category of thing to guard against."
   (:require [clojure.test :refer [deftest is]]
             [clojure.java.io :as io]
             [clojure.string :as str]))
@@ -37,7 +47,9 @@
 (defn- scan-sources []
   (concat ["README.md" "AUTHORS-GUIDE.md"]
           (doc-like-files (io/file "docs"))
-          (mapcat doc-like-files (component-docs-roots))))
+          (mapcat doc-like-files (component-docs-roots))
+          (doc-like-files (io/file "demos"))
+          (doc-like-files (io/file ".github"))))
 
 (deftest no-stale-cli-alias-invocation-anywhere-in-live-docs-test
   (doseq [path (scan-sources)]

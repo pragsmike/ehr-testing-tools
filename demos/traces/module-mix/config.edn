@@ -1,9 +1,9 @@
-;; docs/demos/module-mix/config.edn -- the full vendored GMF module set,
+;; demos/traces/module-mix/config.edn -- the full vendored GMF module set,
 ;; weighted for a mixed population (docs/gmf-interpreter.md's M7 default
 ;; :modules assignment). Run with:
 ;;
-;;   bin/ehrt sim run --seed 7 --patients 100 \
-;;     --config docs/demos/module-mix/config.edn --churn --emit hl7 --format er7
+;;   bin/ehrt sim run --seed 71 --patients 100 \
+;;     --config demos/traces/module-mix/config.edn --churn --emit hl7 --format er7
 ;;
 ;; :pathway is an explicit EMPTY authored pathway (the documented shape
 ;; for module-only patients, ehrt.sim.run's own :modules docstring
