@@ -109,6 +109,55 @@
   [raw-args]
   (cli/parse-args raw-args {:spec cli-spec}))
 
+(defn- flag-expected-type
+  "The human-readable type name for a coerced flag's own cli-spec entry
+  -- \"a long\"/\"a double\"/\"true or false\", or \"a string\" for
+  anything else (`parse-error-result`'s own catch-all, since babashka.cli
+  only ever coerces to a handful of scalar shapes here)."
+  [option]
+  (case (:coerce (get cli-spec option))
+    :long "a long"
+    :double "a double"
+    :boolean "true or false"
+    "a string"))
+
+(defn- parse-error-result
+  "F2 (R3-B2-2, ADR-0117): babashka.cli's own parse-time ExceptionInfo
+  (a coercion failure, e.g. --seed abc) carries :option/:value in its
+  own ex-data -- confirmed live by direct probe: {:type :org.babashka/cli
+  :cause :coerce :option :seed :value \"abc\" ...}. Translated here into
+  the same :invalid-flag-value categorized shape every other CLI
+  rejection already uses, naming the offending flag, its raw value, and
+  the expected type (read from cli-spec's own :coerce entry) -- nil when
+  ex-data carries no :option, the caller's cue to let the exception
+  propagate unchanged rather than misrepresent a shape this doesn't
+  recognize."
+  [ex]
+  (let [{:keys [option value]} (ex-data ex)]
+    (when option
+      (result/error :invalid-flag-value
+                    {:flag (str "--" (name option)) :value value
+                     :expected (flag-expected-type option)}))))
+
+(defn safe-parse
+  "raw-args -> {:args [...] :opts {...}}, or {:parse-error result} when
+  babashka.cli's own parse-time ExceptionInfo fires (F2, R3-B2-2,
+  ADR-0117): the library's own name and a source file:line used to leak
+  straight to the operator, at the wrong exit code (1, an uncaught JVM
+  exception, not the operational-error 2) -- see `parse-error-result`.
+  An ExceptionInfo this doesn't recognize (no :option in its own
+  ex-data) propagates unchanged, rethrown rather than silently
+  misrepresented. This is the CLI's own parse boundary -- `dispatch`
+  itself never calls `parse` and is unaffected; only `main!` (the real
+  entry point) routes through here."
+  [raw-args]
+  (try
+    (parse raw-args)
+    (catch clojure.lang.ExceptionInfo e
+      (if-let [r (parse-error-result e)]
+        {:parse-error r}
+        (throw e)))))
+
 (def no-verdict-exit-code
   "Full exit-code mapping (ADR-0004, extended by ADR-0010 for the
   fourth verdict arm): 0 ok, 1 rejected, 2 operational error, 3 a
@@ -1946,6 +1995,34 @@
               [(keyword id) version]))
           (str/split s #","))))
 
+(defn- check-target-error
+  "F1 (R3-B2-1, ADR-0117, HIGHEST PRIORITY): `check` used to report a
+  clean, all-zero pass on a missing arg, a nonexistent path, or a
+  genuinely empty directory -- indistinguishable from a real
+  zero-finding pass over real files (confirmed live before this fix:
+  all three returned {:status :ok :payload {:totals {:pass 0 ...}}} at
+  exit 0). DIR is now required and must name an existing, non-empty
+  directory -- validated here, at the CLI boundary only; judge/check's
+  own check-corpus is untouched. nil when path passes; a categorized
+  Result (exit 2) otherwise."
+  [path]
+  (cond
+    (nil? path)
+    (result/error :missing-required-opt
+                  {:opt :path :hint "DIR is required -- run: ehrt check DIR"})
+
+    (not (.exists (io/file path)))
+    (result/error :invalid-target
+                  {:path path :reason :not-found
+                   :hint "no such file or directory -- run: ehrt check EXISTING-DIR"})
+
+    (empty? (filter #(.isFile ^java.io.File %) (file-seq (io/file path))))
+    (result/error :invalid-target
+                  {:path path :reason :empty
+                   :hint "this directory contains no files to check -- point ehrt check at a populated directory"})
+
+    :else nil))
+
 (defn check-command
   "`ehrt check DIR --expected DIR --assertions FILE
   [--canonicalizers id@v,...] [--pair-by path|hash] [--report ...]`.
@@ -1957,27 +2034,33 @@
   \"id@version\" list; :pair-by is \"path\" (default) or \"hash\".
   :report goes through `write-report!` on the same terms as the gate's:
   parents created, a residual IO failure returned as
-  :report-write-failed instead of the check's own verdict."
+  :report-write-failed instead of the check's own verdict.
+
+  F1 (R3-B2-1, ADR-0117): DIR is validated first (`check-target-error`)
+  -- required, must exist, must be non-empty -- before any assertions
+  file is even read."
   [{:keys [path expected assertions canonicalizers pair-by report]}]
-  (let [assertions-result
-        (if assertions
-          (try
-            (result/ok (edn/read-string (slurp assertions)))
-            (catch Exception e
-              (result/error :assertions-unreadable
-                             {:path assertions :message (.getMessage e)})))
-          (result/ok nil))]
-    (if-not (result/ok? assertions-result)
-      assertions-result
-      (let [assertions-data (:payload assertions-result)
-            opts (cond-> {:candidate-dir path}
-                   expected (assoc :expected-dir expected)
-                   assertions-data (assoc :assertions assertions-data)
-                   canonicalizers (assoc :canonicalizers (parse-canonicalizer-steps canonicalizers))
-                   pair-by (assoc :pair-by (keyword pair-by)))
-            r (check/check-corpus opts)
-            write-error (when report (write-report! report (:payload r)))]
-        (or write-error r)))))
+  (or
+   (check-target-error path)
+   (let [assertions-result
+         (if assertions
+           (try
+             (result/ok (edn/read-string (slurp assertions)))
+             (catch Exception e
+               (result/error :assertions-unreadable
+                              {:path assertions :message (.getMessage e)})))
+           (result/ok nil))]
+     (if-not (result/ok? assertions-result)
+       assertions-result
+       (let [assertions-data (:payload assertions-result)
+             opts (cond-> {:candidate-dir path}
+                    expected (assoc :expected-dir expected)
+                    assertions-data (assoc :assertions assertions-data)
+                    canonicalizers (assoc :canonicalizers (parse-canonicalizer-steps canonicalizers))
+                    pair-by (assoc :pair-by (keyword pair-by)))
+             r (check/check-corpus opts)
+             write-error (when report (write-report! report (:payload r)))]
+         (or write-error r))))))
 
 (defn- help-text-for
   "Group usage text for a known group name, top-level usage text
@@ -2682,13 +2765,19 @@
   touches the EDN/JSON envelope) and, unlike :cli-help/:display-text,
   does NOT force exit 0 -- `code` below is still computed from the
   real Result, since a failing bare-format run must still exit
-  non-zero (bases/sim-cli's own contract, ported)."
+  non-zero (bases/sim-cli's own contract, ported).
+
+  F2 (R3-B2-2, ADR-0117): raw-args is parsed via `safe-parse`, not
+  `parse` directly -- a babashka.cli coercion failure (a malformed
+  --seed, say) is translated into a categorized :invalid-flag-value
+  Result here rather than propagating as an uncaught ExceptionInfo;
+  `dispatch-fn` is never called in that case."
   ([raw-args] (main! raw-args {}))
   ([raw-args {:keys [dispatch-fn println-fn exit-fn tty?-fn]
               :or {dispatch-fn dispatch println-fn println exit-fn #(System/exit %)
                    tty?-fn real-tty?}}]
-   (let [{:keys [args opts]} (parse raw-args)
-         r (dispatch-fn args opts)
+   (let [{:keys [args opts parse-error]} (safe-parse raw-args)
+         r (or parse-error (dispatch-fn args opts))
          code (result->exit-code r)
          text (cond
                 (#{:cli-help :display-text} (:category r)) (:text (:payload r))

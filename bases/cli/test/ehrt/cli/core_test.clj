@@ -72,6 +72,38 @@
   (let [{:keys [opts]} (cli/parse ["corpus" "generate" "--config-path" "config/synthea/synthea.properties"])]
     (is (= "config/synthea/synthea.properties" (:config-path opts)))))
 
+;; ---- F2 (R3-B2-2, ADR-0117): a malformed flag value (a coercion
+;; failure babashka.cli's own parser rejects before dispatch ever
+;; runs -- "--seed abc") used to surface as a raw ExceptionInfo naming
+;; the library and a source file:line, at the wrong exit code (1, not
+;; the operational-error 2). safe-parse catches it at the CLI's own
+;; parse boundary and translates it into the same categorized shape
+;; every other CLI rejection uses. ----
+
+(deftest safe-parse-translates-babashka-cli-coercion-failure-test
+  (let [{:keys [parse-error]} (cli/safe-parse ["sim" "run" "--seed" "abc" "--patients" "1"])]
+    (is (some? parse-error))
+    (is (result/error? parse-error))
+    (is (= :invalid-flag-value (:category parse-error)))
+    (is (= "--seed" (:flag (:payload parse-error))))
+    (is (= "abc" (:value (:payload parse-error))))
+    (is (= 2 (cli/result->exit-code parse-error)))))
+
+(deftest safe-parse-passes-through-well-formed-args-test
+  (let [{:keys [args opts parse-error]} (cli/safe-parse ["sim" "run" "--seed" "1"])]
+    (is (nil? parse-error))
+    (is (= ["sim" "run"] args))
+    (is (= 1 (:seed opts)))))
+
+(deftest main-bang-parse-error-exits-two-with-no-stack-trace-or-library-name-test
+  (let [printed (atom nil)
+        code (cli/main! ["sim" "run" "--seed" "abc" "--patients" "1"]
+                         {:println-fn (fn [s] (reset! printed s)) :exit-fn (fn [_c] nil)})]
+    (is (= 2 code))
+    (is (not (clojure.string/includes? @printed "babashka")))
+    (is (not (clojure.string/includes? @printed "ExceptionInfo")))
+    (is (clojure.string/includes? @printed "invalid-flag-value"))))
+
 ;; ---- dispatch ----
 
 (deftest dispatch-unknown-command-test
@@ -2011,6 +2043,38 @@
 ;; ---- check-command (`ehrt check`): reads --assertions as an EDN file,
 ;; parses --canonicalizers "id@v,..." into ordered [id version] pairs,
 ;; delegates to ehrt.corpus.interface/check-corpus. ----
+
+;; ---- F1 (R3-B2-1, ADR-0117, HIGHEST PRIORITY): `check` used to
+;; report a clean, all-zero pass on a missing arg, a nonexistent path,
+;; or a genuinely empty directory -- indistinguishable from a real
+;; zero-finding pass over real files. DIR is now required and must
+;; name an existing, non-empty directory; validated at the CLI
+;; boundary only, judge/check's own check-corpus untouched. ----
+
+(deftest check-command-missing-target-is-missing-required-opt-test
+  (let [r (cli/check-command {})]
+    (is (result/error? r))
+    (is (= :missing-required-opt (:category r)))
+    (is (= :path (:opt (:payload r))))
+    (is (= 2 (cli/result->exit-code r)))))
+
+(deftest check-command-nonexistent-target-is-invalid-target-test
+  (let [missing (str (temp-dir*) "/does-not-exist")
+        r (cli/check-command {:path missing})]
+    (is (result/error? r))
+    (is (= :invalid-target (:category r)))
+    (is (= missing (:path (:payload r))))
+    (is (= :not-found (:reason (:payload r))))
+    (is (= 2 (cli/result->exit-code r)))))
+
+(deftest check-command-empty-target-is-invalid-target-test
+  (let [empty-dir (temp-dir*)
+        r (cli/check-command {:path empty-dir})]
+    (is (result/error? r))
+    (is (= :invalid-target (:category r)))
+    (is (= empty-dir (:path (:payload r))))
+    (is (= :empty (:reason (:payload r))))
+    (is (= 2 (cli/result->exit-code r)))))
 
 (deftest check-command-matches-expected-happy-path-test
   (let [cand-dir (temp-dir*) exp-dir (temp-dir*)
