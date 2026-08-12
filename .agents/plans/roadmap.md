@@ -5,14 +5,18 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- **Sim-palgebra unification (ADR-0113, this session).** Docs-and-
-  registers only: records the 2026-08-12 design-exchange rulings batch
-  (manual arc R1–R6, palgebra placement R7) and extends
-  `docs/dev/simulator-architecture.md` §4 into the full palgebra
-  unification named by R7's ruling "a" (citing
+- Nothing in progress at this close (sim palgebra unification,
+  ADR-0113, 2026-08-12 — docs-and-registers only: recorded the
+  2026-08-12 design-exchange rulings batch, R1-R7 [manual naming and
+  shape, the demo exerciser, audience-register paring, the review-3-
+  then-manual sequence, diagrams-derive-from-data, palgebra
+  placement], and extended `docs/dev/simulator-architecture.md` §4
+  into the full palgebra unification R7 ruled — citing
   `components/corpus/docs/palgebra-design.md` and
   `components/sim-trajectory/docs/trajectory-computation.md` both
-  ways). Zero `src`/`test`/generated-doc change.
+  ways, every claim cited to a re-verified witnessing test. Zero
+  `src`/`test`/generated-doc change; the oracle held pure identity
+  across all 35 roots).
 
 ## Next (backlog, no session scheduled)
 - **Busy-tuesday/ED scenario redesign — "A" LANDED, "B" CLOSED
@@ -716,3 +720,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-11 — latency-demo — ADR-0110
 - 2026-08-11 — corpus-batching — ADR-0111
 - 2026-08-11 — batch-straddle-recording — ADR-0112
+- 2026-08-12 — sim-palgebra-unification — ADR-0113

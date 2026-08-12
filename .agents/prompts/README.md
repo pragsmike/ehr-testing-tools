@@ -133,3 +133,4 @@ Files in this directory:
   * 2026-08-11-latency-demo.md
   * 2026-08-11-corpus-batching.md
   * 2026-08-11-batch-straddle-recording.md
+  * 2026-08-12-sim-palgebra-unification.md
