@@ -206,9 +206,11 @@ amended to record this.
 this session's own footprint is a new config file, README sections,
 and close-phase files only; no `src`/`test` namespace touched anywhere.
 
-**Bracket result.** `bin/regression-oracle 2faa5ba <this session's
-close commit>`: IDENTICAL -- all 35 roots' digests match exactly,
-matching the pre-analysis; no STOP-AND-REPORT needed.
+**Bracket result.** `bin/regression-oracle 2faa5ba 916de14`
+(`916de14`: this session's own config+README commit, run before the
+close-phase commit as the driving prompt's own Step 4 orders it):
+`IDENTICAL: every root's digest matches between 2faa5ba and 916de14` --
+all 35 roots, matching the pre-analysis; no STOP-AND-REPORT needed.
 
 ### Full gate
 
