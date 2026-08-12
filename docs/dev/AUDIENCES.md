@@ -20,7 +20,11 @@ name; see the ADR for the prior filename this superseded.
 This is the canonical audience register for this workspace's
 user-facing docs — [`docs/README.md`](../README.md) routes readers to
 an entry path keyed off these segments, rather than defining its own.
-Seven segments arrive here with different on-ramps:
+Five segments arrive here with different on-ramps (pared from eight,
+2026-08-12, `notes/ADRs.md` ADR-0119, R4 — the header itself had drifted
+to "Seven" three segments behind actual count even before this paring;
+every segment folded away is named at its fold site below, its real
+content relocated rather than deleted):
 
 1. **Guide readers, arriving method-first.** They've read (or are
    reading) the guide's account of corpus construction and conformance
@@ -37,23 +41,60 @@ Seven segments arrive here with different on-ramps:
    usage docs first, and a pointer to the guide second — once the task
    is done, the "why" behind it is worth reading. `SETUP.md` exists
    for exactly this cohort, largely on Windows 11/WSL2.
-3. **Contributors.** They need the scope fence up front: PRs that add
-   method content (new properties, new correctness arguments, new
-   test-plan guidance) belong in the guide, not here. This workspace's
-   contribution surface is tool code, not method.
-4. **The AI assistant, as a reader in its own right.** Segment 2's own
-   cohort works agent-assisted by default, and `SETUP.md` hands the
-   whole onboarding job to an assistant via a copy-paste prompt — so an
-   agent reading these docs on a human's behalf is not an edge case,
-   it's the cohort's default path. What this reader needs, distinct
-   from a human skimmer: exact, copy-pasteable commands rather than
+
+   **Evaluation is this segment's own front matter** (folded from the
+   former "evaluator, deciding whether to adopt this at all" segment):
+   before any task, this cohort may not yet have decided to adopt the
+   workspace at all — needs to know what it actually does, what it
+   explicitly doesn't, and how mature each part is before committing to
+   it. Served today by `README.md`'s maturity table (the actual
+   contract with readers, not a formality), its Scope section, and
+   [`docs/what-is-this.md`](../what-is-this.md) — read before the
+   task-oriented docs above, not instead of them.
+
+   **Agent-assistance is a standing style constraint on this segment's
+   own docs, not a separate audience** (folded from the former "AI
+   assistant, as a reader in its own right" segment): this cohort works
+   agent-assisted by default, and `SETUP.md` hands the whole onboarding
+   job to an assistant via a copy-paste prompt — so an agent reading
+   these docs on a human's behalf is not an edge case, it's the
+   cohort's default path. What that constrains, distinct from a human
+   skimmer's own needs: exact, copy-pasteable commands rather than
    descriptions of commands; heading anchors that stay stable across a
    doc's regeneration; and error text that's self-explanatory without a
    human in the loop to interpret it. The CLI help surface (`ehrt
    help`, `ehrt corpus operators`, and the enumerable-options error
    family naming its valid options plus a `run: ehrt help`-style hint)
-   is the deliberate serving of this audience.
-5. **The downstream data consumer.** Reads `report.edn`, `manifest.edn`,
+   is the deliberate serving of this constraint.
+3. **Contributor (human or agent).** They need the scope fence up
+   front: PRs that add method content (new properties, new correctness
+   arguments, new test-plan guidance) belong in the guide, not here —
+   this workspace's contribution surface is tool code, not method.
+
+   **A contributing agent is this same audience, not a separate one**
+   (folded from the former "Agents, as a contributing audience in their
+   own right" segment, added 2026-08-01, agent-UX charter, `notes/ADRs.md`
+   ADR-0023) — distinct from segment 2's own agent-assistance
+   constraint above, which is an AI assistant reading *user-facing*
+   docs on a human's behalf, task-first, at usage time; this is an
+   agent *driving a contribution session* — PRs, commits, docs edits,
+   migration work — the same work `AGENTS.md` governs for a human
+   contributor. Entry points: [`AGENTS.md`](../../AGENTS.md) (the
+   primary instruction surface) and `.agents/` (durable session
+   context: skills, memory, plans, session-records, prompts). What this
+   half of the segment needs, distinct from a human contributor's own
+   reading style: small, budgeted surfaces it can read cold every
+   session without exhausting context (per-task reading sets,
+   `.agents/reading-sets.edn`, forthcoming — charter R-D); indexes over
+   prose narrative wherever a directory accumulates more than a
+   handful of files; deterministic commands over hand-run procedures
+   (`poly ws get:...`, not `poly info`'s pretty-printed prose); and a
+   clear current-truth/archive zone boundary — instruction lives in
+   `AGENTS.md` and `.agents/`'s current-truth surfaces, provenance and
+   history live in archives (`notes/ADRs.md`, `notes/sim/`,
+   `notes/tools/`, session records) and are never mistaken for live
+   instruction.
+4. **The downstream data consumer.** Reads `report.edn`, `manifest.edn`,
    or lineage records — via the `--json` projection or EDN directly —
    and never runs the CLI themselves; a Python or SQL process on the
    other end of a pipeline. [`docs/formats.md`](../formats.md) is the
@@ -67,41 +108,13 @@ Seven segments arrive here with different on-ramps:
    vocabulary itself — judge, verdict, findings, gate, baseline — and
    is this family's authoritative definition set (R38, this workspace's
    own merge of sim's and tools' pre-merge glossaries).
-6. **The Clojure library consumer.** Post-first-release: will `require`
-   this workspace's namespaces directly rather than shelling out to the
-   CLI. Today's serving is source docstrings only — no public-vs-internal
-   demarcation convention exists yet, and cljdoc generation rides on
-   Clojars/Maven Central coordinates that don't exist before that
-   release (see "Go-public gate vs. first release" below). This segment
-   is mostly deferred by design, not neglect.
-7. **The evaluator, deciding whether to adopt this at all.** Doesn't
-   yet have a task or a method question — needs to know what this
-   workspace actually does, what it explicitly doesn't, and how mature
-   each part is before committing to it. Served today by `README.md`'s
-   maturity table (the actual contract with readers, not a formality),
-   its Scope section, and [`docs/what-is-this.md`](../what-is-this.md).
-8. **Agents, as a contributing audience in their own right** (added
-   2026-08-01, agent-UX charter, `notes/ADRs.md` ADR-0023). Distinct
-   from segment 4 above — that's an AI assistant reading *user-facing*
-   docs on a human's behalf, task-first, at usage time. This segment is
-   an agent *driving a contribution session* — PRs, commits, docs
-   edits, migration work — the same work `AGENTS.md` governs for a
-   human contributor. Entry points: [`AGENTS.md`](../../AGENTS.md) (the
-   primary instruction surface) and `.agents/` (durable session
-   context: skills, memory, plans, session-records, prompts). What this
-   audience needs, distinct from a human contributor's own reading
-   style: small, budgeted surfaces it can read cold every session
-   without exhausting context (per-task reading sets,
-   `.agents/reading-sets.edn`, forthcoming — charter R-D); indexes over
-   prose narrative wherever a directory accumulates more than a
-   handful of files; deterministic commands over hand-run procedures
-   (`poly ws get:...`, not `poly info`'s pretty-printed prose); and a
-   clear current-truth/archive zone boundary — instruction lives in
-   `AGENTS.md` and `.agents/`'s current-truth surfaces, provenance and
-   history live in archives (`notes/ADRs.md`, `notes/sim/`,
-   `notes/tools/`, session records) and are never mistaken for live
-   instruction. The seven audiences above are otherwise unchanged by
-   this addition.
+5. **The Clojure library consumer, deferred stub.** Post-first-release:
+   will `require` this workspace's namespaces directly rather than
+   shelling out to the CLI. Today's serving is source docstrings only —
+   no public-vs-internal demarcation convention exists yet, and cljdoc
+   generation rides on Clojars/Maven Central coordinates that don't
+   exist before that release (see "Go-public gate vs. first release"
+   below). This segment is mostly deferred by design, not neglect.
 
 ## The constellation
 

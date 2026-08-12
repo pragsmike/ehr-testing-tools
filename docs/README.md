@@ -37,6 +37,11 @@ prerequisites in [`SETUP.md`](../SETUP.md).
 You have a task: generate test traffic, break it on purpose, gate it,
 or check it against your own expectations.
 
+- **Want the guided, narrative version instead of jumping straight to
+  a task?** [`docs/manual/`](manual/) is the learn-it path over this
+  same reference estate, chaptered, starting from the sixty-second
+  proof.
+
 1. [`README.md`](../README.md#quickstart)'s Quickstart — run every
    stage once, for real, in order.
 2. [`use-cases.md`](use-cases.md) — the full catalog of what you can do
