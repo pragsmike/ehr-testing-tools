@@ -238,28 +238,36 @@ per item; done items move to the bottom of their section with a date and sha.
   group, sourced from `docs/use-cases/*.md`), and the B-3/B-4
   carry-forward wording halves (R3-B3-4) -- the channel drafts, the
   author rules, no session until then.
-- **Engine-test flake investigation** (R8, `.agents/rulings.md` "From
-  ADR-0114"; charter set 2026-08-12, not yet chartered to an executing
-  session). `ehrt.sim-engine.engine-test`'s
-  `mixed-authored-and-compiled-run-satisfies-the-full-invariant-catalog`
-  defspec failed at seed **`7844068501`** (ADR-0112's own disclosure).
-  Per the channel's explanation, ratified this session: a generative-test
-  failure at a recorded seed is a deterministic repro of a found
-  counterexample, not noise. Charter: run the defspec at the recorded
-  seed, capture the shrunk counterexample, classify engine-bug vs.
-  test-defect, fix or file. The seed is the repro handle -- preserve it
-  verbatim in the executing session's own record. Cross-ref: ADR-0112's
-  own disclosure (origin); ADR-0107's sibling corpus defspec flake row
-  (same failure class, a different registry). **Second occurrence,
-  2026-08-12 (ADR-0115, review-3 rulings landing):** the same defspec
-  failed in CI on this session's own commit 1 (`ed00e3a`) at a
-  DIFFERENT seed, **`1786546687672`**, `failing-size 126`, shrunk
-  smallest `[-3377439408979484]` -- disclosed here as a second repro
-  handle for the executing session's own future use, not investigated
-  or fixed by this registers-only session (zero `src` fence). A
-  same-code CI re-run passed clean. Two independent seeds now finding
-  a counterexample corroborates R8's own characterization: a real,
-  seed-dependent defect class, not pure noise.
+- **RESOLVED 2026-08-12** (engine-seed-contract, `notes/ADRs.md`
+  ADR-0116; `.agents/rulings.md` "From ADR-0116" R9): the
+  `ehrt.sim-engine.engine-test` flake this row chartered
+  (`mixed-authored-and-compiled-run-satisfies-the-full-invariant-catalog`)
+  is classified: `gen/large-integer` drew seeds outside the engine's
+  own contract (negatives included) and `engine/run` accepted them
+  unvalidated, occasionally producing an invariant-catalog violation
+  rather than a clean rejection. Both halves fixed -- `engine/run`
+  now rejects a negative `:seed` with `result/error :invalid-seed` at
+  entry (`ehrt.kernel.interface`, the engine's first dependency on
+  it); every generative `:seed` generator repo-wide that feeds
+  `engine/run` (or a wrapper) is constrained to `(gen/large-integer*
+  {:min 0})`, 24 sites across 7 files, swept in the same session after
+  the single originally-fenced site proved insufficient (fixing one
+  while ~20 others still drew negatives would have converted a known
+  flake into a standing repo-wide one); the two production callers
+  that blindly destructured `engine/run`'s return
+  (`ehrt.sim.run/run-command`, `ehrt.sim.identifiers/
+  identifiers-command`) now check `result/error?` and propagate
+  rather than silently reporting `:ok`. The shrunk counterexample
+  `[-3377439408979484]` (seed `1786546687672`, ADR-0115's own CI
+  disclosure) reproduces and now passes green under the fix. The
+  OTHER recorded seed, `7844068501` (ADR-0112's own disclosure), did
+  **not** reproduce when pinned directly this session -- ADR-0112's
+  own "cleared on re-run" was against a fresh, unpinned seed, never
+  this exact value, so it was never actually confirmed as a
+  per-seed-deterministic repro; full account in `notes/adr/
+  0116-engine-seed-contract.md`. Cross-ref: ADR-0107's sibling corpus
+  defspec flake row remains open and is explicitly NOT this session's
+  scope.
 - **Demo exerciser** (ADR-0113 R3; not chartered to any executing
   session yet). Author verbatim, 2026-08-12: *"The demos must be known
   to work, and exercised as documented to make sure they actually play
@@ -791,3 +799,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-12 — sim-palgebra-unification — ADR-0113
 - 2026-08-12 — review-3-user-surface — ADR-0114
 - 2026-08-12 — review-3-rulings-landing — ADR-0115
+- 2026-08-12 — engine-seed-contract — ADR-0116
