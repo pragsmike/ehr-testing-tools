@@ -104,7 +104,11 @@ session's own Step 1), peeled ref verified exact match, remote unmoved
 (`git fetch` + `git rev-parse origin/main` == session's own starting
 HEAD).
 
-**HEAD landed**: `916de14` (config + README), plus this close-phase
-commit, both pushed. The last five `main` CI runs at session start were
-all `completed`/`success`; this session's own push also confirmed
-`completed`/`success` post-push.
+**HEAD landed**: `916de14` (config + README), `dd084b5` (close-phase),
+and one small fix-forward commit (`a462849`) resolving a placeholder
+`notes/adr/0110-*.md` left in its own oracle-bracket section (the
+close commit's own hash wasn't yet known when that section was first
+drafted) — caught before push, corrected as a new commit rather than
+an amend, all three pushed together. The last five `main` CI runs at
+session start were all `completed`/`success`; this session's own push
+also confirmed `completed`/`success` post-push.
