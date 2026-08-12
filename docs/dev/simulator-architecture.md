@@ -252,6 +252,99 @@ resolve to the identical `patient-id`/`active-mrn` pair
 `sim-emit-hl7`'s own PID-3 renders, over every generated case. This is
 the naturality square's own commutation, proven rather than assumed.
 
+### The two layers, instantiated
+
+`palgebra-design.md`'s two-layer read (D5, §I.4) applies to this
+pipeline directly, not by analogy: **`GT` is the sim's abstract-layer
+object** — content on wires, no infrastructure, the layer where "two
+workflows are equal iff their abstract diagrams are equal" (§I.4). The
+sim purity lint (`components/docs-tooling/test/ehrt/docs_tooling/
+sim_purity_lint_test.clj`, the mechanical check behind this doc's own
+§3 mutable-state census) is that same rule read mechanically: **zero
+atoms, refs, agents, or volatiles in the simulation path** is exactly
+"no infrastructure on abstract-layer wires," enforced by grep rather
+than merely asserted. The lint and the layer are the same discipline
+seen from two sides — one names it in prose, the other checks it in
+CI.
+
+**The founding thesis as algebra.** This project's own founding
+sentence (`docs/glossary.md`, "Emitter": *"Formats are just emitters
+of the patient state machine"*) is a layer claim: `emitH` and `emitF`
+are two **lowerings** of one abstract object, `GT`, never two
+independent computations that happen to agree. Read this way, the
+naturality witness cited just above
+(`fhir-patient-id-and-active-mrn-resolve-to-the-same-hl7-identity`,
+`emit_fhir_test.clj:147`, already cited in full above) is the
+**coherence law** between those two lowerings — two paths from the
+same abstract object to two different lowered targets, proven to
+resolve the same identity rather than merely asserted to.
+
+**Honest wrinkle: no `erase` exists from wire back to `GT`.** The
+palgebra's own soundness anchor is `lower ⨟ erase = id` (D6, §I.5) —
+but the emitter arrows `emitH`/`emitF` are one-way. No total `erase :
+ER7* → GT` (or `FHIR* → GT`) is implemented or intended anywhere in
+this pipeline; nothing folds a wire stream back into the ground-truth
+shape the way `sim-engine`'s own `replay` folds events into
+`PatientState` (§2). This is precisely why the regression oracle
+freezes bytes rather than re-deriving and comparing abstract objects:
+**where erasure doesn't exist, byte-identity of the lowered image is
+the checkable surrogate for abstract-object equality.** The machinery
+is used where it holds, named absent where it doesn't — never silently
+assumed either way.
+
+**Where `lower ⨟ erase = id` genuinely holds, witnessed:**
+
+- **The framing codecs are lower/erase pairs at the transport tier.**
+  Each `ehrt.corpus-io.framing` codec's own encode is a `lower`
+  (content plus a wire envelope — BHS/BTS, an MLLP wrapper, an NDJSON
+  line) and its decode is the matching `erase` (forget the envelope,
+  recover the content): `batch-round-trip-property-test`
+  (`components/corpus-io/test/ehrt/corpus_io/framing_test.clj:266`)
+  and its four sibling round-trips —
+  `file-per-item-round-trip-property-test` (`:29`),
+  `er7-multi-round-trip-property-test` (`:121`),
+  `ndjson-round-trip-property-test` (`:142`),
+  `mllp-round-trip-property-test` (`:224`) — are `lower ⨟ erase = id`
+  proven once per codec.
+- **Pacing is movement within a fiber, erasing to the same unpaced
+  bytes.** `ehrt play`'s own real-time delivery is a `lower` — content
+  plus a timing infrastructure — and reading it back at an arbitrarily
+  large rate, or to a file sink, is the matching `erase`:
+  `play-command-at-huge-rate-matches-show-identity-test`
+  (`bases/cli/test/ehrt/cli/core_test.clj:2800`) and
+  `play-command-file-sink-writes-byte-identical-to-unpaced-content-test`
+  (`:2827`) both show the paced rendering and the unpaced content
+  erase to identical bytes — pacing changes nothing about the abstract
+  object, only how long delivering it takes.
+- **The latency second clock's zero point is the identity.**
+  `emit-wire`'s own `LatencyParams` argument is a `lower` from `GT` to
+  `TimedWire` (§5/ADR-0109); at the identity element of that
+  parameter — absent, `nil`, or `{}` offsets —
+  `emit-wire-with-absent-nil-or-empty-offsets-is-byte-identical-to-emit`
+  (`components/sim-emit-hl7/test/ehrt/sim_emit_hl7/latency_test.clj:29`,
+  a 100-trial `defspec`) proves the lowering collapses to plain
+  `emit`'s own output exactly. The stronger claim — that `GT` itself is
+  invariant under ANY latency configuration, not merely the identity
+  one — is architectural (latency parameters enter at the emitter seam
+  only, never reaching `engine/run`, §5/ADR-0109) and was witnessed
+  live rather than merely argued: ADR-0110's own `diff`/`sha256sum` of
+  ground truth generated under `config-latency.edn` against the
+  unlagged baseline, byte-identical.
+
+**Transport realism versus mutation, as algebra.** The ADR-0111
+taxonomy note (`.agents/rulings.md`, "From ADR-0111," "Transport
+realism versus mutation, the taxonomy note") restated in layer terms:
+transport realisms — delayed individual transmission (ADR-0109),
+schedule batching (ADR-0111) — move **within** the erasure fiber: the
+abstract object, `GT`, is unchanged, only its lowered image's own
+infrastructure (timing, framing) varies. Mutation (`ehrt corpus
+mutate`) deliberately produces a **different** abstract object, with
+an expected finding attached — a different fiber, not a different
+point in the same one. Message loss and duplication remain that
+note's own named open boundary, unresolved here: a real transport does
+both, and where they sit relative to this transport-realism/mutation
+split is a named future question, not decided by this subsection.
+
 ---
 
 ## 5. Extension point: downstream-latency realism

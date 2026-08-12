@@ -1,5 +1,7 @@
 # How a patient trajectory is computed
 
+The simulator instantiation: `docs/dev/simulator-architecture.md` §4.
+
 This is the cross-cutting explainer for a question no single document
 answers on its own: given a seed and a config, how does one patient's
 worth of traffic actually get computed, step by step, from nothing to

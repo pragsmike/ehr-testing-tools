@@ -68,6 +68,8 @@ Multi-configuration support is a module story, not a notation story: per-use-cas
 
 Vocabulary hygiene: plain words (file, judge, judgment) are abstract-layer; prefixed forms (ref, store, cached-criterion) are lowered-layer. The transformation dictionary — `file ↦ ref(file) + store entry`, `spider-on-file ↦ spider-on-ref` — is a short, explicit, versioned document; it *is* the interpretation between layers.
 
+The simulator instantiation: `docs/dev/simulator-architecture.md` §4.
+
 ### I.5 Proof economies (D6)
 
 - **`erase : Lowered → Abstract`** is total by the closure rule (forget refs, delete infrastructure). **`lower`** is a section of it: `lower ⨟ erase = id`.
