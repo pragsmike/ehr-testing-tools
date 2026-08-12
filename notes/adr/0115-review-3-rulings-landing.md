@@ -151,6 +151,29 @@ three register-row updates, and all three cluster rows plus the queue
 note landed exactly as the driving prompt specified, verbatim where
 the prompt gave verbatim text.
 
+**A brief CI-red window on commit 1, self-caught after this session's
+own close, disclosed fix-forward.** Confirming CI status ahead of this
+session's own close (`gh run list --limit 6 --branch main`) found
+commit 1's own push (`ed00e3a`, run `31609061805`)
+`completed`/`failure`. Not a defect this session introduced —
+`ehrt.sim-engine.engine-test`'s
+`mixed-authored-and-compiled-run-satisfies-the-full-invariant-catalog`
+defspec (the same flake `.agents/rulings.md`'s R8, ADR-0114, already
+chartered a future investigation for) failed at a NEW seed,
+`1786546687672`, `failing-size 126`, shrunk smallest
+`[-3377439408979484]` — distinct from the originally disclosed seed
+`7844068501` (ADR-0112). This session's own fence is zero `src`/
+`test`, so the failure cannot be this session's own doing, and local
+`make test` ran clean at both checkpoints this session (a different,
+unpinned seed each run — the underlying non-determinism this same
+flake class has always had). `gh run rerun 31609061805 --failed`
+confirmed `completed`/`success` on a same-code re-run. The second seed
+is recorded as further evidence on the roadmap's own "Engine-test
+flake investigation" row (R8) for the future investigating session —
+two independent seeds now finding a counterexample corroborates R8's
+own characterization: a real, seed-dependent defect class, not pure
+noise.
+
 ### Oracle bracket
 
 **Pre-analysis:** pure identity on all 35 roots — registers and notes

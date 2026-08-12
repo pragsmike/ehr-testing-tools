@@ -99,6 +99,24 @@ trailing-blank-line artifact `git log --format=%B` always adds; ASCII
 byte-check (`git log --format=%B -1 | LC_ALL=C grep -n '[^ -~]'`) —
 EMPTY.
 
+**A brief CI-red window on commit 1, self-caught after this session's
+own close, disclosed fix-forward.** `gh run list` showed commit 1's
+own push (`ed00e3a`, run `31609061805`) `completed`/`failure`, caught
+while confirming CI status ahead of writing this record. Not a defect
+this session introduced — `ehrt.sim-engine.engine-test`'s
+`mixed-authored-and-compiled-run-satisfies-the-full-invariant-catalog`
+defspec (the flake ADR-0114's own R8 already chartered a future
+investigation for) failed at a NEW seed, `1786546687672`,
+`failing-size 126`, shrunk smallest `[-3377439408979484]` — distinct
+from the originally disclosed seed `7844068501` (ADR-0112). This
+session's own fence is zero `src`/`test`, so the failure cannot be
+this session's own doing; a same-code CI re-run (`gh run rerun
+31609061805 --failed`) confirmed `completed`/`success`. The second
+seed is recorded as further evidence on the roadmap's own "Engine-test
+flake investigation" row (R8) for the future investigating session.
+See `notes/adr/0115-*.md`'s own Deviations section for the full
+record.
+
 ## Step 4 — ADR + ceremony surfaces + commit 2
 
 Oracle bracket run against commit 1, per the driving prompt's own step

@@ -250,7 +250,16 @@ per item; done items move to the bottom of their section with a date and sha.
   test-defect, fix or file. The seed is the repro handle -- preserve it
   verbatim in the executing session's own record. Cross-ref: ADR-0112's
   own disclosure (origin); ADR-0107's sibling corpus defspec flake row
-  (same failure class, a different registry).
+  (same failure class, a different registry). **Second occurrence,
+  2026-08-12 (ADR-0115, review-3 rulings landing):** the same defspec
+  failed in CI on this session's own commit 1 (`ed00e3a`) at a
+  DIFFERENT seed, **`1786546687672`**, `failing-size 126`, shrunk
+  smallest `[-3377439408979484]` -- disclosed here as a second repro
+  handle for the executing session's own future use, not investigated
+  or fixed by this registers-only session (zero `src` fence). A
+  same-code CI re-run passed clean. Two independent seeds now finding
+  a counterexample corroborates R8's own characterization: a real,
+  seed-dependent defect class, not pure noise.
 - **Demo exerciser** (ADR-0113 R3; not chartered to any executing
   session yet). Author verbatim, 2026-08-12: *"The demos must be known
   to work, and exercised as documented to make sure they actually play
