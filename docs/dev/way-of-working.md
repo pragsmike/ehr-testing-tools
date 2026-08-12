@@ -175,3 +175,60 @@ live tree is a default to fix-forward and reconcile; an `[A]` ruling
 conflicting with the live tree always escalates. Full ruling and its
 precedent citation: `notes/ADRs.md` ADR-0007's own fourth dated
 amendment.
+
+## 7. Method vocabulary
+
+Two families of terms this workspace's sessions and design channel
+have converged on through repeated use, recorded here because they
+have proven themselves (author ruling, 2026-08-12: "add those terms,
+they've been successful").
+
+Evidence family:
+
+- **Oracle** — a mechanism that says whether an output is correct
+  without hand-specifying the answer. Two instances here: the
+  byte-digest regression oracle over the 35 fixed roots, and the NIST
+  engine in the inject-X-expect-X loop.
+- **Oracle bracket** — running the oracle before and after a session,
+  expected result pre-stated.
+- **Witness** — a concrete, checkable piece of evidence for a claim —
+  usually a named passing test, sometimes a captured run. "Witnessed"
+  means ran and saw, never merely asserted.
+- **Red-before-green** — a new test must be seen failing before the
+  satisfying code lands, proving it can detect what it guards.
+- **Count lock** — a test hardcoding a catalog's size so additions
+  can't land silently; bumping it is part of the addition.
+- **Tripwire** — a cheap check built to fire when an assumption goes
+  stale.
+- **Lint, house sense** — mechanical checks over docs and registers,
+  not only code.
+
+Process family:
+
+- **Probe** — a read-only look at the live tree before making a claim.
+- **Landing** — what actually arrived on `origin/main`, verified —
+  distinct from what a session says.
+- **Fence** — the explicit boundary of what a session may touch;
+  outside it is stop-and-report, never judgment.
+- **Charter** — the explicit authorization for a piece of work;
+  chartered is not scheduled.
+- **Rider** — a small extra change licensed to ride a session about
+  something else; never one that moves behavior.
+- **Ruling vs. recommendation** — the author's decision, recorded
+  verbatim, vs. the channel's reasoned proposal — provenance tags
+  `[A]`/`[C]`.
+- **Arc** — a multi-session sequence with one goal, opened and closed
+  explicitly.
+- **Fix-forward** — errors corrected by new dated commits and errata,
+  never history rewrites.
+- **Move-don't-improve** — relocations byte-identical; improvement is
+  a separate commit.
+- **Seam** — see the glossary's own entry (a clean session stopping
+  point); the term also carries a second, architectural sense here —
+  the boundary where one concern hands off to another, as in "the
+  emitter seam."
+
+Palgebra vocabulary (layers, lower/erase, fiber, naturality) is
+defined in `components/corpus/docs/palgebra-design.md` and
+instantiated in `docs/dev/simulator-architecture.md` §4 — not
+duplicated here.

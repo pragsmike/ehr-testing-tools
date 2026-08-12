@@ -405,6 +405,13 @@ ICU care of a deceased donor before organ recovery — the reason
 even a payer change. See
 [`clinical-realities.md`](../components/sim/docs/clinical-realities.md).
 
+**Oracle.** A mechanism that says whether an output is correct without
+hand-specifying the answer. This workspace has two: the byte-digest
+regression oracle, which checks that every one of the 35 fixed corpus
+roots still hashes to its recorded value (`bin/regression-oracle`);
+and the NIST conformance engine, used in an inject-a-known-defect-and-
+expect-it-caught loop (`ehrt gate v2-nist`).
+
 **Pack.** Retired mechanism (the design record[^tools-adr-0006]-era, tools'
 pre-merge sequence) — a single text file concatenating tracked files
 for a non-git chat surface. Not part of this workspace's own ritual;
@@ -534,6 +541,11 @@ it into an existing polarity. Register: `ehrt.judge.finding`
 hospital is filling from empty; its events are *marked* (never
 trimmed) so steady-state corpora can filter the cold-start artifact
 without violating log completeness[^sim-adr-0011].
+
+**Witness.** A concrete, checkable piece of evidence for a claim —
+usually a named passing test, sometimes a captured run. A claim is
+"witnessed" when it was actually run and observed, never merely
+asserted.
 
 ## Organizations and upstream projects
 

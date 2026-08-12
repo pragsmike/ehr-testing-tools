@@ -261,9 +261,9 @@ workflows are equal iff their abstract diagrams are equal" (§I.4). The
 sim purity lint (`components/docs-tooling/test/ehrt/docs_tooling/
 sim_purity_lint_test.clj`, the mechanical check behind this doc's own
 §3 mutable-state census) is that same rule read mechanically: **zero
-atoms, refs, agents, or volatiles in the simulation path** is exactly
-"no infrastructure on abstract-layer wires," enforced by grep rather
-than merely asserted. The lint and the layer are the same discipline
+atoms, refs, agents, or volatiles in the simulation path** (modulo
+§3's own disclosed exceptions) is exactly "no infrastructure on
+abstract-layer wires," enforced by grep rather than merely asserted. The lint and the layer are the same discipline
 seen from two sides — one names it in prose, the other checks it in
 CI.
 
