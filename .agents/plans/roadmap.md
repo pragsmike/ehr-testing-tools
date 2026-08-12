@@ -5,18 +5,18 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- Nothing in progress at this close (latency demo, ADR-0110,
-  2026-08-11 — `demos/scenarios/ed-tuesday/` gains a sibling
-  `config-latency.edn` and a "The second clock" README section: the
-  same seed's ground truth generated under both configs is
-  byte-identical (witnessed `diff`/`sha256sum`), while the latency
-  wire's own `--board` playback shows the ADR-0109 disorder finding
-  live — a lagged admission message re-adding an already-discharged
-  patient to the board, double-booking a bed. Zero `src` changes; pure
-  identity across all 35 oracle roots. See the Next section's own
-  downstream-latency-realism row — the arc is now fully closed, the
-  user-guide trigger's own conditions MET, PENDING AUTHOR
-  RATIFICATION).
+- Nothing in progress at this close (corpus batching, ADR-0111,
+  2026-08-11 — `ehrt corpus batch DIR --interval MINUTES --out-dir
+  OUT`, a corpus-level tool separate from the sim, schedule-partitions
+  any directory of valid v2 message files into epoch-aligned HL7 v2
+  batch-protocol (BHS/BTS) delivery files, each self-verified against
+  its own true message count. Witnessed over `demos/scenarios/
+  ed-tuesday/`'s own latency out-dir: 283 messages, 34 hourly batches,
+  an encounter split across two consecutive batches, both individually
+  clean. Footprint: corpus-io + cli + demo docs only; pure identity
+  across all 35 oracle roots. See the Deferred section's own
+  "Transport realism — batching" row for the three named v1
+  deferrals).
 
 ## Next (backlog, no session scheduled)
 - **Busy-tuesday/ED scenario redesign — "A" LANDED, "B" CLOSED
@@ -202,6 +202,31 @@ per item; done items move to the bottom of their section with a date and sha.
 
 ## Deferred (explicitly, with revisit triggers)
 Rows here are LIVE. Closed rows move to Done with their notes.
+- **Transport realism — batching, LANDED 2026-08-11 (ADR-0111), three
+  named deferrals still open.** `ehrt corpus batch DIR --interval
+  MINUTES --out-dir OUT` schedule-partitions a corpus's own messages
+  (any directory of valid v2 message files, including a foreign
+  corpus — author ruling, `.agents/rulings.md`, "From ADR-0111," Q1
+  a) into epoch-aligned, HL7 v2 batch-protocol (BHS/BTS) delivery
+  files, composing with the latency arc (ADR-0109/ADR-0110) as a
+  second, independent transport realism. Witnessed against
+  `demos/scenarios/ed-tuesday/`'s own latency out-dir: 283 messages,
+  34 hourly batches, an interior empty-hour gap visibly skipped, a
+  straddling encounter (Smith, James/MRN000002) split across two
+  consecutive, individually BTS-verified batch files. Three v1
+  deferrals, each with its own revisit trigger (`notes/adr/
+  0111-corpus-batching.md`): **`--anchor`** (bucket alignment is
+  always Unix-epoch; revisit trigger: a concrete non-epoch-aligned
+  schedule need); **interior empty-batch realism** (an empty bucket
+  between two occupied ones is skipped, never represented as a
+  missing/placeholder file; revisit trigger: a future session wanting
+  to simulate a receiver noticing a missing scheduled delivery);
+  **FHS/FTS file-level wrappers** (the batch protocol's own next tier
+  up from BHS/BTS; revisit trigger: a future need to bundle multiple
+  batches into one file-level transfer). A taxonomy question — where
+  message loss/duplication sit relative to transport-realism (this
+  row, ADR-0109) versus mutation (`ehrt corpus mutate`) — is named,
+  not resolved, in the same ADR.
 - **`ehrt.corpus.sink-composability-test`'s own generator-exhaustion
   flake** (2026-08-11, injuries arc close, `notes/ADRs.md` ADR-0107,
   dated append): `dir-sink-write-then-intake-hash-identity-property-
@@ -626,3 +651,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-11 — simulator-architecture-doc — ADR-0108
 - 2026-08-11 — latency-second-clock — ADR-0109
 - 2026-08-11 — latency-demo — ADR-0110
+- 2026-08-11 — corpus-batching — ADR-0111

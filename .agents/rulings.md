@@ -644,3 +644,35 @@ driving prompt, author-ruled 2026-08-10, executed 2026-08-11)
   a new sibling config (`config-latency.edn`), never a revision of
   `config.edn`, generated at the same seed and played into `--board`
   as the receiver stand-in this demo supplies a case to.
+
+## From ADR-0111 (corpus batching: the transport gets one notch real;
+ruled 2026-08-11)
+
+- **Corpus-level, sim-separate scope** [A, ruled 2026-08-11, author
+  verbatim "Q1 a. I want this separate from the sim. It should work on
+  any corpus, even an existing directory of foreign (but valid)
+  message files."]: `ehrt corpus batch` is a standalone corpus-level
+  tool -- it works on any directory of valid v2 message files,
+  including a foreign corpus this repo never generated, never routing
+  through sim-specific machinery (a manifest, a catalog, a generator
+  registry entry). Applies to any future corpus-level tool this
+  workspace builds sharing the same "works on a foreign corpus, not
+  just this repo's own output" shape.
+- **The `:batch` framing codec, v1** [A, ruled 2026-08-11, author
+  verbatim "Q2 a. Go."]: the HL7 v2 batch protocol's BHS/BTS wrappers
+  land as `ehrt.corpus-io.framing`'s own `:batch` codec (pure
+  bytes, encode/decode, the same call shape as its `:er7-multi`/
+  `:ndjson`/`:mllp`/`:bundle-entries` siblings) -- not deferred, not a
+  second design pass.
+- **Transport realism versus mutation, the taxonomy note** [C,
+  channel-inferred consolidation of the author's own "mutation as
+  imperfect transport" framing from this session's driving
+  conversation -- the literal words were not carried into this
+  session's own written context, so this is a paraphrase, not a
+  verbatim quote; the author may strike or correct it]: transport
+  realism (delayed individual transmission, ADR-0109; schedule
+  batching, ADR-0111) simulates CORRECT transport behaviors,
+  deterministically; mutation (`ehrt corpus mutate`) injects INCORRECT
+  content with an expected finding. Message loss and duplication sit
+  on the boundary (a real transport does both) -- a named future
+  taxonomy question, not resolved by this ruling.
