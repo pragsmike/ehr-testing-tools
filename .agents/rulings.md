@@ -909,3 +909,24 @@ executed 2026-08-12)
   direction (F1/F2/F3/F4/F6 all reject rather than degrade). Applies to
   any future source-scoped or mode-scoped flag mismatch this workspace
   adds; the author may strike or correct this reading.
+
+## From ADR-0118 (fix clusters B and C: help enrichment, doc drift;
+executed 2026-08-12)
+
+- **The `.github/**` scan-root widening [C, un-vetoed]**: R3-B5-4's own
+  "consider whether `.github/**` belongs in the gate's own scan roots"
+  is ruled YES -- widened alongside `demos/**` in the same commit, same
+  recurrence-prevention logic (an operator-facing surface, issue
+  templates, the gate never covered at all). Applies to any future
+  doc-drift gate whose own scan roots are found to have a blind spot
+  over a real operator-facing surface; the author may strike or correct
+  this reading.
+- **B2's sourced-example rule [C, approved by dispatch of the driving
+  prompt]**: each group's own "Example:" line is one invocation copied
+  VERBATIM from an existing witnessed source -- a `docs/use-cases/*.md`
+  strip, README Quickstart, or a demo README -- never composed, source
+  cited per line in `notes/adr/0118-*.md`. A group with no witnessed
+  invocation anywhere (`version`, `doctor`, this session) renders no
+  Example rather than an invented one, recorded as a register addendum
+  row instead. Applies to any future per-group worked-example surface
+  this workspace adds; the author may strike or correct this reading.

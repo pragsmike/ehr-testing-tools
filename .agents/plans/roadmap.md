@@ -158,9 +158,11 @@ per item; done items move to the bottom of their section with a date and sha.
   currently-unrendered fields, which would change plain `emit`'s own
   frozen bytes) is named as a future, declared-oracle-change session of
   its own -- not touched by either ADR-0109 or this session.
-- **User manual design pass** (status: awaiting-design-pass; trigger
-  RATIFIED 2026-08-11, ADR-0112; sequence position set 2026-08-12,
-  ADR-0113 R5, see the review-3 row below). Renamed from "Tool-specific
+- **User manual design pass** (status: READY -- awaiting the design
+  channel's own framing; the review-3 arc it sequenced behind (row
+  below) closed 2026-08-12, ADR-0118. trigger RATIFIED 2026-08-11,
+  ADR-0112; sequence position set 2026-08-12, ADR-0113 R5, see the
+  review-3 row below). Renamed from "Tool-specific
   user-guide design pass" (ADR-0113 R1, author verbatim: *"Let's use
   the name 'user manual' for the user docs for ehr-testing-tools. I've
   been informally calling it the 'user guide' but that's too easy to
@@ -208,9 +210,12 @@ per item; done items move to the bottom of their section with a date and sha.
   tiering ruled (a) deliberate, closed by a help-note addition;
   R3-B1-7 `--received` wall-clock default ruled (a), closed-by-ruling
   as a class exemption) and the fix-session-candidate rows are
-  chartered into three clusters (A, B, C, rows below). The arc's
-  remaining steps are those three cluster sessions, then the user
-  manual design pass.
+  chartered into three clusters (A, B, C, rows below). **CLOSED
+  2026-08-12** except the design-channel-draft queue (the B-3/B-4
+  carry-forward wording halves, R3-B3-4 -- the channel's own work,
+  unchanged, not a session row): all three cluster sessions landed
+  (A, ADR-0117; B and C, both ADR-0118) -- the user manual design pass
+  (row above) is next, now READY.
 - **RESOLVED 2026-08-12** (fix cluster A -- CLI validation and error
   quality, `notes/ADRs.md` ADR-0117; chartered ADR-0115). All eight
   members fixed, red-before-green per fix, four commits: R3-B2-1
@@ -243,20 +248,44 @@ per item; done items move to the bottom of their section with a date and sha.
   pure identity across all 35 roots (F1-F6 change only error paths on
   invalid inputs no root supplies; F7 renames a flag on a verb no root
   invokes; F8 is help text).
-- **Fix cluster B -- help-surface enrichment** (ADR-0115; not
-  chartered to any executing session yet). Members: R3-B3-2 (verb-level
-  help narrowing), R3-B3-1's mechanism half (the "Example:" render
-  slot; content is design-channel-draft, see the queue note below).
-- **Fix cluster C -- doc drift and gate scan-roots** (ADR-0115; not
-  chartered to any executing session yet). Members: R3-B5-3
-  (`demos/traces` stale refs + widen the invocation gate's scan roots
-  to `demos/**`), R3-B5-4 (issue template fix + consider `.github/**`
-  in scan roots). Docs-only session.
-- **Design-channel-draft queue** (ADR-0115; not a session row).
-  R3-B3-1's own Example-line content (one runnable invocation per
-  group, sourced from `docs/use-cases/*.md`), and the B-3/B-4
-  carry-forward wording halves (R3-B3-4) -- the channel drafts, the
-  author rules, no session until then.
+- **RESOLVED 2026-08-12** (fix cluster C -- doc drift and gate
+  scan-roots, `notes/ADRs.md` ADR-0118; chartered ADR-0115). One
+  commit, order-matters red-before-green: the invocation lint's own
+  scan roots widened to `demos/**` and `.github/**` first (R3-B5-4's
+  "consider" ruled YES [C, un-vetoed], same recurrence-prevention logic
+  as `demos/**`) -- the widening itself only goes RED on R3-B5-4's own
+  issue-template alias (`.github/ISSUE_TEMPLATE/bug-report.md`'s stale
+  `clojure -M:cli version`); R3-B5-3's own `demos/traces/**` stale
+  config-header drift lives in unfenced EDN comments the lint's two
+  checks (a substring match, and fenced-\`\`\`bash/sh flag-value
+  resolution) structurally cannot see, disclosed rather than
+  papered over by silently extending the lint. Fixed by an
+  extension-blind, un-truncated census grep instead: the 3 named
+  stale-path/seed instances plus 1 more the census alone found
+  (`demos/traces/module-mix/README.md`'s own stale `docs/demos/
+  emit-state/` prose reference). Docs-only, zero `src` touched.
+- **RESOLVED 2026-08-12** (fix cluster B -- help-surface enrichment,
+  `notes/ADRs.md` ADR-0118; chartered ADR-0115). One commit,
+  red-before-green: R3-B3-2, genuine verb-level help narrowing for
+  both `<group> <verb> --help` and the 3-arg `help <group> <verb>`
+  form (`help/render-verb-help`); a known group with an unknown verb
+  reuses F6's own `:unknown-command` treatment verbatim (ADR-0117); a
+  group with no verbs at all is unaffected. R3-B3-1, both halves: the
+  "Example:" render slot, and its own sourced content -- one witnessed,
+  verbatim invocation per group (never composed), drawn from
+  README.md's Quickstart, `docs/use-cases/*.md`, or a demo README, per
+  the B2 sourcing rule [C, approved by dispatch of the driving prompt]
+  that superseded this row's own design-channel-draft disposition for
+  content. 7 of 9 groups covered; `version`/`doctor` have no witnessed
+  invocation anywhere and render none, recorded as a register addendum
+  row rather than an invented example. `docs/cli.md` regenerated,
+  confirmed byte-identical (it deliberately excludes worked
+  invocations by design, and B1's narrowing is a render-time-only
+  behavior change -- neither reaches the spec shape docsgen reads).
+- **Design-channel-draft queue** (ADR-0115; not a session row). The
+  B-3/B-4 carry-forward wording halves (R3-B3-4) only -- R3-B3-1's own
+  Example-line content resolved above, ADR-0118. The channel drafts,
+  the author rules, no session until then.
 - **RESOLVED 2026-08-12** (engine-seed-contract, `notes/ADRs.md`
   ADR-0116; `.agents/rulings.md` "From ADR-0116" R9): the
   `ehrt.sim-engine.engine-test` flake this row chartered
@@ -820,3 +849,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-12 — review-3-rulings-landing — ADR-0115
 - 2026-08-12 — engine-seed-contract — ADR-0116
 - 2026-08-12 — fix-cluster-a-cli-validation — ADR-0117
+- 2026-08-12 — fix-clusters-b-and-c-help-and-docs — ADR-0118
