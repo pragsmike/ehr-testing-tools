@@ -62,6 +62,9 @@
     ;; replacing SETUP.md's multi-fetch walkthrough.
     {:group "artifact"
      :doc "Fetch and resolve locked external engine/tool artifacts."
+     ;; B2 (R3-B3-1, ADR-0118): witnessed verbatim, README.md Quickstart
+     ;; fence, line 203 -- source cited in notes/adr/0118-*.md.
+     :example "bin/ehrt artifact fetch --name synthea --version 4.0.0"
      :verbs
      [{:verb "fetch" :doc "Fetch a locked artifact into the local content-addressed cache."
        :flags (into artifact-flags
@@ -76,6 +79,9 @@
     ;; Zero-flag reproducible defaults: D9 / ADR-0019.
     {:group "corpus"
      :doc "Generate, mutate, intake, and inspect synthetic corpora. Any PATH, --out-dir, or --out also accepts a dir:/file: URL designator in place of a bare path; bare paths are the common spelling. `corpus generate` is the front door for new corpora; `corpus intake` catalogs existing ones -- and can generate-then-catalog, or read piped bytes, in one command (see intake)."
+     ;; B2 (R3-B3-1, ADR-0118): witnessed verbatim, README.md Quickstart
+     ;; fence, line 197 -- source cited in notes/adr/0118-*.md.
+     :example "bin/ehrt corpus generate"
      :verbs
      [{:verb "generate" :doc "Generate a deterministic synthetic corpus. Takes a source subcommand: `corpus generate sim` (this workspace's own engine; the flags marked sim:) or `corpus generate synthea` (the flags marked synthea:). Bare `corpus generate` means `generate sim`. Both bare commands are byte-reproducible as-is; re-running into an existing non-empty --out-dir is rejected (:out-dir-exists), never silently overwritten."
        :flags [{:flag "--config-path" :doc "synthea: Synthea properties file" :default "resources/synthea-default.properties"}
@@ -133,6 +139,10 @@
     ;; NIST profile tier: ADR-0012. Designators: ruling 7.
     {:group "gate"
      :doc "Conformance-gate a file or directory against HL7 v2, FHIR, or (with --profile) an HL7 v2 conformance profile. Bare `ehrt gate PATH` sniffs the format and dispatches between v2 and fhir only -- never v2-nist, which needs an explicit --profile. A directory mixing formats, or a file that can't be classified, is an error naming the explicit override (`gate v2 PATH` / `gate fhir PATH`), never a silent per-file split. PATH and --scratch-dir (gate fhir only) also accept dir:/file: URL designators."
+     ;; B2 (R3-B3-1, ADR-0118): witnessed verbatim, README.md "See it
+     ;; run" fence, line 92 (a fixture shipped in the repo, runs with
+     ;; no fetched artifacts) -- source cited in notes/adr/0118-*.md.
+     :example "bin/ehrt gate fhir test-fixtures/fhir/storefront-patient.json"
      :positional "PATH"
      :positional-doc "a file or directory, given as a trailing positional argument, not --path -- an explicit --path is never overridden by it"
      :verbs
@@ -160,6 +170,10 @@
     ;; Designators: ruling 7.
     {:group "check"
      :doc "Check a candidate corpus against an expected corpus and/or explicit per-file assertions -- the corpus's second judge, alongside gate. DIR also accepts a dir: URL designator."
+     ;; B2 (R3-B3-1, ADR-0118): witnessed verbatim, docs/use-cases/
+     ;; reproduction-packages.md, line 36 -- source cited in
+     ;; notes/adr/0118-*.md.
+     :example "bin/ehrt check out/repro-b/fhir --expected out/repro-a/fhir --pair-by hash"
      :positional "DIR"
      :positional-doc "check has no sub-verb: the second positional argument names the candidate directory directly"
      :flags [{:flag "--path" :doc "alternative to the positional DIR"}
@@ -170,10 +184,18 @@
              {:flag "--report" :doc "write the report EDN to this path"}]}
 
     ;; Honest pre-release identity ruling: D13.
+    ;; B2 (R3-B3-1, ADR-0118): no :example -- no witnessed invocation of
+    ;; `ehrt version` exists anywhere in README.md's Quickstart, any
+    ;; docs/use-cases/*.md, or any demos/**/README.md (checked this
+    ;; session); per the sourced-only rule, rendering none rather than
+    ;; inventing one -- gap recorded as a register addendum row.
     {:group "version"
      :doc "Print this repo's own pre-release identity (it deliberately has no semver yet) plus every pinned artifact's name@version from the lockfile."
      :flags [{:flag "--lockfile" :doc "path to the lockfile" :default "artifacts.lock.edn"}]}
 
+    ;; B2 (R3-B3-1, ADR-0118): no :example, same gap class as version
+    ;; above -- no witnessed invocation of `ehrt doctor` exists anywhere
+    ;; in the same three source classes (checked this session).
     {:group "doctor"
      :doc "Run SETUP.md's verification checklist as checks: java resolution via the artifact registry, artifact cache presence per lockfile entry, git hooksPath wiring, and platform support. Exit 0: every check passed; 1: at least one failed; 2: couldn't even read the lockfile to know what to check."
      :flags [{:flag "--lockfile" :doc "path to the lockfile" :default "artifacts.lock.edn"}]}
@@ -182,6 +204,9 @@
     ;; ehrt.sim.interface/run-command.
     {:group "sim"
      :doc "Run the sim engine, in-process -- no subprocess, no fetched artifacts needed."
+     ;; B2 (R3-B3-1, ADR-0118): witnessed verbatim, README.md Quickstart
+     ;; fence, line 226 -- source cited in notes/adr/0118-*.md.
+     :example "bin/ehrt sim run --seed 100 --patients 1"
      :verbs
      [{:verb "run" :doc "Runs one deterministic simulation and returns its ground truth, manifest, and summary (plus --emit's rendered messages/bundles, when given)."
        :flags [{:flag "--seed" :doc "simulation seed (integer, non-negative) -- required, determinism is a feature, not a default"}
@@ -207,6 +232,10 @@
     ;; Display-vs-wire ruling: ADR-0013.
     {:group "show"
      :doc "Render a file (or a directory of files sharing one sniffed format) for a human: HL7 v2 (ER7) one segment per line, blank line between messages; FHIR JSON pretty-printed. Always pretty -- `ehrt show FILE | less` just works. The rendered ER7 is display-only and deliberately nonconformant (LF-joined segments): never pipe it anywhere a real HL7 v2 consumer sits."
+     ;; B2 (R3-B3-1, ADR-0118): witnessed verbatim, docs/use-cases/
+     ;; generate-sim-traffic.md, line 28 -- source cited in
+     ;; notes/adr/0118-*.md.
+     :example "bin/ehrt show out/corpus/sim-s42-p5"
      :positional "PATH"
      :positional-doc "a file, or a directory of files sharing one sniffed format, given as a trailing positional argument, not --path -- an explicit --path is never overridden by it"
      :flags [{:flag "--path" :doc "alternative to the positional PATH"}]}
@@ -215,6 +244,9 @@
     ;; --sink designator vocabulary: ADR-0017; deferred sinks: ADR-0014.
     {:group "play"
      :doc "Pace a corpus's own events against their own timestamps and render (or write) them over time -- `ehrt show` plus time. PATH is an HL7 v2 (ER7) file or directory (paced by MSH-7), or a sim event log (a single .edn file, paced by each event's own :t) -- see the PATH description below for both shapes. A directory's files must share the v2 format and are concatenated in LEXICAL FILENAME ORDER before pacing: that ordering is the contract, so name files so sort order is play order (the sim generator's msg-%03d output already is). FHIR or mixed message input is a named deferral (:play-input-unsupported)."
+     ;; B2 (R3-B3-1, ADR-0118): witnessed verbatim, README.md "See it
+     ;; run" fence, line 33 -- source cited in notes/adr/0118-*.md.
+     :example "bin/ehrt play out/corpus/busy-tuesday --board 60 --rate 60"
      :positional "PATH"
      :positional-doc "an HL7 v2 (ER7) file, a directory of files sharing the sniffed v2 format (concatenated in lexical filename order; a .edn event log sitting in that same directory is ignored), or a single .edn sim event log (a vector of ground-truth event maps -- `ehrt sim run --format ground-truth`'s own output, or `ehrt corpus generate sim`'s own events.edn), given as a trailing positional argument, not --path -- an explicit --path is never overridden by it"
      :flags [{:flag "--path" :doc "alternative to the positional PATH"}
@@ -376,7 +408,16 @@
 
 (defn render-group
   "Group usage text: `ehrt help <group>` and `ehrt <group> --help`. Returns
-  nil for an unrecognized group name -- callers decide what that means."
+  nil for an unrecognized group name -- callers decide what that means.
+
+  B2 (R3-B3-1, ADR-0118): a group carrying its own :example (a
+  witnessed, verbatim invocation -- see cli-spec's own per-group
+  comments for each one's source) renders one \"Example:\" line before
+  the exit-code table; a group with no witnessed invocation anywhere
+  (version, doctor) renders none rather than an invented one. Verb-
+  narrowed help (`render-verb-help`) never shows this -- it belongs to
+  \"the whole group screen,\" the thing verb-narrowing is for NOT
+  showing."
   ([spec group-name] (render-group spec group-name default-wrap-width))
   ([spec group-name width]
    (when-let [g (find-group spec group-name)]
@@ -387,7 +428,25 @@
           (if (:verbs g)
             (str/join "\n\n" (map #(render-verb group-name % width) (:verbs g)))
             (str "Flags:\n" (render-flags (:flags g) width)))
+          (when (:example g)
+            (str "\n\nExample:\n" (wrap-with-hanging-indent "  " (:example g) width)))
           "\n\nExit codes:\n" (render-exit-codes (:exit-codes spec) width)))))
+
+(defn render-verb-help
+  "A single verb's own usage text -- `ehrt help <group> <verb>` and
+  `ehrt <group> <verb> --help` (B1, R3-B3-2, ADR-0118): just that
+  verb's own description and flags, not the whole group's page every
+  invocation form used to fall back to regardless of how specifically
+  a caller asked. nil when group or verb is unrecognized -- callers
+  decide what that means (dispatch's own F6 unknown-verb treatment,
+  reusing the unknown-group category verbatim, for a group that HAS
+  verbs but not this one)."
+  ([spec group-name verb-name] (render-verb-help spec group-name verb-name default-wrap-width))
+  ([spec group-name verb-name width]
+   (when-let [g (find-group spec group-name)]
+     (when-let [v (first (filter #(= verb-name (:verb %)) (:verbs g)))]
+       (str (render-verb group-name v width)
+            "\n\nExit codes:\n" (render-exit-codes (:exit-codes spec) width))))))
 
 (defn render-top-level
   "The top-level usage text: bare `ehrt`, `ehrt help`, `--help` with no

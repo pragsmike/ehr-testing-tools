@@ -47,6 +47,61 @@
 (deftest render-group-unknown-group-returns-nil-test
   (is (nil? (help/render-group help/cli-spec "bogus"))))
 
+;; ---- B1 (R3-B3-2, ADR-0118): verb-level help narrowing -- just that
+;; verb's own description and flags, not the whole group screen every
+;; invocation form used to fall back to. ----
+
+(deftest render-verb-help-known-group-and-verb-renders-just-that-verbs-own-content-test
+  (let [text (help/render-verb-help help/cli-spec "sim" "run")]
+    (is (str/includes? text "ehrt sim run"))
+    (is (str/includes? text "--seed"))
+    (is (str/includes? text "--patients"))
+    (is (str/includes? text "Exit codes"))
+    ;; sibling verbs' own content must NOT leak into the narrowed render
+    ;; -- the whole point B1 exists to fix. Checked by each sibling's
+    ;; own section header shape (render-verb's "ehrt sim <verb>\n"),
+    ;; not a bare substring: `--format`'s own doc string legitimately
+    ;; cites "`ehrt sim check`" in prose, a false-positive trap for a
+    ;; cruder check.
+    (is (not (str/includes? text "\nehrt sim check\n")))
+    (is (not (str/includes? text "\nehrt sim identifiers\n")))
+    (is (not (str/includes? text "\nehrt sim version\n")))))
+
+(deftest render-verb-help-unknown-verb-in-a-known-group-returns-nil-test
+  (is (nil? (help/render-verb-help help/cli-spec "sim" "frobnicate"))))
+
+(deftest render-verb-help-unknown-group-returns-nil-test
+  (is (nil? (help/render-verb-help help/cli-spec "bogus" "run"))))
+
+(deftest render-verb-help-never-shows-the-groups-own-example-line-test
+  ;; the narrowed verb screen is explicitly NOT "the whole group
+  ;; screen" -- the Example: line (B2, below) belongs to the group
+  ;; screen only.
+  (is (not (str/includes? (help/render-verb-help help/cli-spec "sim" "run") "Example:"))))
+
+;; ---- B2 (R3-B3-1, ADR-0118): one sourced "Example:" line per group
+;; with a witnessed invocation anywhere in README.md's Quickstart,
+;; docs/use-cases/*.md, or a demo README -- never a composed one. ----
+
+(def ^:private groups-with-a-witnessed-example
+  "Every group with a real, sourced invocation found this session --
+  cited per line in notes/adr/0118-*.md. version/doctor are
+  deliberately excluded: no witnessed invocation of either exists
+  anywhere in the three source classes B2 draws from (checked this
+  session) -- see render-group-omits-example-for-groups-with-no-
+  witnessed-invocation-test, below."
+  #{"artifact" "corpus" "gate" "check" "sim" "show" "play"})
+
+(deftest render-group-shows-a-sourced-example-line-for-every-covered-group-test
+  (doseq [g groups-with-a-witnessed-example]
+    (is (str/includes? (help/render-group help/cli-spec g) "Example:")
+        (str g " is missing its Example: line"))))
+
+(deftest render-group-omits-example-for-groups-with-no-witnessed-invocation-test
+  (doseq [g ["version" "doctor"]]
+    (is (not (str/includes? (help/render-group help/cli-spec g) "Example:"))
+        (str g " should have no Example: line -- no witnessed invocation exists, and B2's own rule is never to invent one"))))
+
 (deftest render-group-check-has-no-sub-verbs-but-lists-its-own-flags-test
   (let [text (help/render-group help/cli-spec "check")]
     (is (str/includes? text "--expected"))

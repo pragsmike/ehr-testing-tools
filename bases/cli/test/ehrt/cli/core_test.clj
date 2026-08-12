@@ -347,8 +347,65 @@
     (is (= (help/render-group help/cli-spec "sim" 40) (:text (:payload r))))))
 
 (deftest dispatch-explicit-width-narrows-double-dash-help-rendering-test
+  ;; B1 (R3-B3-2, ADR-0118): `<group> <verb> --help` now narrows to
+  ;; just that verb's own usage text -- "gate" "v2" is a real verb, so
+  ;; this no longer renders the whole "gate" group screen (the old
+  ;; assertion here, before B1).
   (let [r (cli/dispatch ["gate" "v2"] {:help true :width "40"} {})]
-    (is (= (help/render-group help/cli-spec "gate" 40) (:text (:payload r))))))
+    (is (= (help/render-verb-help help/cli-spec "gate" "v2" 40) (:text (:payload r))))))
+
+;; ---- B1 (R3-B3-2, ADR-0118): verb-level help narrowing, both
+;; invocation forms -- `ehrt help <group> <verb>` and `ehrt <group>
+;; <verb> --help`. A known group with an unknown verb reuses F6's own
+;; :unknown-command treatment verbatim (ADR-0117), naming the group's
+;; real verbs; a group that takes no verbs at all (check/version/
+;; doctor/show/play) is entirely unaffected -- its second positional
+;; was never a verb selector to begin with. ----
+
+(deftest dispatch-help-three-arg-form-narrows-to-just-that-verb-test
+  (let [r (cli/dispatch ["help" "sim" "run"] {} {})]
+    (is (result/ok? r))
+    (is (= :cli-help (:category r)))
+    (is (= (help/render-verb-help help/cli-spec "sim" "run") (:text (:payload r))))
+    ;; not a bare "ehrt sim check" substring check -- --format's own
+    ;; doc string legitimately cites it in prose (help_test.clj's own
+    ;; render-verb-help-known-group-and-verb-renders-just-that-verbs-
+    ;; own-content-test found this the hard way).
+    (is (not (clojure.string/includes? (:text (:payload r)) "\nehrt sim check\n")))))
+
+(deftest dispatch-double-dash-help-on-a-verb-narrows-to-just-that-verb-test
+  (let [r (cli/dispatch ["corpus" "generate"] {:help true} {})]
+    (is (result/ok? r))
+    (is (= :cli-help (:category r)))
+    (is (= (help/render-verb-help help/cli-spec "corpus" "generate") (:text (:payload r))))))
+
+(deftest dispatch-help-three-arg-form-unknown-verb-is-the-f6-treatment-test
+  (let [r (cli/dispatch ["help" "sim" "frobnicate"] {} {})]
+    (is (result/error? r))
+    (is (= :unknown-command (:category r)))
+    (is (= #{"run" "check" "identifiers" "version"} (set (:valid-options (:payload r)))))
+    (is (= "run: ehrt help sim" (:hint (:payload r))))
+    (is (= 2 (cli/result->exit-code r)))))
+
+(deftest dispatch-double-dash-help-on-an-unknown-verb-is-the-f6-treatment-test
+  (let [r (cli/dispatch ["gate" "frobnicate"] {:help true} {})]
+    (is (result/error? r))
+    (is (= :unknown-command (:category r)))
+    (is (= #{"v2" "fhir" "v2-nist"} (set (:valid-options (:payload r)))))
+    (is (= "run: ehrt help gate" (:hint (:payload r))))
+    (is (= 2 (cli/result->exit-code r)))))
+
+(deftest dispatch-help-two-arg-form-with-verbless-group-is-unaffected-test
+  (let [r (cli/dispatch ["help" "check" "frobnicate"] {} {})]
+    (is (result/ok? r))
+    (is (= :cli-help (:category r)))
+    (is (= (help/render-group help/cli-spec "check") (:text (:payload r))))))
+
+(deftest dispatch-double-dash-help-on-verbless-group-with-extra-token-is-unaffected-test
+  (let [r (cli/dispatch ["check" "somedir"] {:help true} {})]
+    (is (result/ok? r))
+    (is (= :cli-help (:category r)))
+    (is (= (help/render-group help/cli-spec "check") (:text (:payload r))))))
 
 (deftest dispatch-explicit-width-narrows-bare-invocation-rendering-test
   (let [r (cli/dispatch nil {:width "40"} {})]

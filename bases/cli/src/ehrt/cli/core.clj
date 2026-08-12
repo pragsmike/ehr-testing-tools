@@ -2113,6 +2113,31 @@
   ([group width]
    (assoc (result/ok {:text (help-text-for group width)}) :category :cli-help)))
 
+;; B1 (R3-B3-2, ADR-0118): `ehrt help <group> <verb>` and `ehrt <group>
+;; <verb> --help` narrow to just that verb's own usage text -- every
+;; invocation form used to fall back to the whole group's page
+;; regardless of how specifically a caller asked. `group-takes-verbs?`
+;; scopes this entirely to groups that HAVE verbs (artifact/corpus/
+;; gate/sim) -- a group with none (check/version/doctor/show/play)
+;; takes its own second positional as a path candidate, never a verb
+;; selector, and stays exactly as unaffected as it always was.
+
+(defn- group-takes-verbs?
+  [group-name]
+  (boolean (:verbs (help/find-group help/cli-spec group-name))))
+
+(defn- verb-known?
+  [group-name verb-name]
+  (when-let [g (help/find-group help/cli-spec group-name)]
+    (when (:verbs g)
+      (contains? (set (help/verb-names g)) verb-name))))
+
+(defn- verb-help-response
+  "A narrowed verb-level help render -- callers only reach this once
+  `verb-known?` has already confirmed the [group verb] pair resolves."
+  [group verb width]
+  (assoc (result/ok {:text (help/render-verb-help help/cli-spec group verb width)}) :category :cli-help))
+
 (defn- bare-invocation-response
   "Bare `ehrt` (no group at all): prints the same top-level usage text
   as `ehrt help`, and now exits the same way too (B-5, ux fixes 2,
@@ -2577,7 +2602,16 @@
      (cond
        (:help opts)
        (let [{:keys [width width-error]} (resolved-help-width opts columns-env-fn)]
-         (or width-error (help-response group width)))
+         (or width-error
+             ;; B1 (R3-B3-2, ADR-0118): `<group> <verb> --help` on a
+             ;; group that takes verbs but not this one -- F6's own
+             ;; unknown-command treatment, reused verbatim, naming the
+             ;; group's real verbs.
+             (when (and group action (group-takes-verbs? group) (not (verb-known? group action)))
+               (unknown-command-error [group action] (help/verb-names (help/find-group help/cli-spec group))))
+             (if (verb-known? group action)
+               (verb-help-response group action width)
+               (help-response group width))))
 
        (= group "help")
        ;; F6 (R3-B2-5 + R3-B3-3, ADR-0117): `ehrt help <unknown-group>`
@@ -2590,8 +2624,19 @@
        (or (validate-top-level-flags "help" opts)
            (when (and action (not (contains? (set (help/group-names help/cli-spec)) action)))
              (unknown-command-error [action] (help/group-names help/cli-spec)))
+           ;; B1 (R3-B3-2, ADR-0118): the 3-arg form, `ehrt help
+           ;; <group> <verb>` -- `path` is the verb token here (dispatch's
+           ;; own [group action path] destructure, one level down from
+           ;; the "help" group token itself). Same unknown-verb F6
+           ;; treatment as the --help form above; a group with no verbs
+           ;; at all ignores `path` exactly as it always did.
+           (when (and action path (group-takes-verbs? action) (not (verb-known? action path)))
+             (unknown-command-error [action path] (help/verb-names (help/find-group help/cli-spec action))))
            (let [{:keys [width width-error]} (resolved-help-width opts columns-env-fn)]
-             (or width-error (help-response action width))))
+             (or width-error
+                 (if (verb-known? action path)
+                   (verb-help-response action path width)
+                   (help-response action width)))))
 
        (nil? group)
        (or (validate-top-level-flags "ehrt" opts)
