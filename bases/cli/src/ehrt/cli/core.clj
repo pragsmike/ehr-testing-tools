@@ -678,8 +678,17 @@
     :or {operator-version "1" git-describe-fn real-git-describe
          now-fn #(str (LocalDate/now))
          list-files-fn result/list-files}}]
-  (let [operator (operators/operator-lookup (keyword operator-id) operator-version)]
+  (let [operator (when operator-id (operators/operator-lookup (keyword operator-id) operator-version))]
     (cond
+      ;; F4 (R3-B1-5, ADR-0117): a literally absent --operator-id is a
+      ;; missing-required-flag invocation error (:missing-required-opt,
+      ;; exit 2) -- distinct from a real, unrecognized id given, still
+      ;; :unknown-operator/exit 1 below (a legitimate rejection: the
+      ;; lookup ran, the id just doesn't exist).
+      (nil? operator-id)
+      (result/error :missing-required-opt
+                    {:opt :operator-id :hint "--operator-id is required -- run: ehrt corpus operators"})
+
       (not operator)
       (result/rejected :unknown-operator
                         {:id operator-id :version operator-version
@@ -804,32 +813,42 @@
   7 -- or simply an unparseable string) falls through to the unchanged
   intake!/:source-dir path exactly as before SS-2. `ehrt corpus
   generate` itself is untouched by any of this -- its own verb, flags,
-  and defaults do not change here."
+  and defaults do not change here.
+
+  F3 (R3-B2-3 + R3-B4-1, ADR-0117): :out is REQUIRED -- validated
+  first, before any generator/stdin resolution or file I/O begins
+  (used to crash with a raw NullPointerException four layers deep in
+  intake.clj when omitted). Ruled require-not-derive: a derived path
+  would fold :received's own wall-clock default into a filesystem
+  name, quietly unreproducible -- requiring is honest."
   [{:keys [path label out received in-override]}]
-  (let [received (or received (str (LocalDate/now)))
-        designator-result (generator-source/parse-source-designator path)]
-    (cond
-      (generator-url? designator-result)
-      (let [source (:payload designator-result)
-            resolved-result (generator-source/resolve-generator-source! (:kind source) (dissoc source :kind))]
-        (if-not (result/ok? resolved-result)
-          resolved-result
-          (intake/intake-via-source! {:source (:payload resolved-result)
-                                      :source-label label :out out :received received})))
+  (if (nil? out)
+    (result/error :missing-required-opt
+                  {:opt :out :hint "--out is required -- run: ehrt corpus intake PATH --out CATALOG-PATH"})
+    (let [received (or received (str (LocalDate/now)))
+          designator-result (generator-source/parse-source-designator path)]
+      (cond
+        (generator-url? designator-result)
+        (let [source (:payload designator-result)
+              resolved-result (generator-source/resolve-generator-source! (:kind source) (dissoc source :kind))]
+          (if-not (result/ok? resolved-result)
+            resolved-result
+            (intake/intake-via-source! {:source (:payload resolved-result)
+                                        :source-label label :out out :received received})))
 
-      (stdin-url? designator-result)
-      (let [source (:payload designator-result)
-            captured-at (str (java.time.Instant/now))
-            resolved-result (spool-source/spool-resolve! (cond-> {:source source :captured-at captured-at}
-                                                      in-override (assoc :in-override in-override)))]
-        (if-not (result/ok? resolved-result)
-          resolved-result
-          (intake/intake-via-source! {:source (:payload resolved-result)
-                                      :source-label label :out out :received received})))
+        (stdin-url? designator-result)
+        (let [source (:payload designator-result)
+              captured-at (str (java.time.Instant/now))
+              resolved-result (spool-source/spool-resolve! (cond-> {:source source :captured-at captured-at}
+                                                              in-override (assoc :in-override in-override)))]
+          (if-not (result/ok? resolved-result)
+            resolved-result
+            (intake/intake-via-source! {:source (:payload resolved-result)
+                                        :source-label label :out out :received received})))
 
-      :else
-      (intake/intake! {:source-dir (source-sink-url/path-designator->path path)
-                        :source-label label :out out :received received}))))
+        :else
+        (intake/intake! {:source-dir (source-sink-url/path-designator->path path)
+                          :source-label label :out out :received received})))))
 
 ;; ---- ADR-0111: `ehrt corpus batch` -- a corpus-level tool,
 ;; deliberately separate from the sim (author ruling, Q1 a): it works
@@ -951,8 +970,9 @@
   corpus this repo never generated -- nothing here reads a manifest,
   a catalog, or anything sim/generator-specific.
 
-  :interval is REQUIRED (:interval-required when absent) -- there is
-  no universally sensible default schedule to assume (D8's
+  :interval is REQUIRED (:missing-required-opt when absent -- retired
+  the verb-specific :interval-required, F4, R3-B1-5, ADR-0117) -- there
+  is no universally sensible default schedule to assume (D8's
   determinism law governs defaults, not requiredness; this mirrors
   `sim run --seed`'s own \"determinism is a feature, not a default\"
   reasoning). Must be positive (:interval-must-be-positive otherwise).
@@ -977,8 +997,8 @@
     (result/error :file-not-found {:path path})
 
     (nil? interval)
-    (result/rejected :interval-required
-                     {:hint "--interval MINUTES is required -- e.g. --interval 60 for hourly batches, 1440 for daily"})
+    (result/error :missing-required-opt
+                  {:opt :interval :hint "--interval MINUTES is required -- e.g. --interval 60 for hourly batches, 1440 for daily"})
 
     (not (pos? interval))
     (result/rejected :interval-must-be-positive {:value interval :hint "must be a positive number of minutes"})
@@ -1290,9 +1310,11 @@
   operational error, not an uncaught stack trace."
   [{:keys [path report profile baseline treat-no-verdict-as make-validator-fn]
     :or {make-validator-fn gate-v2-nist/make-validator}}]
+  ;; F4 (R3-B1-5, ADR-0117): retired :v2-nist-profile-required in favor
+  ;; of the shared :missing-required-opt shape at exit 2.
   (if (str/blank? profile)
-    (result/rejected :v2-nist-profile-required
-                      {:hint (str "ehrt gate v2-nist requires --profile BUNDLE_DIR -- try " default-v2-nist-profile-hint)})
+    (result/error :missing-required-opt
+                  {:opt :profile :hint (str "--profile BUNDLE_DIR is required -- try " default-v2-nist-profile-hint)})
     (let [validator-result (try
                               (result/ok (make-validator-fn profile))
                               (catch Exception e
@@ -2460,6 +2482,47 @@
     (when-let [unknown-kw (first (remove valid-keywords (keys opts)))]
       (unknown-flag-error unknown-kw verb-label valid-keywords))))
 
+;; ---- F5 (R3-B1-3, ADR-0117): `corpus generate`'s unknown-flag check
+;; (validate-known-flags above) only asks "is this flag declared
+;; anywhere in the verb's own spec" -- it never asked "is this flag
+;; applicable to the SOURCE actually selected." A synthea:-scoped flag
+;; given while generating sim (or vice versa) used to pass silently,
+;; with zero effect -- a narrower, still-live descendant of the same
+;; silent-misconfiguration class C-4 fixed for genuinely unknown
+;; flags. Reject, not warn (ruled, F5's reject-not-warn [C]). ----
+
+(def ^:private generate-flag-scope
+  "Flag keyword -> :sim or :synthea, derived from cli-spec's own
+  doc-string prefix convention (\"sim: \"/\"synthea: \") -- one source
+  of truth, the same discipline `declared-flag-keywords` already
+  applies (AR-U3-1). A flag with no such prefix (--seed,
+  --reference-date, --out-dir) is shared and carries no scope entry."
+  (into {}
+        (keep (fn [{:keys [flag doc]}]
+                (cond
+                  (str/starts-with? doc "sim: ") [(flag-key flag) :sim]
+                  (str/starts-with? doc "synthea: ") [(flag-key flag) :synthea])))
+        (:flags (first (filter #(= "generate" (:verb %))
+                               (:verbs (help/find-group help/cli-spec "corpus")))))))
+
+(defn- source-scoped-flag-error
+  [flag-kw scope selected-source]
+  (result/error :flag-source-mismatch
+                {:flag (str "--" (name flag-kw)) :flag-scope scope :selected-source selected-source
+                 :hint (str "--" (name flag-kw) " only applies to corpus generate " (name scope)
+                            " -- this run selected " (name selected-source))}))
+
+(defn- validate-generate-source-scope
+  "nil when every flag in opts is either shared or scoped to `source`;
+  the first mismatched flag's own error otherwise (\"first\" mirrors
+  validate-known-flags's own \"one clear error beats a cascade\"
+  precedent)."
+  [source opts]
+  (let [other (if (= source :sim) :synthea :sim)]
+    (when-let [[flag-kw scope] (first (filter (fn [[k v]] (and (= v other) (contains? opts k)))
+                                              generate-flag-scope))]
+      (source-scoped-flag-error flag-kw scope source))))
+
 (defn dispatch
   "Routes [group action] positional args to the corresponding capability
   function with opts. The -fn keys are injectable (tests use this
@@ -2506,7 +2569,16 @@
          (or width-error (help-response group width)))
 
        (= group "help")
+       ;; F6 (R3-B2-5 + R3-B3-3, ADR-0117): `ehrt help <unknown-group>`
+       ;; used to silently fall back to the top-level usage screen,
+       ;; exit 0 -- unlike `ehrt <unknown-group>` itself, which already
+       ;; names the bad group at exit 2 (below, the fallthrough
+       ;; unknown-command-error). Same treatment now, reusing the
+       ;; category verbatim; bare `ehrt help` (action nil) is
+       ;; unaffected.
        (or (validate-top-level-flags "help" opts)
+           (when (and action (not (contains? (set (help/group-names help/cli-spec)) action)))
+             (unknown-command-error [action] (help/group-names help/cli-spec)))
            (let [{:keys [width width-error]} (resolved-help-width opts columns-env-fn)]
              (or width-error (help-response action width))))
 
@@ -2551,8 +2623,10 @@
                       ;; unfetched; `generate synthea` remains the
                       ;; explicit, unchanged spelling for that lane.
                       "generate" (case (or path "sim")
-                                   "synthea" (with-generate-breadcrumb (generate-fn opts))
-                                   "sim" (with-generate-breadcrumb (generate-sim-fn opts))
+                                   "synthea" (or (validate-generate-source-scope :synthea opts)
+                                                 (with-generate-breadcrumb (generate-fn opts)))
+                                   "sim" (or (validate-generate-source-scope :sim opts)
+                                             (with-generate-breadcrumb (generate-sim-fn opts)))
                                    (unknown-command-error args ["synthea" "sim"]))
                       "mutate" (mutate-fn opts)
                       "intake" (intake-fn opts)

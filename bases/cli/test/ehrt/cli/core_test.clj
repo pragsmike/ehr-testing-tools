@@ -240,9 +240,26 @@
     (is (= :cli-help (:category r)))
     (is (clojure.string/includes? (:text (:payload r)) "gate"))))
 
-(deftest dispatch-help-verb-with-unknown-group-falls-back-to-top-level-test
+;; F6 (R3-B2-5 + R3-B3-3, ADR-0117): `ehrt help <unknown-group>` used
+;; to silently fall back to the top-level usage screen, exit 0, no
+;; error -- unlike `ehrt <unknown-group>` itself, which already names
+;; the bad group at exit 2. Same treatment now, reusing the existing
+;; :unknown-command category verbatim.
+(deftest dispatch-help-verb-with-unknown-group-is-a-named-error-test
   (let [r (cli/dispatch ["help" "bogus"] {} {})]
+    (is (result/error? r))
+    (is (= :unknown-command (:category r)))
+    (is (= ["bogus"] (:args (:payload r))))
+    (is (= #{"artifact" "corpus" "gate" "check" "version" "doctor" "sim" "show" "play"}
+           (set (:valid-options (:payload r)))))
+    (is (= 2 (cli/result->exit-code r)))))
+
+(deftest dispatch-help-verb-with-no-group-still-shows-top-level-usage-test
+  ;; bare `ehrt help` (no group arg at all) is unaffected -- only a
+  ;; genuinely-typo'd group name is now an error.
+  (let [r (cli/dispatch ["help"] {} {})]
     (is (result/ok? r))
+    (is (= :cli-help (:category r)))
     (is (clojure.string/includes? (:text (:payload r)) "Usage:"))))
 
 (deftest dispatch-double-dash-help-short-circuits-before-command-runs-test
@@ -455,6 +472,50 @@
   (let [r (cli/dispatch ["corpus" "generate" "bogus"] {} {})]
     (is (= :unknown-command (:category r)))
     (is (= #{"synthea" "sim"} (set (:valid-options (:payload r)))))))
+
+;; ---- F5 (R3-B1-3, ADR-0117): a synthea:-scoped flag used to pass
+;; validation even when --source was sim (and vice versa) -- accepted
+;; silently, with zero effect, a narrower descendant of the C-4
+;; unknown-flag defect. Now rejected by name, naming the flag, its own
+;; scope, and the selected source -- reject, not warn (ruled
+;; require-not-derive's sibling, F5's reject-not-warn [C, un-vetoed]). ----
+
+(deftest dispatch-corpus-generate-sim-rejects-a-synthea-scoped-flag-test
+  (let [called (atom false)
+        r (cli/dispatch ["corpus" "generate" "sim"] {:seed 1 :population 999}
+                         {:generate-sim-fn (fn [_opts] (reset! called true) (result/ok {:out-dir "x"}))})]
+    (is (not @called) "the mismatched flag must be rejected before generate-sim-fn ever runs")
+    (is (result/error? r))
+    (is (= :flag-source-mismatch (:category r)))
+    (is (= "--population" (:flag (:payload r))))
+    (is (= :synthea (:flag-scope (:payload r))))
+    (is (= :sim (:selected-source (:payload r))))
+    (is (= 2 (cli/result->exit-code r)))))
+
+(deftest dispatch-corpus-generate-synthea-rejects-a-sim-scoped-flag-test
+  (let [called (atom false)
+        r (cli/dispatch ["corpus" "generate" "synthea"] {:seed 1 :patients 5}
+                         {:generate-fn (fn [_opts] (reset! called true) (result/ok {:out-dir "x"}))})]
+    (is (not @called))
+    (is (result/error? r))
+    (is (= :flag-source-mismatch (:category r)))
+    (is (= "--patients" (:flag (:payload r))))
+    (is (= :sim (:flag-scope (:payload r))))
+    (is (= :synthea (:selected-source (:payload r))))))
+
+(deftest dispatch-corpus-generate-sim-allows-shared-and-sim-scoped-flags-test
+  (let [called (atom nil)
+        r (cli/dispatch ["corpus" "generate" "sim"] {:seed 1 :patients 3 :churn true}
+                         {:generate-sim-fn (fn [opts] (reset! called opts) (result/ok {:out-dir "x"}))})]
+    (is (result/ok? r))
+    (is (some? @called))))
+
+(deftest dispatch-corpus-generate-synthea-allows-shared-and-synthea-scoped-flags-test
+  (let [called (atom nil)
+        r (cli/dispatch ["corpus" "generate" "synthea"] {:seed 1 :population 5 :locale "en-US"}
+                         {:generate-fn (fn [opts] (reset! called opts) (result/ok {:out-dir "x"}))})]
+    (is (result/ok? r))
+    (is (some? @called))))
 
 ;; ---- generate-sim-command: real, hermetic (sim is in-process,
 ;; ADR-0005 -- no subprocess, no network), matching the house
@@ -1148,6 +1209,20 @@
     (is (result/ok? r))
     (is (= 1 (:count (:payload r))))))
 
+(deftest mutate-command-missing-operator-id-is-missing-required-opt-test
+  ;; F4 (R3-B1-5, ADR-0117): a literally absent --operator-id is a
+  ;; missing-required-flag invocation error (:missing-required-opt,
+  ;; exit 2) -- distinct from a real, unrecognized operator id given
+  ;; (:unknown-operator, exit 1, unchanged below).
+  (let [in-dir (temp-dir*)
+        _ (spit (io/file in-dir "a.json") sample-bundle-json)
+        r (cli/mutate-command {:path in-dir
+                                :locator-path "entry[0].resource.gender" :out-dir (temp-dir*)})]
+    (is (result/error? r))
+    (is (= :missing-required-opt (:category r)))
+    (is (= :operator-id (:opt (:payload r))))
+    (is (= 2 (cli/result->exit-code r)))))
+
 (deftest mutate-command-rejects-unknown-operator-test
   (let [in-dir (temp-dir*)
         _ (spit (io/file in-dir "a.json") sample-bundle-json)
@@ -1413,6 +1488,23 @@
 ;; ---- intake-command (`ehrt corpus intake`): the real wiring, not the
 ;; injected-stub path dispatch-routes-corpus-intake-test exercises ----
 
+;; ---- F3 (R3-B2-3 + R3-B4-1, ADR-0117): `corpus intake` used to crash
+;; with a raw NullPointerException four layers deep in intake.clj when
+;; --out was omitted. --out is now REQUIRED, validated at the CLI
+;; boundary before intake/intake! (or its generator-URL/stdin-URL
+;; siblings) ever runs -- ruled require-not-derive (ADR-0117): a
+;; derived path would fold intake's own RQ3-exempted wall-clock
+;; --received default into a filesystem name, quietly unreproducible. ----
+
+(deftest intake-command-missing-out-is-missing-required-opt-test
+  (let [in-dir (temp-dir*)
+        _ (spit (io/file in-dir "patient.json") sample-bundle-json)
+        r (cli/intake-command {:path in-dir :label "acme"})]
+    (is (result/error? r))
+    (is (= :missing-required-opt (:category r)))
+    (is (= :out (:opt (:payload r))))
+    (is (= 2 (cli/result->exit-code r)))))
+
 (deftest intake-command-delegates-to-corpus-intake-with-explicit-received-test
   (let [in-dir (temp-dir*)
         out-dir (str (temp-dir*) "/out")
@@ -1542,11 +1634,17 @@
     (is (= missing (:path (:payload r))))))
 
 (deftest batch-command-interval-required-test
+  ;; F4 (R3-B1-5, ADR-0117): retired :interval-required in favor of the
+  ;; shared :missing-required-opt shape at exit 2 -- a missing required
+  ;; flag is an invocation error before anything runs, not a
+  ;; legitimate rejection of real input.
   (let [in-dir (temp-dir*)
         _ (spit (io/file in-dir "a.hl7") (batch-msh "20260101000000"))
         r (cli/batch-command {:path in-dir})]
-    (is (result/rejected? r))
-    (is (= :interval-required (:category r)))))
+    (is (result/error? r))
+    (is (= :missing-required-opt (:category r)))
+    (is (= :interval (:opt (:payload r))))
+    (is (= 2 (cli/result->exit-code r)))))
 
 (deftest batch-command-interval-must-be-positive-test
   (let [in-dir (temp-dir*)
@@ -1956,9 +2054,13 @@
 (def ^:private v2-nist-message-file "test-fixtures/v2-nist/covidELR/231HL7TestFilewithHHSData.txt")
 
 (deftest v2-nist-gate-command-requires-profile-test
+  ;; F4 (R3-B1-5, ADR-0117): retired :v2-nist-profile-required in favor
+  ;; of the shared :missing-required-opt shape at exit 2.
   (let [r (cli/v2-nist-gate-command {:path v2-nist-message-file})]
-    (is (result/rejected? r))
-    (is (= :v2-nist-profile-required (:category r)))
+    (is (result/error? r))
+    (is (= :missing-required-opt (:category r)))
+    (is (= :profile (:opt (:payload r))))
+    (is (= 2 (cli/result->exit-code r)))
     (is (clojure.string/includes? (:hint (:payload r)) v2-nist-profile-dir)
         "the rejection names the committed CDC fixture as the try-it bundle")))
 
