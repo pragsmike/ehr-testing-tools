@@ -574,7 +574,7 @@ driving prompt, author-ruled 2026-08-10, executed 2026-08-11)
   sets.edn`'s own `:sim` set). The guide-side treatment is the
   author's own future authorship, not this session's (the dev-docs
   scope ruling, below).
-- **The user-guide deferral, standing** [A, ruled 2026-08-11, author
+- **The user-manual deferral, standing** [A, ruled 2026-08-11, author
   verbatim]: *"I've been deferring creating the tool-specific user
   guide in tools repo (distinct from EHR Testing Guide, which is more
   generic) until things settled down and the tools were able to
@@ -585,8 +585,10 @@ driving prompt, author-ruled 2026-08-10, executed 2026-08-11)
   into a downstream-receiver stand-in. Recorded in `.agents/plans/
   roadmap.md`'s own downstream-latency-realism Next row, alongside the
   full ratified sequence (architecture doc landed -> latency design
-  pass next -> guide treatment in the author's own queue -> user guide
-  deferred under this trigger).
+  pass next -> guide treatment in the author's own queue -> user manual
+  deferred under this trigger). Renamed "user manual" (ADR-0113, R1) —
+  the quoted sentence above is the author's own prior, literal words
+  and stays unchanged as spoken.
 - **Dev-docs scope, standing** [C, this session's own driving prompt]:
   the architecture doc is dev-docs (`docs/dev/`), not user path -- R34
   governs, never the footnote-citation discipline ADR-0101/ADR-0102
@@ -630,13 +632,13 @@ driving prompt, author-ruled 2026-08-10, executed 2026-08-11)
   workspace's own `--board`. Zero `src` changes; authorship over the
   landed mechanism, not a code change.
 - **The trigger's status, recorded not decided** [C, driving-prompt-
-  directed]: the user-guide deferral trigger's own second condition
+  directed]: the user-manual deferral trigger's own second condition
   (`.agents/plans/roadmap.md`'s Next section) is executed this session
   -- one witnessed end-to-end demo of latency-realistic traffic played
   into a downstream-receiver stand-in. Trigger conditions MET, PENDING
   AUTHOR RATIFICATION: whether the board counts as the stand-in the
   trigger's own language anticipated, and whether to open the
-  tool-specific user-guide work, are the author's own calls, flagged
+  tool-specific user-manual work, are the author's own calls, flagged
   to the author in the driving conversation, un-vetoed, decided by
   neither the driving prompt nor this session.
 - **The board as the downstream stand-in; the sibling-config shape**
@@ -678,7 +680,7 @@ ruled 2026-08-11)
   taxonomy question, not resolved by this ruling.
 
 ## From ADR-0112 (batch-straddle recording: use case, rulings, and the
-user-guide opening; ruled 2026-08-11)
+user-manual opening; ruled 2026-08-11)
 
 - **Batch-straddle documentation placements** [A, ruled 2026-08-11,
   author verbatim: *"We need to add this batch-boundary-straddling
@@ -691,21 +693,93 @@ user-guide opening; ruled 2026-08-11)
   continuity prompt."*]: the batch-boundary-straddling encounter
   scenario gets three documentation placements -- (a) a demo (landed,
   ADR-0111, `demos/scenarios/ed-tuesday/README.md` "Batched
-  delivery"); (b) featured prominently in the tool-specific user guide
+  delivery"); (b) featured prominently in the tool-specific user manual
   (opened this session, see the roadmap row); (c) a treatment in the
   general EHR Testing Guide (Ch 24 "completeness illusion" section --
   the author's own queue, the guide is permanently outside this
   workspace per `AGENTS.md`). The use case landed this session
   (ADR-0112) executes the "Should it be a use case?" half of the
   ruling in the affirmative, per the sequence the author accepted.
-- **User-guide trigger read** [C, channel-read, recorded honestly for
+- **User-manual trigger read** [C, channel-read, recorded honestly for
   author correction at a glance]: the channel read the author's
   "featured prominently in the tool user guide" plus the subsequent
   "ok" (accepting the channel's proposed recording sequence) as
-  RATIFYING the user-guide trigger -- this workspace's own `--board`
+  RATIFYING the user-manual trigger -- this workspace's own `--board`
   accepted as the downstream-receiver stand-in the trigger's language
   anticipated (both trigger conditions met, ADR-0110) -- and as
-  OPENING the tool-specific user-guide work. The author did not veto
+  OPENING the tool-specific user-manual work. The author did not veto
   this reading when it was stated explicitly in the same exchange.
   Provenance is channel-read, not author-verbatim; the author may
-  strike or correct it.
+  strike or correct it. Renamed "user manual" (ADR-0113, R1) -- the
+  quoted fragment above is the author's own prior, literal words and
+  stays unchanged as spoken.
+
+## From ADR-0113 (sim palgebra unification, and the manual-arc rulings
+recorded; ruled 2026-08-12)
+
+- **R1, the "user manual" naming ruling** [A, ruled 2026-08-12, author
+  verbatim]: *"Let's use the name 'user manual' for the user docs for
+  ehr-testing-tools. I've been informally calling it the 'user guide'
+  but that's too easy to confuse with the more general EHR Testing
+  Guide that's in ehr-testing-guide repo."* Standing name going
+  forward for this workspace's own user docs; every prior verbatim
+  quote of the author's own past "user guide" phrasing stays unchanged
+  as spoken, never retroactively edited.
+- **R2, the manual's shape** [A, ruling on channel proposal, author
+  "Q1 a. Q2 a. Q3 a."]: chaptered `docs/manual/` as the narrative layer
+  over this workspace's own existing references, never duplicating
+  them; ed-tuesday (`demos/scenarios/ed-tuesday/`) as the manual's one
+  running scenario throughout; the repo-wide "user guide" -> "user
+  manual" naming-token rename sweep rides on the first manual session,
+  not executed piecemeal before it (see `.agents/plans/roadmap.md`'s
+  User manual design pass row for the narrower, in-session correction
+  this ADR itself makes to `.agents/rulings.md`'s and
+  `.agents/plans/roadmap.md`'s own live prose, which is not that
+  sweep).
+- **R3, demos must be exercised as documented** [A, ruled 2026-08-12,
+  author verbatim]: *"The demos must be known to work, and exercised
+  as documented to make sure they actually play out as written."*
+  Mechanism ruled [A, ruling on channel proposal, author "Q2 a"]: a
+  demo exerciser generalized from the quickstart pattern (`make
+  quickstart` / `quickstart-fresh`), integration-tier, running each
+  scenario README's own fenced commands in order and asserting exit
+  codes plus each demo's own named invariants.
+- **R4, the audience register pares to five segments** [A, ruling on
+  channel proposal, author "Q1 a"]: the audience register pares to
+  five behavioral segments -- practitioner (agent-assistance absorbed
+  as a global style constraint, evaluation as its own front matter),
+  guide reader, data consumer, contributor (human or agent), deferred
+  library-consumer stub -- and `docs/dev/AUDIENCES.md`'s own "Seven
+  segments" header is corrected in the same edit. Executed by a later
+  session; recorded now, not built this session.
+- **R5, the sequence** [A, ruled 2026-08-12, author verbatim]: *"Should
+  we run a repo review before we start on the manual? It might lead to
+  tweaks to the CLI."* Sequence ruled [A, ruling on channel proposal,
+  author "Q3 a"]: review-3, scoped as a USER-SURFACE review (verb/flag
+  consistency, error-message quality, help surface, enumerable-options
+  family, derived-out-dir conventions) -> CLI tweak sessions from its
+  findings -> the user manual design pass (chapter outline plus the
+  naming rider, landed as an ADR) -> chapter sessions, with the demo
+  exerciser (R3) co-landed with the first chapter citing a demo -> a
+  manual-review skill (scoring rubric, run periodically) built at arc
+  close. The manual-review skill itself was raised by the author
+  verbatim [A]: *"Should we devise a manual-review skill, with scoring
+  rubric, so we can run it periodically as we evolve the codebase and
+  manual?"*
+- **R6, diagrams** [A, ruled 2026-08-12, author verbatim]: *"Diagrams
+  are valuable here."* Doctrine [C, un-vetoed]: manual diagrams derive
+  from data (`pipeline.edn`, the palgebra unification doc) wherever
+  derivable, committed as SVG with source, so they cannot drift from
+  what they depict.
+- **R7, palgebra placement** [A, ruled 2026-08-12, author verbatim]:
+  *"Did we ever write down the palgebra treatment of the simulator
+  mechanics? That was in another conversation, and it should be in the
+  manual or design docs."* Placement ruled [A, ruling on channel
+  proposal, author "Q1 a. Q2 a."]: the formal unification extends
+  `docs/dev/simulator-architecture.md` §4, citing
+  `components/corpus/docs/palgebra-design.md` and
+  `components/sim-trajectory/docs/trajectory-computation.md` both
+  ways; landed as one doc session (this session), parallel with
+  review-3 (R5); the manual's own sim chapters get the accessible
+  rendering (the two-spaces story, the founding thesis as organizing
+  idea, derived diagrams) with the formalism linked, not taught.

@@ -5,18 +5,14 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- Nothing in progress at this close (corpus batching, ADR-0111,
-  2026-08-11 — `ehrt corpus batch DIR --interval MINUTES --out-dir
-  OUT`, a corpus-level tool separate from the sim, schedule-partitions
-  any directory of valid v2 message files into epoch-aligned HL7 v2
-  batch-protocol (BHS/BTS) delivery files, each self-verified against
-  its own true message count. Witnessed over `demos/scenarios/
-  ed-tuesday/`'s own latency out-dir: 283 messages, 34 hourly batches,
-  an encounter split across two consecutive batches, both individually
-  clean. Footprint: corpus-io + cli + demo docs only; pure identity
-  across all 35 oracle roots. See the Deferred section's own
-  "Transport realism — batching" row for the three named v1
-  deferrals).
+- **Sim-palgebra unification (ADR-0113, this session).** Docs-and-
+  registers only: records the 2026-08-12 design-exchange rulings batch
+  (manual arc R1–R6, palgebra placement R7) and extends
+  `docs/dev/simulator-architecture.md` §4 into the full palgebra
+  unification named by R7's ruling "a" (citing
+  `components/corpus/docs/palgebra-design.md` and
+  `components/sim-trajectory/docs/trajectory-computation.md` both
+  ways). Zero `src`/`test`/generated-doc change.
 
 ## Next (backlog, no session scheduled)
 - **Busy-tuesday/ED scenario redesign — "A" LANDED, "B" CLOSED
@@ -112,7 +108,7 @@ per item; done items move to the bottom of their section with a date and sha.
   finding (fixed nothing, recorded as data); (3) a guide-side treatment
   (`docs/`, user path) derives from the architecture doc afterward, in
   the author's own queue, not chartered to any session yet; (4) the
-  tool-specific user guide (distinct from the generic EHR Testing
+  tool-specific user manual (distinct from the generic EHR Testing
   Guide, permanently out of this workspace, `AGENTS.md`) stays DEFERRED
   under its own named trigger, author verbatim (`.agents/rulings.md`,
   "From ADR-0108"): *"I've been deferring creating the tool-specific
@@ -139,7 +135,7 @@ per item; done items move to the bottom of their section with a date and sha.
   RATIFIED 2026-08-11 (ADR-0112, `.agents/rulings.md` "From ADR-0112",
   the "User-guide trigger read" entry)**: this workspace's own
   `--board` counts as the downstream-receiver stand-in the trigger's
-  own language anticipated, and the tool-specific user-guide work
+  own language anticipated, and the tool-specific user-manual work
   named below is OPEN. Provenance is channel-read, not
   author-verbatim -- the author did not veto the reading when it was
   stated explicitly in the same exchange that produced it; the author
@@ -154,17 +150,62 @@ per item; done items move to the bottom of their section with a date and sha.
   currently-unrendered fields, which would change plain `emit`'s own
   frozen bytes) is named as a future, declared-oracle-change session of
   its own -- not touched by either ADR-0109 or this session.
-- **Tool-specific user-guide design pass** (status: awaiting-design-
-  pass; trigger RATIFIED 2026-08-11, ADR-0112, see above). The design
-  channel frames the pass -- structure, audience voice, a gap analysis
-  over the accreted `docs/` skeleton -- before any writing session
-  executes it; SETUP.md's unspoiled-human-reader rewalk (Externals,
-  "SETUP rewalk by an unspoiled human reader") is that pass's own
-  smoke test, the rewalk itself remaining an author-only errand. The
-  batch-straddle scenario is ruled "featured prominently" in the
-  eventual guide (`.agents/rulings.md` "From ADR-0112", "Batch-straddle
-  documentation placements"). Not chartered to any executing session
-  yet.
+- **User manual design pass** (status: awaiting-design-pass; trigger
+  RATIFIED 2026-08-11, ADR-0112; sequence position set 2026-08-12,
+  ADR-0113 R5, see the review-3 row below). Renamed from "Tool-specific
+  user-guide design pass" (ADR-0113 R1, author verbatim: *"Let's use
+  the name 'user manual' for the user docs for ehr-testing-tools. I've
+  been informally calling it the 'user guide' but that's too easy to
+  confuse with the more general EHR Testing Guide that's in
+  ehr-testing-guide repo."*). Shape ruled 2026-08-12 (ADR-0113 R2,
+  author "Q1 a. Q2 a. Q3 a."): chaptered `docs/manual/` as the
+  narrative layer over the existing references, never duplicating
+  them; ed-tuesday (`demos/scenarios/ed-tuesday/`) as the manual's one
+  running scenario throughout. The design channel still frames the
+  pass -- structure, audience voice, a gap analysis over the accreted
+  `docs/` skeleton -- before any writing session executes it;
+  SETUP.md's unspoiled-human-reader rewalk (Externals, "SETUP rewalk
+  by an unspoiled human reader") is that pass's own smoke test, the
+  rewalk itself remaining an author-only errand. The batch-straddle
+  scenario is ruled "featured prominently" in the eventual manual
+  (`.agents/rulings.md` "From ADR-0112", "Batch-straddle documentation
+  placements"). **Naming-sweep rider (ADR-0113 R2):** the repo-wide
+  "user guide" -> "user manual" token rename rides on this first manual
+  session, not executed piecemeal before it. **Sequence (ADR-0113
+  R5):** review-3 (user-surface findings, row below) -> CLI tweak
+  sessions from its findings -> this design pass (chapter outline plus
+  the naming rider, landed as an ADR) -> chapter sessions, the demo
+  exerciser (row below) co-landed with the first chapter that cites a
+  demo -> a manual-review skill (scoring rubric, run periodically,
+  ADR-0113 R5) built at the manual arc's own close. Not chartered to
+  any executing session yet.
+- **Review-3, user-surface scope** (ADR-0113 R5; charter set 2026-08-12,
+  not yet chartered to an executing session). Author verbatim,
+  2026-08-12: *"Should we run a repo review before we start on the
+  manual? It might lead to tweaks to the CLI."* Scope, verbatim from
+  the ruling: verb/flag consistency, error-message quality, help
+  surface, enumerable-options family, derived-out-dir conventions.
+  Precedes the user manual design pass above in the ratified sequence;
+  its findings drive a round of CLI tweak sessions before the design
+  pass starts.
+- **Demo exerciser** (ADR-0113 R3; not chartered to any executing
+  session yet). Author verbatim, 2026-08-12: *"The demos must be known
+  to work, and exercised as documented to make sure they actually play
+  out as written."* Mechanism ruled (channel-proposed, author "Q2 a"):
+  a demo exerciser generalized from the quickstart pattern (`make
+  quickstart` / `quickstart-fresh`), integration-tier, running each
+  scenario README's own fenced commands in order and asserting exit
+  codes plus each demo's own named invariants. Co-lands with the
+  manual's first chapter that cites a demo, per the ADR-0113 R5
+  sequence above.
+- **Audience register paring** (ADR-0113 R4; a small future docs
+  session, not chartered). Author "Q1 a": the audience register in
+  `docs/dev/AUDIENCES.md` pares to five behavioral segments --
+  practitioner (agent-assistance absorbed as a global style constraint,
+  evaluation as its front matter), guide reader, data consumer,
+  contributor (human or agent), deferred library-consumer stub -- and
+  that document's own "Seven segments" header gets corrected in the
+  same edit. Ruled 2026-08-12; execution deferred to a later session.
 - The lookup-column `time` gap (named in the schema-invalid family
   backlog since ADR-0039, still untouched — Wave I's own six
   mechanisms didn't cover it). Bulk vendoring (batched by closure
