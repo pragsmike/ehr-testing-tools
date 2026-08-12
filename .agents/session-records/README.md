@@ -186,3 +186,4 @@ Files in this directory:
   * 2026-08-11-corpus-batching.md
   * 2026-08-11-batch-straddle-recording.md
   * 2026-08-12-sim-palgebra-unification.md
+  * 2026-08-12-review-3-user-surface.md

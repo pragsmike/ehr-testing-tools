@@ -783,3 +783,28 @@ recorded; ruled 2026-08-12)
   review-3 (R5); the manual's own sim chapters get the accessible
   rendering (the two-spaces story, the founding thesis as organizing
   idea, derived diagrams) with the formalism linked, not taught.
+
+## From ADR-0114 (review-3, user-surface review; ruled 2026-08-12)
+
+- **R8, the engine-test flake gets a chartered investigation** [A,
+  ruled 2026-08-12, on the channel's own explanation]: the
+  `ehrt.sim-engine.engine-test` flake
+  (`mixed-authored-and-compiled-run-satisfies-the-full-invariant-catalog`,
+  failing seed `7844068501`, `failing-size 110`, first disclosed
+  ADR-0112) is a **deterministic repro of a found counterexample, not
+  noise** -- a `clojure.test.check` generative test that fails at a
+  given seed will fail at that exact seed again, every time, by
+  construction; "flake" here names the SYMPTOM (a later run at a
+  different seed passed clean) rather than the underlying cause, which
+  is not yet known to be seed-dependent test noise as opposed to a real,
+  narrow counterexample the broader seed population usually misses.
+  Standing license, distinct from the fence's own unlikely-clause: a
+  future session may run the defspec pinned at seed `7844068501`,
+  capture the shrunk counterexample `test.check` reports, classify it
+  engine-bug vs. test-defect, and fix or file -- without needing a fresh
+  ruling to do so. The seed is the repro handle and must be preserved
+  verbatim in that session's own record, per this ruling's own citation
+  of it. Roadmap row: `.agents/plans/roadmap.md`, "Engine-test flake
+  investigation." Cross-ref: ADR-0112 (origin disclosure), ADR-0107
+  (the sibling corpus defspec flake row, same failure class, a
+  different registry).

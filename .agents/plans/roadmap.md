@@ -5,18 +5,20 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- Nothing in progress at this close (sim palgebra unification,
-  ADR-0113, 2026-08-12 — docs-and-registers only: recorded the
-  2026-08-12 design-exchange rulings batch, R1-R7 [manual naming and
-  shape, the demo exerciser, audience-register paring, the review-3-
-  then-manual sequence, diagrams-derive-from-data, palgebra
-  placement], and extended `docs/dev/simulator-architecture.md` §4
-  into the full palgebra unification R7 ruled — citing
-  `components/corpus/docs/palgebra-design.md` and
-  `components/sim-trajectory/docs/trajectory-computation.md` both
-  ways, every claim cited to a re-verified witnessing test. Zero
-  `src`/`test`/generated-doc change; the oracle held pure identity
-  across all 35 roots).
+- Nothing in progress at this close (review-3, user-surface review,
+  ADR-0114, 2026-08-12 — findings-only: two author-licensed docs riders
+  [the §4 precision-clause parenthetical; the method-vocabulary section
+  in `docs/dev/way-of-working.md` and two new `docs/glossary.md`
+  entries], then a seven-battery (B1-B7) live probe of the CLI surface
+  landed as `.agents/plans/2026-08-12-review-3-user-surface-findings.md`
+  — 48 tallied dispositions [27 close-as-fine, 12 fix-session-candidate,
+  3 ruling-needed, 4 design-channel-draft, 2 incomplete] plus the UX
+  audit's own 11-row carry-forward [9 of its 10 open items resolved or
+  substantially resolved on fresh evidence]. Highest-priority open
+  finding: `ehrt check` reports a clean all-pass result when given no
+  target, a missing target, or a genuinely empty one, indistinguishable
+  from a real zero-finding run. Zero `src`/`test` change; the oracle
+  held pure identity across all 35 roots).
 
 ## Next (backlog, no session scheduled)
 - **Busy-tuesday/ED scenario redesign — "A" LANDED, "B" CLOSED
@@ -184,14 +186,34 @@ per item; done items move to the bottom of their section with a date and sha.
   ADR-0113 R5) built at the manual arc's own close. Not chartered to
   any executing session yet.
 - **Review-3, user-surface scope** (ADR-0113 R5; charter set 2026-08-12,
-  not yet chartered to an executing session). Author verbatim,
-  2026-08-12: *"Should we run a repo review before we start on the
-  manual? It might lead to tweaks to the CLI."* Scope, verbatim from
-  the ruling: verb/flag consistency, error-message quality, help
-  surface, enumerable-options family, derived-out-dir conventions.
-  Precedes the user manual design pass above in the ratified sequence;
-  its findings drive a round of CLI tweak sessions before the design
-  pass starts.
+  **findings landed 2026-08-12, ADR-0114** —
+  `.agents/plans/2026-08-12-review-3-user-surface-findings.md`, 48
+  tallied dispositions across B1-B7 plus an 11-row UX-audit
+  carry-forward, awaiting author rulings on the ruling-needed rows
+  [R3-B1-1 `--out-dir`'s double meaning, R3-B1-4 `--seed`'s
+  required-vs-defaulted split, R3-B1-7 `--received`'s wall-clock
+  default] before the next step, a rulings-landing session in the
+  review-2 ADR-0093 pattern, chartered a round of CLI tweak sessions
+  from the fix-session-candidate rows). Author verbatim, 2026-08-12:
+  *"Should we run a repo review before we start on the manual? It might
+  lead to tweaks to the CLI."* Scope, verbatim from the ruling:
+  verb/flag consistency, error-message quality, help surface,
+  enumerable-options family, derived-out-dir conventions. Precedes the
+  user manual design pass above in the ratified sequence; its findings
+  drive a round of CLI tweak sessions before the design pass starts.
+- **Engine-test flake investigation** (R8, `.agents/rulings.md` "From
+  ADR-0114"; charter set 2026-08-12, not yet chartered to an executing
+  session). `ehrt.sim-engine.engine-test`'s
+  `mixed-authored-and-compiled-run-satisfies-the-full-invariant-catalog`
+  defspec failed at seed **`7844068501`** (ADR-0112's own disclosure).
+  Per the channel's explanation, ratified this session: a generative-test
+  failure at a recorded seed is a deterministic repro of a found
+  counterexample, not noise. Charter: run the defspec at the recorded
+  seed, capture the shrunk counterexample, classify engine-bug vs.
+  test-defect, fix or file. The seed is the repro handle -- preserve it
+  verbatim in the executing session's own record. Cross-ref: ADR-0112's
+  own disclosure (origin); ADR-0107's sibling corpus defspec flake row
+  (same failure class, a different registry).
 - **Demo exerciser** (ADR-0113 R3; not chartered to any executing
   session yet). Author verbatim, 2026-08-12: *"The demos must be known
   to work, and exercised as documented to make sure they actually play
@@ -721,3 +743,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-11 — corpus-batching — ADR-0111
 - 2026-08-11 — batch-straddle-recording — ADR-0112
 - 2026-08-12 — sim-palgebra-unification — ADR-0113
+- 2026-08-12 — review-3-user-surface — ADR-0114
