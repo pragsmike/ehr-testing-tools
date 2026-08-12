@@ -5,13 +5,18 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- Nothing in progress at this close (latency realism -- the second
-  clock, ADR-0109, 2026-08-11 — `ehrt.sim-emit-hl7.emit-hl7` gains
-  `plan-latency`/`emit-wire`, the split-clock rendering, and a
-  `LatencyProfile` config surface threaded through `ehrt.sim.run`;
-  plain `emit` stays byte-frozen, pure identity across all 35 oracle
-  roots. See the Next section's own downstream-latency-realism row —
-  the mechanism half is now DONE, the demo half remains).
+- Nothing in progress at this close (latency demo, ADR-0110,
+  2026-08-11 — `demos/scenarios/ed-tuesday/` gains a sibling
+  `config-latency.edn` and a "The second clock" README section: the
+  same seed's ground truth generated under both configs is
+  byte-identical (witnessed `diff`/`sha256sum`), while the latency
+  wire's own `--board` playback shows the ADR-0109 disorder finding
+  live — a lagged admission message re-adding an already-discharged
+  patient to the board, double-booking a bed. Zero `src` changes; pure
+  identity across all 35 oracle roots. See the Next section's own
+  downstream-latency-realism row — the arc is now fully closed, the
+  user-guide trigger's own conditions MET, PENDING AUTHOR
+  RATIFICATION).
 
 ## Next (backlog, no session scheduled)
 - **Busy-tuesday/ED scenario redesign — "A" LANDED, "B" CLOSED
@@ -80,7 +85,7 @@ per item; done items move to the bottom of their section with a date and sha.
   landing) is now FULLY CLOSED — no revisit trigger remains for this
   closure.
 - **Downstream-latency realism -- MECHANISM LANDED 2026-08-11
-  (ADR-0109), the demo half remains.** New chartering direction, author
+  (ADR-0109), DEMO LANDED 2026-08-11 (ADR-0110), arc CLOSED.** New chartering direction, author
   verbatim, 2026-08-11 (`.agents/rulings.md`, "From ADR-0107"): *"I want
   to make sure that the simulation faithfully simulates what happens in
   real life: lab results take time to come back, providers take time to
@@ -117,15 +122,34 @@ per item; done items move to the bottom of their section with a date and sha.
   it's getting more likely to verifiably happen soon."* Trigger
   (channel-proposed, un-vetoed): the latency-realism arc landed PLUS
   one witnessed end-to-end demo of latency-realistic traffic played
-  into a downstream-receiver stand-in -- the arc's own mechanism half
-  is now DONE; **the remaining work is the demo itself**, a FUTURE
-  session: author a `:latency`-bearing scenario config (`corpus
-  generate sim`) and witness one real, latency-realistic run played
-  into a downstream-receiver stand-in. Named deferrals this session
-  disclosed, each with its own revisit trigger (`notes/adr/0109-*.md`):
-  FHIR-side latency (`emit-fhir` gets no `offsets` parameter yet); late
-  amendments/trailing A08s (a GT-side new-event-type concern, outside
-  this ADR's own emitter-seam scope).
+  into a downstream-receiver stand-in.
+
+  **Trigger's second condition executed 2026-08-11 (`notes/adr/
+  0110-latency-demo.md`):** `demos/scenarios/ed-tuesday/config-
+  latency.edn`, a sibling of `config.edn` carrying a live-probed
+  `LatencyProfile`, generates ground truth byte-identical to the base
+  config at the same seed (witnessed `diff`/`sha256sum`) while its own
+  `emit-wire`-rendered messages, played into this workspace's own
+  `--board`, reproduce the ADR-0109 disorder finding live: a lagged
+  admission message re-adds an already-discharged patient
+  (MRN000013/Walker) to the board as `inpatient`, double-booking a bed
+  another patient already occupies. `fold-message` itself untouched,
+  per this session's own fence -- the board's confusion is the
+  demonstration, not a defect to fix here. **Trigger conditions MET,
+  PENDING AUTHOR RATIFICATION**: whether this workspace's own `--board`
+  counts as the downstream-receiver stand-in the trigger's own language
+  anticipated, and whether to open the tool-specific user-guide work
+  named below, are the author's own calls, not decided by this session.
+
+  Named deferrals from ADR-0109, still standing, each with its own
+  revisit trigger (`notes/adr/0109-*.md`): FHIR-side latency
+  (`emit-fhir` gets no `offsets` parameter); late amendments/trailing
+  A08s (a GT-side new-event-type concern, outside the emitter-seam
+  scope both ADR-0109 and this session's own fence share). The
+  OBR-7/OBX-14 clinical-time fidelity increment (rendering those two
+  currently-unrendered fields, which would change plain `emit`'s own
+  frozen bytes) is named as a future, declared-oracle-change session of
+  its own -- not touched by either ADR-0109 or this session.
 - The lookup-column `time` gap (named in the schema-invalid family
   backlog since ADR-0039, still untouched — Wave I's own six
   mechanisms didn't cover it). Bulk vendoring (batched by closure
@@ -601,3 +625,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-11 — injuries-arc-close — ADR-0107
 - 2026-08-11 — simulator-architecture-doc — ADR-0108
 - 2026-08-11 — latency-second-clock — ADR-0109
+- 2026-08-11 — latency-demo — ADR-0110

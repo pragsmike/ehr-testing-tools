@@ -620,3 +620,27 @@ driving prompt, author-ruled 2026-08-10, executed 2026-08-11)
   emitter at all, found by direct inspection of every segment
   builder's own parameter list, recorded in `notes/adr/0109-*.md`'s
   own audit table.
+
+## From ADR-0110 (latency demo: same ground truth, two wires; ruled 2026-08-11)
+
+- **"demo session."** [A, ruled 2026-08-11, author verbatim]: this
+  session executes the second half of the latency arc ADR-0109's own
+  mechanism opened -- a `:latency`-bearing scenario config and one
+  witnessed end-to-end run into a downstream-receiver stand-in, this
+  workspace's own `--board`. Zero `src` changes; authorship over the
+  landed mechanism, not a code change.
+- **The trigger's status, recorded not decided** [C, driving-prompt-
+  directed]: the user-guide deferral trigger's own second condition
+  (`.agents/plans/roadmap.md`'s Next section) is executed this session
+  -- one witnessed end-to-end demo of latency-realistic traffic played
+  into a downstream-receiver stand-in. Trigger conditions MET, PENDING
+  AUTHOR RATIFICATION: whether the board counts as the stand-in the
+  trigger's own language anticipated, and whether to open the
+  tool-specific user-guide work, are the author's own calls, flagged
+  to the author in the driving conversation, un-vetoed, decided by
+  neither the driving prompt nor this session.
+- **The board as the downstream stand-in; the sibling-config shape**
+  [C, flagged to the author in the driving conversation, un-vetoed]:
+  a new sibling config (`config-latency.edn`), never a revision of
+  `config.edn`, generated at the same seed and played into `--board`
+  as the receiver stand-in this demo supplies a case to.
