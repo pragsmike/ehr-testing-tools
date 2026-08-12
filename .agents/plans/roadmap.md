@@ -5,20 +5,22 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- Nothing in progress at this close (review-3, user-surface review,
-  ADR-0114, 2026-08-12 — findings-only: two author-licensed docs riders
-  [the §4 precision-clause parenthetical; the method-vocabulary section
-  in `docs/dev/way-of-working.md` and two new `docs/glossary.md`
-  entries], then a seven-battery (B1-B7) live probe of the CLI surface
-  landed as `.agents/plans/2026-08-12-review-3-user-surface-findings.md`
-  — 48 tallied dispositions [27 close-as-fine, 12 fix-session-candidate,
-  3 ruling-needed, 4 design-channel-draft, 2 incomplete] plus the UX
-  audit's own 11-row carry-forward [9 of its 10 open items resolved or
-  substantially resolved on fresh evidence]. Highest-priority open
-  finding: `ehrt check` reports a clean all-pass result when given no
-  target, a missing target, or a genuinely empty one, indistinguishable
-  from a real zero-finding run. Zero `src`/`test` change; the oracle
-  held pure identity across all 35 roots).
+- Nothing in progress at this close (review-3 rulings landing,
+  ADR-0115, 2026-08-12 — registers-only: recorded the author's three
+  rulings on review-3's own `ruling-needed` rows [R3-B1-1 `--out-dir`'s
+  double meaning, RULED (a), the `--scratch-dir` rename chartered to
+  fix cluster A; R3-B1-4 `--seed`'s required-vs-defaulted split, RULED
+  (a) deliberate two-tier design, a help note chartered to fix cluster
+  A; R3-B1-7 `--received`'s wall-clock default, RULED (a), a class
+  exemption for provenance metadata about a real-world act, closed by
+  ruling], fixed the findings register forward (three row dispositions,
+  one summary-table wording correction), and chartered the register's
+  twelve `fix-session-candidate` rows into three fix clusters [A: CLI
+  validation and error quality, 8 members including the register's own
+  HIGHEST-PRIORITY finding `check`'s silent-pass-on-invalid-target; B:
+  help-surface enrichment; C: doc drift and gate scan-roots, docs-only]
+  plus a design-channel-draft queue note. Zero `src`/`test`/`docs`
+  change; the oracle held pure identity across all 35 roots).
 
 ## Next (backlog, no session scheduled)
 - **Busy-tuesday/ED scenario redesign — "A" LANDED, "B" CLOSED
@@ -779,3 +781,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-11 — batch-straddle-recording — ADR-0112
 - 2026-08-12 — sim-palgebra-unification — ADR-0113
 - 2026-08-12 — review-3-user-surface — ADR-0114
+- 2026-08-12 — review-3-rulings-landing — ADR-0115
