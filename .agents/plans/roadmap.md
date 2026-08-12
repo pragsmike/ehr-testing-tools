@@ -211,19 +211,38 @@ per item; done items move to the bottom of their section with a date and sha.
   chartered into three clusters (A, B, C, rows below). The arc's
   remaining steps are those three cluster sessions, then the user
   manual design pass.
-- **Fix cluster A -- CLI validation and error quality** (ADR-0115; not
-  chartered to any executing session yet). Contains the register's
-  HIGHEST PRIORITY finding. Members: R3-B2-1 (`check` target
-  validation -- HIGHEST), R3-B2-2 (parse-error translation), R3-B2-3 +
-  R3-B4-1 (`corpus intake --out` validation-or-derivation, one fix),
-  R3-B1-5 (missing-required-flag exit-code/category unification),
-  R3-B1-3 (`synthea:` source-scoping validator extension), R3-B2-5 +
-  R3-B3-3 (`help <unknown-group>` validation), R3-B1-1 (the
-  `--scratch-dir` rename, RULED ADR-0115 RQ1), R3-B1-4 (the tiering
-  help note, RULED ADR-0115 RQ2). A `src` session; its own prompt
-  (channel-drafted) pre-analyzes the oracle bracket -- error-path
-  changes are expected oracle-neutral but that session declares it,
-  not this row.
+- **RESOLVED 2026-08-12** (fix cluster A -- CLI validation and error
+  quality, `notes/ADRs.md` ADR-0117; chartered ADR-0115). All eight
+  members fixed, red-before-green per fix, four commits: R3-B2-1
+  (`check` target validation, HIGHEST PRIORITY -- DIR now required,
+  must exist, must be non-empty, `:missing-required-opt`/
+  `:invalid-target`); R3-B2-2 (parse-error translation -- a
+  `babashka.cli` coercion failure, e.g. `--seed abc`, no longer leaks
+  the library's own name and a file:line at the wrong exit code;
+  `safe-parse` catches it at the CLI's own parse boundary,
+  `:invalid-flag-value`); R3-B2-3 + R3-B4-1 (`corpus intake --out`
+  required, not derived -- ruled require-not-derive [C, un-vetoed]: a
+  derived path would fold `--received`'s own wall-clock default into a
+  filesystem name, quietly unreproducible; requiring is honest);
+  R3-B1-5 (missing-required-flag exit-code/category unification --
+  `:interval-required`/`:v2-nist-profile-required`/the
+  operator-id-absent leg of `:unknown-operator` all retired in favor of
+  the shared `:missing-required-opt` shape at exit 2); R3-B1-3
+  (`synthea:`/`sim:` source-scoping validator extension -- ruled
+  reject-not-warn [C, un-vetoed], `:flag-source-mismatch`); R3-B2-5 +
+  R3-B3-3 (`help <unknown-group>` reuses `:unknown-command` verbatim,
+  same treatment as `ehrt <unknown-group>` itself); R3-B1-1 (the
+  `--scratch-dir` rename, RULED ADR-0115 RQ1 -- no back-compat alias,
+  sweep census found zero live doc surfaces citing `gate fhir
+  --out-dir` explicitly); R3-B1-4 (the tiering help note, RULED
+  ADR-0115 RQ2 -- `corpus generate`'s `--seed` doc string now states
+  the two-tier design explicitly, closing the same gap ADR-0116's own
+  disclosure left open for the third, dual-source `--seed` row it
+  found but deliberately did not edit). Zero judge/check component
+  internals touched, zero engine/sim `src` touched; the oracle held
+  pure identity across all 35 roots (F1-F6 change only error paths on
+  invalid inputs no root supplies; F7 renames a flag on a verb no root
+  invokes; F8 is help text).
 - **Fix cluster B -- help-surface enrichment** (ADR-0115; not
   chartered to any executing session yet). Members: R3-B3-2 (verb-level
   help narrowing), R3-B3-1's mechanism half (the "Example:" render
@@ -800,3 +819,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-12 — review-3-user-surface — ADR-0114
 - 2026-08-12 — review-3-rulings-landing — ADR-0115
 - 2026-08-12 — engine-seed-contract — ADR-0116
+- 2026-08-12 — fix-cluster-a-cli-validation — ADR-0117

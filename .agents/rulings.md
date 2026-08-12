@@ -889,3 +889,23 @@ author ruled, verbatim, 2026-08-12: *"Q1 a. Q2 a. Q3 a."*
   future sessions making the same class of change: audit every caller
   of a function whose return contract gains a new Result-typed branch,
   not just the function itself.
+
+## From ADR-0117 (fix cluster A: CLI validation and error quality;
+executed 2026-08-12)
+
+- **F3's require-not-derive [C, channel-inferred, un-vetoed]**:
+  `corpus intake --out` is required, not derived, unlike its sibling
+  derived-out-dir verbs (`corpus generate`/`mutate`/`batch`, D12's own
+  pattern). A derived path here would have folded `--received`'s own
+  wall-clock default (RQ3's own class exemption, ADR-0115) into a
+  filesystem name, quietly unreproducible -- requiring is honest.
+  Applies to any future flag whose only sensible derivation would
+  route through a non-deterministic input; the author may strike or
+  correct this reading.
+- **F5's reject-not-warn [C, channel-inferred, un-vetoed]**: a
+  `synthea:`-scoped flag given while generating `sim` (or vice versa)
+  is rejected (`:flag-source-mismatch`, exit 2), not merely warned
+  about -- consistent with this cluster's own strict-validation
+  direction (F1/F2/F3/F4/F6 all reject rather than degrade). Applies to
+  any future source-scoped or mode-scoped flag mismatch this workspace
+  adds; the author may strike or correct this reading.
