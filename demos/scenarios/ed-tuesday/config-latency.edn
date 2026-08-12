@@ -1,0 +1,112 @@
+;; demos/scenarios/ed-tuesday/config-latency.edn -- ADR-0110, the demo
+;; half of the latency-realism arc (ADR-0109 landed the mechanism).
+;; Byte-identical to config.edn below the header, PLUS one added
+;; top-level :latency block (ehrt.sim-model.config/LatencyProfile) --
+;; see config.edn's own header for the scenario's full design rationale
+;; (the disjoint-cohort module tail, the facility surge bump); it is not
+;; repeated here.
+;;
+;; :latency never reaches engine/config-keys (ADR-0109) -- ground truth
+;; generated from this file is byte-identical to ground truth generated
+;; from config.edn at the same --seed (witnessed in this scenario's own
+;; README, a live `diff` of the two events.edn files). Only :messages
+;; changes: `emit-hl7/emit-wire` sorts by TRANSMIT time (MSH-7, shifted
+;; by these ranges) instead of log order, and clinical time (EVN-2, ADT
+;; messages only) never moves.
+;;
+;; Ranges, minutes-authored (sim-model/config.clj's own LatencyRange):
+;; :order-placed (10-45 min) and :result-available (20-120 min)
+;; approximate real specimen-to-result turnaround -- a CBC is fast but
+;; not instant, and the result rarely posts the moment the order fires.
+;; :transfer/:discharge (15-60 min each) approximate real charting lag
+;; once the clinical event itself has happened -- a nurse or unit clerk
+;; logging the move sometime after it occurred. :admission (15-90 min)
+;; overlaps the other two bands rather than dominating them -- tuned
+;; this way ON PURPOSE, by live-probe against this file's own demo
+;; seed: an early draft gave :admission a much wider/later-centered
+;; band and produced disorder on roughly a quarter of every admitted
+;; patient, which stopped reading as a realistic occasional lag and
+;; started reading as "the ED never charts admissions correctly" --
+;; not the point. At this file's shipped ranges, exactly 8 of 92
+;; admitted patients (seed 20260811) have their own admission message
+;; arrive on the wire after their own transfer or discharge message --
+;; occasional and visible, not universal (this scenario's own README
+;; has the live-probed count and one full witnessed example). This is
+;; exactly the class of case the author's own charter (quoted in the
+;; README) asks this demo to supply a downstream receiver with.
+{:facility {:id :general-hospital
+            :wards [{:id :ed :name "Emergency" :beds 0 :surge-slots 16
+                     :surge-format "%s-H%02d" :class :ed}
+                    {:id :renal :name "Renal" :beds 4 :surge-slots 2
+                     :surge-format "%s-H%02d" :class :inpatient}
+                    {:id :cardiology :name "Cardiology" :beds 4 :surge-slots 2
+                     :surge-format "%s-H%02d" :class :inpatient}]}
+ :arrival-gap 30
+ :pathways [;; Walk-in, quick turnaround -- the ED's own bread and butter.
+            {:pathway {:name "ed-fast-track"
+                       :steps [{:type :admission :location "Emergency" :reason "Minor laceration"}
+                               {:type :delay :from 30 :to 90}
+                               {:type :discharge}]}
+             :weight 55}
+            ;; Worked up, one lab panel, then home.
+            {:pathway {:name "ed-observe-and-discharge"
+                       :steps [{:type :admission :location "Emergency" :reason "Chest pain, low risk"}
+                               {:type :delay :from 60 :to 120}
+                               {:type :order :profile :cbc}
+                               {:type :delay :from 60 :to 150}
+                               {:type :discharge}]}
+             :weight 30}
+            ;; Admitted, short inpatient dwell.
+            {:pathway {:name "ed-admit-renal"
+                       :steps [{:type :admission :location "Emergency" :reason "Acute kidney injury"}
+                               {:type :delay :from 45 :to 120}
+                               {:type :transfer :location "Renal"}
+                               {:type :delay :from 240 :to 960}
+                               {:type :discharge}]}
+             :weight 8}
+            {:pathway {:name "ed-admit-cardiology"
+                       :steps [{:type :admission :location "Emergency" :reason "Chest pain, high risk"}
+                               {:type :delay :from 45 :to 120}
+                               {:type :transfer :location "Cardiology"}
+                               {:type :delay :from 240 :to 960}
+                               {:type :discharge}]}
+             :weight 5}
+            ;; The rare, resource-heavy trauma case -- imaging in the ED,
+            ;; then admitted for the longest dwell in the pool.
+            {:pathway {:name "ed-trauma-imaging-admit"
+                       :steps [{:type :admission :location "Emergency" :reason "Multi-system trauma"}
+                               {:type :delay :from 30 :to 90}
+                               {:type :order :profile :cbc}
+                               {:type :delay :from 45 :to 90}
+                               {:type :transfer :location "Renal"}
+                               {:type :delay :from 480 :to 1440}
+                               {:type :discharge}]}
+             :weight 2}
+            ;; The ambulatory module tail -- disjoint from the ED pool
+            ;; above by explicit ordinal, per this file's own header
+            ;; comment. Empty pathway: the module's own compiled content
+            ;; is the whole of this patient's queue (engine.clj's own
+            ;; module-only-patient pattern).
+            {:patient-ordinal 6 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 18 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 30 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 42 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 54 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 66 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 78 :pathway {:name "module-only" :steps []}}
+            {:patient-ordinal 90 :pathway {:name "module-only" :steps []}}]
+ :modules ["sore_throat" "sinusitis" "bronchitis" "ear_infections"]
+ :module-assignment [{:patient-ordinal 6 :module-id "sore_throat"}
+                      {:patient-ordinal 18 :module-id "sinusitis"}
+                      {:patient-ordinal 30 :module-id "bronchitis"}
+                      {:patient-ordinal 42 :module-id "ear_infections"}
+                      {:patient-ordinal 54 :module-id "sore_throat"}
+                      {:patient-ordinal 66 :module-id "sinusitis"}
+                      {:patient-ordinal 78 :module-id "bronchitis"}
+                      {:patient-ordinal 90 :module-id "ear_infections"}]
+ :module-horizon-days 90
+ :latency {:admission {:from-minutes 15 :to-minutes 90}
+           :transfer {:from-minutes 15 :to-minutes 60}
+           :discharge {:from-minutes 15 :to-minutes 60}
+           :order-placed {:from-minutes 10 :to-minutes 45}
+           :result-available {:from-minutes 20 :to-minutes 120}}}

@@ -128,3 +128,139 @@ Full closing summary: `{:unparseable-count 0, :snapshot-count 34,
 :skip-count 0, :rate 100000.0, :idle-cap-ms 5000, :wallclock-ms 1855,
 :stream-span-ms 128520000, :clamped-count 0, :emitted 283,
 :unfolded-count 0, :sink "ticker"}`.
+
+**Same ground truth, a second, latency-realistic wire.** This shift's
+own ground truth is also played onto a wire where messages transmit
+late, the way a real EHR's own downstream feed does -- see "The second
+clock" below.
+
+## The second clock
+
+The author's own charter (`notes/ADRs.md` ADR-0107, 2026-08-11, quoted
+in full in ADR-0109/ADR-0110): *"lab results take time to come back,
+providers take time to log things in the EHR, etc. so it's possible
+that a downstream receiver of the HL7 traffic will have incomplete
+encounter records for some time. That's not our problem to solve, but
+in order to test that such downstream receivers handle it properly
+(whatever that might mean for them) we need to supply them with such
+cases."* ADR-0109 built the mechanism (`emit-hl7/plan-latency` +
+`emit-hl7/emit-wire`, a second, independently-seeded RNG sampling
+per-event-type transmit delays, `sim-model/config.clj`'s own
+`LatencyProfile`). This section is that mechanism's demo:
+[`config-latency.edn`](config-latency.edn) -- byte-identical to
+[`config.edn`](config.edn) below the header, plus one added `:latency`
+block -- generated at the *same* seed as the shift above, played into
+this workspace's own `--board` as the downstream-receiver stand-in.
+
+**Generate both, same seed, separate out-dirs:**
+
+```bash
+bin/ehrt corpus generate sim --seed 20260811 --patients 100 \
+  --reference-date 2026-08-11 --churn \
+  --config demos/scenarios/ed-tuesday/config.edn \
+  --out-dir out/scenarios/ed-tuesday-base
+
+bin/ehrt corpus generate sim --seed 20260811 --patients 100 \
+  --reference-date 2026-08-11 --churn \
+  --config demos/scenarios/ed-tuesday/config-latency.edn \
+  --out-dir out/scenarios/ed-tuesday-latency
+```
+
+**Ground truth is invariant.** `:latency` never reaches
+`engine/config-keys` (ADR-0109) -- it rides `:config` as an emit-only
+passthrough, the same way `:site-profile` does. Witnessed directly,
+not merely asserted:
+
+```
+$ diff out/scenarios/ed-tuesday-base/events.edn out/scenarios/ed-tuesday-latency/events.edn
+$ sha256sum out/scenarios/ed-tuesday-base/events.edn out/scenarios/ed-tuesday-latency/events.edn
+b4e776f773502cf78795a83bb52836ea208c831935330cb0480a731525e637f1  out/scenarios/ed-tuesday-base/events.edn
+b4e776f773502cf78795a83bb52836ea208c831935330cb0480a731525e637f1  out/scenarios/ed-tuesday-latency/events.edn
+```
+
+`diff` reports no differences; the digests match exactly -- the same
+383 ground-truth events either way. Only the *rendering* differs: the
+`msg-%03d.hl7` files carry different MSH-7 values and a different file
+order (`emit-wire` sorts by transmit time, not log order) between the
+two out-dirs -- the palgebra's own `GT -> TimedWire` arrow
+(`docs/dev/simulator-architecture.md` section 5), visible in a diff of
+two directories generated from the same seed.
+
+**Play the latency wire into the board:**
+
+```bash
+bin/ehrt play out/scenarios/ed-tuesday-latency --board 60 --rate 100000
+```
+
+**What the board actually shows.** Patient MRN000013 (Walker,
+William), pathway `ed-fast-track`: admitted (EVN-2 clinical time
+`2026-08-11T03:36:00Z`), discharged 37 minutes later (`04:13:00Z`) --
+ordinary, unremarkable, log-order-correct clinical history. On the
+*latency* wire, the discharge message's own sampled delay (20m54s) is
+shorter than the admission message's own (1h00m46s), so the discharge
+(A03) transmits first (MSH-7 `04:33:54Z`) and the admission (A01)
+transmits second (MSH-7 `04:36:46Z`) -- reordered on the wire, never in
+ground truth. The board, folding messages in the order it receives
+them:
+
+```
+-- board snapshot: 2026-08-11T04:33:54Z --
+
+Emergency:
+  ED-H08  D'Angelo, James  MRN MRN000012  inpatient  attending: 3327386918
+  ED-H12  Rodriguez, Jacob  MRN MRN000005  inpatient  attending: 3327386918
+  ED-H16  Anderson-Lee, Linda  MRN MRN000009  inpatient  attending: 3327386918
+
+inpatients: 3  active outpatients: 0  discharged: 9  merged: 0
+-- board snapshot: 2026-08-11T05:43:41Z --
+
+Emergency:
+  ED-H01  Garcia-Lopez, Amanda  MRN MRN000018  inpatient  attending: 3327386918
+  ED-H03  Moore, Amanda  MRN MRN000015  inpatient  attending: 3327386918
+  ED-H13  Walker, William  MRN MRN000013  inpatient  attending: 3327386918
+  ED-H13  Gonzalez, Emma  MRN MRN000017  inpatient  attending: 3327386918
+  ED-H14  Johnson, Joshua  MRN MRN000014  inpatient  attending: 3327386918
+  ED-H16  Anderson-Lee, Linda  MRN MRN000009  inpatient  attending: 3327386918
+
+inpatients: 6  active outpatients: 0  discharged: 10  merged: 0
+```
+
+Walker's own discharge (folded first, off-camera between these two
+snapshots) already removed him from the board. His admission then
+arrives -- `fold-message`'s own `:admission` case applies
+unconditionally (ADR-0109's Step 5 finding, live here rather than
+probed): it puts him right back on the board as `inpatient` in
+`ED-H13` -- the same bed label the board independently shows occupied
+by Gonzalez, Emma in this same snapshot, Walker's own ghost entry never
+having cleared. Two patients shown occupying the same bed, one of them
+(Walker) already discharged, in ground truth, before his own admission
+message ever posts. Walker's
+own phantom entry never clears (no further message for him exists) --
+it is still on the board at the run's own last snapshot. The *same*
+patient in the base (no-latency) run above appears exactly once,
+admitted and never seen again once discharged -- the entire disorder
+is the wire's doing, not the ground truth's. This is one of 8 (of 92
+admitted patients, seed
+20260811) whose own admission message arrives after its own transfer
+or discharge message on this wire -- occasional and visible, not
+universal (`config-latency.edn`'s own header has the tuning
+rationale).
+
+Closing summary: `{:unparseable-count 0, :snapshot-count 33,
+:skip-count 0, :rate 100000.0, :idle-cap-ms 5000, :wallclock-ms 1765,
+:stream-span-ms 128950000, :clamped-count 0, :emitted 283,
+:unfolded-count 0, :sink "ticker"}` -- the same 283 messages as the
+base run, one fewer snapshot (33 vs 34: the board's own tick-crossing
+schedule shifts when transmit times shift), and a stream span 430
+seconds longer (a shifted final message extends the wire's own tail
+past the last clinical event).
+
+**What a receiver could do better.** Nothing here is prescribed or
+built this session -- as reader orientation only: a receiver that
+buffered incoming messages briefly and reconciled by clinical time
+(EVN-2, when present) rather than folding strictly in arrival order
+would not have produced Walker's own phantom re-admission. Whether, or
+how, to do that is the receiver's own design question -- this
+workspace's job is only to supply the case (the author's own charter,
+quoted above), not to fix `fold-message` (ADR-0109's own named scope
+fence, unchanged here).

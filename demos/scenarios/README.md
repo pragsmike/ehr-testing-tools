@@ -37,4 +37,8 @@ artifact.
   inpatient census, plus a thin ambulatory module tail. Day-scale
   contrast to busy-tuesday's own population-scale incidence; the "A"
   half of the ED-redesign arc the author's own 2026-08-10 direction
-  chartered (`notes/ADRs.md` ADR-0104, citing ADR-0103).
+  chartered (`notes/ADRs.md` ADR-0104, citing ADR-0103). Sibling
+  config [`config-latency.edn`](ed-tuesday/config-latency.edn) plays
+  the same shift onto a latency-realistic wire — same ground truth,
+  a second, disordered clock (`notes/ADRs.md` ADR-0110); see
+  ed-tuesday's own README, "The second clock".
