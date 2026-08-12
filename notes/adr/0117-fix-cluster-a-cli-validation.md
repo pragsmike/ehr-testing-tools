@@ -350,14 +350,34 @@ its own source file (only the known trailing-blank-line `git log
 
 ### Deviations
 
-None. Every "current (verify)" claim in the driving prompt was
-confirmed live against the tree, exactly as stated, before its fix
-landed (F1's triple `check` probe, F2's `sim run --seed abc` probe,
-F3's `corpus intake` NPE probe, F6's `help crops` probe -- all four
-transcribed above). No red test refused to go red; no regen delta
-landed outside F7/F8's own predicted reach (confirmed: `docs/cli.md`'s
-diff after commit 3 was exactly 4 lines across the two fixes' own
-rows, `make use-cases` a confirmed no-op). No oracle non-identity.
+None in the fix work itself. Every "current (verify)" claim in the
+driving prompt was confirmed live against the tree, exactly as stated,
+before its fix landed (F1's triple `check` probe, F2's `sim run --seed
+abc` probe, F3's `corpus intake` NPE probe, F6's `help crops` probe --
+all four transcribed above). No red test refused to go red; no regen
+delta landed outside F7/F8's own predicted reach (confirmed:
+`docs/cli.md`'s diff after commit 3 was exactly 4 lines across the two
+fixes' own rows, `make use-cases` a confirmed no-op). No oracle
+non-identity.
+
+**A brief CI-red window on commit 2, self-caught while confirming CI
+status ahead of this session's own close, disclosed fix-forward.** `gh
+run list --limit 8 --branch main` showed commit 2's own push
+(`5d05825`, run `31642842797`) `completed`/`failure` at 41s -- far
+short of this suite's own ~4-4.5-minute runtime, the first sign this
+was not a real test failure. `gh run view 31642842797 --log-failed`
+confirmed: the `DeLaGuardo/setup-clojure@13.4` action's own Clojure CLI
+tools download hit a transient `curl: (22) The requested URL returned
+error: 503`, retried five times with exponential backoff, then gave up
+-- failing before the workspace checkout finished building, let alone
+running any test. Not a defect this session introduced -- this
+session's own local `make test` for commit 2's exact diff had already
+run green (`clojure -M:poly check` + the full `clojure -M:poly test
+:all skip:integration` suite, 308 tested namespaces, 0 FAIL/ERROR +
+`bin/verify-nist-lock` OK) before that push. `gh run rerun 31642842797`
+confirmed `completed`/`success` on the identical commit, 4m40s runtime,
+matching every sibling push. No `src`/`test`/`docs` edit accompanies
+this disclosure -- the tree was never at fault.
 
 ### Fences
 

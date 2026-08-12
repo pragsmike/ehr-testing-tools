@@ -105,10 +105,25 @@ archive land in the same commit, both READMEs updated.
 
 ## Deviations, disclosed
 
-None. Every Read-first document matched this session's own
-characterization of it; every "current (verify)" claim held exactly as
-stated; no regen delta landed outside F7/F8's own predicted reach; no
-oracle non-identity.
+None in the fix work itself. Every Read-first document matched this
+session's own characterization of it; every "current (verify)" claim
+held exactly as stated; no regen delta landed outside F7/F8's own
+predicted reach; no oracle non-identity.
+
+**A brief CI-red window on commit 2, self-caught while confirming CI
+status ahead of this session's own close.** `gh run list --limit 8
+--branch main` showed commit 2's own push (`5d05825`, run
+`31642842797`) `completed`/`failure` at 41s — far short of this
+suite's own ~4-4.5-minute runtime. `gh run view 31642842797
+--log-failed` found the cause: `DeLaGuardo/setup-clojure@13.4`'s own
+Clojure CLI tools download hit a transient `curl: (22) ... 503`,
+retried five times, then gave up — before the workspace checkout even
+finished, let alone any test running. Not this session's own doing:
+local `make test` for commit 2's exact diff had already run green (0
+FAIL/ERROR across 308 tested namespaces, NIST lock OK) before that
+push. `gh run rerun 31642842797` confirmed `completed`/`success` on
+the identical commit, 4m40s. Full record in `notes/adr/
+0117-fix-cluster-a-cli-validation.md`'s own Deviations section.
 
 ## Close-out echo
 
@@ -134,10 +149,11 @@ match `artifacts.lock.edn` exactly, all three pushes.
 Commit 4: this record's own landing commit.
 
 **CI status:** `test` lane green on `main` at every prior commit
-checked (last five runs, Step 0); this session's own three code pushes
-and commit 4's push each disclosed at push time, per the standing
-watched-never-waited-on discipline (this session's own subject is CLI
-validation, not CI itself, so watch-to-conclusion was not required).
+checked (last five runs, Step 0). All four of this session's own
+pushes confirmed `completed`/`success`: commits 1, 3, and 4 green on
+their first run; commit 2 red on its first run (a transient
+`setup-clojure` download 503, disclosed above), green on a same-code
+rerun watched to conclusion.
 
 ## HEAD landed
 
