@@ -808,3 +808,40 @@ recorded; ruled 2026-08-12)
   investigation." Cross-ref: ADR-0112 (origin disclosure), ADR-0107
   (the sibling corpus defspec flake row, same failure class, a
   different registry).
+
+## From ADR-0115 (review-3 rulings landing; ruled 2026-08-12)
+
+The design channel framed three questions from review-3's own
+`ruling-needed` register rows
+(`.agents/plans/2026-08-12-review-3-user-surface-findings.md`); the
+author ruled, verbatim, 2026-08-12: *"Q1 a. Q2 a. Q3 a."*
+
+- **RQ1, `--out-dir`'s double meaning** (R3-B1-1) [A, ruling on channel
+  proposal, author "Q1 a"]: options were (a) rename `gate fhir`'s flag
+  to `--scratch-dir` so `--out-dir` means one thing repo-wide (a
+  protected artifact, collision-refused); (b) keep both, document the
+  difference; (c) make `gate fhir`'s protected too. RULED (a).
+  Concrete: the rename is chartered to fix cluster A
+  (`.agents/plans/roadmap.md`); until it lands, `--out-dir`'s canonical
+  meaning is `corpus generate`'s (protected artifact).
+- **RQ2, `--seed`'s required-vs-defaulted split** (R3-B1-4) [A, ruling
+  on channel proposal, author "Q2 a"]: options were (a) ruled
+  deliberate -- `corpus generate` is the ergonomic front door
+  (defaults), `sim run`/`sim identifiers` are the strict engine tier
+  (require) -- recorded, plus a one-line help note naming the tiering;
+  (b) default everywhere; (c) require everywhere. RULED (a). Concrete:
+  the split is design, not drift; the help note is chartered to fix
+  cluster A (small); future front-door/engine flag decisions cite this
+  ruling.
+- **RQ3, `--received`'s wall-clock default, precedent-setting**
+  (R3-B1-7) [A, ruling on channel proposal, author "Q3 a"]: question --
+  is provenance metadata about a real-world act (the class `corpus
+  intake`'s catalog record exemplifies) inside or outside the
+  determinism law? Options: (a) outside -- a foreign corpus's arrival
+  date is genuinely wall-clock provenance; the default stands and the
+  CLASS EXEMPTION is recorded so future provenance-of-real-world-acts
+  flags cite it rather than re-litigate; (b) inside -- require the
+  flag, no wall-clock defaults anywhere. RULED (a). Concrete: the
+  exemption's scope is exactly "provenance metadata recording a
+  real-world act"; anything generating or transforming corpus CONTENT
+  remains fully inside the determinism law.

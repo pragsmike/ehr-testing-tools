@@ -267,6 +267,21 @@
 ;; (also an `:onboarding` member, re-measured at this session's own
 ;; close phase alongside that set's own roadmap/README churn), so no
 ;; other set's budget moves here.
+;;
+;; Re-derivation (2026-08-12, review-3 rulings landing, `notes/adr/
+;; 0115-review-3-rulings-landing.md`): `reading-set-budget-test` went
+;; red this session, `:onboarding` measured 1734 lines against its own
+;; 1705-line budget -- this session's own charter of three fix
+;; clusters onto `roadmap.md`'s Next section (a gate-forced companion
+;; edit to a fenced surface, not a fix itself) grew that one path; no
+;; other `:onboarding` path changed. `:onboarding`'s fresh actual
+;; (`wc -l` sum across all eight `:paths`): 294 (AGENTS.md) + 53 + 60 +
+;; 189 + 137 + 33 (the five READMEs) + 781 (roadmap.md) + 187
+;; (build-session/SKILL.md) = 1734. Re-applying the standing formula
+;; (actual x1.15, rounded up to the nearest 5): 1734 x 1.15 = 1994.1 ->
+;; 1995. Budget moves 1705 -> 1995. No other set carries `roadmap.md`
+;; or any other path this session touched, so no other set's budget
+;; moves here.
 
 {:onboarding
  {:paths ["AGENTS.md"
@@ -289,7 +304,7 @@
   ;; because that's a different audience from "a cold task-class session",
   ;; and forcing every onboarding read to carry its cost would budget for an
   ;; activity most onboarding sessions never do (migration session 5, AR-3).
-  :budget-lines 1705}
+  :budget-lines 1995}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one

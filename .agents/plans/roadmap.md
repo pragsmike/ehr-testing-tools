@@ -201,6 +201,41 @@ per item; done items move to the bottom of their section with a date and sha.
   enumerable-options family, derived-out-dir conventions. Precedes the
   user manual design pass above in the ratified sequence; its findings
   drive a round of CLI tweak sessions before the design pass starts.
+  **2026-08-12 (ADR-0115): rulings landed on all three `ruling-needed`
+  rows** (R3-B1-1 `--out-dir` rename ruled (a); R3-B1-4 `--seed`
+  tiering ruled (a) deliberate, closed by a help-note addition;
+  R3-B1-7 `--received` wall-clock default ruled (a), closed-by-ruling
+  as a class exemption) and the fix-session-candidate rows are
+  chartered into three clusters (A, B, C, rows below). The arc's
+  remaining steps are those three cluster sessions, then the user
+  manual design pass.
+- **Fix cluster A -- CLI validation and error quality** (ADR-0115; not
+  chartered to any executing session yet). Contains the register's
+  HIGHEST PRIORITY finding. Members: R3-B2-1 (`check` target
+  validation -- HIGHEST), R3-B2-2 (parse-error translation), R3-B2-3 +
+  R3-B4-1 (`corpus intake --out` validation-or-derivation, one fix),
+  R3-B1-5 (missing-required-flag exit-code/category unification),
+  R3-B1-3 (`synthea:` source-scoping validator extension), R3-B2-5 +
+  R3-B3-3 (`help <unknown-group>` validation), R3-B1-1 (the
+  `--scratch-dir` rename, RULED ADR-0115 RQ1), R3-B1-4 (the tiering
+  help note, RULED ADR-0115 RQ2). A `src` session; its own prompt
+  (channel-drafted) pre-analyzes the oracle bracket -- error-path
+  changes are expected oracle-neutral but that session declares it,
+  not this row.
+- **Fix cluster B -- help-surface enrichment** (ADR-0115; not
+  chartered to any executing session yet). Members: R3-B3-2 (verb-level
+  help narrowing), R3-B3-1's mechanism half (the "Example:" render
+  slot; content is design-channel-draft, see the queue note below).
+- **Fix cluster C -- doc drift and gate scan-roots** (ADR-0115; not
+  chartered to any executing session yet). Members: R3-B5-3
+  (`demos/traces` stale refs + widen the invocation gate's scan roots
+  to `demos/**`), R3-B5-4 (issue template fix + consider `.github/**`
+  in scan roots). Docs-only session.
+- **Design-channel-draft queue** (ADR-0115; not a session row).
+  R3-B3-1's own Example-line content (one runnable invocation per
+  group, sourced from `docs/use-cases/*.md`), and the B-3/B-4
+  carry-forward wording halves (R3-B3-4) -- the channel drafts, the
+  author rules, no session until then.
 - **Engine-test flake investigation** (R8, `.agents/rulings.md` "From
   ADR-0114"; charter set 2026-08-12, not yet chartered to an executing
   session). `ehrt.sim-engine.engine-test`'s
