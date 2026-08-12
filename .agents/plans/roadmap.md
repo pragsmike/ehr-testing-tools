@@ -136,10 +136,14 @@ per item; done items move to the bottom of their section with a date and sha.
   another patient already occupies. `fold-message` itself untouched,
   per this session's own fence -- the board's confusion is the
   demonstration, not a defect to fix here. **Trigger conditions MET,
-  PENDING AUTHOR RATIFICATION**: whether this workspace's own `--board`
-  counts as the downstream-receiver stand-in the trigger's own language
-  anticipated, and whether to open the tool-specific user-guide work
-  named below, are the author's own calls, not decided by this session.
+  RATIFIED 2026-08-11 (ADR-0112, `.agents/rulings.md` "From ADR-0112",
+  the "User-guide trigger read" entry)**: this workspace's own
+  `--board` counts as the downstream-receiver stand-in the trigger's
+  own language anticipated, and the tool-specific user-guide work
+  named below is OPEN. Provenance is channel-read, not
+  author-verbatim -- the author did not veto the reading when it was
+  stated explicitly in the same exchange that produced it; the author
+  may still strike or correct it.
 
   Named deferrals from ADR-0109, still standing, each with its own
   revisit trigger (`notes/adr/0109-*.md`): FHIR-side latency
@@ -150,6 +154,17 @@ per item; done items move to the bottom of their section with a date and sha.
   currently-unrendered fields, which would change plain `emit`'s own
   frozen bytes) is named as a future, declared-oracle-change session of
   its own -- not touched by either ADR-0109 or this session.
+- **Tool-specific user-guide design pass** (status: awaiting-design-
+  pass; trigger RATIFIED 2026-08-11, ADR-0112, see above). The design
+  channel frames the pass -- structure, audience voice, a gap analysis
+  over the accreted `docs/` skeleton -- before any writing session
+  executes it; SETUP.md's unspoiled-human-reader rewalk (Externals,
+  "SETUP rewalk by an unspoiled human reader") is that pass's own
+  smoke test, the rewalk itself remaining an author-only errand. The
+  batch-straddle scenario is ruled "featured prominently" in the
+  eventual guide (`.agents/rulings.md` "From ADR-0112", "Batch-straddle
+  documentation placements"). Not chartered to any executing session
+  yet.
 - The lookup-column `time` gap (named in the schema-invalid family
   backlog since ADR-0039, still untouched — Wave I's own six
   mechanisms didn't cover it). Bulk vendoring (batched by closure
@@ -185,6 +200,13 @@ per item; done items move to the bottom of their section with a date and sha.
   that half of H5 as an open gate; the group/coordinates naming half and
   publication itself both stay open/parked, unchanged by this note.**
 - SETUP rewalk by an unspoiled human reader (F3 superseded-pending-rewalk)
+- **EHR Testing Guide Ch 24 "completeness illusion" section notes**
+  (not a session charter): the batch-straddle scenario's guide-side
+  treatment (`.agents/rulings.md` "From ADR-0112", "Batch-straddle
+  documentation placements", placement (c)). The channel may draft
+  notes on request, grounded in the ADR-0111 demo's witnessed run
+  (`demos/scenarios/ed-tuesday/README.md` "Batched delivery"); the
+  guide itself lives outside this workspace, per `AGENTS.md`.
 - Upstream the adapted repo-adaptation skill to pragsmike/skills (and cyberneutics
   if wanted) — AUTHOR ACTION named 2026-08-01
 - Item 9 (ADR-0024, landed 2026-08-01 as mirror-with-gate, not symlinks): the
