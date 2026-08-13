@@ -199,3 +199,4 @@ Files in this directory:
   * 2026-08-13-manual-s4-mutate-and-gate.md
   * 2026-08-13-manual-s5-chapter8-review-close.md
   * 2026-08-13-citation-sweep-glossary-linkage.md
+  * 2026-08-13-ceremony-scripts-sim-identity-sweep.md — Ceremony scripts, build-session skill absorption, sim-identity citation sweep (ADR-0127)

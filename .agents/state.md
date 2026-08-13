@@ -1,5 +1,27 @@
 # State of the project — continuity register
 
+**CITATION-ONLY update, 2026-08-13, ceremony scripts, build-session
+skill absorption, sim-identity citation sweep (`notes/adr/
+0127-ceremony-scripts-sim-identity-sweep.md`) — this citation moves
+here from ADR-0126, CONTENT NOT RE-PROBED.** Not an arc close (this
+session's own naming convention), so `state_staleness_tripwire_test.
+clj`'s own regex is untouched by this update — that gate tracks only
+`*-arc-close.md` files, and ADR-0127 isn't one. Recorded here anyway,
+in the same append-only citation-only spirit as the entries below, so
+a future full regeneration finds this session named rather than
+silently skipped. Landed: four `bin/` ceremony scripts (`preflight`,
+`tag-ceremony`, `post-push-verify`, `close-scaffold`), R13's own
+charter; `checkpoint isolation`/`red capture`/`sweep census` absorbed
+into `build-session/SKILL.md` and its `.claude/` mirror; the
+sim-identity citation sweep ADR-0126 disclosed but did not fix, now
+CLOSED (238 raw hits re-derived, 106 sim-era sites origin-qualified,
+132 workspace-current sites correctly left bare). Every section below
+still reflects its LAST full regeneration, 2026-08-08 against tip
+`a9c3abf` — twenty ADRs' worth of landings since (0090 through 0127,
+excluding citation-only entries) are NOT reflected below and every
+`[V]` tag below should be read accordingly; a full regeneration is
+still owed at a session that rules it.
+
 **CITATION-ONLY update, 2026-08-13, the citation errata sweep and
 glossary linkage close (`notes/adr/0126-citation-sweep-glossary-
 linkage.md`) — this citation moves here from ADR-0107, CONTENT NOT

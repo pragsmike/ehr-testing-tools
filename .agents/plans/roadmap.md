@@ -306,15 +306,36 @@ per item; done items move to the bottom of their section with a date and sha.
   classification, and the near-miss (`help.clj:471`, doc-doctrine,
   briefly mis-touched by a blanket sed and reverted before commit) in
   `notes/adr/0126-citation-sweep-glossary-linkage.md`.
-- **Ceremony scripts + skill absorption** — this repo's own recurring
-  session-start/session-end ceremony (tag ceremony, preflight, post-push
-  message verification, close-phase scaffold) moves from prose a
-  session re-reads each time to scripts; checkpoint isolation, red
-  capture, and sweep census absorb into the `build-session` skill
-  alongside them. Chartered by the author's own 2026-08-13 "Both a."
-  ruling, part (b) (`.agents/rulings.md`, "From ADR-0122," R13).
-  **Now front of the queue** (2026-08-13, ADR-0126 close — the citation
-  errata sweep row above is CLOSED). No session run yet.
+  **This disclosure CLOSED 2026-08-13 (ADR-0127):** the channel's own
+  17-site census undercounted (as flagged) — the full re-derived
+  inventory found 238 raw `ADR-NNNN` hits across all 10 files in both
+  `docs/` trees (not the 6 named files alone), classified by
+  content-topic match against all three ADR registers: 106 sim-era
+  sites (numbers `ADR-0001`–`ADR-0013`) origin-qualified to
+  `sim/ADR-NNNN` targeting `notes/sim/ADRs.md`, including fixing 8
+  markdown-link citations whose own `../notes/ADRs.md` href was
+  independently broken (one directory level too shallow) and pointed
+  at the wrong register besides; 132 workspace-current sites (GMF
+  coverage waves, vendoring/injuries/player-fold arcs, `ADR-0026`
+  upward) spot-checked and correctly left bare. Full table in
+  `notes/adr/0127-ceremony-scripts-sim-identity-sweep.md`.
+- **Ceremony scripts + skill absorption — CLOSED 2026-08-13
+  (ADR-0127).** This repo's own recurring session-start/session-end
+  ceremony (tag ceremony, preflight, post-push message verification,
+  close-phase scaffold) moved from prose a session re-reads each time
+  to four `bin/` scripts (`bin/preflight`, `bin/tag-ceremony`, `bin/
+  post-push-verify`, `bin/close-scaffold`); checkpoint isolation, red
+  capture, and sweep census absorbed into the `build-session` skill
+  (and its `.claude/` mirror) alongside them, the ceremony's own
+  mechanical steps rewritten to invoke the four scripts by name.
+  Chartered by the author's own 2026-08-13 "Both a." ruling, part (b)
+  (`.agents/rulings.md`, "From ADR-0122," R13). All four scripts
+  smoke-tested with real invocations; `bin/preflight`'s own smoke test
+  caught and fixed a real bash `read`/IFS-collapsing bug (an
+  in-progress CI run briefly mislabeled RED) before it shipped,
+  independently hit and fixed the same way in `bin/post-push-verify`.
+  Full account in `notes/adr/0127-ceremony-scripts-sim-identity-
+  sweep.md`.
 - **Manual-review run 1, dimension 1 (strip executability) — FAIL,
   open** (2026-08-13, ADR-0125, `.agents/plans/2026-08-13-manual-review-1.md`):
   Chapters 6, 7, and 2 of 3 strips in Chapter 8 cite a

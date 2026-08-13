@@ -1127,3 +1127,43 @@ driving prompt)
 - **Standing from ADR-0125, restated, unchanged**: dimension-1 (strip
   executability) stays OPEN — not touched this session, no
   exerciser/lint mechanism edited.
+
+## From ADR-0127 (ceremony scripts, build-session skill absorption,
+sim-identity citation sweep; ruled 2026-08-13, all rulings restated
+verbatim from this session's own driving prompt, citing their own
+originating ADRs)
+
+- **R13 charter, restated** [A, 2026-08-13, "Both a." part (b),
+  originally ruled ADR-0122]: *"this repo's own recurring
+  session-start/session-end ceremony — tag ceremony, preflight
+  (last-five-CI-runs check, edit-root confirmation), post-push message
+  verification, and the close-phase scaffold (self-archive, session
+  record, prompt archive, index bump) — moves from prose a session
+  re-reads each time to scripts, with checkpoint isolation, red
+  capture, and sweep census absorbed into the build-session skill
+  alongside them."* Executed this session: `bin/preflight`, `bin/
+  tag-ceremony`, `bin/post-push-verify`, `bin/close-scaffold`; the
+  three named practices absorbed into `build-session/SKILL.md`.
+- **Sim-identity sweep folded in** [A, 2026-08-13, "Fold it in."]: the
+  sim-identity citation sweep ADR-0126 disclosed but did not fix
+  (out of that session's own touch fence) lands in this same session
+  alongside the ceremony-scripts work, rather than as a separate future
+  session.
+- **Script granularity** [A, 2026-08-13, "Q1 a."]: four one-purpose
+  scripts — `bin/preflight`, `bin/tag-ceremony`, `bin/post-push-verify`,
+  `bin/close-scaffold` — matching this repo's own existing `bin/`
+  one-purpose style (`bin/regression-oracle`, `bin/check-palgebra-
+  drift`, etc.), never one combined ceremony script.
+- **Sweep scope** [A, 2026-08-13, "Q2 b."]: ALL bare `ADR-NNNN` across
+  the sim-doc file set, classified and qualified in one pass — not
+  `ADR-0010` alone, the channel's own narrower census. Executed: 238
+  raw hits across 10 files, 106 sim-era sites fixed, 132
+  workspace-current sites correctly left bare (ADR-0127's own full
+  inventory table).
+- **Tag license, executed** [A, 2026-08-13, restated from the design
+  channel's own fresh-clone CI verification of the ADR-0126 landing —
+  three commits, ASCII, lineage, CI green on all three]: tag
+  `stable-20260813-citation-sweep` at `04ad5af`, instructed at this
+  session's own Step 0; created, pushed, and peeled-ref-verified this
+  session (self-corrected after being initially missed — see
+  `notes/adr/0127-*.md`'s own Step 0 section for the disclosure).
