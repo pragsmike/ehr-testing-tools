@@ -1044,3 +1044,65 @@ follows-it-in-time` violation; the author ruled, verbatim, 2026-08-13:
   RED before the fix and GREEN after, alongside a green re-run of the
   full defspec at both recorded failing seeds
   (`1786589996178`/`1786617342587`), 150 trials each.
+
+## From ADR-0125 (user manual S5: chapter 8, the manual-review skill,
+arc close; ruled 2026-08-13)
+
+- **Tag ceremony, both licenses recorded [C, per this session's own
+  driving prompt]:** `stable-20260813-invariant-fix` (ANNOTATED, at
+  `da72533`, case (i): the ADR-0123 verification, channel, 2026-08-13,
+  plus CI long since green) repays ADR-0124's own skipped Step 0 tag
+  ceremony — see the deviation record below.
+  `stable-20260813-manual-s4` (ANNOTATED, at `a453fe1`, case (i):
+  channel fresh-clone verification 2026-08-13, lineage/ASCII x3/zero
+  `src`, CI per this session's own preflight) covers ADR-0124's own
+  close point, the tag its own session should have created for itself.
+  Both pushed, both peeled refs confirmed exact.
+- **The S4 deviation record [C, channel-found, owned to the S4
+  session]:** ADR-0124 (manual S4, 2026-08-13) never created a
+  `stable-*` tag at its own Step 0, an undisclosed deviation from the
+  standing tag law (`notes/ADRs.md` ADR-0057 AR-T-1, restated
+  `AGENTS.md` — "deferring a licensed tag is now the deviation and
+  needs a disclosed reason") — `notes/adr/0124-manual-s4-mutate-and-
+  gate.md`'s own "Tag ceremony" section records checking CI and the
+  lineage premise, but no tag creation follows, and no deviation is
+  disclosed anywhere in that file. Found by this session's own channel
+  verification of the ADR-0124 record against the live tag list
+  (`git tag -l`), 2026-08-13. Repaid, not merely noted: this session
+  creates the tag S4 should have created for its own predecessor point
+  (`da72533`, case (i) per the license above) as well as its own.
+- **The review-1 verdict [A, this session's own STOP-AND-REPORT,
+  ruled 2026-08-13]:** the `manual-review` skill's own first scored run
+  (`.agents/plans/2026-08-13-manual-review-1.md`) came back **FAIL**
+  overall — dimension 1 (strip executability) and dimension 4 (glossary
+  linkage) both fail on real, repeat-pattern evidence across multiple
+  chapters, quoted in full in that report and in the roadmap's own
+  "User manual design pass" entry. Per the driving prompt's own gate
+  ("a fail-grade finding STOPs for a ruling before arc close is
+  declared") and this skill's own review discipline, the session
+  stopped after landing the report and asked the author how to
+  proceed. The author ruled: close the arc now, land both findings as
+  open backlog rows for a future fix session — no chapter edited, no
+  mechanism widened, this session. Recorded here as the disposition
+  this session actually took; the roadmap's own two new rows are the
+  findings themselves.
+- **The citation errata sweep charter [A, ruled 2026-08-13, author
+  verbatim "a, go"]:** the design channel proposed chartering a future
+  docs-only session to origin-qualify the bare, pre-existing `ADR-0010`
+  citation drift ADR-0124 disclosed (a repo-wide misattribution — the
+  real `notes/adr/0010-documentation-doctrine.md` does not discuss
+  verdicts — used throughout `docs/judge-calibration.md`,
+  `docs/formats.md`, `docs/glossary.md`, every `docs/use-cases/*.md`
+  gate page, `components/judge/` sources/tests, and confirmed this
+  session in `docs/manual/07-judging.md`), per the `ADR-0099` rule form
+  (a scoped, whole-subtree, one-session sweep) and `notes/ADRs.md`'s own
+  fix-forward doctrine. The author ruled "a, go" — chartering the sweep
+  as proposed; not executed this session (docs/registers-only fence, and
+  the sweep is itself its own future session's work). The specific
+  multiple-choice question text this answer responds to was not
+  preserved verbatim into this session's own written context — this
+  entry records the ruling's own literal text and the charter it
+  produced, disclosed as a paraphrase of the question rather than a
+  transcript of it, the same disclosure class ADR-0111's own "mutation
+  as imperfect transport" entry used. Roadmap row: "Citation errata
+  sweep," Next section.

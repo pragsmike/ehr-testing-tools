@@ -241,13 +241,101 @@ per item; done items move to the bottom of their section with a date and sha.
   session's own fence), flagged for the author and a future
   errata-sweep session. Zero `src`/`test`/`demos` touched anywhere, the
   oracle holds pure identity across all 35 roots.
-  **S5 chartered, next:** Chapter 8, the manual-review skill, and
-  the manual arc's own close.
+  **S5 LANDED 2026-08-13 (ADR-0125): the manual arc is CLOSED — see
+  Done, below.** Chapter 8 (`docs/manual/08-your-own-data.md` —
+  cataloging a corpus you didn't generate, content hashes and lineage,
+  the received-date as real-world provenance; checking against
+  expectations, golden equivalence and the per-file assertion
+  vocabulary; baselining a repeatedly-gated corpus; closing pointers
+  into `formats.md`/`locators.md` for the data-consumer path) landed
+  first; `00-front.md` updated to state the manual complete and name
+  Chapter 8's own landing commit as the manual's own currency commit.
+  The `manual-review` skill (`.agents/skills/manual-review/SKILL.md`,
+  chartered `.agents/rulings.md` "From ADR-0113" R5) landed second, plus
+  its own first scored run
+  (`.agents/plans/2026-08-13-manual-review-1.md`): eight dimensions,
+  each graded pass/warn/fail with `file:line` evidence — **overall
+  verdict FAIL.** Two dimensions failed on real, repeat-pattern
+  evidence, not edge cases: **strip executability** (Chapters 6, 7, and
+  2 of 3 strips in the just-landed Chapter 8 cite a
+  `docs/use-cases/*.md` page or README's own separate "What you get"
+  fence, neither covered by the demo exerciser or `quickstart-fresh` —
+  nothing mechanical catches these going stale between sessions); and
+  **glossary linkage** (only Chapters 2 and 8 link `glossary.md` on
+  first use of a defined term — Chapter 3 uses "Pathway" and "script
+  space"/"truth space," the exact colliding-meaning terms the glossary's
+  own front matter calls "the single most common way to misread a page
+  here," with zero link to it anywhere in the chapter). Both findings
+  are register rows, not fixes, per the skill's own review discipline —
+  see the two new Next-section rows below. Author-ruled disposition,
+  2026-08-13: close the arc now, land both findings as open backlog
+  rows for a future fix session, per this session's own STOP-AND-REPORT
+  and the author's own choice among the offered dispositions.
   **SETUP.md's unspoiled-human-reader rewalk (Externals, "SETUP rewalk
   by an unspoiled human reader") widens to cover Chapters 1-2 as well**
   — both narrate SETUP.md's own steps, so the same author-only rewalk
   errand now smoke-tests all three together; still in the author's own
   queue, not executed this session.
+- **Citation errata sweep — origin-qualify the bare frozen-era
+  verdict-family citations** (chartered 2026-08-13, ADR-0125, author
+  ruling verbatim "a, go"): `ADR-0124`'s own disclosed finding — the
+  bare, unqualified `ADR-0010` citation used throughout
+  `docs/judge-calibration.md`, `docs/formats.md`, `docs/glossary.md`,
+  every `docs/use-cases/*.md` gate page, every `components/judge/`
+  source/test file, and (confirmed this session) `docs/manual/07-judging.md`'s
+  own figure-source comment and calibration section, for the
+  four-arm verdict design (`:pass`/`:rejected`/`:indeterminate`/
+  `:no-verdict`, the `worst-of` ranking) — is a pre-existing,
+  repo-wide citation drift: `notes/adr/0010-documentation-doctrine.md`
+  is titled "Documentation doctrine" and does not discuss verdicts at
+  all. `notes/ADRs.md`'s own citation rule (top of file, "added
+  2026-07-30") already states the fix-forward doctrine this sweep
+  applies: trace where the real verdict-design content actually lives,
+  origin-qualify or correct every citation site at once, in a single
+  docs-only session, per the `ADR-0099` rule form (a scoped,
+  whole-subtree, one-session sweep, not split or left partial).
+  Docs-only; zero `src`/`test` touched. Not executed this session
+  (chartering only). Revisit trigger: the next available docs-only
+  session.
+- **Ceremony scripts + skill absorption** — this repo's own recurring
+  session-start/session-end ceremony (tag ceremony, preflight, post-push
+  message verification, close-phase scaffold) moves from prose a
+  session re-reads each time to scripts; checkpoint isolation, red
+  capture, and sweep census absorb into the `build-session` skill
+  alongside them. Chartered by the author's own 2026-08-13 "Both a."
+  ruling, part (b) (`.agents/rulings.md`, "From ADR-0122," R13).
+  **Scheduled next after the citation errata sweep row above**
+  (2026-08-13, ADR-0125 close — both rows were post-manual-arc by their
+  own original charter; the sweep is docs-only and smaller, so it runs
+  first). No session run yet.
+- **Manual-review run 1, dimension 1 (strip executability) — FAIL,
+  open** (2026-08-13, ADR-0125, `.agents/plans/2026-08-13-manual-review-1.md`):
+  Chapters 6, 7, and 2 of 3 strips in Chapter 8 cite a
+  `docs/use-cases/*.md` page or README's own separate "What you get"
+  fence — neither covered by `bin/demo-exerciser-ed-tuesday` /
+  `ehrt.docs-tooling.demo-exerciser-fresh` nor by `bin/quickstart-demo` /
+  `ehrt.docs-tooling.quickstart-fresh-test`. Nothing mechanical re-runs
+  these strips between sessions; only a session that happens to touch
+  that chapter re-witnesses them by hand. Findings-only per review
+  discipline — no chapter edited, no mechanism widened, this session.
+  Revisit trigger: a future session that either (a) extends the
+  exerciser/lint mechanism to cover `docs/use-cases/*.md` pages and
+  README's second fence, or (b) rules that per-session manual
+  re-witnessing is the accepted permanent policy and this dimension's
+  own bar in `.agents/skills/manual-review/SKILL.md` should narrow to
+  match — a genuine design choice for the author, not mechanical
+  follow-through.
+- **Manual-review run 1, dimension 4 (glossary linkage) — FAIL, open**
+  (2026-08-13, ADR-0125, `.agents/plans/2026-08-13-manual-review-1.md`):
+  only Chapters 2 and 8 link `docs/glossary.md` on first use of a
+  glossary-defined term; Chapters 1, 3, 4, 5, 6, 7 use glossary-defined
+  terms (including, in Chapter 3, the two colliding-meaning terms
+  "Pathway" and "script space"/"truth space" the glossary's own front
+  matter names as this workspace's single most common misreading) with
+  zero glossary link anywhere. Findings-only per review discipline — no
+  chapter edited this session. Revisit trigger: a future session willing
+  to sweep Chapters 1, 3-7 adding glossary links at each first use,
+  mirroring Chapter 2's and Chapter 8's own existing pattern.
 - **Positive-seed invariant violation, `ehrt.sim-engine.engine-test`'s
   `mixed-authored-and-compiled-run-satisfies-the-full-invariant-
   catalog`** — surfaced in ADR-0121's own pre-commit-1 `make test` at
@@ -268,14 +356,6 @@ per item; done items move to the bottom of their section with a date and sha.
   green, the positive control still green, the oracle held pure
   identity across all 35 roots (confirmed by an actual
   `bin/regression-oracle` run).
-- **Ceremony scripts + skill absorption** — this repo's own recurring
-  session-start/session-end ceremony (tag ceremony, preflight, post-push
-  message verification, close-phase scaffold) moves from prose a
-  session re-reads each time to scripts; checkpoint isolation, red
-  capture, and sweep census absorb into the `build-session` skill
-  alongside them. Chartered by the author's own 2026-08-13 "Both a."
-  ruling, part (b) (`.agents/rulings.md`, "From ADR-0122," R13).
-  Scheduled post-manual-arc (after S4/S5 land), no session run yet.
 - **Review-3, user-surface scope** (ADR-0113 R5; charter set 2026-08-12,
   **findings landed 2026-08-12, ADR-0114** —
   `.agents/plans/2026-08-12-review-3-user-surface-findings.md`, 48
@@ -965,3 +1045,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-13 — positive-seed-invariant-violation-diagnosis — ADR-0122
 - 2026-08-13 — medication-end-pre-horizon-invariant-fix — ADR-0123
 - 2026-08-13 — manual-s4-mutate-and-gate — ADR-0124
+- 2026-08-13 — manual-s5-chapter8-review-close — ADR-0125
