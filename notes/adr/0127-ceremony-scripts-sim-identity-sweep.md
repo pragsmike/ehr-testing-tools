@@ -318,3 +318,22 @@ event that doctrine names, carried into the repo by ADR-0128's own
 driving prompt, which reproduces the witnessing transcript verbatim as
 its own evidence carrier rather than asserting the near-miss without
 one.
+
+**Erratum, dated 2026-08-13 (ADR-0129).** Step 3's own reading-set
+budget table above states `:sim` measured `1170/1295`, "none needing a
+bump." That figure was arithmetically wrong when it was recorded. The
+five `:sim` paths at this session's own closing commit (`21114e3`)
+already summed to 1293 lines, not 1170 -- a 123-line undercount that
+happened not to trip the gate at the time (1293 still cleared the
+1295-line budget then in force) and so went uncorrected. The error
+surfaced only when ADR-0128's own +5-line tripwire edit to
+`build-session/SKILL.md` pushed `:sim`'s real total to 1298, tripping
+`reading-set-budget-test` for real; re-deriving the number at that
+point found the 1170 baseline itself was already off. `:sim`'s budget
+was re-derived from the corrected actual (1298, per the file's own
+standing formula, actual x1.15 rounded up to the nearest 5) to 1495 --
+recorded in `.agents/reading-sets.edn`'s own dated re-derivation
+comment and in ADR-0128 (`0128-agent-facing-hardening-2.md`), not
+repeated here. This erratum exists so a reader of this record's own
+Step 3 section does not carry the wrong 1170 figure forward without
+also seeing the correction.
