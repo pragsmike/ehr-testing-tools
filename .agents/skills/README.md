@@ -24,6 +24,11 @@ own `SKILL.md` for the full trigger conditions and workflow.
   install agent skills when asked "is there a skill for X."
 - **[`handoff/`](handoff/SKILL.md)** — generates a session handoff
   document for a successor agent, archiving the previous one.
+- **[`manual-review/`](manual-review/SKILL.md)** — scores `docs/manual/`
+  against an eight-dimension rubric (strip executability, reference
+  duplication, anchor stability, glossary linkage, running-example
+  continuity, maturity honesty, cli.md currency, diagram-source
+  presence), landed as a dated report.
 - **[`probe/`](probe/SKILL.md)** — runs the fan→funnel pipeline N times
   over one situation to map the decision landscape's stable vs.
   variable structure.
