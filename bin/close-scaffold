@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+# Close-phase scaffold (R13, ADR-0122 "Both a." part (b); ADR-0127):
+# generates the session-record + prompt-archive filename pair (R-A,
+# build-session SKILL.md step 11) AND both directories' own README
+# index lines -- the two-sided requirement
+# `ehrt.docs-tooling.index-completeness-test` and
+# `ehrt.docs-tooling.prompt-record-pairing-test` both gate -- instead
+# of a session hand-remembering both edits (the index-completeness
+# late catch `notes/adr/0126-*.md` named as its own second lesson,
+# now anticipated here rather than rediscovered).
+#
+# Usage: bin/close-scaffold <YYYY-MM-DD> <slug> <one-line description>
+#
+# Creates (only if missing -- an existing file is left untouched,
+# never overwritten with a stub):
+#   .agents/session-records/<date>-<slug>.md
+#   .agents/prompts/<date>-<slug>.md
+# and appends a star-bullet index line (only if not already present)
+# to each directory's own README.md. Idempotent: safe to re-run with
+# the same arguments. Touches nothing outside .agents/.
+set -uo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)" || exit 2
+cd -- "$repo_root" || exit 2
+
+usage() {
+  cat <<'EOF'
+Usage: bin/close-scaffold <YYYY-MM-DD> <slug> <one-line description>
+
+Scaffolds .agents/session-records/<date>-<slug>.md and
+.agents/prompts/<date>-<slug>.md (creating only whichever is missing),
+plus a star-bullet README index line for each in their own
+directory's README.md (added only if not already present). Idempotent:
+safe to re-run with the same arguments. Touches nothing outside
+.agents/.
+
+Example:
+  bin/close-scaffold 2026-08-13 ceremony-scripts "Ceremony scripts and sim-identity sweep"
+EOF
+}
+
+if [ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ]; then
+  usage
+  exit 0
+fi
+
+if [ $# -lt 3 ]; then
+  usage >&2
+  exit 2
+fi
+
+date="$1"; slug="$2"; shift 2
+description="$*"
+
+if ! [[ "$date" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+  echo "FAIL: date '$date' does not match YYYY-MM-DD" >&2
+  exit 2
+fi
+if ! [[ "$slug" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
+  echo "FAIL: slug '$slug' must be lowercase-kebab-case" >&2
+  exit 2
+fi
+if [ -z "$description" ]; then
+  echo "FAIL: a one-line description is required" >&2
+  exit 2
+fi
+
+filename="${date}-${slug}.md"
+record_path=".agents/session-records/${filename}"
+prompt_path=".agents/prompts/${filename}"
+record_readme=".agents/session-records/README.md"
+prompt_readme=".agents/prompts/README.md"
+
+create_stub() {
+  local path="$1" kind="$2"
+  if [ -f "$path" ]; then
+    echo "SKIP: $path already exists, left untouched"
+    return
+  fi
+  case "$kind" in
+    record)
+      printf '# %s -- %s\n\n(session record body TODO)\n' "$date" "$description" > "$path"
+      ;;
+    prompt)
+      printf '# Archived prompt: %s (%s)\n\n(prompt text TODO)\n' "$slug" "$date" > "$path"
+      ;;
+  esac
+  echo "CREATED: $path"
+}
+
+add_index_line() {
+  local readme="$1"
+  local line="  * ${filename} — ${description}"
+  if grep -qF "* ${filename}" "$readme"; then
+    echo "SKIP: $readme already indexes ${filename}"
+    return
+  fi
+  printf '%s\n' "$line" >> "$readme"
+  echo "UPDATED: $readme"
+}
+
+create_stub "$record_path" record
+create_stub "$prompt_path" prompt
+add_index_line "$record_readme"
+add_index_line "$prompt_readme"
+
+echo "OK: ${filename} scaffolded in .agents/session-records/ and .agents/prompts/"
+exit 0

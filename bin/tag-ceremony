@@ -1,0 +1,133 @@
+#!/usr/bin/env bash
+# Tag ceremony (R13, ADR-0122 "Both a." part (b); ADR-0127): the
+# stable-* continuity-tag mechanics build-session SKILL.md step 8 and
+# `notes/ADRs.md` ADR-0057 (tag law, AR-T-1) state in prose, as one
+# script. A session creates and pushes a stable-* tag under license
+# (a specific tag at a specific commit its own prompt names, or its
+# predecessor's design-channel-verified point) -- this script performs
+# the mechanics; the license itself is still the session's own to have
+# before it runs this.
+#
+# Usage:
+#   bin/tag-ceremony <tag-name> <target-sha> <message-file> [--push]
+#
+# <tag-name> must match stable-YYYYMMDD-<slug>, ASCII only (the
+# ADR-0120 slug-drift class this repo's own tag history has already
+# hit once). <message-file> is a path to the annotated tag message
+# (never an inline string -- same file-not-heredoc discipline the
+# build-session skill uses for commit messages, step 6).
+#
+# Without --push, the tag is created locally only. With --push, it is
+# pushed, and this script ALWAYS finishes by verifying the peeled ref
+# on the remote matches <target-sha> exactly (the ADR-0124 skipped-tag
+# class -- the verify half is not optional). A tag already present at
+# the exact commit and message is verified and disclosed, never
+# re-created (tag law, AR-T-1).
+set -uo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)" || exit 2
+cd -- "$repo_root" || exit 2
+
+usage() {
+  cat <<'EOF'
+Usage: bin/tag-ceremony <tag-name> <target-sha> <message-file> [--push]
+
+Validates <tag-name> against stable-YYYYMMDD-<slug> (ASCII-only),
+creates it as an ANNOTATED tag at <target-sha> with the message read
+from <message-file>, and -- with --push -- pushes it and verifies the
+peeled ref on the remote matches <target-sha> exactly. Without --push,
+the tag is created locally only (never pushed).
+
+A tag already present at the exact commit and message is verified and
+disclosed, never re-created.
+EOF
+}
+
+if [ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ]; then
+  usage
+  exit 0
+fi
+
+if [ $# -lt 3 ]; then
+  usage >&2
+  exit 2
+fi
+
+tag_name="$1"
+target_sha="$2"
+message_file="$3"
+shift 3
+
+do_push=0
+for arg in "$@"; do
+  case "$arg" in
+    --push) do_push=1 ;;
+    *) echo "FAIL: unknown argument '$arg'" >&2; usage >&2; exit 2 ;;
+  esac
+done
+
+# --- Validate tag-name shape: stable-YYYYMMDD-<slug>, ASCII only -------
+if ! [[ "$tag_name" =~ ^stable-[0-9]{8}-[a-z0-9]+(-[a-z0-9]+)*$ ]]; then
+  echo "FAIL: tag name '$tag_name' does not match stable-YYYYMMDD-<slug> (lowercase-kebab slug)" >&2
+  exit 2
+fi
+if LC_ALL=C grep -qP '[^ -~]' <<< "$tag_name"; then
+  echo "FAIL: tag name '$tag_name' contains non-ASCII characters (ADR-0120 slug-drift class)" >&2
+  exit 2
+fi
+
+if [ ! -f "$message_file" ]; then
+  echo "FAIL: message file '$message_file' does not exist" >&2
+  exit 2
+fi
+if LC_ALL=C grep -qP '[^ -~\n]' "$message_file"; then
+  echo "FAIL: message file '$message_file' contains non-ASCII characters" >&2
+  exit 2
+fi
+
+# --- Resolve target sha --------------------------------------------------
+resolved_sha="$(git rev-parse --verify "${target_sha}^{commit}" 2>&1)" || {
+  echo "FAIL: target-sha '$target_sha' does not resolve to a commit: $resolved_sha" >&2
+  exit 2
+}
+
+# --- A tag already present at the exact commit+message is verified, not re-created --
+if git rev-parse -q --verify "refs/tags/$tag_name" >/dev/null; then
+  existing_sha="$(git rev-list -n1 "$tag_name")"
+  existing_msg="$(git for-each-ref "refs/tags/$tag_name" --format='%(contents)')"
+  wanted_msg="$(cat "$message_file")"
+  if [ "$existing_sha" = "$resolved_sha" ] && [ "$existing_msg" = "$wanted_msg" ]; then
+    echo "DISCLOSED: tag '$tag_name' already exists at $resolved_sha with the exact message -- verified, not re-created"
+  else
+    echo "FAIL: tag '$tag_name' already exists but at a different commit ($existing_sha) or message -- never overwritten by this script" >&2
+    exit 1
+  fi
+else
+  if ! git tag -a "$tag_name" "$resolved_sha" -F "$message_file"; then
+    echo "FAIL: git tag -a failed" >&2
+    exit 1
+  fi
+  echo "OK: created annotated tag '$tag_name' at $resolved_sha"
+fi
+
+if [ "$do_push" -eq 0 ]; then
+  echo "OK: tag created locally only (no --push given)"
+  exit 0
+fi
+
+if ! git push origin "refs/tags/$tag_name"; then
+  echo "FAIL: git push origin refs/tags/$tag_name failed" >&2
+  exit 1
+fi
+echo "OK: pushed refs/tags/$tag_name"
+
+# --- ALWAYS verify the peeled ref on the remote (ADR-0124's own skipped-tag class) --
+remote_line="$(git ls-remote --tags origin "refs/tags/$tag_name" "refs/tags/$tag_name^{}" | tail -1)"
+peeled_sha="$(awk '{print $1}' <<< "$remote_line")"
+if [ "$peeled_sha" = "$resolved_sha" ]; then
+  echo "OK: remote peeled ref for '$tag_name' is $peeled_sha, matches target exactly"
+  exit 0
+else
+  echo "FAIL: remote peeled ref for '$tag_name' is '$peeled_sha', expected '$resolved_sha' -- tag anomaly, STOP-AND-REPORT" >&2
+  exit 1
+fi

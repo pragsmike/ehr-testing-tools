@@ -1,0 +1,162 @@
+#!/usr/bin/env bash
+# Session-start preflight (R13, ADR-0122 "Both a." part (b);
+# ADR-0127): the checks a build session's own driving prompt used to
+# re-read from prose each time -- build-session SKILL.md's own "Done
+# when" list -- as one deterministic, re-runnable script. Read-only:
+# reports findings, never fixes them, never pushes, never mutates the
+# working tree.
+#
+# Five checks, each printed as its own labeled section:
+#   1. Last five CI runs on the given branch (green/red each) --
+#      widened past "just the latest" per quality riders AR-QR-3
+#      (`notes/ADRs.md` ADR-0075): a probabilistic red hides behind
+#      any single green.
+#   2. Edit-root confirmation -- the ext4 clone, never a Windows-
+#      mounted /mnt/* checkout (the retired /mnt/c hazard class,
+#      `notes/ADRs.md` ADR-0047 AR-C-3; a fresh instance elsewhere is a
+#      NEW regression per that ruling, not routine vigilance).
+#   3. Tree-clean check, counting untracked files too (`git status
+#      --porcelain=v1 --untracked-files=all` -- the tree-clean
+#      false-positive class a porcelain call without --untracked=all
+#      would miss).
+#   4. HEAD-vs-remote tip match (`git fetch`, then compare).
+#   5. Last stable-* tag, and whether HEAD is tagged.
+#
+# Usage: bin/preflight [--branch BRANCH]
+#
+# Exit 0 always -- this is a report, not a gate; a finding here is
+# disclosed for the session to act on, never silently passed and never
+# blocking by itself (AR-CI-3's own "disclosed, never silently passed"
+# shape, extended to every check here, not CI alone).
+set -uo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)" || exit 2
+cd -- "$repo_root" || exit 2
+
+usage() {
+  cat <<'EOF'
+Usage: bin/preflight [--branch BRANCH]
+
+Session-start preflight: last-five-CI-runs check, edit-root
+confirmation, tree-clean check (untracked included), HEAD-vs-remote
+tip match, and the last stable-* tag / whether HEAD is tagged.
+Read-only, deterministic, no network beyond git/gh, never pushes.
+
+  --branch BRANCH   Branch to check CI runs and remote tip against
+                     (default: main)
+EOF
+}
+
+branch="main"
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --help|-h) usage; exit 0 ;;
+    --branch) branch="${2:?--branch requires a value}"; shift 2 ;;
+    *) echo "FAIL: unknown argument '$1'" >&2; usage >&2; exit 2 ;;
+  esac
+done
+
+echo "== bin/preflight ($branch) =="
+echo
+
+# --- 1. Last five CI runs -----------------------------------------------
+echo "-- 1. Last five CI runs on $branch --"
+if ! command -v gh >/dev/null 2>&1; then
+  echo "SKIP: gh not on PATH -- cannot check CI runs"
+else
+  # Fields joined with \x1f (unit separator), not @tsv/tab: bash `read`
+  # treats tab as IFS-whitespace and silently COLLAPSES adjacent
+  # delimiters, dropping empty fields (e.g. an in-progress run's empty
+  # .conclusion) and misaligning every field after it -- caught live,
+  # smoke-testing this script, before this comment existed.
+  runs_out="$(gh run list --limit 5 --branch "$branch" --json conclusion,status,displayTitle,headSha,createdAt \
+    --jq '.[] | [.status, .conclusion, (.headSha[0:8]), .createdAt, .displayTitle] | join("")' 2>&1)" || {
+    echo "FAIL: gh run list failed:"
+    echo "$runs_out"
+    runs_out=""
+  }
+  any_red=0
+  any_pending=0
+  if [ -n "$runs_out" ]; then
+    while IFS=$'\x1f' read -r status conclusion sha created title; do
+      [ -z "$status" ] && continue
+      if [ "$status" != "completed" ]; then
+        mark="PENDING"
+        any_pending=1
+      elif [ "$conclusion" = "success" ]; then
+        mark="green"
+      else
+        mark="RED"
+        any_red=1
+      fi
+      echo "  $mark  $sha  $created  $title"
+    done <<< "$runs_out"
+  fi
+  if [ "$any_red" -eq 1 ]; then
+    echo "FINDING: a red (completed, non-success) run appears among the last five -- report before proceeding, never silently pass"
+  elif [ "$any_pending" -eq 1 ]; then
+    echo "DISCLOSED: a run among the last five is still in progress -- not awaited to conclusion (AR-CI-4), not counted as red"
+  else
+    echo "OK: last five runs all green (or none found)"
+  fi
+fi
+echo
+
+# --- 2. Edit-root confirmation ------------------------------------------
+echo "-- 2. Edit-root confirmation --"
+case "$repo_root" in
+  /mnt/*)
+    echo "FAIL: repo root '$repo_root' is under /mnt/ -- a Windows-mounted checkout; the ext4 clone is the only clone of record (ADR-0047 AR-C-3). STOP-AND-REPORT: this is a NEW regression, not a known hazard."
+    ;;
+  *)
+    echo "OK: repo root '$repo_root' is not under /mnt/"
+    ;;
+esac
+echo
+
+# --- 3. Tree-clean check (untracked included) ---------------------------
+echo "-- 3. Tree-clean check (untracked included) --"
+dirty="$(git status --porcelain=v1 --untracked-files=all)"
+if [ -n "$dirty" ]; then
+  echo "FINDING: working tree is not clean (untracked files counted):"
+  echo "$dirty" | sed 's/^/  /'
+else
+  echo "OK: working tree clean, including untracked files"
+fi
+echo
+
+# --- 4. HEAD-vs-remote tip match ----------------------------------------
+echo "-- 4. HEAD-vs-remote tip match --"
+local_head="$(git rev-parse HEAD)"
+if git fetch origin "$branch" --quiet 2>/tmp/preflight-fetch-err.$$; then
+  remote_head="$(git rev-parse "origin/$branch")"
+  if [ "$local_head" = "$remote_head" ]; then
+    echo "OK: local HEAD ($local_head) matches origin/$branch"
+  else
+    echo "FINDING: local HEAD ($local_head) differs from origin/$branch ($remote_head)"
+  fi
+else
+  echo "FAIL: git fetch origin $branch failed:"
+  sed 's/^/  /' /tmp/preflight-fetch-err.$$
+fi
+rm -f /tmp/preflight-fetch-err.$$
+echo
+
+# --- 5. Last stable-* tag / HEAD tagged? ---------------------------------
+echo "-- 5. Last stable-* tag / HEAD tagged? --"
+last_stable="$(git tag -l 'stable-*' --sort=-creatordate | head -1)"
+if [ -z "$last_stable" ]; then
+  echo "FINDING: no stable-* tag found in this checkout"
+else
+  echo "Last stable-* tag: $last_stable ($(git rev-list -n1 "$last_stable"))"
+fi
+head_tags="$(git tag --points-at HEAD | grep '^stable-' || true)"
+if [ -n "$head_tags" ]; then
+  echo "OK: HEAD is tagged: $head_tags"
+else
+  echo "DISCLOSED: HEAD is not currently tagged stable-*"
+fi
+
+echo
+echo "== bin/preflight complete =="
+exit 0

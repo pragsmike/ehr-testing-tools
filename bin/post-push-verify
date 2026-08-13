@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+# Post-push verification (R13, ADR-0122 "Both a." part (b); ADR-0127):
+# the build-session skill's own step 7 (message verification) plus
+# AR-RL2-5's own added ASCII line (`notes/ADRs.md` ADR-0092 H-6) and a
+# one-shot CI-status report, as one script -- run immediately after a
+# `git push`, never before.
+#
+# Usage: bin/post-push-verify [<base-sha>] [<tip-sha>]
+#
+#   <base-sha>  Start of the pushed range, exclusive (default: the
+#               range's own merge-base with origin/<branch> before
+#               this call -- in practice, pass the sha that was
+#               origin's tip immediately before your push).
+#   <tip-sha>   End of the pushed range, inclusive (default: HEAD).
+#
+# Three checks:
+#   1. Remote tip == local HEAD (the branch actually landed what this
+#      checkout has).
+#   2. Per-commit ASCII check over the pushed range (<base-sha>..<tip-
+#      sha>) -- `git log --format=%B <range> | LC_ALL=C grep -n
+#      '[^ -~]'`, expected EMPTY (AR-RL2-5, standing ceremony
+#      boilerplate, no new repo test).
+#   3. The CI run triggered for <tip-sha> -- polled ONCE, printed,
+#      never waited on to conclusion (AR-CI-4's own reservation: watch-
+#      to-conclusion is for a session whose own claim is about CI).
+#
+# Read-only besides the one `git fetch`; never pushes.
+set -uo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)" || exit 2
+cd -- "$repo_root" || exit 2
+
+usage() {
+  cat <<'EOF'
+Usage: bin/post-push-verify [<base-sha>] [<tip-sha>]
+
+Verifies a push just landed correctly: remote tip == local HEAD (or
+<tip-sha>), every commit message in (<base-sha>..<tip-sha>] is pure
+ASCII, and reports (does not wait for) the CI run triggered at the
+tip. <base-sha> defaults to the tip's own first parent (a one-commit
+range); <tip-sha> defaults to HEAD.
+EOF
+}
+
+if [ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ]; then
+  usage
+  exit 0
+fi
+
+tip_sha="${2:-HEAD}"
+tip_sha="$(git rev-parse --verify "${tip_sha}^{commit}")" || { echo "FAIL: bad tip-sha" >&2; exit 2; }
+base_sha="${1:-}"
+if [ -z "$base_sha" ]; then
+  base_sha="$(git rev-parse --verify "${tip_sha}^1" 2>/dev/null || echo "")"
+  if [ -z "$base_sha" ]; then
+    echo "FAIL: could not derive a default base-sha (pass one explicitly)" >&2
+    exit 2
+  fi
+else
+  base_sha="$(git rev-parse --verify "${base_sha}^{commit}")" || { echo "FAIL: bad base-sha" >&2; exit 2; }
+fi
+
+branch="$(git rev-parse --abbrev-ref HEAD)"
+
+echo "== bin/post-push-verify ($branch, range ${base_sha:0:8}..${tip_sha:0:8}) =="
+echo
+
+# --- 1. Remote tip == local HEAD -----------------------------------------
+echo "-- 1. Remote tip vs HEAD --"
+if ! git fetch origin "$branch" --quiet; then
+  echo "FAIL: git fetch origin $branch failed" >&2
+  exit 1
+fi
+remote_tip="$(git rev-parse "origin/$branch")"
+if [ "$remote_tip" = "$tip_sha" ]; then
+  echo "OK: origin/$branch ($remote_tip) matches tip ($tip_sha)"
+else
+  echo "FAIL: origin/$branch ($remote_tip) does NOT match tip ($tip_sha)" >&2
+  exit 1
+fi
+echo
+
+# --- 2. Per-commit ASCII check over the pushed range ---------------------
+echo "-- 2. Per-commit ASCII check, ${base_sha:0:8}..${tip_sha:0:8} --"
+ascii_hits="$(git log --format=%B "${base_sha}..${tip_sha}" | LC_ALL=C grep -n '[^ -~]' || true)"
+if [ -z "$ascii_hits" ]; then
+  echo "OK: every commit message in range is pure ASCII"
+else
+  echo "FAIL: non-ASCII byte(s) found in commit message range:" >&2
+  echo "$ascii_hits" | sed 's/^/  /' >&2
+  exit 1
+fi
+echo
+
+# --- 3. CI run for the tip, polled once, never awaited -------------------
+echo "-- 3. CI run at tip ($tip_sha) --"
+if ! command -v gh >/dev/null 2>&1; then
+  echo "SKIP: gh not on PATH -- cannot report CI status"
+else
+  # Joined with \x1f (unit separator), not @tsv/tab: bash `read` treats
+  # tab as IFS-whitespace and silently COLLAPSES adjacent delimiters,
+  # dropping an empty field (e.g. an in-progress run's empty
+  # .conclusion) and misaligning every field after it -- the exact bug
+  # bin/preflight's own smoke test caught first.
+  run_line="$(gh run list --branch "$branch" --json headSha,conclusion,status,url \
+    --jq "map(select(.headSha == \"$tip_sha\")) | .[0] | [.status, .conclusion, .url] | join(\"\")" 2>&1)"
+  if [ -z "$run_line" ] || [ "$run_line" = "null" ]; then
+    echo "DISCLOSED: no CI run found yet for $tip_sha (may not have been triggered/indexed yet)"
+  else
+    IFS=$'\x1f' read -r status conclusion url <<< "$run_line"
+    echo "CI run for $tip_sha: status=$status conclusion=${conclusion:-<pending>} $url"
+    echo "DISCLOSED: reported once, not awaited to conclusion (AR-CI-4)"
+  fi
+fi
+
+echo
+echo "== bin/post-push-verify complete =="
+exit 0
