@@ -112,7 +112,8 @@ $
 `BHS|^~\&` opens the batch; `BTS|3` closes it, `BTS-1` naming the true
 count of 3 messages this file actually carries — the minimal,
 deterministic field set the batcher's own design rules for v1: no
-creation-time field populated at all, so the determinism contract
+creation-time field populated at all, so the
+[determinism](../glossary.md) contract
 Chapter 2 proved for the simulator holds here trivially, rather than
 by threading a wall clock through and hoping it doesn't leak into the
 bytes.
@@ -156,7 +157,7 @@ greps for the same MSH-10 control-ID prefixes shown here,
 excerpt is that same check, made visible.)
 
 Notice what actually pushed the discharge into the next batch: it
-isn't that Smith's own encounter ran long. His EVN-2 clinical times —
+isn't that Smith's own [encounter](../glossary.md) ran long. His EVN-2 clinical times —
 admitted `00:06:00Z`, discharged `00:38:00Z` — sit comfortably inside
 one hour, entirely within `batch-000`'s own window. It's the
 discharge message's own sampled transmit delay, Chapter 4's own second

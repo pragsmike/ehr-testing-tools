@@ -16,7 +16,7 @@ Real output, witnessed this session:
 ```
 
 `out/corpus/sim-s1-p1` now holds four real files: `events.edn` (the
-ground-truth log — every admission, transfer, order, and discharge this
+[ground-truth log](../glossary.md) — every admission, transfer, order, and discharge this
 one simulated patient generated), `manifest.edn` (the reproducibility
 record — the seed, the config, everything needed to regenerate this
 exact corpus byte for byte), and two real HL7v2 messages,
@@ -96,7 +96,8 @@ listing is in the source, linked above.) Patient Smith, James
 later, the very next batch. A receiver holding only the first batch has
 a transport-complete, `BTS`-verified file (every message it declares is
 actually present) whose clinical content is nonetheless half there.
-Nobody hand-authoring a test set chooses to split one encounter across
+Nobody hand-authoring a test set chooses to split one
+[encounter](../glossary.md) across
 two separately-valid delivery files on purpose — it takes an actual
 scheduler drawing a batch boundary through the middle of a real
 encounter's own timeline, which only happens when the traffic is

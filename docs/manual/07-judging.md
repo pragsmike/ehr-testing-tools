@@ -1,19 +1,20 @@
 # Chapter 7 — Judging
 
-Chapter 6 broke a file on purpose and watched the gate notice. This
+Chapter 6 broke a file on purpose and watched the [gate](../glossary.md) notice. This
 chapter is about the gate itself — what "notice" actually means, which
 of the three gates you'd reach for, and why a gate sometimes answers
 neither yes nor no. Gating is structurally upstream of anything Chapter
 8 teaches: it asks whether a file conforms to a standard it didn't
 write and doesn't own — HL7 v2, FHIR — never whether the file matches
 *your own* expectations. That second question, checking a file against
-a caller's own expected corpus or assertions, is a different judge with
+a caller's own expected corpus or assertions, is a different
+[judge](../glossary.md) with
 a different job; Chapter 8 is where it lives.
 
 ## Three gates, three different questions
 
 `ehrt gate` dispatches to one of three engines, and they check
-genuinely different things — a clean verdict from one is not a
+genuinely different things — a clean [verdict](../glossary.md) from one is not a
 prediction about another.
 
 **`gate fhir`** runs the real official FHIR validator against the base

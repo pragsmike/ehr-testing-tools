@@ -30,7 +30,7 @@ bin/ehrt corpus generate sim --seed 20260811 --patients 100 \
 
 Witnessed this session: `{:status :ok, :payload {:out-dir
 "out/scenarios/ed-tuesday"}}` — a hundred patients, a real inpatient
-census, real administrative churn, all from one seed and one config
+[census](../glossary.md), real administrative [churn](../glossary.md), all from one seed and one config
 file. Play it back with `--board` and watch the shift happen —
 [`ed-tuesday`'s own "What to look for"](../../demos/scenarios/ed-tuesday/README.md#what-to-look-for)
 has the full witnessed board snapshots: occupied beds climbing from 4
@@ -51,7 +51,7 @@ institution. [`site-profiles.md`](../site-profiles.md) is the config
 layer that answers this: an MSH dialect, code-table overrides, and
 Z-segment templates you supply once, in one `--config` file, applied
 purely at render time. The load-bearing guarantee, proven there, not
-merely asserted: two site profiles run over the same seed produce
+merely asserted: two [site profiles](../glossary.md) run over the same seed produce
 **the same ground truth** in two accents — a site profile can change
 how a fact is *said*, never what fact is true. `ed-tuesday`'s own
 `config.edn` doesn't use one (this scenario is deliberately institution-
@@ -62,7 +62,8 @@ layered on top of a scenario that runs identically without one.
 
 Look inside `ed-tuesday`'s own `config.edn` and you'll find two
 different ways a patient ends up in this shift, side by side. Most of
-the population follows one of five hand-**scripted** ED pathways —
+the population follows one of five hand-**scripted** ED
+[pathways](../glossary.md) —
 admission, workup, transfer, discharge — authored directly as `:pathways`,
 weighted toward the fast, common end the way a real ED's own admission
 rate actually skews. A small tail of eight patients is instead assigned
@@ -92,7 +93,7 @@ classic error this domain invites, and the reason
 [`trajectory-computation.md`](../../components/sim-trajectory/docs/trajectory-computation.md)
 exists as a document at all.
 
-The first is **script space**: whatever produced a patient's own
+The first is [**script space**](../glossary.md): whatever produced a patient's own
 pathway — a hand-authored `:pathways` entry or a walked disease module,
 Chapter 3's own previous section — is only ever a *plan*. It says an
 encounter *should* happen, a medication *should* be ordered — never
@@ -100,7 +101,7 @@ which bed, which attending, whether a transfer later gets cancelled.
 Nothing in script space can write a fact; it only ever produces data
 waiting to be interpreted.
 
-The second is **truth space**: a single, capacity-aware engine reads
+The second is [**truth space**](../glossary.md): a single, capacity-aware engine reads
 that plan, alongside every other patient's own state so far, and turns
 it into what *actually* happened — this bed, this attending, cancelled
 or not. There is a wall between the two, and it's structural, not a
@@ -112,7 +113,7 @@ pathways that fed it were only ever script space's plan for what
 
 **The same split shows up one layer downstream, in how a shift gets
 rendered onto a wire.** Once truth space has settled what actually
-happened — the ground truth, `GT` — this workspace renders it two
+happened — the [ground truth](../glossary.md), `GT` — this workspace renders it two
 independent ways: as HL7v2 messages (`emitH`), or as FHIR resources
 (`emitF`). Neither is derived from the other; both read the same `GT`
 object and produce their own wire format, entirely independently:
@@ -120,7 +121,7 @@ object and produce their own wire format, entirely independently:
 <img src="assets/gt-emitters.svg" alt="Ground truth GT rendered by two independent emitters, emitH to HL7v2 messages and emitF to FHIR bundles" width="640" />
 
 This is this workspace's own founding idea, stated as plainly as it
-gets: **formats are just emitters of the patient state machine.**
+gets: **formats are just [emitters](../glossary.md) of the patient state machine.**
 `GT` is the one thing that's true; HL7v2 and FHIR are just two accents
 it's read aloud in. That two independently-written renderers agree
 about *who* they're both talking about isn't assumed — it's a proven

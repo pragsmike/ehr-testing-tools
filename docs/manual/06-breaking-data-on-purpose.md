@@ -10,11 +10,12 @@ back to the exact defect planted in it.
 
 ## Named injury, not random corruption
 
-Mutation here isn't fuzzing. You pick one registered operator, one
+Mutation here isn't fuzzing. You pick one registered
+[operator](../glossary.md), one
 locator naming exactly where in the file it acts, and `ehrt corpus
 mutate` edits precisely that — nothing else in the file moves. The
-output is never handed to you bare: a lineage record ships alongside
-every mutant, naming the operator, the locator, and the base-spec
+output is never handed to you bare: a [lineage](../glossary.md) record ships alongside
+every [mutant](../glossary.md), naming the operator, the locator, and the base-spec
 constraint the result now violates. [`docs/formats.md`](../formats.md#the-lineage-record)
 is the field-by-field reference; this chapter is about what the loop
 is *for*.
@@ -94,7 +95,7 @@ base FHIR spec, no profile involved).
 
 Here's the idea the rest of this chapter is building toward, stated
 plainly: **the defect class you inject should surface as the matching
-finding class when you gate the result.** Break a required-cardinality
+[finding](../glossary.md) class when you gate the result.** Break a required-cardinality
 rule, expect a required-cardinality finding. If the gate says something
 else, or says nothing, that's not merely a curiosity — it's a
 measurement of what the validator downstream actually checks, which is

@@ -46,13 +46,13 @@ can point to, not a claim about the code's intentions.
 
 Real transport doesn't deliver instantly. `ed-tuesday`'s own [second
 clock](../../demos/scenarios/ed-tuesday/README.md#the-second-clock)
-section plays the *same* ground truth onto two wires: one instant, one
+section plays the *same* [ground truth](../glossary.md) onto two wires: one instant, one
 where each message's own transmission lags its own clinical event by a
 sampled delay — a real EHR's own downstream feed, modeled rather than
 idealized. The mechanism is
 [`docs/dev/simulator-architecture.md`](../dev/simulator-architecture.md#5-extension-point-downstream-latency-realism)
 section 5's own extension point, built: a second, independently seeded
-RNG samples a per-event-type transmit delay at the emitter seam
+RNG samples a per-event-type transmit delay at the [emitter](../glossary.md) seam
 (`GT × LatencyParams → TimedWire`) — `engine`'s own ground truth is
 never touched, never re-entered, never aware latency exists at all.
 That section's own field audit found exactly two timestamp-bearing
@@ -113,7 +113,7 @@ bin/ehrt play out/scenarios/ed-tuesday-latency --board 60 --rate 100000
 
 ## What one message's own two clocks look like
 
-Walker, William (MRN000013), pathway `ed-fast-track`: admitted, EVN-2
+Walker, William (MRN000013), [pathway](../glossary.md) `ed-fast-track`: admitted, EVN-2
 clinical time `2026-08-11T03:36:00Z`; discharged 37 minutes later,
 `04:13:00Z` — ordinary, unremarkable, log-order-correct clinical
 history, per the demo README's own narration. On the wire, the two
