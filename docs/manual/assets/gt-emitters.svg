@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Content derived from docs/dev/simulator-architecture.md section 4 (the
+  palgebra) -- specifically the "founding thesis as algebra" and "The
+  naturality witness" subsections: GT is the sim's one abstract-layer
+  object, and emitH/emitF are two INDEPENDENT lowerings of it (never one
+  derived from the other), each consuming the same GT object plus its
+  own rendering Params. Hand-authored, not mechanically generated
+  (contrast docs/dev/pipeline.md's own docsgen-regenerated diagrams) --
+  regenerate by hand if simulator-architecture.md section 4's own
+  equations change. ADR-0120.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 260" width="640" height="260"
+     font-family="Helvetica, Arial, sans-serif" role="img"
+     aria-label="Ground truth GT rendered by two independent emitters, emitH to HL7v2 messages and emitF to FHIR bundles">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#222" />
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="640" height="260" fill="#ffffff" />
+
+  <!-- GT: the one abstract-layer object -->
+  <rect x="30" y="105" width="140" height="60" rx="8" fill="#eef3fb" stroke="#22314f" stroke-width="2" />
+  <text x="100" y="130" text-anchor="middle" font-size="20" font-weight="600" fill="#22314f">GT</text>
+  <text x="100" y="150" text-anchor="middle" font-size="12" fill="#44506b">ground-truth log</text>
+
+  <!-- ER7*: the HL7v2 lowering -->
+  <rect x="440" y="20" width="170" height="60" rx="8" fill="#f6efe3" stroke="#5c451c" stroke-width="2" />
+  <text x="525" y="45" text-anchor="middle" font-size="18" font-weight="600" fill="#5c451c">ER7*</text>
+  <text x="525" y="65" text-anchor="middle" font-size="12" fill="#7a5f2e">HL7v2 messages</text>
+
+  <!-- FHIR*: the FHIR lowering -->
+  <rect x="440" y="180" width="170" height="60" rx="8" fill="#eaf3ea" stroke="#22492a" stroke-width="2" />
+  <text x="525" y="205" text-anchor="middle" font-size="18" font-weight="600" fill="#22492a">FHIR*</text>
+  <text x="525" y="225" text-anchor="middle" font-size="12" fill="#3d6b46">FHIR bundles</text>
+
+  <!-- emitH arrow -->
+  <path d="M172,120 C 280,90 360,70 438,55" fill="none" stroke="#222" stroke-width="2" marker-end="url(#arrow)" />
+  <text x="290" y="80" text-anchor="middle" font-size="14" font-style="italic" fill="#222">emitH</text>
+
+  <!-- emitF arrow -->
+  <path d="M172,150 C 280,180 360,200 438,215" fill="none" stroke="#222" stroke-width="2" marker-end="url(#arrow)" />
+  <text x="290" y="205" text-anchor="middle" font-size="14" font-style="italic" fill="#222">emitF</text>
+</svg>
