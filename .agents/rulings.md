@@ -1019,3 +1019,28 @@ verbatim, 2026-08-13: *"Both a."*
   a re-run licensed by a prior seed-specific charter's retired scope.
   Applies to every future session that hits a generative test failure
   in this defspec; the author may strike or correct this reading.
+
+## From ADR-0123 (medication-end invariant: pre-horizon referents,
+fixed; ruled 2026-08-13)
+
+The design channel presented ADR-0122's own three lettered fix options
+for the diagnosed `medication-end-references-existing-order-and-
+follows-it-in-time` violation; the author ruled, verbatim, 2026-08-13:
+*"a"*.
+
+- **R14, checker-fix ruling [A, ruled 2026-08-13, "a"]:** option (a) —
+  widen `medication-end-references-existing-order-and-follows-it-in-
+  time` (`components/sim-check/src/ehrt/sim_check/check.clj`) to accept
+  an order referent living in a patient's own `:pre-horizon-facts`
+  (the compile layer's designed straddle case), with the follows-in-
+  time law adjusted to hold wherever the order lives — never (b) the
+  engine fix or (c) the compile-layer fix. The engine and compile layer
+  stay untouched; two conditions gate the fix, both proven this
+  session: (1) a positive control (a hand-built minimal ground-truth
+  log whose `:medication-end` matches no order anywhere, top-level or
+  pre-horizon) stays green — rejected — both before and after the fix;
+  (2) the regression itself (the property's engine config at the
+  ADR-0122 shrunk seed, `8589258984`, through `check/check-all`) runs
+  RED before the fix and GREEN after, alongside a green re-run of the
+  full defspec at both recorded failing seeds
+  (`1786589996178`/`1786617342587`), 150 trials each.

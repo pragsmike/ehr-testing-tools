@@ -215,9 +215,8 @@ per item; done items move to the bottom of their section with a date and sha.
   Gate Chapter 7, Check folds into Chapter 8 alongside verdict-reading
   at scale) -- disclosed as this session's own channel-inferred
   proposal, not yet ruled by name.
-  **S4 chartered, not yet run:** Chapters 6-7. Awaiting the positive-
-  seed invariant-violation diagnosis (row below, ADR-0122) per the
-  author's own 2026-08-13 "Both a." ruling, part (a).
+  **S4 chartered, next:** Chapters 6-7. The positive-seed invariant-
+  violation fix (row below, ADR-0123) has landed — no longer blocked.
   **S5 chartered, not yet run:** Chapter 8, the manual-review skill, and
   the manual arc's own close.
   **SETUP.md's unspoiled-human-reader rewalk (Externals, "SETUP rewalk
@@ -235,9 +234,16 @@ per item; done items move to the bottom of their section with a date and sha.
   chartered seed `7844068501` specifically, already investigated and
   closed by ADR-0116 — this is a distinct, new finding). **Diagnosis
   landed 2026-08-13, ADR-0122** (root cause, blast estimate against the
-  35 oracle roots, lettered fix options) — fix awaiting a separate,
-  future, ruled session per the author's own 2026-08-13 "Both a."
-  ruling, part (a).
+  35 oracle roots, lettered fix options). **RESOLVED 2026-08-13,
+  ADR-0123** — the author's own "a" ruling (option (a), the checker
+  fix): `medication-end-references-existing-order-and-follows-it-in-
+  time` widened to accept a pre-horizon order referent, the
+  follows-in-time law adjusted to hold wherever the order lives; both
+  recorded failing seeds (`1786589996178`/`1786617342587`) green at 150
+  trials each, the diagnosed shrunk-seed regression (`8589258984`)
+  green, the positive control still green, the oracle held pure
+  identity across all 35 roots (confirmed by an actual
+  `bin/regression-oracle` run).
 - **Ceremony scripts + skill absorption** — this repo's own recurring
   session-start/session-end ceremony (tag ceremony, preflight, post-push
   message verification, close-phase scaffold) moves from prose a
@@ -933,3 +939,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-12 — manual-s2-exerciser-and-chapter3 — ADR-0120
 - 2026-08-12 — manual-s3-transport-pair — ADR-0121
 - 2026-08-13 — positive-seed-invariant-violation-diagnosis — ADR-0122
+- 2026-08-13 — medication-end-pre-horizon-invariant-fix — ADR-0123
