@@ -201,3 +201,4 @@ Files in this directory:
   * 2026-08-13-citation-sweep-glossary-linkage.md
   * 2026-08-13-ceremony-scripts-sim-identity-sweep.md — Ceremony scripts, build-session skill absorption, sim-identity citation sweep (ADR-0127)
   * 2026-08-13-ceremony-scripts-hardening.md — Agent-facing hardening -- ADR-0127 addendum, anti-fabrication tripwire, Step-0 receipts
+  * 2026-08-13-strip-executability.md — Strip executability: exercisers, citation gate, ADR-0127 erratum (ADR-0129)
