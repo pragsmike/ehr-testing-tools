@@ -1,5 +1,27 @@
 # State of the project — continuity register
 
+**CITATION-ONLY update, 2026-08-13, the citation errata sweep and
+glossary linkage close (`notes/adr/0126-citation-sweep-glossary-
+linkage.md`) — this citation moves here from ADR-0107, CONTENT NOT
+RE-PROBED.** Not an arc close (this session's own naming convention),
+so `state_staleness_tripwire_test.clj`'s own regex is untouched by
+this update — that gate tracks only `*-arc-close.md` files, and
+ADR-0126 isn't one. Recorded here anyway, in the same append-only
+citation-only spirit as the entries below, so a future full
+regeneration finds this session named rather than silently skipped.
+Landed: glossary links across manual Chapters 1, 3–7 (manual-review
+dimension 4, re-scored PASS); the citation errata sweep origin-
+qualifying every in-fence bare `ADR-0010` verdict-family site to
+`tools/ADR-0010`, plus a fourth, previously-unnamed drift family found
+and disclosed (bare `ADR-0010` in `components/sim/docs/`/
+`components/sim-trajectory/docs/` meaning `sim/ADR-0010`) — not fixed,
+out of this session's own touch fence. Every section below still
+reflects its LAST full regeneration, 2026-08-08 against tip `a9c3abf`
+— nineteen ADRs' worth of landings since (0090 through 0126, excluding
+citation-only entries) are NOT reflected below and every `[V]` tag
+below should be read accordingly; a full regeneration is still owed at
+a session that rules it.
+
 **CITATION-ONLY update, 2026-08-11, the injuries arc's own close
 (`notes/adr/0107-injuries-arc-close.md`) — this citation moves here
 from ADR-0097, CONTENT NOT RE-PROBED.** `notes/adr/0107-injuries-arc-

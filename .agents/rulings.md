@@ -1106,3 +1106,24 @@ arc close; ruled 2026-08-13)
   transcript of it, the same disclosure class ADR-0111's own "mutation
   as imperfect transport" entry used. Roadmap row: "Citation errata
   sweep," Next section.
+
+## From ADR-0126 (manual-arc tag payment, glossary linkage, citation
+errata sweep; ruled 2026-08-13, all rulings from this session's own
+driving prompt)
+
+- **Citation sweep chartered, executed** [A, verbatim "a, go",
+  2026-08-13, restated from ADR-0125's own charter above — recorded
+  again here since this is the session that actually ran it].
+- **Session pairing, glossary row + sweep in one session** [A, verbatim
+  "b go", 2026-08-13, design channel]: the manual-review dimension-4
+  fix (glossary linkage) and the citation errata sweep landed together,
+  one session, rather than split.
+- **Sweep scope includes the `.clj` comment/docstring sites, whole
+  sweep in one session per the ADR-0099 rule form** [A, verbatim "a",
+  2026-08-13, design channel]: the thirteen `.clj` sites named in the
+  driving prompt's own Step 2d widened the sweep beyond the original
+  ADR-0125 charter's "docs-only" framing — licensed explicitly by this
+  ruling, not a silent scope creep.
+- **Standing from ADR-0125, restated, unchanged**: dimension-1 (strip
+  executability) stays OPEN — not touched this session, no
+  exerciser/lint mechanism edited.

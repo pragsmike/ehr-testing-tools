@@ -276,27 +276,36 @@ per item; done items move to the bottom of their section with a date and sha.
   — both narrate SETUP.md's own steps, so the same author-only rewalk
   errand now smoke-tests all three together; still in the author's own
   queue, not executed this session.
-- **Citation errata sweep — origin-qualify the bare frozen-era
-  verdict-family citations** (chartered 2026-08-13, ADR-0125, author
-  ruling verbatim "a, go"): `ADR-0124`'s own disclosed finding — the
-  bare, unqualified `ADR-0010` citation used throughout
-  `docs/judge-calibration.md`, `docs/formats.md`, `docs/glossary.md`,
-  every `docs/use-cases/*.md` gate page, every `components/judge/`
-  source/test file, and (confirmed this session) `docs/manual/07-judging.md`'s
-  own figure-source comment and calibration section, for the
-  four-arm verdict design (`:pass`/`:rejected`/`:indeterminate`/
-  `:no-verdict`, the `worst-of` ranking) — is a pre-existing,
-  repo-wide citation drift: `notes/adr/0010-documentation-doctrine.md`
-  is titled "Documentation doctrine" and does not discuss verdicts at
-  all. `notes/ADRs.md`'s own citation rule (top of file, "added
-  2026-07-30") already states the fix-forward doctrine this sweep
-  applies: trace where the real verdict-design content actually lives,
-  origin-qualify or correct every citation site at once, in a single
-  docs-only session, per the `ADR-0099` rule form (a scoped,
-  whole-subtree, one-session sweep, not split or left partial).
-  Docs-only; zero `src`/`test` touched. Not executed this session
-  (chartering only). Revisit trigger: the next available docs-only
-  session.
+- **Citation errata sweep — CLOSED 2026-08-13 (ADR-0126).**
+  Origin-qualified every in-fence bare `ADR-0010` verdict-family
+  citation (the four-arm verdict design, `:pass`/`:rejected`/
+  `:indeterminate`/`:no-verdict`, the `worst-of` ranking) to
+  `tools/ADR-0010`, targeting `notes/tools/ADRs.md`'s own record.
+  Fixed: `docs/judge-calibration.md` and `docs/formats.md` (footnote
+  form, renamed `[^adr-0010]` → `[^tools-adr-0010]`),
+  `docs/manual/assets/verdict-ranking.svg` (comment preserved, citation
+  edited), `components/corpus/docs/palgebra-design.md` +
+  `research/judge-v2-nist-spike-notes.md`, `components/corpus/docs/
+  use-cases.edn` (regenerating `docs/use-cases/profile-tier-hl7v2-
+  conformance-gating.md` in the same commit), and all thirteen `.clj`
+  comment/docstring sites the widened charter named (`judge/finding.clj`
+  + `report.clj` + both tests, `judge-fhir-official/fhir.clj` + test,
+  `judge-v2-hapi/v2.clj`, `judge-v2-nist/v2.clj` + test,
+  `corpus/check.clj`, `cli/core.clj` + `help.clj` + `core_test.clj`) —
+  zero behavior change, confirmed per-site and by a pure-identity oracle
+  bracket across all 35 roots. **Corrected against the channel's own
+  probe:** `docs/glossary.md` carries no verdict-family citation in the
+  live tree — its one `[^adr-0010]` usage (line 5) is genuinely class
+  (ii), documentation-doctrine, correctly bare; untouched. **A fourth,
+  previously-unnamed drift family found and disclosed, not fixed:** 17
+  bare `ADR-0010` sites across `components/sim/docs/` and
+  `components/sim-trajectory/docs/` (6 files) mean the frozen sim
+  repo's own `sim/ADR-0010` (patient identity), a THIRD referent this
+  sweep's own two-class charter never anticipated — out of this
+  session's own touch fence, flagged for a future sweep. Full inventory,
+  classification, and the near-miss (`help.clj:471`, doc-doctrine,
+  briefly mis-touched by a blanket sed and reverted before commit) in
+  `notes/adr/0126-citation-sweep-glossary-linkage.md`.
 - **Ceremony scripts + skill absorption** — this repo's own recurring
   session-start/session-end ceremony (tag ceremony, preflight, post-push
   message verification, close-phase scaffold) moves from prose a
@@ -304,10 +313,8 @@ per item; done items move to the bottom of their section with a date and sha.
   capture, and sweep census absorb into the `build-session` skill
   alongside them. Chartered by the author's own 2026-08-13 "Both a."
   ruling, part (b) (`.agents/rulings.md`, "From ADR-0122," R13).
-  **Scheduled next after the citation errata sweep row above**
-  (2026-08-13, ADR-0125 close — both rows were post-manual-arc by their
-  own original charter; the sweep is docs-only and smaller, so it runs
-  first). No session run yet.
+  **Now front of the queue** (2026-08-13, ADR-0126 close — the citation
+  errata sweep row above is CLOSED). No session run yet.
 - **Manual-review run 1, dimension 1 (strip executability) — FAIL,
   open** (2026-08-13, ADR-0125, `.agents/plans/2026-08-13-manual-review-1.md`):
   Chapters 6, 7, and 2 of 3 strips in Chapter 8 cite a
@@ -325,17 +332,23 @@ per item; done items move to the bottom of their section with a date and sha.
   own bar in `.agents/skills/manual-review/SKILL.md` should narrow to
   match — a genuine design choice for the author, not mechanical
   follow-through.
-- **Manual-review run 1, dimension 4 (glossary linkage) — FAIL, open**
-  (2026-08-13, ADR-0125, `.agents/plans/2026-08-13-manual-review-1.md`):
-  only Chapters 2 and 8 link `docs/glossary.md` on first use of a
-  glossary-defined term; Chapters 1, 3, 4, 5, 6, 7 use glossary-defined
-  terms (including, in Chapter 3, the two colliding-meaning terms
-  "Pathway" and "script space"/"truth space" the glossary's own front
-  matter names as this workspace's single most common misreading) with
-  zero glossary link anywhere. Findings-only per review discipline — no
-  chapter edited this session. Revisit trigger: a future session willing
-  to sweep Chapters 1, 3-7 adding glossary links at each first use,
-  mirroring Chapter 2's and Chapter 8's own existing pattern.
+- **Manual-review run 1, dimension 4 (glossary linkage) — CLOSED
+  2026-08-13 (ADR-0126).** Original finding (ADR-0125,
+  `.agents/plans/2026-08-13-manual-review-1.md`): only Chapters 2 and 8
+  linked `docs/glossary.md` on first use of a glossary-defined term;
+  Chapters 1, 3, 4, 5, 6, 7 used glossary-defined terms (including, in
+  Chapter 3, the two colliding-meaning terms "Pathway" and "script
+  space"/"truth space" the glossary's own front matter names as this
+  workspace's single most common misreading) with zero glossary link
+  anywhere. Fixed this session: glossary links added at first use across
+  Chapters 1, 3–7 (Chapters 2, 8 untouched, already conforming) — see
+  `notes/adr/0126-citation-sweep-glossary-linkage.md` for the full
+  per-chapter, per-term table. **Targeted dimension-4-only re-run:
+  PASS** — every chapter now links at first use, dimension 2 (no
+  restatement) and dimension 3 (anchor stability) both re-verified
+  incidentally and hold. The other seven dimensions were not re-run
+  this session; dimension 1 (strip executability, below) stays the open
+  FAIL it was.
 - **Positive-seed invariant violation, `ehrt.sim-engine.engine-test`'s
   `mixed-authored-and-compiled-run-satisfies-the-full-invariant-
   catalog`** — surfaced in ADR-0121's own pre-commit-1 `make test` at
