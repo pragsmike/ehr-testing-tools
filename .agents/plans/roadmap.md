@@ -189,11 +189,15 @@ per item; done items move to the bottom of their section with a date and sha.
   **S1 LANDED 2026-08-12 (ADR-0119):** skeleton (`docs/manual/00-front.md`),
   Chapters 1-2 (`01-what-this-is.md`, `02-setup-first-corpus.md`), the
   audience paring (R4) and learner-path riders.
-  **S2 chartered, not yet run (targets ADR-0120):** Chapter 3, co-landed
-  with the demo exerciser (ADR-0113 R3 mechanism: a
-  quickstart-pattern-generalized, integration-tier exerciser running
-  each scenario README's own fenced commands in order, asserting exit
-  codes plus each demo's own named invariants).
+  **S2 LANDED 2026-08-12 (ADR-0120):** Chapter 3
+  (`docs/manual/03-a-simulated-hospital.md` — `sim run` and ed-tuesday,
+  site profiles linked, scripted-versus-generative patients, the
+  two-spaces story extended to `GT`'s own two emitters) co-landed with
+  the demo exerciser (ADR-0113 R3 mechanism, landed as
+  `bin/demo-exerciser-ed-tuesday` — quickstart-pattern-generalized,
+  integration-tier, running ed-tuesday's own fenced commands in order,
+  asserting exit codes plus every one of that README's own named
+  invariants).
   **S3 chartered, not yet run:** Chapters 4-5.
   **S4 chartered, not yet run:** Chapters 6-7.
   **S5 chartered, not yet run:** Chapter 8, the manual-review skill, and
@@ -330,16 +334,34 @@ per item; done items move to the bottom of their section with a date and sha.
   0116-engine-seed-contract.md`. Cross-ref: ADR-0107's sibling corpus
   defspec flake row remains open and is explicitly NOT this session's
   scope.
-- **Demo exerciser** (ADR-0113 R3; not chartered to any executing
-  session yet). Author verbatim, 2026-08-12: *"The demos must be known
-  to work, and exercised as documented to make sure they actually play
-  out as written."* Mechanism ruled (channel-proposed, author "Q2 a"):
-  a demo exerciser generalized from the quickstart pattern (`make
-  quickstart` / `quickstart-fresh`), integration-tier, running each
-  scenario README's own fenced commands in order and asserting exit
-  codes plus each demo's own named invariants. Co-lands with the
-  manual's first chapter that cites a demo, per the ADR-0113 R5
-  sequence above.
+- **Demo exerciser (ed-tuesday) — LANDED 2026-08-12 (ADR-0120).**
+  Author verbatim, 2026-08-12: *"The demos must be known to work, and
+  exercised as documented to make sure they actually play out as
+  written."* Mechanism ruled (channel-proposed, author "Q2 a"): a demo
+  exerciser generalized from the quickstart pattern (`make quickstart`
+  / `quickstart-fresh`), integration-tier, running each scenario
+  README's own fenced commands in order and asserting exit codes plus
+  each demo's own named invariants. Co-landed with the manual's first
+  chapter that cites a demo (Chapter 3, S2), per the ADR-0113 R5
+  sequence above. Landed for **ed-tuesday only**
+  (`bin/demo-exerciser-ed-tuesday`,
+  `ehrt.docs-tooling.demo-exerciser-fresh`) — **busy-tuesday's own
+  exerciser is a new future row, not this session's scope**, see
+  below.
+- **Demo exerciser (busy-tuesday)** (new row, ADR-0120; not chartered
+  to any executing session yet). R3's own charter — "The demos must be
+  known to work, and exercised as documented" — covers every scenario
+  README this workspace ships, not only ed-tuesday; `bin/demo-exerciser-
+  ed-tuesday` and `ehrt.docs-tooling.demo-exerciser-fresh` (ADR-0120)
+  are the worked pattern a busy-tuesday sibling would generalize from —
+  a second `bin/demo-exerciser-busy-tuesday` plus its own fresh-identity
+  test, mirroring the same shape (multi-fence extraction, per-step exit
+  codes, the README's own named invariants re-derived live, never
+  hardcoded). `demos/scenarios/busy-tuesday/README.md`'s own fenced
+  commands and invariants (the sparse-traffic disclosure, the single
+  inpatient admission) are the source this future exerciser would
+  assert against. Not chartered to a session; no design work done here
+  beyond naming it.
 - **Audience register paring** (ADR-0113 R4; a small future docs
   session, not chartered). Author "Q1 a": the audience register in
   `docs/dev/AUDIENCES.md` pares to five behavioral segments --
@@ -869,3 +891,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-12 — fix-cluster-a-cli-validation — ADR-0117
 - 2026-08-12 — fix-clusters-b-and-c-help-and-docs — ADR-0118
 - 2026-08-12 — user-manual-skeleton — ADR-0119
+- 2026-08-12 — manual-s2-exerciser-and-chapter3 — ADR-0120

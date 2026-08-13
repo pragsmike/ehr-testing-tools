@@ -192,3 +192,4 @@ Files in this directory:
   * 2026-08-12-fix-cluster-a-cli-validation.md
   * 2026-08-12-fix-clusters-b-and-c-help-and-docs.md
   * 2026-08-12-user-manual-skeleton.md
+  * 2026-08-12-manual-s2-exerciser-and-chapter3.md
