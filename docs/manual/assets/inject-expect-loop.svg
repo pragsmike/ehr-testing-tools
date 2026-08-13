@@ -1,0 +1,83 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Content derived from components/corpus/docs/pipeline.edn's own Mutate
+  and Gate stage equations (:inputs/:outputs/:laws, "appends
+  provenance: every mutant carries a lineage record, never produced
+  without one") and docs/operators.md's own "what it does" / "Contract"
+  split per operator. The single worked instance drawn below --
+  test-fixtures/fhir/storefront-patient.json, operator
+  remove-required-element at locator entry[0].resource.resourceType --
+  is the exact sequence README.md's own "What you get" section shows;
+  the mutate/gate output values were witnessed fresh this session
+  (bin/ehrt corpus mutate, bin/ehrt gate fhir), byte-identical to the
+  README's own shown transcript. Hand-authored, not mechanically
+  generated (contrast docs/dev/pipeline.md's own docsgen-regenerated
+  diagrams) -- regenerate by hand if pipeline.edn's Mutate/Gate stages
+  or the worked instance's own witnessed values change. ADR-0124.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 340" width="760" height="340"
+     font-family="Helvetica, Arial, sans-serif" role="img"
+     aria-label="A defect class injected by Mutate surfaces as the matching finding class at Gate -- the gate is the oracle">
+  <defs>
+    <marker id="arrow3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#222" />
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="760" height="340" fill="#ffffff" />
+
+  <text x="20" y="26" font-size="15" font-weight="600" fill="#22314f">Inject a defect, expect the matching finding</text>
+
+  <!-- Box A: canonical file -->
+  <rect x="10" y="90" width="110" height="80" rx="8" fill="#f5f5f5" stroke="#999" stroke-width="1.5" />
+  <text x="65" y="122" text-anchor="middle" font-size="12" font-weight="600" fill="#333">canonical file</text>
+  <text x="65" y="140" text-anchor="middle" font-size="10" fill="#555">storefront-</text>
+  <text x="65" y="153" text-anchor="middle" font-size="10" fill="#555">patient.json</text>
+
+  <line x1="120" y1="130" x2="150" y2="130" stroke="#222" stroke-width="1.5" marker-end="url(#arrow3)" />
+
+  <!-- Box B: Mutate -->
+  <rect x="150" y="70" width="150" height="120" rx="8" fill="#22314f" stroke="#000" stroke-width="2" />
+  <text x="225" y="95" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">Mutate</text>
+  <text x="225" y="118" text-anchor="middle" font-size="10" fill="#dbe4f5">operator:</text>
+  <text x="225" y="132" text-anchor="middle" font-size="10" fill="#dbe4f5">remove-required-</text>
+  <text x="225" y="145" text-anchor="middle" font-size="10" fill="#dbe4f5">element</text>
+  <text x="225" y="163" text-anchor="middle" font-size="9" fill="#b9c6e6">locator: entry[0].</text>
+  <text x="225" y="175" text-anchor="middle" font-size="9" fill="#b9c6e6">resource.resourceType</text>
+
+  <!-- catalytic wire: operator catalog -->
+  <line x1="225" y1="40" x2="225" y2="70" stroke="#888" stroke-width="1.2" stroke-dasharray="3 3" marker-end="url(#arrow3)" />
+  <text x="225" y="32" text-anchor="middle" font-size="9" font-style="italic" fill="#666">operator catalog</text>
+
+  <line x1="300" y1="130" x2="330" y2="130" stroke="#222" stroke-width="1.5" marker-end="url(#arrow3)" />
+
+  <!-- Box C: mutant + lineage -->
+  <rect x="330" y="70" width="180" height="120" rx="8" fill="#eaf3ea" stroke="#22492a" stroke-width="2" />
+  <text x="420" y="93" text-anchor="middle" font-size="12" font-weight="600" fill="#22492a">mutant file + lineage</text>
+  <text x="420" y="112" text-anchor="middle" font-size="10" fill="#3d6b46">contract: :violates</text>
+  <text x="420" y="128" text-anchor="middle" font-size="9" fill="#3d6b46">min-cardinality</text>
+  <text x="420" y="141" text-anchor="middle" font-size="9" fill="#3d6b46">(Element.min &#8805; 1)</text>
+  <text x="420" y="160" text-anchor="middle" font-size="9" font-style="italic" fill="#5c7a61">never produced</text>
+  <text x="420" y="173" text-anchor="middle" font-size="9" font-style="italic" fill="#5c7a61">without this record</text>
+
+  <line x1="510" y1="130" x2="540" y2="130" stroke="#222" stroke-width="1.5" marker-end="url(#arrow3)" />
+
+  <!-- Box D: Gate -->
+  <rect x="540" y="70" width="90" height="120" rx="8" fill="#22314f" stroke="#000" stroke-width="2" />
+  <text x="585" y="135" text-anchor="middle" font-size="14" font-weight="700" fill="#fff">Gate</text>
+
+  <line x1="630" y1="130" x2="660" y2="130" stroke="#222" stroke-width="1.5" marker-end="url(#arrow3)" />
+
+  <!-- Box E: finding -->
+  <rect x="660" y="60" width="90" height="140" rx="8" fill="#f7e9e6" stroke="#8a2f2f" stroke-width="2" />
+  <text x="705" y="85" text-anchor="middle" font-size="12" font-weight="700" fill="#8a2f2f">rejected</text>
+  <text x="705" y="105" text-anchor="middle" font-size="9" fill="#8a2f2f">:invalid</text>
+  <text x="705" y="122" text-anchor="middle" font-size="8" fill="#8a2f2f">"Unable to find</text>
+  <text x="705" y="134" text-anchor="middle" font-size="8" fill="#8a2f2f">resourceType</text>
+  <text x="705" y="146" text-anchor="middle" font-size="8" fill="#8a2f2f">property"</text>
+
+  <!-- The correspondence arc: contract text (C) to finding (E) -->
+  <path d="M420,190 C 420,260 705,260 705,205" fill="none" stroke="#5c451c" stroke-width="1.5" stroke-dasharray="5 3" marker-end="url(#arrow3)" />
+  <text x="560" y="280" text-anchor="middle" font-size="12" font-weight="600" fill="#5c451c">the defect class named at mutate-time is the finding class at gate-time</text>
+  <text x="560" y="300" text-anchor="middle" font-size="11" font-style="italic" fill="#5c451c">the gate is the oracle -- the validator is the answer key</text>
+</svg>
