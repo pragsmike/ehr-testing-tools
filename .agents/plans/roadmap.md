@@ -215,7 +215,9 @@ per item; done items move to the bottom of their section with a date and sha.
   Gate Chapter 7, Check folds into Chapter 8 alongside verdict-reading
   at scale) -- disclosed as this session's own channel-inferred
   proposal, not yet ruled by name.
-  **S4 chartered, not yet run:** Chapters 6-7.
+  **S4 chartered, not yet run:** Chapters 6-7. Awaiting the positive-
+  seed invariant-violation diagnosis (row below, ADR-0122) per the
+  author's own 2026-08-13 "Both a." ruling, part (a).
   **S5 chartered, not yet run:** Chapter 8, the manual-review skill, and
   the manual arc's own close.
   **SETUP.md's unspoiled-human-reader rewalk (Externals, "SETUP rewalk
@@ -223,6 +225,27 @@ per item; done items move to the bottom of their section with a date and sha.
   — both narrate SETUP.md's own steps, so the same author-only rewalk
   errand now smoke-tests all three together; still in the author's own
   queue, not executed this session.
+- **Positive-seed invariant violation, `ehrt.sim-engine.engine-test`'s
+  `mixed-authored-and-compiled-run-satisfies-the-full-invariant-
+  catalog`** — surfaced in ADR-0121's own pre-commit-1 `make test` at
+  seed `1786589996178` (`failing-size 144`), a non-negative,
+  contract-legal seed under ADR-0116's post-R9 generator; the S3
+  session re-ran past it citing R8 (ADR-0114), a mischaracterization
+  corrected by this session's own erratum to `notes/adr/0121-*.md` (R8
+  chartered seed `7844068501` specifically, already investigated and
+  closed by ADR-0116 — this is a distinct, new finding). **Diagnosis
+  landed 2026-08-13, ADR-0122** (root cause, blast estimate against the
+  35 oracle roots, lettered fix options) — fix awaiting a separate,
+  future, ruled session per the author's own 2026-08-13 "Both a."
+  ruling, part (a).
+- **Ceremony scripts + skill absorption** — this repo's own recurring
+  session-start/session-end ceremony (tag ceremony, preflight, post-push
+  message verification, close-phase scaffold) moves from prose a
+  session re-reads each time to scripts; checkpoint isolation, red
+  capture, and sweep census absorb into the `build-session` skill
+  alongside them. Chartered by the author's own 2026-08-13 "Both a."
+  ruling, part (b) (`.agents/rulings.md`, "From ADR-0122," R13).
+  Scheduled post-manual-arc (after S4/S5 land), no session run yet.
 - **Review-3, user-surface scope** (ADR-0113 R5; charter set 2026-08-12,
   **findings landed 2026-08-12, ADR-0114** —
   `.agents/plans/2026-08-12-review-3-user-surface-findings.md`, 48

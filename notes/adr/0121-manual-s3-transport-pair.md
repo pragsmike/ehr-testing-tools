@@ -220,6 +220,36 @@ own message files -- the only delta either time was `git log
 --format=%B`'s own trailing-blank-line formatting artifact; the
 ASCII-only check on each commit message empty both times.
 
+**Erratum, dated 2026-08-13 (ADR-0122).** The paragraph above
+characterizing the pre-commit-1 `make test` failure as "a pre-existing,
+ADR-0114-R8-chartered `ehrt.sim-engine.engine-test` flake ... self-
+cleared on re-run" is corrected. The failing seed was `1786589996178`
+(`failing-size 144`) -- a non-negative, contract-legal seed under
+ADR-0116's post-R9 generator constraint, not seed `7844068501`, the one
+seed R8 actually chartered. R8's own standing license names its scope
+verbatim: "a future session may run the defspec pinned at seed
+`7844068501` ... classify it engine-bug vs. test-defect, and fix or
+file." ADR-0116 already exercised that license -- pinning `7844068501`
+directly found it passed clean, 150/150 trials, both times run (ADR-0116
+Step 1 evidence, item 2) -- so the specific investigation R8 chartered
+is closed, not standing open-ended cover for a failure at any other
+seed. This session's own event is therefore a NEW finding: a genuine
+invariant-catalog violation reachable at a legal, positive seed,
+distinct in kind from R8's negative-seed episode (which ADR-0116's R9
+ruling separately closed by making negative seeds out-of-contract).
+Re-running past it, as this session's own prompt did, citing R8's
+"standing" language, is understandable -- the driving prompt's own
+carry-forward shorthand did not distinguish "R8 stands as a historical
+finding" from "R8 licenses skipping any future generative failure in
+this defspec," a gap owned by the design channel, not by this session's
+execution of what it was told. But the event itself, read against R8's
+own actual text and against ADR-0116's own resolution of it, required a
+STOP, not a re-run. Diagnosis chartered as ADR-0122. This clarification
+is also standing repo-wide policy going forward: any generative failure
+in `mixed-authored-and-compiled-run-satisfies-the-full-invariant-
+catalog` is a new finding to STOP on, never a re-run licensed by R8's
+retired scope.
+
 ### Deviations
 
 **No premise mismatch.** Every Read-first document matched its own
