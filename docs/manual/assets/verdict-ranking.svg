@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Content derived from the documented verdict ranking (worst-of, D10/O2,
+  notes/ADRs.md ADR-0010; the ranking's own revision from a real
+  Synthea integration run, components/corpus/docs/palgebra-design.md
+  Part II.5): four values in code, :rejected > :no-verdict >
+  :indeterminate > :pass -- but :indeterminate is reserved, no producer
+  anywhere in this repo (components/judge/src/ehrt/judge/finding.clj),
+  so the reader-facing vocabulary this figure draws is the honest
+  three-way split docs/use-cases/profile-tier-hl7v2-conformance-
+  gating.md names in prose: rejected, no-verdict, pass. An empty
+  finding set is :pass by definition. Hand-authored, not mechanically
+  generated -- regenerate by hand if the ranking or the reserved status
+  of :indeterminate changes. ADR-0124.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 360" width="640" height="360"
+     font-family="Helvetica, Arial, sans-serif" role="img"
+     aria-label="The verdict decision: rejected dominates no-verdict dominates pass -- a file's verdict is the worst one among its findings, empty means pass">
+  <defs>
+    <marker id="arrowv" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#222" />
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="640" height="360" fill="#ffffff" />
+
+  <text x="20" y="26" font-size="15" font-weight="600" fill="#22314f">The verdict decision: what dominates what</text>
+
+  <!-- REJECTED bar -->
+  <rect x="60" y="45" width="380" height="60" rx="8" fill="#f7e9e6" stroke="#8a2f2f" stroke-width="2" />
+  <text x="80" y="70" font-size="14" font-weight="700" fill="#8a2f2f">rejected</text>
+  <text x="80" y="90" font-size="11" fill="#8a2f2f">the criterion was applied, and something failed it</text>
+  <text x="460" y="78" font-size="10" font-style="italic" fill="#8a2f2f">e.g. Ch.6's mutant --</text>
+  <text x="460" y="92" font-size="10" font-style="italic" fill="#8a2f2f">:invalid, resourceType</text>
+
+  <line x1="250" y1="105" x2="250" y2="140" stroke="#222" stroke-width="1.5" marker-end="url(#arrowv)" />
+  <text x="270" y="126" font-size="11" font-style="italic" fill="#333">dominates</text>
+
+  <!-- NO-VERDICT bar -->
+  <rect x="60" y="140" width="380" height="60" rx="8" fill="#fbf1de" stroke="#7a5f2e" stroke-width="2" />
+  <text x="80" y="165" font-size="14" font-weight="700" fill="#5c451c">no-verdict</text>
+  <text x="80" y="185" font-size="11" fill="#5c451c">the criterion could not be fully applied</text>
+  <text x="460" y="173" font-size="10" font-style="italic" fill="#5c451c">e.g. the NIST profile-tier</text>
+  <text x="460" y="187" font-size="10" font-style="italic" fill="#5c451c">run below -- :profile-spec-error</text>
+
+  <line x1="250" y1="200" x2="250" y2="235" stroke="#222" stroke-width="1.5" marker-end="url(#arrowv)" />
+  <text x="270" y="221" font-size="11" font-style="italic" fill="#333">dominates</text>
+
+  <!-- PASS bar -->
+  <rect x="60" y="235" width="380" height="60" rx="8" fill="#eaf3ea" stroke="#22492a" stroke-width="2" />
+  <text x="80" y="260" font-size="14" font-weight="700" fill="#22492a">pass</text>
+  <text x="80" y="280" font-size="11" fill="#22492a">the criterion was applied, and nothing failed it</text>
+  <text x="460" y="273" font-size="10" font-style="italic" fill="#22492a">e.g. the clean fixture,</text>
+  <text x="460" y="287" font-size="10" font-style="italic" fill="#22492a">no findings at all</text>
+
+  <text x="320" y="330" text-anchor="middle" font-size="12" font-weight="600" fill="#333">a file's verdict is the worst one among its findings -- no findings, pass</text>
+</svg>
