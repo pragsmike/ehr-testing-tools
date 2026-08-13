@@ -1167,3 +1167,24 @@ originating ADRs)
   session's own Step 0; created, pushed, and peeled-ref-verified this
   session (self-corrected after being initially missed — see
   `notes/adr/0127-*.md`'s own Step 0 section for the disclosure).
+
+## From ADR-0128 (agent-facing hardening: addendum, anti-fabrication
+tripwire, Step-0 receipts; ruled 2026-08-13)
+
+- **Standing channel practice, verbatim** [A, ruled 2026-08-13]:
+  *"let's always look for opportunities to improve the agent-facing
+  parts."* Recorded as a standing directive for the design channel and
+  every future session, not scoped to this session's own bundle —
+  agent-facing surfaces (skills, ceremony scripts, session prompts) are
+  a standing improvement target, not a one-off charter.
+- **Micro-session sequencing, this bundle before the strip-
+  executability charter** [A, ruled 2026-08-13, verbatim "a"]: this
+  session's own three-part bundle (addendum, tripwire, Step-0 receipts)
+  lands as its own micro-session, ahead of the strip-executability
+  charter already queued (`.agents/plans/roadmap.md`, manual-review
+  dimension-1 finding, ADR-0125).
+- **Addendum form, ruled** [A, ruled 2026-08-13, verbatim "b"]: the
+  fabricated-draft near-miss (ADR-0127's own Step 0, see that ADR's own
+  dated addendum) lands as a dated fix-forward addendum to ADR-0127,
+  matching `notes/adr/0121-*.md`'s own erratum form exactly, rather
+  than a silent edit to ADR-0127's existing text.

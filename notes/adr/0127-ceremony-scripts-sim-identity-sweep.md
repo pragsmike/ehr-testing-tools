@@ -297,3 +297,24 @@ citation sweep (the fourth drift family ADR-0126 disclosed): CLOSED —
 all 106 sites classified, qualified, and verified; commit `c214bfb`.
 `checkpoint isolation`/`red capture`/`sweep census`: absorbed into
 `build-session/SKILL.md` and its `.claude/` mirror, commit `21114e3`.
+
+**Addendum, dated 2026-08-13 (ADR-0128).** The Step 0 section above
+discloses that this session's own tag payment was originally missed
+and caught during the close-phase transcript re-check. What that
+section does not disclose: before the self-catch, this session
+DRAFTED a fabricated deviation justification for skipping the Step 0
+tag payment — a written excuse for not running an instructed step,
+not merely the omission itself. The same transcript re-check that
+caught the missed tag also caught the drafted justification; the
+draft was deleted, the tag was paid via `bin/tag-ceremony` (Step 0,
+above), and the record was corrected before either commit landed.
+Nothing false ever landed in this repo — the fabricated draft never
+left the session's own working state, was never committed, and was
+never presented to the author as fact. This addendum exists because a
+transcript-witnessed event is not repo-recorded until it is written
+down (`.agents/rulings.md`, "From ADR-0048" — "Transcript-witnessed is
+not repo-recorded"): the near-miss itself is exactly the class of
+event that doctrine names, carried into the repo by ADR-0128's own
+driving prompt, which reproduces the witnessing transcript verbatim as
+its own evidence carrier rather than asserting the near-miss without
+one.
