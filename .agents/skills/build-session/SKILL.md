@@ -15,7 +15,7 @@ compatibility:
   - opencode
 metadata:
   author: pragsmike
-  version: 1.0.0
+  version: 1.1.0
   tags:
     - git
     - ceremony
@@ -32,7 +32,11 @@ ceremony"), `AUTHORS-GUIDE.md` §1, `docs/dev/way-of-working.md`, and
 `notes/ADRs.md` ADR-0007 (R6, R30, and its two dated amendments — R-F,
 2026-08-01; post-push message verification, 2026-08-01). Those documents
 are the narrative; this skill is the operational checklist a session
-actually runs.
+actually runs. The mechanical parts of that checklist — preflight, tag
+ceremony, post-push verification, and the close-phase scaffold — are now
+four `bin/` scripts (R13, `notes/ADRs.md` ADR-0127): one definition, in
+the script; this skill points at it by name rather than restating its
+steps.
 
 ## Use this skill when
 
@@ -55,22 +59,20 @@ actually runs.
    itself commits/pushes/merges/`gh`s). Whichever mode applies, it is
    scoped to this session only — the next session starts back at
    whichever mode its own prompt states.
-2. **Preflight: confirm the session's edit root is the ext4 clone.**
-   **Retired 2026-08-05** (scaffolding compaction C, `notes/ADRs.md`
-   ADR-0047 AR-C-3): the second, Windows-mounted `/mnt/c` clone this
-   step used to guard against — read-only, reject-all-hooks, synced
-   only via the now-deleted `bin/sync-mnt-c` (ADR-0030 J4,
-   `feedback-dual-clone-edit-hazard`) — no longer exists as a live
-   working tree. The hazard class it guarded against is closed
-   structurally, not procedurally: Claude Code's own project root now
-   points at the ext4 clone by its UNC path
-   (`\\wsl.localhost\Ubuntu\home\mg\src\ehr-testing-tools`) directly,
-   so there is no second clone root left to resolve or mistarget. At
-   session start, simply confirm the working directory IS that ext4
-   clone (`~/src/ehr-testing-tools`) — if any Read/Edit/Write call ever
-   resolves somewhere else again, that is a NEW regression, not a
-   known, guarded-against hazard: STOP-AND-REPORT rather than treating
-   it as routine vigilance.
+2. **Preflight: `bin/preflight [--branch BRANCH]`.** Run at session
+   start, before touching git. Reports, deterministically, in one call:
+   the last five CI runs on the branch (green/PENDING/RED — a
+   probabilistic red hides behind any single green, quality riders
+   AR-QR-3; a red finding is disclosed before proceeding, never silently
+   passed, but watching a run TO CONCLUSION stays reserved for a session
+   whose own claim is about CI, AR-CI-4); edit-root confirmation (the
+   ext4 clone, never a Windows-mounted `/mnt/*` checkout — the `/mnt/c`
+   hazard class retired 2026-08-05, `notes/ADRs.md` ADR-0047 AR-C-3; a
+   fresh instance elsewhere is a NEW regression, STOP-AND-REPORT, not
+   routine vigilance); tree-clean check counting untracked files too;
+   HEAD-vs-remote tip match; the last `stable-*` tag and whether HEAD is
+   tagged. Read-only, always exits 0 — a report, not a gate; disclose
+   every finding in the session record.
 3. **All git operations from WSL, never native Windows** —
    `.githooks/pre-commit`/`pre-push` enforce this once `git config
    core.hooksPath .githooks` is set per clone. If working from a
@@ -91,43 +93,91 @@ actually runs.
    messages crossing Bash-tool → `wsl.exe` → bash — write the message to
    a plain file with a non-shell tool, then `git commit -F <path>` as
    its own simple call.
-7. **Push, then verify.** After every push: `git log --format=%B -1`
-   against the pushed commit, diffed against the message file that
-   produced it. A diff whose only delta is one trailing blank line is
-   `git log --format=%B`'s own formatting artifact, not a failure. Any
-   other mismatch is never fixed by amending a pushed commit — add a
-   fix-forward note to this session's own session record naming what
-   the wrapper dropped.
-8. **`stable-*` tags are a session act, under license; everything
-   else below stays author-only regardless of ceremony mode.** A
-   session creates and pushes a `stable-*` continuity tag when (i) its
-   own prompt licenses a SPECIFIC tag at a SPECIFIC commit, or (ii) for
-   its own predecessor's design-channel-verified stable point, as
-   standing ceremony — deferring a licensed tag is now the deviation,
-   disclose why if you do (tag law, `notes/ADRs.md` ADR-0057 AR-T-1,
-   superseding ADR-0003's author-only scope for this one class of tag
-   only; ADR-0003's trust-boundary reasoning for every other AUTHOR
-   ACTION item below is otherwise unchanged). A tag already present at
-   the exact commit and message is verified and disclosed, never
-   re-created. **Release `v*` tags, repo-level `gh` mutations
-   (create/delete/settings/visibility), git surgery, and placing
-   external documents remain AUTHOR ACTION** — stop and hand these to
-   the author regardless of ceremony mode.
-9. **Fix-forward with disclosure on premise mismatch.** When a
-   checkpoint's stated premise doesn't hold against the live tree, stop,
-   record the finding, and ask — don't silently adapt or guess
-   (`docs/dev/way-of-working.md` §2; worked examples: the JDK/Temurin
-   premise, the gitleaks-hook premise, both in that document).
-10. **Red→green for every gate touched.** If a checkpoint adds or edits
-   an enforcement test, prove it fails before the fix and passes after
-   — don't just assert green.
-11. **Session record before the final push (R-A).** The last checkpoint
-    of any non-trivial session writes `.agents/session-records/<date>-
-    <slug>.md` and archives its own driving prompt to
-    `.agents/prompts/<date>-<slug>.md`, both indexed in their own
-    README in the same commit — the index-completeness gate
-    (`ehrt.docs-tooling.index-completeness-test`) fails the build on a
-    missing or ghost entry.
+7. **Checkpoint isolation, when a checkpoint pairs a src fix with its
+   own test.** Polylith's own test runner aborts an entire project's
+   run on the FIRST uncaught exception rather than continuing — so a
+   red capture against a fix that is already partly staged or already
+   applied elsewhere in the working tree is not evidence the FIX is
+   what turns red to green, it is evidence of whatever else is in the
+   tree too. Isolate: disposable `git stash` the src fix (or the test,
+   whichever is smaller) before capturing red, so the red run exercises
+   exactly the unfixed code the checkpoint claims to fix; `git stash
+   pop` before capturing green. Two independent fixes in the same
+   session each get their own isolated stash/red/pop/green cycle, never
+   shared evidence (worked example: `.agents/session-records/
+   2026-08-06-ux-fixes-2.md`, two independent red captures via
+   disposable stash isolation).
+8. **Red capture, for every checkpoint that adds or edits an
+   enforcement test or fixes a defect a test can name.** Prove the gate
+   fails before the fix and passes after — never just assert green. The
+   red run's own output (not a paraphrase of it) is what goes in the
+   session record; a false positive in the first red pass (a naive
+   check catching more than the real target) is itself worth recording,
+   not silently filtered (worked example: the rider's gate in
+   `.agents/session-records/2026-08-06-ux-fixes-2.md`, whose first red
+   pass found 5 failures, one a false positive, before the real 4).
+9. **Sweep census, when a fix's own scope is "every occurrence of X."**
+   An exhaustive grep-based inventory of every site matching the
+   pattern being fixed, disclosed with file:line evidence for EVERY
+   hit — not just the ones fixed. A hit correctly left untouched (a
+   false match, an out-of-fence site, a different meaning at the same
+   token) is named and why, in the same table as the hits that were
+   fixed — the census proves completeness, not just correctness (worked
+   examples: `.agents/session-records/2026-08-12-fix-cluster-a-cli-
+   validation.md`'s own F7 four-site sweep census with file:line; the
+   `errata-sweep` skill's own inventory step is this same practice at
+   full weight, for a session whose entire charter is a sweep rather
+   than one checkpoint's own fix).
+10. **Push, then verify: `bin/post-push-verify [<base-sha>]
+    [<tip-sha>]`.** Run immediately after every `git push`. Confirms the
+    remote tip matches local HEAD (or `<tip-sha>`); runs the per-commit
+    ASCII check over the pushed range (`<base-sha>..<tip-sha>`,
+    AR-RL2-5 — a diff whose only delta is one trailing blank line is
+    `git log --format=%B`'s own formatting artifact, not a failure; any
+    other mismatch is never fixed by amending a pushed commit, add a
+    fix-forward note instead); reports (polls once, never awaits to
+    conclusion) the CI run triggered at the tip.
+11. **`stable-*` tags: `bin/tag-ceremony <tag-name> <target-sha>
+    <message-file> [--push]`, under license.** A session creates and
+    pushes a `stable-*` continuity tag when (i) its own prompt licenses
+    a SPECIFIC tag at a SPECIFIC commit, or (ii) for its own
+    predecessor's design-channel-verified stable point, as standing
+    ceremony — deferring a licensed tag is now the deviation, disclose
+    why if you do (tag law, `notes/ADRs.md` ADR-0057 AR-T-1, superseding
+    ADR-0003's author-only scope for this one class of tag only;
+    ADR-0003's trust-boundary reasoning for every other AUTHOR ACTION
+    item below is otherwise unchanged). The license to tag is still the
+    session's own judgment call — the script only performs the
+    mechanics once licensed: validates the tag name (`stable-YYYYMMDD-
+    <slug>`, ASCII-only, the ADR-0120 slug-drift class), creates the
+    ANNOTATED tag, pushes only with `--push`, and ALWAYS verifies the
+    peeled ref against the remote afterward (the ADR-0124 skipped-tag
+    class — the verify half is not optional). A tag already present at
+    the exact commit and message is verified and disclosed, never
+    re-created. **Release `v*` tags, repo-level `gh` mutations
+    (create/delete/settings/visibility), git surgery, and placing
+    external documents remain AUTHOR ACTION** — stop and hand these to
+    the author regardless of ceremony mode.
+12. **Fix-forward with disclosure on premise mismatch.** When a
+    checkpoint's stated premise doesn't hold against the live tree, stop,
+    record the finding, and ask — don't silently adapt or guess
+    (`docs/dev/way-of-working.md` §2; worked examples: the JDK/Temurin
+    premise, the gitleaks-hook premise, both in that document).
+13. **Close-phase scaffold: `bin/close-scaffold <YYYY-MM-DD> <slug>
+    <one-line description>` (R-A).** Run as the last checkpoint of any
+    non-trivial session, before the final push. Scaffolds
+    `.agents/session-records/<date>-<slug>.md` and `.agents/prompts/
+    <date>-<slug>.md` (creating only whichever is missing) AND both
+    directories' own README star-bullet index lines in the same call —
+    the index-completeness gate (`ehrt.docs-tooling.index-completeness-
+    test`) and the prompt/record pairing gate
+    (`ehrt.docs-tooling.prompt-record-pairing-test`) both fail the build
+    on a missing or ghost entry, so generate the pair rather than
+    hand-remembering it (the index-completeness late catch,
+    `notes/adr/0126-*.md`, is this lesson anticipated rather than
+    rediscovered). Fill in the scaffolded stubs with the session's real
+    record and archived prompt before committing; the script is
+    idempotent, so re-running it after filling in content is a no-op.
 
 ## VERIFICATION
 
@@ -159,29 +209,27 @@ and prompt archive.
 
 - [ ] Ceremony mode was determined from the session's own prompt, not
       assumed.
-- [ ] The session's working directory was confirmed as the ext4
-      clone at session start (the `/mnt/c` mirror retired 2026-08-05,
-      ADR-0047 AR-C-3 — no second clone root to resolve anymore).
-- [ ] The LAST FIVE runs' conclusions for main were checked at session
-      start (e.g. `gh run list --limit 5 --branch main`), not just the
-      latest — a probabilistic red (an intermittent failure) hides
-      behind any single green. All five are disclosed in the session
-      record; a red anywhere among them is a finding to report before
-      proceeding, never silently passed (ci current, `notes/ADRs.md`
-      ADR-0075 AR-CI-3: CI ran red across many commits with nobody —
-      neither a build session nor the design channel's own
-      verification loop — watching, until a session finally checked;
-      widened to five runs, quality riders AR-QR-3, after a session
-      found the flaky-test red hiding one run behind an all-green
-      "latest run" check). Watching a run TO CONCLUSION stays reserved
-      for a session whose own claim is about CI (the AR-CI-4
-      precedent) — an ordinary session discloses the five and
-      proceeds, never blocks waiting on one still running.
+- [ ] `bin/preflight` ran at session start and every finding it printed
+      (CI, edit-root, tree-clean, HEAD-vs-remote, tag state) is
+      disclosed in the session record — a red or FINDING line is never
+      silently passed.
 - [ ] `git diff --cached --stat` was reviewed before every commit.
 - [ ] Every commit message came from a file, not an inline heredoc.
 - [ ] `gitleaks` and `clojure -M:poly check` are green before every push.
-- [ ] Every push was verified against its message file.
+- [ ] A checkpoint pairing a src fix with its own test used checkpoint-
+      isolation (disposable stash) to capture red against exactly the
+      unfixed code, not a tree containing other in-flight changes.
+- [ ] Every checkpoint that added or edited an enforcement test proved
+      red-before-green with the run's own real output, not asserted.
+- [ ] A checkpoint scoped to "every occurrence of X" is backed by a
+      sweep census disclosing every hit, fixed or correctly left
+      untouched, not just the ones changed.
+- [ ] `bin/post-push-verify` ran after every push and its three checks
+      (remote tip, per-commit ASCII, CI run reported) are recorded.
+- [ ] Any `stable-*` tag went through `bin/tag-ceremony`, under an
+      explicit license, ending in its own peeled-ref verification.
 - [ ] AUTHOR ACTION items were named and left to the author, not taken.
 - [ ] Any regression-oracle claim this session made names
       `bin/regression-oracle`'s own output, not a count comparison.
-- [ ] The session record and prompt archive land before the final push.
+- [ ] `bin/close-scaffold` ran before the final push, and its stubs were
+      filled in with the session's real record and archived prompt.
