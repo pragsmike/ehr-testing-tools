@@ -33,7 +33,7 @@
      HAPI itself always reports low severity here.
 
   Nothing in this judge ever produces `:indeterminate` or `:no-verdict`
-  (ADR-0010): there is no terminology server and no conformance profile
+  (tools/ADR-0010): there is no terminology server and no conformance profile
   in play at this tier, so there is no check this judge can only
   partially resolve -- a check either ran (feeding a finding) or the
   message failed to parse at all (`:rejected`)."

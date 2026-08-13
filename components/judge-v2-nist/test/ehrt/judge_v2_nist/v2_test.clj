@@ -49,7 +49,7 @@
 (deftest rejected-dominates-suppression
   (testing "worst-of semantics: a confirmed Error still rejects even when
             VS checking was suppressed elsewhere in the same file (same
-            rationale as ADR-0010's revised ranking)"
+            rationale as tools/ADR-0010's revised ranking)"
     (is (= :rejected (:verdict (v2/interpret
                                 (capture [(entry)
                                           (entry :area "value-set"

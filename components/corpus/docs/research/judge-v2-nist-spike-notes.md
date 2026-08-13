@@ -69,7 +69,7 @@ not prose. This is the closed inject-X-expect-X loop.
    Validation Disabled`, `Excluded From Validation`) → `:no-verdict /
    :terminology-suppressed` — the v2 analog of judge-fhir-official's case.
 3. `:rejected` (any `Error` classification, or engine exception) dominates
-   suppression — same rationale as ADR-0010's revised ranking. Unit-tested.
+   suppression — same rationale as tools/ADR-0010's revised ranking. Unit-tested.
 
 ## Wiring into the workspace (manual steps, deliberately not auto-done)
 

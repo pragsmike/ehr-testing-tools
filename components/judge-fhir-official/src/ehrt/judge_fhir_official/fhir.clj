@@ -38,7 +38,7 @@
 (def verdict-mapping-version "v2")
 (def verdict-mapping-cited-to "components/corpus/docs/experiments/EXP-C5-results.md")
 
-;; verdict-mapping-version bumped v1 -> v2 (ADR-0010, O2): the
+;; verdict-mapping-version bumped v1 -> v2 (tools/ADR-0010, O2): the
 ;; EXP-C5-derived classification logic itself did not change (the same
 ;; five diagnostics-text patterns still mark terminology suppression),
 ;; but the mapping's OUTPUT vocabulary did -- the terminology-
@@ -308,7 +308,7 @@
   "Returns {:verdict ... :cause (only when :verdict is :no-verdict)}:
   :no-verdict/:terminology-suppressed (the engine ran without applying
   terminology -- the judge failed to fully apply the criterion,
-  ADR-0010/O2, not the criterion failing to decide -- formerly
+  tools/ADR-0010/O2, not the criterion failing to decide -- formerly
   :indeterminate), :rejected (a genuine error or fatal issue), or
   :pass (advisory warning/information)."
   [issue]
@@ -324,7 +324,7 @@
   mapping (`issue->classification`); `policy` is reserved for the
   verdict->action layer (ADR-0009), one level up from a single finding.
   :cause rides alongside :disposition, present iff :disposition is
-  :no-verdict (ADR-0010, judge.finding/valid-cause-pairing?)."
+  :no-verdict (tools/ADR-0010, judge.finding/valid-cause-pairing?)."
   [engine issue]
   (let [{:keys [verdict cause]} (issue->classification issue)]
     (cond-> {:severity (severity->keyword (get issue "severity"))

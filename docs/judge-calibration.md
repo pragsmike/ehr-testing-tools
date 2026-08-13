@@ -29,7 +29,7 @@ appears at the mutation's own locator.
 | `wrong-type-value` | any typed field | **Yes** | `:rejected`, `error`/`invalid` ("the primitive value must be a boolean" / similar) | Clean JSON-type violation |
 | `remove-required-element` | **must be a genuinely min-cardinality-1 field** (e.g. `resourceType`, not `Patient.gender` -- gender is min 0 in base FHIR) | **Yes, if the locator is actually required** | `:rejected`, `fatal`/`invalid` ("Unable to find resourceType property") for `resourceType`; **nothing** for a locator that isn't actually required | The operator's own contract is conditional on the locator naming a required element -- verify the target's cardinality before trusting a "detected" result |
 | `invalid-code-value` | a field bound to a **base-FHIR-bundled** ValueSet (e.g. `Patient.gender` -> `AdministrativeGender`) | **Yes** | `:rejected`, `error`/`code-invalid` + `error`/`not-found` | Contrary to the a-priori assumption that this class is terminology-suppressed offline -- small, spec-bundled ValueSets are checked without a terminology server |
-| `invalid-code-value` | a field bound to a **terminology-server-dependent** code system (LOINC, SNOMED, UCUM, most `urn:oid:`-named systems) | **No, no-verdict** | `:no-verdict`/`:terminology-suppressed`, diagnostics containing "without using server" / "doesn't provide any codes" / similar (formerly `:indeterminate`[^adr-0010]) | **Undetectable at this judge tier** -- catchable only with a terminology server or a locally packaged, complete ValueSet; untested directly in this session's contract-pairing suite (no such locator in the fixture), inferred from EXP-C5's own classification table |
+| `invalid-code-value` | a field bound to a **terminology-server-dependent** code system (LOINC, SNOMED, UCUM, most `urn:oid:`-named systems) | **No, no-verdict** | `:no-verdict`/`:terminology-suppressed`, diagnostics containing "without using server" / "doesn't provide any codes" / similar (formerly `:indeterminate`[^tools-adr-0010]) | **Undetectable at this judge tier** -- catchable only with a terminology server or a locally packaged, complete ValueSet; untested directly in this session's contract-pairing suite (no such locator in the fixture), inferred from EXP-C5's own classification table |
 
 **Severity note:** FHIR's `IssueSeverity` ValueSet has four values,
 not three -- `fatal` alongside `error`/`warning`/`information`.
@@ -49,7 +49,7 @@ conformance profiles, usage/cardinality beyond parse-time structure,
 predicates, or co-constraints (`judge-v2-nist`'s own territory,
 [^adr-0012], `gate v2-nist`, profile-aware -- landed as a direct engine,
 not the CDC wrapper EXP-D3 originally evaluated). Nothing here ever produces `:indeterminate` or
-`:no-verdict`[^adr-0010]: there is no terminology and no profile at
+`:no-verdict`[^tools-adr-0010]: there is no terminology and no profile at
 this tier, so there is no check this judge can only partially resolve.
 
 ### Calibration: what the seed catalog convicts, and what P7 found it can't (2026-07-25, CAL-1)
@@ -92,7 +92,7 @@ correctness beyond that scope -- see the FHIR judge's profile-noise
 caveat above, and see `README.md`'s maturity table for the one-line
 honest summary this page backs.
 
-## No-verdict, operationally (2026-07-25, [^adr-0010])
+## No-verdict, operationally (2026-07-25, [^tools-adr-0010])
 
 `:no-verdict` means the judge couldn't fully *apply* the criterion --
 today, exactly the terminology-suppressed case above: the validator ran
@@ -179,9 +179,9 @@ verdicts are binary (`:pass`/`:rejected`), never `:indeterminate` or
 classify as `:no-verdict` in `:absolute` mode. A novel no-verdict-worthy
 finding still counts as `:relative` `:rejected` -- stated here rather
 than left as a surprise. This holds against baselines captured before
-that split landed[^adr-0010] too: an old, three-valued baseline (no `:no-verdict`, no
+that split landed[^tools-adr-0010] too: an old, three-valued baseline (no `:no-verdict`, no
 `:cause`) reads forward unmigrated, since baseline matching keys on
 `{severity, code, locator-path}` alone and never looks at `:cause`.
 
-[^adr-0010]: Design record [ADR-0010](../notes/ADRs.md).
+[^tools-adr-0010]: Design record [tools/ADR-0010](../notes/tools/ADRs.md).
 [^adr-0012]: Design record [ADR-0012](../notes/ADRs.md).

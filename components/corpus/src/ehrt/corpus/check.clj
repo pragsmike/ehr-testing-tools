@@ -12,7 +12,7 @@
   Check is judge-kind (docs/notation.md, ADR-0009): it produces a
   verdict plus findings over the datum and never modifies it. Unlike
   Gate, nothing in this v1 vocabulary maps to :indeterminate (reserved,
-  no producer anywhere in this repo as of ADR-0010) or :no-verdict --
+  no producer anywhere in this repo as of tools/ADR-0010) or :no-verdict --
   stated plainly here rather than left implicit, since both are
   otherwise part of the judge kind's own floor (docs/palgebra-design.md
   D10). Every per-file verdict Check produces is binary (:pass or

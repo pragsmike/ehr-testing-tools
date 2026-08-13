@@ -13,9 +13,9 @@
 
 (def exit-codes
   "0/1/2/3 per ADR-0004's ok/rejected/error mapping, extended by
-  ADR-0010 for the no-verdict arm -- see `cli/result->exit-code`'s own
+  tools/ADR-0010 for the no-verdict arm -- see `cli/result->exit-code`'s own
   docstring for the authoritative reasoning; this table only cites it."
-  ;; Mapping reasoning: ADR-0004 (ok/rejected/error), extended by ADR-0010
+  ;; Mapping reasoning: ADR-0004 (ok/rejected/error), extended by tools/ADR-0010
   ;; (no-verdict arm). Authoritative logic: cli/result->exit-code.
   [{:code 0 :meaning "ran and passed"}
    {:code 0 :meaning "bare invocation, help, and --help all exit 0 too"}
@@ -39,7 +39,7 @@
    {:flag "--version" :doc "artifact version, e.g. \"4.0.0\""}
    {:flag "--lockfile" :doc "path to the lockfile" :default "artifacts.lock.edn"}])
 
-;; no-verdict folding policy: ADR-0010.
+;; no-verdict folding policy: tools/ADR-0010.
 (def ^:private gate-common-flags
   [{:flag "--path" :doc "alternative to the positional PATH"}
    {:flag "--report" :doc "write the report EDN to this path"}

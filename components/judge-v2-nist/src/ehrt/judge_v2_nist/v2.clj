@@ -19,7 +19,7 @@
   input sha256 + PROFILE-BUNDLE sha256s -- the profile is an input in
   this tier, so the invocation record hashes Π alongside m.
 
-  Verdict policy (ADR-0012, mirrors ADR-0010 vocabulary):
+  Verdict policy (ADR-0012, mirrors tools/ADR-0010 vocabulary):
   - classification \"Error\" -> finding :error; any -> :rejected.
   - \"Warning\"/\"Alert\"/\"High Alert\" -> :warning findings, :pass.
   - \"Informational\"/\"Affirmative\" -> :information, :pass.

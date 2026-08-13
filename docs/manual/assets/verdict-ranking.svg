@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!--
   Content derived from the documented verdict ranking (worst-of, D10/O2,
-  notes/ADRs.md ADR-0010; the ranking's own revision from a real
+  notes/tools/ADRs.md tools/ADR-0010; the ranking's own revision from a real
   Synthea integration run, components/corpus/docs/palgebra-design.md
   Part II.5): four values in code, :rejected > :no-verdict >
   :indeterminate > :pass -- but :indeterminate is reserved, no producer

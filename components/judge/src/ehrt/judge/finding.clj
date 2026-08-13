@@ -6,9 +6,9 @@
   raw output into this shape; nothing format-specific lives here.
 
   Verdicts are the Judge stage kind's own vocabulary (docs/notation.md,
-  docs/palgebra-design.md D10/ADR-0010): :pass / :rejected /
+  docs/palgebra-design.md D10/tools/ADR-0010): :pass / :rejected /
   :indeterminate / :no-verdict. :indeterminate is RESERVED as of
-  ADR-0010 -- kept in the enum because old baseline reports still
+  tools/ADR-0010 -- kept in the enum because old baseline reports still
   serialize it (O1's own conservatism), but nothing in this repo
   produces it anymore; `judge.fhir`'s former :indeterminate case is now
   :no-verdict. :no-verdict is a legitimate outcome (the judge could not
@@ -20,7 +20,7 @@
   :rejected beats :no-verdict beats :indeterminate beats :pass -- a
   confirmed violation still dominates the aggregate over incidental
   partiality elsewhere in the same file (see `worst-of`'s own
-  docstring for why this isn't the ranking ADR-0010 originally
+  docstring for why this isn't the ranking tools/ADR-0010 originally
   specified)."
   (:require [malli.core :as m]))
 
@@ -36,7 +36,7 @@
   [:enum :error :warning :information :fatal])
 
 (def Verdict
-  "Four values (ADR-0010): :pass / :rejected / :indeterminate (RESERVED
+  "Four values (tools/ADR-0010): :pass / :rejected / :indeterminate (RESERVED
   -- no producer as of this migration, kept only for old serialized
   data) / :no-verdict (paired with a :cause, see Cause/VerdictOutcome
   below)."
@@ -57,7 +57,7 @@
 
 (def VerdictOutcome
   "A verdict paired with its cause -- cause is required if and only if
-  verdict is :no-verdict (author ruling, ADR-0010): the fourth arm
+  verdict is :no-verdict (author ruling, tools/ADR-0010): the fourth arm
   carries its cause in a distinct sibling field, not folded into the
   verdict keyword itself. Malli-enforced via the :fn refinement below."
   [:and
@@ -70,7 +70,7 @@
 
 (defn valid-cause-pairing?
   "True iff cause is present exactly when verdict is :no-verdict -- the
-  totality rule for the fourth arm (ADR-0010), Malli-enforced via
+  totality rule for the fourth arm (tools/ADR-0010), Malli-enforced via
   VerdictOutcome. cause is omitted from the validated map entirely
   when nil, matching :cause's :optional (key-absence) semantics rather
   than validating an explicit nil value against the Cause enum."
@@ -91,11 +91,11 @@
   (m/validate Finding finding))
 
 ;; :no-verdict ranked ABOVE :indeterminate but BELOW :rejected
-;; (ADR-0010, revised during this same session's Step 5 integration
+;; (tools/ADR-0010, revised during this same session's Step 5 integration
 ;; run): a corpus the judge couldn't fully apply its criterion to is
 ;; worse than one the criterion simply didn't decide, but a confirmed
 ;; violation elsewhere in the same file still dominates the aggregate.
-;; ADR-0010's first draft ranked :no-verdict above :rejected outright
+;; tools/ADR-0010's first draft ranked :no-verdict above :rejected outright
 ;; ("a corpus that couldn't be fully judged is not a corpus that
 ;; passed") -- reverted after `make integration` showed every real,
 ;; US-Core-profiled Synthea file mixes terminology-suppressed findings
@@ -135,7 +135,7 @@
   per-file :no-verdict-causes surfaces it back independently of which
   keyword this function picked.
 
-  :indeterminate's rank is VESTIGIAL as of ADR-0010: nothing in this
+  :indeterminate's rank is VESTIGIAL as of tools/ADR-0010: nothing in this
   repo produces it anymore, so it only ever matters when folding an old,
   pre-split baseline's serialized findings."
   [verdicts]

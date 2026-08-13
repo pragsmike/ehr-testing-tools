@@ -108,7 +108,7 @@
   )
 
 (deftest interpret-terminology-suppressed-issues-are-no-verdict-test
-  ;; ADR-0010/O2: terminology-suppressed is no-verdict(:terminology-
+  ;; tools/ADR-0010/O2: terminology-suppressed is no-verdict(:terminology-
   ;; suppressed) -- the judge failed to fully apply the criterion; the
   ;; criterion didn't fail to decide. Formerly :indeterminate.
   (testing "warning-severity, 'without using server' diagnostics"

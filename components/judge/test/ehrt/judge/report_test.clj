@@ -151,7 +151,7 @@
     (is (report/valid? (:relative br)))
     (is (= {:gate :fhir} (:run (:absolute br))))))
 
-;; ---- no-verdict flows through the report (ADR-0010): totals,
+;; ---- no-verdict flows through the report (tools/ADR-0010): totals,
 ;; per-file :cause, schema, and diff ----
 
 (defn- no-verdict-finding [code]
@@ -190,7 +190,7 @@
 ;; the coverage dimension the projection discards. This per-file
 ;; cause-count surfaces it back, for :rejected files too, not just
 ;; :no-verdict ones. Additive: absent when no finding carries a
-;; :cause, so pre-existing fixtures and old (pre-ADR-0010) baselines
+;; :cause, so pre-existing fixtures and old (pre-tools/ADR-0010) baselines
 ;; are unaffected. ----
 
 (defn- rejected-finding [code]
@@ -246,7 +246,7 @@
 
 ;; ---- baseline-relative reads a pre-split (three-valued) baseline
 ;; forward, without migration -- old baselines predate :no-verdict and
-;; :cause entirely (docs/judge-calibration.md, ADR-0010) ----
+;; :cause entirely (docs/judge-calibration.md, tools/ADR-0010) ----
 
 (def pre-split-baseline
   (edn/read-string (slurp "test-fixtures/reports/pre-split-baseline.edn")))

@@ -36,7 +36,7 @@
   ;; CLI-2's new member of the error family, asserted additively rather
   ;; than by editing the mapping test above: an unwritable --report path
   ;; is an operational failure, so it lands on 2 through ADR-0004's
-  ;; generic mapping -- not on a rejection's 1, and not on ADR-0010's
+  ;; generic mapping -- not on a rejection's 1, and not on tools/ADR-0010's
   ;; :gate-no-verdict arm at 3.
   (let [r (result/error :report-write-failed {:path "x" :message "m"})]
     (is (= 2 (cli/result->exit-code r)))
@@ -2053,7 +2053,7 @@
     (is (= 1 (cli/result->exit-code r)))))
 
 ;; ---- --treat-no-verdict-as (`ehrt gate --treat-no-verdict-as
-;; pass|rejected`, ADR-0010): policy totality at the act layer. Tested
+;; pass|rejected`, tools/ADR-0010): policy totality at the act layer. Tested
 ;; against `gate-command` directly with an injected fake gate-file-fn --
 ;; neither judge.v2 (never produces :no-verdict) nor judge.fhir
 ;; (needs a real subprocess) can produce a :no-verdict outcome

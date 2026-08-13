@@ -87,7 +87,7 @@ Vocabulary: `ehrt.judge.finding/Verdict`.
 purpose: "passed" is meant to mean *checked and clean*, not *clean on
 what we managed to check*. It gets its own CLI exit code (`3`) for the
 same reason — so no workflow silently inherits a policy for it. The
-reasoning is in the design record[^adr-0010]; this page does not restate it.
+reasoning is in the design record[^tools-adr-0010]; this page does not restate it.
 
 Causes are `ehrt.judge.finding/Cause`, a deliberately small
 enum. Today it has exactly one member, `:terminology-suppressed`. Expect
@@ -541,11 +541,11 @@ read it from a shell instead of a REPL.
 
 Semantics cited, never restated here: the judge/gate split[^adr-0009]
 (judge vs. gate, and why the per-finding field is `:disposition` rather
-than `:policy`) and the `:no-verdict` design[^adr-0010] (the `:no-verdict` arm,
+than `:policy`) and the `:no-verdict` design[^tools-adr-0010] (the `:no-verdict` arm,
 its `:cause` channel, and its own exit code).
 
 [^adr-0009]: Design record [ADR-0009](../notes/ADRs.md).
-[^adr-0010]: Design record [ADR-0010](../notes/ADRs.md).
+[^tools-adr-0010]: Design record [tools/ADR-0010](../notes/tools/ADRs.md).
 [^adr-0013]: Design record [ADR-0013](../notes/ADRs.md).
 [^adr-0014]: Design record [ADR-0014](../notes/ADRs.md).
 [^adr-0020]: Design record [ADR-0020](../notes/ADRs.md).

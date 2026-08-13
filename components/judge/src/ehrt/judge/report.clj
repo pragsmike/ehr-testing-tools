@@ -20,7 +20,7 @@
    [:finding-count :int]
    [:findings {:optional true} [:vector finding/Finding]]
    [:id {:optional true} :string]
-   ;; :cause (ADR-0010): present iff :verdict is :no-verdict -- carried
+   ;; :cause (tools/ADR-0010): present iff :verdict is :no-verdict -- carried
    ;; through from whichever result produced this file's overall
    ;; verdict (judge.fhir/interpret). No :fn-refinement pairing here
    ;; the way judge.finding/VerdictOutcome enforces it for a single
@@ -32,12 +32,12 @@
    ;; present regardless of which verdict the file-level projection
    ;; picked. worst-of's fold lets a :rejected finding dominate the
    ;; aggregate over an incidental no-verdict-worthy finding in the
-   ;; SAME file (the revised ranking, ADR-0010) -- that's the coverage
+   ;; SAME file (the revised ranking, tools/ADR-0010) -- that's the coverage
    ;; dimension the single :verdict keyword necessarily discards; this
    ;; field is how a :rejected file still surfaces its own partiality
    ;; instead of losing it entirely to the projection. Optional/absent
    ;; when no finding in the file carries a :cause -- additive, so
-   ;; pre-existing reports and pre-ADR-0010 baselines are unaffected.
+   ;; pre-existing reports and pre-tools/ADR-0010 baselines are unaffected.
    [:no-verdict-causes {:optional true} [:map-of finding/Cause :int]]])
 
 (def Report
@@ -54,7 +54,7 @@
 (defn build-report
   "results is a seq of per-file judge outcomes {:path :verdict :findings
   [...] :id (optional) :cause (optional, iff :verdict is :no-verdict --
-  ADR-0010)}. run is free-form metadata about this run (which gate,
+  tools/ADR-0010)}. run is free-form metadata about this run (which gate,
   which path/corpus was gated, etc.) -- carried through verbatim as
   :run. Each FileEntry retains its full :findings (not just
   :finding-count) -- P6 needs this so a persisted report can later
@@ -127,7 +127,7 @@
   legitimately vary run to run for the *same* underlying finding
   (e.g. differing diagnostic text), and deliberately excludes any
   format-specific extension field (e.g. judge.fhir's own :disposition
-  and :cause, ADR-0010) so this stays format-agnostic, matching
+  and :cause, tools/ADR-0010) so this stays format-agnostic, matching
   build-report's own contract."
   [f]
   [(:severity f) (:code f) (get-in f [:locator :path])])
@@ -147,14 +147,14 @@
   toward rejection only if its finding-key triple is not already
   present in baseline for that file. Verdict is binary (:pass or
   :rejected) even against a four-valued judge's own absolute verdict
-  (ADR-0010: :pass/:rejected/:indeterminate/:no-verdict) -- judge.report
+  (tools/ADR-0010: :pass/:rejected/:indeterminate/:no-verdict) -- judge.report
   stays format-agnostic and has no access to any format-specific
   per-finding classification (e.g. judge.fhir's own :disposition and
   :cause) that would be needed to preserve :no-verdict here; a novel
   no-verdict-worthy finding still counts as :rejected in relative mode,
   same as it did for :indeterminate before this arm existed. Stated
   plainly (docs/judge-calibration.md), not left implicit. Baselines
-  captured before ADR-0010 (three-valued, no :cause) read forward
+  captured before tools/ADR-0010 (three-valued, no :cause) read forward
   unmigrated -- finding-key never looks at :cause, so an old baseline's
   absence of the field is simply absence, not a mismatch."
   [{:keys [path findings id]} baseline]

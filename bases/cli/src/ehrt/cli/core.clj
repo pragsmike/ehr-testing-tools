@@ -159,7 +159,7 @@
         (throw e)))))
 
 (def no-verdict-exit-code
-  "Full exit-code mapping (ADR-0004, extended by ADR-0010 for the
+  "Full exit-code mapping (ADR-0004, extended by tools/ADR-0010 for the
   fourth verdict arm): 0 ok, 1 rejected, 2 operational error, 3 a
   gate's aggregate contains :no-verdict under the default (undecided)
   --treat-no-verdict-as policy. Distinct from 1 so no workflow silently
@@ -172,7 +172,7 @@
   "0 = ran and passed; 1 = ran and legitimately rejected; 2 = operational
   error; 3 = a gate's aggregate contains :no-verdict under the default
   policy (see `no-verdict-exit-code`). Per ADR-0004's CLI exit-code
-  contract, extended by ADR-0010."
+  contract, extended by tools/ADR-0010."
   [r]
   (cond
     (result/ok? r) 0
@@ -1113,7 +1113,7 @@
     (result/rejected :invalid-treat-no-verdict-as {:value s})))
 
 (defn- gate-decision
-  "The policy-totality law (ADR-0010, D10) made total in code: :ok,
+  "The policy-totality law (tools/ADR-0010, D10) made total in code: :ok,
   :rejected, or :no-verdict, given a report's totals and the resolved
   :treat-no-verdict-as policy (nil, :pass, or :rejected). A nil policy
   with any :no-verdict present is its own distinct outcome -- never
@@ -1157,12 +1157,12 @@
   is applied uniformly anyway, for one policy-totality law rather than
   two near-duplicate ones.)
 
-  :treat-no-verdict-as (ADR-0010, D10) is \"pass\" or \"rejected\" (a
+  :treat-no-verdict-as (tools/ADR-0010, D10) is \"pass\" or \"rejected\" (a
   string, validated by `parse-treat-no-verdict-as` before anything else
   runs); anything else is rejected with :invalid-treat-no-verdict-as.
 
   Exit-code contract (ADR-0004's generic ok/rejected/error mapping,
-  extended by ADR-0010 -- see `result->exit-code`): result/ok when the
+  extended by tools/ADR-0010 -- see `result->exit-code`): result/ok when the
   aggregate has zero rejected files and zero no-verdict files;
   result/rejected :gate-rejected the moment any file was rejected (or
   --treat-no-verdict-as rejected folds a no-verdict file in);
@@ -1220,7 +1220,7 @@
   to `out/scratch/gate-fhir` (ADR-0013: the single tool-owned,
   gitignored out/ root -- moved from a bare target/gate-fhir); :java-bin,
   when given, bypasses registry resolution exactly like corpus.generate's
-  own :java-bin override. :treat-no-verdict-as (ADR-0010) passes straight
+  own :java-bin override. :treat-no-verdict-as (tools/ADR-0010) passes straight
   through to gate-command. :no-verdict-cache (ADR-0016) disables the
   content-addressed verdict cache at the validator seam for this
   invocation -- judge.fhir/gate-file's own :verdict-cache? false, the

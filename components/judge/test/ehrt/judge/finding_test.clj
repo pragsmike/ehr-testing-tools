@@ -19,8 +19,8 @@
   (is (finding/valid? (assoc (sample-finding :warning) :native-ref {:issue-index 0}))))
 
 ;; ---- worst-of: the Judge kind's composition law, now over four
-;; values (ADR-0010): :rejected > :no-verdict > :indeterminate > :pass.
-;; :no-verdict ranks below :rejected -- not above it, as ADR-0010
+;; values (tools/ADR-0010): :rejected > :no-verdict > :indeterminate > :pass.
+;; :no-verdict ranks below :rejected -- not above it, as tools/ADR-0010
 ;; originally specified -- because a real, US-Core-profiled corpus
 ;; mixes terminology-suppressed findings with genuine violations in the
 ;; SAME file (EXP-C5); ranking :no-verdict above :rejected made every
@@ -65,7 +65,7 @@
   (is (= :no-verdict (finding/worst-of [:no-verdict :no-verdict :no-verdict])))
   (is (not= (finding/worst-of []) (finding/worst-of [:no-verdict]))))
 
-;; ---- the no-verdict/cause pairing schema (ADR-0010, O2): a Malli
+;; ---- the no-verdict/cause pairing schema (tools/ADR-0010, O2): a Malli
 ;; schema enforcing :cause is present if and only if verdict is
 ;; :no-verdict ----
 
