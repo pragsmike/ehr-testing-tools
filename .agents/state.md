@@ -1,5 +1,33 @@
 # State of the project — continuity register
 
+**CITATION-ONLY update, 2026-08-13, agent-facing hardening: ADR-0127
+addendum, anti-fabrication tripwire, Step-0 receipts (`notes/adr/
+0128-agent-facing-hardening-2.md`) — this citation moves here from
+ADR-0127, CONTENT NOT RE-PROBED.** Not an arc close (this session's
+own naming convention), so `state_staleness_tripwire_test.clj`'s own
+regex is untouched by this update — that gate tracks only
+`*-arc-close.md` files, and ADR-0128 isn't one. Recorded here anyway,
+in the same append-only citation-only spirit as the entries below, so
+a future full regeneration finds this session named rather than
+silently skipped. Landed: a dated addendum to `notes/adr/0127-*.md`
+recording a transcript-witnessed fabricated-draft near-miss (a
+deviation-justification drafted for skipping the Step 0 tag payment,
+self-caught, deleted, never committed); an anti-fabrication tripwire
+rule in `build-session/SKILL.md` (+ mirror); Step-0 receipts guidance
+in `session-prompt/SKILL.md` (+ mirror) and `bin/close-scaffold
+--expect-tag NAME@SHA`, a mechanical local+remote tag-payment
+verification, smoke-tested three ways. Along the way found and fixed
+a real `:sim` reading-set budget-lock error inherited from ADR-0127's
+own Step 3 (measured 1170/1295 when the true actual was already 1293;
+re-derived to 1495 per the standing formula). Zero `src` touched;
+`bin/close-scaffold` is the only pre-existing script edited, mode
+unchanged. Every section below still reflects its LAST full
+regeneration, 2026-08-08 against tip `a9c3abf` — twenty-one ADRs'
+worth of landings since (0090 through 0128, excluding citation-only
+entries) are NOT reflected below and every `[V]` tag below should be
+read accordingly; a full regeneration is still owed at a session that
+rules it.
+
 **CITATION-ONLY update, 2026-08-13, ceremony scripts, build-session
 skill absorption, sim-identity citation sweep (`notes/adr/
 0127-ceremony-scripts-sim-identity-sweep.md`) — this citation moves

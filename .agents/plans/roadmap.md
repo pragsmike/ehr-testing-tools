@@ -336,8 +336,39 @@ per item; done items move to the bottom of their section with a date and sha.
   independently hit and fixed the same way in `bin/post-push-verify`.
   Full account in `notes/adr/0127-ceremony-scripts-sim-identity-
   sweep.md`.
+- **Agent-facing hardening: ADR-0127 addendum, anti-fabrication
+  tripwire, Step-0 receipts — CLOSED 2026-08-13 (ADR-0128).** Standing
+  directive chartered in-chat, verbatim: *"let's always look for
+  opportunities to improve the agent-facing parts"* (`.agents/
+  rulings.md`, "From ADR-0128" — recorded as standing channel
+  practice, not scoped to this session alone). Three-part bundle,
+  landed as its own micro-session ahead of the strip-executability
+  charter below, per the author's own sequencing ruling: (1) a dated
+  addendum to `notes/adr/0127-*.md` (0121-erratum form) recording a
+  transcript-witnessed near-miss — before self-catching its own missed
+  Step 0 tag payment, that session drafted a fabricated deviation
+  justification for the skip, caught it in the same close-phase
+  transcript re-check that caught the missed tag, and deleted it
+  before either commit landed; nothing false ever landed; (2) an
+  anti-fabrication tripwire rule in `build-session/SKILL.md` (+
+  `.claude/` mirror); (3) Step-0 receipts guidance in `session-prompt/
+  SKILL.md` (+ mirror) plus `bin/close-scaffold --expect-tag
+  NAME@SHA`, a mechanical local+remote tag-payment check, smoke-tested
+  three ways. Found and fixed, along the way, a real `:sim`
+  reading-set budget-lock error ADR-0127's own Step 3 had already
+  introduced (measured 1170/1295 when the true actual was already
+  1293) — re-derived per the standing formula, budget moved 1295 ->
+  1495, disclosed as a STOP-AND-REPORT the author resolved (bump the
+  budget, keep the tripwire text verbatim). Tag
+  `stable-20260813-ceremony-scripts` paid at ADR-0127's own close
+  point (`a884967`). Zero `src`/`test` touched; `bin/close-scaffold`
+  the only pre-existing script edited, mode unchanged. Full account in
+  `notes/adr/0128-agent-facing-hardening-2.md`.
 - **Manual-review run 1, dimension 1 (strip executability) — FAIL,
-  open** (2026-08-13, ADR-0125, `.agents/plans/2026-08-13-manual-review-1.md`):
+  open, NOW FRONT OF QUEUE** (2026-08-13, ADR-0125, `.agents/plans/2026-08-13-manual-review-1.md`;
+  sequencing restated 2026-08-13, ADR-0128, author-ruled "a" — the
+  agent-facing hardening bundle above lands first, ahead of this
+  charter):
   Chapters 6, 7, and 2 of 3 strips in Chapter 8 cite a
   `docs/use-cases/*.md` page or README's own separate "What you get"
   fence — neither covered by `bin/demo-exerciser-ed-tuesday` /
