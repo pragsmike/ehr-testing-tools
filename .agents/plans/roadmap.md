@@ -158,37 +158,51 @@ per item; done items move to the bottom of their section with a date and sha.
   currently-unrendered fields, which would change plain `emit`'s own
   frozen bytes) is named as a future, declared-oracle-change session of
   its own -- not touched by either ADR-0109 or this session.
-- **User manual design pass** (status: READY -- awaiting the design
-  channel's own framing; the review-3 arc it sequenced behind (row
-  below) closed 2026-08-12, ADR-0118. trigger RATIFIED 2026-08-11,
-  ADR-0112; sequence position set 2026-08-12, ADR-0113 R5, see the
-  review-3 row below). Renamed from "Tool-specific
-  user-guide design pass" (ADR-0113 R1, author verbatim: *"Let's use
-  the name 'user manual' for the user docs for ehr-testing-tools. I've
-  been informally calling it the 'user guide' but that's too easy to
-  confuse with the more general EHR Testing Guide that's in
-  ehr-testing-guide repo."*). Shape ruled 2026-08-12 (ADR-0113 R2,
-  author "Q1 a. Q2 a. Q3 a."): chaptered `docs/manual/` as the
-  narrative layer over the existing references, never duplicating
-  them; ed-tuesday (`demos/scenarios/ed-tuesday/`) as the manual's one
-  running scenario throughout. The design channel still frames the
-  pass -- structure, audience voice, a gap analysis over the accreted
-  `docs/` skeleton -- before any writing session executes it;
-  SETUP.md's unspoiled-human-reader rewalk (Externals, "SETUP rewalk
-  by an unspoiled human reader") is that pass's own smoke test, the
-  rewalk itself remaining an author-only errand. The batch-straddle
+- **User manual design pass — LANDED 2026-08-12 (ADR-0119).** Renamed
+  from "Tool-specific user-guide design pass" (ADR-0113 R1, author
+  verbatim: *"Let's use the name 'user manual' for the user docs for
+  ehr-testing-tools. I've been informally calling it the 'user guide'
+  but that's too easy to confuse with the more general EHR Testing
+  Guide that's in ehr-testing-guide repo."*). Shape ruled 2026-08-12
+  (ADR-0113 R2, author "Q1 a. Q2 a. Q3 a."): chaptered `docs/manual/`
+  as the narrative layer over the existing references, never
+  duplicating them; ed-tuesday (`demos/scenarios/ed-tuesday/`) as the
+  manual's one running scenario throughout. Framing landed this session
+  (ADR-0119, channel-reconstructed "Q1 a. Q2 a. Q3 a." on "eight
+  chapters, five sessions, exerciser at S2" — see `.agents/rulings.md`
+  "From ADR-0119" R-M1/R-M2/R-M3): eight chapters across five sessions,
+  chartered below as S1-S5; Chapters 3-8's own titles are this
+  session's own disclosed working proposal
+  (`docs/manual/00-front.md`), not yet ruled by name. The batch-straddle
   scenario is ruled "featured prominently" in the eventual manual
   (`.agents/rulings.md` "From ADR-0112", "Batch-straddle documentation
-  placements"). **Naming-sweep rider (ADR-0113 R2):** the repo-wide
-  "user guide" -> "user manual" token rename rides on this first manual
-  session, not executed piecemeal before it. **Sequence (ADR-0113
-  R5):** review-3 (user-surface findings, row below) -> CLI tweak
-  sessions from its findings -> this design pass (chapter outline plus
-  the naming rider, landed as an ADR) -> chapter sessions, the demo
-  exerciser (row below) co-landed with the first chapter that cites a
-  demo -> a manual-review skill (scoring rubric, run periodically,
-  ADR-0113 R5) built at the manual arc's own close. Not chartered to
-  any executing session yet.
+  placements") — Chapter 1 (landed this session) already excerpts it.
+  **Naming-sweep rider (ADR-0113 R2), EXECUTED this session:** the
+  repo-wide "user guide" census (docs/README/SETUP/demos/registers)
+  found zero live-prose stragglers — every hit was an in-quote survivor
+  (`notes/adr/0119-user-manual-skeleton.md`'s own census table).
+  **Sequence (ADR-0113 R5):** review-3 -> CLI tweak sessions -> this
+  design pass -> chapter sessions (below), the demo exerciser co-landed
+  with the first chapter that cites a demo (S2) -> a manual-review
+  skill (scoring rubric, run periodically, ADR-0113 R5) built at the
+  manual arc's own close (S5).
+  **S1 LANDED 2026-08-12 (ADR-0119):** skeleton (`docs/manual/00-front.md`),
+  Chapters 1-2 (`01-what-this-is.md`, `02-setup-first-corpus.md`), the
+  audience paring (R4) and learner-path riders.
+  **S2 chartered, not yet run (targets ADR-0120):** Chapter 3, co-landed
+  with the demo exerciser (ADR-0113 R3 mechanism: a
+  quickstart-pattern-generalized, integration-tier exerciser running
+  each scenario README's own fenced commands in order, asserting exit
+  codes plus each demo's own named invariants).
+  **S3 chartered, not yet run:** Chapters 4-5.
+  **S4 chartered, not yet run:** Chapters 6-7.
+  **S5 chartered, not yet run:** Chapter 8, the manual-review skill, and
+  the manual arc's own close.
+  **SETUP.md's unspoiled-human-reader rewalk (Externals, "SETUP rewalk
+  by an unspoiled human reader") widens to cover Chapters 1-2 as well**
+  — both narrate SETUP.md's own steps, so the same author-only rewalk
+  errand now smoke-tests all three together; still in the author's own
+  queue, not executed this session.
 - **Review-3, user-surface scope** (ADR-0113 R5; charter set 2026-08-12,
   **findings landed 2026-08-12, ADR-0114** —
   `.agents/plans/2026-08-12-review-3-user-surface-findings.md`, 48
@@ -368,7 +382,11 @@ per item; done items move to the bottom of their section with a date and sha.
   cross-referenced into `notes/ADRs.md` ADR-0001's own H5 entry today, closing
   that half of H5 as an open gate; the group/coordinates naming half and
   publication itself both stay open/parked, unchanged by this note.**
-- SETUP rewalk by an unspoiled human reader (F3 superseded-pending-rewalk)
+- SETUP rewalk by an unspoiled human reader (F3 superseded-pending-rewalk).
+  **Widened 2026-08-12 (ADR-0119):** now also covers `docs/manual/`
+  Chapters 1-2 (`01-what-this-is.md`, `02-setup-first-corpus.md`), which
+  narrate SETUP.md's own steps — same author-only errand, one rewalk
+  now smoke-tests all three. Still owed, not executed.
 - **EHR Testing Guide Ch 24 "completeness illusion" section notes**
   (not a session charter): the batch-straddle scenario's guide-side
   treatment (`.agents/rulings.md` "From ADR-0112", "Batch-straddle
@@ -850,3 +868,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-12 — engine-seed-contract — ADR-0116
 - 2026-08-12 — fix-cluster-a-cli-validation — ADR-0117
 - 2026-08-12 — fix-clusters-b-and-c-help-and-docs — ADR-0118
+- 2026-08-12 — user-manual-skeleton — ADR-0119
