@@ -15,11 +15,13 @@
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
+            [clojure.java.io :as io]
             [ehrt.kernel.interface :as result]
             [ehrt.sim-check.check :as check]
             [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim-engine.engine :as engine]
-            [ehrt.sim-engine.order-profiles :as order-profiles]))
+            [ehrt.sim-engine.order-profiles :as order-profiles]
+            [ehrt.sim-trajectory.interface :as sim-trajectory]))
 
 (def test-facility
   {:id :t :wards [{:id :ed :name "ED" :beds 0 :surge-slots 4
@@ -227,6 +229,58 @@
              {:event :medication-order :t 5 :codes [a-concept] :participants (subject "P1")}
              {:event :medication-end :t 10 :order-event-id 1 :participants (subject "P1")}]]
     (is (empty? (check/medication-end-references-existing-order-and-follows-it-in-time log)))))
+
+;; ADR-0123: the medication-end/pre-horizon-order straddle case
+;; (trajectory-computation.md's "History phase" -- an order that fires
+;; before registration, compiled to a :pre-horizon-facts entry riding
+;; :registered, while its own end fires after registration and is
+;; emitted as a normal ground-truth event with no :medication-order to
+;; resolve :order-event-id against).
+
+(deftest medication-end-references-existing-order-and-follows-it-in-time-detects-phantom-order-even-with-unrelated-pre-horizon-facts
+  (testing "a :registered event carrying :pre-horizon-facts at all must
+            not make the checker permissive in general -- only a
+            CITATION match should satisfy the widened branch"
+    (let [log [{:event :registered :t 0 :participants (subject "P1")
+                :pre-horizon-facts [{:event :medication-order
+                                     :citation {:module "m" :state :some-other-order}}]}
+               {:event :medication-end :t 10
+                :order-event-id nil
+                :order-citation {:module "m" :state :prescribe-amoxicillin}
+                :participants (subject "P1")}]]
+      (is (seq (check/medication-end-references-existing-order-and-follows-it-in-time log))))))
+
+(def ^:private fixture-clinic-module
+  "The same hand-authored module engine-test's own defspec assigns --
+  its episode falls close enough to the engine's fixed registration
+  anchor for some seeds to straddle it (engine_test.clj docstring,
+  ~line 1080)."
+  (:payload (sim-trajectory/load-module "fixture-clinic"
+                            (slurp (io/resource "ehrt/sim/fixtures/fixture-clinic.json")))))
+
+(deftest medication-end-references-existing-order-and-follows-it-in-time-holds-at-the-adr-0122-shrunk-seed
+  (testing "ADR-0122's diagnosed regression: engine-test's own
+            mixed-authored-and-compiled-run-satisfies-the-full-invariant-
+            catalog defspec's exact config, at its shrunk failing seed
+            (8589258984) -- a fixture-clinic patient whose medication
+            order falls in history phase while its own end lands in
+            horizon phase, the designed straddle case reproduced end to
+            end through the real engine, not a hand-built log"
+    (let [pathway {:name "scripted" :steps [{:type :admission :location "Renal"}
+                                            {:type :delay :from 30 :to 30}
+                                            {:type :discharge}]}
+          empty-pathway {:name "module-only" :steps []}
+          {:keys [ground-truth] :as result}
+          (engine/run {:seed 8589258984 :patients 4
+                       :pathways [{:patient-ordinal 0 :pathway pathway}
+                                  {:patient-ordinal 1 :pathway pathway}
+                                  {:patient-ordinal 2 :pathway empty-pathway}
+                                  {:patient-ordinal 3 :pathway empty-pathway}]
+                       :modules [(sim-trajectory/singleton-closure fixture-clinic-module)]
+                       :module-assignment [{:patient-ordinal 2 :module-id "fixture-clinic"}
+                                           {:patient-ordinal 3 :module-id "fixture-clinic"}]
+                       :module-horizon-days 3650})]
+      (is (result/ok? (check/check-all ground-truth (:facility result)))))))
 
 (deftest engine-run-with-compiled-clinical-steps-satisfies-check-all
   (let [pathway {:name "clinical" :steps [{:type :admission :location "Renal"}

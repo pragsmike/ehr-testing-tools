@@ -454,22 +454,57 @@
                    (not= :admitted (:status before)))]
     {:invariant :clinical-content-only-when-admitted :patient-id patient-id :at (:t event)}))
 
+(defn- pre-horizon-medication-order-citations-by-patient
+  "patient-id -> the set of :citation values riding that patient's own
+  :registered event as a :medication-order entry in :pre-horizon-facts
+  -- the compile layer's designed straddle case (components/sim-
+  trajectory/docs/trajectory-computation.md, 'History phase'): an order
+  crossed during history phase is real, ongoing therapeutic content,
+  promoted to a registration-time fact rather than dropped, while its
+  own end can legitimately land in horizon phase as a normal
+  ground-truth event with nothing in top-level :medication-order to
+  resolve :order-event-id against."
+  [ground-truth]
+  (into {}
+        (keep (fn [event]
+                (when (= :registered (:event event))
+                  (when-let [citations (seq (into #{}
+                                                   (comp (filter #(= :medication-order (:event %)))
+                                                         (map :citation))
+                                                   (:pre-horizon-facts event)))]
+                    [(:patient-id (first (:participants event))) (set citations)]))))
+        ground-truth))
+
 (defn medication-end-references-existing-order-and-follows-it-in-time
   "Every :medication-end event's :order-event-id is a real
   :medication-order event in this same log, for the SAME patient, at or
   before the end's own :t -- the same shape result's own referential
-  invariant already establishes for :order-placed/:result-available."
+  invariant already establishes for :order-placed/:result-available --
+  OR, when no such ground-truth event exists, the SAME patient's own
+  :registered event carries a matching :medication-order entry in its
+  own :pre-horizon-facts (the designed order/end straddle,
+  trajectory-computation.md's 'History phase'). A pre-horizon fact
+  carries no :t of its own, so the follows-in-time law is satisfied by
+  construction in that branch: the fact is definitionally prior to
+  registration, and every ground-truth event -- this :medication-end
+  included -- comes after it, since :registered is always a patient's
+  first event."
   [ground-truth]
-  (let [indexed (vec ground-truth)]
+  (let [indexed (vec ground-truth)
+        pre-horizon-citations (pre-horizon-medication-order-citations-by-patient ground-truth)]
     (for [[idx event] (map-indexed vector indexed)
           :when (= :medication-end (:event event))
           :let [target-idx (:order-event-id event)
                 target (get indexed target-idx)
-                patient-id (:patient-id (first (:participants event)))]
-          :when (or (nil? target)
-                    (not= :medication-order (:event target))
-                    (not (some #(= patient-id (:patient-id %)) (:participants target)))
-                    (> (:t target) (:t event)))]
+                patient-id (:patient-id (first (:participants event)))
+                pre-horizon-referent? (and (nil? target)
+                                            (contains? (get pre-horizon-citations patient-id)
+                                                       (:order-citation event)))]
+          :when (and (not pre-horizon-referent?)
+                     (or (nil? target)
+                         (not= :medication-order (:event target))
+                         (not (some #(= patient-id (:patient-id %)) (:participants target)))
+                         (> (:t target) (:t event))))]
       {:invariant :medication-end-references-existing-order-and-follows-it-in-time :patient-id patient-id :at (:t event)})))
 
 ;; --- M4: Persona (docs/sim-theory.edn's :persona stage) -------------------
