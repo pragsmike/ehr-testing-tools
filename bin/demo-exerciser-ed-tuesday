@@ -1,0 +1,188 @@
+#!/usr/bin/env bash
+# Runs demos/scenarios/ed-tuesday/README.md's own fenced command
+# sequence, verbatim, under per-step exit-code assertions plus each
+# section's own named invariants -- R3 (notes/ADRs.md ADR-0113, author
+# verbatim): "The demos must be known to work, and exercised as
+# documented to make sure they actually play out as written." Mirrors
+# bin/quickstart-demo's shape (ADR-0004, R23), generalized: this
+# README has SEVERAL fenced blocks, not one, and two of them are
+# `$ `-prefixed terminal transcripts (a command plus its own witnessed
+# output inline) rather than bare ```bash command fences.
+#
+# The block between the BEGIN/END markers is read by
+# components/docs-tooling/test/ehrt/docs_tooling/
+# demo_exerciser_fresh_test.clj (ehrt.docs-tooling.demo-exerciser-fresh,
+# its own generalization of quickstart-fresh) to prove this script and
+# the README's own fences teach the identical commands, in the
+# identical order. Keep every taught line inside that block, one
+# statement per README command, and do not "improve" a command here --
+# an improvement belongs in the README first (AUTHORS-GUIDE.md sec7's
+# craft discipline). Integration-tier only (`make integration`), never
+# per-push CI -- generating a 100-patient corpus twice plus a batch run
+# is real work, the same tier split bin/quickstart-demo's own artifact-
+# fetch-dependent siblings already use.
+set -uo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)" || exit 2
+cd -- "$repo_root" || exit 2
+
+fail() {
+  echo "FAIL: $1" >&2
+  exit 1
+}
+
+# Per-step output capture, so a step's own real stdout can be checked
+# against a named invariant AFTER the taught block -- without the
+# capture mechanism itself ever touching the taught command's own argv
+# (identity-check transparency: the wrapper functions below have the
+# exact same call shape bin/quickstart-demo's own expect/expect_eval
+# do; only their body changed, to also tee each call's own step number).
+STEP=0
+LOG_DIR="$(mktemp -d)"
+trap 'rm -rf "$LOG_DIR"' EXIT
+
+# expect CODE CMD...  Runs CMD with CMD's own argv (no shell
+# reinterpretation -- the same word-splitting and globbing a user
+# typing CMD directly at this call site would get), asserts its exit
+# status is exactly CODE, and tees stdout/stderr to this step's own log
+# file under LOG_DIR (echoed back live, so a human running this script
+# still sees normal output).
+expect() {
+  local want="$1"; shift
+  STEP=$((STEP + 1))
+  "$@" > "$LOG_DIR/step-$STEP.out" 2> "$LOG_DIR/step-$STEP.err"
+  local got=$?
+  cat "$LOG_DIR/step-$STEP.out"
+  cat "$LOG_DIR/step-$STEP.err" >&2
+  if [ "$got" -ne "$want" ]; then
+    fail "'$*' exited $got, expected $want"
+  fi
+}
+
+# expect_eval CODE SNIPPET  Like expect, but for a shell snippet that
+# needs a pipeline (the tail | cat -A step below) rather than one
+# invocable command -- eval runs SNIPPET in this shell's own scope.
+expect_eval() {
+  local want="$1" snippet="$2"
+  STEP=$((STEP + 1))
+  eval "$snippet" > "$LOG_DIR/step-$STEP.out" 2> "$LOG_DIR/step-$STEP.err"
+  local got=$?
+  cat "$LOG_DIR/step-$STEP.out"
+  cat "$LOG_DIR/step-$STEP.err" >&2
+  if [ "$got" -ne "$want" ]; then
+    fail "'$snippet' exited $got, expected $want"
+  fi
+}
+
+echo "== demo-exerciser-ed-tuesday: demos/scenarios/ed-tuesday/README.md, verbatim, asserted =="
+
+# Script-only apparatus, not a taught line (outside BEGIN/END, so
+# demo-exerciser-fresh's freshness check never sees it): this script
+# must be safely re-runnable, and the README's own four out-dirs are
+# fixed names -- clear any prior run's own output first, the same
+# preamble bin/quickstart-demo's own out/corpus cleanup uses. A first-
+# time reader following the README never needs this: their repo starts
+# clean.
+rm -rf out/scenarios/ed-tuesday out/scenarios/ed-tuesday-base \
+       out/scenarios/ed-tuesday-latency out/scenarios/ed-tuesday-latency-batches
+
+# BEGIN ed-tuesday commands (verbatim from demos/scenarios/ed-tuesday/README.md)
+expect 0 bin/ehrt corpus generate sim --seed 20260811 --patients 100 \
+  --reference-date 2026-08-11 --churn \
+  --config demos/scenarios/ed-tuesday/config.edn \
+  --out-dir out/scenarios/ed-tuesday
+
+expect 0 bin/ehrt play out/scenarios/ed-tuesday --board 60 --rate 100000
+
+expect 0 bin/ehrt play out/scenarios/ed-tuesday/events.edn --rate 100000
+
+expect 0 bin/ehrt corpus generate sim --seed 20260811 --patients 100 \
+  --reference-date 2026-08-11 --churn \
+  --config demos/scenarios/ed-tuesday/config.edn \
+  --out-dir out/scenarios/ed-tuesday-base
+
+expect 0 bin/ehrt corpus generate sim --seed 20260811 --patients 100 \
+  --reference-date 2026-08-11 --churn \
+  --config demos/scenarios/ed-tuesday/config-latency.edn \
+  --out-dir out/scenarios/ed-tuesday-latency
+
+expect 0 diff out/scenarios/ed-tuesday-base/events.edn out/scenarios/ed-tuesday-latency/events.edn
+
+expect 0 sha256sum out/scenarios/ed-tuesday-base/events.edn out/scenarios/ed-tuesday-latency/events.edn
+
+expect 0 bin/ehrt play out/scenarios/ed-tuesday-latency --board 60 --rate 100000
+
+expect 0 bin/ehrt corpus batch out/scenarios/ed-tuesday-latency --interval 60 \
+  --out-dir out/scenarios/ed-tuesday-latency-batches
+
+expect 0 head -c 100 out/scenarios/ed-tuesday-latency-batches/batch-000.hl7
+
+expect_eval 0 'tail -c 45 out/scenarios/ed-tuesday-latency-batches/batch-000.hl7 | cat -A'
+# END ed-tuesday commands
+
+# Every value below is copied from the README's own witnessed prose
+# ("What to look for," "Ground truth is invariant," "Batched delivery,"
+# "A straddling encounter") -- never invented here -- and checked
+# against this run's own real, freshly generated output/files, never
+# hand-computed. Step numbers below are this script's own taught
+# sequence position (1-indexed, matching STEP above): 6 = diff, 7 =
+# sha256sum, 9 = corpus batch.
+
+echo "== demo-exerciser-ed-tuesday: checking named invariants =="
+
+# "The determinism ... diff" (Read-first item 2) / "diff reports no
+# differences" (README's own "Ground truth is invariant"): step 6's
+# own exit code already proved this (diff exits 1 on any difference);
+# double-check its own stdout was genuinely empty too, matching the
+# README's literal claim of a silent diff.
+if [ -s "$LOG_DIR/step-6.out" ]; then
+  fail "determinism: diff produced output despite exiting 0 (unexpected) -- $(cat "$LOG_DIR/step-6.out")"
+fi
+
+# "The second-clock zero-offset identity" -- README's own claim:
+# "the digests match exactly." sha256sum's own exit code (step 7) is 0
+# whether or not the two digests agree, so the equality itself needs an
+# explicit re-check of this run's own captured output.
+sha_d1="$(awk 'NR==1{print $1}' "$LOG_DIR/step-7.out")"
+sha_d2="$(awk 'NR==2{print $1}' "$LOG_DIR/step-7.out")"
+if [ -z "$sha_d1" ] || [ "$sha_d1" != "$sha_d2" ]; then
+  fail "second-clock identity: sha256sum digests differ (base=$sha_d1 latency=$sha_d2) -- README's own 'Ground truth is invariant' claim does not hold on this run"
+fi
+
+# "The 34-batch :verified true listing" -- README's own "Batched
+# delivery" section: 34 batches, every one self-verified, none
+# unverified.
+verified_true_count="$(grep -o ':verified true' "$LOG_DIR/step-9.out" | wc -l | tr -d ' ')"
+verified_false_count="$(grep -c ':verified false' "$LOG_DIR/step-9.out" || true)"
+if [ "$verified_true_count" -ne 34 ]; then
+  fail "batch listing: expected 34 ':verified true' entries, got $verified_true_count"
+fi
+if [ "${verified_false_count:-0}" -ne 0 ]; then
+  fail "batch listing: expected zero ':verified false' entries, got $verified_false_count"
+fi
+batch_file_count="$(ls out/scenarios/ed-tuesday-latency-batches/*.hl7 2>/dev/null | wc -l | tr -d ' ')"
+if [ "$batch_file_count" -ne 34 ]; then
+  fail "batch listing: expected 34 batch-*.hl7 files on disk, got $batch_file_count"
+fi
+
+# "The straddle membership" -- README's own "A straddling encounter":
+# Smith, James (MRN000002) admits (A01) in batch-000.hl7, discharges
+# (A03) one clock-hour later in batch-001.hl7.
+if ! grep -qF 'MRN000002-A01-' out/scenarios/ed-tuesday-latency-batches/batch-000.hl7; then
+  fail "straddle membership: Smith James (MRN000002)'s own A01 admission not found in batch-000.hl7"
+fi
+if ! grep -qF 'MRN000002-A03-' out/scenarios/ed-tuesday-latency-batches/batch-001.hl7; then
+  fail "straddle membership: Smith James (MRN000002)'s own A03 discharge not found in batch-001.hl7"
+fi
+
+# Tree-clean postcondition (ADR-0005's own discipline, mirrored from
+# bin/quickstart-demo): every write path above lands under the
+# gitignored /out/ -- a full run must leave the tracked tree exactly as
+# it found it.
+dirty="$(git status --porcelain)"
+if [ -n "$dirty" ]; then
+  fail "tree not clean after a full run (ADR-0005 postcondition violated):
+$dirty"
+fi
+
+echo "== demo-exerciser-ed-tuesday: every command asserted, every named invariant held, tree clean =="
