@@ -932,3 +932,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-12 — user-manual-skeleton — ADR-0119
 - 2026-08-12 — manual-s2-exerciser-and-chapter3 — ADR-0120
 - 2026-08-12 — manual-s3-transport-pair — ADR-0121
+- 2026-08-13 — positive-seed-invariant-violation-diagnosis — ADR-0122

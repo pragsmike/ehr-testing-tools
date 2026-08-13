@@ -194,3 +194,4 @@ Files in this directory:
   * 2026-08-12-user-manual-skeleton.md
   * 2026-08-12-manual-s2-exerciser-and-chapter3.md
   * 2026-08-12-manual-s3-transport-pair.md
+  * 2026-08-13-positive-seed-diagnosis.md
