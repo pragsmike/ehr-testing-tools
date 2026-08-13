@@ -215,9 +215,33 @@ per item; done items move to the bottom of their section with a date and sha.
   Gate Chapter 7, Check folds into Chapter 8 alongside verdict-reading
   at scale) -- disclosed as this session's own channel-inferred
   proposal, not yet ruled by name.
-  **S4 chartered, next:** Chapters 6-7. The positive-seed invariant-
-  violation fix (row below, ADR-0123) has landed — no longer blocked.
-  **S5 chartered, not yet run:** Chapter 8, the manual-review skill, and
+  **S4 LANDED 2026-08-13 (ADR-0124):** Chapter 6
+  (`docs/manual/06-breaking-data-on-purpose.md` — mutation as named,
+  traceable defect injection; choosing an operator by the contract you
+  want proven rather than browsing the catalog; the inject-a-defect-
+  expect-the-matching-finding loop closed with the `README.md`
+  storefront-patient example, witnessed fresh this session) and Chapter
+  7 (`docs/manual/07-judging.md` — the three gates at reader level;
+  verdict semantics, `:no-verdict` taught as a genuinely distinct third
+  answer, not a variant of pass or rejected; the dominance ordering).
+  Two new hand-authored SVG figures
+  (`docs/manual/assets/inject-expect-loop.svg`, `verdict-ranking.svg`).
+  Every strip in both chapters re-derived by fresh regeneration this
+  session against the live tree, byte-identical to its own witnessed
+  source (`README.md`, `judge-tier-calibration-studies.md`,
+  `profile-tier-hl7v2-conformance-gating.md`), no divergence found. A
+  pre-existing, repo-wide `ADR-0010` citation drift was found while
+  reading the driving prompt's own "verdict ranking... ADR-0010's
+  register trace" pointer — `notes/adr/0010-documentation-doctrine.md`
+  is titled "Documentation doctrine," not the verdict design the
+  citation is used for throughout `docs/judge-calibration.md`,
+  `docs/formats.md`, `docs/glossary.md`, and every `components/judge/`
+  source/test file — disclosed in `notes/adr/0124-*.md` and followed as
+  the sole established convention rather than fixed (out of this
+  session's own fence), flagged for the author and a future
+  errata-sweep session. Zero `src`/`test`/`demos` touched anywhere, the
+  oracle holds pure identity across all 35 roots.
+  **S5 chartered, next:** Chapter 8, the manual-review skill, and
   the manual arc's own close.
   **SETUP.md's unspoiled-human-reader rewalk (Externals, "SETUP rewalk
   by an unspoiled human reader") widens to cover Chapters 1-2 as well**
@@ -940,3 +964,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-12 — manual-s3-transport-pair — ADR-0121
 - 2026-08-13 — positive-seed-invariant-violation-diagnosis — ADR-0122
 - 2026-08-13 — medication-end-pre-horizon-invariant-fix — ADR-0123
+- 2026-08-13 — manual-s4-mutate-and-gate — ADR-0124

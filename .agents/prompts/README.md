@@ -144,3 +144,4 @@ Files in this directory:
   * 2026-08-12-manual-s3-transport-pair.md
   * 2026-08-13-positive-seed-diagnosis.md
   * 2026-08-13-medication-end-invariant-fix.md
+  * 2026-08-13-manual-s4-mutate-and-gate.md
