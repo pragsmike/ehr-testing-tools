@@ -198,7 +198,23 @@ per item; done items move to the bottom of their section with a date and sha.
   integration-tier, running ed-tuesday's own fenced commands in order,
   asserting exit codes plus every one of that README's own named
   invariants).
-  **S3 chartered, not yet run:** Chapters 4-5.
+  **S3 LANDED 2026-08-12 (ADR-0121):** Chapter 4
+  (`docs/manual/04-time-on-the-wire.md` -- `ehrt play`/`--board` pacing,
+  the huge-rate-is-`show` and zero-offsets-is-plain-emit identity
+  anchors, the latency second clock's MSH-7/EVN-2 split) and Chapter 5
+  (`docs/manual/05-batch-delivery.md`, the arc's featured chapter --
+  `ehrt corpus batch`'s own sim-independence ruling, the witnessed
+  34-batch listing, Smith James (MRN000002)'s straddling encounter
+  taught as the receiver-side "do I have all of this?" question, not a
+  flag list). Two new hand-authored SVG figures
+  (`docs/manual/assets/two-clocks.svg`, `straddle-timeline.svg`).
+  Resequenced the arc's own working titles: the "realism you didn't
+  script" slot earlier proposals had at Chapter 7 landed here instead,
+  two chapters early; Chapters 6-8's own working titles updated
+  in `docs/manual/00-front.md` accordingly (Mutate keeps Chapter 6,
+  Gate Chapter 7, Check folds into Chapter 8 alongside verdict-reading
+  at scale) -- disclosed as this session's own channel-inferred
+  proposal, not yet ruled by name.
   **S4 chartered, not yet run:** Chapters 6-7.
   **S5 chartered, not yet run:** Chapter 8, the manual-review skill, and
   the manual arc's own close.
@@ -892,3 +908,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-12 — fix-clusters-b-and-c-help-and-docs — ADR-0118
 - 2026-08-12 — user-manual-skeleton — ADR-0119
 - 2026-08-12 — manual-s2-exerciser-and-chapter3 — ADR-0120
+- 2026-08-12 — manual-s3-transport-pair — ADR-0121
