@@ -9,7 +9,7 @@ persona's full pre-run life compress into a manageable simulated
 fast-forward, how a GMF encounter becomes an ADT admission of the
 right stripe, and the attribute-namespacing discipline that keeps
 vendored modules from stepping on each other or on this project's own
-engine-reserved state. [`notes/ADRs.md`](../notes/ADRs.md) ADR-0013
+engine-reserved state. [`notes/sim/ADRs.md`](../../../notes/sim/ADRs.md) sim/ADR-0013
 records the sibling decision (module vendoring: target, provenance,
 curation criterion) this document's own candidate-module survey (the
 appendix) feeds directly. This document stays the as-built spec of
@@ -45,7 +45,7 @@ project's v1 interpreter executes. The table below is v1's scope —
 what a module author's state compiles to, or why it's consumed without
 producing a trajectory event. "Deferred" state types are read and
 skipped over structurally (a module using one fails this project's own
-curation criterion, ADR-0013 point 4, until a later milestone extends
+curation criterion, sim/ADR-0013 point 4, until a later milestone extends
 the interpreter) rather than causing a load error — the interpreter
 walks past what it doesn't yet execute the same way a parser tolerant
 of unknown fields does, so a deferred-type module can still be *read*
@@ -107,7 +107,7 @@ other `:attributes` entry is) but not load-bearing to any v1 module's
 own control flow. Excluding `Symptom` from v1 would fail almost every
 short acute-illness module surveyed on a technicality that carries no
 real interpreter complexity to support — the opposite of this
-project's own curation discipline (ADR-0013), which exists to keep
+project's own curation discipline (sim/ADR-0013), which exists to keep
 real complexity out, not to reject cheap wins.
 
 *Ratified 2026-07-26 (item 1 of 8, this document's closing list, below).*
@@ -221,7 +221,7 @@ conditional transitions like "prior state X, within window" by walking
 because the GMF interpreter had no primitive log to query instead
 (`.agents/memory/architecture.md`'s Synthea entry; `components/sim/docs/event-sourcing.md`'s
 own retelling). This project has the log already, typed, timestamped,
-and authoritative (ADR-0008) — so `PriorState` compiles directly to a
+and authoritative (sim/ADR-0008) — so `PriorState` compiles directly to a
 query over it, never to a second history structure the interpreter
 would have to build and keep in sync, the same "one authoritative
 record, everything else a projection" discipline this project applies
@@ -238,10 +238,10 @@ it directly" — since M2b (`components/sim/docs/patient-state-model.md`'s "dete
 event id" section), landed for the cancel family and
 `:transfer-in-error`'s own prior-location lookups. `engine.clj` already
 ships the query primitive, too: `events-for-patient` (`ground-truth,
-patient-id -> events`, ADR-0010-era) is exactly the log-view a
+patient-id -> events`, sim/ADR-0010-era) is exactly the log-view a
 `PriorState` guard needs to walk looking for its target state. This is
 the concrete fulfillment of an anticipation `engine.clj`'s own
-top-of-file doctrine comment made at ADR-0008's landing (M1-era): decide
+top-of-file doctrine comment made at sim/ADR-0008's landing (M1-era): decide
 "consults `world`... this is where cross-patient coupling lives" —
 `world` was always going to need to carry more than bare patient
 states once a consumer needed to ask "what happened," not just "what
@@ -325,7 +325,7 @@ crashes exactly as before.
 
 **This is the hard decision.** A GMF module runs from birth in real
 Synthea; this project's own scope is an encounter horizon
-(ADR-0007 point 3: "hospital-operations traffic across a single
+(sim/ADR-0007 point 3: "hospital-operations traffic across a single
 encounter... not a patient's lifelong longitudinal history"). Persona
 already assigns every patient a DOB (`components/sim/docs/patient-state-model.md`,
 Milestone M4) — which means a patient can arrive at age 45, and a
@@ -336,7 +336,7 @@ answer is a two-phase run per patient.
 
 **"Run start," precisely.** Because this project has no single
 wall-clock moment shared by every patient — arrivals are scheduled
-individually (a fixed count or, per ADR-0011 point 3, a seeded arrival
+individually (a fixed count or, per sim/ADR-0011 point 3, a seeded arrival
 process) — "run start" for a given patient's own history/horizon split
 means **that patient's own `:registered` event time**, the moment
 their operational encounter horizon begins (`ehrt.sim-engine.engine`'s
@@ -376,7 +376,7 @@ happens first, then the history phase's own module-walk draws, then
 the horizon phase's own draws — the same per-patient, arrival-ordered
 sequencing `engine/run` already establishes for every other stochastic
 source. Landing `RunModules` will perturb the pinned-seed fixture
-again, exactly as ADR-0009 already anticipates for every milestone
+again, exactly as sim/ADR-0009 already anticipates for every milestone
 that grows the engine's stochastic surface — expected, not a
 regression to chase.
 
@@ -403,10 +403,10 @@ regression to chase.
    consumption per patient (proportional to the number of state
    transitions a module actually makes between birth and registration,
    not to elapsed calendar time), which is also the cheaper failure
-   mode to reason about if ADR-0009's fixture-regeneration policy ever
+   mode to reason about if sim/ADR-0009's fixture-regeneration policy ever
    needs to explain a perturbation.
 2. **Do pre-horizon facts enter the log, or live only as attributes?**
-   **Recommendation: mark, don't trim — the same choice ADR-0011
+   **Recommendation: mark, don't trim — the same choice sim/ADR-0011
    already made for warm-up traffic, for the identical reason.** A
    condensed set of `:pre-horizon true` events — one per
    `ConditionOnset`/`ConditionEnd`/`MedicationOrder`/`MedicationEnd`
@@ -530,13 +530,13 @@ appendix):**
   already the distinguishing fact, the same way `:class` already
   distinguishes inpatient sub-cases without a parallel `:status`
   value). It emits a real ground-truth event but — **deliberately, by
-  the same precedent ADR-0012 already established for
+  the same precedent sim/ADR-0012 already established for
   `:step-rejected`** — gets **no `message-type-registry` entry** in
   v1: many real ambulatory feeds send a single A04 and no closing
   message for a same-day visit, so inventing a discharge-shaped message
   here would be manufacturing wire traffic no real interface sends,
   the opposite of this project's realism goal. The ground-truth event
-  still exists because `state-history` (the fold, ADR-0008) needs a
+  still exists because `state-history` (the fold, sim/ADR-0008) needs a
   real event to transition on, independent of whether anything renders
   it.
 - **(Item 8.) New invariants this implies (co-landing scope, `check.clj`, M5b):**
@@ -674,7 +674,7 @@ them in one place, phrased as obligations rather than as prose laws:
 interpreter` — `step`/`walk-module`/`run-module`, §1–§3): every v1 state
 type and all four transition kinds land exactly as specified above,
 tested against `test/ehrt/sim/fixtures/fixture-clinic.json`
-(ADR-0013 point 6's own hand-written fixture — placed there, not
+(sim/ADR-0013 point 6's own hand-written fixture — placed there, not
 `resources/modules/`, per that point's own reasoning: this project's
 authored test content carries no NOTICE obligation and is not vendored
 upstream data). `components/sim/docs/sim-theory.edn`'s own `:trajectory` stage stays
@@ -794,7 +794,7 @@ divergence from anything ratified:
    names that one case specifically.
 4. **Virtual time is an interpreter-internal `epoch-day`
    (`java.time.LocalDate/toEpochDay`), not the engine's own seconds-
-   from-run-start clock (ADR-0011).** M5a is engine-free by design (the
+   from-run-start clock (sim/ADR-0011).** M5a is engine-free by design (the
    roadmap's own M5a/M5b split) — mapping a module's own epoch-day
    virtual clock onto a real run's seconds-from-registration clock is
    exactly the kind of persona → modules → trajectory wiring M5b's own
@@ -823,7 +823,7 @@ itself (Task 3):
    states" — but `ehrt.sim-trajectory.gmf/load-module` has no partial-
    compile mechanism at all: ANY deferred-type state anywhere in a
    module rejects the WHOLE module, by design (section 1's own
-   docstring, ADR-0013 point 4). Resolved by extending v1: `Device`/
+   docstring, sim/ADR-0013 point 4). Resolved by extending v1: `Device`/
    `DeviceEnd` join as consumed-internally states, structurally
    identical to `Simple` (§1's table, above) — no trajectory event, no
    attribute write, ordinary transition resolution. This is the minimal
@@ -901,7 +901,7 @@ itself (Task 3):
    but by a now-load-bearing REQUIREMENT on M5b's own real engine wiring
    (Task 4): every real call to `run-module` against a vendored module
    MUST supply a bounded `horizon-end-t` (this project's own encounter-
-   horizon scope, ADR-0007 point 3, makes this the correct choice
+   horizon scope, sim/ADR-0007 point 3, makes this the correct choice
    anyway, not merely a workaround) — an UNBOUNDED `run-module` call
    is safe only for a module (like the hand-written fixture) known to
    reach Terminal or block. Recorded here so a future module vendored
@@ -1015,7 +1015,7 @@ below strictly requires it (§ recommendation, next).
 ### Recommendation: vendor `sinusitis.json` first
 
 **Ratified 2026-07-26 (item 4 of 8, this document's closing list,
-below), per ADR-0013 point 4's own criterion.** `sinusitis.json` over `sore_throat.json` — despite
+below), per sim/ADR-0013 point 4's own criterion.** `sinusitis.json` over `sore_throat.json` — despite
 `sore_throat.json`'s clean 44/44 state-type score — because
 `sinusitis.json`'s one gap (`Device`/`DeviceEnd`, 2 states) is
 **structurally isolated**: confined to the module's rare chronic-
@@ -1044,7 +1044,7 @@ either alternative.
 
 `ear_infections.json` is not recommended for v1 despite being the
 smallest and best README-fit ("encounter-rich, modest state-type
-surface," ADR-0013 point 4's own phrasing): its `CallSubmodule` gap
+surface," sim/ADR-0013 point 4's own phrasing): its `CallSubmodule` gap
 disqualifies its actual clinical content, not merely 2 of its 16
 states, per the gap-detail note above — vendoring it in v1 would ship
 a module whose two therapeutic branches both silently do nothing.
@@ -1102,7 +1102,7 @@ erase convention, not silently edited above.
 | `sore_throat.json` | 44 | none — all 44 states are v1 types (with the `Symptom` recommendation) | **`At Least`, `Symptom`, `Observation`** — an `At Least`-5-of compound on `Determine_if_Bacterial`, reached by EVERY patient who completes `Doctor_Visit` (not the excludable `Active Allergy` tail this document's own prior survey named as sore_throat's only gap) | ambulatory | State-type clean; blocked by a MANDATORY-path condition-vocabulary gap bigger than previously characterized — **RESOLVED and VENDORED, GMF coverage Wave A, 2026-08-02** (`.agents/plans/2026-08-02-gmf-coverage-plan.md`; `resources/modules/sore_throat.json`'s own NOTICE entry) |
 | `urinary_tract_infections.json` | 29 | `CallSubmodule` ×3 | n/a (module has no `Encounter` state of its own) | none directly — delegates via `type_of_care_transition` (a FIFTH transition kind, outside this document's four, §2) to `uti/ambulatory_path`\|`ed_path`\|`telemed_path` submodules | Not encounter-bearing at its own top level AND `CallSubmodule`-blocked — **deferred** |
 | `total_joint_replacement.json` | 31 | `CallSubmodule` ×4, `CarePlanStart`/`CarePlanEnd` ×1 each | none (`Age`/`And`/`Attribute`, all v1) | ambulatory (pre-op) → inpatient (surgery) → ambulatory (follow-up) | Rejected at LOAD (deferred types scattered through pre-op assessment AND post-op pain management AND post-op careplan — not an excludable tail) — **deferred**. **Dated note, GMF coverage Wave B (2026-08-02, ADR-0027): `CallSubmodule` is REMOVED from this module's own blocker list** — Wave B built the mechanism this row's own gap column names, though this module's OWN four call-paths were never fetched or characterized this session (unlike `ear_infections.json`/`urinary_tract_infections.json`, gmf-interpreter-findings.md §9) — this row's own `CarePlanStart`/`CarePlanEnd` gap alone still blocks it, Wave D's own scope, and this module's real closure could still hide further gaps a real characterization pass would need to surface before any vendoring claim |
-| `congestive_heart_failure.json` | 115 | `CallSubmodule` ×7, `Counter` ×5, `Death` ×4, `ImagingStudy` ×4, `DiagnosticReport` ×3, `CarePlanStart`/`CarePlanEnd` ×3+1, `MultiObservation` ×1 (28/115 ≈ 24% deferred) | `Vital Sign`, `Date`, `Or`, `Active CarePlan` — four more gaps | ambulatory ×3, emergency, hospice, inpatient ×2 | Far over ADR-0013 point 4's "modest surface" bar — **deferred, cited for prioritization data only** |
+| `congestive_heart_failure.json` | 115 | `CallSubmodule` ×7, `Counter` ×5, `Death` ×4, `ImagingStudy` ×4, `DiagnosticReport` ×3, `CarePlanStart`/`CarePlanEnd` ×3+1, `MultiObservation` ×1 (28/115 ≈ 24% deferred) | `Vital Sign`, `Date`, `Or`, `Active CarePlan` — four more gaps | ambulatory ×3, emergency, hospice, inpatient ×2 | Far over sim/ADR-0013 point 4's "modest surface" bar — **deferred, cited for prioritization data only** |
 | `sepsis.json` | 37 | `MultiObservation` ×2, `DiagnosticReport` ×1, `Death` ×1 | none new (`Active Allergy`/`Age`/`Observation`, all recognized keywords — `Observation`-as-condition-type is itself the sore_throat-shared gap) | emergency | `DiagnosticReport` (`Blood_Cultures`) is the FIRST state after the encounter opens, unconditional; `MultiObservation` (`Record_Blood_Pressure`) fires on both the vasopressor and ICU-survival branches — both MANDATORY, not tails — deferred at M7 time. **VENDORED, GMF coverage Wave D stage D1 (2026-08-02, ADR-0029) — `resources/modules/NOTICE`'s own table; `Death` was already v1 by Wave C, `MultiObservation`/`DiagnosticReport` closed this wave, gmf-interpreter-findings.md §11/gmf-interpreter-findings.md §12 for the full account** |
 | `myocardial_infarction.json` | 26 | `CallSubmodule` ×5, `Death` ×2, `CarePlanStart` ×1 | none | emergency | `ACS_Arrival_Meds`/`Cardiac_Labs`/`NSTEACS`/`STEMI` are all `CallSubmodule` and ALL reachable unconditionally past `ECG` — the module's entire post-ECG therapeutic content is opaque — **deferred**. **Dated note, GMF coverage Wave B (2026-08-02, ADR-0027): `CallSubmodule` is REMOVED from this module's own blocker list**, same caveat as `total_joint_replacement.json`'s own note above — the mechanism landed, but this module's own five call-paths were never fetched or characterized this session. `Death`/`CarePlanStart` still block it (Wave C/Wave D respectively) — matching the wave plan's own "B+C → MI" sequencing (`.agents/plans/2026-08-02-gmf-coverage-plan.md`), not reopened or accelerated by this note |
 | `stroke.json` | 12 | `Death` ×1 (an excludable ~17.5% procedural-mortality tail — the ONLY sinusitis-precedent-shaped gap found this session) | **`Date`** — `Emergency_Encounter`'s own `conditional_transition` gates Clopidogrel/Alteplase on simulated year, evaluated immediately on encounter entry, for every patient — **condition-vocabulary gap RESOLVED, GMF coverage Wave A, 2026-08-02** (`:date` now v1, `.agents/plans/2026-08-02-gmf-coverage-plan.md`) | emergency | Smallest, cleanest STATE-type surface surveyed after appendicitis — the `Date` gap that blocked it is closed, but the `Death` state-type gap (this row's own second column) still does, per AR-6 (same plan): `Death` stays a load-bearing, semantically-real state (unlike `Device`, never a safe consumed-internally pass-through) — waits for Wave C's own `:expired`/post-mortem wiring — **deferred, revisit trigger: Wave C**. **Dated note, GMF coverage Wave C (2026-08-02, ADR-0028): `Death` is REMOVED from this module's own blocker list, but a NEW, worse gap replaces it — still deferred, revisit trigger changed.** `Death` itself landed this wave (section 10) and this module's own `Death` state (the `range`+`codes` form) is now fully expressible. But real-closure characterization (section 10's own C5 survey) found `Chance_of_Stroke`'s own `distributed_transition` gates the "Stroke" branch on `{"attribute": "stroke_risk", "default": 0}` — a real Synthea engine attribute (`CardiovascularDiseaseModule`'s own Framingham risk score) this project has no source for, whose own JSON default is exactly 0, making onset (and therefore `Death`) structurally unreachable if honored literally. Escalated and ruled (design channel, 2026-08-02): `stroke.json` stays deferred — revisit trigger is now an attribute-sourced `distributed_transition` weight mechanism (unbuilt) AND a stroke-risk-equivalent data source (out of this project's own persona model), both landing together, not scoped this session |
@@ -1435,7 +1435,7 @@ this session specifically caught itself getting wrong about), or the
 newly-discovered wellness-encoding/`Date` pair (`osteoporosis`,
 `atrial_fibrillation`, `mTBI`, `epilepsy`, `med_rec`). The vendored set
 after this session is `{sinusitis, appendicitis}` — two modules, well
-under ADR-0013 point 5's ~10-module lockfile-revisit threshold, and
+under sim/ADR-0013 point 5's ~10-module lockfile-revisit threshold, and
 under this session's own "~4–6" target even after author-directed
 extended scouting nearly doubled the modules read (26 → 41). **This is
 reported as the session's real result, not under-delivered against
@@ -1496,7 +1496,7 @@ roadmap's own M5a-opens-by-confirming-these convention,
    item 6's own place in §4, above (§4 sketch).
 7. `:outpatient-visit-end`'s `:status` `:admitted -> :discharged`; no
    `message-type-registry` entry, by design, the same precedent
-   ADR-0012 already established for `:step-rejected` (§4 sketch).
+   sim/ADR-0012 already established for `:step-rejected` (§4 sketch).
 8. New invariants implied by items 5–7:
    `outpatient-visit-only-when-new`, `outpatient-patients-occupy-no-bed`,
    and the occupancy board's inpatient/ED-scoped consistency-law

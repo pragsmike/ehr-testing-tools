@@ -34,7 +34,7 @@ which physical room, never which extra is standing in it.
 
 **The patient lifecycle machine** is driven *only* by
 `ehrt.sim-engine.engine/evolve` folding ground-truth events
-(ADR-0008, [`event-sourcing.md`](../../sim/docs/event-sourcing.md)). This is
+(sim/ADR-0008, [`event-sourcing.md`](../../sim/docs/event-sourcing.md)). This is
 **operational truth-space**: it computes what actually happened to a
 real patient-id in a real, capacity-constrained hospital — which bed,
 which attending, whether the transfer got cancelled.
@@ -68,7 +68,7 @@ where script-space begins for any patient carrying a module assignment.
 **The module walk, in two phases** (`ehrt.sim-trajectory.gmf-interpreter/run-module`,
 [`gmf-interpreter.md`](gmf-interpreter.md) section 3). Because this
 project's own scope is an encounter horizon, not a lifetime
-(ADR-0007 point 3), a module assigned to a 45-year-old patient can't
+(sim/ADR-0007 point 3), a module assigned to a 45-year-old patient can't
 mean simulating 45 years of operational traffic. Instead, one
 continuous walk runs from the persona's own DOB on a virtual clock
 (an interpreter-internal epoch-day, not the engine's seconds):
@@ -82,7 +82,7 @@ continuous walk runs from the persona's own DOB on a virtual clock
   encounter machinery itself. `ConditionOnset`/`ConditionEnd`/
   `MedicationOrder`/`MedicationEnd` crossed here still matter — they
   become **pre-horizon facts**, marked (never trimmed, the same
-  "mark, don't trim" choice ADR-0011 already made for warm-up traffic)
+  "mark, don't trim" choice sim/ADR-0011 already made for warm-up traffic)
   and, at `CompileTrajectory`, promoted into **registration-time
   facts** riding the patient's own `:registered` event rather than a
   pathway step (`ehrt.sim-trajectory.compile-trajectory`'s own
@@ -111,7 +111,7 @@ rendered message all the way to the exact JSON state that produced it.
 
 **The IR union with authored pathways.** `pathway-ir` is the declared
 union of `compiled-pathway` and `authored-pathway`
-([`sim-theory.md`](../../sim/docs/sim-theory.md)'s own reading of ADR-0002 clause 1,
+([`sim-theory.md`](../../sim/docs/sim-theory.md)'s own reading of sim/ADR-0002 clause 1,
 algebraically) — once compiled module steps and hand-authored pathway
 steps both sit in a patient's own step queue, the engine's `decide`
 multimethod dispatches purely on a step's `:type`; nothing about a
@@ -167,14 +167,14 @@ The loop's sacred asymmetry, restated for this document's own purpose
 **`decide` proposes, `evolve` disposes.**
 
 `decide (rng, t, world, patient-id, step) → {:events :advance}`
-(ADR-0008) reads the current fold of every patient's state (`world`'s
+(sim/ADR-0008) reads the current fold of every patient's state (`world`'s
 own `:patients` map — itself the running output of every `evolve` call
 so far, never a second structure decide could disagree with), the RNG,
 and, for allocation decisions, an occupancy projection built from that
 same patient-state map (`ehrt.sim.facility/occupancy-board`) —
 the thing that turns "this ward is full" into a boarding placement
 rather than a crash. It emits events, or a **`:step-rejected`** event
-when live world state doesn't support the attempted step (ADR-0012) —
+when live world state doesn't support the attempted step (sim/ADR-0012) —
 a narrower, runtime-only check than the applicability oracle
 `InjectChurn` already consulted statically before ever inserting the
 step: the oracle can say a cancel-discharge's reinstatement is legal
@@ -222,7 +222,7 @@ A's own state each still change only by folding an event through
 A's transfer is now warranted, by reading derived world state — never
 one patient's code reaching into another patient's state directly.
 This is also, precisely, why the two genuinely two-participant event
-types this project has (`:bed-swap`, `:merge`, ADR-0010) needed no
+types this project has (`:bed-swap`, `:merge`, sim/ADR-0010) needed no
 architectural redesign to add: events were always the only channel a
 fact about a patient could travel through, so a fact naming *two*
 patients at once is just an event with a longer `:participants` vector,
@@ -314,7 +314,7 @@ prose (churn touches only the authored half, before the compiled half
 is even resolved — the union itself is real, the two halves just
 arrive at it having taken different paths). And the lifecycle strip
 shows only the three
-landed, always-reachable statuses plus `Merged` (ADR-0010) —
+landed, always-reachable statuses plus `Merged` (sim/ADR-0010) —
 `:expired` is deliberately omitted here, the same honest omission
 [`patient-state-model.md`](../../sim/docs/patient-state-model.md)'s own diagram
 already makes, because it is designed (`components/sim/docs/clinical-realities.md`'s

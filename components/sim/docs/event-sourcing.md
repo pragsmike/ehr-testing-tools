@@ -25,7 +25,7 @@ now" can never silently disagree, because there is only one function
 that produces the second from the first.
 
 This simulator's engine (`ehrt.sim-engine.engine`) implements exactly
-that inversion, decided at [ADR-0008](../notes/ADRs.md#adr-0008) and
+that inversion, decided at [sim/ADR-0008](../../../notes/sim/ADRs.md) and
 specified in full at
 [`docs/patient-state-model.md`](patient-state-model.md). Three pieces
 make it concrete:
@@ -102,7 +102,7 @@ rendering efforts that happen to agree, because the underlying engine
 already has the shape that makes both sides cheap: `hl7v2-stream`
 (`EmitHL7`, built) is the log rendered as messages; `state-document`
 (`EmitState`, built — M6, FHIR R4 first, CDA deferred) is
-`state-history` — itself a derived fold, per ADR-0008 — rendered as
+`state-history` — itself a derived fold, per sim/ADR-0008 — rendered as
 FHIR resources at a queried instant. The **emitter-coherence** law
 (`docs/sim-theory.md`'s global laws) — replaying `hl7v2-stream`
 reconstructs `state-history`, and a FHIR snapshot at instant *t* agrees
@@ -124,7 +124,7 @@ stream (the same `org.clojars.cmiles74/clojure-hl7-parser` structures
 `EmitHL7` renders through) and fold it, message by message
 (`fold-message`), into state — never touching `ehrt.sim-engine.engine`,
 the ground-truth log, or the RNG. This is the same shape `EmitState`'s
-own `snapshot-at` embodies from the log-fold side (ADR-0008's `replay`),
+own `snapshot-at` embodies from the log-fold side (sim/ADR-0008's `replay`),
 mirrored from the wire side: two independent folds of two independent
 renderings, checked against each other rather than against a shared
 implementation either could quietly share a bug with.
@@ -193,7 +193,7 @@ has nowhere else to live. This project's engine needs **one**
 `:location` field, because `:transfer-in-error`'s `decide` can query
 the log directly for the patient's prior location-setting event — the
 log already *is* the undo history, so nothing needs its own copy of it.
-[ADR-0010](../notes/ADRs.md#adr-0010) extends the same argument to
+[sim/ADR-0010](../../../notes/sim/ADRs.md) extends the same argument to
 identity: a merge's "what MRN did this patient answer to before" is the
 same kind of prior-value fact, and it lives on the merge event itself,
 not in a redirect table a mutable design would need instead.
@@ -218,7 +218,7 @@ is exactly the kind of state-visit-history query `Person.history`
 exists to answer, in a system with no primitive log to ask instead.
 (This detail is carried per this document's own briefing rather than a
 fresh source read this session; flagged as such per `AGENTS.md`'s
-provenance discipline, the same way ADR-0010 flags its own SimHospital
+provenance discipline, the same way sim/ADR-0010 flags its own SimHospital
 merge inference.) M5's GMF interpreter port compiles `PriorState`-style
 guards to queries over *this* project's ground-truth log directly —
 typed, timestamped, and already authoritative — rather than porting
@@ -271,8 +271,8 @@ correction/supersession semantics; deterministic simulation time and
 identifiers; separately materialized current-state views; composable
 reactions across modules; and empirically validated domain models."
 Every clause in that sentence names a decision this project has already
-made or has on its roadmap — ADR-0008's log-is-primitive engine,
-ADR-0011's deterministic time model and ADR-0010's deterministic
+made or has on its roadmap — sim/ADR-0008's log-is-primitive engine,
+sim/ADR-0011's deterministic time model and sim/ADR-0010's deterministic
 identity, the occupancy-board/state-history projection pattern
 (`docs/operational-models.md`), `sim-theory.edn`'s IR-transform
 composition (InjectChurn), and M5's empirically-sourced GMF module
@@ -293,9 +293,9 @@ checklist against this project's own defenses.
 
 | Threat (theirs) | Our status |
 |---|---|
-| UUID/id generation divergence | Defended: deterministic `:patient-id` (ADR-0010) and control ids, both derived from the run's seed, never `java.util.UUID/randomUUID` or similar wall-clock/hardware entropy |
+| UUID/id generation divergence | Defended: deterministic `:patient-id` (sim/ADR-0010) and control ids, both derived from the run's seed, never `java.util.UUID/randomUUID` or similar wall-clock/hardware entropy |
 | Unordered-collection iteration | Mostly defended (the engine's work queue is a `sorted-map`); gap closed this session — `emitter-order-independence-test` (`test/ehrt/sim/emitter_order_independence_test.clj`) guards that `emit-hl7` never depends on a map's or set's own iteration order when building segments |
-| Reference *date* vs full timestamp | Defended: relative seconds (ADR-0011) plus an explicit `:reference-date` and a fixed `:utc-offset`, both pinned in the run manifest, never a bare current-time reference |
+| Reference *date* vs full timestamp | Defended: relative seconds (sim/ADR-0011) plus an explicit `:reference-date` and a fixed `:utc-offset`, both pinned in the run manifest, never a bare current-time reference |
 | Locale/OS differences | Partially defended (locale/timezone recorded in the manifest); revisit once CI exists (`.agents/plans/roadmap.md`'s CI trigger) |
 | Cross-format id divergence (CDA vs FHIR vs CSV) | Defended for HL7v2/FHIR, property-tested: `Patient.id`/`Patient.identifier` resolve to the SAME `patient-id`/active-mrn `EmitHL7` uses (`sim-theory.md`'s cross-emitter id sub-law, `emit-fhir-test/fhir-patient-id-and-active-mrn-resolve-to-the-same-hl7-identity`, 150 trials). CDA is out of scope until it's built (EmitState's own format-dispatch contract note) — not a gap in what's landed, a boundary of what hasn't |
 
@@ -314,7 +314,7 @@ generator, not just architectural tidiness:
 
 - **`(config, seed, version)` *is* the corpus.** Because every output —
   messages, state documents, the invariant verdict — is a pure
-  function of config, seed, and the engine's own version (ADR-0009),
+  function of config, seed, and the engine's own version (sim/ADR-0009),
   a generated log or corpus is a **cache** of that function's output,
   not an artifact that has to be preserved and shipped as the source
   of truth. A consumer who needs "the same traffic again" ships the
@@ -330,7 +330,7 @@ generator, not just architectural tidiness:
   checkpoint is just a replay whose result is cached instead of
   recomputed.
 - **Cross-version replay is explicitly not promised.** This is a
-  boundary, not a gap: [ADR-0009](../notes/ADRs.md#adr-0009) states
+  boundary, not a gap: [sim/ADR-0009](../../../notes/sim/ADRs.md) states
   that a fixed seed and config reproduce byte-identical output only
   *within* a generator version — the engine's step vocabulary is
   expected to grow (M2 through M6, `.agents/plans/roadmap.md`), and
@@ -351,5 +351,5 @@ theory this document's architecture sits inside;
 accumulator shape `evolve` folds into and the full upstream-mining
 record; [`docs/operational-models.md`](operational-models.md) for the
 occupancy-board projection worked out in detail;
-[`notes/ADRs.md`](../notes/ADRs.md) ADR-0002, ADR-0008, ADR-0009, and
-ADR-0010 for the decision records this explainer narrates in prose.
+[`notes/sim/ADRs.md`](../../../notes/sim/ADRs.md) sim/ADR-0002, sim/ADR-0008, sim/ADR-0009, and
+sim/ADR-0010 for the decision records this explainer narrates in prose.

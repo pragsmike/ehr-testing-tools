@@ -2,7 +2,7 @@
 
 This document specifies the patient lifecycle state machine: the shape
 of the accumulator `ehrt.sim-engine.engine/evolve` folds the
-ground-truth log into (ADR-0008), the states and transitions that
+ground-truth log into (sim/ADR-0008), the states and transitions that
 accumulator moves through, and the event-validity table that will
 double as `check.clj`'s invariant skeleton now and `InjectChurn`'s
 applicability oracle later (M2b). It formalizes what
@@ -16,7 +16,7 @@ will read and write.
 
 All authored durations — pathway IR (`:delay`'s `:from`/`:to`) and
 engine config (`:arrival-gap`, and any future churn-profile duration)
-alike — are minutes; the engine's own clock is seconds (ADR-0011);
+alike — are minutes; the engine's own clock is seconds (sim/ADR-0011);
 conversion happens exactly once, at the boundary where a minute-
 denominated draw becomes a clock advance (decide-time).
 
@@ -62,7 +62,7 @@ must still account for:
    states — a mutable-world approximation of an event log. When M5
    ports the GMF interpreter, `PriorState` guards compile to queries
    over *our* ground-truth log — typed, timestamped, and already
-   authoritative (ADR-0008) — rather than to a second history
+   authoritative (sim/ADR-0008) — rather than to a second history
    structure. **The accumulator below does not carry its own visit
    history for this reason: the log is `Person.history` done right,
    and the interpreter reads the log directly when M5 lands.**
@@ -116,7 +116,7 @@ gaps and one design lesson:
   cheap PV1 fields once each is seen; no design burden.
 
 **The cautionary tale, worth recording as the worked example of why
-the log-is-primitive decision (ADR-0008) pays for itself starting at
+the log-is-primitive decision (sim/ADR-0008) pays for itself starting at
 M2b, not "someday":** `PatientInfo`'s location alone is *six* fields —
 `Location`, `PriorLocation`, `PriorLocationForCancelTransfer`,
 `PendingLocation`, `PriorPendingLocation`, and a prior for that one
@@ -137,7 +137,7 @@ that patient's most recent location-setting event before the one being
 cancelled, and the emitter derives PV1-6 (prior location) the same way
 at message-build time. **One `:location` field in the accumulator,
 plus a log query, replaces all six `PatientInfo` location fields.**
-This is not a hoped-for benefit of ADR-0008 — it is the concrete
+This is not a hoped-for benefit of sim/ADR-0008 — it is the concrete
 reason M2b's cancel-family step types are expected to be cheap rather
 than each growing their own shadow state.
 
@@ -148,16 +148,16 @@ than each growing their own shadow state.
 
 | Field | Type | Notes |
 |---|---|---|
-| `:patient-id` | `:string` | **Landed, M2a (ADR-0010).** The fold key and work-queue key — replaces `:mrn` in that role. Internal, deterministic (a pure function of the run's seed and the patient's arrival ordinal — never an RNG draw, so identity generation adds no new stochastic consumption); never reassigned, never rebinds. |
-| `:mrns` | `[:set :string]` | **Landed, M2a (ADR-0010).** Every MRN this patient-id has ever answered to — a singleton set until M2b's merge exists to grow it. MRN is now *state*, not identity: a real hospital's MRN is exactly what merge changes. |
-| `:active-mrn` | `:string` | **Landed, M2a (ADR-0010).** Which member of `:mrns` is currently live; emitters render this everywhere PID/control-ids used to read a bare `:mrn`. Until M2b's merge lands, always the patient's one and only MRN. |
+| `:patient-id` | `:string` | **Landed, M2a (sim/ADR-0010).** The fold key and work-queue key — replaces `:mrn` in that role. Internal, deterministic (a pure function of the run's seed and the patient's arrival ordinal — never an RNG draw, so identity generation adds no new stochastic consumption); never reassigned, never rebinds. |
+| `:mrns` | `[:set :string]` | **Landed, M2a (sim/ADR-0010).** Every MRN this patient-id has ever answered to — a singleton set until M2b's merge exists to grow it. MRN is now *state*, not identity: a real hospital's MRN is exactly what merge changes. |
+| `:active-mrn` | `:string` | **Landed, M2a (sim/ADR-0010).** Which member of `:mrns` is currently live; emitters render this everywhere PID/control-ids used to read a bare `:mrn`. Until M2b's merge lands, always the patient's one and only MRN. |
 | `:status` | `[:enum :new :admitted :discharged :expired]` | Lifecycle. Boarding is **not** a separate status — see below. `:expired` (candidate, M2b+ — see `docs/clinical-realities.md`'s post-mortem entry) is **clinically absorbing but operationally alive**: reached via a death event or an expired discharge disposition, it is not a synonym for `:discharged` — a patient can be transferred (to a morgue ward, `:class :morgue`) or undergo autopsy/donor-management events while `:status = :expired`, exactly the way an `:admitted` patient can, before a final disposition-20 `:discharge` moves them to `:discharged`. See the event validity table below for what's legal in `:expired`. |
 | `:class` | `[:enum :inpatient :emergency :outpatient :preadmit :recurring :obstetrics]`, optional until admission | PV1-2. Tracked separately from `:status` per `ir.PatientInfo`'s own separation (mined above) — registration category, not lifecycle. Distinct from a *ward's* `:class` (`:inpatient`/`:ed`, `docs/operational-models.md`'s facility config) — same word, two different things: one is what kind of patient this is, the other is what a ward is designated for. Set at admission, unchanged by transfer within M1's scope. |
 | `:home-ward` | `:string`, ward id, nil until admission | The ward the pathway named — clinical intent (`docs/operational-models.md`'s own term for the rung-1/2 target). Diverges from `:location`'s ward exactly on rungs 3 (outlier) and 4 (boarding) of the allocation ladder. |
 | `:location` | `[:map [:ward :string] [:bed :string] [:placement [:enum :licensed :surge]]]`, nil until admission | The patient's actual **physical** location, always concrete — never nil-bed, even while boarding (see worked example below). `:placement` is exactly the two values `docs/operational-models.md` specifies; ladder rungs 3 and 4 are distinguished from 1 and 2 not by a third placement value but by `:location`'s ward differing from `:home-ward` (see the table below). |
 | `:attending` | `:string`, provider id, nil until admission | References `docs/operational-models.md`'s provider pool by id; rendered PV1-7 as `id^family^given` at emit time, not stored denormalized. |
-| `:persona` | `ehrt.sim.persona/Persona`, nil until the `:registered` event folds | **Landed, M4.** Name, DOB, sex, address, phone, an SSN-shaped id, and payer — ALL of it, sampled together by `ehrt.sim.persona/persona` and folded in by the engine-internal `:registered` event every patient's step queue is now prepended with (never authorable IR, the same treatment `:result-followup` already gets). This RETIRES the standalone `:payer` field this table used to carry: there was no code actually populating it (always nil, an aspiration this document itself named as an engine-patient-init stand-in), so retiring it is a schema simplification, not a behavior removal — payer now lives at `(:payer (:persona patient))`. Never re-sampled after — the attribute-pool contract (ADR-0007) extended to every persona field, not just payer. |
-| `:admitted-at` | `:int`, simulated **seconds** (was minutes pre-M2a — ADR-0011), nil until admission | The moment this patient was admitted. Landed with Milestone M1 for exactly one purpose: breaking ties among multiple patients boarding for the same ward — the bed-ready transfer relieves the longest-waiting one first (earliest `:admitted-at`, `:patient-id` as a further tiebreak — `:patient-id`'s zero-padded ordinal prefix keeps this tiebreak's lexical-order property `:mrn` used to give it for free). Not a SimHospital-style shadow field — set once, never rewritten. |
+| `:persona` | `ehrt.sim.persona/Persona`, nil until the `:registered` event folds | **Landed, M4.** Name, DOB, sex, address, phone, an SSN-shaped id, and payer — ALL of it, sampled together by `ehrt.sim.persona/persona` and folded in by the engine-internal `:registered` event every patient's step queue is now prepended with (never authorable IR, the same treatment `:result-followup` already gets). This RETIRES the standalone `:payer` field this table used to carry: there was no code actually populating it (always nil, an aspiration this document itself named as an engine-patient-init stand-in), so retiring it is a schema simplification, not a behavior removal — payer now lives at `(:payer (:persona patient))`. Never re-sampled after — the attribute-pool contract (sim/ADR-0007) extended to every persona field, not just payer. |
+| `:admitted-at` | `:int`, simulated **seconds** (was minutes pre-M2a — sim/ADR-0011), nil until admission | The moment this patient was admitted. Landed with Milestone M1 for exactly one purpose: breaking ties among multiple patients boarding for the same ward — the bed-ready transfer relieves the longest-waiting one first (earliest `:admitted-at`, `:patient-id` as a further tiebreak — `:patient-id`'s zero-padded ordinal prefix keeps this tiebreak's lexical-order property `:mrn` used to give it for free). Not a SimHospital-style shadow field — set once, never rewritten. |
 | `:attributes` | `[:map-of :keyword :any]`, default `{}` | **The namespacing rule is live, M5a; the engine's own accumulator still doesn't populate this field until M5b.** The open blackboard Synthea's modules coordinate through (mined above): `ehrt.sim-trajectory.gmf`'s loader now REALLY enforces module-namespaced keys (`components/sim-trajectory/docs/gmf-interpreter.md` section 5 — a module's raw `SetAttribute`/`Symptom` name compiles to `:module-id/kebab-name`, never a bare keyword; a module writing a bare engine-reserved name, e.g. `donor`, is rejected at load time), and `ehrt.sim-trajectory.gmf-interpreter`'s own `step` only ever writes through that exact transform — this is no longer a documented convention awaiting code, it is the shape the interpreter's own attribute-registry property test (`gmf-interpreter-test/attribute-writes-are-always-in-the-declared-registry`) checks directly. What's still M5b scope: folding a module instance's own attribute map INTO this accumulator field for a real, running patient (`RunModules` meeting `Execute`, `docs/sim-theory.edn`'s own `:trajectory` stage) — M5a's interpreter carries its own attributes map per module-instance, engine-adjacent but not yet engine-integrated. |
 
 Deliberately absent, per the mining above: no visit-history field (the
@@ -179,13 +179,13 @@ SimHospital sense above (mined section): it is a plain fact recorded
 once at admission and never rewritten, exactly like `:status` or
 `:class`.
 
-**Landed, M2a.** ADR-0010's identity split (`:patient-id`/`:mrns`/
-`:active-mrn`, above) and ADR-0011's time model are both implemented,
+**Landed, M2a.** sim/ADR-0010's identity split (`:patient-id`/`:mrns`/
+`:active-mrn`, above) and sim/ADR-0011's time model are both implemented,
 not just designed: `ehrt.sim-engine.engine/run`'s work queue and
 `world :patients` map are keyed by `:patient-id`; every ground-truth
 event carries a `:participants` vector (`[{:patient-id ... :role
 :subject}]` for every event type today — the degenerate single-
-participant case ADR-0010 names) and a `:warm-up` boolean
+participant case sim/ADR-0010 names) and a `:warm-up` boolean
 (`t < :warm-up-seconds`, config default 0); every `:t` is seconds from
 run start. **The pathway IR is unchanged by the seconds move:**
 `:delay`'s `:from`/`:to` stay authored in minutes (authoring
@@ -218,7 +218,7 @@ alternative relief policy would eventually be configured, the same
 the no-census-floor non-invariant for surge use.
 
 (Pre-M1 staging note, kept for history: the session that first landed
-`evolve`/`decide` — ADR-0008 — shipped `PatientState` with every field
+`evolve`/`decide` — sim/ADR-0008 — shipped `PatientState` with every field
 above present except `:location`, which stayed in its v0 bare-string
 shape until this ladder existed to populate the map shape meaningfully.
 That staging is now resolved.)
@@ -269,7 +269,7 @@ using the event's own **ordinal position in the ground-truth log**
 
 **Decision: the log-position index, stamped on nothing.** The
 ground-truth log is already an immutable, append-only, totally
-ordered vector (ADR-0008) — its own index IS a deterministic, unique,
+ordered vector (sim/ADR-0008) — its own index IS a deterministic, unique,
 stable identifier for every event it contains, for the lifetime of a
 run, with zero schema change to existing event types. A cancel event
 carries one new field of its own, `:cancels-event-id` (the target
@@ -295,15 +295,15 @@ specifically so `decide` can query it directly (`nth`/`filter`/
 `:transfer-in-error`'s prior-location lookup already makes (see the
 worked example below).
 
-## Rejected steps (M2b-surfaced capture, ADR-0012)
+## Rejected steps (M2b-surfaced capture, sim/ADR-0012)
 
 M2b's `InjectChurn` property-testing surfaced a gap in the log's own
-claim to be authoritative (ADR-0002, ADR-0008): a step that is
+claim to be authoritative (sim/ADR-0002, sim/ADR-0008): a step that is
 statically legal per the applicability oracle above can still be
 rejected at execution time by live world state the oracle had no
 visibility into (e.g. a `:cancel-discharge` reinstatement targeting a
 bed someone else's admission has since reclaimed). Today that
-rejection is a bare no-op — no trace enters the log. [ADR-0012](../notes/ADRs.md#adr-0012)
+rejection is a bare no-op — no trace enters the log. [sim/ADR-0012](../../../notes/sim/ADRs.md)
 records the decision to close this: a `:step-rejected` event
 (`:participants`, the attempted step, a reason) enters the ground-truth
 log on every such rejection. It is **truth about the run, never a
@@ -312,7 +312,7 @@ since no real ADT feed carries a message for an attempted action that
 never became a real one — but `check.clj`'s invariant catalog and any
 test harness reading the log directly may reference it, the same
 glass-box-auditability rationale every other event type already
-serves. ADR-0012 also captures a v2 refinement: cancel-reinstatement
+serves. sim/ADR-0012 also captures a v2 refinement: cancel-reinstatement
 should route back through `ehrt.sim.facility/allocate`'s
 existing ladder rather than dead-ending as a no-op, because a real
 hospital doesn't fail a cancellation when the original bed is gone —
@@ -505,7 +505,7 @@ class wherever a single event type doesn't map to a single class.
 | `:discharge` | `:status = :admitted` (Admitted or Boarding) | — | Discharging a patient not currently admitted, or discharging twice. |
 | `:pending-*` (M2b, planned) | `:status = :admitted`, not already pending | — | Double-pending; pending a non-admitted patient. |
 | `:cancel-*` / `:*-in-error` (M2b, planned) | The event class being cancelled must exist in this patient's log and not already be cancelled | — | Cancelling an event that never happened, or cancelling twice. |
-| `:merge` (M2b, planned) | Both patient-ids exist (ADR-0010); at least the surviving patient-id is `:admitted` or reachable | — | Merging into/from a patient-id that was never admitted, or a double merge. |
+| `:merge` (M2b, planned) | Both patient-ids exist (sim/ADR-0010); at least the surviving patient-id is `:admitted` or reachable | — | Merging into/from a patient-id that was never admitted, or a double merge. |
 | `:order` (M3, **landed**) | `:status = :admitted` | — | Ordering labs for a patient not currently admitted (`ehrt.sim-check.check/order-only-when-admitted`). |
 | `:result-available` (M3, **landed**) | No status restriction of its own — a result is asynchronous to the rest of the patient's own pathway (auto-paired at a profile-sampled turnaround, not blocking authored steps like `:discharge`) and may legitimately arrive after discharge; **pending labs at discharge is real clinical traffic, not a bug** — a case this milestone's own integration test surfaced before this row was narrowed to match it. Its own constraint is referential, not status-based: it must name a real, preceding `:order-placed` event for the same patient (`ehrt.sim-check.check/result-references-existing-order-and-follows-it-in-time`). | — | A result whose `:order-event-id` doesn't resolve to a real prior `:order-placed` event for the same patient, or that precedes it in time. |
 | Therapeutic-intent classes (orders, meds, procedures with clinical intent) | **Illegal** when `:status = :expired` | — | An order or medication timestamped after a death event — the classic post-mortem rejection case (`docs/clinical-realities.md`). `:order` is this class's first LANDED instance (row above); the `:expired` half of this row is not yet checkable in code, since `:expired` isn't a landed `:status` value yet (see the accumulator table's own `:status` note) — `order-only-when-admitted` is written as the strict generalization ("legal only when `:admitted`") that already covers it once `:expired` lands, without inventing an unfalsifiable invariant against a status no event can yet produce. |
@@ -523,7 +523,7 @@ the final A03. `docs/operational-models.md`'s facility config
 (`{:id :name :beds ... :class :inpatient|:ed}`) gains `:class :morgue`
 as a third documented ward class — **config documentation only, no
 code this session**; a morgue "ward" is a real occupancy-tracked
-location by the existing exclusive-resource model (ADR-0007), it simply
+location by the existing exclusive-resource model (sim/ADR-0007), it simply
 never boards or admits in the ordinary sense.
 
 The current `check.clj` catalog (`timestamps-monotone`,
@@ -543,9 +543,9 @@ the warm-up mark.** `check.clj`'s catalog gains
 participant) and `participant-ids-exist-in-run` (every patient-id named
 anywhere in `:participants` traces back to an `:admission` event
 somewhere in the same log — catching a stray or mistyped id a future
-churn-injection step could otherwise introduce), per ADR-0010. A third,
+churn-injection step could otherwise introduce), per sim/ADR-0010. A third,
 separately-parameterized invariant, `warm-up-mark-matches-window`
-(ADR-0011), checks the pure predicate `:warm-up = (t < warm-up-
+(sim/ADR-0011), checks the pure predicate `:warm-up = (t < warm-up-
 seconds)` against the run's own configured window — `check/check-all`
 grew a third optional arg (`warm-up-seconds`, default 0) alongside the
 existing `facility-config` one, both following the same "needs more

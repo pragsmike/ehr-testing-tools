@@ -80,16 +80,16 @@ Three structural facts the diagram makes visible at a glance:
    the corpus, the invariant verdict — is downstream of
    `ground-truth-log` (or its sibling `state-history`, produced by the
    same stage). Nothing downstream of Execute touches the RNG. That
-   is ADR-0002 drawn as wires.
+   is sim/ADR-0002 drawn as wires.
 2. **The union is the equivalence.** `pathway-ir` as the declared
-   union of `compiled-pathway` and `authored-pathway` is ADR-0002
+   union of `compiled-pathway` and `authored-pathway` is sim/ADR-0002
    clause 1 stated algebraically: everything downstream of the merge
    is provably indifferent to whether a scenario was generated or
    hand-written — the same shape as tools' `datum` union, for the
    same reason.
 3. **The repo boundary is dashed.** `ToolsCorpusIntake` is external
    *from sim's perspective* even though it's the sibling repo: the
-   dependency arrow (ADR-0001) means sim makes no claims about what
+   dependency arrow (sim/ADR-0001) means sim makes no claims about what
    tools does with a corpus — only that a named resource crosses at a
    named point, in the mirrored manifest shape.
 
@@ -141,8 +141,8 @@ stage doesn't actually carry.
 
 ## M2a lands under Execute's existing contract — no new stage or wire
 
-[ADR-0010](../notes/ADRs.md#adr-0010) (patient identity, MRNs-as-state,
-the `:participants` event shape) and [ADR-0011](../notes/ADRs.md#adr-0011)
+[sim/ADR-0010](../../../notes/sim/ADRs.md) (patient identity, MRNs-as-state,
+the `:participants` event shape) and [sim/ADR-0011](../../../notes/sim/ADRs.md)
 (seconds granularity, a pinned UTC offset, a warm-up window) are both
 now **landed** (M2a session, test-first, `engine.clj`/`check.clj`/
 `emit-hl7.clj`/`run.clj`/`cli.clj`) as engine-internal refactors under
@@ -156,7 +156,7 @@ equation→Mermaid machinery ever sees the structural keys (`:id`
 `:kind` `:status` `:inputs` `:outputs` `:catalytic`), this cannot
 change what any diagram generated from `sim-theory.edn` renders —
 confirmed by inspection rather than by re-running the generator, since
-neither change touches a structural key. ADR-0011's **seeded arrival
+neither change touches a structural key. sim/ADR-0011's **seeded arrival
 process** (an alternative to fixed `:patients N`) was sketched but not
 built this session — explicitly a stretch item behind the seam, per
 the M2a session's own plan; M2b does not depend on it.
@@ -181,7 +181,7 @@ touches `Execute`'s or `EmitHL7`'s declared `:inputs`, `:outputs`, or
 registry entries, not new catalytic wires), so — the same argument the
 M2a section above already made, confirmed by inspection rather than by
 re-running the generator — this cannot change what any diagram
-generated from `sim-theory.edn` renders. `:step-rejected` (ADR-0012,
+generated from `sim-theory.edn` renders. `:step-rejected` (sim/ADR-0012,
 also landed this milestone) renders in **neither** diagram nor
 message-type-registry, by design: it is truth about the run, not wire
 traffic a real ADT/ORM/ORU feed would ever carry.
@@ -271,7 +271,7 @@ targets; unresolved is a gap, not an oversight:
 | Catalytic | Target | Note |
 |---|---|---|
 | `demographics-tables` | 3 — hashed repo-authored config | vendored US tables, `resources/demographics/` -- SMALL and hand-curated this milestone (no Synthea checkout available; NOTICE records why), same schema shape a real extraction would use |
-| `gmf-module-set` | 3 — hashed repo-authored/derived config | **RESOLVED, ADR-0013** (author-ratified 2026-07-27): a small, curated subset vendored into `resources/modules/`, hashed and provenance-tracked per-module in a `resources/modules/NOTICE` file (the same role `resources/demographics/NOTICE` plays), not a lockfile (target 1) — ADR-0003's own trigger, decided once `components/sim-trajectory/docs/gmf-interpreter.md`'s candidate-module survey gave the question something concrete to be decided against. Explicit revisit trigger: a lockfile, if the vendored set ever grows past roughly ten modules |
+| `gmf-module-set` | 3 — hashed repo-authored/derived config | **RESOLVED, sim/ADR-0013** (author-ratified 2026-07-27): a small, curated subset vendored into `resources/modules/`, hashed and provenance-tracked per-module in a `resources/modules/NOTICE` file (the same role `resources/demographics/NOTICE` plays), not a lockfile (target 1) — sim/ADR-0003's own trigger, decided once `components/sim-trajectory/docs/gmf-interpreter.md`'s candidate-module survey gave the question something concrete to be decided against. Explicit revisit trigger: a lockfile, if the vendored set ever grows past roughly ten modules |
 | `gmf-interpreter` | 4 — in-repo code registry | the GMF interpreter, versioned like data |
 | `invariant-catalog` | 4 — in-repo code registry | `ehrt.sim-check.check/catalog`, versioned; the co-landing law couples it to Execute's step set |
 | `hl7-parser-dep` | 2 — deps.edn | `org.clojars.cmiles74/clojure-hl7-parser 3.5.1` (facts-register) |
@@ -372,16 +372,16 @@ rather than computed.
 Recorded here rather than silently decided:
 
 1. **`gmf-module-set`'s catalytic target** — vendor (3) vs lockfile
-   (1); ADR-0003's trigger, decided when modules land.
+   (1); sim/ADR-0003's trigger, decided when modules land.
 
-   **RESOLVED (ADR-0013), the same "leave the original entry standing,
+   **RESOLVED (sim/ADR-0013), the same "leave the original entry standing,
    append the resolution" convention open question #3's own resolution
-   (ADR-0008) already established:** target 3, vendor a small curated
+   (sim/ADR-0008) already established:** target 3, vendor a small curated
    subset into `resources/modules/`, hashed and provenance-tracked
    per-module — see the Catalytic resolution table above for the full
    citation. `components/sim-trajectory/docs/gmf-interpreter.md`'s own candidate-module survey
    (its appendix) names the first module recommended to vendor under
-   ADR-0013's own curation criterion, for author ratification alongside
+   sim/ADR-0013's own curation criterion, for author ratification alongside
    the ADR.
 2. **Does InjectChurn commute with CompileTrajectory?** I.e., is
    churn-then-compile ≡ compile-then-churn for any sensible
@@ -396,7 +396,7 @@ Recorded here rather than silently decided:
    `ground-truth-log` instead. Deferred until EmitState exists to
    test it.
 
-   **RESOLVED (ADR-0008), ahead of the "deferred until EmitState
+   **RESOLVED (sim/ADR-0008), ahead of the "deferred until EmitState
    exists" plan above:** `state-history` is derived. The engine's
    `decide`/`evolve` split makes `evolve (world, event) -> world'` the
    only function that ever produces a new patient state, and it is a

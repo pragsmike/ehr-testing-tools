@@ -21,7 +21,7 @@ coverage-plan.md`) — real closures fetched and read at the SAME pinned
 commit every prior GMF citation in this document uses,
 `7e08387c68a7f0e21d13076609a159fd473fc902` of
 [`synthetichealth/synthea`](https://github.com/synthetichealth/synthea)
-(`master`). D6's own bar ("modest deferred-type surface" per ADR-0013
+(`master`). D6's own bar ("modest deferred-type surface" per sim/ADR-0013
 point 4) applies to each candidate closure as a unit; D7's hidden-
 import check is run per closure; D5's `type_of_care_transition`
 dispatch rule is characterized against real Synthea source, below —
@@ -350,7 +350,7 @@ future module's own `Death` state uses either, the same disposition
 `evaluate-condition`'s own unsupported-condition-type case already
 establishes. `exact`/immediate are built anyway (the SAME code path
 `resolve-time-advance` already provides for `range`, at zero marginal
-cost — not "speculative" in ADR-0013 point 4's sense, since no new
+cost — not "speculative" in sim/ADR-0013 point 4's sense, since no new
 mechanism is added, only an existing one's `:death` case wires to it).
 
 > **Dated resolution note (2026-08-04, GMF coverage Wave I2, ADR-0041

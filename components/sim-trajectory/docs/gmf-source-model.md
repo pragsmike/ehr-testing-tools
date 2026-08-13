@@ -124,7 +124,7 @@ that each made one piece of it:
 | Synthea | This project |
 |---|---|
 | Fixed ~7-day tick, polling every active module | No fixed tick at all — the interpreter's history phase reuses the exact per-state transition-sampling logic the horizon phase uses, chaining state to state to the next relevant instant ([`gmf-interpreter.md`](gmf-interpreter.md) section 3); the engine's own discrete-event queue never ticks either — "quiet hours cost nothing" ([`glossary.md`](../../../docs/glossary.md)'s own DES entry) |
-| A whole simulated lifetime | The history/horizon split: a fast-forwarded pre-registration history compresses a persona's full life into attributes and pre-horizon facts, then a bounded horizon phase emits real trajectory events inside this run's own encounter-horizon scope (ADR-0007 point 3) |
+| A whole simulated lifetime | The history/horizon split: a fast-forwarded pre-registration history compresses a persona's full life into attributes and pre-horizon facts, then a bounded horizon phase emits real trajectory events inside this run's own encounter-horizon scope (sim/ADR-0007 point 3) |
 | `Person.history`, a mutable visit-trail approximation of a log | `PriorState` compiles directly to a query over this project's own ground-truth log — "the log IS `person.history`, done right" ([`gmf-interpreter.md`](gmf-interpreter.md) section 2) |
 | `Person.attributes`, one flat, bare-string map shared by convention | A module-namespaced `:attributes` registry — every write auto-namespaced by its own module id, so cross-module collisions are structurally impossible, not merely avoided by discipline ([`gmf-interpreter.md`](gmf-interpreter.md) section 5) |
 | Hidden, always-on Java lifecycle modules | No hidden modules: every module this project ever runs is an explicit, listable load (`ehrt.sim-trajectory.gmf/loaded-modules`) — [`sim-theory.md`](../../sim/docs/sim-theory.md)'s own IR-transforms-as-composition-layer corollary, restated at the M5 roadmap entry |
@@ -233,7 +233,7 @@ compounders sit alongside this wall, neither a state-type or
 condition-vocabulary gap of its own: the **multi-encounter-per-episode
 compile-time truncation** — `ehrt.sim-trajectory.compile-trajectory`'s own
 `encounter-closed?` mechanism (built to stop a module recurring across
-a whole lifetime from minting a second admission, ADR-0007 point 3's
+a whole lifetime from minting a second admission, sim/ADR-0007 point 3's
 own encounter-horizon scope) also silently drops a real, same-episode
 second encounter, confirmed content-relevant in two modules this
 session read (`appendicitis`, `total_joint_replacement`); and the
@@ -262,7 +262,7 @@ question that has to be ruled on before any code:**
   state still loads — as a **blocking terminal** for whichever branch
   reaches it. If a real patient's walk ever actually reaches it, it
   emits a real, visible, deterministic truth event (something in the
-  spirit of `:step-rejected`, ADR-0012's own precedent for "an
+  spirit of `:step-rejected`, sim/ADR-0012's own precedent for "an
   attempted thing this system doesn't support, made honest rather than
   silently dropped") rather than crashing or vanishing. The whole
   authored branch stays present in the graph, with its own
@@ -271,7 +271,7 @@ question that has to be ruled on before any code:**
   out of the graph entirely before the interpreter ever sees it. But
   this silently rewrites the authored graph, against this project's
   own verbatim-vendoring grain (the same "inspectable by `git show`"
-  argument ADR-0013 already makes for vendoring modules unmodified in
+  argument sim/ADR-0013 already makes for vendoring modules unmodified in
   the first place).
 
 **The interplay worth naming before either is built:** pruning a
@@ -388,7 +388,7 @@ submodule in isolation; the loader's own all-or-nothing gate has to be
 evaluated over the **closure** of every module a `CallSubmodule` chain
 can reach, not just the top-level file; and each submodule file needs
 its own vendoring provenance record (`resources/modules/NOTICE`'s
-existing per-file discipline, ADR-0013 point 3, extended to however
+existing per-file discipline, sim/ADR-0013 point 3, extended to however
 many submodule files a single vendored disease module actually pulls
 in).
 
@@ -425,6 +425,6 @@ document's Part B synthesizes from without repeating.
 [`trajectory-computation.md`](trajectory-computation.md) for how a
 vendored module's own trajectory becomes pathway IR once it *does*
 clear the bar this document's Part B describes. `notes/ADRs.md`
-ADR-0013 for the vendoring decision (target, provenance, curation
+sim/ADR-0013 for the vendoring decision (target, provenance, curation
 criterion) this document's Part B measures every surveyed module
 against.
