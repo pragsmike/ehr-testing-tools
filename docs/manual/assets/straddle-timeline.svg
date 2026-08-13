@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Content derived from demos/scenarios/ed-tuesday/README.md's own
+  "Batched delivery" section and its witnessed batch listing
+  (interval-ms 3600000; batch-000 start-ms 1786406400000 / end-ms
+  1786410000000 = [2026-08-11T00:00Z, 01:00Z); batch-001 start-ms
+  1786410000000 / end-ms 1786413600000 = [01:00Z, 02:00Z)) plus the
+  same section's own "A straddling encounter" prose: Smith, James
+  (MRN000002)'s admission (A01) transmits at 2026-08-11T00:30:26Z,
+  landing in batch-000; his discharge (A03) transmits at
+  2026-08-11T01:34:19Z, landing in batch-001. Both timestamps
+  re-verified by fresh regeneration this session (seed 20260811,
+  config-latency.edn), byte-identical to the README's own witnessed
+  run. Hand-authored, not mechanically generated (contrast
+  docs/dev/pipeline.md's own docsgen-regenerated diagrams) --
+  regenerate by hand if the cited section's own witnessed values
+  change. ADR-0121.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 280" width="640" height="280"
+     font-family="Helvetica, Arial, sans-serif" role="img"
+     aria-label="One encounter bar for Smith, James (MRN000002) crossing the 01:00Z batch boundary, both adjacent batch windows drawn individually clean">
+
+  <rect x="0" y="0" width="640" height="280" fill="#ffffff" />
+
+  <text x="40" y="30" font-size="15" font-weight="600" fill="#22314f">Smith, James (MRN000002) — one encounter, two clean files</text>
+
+  <!-- Batch window boxes -->
+  <rect x="40" y="170" width="280" height="60" rx="6" fill="#eaf3ea" stroke="#22492a" stroke-width="2" />
+  <rect x="320" y="170" width="280" height="60" rx="6" fill="#eaf3ea" stroke="#22492a" stroke-width="2" />
+  <text x="180" y="195" text-anchor="middle" font-size="13" font-weight="600" fill="#22492a">batch-000.hl7</text>
+  <text x="180" y="213" text-anchor="middle" font-size="12" fill="#3d6b46">[00:00Z, 01:00Z) — 3/3 verified</text>
+  <text x="460" y="195" text-anchor="middle" font-size="13" font-weight="600" fill="#22492a">batch-001.hl7</text>
+  <text x="460" y="213" text-anchor="middle" font-size="12" fill="#3d6b46">[01:00Z, 02:00Z) — 4/4 verified</text>
+
+  <!-- Wall-clock boundary line, cutting through both the windows and the encounter bar -->
+  <line x1="320" y1="90" x2="320" y2="230" stroke="#8a2f2f" stroke-width="2" stroke-dasharray="5 4" />
+  <text x="320" y="80" text-anchor="middle" font-size="12" font-weight="600" fill="#8a2f2f">01:00Z — batch boundary</text>
+
+  <!-- Encounter bar: admission to discharge, transmit-time positions -->
+  <line x1="182" y1="120" x2="480" y2="120" stroke="#22314f" stroke-width="6" stroke-linecap="round" />
+  <circle cx="182" cy="120" r="7" fill="#22314f" />
+  <circle cx="480" cy="120" r="7" fill="#22314f" />
+  <text x="182" y="105" text-anchor="middle" font-size="12" fill="#22314f">admitted A01</text>
+  <text x="182" y="145" text-anchor="middle" font-size="11" fill="#44506b">00:30:26Z</text>
+  <text x="480" y="105" text-anchor="middle" font-size="12" fill="#22314f">discharged A03</text>
+  <text x="480" y="145" text-anchor="middle" font-size="11" fill="#44506b">01:34:19Z</text>
+
+  <!-- Ties from encounter-bar endpoints down into their own batch window -->
+  <line x1="182" y1="127" x2="182" y2="170" stroke="#22314f" stroke-width="1" stroke-dasharray="2 2" />
+  <line x1="480" y1="127" x2="480" y2="170" stroke="#22314f" stroke-width="1" stroke-dasharray="2 2" />
+
+  <text x="320" y="255" text-anchor="middle" font-size="12" font-style="italic" fill="#333">transport-complete, individually — clinically half-there, either file alone</text>
+</svg>
