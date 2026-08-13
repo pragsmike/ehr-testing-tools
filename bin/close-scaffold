@@ -9,7 +9,7 @@
 # late catch `notes/adr/0126-*.md` named as its own second lesson,
 # now anticipated here rather than rediscovered).
 #
-# Usage: bin/close-scaffold <YYYY-MM-DD> <slug> <one-line description>
+# Usage: bin/close-scaffold [--expect-tag NAME@SHA] <YYYY-MM-DD> <slug> <one-line description>
 #
 # Creates (only if missing -- an existing file is left untouched,
 # never overwritten with a stub):
@@ -18,6 +18,16 @@
 # and appends a star-bullet index line (only if not already present)
 # to each directory's own README.md. Idempotent: safe to re-run with
 # the same arguments. Touches nothing outside .agents/.
+#
+# --expect-tag NAME@SHA (ADR-0128, mechanical Step-0 receipts check):
+# before scaffolding, verifies NAME resolves to an ANNOTATED tag at
+# SHA both in this local clone and on remote origin (peeled ref) --
+# the same check `bin/tag-ceremony --push` performs at payment time,
+# re-run here as a receipt that the payment this session's own prompt
+# licensed actually happened. Absent, un-annotated, or a different sha
+# on either side prints a FINDING line and exits nonzero before any
+# scaffolding runs. Omitting the flag leaves this script's behavior
+# byte-identical to before this flag existed.
 set -uo pipefail
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)" || exit 2
@@ -25,7 +35,7 @@ cd -- "$repo_root" || exit 2
 
 usage() {
   cat <<'EOF'
-Usage: bin/close-scaffold <YYYY-MM-DD> <slug> <one-line description>
+Usage: bin/close-scaffold [--expect-tag NAME@SHA] <YYYY-MM-DD> <slug> <one-line description>
 
 Scaffolds .agents/session-records/<date>-<slug>.md and
 .agents/prompts/<date>-<slug>.md (creating only whichever is missing),
@@ -34,8 +44,14 @@ directory's README.md (added only if not already present). Idempotent:
 safe to re-run with the same arguments. Touches nothing outside
 .agents/.
 
+--expect-tag NAME@SHA: verify NAME is an ANNOTATED tag at SHA, both
+locally and on remote origin (peeled ref), before scaffolding. Fails
+nonzero with a FINDING line if absent, un-annotated, or at a different
+sha on either side. Omitted: behavior is unchanged.
+
 Example:
   bin/close-scaffold 2026-08-13 ceremony-scripts "Ceremony scripts and sim-identity sweep"
+  bin/close-scaffold --expect-tag stable-20260813-ceremony-scripts@a884967aa43cc1f4b7b8ba32524b470d3ce4e525 2026-08-13 ceremony-scripts "Ceremony scripts and sim-identity sweep"
 EOF
 }
 
@@ -44,6 +60,22 @@ if [ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ]; then
   exit 0
 fi
 
+expect_tag=""
+positional=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --expect-tag)
+      expect_tag="${2:?--expect-tag requires a value (NAME@SHA)}"
+      shift 2
+      ;;
+    *)
+      positional+=("$1")
+      shift
+      ;;
+  esac
+done
+set -- "${positional[@]}"
+
 if [ $# -lt 3 ]; then
   usage >&2
   exit 2
@@ -51,6 +83,49 @@ fi
 
 date="$1"; slug="$2"; shift 2
 description="$*"
+
+# --- --expect-tag: mechanical Step-0 receipts check (ADR-0128) ----------
+if [ -n "$expect_tag" ]; then
+  expect_tag_name="${expect_tag%%@*}"
+  expect_tag_sha="${expect_tag#*@}"
+  if [ -z "$expect_tag_name" ] || [ -z "$expect_tag_sha" ] || [ "$expect_tag_name" = "$expect_tag" ]; then
+    echo "FINDING: --expect-tag value '$expect_tag' does not match NAME@SHA" >&2
+    exit 1
+  fi
+
+  if ! git rev-parse -q --verify "refs/tags/$expect_tag_name" >/dev/null; then
+    echo "FINDING: --expect-tag '$expect_tag_name' not found locally -- Step 0 tag payment missing" >&2
+    exit 1
+  fi
+  local_tag_type="$(git cat-file -t "refs/tags/$expect_tag_name" 2>/dev/null)"
+  if [ "$local_tag_type" != "tag" ]; then
+    echo "FINDING: --expect-tag '$expect_tag_name' exists locally but is not an ANNOTATED tag (type: $local_tag_type)" >&2
+    exit 1
+  fi
+  local_tag_sha="$(git rev-list -n1 "$expect_tag_name")"
+  if [ "$local_tag_sha" != "$expect_tag_sha" ]; then
+    echo "FINDING: --expect-tag '$expect_tag_name' resolves locally to $local_tag_sha, expected $expect_tag_sha" >&2
+    exit 1
+  fi
+
+  remote_tag_lines="$(git ls-remote --tags origin "refs/tags/$expect_tag_name" "refs/tags/$expect_tag_name^{}")"
+  remote_tag_line_count="$(printf '%s\n' "$remote_tag_lines" | grep -c .)"
+  if [ "$remote_tag_line_count" -eq 0 ]; then
+    echo "FINDING: --expect-tag '$expect_tag_name' not found on remote origin" >&2
+    exit 1
+  fi
+  if [ "$remote_tag_line_count" -lt 2 ]; then
+    echo "FINDING: --expect-tag '$expect_tag_name' is un-annotated on remote origin (no peeled ref)" >&2
+    exit 1
+  fi
+  remote_tag_sha="$(printf '%s\n' "$remote_tag_lines" | tail -1 | awk '{print $1}')"
+  if [ "$remote_tag_sha" != "$expect_tag_sha" ]; then
+    echo "FINDING: --expect-tag '$expect_tag_name' remote peeled ref is $remote_tag_sha, expected $expect_tag_sha" >&2
+    exit 1
+  fi
+
+  echo "OK: --expect-tag '$expect_tag_name' verified locally and on remote at $expect_tag_sha"
+fi
 
 if ! [[ "$date" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
   echo "FAIL: date '$date' does not match YYYY-MM-DD" >&2
