@@ -298,6 +298,30 @@
 ;; SKILL.md) = 2029. Re-applying the standing formula (actual x1.15,
 ;; rounded up to the nearest 5): 2029 x 1.15 = 2333.35 -> 2335. Budget
 ;; moves 1995 -> 2335.
+;;
+;; Re-derivation (2026-08-13, agent-facing hardening, `notes/adr/
+;; 0128-agent-facing-hardening-2.md`): the anti-fabrication tripwire
+;; added to `build-session/SKILL.md` this session (187 -> 235 lines at
+;; ADR-0127's own Step 3, now 235 -> 240) pushed `:sim` over its own
+;; budget -- measured 1298 against 1295, red by 3. Verifying this catch
+;; found ADR-0127's own Step 3 measurement of `:sim` (1170/1295) was
+;; already wrong when it was recorded: the five `:sim` paths at that
+;; session's own closing commit (`21114e3`) already summed to 1293, not
+;; 1170 -- a 123-line arithmetic error that happened not to surface a
+;; red gate at the time (1293 still cleared 1295) and so went
+;; uncorrected until this session's own live re-measurement. `:sim`'s
+;; fresh actual (`wc -l` sum across all six `:paths`): 294 (AGENTS.md) +
+;; 47 (sim/interface.clj) + 85 (engine-onboarding.md) + 240
+;; (components.md) + 392 (simulator-architecture.md) + 240
+;; (build-session/SKILL.md) = 1298. Re-applying the standing formula
+;; (actual x1.15, rounded up to the nearest 5): 1298 x 1.15 = 1492.7 ->
+;; 1495. Budget moves 1295 -> 1495. No other set's actual changed this
+;; session (`session-prompt/SKILL.md`, this session's other edit
+;; target, is deliberately not a `:paths` member of any set -- see this
+;; file's own header comment); `:onboarding`/`:corpus`/`:judge`/`:docs`
+;; all still carry `build-session/SKILL.md` at its new 240-line length
+;; but stayed within their own budgets at that delta alone (checked:
+;; +5 lines each, none crossed its own budget).
 
 {:onboarding
  {:paths ["AGENTS.md"
@@ -371,7 +395,7 @@
           ;; the checkpoint ceremony, applies regardless of task class
           ;; (migration session 5, AR-3)
           ".agents/skills/build-session/SKILL.md"]
-  :budget-lines 1295}
+  :budget-lines 1495}
 
  ;; components/judge (verdict vocabulary) plus its three gate engines
  ;; (judge-v2-hapi, judge-fhir-official, judge-v2-nist, ADR-0011's per-engine

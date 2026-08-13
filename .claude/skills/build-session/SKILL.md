@@ -199,6 +199,11 @@ fix the claim (run the script) or fix the wording (name the weaker
 method actually used, disclosed as a deviation the way ADR-0029's own
 D2 dated note did), never leave it unlabeled.
 
+**Catching yourself writing a justification for skipping an
+instructed step is the stop signal itself: do the step, or
+STOP-AND-REPORT.** A drafted excuse is a fabrication near-miss and
+goes in the session record either way (ADR-0128).
+
 ## Output
 
 Commits landed (or staged, in prepare-only mode) at each checkpoint,

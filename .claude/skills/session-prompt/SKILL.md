@@ -63,7 +63,11 @@ observed consistently across every session prompt from
      or migration-report item(s) it executes, what stays fenced, and the
      ceremony reminder (standing ceremony or prepare-only; which clone;
      fast-forward and record HEAD; other clone untouched; roadmap rows
-     land same-commit).
+     land same-commit). When Step 0 pays a tag or runs any other
+     ceremony command, the prompt requires its receipts: every ceremony
+     command's real output pasted into the session-record draft before
+     Step 1 begins, not paraphrased or deferred (ADR-0128, the
+     fabricated-draft near-miss this requirement answers).
    - **Author rulings** — numbered `AR-1`, `AR-2`, ...; each one
      concrete and actionable, not a restatement of background. **Every
      ruling is tagged** `[A]` (author-ruled, verbatim or a direct
@@ -87,7 +91,10 @@ observed consistently across every session prompt from
      at commit time.
    - **Close-out** — what the final session record must contain (HEAD,
      shas, accounting tables, any budget deltas, post-push verification)
-     and how much gets echoed to chat.
+     and how much gets echoed to chat. When the close step scaffolds via
+     `bin/close-scaffold` and this session paid a licensed tag, the
+     prompt names it so the close step passes `--expect-tag NAME@SHA`
+     (ADR-0128) rather than the bare form.
 4. **Cite provenance for every "ruled" claim.** A claim that something
    was already decided should name the roadmap row, ADR number, or prior
    session record it comes from — "as discussed" is not a citation.
