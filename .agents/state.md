@@ -1,5 +1,45 @@
 # State of the project — continuity register
 
+**CITATION-ONLY update, 2026-08-14, exact-name state resolution:
+collision fix, restoration cascade (`notes/adr/0133-exact-name-
+resolution.md`) — this citation moves here from ADR-0132, CONTENT NOT
+RE-PROBED.** Not an arc close (this session's own naming convention),
+so `state_staleness_tripwire_test.clj`'s own regex is untouched by
+this update. Recorded here anyway, in the same append-only citation-
+only spirit as the entries below. Landed: the vendoring-rider row
+ADR-0131 chartered (5 modules, 10 slug-collision pairs) closed via a
+new author ruling superseding its own original per-module-JSON-edit
+framing — loader-side exact-name resolution instead (a raw-name -> key
+table, every one of twelve name-valued reference categories resolved
+by EXACT raw string, module JSONs verbatim, ADR-0071 preserved); the
+WARN -> hard-error escalation ADR-0131 chartered is DISCHARGED, not
+executed (both members now load as real states; the guard becomes a
+disambiguation disclosure; a new strictness, `:unresolved-state-
+reference`, lands instead). Two mid-session STOP-AND-REPORTs, both
+ruled ("the restoration cascade," one restoration pulling on two more
+threads): `gmf-interpreter.clj`'s own `max-steps` backstop switched to
+reset-on-any-advance semantics (a real, legal recurring-care loop in
+`veteran_ptsd.json` was false-firing the OTHER ADR-0105-licensed
+semantics, unmasked by the restoration); `compile-trajectory.clj`'s
+own `encounter->step`/`encounter-end->step` gained a `:virtual` clause
+at both dispatch sites (resolving a decision ADR-0029 D3f's own
+`gmf.clj` docstring had explicitly deferred to "whichever future
+session first exercises a closure through the full compile-trajectory
+pipeline" — this one). Declared-oracle-change prediction (5 roots
+MOVE) matched the official `bin/regression-oracle` bracket on 4 of 5;
+`hypothyroidism` predicted MOVE but stayed byte-identical, investigated
+and explained (both its own collision-pair members are `:exact`-
+severity Symptom states whose only effect is never read downstream in
+this module — restored, real, but structurally unobservable), not a
+bug. Full local suite green throughout (632 "0 failures, 0 errors"
+blocks, matching this session's own pre-fix baseline exactly). Zero
+module JSONs edited (vendored verbatim, ADR-0071 precedent). Every
+section below still reflects its LAST full regeneration, 2026-08-08
+against tip `a9c3abf` — twenty-six ADRs' worth of landings since (0090
+through 0133, excluding citation-only entries) are NOT reflected below
+and every `[V]` tag below should be read accordingly; a full
+regeneration is still owed at a session that rules it.
+
 **CITATION-ONLY update, 2026-08-14, scenario rename (busy-tuesday ->
 clinic-decade) + exerciser completion (`notes/adr/0132-clinic-decade-
 rename-and-exerciser.md`) — this citation moves here from ADR-0131,

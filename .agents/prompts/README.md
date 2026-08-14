@@ -153,3 +153,4 @@ Files in this directory:
   * 2026-08-14-busy-tuesday-exerciser-deferred.md — Busy-tuesday exerciser: marker widening landed, row deferred on slug EDN round-trip defect (ADR-0130)
   * 2026-08-14-slug-edn-round-trip.md — Slug EDN round-trip fix + module-load injectivity guard (ADR-0131)
   * 2026-08-14-clinic-decade-rename-and-exerciser.md — Scenario rename busy-tuesday -> clinic-decade + exerciser completion (ADR-0132)
+  * 2026-08-14-exact-name-resolution.md — Exact-name state resolution: collision fix, restoration cascade (ADR-0133)

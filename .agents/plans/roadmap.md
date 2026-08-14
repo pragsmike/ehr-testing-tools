@@ -687,45 +687,38 @@ per item; done items move to the bottom of their section with a date and sha.
   JSONs edited (vendored verbatim, ADR-0071 precedent); zero README/
   figure edits. Full account, both census tables, and the
   prediction-vs-actual table in `notes/adr/0131-slug-edn-round-trip.md`.
-- **Vendoring rider: per-pair collision corrections, 5 modules — IN
-  PROGRESS, ADR-0133 (2026-08-14), superseding this row's own original
-  per-module-JSON-edit framing below.** A new author ruling picks
+- **Vendoring rider: per-pair collision corrections, 5 modules —
+  CLOSED 2026-08-14 (ADR-0133), superseding this row's own original
+  per-module-JSON-edit framing below.** A new author ruling picked
   loader-side exact-name resolution instead: a raw-name -> key table
   built at load time, every name-valued reference resolved by EXACT
   raw string (never `slug`), vendored JSONs staying verbatim (ADR-0071
   preserved, NOTICE hashes untouched) — the per-pair rename-or-declare
-  decision this row originally chartered is not needed, since BOTH
-  members of every colliding pair load as real, distinct states
-  either way. ADR-0133's own Step 1 (census + declared-oracle-change
-  prediction) landed docs-only; Step 2 (red-then-green fix) is next.
-  Original row text, kept for the record below:
-  (new row, ADR-0131, AR-VB2-R form — a rider attached to a vendoring
-  session's own standing ceremony, ADR-0071's own precedent for this
-  shape). ADR-0131's own re-derived census found 5 already-vendored
-  modules whose own raw state names collide under `slug`
-  (`colorectal_cancer.json`, `hypothyroidism.json`, `injuries.json`,
-  `sleep_apnea.json`, `veteran_ptsd.json`, 10 pairs total) — the
-  module-load guard (WARN-mode, ADR-0131 Q2(b)) now announces these
-  loudly, but the underlying content gap stands: whichever raw name
-  the JSON parser processes last silently wins, and the OTHER named
-  state's own clinical content is unreachable in the compiled module
-  (`sleep_apnea.json`'s own `Home CPAP Unit`/`Home_CPAP_Unit` are
-  DISTINCT Device states with different transition structures, each
-  referenced twice — one is currently dropped). A future vendoring
-  session, per-pair, per-module: read the upstream pin's own two
-  colliding states, determine whether they are genuinely the SAME
-  clinical content authored twice (rename one to disambiguate, no
-  content change) or genuinely DIFFERENT content sharing one name by
-  upstream accident (a real compiled-shape decision, oracle-declaring
-  whichever roots move). **Triggers the guard's own escalation from
-  WARN to hard-error** (ADR-0131's own `handle-state-name-collision!`
-  is structured for this as a mode switch, not a rewrite) — once every
-  currently-known collision has its own per-pair correction landed, a
-  hard-error default no longer breaks any already-vendored module.
-  **ADR-0133 supersedes this escalation plan: the escalation is
-  DISCHARGED (handled via resolution, not executed as hard-error), a
-  new, different strictness (`:unresolved-state-reference`) lands
-  instead.**
+  decision this row originally chartered was not needed, since BOTH
+  members of every colliding pair now load as real, distinct,
+  correctly-routed states. Restoring the previously-orphaned content
+  cascaded into two further, licensed, narrow widenings ("the
+  restoration cascade," `notes/adr/0133-*.md`'s own Step 2 section):
+  `gmf-interpreter.clj`'s own `max-steps` backstop switched to reset-
+  on-any-advance semantics (`veteran-ptsd`'s own real, legal recurring-
+  care loop was false-firing the OTHER ADR-0105-licensed semantics),
+  and `compile-trajectory.clj`'s own `encounter->step`/`encounter-end-
+  >step` gained a `:virtual` clause (resolving the decision ADR-0029
+  D3f's own `gmf.clj` docstring had explicitly deferred). Oracle
+  bracket: 4 of 35 roots moved (`colorectal`/`injuries`/`sleep-apnea`/
+  `veteran-ptsd`) exactly as predicted; `hypothyroidism` was predicted
+  to move but stayed byte-identical, investigated and explained (both
+  its own collision-pair members are `:exact`-severity Symptom states
+  whose only effect — an attribute write — is never read downstream in
+  this module, restored but structurally unobservable). Three pinned
+  trajectory-content tests re-baselined with disclosure. **The guard's
+  own WARN -> hard-error escalation this row originally chartered is
+  DISCHARGED, not executed** — collisions are HANDLED (both members
+  load as real states), not merely tolerated-and-announced; the guard
+  becomes a disambiguation disclosure, and a new, different strictness
+  (`:unresolved-state-reference`, a name-valued reference missing from
+  the table) lands instead. Full account in `notes/adr/0133-exact-
+  name-resolution.md`.
 - **Scenario rename + clinic-decade exerciser completion — CLOSED
   2026-08-14 (ADR-0132).** ADR-0130; UNBLOCKED 2026-08-14 — ADR-0131
   fixed `events.edn` read-back for this scenario's own module mix, the

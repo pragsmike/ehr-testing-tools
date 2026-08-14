@@ -1304,3 +1304,62 @@ exerciser completion; ruled 2026-08-13, executed 2026-08-14)
   roadmap.md`'s own live mentions), zero residue outside the frozen
   classes named above, confirmed by a repo-wide grep census before the
   Step 1 commit.
+
+## From ADR-0133 (exact-name state resolution: collision fix,
+vendoring-rider row; ruled 2026-08-14)
+
+- **Resolution option, ruled "b"** [A, 2026-08-14, driving prompt's own
+  "Author rulings (verbatim)"]: loader-side exact-name resolution — a
+  raw-name -> key table built at load time; colliding raw names get
+  deterministic disambiguated keys; every name-valued reference
+  resolves by EXACT raw string through that table, never through
+  `slug`. Modules stay verbatim (ADR-0071 vendoring preserved, NOTICE
+  hashes untouched). Executed exactly as ruled —
+  `disambiguate-state-names`/`resolve-name-ref` (`gmf.clj`), a
+  file-order-preserving scanner (a load-bearing ordering defect found
+  live: `clojure.data.json` loses key order past 8 object entries), a
+  capture-avoiding-by-construction double-hyphen disambiguation
+  suffix, zero module JSON touched.
+- **Riding (b): WARN -> hard-error escalation, ruled DISCHARGED** [A,
+  2026-08-14]: the escalation ADR-0131 chartered is not executed as
+  originally planned — collisions are now HANDLED (both members load
+  as real states), not merely tolerated-and-announced. The guard's own
+  warning becomes a disambiguation disclosure (still `*err*`-only,
+  new text). The one sanctioned new strictness: a name-valued
+  reference missing from the table is a load REJECTION
+  (`:unresolved-state-reference`), stronger than the old silent
+  dangling keyword. Executed exactly as ruled — old `WARN:` text fully
+  retired (confirmed absent from the oracle run's own captured
+  output), 10/10 disclosures fire with the predicted content, strict-
+  miss rejection proven both by direct test and by a generative
+  capture-avoidance property.
+- **STOP 1 (veteran-ptsd `max-steps` false-positive), ruled Option A
+  then a licensed widening** [A, 2026-08-14, "Option A... The trip is
+  ADR-0105's population-count semantics false-firing on a legitimate
+  time-advancing recurring-care loop, unmasked by the restoration...
+  Licensed: ONE interpreter change... `consume-step-budget` switches
+  to reset-on-any-advance semantics (the alternative ADR-0105's own
+  driving prompt licensed but did not choose)"]: `gmf-interpreter.clj`'s
+  own `consume-step-budget` resets its own zero-advance counter to
+  zero on any genuinely time-advancing step (was: never resets, a
+  lifetime population count) — the SECOND semantics ADR-0105's own
+  Context already licensed as acceptable, not a new design decision.
+  Executed exactly as ruled — checkpoint-isolated red (a new bounded-
+  burst synthetic module) before green; the existing zero-advance-spin
+  positive controls still throw post-fix.
+- **STOP 2 (veteran-ptsd `:virtual` encounter-class gap), ruled
+  Option 1** [A, 2026-08-14, "second narrow widening,
+  compile_trajectory.clj, licensed for exactly this: `:virtual`
+  aliases to the outpatient pair at BOTH dispatch sites... This is the
+  Wave B 'outpatient' precedent... the trajectory event keeps
+  :encounter-class :virtual, so no modality information is lost"]:
+  `compile-trajectory.clj`'s own `encounter->step`/`encounter-end-
+  >step` both gain a `:virtual` clause aliasing to
+  `:outpatient-visit`/`:outpatient-visit-end` — resolving the decision
+  ADR-0029 D3f's own `gmf.clj` docstring explicitly deferred to
+  "whichever future session first exercises a closure through the
+  full compile-trajectory pipeline." Executed exactly as ruled — BOTH
+  dispatch sites patched together (never just the start, which would
+  silently mispair a `:virtual`-opened visit with a `:discharge` end),
+  checkpoint-isolated red before green, `gmf.clj`'s own docstring
+  updated to record the resolution.

@@ -1,4 +1,4 @@
-## ADR-0133 — Exact-name state resolution: collision fix, vendoring-rider row (Step 1 of 4)
+## ADR-0133 — Exact-name state resolution: collision fix, vendoring-rider row (Steps 1-4, closed)
 
 **Status:** Accepted (author-directed, autonomous session per R30), 2026-08-14.
 
@@ -413,3 +413,38 @@ edits outside `sim-trajectory`/`sim-emit-hl7` test files.
 bracket and the ground-truth witness probe are read-only verification
 acts, not fixes, the same disposition ADR-0131's own Step 4 already
 established.
+
+### Step 4 — Close
+
+The vendoring-rider row ADR-0131 chartered (`.agents/plans/
+roadmap.md`) is CLOSED — superseded by ADR-0133's own loader-side
+resolution, not executed as originally per-pair-module-JSON framed.
+All four rulings this session executed (the two from the driving
+prompt's own "Author rulings," the two mid-session STOP-AND-REPORT
+resolutions) are recorded verbatim in `.agents/rulings.md`'s own "From
+ADR-0133" section, each with its own "Executed exactly as ruled"
+account.
+
+**Full account, in one place:** Step 1 (census, prediction,
+`ded3569`); Step 2 (four commits — the core resolution fix `91dc34c`,
+the interpreter `max-steps` widening `017f696`, the compile-trajectory
+`:virtual` widening `53555be`, the pinned-value re-baseline `69e1652`
+— two STOP-AND-REPORTs, both ruled, "the restoration cascade"); Step 3
+(oracle verdict `0d32d20` — 4 of 5 predicted movers matched exactly,
+`hypothyroidism`'s own non-move investigated and explained, not a
+bug, 4/31 the corrected split; all 10 predicted disclosures fired;
+restored content witnessed directly, 47 real ground-truth events);
+Step 4 (this section, plus the roadmap close and rulings register,
+below).
+
+Full `clojure -M:poly test :all skip:integration`: green throughout
+(632 "0 failures, 0 errors" blocks at Step 2's own close, re-confirmed
+after Step 3's re-baseline). `clojure -M:poly check`: OK, checked
+after every commit this session landed. Tree clean before every push.
+
+**Fences held throughout:** zero module JSON touched anywhere (ADR-
+0071 vendoring preserved verbatim, NOTICE hashes unmoved); zero
+`slug`-function changes (ADR-0131's own fold is settled law, this
+session changed RESOLUTION, not folding); every src change outside
+`gmf.clj` itself was a mid-session STOP-AND-REPORT, explicitly
+author-licensed before landing, never a unilateral scope expansion.
