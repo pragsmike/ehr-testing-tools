@@ -2988,6 +2988,64 @@
           result (interp/run-module perpetual-recheck-module (Random. 1) p dob horizon-end-t)]
       (is (= :horizon-complete (:status result))))))
 
+;; --- ADR-0133: consume-step-budget switches from ADR-0105's own
+;; "does not consume" (lifetime population count) semantics to the
+;; OTHER semantics that ADR's own Context licensed but did not choose
+;; -- reset to zero on any genuine time advance, so the budget polices
+;; CONSECUTIVE zero-advance steps only, never a cumulative total a
+;; long-but-legal recurring loop can exhaust over a long enough
+;; horizon (found live: `veteran_ptsd.json`'s own therapy-visit
+;; recurring-care loop, restored reachable by ADR-0133's own exact-
+;; name resolution fix, population-scale over a 100-year horizon). ---
+
+(def bounded-burst-module
+  "A LEGAL, non-buggy loop: each lap does a bounded burst of exactly
+  5000 CONSECUTIVE zero-advance steps (a Counter/Guard re-check cycle,
+  :n climbing 0->5000), then ONE real time-advancing step (a 1-day
+  Delay), then resets and repeats -- never terminating on its own, only
+  the horizon stops it, exactly `perpetual-recheck-module`'s own shape
+  above, scaled up. Any SINGLE burst (5001 zero-advance steps) is
+  comfortably under `max-steps` (10000); the LIFETIME total across
+  enough laps to cross a real horizon is not -- the distinction this
+  fix's own two semantics disagree on."
+  {:id "burst-mod" :name "Burst"
+   :states {:initial {:type :initial :direct-transition :reset}
+            :reset {:type :set-attribute :attribute "n" :value 0 :direct-transition :bump}
+            ;; `attribute-condition-holds?`'s own operator vocabulary
+            ;; (gmf_interpreter.clj ~474) is `!=`/`is nil`/`is not nil`/
+            ;; default-`=` ONLY -- no `<`/`>=` numeric-range comparator
+            ;; (that's `compare-op`, used by Age/Date, a DIFFERENT
+            ;; evaluator) -- so the loop-back condition is "keep
+            ;; looping while n has not YET reached the exact target",
+            ;; not a range check.
+            :bump {:type :counter :attribute "n" :action :increment
+                   :conditional-transition
+                   [{:condition {:condition-type :attribute :attribute "n" :operator "!=" :value 5000}
+                     :transition :bump}
+                    {:transition :wait}]}
+            :wait {:type :delay :exact {:quantity 1 :unit "days"} :direct-transition :reset}}})
+
+(deftest max-steps-resets-on-any-advance-a-bounded-burst-loop-reaches-horizon-complete
+  (testing "ADR-0133 fix: a loop whose own LIFETIME zero-advance total
+            (>10000 across enough laps to cross a 10-day horizon, ~5001
+            per lap x 10+ laps) exceeds max-steps, but whose own
+            CONSECUTIVE zero-advance runs (5001 per lap, reset by each
+            lap's own real 1-day Delay) never do, completes cleanly.
+            PRE-FIX (red, ADR-0105's own 'does not consume' semantics):
+            the lifetime total trips the backstop after ~2 laps, well
+            short of the 10-day horizon, even though no single burst is
+            anywhere near the budget and nothing about this loop is a
+            bug -- the SAME false-positive class `perpetual-recheck-
+            module`'s own ADR-0105 fixture already proved for a much
+            smaller per-lap burst; this one is sized specifically to
+            stay invisible under a per-lap view yet fail under a
+            lifetime view, isolating the semantic this fix changes"
+    (let [p (persona-at 1)
+          dob (interp/dob-epoch-day p)
+          horizon-end-t (+ dob 10)
+          result (interp/run-module bounded-burst-module (Random. 1) p dob horizon-end-t)]
+      (is (= :horizon-complete (:status result))))))
+
 (deftest run-module-zero-advance-spin-still-throws-max-steps
   (testing "ADR-0105: the counting fix narrows what counts toward the
             budget -- it does not remove the backstop. A genuine

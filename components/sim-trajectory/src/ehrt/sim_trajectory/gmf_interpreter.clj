@@ -1430,36 +1430,55 @@
 
 (def ^:private max-steps
   "A runaway-loop backstop, not a design limit: a real v1 module always
-  terminates or blocks in far fewer ZERO-TIME-ADVANCE steps than this.
-  Exceeding it means a module authoring bug (a zero-time-advance
-  transition cycle), a programmer error this project's own conventions
-  reserve exceptions for -- never a result-not-throw outcome, since no
-  legitimate module should ever reach it.
+  terminates or blocks in far fewer CONSECUTIVE ZERO-TIME-ADVANCE steps
+  than this. Exceeding it means a module authoring bug (a zero-time-
+  advance transition cycle), a programmer error this project's own
+  conventions reserve exceptions for -- never a result-not-throw
+  outcome, since no legitimate module should ever reach it.
 
   ADR-0105 fix (2026-08-11): the budget counts ONLY steps whose own
   `:advance` is zero -- a step that genuinely moves the module clock
-  forward does not consume it. Before this fix, EVERY step counted
+  forward does not consume it. Before that fix, EVERY step counted
   regardless of advance, so a LEGAL time-advancing loop (e.g. a 1-7-day
   Delay paired with a zero-advance re-check, `injuries/broken_jaw.
   json`'s own Dental Referral shape, ADR-0070's own bail-out finding)
   could trip this backstop purely by iterating enough times within a
-  long horizon, with no bug present -- `max-steps`'s own name and this
-  docstring's own prior wording already promised 'a zero-time-advance
-  transition cycle' as the target; the implementation now matches that
-  promise instead of merely aspiring to it."
+  long horizon, with no bug present.
+
+  ADR-0133 fix (2026-08-14): ADR-0105's own Context named TWO
+  acceptable semantics for the zero-advance count and chose the first
+  ('does not consume', a lifetime total across the whole walk) --
+  ADR-0133's own restoration of `veteran_ptsd.json`'s two previously-
+  collision-dropped states (`colorectal_cancer.json`/`hypothyroidism.
+  json`/`injuries.json`/`sleep_apnea.json`'s own pairs land clean; this
+  one didn't) unmasked a LEGAL, non-buggy, long-lived recurring-care
+  loop (`therapy delay`/`Therapy_Visit`/`end_Psych_encounter`, a real
+  time-advancing cycle, 5-14-day Delay each lap) whose own lifetime
+  zero-advance total, summed across a 100-year population-scale
+  horizon, exceeds 10000 with NO bug present -- the exact false-
+  positive class `max-steps`'s own name and docstring always promised
+  to exclude, now actually reached by real vendored content rather
+  than only a synthetic ADR-0105 fixture. `consume-step-budget` (below)
+  switches to the SECOND ADR-0105-licensed semantics: reset `n` to
+  zero on any genuinely time-advancing step, so the budget polices
+  CONSECUTIVE zero-advance steps (a true stall), never a cumulative
+  population count a long-but-legal recurring loop can exhaust over a
+  long enough horizon."
   10000)
 
 (defn- consume-step-budget
-  "ADR-0105: `n`, the runaway-loop step counter every `max-steps`-
-  policed loop in this namespace threads through its own `recur` --
-  incremented only when `outcome`'s own `:advance` is zero (this is the
-  budget `max-steps` polices, per that var's own docstring), left
-  unchanged on any step that genuinely moves the module clock forward.
-  One shared rule, three call sites (`walk-module`/`run-submodule`/
-  `run-module`) -- see `max-steps`'s own docstring for the arithmetic
-  this fixes."
+  "ADR-0105/ADR-0133: `n`, the runaway-loop step counter every
+  `max-steps`-policed loop in this namespace threads through its own
+  `recur` -- incremented when `outcome`'s own `:advance` is zero, RESET
+  TO ZERO on any step that genuinely moves the module clock forward
+  (ADR-0133: the reset-on-any-advance semantics ADR-0105's own Context
+  licensed as an alternative but did not choose -- see `max-steps`'s
+  own docstring for why the population-count semantics that ADR chose
+  instead false-fired on a real, legal, long-lived recurring-care
+  loop). One shared rule, three call sites (`walk-module`/`run-
+  submodule`/`run-module`)."
   ^long [^long n outcome]
-  (if (zero? (long (:advance outcome))) (inc n) n))
+  (if (zero? (long (:advance outcome))) (inc n) 0))
 
 (def ^:private max-call-depth
   "D3's own defensive runtime call-depth invariant -- a real v1 closure
