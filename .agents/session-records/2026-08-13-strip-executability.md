@@ -305,4 +305,111 @@ line came back with an empty status field this one time (a transient
 `gh` API read, not retried, per AR-CI-4's own "reported once, never
 awaited" discipline -- disclosed rather than silently re-run).
 
-(Steps 4-5 recorded below as the session proceeds.)
+## `make integration`, first attempt: real invariants held, tree-clean false positive
+
+Ran once after commit 3, against a tree that (correctly, per this
+session's own ongoing checkpoint model) still carried Step 4's own
+in-progress, not-yet-committed files. Every real invariant up through
+`bin/demo-exerciser-ed-tuesday`'s own named checks held (34-batch
+listing, straddle membership, digest identity); the run's own FINAL
+step, the tree-clean postcondition, failed on exactly the files this
+session's own Step 4 work had not yet committed -- the same false-
+positive class ADR-0120's own Commit 1 section names (running an
+exerciser mid-development, before its own commit lands). Re-run
+licensed once after commit 4 lands, against a genuinely clean tree
+(below).
+
+## Step 4 -- Citation gate, commit `35bad55`
+
+`ehrt.docs-tooling.citation-gate`: extracts every "Strip source
+citations" table row across `docs/manual/0*.md` (a small state
+machine over marker/header/separator/data lines -- see below for a
+real bug this caught in its own first draft), restricted to rows
+whose own source cell names a citable doc path (`README.md`, a
+`demos/scenarios/*/README.md`, or a `docs/use-cases/*.md` page --
+verified against every real citation table in the live tree before
+choosing this scope: several real rows cite a fixture path, a config
+file, or nothing at all -- "witnessed this session, same run" -- and
+are correctly out of scope, not false-positived).
+
+**A real state-machine bug, caught live before any test existed.**
+The first draft collapsed "marker seen" and "header seen" into one
+boolean and reset on the blank line between the "Strip source
+citations" marker and the actual table -- a scratch run against the
+real, committed manual returned ZERO citation rows from five chapters
+that visibly have real tables. Rewritten as an explicit four-state
+machine (`:before` / `:seeking-header` / `:seeking-separator` /
+`:in-rows`); re-run found the correct 14 rows across the five
+chapters. `manual-citations-finds-the-expected-count-across-all-five-
+chapters-test` (per-chapter counts: 4/3/2/2/3) exists specifically
+because of this near-miss -- a bare "no violations" assertion would
+have stayed silently green against a zero-row extraction forever.
+
+**A real precision gap, found and fixed before the gate landed.**
+README.md is the one citable source with TWO unrelated register rows
+(Quickstart, What you get) -- a coverage check keyed on :source alone
+would treat ANY README.md citation as covered the moment either row
+exists, silently missing exactly the kind of gap dimension 1 found for
+Chapter 6 (quickstart-fresh never touches the "What you get" section).
+Fixed by adding an optional `:section` field to the register schema
+(README.md's own two rows only: "Quickstart", "What you get") and a
+`covered?` rule: a :source with exactly one register row is covered by
+:source alone (every OTHER citable source today); a :source with more
+than one row requires a case-insensitive substring match between the
+citation's own parsed section label and some candidate row's own
+:section. Proven on synthetic fixtures, not just the live tree
+(`covered-distinguishes-two-different-sections-of-the-same-source-
+test`): a citation naming a THIRD, unrelated section string against
+the same two-row register is correctly flagged uncovered, proving the
+match is genuinely section-aware rather than a source-only pass masked
+by row count.
+
+**Red witnessed, scratch, against a simulated pre-session register**
+(the two pre-existing rows only, filtered live from the current
+registry): 4 of the 5 real dimension-1 gaps surfaced --
+
+```
+docs/manual/07-judging.md cites `docs/use-cases/profile-tier-hl7v2-conformance-gating.md` for strip ... but no row ... covers it
+docs/manual/07-judging.md cites `docs/use-cases/judge-tier-calibration-studies.md` for strip ... but no row ... covers it
+docs/manual/08-your-own-data.md cites `docs/use-cases/acceptance-qa-of-vendor-corpora.md` for strip ... but no row ... covers it
+docs/manual/08-your-own-data.md cites `docs/use-cases/regression-baselining.md` for strip ... but no row ... covers it
+```
+
+**Disclosed limitation of this specific red-witness construction.**
+The 5th gap (Chapter 6, README.md "What you get") does NOT surface in
+this particular simulation: with only ONE README.md row in the
+filtered pre-session set (quickstart-demo), `covered?`'s own "exactly
+one candidate -> covered by :source alone" rule short-circuits before
+:section is ever consulted -- correct behavior for every OTHER
+single-row source today, but it means this specific reconstructed
+pre-session state cannot mechanically reproduce dimension 1's own
+human judgment that quickstart-fresh doesn't cover "What you get."
+The synthetic two-row test above is what actually proves the
+section-disambiguation mechanism works; the live-tree test
+(`committed-manual-is-fully-covered-test`) proves the real, final
+register resolves all 14 real citations, Chapter 6 included, since
+README.md now genuinely has two rows with distinct :section values.
+Disclosed rather than engineering a second, more elaborate pre-session
+simulation solely to force a mechanical match to the historical
+narrative.
+
+`clojure -M:poly check`: caught a real gate on the first attempt --
+`io_vocabulary_lint_test`'s own `no-bare-listfiles-list-renameto-
+outside-the-kernel-io-allowlist-test` failed on `citation_gate.clj`'s
+own default-arity `(.listFiles (io/file "docs/manual"))` (ADR-0078,
+AR-RL-4: raw `.listFiles` is forbidden outside `ehrt.kernel.io`'s own
+allowlist -- a real I/O-failure/empty-directory ambiguity this repo's
+own review found live at 9+ sites). Fixed: routed through
+`ehrt.kernel.interface/list-files` (result-or-loud), matching the
+Polylith interface-boundary convention (docs-tooling already shares
+the `conformance`/`ehrt-cli`/`integration` projects with `kernel`, so
+no new project wiring was needed). Re-run: green.
+
+Full `clojure -M:poly test :all skip:integration`: run twice (once
+before the lint fix, RED on exactly that one gate, 100/101 assertions;
+once after, GREEN, 535/0/0). `bin/verify-nist-lock`: OK. `gitleaks
+git --staged -v`: clean. `git diff --cached --stat` before commit:
+exactly the four fenced files. Pushed; `bin/post-push-verify 4bd7a17
+HEAD`: remote tip matched (`35bad55`), ASCII clean, CI queued/pending.
+
+(Step 5 recorded below as the session proceeds.)
