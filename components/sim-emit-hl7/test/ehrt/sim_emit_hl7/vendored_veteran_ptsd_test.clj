@@ -56,7 +56,21 @@
 ;; --- The straddle counter, pinned (measured, not assumed zero) --------
 
 (def ^:private pinned-suppressed-straddle-spans
-  {20260802 14, 1 6, 42 7})
+  "RE-BASELINED (2026-08-14, ADR-0133): `veteran_ptsd.json`'s own two
+  collision pairs (`PHQ2_Q9 Assessment`/`PHQ2_Q9_Assessment`, `Columbia
+  Suicide Risk Assessment`/`Columbia_Suicide_Risk_Assessment`),
+  previously silently dropping one member of each, now load all four
+  as real, distinct, correctly-routed states -- a declared oracle-
+  change consequence, not a regression (the fix's own Step 1 census
+  predicted this root MOVES). Restoring the previously-orphaned branch
+  also revealed two further, now-resolved gaps this same session fixed
+  under explicit author license: a `max-steps` false-positive in the
+  therapy-visit recurring-care loop (`ehrt.sim-trajectory.gmf-
+  interpreter/consume-step-budget`, reset-on-any-advance semantics) and
+  an unhandled `:virtual` encounter class in `compile-trajectory`'s own
+  `encounter->step`/`encounter-end->step`. Old values (vendoring batch
+  4, ADR-0090): {20260802 14, 1 6, 42 7}."
+  {20260802 0, 1 1, 42 0})
 
 (deftest suppressed-straddle-spans-is-pinned-per-seed
   (doseq [[seed expected-total] pinned-suppressed-straddle-spans]

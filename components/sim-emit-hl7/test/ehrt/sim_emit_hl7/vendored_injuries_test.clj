@@ -85,8 +85,15 @@
   "ADR-0106's own arithmetic (2/120 well-mixed seeds at the direct-
   interpreter layer, ~1.7%) predicts firing at 300 patients with
   ~99.4% likelihood -- measured here at this test's own seed, not
-  assumed."
-  4)
+  assumed.
+
+  RE-BASELINED (2026-08-14, ADR-0133): `injuries.json`'s own two
+  collision pairs (`End DME`/`End_DME`, `Postoperative Care`/
+  `Postoperative_Care`), previously silently dropping one member of
+  each, now load all four as real, distinct, correctly-routed states
+  -- a declared oracle-change consequence, not a regression (the
+  fix's own Step 1 census predicted this root MOVES). Old value: 4."
+  5)
 
 (deftest synthesized-encounter-ends-is-pinned-at-population-scale
   (testing "seed 20260802: the auto-close fix's own counter, pinned --

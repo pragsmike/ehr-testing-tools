@@ -104,7 +104,13 @@
 ;; branch entirely.
 
 (def ^:private pinned-suppressed-straddle-spans
-  {20260802 1, 1 0, 42 1})
+  "RE-BASELINED (2026-08-14, ADR-0133): `colorectal_cancer.json`'s own
+  `postoperative-care` collision pair, previously silently dropping one
+  member, now loads both as real, distinct, correctly-routed states --
+  a declared oracle-change consequence, not a regression (the fix's
+  own Step 1 census predicted this root MOVES). Old values (ADR-0086):
+  {20260802 1, 1 0, 42 1}."
+  {20260802 2, 1 3, 42 3})
 
 (deftest suppressed-straddle-spans-is-pinned-per-seed
   (doseq [[seed expected-total] pinned-suppressed-straddle-spans]
