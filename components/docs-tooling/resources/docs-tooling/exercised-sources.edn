@@ -1,0 +1,104 @@
+;; Exercised-sources register (ADR-0129, dimension-1 fix design Q1(a)/
+;; Q3(a)): one row per {doc-taught-strip, exercising bin/ script} pair
+;; this workspace actually re-runs, verbatim, against the live tree --
+;; the mechanism the manual-review skill's own first run (dimension 1,
+;; `.agents/plans/2026-08-13-manual-review-1.md`) found missing for a
+;; `docs/use-cases/*.md` page or README's own "What you get" fence.
+;; Read/validated by `ehrt.docs-tooling.exercised-sources`; consumed by
+;; `ehrt.docs-tooling.strip-fresh`'s generalized freshness check and by
+;; the citation gate (`ehrt.docs-tooling.citation-gate-test`, commit 4)
+;; that requires every `docs/manual/0*.md` "Strip source citations"
+;; table entry to resolve to a row here.
+;;
+;; :extraction is one of:
+;;   :quickstart-fresh      -- delegates to ehrt.docs-tooling.quickstart-fresh
+;;                              verbatim (the pre-existing pair, unmodified).
+;;   :demo-exerciser-fresh  -- delegates to ehrt.docs-tooling.demo-exerciser-fresh
+;;                              verbatim (the pre-existing pair, unmodified).
+;;   :single-fence          -- one ```<fence-lang> fence in :source, comment
+;;                              and blank lines stripped, everything else kept
+;;                              verbatim (quickstart-fresh's own algorithm,
+;;                              generalized to an arbitrary source/script pair
+;;                              rather than reimplemented against quickstart-
+;;                              fresh's own private fns).
+;;   :paired                -- every ```<fence-lang> fence in :source that is
+;;                              immediately followed (blank lines only, no
+;;                              intervening prose) by a fence of a DIFFERENT
+;;                              language yields a (command-lines, output-lines)
+;;                              pair; a same-language source with no such
+;;                              pairing anywhere contributes nothing (this
+;;                              register's own :paired row targets exactly
+;;                              README.md's "What you get" section, which is
+;;                              the only place in that file the pairing
+;;                              pattern occurs -- README's "See it run" ```bash
+;;                              fence is followed by prose, not an output
+;;                              fence, so it is correctly excluded by the
+;;                              adjacency rule alone, no section-heading logic
+;;                              needed).
+;;
+;; :env is a possibly-empty map of environment-variable bindings the
+;; exercising script sets before running the source's own taught
+;; commands (ADR-0129 Q2(a): env-var placeholders are the sanctioned
+;; strip parameterization). Empty for every row whose source needs no
+;; substitution.
+
+[{:source "README.md"
+  :script "bin/quickstart-demo"
+  :extraction :quickstart-fresh
+  :marker-open "# BEGIN quickstart commands (verbatim from README.md's Quickstart fence)"
+  :marker-close "# END quickstart commands"
+  :env {}
+  :witness {:adr "ADR-0004" :date "2026-07-26"}}
+
+ {:source "demos/scenarios/ed-tuesday/README.md"
+  :script "bin/demo-exerciser-ed-tuesday"
+  :extraction :demo-exerciser-fresh
+  :marker-open "# BEGIN ed-tuesday commands (verbatim from demos/scenarios/ed-tuesday/README.md)"
+  :marker-close "# END ed-tuesday commands"
+  :env {}
+  :witness {:adr "ADR-0120" :date "2026-08-12"}}
+
+ {:source "docs/use-cases/judge-tier-calibration-studies.md"
+  :script "bin/usecase-judge-tier-calibration"
+  :extraction :single-fence
+  :fence-lang "sh"
+  :marker-open "# BEGIN judge-tier-calibration commands (verbatim from docs/use-cases/judge-tier-calibration-studies.md)"
+  :marker-close "# END judge-tier-calibration commands"
+  :env {}
+  :witness {:adr "ADR-0129" :date "2026-08-13"}}
+
+ {:source "docs/use-cases/profile-tier-hl7v2-conformance-gating.md"
+  :script "bin/usecase-profile-tier-v2"
+  :extraction :single-fence
+  :fence-lang "sh"
+  :marker-open "# BEGIN profile-tier-v2 commands (verbatim from docs/use-cases/profile-tier-hl7v2-conformance-gating.md)"
+  :marker-close "# END profile-tier-v2 commands"
+  :env {}
+  :witness {:adr "ADR-0129" :date "2026-08-13"}}
+
+ {:source "docs/use-cases/acceptance-qa-of-vendor-corpora.md"
+  :script "bin/usecase-acceptance-qa"
+  :extraction :single-fence
+  :fence-lang "sh"
+  :marker-open "# BEGIN acceptance-qa commands (verbatim from docs/use-cases/acceptance-qa-of-vendor-corpora.md)"
+  :marker-close "# END acceptance-qa commands"
+  :env {"VENDOR_CORPUS" "test-fixtures/v2"}
+  :witness {:adr "ADR-0129" :date "2026-08-13"}}
+
+ {:source "docs/use-cases/regression-baselining.md"
+  :script "bin/usecase-regression-baselining"
+  :extraction :single-fence
+  :fence-lang "sh"
+  :marker-open "# BEGIN regression-baselining commands (verbatim from docs/use-cases/regression-baselining.md)"
+  :marker-close "# END regression-baselining commands"
+  :env {}
+  :witness {:adr "ADR-0129" :date "2026-08-13"}}
+
+ {:source "README.md"
+  :script "bin/readme-what-you-get"
+  :extraction :paired
+  :fence-lang "bash"
+  :marker-open "# BEGIN what-you-get commands (verbatim from README.md's What you get section)"
+  :marker-close "# END what-you-get commands"
+  :env {}
+  :witness {:adr "ADR-0129" :date "2026-08-13"}}]

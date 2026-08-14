@@ -1,12 +1,12 @@
-{:paths ["src"]
+{:paths ["src" "resources"]
 
  :deps {metosin/malli {:mvn/version "0.20.1"}}
-        ;; usecases.clj's own UseCase/UseCases schemas are the only
-        ;; real use of malli in this component -- docsgen/pipeline/
-        ;; quickstart-fresh/lint need nothing beyond clojure.core and
-        ;; sibling-component interfaces (kernel, tools, palgebra --
-        ;; wired at the project level, ADR-0011's flat convention, not
-        ;; here).
+        ;; usecases.clj's and exercised-sources.clj's own schemas are
+        ;; the real uses of malli in this component -- docsgen/
+        ;; pipeline/quickstart-fresh/lint need nothing beyond
+        ;; clojure.core and sibling-component interfaces (kernel,
+        ;; tools, palgebra -- wired at the project level, ADR-0011's
+        ;; flat convention, not here).
 
  :aliases
  {:test {:extra-paths ["test"]}}}
