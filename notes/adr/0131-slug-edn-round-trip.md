@@ -223,9 +223,124 @@ prompt's own MANDATORY declared-oracle-change requirement. Step 4
 re-runs the official `bin/regression-oracle` bracket and the prediction
 above must match exactly, or this session STOPs.
 
+### Step 2 — Red witness
+
+Both new tests witnessed RED against genuinely pre-fix code (no fix
+had yet been applied — no stash isolation needed, the natural
+sequencing already isolates it): the collision-guard tests failed on
+empty-string warnings (`(not (str/includes? "" "sleep-apnea"))` etc.,
+the guard did not exist yet); the round-trip property ERRORED on its
+first shrunk failing case (`"a,"`, `RuntimeException: Invalid
+constituent character: ~` surfacing during shrinking — the OLD `slug`
+lets reader-illegal characters straight through, so `edn/read-string`
+itself throws, not just returns a mismatched value) and the two
+concrete comma/parens specimen tests failed on the exact un-folded
+strings (`"cipro-500,-5-day"` vs the expected `"cipro-500-5-day"`).
+`slug-is-idempotent` passed even pre-fix (the OLD fold set is
+trivially a fixed point of itself, independent of whether commas are
+handled — not a defect-1 witness, but a real invariant kept green
+across the fix). 10 failures + 1 error, out of 220 assertions.
+
+### Step 3 — The fix
+
+`slug` (Q1(a)): folds comma plus the reader's own thirteen terminating-
+macro characters, alongside the pre-existing `_`/whitespace fold;
+collapses runs; trims edges. The module-load injectivity guard
+(Q2(b), WARN-mode): a second, string-keyed parse of `json-text`'s own
+top-level `"states"` object (before `kebab-key` has silently folded
+any collision), grouped by post-slug key, one `*err*` warning per
+collision group naming the module id, the folded key, and every raw
+name that produced it; `load-module` calls this as a side effect
+before parsing, never touching its own return value — the escalation
+a future rider session charters is a mode switch at
+`handle-state-name-collision!`'s one call site, not a rewrite.
+
+Both new tests green (75 tests, 220 assertions, 0 failures/errors).
+Full `make test`: green (632 "0 failures, 0 errors" blocks, matching
+this session's own pre-fix baseline count — no OTHER test moved,
+no count-lock tripped). `clojure -M:poly check`: OK.
+
+### Step 4 — Oracle verdict: prediction vs actual
+
+`bin/regression-oracle ef15885a e1a9b9a5` (HEAD at Step 0 vs the fix
+commit): soundness check IDENTICAL outside `digest.clj`'s own `(ns
+...)` form; result **DIFFERS** — EXPECTED, a declared change, per the
+ADR-0071/ADR-0086 precedent (a `DIFFERS` exit is this script's own
+literal semantics for any digest delta, declared or not; the
+declaration is what makes it expected rather than a STOP).
+
+| Root | Predicted | Actual | Match? |
+|---|---|---|---|
+| `urinary-tract-infections-engine` | MOVE | MOVED (`97bece7c…` → `2c3203c9…`) | ✅ |
+| `urinary-tract-infections-history-engine` | MOVE | MOVED (`ecc49eb4…` → `bbd33893…`) | ✅ |
+| `injuries` | MOVE | MOVED (`50c0f458…` → `2cbb97ee…`) | ✅ |
+| `veteran-lung-cancer` | NO MOVE (breaker unreached) | byte-identical (`2097308e…`) | ✅ |
+| `sleep-apnea` | WARN, NO MOVE | 4 warnings emitted (`nasal-mask-supplies`/`2nd-assessment`/`home-cpap-unit`/`intraoral-appliance`), byte-identical | ✅ |
+| `hypothyroidism` | WARN, NO MOVE | 1 warning (`hypothyroidism`), byte-identical | ✅ |
+| `colorectal` | WARN, NO MOVE | 1 warning (`postoperative-care`), byte-identical | ✅ |
+| `veteran-ptsd` | WARN, NO MOVE | 2 warnings (`phq2-q9-assessment`/`columbia-suicide-risk-assessment`), byte-identical | ✅ |
+| all other 27 roots | NO MOVE, no warning | byte-identical, silent | ✅ |
+
+**Every prediction matched exactly** — 3 roots moved (and only those
+3), `veteran-lung-cancer`'s empirically-refined no-move prediction
+held, every one of the 10 census-predicted collision warnings fired
+with the exact predicted module/key/raw-name content, and the
+remaining 27 roots stayed silently byte-identical. No STOP condition.
+
+**Re-baseline, per the declared-change ceremony's own mechanism**
+(there is no persisted baseline artifact this repo commits — `bin/
+regression-oracle` always diffs two live git refs — so "re-baseline"
+is this record itself): `injuries`, `urinary-tract-infections-engine`,
+and `urinary-tract-infections-history-engine`'s own post-fix digests
+(`e1a9b9a5` and onward) are the licensed new baseline, the SAME
+"more correct, not merely different" framing ADR-0086 used for its own
+one-root mover — the emit-composed-with-read law these three roots'
+own compiled ground truth now actually satisfies is the correctness
+gain, not an incidental side effect.
+
+### Acceptance — busy-tuesday regenerated, the previously-failing command witnessed green
+
+`bin/ehrt corpus generate sim --seed 20260807 --patients 200 --config
+demos/scenarios/busy-tuesday/config.edn --out-dir out/scenarios/
+busy-tuesday`: `{:status :ok, :payload {:out-dir "out/scenarios/
+busy-tuesday"}}` (4 collision warnings from `sleep_apnea.json`, part
+of this scenario's own twelve-module mix, printed to `*err*` — expected,
+disclosed, no run-blocking effect).
+
+`bin/ehrt play out/scenarios/busy-tuesday --board 60 --rate 100000`
+(README's own second command) — closing summary: `{:status :ok,
+:payload {:unparseable-count 0, :snapshot-count 48, :skip-count 41,
+:emitted 68, :unfolded-count 0, :clamped-count 0, :sink "ticker"}}`;
+`inpatients: 0` on every one of the 48 board snapshots (grepped
+directly, only value seen). **Byte-for-byte the SAME witnessed figures
+ADR-0130 recorded (`68/48/41`, `inpatients: 0` throughout)** — no
+README figure moved.
+
+`bin/ehrt play out/scenarios/busy-tuesday/events.edn --rate 100000`
+(README's own third command — the ONE that failed in ADR-0130 with
+`{:category :play-input-unreadable, :payload {:message "Invalid
+number: -5-day"}}`): now completes — `{:status :ok, :payload
+{:unparseable-count 0, :skip-count 49, :rate 100000.0, :emitted 367,
+:sink "ticker"}}`. This is the FIRST time this exact command has ever
+completed for this scenario (no prior witnessed figure exists to
+compare against, since it always failed before this fix) — its own
+`367`/`49` figures are a new, first-witnessed baseline, not a
+regression against anything.
+
+No README edit, no figure edit — every existing witnessed figure held.
+`out/scenarios/busy-tuesday` (gitignored) left in place per the
+standing convention; tree clean per `git status --porcelain`.
+
 ### Fences
 
 Committed this step: this ADR file, `notes/ADRs.md` index line,
 `.agents/plans/roadmap.md`'s slug row (prediction recorded in place).
 Zero `src`/`test` touched — docs-only, per the driving prompt's own
 Step 1 charter.
+
+Committed Step 3: `components/sim-trajectory/{src,test}/ehrt/sim_
+trajectory/{gmf.clj,gmf_test.clj}` only.
+
+Committed Step 4 (this section): this ADR file only (evidence/record);
+zero `src`/`test`/module JSON touched — the oracle bracket and
+acceptance run are read-only verification acts, not fixes.
