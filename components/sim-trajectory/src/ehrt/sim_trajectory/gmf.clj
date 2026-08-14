@@ -39,6 +39,12 @@
             [malli.core :as m])
   (:import [java.time LocalDate]))
 
+;; Forward-declared: `resolve-name-ref` (ADR-0133) is defined alongside
+;; the rest of the exact-name resolution machinery, near `load-module`
+;; far below, but `normalize-condition`/`normalize-state` (just below)
+;; call it -- a plain forward declaration, not a namespace cycle.
+(declare resolve-name-ref find-unresolved-reference)
+
 ;; --- Normalization: JSON's snake_case/CamelCase -> this project's kebab
 ;; keyword idiom -----------------------------------------------------------
 
@@ -224,16 +230,34 @@
   GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3f finding,
   found vendoring uti/ambulatory_path.json's own Telephone_Encounter):
   \"virtual\" is a real, distinct GMF encounter-class STRING -- a
-  genuinely NEW keyword, `:virtual`, NOT aliased onto `:ambulatory`
-  (unlike \"outpatient\"): a phone/remote encounter is a different
-  clinical modality from an in-person one, and this session's own
-  vendoring never exercises `compile-trajectory`'s encounter mapping
-  for this closure (the standing, disclosed interpreter-layer-only
-  fence, `ehrt.sim-trajectory.vendored-uti-test`'s own docstring) --
-  whether `:virtual` compiles the SAME way `:ambulatory` does, or needs
-  its own IR treatment, is a decision for whichever future session
-  first exercises a closure through the full compile-trajectory
-  pipeline, not this one.
+  genuinely NEW keyword, `:virtual`, NOT aliased onto `:ambulatory` at
+  THIS loader layer (unlike \"outpatient\"): a phone/remote encounter is
+  a different clinical modality from an in-person one, and this
+  session's own vendoring never exercises `compile-trajectory`'s
+  encounter mapping for this closure (the standing, disclosed
+  interpreter-layer-only fence, `ehrt.sim-trajectory.vendored-uti-
+  test`'s own docstring) -- whether `:virtual` compiles the SAME way
+  `:ambulatory` does, or needs its own IR treatment, was left a
+  decision for whichever future session first exercises a closure
+  through the full compile-trajectory pipeline.
+
+  RESOLVED (2026-08-14, ADR-0133, restoration cascade): that future
+  session is this one -- `veteran_ptsd.json`'s own `Telehealth_Visit`
+  branch, previously orphaned by the state-name collision this ADR
+  fixes, is reachable for the first time and reaches `compile-
+  trajectory`'s own `encounter->step`/`encounter-end->step`, which had
+  no `:virtual` clause at either dispatch site (a clean
+  `IllegalArgumentException`, caught red-before-green, never a silent
+  wrong compile). Ruled: `:virtual` aliases to the SAME
+  `:outpatient-visit`/`:outpatient-visit-end` IR shape `:wellness`/
+  `:ambulatory` already compile to, at BOTH sites (Wave B's own
+  \"outpatient\" precedent, one layer down) -- the trajectory event
+  itself keeps `:encounter-class :virtual` (loader-layer distinctness,
+  right here, is untouched), so no modality information is lost; a
+  distinct compile-layer IR treatment remains available to any future
+  session with an actual consumer for that distinction. This loader's
+  own `:virtual` keyword is UNCHANGED by that resolution -- only
+  `compile-trajectory`'s own dispatch gained the two clauses.
 
   GMF coverage Wave I (2026-08-04, ADR-0040 AR-1b, a dated addendum to
   AR-1 -- the census's own found gap, not a NamedDistribution case):
@@ -338,13 +362,13 @@
   condition type surfaces, at evaluation time, not at load time (section
   1's own state-type gate is the load-time enforcement point; conditions
   are a narrower, later concern this loader does not gate)."
-  [condition]
+  [condition name->key]
   (when condition
     (let [condition-type (get condition-type->keyword (:condition-type condition)
                                (keyword (slug (:condition-type condition))))]
       (cond-> (assoc condition :condition-type condition-type)
         (and (= :prior-state condition-type) (:name condition))
-        (update :name (fn [n] (keyword (slug n))))
+        (update :name (fn [n] (resolve-name-ref name->key n)))
 
         (:codes condition)
         (update :codes #(mapv normalize-code %))
@@ -355,7 +379,7 @@
         ;; string, and evaluate-condition's case dispatch (keywords only)
         ;; would never match it.
         (and (#{:and :or :at-least} condition-type) (:conditions condition))
-        (update :conditions #(mapv normalize-condition %))
+        (update :conditions #(mapv (fn [c] (normalize-condition c name->key)) %))
 
         ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-4): `Not` wraps a
         ;; SINGLE nested condition under :condition (singular -- Logic.
@@ -365,30 +389,30 @@
         ;; their own (without this, a nested Not condition's own
         ;; :condition-type stays an un-normalized raw string).
         (and (= :not condition-type) (:condition condition))
-        (update :condition normalize-condition)))))
+        (update :condition #(normalize-condition % name->key))))))
 
 (defn- normalize-transition-entry
-  [{:keys [transition condition distributions] :as entry}]
+  [{:keys [transition condition distributions] :as entry} name->key]
   (cond-> entry
-    transition (assoc :transition (keyword (slug transition)))
-    condition (assoc :condition (normalize-condition condition))
-    distributions (assoc :distributions (mapv #(update % :transition (fn [t] (keyword (slug t)))) distributions))))
+    transition (assoc :transition (resolve-name-ref name->key transition))
+    condition (assoc :condition (normalize-condition condition name->key))
+    distributions (assoc :distributions (mapv #(update % :transition (fn [t] (resolve-name-ref name->key t))) distributions))))
 
 (defn- normalize-lookup-table-entry
   "GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3a, H2):
   :transition normalizes the SAME way every other transition-entry
   target already does (`normalize-transition-entry`); :lookup-table-name
   stays verbatim (a CSV filename, D3a's own citation)."
-  [{:keys [transition] :as entry}]
-  (cond-> entry transition (assoc :transition (keyword (slug transition)))))
+  [{:keys [transition] :as entry} name->key]
+  (cond-> entry transition (assoc :transition (resolve-name-ref name->key transition))))
 
 (defn- normalize-transitions
-  [state]
+  [state name->key]
   (cond-> state
-    (:direct-transition state) (update :direct-transition (fn [t] (keyword (slug t))))
-    (:distributed-transition state) (update :distributed-transition #(mapv normalize-transition-entry %))
-    (:conditional-transition state) (update :conditional-transition #(mapv normalize-transition-entry %))
-    (:complex-transition state) (update :complex-transition #(mapv normalize-transition-entry %))
+    (:direct-transition state) (update :direct-transition (fn [t] (resolve-name-ref name->key t)))
+    (:distributed-transition state) (update :distributed-transition #(mapv (fn [e] (normalize-transition-entry e name->key)) %))
+    (:conditional-transition state) (update :conditional-transition #(mapv (fn [e] (normalize-transition-entry e name->key)) %))
+    (:complex-transition state) (update :complex-transition #(mapv (fn [e] (normalize-transition-entry e name->key)) %))
     ;; GMF coverage Wave B (2026-08-02, ADR-0027, D5): the fifth
     ;; transition kind -- a fixed {:ambulatory :emergency :telemedicine}
     ;; map, each value a raw target-state-name string (never a weight --
@@ -397,10 +421,10 @@
     ;; 9's own D5 account) -- normalized the SAME way :direct-transition
     ;; already is, one key at a time.
     (:type-of-care-transition state)
-    (update :type-of-care-transition #(into {} (map (fn [[k t]] [k (keyword (slug t))])) %))
+    (update :type-of-care-transition #(into {} (map (fn [[k t]] [k (resolve-name-ref name->key t)])) %))
     ;; GMF coverage Wave D stage D3 (D3a, H2): the sixth kind.
     (:lookup-table-transition state)
-    (update :lookup-table-transition #(mapv normalize-lookup-table-entry %))))
+    (update :lookup-table-transition #(mapv (fn [e] (normalize-lookup-table-entry e name->key)) %))))
 
 (defn- normalize-observation-child
   "GMF coverage Wave D stage D1 (2026-08-02, ADR-0029): one embedded
@@ -687,7 +711,7 @@
     kw-type))
 
 (defn- normalize-state
-  [state]
+  [state name->key]
   (let [raw-type (:type state)
         kw-type (get gmf-type->keyword raw-type)]
     (cond
@@ -736,13 +760,13 @@
           (assoc :type (effective-state-type kw-type state))
           (cond-> (:codes state) (update :codes #(mapv normalize-code %))
                   (:code state) (update :code normalize-code)
-                  (:allow state) (update :allow normalize-condition)
+                  (:allow state) (update :allow #(normalize-condition % name->key))
                   (:encounter-class state) (update :encounter-class
                                                     (fn [c] (get encounter-class->keyword c (keyword (slug c)))))
-                  (:condition-onset state) (update :condition-onset (fn [t] (keyword (slug t))))
-                  (:medication-order state) (update :medication-order (fn [t] (keyword (slug t))))
-                  (:device state) (update :device (fn [t] (keyword (slug t))))
-                  (:target-encounter state) (update :target-encounter (fn [t] (keyword (slug t))))
+                  (:condition-onset state) (update :condition-onset (fn [t] (resolve-name-ref name->key t)))
+                  (:medication-order state) (update :medication-order (fn [t] (resolve-name-ref name->key t)))
+                  (:device state) (update :device (fn [t] (resolve-name-ref name->key t)))
+                  (:target-encounter state) (update :target-encounter (fn [t] (resolve-name-ref name->key t)))
                   ;; GMF coverage Wave D stage D2 (2026-08-02, ADR-0029):
                   ;; :careplan (CarePlanEnd's own state-name reference to
                   ;; the CarePlanStart it closes, State.java's own field
@@ -750,7 +774,7 @@
                   ;; order/:device already do; :activities (CarePlanStart's
                   ;; own Concept vector) the same way top-level :codes
                   ;; already does, above.
-                  (:careplan state) (update :careplan (fn [t] (keyword (slug t))))
+                  (:careplan state) (update :careplan (fn [t] (resolve-name-ref name->key t)))
                   (:activities state) (update :activities #(mapv normalize-code %))
                   ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-1): Counter's
                   ;; own :action ("increment"/"decrement") normalizes to a
@@ -817,23 +841,53 @@
                   ;; distribution normalization, no :unit folding.
                   (and (map? (:distribution state)) (#{:set-attribute :vital-sign} kw-type))
                   normalize-value-distribution)
-          normalize-transitions))))
+          (normalize-transitions name->key)
+          (as-> built
+                (if-let [raw (find-unresolved-reference built)]
+                  {:unresolved-reference {:raw raw}}
+                  built))))))
+
+(defn- find-unresolved-reference
+  "A pure, generic walk over an already-normalized state's own value
+  tree, returning the first raw name string `resolve-name-ref` could
+  not resolve (embedded as a `::unresolved-name` sentinel map at its
+  own call site), or nil if none -- ADR-0133's own purity constraint
+  (docs/dev/simulator-architecture.md section 3 / ADR-0108, no third
+  mutable-state exception) means a miss can't be collected via a
+  side-effecting atom the way `check-state-name-collisions!`'s own
+  disclosure does; this walk finds it structurally instead, without
+  re-deriving which of the twelve name-valued field categories carried
+  it."
+  [v]
+  (cond
+    (and (map? v) (contains? v ::unresolved-name)) (::unresolved-name v)
+    (map? v) (some find-unresolved-reference (vals v))
+    (vector? v) (some find-unresolved-reference v)
+    :else nil))
 
 (defn- normalize-states
   "Normalizes every state; short-circuits with the FIRST deferred-type
-  state found (deterministic -- iterates in the module's own key order),
-  since a module using even one deferred type fails load, full stop
-  (this namespace's own docstring). ADR-0035: one more short-circuiting
+  state found (deterministic, though not necessarily FILE order --
+  `states-by-key` is a plain map, keyed by `disambiguate-state-names`'
+  own resolved keyword, iterated in Clojure's own hash order, a
+  pre-existing property of this reduce unaffected by ADR-0133), since a
+  module using even one deferred type fails load, full stop (this
+  namespace's own docstring). ADR-0035: one more short-circuiting
   category joins :unsupported-state-type here, the SAME 'first found,
   deterministic order' discipline -- an unrecognized v2 distribution
   :kind (:invalid-distribution-kind). ADR-0040 AR-2: a SetAttribute state
   carrying :expression/:series-data (:set-attribute-unsupported-source)
   joins the same discipline, replacing the RETIRED :value/:value-code
   co-presence check (`set-attribute-value-conflict?`'s own dated
-  retirement note, above)."
-  [raw-states]
-  (reduce (fn [acc [state-name raw-state]]
-            (let [normalized (normalize-state raw-state)]
+  retirement note, above). ADR-0133: a name-valued reference this
+  state's own body carries that misses `name->key` (`resolve-name-ref`/
+  `find-unresolved-reference`, above -- a pure structural check, no
+  mutable state, docs/dev/simulator-architecture.md section 3) joins
+  the SAME short-circuit discipline as :unresolved-reference -- the one
+  new load-time rejection this session's own ruling sanctions."
+  [states-by-key name->key]
+  (reduce (fn [acc [state-name normalized-or-raw]]
+            (let [normalized (normalize-state normalized-or-raw name->key)]
               (cond
                 (:unsupported-state-type normalized)
                 (reduced {:unsupported {:state state-name
@@ -851,10 +905,14 @@
                 (:vital-sign-expression-unsupported normalized)
                 (reduced {:vital-sign-expression {:state state-name}})
 
+                (:unresolved-reference normalized)
+                (reduced {:unresolved-reference
+                          {:state state-name :raw (:raw (:unresolved-reference normalized))}})
+
                 :else
                 (update acc :states assoc state-name normalized))))
           {:states {}}
-          raw-states))
+          states-by-key))
 
 ;; --- Attributes registry (section 5) --------------------------------------
 
@@ -1295,66 +1353,231 @@
 
 ;; --- Loading ---------------------------------------------------------------
 
-;; --- Module-load injectivity guard (2026-08-14, ADR-0131 Q2(b)) ----------
+;; --- Exact-name state resolution (2026-08-14, ADR-0133, superseding
+;; ADR-0131 Q2(b)'s own WARN-mode guard) -----------------------------------
 ;;
 ;; `slug` is not injective by design (it is a many-to-one fold, the
 ;; whole point of normalizing "Check_Age_Guard"/"Check Age Guard" onto
 ;; one key) -- but `kebab-key`'s own `json/read-str :key-fn` application
-;; (`load-module`, below) uses it to build the `:states` map's own KEYS,
-;; where a genuine collision between two DIFFERENT raw state names
+;; used to build the `:states` map's own KEYS directly from it, where a
+;; genuine collision between two DIFFERENT raw state names
 ;; (`notes/adr/0131-*.md`'s own census: `sleep_apnea.json`'s "Home CPAP
-;; Unit"/"Home_CPAP_Unit", both folding to :home-cpap-unit) means one
-;; silently overwrites the other in the parsed map, before this
-;; namespace ever sees both. WARN-mode (Q2(b), ruled): detect and
-;; announce, load proceeds -- the same silent-overwrite result as
-;; before this guard existed, now merely disclosed. Escalation to
-;; hard-error is chartered to a future rider session (per-pair module
-;; corrections across the 5 collision-bearing modules this session's
-;; own census found, `notes/adr/0131-*.md`, land first); this guard is
-;; structured so that escalation is a MODE switch at
-;; `handle-state-name-collision!`'s own single call site, not a
-;; detection rewrite.
+;; Unit"/"Home_CPAP_Unit", both folding to :home-cpap-unit) meant one
+;; silently overwrote the other before this namespace ever saw both.
+;; ADR-0133 (author ruling "b", loader-side exact-name resolution):
+;; state identity is no longer built through `slug` at all -- every
+;; raw state name gets its OWN key via `disambiguate-state-names`
+;; (below), and every name-VALUED reference (a transition target, a
+;; PriorState condition's own :name, a ConditionEnd/MedicationEnd/
+;; DeviceEnd/CarePlanEnd back-reference) resolves through that SAME
+;; table by exact raw string, never by re-folding. A reference absent
+;; from the table is a load REJECTION (`:unresolved-state-reference`),
+;; not a silent dangling keyword the old `(keyword (slug t))` could
+;; produce. The guard's own former WARN text is retired; a collision
+;; group is now disclosed (still to `*err*`, `disclose-state-name-
+;; collisions!`, below) as a resolution, not merely announced.
+
+(defn- skip-ws [^String text idx]
+  (loop [i idx]
+    (if (and (< i (count text)) (Character/isWhitespace (.charAt text i)))
+      (recur (inc i))
+      i)))
+
+(defn- skip-json-string
+  "`idx` points at a JSON string literal's own opening quote -- returns
+  the index just past its closing (unescaped) quote."
+  [^String text idx]
+  (loop [i (inc idx)]
+    (let [c (.charAt text i)]
+      (cond
+        (= c \\) (if (= (.charAt text (inc i)) \u)
+                   (recur (+ i 6))
+                   (recur (+ i 2)))
+        (= c \") (inc i)
+        :else (recur (inc i))))))
+
+(def ^:private json-scalar-delims
+  #{\, \} \] \space \newline \tab \return \formfeed \backspace})
+
+(defn- skip-json-value
+  "`idx` points at the start (post-whitespace) of a JSON value --
+  returns the index just past it, correctly depth-/string-aware for
+  nested objects and arrays (never confused by a `{`/`}`/`,` living
+  inside a quoted string)."
+  [^String text idx]
+  (let [idx (skip-ws text idx)
+        c (.charAt text idx)]
+    (cond
+      (= c \") (skip-json-string text idx)
+      (or (= c \{) (= c \[))
+      (let [close (if (= c \{) \} \])]
+        (loop [i (inc idx) depth 1]
+          (if (zero? depth)
+            i
+            (let [ch (.charAt text i)]
+              (cond
+                (= ch \") (recur (skip-json-string text i) depth)
+                (or (= ch \{) (= ch \[)) (recur (inc i) (inc depth))
+                (or (= ch \}) (= ch \])) (recur (inc i) (dec depth))
+                :else (recur (inc i) depth))))))
+      :else
+      (loop [i idx]
+        (if (or (>= i (count text)) (json-scalar-delims (.charAt text i)))
+          i
+          (recur (inc i)))))))
+
+(defn- read-json-key
+  "`idx` points at a JSON object key's own opening quote -- returns
+  `[key-string index-after-closing-quote]`. Reuses `json/read-str`
+  itself to unescape the delimited literal (correct `\\uXXXX`/surrogate
+  handling for free) rather than reimplementing JSON string escaping."
+  [^String text idx]
+  (let [end (skip-json-string text idx)]
+    [(json/read-str (subs text idx end)) end]))
+
+(defn- object-key-order
+  "`idx` points at a JSON object's own opening `{` -- returns that
+  object's own DIRECT child keys, in FILE order."
+  [^String text idx]
+  (loop [i (skip-ws text (inc idx)) acc []]
+    (let [i (skip-ws text i)]
+      (if (= (.charAt text i) \})
+        acc
+        (let [[k key-end] (read-json-key text i)
+              colon (skip-ws text key-end)
+              value-start (skip-ws text (inc colon))
+              value-end (skip-json-value text value-start)
+              after (skip-ws text value-end)]
+          (case (.charAt text after)
+            \, (recur (inc after) (conj acc k))
+            \} (conj acc k)))))))
+
+(defn- top-level-field-key-order
+  "`json-text` is a JSON object; `field-name` names one of its own
+  top-level keys whose value is itself an object. Returns that nested
+  object's own direct keys, in FILE order.
+
+  `clojure.data.json` 2.5.2's own `read-object` builds each parsed
+  object via `(transient {})`/`assoc!`/`persistent!` -- for any object
+  with MORE than 8 entries this upgrades from a `PersistentArrayMap`
+  (insertion-ordered) to a `PersistentHashMap` (hash-ordered, NOT file
+  order), confirmed empirically (`(keys (json/read-str \"{\\\"a\\\":1,...
+  ,\\\"j\\\":10}\"))` => a hash-shuffled order, not a..j) -- every one of
+  this project's own real modules has far more than 8 states, so the
+  OLD `raw-state-names` (`(-> json-text json/read-str (get \"states\")
+  keys)`) was NEVER giving file order for any real module (ADR-0133's
+  own found, load-bearing defect, latent until this session's own
+  'first occurrence in file order' disambiguation rule made it matter).
+  This scans `json-text` directly instead of trusting the parsed map's
+  own iteration order."
+  [^String json-text field-name]
+  (let [root (skip-ws json-text 0)]
+    (loop [i (skip-ws json-text (inc root))]
+      (let [i (skip-ws json-text i)
+            [k key-end] (read-json-key json-text i)
+            colon (skip-ws json-text key-end)
+            value-start (skip-ws json-text (inc colon))]
+        (if (= k field-name)
+          (object-key-order json-text value-start)
+          (let [after (skip-ws json-text (skip-json-value json-text value-start))]
+            (case (.charAt json-text after)
+              \, (recur (inc after)))))))))
 
 (defn- raw-state-names
-  "The ORIGINAL, pre-slug state-name strings from `json-text`'s own
-  top-level \"states\" object -- a second, string-keyed parse alongside
-  `load-module`'s own kebab-key one, needed because by the time
-  kebab-key has folded two distinct raw names onto the same keyword,
-  whichever JSON key the parser processed last has already silently
-  overwritten the other in the resulting map. This function looks
-  BEFORE that fold happens, so both original names are still visible."
+  "The ORIGINAL, pre-fold state-name strings from `json-text`'s own
+  top-level \"states\" object, in FILE order -- the input
+  `disambiguate-state-names` (below) resolves into this module's own
+  raw-name -> key table."
   [json-text]
-  (-> json-text json/read-str (get "states") keys))
+  (top-level-field-key-order json-text "states"))
+
+(defn- disambiguate-state-names
+  "`raw-names-in-order` (file order) -> {raw-name -> key}, one entry
+  per raw name, ALL of them, colliding or not. Names sharing a `slug`
+  fold are grouped (`group-by` preserves each group's own relative
+  file order); the FIRST occurrence of a group keeps the bare slug
+  keyword, every subsequent occurrence gets a `--N` suffix (N = its
+  1-based rank within the group).
+
+  Capture-avoiding BY CONSTRUCTION, not by luck: `slug` collapses every
+  run of 2+ hyphens to one (`(str/replace #\"-{2,}\" \"-\")`, above) --
+  no string `slug` can EVER produce contains a doubled hyphen, so a
+  `--N`-suffixed key can never equal ANY raw name's own plain slug, for
+  any module, any content (proved as a generative property against
+  `gmf-test`'s own `raw-gmf-name-gen`, ADR-0133)."
+  [raw-names-in-order]
+  (let [groups (group-by slug raw-names-in-order)]
+    (into {}
+          (mapcat (fn [[base raws]]
+                    (map-indexed (fn [i raw]
+                                   [raw (keyword (if (zero? i) base (str base "--" (inc i))))])
+                                 raws)))
+          groups)))
 
 (defn- state-name-collision-groups
-  "Every group of 2+ raw state names (`raw-state-names`) that fold to
-  the SAME post-slug key -- the injectivity gap this guard exists for.
-  A module with no such group returns an empty seq."
-  [json-text]
-  (->> (raw-state-names json-text)
+  "Every group of 2+ raw state names (`raw-names-in-order`) that fold
+  to the SAME `slug` -- the disambiguation table's own input. A module
+  with no such group returns an empty seq."
+  [raw-names-in-order]
+  (->> raw-names-in-order
        (group-by slug)
        (filter (fn [[_ raws]] (> (count raws) 1)))))
 
-(defn- handle-state-name-collision!
-  "WARN-mode (Q2(b)): a loud per-collision warning to *err*, naming the
-  module `id`, the folded key, and every raw name that folds to it --
-  load proceeds. The one call site a future rider session's escalation
-  to hard-error switches (an added `:error` branch here, returning a
-  rejection the caller checks, rather than only printing) -- detection
-  itself (`state-name-collision-groups`, above) does not change."
-  [id folded raws]
+(defn- disclose-state-name-disambiguation!
+  "A disambiguation disclosure to `*err*`, naming the module `id`, the
+  folded key, every raw name that folds to it, and the DISTINCT keys
+  `name->key` resolved each one to (ADR-0133: both members load as
+  real states now, this is a resolution record, never a warn-and-drop)."
+  [id name->key folded raws]
   (binding [*out* *err*]
-    (println (str "WARN: module " id ": state names " (pr-str raws)
+    (println (str "DISCLOSURE: module " id ": state names " (pr-str raws)
                    " all fold to :" folded
-                   " -- one silently overwrites the other in the loaded module"))))
+                   " -- resolved to distinct keys " (pr-str (mapv name->key raws))
+                   " by exact-name resolution (ADR-0133), no longer silently overwriting"))))
 
-(defn- check-state-name-collisions!
-  "Runs the guard over every collision group `json-text`'s own raw
-  state names produce, side-effecting a warning per group (WARN-mode,
-  Q2(b)) -- never affects `load-module`'s own return value."
-  [id json-text]
-  (doseq [[folded raws] (state-name-collision-groups json-text)]
-    (handle-state-name-collision! id folded raws)))
+(defn- disclose-state-name-collisions!
+  "Runs the disclosure over every collision group `raw-names-in-order`
+  produces -- never affects `load-module`'s own return value."
+  [id name->key raw-names-in-order]
+  (doseq [[folded raws] (state-name-collision-groups raw-names-in-order)]
+    (disclose-state-name-disambiguation! id name->key folded raws)))
+
+(defn- kebab-keys-deep
+  "Recursively kebab-keys every map key in an already-parsed (string-
+  keyed) JSON value -- the same transform `json/read-str :key-fn
+  kebab-key` applies during parsing, reapplied here to ONE state's own
+  body, parsed separately (string-keyed, unfolded) so that the top-
+  level `states` map's own keys resolve through `disambiguate-state-
+  names` instead of through `kebab-key`'s own fold."
+  [v]
+  (cond
+    (map? v) (into {} (map (fn [[k val]] [(kebab-key k) (kebab-keys-deep val)])) v)
+    (vector? v) (mapv kebab-keys-deep v)
+    :else v))
+
+;; NOTE: no mutable state here -- docs/dev/simulator-architecture.md
+;; section 3 / ADR-0108's own purity census allows exactly two named
+;; exceptions across the whole sim family (`ehrt.sim-trajectory.census`/
+;; `ehrt.sim.version`), enforced by `ehrt.docs-tooling.sim-purity-lint-
+;; test`; this namespace is not one of them. A miss is threaded
+;; PURELY: `resolve-name-ref` embeds a small sentinel map in the
+;; normalized value tree in place of the unresolved keyword;
+;; `find-unresolved-reference` (below `normalize-state`) is a plain,
+;; generic walk over the ALREADY-built state that finds it, without
+;; re-deriving which of the twelve name-valued field categories
+;; carried it.
+
+(defn- resolve-name-ref
+  "Resolves a raw name-VALUED reference string `raw` (a transition
+  target, a PriorState condition's own :name, a ConditionEnd/
+  MedicationEnd/DeviceEnd/CarePlanEnd back-reference) through
+  `name->key` -- EXACT raw-string lookup (ADR-0133), never `slug`. A
+  miss returns a sentinel map (`::unresolved-name`) carrying `raw`,
+  never a silent dangling keyword the old `(keyword (slug t))` could
+  produce -- `find-unresolved-reference` is what turns this into a
+  real load rejection."
+  [name->key raw]
+  (get name->key raw {::unresolved-name raw}))
 
 (defn load-module
   "Parses and validates `json-text` (a GMF module's raw JSON) as `id`
@@ -1383,17 +1606,36 @@
   (payload {:state}, ADR-0039 AR-2) for a VitalSign state carrying a CQL
   :expression, a real upstream branch this loader has no evaluator for;
   :rejected :schema-invalid (payload {:explain ...}) for any other v1
-  structural mismatch.
+  structural mismatch; :rejected :unresolved-state-reference (payload
+  {:state :raw}, ADR-0133) for a name-valued reference (a transition
+  target, a PriorState condition's own :name, a ConditionEnd/
+  MedicationEnd/DeviceEnd/CarePlanEnd back-reference) whose own raw
+  string names no state this module actually declares -- the one new
+  strictness this session's own author ruling sanctions, replacing the
+  silent dangling keyword `(keyword (slug t))` used to produce.
 
-  Side effect (2026-08-14, ADR-0131 Q2(b)): before parsing, warns to
-  *err* once per group of raw state names that collide under `slug`
-  (WARN-mode -- never affects this function's own return value; see
-  `check-state-name-collisions!`, above)."
+  State identity (2026-08-14, ADR-0133, superseding ADR-0131 Q2(b)'s
+  own WARN-mode guard): the top-level `states` map's own keys are built
+  from `disambiguate-state-names`, NOT from `kebab-key`'s own fold --
+  every raw state name gets its own key, colliding or not, and every
+  name-valued reference resolves through that SAME table by exact raw
+  string (`normalize-*`'s own `resolve-name-ref` call sites, above).
+  Side effect: discloses to *err* once per group of raw state names
+  that collide under `slug`, naming the keys each one resolved to
+  (`disclose-state-name-collisions!`, above) -- never affects this
+  function's own return value."
   [id json-text]
-  (check-state-name-collisions! id json-text)
-  (let [raw (json/read-str json-text :key-fn kebab-key)
-        {:keys [states unsupported invalid-distribution set-attribute-unsupported-source vital-sign-expression]}
-        (normalize-states (:states raw))]
+  (let [raw-names (raw-state-names json-text)
+        name->key (disambiguate-state-names raw-names)
+        _ (disclose-state-name-collisions! id name->key raw-names)
+        string-states (get (json/read-str json-text) "states")
+        raw (json/read-str json-text :key-fn kebab-key)
+        states-by-key (into {}
+                             (map (fn [[raw-name k]] [k (kebab-keys-deep (get string-states raw-name))]))
+                             name->key)
+        {:keys [states unsupported invalid-distribution set-attribute-unsupported-source vital-sign-expression
+                unresolved-reference]}
+        (normalize-states states-by-key name->key)]
     (cond
       unsupported
       (result/rejected :unsupported-state-type unsupported)
@@ -1406,6 +1648,9 @@
 
       vital-sign-expression
       (result/rejected :vital-sign-expression-unsupported vital-sign-expression)
+
+      unresolved-reference
+      (result/rejected :unresolved-state-reference unresolved-reference)
 
       (reserved-attribute-collision states)
       (result/rejected :attribute-collision {:attribute (reserved-attribute-collision states)})

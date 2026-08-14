@@ -7,7 +7,8 @@
   a module whose own SetAttribute writes a bare engine-reserved attribute
   name is REJECTED with :attribute-collision; the loaded set is listable
   (no hidden modules, docs/gmf-interpreter.md section 5)."
-  (:require [clojure.edn :as edn]
+  (:require [clojure.data.json :as json]
+            [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
@@ -989,13 +990,19 @@
 (def not-guard-json
   "wellness_encounters.json's own Not-wrapping-PriorState shape,
   byte-confirmed against source -- proves the recursive normalization
-  fix (`:condition` singular, not `:conditions` plural)."
+  fix (`:condition` singular, not `:conditions` plural). `Some_State`
+  itself is a real, if otherwise-unused, state (ADR-0133: PriorState's
+  own :name is a name-valued reference now resolved by exact string
+  through the module's own state-name table, so a fixture referencing
+  a name that names no real state is a genuine :unresolved-state-
+  reference rejection, not merely a shape-normalization concern)."
   (str "{\"name\": \"NotMod\", \"states\": {"
        "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Check\"},"
        "  \"Check\": {\"type\": \"Guard\","
        "             \"allow\": {\"condition_type\": \"Not\","
        "                        \"condition\": {\"condition_type\": \"PriorState\", \"name\": \"Some_State\"}},"
        "             \"direct_transition\": \"Done\"},"
+       "  \"Some_State\": {\"type\": \"Terminal\"},"
        "  \"Done\": {\"type\": \"Terminal\"}}}"))
 
 (deftest not-condition-recursively-normalizes-its-nested-condition
@@ -1139,7 +1146,10 @@
   "allergies.json's own Allergy_Unspecified shape, byte-confirmed
   against source: :target-encounter/:assign-to-attribute/:reactions all
   authored but never downstream-read on this closure's own mandatory
-  path -- the same simplification :condition-onset already establishes."
+  path -- the same simplification :condition-onset already establishes.
+  `Allergist_Initial_Visit` itself is a real, if otherwise-unused,
+  state (ADR-0133: :target-encounter is a name-valued reference now
+  resolved by exact string through the module's own state-name table)."
   (str "{\"name\": \"Allergies\", \"states\": {"
        "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Onset\"},"
        "  \"Onset\": {\"type\": \"AllergyOnset\", \"allergy_type\": \"allergy\", \"category\": \"environment\","
@@ -1147,6 +1157,7 @@
        "             \"codes\": [{\"system\": \"SNOMED-CT\", \"code\": \"609328004\", \"display\": \"Allergic disposition (finding)\"}],"
        "             \"reactions\": [], \"assign_to_attribute\": \"allergy_unspecified\","
        "             \"direct_transition\": \"Done\"},"
+       "  \"Allergist_Initial_Visit\": {\"type\": \"Terminal\"},"
        "  \"Done\": {\"type\": \"Terminal\"}}}"))
 
 (deftest allergy-onset-loads-and-validates
@@ -1285,11 +1296,12 @@
     (is (= "it's-a-test?" (gmf/slug "It's a Test?")))
     (is (= "a&b" (gmf/slug "A&B")))))
 
-;; --- Module-load injectivity guard (ADR-0131 Q2(b), WARN-mode) -----------
+;; --- Module-load exact-name resolution (ADR-0133, superseding
+;; ADR-0131 Q2(b)'s own WARN-mode guard) ------------------------------
 
 (defn- captured-stderr
   "Runs `f` with `*err*` rebound to an in-memory writer, returns the
-  captured text -- the guard's own warning is emitted via `(binding
+  captured text -- the guard's own disclosure is emitted via `(binding
   [*out* *err*] (println ...))`, so binding `*err*` here is read
   dynamically at the guard's own call site, the same as a real
   terminal's stderr would be."
@@ -1300,27 +1312,183 @@
 
 (def sleep-apnea-json (slurp (io/resource "sim/modules/sleep_apnea.json")))
 (def hypothyroidism-json (slurp (io/resource "sim/modules/hypothyroidism.json")))
+(def injuries-json (slurp (io/resource "sim/modules/injuries.json")))
+(def veteran-ptsd-json (slurp (io/resource "sim/modules/veteran_ptsd.json")))
+(def colorectal-cancer-json (slurp (io/resource "sim/modules/colorectal_cancer.json")))
 
-(deftest loading-a-collision-module-warns-naming-module-folded-key-and-both-raw-names
-  (testing "sleep_apnea.json: notes/adr/0131-*.md's own census, 4 collision pairs"
-    (let [warnings (captured-stderr #(gmf/load-module "sleep-apnea" sleep-apnea-json))]
-      (is (str/includes? warnings "sleep-apnea"))
-      (is (str/includes? warnings "home-cpap-unit"))
-      (is (str/includes? warnings "Home CPAP Unit"))
-      (is (str/includes? warnings "Home_CPAP_Unit")))))
+(deftest loading-a-collision-module-discloses-module-folded-key-both-raw-names-and-assigned-keys
+  (testing "sleep_apnea.json: notes/adr/0133-*.md's own census, 4 collision pairs -- ADR-0131's
+            WARN text is RETIRED (both raw names now load as real, distinct states, never merely
+            announced), replaced by a disambiguation disclosure naming the keys each raw name resolved to"
+    (let [disclosures (captured-stderr #(gmf/load-module "sleep-apnea" sleep-apnea-json))]
+      (is (not (str/includes? disclosures "WARN:")) "the old WARN-mode text is gone")
+      (is (str/includes? disclosures "DISCLOSURE:"))
+      (is (str/includes? disclosures "sleep-apnea"))
+      (is (str/includes? disclosures "home-cpap-unit"))
+      (is (str/includes? disclosures "Home CPAP Unit"))
+      (is (str/includes? disclosures "Home_CPAP_Unit"))
+      (is (str/includes? disclosures ":home-cpap-unit--2")
+          "the disclosure names the SECOND raw name's own disambiguated key"))))
 
-(deftest loading-a-second-collision-module-warns-independently
-  (testing "hypothyroidism.json: notes/adr/0131-*.md's own census, 1 collision pair (case-only)"
-    (let [warnings (captured-stderr #(gmf/load-module "hypothyroidism" hypothyroidism-json))]
-      (is (str/includes? warnings "hypothyroidism"))
-      (is (str/includes? warnings "Hypothyroidism")))))
+(deftest loading-a-second-collision-module-discloses-independently
+  (testing "hypothyroidism.json: notes/adr/0133-*.md's own census, 1 collision pair (case-only)"
+    (let [disclosures (captured-stderr #(gmf/load-module "hypothyroidism" hypothyroidism-json))]
+      (is (str/includes? disclosures "DISCLOSURE:"))
+      (is (str/includes? disclosures "hypothyroidism"))
+      (is (str/includes? disclosures "Hypothyroidism"))
+      (is (str/includes? disclosures ":hypothyroidism--2")))))
 
-(deftest loading-a-collision-free-module-emits-no-warning
-  (let [warnings (captured-stderr #(gmf/load-module "fixture-clinic" fixture-clinic-json))]
-    (is (= "" warnings))))
+(deftest loading-a-collision-free-module-emits-no-disclosure
+  (let [disclosures (captured-stderr #(gmf/load-module "fixture-clinic" fixture-clinic-json))]
+    (is (= "" disclosures))))
 
-(deftest loading-still-succeeds-alongside-the-collision-warning
-  (testing "WARN-mode (Q2(b)): load proceeds, the same silent-overwrite result as before this guard, now merely announced"
+(deftest loading-still-succeeds-alongside-the-disclosure
+  (testing "both members of the pair now load as real, distinct states -- never a warn-and-drop"
     (let [loaded (atom nil)]
       (captured-stderr (fn [] (reset! loaded (gmf/load-module "sleep-apnea" sleep-apnea-json))))
       (is (result/ok? @loaded)))))
+
+;; --- Cardinality: no state is ever dropped (ADR-0133) ---------------------
+
+(defn- raw-state-count
+  "Direct, key-fn-free count of a module's own top-level `states`
+  object entries -- the ground truth `(count (:states loaded))` must
+  now equal, for every module, colliding or not (the invariant the
+  pre-ADR-0133 overwrite violated for the 5 collision modules)."
+  [json-text]
+  (count (get (json/read-str json-text) "states")))
+
+(deftest loaded-state-count-equals-raw-state-count-for-every-collision-module
+  (doseq [[label json-text] [["sleep-apnea" sleep-apnea-json]
+                              ["hypothyroidism" hypothyroidism-json]
+                              ["injuries" injuries-json]
+                              ["veteran-ptsd" veteran-ptsd-json]
+                              ["colorectal-cancer" colorectal-cancer-json]]]
+    (testing label
+      (let [loaded (gmf/load-module label json-text)]
+        (is (result/ok? loaded) label)
+        (is (= (raw-state-count json-text) (count (:states (:payload loaded))))
+            (str label ": no state silently dropped"))))))
+
+(deftest loaded-state-count-equals-raw-state-count-for-a-collision-free-module
+  (let [loaded (gmf/load-module "fixture-clinic" fixture-clinic-json)]
+    (is (= (raw-state-count fixture-clinic-json) (count (:states (:payload loaded)))))))
+
+;; --- Disambiguation determinism (ADR-0133) --------------------------------
+
+(deftest disambiguation-keeps-the-first-file-order-occurrence-bare
+  (testing "hypothyroidism.json: 'Hypothyroidism' precedes 'hypothyroidism' in file order
+            (direct-read confirmed) -- the FIRST keeps the bare slug, the SECOND gets a suffix"
+    (let [loaded (:payload (gmf/load-module "hypothyroidism" hypothyroidism-json))]
+      (is (contains? (:states loaded) :hypothyroidism))
+      (is (contains? (:states loaded) :hypothyroidism--2))
+      (is (not (contains? (:states loaded) :hypothyroidism--3))))))
+
+(deftest disambiguation-is-deterministic-across-repeated-loads-of-the-same-bytes
+  (let [loaded-1 (:payload (gmf/load-module "sleep-apnea" sleep-apnea-json))
+        loaded-2 (:payload (gmf/load-module "sleep-apnea" sleep-apnea-json))]
+    (is (= (into (sorted-set) (keys (:states loaded-1)))
+           (into (sorted-set) (keys (:states loaded-2)))))))
+
+;; --- Capture-avoidance, as a generative property (ADR-0133) --------------
+;; The disambiguation suffix is a literal double hyphen (`--N`) -- a
+;; substring `slug`'s own fold (which collapses every run of 2+ hyphens
+;; to one, gmf.clj:79) can NEVER produce, so no raw name's own plain
+;; slug can ever equal another raw name's disambiguated key, for ANY
+;; input, by construction -- proven here against `raw-gmf-name-gen`
+;; (the SAME generator ADR-0131's own round-trip property already
+;; exercises), not merely checked against the live tree's own 10 pairs.
+
+(defspec disambiguation-table-is-injective-and-never-captures-another-names-own-slug 200
+  (prop/for-all [raw-names (gen/vector-distinct raw-gmf-name-gen {:min-elements 1 :max-elements 12})]
+    (let [table (#'gmf/disambiguate-state-names raw-names)]
+      (and
+       ;; round-trips exactly onto the input name set
+       (= (set raw-names) (set (keys table)))
+       ;; injective: as many distinct keys as distinct raw names
+       (= (count raw-names) (count (set (vals table))))
+       ;; no raw name's own assigned key ever equals a DIFFERENT raw
+       ;; name's own plain slug
+       (every? (fn [raw]
+                 (let [assigned (name (get table raw))]
+                   (or (= assigned (gmf/slug raw))
+                       (not (some #(and (not= % raw) (= (gmf/slug %) assigned)) raw-names)))))
+               raw-names)))))
+
+;; --- Strict miss: an unresolved name-valued reference rejects the whole
+;; module load (ADR-0133's one sanctioned new strictness, replacing the
+;; old silent dangling keyword `(keyword (slug t))` could produce) -------
+
+(def dangling-transition-json
+  "A deliberately malformed module: `Initial`'s own `direct_transition`
+  names a state that does not exist anywhere in `states` at all -- not
+  a collision, a genuinely absent reference, the class of defect
+  `(keyword (slug t))` used to compile silently into a dangling
+  keyword no downstream code ever caught at load time."
+  (str "{\"name\": \"Dangling\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Nowhere\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest a-name-valued-reference-missing-from-the-table-rejects-the-module-load
+  (let [loaded (gmf/load-module "dangling" dangling-transition-json)]
+    (is (result/rejected? loaded))
+    (is (= :unresolved-state-reference (:category loaded)))
+    (is (= "Nowhere" (:raw (:payload loaded))))))
+
+(def dangling-prior-state-json
+  "PriorState's own :name field is a name-valued reference too (gmf.clj's
+  own normalize-condition) -- a raw name absent from the table here
+  must reject the same way a dangling transition target does."
+  (str "{\"name\": \"DanglingPrior\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Check\"},"
+       "  \"Check\": {\"type\": \"Guard\", \"allow\": {\"condition_type\": \"PriorState\", \"name\": \"Nope\"},"
+       "             \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest a-dangling-prior-state-name-rejects-the-module-load
+  (let [loaded (gmf/load-module "dangling-prior" dangling-prior-state-json)]
+    (is (result/rejected? loaded))
+    (is (= :unresolved-state-reference (:category loaded)))
+    (is (= "Nope" (:raw (:payload loaded))))))
+
+;; --- PriorState's own :name resolves through the table, not `slug`
+;; (ADR-0133) -- gmf.clj:347's own `(keyword (slug n))` collision-fold
+;; site, unreachable by the driving prompt's own channel walker (a
+;; transition-only walk) -----------------------------------------------
+
+(def prior-state-collision-json
+  "A synthetic module whose own two colliding state names ('Foo Bar'/
+  'Foo_Bar') are BOTH referenced by a later Guard's own PriorState
+  condition -- proves each raw name resolves to its OWN distinct
+  disambiguated key, never both folding onto the same one."
+  (str "{\"name\": \"PriorCollision\", \"states\": {"
+       "  \"Initial\": {\"type\": \"Initial\", \"direct_transition\": \"Foo Bar\"},"
+       "  \"Foo Bar\": {\"type\": \"Simple\", \"direct_transition\": \"Foo_Bar\"},"
+       "  \"Foo_Bar\": {\"type\": \"Simple\", \"direct_transition\": \"Check First\"},"
+       "  \"Check First\": {\"type\": \"Guard\", \"allow\": {\"condition_type\": \"PriorState\", \"name\": \"Foo Bar\"},"
+       "                   \"direct_transition\": \"Check Second\"},"
+       "  \"Check Second\": {\"type\": \"Guard\", \"allow\": {\"condition_type\": \"PriorState\", \"name\": \"Foo_Bar\"},"
+       "                    \"direct_transition\": \"Done\"},"
+       "  \"Done\": {\"type\": \"Terminal\"}}}"))
+
+(deftest prior-state-name-resolves-each-colliding-raw-name-to-its-own-key
+  (let [loaded (:payload (gmf/load-module "prior-collision" prior-state-collision-json))]
+    (is (= :foo-bar (get-in loaded [:states :check-first :allow :name])))
+    (is (= :foo-bar--2 (get-in loaded [:states :check-second :allow :name])))))
+
+;; --- Restored-semantics witness: hypothyroidism's own chain (ADR-0133)
+;; loads as FOUR distinct states with the chain intact, direct-read
+;; confirmed against the live module in notes/adr/0133-*.md ----------------
+
+(deftest hypothyroidism-symptom-chain-loads-as-four-distinct-states-chain-intact
+  (let [loaded (:payload (gmf/load-module "hypothyroidism" hypothyroidism-json))
+        states (:states loaded)]
+    (testing "all four states of the chain load, none dropped"
+      (is (contains? states :hypothyroid-symptom))
+      (is (contains? states :hypothyroidism))
+      (is (contains? states :hypothyroidism--2))
+      (is (contains? states :hypothyroid-condition-onset)))
+    (testing "the chain's own transition edges are intact and correctly routed"
+      (is (= :hypothyroidism (:direct-transition (get states :hypothyroid-symptom))))
+      (is (= :hypothyroidism--2 (:direct-transition (get states :hypothyroidism))))
+      (is (= :hypothyroid-condition-onset (:direct-transition (get states :hypothyroidism--2)))))))
