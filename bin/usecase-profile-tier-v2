@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# Runs docs/use-cases/profile-tier-hl7v2-conformance-gating.md's own
+# ```sh fence, verbatim, under a per-step exit-code assertion
+# (ADR-0129, manual-review dimension 1: this use-case page is cited by
+# docs/manual/07-judging.md but, before this script, nothing re-ran it
+# against the live tree). Mirrors bin/quickstart-demo's own shape
+# (ADR-0004, R23).
+#
+# The block between the BEGIN/END markers is read by
+# `ehrt.docs-tooling.strip-fresh` (via the exercised-sources register,
+# components/docs-tooling/resources/docs-tooling/exercised-sources.edn)
+# to prove this script and the use-case page's own fence teach the
+# identical commands, in the identical order. Integration-tier only
+# (`make integration`), never per-push CI -- the NIST profile bundle
+# and its own validator artifact are lock-verified already
+# (bin/verify-nist-lock), not fetched here.
+set -uo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)" || exit 2
+cd -- "$repo_root" || exit 2
+
+fail() {
+  echo "FAIL: $1" >&2
+  exit 1
+}
+
+expect() {
+  local want="$1"; shift
+  "$@"
+  local got=$?
+  if [ "$got" -ne "$want" ]; then
+    fail "'$*' exited $got, expected $want"
+  fi
+}
+
+echo "== usecase-profile-tier-v2: docs/use-cases/profile-tier-hl7v2-conformance-gating.md, verbatim, asserted =="
+
+# BEGIN profile-tier-v2 commands (verbatim from docs/use-cases/profile-tier-hl7v2-conformance-gating.md)
+expect 3 bin/ehrt gate v2-nist \
+  test-fixtures/v2-nist/covidELR/231HL7TestFilewithHHSData.txt \
+  --profile test-fixtures/v2-nist/COVID19_ELR-v2.3.1 --pretty
+# END profile-tier-v2 commands
+
+echo "== usecase-profile-tier-v2: every command asserted =="

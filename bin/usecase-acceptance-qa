@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# Runs docs/use-cases/acceptance-qa-of-vendor-corpora.md's own ```sh
+# fence, verbatim, under per-step exit-code assertions (ADR-0129,
+# manual-review dimension 1: this use-case page is cited by
+# docs/manual/08-your-own-data.md but, before this script, nothing
+# re-ran it against the live tree). Mirrors bin/quickstart-demo's own
+# shape (ADR-0004, R23).
+#
+# VENDOR_CORPUS binds to the committed test-fixtures/v2 fixture --
+# the fence's own text already states this binding as its own first
+# taught line (`VENDOR_CORPUS=test-fixtures/v2`); the exercised-
+# sources register records the same binding as its own :env metadata
+# (ADR-0129 Q2(a): env-var placeholders are the sanctioned strip
+# parameterization, exercisers bind fixtures) for citation-gate/human
+# legibility, not as a second, separate injection point.
+#
+# The block between the BEGIN/END markers is read by
+# `ehrt.docs-tooling.strip-fresh` (via the exercised-sources register,
+# components/docs-tooling/resources/docs-tooling/exercised-sources.edn)
+# to prove this script and the use-case page's own fence teach the
+# identical commands, in the identical order. Integration-tier only
+# (`make integration`), never per-push CI.
+set -uo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)" || exit 2
+cd -- "$repo_root" || exit 2
+
+fail() {
+  echo "FAIL: $1" >&2
+  exit 1
+}
+
+expect() {
+  local want="$1"; shift
+  "$@"
+  local got=$?
+  if [ "$got" -ne "$want" ]; then
+    fail "'$*' exited $got, expected $want"
+  fi
+}
+
+expect_eval() {
+  local want="$1" snippet="$2"
+  eval "$snippet"
+  local got=$?
+  if [ "$got" -ne "$want" ]; then
+    fail "'$snippet' exited $got, expected $want"
+  fi
+}
+
+echo "== usecase-acceptance-qa: docs/use-cases/acceptance-qa-of-vendor-corpora.md, verbatim, asserted =="
+
+# Script-only apparatus, not a taught line: safely re-runnable.
+rm -rf out/acceptance
+
+# BEGIN acceptance-qa commands (verbatim from docs/use-cases/acceptance-qa-of-vendor-corpora.md)
+expect_eval 0 'VENDOR_CORPUS=test-fixtures/v2'
+
+expect 0 bin/ehrt corpus intake --path $VENDOR_CORPUS \
+  --label acme-delivery --received 2026-07-26 \
+  --out out/acceptance/intake
+expect 0 cat out/acceptance/intake/intake-record.edn
+
+expect 0 bin/ehrt gate v2 $VENDOR_CORPUS --report out/acceptance/gate-report.edn
+# END acceptance-qa commands
+
+# Tree-clean postcondition (ADR-0005): every write path above lands
+# under the gitignored /out/.
+dirty="$(git status --porcelain)"
+if [ -n "$dirty" ]; then
+  fail "tree not clean after a full run (ADR-0005 postcondition violated):
+$dirty"
+fi
+
+echo "== usecase-acceptance-qa: every command asserted, tree clean =="

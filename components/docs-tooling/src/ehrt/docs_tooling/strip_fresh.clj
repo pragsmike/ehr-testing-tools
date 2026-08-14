@@ -35,7 +35,8 @@
     correctly excludes it from the readme-what-you-get row's own
     command list -- no section-heading logic needed, adjacency alone
     disambiguates."
-  (:require [clojure.java.io :as io]
+  (:require [clojure.edn :as edn]
+            [clojure.java.io :as io]
             [clojure.string :as str]
             [ehrt.docs-tooling.demo-exerciser-fresh :as demo-fresh]
             [ehrt.docs-tooling.quickstart-fresh :as quickstart-fresh]))
@@ -198,3 +199,92 @@
   "check-entry over every row in `rows`, as a vector in register order."
   [rows]
   (mapv check-entry rows))
+
+;; ---- runtime output comparison (bin/readme-what-you-get, ADR-0129
+;; Q4(a): "extraction pairs command fences with adjacent expected-
+;; output fences and compares output"). README.md's own ```clojure
+;; output fences are hand-formatted, illustrative EXCERPTS of the real
+;; CLI output, not verbatim captures -- the real output carries extra
+;; fields (:engine, :native-ref) the fence never claims, and the
+;; fence's own innermost maps end in a literal ", ..." eliding the
+;; rest ("keys not shown here"). A literal byte-diff can never match
+;; this convention (verified live before choosing this design: the
+;; real `gate fhir` output for the fixture the fence documents is a
+;; single line with :engine/:native-ref present, the fence's own text
+;; is neither single-line nor missing those keys, it elides them).
+;; "normalize only what quickstart-demo already normalizes" (the
+;; charter's own words) turned out to have an empty base to inherit --
+;; quickstart-demo asserts only exit codes, no output-text comparison
+;; at all -- so this fn's own elision-tolerant subset match is a new,
+;; disclosed design rather than an inherited one: every value the
+;; fence's own text states must be present and equal in the real
+;; captured output; extra real fields (whatever the fence's own
+;; trailing "..." elides) are always allowed; vectors must match in
+;; length and element-wise (an omitted or extra element is real
+;; content drift, not elision).
+
+(defn- strip-ellipsis-markers
+  "README.md's own fenced-output convention marks an elided map tail
+  with a literal `, ...` (or ` ...`) immediately before the closing
+  `}`/`]` -- not valid EDN on its own. Stripped so the remainder reads
+  as plain EDN; the elision itself needs no further tracking, because
+  `subset-match?` below always tolerates extra map keys everywhere,
+  not only at a `...` site."
+  [text]
+  (str/replace text #",?\s*\.\.\.\s*(?=[}\]])" ""))
+
+(defn parse-elided-edn
+  "Reads `lines` (a fenced output block's own raw content) as EDN,
+  after stripping README.md's own `...` elision markers."
+  [lines]
+  (edn/read-string (strip-ellipsis-markers (str/join "\n" lines))))
+
+(defn subset-match?
+  "true if every value `expected` states is present and equal in
+  `actual`, recursively. Maps: every key in `expected` must exist in
+  `actual` with a recursively-matching value; extra keys in `actual`
+  are always allowed (README.md's own fence documents \"at least this
+  much\", never a closed set). Vectors: same length, element-wise
+  match (an omitted or extra element is real content drift the fence
+  would be wrong to gloss over, unlike an extra map key). Anything
+  else: `=`."
+  [expected actual]
+  (cond
+    (map? expected)
+    (and (map? actual)
+         (every? (fn [[k v]] (and (contains? actual k) (subset-match? v (get actual k))))
+                 expected))
+
+    (vector? expected)
+    (and (vector? actual)
+         (= (count expected) (count actual))
+         (every? true? (map subset-match? expected actual)))
+
+    :else
+    (= expected actual)))
+
+(defn paired-output-check!
+  "-X-invokable (`clojure -X:dev ehrt.docs-tooling.strip-fresh/paired-
+  output-check!`): compares the `pair-index`'th (0-based) paired
+  output fence extracted live from `source` (`fence-lang` fences)
+  against the real captured stdout in `actual-file` -- an elision-
+  tolerant subset match, per this namespace's own header comment
+  above. Prints OK/FAIL with both sides shown on failure; exits 0/1.
+  bin/readme-what-you-get's own per-pair runtime check, run AFTER its
+  own `expect`-asserted exit codes, against real freshly captured
+  output, never a canned fixture."
+  [{:keys [source fence-lang pair-index actual-file]}]
+  (let [pairs (vec (filter :output-lines (command-output-pairs source fence-lang)))
+        {:keys [output-lines]} (get pairs pair-index)
+        expected (parse-elided-edn output-lines)
+        actual (edn/read-string (slurp actual-file))]
+    (if (subset-match? expected actual)
+      (do (println (str "OK: pair " pair-index
+                         " -- real captured output matches " source
+                         "'s own expected fence (subset match, extra fields allowed)"))
+          (System/exit 0))
+      (do (println (str "FAIL: pair " pair-index
+                         " -- real captured output does NOT match " source "'s own expected fence"))
+          (println (str "  expected: " (pr-str expected)))
+          (println (str "  actual:   " (pr-str actual)))
+          (System/exit 1)))))

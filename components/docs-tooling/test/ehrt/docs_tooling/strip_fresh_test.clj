@@ -142,6 +142,45 @@
     (is (true? (:ok? result)) (str "divergence: " (:divergence result)))
     (is (= 21 (:readme-count result)))))
 
+;; ---- check-entry: the five new rows, live, once their own scripts
+;; land in this same commit (Step 3, ADR-0129) -- RED against these
+;; same rows was witnessed and pasted into the session record before
+;; the scripts existed (Step 2's own commit); these are the promised
+;; five new freshness test cases, co-landed with the scripts per this
+;; session's own disclosed discretion (committing a red test would
+;; break the "make test green before every push" fence) ----
+
+(defn- check-script-row
+  [script-name]
+  (let [rows (reg/load-registry)
+        row (first (filter #(= script-name (:script %)) rows))]
+    (sf/check-entry row)))
+
+(deftest check-entry-live-usecase-judge-tier-calibration-test
+  (let [result (check-script-row "bin/usecase-judge-tier-calibration")]
+    (is (true? (:ok? result)) (str "divergence: " (:divergence result)))
+    (is (= 9 (:readme-count result) (:script-count result)))))
+
+(deftest check-entry-live-usecase-profile-tier-v2-test
+  (let [result (check-script-row "bin/usecase-profile-tier-v2")]
+    (is (true? (:ok? result)) (str "divergence: " (:divergence result)))
+    (is (= 3 (:readme-count result) (:script-count result)))))
+
+(deftest check-entry-live-usecase-acceptance-qa-test
+  (let [result (check-script-row "bin/usecase-acceptance-qa")]
+    (is (true? (:ok? result)) (str "divergence: " (:divergence result)))
+    (is (= 6 (:readme-count result) (:script-count result)))))
+
+(deftest check-entry-live-usecase-regression-baselining-test
+  (let [result (check-script-row "bin/usecase-regression-baselining")]
+    (is (true? (:ok? result)) (str "divergence: " (:divergence result)))
+    (is (= 4 (:readme-count result) (:script-count result)))))
+
+(deftest check-entry-live-readme-what-you-get-test
+  (let [result (check-script-row "bin/readme-what-you-get")]
+    (is (true? (:ok? result)) (str "divergence: " (:divergence result)))
+    (is (= 6 (:readme-count result) (:script-count result)))))
+
 ;; ---- extraction against the real, live use-case pages and README --
 ;; -- proves the extraction layer alone is correct against the real
 ;; committed docs, independent of whether each row's own script exists
@@ -160,3 +199,44 @@
   (let [pairs (filter :output-lines (sf/command-output-pairs "README.md" "bash"))]
     (is (= 2 (count pairs)))
     (is (= 6 (count (mapcat :command-lines pairs))))))
+
+;; ---- paired-output comparison (bin/readme-what-you-get's own
+;; runtime check): elision-tolerant subset match ----
+
+(deftest subset-match-allows-extra-map-keys-test
+  (is (true? (sf/subset-match? {:status :ok} {:status :ok :engine {:name "x"}}))))
+
+(deftest subset-match-catches-a-changed-value-test
+  (is (false? (sf/subset-match? {:status :ok} {:status :rejected}))))
+
+(deftest subset-match-requires-exact-vector-length-test
+  (is (false? (sf/subset-match? {:findings [{:code "a"}]} {:findings []})))
+  (is (true? (sf/subset-match? {:findings [{:code "a"}]} {:findings [{:code "a" :extra 1}]}))))
+
+(deftest subset-match-recurses-into-nested-maps-test
+  (is (true? (sf/subset-match? {:payload {:totals {:pass 1}}}
+                                {:payload {:totals {:pass 1 :rejected 0}} :extra-top-key 1}))))
+
+(deftest parse-elided-edn-strips-trailing-ellipsis-test
+  (is (= {:a 1 :b {:c 2}}
+         (sf/parse-elided-edn ["{:a 1," " :b {:c 2, ...}}"]))))
+
+(deftest paired-output-check-matches-real-live-readme-fence-against-real-captured-output-test
+  (let [expected-lines (:output-lines
+                         (first (filter :output-lines (sf/command-output-pairs "README.md" "bash"))))
+        expected (sf/parse-elided-edn expected-lines)
+        real-actual {:status :ok
+                     :payload {:run {:gate :fhir :path "test-fixtures/fhir/storefront-patient.json"}
+                               :totals {:pass 1 :rejected 0 :indeterminate 0 :no-verdict 0}
+                               :by-code {"invariant" 1}
+                               :files [{:path "test-fixtures/fhir/storefront-patient.json"
+                                        :verdict :pass
+                                        :finding-count 1
+                                        :findings [{:severity :warning :code "invariant"
+                                                     :locator {:format :fhir :path "Bundle.entry[0].resource"}
+                                                     :message "Constraint failed: dom-6: 'A resource should have narrative for robust management' (defined in http://hl7.org/fhir/StructureDefinition/DomainResource) (Best Practice Recommendation)"
+                                                     :engine {:name "fhir-validator-cli" :version "6.9.12"}
+                                                     :disposition :pass
+                                                     :native-ref {:expression ["Bundle.entry[0].resource/*Patient/storefront-patient*/"]}}]}]}}]
+    (is (true? (sf/subset-match? expected real-actual))
+        "the real gate-fhir run's own captured output (this session's own live invocation) must satisfy README.md's own first What-you-get fence")))

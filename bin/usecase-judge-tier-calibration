@@ -1,0 +1,66 @@
+#!/usr/bin/env bash
+# Runs docs/use-cases/judge-tier-calibration-studies.md's own ```sh
+# fence, verbatim, under per-step exit-code assertions (ADR-0129,
+# manual-review dimension 1: this use-case page is cited by
+# docs/manual/07-judging.md but, before this script, nothing re-ran it
+# against the live tree). Mirrors bin/quickstart-demo's own shape
+# (ADR-0004, R23).
+#
+# The block between the BEGIN/END markers is read by
+# `ehrt.docs-tooling.strip-fresh` (via the exercised-sources register,
+# components/docs-tooling/resources/docs-tooling/exercised-sources.edn)
+# to prove this script and the use-case page's own fence teach the
+# identical commands, in the identical order. Keep every taught line
+# inside that block, one statement per fence command, and do not
+# "improve" a command here -- an improvement belongs in the use-case
+# page first (AUTHORS-GUIDE.md sec7's craft discipline). Integration-
+# tier only (`make integration`), never per-push CI.
+set -uo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)" || exit 2
+cd -- "$repo_root" || exit 2
+
+fail() {
+  echo "FAIL: $1" >&2
+  exit 1
+}
+
+expect() {
+  local want="$1"; shift
+  "$@"
+  local got=$?
+  if [ "$got" -ne "$want" ]; then
+    fail "'$*' exited $got, expected $want"
+  fi
+}
+
+echo "== usecase-judge-tier-calibration: docs/use-cases/judge-tier-calibration-studies.md, verbatim, asserted =="
+
+# Script-only apparatus, not a taught line: safely re-runnable.
+rm -rf out/calibration
+
+# BEGIN judge-tier-calibration commands (verbatim from docs/use-cases/judge-tier-calibration-studies.md)
+expect 0 bin/ehrt corpus operators --format v2
+
+expect 0 bin/ehrt gate v2 test-fixtures/v2/adt-a01-admit.hl7 \
+  --report out/calibration/before.edn
+
+expect 0 bin/ehrt corpus mutate --path test-fixtures/v2/adt-a01-admit.hl7 \
+  --operator-id blank-required-field --locator-path MSH-9 \
+  --out-dir out/calibration/blank-required-field
+
+expect 1 bin/ehrt gate v2 out/calibration/blank-required-field \
+  --report out/calibration/after.edn
+
+expect 0 cat out/calibration/before.edn out/calibration/after.edn
+# END judge-tier-calibration commands
+
+# Tree-clean postcondition (ADR-0005): every write path above lands
+# under the gitignored /out/.
+dirty="$(git status --porcelain)"
+if [ -n "$dirty" ]; then
+  fail "tree not clean after a full run (ADR-0005 postcondition violated):
+$dirty"
+fi
+
+echo "== usecase-judge-tier-calibration: every command asserted, tree clean =="

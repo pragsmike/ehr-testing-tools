@@ -43,6 +43,11 @@ test:
 integration:
 	clojure -M:poly test :all project:integration
 	bin/demo-exerciser-ed-tuesday
+	bin/usecase-judge-tier-calibration
+	bin/usecase-profile-tier-v2
+	bin/usecase-acceptance-qa
+	bin/usecase-regression-baselining
+	bin/readme-what-you-get
 
 quickstart:
 	bin/quickstart-demo
