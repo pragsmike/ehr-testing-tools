@@ -41,10 +41,19 @@
 ;; commands (ADR-0129 Q2(a): env-var placeholders are the sanctioned
 ;; strip parameterization). Empty for every row whose source needs no
 ;; substitution.
+;;
+;; :section (optional) disambiguates a :source with MORE THAN ONE row
+;; -- README.md alone, whose Quickstart fence and "What you get"
+;; section are two unrelated citable sections, each its own row. The
+;; citation gate's own coverage check only requires a section match
+;; when a :source has multiple rows (README.md's own two); every
+;; other :source here has exactly one row, so its own :section, if
+;; present, is documentation only, never load-bearing for coverage.
 
 [{:source "README.md"
   :script "bin/quickstart-demo"
   :extraction :quickstart-fresh
+  :section "Quickstart"
   :marker-open "# BEGIN quickstart commands (verbatim from README.md's Quickstart fence)"
   :marker-close "# END quickstart commands"
   :env {}
@@ -97,6 +106,7 @@
  {:source "README.md"
   :script "bin/readme-what-you-get"
   :extraction :paired
+  :section "What you get"
   :fence-lang "bash"
   :marker-open "# BEGIN what-you-get commands (verbatim from README.md's What you get section)"
   :marker-close "# END what-you-get commands"

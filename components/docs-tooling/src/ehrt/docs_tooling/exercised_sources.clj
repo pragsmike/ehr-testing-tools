@@ -30,6 +30,7 @@
    [:marker-open [:string {:min 1}]]
    [:marker-close [:string {:min 1}]]
    [:fence-lang {:optional true} [:string {:min 1}]]
+   [:section {:optional true} [:string {:min 1}]]
    [:env [:map-of :string :string]]
    [:witness [:map [:adr :string] [:date :string]]]])
 
