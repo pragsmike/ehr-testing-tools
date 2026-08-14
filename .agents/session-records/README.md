@@ -203,3 +203,4 @@ Files in this directory:
   * 2026-08-13-ceremony-scripts-hardening.md — Agent-facing hardening -- ADR-0127 addendum, anti-fabrication tripwire, Step-0 receipts
   * 2026-08-13-strip-executability.md — Strip executability: exercisers, citation gate, ADR-0127 erratum (ADR-0129)
   * 2026-08-14-busy-tuesday-exerciser-deferred.md — Busy-tuesday exerciser: marker widening landed, row deferred on slug EDN round-trip defect (ADR-0130)
+  * 2026-08-14-slug-edn-round-trip.md — Slug EDN round-trip fix + module-load injectivity guard (ADR-0131)

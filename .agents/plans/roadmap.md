@@ -651,44 +651,81 @@ per item; done items move to the bottom of their section with a date and sha.
   (not a silent pure-identity assumption) if any root's own digest is
   predicted or confirmed to move.
 
-  **IN PROGRESS 2026-08-14 (ADR-0131), Step 1 of 5 landed (docs-only,
-  the declared-oracle-change prediction).** Both defect censuses
-  re-derived across all 66 module JSONs (recursive — 35 of the 66 live
-  in subdirectories the flat top-level glob alone misses): defect 1
+  **CLOSED 2026-08-14 (ADR-0131).** Both defect censuses re-derived
+  across all 66 module JSONs (recursive — 35 of the 66 live in
+  subdirectories the flat top-level glob alone misses): defect 1
   (illegal EDN chars) 10 breaker keys/3 modules, EXACT match to the
   channel's own pre-probe; defect 2 (collisions, unchanged by this
   fix) 10 pairs across **5** distinct modules — the pre-probe's own "8
   modules" figure was WRONG, disclosed as a found discrepancy, not a
-  live-tree finding (`notes/adr/0131-*.md` has both tables). Movement
-  predicted per-root, empirically (grepped against the pre-fix oracle
-  digest, not just structurally): 3 roots MOVE
+  live-tree finding. `slug` (Q1(a)) now folds comma plus the reader's
+  own thirteen terminating-macro characters, empirically derived
+  against `clojure.edn/read-string` itself; a module-load injectivity
+  guard (Q2(b), WARN-mode) warns per collision, naming module/folded-
+  key/raw-names, load proceeding. Movement predicted per-root
+  empirically (grepped against the pre-fix oracle digest, not just
+  structurally) and confirmed EXACT by the official `bin/regression-
+  oracle` bracket after the fix landed: 3 roots MOVED
   (`urinary-tract-infections-engine`/`-history-engine`, `injuries`); 1
-  root (`veteran-lung-cancer`) structurally contains a breaker module
-  but its own breaker states are grep-confirmed UNREACHED at that
-  root's seed/population — predicted NOT to move; 4 more roots plus
-  `injuries` again will WARN at load (collision guard) but are
-  predicted NOT to move (warnings are a console side effect, never
-  part of `digest.clj`'s own captured return value); 27 of 35 roots
-  untouched by either census. Full tables and the fold-set's own
-  empirical derivation (round-trip-tested character-by-character
-  against `clojure.edn/read-string`, not hand-recalled from the reader
-  grammar) in `notes/adr/0131-slug-edn-round-trip.md`. Steps 2-5 (red
-  witness, the fix, oracle verdict, records/close) remain — this row
-  stays OPEN until Step 5 closes it.
+  root (`veteran-lung-cancer`) structurally contained a breaker module
+  but its own breaker states were grep-confirmed UNREACHED at that
+  root's seed/population, correctly predicted NOT to move (byte-
+  identical, confirmed); 4 more roots plus `injuries` again WARNED at
+  load with zero byte movement (also confirmed); 27 of 35 roots
+  untouched by either census. Red-before-green: a generative property
+  test (round-trip law + fold idempotence) and a guard test, both
+  witnessed RED against pre-fix code, both GREEN after the fix (75
+  tests, 220 assertions). Full `make test` green throughout (632 "0
+  failures, 0 errors" blocks, no other test moved). Acceptance:
+  busy-tuesday regenerated (seed 20260807, 200 patients) — the
+  README's own second command (`--board`) reproduced ADR-0130's exact
+  witnessed figures (`68/48/41`, `inpatients: 0` throughout) byte-for-
+  byte; the README's own THIRD command — the one that failed in
+  ADR-0130 with `:play-input-unreadable` — now completes for the first
+  time ever (`{:emitted 367, :skip-count 49, :unparseable-count 0}`, a
+  new first-witnessed figure, not a regression baseline). Zero module
+  JSONs edited (vendored verbatim, ADR-0071 precedent); zero README/
+  figure edits. Full account, both census tables, and the
+  prediction-vs-actual table in `notes/adr/0131-slug-edn-round-trip.md`.
+- **Vendoring rider: per-pair collision corrections, 5 modules** (new
+  row, ADR-0131, AR-VB2-R form — a rider attached to a vendoring
+  session's own standing ceremony, ADR-0071's own precedent for this
+  shape). ADR-0131's own re-derived census found 5 already-vendored
+  modules whose own raw state names collide under `slug`
+  (`colorectal_cancer.json`, `hypothyroidism.json`, `injuries.json`,
+  `sleep_apnea.json`, `veteran_ptsd.json`, 10 pairs total) — the
+  module-load guard (WARN-mode, ADR-0131 Q2(b)) now announces these
+  loudly, but the underlying content gap stands: whichever raw name
+  the JSON parser processes last silently wins, and the OTHER named
+  state's own clinical content is unreachable in the compiled module
+  (`sleep_apnea.json`'s own `Home CPAP Unit`/`Home_CPAP_Unit` are
+  DISTINCT Device states with different transition structures, each
+  referenced twice — one is currently dropped). A future vendoring
+  session, per-pair, per-module: read the upstream pin's own two
+  colliding states, determine whether they are genuinely the SAME
+  clinical content authored twice (rename one to disambiguate, no
+  content change) or genuinely DIFFERENT content sharing one name by
+  upstream accident (a real compiled-shape decision, oracle-declaring
+  whichever roots move). **Triggers the guard's own escalation from
+  WARN to hard-error** (ADR-0131's own `handle-state-name-collision!`
+  is structured for this as a mode switch, not a rewrite) — once every
+  currently-known collision has its own per-pair correction landed, a
+  hard-error default no longer breaks any already-vendored module.
 - **Scenario rename + busy-tuesday exerciser completion** (new row,
-  ADR-0130; sequenced AFTER the row above — cannot land until
-  `events.edn` read-back is fixed for this scenario's own module mix).
-  Resumes the busy-tuesday exerciser work this session drafted (a
-  working `bin/demo-exerciser-busy-tuesday`, its own register row using
-  the widened `:demo-exerciser-fresh` marker mechanism, `Makefile`
-  wiring) once the slug defect above no longer blocks the README's own
-  third fenced command. **The scenario's own future name is an OPEN
-  question for the author** — ruled explicitly left open rather than
-  assumed "busy-tuesday" stays as-is; this row's own title uses a
-  placeholder pending that ruling. This session's own drafted script
-  (never committed; full text recoverable from this session's own
-  prompt archive and `notes/adr/0130-*.md`) is the worked starting
-  point, not a design redo.
+  ADR-0130; UNBLOCKED 2026-08-14 — ADR-0131 fixed `events.edn`
+  read-back for this scenario's own module mix, the blocker this row
+  was sequenced behind). Resumes the busy-tuesday exerciser work
+  ADR-0130's own session drafted (a working `bin/demo-exerciser-busy-
+  tuesday`, its own register row using the widened `:demo-exerciser-
+  fresh` marker mechanism, `Makefile` wiring) — the README's own third
+  fenced command now completes (ADR-0131), so nothing else blocks this
+  row. **The scenario's own future name is an OPEN question for the
+  author** — ruled explicitly left open rather than assumed
+  "busy-tuesday" stays as-is; this row's own title uses a placeholder
+  pending that ruling. ADR-0130's own drafted script (never committed;
+  full text recoverable from that session's own prompt archive and
+  `notes/adr/0130-*.md`) is the worked starting point, not a design
+  redo.
 - **Audience register paring** (ADR-0113 R4; a small future docs
   session, not chartered). Author "Q1 a": the audience register in
   `docs/dev/AUDIENCES.md` pares to five behavioral segments --
@@ -1224,3 +1261,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-13 — medication-end-pre-horizon-invariant-fix — ADR-0123
 - 2026-08-13 — manual-s4-mutate-and-gate — ADR-0124
 - 2026-08-13 — manual-s5-chapter8-review-close — ADR-0125
+- 2026-08-14 — slug-edn-round-trip — ADR-0131

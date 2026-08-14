@@ -1265,3 +1265,28 @@ rulings restated verbatim from this session's own chat exchange)
   preserved verbatim in that record's Appendix for direct recovery);
   two new `.agents/plans/roadmap.md` Next-section rows chartered as
   ruled.
+
+## From ADR-0131 (slug EDN round-trip fix + module-load injectivity
+guard; ruled 2026-08-13, restated verbatim from the driving prompt's
+own "Author rulings in effect" section)
+
+- **Q1, sanitization scope, ruled (a)** [A, 2026-08-13, "Q1 a."]:
+  sanitization = fold exactly the non-EDN-keyword-legal characters to
+  `-`, collapse runs, trim edge hyphens. EDN legality defines the fold
+  set; nothing more. Executed exactly as ruled — the fold set
+  (empirically derived against `clojure.edn/read-string` itself, not
+  hand-recalled from the reader grammar) is comma plus the reader's
+  own thirteen terminating-macro characters, joining the pre-existing
+  `_`/whitespace fold; `?` `'` `&` `%` `#` `$` `=` `<` `>` `*` `+` `!`
+  `.` `-` all confirmed legal and left untouched.
+- **Q2, collision guard mode, ruled (b)** [A, 2026-08-13, "Q2 b."]:
+  injectivity guard lands WARN-mode — loud per-collision warning at
+  module load, load proceeds; escalation to hard-error is chartered
+  into the new rider row, triggered by that row's per-pair module
+  corrections landing. Module JSONs are NOT edited this session
+  (vendored verbatim, ADR-0071). Executed exactly as ruled — the
+  guard warns to `*err*` naming module/folded-key/raw-names, never
+  affects `load-module`'s own return value; the new vendoring-rider
+  row (`.agents/plans/roadmap.md`) charters the escalation as this
+  session's own `handle-state-name-collision!` single call site, a
+  mode switch, not a rewrite.

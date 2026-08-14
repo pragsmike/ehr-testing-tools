@@ -1,5 +1,48 @@
 # State of the project — continuity register
 
+**CITATION-ONLY update, 2026-08-14, slug EDN round-trip fix + module-
+load injectivity guard (`notes/adr/0131-slug-edn-round-trip.md`) —
+this citation moves here from ADR-0130, CONTENT NOT RE-PROBED.** Not
+an arc close (this session's own naming convention), so
+`state_staleness_tripwire_test.clj`'s own regex is untouched by this
+update. Recorded here anyway, in the same append-only citation-only
+spirit as the entries below. Landed: `ehrt.sim-trajectory.gmf/slug`
+(Q1(a)) now folds comma plus the reader's own thirteen terminating-
+macro characters, alongside the pre-existing `_`/whitespace fold —
+empirically derived against `clojure.edn/read-string` itself, not
+hand-recalled from the reader grammar — restoring the emit-composed-
+with-read identity law ADR-0130 found violated
+(`uti/abx_tx.json`'s own comma-bearing state names); a module-load
+injectivity guard (Q2(b), WARN-mode) warns to `*err*` per collision
+group, naming the module, folded key, and every raw name, load
+proceeding — escalation to hard-error chartered to a future rider
+session as a mode switch, not a rewrite. Both defect censuses
+re-derived across all 66 module JSONs (recursive): defect 1 (10
+breaker keys/3 modules) matched the channel's own pre-probe exactly;
+defect 2 (10 collision pairs) matched the pair count but found the
+pre-probe's own "8 modules" figure wrong (actual 5, disclosed).
+Declared-oracle-change prediction recorded BEFORE the fix, then
+matched EXACTLY by the official `bin/regression-oracle` bracket: 3
+roots moved (`urinary-tract-infections-engine`/`-history-engine`,
+`injuries`), `veteran-lung-cancer` structurally contained a breaker
+module but its own breaker states were grep-confirmed unreached at
+that root's seed/population and correctly predicted NOT to move, 4
+more roots plus `injuries` warned with zero byte movement, the
+remaining 27 roots untouched. Acceptance: busy-tuesday regenerated
+(seed 20260807, 200 patients), the README's own second command
+(`--board`) reproduced ADR-0130's exact witnessed figures (`68/48/41`,
+`inpatients: 0` throughout) byte-for-byte, and the README's own THIRD
+command — the one that failed in ADR-0130 with `:play-input-
+unreadable` — now completes for the first time ever. Full `make test`:
+green (632 "0 failures, 0 errors" blocks, matching this session's own
+pre-fix baseline, no other test moved). Zero module JSONs edited
+(vendored verbatim, ADR-0071 precedent); zero README/figure edits.
+Every section below still reflects its LAST full regeneration,
+2026-08-08 against tip `a9c3abf` — twenty-four ADRs' worth of landings
+since (0090 through 0131, excluding citation-only entries) are NOT
+reflected below and every `[V]` tag below should be read accordingly;
+a full regeneration is still owed at a session that rules it.
+
 **CITATION-ONLY update, 2026-08-14, busy-tuesday exerciser: marker
 widening landed, row deferred on a real slug EDN round-trip defect
 (`notes/adr/0130-busy-tuesday-exerciser-deferred.md`) — this citation
