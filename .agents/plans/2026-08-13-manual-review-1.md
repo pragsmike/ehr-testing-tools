@@ -73,3 +73,51 @@ this run. Fixing either gap (widening the exerciser/lint mechanism to
 cover use-cases pages and README's second fence; adding glossary links
 across Chapters 1, 3-7) is a future session's own charter, pending the
 author's ruling this STOP requests.
+
+## Dimension 1 re-run (2026-08-13, ADR-0129)
+
+Per the roadmap row's own revisit trigger, "(a) extends the
+exerciser/lint mechanism to cover `docs/use-cases/*.md` pages and
+README's second fence" — executed this session, dimension 1 alone
+re-scored against the finished tree.
+
+**PASS.** All three "neither" rows now resolve to a real,
+end-to-end-executed exerciser, tracked by a new, committed register
+(`components/docs-tooling/resources/docs-tooling/
+exercised-sources.edn`, `ehrt.docs-tooling.exercised-sources`):
+
+| Chapter | Strip source(s) | Coverage now |
+|---|---|---|
+| 06 | `README.md`, "What you get" (`06-breaking-data-on-purpose.md:173,176`) | `bin/readme-what-you-get`, register row `:source "README.md" :section "What you get"` (`exercised-sources.edn:106-114`) — executed end-to-end this session, both command/output pairs matched (`OK: pair 0`/`OK: pair 1`, this session's own real run) |
+| 07 | `docs/use-cases/judge-tier-calibration-studies.md` (`07-judging.md:155`) | `bin/usecase-judge-tier-calibration` (`exercised-sources.edn:70-77`) — executed end-to-end this session, exit codes and before/after totals matched the use case's own stated result byte-for-byte |
+| 07 | `docs/use-cases/profile-tier-hl7v2-conformance-gating.md` (`07-judging.md:154`) | `bin/usecase-profile-tier-v2` (`exercised-sources.edn:79-86`) — executed end-to-end this session, exit 3/`:no-verdict` matched |
+| 08 | `docs/use-cases/acceptance-qa-of-vendor-corpora.md` (`08-your-own-data.md:187`) | `bin/usecase-acceptance-qa` (`exercised-sources.edn:88-95`) — executed end-to-end this session |
+| 08 | `docs/use-cases/regression-baselining.md` (`08-your-own-data.md:189`) | `bin/usecase-regression-baselining` (`exercised-sources.edn:97-104`) — executed end-to-end this session, "both runs exit 0" confirmed |
+| 08 | `README.md` Quickstart (`08-your-own-data.md:188`) | already Quickstart-covered, unchanged |
+
+All five new scripts wired into `Makefile`'s `integration:` target
+(`Makefile:43-50`); `make integration` run once, clean tree, all five
+plus `bin/demo-exerciser-ed-tuesday` green, real artifacts, no canned
+fixtures (session record, Step 3 and the final close-out section carry
+the full tails).
+
+**The mechanism, not just this run.** A citation gate
+(`ehrt.docs-tooling.citation-gate`, `ehrt.docs-tooling.citation-gate-
+test/committed-manual-is-fully-covered-test`) now enforces
+cited-implies-exercised going forward: every "Strip source citations"
+table entry across `docs/manual/0*.md` that names a citable doc path
+must resolve to a register row (14 real citations found, all 14
+resolve, live and green). Red witnessed against a simulated
+pre-session register (the two rows that existed before this session):
+4 of 5 real gaps surfaced mechanically; the 5th (Chapter 6) needed
+`:section`-aware disambiguation, proven correct on a synthetic
+two-row fixture rather than the pre-session simulation alone (a
+disclosed limitation of that specific reconstruction, not of the live
+gate — see the session record, Step 4).
+
+Dimensions 2-3, 6-8 were not re-run this session (dimension 4's own
+targeted re-run already closed it, ADR-0126). Overall verdict for
+this run's own original eight-dimension pass is superseded by two
+independent targeted re-runs (dimension 4, ADR-0126; dimension 1,
+here) — both now PASS. Full account: `notes/adr/
+0129-strip-executability.md`.

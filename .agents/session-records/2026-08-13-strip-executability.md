@@ -412,4 +412,84 @@ git --staged -v`: clean. `git diff --cached --stat` before commit:
 exactly the four fenced files. Pushed; `bin/post-push-verify 4bd7a17
 HEAD`: remote tip matched (`35bad55`), ASCII clean, CI queued/pending.
 
-(Step 5 recorded below as the session proceeds.)
+## `make integration`, second attempt (after commit 4): also a tree-
+## clean false positive
+
+Ran against a tree carrying an uncommitted session-record edit made
+WHILE the run was still executing (the Step 4 write-up above, edited
+mid-run). Same class of false positive as the first attempt (and
+ADR-0120's own precedent): `bin/demo-exerciser-ed-tuesday`'s own
+tree-clean postcondition was the only failure, at the very end, after
+every real invariant up to that point held. Fixed by committing the
+session-record checkpoint (`cd82421`) BEFORE the third attempt, and by
+not touching the working tree again until that attempt finished.
+
+## `make integration`, third attempt: GREEN, genuinely clean tree
+
+Ran with nothing outstanding in the working tree (`git status
+--porcelain` empty immediately before launch, and untouched for the
+run's own ~9-minute duration). Every project's own test suite passed
+(`clojure -M:poly test :all project:integration`), then
+`bin/demo-exerciser-ed-tuesday` and all five new scripts ran in
+Makefile order, each against real artifacts:
+
+```
+== usecase-judge-tier-calibration: every command asserted, tree clean ==
+== usecase-profile-tier-v2: every command asserted ==
+== usecase-acceptance-qa: every command asserted, tree clean ==
+== usecase-regression-baselining: every command asserted, tree clean ==
+== readme-what-you-get: checking each pair's own expected output ==
+OK: pair 0 -- real captured output matches README.md's own expected fence (subset match, extra fields allowed)
+OK: pair 1 -- real captured output matches README.md's own expected fence (subset match, extra fields allowed)
+== readme-what-you-get: every command asserted, both pairs matched, tree clean ==
+```
+
+Task exit code 0 for the whole `make integration` invocation. This is
+the run the driving prompt's own fence licenses "once after commit
+3" -- landed later than commit 3 in wall-clock time only because of
+this session's own two false-positive attempts (both fully disclosed
+above), never because any real invariant failed. The second, separate
+"once at close" run is recorded below, after commit 5.
+
+## Step 5 -- Re-score, records, close, commit `<filled in below>`
+
+**Targeted dimension-1-only manual-review re-run: PASS.** Full
+file:line evidence appended directly to `.agents/plans/
+2026-08-13-manual-review-1.md`'s own "Dimension 1 re-run (2026-08-13,
+ADR-0129)" section (per this session's own explicit fence license, in
+addition to the ADR's own narrative -- the fence permits editing that
+file for exactly this append). All three original "neither" rows
+(Chapter 6's README.md "What you get"; Chapter 7's two docs/use-cases
+citations; Chapter 8's acceptance-qa/regression-baselining citations)
+now resolve to a real, end-to-end-executed exerciser tracked by the
+new register. The manual arc reaches its first all-dimensions-
+addressed state: dimension 4 (ADR-0126) and dimension 1 (here) both
+CLOSED; dimensions 2, 3, 6, 7, 8 passed at the original run (ADR-0125)
+and were never regressed by any session since.
+
+**Records landed this checkpoint:**
+
+- `notes/adr/0129-strip-executability.md` -- full session account,
+  matching this record's own narrative.
+- `notes/ADRs.md` -- new ADR-0129 index line.
+- `.agents/rulings.md` -- new "From ADR-0129" section, all four
+  driving-prompt rulings restated verbatim, each tagged `[A]`.
+- `.agents/state.md` -- CITATION-ONLY update, matching ADR-0127's/
+  ADR-0128's own precedent (this session is not an arc-close file, so
+  `state_staleness_tripwire_test` stays untouched by this update).
+- `.agents/plans/roadmap.md` -- dimension-1 row rewritten CLOSED
+  (matching dimension-4's own CLOSED convention exactly); the
+  busy-tuesday demo-exerciser row gains a note that the new register
+  mechanism is now the natural home for a future busy-tuesday row
+  (data, not new code).
+- `.agents/plans/2026-08-13-manual-review-1.md` -- dimension-1
+  re-score section appended (above).
+- This file and its own paired prompt archive (`.agents/prompts/
+  2026-08-13-strip-executability.md`) -- both already landed early,
+  per the Step-0-receipts practice; `bin/close-scaffold --expect-tag
+  stable-20260813-hardening@56613c75c35bd1de5e9a66fb57edd84848196a6b
+  2026-08-13 strip-executability "..."` re-run at this point as the
+  session's own close-phase mechanical check: `OK: --expect-tag ...
+  verified locally and on remote`, both stub-creation and index-line
+  steps reported `SKIP` (already present), confirming nothing was
+  missed.

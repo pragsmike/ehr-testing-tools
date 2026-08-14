@@ -1188,3 +1188,38 @@ tripwire, Step-0 receipts; ruled 2026-08-13)
   dated addendum) lands as a dated fix-forward addendum to ADR-0127,
   matching `notes/adr/0121-*.md`'s own erratum form exactly, rather
   than a silent edit to ADR-0127's existing text.
+
+## From ADR-0129 (strip executability: exercisers, citation gate,
+ADR-0127 erratum; ruled 2026-08-13, restated verbatim from this
+session's own driving prompt)
+
+- **Dim-1 fix design** [A, 2026-08-13, "Q1 a. Q2 a. Q3 a. Q4 a."]:
+  Q1(a) per-source scripts — five new `bin/` exercisers on the proven
+  pattern, PLUS a citation gate; Q2(a) env-var placeholders are the
+  sanctioned strip parameterization, exercisers bind fixtures; Q3(a)
+  exercise exactly the five cited sources, the gate enforces
+  cited-implies-exercised for the future; Q4(a) What-you-get
+  extraction pairs command fences with adjacent expected-output fences
+  and compares output. Executed this session: five `bin/` exercisers,
+  the exercised-sources register, `ehrt.docs-tooling.citation-gate`,
+  and `ehrt.docs-tooling.strip-fresh`'s own elision-tolerant
+  subset-match comparison for the paired case.
+- **1170 erratum** [A, 2026-08-13, "Do b"]: a dated erratum appended
+  to `notes/adr/0127-*.md` — Step 3's `:sim` 1170/1295 figure was
+  arithmetically wrong when recorded, true 1293/1295; budget
+  re-derived to 1495, ADR-0128. Executed this session,
+  `notes/adr/0127-*.md`'s own new dated erratum section.
+- **Standing directive, restated** [A, 2026-08-13, verbatim, originally
+  ruled ADR-0128]: *"let's always look for opportunities to improve
+  the agent-facing parts."* Applied this session via the citation
+  gate's own actionable failure messages (naming the offending
+  chapter, cited source, and register path) and the session record's
+  own disclosure of two real bugs caught live (the citation-table
+  state machine, the source-only coverage gap) rather than silently
+  fixed and unmentioned.
+- **Tag license, executed** [A, 2026-08-13, restated from the design
+  channel's own fresh-clone CI verification of the ADR-0128 landing —
+  four commits, ASCII, lineage, CI green on all four]: tag
+  `stable-20260813-hardening` at `56613c7`, instructed at this
+  session's own Step 0; created, pushed, and peeled-ref-verified this
+  session.

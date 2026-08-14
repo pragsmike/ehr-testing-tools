@@ -1,5 +1,32 @@
 # State of the project — continuity register
 
+**CITATION-ONLY update, 2026-08-13, strip executability: exercisers,
+citation gate, ADR-0127 erratum (`notes/adr/0129-strip-
+executability.md`) — this citation moves here from ADR-0128, CONTENT
+NOT RE-PROBED.** Not an arc close (this session's own naming
+convention), so `state_staleness_tripwire_test.clj`'s own regex is
+untouched by this update. Recorded here anyway, in the same
+append-only citation-only spirit as the entries below. Landed: five
+new `bin/` strip exercisers (`usecase-judge-tier-calibration`,
+`usecase-profile-tier-v2`, `usecase-acceptance-qa`, `usecase-
+regression-baselining`, `readme-what-you-get`), each executed
+end-to-end this session against real artifacts, wired into `make
+integration`; a new `ehrt.docs-tooling.exercised-sources` registry and
+`ehrt.docs-tooling.strip-fresh`'s two new extraction shapes; a new
+`ehrt.docs-tooling.citation-gate` enforcing cited-implies-exercised
+for every `docs/manual/0*.md` "Strip source citations" table entry
+going forward; a dated erratum to `notes/adr/0127-*.md` (the wrong
+`:sim` 1170/1295 figure, true 1293/1295); closes manual-review
+dimension 1 (strip executability, FAIL -> PASS), the manual arc's
+first all-dimensions-addressed state. Zero `docs/manual` prose/
+`README.md`/`demos/` touched; `test-fixtures/` untouched (`acceptance-
+qa` binds the already-committed `test-fixtures/v2`). Every section
+below still reflects its LAST full regeneration, 2026-08-08 against
+tip `a9c3abf` — twenty-two ADRs' worth of landings since (0090 through
+0129, excluding citation-only entries) are NOT reflected below and
+every `[V]` tag below should be read accordingly; a full regeneration
+is still owed at a session that rules it.
+
 **CITATION-ONLY update, 2026-08-13, agent-facing hardening: ADR-0127
 addendum, anti-fabrication tripwire, Step-0 receipts (`notes/adr/
 0128-agent-facing-hardening-2.md`) — this citation moves here from

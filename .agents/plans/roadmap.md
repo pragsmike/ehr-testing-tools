@@ -364,26 +364,32 @@ per item; done items move to the bottom of their section with a date and sha.
   point (`a884967`). Zero `src`/`test` touched; `bin/close-scaffold`
   the only pre-existing script edited, mode unchanged. Full account in
   `notes/adr/0128-agent-facing-hardening-2.md`.
-- **Manual-review run 1, dimension 1 (strip executability) — FAIL,
-  open, NOW FRONT OF QUEUE** (2026-08-13, ADR-0125, `.agents/plans/2026-08-13-manual-review-1.md`;
-  sequencing restated 2026-08-13, ADR-0128, author-ruled "a" — the
-  agent-facing hardening bundle above lands first, ahead of this
-  charter):
-  Chapters 6, 7, and 2 of 3 strips in Chapter 8 cite a
-  `docs/use-cases/*.md` page or README's own separate "What you get"
-  fence — neither covered by `bin/demo-exerciser-ed-tuesday` /
-  `ehrt.docs-tooling.demo-exerciser-fresh` nor by `bin/quickstart-demo` /
-  `ehrt.docs-tooling.quickstart-fresh-test`. Nothing mechanical re-runs
-  these strips between sessions; only a session that happens to touch
-  that chapter re-witnesses them by hand. Findings-only per review
-  discipline — no chapter edited, no mechanism widened, this session.
-  Revisit trigger: a future session that either (a) extends the
-  exerciser/lint mechanism to cover `docs/use-cases/*.md` pages and
-  README's second fence, or (b) rules that per-session manual
-  re-witnessing is the accepted permanent policy and this dimension's
-  own bar in `.agents/skills/manual-review/SKILL.md` should narrow to
-  match — a genuine design choice for the author, not mechanical
-  follow-through.
+- **Manual-review run 1, dimension 1 (strip executability) — CLOSED
+  2026-08-13 (ADR-0129).** Original finding (ADR-0125, `.agents/
+  plans/2026-08-13-manual-review-1.md`): Chapters 6, 7, and 2 of 3
+  strips in Chapter 8 cited a `docs/use-cases/*.md` page or README's
+  own separate "What you get" fence, neither covered by `bin/demo-
+  exerciser-ed-tuesday` nor `bin/quickstart-demo`. Fixed this session
+  via revisit-trigger (a): five new `bin/` exercisers (`usecase-judge-
+  tier-calibration`, `usecase-profile-tier-v2`, `usecase-acceptance-
+  qa`, `usecase-regression-baselining`, `readme-what-you-get`), each
+  executed end-to-end against real artifacts and wired into `make
+  integration`; a new `ehrt.docs-tooling.exercised-sources` registry
+  (seeded with the two pre-existing pairs plus the five new ones) and
+  `ehrt.docs-tooling.strip-fresh`'s two new extraction shapes generalize
+  the freshness-check pattern past its own two hardcoded predecessors;
+  a new `ehrt.docs-tooling.citation-gate` makes this a STANDING
+  mechanism, not a one-time fix — every `docs/manual/0*.md` "Strip
+  source citations" table entry must resolve to a register row or
+  `make test` fails, catching the next drift automatically rather than
+  waiting for the next manual-review run. **Targeted dimension-1-only
+  re-run: PASS** — see `notes/adr/0129-strip-executability.md` for the
+  full account, `.agents/plans/2026-08-13-manual-review-1.md`'s own
+  new "Dimension 1 re-run" section for the file:line evidence table.
+  **The manual arc's first all-dimensions-addressed state**: dimension
+  4 (ADR-0126) and dimension 1 (here) both CLOSED; dimensions 2, 3, 6,
+  7, 8 passed at the original run (ADR-0125) and were never regressed
+  by any session since.
 - **Manual-review run 1, dimension 4 (glossary linkage) — CLOSED
   2026-08-13 (ADR-0126).** Original finding (ADR-0125,
   `.agents/plans/2026-08-13-manual-review-1.md`): only Chapters 2 and 8
@@ -575,7 +581,13 @@ per item; done items move to the bottom of their section with a date and sha.
   commands and invariants (the sparse-traffic disclosure, the single
   inpatient admission) are the source this future exerciser would
   assert against. Not chartered to a session; no design work done here
-  beyond naming it.
+  beyond naming it. **Register mechanism now exists (ADR-0129,
+  `ehrt.docs-tooling.exercised-sources`)** — a future busy-tuesday
+  exerciser session would add one more :demo-exerciser-fresh-shaped
+  register row (or :multi-fence, if the extraction differs) rather
+  than inventing its own freshness-check plumbing; the register's own
+  generalized `ehrt.docs-tooling.strip-fresh/check-entry` already
+  handles a new row of this shape without any code change, only data.
 - **Audience register paring** (ADR-0113 R4; a small future docs
   session, not chartered). Author "Q1 a": the audience register in
   `docs/dev/AUDIENCES.md` pares to five behavioral segments --
