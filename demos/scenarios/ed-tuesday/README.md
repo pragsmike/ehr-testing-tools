@@ -10,10 +10,10 @@ header comment for the full design rationale (the disjoint-cohort
 shape that keeps the ambulatory module tail conflict-free, and the
 facility surge-capacity bump).
 
-**Contrast with [`../busy-tuesday/`](../busy-tuesday/README.md):**
-busy-tuesday is population-scale incidence -- twelve everyday-
+**Contrast with [`../clinic-decade/`](../clinic-decade/README.md):**
+clinic-decade is population-scale incidence -- twelve everyday-
 ambulatory modules across 200 patients and a ten-year horizon,
-genuinely sparse traffic (its own README: "most of a busy Tuesday...
+genuinely sparse traffic (its own README: "most of a clinic-decade...
 unfolds as intake and follow-up over months and years"). ed-tuesday is
 day-scale and scripted -- five weighted ED pathways (admission,
 workup, transfer, discharge) driving real inpatient census on a
@@ -67,7 +67,7 @@ intended.
 occupied beds; the census climbs through the shift to a peak of 21
 concurrent inpatients, then drains back down to 3 by the run's own
 last snapshot -- the whole point of this scenario, unlike
-busy-tuesday's own `inpatients: 0` throughout:
+clinic-decade's own `inpatients: 0` throughout:
 
 ```
 -- board snapshot: 2026-08-11T01:12:00Z --
@@ -95,7 +95,7 @@ inpatients: 3  active outpatients: 0  discharged: 84  merged: 5
 **Discharges accrue and churn fires.** `discharged` climbs from 1 to
 84 across the run; `merged` (an `InjectChurn` bed-merge event) climbs
 from 0 to 5 -- real churn traffic, the direct payoff of scripting real
-admissions for `--churn` to work with, unlike busy-tuesday's own
+admissions for `--churn` to work with, unlike clinic-decade's own
 outpatient-only mix where a merge has no admitted patient to touch.
 
 **Capacity held.** No `:capacity-exhausted` at any point in this
@@ -113,12 +113,12 @@ retuned away.** The 8 explicitly-assigned module-tail patients
 events in this run -- `active outpatients` reads 0 in every snapshot
 above. This was live-probed, not assumed: the same 8-patient tail was
 re-run at `:module-horizon-days` 14, 90 (the value actually shipped),
-and even busy-tuesday's own 3650, and produced a live encounter at
+and even clinic-decade's own 3650, and produced a live encounter at
 only ONE of those three horizons (3650 days: exactly 1 of 8). The
 mechanism is disclosed in `config.edn`'s own header comment, grounded
 in `sore_throat.json`'s own source (`Potential_Infection`'s
 monthly-Delay-gated ~0.5-1% onset probability) -- these modules are
-genuinely low-incidence per patient, the same shape busy-tuesday's own
+genuinely low-incidence per patient, the same shape clinic-decade's own
 README already discloses at population scale. A thin, low-weight tail
 at a genuinely short (day/week/month-scale) horizon is expected to
 show sparse-to-zero live content; this run's own zero is that expected

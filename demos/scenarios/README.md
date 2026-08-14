@@ -26,7 +26,7 @@ artifact.
 
 ## Contents
 
-- [`busy-tuesday/`](busy-tuesday/) — a busy weekday ED mix across the
+- [`clinic-decade/`](clinic-decade/) — a busy weekday ED mix across the
   twelve everyday-ambulatory and acute modules the vendoring arc's
   first two batches landed, a five-minute arrival gap, and a
   total-joint-replacement seed so that closure's own content lands
@@ -35,7 +35,7 @@ artifact.
 - [`ed-tuesday/`](ed-tuesday/) — a scripted single ED shift: five
   weighted admission/transfer/discharge pathways driving real
   inpatient census, plus a thin ambulatory module tail. Day-scale
-  contrast to busy-tuesday's own population-scale incidence; the "A"
+  contrast to clinic-decade's own population-scale incidence; the "A"
   half of the ED-redesign arc the author's own 2026-08-10 direction
   chartered (`notes/ADRs.md` ADR-0104, citing ADR-0103). Sibling
   config [`config-latency.edn`](ed-tuesday/config-latency.edn) plays

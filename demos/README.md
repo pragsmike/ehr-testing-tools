@@ -7,7 +7,7 @@ no other setup.
 ## Scenarios — generate and watch
 
 Runnable, population-scale configurations. Start with
-`scenarios/busy-tuesday/`: a busy weekday across twenty-odd ailments,
+`scenarios/clinic-decade/`: a busy weekday across twenty-odd ailments,
 watched on a live bed board at an hour of hospital time per minute.
 
 ## Traces — small enough to read whole

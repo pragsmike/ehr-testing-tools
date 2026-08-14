@@ -51,7 +51,7 @@
   ;; ADR-0130: was `(contains? #{:quickstart-fresh :demo-exerciser-fresh}
   ;; (:extraction %))` -- a correct proxy for "the two rows that
   ;; existed before ADR-0129" only as long as those extraction kinds
-  ;; stayed at exactly two rows total. The busy-tuesday row (ADR-0130)
+  ;; stayed at exactly two rows total. The clinic-decade row (ADR-0130)
   ;; is a legitimate third :demo-exerciser-fresh row, so the kind-based
   ;; proxy now overcounts; filtering by :script name keeps this test's
   ;; own documented intent -- the exact two ADR-0129 pre-session

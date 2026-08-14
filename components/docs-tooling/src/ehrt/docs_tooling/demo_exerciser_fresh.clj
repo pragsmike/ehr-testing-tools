@@ -104,7 +104,7 @@
   marker pair) doesn't exist yet. `marker-open`/`marker-close` default
   to bin/demo-exerciser-ed-tuesday's own pair (every call site before
   ADR-0130); ADR-0130 widens this to an explicit pair, since a second
-  demo-exerciser script (bin/demo-exerciser-busy-tuesday) needs its own,
+  demo-exerciser script (bin/demo-exerciser-clinic-decade) needs its own,
   honestly-named markers rather than sharing ed-tuesday's literal text."
   ([script-path] (script-command-lines script-path default-marker-open default-marker-close))
   ([script-path marker-open marker-close]

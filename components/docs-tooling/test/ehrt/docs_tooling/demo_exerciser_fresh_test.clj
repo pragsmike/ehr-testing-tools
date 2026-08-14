@@ -102,7 +102,7 @@
     (is (= "bin/ehrt corpus generate --typo" (:script divergence)))))
 
 ;; ---- ADR-0130: marker-open/marker-close widened to explicit params,
-;; so a SECOND demo-exerciser script (bin/demo-exerciser-busy-tuesday)
+;; so a SECOND demo-exerciser script (bin/demo-exerciser-clinic-decade)
 ;; can supply its own, honestly-named markers instead of sharing
 ;; ed-tuesday's own literal marker text. Every test above stays
 ;; unmodified and green -- these are additions, not replacements. ----
@@ -110,37 +110,37 @@
 (deftest script-command-lines-honors-a-non-ed-tuesday-marker-pair-test
   (let [script (temp-file!
                 (str "#!/usr/bin/env bash\n"
-                     "# BEGIN busy-tuesday commands (verbatim from demos/scenarios/busy-tuesday/README.md)\n"
+                     "# BEGIN clinic-decade commands (verbatim from demos/scenarios/clinic-decade/README.md)\n"
                      "expect 0 bin/ehrt corpus generate sim --seed 1 --patients 5 \\\n"
-                     "  --out-dir out/scenarios/busy-tuesday\n"
-                     "expect 0 bin/ehrt play out/scenarios/busy-tuesday --board 60\n"
-                     "# END busy-tuesday commands\n"
+                     "  --out-dir out/scenarios/clinic-decade\n"
+                     "expect 0 bin/ehrt play out/scenarios/clinic-decade --board 60\n"
+                     "# END clinic-decade commands\n"
                      "echo done\n"))]
     (is (= ["bin/ehrt corpus generate sim --seed 1 --patients 5 \\"
-            "  --out-dir out/scenarios/busy-tuesday"
-            "bin/ehrt play out/scenarios/busy-tuesday --board 60"]
+            "  --out-dir out/scenarios/clinic-decade"
+            "bin/ehrt play out/scenarios/clinic-decade --board 60"]
            (def/script-command-lines
              script
-             "# BEGIN busy-tuesday commands (verbatim from demos/scenarios/busy-tuesday/README.md)"
-             "# END busy-tuesday commands")))))
+             "# BEGIN clinic-decade commands (verbatim from demos/scenarios/clinic-decade/README.md)"
+             "# END clinic-decade commands")))))
 
 (deftest script-command-lines-default-arity-still-only-matches-ed-tuesday-markers-test
   (let [script (temp-file!
-                (str "# BEGIN busy-tuesday commands (verbatim from demos/scenarios/busy-tuesday/README.md)\n"
+                (str "# BEGIN clinic-decade commands (verbatim from demos/scenarios/clinic-decade/README.md)\n"
                      "expect 0 bin/ehrt help\n"
-                     "# END busy-tuesday commands\n"))]
+                     "# END clinic-decade commands\n"))]
     (is (nil? (def/script-command-lines script))
         "the 1-arity call still searches for ed-tuesday's own literal markers -- a script using a different marker pair correctly reports absent, not a false match")))
 
 (deftest check-honors-explicit-marker-open-and-close-test
   (let [readme (temp-file! (str "```bash\nbin/ehrt help\n```\n"))
         script (temp-file!
-                (str "# BEGIN busy-tuesday commands (verbatim from demos/scenarios/busy-tuesday/README.md)\n"
+                (str "# BEGIN clinic-decade commands (verbatim from demos/scenarios/clinic-decade/README.md)\n"
                      "expect 0 bin/ehrt help\n"
-                     "# END busy-tuesday commands\n"))
+                     "# END clinic-decade commands\n"))
         {:keys [ok? readme-count script-count]}
         (def/check {:readme-path readme :script-path script
-                     :marker-open "# BEGIN busy-tuesday commands (verbatim from demos/scenarios/busy-tuesday/README.md)"
-                     :marker-close "# END busy-tuesday commands"})]
+                     :marker-open "# BEGIN clinic-decade commands (verbatim from demos/scenarios/clinic-decade/README.md)"
+                     :marker-close "# END clinic-decade commands"})]
     (is ok?)
     (is (= 1 readme-count script-count))))

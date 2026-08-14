@@ -130,31 +130,31 @@
 ;; (ADR-0130): proves the register's own :marker-open/:marker-close
 ;; keys genuinely reach demo-exerciser-fresh/check now, rather than
 ;; being silently ignored in favor of its own ed-tuesday defaults --
-;; the exact gap that made the busy-tuesday register row inexpressible
+;; the exact gap that made the clinic-decade register row inexpressible
 ;; as pure data before this widening. ----
 
 (deftest check-entry-demo-exerciser-fresh-honors-a-non-ed-tuesday-marker-pair-test
   (let [doc (temp-file! (str "```bash\nbin/ehrt help\nbin/ehrt corpus generate\n```\n"))
         script (temp-file!
-                (str "# BEGIN busy-tuesday commands (verbatim from fixture)\n"
+                (str "# BEGIN clinic-decade commands (verbatim from fixture)\n"
                      "expect 0 bin/ehrt help\n"
                      "expect 0 bin/ehrt corpus generate\n"
-                     "# END busy-tuesday commands\n"))
+                     "# END clinic-decade commands\n"))
         result (sf/check-entry {:source doc :script script :extraction :demo-exerciser-fresh
-                                 :marker-open "# BEGIN busy-tuesday commands (verbatim from fixture)"
-                                 :marker-close "# END busy-tuesday commands"})]
+                                 :marker-open "# BEGIN clinic-decade commands (verbatim from fixture)"
+                                 :marker-close "# END clinic-decade commands"})]
     (is (true? (:ok? result)) (str "divergence: " (:divergence result)))
     (is (= 2 (:readme-count result) (:script-count result)))))
 
 (deftest check-entry-demo-exerciser-fresh-catches-an-altered-script-line-test
   (let [doc (temp-file! (str "```bash\nbin/ehrt help\n```\n"))
         script (temp-file!
-                (str "# BEGIN busy-tuesday commands (verbatim from fixture)\n"
+                (str "# BEGIN clinic-decade commands (verbatim from fixture)\n"
                      "expect 0 bin/ehrt help --typo\n"
-                     "# END busy-tuesday commands\n"))
+                     "# END clinic-decade commands\n"))
         result (sf/check-entry {:source doc :script script :extraction :demo-exerciser-fresh
-                                 :marker-open "# BEGIN busy-tuesday commands (verbatim from fixture)"
-                                 :marker-close "# END busy-tuesday commands"})]
+                                 :marker-open "# BEGIN clinic-decade commands (verbatim from fixture)"
+                                 :marker-close "# END clinic-decade commands"})]
     (is (false? (:ok? result)))
     (is (= "bin/ehrt help" (:readme (:divergence result))))
     (is (= "bin/ehrt help --typo" (:script (:divergence result))))))

@@ -23,7 +23,7 @@
   literal text could not have been reused as pure register data without
   either lying in the second script's own marker comment or leaving its
   freshness check permanently red. ADR-0130 landed this widening but
-  deferred its own motivating row (a busy-tuesday exerciser) on a real,
+  deferred its own motivating row (a clinic-decade exerciser) on a real,
   unrelated defect its own live run found first (`ehrt.sim-trajectory.
   gmf/slug` doesn't sanitize commas out of raw upstream state names,
   breaking `ehrt play`'s own EDN read-back for at least one module) --
@@ -47,7 +47,7 @@
     additionally filters to genuinely-paired blocks only before
     building its flattened command list, because a :paired-kind
     register row targets paired content specifically: README.md's own
-    \"See it run\" ```bash fence (busy-tuesday) is the same language as
+    \"See it run\" ```bash fence (clinic-decade) is the same language as
     the \"What you get\" section's two ```bash/```clojure pairs but is
     followed by prose, not an output fence, so `command-output-pairs`
     correctly returns it with nil :output-lines and `check-entry`

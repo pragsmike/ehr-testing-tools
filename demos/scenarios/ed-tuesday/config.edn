@@ -1,8 +1,8 @@
 ;; demos/scenarios/ed-tuesday/config.edn -- ADR-0104, the "A" half of
 ;; the author's 2026-08-10 "c." ruling (ADR-0103): a scripted single ED
 ;; shift, weighted toward quick emergent presentations, contrasted
-;; against busy-tuesday's own population-scale, ambulatory-heavy mix
-;; (demos/scenarios/busy-tuesday/, ten-year horizon, sparse traffic).
+;; against clinic-decade's own population-scale, ambulatory-heavy mix
+;; (demos/scenarios/clinic-decade/, ten-year horizon, sparse traffic).
 ;;
 ;; The :pathways pool below is genuinely weighted/RNG-drawn -- five
 ;; scripted ED trajectories, weighted toward the fast/common end (see
@@ -39,7 +39,7 @@
 ;; against to hold without capacity exhaustion.
 ;;
 ;; :module-horizon-days 90 (~3 months) is short relative to
-;; busy-tuesday's 3650 (10 years), by this session's own instruction,
+;; clinic-decade's 3650 (10 years), by this session's own instruction,
 ;; but a disclosed finding rides along: at THIS thin a tail (8
 ;; patients), the chosen quick modules (sore_throat/sinusitis/
 ;; bronchitis/ear_infections) produced ZERO live encounters at every
@@ -49,7 +49,7 @@
 ;; the `Potential_Infection` state): onset is a monthly-Delay-gated
 ;; complex_transition at roughly 0.5-1% probability per month, so most
 ;; of a patient's simulated history -- and most of any short forward
-;; window -- produces nothing at all; busy-tuesday's own README
+;; window -- produces nothing at all; clinic-decade's own README
 ;; discloses the same low-incidence shape at population scale (68
 ;; messages from 200 patients over 10 years). This tail is authored
 ;; anyway, at low weight, per the driving prompt's own ask for one --

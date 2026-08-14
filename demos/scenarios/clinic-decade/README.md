@@ -1,4 +1,4 @@
-# Scenario: busy-tuesday
+# Scenario: clinic-decade
 
 A busy weekday emergency-department mix: twelve everyday-ambulatory and
 acute modules (sore throat, sinusitis, bronchitis, asthma, ear
@@ -16,8 +16,8 @@ first, then play it back.
 
 ```bash
 bin/ehrt corpus generate sim --seed 20260807 --patients 200 \
-  --config demos/scenarios/busy-tuesday/config.edn \
-  --out-dir out/scenarios/busy-tuesday
+  --config demos/scenarios/clinic-decade/config.edn \
+  --out-dir out/scenarios/clinic-decade
 ```
 
 `--out-dir` is rejected if it already exists and is non-empty — remove
@@ -26,7 +26,7 @@ or rename a prior run's own directory before regenerating.
 ## Play
 
 ```bash
-bin/ehrt play out/scenarios/busy-tuesday --board 60 --rate 100000
+bin/ehrt play out/scenarios/clinic-decade --board 60 --rate 100000
 ```
 
 Renders a bed-state snapshot every 60 stream-minutes instead of a
@@ -37,7 +37,7 @@ Or play the sim's own story directly, from its own event log rather
 than the emitted HL7 v2 messages:
 
 ```bash
-bin/ehrt play out/scenarios/busy-tuesday/events.edn --rate 100000
+bin/ehrt play out/scenarios/clinic-decade/events.edn --rate 100000
 ```
 
 ## What to look for
@@ -67,7 +67,7 @@ printed immediately before the snapshot each time), and total wallclock
 time for the full ten-year stream was ~3m39s. A denser population or a
 larger `--rate` shortens that; this scenario's own module mix and
 five-minute arrival gap, at 200 patients, is genuinely this sparse in
-message traffic — most of a "busy Tuesday" in this scenario's own
+message traffic — most of a "clinic-decade" in this scenario's own
 patient population unfolds as intake and follow-up over months and
 years, not everyone arriving on one shift.
 

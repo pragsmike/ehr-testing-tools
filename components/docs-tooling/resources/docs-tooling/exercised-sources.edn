@@ -21,8 +21,8 @@
 ;;                              second :demo-exerciser-fresh row can supply its
 ;;                              own, honestly-named markers -- ADR-0130 landed
 ;;                              this widening but deferred its own motivating
-;;                              row, busy-tuesday, on a real, unrelated defect
-;;                              found live; see roadmap.md).
+;;                              row, clinic-decade, on a real, unrelated
+;;                              defect found live; see roadmap.md).
 ;;   :single-fence          -- one ```<fence-lang> fence in :source, comment
 ;;                              and blank lines stripped, everything else kept
 ;;                              verbatim (quickstart-fresh's own algorithm,

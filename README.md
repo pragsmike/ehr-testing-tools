@@ -21,26 +21,26 @@ inside; no Clojure skills required.
 
 ## See it run
 
-A busy Tuesday at a 200-patient hospital, watched on a live bed board
+A clinic-decade at a 200-patient hospital, watched on a live bed board
 at an hour of hospital time per minute:
 
 ```bash
 bin/ehrt corpus generate sim --seed 5 --patients 200 \
   --reference-date 2026-08-04 --churn \
-  --config demos/scenarios/busy-tuesday/config.edn \
-  --out-dir out/corpus/busy-tuesday
+  --config demos/scenarios/clinic-decade/config.edn \
+  --out-dir out/corpus/clinic-decade
 
-bin/ehrt play out/corpus/busy-tuesday --board 60 --rate 60
+bin/ehrt play out/corpus/clinic-decade --board 60 --rate 60
 ```
 
-What actually renders is sparser than "busy" suggests — most of this
+What actually renders is sparse — most of this
 scenario's own population's care unfolds as intake and follow-up
 spread across a decade, not a single shift, so the board mostly
 idle-skips forward through quiet stretches rather than filling with
 beds, and only one inpatient is ever admitted across the whole run.
 That sparseness is genuine to this scenario's own module mix and
 patient population, not a player defect.
-[`demos/scenarios/busy-tuesday/README.md`](demos/scenarios/busy-tuesday/README.md)
+[`demos/scenarios/clinic-decade/README.md`](demos/scenarios/clinic-decade/README.md)
 carries the full closing-summary numbers this session actually
 witnessed.
 

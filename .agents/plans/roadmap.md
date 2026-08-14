@@ -23,14 +23,14 @@ per item; done items move to the bottom of their section with a date and sha.
   change; the oracle held pure identity across all 35 roots).
 
 ## Next (backlog, no session scheduled)
-- **Busy-tuesday/ED scenario redesign — "A" LANDED, "B" CLOSED
+- **Clinic-decade/ED scenario redesign — "A" LANDED, "B" CLOSED
   (B1 + B2 + B3, all landed 2026-08-11).** Anchored to the author's own
   2026-08-10 ED-direction ruling (`.agents/rulings.md`, "From
   ADR-0103"), verbatim: *"Maybe weight the patient population toward
   immediate, emergent conditions like trauma/injuries? This would
   simulate an actual ED, which is where a lot of the activity and
   churn would happen."* Chartering context from `notes/adr/0103-board-
-  boundary-catchup.md`: the busy-tuesday scenario's own current module
+  boundary-catchup.md`: the clinic-decade scenario's own current module
   mix (twelve everyday-ambulatory/acute modules, weighted toward
   milder complaints) produces genuinely sparse message traffic — 68
   messages, 200 patients, a ten-year horizon — most of it
@@ -39,7 +39,7 @@ per item; done items move to the bottom of their section with a date and sha.
   The author's own 2026-08-10 "C-with-A-first" ruling split this into
   two halves: **A landed 2026-08-11** (`notes/adr/0104-ed-tuesday-
   scenario.md`) — a NEW sibling scenario, `demos/scenarios/
-  ed-tuesday/`, a day-scale scripted single ED shift; `busy-tuesday/
+  ed-tuesday/`, a day-scale scripted single ED shift; `clinic-decade/
   config.edn` stays untouched, the population-scale contrast.
   **Correction (2026-08-11, `notes/adr/0105-interpreter-horizon-
   budget.md`): this row's own prior "B" text mis-characterized what B
@@ -565,24 +565,24 @@ per item; done items move to the bottom of their section with a date and sha.
   chapter that cites a demo (Chapter 3, S2), per the ADR-0113 R5
   sequence above. Landed for **ed-tuesday only**
   (`bin/demo-exerciser-ed-tuesday`,
-  `ehrt.docs-tooling.demo-exerciser-fresh`) — **busy-tuesday's own
+  `ehrt.docs-tooling.demo-exerciser-fresh`) — **clinic-decade's own
   exerciser is a new future row, not this session's scope**, see
   below.
-- **Demo exerciser (busy-tuesday)** (new row, ADR-0120; not chartered
+- **Demo exerciser (clinic-decade)** (new row, ADR-0120; not chartered
   to any executing session yet). R3's own charter — "The demos must be
   known to work, and exercised as documented" — covers every scenario
   README this workspace ships, not only ed-tuesday; `bin/demo-exerciser-
   ed-tuesday` and `ehrt.docs-tooling.demo-exerciser-fresh` (ADR-0120)
-  are the worked pattern a busy-tuesday sibling would generalize from —
-  a second `bin/demo-exerciser-busy-tuesday` plus its own fresh-identity
+  are the worked pattern a clinic-decade sibling would generalize from —
+  a second `bin/demo-exerciser-clinic-decade` plus its own fresh-identity
   test, mirroring the same shape (multi-fence extraction, per-step exit
   codes, the README's own named invariants re-derived live, never
-  hardcoded). `demos/scenarios/busy-tuesday/README.md`'s own fenced
+  hardcoded). `demos/scenarios/clinic-decade/README.md`'s own fenced
   commands and invariants (the sparse-traffic disclosure, the single
   inpatient admission) are the source this future exerciser would
   assert against. Not chartered to a session; no design work done here
   beyond naming it. **Register mechanism now exists (ADR-0129,
-  `ehrt.docs-tooling.exercised-sources`)** — a future busy-tuesday
+  `ehrt.docs-tooling.exercised-sources`)** — a future clinic-decade
   exerciser session would add one more :demo-exerciser-fresh-shaped
   register row (or :multi-fence, if the extraction differs) rather
   than inventing its own freshness-check plumbing; the register's own
@@ -595,7 +595,7 @@ per item; done items move to the bottom of their section with a date and sha.
   (`ehrt.docs-tooling.demo-exerciser-fresh/script-command-lines`)
   hardwired to ed-tuesday's own literal BEGIN/END marker text, not
   parameterized — verified both by reading and empirically (a
-  correctly-named busy-tuesday-marker fixture returned `nil`). Ruled
+  correctly-named clinic-decade-marker fixture returned `nil`). Ruled
   (a): the fence widened to a minimal parameterization —
   `script-command-lines`/`check` now take an explicit `marker-open`/
   `marker-close` pair, defaulting to ed-tuesday's own literal markers
@@ -604,7 +604,7 @@ per item; done items move to the bottom of their section with a date and sha.
   register row's own `:marker-open`/`:marker-close` through rather than
   silently ignoring them. Landed, red-before-green proven via disposable
   stash isolation (checkpoint-isolation practice, `.agents/skills/
-  build-session/SKILL.md`). **The busy-tuesday row/script/Makefile line
+  build-session/SKILL.md`). **The clinic-decade row/script/Makefile line
   themselves were NOT landed** — the same session's own real,
   end-to-end run of the drafted (never-committed) script surfaced an
   unrelated, genuine defect blocking the README's own third command;
@@ -613,14 +613,14 @@ per item; done items move to the bottom of their section with a date and sha.
 - **Slug EDN-round-trip fix** (new row, ADR-0130; not chartered to any
   executing session yet, sequenced BEFORE the row below). A real,
   previously-undisclosed defect this session found live, exercising
-  busy-tuesday's own third fenced command for the first time ever with
+  clinic-decade's own third fenced command for the first time ever with
   a real assertion on its exit code: `ehrt.sim-trajectory.gmf/slug`
   (`components/sim-trajectory/src/ehrt/sim_trajectory/gmf.clj:45-55`)
   lower-cases and replaces `[_\s]+` with `-` on a raw GMF name, but
   never sanitizes any OTHER punctuation — `keyword` (line 63) then
   wraps the result verbatim. Upstream Synthea state names are free
   text and can legitimately carry a comma (`uti/abx_tx.json`'s own
-  `"Cipro 500, 5 day"`/`"Cipro 250, 3 day"`, part of busy-tuesday's own
+  `"Cipro 500, 5 day"`/`"Cipro 250, 3 day"`, part of clinic-decade's own
   twelve-module mix): `slug` turns the first into `"cipro-500,-5-day"`,
   `keyword` wraps it to `:cipro-500,-5-day` — prints fine via `pr-str`,
   but is not re-readable EDN (the reader treats the embedded comma as
@@ -628,10 +628,10 @@ per item; done items move to the bottom of their section with a date and sha.
   fragment). This project's own informal law — every keyword it
   constructs satisfies `(= k (edn/read-string (pr-str k)))`, emit
   composed with read is identity — is violated for this specimen.
-  Witnessed live: `bin/ehrt play out/scenarios/busy-tuesday/events.edn
+  Witnessed live: `bin/ehrt play out/scenarios/clinic-decade/events.edn
   --rate 100000` (seed 20260807, 200 patients) fails, `{:status
   :error, :category :play-input-unreadable, :payload {:path
-  "out/scenarios/busy-tuesday/events.edn", :message "Invalid number:
+  "out/scenarios/clinic-decade/events.edn", :message "Invalid number:
   -5-day"}}` — the HL7 v2 wire path (a DIFFERENT command, same run)
   does not hit this, since it never round-trips the raw `:citation
   {:state ...}` field through EDN read. An `:sim`-family engine session
@@ -677,7 +677,7 @@ per item; done items move to the bottom of their section with a date and sha.
   witnessed RED against pre-fix code, both GREEN after the fix (75
   tests, 220 assertions). Full `make test` green throughout (632 "0
   failures, 0 errors" blocks, no other test moved). Acceptance:
-  busy-tuesday regenerated (seed 20260807, 200 patients) — the
+  clinic-decade regenerated (seed 20260807, 200 patients) — the
   README's own second command (`--board`) reproduced ADR-0130's exact
   witnessed figures (`68/48/41`, `inpatients: 0` throughout) byte-for-
   byte; the README's own THIRD command — the one that failed in
@@ -711,18 +711,18 @@ per item; done items move to the bottom of their section with a date and sha.
   is structured for this as a mode switch, not a rewrite) — once every
   currently-known collision has its own per-pair correction landed, a
   hard-error default no longer breaks any already-vendored module.
-- **Scenario rename + busy-tuesday exerciser completion** (new row,
+- **Scenario rename + clinic-decade exerciser completion** (new row,
   ADR-0130; UNBLOCKED 2026-08-14 — ADR-0131 fixed `events.edn`
   read-back for this scenario's own module mix, the blocker this row
-  was sequenced behind). Resumes the busy-tuesday exerciser work
-  ADR-0130's own session drafted (a working `bin/demo-exerciser-busy-
-  tuesday`, its own register row using the widened `:demo-exerciser-
+  was sequenced behind). Resumes the clinic-decade exerciser work
+  ADR-0130's own session drafted (a working `bin/demo-exerciser-clinic-
+  decade`, its own register row using the widened `:demo-exerciser-
   fresh` marker mechanism, `Makefile` wiring) — the README's own third
   fenced command now completes (ADR-0131), so nothing else blocks this
-  row. **The scenario's own future name is an OPEN question for the
-  author** — ruled explicitly left open rather than assumed
-  "busy-tuesday" stays as-is; this row's own title uses a placeholder
-  pending that ruling. ADR-0130's own drafted script (never committed;
+  row. **The scenario's own name is RULED (ADR-0132, author verbatim
+  2026-08-13, "clinic-decade it is."): busy-tuesday -> clinic-decade**
+  — this row's own title now carries the ruled name, no longer a
+  placeholder. ADR-0130's own drafted script (never committed;
   full text recoverable from that session's own prompt archive and
   `notes/adr/0130-*.md`) is the worked starting point, not a design
   redo.

@@ -15,7 +15,7 @@
 # components/docs-tooling/resources/docs-tooling/exercised-sources.edn)
 # to prove this script and README.md's own two "What you get" pairs
 # teach the identical commands, in the identical order (README.md's
-# own "See it run" ```bash fence, busy-tuesday, is a DIFFERENT
+# own "See it run" ```bash fence, clinic-decade, is a DIFFERENT
 # register row's own concern -- not this one, correctly excluded by
 # the extraction layer's own pairing-adjacency rule, not by anything
 # this script does). Integration-tier only (`make integration`), never
