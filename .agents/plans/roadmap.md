@@ -711,21 +711,41 @@ per item; done items move to the bottom of their section with a date and sha.
   is structured for this as a mode switch, not a rewrite) — once every
   currently-known collision has its own per-pair correction landed, a
   hard-error default no longer breaks any already-vendored module.
-- **Scenario rename + clinic-decade exerciser completion** (new row,
-  ADR-0130; UNBLOCKED 2026-08-14 — ADR-0131 fixed `events.edn`
-  read-back for this scenario's own module mix, the blocker this row
-  was sequenced behind). Resumes the clinic-decade exerciser work
-  ADR-0130's own session drafted (a working `bin/demo-exerciser-clinic-
-  decade`, its own register row using the widened `:demo-exerciser-
-  fresh` marker mechanism, `Makefile` wiring) — the README's own third
-  fenced command now completes (ADR-0131), so nothing else blocks this
-  row. **The scenario's own name is RULED (ADR-0132, author verbatim
-  2026-08-13, "clinic-decade it is."): busy-tuesday -> clinic-decade**
-  — this row's own title now carries the ruled name, no longer a
-  placeholder. ADR-0130's own drafted script (never committed;
-  full text recoverable from that session's own prompt archive and
-  `notes/adr/0130-*.md`) is the worked starting point, not a design
-  redo.
+- **Scenario rename + clinic-decade exerciser completion — CLOSED
+  2026-08-14 (ADR-0132).** ADR-0130; UNBLOCKED 2026-08-14 — ADR-0131
+  fixed `events.edn` read-back for this scenario's own module mix, the
+  blocker this row was sequenced behind. **The scenario's own name is
+  RULED (ADR-0132, author verbatim 2026-08-13, "clinic-decade it
+  is."): busy-tuesday -> clinic-decade** — a full live-reference sweep
+  landed the rename (`demos/scenarios/clinic-decade/`, every cross-ref,
+  the sourced CLI example, the docsgen companion, docs-tooling
+  comments and test marker fixtures — zero residue outside frozen
+  records, confirmed by a repo-wide grep). The clinic-decade exerciser
+  work ADR-0130's own session drafted landed completed: `bin/demo-
+  exerciser-clinic-decade` (adapted from ADR-0130's own Appendix, one
+  disclosed regex fix for a markdown line-wrap the drafted script never
+  actually hit), its own register row (`:demo-exerciser-fresh`,
+  explicit `:marker-open`/`:marker-close`, the ADR-0130-widened
+  parameterization's own first second-instance consumer), `Makefile`
+  integration wiring. Freshness case red-witnessed (script absent) then
+  green; register count-lock bumped 7 -> 8. Executed end-to-end
+  in-session, real artifacts (seed 20260807, 200 patients): all three
+  README-taught commands, every named invariant re-derived live from
+  the README and matched — `68/48/41`, `inpatients: 0` throughout
+  (byte-for-byte the ADR-0130/ADR-0131 witnessed figures), and the
+  third command's own `367`/`49` first-witnessed figures (ADR-0131)
+  reproduced exactly. No figure moved, no README edit. Full run
+  wallclock: 504s, this lane's own first-witnessed timing. **R3
+  (`notes/ADRs.md` ADR-0113) now fully discharged**: every shipped
+  scenario README (`README.md`'s Quickstart, ed-tuesday's, and now
+  clinic-decade's) is register-exercised, integration-tier, asserting
+  exit codes and every named invariant. Oracle held pure identity
+  across all 35 roots (`bin/regression-oracle` bracket, Step 0's own
+  baseline to Step 2's own tip) — the rename touches no engine
+  behavior and the oracle roots never resolve through
+  `demos/scenarios/`, matching Step 0's own verified prediction
+  exactly. Full account in `notes/adr/0132-clinic-decade-rename-and-
+  exerciser.md`.
 - **Audience register paring** (ADR-0113 R4; a small future docs
   session, not chartered). Author "Q1 a": the audience register in
   `docs/dev/AUDIENCES.md` pares to five behavioral segments --

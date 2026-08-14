@@ -204,3 +204,4 @@ Files in this directory:
   * 2026-08-13-strip-executability.md — Strip executability: exercisers, citation gate, ADR-0127 erratum (ADR-0129)
   * 2026-08-14-busy-tuesday-exerciser-deferred.md — Busy-tuesday exerciser: marker widening landed, row deferred on slug EDN round-trip defect (ADR-0130)
   * 2026-08-14-slug-edn-round-trip.md — Slug EDN round-trip fix + module-load injectivity guard (ADR-0131)
+  * 2026-08-14-clinic-decade-rename-and-exerciser.md — Scenario rename busy-tuesday -> clinic-decade + exerciser completion (ADR-0132)

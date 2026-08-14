@@ -1,5 +1,30 @@
 # State of the project — continuity register
 
+**CITATION-ONLY update, 2026-08-14, scenario rename (busy-tuesday ->
+clinic-decade) + exerciser completion (`notes/adr/0132-clinic-decade-
+rename-and-exerciser.md`) — this citation moves here from ADR-0131,
+CONTENT NOT RE-PROBED.** Not an arc close (this session's own naming
+convention), so `state_staleness_tripwire_test.clj`'s own regex is
+untouched by this update. Recorded here anyway, in the same
+append-only citation-only spirit as the entries below. Landed: the
+author's own name ruling ("clinic-decade it is.") executed as a full
+live-reference sweep, zero residue outside frozen records; `bin/demo-
+exerciser-clinic-decade` completes the exerciser row ADR-0130 closed
+partial-with-open-rows, a new `exercised-sources.edn` row (count-lock
+7 -> 8), all three README-taught commands witnessed end-to-end with
+every named invariant re-derived live from the README and matched
+(`68/48/41`/`inpatients: 0`, and the third command's own `367`/`49`
+first-witnessed figures, both byte-for-byte the ADR-0130/ADR-0131
+figures); R3 now fully discharged across every shipped scenario
+README. Oracle held pure identity across all 35 roots, matching Step
+0's own verified prediction. `make test`/`make integration` both
+green, tree clean. Every section below still reflects its LAST full
+regeneration, 2026-08-08 against tip `a9c3abf` — twenty-five ADRs'
+worth of landings since (0090 through 0132, excluding citation-only
+entries) are NOT reflected below and every `[V]` tag below should be
+read accordingly; a full regeneration is still owed at a session that
+rules it.
+
 **CITATION-ONLY update, 2026-08-14, slug EDN round-trip fix + module-
 load injectivity guard (`notes/adr/0131-slug-edn-round-trip.md`) —
 this citation moves here from ADR-0130, CONTENT NOT RE-PROBED.** Not

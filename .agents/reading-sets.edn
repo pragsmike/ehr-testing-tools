@@ -322,6 +322,30 @@
 ;; all still carry `build-session/SKILL.md` at its new 240-line length
 ;; but stayed within their own budgets at that delta alone (checked:
 ;; +5 lines each, none crossed its own budget).
+;;
+;; Re-derivation (2026-08-14, clinic-decade rename + exerciser
+;; completion, `notes/adr/0132-clinic-decade-rename-and-exerciser.md`):
+;; `reading-set-budget-test` went red this session's own Step 3 close,
+;; `:onboarding` measured 2338 lines against its own 2335-line budget,
+;; over by 3 -- accumulated routine churn since the manual-arc-close
+;; re-derivation (ADR-0125, 2026-08-13): `.agents/plans/roadmap.md`'s
+;; own Now/Next/Done churn across every session since (781 -> 1284
+;; lines, including this session's own rename-row close and the ADR-
+;; 0130/ADR-0131 rows landed since), `.agents/session-records/README.md`/
+;; `.agents/prompts/README.md`'s own new entries (five sessions' worth,
+;; including this one), and `.agents/skills/build-session/SKILL.md`'s
+;; own +6 lines (ADR-0130's checkpoint-commit sentence, landed after
+;; ADR-0128's own 240-line measurement, 240 -> 246). No other
+;; `:onboarding`-only path changed. `:onboarding`'s fresh actual
+;; (`wc -l` sum across all eight `:paths`): 294 (AGENTS.md) + 54 + 65 +
+;; 207 + 155 + 33 (the five READMEs) + 1284 (roadmap.md) + 246
+;; (build-session/SKILL.md) = 2338. Re-applying the standing formula
+;; (actual x1.15, rounded up to the nearest 5): 2338 x 1.15 = 2688.7 ->
+;; 2690. Budget moves 2335 -> 2690. No other set carries `roadmap.md`
+;; or any other `:onboarding`-only path this session touched; `:sim`
+;; also carries `build-session/SKILL.md` at its new 246-line length but
+;; stayed within its own 1495-line budget at that +6 delta alone
+;; (checked, not assumed).
 
 {:onboarding
  {:paths ["AGENTS.md"
@@ -344,7 +368,7 @@
   ;; because that's a different audience from "a cold task-class session",
   ;; and forcing every onboarding read to carry its cost would budget for an
   ;; activity most onboarding sessions never do (migration session 5, AR-3).
-  :budget-lines 2335}
+  :budget-lines 2690}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one

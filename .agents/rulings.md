@@ -1290,3 +1290,17 @@ own "Author rulings in effect" section)
   row (`.agents/plans/roadmap.md`) charters the escalation as this
   session's own `handle-state-name-collision!` single call site, a
   mode switch, not a rewrite.
+
+## From ADR-0132 (scenario rename, busy-tuesday -> clinic-decade, +
+exerciser completion; ruled 2026-08-13, executed 2026-08-14)
+
+- **Name, ruled** [A, 2026-08-13, "clinic-decade it is."]: the scenario
+  is renamed busy-tuesday -> clinic-decade. Frozen records (`notes/adr/`
+  bodies, session records, prompt archives, register history lines)
+  KEEP the old name; ADR-0132 carries the mapping. Executed exactly as
+  ruled — a full live-reference sweep (`demos/scenarios/clinic-decade/`,
+  every cross-ref, the CLI's own sourced example, the docsgen companion,
+  docs-tooling comments and test marker fixtures, `.agents/plans/
+  roadmap.md`'s own live mentions), zero residue outside the frozen
+  classes named above, confirmed by a repo-wide grep census before the
+  Step 1 commit.
