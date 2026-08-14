@@ -50,9 +50,34 @@
   and attribute names all compare and namespace uniformly. Public: also
   reused by ehrt.sim-trajectory.gmf-interpreter to turn a Guard/conditional's
   raw :attribute name into the SAME module-namespaced key this loader's
-  own `declared-attributes` computes (one transform, one place)."
+  own `declared-attributes` computes (one transform, one place).
+
+  FIXED (2026-08-14, ADR-0131, Q1(a)): this project constructs many
+  keywords from upstream free text via `slug`/`keyword`, later
+  `pr-str`d to disk (events.edn) or read back -- the informal law every
+  such keyword must satisfy is `(= k (edn/read-string (pr-str k)))`,
+  emit composed with read is identity. The prior fold set (`_`/
+  whitespace only) left every OTHER reader-significant character
+  untouched, breaking this law for any upstream name carrying one --
+  `uti/abx_tx.json`'s own \"Cipro 500, 5 day\" was the specimen ADR-0130
+  found live. The fold set now folds exactly the non-EDN-keyword-legal
+  characters (Q1(a): 'EDN legality defines the fold set; nothing
+  more'), empirically derived against `clojure.edn/read-string` itself
+  rather than hand-recalled from the reader grammar (notes/adr/
+  0131-*.md has the derivation): comma plus the reader's own
+  terminating-macro characters (`\" ( ) [ ] { } \\ ^ \\` ~ @ ;`), joining
+  the pre-existing `_`/whitespace fold (a house-style choice, not an
+  EDN-legality one -- underscore is itself a legal keyword character).
+  `?` `'` `&` `%` `#` `$` `=` `<` `>` `*` `+` `!` `.` `-` all round-trip
+  clean and are left untouched. Idempotent by construction: the output
+  alphabet excludes every folded character and never carries a
+  leading/trailing/doubled hyphen, so a second pass is always a no-op."
   [s]
-  (-> s str/lower-case (str/replace #"[_\s]+" "-")))
+  (-> s
+      str/lower-case
+      (str/replace #"[_\s,;\"@^`~()\[\]\\{}]+" "-")
+      (str/replace #"-{2,}" "-")
+      (str/replace #"^-+|-+$" "")))
 
 (defn- kebab-key
   "clojure.data.json's :key-fn -- applied to EVERY JSON object key at
@@ -1270,6 +1295,67 @@
 
 ;; --- Loading ---------------------------------------------------------------
 
+;; --- Module-load injectivity guard (2026-08-14, ADR-0131 Q2(b)) ----------
+;;
+;; `slug` is not injective by design (it is a many-to-one fold, the
+;; whole point of normalizing "Check_Age_Guard"/"Check Age Guard" onto
+;; one key) -- but `kebab-key`'s own `json/read-str :key-fn` application
+;; (`load-module`, below) uses it to build the `:states` map's own KEYS,
+;; where a genuine collision between two DIFFERENT raw state names
+;; (`notes/adr/0131-*.md`'s own census: `sleep_apnea.json`'s "Home CPAP
+;; Unit"/"Home_CPAP_Unit", both folding to :home-cpap-unit) means one
+;; silently overwrites the other in the parsed map, before this
+;; namespace ever sees both. WARN-mode (Q2(b), ruled): detect and
+;; announce, load proceeds -- the same silent-overwrite result as
+;; before this guard existed, now merely disclosed. Escalation to
+;; hard-error is chartered to a future rider session (per-pair module
+;; corrections across the 5 collision-bearing modules this session's
+;; own census found, `notes/adr/0131-*.md`, land first); this guard is
+;; structured so that escalation is a MODE switch at
+;; `handle-state-name-collision!`'s own single call site, not a
+;; detection rewrite.
+
+(defn- raw-state-names
+  "The ORIGINAL, pre-slug state-name strings from `json-text`'s own
+  top-level \"states\" object -- a second, string-keyed parse alongside
+  `load-module`'s own kebab-key one, needed because by the time
+  kebab-key has folded two distinct raw names onto the same keyword,
+  whichever JSON key the parser processed last has already silently
+  overwritten the other in the resulting map. This function looks
+  BEFORE that fold happens, so both original names are still visible."
+  [json-text]
+  (-> json-text json/read-str (get "states") keys))
+
+(defn- state-name-collision-groups
+  "Every group of 2+ raw state names (`raw-state-names`) that fold to
+  the SAME post-slug key -- the injectivity gap this guard exists for.
+  A module with no such group returns an empty seq."
+  [json-text]
+  (->> (raw-state-names json-text)
+       (group-by slug)
+       (filter (fn [[_ raws]] (> (count raws) 1)))))
+
+(defn- handle-state-name-collision!
+  "WARN-mode (Q2(b)): a loud per-collision warning to *err*, naming the
+  module `id`, the folded key, and every raw name that folds to it --
+  load proceeds. The one call site a future rider session's escalation
+  to hard-error switches (an added `:error` branch here, returning a
+  rejection the caller checks, rather than only printing) -- detection
+  itself (`state-name-collision-groups`, above) does not change."
+  [id folded raws]
+  (binding [*out* *err*]
+    (println (str "WARN: module " id ": state names " (pr-str raws)
+                   " all fold to :" folded
+                   " -- one silently overwrites the other in the loaded module"))))
+
+(defn- check-state-name-collisions!
+  "Runs the guard over every collision group `json-text`'s own raw
+  state names produce, side-effecting a warning per group (WARN-mode,
+  Q2(b)) -- never affects `load-module`'s own return value."
+  [id json-text]
+  (doseq [[folded raws] (state-name-collision-groups json-text)]
+    (handle-state-name-collision! id folded raws)))
+
 (defn load-module
   "Parses and validates `json-text` (a GMF module's raw JSON) as `id`
   (never derived from a filename here -- the caller's own concern,
@@ -1297,8 +1383,14 @@
   (payload {:state}, ADR-0039 AR-2) for a VitalSign state carrying a CQL
   :expression, a real upstream branch this loader has no evaluator for;
   :rejected :schema-invalid (payload {:explain ...}) for any other v1
-  structural mismatch."
+  structural mismatch.
+
+  Side effect (2026-08-14, ADR-0131 Q2(b)): before parsing, warns to
+  *err* once per group of raw state names that collide under `slug`
+  (WARN-mode -- never affects this function's own return value; see
+  `check-state-name-collisions!`, above)."
   [id json-text]
+  (check-state-name-collisions! id json-text)
   (let [raw (json/read-str json-text :key-fn kebab-key)
         {:keys [states unsupported invalid-distribution set-attribute-unsupported-source vital-sign-expression]}
         (normalize-states (:states raw))]

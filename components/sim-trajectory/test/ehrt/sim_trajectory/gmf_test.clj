@@ -7,10 +7,16 @@
   a module whose own SetAttribute writes a bare engine-reserved attribute
   name is REJECTED with :attribute-collision; the loaded set is listable
   (no hidden modules, docs/gmf-interpreter.md section 5)."
-  (:require [clojure.java.io :as io]
+  (:require [clojure.edn :as edn]
+            [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
+            [clojure.test.check.clojure-test :refer [defspec]]
+            [clojure.test.check.generators :as gen]
+            [clojure.test.check.properties :as prop]
             [ehrt.kernel.interface :as result]
-            [ehrt.sim-trajectory.gmf :as gmf]))
+            [ehrt.sim-trajectory.gmf :as gmf])
+  (:import [java.io StringWriter]))
 
 (def fixture-clinic-json
   (slurp (io/resource "ehrt/sim/fixtures/fixture-clinic.json")))
@@ -1186,3 +1192,135 @@
   (let [loaded (gmf/load-module "no-series" vaccine-no-series-json)]
     (is (result/ok? loaded))
     (is (not (contains? (get-in (:payload loaded) [:states :shot]) :series)))))
+
+;; --- ADR-0131 (slug EDN round-trip fix + module-load injectivity
+;; guard): `slug` compiles every raw GMF name (JSON key, state name,
+;; attribute/symptom name) into a keyword this project later `pr-str`s
+;; to disk and reads back -- the informal law every such keyword must
+;; satisfy is `(= k (edn/read-string (pr-str k)))`, emit composed with
+;; read is identity (`gmf/slug`'s own docstring). Before this ADR,
+;; `slug` folded only `_`/whitespace, never comma or the reader's
+;; terminating-macro characters -- `notes/adr/0131-*.md`'s own census
+;; found this live, twice, in already-vendored module content
+;; (`uti/abx_tx.json`'s `"Cipro 500, 5 day"`, `veteran_lung_cancer.
+;; json`'s `"Sputum Cytology (Phelgm)"`).
+
+(def gmf-name-illegal-char-pool
+  "Characters `slug` must fold (Q1(a): the complement of EDN-keyword-
+  legal constituents), split by kind so the generator below can weight
+  them independently -- underscore/whitespace (the PRE-existing fold),
+  and comma plus the reader's own terminating-macro set (the NEW
+  fold this ADR adds). Empirically derived, not hand-recalled from the
+  reader grammar: every printable ASCII character 33-126 plus the six
+  whitespace characters was round-trip-tested directly against
+  `clojure.edn/read-string` (`(= k (edn/read-string (pr-str k)))` for
+  `k` built from a token containing that one character) -- this is the
+  exact set that failed."
+  {:underscore-whitespace (seq "_ \t\n")
+   :new-illegal (seq ",;\"@^`~()[]{}\\")})
+
+(def gmf-name-legal-char-pool
+  "Characters `slug` must NEVER fold -- confirmed round-trip-LEGAL by
+  the same empirical method, and named explicitly by the driving
+  prompt's own channel pre-probe (`?` `'` `&` are legal keyword
+  constituents, out of Q1(a)'s scope) -- included here so the property
+  below also proves the fix does not over-fold an already-legal
+  character."
+  (seq "?'&%#$=<>*+!.-abcdefghijklmnopqrstuvwxyz0123456789"))
+
+(def gmf-name-char-gen
+  "Weighted toward alphanumeric content (as any real upstream Synthea
+  state name is), with real representation from every fold-relevant
+  category: the pre-existing underscore/whitespace fold, THIS ADR's
+  new illegal-character fold (comma, parens, brackets, braces,
+  backslash, backtick, caret, tilde, double-quote, semicolon, at-sign
+  -- every one of the reader's own terminating macros plus comma), and
+  the legal-punctuation set that must survive untouched."
+  (gen/frequency
+   [[10 (gen/elements gmf-name-legal-char-pool)]
+    [3 (gen/elements (:underscore-whitespace gmf-name-illegal-char-pool))]
+    [3 (gen/elements (:new-illegal gmf-name-illegal-char-pool))]]))
+
+(def raw-gmf-name-gen
+  "Arbitrary raw GMF name strings, 1-40 characters, producing commas,
+  parens, brackets, mixed whitespace/underscore runs, and edge
+  punctuation (any position, including first/last) per the driving
+  prompt's own generator requirement. Constrained to contain at least
+  one alphanumeric character -- a string that folds to nothing (e.g.
+  bare underscores or bare punctuation) has no real specimen in any
+  vendored module and produces `(keyword \"\")`, a KNOWN, SEPARATE,
+  pre-existing Clojure round-trip gap (`:` itself does not re-read,
+  confirmed directly against `clojure.edn/read-string` before writing
+  this generator) that Q1(a)'s fold-set charter does not address --
+  out of this session's own scope, not silently swallowed by a
+  generator that could never produce it."
+  (gen/such-that
+   (fn [s] (re-find #"[a-zA-Z0-9]" s))
+   (gen/fmap str/join (gen/vector gmf-name-char-gen 1 40))))
+
+(defspec slug-derived-keywords-round-trip-through-edn 200
+  (prop/for-all [raw-name raw-gmf-name-gen]
+    (let [k (keyword (gmf/slug raw-name))]
+      (= k (edn/read-string (pr-str k))))))
+
+(defspec slug-is-idempotent 200
+  (prop/for-all [raw-name raw-gmf-name-gen]
+    (let [slugged (gmf/slug raw-name)]
+      (= slugged (gmf/slug slugged)))))
+
+(deftest slug-folds-a-real-vendored-comma-specimen
+  (testing "uti/abx_tx.json's own \"Cipro 500, 5 day\" (notes/adr/0131-*.md census)"
+    (is (= "cipro-500-5-day" (gmf/slug "Cipro 500, 5 day")))
+    (let [k (keyword (gmf/slug "Cipro 500, 5 day"))]
+      (is (= k (edn/read-string (pr-str k)))))))
+
+(deftest slug-folds-a-real-vendored-parens-specimen
+  (testing "veteran_lung_cancer.json's own \"Sputum Cytology (Phelgm)\" (notes/adr/0131-*.md census)"
+    (is (= "sputum-cytology-phelgm" (gmf/slug "Sputum Cytology (Phelgm)")))
+    (let [k (keyword (gmf/slug "Sputum Cytology (Phelgm)"))]
+      (is (= k (edn/read-string (pr-str k)))))))
+
+(deftest slug-still-preserves-legal-punctuation-unfolded
+  (testing "?/'/& (channel pre-probe) plus the rest of the empirically-legal set"
+    (is (= "it's-a-test?" (gmf/slug "It's a Test?")))
+    (is (= "a&b" (gmf/slug "A&B")))))
+
+;; --- Module-load injectivity guard (ADR-0131 Q2(b), WARN-mode) -----------
+
+(defn- captured-stderr
+  "Runs `f` with `*err*` rebound to an in-memory writer, returns the
+  captured text -- the guard's own warning is emitted via `(binding
+  [*out* *err*] (println ...))`, so binding `*err*` here is read
+  dynamically at the guard's own call site, the same as a real
+  terminal's stderr would be."
+  [f]
+  (let [sw (StringWriter.)]
+    (binding [*err* sw] (f))
+    (str sw)))
+
+(def sleep-apnea-json (slurp (io/resource "sim/modules/sleep_apnea.json")))
+(def hypothyroidism-json (slurp (io/resource "sim/modules/hypothyroidism.json")))
+
+(deftest loading-a-collision-module-warns-naming-module-folded-key-and-both-raw-names
+  (testing "sleep_apnea.json: notes/adr/0131-*.md's own census, 4 collision pairs"
+    (let [warnings (captured-stderr #(gmf/load-module "sleep-apnea" sleep-apnea-json))]
+      (is (str/includes? warnings "sleep-apnea"))
+      (is (str/includes? warnings "home-cpap-unit"))
+      (is (str/includes? warnings "Home CPAP Unit"))
+      (is (str/includes? warnings "Home_CPAP_Unit")))))
+
+(deftest loading-a-second-collision-module-warns-independently
+  (testing "hypothyroidism.json: notes/adr/0131-*.md's own census, 1 collision pair (case-only)"
+    (let [warnings (captured-stderr #(gmf/load-module "hypothyroidism" hypothyroidism-json))]
+      (is (str/includes? warnings "hypothyroidism"))
+      (is (str/includes? warnings "Hypothyroidism")))))
+
+(deftest loading-a-collision-free-module-emits-no-warning
+  (let [warnings (captured-stderr #(gmf/load-module "fixture-clinic" fixture-clinic-json))]
+    (is (= "" warnings))))
+
+(deftest loading-still-succeeds-alongside-the-collision-warning
+  (testing "WARN-mode (Q2(b)): load proceeds, the same silent-overwrite result as before this guard, now merely announced"
+    (let [loaded (atom nil)]
+      (captured-stderr (fn [] (reset! loaded (gmf/load-module "sleep-apnea" sleep-apnea-json))))
+      (is (result/ok? @loaded)))))
