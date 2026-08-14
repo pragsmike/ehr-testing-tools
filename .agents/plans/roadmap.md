@@ -650,6 +650,31 @@ per item; done items move to the bottom of their section with a date and sha.
   as part of that session, with a declared-oracle-change disclosure
   (not a silent pure-identity assumption) if any root's own digest is
   predicted or confirmed to move.
+
+  **IN PROGRESS 2026-08-14 (ADR-0131), Step 1 of 5 landed (docs-only,
+  the declared-oracle-change prediction).** Both defect censuses
+  re-derived across all 66 module JSONs (recursive — 35 of the 66 live
+  in subdirectories the flat top-level glob alone misses): defect 1
+  (illegal EDN chars) 10 breaker keys/3 modules, EXACT match to the
+  channel's own pre-probe; defect 2 (collisions, unchanged by this
+  fix) 10 pairs across **5** distinct modules — the pre-probe's own "8
+  modules" figure was WRONG, disclosed as a found discrepancy, not a
+  live-tree finding (`notes/adr/0131-*.md` has both tables). Movement
+  predicted per-root, empirically (grepped against the pre-fix oracle
+  digest, not just structurally): 3 roots MOVE
+  (`urinary-tract-infections-engine`/`-history-engine`, `injuries`); 1
+  root (`veteran-lung-cancer`) structurally contains a breaker module
+  but its own breaker states are grep-confirmed UNREACHED at that
+  root's seed/population — predicted NOT to move; 4 more roots plus
+  `injuries` again will WARN at load (collision guard) but are
+  predicted NOT to move (warnings are a console side effect, never
+  part of `digest.clj`'s own captured return value); 27 of 35 roots
+  untouched by either census. Full tables and the fold-set's own
+  empirical derivation (round-trip-tested character-by-character
+  against `clojure.edn/read-string`, not hand-recalled from the reader
+  grammar) in `notes/adr/0131-slug-edn-round-trip.md`. Steps 2-5 (red
+  witness, the fix, oracle verdict, records/close) remain — this row
+  stays OPEN until Step 5 closes it.
 - **Scenario rename + busy-tuesday exerciser completion** (new row,
   ADR-0130; sequenced AFTER the row above — cannot land until
   `events.edn` read-back is fixed for this scenario's own module mix).
