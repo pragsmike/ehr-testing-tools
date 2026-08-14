@@ -5,13 +5,18 @@
   NOT asserted here (five of the seven rows name a script this same
   session lands one commit later; `ehrt.docs-tooling.strip-fresh`'s own
   `check-entry` is what reports a missing script as its own RED
-  finding, not this loader test)."
+  finding, not this loader test).
+
+  ADR-0132 adds an eighth row: the clinic-decade exerciser (`bin/demo-
+  exerciser-clinic-decade`), the ADR-0130-widened `:demo-exerciser-
+  fresh` marker mechanism's own first second-instance consumer, its
+  own honestly-named marker pair carried as this row's own data."
   (:require [clojure.test :refer [deftest is]]
             [ehrt.docs-tooling.exercised-sources :as reg]))
 
 (deftest registry-loads-and-validates-test
   (let [rows (reg/load-registry)]
-    (is (= 7 (count rows)))
+    (is (= 8 (count rows)))
     (is (every? #(contains? #{:quickstart-fresh :demo-exerciser-fresh
                                :single-fence :paired}
                              (:extraction %))
@@ -48,3 +53,14 @@
   (let [rows (reg/load-registry)]
     (is (= 2 (count (reg/by-source rows "README.md"))))
     (is (= 1 (count (reg/by-source rows "demos/scenarios/ed-tuesday/README.md"))))))
+
+(deftest registry-seeds-the-clinic-decade-row-test
+  (let [rows (reg/load-registry)
+        row (first (filter #(= "bin/demo-exerciser-clinic-decade" (:script %)) rows))]
+    (is (some? row))
+    (is (= "demos/scenarios/clinic-decade/README.md" (:source row)))
+    (is (= :demo-exerciser-fresh (:extraction row)))
+    (is (= "# BEGIN clinic-decade commands (verbatim from demos/scenarios/clinic-decade/README.md)"
+           (:marker-open row)))
+    (is (= "# END clinic-decade commands" (:marker-close row)))
+    (is (= 1 (count (reg/by-source rows "demos/scenarios/clinic-decade/README.md"))))))

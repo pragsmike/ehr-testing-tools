@@ -19,7 +19,7 @@ help:
 	@echo "Available targets:"
 	@echo "  help         - show this message (default target)"
 	@echo "  test         - the per-push lane: poly check -- every brick + projects/conformance's own suite, no artifact-fetch machinery (ADR-0004)"
-	@echo "  integration  - projects/integration's own suite plus bin/demo-exerciser-ed-tuesday (R3, ADR-0120): real Synthea, real FHIR validator -- requires 'ehrt artifact fetch' first, e.g.:"
+	@echo "  integration  - projects/integration's own suite plus bin/demo-exerciser-ed-tuesday and bin/demo-exerciser-clinic-decade (R3, ADR-0120/ADR-0132): real Synthea, real FHIR validator -- requires 'ehrt artifact fetch' first, e.g.:"
 	@echo "                   bin/ehrt artifact fetch --name synthea --version 4.0.0"
 	@echo "                   bin/ehrt artifact fetch --name temurin-jdk --version 21.0.12+8"
 	@echo "                   bin/ehrt artifact fetch --name fhir-validator-cli --version 6.9.12"
@@ -43,6 +43,7 @@ test:
 integration:
 	clojure -M:poly test :all project:integration
 	bin/demo-exerciser-ed-tuesday
+	bin/demo-exerciser-clinic-decade
 	bin/usecase-judge-tier-calibration
 	bin/usecase-profile-tier-v2
 	bin/usecase-acceptance-qa

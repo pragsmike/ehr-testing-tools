@@ -1,0 +1,156 @@
+#!/usr/bin/env bash
+# Runs demos/scenarios/clinic-decade/README.md's own fenced command
+# sequence, verbatim, under per-step exit-code assertions -- R3
+# (notes/ADRs.md ADR-0113, author verbatim): "The demos must be known
+# to work, and exercised as documented to make sure they actually play
+# out as written." Generalizes bin/demo-exerciser-ed-tuesday's own
+# shape (ADR-0120) to this scenario's own README (ADR-0130's own
+# drafted starting point, ADR-0132's own completion under the ruled
+# clinic-decade name) -- same expect/expect_eval wrapper, same
+# tree-clean postcondition, but this one's invariant checks RE-DERIVE
+# the README's own witnessed figures LIVE from the README's own prose
+# at runtime (the inline `inpatients: 0` claim and the inline
+# closing-summary EDN map), rather than hand-copying them into this
+# script as bash literals -- a future re-witness of these figures
+# (the ADR-0103 boundary-catch-up precedent, which DID move this exact
+# scenario's own numbers once already) changes the README and this
+# script's own check stays correct with zero edit here.
+#
+# The block between the BEGIN/END markers is read by
+# ehrt.docs-tooling.strip-fresh (via the exercised-sources register,
+# components/docs-tooling/resources/docs-tooling/exercised-sources.edn)
+# to prove this script and the README's own three fenced commands
+# teach the identical commands, in the identical order. Keep every
+# taught line inside that block, one statement per README command, and
+# do not "improve" a command here -- an improvement belongs in the
+# README first (AUTHORS-GUIDE.md sec7's craft discipline). Integration-
+# tier only (`make integration`), never per-push CI -- a 200-patient,
+# ten-year-horizon corpus generation plus two board plays is real work,
+# the same tier bin/demo-exerciser-ed-tuesday's own siblings already use.
+set -uo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)" || exit 2
+cd -- "$repo_root" || exit 2
+
+fail() {
+  echo "FAIL: $1" >&2
+  exit 1
+}
+
+STEP=0
+LOG_DIR="$(mktemp -d)"
+export LOG_DIR
+trap 'rm -rf "$LOG_DIR"' EXIT
+
+# expect CODE CMD...  Same shape as bin/demo-exerciser-ed-tuesday's own
+# wrapper: runs CMD with its own argv (no shell reinterpretation),
+# asserts exit status CODE, tees stdout/stderr to this step's own log
+# file under LOG_DIR (echoed back live for a human running this script).
+expect() {
+  local want="$1"; shift
+  STEP=$((STEP + 1))
+  "$@" > "$LOG_DIR/step-$STEP.out" 2> "$LOG_DIR/step-$STEP.err"
+  local got=$?
+  cat "$LOG_DIR/step-$STEP.out"
+  cat "$LOG_DIR/step-$STEP.err" >&2
+  if [ "$got" -ne "$want" ]; then
+    fail "'$*' exited $got, expected $want"
+  fi
+}
+
+echo "== demo-exerciser-clinic-decade: demos/scenarios/clinic-decade/README.md, verbatim, asserted =="
+
+started_s="$(date +%s)"
+
+# Script-only apparatus, not a taught line (outside BEGIN/END, so
+# demo-exerciser-fresh's freshness check never sees it): the README's
+# own Generate section states --out-dir is rejected if it already
+# exists and is non-empty -- this script must be safely re-runnable, a
+# first-time reader's own repo starts clean and never needs this.
+rm -rf out/scenarios/clinic-decade
+
+# BEGIN clinic-decade commands (verbatim from demos/scenarios/clinic-decade/README.md)
+expect 0 bin/ehrt corpus generate sim --seed 20260807 --patients 200 \
+  --config demos/scenarios/clinic-decade/config.edn \
+  --out-dir out/scenarios/clinic-decade
+
+expect 0 bin/ehrt play out/scenarios/clinic-decade --board 60 --rate 100000
+
+expect 0 bin/ehrt play out/scenarios/clinic-decade/events.edn --rate 100000
+# END clinic-decade commands
+
+ended_s="$(date +%s)"
+echo "== demo-exerciser-clinic-decade: full run wallclock $((ended_s - started_s))s =="
+
+echo "== demo-exerciser-clinic-decade: checking named invariants (re-derived live from the README) =="
+
+# "every board snapshot reads `inpatients: 0`" -- the exact literal is
+# read from the README's own prose at runtime, never hand-copied here,
+# so a future re-witness of this figure (ADR-0103's own precedent,
+# which DID move this exact scenario's numbers once already) cannot
+# silently desync from this check. The claim sentence itself wraps
+# across a markdown line break in the README's own prose ("every
+# board" / "snapshot reads ..."), so the extraction regex tolerates
+# whitespace (including a newline) between words rather than requiring
+# them on one physical line. Step 2 is the --board play.
+clojure -M:dev:test -e '
+(require (quote [clojure.string :as str]))
+(let [readme (slurp "demos/scenarios/clinic-decade/README.md")
+      claim-match (re-find #"every\s+board\s+snapshot\s+reads\s+`([^`]+)`" readme)]
+  (if-not claim-match
+    (do (println "FAIL: could not find the README'"'"'s own \"every board snapshot reads ...\" inline claim")
+        (System/exit 1))
+    (let [claim (second claim-match)
+          out-lines (str/split-lines (slurp (str (System/getenv "LOG_DIR") "/step-2.out")))
+          snapshot-lines (filter #(str/includes? % "inpatients:") out-lines)]
+      (if (and (seq snapshot-lines) (every? #(str/includes? % claim) snapshot-lines))
+        (do (println (str "OK: all " (count snapshot-lines) " board-snapshot lines contain the README'"'"'s own re-derived claim " (pr-str claim)))
+            (System/exit 0))
+        (do (println (str "FAIL: not every board-snapshot line contains " (pr-str claim) " -- the README'"'"'s own zero-inpatient claim does not hold on this run"))
+            (doseq [l snapshot-lines] (println "  " l))
+            (System/exit 1))))))
+' || fail "zero-inpatient invariant did not hold (see FAIL detail above)"
+
+# "The run's own closing summary: `{:unparseable-count 0, ...}`" -- the
+# whole map is read from the README's own prose at runtime (a Clojure
+# regex, (?s) mode, over the slurped file -- the map's own text wraps
+# across several physical markdown lines), then subset-matched against
+# the real, freshly captured run's own final printed EDN envelope.
+# :wallclock-ms is excluded as genuinely run-volatile (disclosed,
+# per this session's own fence); every other key -- :emitted 68,
+# :snapshot-count 48, :skip-count 41, :unparseable-count 0, :rate,
+# :idle-cap-ms, :stream-span-ms, :clamped-count, :unfolded-count,
+# :sink -- must match exactly, or this is a FINDING, not a silently
+# tolerated drift.
+clojure -M:dev:test -e '
+(require (quote [clojure.edn :as edn])
+         (quote [clojure.string :as str])
+         (quote [ehrt.docs-tooling.strip-fresh :as sf]))
+(let [readme (slurp "demos/scenarios/clinic-decade/README.md")
+      summary-match (re-find #"(?s)The run.s own closing summary: `(\{.*?\})`" readme)]
+  (if-not summary-match
+    (do (println "FAIL: could not find the README'"'"'s own closing-summary inline EDN span")
+        (System/exit 1))
+    (let [expected (dissoc (edn/read-string (second summary-match)) :wallclock-ms)
+          out-lines (remove str/blank? (str/split-lines (slurp (str (System/getenv "LOG_DIR") "/step-2.out"))))
+          actual (:payload (edn/read-string (last out-lines)))]
+      (if (sf/subset-match? expected actual)
+        (do (println (str "OK: closing-summary invariants match the README'"'"'s own re-derived claim (:wallclock-ms excluded as run-volatile): " (pr-str expected)))
+            (System/exit 0))
+        (do (println "FAIL: closing-summary mismatch -- seed 20260807 determinism did not reproduce")
+            (println (str "  expected (README, :wallclock-ms excluded): " (pr-str expected)))
+            (println (str "  actual:   " (pr-str actual)))
+            (System/exit 1))))))
+' || fail "closing-summary invariant did not hold (see FAIL detail above)"
+
+# Tree-clean postcondition (ADR-0005's own discipline, mirrored from
+# bin/demo-exerciser-ed-tuesday): every write path above lands under
+# the gitignored /out/ -- a full run must leave the tracked tree
+# exactly as it found it.
+dirty="$(git status --porcelain)"
+if [ -n "$dirty" ]; then
+  fail "tree not clean after a full run (ADR-0005 postcondition violated):
+$dirty"
+fi
+
+echo "== demo-exerciser-clinic-decade: every command asserted, every named invariant held, tree clean =="

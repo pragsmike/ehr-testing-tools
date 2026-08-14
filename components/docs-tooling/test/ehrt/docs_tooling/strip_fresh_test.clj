@@ -175,6 +175,20 @@
     (is (true? (:ok? result)) (str "divergence: " (:divergence result)))
     (is (= 21 (:readme-count result)))))
 
+;; ---- check-entry: the clinic-decade row, live, ADR-0132 -- the
+;; ADR-0130-widened :demo-exerciser-fresh marker mechanism's own first
+;; second-instance consumer, proving the register's own :marker-open/
+;; :marker-close keys genuinely reach demo-exerciser-fresh/check
+;; against a REAL, committed, non-ed-tuesday marker pair, not only the
+;; synthetic fixtures above ----
+
+(deftest check-entry-delegates-live-to-clinic-decade-exerciser-test
+  (let [rows (reg/load-registry)
+        row (first (filter #(= "bin/demo-exerciser-clinic-decade" (:script %)) rows))
+        result (sf/check-entry row)]
+    (is (true? (:ok? result)) (str "divergence: " (:divergence result)))
+    (is (= 5 (:readme-count result) (:script-count result)))))
+
 ;; ---- check-entry: the five new rows, live, once their own scripts
 ;; land in this same commit (Step 3, ADR-0129) -- RED against these
 ;; same rows was witnessed and pasted into the session record before

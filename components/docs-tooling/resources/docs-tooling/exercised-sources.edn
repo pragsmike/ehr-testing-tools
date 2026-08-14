@@ -119,4 +119,12 @@
   :marker-open "# BEGIN what-you-get commands (verbatim from README.md's What you get section)"
   :marker-close "# END what-you-get commands"
   :env {}
-  :witness {:adr "ADR-0129" :date "2026-08-13"}}]
+  :witness {:adr "ADR-0129" :date "2026-08-13"}}
+
+ {:source "demos/scenarios/clinic-decade/README.md"
+  :script "bin/demo-exerciser-clinic-decade"
+  :extraction :demo-exerciser-fresh
+  :marker-open "# BEGIN clinic-decade commands (verbatim from demos/scenarios/clinic-decade/README.md)"
+  :marker-close "# END clinic-decade commands"
+  :env {}
+  :witness {:adr "ADR-0132" :date "2026-08-14"}}]
