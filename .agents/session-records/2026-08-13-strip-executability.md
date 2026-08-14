@@ -493,3 +493,51 @@ and were never regressed by any session since.
   verified locally and on remote`, both stub-creation and index-line
   steps reported `SKIP` (already present), confirming nothing was
   missed.
+
+`clojure -M:poly check`: OK. Full `clojure -M:poly test :all
+skip:integration`: green, 535 assertions/0 failures/0 errors
+(reading-set-budget-test held -- `roadmap.md`'s own growth this
+session stayed within `:onboarding`'s 2335-line budget, no bump
+needed). `bin/verify-nist-lock`: OK. `gitleaks git --staged -v`:
+clean. `git diff --cached --stat` before commit: exactly the seven
+fenced files. Committed `594e488`; pushed; `bin/post-push-verify
+cd82421 HEAD`: remote tip matched, ASCII clean, CI queued/pending.
+
+## `make integration`, once at close (the fence's own second required run)
+
+Ran against a genuinely clean, fully-committed tree (`git status
+--porcelain` empty, untouched for the run's own ~9-minute duration).
+GREEN -- every project's own test suite, `bin/demo-exerciser-
+ed-tuesday`, and all five new scripts, real artifacts, tree clean
+after each. Task exit code 0.
+
+## Oracle, the full session span
+
+`bin/regression-oracle 56613c7 594e488` (baseline HEAD -> this
+session's own closing commit): soundness check passed
+(`digest.clj` identical outside its own `(ns ...)` form); all 35
+roots' own SHA-256 digests compared between two disposable worktrees
+-- **`IDENTICAL: every root's digest matches between
+56613c75c35bd1de5e9a66fb57edd84848196a6b and
+594e488173d2a8910de490594c24e55c1bbe7dc3`**, all 35 roots. Matches
+the Step 0 pre-digest prediction of pure identity exactly: this
+session's own edits are entirely `components/docs-tooling/`
+(not a pipeline root), five new `bin/` scripts (write only to
+gitignored `out/`), `Makefile`'s own `integration:` target lines, and
+`.agents/`/`notes/` documentation -- zero pipeline `src`/`test` touched
+anywhere.
+
+## Close
+
+HEAD `594e488173d2a8910de490594c24e55c1bbe7dc3`. Five commits this
+session (`3c9333d`, `47a1ab8`, `076d5b1`, `35bad55`, `594e488`) plus
+two small administrative commits (`185018c` self-archive,
+`4bd7a17`/`cd82421` session-record checkpoints -- see above for the
+exact set). Tag `stable-20260813-hardening` paid at `56613c7`,
+peeled-ref-verified twice (once at payment, once via `bin/
+close-scaffold --expect-tag` at close). Manual-review dimension 1
+(strip executability): CLOSED, PASS. Manual arc: first
+all-dimensions-addressed state. Citation gate: a standing mechanism
+enforcing cited-implies-exercised for every future manual chapter.
+Zero fabricated output anywhere in this record -- every pasted result
+above is this session's own real, witnessed command output.
