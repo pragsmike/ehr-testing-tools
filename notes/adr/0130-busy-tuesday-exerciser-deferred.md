@@ -295,10 +295,13 @@ assertions. 0 failures, 0 errors.`
 Pre-analysis: pure identity expected — every landed change is
 `components/docs-tooling/{src,test}` (not an oracle root) plus
 `Makefile` (net no-op after revert), `.agents/`, `notes/`. `bin/
-regression-oracle 3b30aba <this session's own closing commit>`: run
-recorded in this session's own record, appended after the close commit
-lands (the SHA is not known while this file is authored, per this
-repo's own established sequencing for a session's own final commit).
+regression-oracle 3b30abaecb5917a731e65f3c4ab507d6a9048856
+06aec01669a91273fe8ce6a0b84b017042f0f228` (the session's own two real
+commits — `b3483dc0`, the widening; `06aec016`, this record and
+close): **IDENTICAL, all 35 roots.** Matches the pre-analysis exactly.
+Full receipts in this session's own record,
+`.agents/session-records/2026-08-14-busy-tuesday-exerciser-
+deferred.md`.
 
 ### Verification
 

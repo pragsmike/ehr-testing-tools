@@ -329,5 +329,50 @@ Two commits, per the driving prompt's own Step 1/Step 2 split (Step
 Final `make integration`, oracle bracket, and both commits' own
 receipts appended below after landing.
 
-<!-- APPEND-AFTER-CLOSE -->
+## Commits and post-push verification
+
+1. `b3483dc0708b0084c8f49d1446f10f36127a59cc` -- `feat: demo-exerciser-
+   fresh marker widening; checkpoint-commit practice in skill
+   (ADR-0130)`. `bin/post-push-verify 3b30abae b3483dc0`: remote tip
+   matched, per-commit ASCII clean, CI run reported (queued/in_progress
+   at report time, not awaited to conclusion, AR-CI-4).
+2. `06aec01669a91273fe8ce6a0b84b017042f0f228` -- `docs: session record
+   and prompt archive -- busy-tuesday exerciser deferred, slug defect
+   disclosed (ADR-0130)`. `bin/post-push-verify b3483dc0 06aec016`:
+   remote tip matched, per-commit ASCII clean, CI run reported (queued
+   at report time).
+
+## Final `make integration`, clean tree
+
+Run against the post-commit-2 tree (busy-tuesday's own script never
+landed, so this is `bin/demo-exerciser-ed-tuesday` + the five ADR-0129
+use-case exercisers + `readme-what-you-get`, the same scope
+ADR-0129's own close used): exit `0`, zero `FAIL` lines anywhere in
+the captured output, every named invariant held (ed-tuesday's own 34
+`:verified true` batch listing, the straddle membership, both
+`readme-what-you-get` paired-output checks `OK`), tree-clean
+postcondition passed on every script. `git status --porcelain` after
+the run: empty.
+
+## Oracle bracket
+
+`bin/regression-oracle 3b30abaecb5917a731e65f3c4ab507d6a9048856
+06aec01669a91273fe8ce6a0b84b017042f0f228`:
+
+```
+--- declared-digest-change: no (soundness: yes outside ns form) ---
+IDENTICAL: every root's digest matches between 3b30abaecb5917a731e65f3c4ab507d6a9048856 and 06aec01669a91273fe8ce6a0b84b017042f0f228
+```
+
+All 35 roots. Matches the pre-analysis exactly (nothing landed touches
+an oracle root's own `src`).
+
+## Checkpoint commit for this append
+
+Per this session's own newly-landed skill sentence (item 7,
+`build-session/SKILL.md`): this append itself is a session-record
+edit made after `make integration`'s own clean-tree run above, so
+landing it requires its own small checkpoint commit rather than
+re-running the full integration suite a second time to re-prove a
+tree-clean postcondition this append would immediately re-dirty.
 
