@@ -196,9 +196,19 @@
   (:name (first (filter #(= class (:class %)) (:wards facility)))))
 
 (defn- encounter->step
+  "ADR-0133 (restoration cascade, resolving the deferred decision
+  `ehrt.sim-trajectory.gmf/encounter-class->keyword`'s own docstring
+  named): `:virtual` joins `:wellness`/`:ambulatory` here -- the SAME
+  compile-layer same-concept alias Wave B's own `\"outpatient\"` ->
+  `:ambulatory` precedent already established (a phone/remote
+  encounter compiles to the SAME :outpatient-visit IR shape a
+  wellness/ambulatory one does; the trajectory event itself keeps
+  :encounter-class :virtual, so no modality information is lost -- a
+  distinct IR treatment remains available to any future session with
+  an actual consumer for that distinction)."
   [facility event]
   (case (:encounter-class event)
-    (:wellness :ambulatory) {:type :outpatient-visit :citation (citation event)}
+    (:wellness :ambulatory :virtual) {:type :outpatient-visit :citation (citation event)}
     :emergency {:type :admission :location (ward-name-for-class facility :ed) :citation (citation event)}
     :inpatient {:type :admission :location (ward-name-for-class facility :inpatient) :citation (citation event)}))
 
@@ -211,9 +221,13 @@
     (nth trajectory idx nil)))
 
 (defn- encounter-end->step
+  "ADR-0133: `:virtual` joins the outpatient-pairing set here TOO --
+  patching only `encounter->step` would pair a :virtual encounter's own
+  :outpatient-visit start with a :discharge end (this set falling
+  through to the `:else` branch), silently wrong with no exception."
   [trajectory event]
   (let [opening (referenced-event trajectory event)]
-    (if (#{:wellness :ambulatory} (:encounter-class opening))
+    (if (#{:wellness :ambulatory :virtual} (:encounter-class opening))
       {:type :outpatient-visit-end :citation (citation event)}
       {:type :discharge :citation (citation event)})))
 

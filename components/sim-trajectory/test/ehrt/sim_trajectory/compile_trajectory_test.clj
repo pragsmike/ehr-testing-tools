@@ -70,6 +70,29 @@
           {:keys [steps]} (ct/compile-trajectory trajectory facility 100)]
       (is (= [:admission :delay :discharge] (mapv :type steps))))))
 
+;; --- ADR-0133 (restoration cascade): :virtual resolves the deferred
+;; decision ADR-0029 D3f left open (gmf.clj's own `encounter-class->
+;; keyword` docstring) -- a phone/remote encounter compiles to the SAME
+;; :outpatient-visit IR shape :wellness/:ambulatory already do, at BOTH
+;; dispatch sites (`encounter->step`/`encounter-end->step`) --------------
+
+(deftest virtual-encounters-compile-to-outpatient-visit-start-and-end
+  (testing "start: encounter->step's own case gains :virtual (PRE-FIX,
+            red: IllegalArgumentException, no matching clause)"
+    (let [trajectory [(ev :encounter {:t 100 :encounter-class :virtual
+                                      :codes [{:system :snomed :code "185347001" :display "Encounter for problem"}]})]
+          {:keys [steps]} (ct/compile-trajectory trajectory facility 100)]
+      (is (= :outpatient-visit (:type (first steps))))
+      (is (= {:module "m" :state :s} (:citation (first steps))))))
+  (testing "end: encounter-end->step's own opening-class set gains
+            :virtual TOO -- patching only the start would silently pair
+            a :virtual encounter's own :outpatient-visit with a
+            :discharge end, no exception, wrong IR"
+    (let [trajectory [(ev :encounter {:t 100 :encounter-class :virtual :codes []})
+                      (ev :encounter-end {:t 110 :references 0})]
+          {:keys [steps]} (ct/compile-trajectory trajectory facility 100)]
+      (is (= [:outpatient-visit :delay :outpatient-visit-end] (mapv :type steps))))))
+
 (deftest a-second-same-episode-encounter-after-the-first-encounter-end-is-dropped
   (testing "M7 finding (docs/gmf-interpreter.md's own M7 survey section,
             confirmed here against synthetic events rather than only
