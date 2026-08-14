@@ -1,5 +1,50 @@
 # State of the project — continuity register
 
+**CITATION-ONLY update, 2026-08-14, busy-tuesday exerciser: marker
+widening landed, row deferred on a real slug EDN round-trip defect
+(`notes/adr/0130-busy-tuesday-exerciser-deferred.md`) — this citation
+moves here from ADR-0129, CONTENT NOT RE-PROBED.** Not an arc close
+(this session's own naming convention; the row it chartered stays
+OPEN, not closed), so `state_staleness_tripwire_test.clj`'s own regex
+is untouched by this update. Recorded here anyway, in the same
+append-only citation-only spirit as the entries below. **Reduced
+close, TWO in-session STOP-AND-REPORTs, both ruled** — landed:
+`ehrt.docs-tooling.demo-exerciser-fresh`'s own `script-command-lines`/
+`check` widened to an explicit `marker-open`/`marker-close` pair
+(ed-tuesday's own literal markers as default, every prior call site
+byte-identical in behavior), `ehrt.docs-tooling.strip-fresh`'s own
+`:demo-exerciser-fresh` case passing a register row's own markers
+through, red-before-green proven via disposable-stash isolation; a
+forced one-line `citation-gate-test` fix (a pre-session-register
+simulation's own extraction-kind filter retargeted to script name,
+after a legitimately-added third `:demo-exerciser-fresh` row broke its
+own two-row sanity assumption); one sentence in `build-session/
+SKILL.md` (+ mirror) sanctioning session-record checkpoint commits
+when `make integration`'s tree-clean postcondition requires them
+(ADR-0129's own discovered practice, now written down). **NOT
+landed, reverted to byte-identity:** the busy-tuesday register row,
+its own drafted `bin/demo-exerciser-busy-tuesday` script, and the
+`Makefile` integration line — the script's own real end-to-end run
+(seed 20260807, 200 patients) reproduced the seed-determinism contract
+exactly on commands 1-2, then found a genuine, previously-undisclosed
+defect on command 3: `ehrt.sim-trajectory.gmf/slug` never sanitizes
+commas out of raw upstream Synthea state names before constructing a
+keyword (`uti/abx_tx.json`'s own `"Cipro 500, 5 day"` state ->
+`:cipro-500,-5-day`, which `pr-str`s cleanly but is not re-readable
+EDN — `ehrt play events.edn`'s own read-back breaks on it). Full
+disclosure, the drafted script's own verbatim text, and two new
+`.agents/plans/roadmap.md` Next-section rows (the slug fix itself,
+chartered `:sim`-family with a mandatory declared-oracle-change
+assessment; scenario rename + exerciser completion, sequenced after
+it) in `notes/adr/0130-*.md`. Zero `demos/` README edits, zero
+`sim-trajectory`/module-content edits — the oracle holds pure identity
+across all 35 roots. Every section below still reflects its LAST full
+regeneration, 2026-08-08 against tip `a9c3abf` — twenty-three ADRs'
+worth of landings since (0090 through 0130, excluding citation-only
+entries) are NOT reflected below and every `[V]` tag below should be
+read accordingly; a full regeneration is still owed at a session that
+rules it.
+
 **CITATION-ONLY update, 2026-08-13, strip executability: exercisers,
 citation gate, ADR-0127 erratum (`notes/adr/0129-strip-
 executability.md`) — this citation moves here from ADR-0128, CONTENT

@@ -588,6 +588,82 @@ per item; done items move to the bottom of their section with a date and sha.
   than inventing its own freshness-check plumbing; the register's own
   generalized `ehrt.docs-tooling.strip-fresh/check-entry` already
   handles a new row of this shape without any code change, only data.
+
+  **Dated correction (2026-08-14, ADR-0130): the "without any code
+  change, only data" claim above does NOT hold.** A session executing
+  this row found `:demo-exerciser-fresh`'s own script-side extraction
+  (`ehrt.docs-tooling.demo-exerciser-fresh/script-command-lines`)
+  hardwired to ed-tuesday's own literal BEGIN/END marker text, not
+  parameterized — verified both by reading and empirically (a
+  correctly-named busy-tuesday-marker fixture returned `nil`). Ruled
+  (a): the fence widened to a minimal parameterization —
+  `script-command-lines`/`check` now take an explicit `marker-open`/
+  `marker-close` pair, defaulting to ed-tuesday's own literal markers
+  so every pre-ADR-0130 call site stays byte-identical; `ehrt.docs-
+  tooling.strip-fresh`'s own `:demo-exerciser-fresh` case now passes a
+  register row's own `:marker-open`/`:marker-close` through rather than
+  silently ignoring them. Landed, red-before-green proven via disposable
+  stash isolation (checkpoint-isolation practice, `.agents/skills/
+  build-session/SKILL.md`). **The busy-tuesday row/script/Makefile line
+  themselves were NOT landed** — the same session's own real,
+  end-to-end run of the drafted (never-committed) script surfaced an
+  unrelated, genuine defect blocking the README's own third command;
+  see the two new Next-section rows below for the sequenced follow-up.
+  This row stays OPEN, now blocked on the first of those two rows.
+- **Slug EDN-round-trip fix** (new row, ADR-0130; not chartered to any
+  executing session yet, sequenced BEFORE the row below). A real,
+  previously-undisclosed defect this session found live, exercising
+  busy-tuesday's own third fenced command for the first time ever with
+  a real assertion on its exit code: `ehrt.sim-trajectory.gmf/slug`
+  (`components/sim-trajectory/src/ehrt/sim_trajectory/gmf.clj:45-55`)
+  lower-cases and replaces `[_\s]+` with `-` on a raw GMF name, but
+  never sanitizes any OTHER punctuation — `keyword` (line 63) then
+  wraps the result verbatim. Upstream Synthea state names are free
+  text and can legitimately carry a comma (`uti/abx_tx.json`'s own
+  `"Cipro 500, 5 day"`/`"Cipro 250, 3 day"`, part of busy-tuesday's own
+  twelve-module mix): `slug` turns the first into `"cipro-500,-5-day"`,
+  `keyword` wraps it to `:cipro-500,-5-day` — prints fine via `pr-str`,
+  but is not re-readable EDN (the reader treats the embedded comma as
+  whitespace, splitting the token and failing on the orphaned `-5-day`
+  fragment). This project's own informal law — every keyword it
+  constructs satisfies `(= k (edn/read-string (pr-str k)))`, emit
+  composed with read is identity — is violated for this specimen.
+  Witnessed live: `bin/ehrt play out/scenarios/busy-tuesday/events.edn
+  --rate 100000` (seed 20260807, 200 patients) fails, `{:status
+  :error, :category :play-input-unreadable, :payload {:path
+  "out/scenarios/busy-tuesday/events.edn", :message "Invalid number:
+  -5-day"}}` — the HL7 v2 wire path (a DIFFERENT command, same run)
+  does not hit this, since it never round-trips the raw `:citation
+  {:state ...}` field through EDN read. An `:sim`-family engine session
+  chartered to fix this: a red-before-green PROPERTY test (generative,
+  matching this project's own generative-test culture) asserting the
+  round-trip law holds for `slug`-derived keywords across arbitrary raw
+  GMF names, including ones carrying commas or other punctuation, red
+  before the fix and green after; and a MANDATORY declared-oracle-
+  change assessment before landing — `slug` compiles EVERY module's own
+  state/attribute names, not only `uti/abx_tx.json`'s, so a fix
+  (sanitizing/escaping whatever `slug` currently lets through) could
+  change the compiled keyword value, and therefore the emitted ground
+  truth, for any OTHER already-vendored module whose own state names
+  carry a character `slug` doesn't currently touch — a census across
+  all 35 oracle roots' own source modules for this pattern is required
+  as part of that session, with a declared-oracle-change disclosure
+  (not a silent pure-identity assumption) if any root's own digest is
+  predicted or confirmed to move.
+- **Scenario rename + busy-tuesday exerciser completion** (new row,
+  ADR-0130; sequenced AFTER the row above — cannot land until
+  `events.edn` read-back is fixed for this scenario's own module mix).
+  Resumes the busy-tuesday exerciser work this session drafted (a
+  working `bin/demo-exerciser-busy-tuesday`, its own register row using
+  the widened `:demo-exerciser-fresh` marker mechanism, `Makefile`
+  wiring) once the slug defect above no longer blocks the README's own
+  third fenced command. **The scenario's own future name is an OPEN
+  question for the author** — ruled explicitly left open rather than
+  assumed "busy-tuesday" stays as-is; this row's own title uses a
+  placeholder pending that ruling. This session's own drafted script
+  (never committed; full text recoverable from this session's own
+  prompt archive and `notes/adr/0130-*.md`) is the worked starting
+  point, not a design redo.
 - **Audience register paring** (ADR-0113 R4; a small future docs
   session, not chartered). Author "Q1 a": the audience register in
   `docs/dev/AUDIENCES.md` pares to five behavioral segments --
