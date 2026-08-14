@@ -687,8 +687,19 @@ per item; done items move to the bottom of their section with a date and sha.
   JSONs edited (vendored verbatim, ADR-0071 precedent); zero README/
   figure edits. Full account, both census tables, and the
   prediction-vs-actual table in `notes/adr/0131-slug-edn-round-trip.md`.
-- **Vendoring rider: per-pair collision corrections, 5 modules** (new
-  row, ADR-0131, AR-VB2-R form — a rider attached to a vendoring
+- **Vendoring rider: per-pair collision corrections, 5 modules — IN
+  PROGRESS, ADR-0133 (2026-08-14), superseding this row's own original
+  per-module-JSON-edit framing below.** A new author ruling picks
+  loader-side exact-name resolution instead: a raw-name -> key table
+  built at load time, every name-valued reference resolved by EXACT
+  raw string (never `slug`), vendored JSONs staying verbatim (ADR-0071
+  preserved, NOTICE hashes untouched) — the per-pair rename-or-declare
+  decision this row originally chartered is not needed, since BOTH
+  members of every colliding pair load as real, distinct states
+  either way. ADR-0133's own Step 1 (census + declared-oracle-change
+  prediction) landed docs-only; Step 2 (red-then-green fix) is next.
+  Original row text, kept for the record below:
+  (new row, ADR-0131, AR-VB2-R form — a rider attached to a vendoring
   session's own standing ceremony, ADR-0071's own precedent for this
   shape). ADR-0131's own re-derived census found 5 already-vendored
   modules whose own raw state names collide under `slug`
@@ -711,6 +722,10 @@ per item; done items move to the bottom of their section with a date and sha.
   is structured for this as a mode switch, not a rewrite) — once every
   currently-known collision has its own per-pair correction landed, a
   hard-error default no longer breaks any already-vendored module.
+  **ADR-0133 supersedes this escalation plan: the escalation is
+  DISCHARGED (handled via resolution, not executed as hard-error), a
+  new, different strictness (`:unresolved-state-reference`) lands
+  instead.**
 - **Scenario rename + clinic-decade exerciser completion — CLOSED
   2026-08-14 (ADR-0132).** ADR-0130; UNBLOCKED 2026-08-14 — ADR-0131
   fixed `events.edn` read-back for this scenario's own module mix, the
