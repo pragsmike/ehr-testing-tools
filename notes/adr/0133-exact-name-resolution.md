@@ -224,9 +224,192 @@ Step 3 re-runs the official `bin/regression-oracle` bracket; this
 prediction must match exactly (5 movers, 30 identical, 10 disclosures
 in place of 10 warnings) or this session STOPs.
 
+### Step 2 — Implementation: two STOP-AND-REPORTs, both ruled, the
+restoration cascade
+
+Red-then-green landed the exact-name resolution mechanism itself
+(`disambiguate-state-names`, `resolve-name-ref`, `find-unresolved-
+reference`, the file-order scanner) exactly as designed above,
+84/84 green. Two further STOP-AND-REPORTs followed, both surfaced to
+the author and both ruled — the SAME causal chain, one restoration
+pulling on two more threads:
+
+**STOP 1 — `veteran-ptsd` throws `run-module exceeded max-steps`.**
+Restoring the `PHQ2_Q9 Assessment`/`PHQ2_Q9_Assessment` and `Columbia
+Suicide Risk Assessment`/`Columbia_Suicide_Risk_Assessment` pairs
+(confirmed, by direct trace, TWO separate self-consistent workflows —
+`Initial_Psychiatric_PTSD_Encounter` → the space-variant chain,
+`PC-PTSD Screen` → the underscore-variant chain — not a chain like
+hypothyroidism's) reaches, for the first time since vendoring, a real,
+legal, long-lived recurring-care loop (`therapy delay`/`Therapy_Visit`/
+`end_Psych_encounter`, a genuine time-advancing cycle, 5-14-day Delay
+each lap) whose own LIFETIME zero-advance step total, summed across
+this root's own 100-year population-scale horizon, exceeds
+`max-steps` (10000) with no bug present. **Author-ruled:** the module
+is correctly authored; the trip is ADR-0105's own "does not consume"
+(lifetime population count) semantics false-firing on this legitimate
+loop, unmasked by the restoration. `consume-step-budget`
+(`gmf_interpreter.clj`) switches to the OTHER zero-advance semantics
+ADR-0105's own Context licensed but did not choose: reset `n` to zero
+on any genuinely time-advancing step, so the budget polices
+CONSECUTIVE zero-advance steps only. Red-before-green (checkpoint-
+isolated via disposable stash): a new synthetic module
+(`bounded-burst-module`) whose own lifetime zero-advance total exceeds
+`max-steps` but whose consecutive runs (reset every lap by a real
+1-day Delay) never do — throws under the old semantics, completes
+cleanly under the new one; the existing zero-advance-spin tests still
+throw post-fix, non-vacuous proof the backstop itself is unchanged.
+Commit `017f696`.
+
+**STOP 2 — `veteran-ptsd` throws `IllegalArgumentException: No
+matching clause: :virtual`.** Past the interpreter fix, both its own
+tests still threw — one layer further downstream, in
+`compile-trajectory`'s own `encounter->step`. The restored branch
+reaches `Telehealth_Visit`, an `Encounter` state with `encounter_class
+"virtual"`, for the first time since vendoring (the collision bug had
+orphaned this whole branch). Not a new defect: `gmf.clj`'s own
+`encounter-class->keyword` docstring already named this EXACT gap,
+verbatim, at ADR-0029 D3f (2026-08-02): *"whether `:virtual` compiles
+the SAME way `:ambulatory` does, or needs its own IR treatment, is a
+decision for whichever future session first exercises a closure
+through the full compile-trajectory pipeline, not this one."* This is
+that session. **Author-ruled:** `:virtual` aliases to the SAME
+`:outpatient-visit`/`:outpatient-visit-end` IR shape `:wellness`/
+`:ambulatory` already compile to (Wave B's own `"outpatient"`
+precedent, one layer down), at BOTH dispatch sites
+(`encounter->step`/`encounter-end->step`) — patching only the first
+would pair a `:virtual`-opened `:outpatient-visit` with a `:discharge`
+end, silently wrong, no exception. The trajectory event itself keeps
+`:encounter-class :virtual` — loader-layer distinctness untouched, no
+modality information lost. Red-before-green (checkpoint-isolated via
+disposable stash): a new compile test, `:virtual` encounter start+end
+→ `:outpatient-visit`/`:outpatient-visit-end` — throws pre-fix, green
+post-fix. `gmf.clj`'s own `encounter-class->keyword` docstring updated
+in place: the deferred-decision clause is RESOLVED, citing this ADR.
+Commit `53555be`.
+
+**The restoration cascade, named as one chain, not scope creep:**
+ADR-0133's own collision fix (state-name resolution) → unmasks a real
+recurring-care loop → trips ADR-0105's own backstop calibration
+(chosen semantics false-positive) → fixed by switching to the OTHER
+ADR-0105-licensed semantics → unmasks a real, previously-unreached
+branch → lands on ADR-0029 D3f's own deliberately-deferred `:virtual`
+decision → resolved. Each link is a narrow, author-licensed widening
+of a fence that held everywhere else; none is an independent design
+decision this session invented — every one was either an existing,
+already-legal alternative (ADR-0105's own Context) or an explicitly
+pre-named open question (ADR-0029 D3f) waiting for exactly this
+trigger.
+
+Full local suite green throughout (335 tests / 904 assertions across
+the seven directly-touched namespaces; `clojure -M:poly test :all
+skip:integration`: 632 "0 failures, 0 errors" blocks, matching this
+session's own pre-fix baseline count exactly, zero `FAIL`/`ERROR`
+lines). `clojure -M:poly check`: OK, checked after every commit.
+
+**Pinned-value re-baseline (declared-oracle-change consequence, not a
+regression):** three EXISTING tests measure compiled trajectory
+content directly and moved with the restoration, exactly as Step 1's
+own census predicted (`colorectal`/`injuries`/`sleep-apnea`/
+`veteran-ptsd` all carry a collision this fix resolves):
+
+| Test | Old | New |
+|---|---|---|
+| `vendored_colorectal_test.clj`'s `suppressed-straddle-spans` | `{20260802 1, 1 0, 42 1}` | `{20260802 2, 1 3, 42 3}` |
+| `vendored_veteran_ptsd_test.clj`'s `suppressed-straddle-spans` | `{20260802 14, 1 6, 42 7}` | `{20260802 0, 1 1, 42 0}` |
+| `vendored_injuries_test.clj`'s `synthesized-encounter-ends` | `4` | `5` |
+
+Commit `69e1652`.
+
+### Step 3 — Oracle verdict: prediction vs actual, ONE refinement
+
+`bin/regression-oracle c3b6fbc 69e1652` (HEAD at Step 0 vs the Step 2
+tip): soundness check IDENTICAL outside `digest.clj`'s own `(ns ...)`
+form; result **DIFFERS** — EXPECTED, a declared change.
+
+| Root | Predicted | Actual | Match? |
+|---|---|---|---|
+| `colorectal` | MOVE | MOVED (`85f57ba3…` → `1de63081…`) | ✅ |
+| `injuries` | MOVE | MOVED (`2cbb97ee…` → `e7377c0d…`) | ✅ |
+| `sleep-apnea` | MOVE | MOVED (`271df527…` → `5a387354…`) | ✅ |
+| `veteran-ptsd` | MOVE | MOVED (`50405114…` → `e84ab6d0…`) | ✅ |
+| `hypothyroidism` | MOVE | **byte-identical** (`b9891660…`, unchanged) | ❌ — refined below |
+| all other 30 roots | NO MOVE | byte-identical, silent | ✅ |
+
+**`hypothyroidism` predicted MOVE, actually stayed byte-identical —
+found, investigated, explained; not a bug, not a new STOP-worthy
+layer.** The naive rule (Step 1's own caveat: "necessary, not
+sufficient," the same discipline ADR-0131's own `veteran-lung-cancer`
+counter-example already established) held for structural reachability
+but missed a SECOND way a restored pair can be unobservable — not
+"unreached," but "reached and executed, yet inert." Direct read
+(`gmf_interpreter.clj`'s own `:symptom` case, ~1829): a Symptom state
+with `:exact` severity samples NO random value (`(:quantity (:exact
+state))`, a fixed JSON literal, never `rand-int-in`/`sample-
+distribution`) and emits NO trajectory event of its own (`pass-
+through-outcome ... 0 [] ...` — zero advance, empty event vector) —
+its only observable effect is a `ctx.attributes` write. Both
+`"Hypothyroidism"` (`decreased appetite`) and `"hypothyroidism"`
+(`weight gain`) are `:exact`-severity Symptom states; a direct census
+of `hypothyroidism.json`'s own raw text confirms each symptom name
+string (`"decreased appetite"`/`"weight gain"`) appears EXACTLY ONCE
+in the whole module — only in its own defining state, never read by
+any condition anywhere in this closure (every condition in this
+module is `Attribute`/`Gender`, never `Symptom`). Walking through ONE
+collapsed Symptom state (old) or TWO distinct ones in sequence (new)
+therefore consumes the identical zero RNG draws, emits the identical
+zero events, and leaves every downstream random decision in the SAME
+patient's walk bit-for-bit unaffected — the restored content is real
+(both states genuinely load and execute now, witnessed directly by
+`gmf-test`'s own `hypothyroidism-symptom-chain-loads-as-four-
+distinct-states-chain-intact`) but structurally unobservable to
+anything `digest.clj` measures, for THIS module's own real usage
+pattern specifically (not a general property of Symptom states, which
+CAN consume RNG draws and would then move a digest, under `:range`/
+`:distribution` severity or if their own attribute were read
+downstream — neither holds here). Revised count: **4 roots moved, 31
+stayed identical** (not 5/30) — matches actual exactly once refined.
+
+**Every one of the 10 predicted disambiguation disclosures fired**
+(direct grep of the oracle run's own captured output, deduplicated):
+exactly the 10 pairs Step 1's census named, each naming the module,
+the folded key, both raw names, and the two distinct resolved keys.
+Zero occurrences of the old `WARN:` text anywhere in the run.
+
+**Restored content witnessed directly in real ground-truth output**
+(`veteran-ptsd`, this root's own exact `digest.clj` parameters — seed
+20260802, 300 patients, 100-year horizon): 47 events citing a
+previously-orphaned state, including real `:outpatient-visit`/
+`:observation`/`:outpatient-visit-end` triples citing `:telehealth-
+visit`/`:telehealth-observations`/`:end-telehealth` — the direct
+beneficiary of both STOP-AND-REPORT fixes above, not merely a
+theoretical possibility.
+
+No STOP condition beyond the two already ruled above. Re-baseline, per
+the declared-change ceremony's own mechanism: the four moved roots'
+own post-fix digests (`69e1652` and onward) are the licensed new
+baseline.
+
 ### Fences
 
-Committed this step: this ADR file, `notes/ADRs.md` index line,
-`.agents/plans/roadmap.md`'s vendoring-rider row (prediction recorded
-in place, row stays open — closes in Step 4). Zero `src`/`test`/module
-JSON touched — docs-only, matching ADR-0131's own Step 1 precedent.
+**Step 1** (commit `ded3569`): this ADR file, `notes/ADRs.md` index
+line, `.agents/plans/roadmap.md`'s vendoring-rider row (prediction
+recorded in place, row stays open — closes in Step 4). Zero
+`src`/`test`/module JSON touched — docs-only, matching ADR-0131's own
+Step 1 precedent.
+
+**Step 2** (commits `91dc34c`/`017f696`/`53555be`/`69e1652`):
+`components/sim-trajectory/{src,test}/ehrt/sim_trajectory/
+{gmf.clj,gmf_test.clj,gmf_interpreter.clj,gmf_interpreter_test.clj,
+compile_trajectory.clj,compile_trajectory_test.clj}`; three
+`sim-emit-hl7` vendored test files (pinned-value re-baseline only, no
+production code). Zero module JSON touched anywhere (ADR-0071
+vendoring preserved verbatim, NOTICE hashes unmoved) — confirmed by
+this step's own `git diff --stat` review before each commit. Zero
+edits outside `sim-trajectory`/`sim-emit-hl7` test files.
+
+**Step 3** (this section, docs-only): this ADR file's own addendum
+(evidence/record). Zero `src`/`test`/module JSON touched — the oracle
+bracket and the ground-truth witness probe are read-only verification
+acts, not fixes, the same disposition ADR-0131's own Step 4 already
+established.
