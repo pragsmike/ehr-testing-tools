@@ -94,20 +94,27 @@
       (second (re-matches expect-eval-re line))
       line))
 
+(def ^:private default-marker-open
+  "# BEGIN ed-tuesday commands (verbatim from demos/scenarios/ed-tuesday/README.md)")
+(def ^:private default-marker-close "# END ed-tuesday commands")
+
 (defn script-command-lines
-  "bin/demo-exerciser-ed-tuesday's taught command lines, unwrapped, in
-  order -- the lines strictly between its own BEGIN/END marker pair.
-  nil if the script (or its marker pair) doesn't exist yet."
-  [script-path]
-  (when (.exists (java.io.File. ^String script-path))
-    (let [lines (str/split-lines (slurp script-path))
-          open "# BEGIN ed-tuesday commands (verbatim from demos/scenarios/ed-tuesday/README.md)"
-          close "# END ed-tuesday commands"
-          after-open (seq (rest (drop-while #(not= (str/trim %) open) lines)))]
-      (when after-open
-        (->> (take-while #(not= (str/trim %) close) after-open)
-             (remove blank-line?)
-             (mapv unwrap-script-line))))))
+  "The taught command lines strictly between `marker-open`/`marker-close`
+  in `script-path`, unwrapped, in order. nil if the script (or its
+  marker pair) doesn't exist yet. `marker-open`/`marker-close` default
+  to bin/demo-exerciser-ed-tuesday's own pair (every call site before
+  ADR-0130); ADR-0130 widens this to an explicit pair, since a second
+  demo-exerciser script (bin/demo-exerciser-busy-tuesday) needs its own,
+  honestly-named markers rather than sharing ed-tuesday's literal text."
+  ([script-path] (script-command-lines script-path default-marker-open default-marker-close))
+  ([script-path marker-open marker-close]
+   (when (.exists (java.io.File. ^String script-path))
+     (let [lines (str/split-lines (slurp script-path))
+           after-open (seq (rest (drop-while #(not= (str/trim %) marker-open) lines)))]
+       (when after-open
+         (->> (take-while #(not= (str/trim %) marker-close) after-open)
+              (remove blank-line?)
+              (mapv unwrap-script-line)))))))
 
 (defn- diverge-at
   [readme-lines script-lines]
@@ -123,13 +130,17 @@
   "{:ok? :readme-count :script-count :divergence}. :divergence is nil
   when :ok? is true; see diverge-at above otherwise. :script-count and
   :script-lines are 0/nil when the script doesn't exist yet (RED state,
-  before bin/demo-exerciser-ed-tuesday is written)."
+  before bin/demo-exerciser-ed-tuesday is written). :marker-open/
+  :marker-close default to ed-tuesday's own pair (ADR-0130 -- every
+  call site before this stays byte-identical in behavior)."
   ([] (check {}))
-  ([{:keys [readme-path script-path]
+  ([{:keys [readme-path script-path marker-open marker-close]
      :or {readme-path "demos/scenarios/ed-tuesday/README.md"
-          script-path "bin/demo-exerciser-ed-tuesday"}}]
+          script-path "bin/demo-exerciser-ed-tuesday"
+          marker-open default-marker-open
+          marker-close default-marker-close}}]
    (let [readme-lines (readme-command-lines readme-path)
-         script-lines (or (script-command-lines script-path) [])
+         script-lines (or (script-command-lines script-path marker-open marker-close) [])
          divergence (diverge-at readme-lines script-lines)]
      {:ok? (nil? divergence)
       :readme-count (count readme-lines)

@@ -106,7 +106,13 @@ steps.
    session each get their own isolated stash/red/pop/green cycle, never
    shared evidence (worked example: `.agents/session-records/
    2026-08-06-ux-fixes-2.md`, two independent red captures via
-   disposable stash isolation).
+   disposable stash isolation). A small session-record checkpoint
+   commit (landing only `.agents/` files) is sanctioned ahead of the
+   final `make integration` run whenever that run's own tree-clean
+   postcondition would otherwise fail solely because this session's
+   own in-progress session-record/prompt-archive files are still
+   uncommitted (ADR-0129's own discovered practice, `notes/adr/
+   0129-strip-executability.md` Step 3/close).
 8. **Red capture, for every checkpoint that adds or edits an
    enforcement test or fixes a defect a test can name.** Prove the gate
    fails before the fix and passes after — never just assert green. The

@@ -13,8 +13,16 @@
 ;; :extraction is one of:
 ;;   :quickstart-fresh      -- delegates to ehrt.docs-tooling.quickstart-fresh
 ;;                              verbatim (the pre-existing pair, unmodified).
-;;   :demo-exerciser-fresh  -- delegates to ehrt.docs-tooling.demo-exerciser-fresh
-;;                              verbatim (the pre-existing pair, unmodified).
+;;   :demo-exerciser-fresh  -- delegates to ehrt.docs-tooling.demo-exerciser-fresh,
+;;                              passing this row's own :marker-open/:marker-close
+;;                              through (ADR-0130 widened the pre-existing
+;;                              ed-tuesday-only pair to an explicit param, defaulted
+;;                              to ed-tuesday's own literal markers, so a FUTURE
+;;                              second :demo-exerciser-fresh row can supply its
+;;                              own, honestly-named markers -- ADR-0130 landed
+;;                              this widening but deferred its own motivating
+;;                              row, busy-tuesday, on a real, unrelated defect
+;;                              found live; see roadmap.md).
 ;;   :single-fence          -- one ```<fence-lang> fence in :source, comment
 ;;                              and blank lines stripped, everything else kept
 ;;                              verbatim (quickstart-fresh's own algorithm,

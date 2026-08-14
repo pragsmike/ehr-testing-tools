@@ -6,10 +6,29 @@
   source gains a freshness check by adding a register row rather than
   a new bespoke namespace.
 
-  Two NEW extraction shapes, beside the two pre-existing, untouched
-  ones (`ehrt.docs-tooling.quickstart-fresh`, `ehrt.docs-tooling.demo-
-  exerciser-fresh` -- delegated to verbatim below, never reimplemented,
-  so their own tests keep proving their own contract unmodified):
+  Two NEW extraction shapes, beside the two pre-existing ones
+  (`ehrt.docs-tooling.quickstart-fresh`, `ehrt.docs-tooling.demo-
+  exerciser-fresh` -- delegated to below, never reimplemented, so their
+  own tests keep proving their own contract). `quickstart-fresh` stays
+  fully untouched. `demo-exerciser-fresh` gained one widening (ADR-0130):
+  `script-command-lines`/`check` now take an explicit `marker-open`/
+  `marker-close` pair, defaulting to ed-tuesday's own literal markers --
+  every pre-ADR-0130 call site (including this namespace's own
+  `:demo-exerciser-fresh` case below, which now passes a row's own
+  `:marker-open`/`:marker-close` through rather than relying on the
+  default) stays byte-identical in behavior, proven by its own
+  untouched tests staying green. The widening exists because a SECOND
+  demo-exerciser script, sharing this extraction kind with ed-tuesday,
+  needs its own, honestly-named markers -- ed-tuesday's hardcoded
+  literal text could not have been reused as pure register data without
+  either lying in the second script's own marker comment or leaving its
+  freshness check permanently red. ADR-0130 landed this widening but
+  deferred its own motivating row (a busy-tuesday exerciser) on a real,
+  unrelated defect its own live run found first (`ehrt.sim-trajectory.
+  gmf/slug` doesn't sanitize commas out of raw upstream state names,
+  breaking `ehrt play`'s own EDN read-back for at least one module) --
+  see `.agents/plans/roadmap.md`'s own Next-section rows for the
+  sequenced follow-up.
 
   - `:single-fence` -- the first fence of a given language in a doc,
     comment and blank lines stripped, everything else (including
@@ -172,7 +191,8 @@
      (quickstart-fresh/check {:readme-path source :script-path script})
 
      :demo-exerciser-fresh
-     (demo-fresh/check {:readme-path source :script-path script})
+     (demo-fresh/check {:readme-path source :script-path script
+                         :marker-open marker-open :marker-close marker-close})
 
      :single-fence
      (let [readme-lines (or (single-fence-command-lines source fence-lang) [])

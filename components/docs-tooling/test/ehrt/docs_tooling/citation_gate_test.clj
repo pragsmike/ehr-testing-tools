@@ -48,7 +48,15 @@
 ;; two pairs that existed before this session's own additions) ----
 
 (deftest uncovered-against-pre-session-register-finds-the-real-dimension-1-gaps-test
-  (let [pre-session-rows (filterv #(contains? #{:quickstart-fresh :demo-exerciser-fresh} (:extraction %))
+  ;; ADR-0130: was `(contains? #{:quickstart-fresh :demo-exerciser-fresh}
+  ;; (:extraction %))` -- a correct proxy for "the two rows that
+  ;; existed before ADR-0129" only as long as those extraction kinds
+  ;; stayed at exactly two rows total. The busy-tuesday row (ADR-0130)
+  ;; is a legitimate third :demo-exerciser-fresh row, so the kind-based
+  ;; proxy now overcounts; filtering by :script name keeps this test's
+  ;; own documented intent -- the exact two ADR-0129 pre-session
+  ;; pairs -- accurate regardless of how many future rows share a kind.
+  (let [pre-session-rows (filterv #(contains? #{"bin/quickstart-demo" "bin/demo-exerciser-ed-tuesday"} (:script %))
                                    (reg/load-registry))
         violations (cg/uncovered (cg/manual-citations) pre-session-rows)
         cited (set (map :cited-source violations))]
