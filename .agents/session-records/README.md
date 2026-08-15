@@ -208,3 +208,4 @@ Files in this directory:
   * 2026-08-14-exact-name-resolution.md — Exact-name state resolution: collision fix, restoration cascade (ADR-0133)
   * 2026-08-14-manual-review-2.md — Manual-review run 2: channel-authored report landed verbatim, F1/F2/F3 fixed, ADR-0133's tag paid (ADR-0134)
   * 2026-08-15-string-diagram-terminal-outputs.md — String-diagram terminal-output result nodes (ADR-0135)
+  * 2026-08-15-repo-review-3.md — Repo review 3: rubric amended at Step 0 (population-closure law) and executed immediately; 40-row register, plan, three probes recorded blocked/partial
