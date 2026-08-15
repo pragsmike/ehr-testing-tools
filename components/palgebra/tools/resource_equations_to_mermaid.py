@@ -10,6 +10,7 @@ a Mermaid flowchart in string-diagram style:
   - Cross products (×) become multiple input wires to one box
   - Catalytic inputs (dashed wires) are not consumed
   - Waste/discard outputs (red sinks) are rejected byproducts
+  - Terminal outputs (green result nodes) are what the pipeline yields
   - Feedback loops connect outputs back to inputs
   - Spider annotations render fan/funnel topology with distinct shapes
   - Enrichment morphisms (metadata-only changes) render as outlined boxes
@@ -223,30 +224,39 @@ def parse_file(filepath: str) -> list[Equation]:
 # Analysis: classify types
 # ---------------------------------------------------------------------------
 
-def classify_types(equations: list[Equation]) -> tuple[set[str], set[str], set[str], set[str]]:
+def classify_types(equations: list[Equation]) -> tuple[set[str], set[str], set[str], set[str], set[str]]:
     """
     Classify every type as:
       - source: appears only as input (never produced by an operation)
       - sink: appears only as output discard
       - intermediate: produced and consumed
       - catalytic: explicitly marked as not consumed
+      - terminal: produced, and neither consumed, discarded, nor fed back
+        — what the pipeline actually yields (ADR-0135)
     """
     all_inputs = set()
     all_outputs = set()
     all_catalytic = set()
     all_discard = set()
-    
+    all_feedback_sources = set()
+
     for eq in equations:
         all_inputs.update(eq.inputs)
         all_outputs.update(eq.outputs)
         all_catalytic.update(eq.catalytic)
         all_discard.update(eq.discard)
-    
+        all_feedback_sources.update(eq.feedback.keys())
+
     sources = all_inputs - all_outputs  # never produced → raw input
     sinks = all_discard
     intermediate = all_outputs & all_inputs  # produced and consumed
-    
-    return sources, sinks, intermediate, all_catalytic
+    # Terminal: a codomain nothing downstream consumes, that isn't waste
+    # and isn't traced back into the diagram — the result of the whole
+    # composite. Multi-stage diagrams have few; a single-equation
+    # diagram is almost all terminal.
+    terminal = all_outputs - all_inputs - all_discard - all_feedback_sources
+
+    return sources, sinks, intermediate, all_catalytic, terminal
 
 
 # ---------------------------------------------------------------------------
@@ -261,7 +271,7 @@ def slugify(name: str) -> str:
 def generate_mermaid(equations: list[Equation], direction: str = 'LR') -> str:
     """Generate a Mermaid flowchart from parsed equations."""
     
-    sources, sinks, intermediate, catalytic_types = classify_types(equations)
+    sources, sinks, intermediate, catalytic_types, terminal = classify_types(equations)
     
     lines = []
     lines.append(f'flowchart {direction}')
@@ -306,7 +316,18 @@ def generate_mermaid(equations: list[Equation], direction: str = 'LR') -> str:
             slug = slugify(t) + '_sink'
             lines.append(f'    {slug}(["{t}"])')
         lines.append('')
-    
+
+    # --- Result nodes (terminal outputs) ---
+    # The `_out` suffix keeps these IDs clear of the source node for the
+    # same type name: a type can be both consumed somewhere and
+    # terminally produced elsewhere (enrichment pass-through).
+    if terminal:
+        lines.append('    %% --- Result types (terminal outputs) ---')
+        for t in sorted(terminal):
+            slug = slugify(t) + '_out'
+            lines.append(f'    {slug}(["{t}"])')
+        lines.append('')
+
     # --- Wires ---
     lines.append('    %% --- Wires (typed connections) ---')
     
@@ -347,11 +368,18 @@ def generate_mermaid(equations: list[Equation], direction: str = 'LR') -> str:
             else:
                 lines.append(f'    {src} -- {inp} --> {op_slug}')
         
-        # Output wires — discard goes to sink
+        # Output wires — discard goes to a sink, a terminal output goes
+        # to its own result node, feedback keeps the traced wire emitted
+        # just below, and an intermediate is wired by its consumer's own
+        # input pass (via the producer map).
         for out in eq.outputs:
             if out in eq.discard:
                 sink_slug = slugify(out) + '_sink'
                 lines.append(f'    {op_slug} -- "{out}" --> {sink_slug}')
+            elif out in eq.feedback:
+                continue
+            elif out in terminal:
+                lines.append(f'    {op_slug} -- "{out}" --> {slugify(out)}_out')
         
         # Feedback wires
         for src_type, dst_type in eq.feedback.items():
@@ -395,7 +423,16 @@ def generate_mermaid(equations: list[Equation], direction: str = 'LR') -> str:
         slug = slugify(t)
         lines.append(f'    style {slug} fill:#f5f5f5,stroke:#999,color:#333')
     lines.append('')
-    
+
+    # Result types: green rounded — a codomain must be tellable from a
+    # domain at a glance, so never the source grey above (ADR-0135).
+    if terminal:
+        lines.append('    %% Result types (terminal outputs): green rounded')
+        for t in sorted(terminal):
+            slug = slugify(t) + '_out'
+            lines.append(f'    style {slug} fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20')
+        lines.append('')
+
     # Sinks: red
     if sinks:
         lines.append('    %% Waste sinks: red')

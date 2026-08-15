@@ -93,6 +93,7 @@ The generated Mermaid diagram follows string-diagram style:
 | Operation | `[Name]` | Dark box node |
 | Source type (raw input) | Appears only as input | Light rounded node on left |
 | Intermediate type | Produced and consumed | Labeled wire between operation boxes |
+| Terminal output | Produced, not consumed downstream | Green result node on the right, one per coproduct summand |
 | Catalytic input | `{catalytic: X}` | Dashed wire (not consumed) |
 | Waste/discard | `{discard: X}` | Red sink node |
 | Feedback loop | `{feedback: X→Y}` | Wire from output back to input node |
@@ -101,6 +102,22 @@ The generated Mermaid diagram follows string-diagram style:
 | Fan spider | `{spider: fan}` | Trapezoid node (blue) — one-to-many topology |
 | Funnel spider | `{spider: funnel}` | Inverted trapezoid node (green) — many-to-one topology |
 | External operation | `{external: true}` | Dashed-border box — a black-box operation the diagram's own system doesn't implement |
+
+**Node styling by class.** Sources are grey rounded (`#f5f5f5`),
+discard sinks are red (`#fee`), and terminal outputs are green
+(`#e8f5e9`) — a codomain has to be tellable from a domain at a glance,
+so a result node is never drawn in the source grey. Result node IDs
+carry an `_out` suffix (`pass` → `pass_out`), which keeps them clear of
+the source node for the same type name when a type is consumed in one
+equation and terminally produced in another (enrichment pass-through,
+`catalog → catalog [Enrich]`).
+
+Every codomain gets wired somewhere: discarded summands to their red
+sink, fed-back summands along the traced wire, summands another
+equation consumes into that operation's box, and everything left over —
+the truly terminal outputs — to one green result node per coproduct
+summand. A single-equation diagram therefore shows what it yields
+rather than dead-ending at the operation box.
 
 ## How to use
 
@@ -141,11 +158,14 @@ To compose two pipelines (e.g., pipeline A feeds into pipeline B):
 
 ## Validation
 
-The converter classifies every type as source, intermediate, sink, or
-catalytic by analyzing the equation set. If a type appears as input but
-is never produced and isn't a declared source, that's a gap. If a type
-is produced but never consumed and isn't a declared sink, that's a
-dangling output. The user should review these.
+The converter classifies every type as source, intermediate, sink,
+catalytic, or terminal by analyzing the equation set. If a type appears
+as input but is never produced and isn't a declared source, that's a
+gap. A type produced but never consumed and not declared as waste is
+classified terminal and drawn as a green result node — read the result
+nodes as the claim "this is what the pipeline yields," and if one of
+them is really waste, annotate it `{discard: X}` so it renders as a red
+sink instead.
 
 ## Example: Lemon Meringue Pie
 
@@ -159,8 +179,13 @@ unbaked-lemon-pie × meringue → unbaked-pie  [AddMeringue]
 
 This produces a diagram isomorphic to a standard process flow diagram
 for making lemon meringue pie, with ingredients as source nodes,
-operations as boxes, and waste (egg shells, lemon peel, butter wrapper)
-as red sink nodes.
+operations as boxes, waste (egg shells, lemon peel, butter wrapper) as
+red sink nodes, and the one terminal output — `unbaked-pie`, which no
+later equation consumes — as a green result node:
+
+```
+    AddMeringue -- "unbaked-pie" --> unbaked_pie_out
+```
 
 ## Files
 
