@@ -15,7 +15,7 @@
 | OS / kernel | WSL2 (orchestrator host) |
 | JVM(s) used | Validator subprocess: Eclipse Temurin 17.0.19+10 (`artifacts.lock.edn`, kind `:runtime`), resolved through the artifact registry and invoked directly (not via `corpus.generate`'s wrapper -- this experiment ran the validator by hand, ahead of `gate.fhir` existing) |
 | Locale / timezone (host default) | Irrelevant to this experiment (no locale/timezone-sensitive behavior under test) |
-| Artifact(s) resolved | `fhir-validator-cli` 6.9.12 (`artifacts.lock.edn`, sha256 `0e53ab1d1a6f1e35f505255c0b8ce10a35fcf27e6e96b503640f784cd07e5ad6`, facts register [F18](../../notes/facts-register.md)); `temurin-jdk` 17.0.19+10 |
+| Artifact(s) resolved | `fhir-validator-cli` 6.9.12 (`artifacts.lock.edn`, sha256 `0e53ab1d1a6f1e35f505255c0b8ce10a35fcf27e6e96b503640f784cd07e5ad6`, facts register [F18](../../../../notes/facts-register.md)); `temurin-jdk` 17.0.19+10 |
 | Config file(s) used | `config/synthea/synthea.properties` (EXP-A4/EXP-B2's pinned config, sha256 `ead0388b86d5d60bff86d8475cd65d6c3d8ef7cdeb5f7b8a58b55c911ad79bb7`) |
 
 Sample corpus: 8-patient population, seed 100 / clinician-seed 555 /
@@ -48,7 +48,7 @@ now holds everything the 18 offline runs below needed.
 All 18 runs executed under `unshare -r -n` (user+network namespace,
 matching `AGENTS.md`'s hermeticity-check discipline), with
 `-Duser.home` forced ahead of `-jar` (pattern
-[#15](../../.agents/memory/patterns.md): `unshare -r` remaps the
+[#15](../../../../notes/tools/agents/memory/patterns.md): `unshare -r` remaps the
 effective uid, which silently changed where the JVM resolved
 `user.home` -- to `/root` instead of the real cache location -- until
 forced explicitly; caught directly by a failed first attempt, not
@@ -164,7 +164,7 @@ because remapping the effective uid to 0 changes how the JVM resolves
 `user.home` from the OS user database, independent of the `$HOME`
 env var. Fixed by forcing `-Duser.home` explicitly ahead of `-jar`
 (now documented in the protocol's own Procedure step 3 and in pattern
-nursery [#15](../../.agents/memory/patterns.md)).
+nursery [#15](../../../../notes/tools/agents/memory/patterns.md)).
 
 ## Acceptance verdict
 

@@ -3,7 +3,7 @@
 This document specifies the design for the simulator's operational
 resource models — the things a hospital allocates to patients that
 aren't clinical content. It is the spec Milestone M1 of
-[`.agents/plans/roadmap.md`](../.agents/plans/roadmap.md) implements
+[`.agents/plans/roadmap.md`](../../../.agents/plans/roadmap.md) implements
 against, reviewed ahead of any code landing. It does not touch
 `src/`; it describes what M1's code should do.
 

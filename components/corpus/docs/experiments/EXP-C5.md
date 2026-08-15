@@ -19,9 +19,9 @@ terminology-suppressed), which contribute `:indeterminate` findings
 
 **Apparatus.** `fhir-validator-cli` 6.9.12 (`validator_cli.jar`,
 `artifacts.lock.edn`, sha256 verified against a direct re-download —
-facts register [F18](../../notes/facts-register.md)), run under the
+facts register [F18](../../../../notes/facts-register.md)), run under the
 already-locked `temurin-jdk` 17.0.19+10 `:runtime` artifact (pattern
-[#15](../../.agents/memory/patterns.md): the JVM that actually runs the
+[#15](../../../../notes/tools/agents/memory/patterns.md): the JVM that actually runs the
 validator is the pinned one, resolved through the artifact registry,
 never `PATH`). A sample corpus generated via `corpus.generate` at
 EXP-A4/EXP-B2's pinned settings (seed 100, clinician-seed 555,
@@ -62,7 +62,7 @@ registered operator, produced via `ehr corpus mutate`:
    hermeticity-check discipline in `AGENTS.md`) so any residual network
    attempt is a hard failure the run must survive on cache alone, not a
    silent success. `-Duser.home` is forced explicitly ahead of `-jar`
-   (pattern [#15](../../.agents/memory/patterns.md) applies here too: `unshare -r`
+   (pattern [#15](../../../../notes/tools/agents/memory/patterns.md) applies here too: `unshare -r`
    remaps the effective uid, which changes how the JVM resolves
    `user.home` via the OS user database — forcing it keeps the FHIR
    package cache path pointed at the real cache regardless of the

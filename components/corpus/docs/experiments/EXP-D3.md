@@ -137,7 +137,7 @@ them, not smuggle them in as findings):
    full runtime classpath needed to drive `ProfileManager` directly.
 5. **Offline proof.** Sever network via `unshare -r -n`
    (`-Duser.home` forced explicitly ahead of `-jar`/`-cp` invocations,
-   per pattern [#15](../../../../.agents/memory/patterns.md) — the same
+   per pattern [#15](../../../../notes/tools/agents/memory/patterns.md) — the same
    uid-remap hazard EXP-C5 hit) and re-run the built classpath against
    the harness described in step 6. A run that still produces a
    `NistReport` is the offline claim's evidence.

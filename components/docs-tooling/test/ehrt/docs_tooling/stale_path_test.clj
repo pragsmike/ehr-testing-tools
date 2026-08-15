@@ -12,11 +12,93 @@
   Stage 3 (ADR-0018, AR-7) retired the tools component and added its
   namespace prefix, `ehrt.tools.`, to the forbidden list: no
   current-tense doc may cite a namespace under the retired prefix.
-  Deliberately scoped: this scan covers docs/ (plus the use-cases.edn
-  source above) only -- notes/ADRs.md, notes/prompts/, and
-  .agents/session-records/ narrate history and legitimately cite the
-  old names, and this test never reads them (confirmed at AR-7's own
-  request, not assumed).
+  Populations, and how each is enumerated (the population-closure law,
+  applied to this gate's own scan roots -- review 3 D1-2 found the
+  sentence that used to sit here, 'Deliberately scoped: this scan
+  covers docs/ ... only', was itself the defect: a gate whose
+  population excluded the tree where the violations lived). This
+  namespace runs four independent scans over three populations:
+
+  1. The retired-name denylist family (`violations` below) reads
+     docs/**/*.md, enumerated by file-seq from `docs`, plus
+     components/corpus/docs/use-cases.edn and the four named live
+     .agents/ index files. notes/ADRs.md, notes/prompts/, and
+     .agents/session-records/ narrate history and legitimately cite the
+     old names, and this test never reads them (confirmed at AR-7's own
+     request, not assumed).
+  2. The README register-code tripwire reads README.md only.
+  3. The notes/prompts/ archive-instruction tripwire reads
+     docs/**/*.md plus AGENTS.md plus every .agents/skills/**/SKILL.md,
+     enumerated by file-seq from `.agents/skills`.
+  4. The dead-markdown-link scan (2026-08-15 addendum below) reads
+     EVERY *.md under docs/** AND under components/<x>/docs/** -- the
+     component doc roots enumerated from the filesystem
+     (`component-doc-roots`), never a hand-maintained list, so a
+     component gaining a docs/ directory joins the population without
+     anyone remembering to add it.
+
+  2026-08-15 addendum (repo review 3, register rows D1-2/D1-8; fix
+  session B): the dead-markdown-link scan. Review 3 resolved every
+  cited path across the live doc surfaces and found 25 dead markdown
+  links, all 25 under components/<x>/docs/ and zero under docs/ --
+  precisely the population this namespace's other three scans exclude.
+  Two sub-classes: 19 un-re-depthed `../` prefixes (files that moved
+  from a repo-root docs/ into components/<x>/docs/ at the merge gained
+  two path segments, and their relative prefixes were never adjusted),
+  and 6 the register recorded as pointing at genuinely removed targets.
+  Both sub-classes are fixed in the same commit this scan lands in, red
+  witnessed at exactly 25 first -- the same fix-before-gate discipline
+  as every entry in this family.
+
+  The 6 turned out NOT to be a second class (author ruling R-B1,
+  2026-08-15, 'Re-point all six'): both targets exist, frozen. These
+  docs came from the pre-merge tools repo, where `.agents/memory/
+  patterns.md` and `.agents/plans/archive/judge-gate-refactor.md` were
+  live sibling paths; the merge froze that whole tree into
+  notes/tools/agents/, so the citations are the SAME un-re-depthed
+  relocation defect as the other 19, differing only in that the
+  destination moved too. `.agents/memory/patterns.md` was never created
+  at the post-merge path (that directory has only ever held README.md,
+  which says so itself), and the frozen file's numbered pattern 15,
+  'Provenance is measured at the point of execution', is verbatim what
+  all five citing sentences invoke.
+
+  Deliberately NOT built here, and registered rather than improvised
+  (author rulings R-B2 and R-B3, 2026-08-15). (i) This scan resolves
+  markdown link destinations only. The root-anchored BACKTICKED path
+  half cannot be green against the current tree under D1-8's four
+  exclusions: a first-segment-is-a-repo-root-entry reading leaves 216
+  dead, 95 even after component-root resolution, and many of those sit
+  inside docs/, which D1-2 measured as clean. The residue is dominated
+  by a class D1-8 never named -- post-relocation BASENAME shorthand
+  (`docs/notation.md` cited from anywhere, meaning that doc wherever it
+  now lives) -- alongside backticked command lines, globs, and
+  file.clj:21-23 line suffixes. (ii) The retired-name denylist family
+  (scan 1 above) keeps its docs/ population: widening it to
+  components/<x>/docs/ turns 15 more files red, most of them the same
+  basename-shorthand false positive. Both are register rows for a later
+  session, with real findings inside them; neither is a silent loosening
+  of this gate.
+
+  The false-positive control is load-bearing (register row D1-8 names
+  four classes with evidence; a gate that lands noisy gets weakened
+  later, so each is encoded here rather than left to a future reader's
+  judgment). (a) This repo's shorthand backticked citation convention
+  (`sim/run.clj` for the full brick path) is excluded STRUCTURALLY, not
+  by list: this scan resolves markdown link destinations only, and a
+  backticked citation is never one. (b) Generator template sources
+  (components/corpus/docs/use-cases.edn) author their links to resolve
+  at the GENERATED output's location, docs/use-cases/, not at the
+  template's own -- excluded structurally again, since the scan reads
+  *.md and the template is .edn (its rendered output IS in the
+  population, and resolves). (c) docs/dev/migration/polylith-brief.md's
+  external tutorial examples (projects/billing, components/invoice) cite
+  Polylith's own documentation, not this tree, and are excluded by name
+  -- the one class that cannot be structural, because those paths are
+  shaped exactly like real ones. (d) Percent-encoding is DECODED before
+  resolution rather than excluded: components/corpus/docs/experiments.md
+  links a research file whose name contains literal spaces via `%20`,
+  which resolves in any markdown renderer and must resolve here too.
 
   2026-08-01 addendum (storefront + ruled literals session, AR-3): a
   second, unrelated tripwire in the same family, scanning README.md
@@ -403,3 +485,156 @@
   (testing "a citation of a specific file does not trip it"
     (is (not (archives-to-notes-prompts?
                "see notes/prompts/2026-07-30-ehr-testing-doctor-rendering.md for the prompt")))))
+
+;; Dead-markdown-link scan (2026-08-15, review 3 D1-2/D1-8) -- the fourth
+;; scan, over the widest population in this namespace: every *.md under
+;; docs/** AND components/<x>/docs/**. See the population statement and
+;; the four-class false-positive control in the ns docstring above.
+
+(defn- component-doc-roots
+  "Every components/<x>/docs directory that exists, enumerated from the
+  filesystem rather than a hand-maintained list. A component gaining a
+  docs/ directory joins the link-scan population by existing -- the
+  population-closure law, which review 3 D1-2 found this namespace's own
+  scan root violating."
+  []
+  (->> (.listFiles (io/file "components"))
+       (filter #(.isDirectory %))
+       sort
+       (map #(io/file % "docs"))
+       (filter #(.isDirectory %))))
+
+(defn- md-files-under [dir]
+  (->> (file-seq dir)
+       (filter #(.isFile %))
+       (filter #(str/ends-with? (.getName %) ".md"))
+       (sort-by #(.getPath %))))
+
+(defn- link-scan-files
+  "The dead-link scan's population: docs/**/*.md plus every
+  components/<x>/docs/**/*.md."
+  []
+  (concat (md-files-under (io/file "docs"))
+          (mapcat md-files-under (component-doc-roots))))
+
+(def ^:private external-tutorial-example-files
+  "False-positive class (c), register row D1-8 -- the ONE class that
+  cannot be excluded structurally. This brief walks through Polylith's
+  own documentation examples (projects/billing, components/invoice,
+  bases/billing-rest-api), which are shaped exactly like this tree's
+  real paths but describe someone else's repository."
+  #{"docs/dev/migration/polylith-brief.md"})
+
+(def ^:private markdown-link-re
+  "Markdown link/image destinations: the `](target)` form. Destinations
+  stop at whitespace, so a `](path \"Title\")` form yields just the path."
+  #"\]\(([^)\s]+)\)")
+
+(defn- percent-decode
+  "Decodes %XX escapes -- false-positive class (d), an encoding step
+  rather than an exclusion: `%20` is how a markdown link spells a
+  literal space, and the target it names really is on disk. Deliberately
+  not URLDecoder/decode, which would also turn `+` into a space and
+  corrupt any path legitimately containing one."
+  [s]
+  (str/replace s #"%([0-9A-Fa-f]{2})"
+               (fn [[_ hex]] (str (char (Integer/parseInt hex 16))))))
+
+(defn- repo-root-entries []
+  (->> (.listFiles (io/file ".")) (map #(.getName %)) set))
+
+(defn- root-anchored?
+  "True when `target` is written from the repo root -- no ./ or ../
+  prefix, and a first segment naming something that actually exists at
+  the repo root. Such a link is resolved from the repo root as well as
+  from the citing file's own directory; everything else resolves from
+  the citing file's directory only, so resolution never depends on
+  anything outside this repository."
+  [target]
+  (and (not (str/starts-with? target "/"))
+       (not (str/starts-with? target "./"))
+       (not (str/starts-with? target "../"))
+       (contains? (repo-root-entries) (first (str/split target #"/")))))
+
+(defn- dead-link-target?
+  "True when `target`, cited from a file in `dir`, resolves to nothing."
+  [dir target]
+  (let [path (-> target (str/split #"#") first percent-decode)]
+    (and (seq path)
+         (not (re-find #"^(?:[a-zA-Z][a-zA-Z0-9+.-]*:|//|#)" target))
+         (not (.exists (io/file dir path)))
+         (not (and (root-anchored? path) (.exists (io/file path)))))))
+
+(defn- dead-links-in
+  "Every dead markdown link in one file, as {:file :line :target}."
+  [file]
+  (let [path (.getPath file)
+        dir (.getParentFile file)]
+    (when-not (contains? external-tutorial-example-files path)
+      (->> (str/split-lines (slurp file))
+           (map-indexed vector)
+           (mapcat (fn [[idx line]]
+                     (for [[_ target] (re-seq markdown-link-re line)
+                           :when (dead-link-target? dir target)]
+                       {:file path :line (inc idx) :target target})))))))
+
+(defn- all-dead-links []
+  (mapcat dead-links-in (link-scan-files)))
+
+(deftest no-dead-markdown-links-on-any-tracked-doc-surface-test
+  (let [dead (all-dead-links)]
+    (is (empty? dead)
+        (str "dead markdown links (" (count dead) "):\n"
+             (str/join "\n" (map #(str "  " (:file %) ":" (:line %)
+                                       "  -> " (:target %))
+                                 dead))))))
+
+(deftest link-scan-population-is-enumerated-from-the-tree-test
+  (testing "every components/<x>/docs directory that exists is in the population"
+    (let [paths (set (map #(.getPath %) (link-scan-files)))]
+      (doseq [root (component-doc-roots)]
+        (is (some #(str/starts-with? % (.getPath root)) paths)
+            (str (.getPath root) " contributes no file to the link-scan population")))))
+  (testing "docs/ and the component doc roots are both represented"
+    (let [paths (map #(.getPath %) (link-scan-files))]
+      (is (some #(str/starts-with? % "docs/") paths))
+      (is (some #(re-find #"^components/[^/]+/docs/" %) paths)))))
+
+(deftest dead-link-resolution-is-actually-caught-test
+  (let [dir (io/file "components/sim/docs")]
+    (testing "a link resolving from the citing file's own directory is live"
+      (is (not (dead-link-target? dir "sim-theory.md"))))
+    (testing "an un-re-depthed ../ prefix (the review-3 D1-2 defect) is dead"
+      (is (dead-link-target? dir "../notes/facts-register.md")))
+    (testing "the correctly re-depthed form is live"
+      (is (not (dead-link-target? dir "../../../notes/facts-register.md"))))
+    (testing "a root-anchored target resolves from the repo root too"
+      (is (not (dead-link-target? dir "notes/facts-register.md")))
+      (is (dead-link-target? dir "notes/no-such-register.md")))
+    (testing "external and in-page targets are never resolved as paths"
+      (is (not (dead-link-target? dir "https://example.invalid/x.md")))
+      (is (not (dead-link-target? dir "mailto:nobody@example.invalid")))
+      (is (not (dead-link-target? dir "#a-heading-on-this-page"))))
+    (testing "a fragment on a real file resolves to the file"
+      (is (not (dead-link-target? dir "sim-theory.md#global-laws"))))))
+
+(deftest each-false-positive-class-is-encoded-test
+  (testing "(a) shorthand backticked citations are excluded structurally"
+    (is (empty? (re-seq markdown-link-re "the runner lives in `sim/run.clj`, see it")))
+    (is (= ["x.md"] (map second (re-seq markdown-link-re "a real [link](x.md) here")))))
+  (testing "(b) the generator template source is not in the link population"
+    (let [paths (set (map #(.getPath %) (link-scan-files)))]
+      (is (not (contains? paths "components/corpus/docs/use-cases.edn")))
+      (is (some #(str/starts-with? % "docs/use-cases/") paths)
+          "the template's RENDERED output is in the population, and resolves")))
+  (testing "(c) polylith-brief.md's external tutorial examples are excluded by name"
+    (is (contains? external-tutorial-example-files "docs/dev/migration/polylith-brief.md"))
+    (is (empty? (dead-links-in (io/file "docs/dev/migration/polylith-brief.md"))))
+    (testing "the same shape of target is still dead when cited from any other file"
+      (is (dead-link-target? (io/file "docs/dev") "projects/billing/deps.edn"))))
+  (testing "(d) percent-encoding is decoded, not excluded"
+    (is (= "a b/c d.md" (percent-decode "a%20b/c%20d.md")))
+    (is (= "a+b.md" (percent-decode "a+b.md")))
+    (is (not (dead-link-target?
+               (io/file "components/corpus/docs")
+               "research/License%20Status%20of%20NIST%20HL7%20v2%20Validation%20Software%20%20Evidence-Based%20Classification.md")))))

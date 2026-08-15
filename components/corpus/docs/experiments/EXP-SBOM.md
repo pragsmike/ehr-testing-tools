@@ -11,7 +11,7 @@ distribution target (`notes/ADRs.md` ADR-0001).
 **Decision informed.** The v2 gate architecture choice (NIST-engine-based
 "full gate" vs. HAPI-light + local rules, `docs/experiments.md`); the
 go-public gate's licensing condition; resolution of facts-register
-[F1](../../notes/facts-register.md) and the guide repo's claims-register
+[F1](../../../../notes/facts-register.md) and the guide repo's claims-register
 F3.
 
 **Apparatus.** Public GitHub repositories only — no local checkout or
