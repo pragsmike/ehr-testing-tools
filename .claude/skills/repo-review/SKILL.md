@@ -32,12 +32,21 @@ severity — never a numeric grade. Carry the PRIOR assessment's scores
 forward in the new artifact so drift is visible across runs. Every
 probe follows the standing law: audit evidence uses the mechanism it
 recommends — re-derive, re-hash, re-run; never re-read a claim as its
-own verification.
+own verification. A sibling law: every probe states its population and
+enumerates it from the tree, never from the registry under audit — the
+make graph, a scan-root list, and the intake registers are themselves
+audit subjects, and equating any of them with the population converts
+their omissions into silent green verdicts. The first question of every
+probe is "how do I know this is all of them?"
 
 1. **Claim–reality coherence.** Registers, docs, NOTICEs vs the tree.
    Probes: re-derive every stated count (`wc`, `ls`, fresh grep);
    re-hash every stated hash against on-disk bytes; re-resolve every
-   cited path; sample `[V]` claims in `.agents/state.md` live.
+   cited path, with scan roots covering every tracked doc surface
+   including `components/*/docs/` (the scan-root class has two recorded
+   hits: E-5, 2026-08-05, and the sim-theory recipe path, 2026-08-14 —
+   never a root narrower than the tree again); sample `[V]` claims in
+   `.agents/state.md` live.
 2. **Guard coverage.** Every law has a gate; every gate runs where
    someone looks. Probes: enumerate `.agents/rulings.md`'s standing
    rulings and map each to its enforcing test (a law with no gate is a
@@ -58,7 +67,13 @@ own verification.
    auto-flagged.
 5. **Mirror and derivation drift.** Probes: byte-diff every mirrored
    pair (skills, any dual-homed doc); regenerate every derived doc and
-   compare (`make docsgen` and any sibling generators); confirm each
+   compare (`make docsgen` and any sibling generators) — where "every
+   derived doc" is enumerated from the tree first (grep tracked files
+   for generation banners, converter references, and embedded
+   regeneration recipes), diffed against the make graph's targets; a
+   derived artifact with no registered regeneration path is a finding
+   (class: unregistered derivation) regardless of its current
+   freshness; confirm each
    generator's currency is gated LOCALLY where JVM-derivable, and that
    CI-only checks are named as such where they live.
 6. **Sampling adequacy.** Test statistics must reach the claims'
@@ -72,6 +87,12 @@ own verification.
    green; attic-vs-live consistency; carried-item aging — any intake
    or design item carried through two or more arc closes is NAMED as
    aged, with its blocker stated (the pairing-as-data precedent).
+   Header-resident requests: grep tracked files for standing requests
+   embedded outside the registers ("standing request", "TODO", "FIXME",
+   "regenerate", "next session"); any request not mirrored in a
+   register row is a finding (class: unregistered standing request),
+   aged from its first appearance in git history, since the aging probe
+   above structurally cannot see it.
 8. **Operator experience.** The stranger-facing surfaces work as
    taught. Probes: execute every live command fence; the
    bare-invocation / unknown-flag / missing-file matrix against the
