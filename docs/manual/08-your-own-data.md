@@ -37,6 +37,11 @@ cat out/acceptance/intake/intake-record.edn
  :catalog-hash "ecfc531791c4283c857739f2b656cdf2d670e72114078374059bf93131db33aa"}
 ```
 
+(`:file-count 8` counts every regular file under the directory,
+recursively — the five `.hl7` messages plus the simhospital sidecar's
+three provenance files; the gates later in this chapter take only the
+five `.hl7`, which is why their totals read 5.)
+
 Every catalog entry alongside it carries its own content hash — the
 same `sha256` identity a [lineage](../glossary.md) record uses to name
 a mutant's parent — and `:layer :foreign`, `:origin "acme-delivery"`,
