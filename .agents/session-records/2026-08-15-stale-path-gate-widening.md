@@ -201,6 +201,35 @@ and all 25 fixes.
 - `bin/verify-nist-lock`: OK, 6 hit-nexus-sourced coordinates match
   `artifacts.lock.edn` exactly.
 
+## Step 4.5 -- push and post-push receipts
+
+Commit `2db2dee9a15dffda8a9c8149ab65a18238dc2750`, pushed
+`15f5943..2db2dee` to `origin/main`. Pre-push `origin/main` tip
+captured **before** the push (`15f594384a39e343c57c7ea2ff8c4c8501c04fac`)
+and passed to the verifier explicitly, rather than letting it derive
+the range -- D1-6 is live.
+
+`bin/post-push-verify 15f5943… 2db2dee…`:
+
+- Remote tip `2db2dee9…` matches HEAD. OK.
+- Per-commit ASCII over the range: every message pure ASCII. OK.
+- CI run at tip: reported once, conclusion `<pending>`. **DISCLOSED:
+  reported, not awaited to conclusion (AR-CI-4)** -- this session's
+  claim is not about CI.
+
+By-hand full-range check, run independently of the script because
+D1-6's range-derivation defect is live (this is its **third**
+sighting):
+
+- Commits actually in `15f5943..2db2dee`: **1**, ASCII confirmed by
+  hand.
+- `git ls-remote origin refs/heads/main` = `2db2dee9…`, matching.
+- The script's default derivation, `tip^1`, resolves to
+  `15f594384a39e…` -- which is the correct base **here**, but only
+  because this push carried exactly one commit. The defect did not bite
+  this session; it was not fixed either, and remains Session C's
+  subject.
+
 ## Fences honoured
 
 - Touched only: `stale_path_test.clj`, the 8 doc files named by the
