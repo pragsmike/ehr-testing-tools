@@ -4,10 +4,21 @@
      ehr-testing-tools' `make pipeline`). Do not hand-edit the mermaid block
      below except as noted here. Regenerate with:
 
-       python .agents/skills/string-diagram/tools/resource_equations_to_mermaid.py \
-         docs/sim-theory-equations.txt -o docs/sim-theory-diagram.mermaid
+       python3 components/palgebra/tools/resource_equations_to_mermaid.py \
+         components/sim/docs/sim-theory-equations.txt \
+         -o components/sim/docs/sim-theory-diagram.mermaid
 
-     then paste the output back in below.
+     then paste the output back in below. Paths are repo-root-relative;
+     run from the workspace root.
+
+     ADR-0135 NOTE (this session): the recipe above previously named
+     `.agents/skills/string-diagram/tools/resource_equations_to_mermaid.py`,
+     a path that has not existed since ADR-0005 moved the converter to
+     `components/palgebra/` at the carve-loss recovery -- that ADR
+     corrected the pin in SKILL.md and never reached this header or
+     docs/sim-theory-equations.txt's own copy of it. Both are fixed
+     now. Every prior session that could not run the converter was
+     therefore also being handed a dead command.
 
      MILESTONE site-profiles NOTE: this session's environment DID have
      Python available, so the whole block below is a mechanical
@@ -84,7 +95,42 @@
      no structural change is expected, the same way that session's own
      note did; a future session with Python (or WSL) available should
      run the actual regeneration once to confirm, rather than continue
-     trusting inspection alone. -->
+     trusting inspection alone.
+
+     ADR-0135 REGENERATION (2026-08-15): the standing request the M5b
+     and M6 notes each left -- "a future session with Python (or WSL)
+     available should run the actual regeneration once to confirm,
+     rather than continue trusting inspection alone" -- is DISCHARGED
+     here. This session had both, and ran it. The M6 argument holds:
+     no node, no wire, and no catalytic input changed from those
+     sessions' own hand-reasoning. The regeneration surfaced exactly
+     two differences beyond that, both accounted for:
+
+     (1) ADR-0135's own change -- terminal outputs now render. Six
+     codomains that nothing downstream consumes, that are not waste
+     and are not fed back, gained a green result node and a wire out:
+     `pass`/`rejected` from Check, `state-document` from EmitState,
+     `run-manifest` from Package, `sut-behavior` from SystemUnderTest,
+     `catalog-entry` from ToolsCorpusIntake. Check's own coproduct in
+     particular had been invisible -- the invariant catalog's verdict
+     was drawn going in and never coming out.
+
+     (2) `%% Arrow N` comment renumbering, the M6 session's own
+     unregenerated residue: that session removed three `# planned:`
+     comment lines from docs/sim-theory-equations.txt without being
+     able to re-run the converter, and the arrow numbers are derived
+     from the equations file's own line numbering. RunModules 22->21,
+     CompileTrajectory 25->23, and so on down. Cosmetic, and now
+     reconciled.
+
+     One pre-existing oddity, recorded rather than fixed (it is
+     unrelated to terminal outputs and out of ADR-0135's scope):
+     `Calibrate -- churn-profile --> churn_profile` targets a node ID
+     nothing in the diagram declares. `churn-profile` is Calibrate's
+     own traced feedback output and is consumed by InjectChurn, so it
+     is an intermediate with no source node of its own; Mermaid
+     renders the target as a bare unstyled box. This predates this
+     session and survives it untouched. -->
 
 # The simulator's resource theory — diagram
 
@@ -96,6 +142,7 @@ Verified in this render:
 - **`SystemUnderTest` and `ToolsCorpusIntake` render dashed** — both carry `{external: true}`, the same device tools' own external stages use.
 - **Gap, reported rather than faked:** the converter has no visual axis for `:built` vs `:planned` — only `{external: true}` (dashed) exists, and ehr-testing-tools' own history (`docs/notation.md`, "External stages") records that reusing dashed rendering for *planned-but-will-be-built-here* stages was tried once and deliberately dropped, because it conflates "not yet built" with "never built by this repo," which is a different claim. `ehr-testing-tools.pipeline/pipeline->equations-text` resolves this the same way this session does: a `:planned` stage gets a `# planned: <Label>` *comment* line in the equations text — documentary only, "not a distinct visual state" (that namespace's own docstring). So below, every stage box is visually identical dark-solid except the two external stages (dashed) and the union (green funnel); built vs. planned is legible only in [`sim-theory-equations.txt`](sim-theory-equations.txt)'s `# planned:` comments, not in the diagram itself. This is the same limitation tools carries in its own pipeline diagram, not a regression introduced here.
 - **The site-profiles milestone adds exactly one wire, no new stage or node shape:** `site-profile` joins `EmitHL7`'s existing catalytic set (dashed `.->`, light-rounded source node, same convention every other catalytic already uses) — the milestone's own theory-flip note (docs/sim-theory.edn's `:emit-hl7` entry) said this would be a wire-count change only if the converter renders catalytics; it does, and this is that one new wire.
+- **Terminal outputs render as green result nodes (ADR-0135, 2026-08-15):** six codomains nothing downstream consumes — `pass` and `rejected` from `Check`, `state-document` from `EmitState`, `run-manifest` from `Package`, `sut-behavior` from `SystemUnderTest`, `catalog-entry` from `ToolsCorpusIntake` — now each get their own `_out`-suffixed rounded node and a labeled wire out of the operation box, tinted green so a codomain is tellable from a source at a glance. Before this the whole diagram drew what went in and, apart from the traced `churn-profile` feedback, nothing coming out; `Check`'s own verdict coproduct was the starkest case. This is a rendering change only — the equations, and the theory they encode, are untouched.
 
 ```mermaid
 flowchart LR
@@ -131,62 +178,76 @@ flowchart LR
     SystemUnderTest["SystemUnderTest"]
     ToolsCorpusIntake["ToolsCorpusIntake"]
 
+    %% --- Result types (terminal outputs) ---
+    catalog_entry_out(["catalog-entry"])
+    pass_out(["pass"])
+    rejected_out(["rejected"])
+    run_manifest_out(["run-manifest"])
+    state_document_out(["state-document"])
+    sut_behavior_out(["sut-behavior"])
+
     %% --- Wires (typed connections) ---
     %% Arrow 19: Persona
     sim_config -- sim-config --> Persona
     demographics_tables -. demographics-tables .-> Persona
     payer_pool -. payer-pool .-> Persona
 
-    %% Arrow 22: RunModules
+    %% Arrow 21: RunModules
     Persona -- persona --> RunModules
     gmf_module_set -. gmf-module-set .-> RunModules
     gmf_interpreter -. gmf-interpreter .-> RunModules
 
-    %% Arrow 25: CompileTrajectory
+    %% Arrow 23: CompileTrajectory
     RunModules -- clinical-trajectory --> CompileTrajectory
 
-    %% Arrow 27: InjectChurn
+    %% Arrow 25: InjectChurn
     UnionPathwayIr -- pathway-ir --> InjectChurn
     Calibrate -- churn-profile --> InjectChurn
 
-    %% Arrow 29: Execute
+    %% Arrow 27: Execute
     InjectChurn -- operational-pathway --> Execute
     provider_pool -. provider-pool .-> Execute
     order_profiles -. order-profiles .-> Execute
 
-    %% Arrow 31: Check
+    %% Arrow 29: Check
     Execute -- ground-truth-log --> Check
     invariant_catalog -. invariant-catalog .-> Check
+    Check -- "pass" --> pass_out
+    Check -- "rejected" --> rejected_out
 
-    %% Arrow 33: EmitHL7
+    %% Arrow 31: EmitHL7
     Execute -- ground-truth-log --> EmitHL7
     hl7_parser_dep -. hl7-parser-dep .-> EmitHL7
     message_type_registry -. message-type-registry .-> EmitHL7
     snomed_icd10_map -. snomed-icd10-map .-> EmitHL7
     site_profile -. site-profile .-> EmitHL7
 
-    %% Arrow 36: EmitState
+    %% Arrow 33: EmitState
     Execute -- state-history --> EmitState
+    EmitState -- "state-document" --> state_document_out
 
-    %% Arrow 39: Package
+    %% Arrow 36: Package
     EmitHL7 -- hl7v2-stream --> Package
     Execute -- ground-truth-log --> Package
+    Package -- "run-manifest" --> run_manifest_out
 
-    %% Arrow 42: Calibrate
+    %% Arrow 39: Calibrate
     Package -- sim-corpus --> Calibrate
     feed_statistics -- feed-statistics --> Calibrate
     Calibrate -- churn-profile --> Calibrate
     Calibrate -- churn-profile --> churn_profile
 
-    %% Arrow 45: UnionPathwayIr
+    %% Arrow 42: UnionPathwayIr
     CompileTrajectory -- compiled-pathway --> UnionPathwayIr
     authored_pathway -- authored-pathway --> UnionPathwayIr
 
-    %% Arrow 48: SystemUnderTest
+    %% Arrow 45: SystemUnderTest
     EmitHL7 -- hl7v2-stream --> SystemUnderTest
+    SystemUnderTest -- "sut-behavior" --> sut_behavior_out
 
-    %% Arrow 49: ToolsCorpusIntake
+    %% Arrow 46: ToolsCorpusIntake
     Package -- sim-corpus --> ToolsCorpusIntake
+    ToolsCorpusIntake -- "catalog-entry" --> catalog_entry_out
 
     %% --- Styling ---
 
@@ -220,4 +281,12 @@ flowchart LR
     style sim_config fill:#f5f5f5,stroke:#999,color:#333
     style site_profile fill:#f5f5f5,stroke:#999,color:#333
     style snomed_icd10_map fill:#f5f5f5,stroke:#999,color:#333
+
+    %% Result types (terminal outputs): green rounded
+    style catalog_entry_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style pass_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style rejected_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style run_manifest_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style state_document_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style sut_behavior_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
 ```

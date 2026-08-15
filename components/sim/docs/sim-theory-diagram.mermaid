@@ -31,62 +31,76 @@ flowchart LR
     SystemUnderTest["SystemUnderTest"]
     ToolsCorpusIntake["ToolsCorpusIntake"]
 
+    %% --- Result types (terminal outputs) ---
+    catalog_entry_out(["catalog-entry"])
+    pass_out(["pass"])
+    rejected_out(["rejected"])
+    run_manifest_out(["run-manifest"])
+    state_document_out(["state-document"])
+    sut_behavior_out(["sut-behavior"])
+
     %% --- Wires (typed connections) ---
     %% Arrow 19: Persona
     sim_config -- sim-config --> Persona
     demographics_tables -. demographics-tables .-> Persona
     payer_pool -. payer-pool .-> Persona
 
-    %% Arrow 22: RunModules
+    %% Arrow 21: RunModules
     Persona -- persona --> RunModules
     gmf_module_set -. gmf-module-set .-> RunModules
     gmf_interpreter -. gmf-interpreter .-> RunModules
 
-    %% Arrow 25: CompileTrajectory
+    %% Arrow 23: CompileTrajectory
     RunModules -- clinical-trajectory --> CompileTrajectory
 
-    %% Arrow 27: InjectChurn
+    %% Arrow 25: InjectChurn
     UnionPathwayIr -- pathway-ir --> InjectChurn
     Calibrate -- churn-profile --> InjectChurn
 
-    %% Arrow 29: Execute
+    %% Arrow 27: Execute
     InjectChurn -- operational-pathway --> Execute
     provider_pool -. provider-pool .-> Execute
     order_profiles -. order-profiles .-> Execute
 
-    %% Arrow 31: Check
+    %% Arrow 29: Check
     Execute -- ground-truth-log --> Check
     invariant_catalog -. invariant-catalog .-> Check
+    Check -- "pass" --> pass_out
+    Check -- "rejected" --> rejected_out
 
-    %% Arrow 33: EmitHL7
+    %% Arrow 31: EmitHL7
     Execute -- ground-truth-log --> EmitHL7
     hl7_parser_dep -. hl7-parser-dep .-> EmitHL7
     message_type_registry -. message-type-registry .-> EmitHL7
     snomed_icd10_map -. snomed-icd10-map .-> EmitHL7
     site_profile -. site-profile .-> EmitHL7
 
-    %% Arrow 36: EmitState
+    %% Arrow 33: EmitState
     Execute -- state-history --> EmitState
+    EmitState -- "state-document" --> state_document_out
 
-    %% Arrow 39: Package
+    %% Arrow 36: Package
     EmitHL7 -- hl7v2-stream --> Package
     Execute -- ground-truth-log --> Package
+    Package -- "run-manifest" --> run_manifest_out
 
-    %% Arrow 42: Calibrate
+    %% Arrow 39: Calibrate
     Package -- sim-corpus --> Calibrate
     feed_statistics -- feed-statistics --> Calibrate
     Calibrate -- churn-profile --> Calibrate
     Calibrate -- churn-profile --> churn_profile
 
-    %% Arrow 45: UnionPathwayIr
+    %% Arrow 42: UnionPathwayIr
     CompileTrajectory -- compiled-pathway --> UnionPathwayIr
     authored_pathway -- authored-pathway --> UnionPathwayIr
 
-    %% Arrow 48: SystemUnderTest
+    %% Arrow 45: SystemUnderTest
     EmitHL7 -- hl7v2-stream --> SystemUnderTest
+    SystemUnderTest -- "sut-behavior" --> sut_behavior_out
 
-    %% Arrow 49: ToolsCorpusIntake
+    %% Arrow 46: ToolsCorpusIntake
     Package -- sim-corpus --> ToolsCorpusIntake
+    ToolsCorpusIntake -- "catalog-entry" --> catalog_entry_out
 
     %% --- Styling ---
 
@@ -120,3 +134,11 @@ flowchart LR
     style sim_config fill:#f5f5f5,stroke:#999,color:#333
     style site_profile fill:#f5f5f5,stroke:#999,color:#333
     style snomed_icd10_map fill:#f5f5f5,stroke:#999,color:#333
+
+    %% Result types (terminal outputs): green rounded
+    style catalog_entry_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style pass_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style rejected_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style run_manifest_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style state_document_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style sut_behavior_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20

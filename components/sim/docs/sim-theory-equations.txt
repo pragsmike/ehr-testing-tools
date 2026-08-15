@@ -6,8 +6,8 @@
 # node; an external stage -> "{external: true}"). Regenerate
 # docs/sim-theory-diagram.md's mermaid block from this file with:
 #
-#   python .agents/skills/string-diagram/tools/resource_equations_to_mermaid.py \
-#     docs/sim-theory-equations.txt -o docs/sim-theory-diagram.mermaid
+#   python3 components/palgebra/tools/resource_equations_to_mermaid.py \
+#     components/sim/docs/sim-theory-equations.txt -o components/sim/docs/sim-theory-diagram.mermaid
 #
 # This file itself is maintained by hand alongside docs/sim-theory.edn
 # (no Clojure translator exists in this repo, unlike tools' `make
