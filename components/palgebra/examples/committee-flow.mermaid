@@ -21,6 +21,10 @@ flowchart LR
     %% --- Waste / discard sinks ---
     rejected_resolution_sink(["rejected-resolution"])
 
+    %% --- Result types (terminal outputs) ---
+    accepted_resolution_out(["accepted-resolution"])
+    remediation_out(["remediation"])
+
     %% --- Wires (typed connections) ---
     %% Arrow 7: DraftCharter
     problem_statement -- problem-statement --> DraftCharter
@@ -53,6 +57,7 @@ flowchart LR
     QualityGate -- needs-remediation --> Remediate
     Remediate -- transcript --> Remediate
     character_propensities -. character-propensities .-> Remediate
+    Remediate -- "remediation" --> remediation_out
 
     %% Arrow 40: ReEvaluate
     Remediate -- transcript --> ReEvaluate
@@ -63,11 +68,12 @@ flowchart LR
     %% Arrow 44: HumanGate
     QualityGate -- passed-evaluation --> HumanGate
     Resolve -- resolution --> HumanGate
+    HumanGate -- "accepted-resolution" --> accepted_resolution_out
     HumanGate -- "rejected-resolution" --> rejected_resolution_sink
 
     %% --- Styling ---
 
-    %% Operations: dark boxes (fan=blue, funnel=green, enrichment=outlined, gate=purple)
+    %% Operations: dark boxes (fan=blue, funnel=green, enrichment=outlined, gate=purple, external=dashed)
     style DraftCharter fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
     style Convene fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
     style Deliberate fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
@@ -84,6 +90,10 @@ flowchart LR
     style problem_statement fill:#f5f5f5,stroke:#999,color:#333
     style remediation_threshold fill:#f5f5f5,stroke:#999,color:#333
     style roberts_rules fill:#f5f5f5,stroke:#999,color:#333
+
+    %% Result types (terminal outputs): green rounded
+    style accepted_resolution_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style remediation_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
 
     %% Waste sinks: red
     style rejected_resolution_sink fill:#fee,stroke:#c00,color:#c00,stroke-width:2px

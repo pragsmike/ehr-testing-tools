@@ -43,6 +43,17 @@
 # actions/setup-python below is not incidental -- ubuntu-latest ships a
 # python3, but this pins the dependency explicitly rather than relying
 # on the runner image's own default.
+#
+# Population widened 2026-08-15 (review 3, D2-4/D5-3/D5-4, ADR-0136)
+# from five paths to ten. The five it diffed were exactly the five the
+# make graph knew about; a tree-first enumeration found five more
+# derived artifacts with no gate of any kind, three of them already
+# stale against their own converter. The lesson is the gate's, not the
+# artifacts': a freshness step whose population is the make graph
+# cannot see a derivation that was never added to the make graph. Both
+# surfaces are now enumerated from the tree -- if a new derived file
+# appears, it goes on a make target AND on the diff list below, same
+# commit.
 
 name: test
 
@@ -84,4 +95,14 @@ jobs:
       - name: generated-doc freshness (regen + diff)
         run: |
           make docsgen
-          git diff --exit-code docs/dev/pipeline.md docs/use-cases.md docs/use-cases/ docs/operators.md docs/cli.md
+          git diff --exit-code \
+            docs/dev/pipeline.md \
+            docs/use-cases.md \
+            docs/use-cases/ \
+            docs/operators.md \
+            docs/cli.md \
+            components/sim/docs/sim-theory-diagram.md \
+            components/sim/docs/sim-theory-diagram.mermaid \
+            components/palgebra/examples/ai-study-flow-v3.mermaid \
+            components/palgebra/examples/committee-flow.mermaid \
+            components/palgebra/examples/deliberated-choice-flow.mermaid

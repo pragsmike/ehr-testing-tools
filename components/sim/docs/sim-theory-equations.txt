@@ -1,20 +1,20 @@
 # docs/sim-theory-equations.txt -- the string-diagram skill's equation
 # form of docs/sim-theory.edn, hand-derived following the exact
-# equation-line rules ehr-testing-tools.pipeline uses for its own
-# docs/pipeline.edn (stage -> "inputs x catalytic -> outputs [Label]
-# {catalytic: ...}"; a union resource -> a synthetic UnionX funnel
-# node; an external stage -> "{external: true}"). Regenerate
-# docs/sim-theory-diagram.md's mermaid block from this file with:
-#
-#   python3 components/palgebra/tools/resource_equations_to_mermaid.py \
-#     components/sim/docs/sim-theory-equations.txt -o components/sim/docs/sim-theory-diagram.mermaid
-#
-# This file itself is maintained by hand alongside docs/sim-theory.edn
-# (no Clojure translator exists in this repo, unlike tools' `make
-# pipeline`) -- edit both together. A "# planned: <Label>" comment line
-# marks a :planned stage; the skill ignores comment lines, so this is
-# documentary only, not a distinct diagram visual (see
+# equation-line rules `make pipeline` uses for docs/pipeline.edn
+# (stage -> "inputs x catalytic -> outputs [Label] {catalytic: ...}";
+# a union resource -> a synthetic UnionX funnel node; an external
+# stage -> "{external: true}"). Maintained by hand alongside
+# docs/sim-theory.edn (no Clojure translator exists here, unlike
+# `make pipeline`) -- edit both together. A "# planned: <Label>"
+# comment marks a :planned stage; the converter ignores comment
+# lines, so it is documentary only, not a diagram visual (see
 # docs/sim-theory-diagram.md's own note on this gap).
+#
+# Regenerate with `make sim-theory` -- it rewrites the .mermaid AND
+# the .md's embedded block. The hand recipe that stood here is
+# retired (ADR-0136). LINE COUNT IS LOAD-BEARING: `%% Arrow N`
+# numbering derives from THIS file's line numbering, so adding or
+# removing any line above renumbers every arrow in the output.
 
 sim-config × demographics-tables × payer-pool → persona  [Persona]  {catalytic: demographics-tables, payer-pool}
 

@@ -14,7 +14,7 @@ flowchart LR
     security_criteria(["security-criteria"])
     use_case_rubrics(["use-case-rubrics"])
 
-    %% --- Operations (boxes) ---
+    %% --- Operations (boxes; spiders use distinct shapes) ---
     SynthesizeUseCases["SynthesizeUseCases"]
     ExtractPreferenceSignals["ExtractPreferenceSignals"]
     AssembleCandidatesLongList["AssembleCandidatesLongList"]
@@ -27,6 +27,9 @@ flowchart LR
 
     %% --- Waste / discard sinks ---
     rejected_candidates_sink(["rejected-candidates"])
+
+    %% --- Result types (terminal outputs) ---
+    evidence_scores_out(["evidence-scores"])
 
     %% --- Wires (typed connections) ---
     %% Arrow 18: SynthesizeUseCases
@@ -53,6 +56,7 @@ flowchart LR
     %% Arrow 30: ScoreEvidenceQuality
     DraftCandidateEvidence -- evidence --> ScoreEvidenceQuality
     evidence_rubric -. evidence-rubric .-> ScoreEvidenceQuality
+    ScoreEvidenceQuality -- "evidence-scores" --> evidence_scores_out
 
     %% Arrow 33: SecurityTriageToShortList
     AssembleCandidatesLongList -- candidates-long-list --> SecurityTriageToShortList
@@ -79,13 +83,13 @@ flowchart LR
 
     %% --- Styling ---
 
-    %% Operations: dark boxes
+    %% Operations: dark boxes (fan=blue, funnel=green, enrichment=outlined, gate=purple, external=dashed)
     style SynthesizeUseCases fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
     style ExtractPreferenceSignals fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
     style AssembleCandidatesLongList fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
     style DraftCandidateEvidence fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
     style ScoreEvidenceQuality fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
-    style SecurityTriageToShortList fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
+    style SecurityTriageToShortList fill:#4a148c,stroke:#6a1b9a,color:#e1bee7,stroke-width:2px
     style DraftCandidateFindings fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
     style SynthesizeFindingsRollup fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
     style UpdatePrefsFromFindings fill:#2d2d2d,stroke:#000,color:#fff,stroke-width:2px
@@ -103,6 +107,9 @@ flowchart LR
     style rollup_template fill:#f5f5f5,stroke:#999,color:#333
     style security_criteria fill:#f5f5f5,stroke:#999,color:#333
     style use_case_rubrics fill:#f5f5f5,stroke:#999,color:#333
+
+    %% Result types (terminal outputs): green rounded
+    style evidence_scores_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
 
     %% Waste sinks: red
     style rejected_candidates_sink fill:#fee,stroke:#c00,color:#c00,stroke-width:2px

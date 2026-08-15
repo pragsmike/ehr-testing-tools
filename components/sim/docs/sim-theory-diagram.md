@@ -2,14 +2,21 @@
      (itself hand-derived from docs/sim-theory.edn -- see that file's own
      header for why no Clojure translator does this mechanically here, unlike
      ehr-testing-tools' `make pipeline`). Do not hand-edit the mermaid block
-     below except as noted here. Regenerate with:
+     below. Regenerate with:
 
-       python3 components/palgebra/tools/resource_equations_to_mermaid.py \
-         components/sim/docs/sim-theory-equations.txt \
-         -o components/sim/docs/sim-theory-diagram.mermaid
+       make sim-theory
 
-     then paste the output back in below. Paths are repo-root-relative;
-     run from the workspace root.
+     That target rewrites docs/sim-theory-diagram.mermaid from the equations
+     file AND splices it into the block below, so the three surfaces agree
+     byte for byte; CI's generated-doc freshness step diffs all of them.
+
+     ADR-0136 NOTE (review 3, D5-3/D5-4/D2-4): a hand recipe -- run the
+     converter yourself, then paste the output back in below -- stood in this
+     header from authoring until 2026-08-15, and it is what the ADR-0135 note
+     immediately below refers to as "the recipe above". It is retired: an
+     unregistered derivation is one nobody can see go stale, which is exactly
+     how three sibling example diagrams sat stale for a converter generation.
+     The note below is kept verbatim as the record it is, dead path and all.
 
      ADR-0135 NOTE (this session): the recipe above previously named
      `.agents/skills/string-diagram/tools/resource_equations_to_mermaid.py`,

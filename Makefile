@@ -1,4 +1,4 @@
-.PHONY: help test integration quickstart quickstart-fresh ci-parity pipeline use-cases operators-doc cli-doc docsgen lint-pipeline mirror-nist verify-nist-lock
+.PHONY: help test integration quickstart quickstart-fresh ci-parity pipeline use-cases operators-doc cli-doc sim-theory palgebra-examples docsgen lint-pipeline mirror-nist verify-nist-lock
 
 # Thin, deliberately (R23, ADR-0004, 2026-07-28 carve-loss recovery
 # session): every target below is a named entry point to a poly/CLI
@@ -30,7 +30,9 @@ help:
 	@echo "  use-cases    - regenerate docs/use-cases.md (index) and docs/use-cases/*.md (per-case pages) from components/corpus/docs/use-cases.edn"
 	@echo "  operators-doc - regenerate docs/operators.md from the live operator registry"
 	@echo "  cli-doc      - regenerate docs/cli.md from bases/cli's own cli-spec"
-	@echo "  docsgen      - all four of the above"
+	@echo "  sim-theory   - regenerate components/sim/docs/sim-theory-diagram.mermaid from sim-theory-equations.txt and splice it into sim-theory-diagram.md's embedded block"
+	@echo "  palgebra-examples - regenerate the three components/palgebra/examples/*-flow*.mermaid from their sibling *-equations.txt"
+	@echo "  docsgen      - all six of the above"
 	@echo "  lint-pipeline - assert every catalytic resource in docs/pipeline.edn and docs/use-cases.edn resolves to one of the four catalytic targets (ehrt.docs-tooling.lint)"
 	@echo "  mirror-nist  - build ~/.ehrt/nist-mirror/ from this user's own ~/.m2 cache, sha256-verified against artifacts.lock.edn (ADR-0053) -- offline determinism without redistribution"
 	@echo "  verify-nist-lock - check every hit-nexus-sourced artifacts.lock.edn entry's sha256 against ~/.m2 (ADR-0053); also runs as part of 'test'"
@@ -100,7 +102,53 @@ cli-doc:
 	clojure -X:dev ehrt.cli.help/write-cli-md! :out '"docs/cli.md"'
 	@echo "Regenerated docs/cli.md"
 
-docsgen: pipeline use-cases operators-doc cli-doc
+# Regenerates components/sim/docs/sim-theory-diagram.mermaid from
+# components/sim/docs/sim-theory-equations.txt AND splices the result
+# into sim-theory-diagram.md's embedded ```mermaid block, so all three
+# surfaces (equations -> .mermaid -> embedded block) agree byte for
+# byte and one `git diff` sees any drift in any of them. Registered
+# here by review 3 (D5-3/D5-4/D2-4, ADR-0136): this derivation had run
+# by hand from a recipe in the two headers since it was authored, which
+# is how ADR-0135's converter change reached it only by a careful
+# manual sweep -- and how the palgebra examples below it were missed
+# entirely. The hand recipes are retired; those headers now point here.
+#
+# CAUTION, and the reason the equations file's own header must keep its
+# exact line count under edit: the converter's `%% Arrow N` comments
+# derive from the equations file's LINE numbering, so adding or
+# removing a header comment line silently renumbers every arrow in the
+# output (ADR-0135 diagnosed exactly this, off by one).
+sim-theory:
+	@mkdir -p target
+	python3 components/palgebra/tools/resource_equations_to_mermaid.py components/sim/docs/sim-theory-equations.txt -o components/sim/docs/sim-theory-diagram.mermaid
+	@awk -v block=components/sim/docs/sim-theory-diagram.mermaid '\
+		/^```mermaid$$/ && !spliced { print; while ((getline l < block) > 0) print l; close(block); inb=1; spliced=1; next } \
+		inb && /^```$$/ { print; inb=0; next } \
+		inb { next } \
+		{ print }' components/sim/docs/sim-theory-diagram.md > target/sim-theory-diagram.md
+	@cmp -s target/sim-theory-diagram.md components/sim/docs/sim-theory-diagram.md \
+		|| cp target/sim-theory-diagram.md components/sim/docs/sim-theory-diagram.md
+	@echo "Regenerated components/sim/docs/sim-theory-diagram.mermaid and its embedded block in sim-theory-diagram.md"
+
+# Regenerates the string-diagram skill's three shipped teaching
+# examples from their sibling equations files. Registered by review 3
+# (D5-4): all three were stale against their own converter, each
+# missing ADR-0135's result nodes -- teaching material demonstrating
+# precisely the defect that ADR-0135 was chartered to fix.
+#
+# Only three of the five *-equations.txt in that directory have a
+# committed .mermaid output; lemon-pie and decision-monad ship as
+# equation sources only (they are the vendoring surface, not the
+# rendered-example surface). That is the whole registered population --
+# if a fourth example grows a committed .mermaid, it belongs on this
+# target and in CI's freshness diff the same day.
+palgebra-examples:
+	python3 components/palgebra/tools/resource_equations_to_mermaid.py components/palgebra/examples/ai-study-equations.txt -o components/palgebra/examples/ai-study-flow-v3.mermaid
+	python3 components/palgebra/tools/resource_equations_to_mermaid.py components/palgebra/examples/committee-equations.txt -o components/palgebra/examples/committee-flow.mermaid
+	python3 components/palgebra/tools/resource_equations_to_mermaid.py components/palgebra/examples/deliberated-choice-equations.txt -o components/palgebra/examples/deliberated-choice-flow.mermaid
+	@echo "Regenerated components/palgebra/examples/*-flow*.mermaid"
+
+docsgen: pipeline use-cases operators-doc cli-doc sim-theory palgebra-examples
 
 lint-pipeline:
 	clojure -X:dev ehrt.docs-tooling.lint/lint-pipeline!
