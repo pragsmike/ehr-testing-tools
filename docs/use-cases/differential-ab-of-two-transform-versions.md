@@ -32,6 +32,10 @@ flowchart LR
     NewTransform["NewTransform"]
     Check["Check"]
 
+    %% --- Result types (terminal outputs) ---
+    pass_out(["pass"])
+    rejected_out(["rejected"])
+
     %% --- Wires (typed connections) ---
     %% Arrow 1: OldTransform
     canonical_fhir_datum -- canonical-fhir-datum --> OldTransform
@@ -44,6 +48,8 @@ flowchart LR
     OldTransform -. expected-corpus .-> Check
     assertion_set -. assertion-set .-> Check
     canonicalizer_set -. canonicalizer-set .-> Check
+    Check -- "pass" --> pass_out
+    Check -- "rejected" --> rejected_out
 
     %% --- Styling ---
 
@@ -56,4 +62,8 @@ flowchart LR
     style assertion_set fill:#f5f5f5,stroke:#999,color:#333
     style canonical_fhir_datum fill:#f5f5f5,stroke:#999,color:#333
     style canonicalizer_set fill:#f5f5f5,stroke:#999,color:#333
+
+    %% Result types (terminal outputs): green rounded
+    style pass_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style rejected_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
 ```

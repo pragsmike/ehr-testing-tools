@@ -63,15 +63,23 @@ flowchart LR
     Mutate["Mutate"]
     Report["Report"]
 
+    %% --- Result types (terminal outputs) ---
+    lineage_record_out(["lineage-record"])
+    mutant_fhir_datum_out(["mutant-fhir-datum"])
+    report_out(["report"])
+
     %% --- Wires (typed connections) ---
     %% Arrow 1: Mutate
     canonical_fhir_datum -- canonical-fhir-datum --> Mutate
     operator_catalog -. operator-catalog .-> Mutate
+    Mutate -- "mutant-fhir-datum" --> mutant_fhir_datum_out
+    Mutate -- "lineage-record" --> lineage_record_out
 
     %% Arrow 2: Report
     pass -- pass --> Report
     rejected -- rejected --> Report
     indeterminate -- indeterminate --> Report
+    Report -- "report" --> report_out
 
     %% --- Styling ---
 
@@ -85,4 +93,9 @@ flowchart LR
     style operator_catalog fill:#f5f5f5,stroke:#999,color:#333
     style pass fill:#f5f5f5,stroke:#999,color:#333
     style rejected fill:#f5f5f5,stroke:#999,color:#333
+
+    %% Result types (terminal outputs): green rounded
+    style lineage_record_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style mutant_fhir_datum_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style report_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
 ```

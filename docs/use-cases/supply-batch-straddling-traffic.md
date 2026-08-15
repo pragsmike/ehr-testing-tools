@@ -55,10 +55,15 @@ flowchart LR
     Batch["Batch"]
     YourReceiver["YourReceiver"]
 
+    %% --- Result types (terminal outputs) ---
+    generated_corpus_out(["generated-corpus"])
+    receiver_completeness_decision_out(["receiver-completeness-decision"])
+
     %% --- Wires (typed connections) ---
     %% Arrow 1: EngineExecute
     generator_config -- generator-config --> EngineExecute
     sim_engine -- sim-engine --> EngineExecute
+    EngineExecute -- "generated-corpus" --> generated_corpus_out
 
     %% Arrow 2: Batch
     hl7v2_directory -- hl7v2-directory --> Batch
@@ -66,6 +71,7 @@ flowchart LR
 
     %% Arrow 3: YourReceiver
     Batch -- delivery-batches --> YourReceiver
+    YourReceiver -- "receiver-completeness-decision" --> receiver_completeness_decision_out
 
     %% --- Styling ---
 
@@ -79,4 +85,8 @@ flowchart LR
     style generator_config fill:#f5f5f5,stroke:#999,color:#333
     style hl7v2_directory fill:#f5f5f5,stroke:#999,color:#333
     style sim_engine fill:#f5f5f5,stroke:#999,color:#333
+
+    %% Result types (terminal outputs): green rounded
+    style generated_corpus_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style receiver_completeness_decision_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
 ```

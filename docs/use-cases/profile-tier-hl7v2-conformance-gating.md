@@ -42,10 +42,18 @@ flowchart LR
     %% --- Operations (boxes; spiders use distinct shapes) ---
     Gate["Gate"]
 
+    %% --- Result types (terminal outputs) ---
+    no_verdict_out(["no-verdict"])
+    pass_out(["pass"])
+    rejected_out(["rejected"])
+
     %% --- Wires (typed connections) ---
     %% Arrow 1: Gate
     datum -- datum --> Gate
     profile_artifact -. profile-artifact .-> Gate
+    Gate -- "pass" --> pass_out
+    Gate -- "rejected" --> rejected_out
+    Gate -- "no-verdict" --> no_verdict_out
 
     %% --- Styling ---
 
@@ -55,4 +63,9 @@ flowchart LR
     %% Source types: light rounded
     style datum fill:#f5f5f5,stroke:#999,color:#333
     style profile_artifact fill:#f5f5f5,stroke:#999,color:#333
+
+    %% Result types (terminal outputs): green rounded
+    style no_verdict_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style pass_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style rejected_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
 ```

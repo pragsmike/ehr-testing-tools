@@ -52,6 +52,9 @@ flowchart LR
     Generate["Generate"]
     Normalize["Normalize"]
 
+    %% --- Result types (terminal outputs) ---
+    canonical_fhir_datum_out(["canonical-fhir-datum"])
+
     %% --- Wires (typed connections) ---
     %% Arrow 1: Generate
     synthea_config -- synthea-config --> Generate
@@ -61,6 +64,7 @@ flowchart LR
 
     %% Arrow 2: Normalize
     Generate -- raw-corpus --> Normalize
+    Normalize -- "canonical-fhir-datum" --> canonical_fhir_datum_out
 
     %% --- Styling ---
 
@@ -73,4 +77,7 @@ flowchart LR
     style jdk_runtime fill:#f5f5f5,stroke:#999,color:#333
     style synthea_artifact fill:#f5f5f5,stroke:#999,color:#333
     style synthea_config fill:#f5f5f5,stroke:#999,color:#333
+
+    %% Result types (terminal outputs): green rounded
+    style canonical_fhir_datum_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
 ```

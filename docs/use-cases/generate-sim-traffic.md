@@ -46,10 +46,14 @@ flowchart LR
     %% --- Operations (boxes; spiders use distinct shapes) ---
     EngineExecute["EngineExecute"]
 
+    %% --- Result types (terminal outputs) ---
+    generated_corpus_out(["generated-corpus"])
+
     %% --- Wires (typed connections) ---
     %% Arrow 1: EngineExecute
     generator_config -- generator-config --> EngineExecute
     sim_engine -- sim-engine --> EngineExecute
+    EngineExecute -- "generated-corpus" --> generated_corpus_out
 
     %% --- Styling ---
 
@@ -59,4 +63,7 @@ flowchart LR
     %% Source types: light rounded
     style generator_config fill:#f5f5f5,stroke:#999,color:#333
     style sim_engine fill:#f5f5f5,stroke:#999,color:#333
+
+    %% Result types (terminal outputs): green rounded
+    style generated_corpus_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
 ```

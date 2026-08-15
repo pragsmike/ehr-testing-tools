@@ -29,13 +29,19 @@ flowchart LR
     Mutate["Mutate"]
     YourValidation["YourValidation"]
 
+    %% --- Result types (terminal outputs) ---
+    lineage_record_out(["lineage-record"])
+    your_validation_verdict_out(["your-validation-verdict"])
+
     %% --- Wires (typed connections) ---
     %% Arrow 1: Mutate
     canonical_fhir_datum -- canonical-fhir-datum --> Mutate
     operator_catalog -. operator-catalog .-> Mutate
+    Mutate -- "lineage-record" --> lineage_record_out
 
     %% Arrow 2: YourValidation
     Mutate -- mutant-fhir-datum --> YourValidation
+    YourValidation -- "your-validation-verdict" --> your_validation_verdict_out
 
     %% --- Styling ---
 
@@ -46,4 +52,8 @@ flowchart LR
     %% Source types: light rounded
     style canonical_fhir_datum fill:#f5f5f5,stroke:#999,color:#333
     style operator_catalog fill:#f5f5f5,stroke:#999,color:#333
+
+    %% Result types (terminal outputs): green rounded
+    style lineage_record_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style your_validation_verdict_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
 ```

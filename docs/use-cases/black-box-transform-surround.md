@@ -44,6 +44,11 @@ flowchart LR
     Gate["Gate"]
     Check["Check"]
 
+    %% --- Result types (terminal outputs) ---
+    indeterminate_out(["indeterminate"])
+    pass_out(["pass"])
+    rejected_out(["rejected"])
+
     %% --- Wires (typed connections) ---
     %% Arrow 1: Generate
     synthea_config -- synthea-config --> Generate
@@ -63,12 +68,17 @@ flowchart LR
     runtime -. runtime .-> Gate
     hapi_hl7v2_dep -. hapi-hl7v2-dep .-> Gate
     profile_artifact -. profile-artifact .-> Gate
+    Gate -- "pass" --> pass_out
+    Gate -- "rejected" --> rejected_out
+    Gate -- "indeterminate" --> indeterminate_out
 
     %% Arrow 5: Check
     Transform -- transform-output --> Check
     expected_corpus -. expected-corpus .-> Check
     assertion_set -. assertion-set .-> Check
     canonicalizer_set -. canonicalizer-set .-> Check
+    Check -- "pass" --> pass_out
+    Check -- "rejected" --> rejected_out
 
     %% --- Styling ---
 
@@ -91,4 +101,9 @@ flowchart LR
     style synthea_artifact fill:#f5f5f5,stroke:#999,color:#333
     style synthea_config fill:#f5f5f5,stroke:#999,color:#333
     style validator_artifact fill:#f5f5f5,stroke:#999,color:#333
+
+    %% Result types (terminal outputs): green rounded
+    style indeterminate_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style pass_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style rejected_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
 ```

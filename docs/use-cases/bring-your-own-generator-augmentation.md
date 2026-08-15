@@ -29,13 +29,23 @@ flowchart LR
     Intake["Intake"]
     Mutate["Mutate"]
 
+    %% --- Result types (terminal outputs) ---
+    catalog_entry_out(["catalog-entry"])
+    intake_record_out(["intake-record"])
+    lineage_record_out(["lineage-record"])
+    mutant_fhir_datum_out(["mutant-fhir-datum"])
+
     %% --- Wires (typed connections) ---
     %% Arrow 1: Intake
     foreign_file -- foreign-file --> Intake
+    Intake -- "catalog-entry" --> catalog_entry_out
+    Intake -- "intake-record" --> intake_record_out
 
     %% Arrow 2: Mutate
     foreign_file -- foreign-file --> Mutate
     operator_catalog -. operator-catalog .-> Mutate
+    Mutate -- "mutant-fhir-datum" --> mutant_fhir_datum_out
+    Mutate -- "lineage-record" --> lineage_record_out
 
     %% --- Styling ---
 
@@ -46,4 +56,10 @@ flowchart LR
     %% Source types: light rounded
     style foreign_file fill:#f5f5f5,stroke:#999,color:#333
     style operator_catalog fill:#f5f5f5,stroke:#999,color:#333
+
+    %% Result types (terminal outputs): green rounded
+    style catalog_entry_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style intake_record_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style lineage_record_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style mutant_fhir_datum_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
 ```

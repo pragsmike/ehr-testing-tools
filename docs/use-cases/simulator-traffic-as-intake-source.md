@@ -43,6 +43,10 @@ flowchart LR
     EngineExecute["EngineExecute"]
     Intake["Intake"]
 
+    %% --- Result types (terminal outputs) ---
+    catalog_entry_out(["catalog-entry"])
+    intake_record_out(["intake-record"])
+
     %% --- Wires (typed connections) ---
     %% Arrow 1: EngineExecute
     generator_config -- generator-config --> EngineExecute
@@ -50,6 +54,8 @@ flowchart LR
 
     %% Arrow 2: Intake
     EngineExecute -- generated-corpus --> Intake
+    Intake -- "catalog-entry" --> catalog_entry_out
+    Intake -- "intake-record" --> intake_record_out
 
     %% --- Styling ---
 
@@ -60,4 +66,8 @@ flowchart LR
     %% Source types: light rounded
     style generator_config fill:#f5f5f5,stroke:#999,color:#333
     style sim_engine fill:#f5f5f5,stroke:#999,color:#333
+
+    %% Result types (terminal outputs): green rounded
+    style catalog_entry_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style intake_record_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
 ```

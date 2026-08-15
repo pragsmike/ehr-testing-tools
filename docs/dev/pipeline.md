@@ -50,6 +50,12 @@ flowchart LR
     Check["Check"]
     UnionDatum[\"UnionDatum"/]
 
+    %% --- Result types (terminal outputs) ---
+    catalog_entry_out(["catalog-entry"])
+    intake_record_out(["intake-record"])
+    lineage_record_out(["lineage-record"])
+    report_out(["report"])
+
     %% --- Wires (typed connections) ---
     %% Arrow 1: Generate
     synthea_config -- synthea-config --> Generate
@@ -63,9 +69,12 @@ flowchart LR
     %% Arrow 3: Mutate
     Normalize -- canonical-fhir-datum --> Mutate
     operator_catalog -. operator-catalog .-> Mutate
+    Mutate -- "lineage-record" --> lineage_record_out
 
     %% Arrow 4: Intake
     foreign_file -- foreign-file --> Intake
+    Intake -- "catalog-entry" --> catalog_entry_out
+    Intake -- "intake-record" --> intake_record_out
 
     %% Arrow 5: Gate
     UnionDatum -- datum --> Gate
@@ -78,6 +87,7 @@ flowchart LR
     Check -- pass --> Report
     Check -- rejected --> Report
     Gate -- indeterminate --> Report
+    Report -- "report" --> report_out
 
     %% Arrow 7: Check
     UnionDatum -- datum --> Check
@@ -116,4 +126,10 @@ flowchart LR
     style synthea_artifact fill:#f5f5f5,stroke:#999,color:#333
     style synthea_config fill:#f5f5f5,stroke:#999,color:#333
     style validator_artifact fill:#f5f5f5,stroke:#999,color:#333
+
+    %% Result types (terminal outputs): green rounded
+    style catalog_entry_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style intake_record_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style lineage_record_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style report_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
 ```

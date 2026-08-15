@@ -60,6 +60,12 @@ flowchart LR
     UnionDatum[\"UnionDatum"/]
     Gate["Gate"]
 
+    %% --- Result types (terminal outputs) ---
+    indeterminate_out(["indeterminate"])
+    lineage_record_out(["lineage-record"])
+    pass_out(["pass"])
+    rejected_out(["rejected"])
+
     %% --- Wires (typed connections) ---
     %% Arrow 1: Generate
     synthea_config -- synthea-config --> Generate
@@ -73,6 +79,7 @@ flowchart LR
     %% Arrow 3: Mutate
     Normalize -- canonical-fhir-datum --> Mutate
     operator_catalog -. operator-catalog .-> Mutate
+    Mutate -- "lineage-record" --> lineage_record_out
 
     %% Arrow 4: UnionDatum
     Normalize -- canonical-fhir-datum --> UnionDatum
@@ -85,6 +92,9 @@ flowchart LR
     runtime -. runtime .-> Gate
     hapi_hl7v2_dep -. hapi-hl7v2-dep .-> Gate
     profile_artifact -. profile-artifact .-> Gate
+    Gate -- "pass" --> pass_out
+    Gate -- "rejected" --> rejected_out
+    Gate -- "indeterminate" --> indeterminate_out
 
     %% --- Styling ---
 
@@ -106,4 +116,10 @@ flowchart LR
     style synthea_artifact fill:#f5f5f5,stroke:#999,color:#333
     style synthea_config fill:#f5f5f5,stroke:#999,color:#333
     style validator_artifact fill:#f5f5f5,stroke:#999,color:#333
+
+    %% Result types (terminal outputs): green rounded
+    style indeterminate_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style lineage_record_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style pass_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    style rejected_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
 ```

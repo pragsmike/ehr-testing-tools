@@ -48,6 +48,9 @@ flowchart LR
     Gate["Gate"]
     Report["Report"]
 
+    %% --- Result types (terminal outputs) ---
+    report_out(["report"])
+
     %% --- Wires (typed connections) ---
     %% Arrow 1: Gate
     datum -- datum --> Gate
@@ -60,6 +63,7 @@ flowchart LR
     Gate -- pass --> Report
     Gate -- rejected --> Report
     Gate -- indeterminate --> Report
+    Report -- "report" --> report_out
 
     %% --- Styling ---
 
@@ -73,4 +77,7 @@ flowchart LR
     style profile_artifact fill:#f5f5f5,stroke:#999,color:#333
     style runtime fill:#f5f5f5,stroke:#999,color:#333
     style validator_artifact fill:#f5f5f5,stroke:#999,color:#333
+
+    %% Result types (terminal outputs): green rounded
+    style report_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
 ```

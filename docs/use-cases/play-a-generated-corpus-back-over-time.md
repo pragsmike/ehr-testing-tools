@@ -47,12 +47,16 @@ flowchart LR
     Pace["Pace"]
     Render["Render"]
 
+    %% --- Result types (terminal outputs) ---
+    rendered_ticker_output_out(["rendered-ticker-output"])
+
     %% --- Wires (typed connections) ---
     %% Arrow 1: Pace
     hl7v2_directory -- hl7v2-directory --> Pace
 
     %% Arrow 2: Render
     Pace -- paced-event-stream --> Render
+    Render -- "rendered-ticker-output" --> rendered_ticker_output_out
 
     %% --- Styling ---
 
@@ -62,4 +66,7 @@ flowchart LR
 
     %% Source types: light rounded
     style hl7v2_directory fill:#f5f5f5,stroke:#999,color:#333
+
+    %% Result types (terminal outputs): green rounded
+    style rendered_ticker_output_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
 ```

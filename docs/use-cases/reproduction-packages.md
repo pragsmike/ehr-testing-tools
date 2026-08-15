@@ -54,12 +54,16 @@ flowchart LR
     %% --- Operations (boxes; spiders use distinct shapes) ---
     Generate["Generate"]
 
+    %% --- Result types (terminal outputs) ---
+    raw_corpus_out(["raw-corpus"])
+
     %% --- Wires (typed connections) ---
     %% Arrow 1: Generate
     synthea_config -- synthea-config --> Generate
     synthea_artifact -. synthea-artifact .-> Generate
     jdk_runtime -. jdk-runtime .-> Generate
     config_hash -. config-hash .-> Generate
+    Generate -- "raw-corpus" --> raw_corpus_out
 
     %% --- Styling ---
 
@@ -71,4 +75,7 @@ flowchart LR
     style jdk_runtime fill:#f5f5f5,stroke:#999,color:#333
     style synthea_artifact fill:#f5f5f5,stroke:#999,color:#333
     style synthea_config fill:#f5f5f5,stroke:#999,color:#333
+
+    %% Result types (terminal outputs): green rounded
+    style raw_corpus_out fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
 ```
