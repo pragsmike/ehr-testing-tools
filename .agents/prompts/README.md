@@ -155,3 +155,4 @@ Files in this directory:
   * 2026-08-14-clinic-decade-rename-and-exerciser.md — Scenario rename busy-tuesday -> clinic-decade + exerciser completion (ADR-0132)
   * 2026-08-14-exact-name-resolution.md — Exact-name state resolution: collision fix, restoration cascade (ADR-0133)
   * 2026-08-14-manual-review-2.md — Manual-review run 2: channel-authored report landed verbatim, F1/F2/F3 fixed, ADR-0133's tag paid (ADR-0134)
+  * 2026-08-15-string-diagram-terminal-outputs.md — String-diagram terminal-output result nodes (ADR-0135)

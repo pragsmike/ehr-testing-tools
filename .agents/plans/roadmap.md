@@ -364,6 +364,37 @@ per item; done items move to the bottom of their section with a date and sha.
   point (`a884967`). Zero `src`/`test` touched; `bin/close-scaffold`
   the only pre-existing script edited, mode unchanged. Full account in
   `notes/adr/0128-agent-facing-hardening-2.md`.
+- **String-diagram terminal outputs — palgebra diagrams showed inputs,
+  not outputs — CLOSED (ADR-0135; chartered channel-direct 2026-08-14,
+  no prior open row).** Every single-equation use-case diagram
+  dead-ended at the operation box: `resource_equations_to_mermaid.py`
+  emitted output wires only for discard sinks and feedback edges, and
+  `classify_types` had no terminal-output class. Fixed per author
+  rulings "Q1 a. Q2 b.": one green result node per coproduct summand,
+  `_out` suffixed, wired from the operation; discard/feedback/
+  intermediate semantics untouched; skill doc extended in the same
+  commit; all 21 pages plus `pipeline.md` regenerated mechanically.
+  Red witnessed first (`mermaid_render_test.clj`, the one test that
+  runs the renderer for real); regeneration byte-deterministic across
+  two runs and clean under CI's own `make docsgen && git diff
+  --exit-code`. Multi-stage masking proved partial — `pipeline.md`
+  itself gained four yields it had never drawn. Step 3.4's two
+  follow-row candidates were reported, then **acted on under a
+  mid-session author license** ("b. Widen the fence by one step before
+  close…", channel-proposed, author-licensed):
+  `components/sim/docs/sim-theory-diagram.md` regenerated (six terminal
+  codomains now render, `Check`'s verdict coproduct among them) and its
+  dead regeneration-recipe path fixed in both copies — the diagram's
+  header and the equations file's own — a command that had not existed
+  since ADR-0005 moved the converter to `components/palgebra/`. That
+  regeneration DISCHARGED the standing request the M5b and M6 notes
+  each left for a Python-having session to confirm by running rather
+  than by inspection: their argument held, the only non-ADR-0135
+  difference being `%% Arrow N` renumbering from M6's own unregenerated
+  comment-line removals. `README.md` and `docs/dev/architecture.md`
+  stayed read-only (neither is a string diagram). Zero `src`, zero
+  `demos`, zero module JSON — no oracle claim made or owed. Full
+  account in `notes/adr/0135-string-diagram-terminal-outputs.md`.
 - **Manual-review run 2 — CLOSED 2026-08-14 (ADR-0134), overall PASS
   with warns.** The skill's own second scored run
   (`.agents/plans/2026-08-14-manual-review-2.md`), authored by the
@@ -1330,3 +1361,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-13 — manual-s5-chapter8-review-close — ADR-0125
 - 2026-08-14 — slug-edn-round-trip — ADR-0131
 - 2026-08-14 — manual-review-2 — ADR-0134
+- 2026-08-15 — string-diagram-terminal-outputs — ADR-0135

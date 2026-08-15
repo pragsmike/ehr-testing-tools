@@ -1409,3 +1409,54 @@ vendoring-rider row; ruled 2026-08-14)
   run 1 and both of its remediations landed (ADR-0125/0126/0129),
   carrying the standing close ceremony (roadmap Done row, rulings,
   session record, prompt archive) with it.
+
+## From ADR-0135 (string-diagram terminal outputs: result nodes, green
+tint; ruled 2026-08-14)
+
+- **Charter, rendering, style and scope in one line, verbatim:**
+  *"Q1 a. Q2 b. Micro-arc."* [A, 2026-08-14]. Chartered directly from
+  the design channel with no prior open roadmap row — the row lands in
+  Done already closed and discloses that it was chartered
+  channel-direct.
+- **Q1 (what gets a result node), ruled "Q1 a."** [A, 2026-08-14]: one
+  result node per coproduct summand, wired `Op -- name --> node`; a
+  discarded summand still goes to its red sink; a summand consumed by
+  any other equation in the file stays an inter-op edge (the existing
+  producer map arbitrates); only truly-terminal outputs get result
+  nodes. Executed exactly as ruled — `classify_types` grows
+  `terminal = all_outputs - all_inputs - all_discard -
+  all_feedback_sources`, and discard/feedback/intermediate semantics
+  are untouched.
+- **Q2 (how a result node is drawn), ruled "Q2 b."** [A, 2026-08-14]:
+  result nodes get a visually distinct tint so domain and codomain are
+  tellable at a glance (never the source grey). Executed with the
+  channel-recommended colors unadjusted —
+  `fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20`, colliding with neither
+  the source grey `#f5f5f5` nor the red discard sink `#fee`.
+- **Mid-session fence widening (Step 3.4's follow-row candidates),
+  ruled "b."** [A, 2026-08-15], verbatim: *"b. Widen the fence by one
+  step before close: regenerate components/sim/docs/
+  sim-theory-diagram.md with the updated converter and fix its
+  header's regeneration recipe path (dead .agents/skills/
+  string-diagram/tools/… → live components/palgebra/tools/
+  resource_equations_to_mermaid.py) in the same commit. First locate
+  the diagram's true equations source; if it is ambiguous or missing,
+  STOP-AND-REPORT instead of improvising. Witness two-run
+  byte-determinism as in Step 3.3. Quote this ruling verbatim in the
+  ADR and rulings rows; record the widening as channel-proposed,
+  author-licensed. Then proceed to the close as chartered."*
+  **Channel-proposed, author-licensed** — the prompt's own "hand-
+  authored diagrams are read-only this arc" fence stood until this
+  ruling; the candidates were reported first and acted on only after
+  it. Executed exactly as ruled: the equations source was located
+  first and is unambiguous (`components/sim/docs/
+  sim-theory-equations.txt`, named by both headers), so the
+  STOP-AND-REPORT did not fire; two runs byte-identical; the dead path
+  fixed in BOTH copies of the recipe (the diagram's header and the
+  equations file's own), same defect and same commit, with the
+  equations-file header's line count preserved so `%% Arrow N`
+  numbering stayed stable. The regeneration discharged the standing
+  request the M5b and M6 notes each left for a Python-having session
+  to confirm by running rather than by inspection — their argument
+  held, the only non-ADR-0135 difference being arrow renumbering from
+  M6's own unregenerated comment-line removals.
