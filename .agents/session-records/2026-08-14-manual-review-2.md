@@ -213,7 +213,31 @@ all three fix commits, and each fix commit cites its report row.
 
 ## Post-push verification
 
-See the close-out receipts appended below at push time.
+`bin/post-push-verify 46b82babf1e109f6a5748f175f8a687419a3ea3e`, after
+pushing all five commits (`46b82ba..bf129e8`):
+
+```
+-- 1. Remote tip vs HEAD --
+OK: origin/main (bf129e81ca6321c9298f4a93cfc203c11723a88f) matches tip (bf129e81ca6321c9298f4a93cfc203c11723a88f)
+
+-- 2. Per-commit ASCII check, 46b82bab..bf129e81 --
+OK: every commit message in range is pure ASCII
+
+-- 3. CI run at tip (bf129e81ca6321c9298f4a93cfc203c11723a88f) --
+CI run for bf129e81ca6321c9298f4a93cfc203c11723a88f: status=queued conclusion=<pending>
+https://github.com/pragsmike/ehr-testing-tools/actions/runs/31878285949
+DISCLOSED: reported once, not awaited to conclusion (AR-CI-4)
+```
+
+All three checks pass. The CI run is reported at `queued`, polled once
+and not awaited — AR-CI-4 reserves watching a run to conclusion for a
+session whose own claim is about CI, which this session's is not. The
+next session's own `bin/preflight` is where that run's conclusion gets
+read, exactly as this session read `46b82bab`'s.
+
+This section itself landed in a follow-up commit after the push it
+records; that commit's own push receipt is not recorded here, to stop
+the regress at one level rather than chasing it.
 
 ## Carried forward
 
