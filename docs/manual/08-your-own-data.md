@@ -92,7 +92,7 @@ Re-derived fresh this session, a freshly generated `out/corpus/synthea-s1-p5`:
   :by-code {},
   :files [{:path "Abdul218_Schoen8_352cccfc-0946-b8f0-a793-a1897e7f48b6.json",
            :verdict :pass, :finding-count 0, :findings []}
-          ;; ... five more patient files and both info files, all :pass ...
+          ;; ... four more patient files and both info files, all :pass ...
           ]}}
 ```
 
