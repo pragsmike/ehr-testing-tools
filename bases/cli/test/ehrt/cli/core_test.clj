@@ -938,6 +938,49 @@
     (is (result/ok? r))
     (is (= "explicit-path" (:path @called)))))
 
+;; ---- review-3 D4-3: category honesty at gate's own read path ----
+
+(deftest gate-on-an-existing-unreadable-file-reports-path-unreadable-test
+  ;; `ehrt show` on an unreadable-but-present file reports
+  ;; :path-unreadable; `ehrt gate` on the SAME file reported
+  ;; :file-not-found, inherited from the judge engines' own ruled shape
+  ;; (ADR-0098: one category plus a distinguishing :reason
+  ;; :permission-denied payload key -- deliberately UNCHANGED at the
+  ;; engine level, and its three engine tests still assert it). The
+  ;; defect is at the CLI surface: the file WAS found, it could not be
+  ;; read, and a stranger diagnosing a permissions problem was told the
+  ;; file does not exist, which points at the wrong fix. Sibling
+  ;; commands now name one condition one way.
+  ;;
+  ;; PRECONDITION: chmod 000 must actually remove read access. Running
+  ;; as root it does not, so the category assertion is made ONLY when
+  ;; the precondition holds, and the skip announces itself -- the same
+  ;; root-skip-guarded shape ADR-0098's own three engine tests use.
+  (let [f (File/createTempFile "gate-unreadable" ".hl7")]
+    (try
+      (spit f "MSH|^~\\&|A|B|C|D|20260815120000||ADT^A01|1|P|2.5.1\r")
+      (.setReadable f false false)
+      (if (.canRead f)
+        (println (str "SKIPPED gate-on-an-existing-unreadable-file-reports-path-unreadable-test: "
+                      "chmod 000 did not remove read access (root?)"))
+        (let [r (cli/gate-v2-command {:path (.getAbsolutePath f)})]
+          (is (result/error? r))
+          (is (= :path-unreadable (:category r))
+              "the file exists -- the honest category names the read failure, not absence")
+          (is (= (.getAbsolutePath f) (:path (:payload r))))))
+      (finally
+        (.setReadable f true false)
+        (.delete f)))))
+
+(deftest gate-on-a-missing-file-still-reports-file-not-found-test
+  ;; The other half of D4-3's contract, pinned so the fix above cannot
+  ;; over-reach: a path that does not exist is NOT a read failure, the
+  ;; new check does not fire on it, and the engine's own :file-not-found
+  ;; stays the right answer.
+  (let [r (cli/gate-v2-command {:path "/nonexistent/definitely-not-here.hl7"})]
+    (is (result/error? r))
+    (is (= :file-not-found (:category r)))))
+
 (deftest dispatch-routes-corpus-intake-test
   (let [called (atom nil)
         r (cli/dispatch ["corpus" "intake"] {:path "src"}

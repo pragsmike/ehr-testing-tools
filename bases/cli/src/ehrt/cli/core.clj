@@ -1134,6 +1134,32 @@
     :rejected (result/rejected :gate-rejected payload)
     :no-verdict (result/rejected :gate-no-verdict payload)))
 
+(defn- gate-unreadable-file-error
+  "Result or loud (ADR-0078, AR-RL-3; review-3 D4-3): result/error
+  :path-unreadable when `f` names a file that exists but whose bytes
+  cannot actually be read, nil when there is nothing to report -- the
+  same category, and the same try/catch-around-the-read shape,
+  `show`'s own sniff-path-format/show-file already use.
+
+  Category honesty is the whole point. The three judge engines below
+  all name this condition :file-not-found {:reason :permission-denied}
+  (ADR-0098's own ruled engine-level shape, untouched here), so `ehrt
+  gate` and `ehrt show` used to disagree about one condition on one
+  file: show said the file could not be read, gate said it did not
+  exist, and a stranger diagnosing a permissions problem was pointed at
+  the wrong fix. This runs first so the CLI surface answers with one
+  voice.
+
+  A MISSING path is deliberately left alone: it is not a file, this
+  check does not fire, and the engine's own :file-not-found stays the
+  right answer for it."
+  [^java.io.File f]
+  (when (.isFile f)
+    (try
+      (with-open [_ (io/input-stream f)] nil)
+      (catch Exception e
+        (result/error :path-unreadable {:path (.getPath f) :message (.getMessage e)})))))
+
 (defn gate-command
   "Builds an `ehrt gate <format>` command function from that format's
   gate-file/gate-dir functions (an engine interface, e.g. ehrt.judge-v2-hapi.interface, and
@@ -1179,10 +1205,11 @@
               f (io/file path)
               results-result (if (.isDirectory f)
                                 (gate-dir-fn path)
-                                (let [r (gate-file-fn path)]
-                                  (if (result/ok? r)
-                                    (result/ok {:results [(:payload r)]})
-                                    r)))]
+                                (or (gate-unreadable-file-error f)
+                                    (let [r (gate-file-fn path)]
+                                      (if (result/ok? r)
+                                        (result/ok {:results [(:payload r)]})
+                                        r))))]
           (if-not (result/ok? results-result)
             results-result
             (let [results (:results (:payload results-result))
