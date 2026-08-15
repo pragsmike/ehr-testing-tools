@@ -211,3 +211,4 @@ Files in this directory:
   * 2026-08-15-repo-review-3.md — Repo review 3: rubric amended at Step 0 (population-closure law) and executed immediately; 40-row register, plan, three probes recorded blocked/partial
   * 2026-08-15-review-3-fix-a-register-derivations.md — Review-3 fix session A: register every string-diagram derivation (D5-3/D5-4/D2-4), with ruled riders
   * 2026-08-15-stale-path-gate-widening.md — widen the stale-path gate to every tracked doc surface and fix 25 dead links (review-3 D1-2/D1-8)
+  * 2026-08-15-review-3-fix-c-ceremony-and-category.md — review-3 fix session C: post-push-verify range derivation, build-session pipe discipline, gate category honesty
