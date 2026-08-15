@@ -280,3 +280,64 @@ D5-3, D5-4, D2-4 -> **FIXED (ADR-0136)**. D1-5, D7-3, D7-4 ->
 what actually landed. The register is the review arc's working document
 and stays truthful as fixes land; the arc itself remains OPEN, with
 plan Sessions B, C and D still to run.
+
+## Post-push receipts
+
+Pushed `fca52ec..043305b`, three commits, remote tip
+`043305b168bcc5e31c3f0c0f2078f8afc3477106`.
+
+### `bin/post-push-verify`, and its known range defect firing live
+
+```
+== bin/post-push-verify (main, range 0027a6e8..043305b1) ==
+-- 1. Remote tip vs HEAD --
+OK: origin/main (043305b1...) matches tip (043305b1...)
+-- 2. Per-commit ASCII check, 0027a6e8..043305b1 --
+OK: every commit message in range is pure ASCII
+-- 3. CI run at tip (043305b1...) --
+CI run ... status=in_progress conclusion=<pending>
+DISCLOSED: reported once, not awaited to conclusion (AR-CI-4)
+```
+
+Note the range it chose: `0027a6e8..043305b1`, which is `tip^1..tip` --
+**one** commit. Three were pushed. That is register row **D1-6**
+(Session C's subject) reproducing exactly as diagnosed: the script
+derives its default base from the local `tip^1` rather than from the
+remote's pre-push tip, so its ASCII check covered 1 of 3 commit
+messages and reported OK for the whole push. Its own header already
+documents the correct behaviour; the code is what is wrong. Recorded
+here as a live second sighting to hand Session C, not worked around.
+
+### Full range verified by hand instead
+
+The same treatment ADR-0135's session gave it. Pre-push remote tip
+captured before pushing (`fca52ec5...`), so the real range is known
+rather than inferred:
+
+- `git rev-list --count fca52ec..043305b` = **3**.
+- ASCII, per commit, all three checked individually against
+  `[^\x00-\x7F]`: `49f78e4` OK, `0027a6e` OK, `043305b` OK.
+- Remote-side confirmation after `git fetch`: all three commits present
+  in `fca52ec..origin/main`, same SHAs, same subjects.
+- Message-file fidelity, the failure mode message-via-file exists to
+  prevent: each commit's `%B` compared against the exact file it was
+  committed from. All three **verbatim**, the only difference being
+  git's own trailing-newline normalization.
+
+### CI at the tip
+
+Run `31893392232`, **completed / success**, awaited to conclusion
+rather than reported once. Every step green, including the one this
+session changed:
+
+```
+success  poly check
+success  poly test :all skip:integration
+success  verify-nist-lock (supply-chain integrity)
+success  generated-doc freshness (regen + diff)
+```
+
+That last line is the real receipt: the widened ten-path freshness gate
+runs green on a cold clone with a cold cache, not merely on this
+machine. The prompt's STOP condition "local freshness check disagreeing
+with CI's" did not fire -- they agree, red and green alike.
