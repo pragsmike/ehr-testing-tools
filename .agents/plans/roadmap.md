@@ -364,6 +364,45 @@ per item; done items move to the bottom of their section with a date and sha.
   point (`a884967`). Zero `src`/`test` touched; `bin/close-scaffold`
   the only pre-existing script edited, mode unchanged. Full account in
   `notes/adr/0128-agent-facing-hardening-2.md`.
+- **Manual-review run 2 — CLOSED 2026-08-14 (ADR-0134), overall PASS
+  with warns.** The skill's own second scored run
+  (`.agents/plans/2026-08-14-manual-review-2.md`), authored by the
+  DESIGN CHANNEL against a fresh public clone at `46b82ba` rather than
+  by a session invoking the skill — a disclosed runner deviation the
+  author chartered verbatim ("Do a thorough review of this repo's user
+  manual, here in the design channel using this strong model
+  (Fable)") — and landed verbatim by the acting session under the
+  reviewer/actor ruling "Q1 a." (channel reviews, session acts, report
+  commit strictly before every fix commit, each fix citing its report
+  row). **No fail-grade dimension.** Both run-1 FAILs verified
+  remediated STRUCTURALLY, not by hand-witnessing: dimension 1 by
+  ADR-0129's exercised-sources register + citation gate, dimension 4
+  by ADR-0126's first-use links. Dimension 7 strengthens from run 1's
+  disclosed 4-claim sample to test-guaranteed (`cli-md-is-current-
+  test` + CI's regen+diff step make a green tip itself the currency
+  proof), plus eight claims checked on top. Disclosed scope limit:
+  nothing was re-executed — the channel sandbox cannot resolve
+  Clojure dependencies, so every witnessed output was checked for
+  source-consistency, internal arithmetic, and mechanism coverage,
+  never re-witnessed. Three of four beyond-rubric findings disposed
+  the same day: **F1** (Chapter 8's `ehrt check` elision comment said
+  "five more patient files," totalling 8 against the block's own
+  `:totals {:pass 7}`) fixed to "four," only after verifying that no
+  test hashes a manual output fence; **F2** (intake's `:file-count 8`
+  vs the gate's `:pass 5` over `test-fixtures/v2`, both correct, the
+  divergence undisclosed) explained in one parenthetical in place;
+  **F3** (`docs/glossary.md`'s headword didn't cover the phrase
+  Chapter 8 links) widened to `**Intake / intake record.**`. **F4 is
+  an affirmative record**, deliberately — every cited test, numeric
+  value, and section attribution that DID check out, so a future
+  reader can tell "verified correct" from "not looked at."
+  **Dimension 5 (running-example continuity) stays WARN and is now
+  the manual's one standing open register row** — `ed-tuesday` is
+  HL7v2-only and structurally cannot supply Chapters 6-8 their FHIR
+  mutation, FHIR-gate calibration, or foreign-corpus material;
+  disclosed, not silently substituted, and not a defect under the
+  dimension's own reading. Full account in
+  `notes/adr/0134-manual-review-2.md`.
 - **Manual-review run 1, dimension 1 (strip executability) — CLOSED
   2026-08-13 (ADR-0129).** Original finding (ADR-0125, `.agents/
   plans/2026-08-13-manual-review-1.md`): Chapters 6, 7, and 2 of 3
@@ -1290,3 +1329,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-13 — manual-s4-mutate-and-gate — ADR-0124
 - 2026-08-13 — manual-s5-chapter8-review-close — ADR-0125
 - 2026-08-14 — slug-edn-round-trip — ADR-0131
+- 2026-08-14 — manual-review-2 — ADR-0134

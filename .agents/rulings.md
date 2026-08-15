@@ -1363,3 +1363,49 @@ vendoring-rider row; ruled 2026-08-14)
   silently mispair a `:virtual`-opened visit with a `:discharge` end),
   checkpoint-isolated red before green, `gmf.clj`'s own docstring
   updated to record the resolution.
+
+## From ADR-0134 (manual-review run 2: report + errata; ruled
+2026-08-14)
+
+- **Charter, verbatim** [A, 2026-08-14]: *"Do a thorough review of
+  this repo's user manual, here in the design channel using this
+  strong model (Fable). It was recently authored and one manual review
+  arc was run, but I think that used the weaker model."* Executed as
+  chartered — the run was made BY the design channel against a fresh
+  public clone at `46b82ba`, not by an executing session invoking the
+  `manual-review` skill. A disclosed runner deviation, recorded in the
+  report's own preamble alongside its consequence: the channel sandbox
+  cannot resolve Clojure dependencies, so nothing was re-executed.
+- **Q1 (reviewer/actor split for same-session report+fix), ruled
+  "Q1 a."** [A, 2026-08-14]: the split is satisfied ACROSS
+  channel/session rather than across sessions — the channel reviewed,
+  the session acts, the report commit precedes every fix commit, and
+  each fix commit cites its report row. This reads the
+  `manual-review` skill's own review discipline ("this skill produces
+  register rows, never edits") at the channel/session boundary, not
+  the session/session one; it does not weaken the split. Executed
+  exactly as ruled: `bf13e88` (report) strictly before `0a74a4a` (F1),
+  `8e74936` (F2), `49cd75a` (F3).
+- **Q3 (tag slug), ruled "go"** [A, 2026-08-14]: the default accepted
+  — `stable-20260814-exact-name` at
+  `46b82babf1e109f6a5748f175f8a687419a3ea3e`. The same "go" adopted
+  the channel-recommended F2 wording, which landed with no material
+  difference from what Step R3 quoted, so its STOP-AND-REPORT
+  condition never fired.
+- **R0's own CI-relay fence, ruled "Pay it, message verbatim"** [A,
+  2026-08-14]: Step R0 conditioned the tag on the author's `gh run
+  list` being relayed into the session's prompt context; it was not.
+  The session STOPPED and reported rather than deciding for itself,
+  disclosing that its own `bin/preflight` had run the same mechanism
+  and found all five runs green at the exact target SHA. Ruled: pay
+  the tag with R0's message unchanged, and record the session-side
+  provenance in the ADR and session record rather than editing the
+  tag's own text. Executed exactly as ruled — peeled-ref verified
+  against the remote at the exact SHA.
+- **The absent host, ruled "New ADR-0134"** [A, 2026-08-14]: the rider
+  was drafted to splice into a host session that never materialized
+  (its own Q2 open at draft time), so "add a rider section to the host
+  ADR" had no host. Ruled: a standalone numbered record, matching how
+  run 1 and both of its remediations landed (ADR-0125/0126/0129),
+  carrying the standing close ceremony (roadmap Done row, rulings,
+  session record, prompt archive) with it.
