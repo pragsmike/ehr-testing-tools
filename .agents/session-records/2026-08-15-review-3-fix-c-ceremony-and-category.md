@@ -252,10 +252,54 @@ did to this file.
 
 ## Post-push receipts
 
-Recorded in the follow-up commit, per the prompt's Step 4: the fix's own
-first live use, `bin/post-push-verify` with **no arguments**, over a
-multi-commit pushed range, alongside the by-hand full-range check as its
-independent witness.
+Four commits pushed, `7544f7c..0e16778`. The pre-push value of
+`origin/main` was recorded **before** the push, so the derivation could
+be checked against a known answer rather than against itself:
+`7544f7c712db4e1540dbe92efa16dbf8cdb238f2`.
+
+`gitleaks` at the pre-push hook: `no leaks found`, `OK`.
+
+### The fix's own first live use -- `bin/post-push-verify`, no arguments
+
+```
+== bin/post-push-verify (main, range 7544f7c7..0e16778a) ==
+
+-- 1. Remote tip vs HEAD --
+OK: origin/main (0e16778adedb3e54e77af73b72ea424a0c000e76) matches tip (0e16778adedb3e54e77af73b72ea424a0c000e76)
+
+-- 2. Per-commit ASCII check, 7544f7c7..0e16778a --
+OK: every commit message in range is pure ASCII
+
+-- 3. CI run at tip (0e16778adedb3e54e77af73b72ea424a0c000e76) --
+CI run for 0e16778adedb3e54e77af73b72ea424a0c000e76: status=in_progress conclusion=<pending> https://github.com/pragsmike/ehr-testing-tools/actions/runs/31912535033
+DISCLOSED: reported once, not awaited to conclusion (AR-CI-4)
+
+== bin/post-push-verify complete ==
+```
+
+**Range derived: `7544f7c7..0e16778a`. Commits checked: 4** -- exactly
+the four pushed, and exactly the pre-push tip recorded before the push.
+CI reported once at the tip, `in_progress`, not awaited (AR-CI-4).
+
+**What the old derivation would have covered: 1.** `git rev-list --count
+0e16778^1..0e16778` = 1. The defect and its fix are therefore
+demonstrated on the same push, against the same range, with the
+difference visible as `4` against `1`.
+
+### Independent by-hand witness
+
+Run alongside, as the prompt required, over the same range:
+
+```
+git log --format=%B 7544f7c..0e16778 | LC_ALL=C grep -n '[^ -~]'
+-> empty; zero non-ASCII across all four messages
+git rev-list --count 7544f7c..0e16778
+-> 4
+```
+
+The by-hand check and the script now agree on both the range and the
+verdict. That agreement is the point: on the three prior pushes this arc
+they did not agree, and only the by-hand half was right.
 
 ## Deviations and disclosures, collected
 
