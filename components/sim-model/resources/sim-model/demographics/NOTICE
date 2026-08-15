@@ -36,3 +36,13 @@ the session that made the call.
 Recorded: 2026-07-26. All content is synthetic; no PHI, no real-person
 data, by construction (this repo's standing constraint,
 docs/problem-statement.md / AGENTS.md).
+
+REGISTERED 2026-08-15 (repo review 3, finding D7-3(a); notes/ADRs.md
+ADR-0136): the "future session WITH a Synthea checkout" request above
+now carries a Deferred row in .agents/plans/roadmap.md, with that
+checkout as its stated revisit trigger. It had stood here unregistered
+since 2026-08-05 -- an intention written where no register could see
+it. This paragraph is the pointer back; the notice above is unchanged.
+Nothing in this directory is vendored upstream content (that is the
+whole point of the notice), so this addition disturbs no verbatim
+bytes.

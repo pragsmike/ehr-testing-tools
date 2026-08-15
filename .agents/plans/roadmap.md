@@ -851,6 +851,24 @@ per item; done items move to the bottom of their section with a date and sha.
 - generator-source three-concerns split (ADR-0017 named-future)
 - ehrt.corpus.display placement — presentation-leaning (ADR-0018 named-future)
 - Markdown-table helper dedup (ADR-0018 named-future)
+- **`corpus generate --engine` — an OPEN question, registered for
+  visibility, disposition deliberately NOT taken here.** Registered
+  2026-08-15 by repo review 3 (finding D7-3(b), author ruling R-2
+  "accept all.", ADR-0136); the question itself has been marked
+  **Open** in `docs/dev/source-sink-design.md:56`'s own table since
+  `499cad4`, 2026-07-29, and appeared in no register for the 17 days
+  between. The row carries that table's own question rather than
+  answering it: *should `corpus generate` grow an `--engine` flag now
+  that the generator registry (SS-2) names more than one engine kind
+  (`synthea`, `sim`), so a caller could pick which engine `corpus
+  generate` drives instead of only ever driving Synthea?* SS-2's own
+  ruling 6 put `corpus generate`'s verb, flags and defaults out of
+  scope, leaving two live futures: a session adds `--engine`, or
+  `corpus generate` stays Synthea-only forever with `intake
+  GENERATOR-URL` as the one multi-engine door. It sits in Next, not
+  Deferred, because Deferred rows owe a revisit trigger and this one
+  has none yet — being in a register at all is the whole point of the
+  row. Resolving it updates BOTH this row and OPEN-4 in place.
 ## Externals (author-only)
 - Enable GitHub's workflow-failure notification email for this
   repository (one settings toggle) — closes the nobody-watching gap
@@ -1316,6 +1334,39 @@ Rows here are LIVE. Closed rows move to Done with their notes.
   guarded `slurp-play-input` now; the row's own tripwire — the two
   allowlist entries in `cli_parse_guard_lint_test.clj` — is gone, the
   allowlist mechanism itself retired with them.
+- **Synthea-extracted demographics tables — hand-curated placeholders
+  today, replaceable wholesale when a Synthea checkout is at hand.**
+  Registered 2026-08-15 by repo review 3 (finding D7-3(a), author
+  ruling R-2 "accept all.", ADR-0136); the request itself has stood
+  unregistered in
+  `components/sim-model/resources/sim-model/demographics/NOTICE:26`
+  since `3f43a46`, 2026-08-05, with zero hits for `demographics` in
+  either this file or `state.md` across that whole window — invisible
+  to the carried-item aging probe by construction, because that probe
+  enumerates the registers. The NOTICE's own words, verbatim: *"A
+  future session WITH a Synthea checkout available can replace the
+  content of these three files wholesale with a real extraction,
+  keeping ehrt.sim.persona's readers unchanged, since the schema is
+  already shaped to match."* **Revisit trigger, verbatim: a session
+  with a Synthea checkout available.** Until then `given-names.edn`,
+  `surnames.edn` and `places.edn` are hand-curated originals, not
+  copied or derived from any Synthea file, and the NOTICE is the
+  standing record of that distinction — nothing here is a correctness
+  defect, only an unregistered intention that is now registered.
+- **`ehrt.conformance.mutate-stdout-stdin-loopback-test`'s own flake**
+  (first recorded `dc52a25`, 2026-07-28). Registered here 2026-08-15
+  by repo review 3 (finding D7-4, ADR-0136) after 18 days carried in
+  `.agents/state.md:668` alone — and `state.md` is regenerated at
+  every arc close, so it was never a durable anchor. That is review
+  2's own D7-7/D7-8 finding recurring a third time; this row is the
+  anchor those fixes did not reach. Evidence keeps strengthening and
+  never gets acted on: zero recurrence in review 3's own full-suite
+  baseline (636/636, zero `FAIL in`/`ERROR in`), and none in this
+  session's suite either. **Revisit trigger: the next session that
+  owns test-suite hygiene, or any recurrence.** Closing bar, stated
+  so the soak can actually end rather than accumulating forever: if
+  no recurrence appears by the next repo review, close this row and
+  D3-2 together against the accumulated green runs, citing them.
 
 ## Done (live — current arc only; full history in the attic files,
 `.agents/plans/roadmap-done-2026-07.md` and `.agents/plans/roadmap-done-2026-08.md`,
