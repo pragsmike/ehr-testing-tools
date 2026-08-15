@@ -7,10 +7,15 @@
 #
 # Usage: bin/post-push-verify [<base-sha>] [<tip-sha>]
 #
-#   <base-sha>  Start of the pushed range, exclusive (default: the
-#               range's own merge-base with origin/<branch> before
-#               this call -- in practice, pass the sha that was
-#               origin's tip immediately before your push).
+#   <base-sha>  Start of the pushed range, exclusive (default: origin's
+#               PRE-push tip, read from the remote-tracking ref's own
+#               reflog -- `origin/<branch>@{1}` -- because `git push`
+#               itself fast-forwards `origin/<branch>` to what it just
+#               pushed, so that ref's CURRENT value is the post-push
+#               tip and says nothing about what the push added. Falls
+#               back to `git merge-base <tip> origin/<branch>`, and
+#               FAILS LOUDLY when neither is derivable rather than
+#               quietly narrowing the range (review-3 D1-6).
 #   <tip-sha>   End of the pushed range, inclusive (default: HEAD).
 #
 # Three checks:
@@ -37,8 +42,9 @@ Usage: bin/post-push-verify [<base-sha>] [<tip-sha>]
 Verifies a push just landed correctly: remote tip == local HEAD (or
 <tip-sha>), every commit message in (<base-sha>..<tip-sha>] is pure
 ASCII, and reports (does not wait for) the CI run triggered at the
-tip. <base-sha> defaults to the tip's own first parent (a one-commit
-range); <tip-sha> defaults to HEAD.
+tip. <base-sha> defaults to origin's pre-push tip (the previous value
+of origin/<branch>, from that ref's reflog), so a push carrying N
+commits is checked over all N; <tip-sha> defaults to HEAD.
 EOF
 }
 
@@ -49,18 +55,51 @@ fi
 
 tip_sha="${2:-HEAD}"
 tip_sha="$(git rev-parse --verify "${tip_sha}^{commit}")" || { echo "FAIL: bad tip-sha" >&2; exit 2; }
+
+branch="$(git rev-parse --abbrev-ref HEAD)"
+
+# review-3 D1-6: the default base used to be `${tip_sha}^1` -- the
+# tip's own first parent, i.e. ALWAYS exactly one commit, whatever the
+# push actually carried. Three live pushes this arc spanned 4, 3, and 1
+# commits; the first two had their earlier messages checked by nobody.
+# The parent link is a property of the commit graph, which cannot know
+# what was pushed; the remote-tracking ref's reflog can, and does.
+#
+# Derived BEFORE this script's own `git fetch` (check 1, below), so a
+# fetch that moves origin/<branch> cannot shift the answer underneath
+# the range that is about to be checked.
+derive_default_base() {
+  local candidate
+  # (a) origin/<branch>'s own previous value = origin's pre-push tip.
+  candidate="$(git rev-parse --verify --quiet "origin/${branch}@{1}^{commit}" 2>/dev/null)" || candidate=""
+  if [ -n "$candidate" ] && [ "$candidate" != "$tip_sha" ] &&
+     git merge-base --is-ancestor "$candidate" "$tip_sha" 2>/dev/null; then
+    printf '%s' "$candidate"
+    return 0
+  fi
+  # (b) Fallback for a remote-tracking ref with no usable reflog (a
+  #     fresh mirror, reflogs disabled): the merge-base with the ref as
+  #     it stands. Correct while the ref still trails the tip; refused
+  #     when it already equals the tip, because an empty range checks
+  #     nothing and would repeat D1-6's own silent under-coverage.
+  candidate="$(git merge-base "$tip_sha" "origin/${branch}" 2>/dev/null)" || candidate=""
+  if [ -n "$candidate" ] && [ "$candidate" != "$tip_sha" ]; then
+    printf '%s' "$candidate"
+    return 0
+  fi
+  return 1
+}
+
 base_sha="${1:-}"
 if [ -z "$base_sha" ]; then
-  base_sha="$(git rev-parse --verify "${tip_sha}^1" 2>/dev/null || echo "")"
+  base_sha="$(derive_default_base)" || base_sha=""
   if [ -z "$base_sha" ]; then
-    echo "FAIL: could not derive a default base-sha (pass one explicitly)" >&2
+    echo "FAIL: could not derive a default base-sha from origin/${branch}'s pre-push tip (pass one explicitly)" >&2
     exit 2
   fi
 else
   base_sha="$(git rev-parse --verify "${base_sha}^{commit}")" || { echo "FAIL: bad base-sha" >&2; exit 2; }
 fi
-
-branch="$(git rev-parse --abbrev-ref HEAD)"
 
 echo "== bin/post-push-verify ($branch, range ${base_sha:0:8}..${tip_sha:0:8}) =="
 echo
