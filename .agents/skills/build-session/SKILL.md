@@ -205,6 +205,16 @@ fix the claim (run the script) or fix the wording (name the weaker
 method actually used, disclosed as a deviation the way ADR-0029's own
 D2 dated note did), never leave it unlabeled.
 
+**A gate run (`make test`, `make docsgen`, `clojure -M:poly test`, any
+`bin/` script whose exit code is the claim) writes its output to a full
+log file and records its exit code explicitly — `make test > <log> 2>&1;
+MAKE_EXIT=$?` or equivalent — never read through a pipe or a
+`tail`/`head` that can swallow the exit code or truncate the countable
+signature** (review-3 D2-6; the ADR-0135 incident class, H-2). `cmd |
+tail -40` reports the exit status of `tail`, which is 0 no matter what
+`cmd` did, so a red run reads as green; the same truncation drops the
+block/test counts a session reconciles against.
+
 **Catching yourself writing a justification for skipping an
 instructed step is the stop signal itself: do the step, or
 STOP-AND-REPORT.** A drafted excuse is a fabrication near-miss and
@@ -227,6 +237,8 @@ and prompt archive.
 - [ ] `git diff --cached --stat` was reviewed before every commit.
 - [ ] Every commit message came from a file, not an inline heredoc.
 - [ ] `gitleaks` and `clojure -M:poly check` are green before every push.
+- [ ] Every gate run went to a full log file with its exit code captured
+      explicitly, never through a pipe or `tail` that can mask it.
 - [ ] A checkpoint pairing a src fix with its own test used checkpoint-
       isolation (disposable stash) to capture red against exactly the
       unfixed code, not a tree containing other in-flight changes.
