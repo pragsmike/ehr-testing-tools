@@ -124,10 +124,11 @@ These rules deliberately distinguish facts in Synthea from events invented for i
 Download and checksum the SimHospital artifact:
 
 ```bash
+mkdir -p out/simhospital
 curl -L \
   https://raw.githubusercontent.com/google/simhospital/master/docs/artifacts/messages.out \
-  -o messages.out
-sha256sum messages.out
+  -o out/simhospital/messages.out
+sha256sum out/simhospital/messages.out
 ```
 
 The file and its creation command are documented by SimHospital ([artifact](https://github.com/google/simhospital/blob/master/docs/artifacts/messages.out), [sample documentation](https://github.com/google/simhospital/blob/master/docs/sample.md)). Retain the upstream SHA-256, repository commit, license, and a generated sanitization manifest beside the data.

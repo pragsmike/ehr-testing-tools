@@ -20,6 +20,10 @@ exactly the role Chapter 3 already used it in, folding whatever
 arrives, in the order it arrives, the way any receiver's own intake
 would. `ed-tuesday`'s own README plays its latency wire this way:
 
+(This plays the latency wire that the two `corpus generate sim`
+invocations below create; run those first, or run
+`bin/demo-exerciser-ed-tuesday` once.)
+
 ```bash
 bin/ehrt play out/scenarios/ed-tuesday-latency --board 60 --rate 100000
 ```

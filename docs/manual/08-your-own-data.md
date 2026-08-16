@@ -79,6 +79,12 @@ explicit assertions you state yourself.
 **Witnessed: golden equivalence, a corpus checked against itself** —
 copied verbatim from the root `README.md`'s own Quickstart:
 
+(This checks the Synthea corpus the
+[Quickstart](../../README.md#quickstart) generates, which no chapter of
+this manual creates for you — run its `bin/ehrt artifact fetch --name
+synthea …` / `--name temurin-jdk …` pair and then `bin/ehrt corpus
+generate synthea` first, or regenerate them if `out/` was cleared.)
+
 ```bash
 bin/ehrt check out/corpus/synthea-s1-p5/fhir --expected out/corpus/synthea-s1-p5/fhir
 ```

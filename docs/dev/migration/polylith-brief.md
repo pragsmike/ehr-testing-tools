@@ -8,6 +8,11 @@ Tool version referenced throughout: `poly` **0.3.32** (released 2025-12-29), Clo
 `polylith/clj-poly` ([Clojars](https://clojars.org/polylith/clj-poly),
 [releases](https://github.com/polyfy/polylith/releases)).
 
+**How to read the `poly` commands below.** This brief teaches the standalone `poly` binary as the
+upstream Polylith docs do; in this workspace `poly` is not on PATH and every `poly <cmd>` below runs
+as `clojure -M:poly <cmd>` (see [§5 Phase 0](#phase-0--prerequisites-and-inventory) and
+[§9 Command cheat sheet](#9-command-cheat-sheet), both of which state the alias).
+
 ---
 
 ## 1. Executive summary
