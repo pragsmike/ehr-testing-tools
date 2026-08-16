@@ -23,6 +23,115 @@ per item; done items move to the bottom of their section with a date and sha.
   change; the oracle held pure identity across all 35 roots).
 
 ## Next (backlog, no session scheduled)
+- **D8-5 live fence battery — its own session, BEFORE repo review 4**
+  (chartered 2026-08-15 by the repo-review-3 arc close, author ruling
+  Q2 "a.", `notes/ADRs.md` ADR-0139). Execute every live command fence
+  across `README.md`, `docs/**`, the 21 use-case pages,
+  `components/*/docs/**` and `demos/**`, plus `make quickstart` and
+  `make integration` (the latter needs a primed artifact cache).
+  **Standalone and ahead of review 4 regardless of the ADR count**,
+  because this probe has now lapsed twice: review 2 ran it through a
+  dedicated sub-agent, review 3 could not (register row D8-5, `intake`)
+  and held D8 at YELLOW on an unrun probe rather than scoring the
+  evidence it did have. Folding it into review 4 would make it compete
+  for budget with the same battery that displaced it last time. The
+  window it covers landed the entire user manual (ADR-0119-0125) plus
+  ADR-0134's review — exactly this surface, still unverified.
+- **Repo review 4 — chartered after roughly 15 ADRs from ADR-0139,
+  i.e. at approximately ADR-0154** (author ruling Q3 "a.", 2026-08-15,
+  `notes/ADRs.md` ADR-0139). **This is the standing cadence rule from
+  now on: ADR count, not calendar.** Measured rationale, not
+  preference — reviews 1->2 spanned 11 ADRs, review 2->3 spanned 44,
+  and at that window size the instrument's own coverage degraded in
+  ways review 3 had to disclose rather than score around (three probes
+  recorded blocked or partial: D8-5 unrun, D6-4's 44-ADR deviation read
+  done at heading depth, D3-1 substituted by CI's cold runner).
+  Inherits review 3's twelve-row watch-list, ADR-0139's "Review 4's
+  inherited watch-list" section: **D1-9** (backticked-path shorthand,
+  open by ruling R-B2), **D1-10** (denylist-family widening, open by
+  ruling R-B3), **D8-5** (the row above; if it has run by then, its
+  results), **D3-1** (restore the local cold-clone probe or retire it
+  by name — twice substituted is where a method quietly becomes a
+  former method), **D6-4**, **D1-4**'s method note (compare the two
+  sets, not their cardinalities), the three rows below, and the H-2 /
+  H-3 incident classes — **watched for recurrence, not re-probed for
+  the defect**, both now being gated.
+- **The `sim-theory.edn` -> `sim-theory-equations.txt` hop: an
+  unregistered hand derivation at the head of a registered chain**
+  (new row, opened 2026-08-15 by the repo-review-3 arc close's own
+  re-scoring probes, ADR-0139 finding C-1; not chartered to any
+  session). ADR-0136 registered `sim-theory-equations.txt` ->
+  `.mermaid` -> the `.md`'s embedded block in the make graph and CI's
+  freshness diff. Its head hop is not registered: the equations file's
+  own header says it is *"hand-derived"* from `sim-theory.edn` and
+  *"maintained by hand alongside"* it, with *"no Clojure translator"*,
+  and nothing gates their agreement (`git grep -l sim-theory-equations`
+  over `*.clj` / `Makefile` / `.github/` returns the `Makefile` alone —
+  the regeneration target, not a check). So the `.edn` can drift and
+  every downstream artifact will regenerate byte-perfectly from the
+  stale half while CI stays green. **ADR-0136's own corollary — a
+  derivation maintained by a documented hand procedure IS an
+  unregistered derivation — one hop upstream of where that ADR
+  applied it.** A live surface states the opposite:
+  `components/sim-trajectory/docs/trajectory-computation.md:250`
+  describes the diagram as *"mechanically regenerated from
+  `sim-theory.edn`"*. **Open question for the author: translator, or
+  checked-in agreement gate?** Deliberately not fixed at the close —
+  correcting only the sentence would make the doc accurate about a gap
+  nobody then has to close.
+- **CarePlan / Guard condition-resolution: a third unregistered
+  standing request** (new row, opened 2026-08-15 by the
+  repo-review-3 arc close, ADR-0139 finding C-2; registered
+  visibility-first per ruling R-2's own precedent, disposition
+  deliberately not taken). `components/sim-trajectory/docs/
+  gmf-interpreter-findings.md:1189` and `gmf-interpreter.md:1359` name
+  the CarePlan mechanism as a closure's next prerequisite, *"unowned by
+  any wave until a future session extends Guard's own
+  condition-resolution machinery"* — a standing request that says so in
+  its own words. Zero hits for `careplan` or `care.plan` in this file
+  or `.agents/state.md`; unregistered since `e6a0b28`, **2026-08-05**,
+  the same date as the demographics NOTICE request that review 3's
+  amended D7 probe *did* catch. **The probe found two of at least
+  three**, because its exclusion step ("requests already mirrored in
+  `roadmap.md`") is a registry standing in for a population, one level
+  up — the arc's own central class, in the instrument patched to catch
+  it.
+- **`state_staleness_tripwire_test` enumerates filenames, not arc
+  closes** (new row, opened 2026-08-15 by the repo-review-3 arc close,
+  ADR-0139 finding C-4; the FILE is fixed, the GATE is not). The gate
+  exists to turn an arc close red if it lands without regenerating
+  `.agents/state.md` (AR-C-1). It fired correctly on ADR-0139 — and had
+  been green since 2026-08-11 because its population is *ADR files
+  whose filename matches `NNNN-*-arc-close.md`*, while the obligation
+  is "each arc close". Arcs closed under other filenames in that window
+  and it never saw them; `notes/adr/0125-manual-s5-chapter8-review-
+  close.md`'s own first line reads "the manual-review skill, arc close".
+  Measured cost: **fifty ADRs** (0090-0139) between `.agents/state.md`'s
+  last full regeneration (2026-08-08, tip `a9c3abf`) and the one this
+  close performed under an author ruling. **Fix options, for the
+  session that takes it:** read each ADR's own first line for "arc
+  close" rather than trusting the filename, or make the filename
+  convention itself a gated rule so the cheap check becomes a sound
+  one. Until then a close can still land stale by naming its file
+  anything else.
+- **The attic-rotation law has lapsed** (new row, opened 2026-08-15 by
+  the repo-review-3 arc close, ADR-0139 finding C-3; not chartered to
+  any session). This file's own `## Done` header states the law
+  (`notes/adr/0055-alignment-arc-close.md` AR-AC-5): the section holds
+  the **current arc only**, and each closed arc's pointers rotate to a
+  dated header in `.agents/plans/roadmap-done-2026-08.md` at that arc's
+  own close. The attic's last dated header is **"Conviction arc —
+  closed 2026-08-08 (ADR-0085-0089)"**; the live Done section now
+  carries **40** pointers spanning 2026-08-08 to 2026-08-15 across
+  roughly a dozen arcs. Review 3's D7-5 probe is named
+  "attic-vs-live consistency" and scored this clean, because what it
+  actually measured was the Deferred-section lint and the
+  frozen-provenance boundary — **a probe whose name is broader than its
+  measurement, which is the arc's class again**. Not executed at this
+  close: deciding arc boundaries for a dozen intervening arcs is
+  judgment work well outside a records-only close's fence, and it is
+  the roadmap-shaped half of the same question review 4 will be asking
+  anyway.
 - **Clinic-decade/ED scenario redesign — "A" LANDED, "B" CLOSED
   (B1 + B2 + B3, all landed 2026-08-11).** Anchored to the author's own
   2026-08-10 ED-direction ruling (`.agents/rulings.md`, "From
@@ -276,6 +385,51 @@ per item; done items move to the bottom of their section with a date and sha.
   — both narrate SETUP.md's own steps, so the same author-only rewalk
   errand now smoke-tests all three together; still in the author's own
   queue, not executed this session.
+- **Repo review 3 arc — CLOSED 2026-08-15 (ADR-0136-0139); arc tag
+  `stable-20260815-review-3-fixes` created at `b96c246`, PUSH HELD.**
+  *(The tag's license, case (i), required an author-side CI relay that
+  this close's prompt did not carry; the fence's STOP was taken, no
+  ruling came back in-session, so the annotated tag exists locally and
+  unpushed — ADR-0139's Step 0 and its mechanical-debt section carry
+  the receipt and the one command that pays it.)* *(Row created
+  already-closed at the close: the arc was chartered channel-direct and
+  its sessions registered their findings as rows without one ever being
+  opened for the arc itself — disclosed in ADR-0139's deviations rather
+  than silently substituted; same shape ADR-0135's channel-direct row
+  used.)* The third rubric-driven survey, and the first run under the
+  **population-closure amendment** (`dbbeb1f`, choice (b) — landed and
+  executed in the same session so it would prove itself by running).
+  It did: D5's patch predicted one unregistered derivation and found
+  five, three demonstrably stale; D1's patch found 25 dead markdown
+  links, all 25 in the scan root the amendment added; D7's patch found
+  two standing requests aged outside every register. **40 rows, 8
+  dimensions, scored 2 green / 5 yellow / 1 red.** Three fix sessions
+  on the author's ruling *"accept all."*: **ADR-0136** (every
+  string-diagram derivation registered in the make graph and CI's
+  freshness diff, three stale teaching examples regenerated, inert
+  guard deleted, three standing items registered), **ADR-0137** (the
+  stale-path gate widened to every tracked doc surface, 25 dead links
+  fixed, the six "gone" targets found frozen at `notes/tools/agents/`,
+  two halves registered rather than improvised), **ADR-0138**
+  (`bin/post-push-verify` derives the pushed range from origin's
+  pre-push reflog and fails loud when underivable, `build-session`
+  names explicit exit-code capture, `gate` reports `:path-unreadable`).
+  Session D of the plan was consumed by A and C, so four chartered
+  sessions ran as three. **Eleven register cells moved** — 8 FIXED, 1
+  encoded-in-gate, 2 registered — and every fix-session-candidate and
+  ruling-needed row the review itself opened is closed or registered.
+  Closed in its own session per author ruling Q1 "a." (**ADR-0139**),
+  which re-scored every dimension against the live tree rather than
+  against the fix ADRs: **D5 RED -> YELLOW**, close day **2 green / 6
+  yellow / 0 red**, with D7 and D8 held at yellow *not earned* and the
+  reasons stated. The arc's central finding is a class, not a list — **a
+  probe, gate, or tool whose population is a registry rather than the
+  tree**, ten recorded instances in one arc, the last three found by
+  the close itself (the three rows above). Follow-ons chartered at the
+  close and carried as their own rows above: the D8-5 fence battery
+  (before review 4, Q2 "a.") and review 4 itself (after ~15 ADRs,
+  Q3 "a."). Full account in
+  `notes/adr/0139-review-3-arc-close.md`.
 - **Citation errata sweep — CLOSED 2026-08-13 (ADR-0126).**
   Origin-qualified every in-fence bare `ADR-0010` verdict-family
   citation (the four-arm verdict design, `:pass`/`:rejected`/
@@ -1413,3 +1567,7 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-14 — slug-edn-round-trip — ADR-0131
 - 2026-08-14 — manual-review-2 — ADR-0134
 - 2026-08-15 — string-diagram-terminal-outputs — ADR-0135
+- 2026-08-15 — review-3-fix-a-register-derivations — ADR-0136
+- 2026-08-15 — stale-path-gate-widening — ADR-0137
+- 2026-08-15 — review-3-fix-c-ceremony-and-category — ADR-0138
+- 2026-08-15 — review-3-arc-close — ADR-0139

@@ -353,6 +353,28 @@ the merge.
 
 ---
 
+## Close note — 2026-08-15, ADR-0139
+
+**The arc is closed. This register is history from here: no row above
+has been rewritten and no score above has been edited at the close.**
+
+The post-arc scoreboard — every dimension re-scored against the live
+tree rather than against the fix ADRs, presented as a fourth column
+beside the three above — lives in
+[`notes/adr/0139-review-3-arc-close.md`](../../notes/adr/0139-review-3-arc-close.md),
+together with the re-derived disposition tally, review 4's inherited
+watch-list, and the cadence rulings. Read that file, not this line, for
+what the arc's fixes actually moved.
+
+In one line: **eleven cells moved** (8 FIXED, 1 encoded-in-gate, 2
+registered) across ADR-0136/0137/0138 — every fix-session-candidate and
+ruling-needed row this review opened is closed or registered; D5 RED →
+YELLOW, close day 2 green / 6 yellow / 0 red. **D1-9 and D1-10, opened
+during the arc by fix session B, are NOT this arc's work** and pass to
+review 4 with the rest of the watch-list.
+
+---
+
 ## Register summary
 
 **40 total rows** across 8 dimensions (D1: 8, D2: 7, D3: 3, D4: 4,
