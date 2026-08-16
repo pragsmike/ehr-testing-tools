@@ -4,7 +4,18 @@
  ;; a component's own.
  :mvn/repos {"nist-hit" {:url "https://hit-nexus.nist.gov/repository/releases/"}}
 
- :aliases  {:dev {:extra-paths ["development/src"]
+ :aliases  {;; Adds sim-engine's TEST path to :dev, for the two docsgen
+            ;; targets that generate a resource from the deterministic
+            ;; fixture fleet (ehrt.sim-engine.event-fleet, event-log
+            ;; contract arc 2026-08-16). The fleet lives on the test
+            ;; path deliberately -- it is fixture code, not shipped
+            ;; behavior -- and the examples in docs/formats.md must come
+            ;; from the SAME runs the contract gate is asserted against,
+            ;; so a second copy on the src path would be the drift this
+            ;; sharing exists to prevent.
+            :event-fleet {:extra-paths ["components/sim-engine/test"]}
+
+            :dev {:extra-paths ["development/src"]
 
                   :extra-deps {org.clojure/clojure {:mvn/version "1.12.5"}
                                poly/sim      {:local/root "components/sim"}

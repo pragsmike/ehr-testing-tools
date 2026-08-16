@@ -235,6 +235,853 @@ not an external engine — the same slot, a different kind of occupant.
 
 ---
 
+## The event log
+
+**If you are here to translate simulated traffic into a format we do not
+ship, this is the section you want.** The ground-truth event log is the
+richest semantic form this project produces — everything else (HL7v2
+messages, FHIR bundles, the check report) is a *projection* of it. Writing
+your own emitter against the log means you are reading the same primitive
+our own emitters read, rather than reverse-engineering ours.
+
+Where you get it:
+
+| Command | What lands |
+|---|---|
+| `ehrt sim run --seed N --format ground-truth` | the **bare EDN vector**, nothing around it — pipe it straight to a file or to `ehrt sim check` |
+| `ehrt sim run --seed N` | the full result envelope: `{:status :ok :payload {:ground-truth [...] :manifest {...} :summary {...}}}` |
+| `ehrt corpus generate sim --out-dir D` | `D/events.edn` — the same EDN vector `--format ground-truth` emits |
+
+Two traps, both stated plainly because both were found by running the
+commands rather than by reading them:
+
+- **`--format ground-truth --json` emits EDN, not JSON.** The flags read as
+  if they compose; they do not, and `--format` wins. If you want JSON, use
+  the envelope form (`--json` with no `--format`) and take
+  `payload.ground-truth`.
+- **`events.edn` and a redirected `--format ground-truth` are not quite
+  byte-identical**: the printed form ends with a trailing newline, the file
+  does not. The EDN *value* is the same either way, so any reader parses
+  them identically — but a checksum comparison across the two will differ by
+  that one byte.
+
+### Ordering
+
+The vector is in run order, and **`:t` never decreases within a run**. That
+is a real guarantee, not an accident of construction — it is what lets
+`ehrt corpus play` pace a log by `:t` alone, and it means you may stream the
+vector in order rather than sorting it.
+
+It is a *run*-level property. Concatenating two runs breaks it, and nothing
+in an event marks a run boundary — so do not concatenate logs and expect
+monotonicity to survive. Note also that `:t` is **seconds elapsed since the
+run began**, not a wall-clock instant: the log carries no absolute time at
+all. Anchoring to a real date happens at emit time, from `--reference-date`.
+
+### EDN conventions
+
+- **Keywords** are used for the event discriminator, enumerated values, and
+  every map key. `:event`, `:role`, `:placement`, `:disposition` are all
+  keywords, not strings.
+- **Sets** appear in exactly one place: `:merge`'s `:merged-mrns`. Sets are
+  unordered; do not depend on iteration order.
+- **Maps keyed by data** appear in exactly one place: `:bed-swap`'s `:swap`
+  is keyed by patient-id.
+- **No instants.** There is no `#inst` anywhere in an event log — the only
+  time-like field is `:t`, an integer. Nothing here needs a date parser.
+- **Regex patterns**, where the schema constrains a string, are written
+  `[:re "…"]` with the pattern as a plain string. The dialect is
+  **`java.util.regex`** — if you are validating in another language, that is
+  whose flavour of regex you have been handed.
+
+### JSON
+
+JSON is derived from the EDN, by the same projection [described
+below](#the-json-projection), and EDN is canonical. The rules that matter
+for this shape, all confirmed against real captured output:
+
+| EDN | JSON |
+|---|---|
+| `:event :admission` | `"event": "admission"` — keyword keys lose the colon, keyword values become strings, hyphens are kept |
+| `:t 3600` | `3600` — a number, never a formatted date |
+| `#{"MRN000029"}` (a set) | `["MRN000029"]` — an array, in unspecified order |
+| `{"PID-000000-…" {…}}` (`:swap`) | an object; the patient-id keys are already strings and survive intact |
+| `nil` | `null` |
+
+The lossy step is that JSON cannot tell the keyword `:admission` from the
+string `"admission"`. Nothing in this shape depends on that distinction,
+which is why the projection is safe in practice — and why EDN, not JSON,
+is the form the contract is stated in.
+
+### Stability
+
+The event log is a **public, versioned contract**, and the version is
+recorded in every run's `manifest.edn` as `:event-schema-version`. So a
+log always carries the version of the contract that produced it.
+
+- **Additive change does not bump the version.** A new event kind, or a new
+  *optional* key on an existing kind, is non-breaking: nothing you already
+  read has moved.
+- **Anything else bumps it** — a key removed, an optional key made
+  required, a value schema changed, a kind removed.
+- **A key or kind slated for removal is marked deprecated here for one
+  minor release before it goes**, so you get a release in which to notice.
+
+This is enforced rather than promised: a frozen copy of the last versioned
+contract is committed alongside the current one, and the build fails if a
+non-additive difference appears without a version bump.
+
+The machine-readable contract is
+[`event-schema.edn`](../components/sim-engine/resources/sim-engine/event-schema.edn)
+— a self-contained [malli](https://github.com/metosin/malli) schema with
+every reference inlined, readable as plain EDN without running Clojure. The
+section below is generated from it.
+
+<!-- EVENT-LOG-GENERATED-BEGIN -->
+
+<!-- Generated by `make docsgen` from components/sim-engine/resources/sim-engine/event-schema.edn. Do not edit between the markers. -->
+
+Event schema version: **`1.0.0`** — stamped into every run's `manifest.edn` as `:event-schema-version`.
+
+### Read the top-level vector only
+
+**This is the one thing most likely to go wrong, so it comes first.**
+
+The log is a vector of events. Some of those events carry *nested* maps that
+have an `:event` key of their own, drawn from a **different vocabulary** —
+a `:registered` event's `:pre-horizon-facts` (clinical history that predates
+the run's window) and an encounter's `:conditions`.
+
+Those nested names are: `:condition-onset`, `:condition-end`, `:medication-order`, `:medication-end`, `:care-plan-start`, `:care-plan-end`.
+
+And 4 of them — `:care-plan-end`, `:care-plan-start`, `:medication-end`, `:medication-order` — **are also top-level event kinds, with entirely different keys.**
+
+So: iterate the top-level vector. Do not walk the tree looking for `:event`.
+A tree-walking consumer will find pre-horizon facts, mistake them for log
+events, and emit clinical activity that never happened during the run.
+
+Nothing here is being renamed to make the collision go away — the nested
+names are the vocabulary the trajectory layer genuinely uses. It is
+documented instead.
+
+### The vocabulary
+
+There are exactly **21** event kinds. The set is closed; a
+reader may treat an unknown `:event` value as a contract violation rather
+than as something to skip.
+
+`:admission` `:bed-swap` `:cancel-admit` `:cancel-discharge` `:cancel-transfer` `:care-plan-end` `:care-plan-start` `:diagnostic-report` `:discharge` `:medication-end` `:medication-order` `:merge` `:observation` `:order-placed` `:outpatient-visit` `:outpatient-visit-end` `:procedure` `:registered` `:result-available` `:step-rejected` `:transfer`
+
+Every event of every kind carries these four keys:
+
+| Key | Value | Meaning |
+|---|---|---|
+| `:event` | keyword | which kind this is — the discriminator |
+| `:t` | integer | seconds from the start of the run, not a wall-clock instant |
+| `:participants` | vector of maps | `{:patient-id :role}` — who this event is about |
+| `:warm-up` | boolean | whether `:t` fell inside the configured warm-up window |
+
+**`:active-mrn` is *not* one of them.** It is absent from `:bed-swap`,
+`:merge`, and `:step-rejected`. Partition a log by `:participants`, never by
+`:active-mrn`.
+
+### Every kind
+
+Each entry below gives the kind's meaning, which patient-state transition it
+drives, its keys, and one **real** example — every example was produced by an
+actual engine run, not hand-written.
+
+#### `:admission`
+
+A patient is admitted to a bed, allocated by the ward ladder.
+
+**State transition:** `:new` -> `:admitted`; sets `:location`, `:home-ward`, `:attending`, `:admitted-at`.
+
+| Key | Required | Value |
+|---|---|---|
+| `:active-mrn` | always | string |
+| `:attending` | always | string |
+| `:citation` | optional | map with keys `:module`, `:state` |
+| `:conditions` | optional | vector of map with keys `:event`, `:codes`, `:citation`, `:references` |
+| `:event` | always | `:admission` |
+| `:forced` | always | boolean |
+| `:home-ward` | always | string |
+| `:location` | always | map with keys `:ward`, `:bed`, `:placement` |
+| `:participants` | always | vector of map with keys `:patient-id`, `:role` |
+| `:reason` | always | string or map with keys `:system`, `:code`, `:display`, or nil |
+| `:t` | always | integer |
+| `:warm-up` | always | boolean |
+
+```clojure
+{:home-ward "ED",
+ :participants [{:patient-id "PID-000000-055bdef6", :role :subject}],
+ :active-mrn "MRN000001",
+ :attending "5302676874",
+ :warm-up false,
+ :reason "Chest pain",
+ :event :admission,
+ :t 0,
+ :location {:ward "ED", :bed "ED-H01", :placement :surge},
+ :forced false}
+```
+
+#### `:bed-swap`
+
+Two admitted patients exchange beds in one atomic event (HL7v2 A17).
+
+**State transition:** Both stay `:admitted`; each takes the other's `:location`.
+
+| Key | Required | Value |
+|---|---|---|
+| `:event` | always | `:bed-swap` |
+| `:participants` | always | vector of map with keys `:patient-id`, `:role` |
+| `:swap` | always | map of string -> map with keys `:active-mrn`, `:from`, `:to`, `:attending` |
+| `:t` | always | integer |
+| `:warm-up` | always | boolean |
+
+```clojure
+{:event :bed-swap,
+ :t 0,
+ :participants
+ [{:patient-id "PID-000000-e0bbdb7b", :role :subject}
+  {:patient-id "PID-000001-4baa5dc0", :role :subject}],
+ :swap
+ {"PID-000000-e0bbdb7b"
+  {:active-mrn "MRN000001",
+   :from {:ward "Renal", :bed "RENAL-01", :placement :licensed},
+   :to {:ward "Renal", :bed "RENAL-H01", :placement :surge},
+   :attending "0438290740"},
+  "PID-000001-4baa5dc0"
+  {:active-mrn "MRN000002",
+   :from {:ward "Renal", :bed "RENAL-H01", :placement :surge},
+   :to {:ward "Renal", :bed "RENAL-01", :placement :licensed},
+   :attending "2058303365"}},
+ :warm-up false}
+```
+
+#### `:cancel-admit`
+
+An admission is retracted as never having happened (HL7v2 A11).
+
+**State transition:** `:admitted` -> `:new`; clears `:location` and `:home-ward`.
+
+| Key | Required | Value |
+|---|---|---|
+| `:active-mrn` | always | string |
+| `:cancels-event-id` | always | integer |
+| `:event` | always | `:cancel-admit` |
+| `:participants` | always | vector of map with keys `:patient-id`, `:role` |
+| `:t` | always | integer |
+| `:warm-up` | always | boolean |
+
+```clojure
+{:event :cancel-admit,
+ :t 0,
+ :active-mrn "MRN000003",
+ :cancels-event-id 6,
+ :participants [{:patient-id "PID-000002-61b10361", :role :subject}],
+ :warm-up false}
+```
+
+#### `:cancel-discharge`
+
+A discharge is retracted and the patient reinstated (HL7v2 A13).
+
+**State transition:** `:discharged` -> `:admitted`; restores `:location`, `:home-ward`, `:attending`.
+
+| Key | Required | Value |
+|---|---|---|
+| `:active-mrn` | always | string |
+| `:attending` | always | string, or nil |
+| `:cancels-event-id` | always | integer |
+| `:event` | always | `:cancel-discharge` |
+| `:home-ward` | always | string, or nil |
+| `:location` | always | map with keys `:ward`, `:bed`, `:placement`, or nil |
+| `:participants` | always | vector of map with keys `:patient-id`, `:role` |
+| `:t` | always | integer |
+| `:warm-up` | always | boolean |
+
+```clojure
+{:home-ward "Renal",
+ :cancels-event-id 11,
+ :participants [{:patient-id "PID-000000-e0bbdb7b", :role :subject}],
+ :active-mrn "MRN000001",
+ :attending "0438290740",
+ :warm-up false,
+ :event :cancel-discharge,
+ :t 0,
+ :location {:ward "Renal", :bed "RENAL-01", :placement :licensed}}
+```
+
+#### `:cancel-transfer`
+
+A transfer is retracted and the patient reinstated to where they were (HL7v2 A12).
+
+**State transition:** Stays `:admitted`; restores the pre-transfer `:location` and `:home-ward`.
+
+| Key | Required | Value |
+|---|---|---|
+| `:active-mrn` | always | string |
+| `:cancels-event-id` | always | integer |
+| `:event` | always | `:cancel-transfer` |
+| `:home-ward` | always | string, or nil |
+| `:in-error` | optional | boolean |
+| `:location` | always | map with keys `:ward`, `:bed`, `:placement`, or nil |
+| `:participants` | always | vector of map with keys `:patient-id`, `:role` |
+| `:t` | always | integer |
+| `:warm-up` | always | boolean |
+
+```clojure
+{:home-ward "Renal",
+ :cancels-event-id 8,
+ :participants [{:patient-id "PID-000000-e0bbdb7b", :role :subject}],
+ :active-mrn "MRN000001",
+ :warm-up false,
+ :event :cancel-transfer,
+ :in-error true,
+ :t 0,
+ :location {:ward "Renal", :bed "RENAL-01", :placement :licensed}}
+```
+
+#### `:care-plan-end`
+
+A care plan closes, resolved to its start by CITATION rather than by log position.
+
+**State transition:** Closes the matching `:care-plans` entry.
+
+| Key | Required | Value |
+|---|---|---|
+| `:active-mrn` | always | string |
+| `:care-plan-citation` | always | map with keys `:module`, `:state`, or nil |
+| `:citation` | optional | map with keys `:module`, `:state` |
+| `:event` | always | `:care-plan-end` |
+| `:participants` | always | vector of map with keys `:patient-id`, `:role` |
+| `:start-event-id` | always | integer, or nil |
+| `:t` | always | integer |
+| `:warm-up` | always | boolean |
+
+```clojure
+{:event :care-plan-end,
+ :t 3888000,
+ :active-mrn "MRN000002",
+ :start-event-id 7,
+ :care-plan-citation {:module "schema-fixture-mod", :state :the-plan},
+ :participants [{:patient-id "PID-000001-01564f61", :role :subject}],
+ :citation {:module "schema-fixture-mod", :state :stop-plan},
+ :warm-up false}
+```
+
+#### `:care-plan-start`
+
+A care plan is opened, optionally listing its planned activities.
+
+**State transition:** Opens an `:active` entry in the patient's `:care-plans` accumulator.
+
+| Key | Required | Value |
+|---|---|---|
+| `:active-mrn` | always | string |
+| `:activities` | optional | vector of map with keys `:system`, `:code`, `:display` |
+| `:citation` | optional | map with keys `:module`, `:state` |
+| `:codes` | always | vector of map with keys `:system`, `:code`, `:display` |
+| `:event` | always | `:care-plan-start` |
+| `:participants` | always | vector of map with keys `:patient-id`, `:role` |
+| `:t` | always | integer |
+| `:warm-up` | always | boolean |
+
+```clojure
+{:event :care-plan-start,
+ :t 3024000,
+ :active-mrn "MRN000002",
+ :codes
+ [{:system :snomed, :code "324911001", :display "Antibiotic therapy"}],
+ :activities
+ [{:system :snomed,
+   :code "710824005",
+   :display "Assessment of health"}],
+ :participants [{:patient-id "PID-000001-01564f61", :role :subject}],
+ :citation {:module "schema-fixture-mod", :state :the-plan},
+ :warm-up false}
+```
+
+#### `:diagnostic-report`
+
+A panel of observations reported together as one document -- ONE event carrying all children, never one event per child.
+
+**State transition:** Appends one `:observations` entry per child.
+
+| Key | Required | Value |
+|---|---|---|
+| `:active-mrn` | always | string |
+| `:citation` | optional | map with keys `:module`, `:state` |
+| `:codes` | optional | vector of map with keys `:system`, `:code`, `:display` |
+| `:event` | always | `:diagnostic-report` |
+| `:observations` | always | vector of map with keys `:codes`, `:value`, `:unit`, `:value-code`, `:category`, `:reference-range`, `:interpretation` |
+| `:participants` | always | vector of map with keys `:patient-id`, `:role` |
+| `:t` | always | integer |
+| `:warm-up` | always | boolean |
+
+```clojure
+{:event :diagnostic-report,
+ :t 3024000,
+ :active-mrn "MRN000002",
+ :observations
+ [{:codes [{:system :loinc, :code "6690-2", :display "Leukocytes"}],
+   :value 8.6,
+   :unit "K/uL",
+   :category "laboratory"}
+  {:codes [{:system :snomed, :code "10828004", :display "Positive"}],
+   :value-code
+   {:system :snomed, :code "10828004", :display "Positive"},
+   :category "laboratory"}],
+ :codes [{:system :loinc, :code "58410-2", :display "CBC panel"}],
+ :participants [{:patient-id "PID-000001-01564f61", :role :subject}],
+ :citation {:module "schema-fixture-mod", :state :the-panel},
+ :warm-up false}
+```
+
+#### `:discharge`
+
+A patient leaves; an expired disposition marks a death, which vacates no bed.
+
+**State transition:** `:admitted` -> `:discharged` (or `:expired`); sets `:discharged-at`.
+
+| Key | Required | Value |
+|---|---|---|
+| `:active-mrn` | always | string |
+| `:attending` | always | string |
+| `:citation` | optional | map with keys `:module`, `:state` |
+| `:codes` | optional | vector of map with keys `:system`, `:code`, `:display` |
+| `:disposition` | optional | one of `:expired` |
+| `:event` | always | `:discharge` |
+| `:location` | always | map with keys `:ward`, `:bed`, `:placement` |
+| `:participants` | always | vector of map with keys `:patient-id`, `:role` |
+| `:t` | always | integer |
+| `:warm-up` | always | boolean |
+
+```clojure
+{:event :discharge,
+ :t 0,
+ :active-mrn "MRN000002",
+ :location {:ward "ED", :bed "ED-H02", :placement :surge},
+ :attending "5302676874",
+ :participants [{:patient-id "PID-000001-14cf8bfe", :role :subject}],
+ :warm-up false}
+```
+
+#### `:medication-end`
+
+A medication course ends, resolved to its order by CITATION rather than by log position.
+
+**State transition:** Closes the matching `:medication-orders` entry.
+
+| Key | Required | Value |
+|---|---|---|
+| `:active-mrn` | always | string |
+| `:citation` | optional | map with keys `:module`, `:state` |
+| `:event` | always | `:medication-end` |
+| `:order-citation` | always | map with keys `:module`, `:state`, or nil |
+| `:order-event-id` | always | integer, or nil |
+| `:participants` | always | vector of map with keys `:patient-id`, `:role` |
+| `:t` | always | integer |
+| `:warm-up` | always | boolean |
+
+```clojure
+{:event :medication-end,
+ :t 3888000,
+ :active-mrn "MRN000002",
+ :order-event-id 6,
+ :order-citation {:module "schema-fixture-mod", :state :the-med},
+ :participants [{:patient-id "PID-000001-01564f61", :role :subject}],
+ :citation {:module "schema-fixture-mod", :state :stop-med},
+ :warm-up false}
+```
+
+#### `:medication-order`
+
+A medication is prescribed.
+
+**State transition:** Opens an `:active` entry in the patient's `:medication-orders` accumulator.
+
+| Key | Required | Value |
+|---|---|---|
+| `:active-mrn` | always | string |
+| `:citation` | optional | map with keys `:module`, `:state` |
+| `:codes` | always | vector of map with keys `:system`, `:code`, `:display` |
+| `:event` | always | `:medication-order` |
+| `:participants` | always | vector of map with keys `:patient-id`, `:role` |
+| `:t` | always | integer |
+| `:warm-up` | always | boolean |
+
+```clojure
+{:event :medication-order,
+ :t 3024000,
+ :active-mrn "MRN000002",
+ :codes
+ [{:system :rxnorm, :code "308182", :display "Amoxicillin 250 MG"}],
+ :participants [{:patient-id "PID-000001-01564f61", :role :subject}],
+ :citation {:module "schema-fixture-mod", :state :the-med},
+ :warm-up false}
+```
+
+#### `:merge`
+
+Two patient records are found to be one person; the survivor absorbs the merged record's MRNs (HL7v2 A40).
+
+**State transition:** Survivor keeps its status and gains the merged MRNs; the merged patient becomes `:merged` and emits nothing further.
+
+| Key | Required | Value |
+|---|---|---|
+| `:event` | always | `:merge` |
+| `:merged-mrn` | always | string |
+| `:merged-mrns` | always | set of string |
+| `:participants` | always | vector of map with keys `:patient-id`, `:role` |
+| `:surviving-mrn` | always | string |
+| `:t` | always | integer |
+| `:warm-up` | always | boolean |
+
+```clojure
+{:event :merge,
+ :t 0,
+ :participants
+ [{:patient-id "PID-000000-e0bbdb7b", :role :survivor}
+  {:patient-id "PID-000001-4baa5dc0", :role :merged}],
+ :surviving-mrn "MRN000001",
+ :merged-mrn "MRN000002",
+ :merged-mrns #{"MRN000002"},
+ :warm-up false}
+```
+
+#### `:observation`
+
+An unsolicited clinical finding, not tied to any order -- a single measured or coded value.
+
+**State transition:** Appends one entry to the patient's `:observations` accumulator.
+
+| Key | Required | Value |
+|---|---|---|
+| `:active-mrn` | always | string |
+| `:category` | optional | string |
+| `:citation` | optional | map with keys `:module`, `:state` |
+| `:codes` | always | vector of map with keys `:system`, `:code`, `:display` |
+| `:event` | always | `:observation` |
+| `:interpretation` | optional | one of `:normal`, `:low`, `:high` |
+| `:participants` | always | vector of map with keys `:patient-id`, `:role` |
+| `:reference-range` | optional | map with keys `:low`, `:high` |
+| `:t` | always | integer |
+| `:unit` | optional | string |
+| `:value` | optional | number? |
+| `:value-code` | optional | map with keys `:system`, `:code`, `:display` |
+| `:warm-up` | always | boolean |
+
+```clojure
+{:category "vital-signs",
+ :unit "Cel",
+ :participants [{:patient-id "PID-000001-01564f61", :role :subject}],
+ :value 37.7,
+ :active-mrn "MRN000002",
+ :warm-up false,
+ :citation {:module "schema-fixture-mod", :state :the-observation},
+ :event :observation,
+ :t 3024000,
+ :codes [{:system :loinc, :code "8310-5", :display "Body temperature"}]}
+```
+
+#### `:order-placed`
+
+A diagnostic order is placed against an order profile.
+
+**State transition:** No state change; the log itself is the record.
+
+| Key | Required | Value |
+|---|---|---|
+| `:active-mrn` | always | string |
+| `:attending` | always | string |
+| `:concept` | always | map with keys `:system`, `:code`, `:display` |
+| `:event` | always | `:order-placed` |
+| `:location` | always | map with keys `:ward`, `:bed`, `:placement` |
+| `:participants` | always | vector of map with keys `:patient-id`, `:role` |
+| `:profile` | always | keyword |
+| `:t` | always | integer |
+| `:warm-up` | always | boolean |
+
+```clojure
+{:participants [{:patient-id "PID-000000-055bdef6", :role :subject}],
+ :active-mrn "MRN000001",
+ :attending "5302676874",
+ :warm-up false,
+ :event :order-placed,
+ :concept
+ {:system :loinc,
+  :code "58410-2",
+  :display "CBC panel - Blood by Automated count"},
+ :t 0,
+ :location {:ward "ED", :bed "ED-H01", :placement :surge},
+ :profile :cbc}
+```
+
+#### `:outpatient-visit`
+
+An ambulatory encounter opens; it occupies no bed (HL7v2 A04).
+
+**State transition:** `:new` -> `:admitted` with `:class` `:outpatient` and a nil `:location` -- the one sanctioned admitted-without-a-bed case.
+
+| Key | Required | Value |
+|---|---|---|
+| `:active-mrn` | always | string |
+| `:attending` | always | string |
+| `:citation` | optional | map with keys `:module`, `:state` |
+| `:conditions` | optional | vector of map with keys `:event`, `:codes`, `:citation`, `:references` |
+| `:event` | always | `:outpatient-visit` |
+| `:participants` | always | vector of map with keys `:patient-id`, `:role` |
+| `:reason` | always | string or map with keys `:system`, `:code`, `:display`, or nil |
+| `:t` | always | integer |
+| `:warm-up` | always | boolean |
+
+```clojure
+{:event :outpatient-visit,
+ :t 3024000,
+ :active-mrn "MRN000002",
+ :reason nil,
+ :attending "7447928418",
+ :participants [{:patient-id "PID-000001-01564f61", :role :subject}],
+ :citation {:module "schema-fixture-mod", :state :visit},
+ :warm-up false}
+```
+
+#### `:outpatient-visit-end`
+
+An ambulatory encounter closes. Deliberately renders no HL7 message -- many real ambulatory feeds send an A04 and nothing else.
+
+**State transition:** `:admitted` -> `:discharged`; sets `:discharged-at`.
+
+| Key | Required | Value |
+|---|---|---|
+| `:active-mrn` | always | string |
+| `:attending` | always | string, or nil |
+| `:citation` | optional | map with keys `:module`, `:state` |
+| `:event` | always | `:outpatient-visit-end` |
+| `:participants` | always | vector of map with keys `:patient-id`, `:role` |
+| `:t` | always | integer |
+| `:warm-up` | always | boolean |
+
+```clojure
+{:event :outpatient-visit-end,
+ :t 3888000,
+ :active-mrn "MRN000002",
+ :attending "7447928418",
+ :participants [{:patient-id "PID-000001-01564f61", :role :subject}],
+ :citation {:module "schema-fixture-mod", :state :visit-end},
+ :warm-up false}
+```
+
+#### `:procedure`
+
+A procedure is performed, cited back to the module state that produced it.
+
+**State transition:** No state change; the log itself is the record.
+
+| Key | Required | Value |
+|---|---|---|
+| `:active-mrn` | always | string |
+| `:citation` | optional | map with keys `:module`, `:state` |
+| `:codes` | always | vector of map with keys `:system`, `:code`, `:display` |
+| `:event` | always | `:procedure` |
+| `:participants` | always | vector of map with keys `:patient-id`, `:role` |
+| `:t` | always | integer |
+| `:warm-up` | always | boolean |
+
+```clojure
+{:event :procedure,
+ :t 3024000,
+ :active-mrn "MRN000002",
+ :codes
+ [{:system :snomed,
+   :code "80146002",
+   :display "Excision of appendix"}],
+ :participants [{:patient-id "PID-000001-01564f61", :role :subject}],
+ :citation {:module "schema-fixture-mod", :state :the-procedure},
+ :warm-up false}
+```
+
+#### `:registered`
+
+A patient enters the run: identity assigned, demographics sampled, any pre-horizon clinical history attached.
+
+**State transition:** Creates the patient's fold origin; `:status` stays `:new`.
+
+| Key | Required | Value |
+|---|---|---|
+| `:active-mrn` | always | string |
+| `:event` | always | `:registered` |
+| `:participants` | always | vector of map with keys `:patient-id`, `:role` |
+| `:persona` | always | map with keys `:name`, `:sex`, `:dob`, `:age`, `:address`, `:phone`, `:ssn`, `:payer`, `:race`, `:socioeconomic-category`, `:state` |
+| `:pre-horizon-facts` | optional | vector of map with keys `:event`, `:codes`, `:citation`, `:references` |
+| `:t` | always | integer |
+| `:warm-up` | always | boolean |
+
+```clojure
+{:event :registered,
+ :t 0,
+ :active-mrn "MRN000001",
+ :persona
+ {:name {:family "Garcia", :given "Noah"},
+  :sex :male,
+  :dob "2024-09-19",
+  :age 0,
+  :address
+  {:street "482 Ridgeway Ln",
+   :city "Springfield",
+   :state "IL",
+   :zip "62704"},
+  :phone "867-396-2000",
+  :ssn "900-09-7523",
+  :payer
+  {:id "commercial-ppo", :name "Commercial PPO", :type :commercial}},
+ :participants [{:patient-id "PID-000000-3cb13d09", :role :subject}],
+ :warm-up false}
+```
+
+#### `:result-available`
+
+An order's results come back, one entry per analyte, with abnormal flags already computed against each reference range.
+
+**State transition:** Appends to the patient's `:observations` accumulator.
+
+| Key | Required | Value |
+|---|---|---|
+| `:active-mrn` | always | string |
+| `:attending` | always | string |
+| `:concept` | always | map with keys `:system`, `:code`, `:display` |
+| `:event` | always | `:result-available` |
+| `:location` | always | map with keys `:ward`, `:bed`, `:placement` |
+| `:order-event-id` | always | integer |
+| `:participants` | always | vector of map with keys `:patient-id`, `:role` |
+| `:profile` | always | keyword |
+| `:results` | always | vector of map with keys `:concept`, `:units`, `:value`, `:reference-range`, `:abnormal-flag` |
+| `:t` | always | integer |
+| `:warm-up` | always | boolean |
+
+```clojure
+{:participants [{:patient-id "PID-000000-055bdef6", :role :subject}],
+ :active-mrn "MRN000001",
+ :attending "5302676874",
+ :warm-up false,
+ :order-event-id 4,
+ :event :result-available,
+ :concept
+ {:system :loinc,
+  :code "58410-2",
+  :display "CBC panel - Blood by Automated count"},
+ :t 4080,
+ :location {:ward "ED", :bed "ED-H01", :placement :surge},
+ :profile :cbc,
+ :results
+ [{:concept
+   {:system :loinc,
+    :code "6690-2",
+    :display "Leukocytes [#/volume] in Blood by Automated count"},
+   :units "K/uL",
+   :value 18.0,
+   :reference-range {:low 4.5, :high 11.0},
+   :abnormal-flag :high}
+  {:concept
+   {:system :loinc,
+    :code "789-8",
+    :display "Erythrocytes [#/volume] in Blood by Automated count"},
+   :units "M/uL",
+   :value 5.26,
+   :reference-range {:low 4.2, :high 5.9},
+   :abnormal-flag :normal}
+  {:concept
+   {:system :loinc,
+    :code "718-7",
+    :display "Hemoglobin [Mass/volume] in Blood"},
+   :units "g/dL",
+   :value 14.1,
+   :reference-range {:low 12.0, :high 17.5},
+   :abnormal-flag :normal}
+  {:concept
+   {:system :loinc,
+    :code "4544-3",
+    :display
+    "Hematocrit [Volume Fraction] of Blood by Automated count"},
+   :units "%",
+   :value 47.6,
+   :reference-range {:low 36.0, :high 50.0},
+   :abnormal-flag :normal}
+  {:concept
+   {:system :loinc,
+    :code "777-3",
+    :display "Platelets [#/volume] in Blood by Automated count"},
+   :units "K/uL",
+   :value 400.0,
+   :reference-range {:low 150, :high 450},
+   :abnormal-flag :normal}]}
+```
+
+#### `:step-rejected`
+
+A step was attempted and declined as illegal for this patient's current state -- truth about the run, never wire traffic.
+
+**State transition:** None, by construction: evolve folds it as identity.
+
+| Key | Required | Value |
+|---|---|---|
+| `:attempted-step` | always | map with keys `:type` |
+| `:event` | always | `:step-rejected` |
+| `:participants` | always | vector of map with keys `:patient-id`, `:role` |
+| `:reason` | always | one of `:illegal-bed-swap`, `:illegal-cancel-admit`, `:illegal-cancel-discharge`, `:illegal-cancel-discharge-bed-reoccupied`, `:illegal-cancel-transfer`, `:illegal-cancel-transfer-bed-reoccupied`, `:illegal-merge` |
+| `:t` | always | integer |
+| `:warm-up` | always | boolean |
+
+```clojure
+{:event :step-rejected,
+ :t 0,
+ :participants [{:patient-id "PID-000003-9d0fdcf4", :role :subject}],
+ :attempted-step {:type :cancel-admit},
+ :reason :illegal-cancel-admit,
+ :warm-up false}
+```
+
+#### `:transfer`
+
+An admitted patient moves to another bed, either by a pathway step or because a bed they were waiting for came free.
+
+**State transition:** Stays `:admitted`; rewrites `:location` and `:home-ward`.
+
+| Key | Required | Value |
+|---|---|---|
+| `:active-mrn` | always | string |
+| `:attending` | always | string |
+| `:bed-ready` | always | boolean |
+| `:event` | always | `:transfer` |
+| `:forced` | always | boolean |
+| `:from` | always | map with keys `:ward`, `:bed`, `:placement` |
+| `:home-ward` | always | string |
+| `:location` | always | map with keys `:ward`, `:bed`, `:placement` |
+| `:participants` | always | vector of map with keys `:patient-id`, `:role` |
+| `:placement` | optional | one of `:licensed`, `:surge` |
+| `:t` | always | integer |
+| `:warm-up` | always | boolean |
+
+```clojure
+{:home-ward "Renal",
+ :bed-ready false,
+ :participants [{:patient-id "PID-000000-055bdef6", :role :subject}],
+ :active-mrn "MRN000001",
+ :attending "5302676874",
+ :warm-up false,
+ :event :transfer,
+ :from {:ward "ED", :bed "ED-H01", :placement :surge},
+ :t 3600,
+ :location {:ward "Renal", :bed "RENAL-01", :placement :licensed},
+ :forced false}
+```
+
+<!-- EVENT-LOG-GENERATED-END -->
+
+---
+
 ## The corpus manifest
 
 Written as `manifest.edn` in a generated corpus's `--out-dir`. It is
@@ -540,6 +1387,7 @@ read it from a shell instead of a REPL.
 | Verdicts, causes, findings | `ehrt.judge.finding/Finding`, `/Verdict`, `/Cause` | the same runs |
 | FHIR findings' `:disposition` / `:cause` | `ehrt.judge.fhir/interpret` | a live `ehrt gate fhir` run against a real mutant bundle, 2026-07-25 — 6554 findings, all three dispositions present |
 | Check report and its codes | `ehrt.corpus.check` | live `ehrt check` runs in both golden-equivalence and per-file-assertion modes, 2026-07-25 |
+| Event log, all 21 kinds | `ehrt.sim-engine.event-schema/Event` | the census's own 4,997 events across eleven corpora (`.agents/plans/2026-08-16-event-log-census.md`), reconciled against every `{:event ...}` construction site in the engine; the section above is GENERATED from the committed schema, and every example in it came out of a real engine run |
 | Corpus manifest | `ehrt.provenance.manifest/ManifestV1_1` | a real generated corpus's `manifest.edn` |
 | Lineage record | `ehrt.corpus.lineage/LineageRecord` | a real mutant's lineage sidecar |
 | Operation manifest | `ehrt.corpus-io.operation-manifest/OperationManifestV1` | a real `corpus mutate` batch's `operation-manifest.edn`, 2026-07-28 |

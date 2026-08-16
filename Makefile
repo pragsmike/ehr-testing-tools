@@ -1,4 +1,4 @@
-.PHONY: help test integration quickstart quickstart-fresh ci-parity pipeline use-cases operators-doc cli-doc sim-theory palgebra-examples docsgen lint-pipeline mirror-nist verify-nist-lock
+.PHONY: event-schema-export event-schema-freeze event-schema-examples formats-event-log help test integration quickstart quickstart-fresh ci-parity pipeline use-cases operators-doc cli-doc sim-theory palgebra-examples docsgen lint-pipeline mirror-nist verify-nist-lock
 
 # Thin, deliberately (R23, ADR-0004, 2026-07-28 carve-loss recovery
 # session): every target below is a named entry point to a poly/CLI
@@ -32,7 +32,11 @@ help:
 	@echo "  cli-doc      - regenerate docs/cli.md from bases/cli's own cli-spec"
 	@echo "  sim-theory   - regenerate components/sim/docs/sim-theory-diagram.mermaid from sim-theory-equations.txt and splice it into sim-theory-diagram.md's embedded block"
 	@echo "  palgebra-examples - regenerate the three components/palgebra/examples/*-flow*.mermaid from their sibling *-equations.txt"
-	@echo "  docsgen      - all six of the above"
+	@echo "  event-schema-export - regenerate the event log's committed EDN contract from ehrt.sim-engine.event-schema"
+	@echo "  event-schema-examples - regenerate the one-real-event-per-kind examples docs/formats.md shows, from the deterministic fixture fleet"
+	@echo "  formats-event-log - regenerate docs/formats.md's event-log section from the two artifacts above"
+	@echo "  docsgen      - all nine of the above"
+	@echo "  event-schema-freeze - NOT part of docsgen: re-freeze the stability gate's baseline, ONLY when bumping the event schema version"
 	@echo "  lint-pipeline - assert every catalytic resource in docs/pipeline.edn and docs/use-cases.edn resolves to one of the four catalytic targets (ehrt.docs-tooling.lint)"
 	@echo "  mirror-nist  - build ~/.ehrt/nist-mirror/ from this user's own ~/.m2 cache, sha256-verified against artifacts.lock.edn (ADR-0053) -- offline determinism without redistribution"
 	@echo "  verify-nist-lock - check every hit-nexus-sourced artifacts.lock.edn entry's sha256 against ~/.m2 (ADR-0053); also runs as part of 'test'"
@@ -168,7 +172,28 @@ event-schema-freeze:
 	clojure -X:dev ehrt.sim-engine.event-schema/write-baseline!
 	@echo "Froze components/sim-engine/resources/sim-engine/event-schema-baseline.edn at the current schema-version"
 
-docsgen: pipeline use-cases operators-doc cli-doc sim-theory palgebra-examples event-schema-export
+# Regenerates components/sim-engine/resources/sim-engine/event-examples.edn
+# -- ONE real event per kind, lifted from the deterministic fixture
+# fleet on sim-engine's TEST path (ehrt.sim-engine.event-fleet). The
+# :event-fleet alias exists for exactly this: the examples
+# docs/formats.md shows a reader must come from the SAME runs the
+# contract gate is asserted against, so the fleet is shared rather than
+# copied.
+event-schema-examples:
+	clojure -X:dev:event-fleet ehrt.sim-engine.event-fleet/write-examples!
+	@echo "Regenerated components/sim-engine/resources/sim-engine/event-examples.edn"
+
+# Regenerates docs/formats.md's "The event log" section, between its own
+# EVENT-LOG-GENERATED markers, from the published EDN artifacts -- never
+# from the Clojure namespace (ehrt.docs-tooling.event-log-doc's own
+# docstring has the reasoning: the page is rendered from the same bytes
+# a consumer receives, so it cannot describe something the artifact does
+# not say). The prose around the markers is authored and untouched.
+formats-event-log: event-schema-export event-schema-examples
+	clojure -X:dev ehrt.docs-tooling.event-log-doc/write-event-log-section!
+	@echo "Regenerated docs/formats.md's event-log section"
+
+docsgen: pipeline use-cases operators-doc cli-doc sim-theory palgebra-examples event-schema-export event-schema-examples formats-event-log
 
 lint-pipeline:
 	clojure -X:dev ehrt.docs-tooling.lint/lint-pipeline!

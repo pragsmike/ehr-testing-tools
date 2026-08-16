@@ -101,6 +101,9 @@ jobs:
             docs/use-cases/ \
             docs/operators.md \
             docs/cli.md \
+            docs/formats.md \
+            components/sim-engine/resources/sim-engine/event-schema.edn \
+            components/sim-engine/resources/sim-engine/event-examples.edn \
             components/sim/docs/sim-theory-diagram.md \
             components/sim/docs/sim-theory-diagram.mermaid \
             components/palgebra/examples/ai-study-flow-v3.mermaid \
