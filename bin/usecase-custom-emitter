@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+# Runs docs/use-cases/custom-emitter-from-the-event-log.md's own ```sh
+# fence, verbatim, under per-step exit-code assertions plus this page's
+# own named invariants.
+#
+# EXERCISED FROM BIRTH. This page and this script landed in the same
+# commit as the use case itself -- the reader-path rule the D8-5 fence
+# battery proposed (R-F8), satisfied by construction rather than
+# retrofitted. The battery's own finding was that pages get written and
+# then never re-run; this one has never existed unexercised.
+#
+# The block between the BEGIN/END markers is read by
+# `ehrt.docs-tooling.strip-fresh` (via the exercised-sources register,
+# components/docs-tooling/resources/docs-tooling/exercised-sources.edn)
+# to prove this script and the page's own fence teach the identical
+# commands, in the identical order. Integration-tier only
+# (`make integration`), never per-push CI.
+#
+# Offline: every command here is a local sim run plus a local Clojure
+# script. No artifact fetch, no network.
+set -uo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)" || exit 2
+cd -- "$repo_root" || exit 2
+
+fail() {
+  echo "FAIL: $1" >&2
+  exit 1
+}
+
+STEP=0
+LOG_DIR="$(mktemp -d)"
+trap 'rm -rf "$LOG_DIR"' EXIT
+
+# expect CODE CMD...  Asserts CMD's exit status and tees its stdout to
+# this step's own log, so a named invariant below can be checked
+# against real output rather than re-derived.
+expect() {
+  local want="$1"; shift
+  STEP=$((STEP + 1))
+  "$@" > "$LOG_DIR/step-$STEP.out" 2> "$LOG_DIR/step-$STEP.err"
+  local got=$?
+  cat "$LOG_DIR/step-$STEP.out"
+  cat "$LOG_DIR/step-$STEP.err" >&2
+  if [ "$got" -ne "$want" ]; then
+    fail "'$*' exited $got, expected $want"
+  fi
+}
+
+echo "== usecase-custom-emitter: docs/use-cases/custom-emitter-from-the-event-log.md, verbatim, asserted =="
+
+# Script-only apparatus, not a taught line: safely re-runnable. The
+# taught `mkdir -p` below is idempotent and stays exactly as the page
+# teaches it.
+rm -rf out/custom-emitter
+
+# BEGIN custom-emitter commands (verbatim from docs/use-cases/custom-emitter-from-the-event-log.md)
+expect 0 mkdir -p out/custom-emitter
+
+expect 0 bash -c 'bin/ehrt sim run --seed 42 --patients 5 --format ground-truth > out/custom-emitter/events.edn'
+
+expect 0 bin/example-custom-emitter out/custom-emitter/events.edn
+# END custom-emitter commands
+
+# --- named invariants, checked against the real output above ---------------
+
+emitted="$LOG_DIR/step-3.out"
+summary="$LOG_DIR/step-3.err"
+
+# 1. The seam actually produced the proprietary format, not an empty file.
+grep -q '^# kind|t-seconds|patient-id|mrn|ward|bed$' "$emitted" \
+  || fail "the emitted output carries no header line"
+
+# 2. Five patients in, five admissions and five discharges out. If the
+#    engine's own defaults ever change under this page, this catches it
+#    here rather than leaving a reader with a page that quietly teaches
+#    the wrong numbers.
+admissions="$(grep -c '^admission|' "$emitted")"
+discharges="$(grep -c '^discharge|' "$emitted")"
+[ "$admissions" -eq 5 ] || fail "expected 5 admission lines, got $admissions"
+[ "$discharges" -eq 5 ] || fail "expected 5 discharge lines, got $discharges"
+
+# 3. The emitter reports what it did NOT translate. This is the page's
+#    own teaching point about custom emitters, so it is asserted rather
+#    than trusted.
+grep -q 'events in, .* translated, .* skipped' "$summary" \
+  || fail "the emitter did not report its skipped-event count"
+
+# 4. :t is rendered as an integer of seconds, never a formatted date --
+#    the contract's own claim in docs/formats.md ("the log carries no
+#    absolute time at all").
+awk -F'|' 'NR>1 && $2 !~ /^[0-9]+$/ { exit 1 }' "$emitted" \
+  || fail "a t-seconds column is not a bare integer"
+
+# Tree-clean postcondition (ADR-0005): every write path above lands
+# under the gitignored /out/.
+dirty="$(git status --porcelain)"
+if [ -n "$dirty" ]; then
+  echo "$dirty" >&2
+  fail "working tree is dirty after the run -- a taught command wrote outside out/"
+fi
+
+echo "== usecase-custom-emitter: OK ($STEP steps, 4 invariants) =="

@@ -54,6 +54,7 @@ integration:
 	bin/usecase-profile-tier-v2
 	bin/usecase-acceptance-qa
 	bin/usecase-regression-baselining
+	bin/usecase-custom-emitter
 	bin/readme-what-you-get
 
 quickstart:

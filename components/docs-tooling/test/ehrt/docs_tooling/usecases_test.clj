@@ -82,7 +82,7 @@
   (let [data (edn/read-string (slurp "components/corpus/docs/use-cases.edn"))]
     (is (usecases/valid? data))))
 
-(deftest committed-use-cases-edn-has-twenty-one-cases-test
+(deftest committed-use-cases-edn-has-twenty-two-cases-test
   ;; 14 -> 15, SS-2 Step 5: :simulator-traffic-as-intake-source, the
   ;; new eleventh verified command strip (ruling 7).
   ;; 15 -> 16, SS-3 Step 7: :piped-hl7-traffic-as-intake-source, the
@@ -103,8 +103,19 @@
   ;; batch-straddle transport-realism strip -- commands are ADR-0111's
   ;; own witnessed demo run, reused verbatim, not re-executed this
   ;; session.
+  ;; 21 -> 22, event-log contract arc Step 4:
+  ;; :custom-emitter-from-the-event-log, the ground-truth-log-to-your-
+  ;; own-format strip. Exercised FROM BIRTH -- page, worked example
+  ;; (bin/example-custom-emitter) and exerciser
+  ;; (bin/usecase-custom-emitter, registered in exercised-sources.edn)
+  ;; all landed in this same commit, satisfying the D8-5 battery's own
+  ;; proposed reader-path rule by construction rather than retrofit.
+  ;; Its strip was re-executed live, and caught a real defect on the
+  ;; first run: the taught redirect wrote into an out/ subdirectory it
+  ;; never created (the R-F5 class the battery had just fixed), so a
+  ;; taught `mkdir -p` now leads the fence.
   (let [data (edn/read-string (slurp "components/corpus/docs/use-cases.edn"))]
-    (is (= 21 (count (:cases data))))))
+    (is (= 22 (count (:cases data))))))
 
 (deftest committed-use-cases-edn-has-unique-ids-test
   (let [data (edn/read-string (slurp "components/corpus/docs/use-cases.edn"))

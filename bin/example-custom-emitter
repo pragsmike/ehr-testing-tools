@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+# A worked example: the ground-truth event log rendered into a
+# proprietary format this project has never heard of.
+#
+# Landed by the event-log contract arc (docs/use-cases/custom-emitter-
+# from-the-event-log.md is the page it belongs to; docs/formats.md's
+# "The event log" is the contract it is written against).
+#
+# It is a TEACHING ARTEFACT, not a feature. The format is deliberately
+# useless -- one pipe-delimited line per admission and discharge -- so
+# that the only interesting thing about the script is the seam it
+# proves: a consumer can read `ehrt sim run --format ground-truth` and
+# emit something we do not ship, using only the documented contract and
+# no dependency on this repo's code.
+#
+# Usage:
+#   bin/ehrt sim run --seed 42 --patients 5 --format ground-truth > out/events.edn
+#   bin/example-custom-emitter out/events.edn
+#
+# Exit codes:
+#   0  emitted
+#   2  no input file given
+set -euo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# Clojure and nothing else, on purpose. If this needed a component off
+# this repo's classpath, the event log would not really be a consumable
+# contract -- it would just be our own internals with a nicer name.
+exec clojure -Sdeps "{:paths [\"$repo_root/bin/example-custom-emitter-src\"]
+                      :deps {org.clojure/clojure {:mvn/version \"1.12.5\"}}}" \
+     -M -m emitter "$@"

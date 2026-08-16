@@ -10,13 +10,21 @@
   ADR-0132 adds an eighth row: the clinic-decade exerciser (`bin/demo-
   exerciser-clinic-decade`), the ADR-0130-widened `:demo-exerciser-
   fresh` marker mechanism's own first second-instance consumer, its
-  own honestly-named marker pair carried as this row's own data."
+  own honestly-named marker pair carried as this row's own data.
+
+  The event-log contract arc (Step 4) adds a ninth: the custom-emitter
+  use case (`bin/usecase-custom-emitter`). Unlike every row before it,
+  this one names a script that exists in the SAME commit as its own
+  registry entry and its own page -- exercised from birth, the D8-5
+  battery's own proposed reader-path rule (R-F8) satisfied by
+  construction rather than retrofitted onto a page that had already
+  gone unexercised."
   (:require [clojure.test :refer [deftest is]]
             [ehrt.docs-tooling.exercised-sources :as reg]))
 
 (deftest registry-loads-and-validates-test
   (let [rows (reg/load-registry)]
-    (is (= 8 (count rows)))
+    (is (= 9 (count rows)))
     (is (every? #(contains? #{:quickstart-fresh :demo-exerciser-fresh
                                :single-fence :paired}
                              (:extraction %))

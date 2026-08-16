@@ -111,6 +111,20 @@
   :env {}
   :witness {:adr "ADR-0129" :date "2026-08-13"}}
 
+ ;; Exercised FROM BIRTH: page, example emitter, and exerciser all
+ ;; landed in the same commit as the use case itself (event-log contract
+ ;; arc, Step 4) -- the reader-path rule the D8-5 fence battery proposed
+ ;; as R-F8, satisfied by construction rather than retrofitted onto a
+ ;; page that had already gone unexercised.
+ {:source "docs/use-cases/custom-emitter-from-the-event-log.md"
+  :script "bin/usecase-custom-emitter"
+  :extraction :single-fence
+  :fence-lang "sh"
+  :marker-open "# BEGIN custom-emitter commands (verbatim from docs/use-cases/custom-emitter-from-the-event-log.md)"
+  :marker-close "# END custom-emitter commands"
+  :env {}
+  :witness {:adr "ADR-0141" :date "2026-08-16"}}
+
  {:source "README.md"
   :script "bin/readme-what-you-get"
   :extraction :paired
