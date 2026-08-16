@@ -29,6 +29,7 @@
   wall clock itself. The CLI shell (SS-3 Step 6/7) is where a
   wall-clock default belongs, matching `:received`'s own discipline."
   (:require [clojure.data.json :as json]
+            [clojure.edn :as edn]
             [clojure.java.io :as io]
             [ehrt.corpus-io.framing :as framing]
             [ehrt.kernel.interface :as kernel])
@@ -93,6 +94,35 @@
   [idx format]
   (str "item-" (pad4 idx) "." (get format->extension format "dat")))
 
+(def ^:private upstream-sniff-bytes
+  "How far into the input to look for an upstream envelope's own
+  opening `{:status :error`. A real envelope is one short line; a
+  corpus is not, and must never be read into a second string just to
+  find that out."
+  4096)
+
+(defn- upstream-error-envelope
+  "The parsed result envelope of a FAILED upstream `ehrt` command, or
+  nil when these bytes are not one.
+
+  Every command in this repo prints its own result envelope as EDN on
+  stdout, so a failing upstream in a pipe hands `{:status :error ...}`
+  to this side's stdin in place of framed corpus bytes. Decoding that
+  reports a framing defect in bytes the reader never wrote, and buries
+  the cause that actually stopped the run -- so the seam distinguishes
+  BEFORE it parses (the D4-3 pattern; fence-battery R-F7).
+
+  Sniffed by prefix first so corpus bytes that merely also start with
+  `{` (a FHIR Bundle, :bundle-entries' own input) cost one short regex
+  and nothing more."
+  [^bytes bs]
+  (let [head (String. bs 0 (min (alength bs) upstream-sniff-bytes) "UTF-8")]
+    (when (re-find #"^\s*\{\s*:status\s+:(?:error|rejected)[\s,}]" head)
+      (let [parsed (try (edn/read-string (String. bs "UTF-8"))
+                        (catch Exception _ nil))]
+        (when (and (map? parsed) (#{:error :rejected} (:status parsed)))
+          parsed)))))
+
 (defn- item-bytes
   "An item, as returned by ehrt.corpus-io.framing/decode, is
   already a byte array for every byte-exact framing kind -- except
@@ -121,9 +151,18 @@
     (D3's fail-if-exists convention), checked before :in is even read.
   - :spool-cap-exceeded {:max-bytes} -- :in has more than :max-bytes
     of content; nothing is written (see the cap discussion above).
+  - :empty-input {:origin :framing} -- :in carried no bytes at all.
   - whatever ehrt.corpus-io.framing/decode itself rejects
     with (:malformed-er7-multi-frame, :malformed-mllp-frame, ...),
-    propagated unchanged; nothing is written on this path either."
+    propagated unchanged; nothing is written on this path either.
+
+  Or kernel/error :upstream-error {:origin :upstream} -- :in carried a
+  failed upstream `ehrt` command's own result envelope rather than
+  corpus bytes; :upstream is that envelope verbatim, so the cause
+  survives the pipe instead of being reported as a framing defect
+  (fence-battery R-F7). Both of the last two are decided BEFORE
+  anything is decoded (the D4-3 pattern): a framing category names a
+  fault in bytes the caller supplied, and neither of these is that."
   [{:keys [in framing format origin captured-at out-dir max-bytes]
     :or {max-bytes default-max-bytes}}]
   (let [out-dir (or out-dir (default-spool-out-dir captured-at))
@@ -137,11 +176,25 @@
                          :hint "remove the directory, or pass a different :out-dir"})
 
       :else
-      (let [{:keys [bytes exceeded?]} (read-capped in max-bytes)]
-        (if exceeded?
+      (let [{:keys [bytes exceeded?]} (read-capped in max-bytes)
+            upstream (when-not exceeded? (upstream-error-envelope bytes))]
+        (cond
+          exceeded?
           (kernel/rejected :spool-cap-exceeded
                             {:max-bytes max-bytes :out-dir out-dir
                              :hint "pass a larger max-bytes override, or a smaller/paginated input"})
+
+          (zero? (alength ^bytes bytes))
+          (kernel/rejected :empty-input
+                            {:origin origin :framing framing
+                             :hint "nothing arrived to spool -- check that the producer on the other side of the pipe actually ran"})
+
+          upstream
+          (kernel/error :upstream-error
+                         {:origin origin :upstream upstream
+                          :hint "the command feeding this one failed; its own result envelope arrived here instead of corpus bytes"})
+
+          :else
           (let [decode-result (framing/decode framing bytes)]
             (if-not (kernel/ok? decode-result)
               decode-result

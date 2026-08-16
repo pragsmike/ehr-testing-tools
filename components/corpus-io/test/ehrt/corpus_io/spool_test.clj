@@ -134,6 +134,53 @@
     (is (= :malformed-er7-multi-frame (:category r)))
     (is (not (.exists (io/file out-dir))))))
 
+;; ---- the intake seam distinguishes BEFORE it parses (the D4-3
+;; pattern; fence-battery R-F7). Piped input that is not corpus bytes
+;; at all must never be reported as a framing defect: a framing
+;; category names a fault in bytes the reader supplied, and blaming
+;; the frame hides the real cause upstream of the pipe. ----
+
+(deftest spool-rejects-empty-input-as-empty-input-not-a-framing-defect-test
+  (doseq [framing [:mllp :er7-multi]]
+    (testing (str "empty input, framing " framing)
+      (let [out-dir (temp-dir-path)
+            r (spool/spool! {:in (ByteArrayInputStream. (byte-array 0))
+                              :framing framing :format :v2-er7
+                              :origin "stdin" :captured-at "2026-07-28T00:00:00Z"
+                              :out-dir out-dir})]
+        (is (kernel/rejected? r))
+        (is (= :empty-input (:category r))
+            "empty input is its own category, never a malformed frame")
+        (is (not (.exists (io/file out-dir)))
+            "nothing is written -- no empty corpus dressed as success")))))
+
+(deftest spool-reports-an-upstream-error-envelope-as-upstream-error-test
+  (let [out-dir (temp-dir-path)
+        upstream "{:status :error, :category :file-not-found, :payload {:path \"in/v2-corpus\"}}\n"
+        r (spool/spool! {:in (ByteArrayInputStream. (.getBytes upstream "UTF-8"))
+                          :framing :mllp :format :v2-er7
+                          :origin "stdin" :captured-at "2026-07-28T00:00:00Z"
+                          :out-dir out-dir})]
+    (is (kernel/error? r))
+    (is (= :upstream-error (:category r))
+        "an upstream ehrt command's own envelope is not a malformed frame")
+    (is (= {:status :error :category :file-not-found :payload {:path "in/v2-corpus"}}
+           (:upstream (:payload r)))
+        "the upstream envelope is carried through verbatim, so the real cause survives the pipe")
+    (is (not (.exists (io/file out-dir))))))
+
+(deftest spool-does-not-mistake-corpus-bytes-for-an-upstream-envelope-test
+  (testing "a FHIR bundle also starts with { and must still spool normally"
+    (let [out-dir (temp-dir-path)
+          bundle-json (str "{\"resourceType\":\"Bundle\",\"type\":\"collection\",\"entry\":"
+                            "[{\"resource\":{\"resourceType\":\"Patient\",\"id\":\"1\"}}]}")
+          r (spool/spool! {:in (ByteArrayInputStream. (.getBytes bundle-json "UTF-8"))
+                            :framing :bundle-entries :format :fhir-json
+                            :origin "./bundle.json" :captured-at "2026-07-28T00:00:00Z"
+                            :out-dir out-dir})]
+      (is (kernel/ok? r))
+      (is (= 1 (:item-count (:payload r)))))))
+
 ;; ---- :bundle-entries materializes one JSON file per resource ----
 
 (deftest spool-bundle-entries-writes-one-json-file-per-resource-test
