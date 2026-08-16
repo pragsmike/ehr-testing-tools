@@ -5,11 +5,17 @@
   close, every `[V]` claim re-probed') was, until this gate, enforced
   entirely by session discipline -- the same shape of gap that let the
   tag law drift for nine sessions before ADR-0057 caught it. This test
-  asserts state.md's own header cites the NEWEST `*-arc-close.md` ADR
-  on disk as its own regeneration point; a future arc close that lands
-  without regenerating state.md turns this test red at that closing
-  session's own full-suite run, rather than waiting for the next repo
-  review to notice by hand.
+  asserts state.md's own header cites the NEWEST arc-close ADR on disk
+  as its own regeneration point; a future arc close that lands without
+  regenerating state.md turns this test red at that closing session's
+  own full-suite run, rather than waiting for the next repo review to
+  notice by hand.
+
+  Arc closes are enumerated by each ADR's OWN FIRST HEADING, not by a
+  filename glob (C-4, ADR-0139; see `arc-close-adrs` for why the glob
+  was itself an instance of the defect the arc is named for), and a
+  second assertion holds the filename convention to what the headings
+  declare, so the two readings cannot drift apart again.
 
   Deliberately narrow: this checks CURRENCY (state.md's cited close is
   the latest one), not CONTENT (whether every `[V]` claim inside was
@@ -35,13 +41,48 @@
   [content]
   (second (re-find #"own\s+close\s*\(`notes/adr/(\d{4})-[\w-]+-arc-close\.md`" content)))
 
-(defn- newest-arc-close-adr-number
-  "The highest-numbered `notes/adr/NNNN-*-arc-close.md` file on disk."
+(def ^:private arc-close-filename-re #"^(\d{4})-[\w-]+-arc-close\.md$")
+
+(defn- first-heading
+  "The first markdown heading line in `content`, or nil. ADR files open
+  at level 2 (`## ADR-NNNN -- ...`), but the level is not what this gate
+  depends on: any level counts, so a future ADR opening at `#` is still
+  enumerated."
+  [content]
+  (some #(when (re-find #"^#{1,6}\s" %) %) (str/split-lines content)))
+
+(defn- arc-close-adrs
+  "Every ADR whose OWN FIRST HEADING says it closes an arc.
+
+  The population is the TREE, not a filename glob -- rule 9 (ADR-0139:
+  'a probe, gate, or tool whose population is a registry rather than the
+  tree'), applied to this gate itself, which was an instance of it. The
+  prior implementation enumerated files matching `NNNN-*-arc-close.md`,
+  so an arc close whose FILENAME said anything else was invisible: that
+  is how two files escaped it -- ADR-0047, then named
+  `0047-scaffolding-compaction-c.md`, and ADR-0125, then named
+  `0125-manual-s5-chapter8-review-close.md` (both renamed into the
+  convention by the session that added this gate) -- and how
+  `.agents/state.md` drifted fifty ADRs (0090-0139) past its last
+  regeneration without this test ever going red (C-4).
+
+  Matches `arc close` and `arc closes` alike -- ADR-0089's own heading
+  reads 'The conviction arc closes', and ADR-0047's ends 'arc closes'."
   []
   (->> (file-seq (io/file adr-dir))
        (filter #(.isFile ^java.io.File %))
-       (map #(.getName ^java.io.File %))
-       (keep #(second (re-find #"^(\d{4})-[\w-]+-arc-close\.md$" %)))
+       (filter #(str/ends-with? (.getName ^java.io.File %) ".md"))
+       (keep (fn [^java.io.File f]
+               (when-let [h (first-heading (slurp f))]
+                 (when (re-find #"(?i)arc close" h)
+                   {:file (.getName f) :heading h}))))
+       (sort-by :file)))
+
+(defn- newest-arc-close-adr-number
+  "The highest ADR number among the arc closes the tree actually holds."
+  []
+  (->> (arc-close-adrs)
+       (keep #(second (re-find #"^(\d{4})-" (:file %))))
        sort
        last))
 
@@ -53,6 +94,16 @@
           (str state-path "'s header cites ADR-" cited " as its own regeneration point, but "
                "the newest arc-close ADR on disk is ADR-" newest " -- " state-path
                " is stale (AR-C-1, D2-4): an arc close landed without regenerating it.")))))
+
+(deftest every-arc-close-adr-carries-the-filename-convention-test
+  (testing "an ADR that says 'arc close' in its own heading must be named -arc-close.md"
+    (let [offenders (->> (arc-close-adrs)
+                         (remove #(re-find arc-close-filename-re (:file %))))]
+      (is (empty? offenders)
+          (str "ADR(s) below declare an arc close in their own first heading but do not carry "
+               "the `-arc-close.md` filename convention, so the convention is not real and any "
+               "gate keyed on the filename silently under-enumerates (C-4, ADR-0139):\n"
+               (str/join "\n" (map #(str "  " (:file %) "  --  " (:heading %)) offenders)))))))
 
 ;; -- mechanism-sanity: prove the extraction functions actually catch what they claim to --
 

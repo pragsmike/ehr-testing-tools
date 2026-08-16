@@ -87,7 +87,7 @@ prompt, and recorded this session.
   not fixed.** Fixing it would mean editing `.agents/plans/roadmap.md`
   beyond the two `/mnt/c` Externals rows AR-C-3 licenses — outside this
   session's own fence. Named in both `.agents/state.md` and
-  `notes/adr/0047-scaffolding-compaction-c.md` so a future Deferred-
+  `notes/adr/0047-scaffolding-compaction-c-arc-close.md` so a future Deferred-
   triage session (the next natural home for this fix, per ADR-0045's
   own precedent) doesn't have to rediscover it from scratch.
 - **AR-C-3's own premise correction, not silently adapted.** The

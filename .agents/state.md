@@ -18,7 +18,7 @@ did exactly that at this close — and it had stayed green for seven days
 because **its population is ADR files whose FILENAME ends
 `-arc-close.md`**, while the obligation AR-C-1 states is "each arc
 close." Arcs closed in that window under other filenames
-(`0125-manual-s5-chapter8-review-close.md`'s own title reads "arc
+(`0125-manual-s5-chapter8-review-arc-close.md`'s own title reads "arc
 close") and the gate never saw them. That is the same
 registry-standing-in-for-a-population class repo review 3 is about, in
 the gate that guards this very file; it is recorded as finding C-3's
@@ -697,7 +697,7 @@ execute).
 **This window's own pointers.** Too many to list individually — see
 `notes/ADRs.md` for 0090 through 0139. The four that a cold reader
 should start from: `0107-injuries-arc-close.md` (the interpreter fix
-and its arc), `0125-manual-s5-chapter8-review-close.md` (the user
+and its arc), `0125-manual-s5-chapter8-review-arc-close.md` (the user
 manual, this window's largest addition), `0133-exact-name-resolution.md`
 (the restoration cascade), and `0139-review-3-arc-close.md` (this
 close, and the watch-list review 4 inherits).

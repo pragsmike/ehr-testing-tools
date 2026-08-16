@@ -5,7 +5,7 @@
 ### Context
 
 Prior: the scaffolding compaction arc closed and verified (`89e327f`,
-`notes/adr/0047-scaffolding-compaction-c.md`). This session opens the
+`notes/adr/0047-scaffolding-compaction-c-arc-close.md`). This session opens the
 alignment arc: it lands the arc's own brief and pays three pre-ruled
 debts BEFORE the audit session runs, so the audit starts clean.
 Docs-only — no `src/` touched at any point. The alignment-audit brief

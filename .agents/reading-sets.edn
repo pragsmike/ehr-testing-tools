@@ -284,7 +284,7 @@
 ;; moves here.
 ;;
 ;; Re-derivation (2026-08-13, manual arc close, `notes/adr/
-;; 0125-manual-s5-chapter8-review-close.md`): `reading-set-budget-test`
+;; 0125-manual-s5-chapter8-review-arc-close.md`): `reading-set-budget-test`
 ;; went red this session, `:onboarding` measured 2029 lines against its
 ;; own 1995-line budget -- the manual arc's own five-session close
 ;; (roadmap.md's Now/Done/Next churn across S1-S5, `prompts/README.md`/

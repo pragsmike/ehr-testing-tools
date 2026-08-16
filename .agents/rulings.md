@@ -119,7 +119,7 @@ explicitly this session — a deviation-with-license, not a silent
 change to the contract itself.
 
 - **Transcript-witnessed is not repo-recorded** (from ADR-0048,
-  citing `notes/adr/0047-scaffolding-compaction-c.md` Step 0 as the
+  citing `notes/adr/0047-scaffolding-compaction-c-arc-close.md` Step 0 as the
   evidencing event): only repo artifacts are citable as established
   fact. An event witnessed only in a chat transcript — a design-
   channel claim, an author statement, a prior session's own summary —

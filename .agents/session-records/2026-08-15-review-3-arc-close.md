@@ -217,7 +217,7 @@ fifty ADRs.
 
 **C-4, the finding underneath the failure.** The gate enumerates *ADR
 files whose filename matches `NNNN-*-arc-close.md`*; AR-C-1's
-obligation is "each arc close". `0125-manual-s5-chapter8-review-close.md`'s
+obligation is "each arc close". `0125-manual-s5-chapter8-review-arc-close.md`'s
 own first line reads "the manual-review skill, arc close" and the gate
 never saw it. Measured cost: **fifty ADRs** (0090-0139) between
 state.md's last full regeneration and this one. **The file is fixed;

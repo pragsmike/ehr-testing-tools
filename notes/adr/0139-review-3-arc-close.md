@@ -374,7 +374,7 @@ mechanical enforcement. It fired here, correctly, on ADR-0139. It had
 been green since **2026-08-11** because it enumerates *ADR files whose
 FILENAME matches `NNNN-*-arc-close.md`*, while the obligation AR-C-1
 states is **"each arc close."** Arcs closed in that window under other
-filenames and it never saw them — `0125-manual-s5-chapter8-review-close.md`
+filenames and it never saw them — `0125-manual-s5-chapter8-review-arc-close.md`
 is the clean example: its own first line reads *"the manual-review
 skill, arc close"*, and its filename ends `-review-close.md`.
 

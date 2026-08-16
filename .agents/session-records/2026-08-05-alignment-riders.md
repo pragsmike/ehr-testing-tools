@@ -4,7 +4,7 @@
 
 Session prompt naming AR-R-1 through AR-R-5, opening the alignment
 arc. Prior: the scaffolding compaction arc closed and verified
-(`89e327f`, `notes/adr/0047-scaffolding-compaction-c.md`). Docs-only —
+(`89e327f`, `notes/adr/0047-scaffolding-compaction-c-arc-close.md`). Docs-only —
 no `src/` touched at any point. Full account, rulings, the Step 0
 verification table, and the ruling-arithmetic disclosure: `notes/
 ADRs.md` ADR-0048.
