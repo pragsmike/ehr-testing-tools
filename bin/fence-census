@@ -1,0 +1,317 @@
+#!/usr/bin/env python3
+# Enumerates every fenced block in this repo's reader-facing docs and
+# classifies it, so the D8-5 live fence battery has a population that was
+# derived from the TREE rather than from any registry
+# (`.agents/plans/2026-08-16-fence-battery-findings.md`; the row is
+# `.agents/plans/2026-08-15-repo-review-findings.md` D8-5, chartered
+# standalone by author ruling Q2 a, 2026-08-15).
+#
+# The population-closure law (repo-review rubric, adopted at dbbeb1f)
+# is why this script exists at all: the battery may not enumerate its
+# own subject from `exercised-sources.edn`, because that registry is one
+# of the things the battery audits. Every fence in scope is counted and
+# lands in exactly one class, so the classes sum to the total.
+#
+# Classification (D8-5's own definitions):
+#   command -- a shell-ish fence whose first non-comment, non-blank line
+#              starts with one of the COMMAND_HEADS below, or with `$ `.
+#   output  -- a non-command fence adjacent to a preceding command fence
+#              (blank lines only between). This is the same adjacency
+#              rule `exercised-sources.edn`'s own :paired extraction
+#              uses; it is reused rather than reinvented.
+#   other   -- code / config / prose. Counted, never run: the population
+#              is closed, not filtered.
+#
+# Every `command` fence additionally gets `exercised` or `bare`. A fence
+# is `exercised` only if its own first command line is present inside the
+# marker block of the bin/ script that `exercised-sources.edn` pairs to
+# its source file -- per FENCE, not per file. A file can carry a registry
+# row and still hold bare fences the exerciser never extracts; that gap
+# is exactly what the battery is looking for, so it is measured here
+# rather than assumed away.
+#
+# Usage:
+#   bin/fence-census              # summary counts + TSV to stdout
+#   bin/fence-census --tsv-only   # TSV only, for piping
+#   bin/fence-census --summary-only
+
+import os
+import re
+import sys
+
+REPO = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+# The reader-facing surface D8-5 names, exactly.
+ROOT_FILES = ["README.md", "SETUP.md"]
+GLOB_DIRS = [
+    ("docs", True),      # docs/**/*.md
+    ("demos", True),     # demos/**/*.md
+]
+
+# Command heads, widened past D8-5's own starter list after the first
+# census run showed it missing real command fences: `java -version` in
+# SETUP.md, `diff out/... out/...` in the manual, `head -c 100 ...`,
+# `jet ... | jq ...`, `poly create ...` in the Polylith brief. The row's
+# list ("bin/ehrt, make, bin/, clojure, git, or `$ ` prompt lines") was a
+# floor, not a closed set, and a census that used it as a closed set
+# would under-report the bare population -- the battery's own headline.
+COMMAND_HEADS = (
+    "bin/ehrt", "bin/", "./bin/", "make", "clojure", "clj", "git", "poly",
+    "java", "javac", "curl", "wget", "sudo", "apt", "apt-get", "brew",
+    "cd", "mkdir", "rm", "cp", "mv", "chmod", "export", "source",
+    "diff", "grep", "rg", "head", "tail", "cat", "ls", "find", "wc",
+    "sort", "uniq", "tr", "sed", "awk", "jq", "jet", "xargs", "tee",
+    "python3", "python", "docker", "unzip", "tar", "gzip", "echo",
+    "bash", "sh", "env", "which", "test", "gitleaks", "npm", "npx",
+)
+
+# A leading `FOO=bar` env prefix is a command line (the acceptance-qa
+# page's own `VENDOR_CORPUS=test-fixtures/v2` shape).
+ENV_PREFIX_RE = re.compile(r"^[A-Z_][A-Z0-9_]*=\S")
+
+# Shapes that look command-ish at the head but are not runnable text:
+# usage synopses with placeholder brackets, palgebra/grammar arrows.
+NOT_A_COMMAND_RE = re.compile(r"(:=|→|×|\S\s+<[a-z-]+>)")
+
+FENCE_RE = re.compile(r"^(\s*)(`{3,}|~{3,})\s*([^\s`]*)")
+
+
+def component_doc_files():
+    """components/*/docs/**/*.md -- one level of component, then any depth."""
+    out = []
+    comp_root = os.path.join(REPO, "components")
+    if not os.path.isdir(comp_root):
+        return out
+    for comp in sorted(os.listdir(comp_root)):
+        d = os.path.join(comp_root, comp, "docs")
+        if not os.path.isdir(d):
+            continue
+        for dirpath, _, filenames in os.walk(d):
+            for fn in sorted(filenames):
+                if fn.endswith(".md"):
+                    out.append(os.path.relpath(os.path.join(dirpath, fn), REPO))
+    return out
+
+
+def in_scope_files():
+    files = []
+    for f in ROOT_FILES:
+        if os.path.isfile(os.path.join(REPO, f)):
+            files.append(f)
+    for top, _ in GLOB_DIRS:
+        d = os.path.join(REPO, top)
+        if not os.path.isdir(d):
+            continue
+        for dirpath, _, filenames in os.walk(d):
+            for fn in sorted(filenames):
+                if fn.endswith(".md"):
+                    files.append(os.path.relpath(os.path.join(dirpath, fn), REPO))
+    files.extend(component_doc_files())
+    return sorted(set(files))
+
+
+def parse_fences(relpath):
+    """Return [{file,line,lang,body:[str],end_line}] for one markdown file.
+
+    Handles nested fences the way CommonMark does: an opener records its
+    own marker length, and only a marker of at least that length, of the
+    same character, with no info string, closes it.
+    """
+    path = os.path.join(REPO, relpath)
+    with open(path, encoding="utf-8", errors="replace") as fh:
+        lines = fh.read().split("\n")
+
+    fences = []
+    i = 0
+    while i < len(lines):
+        m = FENCE_RE.match(lines[i])
+        if not m:
+            i += 1
+            continue
+        indent, marker, lang = m.group(1), m.group(2), m.group(3)
+        char, need = marker[0], len(marker)
+        body = []
+        j = i + 1
+        closed = False
+        while j < len(lines):
+            m2 = FENCE_RE.match(lines[j])
+            if m2 and m2.group(2)[0] == char and len(m2.group(2)) >= need and not m2.group(3):
+                closed = True
+                break
+            body.append(lines[j])
+            j += 1
+        fences.append({
+            "file": relpath,
+            "line": i + 1,          # 1-indexed, the opening ``` line
+            "lang": lang or "",
+            "body": body,
+            "end_line": (j + 1) if closed else len(lines),
+            "closed": closed,
+        })
+        i = j + 1
+    return fences
+
+
+_FILE_LINES = {}
+
+
+def lines_between(relpath, after_line, before_line):
+    """The raw lines strictly between two 1-indexed line numbers."""
+    if relpath not in _FILE_LINES:
+        with open(os.path.join(REPO, relpath), encoding="utf-8", errors="replace") as fh:
+            _FILE_LINES[relpath] = fh.read().split("\n")
+    return _FILE_LINES[relpath][after_line:before_line - 1]
+
+
+def first_command_line(body):
+    for raw in body:
+        s = raw.strip()
+        if not s or s.startswith("#"):
+            continue
+        if s.startswith("$ "):
+            return s[2:].strip()
+        return s
+    return None
+
+
+DATA_LANGS = ("json", "edn", "clojure", "clj", "yaml", "yml", "mermaid",
+              "xml", "hl7", "java", "elisp", "diff")
+
+
+def looks_like_command(line):
+    if not line:
+        return False
+    if NOT_A_COMMAND_RE.search(line):
+        return False
+    if ENV_PREFIX_RE.match(line):
+        return True
+    head = re.split(r"[\s;|&]", line, 1)[0]
+    return head in COMMAND_HEADS or head.startswith(("bin/", "./bin/", "./"))
+
+
+def is_command_fence(f):
+    """Command iff its first real line looks like a shell invocation.
+
+    A fence tagged with a data language is data even if a line inside it
+    happens to parse as a command -- unless the page wrote an explicit
+    `$ ` prompt, which is the author saying "this is a transcript".
+    """
+    cl = first_command_line(f["body"])
+    if f["lang"] in DATA_LANGS:
+        return any(l.strip().startswith("$ ") for l in f["body"])
+    return looks_like_command(cl)
+
+
+def read_registry():
+    """Parse exercised-sources.edn just enough: :source/:script/markers.
+
+    A hand-rolled reader rather than an EDN library: this script has no
+    Clojure runtime, and the shape it needs is three string keys per map.
+    """
+    p = os.path.join(REPO, "components/docs-tooling/resources/docs-tooling/exercised-sources.edn")
+    txt = open(p, encoding="utf-8").read()
+    txt = re.sub(r"^\s*;;.*$", "", txt, flags=re.M)
+    rows = []
+    for blob in re.findall(r"\{(.*?)\}\s*(?=\{|\]|$)", txt, re.S):
+        def grab(key):
+            m = re.search(r':%s\s+"((?:[^"\\]|\\.)*)"' % key, blob)
+            return m.group(1).replace('\\"', '"') if m else None
+        src = grab("source")
+        if src:
+            rows.append({
+                "source": src,
+                "script": grab("script"),
+                "marker_open": grab("marker-open"),
+                "marker_close": grab("marker-close"),
+                "section": grab("section"),
+            })
+    return rows
+
+
+def marker_block(row):
+    """The literal command text an exerciser re-runs, between its markers."""
+    if not row["script"]:
+        return ""
+    p = os.path.join(REPO, row["script"])
+    if not os.path.isfile(p):
+        return ""
+    txt = open(p, encoding="utf-8", errors="replace").read()
+    if row["marker_open"] and row["marker_open"] in txt:
+        rest = txt.split(row["marker_open"], 1)[1]
+        if row["marker_close"] and row["marker_close"] in rest:
+            return rest.split(row["marker_close"], 1)[0]
+        return rest
+    return txt
+
+
+def main():
+    argv = sys.argv[1:]
+    tsv_only = "--tsv-only" in argv
+    summary_only = "--summary-only" in argv
+
+    registry = read_registry()
+    blocks = {}
+    for row in registry:
+        blocks.setdefault(row["source"], []).append(marker_block(row))
+
+    records = []
+    for relpath in in_scope_files():
+        fences = parse_fences(relpath)
+        for idx, f in enumerate(fences):
+            if is_command_fence(f):
+                klass = "command"
+            else:
+                # An output fence belongs to the command fence it follows
+                # in the same SECTION. Strict blank-line adjacency (the
+                # :paired extraction's rule) is too narrow here: pages
+                # routinely put a sentence of prose between the command
+                # and the output it produced. A markdown heading between
+                # the two ends the pairing -- that is the section break.
+                prev = fences[idx - 1] if idx > 0 else None
+                paired = False
+                if prev is not None and is_command_fence(prev):
+                    gap = lines_between(relpath, prev["end_line"], f["line"])
+                    paired = not any(g.lstrip().startswith("#") for g in gap)
+                klass = "output" if paired else "other"
+
+            reg = ""
+            if klass == "command":
+                cl = first_command_line(f["body"]) or ""
+                covered = any(cl and cl in b for b in blocks.get(relpath, []))
+                reg = "exercised" if covered else "bare"
+
+            records.append({
+                "file": f["file"], "line": f["line"], "lang": f["lang"] or "-",
+                "klass": klass, "reg": reg or "-",
+                "cmd": (first_command_line(f["body"]) or "")[:120],
+            })
+
+    n_cmd_ex = sum(1 for r in records if r["klass"] == "command" and r["reg"] == "exercised")
+    n_cmd_bare = sum(1 for r in records if r["klass"] == "command" and r["reg"] == "bare")
+    n_out = sum(1 for r in records if r["klass"] == "output")
+    n_other = sum(1 for r in records if r["klass"] == "other")
+
+    if not tsv_only:
+        print("== fence census: population enumerated from the tree ==")
+        print("files in scope: %d" % len(in_scope_files()))
+        print("fenced blocks total: %d" % len(records))
+        print("  command / exercised : %d" % n_cmd_ex)
+        print("  command / bare      : %d" % n_cmd_bare)
+        print("  output              : %d" % n_out)
+        print("  other               : %d" % n_other)
+        total = n_cmd_ex + n_cmd_bare + n_out + n_other
+        print("  ---- sum            : %d  (%s)"
+              % (total, "closed" if total == len(records) else "POPULATION NOT CLOSED"))
+        print()
+
+    if not summary_only:
+        print("file\tline\tlang\tclass\tregistry\tfirst_command")
+        for r in records:
+            print("%s\t%d\t%s\t%s\t%s\t%s"
+                  % (r["file"], r["line"], r["lang"], r["klass"], r["reg"], r["cmd"]))
+
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
