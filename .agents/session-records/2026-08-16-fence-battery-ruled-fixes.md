@@ -193,9 +193,41 @@ Chapter 4 not reordered. `jet` not vendored. No converter, generator,
 or engine changed; zero vendored bytes. No regression-oracle claim is
 made or owed.
 
-## Close
+## Close -- full suite, unpiped, `MAKE_EXIT` captured
 
-Full `make test` unpiped with `MAKE_EXIT` captured; block/assertion
-reconciliation and push receipts below.
+```
+MAKE_EXIT=0
+0-failures-0-errors occurrences: 640
+FAIL in / ERROR in lines: 0
+total passes: 16408
+Test results: blocks: 320
+log lines: 2485
+```
+
+An earlier attempt at this same run was killed at the harness's 10-minute
+cap (exit 143) and is NOT the run above -- recorded because a truncated
+run must never be read as a result. The run above completed in the
+background, ~25 minutes, matching the battery's own measured baseline.
+
+**Block-count reconciliation, predicted BEFORE the run.** Prediction:
+**640, unchanged.** R-F7's three new deftests land in the EXISTING
+namespace `ehrt.corpus-io.spool-test`, so they raise assertions and not
+blocks -- the prompt's "new namespace, +2 per project context" branch
+did not apply. **Outcome: 640, exactly as predicted**; `Test results:`
+blocks held at 320.
+
+**Passes reconcile with no residue.** Baseline 16,384 (`30cc335`'s own
+recorded figure, not the 16,382 in the prompt's memory -- that was the
+figure BEFORE the battery session's own C-4 deftest). The three new
+deftests carry 12 assertions (6 + 4 + 2, the first being three `is`
+across a two-framing `doseq`), and `corpus-io` sits in two of the
+project contexts `:all skip:integration` runs (`conformance`,
+`ehrt-cli`; `integration` is skipped). `16,384 + 12 x 2 = 16,408`.
+**Observed: 16,408.**
+
+`clojure -M:poly check` OK (it is `make test`'s own first step), and
+`bin/verify-nist-lock` ran and printed its six NIST coordinates.
+
+## Push receipts
 
 <!-- CLOSE-RECEIPTS -->
