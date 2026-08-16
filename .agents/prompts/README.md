@@ -161,3 +161,4 @@ Files in this directory:
   * 2026-08-15-stale-path-gate-widening.md — widen the stale-path gate to every tracked doc surface and fix 25 dead links (review-3 D1-2/D1-8)
   * 2026-08-15-review-3-fix-c-ceremony-and-category.md — review-3 fix session C: post-push-verify range derivation, build-session pipe discipline, gate category honesty
   * 2026-08-15-review-3-arc-close.md — Repo-review 3 arc close: step-7 close ADR, post-arc scoreboard, review 4's watch-list
+  * 2026-08-16-d8-5-fence-battery.md — D8-5 live fence battery: 202 fences enumerated from the tree, 58 bare fences run, riders C-4 and C-2

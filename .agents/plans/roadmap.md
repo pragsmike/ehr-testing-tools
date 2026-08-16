@@ -96,24 +96,20 @@ per item; done items move to the bottom of their section with a date and sha.
   `roadmap.md`") is a registry standing in for a population, one level
   up — the arc's own central class, in the instrument patched to catch
   it.
-- **`state_staleness_tripwire_test` enumerates filenames, not arc
-  closes** (new row, opened 2026-08-15 by the repo-review-3 arc close,
-  ADR-0139 finding C-4; the FILE is fixed, the GATE is not). The gate
-  exists to turn an arc close red if it lands without regenerating
-  `.agents/state.md` (AR-C-1). It fired correctly on ADR-0139 — and had
-  been green since 2026-08-11 because its population is *ADR files
-  whose filename matches `NNNN-*-arc-close.md`*, while the obligation
-  is "each arc close". Arcs closed under other filenames in that window
-  and it never saw them; `notes/adr/0125-manual-s5-chapter8-review-
-  close.md`'s own first line reads "the manual-review skill, arc close".
-  Measured cost: **fifty ADRs** (0090-0139) between `.agents/state.md`'s
-  last full regeneration (2026-08-08, tip `a9c3abf`) and the one this
-  close performed under an author ruling. **Fix options, for the
-  session that takes it:** read each ADR's own first line for "arc
-  close" rather than trusting the filename, or make the filename
-  convention itself a gated rule so the cheap check becomes a sound
-  one. Until then a close can still land stale by naming its file
-  anything else.
+- ~~**`state_staleness_tripwire_test` enumerates filenames, not arc
+  closes**~~ — **CLOSED 2026-08-16** by the D8-5 fence battery session,
+  which carried C-4 as a rider (opened 2026-08-15, ADR-0139 finding
+  C-4; measured cost was **fifty ADRs**, 0090-0139, of `.agents/state.md`
+  drift the gate never saw). Both fix options in the original row were
+  taken rather than one: the population now reads each ADR's own first
+  heading for "arc close", and a second assertion holds the filename
+  convention to what the headings declare, so the two readings cannot
+  drift apart again. **The row understated the defect** — enumerating
+  by heading found **two** escaping files, not the one it named:
+  `0047-scaffolding-compaction-c.md` (heading ends "arc closes") as
+  well as `0125-manual-s5-chapter8-review-close.md`. Both renamed into
+  the convention under an author ruling, 12 inbound references updated
+  across 10 files; red witnessed on both before the rename.
 - **The attic-rotation law has lapsed** (new row, opened 2026-08-15 by
   the repo-review-3 arc close, ADR-0139 finding C-3; not chartered to
   any session). This file's own `## Done` header states the law
@@ -1571,3 +1567,6 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-15 — stale-path-gate-widening — ADR-0137
 - 2026-08-15 — review-3-fix-c-ceremony-and-category — ADR-0138
 - 2026-08-15 — review-3-arc-close — ADR-0139
+- 2026-08-16 — d8-5-fence-battery — register
+  `.agents/plans/2026-08-16-fence-battery-findings.md` (ADR deferred to
+  the ruled fixes' own session, per the battery's own prompt)
