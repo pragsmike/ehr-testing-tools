@@ -1575,3 +1575,38 @@ contract)
     exercised only when they make claims about outputs; the census can
     gate bare-fence-count-on-reader-path = 0."* Recorded as handed on;
     deliberately not implemented.
+
+## From ADR-0141 — the event-log contract arc (2026-08-16)
+
+- **Charter, author verbatim:** *"Ok, add it, and make EDN be primary.
+  JSON can be derived later. This will be a priority after the immediate
+  review is done."*
+- **Ordering, author verbatim:** *"Choose a."* — the event-log contract
+  arc runs BEFORE latency realism, so that arc lands against a pinned
+  contract.
+- **Q-A — stability tier: RULED (a), public and versioned.** The schema
+  carries a version; the run manifest gains `:event-schema-version`; a
+  deprecation policy is stated in `docs/formats.md` (a key or kind is
+  marked deprecated for one minor before removal; additive change is
+  non-breaking); the schema's own test enforces that a bump accompanies
+  any non-additive diff against the committed contract.
+- **Q-B — artifact shape: RULED (a).** Malli schema in `sim-engine` as
+  the source of truth, AND a committed EDN export with a parity test, so
+  the contract is data a non-Clojure consumer can read and JSON is later
+  a projection of that EDN.
+- **Nested-`:event` collision, author verbatim:** *"describe in schema
+  (separate fact schemas) and lead the formats.md prose with the
+  warning; no rename this arc."*
+- **Shape defects, author verbatim:** *"S-1..S-5 and the Z-segment
+  asymmetry stay register rows."* Carried to the roadmap; S-3 was
+  withdrawn as correct behaviour on fresh evidence, and S-6 (`:units`
+  vs `:unit`) was found during Step 2 and joined the same set.
+- **Fence widening, author-licensed:** *"Promote the tabulator to
+  bin/event-census, author-licensed fence widening."*
+- **Step-2 acceptance, verified from a fresh clone, author verbatim:**
+  *"Two-artifact gate stands; the ObservationEntry export is accepted
+  as-is."*
+- **Added beyond the original ruling, author instruction:** *"the [:re
+  …] pattern dialect is java.util.regex"* — stated in `docs/formats.md`
+  because a consumer validating in another language is being handed a
+  specific regex flavour.

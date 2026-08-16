@@ -347,6 +347,40 @@
 ;; stayed within its own 1495-line budget at that +6 delta alone
 ;; (checked, not assumed).
 
+;; Re-derivation (2026-08-16, event-log contract arc close, `notes/adr/
+;; 0141-event-log-contract.md`): `reading-set-budget-test` went red this
+;; session -- `:onboarding` measured 2724 against its own 2690-line budget.
+;; The cause was this arc's own close: `roadmap.md` gained an arc-CLOSED row
+;; plus a register-row entry for the six event-log shape defects the author
+;; ruled stay rows, and the session-records/prompts READMEs each gained an
+;; entry.
+;;
+;; The catch earned its keep rather than merely being paid off. Measuring the
+;; red showed the register block had been written as ~50 lines of per-defect
+;; detail inside a file whose own header states "Cite sources; one line per
+;; item" -- growth of exactly the kind this budget exists to make visible, and
+;; in the one file every cold session reads. It was compressed to a citation
+;; plus a single row BEFORE any budget moved, with the full write-up left
+;; where it already lived (`.agents/plans/2026-08-16-event-log-census.md`).
+;;
+;; DISCLOSED, because the first attempt at that compression was worse than the
+;; problem it fixed: it spliced between two anchors and deleted every
+;; intervening backlog row -- the D8-5 closure, the repo-review-4 charter, and
+;; the sim-theory.edn unregistered-derivation row. Caught by reading the
+;; diffstat before committing (209 changed lines where ~35 were intended),
+;; restored from HEAD, and redone as anchored INSERTION, with the resulting
+;; diff checked to contain exactly one deletion (a single reflowed line).
+;; A slice-between-anchors edit on a file of independent rows is a data-loss
+;; shape; it is recorded here so the next session does not reach for it.
+;;
+;; Fresh actual (`wc -l` sum across all eight `:paths`, measured AFTER the
+;; restore and the corrected edit): 294 + 59 + 65 + 218 + 166 + 33 + 1606 + 258 = 2699. Re-applying the
+;; standing formula (actual x1.15, rounded up to the nearest 5): 2699 x
+;; 1.15 = 3103.85 -> 3105. Budget moves 2690 -> 3105. No other set
+;; carries `roadmap.md` or any other `:onboarding`-only path this arc
+;; touched; `:sim` and `:docs` carry `build-session/SKILL.md`, unchanged this
+;; session, so their budgets stay untouched (checked, not assumed).
+
 {:onboarding
  {:paths ["AGENTS.md"
           ;; the .agents/ index layer: one README per durable-context
@@ -368,7 +402,7 @@
   ;; because that's a different audience from "a cold task-class session",
   ;; and forcing every onboarding read to carry its cost would budget for an
   ;; activity most onboarding sessions never do (migration session 5, AR-3).
-  :budget-lines 2690}
+  :budget-lines 3105}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one

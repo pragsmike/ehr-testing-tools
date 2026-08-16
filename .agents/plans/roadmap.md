@@ -23,6 +23,33 @@ per item; done items move to the bottom of their section with a date and sha.
   change; the oracle held pure identity across all 35 roots).
 
 ## Next (backlog, no session scheduled)
+- **Event-log contract arc — CLOSED 2026-08-16 (`notes/adr/0141-event-log-contract.md`).**
+  Author-ordered before latency realism (*"Choose a."*). The ground-truth event
+  log is now a PUBLIC, VERSIONED contract: `ehrt.sim-engine.event-schema/Event`
+  (21 kinds, source and a 4,997-event census reconciled exactly), exported as
+  self-contained EDN, stamped into every manifest as `:event-schema-version`,
+  documented by a GENERATED `docs/formats.md` section led by the nested-`:event`
+  warning, and demonstrated by `bin/example-custom-emitter` behind a use-case
+  page exercised from birth. Landed red-first; zero engine, emitter or
+  vendored-byte changes. Any successor arc that changes the log's SHAPE now
+  owes a version bump or an additive-only change, enforced by
+  `event-schema-test` against a frozen baseline.
+- **Event-log shape defects — REGISTER ROWS, ruled 2026-08-16** (*"S-1..S-5 and
+  the Z-segment asymmetry stay register rows"*). Evidence and full write-up:
+  `.agents/plans/2026-08-16-event-log-census.md` (§ Shape defects). Deliberately
+  unfixed — describing current truth first, then changing it under the versioned
+  contract, is the point of the tier. **S-1** module-compiled encounters carry
+  `:reason` present-and-always-nil; **S-2** `referenced_by_attribute` care-plan
+  closures never resolve their start, so no `:care-plan-start` ever closes (not
+  the mechanism — a `careplan`-citing fixture resolves both); **S-4** the
+  `:step-rejected` reason enum is 7 wide and the census saw 1 (not a defect,
+  recorded so nothing narrows it to observation); **S-5** unrelated, seed 202
+  under `--churn` exits `:self-check-failed`, reproducible; **S-6** `:units`
+  plural on result entries vs `:unit` singular on observations, same concept;
+  **Z-segment context asymmetry** a CONSUMER defect outside this arc's fences —
+  `emit_hl7`'s ADT-family builder hands Z-templates a seven-key subset while
+  every other family hands the whole event, silently. S-3 was withdrawn as
+  correct behaviour on evidence.
 - ~~**D8-5 live fence battery — its own session, BEFORE repo review
   4**~~ — **CLOSED 2026-08-16, DISCHARGED.** Ran at `30cc335` (the
   register, 102 files / 202 blocks / 58 bare fences executed one by
@@ -193,7 +220,14 @@ per item; done items move to the bottom of their section with a date and sha.
   landing) is now FULLY CLOSED — no revisit trigger remains for this
   closure.
 - **Downstream-latency realism -- MECHANISM LANDED 2026-08-11
-  (ADR-0109), DEMO LANDED 2026-08-11 (ADR-0110), arc CLOSED.** New chartering direction, author
+  (ADR-0109), DEMO LANDED 2026-08-11 (ADR-0110), arc CLOSED.**
+  *Lands against Event schema v1.0.0* (ADR-0141, 2026-08-16): further
+  latency-realism work now sits downstream of a versioned event contract, so a
+  change altering the log's shape owes a version bump rather than a silent edit.
+  `:latency` never reaches `engine/config-keys` (ADR-0109), so today's mechanism
+  is emit-only and contract-neutral.
+
+  New chartering direction, author
   verbatim, 2026-08-11 (`.agents/rulings.md`, "From ADR-0107"): *"I want
   to make sure that the simulation faithfully simulates what happens in
   real life: lab results take time to come back, providers take time to

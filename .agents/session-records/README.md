@@ -215,3 +215,4 @@ Files in this directory:
   * 2026-08-15-review-3-arc-close.md — Repo-review 3 arc close: step-7 close ADR, post-arc scoreboard, review 4's watch-list
   * 2026-08-16-d8-5-fence-battery.md — D8-5 live fence battery: 202 fences enumerated from the tree, 58 bare fences run, riders C-4 and C-2
   * 2026-08-16-fence-battery-ruled-fixes.md — the D8-5 battery's ruled fixes: six pages fixed-or-disclosed, intake made diagnosable, D8-5 discharged
+  * 2026-08-16-event-log-contract-arc.md — the ground-truth event log's contract: census, Event schema, generated formats.md section, custom-emitter use case

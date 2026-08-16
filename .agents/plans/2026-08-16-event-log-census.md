@@ -618,7 +618,7 @@ explicitly allows a nil `:order-event-id` for. Step 2's fixture, whose
 order IS in-horizon, resolves `:order-event-id 6`. **Not a register
 row.** The schema types the field `[:maybe :int]` and says why.
 
-**S-4 — the `:step-rejected` reason enum is 6 wide; the census
+**S-4 — the `:step-rejected` reason enum is 7 wide; the census
 observed 1.** `engine/documented-step-rejection-reasons` names
 `:illegal-cancel-admit`, `:illegal-cancel-transfer`,
 `:illegal-cancel-transfer-bed-reoccupied`, `:illegal-cancel-discharge`,
@@ -628,6 +628,17 @@ occurred (3 events across five churn seeds). Not a defect — the
 schema should reference the existing var rather than an
 observation-derived set, which is what Step 2 will do. Recorded so
 the "closed enum from the census" instinct does not narrow it.
+
+**S-6 — `:units` plural in one place, `:unit` singular in another,
+for the same concept.** A `:result-available` event's `:results`
+entries carry `:units`; an `:observation` event and a
+`:diagnostic-report`'s `:observations` children carry `:unit`. Both
+mean the unit of measure of a single value. Nothing is wrong with
+either log, and both emitters read the right one — but a consumer
+writing one unit-handling function for "an observed value" will get it
+right for two of the three shapes and silently empty for the third.
+Found while writing the schema (`ResultEntry`'s own docstring records
+it too); described, not fixed, under the same rule as the rest.
 
 **S-5 — an unrelated engine finding, disclosed not pursued.** Seed
 202 under `--churn` with the ed-tuesday facility exits `:status
