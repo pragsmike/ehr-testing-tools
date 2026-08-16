@@ -1529,3 +1529,49 @@ contract)
   gate that guards `.agents/state.md`, which had let that file drift
   fifty ADRs because it enumerates `*-arc-close.md` filenames rather
   than arc closes.
+- **"Accept recommendations."** [author, 2026-08-16, on the D8-5 fence
+  battery's own disposition table,
+  `.agents/plans/2026-08-16-fence-battery-findings.md:325-334`;
+  executed the same day by `notes/adr/0140-fence-battery-ruled-fixes.md`].
+  Binds the register's per-finding recommendations and the session
+  shape: **the battery's fixes are their own micro-session with their
+  own ADR**, so D8-5's lapse closes on the record before the
+  event-log-contract arc starts. Per finding, as ruled and landed:
+  - **R-F1** (`04-time-on-the-wire.md:23` plays a corpus its chapter
+    creates 45 lines later) — **fix the page**, one sentence, and
+    **do not reorder the chapter**: the "symptom first, then
+    mechanism" pedagogy is the author's, and move-don't-improve
+    applies to prose too. YELLOW -> GREEN.
+  - **R-F2** (`08-your-own-data.md:82` needs a Synthea corpus no
+    chapter generates) — **fix the page**, one line naming the
+    prerequisite. The ruling's own premise (that Chapter 2 generates
+    it) does not hold against the tree; fixed forward to the ruled
+    substance, pointing at the root Quickstart. YELLOW -> GREEN.
+  - **R-F3** (`polylith-brief.md` x7 teach bare `poly`) — **fix
+    minimally, provenance-preserving**: ONE note at the head of the
+    document, the seven fences verbatim. **A disclosed convention is a
+    real disposition** — the fences still fail if pasted, and the note
+    is what makes that the reader's informed choice rather than the
+    document's undisclosed breakage.
+  - **R-F4** (`formats.md:506`/`:518` placeholders, un-vendored `jet`)
+    — **accept-with-disclosure**; mark the placeholders, name `jet` as
+    optional and external, **do not vendor it**.
+  - **R-F5** (research note curls `messages.out` into the repo root) —
+    **fix the page**: output under `out/`, the single tool-owned
+    output root.
+  - **R-F6** (`simulate-your-facility.md:169` needs an authored
+    config) — **accept-with-disclosure**: one sentence turns a
+    surprising exit 2 into a taught expectation.
+  - **R-F7** (the mutate->intake pipe masks `:file-not-found` behind
+    `:malformed-mllp-frame`) — **fix the tool**, diagnosability only.
+    The input gap itself stays closed-as-fine (review 2's D8-9); the
+    fix lives at the intake seam, distinguishing before parsing, with
+    engines untouched.
+  - **R-F8** (56 of 74 command fences unexercised) — **NOT this
+    session's work**: ruled to **review 4's D2** as a standing policy
+    question, with the proposed rule as the default — *"every fence a
+    reader meets on the README / SETUP / manual / use-case path is
+    exercised; developer-facing briefs and research notes are
+    exercised only when they make claims about outputs; the census can
+    gate bare-fence-count-on-reader-path = 0."* Recorded as handed on;
+    deliberately not implemented.

@@ -333,6 +333,18 @@ Nothing below is decided. Ordered by reader impact.
 | `mutate-output-piped-straight-into-intake.md:16` pipeline masks `:file-not-found` behind `:malformed-mllp-frame` | **fix the tool** (diagnosability), or accept — the input gap itself is already ruled close-as-fine (review 2 D8-9) |
 | 58 bare fences / 76 command fences have no exerciser | **standing question for review 4**: is the exercised-sources registry meant to grow toward the tree, or is 24% coverage the intended equilibrium? The battery can state the number; only a ruling can say whether it is the right one. |
 
+**CLOSED 2026-08-16 — ruled and executed.** Author ruling *"Accept
+recommendations."*; every row above dispositioned in its own
+micro-session, recorded in
+[`notes/adr/0140-fence-battery-ruled-fixes.md`](../../notes/adr/0140-fence-battery-ruled-fixes.md).
+Four page fixes and the `poly`-alias note at `14c9348`; the two
+accept-with-disclosure rows at `43aec70`; R-F7's tool fix, red-first,
+at `07a9566`. The last row (76% unexercised) was ruled **out** of that
+session and handed to **review 4's D2** with its proposed rule quoted
+in the ADR. Rows above are left exactly as the battery wrote them —
+the register records what was found, the ADR records what was done
+about it.
+
 ---
 
 ## Riders carried by this session

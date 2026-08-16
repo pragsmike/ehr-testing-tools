@@ -23,20 +23,17 @@ per item; done items move to the bottom of their section with a date and sha.
   change; the oracle held pure identity across all 35 roots).
 
 ## Next (backlog, no session scheduled)
-- **D8-5 live fence battery — its own session, BEFORE repo review 4**
-  (chartered 2026-08-15 by the repo-review-3 arc close, author ruling
-  Q2 "a.", `notes/ADRs.md` ADR-0139). Execute every live command fence
-  across `README.md`, `docs/**`, the 21 use-case pages,
-  `components/*/docs/**` and `demos/**`, plus `make quickstart` and
-  `make integration` (the latter needs a primed artifact cache).
-  **Standalone and ahead of review 4 regardless of the ADR count**,
-  because this probe has now lapsed twice: review 2 ran it through a
-  dedicated sub-agent, review 3 could not (register row D8-5, `intake`)
-  and held D8 at YELLOW on an unrun probe rather than scoring the
-  evidence it did have. Folding it into review 4 would make it compete
-  for budget with the same battery that displaced it last time. The
-  window it covers landed the entire user manual (ADR-0119-0125) plus
-  ADR-0134's review — exactly this surface, still unverified.
+- ~~**D8-5 live fence battery — its own session, BEFORE repo review
+  4**~~ — **CLOSED 2026-08-16, DISCHARGED.** Ran at `30cc335` (the
+  register, 102 files / 202 blocks / 58 bare fences executed one by
+  one); ruled *"Accept recommendations."* and executed the same day by
+  `notes/adr/0140-fence-battery-ruled-fixes.md` — six pages
+  fixed-or-disclosed and one tool fix (`intake` distinguishes
+  `:empty-input` and `:upstream-error` from `:malformed-mllp-frame`).
+  The probe that lapsed across two consecutive reviews is closed on
+  the record. **One row survives it into review 4's D2**: 56 of 74
+  command fences still have no exerciser — ruled out of the fix
+  session, handed on with its proposed rule quoted in ADR-0140.
 - **Repo review 4 — chartered after roughly 15 ADRs from ADR-0139,
   i.e. at approximately ADR-0154** (author ruling Q3 "a.", 2026-08-15,
   `notes/ADRs.md` ADR-0139). **This is the standing cadence rule from
@@ -49,8 +46,10 @@ per item; done items move to the bottom of their section with a date and sha.
   Inherits review 3's twelve-row watch-list, ADR-0139's "Review 4's
   inherited watch-list" section: **D1-9** (backticked-path shorthand,
   open by ruling R-B2), **D1-10** (denylist-family widening, open by
-  ruling R-B3), **D8-5** (the row above; if it has run by then, its
-  results), **D3-1** (restore the local cold-clone probe or retire it
+  ruling R-B3), **D8-5** (RUN and DISCHARGED 2026-08-16, ADR-0140 —
+  what D2 inherits is its one surviving row: 56 of 74 command fences
+  unexercised, and whether that is the intended equilibrium),
+  **D3-1** (restore the local cold-clone probe or retire it
   by name — twice substituted is where a method quietly becomes a
   former method), **D6-4**, **D1-4**'s method note (compare the two
   sets, not their cardinalities), the three rows below, and the H-2 /
@@ -1570,3 +1569,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
 - 2026-08-16 — d8-5-fence-battery — register
   `.agents/plans/2026-08-16-fence-battery-findings.md` (ADR deferred to
   the ruled fixes' own session, per the battery's own prompt)
+- 2026-08-16 — fence-battery-ruled-fixes — ADR-0140
