@@ -501,10 +501,12 @@ which findings are worth alerting on — see
 
 `--json | jq` is the zero-install route, and for most shell use it's
 the right one — every command already accepts `--json`, so there's
-nothing to install beyond `jq` itself:
+nothing to install beyond `jq` itself. Both strips below are
+illustrative shapes rather than runnable commands — `<…>` marks a path
+you supply:
 
 ```sh
-bin/ehrt gate v2 some/corpus --json | jq '.payload.totals'
+bin/ehrt gate v2 <your-corpus-dir> --json | jq '.payload.totals'
 ```
 
 For querying EDN directly, or for rescuing an existing `--report` file
@@ -513,11 +515,15 @@ without a full rerun — [`jet`](https://github.com/borkdude/jet)
 (borkdude) reads and writes EDN, JSON, and Transit, and is this
 family's natural `jq`-equivalent for EDN. Its own README is the
 authoritative reference for its query syntax; the conversion path alone
-already covers the common rescue case:
+already covers the common rescue case. `jet` is an optional external
+tool — it is neither vendored here nor on this workspace's PATH, so
+install it yourself from
+[its own repository](https://github.com/borkdude/jet) before running
+the strip below:
 
 ```sh
 # Rescue an existing --report EDN file into JSON for jq.
-jet --to json < some/report.edn | jq '.totals'
+jet --to json < <your-report>.edn | jq '.totals'
 ```
 
 Neither `--json` nor `jet` changes what's canonical: EDN is still the

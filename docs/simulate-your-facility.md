@@ -166,6 +166,11 @@ those and edit.
 installing the three prerequisites and verifying they work — come
 back here once `clojure -X:test` passes.)
 
+Save the config block above as `stmarys.edn` (or point `--config` at
+one of the runnable configs under [`demos/`](../demos/) — say
+`demos/scenarios/ed-tuesday/config.edn`); with no such file present the
+command exits 2 with `:config-not-found`.
+
 ```bash
 bin/ehrt sim run --seed 42 --patients 40 --churn \
         --config stmarys.edn --emit hl7
