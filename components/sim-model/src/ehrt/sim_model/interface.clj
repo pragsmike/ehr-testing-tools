@@ -18,6 +18,15 @@
 
 (def Concept pathway/Concept)
 (def ConditionAnnotation pathway/ConditionAnnotation)
+;; Exported by the event-log contract arc (2026-08-16): a
+;; `:diagnostic-report` event's own `:observations` children ARE
+;; `ObservationEntry`, and `ehrt.sim-engine.event-schema` reuses this
+;; one definition rather than restating the shape. A restatement would
+;; be exactly the mirror `ehrt.sim.manifest`'s own retirement
+;; disclosure warns about -- a copy validates against itself and
+;; agrees with its own mistake. Additive: one new name on this seam,
+;; nothing moved.
+(def ObservationEntry pathway/ObservationEntry)
 (def Citation pathway/Citation)
 (def Step pathway/Step)
 (def PathwaysConfig pathway/PathwaysConfig)

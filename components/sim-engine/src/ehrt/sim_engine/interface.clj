@@ -34,6 +34,7 @@
     state-reader surface above)."
   (:require [ehrt.sim-engine.churn :as churn]
             [ehrt.sim-engine.engine :as engine]
+            [ehrt.sim-engine.event-schema :as event-schema]
             [ehrt.sim-engine.order-profiles :as order-profiles]))
 
 ;; --- orchestration surface (run.clj's own engine + churn wiring;
@@ -53,5 +54,25 @@
 ;; --- acceptance surface (check.clj's own invariant catalog) ----------------
 
 (def documented-step-rejection-reasons engine/documented-step-rejection-reasons)
+
+;; --- contract surface (event-log contract arc, 2026-08-16) ----------------
+;;
+;; The ground-truth event log's own schema, and the version `ehrt.sim.
+;; manifest` stamps into every run's manifest as :event-schema-version
+;; (author ruling Q-A (a): the log is a public, versioned contract, so a
+;; consumer holding an events.edn can tell which contract produced it).
+;;
+;; `Event` is exported here for the CONSUMER-CONFORMANCE tests in
+;; sim-emit-hl7, sim-emit-fhir, and sim-check -- the three built-in
+;; consumers validating their own INPUT against the explicit contract
+;; instead of against a shape reverse-engineered from our HL7 emitter.
+;; Nothing in any production path validates: the contract costs no
+;; runtime.
+
+(def event-schema-version event-schema/schema-version)
+(def Event event-schema/Event)
+(def valid-event? event-schema/valid-event?)
+(def explain-event event-schema/explain-event)
+(def run-t-monotone? event-schema/run-t-monotone?)
 (def default-profiles order-profiles/default-profiles)
 (def abnormal-flag order-profiles/abnormal-flag)

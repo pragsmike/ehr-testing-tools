@@ -148,7 +148,27 @@ palgebra-examples:
 	python3 components/palgebra/tools/resource_equations_to_mermaid.py components/palgebra/examples/deliberated-choice-equations.txt -o components/palgebra/examples/deliberated-choice-flow.mermaid
 	@echo "Regenerated components/palgebra/examples/*-flow*.mermaid"
 
-docsgen: pipeline use-cases operators-doc cli-doc sim-theory palgebra-examples
+# Regenerates components/sim-engine/resources/sim-engine/event-schema.edn
+# from ehrt.sim-engine.event-schema (author ruling Q-B (a), 2026-08-16:
+# EDN primary, the Clojure source of truth exported as data a
+# non-Clojure consumer can read). On `docsgen`, so CI's freshness diff
+# catches a source change whose export was never regenerated -- the
+# published contract can never lag the code.
+event-schema-export:
+	clojure -X:dev ehrt.sim-engine.event-schema/write-export!
+	@echo "Regenerated components/sim-engine/resources/sim-engine/event-schema.edn"
+
+# NOT on `docsgen`, deliberately. This freezes the BASELINE the
+# stability gate measures against, and is run ONLY when
+# `ehrt.sim-engine.event-schema/schema-version` is bumped. Regenerating
+# it on every docsgen would make the gate compare the schema against
+# itself -- always empty, always green, and worth nothing. See the
+# two-artifact comment in event_schema.clj.
+event-schema-freeze:
+	clojure -X:dev ehrt.sim-engine.event-schema/write-baseline!
+	@echo "Froze components/sim-engine/resources/sim-engine/event-schema-baseline.edn at the current schema-version"
+
+docsgen: pipeline use-cases operators-doc cli-doc sim-theory palgebra-examples event-schema-export
 
 lint-pipeline:
 	clojure -X:dev ehrt.docs-tooling.lint/lint-pipeline!

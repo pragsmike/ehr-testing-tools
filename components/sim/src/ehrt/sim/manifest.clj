@@ -34,7 +34,8 @@
   its own now-retired test (`ehrt.provenance.interface/valid-v1-1?` is
   the real predicate; `build`'s own callers never validated its
   output, they just used it)."
-  (:require [ehrt.sim.version :as version]))
+  (:require [ehrt.sim.version :as version]
+            [ehrt.sim-engine.interface :as engine]))
 
 (defn environment
   []
@@ -61,6 +62,21 @@
   nothing downstream learns to tolerate their absence."
   [{:keys [seed engine-params config invocation version sha256]}]
   {:schema-version "1.1"
+   ;; Author ruling Q-A (a), 2026-08-16 (event-log contract arc): the
+   ;; ground-truth event log is a PUBLIC, VERSIONED contract, so every
+   ;; run records which version of it produced this log. A consumer
+   ;; holding an events.edn and its manifest can therefore tell whether
+   ;; the contract it built against still applies -- without that, a
+   ;; schema change and a schema break look identical from the outside,
+   ;; which is the whole problem the arc exists to fix.
+   ;;
+   ;; Distinct from :schema-version above, which versions the MANIFEST.
+   ;; Top-level rather than tucked inside :generator because it
+   ;; describes the artifact, not the tool. ManifestV1_1 is an open map,
+   ;; so this is additive at the provenance seam: no shared schema
+   ;; changes, and no non-sim corpus grows a key that means nothing to
+   ;; it.
+   :event-schema-version engine/event-schema-version
    :stage :simulated
    :generator {:name "ehrt.sim"
                :version (or version version/version)

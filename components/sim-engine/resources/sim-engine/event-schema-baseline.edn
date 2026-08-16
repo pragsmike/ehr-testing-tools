@@ -1,0 +1,699 @@
+;; GENERATED and FROZEN -- do not edit by hand, and do not
+;; regenerate as a matter of routine.
+;;
+;; This is the last VERSIONED event contract: the baseline
+;; ehrt.sim-engine.event-schema-test measures the live schema against
+;; to decide whether a change was additive (non-breaking, no version
+;; bump owed) or not (bump owed). It is deliberately NOT on `make
+;; docsgen`: an artifact regenerated alongside the source it is meant
+;; to check would make the gate compare the schema against itself.
+;;
+;; Re-freeze ONLY when bumping schema-version, with
+;; `make event-schema-freeze`.
+{:event-schema-version "1.0.0",
+ :schema
+ [:multi
+  {:dispatch :event,
+   :doc
+   "One ground-truth event. The log is a vector of these, in run order."}
+  [:registered
+   [:map
+    {:doc
+     "A patient enters the run: identity assigned, demographics sampled, any pre-horizon clinical history attached.",
+     :transition
+     "Creates the patient's fold origin; :status stays :new.",
+     :closed true}
+    [:event [:= :registered]]
+    [:t :int]
+    [:participants
+     [:vector
+      [:map
+       {:closed true}
+       [:patient-id :string]
+       [:role [:enum :subject :survivor :merged]]]]]
+    [:warm-up :boolean]
+    [:active-mrn :string]
+    [:persona
+     [:map
+      [:name [:map [:family :string] [:given :string]]]
+      [:sex [:enum :female :male]]
+      [:dob [:re "^\\d{4}-\\d{2}-\\d{2}$"]]
+      [:age :int]
+      [:address
+       [:map
+        [:street :string]
+        [:city :string]
+        [:state :string]
+        [:zip :string]]]
+      [:phone [:re "^\\d{3}-\\d{3}-\\d{4}$"]]
+      [:ssn [:re "^\\d{3}-\\d{2}-\\d{4}$"]]
+      [:payer
+       [:map
+        [:id :string]
+        [:name :string]
+        [:type [:enum :medicare :medicaid :commercial :self-pay]]]]
+      [:race {:optional true} :string]
+      [:socioeconomic-category {:optional true} :string]
+      [:state {:optional true} :string]]]
+    [:pre-horizon-facts
+     {:optional true}
+     [:vector
+      [:map
+       {:closed true}
+       [:event
+        [:enum
+         :condition-onset
+         :condition-end
+         :medication-order
+         :medication-end
+         :care-plan-start
+         :care-plan-end]]
+       [:codes
+        [:maybe
+         [:vector
+          [:map
+           [:system :keyword]
+           [:code :string]
+           [:display {:optional true} :string]]]]]
+       [:citation [:map [:module :string] [:state :keyword]]]
+       [:references [:maybe :int]]]]]]]
+  [:admission
+   [:map
+    {:doc
+     "A patient is admitted to a bed, allocated by the ward ladder.",
+     :transition
+     ":new -> :admitted; sets :location, :home-ward, :attending, :admitted-at.",
+     :closed true}
+    [:event [:= :admission]]
+    [:t :int]
+    [:participants
+     [:vector
+      [:map
+       {:closed true}
+       [:patient-id :string]
+       [:role [:enum :subject :survivor :merged]]]]]
+    [:warm-up :boolean]
+    [:active-mrn :string]
+    [:attending :string]
+    [:home-ward :string]
+    [:location
+     [:map
+      {:closed true}
+      [:ward :string]
+      [:bed :string]
+      [:placement [:enum :licensed :surge]]]]
+    [:forced :boolean]
+    [:reason
+     [:maybe
+      [:or
+       :string
+       [:map
+        [:system :keyword]
+        [:code :string]
+        [:display {:optional true} :string]]]]]
+    [:citation
+     {:optional true}
+     [:map [:module :string] [:state :keyword]]]
+    [:conditions
+     {:optional true}
+     [:vector
+      [:map
+       [:event [:enum :condition-onset :condition-end]]
+       [:codes
+        {:optional true}
+        [:maybe
+         [:vector
+          [:map
+           [:system :keyword]
+           [:code :string]
+           [:display {:optional true} :string]]]]]
+       [:citation [:map [:module :string] [:state :keyword]]]
+       [:references {:optional true} [:maybe :int]]]]]]]
+  [:transfer
+   [:map
+    {:doc
+     "An admitted patient moves to another bed, either by a pathway step or because a bed they were waiting for came free.",
+     :transition "Stays :admitted; rewrites :location and :home-ward.",
+     :closed true}
+    [:event [:= :transfer]]
+    [:t :int]
+    [:participants
+     [:vector
+      [:map
+       {:closed true}
+       [:patient-id :string]
+       [:role [:enum :subject :survivor :merged]]]]]
+    [:warm-up :boolean]
+    [:active-mrn :string]
+    [:attending :string]
+    [:from
+     [:map
+      {:closed true}
+      [:ward :string]
+      [:bed :string]
+      [:placement [:enum :licensed :surge]]]]
+    [:location
+     [:map
+      {:closed true}
+      [:ward :string]
+      [:bed :string]
+      [:placement [:enum :licensed :surge]]]]
+    [:home-ward :string]
+    [:forced :boolean]
+    [:bed-ready :boolean]
+    [:placement {:optional true} [:enum :licensed :surge]]]]
+  [:discharge
+   [:map
+    {:doc
+     "A patient leaves; an expired disposition marks a death, which vacates no bed.",
+     :transition
+     ":admitted -> :discharged (or :expired); sets :discharged-at.",
+     :closed true}
+    [:event [:= :discharge]]
+    [:t :int]
+    [:participants
+     [:vector
+      [:map
+       {:closed true}
+       [:patient-id :string]
+       [:role [:enum :subject :survivor :merged]]]]]
+    [:warm-up :boolean]
+    [:active-mrn :string]
+    [:attending :string]
+    [:location
+     [:map
+      {:closed true}
+      [:ward :string]
+      [:bed :string]
+      [:placement [:enum :licensed :surge]]]]
+    [:citation
+     {:optional true}
+     [:map [:module :string] [:state :keyword]]]
+    [:disposition {:optional true} [:enum :expired]]
+    [:codes
+     {:optional true}
+     [:vector
+      [:map
+       [:system :keyword]
+       [:code :string]
+       [:display {:optional true} :string]]]]]]
+  [:cancel-admit
+   [:map
+    {:doc
+     "An admission is retracted as never having happened (HL7v2 A11).",
+     :transition ":admitted -> :new; clears :location and :home-ward.",
+     :closed true}
+    [:event [:= :cancel-admit]]
+    [:t :int]
+    [:participants
+     [:vector
+      [:map
+       {:closed true}
+       [:patient-id :string]
+       [:role [:enum :subject :survivor :merged]]]]]
+    [:warm-up :boolean]
+    [:active-mrn :string]
+    [:cancels-event-id :int]]]
+  [:cancel-transfer
+   [:map
+    {:doc
+     "A transfer is retracted and the patient reinstated to where they were (HL7v2 A12).",
+     :transition
+     "Stays :admitted; restores the pre-transfer :location and :home-ward.",
+     :closed true}
+    [:event [:= :cancel-transfer]]
+    [:t :int]
+    [:participants
+     [:vector
+      [:map
+       {:closed true}
+       [:patient-id :string]
+       [:role [:enum :subject :survivor :merged]]]]]
+    [:warm-up :boolean]
+    [:active-mrn :string]
+    [:cancels-event-id :int]
+    [:home-ward [:maybe :string]]
+    [:location
+     [:maybe
+      [:map
+       {:closed true}
+       [:ward :string]
+       [:bed :string]
+       [:placement [:enum :licensed :surge]]]]]
+    [:in-error {:optional true} :boolean]]]
+  [:cancel-discharge
+   [:map
+    {:doc
+     "A discharge is retracted and the patient reinstated (HL7v2 A13).",
+     :transition
+     ":discharged -> :admitted; restores :location, :home-ward, :attending.",
+     :closed true}
+    [:event [:= :cancel-discharge]]
+    [:t :int]
+    [:participants
+     [:vector
+      [:map
+       {:closed true}
+       [:patient-id :string]
+       [:role [:enum :subject :survivor :merged]]]]]
+    [:warm-up :boolean]
+    [:active-mrn :string]
+    [:cancels-event-id :int]
+    [:home-ward [:maybe :string]]
+    [:location
+     [:maybe
+      [:map
+       {:closed true}
+       [:ward :string]
+       [:bed :string]
+       [:placement [:enum :licensed :surge]]]]]
+    [:attending [:maybe :string]]]]
+  [:bed-swap
+   [:map
+    {:doc
+     "Two admitted patients exchange beds in one atomic event (HL7v2 A17).",
+     :transition
+     "Both stay :admitted; each takes the other's :location.",
+     :closed true}
+    [:event [:= :bed-swap]]
+    [:t :int]
+    [:participants
+     [:vector
+      [:map
+       {:closed true}
+       [:patient-id :string]
+       [:role [:enum :subject :survivor :merged]]]]]
+    [:warm-up :boolean]
+    [:swap
+     [:map-of
+      :string
+      [:map
+       {:closed true}
+       [:active-mrn :string]
+       [:from
+        [:map
+         {:closed true}
+         [:ward :string]
+         [:bed :string]
+         [:placement [:enum :licensed :surge]]]]
+       [:to
+        [:map
+         {:closed true}
+         [:ward :string]
+         [:bed :string]
+         [:placement [:enum :licensed :surge]]]]
+       [:attending :string]]]]]]
+  [:merge
+   [:map
+    {:doc
+     "Two patient records are found to be one person; the survivor absorbs the merged record's MRNs (HL7v2 A40).",
+     :transition
+     "Survivor keeps its status and gains the merged MRNs; the merged patient becomes :merged and emits nothing further.",
+     :closed true}
+    [:event [:= :merge]]
+    [:t :int]
+    [:participants
+     [:vector
+      [:map
+       {:closed true}
+       [:patient-id :string]
+       [:role [:enum :subject :survivor :merged]]]]]
+    [:warm-up :boolean]
+    [:surviving-mrn :string]
+    [:merged-mrn :string]
+    [:merged-mrns [:set :string]]]]
+  [:order-placed
+   [:map
+    {:doc "A diagnostic order is placed against an order profile.",
+     :transition "No state change; the log itself is the record.",
+     :closed true}
+    [:event [:= :order-placed]]
+    [:t :int]
+    [:participants
+     [:vector
+      [:map
+       {:closed true}
+       [:patient-id :string]
+       [:role [:enum :subject :survivor :merged]]]]]
+    [:warm-up :boolean]
+    [:active-mrn :string]
+    [:profile :keyword]
+    [:concept
+     [:map
+      [:system :keyword]
+      [:code :string]
+      [:display {:optional true} :string]]]
+    [:location
+     [:map
+      {:closed true}
+      [:ward :string]
+      [:bed :string]
+      [:placement [:enum :licensed :surge]]]]
+    [:attending :string]]]
+  [:result-available
+   [:map
+    {:doc
+     "An order's results come back, one entry per analyte, with abnormal flags already computed against each reference range.",
+     :transition "Appends to the patient's :observations accumulator.",
+     :closed true}
+    [:event [:= :result-available]]
+    [:t :int]
+    [:participants
+     [:vector
+      [:map
+       {:closed true}
+       [:patient-id :string]
+       [:role [:enum :subject :survivor :merged]]]]]
+    [:warm-up :boolean]
+    [:active-mrn :string]
+    [:profile :keyword]
+    [:order-event-id :int]
+    [:concept
+     [:map
+      [:system :keyword]
+      [:code :string]
+      [:display {:optional true} :string]]]
+    [:location
+     [:map
+      {:closed true}
+      [:ward :string]
+      [:bed :string]
+      [:placement [:enum :licensed :surge]]]]
+    [:attending :string]
+    [:results
+     [:vector
+      [:map
+       {:closed true}
+       [:concept
+        [:map
+         [:system :keyword]
+         [:code :string]
+         [:display {:optional true} :string]]]
+       [:units :string]
+       [:value number?]
+       [:reference-range
+        [:map {:closed true} [:low number?] [:high number?]]]
+       [:abnormal-flag [:enum :normal :low :high]]]]]]]
+  [:outpatient-visit
+   [:map
+    {:doc
+     "An ambulatory encounter opens; it occupies no bed (HL7v2 A04).",
+     :transition
+     ":new -> :admitted with :class :outpatient and a nil :location -- the one sanctioned admitted-without-a-bed case.",
+     :closed true}
+    [:event [:= :outpatient-visit]]
+    [:t :int]
+    [:participants
+     [:vector
+      [:map
+       {:closed true}
+       [:patient-id :string]
+       [:role [:enum :subject :survivor :merged]]]]]
+    [:warm-up :boolean]
+    [:active-mrn :string]
+    [:attending :string]
+    [:reason
+     [:maybe
+      [:or
+       :string
+       [:map
+        [:system :keyword]
+        [:code :string]
+        [:display {:optional true} :string]]]]]
+    [:citation
+     {:optional true}
+     [:map [:module :string] [:state :keyword]]]
+    [:conditions
+     {:optional true}
+     [:vector
+      [:map
+       [:event [:enum :condition-onset :condition-end]]
+       [:codes
+        {:optional true}
+        [:maybe
+         [:vector
+          [:map
+           [:system :keyword]
+           [:code :string]
+           [:display {:optional true} :string]]]]]
+       [:citation [:map [:module :string] [:state :keyword]]]
+       [:references {:optional true} [:maybe :int]]]]]]]
+  [:outpatient-visit-end
+   [:map
+    {:doc
+     "An ambulatory encounter closes. Deliberately renders no HL7 message -- many real ambulatory feeds send an A04 and nothing else.",
+     :transition ":admitted -> :discharged; sets :discharged-at.",
+     :closed true}
+    [:event [:= :outpatient-visit-end]]
+    [:t :int]
+    [:participants
+     [:vector
+      [:map
+       {:closed true}
+       [:patient-id :string]
+       [:role [:enum :subject :survivor :merged]]]]]
+    [:warm-up :boolean]
+    [:active-mrn :string]
+    [:attending [:maybe :string]]
+    [:citation
+     {:optional true}
+     [:map [:module :string] [:state :keyword]]]]]
+  [:procedure
+   [:map
+    {:doc
+     "A procedure is performed, cited back to the module state that produced it.",
+     :transition "No state change; the log itself is the record.",
+     :closed true}
+    [:event [:= :procedure]]
+    [:t :int]
+    [:participants
+     [:vector
+      [:map
+       {:closed true}
+       [:patient-id :string]
+       [:role [:enum :subject :survivor :merged]]]]]
+    [:warm-up :boolean]
+    [:active-mrn :string]
+    [:codes
+     [:vector
+      [:map
+       [:system :keyword]
+       [:code :string]
+       [:display {:optional true} :string]]]]
+    [:citation
+     {:optional true}
+     [:map [:module :string] [:state :keyword]]]]]
+  [:observation
+   [:map
+    {:doc
+     "An unsolicited clinical finding, not tied to any order -- a single measured or coded value.",
+     :transition
+     "Appends one entry to the patient's :observations accumulator.",
+     :closed true}
+    [:event [:= :observation]]
+    [:t :int]
+    [:participants
+     [:vector
+      [:map
+       {:closed true}
+       [:patient-id :string]
+       [:role [:enum :subject :survivor :merged]]]]]
+    [:warm-up :boolean]
+    [:active-mrn :string]
+    [:codes
+     [:vector
+      [:map
+       [:system :keyword]
+       [:code :string]
+       [:display {:optional true} :string]]]]
+    [:value {:optional true} number?]
+    [:unit {:optional true} :string]
+    [:value-code
+     {:optional true}
+     [:map
+      [:system :keyword]
+      [:code :string]
+      [:display {:optional true} :string]]]
+    [:category {:optional true} :string]
+    [:reference-range
+     {:optional true}
+     [:map {:closed true} [:low number?] [:high number?]]]
+    [:interpretation {:optional true} [:enum :normal :low :high]]
+    [:citation
+     {:optional true}
+     [:map [:module :string] [:state :keyword]]]]]
+  [:diagnostic-report
+   [:map
+    {:doc
+     "A panel of observations reported together as one document -- ONE event carrying all children, never one event per child.",
+     :transition "Appends one :observations entry per child.",
+     :closed true}
+    [:event [:= :diagnostic-report]]
+    [:t :int]
+    [:participants
+     [:vector
+      [:map
+       {:closed true}
+       [:patient-id :string]
+       [:role [:enum :subject :survivor :merged]]]]]
+    [:warm-up :boolean]
+    [:active-mrn :string]
+    [:observations
+     [:vector
+      [:map
+       [:codes
+        [:vector
+         [:map
+          [:system :keyword]
+          [:code :string]
+          [:display {:optional true} :string]]]]
+       [:value {:optional true} number?]
+       [:unit {:optional true} :string]
+       [:value-code
+        {:optional true}
+        [:map
+         [:system :keyword]
+         [:code :string]
+         [:display {:optional true} :string]]]
+       [:category {:optional true} :string]
+       [:reference-range
+        {:optional true}
+        [:map [:low number?] [:high number?]]]
+       [:interpretation {:optional true} [:enum :normal :low :high]]]]]
+    [:codes
+     {:optional true}
+     [:vector
+      [:map
+       [:system :keyword]
+       [:code :string]
+       [:display {:optional true} :string]]]]
+    [:citation
+     {:optional true}
+     [:map [:module :string] [:state :keyword]]]]]
+  [:medication-order
+   [:map
+    {:doc "A medication is prescribed.",
+     :transition
+     "Opens an :active entry in the patient's :medication-orders accumulator.",
+     :closed true}
+    [:event [:= :medication-order]]
+    [:t :int]
+    [:participants
+     [:vector
+      [:map
+       {:closed true}
+       [:patient-id :string]
+       [:role [:enum :subject :survivor :merged]]]]]
+    [:warm-up :boolean]
+    [:active-mrn :string]
+    [:codes
+     [:vector
+      [:map
+       [:system :keyword]
+       [:code :string]
+       [:display {:optional true} :string]]]]
+    [:citation
+     {:optional true}
+     [:map [:module :string] [:state :keyword]]]]]
+  [:medication-end
+   [:map
+    {:doc
+     "A medication course ends, resolved to its order by CITATION rather than by log position.",
+     :transition "Closes the matching :medication-orders entry.",
+     :closed true}
+    [:event [:= :medication-end]]
+    [:t :int]
+    [:participants
+     [:vector
+      [:map
+       {:closed true}
+       [:patient-id :string]
+       [:role [:enum :subject :survivor :merged]]]]]
+    [:warm-up :boolean]
+    [:active-mrn :string]
+    [:order-event-id [:maybe :int]]
+    [:order-citation
+     [:maybe [:map [:module :string] [:state :keyword]]]]
+    [:citation
+     {:optional true}
+     [:map [:module :string] [:state :keyword]]]]]
+  [:care-plan-start
+   [:map
+    {:doc
+     "A care plan is opened, optionally listing its planned activities.",
+     :transition
+     "Opens an :active entry in the patient's :care-plans accumulator.",
+     :closed true}
+    [:event [:= :care-plan-start]]
+    [:t :int]
+    [:participants
+     [:vector
+      [:map
+       {:closed true}
+       [:patient-id :string]
+       [:role [:enum :subject :survivor :merged]]]]]
+    [:warm-up :boolean]
+    [:active-mrn :string]
+    [:codes
+     [:vector
+      [:map
+       [:system :keyword]
+       [:code :string]
+       [:display {:optional true} :string]]]]
+    [:activities
+     {:optional true}
+     [:vector
+      [:map
+       [:system :keyword]
+       [:code :string]
+       [:display {:optional true} :string]]]]
+    [:citation
+     {:optional true}
+     [:map [:module :string] [:state :keyword]]]]]
+  [:care-plan-end
+   [:map
+    {:doc
+     "A care plan closes, resolved to its start by CITATION rather than by log position.",
+     :transition "Closes the matching :care-plans entry.",
+     :closed true}
+    [:event [:= :care-plan-end]]
+    [:t :int]
+    [:participants
+     [:vector
+      [:map
+       {:closed true}
+       [:patient-id :string]
+       [:role [:enum :subject :survivor :merged]]]]]
+    [:warm-up :boolean]
+    [:active-mrn :string]
+    [:start-event-id [:maybe :int]]
+    [:care-plan-citation
+     [:maybe [:map [:module :string] [:state :keyword]]]]
+    [:citation
+     {:optional true}
+     [:map [:module :string] [:state :keyword]]]]]
+  [:step-rejected
+   [:map
+    {:doc
+     "A step was attempted and declined as illegal for this patient's current state -- truth about the run, never wire traffic.",
+     :transition "None, by construction: evolve folds it as identity.",
+     :closed true}
+    [:event [:= :step-rejected]]
+    [:t :int]
+    [:participants
+     [:vector
+      [:map
+       {:closed true}
+       [:patient-id :string]
+       [:role [:enum :subject :survivor :merged]]]]]
+    [:warm-up :boolean]
+    [:reason
+     [:enum
+      :illegal-bed-swap
+      :illegal-cancel-admit
+      :illegal-cancel-discharge
+      :illegal-cancel-discharge-bed-reoccupied
+      :illegal-cancel-transfer
+      :illegal-cancel-transfer-bed-reoccupied
+      :illegal-merge]]
+    [:attempted-step [:map [:type :keyword]]]]]]}

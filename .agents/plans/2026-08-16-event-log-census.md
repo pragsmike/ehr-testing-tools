@@ -557,6 +557,10 @@ the arc exists to make visible.
 
 ## Shape defects — register rows, not fixes
 
+_(S-2 and S-3 were sharpened after Step 2's fixture work gave the
+control case the census itself lacked. The corrections are marked
+inline rather than silently applied.)_
+
 Per the arc's own fence: found by describing, fixed later under the
 versioned contract.
 
@@ -575,24 +579,44 @@ encounter reason (a module state name would be an honest one), or the
 key rides the nil-dropping `cond->` treatment `:citation` already gets
 — present-and-nil is the one shape that tells a consumer nothing.
 
-**S-2 — `:care-plan-end` never resolves its own start.** 7/7 events
-carry both `:care-plan-citation nil` and `:start-event-id nil`.
+**S-2 — `referenced_by_attribute` care-plan closures never resolve
+their start.** 7/7 observed `:care-plan-end` events carry both
+`:care-plan-citation nil` and `:start-event-id nil`.
 `decide :care-plan-end` (`:809-825`) resolves `:start-event-id` by
-matching `care-plan-citation` against the log; with the citation nil,
-the `when` short-circuits and the resolution can never succeed. So
-`evolve :care-plan-end` (`:1052-1058`) never closes a care plan
-either — every `:care-plan-start` in the census stays `:active`
-forever. The compiled step is not carrying `:care-plan-citation`
-through. This is a real broken link, not cosmetics.
+matching `care-plan-citation` against the log; with the citation nil
+the `when` short-circuits, so `evolve :care-plan-end` (`:1052-1058`)
+never closes anything and every `:care-plan-start` stays `:active`
+forever.
 
-**S-3 — `:medication-end`'s `:order-event-id` was nil in both
-observed events**, while `:order-citation` was populated. Sample size
-2, both from the `meds` corpus; the resolution is the designed
-straddle case (`check.clj:479-505` explicitly allows a nil
-`:order-event-id` when the order is a `:pre-horizon-facts` entry), so
-this may be correct behaviour rather than a defect. **Needs one more
-probe before it earns a register row** — recorded here as
-undetermined rather than asserted either way.
+**Corrected after Step 2, and narrowed.** The first draft of this row
+blamed the mechanism. It is not the mechanism: Step 2's own fixture
+module cites its start with `:careplan` and resolves **both** fields
+(`:start-event-id 7`, `:care-plan-citation {:module "schema-fixture-
+mod" :state :the-plan}`), proving the path works end to end. The nils
+come from which vendored modules the corpora happened to draw. Of the
+12 `CarePlanEnd` states across the vendored set, **8 cite by
+`careplan`** (a direct state reference, which resolves) and **4 by
+`referenced_by_attribute`** — and every one of the 7 observed events
+came from exactly two of those four (`bronchitis`'s
+`End_Bronchitis_CarePlan`, `injuries`' `End_Injury_CarePlan`).
+`ehrt.sim-trajectory.gmf` says why, in its own source comment:
+`:assign-to-attribute` / `:referenced-by-attribute` "stay UNDECLARED
+here — the declared D2 vendoring scope (`total_joint_replacement.json`)
+exercises neither". So this is an unported resolution shape, disclosed
+at the time, whose absence is now visible in emitted data. Still a
+register row; a materially different one than first written.
+
+**S-3 — `:medication-end`'s `:order-event-id` nil: RESOLVED as
+correct behaviour, not a defect.** Both observed events carried a
+populated `:order-citation` and a nil `:order-event-id`. The extra
+probe this row asked for was run: their citations point at
+`bronchitis`'s `:cough-suppressant` and `medications/otc_pain_reliever`'s
+`:naproxen-sodium`, and neither has a matching `:medication-order`
+event in its own log — the order was a `:pre-horizon-facts` entry on
+`:registered`, which is exactly the straddle `check.clj:479-505`
+explicitly allows a nil `:order-event-id` for. Step 2's fixture, whose
+order IS in-horizon, resolves `:order-event-id 6`. **Not a register
+row.** The schema types the field `[:maybe :int]` and says why.
 
 **S-4 — the `:step-rejected` reason enum is 6 wide; the census
 observed 1.** `engine/documented-step-rejection-reasons` names
