@@ -335,5 +335,39 @@ bin/verify-nist-lock:          green (nist-hl7-v2-validation, nist-xml-util,
 ### Push receipts
 
 ```
-PLACEHOLDER_PUSH_BLOCK
+$ git push
+   b96c246..f91ca13  main -> main
+(pre-push hook: gitleaks clean, poly check OK)
+
+$ bin/post-push-verify            # no arguments -- the ADR-0138 fix is live
+== bin/post-push-verify (main, range b96c2464..f91ca13f) ==
+-- 1. Remote tip vs HEAD --
+OK: origin/main (f91ca13f...) matches tip (f91ca13f...)
+-- 2. Per-commit ASCII check, b96c2464..f91ca13f --
+OK: every commit message in range is pure ASCII
+-- 3. CI run at tip --
+CI run for f91ca13f...: status=queued conclusion=<pending>
+  https://github.com/pragsmike/ehr-testing-tools/actions/runs/31921825657
+DISCLOSED: reported once, not awaited to conclusion (AR-CI-4)
+PPV_EXIT=0
 ```
+
+**The derived range is one commit, and that is correct, not a
+regression.** `bin/post-push-verify` with no arguments now derives its
+base from `origin/main`'s own pre-push value rather than from
+`tip^1`; this records-only close pushed exactly one commit, so the
+derived range `b96c2464..f91ca13f` covers exactly what was pushed. The
+old code would have produced the same range here **by coincidence** —
+which is precisely the failure mode D1-6 described (Session B's push
+was "correct only by coincidence"), and precisely why the fix was
+witnessed against a synthetic three-commit push instead of a one-commit
+one.
+
+**The by-hand cross-check is retired as of this session.** ADR-0135 and
+ADR-0136 both shadowed this script by re-checking the pushed range by
+hand, correctly, because the script was known-wrong. It now has three
+independent witnesses — Session C's co-landed test (red at a one-commit
+range over a three-commit push, green after), Session C's own push, and
+the design channel's synthetic 3-commit fresh-clone witness with a
+non-ASCII middle message. Three witnesses is the bar for trusting a
+tool instead of shadowing it, and this session trusted it.
