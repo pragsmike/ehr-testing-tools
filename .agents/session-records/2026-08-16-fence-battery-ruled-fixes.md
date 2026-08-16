@@ -230,4 +230,33 @@ project contexts `:all skip:integration` runs (`conformance`,
 
 ## Push receipts
 
-<!-- CLOSE-RECEIPTS -->
+Pushed `30cc335..79788c4` (five commits). `bin/post-push-verify` (no
+arguments), all three checks:
+
+```
+-- 1. Remote tip vs HEAD --
+OK: origin/main (79788c4807641ebec154d1d8dd503b351552f9e3) matches tip (79788c4807641ebec154d1d8dd503b351552f9e3)
+
+-- 2. Per-commit ASCII check, 30cc3358..79788c48 --
+OK: every commit message in range is pure ASCII
+
+-- 3. CI run at tip (79788c4807641ebec154d1d8dd503b351552f9e3) --
+CI run for 79788c48…: status=queued conclusion=<pending>
+  https://github.com/pragsmike/ehr-testing-tools/actions/runs/31961270263
+DISCLOSED: reported once, not awaited to conclusion (AR-CI-4)
+```
+
+`gitleaks detect` ran as the pre-push hook over 942 commits: no leaks.
+
+The commits, in order:
+
+| sha | what |
+|---|---|
+| `14c9348` | R-F1/R-F2/R-F3/R-F5 -- four page fixes |
+| `43aec70` | R-F4/R-F6 -- two disclosures |
+| `07a9566` | R-F7 -- the intake diagnosability fix, red-first |
+| `c177000` | ADR-0140, register close note, roadmap, rulings, record, prompt archive |
+| `79788c4` | full-suite reconciliation |
+
+**No tag owed or taken** by this session; its own close tag is deferred
+to the next session's Step 0 under the standing conditional license.
