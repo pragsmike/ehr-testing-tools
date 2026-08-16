@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+# Ground-truth event-log census: tabulates the event vocabulary and
+# per-kind key population from EMITTED EDN, as markdown on stdout.
+#
+# Landed by the event-log contract arc (notes/ADRs.md, the arc's own
+# ADR; `.agents/plans/2026-08-16-event-log-census.md` is the Step-1
+# evidence this instrument produced). Promoted out of that file's own
+# appendix into bin/ by author-licensed fence widening, 2026-08-16, so
+# the census stays re-derivable rather than ageing silently inside a
+# plan file.
+#
+# WHY THIS IS NOT A TEST, and does not load the schema. Its population
+# is the CORPORA, not the schema -- the same population-closure law
+# `bin/fence-census` runs under (repo-review rubric, adopted at
+# dbbeb1f). An instrument that read `Event` to decide what to count
+# could only ever confirm the schema agrees with itself; this one can
+# be pointed at a log emitted by a different version of this repo,
+# including one the committed schema would reject, which is the whole
+# question it exists to answer. `ehrt.sim-engine.event-schema-test`
+# is the gate; this is the survey.
+#
+# Usage:
+#   bin/event-census out/scenarios/ed-tuesday/events.edn
+#   bin/event-census out/**/events.edn > census.md
+#
+# Reads either shape `sim run` emits -- the bare ground-truth vector
+# (`--format ground-truth`, and `corpus generate sim`'s events.edn) or
+# the full envelope map. A kernel error envelope is SKIPPED with a
+# note, never counted as an empty run (ADR-0140's own
+# distinguish-empty-from-error lesson).
+#
+# Exit codes:
+#   0  tabulated
+#   1  every input was skipped or empty -- nothing to tabulate
+#   2  no arguments
+set -euo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+
+if [ "$#" -eq 0 ]; then
+  echo "usage: bin/event-census <events.edn>..." >&2
+  exit 2
+fi
+
+# No component on the classpath, deliberately (see the header): this
+# script's only dependency is Clojure itself.
+exec clojure -Sdeps "{:paths [\"$repo_root/bin/event-census-src\"]
+                      :deps {org.clojure/clojure {:mvn/version \"1.12.5\"}}}" \
+     -M -m ehrt.event-census.census "$@"
