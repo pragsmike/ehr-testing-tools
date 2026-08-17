@@ -3,11 +3,18 @@
   law (the RNG-path law's own worked precedent, `ehrt.sim-engine.engine/
   assign-pathway`/`assign-module`, extended here); `emit-wire`'s own
   split-clock rendering (MSH-7 transmit time, EVN-2 clinical time --
-  this session's own field audit) and transmit-time ordering; and the
+  ADR-0109's own field audit) and transmit-time ordering; and the
   identity property `emit-wire` rests on: absent/nil/{} offsets renders
   byte-identical to `emit`, in `emit`'s own order. Written test-first
-  per this session's own red-then-green requirement on every gate
-  touched (build-session ceremony)."
+  per that session's own red-then-green requirement on every gate
+  touched (build-session ceremony).
+
+  The RESULT wire's own half of the split clock (OBR-7/OBX-14, ADR-0142,
+  2026-08-16) lives in the sibling `ehrt.sim-emit-hl7.result-clock-test`
+  -- half of what that file asserts is about plain `emit` rather than
+  about latency at all. The 100-trial identity property below is
+  deliberately NOT duplicated there and must stay green through any
+  emitter-seam change: both sides move together or neither does."
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.test.check.clojure-test :refer [defspec]]
             [clojure.test.check.generators :as gen]
@@ -106,9 +113,19 @@
                   (message/get-field-first-value wire-parsed "MSH" 7)))))))
 
 (deftest emit-wire-msh-only-message-types-shift-their-sole-timestamp-field
-  (testing "ORM^O01/ORU^R01 (order/result) carry no EVN and no rendered
-            OBR-7/OBX-14 (this session's field audit) -- MSH-7 is their
-            ONLY timestamp field, so it shifts unconditionally"
+  (testing "ORM^O01 (order) carries no EVN and no rendered OBR-7/ORC-9
+            -- MSH-7 is its ONLY timestamp field, so it shifts
+            unconditionally.
+
+            AMENDED 2026-08-16 (ADR-0142): this docstring used to say
+            'ORM^O01/ORU^R01', on ADR-0109's own field audit. ADR-0142
+            put OBR-7 and OBX-14 on all three ORU shapes, so ORU is no
+            longer an MSH-only type and its own split-clock assertions
+            live in `ehrt.sim-emit-hl7.result-clock-test`. The
+            ASSERTIONS below are unchanged and always exercised ORM
+            alone (`\\^O01`); only the claim they were described under
+            was wider than what they tested. ORM stays byte-frozen by
+            author ruling Q3, 'Results only; ORM byte-frozen'"
     (let [pathway {:name "cbc-order" :steps [{:type :admission :location "Renal"}
                                              {:type :order :profile :cbc}
                                              {:type :discharge}]}

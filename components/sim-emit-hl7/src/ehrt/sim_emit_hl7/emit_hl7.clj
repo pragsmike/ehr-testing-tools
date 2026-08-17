@@ -590,14 +590,41 @@
 
 (defn- obr-segment
   "OBR-4: universal service id -- the PANEL-level LOINC concept (CBC/BMP
-  itself, not its analytes; those are per-OBX below)."
-  [set-id concept]
-  (parser/create-segment
-   "OBR"
-   (parser/create-field [(str set-id)])
-   (parser/create-field [])
-   (parser/create-field [])
-   (cwe-field concept)))
+  itself, not its analytes; those are per-OBX below).
+
+  ADR-0142 (2026-08-16), clinical time on the RESULT wire: the 3-arity
+  additionally renders OBR-7 (Observation Date/Time) = `clinical-ts`,
+  the event's OWN `:t`, rendered by `hl7-timestamp` exactly as EVN-2's
+  clinical-ts is (author ruling Q1 \"a\") -- with OBR-5/OBR-6 as empty
+  positional fields. It NEVER shifts under `emit-wire`: MSH-7 alone
+  carries transmit time (`single-subject-message`'s own split-clock
+  docstring, extended to results).
+
+  The 2-arity renders OBR-1/4 only, exactly as before. It exists so
+  `orm-message` stays BYTE-FROZEN: `obr-segment` also renders on
+  ORM^O01, whose clinical-time story (OBR-7 = specimen/observation time
+  versus ORC-9 = transaction time on an order that has not been
+  observed yet) is a different question from a result's, and one
+  ADR-0142's own fence holds shut. Author ruling Q3, 2026-08-16, on a
+  scope collision reported rather than resolved in silence: \"Results
+  only; ORM byte-frozen.\""
+  ([set-id concept]
+   (parser/create-segment
+    "OBR"
+    (parser/create-field [(str set-id)])
+    (parser/create-field [])
+    (parser/create-field [])
+    (cwe-field concept)))
+  ([set-id concept clinical-ts]
+   (parser/create-segment
+    "OBR"
+    (parser/create-field [(str set-id)])
+    (parser/create-field [])
+    (parser/create-field [])
+    (cwe-field concept)
+    (parser/create-field [])
+    (parser/create-field [])
+    (parser/create-field [clinical-ts]))))
 
 (defn- obx-segment
   "One analyte per OBX (docs/operational-models.md's own spec for this
@@ -607,8 +634,16 @@
   the abnormal flag, HL7v2's own N/L/H vocabulary (Table 0078) -- a
   direct rendering of ehrt.sim-engine.order-profiles/abnormal-flag's
   own :normal/:low/:high, computed truth carried straight from the log,
-  never re-derived at emit time (the log already has the answer)."
-  [set-id {:keys [concept units value reference-range abnormal-flag]}]
+  never re-derived at emit time (the log already has the answer).
+
+  ADR-0142 (2026-08-16), clinical time on the RESULT wire: OBX-14
+  (Date/Time of the Observation) = `clinical-ts`, the event's OWN `:t`,
+  behind a positional pad at OBX-9..13 (author ruling Q2 \"a\"). Like
+  OBR-7 it NEVER shifts under `emit-wire` -- MSH-7 alone carries
+  transmit time. Every analyte OBX of one result event carries the SAME
+  clinical instant, since the log records one `:t` for the result, not
+  one per analyte."
+  [set-id clinical-ts {:keys [concept units value reference-range abnormal-flag]}]
   (parser/create-segment
    "OBX"
    (parser/create-field [(str set-id)])
@@ -618,17 +653,33 @@
    (parser/create-field [(str value)])
    (parser/create-field [units])
    (parser/create-field [(str (:low reference-range) "-" (:high reference-range))])
-   (parser/create-field [(case abnormal-flag :normal "N" :low "L" :high "H")])))
+   (parser/create-field [(case abnormal-flag :normal "N" :low "L" :high "H")])
+   (parser/create-field [])
+   (parser/create-field [])
+   (parser/create-field [])
+   (parser/create-field [])
+   (parser/create-field [])
+   (parser/create-field [clinical-ts])))
 
 (defn- orm-message
   "ORM^O01: order placed. No EVN segment -- EVN is an ADT-specific
   segment (HL7v2 convention), not part of the order-message family.
   ADR-0109's split clock: MSH-7 is this builder's ONLY timestamp field
-  (this session's field audit: OBR-7 and ORC-9, HL7v2's own clinical-
-  time candidates for this message family, are not rendered by
+  (ADR-0109's field audit: OBR-7 and ORC-9, HL7v2's own clinical-time
+  candidates for this message family, are not rendered by
   `orc-segment`/`obr-segment` at all), so it is unconditionally
   transmit time -- there is no clinical-time field here to keep
-  unshifted."
+  unshifted.
+
+  STILL TRUE after ADR-0142 (2026-08-16), and deliberately so. That
+  session gave `obr-segment` a 3-arity rendering OBR-7 and put it on
+  all three ORU shapes; this builder keeps calling the 2-arity, so
+  ORM^O01 stays BYTE-FROZEN. An order's clinical-time story is a
+  different question from a result's -- OBR-7 on an order would mean
+  specimen/observation time for an observation that has not happened
+  yet, and ORC-9 (transaction time) is the field that would actually
+  be owed -- and it is a named revisit, not a silent ride-along.
+  Author ruling Q3, 2026-08-16: \"Results only; ORM byte-frozen.\""
   [reference-date utc-offset facility providers personas site-profile offsets
    {:keys [t active-mrn location attending concept participants] :as ev}]
   (let [type+trigger (message-type-registry :order-placed)
@@ -650,19 +701,26 @@
   "ORU^R01: result available -- OBR (order context) plus one OBX per
   analyte, in the same order the profile's own :results carries them
   (derived straight from the log, ehrt.sim-engine.order-profiles'
-  sampling order -- no re-sorting here). ADR-0109's split clock: MSH-7
-  is this builder's ONLY timestamp field (this session's field audit:
-  OBR-7/OBX-14, HL7v2's own clinical-time candidates, are not rendered
-  by `obr-segment`/`obx-segment` at all), so it is unconditionally
-  transmit time."
+  sampling order -- no re-sorting here).
+
+  ADR-0109's split clock, CORRECTED IN PLACE 2026-08-16 (ADR-0142):
+  ADR-0109's field audit recorded OBR-7 and OBX-14 as not rendered by
+  `obr-segment`/`obx-segment` at all, which made MSH-7 this builder's
+  only timestamp field and therefore unconditionally transmit time.
+  ADR-0142 renders both: MSH-7 is TRANSMIT time (shifted by `offsets`),
+  OBR-7 and every OBX-14 are CLINICAL time (`clinical-ts`, this event's
+  own `:t`, never shifted) -- the same two-clock split
+  `single-subject-message` has always had via EVN-2, now on the result
+  wire, so a downstream receiver handed a late result can back-date it."
   [reference-date utc-offset facility providers personas site-profile offsets
    {:keys [t active-mrn location attending concept results participants] :as ev}]
   (let [type+trigger (message-type-registry :result-available)
         control-id (control-id-for ev)
+        clinical-ts (hl7-timestamp reference-date t utc-offset)
         transmit-ts (hl7-timestamp reference-date (transmit-seconds offsets control-id t) utc-offset)
         facility-name (name (:id facility))
         provider (provider-by-id providers attending)
-        obx-segments (map-indexed (fn [i r] (obx-segment (inc i) r)) results)]
+        obx-segments (map-indexed (fn [i r] (obx-segment (inc i) clinical-ts r)) results)]
     (parser/str-message
      (apply parser/create-message
       parser/DEFAULT-DELIMITERS
@@ -670,7 +728,7 @@
       (pid-segment active-mrn (get personas (:patient-id (first participants))))
       (pv1-segment site-profile :inpatient facility-name location nil provider nil)
       (orc-segment control-id)
-      (obr-segment 1 concept)
+      (obr-segment 1 concept clinical-ts)
       (concat obx-segments (z-segments-for site-profile personas ev))))))
 
 ;; --- M5b: :observation -> ORU^R01, OBX only (components/sim-trajectory/docs/gmf-interpreter.md
@@ -690,20 +748,44 @@
   identical to every pre-existing call (range-sourced or codes-only,
   neither field ever present) when absent, this stage's OWN emitter-
   extension discipline (never a positional pad for a field nothing
-  supplies)."
-  [set-id {:keys [codes value unit value-code reference-range interpretation]}]
-  (apply parser/create-segment
-   "OBX"
-   (concat
-    [(parser/create-field [(str set-id)])
-     (parser/create-field [(if value-code "CWE" "NM")])
-     (cwe-field (first codes))
-     (parser/create-field [])
-     (if value-code (coded-value-field value-code) (parser/create-field (if (some? value) [(str value)] [])))
-     (parser/create-field (if unit [unit] []))]
-    (when (or reference-range interpretation)
-      [(parser/create-field (if reference-range [(str (:low reference-range) "-" (:high reference-range))] []))
-       (parser/create-field (if interpretation [(case interpretation :normal "N" :low "L" :high "H")] []))]))))
+  supplies) -- **AMENDED 2026-08-16 (ADR-0142), for OBX-14 ONLY.**
+
+  ADR-0142, clinical time on the RESULT wire: OBX-14 (Date/Time of the
+  Observation) = `clinical-ts`, the event's OWN `:t`, is now rendered
+  unconditionally on every OBX this builder produces (author ruling Q2
+  \"a\"). HL7v2 field positions being ordinal, that requires a
+  POSITIONAL PAD -- OBX-9..13 always, and OBX-7/8 as well when the
+  observation carries neither a reference-range nor an interpretation.
+  The \"never a positional pad\" sentence above is superseded for this
+  one field and stands for every other: OBX-7/8 are still content-
+  conditional, and no field is padded to except on the way to OBX-14.
+  The distinction that makes this consistent rather than merely
+  excepted: OBX-7/8 pad for a value the observation MIGHT NOT HAVE,
+  whereas `clinical-ts` is derived from `:t`, which every event in the
+  log carries by construction -- there is no case where the pad leads
+  to nothing.
+
+  Like OBR-7, OBX-14 never shifts under `emit-wire`: MSH-7 alone
+  carries transmit time."
+  [set-id clinical-ts {:keys [codes value unit value-code reference-range interpretation]}]
+  (let [range-fields (when (or reference-range interpretation)
+                       [(parser/create-field (if reference-range [(str (:low reference-range) "-" (:high reference-range))] []))
+                        (parser/create-field (if interpretation [(case interpretation :normal "N" :low "L" :high "H")] []))])
+        ;; OBX-1..6 always, plus OBX-7/8 when present: pad from there up
+        ;; to OBX-13, so `clinical-ts` lands at OBX-14 exactly.
+        rendered-so-far (+ 6 (count range-fields))]
+    (apply parser/create-segment
+     "OBX"
+     (concat
+      [(parser/create-field [(str set-id)])
+       (parser/create-field [(if value-code "CWE" "NM")])
+       (cwe-field (first codes))
+       (parser/create-field [])
+       (if value-code (coded-value-field value-code) (parser/create-field (if (some? value) [(str value)] [])))
+       (parser/create-field (if unit [unit] []))]
+      range-fields
+      (repeatedly (- 13 rendered-so-far) #(parser/create-field []))
+      [(parser/create-field [clinical-ts])]))))
 
 ;; GMF coverage Wave D stage D1 (2026-08-02, ADR-0029 P6): a real
 ;; DiagnosticReport panel's own OBX shares `observation-obx-segment`'s
@@ -715,14 +797,20 @@
   "ORU^R01 with a SINGLE OBX and no ORC/OBR -- a legal, real HL7v2 shape
   for an unsolicited observation not tied to any originating order
   (unlike :result-available's own order-linked ORU, docs/operational-
-  models.md). ADR-0109's split clock: MSH-7 is this builder's ONLY
-  timestamp field (OBX-14 is not rendered by `observation-obx-segment`
-  -- this session's field audit), so it is unconditionally transmit
-  time."
+  models.md).
+
+  ADR-0109's split clock, CORRECTED IN PLACE 2026-08-16 (ADR-0142):
+  ADR-0109 recorded OBX-14 as not rendered by
+  `observation-obx-segment`, making MSH-7 this builder's only timestamp
+  field. ADR-0142 renders it: MSH-7 is TRANSMIT time, OBX-14 is
+  CLINICAL time (this event's own `:t`, never shifted). There is no
+  OBR here at all -- this shape carries no ORC/OBR -- so OBR-7 is not
+  owed and not rendered."
   [reference-date utc-offset facility providers personas site-profile offsets
    {:keys [t active-mrn location attending participants] :as ev}]
   (let [type+trigger (message-type-registry :observation)
         control-id (control-id-for ev)
+        clinical-ts (hl7-timestamp reference-date t utc-offset)
         transmit-ts (hl7-timestamp reference-date (transmit-seconds offsets control-id t) utc-offset)
         facility-name (name (:id facility))
         provider (provider-by-id providers attending)]
@@ -732,7 +820,7 @@
       (msh-segment site-profile type+trigger control-id transmit-ts)
       (pid-segment active-mrn (get personas (:patient-id (first participants))))
       (pv1-segment site-profile :inpatient facility-name location nil provider nil)
-      (observation-obx-segment 1 ev)
+      (observation-obx-segment 1 clinical-ts ev)
       (z-segments-for site-profile personas ev)))))
 
 ;; GMF coverage Wave D stage D1 (2026-08-02, ADR-0029 P6): ORC+OBR
@@ -744,18 +832,23 @@
 ;; `oru-message` already uses for :results.
 
 (defn- diagnostic-report-message
-  "ADR-0109's split clock: MSH-7 is this builder's ONLY timestamp field
-  (OBR-7/OBX-14 not rendered -- this session's field audit, same as
-  `orm-message`/`oru-message`/`observation-message`), so it is
-  unconditionally transmit time."
+  "ADR-0109's split clock, CORRECTED IN PLACE 2026-08-16 (ADR-0142):
+  ADR-0109 recorded OBR-7/OBX-14 as not rendered, making MSH-7 this
+  builder's only timestamp field, the same as
+  `orm-message`/`oru-message`/`observation-message`. ADR-0142 renders
+  both on this ORU shape: MSH-7 is TRANSMIT time, OBR-7 and every
+  embedded child's own OBX-14 are CLINICAL time (this event's own `:t`,
+  never shifted). `orm-message` is the one of that list that does NOT
+  change -- author ruling Q3, \"Results only; ORM byte-frozen\"."
   [reference-date utc-offset facility providers personas site-profile offsets
    {:keys [t active-mrn location attending codes observations participants] :as ev}]
   (let [type+trigger (message-type-registry :diagnostic-report)
         control-id (control-id-for ev)
+        clinical-ts (hl7-timestamp reference-date t utc-offset)
         transmit-ts (hl7-timestamp reference-date (transmit-seconds offsets control-id t) utc-offset)
         facility-name (name (:id facility))
         provider (provider-by-id providers attending)
-        obx-segments (map-indexed (fn [i o] (observation-obx-segment (inc i) o)) observations)]
+        obx-segments (map-indexed (fn [i o] (observation-obx-segment (inc i) clinical-ts o)) observations)]
     (parser/str-message
      (apply parser/create-message
       parser/DEFAULT-DELIMITERS
@@ -763,7 +856,7 @@
       (pid-segment active-mrn (get personas (:patient-id (first participants))))
       (pv1-segment site-profile :inpatient facility-name location nil provider nil)
       (orc-segment control-id)
-      (obr-segment 1 (first codes))
+      (obr-segment 1 (first codes) clinical-ts)
       (concat obx-segments (z-segments-for site-profile personas ev))))))
 
 (defn event->messages

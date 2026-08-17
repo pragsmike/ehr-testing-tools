@@ -366,10 +366,33 @@
     (is (= "38.2" (message/get-field-first-value parsed "OBX" 5)))
     (is (= "Cel" (message/get-field-first-value parsed "OBX" 6)))
     (is (= "" (or (message/get-field-first-value parsed "ORC" 1) "")) "no order context -- unsolicited observation")
-    (testing "GMF coverage Wave D stage D1 (ADR-0029): byte-identical to
-              pre-D1 output -- no reference-range/abnormal-flag fields
-              appended when the observation carries neither"
-      (is (= 7 (count (str/split obx-line #"\|" -1)))))))
+    (testing "GMF coverage Wave D stage D1 (ADR-0029): no reference-
+              range/abnormal-flag CONTENT when the observation carries
+              neither.
+
+              RE-BASELINED 2026-08-16 (ADR-0142), disclosed rather than
+              silently edited. This assertion read `(= 7 ...)` and
+              stated the D1 property as 'byte-identical to pre-D1
+              output -- no fields appended'. ADR-0142 renders OBX-14
+              (clinical time) on every OBX, and HL7v2 field positions
+              being ordinal, reaching OBX-14 requires a positional pad
+              through OBX-7..13 -- so the field COUNT is now fixed at
+              14 for every OBX (15 split elements, the segment name
+              included), and D1's absence-based phrasing can no longer
+              be what carries the property. Author ruling Q2 'a' names
+              this pad and accepts it, OBX-7/8 included.
+
+              What D1 actually cared about survives intact and is what
+              is asserted here now: OBX-7 and OBX-8 are EMPTY, not
+              populated, when the observation carries neither a
+              reference-range nor an interpretation. A downstream
+              reader still cannot mistake this observation for one
+              carrying a range; it simply learns that from an empty
+              field rather than from a missing one."
+      (let [parts (str/split obx-line #"\|" -1)]
+        (is (= 15 (count parts)) "OBX-1..14, plus the segment name")
+        (is (= "" (nth parts 7)) "OBX-7 empty: no reference range supplied")
+        (is (= "" (nth parts 8)) "OBX-8 empty: no abnormal flag supplied")))))
 
 ;; --- GMF coverage Wave D stage D1 (2026-08-02, ADR-0029 P6): observation's
 ;; new fields (value-code/reference-range/abnormal-flag), and
