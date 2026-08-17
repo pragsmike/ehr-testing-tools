@@ -184,7 +184,8 @@ is the path end to end, with two worked example emitters that depend on
 nothing in this repo;
 [`docs/formats.md`](docs/formats.md#the-event-log) is the contract
 itself; and the manual's
-[Chapter 3](docs/manual/03-a-simulated-hospital.md) tells it as a story.
+[Chapter 3](docs/manual/03-a-simulated-hospital.md#the-log-underneath-every-message)
+tells it as a story.
 
 **I want to maintain or extend this workspace** — start at
 [`docs/dev/architecture.md`](docs/dev/architecture.md) and read

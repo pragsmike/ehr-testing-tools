@@ -53,6 +53,12 @@ rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
   drift silently and did. Registered, not fixed; proposed shape is a `docsgen`
   target plus the CI freshness diff every other generated surface gets.
   Candidate for review 4's D5. ADR-0142.
+- OPEN **[exercised-row-gate-closure]** PRIORITY 9 -- nothing asserts that EVERY
+  `exercised-sources.edn` row has a live `check-entry` freshness case, so the
+  next row added can go ungated silently, as one of nine already had. Wanted: a
+  coverage test over the register per `rulings.md#R-population-closure`, not
+  more hand-written cases. Evidence and the two-layered cause in ADR-0146's
+  U-15.
 - OPEN **[manual-dimension-5]** PRIORITY 10 -- manual-review run 2 passed with
   warns, and dimension 5 (running-example continuity) stays WARN as the manual's
   one standing open row: `ed-tuesday` is HL7v2-only and structurally cannot
@@ -286,3 +292,9 @@ Rows here are LIVE, each owing a revisit trigger in its own token.
 - CLOSED 2026-08-17 b96c246 **[review-3-tag-unpushed]** -- the author pushed
   `stable-20260815-review-3-fixes`; verified at the ADR-0145 session's own
   Step 0 as an annotated tag on the remote peeling to `b96c246`.
+- CLOSED 2026-08-17 ADR-0146 **[emitter-author-ux]** -- the emitter author gets a
+  named audience segment and an entry path; eight of fourteen entry surfaces had
+  no route to the event log, now zero do. Registered CLOSED rather than OPEN
+  first: it arrived as a chat ruling and was executed the same session, so
+  `rulings.md#R-unregistered-request-gets-a-row` was satisfied late, disclosed
+  here rather than backdated.

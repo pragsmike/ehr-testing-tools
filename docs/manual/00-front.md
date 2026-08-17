@@ -38,8 +38,11 @@ featured-placement ruling `.agents/rulings.md` names.[^featured-placement]
    proving to yourself that it's exactly reproducible.
 3. **A simulated hospital** — `sim run` and the ed-tuesday scenario at
    volume, shaping a facility's own local dialect with a site profile,
-   scripted versus generative patients, and the two spaces (plan versus
-   fact) every patient's traffic passes through.
+   scripted versus generative patients, the two spaces (plan versus
+   fact) every patient's traffic passes through, and the ground-truth
+   event log underneath every message — the published contract you write
+   your own emitter against when you need a format this workspace
+   doesn't ship.
 4. **Time on the wire** — pacing a corpus against its own timestamps
    with `ehrt play`, and the second, independently seeded clock at the
    emitter seam that lets a message's own wire transmit time (MSH-7)

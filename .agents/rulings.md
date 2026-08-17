@@ -235,3 +235,14 @@ Appended by the session that takes the ruling, not held to arc close.
   history lives in a sibling `HISTORY.md` no reading set carries -- ADR-0145
 - **R-reading-sets-header-cap** -- `.agents/reading-sets.edn` carries a 20-line header;
   budget derivations live in `.agents/plans/reading-sets-history.md` -- ADR-0145
+- **R-audience-has-entry-path** -- every segment in `docs/dev/AUDIENCES.md` states its
+  own entry path; a registered audience without one is a routing gap everywhere that
+  register is keyed off -- ADR-0146
+- **R-exercised-implies-gated** -- a row in `exercised-sources.edn` needs a live
+  `check-entry` case: a script that exists is not a script PROVEN to teach its page's
+  own commands -- ADR-0146
+- **R-taught-shell-lines-use-expect-eval** -- a taught line needing a shell is exercised
+  via `expect_eval`, never `expect 0 bash -c`, which the freshness unwrapper cannot
+  read -- ADR-0146
+- **R-count-by-presence-not-truthiness** -- code reporting which fields it dropped counts
+  by PRESENCE; truthiness reports a present-but-false field as absent -- ADR-0146

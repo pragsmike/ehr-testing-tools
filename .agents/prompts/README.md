@@ -168,3 +168,4 @@ Files in this directory:
   * 2026-08-16-compression-a-adr-index.md — compression arc session A: the ADR index becomes generated, guards #2/#3, the skills rider
   * 2026-08-17-compression-b-roadmap.md — compression arc session B: the roadmap row contract, its lint, and the migration ledger
   * 2026-08-17-compression-c-rulings.md — compression arc session C: the standing rulings register, the build-session skill split, the reading-sets header
+  * 2026-08-17-emitter-author-ux.md — UX pass for one actor: the emitter author -- cold walk of every entry surface, ruled signpost fixes, a second worked emitter

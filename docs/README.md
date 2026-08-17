@@ -72,7 +72,7 @@ emitters, and a way to check your own coverage.
 [`formats.md`](formats.md#the-event-log)'s "The event log" is the
 contract it's written against — 21 closed event kinds, generated from a
 committed schema. The narrative version is the manual's
-[Chapter 3](manual/03-a-simulated-hospital.md), "The log underneath
+[Chapter 3](manual/03-a-simulated-hospital.md#the-log-underneath-every-message), "The log underneath
 every message".
 
 This is a different audience from "Downstream data consumer" below, and

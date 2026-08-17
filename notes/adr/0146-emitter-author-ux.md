@@ -383,7 +383,301 @@ Three questions the prompt asked directly:
 - **Does anything say how to know your emitter is complete?** No —
   U-12.
 
-### Disposition
+### U-15, found by walking into it
 
-Recorded at Step 2 and Step 3; the after-hops table is the acceptance
-evidence.
+The walk produced fourteen rows. A fifteenth came from this session's own
+Step 2 commit, and it is the most useful finding here because nothing in
+the review would have caught it.
+
+Step 2 added `bin/event-census` as a taught command on the use-case
+page's fence and **did not add it to `bin/usecase-custom-emitter`**. The
+entire docs-gate battery — 106 tests, 1,094 assertions, including
+`strip-fresh-test`, whose whole job is proving that a page and its
+exerciser teach the identical commands — stayed green. The commit landed
+a page teaching four commands and a script running three.
+
+The cause, on inspection, is two-layered:
+
+1. **`bin/usecase-custom-emitter` was the only row of the nine in
+   `exercised-sources.edn` with no live `check-entry` test.** The other
+   eight all have one: `quickstart-demo`, `demo-exerciser-ed-tuesday`,
+   `demo-exerciser-clinic-decade`, and the five ADR-0129 rows
+   (`usecase-judge-tier-calibration`, `usecase-profile-tier-v2`,
+   `usecase-acceptance-qa`, `usecase-regression-baselining`,
+   `readme-what-you-get`), each asserting `:ok?` and a pinned command
+   count. ADR-0141 registered the custom-emitter row and wrote the
+   exerciser but never added the case. So the one page whose stated
+   selling point is *"EXERCISED FROM BIRTH … this one has never existed
+   unexercised"* was the one page never proven at per-push tier to teach
+   what its script runs.
+2. **It could not have passed if added.** The script wrapped the taught
+   redirect as `expect 0 bash -c '…'`, and `strip-fresh`'s unwrapper
+   handles `expect` and `expect_eval`, not a `bash -c` wrapper — so a
+   literal comparison would always have diverged at that line. The row
+   was structurally ungateable, not merely ungated.
+
+Red, witnessed before the fix, naming both halves at once:
+
+    FAIL in (check-entry-live-usecase-custom-emitter-test)
+    divergence: {:index 1,
+                 :readme "bin/ehrt sim run --seed 42 --patients 5 --format ground-truth > out/custom-emitter/events.edn",
+                 :script "bash -c 'bin/ehrt sim run --seed 42 --patients 5 --format ground-truth > out/custom-emitter/events.edn'"}
+    expected: (true? (:ok? result))
+      actual: (not (true? false))
+    expected: (= 5 (:readme-count result) (:script-count result))
+      actual: (not (= 5 4 3))
+
+Fixed with the workspace's own sanctioned convention rather than by
+widening the comparison layer: `expect_eval CODE 'SNIPPET'`, which
+`strip-fresh` already unwraps and which `quickstart-demo`,
+`demo-exerciser-ed-tuesday` and `usecase-acceptance-qa` already use for
+exactly this case (a taught line that needs a shell). The row now proves
+page and script teach the identical five commands, and the test pins the
+count so a future addition to either side without the other fails by
+name.
+
+**Why this is the session's most transferable result.** "Exercised from
+birth" was true and was load-bearing in the ADR that landed it — and it
+was not the same claim as "gated". The gap between a script that exists
+and a script that is *proven to match its page* is invisible from the
+page, from the script, and from a green suite. It took a session
+carelessly widening the fence to reveal it, which is the honest account
+of how it was found.
+
+### Step 2 — the fixes, and the two I did not take as written
+
+Every proposed fix from the walk was applied except as noted. The
+surfaces, in the order the actor meets them:
+
+| finding | fix landed |
+|---|---|
+| U-1 | `docs/dev/AUDIENCES.md` segment 6, with a stated entry path; header count five → six |
+| U-2 | `README.md` "Where to start" third branch, with the command inline |
+| U-3 | `docs/what-is-this.md`'s closed output enumeration now includes the log |
+| U-4 | `docs/README.md` "I have my own format", placed above the section it is confused with; manual ch. 8 opens with one disambiguating sentence; ch. 3's TOC entry names the log |
+| U-5 | manual ch. 3, "The log underneath every message", landing where the founding idea does |
+| U-6 | glossary gains "Event log" and "Schema version"; "Ground-truth log" gains the consumer route |
+| U-7 | "Emitter" and "CDA / C-CDA" corrected in place, dated |
+| U-8 | `--format ground-truth`'s help cites the contract and the worked path; `docs/cli.md` regenerated |
+| U-9 | gated `:start-here` table, rendered above the flat catalog |
+| U-10 | the page links `emitter_jsonl.clj`/`emitter.clj` directly and says which file is the launcher |
+| U-11 | "count what you did not translate" now leads the note |
+| U-12 | `bin/event-census` is a taught command with its own exerciser invariant |
+| U-13 | `docs/formats.md`'s top names the event log and links its own section |
+| U-14 | manual footnote repointed to `notes/adr/0112-*.md`, with a note saying where it moved from |
+| U-15 | live `check-entry` test for the custom-emitter row; `expect_eval` replaces `bash -c` |
+
+Two departures from the prompt's expected form, both deliberate:
+
+- **The README paragraph went in "Where to start", not "What you get".**
+  "What you get"'s fences are an exercised `:paired` strip re-run by
+  `bin/readme-what-you-get`; adding a fence there is either picked up by
+  that machinery or excluded by an adjacency subtlety, and duplicating an
+  unexercised fence into README would cut against
+  `rulings.md#R-examples-are-sourced-verbatim`. "Where to start" is also
+  the surface U-2's own evidence indicts — its two branches excluded this
+  actor by construction — so the fix belongs where the defect is. The
+  runnable fence stays on the use-case page, which has an exerciser.
+- **Manual ch. 3 cites its new strip in prose, not in a "Strip source
+  citations" table.** Chapters 1–3 carry no such table; adding one to
+  ch. 3 alone, listing one of its two strips, would be less honest than
+  the in-prose form the chapter already uses for its `generate sim` strip
+  ("copied verbatim from that README, never composed for the occasion").
+  The strip's source is the use-case page, itself a registered exercised
+  source, so the provenance is real either way.
+
+The `:start-here` table's **ordering** is a judgement call worth stating:
+rows are ordered by how many readers each question serves, so the emitter
+author's row is last of six. A "start here" table that led with the
+rarest actor would be dishonest signposting for the other five. What
+fixes U-9 is that the catalog's first screen is six scannable questions
+instead of twenty-two audience sentences — and that this actor now also
+has direct routes from `README.md` and `docs/README.md` that skip the
+catalog entirely.
+
+### Step 3 — the second emitter, and why JSONL
+
+`bin/example-custom-emitter-jsonl` renders the log into a line-delimited
+JSON **encounter feed**. The shape was chosen against the actor card:
+a hospital-adjacent system with its own message format is far likelier to
+ingest line-delimited JSON over a queue than a CSV census, and — the
+deciding reason — the first example is *already* flat pipe-delimited
+lines, so a CSV would differ from it on no axis that teaches anything. A
+one-object-per-**encounter** feed cannot line up with a
+one-map-per-**event** log, so it cannot dodge the decisions a real
+mapping forces. All three are made visibly, and all three print real
+numbers against seed 42:
+
+1. **Two events fold into one record.** `:admission` opens, `:discharge`
+   closes. An encounter the run's window left open is emitted
+   `"status":"open"` with a null discharge — not dropped, and not handed
+   an invented discharge at end-of-run.
+2. **Fields the log has that the target lacks: dropped and counted.**
+   `:attending`, `:reason`, `:placement`, on 5 records each. `:warm-up`
+   is reported present-vs-true.
+3. **A field the target wants that the log lacks: null, and said.** No
+   absolute time exists anywhere in a log, so `admission_datetime` is
+   `null` and the summary says why rather than anchoring to a date
+   nobody supplied.
+
+**One draft defect worth recording, because it is the failure mode this
+example exists to teach.** The first version counted dropped fields by
+*truthiness* (`(if (:warm-up event) inc identity)`) and picked `:warm-up`
+and `:citation` as its examples. Against real seed-42 output both came
+back **zero** — `:warm-up` is present-but-`false` on every event, and
+`:citation` is absent from admissions entirely — so decision 2 rendered
+as a row of zeros and taught nothing. The counters now key off
+**presence** (`contains?`), and the fields named are ones the log
+actually carries. An emitter that conflates "absent" with "present and
+false" is exactly the bug this page warns about, and the first draft
+committed it.
+
+Determinism: records sorted by `(admitted-t, patient-id)`, fixed key
+order per object, no dependence on map or set iteration order — verified
+byte-identical across two runs, and pinned as
+`test-fixtures/custom-emitter/seed42-p5-encounters.jsonl`. It depends on
+`org.clojure/clojure` and nothing else, and it iterates the top-level
+vector only, so it does not walk into `:pre-horizon-facts`.
+
+### The hops table, AFTER — the acceptance evidence
+
+Re-walked against the committed tree. Same four targets, same hop
+definition (a navigation action taken after reading the surface).
+
+| entry surface | (a) log exists | (b) contract | (c) worked example | (d) version promise |
+|---|---|---|---|---|
+| `README.md` | **0** | 1 | 1 to the page, 2 to the code | 1 |
+| `docs/README.md` | **0** | 1 | 2 | 2 |
+| `docs/what-is-this.md` | **0** | 1 | 2 | 1 |
+| `docs/manual/00-front.md` (TOC) | **0** | 2 | 2 | 2 |
+| `docs/manual/03-a-simulated-hospital.md` | **0** | 1 | 2 | **0** |
+| `docs/manual/08-your-own-data.md` | 1 | 2 | 2 | 2 |
+| `docs/use-cases.md` | **0** | 2 | 2 | 1 |
+| `docs/glossary.md` | **0** | 1 | 1 | **0** |
+| `bin/ehrt --help` | 1 | 2 | 2 | 1 |
+| `bin/ehrt sim --help` | **0** | 1 | 1 | **0** |
+| `bin/ehrt sim run --help` | **0** | 1 | 1 | **0** |
+| `docs/cli.md` | **0** | 1 | 1 | **0** |
+| `docs/formats.md` (top) | **0** | 1 | 2 | 1 |
+| `docs/dev/AUDIENCES.md` | **0** | 1 | 1 | **0** |
+
+**Before: eight of fourteen surfaces had no route at all. After: zero
+do.** Twelve of fourteen now state that the log exists on the surface
+itself, at hop 0. The two that don't are both correct as they stand:
+`bin/ehrt --help` is a group index and reaching `sim` is the hop it
+exists to provide, and manual ch. 8 is a chapter about the opposite
+direction whose job is to recover a reader in one hop, which it now does.
+
+### Fences honoured
+
+- **`docs/`-root law**: no Polylith vocabulary and no repo history in any
+  `docs/` prose added here. `components/...` appears only as literal
+  link targets (`event-schema.edn`, the two emitter sources), the
+  sanctioned form.
+- **No visible ADR tokens in user-path prose**: every ADR reference in
+  this session's `docs/` edits is either absent or in `docs/dev/`, which
+  `rulings.md#R-dev-docs-not-user-path` exempts. `README.md`'s own
+  provenance-code tripwire (`ADR-\d+`, `EXP-…`, `DOC-\d+`, `\bD\d+\b`)
+  is green.
+- **Generated docs regenerated, never hand-edited**: `make use-cases`,
+  `make cli-doc`, `make adr-index` — every generated file in this
+  session's diffs came from its generator.
+- **`src` scope**: `bases/cli/src/ehrt/cli/help.clj` (a help string) and
+  `components/docs-tooling` only, exactly as fenced.
+- **`.agents/**` scope**: roadmap row, rulings rows, prompt archive,
+  session record. Nothing else.
+
+### Standing rules this session earned
+
+Four rows, each a rule a future session must follow rather than a thing
+done once:
+
+- **`R-audience-has-entry-path`** — every segment in
+  `docs/dev/AUDIENCES.md` states its own entry path. U-1 is the whole
+  argument: a registered audience without a path is a routing gap on
+  every surface keyed off that register, and `docs/README.md` says
+  explicitly that it is keyed off it.
+- **`R-exercised-implies-gated`** — a row in `exercised-sources.edn`
+  needs a live `check-entry` case. "A script exists" and "a script is
+  proven to teach its page's commands" are different claims, and only the
+  second is a gate. U-15.
+- **`R-taught-shell-lines-use-expect-eval`** — a taught line needing a
+  shell is exercised via `expect_eval`, never `expect 0 bash -c`, which
+  the freshness unwrapper cannot read. The second half of U-15's cause,
+  and the reason a test alone would not have been enough.
+- **`R-count-by-presence-not-truthiness`** — code reporting which fields
+  it dropped counts by presence, not truthiness. Earned from this
+  session's own draft defect, and general: `contains?` and `if` answer
+  different questions about a field that is present and `false`.
+
+### Roadmap
+
+`**[emitter-author-ux]**` lands CLOSED under `## Done`. Disclosed in the
+row itself: it was registered CLOSED rather than OPEN-then-closed,
+because it arrived as a chat ruling and executed in the same session —
+`rulings.md#R-unregistered-request-gets-a-row` satisfied late, and said
+so rather than backdated.
+
+`**[exercised-row-gate-closure]**` opens at PRIORITY 9, U-15's successor
+and the part this session did **not** close: it fixed the one ungated row
+and added the one missing test, but nothing asserts that *every*
+registered row has a live freshness case, so the next row added can
+repeat the same silence. `rulings.md#R-population-closure` names the
+right shape — enumerate the register and diff it — rather than a tenth
+hand-written case. The row was rejected twice by
+`ehrt.docs-tooling.roadmap-lint-test` before it was acceptable (a
+duplicate `PRIORITY 7`, then eight lines against a six-line cap), which
+is the row contract ADR-0144 landed doing exactly its job.
+
+### Verification
+
+- **Regression oracle**: `bin/regression-oracle d62ed19 HEAD` →
+  **`IDENTICAL: every root's digest matches between d62ed19 and HEAD`**,
+  **35 roots per side**, soundness check `IDENTICAL outside the (ns ...)
+  form`, `declared-digest-change: no`. The prompt named an oracle move
+  from a help-string edit as a STOP condition; it did not move, which
+  confirms help text sits outside the oracle's digest surface.
+- **Exerciser**: `bin/usecase-custom-emitter` on a clean tree, exit 0,
+  `OK (5 steps, 8 invariants)`.
+- **Docs gates**: 106 tests / 1,094 assertions green across the
+  docsgen-drift, dead-link, footnote, citation, strip-freshness,
+  stale-path, structure-currency, invocation-lint, index-completeness and
+  cli-tombstone gates; register lints (roadmap, rulings, reading-set
+  budget) green; index-completeness and prompt-record-pairing green after
+  `bin/close-scaffold`.
+- **Reading sets at the close**, all five under budget, no budget moved:
+  `:onboarding` 1524/1665, `:corpus` 1774/2045, `:sim` 1220/1405,
+  `:judge` 868/1000, `:docs` 681/785. `:onboarding` fell 164 → 141 lines
+  of headroom, spent on four rulings rows and two roadmap rows — the only
+  set this session touched, and the reason the `docs/**` work was
+  budget-neutral is that no reading set carries a `docs/` file outside
+  `docs/dev/`.
+- **Final `make test`**: recorded in
+  `.agents/session-records/2026-08-17-emitter-author-ux.md`.
+
+**DISCLOSED — a real defect in this session's own Step 3 commit, caught by
+a gate and fixed before any push.** The first final `make test` returned
+`MAKE_EXIT=2` on
+`tracked-scripts-are-executable-in-the-index-test`
+(`executable_bits_test.clj:55`):
+
+    Tracked script(s) below are not mode 100755 in the git index -- a fresh
+    clone (what CI checks out) will see them as non-executable even if your
+    own working tree runs them fine (core.fileMode=false hides the mismatch
+    locally).
+      {:mode "100644", :path "bin/example-custom-emitter-jsonl"}
+      {:mode "100644", :path "bin/example-custom-emitter-jsonl-src/emitter_jsonl.clj"}
+
+`chmod +x` had been run on the launcher and it ran fine locally;
+`core.fileMode=false` meant git recorded `100644` anyway. Both files are
+`100755` for the first example (`bin/example-custom-emitter`,
+`bin/example-custom-emitter-src/emitter.clj`) and for
+`bin/event-census-src/…/census.clj`, so the convention was unambiguous and
+this commit simply broke it. Consequence had it shipped: the exerciser
+would have run green locally and failed in CI on a fresh clone — the
+precise class this gate exists for, and a mistake no amount of local
+verification would have surfaced. Fixed with
+`git update-index --chmod=+x` and folded into Step 3's own commit by
+amend rather than added as a follow-up, because a fresh clone *at that
+commit* would otherwise be broken; nothing had been pushed, so no
+published history was rewritten.
