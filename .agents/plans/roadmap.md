@@ -10,10 +10,10 @@ rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
 ## Next (backlog, no session scheduled)
 - OPEN **[compression-arc]** PRIORITY 1 -- register compression, author-ordered
   A -> B -> C -> D, one session each. A landed the generated ADR index
-  (ADR-0143); B landed this row contract and its lint (ADR-0144). C compacts
-  `.agents/skills/build-session/SKILL.md` (162 -> 309 lines across this
-  workspace's life, the one path all five reading sets carry, ADR-0143 Finding
-  6) plus `.agents/reading-sets.edn`; D's scope is set by C's own close.
+  (ADR-0143), B this row contract (ADR-0144), C the standing-rules-only rulings
+  register, the build-session skill split and the reading-sets header
+  (ADR-0145). D is set by C's close: `.agents/session-records/README.md` and
+  `.agents/prompts/README.md`, 390 lines and the last `:onboarding` growth.
 - OPEN **[event-log-shape-defects]** PRIORITY 2 -- S-1/S-2/S-4/S-5/S-6 and the
   Z-segment context asymmetry stay register rows by ruling (2026-08-16):
   describing current truth first, then changing it under the versioned event
@@ -282,6 +282,7 @@ Rows here are LIVE, each owing a revisit trigger in its own token.
 - CLOSED 2026-08-16 ADR-0142 **[result-clinical-time]**
 - CLOSED 2026-08-16 ADR-0143 **[adr-index-generated]**
 - CLOSED 2026-08-17 ADR-0144 **[roadmap-row-contract]**
+- CLOSED 2026-08-17 ADR-0145 **[rulings-standing-register]**
 - CLOSED 2026-08-17 b96c246 **[review-3-tag-unpushed]** -- the author pushed
   `stable-20260815-review-3-fixes`; verified at the ADR-0145 session's own
   Step 0 as an annotated tag on the remote peeling to `b96c246`.

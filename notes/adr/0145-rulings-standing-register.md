@@ -284,4 +284,202 @@ fixes the membership; the compression is what makes the membership affordable.
 5. `.agents/rulings.md` joins `:onboarding`; every budget and baseline is
    re-derived at the new actuals.
 
-Steps 2 through 4 of this record are appended as they land.
+### The gate (red before green)
+
+`ehrt.docs-tooling.rulings-lint-test` holds six assertions; the reading-set
+header cap is added to `ehrt.docs-tooling.reading-set-budget-test`. RED
+witnessed at `57a27f5`:
+
+| assertion | red |
+|---|---|
+| every row matches the row contract | **170** of 170 top-level bullets |
+| slugs unique | 0 — vacuous, see below |
+| every cited ADR resolves | 0 — vacuous, see below |
+| three lines a row | **156** of 170 rows |
+| no `## From` block headings remain | **55** headings |
+| a SUPERSEDED row names an existing successor | 0 — vacuous, see below |
+| `.agents/reading-sets.edn` comment cap | **480** comment lines against 20 |
+
+**Three of the six match nothing at red, and that is the shape of the gate,
+not a weakness in it.** Their subject is the row, and no row exists until the
+migration introduces it — ADR-0144 hit exactly this (its F-11, where guard #1
+also fired on zero) and drew the conclusion this session acts on: a gate
+written in the same arc as the shape it gates cannot be trusted to have been
+exercised. So the non-vacuity is carried by mechanism-sanity cases on synthetic
+strings, all of which pass: the pattern matches a known-good row and a
+known-good SUPERSEDED row (asserting the bare cite is the rule's own ADR, not
+the successor's parenthesised one), rejects six known-bad shapes one at a time,
+tolerates a rule containing its own ` -- ` separator (several real rules do —
+the LAST separator is the cite), folds a wrapped row back into one row for the
+cap, and proves the `## From` pattern fires on the shape it forbids while
+ignoring prose that merely starts with the same letters.
+
+**A runner finding, disclosed.** `clojure -M:poly test :project:docs-tooling`
+stopped at `rulings-lint-test` and never reached `reading-set-budget-test`, so
+the 480/20 red was captured by running that namespace alone on a minimal
+classpath. Same first-failure-abort behaviour the build-session skill's
+checkpoint-isolation step names; recorded so the red evidence is not read as
+one run when it was two.
+
+### The migration, and the nothing-lost ledger
+
+`bin/rulings-migrate-0145`, run once and committed, because the claim is that
+the move was mechanical and the script is that claim's evidence (ADR-0143's
+`bin/adr-index-migrate`, ADR-0144's `bin/roadmap-migrate-0144`). It refuses a
+drifted tree: each of the 56 blocks is keyed to its start line at `e0cd075`
+AND a prefix of that line, both asserted before anything is written.
+
+- **1,702 lines out** of `.agents/rulings.md` — 56 blocks, the file's own
+  header among them.
+- **1,702 lines in**, multiset-identical over non-blank lines, asserted before
+  the script writes anything.
+- **Read back and proved**, which is the durable half: `--verify` re-reads
+  `.agents/rulings.md` as it was at `e0cd075` and asserts each block is present
+  as an exact contiguous block in its destination file NOW — **56 of 56 found
+  verbatim, 0 missing, 1,702 lines**. Re-runnable at any later commit.
+
+The skill split gets the same treatment, and for the same reason ADR-0144 gave:
+the replacement steps are AUTHORED, not excerpted, so "the history" has no
+clean line boundary to subtract. Each of the 19 blocks (the preamble, 17
+numbered steps, `VERIFICATION`) therefore moves to `HISTORY.md` WHOLE. A step's
+imperative consequently appears in both files; nothing is summarised and
+nothing is dropped. `bin/verify-skill-history-0145` reads all 19 back: **19 of
+19 found verbatim, 0 missing, 227 lines**, and checks the `.claude/` mirror is
+byte-equal in the same run.
+
+`.agents/reading-sets.edn`'s 415-line header and its 65 lines of in-map
+rationale move to `.agents/plans/reading-sets-history.md` inside fenced blocks,
+verbatim; the replacement header is 19 comment lines pointing at it.
+
+**No `git diff --numstat` identity is claimed.** ADR-0144 established why one
+cannot be: git renders moved lines that duplicate adjacent content as context
+rather than insertions, so a diffstat systematically undercounts a move of this
+shape. That ADR's own closing recommendation was that the instrument named in
+the fence should be the read-back; this session takes it.
+
+### Before and after
+
+| | before | after |
+|---|---:|---:|
+| `.agents/rulings.md` | 1,757 lines, 55 `## From` blocks | **237 lines, 100 rows, 0 blocks** |
+| `.agents/skills/build-session/SKILL.md` | 309 | **117** |
+| `.agents/skills/build-session/HISTORY.md` | — | 300 (new, in no reading set) |
+| `.agents/reading-sets.edn` | 531 (480 comment) | **69 (19 comment)** |
+| `.agents/plans/reading-sets-history.md` | — | 505 (new) |
+| longest register row | 158 lines | **3** |
+
+100 rows from 91 STANDING and 6 SUPERSEDED classifications plus this session's
+own three, less the duplicate slugs five split bullets would otherwise produce.
+
+### Reading sets — four fall, one holds, and the one that holds is the finding
+
+Measured after every edit landed (R-RH), never before.
+
+| set | actual before | actual after | budget | baseline |
+|---|---:|---:|---:|---:|
+| `:onboarding` | 1,449 | **1,501** | 1,665 → **1,665 (held)** | 1,665 (held) |
+| `:corpus` | 1,961 | **1,774** | 2,245 → **2,045** | 2,245 → **2,045** |
+| `:sim` | 1,407 | **1,220** | 1,610 → **1,405** | 1,610 → **1,405** |
+| `:judge` | 1,055 | **868** | 1,205 → **1,000** | 1,205 → **1,000** |
+| `:docs` | 868 | **681** | 990 → **785** | 990 → **785** |
+
+Four sets fall for one reason: they carry exactly one path this session
+touched, and `build-session/SKILL.md` went 309 → 117. Those four are the first
+budgets in this workspace's life to fall by 200 lines each.
+
+**`:onboarding` does not fall, and this session reports that rather than
+absorbing it.** Its actual RISES, 1,449 → 1,501: the same session that took 192
+lines of skill out of the set added `.agents/rulings.md` to its `:paths` by Q5,
+and the register is 237 lines even after a 7.4× compression — a net +52. The
+formula value is 1,730, above the 1,665 baseline; the ratchet forbids up, so
+the budget holds where it is.
+
+The prompt's own fences say **"No budget increase"** and **"exit condition: all
+five sets at or below baseline"**, and its STOP list names "a set still above
+baseline after Step 3". Read against the numbers: no budget increased, every
+budget is at or below its baseline, and no set is over its budget — so the exit
+condition holds and no STOP fires. What did not happen is the *method* the
+prompt described for reaching it, "every budget and baseline re-set DOWN to the
+standing formula": for `:onboarding` the formula points up, so the budget holds
+instead. Recorded as a trip rather than a footnote, because the difference
+matters and the author should not learn it from a diffstat later.
+
+It is also not a null result. `:onboarding`'s headroom falls from the 15% the
+standing formula grants to **11%** (164 lines over an actual of 1,501). The
+ratchet bites; it just does not fall.
+
+**Where the remaining growth actually is, which is D's charter.**
+`:onboarding`'s eight paths after this session: `AGENTS.md` 308,
+`plans/README.md` 61, `skills/README.md` 65, **`session-records/README.md`
+222**, **`prompts/README.md` 170**, `memory/README.md` 33, `roadmap.md` 288,
+`rulings.md` 237, `build-session/SKILL.md` 117. The two dated indexes are 392
+lines between them and grow by one line every session, forever, by construction
+— they are the only `:onboarding` path this arc has not reached, and they are
+now the largest thing in the set after `AGENTS.md`. Session D is chartered
+there by this close, and the roadmap row says so.
+
+### Findings, continued
+
+**F-7 — a gate's own scope was set by this session and is stated plainly.**
+The header cap counts EVERY `;;` line in `.agents/reading-sets.edn`, header and
+in-map alike, not just the header. The ruling says "comment lines <= 20 (header
+only)", and counting both is the reading that makes it hold: the growth this
+guard exists to stop arrived as per-set rationale exactly as readily as as a
+dated header note, and a cap that watched only the top would have been
+satisfied while 65 lines accumulated below it. The 65 lines are not lost —
+they are verbatim in the history file, and the header says where.
+
+**F-8 — the register is now citable, and three cites were rewritten to prove
+it.** `AGENTS.md:53` pointed at "`rulings.md`'s own AR-R-2", a label inside a
+block that no longer exists; it now reads `rulings.md#R-stable-tag-author-only`.
+`manual-review/SKILL.md:163` pointed at `"From ADR-0113," R6` and now reads
+`rulings.md#R-diagrams-derive-from-data`. `manual-review/SKILL.md:35` cited
+ADR-0113 R5 via the register, but R5 is ARC-LOCAL and has no row, so it now
+cites the ADR directly. `repo-review/SKILL.md:51` is deliberately untouched:
+it asks a session to "enumerate `.agents/rulings.md`'s standing rulings and map
+each to its enforcing test", which named no block, and which the row form
+finally makes cheap. The `.claude/` mirrors are byte-equal, `diff -r` zero.
+
+### Fences honoured
+
+- **`src`: only `components/docs-tooling/test/`** — one new test namespace and
+  one addition to an existing one. No `src` file anywhere is touched, so **no
+  regression-oracle claim is owed and none is made** (the ADR-0135/ADR-0144
+  precedent for the same shape).
+- **ADR files append-only**, except that all 55 block moves are appends under
+  one dated heading per file, and no pre-existing sentence in any ADR is
+  edited. The three enumerated cite rewrites are outside `notes/adr/`.
+- **Nothing deleted**: 1,702 register lines and 227 skill lines proved present
+  verbatim at their destinations by read-back, not by diffstat.
+- **No budget increase**; four fell by 200 lines each, one held.
+- **`out/` cleared** before the authoritative run; every gate run unpiped with
+  its exit code captured.
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+# Rulings register — standing decisions only
+
+**Seed, not a completed register (ADR-0047 AR-C-2).** This file holds
+only the STANDING `[A]` rulings — ongoing rules a future session must
+still follow, not one-off execution choices — stated by this arc's own
+five ADRs (0043–0047), extracted by reading those attic files
+directly. It is NOT a history: the ADR files themselves (`notes/adr/`)
+are the narrative and execution record of record; this file exists so
+a cold session can find "what rule applies going forward" without
+re-reading forty-plus ADRs to separate standing rules from executed-
+once decisions.
+
+**Back-fill of ADR-0001 through ADR-0042 is a named future, not
+attempted here.** Extracting standing rulings from all forty-two prior
+ADRs is judgment work — deciding which of each ADR's rulings are still
+"standing" versus superseded or one-off — that exceeds what one
+session can responsibly do alongside its own primary work. Trigger:
+the next design-channel onboarding session that misses a rule this
+register would have surfaced.
+
+**Contract:** appended at each arc close, by the design channel,
+citing the closing ADR. A ruling that gets superseded stays in this
+file with a dated superseding note (never silently deleted) — same
+discipline `notes/ADRs.md` itself uses for ADRs.
+
+---

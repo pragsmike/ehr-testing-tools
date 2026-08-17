@@ -559,3 +559,88 @@ self-checks rather than by the gates themselves** (this one and the
 because the pattern is the point: a gate written in the same commit as
 the shape it gates cannot be trusted to have been exercised — it has to
 be shown failing first, and "it passed" is not that showing.
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0144
+
+Compression arc session B, 2026-08-17 — the roadmap's own row contract.
+
+- **Q1 (a): status tokens, throughout.** Every top-level row's first
+  token after the bullet is one of `OPEN`, `CLOSED <yyyy-mm-dd>
+  <ADR-NNNN|sha>`, `DEFERRED (trigger: ...)`, `EXTERNAL`. **Guard #1**:
+  a `CLOSED` row outside `## Done` is red. **Its dual**: a closure word
+  (LANDED/CLOSED/FIXED/DONE/RESOLVED) in the first sentence of a row
+  not tokened `CLOSED` is red. Gated by
+  `ehrt.docs-tooling.roadmap-lint-test`.
+- **Q2 (a): slug anchors, and no line-number cites.** Every row carries
+  a stable `**[slug]**` right after its token, unique file-wide; rows
+  are cited `roadmap.md#<slug>`. A `roadmap.md:NNN` cite in a live
+  surface is red. **Scope taken as an include-list, not `.agents/**` +
+  `notes/**`** — the ruling's own globs contain three standing frozen
+  populations (`notes/prompts/`, `notes/sim/`, and every dated one-shot
+  record), so a literal reading needed at least three dated exemptions
+  where the fence allows one. The live-surface include-list
+  `ehrt.docs-tooling.stale-path-test` has drawn since 2026-08-05 (S7,
+  ADR-0050) is used instead, and the gate carries **zero** exemptions
+  (ADR-0144 F-2).
+- **Q3 (a): six lines a row, maximum.** Token, slug, one clause of what
+  remains and why, an ADR cite.
+- **Q4 (a): destinations, nothing deleted.** Closed rows moved verbatim
+  to `.agents/plans/roadmap-done-2026-08.md`, leaving one `## Done`
+  line each; live rows' overflow moved verbatim to the ADR that owns it
+  (the most recent ADR the row cites) under a dated heading; rows with
+  no owning ADR to the attic. Proven by multiset identity, not by
+  diffstat: 1,574 row lines out of `roadmap.md`, the same 1,574 lines
+  byte-identical into the destinations, asserted by
+  `bin/roadmap-migrate-0144` before it wrote anything.
+- **Q5 (a): `PRIORITY n` on `## Next` rows**, unique and ascending, so
+  `head` is what is next. **Only two values are author-ruled** — the
+  compression arc at 1 and repo review 4's ADR-count cadence; no ruling
+  orders the other seventeen rows against each other, so `PRIORITY`
+  carries the file's own pre-existing top-to-bottom order rather than
+  inventing a queue. Disclosed, not claimed (ADR-0144 F-9).
+- **`## Now` dropped, by census rather than by preference.** 39 of the
+  last 40 roadmap revisions read "Nothing in progress"; the one that
+  did not was stale for 32 consecutive revisions, naming ADR-0115 for
+  five days after it closed; and nothing in the tree references the
+  section.
+- **A closure that leaves a live remainder is tokened by the
+  remainder.** Three rows said CLOSED and were not finished (review 3's
+  unpushed tag, manual-review dimension 5, the latency arc's four
+  standing deferrals). Each keeps ONE row, retitled by what survives,
+  with the closure narrative moved to its owning ADR — splitting a row
+  in two is re-triage, which is author judgement (ADR-0144 F-10).
+- **Section membership was NOT re-triaged.** Q1 constrains exactly one
+  placement (`CLOSED` under `## Done`). Five rows now carry a token
+  suggesting a different section; they are listed for the author and
+  left where they are (ADR-0144 F-8).
+- **Tag `stable-20260816-adr-index-generated` paid** at `deb9a33`,
+  case (i), pushed and peel-verified.
+
+### Erratum (2026-08-17, ADR-0145): the reading-set table's own itemisation
+
+Found by ADR-0145 re-measuring `:onboarding` against the tree at this ADR's own
+closing commit, before relying on the number.
+
+The "Reading sets" section above records `:onboarding`'s post-compaction actual
+as 1,446 and `.agents/reading-sets.edn`'s dated note itemises it as
+`305 + 59 + 65 + 218 + 166 + 33 + 289 + 258`. **Those eight numbers sum to
+1,393, not 1,446**, and four of them do not match the tree at `e0cd075`:
+`AGENTS.md` is 303 (not 305), `.agents/session-records/README.md` 221 (not
+218), `.agents/prompts/README.md` 169 (not 166), and
+`.agents/skills/build-session/SKILL.md` **309, not 258** -- ADR-0143's own
+approved skills rider had already taken that file to 309, and 258 was its
+length before it.
+
+The correct actual is **1,449**, and the standing formula gives 1,449 x 1.15 =
+1,665.35 -> **1,670**, three lines above the 1,665 baseline this ADR set from
+the mis-itemised figure. Nothing was red as a result: 1,665 still cleared the
+true actual by 216 lines, and the ratchet only bites upward. But it made this
+ADR's own claim that "the other four could not be re-derived" one set short --
+it was all five -- and ADR-0145's charter inherited the wrong number.
+
+Recorded as a dated erratum rather than an edit to the text above
+(`rulings.md#R-dated-addendum-not-silent-edit`). Same class as ADR-0129's own
+`1170` erratum to ADR-0127: an arithmetic figure that happened not to surface a
+red gate, and so went uncorrected until the next session measured live.
