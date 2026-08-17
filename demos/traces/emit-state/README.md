@@ -23,7 +23,17 @@ bin/ehrt sim run --seed 42 --patients 3 \
 - [`ground-truth.edn`](ground-truth.edn) — the shared truth both
   renderings derive from (identical to `order-result/ground-truth.edn`).
 - [`messages.txt`](messages.txt) — the HL7v2 stream (`--emit hl7`), same
-  as `order-result/messages.txt`.
+  as `order-result/messages.txt`. **Dated note, 2026-08-16 (ADR-0142):
+  "same as" is now literally true — both files were regenerated this
+  session and are byte-identical at 5,822 bytes. They were NOT before:
+  the sibling copy had drifted, having been captured before PV1 gained
+  its trailing positional fields, because nothing in the build
+  regenerates or freshness-checks `demos/traces/**`. This copy was
+  current, so its own regeneration shows ADR-0142's change and nothing
+  else: 18 changed lines, 3 `OBR-7` and 15 `OBX-14`, on the three ORU
+  messages. The three ORM^O01 messages are byte-identical across the
+  regeneration — the ORM freeze witnessed on a committed artifact
+  rather than only asserted.**
 - [`fhir-bundle-patient1.json`](fhir-bundle-patient1.json) — patient
   1's own end-of-run FHIR Bundle (`--emit fhir`, `ehrt.sim-emit-fhir.interface/bundle-run`):
   `Patient`, `Encounter`, five `Observation`s (the CBC panel), and

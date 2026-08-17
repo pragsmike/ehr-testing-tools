@@ -390,3 +390,34 @@ order/result/observation message type carries MSH-7 alone. `emitF`
 (FHIR) gets no such arrow this session — a named deferral (notes/
 adr/0109-*.md), since FHIR resources' own instant fields are a
 distinct rendering surface this session's own fence did not open.
+
+**Addendum, 2026-08-16 (ADR-0142): the split clock reaches the result
+wire.** ADR-0109's field audit, quoted just above, is what dated this
+addendum into existence: it recorded that `OBR-7` and `OBX-14` —
+HL7v2's own clinical-time fields on a result message — were simply not
+rendered, which is why "every order/result/observation message type
+carries MSH-7 alone" was true. It no longer is, for results. Both
+fields now render on all three shapes this project emits as `ORU^R01`
+(`:result-available`, ORC+OBR+one OBX per analyte; `:observation`, a
+single OBX with no order context; `:diagnostic-report`, ORC+OBR+one OBX
+per embedded child), carrying the result event's own `:t` through
+`hl7-timestamp` exactly as `evn-segment` receives `clinical-ts`, and
+never shifting under `emit-wire` — MSH-7 alone carries transmit time.
+The arrow itself is untouched: `plan-latency`, `emit-wire` and
+`transmit-seconds` have the same signatures and the same behaviour, and
+the identity property still holds (zero offsets is still plain `emit`).
+What changed is only what a shifted message has to say for itself,
+which is the point — a downstream receiver handed a late result can now
+back-date it from the message rather than guess.
+
+Two boundaries this addendum draws deliberately. **`ORM^O01` is
+byte-frozen**: `obr-segment` renders there too, but OBR-7 means
+*observation* time and an order's observation has not happened yet; the
+field an order would actually owe is ORC-9, transaction time, and it
+stays unrendered and named rather than filled with a plausible-looking
+wrong value (author ruling, 2026-08-16, "Results only; ORM
+byte-frozen"). And this is an EMITTER-seam change only: the
+ground-truth event log's shape is untouched, `:event-schema-version`
+stays `"1.0.0"`, and nothing new entered the log — both fields are
+rendered from `:t`, which every event already carries. `emitF` remains
+the standing deferral it was in 2026-08-11.

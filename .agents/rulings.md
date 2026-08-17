@@ -1610,3 +1610,46 @@ contract)
   …] pattern dialect is java.util.regex"* — stated in `docs/formats.md`
   because a consumer validating in another language is being handed a
   specific regex flavour.
+
+## From ADR-0142 — clinical time on the result wire (2026-08-16)
+
+- **Session scope, ruled:** option (a) of the latency follow-on set —
+  the OBR-7/OBX-14 clinical-time increment. FHIR-side latency and late
+  amendments/A08 stay named deferrals; `emit-fhir` and `sim-engine` are
+  not touched. An emitter-seam change and a DECLARED ORACLE CHANGE
+  (plain `emit`'s frozen bytes move on every root emitting an ORU),
+  deliberately CONTRACT-NEUTRAL (`:event-schema-version` stays
+  `"1.0.0"`; anything wanting to ENTER the log is a schema change under
+  ADR-0141 Q-A's versioning, ruled separately).
+- **Q1 — what OBR-7 carries: RULED (a).** The result event's own `:t`,
+  rendered via `hl7-timestamp` exactly as EVN-2's `clinical-ts` is. The
+  order-placed-`:t` / OBR-22 variant (OBR-7 as specimen time, OBR-22 as
+  report time) is a NAMED REVISIT, roadmap-registered, trigger *"a
+  downstream-receiver case that needs specimen time distinct from
+  result time"*.
+- **Q2 — OBX-14 in `observation-obx-segment`: RULED (a).** Render it in
+  all three ORU shapes. The positional pad at OBX-9..13 — and at
+  OBX-7/8 when the observation carries neither reference-range nor
+  interpretation — is ACCEPTED and disclosed in the ADR and in that
+  builder's own docstring, superseding its "never a positional pad"
+  sentence **for OBX-14 only**. The sentence is amended in place with a
+  date, not deleted, and the distinction that keeps it coherent is
+  stated: OBX-7/8 pad for a value the observation might not have,
+  whereas `clinical-ts` derives from `:t`, which every event carries by
+  construction.
+- **Q3 — scope collision, opened in-session and ruled: "Results only;
+  ORM byte-frozen."** The driving prompt's Context said "OBR-7 wherever
+  `obr-segment` renders", but `obr-segment` also renders in
+  `orm-message`, which the same prompt's fences, mover rule and test
+  set all held untouched. Reported rather than silently resolved.
+  Executed by giving `obr-segment` an extra arity used only by the ORU
+  builders, so `orm-message`'s call site has a literally empty diff.
+  ORC-9 on ORM^O01 becomes a named revisit, trigger *"a receiver case
+  that needs order transaction time on the wire"*.
+- **Tag licences, author verbatim ("Pay it, message verbatim"),** case
+  (i): design-channel fresh-clone verification plus the author's own CI
+  relay 2026-08-16 via `gh run list`. Both paid at Step 0 and
+  peel-verified against the remote: `stable-20260816-fence-battery` at
+  `24f351d` (run 31961309197) and `stable-20260816-event-log-contract`
+  at `c90c9bd` (run 31975476669). These discharge the close tags the
+  two predecessor sessions had each recorded as deferred.

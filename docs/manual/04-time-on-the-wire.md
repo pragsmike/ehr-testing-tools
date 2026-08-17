@@ -59,12 +59,25 @@ section 5's own extension point, built: a second, independently seeded
 RNG samples a per-event-type transmit delay at the [emitter](../glossary.md) seam
 (`GT × LatencyParams → TimedWire`) — `engine`'s own ground truth is
 never touched, never re-entered, never aware latency exists at all.
-That section's own field audit found exactly two timestamp-bearing
-fields this workspace's emitter renders: **MSH-7**, the message's own
-transmit time, shiftable by a sampled delay; and **EVN-2**, an ADT
-message's own clinical event time, never shifted. One message,
-two clocks — the figure below draws exactly one of them, field values
-and all.
+That section's own field audit found, in 2026-08-11, exactly two
+timestamp-bearing fields this workspace's emitter rendered: **MSH-7**,
+the message's own transmit time, shiftable by a sampled delay; and
+**EVN-2**, an ADT message's own clinical event time, never shifted.
+One message, two clocks — the figure below draws exactly one of them,
+field values and all.
+
+**Dated update, 2026-08-16: there are now four, and the two new ones
+are on results.** That audit also recorded which fields HL7v2 *would*
+put clinical time in if this emitter ever rendered them — and named
+`OBR-7` and `OBX-14` among them. Until this update it didn't, so a
+result message carried MSH-7 alone and a receiver handed a late result
+had nothing to back-date it with. Both now render, on all three of the
+shapes this workspace emits as `ORU^R01`, carrying the result event's
+own clinical instant and never shifting under latency. "One message,
+two clocks" is no longer an ADT-only story; ["When the result is
+late"](#when-the-result-is-late) below is the same mechanism on the
+result wire. (Order messages are deliberately unchanged — see that
+section's closing note.)
 
 **Generate both wires, same seed, separate out-dirs** — copied
 verbatim from the demo README:
@@ -144,11 +157,70 @@ produced Walker's own phantom re-admission" — a receiver's own design
 question, not this workspace's to answer. Supplying the case is the
 job; Chapter 5 supplies a second, complementary one.
 
+## When the result is late
+
+Walker's story above is an admission — an ADT message, whose clinical
+time rides EVN-2. A *result* has no EVN segment at all (EVN is
+ADT-specific, by HL7v2 convention), so until 2026-08-16 a lagged
+`ORU^R01` on this wire carried exactly one timestamp and a receiver
+could not tell a stale result from a fresh one. It now carries its own
+clinical instant twice over: **OBR-7** on the order-context segment,
+and **OBX-14** on every observation.
+
+Rodriguez, Jacob (MRN000005) had a CBC panel resulted at
+**03:22:00Z**. The `:result-available` band in
+[`config-latency.edn`](../../demos/scenarios/ed-tuesday/config-latency.edn)
+is 20–120 minutes, and this run's own sample came out at 45m40s, so
+the message transmitted at **04:07:40Z**. Both wires, same seed, same
+patient, same message — the whole difference is which clock moved:
+
+```
+--- out/scenarios/ed-tuesday-base/msg-020.hl7 (the instant wire)
+MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811032200+0000||ORU^R01|MRN000005-R01-12120|P|2.3
+OBR|1|||58410-2^CBC panel - Blood by Automated count^LN|||20260811032200+0000
+OBX|1|NM|6690-2^Leukocytes [#/volume] in Blood by Automated count^LN||6.1|K/uL|4.5-11.0|N||||||20260811032200+0000
+
+--- out/scenarios/ed-tuesday-latency/msg-023.hl7 (the latency wire)
+MSH|^~\&|EHR-TESTING-SIM|SIM|||20260811040740+0000||ORU^R01|MRN000005-R01-12120|P|2.3
+OBR|1|||58410-2^CBC panel - Blood by Automated count^LN|||20260811032200+0000
+OBX|1|NM|6690-2^Leukocytes [#/volume] in Blood by Automated count^LN||6.1|K/uL|4.5-11.0|N||||||20260811032200+0000
+```
+
+`MSH-7` moved by 45m40s. `OBR-7` and `OBX-14` did not move at all —
+they are the *same bytes* on both wires. So is everything else: the
+values, the flags, the reference ranges. Only the transmit clock, and
+the message's position in the stream (`msg-020` on the instant wire,
+`msg-023` on the latency wire, since `emit-wire` sorts by transmit
+time) reflect the delay.
+
+That is the whole payoff. A receiver folding this stream in arrival
+order sees the result at 04:07:40Z, but the message itself says the
+observation happened at 03:22:00Z — enough to reconcile by clinical
+time rather than by arrival, which is exactly the defence Walker's
+phantom re-admission had no equivalent of on the ADT side. This
+workspace still does not fold that way itself; supplying the case is
+the job.
+
+**The order message is deliberately not symmetric.** The `ORM^O01` that
+preceded this result still ends its OBR at OBR-4, with no OBR-7. OBR-7
+means *observation* time, and an order's observation has not happened
+yet; the field an order would actually owe is ORC-9, transaction time.
+Rendering OBR-7 there would have put a plausible-looking timestamp in a
+field whose meaning does not fit — so it stays a named revisit rather
+than a silent ride-along. Author ruling, 2026-08-16: "Results only; ORM
+byte-frozen."
+
 **Strip source citations, per strip:**
 
 | strip | source |
 |---|---|
 | `bin/ehrt play out/scenarios/ed-tuesday-latency --board 60 --rate 100000` | `demos/scenarios/ed-tuesday/README.md`, "The second clock" |
 | `bin/ehrt corpus generate sim ...` (base + latency, two commands) | `demos/scenarios/ed-tuesday/README.md`, "The second clock" |
-| `diff`/`sha256sum` ground-truth-invariance transcript | `demos/scenarios/ed-tuesday/README.md`, "The second clock" |
+| `diff`/`sha256sum` ground-truth-invariance transcript | `demos/scenarios/ed-tuesday/README.md`, "The second clock"; re-witnessed 2026-08-16 against this chapter's own two commands, digest `b4e776f7…` unchanged |
 | Walker EVN-2/MSH-7 values (`03:36:00Z`, `04:13:00Z`, `04:33:54Z`, `04:36:46Z`) | `demos/scenarios/ed-tuesday/README.md`, "What the board actually shows" |
+| Rodriguez ORU pair (`msg-020.hl7` / `msg-023.hl7`, MSH-7 `03:22:00Z` vs `04:07:40Z`, OBR-7/OBX-14 `03:22:00Z` both) | this chapter's own two `corpus generate sim` commands above, run 2026-08-16 at seed 20260811 with `out/` cleared first[^result-clock] |
+
+[^result-clock]: `notes/adr/0142-result-clinical-time.md` — the field
+    audit, the author rulings behind OBR-7's value and OBX-14's
+    positional pad, and the declared oracle change the two fields
+    caused (14 of 35 roots moved, exactly as predicted).
