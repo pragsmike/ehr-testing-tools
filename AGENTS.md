@@ -217,10 +217,14 @@ library in its own right.
 
 ## Discipline surface, mapped (ADR-0006)
 
-- **Live, current, edit freely:** `notes/ADRs.md` (architecture
-  decisions); `notes/facts-register.md` (externally verifiable facts,
-  `AUTHORS-GUIDE.md` §4); `.agents/memory/`, `.agents/plans/`,
-  `.agents/session-records/`, `.agents/prompts/` (above); `.agents/skills/`.
+- **GENERATED, never hand-edited:** `notes/ADRs.md` — the ADR index is
+  rendered from the `notes/adr/` tree by `make adr-index` (ADR-0143);
+  edit the ADR, regenerate.
+- **Live, current, edit freely:** `notes/adr/` (the architecture
+  decisions themselves); `notes/facts-register.md` (externally
+  verifiable facts, `AUTHORS-GUIDE.md` §4); `.agents/memory/`,
+  `.agents/plans/`, `.agents/session-records/`, `.agents/prompts/`
+  (above); `.agents/skills/`.
 - **Frozen provenance, read-only, never edited for new paths or
   namespaces:** `notes/sim/` and `notes/tools/` (each parent's own
   ADRs, facts-register, and `.agents/` tree as they stood at the

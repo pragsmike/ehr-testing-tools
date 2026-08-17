@@ -5,24 +5,39 @@ design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one li
 per item; done items move to the bottom of their section with a date and sha.
 
 ## Now (in progress)
-- Nothing in progress at this close (review-3 rulings landing,
-  ADR-0115, 2026-08-12 — registers-only: recorded the author's three
-  rulings on review-3's own `ruling-needed` rows [R3-B1-1 `--out-dir`'s
-  double meaning, RULED (a), the `--scratch-dir` rename chartered to
-  fix cluster A; R3-B1-4 `--seed`'s required-vs-defaulted split, RULED
-  (a) deliberate two-tier design, a help note chartered to fix cluster
-  A; R3-B1-7 `--received`'s wall-clock default, RULED (a), a class
-  exemption for provenance metadata about a real-world act, closed by
-  ruling], fixed the findings register forward (three row dispositions,
-  one summary-table wording correction), and chartered the register's
-  twelve `fix-session-candidate` rows into three fix clusters [A: CLI
-  validation and error quality, 8 members including the register's own
-  HIGHEST-PRIORITY finding `check`'s silent-pass-on-invalid-target; B:
-  help-surface enrichment; C: doc drift and gate scan-roots, docs-only]
-  plus a design-channel-draft queue note. Zero `src`/`test`/`docs`
-  change; the oracle held pure identity across all 35 roots).
-
+- Nothing in progress at this close (register-compression arc session A,
+  ADR-0143, 2026-08-16 — `notes/ADRs.md` became a generated surface, the
+  reading-set budgets gained a committed ratchet baseline
+  (`.agents/reading-sets-baseline.edn`), and the queue-provenance and
+  register-hygiene rules landed in the skills. Arc sessions B, C and D are
+  queued below; B's own first specimen is deliberately left unmoved at
+  `roadmap.md:222`. The oracle held pure identity across all 35 roots; the
+  only `src` touched was `components/docs-tooling`).
 ## Next (backlog, no session scheduled)
+- **Register-compression arc — SESSION A LANDED 2026-08-16
+  (`notes/adr/0143-adr-index-generated.md`); B, C, D QUEUED.**
+  Author-ordered A -> B -> C -> D, one session each (*"I like that order,
+  after OBR/OBX."*; guards *"Ok on all five. Rider ok."*), chartered after a
+  queue item was carried as open for five days after its own arc closed.
+  **A (landed):** `notes/ADRs.md` is GENERATED — `make adr-index` renders every
+  row from the `notes/adr/` tree's own headings and Status lines, on `docsgen`
+  and in CI's freshness diff; 140,852 -> 30,933 bytes, mean row 977 -> 184
+  chars; 78 narratives moved verbatim into their own ADRs, zero deleted lines.
+  Guard #3 (budget ratchet, `.agents/reading-sets-baseline.edn`) and the skills
+  rider (queue provenance in `session-prompt`/`handoff`; R-RH/R-BS/R-RP/R-AE in
+  `build-session`) landed with it.
+  **B (queued):** guard #1 and its dual — a roadmap row whose own text says
+  CLOSED may not sit under `## Next`, and the converse.
+  `ehrt.docs-tooling.roadmap-deferred-closure-lint-test` covers `## Deferred`
+  only, which is why the specimen went uncaught. B's first specimen is
+  `roadmap.md:222`, the downstream-latency row, status words *"arc CLOSED"*,
+  sitting in this section — deliberately LEFT IN PLACE by session A so B has a
+  live red to prove its gate against, not a fixture.
+  **C (queued):** `.agents/skills/build-session/SKILL.md`, 162 -> 309 lines
+  across this workspace's life, in the one path all five reading sets carry
+  (ADR-0143 Finding 6), plus `.agents/reading-sets.edn`'s own eleven-block
+  re-derivation trail.
+  **D (queued):** scope set by the arc's own C close.
 - **Event-log contract arc — CLOSED 2026-08-16 (`notes/adr/0141-event-log-contract.md`).**
   Author-ordered before latency realism (*"Choose a."*). The ground-truth event
   log is now a PUBLIC, VERSIONED contract: `ehrt.sim-engine.event-schema/Event`
@@ -1666,3 +1681,4 @@ pointers rotate to a dated header in the attic at that arc's own close,
   but not here, and adding only ADR-0142's line would have left a
   visible gap in the sequence. One line, no other content touched.)
 - 2026-08-16 — result-clinical-time — ADR-0142
+- 2026-08-16 — adr-index-generated — ADR-0143
