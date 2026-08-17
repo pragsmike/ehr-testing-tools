@@ -129,5 +129,12 @@ all in ADR-0147. The ones that outlive this session:
 licensed on CI run `32041400966` (success, verified with `gh run view`
 before tagging), pushed and peel-verified.
 
-**HEAD landed:** see the close commit; the arc tag
-`stable-20260817-compression-arc` disposition is recorded in ADR-0147.
+**HEAD landed:** `9b3432a` (close commit), pushed and post-push-verified
+(remote tip match, per-commit ASCII over the range, CI reported once).
+
+**Arc tag PAID IN SESSION**, not handed on: CI run `32068201062` at
+`9b3432a` concluded **success** while this session was still open, which
+is the branch the prompt's ruling licensed for that case.
+`stable-20260817-compression-arc` created annotated via
+`bin/tag-ceremony`, pushed, remote peeled ref verified equal to
+`9b3432a`.

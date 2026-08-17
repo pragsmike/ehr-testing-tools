@@ -409,6 +409,23 @@ historical — and never more than one of the three) and
 owes a lint on its own growth; a budget without one measures growth, and
 a measurement is not a limit).
 
+### The arc tag — paid here, not handed on
+
+The prompt licensed `stable-20260817-compression-arc` at D's own tip
+either way: paid by the NEXT session's Step 0, or **paid here if the tip
+run concludes success while this session is still open**. It concluded
+while this session was still open, so it was paid here.
+
+CI run **`32068201062`** at `9b3432a`, workflow `test`, status
+`completed`, conclusion **`success`**, read with `gh run view` before
+tagging. Tag created annotated through `bin/tag-ceremony` and pushed;
+the remote peeled ref verifies equal to `9b3432a` exactly. Nothing is
+handed to the next session's Step 0 on this row.
+
+The predecessor tag `stable-20260817-emitter-author-ux` was paid at Step
+0 of this session by the same route (run `32041400966` at `0b15e87`,
+conclusion success).
+
 ### Fences honoured
 
 `src` touched: `components/docs-tooling` only, one new namespace. **The
