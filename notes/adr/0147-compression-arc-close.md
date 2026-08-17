@@ -1,4 +1,4 @@
-## ADR-0147 — The continuity register re-derived: generated where derivable, capped where hand-owned, attic'd where historical (compression arc, session D)
+## ADR-0147 — The compression arc closes: the continuity register re-derived, generated where derivable, capped where hand-owned, attic'd where historical (session D)
 
 **Status:** Accepted (author-directed, autonomous session per R30),
 2026-08-17.
@@ -182,12 +182,30 @@ condition ADR-0145 recorded that session C could not meet.
 - **`bin/preflight`**: last five CI runs green; edit root not under
   `/mnt/`; tree clean including untracked; HEAD matches `origin/main`;
   HEAD not yet tagged (paid immediately after).
-- **FINDING S-5 (prompt figure wrong, disclosed).** The prompt asks the
-  baseline to reconcile against "ADR-0146's recorded 338 blocks / 3,848
-  tests / 17,422 assertions". ADR-0146 line 81 records **338 blocks /
-  3,830 tests / 17,354 assertions**. The prompt names that ADR as the
-  artifact, so the ADR's figures are the baseline and the prompt's are a
-  channel slip. Second instance this Step 0, after S-1.
+- **FINDING S-5 — and its own correction, which went the other way.**
+  The prompt asks the baseline to reconcile against "ADR-0146's recorded
+  338 blocks / 3,848 tests / 17,422 assertions". ADR-0146 line 81 records
+  **338 / 3,830 / 17,354**. At Step 1 this ADR called the prompt a
+  channel slip, on the reasoning that the ADR is the artifact. **The clean
+  baseline run settles it, and the Step-1 reading was wrong.** Measured at
+  `0b15e87` from a disposable worktree, `MAKE_EXIT=0`: **338 blocks /
+  3,848 tests / 17,420 assertions**, zero `FAIL`/`ERROR` lines, 338
+  zero-failure blocks.
+
+  So the prompt's block and TEST counts are exactly right, and ADR-0146's
+  3,830 / 17,354 describes an earlier tree than its own closing tip —
+  taken mid-session, before that session's last commits landed. What
+  survives as a real discrepancy is small, and is disclosed rather than
+  smoothed: **17,420 measured against the prompt's 17,422**, two
+  assertions I cannot account for from a single run and will not invent a
+  cause for.
+
+  Recorded at this length because the correction is the point. "The ADR is
+  the artifact" is a good rule and it produced a wrong answer here,
+  because an ADR's figure is a measurement of the tree AT THE MOMENT IT
+  WAS TAKEN, not of the commit it ships in. The live tree outranks both
+  documents — the same lesson this census reaches about every `[V]` claim
+  in `state.md`, arrived at this time against this ADR's own text.
 - **FINDING S-6 (this session's own near-miss, recorded).** The first
   baseline run was started before any edit and was still in flight when
   the Step-0 roadmap re-triage and the Step-2 test files landed in the

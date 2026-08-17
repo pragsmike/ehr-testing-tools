@@ -70,7 +70,30 @@
 ;; growing one line per session forever, and the only `:onboarding` growth
 ;; this arc has not touched.
 
-{:onboarding 1665
+;; 2026-08-17, compression arc session D (`notes/adr/
+;; 0147-compression-arc-close.md`): `:onboarding` 1665 -> 1530, the
+;; second downward move, and the one session C's own close said it could
+;; not make. Set from this ADR's post-compaction actual (1,328) by the
+;; standing formula. The other four HOLD: each already sits exactly at
+;; its own formula value from session C, so the ratchet has nothing to
+;; give there.
+;;
+;; What moved. `.agents/session-records/README.md` and
+;; `.agents/prompts/README.md` went 223 + 171 -> 42 + 35 lines: the 291
+;; per-record rows between them are generated into a sibling `INDEX.md`
+;; that NO set carries, and the READMEs keep only the convention, capped
+;; at 40 lines each by `ehrt.docs-tooling.index-completeness-test`.
+;;
+;; DISCLOSED, because it is a set GAINING a path in a compaction ADR:
+;; `.agents/state.md` JOINS `:onboarding` (+118 lines). It was in no set
+;; at all -- 724 lines that `AGENTS.md` routes a cold session to and the
+;; `repo-review` skill samples, counted against no budget and gated only
+;; for currency. It is 118 hand-owned lines now, capped and linted
+;; (`ehrt.docs-tooling.state-residue-test`), and its countable half is
+;; generated into `.agents/state-derived.md`, which no set carries
+;; either. Net for the set: 1,526 -> 1,328.
+
+{:onboarding 1530
  :corpus 2045
  :sim 1405
  :judge 1000

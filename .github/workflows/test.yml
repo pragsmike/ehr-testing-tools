@@ -120,4 +120,7 @@ jobs:
             components/palgebra/examples/ai-study-flow-v3.mermaid \
             components/palgebra/examples/committee-flow.mermaid \
             components/palgebra/examples/deliberated-choice-flow.mermaid \
-            notes/ADRs.md
+            notes/ADRs.md \
+            .agents/state-derived.md \
+            .agents/session-records/INDEX.md \
+            .agents/prompts/INDEX.md

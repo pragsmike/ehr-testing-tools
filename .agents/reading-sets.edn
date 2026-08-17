@@ -20,6 +20,7 @@
 
 {:onboarding
  {:paths ["AGENTS.md"
+          ".agents/state.md"
           ".agents/plans/README.md"
           ".agents/skills/README.md"
           ".agents/session-records/README.md"
@@ -28,7 +29,7 @@
           ".agents/plans/roadmap.md"
           ".agents/rulings.md"
           ".agents/skills/build-session/SKILL.md"]
-  :budget-lines 1665}
+  :budget-lines 1530}
 
  :corpus
  {:paths ["AGENTS.md"

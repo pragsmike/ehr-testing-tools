@@ -163,21 +163,27 @@ create_stub() {
   echo "CREATED: $path"
 }
 
-add_index_line() {
-  local readme="$1"
-  local line="  * ${filename} — ${description}"
-  if grep -qF "* ${filename}" "$readme"; then
-    echo "SKIP: $readme already indexes ${filename}"
-    return
+# The two index lines are no longer appended by hand (ADR-0147). Both
+# directories' listings are GENERATED into a sibling INDEX.md by `make
+# state-derived`, whose population is the directory itself -- so a
+# scaffolded record cannot be missing from its index, rather than being
+# present because this script remembered to add it. The READMEs the two
+# variables above still name are convention prose now, capped at 40
+# lines and asserted to carry no per-record row.
+regenerate_indexes() {
+  echo "Regenerating the two record indexes (make state-derived)..."
+  if make state-derived; then
+    echo "UPDATED: .agents/session-records/INDEX.md, .agents/prompts/INDEX.md"
+  else
+    echo "WARN: 'make state-derived' failed -- run it before committing, or" >&2
+    echo "      ehrt.docs-tooling.state-derived-test and CI's freshness diff will be red." >&2
+    return 1
   fi
-  printf '%s\n' "$line" >> "$readme"
-  echo "UPDATED: $readme"
 }
 
 create_stub "$record_path" record
 create_stub "$prompt_path" prompt
-add_index_line "$record_readme"
-add_index_line "$prompt_readme"
+regenerate_indexes || exit 1
 
 echo "OK: ${filename} scaffolded in .agents/session-records/ and .agents/prompts/"
 exit 0

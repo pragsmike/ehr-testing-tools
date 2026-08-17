@@ -1,4 +1,4 @@
-.PHONY: adr-index event-schema-export event-schema-freeze event-schema-examples formats-event-log help test integration quickstart quickstart-fresh ci-parity pipeline use-cases operators-doc cli-doc sim-theory palgebra-examples docsgen lint-pipeline mirror-nist verify-nist-lock
+.PHONY: adr-index state-derived event-schema-export event-schema-freeze event-schema-examples formats-event-log help test integration quickstart quickstart-fresh ci-parity pipeline use-cases operators-doc cli-doc sim-theory palgebra-examples docsgen lint-pipeline mirror-nist verify-nist-lock
 
 # Thin, deliberately (R23, ADR-0004, 2026-07-28 carve-loss recovery
 # session): every target below is a named entry point to a poly/CLI
@@ -36,7 +36,8 @@ help:
 	@echo "  event-schema-examples - regenerate the one-real-event-per-kind examples docs/formats.md shows, from the deterministic fixture fleet"
 	@echo "  formats-event-log - regenerate docs/formats.md's event-log section from the two artifacts above"
 	@echo "  adr-index    - regenerate notes/ADRs.md from the notes/adr/ tree's own headings and Status lines (ADR-0143)"
-	@echo "  docsgen      - all ten of the above"
+	@echo "  state-derived - regenerate .agents/state-derived.md plus the two record INDEX.md files from the live tree (ADR-0147)"
+	@echo "  docsgen      - all eleven of the above"
 	@echo "  event-schema-freeze - NOT part of docsgen: re-freeze the stability gate's baseline, ONLY when bumping the event schema version"
 	@echo "  lint-pipeline - assert every catalytic resource in docs/pipeline.edn and docs/use-cases.edn resolves to one of the four catalytic targets (ehrt.docs-tooling.lint)"
 	@echo "  mirror-nist  - build ~/.ehrt/nist-mirror/ from this user's own ~/.m2 cache, sha256-verified against artifacts.lock.edn (ADR-0053) -- offline determinism without redistribution"
@@ -207,7 +208,24 @@ adr-index:
 	clojure -X:dev ehrt.docs-tooling.docsgen/write-adr-index!
 	@echo "Regenerated notes/ADRs.md"
 
-docsgen: pipeline use-cases operators-doc cli-doc sim-theory palgebra-examples event-schema-export event-schema-examples formats-event-log adr-index
+# Regenerates .agents/state-derived.md -- the countable half of the
+# continuity register -- plus .agents/session-records/INDEX.md and
+# .agents/prompts/INDEX.md, all three from the live tree (compression
+# arc session D, notes/adr/0147-compression-arc-close.md).
+#
+# `.agents/state.md` carried nine sections of counts, inventories and
+# gate lists that a session was asked to re-probe BY HAND at each arc
+# close. That contract was met once in fifty ADRs; the file's own
+# preamble is eleven dated blocks each saying the sections below it are
+# stale. Derivable facts regenerate here instead, so they cannot go
+# stale and cannot be hand-written wrong; what is left in state.md is
+# judgement, and it is capped and linted
+# (ehrt.docs-tooling.state-residue-test).
+state-derived:
+	clojure -X:dev ehrt.docs-tooling.state-derived/write-state-derived!
+	@echo "Regenerated .agents/state-derived.md and the two record INDEX.md files"
+
+docsgen: pipeline use-cases operators-doc cli-doc sim-theory palgebra-examples event-schema-export event-schema-examples formats-event-log adr-index state-derived
 
 lint-pipeline:
 	clojure -X:dev ehrt.docs-tooling.lint/lint-pipeline!

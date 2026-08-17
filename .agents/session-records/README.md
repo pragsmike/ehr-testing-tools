@@ -1,223 +1,40 @@
 # Session records
 
-**One dated markdown record per session, started here** — adapted
-directly from sim's own convention (frozen provenance:
+One dated markdown record per session, written as its last pre-push act
+(charter R-A, `notes/ADRs.md` ADR-0023) — adapted from sim's own
+convention (frozen provenance:
 `notes/sim/agents/session-records/README.md`), which closed the same
-gap sim's own retiring design channel named: session summaries that used
-to live only in a chat conversation, nowhere in the repo. From this
-session forward, a session doing non-trivial work in this workspace
-writes its own record here as its last act before the ceremony (commit
-→ push, per `AUTHORS-GUIDE.md` §1 — the same ceremony sim used, this
-workspace's own checkpoint/delegation model layered on top per
-`docs/dev/way-of-working.md` §1).
+gap: summaries that lived only in a chat, nowhere in the repo.
+
+**The listing is [`INDEX.md`](INDEX.md)**, generated from this directory
+by `make state-derived` and gated both ways by
+`ehrt.docs-tooling.index-completeness-test`. This file states the
+convention; it does not list files (ADR-0147).
 
 ## Filename convention
 
 `YYYY-MM-DD-short-slug.md`, one file per session (a session spanning
-multiple calendar days uses its start date). If two sessions land the
-same day, append `-2`, `-3`, etc. to the slug.
+several calendar days uses its start date). Two the same day append
+`-2`, `-3`. The slug MUST match its paired
+[`.agents/prompts/`](../prompts/README.md) archive.
 
 ## What a record contains
 
-Four parts, in this order — unchanged from sim's own convention:
+Four parts, in this order, unchanged from sim's convention:
 
-1. **Scope.** What the session was asked to do and what it actually
-   did, in a sentence or two.
-2. **Red→green evidence highlights.** Not every test — the headline
-   count/delta (tests, assertions, coverage, against the prior baseline)
-   and anything a test caught worth naming. A docs-only session's proof
-   is the suite staying green and untouched, not a red→green cycle.
-3. **Judgment calls and their ratification status.** Every place the
-   session made a call the author didn't hand it verbatim, and whether
-   the author has ratified it yet. Ratified elsewhere (an ADR) can be a
-   pointer rather than a repeat.
-4. **Findings and HEAD landed.** Anything discovered that wasn't the
-   point of the session, plus the commit HEAD this session's ceremony
-   lands on.
+1. **Scope.** What the session was asked to do and what it did.
+2. **Red→green evidence highlights.** Headline counts and deltas against
+   the prior baseline, plus anything a test caught worth naming. A
+   docs-only session's proof is the suite staying green and untouched.
+3. **Judgment calls and their ratification status.** Every call the
+   author did not hand over verbatim, and whether it is ratified yet.
+4. **Findings and HEAD landed.**
 
-## Where this sits relative to everything else
+## Where this sits
 
-Does not replace or outrank:
-
-- `notes/ADRs.md` — the reasoning-of-record for *why* a structural
-  decision was made.
-- `.agents/plans/` — what's landed and what's next, at milestone grain.
-  A session record is finer-grained and may sit underneath several
-  plan entries, or none.
-- `.agents/handoffs/` — not instantiated in this workspace
-  (`notes/discipline-parity-audit.md` row M14): this workspace's own
-  checkpoint model, author present throughout one session rather than
-  sim's/tools' async multi-session handoff, structurally reduces the
-  need for it. Add it the moment a session actually ends with open
-  mid-flight work for a fresh session to pick up.
-
-Empty at instantiation (2026-07-28, discipline-parity session, R25) —
-this session's own record will be its first entry, written at close.
-
-## Gap, 2026-07-29..2026-08-01 (recorded 2026-08-01, agent-ux capture session)
-
-The ritual lapsed for eight sessions between `2026-07-29-wsl-clone-igamt-hygiene.md`
-and this entry — nothing gated it, and it stopped the week velocity
-spiked (`.agents/plans/2026-08-01-agent-ux-charter.md` §2.1, the
-diagnosis this session's own charter-adoption work exists to close).
-**No retroactive record is fabricated for that gap.** Each of those
-eight sessions' own archived prompt under `notes/prompts/` carries a
-deviation record documenting what actually happened and what judgment
-calls it made; the design-channel conversation that drove them holds
-whatever isn't in those deviation records. This entry exists so a
-future reader doesn't mistake the gap for sessions that did nothing
-notable, or search here first and stop looking.
-
-## Records
-
-Files in this directory:
-
-  * 2026-07-28-discipline-parity.md
-  * 2026-07-29-development-resumption.md
-  * 2026-07-29-exp-d3-nist-validator.md
-  * 2026-07-29-judge-engine-extraction.md
-  * 2026-07-29-sim-sibling-errata-sweep.md
-  * 2026-07-29-storefront-polish.md
-  * 2026-07-29-wsl-clone-igamt-hygiene.md
-  * 2026-08-01-agent-ux-capture.md
-  * 2026-08-01-skill-adaptation.md
-  * 2026-08-01-migration-session-1.md
-  * 2026-08-02-migration-session-2.md
-  * 2026-08-02-migration-session-3.md
-  * 2026-08-02-migration-session-4.md
-  * 2026-08-02-migration-session-5.md
-  * 2026-08-02-migration-session-6.md
-  * 2026-08-02-provenance-adoption-rider.md
-  * 2026-08-02-sim-split-s1-s2.md
-  * 2026-08-02-gmf-coverage-wave-a.md
-  * 2026-08-02-gmf-coverage-wave-b.md
-  * 2026-08-02-gmf-coverage-wave-c.md
-  * 2026-08-02-sim-split-s3-wave-d-d0.md
-  * 2026-08-02-gmf-coverage-wave-d-d1a.md
-  * 2026-08-02-gmf-coverage-wave-d-stage-d1b.md
-  * 2026-08-02-gmf-coverage-wave-d-stage-d2.md
-  * 2026-08-02-gmf-coverage-wave-d-stage-d3.md
-  * 2026-08-02-post-wave-d-cleanup.md
-  * 2026-08-03-rulings-capture.md
-  * 2026-08-03-procedure-duration-fix.md
-  * 2026-08-03-engine-closure-context.md
-  * 2026-08-03-gmf-census.md
-  * 2026-08-03-wave-f0-distributions.md
-  * 2026-08-03-gmf-coverage-wave-f.md
-  * 2026-08-03-gmf-coverage-wave-g.md
-  * 2026-08-03-gmf-coverage-wave-lc.md
-  * 2026-08-04-gmf-coverage-wave-vs.md
-  * 2026-08-04-gmf-coverage-wave-i.md
-  * 2026-08-04-gmf-coverage-wave-i2.md
-  * 2026-08-04-gmf-coverage-wave-h.md
-  * 2026-08-04-sim-split-m1-provenance.md
-  * 2026-08-04-sim-split-m2-engine.md
-  * 2026-08-04-sim-split-m3-emit-fhir.md
-  * 2026-08-04-sim-split-m4-check.md
-  * 2026-08-05-docs-coherence-pass.md
-  * 2026-08-05-standing-equipment-promotion.md
-  * 2026-08-05-scaffolding-compaction-a.md
-  * 2026-08-05-scaffolding-compaction-b.md
-  * 2026-08-05-scaffolding-compaction-c.md
-  * 2026-08-05-alignment-riders.md
-  * 2026-08-05-alignment-audit.md
-  * 2026-08-05-alignment-fixes-1.md
-  * 2026-08-05-alignment-fixes-2.md
-  * 2026-08-05-alignment-fixes-3.md
-  * 2026-08-05-alignment-fixes-4.md
-  * 2026-08-05-alignment-fixes-5.md
-  * 2026-08-05-alignment-arc-close.md
-  * 2026-08-06-ux-riders.md
-  * 2026-08-06-tag-law.md
-  * 2026-08-06-ux-audit.md
-  * 2026-08-06-ux-fixes-1.md
-  * 2026-08-06-ux-fixes-2.md
-  * 2026-08-06-ux-fixes-3.md
-  * 2026-08-06-ux-fixes-4.md
-  * 2026-08-06-ux-fixes-5.md
-  * 2026-08-06-ux-arc-close.md
-  * 2026-08-06-ux-epilogue.md
-  * 2026-08-06-player-fold.md
-  * 2026-08-07-player-board.md
-  * 2026-08-07-player-arc-close.md
-  * 2026-08-07-census-substance.md
-  * 2026-08-07-vendoring-batch-1.md
-  * 2026-08-07-vendoring-batch-2.md
-  * 2026-08-07-vendoring-batch-3.md
-  * 2026-08-07-demos-front-door.md
-  * 2026-08-07-vendoring-arc-close.md
-  * 2026-08-07-ci-current.md
-  * 2026-08-07-quality-riders.md
-  * 2026-08-07-repo-review-1.md
-  * 2026-08-07-result-or-loud.md
-  * 2026-08-07-lint-family.md
-  * 2026-08-07-quality-arc-close.md
-  * 2026-08-08-fidelity-riders.md
-  * 2026-08-08-encounterend-fix.md
-  * 2026-08-08-fidelity-payoff.md
-  * 2026-08-08-fidelity-arc-close.md
-  * 2026-08-08-colorectal-investigation.md
-  * 2026-08-08-straddle-fix.md
-  * 2026-08-08-colorectal-payoff.md
-  * 2026-08-08-pairing-registry.md
-  * 2026-08-08-conviction-close-a.md
-  * 2026-08-08-conviction-close-b.md
-  * 2026-08-08-vendoring-batch-4.md
-  * 2026-08-09-storefront-fixture.md
-  * 2026-08-09-repo-review-2.md
-  * 2026-08-09-review-2-rulings-landing.md
-  * 2026-08-09-census-closure-file-count.md
-  * 2026-08-09-cluster-a-gate-wiring.md
-  * 2026-08-09-cluster-b-parse-guards.md
-  * 2026-08-09-review-2-arc-close.md
-  * 2026-08-09-permission-legs-and-bare-flags.md
-  * 2026-08-10-fixture-relocation.md
-  * 2026-08-10-sim-event-log-adapter.md
-  * 2026-08-10-adr-footnotes.md
-  * 2026-08-10-marker-only-footnotes.md
-  * 2026-08-11-board-boundary-fix.md
-  * 2026-08-11-ed-tuesday-scenario.md
-  * 2026-08-11-interpreter-horizon-budget.md
-  * 2026-08-11-injuries-b2-assessment.md
-  * 2026-08-11-injuries-arc-close.md
-  * 2026-08-11-simulator-architecture-doc.md
-  * 2026-08-11-latency-second-clock.md
-  * 2026-08-11-latency-demo.md
-  * 2026-08-11-corpus-batching.md
-  * 2026-08-11-batch-straddle-recording.md
-  * 2026-08-12-sim-palgebra-unification.md
-  * 2026-08-12-review-3-user-surface.md
-  * 2026-08-12-review-3-rulings-landing.md
-  * 2026-08-12-engine-seed-contract.md
-  * 2026-08-12-fix-cluster-a-cli-validation.md
-  * 2026-08-12-fix-clusters-b-and-c-help-and-docs.md
-  * 2026-08-12-user-manual-skeleton.md
-  * 2026-08-12-manual-s2-exerciser-and-chapter3.md
-  * 2026-08-12-manual-s3-transport-pair.md
-  * 2026-08-13-positive-seed-diagnosis.md
-  * 2026-08-13-medication-end-invariant-fix.md
-  * 2026-08-13-manual-s4-mutate-and-gate.md
-  * 2026-08-13-manual-s5-chapter8-review-close.md
-  * 2026-08-13-citation-sweep-glossary-linkage.md
-  * 2026-08-13-ceremony-scripts-sim-identity-sweep.md — Ceremony scripts, build-session skill absorption, sim-identity citation sweep (ADR-0127)
-  * 2026-08-13-ceremony-scripts-hardening.md — Agent-facing hardening -- ADR-0127 addendum, anti-fabrication tripwire, Step-0 receipts
-  * 2026-08-13-strip-executability.md — Strip executability: exercisers, citation gate, ADR-0127 erratum (ADR-0129)
-  * 2026-08-14-busy-tuesday-exerciser-deferred.md — Busy-tuesday exerciser: marker widening landed, row deferred on slug EDN round-trip defect (ADR-0130)
-  * 2026-08-14-slug-edn-round-trip.md — Slug EDN round-trip fix + module-load injectivity guard (ADR-0131)
-  * 2026-08-14-clinic-decade-rename-and-exerciser.md — Scenario rename busy-tuesday -> clinic-decade + exerciser completion (ADR-0132)
-  * 2026-08-14-exact-name-resolution.md — Exact-name state resolution: collision fix, restoration cascade (ADR-0133)
-  * 2026-08-14-manual-review-2.md — Manual-review run 2: channel-authored report landed verbatim, F1/F2/F3 fixed, ADR-0133's tag paid (ADR-0134)
-  * 2026-08-15-string-diagram-terminal-outputs.md — String-diagram terminal-output result nodes (ADR-0135)
-  * 2026-08-15-repo-review-3.md — Repo review 3: rubric amended at Step 0 (population-closure law) and executed immediately; 40-row register, plan, three probes recorded blocked/partial
-  * 2026-08-15-review-3-fix-a-register-derivations.md — Review-3 fix session A: register every string-diagram derivation (D5-3/D5-4/D2-4), with ruled riders
-  * 2026-08-15-stale-path-gate-widening.md — widen the stale-path gate to every tracked doc surface and fix 25 dead links (review-3 D1-2/D1-8)
-  * 2026-08-15-review-3-fix-c-ceremony-and-category.md — review-3 fix session C: post-push-verify range derivation, build-session pipe discipline, gate category honesty
-  * 2026-08-15-review-3-arc-close.md — Repo-review 3 arc close: step-7 close ADR, post-arc scoreboard, review 4's watch-list
-  * 2026-08-16-d8-5-fence-battery.md — D8-5 live fence battery: 202 fences enumerated from the tree, 58 bare fences run, riders C-4 and C-2
-  * 2026-08-16-fence-battery-ruled-fixes.md — the D8-5 battery's ruled fixes: six pages fixed-or-disclosed, intake made diagnosable, D8-5 discharged
-  * 2026-08-16-event-log-contract-arc.md — the ground-truth event log's contract: census, Event schema, generated formats.md section, custom-emitter use case
-  * 2026-08-16-result-clinical-time.md — clinical time on the result wire -- OBR-7 and OBX-14 (ADR-0142)
-  * 2026-08-16-compression-a-adr-index.md — compression arc session A: the ADR index becomes generated, guards #2/#3, the skills rider
-  * 2026-08-17-compression-b-roadmap.md — compression arc session B: the roadmap row contract, its lint, and the migration ledger
-  * 2026-08-17-compression-c-rulings.md — compression arc session C: the standing rulings register, the build-session skill split, the reading-sets header
-  * 2026-08-17-emitter-author-ux.md — UX pass for one actor: the emitter author -- cold walk of every entry surface, ruled signpost fixes, a second worked emitter
+It does not outrank `notes/adr/` (why a decision was made — the sole
+session narrative, `rulings.md#R-session-narrative-hierarchy`) or
+`.agents/plans/` (what is next). `.agents/handoffs/` is deliberately not
+instantiated here. The 2026-07-29..2026-08-01 gap, and the annotations
+that used to ride the old per-file rows, are verbatim and dated in
+[`../plans/state-history-2026-08.md`](../plans/state-history-2026-08.md).

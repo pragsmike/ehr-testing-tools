@@ -262,10 +262,10 @@ design-channel contract. Read that first; this page answers *how many*
 and *which ones*.
 
 **A count here is not a claim that two counts correspond.** Oracle
-roots and vendored round-trip tests are different populations, and
-review 2 asserted a correspondence between them on the strength of
-both totals reading 34 (ADR-0139 D1-4). Compare the sets, not the
-cardinalities.")
+roots and vendored round-trip tests are different populations. Review 2
+asserted a correspondence between them because both totals happened to
+read 34 on the day it looked; they have diverged since, with nothing
+wrong (ADR-0139 D1-4). Compare the sets, not the cardinalities.")
 
 (defn render
   "Pure: the collected facts -> `.agents/state-derived.md`'s content."

@@ -45,8 +45,14 @@ probe is "how do I know this is all of them?"
    cited path, with scan roots covering every tracked doc surface
    including `components/*/docs/` (the scan-root class has two recorded
    hits: E-5, 2026-08-05, and the sim-theory recipe path, 2026-08-14 —
-   never a root narrower than the tree again); sample `[V]` claims in
-   `.agents/state.md` live.
+   never a root narrower than the tree again). For the continuity
+   register the probe has changed shape (ADR-0147): `.agents/state.md`
+   no longer carries `[V]` claims to sample — it is hand-owned
+   judgement, capped and linted — and every count it used to carry is
+   generated into `.agents/state-derived.md`. Probe THAT by regenerating
+   (`make state-derived`) and diffing, and probe `state.md` for pointer
+   rot instead: does every register it names still exist, and does every
+   gate it cites still run?
 2. **Guard coverage.** Every law has a gate; every gate runs where
    someone looks. Probes: enumerate `.agents/rulings.md`'s standing
    rulings and map each to its enforcing test (a law with no gate is a
