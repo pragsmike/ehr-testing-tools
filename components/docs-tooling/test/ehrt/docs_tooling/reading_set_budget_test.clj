@@ -27,6 +27,7 @@
   actually gates are two different tests."
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.edn :as edn]))
 
 (def ^:private reading-sets-path ".agents/reading-sets.edn")
@@ -157,3 +158,47 @@
         "AGENTS.md resolves -- the presence check passes on a real path")
     (is (<= (total-lines paths) generous-budget)
         "a generously-budgeted single real file passes the budget check")))
+
+;; -- guard: the header stays a header (compression arc session C, ADR-0145) --
+;;
+;; `.agents/reading-sets.edn` grew to 531 lines of which 480 were comment:
+;; a 415-line header carrying NINETEEN dated per-session budget
+;; re-derivations, plus 65 lines of per-set rationale inside the map, over
+;; 48 lines of actual data. The file's own header said the quiet part out
+;; loud -- "They stay as per-session provenance; they are history, not
+;; instructions" -- which is a description of a move it had not made.
+;;
+;; ADR-0145 moves that history VERBATIM to
+;; `.agents/plans/reading-sets-history.md` and caps what may live here. The
+;; cap is deliberately small: a header a session actually reads before
+;; editing a set, and no more. A future re-derivation is recorded in its
+;; own compaction ADR and in the history file, never appended here.
+
+(def ^:private max-comment-lines 20)
+
+(defn- comment-lines
+  "Every `;;` comment line in the file, header and in-map alike. Counting
+  both is the point: the growth this guard exists to stop arrived as
+  per-set rationale as readily as as a dated header note."
+  [path]
+  (->> (str/split-lines (slurp path))
+       (filter #(str/starts-with? (str/triml %) ";;"))))
+
+(deftest reading-sets-edn-carries-a-header-not-a-history-test
+  (testing "ADR-0145: `.agents/reading-sets.edn` is data with a short header; its derivation history lives in the plans attic"
+    (let [n (count (comment-lines reading-sets-path))]
+      (is (<= n max-comment-lines)
+          (str reading-sets-path " carries " n " comment lines, over the "
+               max-comment-lines "-line header cap by " (- n max-comment-lines)
+               " -- move the history VERBATIM to .agents/plans/reading-sets-history.md "
+               "(ADR-0145), never trim it away")))))
+
+(deftest the-comment-line-counter-is-not-vacuous-test
+  (let [tmp (java.io.File/createTempFile "reading-sets" ".edn")]
+    (try
+      (spit tmp ";; one\n  ;; two, indented inside a map\n{:a 1} ; not a ;; comment line\n\n;; three\n")
+      (is (= 3 (count (comment-lines (.getPath tmp))))
+          "an indented `;;` line counts, a trailing `;` on a data line does not, blanks do not")
+      (finally (.delete tmp))))
+  (is (pos? (count (comment-lines reading-sets-path)))
+      "sanity: the live file has a header at all -- a zero here would pass the cap vacuously"))
