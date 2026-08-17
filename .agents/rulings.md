@@ -246,3 +246,14 @@ Appended by the session that takes the ruling, not held to arc close.
   read -- ADR-0146
 - **R-count-by-presence-not-truthiness** -- code reporting which fields it dropped counts
   by PRESENCE; truthiness reports a present-but-false field as absent -- ADR-0146
+- **R-register-three-ways** -- a register is GENERATED where its content is derivable
+  from the tree, capped and LINTED where it is hand-owned judgement, and ATTIC'D
+  verbatim where it is history. No register is more than one of the three -- ADR-0147
+- **R-register-in-a-set-is-linted** -- a register carried by any reading set owes a
+  lint on its own growth; without one the budget only measures the growth, and a
+  measurement is not a limit -- ADR-0147
+- **R-git-from-wsl** -- every git operation runs from WSL, never native Windows, enforced
+  by `.githooks/pre-commit` once `git config core.hooksPath .githooks` is set per clone --
+  ADR-0003
+- **R-staging-hygiene** -- `git diff --cached --stat` is read before every commit and
+  anything outside the checkpoint in flight is unstaged first -- ADR-0007

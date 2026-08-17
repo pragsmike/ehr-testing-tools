@@ -56,19 +56,19 @@ Docs-tooling gates: `adr_index_test`, `citation_gate_test`, `cli_tombstone_test`
 |---|---|
 | ADR files (`notes/adr/NNNN-*.md`) | 145 |
 | roadmap rows (all sections) | 104 |
-| rulings rows | 104 |
+| rulings rows | 108 |
 | rulings rows superseded | 6 |
-| session records | 149 |
-| archived prompts | 142 |
+| session records | 150 |
+| archived prompts | 143 |
 
 ### Roadmap rows by section
 
 | section | rows | tokens in use |
 |---|---|---|
-| Next | 16 | `OPEN` |
+| Next | 15 | `OPEN` |
 | Externals | 8 | `EXTERNAL` |
 | Deferred | 21 | `DEFERRED` |
-| Done | 59 | `CLOSED` |
+| Done | 60 | `CLOSED` |
 
 ## Reading sets
 
@@ -76,8 +76,8 @@ Docs-tooling gates: `adr_index_test`, `citation_gate_test`, `cli_tombstone_test`
 
 | set | paths | actual | budget | baseline | headroom |
 |---|---|---|---|---|---|
-| :corpus | 7 | 1774 | 2045 | 2045 | 271 |
-| :docs | 5 | 681 | 785 | 785 | 104 |
-| :judge | 8 | 868 | 1000 | 1000 | 132 |
-| :onboarding | 10 | 1326 | 1530 | 1530 | 204 |
-| :sim | 6 | 1220 | 1405 | 1405 | 185 |
+| :corpus | 7 | 1799 | 2045 | 2045 | 246 |
+| :docs | 5 | 706 | 785 | 785 | 79 |
+| :judge | 8 | 893 | 1000 | 1000 | 107 |
+| :onboarding | 10 | 1360 | 1530 | 1530 | 170 |
+| :sim | 6 | 1245 | 1405 | 1405 | 160 |

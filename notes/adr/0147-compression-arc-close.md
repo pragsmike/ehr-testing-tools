@@ -217,6 +217,38 @@ condition ADR-0145 recorded that session C could not meet.
   is discarded, not reported as a baseline; a clean baseline was taken
   from a disposable `git worktree` detached at `0b15e87`.
 
+**FINDING S-7 — this session pushed a red commit, and the gate that
+caught it is one this repo already had.** `bin/state-migrate-0147` landed
+in the Step-3 commit as mode **100644**. It is executable in the working
+tree and was run there repeatedly; `core.fileMode=false` in this clone
+means git never noticed the working-tree bit, so `git add` recorded the
+mode the file had when it was first created by a tool that does not set
+one.
+
+`ehrt.cli.executable-bits-test` exists for exactly this and says so in
+its own failure message — *"a fresh clone (what CI checks out) will see
+them as non-executable even if your own working tree runs them fine
+(core.fileMode=false hides the mismatch locally)"* — with the repair
+command in the message. It did not fire before the Step-3 push because
+the Step-3 suite was started BEFORE the script was staged: the run
+measured a tree in which the file was still untracked, and an untracked
+file is outside that gate's population. The Step-4 run, taken after
+staging, went red immediately.
+
+CI run `32065822565` at `77f4fba` therefore concluded **failure**, and
+its ONLY failing assertion is this one — confirmed by reading
+`--log-failed` rather than assumed. Fixed forward in the close commit
+with `git update-index --chmod=+x`, never by amending or force-pushing a
+pushed commit.
+
+Recorded rather than smoothed, because the lesson is narrow and real:
+**a suite run is a measurement of the tree AT THE MOMENT IT STARTED**,
+and a gate whose population is "tracked files" cannot see a file that
+was not yet tracked when the run began. That is the same
+population-closure class as ADR-0139's central finding, arriving through
+the ordering of a session rather than through the shape of a registry.
+The practical rule it yields: stage first, then run the gate.
+
 ### The owed session-B item, executed
 
 ADR-0144's finding F-8 listed five roadmap rows whose status token
@@ -259,5 +291,134 @@ permits.
    `.agents/plans/state-history-2026-08.md`, with a `--verify` read-back.
 4. **Reshape and ratchet `:onboarding` down.**
 
-Its own close, the cold-read acceptance probe, and the arc's laws are
-below, landed at the close.
+### The cold-read acceptance probe
+
+The point of compacting a reading set is that a cold session can still
+answer the questions the set exists to answer. That is testable, so it
+was tested rather than asserted: a **fresh sub-agent context**, fenced to
+the ten `:onboarding` paths and nothing else — no `git`, no `ls`, no file
+outside the list — was asked five questions and told to say plainly when
+the set could not answer one.
+
+| # | question | cold answer | tree | match |
+|---|---|---|---|---|
+| Q1 | sha and date the state is described against | `0b15e87`, 2026-08-17, from `state.md`'s header, **directly** | `state.md` says exactly that, and it is true of the tree it was regenerated against | ✅ |
+| Q2 | open work, first five by priority | `event-log-shape-defects`, `repo-review-4`, `sim-theory-edn-hop`, `careplan-guard-resolution`, `attic-rotation-law` | the five lowest-numbered `## Next` rows | ✅ content — ❌ **numbering** (below) |
+| Q3 | five rules most likely to bind a commit/push | `R-red-pushed-with-green`, `R-post-push-ascii`, `R-ci-watched-not-awaited`, `R-tag-law`, `R-register-hygiene-at-close` | all five slugs resolve in `rulings.md` (`grep -c` → 1 each), as do the four it named as runners-up | ✅ — with a real gap it found (below) |
+| Q4 | standing tags / latest stable point | *"the reading set answers this by refusing to answer it and handing over a command"* — `git tag -l 'stable-*'`, `bin/preflight`, plus the tag-law class split | exactly the design: `state.md`'s Environment section says the census is deliberately absent and why | ✅ **by design** |
+| Q5 | where the event-log contract and its version live | the four ADR-0141 rules and the version key `:event-schema-version` in the manifest — **but no path**, and it inferred `components/provenance`, flagging the inference | the schema is `ehrt.sim-engine.event-schema` in **`components/sim-engine`**; `provenance` owns the manifest family but not this schema | ❌ **wrong home inferred** |
+
+Three findings, all fixed here, all pointer-class:
+
+**C-1 — `## Next` had no `PRIORITY 1`.** This session's own close removed
+the `compression-arc` row from the top slot, and the Step-0 re-triage left
+gaps at 7, 11 and 14. The lint permits it (unique and *ascending*, not
+contiguous) and the Step-0 commit disclosed the choice as minimal churn.
+The cold reader found it anyway and could not tell whether a row had been
+closed out of the top slot or PRIORITY 1 was being held open — which is
+precisely the question `head` is supposed to answer. **The disclosure was
+not a substitute for the fix.** The fifteen `## Next` rows are renumbered
+1–15 in file order; ADR-0144 F-9's point that these numbers carry file
+order and no ruled queue is preserved exactly, because file order is what
+was renumbered. This is **not** a missing lint and no lint was improvised:
+the contract is satisfied either way, and legibility is the thing that was
+not.
+
+**C-2 — two rules that bind every commit are stated only as `AGENTS.md`
+prose, with no `R-` row**, so they cannot be cited as `rulings.md#R-...`
+and do not appear in the register a session greps: **git runs from WSL
+only** (enforced by `.githooks/pre-commit`, ADR-0003) and **staging
+hygiene** (`git diff --cached --stat` read before every commit, anything
+out of scope unstaged, ADR-0007). Both are long-standing, both are
+standing rather than executed-once, and both were simply never given
+rows. Landed as `R-git-from-wsl` and `R-staging-hygiene`, citing the ADRs
+that ruled them. This is the arc's own second law catching a gap in the
+arc's own first register.
+
+**C-3 — the `:onboarding` set carries no source-tree path at all**, which
+is defensible for ten governance files but bit exactly once: a cold reader
+could reach every rule about the event-log contract and the key its
+version lives under, and still not find the schema — then infer the wrong
+component, correctly flagging the inference rather than asserting it.
+`AGENTS.md` now names the schema namespace, the committed export, the
+`make` target and the reader-facing page, and says why the note is there.
+
+Two observations recorded without a fix. The probe noted that
+`.agents/memory/README.md` **earned no citation** across any of the five
+questions — it documents a directory empty at instantiation. It is 33
+lines and inside budget, so this is a note for review 4, not a row. And
+it observed that the set delivers **no numbers at all** — by construction,
+since every count now lives in `state-derived.md`, which no set carries.
+It called that "a coherent design", and it is the design; but it means a
+cold session that needs a count must be routed to the derived register,
+which is why `state.md` and `AGENTS.md` both point at it explicitly.
+
+### The arc, A–D
+
+**Per file**, lines before → after:
+
+| register | before | after | how |
+|---|---|---|---|
+| `notes/ADRs.md` | 134 KB, 140 rows averaging 977 chars | 212 lines / 31 KB | GENERATED (A) |
+| `.agents/plans/roadmap.md` | 1,684 | 298 | row contract + lint (B) |
+| `.agents/rulings.md` | 1,757 | 256 | standing-rules-only rows + lint (C) |
+| `.agents/skills/build-session/SKILL.md` | 309 | 117 | history split to a sibling (C) |
+| `.agents/reading-sets.edn` | 531 | 70 | header capped at 20, history attic'd (C) |
+| `.agents/state.md` | 724 | 118 | **split three ways (D)** |
+| `.agents/session-records/README.md` | 223 | 40 | rows GENERATED (D) |
+| `.agents/prompts/README.md` | 171 | 35 | rows GENERATED (D) |
+
+Nothing was deleted. `notes/ADRs.md`'s 117,079 characters of row
+narrative went into the ADR files that own them; the roadmap's and
+rulings' history went to their attics and their ADRs; this session's
+724 + 291 lines went to `.agents/plans/state-history-2026-08.md`, and
+`bin/state-migrate-0147 --verify` reads all three regions back as exact
+contiguous blocks.
+
+**Per set**, `:budget-lines` ratchet baseline:
+
+| set | pre-arc | A | B | C | D |
+|---|---|---|---|---|---|
+| `:onboarding` | 3,240 | 2,814 | **1,665** | 1,665 (held) | **1,530** |
+| `:corpus` | — | 1,952 | — | 2,045 | — |
+| `:sim` | — | 1,398 | — | 1,405 | — |
+| `:judge` | — | 1,046 | — | 1,000 | — |
+| `:docs` | — | 859 | — | 785 | — |
+
+`:onboarding` ends at **1,327 actual against a 1,530 baseline**, down from
+3,240 — and it now CARRIES the continuity register, which it never did
+before. The four other sets hold: each already sits exactly at its own
+formula value from session C, so the ratchet has nothing left to give
+there. ADR-0145 recorded that `:onboarding` was the one set it could not
+move; this is that move.
+
+### The guards, and which of them is load-bearing
+
+| # | guard | what it makes impossible |
+|---|---|---|
+| 1 | generation (`make adr-index`, `make state-derived`) + CI freshness diff | a register row written by hand, therefore a row that can regrow or go stale |
+| 2 | parity tests (`adr-index-test`, `state-derived-test`) | the same drift reaching a push without the session seeing it in its own suite run |
+| 3 | the ratchet (`reading-sets-baseline.edn`) | a budget satisfied by editing the budget |
+| 4 | row contracts + lints (roadmap, rulings) | a hand-owned register growing a paragraph where a row belongs |
+| 5 | caps (`state-residue-test` 120, `index-completeness-test` 40, reading-sets header 20) | a hand-owned register growing at all, unnoticed |
+
+The arc's laws, now rows: **`R-register-three-ways`** (generated where
+derivable, capped and linted where hand-owned, attic'd verbatim where
+historical — and never more than one of the three) and
+**`R-register-in-a-set-is-linted`** (a register any reading set carries
+owes a lint on its own growth; a budget without one measures growth, and
+a measurement is not a limit).
+
+### Fences honoured
+
+`src` touched: `components/docs-tooling` only, one new namespace. **The
+regression oracle is IDENTICAL by construction** — no `sim`-family,
+`corpus`-family or module-JSON byte moved, so no root can have moved; the
+oracle was not re-bracketed and no oracle claim is made
+(`rulings.md#R-oracle-script-contract`: a claim would mean running
+`bin/regression-oracle`, and this session has nothing for it to compare).
+The 35-root figure this ADR corrects is a COUNT parsed from `digest.clj`,
+not a digest. Nothing deleted; read-back is the instrument. The staleness
+tripwire is green at every commit, which is why the arc-close heading and
+`state.md`'s citation flipped together at Step 3. Skill mirrors `diff -rq`
+clean. No budget rose.
