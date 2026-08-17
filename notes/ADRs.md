@@ -206,3 +206,4 @@ append-only, never-reassigned rule stands.
 - **ADR-0141** — The ground-truth event log becomes a contract: census, Event schema, generated formats.md section, custom-emitter use case — [`0141-event-log-contract.md`](adr/0141-event-log-contract.md) — Accepted
 - **ADR-0142** — Clinical time on the result wire: OBR-7 and OBX-14 — [`0142-result-clinical-time.md`](adr/0142-result-clinical-time.md) — Accepted
 - **ADR-0143** — The ADR index becomes generated: guard #2 (structure by generation), guard #3 (budget ratchet), and the skills rider (compression arc, session A) — [`0143-adr-index-generated.md`](adr/0143-adr-index-generated.md) — Accepted
+- **ADR-0144** — The roadmap gets a row contract: status tokens, slug anchors, a six-line cap, and the lint that holds all three (compression arc, session B) — [`0144-roadmap-row-contract.md`](adr/0144-roadmap-row-contract.md) — Accepted
