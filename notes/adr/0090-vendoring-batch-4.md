@@ -372,3 +372,7 @@ session's own Step 0, per tag law (ADR-0057 AR-T-1) — not created here
   additions** — the same operational finding every prior batch ADR has
   named, repeated here (staged before every `poly test` invocation, not
   itself fixed, out of this session's own scope).
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+Vendoring batch 4: the veteran family comes home, five of nine, and a mechanism name gets corrected in the open — nine candidates gated fresh at the pin (the 2026-08-03 wave-f census verdicts treated as a stale prior map, never current evidence); the driving prompt's own `:persona-config` mechanism claim is corrected in the open to the real precedent, `:initial-attributes` (ADR-0033 AR-1), before any gate runs on the wrong premise; five modules land (lung cancer, prostate cancer, ptsd, self harm, substance abuse treatment), the oracle's 30th-34th roots; four do not — two zero-substance, one a real population-scale `MedicationEnd`-double-reference defect (hyperlipidemia), one a real interpreter max-steps exhaustion in a legitimate long-running loop (mdd), each named under its own true name with its own roadmap Deferred row; one old `:walk-failed` census verdict now passes, attributed `unknown` rather than guessed

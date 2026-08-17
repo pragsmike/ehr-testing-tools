@@ -38,7 +38,9 @@
   interface, since sharing them would reintroduce exactly the
   cross-brick coupling the split exists to avoid, for four small pure
   functions."
-  (:require [clojure.string :as str]))
+  (:require [clojure.java.io :as io]
+            [clojure.string :as str]
+            [ehrt.kernel.interface :as kernel]))
 
 ;; ---- shared helpers (this half's own copy -- see docstring) ----
 
@@ -145,7 +147,198 @@
        (exit-code-table spec) "\n\n"
        (str/join "\n" (map group-section (:groups spec)))))
 
+;; ---- notes/ADRs.md (the ADR index) ----
+;;
+;; Compression arc session A (2026-08-16, notes/adr/0143-adr-index-
+;; generated.md): the ADR index stops being hand-edited and joins the
+;; generated surfaces above. ADR-0046 AR-B-1 ruled it one line per ADR
+;; -- number, title, file link, status -- and nothing enforced that
+;; shape, so it decayed one session at a time into 140 rows averaging
+;; 977 characters (134 KB), each row a session write-up in a slot sized
+;; for a title. A row cannot regrow if no one writes a row: `make
+;; adr-index` renders every row from the ADR's OWN heading and Status
+;; line, and CI's freshness step diffs the result.
+;;
+;; The row shape below is deliberately today's, not a new one: it is
+;; ADR-0046 AR-B-1's own, `ehrt.docs-tooling.done-pointer-adr-test`
+;; parses its `- **ADR-NNNN**` prefix, and keeping it made 62 of the
+;; 140 rows regenerate byte-identical -- so the landing diff was
+;; exactly the compression and nothing else.
+
+(def adr-index-preamble
+  "The index's own header prose -- the numbering rule, the frozen-era
+  origin-qualification convention, and the citation rule -- carried
+  here VERBATIM from the hand-edited file by ADR-0143, since this
+  file's output is wholly generated (DOC-3) and therefore has no
+  hand-edited region for it to stay in. Edit it here."
+  "# Architecture Decision Records — ehr-testing (workspace)
+
+Numbered, append-only, starting fresh at ADR-0001 for this workspace
+— not a continuation of `ehr-testing-sim`'s or (later) `ehr-testing-tools`'
+own numbering. Never silently revert an Accepted ADR; supersede it
+with a new numbered record.
+
+Legacy ADRs move into this workspace intact as provenance
+(`notes/sim/ADRs.md`, `notes/tools/ADRs.md`, frozen, not rewritten for
+new paths/namespaces) and are cited here origin-qualified, e.g.
+`sim/ADR-0008`, `tools/ADR-0017`.
+
+**Citation rule (added 2026-07-30, judge-v2-nist follow-through
+session): a bare `ADR-00XX` in this file, or in any other workspace
+document, means this file's own record.** Frozen-era ADRs are always
+cited origin-qualified (`tools/ADR-0012`, `sim/ADR-0008`, etc.) — never
+bare. This is the rule the two paragraphs above already modeled; it is
+restated as an explicit standing rule here because ADR-0012 below now
+shares its number with the frozen `notes/tools/ADRs.md` ADR-0012 (the
+`ehr sim` mount design), a genuine collision this session's own
+citation-space audit found, unambiguous when ADR-0005 wrote its own
+unqualified `ADR-0012` references (2026-07-28, before this workspace's
+own ADR-0012 existed) but ambiguous since. Renumbering either record
+was considered and rejected: ADR numbers are load-bearing in immutable
+places this workspace cannot edit (commit messages, archived prompts,
+docstrings) and this register's own append-only, never-reassigned
+numbering rule exists for exactly this reason. Existing unqualified
+frozen-era references are fixed forward, dated, as they're found — not
+rewritten wholesale, and never by editing the frozen files themselves.
+
+---
+
+## Index
+
+**This file became an index on 2026-08-05** (scaffolding compaction B,
+`notes/ADRs.md` ADR-0046). Every entry that used to live inline here
+now lives verbatim in its own file under `notes/adr/`, moved
+byte-for-byte (proof: the session record's own extraction diff) — this
+file keeps its role as the citation target (`notes/ADRs.md ADR-NNNN`
+resolves here, then follows the link below; the bare-`ADR-NNNN`
+citation-qualification rule above is unchanged) and stays the sole
+home for the preamble rules above. Order below matches this file's own
+pre-split entry order — unchanged, not renumbered and not
+re-sequenced. New execution-record appends to an existing ADR go
+directly to its own `notes/adr/` file from this date forward; a line
+below updates only when an arc closes.")
+
+(def adr-index-generation-note
+  "The dated amendment ADR-0143 appends to the paragraph above rather
+  than rewriting it (this workspace's own amend-in-place practice): two
+  of that paragraph's sentences stopped being true on 2026-08-16, and
+  the honest record is both statements with their dates, not the later
+  one alone."
+  "**Amended 2026-08-16** (compression arc session A, `notes/ADRs.md`
+ADR-0143): **this file is now GENERATED.** `make adr-index` — part of
+`make docsgen`, diffed by CI's own generated-doc freshness step —
+renders every line below from the `notes/adr/` tree's own `## ADR-NNNN
+— Title` headings and `**Status:**` lines. To change a row, edit that
+ADR and regenerate; a hand edit here is reverted by the next `make
+docsgen` and fails CI in the meantime. Two of the sentences above are
+superseded as of this date, and kept rather than rewritten so the
+record shows both. First, the order is now **ascending by ADR number**:
+a generator derived from the tree can only order by what the tree says,
+so the pre-split entry order described above held from 2026-08-05 to
+2026-08-16 and no longer does. Second, each row's own narrative — 78 of
+the 140 rows had grown one, 117,079 characters between them — moved
+verbatim into its own ADR file under an `### Index summary` heading.
+Numbering is untouched by any of this: nothing is renumbered, and the
+append-only, never-reassigned rule stands.")
+
+(defn parse-adr
+  "Pure: one ADR file's name and content -> the facts a row is rendered
+  from. Line-anchored rather than free-`re-find`: `:status` is read
+  only from the HEADER BLOCK -- the lines between the `## ADR-NNNN`
+  heading and the record's first `###` subsection -- so a `**Status:**`
+  token appearing later in a long execution record (a superseded status
+  quoted in an amendment, say) can never be mistaken for the record's
+  own status. A fixed line window would not do: it caught exactly that
+  in this namespace's own red run, 2026-08-16.
+
+  `:status` is the status line's leading STATUS WORD -- everything up
+  to the first `,` `(` `.` `;` `:` em-dash or ` -- `, which is where
+  every one of this register's own status lines puts the date and
+  provenance that follow. That keeps the index's status column the
+  fixed vocabulary it has always been (`Accepted`, and one day
+  `Superseded by ADR-NNNN`) rather than a second place the ADR's own
+  ratification prose is duplicated.
+
+  Any of `:number`/`:title`/`:status` may be nil -- a malformed or
+  status-less file is reported by `ehrt.docs-tooling.adr-index-test`,
+  not silently rendered into a broken row (`render-adr-index` refuses
+  outright)."
+  [filename content]
+  (let [lines (str/split-lines content)
+        hidx (first (keep-indexed (fn [i l] (when (re-find #"^## ADR-\d{4}\s*—" l) i)) lines))
+        [_ number title] (some->> hidx (nth lines) (re-find #"^## ADR-(\d{4})\s*—\s*(.*)$"))
+        header-block (when hidx
+                       (->> (drop (inc hidx) lines)
+                            (take-while #(not (re-find #"^#{2,6}\s" %)))))
+        status-raw (first (keep #(second (re-find #"^\*\*Status:\*\*\s*(.*)$" %)) header-block))]
+    {:file filename
+     :number number
+     :title (some-> title str/trim not-empty)
+     :status (some-> status-raw (str/split #"[,(.;:—]|\s--\s") first str/trim not-empty)}))
+
+(defn adr-row
+  "ADR-0046 AR-B-1's own row shape, unchanged: number, title, file
+  link, status."
+  [{:keys [number title file status]}]
+  (str "- **ADR-" number "** — " title " — [`" file "`](adr/" file ") — " status))
+
+(defn render-adr-index
+  "Pure: parsed ADR entries -> notes/ADRs.md's content, rows ascending
+  by ADR number.
+
+  Refuses rather than degrades: an entry missing a heading number, a
+  title, or a status throws, because a register that renders a blank
+  status column is worse than a build that stops -- the blank would be
+  read as a fact about the ADR."
+  [entries]
+  (let [malformed (remove #(and (:number %) (:title %) (:status %)) entries)]
+    (when (seq malformed)
+      (throw (ex-info (str "cannot render the ADR index: " (count malformed)
+                           " file(s) lack a `## ADR-NNNN — Title` heading or a `**Status:**` line: "
+                           (str/join ", " (map :file malformed)))
+                      {:malformed (mapv :file malformed)})))
+    (str (banner "adr-index"
+                 "the `## ADR-NNNN — Title` headings and `**Status:**` lines of notes/adr/*.md"
+                 (str "Edit the ADR itself (notes/adr/NNNN-<slug>.md), or this file's renderer "
+                      "(components/docs-tooling/src/ehrt/docs_tooling/docsgen.clj), and regenerate instead."))
+         "\n"
+         adr-index-preamble
+         "\n\n"
+         adr-index-generation-note
+         "\n\n"
+         (str/join "\n" (map adr-row (sort-by :number entries)))
+         "\n")))
+
 ;; ---- impure shell (I/O) ----
+
+(defn adr-entries
+  "Every `NNNN-<slug>.md` directly under `adr-dir`, parsed. The
+  population is the DIRECTORY, never a hand-maintained list -- an ADR
+  that lands without an index row is impossible by construction, which
+  is the whole point of generating this file.
+
+  Listed via `ehrt.kernel.interface/list-files` (result-or-loud,
+  ADR-0078 -- `ehrt.docs-tooling.io-vocabulary-lint-test` forbids a
+  bare `.listFiles` outside that namespace's own allowlist, and caught
+  this function's first draft doing exactly that). The distinction is
+  load-bearing here rather than ceremonial: a nil from `.listFiles` is
+  an I/O failure, and treating it as an empty directory would silently
+  regenerate the register with ZERO rows."
+  [adr-dir]
+  (let [r (kernel/list-files adr-dir)]
+    (when-not (kernel/ok? r)
+      (throw (ex-info (str "failed to list " adr-dir " -- refusing to regenerate the ADR index from an unknown directory") r)))
+    (->> (:payload r)
+         (filter #(.isFile ^java.io.File %))
+         (map #(.getName ^java.io.File %))
+         (filter #(re-matches #"\d{4}-.*\.md" %))
+         sort
+         (mapv (fn [n] (parse-adr n (slurp (io/file adr-dir n))))))))
+
+(defn write-adr-index!
+  "-X-invokable: renders notes/ADRs.md from the notes/adr/ tree."
+  [{:keys [adr-dir out] :or {adr-dir "notes/adr" out "notes/ADRs.md"}}]
+  (spit out (render-adr-index (adr-entries adr-dir))))
 
 (defn write-cli-md!
   "-X-invokable: renders a caller-supplied help spec to out. No longer

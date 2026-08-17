@@ -280,3 +280,7 @@ LIVE, gaining a dated note pointing here (this session's own edit,
 landed in the same commit as this ADR). `notes/ADRs.md` gains this
 ADR's own citation-index line, one line, in that file's own running
 sequence (below).
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+Colorectal investigation: the straddling encounter, named — a diagnosis-only session (no fix, per the design channel's own ruled fence) localizes `colorectal_cancer.json`'s own `:clinical-content-only-when-admitted`/`:discharge-follows-admission` violations to `compile-trajectory`'s own legacy `:pre-horizon` drop gate, which tests only an event's own flag with no back-reference to the encounter it belongs to — an encounter opened pre-horizon and closed post-horizon compiles its post-horizon content with no matching admission step; confirmed across 100% of the violating population (2 of 2 patients, both seeds), the truncation hypothesis narrowed and confirmed, a fix shape proposed for a future ruled session

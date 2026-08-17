@@ -427,3 +427,7 @@ makes.)
 
 `notes/adr/README.md`'s own file count corrects 97→98, verified by
 `ls notes/adr/*.md | grep -v README | wc -l`, not arithmetic.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+Corpus player: the sim's own event log, native playback — and `ehrt play`'s own bare reads, closed — the roadmap's own sim event-log adapter row (named since ADR-0014) lands alongside its fired Deferred row (ADR-0096 Finding 2/ADR-0097): `ehrt play` reads a sim event log natively (`.edn`, recognized in play's own dispatch, never the shared sniff), paced by each event's own `:t` via a new injectable seam on `plan` (byte-identical default, every existing test unmodified and green), rendered by a purpose-built compact event-line ticker; `corpus generate sim` spools `events.edn` alongside its messages, byte-identical to `--format ground-truth`'s own bare stdout; `play-events-from-file`/`-from-dir`'s own bare reads are categorized, the lint allowlist retired; a channel-inferred event-shape claim (`:type`) is corrected in the open to the real key (`:event`), live-probed before any code was built on it; `--board` and (a disclosed judgment call) `--sink` both reject event input by name; the oracle holds pure identity across all 34 roots

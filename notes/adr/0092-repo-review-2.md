@@ -427,3 +427,7 @@ leaving a structurally adjacent, more general trigger of the identical
 class open. Nothing moved beyond the register, this ADR, and ceremony:
 the plan draft awaits the author's own rulings before any fix session
 runs.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+Repo review 2: the second assessment — one red closes, two greens don't hold — eight dimensions re-surveyed, 76 rows recorded (57 clean, 8 fix-candidate, 5 ruling-needed, 5 intake); review 1's own prior arithmetic independently re-derived and confirmed exact; the repo-wide silent-success I/O defect (D4, review 1's sole red) is re-verified genuinely closed by running its gate and re-deriving its grep, not by trusting the fix session's account, moving RED to GREEN; two dimensions clean at review 1 (continuity integrity, operator experience) each regress to yellow on the same underlying shape — a fix or gate that closed the literal trigger a prior probe hit while leaving a structurally adjacent, more general trigger of the same class open; nothing moved beyond the register and this ADR's own plan draft, awaiting the author's rulings

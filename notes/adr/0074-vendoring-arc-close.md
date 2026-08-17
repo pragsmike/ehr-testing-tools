@@ -463,3 +463,7 @@ piece of mechanical debt (the `stable-20260807-vendoring-close` tag),
 both recorded here rather than left to be rediscovered — and one
 disclosed process lesson: this close itself, interrupted and resumed
 across two sessions without losing a single landed commit.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+Vendoring arc close: the mix more than tripled, the bytes cannot lie, the front door is open — closed across two Code sessions after an infrastructure block, no work lost; state and budgets regenerate, six Done pointers rotate to the attic, `libs :outdated` re-run fresh, the EncounterEnd two-module blocker named as next-arc's strongest candidate

@@ -200,3 +200,7 @@ re-executes.
 ```
 
 (appended to `.agents/plans/roadmap.md`'s own Done section.)
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+Batch-straddle recording: use case, rulings, and the user-guide opening — a docs-and-registers-only session executing the author's own deferred-to-next-session ruling: a new use case, `:supply-batch-straddling-traffic`, lands in `components/corpus/docs/use-cases.edn` next to its transport-realism sibling, commands reused verbatim from ADR-0111's own witnessed demo run, cross-linked into the "Batched delivery" section by footnote marker; `.agents/rulings.md` records both author quotes and the three documentation placements (demo landed, tool-specific user guide opened, EHR Testing Guide Ch 24 the author's own queue) plus a channel-read flag on the user-guide trigger, disclosed honestly as channel-read rather than author-verbatim; `.agents/plans/roadmap.md`'s own user-guide trigger paragraph moves from PENDING AUTHOR RATIFICATION to RATIFIED, and gains a new awaiting-design-pass row plus an author's-queue Externals row; a mid-session STOP-AND-REPORT surfaces a fence conflict the driving prompt's own Read-first list missed — a hardcoded use-case-count test the new case's own landing breaks — resolved by one author-licensed deftest edit, disclosed as a deviation naming the channel's own incomplete-probe error; a same-tree property-test flake in an untouched namespace (`ehrt.sim-engine.engine-test`) is disclosed and shown to clear on re-run; the oracle holds pure identity across all 35 roots

@@ -356,3 +356,7 @@ only in CI's cold environment — is recorded here rather than smoothed
 into "landed clean," the same disclosure discipline this repo's own
 transcript-witnessed-is-not-repo-recorded law (ADR-0048) already
 requires.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+The storefront opens: one clean fixture, a real flip, and every operator on the record — a minimal, project-authored FHIR fixture (one `Patient` in a `Bundle`, no declared profile) gates `:accepted` in a real offline run; all five FHIR operators witnessed against it (zero skips), landing five registry rows against a new `:judge-fhir-official` judge; tier-two coverage promotes from report-only to a live gate over the full ten-operator catalog (10/10 covered); the README's mutate demo gains a real accepted→rejected transcript, replacing a stale, honest-but-unearned example; a preflight CI regression (integration lane missing `judge-v2-nist` on its own classpath) and a mid-session hermeticity correction (the FHIR conviction test moved from a brick's own test tree, composed by every project, into the one project whose CI lane actually primes the artifact cache) are both fixed forward and disclosed, not smoothed over

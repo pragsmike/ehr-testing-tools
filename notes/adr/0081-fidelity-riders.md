@@ -264,3 +264,7 @@ the arc that just closed — a tag cut and caught before it reached the
 record — is written down rather than left to be rediscovered as an
 unexplained gap between what the design channel disclosed and what the
 repo shows.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+Fidelity riders: the arc opens — the EncounterEnd design brief lands re-verified against upstream and the live tree (no factual error found), the R1-R3 rulings that license the fix session are recorded verbatim, the roadmap's two-module blocker gains a pointer, two backlog rows record (fixture relocation, ADR-footnote links — the latter's own fork left unruled), and a quality-close tag near-miss is disclosed one session late

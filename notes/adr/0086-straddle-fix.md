@@ -352,3 +352,7 @@ The next session that opens fresh work tags `stable-20260808-straddle-
 fix` at THIS session's own closing tip — the same tag-law case (ii)
 pattern every prior close in this repo has used for its own
 predecessor.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+The straddle fix: the legacy gate learns the span — the blast-radius probe finds one real mover, `sleep-apnea` (3 of 300 walks, a dangling `:outpatient-visit-end` already shipped since vendoring batch 1), STOP-AND-REPORTs, and is licensed by name; shape (b) lands (a compile-time mirror of `mark-phase`'s own straddle inheritance, generalized to the legacy path), red-witnessed then green, `colorectal_cancer.json` clean at all three seeds, the oracle bracket matches the prediction exactly, `sleep-apnea`'s post-fix digest licensed as the new baseline (more correct, not merely different); an ADR-0082 erratum corrects a self-contradicting seed-42 prose figure, and the carry-across row gains shape (a)'s own compile-layer note

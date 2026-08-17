@@ -444,3 +444,7 @@ never committed, cleaned before this record's own commit.
 
 `notes/adr/README.md`'s own file count corrects 103→104, verified by
 `ls notes/adr/*.md | grep -v README | wc -l`, not arithmetic.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+Injuries B2 assessment: the nested-encounter gap characterized, vendoring still deferred — B2's own widened, assessment-first charter fires as predicted (~99.4% likely at 300 patients): a fresh gate finds ADR-0105's own max-steps fix complete (0/120) but a SEPARATE, pre-existing gap still trips — `injuries.json`'s own `Spinal_Injury` branch opens `ED_Visit_For_Spinal_Injury` and never closes it before opening a second `Encounter` on the same walk, tripping `step`'s own nested-`:encounter` assert at 2/120 well-mixed seeds AND aborting a whole 300-patient `engine/run` uncaught (no per-patient isolation at the engine layer, a new severity finding); both failing seeds' trajectories walked to the identical state pair, upstream Synthea's own real Java semantics for the same authored pattern probed and cited (a quiet same-module auto-close, never a nest), four design options recorded with blast radius and no recommendation; a closure-membership correction (`dme/wheelchair.json` already vendored via a sibling batch, true count 5 already-vendored/3-new not 4/4) caught by fresh-gate discipline; nothing vendored, the oracle holds pure identity across all 34 roots

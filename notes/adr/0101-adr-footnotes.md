@@ -292,3 +292,7 @@ the Next-row removal this same commit makes.)
 
 `notes/adr/README.md`'s own file count corrects 98→99, verified by `ls
 notes/adr/*.md | grep -v README | wc -l`, not arithmetic.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+User-path ADR citations become footnotes, a link/footnote gate co-lands — the roadmap's own unruled fork (ADR-0081) resolves: bare `ADR-NNNN` citations in `docs/` proper become clickable footnotes, not stripped; a fresh inventory reconciles the channel's own counts exactly (39 hand-authored, 16 generated-page sites) while surfacing two real scoping findings the driving prompt's own inventory didn't distinguish — 12 of the 39 are origin-qualified `sim/ADR-N` citations into a *different* frozen document (`notes/sim/ADRs.md`), out of scope by the standing citation rule, and 5 of the 16 generated-page sites sit inside a code-fence comment where footnote markdown cannot render, left bare by necessity; an append-in-place convention (keep the visible `ADR-NNNN` text, insert the marker after it) is adopted and verified to need zero sentence rewording; two pre-existing citation-accuracy anomalies in `glossary.md` are found, disclosed, and left unfixed per this session's own "moves citations, not content" fence; a new link/footnote validity gate lands red-proven non-vacuous then green; the oracle holds pure identity across all 34 roots

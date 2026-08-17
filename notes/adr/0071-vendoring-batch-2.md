@@ -321,3 +321,7 @@ session next revisits `ehrt.sim-trajectory.census`.
   additions** — the same operational finding ADR-0070 already named,
   repeated here (staged before every `poly test` invocation, not
   itself fixed, out of this session's own scope).
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+Vendoring batch 2: the chronic clinic tail — seven ailments join the mix (hypothyroidism, rheumatoid-arthritis, osteoarthritis, osteoporosis, attention-deficit-disorder, allergic-rhinitis, dermatitis), `anemia___unknown_etiology.json` assessed and deferred whole on a real dangling-`:encounter-end` `gmf-interpreter` gap; a `scenarios/` home lands with the first runnable, population-scale demo, `busy-tuesday`

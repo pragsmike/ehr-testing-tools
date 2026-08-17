@@ -412,3 +412,7 @@ intake items (fold leniency for absent PID fields, the sim event-log
 input adapter, `ehrt.corpus.display` placement, the `:mllp` sink) and
 one piece of mechanical debt (the `stable-20260807-player-close` tag),
 both recorded here rather than left to be rediscovered.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+Player arc close: the hospital is watchable, the suite is honest, the state regenerates — six founding-incident mechanisms now guard the CLI, fresh-clone-green for the first time since ADR-0060, the state and its budgets re-derive

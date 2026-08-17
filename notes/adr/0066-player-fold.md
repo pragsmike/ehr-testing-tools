@@ -228,3 +228,7 @@ interface export and corpus→sim-emit-hl7 edge under AR-BB1-R ruling
 (2), the `--board` cadence flag, the board renderer and its gates) gets
 its own prompt; this landing's own tag rides that session's Step 0
 under standing ceremony.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+Player fold: the accumulator learns two-participant messages and absolute time — A17/A40 fold into the wire-side accumulator, MSH-7 reads an absolute epoch instant, the emitter-coherence property runs over the full churn family

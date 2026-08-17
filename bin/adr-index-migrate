@@ -1,0 +1,156 @@
+#!/usr/bin/env python3
+"""Compression arc session A (notes/adr/0143-adr-index-generated.md).
+
+Run ONCE, on 2026-08-16, to move each `notes/ADRs.md` index row's own
+narrative into the ADR it describes, so the index can become a
+generated surface (`make adr-index`) whose rows are derived from each
+ADR's own `## ADR-NNNN -- Title` heading and `**Status:**` line.
+
+Two mechanical actions, both APPEND-ONLY -- no pre-existing sentence in
+any ADR file is changed:
+
+  1. For every index row whose title column is NOT byte-identical to
+     the ADR file's own heading title, append to that ADR file:
+
+         ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+         <the row's whole title-column text, verbatim>
+
+     Rows already in the one-line form ADR-0046 AR-B-1 ruled (the row
+     title IS the heading title -- 62 of them, the 0043-0048 class
+     among others) get no section: the generator reproduces them
+     exactly, so there is nothing to move.
+
+  2. For the two split-era files that never carried one (ADR-0021,
+     ADR-0022), insert a `**Status:**` line after the heading, sourced
+     from the index row's own status column and marked as added.
+
+Idempotent: a file that already carries the dated section (or a Status
+line) is left alone and reported as `skip`. Committed, rather than run
+and discarded, because the ADR's own claim is that the move was
+mechanical -- the script IS that claim's evidence.
+
+Usage:  bin/adr-index-migrate [--dry-run]
+"""
+
+import os
+import re
+import sys
+
+INDEX = "notes/ADRs.md"
+ADR_DIR = "notes/adr"
+
+SECTION_HEADING = (
+    "### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)"
+)
+STATUS_ADDED = (
+    "**Status:** Accepted (status line added ADR-0143, 2026-08-16, from "
+    "`notes/ADRs.md`'s own index row)."
+)
+
+ROW_RE = re.compile(
+    r"^- \*\*ADR-(\d{4})\*\* — (.*?) — \[`([^`]+)`\]\(adr/([^)]+)\) — (.*)$"
+)
+HEADING_RE = re.compile(r"^## ADR-(\d{4})\s*—\s*(.*)$")
+
+
+def index_rows(path):
+    rows = []
+    with open(path, encoding="utf-8") as f:
+        for lineno, line in enumerate(f, 1):
+            line = line.rstrip("\n")
+            if not line.startswith("- **ADR-"):
+                continue
+            m = ROW_RE.match(line)
+            if not m:
+                sys.exit("FATAL: %s:%d does not parse as an index row" % (path, lineno))
+            rows.append(
+                {
+                    "line": lineno,
+                    "number": m.group(1),
+                    "title": m.group(2),
+                    "file": m.group(4),
+                    "status": m.group(5),
+                }
+            )
+    return rows
+
+
+def heading_title(lines):
+    for i, l in enumerate(lines[:20]):
+        m = HEADING_RE.match(l)
+        if m:
+            return i, m.group(2).strip()
+    return None, None
+
+
+def has_status(lines, heading_idx):
+    """Same header-block rule the generator uses (docsgen/parse-adr): the
+    block runs from the heading to the record's first `###` subsection,
+    so a `**Status:**` quoted further down an execution record is not
+    mistaken for the record's own."""
+    for l in lines[heading_idx + 1 :]:
+        if re.match(r"^#{2,6}\s", l):
+            return False
+        if l.startswith("**Status:**"):
+            return True
+    return False
+
+
+def main():
+    dry = "--dry-run" in sys.argv[1:]
+    rows = index_rows(INDEX)
+    moved = same = skipped = status_added = 0
+
+    for row in rows:
+        path = os.path.join(ADR_DIR, row["file"])
+        if not os.path.isfile(path):
+            sys.exit("FATAL: index row ADR-%s cites a missing file %s" % (row["number"], path))
+        text = open(path, encoding="utf-8").read()
+        lines = text.split("\n")
+        hidx, htitle = heading_title(lines)
+        if htitle is None:
+            sys.exit("FATAL: %s has no `## ADR-NNNN -- Title` heading" % path)
+
+        # (2) the missing-Status repair, before any append
+        if not has_status(lines, hidx):
+            lines.insert(hidx + 1, "")
+            lines.insert(hidx + 2, STATUS_ADDED)
+            text = "\n".join(lines)
+            status_added += 1
+            print("status  ADR-%s  %s" % (row["number"], row["file"]))
+            if not dry:
+                open(path, "w", encoding="utf-8").write(text)
+
+        # (1) the narrative move
+        if row["title"] == htitle:
+            same += 1
+            continue
+        if SECTION_HEADING in text:
+            skipped += 1
+            print("skip    ADR-%s  %s (section already present)" % (row["number"], row["file"]))
+            continue
+
+        if not text.endswith("\n"):
+            text += "\n"
+        text += "\n%s\n\n%s\n" % (SECTION_HEADING, row["title"])
+        moved += 1
+        print(
+            "move    ADR-%s  %s  (%d chars)"
+            % (row["number"], row["file"], len(row["title"]))
+        )
+        if not dry:
+            open(path, "w", encoding="utf-8").write(text)
+
+    print()
+    print("rows                     : %d" % len(rows))
+    print("one-line already (no move): %d" % same)
+    print("narratives moved          : %d" % moved)
+    print("already migrated (skip)   : %d" % skipped)
+    print("Status lines added        : %d" % status_added)
+    if dry:
+        print("\n(--dry-run: nothing written)")
+
+
+if __name__ == "__main__":
+    main()

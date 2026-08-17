@@ -479,3 +479,7 @@ ADR-0014 supersession note, as the driving prompt directed.)
 
 `notes/adr/README.md`'s own file count corrects 99→100, verified by `ls
 notes/adr/*.md | grep -v README | wc -l`, not arithmetic.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+User-path citations go marker-only, full user path, gate hardened; `:mllp` sink abandoned — three author rulings execute: the append-in-place form ADR-0101 landed is superseded (visible `ADR-NNNN` token drops everywhere, marker alone remains), scope widens to the 12 origin-qualified citations ADR-0101 left untouched (first-time footnotes into the frozen `sim`/`tools` pre-merge indexes, distinctly-named markers), and the `:mllp` sink is abandoned for now; a re-derived inventory finds zero deltas against ADR-0101's own count; the gate gains a third check (no visible `ADR-NNNN` token in prose, fences and definition lines exempted) proven red on the pre-conversion tree (12 files) then green; eleven sentences reworded where the citation was grammatically load-bearing, every one listed before/after; the two `glossary.md` citation-accuracy anomalies ADR-0101 disclosed are closed (their footnotes now target the tools index they actually describe); a three-place mllp-language inventory is disclosed, only the help-text overclaim corrected, the design doc and ADR-0014 left standing as written; the oracle holds pure identity across all 34 roots

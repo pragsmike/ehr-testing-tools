@@ -184,6 +184,57 @@ steps.
     rediscovered). Fill in the scaffolded stubs with the session's real
     record and archived prompt before committing; the script is
     idempotent, so re-running it after filling in content is a no-op.
+14. **Register hygiene at close (R-RH, `notes/adr/0143-adr-index-
+    generated.md`).** The close commit moves THIS session's own closed
+    rows to `Done` — a row whose own words say CLOSED may not be left
+    sitting in `Now` or `Next` for the next session to re-triage — and
+    re-measures every reading set against its budget, recording the
+    actuals in the session record. The compression arc exists because
+    both halves were skipped: `roadmap.md`'s latency row read "arc
+    CLOSED" from under the `## Next (backlog, no session scheduled)`
+    heading for five days, and budgets were re-measured only when a
+    gate went red.
+15. **Budget stop: exceed a reading-set budget and you compact or you
+    stop — never bump (R-BS, ADR-0143, guard #3).** `.agents/reading-
+    sets.edn`'s `:budget-lines` is now ratcheted against
+    `.agents/reading-sets-baseline.edn` and
+    `ehrt.docs-tooling.reading-set-budget-test` fails any budget above
+    it, so the bump is not merely discouraged, it is unavailable. When
+    a set goes over: compact the set's own paths back under the number
+    in the same session (the ADR-0141 close is the worked example — a
+    ~50-line register block compressed back to one row and a citation
+    BEFORE any number moved), or STOP-AND-REPORT. A budget moves, and
+    the baseline with it, only inside a compaction ADR. The history
+    this replaces is in that file's own header: fourteen in-place bumps
+    superseded by one 2026-08-05 re-baseline, then eleven more dated
+    re-derivations through 2026-08-16, each one honest and each one
+    raising the ceiling the gate had just caught.
+16. **A red-first commit is pushed together with its green successor,
+    never alone (R-RP, ADR-0143, ADR-0142's own practice made the
+    rule).** Capture and commit the red exactly as before — the red
+    checkpoint is what makes the green mean something — but hold the
+    push until the green commit exists, then push both. A red commit
+    pushed by itself puts a known-failing tip on `main` and burns a CI
+    run proving what the session already knows. This applies equally
+    when the red-first commit cannot compile standalone (a new test
+    naming a function its own green commit introduces): that is a
+    normal shape for red-first, and pushing the pair together is what
+    keeps it off the remote as a lone tip. Disclose it in the session
+    record when it happens.
+17. **Anchored edits on register files; read the diffstat before you
+    commit (R-AE, ADR-0143, from the ADR-0141 near-miss).** A register
+    made of INDEPENDENT rows — `.agents/plans/roadmap.md`,
+    `.agents/rulings.md`, any README index — is edited by anchored
+    insertion or anchored replacement of the specific row, never by
+    slicing between two anchors and re-joining (`s[:start] + new +
+    s[end:]` silently deletes every row in between: it took out the
+    D8-5 closure, the repo-review-4 charter, and the sim-theory.edn
+    row in one edit). Before every commit, read `git diff --cached
+    --stat` and compare the changed-line count against what you
+    intended to change; that comparison — 209 changed lines where ~35
+    were intended — is what caught it. Any number computed from a
+    damaged file is also wrong, so re-measure after restoring, never
+    reuse the measurement taken during the damage.
 
 ## VERIFICATION
 

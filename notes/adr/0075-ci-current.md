@@ -332,3 +332,7 @@ mid-session ruling. The vendoring arc's own successor tag debt is
 inherited and passed forward again, unchanged in kind. CI on `main`
 was watched green (or, if not, STOP-AND-REPORTED) for the first time
 since ADR-0065 — see the session record for which.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+CI current: the derived docs catch up, the staleness guard comes home, preflight learns to look — `docs/cli.md` had been stale since ADR-0065 (32 commits, not the estimated 25), CI red the whole time with nobody watching; docs/cli.md and docs/operators.md gain local, in-process staleness gates alongside CI's own; a second, unrelated intermittent test failure found and named for next-arc intake, not fixed here

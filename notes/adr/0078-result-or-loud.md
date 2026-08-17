@@ -282,3 +282,7 @@ red against the exact pre-sweep tree, naming exactly the sites the
 register named, no more, no fewer — so the next site that reaches for
 a bare `.listFiles` fails a test instead of waiting for another review
 to find it by hand.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+Result or loud: an I/O failure can no longer impersonate an empty directory — fix session 1 of the ruled mitigation plan closes the register's highest-severity cluster (D4-1/D3-4/D8-2/D8-3, one root cause, three dimensions): a shared `ehrt.kernel.io` helper, an 11-site sweep (one live regression caught and fixed mid-sweep), `corpus mutate`'s missing-path error cleaned up, and a recurrence gate witnessed red against the pre-sweep tree before landing green; the register's own arithmetic corrected (45/28/5, not 44/26/6) in a preceding commit

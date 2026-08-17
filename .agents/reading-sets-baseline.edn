@@ -1,0 +1,45 @@
+;; Reading-set budget RATCHET baseline (guard #3, compression arc
+;; session A, 2026-08-16, `notes/adr/0143-adr-index-generated.md`).
+;;
+;; One integer per named set in `.agents/reading-sets.edn`: the highest
+;; value that set's `:budget-lines` is allowed to take.
+;; `ehrt.docs-tooling.reading-set-budget-test` fails the build on any
+;; budget above its entry here, with the message "compact, or bump by
+;; compaction ADR -- never in a build session". A budget may always
+;; fall below its baseline; compaction is never gated.
+;;
+;; Why this file exists. The budget test was a ceiling that moved
+;; whenever it was hit. Its own file records the history without
+;; flinching: fourteen in-place bumps through 2026-08-05, superseded by
+;; one re-baseline, then eleven more dated re-derivations through
+;; 2026-08-16 -- twenty-five upward moves, every one of them honest and
+;; individually justified, which is exactly why none of them was ever
+;; the moment someone stopped and compacted instead. A gate a session
+;; can satisfy by editing the gate is a measurement, not a limit.
+;;
+;; This file is edited ONLY by a compaction ADR, which sets each value
+;; from that ADR's own post-compaction measured actual times 1.15,
+;; rounded up to the nearest 5 (the standing formula, defined in
+;; `.agents/reading-sets.edn`'s own header). A build session that finds
+;; itself wanting to edit this file has found its STOP-AND-REPORT.
+;;
+;; Values below were set by ADR-0143 at its own Step 3 actuals:
+;; :onboarding 2814, :corpus 1952, :sim 1398, :judge 1046, :docs 859.
+;;
+;; DISCLOSED, because it matters to whoever reads these numbers next:
+;; four of the five moved UP rather than down at this landing, and the
+;; ADR that set them says why. The compression this session performed
+;; was of `notes/ADRs.md`, which the census found is a `:paths` member
+;; of NO set -- its 134 KB was never counted against any budget -- while
+;; this session's own author-approved skills rider grew
+;; `.agents/skills/build-session/SKILL.md` by 51 lines, and every set
+;; carries that file. That growth curve (162 -> 309 lines across the
+;; workspace's life, in the one path all five sets share) is ADR-0143's
+;; own Finding 6 and is chartered to a later session of this arc. The
+;; ratchet is what makes the next move down instead of up.
+
+{:onboarding 3240
+ :corpus 2245
+ :sim 1610
+ :judge 1205
+ :docs 990}

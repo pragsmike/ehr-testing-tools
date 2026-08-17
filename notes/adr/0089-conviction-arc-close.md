@@ -397,3 +397,7 @@ implicit; and the pairing-as-data registry, ruled in at the
 quality-review arc's own close and carried across two subsequent
 closes without action, finally lands as sixty-nine lines of committed,
 execution-checked data.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+The conviction arc closes: two loops convicted on evidence, and the close itself splits by design — the author's own "adopt, two close sessions" ruling gets its first execution (session A: tag + rulings appends; session B: state/budgets/rotation/this ADR), catching a mechanical tag slip inside a narrow blast radius as the pattern's own first observed benefit; `state.md` regenerates (two new sections, the first oracle-root MOVE since Wave G); two reading-set budgets move together for the first time since the quality-review arc's own close; the oracle's own blind spot to malformed compiled shapes (byte-identity can't see what it's never compared) is named and evidenced; a prompt-citation mismatch is disclosed rather than silently resolved

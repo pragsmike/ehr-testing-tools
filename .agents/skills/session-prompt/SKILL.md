@@ -98,10 +98,29 @@ observed consistently across every session prompt from
 4. **Cite provenance for every "ruled" claim.** A claim that something
    was already decided should name the roadmap row, ADR number, or prior
    session record it comes from — "as discussed" is not a citation.
-5. **Fence explicitly.** Name what this session will *not* do, even
+5. **QUEUE PROVENANCE: every queued item cites its roadmap row and
+   quotes that row's own status words** (`notes/adr/0143-adr-index-
+   generated.md`, compression arc session A). A prompt that hands the
+   next session a queue — "Now", "Next", carried items, a horizon list
+   — writes each item as `roadmap.md:LINE` plus the row's status words
+   in quotation marks, e.g. *`roadmap.md:222` — "arc CLOSED"*. An
+   uncited queue item is a **drafting error**, not a stylistic
+   preference, and the receiving session's Step 0 **rejects a prompt
+   whose queue contains one** rather than starting work against it.
+
+   The rule exists because of a specific failure: the downstream-
+   latency row was carried as an open queue item for five days while
+   its own text, at `roadmap.md:222`, read "arc CLOSED" — a prompt
+   written from a remembered queue rather than from the register it
+   claims to execute. Quoting the row's own words makes that
+   contradiction visible at drafting time, when it costs a line, rather
+   than at session time, when it costs a session. It is the same
+   discipline as R-B's own preflight, applied to the queue instead of
+   the conventions: read the row, quote the row.
+6. **Fence explicitly.** Name what this session will *not* do, even
    if a broader plan already approved it — this is what stops a later
    session reading silence as authorization.
-6. **Archive it.** The prompt a session actually runs under gets
+7. **Archive it.** The prompt a session actually runs under gets
    archived verbatim to `.agents/prompts/<date>-<slug>.md` as part of
    that session's own close-out, paired with its session record, indexed
    in `.agents/prompts/README.md` in the same commit
@@ -119,4 +138,6 @@ a stated close-out and fence.
 - [ ] Every ruling traces to a real roadmap row, ADR, or prior record.
 - [ ] Every ruling is tagged `[A]` or `[C]`.
 - [ ] Checkpoints name their commit messages verbatim.
+- [ ] Every queued item cites `roadmap.md:LINE` and quotes that row's
+      own status words.
 - [ ] The prompt states what it deliberately does not authorize.

@@ -222,3 +222,7 @@ green, oracle-confirmed as pure tooling with zero sim/engine-path
 effect, and witnessed against a real vendored module at exactly the
 count D6-1's own re-derivation predicted (11, not 3). Nothing else in
 `census.clj` moved.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+Census closure-file-count fix: the lookup tables get counted too — ruling 6 = D6-1 "a" executes: both `census-one` branches converge on one definition (root + submodules + lookup-table CSVs), the load-failed branch's `fetched` atom now threads through `make-table-resolve-fn` too; three new deftests gate red-to-green (1+N+M, a table read before a load failure, and the no-tables regression guard); the oracle bracket over the fix itself holds pure identity across all 34 roots; a bounded real-module witness against the in-repo `asthma` closure reports 11, matching D6-1's own re-derivation exactly

@@ -75,6 +75,18 @@ The generated handoff follows this structure:
 - Prioritized, actionable tasks
 - Context for why each is ready
 - Dependencies and blockers
+- **Queue provenance, required** (`notes/adr/0143-adr-index-
+  generated.md`, compression arc session A): every item here that
+  corresponds to a register row cites it as `roadmap.md:LINE` and
+  quotes the row's own status words — e.g. *`roadmap.md:222` — "arc
+  CLOSED"*. An uncited item is a drafting error, and a session prompt
+  built from a handoff whose queue contains one is rejected at the
+  receiving session's Step 0. The rule answers a real failure: the
+  downstream-latency row was carried forward as open work for five
+  days while the row itself said "arc CLOSED", because the queue was
+  reproduced from memory instead of re-read. A handoff is exactly
+  where that reproduction happens, so it is exactly where the citation
+  belongs.
 
 ### Open Questions and Decisions Needed
 - Questions requiring human input

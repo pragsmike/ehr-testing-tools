@@ -274,3 +274,7 @@ here (no ruling licensed it at this session's own closing commit).
 `.agents/reading-sets.edn` needed no path or budget change this
 session — confirmed by direct grep of every set's own `:paths` against
 both moved trees before AR-DM-1 landed: zero members under either.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+Demos front door: the operator surface moves to the front, and the README shows it running — `demos/scenarios/`+`demos/traces/` land at the repo root, byte-witnessed, pointer READMEs left behind; README.md gains a "See it run" section, live-probed to a rendered bed board in two commands

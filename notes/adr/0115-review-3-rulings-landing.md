@@ -226,3 +226,7 @@ file outside the list above was touched.
 ```
 
 (appended to `.agents/plans/roadmap.md`'s own Done section.)
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+Review-3's rulings land: three questions, three clusters chartered — the author's own verbatim "Q1 a. Q2 a. Q3 a." ruling resolves review-3's three `ruling-needed` rows (R3-B1-1 `--out-dir`'s double meaning, rename chartered to fix cluster A; R3-B1-4 `--seed`'s required-vs-defaulted split, ruled deliberate two-tier design, a help note chartered to fix cluster A; R3-B1-7 `--received`'s wall-clock default, ruled a class exemption for provenance metadata about a real-world act, closed by ruling); the register's twelve `fix-session-candidate` rows charter into three fix clusters on the roadmap (A — CLI validation and error quality, 8 members including the register's own HIGHEST-PRIORITY finding R3-B2-1; B — help-surface enrichment, 2 members; C — doc drift and gate scan-roots, 2 members, docs-only) plus a design-channel-draft queue note; the summary table's own note wrongly claiming a cross-referencing row is "marked '(x-ref)'" is corrected to the actual "(see ...)" citation marker, counts independently recounted and unaffected; one gate-forced companion edit, `.agents/reading-sets.edn`'s `:onboarding` budget re-baselined 1705→1995 under the file's own standing formula after the cluster charter grew `roadmap.md` past its budget; zero `src`/`test`/`docs` change anywhere, the oracle holds pure identity across all 35 roots

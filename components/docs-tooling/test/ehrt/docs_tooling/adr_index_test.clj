@@ -63,16 +63,12 @@
 
 ;; -- gate 2: every ADR file has the uniform shape the rows derive from --
 
-(defn- adr-filenames [dir]
-  (->> (.listFiles (io/file dir))
-       (filter #(.isFile ^java.io.File %))
-       (map #(.getName ^java.io.File %))
-       (filter #(re-matches #"\d{4}-.*\.md" %))
-       sort))
-
 (deftest every-adr-file-carries-a-heading-and-a-status-line-test
-  (let [entries (map (fn [n] (assoc (docsgen/parse-adr n (slurp (io/file adr-dir n))) :name n))
-                     (adr-filenames adr-dir))]
+  ;; The population comes from `adr-entries`, the generator's own, rather
+  ;; than a second listing walked here -- a shape gate that enumerated the
+  ;; directory differently from the renderer could pass while the renderer
+  ;; was reading a different set of files.
+  (let [entries (map #(assoc % :name (:file %)) (docsgen/adr-entries adr-dir))]
     (testing "sanity: the population is the directory, and it is not empty"
       (is (seq entries) (str "no ADR files found under " adr-dir)))
     (testing "every ADR file has a `## ADR-NNNN — Title` heading"

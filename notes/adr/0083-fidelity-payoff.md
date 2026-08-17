@@ -265,3 +265,7 @@ The arc's own recurring lesson — a check (or an inference) that
 verifies one property does not verify a different one later cited in
 its name — lands a second time, this time on an inference rather than
 a check, closing the loop ADR-0082's own AR-EE-1c erratum opened.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+Fidelity payoff: anemia comes home — and colorectal's real blocker gets its true name — `anemia___unknown_etiology.json` vendors clean at last (deferred since batch 2), pinned by a committed test asserting the A5 no-op arm's own counter, not just invariant-catalog pass; the oracle gains its 28th root, the 27 pre-existing ones byte-identical; the roadmap's `EncounterEnd` Deferred row CLOSES on a dated erratum — colorectal was never actually blocked by that gap, a diagnosis-by-adjacency ADR-0072 made and this session's own trajectory scan overturns — and a new row names colorectal's real, undiagnosed blocker for its own future investigation

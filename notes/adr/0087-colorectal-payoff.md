@@ -290,3 +290,7 @@ methodology that works for one counter but silently undercounts
 another) is this session's own instance of the arc's recurring lesson:
 a technique proven for one gap does not transfer to a structurally
 different one without re-verification.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+Colorectal payoff: the twenty-ninth root, and the straddle counter finds its witness — `colorectal_cancer.json` vendors clean at last (four ADRs, three sessions after its first deferral), pinned by a committed test asserting a clean invariant pass plus a `:suppressed-straddle-spans` count measured via `with-redefs` interception against the SAME real straddling patients the investigation traced by name (1/0/1 across seeds 20260802/1/42) — a first, undercounting synthetic-sweep attempt disclosed rather than discarded; the oracle gains its 29th root, the 28 pre-existing ones byte-identical

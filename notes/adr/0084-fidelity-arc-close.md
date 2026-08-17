@@ -476,3 +476,7 @@ disclosed two-session shape — while also surfacing, in its own
 preflight, a genuinely new and previously undisclosed test-suite
 flake, run to ground rather than smoothed past on the way to a clean
 commit.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+Fidelity arc close: the interpreter tells upstream's truth, and the record tells its own — closed across two Code sessions after an infrastructure block (the second such interruption, and the second to hit an arc close specifically); state and budgets regenerate (only `:onboarding` moves this time), four Done pointers rotate to the attic, `libs :outdated` re-run fresh, the oracle bracket spans both sessions at 28 roots identical, and an unrelated, newly-found subprocess-piping test flake is disambiguated live rather than smoothed past

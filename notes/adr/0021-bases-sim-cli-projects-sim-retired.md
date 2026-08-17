@@ -3,6 +3,8 @@
 
 ## ADR-0021 — `bases/sim-cli`/`projects/sim` retired (F2 fired): `ehrt sim` gains `check`/`identifiers`/`version`, closing the parity gap the retirement review found first
 
+**Status:** Accepted (status line added ADR-0143, 2026-08-16, from `notes/ADRs.md`'s own index row).
+
 ### Context
 
 `notes/facts-register.md` F2 (R33, ADR-0009, 2026-07-29) named a dated,

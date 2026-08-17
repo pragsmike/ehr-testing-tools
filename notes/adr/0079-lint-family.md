@@ -280,3 +280,7 @@ listing fails immediately instead of waiting for the busy-weekday
 class to recur. The one spec that has actually flaked reproduces
 deterministically from here forward. Two citations now resolve
 exactly where they claim to.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+Lint family: the small gates land together — fix session 2 lands eight small, mechanical cargo items: the `state.md` staleness tripwire, the `ehrt.sim.interface` façade surface-identity gate, two Deferred-section/live-path lints (each corrected live against a real false positive found during authoring, disclosed in their own docstrings), `-text` protection for four unprotected hash-recorded fixture files, the flaked engine spec's seed pinned, and two small citation/skill-doc fixes — all four gates' reds witnessed via git-stash-and-restore before landing green

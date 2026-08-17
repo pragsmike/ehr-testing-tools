@@ -280,3 +280,7 @@ session's own Step 0, per tag law (ADR-0057 AR-T-1) — not created here
   (matching every other landed module's own actual output) — a test-
   authoring correction made and disclosed here, not a module or
   interpreter finding.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+Vendoring batch 1: the everyday ambulatory load — five ailments join the mix (asthma, bronchitis, sleep-apnea, fibromyalgia, dementia), `injuries.json` assessed and deferred whole on a real `gmf-interpreter` gap the census's own narrow sample missed

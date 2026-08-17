@@ -342,3 +342,7 @@ discipline caught and fixed a functional gap the driving prompt's own
 channel-probed inventory missed — `pairing-registry.edn`'s runtime
 fixture paths — before it ever reached a red test, by re-deriving the
 sweep from the live tree instead of trusting the prompt's own count.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+Fixture relocation: the demos front door mechanic runs on test-fixtures/ — ADR-0081's own backlog row executes: the entire `components/corpus/test-fixtures/` tree (`v2/`, `v2-nist/`, `fhir/`, and the roadmap-unnamed `reports/`, riding along by author ruling) subtree-whole `git mv`s to a root-level `test-fixtures/`, symmetric with `demos/`; five `.gitattributes` `-text` patterns move in the same commit, all 13 vendored/authored fixture files sha256-identical before and after; the driving prompt's own channel-probed sweep inventory (claimed 16 `.clj` files) undercounted thirteen additional live citations — most critically `pairing-registry.edn`'s twelve RUNTIME `:fixture`/`:profile` values, a functional gap not a doc-staleness one, caught and widened into the same commit before any test went red; the live-path lint's allowlist needed zero edits, confirmed not assumed; the oracle bracket holds pure identity across all 34 roots

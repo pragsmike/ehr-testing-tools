@@ -296,3 +296,7 @@ verification are now repo-recorded. The oracle bracket confirms none
 of this touched a single emitted byte of the sim engine's own output.
 The feature horizon (corpus-player, pairing-as-data, module vendoring)
 is untouched, unruled, waiting for its own session.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+UX epilogue: muscle memory gets an answer, help gets a width — the retired `:cli` alias redirects, a sibling near-miss gets a real hint, `--width`/COLUMNS lands

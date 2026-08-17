@@ -210,3 +210,7 @@ predecessor-tag ceremony).
   added the index row to `gmf-interpreter.md` §9, both per the
   convention as it actually stands, disclosed here as a small premise
   correction, not blocking.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+Census substance: the vendoring arc opens with an honest catalog — the `:substance`/`:event-counts`/`:ok-walked-by-substance` qualifier and the labeled-filename fix land, the fresh census ranks 84 `:ok-walked` modules 51/33 zero-content/content-producing, parity held

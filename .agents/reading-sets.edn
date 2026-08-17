@@ -32,23 +32,32 @@
 ;; probe, scenarios, etc.) -- so "the skills relevant to it" stays the empty
 ;; set for all four task classes, honestly, not an omission.
 ;;
-;; Budget re-baseline (2026-08-05, docs coherence pass, ADR-0043 AR-D-3).
-;; Between migration session 4's zero-headroom seed and this date, every
-;; set's budget was bumped in place, session by session, fourteen times
-;; total, each bump a dated comment recording exactly what grew and by how
-;; many lines -- an honest but increasingly illegible record, since a zero-
-;; headroom budget makes ROUTINE growth (AGENTS.md's Components list,
-;; roadmap.md's own Now/Done churn) indistinguishable from the unplanned
-;; growth the budget test exists to catch. This note supersedes all
-;; fourteen: every set's budget below is its own actual line count, measured
-;; fresh against the tip this note lands on, times 1.15, rounded up to the
-;; nearest 5 -- one formula, applied uniformly, replacing the accumulated
-;; per-session bump trail. `:paths` membership is UNCHANGED by this note;
-;; only `:budget-lines` values move and the bump-history comments retire.
-;; Future growth resumes the same discipline this file always used: a
-;; session whose own edit pushes a set over its budget bumps that set's
-;; number, with a dated comment recording what grew -- this note is a
-;; re-baseline, not a suspension of the practice it replaces.
+;; THE RATCHET (2026-08-16, compression arc session A, guard #3,
+;; `notes/adr/0143-adr-index-generated.md`). A budget below may not
+;; EXCEED the integer this set carries in `.agents/reading-sets-
+;; baseline.edn`; `ehrt.docs-tooling.reading-set-budget-test` fails the
+;; build if it does. A budget may always fall. So a session that runs
+;; out of headroom now has two moves -- compact the set's own paths back
+;; under the number, or STOP-AND-REPORT -- and no longer has the third
+;; one it had been taking. Only a COMPACTION ADR moves the baseline.
+;;
+;; This supersedes the 2026-08-05 re-baseline note that used to sit
+;; here, which is retired VERBATIM into ADR-0143's own record rather
+;; than deleted. That note is worth knowing about even so: it recorded
+;; that between migration session 4's zero-headroom seed and 2026-08-05
+;; every set's budget had been bumped in place, session by session,
+;; FOURTEEN times, and it replaced all fourteen with one formula. Its
+;; closing sentence -- "future growth resumes the same discipline this
+;; file always used: a session whose own edit pushes a set over its
+;; budget bumps that set's number" -- is the sentence the ratchet
+;; revokes, and the eleven dated re-derivations below it, 2026-08-05
+;; through 2026-08-16, are what taking it eleven more times looks like.
+;; They stay as per-session provenance; they are history, not
+;; instructions.
+;;
+;; The formula that note defined is KEPT, and is the only thing a
+;; compaction ADR uses when it sets a new baseline: each set's own
+;; measured actual line count, times 1.15, rounded up to the nearest 5.
 ;;
 ;; Re-derivation (2026-08-05, scaffolding compaction B, AR-B-4,
 ;; `notes/ADRs.md` ADR-0046): `.agents/plans/roadmap.md`'s own Done
@@ -402,7 +411,7 @@
   ;; because that's a different audience from "a cold task-class session",
   ;; and forcing every onboarding read to carry its cost would budget for an
   ;; activity most onboarding sessions never do (migration session 5, AR-3).
-  :budget-lines 3105}
+  :budget-lines 3240}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one
@@ -428,7 +437,7 @@
           ;; the checkpoint ceremony, applies regardless of task class
           ;; (migration session 5, AR-3)
           ".agents/skills/build-session/SKILL.md"]
-  :budget-lines 2060}
+  :budget-lines 2245}
 
  ;; components/sim is the deterministic generator engine wrapping Synthea
  ;; (ADR-0005) -- engine-onboarding.md is the checklist every engine wrapper
@@ -453,7 +462,7 @@
           ;; the checkpoint ceremony, applies regardless of task class
           ;; (migration session 5, AR-3)
           ".agents/skills/build-session/SKILL.md"]
-  :budget-lines 1495}
+  :budget-lines 1610}
 
  ;; components/judge (verdict vocabulary) plus its three gate engines
  ;; (judge-v2-hapi, judge-fhir-official, judge-v2-nist, ADR-0011's per-engine
@@ -475,7 +484,7 @@
           ;; the checkpoint ceremony, applies regardless of task class
           ;; (migration session 5, AR-3)
           ".agents/skills/build-session/SKILL.md"]
-  :budget-lines 1055}
+  :budget-lines 1205}
 
  ;; components/docs-tooling (dev-time-only doc/lint tooling) generates and
  ;; lints docs/cli.md, docs/pipeline.md-equivalents, and docs/use-cases.md
@@ -493,4 +502,4 @@
           ;; the checkpoint ceremony, applies regardless of task class
           ;; (migration session 5, AR-3)
           ".agents/skills/build-session/SKILL.md"]
-  :budget-lines 840}}
+  :budget-lines 990}}

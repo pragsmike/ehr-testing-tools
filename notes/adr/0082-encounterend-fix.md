@@ -455,3 +455,7 @@ session (`.agents/prompts/2026-08-08-colorectal-investigation.md`)
 itself propagated the disputed `19` figure — archived prompts are
 frozen provenance, per this repo's own standing law, and are noted
 here, never edited.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+The EncounterEnd fix: the interpreter learns the five arms — the blast-radius probe finds a real, already-shipped dangling `:encounter-end` in `hypothyroidism`'s own oracle walk before any code lands (STOP-AND-REPORT), the author traces it, licenses it as one disclosed mover, and corrects ADR-0071's own erratum; the fix lands (openness tracking, the A1/A5 arm split, a counted suppression), red-witnessed in-session and green-committed; all 27 oracle roots stay byte-identical regardless (the mover proves invisible downstream, explained not just observed); `anemia___unknown_etiology.json` vendors clean, `colorectal_cancer.json` does not — a second, unrelated defect found and disclosed, not fixed

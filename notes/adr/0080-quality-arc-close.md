@@ -442,3 +442,7 @@ left to age as ambient debt. The next arc opens with six named
 Externals, a five-item ruled horizon, and one piece of mechanical debt
 (the `stable-20260807-quality-close` tag) — all recorded here rather
 than left to be rediscovered.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+Quality arc close: the repo examined itself, ruled on what it saw, and fixed the worst of it — the register's forty-five rows close out (9 fix-session-candidate executed, 5 ruling-needed ruled, the FINAL tally independently re-derived a second time on principle); `state.md` regenerates around its own staleness tripwire's first live sequencing test; all five reading-set budgets move together for the first time; five Done pointers rotate to the attic; the sibling-flake soak (12 clean runs), the census undercount, and wellness-encounters are named for review 2

@@ -54,6 +54,17 @@
 # surfaces are now enumerated from the tree -- if a new derived file
 # appears, it goes on a make target AND on the diff list below, same
 # commit.
+#
+# Population widened again 2026-08-16 (compression arc session A,
+# notes/adr/0143-adr-index-generated.md) by one path: notes/ADRs.md,
+# the ADR index, which stopped being hand-edited that day. It is the
+# first REGISTER on this list rather than a derived doc -- the reason
+# it joined is the same one the ten above are here for, applied to a
+# file whose shape decayed instead of going stale: rows ruled to be one
+# line in ADR-0046 had grown to 977 characters on average because
+# nothing regenerated them. `ehrt.docs-tooling.adr-index-test` asserts
+# the same parity in the normal suite, so a hand edit fails before it
+# reaches a push; this step is the second lock.
 
 name: test
 
@@ -108,4 +119,5 @@ jobs:
             components/sim/docs/sim-theory-diagram.mermaid \
             components/palgebra/examples/ai-study-flow-v3.mermaid \
             components/palgebra/examples/committee-flow.mermaid \
-            components/palgebra/examples/deliberated-choice-flow.mermaid
+            components/palgebra/examples/deliberated-choice-flow.mermaid \
+            notes/ADRs.md

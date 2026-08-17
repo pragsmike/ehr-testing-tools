@@ -382,3 +382,7 @@ check.
   additions** — the same operational finding ADR-0070/0071 already
   named, repeated here (staged before every `poly test` invocation, not
   itself fixed, out of this session's own scope).
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+Vendoring batch 3: the families that travel, and the verbatim law gets teeth — `uti_recurrence.csv`'s silent LF-normalization closed with a `-text` rule and a standing NOTICE-verbatim gate; four content-producers land (metabolic-syndrome-care, vhd-pulmonic, vhd-tricuspid, med-rec), `colorectal_cancer.json` deferred whole on the same `:encounter-end` gap batch 2 found

@@ -303,3 +303,7 @@ a stale doc a green local suite couldn't see and ADR-0072 caught a
 byte-corruption a correct hash couldn't see. Nothing moved: the
 register and this ADR are a survey, complete and dated, awaiting the
 author's own rulings before any fix session runs.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+Repo review 1: the first assessment — eight dimensions surveyed, 44 rows recorded (26 clean, 9 fix-candidate, 6 ruling-needed, 3 intake), one dimension (error honesty) scores red on a demonstrated silent-success defect shared with two other dimensions' own findings; nothing moved, the register awaits the author's own rulings

@@ -272,3 +272,7 @@ row records the redesign arc's own charter, awaiting-design-pass.)
 
 `notes/adr/README.md`'s own file count corrects 100→101, verified by
 `ls notes/adr/*.md | grep -v README | wc -l`, not arithmetic.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+Board boundary catch-up: the snapshot grid stops lagging behind stream-time jumps — the `--board` sink's post-render boundary update advanced by exactly one span, leaving it arbitrarily far behind after any stream-time jump larger than a span (the idle-skip case) and rendering a duplicate, identical-timestamp snapshot for every message sharing a board window with the message that just rendered; fixed to an arithmetic smallest-grid-point-above-ts computation, hermetically red-then-green on two new tests (the author-observed paired-identical shape, and a four-window grid-invariant case with two deliberately empty windows); the busy-tuesday demo's own witnessed snapshot count is re-run and corrected (68 → 48); two stale `notes/ADRs.md` prose prefixes in `docs/glossary.md`'s Baseline/Pack entries (an ADR-0102 residual finding) are dropped; the oracle holds pure identity across all 34 roots

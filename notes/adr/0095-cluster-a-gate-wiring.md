@@ -319,3 +319,7 @@ every push actually runs, proven to trip when reality diverges
 (scratch exit 2) and pass when it doesn't (real repo exit 0). The
 oracle holds pure identity across all 34 roots — this is tooling and
 CI wiring, not sim/engine-path work.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+Cluster A: the classpath static gate lands, verify-nist-lock joins the push lane — ADR-0092's fix cluster A (D2-18, D2-4) executes: a new reader-based docs-tooling gate parses every `workspace.edn` project's own composed-brick TEST-tree requires and asserts each resolves to a brick the composing project's own `deps.edn`/`:necessary` list actually declares, closing the `2088763` classpath-break class structurally; its witness pair reproduces exactly the historical judge/`ehrt.judge-v2-nist`/`integration` violation at `2088763~1` and passes clean at HEAD; `bin/verify-nist-lock` joins `test.yml` as an explicit step right after `poly test :all skip:integration`, its own header corrected to name the push lane truthfully, proven to trip (scratch exit 2) and pass (real repo exit 0); the oracle holds pure identity across all 34 roots

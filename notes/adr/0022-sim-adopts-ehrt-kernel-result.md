@@ -3,6 +3,8 @@
 
 ## ADR-0022 — Sim adopts `ehrt.kernel.result`; its own copied envelope (`sim/ADR-0001` point 4) is retired, promise honored
 
+**Status:** Accepted (status line added ADR-0143, 2026-08-16, from `notes/ADRs.md`'s own index row).
+
 ### Context
 
 `ehrt.sim.result` was a deliberate ~30-line copy of the result-not-throw

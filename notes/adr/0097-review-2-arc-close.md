@@ -474,3 +474,7 @@ none. Review 3 opens next, unscheduled, on the author's own cadence
 call, inheriting four carried items, two new anchors, a named lint
 watch item, and one ruled-but-not-yet-executed routing decision — nothing
 smoothed over, nothing taken beyond what was ruled.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+Review-2 arc close: the plan executes in full, two findings anchor, one session closes it — the author's own "one close session" ruling, a deliberate deviation from the two-session-close default, executes: the register's 76 rows fully tallied (57 clean, 8 fix-candidates landed or anchored, 5 ruling-needed all ruled in the author's own verbatim words, 5 intake resolved-or-carried, 1 non-tallied cross-reference); cluster B's own two disclosed-not-fixed findings (`gate fhir`'s permission-denied leg, `ehrt play`'s bare reads) get their first roadmap anchor under the arc's own new law, its first execution at an actual close; D8-4 rides the gate-fhir row as a rider; three design-channel unearned-specificity instances surface and correct in the open, including one caught by this close itself before landing

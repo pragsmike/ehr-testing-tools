@@ -256,3 +256,7 @@ standing-law rider, state regeneration, budgets, rotation, tags)
 follows a fresh design-channel probe against this landing; the
 vendoring arc's design pass opens after, per the standing ratification
 ADR-0066 AR-BB1-R already gave it.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+Player board: the whiteboard exists — the accumulator meets the pacer — `ehrt play --board N` renders a bed-state snapshot every N stream-minutes, foreign traffic skips as a counted cue not a crash

@@ -325,3 +325,7 @@ folded into this one's scope, the same restraint ADR-0075 showed for
 the flake this session just fixed. The quality-review arc's own first
 instrument is now landed; its first survey is the next session's own
 act.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+Quality riders: the review arc opens — the `repo-review` skill lands (its own already-landed commit found off-ceremony and CI-red, fixed forward), the ADR-0075 flake gets a mechanism fix proven by soak not a single run, preflight widens from one CI run to five; a third, independent intermittent test found mid-session and named, not fixed

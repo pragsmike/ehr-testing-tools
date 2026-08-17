@@ -273,3 +273,7 @@ ED-redesign Next row amended in place, not replaced.)
 
 `notes/adr/README.md`'s own file count corrects 101→102, verified by
 `ls notes/adr/*.md | grep -v README | wc -l`, not arithmetic.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+ed-tuesday: the scripted ED scenario, "A" of "C-with-A-first" — a new sibling scenario, `demos/scenarios/ed-tuesday/`, contrasts busy-tuesday's population-scale sparse incidence with a day-scale scripted single ED shift; Step 2's own verification finds that mixing a weighted scripted-pathway pool with a weighted GMF-module pool over the SAME patients carries a real RNG-coincident `:incompatible-assignment` collision risk the static check cannot see (`ModuleAssignment`'s own pool has no "no module" option), and lands the sanctioned fix — disjoint explicit-ordinal cohorts, never a second weighted pool; five weighted ED trajectories (55/30/8/5/2) plus an 8-patient explicit ambulatory-module tail; a first-draft config exhausted ED capacity, re-tuned by calculation and re-probed clean; witnessed run: inpatients rise to a peak of 21 and fall to 3, discharges 1→84, churn merges 0→5, zero `:capacity-exhausted`; the ambulatory tail shows zero live encounters in the shipped (90-day-horizon) run, live-probed at 14/90/3650 days and disclosed as a genuine low-incidence finding, not silently retuned; the oracle holds pure identity across all 34 roots

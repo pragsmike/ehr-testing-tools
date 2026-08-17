@@ -382,3 +382,7 @@ parser-level rejections with no finding-level class, one profile-noise-
 masked mutation) — recorded as findings about the fixture/engine
 combination, not smoothed into a false completeness the catalog's own
 prose does not claim either.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+The pairing registry: inject X, expect X, on the record — the pairing-as-data design pass (review P3-3, ADR-0050 D-3) lands its first executable registry, seven witnessed rows across two v2 judges (five judge-v2-hapi, two judge-v2-nist), zero FHIR rows by design; a names-only NIST taxonomy snapshot derived from the resolved jar's own `reference.conf`, gated by a currency test; three skipped NIST pairs honestly named (two parser-level rejections with no finding-level class, one masked by baseline profile noise); a report-only tier-two coverage table; all 29 oracle roots byte-identical

@@ -270,4 +270,37 @@ changed.
   **session B's**, chartered here, not built here.
 - Sessions C and D of the compression arc are chartered, not executed.
 
+### The retired note (moved verbatim from `.agents/reading-sets.edn`, 2026-08-16)
+
+Guard #3 replaces the 2026-08-05 budget re-baseline note that stood at
+the head of `.agents/reading-sets.edn`. It is retired here VERBATIM
+rather than deleted, in the same commit that removes it, so the
+pointer left in its place resolves:
+
+```
+;; Budget re-baseline (2026-08-05, docs coherence pass, ADR-0043 AR-D-3).
+;; Between migration session 4's zero-headroom seed and this date, every
+;; set's budget was bumped in place, session by session, fourteen times
+;; total, each bump a dated comment recording exactly what grew and by how
+;; many lines -- an honest but increasingly illegible record, since a zero-
+;; headroom budget makes ROUTINE growth (AGENTS.md's Components list,
+;; roadmap.md's own Now/Done churn) indistinguishable from the unplanned
+;; growth the budget test exists to catch. This note supersedes all
+;; fourteen: every set's budget below is its own actual line count, measured
+;; fresh against the tip this note lands on, times 1.15, rounded up to the
+;; nearest 5 -- one formula, applied uniformly, replacing the accumulated
+;; per-session bump trail. `:paths` membership is UNCHANGED by this note;
+;; only `:budget-lines` values move and the bump-history comments retire.
+;; Future growth resumes the same discipline this file always used: a
+;; session whose own edit pushes a set over its budget bumps that set's
+;; number, with a dated comment recording what grew -- this note is a
+;; re-baseline, not a suspension of the practice it replaces.
+```
+
+Its closing sentence is the one the ratchet revokes. The formula it
+defined is kept, and is what a compaction ADR uses to set a new
+baseline. The eleven dated re-derivations that followed it, 2026-08-05
+through 2026-08-16, stay in the file as per-session provenance under a
+note saying they are history, not instructions.
+
 <!-- Steps 2-4 are recorded below as they land. -->

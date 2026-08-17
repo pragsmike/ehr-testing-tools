@@ -227,3 +227,7 @@ voice, without touching a single byte of the demo it describes. Six
 rulings executed, two decisions explicitly still open (D8-4, ruling
 1's option b), one session scheduled but not run (the census fix) —
 nothing smoothed over, nothing taken beyond what was ruled.
+
+### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
+
+Review 2's rulings land: three laws append, four anchors, the front door discloses — the author's own six rulings on ADR-0092's register execute their docs/law-only surface: three standing rulings append to `.agents/rulings.md` (measurements sample the claimed population; horizon items anchor in the roadmap; post-push verification includes the ASCII check); wellness-encounters and the `notice_verbatim_test` coverage gap each gain a `roadmap.md` Deferred row for the first time (the new law's own first two instances); Wave E parks with a named revisit trigger; the census `:closure-file-count` fix is scheduled, not run; README's "See it run" front door carries up the sibling busy-tuesday README's own honesty disclosure without touching a byte of the demo; D8-4 and ruling 1's own option (b) stay explicitly unruled

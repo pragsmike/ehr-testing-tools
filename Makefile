@@ -1,4 +1,4 @@
-.PHONY: event-schema-export event-schema-freeze event-schema-examples formats-event-log help test integration quickstart quickstart-fresh ci-parity pipeline use-cases operators-doc cli-doc sim-theory palgebra-examples docsgen lint-pipeline mirror-nist verify-nist-lock
+.PHONY: adr-index event-schema-export event-schema-freeze event-schema-examples formats-event-log help test integration quickstart quickstart-fresh ci-parity pipeline use-cases operators-doc cli-doc sim-theory palgebra-examples docsgen lint-pipeline mirror-nist verify-nist-lock
 
 # Thin, deliberately (R23, ADR-0004, 2026-07-28 carve-loss recovery
 # session): every target below is a named entry point to a poly/CLI
@@ -35,7 +35,8 @@ help:
 	@echo "  event-schema-export - regenerate the event log's committed EDN contract from ehrt.sim-engine.event-schema"
 	@echo "  event-schema-examples - regenerate the one-real-event-per-kind examples docs/formats.md shows, from the deterministic fixture fleet"
 	@echo "  formats-event-log - regenerate docs/formats.md's event-log section from the two artifacts above"
-	@echo "  docsgen      - all nine of the above"
+	@echo "  adr-index    - regenerate notes/ADRs.md from the notes/adr/ tree's own headings and Status lines (ADR-0143)"
+	@echo "  docsgen      - all ten of the above"
 	@echo "  event-schema-freeze - NOT part of docsgen: re-freeze the stability gate's baseline, ONLY when bumping the event schema version"
 	@echo "  lint-pipeline - assert every catalytic resource in docs/pipeline.edn and docs/use-cases.edn resolves to one of the four catalytic targets (ehrt.docs-tooling.lint)"
 	@echo "  mirror-nist  - build ~/.ehrt/nist-mirror/ from this user's own ~/.m2 cache, sha256-verified against artifacts.lock.edn (ADR-0053) -- offline determinism without redistribution"
@@ -194,7 +195,19 @@ formats-event-log: event-schema-export event-schema-examples
 	clojure -X:dev ehrt.docs-tooling.event-log-doc/write-event-log-section!
 	@echo "Regenerated docs/formats.md's event-log section"
 
-docsgen: pipeline use-cases operators-doc cli-doc sim-theory palgebra-examples event-schema-export event-schema-examples formats-event-log
+# Regenerates notes/ADRs.md -- the ADR index -- from the notes/adr/
+# tree's own `## ADR-NNNN -- Title` headings and `**Status:**` lines
+# (compression arc session A, notes/adr/0143-adr-index-generated.md).
+# The index had been hand-edited since the 2026-08-05 split and its
+# rows regrew from the one line ADR-0046 AR-B-1 ruled into session
+# write-ups averaging 977 characters; generating it means no one writes
+# a row, so no row can regrow. On `docsgen`, and in CI's freshness
+# diff, exactly like cli.md: edit the ADR, regenerate.
+adr-index:
+	clojure -X:dev ehrt.docs-tooling.docsgen/write-adr-index!
+	@echo "Regenerated notes/ADRs.md"
+
+docsgen: pipeline use-cases operators-doc cli-doc sim-theory palgebra-examples event-schema-export event-schema-examples formats-event-log adr-index
 
 lint-pipeline:
 	clojure -X:dev ehrt.docs-tooling.lint/lint-pipeline!
