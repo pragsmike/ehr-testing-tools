@@ -218,3 +218,4 @@ Files in this directory:
   * 2026-08-16-event-log-contract-arc.md — the ground-truth event log's contract: census, Event schema, generated formats.md section, custom-emitter use case
   * 2026-08-16-result-clinical-time.md — clinical time on the result wire -- OBR-7 and OBX-14 (ADR-0142)
   * 2026-08-16-compression-a-adr-index.md — compression arc session A: the ADR index becomes generated, guards #2/#3, the skills rider
+  * 2026-08-17-compression-b-roadmap.md — compression arc session B: the roadmap row contract, its lint, and the migration ledger

@@ -55,7 +55,7 @@ Every top-level row, in every section:
   outside `## Done` is red. **Its dual**: a closure word in the first
   sentence of a row not tokened `CLOSED` is red.
 - **Q2 — slug.** A stable `**[slug]**` right after the token, unique
-  file-wide. Rows are cited `roadmap.md#slug`; `roadmap.md:NNN` in a
+  file-wide. Rows are cited `roadmap.md#<slug>`; `roadmap.md:NNN` in a
   live surface is red.
 - **Q3 — cap.** Six lines a row, maximum.
 - **Q4 — destinations.** A closed row moves VERBATIM to the attic,
@@ -340,3 +340,222 @@ capture while every other assertion fired. That is not a weak gate: it
 is a gate whose subject the same commit introduces. Its dual — closure
 words in a non-`CLOSED` row's first sentence — is what carries the
 pre-migration population, and it fired on 25.
+
+### The gate (red before green)
+
+`roadmap_deferred_closure_lint_test` was widened to `roadmap_lint_test`
+(`git mv`; the ancestor's own D2-5 assertion kept unchanged as one case
+among the rest). RED witnessed at `deb9a33`, per assertion:
+
+| assertion | red |
+|---|---|
+| every row carries one of the four tokens | **123** of 123 rows |
+| guard #1 — `CLOSED` outside `## Done` | **0** — see F-11 |
+| the dual — closure words in a non-`CLOSED` row's first sentence | **25** rows |
+| every row carries a `**[slug]**` | **123** of 123 rows |
+| slugs unique | 0 (vacuous — no slug existed) |
+| six-line cap | **59** rows |
+| `PRIORITY n` on `## Next` rows | **41** of 41 |
+| no live-surface line cite into the roadmap | **8** cites |
+| every cited slug resolves | 0 (no `roadmap.md#` cite existed) |
+| ancestor D2-5 (unchanged) | green |
+
+**A mechanism-sanity case earned its keep on the pattern's first run.**
+The token regex terminated with `\b`. The `DEFERRED` form ends in `)`,
+a non-word character, so `\b` never matched and the gate silently
+rejected **every** `DEFERRED` row — a gate unable to recognise one of
+its own four tokens, which would have passed green over that whole
+class forever. Terminator is now `(?=\s|$)`; the case that caught it is
+committed beside the pattern.
+
+**One false positive, fixed in the grammar rather than exempted.** The
+first green run flagged five live surfaces citing `roadmap.md#slug` — a
+slug no row defines, because it is the CONTRACT's own metavariable in
+prose, not a cite. Rather than special-case the literal `slug`, the
+placeholder is now written `roadmap.md#<slug>`, which is visibly a
+placeholder and matches no cite pattern. The gate keeps no exception.
+
+### The migration
+
+`bin/roadmap-migrate-0144`, run once, committed, because the ADR's own
+claim is that the move was mechanical and the script IS that claim's
+evidence (ADR-0143's `bin/adr-index-migrate` precedent). It refuses to
+run against a drifted tree: each of the 74 tabled rows is keyed by its
+start line at `deb9a33` AND a prefix of its own first line, both
+asserted before anything is written.
+
+**The nothing-lost ledger.** The replacement rows are AUTHORED, not
+excerpted, so "the overflow" has no clean line boundary to subtract.
+Each moved row therefore goes to its destination WHOLE, and the script
+asserts multiset identity before writing:
+
+- **1,574 verbatim row lines out** of `roadmap.md` — 29 rows to the
+  attic, 31 rows to 19 ADRs, 14 rows already inside the cap and
+  therefore moved nowhere.
+- **1,574 verbatim row lines in**, multiset-identical, asserted before
+  the script writes anything (`removed == added`, or it exits).
+- **Read back and proved**, which is the durable half:
+  `bin/roadmap-migrate-0144 --verify` re-reads the roadmap as it was at
+  `deb9a33` and asserts each moved row's exact contiguous block is
+  present in its destination file NOW — **60 of 60 blocks found
+  verbatim, 0 missing, 1,574 lines**. Re-runnable at any later commit.
+- **106 lines of NEW scaffolding** at the destinations, counted
+  separately and never netted against the proof: one dated attic header
+  block (11 lines) and 19 ADR section headers (5 lines each, 95).
+
+**`git diff --numstat` is a cross-check, and it does NOT balance
+exactly — disclosed, with the reason.** It reports `roadmap.md`
+−1,676/+282, attic +939, the 19 ADRs +740/−2. Subtracting the 4
+insertions belonging to the two sanctioned cite rewrites leaves 1,675
+insertions at the destinations against 1,574 moved lines + 106
+scaffolding = 1,680: **five short**. The five are not missing — the
+`--verify` read-back finds every one of them. Git's diff aligns five
+moved lines that happen to duplicate adjacent existing content as
+CONTEXT rather than as insertions, so a diffstat systematically
+undercounts a move by however many such coincidences it finds. This is
+worth stating plainly because the prompt asked for the ledger as a
+numstat identity, and a numstat identity is not something a move of
+this shape can actually satisfy. The multiset assertion and the
+read-back are the proof; the diffstat lands within five lines of it for
+a reason that is understood and reproducible.
+
+**Cite rewrites.** The eight live-surface cites became
+`roadmap.md#downstream-latency`, in `.agents/skills/handoff/SKILL.md`,
+`.agents/skills/session-prompt/SKILL.md` (×2) and their `.claude/`
+mirrors (held byte-equal, `diff -r` zero). Two further rewrites are the
+ONE sanctioned in-place edit into an otherwise append-only ADR, each
+marked in the sentence it changed: `notes/adr/0143-*.md:10` and `:40`.
+Nothing else in any ADR was edited.
+
+### Before and after
+
+| | before | after |
+|---|---:|---:|
+| `.agents/plans/roadmap.md` | 1,684 lines | **290** |
+| rows, total | 123 | 101 |
+| `## Now` | 1 row, 8 lines | *section dropped* |
+| `## Next` | 41 rows, 1,110 lines | **19 rows, 90 lines** |
+| `## Externals` | 9 rows, 40 lines | **7 rows, 24 lines** |
+| `## Deferred` | 23 rows, 454 lines | **19 rows, 99 lines** |
+| `## Done` | 49 rows, 54 lines | **56 rows, 60 lines** |
+| longest row | 118 lines | **6** |
+| rows over the cap | 59 | **0** |
+| `.agents/plans/roadmap-done-2026-08.md` | 1,593 lines | 2,532 |
+
+`## Done` grows because Q4 owes a pointer per closed row and six were
+missing (F-7), plus this session's own. That makes the
+`roadmap.md#attic-rotation-law` row more pressing, not less, and its
+new text says so.
+
+**A gate caught this session's own mode bug, on the authoritative run.**
+`ehrt.cli.executable-bits-test` went red on `bin/roadmap-migrate-0144`:
+the script was `chmod +x` in the working tree but staged `100644`,
+because `core.fileMode=false` hides the mismatch locally and a fresh
+clone (which is what CI checks out) would have received a
+non-executable script. Fixed with `git update-index --chmod=+x` and the
+whole suite re-run from a cleared `out/`. Recorded because it is the
+third defect this session that only a mechanical check could have
+found, and the only one of the three that an existing gate caught
+unaided.
+
+### A fence condition fired: the numstat ledger does not balance
+
+The session prompt lists, among its STOP-AND-REPORT conditions, "a
+numstat ledger that does not balance." **It does not balance, by five
+lines**, for the reason set out above: `git diff` renders five moved
+lines that duplicate adjacent existing content as context rather than
+insertions, so a diffstat cannot express this move as an identity no
+matter how the move is performed.
+
+Recorded as a fired fence rather than absorbed into a footnote, because
+the difference matters. What the fence protects is the property
+"nothing was deleted." That property is PROVED, and by a stronger
+instrument than the one the fence names: `--verify` reads every moved
+row back out of its destination file and matches it as an exact
+contiguous block, 60 of 60, 1,574 lines, 0 missing — a check that keeps
+working at any later commit, where a diffstat only works against the
+one diff that produced it.
+
+So the work landed and the trip is reported, rather than the work being
+held. The author may disagree with that call; what should not happen is
+the author learning about it from a diffstat later. **The instrument
+named in the fence should be the read-back, not the diffstat, for any
+future move of this shape** — that is the reusable finding here.
+
+### Reading sets — the first downward move this workspace has recorded
+
+Measured before touching anything (R-RH), and again after every edit
+landed. No set was over budget at Step 0, so there was no STOP.
+
+| set | actual before | actual after | budget | baseline |
+|---|---:|---:|---:|---:|
+| `:onboarding` | 2,836 | **1,446** | 3,240 → **1,665** | 3,240 → **1,665** |
+| `:corpus` | 1,956 | 1,961 | 2,245 (held) | 2,245 (held) |
+| `:sim` | 1,402 | 1,407 | 1,610 (held) | 1,610 (held) |
+| `:judge` | 1,050 | 1,055 | 1,205 (held) | 1,205 (held) |
+| `:docs` | 863 | 868 | 990 (held) | 990 (held) |
+
+`:onboarding` is the only set carrying `roadmap.md`; its budget and its
+ratchet baseline both move DOWN by the standing formula (1,446 × 1.15 =
+1,662.9 → 1,665). **The other four could not be re-derived and are
+disclosed as held**: their formula values (2,260 / 1,620 / 1,215 /
+1,000) now all exceed their baselines, because this session's own
+AGENTS.md row-contract line grew a path every set carries. The ratchet
+forbids up, so they hold — green, with 284 / 203 / 150 / 122 lines of
+headroom and a formula value already past the ceiling. That is
+ADR-0143 Finding 6 arriving on schedule, and compacting the two shared
+paths is chartered to session C.
+
+### Fences honoured
+
+- **`src`: zero files touched, anywhere** — not merely "none outside
+  `components/docs-tooling`". The only Clojure file this session
+  changed is `components/docs-tooling/test/.../roadmap_lint_test.clj`.
+  So **no regression-oracle claim is owed** (ADR-0135's precedent for
+  the same shape: "zero `src` ... no oracle claim made or owed"). The
+  bracket was nonetheless run, and its own output is quoted in the
+  session record rather than paraphrased.
+- **ADR files append-only**, except the two enumerated cite rewrites.
+- **Nothing deleted**: the ledger balances by multiset identity.
+- **No budget increase**; the only budget that moved, moved down.
+- **Zero dated exemptions** in the lint (F-2).
+
+### F-12 — the retokening would have silently voided a neighbouring gate
+
+Found by checking a claim this session had already written down, not by
+any gate going red.
+
+`ehrt.docs-tooling.done-pointer-adr-test` (AR-B-4, ADR-0046) exists so
+a `## Done` pointer cannot cite an ADR number that does not resolve. It
+extracted the number with `(ADR-\d{4})\s*$` — anchored to end of line,
+because the pointer shape was `- DATE — slug — ADR-NNNN`.
+
+Q1's retokening makes the shape `- CLOSED <date> <ADR-NNNN|sha>
+**[slug]**`, which moves the ADR number off the end of the line. After
+the migration that anchor matched **0 of 56** live pointers. The test
+still passed — a gate that extracts nothing has nothing to find
+dangling, so it goes green precisely when it has stopped working. It
+would have sat there, green and inert, for as long as anyone left it.
+
+This is guard #2's own class (structure that decays because nothing
+holds it) landing on a gate rather than on a register, and the honest
+account is that the session record asserted "still passes and is NOT
+vacuous — checked, not assumed" **before** the check was actually run.
+Running it is what found the opposite.
+
+Fixed red-first: a non-vacuity assertion added FIRST (red at "extracted
+0 ADR pointer(s) from 56 Done bullet(s)"), then the anchor dropped so
+the extraction reads the first `ADR-NNNN` in any Done bullet. The
+non-vacuity assertion is the durable half — it bounds extracted
+pointers to within two of the bullet count, so the *next* reshape of
+this line is loud instead of silent, rather than trading one brittle
+anchor for another. A mechanism-sanity case pins the new shape,
+including the sha-tokened pointer that correctly contributes no ADR and
+whose continuation line's own `ADR-0140` correctly does not leak in.
+
+**Two of this session's own gate defects were found by sanity cases and
+self-checks rather than by the gates themselves** (this one and the
+`\b`-terminator bug). Both would have been silent. Recorded together
+because the pattern is the point: a gate written in the same commit as
+the shape it gates cannot be trusted to have been exercised — it has to
+be shown failing first, and "it passed" is not that showing.
