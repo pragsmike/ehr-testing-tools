@@ -287,3 +287,18 @@
                                                      :native-ref {:expression ["Bundle.entry[0].resource/*Patient/storefront-patient*/"]}}]}]}}]
     (is (true? (sf/subset-match? expected real-actual))
         "the real gate-fhir run's own captured output (this session's own live invocation) must satisfy README.md's own first What-you-get fence")))
+
+;; ---- check-entry: the custom-emitter row, live (ADR-0146, finding
+;; U-15). This row was registered by ADR-0141 and, alone among the nine
+;; in the register, never got a live check-entry case -- so the one page
+;; whose selling point is "exercised from birth" was the one page whose
+;; fence and script were never PROVEN to teach the same commands at
+;; per-push tier. ADR-0146 found the gap the hard way: it added a taught
+;; command to the page, did not add it to the script, and the whole
+;; docs-gate suite stayed green. RED against exactly that divergence was
+;; witnessed before this test landed.
+
+(deftest check-entry-live-usecase-custom-emitter-test
+  (let [result (check-script-row "bin/usecase-custom-emitter")]
+    (is (true? (:ok? result)) (str "divergence: " (:divergence result)))
+    (is (= 5 (:readme-count result) (:script-count result)))))

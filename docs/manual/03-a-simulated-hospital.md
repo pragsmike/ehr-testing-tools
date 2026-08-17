@@ -164,10 +164,12 @@ schema. Every run's `manifest.edn` records the `:event-schema-version`
 it was produced under, so a log always says which version of the
 contract made it.
 
-The use-case page above walks the whole path and links a worked example
-emitter that depends on nothing off this repo's classpath. That last
-part is the demonstration, not a detail: an example that needed our code
-to run would prove the opposite of what it claims.
+The use-case page above walks the whole path and links two worked
+example emitters — one that proves only the seam, one whose target is a
+plausible foreign shape and which therefore cannot dodge the decisions a
+real mapping forces — each depending on nothing off this repo's
+classpath. That last part is the demonstration, not a detail: an example
+that needed our code to run would prove the opposite of what it claims.
 
 One signpost, because the next chapters invite the confusion: Chapter 8
 is about your own **data** arriving. This is your own **format** going

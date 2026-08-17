@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# A SECOND worked example, and a different kind of one: where
+# bin/example-custom-emitter proves only the seam (one line out per
+# event in, a format deliberately useless), this one proves the part
+# that is actually hard -- a target shape that does not line up with
+# the log one-to-one, and the mapping decisions that gap forces.
+#
+# Landed by the emitter-author UX pass (docs/use-cases/custom-emitter-
+# from-the-event-log.md is the page it belongs to; docs/formats.md's
+# "The event log" is the contract it is written against). Its own
+# rationale, and the three decisions it makes visibly, are in the
+# docstring of bin/example-custom-emitter-jsonl-src/emitter_jsonl.clj
+# -- read that, not this launcher.
+#
+# Target format: a line-delimited JSON encounter feed, one object per
+# ENCOUNTER rather than per event, the shape a hospital-adjacent
+# system plausibly already ingests.
+#
+# Usage:
+#   bin/ehrt sim run --seed 42 --patients 5 --format ground-truth > out/events.edn
+#   bin/example-custom-emitter-jsonl out/events.edn
+#
+# Exit codes:
+#   0  emitted
+#   2  no input file given
+set -euo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+
+# Clojure and nothing else, on purpose -- same demonstration the first
+# example makes: if this needed a component off this repo's classpath,
+# the event log would not really be a consumable contract.
+exec clojure -Sdeps "{:paths [\"$repo_root/bin/example-custom-emitter-jsonl-src\"]
+                      :deps {org.clojure/clojure {:mvn/version \"1.12.5\"}}}" \
+     -M -m emitter-jsonl "$@"

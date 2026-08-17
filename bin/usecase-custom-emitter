@@ -47,6 +47,26 @@ expect() {
   fi
 }
 
+# expect_eval CODE SNIPPET  Like expect, but for a taught line that needs a
+# SHELL -- here, the redirect on the `sim run` line. eval runs SNIPPET in
+# this shell, and its stdout/stderr are tee'd to this step's own log the
+# same way expect's are, so the invariants below can index step logs
+# uniformly. This wrapper is what `ehrt.docs-tooling.strip-fresh` already
+# knows how to unwrap (`expect-eval-re`); the `expect 0 bash -c '...'`
+# spelling this script used until 2026-08-17 was NOT unwrappable, which is
+# why this row could never pass check-entry -- ADR-0146 finding U-15.
+expect_eval() {
+  local want="$1" snippet="$2"
+  STEP=$((STEP + 1))
+  eval "$snippet" > "$LOG_DIR/step-$STEP.out" 2> "$LOG_DIR/step-$STEP.err"
+  local got=$?
+  cat "$LOG_DIR/step-$STEP.out"
+  cat "$LOG_DIR/step-$STEP.err" >&2
+  if [ "$got" -ne "$want" ]; then
+    fail "'$snippet' exited $got, expected $want"
+  fi
+}
+
 echo "== usecase-custom-emitter: docs/use-cases/custom-emitter-from-the-event-log.md, verbatim, asserted =="
 
 # Script-only apparatus, not a taught line: safely re-runnable. The
@@ -57,9 +77,13 @@ rm -rf out/custom-emitter
 # BEGIN custom-emitter commands (verbatim from docs/use-cases/custom-emitter-from-the-event-log.md)
 expect 0 mkdir -p out/custom-emitter
 
-expect 0 bash -c 'bin/ehrt sim run --seed 42 --patients 5 --format ground-truth > out/custom-emitter/events.edn'
+expect_eval 0 'bin/ehrt sim run --seed 42 --patients 5 --format ground-truth > out/custom-emitter/events.edn'
 
 expect 0 bin/example-custom-emitter out/custom-emitter/events.edn
+
+expect 0 bin/example-custom-emitter-jsonl out/custom-emitter/events.edn
+
+expect 0 bin/event-census out/custom-emitter/events.edn
 # END custom-emitter commands
 
 # --- named invariants, checked against the real output above ---------------
@@ -92,6 +116,44 @@ grep -q 'events in, .* translated, .* skipped' "$summary" \
 awk -F'|' 'NR>1 && $2 !~ /^[0-9]+$/ { exit 1 }' "$emitted" \
   || fail "a t-seconds column is not a bare integer"
 
+# --- the second example: a mapping with decisions (ADR-0146 item 3) --------
+
+jsonl="$LOG_DIR/step-4.out"
+jsonl_summary="$LOG_DIR/step-4.err"
+
+# 5. Byte-for-byte against the committed seed-42 fixture. This example
+#    makes mapping DECISIONS, so its output is the thing worth pinning:
+#    a decision quietly changing under a page that teaches those
+#    decisions is exactly what must not be possible.
+if ! diff -u test-fixtures/custom-emitter/seed42-p5-encounters.jsonl "$jsonl"; then
+  fail "the jsonl emitter's output no longer byte-matches test-fixtures/custom-emitter/seed42-p5-encounters.jsonl"
+fi
+
+# 6. The untranslated count for seed 42 / 5 patients is KNOWN, not merely
+#    reported: 15 events in, 5 encounters out, and the 5 :registered
+#    events are the only kinds this format does not carry.
+grep -q '^# 15 events in, 5 encounters out (5 closed, 0 still open at end of run)$' "$jsonl_summary" \
+  || fail "the jsonl emitter's own in/out counts changed for seed 42/5 patients"
+grep -q '^# 5 events untranslated, by kind: :registered=5$' "$jsonl_summary" \
+  || fail "the jsonl emitter's untranslated count/breakdown changed for seed 42/5 patients"
+
+# 7. Each of the three mapping decisions is VISIBLE in the summary, with
+#    real numbers rather than zeros -- the whole reason this example
+#    exists beside the seam-only one.
+grep -q ':attending on 5 record(s)' "$jsonl_summary" \
+  || fail "the jsonl emitter no longer counts the fields it drops"
+grep -q 'admission_datetime/discharge_datetime are null' "$jsonl_summary" \
+  || fail "the jsonl emitter no longer says why the datetime fields are null"
+grep -q '"status":"closed"' "$jsonl" \
+  || fail "the jsonl emitter emitted no folded encounter record"
+
+# 8. The completeness step the page teaches (ADR-0146, finding U-12)
+#    really tabulates this log's own vocabulary, since the page's claim
+#    is that a reader can diff it against what their emitter handles.
+census="$LOG_DIR/step-5.out"
+grep -qi 'admission' "$census" \
+  || fail "bin/event-census did not tabulate :admission from this log"
+
 # Tree-clean postcondition (ADR-0005): every write path above lands
 # under the gitignored /out/.
 dirty="$(git status --porcelain)"
@@ -100,4 +162,4 @@ if [ -n "$dirty" ]; then
   fail "working tree is dirty after the run -- a taught command wrote outside out/"
 fi
 
-echo "== usecase-custom-emitter: OK ($STEP steps, 4 invariants) =="
+echo "== usecase-custom-emitter: OK ($STEP steps, 8 invariants) =="

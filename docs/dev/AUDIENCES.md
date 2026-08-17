@@ -140,7 +140,7 @@ register had never carried — segment 6, the emitter author):
    exactly what the walk found: the root
    [`README.md`](../../README.md)'s "Where to start" third branch →
    [`docs/use-cases/custom-emitter-from-the-event-log.md`](../use-cases/custom-emitter-from-the-event-log.md)
-   (the path end to end, with a worked emitter) →
+   (the path end to end, with two worked emitters) →
    [`docs/formats.md`](../formats.md#the-event-log)'s "The event log"
    (the contract: 21 closed event kinds, per-kind keys, one real example
    each, generated from `event-schema.edn`). The narrative option is the

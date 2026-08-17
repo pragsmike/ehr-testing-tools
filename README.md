@@ -180,7 +180,7 @@ that log is a published, versioned contract you can render yourself
 instead of reverse-engineering our emitters. One command shows it:
 `bin/ehrt sim run --seed 42 --patients 5 --format ground-truth`.
 [`docs/use-cases/custom-emitter-from-the-event-log.md`](docs/use-cases/custom-emitter-from-the-event-log.md)
-is the path end to end, with a worked example emitter that depends on
+is the path end to end, with two worked example emitters that depend on
 nothing in this repo;
 [`docs/formats.md`](docs/formats.md#the-event-log) is the contract
 itself; and the manual's
