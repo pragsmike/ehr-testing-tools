@@ -558,3 +558,51 @@ The `.agents/plans/roadmap.md` row this ADR owns, as it stood at `deb9a33` befor
   (ADR-0143 Finding 6), plus `.agents/reading-sets.edn`'s own eleven-block
   re-derivation trail.
   **D (queued):** scope set by the arc's own C close.
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0143 — the register-compression arc, session A (2026-08-16)
+
+- **Arc order, author verbatim:** *"I like that order, after
+  OBR/OBX."* — the compression arc runs A -> B -> C -> D, one session
+  each, after the OBR-7/OBX-14 increment (ADR-0142).
+- **The five guards and the rider, author verbatim:** *"Ok on all
+  five. Rider ok."*
+- **Q1 — index shape: RULED (a).** `notes/ADRs.md` is generated from
+  the ADR files' own headings and Status lines by docsgen, CI
+  freshness-gated. Landed as `make adr-index`, on `make docsgen` and in
+  the freshness diff, with `ehrt.docs-tooling.adr-index-test` asserting
+  the same parity in the normal suite so a hand edit fails before a
+  push rather than at CI.
+- **Q2 — narratives: RULED (a).** Each row's narrative moved VERBATIM
+  into its own ADR file under a dated heading. Executed by the
+  committed `bin/adr-index-migrate`: 78 moved, 62 rows already in the
+  one-line form ADR-0046 AR-B-1 ruled, **0 deleted lines** across all
+  80 changed files.
+- **Tag licence, case (i), CONDITIONAL — and the condition was not met
+  when it was checked.** The prompt licensed
+  `stable-20260816-result-clinical-time` at `dc13a17` *only* if run
+  31987012257 was success at Step 0. At Step 0 it was still
+  `in_progress`, so the tag was HELD and the run id reported rather
+  than paid on an assumption. It concluded `success` later in the same
+  session, and the tag was then paid through `bin/tag-ceremony` and
+  peel-verified. Recorded because the licence's condition was satisfied
+  at a different step than it was written for.
+- **Two disclosed deviations from the charter's own sketch.** The
+  generated row keeps ADR-0046 AR-B-1's existing shape rather than the
+  charter's `- [ADR-NNNN](adr/file.md) -- Title -- Status` (ADR-0143
+  Finding 4: `done-pointer-adr-test` parses the existing prefix, and
+  keeping it made 62 rows regenerate byte-identical, so the landing
+  diff is exactly the compression). And the index is re-sequenced
+  ascending by ADR number, because a tree-derived generator cannot
+  reproduce the pre-split order (Finding 3) — the superseded sentence
+  is amended in place with a date, not rewritten.
+- **A charter premise that did not hold, reported not smoothed over.**
+  The re-baseline moved four of five budgets UP, not down: the census
+  found `notes/ADRs.md` is a `:paths` member of no reading set (so
+  compressing it freed no budget at all), while this session's own
+  approved skills rider grew `build-session/SKILL.md` by 51 lines — a
+  path every set carries. `:docs` went red at 859/840 in Step 2, the
+  budget gate catching this session's own edit. The growth curve is
+  ADR-0143 Finding 6 and is chartered to session C rather than
+  retrofitted here.

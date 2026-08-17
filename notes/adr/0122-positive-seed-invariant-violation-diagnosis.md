@@ -418,3 +418,47 @@ on the structural argument alone.
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Positive-seed invariant violation: diagnosis — diagnosis-only session, zero fix: pins the failing seed ADR-0121's own gate hit (`1786589996178`, `failing-size 144`) via `clojure.test.check/quick-check`, reproduces it exactly, shrinks to seed `8589258984`; the direct witness shows one genuine violation, `medication-end-references-existing-order-and-follows-it-in-time`, for a near-birth patient whose medication order compiles as a pre-horizon `:registered` fact while its own end lands in-horizon as a normal ground-truth event with `:order-event-id nil` — `decide :medication-end`'s own citation search (`engine.clj`) never looks inside `:pre-horizon-facts`, the one place a legitimately straddling order lives (`compile_trajectory.clj`'s own ratified pre-horizon-fact-types design); root cause traced and the checker confirmed genuinely firing on its own current (incomplete, not false) specification; blast estimate runs all 32 reachable oracle-root producers directly — zero of them emit even one `:medication-end` event at their own pinned seed/population, so a fix can hold pure oracle identity by construction; three lettered fix options recorded (a widen-the-checker fix RECOMMENDED, an engine-side resolution widening, a compile-layer straddle extension NOT recommended as it would regress the design's own intent) — the ruling and the fix itself are chartered to a future session; also corrects the S3 gate event's own mischaracterization (R8's standing license named seed `7844068501` specifically, already investigated and closed by ADR-0116 — a failure at any other seed was always a new finding), and charters a future ceremony-scripts session (tag ceremony, preflight, post-push verification, close-phase scaffold as scripts, absorbed into `build-session`); zero `src`/`test`/`docs/manual` touched anywhere, the oracle holds pure identity across all 35 roots
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0122 (positive-seed invariant violation: diagnosis; ruled
+2026-08-13)
+
+The design channel framed the S3 gate event's own recharacterization
+and this diagnosis session's charter as one question; the author ruled,
+verbatim, 2026-08-13: *"Both a."*
+
+- **R12, diagnosis-before-fix [A, ruled 2026-08-13, "Both a." part (a)]:**
+  the positive-seed invariant violation found at seed `1786589996178`
+  (`failing-size 144`, ADR-0121's own gate, recharacterized by this
+  session's erratum to ADR-0121) gets a diagnosis-only session
+  (ADR-0122) before any fix session runs -- root cause, blast radius
+  against the 35 oracle roots, and lettered fix options land first; the
+  fix itself is a separate, future, ruled session.
+- **R13, ceremony-scripts charter [A, ruled 2026-08-13, "Both a." part
+  (b)]:** this repo's own recurring session-start/session-end ceremony
+  -- tag ceremony, preflight (last-five-CI-runs check, edit-root
+  confirmation), post-push message verification, and the close-phase
+  scaffold (self-archive, session record, prompt archive, index bump)
+  -- moves from prose a session re-reads each time to scripts, with
+  checkpoint isolation, red capture, and sweep census absorbed into the
+  `build-session` skill alongside them. Scheduled post-manual-arc (after
+  S4/S5 land), not this session's own work.
+- **R-clarify, R8's scope [C, channel-inferred from the author's own
+  ruling text, un-vetoed]:** R8's own standing license
+  (`.agents/rulings.md`, "From ADR-0114") named one specific seed,
+  `7844068501`, as its repro handle -- it licensed pinning and
+  classifying THAT seed, not open-ended cover for any future generative
+  failure in the same defspec. ADR-0116 already exercised the license
+  R8 granted (pinning `7844068501` found it passed clean, closing that
+  specific investigation); a failure at a different seed is therefore
+  always a new finding under R8, not a re-run candidate. This clarifies
+  R8's own text; it does not narrow or retract anything R8 itself ruled.
+- **Standing gate policy, repo-wide, effective now:** any generative
+  failure in
+  `mixed-authored-and-compiled-run-satisfies-the-full-invariant-catalog`
+  (or, by the same reasoning, any other `clojure.test.check` defspec in
+  this repo) is a new finding a session must STOP on and record, never
+  a re-run licensed by a prior seed-specific charter's retired scope.
+  Applies to every future session that hits a generative test failure
+  in this defspec; the author may strike or correct this reading.

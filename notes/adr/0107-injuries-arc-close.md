@@ -472,3 +472,32 @@ The `.agents/plans/roadmap.md` row this ADR owns, as it stood at `deb9a33` befor
   future session willing to widen `:max-tries` or broaden
   `safe-filename-gen`'s own range to make collision genuinely rare
   rather than merely uncommon.
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0107 (injuries arc close; both rulings 2026-08-11)
+
+- **Option (i), auto-close on reopen** [A, ruled 2026-08-11, author
+  verbatim]: *"Let's do (i)."* — ADR-0106's own four named design
+  options for the nested-encounter gap, the author selects (i):
+  matching upstream exactly, the `:encounter` case's own assert
+  becomes a conditional auto-close, synthesizing an implicit
+  `:encounter-end` for a stale open before emitting the new
+  `:encounter`, referencing it per the citation law. Phase 1, this
+  session. Phase 2 (the injuries vendoring batch itself) is chartered
+  to execute immediately ON phase 1's own green — the B3 framing this
+  session's own driving prompt named and the author accepted — not a
+  separate future session's own ruling to seek again.
+- **Downstream-latency realism, chartering context only, NOT
+  executed** [A, ruled 2026-08-11, author verbatim]: *"Also, I want to
+  make sure that the simulation faithfully simulates what happens in
+  real life: lab results take time to come back, providers take time
+  to log things in the EHR, etc. so it's possible that a downstream
+  receiver of the HL7 traffic will have incomplete encounter records
+  for some time. That's not our problem to solve, but in order to test
+  that such downstream receivers handle it properly (whatever that
+  might mean for them) we need to supply them with such cases."*
+  Recorded here as the anchor for a FUTURE design pass — no
+  interpreter, emitter, engine, or scenario change accompanies this
+  entry; `.agents/plans/roadmap.md`'s own new Next row is the
+  anchor.

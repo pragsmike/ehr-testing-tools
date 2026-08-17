@@ -209,3 +209,30 @@ file outside the list above was touched.
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Review-3, the user-surface review — the ADR-0113 R5 charter's first step (author verbatim: "Should we run a repo review before we start on the manual? It might lead to tweaks to the CLI."), findings-only per the review-2/UX-audit lineage (AR-RR2-1: every row a recommendation, zero fixes executed): two author-licensed docs riders land first (the §4 precision-clause parenthetical citing §3's own disclosed census-atom exception; a new "Method vocabulary" section in `docs/dev/way-of-working.md` plus Oracle/Witness entries in `docs/glossary.md`, author verbatim "add those terms, they've been successful"); a seven-battery (B1-B7) live probe of the CLI surface — B1 verb/flag consistency, B2 error quality, B3 help surface, B4 filesystem conventions, B5 cross-doc agreement (one read-only sub-agent), B6 output-shape consistency, B7 the narration test — lands as `.agents/plans/2026-08-12-review-3-user-surface-findings.md`, 48 tallied dispositions (27 close-as-fine, 12 fix-session-candidate, 3 ruling-needed, 4 design-channel-draft, 2 incomplete) plus an 11-row UX-audit carry-forward of which 9 of 10 open items are confirmed resolved on fresh evidence (the stale-alias sweep, the agent-speak-in-help-text citations, the bare-`ehrt`-exit-code divergence, the generic no-verb hint, the raw `--config` crash, and the silently-absorbed unknown flags all fixed since 2026-08-06, none of it this session's own doing); three new highest-priority findings — `ehrt check` reports a clean all-pass result given no target, a missing target, or a genuinely empty one (R3-B2-1); malformed numeric CLI flag values crash with a raw `babashka.cli` stack trace at the wrong exit code (R3-B2-2); `corpus intake` without `--out` crashes with a raw `NullPointerException` (R3-B2-3) — plus a cross-cutting exit-code inconsistency for missing-required-flag cases across four verbs (R3-B1-5); one self-caught arithmetic error in the register's own first-draft summary table, corrected by direct recount before landing (AR-RR2-2's own discipline); `.agents/rulings.md` gains "From ADR-0114" R8, chartering a future investigation of the `ehrt.sim-engine.engine-test` flake at its recorded seed (`7844068501`); zero `src`/`test` change anywhere, the oracle holds pure identity across all 35 roots
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0114 (review-3, user-surface review; ruled 2026-08-12)
+
+- **R8, the engine-test flake gets a chartered investigation** [A,
+  ruled 2026-08-12, on the channel's own explanation]: the
+  `ehrt.sim-engine.engine-test` flake
+  (`mixed-authored-and-compiled-run-satisfies-the-full-invariant-catalog`,
+  failing seed `7844068501`, `failing-size 110`, first disclosed
+  ADR-0112) is a **deterministic repro of a found counterexample, not
+  noise** -- a `clojure.test.check` generative test that fails at a
+  given seed will fail at that exact seed again, every time, by
+  construction; "flake" here names the SYMPTOM (a later run at a
+  different seed passed clean) rather than the underlying cause, which
+  is not yet known to be seed-dependent test noise as opposed to a real,
+  narrow counterexample the broader seed population usually misses.
+  Standing license, distinct from the fence's own unlikely-clause: a
+  future session may run the defspec pinned at seed `7844068501`,
+  capture the shrunk counterexample `test.check` reports, classify it
+  engine-bug vs. test-defect, and fix or file -- without needing a fresh
+  ruling to do so. The seed is the repro handle and must be preserved
+  verbatim in that session's own record, per this ruling's own citation
+  of it. Roadmap row: `.agents/plans/roadmap.md`, "Engine-test flake
+  investigation." Cross-ref: ADR-0112 (origin disclosure), ADR-0107
+  (the sibling corpus defspec flake row, same failure class, a
+  different registry).

@@ -451,3 +451,32 @@ close in this repo applies to a post-push finding.
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Permission-denied gate legs categorized across the judge family; bare-level unknown flags routed — ADR-0096 Finding 1's own anchor executes, widened by author ruling (Q1 "a.") to all three judge engines: `judge-fhir-official`'s `gate-file`/`gate-batch` gain a shared entry guard (fhir's own first-ever check, missing AND unreadable), `judge-v2-hapi`/`judge-v2-nist`'s existing `.isFile`-only guards extend with a `.canRead` leg — one category (`:file-not-found`), a distinguishing `:reason :permission-denied` payload key (Q2 "a."), red-to-green proven per engine with a root-skip-guarded chmod-000 test; the D8-4 rider ("I choose a.") routes bare/`help`-level unknown flags through the same `:unknown-flag` category `--help` itself stays untouched by
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0098 (mid-arc append, author-licensed via this session's own
+driving prompt — the same license class ADR-0048's own mid-arc append
+used: not an arc close, but the author's own ruling explicitly directed
+into this register the same session it was made)
+
+- **Judge-family entry-guard charter width, ruled** (2026-08-09, author
+  verbatim "Q1 a.", citing ADR-0096 Finding 1 / ADR-0097 AR-AC-1 item
+  1): a permission-denied (or missing-path) entry-guard fix scoped by
+  its own driving prompt to one judge engine widens to every judge
+  engine sharing the identical defect shape (an `.isFile`-only, or
+  no, entry check that a chmod-000 path passes) IN THE SAME SESSION,
+  when the author rules it — not deferred to a future session per
+  engine. `judge-fhir-official`'s own Finding-1 fix widened to
+  `judge-v2-hapi`/`judge-v2-nist` on this ruling; not standing beyond
+  its own session unless a future author ruling re-confirms it for a
+  different defect class.
+- **Permission-denied category shape, standing** [A, ruled 2026-08-09,
+  author verbatim "Q2 a.", citing family parity ruled 2026-07-31]: a
+  missing-path and an exists-but-unreadable path share ONE category
+  (`:file-not-found` in this judge family; the category a component's
+  own existing missing-path convention already uses elsewhere) — never
+  a second, unreadable-specific category — distinguished by a
+  `:reason :permission-denied` payload key on the unreadable leg only.
+  Applies to any future component gaining this same missing-vs-
+  unreadable distinction: extend the existing category with a `:reason`
+  key, don't mint a new one.

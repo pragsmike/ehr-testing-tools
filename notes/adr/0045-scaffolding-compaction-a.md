@@ -144,3 +144,15 @@ sweeping intra-session citations is named as future gate material, not
 built here). Frozen archives untouched.
 
 ---
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0045 (scaffolding compaction A)
+
+- **The Deferred section's own standing contract** (AR-A-5): rows
+  there are LIVE. A row that closes moves to Done WITH its notes
+  intact (relocation, not rewrite) — never left in place with a
+  closure note substituted for actually moving it. (See `.agents/
+  state.md`'s own disclosed finding: `myocardial_infarction.json`
+  is a known violation of this exact rule, predating this ruling,
+  not yet swept.)

@@ -198,3 +198,20 @@ re-opened. Frozen archives untouched.
 
 ---
 
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0044 (standing-equipment promotion)
+
+- **`bin/regression-oracle`'s standing script contract** (AR-P-3):
+  per-worktree classpath resolution (each side's own `components/
+  oracle`); a cross-side digest-source equivalence check runs FIRST;
+  anything beyond an ns/require-only diff requires an explicit
+  `--declared-digest-change` flag (recorded in the manifest header) or
+  the script aborts. This closed ADR-0030's own J2 limitation
+  structurally, not as a one-off fix.
+- **Promotion moves equipment, it does not improve it** (AR-P-4,
+  generalized): a relocation session's job is relocation plus
+  test-exercise; a tempting fix found mid-move is a FINDING, recorded,
+  never taken — the same fence this arc's own compaction sessions
+  (0045–0047) all re-apply to their own scope.

@@ -379,3 +379,18 @@ session to schedule.
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Interpreter horizon/budget fix: submodule walks respect the horizon, the runaway budget counts only zero-advance steps — B1 of the author-ruled two-session injuries arc executes the revisit trigger ADR-0070's own bail-out finding named: `run-submodule` never received `horizon-end-t` (horizon-BLIND, tripping `max-steps` at ANY horizon for a time-advancing loop inside a `CallSubmodule`, `injuries/broken_jaw.json`'s own Dental Referral cycle) and `max-steps` counted every step regardless of advance (a SECOND, coupled gap — verified arithmetic against the census's own real 50-year horizon shows even a horizon-bounded LEGAL loop sits within ~9% of the ceiling at its exact mean, corroborated independently by `veteran_mdd.json`'s own NOTICE finding, ADR-0090, tripping the SAME backstop at the ROOT level); both halves fixed in one commit, two hermetic reds flip green, a real-content scratch probe against the pinned `injuries.json` closure drops from 14/120 to 0/120 `max-steps` failures (the 2 remaining failures are a separate, pre-existing, unaffected `nested :encounter` gap, confirmed by seed-identical pre/post comparison); the oracle bracket holds pure identity across all 34 roots, matching a pre-analysis that found no vendored closure's own submodule Delay states loop or plausibly straddle a horizon; `.agents/plans/roadmap.md`'s own ED row corrects a mis-characterization (B was never "routine vendoring intake") and records B2 (the injuries batch) as unblocked
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0105 (interpreter horizon/budget fix; ruled 2026-08-11)
+
+- **The two-session plan** [A, ruled 2026-08-11, author verbatim
+  "yes"]: the injuries-batch prerequisite ADR-0070 named (a future
+  session willing to extend `gmf-interpreter`'s own runaway-loop
+  handling) splits into two sessions — **B1**, this session, the
+  interpreter fix itself (`run-submodule` horizon-awareness plus the
+  zero-advance-only runaway budget), and **B2**, a later session, the
+  injuries vendoring batch B1 unblocks. B1 lands NO vendoring, NO
+  NOTICE rows, NO oracle-root additions, NO module content anywhere —
+  `.agents/plans/roadmap.md`'s own B row records B2 as open, not
+  scheduled.

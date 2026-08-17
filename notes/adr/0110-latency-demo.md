@@ -270,3 +270,29 @@ downstream-latency-realism Next-section row amended in place.)
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Latency demo: same ground truth, two wires, the board as witness — the arc's demo half, author-chartered "demo session.": a sibling scenario config, `demos/scenarios/ed-tuesday/config-latency.edn`, byte-identical to `config.edn` below the header plus one added `:latency` block; generating both configs at the same seed produces byte-identical ground truth (witnessed `diff`/`sha256sum` of both `events.edn` files, 383 events either way) while `emit-wire` renders a differently-ordered wire; a first-drafted `:admission` latency band was rejected by live-probe (disorder on ~a quarter of admitted patients, statistically overwhelming) and retuned to an occasional, not-universal shape (8 of 92 admitted patients, seed 20260811); played into this workspace's own `--board` as the downstream-receiver stand-in, the ADR-0109 disorder finding reproduces live — a lagged admission message (MRN000013/Walker) re-adds an already-discharged patient to the board, double-booking a bed another patient already occupies — `fold-message` itself untouched, its confusion the demonstration, not a defect fixed here; the user-guide deferral trigger's own second condition (one witnessed end-to-end demo into a downstream-receiver stand-in) is executed, recorded as MET, PENDING AUTHOR RATIFICATION, decided by neither the driving prompt nor this session; zero `src`/`test` changes anywhere, the oracle holds pure identity across all 35 roots
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0110 (latency demo: same ground truth, two wires; ruled 2026-08-11)
+
+- **"demo session."** [A, ruled 2026-08-11, author verbatim]: this
+  session executes the second half of the latency arc ADR-0109's own
+  mechanism opened -- a `:latency`-bearing scenario config and one
+  witnessed end-to-end run into a downstream-receiver stand-in, this
+  workspace's own `--board`. Zero `src` changes; authorship over the
+  landed mechanism, not a code change.
+- **The trigger's status, recorded not decided** [C, driving-prompt-
+  directed]: the user-manual deferral trigger's own second condition
+  (`.agents/plans/roadmap.md`'s Next section) is executed this session
+  -- one witnessed end-to-end demo of latency-realistic traffic played
+  into a downstream-receiver stand-in. Trigger conditions MET, PENDING
+  AUTHOR RATIFICATION: whether the board counts as the stand-in the
+  trigger's own language anticipated, and whether to open the
+  tool-specific user-manual work, are the author's own calls, flagged
+  to the author in the driving conversation, un-vetoed, decided by
+  neither the driving prompt nor this session.
+- **The board as the downstream stand-in; the sibling-config shape**
+  [C, flagged to the author in the driving conversation, un-vetoed]:
+  a new sibling config (`config-latency.edn`), never a revision of
+  `config.edn`, generated at the same seed and played into `--board`
+  as the receiver stand-in this demo supplies a case to.

@@ -765,3 +765,120 @@ The `.agents/plans/roadmap.md` row this ADR owns, as it stood at `deb9a33` befor
   (before review 4, Q2 "a.") and review 4 itself (after ~15 ADRs,
   Q3 "a."). Full account in
   `notes/adr/0139-review-3-arc-close.md`.
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0136 through ADR-0139 (repo review 3: the arc's two
+verbatim rulings, appended at the arc close per this file's own
+contract)
+
+- **The arc's fix charter, ruled "accept all."** [A, 2026-08-15]:
+  binding the review's three proposed rulings as put. **R-1** — delete
+  `bin/check-palgebra-drift` (a "Nightly drift check" nothing invoked,
+  whose sibling-checkout premise died at the merge), with the
+  load-bearing zero-caller inventory **re-derived at deletion** rather
+  than inherited from the register, and a `notes/carve-loss-audit.md`
+  disposition row. **R-2** — register BOTH unregistered standing
+  requests as roadmap rows **now: visibility first, disposition
+  later**. **R-3** — D5's RED stands as scored; **severity tracks the
+  mechanism, not the instance set's blast radius** (the counter-
+  argument, that the three stale artifacts were teaching examples
+  rather than shipped docs, was stated in the register and declined).
+  Executed across ADR-0136/0137/0138. **The standing part is R-2's and
+  R-3's shape**: an unregistered standing request gets a row before it
+  gets a decision, and a dimension is scored on the gap its mechanism
+  leaves open, not on what happened to fall through it this time.
+- **Scheduling, ruled "Concur. Go."** [A, 2026-08-15] — three
+  questions at once, all three standing:
+  - **Q1 "a." — an arc closes in its own session, with its own tag.**
+    The step-7 close is not an appendix to the last fix session. The
+    close's own re-scoring is a probe, not bookkeeping: this one found
+    three further defects (ADR-0139's C-1, C-2, C-3) that a close
+    tacked onto Session C would have had no budget to find.
+  - **Q2 "a." — a lapsed probe is chartered standalone, ahead of the
+    review that would otherwise absorb it.** Applied to the D8-5 fence
+    battery, unrun for two reviews running: it precedes review 4
+    regardless of the ADR count, because folding it in would make it
+    compete for budget with the same battery that displaced it last
+    time.
+  - **Q3 "a." — repo-review cadence is measured in ADRs, not days:
+    the next review is chartered after roughly 15 ADRs from the prior
+    close** (ADR-0139 -> review 4 at approximately ADR-0154). Measured,
+    not preferred: reviews 1->2 spanned 11 ADRs, review 2->3 spanned
+    44, and at 44 the instrument's own coverage degraded in ways review
+    3 had to disclose rather than score around — three probes recorded
+    blocked or partial, and one dimension held yellow on an unrun probe
+    rather than on evidence. **A review that cannot execute its own
+    battery reports a scoreboard it did not earn.**
+- **`.agents/state.md` regenerated at the close, fence widened by
+  ruling** [A, 2026-08-15, ruled by selection from the options the
+  session put to the author after its own full-suite run went red]:
+  when a close's own arc-close ADR trips
+  `state_staleness_tripwire_test`, **the close regenerates the file —
+  it does not rename its ADR to fall outside the gate's filename
+  population, and it does not update the citation without doing the
+  work.** AR-C-1 names the design channel as the actor; the session
+  performing it is a disclosed substitution, recorded in the closing
+  ADR and the session record, not a new standing actor. **The standing
+  part:** a gate that fires on a records-only session is telling that
+  session something true about scope, and the answer is to widen the
+  fence under a ruling or to stop — never to move outside the gate's
+  population. Dodging by filename is the defect the same arc spent
+  eleven instances documenting.
+- **The population-closure law, restated as the arc's standing
+  finding** [C, from the amendment at `dbbeb1f` and its evidence in
+  ADR-0136/0137/0138/0139]: **enumerate the population from the tree,
+  then diff it against whatever registry claims to cover it, and treat
+  the gap as the finding.** Every probe, gate and tool owes an answer
+  to *"how do I know this is all of them?"* — the question paid out
+  **eleven** times in this one arc, including three times inside
+  instruments that had just been patched to ask it, and once inside the
+  gate that guards `.agents/state.md`, which had let that file drift
+  fifty ADRs because it enumerates `*-arc-close.md` filenames rather
+  than arc closes.
+- **"Accept recommendations."** [author, 2026-08-16, on the D8-5 fence
+  battery's own disposition table,
+  `.agents/plans/2026-08-16-fence-battery-findings.md:325-334`;
+  executed the same day by `notes/adr/0140-fence-battery-ruled-fixes.md`].
+  Binds the register's per-finding recommendations and the session
+  shape: **the battery's fixes are their own micro-session with their
+  own ADR**, so D8-5's lapse closes on the record before the
+  event-log-contract arc starts. Per finding, as ruled and landed:
+  - **R-F1** (`04-time-on-the-wire.md:23` plays a corpus its chapter
+    creates 45 lines later) — **fix the page**, one sentence, and
+    **do not reorder the chapter**: the "symptom first, then
+    mechanism" pedagogy is the author's, and move-don't-improve
+    applies to prose too. YELLOW -> GREEN.
+  - **R-F2** (`08-your-own-data.md:82` needs a Synthea corpus no
+    chapter generates) — **fix the page**, one line naming the
+    prerequisite. The ruling's own premise (that Chapter 2 generates
+    it) does not hold against the tree; fixed forward to the ruled
+    substance, pointing at the root Quickstart. YELLOW -> GREEN.
+  - **R-F3** (`polylith-brief.md` x7 teach bare `poly`) — **fix
+    minimally, provenance-preserving**: ONE note at the head of the
+    document, the seven fences verbatim. **A disclosed convention is a
+    real disposition** — the fences still fail if pasted, and the note
+    is what makes that the reader's informed choice rather than the
+    document's undisclosed breakage.
+  - **R-F4** (`formats.md:506`/`:518` placeholders, un-vendored `jet`)
+    — **accept-with-disclosure**; mark the placeholders, name `jet` as
+    optional and external, **do not vendor it**.
+  - **R-F5** (research note curls `messages.out` into the repo root) —
+    **fix the page**: output under `out/`, the single tool-owned
+    output root.
+  - **R-F6** (`simulate-your-facility.md:169` needs an authored
+    config) — **accept-with-disclosure**: one sentence turns a
+    surprising exit 2 into a taught expectation.
+  - **R-F7** (the mutate->intake pipe masks `:file-not-found` behind
+    `:malformed-mllp-frame`) — **fix the tool**, diagnosability only.
+    The input gap itself stays closed-as-fine (review 2's D8-9); the
+    fix lives at the intake seam, distinguishing before parsing, with
+    engines untouched.
+  - **R-F8** (56 of 74 command fences unexercised) — **NOT this
+    session's work**: ruled to **review 4's D2** as a standing policy
+    question, with the proposed rule as the default — *"every fence a
+    reader meets on the README / SETUP / manual / use-case path is
+    exercised; developer-facing briefs and research notes are
+    exercised only when they make claims about outputs; the census can
+    gate bare-fence-count-on-reader-path = 0."* Recorded as handed on;
+    deliberately not implemented.

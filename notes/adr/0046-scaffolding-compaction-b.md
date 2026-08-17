@@ -264,3 +264,21 @@ clean `^## ADR-NNNN — ` heading, none nested or malformed) — no
 STOP-AND-ESCALATE fired.
 
 ---
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0046 (scaffolding compaction B)
+
+- **Citation continuity, standing** (AR-B-2): `notes/ADRs.md` REMAINS
+  the citation target forever — every "notes/ADRs.md ADR-NNNN"
+  citation repo-wide stays resolvable (index → per-ADR file). No
+  renumbering, ever — ADR numbers are load-bearing in immutable places
+  this workspace cannot edit (commit messages, archived prompts).
+- **The canonical session-narrative hierarchy** (AR-B-4, explicitly
+  recorded as standing rule): the ADR execution record is the SOLE
+  narrative of a session; the session record is the ceremony/
+  verification log; the roadmap Done entry is a one-line pointer
+  (date, slug, ADR number) gated by `ehrt.docs-tooling.done-pointer-
+  adr-test`; the prompt archive is provenance. New execution-record
+  appends go directly to the per-ADR file, never back through
+  `notes/ADRs.md` itself.

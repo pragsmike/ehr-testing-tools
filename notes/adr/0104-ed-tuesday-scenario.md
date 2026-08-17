@@ -277,3 +277,22 @@ ED-redesign Next row amended in place, not replaced.)
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 ed-tuesday: the scripted ED scenario, "A" of "C-with-A-first" — a new sibling scenario, `demos/scenarios/ed-tuesday/`, contrasts busy-tuesday's population-scale sparse incidence with a day-scale scripted single ED shift; Step 2's own verification finds that mixing a weighted scripted-pathway pool with a weighted GMF-module pool over the SAME patients carries a real RNG-coincident `:incompatible-assignment` collision risk the static check cannot see (`ModuleAssignment`'s own pool has no "no module" option), and lands the sanctioned fix — disjoint explicit-ordinal cohorts, never a second weighted pool; five weighted ED trajectories (55/30/8/5/2) plus an 8-patient explicit ambulatory-module tail; a first-draft config exhausted ED capacity, re-tuned by calculation and re-probed clean; witnessed run: inpatients rise to a peak of 21 and fall to 3, discharges 1→84, churn merges 0→5, zero `:capacity-exhausted`; the ambulatory tail shows zero live encounters in the shipped (90-day-horizon) run, live-probed at 14/90/3650 days and disclosed as a genuine low-incidence finding, not silently retuned; the oracle holds pure identity across all 34 roots
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0104 (ed-tuesday scenario; rulings taken this session's own
+driving prompt, author-ruled 2026-08-10, executed 2026-08-11)
+
+- **"C-with-A-first," standing until B lands** [A, ruled 2026-08-10,
+  author verbatim "c."]: the ED-weighted redesign direction (above)
+  splits into A (a new sibling scenario, `demos/scenarios/
+  ed-tuesday/`, landed this session) and B (vendoring upstream's
+  injuries family, a separate future batch under the standing
+  vendoring ceremony) — A executes first, B stays open, anchored in
+  `.agents/plans/roadmap.md`'s own Next section until a future session
+  runs it.
+- **Sibling-not-revision** [C, flagged to the author 2026-08-10,
+  un-vetoed]: `ed-tuesday/` is a NEW scenario directory;
+  `busy-tuesday/config.edn` — a ruled artifact, AR-VB2-R — stays
+  untouched; each scenario's own README gains exactly one
+  cross-reference line naming the other as its contrast.

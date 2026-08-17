@@ -32,7 +32,7 @@ metadata:
 Scores the finished `docs/manual/` arc against an eight-dimension
 rubric, periodically, as the codebase and the manual evolve out from
 under each other. Chartered by the author, verbatim (ADR-0113 R5,
-`.agents/rulings.md`): *"Should we devise a manual-review skill, with
+`notes/adr/0113-sim-palgebra-unification.md`): *"Should we devise a manual-review skill, with
 scoring rubric, so we can run it periodically as we evolve the codebase
 and manual?"* Built and first run at the manual arc's own close
 (ADR-0125).
@@ -160,7 +160,7 @@ citation is not a grade, it's an assertion.
    carries a `<!-- Content derived from ... -->` comment (or
    equivalent) in its own first few lines naming what real doc, config,
    or witnessed run it was derived from — the standing rule this arc's
-   own diagram doctrine set (`.agents/rulings.md`, "From ADR-0113," R6).
+   own diagram doctrine set (`.agents/rulings.md#R-diagrams-derive-from-data`).
    List every SVG and quote its derivation comment; an SVG with no such
    comment is a fail on its own, regardless of how the rest of the
    manual scores.

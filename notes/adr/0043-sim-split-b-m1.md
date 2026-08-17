@@ -831,3 +831,31 @@ context the way this arc's own four stages did.
 
 ---
 
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0043 (sim split B, M1–M4)
+
+- **The intake-front-door doctrine** (AR-M1-4): a sim run enters `ehr
+  corpus intake` as if it were a foreign pipeline's own output, never
+  a privileged first-party producer. Deliberate, not a gap to
+  eventually special-case — the discipline has caught real defects
+  before precisely because nothing about the intake path assumes the
+  producer is trustworthy.
+- **`provenance` is a leaf schema component, forbidden forever from
+  depending on anything but `malli`** (AR-2) — not `kernel`, not
+  `corpus`, not `sim`, not any other brick. A future `ehrt.*` require
+  inside `ehrt.provenance.*` is itself the violation, not something to
+  accommodate.
+- **The façade (`ehrt.sim.interface`) stays permanently frozen in
+  surface** (AR-M4-3, honoring the 08-02 plan's own AR-3): var list,
+  names, and arities byte-identical across every extraction stage —
+  `corpus` depends on this interface's own stability in-process
+  (ADR-0012). Any future thinning of the façade itself is a SEPARATE,
+  explicit author-ruled decision — never a side effect of some other
+  session's own work.
+- **Every future parity/deftest ledger in this project states which
+  counting definition it uses** (`deftest`-only, or `deftest`+
+  `defspec`), explicitly, rather than leaving the reader to infer it
+  from context (AR-D-6, the lesson this arc's own four stages learned
+  the hard way).

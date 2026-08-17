@@ -47,8 +47,31 @@
 ;; `.agents/reading-sets.edn`'s own dated note for the numbers and for
 ;; why session C is where they move.
 
+;; 2026-08-17, compression arc session C (`notes/adr/
+;; 0145-rulings-standing-register.md`): four of the five move DOWN, set from
+;; that ADR's own post-compaction actuals by the standing formula --
+;; `:corpus` 2245 -> 2045, `:sim` 1610 -> 1405, `:judge` 1205 -> 1000,
+;; `:docs` 990 -> 785. All four fall for one reason: they carry exactly one
+;; path this session touched, `.agents/skills/build-session/SKILL.md`, and it
+;; went 309 -> 117 lines when its history split out to a sibling HISTORY.md
+;; that no set carries.
+;;
+;; DISCLOSED: `:onboarding` HOLDS at 1665 and does not fall, which is a fence
+;; this session tripped and reports rather than absorbs. Its actual RISES,
+;; 1449 -> 1501: the same session that took 192 lines of skill out of it added
+;; `.agents/rulings.md` to its `:paths` by Q5, and the register is 238 lines
+;; even after a 1757 -> 238 compression -- a net +46 on this set. The
+;; formula value is 1725, above the 1665 baseline, and the ratchet forbids up,
+;; so the budget holds where it is. The set is green with 164 lines of
+;; headroom, but that headroom is 11% where the standing formula grants 15%:
+;; the ratchet bites, it just does not fall. ADR-0145's own close chartered
+;; session D at what is actually left -- `.agents/session-records/README.md`
+;; and `.agents/prompts/README.md`, 390 lines of dated index between them,
+;; growing one line per session forever, and the only `:onboarding` growth
+;; this arc has not touched.
+
 {:onboarding 1665
- :corpus 2245
- :sim 1610
- :judge 1205
- :docs 990}
+ :corpus 2045
+ :sim 1405
+ :judge 1000
+ :docs 785}

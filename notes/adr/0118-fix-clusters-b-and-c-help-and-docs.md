@@ -286,3 +286,26 @@ the rendered text those paths return).
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Fix clusters B and C: help enrichment, doc drift, scan roots — lands review-3's two remaining fix clusters (ADR-0115), two commits, red-before-green: cluster C first — the invocation lint's own scan roots widen to `demos/**` and `.github/**` (R3-B5-4's "consider" ruled YES); the widening only goes RED on R3-B5-4's own issue-template `clojure -M:cli` alias, since R3-B5-3's own `demos/traces/**` stale config-header drift lives in unfenced EDN comments the lint's two checks structurally cannot see — disclosed as a premise mismatch (STOP-AND-REPORT), resolved by the author's own choice to proceed rather than silently extend the lint's content patterns; fixed instead by an extension-blind census grep, finding the 3 named instances plus 1 more the register never listed (`demos/traces/module-mix/README.md`'s own stale `docs/demos/emit-state/` prose reference); then cluster B — genuine verb-level help narrowing for both `<group> <verb> --help` and the 3-arg `help <group> <verb>` form (`help/render-verb-help`), a known group's unknown verb reusing F6's own `:unknown-command` treatment verbatim (R3-B3-2), and one sourced, verbatim "Example:" line per group with a witnessed invocation anywhere in README.md's Quickstart, `docs/use-cases/*.md`, or a demo README — 7 of 9 groups covered, `version`/`doctor` render none (no witnessed invocation exists for either, recorded as a register addendum) rather than an invented one (R3-B3-1); a real regression an existing gate caught mid-session (the unwrapped Example line broke `help_wrap_test.clj`'s own width-fit property at non-default widths) fixed by routing it through the same wrap function every other field uses; `docs/cli.md` regenerated, confirmed byte-identical both times (it deliberately excludes worked invocations by design); zero engine/sim/judge/check `src` touched, the oracle holds pure identity across all 35 roots
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0118 (fix clusters B and C: help enrichment, doc drift;
+executed 2026-08-12)
+
+- **The `.github/**` scan-root widening [C, un-vetoed]**: R3-B5-4's own
+  "consider whether `.github/**` belongs in the gate's own scan roots"
+  is ruled YES -- widened alongside `demos/**` in the same commit, same
+  recurrence-prevention logic (an operator-facing surface, issue
+  templates, the gate never covered at all). Applies to any future
+  doc-drift gate whose own scan roots are found to have a blind spot
+  over a real operator-facing surface; the author may strike or correct
+  this reading.
+- **B2's sourced-example rule [C, approved by dispatch of the driving
+  prompt]**: each group's own "Example:" line is one invocation copied
+  VERBATIM from an existing witnessed source -- a `docs/use-cases/*.md`
+  strip, README Quickstart, or a demo README -- never composed, source
+  cited per line in `notes/adr/0118-*.md`. A group with no witnessed
+  invocation anywhere (`version`, `doctor`, this session) renders no
+  Example rather than an invented one, recorded as a register addendum
+  row instead. Applies to any future per-group worked-example surface
+  this workspace adds; the author may strike or correct this reading.

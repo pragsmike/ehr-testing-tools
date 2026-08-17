@@ -421,3 +421,41 @@ structural facts about this repository, not vigilance items — the
 arc's own central theme, stated plainly: convention enforced by a red
 test outlives convention enforced by memory. The next arc opens
 feature-shaped, per the horizon note above.
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From the alignment arc (ADR-0048–0055)
+
+- **Dependency-review cadence, standing** (A-3, from ADR-0050 AR-F1-6;
+  corrected 2026-08-07, lint family AR-LF-6, D7-1 -- this ruling had
+  cited invented sub-letters "AR-F1-6a"/"AR-F1-6b"; ADR-0050's own
+  source labels these two rulings `A-3`/`D-3` under one shared AR-F1-6
+  heading, the letter-suffix scheme never existed there):
+  `clojure -M:poly libs :outdated` is report-only, run at each arc close
+  plus mandatory before any publish; upgrades are never taken as a side
+  effect of running it.
+- **Pairing-as-data registry landing spot, accepted** (D-3, from
+  ADR-0050 AR-F1-6): `judge` is the accepted acyclic home for the
+  mutate↔judge conviction registry; the design pass starts from there.
+- **Law-surface propagation lesson, standing** (from ADR-0051 AR-F2-0
+  and ADR-0053 AR-F4-4): an amendment to standing law lands on every
+  surface that states the law, in the same session that rules it —
+  never left to a later session to notice the drift, and never resolved
+  ad hoc by a session that only notices the conflict in passing. Two
+  instances this arc: `AGENTS.md`'s tag rule lagged ADR-0049's AR-AU-0
+  by three sessions before ADR-0051 closed the gap; `components/
+  judge-v2-nist/deps.edn`'s own comment block (and its source, the
+  archived spike-notes document) kept prescribing in-repo NIST-jar
+  vendoring for eleven days after ADR-0005's 2026-07-24 amendment made
+  that prescription unlawful, until ADR-0053 closed it.
+
+  **Third instance, 2026-08-06 (tag law, `notes/adr/0057-tag-law.md`
+  AR-T-1/AR-T-2):** this file's own AR-R-2, above, stated tagging as
+  "the author's act alone" nine sessions after ADR-0049's AR-AU-0 had
+  already amended the mechanic, and was never itself corrected when
+  ADR-0051's AR-F2-0 reconciled `AGENTS.md` alone — leaving
+  `AUTHORS-GUIDE.md`, both `build-session` `SKILL.md` copies,
+  `.agents/state.md`, and this file all stating or implying the retired
+  law until the tag-law session swept every surface at once and gated
+  the retired phrasing against recurrence
+  (`ehrt.docs-tooling.tag-law-test`).

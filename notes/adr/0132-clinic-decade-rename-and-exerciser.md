@@ -302,3 +302,19 @@ matching Step 0's own verified pure-identity prediction exactly.
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Scenario rename (busy-tuesday -> clinic-decade) + exerciser completion — pays tag `stable-20260814-slug-fix` at `c27bdd3` (ADR-0131's own close, `bin/preflight` all-five-runs-green); executes the author's own name ruling, verbatim: *"clinic-decade it is."* Full live-reference sweep renames the scenario (`demos/scenarios/clinic-decade/`, every README cross-ref, the CLI's own sourced `play` example, the `use-cases.edn` docsgen companion, docs-tooling comments and test marker fixtures, `.agents/plans/roadmap.md`'s own live mentions) with zero residue outside frozen records (notes/adr bodies, session records, prompt archives, the ADR/ruling registers' own existing lines), confirmed by a repo-wide grep census; frozen records keep the old name by rule. Completes the exerciser row ADR-0130 closed partial-with-open-rows: `bin/demo-exerciser-clinic-decade` adapted from ADR-0130's own drafted Appendix script (one disclosed regex fix, a markdown line-wrap the drafted-but-never-run script would have missed), a new `exercised-sources.edn` row (`:demo-exerciser-fresh`, the ADR-0130-widened marker parameterization's own first second-instance consumer), register count-lock 7 -> 8, `Makefile` integration wiring, freshness case red-witnessed (script absent) then green. Executed end-to-end in-session, real artifacts (seed 20260807, 200 patients): all three README-taught commands, every named invariant re-derived live from the README and matched exactly -- `68/48/41`/`inpatients: 0` throughout (byte-for-byte ADR-0130/ADR-0131's own witnessed figures) and the third command's own `367`/`49` first-witnessed figures (ADR-0131) reproduced exactly; no figure moved, no README edit. R3 (`notes/ADRs.md` ADR-0113) now fully discharged -- every shipped scenario README is register-exercised. Oracle held pure identity across all 35 roots (`bin/regression-oracle` Step 0 baseline to Step 2 tip), matching Step 0's own verified prediction exactly -- the oracle roots never resolve through `demos/scenarios/`. `make test`/`make integration` both green, tree clean throughout
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0132 (scenario rename, busy-tuesday -> clinic-decade, +
+exerciser completion; ruled 2026-08-13, executed 2026-08-14)
+
+- **Name, ruled** [A, 2026-08-13, "clinic-decade it is."]: the scenario
+  is renamed busy-tuesday -> clinic-decade. Frozen records (`notes/adr/`
+  bodies, session records, prompt archives, register history lines)
+  KEEP the old name; ADR-0132 carries the mapping. Executed exactly as
+  ruled — a full live-reference sweep (`demos/scenarios/clinic-decade/`,
+  every cross-ref, the CLI's own sourced example, the docsgen companion,
+  docs-tooling comments and test marker fixtures, `.agents/plans/
+  roadmap.md`'s own live mentions), zero residue outside the frozen
+  classes named above, confirmed by a repo-wide grep census before the
+  Step 1 commit.

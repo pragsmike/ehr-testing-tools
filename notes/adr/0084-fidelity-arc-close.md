@@ -480,3 +480,23 @@ commit.
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Fidelity arc close: the interpreter tells upstream's truth, and the record tells its own — closed across two Code sessions after an infrastructure block (the second such interruption, and the second to hit an arc close specifically); state and budgets regenerate (only `:onboarding` moves this time), four Done pointers rotate to the attic, `libs :outdated` re-run fresh, the oracle bracket spans both sessions at 28 roots identical, and an unrelated, newly-found subprocess-piping test flake is disambiguated live rather than smoothed past
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From the fidelity arc (ADR-0081–0084)
+
+- **Semantics changes are predicted before they are made, standing**
+  [C — the arc's own executed discipline; the author may strike it]: an
+  interpreter/engine/emitter semantics change runs a blast-radius probe
+  over every oracle root FIRST, lands a per-root identical-or-moves
+  prediction, and any mover is STOP-AND-REPORT for an explicit license
+  naming that mover alone; the post-change bracket must match the
+  prediction exactly (ADR-0082's own executed protocol, R3 as ruled and
+  exercised — including the trace-then-license resolution the author
+  ruled when the probe fired).
+- **Plausible-by-adjacency is not a diagnosis, standing** [C —
+  likewise]: a defect attributed to a shared mechanism without a direct
+  probe of the failing artifact is `[unverified]` until the probe
+  exists; ADR-0072's colorectal diagnosis was inference from a shared
+  submodule, overturned by the first trajectory scan (ADR-0082/0083's
+  own erratum chain).

@@ -181,3 +181,30 @@ zero-touch/zero-reach argument alone.
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Medication-end invariant: pre-horizon referents, fixed — implements the author's own "a" ruling on ADR-0122's three lettered fix options: `medication-end-references-existing-order-and-follows-it-in-time` (`components/sim-check/src/ehrt/sim_check/check.clj`) widens to accept an order referent living in a patient's own `:pre-horizon-facts` (the compile layer's designed straddle case, `trajectory-computation.md`'s "History phase"), the follows-in-time law adjusted to hold by construction wherever the order lives (a pre-horizon fact carries no `:t` of its own, but is definitionally prior to registration, and every ground-truth event comes after registration); red-first per the ruling's own two conditions — a positive control (a phantom order matching neither a top-level order nor any pre-horizon fact, even with an unrelated pre-horizon fact present) green both before and after the fix, and the diagnosed regression (the property's exact engine config at the ADR-0122 shrunk seed `8589258984`) RED before the fix, reproducing the same patient/instant ADR-0122's own witness names, GREEN after; the full defspec re-run at both recorded failing seeds, 150 trials each, green; full `make test` green; the oracle held pure identity across all 35 roots, confirmed by an actual `bin/regression-oracle 6827f5b f9fbeca` run (not merely re-asserted from ADR-0122's own zero-reach argument); zero `sim-engine`/`sim-trajectory` `src`, zero other invariant, zero `docs/manual` touched
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0123 (medication-end invariant: pre-horizon referents,
+fixed; ruled 2026-08-13)
+
+The design channel presented ADR-0122's own three lettered fix options
+for the diagnosed `medication-end-references-existing-order-and-
+follows-it-in-time` violation; the author ruled, verbatim, 2026-08-13:
+*"a"*.
+
+- **R14, checker-fix ruling [A, ruled 2026-08-13, "a"]:** option (a) —
+  widen `medication-end-references-existing-order-and-follows-it-in-
+  time` (`components/sim-check/src/ehrt/sim_check/check.clj`) to accept
+  an order referent living in a patient's own `:pre-horizon-facts`
+  (the compile layer's designed straddle case), with the follows-in-
+  time law adjusted to hold wherever the order lives — never (b) the
+  engine fix or (c) the compile-layer fix. The engine and compile layer
+  stay untouched; two conditions gate the fix, both proven this
+  session: (1) a positive control (a hand-built minimal ground-truth
+  log whose `:medication-end` matches no order anywhere, top-level or
+  pre-horizon) stays green — rejected — both before and after the fix;
+  (2) the regression itself (the property's engine config at the
+  ADR-0122 shrunk seed, `8589258984`, through `check/check-all`) runs
+  RED before the fix and GREEN after, alongside a green re-run of the
+  full defspec at both recorded failing seeds
+  (`1786589996178`/`1786617342587`), 150 trials each.

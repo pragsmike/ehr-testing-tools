@@ -1,0 +1,98 @@
+#!/usr/bin/env python3
+"""Read-back check for the ADR-0145 build-session skill split.
+
+`.agents/skills/build-session/SKILL.md` was 309 lines carrying 39 lines of
+imperative and 145 lines of history inside its Procedure alone. ADR-0145
+split it: SKILL.md keeps the imperative and one cite per step, HISTORY.md
+takes the incidents, near-misses, worked examples and provenance chains.
+
+This script proves nothing was lost, by the instrument ADR-0144 established
+as the durable one: it re-reads SKILL.md as it stood at the pinned base
+commit and asserts each of its 19 blocks -- the preamble, all 17 numbered
+steps, and the VERIFICATION section -- is present as an exact CONTIGUOUS
+block in HISTORY.md now. A diffstat cannot express a move of this shape as
+an identity (ADR-0144's own finding); a read-back can, and keeps working at
+any later commit.
+
+Re-runnable:  bin/verify-skill-history-0145
+"""
+
+import re
+import subprocess
+import sys
+
+BASE = "57a27f5"
+SKILL = ".agents/skills/build-session/SKILL.md"
+HISTORY = ".agents/skills/build-session/HISTORY.md"
+MIRROR = ".claude/skills/build-session/SKILL.md"
+
+
+def base_lines():
+    return subprocess.check_output(
+        ["git", "show", f"{BASE}:{SKILL}"], text=True).split("\n")
+
+
+def blocks(lines):
+    """The preamble, each numbered Procedure step, and VERIFICATION, as
+    (name, [lines]) with trailing blanks trimmed."""
+    def at(pred, start=0):
+        for i in range(start, len(lines)):
+            if pred(lines[i]):
+                return i
+        sys.exit("FAIL: the base SKILL.md does not have the expected shape")
+
+    i_title = at(lambda l: l == "# Build Session")
+    i_use = at(lambda l: l == "## Use this skill when")
+    i_proc = at(lambda l: l == "## Procedure")
+    i_ver = at(lambda l: l == "## VERIFICATION")
+    i_out = at(lambda l: l == "## Output")
+
+    out = [("preamble", lines[i_title + 1:i_use])]
+    cur = None
+    for l in lines[i_proc + 1:i_ver]:
+        m = re.match(r"^(\d+)\. ", l)
+        if m:
+            if cur:
+                out.append(cur)
+            cur = (f"step {m.group(1)}", [l])
+        elif cur is not None:
+            cur[1].append(l)
+    if cur:
+        out.append(cur)
+    out.append(("VERIFICATION", lines[i_ver + 1:i_out]))
+    return [(n, [x for x in b]) for n, b in out]
+
+
+def trimmed(b):
+    while b and b[-1].strip() == "":
+        b.pop()
+    while b and b[0].strip() == "":
+        b.pop(0)
+    return b
+
+
+def main():
+    hist = open(HISTORY, encoding="utf-8").read()
+    bs = blocks(base_lines())
+    ok, missing, moved = 0, [], 0
+    for name, body in bs:
+        body = trimmed(body)
+        moved += len(body)
+        if "\n".join(body) in hist:
+            ok += 1
+        else:
+            missing.append(name)
+    print(f"blocks checked        : {len(bs)}")
+    print(f"blocks found VERBATIM : {ok}")
+    print(f"blocks missing        : {len(missing)}  {missing if missing else ''}")
+    print(f"moved lines total     : {moved}")
+
+    a = open(SKILL, encoding="utf-8").read()
+    b = open(MIRROR, encoding="utf-8").read()
+    print(f"mirror byte-equal     : {'yes' if a == b else 'NO'}")
+    if missing or a != b:
+        sys.exit("FAIL: a block is not present verbatim, or the mirror has drifted")
+
+
+if __name__ == "__main__":
+    main()

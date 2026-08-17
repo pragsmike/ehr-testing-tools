@@ -283,3 +283,40 @@ fails `make test`, not just a future manual-review run.
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Strip executability: exercisers, citation gate, ADR-0127 erratum — tags `stable-20260813-hardening` at `56613c7` (ADR-0128's own close, CI-verified green); closes manual-review dimension 1 (strip executability, FAIL): five new `bin/` exercisers (`usecase-judge-tier-calibration`, `usecase-profile-tier-v2`, `usecase-acceptance-qa`, `usecase-regression-baselining`, `readme-what-you-get`), each executed end-to-end this session against real artifacts and wired into `make integration`; a new `ehrt.docs-tooling.exercised-sources` registry (schema + committed EDN, seeded with the two pre-existing pairs plus the five new ones) and `ehrt.docs-tooling.strip-fresh`'s two new extraction shapes (`:single-fence`, `:paired`) generalize the freshness-check pattern without touching quickstart-fresh/demo-exerciser-fresh's own tested code; `readme-what-you-get`'s own paired-output check discovers and resolves a real finding -- README.md's own "What you get" fences are hand-formatted, elided excerpts, not verbatim CLI output -- with a new elision-tolerant subset-match comparison, disclosed as a new design rather than an inherited one (`quickstart-demo` normalizes nothing); a new `ehrt.docs-tooling.citation-gate` enforces cited-implies-exercised going forward (every "Strip source citations" table entry across `docs/manual/0*.md` must resolve to a register row), catching and fixing two real bugs live before landing (a table-extraction state machine that silently returned zero rows; a source-only coverage check that would have missed README.md's own two unrelated sections, fixed with an optional per-row `:section` field); a dated erratum to `notes/adr/0127-*.md` corrects that session's own wrong `:sim` 1170/1295 reading-set figure (true 1293/1295); targeted dimension-1-only manual-review re-run: PASS, closing the manual arc's first all-dimensions-addressed state; `make integration` green once, real artifacts, clean tree; zero `docs/manual` prose/`README.md`/`demos/` touched, the oracle holds pure identity across all 35 roots
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0129 (strip executability: exercisers, citation gate,
+ADR-0127 erratum; ruled 2026-08-13, restated verbatim from this
+session's own driving prompt)
+
+- **Dim-1 fix design** [A, 2026-08-13, "Q1 a. Q2 a. Q3 a. Q4 a."]:
+  Q1(a) per-source scripts — five new `bin/` exercisers on the proven
+  pattern, PLUS a citation gate; Q2(a) env-var placeholders are the
+  sanctioned strip parameterization, exercisers bind fixtures; Q3(a)
+  exercise exactly the five cited sources, the gate enforces
+  cited-implies-exercised for the future; Q4(a) What-you-get
+  extraction pairs command fences with adjacent expected-output fences
+  and compares output. Executed this session: five `bin/` exercisers,
+  the exercised-sources register, `ehrt.docs-tooling.citation-gate`,
+  and `ehrt.docs-tooling.strip-fresh`'s own elision-tolerant
+  subset-match comparison for the paired case.
+- **1170 erratum** [A, 2026-08-13, "Do b"]: a dated erratum appended
+  to `notes/adr/0127-*.md` — Step 3's `:sim` 1170/1295 figure was
+  arithmetically wrong when recorded, true 1293/1295; budget
+  re-derived to 1495, ADR-0128. Executed this session,
+  `notes/adr/0127-*.md`'s own new dated erratum section.
+- **Standing directive, restated** [A, 2026-08-13, verbatim, originally
+  ruled ADR-0128]: *"let's always look for opportunities to improve
+  the agent-facing parts."* Applied this session via the citation
+  gate's own actionable failure messages (naming the offending
+  chapter, cited source, and register path) and the session record's
+  own disclosure of two real bugs caught live (the citation-table
+  state machine, the source-only coverage gap) rather than silently
+  fixed and unmentioned.
+- **Tag license, executed** [A, 2026-08-13, restated from the design
+  channel's own fresh-clone CI verification of the ADR-0128 landing —
+  four commits, ASCII, lineage, CI green on all four]: tag
+  `stable-20260813-hardening` at `56613c7`, instructed at this
+  session's own Step 0; created, pushed, and peeled-ref-verified this
+  session.

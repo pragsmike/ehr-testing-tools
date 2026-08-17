@@ -253,3 +253,41 @@ reverted before commit.
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Simulator architecture doc lands, made load-bearing by a co-landed purity lint — author charter ("aid to understanding the design, as well as a guide for agents to avoid departing too much from the established theory"), ratified "Good sequence": `docs/dev/simulator-architecture.md` (dev-docs, R34) inventories the seven `sim-*` bricks plus `sim`, restates the decide/evolve doctrine cited to `engine.clj`/`sim/ADR-0008`, states the mutable-state census (zero atoms/refs/agents/volatiles across all seven bricks' src, two named exceptions — `census.clj`'s probe-fetch memoization atom, `version.clj`'s git read), a palgebra section using the real `⨟`/`×` operators, two honest wrinkles (`engine` is one fold over a shared `World`; the GMF walk is an unfold meeting `evolve`'s fold), the naturality witness cited by test name (`fhir-patient-id-and-active-mrn-resolve-to-the-same-hl7-identity`), and the downstream-latency extension point named in one sentence; `ehrt.docs-tooling.sim-purity-lint-test` makes the census claim checkable, non-vacuity proven by a planted-and-reverted temporary atom's own captured red; wired into `AGENTS.md` and `.agents/reading-sets.edn`'s `:sim` set (budget re-baselined 970 → 1295); zero `src` change anywhere, the oracle holds pure identity across all 35 roots; the user-guide deferral (distinct from the generic EHR Testing Guide) restated under its own named trigger, verbatim
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0108 (simulator architecture doc, purity lint; ruled 2026-08-11)
+
+- **The chartering ruling** [A, ruled 2026-08-11, author verbatim]:
+  *"I want to document this architecture in the tools repo, as that's
+  where the implementation is. This is more of an aid to understanding
+  the design, as well as a guide for agents to avoid departing too much
+  from the established theory when adding features. We might include a
+  treatment in the guide as well."* Ratified: *"Good sequence."*
+  Executed as `docs/dev/simulator-architecture.md` (dev-docs, R34) plus
+  a co-landed purity lint (`ehrt.docs-tooling.sim-purity-lint-test`)
+  making its own state-isolation claim checkable, not merely asserted;
+  wired into the agent reading path (`AGENTS.md`, `.agents/reading-
+  sets.edn`'s own `:sim` set). The guide-side treatment is the
+  author's own future authorship, not this session's (the dev-docs
+  scope ruling, below).
+- **The user-manual deferral, standing** [A, ruled 2026-08-11, author
+  verbatim]: *"I've been deferring creating the tool-specific user
+  guide in tools repo (distinct from EHR Testing Guide, which is more
+  generic) until things settled down and the tools were able to
+  produce the realistic traffic I need. That remains to be seen, but
+  it's getting more likely to verifiably happen soon."* Trigger
+  (channel-proposed, un-vetoed): the latency-realism arc landed PLUS
+  one witnessed end-to-end demo of latency-realistic traffic played
+  into a downstream-receiver stand-in. Recorded in `.agents/plans/
+  roadmap.md`'s own downstream-latency-realism Next row, alongside the
+  full ratified sequence (architecture doc landed -> latency design
+  pass next -> guide treatment in the author's own queue -> user manual
+  deferred under this trigger). Renamed "user manual" (ADR-0113, R1) —
+  the quoted sentence above is the author's own prior, literal words
+  and stays unchanged as spoken.
+- **Dev-docs scope, standing** [C, this session's own driving prompt]:
+  the architecture doc is dev-docs (`docs/dev/`), not user path -- R34
+  governs, never the footnote-citation discipline ADR-0101/ADR-0102
+  established for `docs/` proper. Nothing guide-side or user-path
+  landed this session.

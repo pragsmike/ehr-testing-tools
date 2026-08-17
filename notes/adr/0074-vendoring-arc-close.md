@@ -467,3 +467,24 @@ across two sessions without losing a single landed commit.
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Vendoring arc close: the mix more than tripled, the bytes cannot lie, the front door is open — closed across two Code sessions after an infrastructure block, no work lost; state and budgets regenerate, six Done pointers rotate to the attic, `libs :outdated` re-run fresh, the EncounterEnd two-module blocker named as next-arc's strongest candidate
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From the vendoring arc (ADR-0069–0074)
+
+- **Vendored bytes are law** [C] (channel-inferred consolidation of
+  this arc's own executed discipline — the author may strike it):
+  upstream content vendors byte-verbatim at its named pin, `-text`-
+  protected from git normalization, NOTICE-hashed per file, and
+  gate-verified on every test run (`notice_verbatim_test`). An
+  edit-tempting vendored file is STOP-AND-REPORT, never a fix
+  (ADR-0070's own mechanics; AR-VB3-R1's teeth; the `uti_recurrence`
+  lesson — a hash and the bytes it names are only honest together when
+  something actually re-checks them, which nothing did until batch 3).
+- **The population-scale gate outranks the census sample** [C]
+  (channel-inferred consolidation — the author may strike it): a
+  module joins the tree only with a witnessed content-producing
+  engine-layer round trip at population scale; zero-substance modules
+  are not vendorable; a census verdict is evidence for curation, never
+  a vendoring license (the `injuries`, `anemia___unknown_etiology`, and
+  `colorectal_cancer` precedents, ADR-0070–0072).

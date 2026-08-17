@@ -211,3 +211,22 @@ line are the only edits to already-existing attic-adjacent files, both
 mechanical and disclosed above.
 
 ---
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0047 (scaffolding compaction C — this arc's close)
+
+- **`.agents/state.md`'s own regeneration contract** (AR-C-1): the
+  design channel regenerates this file at each arc close, every `[V]`
+  claim re-probed against the live tree at landing time before it
+  lands — never carried forward stale.
+- **This register's own append contract** (AR-C-2, restated): standing
+  rulings only, appended per arc close, citing the closing ADR — see
+  this file's own header.
+- **`/mnt/c` is retired, permanently** (AR-C-3): no future session
+  routes work through a second, Windows-mounted clone of this repo.
+  The ext4 clone, reached by its UNC path, is the only clone of
+  record. A future session that finds itself defaulting to a `/mnt/c`
+  working directory again is encountering a NEW regression, not a
+  known, guarded hazard — treat it as a fresh STOP-AND-REPORT, not
+  routine vigilance.

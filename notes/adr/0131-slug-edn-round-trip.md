@@ -348,3 +348,30 @@ acceptance run are read-only verification acts, not fixes.
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Slug EDN round-trip fix + module-load injectivity guard: census, declared-oracle-change prediction (Step 1 of 5) — pays tag `stable-20260813-busy-tuesday-deferral` at `ef15885` (ADR-0130's own close, `bin/preflight` all-green on the three named commits, conditional license satisfied); re-derives both defect censuses across all 66 module JSONs recursively (the flat top-level glob alone misses 35 of the 66, one level down in 12 subdirectories) -- defect 1 (illegal EDN chars, empirically fold-set-verified against `clojure.edn/read-string` round-trip): 10 breaker keys, 3 modules (`uti/abx_tx.json` x5 comma, `injuries/broken_jaw.json` x1 comma, `veteran_lung_cancer.json` x4 parens), EXACT match to the driving prompt's own pre-probe; defect 2 (collisions under the unchanged `_`/whitespace fold, identical pre-fix and post-fix): 10 pairs across **5** distinct module files (`colorectal_cancer.json`, `hypothyroidism.json`, `injuries.json`, `sleep_apnea.json`, `veteran_ptsd.json`) -- pair count and per-module breakdown match the pre-probe exactly, but the pre-probe's own "8 modules" figure is WRONG (actual 5, double-checked two ways), disclosed as a found pre-probe discrepancy, not a live-tree finding. Resolves every one of the 35 oracle roots' own module closure from the live tree (`load-closure`, direct invocation) and predicts movement empirically, not just structurally: 3 roots MOVE (`urinary-tract-infections-engine`/`-history-engine` via `uti/abx_tx.json`, `injuries` via `injuries/broken_jaw.json` -- all three grep-confirmed against the pre-fix oracle digest to already contain the broken comma-keywords); 1 root (`veteran-lung-cancer`) structurally contains a breaker module but its 4 breaker states are grep-confirmed UNREACHED at that root's own seed/population (zero occurrences in the pre-fix digest) -- predicted NOT to move, refining the naive closure-inclusion rule; 4 more roots (`sleep-apnea`, `hypothyroidism`, `colorectal`, `veteran-ptsd`) plus `injuries` again will emit a collision WARNING at load but are predicted NOT to move, since `digest.clj`'s own `-main` only ever captures a producer function's RETURNED value, never stdout/stderr (confirmed by direct read of `components/oracle/src/ehrt/oracle/digest.clj:589-591`) -- 27 of 35 roots predicted pure-identity, untouched by either census. Oracle PRE-digest, all 35 roots, recorded as this declaration's own baseline. Declared BEFORE any `src` edit, per the driving prompt's own mandatory declared-oracle-change requirement; Step 4 (a future commit) re-runs the official `bin/regression-oracle` bracket and this prediction must match exactly. Docs-only -- zero `src`/`test` touched
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0131 (slug EDN round-trip fix + module-load injectivity
+guard; ruled 2026-08-13, restated verbatim from the driving prompt's
+own "Author rulings in effect" section)
+
+- **Q1, sanitization scope, ruled (a)** [A, 2026-08-13, "Q1 a."]:
+  sanitization = fold exactly the non-EDN-keyword-legal characters to
+  `-`, collapse runs, trim edge hyphens. EDN legality defines the fold
+  set; nothing more. Executed exactly as ruled — the fold set
+  (empirically derived against `clojure.edn/read-string` itself, not
+  hand-recalled from the reader grammar) is comma plus the reader's
+  own thirteen terminating-macro characters, joining the pre-existing
+  `_`/whitespace fold; `?` `'` `&` `%` `#` `$` `=` `<` `>` `*` `+` `!`
+  `.` `-` all confirmed legal and left untouched.
+- **Q2, collision guard mode, ruled (b)** [A, 2026-08-13, "Q2 b."]:
+  injectivity guard lands WARN-mode — loud per-collision warning at
+  module load, load proceeds; escalation to hard-error is chartered
+  into the new rider row, triggered by that row's per-pair module
+  corrections landing. Module JSONs are NOT edited this session
+  (vendored verbatim, ADR-0071). Executed exactly as ruled — the
+  guard warns to `*err*` naming module/folded-key/raw-names, never
+  affects `load-module`'s own return value; the new vendoring-rider
+  row (`.agents/plans/roadmap.md`) charters the escalation as this
+  session's own `handle-state-name-collision!` single call site, a
+  mode switch, not a rewrite.

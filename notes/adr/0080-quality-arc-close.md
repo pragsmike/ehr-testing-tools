@@ -446,3 +446,29 @@ than left to be rediscovered.
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Quality arc close: the repo examined itself, ruled on what it saw, and fixed the worst of it — the register's forty-five rows close out (9 fix-session-candidate executed, 5 ruling-needed ruled, the FINAL tally independently re-derived a second time on principle); `state.md` regenerates around its own staleness tripwire's first live sequencing test; all five reading-set budgets move together for the first time; five Done pointers rotate to the attic; the sibling-flake soak (12 clean runs), the census undercount, and wellness-encounters are named for review 2
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From the quality-review arc (ADR-0075–0080)
+
+- **Multi-seed-once-flagged, standing** [A — ruled AR-RL-5(5)]: a
+  vendoring round-trip that flags a module re-runs at 2–3 well-mixed
+  seeds at population scale before any verdict — codifies ADR-0071/
+  ADR-0072's own followed practice (findings register D6-4), previously
+  precedent-only.
+- **The `defspec` seed policy, standing** [A — ruled AR-RL-5(3)]: seeds
+  stay unpinned repo-wide, for generator diversity; a spec that has
+  actually flaked pins or durably logs its seed (the engine spec,
+  ADR-0079); the printed-seed-plus-CI-retention default is sufficient
+  otherwise; revisited on the next flake.
+- **I/O speaks Result or fails loud, standing** [C — the arc's own
+  executed discipline; the author may strike it]: a production I/O
+  call that can fail routes through `ehrt.kernel.io` or handles its
+  failure mode by name; an I/O failure never impersonates an empty
+  result (ADR-0078, gated by `io_vocabulary_lint_test`).
+- **CI is watched, never waited on, and commits land green, standing**
+  [C — likewise]: preflight discloses the last five runs' conclusions;
+  watch-to-conclusion is reserved for sessions whose own claim is about
+  CI; no push carries a knowingly-failing test (ADR-0075/0076/0078's
+  own pattern shift, superseding the older red-checkpoint-commit
+  pattern).

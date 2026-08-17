@@ -231,3 +231,33 @@ nothing smoothed over, nothing taken beyond what was ruled.
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Review 2's rulings land: three laws append, four anchors, the front door discloses — the author's own six rulings on ADR-0092's register execute their docs/law-only surface: three standing rulings append to `.agents/rulings.md` (measurements sample the claimed population; horizon items anchor in the roadmap; post-push verification includes the ASCII check); wellness-encounters and the `notice_verbatim_test` coverage gap each gain a `roadmap.md` Deferred row for the first time (the new law's own first two instances); Wave E parks with a named revisit trigger; the census `:closure-file-count` fix is scheduled, not run; README's "See it run" front door carries up the sibling busy-tuesday README's own honesty disclosure without touching a byte of the demo; D8-4 and ruling 1's own option (b) stay explicitly unruled
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From review 2's rulings (ADR-0092/0093)
+
+- **Measurements sample the claimed population, standing** [A, ruled
+  AR-RL2-2, 2026-08-09, citing ADR-0087 / ADR-0092 D6-2]: a sweep or
+  sample claiming to measure a population must draw from that
+  population's own RNG path/generation mechanism, never an independent
+  synthetic path assumed equivalent; a zero measured against a
+  known-nonzero branch is the tripwire (ADR-0087's own self-caught
+  miss — a synthetic sweep for `:suppressed-straddle-spans` drew from
+  an independent RNG path and measured zero against a real, disclosed
+  2-of-900 branch — is the precedent).
+- **Horizon items anchor in the roadmap, standing** [A, ruled AR-RL2-3,
+  2026-08-09, citing ADR-0092 D7-7/D7-8]: any item surviving past ONE
+  arc close purely in horizon-note prose gains a `roadmap.md` Deferred
+  or Next row in the SAME close that first restates it; horizon notes
+  narrate, the roadmap remembers (ADR-0092's own A/B evidence — the one
+  aged item with a roadmap anchor, the census undercount, self-healed
+  after a single missed restatement; the two without one, wellness-
+  encounters and the `notice_verbatim_test` coverage gap, did not
+  recover across three — is the precedent).
+- **Post-push verification includes the ASCII check, standing** [A,
+  ruled AR-RL2-5, 2026-08-09, citing ADR-0091 AR-SD-6 / ADR-0092 H-6]:
+  the standing post-push ceremony adds one mechanical line, `git log
+  --format=%B -1 | LC_ALL=C grep -n '[^ -~]'`, expected EMPTY; any hit
+  is disclosed in-session, not discovered by channel report later. This
+  is ceremony boilerplate for session prompts and session practice —
+  NO new repo test, NO workflow change, NO gate file.

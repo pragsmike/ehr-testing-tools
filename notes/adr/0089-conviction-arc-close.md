@@ -401,3 +401,23 @@ execution-checked data.
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 The conviction arc closes: two loops convicted on evidence, and the close itself splits by design — the author's own "adopt, two close sessions" ruling gets its first execution (session A: tag + rulings appends; session B: state/budgets/rotation/this ADR), catching a mechanical tag slip inside a narrow blast radius as the pattern's own first observed benefit; `state.md` regenerates (two new sections, the first oracle-root MOVE since Wave G); two reading-set budgets move together for the first time since the quality-review arc's own close; the oracle's own blind spot to malformed compiled shapes (byte-identity can't see what it's never compared) is named and evidenced; a prompt-citation mismatch is disclosed rather than silently resolved
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From the conviction arc (ADR-0085–0089)
+
+- **Witnessed rows only, standing** [A]: the pairing registry
+  (ADR-0088) holds per-operator rows that exist ONLY when the
+  mutate→judge loop was actually executed against a real fixture;
+  unwitnessed cells do not appear; every pinned expectation is
+  MEASURED before it is written (a wrong first measurement is
+  disclosed, never silently discarded — ADR-0087/0088's own
+  precedent); tier promotions (report-only → gating) happen only by
+  dated author ruling.
+- **Licenses bind at their own granularity, standing** [A]: a licensed
+  oracle mover is licensed by NAME and at the EVIDENCE GRANULARITY the
+  license states (ADR-0086: `sleep-apnea`, walks #17/#58/#269); the
+  post-change bracket must match at that granularity, and any
+  deviation — a different root, a different walk set, a surprise
+  identical — is a fresh STOP-AND-REPORT, never absorbed by the
+  existing license.

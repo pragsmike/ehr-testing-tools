@@ -276,3 +276,23 @@ row records the redesign arc's own charter, awaiting-design-pass.)
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Board boundary catch-up: the snapshot grid stops lagging behind stream-time jumps — the `--board` sink's post-render boundary update advanced by exactly one span, leaving it arbitrarily far behind after any stream-time jump larger than a span (the idle-skip case) and rendering a duplicate, identical-timestamp snapshot for every message sharing a board window with the message that just rendered; fixed to an arithmetic smallest-grid-point-above-ts computation, hermetically red-then-green on two new tests (the author-observed paired-identical shape, and a four-window grid-invariant case with two deliberately empty windows); the busy-tuesday demo's own witnessed snapshot count is re-run and corrected (68 → 48); two stale `notes/ADRs.md` prose prefixes in `docs/glossary.md`'s Baseline/Pack entries (an ADR-0102 residual finding) are dropped; the oracle holds pure identity across all 34 roots
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0103 (board boundary catch-up; rulings taken this
+session's own driving prompt, author-ruled 2026-08-10, executed
+2026-08-11)
+
+- **Bugfix now, redesign later** [A, ruled 2026-08-10, author verbatim
+  "c."] — choosing both: this session executes the `--board` cadence
+  bugfix only; the busy-tuesday/ED scenario redesign is chartered as
+  its own, separate, not-yet-opened arc (see the ED-direction ruling,
+  below, and `.agents/plans/roadmap.md`'s own Next row).
+- **ED-weighted redesign direction, chartering context only, NOT
+  executed** [A, ruled 2026-08-10, author verbatim]: *"Maybe weight
+  the patient population toward immediate, emergent conditions like
+  trauma/injuries? This would simulate an actual ED, which is where a
+  lot of the activity and churn would happen."* Recorded here as the
+  redesign arc's own charter — no scenario, config, module, or content
+  change accompanies this entry; the design pass that turns this
+  direction into a plan is a future session's own work.

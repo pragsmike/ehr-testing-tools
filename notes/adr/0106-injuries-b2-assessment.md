@@ -448,3 +448,27 @@ never committed, cleaned before this record's own commit.
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Injuries B2 assessment: the nested-encounter gap characterized, vendoring still deferred — B2's own widened, assessment-first charter fires as predicted (~99.4% likely at 300 patients): a fresh gate finds ADR-0105's own max-steps fix complete (0/120) but a SEPARATE, pre-existing gap still trips — `injuries.json`'s own `Spinal_Injury` branch opens `ED_Visit_For_Spinal_Injury` and never closes it before opening a second `Encounter` on the same walk, tripping `step`'s own nested-`:encounter` assert at 2/120 well-mixed seeds AND aborting a whole 300-patient `engine/run` uncaught (no per-patient isolation at the engine layer, a new severity finding); both failing seeds' trajectories walked to the identical state pair, upstream Synthea's own real Java semantics for the same authored pattern probed and cited (a quiet same-module auto-close, never a nest), four design options recorded with blast radius and no recommendation; a closure-membership correction (`dme/wheelchair.json` already vendored via a sibling batch, true count 5 already-vendored/3-new not 4/4) caught by fresh-gate discipline; nothing vendored, the oracle holds pure identity across all 34 roots
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0106 (injuries B2 assessment; ruled 2026-08-11)
+
+- **The widened, assessment-first charter** [A, ruled 2026-08-11,
+  author verbatim "b"]: B2 (the injuries vendoring batch itself)
+  ATTEMPTS the batch under the standing vendoring ceremony, but if the
+  known pre-existing `nested :encounter` gap (ADR-0105's own finding,
+  2/120 well-mixed seeds, unaffected by that session's own fix) fires
+  at the round-trip gate, the session's own deliverable BECOMES the
+  full characterization of that gap (root cause, upstream semantics,
+  measured rate, design options with blast radius, no recommendation
+  required) under the ADR-0070 bail-out precedent, and NOTHING is
+  vendored. Either outcome — a landed batch or a full characterization
+  — is a successful session; this ruling licenses both branches in
+  advance, not only the one that actually fired. It fired: the fresh
+  gate found the assert tripping at both probe layers (2/120 direct
+  interpreter, and a full 300-patient `engine/run` throwing uncaught),
+  matching this session's own pre-stated ~99.4%-likely arithmetic; the
+  characterization landed in `notes/adr/0106-injuries-b2-assessment.
+  md`, nothing vendored, `injuries.json` remains deferred, re-anchored
+  on the nested-encounter blocker with a new revisit trigger (a future
+  session ruling on one of the four named design options).

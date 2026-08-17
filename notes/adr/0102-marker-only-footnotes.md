@@ -483,3 +483,38 @@ notes/adr/*.md | grep -v README | wc -l`, not arithmetic.
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 User-path citations go marker-only, full user path, gate hardened; `:mllp` sink abandoned — three author rulings execute: the append-in-place form ADR-0101 landed is superseded (visible `ADR-NNNN` token drops everywhere, marker alone remains), scope widens to the 12 origin-qualified citations ADR-0101 left untouched (first-time footnotes into the frozen `sim`/`tools` pre-merge indexes, distinctly-named markers), and the `:mllp` sink is abandoned for now; a re-derived inventory finds zero deltas against ADR-0101's own count; the gate gains a third check (no visible `ADR-NNNN` token in prose, fences and definition lines exempted) proven red on the pre-conversion tree (12 files) then green; eleven sentences reworded where the citation was grammatically load-bearing, every one listed before/after; the two `glossary.md` citation-accuracy anomalies ADR-0101 disclosed are closed (their footnotes now target the tools index they actually describe); a three-place mllp-language inventory is disclosed, only the help-text overclaim corrected, the design doc and ADR-0014 left standing as written; the oracle holds pure identity across all 34 roots
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0102 (user-path citations go marker-only, full user path,
+gate hardened; `:mllp` sink abandoned; rulings taken this session's own
+driving prompt, author-ruled 2026-08-10, the session's own day)
+
+- **`:mllp` sink, abandoned for now** [A, ruled 2026-08-10, author
+  verbatim: "Let's abandon `:mllp` for now."]: no transport work, no
+  amendment to `docs/dev/source-sink-design.md` (its D2/D3 stand as
+  written and governing). `notes/adr/0014-corpus-player.md`'s own
+  "future `:mllp` sink" deferral language (repeated in its 2026-07-30
+  fulfillment note's own list of what "remain[s] exactly as deferred
+  here") is RULED SUPERSEDED IN PART by this entry — the sink is
+  abandoned, not merely still-deferred — without editing that frozen
+  record itself (frozen-archives discipline). `bases/cli/src/ehrt/cli/
+  help.clj`'s `play --sink` doc line, the one place actually claiming
+  `mllp:` was "recognized but deferred," is corrected (ADR-0102) to
+  name only `dir:`/`blaze:`.
+- **Footnote form, marker-only** [A, ruled 2026-08-10, author verbatim:
+  "For footnotes, do b, marker-only form. I don't want ADRs cluttering
+  user-facing prose."]: supersedes ADR-0101's own append-in-place
+  convention (visible `ADR-NNNN` token immediately followed by its
+  marker) — every footnoted citation site in the user path now drops
+  the visible token; the marker alone remains, standing law for any
+  future citation this workspace footnotes.
+- **Footnote scope, full user path** [A, ruled 2026-08-10, author
+  verbatim "a," in answer to whether the origin-qualified citations
+  footnote too]: ADR-0101's own bare-only scope widens permanently —
+  an origin-qualified citation (`sim/ADR-NNNN`, `tools/ADR-NNNN`) in
+  the user path footnotes exactly like a bare one, targeting the
+  frozen pre-merge index (`notes/sim/ADRs.md`, `notes/tools/ADRs.md`)
+  it actually names, under a distinctly-named marker
+  (`[^sim-adr-NNNN]`/`[^tools-adr-NNNN]`) so it never collides with a
+  same-numbered current-workspace record's own marker.

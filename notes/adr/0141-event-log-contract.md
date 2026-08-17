@@ -216,3 +216,40 @@ correct behaviour on evidence.
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 The ground-truth event log becomes a contract: the event vocabulary and per-kind key population derived FROM THE TREE by the co-landed `bin/event-census` (21 `{:event ...}` construction sites reconciled exactly against **4,997 events across eleven corpora**; the two demo scenarios alone reach only 17, so four further corpora exist because a census stopping there would have declared four kinds unreachable and one live consumer read dead), landing `ehrt.sim-engine.event-schema/Event` as a closed 21-branch multi-schema; author rulings **Q-A (a)** (public, VERSIONED — `:event-schema-version` in every manifest, additive change non-breaking, non-additive change bump-enforced by a test against a FROZEN baseline, since one artifact regenerated in the same commit could only confirm the schema agrees with itself) and **Q-B (a)** (malli source of truth ALSO exported as self-contained EDN, every reference inlined, with a parity test); landed RED-FIRST — the schema shipped one kind short to witness the coverage assertion bite (`produced but not declared: (:care-plan-end)`) before completing to green; both emitters and `sim-check` now validate their own INPUT against the contract in TESTS ONLY (zero runtime cost), and `sim-emit-fhir` turned out to read exactly one raw key, making `evolve` its real contract surface; `docs/formats.md` gains a GENERATED event-log section rendered from the published artifacts rather than the namespace, led — per ruling — by the nested-`:event` collision warning, itself derived from `PreHorizonFact`'s own enum; `docs/use-cases/custom-emitter-from-the-event-log.md` ships with `bin/example-custom-emitter` (depending on nothing in this repo, which is the demonstration) and an exerciser registered from birth (R-F8 by construction); four findings came from RUNNING rather than reading — the EDN export was not readable EDN (`#"..."` regex literals, now `[:re "<pattern>"]`, dialect `java.util.regex` stated per author instruction), `--format ground-truth --json` emits EDN not JSON, a "byte-identical" claim this session wrote was false by one trailing newline and is corrected precisely, and the R-F5 fence class was reintroduced and caught by executing the new page's own strip; the event log's SHAPE is unchanged (zero `decide`/`evolve`, zero emitter production, vendored bytes verbatim), every shape defect being a register row per ruling
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0141 — the event-log contract arc (2026-08-16)
+
+- **Charter, author verbatim:** *"Ok, add it, and make EDN be primary.
+  JSON can be derived later. This will be a priority after the immediate
+  review is done."*
+- **Ordering, author verbatim:** *"Choose a."* — the event-log contract
+  arc runs BEFORE latency realism, so that arc lands against a pinned
+  contract.
+- **Q-A — stability tier: RULED (a), public and versioned.** The schema
+  carries a version; the run manifest gains `:event-schema-version`; a
+  deprecation policy is stated in `docs/formats.md` (a key or kind is
+  marked deprecated for one minor before removal; additive change is
+  non-breaking); the schema's own test enforces that a bump accompanies
+  any non-additive diff against the committed contract.
+- **Q-B — artifact shape: RULED (a).** Malli schema in `sim-engine` as
+  the source of truth, AND a committed EDN export with a parity test, so
+  the contract is data a non-Clojure consumer can read and JSON is later
+  a projection of that EDN.
+- **Nested-`:event` collision, author verbatim:** *"describe in schema
+  (separate fact schemas) and lead the formats.md prose with the
+  warning; no rename this arc."*
+- **Shape defects, author verbatim:** *"S-1..S-5 and the Z-segment
+  asymmetry stay register rows."* Carried to the roadmap; S-3 was
+  withdrawn as correct behaviour on fresh evidence, and S-6 (`:units`
+  vs `:unit`) was found during Step 2 and joined the same set.
+- **Fence widening, author-licensed:** *"Promote the tabulator to
+  bin/event-census, author-licensed fence widening."*
+- **Step-2 acceptance, verified from a fresh clone, author verbatim:**
+  *"Two-artifact gate stands; the ObservationEntry export is accepted
+  as-is."*
+- **Added beyond the original ruling, author instruction:** *"the [:re
+  …] pattern dialect is java.util.regex"* — stated in `docs/formats.md`
+  because a consumer validating in another language is being handed a
+  specific regex flavour.

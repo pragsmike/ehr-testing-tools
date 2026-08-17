@@ -334,3 +334,33 @@ None. Every step executed as the driving prompt specified.
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Latency realism: the second clock in the emitter seam — the author's own "I like a. go" ruling executes option (a), the extension point ADR-0108 named: two new pure functions in `ehrt.sim-emit-hl7.emit-hl7` (`plan-latency`, fixed-RNG-consumption per ground-truth event, the same law `assign-pathway`/`assign-module` establish; `emit-wire`, no RNG at all, sorts messages by transmit time), a `LatencyProfile` schema in `ehrt.sim-model.config`, and an optional `:latency` opt threaded through `ehrt.sim.run` the same emit-only treatment `:site-profile` already gets; a field audit of every timestamp-bearing segment builder finds exactly two rendered fields — MSH-7 (message/transmit time, now shiftable) and EVN-2 (event/clinical time, unshifted) — every other HL7v2 clinical-time candidate (PV1-44/45, ORC-9, OBR-7, OBX-14) simply isn't rendered by this project's emitter at all; plain `emit`'s own output stays byte-frozen, proven both by a 100-trial identity property and the oracle bracket (`IDENTICAL` across all 35 roots); a disorder probe folds a wire-reordered lagged-admission stream through `fold-message` and finds it produces an internally inconsistent reconstructed state (`:status :admitted` alongside a non-nil `:discharged-at`) — disclosed as a finding, `fold-message` itself left untouched, exactly the downstream-receiver behavior this arc exists to expose; FHIR-side latency and late-amendment/A08 events both named as deferrals with their own revisit triggers; the roadmap's downstream-latency-realism row moves from "awaiting design pass" to "mechanism landed, demo half remains"
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0109 (latency realism: the second clock; ruled 2026-08-11)
+
+- **The seam ruling** [A, ruled 2026-08-11, author verbatim "I like a.
+  go."]: the design channel offered option (a) -- the second clock
+  lives in the emitter seam, `GT × LatencyParams → TimedWire`, keeping
+  ground truth pure -- against the extension point ADR-0108's own
+  section 5 already named. Executed as two pure functions in
+  `ehrt.sim-emit-hl7.emit-hl7` (`plan-latency`, `emit-wire`), a
+  `LatencyProfile` schema in `ehrt.sim-model.config`, and an optional
+  `:latency` opt threaded through `ehrt.sim.run` the same emit-only,
+  never-reaches-`engine/run` way `:site-profile` already is. Plain
+  `emit`'s own output stays byte-frozen (the oracle bracket and the
+  identity property test are the dual witnesses).
+- **The chartering direction, restated (standing since ADR-0107)**
+  [A]: *"lab results take time to come back, providers take time to
+  log things in the EHR... we need to supply [downstream receivers]
+  with such cases"* -- their handling is not this workspace's problem
+  to solve, per the same ruling's own next sentence, restated verbatim
+  in ADR-0107's own rulings entry.
+- **The field-audit classifications, this session's own** [C,
+  driving-prompt-directed, verify-then-act]: MSH-7 is message/transmit
+  time; EVN-2 is event/clinical time; every other HL7v2 clinical-time
+  candidate field this project's standard would name (PV1-44/45,
+  ORC-9, OBR-7, OBX-14) is simply not rendered by this project's
+  emitter at all, found by direct inspection of every segment
+  builder's own parameter list, recorded in `notes/adr/0109-*.md`'s
+  own audit table.

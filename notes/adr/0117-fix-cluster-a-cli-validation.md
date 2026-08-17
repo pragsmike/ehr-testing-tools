@@ -406,3 +406,25 @@ to any verb. No file outside this list was touched.
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Fix cluster A: CLI validation and error quality — lands all eight members review-3 chartered (ADR-0115), three commits, red-before-green per fix: `ehrt check` now requires DIR to exist and be non-empty (`:missing-required-opt`/`:invalid-target`, exit 2 — R3-B2-1, the register's own HIGHEST-PRIORITY finding); a `babashka.cli` coercion failure (`--seed abc`) no longer leaks the library's own name and a file:line at the wrong exit code, caught at a new `safe-parse` boundary and translated to `:invalid-flag-value` (R3-B2-2); `corpus intake --out` is now required rather than crashing with a raw `NullPointerException`, ruled require-not-derive (R3-B2-3 + R3-B4-1); every "required flag missing" case across `corpus batch`/`gate v2-nist`/`corpus mutate` is unified onto the shared `:missing-required-opt` shape at exit 2, retiring three verb-specific categories (R3-B1-5); a `synthea:`/`sim:`-scoped flag given to the wrong `corpus generate` source is now rejected by name, ruled reject-not-warn (R3-B1-3); `ehrt help <unknown-group>` now gives the same named error `ehrt <unknown-group>` itself already gave (R3-B2-5 + R3-B3-3); `gate fhir`'s `--out-dir` is renamed `--scratch-dir`, no back-compat alias, per ADR-0115's own RQ1 ruling — sweep census found zero live doc surfaces citing it explicitly (R3-B1-1); `corpus generate`'s `--seed` doc string states the two-tier front-door/engine-tier design explicitly, per ADR-0115's own RQ2 ruling, also closing the gap ADR-0116 disclosed but left open on this same row (R3-B1-4); zero judge/check component internals touched, zero engine/sim `src` touched, the oracle holds pure identity across all 35 roots
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0117 (fix cluster A: CLI validation and error quality;
+executed 2026-08-12)
+
+- **F3's require-not-derive [C, channel-inferred, un-vetoed]**:
+  `corpus intake --out` is required, not derived, unlike its sibling
+  derived-out-dir verbs (`corpus generate`/`mutate`/`batch`, D12's own
+  pattern). A derived path here would have folded `--received`'s own
+  wall-clock default (RQ3's own class exemption, ADR-0115) into a
+  filesystem name, quietly unreproducible -- requiring is honest.
+  Applies to any future flag whose only sensible derivation would
+  route through a non-deterministic input; the author may strike or
+  correct this reading.
+- **F5's reject-not-warn [C, channel-inferred, un-vetoed]**: a
+  `synthea:`-scoped flag given while generating `sim` (or vice versa)
+  is rejected (`:flag-source-mismatch`, exit 2), not merely warned
+  about -- consistent with this cluster's own strict-validation
+  direction (F1/F2/F3/F4/F6 all reject rather than degrade). Applies to
+  any future source-scoped or mode-scoped flag mismatch this workspace
+  adds; the author may strike or correct this reading.

@@ -250,3 +250,75 @@ The `.agents/plans/roadmap.md` row this ADR owns, as it stood at `deb9a33` befor
   contributor (human or agent), deferred library-consumer stub -- and
   that document's own "Seven segments" header gets corrected in the
   same edit. Ruled 2026-08-12; execution deferred to a later session.
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0113 (sim palgebra unification, and the manual-arc rulings
+recorded; ruled 2026-08-12)
+
+- **R1, the "user manual" naming ruling** [A, ruled 2026-08-12, author
+  verbatim]: *"Let's use the name 'user manual' for the user docs for
+  ehr-testing-tools. I've been informally calling it the 'user guide'
+  but that's too easy to confuse with the more general EHR Testing
+  Guide that's in ehr-testing-guide repo."* Standing name going
+  forward for this workspace's own user docs; every prior verbatim
+  quote of the author's own past "user guide" phrasing stays unchanged
+  as spoken, never retroactively edited.
+- **R2, the manual's shape** [A, ruling on channel proposal, author
+  "Q1 a. Q2 a. Q3 a."]: chaptered `docs/manual/` as the narrative layer
+  over this workspace's own existing references, never duplicating
+  them; ed-tuesday (`demos/scenarios/ed-tuesday/`) as the manual's one
+  running scenario throughout; the repo-wide "user guide" -> "user
+  manual" naming-token rename sweep rides on the first manual session,
+  not executed piecemeal before it (see `.agents/plans/roadmap.md`'s
+  User manual design pass row for the narrower, in-session correction
+  this ADR itself makes to `.agents/rulings.md`'s and
+  `.agents/plans/roadmap.md`'s own live prose, which is not that
+  sweep).
+- **R3, demos must be exercised as documented** [A, ruled 2026-08-12,
+  author verbatim]: *"The demos must be known to work, and exercised
+  as documented to make sure they actually play out as written."*
+  Mechanism ruled [A, ruling on channel proposal, author "Q2 a"]: a
+  demo exerciser generalized from the quickstart pattern (`make
+  quickstart` / `quickstart-fresh`), integration-tier, running each
+  scenario README's own fenced commands in order and asserting exit
+  codes plus each demo's own named invariants.
+- **R4, the audience register pares to five segments** [A, ruling on
+  channel proposal, author "Q1 a"]: the audience register pares to
+  five behavioral segments -- practitioner (agent-assistance absorbed
+  as a global style constraint, evaluation as its own front matter),
+  guide reader, data consumer, contributor (human or agent), deferred
+  library-consumer stub -- and `docs/dev/AUDIENCES.md`'s own "Seven
+  segments" header is corrected in the same edit. Executed by a later
+  session; recorded now, not built this session.
+- **R5, the sequence** [A, ruled 2026-08-12, author verbatim]: *"Should
+  we run a repo review before we start on the manual? It might lead to
+  tweaks to the CLI."* Sequence ruled [A, ruling on channel proposal,
+  author "Q3 a"]: review-3, scoped as a USER-SURFACE review (verb/flag
+  consistency, error-message quality, help surface, enumerable-options
+  family, derived-out-dir conventions) -> CLI tweak sessions from its
+  findings -> the user manual design pass (chapter outline plus the
+  naming rider, landed as an ADR) -> chapter sessions, with the demo
+  exerciser (R3) co-landed with the first chapter citing a demo -> a
+  manual-review skill (scoring rubric, run periodically) built at arc
+  close. The manual-review skill itself was raised by the author
+  verbatim [A]: *"Should we devise a manual-review skill, with scoring
+  rubric, so we can run it periodically as we evolve the codebase and
+  manual?"*
+- **R6, diagrams** [A, ruled 2026-08-12, author verbatim]: *"Diagrams
+  are valuable here."* Doctrine [C, un-vetoed]: manual diagrams derive
+  from data (`pipeline.edn`, the palgebra unification doc) wherever
+  derivable, committed as SVG with source, so they cannot drift from
+  what they depict.
+- **R7, palgebra placement** [A, ruled 2026-08-12, author verbatim]:
+  *"Did we ever write down the palgebra treatment of the simulator
+  mechanics? That was in another conversation, and it should be in the
+  manual or design docs."* Placement ruled [A, ruling on channel
+  proposal, author "Q1 a. Q2 a."]: the formal unification extends
+  `docs/dev/simulator-architecture.md` §4, citing
+  `components/corpus/docs/palgebra-design.md` and
+  `components/sim-trajectory/docs/trajectory-computation.md` both
+  ways; landed as one doc session (this session), parallel with
+  review-3 (R5); the manual's own sim chapters get the accessible
+  rendering (the two-spaces story, the founding thesis as organizing
+  idea, derived diagrams) with the formalism linked, not taught.

@@ -230,3 +230,42 @@ file outside the list above was touched.
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Review-3's rulings land: three questions, three clusters chartered — the author's own verbatim "Q1 a. Q2 a. Q3 a." ruling resolves review-3's three `ruling-needed` rows (R3-B1-1 `--out-dir`'s double meaning, rename chartered to fix cluster A; R3-B1-4 `--seed`'s required-vs-defaulted split, ruled deliberate two-tier design, a help note chartered to fix cluster A; R3-B1-7 `--received`'s wall-clock default, ruled a class exemption for provenance metadata about a real-world act, closed by ruling); the register's twelve `fix-session-candidate` rows charter into three fix clusters on the roadmap (A — CLI validation and error quality, 8 members including the register's own HIGHEST-PRIORITY finding R3-B2-1; B — help-surface enrichment, 2 members; C — doc drift and gate scan-roots, 2 members, docs-only) plus a design-channel-draft queue note; the summary table's own note wrongly claiming a cross-referencing row is "marked '(x-ref)'" is corrected to the actual "(see ...)" citation marker, counts independently recounted and unaffected; one gate-forced companion edit, `.agents/reading-sets.edn`'s `:onboarding` budget re-baselined 1705→1995 under the file's own standing formula after the cluster charter grew `roadmap.md` past its budget; zero `src`/`test`/`docs` change anywhere, the oracle holds pure identity across all 35 roots
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0115 (review-3 rulings landing; ruled 2026-08-12)
+
+The design channel framed three questions from review-3's own
+`ruling-needed` register rows
+(`.agents/plans/2026-08-12-review-3-user-surface-findings.md`); the
+author ruled, verbatim, 2026-08-12: *"Q1 a. Q2 a. Q3 a."*
+
+- **RQ1, `--out-dir`'s double meaning** (R3-B1-1) [A, ruling on channel
+  proposal, author "Q1 a"]: options were (a) rename `gate fhir`'s flag
+  to `--scratch-dir` so `--out-dir` means one thing repo-wide (a
+  protected artifact, collision-refused); (b) keep both, document the
+  difference; (c) make `gate fhir`'s protected too. RULED (a).
+  Concrete: the rename is chartered to fix cluster A
+  (`.agents/plans/roadmap.md`); until it lands, `--out-dir`'s canonical
+  meaning is `corpus generate`'s (protected artifact).
+- **RQ2, `--seed`'s required-vs-defaulted split** (R3-B1-4) [A, ruling
+  on channel proposal, author "Q2 a"]: options were (a) ruled
+  deliberate -- `corpus generate` is the ergonomic front door
+  (defaults), `sim run`/`sim identifiers` are the strict engine tier
+  (require) -- recorded, plus a one-line help note naming the tiering;
+  (b) default everywhere; (c) require everywhere. RULED (a). Concrete:
+  the split is design, not drift; the help note is chartered to fix
+  cluster A (small); future front-door/engine flag decisions cite this
+  ruling.
+- **RQ3, `--received`'s wall-clock default, precedent-setting**
+  (R3-B1-7) [A, ruling on channel proposal, author "Q3 a"]: question --
+  is provenance metadata about a real-world act (the class `corpus
+  intake`'s catalog record exemplifies) inside or outside the
+  determinism law? Options: (a) outside -- a foreign corpus's arrival
+  date is genuinely wall-clock provenance; the default stands and the
+  CLASS EXEMPTION is recorded so future provenance-of-real-world-acts
+  flags cite it rather than re-litigate; (b) inside -- require the
+  flag, no wall-clock defaults anywhere. RULED (a). Concrete: the
+  exemption's scope is exactly "provenance metadata recording a
+  real-world act"; anything generating or transforming corpus CONTENT
+  remains fully inside the determinism law.

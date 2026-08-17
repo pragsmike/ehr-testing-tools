@@ -216,3 +216,40 @@ The `.agents/plans/roadmap.md` row this ADR owns, as it stood at `deb9a33` befor
   notes on request, grounded in the ADR-0111 demo's witnessed run
   (`demos/scenarios/ed-tuesday/README.md` "Batched delivery"); the
   guide itself lives outside this workspace, per `AGENTS.md`.
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0112 (batch-straddle recording: use case, rulings, and the
+user-manual opening; ruled 2026-08-11)
+
+- **Batch-straddle documentation placements** [A, ruled 2026-08-11,
+  author verbatim: *"We need to add this batch-boundary-straddling
+  encounter message scenario to the documentation. Should it be a use
+  case? It should be a demo, and featured prominently in the tool user
+  guide, and in the more general EHR testing guide as it's something
+  that happens in the real world and can trip up the unaware."*] and
+  [author verbatim: *"ok, but this session is getting old. Let's put
+  that in the next session to record in the repo, and in the
+  continuity prompt."*]: the batch-boundary-straddling encounter
+  scenario gets three documentation placements -- (a) a demo (landed,
+  ADR-0111, `demos/scenarios/ed-tuesday/README.md` "Batched
+  delivery"); (b) featured prominently in the tool-specific user manual
+  (opened this session, see the roadmap row); (c) a treatment in the
+  general EHR Testing Guide (Ch 24 "completeness illusion" section --
+  the author's own queue, the guide is permanently outside this
+  workspace per `AGENTS.md`). The use case landed this session
+  (ADR-0112) executes the "Should it be a use case?" half of the
+  ruling in the affirmative, per the sequence the author accepted.
+- **User-manual trigger read** [C, channel-read, recorded honestly for
+  author correction at a glance]: the channel read the author's
+  "featured prominently in the tool user guide" plus the subsequent
+  "ok" (accepting the channel's proposed recording sequence) as
+  RATIFYING the user-manual trigger -- this workspace's own `--board`
+  accepted as the downstream-receiver stand-in the trigger's language
+  anticipated (both trigger conditions met, ADR-0110) -- and as
+  OPENING the tool-specific user-manual work. The author did not veto
+  this reading when it was stated explicitly in the same exchange.
+  Provenance is channel-read, not author-verbatim; the author may
+  strike or correct it. Renamed "user manual" (ADR-0113, R1) -- the
+  quoted fragment above is the author's own prior, literal words and
+  stays unchanged as spoken.

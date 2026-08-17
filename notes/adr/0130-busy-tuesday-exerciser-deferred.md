@@ -525,3 +525,47 @@ defect — it did exactly what it was built to do.
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Busy-tuesday exerciser: marker widening landed, row deferred on a real slug EDN round-trip defect — tags `stable-20260813-strip-executability` at `3b30aba` (ADR-0129's own close, CI-verified via `bin/preflight`'s last-five-runs check per this session's own conditional license); TWO in-session STOP-AND-REPORTs, both ruled. First: the row's own "without any code change, only data" charter did NOT hold -- `ehrt.docs-tooling.demo-exerciser-fresh`'s own script-side marker text was hardwired to ed-tuesday literally (verified empirically, not just read), and `:single-fence` only captures a doc's FIRST matching fence, short of busy-tuesday's own three separate `` ```bash `` fences -- ruled (a): widen the fence to a minimal, backward-compatible `marker-open`/`marker-close` parameterization, landed with red-before-green proof via disposable-stash isolation in both `demo-exerciser-fresh-test` and `strip-fresh-test` (the isolation itself catching a live demonstration of polylith's own abort-on-first-exception behavior); forced a second, one-line test-correctness fix in `citation-gate-test` (a pre-session-register simulation's own extraction-kind filter, now retargeted to script name). Second: the drafted (then reverted) busy-tuesday row/script's own real end-to-end run reproduced the seed-20260807 determinism contract exactly (`:emitted 68, :snapshot-count 48, :skip-count 41`, zero inpatients throughout) on commands 1-2, then hit a genuine, previously-undisclosed defect on command 3 -- `ehrt.sim-trajectory.gmf/slug` never sanitizes commas out of raw upstream Synthea state names before constructing a keyword (`uti/abx_tx.json`'s own `"Cipro 500, 5 day"` -> `:cipro-500,-5-day`), producing a keyword that `pr-str`s fine but is not re-readable EDN, breaking `ehrt play events.edn`'s own read-back -- an emit-composed-with-read identity law this project's own compiled keywords otherwise satisfy, violated for this specimen. Ruled (b), reduced close: land the marker widening, the citation-gate fix, and the skill sentence (checkpoint-commit practice, ADR-0129's own discovered practice, now written into `build-session/SKILL.md` + `.claude/` mirror); revert the busy-tuesday register row/script/Makefile line and the register count-lock (7, unchanged) -- the design is fully preserved in this record's own Appendix; close this ADR partial-with-open-rows per the ADR-0125 precedent, with two new roadmap Next-section rows (the slug fix itself, chartered as an `:sim`-family engine session with a mandatory declared-oracle-change assessment; scenario rename + exerciser completion, sequenced after it, the scenario's own future name left open for the author). Zero `demos/` README edits, zero `sim-trajectory`/module-content edits -- the oracle holds pure identity across all 35 roots
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0130 (busy-tuesday exerciser: marker widening landed, row
+deferred on a real slug EDN round-trip defect; ruled 2026-08-14, both
+rulings restated verbatim from this session's own chat exchange)
+
+- **Register inexpressibility, ruled (a)** [A, 2026-08-14, "Ruled (a):
+  fence widened to the minimal parameterization exactly as you
+  proposed — marker-open/marker-close params with ed-tuesday defaults,
+  strip-fresh passes register keys through, existing ed-tuesday
+  row/script/tests byte-unmodified and green, red-before-green on the
+  new path. Correct the roadmap row's 'only data' claim in place in
+  Step 2, dated, citing ADR-0130. Resume."]: executed exactly as
+  ruled — `ehrt.docs-tooling.demo-exerciser-fresh`'s own `script-
+  command-lines`/`check` widened to an explicit `marker-open`/
+  `marker-close` pair (ed-tuesday's own literal markers as the
+  default), `ehrt.docs-tooling.strip-fresh`'s own `:demo-exerciser-
+  fresh` case in `check-entry` now passes a register row's own markers
+  through; red-before-green proven via disposable-stash isolation,
+  both `demo-exerciser-fresh-test` and `strip-fresh-test`; the
+  roadmap's own "Demo exerciser (busy-tuesday)" row corrected in place
+  with a dated 2026-08-14 note, citing ADR-0130.
+- **Slug defect, ruled (b), reduced close** [A, 2026-08-14, "Ruled (b),
+  reduced close: land Checkpoint A (parameterization + both test
+  namespaces), the citation-gate filter retarget, the skill sentence,
+  and the dated roadmap correction. Revert the exercised-sources
+  count-lock to 7 and do NOT land the busy-tuesday register row,
+  script, or Makefile line — the design is preserved in this prompt's
+  archive and the ADR. Close ADR-0130 as partial-with-open-rows per
+  the ADR-0125 precedent: full slug-defect disclosure (root cause, the
+  :cipro-500,-5-day specimen, the emit ⨟ read = id framing), plus two
+  roadmap rows: (1) slug EDN-round-trip fix — engine session,
+  red-before-green property test, mandatory declared-oracle-change
+  assessment; (2) scenario rename + exerciser completion, sequenced
+  after (1), name slot open for author ruling. Everything else per the
+  original Step 2."]: executed exactly as ruled — the busy-tuesday
+  register row, drafted script, and Makefile line all reverted to
+  byte-identity with `HEAD`, the count-lock reverted to 7; ADR-0130
+  closed partial-with-open-rows, full disclosure landed in
+  `notes/adr/0130-*.md` (including the drafted script's own full text,
+  preserved verbatim in that record's Appendix for direct recovery);
+  two new `.agents/plans/roadmap.md` Next-section rows chartered as
+  ruled.

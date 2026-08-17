@@ -265,3 +265,67 @@ prompt's own review discipline).
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 User manual S5: chapter 8, the manual-review skill, arc close — lands Chapter 8 (`docs/manual/08-your-own-data.md`: cataloging a corpus you didn't generate via `ehrt corpus intake`, content hashes and lineage, the `--received` real-world-provenance field taught plainly with no ruling citation in the prose itself; checking against expectations via `ehrt check`, golden equivalence witnessed against a freshly generated Synthea corpus plus the per-file assertion vocabulary by reference; `--baseline` mode on the gates; closing pointers into `formats.md`/`locators.md` for the data-consumer path) marking the eight-chapter manual complete, `00-front.md` updated to state so and name the currency commit; the `manual-review` skill (`.agents/skills/manual-review/SKILL.md` + `.claude/` mirror, chartered ADR-0113 R5) lands with its own first scored run against the finished manual, eight dimensions each graded pass/warn/fail with `file:line` evidence -- **overall verdict FAIL**, two dimensions failing on real, repeat-pattern evidence (strip executability: Chapters 6-8 cite `docs/use-cases/*.md` pages or README's own second, uncovered fence, neither exerciser- nor Quickstart-covered; glossary linkage: only Chapters 2 and 8 link `docs/glossary.md` on first use, Chapter 3's own "Pathway"/"script space"/"truth space" -- the exact colliding-meaning terms the glossary calls this workspace's most common misreading -- carry zero link anywhere); per the driving prompt's own gate and the skill's own review discipline (findings are register rows, never fixes), this session STOPPED after landing the report and asked the author how to proceed -- ruled: close the arc now, both findings land as open backlog rows, no chapter edited; also repays an undisclosed ADR-0124 deviation (Step 0's own tag ceremony skipped, found by this session's channel verification, not disclosed there) with a tag at that session's own predecessor point plus its own close point, both ANNOTATED and peeled-ref-verified; charters a citation errata sweep (the ADR-0124-disclosed bare `ADR-0010` drift, author-ruled "a, go") and reschedules the ceremony-scripts row to run after it; zero `src`/`test`/`demos` touched anywhere, zero edits to Chapters 1-7, the oracle holds pure identity across all 35 roots
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0125 (user manual S5: chapter 8, the manual-review skill,
+arc close; ruled 2026-08-13)
+
+- **Tag ceremony, both licenses recorded [C, per this session's own
+  driving prompt]:** `stable-20260813-invariant-fix` (ANNOTATED, at
+  `da72533`, case (i): the ADR-0123 verification, channel, 2026-08-13,
+  plus CI long since green) repays ADR-0124's own skipped Step 0 tag
+  ceremony — see the deviation record below.
+  `stable-20260813-manual-s4` (ANNOTATED, at `a453fe1`, case (i):
+  channel fresh-clone verification 2026-08-13, lineage/ASCII x3/zero
+  `src`, CI per this session's own preflight) covers ADR-0124's own
+  close point, the tag its own session should have created for itself.
+  Both pushed, both peeled refs confirmed exact.
+- **The S4 deviation record [C, channel-found, owned to the S4
+  session]:** ADR-0124 (manual S4, 2026-08-13) never created a
+  `stable-*` tag at its own Step 0, an undisclosed deviation from the
+  standing tag law (`notes/ADRs.md` ADR-0057 AR-T-1, restated
+  `AGENTS.md` — "deferring a licensed tag is now the deviation and
+  needs a disclosed reason") — `notes/adr/0124-manual-s4-mutate-and-
+  gate.md`'s own "Tag ceremony" section records checking CI and the
+  lineage premise, but no tag creation follows, and no deviation is
+  disclosed anywhere in that file. Found by this session's own channel
+  verification of the ADR-0124 record against the live tag list
+  (`git tag -l`), 2026-08-13. Repaid, not merely noted: this session
+  creates the tag S4 should have created for its own predecessor point
+  (`da72533`, case (i) per the license above) as well as its own.
+- **The review-1 verdict [A, this session's own STOP-AND-REPORT,
+  ruled 2026-08-13]:** the `manual-review` skill's own first scored run
+  (`.agents/plans/2026-08-13-manual-review-1.md`) came back **FAIL**
+  overall — dimension 1 (strip executability) and dimension 4 (glossary
+  linkage) both fail on real, repeat-pattern evidence across multiple
+  chapters, quoted in full in that report and in the roadmap's own
+  "User manual design pass" entry. Per the driving prompt's own gate
+  ("a fail-grade finding STOPs for a ruling before arc close is
+  declared") and this skill's own review discipline, the session
+  stopped after landing the report and asked the author how to
+  proceed. The author ruled: close the arc now, land both findings as
+  open backlog rows for a future fix session — no chapter edited, no
+  mechanism widened, this session. Recorded here as the disposition
+  this session actually took; the roadmap's own two new rows are the
+  findings themselves.
+- **The citation errata sweep charter [A, ruled 2026-08-13, author
+  verbatim "a, go"]:** the design channel proposed chartering a future
+  docs-only session to origin-qualify the bare, pre-existing `ADR-0010`
+  citation drift ADR-0124 disclosed (a repo-wide misattribution — the
+  real `notes/adr/0010-documentation-doctrine.md` does not discuss
+  verdicts — used throughout `docs/judge-calibration.md`,
+  `docs/formats.md`, `docs/glossary.md`, every `docs/use-cases/*.md`
+  gate page, `components/judge/` sources/tests, and confirmed this
+  session in `docs/manual/07-judging.md`), per the `ADR-0099` rule form
+  (a scoped, whole-subtree, one-session sweep) and `notes/ADRs.md`'s own
+  fix-forward doctrine. The author ruled "a, go" — chartering the sweep
+  as proposed; not executed this session (docs/registers-only fence, and
+  the sweep is itself its own future session's work). The specific
+  multiple-choice question text this answer responds to was not
+  preserved verbatim into this session's own written context — this
+  entry records the ruling's own literal text and the charter it
+  produced, disclosed as a paraphrase of the question rather than a
+  transcript of it, the same disclosure class ADR-0111's own "mutation
+  as imperfect transport" entry used. Roadmap row: "Citation errata
+  sweep," Next section.

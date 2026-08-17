@@ -1,0 +1,505 @@
+# Reading-sets history — moved verbatim from `.agents/reading-sets.edn` (ADR-0145, 2026-08-17)
+
+`.agents/reading-sets.edn` was 531 lines of which 480 were comment: a 415-line
+header carrying a seed note, the composition principle, the ratchet, and NINETEEN
+dated per-session budget re-derivations, plus 65 lines of per-set rationale inside
+the map. That file's own header already said what these are — *"They stay as
+per-session provenance; they are history, not instructions"* — so ADR-0145 moved
+them here, verbatim, and capped what may live there at 20 comment lines
+(`ehrt.docs-tooling.reading-set-budget-test`).
+
+Nothing below is summarised or edited. A future budget re-derivation is recorded
+in its own compaction ADR and appended here, never back into the data file.
+
+## Header, moved verbatim (2026-08-17, ADR-0145)
+
+```clojure
+;; Reading sets (migration item 8, charter R-D, .agents/plans/2026-08-01-agent-ux-charter.md).
+;; Named path lists a cold session of a given task class should read before
+;; starting work, plus a `:budget-lines` integer -- `ehrt.docs-tooling.reading-
+;; set-budget-test` resolves every path (a missing file is red -- a reading set
+;; can't cite a ghost), sums real line counts, and fails any set that exceeds
+;; its own budget. Migration session 4 (2026-08-02) seeded every
+;; `:budget-lines` value to the exact measured actual of the set as composed
+;; that session -- zero headroom, by design, so day-one green proved the
+;; numbers were honest. Charter §6 deferred the real budget ruling to the
+;; author, after real sizes existed to rule against.
+;;
+;; Composition principle (AR-1): prefer omission. A path added here is a path
+;; every future session of that class is expected to read cold -- the budget
+;; test makes that cost visible and conscious forever after, so each entry
+;; below is justified, not just plausible. AGENTS.md is in every set (it is
+;; the entry point regardless of task class).
+;;
+;; Migration session 5 (2026-08-02, item 5, AR-3) added exactly one skill
+;; file to every set below: `.agents/skills/build-session/SKILL.md` -- the
+;; ceremony it encodes (WSL-only git, staging hygiene, commit-message-via-
+;; file, post-push verification) applies to a session of ANY task class, not
+;; a specific domain, so unlike the other skills it earns its way into every
+;; set rather than staying index-only. `session-prompt` is deliberately NOT
+;; a :paths entry anywhere -- it is for the design channel authoring a
+;; session's own prompt, a different audience than a task-class session
+;; reading cold to do the task itself; see its own mention in :onboarding's
+;; comments below. `capture-session`/`extraction-stage`/`errata-sweep` stay
+;; excluded from every set below, same reasoning as the other nine
+;; unqualified skills: none of the ten pre-existing skills indexed at
+;; `.agents/skills/README.md` were specific to corpus, sim, judge, or docs-
+;; tooling work (they are session-mechanics/meta skills: committee, handoff,
+;; probe, scenarios, etc.) -- so "the skills relevant to it" stays the empty
+;; set for all four task classes, honestly, not an omission.
+;;
+;; THE RATCHET (2026-08-16, compression arc session A, guard #3,
+;; `notes/adr/0143-adr-index-generated.md`). A budget below may not
+;; EXCEED the integer this set carries in `.agents/reading-sets-
+;; baseline.edn`; `ehrt.docs-tooling.reading-set-budget-test` fails the
+;; build if it does. A budget may always fall. So a session that runs
+;; out of headroom now has two moves -- compact the set's own paths back
+;; under the number, or STOP-AND-REPORT -- and no longer has the third
+;; one it had been taking. Only a COMPACTION ADR moves the baseline.
+;;
+;; This supersedes the 2026-08-05 re-baseline note that used to sit
+;; here, which is retired VERBATIM into ADR-0143's own record rather
+;; than deleted. That note is worth knowing about even so: it recorded
+;; that between migration session 4's zero-headroom seed and 2026-08-05
+;; every set's budget had been bumped in place, session by session,
+;; FOURTEEN times, and it replaced all fourteen with one formula. Its
+;; closing sentence -- "future growth resumes the same discipline this
+;; file always used: a session whose own edit pushes a set over its
+;; budget bumps that set's number" -- is the sentence the ratchet
+;; revokes, and the eleven dated re-derivations below it, 2026-08-05
+;; through 2026-08-16, are what taking it eleven more times looks like.
+;; They stay as per-session provenance; they are history, not
+;; instructions.
+;;
+;; The formula that note defined is KEPT, and is the only thing a
+;; compaction ADR uses when it sets a new baseline: each set's own
+;; measured actual line count, times 1.15, rounded up to the nearest 5.
+;;
+;; Re-derivation (2026-08-05, scaffolding compaction B, AR-B-4,
+;; `notes/ADRs.md` ADR-0046): `.agents/plans/roadmap.md`'s own Done
+;; history rotated out to dated attic files this session (AR-B-3),
+;; shrinking it from 1342 lines to 204 -- the one path in any set
+;; whose size this session's own edit changed. `:onboarding` is the
+;; only set that carries `roadmap.md`; re-applying AR-D-3's own
+;; formula (actual x1.15, rounded up to the nearest 5) drops its
+;; budget from 2405 to 1095. No other set carries `roadmap.md` or
+;; `notes/ADRs.md` (neither is `:paths` in `:corpus`/`:sim`/`:judge`/
+;; `:docs`), so no other budget below changes.
+;;
+;; Re-derivation (2026-08-05, alignment arc close, `notes/adr/
+;; 0055-alignment-arc-close.md` AR-AC-4): diffing every set's own
+;; `:paths` membership against `git log 89e327f..HEAD --name-only`
+;; (the alignment arc's own span) found five `:onboarding` members
+;; touched (`AGENTS.md`, the four `.agents/*/README.md` files) plus
+;; `.agents/plans/roadmap.md` itself, shrunk again this session by
+;; AR-AC-5's own Done-pointer rotation; no `:corpus`/`:sim`/`:judge`/
+;; `:docs` member path appears in that diff, so those four budgets are
+;; untouched. `:onboarding`'s fresh actual (`wc -l` sum across all
+;; eight `:paths`, matching this test's own `line-seq` count exactly):
+;; 275 (AGENTS.md) + 46 + 57 + 128 + 76 + 33 (the five READMEs) + 230
+;; (roadmap.md, post-rotation) + 162 (build-session/SKILL.md) = 1007.
+;; Re-applying the standing formula (actual x1.15, rounded up to the
+;; nearest 5): 1007 x 1.15 = 1158.05 -> 1160. Budget moves 1095 -> 1160.
+;;
+;; Re-derivation (2026-08-06, UX arc close, `notes/adr/
+;; 0064-ux-arc-close.md` AR-UC-4): diffing every set's own `:paths`
+;; membership against `git log 12d3aa3..HEAD --name-only` (12d3aa3 =
+;; the alignment arc's own closing commit, the base since which
+;; `state.md`/`reading-sets.edn` were last touched) found six
+;; `:onboarding` members touched this arc (`AGENTS.md`, ADR-0057's tag
+;; law; `.agents/plans/README.md`, `.agents/session-records/README.md`,
+;; `.agents/prompts/README.md` -- new session/ADR/prompt entries;
+;; `.agents/plans/roadmap.md` -- Now/Done churn across nine sessions,
+;; shrunk again this session by AR-UC-5's own Done-pointer rotation;
+;; `.agents/skills/build-session/SKILL.md` -- the tag-law sweep). No
+;; `:corpus`/`:sim`/`:judge`/`:docs` member path appears in that diff,
+;; so those four budgets stay untouched. `:onboarding`'s fresh actual
+;; (`wc -l` sum across all eight `:paths`, measured AFTER the rotation
+;; landed): 284 (AGENTS.md) + 49 + 57 + 137 + 85 + 33 (the five
+;; READMEs) + 228 (roadmap.md, post-rotation) + 172
+;; (build-session/SKILL.md) = 1045. Re-applying the standing formula
+;; (actual x1.15, rounded up to the nearest 5): 1045 x 1.15 = 1201.75
+;; -> 1205. Budget moves 1160 -> 1205.
+;;
+;; Re-derivation (2026-08-07, player arc close, `notes/adr/
+;; 0068-player-arc-close.md` AR-PC-4): diffing every set's own `:paths`
+;; membership against `git log 2e77096..HEAD --name-only` (2e77096 =
+;; the UX arc's own closing commit, the base since which `state.md`/
+;; `reading-sets.edn` were last touched) found two sets with a touched
+;; member: `:onboarding` (`.agents/plans/roadmap.md` -- Now/Done churn
+;; across the ux-epilogue/player-fold/player-board sessions, shrunk
+;; again this session by AR-PC-5's own Done-pointer rotation) and
+;; `:corpus` (`components/corpus/src/ehrt/corpus/interface.clj` -- the
+;; new `board-fold-event`/`board-render-snapshot` re-exports, player
+;; board, ADR-0067 AR-BB2-1). No `:sim`/`:judge`/`:docs` member path
+;; appears in that diff (the fold/board work touched `sim-emit-hl7`
+;; and `corpus`, neither carried by those three sets), so those three
+;; budgets stay untouched. `:onboarding`'s fresh actual (`wc -l` sum
+;; across all eight `:paths`, measured AFTER the rotation landed): 284
+;; (AGENTS.md) + 49 + 57 + 141 + 89 + 33 (the five READMEs) + 197
+;; (roadmap.md, post-rotation) + 172 (build-session/SKILL.md) = 1022.
+;; Re-applying the standing formula (actual x1.15, rounded up to the
+;; nearest 5): 1022 x 1.15 = 1175.3 -> 1180. Budget moves 1205 -> 1180
+;; (a DECREASE -- the rotation shrank roadmap.md faster than the arc's
+;; own churn grew it). `:corpus`'s fresh actual (`wc -l` sum across all
+;; seven `:paths`): 284 (AGENTS.md) + 150 (corpus/interface.clj,
+;; grown by the board re-exports) + 104 + 119 + 212 + 732 + 172
+;; (build-session/SKILL.md) = 1773. Re-applying the standing formula:
+;; 1773 x 1.15 = 2038.95 -> 2040. Budget moves 1995 -> 2040.
+;;
+;; Re-derivation (2026-08-07, vendoring arc close, `notes/adr/
+;; 0074-vendoring-arc-close.md` AR-VAC-4): diffing every set's own
+;; `:paths` membership against `git log b7ed686..HEAD --name-only`
+;; (b7ed686 = the player arc's own closing commit, the base since which
+;; `state.md`/`reading-sets.edn` were last touched) found one set with
+;; a touched member: `:onboarding` (`.agents/plans/roadmap.md` -- Now/
+;; Done churn across five vendoring-arc sessions, shrunk again this
+;; session by AR-VAC-5's own Done-pointer rotation; the five
+;; `.agents/*/README.md` files also grew, indexing those sessions' own
+;; records and prompts). No `:corpus`/`:sim`/`:judge`/`:docs` member
+;; path appears in that diff (the arc's own src/test edits touched
+;; `sim-trajectory`'s census tool and new gate/round-trip test files,
+;; none of them a `:paths` member of those four sets), so those four
+;; budgets stay untouched. `:onboarding`'s fresh actual (`wc -l` sum
+;; across all eight `:paths`, measured AFTER the rotation landed): 284
+;; (AGENTS.md) + 49 + 57 + 147 + 95 + 33 (the five READMEs) + 241
+;; (roadmap.md, post-rotation) + 172 (build-session/SKILL.md) = 1078.
+;; Re-applying the standing formula (actual x1.15, rounded up to the
+;; nearest 5): 1078 x 1.15 = 1239.7 -> 1240. Budget moves 1180 -> 1240
+;; (an increase -- five sessions' worth of index/Now/Done churn outpaced
+;; this close's own rotation, unlike the player close's own decrease).
+;;
+;; Re-derivation (2026-08-07/08, quality-review arc close, `notes/adr/
+;; 0080-quality-arc-close.md` AR-QC-4): diffing every set's own
+;; `:paths` membership against `git log cd6c56c..HEAD --name-only`
+;; (cd6c56c = the vendoring arc's own closing tip, the base since which
+;; `state.md`/`reading-sets.edn` were last touched) found `.agents/
+;; skills/build-session/SKILL.md` touched -- a member of EVERY set --
+;; twice this arc (ADR-0075 AR-CI-3's CI-check Step-0 line, ADR-0076
+;; AR-QR-3's five-run-deep widening), plus `:onboarding`'s own five
+;; `.agents/*/README.md` files and `.agents/plans/roadmap.md` (Now/Done
+;; churn across five quality-review-arc sessions, shrunk again this
+;; session by AR-QC-5's own Done-pointer rotation). All FIVE sets
+;; re-derived this close, the first time every set has moved in the
+;; same regeneration. Fresh actuals (`wc -l` sum across each set's own
+;; `:paths`, measured AFTER the rotation landed): `:onboarding` 284
+;; (AGENTS.md) + 50 + 60 + 153 + 101 + 33 (the five READMEs) + 247
+;; (roadmap.md, post-rotation) + 187 (build-session/SKILL.md) = 1115;
+;; `:corpus` 284 (AGENTS.md) + 150 (corpus/interface.clj) + 104
+;; (corpus-io/interface.clj) + 119 (pipeline.md) + 212 (notation.md) +
+;; 732 (source-sink-design.md) + 187 (build-session/SKILL.md) = 1788;
+;; `:sim` 284 + 47 (sim/interface.clj) + 85 (engine-onboarding.md) +
+;; 240 (components.md) + 187 = 843; `:judge` 284 + 48
+;; (judge/interface.clj) + 16 (judge-v2-hapi) + 18
+;; (judge-fhir-official) + 23 (judge-v2-nist) + 85 + 240 + 187 = 901;
+;; `:docs` 284 + 19 (docs-tooling/interface.clj) + 183
+;; (architecture.md) + 54 (docs/dev/README.md) + 187 = 727. Re-applying
+;; the standing formula (actual x1.15, rounded up to the nearest 5) to
+;; each: onboarding 1115 x 1.15 = 1282.25 -> 1285 (1240 -> 1285); corpus
+;; 1788 x 1.15 = 2056.2 -> 2060 (2040 -> 2060); sim 843 x 1.15 = 969.45
+;; -> 970 (915 -> 970); judge 901 x 1.15 = 1036.15 -> 1040 (980 -> 1040);
+;; docs 727 x 1.15 = 836.05 -> 840 (775 -> 840). Every budget increases
+;; -- the shared `build-session/SKILL.md` growth alone accounts for the
+;; `:sim`/`:judge`/`:docs` moves (each carries no other touched path).
+;;
+;; Re-derivation (2026-08-08, fidelity arc close, `notes/adr/
+;; 0084-fidelity-arc-close.md` AR-FC-4): diffing every set's own
+;; `:paths` membership against `git log 42cd1e0..HEAD --name-only`
+;; (42cd1e0 = the quality-review arc's own closing tip, the base since
+;; which `state.md`/`reading-sets.edn` were last touched) found four
+;; `:onboarding` members touched (`.agents/plans/roadmap.md` -- Now/Done
+;; churn across three fidelity-arc sessions plus this close's own
+;; rotation; `.agents/plans/README.md`, `.agents/prompts/README.md`,
+;; `.agents/session-records/README.md` -- new session/prompt/plan
+;; entries). No `AGENTS.md`, no `.agents/skills/README.md`, no
+;; `.agents/memory/README.md`, and no `.agents/skills/build-session/
+;; SKILL.md` change in that diff (this arc touched no ceremony/skill
+;; surface) -- so only `:onboarding` moves; `:corpus`/`:sim`/`:judge`/
+;; `:docs` budgets stay untouched (this arc's own src/test edits
+;; touched `sim-trajectory`, `sim-emit-hl7`, and `oracle`, none of them
+;; a `:paths` member of those four sets). `:onboarding`'s fresh actual
+;; (`wc -l` sum across all eight `:paths`, measured AFTER the rotation
+;; landed): 284 (AGENTS.md) + 51 + 60 + 157 + 105 + 33 (the five
+;; READMEs) + 339 (roadmap.md, post-rotation) + 187
+;; (build-session/SKILL.md) = 1216. Re-applying the standing formula
+;; (actual x1.15, rounded up to the nearest 5): 1216 x 1.15 = 1398.4 ->
+;; 1400. Budget moves 1285 -> 1400.
+;;
+;; Re-derivation (2026-08-08, conviction arc close, `notes/adr/
+;; 0089-conviction-arc-close.md` AR-CB-2): diffing every set's own
+;; `:paths` membership against `git log 45eb2f4..HEAD --name-only`
+;; (45eb2f4 = the fidelity arc's own closing tip, the base since which
+;; `state.md`/`reading-sets.edn` were last touched) found TWO sets with
+;; a touched member -- the first close since the quality-review arc's
+;; own "all five together" regeneration where more than one set moves.
+;; `:onboarding`: `.agents/plans/roadmap.md` (Now/Done churn across
+;; five conviction-arc sessions plus this close's own rotation),
+;; `.agents/prompts/README.md` and `.agents/session-records/README.md`
+;; (five sessions' worth of new prompt/record entries) all touched; no
+;; `AGENTS.md`, `.agents/plans/README.md`, `.agents/skills/README.md`,
+;; `.agents/memory/README.md`, or `.agents/skills/build-session/
+;; SKILL.md` change in that diff. `:judge`: `components/judge/src/ehrt/
+;; judge/interface.clj` touched (the pairing registry's five new
+;; re-exports, ADR-0088 AR-PD-4) -- the first time `:judge` has moved
+;; since the quality-review arc's own close. No `:corpus`/`:sim`/`:docs`
+;; member path appears in the diff (this arc's own src/test edits
+;; touched `sim-trajectory`, `sim-emit-hl7`, `oracle`, `judge`,
+;; `judge-v2-nist`, none of them a `:paths` member of those three
+;; sets), so those three budgets stay untouched. `:onboarding`'s fresh
+;; actual (`wc -l` sum across all eight `:paths`, measured AFTER the
+;; rotation landed): 284 (AGENTS.md) + 51 + 60 + 163 + 111 + 33 (the
+;; five READMEs) + 385 (roadmap.md, post-rotation) + 187
+;; (build-session/SKILL.md) = 1274. Re-applying the standing formula
+;; (actual x1.15, rounded up to the nearest 5): 1274 x 1.15 = 1465.1 ->
+;; 1470. Budget moves 1400 -> 1470. `:judge`'s fresh actual (`wc -l`
+;; sum across all eight `:paths`): 284 (AGENTS.md) + 61 (judge/
+;; interface.clj, grown by the pairing re-exports) + 16 + 18 + 23 (the
+;; three engine interfaces) + 85 + 240 + 187 (build-session/SKILL.md)
+;; = 914. Re-applying the standing formula: 914 x 1.15 = 1051.1 ->
+;; 1055. Budget moves 1040 -> 1055.
+;;
+;; Re-derivation (2026-08-11, injuries arc close, `notes/adr/
+;; 0107-injuries-arc-close.md`): `reading-set-budget-test` went red
+;; this session, `:onboarding` measured 1480 lines against its own
+;; 1470-line budget -- growth accumulated across every session since
+;; the conviction-arc-close re-derivation (ADR-0089, 2026-08-08)
+;; through this one (`roadmap.md`'s own Now/Done/Next churn,
+;; `prompts/README.md`/`session-records/README.md`'s own new entries
+;; each session appends), never re-baselined in between. No other set
+;; carries `roadmap.md` or any other `:onboarding`-only path, so no
+;; other budget below changes. `:onboarding`'s fresh actual (`wc -l`
+;; sum across all eight `:paths`, measured AFTER this session's own
+;; close-phase edits landed): 284 (AGENTS.md) + 52 + 60 + 182 + 130 +
+;; 33 (the five READMEs) + 554 (roadmap.md) + 187 (build-session/
+;; SKILL.md) = 1482. Re-applying the standing formula (actual x1.15,
+;; rounded up to the nearest 5): 1482 x 1.15 = 1704.3 -> 1705. Budget
+;; moves 1470 -> 1705.
+;;
+;; Re-derivation (2026-08-11, simulator architecture doc, `notes/adr/
+;; 0108-simulator-architecture.md`): `:sim` gains a new `:paths` member,
+;; `docs/dev/simulator-architecture.md` (ADR-0108's own charter: any
+;; session prompt fencing sim-family src carries this doc in Read-first,
+;; so a sim task-class session reading this set cold must read it too).
+;; `AGENTS.md` also grew by 8 lines this session (the doc's own pointer
+;; sentence, landed in the same commit). `:sim`'s fresh actual (`wc -l`
+;; sum across all six `:paths`): 294 (AGENTS.md) + 47 (sim/interface.clj)
+;; + 85 (engine-onboarding.md) + 240 (components.md) + 187
+;; (build-session/SKILL.md) + 269 (simulator-architecture.md) = 1122.
+;; Re-applying the standing formula (actual x1.15, rounded up to the
+;; nearest 5): 1122 x 1.15 = 1290.3 -> 1295. Budget moves 970 -> 1295.
+;; No other set carries `docs/dev/simulator-architecture.md` or any
+;; other path this session's own fences touched besides `AGENTS.md`
+;; (also an `:onboarding` member, re-measured at this session's own
+;; close phase alongside that set's own roadmap/README churn), so no
+;; other set's budget moves here.
+;;
+;; Re-derivation (2026-08-12, review-3 rulings landing, `notes/adr/
+;; 0115-review-3-rulings-landing.md`): `reading-set-budget-test` went
+;; red this session, `:onboarding` measured 1734 lines against its own
+;; 1705-line budget -- this session's own charter of three fix
+;; clusters onto `roadmap.md`'s Next section (a gate-forced companion
+;; edit to a fenced surface, not a fix itself) grew that one path; no
+;; other `:onboarding` path changed. `:onboarding`'s fresh actual
+;; (`wc -l` sum across all eight `:paths`): 294 (AGENTS.md) + 53 + 60 +
+;; 189 + 137 + 33 (the five READMEs) + 781 (roadmap.md) + 187
+;; (build-session/SKILL.md) = 1734. Re-applying the standing formula
+;; (actual x1.15, rounded up to the nearest 5): 1734 x 1.15 = 1994.1 ->
+;; 1995. Budget moves 1705 -> 1995. No other set carries `roadmap.md`
+;; or any other path this session touched, so no other set's budget
+;; moves here.
+;;
+;; Re-derivation (2026-08-13, manual arc close, `notes/adr/
+;; 0125-manual-s5-chapter8-review-arc-close.md`): `reading-set-budget-test`
+;; went red this session, `:onboarding` measured 2029 lines against its
+;; own 1995-line budget -- the manual arc's own five-session close
+;; (roadmap.md's Now/Done/Next churn across S1-S5, `prompts/README.md`/
+;; `session-records/README.md`'s own five sessions' worth of new
+;; entries) grew every `:onboarding` member except `AGENTS.md`,
+;; `.agents/skills/README.md`, and `.agents/memory/README.md`. No other
+;; set carries `roadmap.md` or any other `:onboarding`-only path, so no
+;; other budget below changes. `:onboarding`'s fresh actual (`wc -l`
+;; sum across all eight `:paths`): 294 (AGENTS.md) + 54 + 65 + 200 + 148
+;; + 33 (the five READMEs) + 1048 (roadmap.md) + 187 (build-session/
+;; SKILL.md) = 2029. Re-applying the standing formula (actual x1.15,
+;; rounded up to the nearest 5): 2029 x 1.15 = 2333.35 -> 2335. Budget
+;; moves 1995 -> 2335.
+;;
+;; Re-derivation (2026-08-13, agent-facing hardening, `notes/adr/
+;; 0128-agent-facing-hardening-2.md`): the anti-fabrication tripwire
+;; added to `build-session/SKILL.md` this session (187 -> 235 lines at
+;; ADR-0127's own Step 3, now 235 -> 240) pushed `:sim` over its own
+;; budget -- measured 1298 against 1295, red by 3. Verifying this catch
+;; found ADR-0127's own Step 3 measurement of `:sim` (1170/1295) was
+;; already wrong when it was recorded: the five `:sim` paths at that
+;; session's own closing commit (`21114e3`) already summed to 1293, not
+;; 1170 -- a 123-line arithmetic error that happened not to surface a
+;; red gate at the time (1293 still cleared 1295) and so went
+;; uncorrected until this session's own live re-measurement. `:sim`'s
+;; fresh actual (`wc -l` sum across all six `:paths`): 294 (AGENTS.md) +
+;; 47 (sim/interface.clj) + 85 (engine-onboarding.md) + 240
+;; (components.md) + 392 (simulator-architecture.md) + 240
+;; (build-session/SKILL.md) = 1298. Re-applying the standing formula
+;; (actual x1.15, rounded up to the nearest 5): 1298 x 1.15 = 1492.7 ->
+;; 1495. Budget moves 1295 -> 1495. No other set's actual changed this
+;; session (`session-prompt/SKILL.md`, this session's other edit
+;; target, is deliberately not a `:paths` member of any set -- see this
+;; file's own header comment); `:onboarding`/`:corpus`/`:judge`/`:docs`
+;; all still carry `build-session/SKILL.md` at its new 240-line length
+;; but stayed within their own budgets at that delta alone (checked:
+;; +5 lines each, none crossed its own budget).
+;;
+;; Re-derivation (2026-08-14, clinic-decade rename + exerciser
+;; completion, `notes/adr/0132-clinic-decade-rename-and-exerciser.md`):
+;; `reading-set-budget-test` went red this session's own Step 3 close,
+;; `:onboarding` measured 2338 lines against its own 2335-line budget,
+;; over by 3 -- accumulated routine churn since the manual-arc-close
+;; re-derivation (ADR-0125, 2026-08-13): `.agents/plans/roadmap.md`'s
+;; own Now/Next/Done churn across every session since (781 -> 1284
+;; lines, including this session's own rename-row close and the ADR-
+;; 0130/ADR-0131 rows landed since), `.agents/session-records/README.md`/
+;; `.agents/prompts/README.md`'s own new entries (five sessions' worth,
+;; including this one), and `.agents/skills/build-session/SKILL.md`'s
+;; own +6 lines (ADR-0130's checkpoint-commit sentence, landed after
+;; ADR-0128's own 240-line measurement, 240 -> 246). No other
+;; `:onboarding`-only path changed. `:onboarding`'s fresh actual
+;; (`wc -l` sum across all eight `:paths`): 294 (AGENTS.md) + 54 + 65 +
+;; 207 + 155 + 33 (the five READMEs) + 1284 (roadmap.md) + 246
+;; (build-session/SKILL.md) = 2338. Re-applying the standing formula
+;; (actual x1.15, rounded up to the nearest 5): 2338 x 1.15 = 2688.7 ->
+;; 2690. Budget moves 2335 -> 2690. No other set carries `roadmap.md`
+;; or any other `:onboarding`-only path this session touched; `:sim`
+;; also carries `build-session/SKILL.md` at its new 246-line length but
+;; stayed within its own 1495-line budget at that +6 delta alone
+;; (checked, not assumed).
+
+;; Re-derivation (2026-08-16, event-log contract arc close, `notes/adr/
+;; 0141-event-log-contract.md`): `reading-set-budget-test` went red this
+;; session -- `:onboarding` measured 2724 against its own 2690-line budget.
+;; The cause was this arc's own close: `roadmap.md` gained an arc-CLOSED row
+;; plus a register-row entry for the six event-log shape defects the author
+;; ruled stay rows, and the session-records/prompts READMEs each gained an
+;; entry.
+;;
+;; The catch earned its keep rather than merely being paid off. Measuring the
+;; red showed the register block had been written as ~50 lines of per-defect
+;; detail inside a file whose own header states "Cite sources; one line per
+;; item" -- growth of exactly the kind this budget exists to make visible, and
+;; in the one file every cold session reads. It was compressed to a citation
+;; plus a single row BEFORE any budget moved, with the full write-up left
+;; where it already lived (`.agents/plans/2026-08-16-event-log-census.md`).
+;;
+;; DISCLOSED, because the first attempt at that compression was worse than the
+;; problem it fixed: it spliced between two anchors and deleted every
+;; intervening backlog row -- the D8-5 closure, the repo-review-4 charter, and
+;; the sim-theory.edn unregistered-derivation row. Caught by reading the
+;; diffstat before committing (209 changed lines where ~35 were intended),
+;; restored from HEAD, and redone as anchored INSERTION, with the resulting
+;; diff checked to contain exactly one deletion (a single reflowed line).
+;; A slice-between-anchors edit on a file of independent rows is a data-loss
+;; shape; it is recorded here so the next session does not reach for it.
+;;
+;; Fresh actual (`wc -l` sum across all eight `:paths`, measured AFTER the
+;; restore and the corrected edit): 294 + 59 + 65 + 218 + 166 + 33 + 1606 + 258 = 2699. Re-applying the
+;; standing formula (actual x1.15, rounded up to the nearest 5): 2699 x
+;; 1.15 = 3103.85 -> 3105. Budget moves 2690 -> 3105. No other set
+;; carries `roadmap.md` or any other `:onboarding`-only path this arc
+;; touched; `:sim` and `:docs` carry `build-session/SKILL.md`, unchanged this
+;; session, so their budgets stay untouched (checked, not assumed).
+
+;; Re-derivation DOWNWARD (2026-08-17, compression arc session B,
+;; `notes/adr/0144-roadmap-row-contract.md`). The first move down this
+;; file has ever recorded. `.agents/plans/roadmap.md` adopted the
+;; ADR-0144 row contract -- status token, slug anchor, six-line cap --
+;; and went 1,684 lines to 289; nothing was deleted, every row moved
+;; verbatim to the attic or to the ADR that owns it, and the multiset
+;; of moved lines was asserted identical by `bin/roadmap-migrate-0144`.
+;; `:onboarding`'s fresh actual (`wc -l` sum across all eight `:paths`,
+;; measured AFTER this session's own AGENTS.md and skills edits landed):
+;; 305 (AGENTS.md) + 59 + 65 + 218 + 166 + 33 (the five READMEs) + 289
+;; (roadmap.md) + 258 (build-session/SKILL.md) = 1446. Standing formula
+;; (actual x1.15, rounded up to the nearest 5): 1446 x 1.15 = 1662.9 ->
+;; 1665. Budget moves 3240 -> 1665, and the ratchet baseline with it.
+;;
+;; DISCLOSED, because it is the number the NEXT session runs into. The
+;; other four sets are NOT re-derived here, and could not be: their
+;; formula values (corpus 2260, sim 1620, judge 1215, docs 1000) all sit
+;; ABOVE their current baselines, because this session's own AGENTS.md
+;; row-contract line grew a path every set carries. The ratchet forbids
+;; up, so all four hold at their existing budgets -- green, but with
+;; 284/203/150/122 lines of headroom and a formula value already past
+;; the ceiling. That is ADR-0143's Finding 6 arriving on schedule:
+;; growth in the shared paths (`AGENTS.md`, `build-session/SKILL.md`)
+;; is what moves four sets at once, and compacting those is chartered
+;; to this arc's session C.
+
+```
+
+## Per-set rationale, moved verbatim from inside the map (2026-08-17, ADR-0145)
+
+```clojure
+          ;; the .agents/ index layer: one README per durable-context
+          ;; subdirectory, so a cold session knows what each holds and where
+          ;; to look further without reading every file in every one
+          ;; the living plan -- what's landed, what's next, milestone grain
+          ;; the checkpoint/COMMIT/AUTHOR-ACTION ceremony every session runs,
+          ;; regardless of task class (migration session 5, AR-3)
+  ;; a session about to author a NEW session prompt (the design channel's
+  ;; own role, not a task-class session's) additionally reads
+  ;; `.agents/skills/session-prompt/SKILL.md` cold -- not listed above
+  ;; because that's a different audience from "a cold task-class session",
+  ;; and forcing every onboarding read to carry its cost would budget for an
+  ;; activity most onboarding sessions never do (migration session 5, AR-3).
+ ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
+ ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one
+ ;; task class from a session's perspective -- corpus work routinely touches
+ ;; the I/O boundary. docs/dev/pipeline.md + notation.md are the pipeline's own
+ ;; resource-equation description and the notation it's written in (pipeline.md
+ ;; is unreadable without notation.md alongside it). source-sink-design.md is
+ ;; large (732 lines) but is the load-bearing design record for corpus-io's
+ ;; Source/Sink types -- cited pervasively by notes/ADRs.md and still carrying
+ ;; open decisions (D-b, OPEN-4/5/6) a corpus-io session needs to know about;
+ ;; corpus-io's own interface.clj is signatures only, no rationale, so the
+ ;; design doc is not optional context here. docs/dev/components.md (the
+ ;; external-tool catalog: Synthea, HAPI, NIST, IGAMT, FSH) is deliberately
+ ;; NOT included -- it's organized by engine, not by corpus's own domain logic,
+ ;; and belongs to :sim/:judge below instead.
+          ;; the checkpoint ceremony, applies regardless of task class
+          ;; (migration session 5, AR-3)
+ ;; components/sim is the deterministic generator engine wrapping Synthea
+ ;; (ADR-0005) -- engine-onboarding.md is the checklist every engine wrapper
+ ;; (generator/mutator/gate) must satisfy, directly load-bearing for sim work;
+ ;; components.md's Synthea section is the external-tool reference sim wraps.
+ ;; components/sim's own deep theory docs (components/sim/docs/: sim-theory,
+ ;; patient-state-model, trajectory-computation, event-sourcing, ...) are
+ ;; deliberately NOT included -- nine files, component-owned, discoverable via
+ ;; `poly ws get` and the component's own tree, well beyond what a lean
+ ;; orientation budget can carry; a sim session doing deep theory work reads
+ ;; those directly, not via this set.
+          ;; the decide/evolve doctrine, the mutable-state census, and
+          ;; the palgebra reading of the whole sim pipeline -- ADR-0108's
+          ;; own standing channel practice: any session prompt fencing
+          ;; sim-family src carries this doc in Read-first
+          ;; the checkpoint ceremony, applies regardless of task class
+          ;; (migration session 5, AR-3)
+ ;; components/judge (verdict vocabulary) plus its three gate engines
+ ;; (judge-v2-hapi, judge-fhir-official, judge-v2-nist, ADR-0011's per-engine
+ ;; split) -- a judge task session usually needs to know all four interfaces
+ ;; even when touching one engine, since judge's own Report/finding vocabulary
+ ;; is the shared contract. engine-onboarding.md and components.md (HAPI/NIST/
+ ;; validator/CDC sections) are the same two docs/dev files :sim carries, for
+ ;; the same reason: judge's engines are the "gate engine" half of the same
+ ;; engine-wrapper checklist and external-tool catalog sim's generator half
+ ;; uses.
+          ;; the checkpoint ceremony, applies regardless of task class
+          ;; (migration session 5, AR-3)
+ ;; components/docs-tooling (dev-time-only doc/lint tooling) generates and
+ ;; lints docs/cli.md, docs/pipeline.md-equivalents, and docs/use-cases.md
+ ;; (the generated index, migration item 14, 2026-08-02) plus its per-case
+ ;; pages under docs/use-cases/, and gates docs/dev/architecture.md's own
+ ;; currency against AGENTS.md
+ ;; (ehrt.docs-tooling.structure-currency-test) -- so architecture.md is this
+ ;; task class's own doc, not a workspace-wide add. docs/dev/README.md is the
+ ;; maintainer-docs-tree index docs-tooling sessions work within.
+          ;; the checkpoint ceremony, applies regardless of task class
+          ;; (migration session 5, AR-3)
+```

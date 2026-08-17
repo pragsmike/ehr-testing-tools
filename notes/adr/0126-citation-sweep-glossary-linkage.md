@@ -245,3 +245,26 @@ of the Next-section queue.
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Manual-arc tag payment, glossary linkage, citation errata sweep — tags `stable-20260813-manual-arc-close` at `c6d0257` (ADR-0125's own close, CI-verified green); adds `docs/glossary.md` links at first use of glossary-defined terms across manual Chapters 1, 3-7 (Chapters 2, 8 already conformed), closing the manual-review skill's own dimension-4 FAIL with a targeted re-run: PASS; runs the citation errata sweep ADR-0125 chartered, origin-qualifying every in-fence bare `ADR-0010` verdict-family citation to `tools/ADR-0010` across `docs/judge-calibration.md`/`docs/formats.md` (footnote form, renamed `[^adr-0010]` -> `[^tools-adr-0010]`), `docs/manual/assets/verdict-ranking.svg`, `components/corpus/docs/palgebra-design.md`/`research/judge-v2-nist-spike-notes.md`, `components/corpus/docs/use-cases.edn` (regenerating `docs/use-cases/profile-tier-hl7v2-conformance-gating.md`), and thirteen `.clj` comment/docstring sites (the widened, author-licensed scope) -- zero behavior change, confirmed per-site and by a pure-identity oracle bracket; corrects the channel's own probe (`docs/glossary.md` carries no verdict-family citation in the live tree; untouched); discloses a fourth, previously-unnamed drift family (bare `ADR-0010` in `components/sim/docs/`/`components/sim-trajectory/docs/` meaning the frozen sim repo's own `sim/ADR-0010`, 17 sites, 6 files) found but out of this session's own touch fence, not fixed; dimension-1 (strip executability) stays open, untouched; zero `src` behavior touched anywhere, the oracle holds pure identity across all 35 roots
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0126 (manual-arc tag payment, glossary linkage, citation
+errata sweep; ruled 2026-08-13, all rulings from this session's own
+driving prompt)
+
+- **Citation sweep chartered, executed** [A, verbatim "a, go",
+  2026-08-13, restated from ADR-0125's own charter above — recorded
+  again here since this is the session that actually ran it].
+- **Session pairing, glossary row + sweep in one session** [A, verbatim
+  "b go", 2026-08-13, design channel]: the manual-review dimension-4
+  fix (glossary linkage) and the citation errata sweep landed together,
+  one session, rather than split.
+- **Sweep scope includes the `.clj` comment/docstring sites, whole
+  sweep in one session per the ADR-0099 rule form** [A, verbatim "a",
+  2026-08-13, design channel]: the thirteen `.clj` sites named in the
+  driving prompt's own Step 2d widened the sweep beyond the original
+  ADR-0125 charter's "docs-only" framing — licensed explicitly by this
+  ruling, not a silent scope creep.
+- **Standing from ADR-0125, restated, unchanged**: dimension-1 (strip
+  executability) stays OPEN — not touched this session, no
+  exerciser/lint mechanism edited.

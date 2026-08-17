@@ -476,3 +476,23 @@ arc opens feature-shaped, per the horizon note above, with two named,
 unruled intake items (the `--width`/COLUMNS affordance, module
 vendoring widening the ailment mix) waiting for a future session's own
 ruling.
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From the UX arc (ADR-0056–0064)
+
+- **Two voices, two homes, standing** (brief §3, executed by ADR-0062):
+  user-facing surfaces (help, errors, command-bearing docs) speak
+  operator language; maintainer content (citations, milestone history,
+  internal names) lives in source comments and dev docs, relocated
+  never deleted.
+- **Errors name their artifact, standing** (ADR-0060, ADR-0061): every
+  operational error names the concrete thing it could not find or
+  parse, with a next step where one exists; unknown input is rejected
+  by name, never silently accepted.
+- **Audit evidence uses the mechanism it recommends, standing**: fence
+  verification resolves paths rather than parsing grammar, and string
+  inventories walk the data the gate will walk rather than grepping
+  source. Two same-arc instances of the cheaper method being wrong:
+  AR-U2-R's non-resolving fences (ADR-0060) and the 38-vs-36 token
+  count (ADR-0062).

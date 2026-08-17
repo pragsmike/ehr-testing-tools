@@ -431,3 +431,29 @@ makes.)
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Corpus player: the sim's own event log, native playback — and `ehrt play`'s own bare reads, closed — the roadmap's own sim event-log adapter row (named since ADR-0014) lands alongside its fired Deferred row (ADR-0096 Finding 2/ADR-0097): `ehrt play` reads a sim event log natively (`.edn`, recognized in play's own dispatch, never the shared sniff), paced by each event's own `:t` via a new injectable seam on `plan` (byte-identical default, every existing test unmodified and green), rendered by a purpose-built compact event-line ticker; `corpus generate sim` spools `events.edn` alongside its messages, byte-identical to `--format ground-truth`'s own bare stdout; `play-events-from-file`/`-from-dir`'s own bare reads are categorized, the lint allowlist retired; a channel-inferred event-shape claim (`:type`) is corrected in the open to the real key (`:event`), live-probed before any code was built on it; `--board` and (a disclosed judgment call) `--sink` both reject event input by name; the oracle holds pure identity across all 34 roots
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0100 (corpus player: sim event-log adapter, roadmap Next
+row named since ADR-0014; rulings taken this session's own driving
+prompt, author-ruled 2026-08-10, the session's own day)
+
+- **Sim event-log adapter semantics** [A, ruled 2026-08-10, author
+  verbatim "Q1 a."]: native event playback — events paced by `:t`
+  directly via an injectable timestamp-extraction seam on `plan`
+  (continuing the `:tty?-fn`/`:sleep-fn` injection lineage, not a
+  second pacer); a compact event-line ticker; `--board` under event
+  input REJECTED with a named-deferral hint (the board's fold is
+  wire-side; feeding it would need emission parameters the log does
+  not carry).
+- **Producer-side event log** [A, ruled 2026-08-10, author verbatim
+  "Q2 a."]: `corpus generate sim` also spools the ground-truth vector
+  as `events.edn` into out-dir, same `pr-str` bytes as `--format
+  ground-truth`'s bare text — disclosed against D7 ruling 4's
+  "provenance is the generator's word" (that ruling governed
+  manifests; `events.edn` is data, not provenance, so it does not
+  reopen that ruling's scope).
+- **Demo touch, scoped** [A, ruled 2026-08-10, author verbatim "Q3
+  a."]: busy-tuesday's README gains ONE "play the sim's own story"
+  example line once the adapter lands. Nothing else attaches — no
+  rows invented, no other demo asides committed.

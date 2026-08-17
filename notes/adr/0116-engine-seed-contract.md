@@ -358,3 +358,49 @@ No file outside this list was touched.
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Engine seed contract: non-negative, validated at entry — resolves R8's chartered engine-test flake investigation: the shrunk counterexample `[-3377439408979484]` (seed `1786546687672`) reproduces a real invariant-catalog violation from an unvalidated negative seed; the author ruled (R9) the contract is non-negative longs, engine-validated; `engine/run` gains a guard clause returning `ehrt.kernel.interface`'s `result/error :invalid-seed` (R10, the engine's first dependency on the kernel result-not-throw doctrine, since no prior invalid-option convention existed to match); mid-session, the single-generator fix broke an unfenced sibling defspec, so the fence widened (author-ruled) to a full 24-site repo-wide sweep constraining every generative `:seed` feeding `engine/run` (or a wrapper) to `(gen/large-integer* {:min 0})` across 7 files; a second widening fixes `ehrt.sim.run/run-command` and `ehrt.sim.identifiers/identifiers-command`, both of which silently swallowed the engine's new error and reported false `:ok`/exit 0; the OTHER recorded seed, `7844068501`, did not reproduce when pinned directly — ADR-0112's own "cleared on re-run" was against a fresh unpinned seed, never confirmed at that exact value, disclosed as an evidence-base gap rather than re-litigated; the `--seed` doc strings for `sim run`/`sim identifiers` gain "(non-negative)," `corpus generate`'s own dual-source `--seed` row deliberately left unedited (disclosed, not guessed at); the oracle holds pure identity across all 35 roots
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0116 (engine seed contract; ruled 2026-08-12)
+
+- **R9, the seed contract** [A, ruled 2026-08-12, on the channel's own
+  framing]: question -- is the seed contract (a) non-negative longs --
+  engine validates at entry, generator constrained to contract,
+  contract stated in the docs -- or (b) all longs legal, making this an
+  engine arithmetic bug? The author ruled, verbatim: *"a"*. Concrete:
+  the seed contract repo-wide is non-negative longs; `ehrt.sim-engine.
+  engine/run` validates `:seed` at entry (`components/sim-engine/src/
+  ehrt/sim_engine/engine.clj`); the class of generative tests over
+  engine options must draw from documented contracts, not raw type
+  ranges (this last clause is the generalizable lesson, provenance [C,
+  channel-inferred, un-vetoed]).
+- **R10, the error convention for the new guard** [A, ruled
+  2026-08-12, multiple-choice]: question -- `engine.clj` had no
+  existing invalid-option error envelope (only `{:pre [...]}`
+  assertions that throw `AssertionError`) for the negative-seed guard
+  to match; Read-first's own instruction was to STOP-AND-REPORT rather
+  than invent a convention, which this session did. Options offered:
+  (a) adopt `ehrt.kernel.interface`'s result-not-throw doctrine
+  (`result/error`), a new dependency for this component but the
+  repo's own standing envelope shape; (b) extend the `:pre` clause,
+  matching the engine's actual (but unstructured, throw-based) current
+  practice; (c) `ex-info` with a structured payload, still a throw.
+  RULED (a). Concrete: `engine.clj` gains its first `ehrt.kernel.
+  interface` dependency; `(neg? seed)` returns `(result/error
+  :invalid-seed {:key :seed :value seed :expected "a non-negative
+  integer"})` rather than throwing or running -- the standing pattern
+  for future engine-level option validation in this component: when a
+  component has no existing invalid-option convention, adopt the
+  repo's own kernel result-not-throw doctrine rather than invent a
+  local one.
+- **R11, caller-return-contract auditing (generalizable lesson,
+  un-numbered channel finding, un-vetoed [C])**: this session's own
+  mid-execution finding -- changing a function from
+  always-throws-or-succeeds to sometimes-returns-`result/error`
+  breaks every existing caller that blindly destructures its return
+  value (`ehrt.sim.run/run-command` and `ehrt.sim.identifiers/
+  identifiers-command` both silently reported `:status :ok`/exit 0 on
+  a rejected negative seed until fixed, ADR-0116). Standing lesson for
+  future sessions making the same class of change: audit every caller
+  of a function whose return contract gains a new Result-typed branch,
+  not just the function itself.

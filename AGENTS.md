@@ -50,7 +50,7 @@ documents**. **`stable-*` continuity tags are a SESSION ACT** (tag law,
 `notes/ADRs.md` ADR-0057 AR-T-1, 2026-08-06 — the law restated once,
 canonically, after two dated amendments, ADR-0049's AR-AU-0 and
 ADR-0051's AR-F2-0, had left this surface and others out of sync with
-each other and with `.agents/rulings.md`'s own AR-R-2; ADR-0003's
+each other and with `.agents/rulings.md#R-stable-tag-author-only`; ADR-0003's
 original author-only trust-boundary reasoning is superseded in scope
 for this one class of tag, not erased — the design channel's own
 landing verification is now that boundary, and the tag is its
@@ -208,6 +208,11 @@ library in its own right.
   then `PRIORITY n` under `## Next`; six lines a row, `CLOSED` only
   under `## Done`, and rows are cited `roadmap.md#<slug>`, never by
   line number.
+- [`.agents/rulings.md`](.agents/rulings.md) — standing rules ONLY, one
+  gated row each (ADR-0145): `- **R-<slug>** -- <rule> -- ADR-NNNN`,
+  optionally `SUPERSEDED-BY R-<slug> (ADR-NNNN)`; three lines a row,
+  cited `rulings.md#R-<slug>`. A decision executed once belongs to its
+  own ADR, not here.
 - [`.agents/memory/`](.agents/memory/README.md) — durable design
   lineage too expensive to re-derive, not decision-of-record (that's
   an ADR) or one verifiable claim (that's `notes/facts-register.md`).

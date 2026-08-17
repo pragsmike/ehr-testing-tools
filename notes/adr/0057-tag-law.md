@@ -256,3 +256,25 @@ this session's own driving prompt archived
 (`.agents/prompts/2026-08-06-tag-law.md`), both indexed in
 `.agents/session-records/README.md` and `.agents/prompts/README.md` in
 the same commit.
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From the tag-law session (ADR-0057)
+
+- **Stable-tag discipline, AMENDED 2026-08-06** (AR-T-1, STANDING,
+  superseding AR-R-2's final sentence above): `stable-*` continuity
+  tags are SESSION ACTS. A session creates and pushes one (i) when its
+  own prompt licenses a SPECIFIC tag at a SPECIFIC commit, a license
+  the design channel issues only after verifying the landing it names,
+  or (ii) for its own predecessor's design-channel-verified stable
+  point, as standing ceremony, without bouncing back to the author.
+  **Deferring a licensed tag is now the deviation** and needs a
+  disclosed reason — the inverse of AR-R-2's own default. The author
+  may always tag directly, licensed or not; a tag already present at
+  the exact commit and message a session would otherwise have created
+  is verified and disclosed, never re-created. Release `v*` tags stay
+  AUTHOR ACTION, unchanged — publication itself is author-gated, so its
+  tags are too. `notes/ADRs.md` ADR-0003's original author-only
+  trust-boundary reasoning is superseded in scope for this one class of
+  tag, not erased: the design channel's own landing verification is now
+  that boundary, and the tag is its mechanical consequence.

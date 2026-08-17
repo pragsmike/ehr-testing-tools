@@ -346,3 +346,20 @@ sweep from the live tree instead of trusting the prompt's own count.
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Fixture relocation: the demos front door mechanic runs on test-fixtures/ — ADR-0081's own backlog row executes: the entire `components/corpus/test-fixtures/` tree (`v2/`, `v2-nist/`, `fhir/`, and the roadmap-unnamed `reports/`, riding along by author ruling) subtree-whole `git mv`s to a root-level `test-fixtures/`, symmetric with `demos/`; five `.gitattributes` `-text` patterns move in the same commit, all 13 vendored/authored fixture files sha256-identical before and after; the driving prompt's own channel-probed sweep inventory (claimed 16 `.clj` files) undercounted thirteen additional live citations — most critically `pairing-registry.edn`'s twelve RUNTIME `:fixture`/`:profile` values, a functional gap not a doc-staleness one, caught and widened into the same commit before any test went red; the live-path lint's allowlist needed zero edits, confirmed not assumed; the oracle bracket holds pure identity across all 34 roots
+
+### Rulings-register history (moved verbatim from `.agents/rulings.md` by ADR-0145, 2026-08-17)
+
+## From ADR-0099 (fixture relocation, backlog row licensed by ADR-0081
+AR-FR-2(a); rulings taken this session's own driving prompt, author-
+ruled 2026-08-09 the day before this session ran)
+
+- **Fixture relocation target home** [A, ruled 2026-08-09, author
+  verbatim "Q1 a."]: the new home for `components/corpus/test-
+  fixtures/` is a root-level `test-fixtures/` directory, sibling to
+  `demos/` — not nested under any component.
+- **Fixture relocation scope** [A, ruled 2026-08-09, author verbatim
+  "Q2 a."]: the ENTIRE tree moves as one subtree-whole `git mv`, all
+  four subtrees together (`v2/`, `v2-nist/`, `fhir/`, and
+  `reports/` — the last unnamed in ADR-0081's own row, riding along by
+  this ruling, disclosed in ADR-0099) — never split across sessions or
+  left partially relocated.
