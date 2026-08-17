@@ -54,13 +54,18 @@
     "2026-07-29-wsl-clone-igamt-hygiene"})
 
 (defn- slugs
-  "Every regular file's own slug (filename minus '.md') in `dir`,
-  README.md excluded."
+  "Every regular file's own slug (filename minus '.md') in `dir`, with
+  the two non-record files excluded: `README.md` (convention prose) and
+  `INDEX.md` (the generated listing, ADR-0147). `INDEX.md` is excluded
+  EXPLICITLY rather than left to pair with its opposite number -- it
+  exists in both directories, so it would have paired with itself and
+  passed this gate for a reason that has nothing to do with a session
+  archiving its prompt."
   [dir]
   (->> (.listFiles (io/file dir))
        (filter #(.isFile %))
        (map #(.getName %))
-       (remove #{"README.md"})
+       (remove #{"README.md" "INDEX.md"})
        (map #(str/replace % #"\.md$" ""))
        set))
 

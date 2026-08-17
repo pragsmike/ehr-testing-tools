@@ -56,13 +56,15 @@
 ;; -- shared filesystem helpers --
 
 (defn- real-files
-  "Every regular file directly under `dir`, excluding README.md, by
-  filename."
+  "Every regular file directly under `dir`, excluding the two files
+  that index rather than are indexed -- `README.md` (the convention
+  prose) and `INDEX.md` (the generated listing, ADR-0147). Neither is
+  an item, so neither owes itself an entry."
   [dir]
   (->> (.listFiles (io/file dir))
        (filter #(.isFile %))
        (map #(.getName %))
-       (remove #{"README.md"})
+       (remove #{"README.md" "INDEX.md"})
        set))
 
 (defn- real-subdirs
@@ -113,9 +115,11 @@
     :real (real-files ".agents/plans")
     :tokens star-bullet-index-tokens}
    {:dir ".agents/prompts"
+    :index "INDEX.md"
     :real (real-files ".agents/prompts")
     :tokens star-bullet-index-tokens}
    {:dir ".agents/session-records"
+    :index "INDEX.md"
     :real (real-files ".agents/session-records")
     :tokens star-bullet-index-tokens}
    {:dir "notes"
@@ -126,22 +130,51 @@
     :tokens backtick-bullet-index-tokens}])
 
 (deftest every-real-item-is-indexed-test
-  (testing "presence: every real file/subdir appears in its directory's own README"
-    (doseq [{:keys [dir real tokens]} indexed-directories]
-      (let [content (slurp (io/file dir "README.md"))
+  (testing "presence: every real file/subdir appears in its directory's own index"
+    (doseq [{:keys [dir real tokens index] :or {index "README.md"}} indexed-directories]
+      (let [content (slurp (io/file dir index))
             indexed (tokens content)
             missing (set/difference real indexed)]
         (is (empty? missing)
-            (str dir "/README.md is missing an index entry for: " missing))))))
+            (str dir "/" index " is missing an index entry for: " missing))))))
 
 (deftest every-indexed-item-is-real-test
-  (testing "absence: every README-listed item actually exists on disk (no ghosts)"
-    (doseq [{:keys [dir real tokens]} indexed-directories]
-      (let [content (slurp (io/file dir "README.md"))
+  (testing "absence: every listed item actually exists on disk (no ghosts)"
+    (doseq [{:keys [dir real tokens index] :or {index "README.md"}} indexed-directories]
+      (let [content (slurp (io/file dir index))
             indexed (tokens content)
             ghosts (set/difference indexed real)]
         (is (empty? ghosts)
-            (str dir "/README.md lists an entry that does not exist: " ghosts))))))
+            (str dir "/" index " lists an entry that does not exist: " ghosts))))))
+
+;; -- the two dated record READMEs: convention only, capped (ADR-0147) --
+;;
+;; Both were 223 and 171 lines, ~30 of convention prose and the rest a
+;; per-file row growing by one every session -- in the `:onboarding`
+;; set, so every cold session of every task class read all 390 lines to
+;; learn a filename convention. The rows are now generated into a
+;; sibling `INDEX.md` (`ehrt.docs-tooling.state-derived`), which no
+;; reading set carries. What stays is the convention, and it is capped
+;; so it cannot silently regrow the half that just left.
+
+(def ^:private convention-only-readmes
+  [".agents/session-records/README.md" ".agents/prompts/README.md"])
+
+(def ^:private readme-line-cap 40)
+
+(deftest record-readmes-stay-convention-only-test
+  (testing "the per-record rows live in the generated INDEX.md; the README states the convention"
+    (doseq [path convention-only-readmes]
+      (let [lines (str/split-lines (slurp path))
+            rows (filter star-bullet-token lines)]
+        (is (<= (count lines) readme-line-cap)
+            (str path " is " (count lines) " lines, over its " readme-line-cap "-line cap by "
+                 (- (count lines) readme-line-cap) " -- this file states a convention; the listing "
+                 "is generated into INDEX.md beside it."))
+        (is (empty? rows)
+            (str path " carries " (count rows) " per-record row(s) -- those are generated into "
+                 "INDEX.md now, and a hand-maintained second copy is exactly the drift this gate "
+                 "was written for in the first place: " (vec (take 3 rows))))))))
 
 ;; -- convention-exempt directory (notes/prompts/) --
 

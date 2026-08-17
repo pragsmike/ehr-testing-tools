@@ -28,7 +28,8 @@
   (:require [clojure.test :refer [deftest is testing]]
             [clojure.java.io :as io]
             [clojure.string :as str]
-            [clojure.edn :as edn]))
+            [clojure.edn :as edn]
+            [ehrt.docs-tooling.state-derived :as sd]))
 
 (def ^:private reading-sets-path ".agents/reading-sets.edn")
 
@@ -42,18 +43,16 @@
   [paths]
   (remove #(.isFile (io/file %)) paths))
 
-(defn- line-count [path]
-  (with-open [r (io/reader path)]
-    (count (line-seq r))))
-
-(defn- total-lines
-  "Sum of real line counts across `paths`. Callers are expected to have
-  already checked `missing-paths` is empty -- a nonexistent path here
-  throws, deliberately: silently treating a ghost as zero lines would
-  let an over-budget set masquerade as in-budget by citing a path that
-  doesn't exist."
-  [paths]
-  (reduce + (map line-count paths)))
+;; `line-count`/`total-lines` moved to `ehrt.docs-tooling.state-derived`
+;; (ADR-0147) and are used from there rather than re-implemented here.
+;; `.agents/state-derived.md` renders each set's measured actual, and
+;; this gate enforces it against the budget: two numbers describing the
+;; same file, so they are one function (R13, "one definition each").
+;; Local copies drifting apart is not hypothetical -- ADR-0145's own
+;; erratum records eight itemised per-path figures that summed to 1,393
+;; against a stated actual of 1,446.
+(def ^:private line-count sd/line-count)
+(def ^:private total-lines sd/total-lines)
 
 ;; -- the two real gates, over the live .agents/reading-sets.edn --
 
@@ -202,3 +201,37 @@
       (finally (.delete tmp))))
   (is (pos? (count (comment-lines reading-sets-path)))
       "sanity: the live file has a header at all -- a zero here would pass the cap vacuously"))
+
+;; -- set membership, ruled (compression arc session D, ADR-0147) --
+;;
+;; `:onboarding`'s composition is where this arc's work becomes visible
+;; or invisible to a cold session. Two assertions, in opposite
+;; directions, each guarding one half of what session D did:
+;;
+;;  - `.agents/state.md` JOINS the set. The continuity register was in
+;;    no reading set at all -- 724 lines that a cold session was told to
+;;    read by `AGENTS.md`'s own routing and by the `repo-review` skill,
+;;    counted against no budget and gated by nothing but a currency
+;;    tripwire. It is small and linted now, so it can be carried; and
+;;    being carried is what puts it under the ratchet, which is the only
+;;    thing that has ever kept a register in this repo small.
+;;  - No generated `INDEX.md` joins any set. The 390 lines of dated rows
+;;    this session took out of `:onboarding` are still on disk, in the
+;;    generated indexes. A future session adding one back to a `:paths`
+;;    list would undo the compaction while every gate stayed green.
+
+(deftest state-md-is-an-onboarding-member-test
+  (testing "the continuity register is read cold, so it is budgeted and ratcheted like everything else read cold"
+    (is (contains? (set (get-in (read-reading-sets) [:onboarding :paths])) ".agents/state.md")
+        ":onboarding no longer carries .agents/state.md -- the register a cold session is routed to must sit under the budget gate (ADR-0147)")))
+
+(deftest no-generated-index-is-a-reading-set-member-test
+  (testing "the dated per-record rows left :onboarding by generation; a :paths entry would walk them straight back in"
+    (let [offenders (for [[set-name {:keys [paths]}] (read-reading-sets)
+                          path paths
+                          :when (str/ends-with? path "INDEX.md")]
+                      (str set-name " -> " path))]
+      (is (empty? (vec offenders))
+          (str "reading set(s) cite a generated INDEX.md: " (vec offenders)
+               " -- those files grow one line per session forever, which is exactly what "
+               "ADR-0147 removed from :onboarding. Cite the README's convention instead.")))))

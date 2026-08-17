@@ -59,7 +59,7 @@ the source of truth and the gate that would hold it are named.
 |---|---|---|---|---|
 | What this repo is | 341–367 | MIXED | prose hand-owned; module count from the modules dir | **stale in part** — the "Since the last regeneration (0090–0139)" narrative is history, not state |
 | Component graph `[V]` | 369–402 | DERIVABLE | `ls -d components/*/`, `bases/*/`, `components/*/resources`; `poly check` | **HOLDS** — 18 / 1 / 9 all re-derive |
-| Vendored module inventory `[V]` | 404–429 | DERIVABLE | modules dir; `digest.clj`'s `roots`; NOTICE rows | **HOLDS** — 31 / 34 / 80 all re-derive |
+| Vendored module inventory `[V]` | 404–429 | DERIVABLE | modules dir; `digest.clj`'s `roots`; NOTICE rows | **STALE in one of three** — 31 modules and 80 NOTICE rows re-derive; **34 oracle roots does not, the map holds 35** (erratum below) |
 | Where history lives `[V]` | 431–453 | DERIVABLE | `ls notes/adr`; roadmap sections | **STALE** — claims 137 ADR files and 137 index entries; actual **144 / 144**. Claims Next 31 / Done 44; actual **19 / 59** |
 | Standing gates `[V]` | 455–524 | DERIVABLE | test dirs; `reading-sets.edn` | **STALE** — claims 36 docs-tooling gates; actual **39**. Claims `:onboarding` 2658 / 2690; actual **1526 / 1665** (ADR-0144/0145 moved both halves) |
 | The repo-review instrument `[V]` | 526–558 | HAND-OWNED | the review's own register; a scoreboard is judgement | current as judgement |
@@ -68,10 +68,46 @@ the source of truth and the gate that would hold it are named.
 | Environment `[A]` | 636–703 | MIXED | tags and suite counts derivable; ceremony prose hand-owned | **STALE** — claims 92 `stable-*` tags, actual **98**; claims a 640-block / 16,382-assertion suite, superseded by ADR-0146's own 338 / 3,830 / 17,354 |
 | Design-channel contract | 705–724 | HAND-OWNED | — | current |
 
-Five of the ten sections carry a stale claim. Every one of the five is
-DERIVABLE, and none of the five hand-owned sections is stale — which is
+**Six** of the ten sections carry a stale claim (five at the census as
+first written, plus the oracle-root correction below). Every one of the
+six is DERIVABLE, and none of the hand-owned sections is stale — which is
 the whole finding of this census, and the reason the split falls where it
 does.
+
+**Erratum, 2026-08-17, same session, Step 2.** The census above first
+recorded the vendored-inventory section as HOLDS on all three of its
+figures. It does not: the oracle-root count is **35**, not the 34 that
+section claims, and this ADR is corrected rather than rewritten so the
+record shows both readings and how the second was reached.
+
+The correction was forced by a defect in this session's own parser, and
+the sequence is worth keeping because it is the census's own thesis
+happening to the census:
+
+1. The first draft of `parse-oracle-roots` anchored keys at `^\s+"`. The
+   map's first key shares the opening brace's line
+   (`{"appendicitis"  appendicitis-batch`), so it was skipped. **The
+   live-tree sanity case passed** — one fewer root is still non-empty,
+   distinct and well-formed — and only the synthetic fixture, whose
+   answer is known independently, went red.
+2. Fixing that returned 35, contradicting the section. Cross-checked by
+   hand against `digest.clj` lines 545–579: **35 keys**, and the prompt's
+   own fence ("oracle IDENTICAL 35/35") agrees. The `[V @b96c246]` claim
+   of 34 is simply stale — `injuries` joined at ADR-0107 and the section
+   was not re-probed.
+3. Investigating *that* exposed a second defect: the map's last key
+   closes it (`"injuries" injuries-pair})`), so no line begins with `}`
+   and the `take-while` terminating on that never fired. The scan ran
+   past the form into `-main`'s docstring. It returned 35 anyway, **by
+   luck** — no line there happens to hold a complete `"..."` at its
+   start. A docstring reflowed by one word would have added a phantom
+   root. The window is brace-balanced now, and the fixture carries a
+   case for both shapes.
+
+Recorded at length because the moral is the one this ADR is about: a
+count nobody re-derives drifts, and a parser checked only against the
+tree it parses cannot tell you it is wrong. The mechanism-sanity case is
+not ceremony.
 
 **FINDING S-2.** The regeneration contract (`rulings.md#R-state-regeneration`,
 ADR-0047 AR-C-1) asks a session to re-probe every `[V]` claim by hand at
