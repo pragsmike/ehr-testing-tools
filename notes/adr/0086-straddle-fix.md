@@ -356,3 +356,25 @@ predecessor.
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 The straddle fix: the legacy gate learns the span — the blast-radius probe finds one real mover, `sleep-apnea` (3 of 300 walks, a dangling `:outpatient-visit-end` already shipped since vendoring batch 1), STOP-AND-REPORTs, and is licensed by name; shape (b) lands (a compile-time mirror of `mark-phase`'s own straddle inheritance, generalized to the legacy path), red-witnessed then green, `colorectal_cancer.json` clean at all three seeds, the oracle bracket matches the prediction exactly, `sleep-apnea`'s post-fix digest licensed as the new baseline (more correct, not merely different); an ADR-0082 erratum corrects a self-contradicting seed-42 prose figure, and the carry-across row gains shape (a)'s own compile-layer note
+
+### Roadmap history (moved verbatim from roadmap.md by ADR-0144, 2026-08-17)
+
+The `.agents/plans/roadmap.md` row this ADR owns, as it stood at `deb9a33` before the ADR-0144 row contract capped rows at six lines. The live row now states what remains and cites this ADR for the rest; this is the rest, verbatim.
+
+- **Carry-across emission** (2026-08-04, `notes/ADRs.md` ADR-0042
+  AR-2): a straddling encounter (opens history, closes horizon) yields
+  NO in-window wire traffic for that patient under Wave H's own pre-
+  roll — real hospital censuses DO show patients mid-stay at window
+  open, but building that emission is out of this session's own scope.
+  Revisit trigger: a test scenario needs mid-stay-at-window-open
+  realism.
+  **Dated note (2026-08-08, straddle fix, `notes/ADRs.md` ADR-0086,
+  AR-SF-5):** this row's own compile-layer half, recorded, not built —
+  shape (a) from ADR-0085's own proposal (synthesize a compiled opening
+  step at the horizon boundary for a straddling encounter), the arm the
+  author did NOT rule for the legacy path this session (shape (b) was
+  ruled instead — see the colorectal row's own closure, above). The
+  straddle-detection machinery ADR-0086 lands (a fold-state tracking an
+  open pre-horizon-opened span) is the shared prerequisite this row's
+  own future emission work would build on. Row stays deferred, trigger
+  unchanged.

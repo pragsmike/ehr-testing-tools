@@ -7,7 +7,8 @@
 
 The author ordered a four-session register-compression arc (A → B → C →
 D, one session each) after a queue item was carried as open five days
-after its own arc had closed: `.agents/plans/roadmap.md:222` reads
+after its own arc had closed: `.agents/plans/roadmap.md#downstream-latency`
+(cite rewritten from a line number by ADR-0144, 2026-08-17) reads
 `**Downstream-latency realism -- MECHANISM LANDED 2026-08-11
 (ADR-0109), DEMO LANDED 2026-08-11 (ADR-0110), arc CLOSED;
 OBR-7/OBX-14 increment LANDED 2026-08-16 (ADR-0142).**` and sits in the
@@ -37,7 +38,8 @@ outgrown by ordinary growth. Verified against the live tree at
 - **The roadmap closure lint covers `## Deferred` only.**
   `ehrt.docs-tooling.roadmap-deferred-closure-lint-test` is scoped to
   the Deferred section; a CLOSED row parked in `## Next` — exactly the
-  `roadmap.md:222` specimen — is outside its population. (Guard #1 and
+  `roadmap.md#downstream-latency` specimen (cite rewritten from a line
+  number by ADR-0144) — is outside its population. (Guard #1 and
   its dual are chartered to session B, whose red set is that row's own
   population; this session does not touch them.)
 
@@ -519,3 +521,40 @@ output, and a piped or `tail`-read invocation would have reported
 green, which is exactly the incident class review-3 D2-6 named. And an
 existing gate caught new code the same hour it was written, which is
 the whole argument for the two guards this ADR adds.
+
+### Roadmap history (moved verbatim from roadmap.md by ADR-0144, 2026-08-17)
+
+The `.agents/plans/roadmap.md` row this ADR owns, as it stood at `deb9a33` before the ADR-0144 row contract capped rows at six lines. The live row now states what remains and cites this ADR for the rest; this is the rest, verbatim.
+
+- Nothing in progress at this close (register-compression arc session A,
+  ADR-0143, 2026-08-16 — `notes/ADRs.md` became a generated surface, the
+  reading-set budgets gained a committed ratchet baseline
+  (`.agents/reading-sets-baseline.edn`), and the queue-provenance and
+  register-hygiene rules landed in the skills. Arc sessions B, C and D are
+  queued below; B's own first specimen is deliberately left unmoved at
+  `roadmap.md:222`. The oracle held pure identity across all 35 roots; the
+  only `src` touched was `components/docs-tooling`).
+- **Register-compression arc — SESSION A LANDED 2026-08-16
+  (`notes/adr/0143-adr-index-generated.md`); B, C, D QUEUED.**
+  Author-ordered A -> B -> C -> D, one session each (*"I like that order,
+  after OBR/OBX."*; guards *"Ok on all five. Rider ok."*), chartered after a
+  queue item was carried as open for five days after its own arc closed.
+  **A (landed):** `notes/ADRs.md` is GENERATED — `make adr-index` renders every
+  row from the `notes/adr/` tree's own headings and Status lines, on `docsgen`
+  and in CI's freshness diff; 140,852 -> 30,933 bytes, mean row 977 -> 184
+  chars; 78 narratives moved verbatim into their own ADRs, zero deleted lines.
+  Guard #3 (budget ratchet, `.agents/reading-sets-baseline.edn`) and the skills
+  rider (queue provenance in `session-prompt`/`handoff`; R-RH/R-BS/R-RP/R-AE in
+  `build-session`) landed with it.
+  **B (queued):** guard #1 and its dual — a roadmap row whose own text says
+  CLOSED may not sit under `## Next`, and the converse.
+  `ehrt.docs-tooling.roadmap-deferred-closure-lint-test` covers `## Deferred`
+  only, which is why the specimen went uncaught. B's first specimen is
+  `roadmap.md:222`, the downstream-latency row, status words *"arc CLOSED"*,
+  sitting in this section — deliberately LEFT IN PLACE by session A so B has a
+  live red to prove its gate against, not a fixture.
+  **C (queued):** `.agents/skills/build-session/SKILL.md`, 162 -> 309 lines
+  across this workspace's life, in the one path all five reading sets carry
+  (ADR-0143 Finding 6), plus `.agents/reading-sets.edn`'s own eleven-block
+  re-derivation trail.
+  **D (queued):** scope set by the arc's own C close.

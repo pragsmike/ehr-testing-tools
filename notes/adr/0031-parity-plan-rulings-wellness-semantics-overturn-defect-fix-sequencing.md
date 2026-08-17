@@ -146,3 +146,18 @@ form is untouched pending Wave G's wait-semantics implementation.
 
 ---
 
+### Roadmap history (moved verbatim from roadmap.md by ADR-0144, 2026-08-17)
+
+The `.agents/plans/roadmap.md` row this ADR owns, as it stood at `deb9a33` before the ADR-0144 row contract capped rows at six lines. The live row now states what remains and cites this ADR for the rest; this is the rest, verbatim.
+
+- `ImagingStudy` (R5, CHF trigger) and the stroke-risk data source (R7)
+  — GMF coverage Wave D closed 2026-08-02 (D0-D3, see Done below)
+  without owning either; H3's own attribute-weighted `distributed_
+  transition` mechanism landed D3 but is only half of stroke's own
+  revisit trigger (`stroke.json` stays deferred). **Dated
+  cross-reference (2026-08-03, ADR-0031):** the stroke-risk DATA-SOURCE
+  question is RULED — `.agents/plans/2026-08-02-gmf-parity-plan.md` §2
+  (the risk-attribute register, curated calibration content rather than
+  a ported calculation). This row's remaining substance is Wave E
+  scheduling (stroke as the register's first consumer), not an open
+  design question.

@@ -431,3 +431,45 @@ runs.
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Repo review 2: the second assessment — one red closes, two greens don't hold — eight dimensions re-surveyed, 76 rows recorded (57 clean, 8 fix-candidate, 5 ruling-needed, 5 intake); review 1's own prior arithmetic independently re-derived and confirmed exact; the repo-wide silent-success I/O defect (D4, review 1's sole red) is re-verified genuinely closed by running its gate and re-deriving its grep, not by trusting the fix session's account, moving RED to GREEN; two dimensions clean at review 1 (continuity integrity, operator experience) each regress to yellow on the same underlying shape — a fix or gate that closed the literal trigger a prior probe hit while leaving a structurally adjacent, more general trigger of the same class open; nothing moved beyond the register and this ADR's own plan draft, awaiting the author's rulings
+
+### Roadmap history (moved verbatim from roadmap.md by ADR-0144, 2026-08-17)
+
+The `.agents/plans/roadmap.md` row this ADR owns, as it stood at `deb9a33` before the ADR-0144 row contract capped rows at six lines. The live row now states what remains and cites this ADR for the rest; this is the rest, verbatim.
+
+- **Wellness-encounters, roadmap anchor** (2026-08-09, review 2
+  rulings landing, `notes/ADRs.md` ADR-0092/0093, ruling 3's first
+  execution = D7-7): a NAMED DESIGN ITEM, never routine vendoring
+  (`notes/ADRs.md` ADR-0070) — it is upstream's own wellness machinery
+  and collides with this engine's own wellness-cadence design; waits
+  its own pass. Re-surfaced once (ADR-0080, D7-6), then survived three
+  consecutive closes (0089, 0090, 0091) only in `.agents/state.md`'s
+  own Live-work section — HELD, restated unchanged, no session touched
+  it — with no `roadmap.md` row of its own until now. This row is that
+  anchor. Revisit trigger: a future session ready to reconcile
+  upstream's own wellness machinery with this engine's own
+  wellness-cadence design.
+- **`notice_verbatim_test`'s own coverage gap, roadmap anchor**
+  (2026-08-09, review 2 rulings landing, `notes/ADRs.md` ADR-0092/0093,
+  ruling 3's second execution = D7-8): the v2-nist `NOTICE.md` table
+  (2-column, not the gate's 5-column shape) and the simhospital
+  `PROVENANCE.md` hash (prose, not a table, not named NOTICE) both sit
+  outside `notice_verbatim_test`'s own recognized shapes (`notes/
+  ADRs.md` ADR-0079); both hashes are still manually verified correct —
+  a coverage gap, not an active drift. Named at ADR-0079/0080/0084,
+  then absent from three consecutive closes (0089, 0090, 0091) with no
+  `roadmap.md` row of its own until now. Revisit trigger: a future
+  session willing to extend the gate's parser to the v2-nist 2-column
+  table shape and the simhospital prose-hash shape — judged at ADR-0080
+  to balloon past "lands small" for a routine session.
+- **Wave E (vital-sign/CHF/contraceptives/covid19 cluster), parked**
+  (2026-08-09, review 2 rulings landing, `notes/ADRs.md` ADR-0092/0093,
+  ruling 4 = D7-13): restated at four consecutive closes (0074, 0080,
+  0084, 0089) with zero movement on the genuinely blocked member —
+  `covid19` alone stays `:zero-on-every-seed`
+  (`congestive-heart-failure`/`contraceptives` are both
+  `:produces-content` post-Wave-VS, per the "Vital-sign channel" row
+  above, which names the underlying vital-sign-register blocker this
+  row does not restate). Parked rather than scheduled — four closes of
+  identical restatement with zero movement is evidence this is
+  backlog, not urgent. Revisit trigger: the next content-vendoring
+  session with a vital-sign-adjacent candidate.

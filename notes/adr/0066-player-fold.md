@@ -232,3 +232,15 @@ under standing ceremony.
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Player fold: the accumulator learns two-participant messages and absolute time — A17/A40 fold into the wire-side accumulator, MSH-7 reads an absolute epoch instant, the emitter-coherence property runs over the full churn family
+
+### Roadmap history (moved verbatim from roadmap.md by ADR-0144, 2026-08-17)
+
+The `.agents/plans/roadmap.md` row this ADR owns, as it stood at `deb9a33` before the ADR-0144 row contract capped rows at six lines. The live row now states what remains and cites this ADR for the rest; this is the rest, verbatim.
+
+- The lookup-column `time` gap (named in the schema-invalid family
+  backlog since ADR-0039, still untouched — Wave I's own six
+  mechanisms didn't cover it). Bulk vendoring (batched by closure
+  family) follows once the catalog fully walks. **Ratified as real**
+  (design channel, 2026-08-06, `notes/adr/0066-player-fold.md` AR-BB1-R)
+  — discharges the `[unverified]` intake note ADR-0064 carried for it;
+  scheduled after the player-fold arc, still not built.

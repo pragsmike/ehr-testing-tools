@@ -39,14 +39,25 @@
       "")))
 
 (defn- done-pointer-adr-numbers
-  "Every `ADR-NNNN` cited by a one-line Done pointer (`- DATE — slug —
-  ADR-NNNN`) in `content`'s own Done section. Line-anchored to
-  `- `-leading bullet lines so an ADR number mentioned in the Done
-  section's own header/prose is never mistaken for a pointer."
+  "Every `ADR-NNNN` cited by a Done pointer in `content`'s own Done
+  section. Line-anchored to `- `-leading bullet lines so an ADR number
+  in the section's own header/prose is never mistaken for a pointer,
+  and FIRST-match per line so a pointer's own trailing note cannot add
+  a second.
+
+  2026-08-17 (ADR-0144): the pointer shape became
+  `- CLOSED <date> <ADR-NNNN|sha> **[slug]**` -- the token grammar the
+  whole file now carries, which is the old `- DATE — slug — ADR-NNNN`
+  with its fields reordered. The previous end-of-line anchor
+  (`ADR-\\d{4}\\s*$`) matched ZERO of the 56 retokened pointers while
+  the gate stayed green, because a gate that extracts nothing has
+  nothing to find dangling. The anchor is dropped; the non-vacuity
+  assertion above is what now holds the extraction honest, rather than
+  a second anchor that the next reshape would break the same way."
   [content]
   (->> (str/split-lines (done-section content))
        (filter #(str/starts-with? % "- "))
-       (keep #(second (re-find #"(ADR-\d{4})\s*$" %)))
+       (keep #(second (re-find #"(ADR-\d{4})" %)))
        distinct))
 
 (defn- indexed-adr-numbers
@@ -56,6 +67,23 @@
   (->> (re-seq #"(?m)^- \*\*(ADR-\d{4})\*\*" content)
        (map second)
        set))
+
+(deftest the-done-pointer-scan-is-not-vacuous-test
+  (testing "the gate below is worthless if the extraction returns nothing -- ADR-0144's own retokening
+            (`- CLOSED DATE ADR-NNNN **[slug]**`) moved the ADR number off the end of the line, and the
+            original `ADR-\\d{4}\\s*$` anchor silently extracted ZERO of 56 live pointers. Caught by
+            checking rather than by the gate, which stayed green throughout; this assertion is what
+            makes the next such reshape loud."
+    (let [cited (done-pointer-adr-numbers (slurp roadmap-path))
+          bullets (->> (str/split-lines (done-section (slurp roadmap-path)))
+                       (filter #(str/starts-with? % "- "))
+                       count)]
+      (is (pos? bullets) "the live roadmap has a ## Done section with pointers in it")
+      (is (<= (- bullets 2) (count cited) bullets)
+          (str "extracted " (count cited) " ADR pointer(s) from " bullets
+               " Done bullet(s) -- the extraction has stopped matching the pointer shape. "
+               "(Up to two bullets may legitimately cite a sha instead of an ADR, the token's "
+               "own `<ADR-NNNN|sha>` alternative.)")))))
 
 (deftest every-done-pointer-cites-an-adr-that-exists-in-the-index-test
   (testing "every Done one-liner in the live roadmap cites an ADR number the index actually lists"
@@ -77,6 +105,18 @@
                       "- 2026-08-05 — scaffolding-compaction-b — ADR-0046\n")]
     (is (= ["ADR-0045" "ADR-0046"] (done-pointer-adr-numbers fixture))
         "only bullet lines inside the Done section are read as pointers -- the Now-section ADR-9999 mention must not leak in")))
+
+(deftest the-adr-0144-pointer-shape-is-actually-read-test
+  (testing "the retokened shape, and the sha alternative that carries no ADR at all"
+    (let [fixture (str "## Done (current arc only)\n"
+                       "- CLOSED 2026-08-05 ADR-0045 **[scaffolding-compaction-a]**\n"
+                       "- CLOSED 2026-08-16 30cc335 **[d8-5-fence-battery]** -- register\n"
+                       "  `.agents/plans/2026-08-16-fence-battery-findings.md`; the ADR was deferred\n"
+                       "  to the ruled fixes' own session (ADR-0140).\n"
+                       "- CLOSED 2026-08-16 ADR-0141 **[event-log-contract]**\n")]
+      (is (= ["ADR-0045" "ADR-0141"] (done-pointer-adr-numbers fixture))
+          (str "the sha-tokened pointer contributes nothing (its own ADR-0140 mention is on a "
+               "CONTINUATION line, not a bullet), and each bullet contributes its FIRST ADR only")))))
 
 (deftest indexed-adr-numbers-extraction-is-actually-caught-test
   (let [fixture "- **ADR-0001** — Title — [`0001-title.md`](adr/0001-title.md) — Accepted\n- **ADR-0045** — Other — [`0045-other.md`](adr/0045-other.md) — Accepted\n"]

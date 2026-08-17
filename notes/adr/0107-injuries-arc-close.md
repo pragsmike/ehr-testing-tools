@@ -454,3 +454,21 @@ filename range broadened, a future session's own call).
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Injuries arc close: auto-close on reopen lands, the batch vendors, both deferral legs closed — the author's own "Let's do (i)" ruling executes ADR-0106's option (i): the `:encounter` case's own assert becomes a conditional auto-close, synthesizing an implicit `:encounter-end` for a stale open (upstream-faithful, `State.java`'s own same-module-reopen branch, source-cited) before emitting the new `:encounter`, timestamped end-before-open at the SAME instant — `mark-phase`'s own single-open assumption now holds by construction, a new `:synthesized-encounter-ends` counter mirrors `:suppressed-encounter-ends`'s own zero-cost-countable precedent; phase 1's own hermetic red (the pre-existing nesting fixture, byte-identical to `injuries.json`'s own hazard shape) and both ADR-0106-recorded failing seeds go green, oracle bracket leg 1 holds pure identity across all 34 roots; ON THAT GREEN, phase 2 lands the batch — `injuries.json`, `injuries/broken_jaw.json`, `snf/skilled_nursing_facility.json` (5 already-vendored closure members re-verified byte-identical, not re-vendored), round-trip tests red-before-resource, a first-baseline `injuries` oracle root (oracle bracket leg 2: one added root, zero changed among the 34 pre-existing), and a named regression test re-walking one of ADR-0106's own failing seeds against the real vendored closure; a disclosed live finding sets the round-trip horizon to 50 years, not the 100-year convention most engine-layer roots use (`broken_jaw.json`'s own dental-referral loop crosses the interpreter's max-steps budget at 100 years, confirmed live, exactly as ADR-0106's own dated finding predicted) — the arc ADR-0070 opened is now fully closed, no revisit trigger remains
+
+### Roadmap history (moved verbatim from roadmap.md by ADR-0144, 2026-08-17)
+
+The `.agents/plans/roadmap.md` row this ADR owns, as it stood at `deb9a33` before the ADR-0144 row contract capped rows at six lines. The live row now states what remains and cites this ADR for the rest; this is the rest, verbatim.
+
+- **`ehrt.corpus.sink-composability-test`'s own generator-exhaustion
+  flake** (2026-08-11, injuries arc close, `notes/ADRs.md` ADR-0107,
+  dated append): `dir-sink-write-then-intake-hash-identity-property-
+  test`'s own `item-set-gen` draws up to 5 DISTINCT filenames via
+  `gen/vector-distinct` over a small-range `gen/nat`-derived
+  generator, no fixed seed — occasionally throws `Couldn't generate
+  enough distinct elements!` (witnessed once, CI run `31530741376`,
+  confirmed unrelated to that session's own changes and confirmed
+  non-reproducing on immediate re-run). Not fixed this session — out
+  of fence, the file untouched since 2026-07-31. Revisit trigger: a
+  future session willing to widen `:max-tries` or broaden
+  `safe-filename-gen`'s own range to make collision genuinely rare
+  rather than merely uncommon.

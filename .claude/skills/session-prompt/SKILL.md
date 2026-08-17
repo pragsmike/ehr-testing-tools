@@ -98,20 +98,25 @@ observed consistently across every session prompt from
 4. **Cite provenance for every "ruled" claim.** A claim that something
    was already decided should name the roadmap row, ADR number, or prior
    session record it comes from — "as discussed" is not a citation.
-5. **QUEUE PROVENANCE: every queued item cites its roadmap row and
-   quotes that row's own status words** (`notes/adr/0143-adr-index-
-   generated.md`, compression arc session A). A prompt that hands the
-   next session a queue — "Now", "Next", carried items, a horizon list
-   — writes each item as `roadmap.md:LINE` plus the row's status words
-   in quotation marks, e.g. *`roadmap.md:222` — "arc CLOSED"*. An
-   uncited queue item is a **drafting error**, not a stylistic
-   preference, and the receiving session's Step 0 **rejects a prompt
-   whose queue contains one** rather than starting work against it.
+5. **QUEUE PROVENANCE: every queued item cites its roadmap row by SLUG
+   and quotes that row's own STATUS TOKEN** (`notes/adr/0143-adr-index-
+   generated.md`, compression arc session A; cite form set by
+   `notes/adr/0144-roadmap-row-contract.md`, session B). A prompt that
+   hands the next session a queue — "Next", carried items, a horizon
+   list — writes each item as `roadmap.md#<slug>` plus the row's own
+   first token, e.g. *`roadmap.md#downstream-latency` —
+   `DEFERRED (trigger: ...)`*. An uncited queue item is a **drafting
+   error**, not a stylistic preference, and the receiving session's
+   Step 0 **rejects a prompt whose queue contains one** rather than
+   starting work against it. A `roadmap.md:NNN` line cite is itself red
+   under `ehrt.docs-tooling.roadmap-lint-test` — line numbers rot on
+   every insert, and ADR-0143's own cite of this very row was fifteen
+   lines stale one session later.
 
    The rule exists because of a specific failure: the downstream-
    latency row was carried as an open queue item for five days while
-   its own text, at `roadmap.md:222`, read "arc CLOSED" — a prompt
-   written from a remembered queue rather than from the register it
+   its own first sentence read "arc CLOSED" — a prompt written from a
+   remembered queue rather than from the register it
    claims to execute. Quoting the row's own words makes that
    contradiction visible at drafting time, when it costs a line, rather
    than at session time, when it costs a session. It is the same

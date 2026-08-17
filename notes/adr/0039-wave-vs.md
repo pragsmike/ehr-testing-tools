@@ -241,3 +241,24 @@ fully closed this session.
 
 ---
 
+### Roadmap history (moved verbatim from roadmap.md by ADR-0144, 2026-08-17)
+
+The `.agents/plans/roadmap.md` row this ADR owns, as it stood at `deb9a33` before the ADR-0144 row contract capped rows at six lines. The live row now states what remains and cites this ADR for the rest; this is the rest, verbatim.
+
+- **Lookup-table column `time` — genuinely open, distinct from the
+  Wave LC column-resolution mechanism** (compaction A, AR-A-5
+  STALE-AUDIT disposition): Wave LC (ADR-0038 AR-1) DOES
+  special-case a `time` lookup-table COLUMN (age/time date-range
+  parsing) and the Wave LC census confirmed `hiv-diagnosis`
+  (originally blocked on this column) moved `:load-failed` →
+  `:ok-walked` — that evidence is real, recorded here rather than
+  hidden. The Next section's own separate "lookup-column `time`
+  gap" row (named since ADR-0039, schema-invalid family, still
+  untouched per that row's own text) is a DIFFERENT concern this
+  evidence does not resolve — author ruling (compaction A,
+  AR-A-5): this row's `time` component stays explicitly LIVE
+  regardless of the column-resolution evidence above, pending a
+  future session that reconciles the two. The `race` half of the
+  original combined row CLOSED this session — see Done, below.
+  Revisit trigger: whichever session next touches the
+  schema-invalid family's own `time` gap.

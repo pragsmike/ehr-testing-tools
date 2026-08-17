@@ -33,7 +33,7 @@ rule. Sim's and tools' own pre-merge plans stay frozen at
 
 Files in this directory:
 
-  * roadmap.md — the rolling plan (milestone grain, updated same-commit as work)
+  * roadmap.md — the rolling plan (milestone grain, updated same-commit as work; rows follow the ADR-0144 contract: status token, `**[slug]**`, `PRIORITY n` under `## Next`, six lines a row, cited `roadmap.md#<slug>`)
   * 2026-08-01-agent-ux-charter.md
   * 2026-08-01-migration-report.md
   * 2026-08-02-sim-split-plan.md — staged extraction of components/sim into sim-model/sim-trajectory/sim-emit-hl7/sim-engine
@@ -43,7 +43,7 @@ Files in this directory:
   * 2026-08-05-alignment-audit-brief.md — working brief for the alignment & cleanup audit arc: cognitive-load reduction, evolution-seam readiness, publication readiness; seeded findings S1-S6
   * 2026-08-05-alignment-audit-findings.md — the audit's findings register (`notes/ADRs.md` ADR-0049): probe/evidence/finding/recommendation/disposition rows for areas A-F, seeded rows S1-S7 updated with fresh evidence; findings-only, no fixes taken beyond Step 0's two pre-ruled acts
   * roadmap-done-2026-07.md — attic: July's slice of the Done history (empty — no July-dated Done rows existed at rotation time), moved 2026-08-05 by scaffolding compaction B
-  * roadmap-done-2026-08.md — attic: August's slice of the Done history, moved verbatim 2026-08-05 by scaffolding compaction B (`notes/ADRs.md` ADR-0046)
+  * roadmap-done-2026-08.md — attic: August's slice of the Done history, moved verbatim 2026-08-05 by scaffolding compaction B (`notes/ADRs.md` ADR-0046) and again 2026-08-17 by the row-contract migration (ADR-0144), which retired 29 closed rows here verbatim
   * 2026-08-06-ux-arc-brief.md — working brief for the UX arc: two-voices-two-homes principle, error-names-the-artifact, invocation-docs-gated; seeded findings U1-U5; residuals R1 (pending tags) and R2 (compaction-pointer rotation) folded into the opening session
   * 2026-08-06-ux-audit-findings.md — the UX audit's findings register (`notes/ADRs.md` ADR-0058): probe/evidence/finding/recommendation/disposition rows for areas A-D (invocation surfaces, help voice, error surfaces, first contact), seeded rows U1-U5 updated with fresh evidence, plus a complete 100-string classified appendix of every `help.clj` user-facing string; findings-only, no fixes taken
   * 2026-08-06-help-rewrite-draft.md — APPROVED 2026-08-06 (ADR-0062): the complete replacement text for every rendered string in `cli-spec` (register rows B-1/B-2/B-3/B-4(a)), every relocated ADR/milestone token moved to an adjacent `;;` source comment, plus the §5 voice-gate spec; applied verbatim by the landing session

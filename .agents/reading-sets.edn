@@ -390,6 +390,32 @@
 ;; touched; `:sim` and `:docs` carry `build-session/SKILL.md`, unchanged this
 ;; session, so their budgets stay untouched (checked, not assumed).
 
+;; Re-derivation DOWNWARD (2026-08-17, compression arc session B,
+;; `notes/adr/0144-roadmap-row-contract.md`). The first move down this
+;; file has ever recorded. `.agents/plans/roadmap.md` adopted the
+;; ADR-0144 row contract -- status token, slug anchor, six-line cap --
+;; and went 1,684 lines to 289; nothing was deleted, every row moved
+;; verbatim to the attic or to the ADR that owns it, and the multiset
+;; of moved lines was asserted identical by `bin/roadmap-migrate-0144`.
+;; `:onboarding`'s fresh actual (`wc -l` sum across all eight `:paths`,
+;; measured AFTER this session's own AGENTS.md and skills edits landed):
+;; 305 (AGENTS.md) + 59 + 65 + 218 + 166 + 33 (the five READMEs) + 289
+;; (roadmap.md) + 258 (build-session/SKILL.md) = 1446. Standing formula
+;; (actual x1.15, rounded up to the nearest 5): 1446 x 1.15 = 1662.9 ->
+;; 1665. Budget moves 3240 -> 1665, and the ratchet baseline with it.
+;;
+;; DISCLOSED, because it is the number the NEXT session runs into. The
+;; other four sets are NOT re-derived here, and could not be: their
+;; formula values (corpus 2260, sim 1620, judge 1215, docs 1000) all sit
+;; ABOVE their current baselines, because this session's own AGENTS.md
+;; row-contract line grew a path every set carries. The ratchet forbids
+;; up, so all four hold at their existing budgets -- green, but with
+;; 284/203/150/122 lines of headroom and a formula value already past
+;; the ceiling. That is ADR-0143's Finding 6 arriving on schedule:
+;; growth in the shared paths (`AGENTS.md`, `build-session/SKILL.md`)
+;; is what moves four sets at once, and compacting those is chartered
+;; to this arc's session C.
+
 {:onboarding
  {:paths ["AGENTS.md"
           ;; the .agents/ index layer: one README per durable-context
@@ -411,7 +437,7 @@
   ;; because that's a different audience from "a cold task-class session",
   ;; and forcing every onboarding read to carry its cost would budget for an
   ;; activity most onboarding sessions never do (migration session 5, AR-3).
-  :budget-lines 3240}
+  :budget-lines 1665}
 
  ;; components/corpus (generate/mutate/intake/operators) and components/corpus-io
  ;; (transport/IO: sources, sinks, spooling, framing) are two bricks but one

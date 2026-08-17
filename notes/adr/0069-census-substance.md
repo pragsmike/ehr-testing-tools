@@ -214,3 +214,28 @@ predecessor-tag ceremony).
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Census substance: the vendoring arc opens with an honest catalog — the `:substance`/`:event-counts`/`:ok-walked-by-substance` qualifier and the labeled-filename fix land, the fresh census ranks 84 `:ok-walked` modules 51/33 zero-content/content-producing, parity held
+
+### Roadmap history (moved verbatim from roadmap.md by ADR-0144, 2026-08-17)
+
+The `.agents/plans/roadmap.md` row this ADR owns, as it stood at `deb9a33` before the ADR-0144 row contract capped rows at six lines. The live row now states what remains and cites this ADR for the rest; this is the rest, verbatim.
+
+- **Vital-sign channel** (ADR-0036 AR-7, GMF coverage Wave F's own
+  explicit deferral): the `VitalSign` STATE type and the `:vital-sign`
+  CONDITION type both require a vital-sign REGISTER with baseline
+  values (State.java: Synthea's lifecycle engine sets these before any
+  module runs) — engine-delegated content this project does not yet
+  supply, authored calibration content pairing naturally with the
+  re-scoped Wave E (risk-attribute register, above). Blocks
+  `congestive_heart_failure`/`contraceptives`/`covid19` directly
+  (census-confirmed). Revisit trigger: Wave E's own design session, or
+  whichever session first needs a real vital-sign baseline.
+  **Dated note (2026-08-07, vendoring batch 1, AR-VB1-5):** the
+  substance census (ADR-0069's artifact,
+  `components/sim-trajectory/docs/census/2026-08-07-synthea-7e08387-substance.edn`)
+  shows this blockage is now partial, post-Wave-VS —
+  `congestive-heart-failure` walks `[0 117 0]` and `contraceptives`
+  walks `[0 89 0]`, both `:produces-content`; `covid19` alone walks
+  `[0 0 0]`, `:zero-on-every-seed`, still fully blocked. The trigger
+  above is unchanged (a real vital-sign baseline register, not yet
+  built) — only the "blocks all three directly" citation updates to
+  the current evidence.

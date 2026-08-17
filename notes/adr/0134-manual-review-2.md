@@ -186,3 +186,47 @@ standing open register row.
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Manual-review run 2: report landed verbatim, three findings fixed — pays tag `stable-20260814-exact-name` at `46b82ba` (ADR-0133's own close), under a disclosed substitution the author ruled on directly: Step R0's fence required the AUTHOR's `gh run list` relayed into the prompt context, which it was not, so the session STOPped rather than deciding for itself; ruled "Pay it, message verbatim" on this session's own `bin/preflight` showing all five runs green at the exact target SHA, with the session-side provenance recorded in the ADR and session record rather than edited into the tag. The second scored run of the `manual-review` skill's own rubric, authored by the DESIGN CHANNEL against a fresh public clone rather than by a session invoking the skill (a disclosed runner deviation the author chartered verbatim: "Do a thorough review of this repo's user manual, here in the design channel using this strong model (Fable)"), and landed here verbatim -- not re-derived, re-graded, or re-worded. The reviewer/actor split, ruled "Q1 a.", is satisfied ACROSS channel and session rather than across sessions: the channel reviews, the session acts, the report commit strictly precedes every fix commit, each fix commit cites its report row. **Overall PASS with warns, no fail-grade dimension** — both run-1 FAILs verified remediated STRUCTURALLY (dimension 1 by ADR-0129's exercised-sources register and citation gate, dimension 4 by ADR-0126's first-use links), not by hand-witnessing; dimension 7 strengthens from run 1's disclosed 4-claim sample to test-guaranteed (`cli-md-is-current-test` plus CI's regen+diff step make a green tip itself the currency proof) plus eight claims checked on top; dimension 5 stays WARN for the structural reason run 1 documented (HL7v2-only `ed-tuesday` cannot supply Chapters 6-8 their FHIR material), the manual's one standing open register row. Disclosed scope limit, stated in the report's own preamble: NOTHING was re-executed -- the channel sandbox cannot resolve Clojure dependencies, so every witnessed output was checked for source-consistency, internal arithmetic, and mechanism coverage, never re-witnessed; execution-tier confidence rests on the two-gate exerciser mechanism and the green suite at `46b82ba`. Four findings beyond the rubric, the fourth deliberately affirmative (F4, every cited test/numeric/attribution that DID check out, so a future reader can tell "verified correct" from "not looked at"): **F1** fixed -- Chapter 8's `ehrt check` elision comment said "five more patient files," totalling 8 against the same block's own `:totals {:pass 7}`, corrected to "four" only after VERIFYING the rider's stated premise that no test hashes a manual output fence (it holds -- the citation gate parses only "Strip source citations" tables, the exerciser parity test compares scenario-README commands to script command lists, and a repo-wide grep finds no third reader), so the currency contract's never-hand-edit-to-match rule is not implicated; **F2** disclosed in place -- one parenthetical sentence explaining why `corpus intake` reports `:file-count 8` over `test-fixtures/v2` while `gate v2` reports `:pass 5` (intake walks every regular file recursively and picks up the three `simhospital/` sidecar files; the gate takes only the five `.hl7`), both correct, the undisclosed divergence having invited a false "did the gate skip files?" alarm; **F3** fixed -- `docs/glossary.md`'s headword widened to `**Intake / intake record.**` to cover the phrase Chapter 8 actually links, the rider's single sanctioned move-don't-improve allowance. One fence widening disclosed: `.agents/plans/README.md`'s index line for the report, a mechanical consequence of landing the file (`ehrt.docs-tooling.index-completeness-test` gates plans entries in both directions), added in the report's own commit and named in its message. Zero `src` touched anywhere, so no oracle root can have moved and no oracle claim is made or owed; `make test` green at the final tree
+
+### Roadmap history (moved verbatim from roadmap.md by ADR-0144, 2026-08-17)
+
+The `.agents/plans/roadmap.md` row this ADR owns, as it stood at `deb9a33` before the ADR-0144 row contract capped rows at six lines. The live row now states what remains and cites this ADR for the rest; this is the rest, verbatim.
+
+- **Manual-review run 2 — CLOSED 2026-08-14 (ADR-0134), overall PASS
+  with warns.** The skill's own second scored run
+  (`.agents/plans/2026-08-14-manual-review-2.md`), authored by the
+  DESIGN CHANNEL against a fresh public clone at `46b82ba` rather than
+  by a session invoking the skill — a disclosed runner deviation the
+  author chartered verbatim ("Do a thorough review of this repo's user
+  manual, here in the design channel using this strong model
+  (Fable)") — and landed verbatim by the acting session under the
+  reviewer/actor ruling "Q1 a." (channel reviews, session acts, report
+  commit strictly before every fix commit, each fix citing its report
+  row). **No fail-grade dimension.** Both run-1 FAILs verified
+  remediated STRUCTURALLY, not by hand-witnessing: dimension 1 by
+  ADR-0129's exercised-sources register + citation gate, dimension 4
+  by ADR-0126's first-use links. Dimension 7 strengthens from run 1's
+  disclosed 4-claim sample to test-guaranteed (`cli-md-is-current-
+  test` + CI's regen+diff step make a green tip itself the currency
+  proof), plus eight claims checked on top. Disclosed scope limit:
+  nothing was re-executed — the channel sandbox cannot resolve
+  Clojure dependencies, so every witnessed output was checked for
+  source-consistency, internal arithmetic, and mechanism coverage,
+  never re-witnessed. Three of four beyond-rubric findings disposed
+  the same day: **F1** (Chapter 8's `ehrt check` elision comment said
+  "five more patient files," totalling 8 against the block's own
+  `:totals {:pass 7}`) fixed to "four," only after verifying that no
+  test hashes a manual output fence; **F2** (intake's `:file-count 8`
+  vs the gate's `:pass 5` over `test-fixtures/v2`, both correct, the
+  divergence undisclosed) explained in one parenthetical in place;
+  **F3** (`docs/glossary.md`'s headword didn't cover the phrase
+  Chapter 8 links) widened to `**Intake / intake record.**`. **F4 is
+  an affirmative record**, deliberately — every cited test, numeric
+  value, and section attribution that DID check out, so a future
+  reader can tell "verified correct" from "not looked at."
+  **Dimension 5 (running-example continuity) stays WARN and is now
+  the manual's one standing open register row** — `ed-tuesday` is
+  HL7v2-only and structurally cannot supply Chapters 6-8 their FHIR
+  mutation, FHIR-gate calibration, or foreign-corpus material;
+  disclosed, not silently substituted, and not a defect under the
+  dimension's own reading. Full account in
+  `notes/adr/0134-manual-review-2.md`.

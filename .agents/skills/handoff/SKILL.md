@@ -76,10 +76,17 @@ The generated handoff follows this structure:
 - Context for why each is ready
 - Dependencies and blockers
 - **Queue provenance, required** (`notes/adr/0143-adr-index-
-  generated.md`, compression arc session A): every item here that
-  corresponds to a register row cites it as `roadmap.md:LINE` and
-  quotes the row's own status words — e.g. *`roadmap.md:222` — "arc
-  CLOSED"*. An uncited item is a drafting error, and a session prompt
+  generated.md`, compression arc session A; cite form set by
+  `notes/adr/0144-roadmap-row-contract.md`, session B): every item here
+  that corresponds to a register row cites it by SLUG as
+  `roadmap.md#<slug>` and quotes the row's own STATUS TOKEN — e.g.
+  *`roadmap.md#downstream-latency` — `DEFERRED (trigger: ...)`*. A
+  `roadmap.md:NNN` line cite is red under
+  `ehrt.docs-tooling.roadmap-lint-test`: line numbers rot on every
+  insert, which is how ADR-0143's own cite of this very row was
+  addressing line 237 by the time session B read it, fifteen lines
+  further down than when it was written. An uncited item is a drafting
+  error, and a session prompt
   built from a handoff whose queue contains one is rejected at the
   receiving session's Step 0. The rule answers a real failure: the
   downstream-latency row was carried forward as open work for five

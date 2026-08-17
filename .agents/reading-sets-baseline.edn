@@ -38,7 +38,16 @@
 ;; own Finding 6 and is chartered to a later session of this arc. The
 ;; ratchet is what makes the next move down instead of up.
 
-{:onboarding 3240
+;; 2026-08-17, compression arc session B (`notes/adr/
+;; 0144-roadmap-row-contract.md`): `:onboarding` 3240 -> 1665, the first
+;; DOWNWARD move any budget in this workspace has recorded. Set from
+;; that ADR's own post-compaction actual (1446) by the standing formula.
+;; The other four are unchanged: their formula values now sit ABOVE
+;; their baselines, and the ratchet forbids up -- see
+;; `.agents/reading-sets.edn`'s own dated note for the numbers and for
+;; why session C is where they move.
+
+{:onboarding 1665
  :corpus 2245
  :sim 1610
  :judge 1205

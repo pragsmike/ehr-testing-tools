@@ -293,3 +293,33 @@ trigger.)
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Corpus batching: the transport gets one notch real — two author rulings execute: the batcher is a corpus-level tool separate from the sim, working on any directory of valid v2 message files including foreign corpora (Q1 a); the HL7 v2 batch protocol's BHS/BTS wrappers land as `ehrt.corpus-io.framing`'s own `:batch` codec in v1 (Q2 a); a new pure `ehrt.corpus-io.batch/partition-messages` sorts messages globally by MSH-7 and partitions into epoch-aligned, half-open buckets, fail-fast on an unparseable transmit time naming the file; the `:batch` codec wraps `:er7-multi`-framed messages in minimal, deterministic BHS/BTS segments (BTS-1 the true count, verified on decode — a free transport-integrity check); MSH-7 extraction reuses the one existing lenient reader via a move-don't-improve micro-relocation from `ehrt.corpus.player` down into `ehrt.corpus-io.er7-fields` (corpus-io may never require `ehrt.corpus.*`), proven byte-identical by 24 unmodified, still-green pre-existing tests; `ehrt corpus batch DIR --interval MINUTES --out-dir OUT` lands in `bases/cli`, reusing `ehrt play`'s own directory-input machinery, self-verifying every written batch's BTS-1 against its own true count before reporting success; witnessed over `demos/scenarios/ed-tuesday/`'s own latency out-dir — 283 messages, 34 hourly batches, an interior empty-hour gap visibly skipped, and a straddling encounter (Smith, James/MRN000002) split across two consecutive, individually clean batches, the transport-vs-clinical-completeness lesson made concrete; three v1 deferrals named with revisit triggers (`--anchor`, interior empty-batch realism, FHS/FTS); the oracle holds pure identity across all 35 roots
+
+### Roadmap history (moved verbatim from roadmap.md by ADR-0144, 2026-08-17)
+
+The `.agents/plans/roadmap.md` row this ADR owns, as it stood at `deb9a33` before the ADR-0144 row contract capped rows at six lines. The live row now states what remains and cites this ADR for the rest; this is the rest, verbatim.
+
+- **Transport realism — batching, LANDED 2026-08-11 (ADR-0111), three
+  named deferrals still open.** `ehrt corpus batch DIR --interval
+  MINUTES --out-dir OUT` schedule-partitions a corpus's own messages
+  (any directory of valid v2 message files, including a foreign
+  corpus — author ruling, `.agents/rulings.md`, "From ADR-0111," Q1
+  a) into epoch-aligned, HL7 v2 batch-protocol (BHS/BTS) delivery
+  files, composing with the latency arc (ADR-0109/ADR-0110) as a
+  second, independent transport realism. Witnessed against
+  `demos/scenarios/ed-tuesday/`'s own latency out-dir: 283 messages,
+  34 hourly batches, an interior empty-hour gap visibly skipped, a
+  straddling encounter (Smith, James/MRN000002) split across two
+  consecutive, individually BTS-verified batch files. Three v1
+  deferrals, each with its own revisit trigger (`notes/adr/
+  0111-corpus-batching.md`): **`--anchor`** (bucket alignment is
+  always Unix-epoch; revisit trigger: a concrete non-epoch-aligned
+  schedule need); **interior empty-batch realism** (an empty bucket
+  between two occupied ones is skipped, never represented as a
+  missing/placeholder file; revisit trigger: a future session wanting
+  to simulate a receiver noticing a missing scheduled delivery);
+  **FHS/FTS file-level wrappers** (the batch protocol's own next tier
+  up from BHS/BTS; revisit trigger: a future need to bundle multiple
+  batches into one file-level transfer). A taxonomy question — where
+  message loss/duplication sit relative to transport-realism (this
+  row, ADR-0109) versus mutation (`ehrt corpus mutate`) — is named,
+  not resolved, in the same ADR.

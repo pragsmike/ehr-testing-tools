@@ -16,7 +16,7 @@
       token was introduced to retire, a row whose prose says it is
       finished while its position says it is not.
     - **slug** -- a stable `**[slug]**` anchor right after the token,
-      unique across the file. Rows are cited `roadmap.md#slug`; a
+      unique across the file. Rows are cited `roadmap.md#<slug>`; a
       `roadmap.md:NNN` line cite in any live surface is red, because
       line numbers rot on every insert (the specimen this arc opened
       against, `roadmap.md:222`, addressed the latency row when it was
@@ -231,7 +231,7 @@
         (is (= ps (sort ps)) (str "## Next PRIORITY values are not ascending in file order: " (vec ps)))))))
 
 (deftest no-live-surface-cites-the-roadmap-by-line-number-test
-  (testing "Q2(a): line-number cites rot on every insert; live surfaces cite roadmap.md#slug"
+  (testing "Q2(a): line-number cites rot on every insert; live surfaces cite roadmap.md#<slug>"
     (let [bad (for [path live-scan-roots
                     :let [content (slurp path)]
                     [lineno line] (map-indexed (fn [i l] [(inc i) l]) (str/split-lines content))
@@ -239,10 +239,10 @@
                 (str path ":" lineno))]
       (is (empty? (vec bad))
           (str (count bad) " live-surface line cite(s) into .agents/plans/roadmap.md -- "
-               "rewrite as roadmap.md#slug (ADR-0144 Q2): " (vec bad))))))
+               "rewrite as roadmap.md#<slug> (ADR-0144 Q2): " (vec bad))))))
 
 (deftest every-cited-slug-resolves-test
-  (testing "Q2(a): a roadmap.md#slug cite in a live surface addresses a row that exists"
+  (testing "Q2(a): a roadmap.md#<slug> cite in a live surface addresses a row that exists"
     (let [defined (set (keep #(second (re-find slug-pattern (:body %)))
                              (all-rows (slurp roadmap-path))))
           bad (for [path live-scan-roots

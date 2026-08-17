@@ -202,7 +202,12 @@ library in its own right.
   one dated record per non-trivial session, written as its last
   pre-push act (charter R-A, `notes/ADRs.md` ADR-0023).
 - [`.agents/plans/`](.agents/plans/README.md) — what's landed and
-  what's next, milestone grain.
+  what's next, milestone grain. `roadmap.md` rows follow a gated
+  contract (ADR-0144): `OPEN` | `CLOSED <date> <ADR|sha>` |
+  `DEFERRED (trigger: ...)` | `EXTERNAL`, then a stable `**[slug]**`,
+  then `PRIORITY n` under `## Next`; six lines a row, `CLOSED` only
+  under `## Done`, and rows are cited `roadmap.md#<slug>`, never by
+  line number.
 - [`.agents/memory/`](.agents/memory/README.md) — durable design
   lineage too expensive to re-derive, not decision-of-record (that's
   an ADR) or one verifiable claim (that's `notes/facts-register.md`).

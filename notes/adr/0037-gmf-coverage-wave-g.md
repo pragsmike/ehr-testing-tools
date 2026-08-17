@@ -252,3 +252,25 @@ against a stale prompt, and not left for a future session to resolve.
 
 ---
 
+### Roadmap history (moved verbatim from roadmap.md by ADR-0144, 2026-08-17)
+
+The `.agents/plans/roadmap.md` row this ADR owns, as it stood at `deb9a33` before the ADR-0144 row contract capped rows at six lines. The live row now states what remains and cites this ADR for the rest; this is the rest, verbatim.
+
+- **Wave G attachment deferral** (ADR-0037 AR-4, named trigger "multi-
+  module assignment per patient"): upstream's own all-waiting-modules-
+  attach-to-one-visit semantics only diverges from this project's
+  per-module wait when one patient runs multiple modules concurrently —
+  the engine's current one-module-per-patient assignment never
+  exercises this, so it is deferred, not built. Revisit trigger: a
+  future session that assigns more than one module to the same patient.
+- **Wellness cadence chronic-meds cap** (2026-08-03, `notes/ADRs.md`
+  ADR-0037 AR-1): `EncounterModule.recommendedTimeBetweenWellnessVisits`'s
+  own chronic-medications annual cap ("if hasChronicMeds && interval >
+  1 year, interval = 1 year", lines 209-211 at the pin) is EXCLUDED from
+  `next-wellness-tick` by ruling, not omitted by oversight —
+  `active-chronic-medications` exists in this project's own persona/
+  attribute model with no input cascade, so wiring the cap in is a
+  register item, not a design question. Revisit trigger: a future
+  session ranking calibration fidelity for the chronic cluster, or a
+  finding that the cap's absence materially skews a census/corpus
+  result.

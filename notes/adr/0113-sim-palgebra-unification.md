@@ -237,3 +237,16 @@ generated-doc regeneration (`docs/cli.md`, `docs/use-cases*`,
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Sim palgebra unification, and the manual-arc rulings recorded — a docs-and-registers-only session: `.agents/rulings.md` gains "From ADR-0113," R1-R7 verbatim (the "user manual" naming ruling; the manual's chaptered shape and ed-tuesday running scenario; demos must be exercised as documented, mechanism a quickstart-generalized demo exerciser; the five-segment audience-register paring, recorded not executed; the review-3-then-manual sequence, scope verbatim, plus the manual-review skill at arc close; diagrams derive from data; the palgebra placement itself); `.agents/plans/roadmap.md`'s "Tool-specific user-guide design pass" row renames to "User manual design pass," folding in the shape and sequence rulings, with two new Next rows (review-3's user-surface scope, the demo exerciser) and a register-maintenance row (the audience paring); every non-quoted "user guide" token in both files' own live prose corrects to "user manual," verbatim author quotes left unchanged as spoken; `docs/dev/simulator-architecture.md` §4 gains "The two layers, instantiated" — `GT` as the abstract-layer object (the sim purity lint as its mechanical enforcement), the founding thesis read as two lowerings of one object (the naturality witness as their coherence law), the honest wrinkle that no `erase` exists from wire back to `GT` (why the oracle freezes bytes), four witnessed cases where `lower ⨟ erase = id` genuinely holds (the framing codecs, pacing, the latency second clock's zero point), and transport realism versus mutation restated as movement-within-a-fiber versus a different abstract object — every witness re-verified at its own path:line before landing; one pointer line each lands in `palgebra-design.md` and `trajectory-computation.md`; zero `src` change anywhere, the oracle holds pure identity across all 35 roots
+
+### Roadmap history (moved verbatim from roadmap.md by ADR-0144, 2026-08-17)
+
+The `.agents/plans/roadmap.md` row this ADR owns, as it stood at `deb9a33` before the ADR-0144 row contract capped rows at six lines. The live row now states what remains and cites this ADR for the rest; this is the rest, verbatim.
+
+- **Audience register paring** (ADR-0113 R4; a small future docs
+  session, not chartered). Author "Q1 a": the audience register in
+  `docs/dev/AUDIENCES.md` pares to five behavioral segments --
+  practitioner (agent-assistance absorbed as a global style constraint,
+  evaluation as its front matter), guide reader, data consumer,
+  contributor (human or agent), deferred library-consumer stub -- and
+  that document's own "Seven segments" header gets corrected in the
+  same edit. Ruled 2026-08-12; execution deferred to a later session.

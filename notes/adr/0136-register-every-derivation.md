@@ -283,3 +283,59 @@ it, and it fails silently the first time one does not.
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Register every string-diagram derivation: the make graph and CI freshness gate get the tree's population — the first fix session under repo review 3's open arc (`.agents/plans/2026-08-15-repo-review-3-plan.md` Session A), on the author's ruling *"accept all."* Tree-first enumeration found 10 derived artifacts against 5 registered; the 5 unregistered included the three `components/palgebra/examples/*-flow*.mermaid` teaching diagrams, **stale against their own converter** and therefore demonstrating to any reader precisely the defect ADR-0135 was chartered to fix — channel-confirmed by independent regeneration before the session began, and the headline finding of the review. New `make` targets `sim-theory` (converter + an `awk` splice into `sim-theory-diagram.md`'s embedded block, so equations → `.mermaid` → embedded block agree byte for byte under one `git diff`) and `palgebra-examples`, both folded into `docsgen`; CI's freshness step now diffs all ten paths and its header records the obligation that comes with a new derived file. Red witnessed first, running CI's step verbatim against `fca52ec`: **exactly three** failures, exactly the three named, `sim-theory` correctly not among them — the stated proof the gate had the right population. Regeneration surfaced one detail beyond the register's account, recorded because it sharpens the finding: `ai-study-flow-v3.mermaid` was **two** converter generations behind, not one (also missing the gate/spider styling). Hand recipes retired from both `sim-theory` headers for `make sim-theory` pointers, with the `sim-theory-equations.txt` edit rewritten in place at exactly 17 comment lines in / 17 out (46-line file preserved) so no `%% Arrow N` renumbering occurred — the authorized disclosed-churn fallback was not needed — and the header now states that its line count is load-bearing; ADR-0135's historical disclosure note kept verbatim, dead path and all, with its "the recipe above" referent preserved by a new note rather than by editing the record. Riders, both ruled: `bin/check-palgebra-drift` deleted with its zero-caller inventory re-derived at deletion and a `notes/carve-loss-audit.md` disposition row (a guard whose sibling-checkout premise died at the merge, which nominally watched the very directory whose outputs went stale); three roadmap rows registered visibility-first — the Synthea demographics extraction (Deferred, trigger verbatim, pointer paragraph added at the `NOTICE` after confirming it holds no verbatim upstream bytes and no provenance table), `source-sink-design.md`'s OPEN-4 `--engine` (Next, carrying its own question, disposition deliberately not taken), and the loopback flake (Deferred, with a stated closing bar after 18 days in `state.md` alone). Zero `src/`, zero converter changes — the converter was correct, only its outputs were stale. Closes review-3 rows D5-3/D5-4/D2-4 (D5's RED) and registers D1-5/D7-3/D7-4
+
+### Roadmap history (moved verbatim from roadmap.md by ADR-0144, 2026-08-17)
+
+The `.agents/plans/roadmap.md` row this ADR owns, as it stood at `deb9a33` before the ADR-0144 row contract capped rows at six lines. The live row now states what remains and cites this ADR for the rest; this is the rest, verbatim.
+
+- **`corpus generate --engine` — an OPEN question, registered for
+  visibility, disposition deliberately NOT taken here.** Registered
+  2026-08-15 by repo review 3 (finding D7-3(b), author ruling R-2
+  "accept all.", ADR-0136); the question itself has been marked
+  **Open** in `docs/dev/source-sink-design.md:56`'s own table since
+  `499cad4`, 2026-07-29, and appeared in no register for the 17 days
+  between. The row carries that table's own question rather than
+  answering it: *should `corpus generate` grow an `--engine` flag now
+  that the generator registry (SS-2) names more than one engine kind
+  (`synthea`, `sim`), so a caller could pick which engine `corpus
+  generate` drives instead of only ever driving Synthea?* SS-2's own
+  ruling 6 put `corpus generate`'s verb, flags and defaults out of
+  scope, leaving two live futures: a session adds `--engine`, or
+  `corpus generate` stays Synthea-only forever with `intake
+  GENERATOR-URL` as the one multi-engine door. It sits in Next, not
+  Deferred, because Deferred rows owe a revisit trigger and this one
+  has none yet — being in a register at all is the whole point of the
+  row. Resolving it updates BOTH this row and OPEN-4 in place.
+- **Synthea-extracted demographics tables — hand-curated placeholders
+  today, replaceable wholesale when a Synthea checkout is at hand.**
+  Registered 2026-08-15 by repo review 3 (finding D7-3(a), author
+  ruling R-2 "accept all.", ADR-0136); the request itself has stood
+  unregistered in
+  `components/sim-model/resources/sim-model/demographics/NOTICE:26`
+  since `3f43a46`, 2026-08-05, with zero hits for `demographics` in
+  either this file or `state.md` across that whole window — invisible
+  to the carried-item aging probe by construction, because that probe
+  enumerates the registers. The NOTICE's own words, verbatim: *"A
+  future session WITH a Synthea checkout available can replace the
+  content of these three files wholesale with a real extraction,
+  keeping ehrt.sim.persona's readers unchanged, since the schema is
+  already shaped to match."* **Revisit trigger, verbatim: a session
+  with a Synthea checkout available.** Until then `given-names.edn`,
+  `surnames.edn` and `places.edn` are hand-curated originals, not
+  copied or derived from any Synthea file, and the NOTICE is the
+  standing record of that distinction — nothing here is a correctness
+  defect, only an unregistered intention that is now registered.
+- **`ehrt.conformance.mutate-stdout-stdin-loopback-test`'s own flake**
+  (first recorded `dc52a25`, 2026-07-28). Registered here 2026-08-15
+  by repo review 3 (finding D7-4, ADR-0136) after 18 days carried in
+  `.agents/state.md:668` alone — and `state.md` is regenerated at
+  every arc close, so it was never a durable anchor. That is review
+  2's own D7-7/D7-8 finding recurring a third time; this row is the
+  anchor those fixes did not reach. Evidence keeps strengthening and
+  never gets acted on: zero recurrence in review 3's own full-suite
+  baseline (636/636, zero `FAIL in`/`ERROR in`), and none in this
+  session's suite either. **Revisit trigger: the next session that
+  owns test-suite hygiene, or any recurrence.** Closing bar, stated
+  so the soak can actually end rather than accumulating forever: if
+  no recurrence appears by the next repo review, close this row and
+  D3-2 together against the accumulated green runs, citing them.

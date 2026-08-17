@@ -1,1684 +1,290 @@
-# Roadmap — rolling plan and backlog
+# Roadmap -- rolling plan and backlog
 
-Updated by sessions in the same commit as work that changes a row. Successor to the
-design channel's chat-resident ledger (retired 2026-08-01). Cite sources; one line
-per item; done items move to the bottom of their section with a date and sha.
+Updated by sessions in the same commit as the work that changes a row. Row
+contract (ADR-0144, gated by `ehrt.docs-tooling.roadmap-lint-test`): the first
+token is `OPEN` | `CLOSED <date> <ADR-NNNN|sha>` | `DEFERRED (trigger: ...)` |
+`EXTERNAL`, and `CLOSED` lives only under `## Done`; then a stable `**[slug]**`,
+cited from elsewhere as `roadmap.md#<slug>` and never by line number; `## Next`
+rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
 
-## Now (in progress)
-- Nothing in progress at this close (register-compression arc session A,
-  ADR-0143, 2026-08-16 — `notes/ADRs.md` became a generated surface, the
-  reading-set budgets gained a committed ratchet baseline
-  (`.agents/reading-sets-baseline.edn`), and the queue-provenance and
-  register-hygiene rules landed in the skills. Arc sessions B, C and D are
-  queued below; B's own first specimen is deliberately left unmoved at
-  `roadmap.md:222`. The oracle held pure identity across all 35 roots; the
-  only `src` touched was `components/docs-tooling`).
 ## Next (backlog, no session scheduled)
-- **Register-compression arc — SESSION A LANDED 2026-08-16
-  (`notes/adr/0143-adr-index-generated.md`); B, C, D QUEUED.**
-  Author-ordered A -> B -> C -> D, one session each (*"I like that order,
-  after OBR/OBX."*; guards *"Ok on all five. Rider ok."*), chartered after a
-  queue item was carried as open for five days after its own arc closed.
-  **A (landed):** `notes/ADRs.md` is GENERATED — `make adr-index` renders every
-  row from the `notes/adr/` tree's own headings and Status lines, on `docsgen`
-  and in CI's freshness diff; 140,852 -> 30,933 bytes, mean row 977 -> 184
-  chars; 78 narratives moved verbatim into their own ADRs, zero deleted lines.
-  Guard #3 (budget ratchet, `.agents/reading-sets-baseline.edn`) and the skills
-  rider (queue provenance in `session-prompt`/`handoff`; R-RH/R-BS/R-RP/R-AE in
-  `build-session`) landed with it.
-  **B (queued):** guard #1 and its dual — a roadmap row whose own text says
-  CLOSED may not sit under `## Next`, and the converse.
-  `ehrt.docs-tooling.roadmap-deferred-closure-lint-test` covers `## Deferred`
-  only, which is why the specimen went uncaught. B's first specimen is
-  `roadmap.md:222`, the downstream-latency row, status words *"arc CLOSED"*,
-  sitting in this section — deliberately LEFT IN PLACE by session A so B has a
-  live red to prove its gate against, not a fixture.
-  **C (queued):** `.agents/skills/build-session/SKILL.md`, 162 -> 309 lines
-  across this workspace's life, in the one path all five reading sets carry
-  (ADR-0143 Finding 6), plus `.agents/reading-sets.edn`'s own eleven-block
-  re-derivation trail.
-  **D (queued):** scope set by the arc's own C close.
-- **Event-log contract arc — CLOSED 2026-08-16 (`notes/adr/0141-event-log-contract.md`).**
-  Author-ordered before latency realism (*"Choose a."*). The ground-truth event
-  log is now a PUBLIC, VERSIONED contract: `ehrt.sim-engine.event-schema/Event`
-  (21 kinds, source and a 4,997-event census reconciled exactly), exported as
-  self-contained EDN, stamped into every manifest as `:event-schema-version`,
-  documented by a GENERATED `docs/formats.md` section led by the nested-`:event`
-  warning, and demonstrated by `bin/example-custom-emitter` behind a use-case
-  page exercised from birth. Landed red-first; zero engine, emitter or
-  vendored-byte changes. Any successor arc that changes the log's SHAPE now
-  owes a version bump or an additive-only change, enforced by
-  `event-schema-test` against a frozen baseline.
-- **Event-log shape defects — REGISTER ROWS, ruled 2026-08-16** (*"S-1..S-5 and
-  the Z-segment asymmetry stay register rows"*). Evidence and full write-up:
-  `.agents/plans/2026-08-16-event-log-census.md` (§ Shape defects). Deliberately
-  unfixed — describing current truth first, then changing it under the versioned
-  contract, is the point of the tier. **S-1** module-compiled encounters carry
-  `:reason` present-and-always-nil; **S-2** `referenced_by_attribute` care-plan
-  closures never resolve their start, so no `:care-plan-start` ever closes (not
-  the mechanism — a `careplan`-citing fixture resolves both); **S-4** the
-  `:step-rejected` reason enum is 7 wide and the census saw 1 (not a defect,
-  recorded so nothing narrows it to observation); **S-5** unrelated, seed 202
-  under `--churn` exits `:self-check-failed`, reproducible; **S-6** `:units`
-  plural on result entries vs `:unit` singular on observations, same concept;
-  **Z-segment context asymmetry** a CONSUMER defect outside this arc's fences —
-  `emit_hl7`'s ADT-family builder hands Z-templates a seven-key subset while
-  every other family hands the whole event, silently. S-3 was withdrawn as
-  correct behaviour on evidence.
-- ~~**D8-5 live fence battery — its own session, BEFORE repo review
-  4**~~ — **CLOSED 2026-08-16, DISCHARGED.** Ran at `30cc335` (the
-  register, 102 files / 202 blocks / 58 bare fences executed one by
-  one); ruled *"Accept recommendations."* and executed the same day by
-  `notes/adr/0140-fence-battery-ruled-fixes.md` — six pages
-  fixed-or-disclosed and one tool fix (`intake` distinguishes
-  `:empty-input` and `:upstream-error` from `:malformed-mllp-frame`).
-  The probe that lapsed across two consecutive reviews is closed on
-  the record. **One row survives it into review 4's D2**: 56 of 74
-  command fences still have no exerciser — ruled out of the fix
-  session, handed on with its proposed rule quoted in ADR-0140.
-- **Repo review 4 — chartered after roughly 15 ADRs from ADR-0139,
-  i.e. at approximately ADR-0154** (author ruling Q3 "a.", 2026-08-15,
-  `notes/ADRs.md` ADR-0139). **This is the standing cadence rule from
-  now on: ADR count, not calendar.** Measured rationale, not
-  preference — reviews 1->2 spanned 11 ADRs, review 2->3 spanned 44,
-  and at that window size the instrument's own coverage degraded in
-  ways review 3 had to disclose rather than score around (three probes
-  recorded blocked or partial: D8-5 unrun, D6-4's 44-ADR deviation read
-  done at heading depth, D3-1 substituted by CI's cold runner).
-  Inherits review 3's twelve-row watch-list, ADR-0139's "Review 4's
-  inherited watch-list" section: **D1-9** (backticked-path shorthand,
-  open by ruling R-B2), **D1-10** (denylist-family widening, open by
-  ruling R-B3), **D8-5** (RUN and DISCHARGED 2026-08-16, ADR-0140 —
-  what D2 inherits is its one surviving row: 56 of 74 command fences
-  unexercised, and whether that is the intended equilibrium),
-  **D3-1** (restore the local cold-clone probe or retire it
-  by name — twice substituted is where a method quietly becomes a
-  former method), **D6-4**, **D1-4**'s method note (compare the two
-  sets, not their cardinalities), the three rows below, and the H-2 /
-  H-3 incident classes — **watched for recurrence, not re-probed for
-  the defect**, both now being gated.
-- **The `sim-theory.edn` -> `sim-theory-equations.txt` hop: an
-  unregistered hand derivation at the head of a registered chain**
-  (new row, opened 2026-08-15 by the repo-review-3 arc close's own
-  re-scoring probes, ADR-0139 finding C-1; not chartered to any
-  session). ADR-0136 registered `sim-theory-equations.txt` ->
-  `.mermaid` -> the `.md`'s embedded block in the make graph and CI's
-  freshness diff. Its head hop is not registered: the equations file's
-  own header says it is *"hand-derived"* from `sim-theory.edn` and
-  *"maintained by hand alongside"* it, with *"no Clojure translator"*,
-  and nothing gates their agreement (`git grep -l sim-theory-equations`
-  over `*.clj` / `Makefile` / `.github/` returns the `Makefile` alone —
-  the regeneration target, not a check). So the `.edn` can drift and
-  every downstream artifact will regenerate byte-perfectly from the
-  stale half while CI stays green. **ADR-0136's own corollary — a
-  derivation maintained by a documented hand procedure IS an
-  unregistered derivation — one hop upstream of where that ADR
-  applied it.** A live surface states the opposite:
-  `components/sim-trajectory/docs/trajectory-computation.md:250`
-  describes the diagram as *"mechanically regenerated from
-  `sim-theory.edn`"*. **Open question for the author: translator, or
-  checked-in agreement gate?** Deliberately not fixed at the close —
-  correcting only the sentence would make the doc accurate about a gap
-  nobody then has to close.
-- **CarePlan / Guard condition-resolution: a third unregistered
-  standing request** (new row, opened 2026-08-15 by the
-  repo-review-3 arc close, ADR-0139 finding C-2; registered
-  visibility-first per ruling R-2's own precedent, disposition
-  deliberately not taken). `components/sim-trajectory/docs/
-  gmf-interpreter-findings.md:1189` and `gmf-interpreter.md:1359` name
-  the CarePlan mechanism as a closure's next prerequisite, *"unowned by
-  any wave until a future session extends Guard's own
-  condition-resolution machinery"* — a standing request that says so in
-  its own words. Zero hits for `careplan` or `care.plan` in this file
-  or `.agents/state.md`; unregistered since `e6a0b28`, **2026-08-05**,
-  the same date as the demographics NOTICE request that review 3's
-  amended D7 probe *did* catch. **The probe found two of at least
-  three**, because its exclusion step ("requests already mirrored in
-  `roadmap.md`") is a registry standing in for a population, one level
-  up — the arc's own central class, in the instrument patched to catch
-  it.
-- ~~**`state_staleness_tripwire_test` enumerates filenames, not arc
-  closes**~~ — **CLOSED 2026-08-16** by the D8-5 fence battery session,
-  which carried C-4 as a rider (opened 2026-08-15, ADR-0139 finding
-  C-4; measured cost was **fifty ADRs**, 0090-0139, of `.agents/state.md`
-  drift the gate never saw). Both fix options in the original row were
-  taken rather than one: the population now reads each ADR's own first
-  heading for "arc close", and a second assertion holds the filename
-  convention to what the headings declare, so the two readings cannot
-  drift apart again. **The row understated the defect** — enumerating
-  by heading found **two** escaping files, not the one it named:
-  `0047-scaffolding-compaction-c.md` (heading ends "arc closes") as
-  well as `0125-manual-s5-chapter8-review-close.md`. Both renamed into
-  the convention under an author ruling, 12 inbound references updated
-  across 10 files; red witnessed on both before the rename.
-- **The attic-rotation law has lapsed** (new row, opened 2026-08-15 by
-  the repo-review-3 arc close, ADR-0139 finding C-3; not chartered to
-  any session). This file's own `## Done` header states the law
-  (`notes/adr/0055-alignment-arc-close.md` AR-AC-5): the section holds
-  the **current arc only**, and each closed arc's pointers rotate to a
-  dated header in `.agents/plans/roadmap-done-2026-08.md` at that arc's
-  own close. The attic's last dated header is **"Conviction arc —
-  closed 2026-08-08 (ADR-0085-0089)"**; the live Done section now
-  carries **40** pointers spanning 2026-08-08 to 2026-08-15 across
-  roughly a dozen arcs. Review 3's D7-5 probe is named
-  "attic-vs-live consistency" and scored this clean, because what it
-  actually measured was the Deferred-section lint and the
-  frozen-provenance boundary — **a probe whose name is broader than its
-  measurement, which is the arc's class again**. Not executed at this
-  close: deciding arc boundaries for a dozen intervening arcs is
-  judgment work well outside a records-only close's fence, and it is
-  the roadmap-shaped half of the same question review 4 will be asking
-  anyway.
-- **Clinic-decade/ED scenario redesign — "A" LANDED, "B" CLOSED
-  (B1 + B2 + B3, all landed 2026-08-11).** Anchored to the author's own
-  2026-08-10 ED-direction ruling (`.agents/rulings.md`, "From
-  ADR-0103"), verbatim: *"Maybe weight the patient population toward
-  immediate, emergent conditions like trauma/injuries? This would
-  simulate an actual ED, which is where a lot of the activity and
-  churn would happen."* Chartering context from `notes/adr/0103-board-
-  boundary-catchup.md`: the clinic-decade scenario's own current module
-  mix (twelve everyday-ambulatory/acute modules, weighted toward
-  milder complaints) produces genuinely sparse message traffic — 68
-  messages, 200 patients, a ten-year horizon — most of it
-  intake/follow-up unfolding over months, not a single busy shift; an
-  ED-weighted mix would exercise `--board`'s own cadence far harder.
-  The author's own 2026-08-10 "C-with-A-first" ruling split this into
-  two halves: **A landed 2026-08-11** (`notes/adr/0104-ed-tuesday-
-  scenario.md`) — a NEW sibling scenario, `demos/scenarios/
-  ed-tuesday/`, a day-scale scripted single ED shift; `clinic-decade/
-  config.edn` stays untouched, the population-scale contrast.
-  **Correction (2026-08-11, `notes/adr/0105-interpreter-horizon-
-  budget.md`): this row's own prior "B" text mis-characterized what B
-  actually required.** It named B "a separate future batch under the
-  standing vendoring ceremony... not a design pass, routine vendoring
-  intake once scheduled" — but B's own cited mechanics, `notes/ADRs.md`
-  ADR-0070, had already deferred `injuries.json` WHOLE on a real
-  `gmf-interpreter` gap (`run-submodule` never receiving `horizon-
-  end-t`, tripping `max-steps` at every horizon tried), naming its own
-  revisit trigger as "a future session willing to extend gmf-
-  interpreter's own runaway-loop handling" — an interpreter fix, not
-  routine intake, was always B's own real prerequisite. **B1 (the
-  interpreter fix) landed 2026-08-11** (`notes/adr/0105-interpreter-
-  horizon-budget.md`): `run-submodule` now respects `horizon-end-t`
-  the same way `run-module`'s own top-level loop does, and the
-  `max-steps` runaway budget now counts only zero-time-advance steps
-  (a second, coupled gap the same ADR's own arithmetic found: even a
-  horizon-bounded LEGAL loop could trip the old every-step count on
-  volume alone). **B2 (the injuries vendoring batch itself) ran
-  2026-08-11 under a WIDENED, assessment-first charter** (`notes/adr/
-  0106-injuries-b2-assessment.md`, the author's own "b" ruling): the
-  fresh gate found ADR-0105's own fix complete (0/120 max-steps
-  failures) but a SEPARATE, pre-existing `nested :encounter` assert
-  still fires — `injuries.json`'s own `Spinal_Injury` branch opens a
-  second `Encounter` state before closing its first — at 2/120
-  well-mixed seeds (direct interpreter) and on a full 300-patient
-  `engine/run`, uncaught, at the round-trip test's own standard
-  parameters. Nothing vendored; the closure stayed deferred,
-  RE-ANCHORED on this new blocker (`injuries.json` itself never had its
-  own dedicated Deferred row below — only this Next-section B row and
-  other modules' own Deferred rows cited its max-steps finding as
-  precedent; that finding was already closed, ADR-0105, and this row
-  was the anchor per AR-RL2-3).
+- OPEN **[compression-arc]** PRIORITY 1 -- register compression, author-ordered
+  A -> B -> C -> D, one session each. A landed the generated ADR index
+  (ADR-0143); B landed this row contract and its lint (ADR-0144). C compacts
+  `.agents/skills/build-session/SKILL.md` (162 -> 309 lines across this
+  workspace's life, the one path all five reading sets carry, ADR-0143 Finding
+  6) plus `.agents/reading-sets.edn`; D's scope is set by C's own close.
+- OPEN **[event-log-shape-defects]** PRIORITY 2 -- S-1/S-2/S-4/S-5/S-6 and the
+  Z-segment context asymmetry stay register rows by ruling (2026-08-16):
+  describing current truth first, then changing it under the versioned event
+  contract, is the point of the tier. Evidence and full write-up in
+  `.agents/plans/2026-08-16-event-log-census.md`, section "Shape defects".
+- OPEN **[repo-review-4]** PRIORITY 3 -- chartered at roughly 15 ADRs past
+  ADR-0139, i.e. approximately ADR-0154; the standing cadence rule is ADR count,
+  not calendar (ruling Q3 "a.", 2026-08-15). Inherits review 3's twelve-row
+  watch-list, D8-5's one surviving row among them (56 of 74 command fences have
+  no exerciser -- ruled out of the fix session, handed on in ADR-0140).
+- OPEN **[sim-theory-edn-hop]** PRIORITY 4 -- `sim-theory.edn` ->
+  `sim-theory-equations.txt` is a hand derivation at the head of an otherwise
+  registered chain, so the `.edn` can drift while every downstream artifact
+  regenerates byte-perfectly from the stale half and CI stays green. Open
+  question for the author: translator, or checked-in agreement gate?
+  ADR-0139 finding C-1 holds the evidence and the contradicting live sentence.
+- OPEN **[careplan-guard-resolution]** PRIORITY 5 -- a third unregistered
+  standing request, registered visibility-first with its disposition
+  deliberately not taken: a closure's next prerequisite is CarePlan, "unowned by
+  any wave until a future session extends Guard's own condition-resolution
+  machinery". ADR-0139 finding C-2.
+- OPEN **[attic-rotation-law]** PRIORITY 6 -- `## Done` holds the current arc
+  only by law, and its pointers have not rotated to the attic since the
+  conviction arc closed 2026-08-08; deciding a dozen intervening arcs'
+  boundaries is judgement work outside a records-only close. ADR-0144 retokened
+  those pointers and added six missing ones rather than rotating them, so the
+  backlog this row names is larger, not smaller. ADR-0139 finding C-3.
+- DEFERRED (trigger: a receiver case needing specimen time distinct from result
+  time; FHIR-side latency; late amendments or trailing A08s; or order
+  transaction time on the wire) **[downstream-latency]** PRIORITY 7 -- the
+  latency mechanism, its demo, and the OBR-7/OBX-14 clinical-time increment all
+  landed; what survives this row is four named deferrals, each with its own
+  revisit trigger. ADR-0109, ADR-0110, ADR-0142 hold them.
+- OPEN **[demos-traces-ungated]** PRIORITY 8 -- `demos/traces/**`'s seven
+  committed `messages*.txt` traces are produced by `bin/ehrt sim run` and
+  regenerated by nothing (no Makefile target, no workflow, no test), so they
+  drift silently and did. Registered, not fixed; proposed shape is a `docsgen`
+  target plus the CI freshness diff every other generated surface gets.
+  Candidate for review 4's D5. ADR-0142.
+- OPEN **[review-3-tag-unpushed]** PRIORITY 9 -- the repo review 3 arc closed,
+  but its arc tag `stable-20260815-review-3-fixes` at `b96c246` exists only
+  locally: the licence's case (i) needed an author-side CI relay the close's own
+  prompt did not carry, so the fence's STOP was taken and no ruling came back
+  in-session. ADR-0139's Step 0 and mechanical-debt section carry the receipt
+  and the one command that pays it.
+- OPEN **[manual-dimension-5]** PRIORITY 10 -- manual-review run 2 passed with
+  warns, and dimension 5 (running-example continuity) stays WARN as the manual's
+  one standing open row: `ed-tuesday` is HL7v2-only and structurally cannot
+  supply Chapters 6-8 their FHIR mutation, FHIR-gate calibration, or
+  foreign-corpus material. Disclosed, not silently substituted; not a defect
+  under the dimension's own reading. ADR-0134.
+- EXTERNAL **[design-channel-draft-queue]** PRIORITY 11 -- the B-3/B-4
+  carry-forward wording halves (R3-B3-4) only; R3-B3-1's own Example-line
+  content resolved at ADR-0118. The channel drafts, the author rules, no session
+  until then. ADR-0115.
+- OPEN **[audience-register-paring]** PRIORITY 12 -- `docs/dev/AUDIENCES.md`
+  pares to five behavioral segments and its own "Seven segments" header is
+  corrected in the same edit. Ruled 2026-08-12 (ADR-0113 R4, author "Q1 a");
+  execution deferred to a later docs session, not chartered.
+- OPEN **[lookup-column-time-next]** PRIORITY 13 -- the lookup-column `time`
+  gap in the schema-invalid family, ratified as real (2026-08-06) and still
+  untouched; bulk vendoring batched by closure family follows once the catalog
+  fully walks. Deliberately distinct from `roadmap.md#lookup-column-time-open`
+  below, which the author ruled stays live regardless. ADR-0039, ADR-0066.
+- DEFERRED (trigger: a future session that assigns more than one module to the
+  same patient) **[wave-g-attachment]** PRIORITY 14 -- upstream's own
+  all-waiting-modules-attach-to-one-visit semantics diverges from this project's
+  per-module wait only under concurrent modules, which the engine's
+  one-module-per-patient assignment never produces. ADR-0037 AR-4.
+- OPEN **[nightly-quickstart-workflow]** PRIORITY 15 -- `make quickstart` gains
+  a nightly integration workflow plus the single-sh-fence guard in README
+  (`quickstart_fresh`'s own docstring corrected in the same change).
+- OPEN **[generator-source-split]** PRIORITY 16 -- the generator-source
+  three-concerns split, a named future. ADR-0017.
+- OPEN **[corpus-display-placement]** PRIORITY 17 -- `ehrt.corpus.display`'s
+  placement is presentation-leaning, a named future. ADR-0018.
+- OPEN **[markdown-table-dedup]** PRIORITY 18 -- markdown-table helper dedup, a
+  named future. ADR-0018.
+- OPEN **[corpus-generate-engine]** PRIORITY 19 -- should `corpus generate` grow
+  an `--engine` flag now that the generator registry names more than one engine
+  kind (`synthea`, `sim`)? Registered for visibility 2026-08-15, disposition
+  deliberately not taken; it sits here rather than in Deferred because a
+  Deferred row owes a revisit trigger and this one has none yet. Resolving it
+  updates this row and OPEN-4 together. ADR-0136 finding D7-3(b).
 
-  **B3 CLOSED 2026-08-11** (`notes/adr/0107-injuries-arc-close.md`,
-  the author's own verbatim "Let's do (i)" ruling): ADR-0106's option
-  (i), auto-close on reopen matching upstream exactly, landed in
-  `gmf-interpreter.clj`'s own `:encounter` case — a reopen over a
-  stale open now synthesizes an implicit `:encounter-end` for it
-  first, upstream-faithful, rather than throwing. ON ITS GREEN, the
-  injuries batch itself landed under the standing vendoring ceremony:
-  `injuries.json`, `injuries/broken_jaw.json`, `snf/
-  skilled_nursing_facility.json` (the 3 genuinely new closure members,
-  5 already vendored from prior batches, re-verified byte-identical).
-  This entire row's own arc (ADR-0070 deferral → ADR-0105 max-steps fix
-  → ADR-0106 nested-encounter characterization → ADR-0107 fix and
-  landing) is now FULLY CLOSED — no revisit trigger remains for this
-  closure.
-- **Downstream-latency realism -- MECHANISM LANDED 2026-08-11
-  (ADR-0109), DEMO LANDED 2026-08-11 (ADR-0110), arc CLOSED;
-  OBR-7/OBX-14 increment LANDED 2026-08-16 (ADR-0142).**
-  *Lands against Event schema v1.0.0* (ADR-0141, 2026-08-16): further
-  latency-realism work now sits downstream of a versioned event contract, so a
-  change altering the log's shape owes a version bump rather than a silent edit.
-  `:latency` never reaches `engine/config-keys` (ADR-0109), so today's mechanism
-  is emit-only and contract-neutral.
-
-  New chartering direction, author
-  verbatim, 2026-08-11 (`.agents/rulings.md`, "From ADR-0107"): *"I want
-  to make sure that the simulation faithfully simulates what happens in
-  real life: lab results take time to come back, providers take time to
-  log things in the EHR, etc. so it's possible that a downstream
-  receiver of the HL7 traffic will have incomplete encounter records
-  for some time. That's not our problem to solve, but in order to test
-  that such downstream receivers handle it properly (whatever that
-  might mean for them) we need to supply them with such cases."*
-
-  **The ratified sequence (2026-08-11, `notes/ADRs.md` ADR-0108,
-  author-ratified "Good sequence"):** (1) the simulator architecture
-  doc lands first (`docs/dev/simulator-architecture.md`, ADR-0108,
-  DONE 2026-08-11) -- names this extension point in one sentence
-  (section 5: an arrow `GT -> TimedWire` between `engine` and the
-  emitters), builds nothing; (2) **THIS latency design pass, DONE
-  2026-08-11 (`notes/adr/0109-latency-second-clock.md`)** -- author
-  ruling verbatim "I like a. go" (option (a), the second clock in the
-  emitter seam): `ehrt.sim-emit-hl7.emit-hl7/plan-latency` +
-  `emit-wire`, a `LatencyProfile` schema, `ehrt.sim.run`'s own optional
-  `:latency` opt, the field audit (MSH-7 message-time, EVN-2
-  clinical-time, every other HL7v2 clinical-time-candidate field simply
-  not rendered by this project's emitter), the identity property (plain
-  `emit` byte-frozen), and a disclosed `fold-message`-under-disorder
-  finding (fixed nothing, recorded as data); (3) a guide-side treatment
-  (`docs/`, user path) derives from the architecture doc afterward, in
-  the author's own queue, not chartered to any session yet; (4) the
-  tool-specific user manual (distinct from the generic EHR Testing
-  Guide, permanently out of this workspace, `AGENTS.md`) stays DEFERRED
-  under its own named trigger, author verbatim (`.agents/rulings.md`,
-  "From ADR-0108"): *"I've been deferring creating the tool-specific
-  user guide in tools repo (distinct from EHR Testing Guide, which is
-  more generic) until things settled down and the tools were able to
-  produce the realistic traffic I need. That remains to be seen, but
-  it's getting more likely to verifiably happen soon."* Trigger
-  (channel-proposed, un-vetoed): the latency-realism arc landed PLUS
-  one witnessed end-to-end demo of latency-realistic traffic played
-  into a downstream-receiver stand-in.
-
-  **Trigger's second condition executed 2026-08-11 (`notes/adr/
-  0110-latency-demo.md`):** `demos/scenarios/ed-tuesday/config-
-  latency.edn`, a sibling of `config.edn` carrying a live-probed
-  `LatencyProfile`, generates ground truth byte-identical to the base
-  config at the same seed (witnessed `diff`/`sha256sum`) while its own
-  `emit-wire`-rendered messages, played into this workspace's own
-  `--board`, reproduce the ADR-0109 disorder finding live: a lagged
-  admission message re-adds an already-discharged patient
-  (MRN000013/Walker) to the board as `inpatient`, double-booking a bed
-  another patient already occupies. `fold-message` itself untouched,
-  per this session's own fence -- the board's confusion is the
-  demonstration, not a defect to fix here. **Trigger conditions MET,
-  RATIFIED 2026-08-11 (ADR-0112, `.agents/rulings.md` "From ADR-0112",
-  the "User-guide trigger read" entry)**: this workspace's own
-  `--board` counts as the downstream-receiver stand-in the trigger's
-  own language anticipated, and the tool-specific user-manual work
-  named below is OPEN. Provenance is channel-read, not
-  author-verbatim -- the author did not veto the reading when it was
-  stated explicitly in the same exchange that produced it; the author
-  may still strike or correct it.
-
-  Named deferrals from ADR-0109, still standing, each with its own
-  revisit trigger (`notes/adr/0109-*.md`): FHIR-side latency
-  (`emit-fhir` gets no `offsets` parameter); late amendments/trailing
-  A08s (a GT-side new-event-type concern, outside the emitter-seam
-  scope both ADR-0109 and this session's own fence share).
-
-  **The OBR-7/OBX-14 clinical-time fidelity increment: LANDED
-  2026-08-16 (`notes/adr/0142-result-clinical-time.md`).** Both fields
-  now render on all three `ORU^R01` shapes, carrying the result event's
-  own `:t` and never shifting under `emit-wire` -- so a latency-shifted
-  result carries both clocks and a downstream receiver can back-date
-  it. Declared oracle change, as this row anticipated: plain `emit`'s
-  frozen bytes moved on 14 of the 35 oracle roots, exactly the set
-  predicted from the live tree before any src edit (every root whose
-  digest contains an `ORU^R01`); the other 21 stayed byte-identical.
-  Contract-neutral -- `:event-schema-version` stays `"1.0.0"` and the
-  committed EDN export is untouched, both fields being rendered from a
-  key the log already carries.
-
-  Named deferrals still standing after ADR-0142, each with its own
-  revisit trigger:
-  - **FHIR-side latency** (`emit-fhir` gets no `offsets` parameter) --
-    from ADR-0109, unchanged; ADR-0142 did not touch `emit-fhir`.
-  - **Late amendments / trailing A08s** -- from ADR-0109, unchanged; a
-    GT-side new-event-type concern, outside the emitter seam.
-  - **NEW (ADR-0142, author ruling Q1 "a" naming the alternative it
-    declined): OBR-7 = the ORDER-placed `:t` with OBR-22 = the result
-    `:t`.** ADR-0142 renders OBR-7 as the result event's own instant,
-    which reads OBR-7 as "when this observation happened". HL7v2 also
-    supports the reading where OBR-7 is specimen/collection time and
-    OBR-22 (Results Rpt/Status Chng) is when the result was reported --
-    a distinction this project's log can express (`:order-placed` and
-    `:result-available` are separate events, joined by
-    `:order-event-id`) but does not currently render. Revisit trigger:
-    *a downstream-receiver case that needs specimen time distinct from
-    result time.*
-  - **NEW (ADR-0142, author ruling Q3): ORC-9 on `ORM^O01`.** ORM stays
-    byte-frozen -- an order's clinical-time field is ORC-9 (transaction
-    time), not OBR-7, and rendering OBR-7 there would put a
-    plausible-looking timestamp in a field whose meaning does not fit.
-    Revisit trigger: *a receiver case that needs order transaction time
-    on the wire.*
-- **`demos/traces/**` is an ungated derived-artifact tree -- REGISTERED
-  2026-08-16 (ADR-0142), not fixed.** Seven committed `messages*.txt`
-  traces and their README strips are produced by `bin/ehrt sim run` and
-  regenerated by nothing: no `Makefile` target (checked against all 17,
-  `docsgen`'s seven dependencies included), no `.github/` workflow, no
-  test. The only tracked mechanism touching these paths is
-  `.gitattributes`' `demos/traces/**/messages*.txt -text`, which
-  protects their bytes from EOL rewriting and checks nothing about
-  their freshness. **Found by drift, not by audit:** regenerating
-  `order-result/messages.txt` for ADR-0142's own field change also
-  picked up 12 changed `PV1` lines from the site-profiles milestone's
-  trailing positional fields -- drift that had sat there through
-  multiple sessions, and that made the sibling `emit-state/README.md`'s
-  "same as `order-result/messages.txt`" claim false until this session
-  made it true again. This is `notes/adr/0139-*.md` rule 9's own class
-  (a population that is a registry rather than the tree), applied to a
-  directory. Both files and the affected README strip are regenerated
-  by hand with dated errata notes in place; what is NOT done is the
-  gate. Proposed shape, for whichever session takes it: a `docsgen`
-  target that re-runs each trace's own README-declared command into its
-  own directory, plus the CI freshness diff every other generated
-  surface already gets. Candidate for repo review 4's D5 (generated-
-  artifact gating), which is where the same class already lives.
-- **User manual design pass — LANDED 2026-08-12 (ADR-0119).** Renamed
-  from "Tool-specific user-guide design pass" (ADR-0113 R1, author
-  verbatim: *"Let's use the name 'user manual' for the user docs for
-  ehr-testing-tools. I've been informally calling it the 'user guide'
-  but that's too easy to confuse with the more general EHR Testing
-  Guide that's in ehr-testing-guide repo."*). Shape ruled 2026-08-12
-  (ADR-0113 R2, author "Q1 a. Q2 a. Q3 a."): chaptered `docs/manual/`
-  as the narrative layer over the existing references, never
-  duplicating them; ed-tuesday (`demos/scenarios/ed-tuesday/`) as the
-  manual's one running scenario throughout. Framing landed this session
-  (ADR-0119, channel-reconstructed "Q1 a. Q2 a. Q3 a." on "eight
-  chapters, five sessions, exerciser at S2" — see `.agents/rulings.md`
-  "From ADR-0119" R-M1/R-M2/R-M3): eight chapters across five sessions,
-  chartered below as S1-S5; Chapters 3-8's own titles are this
-  session's own disclosed working proposal
-  (`docs/manual/00-front.md`), not yet ruled by name. The batch-straddle
-  scenario is ruled "featured prominently" in the eventual manual
-  (`.agents/rulings.md` "From ADR-0112", "Batch-straddle documentation
-  placements") — Chapter 1 (landed this session) already excerpts it.
-  **Naming-sweep rider (ADR-0113 R2), EXECUTED this session:** the
-  repo-wide "user guide" census (docs/README/SETUP/demos/registers)
-  found zero live-prose stragglers — every hit was an in-quote survivor
-  (`notes/adr/0119-user-manual-skeleton.md`'s own census table).
-  **Sequence (ADR-0113 R5):** review-3 -> CLI tweak sessions -> this
-  design pass -> chapter sessions (below), the demo exerciser co-landed
-  with the first chapter that cites a demo (S2) -> a manual-review
-  skill (scoring rubric, run periodically, ADR-0113 R5) built at the
-  manual arc's own close (S5).
-  **S1 LANDED 2026-08-12 (ADR-0119):** skeleton (`docs/manual/00-front.md`),
-  Chapters 1-2 (`01-what-this-is.md`, `02-setup-first-corpus.md`), the
-  audience paring (R4) and learner-path riders.
-  **S2 LANDED 2026-08-12 (ADR-0120):** Chapter 3
-  (`docs/manual/03-a-simulated-hospital.md` — `sim run` and ed-tuesday,
-  site profiles linked, scripted-versus-generative patients, the
-  two-spaces story extended to `GT`'s own two emitters) co-landed with
-  the demo exerciser (ADR-0113 R3 mechanism, landed as
-  `bin/demo-exerciser-ed-tuesday` — quickstart-pattern-generalized,
-  integration-tier, running ed-tuesday's own fenced commands in order,
-  asserting exit codes plus every one of that README's own named
-  invariants).
-  **S3 LANDED 2026-08-12 (ADR-0121):** Chapter 4
-  (`docs/manual/04-time-on-the-wire.md` -- `ehrt play`/`--board` pacing,
-  the huge-rate-is-`show` and zero-offsets-is-plain-emit identity
-  anchors, the latency second clock's MSH-7/EVN-2 split) and Chapter 5
-  (`docs/manual/05-batch-delivery.md`, the arc's featured chapter --
-  `ehrt corpus batch`'s own sim-independence ruling, the witnessed
-  34-batch listing, Smith James (MRN000002)'s straddling encounter
-  taught as the receiver-side "do I have all of this?" question, not a
-  flag list). Two new hand-authored SVG figures
-  (`docs/manual/assets/two-clocks.svg`, `straddle-timeline.svg`).
-  Resequenced the arc's own working titles: the "realism you didn't
-  script" slot earlier proposals had at Chapter 7 landed here instead,
-  two chapters early; Chapters 6-8's own working titles updated
-  in `docs/manual/00-front.md` accordingly (Mutate keeps Chapter 6,
-  Gate Chapter 7, Check folds into Chapter 8 alongside verdict-reading
-  at scale) -- disclosed as this session's own channel-inferred
-  proposal, not yet ruled by name.
-  **S4 LANDED 2026-08-13 (ADR-0124):** Chapter 6
-  (`docs/manual/06-breaking-data-on-purpose.md` — mutation as named,
-  traceable defect injection; choosing an operator by the contract you
-  want proven rather than browsing the catalog; the inject-a-defect-
-  expect-the-matching-finding loop closed with the `README.md`
-  storefront-patient example, witnessed fresh this session) and Chapter
-  7 (`docs/manual/07-judging.md` — the three gates at reader level;
-  verdict semantics, `:no-verdict` taught as a genuinely distinct third
-  answer, not a variant of pass or rejected; the dominance ordering).
-  Two new hand-authored SVG figures
-  (`docs/manual/assets/inject-expect-loop.svg`, `verdict-ranking.svg`).
-  Every strip in both chapters re-derived by fresh regeneration this
-  session against the live tree, byte-identical to its own witnessed
-  source (`README.md`, `judge-tier-calibration-studies.md`,
-  `profile-tier-hl7v2-conformance-gating.md`), no divergence found. A
-  pre-existing, repo-wide `ADR-0010` citation drift was found while
-  reading the driving prompt's own "verdict ranking... ADR-0010's
-  register trace" pointer — `notes/adr/0010-documentation-doctrine.md`
-  is titled "Documentation doctrine," not the verdict design the
-  citation is used for throughout `docs/judge-calibration.md`,
-  `docs/formats.md`, `docs/glossary.md`, and every `components/judge/`
-  source/test file — disclosed in `notes/adr/0124-*.md` and followed as
-  the sole established convention rather than fixed (out of this
-  session's own fence), flagged for the author and a future
-  errata-sweep session. Zero `src`/`test`/`demos` touched anywhere, the
-  oracle holds pure identity across all 35 roots.
-  **S5 LANDED 2026-08-13 (ADR-0125): the manual arc is CLOSED — see
-  Done, below.** Chapter 8 (`docs/manual/08-your-own-data.md` —
-  cataloging a corpus you didn't generate, content hashes and lineage,
-  the received-date as real-world provenance; checking against
-  expectations, golden equivalence and the per-file assertion
-  vocabulary; baselining a repeatedly-gated corpus; closing pointers
-  into `formats.md`/`locators.md` for the data-consumer path) landed
-  first; `00-front.md` updated to state the manual complete and name
-  Chapter 8's own landing commit as the manual's own currency commit.
-  The `manual-review` skill (`.agents/skills/manual-review/SKILL.md`,
-  chartered `.agents/rulings.md` "From ADR-0113" R5) landed second, plus
-  its own first scored run
-  (`.agents/plans/2026-08-13-manual-review-1.md`): eight dimensions,
-  each graded pass/warn/fail with `file:line` evidence — **overall
-  verdict FAIL.** Two dimensions failed on real, repeat-pattern
-  evidence, not edge cases: **strip executability** (Chapters 6, 7, and
-  2 of 3 strips in the just-landed Chapter 8 cite a
-  `docs/use-cases/*.md` page or README's own separate "What you get"
-  fence, neither covered by the demo exerciser or `quickstart-fresh` —
-  nothing mechanical catches these going stale between sessions); and
-  **glossary linkage** (only Chapters 2 and 8 link `glossary.md` on
-  first use of a defined term — Chapter 3 uses "Pathway" and "script
-  space"/"truth space," the exact colliding-meaning terms the glossary's
-  own front matter calls "the single most common way to misread a page
-  here," with zero link to it anywhere in the chapter). Both findings
-  are register rows, not fixes, per the skill's own review discipline —
-  see the two new Next-section rows below. Author-ruled disposition,
-  2026-08-13: close the arc now, land both findings as open backlog
-  rows for a future fix session, per this session's own STOP-AND-REPORT
-  and the author's own choice among the offered dispositions.
-  **SETUP.md's unspoiled-human-reader rewalk (Externals, "SETUP rewalk
-  by an unspoiled human reader") widens to cover Chapters 1-2 as well**
-  — both narrate SETUP.md's own steps, so the same author-only rewalk
-  errand now smoke-tests all three together; still in the author's own
-  queue, not executed this session.
-- **Repo review 3 arc — CLOSED 2026-08-15 (ADR-0136-0139); arc tag
-  `stable-20260815-review-3-fixes` created at `b96c246`, PUSH HELD.**
-  *(The tag's license, case (i), required an author-side CI relay that
-  this close's prompt did not carry; the fence's STOP was taken, no
-  ruling came back in-session, so the annotated tag exists locally and
-  unpushed — ADR-0139's Step 0 and its mechanical-debt section carry
-  the receipt and the one command that pays it.)* *(Row created
-  already-closed at the close: the arc was chartered channel-direct and
-  its sessions registered their findings as rows without one ever being
-  opened for the arc itself — disclosed in ADR-0139's deviations rather
-  than silently substituted; same shape ADR-0135's channel-direct row
-  used.)* The third rubric-driven survey, and the first run under the
-  **population-closure amendment** (`dbbeb1f`, choice (b) — landed and
-  executed in the same session so it would prove itself by running).
-  It did: D5's patch predicted one unregistered derivation and found
-  five, three demonstrably stale; D1's patch found 25 dead markdown
-  links, all 25 in the scan root the amendment added; D7's patch found
-  two standing requests aged outside every register. **40 rows, 8
-  dimensions, scored 2 green / 5 yellow / 1 red.** Three fix sessions
-  on the author's ruling *"accept all."*: **ADR-0136** (every
-  string-diagram derivation registered in the make graph and CI's
-  freshness diff, three stale teaching examples regenerated, inert
-  guard deleted, three standing items registered), **ADR-0137** (the
-  stale-path gate widened to every tracked doc surface, 25 dead links
-  fixed, the six "gone" targets found frozen at `notes/tools/agents/`,
-  two halves registered rather than improvised), **ADR-0138**
-  (`bin/post-push-verify` derives the pushed range from origin's
-  pre-push reflog and fails loud when underivable, `build-session`
-  names explicit exit-code capture, `gate` reports `:path-unreadable`).
-  Session D of the plan was consumed by A and C, so four chartered
-  sessions ran as three. **Eleven register cells moved** — 8 FIXED, 1
-  encoded-in-gate, 2 registered — and every fix-session-candidate and
-  ruling-needed row the review itself opened is closed or registered.
-  Closed in its own session per author ruling Q1 "a." (**ADR-0139**),
-  which re-scored every dimension against the live tree rather than
-  against the fix ADRs: **D5 RED -> YELLOW**, close day **2 green / 6
-  yellow / 0 red**, with D7 and D8 held at yellow *not earned* and the
-  reasons stated. The arc's central finding is a class, not a list — **a
-  probe, gate, or tool whose population is a registry rather than the
-  tree**, ten recorded instances in one arc, the last three found by
-  the close itself (the three rows above). Follow-ons chartered at the
-  close and carried as their own rows above: the D8-5 fence battery
-  (before review 4, Q2 "a.") and review 4 itself (after ~15 ADRs,
-  Q3 "a."). Full account in
-  `notes/adr/0139-review-3-arc-close.md`.
-- **Citation errata sweep — CLOSED 2026-08-13 (ADR-0126).**
-  Origin-qualified every in-fence bare `ADR-0010` verdict-family
-  citation (the four-arm verdict design, `:pass`/`:rejected`/
-  `:indeterminate`/`:no-verdict`, the `worst-of` ranking) to
-  `tools/ADR-0010`, targeting `notes/tools/ADRs.md`'s own record.
-  Fixed: `docs/judge-calibration.md` and `docs/formats.md` (footnote
-  form, renamed `[^adr-0010]` → `[^tools-adr-0010]`),
-  `docs/manual/assets/verdict-ranking.svg` (comment preserved, citation
-  edited), `components/corpus/docs/palgebra-design.md` +
-  `research/judge-v2-nist-spike-notes.md`, `components/corpus/docs/
-  use-cases.edn` (regenerating `docs/use-cases/profile-tier-hl7v2-
-  conformance-gating.md` in the same commit), and all thirteen `.clj`
-  comment/docstring sites the widened charter named (`judge/finding.clj`
-  + `report.clj` + both tests, `judge-fhir-official/fhir.clj` + test,
-  `judge-v2-hapi/v2.clj`, `judge-v2-nist/v2.clj` + test,
-  `corpus/check.clj`, `cli/core.clj` + `help.clj` + `core_test.clj`) —
-  zero behavior change, confirmed per-site and by a pure-identity oracle
-  bracket across all 35 roots. **Corrected against the channel's own
-  probe:** `docs/glossary.md` carries no verdict-family citation in the
-  live tree — its one `[^adr-0010]` usage (line 5) is genuinely class
-  (ii), documentation-doctrine, correctly bare; untouched. **A fourth,
-  previously-unnamed drift family found and disclosed, not fixed:** 17
-  bare `ADR-0010` sites across `components/sim/docs/` and
-  `components/sim-trajectory/docs/` (6 files) mean the frozen sim
-  repo's own `sim/ADR-0010` (patient identity), a THIRD referent this
-  sweep's own two-class charter never anticipated — out of this
-  session's own touch fence, flagged for a future sweep. Full inventory,
-  classification, and the near-miss (`help.clj:471`, doc-doctrine,
-  briefly mis-touched by a blanket sed and reverted before commit) in
-  `notes/adr/0126-citation-sweep-glossary-linkage.md`.
-  **This disclosure CLOSED 2026-08-13 (ADR-0127):** the channel's own
-  17-site census undercounted (as flagged) — the full re-derived
-  inventory found 238 raw `ADR-NNNN` hits across all 10 files in both
-  `docs/` trees (not the 6 named files alone), classified by
-  content-topic match against all three ADR registers: 106 sim-era
-  sites (numbers `ADR-0001`–`ADR-0013`) origin-qualified to
-  `sim/ADR-NNNN` targeting `notes/sim/ADRs.md`, including fixing 8
-  markdown-link citations whose own `../notes/ADRs.md` href was
-  independently broken (one directory level too shallow) and pointed
-  at the wrong register besides; 132 workspace-current sites (GMF
-  coverage waves, vendoring/injuries/player-fold arcs, `ADR-0026`
-  upward) spot-checked and correctly left bare. Full table in
-  `notes/adr/0127-ceremony-scripts-sim-identity-sweep.md`.
-- **Ceremony scripts + skill absorption — CLOSED 2026-08-13
-  (ADR-0127).** This repo's own recurring session-start/session-end
-  ceremony (tag ceremony, preflight, post-push message verification,
-  close-phase scaffold) moved from prose a session re-reads each time
-  to four `bin/` scripts (`bin/preflight`, `bin/tag-ceremony`, `bin/
-  post-push-verify`, `bin/close-scaffold`); checkpoint isolation, red
-  capture, and sweep census absorbed into the `build-session` skill
-  (and its `.claude/` mirror) alongside them, the ceremony's own
-  mechanical steps rewritten to invoke the four scripts by name.
-  Chartered by the author's own 2026-08-13 "Both a." ruling, part (b)
-  (`.agents/rulings.md`, "From ADR-0122," R13). All four scripts
-  smoke-tested with real invocations; `bin/preflight`'s own smoke test
-  caught and fixed a real bash `read`/IFS-collapsing bug (an
-  in-progress CI run briefly mislabeled RED) before it shipped,
-  independently hit and fixed the same way in `bin/post-push-verify`.
-  Full account in `notes/adr/0127-ceremony-scripts-sim-identity-
-  sweep.md`.
-- **Agent-facing hardening: ADR-0127 addendum, anti-fabrication
-  tripwire, Step-0 receipts — CLOSED 2026-08-13 (ADR-0128).** Standing
-  directive chartered in-chat, verbatim: *"let's always look for
-  opportunities to improve the agent-facing parts"* (`.agents/
-  rulings.md`, "From ADR-0128" — recorded as standing channel
-  practice, not scoped to this session alone). Three-part bundle,
-  landed as its own micro-session ahead of the strip-executability
-  charter below, per the author's own sequencing ruling: (1) a dated
-  addendum to `notes/adr/0127-*.md` (0121-erratum form) recording a
-  transcript-witnessed near-miss — before self-catching its own missed
-  Step 0 tag payment, that session drafted a fabricated deviation
-  justification for the skip, caught it in the same close-phase
-  transcript re-check that caught the missed tag, and deleted it
-  before either commit landed; nothing false ever landed; (2) an
-  anti-fabrication tripwire rule in `build-session/SKILL.md` (+
-  `.claude/` mirror); (3) Step-0 receipts guidance in `session-prompt/
-  SKILL.md` (+ mirror) plus `bin/close-scaffold --expect-tag
-  NAME@SHA`, a mechanical local+remote tag-payment check, smoke-tested
-  three ways. Found and fixed, along the way, a real `:sim`
-  reading-set budget-lock error ADR-0127's own Step 3 had already
-  introduced (measured 1170/1295 when the true actual was already
-  1293) — re-derived per the standing formula, budget moved 1295 ->
-  1495, disclosed as a STOP-AND-REPORT the author resolved (bump the
-  budget, keep the tripwire text verbatim). Tag
-  `stable-20260813-ceremony-scripts` paid at ADR-0127's own close
-  point (`a884967`). Zero `src`/`test` touched; `bin/close-scaffold`
-  the only pre-existing script edited, mode unchanged. Full account in
-  `notes/adr/0128-agent-facing-hardening-2.md`.
-- **String-diagram terminal outputs — palgebra diagrams showed inputs,
-  not outputs — CLOSED (ADR-0135; chartered channel-direct 2026-08-14,
-  no prior open row).** Every single-equation use-case diagram
-  dead-ended at the operation box: `resource_equations_to_mermaid.py`
-  emitted output wires only for discard sinks and feedback edges, and
-  `classify_types` had no terminal-output class. Fixed per author
-  rulings "Q1 a. Q2 b.": one green result node per coproduct summand,
-  `_out` suffixed, wired from the operation; discard/feedback/
-  intermediate semantics untouched; skill doc extended in the same
-  commit; all 21 pages plus `pipeline.md` regenerated mechanically.
-  Red witnessed first (`mermaid_render_test.clj`, the one test that
-  runs the renderer for real); regeneration byte-deterministic across
-  two runs and clean under CI's own `make docsgen && git diff
-  --exit-code`. Multi-stage masking proved partial — `pipeline.md`
-  itself gained four yields it had never drawn. Step 3.4's two
-  follow-row candidates were reported, then **acted on under a
-  mid-session author license** ("b. Widen the fence by one step before
-  close…", channel-proposed, author-licensed):
-  `components/sim/docs/sim-theory-diagram.md` regenerated (six terminal
-  codomains now render, `Check`'s verdict coproduct among them) and its
-  dead regeneration-recipe path fixed in both copies — the diagram's
-  header and the equations file's own — a command that had not existed
-  since ADR-0005 moved the converter to `components/palgebra/`. That
-  regeneration DISCHARGED the standing request the M5b and M6 notes
-  each left for a Python-having session to confirm by running rather
-  than by inspection: their argument held, the only non-ADR-0135
-  difference being `%% Arrow N` renumbering from M6's own unregenerated
-  comment-line removals. `README.md` and `docs/dev/architecture.md`
-  stayed read-only (neither is a string diagram). Zero `src`, zero
-  `demos`, zero module JSON — no oracle claim made or owed. Full
-  account in `notes/adr/0135-string-diagram-terminal-outputs.md`.
-- **Manual-review run 2 — CLOSED 2026-08-14 (ADR-0134), overall PASS
-  with warns.** The skill's own second scored run
-  (`.agents/plans/2026-08-14-manual-review-2.md`), authored by the
-  DESIGN CHANNEL against a fresh public clone at `46b82ba` rather than
-  by a session invoking the skill — a disclosed runner deviation the
-  author chartered verbatim ("Do a thorough review of this repo's user
-  manual, here in the design channel using this strong model
-  (Fable)") — and landed verbatim by the acting session under the
-  reviewer/actor ruling "Q1 a." (channel reviews, session acts, report
-  commit strictly before every fix commit, each fix citing its report
-  row). **No fail-grade dimension.** Both run-1 FAILs verified
-  remediated STRUCTURALLY, not by hand-witnessing: dimension 1 by
-  ADR-0129's exercised-sources register + citation gate, dimension 4
-  by ADR-0126's first-use links. Dimension 7 strengthens from run 1's
-  disclosed 4-claim sample to test-guaranteed (`cli-md-is-current-
-  test` + CI's regen+diff step make a green tip itself the currency
-  proof), plus eight claims checked on top. Disclosed scope limit:
-  nothing was re-executed — the channel sandbox cannot resolve
-  Clojure dependencies, so every witnessed output was checked for
-  source-consistency, internal arithmetic, and mechanism coverage,
-  never re-witnessed. Three of four beyond-rubric findings disposed
-  the same day: **F1** (Chapter 8's `ehrt check` elision comment said
-  "five more patient files," totalling 8 against the block's own
-  `:totals {:pass 7}`) fixed to "four," only after verifying that no
-  test hashes a manual output fence; **F2** (intake's `:file-count 8`
-  vs the gate's `:pass 5` over `test-fixtures/v2`, both correct, the
-  divergence undisclosed) explained in one parenthetical in place;
-  **F3** (`docs/glossary.md`'s headword didn't cover the phrase
-  Chapter 8 links) widened to `**Intake / intake record.**`. **F4 is
-  an affirmative record**, deliberately — every cited test, numeric
-  value, and section attribution that DID check out, so a future
-  reader can tell "verified correct" from "not looked at."
-  **Dimension 5 (running-example continuity) stays WARN and is now
-  the manual's one standing open register row** — `ed-tuesday` is
-  HL7v2-only and structurally cannot supply Chapters 6-8 their FHIR
-  mutation, FHIR-gate calibration, or foreign-corpus material;
-  disclosed, not silently substituted, and not a defect under the
-  dimension's own reading. Full account in
-  `notes/adr/0134-manual-review-2.md`.
-- **Manual-review run 1, dimension 1 (strip executability) — CLOSED
-  2026-08-13 (ADR-0129).** Original finding (ADR-0125, `.agents/
-  plans/2026-08-13-manual-review-1.md`): Chapters 6, 7, and 2 of 3
-  strips in Chapter 8 cited a `docs/use-cases/*.md` page or README's
-  own separate "What you get" fence, neither covered by `bin/demo-
-  exerciser-ed-tuesday` nor `bin/quickstart-demo`. Fixed this session
-  via revisit-trigger (a): five new `bin/` exercisers (`usecase-judge-
-  tier-calibration`, `usecase-profile-tier-v2`, `usecase-acceptance-
-  qa`, `usecase-regression-baselining`, `readme-what-you-get`), each
-  executed end-to-end against real artifacts and wired into `make
-  integration`; a new `ehrt.docs-tooling.exercised-sources` registry
-  (seeded with the two pre-existing pairs plus the five new ones) and
-  `ehrt.docs-tooling.strip-fresh`'s two new extraction shapes generalize
-  the freshness-check pattern past its own two hardcoded predecessors;
-  a new `ehrt.docs-tooling.citation-gate` makes this a STANDING
-  mechanism, not a one-time fix — every `docs/manual/0*.md` "Strip
-  source citations" table entry must resolve to a register row or
-  `make test` fails, catching the next drift automatically rather than
-  waiting for the next manual-review run. **Targeted dimension-1-only
-  re-run: PASS** — see `notes/adr/0129-strip-executability.md` for the
-  full account, `.agents/plans/2026-08-13-manual-review-1.md`'s own
-  new "Dimension 1 re-run" section for the file:line evidence table.
-  **The manual arc's first all-dimensions-addressed state**: dimension
-  4 (ADR-0126) and dimension 1 (here) both CLOSED; dimensions 2, 3, 6,
-  7, 8 passed at the original run (ADR-0125) and were never regressed
-  by any session since.
-- **Manual-review run 1, dimension 4 (glossary linkage) — CLOSED
-  2026-08-13 (ADR-0126).** Original finding (ADR-0125,
-  `.agents/plans/2026-08-13-manual-review-1.md`): only Chapters 2 and 8
-  linked `docs/glossary.md` on first use of a glossary-defined term;
-  Chapters 1, 3, 4, 5, 6, 7 used glossary-defined terms (including, in
-  Chapter 3, the two colliding-meaning terms "Pathway" and "script
-  space"/"truth space" the glossary's own front matter names as this
-  workspace's single most common misreading) with zero glossary link
-  anywhere. Fixed this session: glossary links added at first use across
-  Chapters 1, 3–7 (Chapters 2, 8 untouched, already conforming) — see
-  `notes/adr/0126-citation-sweep-glossary-linkage.md` for the full
-  per-chapter, per-term table. **Targeted dimension-4-only re-run:
-  PASS** — every chapter now links at first use, dimension 2 (no
-  restatement) and dimension 3 (anchor stability) both re-verified
-  incidentally and hold. The other seven dimensions were not re-run
-  this session; dimension 1 (strip executability, below) stays the open
-  FAIL it was.
-- **Positive-seed invariant violation, `ehrt.sim-engine.engine-test`'s
-  `mixed-authored-and-compiled-run-satisfies-the-full-invariant-
-  catalog`** — surfaced in ADR-0121's own pre-commit-1 `make test` at
-  seed `1786589996178` (`failing-size 144`), a non-negative,
-  contract-legal seed under ADR-0116's post-R9 generator; the S3
-  session re-ran past it citing R8 (ADR-0114), a mischaracterization
-  corrected by this session's own erratum to `notes/adr/0121-*.md` (R8
-  chartered seed `7844068501` specifically, already investigated and
-  closed by ADR-0116 — this is a distinct, new finding). **Diagnosis
-  landed 2026-08-13, ADR-0122** (root cause, blast estimate against the
-  35 oracle roots, lettered fix options). **RESOLVED 2026-08-13,
-  ADR-0123** — the author's own "a" ruling (option (a), the checker
-  fix): `medication-end-references-existing-order-and-follows-it-in-
-  time` widened to accept a pre-horizon order referent, the
-  follows-in-time law adjusted to hold wherever the order lives; both
-  recorded failing seeds (`1786589996178`/`1786617342587`) green at 150
-  trials each, the diagnosed shrunk-seed regression (`8589258984`)
-  green, the positive control still green, the oracle held pure
-  identity across all 35 roots (confirmed by an actual
-  `bin/regression-oracle` run).
-- **Review-3, user-surface scope** (ADR-0113 R5; charter set 2026-08-12,
-  **findings landed 2026-08-12, ADR-0114** —
-  `.agents/plans/2026-08-12-review-3-user-surface-findings.md`, 48
-  tallied dispositions across B1-B7 plus an 11-row UX-audit
-  carry-forward, awaiting author rulings on the ruling-needed rows
-  [R3-B1-1 `--out-dir`'s double meaning, R3-B1-4 `--seed`'s
-  required-vs-defaulted split, R3-B1-7 `--received`'s wall-clock
-  default] before the next step, a rulings-landing session in the
-  review-2 ADR-0093 pattern, chartered a round of CLI tweak sessions
-  from the fix-session-candidate rows). Author verbatim, 2026-08-12:
-  *"Should we run a repo review before we start on the manual? It might
-  lead to tweaks to the CLI."* Scope, verbatim from the ruling:
-  verb/flag consistency, error-message quality, help surface,
-  enumerable-options family, derived-out-dir conventions. Precedes the
-  user manual design pass above in the ratified sequence; its findings
-  drive a round of CLI tweak sessions before the design pass starts.
-  **2026-08-12 (ADR-0115): rulings landed on all three `ruling-needed`
-  rows** (R3-B1-1 `--out-dir` rename ruled (a); R3-B1-4 `--seed`
-  tiering ruled (a) deliberate, closed by a help-note addition;
-  R3-B1-7 `--received` wall-clock default ruled (a), closed-by-ruling
-  as a class exemption) and the fix-session-candidate rows are
-  chartered into three clusters (A, B, C, rows below). **CLOSED
-  2026-08-12** except the design-channel-draft queue (the B-3/B-4
-  carry-forward wording halves, R3-B3-4 -- the channel's own work,
-  unchanged, not a session row): all three cluster sessions landed
-  (A, ADR-0117; B and C, both ADR-0118) -- the user manual design pass
-  (row above) is next, now READY.
-- **RESOLVED 2026-08-12** (fix cluster A -- CLI validation and error
-  quality, `notes/ADRs.md` ADR-0117; chartered ADR-0115). All eight
-  members fixed, red-before-green per fix, four commits: R3-B2-1
-  (`check` target validation, HIGHEST PRIORITY -- DIR now required,
-  must exist, must be non-empty, `:missing-required-opt`/
-  `:invalid-target`); R3-B2-2 (parse-error translation -- a
-  `babashka.cli` coercion failure, e.g. `--seed abc`, no longer leaks
-  the library's own name and a file:line at the wrong exit code;
-  `safe-parse` catches it at the CLI's own parse boundary,
-  `:invalid-flag-value`); R3-B2-3 + R3-B4-1 (`corpus intake --out`
-  required, not derived -- ruled require-not-derive [C, un-vetoed]: a
-  derived path would fold `--received`'s own wall-clock default into a
-  filesystem name, quietly unreproducible; requiring is honest);
-  R3-B1-5 (missing-required-flag exit-code/category unification --
-  `:interval-required`/`:v2-nist-profile-required`/the
-  operator-id-absent leg of `:unknown-operator` all retired in favor of
-  the shared `:missing-required-opt` shape at exit 2); R3-B1-3
-  (`synthea:`/`sim:` source-scoping validator extension -- ruled
-  reject-not-warn [C, un-vetoed], `:flag-source-mismatch`); R3-B2-5 +
-  R3-B3-3 (`help <unknown-group>` reuses `:unknown-command` verbatim,
-  same treatment as `ehrt <unknown-group>` itself); R3-B1-1 (the
-  `--scratch-dir` rename, RULED ADR-0115 RQ1 -- no back-compat alias,
-  sweep census found zero live doc surfaces citing `gate fhir
-  --out-dir` explicitly); R3-B1-4 (the tiering help note, RULED
-  ADR-0115 RQ2 -- `corpus generate`'s `--seed` doc string now states
-  the two-tier design explicitly, closing the same gap ADR-0116's own
-  disclosure left open for the third, dual-source `--seed` row it
-  found but deliberately did not edit). Zero judge/check component
-  internals touched, zero engine/sim `src` touched; the oracle held
-  pure identity across all 35 roots (F1-F6 change only error paths on
-  invalid inputs no root supplies; F7 renames a flag on a verb no root
-  invokes; F8 is help text).
-- **RESOLVED 2026-08-12** (fix cluster C -- doc drift and gate
-  scan-roots, `notes/ADRs.md` ADR-0118; chartered ADR-0115). One
-  commit, order-matters red-before-green: the invocation lint's own
-  scan roots widened to `demos/**` and `.github/**` first (R3-B5-4's
-  "consider" ruled YES [C, un-vetoed], same recurrence-prevention logic
-  as `demos/**`) -- the widening itself only goes RED on R3-B5-4's own
-  issue-template alias (`.github/ISSUE_TEMPLATE/bug-report.md`'s stale
-  `clojure -M:cli version`); R3-B5-3's own `demos/traces/**` stale
-  config-header drift lives in unfenced EDN comments the lint's two
-  checks (a substring match, and fenced-\`\`\`bash/sh flag-value
-  resolution) structurally cannot see, disclosed rather than
-  papered over by silently extending the lint. Fixed by an
-  extension-blind, un-truncated census grep instead: the 3 named
-  stale-path/seed instances plus 1 more the census alone found
-  (`demos/traces/module-mix/README.md`'s own stale `docs/demos/
-  emit-state/` prose reference). Docs-only, zero `src` touched.
-- **RESOLVED 2026-08-12** (fix cluster B -- help-surface enrichment,
-  `notes/ADRs.md` ADR-0118; chartered ADR-0115). One commit,
-  red-before-green: R3-B3-2, genuine verb-level help narrowing for
-  both `<group> <verb> --help` and the 3-arg `help <group> <verb>`
-  form (`help/render-verb-help`); a known group with an unknown verb
-  reuses F6's own `:unknown-command` treatment verbatim (ADR-0117); a
-  group with no verbs at all is unaffected. R3-B3-1, both halves: the
-  "Example:" render slot, and its own sourced content -- one witnessed,
-  verbatim invocation per group (never composed), drawn from
-  README.md's Quickstart, `docs/use-cases/*.md`, or a demo README, per
-  the B2 sourcing rule [C, approved by dispatch of the driving prompt]
-  that superseded this row's own design-channel-draft disposition for
-  content. 7 of 9 groups covered; `version`/`doctor` have no witnessed
-  invocation anywhere and render none, recorded as a register addendum
-  row rather than an invented example. `docs/cli.md` regenerated,
-  confirmed byte-identical (it deliberately excludes worked
-  invocations by design, and B1's narrowing is a render-time-only
-  behavior change -- neither reaches the spec shape docsgen reads).
-- **Design-channel-draft queue** (ADR-0115; not a session row). The
-  B-3/B-4 carry-forward wording halves (R3-B3-4) only -- R3-B3-1's own
-  Example-line content resolved above, ADR-0118. The channel drafts,
-  the author rules, no session until then.
-- **RESOLVED 2026-08-12** (engine-seed-contract, `notes/ADRs.md`
-  ADR-0116; `.agents/rulings.md` "From ADR-0116" R9): the
-  `ehrt.sim-engine.engine-test` flake this row chartered
-  (`mixed-authored-and-compiled-run-satisfies-the-full-invariant-catalog`)
-  is classified: `gen/large-integer` drew seeds outside the engine's
-  own contract (negatives included) and `engine/run` accepted them
-  unvalidated, occasionally producing an invariant-catalog violation
-  rather than a clean rejection. Both halves fixed -- `engine/run`
-  now rejects a negative `:seed` with `result/error :invalid-seed` at
-  entry (`ehrt.kernel.interface`, the engine's first dependency on
-  it); every generative `:seed` generator repo-wide that feeds
-  `engine/run` (or a wrapper) is constrained to `(gen/large-integer*
-  {:min 0})`, 24 sites across 7 files, swept in the same session after
-  the single originally-fenced site proved insufficient (fixing one
-  while ~20 others still drew negatives would have converted a known
-  flake into a standing repo-wide one); the two production callers
-  that blindly destructured `engine/run`'s return
-  (`ehrt.sim.run/run-command`, `ehrt.sim.identifiers/
-  identifiers-command`) now check `result/error?` and propagate
-  rather than silently reporting `:ok`. The shrunk counterexample
-  `[-3377439408979484]` (seed `1786546687672`, ADR-0115's own CI
-  disclosure) reproduces and now passes green under the fix. The
-  OTHER recorded seed, `7844068501` (ADR-0112's own disclosure), did
-  **not** reproduce when pinned directly this session -- ADR-0112's
-  own "cleared on re-run" was against a fresh, unpinned seed, never
-  this exact value, so it was never actually confirmed as a
-  per-seed-deterministic repro; full account in `notes/adr/
-  0116-engine-seed-contract.md`. Cross-ref: ADR-0107's sibling corpus
-  defspec flake row remains open and is explicitly NOT this session's
-  scope.
-- **Demo exerciser (ed-tuesday) — LANDED 2026-08-12 (ADR-0120).**
-  Author verbatim, 2026-08-12: *"The demos must be known to work, and
-  exercised as documented to make sure they actually play out as
-  written."* Mechanism ruled (channel-proposed, author "Q2 a"): a demo
-  exerciser generalized from the quickstart pattern (`make quickstart`
-  / `quickstart-fresh`), integration-tier, running each scenario
-  README's own fenced commands in order and asserting exit codes plus
-  each demo's own named invariants. Co-landed with the manual's first
-  chapter that cites a demo (Chapter 3, S2), per the ADR-0113 R5
-  sequence above. Landed for **ed-tuesday only**
-  (`bin/demo-exerciser-ed-tuesday`,
-  `ehrt.docs-tooling.demo-exerciser-fresh`) — **clinic-decade's own
-  exerciser is a new future row, not this session's scope**, see
-  below.
-- **Demo exerciser (clinic-decade)** (new row, ADR-0120; not chartered
-  to any executing session yet). R3's own charter — "The demos must be
-  known to work, and exercised as documented" — covers every scenario
-  README this workspace ships, not only ed-tuesday; `bin/demo-exerciser-
-  ed-tuesday` and `ehrt.docs-tooling.demo-exerciser-fresh` (ADR-0120)
-  are the worked pattern a clinic-decade sibling would generalize from —
-  a second `bin/demo-exerciser-clinic-decade` plus its own fresh-identity
-  test, mirroring the same shape (multi-fence extraction, per-step exit
-  codes, the README's own named invariants re-derived live, never
-  hardcoded). `demos/scenarios/clinic-decade/README.md`'s own fenced
-  commands and invariants (the sparse-traffic disclosure, the single
-  inpatient admission) are the source this future exerciser would
-  assert against. Not chartered to a session; no design work done here
-  beyond naming it. **Register mechanism now exists (ADR-0129,
-  `ehrt.docs-tooling.exercised-sources`)** — a future clinic-decade
-  exerciser session would add one more :demo-exerciser-fresh-shaped
-  register row (or :multi-fence, if the extraction differs) rather
-  than inventing its own freshness-check plumbing; the register's own
-  generalized `ehrt.docs-tooling.strip-fresh/check-entry` already
-  handles a new row of this shape without any code change, only data.
-
-  **Dated correction (2026-08-14, ADR-0130): the "without any code
-  change, only data" claim above does NOT hold.** A session executing
-  this row found `:demo-exerciser-fresh`'s own script-side extraction
-  (`ehrt.docs-tooling.demo-exerciser-fresh/script-command-lines`)
-  hardwired to ed-tuesday's own literal BEGIN/END marker text, not
-  parameterized — verified both by reading and empirically (a
-  correctly-named clinic-decade-marker fixture returned `nil`). Ruled
-  (a): the fence widened to a minimal parameterization —
-  `script-command-lines`/`check` now take an explicit `marker-open`/
-  `marker-close` pair, defaulting to ed-tuesday's own literal markers
-  so every pre-ADR-0130 call site stays byte-identical; `ehrt.docs-
-  tooling.strip-fresh`'s own `:demo-exerciser-fresh` case now passes a
-  register row's own `:marker-open`/`:marker-close` through rather than
-  silently ignoring them. Landed, red-before-green proven via disposable
-  stash isolation (checkpoint-isolation practice, `.agents/skills/
-  build-session/SKILL.md`). **The clinic-decade row/script/Makefile line
-  themselves were NOT landed** — the same session's own real,
-  end-to-end run of the drafted (never-committed) script surfaced an
-  unrelated, genuine defect blocking the README's own third command;
-  see the two new Next-section rows below for the sequenced follow-up.
-  This row stays OPEN, now blocked on the first of those two rows.
-- **Slug EDN-round-trip fix** (new row, ADR-0130; not chartered to any
-  executing session yet, sequenced BEFORE the row below). A real,
-  previously-undisclosed defect this session found live, exercising
-  clinic-decade's own third fenced command for the first time ever with
-  a real assertion on its exit code: `ehrt.sim-trajectory.gmf/slug`
-  (`components/sim-trajectory/src/ehrt/sim_trajectory/gmf.clj:45-55`)
-  lower-cases and replaces `[_\s]+` with `-` on a raw GMF name, but
-  never sanitizes any OTHER punctuation — `keyword` (line 63) then
-  wraps the result verbatim. Upstream Synthea state names are free
-  text and can legitimately carry a comma (`uti/abx_tx.json`'s own
-  `"Cipro 500, 5 day"`/`"Cipro 250, 3 day"`, part of clinic-decade's own
-  twelve-module mix): `slug` turns the first into `"cipro-500,-5-day"`,
-  `keyword` wraps it to `:cipro-500,-5-day` — prints fine via `pr-str`,
-  but is not re-readable EDN (the reader treats the embedded comma as
-  whitespace, splitting the token and failing on the orphaned `-5-day`
-  fragment). This project's own informal law — every keyword it
-  constructs satisfies `(= k (edn/read-string (pr-str k)))`, emit
-  composed with read is identity — is violated for this specimen.
-  Witnessed live: `bin/ehrt play out/scenarios/clinic-decade/events.edn
-  --rate 100000` (seed 20260807, 200 patients) fails, `{:status
-  :error, :category :play-input-unreadable, :payload {:path
-  "out/scenarios/clinic-decade/events.edn", :message "Invalid number:
-  -5-day"}}` — the HL7 v2 wire path (a DIFFERENT command, same run)
-  does not hit this, since it never round-trips the raw `:citation
-  {:state ...}` field through EDN read. An `:sim`-family engine session
-  chartered to fix this: a red-before-green PROPERTY test (generative,
-  matching this project's own generative-test culture) asserting the
-  round-trip law holds for `slug`-derived keywords across arbitrary raw
-  GMF names, including ones carrying commas or other punctuation, red
-  before the fix and green after; and a MANDATORY declared-oracle-
-  change assessment before landing — `slug` compiles EVERY module's own
-  state/attribute names, not only `uti/abx_tx.json`'s, so a fix
-  (sanitizing/escaping whatever `slug` currently lets through) could
-  change the compiled keyword value, and therefore the emitted ground
-  truth, for any OTHER already-vendored module whose own state names
-  carry a character `slug` doesn't currently touch — a census across
-  all 35 oracle roots' own source modules for this pattern is required
-  as part of that session, with a declared-oracle-change disclosure
-  (not a silent pure-identity assumption) if any root's own digest is
-  predicted or confirmed to move.
-
-  **CLOSED 2026-08-14 (ADR-0131).** Both defect censuses re-derived
-  across all 66 module JSONs (recursive — 35 of the 66 live in
-  subdirectories the flat top-level glob alone misses): defect 1
-  (illegal EDN chars) 10 breaker keys/3 modules, EXACT match to the
-  channel's own pre-probe; defect 2 (collisions, unchanged by this
-  fix) 10 pairs across **5** distinct modules — the pre-probe's own "8
-  modules" figure was WRONG, disclosed as a found discrepancy, not a
-  live-tree finding. `slug` (Q1(a)) now folds comma plus the reader's
-  own thirteen terminating-macro characters, empirically derived
-  against `clojure.edn/read-string` itself; a module-load injectivity
-  guard (Q2(b), WARN-mode) warns per collision, naming module/folded-
-  key/raw-names, load proceeding. Movement predicted per-root
-  empirically (grepped against the pre-fix oracle digest, not just
-  structurally) and confirmed EXACT by the official `bin/regression-
-  oracle` bracket after the fix landed: 3 roots MOVED
-  (`urinary-tract-infections-engine`/`-history-engine`, `injuries`); 1
-  root (`veteran-lung-cancer`) structurally contained a breaker module
-  but its own breaker states were grep-confirmed UNREACHED at that
-  root's seed/population, correctly predicted NOT to move (byte-
-  identical, confirmed); 4 more roots plus `injuries` again WARNED at
-  load with zero byte movement (also confirmed); 27 of 35 roots
-  untouched by either census. Red-before-green: a generative property
-  test (round-trip law + fold idempotence) and a guard test, both
-  witnessed RED against pre-fix code, both GREEN after the fix (75
-  tests, 220 assertions). Full `make test` green throughout (632 "0
-  failures, 0 errors" blocks, no other test moved). Acceptance:
-  clinic-decade regenerated (seed 20260807, 200 patients) — the
-  README's own second command (`--board`) reproduced ADR-0130's exact
-  witnessed figures (`68/48/41`, `inpatients: 0` throughout) byte-for-
-  byte; the README's own THIRD command — the one that failed in
-  ADR-0130 with `:play-input-unreadable` — now completes for the first
-  time ever (`{:emitted 367, :skip-count 49, :unparseable-count 0}`, a
-  new first-witnessed figure, not a regression baseline). Zero module
-  JSONs edited (vendored verbatim, ADR-0071 precedent); zero README/
-  figure edits. Full account, both census tables, and the
-  prediction-vs-actual table in `notes/adr/0131-slug-edn-round-trip.md`.
-- **Vendoring rider: per-pair collision corrections, 5 modules —
-  CLOSED 2026-08-14 (ADR-0133), superseding this row's own original
-  per-module-JSON-edit framing below.** A new author ruling picked
-  loader-side exact-name resolution instead: a raw-name -> key table
-  built at load time, every name-valued reference resolved by EXACT
-  raw string (never `slug`), vendored JSONs staying verbatim (ADR-0071
-  preserved, NOTICE hashes untouched) — the per-pair rename-or-declare
-  decision this row originally chartered was not needed, since BOTH
-  members of every colliding pair now load as real, distinct,
-  correctly-routed states. Restoring the previously-orphaned content
-  cascaded into two further, licensed, narrow widenings ("the
-  restoration cascade," `notes/adr/0133-*.md`'s own Step 2 section):
-  `gmf-interpreter.clj`'s own `max-steps` backstop switched to reset-
-  on-any-advance semantics (`veteran-ptsd`'s own real, legal recurring-
-  care loop was false-firing the OTHER ADR-0105-licensed semantics),
-  and `compile-trajectory.clj`'s own `encounter->step`/`encounter-end-
-  >step` gained a `:virtual` clause (resolving the decision ADR-0029
-  D3f's own `gmf.clj` docstring had explicitly deferred). Oracle
-  bracket: 4 of 35 roots moved (`colorectal`/`injuries`/`sleep-apnea`/
-  `veteran-ptsd`) exactly as predicted; `hypothyroidism` was predicted
-  to move but stayed byte-identical, investigated and explained (both
-  its own collision-pair members are `:exact`-severity Symptom states
-  whose only effect — an attribute write — is never read downstream in
-  this module, restored but structurally unobservable). Three pinned
-  trajectory-content tests re-baselined with disclosure. **The guard's
-  own WARN -> hard-error escalation this row originally chartered is
-  DISCHARGED, not executed** — collisions are HANDLED (both members
-  load as real states), not merely tolerated-and-announced; the guard
-  becomes a disambiguation disclosure, and a new, different strictness
-  (`:unresolved-state-reference`, a name-valued reference missing from
-  the table) lands instead. Full account in `notes/adr/0133-exact-
-  name-resolution.md`.
-- **Scenario rename + clinic-decade exerciser completion — CLOSED
-  2026-08-14 (ADR-0132).** ADR-0130; UNBLOCKED 2026-08-14 — ADR-0131
-  fixed `events.edn` read-back for this scenario's own module mix, the
-  blocker this row was sequenced behind. **The scenario's own name is
-  RULED (ADR-0132, author verbatim 2026-08-13, "clinic-decade it
-  is."): busy-tuesday -> clinic-decade** — a full live-reference sweep
-  landed the rename (`demos/scenarios/clinic-decade/`, every cross-ref,
-  the sourced CLI example, the docsgen companion, docs-tooling
-  comments and test marker fixtures — zero residue outside frozen
-  records, confirmed by a repo-wide grep). The clinic-decade exerciser
-  work ADR-0130's own session drafted landed completed: `bin/demo-
-  exerciser-clinic-decade` (adapted from ADR-0130's own Appendix, one
-  disclosed regex fix for a markdown line-wrap the drafted script never
-  actually hit), its own register row (`:demo-exerciser-fresh`,
-  explicit `:marker-open`/`:marker-close`, the ADR-0130-widened
-  parameterization's own first second-instance consumer), `Makefile`
-  integration wiring. Freshness case red-witnessed (script absent) then
-  green; register count-lock bumped 7 -> 8. Executed end-to-end
-  in-session, real artifacts (seed 20260807, 200 patients): all three
-  README-taught commands, every named invariant re-derived live from
-  the README and matched — `68/48/41`, `inpatients: 0` throughout
-  (byte-for-byte the ADR-0130/ADR-0131 witnessed figures), and the
-  third command's own `367`/`49` first-witnessed figures (ADR-0131)
-  reproduced exactly. No figure moved, no README edit. Full run
-  wallclock: 504s, this lane's own first-witnessed timing. **R3
-  (`notes/ADRs.md` ADR-0113) now fully discharged**: every shipped
-  scenario README (`README.md`'s Quickstart, ed-tuesday's, and now
-  clinic-decade's) is register-exercised, integration-tier, asserting
-  exit codes and every named invariant. Oracle held pure identity
-  across all 35 roots (`bin/regression-oracle` bracket, Step 0's own
-  baseline to Step 2's own tip) — the rename touches no engine
-  behavior and the oracle roots never resolve through
-  `demos/scenarios/`, matching Step 0's own verified prediction
-  exactly. Full account in `notes/adr/0132-clinic-decade-rename-and-
-  exerciser.md`.
-- **Audience register paring** (ADR-0113 R4; a small future docs
-  session, not chartered). Author "Q1 a": the audience register in
-  `docs/dev/AUDIENCES.md` pares to five behavioral segments --
-  practitioner (agent-assistance absorbed as a global style constraint,
-  evaluation as its front matter), guide reader, data consumer,
-  contributor (human or agent), deferred library-consumer stub -- and
-  that document's own "Seven segments" header gets corrected in the
-  same edit. Ruled 2026-08-12; execution deferred to a later session.
-- The lookup-column `time` gap (named in the schema-invalid family
-  backlog since ADR-0039, still untouched — Wave I's own six
-  mechanisms didn't cover it). Bulk vendoring (batched by closure
-  family) follows once the catalog fully walks. **Ratified as real**
-  (design channel, 2026-08-06, `notes/adr/0066-player-fold.md` AR-BB1-R)
-  — discharges the `[unverified]` intake note ADR-0064 carried for it;
-  scheduled after the player-fold arc, still not built.
-- **Wave G attachment deferral** (ADR-0037 AR-4, named trigger "multi-
-  module assignment per patient"): upstream's own all-waiting-modules-
-  attach-to-one-visit semantics only diverges from this project's
-  per-module wait when one patient runs multiple modules concurrently —
-  the engine's current one-module-per-patient assignment never
-  exercises this, so it is deferred, not built. Revisit trigger: a
-  future session that assigns more than one module to the same patient.
-- make quickstart → nightly integration workflow + single-```sh-fence guard in README
-  (quickstart_fresh docstring corrected in same change)
-- generator-source three-concerns split (ADR-0017 named-future)
-- ehrt.corpus.display placement — presentation-leaning (ADR-0018 named-future)
-- Markdown-table helper dedup (ADR-0018 named-future)
-- **`corpus generate --engine` — an OPEN question, registered for
-  visibility, disposition deliberately NOT taken here.** Registered
-  2026-08-15 by repo review 3 (finding D7-3(b), author ruling R-2
-  "accept all.", ADR-0136); the question itself has been marked
-  **Open** in `docs/dev/source-sink-design.md:56`'s own table since
-  `499cad4`, 2026-07-29, and appeared in no register for the 17 days
-  between. The row carries that table's own question rather than
-  answering it: *should `corpus generate` grow an `--engine` flag now
-  that the generator registry (SS-2) names more than one engine kind
-  (`synthea`, `sim`), so a caller could pick which engine `corpus
-  generate` drives instead of only ever driving Synthea?* SS-2's own
-  ruling 6 put `corpus generate`'s verb, flags and defaults out of
-  scope, leaving two live futures: a session adds `--engine`, or
-  `corpus generate` stays Synthea-only forever with `intake
-  GENERATOR-URL` as the one multi-engine door. It sits in Next, not
-  Deferred, because Deferred rows owe a revisit trigger and this one
-  has none yet — being in a register at all is the whole point of the
-  row. Resolving it updates BOTH this row and OPEN-4 in place.
 ## Externals (author-only)
-- Enable GitHub's workflow-failure notification email for this
-  repository (one settings toggle) — closes the nobody-watching gap
-  ADR-0075 named at zero session cost; named quality riders AR-QR-3,
-  2026-08-07.
-- NIST licensing inquiry: send the drafted gist (retires the confirmation-pending
-  posture cited on the storefront Gate row)
-- IG pinning: choose and commit the profile-tier conformance target (Gate row's
-  other caveat)
-- Clojars publish, when satisfied with the product (ruled 2026-07-31; ends the
-  greenfield era — output formats freeze harder after first tag). **Dated note
-  (D1a rider, 2026-08-02): this row IS the Clojars-vs-Maven-Central ruling —
-  cross-referenced into `notes/ADRs.md` ADR-0001's own H5 entry today, closing
-  that half of H5 as an open gate; the group/coordinates naming half and
-  publication itself both stay open/parked, unchanged by this note.**
-- SETUP rewalk by an unspoiled human reader (F3 superseded-pending-rewalk).
-  **Widened 2026-08-12 (ADR-0119):** now also covers `docs/manual/`
-  Chapters 1-2 (`01-what-this-is.md`, `02-setup-first-corpus.md`), which
-  narrate SETUP.md's own steps — same author-only errand, one rewalk
-  now smoke-tests all three. Still owed, not executed.
-- **EHR Testing Guide Ch 24 "completeness illusion" section notes**
-  (not a session charter): the batch-straddle scenario's guide-side
-  treatment (`.agents/rulings.md` "From ADR-0112", "Batch-straddle
-  documentation placements", placement (c)). The channel may draft
-  notes on request, grounded in the ADR-0111 demo's witnessed run
-  (`demos/scenarios/ed-tuesday/README.md` "Batched delivery"); the
-  guide itself lives outside this workspace, per `AGENTS.md`.
-- Upstream the adapted repo-adaptation skill to pragsmike/skills (and cyberneutics
-  if wanted) — AUTHOR ACTION named 2026-08-01
-- Item 9 (ADR-0024, landed 2026-08-01 as mirror-with-gate, not symlinks): the
-  fresh-session discovery probe is DONE — see Done section below. The
-  "fast-forward /mnt/c" remainder is CLOSED (2026-08-05, scaffolding
-  compaction C, `notes/ADRs.md` ADR-0047 AR-C-3): `/mnt/c` itself
-  retired, so there is nothing left to fast-forward.
-- **RESOLVED 2026-08-05** (scaffolding compaction C, `notes/ADRs.md`
-  ADR-0047 AR-C-3): the standing-cost question this row posed — does
-  `/mnt/c` still earn its keep — is answered: retire it. `bin/sync-
-  mnt-c` deleted; the guarded-mirror doctrine retired from
-  `.agents/skills/build-session/SKILL.md` (both copies) with a dated
-  note. The physical directory's own deletion on the Windows side
-  stays the author's own act, per this ruling.
+- EXTERNAL **[ci-failure-email]** -- enable GitHub's workflow-failure
+  notification email for this repository (one settings toggle); closes the
+  nobody-watching gap at zero session cost. ADR-0075, named quality riders
+  AR-QR-3, 2026-08-07.
+- EXTERNAL **[nist-licensing]** -- send the drafted NIST licensing gist,
+  retiring the confirmation-pending posture cited on the storefront Gate row.
+- EXTERNAL **[ig-pinning]** -- choose and commit the profile-tier conformance
+  target (the Gate row's other caveat).
+- EXTERNAL **[clojars-publish]** -- publish to Clojars when satisfied with the
+  product (ruled 2026-07-31); ends the greenfield era, output formats freeze
+  harder after the first tag. This row IS the Clojars-vs-Maven-Central ruling
+  and closes that half of ADR-0001's H5; the group/coordinates naming half and
+  publication itself both stay open.
+- EXTERNAL **[setup-rewalk]** -- SETUP.md rewalked by an unspoiled human reader
+  (F3 superseded-pending-rewalk), widened 2026-08-12 to cover `docs/manual/`
+  Chapters 1-2, which narrate the same steps; one rewalk smoke-tests all three.
+  Still owed, not executed. ADR-0119.
+- EXTERNAL **[guide-ch24-notes]** -- EHR Testing Guide Ch 24 "completeness
+  illusion" section notes, the batch-straddle scenario's guide-side treatment
+  (placement (c)); the channel may draft on request, grounded in the ADR-0111
+  demo's witnessed run. The guide itself lives outside this workspace. ADR-0112.
+- EXTERNAL **[upstream-adaptation-skill]** -- upstream the adapted
+  repo-adaptation skill to pragsmike/skills (and cyberneutics if wanted); named
+  AUTHOR ACTION 2026-08-01.
 
 ## Deferred (explicitly, with revisit triggers)
-Rows here are LIVE. Closed rows move to Done with their notes.
-- **Transport realism — batching, LANDED 2026-08-11 (ADR-0111), three
-  named deferrals still open.** `ehrt corpus batch DIR --interval
-  MINUTES --out-dir OUT` schedule-partitions a corpus's own messages
-  (any directory of valid v2 message files, including a foreign
-  corpus — author ruling, `.agents/rulings.md`, "From ADR-0111," Q1
-  a) into epoch-aligned, HL7 v2 batch-protocol (BHS/BTS) delivery
-  files, composing with the latency arc (ADR-0109/ADR-0110) as a
-  second, independent transport realism. Witnessed against
-  `demos/scenarios/ed-tuesday/`'s own latency out-dir: 283 messages,
-  34 hourly batches, an interior empty-hour gap visibly skipped, a
-  straddling encounter (Smith, James/MRN000002) split across two
-  consecutive, individually BTS-verified batch files. Three v1
-  deferrals, each with its own revisit trigger (`notes/adr/
-  0111-corpus-batching.md`): **`--anchor`** (bucket alignment is
-  always Unix-epoch; revisit trigger: a concrete non-epoch-aligned
-  schedule need); **interior empty-batch realism** (an empty bucket
-  between two occupied ones is skipped, never represented as a
-  missing/placeholder file; revisit trigger: a future session wanting
-  to simulate a receiver noticing a missing scheduled delivery);
-  **FHS/FTS file-level wrappers** (the batch protocol's own next tier
-  up from BHS/BTS; revisit trigger: a future need to bundle multiple
-  batches into one file-level transfer). A taxonomy question — where
-  message loss/duplication sit relative to transport-realism (this
-  row, ADR-0109) versus mutation (`ehrt corpus mutate`) — is named,
-  not resolved, in the same ADR.
-- **`ehrt.corpus.sink-composability-test`'s own generator-exhaustion
-  flake** (2026-08-11, injuries arc close, `notes/ADRs.md` ADR-0107,
-  dated append): `dir-sink-write-then-intake-hash-identity-property-
-  test`'s own `item-set-gen` draws up to 5 DISTINCT filenames via
-  `gen/vector-distinct` over a small-range `gen/nat`-derived
-  generator, no fixed seed — occasionally throws `Couldn't generate
-  enough distinct elements!` (witnessed once, CI run `31530741376`,
-  confirmed unrelated to that session's own changes and confirmed
-  non-reproducing on immediate re-run). Not fixed this session — out
-  of fence, the file untouched since 2026-07-31. Revisit trigger: a
-  future session willing to widen `:max-tries` or broaden
-  `safe-filename-gen`'s own range to make collision genuinely rare
-  rather than merely uncommon.
-- **`veteran_hyperlipidemia.json`'s own stale-`statin_initial`
-  reference, true name** (2026-08-08, vendoring batch 4, `notes/
-  ADRs.md` ADR-0090): deferred whole, not vendored. The module's own
-  annual reassessment loop (`Record_LipidPanel_2`/`end old statin`/
-  `Hyperlipidemia_medication_renewal`) re-checks `statin_initial is
-  not nil` every year without ever clearing that attribute, so every
-  year after the first re-fires a `MedicationEnd` against the SAME
-  already-ended original order — `ehrt.sim-check.check`'s own
-  `:medication-end-references-existing-order-and-follows-it-in-time`
-  invariant fails at population scale (20+ violations per 300
-  patients, seed 20260802, confirmed non-seed-tunable down to a
-  16000-day horizon), a real upstream module-authoring pattern this
-  project's interpreter compiles faithfully. Per the standing fence,
-  no interpreter/module-content edit lands this session. Revisit
-  trigger: a future session willing to characterize whether
-  `MedicationEnd`/`referenced_by_attribute` should itself become
-  idempotent (a no-op against an already-ended order) as a general
-  interpreter rule, or whether this is upstream-module-only and stays
-  out of scope.
-- **`veteran_mdd.json`'s own recurring-encounter max-steps
-  exhaustion, true name** (2026-08-08, vendoring batch 4, `notes/
-  ADRs.md` ADR-0090): deferred whole (BLOCKED), not vendored.
-  `run-module` throws `ehrt.sim-trajectory.gmf-interpreter: run-module
-  exceeded max-steps -- likely a module authoring bug (a zero-time-
-  advance transition cycle)` at `:therapy-delay`/`:end-therapy-visit`,
-  reproduced at every horizon tried (36500/18250/3650 days, the
-  `injuries.json` bail-out precedent's own horizon-sweep method,
-  ADR-0070) — the module's own recurring `therapy_delay`/`Therapy_
-  Visit`/`Therapy_Note`/`end therapy visit`/`MDD_Re_evaluation
-  Encounter` cycle genuinely advances real time each iteration (a
-  5-14 day Delay) but never exits before a multi-decade horizon
-  exhausts the interpreter's 10000-step runaway-loop backstop
-  (`gmf_interpreter.clj`'s own `max-steps`) — a legitimate
-  long-running follow-up schedule the backstop cannot distinguish
-  from a true zero-advance spin. Per the standing fence, no
-  interpreter/module-content edit lands this session. Revisit
-  trigger: a future session willing to extend the runaway-loop
-  backstop to distinguish a real-time-advancing cycle from a
-  zero-advance one (e.g. raising `max-steps` conditionally, or
-  detecting forward wall-clock progress alongside the step count) —
-  the SAME class of backstop-vs-legitimate-long-loop tension
-  `injuries.json`'s own dangling-`dental_referral` gap named first,
-  a different mechanism, same backstop.
-- **`EncounterEnd` no-op-when-nothing-open** (2026-08-07, vendoring
-  batch 2, `notes/ADRs.md` ADR-0071, the `anemia___unknown_etiology.
-  json` bail-out finding): upstream Synthea's own `EncounterEnd` idiom
-  "close the encounter IF one is open, else no-op" (e.g. `anemia/
-  anemia_sub.json`'s own `End Any Active Encounter Just In Case`)
-  compiles here as an UNCONDITIONAL `:encounter-end` —
-  `ehrt.sim-trajectory.gmf-interpreter/emit-and-advance`'s own
-  `:encounter-end` case never checks whether `index-of-last-open-
-  encounter` actually found one before emitting, producing a dangling
-  `:discharge` that trips `ehrt.sim-check.check`'s own
-  `:discharge-follows-admission` invariant at population scale (12,
-  17, and 6 violations of 300 patients across three seeds tried).
-  Blocks `anemia___unknown_etiology.json` (deferred whole, not
-  vendored) and any future module whose own closure reaches this same
-  idiom. Revisit trigger: a future session willing to extend
-  `emit-and-advance`'s own `:encounter-end` case to no-op (open design
-  question: silently drop the event, or attach a `:no-op true` marker)
-  when no encounter is open.
-  **Dated note (2026-08-07, vendoring batch 3, `notes/ADRs.md`
-  ADR-0072): a SECOND blocked module, `colorectal_cancer.json` —
-  unlike `hypothyroidism.json`'s own clean call path through the same
-  shared `anemia/anemia_sub.json` submodule, `colorectal_cancer.json`'s
-  own call sometimes lands outside an open encounter (2 of 3 seeds
-  tried rejected at 300 patients, not universal every seed the way the
-  first finding was, but a real, non-negligible population-scale rate)
-  — same root cause, not a new gap. Revisit trigger unchanged.**
-  **Dated note (2026-08-08, fidelity riders, `notes/ADRs.md` ADR-0081):**
-  the revisit trigger fires — a design brief
-  (`.agents/plans/2026-08-08-encounterend-design.md`) proposes real
-  openness tracking in the walk state (an open-encounter index set on
-  `:encounter`, cleared on the matched `:encounter-end`) and a compile
-  rule that no-ops `:encounter-end` when nothing is open, gated by
-  author rulings R1 (wellness arms), R2 (suppressed-end visibility),
-  R3 (acceptance bar) — all three ruled in ADR-0081. The fix session
-  itself is licensed but not yet run.
-  **Dated note (2026-08-08, `notes/ADRs.md` ADR-0082, the EncounterEnd
-  fix): the interpreter gap itself is CLOSED (see Done's own
-  `- 2026-08-08 — encounterend-fix — ADR-0082` pointer for the fix
-  landing; this row stays live, narrowed to colorectal's own remaining
-  blocker below)** — `open-encounter-index` (a pure
-  walk-level fold, retiring `index-of-last-open-encounter`) plus the
-  A1/A5 compile-arm split land; `anemia___unknown_etiology.json` is
-  confirmed CLEAN post-fix (0 violations at all three of ADR-0071's own
-  seeds, in-session proof, ADR-0082) — ready for its own vendoring
-  rider. `colorectal_cancer.json` is NOT: its own residual violations
-  (`:clinical-content-only-when-admitted`, plus one early
-  `:discharge-follows-admission`) persist BYTE-IDENTICAL pre- and
-  post-fix at ADR-0072's own seeds — confirmed, via a raw-trajectory
-  scan, to be UNRELATED to the dangling-`:encounter-end` gap this fix
-  closes (the fixed interpreter's own raw walk is dangling-reference-
-  free for every one of colorectal's 300 seed-42 patients) — a NEW,
-  separate, still-open defect, one compile layer downstream
-  (`compile-trajectory` or the engine, not yet localized), found as a
-  byproduct of this session's own in-session proof and NOT fixed here
-  (this session's own fence, AR-EE-6). Revisit trigger, narrowed:
-  `colorectal_cancer.json`'s own clinical-content-outside-admission gap
-  needs its own diagnosis before it can vendor; `anemia___unknown_
-  etiology.json` needs none.
-  **Dated note (2026-08-08, fidelity payoff, `notes/ADRs.md` ADR-0083):
-  this row CLOSED — see Done, below — both modules it ever blocked are
-  resolved, neither by extending this row's own revisit trigger.**
-  `anemia___unknown_etiology.json` vendors clean (AR-FP-1, this
-  session). `colorectal_cancer.json` — this row's ONLY erratum, dated
-  and append-don't-erase — was NEVER actually blocked by this gap: the
-  same in-session raw-trajectory scan that cleared `anemia___unknown_
-  etiology.json` (ADR-0082, cited two notes above) found ZERO dangling
-  `:encounter-end` references anywhere in `colorectal_cancer.json`'s
-  own 300 seed-42 walks, and its own violations sit BYTE-IDENTICAL
-  before and after the fix landed — a fix that had nothing to correct
-  there. ADR-0072's own diagnosis ("same root cause, not a new gap",
-  the dated note two above) was plausible BY ADJACENCY — the same
-  shared `anemia/anemia_sub.json` submodule, the same violation
-  invariant family — never itself probe-verified by a trajectory scan
-  the way `anemia___unknown_etiology.json`'s own finding always was;
-  this session's own probe is the first scan colorectal's blocker ever
-  received, and it overturns the inference. Colorectal's real blocker
-  moves to its own row, under its own true name, below.
-- **`colorectal_cancer.json`'s own `:clinical-content-only-when-
-  admitted` gap, true name, undiagnosed** (2026-08-08, fidelity payoff,
-  `notes/ADRs.md` ADR-0083, corrected from the closed `EncounterEnd`
-  row above): `colorectal_cancer.json` is deferred whole, NOT vendored
-  — not blocked by the (now-closed) EncounterEnd gap, per the erratum
-  above, but by a separate, still-undiagnosed defect one compile layer
-  downstream of the interpreter (`compile-trajectory` or the engine,
-  not yet localized): `ehrt.sim-check.check`'s own
-  `:clinical-content-only-when-admitted` invariant (plus one early
-  `:discharge-follows-admission`) rejects at 2 of 3 seeds tried
-  (20260802, 42; 300 patients each, ADR-0072's own original counts,
-  reconfirmed byte-identical post-fix by ADR-0082). Clinical content is
-  compiling or replaying as though outside an open encounter — the
-  mechanism is unknown. Revisit trigger: a future session's own
-  dedicated investigation of this violation class against
-  `colorectal_cancer.json`'s own closure — intake for the fidelity
-  arc's own close (ADR-0084).
-  **Dated note (2026-08-08, colorectal investigation, `notes/ADRs.md`
-  ADR-0085): DIAGNOSED, not fixed — row stays LIVE.** The mechanism is
-  now named: `ehrt.sim-trajectory.compile-trajectory/compile-
-  trajectory`'s own legacy `:pre-horizon` drop gate tests only an
-  event's own flag, with no back-reference check against the encounter
-  it belongs to — an `:encounter` opened PRE-horizon (dropped) whose
-  own `:encounter-end` and intervening clinical content fire
-  POST-horizon (compiled normally) produces clinical-content and
-  terminal-discharge steps with no matching compiled admission step,
-  confirmed across 100% of the violating population (2 of 2 distinct
-  patients, both seeds, three-layer probe evidence in ADR-0085). The
-  truncation hypothesis ADR-0082 AR-EE-1a raised is CONFIRMED but
-  narrower than stated: the `:pre-horizon` gate is the real mechanism,
-  in a straddling-encounter shape that finding never exercised;
-  `encounter-closed?`'s own single-encounter scope plays no defective
-  role. Revisit trigger, narrowed to a fix session: two candidate fix
-  shapes named in ADR-0085 (synthesize a compiled opening step for a
-  straddling encounter, or generalize the Wave H `history-phase?`
-  back-reference principle to the legacy path) — a genuine design
-  choice for the design channel to rule on, not mechanical follow-
-  through.
-  **Dated note (2026-08-08, straddle fix, `notes/ADRs.md` ADR-0086):
-  this row CLOSED — see Done, below.** The author ruled shape (b) —
-  generalize `history-phase?`'s own back-reference principle to the
-  legacy path — accepted now, shape (a) recorded (see the carry-across
-  row, below). `colorectal_cancer.json` is clean (`:status :ok`, 0
-  violations) at all three seeds (20260802, 1, 42), 300 patients each.
-  The blast-radius probe's one predicted mover (`sleep-apnea`, a
-  latent, already-shipped defect the oracle's own byte-digest checks
-  could never catch) was licensed by name and confirmed exactly; all
-  27 other oracle roots stayed byte-identical.
-- **Corpus player `:mllp` transport sink** (`notes/adr/0014-corpus-
-  player.md`, deferred whole per that session's own bail-out
-  procedure): `:mllp` already exists as a *framing* (byte-level
-  0x0B/0x1C 0x0D envelope, `ehrt.corpus-io.framing`) but there is
-  no `:mllp` *sink kind* in `ehrt.corpus-io.source-sink`'s own
-  `known-sink-kinds` (`#{:dir :file :stdout :blaze}`) (both namespace
-  citations in this row corrected 2026-08-05 — the source-sink form at
-  ADR-0049, the framing form at ADR-0050 register row A-6 — ADR-0014's
-  text predates the tools→corpus rename and corpus-io split;
-  transcribed faithfully by ADR-0048, corrected fix-forward here) — a
-  real network socket write. Building
-  one properly touches three namespaces at once (a new canonical
-  schema and constructor in `source-sink.clj`, a new
-  scheme in `source-sink-url.clj`'s grammar, and a new write function
-  in `sink-write.clj`), not a single isolated extension point —
-  assessed against the bail-out procedure and judged to balloon past
-  "lands small." Deferred whole, not half-built: the player ships
-  `--sink dir:`/`file:` only. Revisit trigger: a session needs wire
-  transport and a lands-small shape is identified.
-  **Dated note (2026-08-10, marker-only footnotes / mllp ruling,
-  `notes/ADRs.md` ADR-0102): this row CLOSED — see Done, below.** The
-  author ruled `:mllp` abandoned for now, verbatim "Let's abandon
-  `:mllp` for now" — not merely still-deferred pending a lands-small
-  shape, as this row's own revisit trigger anticipated. No wire
-  transport work landed; the only code change is `bases/cli/src/ehrt/
-  cli/help.clj`'s `play --sink` doc line, which had claimed `mllp:` was
-  "recognized but deferred" (untrue on its own terms — `mllp:` was
-  never in the sink-URL grammar) and now names only `dir:`/`blaze:`.
-  `notes/adr/0014-corpus-player.md`'s own "future `:mllp` sink" framing
-  is ruled superseded in part by this closure, without editing that
-  frozen record; see `.agents/rulings.md`'s "From ADR-0102" section and
-  ADR-0102 itself for the full ruling and the three-place inventory of
-  where the old framing still lives.
-- **Carry-across emission** (2026-08-04, `notes/ADRs.md` ADR-0042
-  AR-2): a straddling encounter (opens history, closes horizon) yields
-  NO in-window wire traffic for that patient under Wave H's own pre-
-  roll — real hospital censuses DO show patients mid-stay at window
-  open, but building that emission is out of this session's own scope.
-  Revisit trigger: a test scenario needs mid-stay-at-window-open
-  realism.
-  **Dated note (2026-08-08, straddle fix, `notes/ADRs.md` ADR-0086,
-  AR-SF-5):** this row's own compile-layer half, recorded, not built —
-  shape (a) from ADR-0085's own proposal (synthesize a compiled opening
-  step at the horizon boundary for a straddling encounter), the arm the
-  author did NOT rule for the legacy path this session (shape (b) was
-  ruled instead — see the colorectal row's own closure, above). The
-  straddle-detection machinery ADR-0086 lands (a fold-state tracking an
-  open pre-horizon-opened span) is the shared prerequisite this row's
-  own future emission work would build on. Row stays deferred, trigger
-  unchanged.
-- **Wellness cadence chronic-meds cap** (2026-08-03, `notes/ADRs.md`
-  ADR-0037 AR-1): `EncounterModule.recommendedTimeBetweenWellnessVisits`'s
-  own chronic-medications annual cap ("if hasChronicMeds && interval >
-  1 year, interval = 1 year", lines 209-211 at the pin) is EXCLUDED from
-  `next-wellness-tick` by ruling, not omitted by oversight —
-  `active-chronic-medications` exists in this project's own persona/
-  attribute model with no input cascade, so wiring the cap in is a
-  register item, not a design question. Revisit trigger: a future
-  session ranking calibration fidelity for the chronic cluster, or a
-  finding that the cap's absence materially skews a census/corpus
-  result.
-- **Backload named future** (2026-08-03, `notes/ADRs.md` ADR-0031 AR-3):
-  pre-roll stays emit-nothing, reaffirmed — no backloaded-history mode
-  in the sim. The backload need (pre-window messages for systems that
-  ingest historical loads) is a TOOLS-SIDE construction over sim
-  output, fault-injection's own sibling, not a sim feature. Revisit
-  trigger: a real consumer for pre-window messages appears.
-- P2-5 intake staging-dir behavior (deferred 2026-07-31)
-- Verdict-cache placement revisit (ADR-0011 note: second consumer, or never)
-- `ImagingStudy` (R5, CHF trigger) and the stroke-risk data source (R7)
-  — GMF coverage Wave D closed 2026-08-02 (D0-D3, see Done below)
-  without owning either; H3's own attribute-weighted `distributed_
-  transition` mechanism landed D3 but is only half of stroke's own
-  revisit trigger (`stroke.json` stays deferred). **Dated
-  cross-reference (2026-08-03, ADR-0031):** the stroke-risk DATA-SOURCE
-  question is RULED — `.agents/plans/2026-08-02-gmf-parity-plan.md` §2
-  (the risk-attribute register, curated calibration content rather than
-  a ported calculation). This row's remaining substance is Wave E
-  scheduling (stroke as the register's first consumer), not an open
-  design question.
-- **Census tool refinements** (ADR-0035/ADR-0036's own disclosed, not-
-  fixed findings, `ehrt.sim-trajectory.census`): (b) no per-module
-  census-seed override (every module shares the SAME global seed
-  count) STANDS, untouched, its own trigger unfired: a future session
-  needing a per-module seed-count override. (a) and (c) **CLOSED
-  2026-08-07 (census substance, `notes/ADRs.md` ADR-0069 AR-VC-2/
-  AR-VC-3): the substance qualifier (`:substance`/`:event-counts` on an
-  `:ok-walked` row, `summarize`'s own `:ok-walked-by-substance` tally)
-  and the labeled-filename fix (`artifact-filename`, `-main`'s optional
-  third arg) both land — their own original text relocated verbatim
-  into ADR-0069's own record, not restated here.**
-  **Dated intake (2026-08-07, vendoring batch 2, `notes/ADRs.md`
-  ADR-0071 AR-VB2-4, adjacent to (b), neither acted on): (i) the
-  `:closure-file-count` metric counts JSON modules only, never
-  lookup-table CSV data files (ADR-0070's own AR-VB1-2 lesson) — this
-  batch had zero CSVs so the metric held, but a future batch could
-  repeat the undercount; (ii) the three-seed sample can miss
-  population-scale failures a real round-trip catches —
-  `injuries.json` (batch 1) and `anemia___unknown_etiology.json`
-  (batch 2) are now two independent findings the census's own narrow
-  sample missed. Revisit trigger: a future session extending the
-  census tool itself, not a vendoring session.**
-  **Dated note (2026-08-05, standing-equipment promotion, `notes/ADRs.md`
-  ADR-0044 AR-P-4): `ehrt.sim-trajectory.census` moved from
-  `development/src` into `components/sim-trajectory` — relocation and
-  test-exercise only, by ruling; the triggers above stood, untouched,
-  none fired by the move.** A different, real finding surfaced
-  INCIDENTALLY by the move (running the census's own 7 tests under
-  `poly test` for the first time ever): two test fixtures had gone
-  stale after GMF coverage Wave VS landed real `VitalSign`/`:vital-sign`
-  support, fixed forward (ADR-0044's own Step 1) — not one of this row's
-  own named refinements, disclosed separately there.
-- UTI's own `ed_bundle.json` O2-saturation Observation states carry a
-  `gmf_version 2` `:distribution` this loader has NEVER normalized
-  (Observation is not one of ADR-0035's three ported contexts) — a
-  stray, still-raw, string-keyed field `emit-and-advance`'s own
-  `(= :procedure (:type state))` gate correctly ignores (ADR-0035's own
-  execution note, Step 2's "real bug found and fixed mid-step"). The
-  raw field itself stays unnormalized, disclosed, not built — revisit
-  trigger: a future session that needs Observation's own v2 timing/
-  value distributions for real (no vendored-corpus module currently
-  reads the sampled value back).
-- **Vital-sign channel** (ADR-0036 AR-7, GMF coverage Wave F's own
-  explicit deferral): the `VitalSign` STATE type and the `:vital-sign`
-  CONDITION type both require a vital-sign REGISTER with baseline
-  values (State.java: Synthea's lifecycle engine sets these before any
-  module runs) — engine-delegated content this project does not yet
-  supply, authored calibration content pairing naturally with the
-  re-scoped Wave E (risk-attribute register, above). Blocks
-  `congestive_heart_failure`/`contraceptives`/`covid19` directly
-  (census-confirmed). Revisit trigger: Wave E's own design session, or
-  whichever session first needs a real vital-sign baseline.
-  **Dated note (2026-08-07, vendoring batch 1, AR-VB1-5):** the
-  substance census (ADR-0069's artifact,
-  `components/sim-trajectory/docs/census/2026-08-07-synthea-7e08387-substance.edn`)
-  shows this blockage is now partial, post-Wave-VS —
-  `congestive-heart-failure` walks `[0 117 0]` and `contraceptives`
-  walks `[0 89 0]`, both `:produces-content`; `covid19` alone walks
-  `[0 0 0]`, `:zero-on-every-seed`, still fully blocked. The trigger
-  above is unchanged (a real vital-sign baseline register, not yet
-  built) — only the "blocks all three directly" citation updates to
-  the current evidence.
-- **Lookup-table column `time` — genuinely open, distinct from the
-  Wave LC column-resolution mechanism** (compaction A, AR-A-5
-  STALE-AUDIT disposition): Wave LC (ADR-0038 AR-1) DOES
-  special-case a `time` lookup-table COLUMN (age/time date-range
-  parsing) and the Wave LC census confirmed `hiv-diagnosis`
-  (originally blocked on this column) moved `:load-failed` →
-  `:ok-walked` — that evidence is real, recorded here rather than
-  hidden. The Next section's own separate "lookup-column `time`
-  gap" row (named since ADR-0039, schema-invalid family, still
-  untouched per that row's own text) is a DIFFERENT concern this
-  evidence does not resolve — author ruling (compaction A,
-  AR-A-5): this row's `time` component stays explicitly LIVE
-  regardless of the column-resolution evidence above, pending a
-  future session that reconciles the two. The `race` half of the
-  original combined row CLOSED this session — see Done, below.
-  Revisit trigger: whichever session next touches the
-  schema-invalid family's own `time` gap.
-- **Wellness-encounters, roadmap anchor** (2026-08-09, review 2
-  rulings landing, `notes/ADRs.md` ADR-0092/0093, ruling 3's first
-  execution = D7-7): a NAMED DESIGN ITEM, never routine vendoring
-  (`notes/ADRs.md` ADR-0070) — it is upstream's own wellness machinery
-  and collides with this engine's own wellness-cadence design; waits
-  its own pass. Re-surfaced once (ADR-0080, D7-6), then survived three
-  consecutive closes (0089, 0090, 0091) only in `.agents/state.md`'s
-  own Live-work section — HELD, restated unchanged, no session touched
-  it — with no `roadmap.md` row of its own until now. This row is that
-  anchor. Revisit trigger: a future session ready to reconcile
-  upstream's own wellness machinery with this engine's own
-  wellness-cadence design.
-- **`notice_verbatim_test`'s own coverage gap, roadmap anchor**
-  (2026-08-09, review 2 rulings landing, `notes/ADRs.md` ADR-0092/0093,
-  ruling 3's second execution = D7-8): the v2-nist `NOTICE.md` table
-  (2-column, not the gate's 5-column shape) and the simhospital
-  `PROVENANCE.md` hash (prose, not a table, not named NOTICE) both sit
-  outside `notice_verbatim_test`'s own recognized shapes (`notes/
-  ADRs.md` ADR-0079); both hashes are still manually verified correct —
-  a coverage gap, not an active drift. Named at ADR-0079/0080/0084,
-  then absent from three consecutive closes (0089, 0090, 0091) with no
-  `roadmap.md` row of its own until now. Revisit trigger: a future
-  session willing to extend the gate's parser to the v2-nist 2-column
-  table shape and the simhospital prose-hash shape — judged at ADR-0080
-  to balloon past "lands small" for a routine session.
-- **Wave E (vital-sign/CHF/contraceptives/covid19 cluster), parked**
-  (2026-08-09, review 2 rulings landing, `notes/ADRs.md` ADR-0092/0093,
-  ruling 4 = D7-13): restated at four consecutive closes (0074, 0080,
-  0084, 0089) with zero movement on the genuinely blocked member —
-  `covid19` alone stays `:zero-on-every-seed`
-  (`congestive-heart-failure`/`contraceptives` are both
-  `:produces-content` post-Wave-VS, per the "Vital-sign channel" row
-  above, which names the underlying vital-sign-register blocker this
-  row does not restate). Parked rather than scheduled — four closes of
-  identical restatement with zero movement is evidence this is
-  backlog, not urgent. Revisit trigger: the next content-vendoring
-  session with a vital-sign-adjacent candidate.
-- **`ehrt play`'s own bare reads, true name** (2026-08-09, review-2 arc
-  close, `notes/ADRs.md` ADR-0096 Finding 2 / ADR-0097):
-  `play-events-from-file`/`play-events-from-dir` carry the identical
-  unguarded `slurp`/`sniff-path-format` shape cluster B fixed for
-  `mutate`/`gate`/`check`/`show` (ADR-0096), never charted by review 2
-  — allowlisted BY NAME in `cli_parse_guard_lint_test.clj` (the
-  allowlist entries are this row's own tripwire; removing them is the
-  fix's own co-landed gate, ready-made — confirmed non-vacuous,
-  ADR-0096: `[play-events-from-dir play-events-from-file]` reported
-  with the allowlist stripped). Revisit trigger: the next session
-  touching `ehrt play` or the corpus-player slices (`notes/adr/0014-
-  corpus-player.md`, the bed-board sink).
-  **Dated note (2026-08-10, sim event-log adapter, `notes/ADRs.md`
-  ADR-0100): this row CLOSED — see Done, below.** The revisit trigger
-  fired (this session touched `ehrt play` directly, landing the sim
-  event-log adapter alongside). Both bare reads route through a
-  guarded `slurp-play-input` now; the row's own tripwire — the two
-  allowlist entries in `cli_parse_guard_lint_test.clj` — is gone, the
-  allowlist mechanism itself retired with them.
-- **Synthea-extracted demographics tables — hand-curated placeholders
-  today, replaceable wholesale when a Synthea checkout is at hand.**
-  Registered 2026-08-15 by repo review 3 (finding D7-3(a), author
-  ruling R-2 "accept all.", ADR-0136); the request itself has stood
-  unregistered in
-  `components/sim-model/resources/sim-model/demographics/NOTICE:26`
-  since `3f43a46`, 2026-08-05, with zero hits for `demographics` in
-  either this file or `state.md` across that whole window — invisible
-  to the carried-item aging probe by construction, because that probe
-  enumerates the registers. The NOTICE's own words, verbatim: *"A
-  future session WITH a Synthea checkout available can replace the
-  content of these three files wholesale with a real extraction,
-  keeping ehrt.sim.persona's readers unchanged, since the schema is
-  already shaped to match."* **Revisit trigger, verbatim: a session
-  with a Synthea checkout available.** Until then `given-names.edn`,
-  `surnames.edn` and `places.edn` are hand-curated originals, not
-  copied or derived from any Synthea file, and the NOTICE is the
-  standing record of that distinction — nothing here is a correctness
-  defect, only an unregistered intention that is now registered.
-- **`ehrt.conformance.mutate-stdout-stdin-loopback-test`'s own flake**
-  (first recorded `dc52a25`, 2026-07-28). Registered here 2026-08-15
-  by repo review 3 (finding D7-4, ADR-0136) after 18 days carried in
-  `.agents/state.md:668` alone — and `state.md` is regenerated at
-  every arc close, so it was never a durable anchor. That is review
-  2's own D7-7/D7-8 finding recurring a third time; this row is the
-  anchor those fixes did not reach. Evidence keeps strengthening and
-  never gets acted on: zero recurrence in review 3's own full-suite
-  baseline (636/636, zero `FAIL in`/`ERROR in`), and none in this
-  session's suite either. **Revisit trigger: the next session that
-  owns test-suite hygiene, or any recurrence.** Closing bar, stated
-  so the soak can actually end rather than accumulating forever: if
-  no recurrence appears by the next repo review, close this row and
-  D3-2 together against the accumulated green runs, citing them.
+Rows here are LIVE, each owing a revisit trigger in its own token.
+- DEFERRED (trigger: a non-epoch-aligned schedule need; a session simulating a
+  receiver noticing a missing scheduled delivery; or a need to bundle batches
+  into one file-level transfer) **[transport-batching-deferrals]** -- `ehrt
+  corpus batch` landed 2026-08-11; three v1 deferrals survive it (`--anchor`,
+  interior empty-batch realism, FHS/FTS file-level wrappers), plus a named,
+  unresolved taxonomy question about where message loss sits. ADR-0111.
+- DEFERRED (trigger: a session willing to widen `:max-tries` or broaden
+  `safe-filename-gen`'s own range) **[sink-composability-flake]** --
+  `dir-sink-write-then-intake-hash-identity-property-test` occasionally throws
+  `Couldn't generate enough distinct elements!`; witnessed once, confirmed
+  unrelated to that session's changes and non-reproducing on re-run. ADR-0107.
+- DEFERRED (trigger: a session willing to characterize whether
+  `MedicationEnd`/`referenced_by_attribute` should itself be idempotent as a
+  general interpreter rule) **[veteran-hyperlipidemia]** -- deferred whole, not
+  vendored: the module's annual reassessment loop never clears
+  `statin_initial`, so it re-fires `MedicationEnd` against an already-ended
+  order and fails the medication-end invariant at population scale. ADR-0090.
+- DEFERRED (trigger: a session willing to extend the runaway-loop backstop to
+  distinguish a real-time-advancing cycle from a zero-advance one)
+  **[veteran-mdd-max-steps]** -- deferred whole and BLOCKED, not vendored: a
+  legitimate multi-decade recurring-therapy cycle exhausts `max-steps` at every
+  horizon tried. Same backstop tension `injuries.json` named first. ADR-0090.
+- DEFERRED (trigger: a test scenario needing mid-stay-at-window-open realism)
+  **[carry-across-emission]** -- a straddling encounter yields no in-window wire
+  traffic under Wave H's own pre-roll, though real hospital censuses do show
+  patients mid-stay at window open. This row's compile-layer half is shape (a)
+  from ADR-0085, recorded and not built. ADR-0042 AR-2, ADR-0086 AR-SF-5.
+- DEFERRED (trigger: a session ranking calibration fidelity for the chronic
+  cluster, or a finding that the cap's absence materially skews a census result)
+  **[wellness-chronic-meds-cap]** -- upstream's chronic-medications annual
+  wellness cap is excluded from `next-wellness-tick` BY RULING, not omitted by
+  oversight; a register item, not a design question. ADR-0037 AR-1.
+- DEFERRED (trigger: a real consumer for pre-window messages appears)
+  **[backload-named-future]** -- pre-roll stays emit-nothing, reaffirmed: the
+  backload need is a TOOLS-SIDE construction over sim output, fault-injection's
+  own sibling, not a sim feature. ADR-0031 AR-3.
+- DEFERRED (trigger: none recorded -- ADR-0144 finding F-6)
+  **[intake-staging-dir]** -- P2-5 intake staging-dir behavior, deferred
+  2026-07-31 with neither a revisit trigger nor an ADR cite, against this
+  section's own contract that a Deferred row owes a trigger.
+- DEFERRED (trigger: a second consumer, or never) **[verdict-cache-placement]**
+  -- verdict-cache placement revisit. ADR-0011.
+- DEFERRED (trigger: Wave E's own scheduling, with stroke as the risk-attribute
+  register's first consumer) **[imagingstudy-stroke-risk]** -- `ImagingStudy`
+  (R5, CHF trigger) and the stroke-risk data source (R7). The DATA-SOURCE half
+  is ruled -- curated calibration content, not a ported calculation -- so what
+  remains here is scheduling, not an open design question. ADR-0031.
+- DEFERRED (trigger: a session extending the census tool itself, not a
+  vendoring session) **[census-tool-refinements]** -- refinement (b), no
+  per-module census-seed override, stands untouched; (a) and (c) closed at
+  ADR-0069. Beside it sit two dated intakes: `:closure-file-count` never counts
+  lookup-table CSVs, and the three-seed sample misses population-scale failures.
+  ADR-0035, ADR-0036, ADR-0071 AR-VB2-4.
+- DEFERRED (trigger: a session needing Observation's own v2 timing/value
+  distributions for real) **[uti-o2-distribution]** -- UTI's `ed_bundle.json`
+  O2-saturation Observation states carry a `gmf_version 2` `:distribution` this
+  loader has never normalized; a stray raw field the procedure gate correctly
+  ignores. Disclosed, not built; no vendored module reads the value back.
+  ADR-0035.
+- DEFERRED (trigger: Wave E's own design session, or whichever session first
+  needs a real vital-sign baseline) **[vital-sign-channel]** -- the `VitalSign`
+  state type and the `:vital-sign` condition type both need a vital-sign
+  REGISTER with baseline values this project does not yet supply. Post-Wave-VS
+  the blockage is partial: `covid19` alone is still fully blocked. ADR-0036
+  AR-7, ADR-0069.
+- DEFERRED (trigger: whichever session next touches the schema-invalid family's
+  own `time` gap) **[lookup-column-time-open]** -- Wave LC does special-case a
+  `time` lookup-table COLUMN and that evidence is real, but by author ruling
+  (compaction A, AR-A-5) it does not resolve the separate schema-invalid
+  concern, so this row stays explicitly LIVE pending a session that reconciles
+  the two. ADR-0038, ADR-0039.
+- DEFERRED (trigger: a session ready to reconcile upstream's own wellness
+  machinery with this engine's wellness-cadence design) **[wellness-encounters]**
+  -- a NAMED DESIGN ITEM, never routine vendoring; it waits its own pass. This
+  row is the anchor it survived three consecutive closes without. ADR-0092,
+  ADR-0093 ruling 3 (D7-7).
+- DEFERRED (trigger: a session willing to extend the gate's parser to the
+  v2-nist 2-column table shape and the simhospital prose-hash shape)
+  **[notice-verbatim-coverage]** -- both hashes are still manually verified
+  correct, so this is a coverage gap, not an active drift; judged at ADR-0080 to
+  balloon past "lands small". ADR-0092, ADR-0093 ruling 3 (D7-8).
+- DEFERRED (trigger: the next content-vendoring session with a
+  vital-sign-adjacent candidate) **[wave-e-parked]** -- PARKED rather than
+  scheduled: four consecutive closes restated it with zero movement, and only
+  `covid19` is still genuinely blocked (`congestive-heart-failure` and
+  `contraceptives` both produce content post-Wave-VS). ADR-0092, ADR-0093
+  ruling 4 (D7-13).
+- DEFERRED (trigger: a session with a Synthea checkout available)
+  **[synthea-demographics]** -- `given-names.edn`, `surnames.edn` and
+  `places.edn` are hand-curated ORIGINALS, replaceable wholesale by a real
+  extraction with `ehrt.sim.persona`'s readers unchanged. Not a correctness
+  defect: an intention that had stood unregistered since 2026-08-05 and is now
+  registered. ADR-0136 finding D7-3(a).
+- DEFERRED (trigger: the next session that owns test-suite hygiene, or any
+  recurrence) **[mutate-loopback-flake]** -- first recorded 2026-07-28, carried
+  18 days in `state.md` alone, which is regenerated at every arc close and was
+  never a durable anchor. Closing bar, so the soak can end: if no recurrence
+  appears by the next repo review, close this row and D3-2 together against the
+  accumulated green runs. ADR-0136 finding D7-4.
 
-## Done (live — current arc only; full history in the attic files,
-`.agents/plans/roadmap-done-2026-07.md` and `.agents/plans/roadmap-done-2026-08.md`,
-scaffolding compaction B, `notes/ADRs.md` ADR-0046 — each closed arc's own
-pointers rotate to a dated header in the attic at that arc's own close,
-`notes/adr/0055-alignment-arc-close.md` AR-AC-5)
-- 2026-08-08 — conviction-arc-close — ADR-0089
-- 2026-08-08 — vendoring-batch-4 — ADR-0090
-- 2026-08-09 — storefront-fixture — ADR-0091
-- 2026-08-09 — repo-review-2 — ADR-0092
-- 2026-08-09 — review-2-rulings-landing — ADR-0093
-- 2026-08-09 — census-closure-file-count — ADR-0094
-- 2026-08-09 — cluster-a-gate-wiring — ADR-0095
-- 2026-08-09 — cluster-b-parse-guards — ADR-0096
-- 2026-08-09 — review-2-arc-close — ADR-0097
-- 2026-08-09 — permission-legs-and-bare-flags — ADR-0098
-- 2026-08-10 — fixture-relocation — ADR-0099
-- 2026-08-10 — sim-event-log-adapter — ADR-0100
-- 2026-08-10 — adr-footnotes — ADR-0101
-- 2026-08-10 — marker-only-footnotes — ADR-0102
-- 2026-08-11 — board-boundary-fix — ADR-0103
-- 2026-08-11 — ed-tuesday-scenario — ADR-0104
-- 2026-08-11 — interpreter-horizon-budget — ADR-0105
-- 2026-08-11 — injuries-b2-assessment — ADR-0106
-- 2026-08-11 — injuries-arc-close — ADR-0107
-- 2026-08-11 — simulator-architecture-doc — ADR-0108
-- 2026-08-11 — latency-second-clock — ADR-0109
-- 2026-08-11 — latency-demo — ADR-0110
-- 2026-08-11 — corpus-batching — ADR-0111
-- 2026-08-11 — batch-straddle-recording — ADR-0112
-- 2026-08-12 — sim-palgebra-unification — ADR-0113
-- 2026-08-12 — review-3-user-surface — ADR-0114
-- 2026-08-12 — review-3-rulings-landing — ADR-0115
-- 2026-08-12 — engine-seed-contract — ADR-0116
-- 2026-08-12 — fix-cluster-a-cli-validation — ADR-0117
-- 2026-08-12 — fix-clusters-b-and-c-help-and-docs — ADR-0118
-- 2026-08-12 — user-manual-skeleton — ADR-0119
-- 2026-08-12 — manual-s2-exerciser-and-chapter3 — ADR-0120
-- 2026-08-12 — manual-s3-transport-pair — ADR-0121
-- 2026-08-13 — positive-seed-invariant-violation-diagnosis — ADR-0122
-- 2026-08-13 — medication-end-pre-horizon-invariant-fix — ADR-0123
-- 2026-08-13 — manual-s4-mutate-and-gate — ADR-0124
-- 2026-08-13 — manual-s5-chapter8-review-close — ADR-0125
-- 2026-08-14 — slug-edn-round-trip — ADR-0131
-- 2026-08-14 — manual-review-2 — ADR-0134
-- 2026-08-15 — string-diagram-terminal-outputs — ADR-0135
-- 2026-08-15 — review-3-fix-a-register-derivations — ADR-0136
-- 2026-08-15 — stale-path-gate-widening — ADR-0137
-- 2026-08-15 — review-3-fix-c-ceremony-and-category — ADR-0138
-- 2026-08-15 — review-3-arc-close — ADR-0139
-- 2026-08-16 — d8-5-fence-battery — register
-  `.agents/plans/2026-08-16-fence-battery-findings.md` (ADR deferred to
-  the ruled fixes' own session, per the battery's own prompt)
-- 2026-08-16 — fence-battery-ruled-fixes — ADR-0140
-- 2026-08-16 — event-log-contract — ADR-0141 (added 2026-08-16 by the
-  ADR-0142 session: the ADR-0141 close indexed itself in `notes/ADRs.md`
-  but not here, and adding only ADR-0142's line would have left a
-  visible gap in the sequence. One line, no other content touched.)
-- 2026-08-16 — result-clinical-time — ADR-0142
-- 2026-08-16 — adr-index-generated — ADR-0143
+## Done (current arc only; older arcs rotate to `.agents/plans/roadmap-done-2026-08.md`, ADR-0046/ADR-0055)
+- CLOSED 2026-08-08 ADR-0089 **[conviction-arc-close]**
+- CLOSED 2026-08-08 ADR-0090 **[vendoring-batch-4]**
+- CLOSED 2026-08-09 ADR-0091 **[storefront-fixture]**
+- CLOSED 2026-08-09 ADR-0092 **[repo-review-2]**
+- CLOSED 2026-08-09 ADR-0093 **[review-2-rulings-landing]**
+- CLOSED 2026-08-09 ADR-0094 **[census-closure-file-count]**
+- CLOSED 2026-08-09 ADR-0095 **[cluster-a-gate-wiring]**
+- CLOSED 2026-08-09 ADR-0096 **[cluster-b-parse-guards]**
+- CLOSED 2026-08-09 ADR-0097 **[review-2-arc-close]**
+- CLOSED 2026-08-09 ADR-0098 **[permission-legs-and-bare-flags]**
+- CLOSED 2026-08-10 ADR-0099 **[fixture-relocation]**
+- CLOSED 2026-08-10 ADR-0100 **[sim-event-log-adapter]**
+- CLOSED 2026-08-10 ADR-0101 **[adr-footnotes]**
+- CLOSED 2026-08-10 ADR-0102 **[marker-only-footnotes]**
+- CLOSED 2026-08-11 ADR-0103 **[board-boundary-fix]**
+- CLOSED 2026-08-11 ADR-0104 **[ed-tuesday-scenario]**
+- CLOSED 2026-08-11 ADR-0105 **[interpreter-horizon-budget]**
+- CLOSED 2026-08-11 ADR-0106 **[injuries-b2-assessment]**
+- CLOSED 2026-08-11 ADR-0107 **[injuries-arc-close]**
+- CLOSED 2026-08-11 ADR-0108 **[simulator-architecture-doc]**
+- CLOSED 2026-08-11 ADR-0109 **[latency-second-clock]**
+- CLOSED 2026-08-11 ADR-0110 **[latency-demo]**
+- CLOSED 2026-08-11 ADR-0111 **[corpus-batching]**
+- CLOSED 2026-08-11 ADR-0112 **[batch-straddle-recording]**
+- CLOSED 2026-08-12 ADR-0113 **[sim-palgebra-unification]**
+- CLOSED 2026-08-12 ADR-0114 **[review-3-user-surface]**
+- CLOSED 2026-08-12 ADR-0115 **[review-3-rulings-landing]**
+- CLOSED 2026-08-12 ADR-0116 **[engine-seed-contract]**
+- CLOSED 2026-08-12 ADR-0117 **[fix-cluster-a-cli-validation]**
+- CLOSED 2026-08-12 ADR-0118 **[fix-clusters-b-and-c-help-and-docs]**
+- CLOSED 2026-08-12 ADR-0119 **[user-manual-skeleton]**
+- CLOSED 2026-08-12 ADR-0120 **[manual-s2-exerciser-and-chapter3]**
+- CLOSED 2026-08-12 ADR-0121 **[manual-s3-transport-pair]**
+- CLOSED 2026-08-13 ADR-0122 **[positive-seed-invariant-violation-diagnosis]**
+- CLOSED 2026-08-13 ADR-0123 **[medication-end-pre-horizon-invariant-fix]**
+- CLOSED 2026-08-13 ADR-0124 **[manual-s4-mutate-and-gate]**
+- CLOSED 2026-08-13 ADR-0125 **[manual-s5-chapter8-review-close]**
+- CLOSED 2026-08-13 ADR-0126 **[citation-sweep-glossary-linkage]**
+- CLOSED 2026-08-13 ADR-0127 **[ceremony-scripts-sim-identity-sweep]**
+- CLOSED 2026-08-13 ADR-0128 **[agent-facing-hardening-2]**
+- CLOSED 2026-08-13 ADR-0129 **[strip-executability]**
+- CLOSED 2026-08-14 ADR-0131 **[slug-edn-round-trip]**
+- CLOSED 2026-08-14 ADR-0132 **[clinic-decade-rename-and-exerciser]**
+- CLOSED 2026-08-14 ADR-0133 **[exact-name-resolution]**
+- CLOSED 2026-08-14 ADR-0134 **[manual-review-2]**
+- CLOSED 2026-08-15 ADR-0135 **[string-diagram-terminal-outputs]**
+- CLOSED 2026-08-15 ADR-0136 **[review-3-fix-a-register-derivations]**
+- CLOSED 2026-08-15 ADR-0137 **[stale-path-gate-widening]**
+- CLOSED 2026-08-15 ADR-0138 **[review-3-fix-c-ceremony-and-category]**
+- CLOSED 2026-08-15 ADR-0139 **[review-3-arc-close]**
+- CLOSED 2026-08-16 30cc335 **[d8-5-fence-battery]** -- register
+  `.agents/plans/2026-08-16-fence-battery-findings.md`; the ADR was deferred
+  to the ruled fixes' own session (ADR-0140).
+- CLOSED 2026-08-16 ADR-0140 **[fence-battery-ruled-fixes]**
+- CLOSED 2026-08-16 ADR-0141 **[event-log-contract]** -- line added
+  2026-08-16 by the ADR-0142 session: the ADR-0141 close indexed itself in
+  `notes/ADRs.md` but not here.
+- CLOSED 2026-08-16 ADR-0142 **[result-clinical-time]**
+- CLOSED 2026-08-16 ADR-0143 **[adr-index-generated]**
+- CLOSED 2026-08-17 ADR-0144 **[roadmap-row-contract]**

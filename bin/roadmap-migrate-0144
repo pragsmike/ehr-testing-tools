@@ -1,0 +1,674 @@
+#!/usr/bin/env python3
+"""Compression arc session B (notes/adr/0144-roadmap-row-contract.md).
+
+Run ONCE, on 2026-08-17, to re-section `.agents/plans/roadmap.md` onto
+the row contract author rulings Q1-Q5 ("a. throughout") define, and
+which `ehrt.docs-tooling.roadmap-lint-test` gates:
+
+    - <TOKEN> **[slug]** [PRIORITY n] <what remains and why> <ADR cite>
+
+  TOKEN is `OPEN` | `CLOSED <yyyy-mm-dd> <ADR-NNNN|sha>` |
+  `DEFERRED (trigger: ...)` | `EXTERNAL`; `CLOSED` only under `## Done`;
+  `PRIORITY n` on `## Next` rows, unique and ascending; six lines max.
+
+`roadmap.md` is hand-owned intent, so unlike `notes/ADRs.md` (ADR-0143)
+it cannot be GENERATED. The judgement -- which token a row takes, which
+clause of it survives, where the rest belongs -- is authored, in ROWS
+below. What is mechanical, and what this script does, is the move:
+
+  1. Every row leaves `roadmap.md` VERBATIM, into exactly one
+     destination:
+       * `attic`   -> `.agents/plans/roadmap-done-2026-08.md`, under one
+                      dated `## ` header. Every CLOSED row goes here;
+                      so does a live row with no owning ADR (Q4's own
+                      fallback).
+       * `adr:NNNN`-> `notes/adr/NNNN-*.md`, appended under
+                      `### Roadmap history (moved verbatim from
+                      roadmap.md by ADR-0144, 2026-08-17)`. This is the
+                      only append these otherwise append-only files get
+                      here; no pre-existing sentence is edited by this
+                      script.
+       * `None`    -> the row was already inside the six-line cap, so
+                      nothing overflows: its rewrite is a reformat and
+                      the commit diff is its own record.
+
+  2. The row's replacement text (`new`, authored, `None` for a row that
+     leaves the file) is written in its place.
+
+  3. Every `## Done` pointer is retokened mechanically
+     (`- DATE - slug - ADR` becomes `- CLOSED DATE ADR **[slug]**`), and
+     the six Done lines the census found MISSING are inserted in date
+     order (ADR-0126/0127/0128/0129/0132/0133 -- their rows had been
+     carried in `## Next` as closed prose instead).
+
+NOTHING-LOST PROOF, and why it is a multiset and not a diffstat. The
+new rows are AUTHORED, not excerpted, so "the overflow" has no clean
+line boundary to subtract. So each moved row goes to its destination
+WHOLE, and the script asserts that the multiset of row lines removed
+from `roadmap.md` equals, exactly, the multiset of lines added to the
+destinations -- byte-identical, per line, per row. Scaffolding (dated
+headers, blank separators) and the authored replacement rows are
+counted and reported SEPARATELY, never netted against the proof.
+`--dry-run` prints the whole ledger and writes nothing.
+
+Idempotent by refusal: the script asserts each row's own first line
+still matches what the census read at `deb9a33`, so a second run (or a
+drifted tree) fails loud rather than double-appending.
+
+Usage:  bin/roadmap-migrate-0144 [--dry-run] [--census] [--markdown] [--verify]
+
+`--verify` re-reads the roadmap AS IT WAS at `deb9a33` and asserts that
+every moved row's exact contiguous block is present in the destination
+file NOW. This is the durable proof, re-runnable at any later commit,
+and it is stronger than a diffstat: `git diff --numstat` UNDERCOUNTS a
+move by however many moved lines its own alignment happens to render as
+context rather than insertions (here, five).
+
+`--markdown` emits the per-row disposition table ADR-0144 carries, from
+this same table, so the ADR's census and the migration cannot disagree.
+"""
+
+import os
+import re
+import sys
+from collections import Counter
+
+ROADMAP = ".agents/plans/roadmap.md"
+ATTIC = ".agents/plans/roadmap-done-2026-08.md"
+ADR_DIR = "notes/adr"
+
+ATTIC_HEADER = (
+    "## Register-compression arc, session B -- roadmap rows retired "
+    "2026-08-17 (ADR-0144)"
+)
+ATTIC_PREAMBLE = """
+Rows moved VERBATIM out of `.agents/plans/roadmap.md` by
+`bin/roadmap-migrate-0144` when that file adopted the ADR-0144 row
+contract. Every row below either closed (and was still sitting in
+`## Next`, `## Externals` or `## Deferred`, which is the shape guard #1
+now catches) or had no owning ADR to hold its overflow. Nothing is
+summarised here; each row is its own text, unedited.
+"""
+
+ADR_HEADER = (
+    "### Roadmap history (moved verbatim from roadmap.md by ADR-0144, 2026-08-17)"
+)
+ADR_PREAMBLE = (
+    "The `.agents/plans/roadmap.md` row this ADR owns, as it stood at "
+    "`deb9a33` before the ADR-0144 row contract capped rows at six "
+    "lines. The live row now states what remains and cites this ADR for "
+    "the rest; this is the rest, verbatim."
+)
+
+HEADER_NEW = """# Roadmap -- rolling plan and backlog
+
+Updated by sessions in the same commit as the work that changes a row. Row
+contract (ADR-0144, gated by `ehrt.docs-tooling.roadmap-lint-test`): the first
+token is `OPEN` | `CLOSED <date> <ADR-NNNN|sha>` | `DEFERRED (trigger: ...)` |
+`EXTERNAL`, and `CLOSED` lives only under `## Done`; then a stable `**[slug]**`,
+cited from elsewhere as `roadmap.md#<slug>` and never by line number; `## Next`
+rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
+"""
+
+DONE_HEADING_NEW = (
+    "## Done (current arc only; older arcs rotate to "
+    "`.agents/plans/roadmap-done-2026-08.md`, ADR-0046/ADR-0055)"
+)
+
+# Done pointers the census found MISSING from the live section: their
+# rows had been left in `## Next` as closed prose instead. Inserted
+# after the pointer named by `after`.
+DONE_INSERTS = [
+    ("ADR-0125", "- CLOSED 2026-08-13 ADR-0126 **[citation-sweep-glossary-linkage]**"),
+    ("ADR-0126", "- CLOSED 2026-08-13 ADR-0127 **[ceremony-scripts-sim-identity-sweep]**"),
+    ("ADR-0127", "- CLOSED 2026-08-13 ADR-0128 **[agent-facing-hardening-2]**"),
+    ("ADR-0128", "- CLOSED 2026-08-13 ADR-0129 **[strip-executability]**"),
+    ("ADR-0131", "- CLOSED 2026-08-14 ADR-0132 **[clinic-decade-rename-and-exerciser]**"),
+    ("ADR-0132", "- CLOSED 2026-08-14 ADR-0133 **[exact-name-resolution]**"),
+]
+
+# Two Done pointers are not in the mechanical `- DATE - slug - ADR`
+# shape and are retokened by hand.
+DONE_IRREGULAR = {
+    "d8-5-fence-battery": [
+        "- CLOSED 2026-08-16 30cc335 **[d8-5-fence-battery]** -- register",
+        "  `.agents/plans/2026-08-16-fence-battery-findings.md`; the ADR was deferred",
+        "  to the ruled fixes' own session (ADR-0140).",
+    ],
+    "event-log-contract": [
+        "- CLOSED 2026-08-16 ADR-0141 **[event-log-contract]** -- line added",
+        "  2026-08-16 by the ADR-0142 session: the ADR-0141 close indexed itself in",
+        "  `notes/ADRs.md` but not here.",
+    ],
+}
+
+# ---------------------------------------------------------------------
+# THE DECISION TABLE. One entry per row, in file order, keyed by the row's
+# own start line at `deb9a33` and a prefix of its first line (asserted, so
+# a drifted tree fails loud). `dest` is where the row's own text goes
+# VERBATIM; `new` is the authored replacement, or None when the row leaves.
+# ---------------------------------------------------------------------
+
+R = lambda start, prefix, dest, new: (start, prefix, dest, new)
+
+ROWS = [
+    # -- ## Now: dropped. 39 of the last 40 roadmap revisions read
+    #    "Nothing in progress" here, and the one that did not was stale
+    #    for 32 consecutive revisions (ADR-0144 census, section 3).
+    R(8, "- Nothing in progress at this close", "adr:0143", None),
+
+    # -- ## Next
+    R(17, "- **Register-compression arc", "adr:0143", """- OPEN **[compression-arc]** PRIORITY 1 -- register compression, author-ordered
+  A -> B -> C -> D, one session each. A landed the generated ADR index
+  (ADR-0143); B landed this row contract and its lint (ADR-0144). C compacts
+  `.agents/skills/build-session/SKILL.md` (162 -> 309 lines across this
+  workspace's life, the one path all five reading sets carry, ADR-0143 Finding
+  6) plus `.agents/reading-sets.edn`; D's scope is set by C's own close."""),
+    R(41, "- **Event-log contract arc", "attic", None),
+    R(52, "- **Event-log shape defects", "attic", """- OPEN **[event-log-shape-defects]** PRIORITY 2 -- S-1/S-2/S-4/S-5/S-6 and the
+  Z-segment context asymmetry stay register rows by ruling (2026-08-16):
+  describing current truth first, then changing it under the versioned event
+  contract, is the point of the tier. Evidence and full write-up in
+  `.agents/plans/2026-08-16-event-log-census.md`, section "Shape defects"."""),
+    R(68, "- ~~**D8-5 live fence battery", "attic", None),
+    R(79, "- **Repo review 4", "adr:0139", """- OPEN **[repo-review-4]** PRIORITY 3 -- chartered at roughly 15 ADRs past
+  ADR-0139, i.e. approximately ADR-0154; the standing cadence rule is ADR count,
+  not calendar (ruling Q3 "a.", 2026-08-15). Inherits review 3's twelve-row
+  watch-list, D8-5's one surviving row among them (56 of 74 command fences have
+  no exerciser -- ruled out of the fix session, handed on in ADR-0140)."""),
+    R(100, "- **The `sim-theory.edn`", "adr:0139", """- OPEN **[sim-theory-edn-hop]** PRIORITY 4 -- `sim-theory.edn` ->
+  `sim-theory-equations.txt` is a hand derivation at the head of an otherwise
+  registered chain, so the `.edn` can drift while every downstream artifact
+  regenerates byte-perfectly from the stale half and CI stays green. Open
+  question for the author: translator, or checked-in agreement gate?
+  ADR-0139 finding C-1 holds the evidence and the contradicting live sentence."""),
+    R(123, "- **CarePlan / Guard condition-resolution", "adr:0139", """- OPEN **[careplan-guard-resolution]** PRIORITY 5 -- a third unregistered
+  standing request, registered visibility-first with its disposition
+  deliberately not taken: a closure's next prerequisite is CarePlan, "unowned by
+  any wave until a future session extends Guard's own condition-resolution
+  machinery". ADR-0139 finding C-2."""),
+    R(140, "- ~~**`state_staleness_tripwire_test`", "attic", None),
+    R(154, "- **The attic-rotation law has lapsed", "adr:0139", """- OPEN **[attic-rotation-law]** PRIORITY 6 -- `## Done` holds the current arc
+  only by law, and its pointers have not rotated to the attic since the
+  conviction arc closed 2026-08-08; deciding a dozen intervening arcs'
+  boundaries is judgement work outside a records-only close. ADR-0144 retokened
+  those pointers and added six missing ones rather than rotating them, so the
+  backlog this row names is larger, not smaller. ADR-0139 finding C-3."""),
+    R(172, "- **Clinic-decade/ED scenario redesign", "attic", None),
+    R(237, "- **Downstream-latency realism", "adr:0142", """- DEFERRED (trigger: a receiver case needing specimen time distinct from result
+  time; FHIR-side latency; late amendments or trailing A08s; or order
+  transaction time on the wire) **[downstream-latency]** PRIORITY 7 -- the
+  latency mechanism, its demo, and the OBR-7/OBX-14 clinical-time increment all
+  landed; what survives this row is four named deferrals, each with its own
+  revisit trigger. ADR-0109, ADR-0110, ADR-0142 hold them."""),
+    R(348, "- **`demos/traces/**` is an ungated", "adr:0142", """- OPEN **[demos-traces-ungated]** PRIORITY 8 -- `demos/traces/**`'s seven
+  committed `messages*.txt` traces are produced by `bin/ehrt sim run` and
+  regenerated by nothing (no Makefile target, no workflow, no test), so they
+  drift silently and did. Registered, not fixed; proposed shape is a `docsgen`
+  target plus the CI freshness diff every other generated surface gets.
+  Candidate for review 4's D5. ADR-0142."""),
+    R(371, "- **User manual design pass", "attic", None),
+    R(489, "- **Repo review 3 arc", "adr:0139", """- OPEN **[review-3-tag-unpushed]** PRIORITY 9 -- the repo review 3 arc closed,
+  but its arc tag `stable-20260815-review-3-fixes` at `b96c246` exists only
+  locally: the licence's case (i) needed an author-side CI relay the close's own
+  prompt did not carry, so the fence's STOP was taken and no ruling came back
+  in-session. ADR-0139's Step 0 and mechanical-debt section carry the receipt
+  and the one command that pays it."""),
+    R(534, "- **Citation errata sweep", "attic", None),
+    R(577, "- **Ceremony scripts + skill absorption", "attic", None),
+    R(594, "- **Agent-facing hardening", "attic", None),
+    R(622, "- **String-diagram terminal outputs", "attic", None),
+    R(653, "- **Manual-review run 2", "adr:0134", """- OPEN **[manual-dimension-5]** PRIORITY 10 -- manual-review run 2 passed with
+  warns, and dimension 5 (running-example continuity) stays WARN as the manual's
+  one standing open row: `ed-tuesday` is HL7v2-only and structurally cannot
+  supply Chapters 6-8 their FHIR mutation, FHIR-gate calibration, or
+  foreign-corpus material. Disclosed, not silently substituted; not a defect
+  under the dimension's own reading. ADR-0134."""),
+    R(692, "- **Manual-review run 1, dimension 1", "attic", None),
+    R(718, "- **Manual-review run 1, dimension 4", "attic", None),
+    R(735, "- **Positive-seed invariant violation", "attic", None),
+    R(755, "- **Review-3, user-surface scope", "attic", None),
+    R(782, "- **RESOLVED 2026-08-12** (fix cluster A", "attic", None),
+    R(814, "- **RESOLVED 2026-08-12** (fix cluster C", "attic", None),
+    R(830, "- **RESOLVED 2026-08-12** (fix cluster B", "attic", None),
+    R(848, "- **Design-channel-draft queue", None, """- EXTERNAL **[design-channel-draft-queue]** PRIORITY 11 -- the B-3/B-4
+  carry-forward wording halves (R3-B3-4) only; R3-B3-1's own Example-line
+  content resolved at ADR-0118. The channel drafts, the author rules, no session
+  until then. ADR-0115."""),
+    R(852, "- **RESOLVED 2026-08-12** (engine-seed-contract", "attic", None),
+    R(882, "- **Demo exerciser (ed-tuesday)", "attic", None),
+    R(896, "- **Demo exerciser (clinic-decade)", "attic", None),
+    R(938, "- **Slug EDN-round-trip fix", "attic", None),
+    R(1015, "- **Vendoring rider: per-pair collision", "attic", None),
+    R(1047, "- **Scenario rename + clinic-decade exerciser", "attic", None),
+    R(1082, "- **Audience register paring", "adr:0113", """- OPEN **[audience-register-paring]** PRIORITY 12 -- `docs/dev/AUDIENCES.md`
+  pares to five behavioral segments and its own "Seven segments" header is
+  corrected in the same edit. Ruled 2026-08-12 (ADR-0113 R4, author "Q1 a");
+  execution deferred to a later docs session, not chartered."""),
+    R(1090, "- The lookup-column `time` gap", "adr:0066", """- OPEN **[lookup-column-time-next]** PRIORITY 13 -- the lookup-column `time`
+  gap in the schema-invalid family, ratified as real (2026-08-06) and still
+  untouched; bulk vendoring batched by closure family follows once the catalog
+  fully walks. Deliberately distinct from `roadmap.md#lookup-column-time-open`
+  below, which the author ruled stays live regardless. ADR-0039, ADR-0066."""),
+    R(1097, "- **Wave G attachment deferral", "adr:0037", """- DEFERRED (trigger: a future session that assigns more than one module to the
+  same patient) **[wave-g-attachment]** PRIORITY 14 -- upstream's own
+  all-waiting-modules-attach-to-one-visit semantics diverges from this project's
+  per-module wait only under concurrent modules, which the engine's
+  one-module-per-patient assignment never produces. ADR-0037 AR-4."""),
+    R(1104, "- make quickstart", None, """- OPEN **[nightly-quickstart-workflow]** PRIORITY 15 -- `make quickstart` gains
+  a nightly integration workflow plus the single-sh-fence guard in README
+  (`quickstart_fresh`'s own docstring corrected in the same change)."""),
+    R(1106, "- generator-source three-concerns split", None,
+      "- OPEN **[generator-source-split]** PRIORITY 16 -- the generator-source\n"
+      "  three-concerns split, a named future. ADR-0017."),
+    R(1107, "- ehrt.corpus.display placement", None,
+      "- OPEN **[corpus-display-placement]** PRIORITY 17 -- `ehrt.corpus.display`'s\n"
+      "  placement is presentation-leaning, a named future. ADR-0018."),
+    R(1108, "- Markdown-table helper dedup", None,
+      "- OPEN **[markdown-table-dedup]** PRIORITY 18 -- markdown-table helper dedup, a\n"
+      "  named future. ADR-0018."),
+    R(1109, "- **`corpus generate --engine`", "adr:0136", """- OPEN **[corpus-generate-engine]** PRIORITY 19 -- should `corpus generate` grow
+  an `--engine` flag now that the generator registry names more than one engine
+  kind (`synthea`, `sim`)? Registered for visibility 2026-08-15, disposition
+  deliberately not taken; it sits here rather than in Deferred because a
+  Deferred row owes a revisit trigger and this one has none yet. Resolving it
+  updates this row and OPEN-4 together. ADR-0136 finding D7-3(b)."""),
+
+    # -- ## Externals
+    R(1128, "- Enable GitHub's workflow-failure", None, """- EXTERNAL **[ci-failure-email]** -- enable GitHub's workflow-failure
+  notification email for this repository (one settings toggle); closes the
+  nobody-watching gap at zero session cost. ADR-0075, named quality riders
+  AR-QR-3, 2026-08-07."""),
+    R(1132, "- NIST licensing inquiry", None, """- EXTERNAL **[nist-licensing]** -- send the drafted NIST licensing gist,
+  retiring the confirmation-pending posture cited on the storefront Gate row."""),
+    R(1134, "- IG pinning", None, """- EXTERNAL **[ig-pinning]** -- choose and commit the profile-tier conformance
+  target (the Gate row's other caveat)."""),
+    R(1136, "- Clojars publish", None, """- EXTERNAL **[clojars-publish]** -- publish to Clojars when satisfied with the
+  product (ruled 2026-07-31); ends the greenfield era, output formats freeze
+  harder after the first tag. This row IS the Clojars-vs-Maven-Central ruling
+  and closes that half of ADR-0001's H5; the group/coordinates naming half and
+  publication itself both stay open."""),
+    R(1142, "- SETUP rewalk by an unspoiled human reader", None, """- EXTERNAL **[setup-rewalk]** -- SETUP.md rewalked by an unspoiled human reader
+  (F3 superseded-pending-rewalk), widened 2026-08-12 to cover `docs/manual/`
+  Chapters 1-2, which narrate the same steps; one rewalk smoke-tests all three.
+  Still owed, not executed. ADR-0119."""),
+    R(1147, "- **EHR Testing Guide Ch 24", "adr:0112", """- EXTERNAL **[guide-ch24-notes]** -- EHR Testing Guide Ch 24 "completeness
+  illusion" section notes, the batch-straddle scenario's guide-side treatment
+  (placement (c)); the channel may draft on request, grounded in the ADR-0111
+  demo's witnessed run. The guide itself lives outside this workspace. ADR-0112."""),
+    R(1154, "- Upstream the adapted repo-adaptation skill", None, """- EXTERNAL **[upstream-adaptation-skill]** -- upstream the adapted
+  repo-adaptation skill to pragsmike/skills (and cyberneutics if wanted); named
+  AUTHOR ACTION 2026-08-01."""),
+    R(1156, "- Item 9 (ADR-0024", "attic", None),
+    R(1161, "- **RESOLVED 2026-08-05** (scaffolding compaction C", "attic", None),
+
+    # -- ## Deferred
+    R(1171, "- **Transport realism", "adr:0111", """- DEFERRED (trigger: a non-epoch-aligned schedule need; a session simulating a
+  receiver noticing a missing scheduled delivery; or a need to bundle batches
+  into one file-level transfer) **[transport-batching-deferrals]** -- `ehrt
+  corpus batch` landed 2026-08-11; three v1 deferrals survive it (`--anchor`,
+  interior empty-batch realism, FHS/FTS file-level wrappers), plus a named,
+  unresolved taxonomy question about where message loss sits. ADR-0111."""),
+    R(1196, "- **`ehrt.corpus.sink-composability-test`", "adr:0107", """- DEFERRED (trigger: a session willing to widen `:max-tries` or broaden
+  `safe-filename-gen`'s own range) **[sink-composability-flake]** --
+  `dir-sink-write-then-intake-hash-identity-property-test` occasionally throws
+  `Couldn't generate enough distinct elements!`; witnessed once, confirmed
+  unrelated to that session's changes and non-reproducing on re-run. ADR-0107."""),
+    R(1209, "- **`veteran_hyperlipidemia.json`", "adr:0090", """- DEFERRED (trigger: a session willing to characterize whether
+  `MedicationEnd`/`referenced_by_attribute` should itself be idempotent as a
+  general interpreter rule) **[veteran-hyperlipidemia]** -- deferred whole, not
+  vendored: the module's annual reassessment loop never clears
+  `statin_initial`, so it re-fires `MedicationEnd` against an already-ended
+  order and fails the medication-end invariant at population scale. ADR-0090."""),
+    R(1228, "- **`veteran_mdd.json`", "adr:0090", """- DEFERRED (trigger: a session willing to extend the runaway-loop backstop to
+  distinguish a real-time-advancing cycle from a zero-advance one)
+  **[veteran-mdd-max-steps]** -- deferred whole and BLOCKED, not vendored: a
+  legitimate multi-decade recurring-therapy cycle exhausts `max-steps` at every
+  horizon tried. Same backstop tension `injuries.json` named first. ADR-0090."""),
+    R(1252, "- **`EncounterEnd` no-op-when-nothing-open", "attic", None),
+    R(1329, "- **`colorectal_cancer.json`", "attic", None),
+    R(1377, "- **Corpus player `:mllp` transport sink", "attic", None),
+    R(1410, "- **Carry-across emission", "adr:0086", """- DEFERRED (trigger: a test scenario needing mid-stay-at-window-open realism)
+  **[carry-across-emission]** -- a straddling encounter yields no in-window wire
+  traffic under Wave H's own pre-roll, though real hospital censuses do show
+  patients mid-stay at window open. This row's compile-layer half is shape (a)
+  from ADR-0085, recorded and not built. ADR-0042 AR-2, ADR-0086 AR-SF-5."""),
+    R(1427, "- **Wellness cadence chronic-meds cap", "adr:0037", """- DEFERRED (trigger: a session ranking calibration fidelity for the chronic
+  cluster, or a finding that the cap's absence materially skews a census result)
+  **[wellness-chronic-meds-cap]** -- upstream's chronic-medications annual
+  wellness cap is excluded from `next-wellness-tick` BY RULING, not omitted by
+  oversight; a register item, not a design question. ADR-0037 AR-1."""),
+    R(1438, "- **Backload named future", None, """- DEFERRED (trigger: a real consumer for pre-window messages appears)
+  **[backload-named-future]** -- pre-roll stays emit-nothing, reaffirmed: the
+  backload need is a TOOLS-SIDE construction over sim output, fault-injection's
+  own sibling, not a sim feature. ADR-0031 AR-3."""),
+    R(1444, "- P2-5 intake staging-dir behavior", None, """- DEFERRED (trigger: none recorded -- ADR-0144 finding F-6)
+  **[intake-staging-dir]** -- P2-5 intake staging-dir behavior, deferred
+  2026-07-31 with neither a revisit trigger nor an ADR cite, against this
+  section's own contract that a Deferred row owes a trigger."""),
+    R(1445, "- Verdict-cache placement revisit", None,
+      "- DEFERRED (trigger: a second consumer, or never) **[verdict-cache-placement]**\n"
+      "  -- verdict-cache placement revisit. ADR-0011."),
+    R(1446, "- `ImagingStudy` (R5, CHF trigger)", "adr:0031", """- DEFERRED (trigger: Wave E's own scheduling, with stroke as the risk-attribute
+  register's first consumer) **[imagingstudy-stroke-risk]** -- `ImagingStudy`
+  (R5, CHF trigger) and the stroke-risk data source (R7). The DATA-SOURCE half
+  is ruled -- curated calibration content, not a ported calculation -- so what
+  remains here is scheduling, not an open design question. ADR-0031."""),
+    R(1457, "- **Census tool refinements", "adr:0071", """- DEFERRED (trigger: a session extending the census tool itself, not a
+  vendoring session) **[census-tool-refinements]** -- refinement (b), no
+  per-module census-seed override, stands untouched; (a) and (c) closed at
+  ADR-0069. Beside it sit two dated intakes: `:closure-file-count` never counts
+  lookup-table CSVs, and the three-seed sample misses population-scale failures.
+  ADR-0035, ADR-0036, ADR-0071 AR-VB2-4."""),
+    R(1489, "- UTI's own `ed_bundle.json`", "adr:0035", """- DEFERRED (trigger: a session needing Observation's own v2 timing/value
+  distributions for real) **[uti-o2-distribution]** -- UTI's `ed_bundle.json`
+  O2-saturation Observation states carry a `gmf_version 2` `:distribution` this
+  loader has never normalized; a stray raw field the procedure gate correctly
+  ignores. Disclosed, not built; no vendored module reads the value back.
+  ADR-0035."""),
+    R(1499, "- **Vital-sign channel", "adr:0069", """- DEFERRED (trigger: Wave E's own design session, or whichever session first
+  needs a real vital-sign baseline) **[vital-sign-channel]** -- the `VitalSign`
+  state type and the `:vital-sign` condition type both need a vital-sign
+  REGISTER with baseline values this project does not yet supply. Post-Wave-VS
+  the blockage is partial: `covid19` alone is still fully blocked. ADR-0036
+  AR-7, ADR-0069."""),
+    R(1519, "- **Lookup-table column `time`", "adr:0039", """- DEFERRED (trigger: whichever session next touches the schema-invalid family's
+  own `time` gap) **[lookup-column-time-open]** -- Wave LC does special-case a
+  `time` lookup-table COLUMN and that evidence is real, but by author ruling
+  (compaction A, AR-A-5) it does not resolve the separate schema-invalid
+  concern, so this row stays explicitly LIVE pending a session that reconciles
+  the two. ADR-0038, ADR-0039."""),
+    R(1536, "- **Wellness-encounters, roadmap anchor", "adr:0092", """- DEFERRED (trigger: a session ready to reconcile upstream's own wellness
+  machinery with this engine's wellness-cadence design) **[wellness-encounters]**
+  -- a NAMED DESIGN ITEM, never routine vendoring; it waits its own pass. This
+  row is the anchor it survived three consecutive closes without. ADR-0092,
+  ADR-0093 ruling 3 (D7-7)."""),
+    R(1548, "- **`notice_verbatim_test`'s own coverage gap", "adr:0092", """- DEFERRED (trigger: a session willing to extend the gate's parser to the
+  v2-nist 2-column table shape and the simhospital prose-hash shape)
+  **[notice-verbatim-coverage]** -- both hashes are still manually verified
+  correct, so this is a coverage gap, not an active drift; judged at ADR-0080 to
+  balloon past "lands small". ADR-0092, ADR-0093 ruling 3 (D7-8)."""),
+    R(1561, "- **Wave E (vital-sign/CHF/contraceptives/covid19", "adr:0092", """- DEFERRED (trigger: the next content-vendoring session with a
+  vital-sign-adjacent candidate) **[wave-e-parked]** -- PARKED rather than
+  scheduled: four consecutive closes restated it with zero movement, and only
+  `covid19` is still genuinely blocked (`congestive-heart-failure` and
+  `contraceptives` both produce content post-Wave-VS). ADR-0092, ADR-0093
+  ruling 4 (D7-13)."""),
+    R(1573, "- **`ehrt play`'s own bare reads", "attic", None),
+    R(1592, "- **Synthea-extracted demographics tables", "adr:0136", """- DEFERRED (trigger: a session with a Synthea checkout available)
+  **[synthea-demographics]** -- `given-names.edn`, `surnames.edn` and
+  `places.edn` are hand-curated ORIGINALS, replaceable wholesale by a real
+  extraction with `ehrt.sim.persona`'s readers unchanged. Not a correctness
+  defect: an intention that had stood unregistered since 2026-08-05 and is now
+  registered. ADR-0136 finding D7-3(a)."""),
+    R(1611, "- **`ehrt.conformance.mutate-stdout-stdin-loopback-test`", "adr:0136", """- DEFERRED (trigger: the next session that owns test-suite hygiene, or any
+  recurrence) **[mutate-loopback-flake]** -- first recorded 2026-07-28, carried
+  18 days in `state.md` alone, which is regenerated at every arc close and was
+  never a durable anchor. Closing bar, so the soak can end: if no recurrence
+  appears by the next repo review, close this row and D3-2 together against the
+  accumulated green runs. ADR-0136 finding D7-4."""),
+]
+
+
+# ---------------------------------------------------------------------
+
+
+def read(path):
+    with open(path, encoding="utf-8") as f:
+        return f.read().split("\n")
+
+
+def parse_rows(lines):
+    """Rows exactly as `ehrt.docs-tooling.roadmap-lint-test` parses them."""
+    starts = [i for i, l in enumerate(lines) if l.startswith("## ")]
+    out = []
+    for n, h in enumerate(starts):
+        end = starts[n + 1] if n + 1 < len(starts) else len(lines)
+        cur = None
+        for i in range(h + 1, end):
+            if lines[i].startswith("- "):
+                if cur:
+                    out.append(cur)
+                cur = {"heading": lines[i - 0 : i][0] if False else lines[h],
+                       "start": i, "lines": [lines[i]]}
+            elif cur is not None:
+                cur["lines"].append(lines[i])
+        if cur:
+            out.append(cur)
+    for r in out:
+        while r["lines"] and not r["lines"][-1].strip():
+            r["lines"].pop()
+    return out
+
+
+def retoken_done(line):
+    """`- DATE - slug - ADR-NNNN` becomes `- CLOSED DATE ADR-NNNN **[slug]**`."""
+    m = re.match(r"^- (\d{4}-\d{2}-\d{2}) [—-]+ ([a-z0-9][a-z0-9-]*) [—-]+ (ADR-\d{4})\s*$", line)
+    if not m:
+        return None
+    date, slug, adr = m.groups()
+    return f"- CLOSED {date} {adr} **[{slug}]**"
+
+
+def verify():
+    """Assert every moved row is present VERBATIM, contiguous, at its
+    destination -- read back from the files as they are now, against the
+    roadmap as it was at `deb9a33`. Re-runnable long after the move."""
+    import subprocess
+    old = subprocess.check_output(
+        ["git", "show", "deb9a33:" + ROADMAP], text=True).split("\n")
+    rows = {r["start"] + 1: r["lines"] for r in parse_rows(old)}
+    adr_files = {f[:4]: os.path.join(ADR_DIR, f) for f in os.listdir(ADR_DIR)}
+    cache, ok, missing, moved = {}, 0, [], 0
+    for start, _, dest, _ in ROWS:
+        if not dest:
+            continue
+        path = (ATTIC if dest == "attic" else adr_files[dest[4:]])
+        if path not in cache:
+            cache[path] = open(path, encoding="utf-8").read()
+        block = "\n".join(rows[start])
+        moved += len(rows[start])
+        if block in cache[path]:
+            ok += 1
+        else:
+            missing.append((start, path))
+    print(f"rows moved            : {ok + len(missing)}")
+    print(f"blocks found VERBATIM : {ok}")
+    print(f"blocks missing        : {len(missing)}  {missing if missing else ''}")
+    print(f"moved lines total     : {moved}")
+    if missing:
+        sys.exit("FAIL: a moved row is not present verbatim at its destination")
+
+
+def main():
+    if "--verify" in sys.argv:
+        verify()
+        return
+    dry = "--dry-run" in sys.argv
+    census_only = "--census" in sys.argv
+
+    lines = read(ROADMAP)
+    rows = parse_rows(lines)
+    by_start = {r["start"] + 1: r for r in rows}
+
+    table = {}
+    for start, prefix, dest, new in ROWS:
+        row = by_start.get(start)
+        if row is None:
+            sys.exit(f"FAIL: no row starts at {ROADMAP}:{start} -- tree has drifted")
+        if not row["lines"][0].startswith(prefix):
+            sys.exit(
+                f"FAIL: {ROADMAP}:{start} first line is\n  {row['lines'][0]!r}\n"
+                f"but the census read\n  {prefix!r}\n-- tree has drifted"
+            )
+        table[start] = (row, dest, new)
+
+    done_rows = [r for r in rows if r["heading"].startswith("## Done")]
+    non_done = [r for r in rows if not r["heading"].startswith("## Done")]
+    if len(table) != len(non_done):
+        missing = [r["start"] + 1 for r in non_done if (r["start"] + 1) not in table]
+        sys.exit(f"FAIL: {len(non_done)} non-Done rows, {len(table)} tabled; untabled: {missing}")
+
+    # ---- ledger -----------------------------------------------------
+    removed = Counter()
+    added = Counter()
+    to_attic, to_adr = [], {}
+    ledger = []
+    for start, (row, dest, new) in sorted(table.items()):
+        n_old = len(row["lines"])
+        n_new = len(new.split("\n")) if new else 0
+        if dest:
+            removed.update(row["lines"])
+            added.update(row["lines"])
+            if dest == "attic":
+                to_attic.append(row)
+            else:
+                to_adr.setdefault(dest[4:], []).append(row)
+        ledger.append((start, row["lines"][0][:64], n_old, n_new, dest or "-"))
+
+    if removed != added:
+        sys.exit("FAIL: nothing-lost ledger does not balance")
+
+    if "--markdown" in sys.argv:
+        tok_re = re.compile(r"^- (OPEN|CLOSED [^*]*|DEFERRED \(trigger: [^()]+\)|EXTERNAL)")
+        print("| # | section | old | token | slug | new | verbatim to |")
+        print("|---|---|----:|---|---|----:|---|")
+        for n, (start, _, dest, new) in enumerate(ROWS, 1):
+            row = table[start][0]
+            sect = row["heading"].replace("## ", "").split(" (")[0]
+            if new:
+                m = tok_re.match(new)
+                tok = m.group(1).strip() if m else "??"
+                tok = "DEFERRED" if tok.startswith("DEFERRED") else tok
+                slug = re.search(r"\*\*\[([a-z0-9-]+)\]\*\*", new).group(1)
+                cell, n_new = f"`{slug}`", len(new.split("\n"))
+            elif sect == "Now":
+                tok, cell, n_new = "n/a", "section dropped", 0
+            else:
+                tok, cell, n_new = "CLOSED", "-> `## Done` pointer", 0
+            print(f"| {n} | {sect} | {len(row['lines'])} | `{tok}` | {cell} | {n_new} "
+                  f"| {dest or 'nothing (already within cap)'} |")
+        return
+
+    print(f"== ADR-0144 roadmap migration ledger ({'DRY RUN' if dry else 'APPLY'}) ==\n")
+    print(f"{'line':>6}  {'old':>4} {'new':>4}  {'destination':<12} row")
+    for start, lead, n_old, n_new, dest in ledger:
+        print(f"{start:>6}  {n_old:>4} {n_new:>4}  {dest:<12} {lead}")
+    moved_lines = sum(len(r['lines']) for r in to_attic) + sum(
+        len(r['lines']) for rs in to_adr.values() for r in rs)
+    print(f"\nrows tabled                 : {len(table)}")
+    print(f"rows leaving the file       : {sum(1 for _, (_, _, n) in table.items() if n is None)}")
+    print(f"rows staying, rewritten     : {sum(1 for _, (_, _, n) in table.items() if n)}")
+    print(f"rows moved verbatim         : {len(to_attic)} to attic, "
+          f"{sum(len(v) for v in to_adr.values())} to {len(to_adr)} ADRs")
+    print(f"VERBATIM lines out of roadmap: {sum(removed.values())}")
+    print(f"VERBATIM lines into dests    : {sum(added.values())}  "
+          f"(multiset-identical: {removed == added})")
+    print(f"distinct moved row-lines     : {moved_lines}")
+    print(f"Done pointers retokened      : {len(done_rows)}")
+    print(f"Done pointers inserted       : {len(DONE_INSERTS)}")
+
+    if census_only:
+        return
+
+    # ---- rebuild roadmap.md -----------------------------------------
+    out = HEADER_NEW.split("\n")
+    seen_headings = []
+    for r in rows:
+        if r["heading"] not in seen_headings:
+            seen_headings.append(r["heading"])
+
+    def emit_section(heading, body):
+        if not body:
+            return
+        out.append(heading)
+        out.extend(body)
+
+    buckets = {}
+    order = []
+    for r in rows:
+        h = r["heading"]
+        if h not in buckets:
+            buckets[h] = []
+            order.append(h)
+        buckets[h].append(r)
+
+    for h in order:
+        body = []
+        if h.startswith("## Done"):
+            fired = set()
+            for r in buckets[h]:
+                slug_match = re.match(r"^- \d{4}-\d{2}-\d{2} [—-]+ ([a-z0-9][a-z0-9-]*)",
+                                      r["lines"][0])
+                slug = slug_match.group(1) if slug_match else None
+                if slug in DONE_IRREGULAR:
+                    body.extend(DONE_IRREGULAR[slug])
+                else:
+                    new_line = retoken_done(r["lines"][0])
+                    if new_line is None or len(r["lines"]) != 1:
+                        sys.exit(f"FAIL: unhandled Done pointer shape: {r['lines']!r}")
+                    body.append(new_line)
+                for after, insert in DONE_INSERTS:
+                    if insert in fired:
+                        continue
+                    if body and body[-1].endswith("]**") and f" {after} " in body[-1]:
+                        body.append(insert)
+                        fired.add(insert)
+            emit_section(DONE_HEADING_NEW, body)
+        else:
+            if h.startswith("## Now"):
+                continue  # section dropped; census section 3
+            for r in buckets[h]:
+                _, _, new = table[r["start"] + 1]
+                if new:
+                    body.extend(new.split("\n"))
+            if h.startswith("## Deferred"):
+                body = ["Rows here are LIVE, each owing a revisit trigger in its own token."] + body
+            emit_section(h, body)
+        out.append("")
+
+    while out and not out[-1].strip():
+        out.pop()
+    new_roadmap = "\n".join(out) + "\n"
+
+    # ---- destinations -----------------------------------------------
+    attic_block = ["", ATTIC_HEADER, ATTIC_PREAMBLE.rstrip(), ""]
+    for r in to_attic:
+        attic_block.extend(r["lines"])
+    attic_new = "\n".join(read(ATTIC)).rstrip("\n") + "\n" + "\n".join(attic_block) + "\n"
+
+    adr_writes = {}
+    for num, rs in sorted(to_adr.items()):
+        matches = [f for f in os.listdir(ADR_DIR) if f.startswith(num + "-")]
+        if len(matches) != 1:
+            sys.exit(f"FAIL: {len(matches)} ADR files for {num}")
+        path = os.path.join(ADR_DIR, matches[0])
+        existing = "\n".join(read(path))
+        if ADR_HEADER in existing:
+            sys.exit(f"FAIL: {path} already carries the ADR-0144 section -- second run?")
+        block = ["", ADR_HEADER, "", ADR_PREAMBLE, ""]
+        for r in rs:
+            block.extend(r["lines"])
+        adr_writes[path] = existing.rstrip("\n") + "\n" + "\n".join(block) + "\n"
+
+    print(f"\nroadmap.md    : {len(lines) - 1} -> {len(new_roadmap.split(chr(10))) - 1} lines")
+    print(f"attic         : +{len(attic_block)} lines")
+    for p, c in adr_writes.items():
+        print(f"  {p}")
+
+    if dry:
+        print("\n-- dry run, nothing written --")
+        return
+
+    with open(ROADMAP, "w", encoding="utf-8") as f:
+        f.write(new_roadmap)
+    with open(ATTIC, "w", encoding="utf-8") as f:
+        f.write(attic_new)
+    for p, c in adr_writes.items():
+        with open(p, "w", encoding="utf-8") as f:
+            f.write(c)
+    print("\n-- written --")
+
+
+if __name__ == "__main__":
+    main()

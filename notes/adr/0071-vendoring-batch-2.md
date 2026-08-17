@@ -325,3 +325,40 @@ session next revisits `ehrt.sim-trajectory.census`.
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Vendoring batch 2: the chronic clinic tail — seven ailments join the mix (hypothyroidism, rheumatoid-arthritis, osteoarthritis, osteoporosis, attention-deficit-disorder, allergic-rhinitis, dermatitis), `anemia___unknown_etiology.json` assessed and deferred whole on a real dangling-`:encounter-end` `gmf-interpreter` gap; a `scenarios/` home lands with the first runnable, population-scale demo, `busy-tuesday`
+
+### Roadmap history (moved verbatim from roadmap.md by ADR-0144, 2026-08-17)
+
+The `.agents/plans/roadmap.md` row this ADR owns, as it stood at `deb9a33` before the ADR-0144 row contract capped rows at six lines. The live row now states what remains and cites this ADR for the rest; this is the rest, verbatim.
+
+- **Census tool refinements** (ADR-0035/ADR-0036's own disclosed, not-
+  fixed findings, `ehrt.sim-trajectory.census`): (b) no per-module
+  census-seed override (every module shares the SAME global seed
+  count) STANDS, untouched, its own trigger unfired: a future session
+  needing a per-module seed-count override. (a) and (c) **CLOSED
+  2026-08-07 (census substance, `notes/ADRs.md` ADR-0069 AR-VC-2/
+  AR-VC-3): the substance qualifier (`:substance`/`:event-counts` on an
+  `:ok-walked` row, `summarize`'s own `:ok-walked-by-substance` tally)
+  and the labeled-filename fix (`artifact-filename`, `-main`'s optional
+  third arg) both land — their own original text relocated verbatim
+  into ADR-0069's own record, not restated here.**
+  **Dated intake (2026-08-07, vendoring batch 2, `notes/ADRs.md`
+  ADR-0071 AR-VB2-4, adjacent to (b), neither acted on): (i) the
+  `:closure-file-count` metric counts JSON modules only, never
+  lookup-table CSV data files (ADR-0070's own AR-VB1-2 lesson) — this
+  batch had zero CSVs so the metric held, but a future batch could
+  repeat the undercount; (ii) the three-seed sample can miss
+  population-scale failures a real round-trip catches —
+  `injuries.json` (batch 1) and `anemia___unknown_etiology.json`
+  (batch 2) are now two independent findings the census's own narrow
+  sample missed. Revisit trigger: a future session extending the
+  census tool itself, not a vendoring session.**
+  **Dated note (2026-08-05, standing-equipment promotion, `notes/ADRs.md`
+  ADR-0044 AR-P-4): `ehrt.sim-trajectory.census` moved from
+  `development/src` into `components/sim-trajectory` — relocation and
+  test-exercise only, by ruling; the triggers above stood, untouched,
+  none fired by the move.** A different, real finding surfaced
+  INCIDENTALLY by the move (running the census's own 7 tests under
+  `poly test` for the first time ever): two test fixtures had gone
+  stale after GMF coverage Wave VS landed real `VitalSign`/`:vital-sign`
+  support, fixed forward (ADR-0044's own Step 1) — not one of this row's
+  own named refinements, disclosed separately there.

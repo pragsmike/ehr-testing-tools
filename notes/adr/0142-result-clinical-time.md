@@ -575,3 +575,142 @@ builder, `orc-segment`, `docs/formats.md`.
 ### Index summary (moved verbatim from notes/ADRs.md by ADR-0143, 2026-08-16)
 
 Clinical time on the result wire: OBR-7 and OBX-14 — the fidelity increment ADR-0109 and the roadmap both named as "a future, declared-oracle-change session of its own", executed. ADR-0109 built the second clock and in the same step recorded what it could not shift: its field audit found `OBR-7` and `OBX-14` simply **not rendered**, so a latency-shifted `ORU` carried MSH-7 alone and a downstream receiver handed a late result had nothing on the wire with which to back-date it. Both fields now render on all three shapes this project emits as `ORU^R01` (`:result-available`, `:observation`, `:diagnostic-report`), carrying the result event's own `:t` through `hl7-timestamp` exactly as `evn-segment` receives `clinical-ts` (**Q1 "a"**), and never shifting under `emit-wire` — the split-clock law ADR-0109 proved for EVN-2, made for results. **Q2 "a"** accepts the positional pad OBX-9..13 (and OBX-7/8 when the observation carries neither reference-range nor interpretation), superseding `observation-obx-segment`'s own "never a positional pad" sentence **for OBX-14 only** — amended in place and dated, with the distinction that keeps the rule coherent rather than merely excepted: OBX-7/8 pad for a value the observation might not have, whereas `clinical-ts` derives from `:t`, which every event carries by construction. **A scope collision in the driving prompt was reported rather than silently resolved and became Q3, ruled "Results only; ORM byte-frozen":** the prompt's Context said "OBR-7 wherever `obr-segment` renders", but `obr-segment` also renders in `orm-message`, which the same prompt's Step 3 fence, Fences block, STOP-AND-REPORT list, ORU-only mover rule and ORU-only test set all held untouched — executed by giving `obr-segment` an extra arity used only by the ORU builders, so ORM's call site has a literally empty diff, and ORC-9 becomes a named revisit rather than a silent ride-along (OBR-7 on an order would mean the observation time of an observation that has not happened yet). **The declared oracle change landed exactly as predicted:** the mover set was derived BEFORE any `src` edit from the live tree in both halves — the root set read from `digest.clj` (35, counted from the map) and per-root content from a PRE-digest run over all 35 — predicting 14 movers (every root whose digest contains an `ORU^R01`) and 21 identical; `bin/regression-oracle c90c9bd HEAD` returned `DIFFERS` with the actual mover set **matching the prediction exactly, no residue in either direction**, the soundness line confirming `digest.clj` itself unchanged so both sides ran the same instrument. Two prompt figures did not survive the tree and are corrected from it: "27-ish predicted-identical roots" is **21**, and `ORM^O01`'s count across all 35 roots is **zero** — no oracle root emits an order message at all, so ORM could never have been witnessed moving, which is its own argument for freezing it rather than moving it unwitnessed. **Contract-neutral by construction and verified as such:** `:event-schema-version` stays `"1.0.0"` in both halves of ADR-0141's two-artifact gate (asserted by a negative test), both `event-schema*.edn` are byte-identical, and `events.edn` did not move anywhere — the manual's own ground-truth-invariance transcript was re-witnessed rather than trusted and returned the identical digest `b4e776f7…` already committed there. Gate: `make test` unpiped, `MAKE_EXIT=0`, **334** zero-failure blocks / **17,176** passes, reconciled against ADR-0141's 332/17,054 **per namespace** rather than in aggregate (+116 the new namespace across two project contexts, +4 the one re-baselined assertion becoming three, +2 a docs-tooling lint whose assertion count is a function of the test files it scans — 122 exactly). `latency-test` unchanged at 171 assertions: the 100-trial identity property held green straight through, which is the witness that both sides moved together. **One pinned test re-baselined with disclosure, and it is a semantic change rather than a count change:** `observation-emits-oru-with-one-obx-and-no-orc-or-obr` asserted `(= 7 …)` OBX fields as ADR-0029's absence-phrased "no positional pad" property; reaching OBX-14 pads through OBX-7..13, so the count is now fixed at 14 and what D1 actually cared about — that a reader cannot mistake this observation for one carrying a range — is now asserted as OBX-7/8 being **empty** rather than **absent**. **A second finding came from running rather than reading.** The Step 1 census established that `demos/traces/**` is an ungated derived-artifact tree — no `Makefile` target, no workflow, no test, only `.gitattributes` byte protection — and regenerating its two ORU-bearing traces proved the cost: `order-result/messages.txt` had drifted 12 `PV1` lines behind the site-profiles milestone's trailing positional fields and had made its sibling's "same as `order-result/messages.txt`" claim false for several sessions. Both are regenerated (byte-identical again at 5,822 bytes) with the two change classes separated in dated errata rather than blended, and the missing gate is a roadmap row with a proposed shape, not a silent fix — `notes/adr/0139-*.md` rule 9's own class, applied to a directory. That same regeneration **witnesses the ORM freeze on a committed artifact rather than only asserting it**: of the six `OBR` lines in the file whose copy was current, only the three ORU ones changed. Manual chapter 4 gains a "When the result is late" section built on a strip regenerated this session (seed 20260811, `out/` cleared first): MRN000005's CBC resulted `03:22:00Z`, transmitted `04:07:40Z`, `MSH-7` moving 45m40s while `OBR-7`/`OBX-14` are the same bytes on both wires and the message's own position moves `msg-020` → `msg-023` under the transmit-time sort — no `config-latency.edn` widening needed or made, that file already covering `:result-available`. `emit_hl7.clj` is the only `src` file touched; `plan-latency`/`emit-wire`/`transmit-seconds` signatures and behaviour, every ADT builder, `orc-segment`, `orm-message`'s body, `emit-fhir`, `sim-engine` and `docs/formats.md` all untouched. One deviation disclosed: the red-test commit's push was **held** until the fix was green and the two were pushed together, because pushing a knowingly-red commit alone would have manufactured exactly the CI-red finding class this session had already had to disclose one instance of at Step 0
+
+### Roadmap history (moved verbatim from roadmap.md by ADR-0144, 2026-08-17)
+
+The `.agents/plans/roadmap.md` row this ADR owns, as it stood at `deb9a33` before the ADR-0144 row contract capped rows at six lines. The live row now states what remains and cites this ADR for the rest; this is the rest, verbatim.
+
+- **Downstream-latency realism -- MECHANISM LANDED 2026-08-11
+  (ADR-0109), DEMO LANDED 2026-08-11 (ADR-0110), arc CLOSED;
+  OBR-7/OBX-14 increment LANDED 2026-08-16 (ADR-0142).**
+  *Lands against Event schema v1.0.0* (ADR-0141, 2026-08-16): further
+  latency-realism work now sits downstream of a versioned event contract, so a
+  change altering the log's shape owes a version bump rather than a silent edit.
+  `:latency` never reaches `engine/config-keys` (ADR-0109), so today's mechanism
+  is emit-only and contract-neutral.
+
+  New chartering direction, author
+  verbatim, 2026-08-11 (`.agents/rulings.md`, "From ADR-0107"): *"I want
+  to make sure that the simulation faithfully simulates what happens in
+  real life: lab results take time to come back, providers take time to
+  log things in the EHR, etc. so it's possible that a downstream
+  receiver of the HL7 traffic will have incomplete encounter records
+  for some time. That's not our problem to solve, but in order to test
+  that such downstream receivers handle it properly (whatever that
+  might mean for them) we need to supply them with such cases."*
+
+  **The ratified sequence (2026-08-11, `notes/ADRs.md` ADR-0108,
+  author-ratified "Good sequence"):** (1) the simulator architecture
+  doc lands first (`docs/dev/simulator-architecture.md`, ADR-0108,
+  DONE 2026-08-11) -- names this extension point in one sentence
+  (section 5: an arrow `GT -> TimedWire` between `engine` and the
+  emitters), builds nothing; (2) **THIS latency design pass, DONE
+  2026-08-11 (`notes/adr/0109-latency-second-clock.md`)** -- author
+  ruling verbatim "I like a. go" (option (a), the second clock in the
+  emitter seam): `ehrt.sim-emit-hl7.emit-hl7/plan-latency` +
+  `emit-wire`, a `LatencyProfile` schema, `ehrt.sim.run`'s own optional
+  `:latency` opt, the field audit (MSH-7 message-time, EVN-2
+  clinical-time, every other HL7v2 clinical-time-candidate field simply
+  not rendered by this project's emitter), the identity property (plain
+  `emit` byte-frozen), and a disclosed `fold-message`-under-disorder
+  finding (fixed nothing, recorded as data); (3) a guide-side treatment
+  (`docs/`, user path) derives from the architecture doc afterward, in
+  the author's own queue, not chartered to any session yet; (4) the
+  tool-specific user manual (distinct from the generic EHR Testing
+  Guide, permanently out of this workspace, `AGENTS.md`) stays DEFERRED
+  under its own named trigger, author verbatim (`.agents/rulings.md`,
+  "From ADR-0108"): *"I've been deferring creating the tool-specific
+  user guide in tools repo (distinct from EHR Testing Guide, which is
+  more generic) until things settled down and the tools were able to
+  produce the realistic traffic I need. That remains to be seen, but
+  it's getting more likely to verifiably happen soon."* Trigger
+  (channel-proposed, un-vetoed): the latency-realism arc landed PLUS
+  one witnessed end-to-end demo of latency-realistic traffic played
+  into a downstream-receiver stand-in.
+
+  **Trigger's second condition executed 2026-08-11 (`notes/adr/
+  0110-latency-demo.md`):** `demos/scenarios/ed-tuesday/config-
+  latency.edn`, a sibling of `config.edn` carrying a live-probed
+  `LatencyProfile`, generates ground truth byte-identical to the base
+  config at the same seed (witnessed `diff`/`sha256sum`) while its own
+  `emit-wire`-rendered messages, played into this workspace's own
+  `--board`, reproduce the ADR-0109 disorder finding live: a lagged
+  admission message re-adds an already-discharged patient
+  (MRN000013/Walker) to the board as `inpatient`, double-booking a bed
+  another patient already occupies. `fold-message` itself untouched,
+  per this session's own fence -- the board's confusion is the
+  demonstration, not a defect to fix here. **Trigger conditions MET,
+  RATIFIED 2026-08-11 (ADR-0112, `.agents/rulings.md` "From ADR-0112",
+  the "User-guide trigger read" entry)**: this workspace's own
+  `--board` counts as the downstream-receiver stand-in the trigger's
+  own language anticipated, and the tool-specific user-manual work
+  named below is OPEN. Provenance is channel-read, not
+  author-verbatim -- the author did not veto the reading when it was
+  stated explicitly in the same exchange that produced it; the author
+  may still strike or correct it.
+
+  Named deferrals from ADR-0109, still standing, each with its own
+  revisit trigger (`notes/adr/0109-*.md`): FHIR-side latency
+  (`emit-fhir` gets no `offsets` parameter); late amendments/trailing
+  A08s (a GT-side new-event-type concern, outside the emitter-seam
+  scope both ADR-0109 and this session's own fence share).
+
+  **The OBR-7/OBX-14 clinical-time fidelity increment: LANDED
+  2026-08-16 (`notes/adr/0142-result-clinical-time.md`).** Both fields
+  now render on all three `ORU^R01` shapes, carrying the result event's
+  own `:t` and never shifting under `emit-wire` -- so a latency-shifted
+  result carries both clocks and a downstream receiver can back-date
+  it. Declared oracle change, as this row anticipated: plain `emit`'s
+  frozen bytes moved on 14 of the 35 oracle roots, exactly the set
+  predicted from the live tree before any src edit (every root whose
+  digest contains an `ORU^R01`); the other 21 stayed byte-identical.
+  Contract-neutral -- `:event-schema-version` stays `"1.0.0"` and the
+  committed EDN export is untouched, both fields being rendered from a
+  key the log already carries.
+
+  Named deferrals still standing after ADR-0142, each with its own
+  revisit trigger:
+  - **FHIR-side latency** (`emit-fhir` gets no `offsets` parameter) --
+    from ADR-0109, unchanged; ADR-0142 did not touch `emit-fhir`.
+  - **Late amendments / trailing A08s** -- from ADR-0109, unchanged; a
+    GT-side new-event-type concern, outside the emitter seam.
+  - **NEW (ADR-0142, author ruling Q1 "a" naming the alternative it
+    declined): OBR-7 = the ORDER-placed `:t` with OBR-22 = the result
+    `:t`.** ADR-0142 renders OBR-7 as the result event's own instant,
+    which reads OBR-7 as "when this observation happened". HL7v2 also
+    supports the reading where OBR-7 is specimen/collection time and
+    OBR-22 (Results Rpt/Status Chng) is when the result was reported --
+    a distinction this project's log can express (`:order-placed` and
+    `:result-available` are separate events, joined by
+    `:order-event-id`) but does not currently render. Revisit trigger:
+    *a downstream-receiver case that needs specimen time distinct from
+    result time.*
+  - **NEW (ADR-0142, author ruling Q3): ORC-9 on `ORM^O01`.** ORM stays
+    byte-frozen -- an order's clinical-time field is ORC-9 (transaction
+    time), not OBR-7, and rendering OBR-7 there would put a
+    plausible-looking timestamp in a field whose meaning does not fit.
+    Revisit trigger: *a receiver case that needs order transaction time
+    on the wire.*
+- **`demos/traces/**` is an ungated derived-artifact tree -- REGISTERED
+  2026-08-16 (ADR-0142), not fixed.** Seven committed `messages*.txt`
+  traces and their README strips are produced by `bin/ehrt sim run` and
+  regenerated by nothing: no `Makefile` target (checked against all 17,
+  `docsgen`'s seven dependencies included), no `.github/` workflow, no
+  test. The only tracked mechanism touching these paths is
+  `.gitattributes`' `demos/traces/**/messages*.txt -text`, which
+  protects their bytes from EOL rewriting and checks nothing about
+  their freshness. **Found by drift, not by audit:** regenerating
+  `order-result/messages.txt` for ADR-0142's own field change also
+  picked up 12 changed `PV1` lines from the site-profiles milestone's
+  trailing positional fields -- drift that had sat there through
+  multiple sessions, and that made the sibling `emit-state/README.md`'s
+  "same as `order-result/messages.txt`" claim false until this session
+  made it true again. This is `notes/adr/0139-*.md` rule 9's own class
+  (a population that is a registry rather than the tree), applied to a
+  directory. Both files and the affected README strip are regenerated
+  by hand with dated errata notes in place; what is NOT done is the
+  gate. Proposed shape, for whichever session takes it: a `docsgen`
+  target that re-runs each trace's own README-declared command into its
+  own directory, plus the CI freshness diff every other generated
+  surface already gets. Candidate for repo review 4's D5 (generated-
+  artifact gating), which is where the same class already lives.
