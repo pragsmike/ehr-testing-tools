@@ -58,8 +58,8 @@ Docs-tooling gates: `adr_index_test`, `citation_gate_test`, `cli_tombstone_test`
 | roadmap rows (all sections) | 105 |
 | rulings rows | 110 |
 | rulings rows superseded | 6 |
-| session records | 150 |
-| archived prompts | 143 |
+| session records | 151 |
+| archived prompts | 144 |
 
 ### Roadmap rows by section
 

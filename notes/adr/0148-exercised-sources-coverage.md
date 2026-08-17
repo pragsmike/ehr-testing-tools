@@ -185,4 +185,108 @@ reported fresh.
 - No register row is edited: (d) forced none.
 - No new extraction kind.
 
-*(Sections below filled in at close.)*
+### Red, then green
+
+RED, witnessed before any src change, on the new namespace alone:
+
+    Ran 8 tests containing 26 assertions.
+    6 failures, 0 errors.
+
+All six in `a-source-yielding-no-taught-commands-is-never-reported-fresh-test`,
+two per route:
+
+    FAIL in (…) (exercised_sources_coverage_test.clj:168)
+    no fence of the row's own language
+    expected: (false? (:ok? r))
+      actual: (not (false? true))
+
+    FAIL in (…) (exercised_sources_coverage_test.clj:170)
+    no fence of the row's own language
+    expected: (= :ehrt.docs-tooling.strip-fresh/no-taught-commands (:readme (:divergence r)))
+      actual: (not (= :ehrt.docs-tooling.strip-fresh/no-taught-commands nil))
+
+…and the same pair for "a fence that is entirely comments" and "a
+`:paired` row whose source holds no genuine pair".
+
+**Everything else was green on arrival, exactly as the census predicted**
+— (a) coverage over all nine live rows, (b) the seeded two-row
+instrument failing on precisely the diverged row, (c) the `bash -c`
+pin, and all three (d) population gates. That is the census doing its
+job: it is why this session's src change is one function.
+
+GREEN after `reject-vacuous`:
+
+| gate | baseline `5c1d73e` | close |
+|---|---|---|
+| `make test` (unpiped, `MAKE_EXIT`) | **0** | **0** |
+| blocks | 342 | 344 |
+| tests | 3,890 | 3,906 |
+| assertions | 17,496 | 17,548 |
+
+Baseline reconciles exactly with ADR-0147's own recorded figures. The
+deltas are the new namespace and nothing else: +8 tests and +26
+assertions, counted twice because the namespace runs under two projects.
+
+`bin/regression-oracle 5c1d73e 3dd20ed`, its own output:
+
+    --- declared-digest-change: no (soundness: yes outside ns form) ---
+    IDENTICAL: every root's digest matches between 5c1d73e and 3dd20ed
+
+35 of 35 roots. `clojure -M:poly check` OK at both ends.
+
+### Findings
+
+**F-1 — the register has nine rows, not ten.** The session prompt's
+channel probe says ten. `exercised_sources_test.clj:27` pins nine, and
+the roadmap row this session closes says "one of **nine**". Reported
+rather than adapted around; nothing downstream depended on the number,
+because the whole point of the landing is that no test names a count of
+rows any more.
+
+**F-2 — the `bash -c` hazard needed no fix, and its sibling did.** The
+prompt anticipated an `:unreadable` classification for U-15's wrapper.
+Probed first, per its own instruction: the wrapper already diverges
+loudly. What is genuinely silent is the ABSENT population — a source
+yielding zero taught commands, which compared `[]` to `[]` and reported
+fresh. The prompt named the right shape ("an empty command list that
+trivially matches") against the wrong trigger. Fixed the sibling, pinned
+the wrapper.
+
+**F-3 — (d) as scoped would have been vacuous, and was widened.** The
+prompt scopes the dual to exercisers "a `docs/**` page cites". That
+population is two cites of one script; the five `bin/usecase-*` scripts
+are cited by no reader-facing page, so a cite-filtered gate over them
+asserts nothing. Landed as the unconditional tree-population closure
+(seven scripts) *and* the cite closure, each carrying an explicit
+non-empty assertion. This is the session's own second instance of the
+rule it is landing: `R-empty-population-is-red` was earned twice over,
+once by the mechanism under test and once by the test.
+
+**F-4 — no row is diverged, and no register row was edited.** All nine
+rows are fresh at `5c1d73e` and at close. Neither STOP condition the
+prompt names fired.
+
+**F-5 — the ADR-0147 freshness gate fired on this session's own
+footprint.** The first full green run went red on
+`state-derived-md-matches-a-fresh-render-test`: this session added an
+ADR file, a test namespace, a roadmap row and two rulings rows, all of
+which `.agents/state-derived.md` counts. Fixed by `make docsgen`, never
+by hand — which is the whole design of ADR-0147, working, one session
+after it landed.
+
+### Consequences
+
+The nine hand-written per-row cases are now the *second* thing proving
+each row, and the register itself is the first. A tenth row added
+tomorrow is gated the moment it is registered. The path that produced
+U-15 — register a row, write its script, forget its test, watch the
+docs-gate battery stay green — is closed by construction rather than by
+remembering.
+
+Two rulings landed: `R-register-gated-by-its-own-loader` and
+`R-empty-population-is-red`. One roadmap row closed
+(`[exercised-row-gate-closure]`), one opened
+(`[strip-fresh-hand-case-retirement]`, PRIORITY 16) — the hand cases are
+kept this session because their pinned `:readme-count`s are NOT
+subsumed and carry a real distinct signal, so retiring them is judgement
+about where the pins belong, not a deletion (`rulings.md#R-move-not-improve`).
