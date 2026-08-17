@@ -45,18 +45,18 @@ Oracle roots: `appendicitis`, `sore-throat`, `ear-infections`, `sinusitis`, `dea
 
 | fact | count |
 |---|---|
-| `*_test.clj` namespaces under any brick's own `test/` | 184 |
-| docs-tooling gate namespaces | 41 |
+| `*_test.clj` namespaces under any brick's own `test/` | 185 |
+| docs-tooling gate namespaces | 42 |
 
-Docs-tooling gates: `adr_index_test`, `citation_gate_test`, `cli_tombstone_test`, `demo_exerciser_fresh_test`, `docsgen_test`, `done_pointer_adr_test`, `event_log_doc_test`, `exercised_sources_test`, `index_completeness_test`, `invocation_lint_test`, `io_vocabulary_lint_test`, `license_text_pointer_test`, `link_footnote_gate_test`, `lint_test`, `mermaid_render_test`, `notes_prompts_frozen_test`, `notice_verbatim_test`, `pipeline_test`, `post_push_verify_range_test`, `project_classpath_test`, `prompt_record_pairing_test`, `provenance_leaf_law_test`, `quickstart_fresh_test`, `reading_set_budget_test`, `readme_presence_test`, `resource_nesting_test`, `roadmap_lint_test`, `root_alias_completeness_test`, `rulings_lint_test`, `sim_emit_hl7_dependency_test`, `sim_purity_lint_test`, `skill_mirror_currency_test`, `stale_path_test`, `state_derived_test`, `state_residue_test`, `state_staleness_tripwire_test`, `strip_fresh_test`, `structure_currency_test`, `tag_law_test`, `test_source_live_path_lint_test`, `usecases_test`
+Docs-tooling gates: `adr_index_test`, `citation_gate_test`, `cli_tombstone_test`, `demo_exerciser_fresh_test`, `docsgen_test`, `done_pointer_adr_test`, `event_log_doc_test`, `exercised_sources_coverage_test`, `exercised_sources_test`, `index_completeness_test`, `invocation_lint_test`, `io_vocabulary_lint_test`, `license_text_pointer_test`, `link_footnote_gate_test`, `lint_test`, `mermaid_render_test`, `notes_prompts_frozen_test`, `notice_verbatim_test`, `pipeline_test`, `post_push_verify_range_test`, `project_classpath_test`, `prompt_record_pairing_test`, `provenance_leaf_law_test`, `quickstart_fresh_test`, `reading_set_budget_test`, `readme_presence_test`, `resource_nesting_test`, `roadmap_lint_test`, `root_alias_completeness_test`, `rulings_lint_test`, `sim_emit_hl7_dependency_test`, `sim_purity_lint_test`, `skill_mirror_currency_test`, `stale_path_test`, `state_derived_test`, `state_residue_test`, `state_staleness_tripwire_test`, `strip_fresh_test`, `structure_currency_test`, `tag_law_test`, `test_source_live_path_lint_test`, `usecases_test`
 
 ## Registers
 
 | register | count |
 |---|---|
-| ADR files (`notes/adr/NNNN-*.md`) | 145 |
-| roadmap rows (all sections) | 104 |
-| rulings rows | 108 |
+| ADR files (`notes/adr/NNNN-*.md`) | 146 |
+| roadmap rows (all sections) | 105 |
+| rulings rows | 110 |
 | rulings rows superseded | 6 |
 | session records | 150 |
 | archived prompts | 143 |
@@ -68,7 +68,7 @@ Docs-tooling gates: `adr_index_test`, `citation_gate_test`, `cli_tombstone_test`
 | Next | 15 | `OPEN` |
 | Externals | 8 | `EXTERNAL` |
 | Deferred | 21 | `DEFERRED` |
-| Done | 60 | `CLOSED` |
+| Done | 61 | `CLOSED` |
 
 ## Reading sets
 
@@ -79,5 +79,5 @@ Docs-tooling gates: `adr_index_test`, `citation_gate_test`, `cli_tombstone_test`
 | :corpus | 7 | 1799 | 2045 | 2045 | 246 |
 | :docs | 5 | 706 | 785 | 785 | 79 |
 | :judge | 8 | 893 | 1000 | 1000 | 107 |
-| :onboarding | 10 | 1360 | 1530 | 1530 | 170 |
+| :onboarding | 10 | 1371 | 1530 | 1530 | 159 |
 | :sim | 6 | 1245 | 1405 | 1405 | 160 |

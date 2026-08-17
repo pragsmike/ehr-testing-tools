@@ -160,6 +160,20 @@
     (is (= "bin/ehrt help --typo" (:script (:divergence result))))))
 
 ;; ---- check-entry: the two real, already-committed pairs, live ----
+;;
+;; ADR-0148, applying to all NINE live per-row cases below (the two
+;; here, clinic-decade, the five ADR-0129 rows, readme-what-you-get and
+;; custom-emitter): their `:ok?` half is now subsumed by
+;; `ehrt.docs-tooling.exercised-sources-coverage-test`, which runs
+;; `check-all` over `load-registry` itself and so gates every row --
+;; including rows added after this comment was written -- without a
+;; per-row case. Kept, not deleted: the pinned `:readme-count` in each
+;; is NOT subsumed, and it is a distinct signal (a command added to page
+;; AND script together keeps `:ok?` true but moves the count, so the pin
+;; is what makes a coordinated change announce itself). Retire the
+;; `:ok?` assertions, keep or re-site the count pins, at the next
+;; docs-tooling test compaction -- `roadmap.md#strip-fresh-hand-case-
+;; retirement`.
 
 (deftest check-entry-delegates-live-to-quickstart-fresh-test
   (let [rows (reg/load-registry)

@@ -175,6 +175,40 @@
    :script-count 0
    :divergence {:index 0 :readme (first readme-lines) :script ::script-absent}})
 
+(defn- reject-vacuous
+  "ADR-0148: a row whose SOURCE yields zero taught command lines is never
+  reported fresh.
+
+  Three routes reach that state -- the source has no fence of the row's
+  own `:fence-lang`, its fence is entirely comments and blanks, or a
+  `:paired` row's source holds no genuinely paired block -- and in every
+  one of them the extraction returns `[]`. Compared against a script
+  whose marker block is also empty, `diverge-at` finds nothing and the
+  old code answered `:ok? true` with counts 0/0: a freshness check
+  certifying a page-and-script pair that no command has ever passed
+  through.
+
+  That is ADR-0146 U-15's shape reached by a different road. U-15's
+  `bash -c` wrapper is loud -- it diverges, carrying the wrapper text
+  (which is exactly how U-15's own red witness read), and needs no
+  classification of its own. An ABSENT population is the silent one, and
+  a gate that can pass with an empty population is the defect
+  `rulings.md#R-population-closure` is about.
+
+  Applied to every `:extraction` kind uniformly, on the RESULT rather
+  than inside any branch, so `:quickstart-fresh`/`:demo-exerciser-fresh`
+  gain the guard without either delegated namespace being touched --
+  each keeps its own tested contract answerable only to its own test
+  file, per this namespace's own standing note above."
+  [{:keys [readme-count] :as result}]
+  (if (and (:ok? result) (not (pos? (or readme-count 0))))
+    (assoc result
+           :ok? false
+           :divergence {:index 0
+                        :readme ::no-taught-commands
+                        :script ::no-taught-commands})
+    result))
+
 (defn check-entry
   "Runs the freshness check for one exercised-sources register row.
   Returns {:source :script :ok? :readme-count :script-count
@@ -182,11 +216,15 @@
   regardless of which extraction mechanism ran, so a caller (the
   citation gate, a future `make` target) never branches on kind.
   :quickstart-fresh/:demo-exerciser-fresh delegate to those namespaces'
-  own `check` verbatim."
+  own `check` verbatim.
+
+  A row whose source yields no taught commands at all is never reported
+  fresh -- see `reject-vacuous` above (ADR-0148)."
   [{:keys [source script extraction fence-lang marker-open marker-close]}]
   (merge
    {:source source :script script}
-   (case extraction
+   (reject-vacuous
+    (case extraction
      :quickstart-fresh
      (quickstart-fresh/check {:readme-path source :script-path script})
 
@@ -213,10 +251,18 @@
          {:ok? (nil? (diverge-at readme-lines script-lines))
           :readme-count (count readme-lines)
           :script-count (count script-lines)
-          :divergence (diverge-at readme-lines script-lines)})))))
+          :divergence (diverge-at readme-lines script-lines)}))))))
 
 (defn check-all
-  "check-entry over every row in `rows`, as a vector in register order."
+  "check-entry over every row in `rows`, as a vector in register order.
+
+  ADR-0148: this is what gates the register as a POPULATION. Run over
+  `exercised-sources/load-registry` by `ehrt.docs-tooling.exercised-
+  sources-coverage-test`, so a row added to the register is gated the
+  moment it is registered -- no per-row test case, and no test edit at
+  all. It existed unreached from ADR-0129 until then, beside nine
+  hand-written calls to the `check-entry` it wraps; ADR-0146's U-15 is
+  what that costs (`rulings.md#R-exercised-implies-gated`)."
   [rows]
   (mapv check-entry rows))
 

@@ -257,3 +257,9 @@ Appended by the session that takes the ruling, not held to arc close.
   ADR-0003
 - **R-staging-hygiene** -- `git diff --cached --stat` is read before every commit and
   anything outside the checkpoint in flight is unstaged first -- ADR-0007
+- **R-register-gated-by-its-own-loader** -- a register that gates a population is covered
+  by ONE test over its own loader, never per-row hand cases: a row must be gated the
+  moment it is registered, with no test edit -- ADR-0148
+- **R-empty-population-is-red** -- a population gate asserts its population is non-empty;
+  "no violations" over zero items is a pass that proves nothing, whether the zero is an
+  empty scan or an empty extraction -- ADR-0148

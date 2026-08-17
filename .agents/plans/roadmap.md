@@ -41,12 +41,6 @@ rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
   drift silently and did. Registered, not fixed; proposed shape is a `docsgen`
   target plus the CI freshness diff every other generated surface gets.
   Candidate for review 4's D5. ADR-0142.
-- OPEN **[exercised-row-gate-closure]** PRIORITY 7 -- nothing asserts that EVERY
-  `exercised-sources.edn` row has a live `check-entry` freshness case, so the
-  next row added can go ungated silently, as one of nine already had. Wanted: a
-  coverage test over the register per `rulings.md#R-population-closure`, not
-  more hand-written cases. Evidence and the two-layered cause in ADR-0146's
-  U-15.
 - OPEN **[manual-dimension-5]** PRIORITY 8 -- manual-review run 2 passed with
   warns, and dimension 5 (running-example continuity) stays WARN as the manual's
   one standing open row: `ed-tuesday` is HL7v2-only and structurally cannot
@@ -77,6 +71,12 @@ rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
   deliberately not taken; it sits here rather than in Deferred because a
   Deferred row owes a revisit trigger and this one has none yet. Resolving it
   updates this row and OPEN-4 together. ADR-0136 finding D7-3(b).
+- OPEN **[strip-fresh-hand-case-retirement]** PRIORITY 16 -- the nine live
+  per-row `check-entry` cases in `strip_fresh_test.clj` had their `:ok?` half
+  subsumed by `exercised_sources_coverage_test` (ADR-0148) and are kept, not
+  deleted, this session. Their pinned `:readme-count`s are NOT subsumed and
+  carry a real distinct signal, so the retirement is judgement about where the
+  pins should live, not a deletion. Next docs-tooling test compaction.
 
 ## Externals (author-only)
 - EXTERNAL **[ci-failure-email]** -- enable GitHub's workflow-failure
@@ -296,3 +296,8 @@ Rows here are LIVE, each owing a revisit trigger in its own token.
   generated, the roadmap and rulings registers under row contracts, the
   continuity register split generated/hand-owned/attic'd. `:onboarding` 3,240 ->
   1,530 by ratchet across the arc.
+- CLOSED 2026-08-17 ADR-0148 **[exercised-row-gate-closure]** -- `check-all` over
+  `load-registry` gates the register as a population, so a row is gated the
+  moment it is registered. Nine hand cases replaced by one test; the dual added
+  (a cited or existing exerciser must be a row); and a zero-command source, which
+  reported fresh over an empty comparison, no longer can.
