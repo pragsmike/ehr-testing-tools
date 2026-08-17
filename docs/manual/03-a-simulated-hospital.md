@@ -135,3 +135,40 @@ section 4. This manual won't re-teach that formalism; the two-spaces
 story above is everything you need to read `ed-tuesday`'s own traffic
 correctly, and the link is there for when you want the proof underneath
 it.
+
+## The log underneath every message
+
+`GT` is not just a letter in a diagram. It is a file you can have, and
+the same engine that rendered those two accents will hand you the log
+itself:
+
+```bash
+bin/ehrt sim run --seed 42 --patients 5 --format ground-truth
+```
+
+That prints the bare EDN vector — one map per fact, in run order, with
+`:t` an integer of seconds since the run began. Copied verbatim from
+[Write your own emitter from the event log](../use-cases/custom-emitter-from-the-event-log.md),
+never composed for the occasion, the same way this chapter's own
+`generate sim` strip is copied from `ed-tuesday`'s README.
+
+This matters beyond curiosity, and it is the practical form of the
+founding idea above. If your own system speaks a format this workspace
+doesn't ship — a proprietary interface, an internal schema, a vendor's
+flat file — the log is where you start, because it is a **published,
+versioned contract** rather than an internal shape that happens to be
+printable. [`formats.md`](../formats.md#the-event-log)'s "The event log"
+is that contract: twenty-one event kinds, closed, with the keys each one
+carries and one real example each, all generated from a committed
+schema. Every run's `manifest.edn` records the `:event-schema-version`
+it was produced under, so a log always says which version of the
+contract made it.
+
+The use-case page above walks the whole path and links a worked example
+emitter that depends on nothing off this repo's classpath. That last
+part is the demonstration, not a detail: an example that needed our code
+to run would prove the opposite of what it claims.
+
+One signpost, because the next chapters invite the confusion: Chapter 8
+is about your own **data** arriving. This is your own **format** going
+out — the other direction entirely.

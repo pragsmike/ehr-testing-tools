@@ -20,11 +20,13 @@ name; see the ADR for the prior filename this superseded.
 This is the canonical audience register for this workspace's
 user-facing docs — [`docs/README.md`](../README.md) routes readers to
 an entry path keyed off these segments, rather than defining its own.
-Five segments arrive here with different on-ramps (pared from eight,
+Six segments arrive here with different on-ramps (pared from eight,
 2026-08-12, `notes/ADRs.md` ADR-0119, R4 — the header itself had drifted
 to "Seven" three segments behind actual count even before this paring;
 every segment folded away is named at its fold site below, its real
-content relocated rather than deleted):
+content relocated rather than deleted; grown back to six 2026-08-17,
+`notes/ADRs.md` ADR-0146, by the one segment a cold walk found this
+register had never carried — segment 6, the emitter author):
 
 1. **Guide readers, arriving method-first.** They've read (or are
    reading) the guide's account of corpus construction and conformance
@@ -115,6 +117,45 @@ content relocated rather than deleted):
    generation rides on Clojars/Maven Central coordinates that don't
    exist before that release (see "Go-public gate vs. first release"
    below). This segment is mostly deferred by design, not neglect.
+6. **The emitter author, arriving with a target format in hand.** They
+   run a hospital-adjacent system with its own message format and want
+   this workspace's simulated traffic in *that* format. Added
+   2026-08-17 (`notes/ADRs.md` ADR-0146) because a cold walk of every
+   entry surface as this actor found the register had no row for them,
+   and therefore neither did any routing surface keyed off it —
+   [`docs/README.md`](../README.md) says explicitly that it routes off
+   this register rather than defining its own paths, so a missing
+   segment here is a missing path everywhere.
+
+   **Distinct from segment 4 in both directions**, which is why folding
+   it in there was considered and rejected: segment 4 never runs the CLI
+   and *reads what a run produced* (`report.edn`, `manifest.edn`,
+   lineage records), while this segment runs `ehrt sim run` once and
+   then writes **code** — an emitter — against a contract. Distinct from
+   segment 3 too: the code they write lives in their own repo, not this
+   one. They are not contributing an emitter here, and none of this
+   workspace's contribution surface is involved.
+
+   **Entry path**, stated because a registered audience without one is
+   exactly what the walk found: the root
+   [`README.md`](../../README.md)'s "Where to start" third branch →
+   [`docs/use-cases/custom-emitter-from-the-event-log.md`](../use-cases/custom-emitter-from-the-event-log.md)
+   (the path end to end, with a worked emitter) →
+   [`docs/formats.md`](../formats.md#the-event-log)'s "The event log"
+   (the contract: 21 closed event kinds, per-kind keys, one real example
+   each, generated from `event-schema.edn`). The narrative option is the
+   manual's [Chapter 3](../manual/03-a-simulated-hospital.md), "The log
+   underneath every message".
+
+   What this segment needs, distinct from segment 4's own: a
+   **versioned** contract rather than a described shape
+   (`:event-schema-version` in every run's manifest, so a log carries
+   the version that produced it); a worked example that depends on
+   nothing off this repo's classpath, because one that needed our code
+   would prove the opposite of what it claims; and an honest answer to
+   *"how do I know my emitter is complete"* — the closed 21-kind
+   vocabulary, checkable against their own log with
+   [`bin/event-census`](../../bin/event-census).
 
 ## The constellation
 

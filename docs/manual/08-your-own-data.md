@@ -11,6 +11,17 @@ you *can* do is give it the same provenance discipline this workspace
 gives its own output, catalog it honestly as foreign, and hold it
 against expectations you state explicitly.
 
+**One disambiguation first, because this chapter's title invites it.**
+This chapter is about your own *data* arriving — a corpus somebody else
+produced, which you catalog, check, and watch over time. It is not about
+your own *format*. If what you have is a target shape you need this
+workspace's traffic rendered **into**, that is the opposite direction
+and it has its own path:
+[Chapter 3's "The log underneath every message"](03-a-simulated-hospital.md#the-log-underneath-every-message)
+for the narrative, and
+[Write your own emitter from the event log](../use-cases/custom-emitter-from-the-event-log.md)
+for the worked path.
+
 ## Cataloging what you didn't generate
 
 `ehrt corpus intake` is the front door for a corpus you didn't

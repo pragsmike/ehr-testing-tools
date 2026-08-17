@@ -173,6 +173,19 @@ jump to the Quickstart below. If you'd rather have an AI assistant
 install and drive this for you, [`SETUP.md`](SETUP.md) contains a
 copy-paste prompt that walks it through everything.
 
+**I want simulated traffic in my own format** — a proprietary
+interface, an internal schema, a vendor's flat file. Every message this
+workspace emits is a projection of one **ground-truth event log**, and
+that log is a published, versioned contract you can render yourself
+instead of reverse-engineering our emitters. One command shows it:
+`bin/ehrt sim run --seed 42 --patients 5 --format ground-truth`.
+[`docs/use-cases/custom-emitter-from-the-event-log.md`](docs/use-cases/custom-emitter-from-the-event-log.md)
+is the path end to end, with a worked example emitter that depends on
+nothing in this repo;
+[`docs/formats.md`](docs/formats.md#the-event-log) is the contract
+itself; and the manual's
+[Chapter 3](docs/manual/03-a-simulated-hospital.md) tells it as a story.
+
 **I want to maintain or extend this workspace** — start at
 [`docs/dev/architecture.md`](docs/dev/architecture.md) and read
 [`AGENTS.md`](AGENTS.md) before your first commit.

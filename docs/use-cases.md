@@ -7,6 +7,21 @@ What you can do with this repo, formally: one entry per use case, each anchored 
 
 Each case's own page answers **what do I type** as well as what you get. Every command in a **You type:** strip was run, once, locally, before it was committed here -- see the commit that added it for the dated evidence. Where a case has no strip, it is because this repo genuinely doesn't drive that case end to end (an `{external: true}` stage is yours to run, or the case is `planned`); those cases say so rather than showing an invocation that has never run. Strips use the same `bin/ehrt ...` convention as [README.md](../README.md)'s Quickstart, and `$UPPERCASE` names mark values you supply. For what a flag does see [cli.md](cli.md) (or `ehrt help <group>`), for operator ids [operators.md](operators.md), for locator syntax [locators.md](locators.md), for reading a verdict [judge-calibration.md](judge-calibration.md), and for the shape of what lands on disk [formats.md](formats.md).
 
+## Start here
+
+One question each, in the words a reader tends to arrive with. The full catalog follows.
+
+| If this is you | Start here |
+|---|---|
+| I need realistic FHIR test data and don't want to hand-author it | [Generate conforming synthetic data](use-cases/generate-conforming-data.md) |
+| I need deterministic HL7v2 hospital traffic (admits, transfers, churn) | [Generate deterministic sim (HL7v2) traffic](use-cases/generate-sim-traffic.md) |
+| I need deliberately broken data, to prove my own checks catch it | [Generate controlled-fault data](use-cases/generate-controlled-fault-data.md) |
+| Somebody handed me a corpus and I need it judged | [Judge user-supplied data: intake -> gate -> report](use-cases/judge-user-supplied-data.md) |
+| The thing I'm testing is a transform this repo doesn't implement | [Black-box transform surround](use-cases/black-box-transform-surround.md) |
+| I have my own message format and need this traffic in it | [Write your own emitter from the event log](use-cases/custom-emitter-from-the-event-log.md) |
+
+## Every case
+
 - [Generate conforming synthetic data](use-cases/generate-conforming-data.md) -- Teams needing realistic FHIR test data without hand-authoring it, for any downstream use they choose.
 - [Generate deterministic sim (HL7v2) traffic](use-cases/generate-sim-traffic.md) -- Teams wanting deterministic, seeded HL7v2 hospital traffic (boarding, churn, cancellations, merges) as a corpus, with no cataloging step required first.
 - [Play a generated corpus back over time](use-cases/play-a-generated-corpus-back-over-time.md) -- Teams wanting to watch, demo, or load-test against hospital traffic paced the way it actually happened, not delivered all at once.

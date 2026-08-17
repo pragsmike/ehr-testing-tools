@@ -25,6 +25,14 @@ writes EDN to `r.edn` and prints JSON to stdout, and the two are *not*
 the same shape — the file has no `status` wrapper. To get JSON on disk,
 redirect stdout.
 
+One more shape this page carries, and it is not a report: the
+**ground-truth event log** — `ehrt sim run --format ground-truth`'s own
+output, and the `events.edn` beside a generated sim corpus. **If you came
+here to render simulated traffic into a format this project does not
+ship, skip straight to [The event log](#the-event-log)**; that section is
+the contract you want, and everything between here and it is about
+reports.
+
 See [cli.md](cli.md) for which commands take `--report` and `--json`.
 
 ---

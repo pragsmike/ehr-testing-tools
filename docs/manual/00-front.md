@@ -99,4 +99,4 @@ run the command, you read the real output, you draw the conclusion;
 this manual doesn't ask you to take a claim on faith it could instead
 let you witness yourself.
 
-[^featured-placement]: `.agents/rulings.md`, "From ADR-0112," "Batch-straddle documentation placements" — the author's own charter, verbatim: "featured prominently in the tool user guide."
+[^featured-placement]: `notes/adr/0112-batch-straddle-recording.md`, "From ADR-0112," "Batch-straddle documentation placements" — the author's own charter, verbatim: "featured prominently in the tool user guide." (Cited as `.agents/rulings.md` until 2026-08-17, when that register became standing-rules-only and this block moved verbatim into the ADR that owns it.)

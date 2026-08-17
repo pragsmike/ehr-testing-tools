@@ -120,7 +120,9 @@ versioned source. See [`docs/dev/notation.md`](dev/notation.md).
 **CDA / C-CDA.** Clinical Document Architecture — HL7's XML document
 standard for clinical summaries (Consolidated CDA is the US
 implementation). A *state-based* format: a snapshot document, not an
-event stream. A planned emitter here.
+event stream. A planned emitter here — and, since the **Event log**
+became a published contract, one nobody need wait for: see **Emitter**
+(corrected in place 2026-08-17, same pass).
 
 **Census.** How many patients occupy a unit right now. Census pressure
 against capacity is what makes boarding and diversion emerge in this
@@ -211,9 +213,15 @@ future model; today full exhaustion is a structured error.
 **Emitter.** A pure function from the ground-truth log (or state
 history) to a wire format. HL7v2 messages and FHIR resources are both
 built emitters over the same truth, property-tested against each
-other (see **Coherence property**); CDA is a still-planned emitter.
+other (see **Coherence property**); CDA is a still-planned emitter *of
+this workspace's own*. **A consumer does not have to wait for one**
+(corrected in place 2026-08-17, when a cold walk found this entry read
+as "wait for us to build it"): the **Event log** both built emitters
+read is a published, versioned contract, so an emitter for a format this
+workspace does not ship is something you write yourself —
+[Write your own emitter from the event log](use-cases/custom-emitter-from-the-event-log.md).
 "Formats are just emitters of the patient state machine" is sim's
-founding sentence.
+founding sentence, and it cuts both ways: yours counts too.
 
 **Encounter.** *In clinical/EHR usage:* a discrete interaction between
 patient and health system (a visit, a hospitalization). *Here:* the
@@ -234,6 +242,17 @@ fact about the simulated world ("patient P admitted to bed B at t").
 reports (the A01 in ADT^A01). The two align on purpose, but the
 ground-truth log also contains events that never become messages
 (e.g. `:step-rejected`).
+
+**Event log.** The user-facing name for the **Ground-truth log** below,
+and the name its contract is published under. `ehrt sim run --format
+ground-truth` is how you get one;
+[`formats.md`](formats.md#the-event-log)'s "The event log" is the shape
+— twenty-one closed event kinds, the keys each carries, one real example
+each, generated from a committed schema — and every run's `manifest.edn`
+records the **Schema version** it was produced under. If you need
+traffic in a format this workspace does not ship, write your emitter
+against this rather than against our HL7v2 or FHIR output:
+[Write your own emitter from the event log](use-cases/custom-emitter-from-the-event-log.md).
 
 **Event sourcing.** The architecture where an immutable event log is
 the authoritative record and all state is derived by replaying it. See
@@ -283,7 +302,11 @@ semantics. See
 **Ground-truth log.** The simulator's primary output and single
 source of truth[^sim-adr-0002]: a time-ordered, immutable sequence of events
 describing everything that happened in a run. Messages, state
-snapshots, and test assertions all derive from it. See
+snapshots, and test assertions all derive from it. Its shape is a
+**public, versioned contract**, not an internal detail — see **Event
+log** above for the consumer's own route into it, and
+[`formats.md`](formats.md#the-event-log) for the contract itself. For
+*why* the architecture is shaped this way,
 [`event-sourcing.md`](../components/sim/docs/event-sourcing.md).
 
 **History / horizon.** The two phases of running a GMF module for one
@@ -457,6 +480,15 @@ which bed or attending — while *truth space* is `decide`/`evolve`
 computing what a capacity-bounded hospital actually did. Nothing in
 script space can write truth. See
 [`trajectory-computation.md`](../components/sim-trajectory/docs/trajectory-computation.md).
+
+**Schema version.** `:event-schema-version`, recorded in every `sim
+run`'s own `manifest.edn`: which version of the **Event log** contract
+produced that log. Additive change — a new event kind, or a new
+*optional* key on an existing kind — does not bump it; anything else
+does, and a key or kind slated for removal is marked deprecated for one
+minor release first. So a log always carries the version of the contract
+it was produced under, and a consumer can tell a contract *change* from
+a contract *break* ([`formats.md`](formats.md#the-event-log)).
 
 **Seam.** A designated clean stopping point in a work session: if
 budget runs out, everything before the seam commits green and the rest

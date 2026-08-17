@@ -245,7 +245,7 @@ Runs one deterministic simulation and returns its ground truth, manifest, and su
 | `--at` | — | with --emit fhir: seconds from run start to snapshot (integer, default: end of run) |
 | `--churn` | `false` | turn churn on with sensible defaults |
 | `--config` | — | path to an EDN file carrying the data-heavy engine keys with no flag of their own (:pathway/:pathways/:order-profiles/:churn-profile/:site-profile/:modules/...) |
-| `--format` | — | "er7": bare wire messages to stdout (requires --emit hl7). "ground-truth": the bare ground-truth EDN vector -- pipe straight into `ehrt sim check`. Default: the full EDN envelope; --json works as always. |
+| `--format` | — | "er7": bare wire messages to stdout (requires --emit hl7). "ground-truth": the bare ground-truth EDN vector -- the PUBLIC, VERSIONED contract both built emitters read, so write your own emitter against it for a format we don't ship (contract: docs/formats.md "The event log"; worked path: docs/use-cases/custom-emitter-from-the-event-log.md). Pipes straight into `ehrt sim check` too. Default: the full EDN envelope; --json works as always. |
 
 ### `ehrt sim check`
 

@@ -60,6 +60,25 @@ or check it against your own expectations.
    verdicts and findings in bulk, and what "no-verdict" means
    operationally.
 
+## I have my own format
+
+You need this traffic in a shape this workspace doesn't ship — a
+proprietary interface, an internal schema, a vendor's flat file. You
+don't need our emitters; you need the log underneath them.
+
+[`use-cases/custom-emitter-from-the-event-log.md`](use-cases/custom-emitter-from-the-event-log.md)
+is the path end to end: one command for the log, a worked example
+emitter, and a way to check your own coverage.
+[`formats.md`](formats.md#the-event-log)'s "The event log" is the
+contract it's written against — 21 closed event kinds, generated from a
+committed schema. The narrative version is the manual's
+[Chapter 3](manual/03-a-simulated-hospital.md), "The log underneath
+every message".
+
+This is a different audience from "Downstream data consumer" below, and
+the difference is worth a sentence: that reader never runs the CLI and
+reads what a run *produced*; you run it once and then write code.
+
 ## Downstream data consumer
 
 You read `report.edn`, `manifest.edn`, or lineage records — via

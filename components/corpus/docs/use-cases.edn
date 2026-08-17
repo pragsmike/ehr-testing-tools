@@ -16,6 +16,30 @@
 ;; repo doesn't fully support yet -- stated honestly in :get, not
 ;; smoothed over).
 {:schema-version 1
+ ;; The "Start here" table (ADR-0146, finding U-9). Rendered above the
+ ;; full catalog by ehrt.docs-tooling.usecases/render-start-here-md;
+ ;; every :case must name a real case id or the document is INVALID.
+ ;;
+ ;; Ordered by how many readers each question serves, not by how much
+ ;; any one of them needed signposting -- the emitter author's row is
+ ;; last on purpose. A "start here" table that led with the rarest
+ ;; actor would be dishonest signposting for everyone else; what fixes
+ ;; U-9 is that the first screen is six scannable questions instead of
+ ;; twenty-two audience sentences, and that this actor ALSO has direct
+ ;; routes from README's "Where to start" and docs/README.md.
+ :start-here
+ [{:question "I need realistic FHIR test data and don't want to hand-author it"
+   :case :generate-conforming-data}
+  {:question "I need deterministic HL7v2 hospital traffic (admits, transfers, churn)"
+   :case :generate-sim-traffic}
+  {:question "I need deliberately broken data, to prove my own checks catch it"
+   :case :generate-controlled-fault-data}
+  {:question "Somebody handed me a corpus and I need it judged"
+   :case :judge-user-supplied-data}
+  {:question "The thing I'm testing is a transform this repo doesn't implement"
+   :case :black-box-transform-surround}
+  {:question "I have my own message format and need this traffic in it"
+   :case :custom-emitter-from-the-event-log}]
  :cases
  [{:id :generate-conforming-data
    :title "Generate conforming synthetic data"
@@ -473,11 +497,18 @@
             "# produces. Every shipped emitter is a projection of it."
             "bin/ehrt sim run --seed 42 --patients 5 --format ground-truth > out/custom-emitter/events.edn"
             ""
-            "# A worked example emitter, ~40 lines, depending on nothing in this"
-            "# repo -- which is the point: if it needed our code, the log would not"
-            "# really be a consumable contract."
-            "bin/example-custom-emitter out/custom-emitter/events.edn"]
-    :note "The contract is [formats.md, \"The event log\"](../formats.md#the-event-log) -- 21 event kinds, per-kind keys, and one real example each, all generated from the committed schema at [`event-schema.edn`](../../components/sim-engine/resources/sim-engine/event-schema.edn). Read that page's first subsection before writing anything: the log's sharpest edge is that `:registered` events carry nested `:pre-horizon-facts` whose entries have an `:event` key of their own, four of whose values collide with real log kinds. Iterate the top-level vector; do not walk the tree. The example emitter at [`bin/example-custom-emitter`](../../bin/example-custom-emitter) is a teaching artefact, not a feature -- its pipe-delimited format is deliberately useless, so the only interesting thing about it is the seam. It also does the thing a real custom emitter most needs to do: it reports how many events it did *not* translate, rather than dropping them silently.\n\nThe contract is versioned. Every run's `manifest.edn` records `:event-schema-version`, so a log always carries the version of the contract that produced it; additive change does not bump it, anything else does."}
+            "# A worked example emitter, ~37 lines of Clojure, depending on nothing"
+            "# in this repo -- which is the point: if it needed our code, the log"
+            "# would not really be a consumable contract. The mapping code you"
+            "# actually want to read is bin/example-custom-emitter-src/emitter.clj;"
+            "# this is its launcher."
+            "bin/example-custom-emitter out/custom-emitter/events.edn"
+            ""
+            "# Which kinds does YOUR log actually contain? This tabulates the"
+            "# vocabulary and per-kind keys from the emitted EDN -- so you can diff"
+            "# what you handled against what arrived, rather than guessing."
+            "bin/event-census out/custom-emitter/events.edn"]
+    :note "**The one thing a real emitter must do: count what it did not translate.** The example below prints that count, and it is the single most load-bearing habit on this page. An emitter that silently drops kinds it doesn't recognise looks identical, downstream, to one that handled everything -- until the log gains a kind and nobody notices for a quarter. Count the skips, log them, and alert on a kind you've never seen before.\n\n**How you know your emitter is complete.** There are exactly 21 event kinds and the set is closed, so an unknown `:event` value is a contract violation rather than something to skip past. `bin/event-census` (the third command above) tabulates the vocabulary and per-kind keys out of *your own* emitted log rather than out of our schema -- deliberately, so it still works on a log produced by a different version of this repo. Diff its kind list against the kinds you handle: that difference is your remaining work.\n\n**The contract** is [formats.md, \"The event log\"](../formats.md#the-event-log) -- all 21 kinds, per-kind keys, and one real example each, generated from the committed schema at [`event-schema.edn`](../../components/sim-engine/resources/sim-engine/event-schema.edn). Read that page's first subsection before writing anything: the log's sharpest edge is that `:registered` events carry nested `:pre-horizon-facts` whose entries have an `:event` key of their own, four of whose values collide with real log kinds. Iterate the top-level vector; do not walk the tree.\n\n**The contract is versioned.** Every run's `manifest.edn` records `:event-schema-version`, so a log always carries the version of the contract that produced it; additive change (a new kind, a new optional key) does not bump it, anything else does, and a kind or key slated for removal is marked deprecated for one minor release first.\n\n**The example, and what it is for.** [`bin/example-custom-emitter`](../../bin/example-custom-emitter) proves the *seam* and nothing else: its pipe-delimited format is deliberately useless, so the only interesting thing about it is that it works at all without our code. Read the mapping in [`bin/example-custom-emitter-src/emitter.clj`](../../bin/example-custom-emitter-src/emitter.clj) -- ~37 lines; the `bin/` entry is a one-line launcher, not the emitter. It depends on nothing in this repo, which is the demonstration: one that needed our classpath would prove the opposite of what it claims."}
    :equations ["generator-config × sim-engine → event-log  [EngineExecute]"
                "event-log × custom-emitter → proprietary-datum  [Emit]"]}
 

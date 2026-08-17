@@ -227,3 +227,65 @@
 
 (deftest cases->pages-errors-loudly-on-a-missing-mermaid-entry-test
   (is (thrown? Exception (usecases/cases->pages [sample-case] {}))))
+
+;; ---- the "Start here" actor table (ADR-0146, finding U-9) ----
+;;
+;; The emitter author's own cold walk found the catalog is a flat list of
+;; twenty-two undifferentiated audience sentences, so a reader with ONE
+;; question reads all twenty-two to find their row -- theirs was row 19.
+;; These tests hold the fix's contract: rows are DATA, every row's :case
+;; must RESOLVE (a table that routes to a nonexistent page is worse than
+;; no table), and the table renders above the full list.
+
+(deftest start-here-row-requires-a-question-and-a-case-test
+  (is (usecases/valid-start-here-row? {:question "I have my own format" :case :sample-case}))
+  (is (not (usecases/valid-start-here-row? {:question "no case"})))
+  (is (not (usecases/valid-start-here-row? {:case :sample-case})))
+  (is (not (usecases/valid-start-here-row? {:question "case must be a keyword" :case "sample-case"}))))
+
+(deftest start-here-is-optional-so-a-minimal-document-stays-valid-test
+  (is (usecases/valid? {:schema-version 1 :cases [sample-case]})))
+
+(deftest start-here-rows-must-name-a-real-case-id-test
+  (testing "a row naming a present case is valid"
+    (is (usecases/valid? {:schema-version 1
+                          :cases [sample-case]
+                          :start-here [{:question "Q" :case :sample-case}]})))
+  (testing "a row naming a case that does not exist is REJECTED, not silently dropped"
+    (is (not (usecases/valid? {:schema-version 1
+                               :cases [sample-case]
+                               :start-here [{:question "Q" :case :no-such-case}]})))))
+
+(deftest committed-use-cases-edn-declares-a-start-here-table-whose-rows-all-resolve-test
+  (let [data (edn/read-string (slurp "components/corpus/docs/use-cases.edn"))
+        ids (set (map :id (:cases data)))]
+    (is (seq (:start-here data)) "the committed catalog declares a Start here table")
+    (doseq [{:keys [question] c :case} (:start-here data)]
+      (is (contains? ids c) (str "Start here row " (pr-str question) " routes to unknown case " c)))))
+
+(deftest committed-start-here-table-carries-the-emitter-authors-own-row-test
+  ;; The acceptance gate for ADR-0146's finding U-9: this actor's own
+  ;; question is a table row on the catalog's first screen, not row 19
+  ;; of a flat list. If a future edit drops it, this fails by name.
+  (let [data (edn/read-string (slurp "components/corpus/docs/use-cases.edn"))]
+    (is (some #(= :custom-emitter-from-the-event-log (:case %)) (:start-here data)))))
+
+(deftest render-start-here-md-is-empty-when-no-rows-are-declared-test
+  (is (= "" (usecases/render-start-here-md {:cases [sample-case]}))))
+
+(deftest render-start-here-md-links-each-row-to-its-cases-own-page-test
+  (let [md (usecases/render-start-here-md
+             {:cases [sample-case]
+              :start-here [{:question "I have my own format" :case :sample-case}]})]
+    (is (str/includes? md "I have my own format"))
+    (is (str/includes? md "[Sample Case](use-cases/sample-case.md)"))))
+
+(deftest index-puts-the-start-here-table-above-the-full-case-list-test
+  (let [md (usecases/render-use-cases-index-md
+             {:cases [sample-case]
+              :start-here [{:question "I have my own format" :case :sample-case}]})
+        table-at (str/index-of md "I have my own format")
+        list-at (str/index-of md "- [Sample Case](use-cases/sample-case.md)")]
+    (is (some? table-at))
+    (is (some? list-at))
+    (is (< table-at list-at) "the actor table must come before the flat list, or it fixes nothing")))

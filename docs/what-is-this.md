@@ -70,6 +70,15 @@ Every stage's output is plain FHIR JSON, HL7v2 ER7 text, and EDN
 manifests — readable from Python, SQL, or anything else. Clojure
 inside; no Clojure skills required to use it.
 
+Underneath the two message formats sits the **ground-truth event log** —
+the richest semantic form the simulator produces, and the thing both
+emitters read rather than one deriving from the other. It is a
+published, versioned contract, which means traffic in a format this
+workspace doesn't ship is something you render yourself rather than
+something you wait for us to build
+([use-cases/custom-emitter-from-the-event-log.md](use-cases/custom-emitter-from-the-event-log.md)
+for the path, [formats.md](formats.md#the-event-log) for the contract).
+
 ## Audience
 
 - **Integration engineers** building or configuring interface engines,

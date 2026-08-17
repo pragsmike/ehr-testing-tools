@@ -20,15 +20,28 @@ mkdir -p out/custom-emitter
 # produces. Every shipped emitter is a projection of it.
 bin/ehrt sim run --seed 42 --patients 5 --format ground-truth > out/custom-emitter/events.edn
 
-# A worked example emitter, ~40 lines, depending on nothing in this
-# repo -- which is the point: if it needed our code, the log would not
-# really be a consumable contract.
+# A worked example emitter, ~37 lines of Clojure, depending on nothing
+# in this repo -- which is the point: if it needed our code, the log
+# would not really be a consumable contract. The mapping code you
+# actually want to read is bin/example-custom-emitter-src/emitter.clj;
+# this is its launcher.
 bin/example-custom-emitter out/custom-emitter/events.edn
+
+# Which kinds does YOUR log actually contain? This tabulates the
+# vocabulary and per-kind keys from the emitted EDN -- so you can diff
+# what you handled against what arrived, rather than guessing.
+bin/event-census out/custom-emitter/events.edn
 ```
 
-The contract is [formats.md, "The event log"](../formats.md#the-event-log) -- 21 event kinds, per-kind keys, and one real example each, all generated from the committed schema at [`event-schema.edn`](../../components/sim-engine/resources/sim-engine/event-schema.edn). Read that page's first subsection before writing anything: the log's sharpest edge is that `:registered` events carry nested `:pre-horizon-facts` whose entries have an `:event` key of their own, four of whose values collide with real log kinds. Iterate the top-level vector; do not walk the tree. The example emitter at [`bin/example-custom-emitter`](../../bin/example-custom-emitter) is a teaching artefact, not a feature -- its pipe-delimited format is deliberately useless, so the only interesting thing about it is the seam. It also does the thing a real custom emitter most needs to do: it reports how many events it did *not* translate, rather than dropping them silently.
+**The one thing a real emitter must do: count what it did not translate.** The example below prints that count, and it is the single most load-bearing habit on this page. An emitter that silently drops kinds it doesn't recognise looks identical, downstream, to one that handled everything -- until the log gains a kind and nobody notices for a quarter. Count the skips, log them, and alert on a kind you've never seen before.
 
-The contract is versioned. Every run's `manifest.edn` records `:event-schema-version`, so a log always carries the version of the contract that produced it; additive change does not bump it, anything else does.
+**How you know your emitter is complete.** There are exactly 21 event kinds and the set is closed, so an unknown `:event` value is a contract violation rather than something to skip past. `bin/event-census` (the third command above) tabulates the vocabulary and per-kind keys out of *your own* emitted log rather than out of our schema -- deliberately, so it still works on a log produced by a different version of this repo. Diff its kind list against the kinds you handle: that difference is your remaining work.
+
+**The contract** is [formats.md, "The event log"](../formats.md#the-event-log) -- all 21 kinds, per-kind keys, and one real example each, generated from the committed schema at [`event-schema.edn`](../../components/sim-engine/resources/sim-engine/event-schema.edn). Read that page's first subsection before writing anything: the log's sharpest edge is that `:registered` events carry nested `:pre-horizon-facts` whose entries have an `:event` key of their own, four of whose values collide with real log kinds. Iterate the top-level vector; do not walk the tree.
+
+**The contract is versioned.** Every run's `manifest.edn` records `:event-schema-version`, so a log always carries the version of the contract that produced it; additive change (a new kind, a new optional key) does not bump it, anything else does, and a kind or key slated for removal is marked deprecated for one minor release first.
+
+**The example, and what it is for.** [`bin/example-custom-emitter`](../../bin/example-custom-emitter) proves the *seam* and nothing else: its pipe-delimited format is deliberately useless, so the only interesting thing about it is that it works at all without our code. Read the mapping in [`bin/example-custom-emitter-src/emitter.clj`](../../bin/example-custom-emitter-src/emitter.clj) -- ~37 lines; the `bin/` entry is a one-line launcher, not the emitter. It depends on nothing in this repo, which is the demonstration: one that needed our classpath would prove the opposite of what it claims.
 
 ```
 generator-config × sim-engine → event-log  [EngineExecute]

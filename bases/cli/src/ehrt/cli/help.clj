@@ -219,7 +219,7 @@
                {:flag "--at" :doc "with --emit fhir: seconds from run start to snapshot (integer, default: end of run)"}
                {:flag "--churn" :doc "turn churn on with sensible defaults" :default "false"}
                {:flag "--config" :doc "path to an EDN file carrying the data-heavy engine keys with no flag of their own (:pathway/:pathways/:order-profiles/:churn-profile/:site-profile/:modules/...)"}
-               {:flag "--format" :doc "\"er7\": bare wire messages to stdout (requires --emit hl7). \"ground-truth\": the bare ground-truth EDN vector -- pipe straight into `ehrt sim check`. Default: the full EDN envelope; --json works as always."}]}
+               {:flag "--format" :doc "\"er7\": bare wire messages to stdout (requires --emit hl7). \"ground-truth\": the bare ground-truth EDN vector -- the PUBLIC, VERSIONED contract both built emitters read, so write your own emitter against it for a format we don't ship (contract: docs/formats.md \"The event log\"; worked path: docs/use-cases/custom-emitter-from-the-event-log.md). Pipes straight into `ehrt sim check` too. Default: the full EDN envelope; --json works as always."}]}
       {:verb "check" :doc "Runs the invariant catalog (capacity/surge-ladder, timestamp-monotone, and friends) over a ground-truth EDN vector read from stdin -- e.g. `ehrt sim run --format ground-truth | ehrt sim check`."
        :flags []}
       {:verb "identifiers" :doc "Config + seed -> the complete EDN inventory of every identifier this run's output would contain (patient-ids, MRNs, visit beds, HL7 control ids, FHIR resource ids, provider NPIs, run-id) -- how you'd find and remove synthetic data that ever reached a real system (docs/simulate-your-facility.md)."
