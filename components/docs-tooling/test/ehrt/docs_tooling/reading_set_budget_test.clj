@@ -71,7 +71,71 @@
             (str set-name " is " actual " lines, over its " budget-lines
                  "-line budget by " (- actual budget-lines)))))))
 
+;; -- guard #3: the ratchet (compression arc session A, ADR-0143) --
+;;
+;; The budget above is a ceiling that moved every time it was hit. Its
+;; own file records the history plainly: a 2026-08-05 note superseding
+;; FOURTEEN in-place bumps, then eleven further dated re-derivations
+;; through 2026-08-16, each one honest, each one raising the number the
+;; gate had just caught. A ceiling that rises on contact measures
+;; growth; it does not resist it.
+;;
+;; So `:budget-lines` gains a ceiling of its own. `.agents/reading-sets-
+;; baseline.edn` holds one integer per set, written by a COMPACTION ADR
+;; at that ADR's own post-compaction measured actuals; a budget may fall
+;; below it freely (compaction is always allowed) but may never exceed
+;; it. A build session that runs out of headroom therefore has exactly
+;; two moves -- compact the set's own paths back under the budget, or
+;; STOP-AND-REPORT -- and no longer has the third one, which is what
+;; happened eleven times.
+
+(def ^:private baseline-path ".agents/reading-sets-baseline.edn")
+
+(defn- read-baseline []
+  (edn/read-string (slurp baseline-path)))
+
+(defn- over-baseline
+  "Sets whose `:budget-lines` exceeds the committed baseline, as
+  `[set-name budget baseline]` triples. A set with no baseline entry is
+  reported separately by the coverage test below, not silently skipped
+  here."
+  [sets baseline]
+  (for [[set-name {:keys [budget-lines]}] sets
+        :let [ceiling (get baseline set-name)]
+        :when (and ceiling (> budget-lines ceiling))]
+    [set-name budget-lines ceiling]))
+
+(deftest no-budget-exceeds-the-committed-baseline-test
+  (testing "every :budget-lines is at or below the ratchet baseline -- a budget may fall, never rise"
+    (let [offenders (over-baseline (read-reading-sets) (read-baseline))]
+      (is (empty? offenders)
+          (str "reading-set budget(s) above the committed baseline in " baseline-path ": "
+               (vec offenders)
+               " -- compact, or bump by compaction ADR -- never in a build session.")))))
+
+(deftest every-set-has-a-baseline-and-every-baseline-names-a-real-set-test
+  (testing "both directions: the ratchet covers every set, and names no set that doesn't exist"
+    (let [sets (set (keys (read-reading-sets)))
+          baseline (set (keys (read-baseline)))]
+      (is (empty? (remove baseline sets))
+          (str "reading set(s) with no entry in " baseline-path ": " (vec (remove baseline sets))
+               " -- an uncovered set has no ceiling at all, which is the state this guard exists to end."))
+      (is (empty? (remove sets baseline))
+          (str baseline-path " names set(s) that no longer exist in " reading-sets-path ": "
+               (vec (remove sets baseline)))))))
+
 ;; -- mechanism-sanity: prove the two checks above actually catch bad data --
+
+(deftest a-budget-above-its-baseline-is-caught-test
+  (is (= [[:onboarding 3200 3105]]
+         (vec (over-baseline {:onboarding {:budget-lines 3200} :docs {:budget-lines 800}}
+                             {:onboarding 3105 :docs 840})))
+      "a set bumped above its baseline is reported; a set comfortably under is not")
+  (is (empty? (over-baseline {:onboarding {:budget-lines 3105}} {:onboarding 3105}))
+      "equality is allowed -- the baseline IS the ceiling, not one below it")
+  (is (empty? (over-baseline {:onboarding {:budget-lines 900}} {:onboarding 3105}))
+      "a budget compacted well below its baseline is always fine -- the ratchet only bites upward"))
+
 
 (deftest missing-paths-catches-a-ghost-test
   (is (= ["components/does-not-exist/ghost.clj"]
