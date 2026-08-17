@@ -681,3 +681,25 @@ verification would have surfaced. Fixed with
 amend rather than added as a follow-up, because a fresh clone *at that
 commit* would otherwise be broken; nothing had been pushed, so no
 published history was rewritten.
+
+### Addendum, 2026-08-17 — the closing `:onboarding` figure was two lines stale
+
+Recorded above and in the session record: `:onboarding` 1524/1665, 141
+lines of headroom. **Measured against the pushed tree it is 1526/1665,
+139 lines of headroom.** The other four are unchanged and correct
+(`:corpus` 1774/2045, `:sim` 1220/1405, `:judge` 868/1000, `:docs`
+681/785); every set is still UNDER budget and no budget moved, so the
+ratchet conclusion is unaffected.
+
+Cause: the figure was measured before Step 4's own commit, and that commit
+then edited `.agents/plans/roadmap.md` twice more — repricing the new row
+from `PRIORITY 7` to `9` and moving it into ascending position after the
+roadmap lint rejected it — for a net two lines this session's own
+measurement predated.
+
+Landed as a dated addendum rather than an edit to the text above, per
+`rulings.md#R-dated-addendum-not-silent-edit`. Worth the paragraph for one
+reason beyond the two lines: a register measurement taken *before* the
+commit that changes the register is not a measurement of anything that
+exists, and this session took one anyway. The close-phase re-measure
+belongs after the last register edit, not before it.

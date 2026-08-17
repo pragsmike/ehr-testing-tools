@@ -53,11 +53,17 @@ actual exactly.
    fixes: actor card, hops-before table, findings U-1..U-14.
 2. `6b8077a` — **docs: the emitter author's path** — the ruled signpost
    fixes across fourteen surfaces, plus the gated `:start-here` table.
-3. (Step 3) — **feat: second worked custom emitter** —
+3. `8b65e9d` — **feat: second worked custom emitter** —
    `bin/example-custom-emitter-jsonl`, its seed-42 fixture, and the
-   exerciser's four new invariants; plus U-15's fix.
-4. (Step 4) — **docs: ADR-0146** — hops before/after, dispositions,
+   exerciser's four new invariants; plus U-15's fix. Amended once before
+   push, for the executable-bits defect disclosed below.
+4. `00d54a8` — **docs: ADR-0146** — hops before/after, dispositions,
    rulings rows, roadmap rows, this record, prompt archive.
+5. (this commit) — the dated addendum correcting the closing
+   `:onboarding` figure, per `rulings.md#R-dated-addendum-not-silent-edit`.
+
+Pushed `d62ed19..00d54a8` in one push; `bin/post-push-verify` recorded
+below. The addendum commit follows it.
 
 ## Red captured, per enforcement test added
 
@@ -145,14 +151,33 @@ pre-existing defect, naming both halves of the cause at once:
   stale-path, structure-currency, invocation-lint, index-completeness and
   cli-tombstone.
 - **Registers**: roadmap lint and rulings lint green.
-- **Final `make test`** and the closing reading-set re-measure: recorded
-  at the close, below.
-- **`bin/post-push-verify`**: recorded at the close, below.
+- **Final `make test`** on the complete, clean tree: `MAKE_EXIT=0`, zero
+  failures and zero errors, **338 blocks / 3,848 tests / 17,422
+  assertions**. Delta from the 3,830/17,354 baseline is +18 tests / +68
+  assertions, which reconciles exactly: nine new deftests (eight for the
+  `:start-here` table, one for the custom-emitter freshness gate), and
+  docs-tooling's tests run under two projects, so each is counted twice.
+  Block count unchanged at 338 because no new test namespace was added.
+- **`bin/post-push-verify d62ed19 00d54a8`**, all three checks: remote tip
+  `00d54a82` matches HEAD; every commit message in range pure ASCII; CI run
+  **32041272457** reported once and not awaited to conclusion (AR-CI-4),
+  status `in_progress` at report time. Not chased further, per
+  `rulings.md#R-ci-watched-not-awaited`: this session's claims are about
+  the docs surfaces and the emitter, not about CI, and no push here carried
+  a known-failing test. The addendum commit that follows becomes the new
+  tip, so its own run is the one the next session's `bin/preflight` will
+  disclose.
 
 ## Close
 
-- Reading sets, re-measured after this session's register rows:
-  `:onboarding` 1524/1665 (141 headroom, down from 164 — the four rulings
-  rows and two roadmap rows), `:corpus` 1774/2045, `:sim` 1220/1405,
-  `:judge` 868/1000, `:docs` 681/785. All under budget; no budget moved.
+- Reading sets, re-measured against the PUSHED tree: `:onboarding`
+  1526/1665 (139 headroom, down from 164 — the four rulings rows and two
+  roadmap rows), `:corpus` 1774/2045, `:sim` 1220/1405, `:judge` 868/1000,
+  `:docs` 681/785. All under budget; no budget moved.
+  CORRECTED: this line first recorded `:onboarding` 1524/141, measured
+  before Step 4's own commit, which then edited the roadmap twice more
+  (repricing the new row to PRIORITY 9 and moving it into ascending order
+  after the lint rejected it) for a net two lines. See ADR-0146's dated
+  addendum — a re-measure taken before the last register edit measures
+  nothing that exists.
 - Closed rows moved to `## Done`: `[emitter-author-ux]`.
