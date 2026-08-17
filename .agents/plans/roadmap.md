@@ -53,12 +53,6 @@ rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
   drift silently and did. Registered, not fixed; proposed shape is a `docsgen`
   target plus the CI freshness diff every other generated surface gets.
   Candidate for review 4's D5. ADR-0142.
-- OPEN **[review-3-tag-unpushed]** PRIORITY 9 -- the repo review 3 arc closed,
-  but its arc tag `stable-20260815-review-3-fixes` at `b96c246` exists only
-  locally: the licence's case (i) needed an author-side CI relay the close's own
-  prompt did not carry, so the fence's STOP was taken and no ruling came back
-  in-session. ADR-0139's Step 0 and mechanical-debt section carry the receipt
-  and the one command that pays it.
 - OPEN **[manual-dimension-5]** PRIORITY 10 -- manual-review run 2 passed with
   warns, and dimension 5 (running-example continuity) stays WARN as the manual's
   one standing open row: `ed-tuesday` is HL7v2-only and structurally cannot
@@ -288,3 +282,6 @@ Rows here are LIVE, each owing a revisit trigger in its own token.
 - CLOSED 2026-08-16 ADR-0142 **[result-clinical-time]**
 - CLOSED 2026-08-16 ADR-0143 **[adr-index-generated]**
 - CLOSED 2026-08-17 ADR-0144 **[roadmap-row-contract]**
+- CLOSED 2026-08-17 b96c246 **[review-3-tag-unpushed]** -- the author pushed
+  `stable-20260815-review-3-fixes`; verified at the ADR-0145 session's own
+  Step 0 as an annotated tag on the remote peeling to `b96c246`.

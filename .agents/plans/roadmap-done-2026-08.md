@@ -2530,3 +2530,18 @@ summarised here; each row is its own text, unedited.
   guarded `slurp-play-input` now; the row's own tripwire — the two
   allowlist entries in `cli_parse_guard_lint_test.clj` — is gone, the
   allowlist mechanism itself retired with them.
+
+## Review-3 arc tag paid -- row retired 2026-08-17 (ADR-0145 Step 0)
+
+The row below is moved VERBATIM out of `.agents/plans/roadmap.md`. It closed
+when the author pushed `stable-20260815-review-3-fixes`; the ADR-0145 session
+verified at its own Step 0 that the remote carries it as an annotated tag
+peeling to `b96c246`. Nothing is summarised here; the row is its own text,
+unedited.
+
+- OPEN **[review-3-tag-unpushed]** PRIORITY 9 -- the repo review 3 arc closed,
+  but its arc tag `stable-20260815-review-3-fixes` at `b96c246` exists only
+  locally: the licence's case (i) needed an author-side CI relay the close's own
+  prompt did not carry, so the fence's STOP was taken and no ruling came back
+  in-session. ADR-0139's Step 0 and mechanical-debt section carry the receipt
+  and the one command that pays it.
