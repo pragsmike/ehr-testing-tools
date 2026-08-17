@@ -1,0 +1,671 @@
+#!/usr/bin/env python3
+"""Compression arc session C (notes/adr/0145-rulings-standing-register.md).
+
+Run ONCE, on 2026-08-17, to make `.agents/rulings.md` what its own header
+has claimed since ADR-0047 and has not been since roughly ADR-0057: a
+register of STANDING RULES ONLY, not a history.
+
+    - **R-<slug>** -- <rule> -- ADR-NNNN [SUPERSEDED-BY R-<slug> (ADR-NNNN)]
+
+gated by `ehrt.docs-tooling.rulings-lint-test`.
+
+Two things happen, and only these two:
+
+  1. Every `## From ...` block leaves the file VERBATIM, appended to the
+     ADR that owns it (an arc block goes to that arc's own close ADR)
+     under a dated heading. Nothing is summarised, nothing is deleted.
+     The file's own current header goes the same way, to ADR-0145.
+  2. The STANDING and SUPERSEDED rulings the census classified become
+     rows, authored from the bullets they replace, each citing the ADR
+     that ruled it. An ARC-LOCAL bullet becomes no row: its text now
+     lives in its own ADR, which is where an execution decision belongs.
+
+The judgement -- which of 181 bullets is a standing rule, which is an
+executed-once decision, which was superseded and by what -- is authored,
+in BULLETS below, each entry carrying the sentence that decides it. What
+is mechanical, and what this script does, is the move and the read-back.
+
+Usage:
+    bin/rulings-migrate-0145 --markdown   # the census, as ADR tables
+    bin/rulings-migrate-0145 --dry-run    # what would be written
+    bin/rulings-migrate-0145              # do it
+    bin/rulings-migrate-0145 --verify     # read every block back out
+
+`--verify` re-reads `.agents/rulings.md` as it was at the pinned base
+commit and asserts each moved block is present as an exact contiguous
+block at its destination NOW. That, not `git diff --numstat`, is the
+instrument: ADR-0144 found a diffstat cannot express a move of this
+shape as an identity, because git renders moved lines that duplicate
+adjacent content as context rather than insertions.
+"""
+
+import os
+import re
+import subprocess
+import sys
+import textwrap
+
+RULINGS = ".agents/rulings.md"
+ADR_DIR = "notes/adr"
+WRAP = 92                 # the register's own wrap; roadmap.md already runs to 107
+BASE = "e0cd075"          # ADR-0144's close; the tree this table is keyed to
+DATED_HEADING = ("### Rulings-register history (moved verbatim from "
+                 "`.agents/rulings.md` by ADR-0145, 2026-08-17)")
+
+# ---------------------------------------------------------------------
+# 1. THE BLOCK TABLE. One entry per `## From ...` block, keyed by its own
+#    start line at BASE and a prefix of that line (both asserted, so a
+#    drifted tree fails loud rather than writing into the wrong place).
+#    `dest` is the ADR that owns the block: a single-ADR block goes to
+#    that ADR, an arc block to that arc's own close ADR.
+# ---------------------------------------------------------------------
+
+B = lambda start, prefix, dest: (start, prefix, dest)
+
+BLOCKS = [
+    B(1,    "# Rulings register",                          "0145"),
+    B(28,   "## From ADR-0043",                            "0043"),
+    B(54,   "## From ADR-0044",                            "0044"),
+    B(69,   "## From ADR-0045",                            "0045"),
+    B(79,   "## From ADR-0046",                            "0046"),
+    B(95,   "## From ADR-0047",                            "0047"),
+    B(112,  "## From ADR-0048",                            "0048"),
+    B(146,  "## From the alignment arc",                   "0055"),
+    B(182,  "## From the tag-law session",                 "0057"),
+    B(202,  "## From the UX arc",                          "0064"),
+    B(220,  "## From the player arc",                      "0068"),
+    B(242,  "## From the vendoring arc",                   "0074"),
+    B(261,  "## From the quality-review arc",              "0080"),
+    B(285,  "## From the fidelity arc",                    "0084"),
+    B(303,  "## From the conviction arc",                  "0089"),
+    B(321,  "## From review 2's rulings",                  "0093"),
+    B(349,  "## From ADR-0098",                            "0098"),
+    B(376,  "## From ADR-0099",                            "0099"),
+    B(391,  "## From ADR-0100",                            "0100"),
+    B(415,  "## From ADR-0101",                            "0101"),
+    B(432,  "## From ADR-0102",                            "0102"),
+    B(465,  "## From ADR-0103",                            "0103"),
+    B(483,  "## From ADR-0104",                            "0104"),
+    B(500,  "## From ADR-0105",                            "0105"),
+    B(513,  "## From ADR-0106",                            "0106"),
+    B(535,  "## From ADR-0107",                            "0107"),
+    B(562,  "## From ADR-0108",                            "0108"),
+    B(598,  "## From ADR-0109",                            "0109"),
+    B(626,  "## From ADR-0110",                            "0110"),
+    B(650,  "## From ADR-0111",                            "0111"),
+    B(682,  "## From ADR-0112",                            "0112"),
+    B(717,  "## From ADR-0113",                            "0113"),
+    B(787,  "## From ADR-0114",                            "0114"),
+    B(812,  "## From ADR-0115",                            "0115"),
+    B(849,  "## From ADR-0116",                            "0116"),
+    B(893,  "## From ADR-0117",                            "0117"),
+    B(913,  "## From ADR-0118",                            "0118"),
+    B(934,  "## From ADR-0119",                            "0119"),
+    B(981,  "## From ADR-0122",                            "0122"),
+    B(1023, "## From ADR-0123",                            "0123"),
+    B(1048, "## From ADR-0125",                            "0125"),
+    B(1110, "## From ADR-0126",                            "0126"),
+    B(1131, "## From ADR-0127",                            "0127"),
+    B(1171, "## From ADR-0128",                            "0128"),
+    B(1192, "## From ADR-0129",                            "0129"),
+    B(1227, "## From ADR-0130",                            "0130"),
+    B(1269, "## From ADR-0131",                            "0131"),
+    B(1294, "## From ADR-0132",                            "0132"),
+    B(1308, "## From ADR-0133",                            "0133"),
+    B(1367, "## From ADR-0134",                            "0134"),
+    B(1413, "## From ADR-0135",                            "0135"),
+    B(1464, "## From ADR-0136 through ADR-0139",           "0139"),
+    B(1579, "## From ADR-0141",                            "0141"),
+    B(1614, "## From ADR-0142",                            "0142"),
+    B(1657, "## From ADR-0143",                            "0143"),
+    B(1703, "## From ADR-0144",                            "0144"),
+]
+
+# ---------------------------------------------------------------------
+# 2. THE CLASSIFICATION. One entry per bullet, at every indent level,
+#    keyed by its own line at BASE. `cls` is STANDING | ARC-LOCAL |
+#    SUPERSEDED; `slug` names the row it becomes (None when it becomes
+#    none); `why` quotes or names the sentence that decides it, against
+#    the register's own header test -- "ongoing rules a future session
+#    must still follow, not one-off execution choices".
+# ---------------------------------------------------------------------
+
+S, A, X = "STANDING", "ARC-LOCAL", "SUPERSEDED"
+C = lambda line, cls, slug, why: (line, cls, slug, why)
+
+BULLETS = [
+    C(30,  S, "intake-front-door", '"Deliberate, not a gap to eventually special-case"'),
+    C(36,  S, "provenance-leaf", '"forbidden forever from depending on anything but `malli`"'),
+    C(41,  S, "sim-facade-frozen", '"stays permanently frozen in surface"'),
+    C(48,  S, "ledger-counting-definition", '"Every future parity/deftest ledger ... states which counting definition it uses"'),
+    C(56,  S, "oracle-script-contract", '"standing script contract"; "closed ADR-0030\'s own J2 limitation structurally"'),
+    C(63,  S, "move-not-improve", '"(AR-P-4, generalized)"; a fix found mid-move "is a FINDING, recorded, never taken"'),
+    C(71,  S, "deferred-rows-live", '"The Deferred section\'s own standing contract"; "rows there are LIVE"'),
+    C(81,  S, "adr-citation-continuity", '"REMAINS the citation target forever"; "No renumbering, ever"'),
+    C(86,  S, "session-narrative-hierarchy", '"explicitly recorded as standing rule"'),
+    C(97,  S, "state-regeneration", '"regenerates this file at each arc close ... never carried forward stale"'),
+    C(101, X, "register-append-contract", 'its own append shape is what ADR-0145 replaces with the row contract'),
+    C(104, S, "mnt-c-retired", '"retired, permanently"; "no future session routes work through" it'),
+    C(121, S, "transcript-not-record", '"only repo artifacts are citable as established fact"'),
+    C(134, X, "stable-tag-author-only", 'its own text: "Superseded 2026-08-06 -- this ruling\'s own final sentence is out of date"'),
+    C(148, S, "dependency-review-cadence", '"Dependency-review cadence, standing"'),
+    C(156, S, "pairing-registry-home", '"the accepted acyclic home ... the design pass starts from there"'),
+    C(159, S, "law-surface-propagation", '"lands on every surface that states the law, in the same session that rules it"'),
+    C(184, S, "tag-law", '"AMENDED 2026-08-06 (AR-T-1, STANDING, superseding AR-R-2\'s final sentence)"'),
+    C(204, S, "two-voices-two-homes", '"Two voices, two homes, standing"'),
+    C(209, S, "errors-name-artifact", '"Errors name their artifact, standing"'),
+    C(213, S, "audit-uses-mechanism", '"Audit evidence uses the mechanism it recommends, standing"'),
+    C(222, S, "tests-build-own-dirs", '"Tests build their own directories, standing [A]"'),
+    C(232, S, "folds-strict-sinks-lenient", '"The two live side by side deliberately"'),
+    C(244, S, "vendored-bytes-are-law", '"Vendored bytes are law"; "an edit-tempting vendored file is STOP-AND-REPORT"'),
+    C(253, S, "population-scale-gate", '"a census verdict is evidence for curation, never a vendoring license"'),
+    C(263, S, "multi-seed-once-flagged", '"Multi-seed-once-flagged, standing"'),
+    C(268, S, "defspec-seed-policy", '"The `defspec` seed policy, standing"'),
+    C(273, S, "io-result-or-loud", '"I/O speaks Result or fails loud, standing"'),
+    C(278, S, "ci-watched-not-awaited", '"CI is watched, never waited on, and commits land green, standing"'),
+    C(287, S, "semantics-predicted-first", '"Semantics changes are predicted before they are made, standing"'),
+    C(296, S, "no-adjacency-diagnosis", '"Plausible-by-adjacency is not a diagnosis, standing"'),
+    C(305, S, "witnessed-rows-only", '"Witnessed rows only, standing [A]"'),
+    C(313, S, "license-granularity", '"Licenses bind at their own granularity, standing [A]"'),
+    C(323, S, "measure-claimed-population", '"Measurements sample the claimed population, standing"'),
+    C(332, S, "horizon-anchors-roadmap", '"horizon notes narrate, the roadmap remembers"'),
+    C(341, S, "post-push-ascii", '"the standing post-push ceremony adds one mechanical line"'),
+    C(354, A, None, '"not standing beyond its own session unless a future author ruling re-confirms it"'),
+    C(365, S, "permission-denied-category", '"Applies to any future component gaining this same missing-vs-unreadable distinction"'),
+    C(380, A, None, 'a one-time relocation target; the tree now IS the decision'),
+    C(384, A, None, '"the ENTIRE tree moves as one subtree-whole `git mv`" -- executed once, ADR-0099'),
+    C(395, A, None, 'an executed adapter design; its semantics live in `plan` and in ADR-0100'),
+    C(403, A, None, 'an executed spool behaviour, in the code and in ADR-0100'),
+    C(410, A, None, '"Nothing else attaches" -- scoped to that one README line'),
+    C(419, S, "user-path-adr-footnoted", '"never stripped" -- the fork resolution itself still governs the user path'),
+    C(419, X, "footnote-append-in-place", 'ADR-0102: "supersedes ADR-0101\'s own append-in-place convention"'),
+    C(425, A, None, '"No code change; this entry is the record" -- one categorization, held in ADR-0101'),
+    C(436, S, "mllp-abandoned", '"abandoned, not merely still-deferred"; "no transport work" follows without a new ruling'),
+    C(448, S, "footnote-marker-only", '"standing law for any future citation this workspace footnotes"'),
+    C(455, S, "footnote-scope-origin-qualified", '"ADR-0101\'s own bare-only scope widens permanently"'),
+    C(469, A, None, '"this session executes the `--board` cadence bugfix only"'),
+    C(474, A, None, '"chartering context only, NOT executed" -- executed as ed-tuesday, ADR-0104'),
+    C(486, A, None, 'a two-part schedule; B stays anchored in the roadmap, not here'),
+    C(494, A, None, 'the shape of one scenario directory, executed ADR-0104'),
+    C(502, A, None, '"The two-session plan" -- B1 executed ADR-0105, B2 assessed ADR-0106'),
+    C(515, A, None, '"It fired" -- the branch this licensed resolved in-session, ADR-0106'),
+    C(537, A, None, '"Phase 1, this session" -- executed, ADR-0107'),
+    C(548, A, None, '"chartering context only, NOT executed"; anchored at `roadmap.md#downstream-latency`'),
+    C(564, A, None, '"Executed as `docs/dev/simulator-architecture.md`" -- one doc, landed'),
+    C(577, X, "user-manual-deferral", 'ADR-0112 read both trigger conditions met and the manual work open'),
+    C(592, S, "dev-docs-not-user-path", '"Dev-docs scope, standing"; "R34 governs, never the footnote-citation discipline"'),
+    C(600, A, None, '"Executed as two pure functions in `ehrt.sim-emit-hl7.emit-hl7`"'),
+    C(611, A, None, 'a verbatim restatement of the ADR-0107 direction already anchored in the roadmap'),
+    C(617, A, None, 'an audit table of what this emitter renders -- a measurement, recorded in ADR-0109'),
+    C(628, A, None, '"Zero `src` changes" -- one demo, landed'),
+    C(634, A, None, '"PENDING AUTHOR RATIFICATION" -- ratified the next session, ADR-0112'),
+    C(644, A, None, 'the shape of one demo config, executed ADR-0110'),
+    C(653, S, "corpus-tools-foreign-corpora", '"Applies to any future corpus-level tool this workspace builds sharing the same ... shape"'),
+    C(663, A, None, '"not deferred, not a second design pass" -- the codec landed, ADR-0111'),
+    C(669, S, "transport-realism-vs-mutation", 'a standing taxonomy: transport simulates CORRECT behaviour, mutation injects INCORRECT'),
+    C(685, A, None, '(a) and the use case landed; (c) is the author\'s own queue, `roadmap.md#guide-ch24-notes`'),
+    C(703, S, "user-manual-opened", '"as OPENING the tool-specific user-manual work. The author did not veto this reading"'),
+    C(720, S, "user-manual-name", '"Standing name going forward for this workspace\'s own user docs"'),
+    C(728, S, "manual-shape", '"chaptered `docs/manual/` as the narrative layer ... never duplicating them"'),
+    C(739, S, "demos-exercised", '"The demos must be known to work, and exercised as documented"'),
+    C(747, A, None, '"Executed by a later session" -- still open at `roadmap.md#audience-register-paring`'),
+    C(755, A, None, 'a five-step sequence, run to completion across ADR-0114 through ADR-0125'),
+    C(769, S, "diagrams-derive-from-data", '"so they cannot drift from what they depict"'),
+    C(774, A, None, '"landed as one doc session (this session)"'),
+    C(789, X, "engine-flake-seed-licence", 'ADR-0122: "never a re-run licensed by a prior seed-specific charter\'s retired scope"'),
+    C(819, S, "out-dir-protected-artifact", '"`--out-dir` means one thing repo-wide"'),
+    C(827, S, "front-door-vs-engine-tier", '"future front-door/engine flag decisions cite this ruling"'),
+    C(836, S, "provenance-wall-clock-exemption", '"the CLASS EXEMPTION is recorded so future ... flags cite it rather than re-litigate"'),
+    C(851, S, "seed-contract-non-negative", '"the seed contract repo-wide is non-negative longs"'),
+    C(862, S, "kernel-result-for-new-guards", '"the standing pattern for future engine-level option validation"'),
+    C(881, S, "audit-callers-on-result-branch", '"Standing lesson for future sessions making the same class of change"'),
+    C(896, S, "no-derivation-through-nondeterminism", '"Applies to any future flag whose only sensible derivation would route through a non-deterministic input"'),
+    C(905, S, "scoped-flag-mismatch-rejected", '"Applies to any future source-scoped or mode-scoped flag mismatch this workspace adds"'),
+    C(916, S, "gate-scan-roots-cover-operator-surfaces", '"Applies to any future doc-drift gate whose own scan roots are found to have a blind spot"'),
+    C(924, S, "examples-are-sourced-verbatim", '"Applies to any future per-group worked-example surface this workspace adds"'),
+    C(945, A, None, 'the manual arc\'s own chapter count, delivered ADR-0119 through ADR-0125'),
+    C(948, A, None, 'a five-session split, run to completion'),
+    C(954, A, None, '"the demo exerciser ... lands at S2" -- landed, ADR-0120'),
+    C(968, A, None, '"so a future session (or the author) can affirm or narrow this reading" -- FINDING F-3, unaffirmed'),
+    C(988, A, None, '"the fix itself is a separate, future, ruled session" -- ran as ADR-0123'),
+    C(995, A, None, '"Scheduled post-manual-arc" -- executed ADR-0127'),
+    C(1004, A, None, 'a clarification of R8 whose standing content is carried by the next bullet'),
+    C(1014, S, "generative-failure-is-new-finding", '"Standing gate policy, repo-wide, effective now"'),
+    C(1031, A, None, '"Executed" -- one checker widened, ADR-0123'),
+    C(1051, A, None, 'two tag payments, made'),
+    C(1061, A, None, 'a deviation found and repaid in-session'),
+    C(1074, A, None, '"Recorded here as the disposition this session actually took"'),
+    C(1089, A, None, '"chartering the sweep as proposed; not executed this session" -- executed ADR-0126'),
+    C(1114, A, None, '"recorded again here since this is the session that actually ran it"'),
+    C(1117, A, None, 'one session-pairing decision, executed'),
+    C(1121, A, None, 'one sweep\'s scope, executed'),
+    C(1127, A, None, 'a status line -- dimension 1 was remediated by ADR-0129 and re-scored by ADR-0134'),
+    C(1136, A, None, '"Executed this session: `bin/preflight`, `bin/tag-ceremony`, ..."'),
+    C(1147, A, None, 'one sweep folded into one session'),
+    C(1152, S, "bin-scripts-one-purpose", '"matching this repo\'s own existing `bin/` one-purpose style ... never one combined ceremony script"'),
+    C(1157, A, None, '"Executed: 238 raw hits across 10 files"'),
+    C(1163, A, None, 'one tag, paid'),
+    C(1174, S, "improve-agent-facing", '"Recorded as a standing directive for the design channel and every future session"'),
+    C(1180, A, None, 'one session\'s place in a queue'),
+    C(1186, S, "dated-addendum-not-silent-edit", '"rather than a silent edit to ADR-0127\'s existing text"'),
+    C(1196, A, None, '"Executed this session: five `bin/` exercisers, ... `ehrt.docs-tooling.citation-gate`"'),
+    C(1207, A, None, 'one erratum, appended'),
+    C(1212, A, None, 'a verbatim restatement of the ADR-0128 directive already rowed'),
+    C(1220, A, None, 'one tag, paid'),
+    C(1231, A, None, '"executed exactly as ruled" -- one fence widening, ADR-0130'),
+    C(1247, A, None, '"executed exactly as ruled" -- a reduced close, its two rows chartered to the roadmap'),
+    C(1273, A, None, '"Executed exactly as ruled" -- the fold set, landed in `gmf.clj`'),
+    C(1282, X, "collision-guard-warn", 'ADR-0133: "ruled DISCHARGED ... collisions are now HANDLED, not merely tolerated-and-announced"'),
+    C(1297, S, "rename-frozen-records-keep-old-name", '"Frozen records ... KEEP the old name; ADR-0132 carries the mapping"'),
+    C(1311, S, "exact-name-resolution", '"every name-valued reference resolves by EXACT raw string through that table, never through `slug`"'),
+    C(1323, A, None, '"ruled DISCHARGED" -- the escalation is not executed; the successor rule is the bullet above'),
+    C(1336, A, None, '"Executed exactly as ruled" -- one interpreter change, ADR-0133'),
+    C(1350, A, None, '"Executed exactly as ruled" -- two dispatch sites, ADR-0133'),
+    C(1370, A, None, 'one review run, made; its runner deviation disclosed in the report'),
+    C(1379, S, "review-actor-split", '"it does not weaken the split" -- a standing reading of the reviewer/actor boundary'),
+    C(1389, A, None, 'one tag slug, accepted'),
+    C(1395, S, "unrelayed-tag-condition-stops", '"The session STOPPED and reported rather than deciding for itself"'),
+    C(1405, A, None, 'one record\'s form, decided once'),
+    C(1416, A, None, '"Micro-arc" -- one converter change, landed'),
+    C(1421, A, None, '"Executed exactly as ruled" -- `classify_types` grows one term'),
+    C(1430, A, None, '"Executed with the channel-recommended colors unadjusted"'),
+    C(1436, A, None, '"Executed exactly as ruled" -- one regeneration, in the same commit'),
+    C(1468, S, "unregistered-request-gets-a-row", '"The standing part is R-2\'s and R-3\'s shape": "visibility first, disposition later"'),
+    C(1468, S, "severity-tracks-mechanism", '"severity tracks the mechanism, not the instance set\'s blast radius"'),
+    C(1484, A, None, 'the parent of the three standing sub-rulings below'),
+    C(1486, S, "arc-closes-in-own-session", '"an arc closes in its own session, with its own tag ... not an appendix to the last fix session"'),
+    C(1491, S, "lapsed-probe-standalone", '"a lapsed probe is chartered standalone, ahead of the review that would otherwise absorb it"'),
+    C(1497, S, "review-cadence-in-adrs", '"repo-review cadence is measured in ADRs, not days"'),
+    C(1506, S, "never-dodge-a-gate-by-population", '"The standing part: ... never to move outside the gate\'s population"'),
+    C(1521, S, "population-closure", '"restated as the arc\'s standing finding"'),
+    C(1532, A, None, 'the parent of eight per-finding dispositions, all executed in ADR-0140'),
+    C(1540, A, None, '"fix the page, one sentence" -- its generalization is already `R-move-not-improve`'),
+    C(1545, A, None, '"fix the page, one line naming the prerequisite"'),
+    C(1550, S, "disclosed-convention-is-a-disposition", '"A disclosed convention is a real disposition"'),
+    C(1556, A, None, '"accept-with-disclosure ... do not vendor it"'),
+    C(1559, S, "out-is-the-only-output-root", '"output under `out/`, the single tool-owned output root"'),
+    C(1562, A, None, '"one sentence turns a surprising exit 2 into a taught expectation"'),
+    C(1565, A, None, '"fix the tool, diagnosability only" -- one seam, fixed'),
+    C(1570, A, None, '"NOT this session\'s work"; handed to `roadmap.md#repo-review-4`'),
+    C(1581, S, "event-log-edn-primary", '"make EDN be primary. JSON can be derived later"'),
+    C(1584, A, None, 'the ordering of two arcs, both since run'),
+    C(1587, S, "event-schema-versioned", '"RULED (a), public and versioned"'),
+    C(1593, S, "schema-source-plus-export-parity", '"Malli schema in `sim-engine` as the source of truth, AND a committed EDN export with a parity test"'),
+    C(1597, A, None, '"no rename this arc" -- the schema and the prose landed'),
+    C(1600, A, None, '"stay register rows" -- they are rows, at `roadmap.md#event-log-shape-defects`'),
+    C(1604, A, None, 'one fence widening, executed as `bin/event-census`'),
+    C(1606, A, None, 'one acceptance, at one step'),
+    C(1609, S, "regex-dialect-stated", '"because a consumer validating in another language is being handed a specific regex flavour"'),
+    C(1616, A, None, 'one session\'s scope and its declared oracle change, executed'),
+    C(1624, A, None, '"RULED (a)" -- one field, rendered; the revisit is at `roadmap.md#downstream-latency`'),
+    C(1630, A, None, '"RULED (a)" -- one field in three shapes, rendered'),
+    C(1640, A, None, '"Results only; ORM byte-frozen" -- a scope collision, resolved in-session'),
+    C(1649, A, None, 'two tags, paid'),
+    C(1659, A, None, 'the arc order this session is the third step of'),
+    C(1662, S, "register-hygiene-at-close", '"Ok on all five" -- guard: the close moves its own closed rows and re-measures every set'),
+    C(1662, S, "budget-stop", '"Ok on all five" -- guard #3: compact or stop, never bump'),
+    C(1662, S, "red-pushed-with-green", '"Ok on all five" -- a red-first commit is pushed with its green successor'),
+    C(1662, S, "anchored-register-edits", '"Ok on all five" -- anchored insertion or replacement, never a slice between anchors'),
+    C(1664, S, "adr-index-generated", '"RULED (a). `notes/ADRs.md` is generated ... CI freshness-gated"'),
+    C(1670, S, "narratives-move-to-owning-adr", '"RULED (a). Each row\'s narrative moved VERBATIM into its own ADR file under a dated heading"'),
+    C(1675, A, None, 'one conditional tag, held then paid; the standing rule is `R-unrelayed-tag-condition-stops`'),
+    C(1684, A, None, 'two deviations from one charter sketch'),
+    C(1693, A, None, 'one charter premise that did not hold; its consequence is this session'),
+    C(1707, S, "roadmap-status-tokens", '"Q1 (a): status tokens, throughout"'),
+    C(1714, S, "roadmap-slug-anchors", '"Q2 (a): slug anchors, and no line-number cites"'),
+    C(1725, S, "roadmap-six-line-cap", '"Q3 (a): six lines a row, maximum"'),
+    C(1727, S, "roadmap-row-destinations", '"Q4 (a): destinations, nothing deleted"'),
+    C(1735, S, "roadmap-priority", '"Q5 (a): `PRIORITY n` on `## Next` rows"'),
+    C(1741, A, None, '"dropped, by census rather than by preference" -- one section, gone'),
+    C(1746, S, "remainder-tokens-the-row", '"A closure that leaves a live remainder is tokened by the remainder"'),
+    C(1752, S, "section-retriage-is-author-judgement", '"re-triaging a row ... is author judgement, not mechanical re-sectioning"'),
+    C(1756, A, None, 'one tag, paid'),
+]
+
+# ---------------------------------------------------------------------
+# 3. THE NEW FILE. The preamble keeps the seed prose's one surviving
+#    sentence VERBATIM (the whole old header is moved to ADR-0145, so
+#    nothing is lost by trimming it here); the rows are authored from
+#    the bullets BULLETS classifies STANDING or SUPERSEDED, in the order
+#    those bullets appear, so the register reads in ruling order.
+# ---------------------------------------------------------------------
+
+PREAMBLE = """# Rulings register -- standing rules only
+
+**One row per standing rule, with the ADR that ruled it.** Verbatim from this file's
+founding header (ADR-0047 AR-C-2): *"It is NOT a history: the ADR files themselves
+(`notes/adr/`) are the narrative and execution record of record; this file exists so a
+cold session can find 'what rule applies going forward' without re-reading forty-plus
+ADRs to separate standing rules from executed-once decisions."* Between ADR-0048 and
+ADR-0144 every block appended here was a history anyway; ADR-0145 moved all 56 of them,
+verbatim, into the ADRs that own them, and made the shape enforceable.
+
+Row contract, gated by `ehrt.docs-tooling.rulings-lint-test`:
+
+    - **R-<slug>** -- <rule> -- ADR-NNNN [SUPERSEDED-BY R-<slug> (ADR-NNNN)]
+
+Slugs are unique file-wide; a rule is cited `rulings.md#R-<slug>`. Three lines a row,
+maximum. A superseded rule KEEPS its row and names its successor -- nothing here is
+deleted. A rule earns a row only if a FUTURE session must still follow it; a decision
+executed once belongs to its own ADR, which is also where every row's reasoning lives.
+Appended by the session that takes the ruling, not held to arc close.
+"""
+
+ROWS = {
+    "intake-front-door": "a sim run enters `ehr corpus intake` as a foreign pipeline's output would, never as a privileged first-party producer",
+    "provenance-leaf": "`ehrt.provenance.*` depends on `malli` and nothing else; an `ehrt.*` require inside it is itself the violation",
+    "sim-facade-frozen": "`ehrt.sim.interface`'s vars, names and arities stay byte-identical; thinning the facade is a separate author-ruled decision",
+    "ledger-counting-definition": "every parity or deftest ledger states which counting definition it uses -- `deftest`-only, or `deftest` plus `defspec`",
+    "oracle-script-contract": "`bin/regression-oracle` resolves a classpath per worktree, equivalence-checks digest sources first, and aborts on an undeclared digest-source diff",
+    "move-not-improve": "a relocation moves equipment and exercises it; a fix found mid-move is a FINDING, recorded, never taken. Prose included",
+    "deferred-rows-live": "`## Deferred` rows are LIVE; one that closes moves with its notes intact, never a closure note left in place of the move",
+    "adr-citation-continuity": "`notes/ADRs.md` stays the citation target forever; ADR numbers are never renumbered",
+    "session-narrative-hierarchy": "the ADR is the sole session narrative, the session record the ceremony log, the roadmap a pointer, the prompt archive provenance",
+    "state-regeneration": "`.agents/state.md` is regenerated at each arc close, every claim re-probed against the live tree",
+    "register-append-contract": "standing rulings only, appended per arc close by the design channel, citing the closing ADR",
+    "mnt-c-retired": "no session routes work through a Windows-mounted clone; a fresh instance is a NEW regression and a STOP-AND-REPORT",
+    "transcript-not-record": "only repo artifacts are citable as fact; anything witnessed solely in a transcript is `[unverified]` until an artifact captures it",
+    "stable-tag-author-only": "tagging remains the author's act alone",
+    "dependency-review-cadence": "`clojure -M:poly libs :outdated` is report-only, run at each arc close and before any publish; upgrades never ride along",
+    "pairing-registry-home": "`judge` is the accepted acyclic home for the mutate-to-judge conviction registry",
+    "law-surface-propagation": "an amendment to standing law lands on every surface stating that law, in the session that rules it",
+    "tag-law": "`stable-*` tags are SESSION acts, under a specific licence or for a verified predecessor point; deferring a licensed one is the deviation. `v*` tags stay AUTHOR ACTION",
+    "two-voices-two-homes": "user surfaces speak operator language; maintainer content lives in source comments and dev docs, relocated never deleted",
+    "errors-name-artifact": "every operational error names the thing it could not find or parse, with a next step; unknown input is rejected by name",
+    "audit-uses-mechanism": "audit evidence uses the mechanism it recommends: resolve paths rather than parse grammar, walk the data the gate walks",
+    "tests-build-own-dirs": "a test builds the directories it needs; depending on a live mutable repo directory is the violation, tracked fixtures are not",
+    "folds-strict-sinks-lenient": "a coherence fold rejects what it cannot reconstruct; a display sink absorbing foreign traffic skips-with-cue and counts the skips",
+    "vendored-bytes-are-law": "vendored content is byte-verbatim at its pin, `-text`-protected, NOTICE-hashed, gate-verified; an edit is STOP-AND-REPORT",
+    "population-scale-gate": "a module joins on a witnessed content-producing round trip at population scale; a census verdict is never a vendoring licence",
+    "multi-seed-once-flagged": "a round trip that flags a module re-runs at 2-3 well-mixed seeds at population scale before any verdict",
+    "defspec-seed-policy": "seeds stay unpinned repo-wide; a spec that has actually flaked pins or durably logs its seed",
+    "io-result-or-loud": "a production I/O call that can fail routes through `ehrt.kernel.io` or handles failure by name; failure never impersonates an empty result",
+    "ci-watched-not-awaited": "preflight discloses the last five runs; watching to conclusion is for a session whose claim is about CI; no push carries a known-failing test",
+    "semantics-predicted-first": "a semantics change probes every oracle root FIRST and lands a per-root prediction; a mover is STOP-AND-REPORT for a licence naming it",
+    "no-adjacency-diagnosis": "a defect attributed to a shared mechanism without a direct probe of the failing artifact is `[unverified]`",
+    "witnessed-rows-only": "a registry row exists only where the loop ran against a real fixture; every pinned expectation is MEASURED first; promotions need a dated ruling",
+    "license-granularity": "a licensed oracle mover is licensed by NAME and at the granularity the licence states; any deviation, a surprise identical included, is a STOP",
+    "measure-claimed-population": "a sweep claiming to measure a population draws from that population's own generation path, never a synthetic one assumed equivalent",
+    "horizon-anchors-roadmap": "an item surviving past ONE arc close in horizon prose gains a roadmap row in that same close: notes narrate, the roadmap remembers",
+    "post-push-ascii": "post-push ceremony includes the per-commit ASCII check over the pushed range, expected empty, disclosed in-session",
+    "permission-denied-category": "a missing path and an unreadable one share ONE category, distinguished by a `:reason :permission-denied` key, never a second one",
+    "user-path-adr-footnoted": "an ADR citation in the user path (`docs/` proper) becomes a footnote marker linking the index, never stripped",
+    "footnote-append-in-place": "the visible `ADR-NNNN` token stays in the prose, followed by its marker",
+    "mllp-abandoned": "the `:mllp` sink is abandoned, not deferred; no transport work follows from it without a fresh ruling",
+    "footnote-marker-only": "a footnoted citation drops the visible token and keeps the marker alone",
+    "footnote-scope-origin-qualified": "an origin-qualified citation (`sim/ADR-NNNN`) footnotes like a bare one, under a distinct marker targeting the index it names",
+    "user-manual-deferral": "the user manual waits on latency-realistic traffic plus a witnessed downstream-receiver demo",
+    "dev-docs-not-user-path": "`docs/dev/` is dev-docs under R34, never under the user-path footnote-citation discipline",
+    "corpus-tools-foreign-corpora": "a corpus-level tool works on any directory of valid messages, foreign corpora included, never through sim-specific machinery",
+    "transport-realism-vs-mutation": "transport realism simulates CORRECT transport behaviour deterministically; mutation injects INCORRECT content with an expected finding",
+    "user-manual-opened": "the deferral's trigger is met -- `--board` accepted as the downstream stand-in -- and the manual work is open",
+    "user-manual-name": "this workspace's user docs are the \"user manual\"; prior verbatim quotes saying \"user guide\" stay as spoken",
+    "manual-shape": "`docs/manual/` is a chaptered narrative layer over existing references, never duplicating them, with `ed-tuesday` as its one running scenario",
+    "demos-exercised": "demos are exercised as documented: each scenario README's fenced commands run in order, exit codes and named invariants asserted",
+    "diagrams-derive-from-data": "a manual diagram derives from data wherever derivable, committed as SVG with its source, so it cannot drift",
+    "engine-flake-seed-licence": "a session may pin seed `7844068501`, classify the shrunk counterexample and fix or file, without a fresh ruling",
+    "out-dir-protected-artifact": "`--out-dir` means one thing repo-wide: a protected artifact directory that refuses a collision",
+    "front-door-vs-engine-tier": "`corpus generate` is the front door and defaults `--seed`; `sim run`/`sim identifiers` are the engine tier and require it",
+    "provenance-wall-clock-exemption": "provenance recording a real-world act may default to wall clock; generating or transforming CONTENT stays inside the determinism law",
+    "seed-contract-non-negative": "the seed contract is non-negative longs, validated at engine entry; generative tests draw from documented contracts, not type ranges",
+    "kernel-result-for-new-guards": "a component with no invalid-option convention adopts the kernel's result-not-throw doctrine rather than inventing one",
+    "audit-callers-on-result-branch": "a function whose return contract gains a Result-typed branch has every caller audited, not just the function",
+    "no-derivation-through-nondeterminism": "a flag whose only sensible derivation routes through a non-deterministic input is required, not derived",
+    "scoped-flag-mismatch-rejected": "a source- or mode-scoped flag supplied in the wrong mode is rejected, not warned about",
+    "gate-scan-roots-cover-operator-surfaces": "a doc-drift gate's scan roots cover every operator-facing surface, `.github/**` and `demos/**` included",
+    "examples-are-sourced-verbatim": "a worked example is copied VERBATIM from a witnessed source and cited; with no witnessed source it renders none",
+    "generative-failure-is-new-finding": "any generative failure in a `test.check` defspec is a new finding to STOP on and record, never a re-run under a prior seed charter",
+    "bin-scripts-one-purpose": "ceremony mechanics land as one-purpose `bin/` scripts, never one combined script",
+    "improve-agent-facing": "*'let's always look for opportunities to improve the agent-facing parts'* -- skills, scripts and prompts are a standing target",
+    "dated-addendum-not-silent-edit": "a correction to a landed ADR is a dated fix-forward addendum, never a silent edit to its existing text",
+    "collision-guard-warn": "a state-name collision warns at module load and the load proceeds",
+    "rename-frozen-records-keep-old-name": "a rename sweeps every live reference; frozen records keep the old name and the renaming ADR carries the mapping",
+    "exact-name-resolution": "name-valued references resolve by EXACT raw string through a load-time table, never through `slug`; a missing name is a load rejection",
+    "review-actor-split": "the reviewer/actor split may be satisfied across channel and session: the report commit precedes every fix, each fix cites its row",
+    "unrelayed-tag-condition-stops": "a tag licence conditioned on a relay the prompt does not carry STOPs and reports the run id; never substitute your own check",
+    "unregistered-request-gets-a-row": "an unregistered standing request gets a roadmap row before it gets a disposition -- visibility first",
+    "severity-tracks-mechanism": "a review dimension is scored on the gap its mechanism leaves open, not on what fell through it this time",
+    "arc-closes-in-own-session": "an arc closes in its own session with its own tag; the close is a probe, not an appendix to the last fix session",
+    "lapsed-probe-standalone": "a lapsed probe is chartered standalone, ahead of the review that would otherwise absorb it",
+    "review-cadence-in-adrs": "repo-review cadence is measured in ADRs, not days: the next review is chartered roughly 15 ADRs past the prior close",
+    "never-dodge-a-gate-by-population": "a gate that fires is telling you something true about scope: widen the fence under a ruling, or stop -- never move outside it",
+    "population-closure": "enumerate the population from the tree, diff it against whatever claims to cover it, and treat the gap as the finding",
+    "disclosed-convention-is-a-disposition": "a documented convention a reader can act on is a real disposition; the disclosure is what makes it one",
+    "out-is-the-only-output-root": "generated output lands under `out/`, the single tool-owned output root",
+    "event-log-edn-primary": "the event log's primary artifact is EDN; JSON is a later projection of it",
+    "event-schema-versioned": "the event schema is public and versioned: the manifest carries `:event-schema-version`, and a non-additive diff must carry a bump",
+    "schema-source-plus-export-parity": "the Malli schema is the source of truth and a committed EDN export is gated at parity with it",
+    "regex-dialect-stated": "a pattern handed to a consumer names its dialect; this project's is `java.util.regex`",
+    "register-hygiene-at-close": "the close commit moves this session's own closed rows to `Done` and re-measures every reading set, recording the actuals",
+    "budget-stop": "exceed a reading-set budget and you compact or you stop, never bump; budget and baseline move only inside a compaction ADR",
+    "red-pushed-with-green": "a red-first commit is pushed together with its green successor, never alone",
+    "anchored-register-edits": "a register of independent rows is edited by anchored insertion or replacement, never by slicing between two anchors",
+    "adr-index-generated": "`notes/ADRs.md` is generated from the ADR files' own headings and Status lines, CI freshness-gated",
+    "narratives-move-to-owning-adr": "a register row's narrative moves VERBATIM into the ADR that owns it, under a dated heading",
+    "roadmap-status-tokens": "every roadmap row opens with `OPEN`, `CLOSED <date> <ADR|sha>`, `DEFERRED (trigger: ...)` or `EXTERNAL`; `CLOSED` only under `## Done`",
+    "roadmap-slug-anchors": "every roadmap row carries a unique `**[slug]**` and is cited `roadmap.md#<slug>`; a line-number cite from a live surface is red",
+    "roadmap-six-line-cap": "six lines a roadmap row, maximum",
+    "roadmap-row-destinations": "a closed roadmap row moves verbatim to the attic leaving one `## Done` line; a live row's overflow moves verbatim to its owning ADR",
+    "roadmap-priority": "`## Next` rows carry `PRIORITY n`, unique and ascending in file order",
+    "remainder-tokens-the-row": "a closure leaving a live remainder keeps ONE row, retitled and retokened by what survives; splitting it is re-triage",
+    "section-retriage-is-author-judgement": "moving a row between `## Next`, `## Deferred` and `## Externals` is author judgement, never mechanical",
+    "rulings-row-contract": "this register holds standing rules only, one row per rule with its ADR; a superseded rule keeps its row and names its successor",
+    "skill-rules-not-history": "a skill states the imperative and one cite; its narrative history lives in a sibling `HISTORY.md` no reading set carries",
+    "reading-sets-header-cap": "`.agents/reading-sets.edn` carries a 20-line header; budget derivations live in `.agents/plans/reading-sets-history.md`",
+}
+
+# The ADR each row cites, and the successor a SUPERSEDED row names.
+ROW_ADR = {}
+ROW_SUPERSEDED_BY = {
+    "register-append-contract":  ("rulings-row-contract", "0145"),
+    "stable-tag-author-only":    ("tag-law", "0057"),
+    "footnote-append-in-place":  ("footnote-marker-only", "0102"),
+    "user-manual-deferral":      ("user-manual-opened", "0112"),
+    "engine-flake-seed-licence": ("generative-failure-is-new-finding", "0122"),
+    "collision-guard-warn":      ("exact-name-resolution", "0133"),
+}
+
+# Rows this session takes itself; they have no bullet in the old file.
+OWN_ROWS = [
+    ("rulings-row-contract", "0145"),
+    ("skill-rules-not-history", "0145"),
+    ("reading-sets-header-cap", "0145"),
+]
+
+
+# ---------------------------------------------------------------------
+# mechanics
+# ---------------------------------------------------------------------
+
+def base_lines():
+    return subprocess.check_output(
+        ["git", "show", BASE + ":" + RULINGS], text=True).split("\n")
+
+
+def block_spans(lines):
+    """(start, end) 0-based half-open spans for every entry in BLOCKS,
+    asserted against the prefix each entry carries."""
+    starts = [b[0] - 1 for b in BLOCKS]
+    spans = []
+    for i, (start, prefix, dest) in enumerate(BLOCKS):
+        s = start - 1
+        if not lines[s].startswith(prefix):
+            sys.exit(f"FAIL: {RULINGS}:{start} is {lines[s]!r}, expected prefix "
+                     f"{prefix!r} -- the tree has drifted from {BASE}")
+        e = starts[i + 1] if i + 1 < len(starts) else len(lines)
+        while e > s and lines[e - 1].strip() == "":
+            e -= 1
+        spans.append((s, e, dest))
+    return spans
+
+
+def adr_path(num):
+    for f in sorted(os.listdir(ADR_DIR)):
+        if f.startswith(num + "-"):
+            return os.path.join(ADR_DIR, f)
+    sys.exit(f"FAIL: no ADR file for {num}")
+
+
+def adr_for_row(slug):
+    if slug in ROW_ADR:
+        return ROW_ADR[slug]
+    sys.exit(f"FAIL: no ADR recorded for row R-{slug}")
+
+
+def build_row_adrs():
+    """Every row's ADR cite comes from the block its bullet sits in, so a
+    row cannot cite an ADR the bullet did not come from."""
+    lines = base_lines()
+    spans = block_spans(lines)
+    for line, cls, slug, _why in BULLETS:
+        if slug is None:
+            continue
+        for s, e, dest in spans:
+            if s < line <= e:
+                ROW_ADR[slug] = dest
+                break
+        else:
+            sys.exit(f"FAIL: bullet at line {line} sits in no block")
+    for slug, num in OWN_ROWS:
+        ROW_ADR[slug] = num
+
+
+def render_register():
+    out = [PREAMBLE.rstrip("\n"), ""]
+    ordered = [(l, c, s) for (l, c, s, _w) in BULLETS if s is not None]
+    ordered += [(10 ** 9, "STANDING", s) for s, _n in OWN_ROWS]
+    seen = set()
+    for _line, _cls, slug in ordered:
+        if slug in seen:
+            sys.exit(f"FAIL: duplicate slug R-{slug}")
+        seen.add(slug)
+        if slug not in ROWS:
+            sys.exit(f"FAIL: no authored rule text for R-{slug}")
+        body = ROWS[slug]
+        tail = f" -- ADR-{adr_for_row(slug)}"
+        if slug in ROW_SUPERSEDED_BY:
+            succ, num = ROW_SUPERSEDED_BY[succ_key(slug)]
+            tail += f" SUPERSEDED-BY R-{succ} (ADR-{num})"
+        out.append(textwrap.fill(f"- **R-{slug}** -- {body}{tail}",
+                                 width=WRAP, subsequent_indent="  ",
+                                 break_long_words=False, break_on_hyphens=False))
+    for slug in ROWS:
+        if slug not in seen:
+            sys.exit(f"FAIL: authored rule text R-{slug} is used by no bullet")
+    return "\n".join(out) + "\n"
+
+
+def succ_key(slug):
+    return slug
+
+
+def append_block(path, text):
+    with open(path, encoding="utf-8") as fh:
+        cur = fh.read()
+    sep = "" if cur.endswith("\n") else "\n"
+    if DATED_HEADING not in cur:
+        cur += sep + "\n" + DATED_HEADING + "\n\n" + text.rstrip("\n") + "\n"
+    else:
+        cur += sep + "\n" + text.rstrip("\n") + "\n"
+    return cur
+
+
+def census_markdown():
+    lines = base_lines()
+    spans = block_spans(lines)
+    print("#### 1. Blocks, and where each one goes\n")
+    print("| # | block | lines | bullets | verbatim to |")
+    print("|---:|---|---:|---:|---|")
+    by_line = {b[0]: b for b in BULLETS}
+    for i, (s, e, dest) in enumerate(spans):
+        head = " ".join(lines[s].lstrip("# ").split())
+        n = sum(1 for (ln, *_r) in BULLETS if s < ln <= e)
+        print(f"| {i} | {head[:58]} | {e - s} | {n} | adr:{dest} |")
+    print()
+    counts = {"STANDING": 0, "ARC-LOCAL": 0, "SUPERSEDED": 0}
+    for _l, c, _s, _w in BULLETS:
+        counts[c] += 1
+    dupes = len(BULLETS) - len({b[0] for b in BULLETS})
+    print(f"**{len({b[0] for b in BULLETS})} bullets across {len(spans) - 1} "
+          f"blocks**, {len(BULLETS)} classification entries "
+          f"({dupes} bullet(s) yield more than one row): "
+          f"{counts['STANDING']} STANDING, {counts['ARC-LOCAL']} ARC-LOCAL, "
+          f"{counts['SUPERSEDED']} SUPERSEDED.\n")
+    print("#### 2. Per-bullet classification\n")
+    print("| line | class | row | the sentence that decides it |")
+    print("|---:|---|---|---|")
+    for ln, cls, slug, why in BULLETS:
+        print(f"| {ln} | {cls} | {('R-' + slug) if slug else '--'} | {why} |")
+
+
+def verify():
+    lines = base_lines()
+    spans = block_spans(lines)
+    cache, ok, missing, moved = {}, 0, [], 0
+    for s, e, dest in spans:
+        path = adr_path(dest)
+        if path not in cache:
+            cache[path] = open(path, encoding="utf-8").read()
+        block = "\n".join(lines[s:e])
+        moved += e - s
+        if block in cache[path]:
+            ok += 1
+        else:
+            missing.append((s + 1, path))
+    print(f"blocks moved          : {len(spans)}")
+    print(f"blocks found VERBATIM : {ok}")
+    print(f"blocks missing        : {len(missing)}  {missing if missing else ''}")
+    print(f"moved lines total     : {moved}")
+    if missing:
+        sys.exit("FAIL: a moved block is not present verbatim at its destination")
+
+
+def main():
+    build_row_adrs()
+    if "--markdown" in sys.argv:
+        census_markdown()
+        return
+    if "--verify" in sys.argv:
+        verify()
+        return
+    dry = "--dry-run" in sys.argv
+
+    lines = base_lines()
+    live = open(RULINGS, encoding="utf-8").read().split("\n")
+    if live[:len(lines)] != lines and "".join(live) != "".join(lines):
+        sys.exit(f"FAIL: {RULINGS} has drifted from {BASE}; re-key the table")
+    spans = block_spans(lines)
+
+    # multiset identity: every line of the old file is either moved into a
+    # destination or is a blank separator between blocks.
+    moved_lines, writes = [], {}
+    for s, e, dest in spans:
+        path = adr_path(dest)
+        block = "\n".join(lines[s:e])
+        moved_lines.extend(lines[s:e])
+        writes[path] = append_block(path, block) if path not in writes else \
+            writes[path] + "\n" + block.rstrip("\n") + "\n"
+    old_nonblank = [l for l in lines if l.strip()]
+    new_nonblank = [l for l in moved_lines if l.strip()]
+    if sorted(old_nonblank) != sorted(new_nonblank):
+        sys.exit(f"FAIL: multiset identity broken -- {len(old_nonblank)} lines in, "
+                 f"{len(new_nonblank)} lines out")
+
+    register = render_register()
+    print(f"blocks moved     : {len(spans)}")
+    print(f"lines moved      : {len(moved_lines)} ({len(new_nonblank)} non-blank)")
+    print(f"rows written     : {register.count(chr(10) + '- **R-') + 1}")
+    print(f"{RULINGS}        : {len(lines)} -> {len(register.split(chr(10)))} lines")
+    if dry:
+        print("(--dry-run: nothing written)")
+        return
+    for path, text in writes.items():
+        with open(path, "w", encoding="utf-8") as fh:
+            fh.write(text)
+    with open(RULINGS, "w", encoding="utf-8") as fh:
+        fh.write(register)
+    print("written; run --verify")
+
+
+if __name__ == "__main__":
+    main()
