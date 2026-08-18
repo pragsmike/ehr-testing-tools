@@ -177,6 +177,7 @@ Appended by the session that takes the ruling, not held to arc close.
   session: the report commit precedes every fix, each fix cites its row -- ADR-0134
 - **R-unrelayed-tag-condition-stops** -- a tag licence conditioned on a relay the prompt
   does not carry STOPs and reports the run id; never substitute your own check -- ADR-0134
+  SUPERSEDED-BY R-session-verifies-ci-via-gh (ADR-0148)
 - **R-unregistered-request-gets-a-row** -- an unregistered standing request gets a roadmap
   row before it gets a disposition -- visibility first -- ADR-0139
 - **R-severity-tracks-mechanism** -- a review dimension is scored on the gap its mechanism
@@ -263,3 +264,9 @@ Appended by the session that takes the ruling, not held to arc close.
 - **R-empty-population-is-red** -- a population gate asserts its population is non-empty;
   "no violations" over zero items is a pass that proves nothing, whether the zero is an
   empty scan or an empty extraction -- ADR-0148
+- **R-session-verifies-ci-via-gh** -- a tag licence's CI condition is met by the executing
+  session's own `gh run view <id>` concluding success, id and conclusion recorded; author
+  relay sufficient, never required; pay in session if it concludes while open -- ADR-0148
+- **R-stop-only-on-two-defensible-readings** -- STOP-AND-REPORT binds where two readings
+  are both defensible; a mechanical conflict with one defensible reading is fix-forward
+  with disclosure -- ADR-0146
