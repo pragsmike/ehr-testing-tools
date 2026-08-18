@@ -444,8 +444,44 @@
   [step]
   (into {} (filter val) (select-keys step [:disposition :codes])))
 
+(defn- bed-ready-location
+  "Where a bed-ready transfer actually places `waiting-id`, once
+  `patient-id`'s discharge has vacated `vacated-location`.
+
+  Normally the just-vacated bed itself: that specific bed becoming ready
+  IS the coupling (docs/operational-models.md's own \"patient B's
+  discharge event is what makes patient A's boarding-to-transfer event
+  schedulable\"). But the coupling names the bed WITHIN its rung -- it
+  never licenses a rung the allocation ladder would not have reached.
+  A vacated SURGE slot is rung 2, legal only \"once licensed beds are
+  full\" (same document, ladder rung 2), and a licensed bed in the
+  boarder's home ward -- which is this ward, since that is how
+  `waiting-id` was chosen -- can be free at this instant: some OTHER
+  coupling can vacate one with no boarder pulled into it (a bed-ready
+  transfer's own origin bed triggers no second search), and under
+  `--churn` a :cancel-admit or :cancel-transfer can vacate one outright.
+  Handing over the surge slot then places on rung 2 with rung 1 free,
+  which is exactly what `ehrt.sim-check.check/surge-only-when-earlier-
+  rungs-exhausted` forbids (ADR-0153, seed 202 under `--churn` at
+  `t 78480`). In that case the ladder decides, drawing its own seeded
+  bed choice the way every other placement does.
+
+  `allocate` can never come back `:exhausted` here: the vacated bed is
+  in `waiting-id`'s own home ward, so rung 1 or rung 2 always has at
+  least that one candidate -- and since rung 1 is free by the branch
+  we are in, the result is always a licensed bed in that same ward."
+  [rng world patient-id waiting-id vacated-location]
+  (let [facility (:facility world)
+        home-ward-name (get-in world [:patients waiting-id :home-ward])
+        board (sim-model/occupancy-board (dissoc (:patients world) patient-id))
+        home-ward (sim-model/ward-by-name facility home-ward-name)
+        home-licensed-free? (boolean (seq (remove board (sim-model/licensed-bed-ids home-ward))))]
+    (if (and (= :surge (:placement vacated-location)) home-licensed-free?)
+      (:location (sim-model/allocate rng facility board home-ward-name nil))
+      vacated-location)))
+
 (defmethod decide :discharge
-  [_rng t world patient-id step]
+  [rng t world patient-id step]
   (let [patient (get-in world [:patients patient-id])
         ;; C3: an expired-disposition discharge vacates NO bed --
         ;; patient-state-model.md's own "clinically absorbing but
@@ -470,16 +506,17 @@
                           ffirst))]
     {:events (cond-> [discharge-event]
                waiting-id
-               (conj {:event :transfer :t t
-                      :active-mrn (:active-mrn (get-in world [:patients waiting-id]))
-                      :from (:location (get-in world [:patients waiting-id]))
-                      :attending (:attending (get-in world [:patients waiting-id]))
-                      :home-ward (get-in world [:patients waiting-id :home-ward])
-                      :location vacated-location
-                      :placement (:placement vacated-location)
-                      :forced false
-                      :bed-ready true
-                      :participants [{:patient-id waiting-id :role :subject}]}))
+               (conj (let [location (bed-ready-location rng world patient-id waiting-id vacated-location)]
+                       {:event :transfer :t t
+                        :active-mrn (:active-mrn (get-in world [:patients waiting-id]))
+                        :from (:location (get-in world [:patients waiting-id]))
+                        :attending (:attending (get-in world [:patients waiting-id]))
+                        :home-ward (get-in world [:patients waiting-id :home-ward])
+                        :location location
+                        :placement (:placement location)
+                        :forced false
+                        :bed-ready true
+                        :participants [{:patient-id waiting-id :role :subject}]})))
      :advance 0}))
 
 ;; --- M2b: churn family (docs/patient-state-model.md's event-validity
