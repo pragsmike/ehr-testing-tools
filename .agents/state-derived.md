@@ -54,7 +54,7 @@ Docs-tooling gates: `adr_index_test`, `citation_gate_test`, `cli_tombstone_test`
 
 | register | count |
 |---|---|
-| ADR files (`notes/adr/NNNN-*.md`) | 148 |
+| ADR files (`notes/adr/NNNN-*.md`) | 149 |
 | roadmap rows (all sections) | 107 |
 | rulings rows | 113 |
 | rulings rows superseded | 7 |

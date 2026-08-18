@@ -333,7 +333,14 @@ log always carries the version of the contract that produced it.
 - **Anything else bumps it** — a key removed, an optional key made
   required, a value schema changed, a kind removed.
 - **A key or kind slated for removal is marked deprecated here for one
-  minor release before it goes**, so you get a release in which to notice.
+  minor release before it goes**, so you get a release in which to notice
+  — **waived for now.** While the event contract has no consumer outside
+  this repository (it is not published to Clojars, and no downstream repo
+  pins `:event-schema-version`), there is no release in between for a
+  deprecation window to protect, so removals land directly. The waiver
+  expires on the first such consumer, at which point the rule above binds
+  as written; every removal made under it says so in the version's own
+  note in the schema source.[^waiver-0151]
 
 This is enforced rather than promised: a frozen copy of the last versioned
 contract is committed alongside the current one, and the build fails if a
@@ -1411,3 +1418,4 @@ its `:cause` channel, and its own exit code).
 [^adr-0013]: Design record [ADR-0013](../notes/ADRs.md).
 [^adr-0014]: Design record [ADR-0014](../notes/ADRs.md).
 [^adr-0020]: Design record [ADR-0020](../notes/ADRs.md).
+[^waiver-0151]: Design record [ADR-0151](../notes/ADRs.md).

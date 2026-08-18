@@ -83,7 +83,14 @@
     made required, a value schema changed, a kind removed. A key or
     kind slated for removal is marked deprecated in `docs/formats.md`
     for one minor release BEFORE it goes, so a consumer gets a release
-    in which to notice.
+    in which to notice -- WAIVED (author ruling, 2026-08-18, ADR-0151)
+    while the event contract has no consumer outside this repository:
+    no Clojars publication, and no downstream repo pinning
+    `:event-schema-version`. The waiver expires ON THE FIRST such
+    consumer, at which point the clause above binds unamended and
+    nothing further need be edited here for it to. Each removal made
+    under the waiver says so in its own version note below, so the
+    waiver leaves a trail rather than a silence.
 
   1.0.0 is the shape as of the event-log contract arc, describing the
   tree at `24f351d` -- not a redesign of it.
@@ -98,7 +105,12 @@
   two days before this change, with `ResultEntry`'s own docstring
   already naming `:units` as a known defect (census row S-6); there is
   no consumer release in between for a deprecation window to protect.
-  A future removal with any distance from publication owes the window."
+  AMENDED 2026-08-18 (ADR-0151): this note's last sentence used to
+  read -- a future removal with any distance from publication owes the
+  window. The window is now WAIVED while no external consumer exists,
+  so 1.1.0 is re-read as the first removal MADE UNDER THE WAIVER,
+  disclosed. The original disclosure above is left standing, not
+  rewritten."
   "1.1.0")
 
 ;; --- shared leaf schemas --------------------------------------------------
