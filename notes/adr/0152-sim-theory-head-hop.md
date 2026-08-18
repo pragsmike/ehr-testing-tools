@@ -231,6 +231,17 @@ described the diagram as "mechanically regenerated from
 `sim-theory.edn`" all along — ADR-0139's contradicting live sentence.
 It is true as of this ADR, and was left as written.
 
+### Addendum, 2026-08-18 -- the close tag was paid in session
+
+The tag ruling's first arm fired. CI run 32179494387 at `c509e46`
+concluded **success** while the session was still open, so
+`stable-20260818-sim-theory-edn-hop` was created through
+`bin/tag-ceremony ... --push` rather than deferred to the next Step 0,
+ending in the peeled-ref verification that ruling requires: the remote
+peeled ref reads `c509e4625fceac276c76410ef008908c6e0f3e22`, matching the
+target exactly. CI was green at both of this session's pushes --
+`1e261f5` (run 32176462377) and `c509e46`.
+
 ### One line
 
 The sim-theory head hop becomes a translator on the author's ruling

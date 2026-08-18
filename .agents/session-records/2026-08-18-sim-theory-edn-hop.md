@@ -158,6 +158,19 @@ the project suite. No other namespace moved.
 
 ## Tag
 
-Per the author's ruling -- *"pay in-session if its tip run concludes
-success while open, else next Step 0"* -- see the close commit's own
-disclosure for which arm fired.
+**Paid in-session; the ruling's first arm fired.** CI run
+[32179494387](https://github.com/pragsmike/ehr-testing-tools/actions/runs/32179494387)
+at `c509e46` concluded **success** while this session was still open, so
+per the author's ruling -- *"pay in-session if its tip run concludes
+success while open, else next Step 0"* -- the tag was created rather
+than deferred.
+
+`bin/tag-ceremony stable-20260818-sim-theory-edn-hop c509e462 <msg> --push`:
+
+    OK: created annotated tag at c509e4625fceac276c76410ef008908c6e0f3e22
+    OK: pushed refs/tags/stable-20260818-sim-theory-edn-hop
+    OK: remote peeled ref is c509e4625fceac276c76410ef008908c6e0f3e22,
+        matches target exactly
+
+CI was green at **both** of this session's pushes: `1e261f5` (run
+32176462377) and `c509e46` (run 32179494387).
