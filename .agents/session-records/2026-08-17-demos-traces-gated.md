@@ -216,10 +216,15 @@ tip run concludes `success` while the session is open, else defer to the
 next Step 0, saying which
 (`rulings.md#R-session-verifies-ci-via-gh`, landed this session).
 
-Which branch this took cannot be known until the close commit is pushed
-and its own run concludes, so it is recorded in an addendum to
-`notes/adr/0149-demos-traces-gated.md` rather than guessed here -- the
-same shape ADR-0147 and ADR-0148 each used. The licensed tag is
-`stable-20260817-demos-traces-gated`, and deferring it is the deviation
-(`rulings.md#R-tag-law`), so the default is payment the moment the
-condition is met.
+**The first branch was taken: paid in session.** CI run `32092909614` at
+`e6f9c13` concluded `success` while the session was open -- every step,
+including the first real run of the `demos/traces/` freshness diff.
+
+`bin/tag-ceremony stable-20260817-demos-traces-gated e6f9c13 ... --push`:
+
+    OK: created annotated tag 'stable-20260817-demos-traces-gated' at e6f9c134...
+    OK: pushed refs/tags/stable-20260817-demos-traces-gated
+    OK: remote peeled ref for 'stable-20260817-demos-traces-gated' is e6f9c134..., matches target exactly
+
+Verified by peeled ref on the remote, not by the local tag object alone.
+Recorded in ADR-0149's own addendum.

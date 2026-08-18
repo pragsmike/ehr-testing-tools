@@ -402,3 +402,45 @@ committed bytes were a capture *of*. They were internally consistent HL7
 at a different seed or config, so they came from somewhere. The question
 is archaeology, the file is right now, and the gate makes it stay right.
 Named here rather than registered, since there is nothing to act on.
+
+### Addendum, 2026-08-17 — the close tag was paid in session, and the freshness step ran green on its first real CI exercise
+
+The prompt's tag licence had two branches: pay in session if this
+session's tip run concludes `success` while the session is open, else
+leave it to the next Step 0, saying which. **The first branch was
+taken.**
+
+CI run `32092909614` at `e6f9c13` concluded `success` while the session
+was still open, so the licence was payable and was paid rather than
+deferred — deferring a licensed tag is itself the deviation
+(`rulings.md#R-tag-law`), and the CI condition was met by this session's
+own `gh run view` (`rulings.md#R-session-verifies-ci-via-gh`, landed one
+commit earlier in this same session).
+
+`bin/tag-ceremony stable-20260817-demos-traces-gated e6f9c13 … --push`,
+its own output:
+
+    OK: created annotated tag 'stable-20260817-demos-traces-gated' at e6f9c134…
+    OK: pushed refs/tags/stable-20260817-demos-traces-gated
+    OK: remote peeled ref for 'stable-20260817-demos-traces-gated' is e6f9c134…, matches target exactly
+
+Annotated, pushed, and verified by peeled ref on the remote — not by the
+local tag object alone.
+
+**The residual risk named above is closed, by evidence rather than by
+assumption.** That run's `generated-doc freshness (regen + diff)` step
+concluded `success`: CI's own JVM ran `make docsgen` — `make traces`
+included — and `git diff --exit-code` found no change under
+`demos/traces/`. So a different JVM does produce the same map iteration
+order in the pretty-printed EDN and JSON, and every step of the run was
+green:
+
+    success  poly check
+    success  poly test :all skip:integration
+    success  verify-nist-lock (supply-chain integrity)
+    success  generated-doc freshness (regen + diff)
+
+This is the first time anything has ever compared `demos/traces/**`
+against what its own commands produce. It is also the first CI run in
+this repo's history that could have failed on those bytes, which is the
+whole point of the row this ADR closes.
