@@ -374,8 +374,30 @@
   [step]
   (into {} (filter val) (select-keys step [:citation :conditions])))
 
+(defn- reason-field
+  "S-1 (ADR-0151): `:reason` rides onto the ground-truth event ONLY
+  when the step actually carries one, the same nil-dropping shape
+  `citation-fields` uses -- and a SIBLING of it rather than a widening
+  of it, deliberately. `citation-fields` scopes itself to glass-box
+  TRACEABILITY of what the compiler supplied
+  (components/sim-trajectory/docs/gmf-interpreter.md section 6
+  obligations 1/3); `:reason` is clinical content a HAND-AUTHORED step
+  supplies, and `compile_trajectory`'s own `encounter->step` never sets
+  one. Same shape, different reason to exist, so two functions.
+
+  Before this, both encounter decides merged `:reason` unconditionally,
+  so every module-compiled encounter emitted `:reason nil` -- present
+  and empty, which is the one shape that tells a consumer nothing
+  (census S-1: `:outpatient-visit` 221/221, `:admission` 48/692, those
+  48 exactly the 48 carrying a citation). Dropping the key made
+  `:reason` `{:optional true}` on both kinds, which `classify-change`
+  calls breaking, which is why this is the whole of what the event
+  contract's 1.1.0 -> 1.2.0 bump buys."
+  [step]
+  (into {} (filter val) (select-keys step [:reason])))
+
 (defmethod decide :admission
-  [rng t world patient-id {:keys [location reason force-placement] :as step}]
+  [rng t world patient-id {:keys [location force-placement] :as step}]
   (let [{:keys [facility providers patients]} world
         board (sim-model/occupancy-board patients)
         alloc (sim-model/allocate rng facility board location force-placement)]
@@ -384,9 +406,9 @@
       (let [ward-id (:id (sim-model/ward-by-name facility (:home-ward alloc)))
             attending (sim-model/choose-attending rng providers ward-id)
             active-mrn (get-in patients [patient-id :active-mrn])]
-        {:events [(merge {:event :admission :t t :active-mrn active-mrn :reason reason :attending attending
+        {:events [(merge {:event :admission :t t :active-mrn active-mrn :attending attending
                           :participants [{:patient-id patient-id :role :subject}]}
-                         alloc (citation-fields step))]
+                         alloc (reason-field step) (citation-fields step))]
          :advance 0}))))
 
 (defmethod decide :delay
@@ -687,7 +709,7 @@
 ;; section 4's sketch, items 5-7) --------------------------------------------
 
 (defmethod decide :outpatient-visit
-  [rng t world patient-id {:keys [reason] :as step}]
+  [rng t world patient-id step]
   ;; Item 5: NO sim-model/allocate call -- an outpatient encounter occupies
   ;; no bed, so there is no ladder to consult. Still gets an attending
   ;; (real ambulatory visits have a treating provider) -- chosen uniformly
@@ -698,9 +720,9 @@
         patient (get patients patient-id)
         attending (:id (uniform-choice rng providers))]
     {:events [(merge {:event :outpatient-visit :t t :active-mrn (:active-mrn patient)
-                      :reason reason :attending attending
+                      :attending attending
                       :participants [{:patient-id patient-id :role :subject}]}
-                     (citation-fields step))]
+                     (reason-field step) (citation-fields step))]
      :advance 0}))
 
 (defmethod decide :outpatient-visit-end

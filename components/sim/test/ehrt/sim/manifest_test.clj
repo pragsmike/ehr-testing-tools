@@ -14,6 +14,7 @@
   (:require [clojure.test :refer [deftest is]]
             [ehrt.sim.manifest :as manifest]
             [ehrt.sim.version :as version]
+            [ehrt.sim-engine.interface :as engine]
             [ehrt.provenance.interface :as provenance]))
 
 (deftest built-manifest-validates-against-provenance-test
@@ -47,17 +48,27 @@
         "not hardcoded all-zeros anymore -- ehrt.sim.version's own
          honestly-documented placeholder-or-real-hash policy")))
 
-;; --- ADR-0150 S-6: the bumped contract version reaches the manifest --------
-;; `schema-version` is only a promise if a run STAMPS it. The rename of
-;; `ResultEntry`'s `:units` to `:unit` is the contract's first non-additive
-;; change, so this asserts the manifest a run writes carries the bumped
-;; value rather than the version the contract was published at.
+;; --- ADR-0150 S-6 / ADR-0151 S-1: the contract version reaches the manifest -
+;; `schema-version` is only a promise if a run STAMPS it, so this asserts the
+;; manifest a run writes carries the LIVE contract version.
+;;
+;; RE-BASELINED 2026-08-18 (ADR-0151), semantically rather than by bumping a
+;; literal from under it -- the same correction ADR-0150 applied to
+;; `result_clock_test`'s own pin, and for the same reason. This asserted
+;; `(= "1.1.0" ...)`, which pinned the property to the number the contract
+;; HAPPENED to sit at on the day S-6 landed. That conflates the live property
+;; -- a run stamps the version it was produced under -- with the accident of
+;; the value, and it broke on the very next legitimate bump (1.1.0 -> 1.2.0,
+;; census S-1), which is exactly what a literal pin teaches a session to edit
+;; rather than think about. The version-independent property is asserted
+;; instead, so no later bump has a literal here to re-baseline.
 
-(deftest manifest-carries-the-bumped-event-schema-version
+(deftest manifest-carries-the-live-event-schema-version
   (let [m (manifest/build {:seed 1 :engine-params {}
                            :config {:path "x" :sha256 (apply str (repeat 64 "a"))}
                            :invocation {}})]
-    (is (= "1.1.0" (:event-schema-version m))
-        "the event contract bumped 1.0.0 -> 1.1.0 when ResultEntry's :units
-         was renamed :unit; a manifest still saying 1.0.0 would date a log
-         to a contract it was not produced under")))
+    (is (string? engine/event-schema-version))
+    (is (= engine/event-schema-version (:event-schema-version m))
+        "a manifest whose stamp disagrees with the live contract dates a log
+         to a contract it was not produced under -- which is the whole reason
+         the key is in the manifest at all")))

@@ -10,7 +10,7 @@
 ;;
 ;; Re-freeze ONLY when bumping schema-version, with
 ;; `make event-schema-freeze`.
-{:event-schema-version "1.1.0",
+{:event-schema-version "1.2.0",
  :schema
  [:multi
   {:dispatch :event,
@@ -104,6 +104,7 @@
       [:placement [:enum :licensed :surge]]]]
     [:forced :boolean]
     [:reason
+     {:optional true}
      [:maybe
       [:or
        :string
@@ -413,6 +414,7 @@
     [:active-mrn :string]
     [:attending :string]
     [:reason
+     {:optional true}
      [:maybe
       [:or
        :string

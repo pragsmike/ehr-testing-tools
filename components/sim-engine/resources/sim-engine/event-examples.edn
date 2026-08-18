@@ -171,7 +171,6 @@
  {:event :outpatient-visit,
   :t 3024000,
   :active-mrn "MRN000002",
-  :reason nil,
   :attending "7447928418",
   :participants [{:patient-id "PID-000001-01564f61", :role :subject}],
   :citation {:module "schema-fixture-mod", :state :visit},

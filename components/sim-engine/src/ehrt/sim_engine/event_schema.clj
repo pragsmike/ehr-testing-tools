@@ -110,8 +110,25 @@
   window. The window is now WAIVED while no external consumer exists,
   so 1.1.0 is re-read as the first removal MADE UNDER THE WAIVER,
   disclosed. The original disclosure above is left standing, not
-  rewritten."
-  "1.1.0")
+  rewritten.
+
+  1.2.0 (2026-08-18, ADR-0151) is census S-1: `:reason` becomes
+  `{:optional true}` on `:admission` and `:outpatient-visit`, and a
+  module-compiled encounter -- which has no reason to give, because
+  `compile_trajectory`'s own `encounter->step` never sets one -- now
+  omits the key instead of emitting `:reason nil`. MINOR rather than
+  MAJOR because one key of two kinds changed cardinality, no kind was
+  removed, no value schema moved, and nothing a 1.1.0-era consumer read
+  was renamed. `classify-change` calls a required key made optional
+  BREAKING, which is the whole of what this bump buys; ADR-0150 wrote
+  and proved this same fix and correctly STOPPED it rather than let it
+  share S-6's bump. MADE UNDER THE WAIVER, disclosed: no deprecation
+  release was run, because the waiver above holds -- the contract still
+  has no consumer outside this repository. Note also that a 1.1.0-era
+  log VALIDATES UNCHANGED against 1.2.0: `[:maybe ...]` is retained, so
+  only the writer changed and the breaking direction is
+  producer-side."
+  "1.2.0")
 
 ;; --- shared leaf schemas --------------------------------------------------
 ;;
@@ -281,9 +298,14 @@
            ;; observation: a Concept reason is emittable today by a
            ;; hand-authored pathway, and a schema that rejected it
            ;; would be describing our corpora rather than our engine.
-           ;; Always PRESENT, nil for every module-compiled encounter
-           ;; (census S-1, a register row, not fixed here).
-           [:reason [:maybe [:or :string sim-model/Concept]]]
+           ;; OPTIONAL since 1.2.0 (census S-1 fixed, ADR-0151): a
+           ;; hand-authored step's reason rides through and the key is
+           ;; PRESENT; a module-compiled encounter has no reason to
+           ;; give, so the key is ABSENT rather than present-and-nil.
+           ;; `[:maybe ...]` is retained deliberately -- a 1.1.0-era
+           ;; log still validates, so this is a widening for readers
+           ;; and only the WRITER changed.
+           [:reason {:optional true} [:maybe [:or :string sim-model/Concept]]]
            [:citation {:optional true} sim-model/Citation]
            [:conditions {:optional true} [:vector sim-model/ConditionAnnotation]])]
 
@@ -394,9 +416,10 @@
             :transition ":new -> :admitted with :class :outpatient and a nil :location -- the one sanctioned admitted-without-a-bed case."}
            [:active-mrn :string]
            [:attending :string]
-           ;; Always present, nil in all 221 observed -- see S-1 on
-           ;; :admission above; same key, same register row.
-           [:reason [:maybe [:or :string sim-model/Concept]]]
+           ;; OPTIONAL since 1.2.0 -- see :admission above; same key,
+           ;; same fix (census S-1, ADR-0151). All 221 observed were
+           ;; module-compiled and so emit no key at all now.
+           [:reason {:optional true} [:maybe [:or :string sim-model/Concept]]]
            [:citation {:optional true} sim-model/Citation]
            [:conditions {:optional true} [:vector sim-model/ConditionAnnotation]])]
 
