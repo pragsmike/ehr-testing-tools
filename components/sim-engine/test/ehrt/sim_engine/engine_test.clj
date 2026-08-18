@@ -228,6 +228,79 @@
                          ground-truth)))))
        (engine/replay ground-truth)))))
 
+(def ^:private one-bed-one-surge-facility
+  "ADR-0153: the smallest facility that can hold, at one instant, a
+  Renal-surge occupant, a boarder waiting on Renal, AND a free Renal
+  licensed bed -- the three-way state the seed-202 self-check failure
+  needs. One licensed bed and one surge slot in Renal, a generous ED to
+  board into, and no second inpatient ward (so rung 3 is empty and the
+  boarder reaches rung 4 deterministically)."
+  {:id :bed-ready-rung-test
+   :wards [{:id :ed :name "ED" :beds 0 :surge-slots 4
+            :surge-format "%s-H%02d" :class :ed}
+           {:id :renal :name "Renal" :beds 1 :surge-slots 1
+            :surge-format "%s-H%02d" :class :inpatient}]})
+
+(defn- advance
+  "Decide one step and fold its events into `world` the way engine/run's
+  own loop does -- every participant of every emitted event evolved, and
+  the event appended to :ground-truth (which the churn decides query).
+  The multi-patient driver a hand-built sequence needs; the scripted
+  bed-ready test above folds by hand because it only ever moves one
+  patient at a time."
+  [world rng t patient-id step]
+  (let [{:keys [events]} (engine/decide rng t world patient-id step)]
+    (reduce (fn [w ev]
+              (reduce (fn [w' pid] (update-in w' [:patients pid] engine/evolve ev))
+                      (update w :ground-truth (fnil conj []) ev)
+                      (map :patient-id (:participants ev))))
+            world
+            events)))
+
+(deftest bed-ready-transfer-obeys-the-allocation-ladder
+  (testing "ADR-0153 (roadmap.md#surge-policy-self-check-202, census S-5):
+            the bed-ready coupling names the bed WITHIN its rung; it never
+            hands a boarder a surge slot while a licensed bed in their own
+            home ward is free. Minimal repro of the seed-202 misfire: a
+            :cancel-admit frees RENAL-01 with no bed-ready pull of its own,
+            so when the RENAL-H01 occupant discharges the waiting boarder
+            must take rung 1 (RENAL-01), not the just-vacated rung-2 slot."
+    (let [rng (Random. 1)
+          world0 {:facility one-bed-one-surge-facility
+                  :providers test-providers
+                  :ground-truth []
+                  :patients {"P1" (engine/initial-patient "P1" "MRN000001")
+                             "P2" (engine/initial-patient "P2" "MRN000002")
+                             "P3" (engine/initial-patient "P3" "MRN000003")}}
+          world1 (advance world0 rng 0 "P1" {:type :admission :location "Renal"})
+          world2 (advance world1 rng 10 "P2" {:type :admission :location "Renal"})
+          world3 (advance world2 rng 20 "P3" {:type :admission :location "Renal"})]
+      (testing "the ladder fills rung 1, rung 2, then boards P3 in ED surge"
+        (is (= {:ward "Renal" :bed "RENAL-01" :placement :licensed}
+               (get-in world3 [:patients "P1" :location])))
+        (is (= {:ward "Renal" :bed "RENAL-H01" :placement :surge}
+               (get-in world3 [:patients "P2" :location])))
+        (is (= "Renal" (get-in world3 [:patients "P3" :home-ward])))
+        (is (= "ED" (get-in world3 [:patients "P3" :location :ward]))))
+      (let [world4 (advance world3 rng 30 "P1" {:type :cancel-admit})]
+        (testing "the churn step frees RENAL-01, and nothing pulls a boarder in"
+          (is (nil? (get-in world4 [:patients "P1" :location])))
+          (is (= "ED" (get-in world4 [:patients "P3" :location :ward]))))
+        (let [world5 (advance world4 rng 40 "P2" {:type :discharge})
+              log (:ground-truth world5)
+              transfer (last log)]
+          (testing "P2's discharge bed-ready-transfers P3"
+            (is (= :transfer (:event transfer)))
+            (is (true? (:bed-ready transfer)))
+            (is (= "P3" (:patient-id (first (:participants transfer))))))
+          (testing "into the FREE LICENSED bed, not the vacated surge slot"
+            (is (= {:ward "Renal" :bed "RENAL-01" :placement :licensed}
+                   (:location transfer)))
+            (is (= :licensed (:placement transfer))))
+          (testing "so the self-check the seed-202 run failed stays silent"
+            (is (empty? (check/surge-only-when-earlier-rungs-exhausted
+                         log one-bed-one-surge-facility)))))))))
+
 (deftest replay-tracks-before-after-and-world
   (let [{:keys [ground-truth]} (engine/run {:seed 7 :patients 2 :facility crowded-facility})
         records (engine/replay ground-truth)]

@@ -380,3 +380,21 @@
     (is (result/error? r))
     (is (= :config-not-found (:category r)))
     (is (= path (:path (:payload r))))))
+
+;; --- ADR-0153: the seed-202 self-check failure, at the run level ----------
+
+(deftest ed-tuesday-churn-seed-202-self-checks-clean
+  (testing "roadmap.md#surge-policy-self-check-202 (census S-5): the exact
+            reproducing invocation --
+            `ehrt sim run --seed 202 --patients 100 --churn --config
+            demos/scenarios/ed-tuesday/config.edn` -- exited :error
+            :self-check-failed on :surge-only-when-earlier-rungs-exhausted
+            at t 78480, because the bed-ready transfer coupling handed a
+            waiting boarder a just-vacated SURGE slot while RENAL-04 stood
+            free (ehrt.sim-engine.engine's own decide :discharge). Kept at
+            the per-push tier, not integration: the whole run is ~1s in a
+            warm JVM, and the demo config it reads is tracked content."
+    (let [r (run/run-command {:seed 202 :patients 100 :churn true
+                              :config "demos/scenarios/ed-tuesday/config.edn"})]
+      (is (result/ok? r) (str "violations: " (pr-str (:payload r))))
+      (is (seq (:ground-truth (:payload r)))))))
