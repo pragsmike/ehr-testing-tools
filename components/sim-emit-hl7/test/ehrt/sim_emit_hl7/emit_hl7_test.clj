@@ -961,3 +961,41 @@
           rendered-control-ids (into #{} (map #(message/get-field-first-value (parser/parse %) "MSH" 10)) messages)
           derived-control-ids (into #{} (keep emit-hl7/control-id-for) ground-truth)]
       (= rendered-control-ids derived-control-ids))))
+
+;; --- ADR-0150 S-Z: the ADT family sees the WHOLE event ---------------------
+;; `.agents/plans/2026-08-16-event-log-census.md`, "One genuine defect found
+;; in a consumer": `single-subject-message` handed `z-segments-for` a
+;; synthesized seven-key subset while every other family handed it `ev`, so a
+;; template bound to any other key rendered EMPTY on ADT and populated
+;; everywhere else -- silently, because `render-z-field` never throws on an
+;; unbound path. One run, two families, one template: the asymmetry is the
+;; whole assertion.
+
+(def ^:private whole-event-profile
+  "A profile whose Z-segment binds keys OUTSIDE the seven the ADT builder
+  used to synthesize -- `:warm-up` (universal, so an empty rendering is the
+  bug and never the data, the census's own probe) and `:home-ward` (present
+  on :admission, absent on :order-placed, so its per-family emptiness is
+  DATA and is asserted as such)."
+  (assoc aldric-profile
+         :z-segments [{:segment "ZWU"
+                       :trigger #{:admission :order-placed}
+                       :fields [{:path [:warm-up]}
+                                {:path [:home-ward]}]}]))
+
+(deftest z-segments-see-the-whole-event-on-the-adt-family-too
+  (let [{:keys [ground-truth facility providers]} (run-with-order 1)
+        messages (emit-hl7/emit ground-truth ref-date utc-offset facility providers whole-event-profile)
+        adt (parser/parse (find-message messages "A01"))
+        orm (parser/parse (find-message messages "O01"))
+        admission (first (filter #(= :admission (:event %)) ground-truth))]
+    (testing "the non-ADT family has always seen the whole event -- the control"
+      (is (= "false" (message/get-field-first-value orm "ZWU" 1))))
+    (testing "ADT sees it too: :warm-up is not one of the seven keys the ADT
+              builder used to synthesize, and it must render all the same"
+      (is (= "false" (message/get-field-first-value adt "ZWU" 1))))
+    (testing ":home-ward, an ADT-only key, renders on the ADT message"
+      (is (= (:home-ward admission) (message/get-field-first-value adt "ZWU" 2))))
+    (testing "and stays empty on the order message, because the ORDER EVENT
+              has no :home-ward -- absence is data, not a dropped context"
+      (is (= "" (or (message/get-field-first-value orm "ZWU" 2) ""))))))
