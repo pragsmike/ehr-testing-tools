@@ -579,6 +579,17 @@ encounter reason (a module state name would be an honest one), or the
 key rides the nil-dropping `cond->` treatment `:citation` already gets
 — present-and-nil is the one shape that tells a consumer nothing.
 
+**ATTEMPTED AND STOPPED 2026-08-18 (ADR-0150); re-rowed as
+`.agents/plans/roadmap.md#reason-nil-drop-owes-a-bump`.** The fix was
+written and proven -- red 2 of 4 assertions, green 4 of 4, the key
+riding a sibling `reason-field` rather than a widened
+`citation-fields` (that function's contract is glass-box traceability;
+`:reason` is clinical content). What stops it is the contract, not the
+code: `:reason` is a REQUIRED key of a `{:closed true}` map, so
+dropping it forces `{:optional true}`, and `classify-change` returns
+`additive? false` with `key changed: :reason (required -> optional)`
+on both kinds. It owes a version bump it may not share with S-6's.
+
 **S-2 — `referenced_by_attribute` care-plan closures never resolve
 their start.** 7/7 observed `:care-plan-end` events carry both
 `:care-plan-citation nil` and `:start-event-id nil`.
@@ -606,6 +617,12 @@ exercises neither". So this is an unported resolution shape, disclosed
 at the time, whose absence is now visible in emitted data. Still a
 register row; a materially different one than first written.
 
+**FOLDED 2026-08-18 (ADR-0150) into
+`.agents/plans/roadmap.md#careplan-guard-resolution`.** The cause this
+row landed on -- an undeclared D2 vendoring scope for
+`:referenced-by-attribute` -- is the same cause that row already owns,
+so it becomes one row rather than two. No separate row survives here.
+
 **S-3 — `:medication-end`'s `:order-event-id` nil: RESOLVED as
 correct behaviour, not a defect.** Both observed events carried a
 populated `:order-citation` and a nil `:order-event-id`. The extra
@@ -629,6 +646,12 @@ schema should reference the existing var rather than an
 observation-derived set, which is what Step 2 will do. Recorded so
 the "closed enum from the census" instinct does not narrow it.
 
+**CLOSED 2026-08-18 (ADR-0150), no code owed.** Re-derived at
+`cfe6a73`: `event_schema.clj:478` reads `[:reason (into [:enum] (sort
+engine/documented-step-rejection-reasons))]` against
+`engine.clj:486-496`'s seven-member set, and the comment above it
+already names this row. Step 2 did what this row asked.
+
 **S-6 — `:units` plural in one place, `:unit` singular in another,
 for the same concept.** A `:result-available` event's `:results`
 entries carry `:units`; an `:observation` event and a
@@ -640,12 +663,22 @@ right for two of the three shapes and silently empty for the third.
 Found while writing the schema (`ResultEntry`'s own docstring records
 it too); described, not fixed, under the same rule as the rest.
 
+**CLOSED 2026-08-18 (ADR-0150).** The EVENT key is renamed `:unit`
+under the contract's first non-additive bump, 1.0.0 -> 1.1.0, baseline
+re-frozen. The order-profile ANALYTE config key stays `:units` by
+author ruling -- it is user-reachable through `--config` -- and
+`engine.clj`'s one result-construction site translates between them.
+
 **S-5 — an unrelated engine finding, disclosed not pursued.** Seed
 202 under `--churn` with the ed-tuesday facility exits `:status
 :error :category :self-check-failed`, violation
 `:surge-only-when-earlier-rungs-exhausted` at `t 78480`. Reproducible.
 Wholly outside this arc; recorded because it was found while running,
 and a finding met and not written down is a finding lost.
+
+**ROWED 2026-08-18 (ADR-0150)** as
+`.agents/plans/roadmap.md#surge-policy-self-check-202`, which now owns
+the repro and the fix.
 
 ---
 

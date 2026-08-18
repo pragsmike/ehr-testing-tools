@@ -89,7 +89,9 @@ a step are in `HISTORY.md` beside this file (split out by ADR-0145).
   oracle and may not be reported as one (`rulings.md#R-oracle-script-contract`).
 - **Every gate run goes to a full log with its exit code captured explicitly** —
   `make test > <log> 2>&1; MAKE_EXIT=$?`. A pipe or `tail` returns its own status
-  and truncates the counts you reconcile against (review-3 D2-6).
+  and truncates the counts you reconcile against (review-3 D2-6). That full run,
+  never `poly test brick:`/`project:`, is what precedes a push: tree-scanning
+  gates live in bricks other than the one you changed (`rulings.md#R-full-suite-before-push`).
 - **Catching yourself drafting a justification for skipping an instructed step is
   the stop signal.** Do the step or STOP-AND-REPORT; the drafted excuse goes in the
   session record either way (ADR-0128).

@@ -8,11 +8,12 @@ cited from elsewhere as `roadmap.md#<slug>` and never by line number; `## Next`
 rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
 
 ## Next (backlog, no session scheduled)
-- OPEN **[event-log-shape-defects]** PRIORITY 1 -- S-1/S-2/S-4/S-5/S-6 and the
-  Z-segment context asymmetry stay register rows by ruling (2026-08-16):
-  describing current truth first, then changing it under the versioned event
-  contract, is the point of the tier. Evidence and full write-up in
-  `.agents/plans/2026-08-16-event-log-census.md`, section "Shape defects".
+- OPEN **[reason-nil-drop-owes-a-bump]** PRIORITY 1 -- census S-1: every
+  module-compiled encounter emits `:reason nil`. The fix is written and proven
+  (ADR-0150 Step 2, red 2/4, green 4/4, a sibling `reason-field`) and STOPPED:
+  `:reason` is a required key of a closed map, so nil-dropping it forces
+  `{:optional true}`, which `classify-change` calls breaking. Owes a version
+  bump of its own; it may not share S-6's. ADR-0150 preserves the diff.
 - OPEN **[repo-review-4]** PRIORITY 2 -- chartered at roughly 15 ADRs past
   ADR-0139, i.e. approximately ADR-0154; the standing cadence rule is ADR count,
   not calendar (ruling Q3 "a.", 2026-08-15). Inherits review 3's twelve-row
@@ -24,17 +25,24 @@ rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
   regenerates byte-perfectly from the stale half and CI stays green. Open
   question for the author: translator, or checked-in agreement gate?
   ADR-0139 finding C-1 holds the evidence and the contradicting live sentence.
-- OPEN **[careplan-guard-resolution]** PRIORITY 4 -- a third unregistered
-  standing request, registered visibility-first with its disposition
-  deliberately not taken: a closure's next prerequisite is CarePlan, "unowned by
-  any wave until a future session extends Guard's own condition-resolution
-  machinery". ADR-0139 finding C-2.
+- OPEN **[careplan-guard-resolution]** PRIORITY 4 -- a closure's next
+  prerequisite is CarePlan, "unowned by any wave until a future session extends
+  Guard's own condition-resolution machinery" (ADR-0139 C-2). NOW ALSO OWNS
+  census S-2 (folded 2026-08-18, ADR-0150): 7/7 `:care-plan-end` events resolve
+  neither field because 4 of 12 vendored `CarePlanEnd` states cite by
+  `referenced_by_attribute`, a shape the declared D2 scope never exercised.
 - OPEN **[attic-rotation-law]** PRIORITY 5 -- `## Done` holds the current arc
   only by law, and its pointers have not rotated to the attic since the
   conviction arc closed 2026-08-08; deciding a dozen intervening arcs'
   boundaries is judgement work outside a records-only close. ADR-0144 retokened
   those pointers and added six missing ones rather than rotating them, so the
   backlog this row names is larger, not smaller. ADR-0139 finding C-3.
+- OPEN **[surge-policy-self-check-202]** PRIORITY 6 -- seed 202 under `--churn`
+  with the ed-tuesday facility exits `:status :error :category
+  :self-check-failed`, violation `:surge-only-when-earlier-rungs-exhausted` at
+  `t 78480`. Reproducible. Found while running the event-log census, wholly
+  outside that arc and disclosed rather than pursued (census S-5). Wanted: a
+  repro test, then the fix.
 - OPEN **[manual-dimension-5]** PRIORITY 8 -- manual-review run 2 passed with
   warns, and dimension 5 (running-example continuity) stays WARN as the manual's
   one standing open row: `ed-tuesday` is HL7v2-only and structurally cannot
@@ -301,3 +309,8 @@ Rows here are LIVE, each owing a revisit trigger in its own token.
   script. No residue: all fifteen derived files are gated. The census found
   `module-mix/messages.txt` was never its own command's output -- proven by
   re-running that command at `f07684c` -- not merely stale.
+- CLOSED 2026-08-18 ADR-0150 **[event-log-shape-defects]** -- the Z-segment
+  context asymmetry and S-6 fixed, S-4 confirmed closed with no code owed.
+  Residue re-rowed rather than dropped: S-1 as `#reason-nil-drop-owes-a-bump`,
+  S-2 folded into `#careplan-guard-resolution`, S-5 as
+  `#surge-policy-self-check-202`.
