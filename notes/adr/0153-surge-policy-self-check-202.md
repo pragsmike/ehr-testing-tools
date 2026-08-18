@@ -298,3 +298,19 @@ boarder still in ED surge at `t 78480`. It is a realism gap, not an
 invariant violation (this fix means the boarder now takes the licensed
 bed when a *later* discharge finally pulls them), so it is rowed, not
 fixed in passing.
+
+### Addendum, 2026-08-18 — the close tag was paid in session
+
+CI run **32195652221** at `5563f71` (the close commit) concluded
+**`success`** while this session was still open, meeting the tag
+licence's own condition, so
+`stable-20260818-surge-policy-self-check-202` was created and pushed
+in-session via `bin/tag-ceremony` and its remote peeled ref verified
+against `5563f71f7a43780ab58c1d8ed9193bd6ceb41a28` exactly. Deferring a
+licensed tag is the deviation (`rulings.md#R-tag-law`), so this is
+ceremony, not a judgement call.
+
+`bin/post-push-verify c1a40d0 5563f71` reported all three of its checks
+green: remote tip matches HEAD, every commit message in the range is
+pure ASCII, and the CI run reported once (queued at the time, disclosed
+as not awaited there and awaited separately here).

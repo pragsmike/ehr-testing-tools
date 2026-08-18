@@ -103,13 +103,53 @@ net +6 lines there. 132 lines of headroom; no budget touched, so
 
 ## Push and CI
 
-(filled at C3)
+One push, `c1a40d0..5563f71`, carrying all three commits -- the red
+commit went out together with its green successor, never alone
+(`rulings.md#R-red-pushed-with-green`).
+
+`bin/post-push-verify c1a40d0 5563f71`, its three checks:
+
+1. remote tip `5563f71f7a43780ab58c1d8ed9193bd6ceb41a28` matches HEAD;
+2. every commit message in the range is pure ASCII;
+3. CI run reported once, `status=queued` at the time, disclosed as not
+   awaited to conclusion (AR-CI-4).
+
+Awaited separately, per `rulings.md#R-session-verifies-ci-via-gh`:
+`gh run view 32195652221` -> **`status=completed conclusion=success`**
+at `sha=5563f71f7a43780ab58c1d8ed9193bd6ceb41a28`.
+https://github.com/pragsmike/ehr-testing-tools/actions/runs/32195652221
 
 ## Tag
 
 No tag owed at Step 0 (preflight-confirmed). This session's own close
 tag is licensed by the prompt to be paid in-session if this session's
 tip CI run concludes success while the session is still open, else at
-the next Step 0 -- the disposition is recorded below.
+the next Step 0.
 
-(filled at C3)
+**PAID IN-SESSION.** Run 32195652221 concluded `success` at `5563f71`
+while this session was open, so the licence's condition was met and
+deferring would have been the deviation (`rulings.md#R-tag-law`).
+
+`bin/tag-ceremony stable-20260818-surge-policy-self-check-202
+5563f71f7a43780ab58c1d8ed9193bd6ceb41a28 <msg-file> --push`, its own
+output:
+
+    OK: created annotated tag 'stable-20260818-surge-policy-self-check-202'
+        at 5563f71f7a43780ab58c1d8ed9193bd6ceb41a28
+    OK: pushed refs/tags/stable-20260818-surge-policy-self-check-202
+    OK: remote peeled ref for 'stable-20260818-surge-policy-self-check-202'
+        is 5563f71f7a43780ab58c1d8ed9193bd6ceb41a28, matches target exactly
+
+Message from a file, never inline. No `v*` tag, no repo-level `gh`
+mutation, no git surgery -- those stay AUTHOR ACTION under either
+ceremony mode.
+
+## Scratch hygiene
+
+Instrumentation lived in three throwaway `development/src/dev/scratch*`
+namespaces (gitignored by that exact pattern) and was deleted before the
+pre-push suite ran; the disposable `c1a40d0` worktree used for the
+demo-corpus baseline was removed and `git worktree prune` run. `out/`
+was backed up before being cleared for the runs and restored to its
+Step 0 contents at close -- it is gitignored and reproducible, but it
+was not this session's to destroy.
