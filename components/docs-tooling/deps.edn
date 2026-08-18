@@ -1,12 +1,15 @@
 {:paths ["src" "resources"]
 
- :deps {metosin/malli {:mvn/version "0.20.1"}}
-        ;; usecases.clj's and exercised-sources.clj's own schemas are
-        ;; the real uses of malli in this component -- docsgen/
-        ;; pipeline/quickstart-fresh/lint need nothing beyond
-        ;; clojure.core and sibling-component interfaces (kernel,
-        ;; tools, palgebra -- wired at the project level, ADR-0011's
-        ;; flat convention, not here).
+ ;; usecases.clj's and exercised-sources.clj's own schemas are the real
+ ;; uses of malli in this component -- docsgen/pipeline/quickstart-fresh/
+ ;; lint need nothing beyond clojure.core and sibling-component
+ ;; interfaces (kernel, tools, palgebra -- wired at the project level,
+ ;; ADR-0011's flat convention, not here). data.json is trace-capture's
+ ;; FHIR half alone (ADR-0149): the committed demos/traces/emit-state/
+ ;; fhir-bundle-patient1.json is pretty JSON and clojure.data.json/pprint
+ ;; is what renders it -- the same coordinate five other bricks carry.
+ :deps {metosin/malli {:mvn/version "0.20.1"}
+        org.clojure/data.json {:mvn/version "2.5.2"}}
 
  :aliases
  {:test {:extra-paths ["test"]}}}

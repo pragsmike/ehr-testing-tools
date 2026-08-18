@@ -45,10 +45,10 @@ Oracle roots: `appendicitis`, `sore-throat`, `ear-infections`, `sinusitis`, `dea
 
 | fact | count |
 |---|---|
-| `*_test.clj` namespaces under any brick's own `test/` | 185 |
-| docs-tooling gate namespaces | 42 |
+| `*_test.clj` namespaces under any brick's own `test/` | 186 |
+| docs-tooling gate namespaces | 43 |
 
-Docs-tooling gates: `adr_index_test`, `citation_gate_test`, `cli_tombstone_test`, `demo_exerciser_fresh_test`, `docsgen_test`, `done_pointer_adr_test`, `event_log_doc_test`, `exercised_sources_coverage_test`, `exercised_sources_test`, `index_completeness_test`, `invocation_lint_test`, `io_vocabulary_lint_test`, `license_text_pointer_test`, `link_footnote_gate_test`, `lint_test`, `mermaid_render_test`, `notes_prompts_frozen_test`, `notice_verbatim_test`, `pipeline_test`, `post_push_verify_range_test`, `project_classpath_test`, `prompt_record_pairing_test`, `provenance_leaf_law_test`, `quickstart_fresh_test`, `reading_set_budget_test`, `readme_presence_test`, `resource_nesting_test`, `roadmap_lint_test`, `root_alias_completeness_test`, `rulings_lint_test`, `sim_emit_hl7_dependency_test`, `sim_purity_lint_test`, `skill_mirror_currency_test`, `stale_path_test`, `state_derived_test`, `state_residue_test`, `state_staleness_tripwire_test`, `strip_fresh_test`, `structure_currency_test`, `tag_law_test`, `test_source_live_path_lint_test`, `usecases_test`
+Docs-tooling gates: `adr_index_test`, `citation_gate_test`, `cli_tombstone_test`, `demo_exerciser_fresh_test`, `docsgen_test`, `done_pointer_adr_test`, `event_log_doc_test`, `exercised_sources_coverage_test`, `exercised_sources_test`, `index_completeness_test`, `invocation_lint_test`, `io_vocabulary_lint_test`, `license_text_pointer_test`, `link_footnote_gate_test`, `lint_test`, `mermaid_render_test`, `notes_prompts_frozen_test`, `notice_verbatim_test`, `pipeline_test`, `post_push_verify_range_test`, `project_classpath_test`, `prompt_record_pairing_test`, `provenance_leaf_law_test`, `quickstart_fresh_test`, `reading_set_budget_test`, `readme_presence_test`, `resource_nesting_test`, `roadmap_lint_test`, `root_alias_completeness_test`, `rulings_lint_test`, `sim_emit_hl7_dependency_test`, `sim_purity_lint_test`, `skill_mirror_currency_test`, `stale_path_test`, `state_derived_test`, `state_residue_test`, `state_staleness_tripwire_test`, `strip_fresh_test`, `structure_currency_test`, `tag_law_test`, `test_source_live_path_lint_test`, `traces_fresh_test`, `usecases_test`
 
 ## Registers
 

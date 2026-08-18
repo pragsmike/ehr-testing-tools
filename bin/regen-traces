@@ -1,0 +1,207 @@
+#!/usr/bin/env bash
+# Regenerates every derived file under demos/traces/ by running each
+# trace README's OWN fenced commands, verbatim, under per-step exit-code
+# assertions -- ADR-0149, closing `.agents/plans/roadmap.md#demos-traces-
+# ungated`.
+#
+# Until this script existed, demos/traces/** was an ungated derived-
+# artifact tree: no Makefile target, no workflow, no test touched it
+# (ADR-0142's own "Gating verified negative" census), only
+# .gitattributes' `-text` byte protection. It drifted twice that we know
+# of. ADR-0142 found order-result/messages.txt captured before PV1 gained
+# its trailing positional fields. ADR-0149's own census found worse:
+# module-mix/messages.txt was never the output of the command its README
+# teaches -- re-running that command at f07684c, the commit that last
+# wrote the file, produces today's bytes, not the committed ones.
+#
+# Each BEGIN/END block below carries one trace README's fences VERBATIM
+# and is read by components/docs-tooling/test/ehrt/docs_tooling/
+# traces_fresh_test.clj (through the exercised-sources register and
+# ehrt.docs-tooling.strip-fresh's check-all, ADR-0148) to prove this
+# script and that README teach the identical commands in the identical
+# order. Keep every taught line inside its own block, one statement per
+# README command, and do not "improve" a command here -- an improvement
+# belongs in the README first (AUTHORS-GUIDE.md sec7).
+#
+# On `make docsgen`, and so in CI's freshness diff, exactly like cli.md:
+# edit a trace README's command, regenerate, or the build goes red.
+#
+# TWO DELIBERATE DEVIATIONS from bin/demo-exerciser-ed-tuesday, whose
+# expect/expect_eval shape this otherwise reuses verbatim:
+#
+#   1. `expect` does NOT echo captured stdout. ed-tuesday echoes so a
+#      human sees normal output; here a single step's stdout is up to
+#      ~300 KB of EDN envelope, and `make traces` would bury its own
+#      result. Each step reports its byte count instead.
+#   2. Two runs are APPARATUS, outside any BEGIN/END block and so
+#      invisible to the freshness check: boarding-transfer's and
+#      module-mix's READMEs teach only a `--format er7` command, which
+#      renders messages and no ground truth, so their ground-truth.edn
+#      has no taught command that yields it. Each apparatus run is the
+#      taught command MINUS `--format er7` -- the same seed, patients and
+#      config -- and the script then proves it is the same run by
+#      rebuilding the ER7 bytes from its envelope and `cmp`ing them
+#      against the taught command's own captured stdout. An apparatus run
+#      that had drifted from its taught sibling fails here rather than
+#      quietly writing a ground truth from a different run.
+set -uo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)" || exit 2
+cd -- "$repo_root" || exit 2
+
+fail() {
+  echo "FAIL: $1" >&2
+  exit 1
+}
+
+STEP=0
+WORK="$(mktemp -d)"
+trap 'rm -rf "$WORK"' EXIT
+PLAN="$WORK/plan.edn"
+: > "$PLAN"
+
+# expect CODE CMD...  Runs CMD with CMD's own argv (no shell
+# reinterpretation -- the same word-splitting a user typing CMD at this
+# call site would get), asserts its exit status is exactly CODE, and
+# captures stdout/stderr to this step's own files under WORK.
+expect() {
+  local want="$1"; shift
+  STEP=$((STEP + 1))
+  "$@" > "$WORK/step-$STEP.out" 2> "$WORK/step-$STEP.err"
+  local got=$?
+  cat "$WORK/step-$STEP.err" >&2
+  if [ "$got" -ne "$want" ]; then
+    fail "'$*' exited $got, expected $want"
+  fi
+  printf '  step %-2s captured %8s bytes  %s\n' "$STEP" "$(wc -c < "$WORK/step-$STEP.out")" "$*"
+}
+
+# plan KIND STEP OUT  Queues one derived file for the single
+# materializing JVM at the end (ehrt.docs-tooling.trace-capture).
+plan() {
+  printf '{:kind %s :envelope "%s" :out "%s"}\n' ":$1" "$WORK/step-$2.out" "$3" >> "$PLAN"
+}
+
+# copy_er7 STEP OUT  A `--format er7` step's stdout IS the committed
+# bytes; no formatting step may touch them (.gitattributes' `-text`
+# protects them from EOL rewriting, and this preserves that guarantee
+# end to end).
+copy_er7() {
+  cp "$WORK/step-$1.out" "$2" || fail "could not write $2"
+  printf '  %-14s %-52s %7s bytes\n' "er7-verbatim" "$2" "$(wc -c < "$2")"
+}
+
+echo "== regen-traces: every demos/traces/*/README.md's own commands, verbatim, asserted =="
+
+# ---------------------------------------------------------------- boarding-transfer
+# BEGIN boarding-transfer commands (verbatim from demos/traces/boarding-transfer/README.md)
+expect 0 bin/ehrt sim run --seed 1 --patients 25 --arrival-gap 20 --emit hl7 --format er7
+# END boarding-transfer commands
+bt_er7=$STEP
+expect 0 bin/ehrt sim run --seed 1 --patients 25 --arrival-gap 20 --emit hl7   # APPARATUS (see header note 2)
+bt_env=$STEP
+copy_er7 "$bt_er7" demos/traces/boarding-transfer/messages.txt
+plan er7          "$bt_env" "$WORK/boarding-transfer.er7.check"
+plan ground-truth "$bt_env" demos/traces/boarding-transfer/ground-truth.edn
+
+# ---------------------------------------------------------------- emit-state
+# BEGIN emit-state commands (verbatim from demos/traces/emit-state/README.md)
+expect 0 bin/ehrt sim run --seed 42 --patients 3 \
+  --config demos/traces/order-result/config.edn --emit hl7
+
+expect 0 bin/ehrt sim run --seed 42 --patients 3 \
+  --config demos/traces/order-result/config.edn --emit fhir
+# END emit-state commands
+es_fhir=$STEP
+es_hl7=$((STEP - 1))
+plan er7          "$es_hl7"  demos/traces/emit-state/messages.txt
+plan ground-truth "$es_hl7"  demos/traces/emit-state/ground-truth.edn
+plan fhir-bundle  "$es_fhir" demos/traces/emit-state/fhir-bundle-patient1.json
+
+# ---------------------------------------------------------------- module-mix
+# BEGIN module-mix commands (verbatim from demos/traces/module-mix/README.md)
+expect 0 bin/ehrt sim run --seed 71 --patients 100 --config demos/traces/module-mix/config.edn --churn --emit hl7 --format er7
+# END module-mix commands
+mm_er7=$STEP
+expect 0 bin/ehrt sim run --seed 71 --patients 100 --config demos/traces/module-mix/config.edn --churn --emit hl7   # APPARATUS
+mm_env=$STEP
+copy_er7 "$mm_er7" demos/traces/module-mix/messages.txt
+plan er7          "$mm_env" "$WORK/module-mix.er7.check"
+plan ground-truth "$mm_env" demos/traces/module-mix/ground-truth.edn
+
+# ---------------------------------------------------------------- order-result
+# BEGIN order-result commands (verbatim from demos/traces/order-result/README.md)
+expect 0 bin/ehrt sim run --seed 42 --patients 3 \
+  --config demos/traces/order-result/config.edn --emit hl7
+# END order-result commands
+or_hl7=$STEP
+plan er7          "$or_hl7" demos/traces/order-result/messages.txt
+plan ground-truth "$or_hl7" demos/traces/order-result/ground-truth.edn
+
+# ---------------------------------------------------------------- persona-enriched
+# BEGIN persona-enriched commands (verbatim from demos/traces/persona-enriched/README.md)
+expect 0 bin/ehrt sim run --seed 41 --patients 5 --emit hl7
+
+expect 0 bin/ehrt sim run --seed 41 --patients 5 --emit hl7 --format er7
+# END persona-enriched commands
+pe_er7=$STEP
+pe_env=$((STEP - 1))
+copy_er7 "$pe_er7" demos/traces/persona-enriched/messages.txt
+plan er7          "$pe_env" "$WORK/persona-enriched.er7.check"
+plan ground-truth "$pe_env" demos/traces/persona-enriched/ground-truth.edn
+
+# ---------------------------------------------------------------- site-profiles
+# BEGIN site-profiles commands (verbatim from demos/traces/site-profiles/README.md)
+expect 0 bin/ehrt sim run --seed 42 --patients 2 --emit hl7
+expect 0 bin/ehrt sim run --seed 42 --patients 2 --emit hl7 --config demos/traces/site-profiles/config-aldric.edn
+# END site-profiles commands
+sp_aldric=$STEP
+sp_default=$((STEP - 1))
+plan er7          "$sp_default" demos/traces/site-profiles/messages-default.txt
+plan ground-truth "$sp_default" demos/traces/site-profiles/ground-truth.edn
+plan er7          "$sp_aldric"  demos/traces/site-profiles/messages-aldric.txt
+plan ground-truth "$sp_aldric"  "$WORK/site-profiles-aldric.ground-truth.check"
+
+# ---------------------------------------------------------------- materialize
+echo "== regen-traces: rendering the derived files (one JVM, ehrt.docs-tooling.trace-capture) =="
+printf '[\n' > "$WORK/plan-wrapped.edn"
+cat "$PLAN" >> "$WORK/plan-wrapped.edn"
+printf ']\n' >> "$WORK/plan-wrapped.edn"
+clojure -X:dev ehrt.docs-tooling.trace-capture/materialize! :plan "\"$WORK/plan-wrapped.edn\"" \
+  || fail "trace-capture/materialize! failed"
+
+# ---------------------------------------------------------------- named invariants
+echo "== regen-traces: checking named invariants =="
+
+# The apparatus runs are the SAME runs as their taught `--format er7`
+# siblings (header note 2). Rebuilding ER7 from each apparatus envelope
+# and comparing byte-for-byte is what makes that claim checked rather
+# than asserted -- and it re-proves `sim-er7-bare-text`'s own join rule
+# against real captured output on every regeneration.
+for pair in \
+  "boarding-transfer:demos/traces/boarding-transfer/messages.txt" \
+  "module-mix:demos/traces/module-mix/messages.txt" \
+  "persona-enriched:demos/traces/persona-enriched/messages.txt"; do
+  name="${pair%%:*}"; committed="${pair#*:}"
+  cmp -s "$WORK/$name.er7.check" "$committed" \
+    || fail "$name: the envelope run and the taught --format er7 run disagree byte-for-byte -- they are not the same run, so the ground truth written from the envelope would describe different traffic"
+done
+echo "  OK: 3 apparatus envelopes rebuild their taught --format er7 bytes exactly"
+
+# site-profiles' own README thesis: the SAME seed under two site profiles
+# produces byte-identical ground truth, which is why ONE ground-truth.edn
+# is committed there rather than two. Checked on this run's real output
+# rather than trusted from the prose.
+cmp -s demos/traces/site-profiles/ground-truth.edn "$WORK/site-profiles-aldric.ground-truth.check" \
+  || fail "site-profiles: the default and St. Aldric runs produced DIFFERENT ground truth -- that README's own invariance claim ('the SAME log for both runs') no longer holds"
+echo "  OK: site-profiles' two profiles share one byte-identical ground truth"
+
+# emit-state's own README claim: its messages.txt is "same as
+# order-result/messages.txt", the two demos sharing one seed and one
+# config by construction. ADR-0142 found this false and fixed it; nothing
+# kept it true. Now something does.
+cmp -s demos/traces/emit-state/messages.txt demos/traces/order-result/messages.txt \
+  || fail "emit-state/messages.txt and order-result/messages.txt differ -- emit-state's README says 'same as order-result/messages.txt', the claim ADR-0142 found drifted once already"
+echo "  OK: emit-state and order-result render byte-identical messages"
+
+echo "== regen-traces: every taught command asserted, every named invariant held =="

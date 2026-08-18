@@ -18,8 +18,7 @@
     "birthDate":"1935-02-21",
     "resourceType":"Patient",
     "id":"PID-000000-918175ce",
-    "identifier":
-    [{"system":"urn:ehrt.sim:mrn", "value":"MRN000001"}],
+    "identifier":[{"system":"urn:ehrt.sim:mrn", "value":"MRN000001"}],
     "telecom":[{"system":"phone", "value":"607-335-0157"}],
     "gender":"female"}},
   {"resource":

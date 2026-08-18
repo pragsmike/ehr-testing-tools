@@ -141,4 +141,69 @@
   :marker-open "# BEGIN clinic-decade commands (verbatim from demos/scenarios/clinic-decade/README.md)"
   :marker-close "# END clinic-decade commands"
   :env {}
-  :witness {:adr "ADR-0132" :date "2026-08-14"}}]
+  :witness {:adr "ADR-0132" :date "2026-08-14"}}
+
+ ;; The six demos/traces READMEs (ADR-0149, closing
+ ;; `roadmap.md#demos-traces-ungated`). FIRST rows to share ONE :script:
+ ;; `bin/regen-traces` carries one BEGIN/END pair per trace, because a
+ ;; single `make traces` has to regenerate the whole tree in one pass and
+ ;; six scripts would be six copies of the same apparatus. Nothing in the
+ ;; register or in `strip-fresh` assumed one script per source -- rows are
+ ;; keyed by {source, script} and `:section` disambiguates only a SOURCE
+ ;; with several rows, which none of these is -- so the widening is a
+ ;; use of the existing shape, not a change to it (probed before choosing
+ ;; it; see ADR-0149's marker/row decision).
+ ;;
+ ;; Unlike every row above, these gate a page whose DERIVED FILES are the
+ ;; artifact: the freshness check proves README and script teach the same
+ ;; commands, and CI's `git diff` over demos/traces/ proves the committed
+ ;; bytes are what those commands produce. Neither half is sufficient
+ ;; alone, which is exactly how this tree drifted twice unnoticed.
+
+ {:source "demos/traces/boarding-transfer/README.md"
+  :script "bin/regen-traces"
+  :extraction :demo-exerciser-fresh
+  :marker-open "# BEGIN boarding-transfer commands (verbatim from demos/traces/boarding-transfer/README.md)"
+  :marker-close "# END boarding-transfer commands"
+  :env {}
+  :witness {:adr "ADR-0149" :date "2026-08-17"}}
+
+ {:source "demos/traces/emit-state/README.md"
+  :script "bin/regen-traces"
+  :extraction :demo-exerciser-fresh
+  :marker-open "# BEGIN emit-state commands (verbatim from demos/traces/emit-state/README.md)"
+  :marker-close "# END emit-state commands"
+  :env {}
+  :witness {:adr "ADR-0149" :date "2026-08-17"}}
+
+ {:source "demos/traces/module-mix/README.md"
+  :script "bin/regen-traces"
+  :extraction :demo-exerciser-fresh
+  :marker-open "# BEGIN module-mix commands (verbatim from demos/traces/module-mix/README.md)"
+  :marker-close "# END module-mix commands"
+  :env {}
+  :witness {:adr "ADR-0149" :date "2026-08-17"}}
+
+ {:source "demos/traces/order-result/README.md"
+  :script "bin/regen-traces"
+  :extraction :demo-exerciser-fresh
+  :marker-open "# BEGIN order-result commands (verbatim from demos/traces/order-result/README.md)"
+  :marker-close "# END order-result commands"
+  :env {}
+  :witness {:adr "ADR-0149" :date "2026-08-17"}}
+
+ {:source "demos/traces/persona-enriched/README.md"
+  :script "bin/regen-traces"
+  :extraction :demo-exerciser-fresh
+  :marker-open "# BEGIN persona-enriched commands (verbatim from demos/traces/persona-enriched/README.md)"
+  :marker-close "# END persona-enriched commands"
+  :env {}
+  :witness {:adr "ADR-0149" :date "2026-08-17"}}
+
+ {:source "demos/traces/site-profiles/README.md"
+  :script "bin/regen-traces"
+  :extraction :demo-exerciser-fresh
+  :marker-open "# BEGIN site-profiles commands (verbatim from demos/traces/site-profiles/README.md)"
+  :marker-close "# END site-profiles commands"
+  :env {}
+  :witness {:adr "ADR-0149" :date "2026-08-17"}}]

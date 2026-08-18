@@ -18,13 +18,25 @@
   registry entry and its own page -- exercised from birth, the D8-5
   battery's own proposed reader-path rule (R-F8) satisfied by
   construction rather than retrofitted onto a page that had already
-  gone unexercised."
+  gone unexercised.
+
+  ADR-0149 adds SIX at once -- the `demos/traces/*/README.md` tree --
+  taking the register to fifteen rows. They are the first rows to share
+  one `:script`: `bin/regen-traces` carries a marker pair per trace,
+  because one `make traces` has to regenerate the whole tree in one
+  pass. Nothing in the loader or its schema assumed one script per
+  source, so nothing here changed but the count. Note for a future
+  reader of `registry-seeds-the-five-new-rows-test` below: its
+  `by-script` map now collapses those six rows onto one key. That test
+  only looks up the older, unique scripts, so it stays honest -- but a
+  new assertion keyed by `:script` alone would not be."
   (:require [clojure.test :refer [deftest is]]
             [ehrt.docs-tooling.exercised-sources :as reg]))
 
 (deftest registry-loads-and-validates-test
   (let [rows (reg/load-registry)]
-    (is (= 9 (count rows)))
+    (is (= 15 (count rows))
+        "the registry's own row count, pinned: six of the fifteen arrived together in ADR-0149 and share one script")
     (is (every? #(contains? #{:quickstart-fresh :demo-exerciser-fresh
                                :single-fence :paired}
                              (:extraction %))

@@ -86,7 +86,11 @@ captured *before* PV1 gained its trailing positional fields (the
 site-profiles milestone's PV1-36 disposition), and nothing regenerates
 or freshness-checks `demos/traces/**` — no `Makefile` target, no CI
 job, no test, only `.gitattributes`' `-text` byte protection. So the
-strip drifted silently and stayed drifted. Both classes of change are
+strip drifted silently and stayed drifted. **Errata, 2026-08-17
+(ADR-0149): there is now a `Makefile` target (`make traces`), a CI job
+(the generated-doc freshness diff) and a test
+(`ehrt.docs-tooling.traces-fresh-test`); `messages.txt` also gained the
+one trailing newline this file's hand capture had dropped, +1 byte.** Both classes of change are
 now landed together and are distinguished here rather than blended: 18
 changed lines are ADR-0142's own (3 OBR-7, 15 OBX-14, across the three
 ORU messages) and 12 are the pre-existing PV1 catch-up. The missing

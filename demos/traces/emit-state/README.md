@@ -28,7 +28,12 @@ bin/ehrt sim run --seed 42 --patients 3 \
   session and are byte-identical at 5,822 bytes. They were NOT before:
   the sibling copy had drifted, having been captured before PV1 gained
   its trailing positional fields, because nothing in the build
-  regenerates or freshness-checks `demos/traces/**`. This copy was
+  regenerates or freshness-checks `demos/traces/**`. **Errata,
+  2026-08-17 (ADR-0149): both halves of that sentence are now false.
+  `make traces` regenerates this file and CI diffs it on every push, and
+  the shared byte count is 5,823, not 5,822 — the capture ADR-0142 made
+  by hand was missing the single trailing newline the CLI's own
+  `--format er7` output carries.** This copy was
   current, so its own regeneration shows ADR-0142's change and nothing
   else: 18 changed lines, 3 `OBR-7` and 15 `OBX-14`, on the three ORU
   messages. The three ORM^O01 messages are byte-identical across the

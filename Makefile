@@ -1,4 +1,4 @@
-.PHONY: adr-index state-derived event-schema-export event-schema-freeze event-schema-examples formats-event-log help test integration quickstart quickstart-fresh ci-parity pipeline use-cases operators-doc cli-doc sim-theory palgebra-examples docsgen lint-pipeline mirror-nist verify-nist-lock
+.PHONY: adr-index state-derived traces event-schema-export event-schema-freeze event-schema-examples formats-event-log help test integration quickstart quickstart-fresh ci-parity pipeline use-cases operators-doc cli-doc sim-theory palgebra-examples docsgen lint-pipeline mirror-nist verify-nist-lock
 
 # Thin, deliberately (R23, ADR-0004, 2026-07-28 carve-loss recovery
 # session): every target below is a named entry point to a poly/CLI
@@ -37,7 +37,8 @@ help:
 	@echo "  formats-event-log - regenerate docs/formats.md's event-log section from the two artifacts above"
 	@echo "  adr-index    - regenerate notes/ADRs.md from the notes/adr/ tree's own headings and Status lines (ADR-0143)"
 	@echo "  state-derived - regenerate .agents/state-derived.md plus the two record INDEX.md files from the live tree (ADR-0147)"
-	@echo "  docsgen      - all eleven of the above"
+	@echo "  traces       - regenerate demos/traces/** by running each trace README's own commands (bin/regen-traces, ADR-0149)"
+	@echo "  docsgen      - all twelve of the above"
 	@echo "  event-schema-freeze - NOT part of docsgen: re-freeze the stability gate's baseline, ONLY when bumping the event schema version"
 	@echo "  lint-pipeline - assert every catalytic resource in docs/pipeline.edn and docs/use-cases.edn resolves to one of the four catalytic targets (ehrt.docs-tooling.lint)"
 	@echo "  mirror-nist  - build ~/.ehrt/nist-mirror/ from this user's own ~/.m2 cache, sha256-verified against artifacts.lock.edn (ADR-0053) -- offline determinism without redistribution"
@@ -225,7 +226,27 @@ state-derived:
 	clojure -X:dev ehrt.docs-tooling.state-derived/write-state-derived!
 	@echo "Regenerated .agents/state-derived.md and the two record INDEX.md files"
 
-docsgen: pipeline use-cases operators-doc cli-doc sim-theory palgebra-examples event-schema-export event-schema-examples formats-event-log adr-index state-derived
+# Regenerates every derived file under demos/traces/ -- seven
+# messages*.txt, six ground-truth.edn, one FHIR bundle -- by running each
+# trace README's OWN fenced commands, verbatim (ADR-0149, closing
+# `.agents/plans/roadmap.md#demos-traces-ungated`).
+#
+# This tree was the last ungated derived-artifact tree in the repo: no
+# target, no workflow, no test touched it (ADR-0142's own "Gating
+# verified negative" census), only .gitattributes' `-text` byte
+# protection, and it drifted twice -- once caught by ADR-0142, once by
+# ADR-0149's census, which found module-mix/messages.txt had never been
+# its own command's output at all. On `docsgen`, and so in CI's freshness
+# diff, exactly like cli.md: edit a trace README's command, regenerate.
+#
+# The slowest leaf on `docsgen` by a wide margin: eleven `bin/ehrt sim
+# run` starts plus one materializing JVM. See ADR-0149 for the measured
+# cold wall clock and the per-push-vs-integration tier reasoning.
+traces:
+	bin/regen-traces
+	@echo "Regenerated demos/traces/**"
+
+docsgen: pipeline use-cases operators-doc cli-doc sim-theory palgebra-examples event-schema-export event-schema-examples formats-event-log adr-index state-derived traces
 
 lint-pipeline:
 	clojure -X:dev ehrt.docs-tooling.lint/lint-pipeline!
