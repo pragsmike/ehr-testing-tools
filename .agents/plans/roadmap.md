@@ -25,12 +25,12 @@ rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
   boundaries is judgement work outside a records-only close. ADR-0144 retokened
   those pointers and added six missing ones rather than rotating them, so the
   backlog this row names is larger, not smaller. ADR-0139 finding C-3.
-- OPEN **[surge-policy-self-check-202]** PRIORITY 6 -- seed 202 under `--churn`
-  with the ed-tuesday facility exits `:status :error :category
-  :self-check-failed`, violation `:surge-only-when-earlier-rungs-exhausted` at
-  `t 78480`. Reproducible. Found while running the event-log census, wholly
-  outside that arc and disclosed rather than pursued (census S-5). Wanted: a
-  repro test, then the fix.
+- OPEN **[bed-ready-vacancy-cascade]** PRIORITY 6 -- a bed-ready transfer
+  vacates its own ORIGIN bed and nothing looks for a boarder waiting on that
+  ward: only `decide :discharge` runs the search. Witnessed at seed 202,
+  `t 78060` -- RENAL-04 freed by a bed-ready pull, a Renal boarder still in ED
+  surge 420s later. Realism gap, not an invariant violation once ADR-0153
+  landed. Class exposed by ADR-0153's diagnosis, rowed rather than fixed there.
 - OPEN **[manual-dimension-5]** PRIORITY 8 -- manual-review run 2 passed with
   warns, and dimension 5 (running-example continuity) stays WARN as the manual's
   one standing open row: `ed-tuesday` is HL7v2-only and structurally cannot
@@ -212,6 +212,12 @@ Rows here are LIVE, each owing a revisit trigger in its own token.
   one-module-per-patient assignment never produces. ADR-0037 AR-4.
 
 ## Done (current arc only; older arcs rotate to `.agents/plans/roadmap-done-2026-08.md`, ADR-0046/ADR-0055)
+- CLOSED 2026-08-18 ADR-0153 **[surge-policy-self-check-202]** -- diagnosed H2
+  (the bed-ready transfer bypassed the allocation ladder outright), minimal
+  repro plus a run-level test at the exact argv, fixed in `engine.clj` alone.
+  `bin/regression-oracle c1a40d0 HEAD` IDENTICAL, 35 roots; `demos/traces/**`
+  and six of the census's seven churn shapes byte-identical. Residue rowed as
+  `#bed-ready-vacancy-cascade`, not fixed in passing.
 - CLOSED 2026-08-08 ADR-0089 **[conviction-arc-close]**
 - CLOSED 2026-08-08 ADR-0090 **[vendoring-batch-4]**
 - CLOSED 2026-08-09 ADR-0091 **[storefront-fixture]**

@@ -215,3 +215,4 @@ append-only, never-reassigned rule stands.
 - **ADR-0150** — event-log shape defects: the Z-segment context asymmetry and `:units` closed, S-1 stopped by its own contract gate — [`0150-event-log-shape-defects.md`](adr/0150-event-log-shape-defects.md) — Accepted
 - **ADR-0151** — census S-1 lands under its own bump (1.1.0 -> 1.2.0), and the deprecation clause gains a no-external-consumer waiver — [`0151-reason-nil-drop.md`](adr/0151-reason-nil-drop.md) — Accepted
 - **ADR-0152** — the sim-theory head hop becomes a translator, and the `.edn` turns out to have drifted already — [`0152-sim-theory-head-hop.md`](adr/0152-sim-theory-head-hop.md) — Accepted
+- **ADR-0153** — the bed-ready transfer obeyed no ladder: seed 202 under `--churn`, diagnosed, repro'd, fixed — [`0153-surge-policy-self-check-202.md`](adr/0153-surge-policy-self-check-202.md) — Accepted

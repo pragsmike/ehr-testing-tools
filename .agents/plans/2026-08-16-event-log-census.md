@@ -690,6 +690,17 @@ and a finding met and not written down is a finding lost.
 `.agents/plans/roadmap.md#surge-policy-self-check-202`, which now owns
 the repro and the fix.
 
+**CLOSED 2026-08-18 (ADR-0153).** Diagnosed H2: `decide :discharge`'s
+bed-ready transfer coupling never called the allocation ladder at all
+-- it handed the waiting boarder the just-vacated bed verbatim, so a
+vacated SURGE slot placed on rung 2 while a home-ward licensed bed
+stood free (`RENAL-04`, at `t 78480`). Fixed in `engine.clj` alone;
+`bin/regression-oracle c1a40d0 HEAD` IDENTICAL across all 35 roots,
+`demos/traces/**` byte-identical, and six of the seven `--churn`
+corpus shapes in this document's own table unmoved. The residue --
+a bed-ready transfer's ORIGIN bed triggering no search of its own --
+is rowed as `roadmap.md#bed-ready-vacancy-cascade`.
+
 ---
 
 ## What Step 2 takes from this
