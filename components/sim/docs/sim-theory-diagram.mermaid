@@ -40,65 +40,65 @@ flowchart LR
     sut_behavior_out(["sut-behavior"])
 
     %% --- Wires (typed connections) ---
-    %% Arrow 19: Persona
+    %% Arrow 5: Persona
     sim_config -- sim-config --> Persona
     demographics_tables -. demographics-tables .-> Persona
     payer_pool -. payer-pool .-> Persona
 
-    %% Arrow 21: RunModules
+    %% Arrow 6: RunModules
     Persona -- persona --> RunModules
     gmf_module_set -. gmf-module-set .-> RunModules
     gmf_interpreter -. gmf-interpreter .-> RunModules
 
-    %% Arrow 23: CompileTrajectory
+    %% Arrow 7: CompileTrajectory
     RunModules -- clinical-trajectory --> CompileTrajectory
 
-    %% Arrow 25: InjectChurn
+    %% Arrow 8: InjectChurn
     UnionPathwayIr -- pathway-ir --> InjectChurn
     Calibrate -- churn-profile --> InjectChurn
 
-    %% Arrow 27: Execute
+    %% Arrow 9: Execute
     InjectChurn -- operational-pathway --> Execute
     provider_pool -. provider-pool .-> Execute
     order_profiles -. order-profiles .-> Execute
 
-    %% Arrow 29: Check
+    %% Arrow 10: Check
     Execute -- ground-truth-log --> Check
     invariant_catalog -. invariant-catalog .-> Check
     Check -- "pass" --> pass_out
     Check -- "rejected" --> rejected_out
 
-    %% Arrow 31: EmitHL7
+    %% Arrow 11: EmitHL7
     Execute -- ground-truth-log --> EmitHL7
     hl7_parser_dep -. hl7-parser-dep .-> EmitHL7
     message_type_registry -. message-type-registry .-> EmitHL7
     snomed_icd10_map -. snomed-icd10-map .-> EmitHL7
     site_profile -. site-profile .-> EmitHL7
 
-    %% Arrow 33: EmitState
+    %% Arrow 12: EmitState
     Execute -- state-history --> EmitState
     EmitState -- "state-document" --> state_document_out
 
-    %% Arrow 36: Package
+    %% Arrow 14: Package
     EmitHL7 -- hl7v2-stream --> Package
     Execute -- ground-truth-log --> Package
     Package -- "run-manifest" --> run_manifest_out
 
-    %% Arrow 39: Calibrate
+    %% Arrow 16: Calibrate
     Package -- sim-corpus --> Calibrate
     feed_statistics -- feed-statistics --> Calibrate
     Calibrate -- churn-profile --> Calibrate
     Calibrate -- churn-profile --> churn_profile
 
-    %% Arrow 42: UnionPathwayIr
+    %% Arrow 17: UnionPathwayIr
     CompileTrajectory -- compiled-pathway --> UnionPathwayIr
     authored_pathway -- authored-pathway --> UnionPathwayIr
 
-    %% Arrow 45: SystemUnderTest
+    %% Arrow 18: SystemUnderTest
     EmitHL7 -- hl7v2-stream --> SystemUnderTest
     SystemUnderTest -- "sut-behavior" --> sut_behavior_out
 
-    %% Arrow 46: ToolsCorpusIntake
+    %% Arrow 19: ToolsCorpusIntake
     Package -- sim-corpus --> ToolsCorpusIntake
     ToolsCorpusIntake -- "catalog-entry" --> catalog_entry_out
 

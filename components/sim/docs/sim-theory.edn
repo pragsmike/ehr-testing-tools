@@ -4,8 +4,14 @@
 ;; now/next/want reading. Notation is ehr-testing-tools'
 ;; docs/notation.md (equation form, five stage kinds, catalytic
 ;; targets, unions, external stages); this file keeps that repo's
-;; pipeline.edn schema shape exactly, so its equation->diagram
-;; machinery consumes this file unchanged.
+;; pipeline.edn schema shape, and `make sim-theory` renders it --
+;; `ehrt.docs-tooling.pipeline/write-sim-theory-equations-txt!` writes
+;; sim-theory-equations.txt from THIS file, the converter renders the
+;; .mermaid from that, and the .md's embedded block is spliced from
+;; the .mermaid. This file is the single source of truth for all three
+;; (ADR-0152, 2026-08-18); before that date the first hop was a hand
+;; derivation and this sentence claimed a consumption that had never
+;; been run -- the file did not in fact validate.
 ;;
 ;; now/next/want convention: the WANT is this whole file. The NOW is
 ;; derivable as the :status :built subset. The NEXT is the single
@@ -136,13 +142,9 @@
           "touches only churn-profile parameters; clinical module content is never calibrated against a site feed (that would launder real-feed information into clinical content -- see the no-PHI global law)"]
    :contract "this is validation claim #5's third arm made mechanical: 'match your hospital' instead of 'trust our defaults' (docs/problem-statement.md)"}
 
-  ;; External stages: dashed boxes, no :kind/:status/:laws -- named
-  ;; slots this repo makes no claims about (docs/notation.md).
-  {:id :sut :label "SystemUnderTest" :external? true
-   :inputs ["hl7v2-stream"] :outputs ["sut-behavior"]}
-
-  {:id :tools-intake :label "ToolsCorpusIntake" :external? true
-   :inputs ["sim-corpus"] :outputs ["catalog-entry"]}]
+  ;; (External stages used to sit here, inside :stages. They moved to
+  ;; their own top-level key below -- see that key's comment.)
+  ]
 
  ;; Union resources (docs/notation.md): pathway-ir is THE union of
  ;; sim/ADR-0002 clause 1, stated algebraically -- hand-authored scripts
@@ -152,4 +154,22 @@
  ;; this repo, exactly as tools' foreign-file does.
  :resources
  [{:resource "pathway-ir"
-   :union-of ["compiled-pathway" "authored-pathway"]}]}
+   :union-of ["compiled-pathway" "authored-pathway"]}]
+
+ ;; External stages: dashed boxes, no :kind/:status/:laws -- named
+ ;; slots this repo makes no claims about (docs/notation.md).
+ ;;
+ ;; ADR-0152: these live under their OWN top-level key, never inside
+ ;; :stages. An :external? entry among the stages fails the Pipeline
+ ;; Malli outright (ExternalStage has no :kind and no :status, Stage
+ ;; requires both) and renders through stage->equation-line, which
+ ;; silently drops {external: true} -- costing both boxes their dashed
+ ;; border, i.e. drawing a diagram that claims this repo implements
+ ;; SystemUnderTest and ToolsCorpusIntake. That is exactly what this
+ ;; file did, unvalidated, from authoring until 2026-08-18.
+ :external-stages
+ [{:id :sut :label "SystemUnderTest" :external? true
+   :inputs ["hl7v2-stream"] :outputs ["sut-behavior"]}
+
+  {:id :tools-intake :label "ToolsCorpusIntake" :external? true
+   :inputs ["sim-corpus"] :outputs ["catalog-entry"]}]}
