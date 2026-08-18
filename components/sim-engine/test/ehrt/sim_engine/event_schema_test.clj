@@ -209,3 +209,31 @@
   (testing "GroundTruth, not just Event by Event"
     (doseq [[label {:keys [ground-truth]}] (fleet/fleet)]
       (is (es/valid-ground-truth? ground-truth) label))))
+
+;; --- ADR-0150 S-6: ResultEntry's unit key is SINGULAR ----------------------
+;; Census S-6: a `:result-available` entry carried `:units` while
+;; `:observation` and a `:diagnostic-report`'s children carried `:unit`, for
+;; the same concept -- so a consumer writing one unit-handling function for
+;; "an observed value" got it right for two shapes of three and silently
+;; empty for the third. The EVENT key is renamed; the order-profile ANALYTE
+;; config key stays `:units` (user-reachable via `--config`), translated at
+;; the one construction site exactly as `evolve` already translated it.
+
+(deftest result-entries-carry-unit-singular
+  (let [{:keys [ground-truth]} (engine/run {:seed 1 :patients 1
+                                            :pathways [{:pathway {:name "cbc"
+                                                                  :steps [{:type :admission :location "Renal"}
+                                                                          {:type :order :profile :cbc}
+                                                                          {:type :discharge}]}
+                                                        :weight 1}]})
+        result (first (filter #(= :result-available (:event %)) ground-truth))
+        entries (:results result)]
+    (is (seq entries) "a population gate asserts its population is non-empty")
+    (testing "every entry carries :unit, singular"
+      (is (every? #(contains? % :unit) entries)))
+    (testing "and none carries the retired plural"
+      (is (not-any? #(contains? % :units) entries)))
+    (testing "the value is the analyte's own unit string, not a translation loss"
+      (is (every? #(string? (:unit %)) entries)))
+    (testing "and the whole event still validates against the contract"
+      (is (es/valid-event? result) (pr-str (es/explain-event result))))))

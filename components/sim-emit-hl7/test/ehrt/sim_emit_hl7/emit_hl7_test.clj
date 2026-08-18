@@ -999,3 +999,18 @@
     (testing "and stays empty on the order message, because the ORDER EVENT
               has no :home-ward -- absence is data, not a dropped context"
       (is (= "" (or (message/get-field-first-value orm "ZWU" 2) ""))))))
+
+;; --- ADR-0150 S-6: OBX-6 reads the entry's `:unit`, singular ---------------
+
+(deftest oru-obx6-renders-the-result-entrys-singular-unit
+  (let [{:keys [ground-truth facility providers]} (run-with-order 1)
+        result (first (filter #(= :result-available (:event %)) ground-truth))
+        first-entry (first (:results result))
+        oru (find-message (emit-hl7/emit ground-truth ref-date utc-offset facility providers) "R01")
+        parsed (parser/parse oru)]
+    (is (some? first-entry) "a population gate asserts its population is non-empty")
+    (testing "the log entry carries :unit, not :units"
+      (is (contains? first-entry :unit))
+      (is (not (contains? first-entry :units))))
+    (testing "OBX-6 renders exactly that value"
+      (is (= (:unit first-entry) (message/get-field-first-value parsed "OBX" 6))))))

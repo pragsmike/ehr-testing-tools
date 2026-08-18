@@ -46,3 +46,18 @@
     (is (= (version/generator-sha256) (get-in m [:generator :sha256]))
         "not hardcoded all-zeros anymore -- ehrt.sim.version's own
          honestly-documented placeholder-or-real-hash policy")))
+
+;; --- ADR-0150 S-6: the bumped contract version reaches the manifest --------
+;; `schema-version` is only a promise if a run STAMPS it. The rename of
+;; `ResultEntry`'s `:units` to `:unit` is the contract's first non-additive
+;; change, so this asserts the manifest a run writes carries the bumped
+;; value rather than the version the contract was published at.
+
+(deftest manifest-carries-the-bumped-event-schema-version
+  (let [m (manifest/build {:seed 1 :engine-params {}
+                           :config {:path "x" :sha256 (apply str (repeat 64 "a"))}
+                           :invocation {}})]
+    (is (= "1.1.0" (:event-schema-version m))
+        "the event contract bumped 1.0.0 -> 1.1.0 when ResultEntry's :units
+         was renamed :unit; a manifest still saying 1.0.0 would date a log
+         to a contract it was not produced under")))

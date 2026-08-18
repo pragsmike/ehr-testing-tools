@@ -423,7 +423,7 @@
    {:event :order-placed :t 10 :profile :cbc :concept (:concept cbc-profile) :participants (subject "P1")}
    {:event :result-available :t 100 :profile :cbc :order-event-id 1 :concept (:concept cbc-profile)
     :participants (subject "P1")
-    :results (mapv (fn [a] {:concept (:concept a) :units (:units a) :value (:low (:reference-range a))
+    :results (mapv (fn [a] {:concept (:concept a) :unit (:units a) :value (:low (:reference-range a))
                             :reference-range (:reference-range a) :abnormal-flag :normal})
                     (:analytes cbc-profile))}])
 
