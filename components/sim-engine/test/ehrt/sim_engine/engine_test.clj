@@ -782,6 +782,40 @@
     (is (not (contains? (first events) :citation)))
     (is (not (contains? (first events) :conditions)))))
 
+(deftest module-compiled-encounters-carry-no-reason-hand-authored-ones-keep-theirs
+  (testing "census S-1, fixed under the event contract's own 1.2.0 bump
+            (ADR-0151). `compile_trajectory.clj:211-213`'s
+            `encounter->step` emits `:admission`/`:outpatient-visit`
+            steps carrying a `:citation` and NO `:reason` -- so before
+            this fix every module-compiled encounter emitted
+            `:reason nil`, a present-but-nil key that tells a consumer
+            nothing (`:outpatient-visit` 221/221, `:admission` 48/692,
+            those 48 being exactly the 48 that carry a citation). The
+            two fixtures below are that compiler output verbatim; the
+            two after them are hand-authored steps, and they are the
+            control that keeps this a nil-DROP rather than a removal."
+    (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
+          compiled-admission (:events (engine/decide (Random. 1) 0 world0 "P1"
+                                                     {:type :admission :location "Renal"
+                                                      :citation a-citation}))
+          compiled-visit (:events (engine/decide (Random. 1) 0 world0 "P1"
+                                                 {:type :outpatient-visit
+                                                  :citation a-citation}))
+          authored-admission (:events (engine/decide (Random. 1) 0 world0 "P1"
+                                                     {:type :admission :location "Renal"
+                                                      :reason "Kidney problems"}))
+          authored-visit (:events (engine/decide (Random. 1) 0 world0 "P1"
+                                                 {:type :outpatient-visit
+                                                  :reason "Sinus congestion"}))]
+      (is (not (contains? (first compiled-admission) :reason))
+          "a module-compiled admission must not carry a nil :reason")
+      (is (not (contains? (first compiled-visit) :reason))
+          "a module-compiled outpatient visit must not carry a nil :reason")
+      (is (= "Kidney problems" (:reason (first authored-admission)))
+          "a hand-authored admission keeps its reason, unchanged")
+      (is (= "Sinus congestion" (:reason (first authored-visit)))
+          "a hand-authored outpatient visit keeps its reason, unchanged"))))
+
 (deftest procedure-decide-emits-a-log-only-fact-with-codes-and-citation
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
