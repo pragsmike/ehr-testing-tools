@@ -322,6 +322,21 @@ watch-list row.)
   translator or a checked-in agreement gate, and either is a design
   question, not a wording change. Correcting only the sentence would
   make the doc accurate about a gap nobody then has to close.
+- **ADDENDUM 2026-08-18 — closed by ADR-0152.** Ruled: translator, with
+  `sim-theory.edn` the single source of truth and the equations file
+  staying committed as a GENERATED artifact. `make sim-theory` now runs
+  `write-sim-theory-equations-txt!` first, and the equations file is on
+  CI's freshness diff list. The finding was **understated**: the pair had
+  not merely gone ungated, it had already drifted, and in a way this row
+  did not anticipate. `sim-theory.edn` did not validate against the
+  Pipeline Malli at all — its two external stages sat inside `:stages`
+  without `:kind`/`:status` — so the translator rendered them without
+  `{external: true}`, and Calibrate's `{feedback: ...}` had no schema key.
+  Ten of thirteen equation lines matched byte-for-byte; three could not
+  be derived from the `.edn` as it stood. Both gaps were repaired at the
+  source. `trajectory-computation.md:249-250`, the contradicting live
+  sentence this row names, is true as of ADR-0152 and was left as
+  written.
 
 **C-2 — a third unregistered standing request, which the amended D7
 probe did not find.** (D7 class; review-4 watch-list row.)

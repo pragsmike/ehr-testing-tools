@@ -70,10 +70,11 @@ follows has no other anchor.
   of them in the gate on this very file. Every gate here owes the same
   question an answer: *how do I know this population is all of them?*
   Now `rulings.md#R-population-closure`.
-* **`sim-theory-equations.txt` is hand-derived from `sim-theory.edn`**
-  with no translator and nothing gating their agreement, so the `.edn`
-  can drift while every downstream artifact regenerates byte-perfectly
-  from the stale half. `roadmap.md#sim-theory-edn-hop`.
+* **A generated chain whose SOURCE hop is unregistered** `[C]` -- a
+  freshness gate over a chain that excludes its own source proves only
+  that the middle agrees with itself. `sim-theory.edn` had already
+  drifted from its equations file and did not validate against its own
+  declared Malli; ADR-0152 closed it. The class is the lesson.
 * **Oracle roots and vendored round-trip tests are different
   populations** and must be compared as sets, never by cardinality —
   review 2 asserted a correspondence because both totals read 34, and

@@ -13,12 +13,6 @@ rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
   not calendar (ruling Q3 "a.", 2026-08-15). Inherits review 3's twelve-row
   watch-list, D8-5's one surviving row among them (56 of 74 command fences have
   no exerciser -- ruled out of the fix session, handed on in ADR-0140).
-- OPEN **[sim-theory-edn-hop]** PRIORITY 3 -- `sim-theory.edn` ->
-  `sim-theory-equations.txt` is a hand derivation at the head of an otherwise
-  registered chain, so the `.edn` can drift while every downstream artifact
-  regenerates byte-perfectly from the stale half and CI stays green. Open
-  question for the author: translator, or checked-in agreement gate?
-  ADR-0139 finding C-1 holds the evidence and the contradicting live sentence.
 - OPEN **[careplan-guard-resolution]** PRIORITY 4 -- a closure's next
   prerequisite is CarePlan, "unowned by any wave until a future session extends
   Guard's own condition-resolution machinery" (ADR-0139 C-2). NOW ALSO OWNS
@@ -310,6 +304,7 @@ Rows here are LIVE, each owing a revisit trigger in its own token.
   deprecation window was waived first, in its own commit. A DECLARED oracle
   change: 32 of 35 roots moved, predicted exactly before the edit.
 - CLOSED 2026-08-18 ADR-0150 **[event-log-shape-defects]** -- the Z-segment
+- CLOSED 2026-08-18 ADR-0152 **[sim-theory-edn-hop]**
   context asymmetry and S-6 fixed, S-4 confirmed closed with no code owed.
   Residue re-rowed rather than dropped: S-1 as `#reason-nil-drop-owes-a-bump`,
   S-2 folded into `#careplan-guard-resolution`, S-5 as
