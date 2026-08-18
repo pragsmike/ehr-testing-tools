@@ -579,7 +579,17 @@ encounter reason (a module state name would be an honest one), or the
 key rides the nil-dropping `cond->` treatment `:citation` already gets
 — present-and-nil is the one shape that tells a consumer nothing.
 
-**ATTEMPTED AND STOPPED 2026-08-18 (ADR-0150); re-rowed as
+**CLOSED 2026-08-18 (ADR-0151)** -- landed under the event contract's
+own 1.1.0 -> 1.2.0 bump, which is the bump ADR-0150 correctly refused
+to let it share with S-6. `:reason` is `{:optional true}` on
+`:admission` and `:outpatient-visit`, a sibling `reason-field` drops
+the key when the step carries none, and the three hand-authored traces
+stayed byte-frozen while the three module-compiled ones lost 3/59/3
+`:reason nil` lines apiece. The oracle moved on 32 of 35 roots, exactly
+as predicted before the edit -- a declared oracle change, ADR-0151.
+
+**Its earlier attempt, kept for the record. ATTEMPTED AND STOPPED
+2026-08-18 (ADR-0150); re-rowed as
 `.agents/plans/roadmap.md#reason-nil-drop-owes-a-bump`.** The fix was
 written and proven -- red 2 of 4 assertions, green 4 of 4, the key
 riding a sibling `reason-field` rather than a widened

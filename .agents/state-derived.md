@@ -58,17 +58,17 @@ Docs-tooling gates: `adr_index_test`, `citation_gate_test`, `cli_tombstone_test`
 | roadmap rows (all sections) | 107 |
 | rulings rows | 113 |
 | rulings rows superseded | 7 |
-| session records | 153 |
-| archived prompts | 146 |
+| session records | 154 |
+| archived prompts | 147 |
 
 ### Roadmap rows by section
 
 | section | rows | tokens in use |
 |---|---|---|
-| Next | 15 | `OPEN` |
+| Next | 14 | `OPEN` |
 | Externals | 8 | `EXTERNAL` |
 | Deferred | 21 | `DEFERRED` |
-| Done | 63 | `CLOSED` |
+| Done | 64 | `CLOSED` |
 
 ## Reading sets
 

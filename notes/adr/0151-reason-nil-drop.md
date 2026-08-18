@@ -194,3 +194,173 @@ shape this file will meet again. Worth recording for the same reason
 ADR-0150 recorded its ADR-token gate trip: the compiler caught it on
 the first run that could see it, and a docs-only-looking commit is
 exactly the kind that tempts a session to skip the full suite.
+
+### Step 2 — S-1 red
+
+The ADR-0150 test is not in the tree and never was — that ADR describes
+it in prose, and `grep reason-field` over `d4e73fc` finds only prose —
+so it was re-written from the description rather than recovered.
+
+One test, four assertions, two families. The two module-compiled
+fixtures are `encounter->step`'s own output verbatim (a `:citation`,
+no `:reason`); the two hand-authored fixtures are the control that
+keeps this a nil-DROP rather than a key removal.
+
+    Ran 1 tests containing 4 assertions.
+    2 failures, 0 errors.
+    {:test 1, :pass 2, :fail 2, :error 0, :type :summary}
+
+    a module-compiled admission must not carry a nil :reason
+    expected: (not (contains? (first compiled-admission) :reason))
+      actual: (not (not true))
+
+Both failures the nil cases, both hand-authored assertions passing —
+reproducing ADR-0150 Step 2's own measured red (2 of 4) exactly.
+
+### Step 3 — green, the bump, the one freeze
+
+`reason-field` landed as a SIBLING of `citation-fields`, not a widening
+of it, for the reason ADR-0150 asked be said out loud and which is now
+in the function's own docstring: `citation-fields` scopes itself to
+glass-box traceability of what the COMPILER supplied, while `:reason`
+is clinical content a HAND-AUTHORED step supplies. Same nil-dropping
+shape, different reason to exist. Both `decide` methods call it, and
+the two now-unused `reason` destructuring bindings went with it.
+
+**Prediction (a) vs actual — EXACT MATCH, no residue in either
+direction**, `classify-change` over the frozen baseline and the live
+export, run BEFORE the bump so the gate was answered rather than
+silenced:
+
+    baseline-version: 1.1.0
+    live schema-version: 1.1.0
+    additive?: false
+      BREAKING: :admission: key changed: :reason (required -> optional)
+      BREAKING: :outpatient-visit: key changed: :reason (required -> optional)
+
+Green, same test: `Ran 1 tests containing 4 assertions. 0 failures, 0
+errors.` — ADR-0150's own 4-of-4.
+
+**Prediction (b) vs actual — MATCH.** 1.1.0 -> 1.2.0, MINOR. One key
+of two kinds changed cardinality; no kind removed, no value schema
+moved, nothing a 1.1.0-era consumer read renamed. `[:maybe ...]` is
+retained deliberately, which is worth stating because it bounds the
+break: **a 1.1.0-era log validates unchanged against 1.2.0.** Only the
+WRITER changed. The break is producer-side, which is exactly the
+direction a waived deprecation window is cheapest in.
+
+**The READ-BACK fence, per regenerated artifact.**
+
+| artifact | before | after | Δ | change class |
+|---|---|---|---|---|
+| `resources/sim-engine/event-examples.edn` | 9,097 | 9,082 | −15 | 1× `:reason nil` line |
+| `resources/sim-engine/event-schema.edn` | 19,799 | 19,843 | +44 | 1× bump stamp + 2× flag |
+| `resources/sim-engine/event-schema-baseline.edn` | 19,712 | 19,756 | +44 | the ONE re-freeze |
+| `docs/formats.md` | 58,055 | 58,045 | −10 | 1× bump stamp + 2× key-table row |
+| `demos/traces/emit-state/ground-truth.edn` | 8,770 | 8,725 | −45 | 3× `:reason nil` line |
+| `demos/traces/module-mix/ground-truth.edn` | 318,661 | 317,776 | −885 | 59× `:reason nil` line |
+| `demos/traces/order-result/ground-truth.edn` | 8,770 | 8,725 | −45 | 3× `:reason nil` line |
+| `demos/traces/boarding-transfer/ground-truth.edn` | 31,981 | 31,981 | 0 | FROZEN |
+| `demos/traces/persona-enriched/ground-truth.edn` | 5,159 | 5,159 | 0 | FROZEN |
+| `demos/traces/site-profiles/ground-truth.edn` | 2,067 | 2,067 | 0 | FROZEN |
+
+Every changed line in all seven moved artifacts falls in a DECLARED
+class — 66 lines `:reason nil` removed, 3 lines bump stamp, 6 lines the
+`{:optional true}` flag and its two rendered key-table rows. **No
+"other" appeared, so no STOP fired.** Each of the three moved traces
+diffs to nothing but `-  :reason nil,` repeated, 3/59/3 times.
+
+**The prompt's fence names two classes; the honest count is three.**
+The `{:optional true}` flag is not a `:reason nil` line and is not a
+bump stamp. It is not an "other" either — it is precisely what
+prediction (a) predicted and what the bump is FOR — but it is named as
+its own class here rather than folded into one of the two, because a
+fence that has to be stretched to fit is a fence that stopped
+measuring anything.
+
+**The three FROZEN traces are the load-bearing control.** Between them
+they carry 25 + 5 + 2 real reasons and zero nils, and they did not
+move a byte. That is what makes this change "module-compiled
+encounters stop saying nothing" rather than "`:reason` went away".
+
+### Prediction (c)'s second half was WRONG, in the safe direction
+
+The manual's ground-truth-invariance digest was predicted to MOVE, by
+this ADR and by the driving prompt, which reasoned that *"ed-tuesday
+has module-compiled admissions per the census's 48/692"*. Re-witnessed
+rather than trusted, with both out-dirs cleared first:
+
+    diff  ... silent
+    d00bf49c5df558b0fba91465090d533c09213d3183e500d0e903483f0c6842ca  .../ed-tuesday-base/events.edn
+    d00bf49c5df558b0fba91465090d533c09213d3183e500d0e903483f0c6842ca  .../ed-tuesday-latency/events.edn
+
+**Unchanged — the same `d00bf49c…` ADR-0150 committed.** The manual
+needs no edit, and its chapter-4 transcript still reproduces.
+
+Measured from the regenerated strip, the reason: ed-tuesday's 92
+`:admission` events carry 92 non-nil reasons and ZERO nils, and the
+strip contains no `:outpatient-visit` at all. Its admissions all come
+from the hand-authored `:pathways` pool; its module tail contributes 88
+citations but, within the 90-day `:module-horizon-days`, no Encounter
+state at all. The census's 48/692 is a figure across eleven corpora,
+not a claim about this one — corrected here from the tree, the same
+way ADR-0150 corrected the probe's reading of this same digest in the
+other direction.
+
+That the digest is stable across S-6 (where it moved) and S-1 (where
+it did not) is itself the evidence that re-witnessing beats trusting:
+neither answer was predictable from the row.
+
+### The declared oracle change — predicted 32/3, actual 32/3
+
+The prompt's prediction (d) said IDENTICAL and could not have been
+right, and Step 0 said so before any `src` edit rather than letting
+the instrument discover it. **The prompt's REASONING was sound and is
+now confirmed by measurement; its SCOPE was half the artifact.**
+
+`bin/regression-oracle d4e73fc HEAD`, exit 1:
+
+    == soundness check: digest.clj outside its own (ns ...) form ==
+    IDENTICAL outside the (ns ...) form -- proceeding
+    --- declared-digest-change: no (soundness: yes outside ns form) ---
+    DIFFERS: digests diverge between d4e73fc and HEAD
+
+The soundness line matters as much as the verdict: `digest.clj` itself
+is untouched, so both sides ran the same instrument and the divergence
+is content, not method.
+
+**Actual mover set == predicted mover set, exactly, no residue in
+either direction.** 32 roots moved; the 3 that did not are
+`appendicitis`, `sore-throat`, `ear-infections` — precisely the three
+`interpreter-batch` roots, which digest compiled TRAJECTORIES and never
+run the engine.
+
+**And the emitter really is frozen, measured rather than argued.** A
+second full 35-root digest at HEAD, compared against the Step 0 one
+root by root and HALF by half:
+
+    engine-pair roots        : 32
+    HL7 half IDENTICAL       : 32
+    HL7 half MOVED           : 0
+    ground-truth half MOVED  : 32
+
+So every byte of divergence in all 32 roots is ground-truth, and not
+one HL7 byte moved anywhere — which is the prompt's own grep
+(`:reason` appears in `sim-emit-hl7`/`sim-emit-fhir` `src` only as
+prose, three times) proven at the artifact level rather than inferred
+from the source. **The correction to prediction (d) is therefore about
+WHAT THE ORACLE DIGESTS, not about what the emitter does.**
+
+### Step 4 — register hygiene
+
+Census S-1: **CLOSED 2026-08-18 (ADR-0151)**, dated, citing this
+record, with its ADR-0150 stop kept beneath as the record of the
+earlier attempt rather than overwritten. `roadmap.md#reason-nil-drop-
+owes-a-bump` moves to `## Done`, CLOSED, naming the declared oracle
+change so the row's disappearance does not read as a byte-frozen
+change. Nothing else re-rowed.
+
+The roadmap's own six-line cap caught the first version of that row at
+seven lines and it was compacted, not exempted — the gate ADR-0144
+installed doing its job on a row written by the session that installed
+nothing.

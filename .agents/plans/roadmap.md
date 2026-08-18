@@ -8,12 +8,6 @@ cited from elsewhere as `roadmap.md#<slug>` and never by line number; `## Next`
 rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
 
 ## Next (backlog, no session scheduled)
-- OPEN **[reason-nil-drop-owes-a-bump]** PRIORITY 1 -- census S-1: every
-  module-compiled encounter emits `:reason nil`. The fix is written and proven
-  (ADR-0150 Step 2, red 2/4, green 4/4, a sibling `reason-field`) and STOPPED:
-  `:reason` is a required key of a closed map, so nil-dropping it forces
-  `{:optional true}`, which `classify-change` calls breaking. Owes a version
-  bump of its own; it may not share S-6's. ADR-0150 preserves the diff.
 - OPEN **[repo-review-4]** PRIORITY 2 -- chartered at roughly 15 ADRs past
   ADR-0139, i.e. approximately ADR-0154; the standing cadence rule is ADR count,
   not calendar (ruling Q3 "a.", 2026-08-15). Inherits review 3's twelve-row
@@ -309,6 +303,12 @@ Rows here are LIVE, each owing a revisit trigger in its own token.
   script. No residue: all fifteen derived files are gated. The census found
   `module-mix/messages.txt` was never its own command's output -- proven by
   re-running that command at `f07684c` -- not merely stale.
+- CLOSED 2026-08-18 ADR-0151 **[reason-nil-drop-owes-a-bump]** -- census S-1
+  landed under its own bump, event contract 1.1.0 -> 1.2.0: `:reason` is
+  `{:optional true}` on `:admission`/`:outpatient-visit` and a sibling
+  `reason-field` drops the key rather than emitting `:reason nil`. The
+  deprecation window was waived first, in its own commit. A DECLARED oracle
+  change: 32 of 35 roots moved, predicted exactly before the edit.
 - CLOSED 2026-08-18 ADR-0150 **[event-log-shape-defects]** -- the Z-segment
   context asymmetry and S-6 fixed, S-4 confirmed closed with no code owed.
   Residue re-rowed rather than dropped: S-1 as `#reason-nil-drop-owes-a-bump`,
