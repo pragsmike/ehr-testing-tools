@@ -134,5 +134,13 @@ roadmap.
 
 ## CI and tag
 
-`gh run view` at the close tip: recorded below.
-Tag disposition per `rulings.md#R-session-verifies-ci-via-gh`: recorded below.
+`gh run view 32137738307` at the close tip `eeb0299`:
+`status=completed conclusion=success`.
+
+Tag PAID IN SESSION per `rulings.md#R-session-verifies-ci-via-gh` --
+the tip run concluded success while this session was still open, which
+is the condition the prompt's licence named. `bin/tag-ceremony
+stable-20260818-event-log-shape-defects eeb0299 <msg-file> --push`:
+annotated tag created, pushed, and the remote PEELED ref verified as
+`eeb0299b32b1b958a0bbdd738a144b0a3e14aef3`, matching target exactly.
+No tag is owed at the next Step 0.

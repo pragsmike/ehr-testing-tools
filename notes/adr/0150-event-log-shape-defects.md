@@ -438,3 +438,13 @@ A sweep for the same class found no other hard-pinned contract
 version: `grep '"1\.0\.0"'` across `components/`, `bases/` and
 `development/` returns only unrelated artifact/tool versions.
 
+### Receipts
+
+    push 1   cfe6a73..ee63a7b   both red/green pairs
+    push 2   ee63a7b..eeb0299   the close
+    CI       run 32137738307 @ eeb0299 -- completed, success
+    tag      stable-20260818-event-log-shape-defects @ eeb0299,
+             paid in session, remote peeled ref verified
+
+`bin/post-push-verify` ran after both pushes: remote tip matched, every
+commit message in range pure ASCII, CI reported once per AR-CI-4.
