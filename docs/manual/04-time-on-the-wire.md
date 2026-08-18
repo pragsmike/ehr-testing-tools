@@ -104,8 +104,8 @@ differs. Witnessed directly, not merely asserted:
 ```
 $ diff out/scenarios/ed-tuesday-base/events.edn out/scenarios/ed-tuesday-latency/events.edn
 $ sha256sum out/scenarios/ed-tuesday-base/events.edn out/scenarios/ed-tuesday-latency/events.edn
-b4e776f773502cf78795a83bb52836ea208c831935330cb0480a731525e637f1  out/scenarios/ed-tuesday-base/events.edn
-b4e776f773502cf78795a83bb52836ea208c831935330cb0480a731525e637f1  out/scenarios/ed-tuesday-latency/events.edn
+d00bf49c5df558b0fba91465090d533c09213d3183e500d0e903483f0c6842ca  out/scenarios/ed-tuesday-base/events.edn
+d00bf49c5df558b0fba91465090d533c09213d3183e500d0e903483f0c6842ca  out/scenarios/ed-tuesday-latency/events.edn
 ```
 
 `diff` prints nothing; the digests match. The same 383 ground-truth
@@ -216,7 +216,7 @@ byte-frozen."
 |---|---|
 | `bin/ehrt play out/scenarios/ed-tuesday-latency --board 60 --rate 100000` | `demos/scenarios/ed-tuesday/README.md`, "The second clock" |
 | `bin/ehrt corpus generate sim ...` (base + latency, two commands) | `demos/scenarios/ed-tuesday/README.md`, "The second clock" |
-| `diff`/`sha256sum` ground-truth-invariance transcript | `demos/scenarios/ed-tuesday/README.md`, "The second clock"; re-witnessed 2026-08-16 against this chapter's own two commands, digest `b4e776f7…` unchanged |
+| `diff`/`sha256sum` ground-truth-invariance transcript | `demos/scenarios/ed-tuesday/README.md`, "The second clock"; re-witnessed 2026-08-18 against this chapter's own two commands. The digest MOVED, `b4e776f7…` → `d00bf49c…`, and the property it witnesses did not: `diff` is still silent and the two out-dirs still agree. The move is the event contract's 1.0.0 → 1.1.0 rename of a result entry's `:units` to `:unit`[^adr-0150-mv] — a key spelling in the ground truth, not a fact about it |
 | Walker EVN-2/MSH-7 values (`03:36:00Z`, `04:13:00Z`, `04:33:54Z`, `04:36:46Z`) | `demos/scenarios/ed-tuesday/README.md`, "What the board actually shows" |
 | Rodriguez ORU pair (`msg-020.hl7` / `msg-023.hl7`, MSH-7 `03:22:00Z` vs `04:07:40Z`, OBR-7/OBX-14 `03:22:00Z` both) | this chapter's own two `corpus generate sim` commands above, run 2026-08-16 at seed 20260811 with `out/` cleared first[^result-clock] |
 
@@ -224,3 +224,8 @@ byte-frozen."
     audit, the author rulings behind OBR-7's value and OBX-14's
     positional pad, and the declared oracle change the two fields
     caused (14 of 35 roots moved, exactly as predicted).
+
+[^adr-0150-mv]: `notes/adr/0150-event-log-shape-defects.md` — census
+    row S-6, the contract's first non-additive change, and why the
+    order-profile `--config` key stayed `:units` while the event key
+    became `:unit`.

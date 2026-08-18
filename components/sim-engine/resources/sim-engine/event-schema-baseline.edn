@@ -10,7 +10,7 @@
 ;;
 ;; Re-freeze ONLY when bumping schema-version, with
 ;; `make event-schema-freeze`.
-{:event-schema-version "1.0.0",
+{:event-schema-version "1.1.0",
  :schema
  [:multi
   {:dispatch :event,
@@ -389,7 +389,7 @@
          [:system :keyword]
          [:code :string]
          [:display {:optional true} :string]]]
-       [:units :string]
+       [:unit :string]
        [:value number?]
        [:reference-range
         [:map {:closed true} [:low number?] [:high number?]]]

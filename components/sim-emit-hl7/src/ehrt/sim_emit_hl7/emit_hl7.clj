@@ -652,7 +652,7 @@
   transmit time. Every analyte OBX of one result event carries the SAME
   clinical instant, since the log records one `:t` for the result, not
   one per analyte."
-  [set-id clinical-ts {:keys [concept units value reference-range abnormal-flag]}]
+  [set-id clinical-ts {:keys [concept unit value reference-range abnormal-flag]}]
   (parser/create-segment
    "OBX"
    (parser/create-field [(str set-id)])
@@ -660,7 +660,7 @@
    (cwe-field concept)
    (parser/create-field [])
    (parser/create-field [(str value)])
-   (parser/create-field [units])
+   (parser/create-field [unit])
    (parser/create-field [(str (:low reference-range) "-" (:high reference-range))])
    (parser/create-field [(case abnormal-flag :normal "N" :low "L" :high "H")])
    (parser/create-field [])

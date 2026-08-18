@@ -235,11 +235,30 @@
 (deftest the-result-clock-increment-does-not-touch-the-event-log-contract
   (testing "ADR-0142 renders two HL7v2 fields from a value the event log
             ALREADY carries (`:t`). Nothing enters the log, so the
-            contract's own version must not move -- a bump here would
-            mean this session had quietly changed the ground truth's
-            shape. Asserted against both halves of ADR-0141's
+            contract's own version must not move -- a bump there would
+            have meant that session had quietly changed the ground
+            truth's shape. Asserted against both halves of ADR-0141's
             two-artifact gate: the live schema's version and the
-            committed EDN export's own stamp"
-    (is (= "1.0.0" engine/event-schema-version))
+            committed EDN export's own stamp.
+
+            RE-BASELINED 2026-08-18 (ADR-0150), and the change is
+            SEMANTIC rather than a literal bumped from under it. This
+            asserted `(= \"1.0.0\" ...)` twice, which pinned ADR-0142's
+            neutrality to the version the contract HAPPENED to sit at.
+            That conflates two different things: the property ADR-0142
+            owned -- that ITS change moved nothing -- and the accident
+            of the number. The property was proven when ADR-0142 landed
+            green at 1.0.0 and is history now; the literal, left alone,
+            would break every later LEGITIMATE bump and teach a session
+            to edit this line rather than think. ADR-0150 is the first
+            such bump (1.0.0 -> 1.1.0, ResultEntry's `:units` renamed
+            `:unit`), and it broke exactly here.
+
+            What survives as a LIVE property, and is asserted instead,
+            is version-independent: the emitter component's own view of
+            the contract version agrees with the committed export's
+            stamp. Same two assertions, same two halves of the gate,
+            no literal to re-baseline next time."
     (let [export (edn/read-string (slurp (io/resource "sim-engine/event-schema.edn")))]
-      (is (= "1.0.0" (:event-schema-version export))))))
+      (is (string? engine/event-schema-version))
+      (is (= engine/event-schema-version (:event-schema-version export))))))

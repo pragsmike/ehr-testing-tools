@@ -634,7 +634,16 @@
                                               (get-in prof [:turnaround-minutes :to])))
         results (mapv (fn [analyte]
                         (let [value (order-profiles/sample-analyte-value rng analyte)]
-                          {:concept (:concept analyte) :units (:units analyte) :value value
+                          ;; ADR-0150 (census S-6): the EVENT key is `:unit`,
+                          ;; singular, matching :observation and a
+                          ;; :diagnostic-report's children. The order-profile
+                          ;; ANALYTE key stays `:units` -- it is a
+                          ;; user-reachable `--config` surface (docs/cli.md,
+                          ;; `:order-profiles`) and renaming it would break
+                          ;; every config a user already wrote. Translated
+                          ;; here, the same one-place translation `evolve
+                          ;; :result-available` already performs downstream.
+                          {:concept (:concept analyte) :unit (:units analyte) :value value
                            :reference-range (:reference-range analyte)
                            ;; Computed truth, not sampled (Task 4's mini-law):
                            ;; the flag is DERIVED from value vs range, here
@@ -964,8 +973,8 @@
   ;; other record here uses.
   [patient {:keys [t results]}]
   (update patient :observations (fnil into [])
-          (mapv (fn [{:keys [concept units value reference-range abnormal-flag]}]
-                  {:codes [concept] :t t :value value :unit units
+          (mapv (fn [{:keys [concept unit value reference-range abnormal-flag]}]
+                  {:codes [concept] :t t :value value :unit unit
                    :reference-range reference-range :interpretation abnormal-flag})
                 results)))
 

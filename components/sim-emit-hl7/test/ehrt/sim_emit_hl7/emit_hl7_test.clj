@@ -553,7 +553,7 @@
         obx-segments (message/get-segments parsed "OBX")]
     (testing "one OBX per analyte, same count and order as the result's own :results"
       (is (= (count (:results result-event)) (count obx-segments)) "CBC has 5 analytes"))
-    (doseq [[i {:keys [concept units value reference-range abnormal-flag]}]
+    (doseq [[i {:keys [concept unit value reference-range abnormal-flag]}]
             (map-indexed vector (:results result-event))]
       (let [obx (nth obx-segments i)
             field #(parser/pr-field (:delimiters parsed) (message/get-segment-field-raw obx %))]
@@ -562,7 +562,7 @@
           (is (= "NM" (field 2)) "OBX-2: value type")
           (is (= (str (:code concept) "^" (:display concept) "^LN") (field 3)) "OBX-3: CWE, LOINC triplet")
           (is (= (str value) (field 5)) "OBX-5: value")
-          (is (= units (field 6)) "OBX-6: units")
+          (is (= unit (field 6)) "OBX-6: unit")
           (is (= (str (:low reference-range) "-" (:high reference-range)) (field 7)) "OBX-7: reference range")
           (is (= (case abnormal-flag :normal "N" :low "L" :high "H") (field 8)) "OBX-8: abnormal flag"))))))
 

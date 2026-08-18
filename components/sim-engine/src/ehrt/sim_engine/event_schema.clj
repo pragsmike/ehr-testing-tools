@@ -86,8 +86,20 @@
     in which to notice.
 
   1.0.0 is the shape as of the event-log contract arc, describing the
-  tree at `24f351d` -- not a redesign of it."
-  "1.0.0")
+  tree at `24f351d` -- not a redesign of it.
+
+  1.1.0 (2026-08-18, ADR-0150) is the contract's FIRST non-additive
+  change: `ResultEntry`'s `:units` renamed `:unit` (census S-6). MINOR
+  rather than MAJOR because exactly one key of one nested schema moved
+  and every other kind is untouched. DISCLOSED, because the policy
+  above states it and this change does not honour it: the deprecation
+  clause -- a key slated for removal is marked deprecated for one minor
+  release BEFORE it goes -- was NOT run. 1.0.0 was published 2026-08-16,
+  two days before this change, with `ResultEntry`'s own docstring
+  already naming `:units` as a known defect (census row S-6); there is
+  no consumer release in between for a deprecation window to protect.
+  A future removal with any distance from publication owes the window."
+  "1.1.0")
 
 ;; --- shared leaf schemas --------------------------------------------------
 ;;
@@ -152,13 +164,15 @@
 (def ResultEntry
   "One analyte inside a `:result-available` event's `:results`.
 
-  NOTE `:units`, PLURAL -- `:observation` and `:diagnostic-report`
-  children use `:unit`, SINGULAR, for the same concept. That
-  inconsistency is real, is described rather than fixed here, and is
-  census register row S-6."
+  `:unit`, SINGULAR since 2026-08-18 (ADR-0150, census S-6) -- the same
+  spelling `:observation` and a `:diagnostic-report`'s children have
+  always used for the same concept. The order-profile ANALYTE key it is
+  built from remains `:units`, plural: that is a user-reachable
+  `--config` surface, and `engine.clj`'s one result-construction site
+  translates between them."
   [:map {:closed true}
    [:concept sim-model/Concept]
-   [:units :string]
+   [:unit :string]
    [:value number?]
    [:reference-range [:map {:closed true} [:low number?] [:high number?]]]
    [:abnormal-flag [:enum :normal :low :high]]])

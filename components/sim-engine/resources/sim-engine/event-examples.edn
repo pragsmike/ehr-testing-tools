@@ -234,7 +234,7 @@
     {:system :loinc,
      :code "6690-2",
      :display "Leukocytes [#/volume] in Blood by Automated count"},
-    :units "K/uL",
+    :unit "K/uL",
     :value 18.0,
     :reference-range {:low 4.5, :high 11.0},
     :abnormal-flag :high}
@@ -242,7 +242,7 @@
     {:system :loinc,
      :code "789-8",
      :display "Erythrocytes [#/volume] in Blood by Automated count"},
-    :units "M/uL",
+    :unit "M/uL",
     :value 5.26,
     :reference-range {:low 4.2, :high 5.9},
     :abnormal-flag :normal}
@@ -250,7 +250,7 @@
     {:system :loinc,
      :code "718-7",
      :display "Hemoglobin [Mass/volume] in Blood"},
-    :units "g/dL",
+    :unit "g/dL",
     :value 14.1,
     :reference-range {:low 12.0, :high 17.5},
     :abnormal-flag :normal}
@@ -259,7 +259,7 @@
      :code "4544-3",
      :display
      "Hematocrit [Volume Fraction] of Blood by Automated count"},
-    :units "%",
+    :unit "%",
     :value 47.6,
     :reference-range {:low 36.0, :high 50.0},
     :abnormal-flag :normal}
@@ -267,7 +267,7 @@
     {:system :loinc,
      :code "777-3",
      :display "Platelets [#/volume] in Blood by Automated count"},
-    :units "K/uL",
+    :unit "K/uL",
     :value 400.0,
     :reference-range {:low 150, :high 450},
     :abnormal-flag :normal}]},
