@@ -364,3 +364,39 @@ The roadmap's own six-line cap caught the first version of that row at
 seven lines and it was compacted, not exempted — the gate ADR-0144
 installed doing its job on a row written by the session that installed
 nothing.
+
+### Receipts
+
+    push 1   d4e73fc..43dc272   the waiver, alone and first
+    push 2   43dc272..8d4fac2   red + green + close
+    oracle   bin/regression-oracle d4e73fc 7af2130 -- DIFFERS (exit 1),
+             32 movers / 3 identical, == predicted, no residue
+    CI       32148358728 @ 43dc272 -- completed, success
+             32156712987 @ 8d4fac2 -- completed, success
+    tag      stable-20260818-reason-nil-drop @ 8d4fac2, paid in
+             session, remote peeled ref verified
+
+`bin/post-push-verify` ran after both pushes: remote tip matched, every
+commit message in range pure ASCII, CI reported once per AR-CI-4.
+
+### Close
+
+**S-1 closed; the deprecation clause waived, with its own expiry
+condition; the contract at 1.2.0.**
+
+What this session settles beyond the fix: the contract's versioning
+machinery has now been exercised by a change that could NOT be argued
+into being additive, and the waiver makes explicit what ADR-0150 had
+to disclose as a violation — that a deprecation window protects a
+consumer, and this contract has none yet. The waiver is written so it
+expires by itself rather than by anyone remembering to remove it.
+
+And the oracle finding is the more durable half. Prediction (d) was
+wrong not because its grep was wrong — every HL7 half is byte-identical,
+exactly as it argued — but because it reasoned about the EMITTER when
+the instrument digests the emitter's INPUT as well. A session that had
+simply run `bin/regression-oracle` at Step 3 and read `DIFFERS` would
+have hit the fence with no way to tell a declared change from a
+regression. Deriving the mover set from the live tree first, the way
+ADR-0142 established, is what turned an unsatisfiable fence into an
+exact 32/3 match.

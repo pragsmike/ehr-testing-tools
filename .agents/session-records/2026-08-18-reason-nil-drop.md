@@ -130,5 +130,28 @@ WSL.
 
 ## CI and tag
 
-`gh run view` at the close tip: recorded below.
-Tag disposition per `rulings.md#R-session-verifies-ci-via-gh`: recorded below.
+`gh run view 32156712987` at the close tip `8d4fac2`:
+`status=completed conclusion=success`. The earlier push's run,
+`32148358728` at `43dc272`, also concluded `completed / success`.
+
+Tag PAID IN SESSION per `rulings.md#R-session-verifies-ci-via-gh` --
+the tip run concluded success while this session was still open, which
+is the condition the prompt's licence named. `bin/tag-ceremony
+stable-20260818-reason-nil-drop 8d4fac2 <msg-file> --push`: annotated
+tag created, pushed, and the remote PEELED ref verified as
+`8d4fac27aacdb28e8f5d17addff2d1642f02d89b`, matching target exactly.
+No tag is owed at the next Step 0.
+
+## Receipts
+
+    push 1   d4e73fc..43dc272   the waiver, alone and first
+    push 2   43dc272..8d4fac2   red + green + close
+    oracle   bin/regression-oracle d4e73fc 7af2130 -- DIFFERS (exit 1),
+             32 movers / 3 identical, == predicted, no residue
+    CI       32148358728 @ 43dc272 -- completed, success
+             32156712987 @ 8d4fac2 -- completed, success
+    tag      stable-20260818-reason-nil-drop @ 8d4fac2, paid in
+             session, remote peeled ref verified
+
+`bin/post-push-verify` ran after both pushes: remote tip matched, every
+commit message in range pure ASCII, CI reported once per AR-CI-4.
