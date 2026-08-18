@@ -122,7 +122,13 @@ existing idea rather than inventing a new mechanism:
    reserved `:attributes` map once M5's interpreter writes to it, but
    not limited to it: any path into the per-render context
    (`ehrt.sim-emit-hl7.emit-hl7`'s own event map plus the patient's
-   persona) resolves today. A template is a declarative mapping
+   persona) resolves today. *(Dated 2026-08-18[^adr-0150]: this sentence
+   was true of the six non-ADT builders (bed-swap, merge, ORM, ORU,
+   observation, diagnostic-report) and FALSE of the ADT one, which was
+   handed a synthesized seven-key subset of the event and rendered an
+   empty field for every other key, silently. It is now true of all
+   seven -- the sentence did not change; the emitter caught up to it.)*
+   A template is a declarative mapping
    (`:segment`, `:trigger` — the event types it attaches to — and
    `:fields`, each `:path` or a `:literal` fallback) the emitter reads
    at render time, rendered AFTER standard segments, escaped per ER7,
@@ -297,4 +303,5 @@ overrides.
 
 [^adr-0014]: Design record [ADR-0014](../notes/ADRs.md).
 [^adr-0029]: Design record [ADR-0029](../notes/ADRs.md).
+[^adr-0150]: Design record [ADR-0150](../notes/ADRs.md).
 [^sim-adr-0002]: Design record [sim/ADR-0002](../notes/sim/ADRs.md).

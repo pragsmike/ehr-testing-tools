@@ -424,7 +424,18 @@
   achieved by `concat`-ing this vector onto the end of each message's
   segment list). No site-profile, or a profile with no :z-segments,
   renders none -- an empty vector `concat`s as a no-op, so absent-
-  profile output is untouched by this function's existence."
+  profile output is untouched by this function's existence.
+
+  ADR-0150 (2026-08-18): every call site hands this the WHOLE event.
+  `single-subject-message` used to synthesize a seven-key subset
+  ({:event :t :active-mrn :location :from :attending :participants})
+  while the six other families passed `ev`, so an ADT-family template
+  bound to `:reason`, `:home-ward`, `:disposition`, `:warm-up` or any
+  other key rendered empty -- and silently, `render-z-field` treating
+  an unbound path and an unreachable one identically. The context a
+  template resolves against is now the same map on every family, which
+  is the only shape `docs/site-profiles.md`'s own path examples can be
+  read literally against."
   [site-profile personas event]
   (let [context (context-for-event personas event)]
     (into []
@@ -489,9 +500,7 @@
         (pid-segment active-mrn persona)
         (pv1-segment site-profile patient-class facility-name location from provider disposition-state)
         (concat (when (and (= :admission event) persona) [(in1-segment (:payer persona))])
-                (z-segments-for site-profile personas {:event event :t t :active-mrn active-mrn
-                                                       :location location :from from :attending attending
-                                                       :participants participants})))))))
+                (z-segments-for site-profile personas ev)))))))
 
 (defn- bed-swap-message
   "A17 (swap patients): ONE message per ground-truth event, carrying
