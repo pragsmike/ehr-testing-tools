@@ -178,3 +178,79 @@
         stage-outputs (mapcat :outputs (:stages data))
         union-resources (map :resource (:resources data))]
     (is (some #{"datum"} (concat stage-outputs union-resources)))))
+
+;; ---- feedback annotation (ADR-0152): a `:kind :feedback` stage whose
+;; own output re-enters its inputs renders the string-diagram skill's
+;; `{feedback: X→X}` wire annotation. DERIVED from the equation, not a
+;; new schema key -- the fact is already in :inputs/:outputs/:kind, and
+;; adding a key would put the same fact in two places for an editor to
+;; keep in step, which is the exact defect ADR-0152 was chartered to
+;; close one hop upstream. ----
+
+(def sample-feedback-stage
+  {:id :calibrate
+   :label "Calibrate"
+   :kind :feedback
+   :status :planned
+   :inputs ["sim-corpus" "feed-statistics" "churn-profile"]
+   :outputs ["churn-profile"]})
+
+(deftest feedback-stage-renders-a-feedback-annotation-test
+  (is (= (str "sim-corpus × feed-statistics × churn-profile → churn-profile"
+              "  [Calibrate]  {feedback: churn-profile→churn-profile}")
+         (pipeline/stage->equation-line sample-feedback-stage))))
+
+(deftest feedback-annotation-follows-a-catalytic-annotation-test
+  ;; Both annotations on one stage: catalytic first, feedback second, one
+  ;; brace group each -- the converter's parse_annotations reads them
+  ;; independently, so order is a house-style choice pinned here.
+  (let [line (pipeline/stage->equation-line (assoc sample-feedback-stage :catalytic ["tuner"]))]
+    (is (clojure.string/includes? line "{catalytic: tuner}"))
+    (is (clojure.string/includes? line "{feedback: churn-profile→churn-profile}"))
+    (is (< (clojure.string/index-of line "{catalytic:")
+           (clojure.string/index-of line "{feedback:")))))
+
+(deftest only-a-feedback-kind-stage-gets-the-feedback-annotation-test
+  ;; A :transform whose output happens to share a name with an input is
+  ;; not a feedback loop -- :kind is what declares the loop, so the
+  ;; derivation is gated on it rather than on the name coincidence alone.
+  (let [not-feedback (assoc sample-feedback-stage :kind :transform :status :built)]
+    (is (not (clojure.string/includes? (pipeline/stage->equation-line not-feedback)
+                                       "{feedback:")))))
+
+(deftest a-feedback-stage-with-no-returning-output-gets-no-annotation-test
+  (let [open-loop (assoc sample-feedback-stage :outputs ["tuning-report"])]
+    (is (not (clojure.string/includes? (pipeline/stage->equation-line open-loop)
+                                       "{feedback:")))))
+
+(deftest committed-pipeline-edn-renders-no-feedback-annotation-test
+  ;; The byte-unchanged assertion ADR-0152's fence requires: pipeline.edn
+  ;; has no :feedback-kind stage, so the new derivation cannot move
+  ;; docs/dev/pipeline.md. Stated as a test rather than as a claim so it
+  ;; stays true if a feedback stage is ever added there.
+  (let [data (edn/read-string (slurp "components/corpus/docs/pipeline.edn"))
+        text (pipeline/pipeline->equations-text data)]
+    (is (empty? (filter #(= :feedback (:kind %)) (:stages data))))
+    (is (not (clojure.string/includes? text "{feedback:")))))
+
+;; ---- the generated banner (ADR-0152): docsgen.clj's own `banner` is
+;; HTML-comment shaped, and the string-diagram converter only ignores
+;; lines beginning `#`, so the equations file needs a `#`-prefixed
+;; equivalent. Kept here rather than generalising docsgen's helper with a
+;; comment-prefix argument: that helper serves markdown outputs only, and
+;; parameterizing it for one caller in another namespace buys coupling
+;; with no second use. ----
+
+(deftest generated-comment-header-is-hash-prefixed-and-four-lines-test
+  (let [header (pipeline/generated-comment-header
+                {:make-target "sim-theory" :source "components/sim/docs/sim-theory.edn"})
+        lines (clojure.string/split-lines header)]
+    (is (= 4 (count lines))
+        "pinned at 4 lines -- the equations file's arrow numbering derives from its line count")
+    (is (every? #(clojure.string/starts-with? % "#") lines)
+        "every banner line must start with # -- the converter ignores only those")
+    (is (clojure.string/includes? header "make sim-theory"))
+    (is (clojure.string/includes? header "components/sim/docs/sim-theory.edn"))
+    (is (clojure.string/includes? header "do not hand-edit"))
+    (is (clojure.string/ends-with? header "\n")
+        "ends with a newline so the first equation line starts its own line")))
