@@ -290,3 +290,24 @@ Two rulings landed: `R-register-gated-by-its-own-loader` and
 kept this session because their pinned `:readme-count`s are NOT
 subsumed and carry a real distinct signal, so retiring them is judgement
 about where the pins belong, not a deletion (`rulings.md#R-move-not-improve`).
+
+### Addendum, 2026-08-17 — the close tag was paid in session
+
+The prompt's tag ruling had two branches: pay in session if this
+session's tip run concludes `success` while the session is open, else
+leave it to the next Step 0, saying which. **The first branch was taken.**
+
+CI run `32078358238` at `854a0df` concluded `success` while the session
+was still open, so the licence was payable and was paid rather than
+deferred — deferring a licensed tag is itself the deviation
+(`rulings.md#R-tag-law`).
+
+`bin/tag-ceremony stable-20260817-exercised-sources-coverage 854a0df … --push`,
+its own output:
+
+    OK: created annotated tag 'stable-20260817-exercised-sources-coverage' at 854a0df0…
+    OK: pushed refs/tags/stable-20260817-exercised-sources-coverage
+    OK: remote peeled ref for 'stable-20260817-exercised-sources-coverage' is 854a0df0…, matches target exactly
+
+Annotated, pushed, and verified by peeled ref on the remote — not by the
+local tag object alone.
