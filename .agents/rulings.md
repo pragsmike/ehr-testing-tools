@@ -268,8 +268,11 @@ Appended by the session that takes the ruling, not held to arc close.
   session's own `gh run view <id>` concluding success, id and conclusion recorded; author
   relay sufficient, never required; pay in session if it concludes while open -- ADR-0148
 - **R-full-suite-before-push** -- a push is preceded by full `make test` unpiped with
-  MAKE_EXIT recorded; `poly test brick:`/`project:` are development aids, never the
-  pre-push gate, because tree-scanning gates live in other bricks (ADR-0149 f.3) -- ADR-0150
+  MAKE_EXIT recorded, and a wrapper capturing it ENDS with `exit "$MAKE_EXIT"`; `poly test
+  brick:`/`project:` are aids, never the gate: tree-scanning gates live elsewhere -- ADR-0150
+- **R-preflight-fail-closed** -- `bin/preflight` exits non-zero on any FINDING/FAIL/UNKNOWN,
+  and a check that could not MEASURE reports UNKNOWN, never OK: its output is the artifact
+  a session discloses and its exit code is a claim as well -- ADR-0155
 - **R-stop-only-on-two-defensible-readings** -- STOP-AND-REPORT binds where two readings
   are both defensible; a mechanical conflict with one defensible reading is fix-forward
   with disclosure -- ADR-0146

@@ -54,12 +54,12 @@ Docs-tooling gates: `adr_index_test`, `citation_gate_test`, `cli_tombstone_test`
 
 | register | count |
 |---|---|
-| ADR files (`notes/adr/NNNN-*.md`) | 152 |
+| ADR files (`notes/adr/NNNN-*.md`) | 153 |
 | roadmap rows (all sections) | 108 |
-| rulings rows | 113 |
+| rulings rows | 114 |
 | rulings rows superseded | 7 |
-| session records | 157 |
-| archived prompts | 150 |
+| session records | 158 |
+| archived prompts | 151 |
 
 ### Roadmap rows by section
 
@@ -79,5 +79,5 @@ Docs-tooling gates: `adr_index_test`, `citation_gate_test`, `cli_tombstone_test`
 | :corpus | 7 | 1807 | 2045 | 2045 | 238 |
 | :docs | 5 | 714 | 785 | 785 | 71 |
 | :judge | 8 | 901 | 1000 | 1000 | 99 |
-| :onboarding | 10 | 1407 | 1530 | 1530 | 123 |
+| :onboarding | 10 | 1410 | 1530 | 1530 | 120 |
 | :sim | 6 | 1253 | 1405 | 1405 | 152 |

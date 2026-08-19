@@ -308,6 +308,11 @@ generated-surface class had never been surveyed as a class.
 
 ### Session A — harness truthfulness (the watch item that fired)
 
+**LANDED 2026-08-19, ADR-0155** (fix 1/5, paired with Session G), and it
+took MORE than the rows listed: L2-4 and L2-6 are closed here too, because
+author rulings R4-Q2 (c) and R4-Q3 (a) resolved them and both edits sit in
+the same two scripts. Rows closed: L2-1, L2-2, L2-3, L2-4, L2-5, L2-6, L2-10.
+
 **Rows:** L2-1, L2-2, L2-3 (the `UNKNOWN:` half), L2-5, L2-10.
 **Why first:** this is review 3's H-2/H-3 watch item firing in a new
 shape, and one of its rows is a tracked skill that *teaches* the
@@ -451,6 +456,12 @@ possible evidence for this row and it is cheap: the fix is one helper in
 ---
 
 ### Session G — the closure gates (small tests, high leverage)
+
+**LANDED 2026-08-19, ADR-0155** (fix 1/5, paired with Session A). L3-1
+landed here too rather than waiting: author ruling R4-Q10 (d) took option
+(b), and its closure gate is what subsumes L3-10's pairing check, exactly
+as this session's own "Depends on" note anticipated. Rows closed: L3-1,
+L3-2, L3-4, L3-9, L3-10.
 
 **Rows:** L3-2, L3-4, L3-9, L3-10.
 **Why grouped:** all four are *closure* assertions — each says "this

@@ -8,12 +8,12 @@ cited from elsewhere as `roadmap.md#<slug>` and never by line number; `## Next`
 rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
 
 ## Next (backlog, no session scheduled)
-- OPEN **[repo-review-4]** PRIORITY 2 -- chartered at roughly 15 ADRs past
-  ADR-0139, i.e. approximately ADR-0154; the standing cadence rule is ADR count,
-  not calendar (ruling Q3 "a.", 2026-08-15). Inherits review 3's twelve-row
-  watch-list, D8-5's one surviving row among them (56 of 74 command fences have
-  no exerciser -- ruled out of the fix session, handed on in ADR-0140).
-  ASSESSMENT LANDED 2026-08-18 (ADR-0154): register `.agents/plans/2026-08-18-repo-review-findings.md`, plan `.agents/plans/2026-08-18-repo-review-4-plan.md`; 72 rows, 10 rulings owed, 8 proposed fix sessions; row stays OPEN until they land.
+- OPEN **[repo-review-4]** PRIORITY 2 -- chartered roughly 15 ADRs past ADR-0139
+  by ADR count, not calendar (ruling Q3 "a.", 2026-08-15). Inherits review 3's
+  twelve-row watch-list and D8-5's survivor (56 of 74 command fences have no
+  exerciser -- handed on in ADR-0140).
+  ASSESSMENT LANDED 2026-08-18 (ADR-0154): register `.agents/plans/2026-08-18-repo-review-findings.md`, plan `.agents/plans/2026-08-18-repo-review-4-plan.md`; 72 rows, 10 rulings owed, 8 fix sessions; author order G A E B C D F H, paired.
+  FIX 1/5 (G+A) LANDED 2026-08-19 (ADR-0155): 12 rows FIXED -- L3-1/L3-2/L3-4/L3-9/L3-10, L2-1..L2-6, L2-10; row stays OPEN until the remaining four land.
 - OPEN **[careplan-guard-resolution]** PRIORITY 4 -- a closure's next
   prerequisite is CarePlan, "unowned by any wave until a future session extends
   Guard's own condition-resolution machinery" (ADR-0139 C-2). NOW ALSO OWNS

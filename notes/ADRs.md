@@ -217,3 +217,4 @@ append-only, never-reassigned rule stands.
 - **ADR-0152** — the sim-theory head hop becomes a translator, and the `.edn` turns out to have drifted already — [`0152-sim-theory-head-hop.md`](adr/0152-sim-theory-head-hop.md) — Accepted
 - **ADR-0153** — the bed-ready transfer obeyed no ladder: seed 202 under `--churn`, diagnosed, repro'd, fixed — [`0153-surge-policy-self-check-202.md`](adr/0153-surge-policy-self-check-202.md) — Accepted
 - **ADR-0154** — repo review 4: the assessment, run hybrid; 72 rows, 10 rulings owed, nothing fixed — [`0154-repo-review-4.md`](adr/0154-repo-review-4.md) — Accepted
+- **ADR-0155** — review-4 fix 1/5: the docsgen population is closed as a class, and the harness stops reporting successes it did not have — [`0155-closure-gates-and-harness-truthfulness.md`](adr/0155-closure-gates-and-harness-truthfulness.md) — Accepted
