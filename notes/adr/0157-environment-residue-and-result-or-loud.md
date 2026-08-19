@@ -388,3 +388,35 @@ expect it.
 - **Reading sets**, all under budget, none compacted: `:corpus`
   1821/2045, `:docs` 728/785, `:judge` 915/1000, `:onboarding`
   1438/1530, `:sim` 1267/1405.
+
+### Addendum, 2026-08-19 — the close tag was paid, and the hook was proved against this session's own commit
+
+CI run **32283740721** at
+`ae396cf6cd506bdcb6bcc0947a6ed24f4f551d74` concluded **`success`**
+while this session was still open, meeting the tag licence's condition
+(`rulings.md#R-session-verifies-ci-via-gh`). Deferring a licensed tag is
+the deviation (`rulings.md#R-tag-law`), so
+`stable-20260819-review-4-fix-3-environment-and-result-or-loud` was
+created and pushed in session via `bin/tag-ceremony`, remote peeled ref
+verified against that sha exactly.
+
+**And the hook was proved on the exact sentence that produced its own
+row.** ADR-0156's addendum could only *record* its defect, because
+`04b6f66` was already pushed. The same shape was tried here as an empty
+commit:
+
+```
+$ git commit --allow-empty -F <a message reading "CI green at ae396cf… exactly">
+ERROR: this commit message contains non-ASCII byte(s) -- commit refused.
+  1:docs: a deliberate probe -- CI green at ae396cf… exactly
+      non-ASCII byte(s) on this line: e2 80 a6
+```
+exit 1, `HEAD` unchanged, tree clean. The byte that could not be
+amended out of `04b6f66` never becomes a commit now, and the refusal
+names the line, the bytes, and the three prose characters that produce
+this class.
+
+That closes the loop the second addendum to ADR-0156 opened, within one
+ADR of opening it — and it is the same discipline that ADR recorded
+about itself: a rule is better tested by binding its own author than by
+any argument for it.
