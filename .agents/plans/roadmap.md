@@ -8,12 +8,12 @@ cited from elsewhere as `roadmap.md#<slug>` and never by line number; `## Next`
 rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
 
 ## Next (backlog, no session scheduled)
-- OPEN **[repo-review-4]** PRIORITY 2 -- chartered roughly 15 ADRs past ADR-0139 by
-  ADR count, not calendar (ruling Q3 "a.", 2026-08-15). Inherits review 3's twelve-row
-  watch-list and D8-5's survivor (56 of 74 command fences have no exerciser, ADR-0140).
+- OPEN **[repo-review-4]** PRIORITY 2 -- chartered roughly 15 ADRs past ADR-0139 by ADR count, not calendar (ruling Q3 "a.", 2026-08-15); inherits review 3's twelve-row watch-list and D8-5's survivor (56 of 74 command fences unexercised, ADR-0140).
   ASSESSMENT 2026-08-18 (ADR-0154): register `.agents/plans/2026-08-18-repo-review-findings.md`, plan `.agents/plans/2026-08-18-repo-review-4-plan.md`; 72 rows, 10 rulings owed, 8 fix sessions; author order G A E B C D F H, paired.
   FIX 1/5 (G+A) 2026-08-19 (ADR-0155), 12 rows: L3-1/L3-2/L3-4/L3-9/L3-10, L2-1..L2-6, L2-10.
-  FIX 2/5 (E+C) 2026-08-19 (ADR-0156), 11 rows: L1-1..L1-5, D2-1/D2-2/D2-4/D2-6, D3-2, D4-4; R4-Q1/Q6/Q7/Q8 ruled. OPEN until B, D and F+H land.
+  FIX 2/5 (E+C) 2026-08-19 (ADR-0156), 11 rows: L1-1..L1-5, D2-1/D2-2/D2-4/D2-6, D3-2, D4-4; R4-Q1/Q6/Q7/Q8 ruled.
+  FIX 3/5 (B+D) 2026-08-19 (ADR-0157), 2 rows + #commit-msg-ascii-hook: D4-1 fixed, D3-1 PARTLY -- its gate landed and proved its own "verified safe" false; see #edit-root-worktree-residue.
+  OPEN until F+H land.
 - OPEN **[oracle-coverage-roots]** PRIORITY 3 -- R4-Q6 (ii) (b): add oracle roots
   reaching the capacity and order->result paths (a churn root, a pathway root), so the
   13-of-21 witnessed-kind set widens. PRICED, NOT TAKEN: each new root is a declared
@@ -38,12 +38,12 @@ rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
   `t 78060` -- RENAL-04 freed by a bed-ready pull, a Renal boarder still in ED
   surge 420s later. Realism gap, not an invariant violation once ADR-0153
   landed. Class exposed by ADR-0153's diagnosis, rowed rather than fixed there.
-- OPEN **[commit-msg-ascii-hook]** PRIORITY 7 -- the ASCII commit-message law is
-  gated only by `bin/post-push-verify` check 2, which by name runs AFTER the push,
-  so a violation is reported when it can no longer be amended
-  (`rulings.md#R-amend-unpushed-message-only`). ADR-0156's own addendum commit
-  `04b6f66` is the instance: a Unicode ellipsis in an abbreviated sha. A
-  `.githooks/commit-msg` hook beside `pre-commit`/`pre-push` refuses it for free.
+- OPEN **[edit-root-worktree-residue]** PRIORITY 7 -- AUTHOR ACTION. The edit root's
+  WORKTREE carries retired `/mnt/c`-era residue the index does not: **360** tracked
+  text files (`.md`, `.edn`, `LICENSE`, brick `deps.edn`) at mode 0755 against an
+  index of `100644`, hidden by `core.fileMode=false`, plus **3** files with CRLF
+  (`skills/shared-skill-layout/agents/openai.yaml` and its two mirrors). Remedy is
+  the config flip AND a `chmod -x` sweep, together. ADR-0157, register row D3-1.
 - OPEN **[manual-dimension-5]** PRIORITY 8 -- manual-review run 2 passed with
   warns, and dimension 5 (running-example continuity) stays WARN as the manual's
   one standing open row: `ed-tuesday` is HL7v2-only and structurally cannot
@@ -80,6 +80,12 @@ rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
   deleted, this session. Their pinned `:readme-count`s are NOT subsumed and
   carry a real distinct signal, so the retirement is judgement about where the
   pins should live, not a deletion. Next docs-tooling test compaction.
+- OPEN **[setup-md-hook-citations]** PRIORITY 17 -- three live surfaces cite
+  `SETUP.md` for hook and gitleaks instructions it does not contain: hooks are
+  documented in `AGENTS.md` and `AUTHORS-GUIDE.md` SS1 only. `.githooks/pre-push:14`
+  ("See SETUP.md for hook installation and gitleaks install instructions"), the
+  same file's :39 gitleaks line, and `cli/core.clj:360` ("SETUP.md section 1's
+  maintainer-tools row"). Found in passing by ADR-0157; errata, not behavior.
 
 ## Externals (author-only)
 - EXTERNAL **[ci-failure-email]** -- enable GitHub's workflow-failure
@@ -225,6 +231,12 @@ Rows here are LIVE, each owing a revisit trigger in its own token.
   one-module-per-patient assignment never produces. ADR-0037 AR-4.
 
 ## Done (current arc only; older arcs rotate to `.agents/plans/roadmap-done-2026-08.md`, ADR-0046/ADR-0055)
+- CLOSED 2026-08-19 ADR-0157 **[commit-msg-ascii-hook]** -- `.githooks/commit-msg`
+  refuses a non-ASCII commit message before the commit exists, installed by the
+  same `core.hooksPath .githooks` that installs the other two. The scan is
+  EXTRACTED to `bin/ascii-scan`, which `bin/post-push-verify` check 2 now invokes
+  too, so the pre-commit twin and the post-push check cannot drift; both are
+  fail-closed on a scanner they cannot run.
 - CLOSED 2026-08-18 ADR-0153 **[surge-policy-self-check-202]** -- diagnosed H2
   (the bed-ready transfer bypassed the allocation ladder outright), minimal
   repro plus a run-level test at the exact argv, fixed in `engine.clj` alone.

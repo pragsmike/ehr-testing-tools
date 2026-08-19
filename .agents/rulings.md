@@ -76,8 +76,8 @@ Appended by the session that takes the ruling, not held to arc close.
 - **R-defspec-seed-policy** -- seeds stay unpinned repo-wide; a spec that has actually
   flaked pins or durably logs its seed -- ADR-0080
 - **R-io-result-or-loud** -- a production I/O call that can fail routes through
-  `ehrt.kernel.io` or handles failure by name; failure never impersonates an empty result --
-  ADR-0080
+  `ehrt.kernel.io` -- `list-files`/`rename!`, and from 2026-08-19 `mkdirs!`/`delete!` with
+  `delete-quietly!` the declared cleanup exception (ADR-0157) -- or handles failure by name; failure never impersonates an empty result -- ADR-0080
 - **R-ci-watched-not-awaited** -- preflight discloses the last five runs; watching to
   conclusion is for a session whose claim is about CI; no push carries a known-failing test
   -- ADR-0080

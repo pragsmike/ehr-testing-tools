@@ -353,6 +353,13 @@ status is propagated and described.
 
 ### Session B — environment residue (the three-hit class, at its root)
 
+**LANDED 2026-08-19, ADR-0157** (fix 3/5, paired with Session D), with
+`roadmap.md#commit-msg-ascii-hook` folded in. The co-landed gate landed; the
+config change did NOT. Running the new gate found D3-1's own "verified safe"
+was measured on a fresh clone and read as covering the edit root, where the
+flip surfaces 360 hidden worktree mode bits. Restored to as-found and re-rowed
+as `roadmap.md#edit-root-worktree-residue`, AUTHOR ACTION.
+
 **Rows:** D3-1, D3-2.
 **Why:** the executable-bit class has bitten three times in this window
 alone and was gated at the symptom every time. The root cause is two
@@ -406,6 +413,12 @@ the text lands. Watch the `:docs` and `:onboarding` reading-set budgets
 that this exact file has grown 162 → 309 lines by accretion.
 
 ### Session D — result-or-loud, widened to the class it names
+
+**LANDED 2026-08-19, ADR-0157** (fix 3/5, paired with Session B). The 13/2
+counts held exactly; the plan's 13 and the prompt's re-derived 10 differ only
+by grep shape (`components/*/src` alone omits `bases/*/src`), not by any site
+removed. `delete-quietly!` was needed after all — both `.delete` sites would
+be made worse by a throw.
 
 **Row:** D4-1.
 **Why:** `R-io-result-or-loud`'s lint forbids

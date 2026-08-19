@@ -219,3 +219,4 @@ append-only, never-reassigned rule stands.
 - **ADR-0154** — repo review 4: the assessment, run hybrid; 72 rows, 10 rulings owed, nothing fixed — [`0154-repo-review-4.md`](adr/0154-repo-review-4.md) — Accepted
 - **ADR-0155** — review-4 fix 1/5: the docsgen population is closed as a class, and the harness stops reporting successes it did not have — [`0155-closure-gates-and-harness-truthfulness.md`](adr/0155-closure-gates-and-harness-truthfulness.md) — Accepted
 - **ADR-0156** — review-4 fix 2/5: the oracle says what it cannot see, and three laws get the gates they never had — [`0156-oracle-coverage-and-guard-coverage.md`](adr/0156-oracle-coverage-and-guard-coverage.md) — Accepted
+- **ADR-0157** — review-4 fix 3/5: environment residue at its root, and result-or-loud widened to the class it names — [`0157-environment-residue-and-result-or-loud.md`](adr/0157-environment-residue-and-result-or-loud.md) — Accepted
