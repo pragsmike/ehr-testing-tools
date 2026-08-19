@@ -159,6 +159,15 @@ sim-theory:
 # rendered-example surface). That is the whole registered population --
 # if a fourth example grows a committed .mermaid, it belongs on this
 # target and in CI's freshness diff the same day.
+#
+# That exception is now DECLARED rather than merely described, on the
+# machine-readable line below (ADR-0155, register L3-10). The prose
+# above said the right thing and nothing read it: the directory held
+# five equations files, the recipe hardcoded three converter calls, and
+# the whole test tree carried zero references to this directory, so a
+# sixth example -- or a .mermaid quietly added for one of these two --
+# was indistinguishable from drift.
+# EXAMPLES-WITHOUT-MERMAID: lemon-pie decision-monad
 palgebra-examples:
 	python3 components/palgebra/tools/resource_equations_to_mermaid.py components/palgebra/examples/ai-study-equations.txt -o components/palgebra/examples/ai-study-flow-v3.mermaid
 	python3 components/palgebra/tools/resource_equations_to_mermaid.py components/palgebra/examples/committee-equations.txt -o components/palgebra/examples/committee-flow.mermaid
@@ -231,9 +240,22 @@ adr-index:
 # stale and cannot be hand-written wrong; what is left in state.md is
 # judgement, and it is capped and linted
 # (ehrt.docs-tooling.state-residue-test).
-state-derived:
+# `pipeline` is a DECLARED prerequisite, not merely a left-to-right
+# neighbour on the `docsgen:` line (ADR-0155, register L3-4).
+# docs/dev/pipeline.md is itself generated AND is a line-counted input
+# to state-derived.md -- a generated -> generated edge. The edge existed
+# only as the ORDER of docsgen's prerequisite list, which `make -j` is
+# free to ignore, and `make -j8 pipeline state-derived` duly produced a
+# stale state-derived.md against a changed pipeline.md, twice.
+#
+# The echo names all THREE outputs, not one. That is load-bearing now,
+# not decorative: the closure gate reads each leaf's declared write set
+# out of its own recipe, and this recipe named state-derived.md alone
+# while writing both INDEX.md files too -- so two paths sat on CI's
+# freshness diff that no leaf claimed.
+state-derived: pipeline
 	clojure -X:dev ehrt.docs-tooling.state-derived/write-state-derived!
-	@echo "Regenerated .agents/state-derived.md and the two record INDEX.md files"
+	@echo "Regenerated .agents/state-derived.md and .agents/session-records/INDEX.md and .agents/prompts/INDEX.md"
 
 # Regenerates every derived file under demos/traces/ -- seven
 # messages*.txt, six ground-truth.edn, one FHIR bundle -- by running each

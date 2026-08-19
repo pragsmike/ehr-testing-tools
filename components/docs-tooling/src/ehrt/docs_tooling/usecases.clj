@@ -29,6 +29,7 @@
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.string :as str]
+            [ehrt.kernel.interface :as kernel]
             [malli.core :as m]))
 
 (def maturities
@@ -296,6 +297,38 @@
                                        [id (slurp (str cases-dir "/" (name id) ".mermaid"))]))
                              (:cases data))]
     (.mkdirs (io/file pages-dir))
-    (doseq [{:keys [filename content]} (cases->pages (:cases data) mermaid-by-id)]
-      (spit (str pages-dir "/" filename) content))
+    (let [pages (cases->pages (:cases data) mermaid-by-id)]
+      (doseq [{:keys [filename content]} pages]
+        (spit (str pages-dir "/" filename) content))
+      ;; PRUNE (ADR-0155, register L3-9). Writing without pruning let a
+      ;; generated page outlive its own source indefinitely, green: drop
+      ;; a case from use-cases.edn and the index loses its row, this
+      ;; doseq never touches the orphaned page, `git diff --exit-code
+      ;; docs/use-cases/` sees no change, and nothing compared the page
+      ;; set to the case set. The generator owns the directory's
+      ;; contents, so it deletes what it did not write -- only ever
+      ;; `.md` files directly in pages-dir, never a subdirectory and
+      ;; never another extension.
+      ;;
+      ;; Listed via `ehrt.kernel.interface/list-files` (result-or-loud,
+      ;; ADR-0078), for the same reason `docsgen/parse-adr-dir` is --
+      ;; and `io-vocabulary-lint-test` caught this prune's first draft
+      ;; doing exactly what it caught that one's. The distinction is
+      ;; load-bearing rather than ceremonial here too, in the opposite
+      ;; direction: a nil from `.listFiles` is an I/O failure, and
+      ;; reading it as an empty directory would silently prune nothing
+      ;; while reporting success -- the orphan class this fix closes,
+      ;; reintroduced by the fix itself.
+      (let [written (set (map :filename pages))
+            r (kernel/list-files pages-dir)]
+        (when-not (kernel/ok? r)
+          (throw (ex-info (str "failed to list " pages-dir
+                               " -- refusing to report a prune that never ran")
+                          r)))
+        (doseq [^java.io.File f (:payload r)]
+          (let [n (.getName f)]
+            (when (and (.isFile f)
+                       (str/ends-with? n ".md")
+                       (not (contains? written n)))
+              (io/delete-file f))))))
     (spit index-out (render-use-cases-index-md data))))
