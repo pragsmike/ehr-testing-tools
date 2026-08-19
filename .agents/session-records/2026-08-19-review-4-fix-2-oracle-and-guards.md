@@ -154,6 +154,20 @@ emitter or digest-logic path moved. Predicted before running.
    `diagnostic-report-message`. The per-function count was right; the
    generalisation was not.
 
+7. **`bin/post-push-verify` check 2 FAILED on this session's own last
+   commit**, and the failure stands. `04b6f66` — the addendum recording
+   the tag payment — carries a Unicode ellipsis (`e2 80 a6`) in
+   `841fb75e... exactly`, where three ASCII dots belonged. `FAIL:
+   non-ASCII byte(s) found in commit message range`, exit 1. It was
+   already pushed when the check ran, and
+   `rulings.md#R-amend-unpushed-message-only` — this session's own
+   R4-Q1 (a), landed hours earlier — permits `--amend` only on an
+   unpushed commit. So it is disclosed and fixed forward, not repaired
+   in place. The tagged commit `841fb75` and everything before it pass
+   check 2; CI is green at it; the tag's peeled ref is verified. Rowed
+   as `roadmap.md#commit-msg-ascii-hook`: the check belongs in the
+   commit path, not only after it.
+
 ## Fence
 
 Touched: `digest.clj` (docstring + COVERAGE block only),

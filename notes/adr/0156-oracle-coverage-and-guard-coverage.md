@@ -308,3 +308,48 @@ that says so. And the review's own instrument is amended twice: a probe
 that reports zero must show its population first, and the cold-clone
 probe that two reviews recorded as lost is named where it cannot go
 missing a third time.
+
+### Addendum, 2026-08-19 — the close tag was paid, and check 2 caught this session's own defect
+
+CI run **32271198594** at
+`841fb75e4ba51ab4d5f2e2a1c09ac7e05ff4754e` concluded **`success`**
+while this session was still open, meeting the tag licence's own
+condition (`rulings.md#R-session-verifies-ci-via-gh`). Deferring a
+licensed tag is the deviation (`rulings.md#R-tag-law`), so
+`stable-20260819-review-4-fix-2-oracle-and-guards` was created and
+pushed in session via `bin/tag-ceremony`, remote peeled ref verified
+against that sha exactly.
+
+**Then `bin/post-push-verify 841fb75 HEAD` failed check 2, on the
+addendum commit `04b6f66` that recorded the tag payment.** Its line 9
+reads `841fb75e… exactly` — a Unicode horizontal ellipsis (`e2 80 a6`)
+where three ASCII dots belonged, written when a sha was abbreviated in
+prose. `FAIL: non-ASCII byte(s) found in commit message range`, exit 1.
+
+Recorded rather than quietly repaired, for three reasons.
+
+**It is not amendable, by the law this session landed.** `04b6f66` was
+already pushed when the check ran, and
+`rulings.md#R-amend-unpushed-message-only` — added today, at this
+session's own R4-Q1 (a) — permits `--amend` only on an unpushed commit.
+The rule bound its author within the hour of being written, which is a
+better test of it than any argument for it.
+
+**It is the class this arc keeps finding, one layer further out.** The
+ASCII law is stated and gated; what produced the violation is the same
+habit that produced the ellipsis in every other prose surface here,
+where it is correct. A commit message is prose that is not prose. No
+gate ran between writing the message and pushing it — `post-push-verify`
+is by name a POST-push check, so for this one class it reports a fault
+that can no longer be fixed in place. That is a real gap and it is
+rowed, not fixed in passing: **the ASCII check belongs in the commit
+path, not only after it** — a `commit-msg` hook beside the existing
+`pre-commit`/`pre-push` pair would have refused the message and cost
+nothing.
+
+**The verdict stands and the tree is sound.** Nothing about the tagged
+commit `841fb75` is affected: it and every commit before it pass check
+2, CI is green at it, and the tag's peeled ref is verified. The defect
+is confined to one character in one later commit message.
+
+Rowed as `roadmap.md#commit-msg-ascii-hook`, PRIORITY 7.

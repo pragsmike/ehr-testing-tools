@@ -38,6 +38,12 @@ rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
   `t 78060` -- RENAL-04 freed by a bed-ready pull, a Renal boarder still in ED
   surge 420s later. Realism gap, not an invariant violation once ADR-0153
   landed. Class exposed by ADR-0153's diagnosis, rowed rather than fixed there.
+- OPEN **[commit-msg-ascii-hook]** PRIORITY 7 -- the ASCII commit-message law is
+  gated only by `bin/post-push-verify` check 2, which by name runs AFTER the push,
+  so a violation is reported when it can no longer be amended
+  (`rulings.md#R-amend-unpushed-message-only`). ADR-0156's own addendum commit
+  `04b6f66` is the instance: a Unicode ellipsis in an abbreviated sha. A
+  `.githooks/commit-msg` hook beside `pre-commit`/`pre-push` refuses it for free.
 - OPEN **[manual-dimension-5]** PRIORITY 8 -- manual-review run 2 passed with
   warns, and dimension 5 (running-example continuity) stays WARN as the manual's
   one standing open row: `ed-tuesday` is HL7v2-only and structurally cannot
