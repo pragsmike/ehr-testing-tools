@@ -360,6 +360,24 @@ green. Every planted red withdrawn. Exit codes unpiped throughout, and
 **this session's own wrappers end with `exit "$MAKE_EXIT"`** — the law
 it lands, applied to itself.
 
+### Addendum, 2026-08-19 -- the close tag was paid in session
+
+The prompt's tag ruling was conditional: *"pay in-session if its tip run
+concludes success while open, else next Step 0 -- say which."* **It was
+paid in session.** CI run **32255233896** at `660b7bf` concluded
+**success** while this session was still open, verified by its own
+`gh run view` (`R-session-verifies-ci-via-gh`), so
+`bin/tag-ceremony stable-20260819-review-4-fix-1-closure-and-harness
+660b7bf <msg> --push` ran under the licence: annotated tag created,
+pushed, and the remote **peeled ref verified to match `660b7bf`
+exactly** (the ADR-0124 skipped-tag class -- the verify half is not
+optional).
+
+Four CI runs, all success: 32250959906 (`bf0b381`), 32253127894
+(`f704c91`), 32255233896 (`660b7bf`), plus 32228155848 at the Step-0
+tip. The tree is clean and `bin/preflight` -- the NEW one -- exits 0
+with no findings at the tagged tip.
+
 ### One line
 
 The class ADR-0136 opened and that ADR-0149 and ADR-0152 each closed for

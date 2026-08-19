@@ -141,6 +141,14 @@ to hold its six-line cap; `rulings.md` gains
 `R-preflight-fail-closed` and `R-full-suite-before-push` gains the
 wrapper clause.
 
+## Tag — paid in session
+
+The ruling was conditional. CI run **32255233896** at `660b7bf`
+concluded **success** while the session was open, so
+`bin/tag-ceremony stable-20260819-review-4-fix-1-closure-and-harness
+660b7bf <msg-file> --push` ran under the licence: annotated tag created,
+pushed, remote **peeled ref verified to match `660b7bf` exactly**.
+
 ## An observation, out of fence
 
 At both pushes, `post-push-verify` check 3 printed `status=
