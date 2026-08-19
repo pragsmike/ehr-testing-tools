@@ -93,13 +93,20 @@
 
 (defn- install-script!
   "Copies the real script into the fixture's own bin/, so its
-  `${BASH_SOURCE[0]}/..` repo-root resolution lands on the fixture."
+  `${BASH_SOURCE[0]}/..` repo-root resolution lands on the fixture --
+  and `bin/ascii-scan` beside it, because ADR-0157 extracted check 2's
+  byte scan into that script when `.githooks/commit-msg` became its
+  second caller. post-push-verify is fail-closed on a scanner it cannot
+  run (an unmeasurable check is not a passing one, ADR-0155), so a
+  fixture missing it never reaches check 2's real verdict."
   [^java.io.File work]
   (let [dest-dir (io/file work "bin")
         dest (io/file dest-dir "post-push-verify")]
     (.mkdirs dest-dir)
-    (io/copy (io/file script-under-test) dest)
-    (.setExecutable dest true)
+    (doseq [script [script-under-test "bin/ascii-scan"]]
+      (let [copied (io/file dest-dir (.getName (io/file script)))]
+        (io/copy (io/file script) copied)
+        (.setExecutable copied true)))
     dest))
 
 (deftest default-range-covers-every-pushed-commit-test

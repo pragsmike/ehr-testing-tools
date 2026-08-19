@@ -14,7 +14,13 @@
 #   2. Edit-root confirmation -- the ext4 clone, never a Windows-
 #      mounted /mnt/* checkout (the retired /mnt/c hazard class,
 #      `notes/ADRs.md` ADR-0047 AR-C-3; a fresh instance elsewhere is a
-#      NEW regression per that ruling, not routine vigilance).
+#      NEW regression per that ruling, not routine vigilance) -- plus
+#      the two git settings that same retired era leaves behind in a
+#      clone's own .git/config, `core.fileMode=false` and
+#      `core.ignorecase=true` (ADR-0157, review-4 register row D3-1).
+#      The path check catches a checkout in the wrong place; these two
+#      catch a checkout in the RIGHT place still configured for the
+#      wrong one, which is what the edit root actually was.
 #   3. Tree-clean check, counting untracked files too (`git status
 #      --porcelain=v1 --untracked-files=all` -- the tree-clean
 #      false-positive class a porcelain call without --untracked=all
@@ -147,6 +153,43 @@ case "$repo_root" in
     echo "OK: repo root '$repo_root' is not under /mnt/"
     ;;
 esac
+
+# The residue the /mnt/* check cannot see, because it is in .git/config
+# rather than in the path (ADR-0157, register row D3-1). The executable-
+# bit class bit three times in one review window -- ADR-0147 S-7,
+# ADR-0149's own CI red, and ADR-0154's Step-0 disclosure -- and was
+# gated at the SYMPTOM every time: `executable_bits_test` reads the git
+# INDEX precisely because core.fileMode=false makes the worktree bit
+# lie. The cause is one line of config, wrong for the ext4 filesystem
+# this clone now sits on. core.ignorecase=true is the same residue with
+# no recorded hit yet: equally wrong on a case-sensitive filesystem, and
+# able to mask a case-only rename.
+#
+# .git/config is not tracked, so no repo test can assert this for
+# someone else's clone -- which is exactly why it belongs here, in the
+# script every session runs at Step 0. Read EFFECTIVE (any scope), since
+# a global setting bites identically; the remedy is --local either way,
+# because a local setting wins.
+#
+# Only `false` is a finding. Unset is correct: git detects mode support
+# from the filesystem itself, and on a filesystem that genuinely has no
+# executable bit, `false` is the right answer -- that case is already a
+# FAIL above, where /mnt/* is refused outright.
+file_mode="$(git config --get core.fileMode 2>/dev/null || true)"
+if [ "$file_mode" = "false" ]; then
+  echo "FINDING: core.fileMode=false in this clone, on a filesystem that is not /mnt/* -- retired /mnt/c-era residue (ADR-0157, D3-1). A plain \`git add\` will silently ignore a permission change, so a new bin/ or .githooks/ script reaches CI non-executable. Remedy: git config --local core.fileMode true"
+  findings=1
+else
+  echo "OK: core.fileMode is ${file_mode:-unset (git detects mode support from the filesystem)}"
+fi
+
+ignore_case="$(git config --get core.ignorecase 2>/dev/null || true)"
+if [ "$ignore_case" = "true" ]; then
+  echo "FINDING: core.ignorecase=true in this clone -- the same retired /mnt/c-era residue (ADR-0157, D3-1), wrong on a case-sensitive filesystem, where it can mask a case-only rename. Remedy: git config --local --unset core.ignorecase"
+  findings=1
+else
+  echo "OK: core.ignorecase is ${ignore_case:-unset}"
+fi
 echo
 
 # --- 3. Tree-clean check (untracked included) ---------------------------

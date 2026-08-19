@@ -22,9 +22,11 @@
 #   1. Remote tip == local HEAD (the branch actually landed what this
 #      checkout has).
 #   2. Per-commit ASCII check over the pushed range (<base-sha>..<tip-
-#      sha>) -- `git log --format=%B <range> | LC_ALL=C grep -n
-#      '[^ -~]'`, expected EMPTY (AR-RL2-5, standing ceremony
-#      boilerplate, no new repo test).
+#      sha>): every message piped through `bin/ascii-scan`, expected
+#      EMPTY (AR-RL2-5, standing ceremony boilerplate). The scan itself
+#      moved into that script at ADR-0157, when `.githooks/commit-msg`
+#      became its second caller -- two gates on one law must not be two
+#      definitions of it. What check 2 measures is unchanged.
 #   3. The CI run triggered for <tip-sha> -- polled ONCE, printed,
 #      never waited on to conclusion (AR-CI-4's own reservation: watch-
 #      to-conclusion is for a session whose own claim is about CI).
@@ -121,7 +123,12 @@ echo
 
 # --- 2. Per-commit ASCII check over the pushed range ---------------------
 echo "-- 2. Per-commit ASCII check, ${base_sha:0:8}..${tip_sha:0:8} --"
-ascii_hits="$(git log --format=%B "${base_sha}..${tip_sha}" | LC_ALL=C grep -n '[^ -~]' || true)"
+ascii_scan="$repo_root/bin/ascii-scan"
+if [ ! -x "$ascii_scan" ]; then
+  echo "FAIL: $ascii_scan is missing or not executable -- check 2 could not run, and a check that could not MEASURE is not a check that passed (ADR-0155)." >&2
+  exit 1
+fi
+ascii_hits="$(git log --format=%B "${base_sha}..${tip_sha}" | "$ascii_scan" || true)"
 if [ -z "$ascii_hits" ]; then
   echo "OK: every commit message in range is pure ASCII"
 else

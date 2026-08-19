@@ -24,7 +24,14 @@ git config core.hooksPath .githooks
 
 `.githooks/pre-push` additionally gates on a clean `gitleaks detect`
 scan and `clojure -M:poly check` being green -- tests are CI's job, not
-the push gate's (`notes/ADRs.md` ADR-0003). See `AUTHORS-GUIDE.md` §1
+the push gate's (`notes/ADRs.md` ADR-0003). `.githooks/commit-msg`
+refuses a commit message carrying a non-ASCII byte, the ASCII law
+(AR-RL2-5) gated in the commit path rather than only by
+`bin/post-push-verify` check 2, which runs after the push and so
+reports what `.agents/rulings.md#R-amend-unpushed-message-only` no
+longer permits fixing (`notes/ADRs.md` ADR-0157). The one config above
+installs all three -- it points git at the tracked directory, and
+nothing enumerates the hooks by name. See `AUTHORS-GUIDE.md` §1
 for the full rationale and gitleaks install instructions.
 
 **A "regression-oracle" claim means `bin/regression-oracle`'s own

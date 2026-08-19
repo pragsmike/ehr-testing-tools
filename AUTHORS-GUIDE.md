@@ -18,7 +18,13 @@ executable-bit flips, and diffs that are 90% whitespace noise. Windows
 is fine for building, reading, and running tools once they exist; it
 is not fine for writing to git history. `.githooks/pre-commit` and
 `.githooks/pre-push` enforce this once a clone runs `git config
-core.hooksPath .githooks` (see `AGENTS.md`).
+core.hooksPath .githooks` (see `AGENTS.md`). That same config installs
+`.githooks/commit-msg`, which refuses a commit message carrying a
+non-ASCII byte -- the ASCII law (AR-RL2-5) moved into the commit path
+by `notes/ADRs.md` ADR-0157, because `bin/post-push-verify` check 2
+runs after the push and can only report a message that
+`.agents/rulings.md#R-amend-unpushed-message-only` has already put out
+of reach. Both gates run the same `bin/ascii-scan`.
 
 **Commits and pushes follow whatever mode the author set for the
 session, stated in that session's own chat (ADR-0001 R6, superseded in

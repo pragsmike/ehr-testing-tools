@@ -327,11 +327,16 @@
       (spit (io/file work "f") "a\nb\n")
       (git! work "commit" "-qam" "B plain ASCII message")
       (git! work "push" "-q" "origin" "main")
-      (let [dest-dir (io/file work "bin")
-            dest (io/file dest-dir "post-push-verify")]
+      ;; `bin/ascii-scan` rides along: ADR-0157 extracted check 2's byte
+      ;; scan there, and post-push-verify is fail-closed on a scanner it
+      ;; cannot run, so a fixture without it stops at check 2 and never
+      ;; reaches the check 3 these tests are about.
+      (let [dest-dir (io/file work "bin")]
         (.mkdirs dest-dir)
-        (io/copy (io/file "bin/post-push-verify") dest)
-        (.setExecutable dest true))
+        (doseq [script ["bin/post-push-verify" "bin/ascii-scan"]]
+          (let [copied (io/file dest-dir (.getName (io/file script)))]
+            (io/copy (io/file script) copied)
+            (.setExecutable copied true))))
       {:work work :base base :tip (git! work "rev-parse" "HEAD")})))
 
 (defn- run-post-push-verify [root gh-body]
