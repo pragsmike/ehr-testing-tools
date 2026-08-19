@@ -42,15 +42,30 @@
   component-code versions, and hashing itself happens in the calling
   shell (`sha256sum`), not in-process.
 
-  Six roots, matching this session's own J1 ruling verbatim:
-  appendicitis/sore-throat/ear-infections (interpreter-layer batches,
-  the same well-mixed-seed pattern every vendored-module test in this
-  repo already uses -- SEQUENTIAL small java.util.Random seeds are NOT
-  well-distributed for their own first draw, confirmed repeatedly
-  across GMF coverage waves), sinusitis/death-fixture/sepsis
-  (engine-layer: engine/run plus emit-hl7/emit, ground truth AND
-  emitted HL7 both captured, the exact run-configs each root's own
-  vendored/engine test already established as producing real content).
+  CURRENT STATE, 2026-08-19 (ADR-0156, review-4 register row L1-5).
+  `roots` holds 35 roots in two families:
+
+    3 INTERPRETER-LAYER batches -- appendicitis/sore-throat/
+      ear-infections. 100 well-mixed seeds x both sexes = 200 walks per
+      root, concatenated into one deterministic EDN vector. The
+      well-mixed-seed pattern every vendored-module test in this repo
+      already uses: SEQUENTIAL small java.util.Random seeds are NOT
+      well-distributed for their own first draw, confirmed repeatedly
+      across GMF coverage waves.
+
+   32 ENGINE-LAYER pairs -- engine/run plus emit-hl7/emit, ground truth
+      AND emitted HL7 both captured, at the run-config each root's own
+      vendored/engine test already established as producing real
+      content.
+
+  This paragraph replaced an opening that read `Six roots, matching this
+  session's own J1 ruling verbatim` -- true when written and never
+  updated past the two dated notes below, which carry the population to
+  11. The other 24 arrived in `;;` comments inside the body. Nothing was
+  false; a cold reader simply got a third of the population and no
+  signal that it was a third. The count is gated now
+  (`ehrt.docs-tooling.oracle-coverage-test`), and the COVERAGE block
+  beside `roots` states what these 35 can and cannot witness.
 
   Dated note (2026-08-03, ADR-0033 AR-4b): three more roots join at the
   ENGINE layer -- ear-infections-engine/urinary-tract-infections-engine/
@@ -540,6 +555,78 @@
     (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
                   :modules [closure] :module-assignment [{:module-id "injuries" :weight 1}]
                   :module-horizon-days 18250})))
+
+;; --- COVERAGE (2026-08-19, ADR-0156, register rows L1-1/L1-2/L1-3) ---
+;;
+;; WHAT `IDENTICAL` MEANS, AND WHAT IT DOES NOT. This block is INSIDE
+;; the region `bin/regression-oracle`'s soundness check compares, on
+;; purpose. A coverage claim that sat in the docstring above could drift
+;; with no bracket noticing -- which is exactly how `Six roots` survived
+;; to 35. Here, widening or narrowing coverage forces
+;; `--declared-digest-change`, and the session that pays it has to say
+;; which way coverage moved.
+;;
+;; THE VACUOUS SET -- surfaces no root can move, so no IDENTICAL verdict
+;; says anything about them (review 4's instrumented reachability
+;; battery over 78 named surfaces, all 35 roots, its output proven
+;; byte-identical to the clean digest):
+;;
+;;   * 9 of 22 `decide` dispatches and 8 of 21 `evolve` dispatches.
+;;   * 8 of the event contract's 21 closed kinds: :bed-swap,
+;;     :cancel-admit, :cancel-discharge, :cancel-transfer, :merge,
+;;     :order-placed, :result-available, :step-rejected.
+;;   * The whole order->result path: `orm-message`, `oru-message`,
+;;     `obx-segment`. NOTE the precision, because the summary version of
+;;     this claim is wrong: ORU^R01 IS emitted, 1,768 times across 14
+;;     roots -- by `observation-message` and `diagnostic-report-message`.
+;;     It is `oru-message`, the :result-available order-result emitter,
+;;     that no root reaches. ORM^O01 is emitted zero times.
+;;   * `bed-swap-message`, `merge-message`, `mrg-segment`, the Z-segment
+;;     pair, `plan-latency`/`emit-wire` (the second clock),
+;;     `v2-replay/fold-message`, `churn/inject`+`strip`, `engine/replay`,
+;;     and `sim-check` in its entirety.
+;;
+;; THE STRUCTURAL CAUSE, re-derived rather than inferred from the
+;; instrumentation: all 35 roots pass `:pathway {:name "module-only"
+;; :steps []}`, and 11 of 18 components plus `bases/cli` are off the
+;; oracle classpath entirely (`bin/regression-oracle`'s own deps block).
+;;
+;; SITE PROFILES -- generalising ADR-0150 (a), which named only the
+;; Z-segment quarter of this surface. The sole emitter call below is the
+;; FIVE-arg arity, so `site-profile` is nil at ALL FOUR bind points: MSH
+;; dialect, the :patient-class table, the :discharge-disposition table,
+;; and Z-segments. `effective-msh` and `code-for` ARE invoked -- on their
+;; nil-profile branch only. The oracle witnesses the ABSENT-PROFILE
+;; IDENTITY and nothing else: `default-msh` and the standard code tables
+;; are inside it, every override branch is outside it. Any site-profile
+;; milestone must nominate a different witness up front.
+;;
+;; THE CAPACITY WITNESS IS ONE ROOT DEEP. `death-fixture` alone carries
+;; the oracle's single `:transfer` -- and with it the only ADT^A02, the
+;; only `:bed-ready true`, and all 13 of its ladder rung-3 placements.
+;; Rung 4, `:forced` and `:exhausted` are zero across all 35. Lose that
+;; root and four claims go dark together. `:medication-end` is one root
+;; deep too (`injuries`, one occurrence).
+;;
+;; The two sets below are the committed claim, asserted against a FRESH
+;; 35-root digest by `ehrt.integration.oracle-coverage-test` and checked
+;; for shape, population, membership and location on every push by
+;; `ehrt.docs-tooling.oracle-coverage-test`.
+
+(def ^:private witnessed-event-kinds
+  "The 13 of 21 closed event kinds any root can produce. Adding a root
+  that reaches the capacity or order->result paths moves this set --
+  that is R4-Q6 (ii) (b), rowed and priced, deliberately not taken."
+  #{:admission :care-plan-end :care-plan-start :diagnostic-report
+    :discharge :medication-end :medication-order :observation
+    :outpatient-visit :outpatient-visit-end :procedure :registered
+    :transfer})
+
+(def ^:private witnessed-message-types
+  "Every MSH-9 the 32 engine-layer roots emit. ADT^A02 is death-fixture's
+  alone, once. ADT^A08/A11/A13/A34/A40 and ORM^O01 are emitted by no
+  root at all."
+  #{"ADT^A01" "ADT^A02" "ADT^A03" "ADT^A04" "ORU^R01"})
 
 (def ^:private roots
   {"appendicitis"                       appendicitis-batch

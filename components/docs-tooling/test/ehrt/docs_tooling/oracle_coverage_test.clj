@@ -68,7 +68,8 @@
   file was written against, not an error to swallow: every caller below
   asserts on it."
   [source name]
-  (when-let [i (str/index-of source (str "(def " name))]
+  (when-let [i (some #(str/index-of source %)
+                     [(str "(def " name) (str "(def ^:private " name)])]
     (let [after (subs source i)
           open (str/index-of after "#{")]
       (when open
@@ -239,5 +240,8 @@
                "this session's own J1 ruling verbatim` and its dated notes add three then two "
                "-- 11 of " roots ". A cold reader who stops at the docstring gets a third of "
                "the population."))
-      (is (not (str/includes? docstring "Six roots, matching"))
-          "the superseded `Six roots` opening must be gone, not merely followed by a correction"))))
+      (is (not (str/includes? (str/replace docstring #"(?s)`[^`]*`" "") "Six roots"))
+          (str "the superseded `Six roots` opening must no longer be STATED. Quoting it inside "
+               "backticks, as the history of what this paragraph replaced, is exactly what "
+               "`rulings.md#R-dated-addendum-not-silent-edit` asks for -- so backtick-quoted "
+               "spans are stripped before this check, and only a bare restatement is red.")))))
