@@ -14,6 +14,12 @@ rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
   exerciser -- handed on in ADR-0140).
   ASSESSMENT LANDED 2026-08-18 (ADR-0154): register `.agents/plans/2026-08-18-repo-review-findings.md`, plan `.agents/plans/2026-08-18-repo-review-4-plan.md`; 72 rows, 10 rulings owed, 8 fix sessions; author order G A E B C D F H, paired.
   FIX 1/5 (G+A) LANDED 2026-08-19 (ADR-0155): 12 rows FIXED -- L3-1/L3-2/L3-4/L3-9/L3-10, L2-1..L2-6, L2-10; row stays OPEN until the remaining four land.
+- OPEN **[oracle-coverage-roots]** PRIORITY 3 -- R4-Q6 (ii) (b): add oracle roots
+  reaching the capacity and order->result paths (a churn root, a pathway root), so the
+  13-of-21 witnessed-kind set widens. PRICED, NOT TAKEN: each new root is a declared
+  oracle change AND a permanent per-session cost on every bracket (today's 35 cost 114s
+  a side, measured). ADR-0156's COVERAGE block is what makes the purchase visible -- the
+  vacuous set is named now, so widening it is a decision rather than a side effect.
 - OPEN **[careplan-guard-resolution]** PRIORITY 4 -- a closure's next
   prerequisite is CarePlan, "unowned by any wave until a future session extends
   Guard's own condition-resolution machinery" (ADR-0139 C-2). NOW ALSO OWNS

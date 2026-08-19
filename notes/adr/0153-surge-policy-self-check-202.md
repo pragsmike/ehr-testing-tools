@@ -314,3 +314,51 @@ ceremony, not a judgement call.
 green: remote tip matches HEAD, every commit message in the range is
 pure ASCII, and the CI run reported once (queued at the time, disclosed
 as not awaited there and awaited separately here).
+
+### Addendum, 2026-08-19 — the reason given for IDENTICAL was wrong
+
+Review 4's register row L1-1 re-derived this section's own oracle claim
+and found the verdict right and its stated reason wrong. The sentence
+above — *"It holds because the fix draws no RNG and changes no bytes on
+the branch every existing root takes: a vacated LICENSED bed is handed
+over exactly as before"* — is superseded by this addendum
+(`rulings.md#R-dated-addendum-not-silent-edit`: the original text stays,
+the correction is dated beside it).
+
+**What is wrong with it.** The oracle has exactly one `:bed-ready`
+transfer across all 35 roots, in `death-fixture`, and the bed it hands
+over is a **surge** bed, not a licensed one:
+
+```
+{:home-ward "Emergency", :bed-ready true, ...
+ :from {:ward "Cardiology", :bed "CARDIOLOGY-02", :placement :licensed},
+ :placement :surge,
+ :location {:ward "Emergency", :bed "ED-H02", :placement :surge},
+ :forced false}
+```
+
+preceded by a `:discharge` vacating exactly
+`{:ward "Emergency", :bed "ED-H02", :placement :surge}`. So the
+`(= :surge (:placement vacated-location))` half of this session's own
+new guard evaluates **true** on the only event the sentence describes.
+
+**The real reason, which is stronger.** `config.clj:41` gives the
+Emergency ward `:beds 0 :surge-slots 6`, so `home-licensed-free?` is
+identically false for every ED boarder — and the ED is where the
+oracle's only bed-ready transfer lives. IDENTICAL holds structurally,
+not by which placement happened to be vacated.
+
+**Recorded as an instance, not just a correction.** This ADR wrote *"a
+right answer for the wrong reason is worth catching once"* and then gave
+a second wrong reason in the same paragraph. Both were arrived at the
+same way: reasoning about the oracle's coverage from memory of what the
+roots do, instead of reading a digest. ADR-0156 is the fix that makes
+that harder — `digest.clj` now carries a COVERAGE block, inside the
+region the soundness check compares, naming what no root can move.
+
+**Coverage restated, from ADR-0156 Step 0 (b)'s own fresh 35-root
+digest.** The standing "the oracle is blind to capacity pressure" claim
+is false as stated; the honest claim is **thin, not zero**, and one root
+deep: 1 `:bed-ready` / 1 `:transfer` / 1 `ADT^A02` / 13 rung-3
+placements, all `death-fixture`; 48 rung-1, 381 rung-2; rung 4,
+`:forced` and `:exhausted` all zero.
