@@ -256,11 +256,13 @@ library in its own right.
 
 ## Discipline surface, mapped (ADR-0006)
 
-- **GENERATED, never hand-edited:** `notes/ADRs.md` — the ADR index is
-  rendered from the `notes/adr/` tree by `make adr-index` (ADR-0143);
-  edit the ADR, regenerate. Likewise `.agents/state-derived.md` and the
-  two record `INDEX.md` files, rendered from the live tree by `make
-  state-derived` (ADR-0147).
+- **GENERATED, never hand-edited:** `make docsgen` writes 53 tracked
+  files, and the list is itself generated — read
+  [`.agents/state-derived.md`](.agents/state-derived.md)'s own
+  `## Generated surface` section, gated equal to what the make recipes
+  declare (`ehrt.docs-tooling.docsgen-closure-test`). Edit the SOURCE and
+  regenerate. Hand-listing four of the 53 is how this bullet stayed
+  wrong for 53 ADRs (ADR-0158, review-4 register row L3-8).
 - **Live, current, edit freely:** `notes/adr/` (the architecture
   decisions themselves); `notes/facts-register.md` (externally
   verifiable facts, `AUTHORS-GUIDE.md` §4); `.agents/memory/`,

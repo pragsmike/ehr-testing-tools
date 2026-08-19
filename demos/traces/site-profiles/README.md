@@ -1,5 +1,15 @@
 # Demo: two site profiles, one seed — the invariance property (Milestone site-profiles)
 
+> **Generated, byte-exact.** The captured artifacts in this directory --
+> ground-truth.edn, messages-aldric.txt, messages-default.txt -- are written by `bin/regen-traces`, run
+> via `make traces` (a `make docsgen` leaf). They are byte-for-byte
+> capture of the command below, not prose about it, so hand-editing one
+> makes it a fiction: change the command or the engine and regenerate.
+> CI freshness-diffs `demos/traces/` whole. This README itself is
+> hand-owned. (ADR-0158, review-4 register row L3-7.)
+> The `config*.edn` beside them is the opposite: a hand-authored INPUT
+> `bin/regen-traces` reads with `--config`, never writes.
+
 `docs/site-profiles.md`'s own thesis, made concrete: the SAME seed and
 patient count, rendered under two different site profiles, produce
 byte-identical ground truth and messages that differ only on the

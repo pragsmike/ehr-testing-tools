@@ -45,6 +45,7 @@
             [clojure.string :as str]
             [clojure.edn :as edn]
             [ehrt.docs-tooling.docsgen :as docsgen]
+            [ehrt.docs-tooling.make-graph :as mg]
             [ehrt.kernel.interface :as kernel]))
 
 ;; ---- filesystem primitives (result-or-loud, ADR-0078) ----
@@ -187,29 +188,106 @@
        (map second)
        set))
 
+(def inputs
+  "EVERY path this register reads, as data (ADR-0158, review-4 register
+  row L3-3).
+
+  ONE definition, used twice: `collect` reads through it and `render`
+  prints it. That is the whole point. This page's banner says it is
+  derived from \"the live tree\", which is a CATEGORY, not a list -- so
+  no session could predict what moved it, and both ADR-0143 and ADR-0152
+  found out the same way, as a pre-push red. ADR-0143 wrote down \"adding
+  an ADR moves it\"; ADR-0152 discovered \"adding a test namespace moves
+  it\"; review 4 re-derived the real generalisation, which is far wider
+  than either and was still unwritten. A generated enumeration cannot go
+  stale, and it turns \"which of my edits moved this?\" into a grep.
+
+  Were these paths merely LISTED beside `collect` rather than used by
+  it, the list would be one more hand-maintained claim about the code
+  next to it -- the exact shape of defect this row belongs to."
+  [{:key :reading-sets :path ".agents/reading-sets.edn" :kind :file
+    :feeds "which paths each reading set holds, and its budget"}
+   {:key :reading-sets-baseline :path ".agents/reading-sets-baseline.edn" :kind :file
+    :feeds "the ratchet baseline each budget is measured against"}
+   {:key :rulings :path ".agents/rulings.md" :kind :file
+    :feeds "rulings rows, and which are superseded"}
+   {:key :roadmap :path ".agents/plans/roadmap.md" :kind :file
+    :feeds "roadmap rows, their sections and status tokens"}
+   {:key :modules-notice :path "components/sim/resources/sim/modules/NOTICE" :kind :file
+    :feeds "the NOTICE provenance row count"}
+   {:key :oracle-digest :path "components/oracle/src/ehrt/oracle/digest.clj" :kind :file
+    :feeds "the regression-oracle root names, parsed from its `roots` map"}
+   {:key :components :path "components" :kind :directory
+    :feeds "the component list, and (walked) the test-namespace count"}
+   {:key :bases :path "bases" :kind :directory
+    :feeds "the base list, and (walked) the test-namespace count"}
+   {:key :projects :path "projects" :kind :directory
+    :feeds "the project list, and (walked) the test-namespace count"}
+   {:key :modules :path "components/sim/resources/sim/modules" :kind :directory
+    :feeds "the vendored GMF module count"}
+   {:key :adrs :path "notes/adr" :kind :directory
+    :feeds "the ADR file count"}
+   {:key :docs-tooling-gates :path "components/docs-tooling/test/ehrt/docs_tooling" :kind :directory
+    :feeds "the docs-tooling gate namespace list"}
+   {:key :session-records :path ".agents/session-records" :kind :directory
+    :feeds "the session-record count and that directory's own INDEX.md"}
+   {:key :prompts :path ".agents/prompts" :kind :directory
+    :feeds "the archived-prompt count and that directory's own INDEX.md"}])
+
+(def ^:private in
+  "input key -> path, so `collect` never writes a path literal twice."
+  (into {} (map (juxt :key :path)) inputs))
+
 ;; ---- fact collection (impure: reads the live tree) ----
+
+(defn generated-surface
+  "Every path CI's own generated-doc freshness step diffs, with the count
+  of tracked files each covers (ADR-0158, review-4 register row L3-8).
+
+  `AGENTS.md`'s \"GENERATED, never hand-edited\" bullet named FOUR files
+  while `docsgen` writes 53, so the primary instruction surface for AI
+  agents in this repo understated its own generated surface by 49 files,
+  every one of them a file an agent could plausibly hand-edit. The list
+  is rendered from `.github/workflows/test.yml`'s own diff-list rather
+  than hand-kept, and `ehrt.docs-tooling.docsgen-closure-test` already
+  gates that list equal, both directions, to what the make recipes
+  declare -- so this table is as closed as that gate is.
+
+  Two entries are DIRECTORIES, gated whole. `docs/use-cases/` is
+  generated end to end; `demos/traces/` is not -- its per-trace
+  README.md files are hand-owned and its 14 captured artifacts are
+  derived. The directory is on the gate either way, which is what a
+  reader needs to know before editing anything under it."
+  []
+  (let [entries (or (mg/freshness-diff-paths (slurp mg/workflow)) [])]
+    (for [e entries]
+      {:path e
+       :files (if (str/ends-with? e "/")
+                (->> (file-seq (io/file e)) (filter #(.isFile ^java.io.File %)) count)
+                (if (.exists (io/file e)) 1 0))})))
 
 (defn collect
   "Every derived fact this register renders, read fresh from the tree."
   []
-  (let [reading-sets (edn/read-string (slurp ".agents/reading-sets.edn"))
-        baselines (edn/read-string (slurp ".agents/reading-sets-baseline.edn"))
-        rulings (slurp ".agents/rulings.md")
-        roadmap-rows (parse-roadmap-rows (slurp ".agents/plans/roadmap.md"))]
-    {:components (subdir-names "components")
-     :bases (subdir-names "bases")
-     :projects (subdir-names "projects")
-     :modules (->> (file-names "components/sim/resources/sim/modules")
+  (let [reading-sets (edn/read-string (slurp (in :reading-sets)))
+        baselines (edn/read-string (slurp (in :reading-sets-baseline)))
+        rulings (slurp (in :rulings))
+        roadmap-rows (parse-roadmap-rows (slurp (in :roadmap)))]
+    {:components (subdir-names (in :components))
+     :bases (subdir-names (in :bases))
+     :projects (subdir-names (in :projects))
+     :modules (->> (file-names (in :modules))
                    (filter #(str/ends-with? % ".json")))
-     :notice-rows (->> (str/split-lines (slurp "components/sim/resources/sim/modules/NOTICE"))
+     :notice-rows (->> (str/split-lines (slurp (in :modules-notice)))
                        (filter #(str/starts-with? % "| `"))
                        count)
-     :oracle-roots (parse-oracle-roots (slurp "components/oracle/src/ehrt/oracle/digest.clj"))
-     :adrs (->> (file-names "notes/adr") (filter #(re-matches #"\d{4}-.*\.md" %)))
-     :docs-tooling-gates (->> (file-names "components/docs-tooling/test/ehrt/docs_tooling")
+     :oracle-roots (parse-oracle-roots (slurp (in :oracle-digest)))
+     :adrs (->> (file-names (in :adrs)) (filter #(re-matches #"\d{4}-.*\.md" %)))
+     :docs-tooling-gates (->> (file-names (in :docs-tooling-gates))
                               (filter #(str/ends-with? % "_test.clj")))
-     :test-namespaces (->> (concat (file-seq (io/file "components")) (file-seq (io/file "bases"))
-                                   (file-seq (io/file "projects")))
+     :test-namespaces (->> (concat (file-seq (io/file (in :components)))
+                                   (file-seq (io/file (in :bases)))
+                                   (file-seq (io/file (in :projects))))
                            (filter #(.isFile ^java.io.File %))
                            (filter #(str/ends-with? (.getName ^java.io.File %) "_test.clj"))
                            (filter #(str/includes? (str/replace (.getPath ^java.io.File %) "\\" "/") "/test/"))
@@ -217,10 +295,11 @@
      :roadmap-rows roadmap-rows
      :rulings-rows (parse-rulings-rows rulings)
      :rulings-superseded (superseded-slugs rulings)
-     :session-records (->> (file-names ".agents/session-records")
+     :session-records (->> (file-names (in :session-records))
                            (remove #{"README.md" "INDEX.md"}))
-     :prompts (->> (file-names ".agents/prompts")
+     :prompts (->> (file-names (in :prompts))
                    (remove #{"README.md" "INDEX.md"}))
+     :generated-surface (generated-surface)
      :reading-sets (into (sorted-map)
                          (for [[k {:keys [paths budget-lines]}] reading-sets]
                            [k {:actual (total-lines paths)
@@ -271,7 +350,8 @@ wrong (ADR-0139 D1-4). Compare the sets, not the cardinalities.")
   "Pure: the collected facts -> `.agents/state-derived.md`'s content."
   [{:keys [components bases projects modules notice-rows oracle-roots adrs
            docs-tooling-gates test-namespaces roadmap-rows rulings-rows
-           rulings-superseded session-records prompts reading-sets]}]
+           rulings-superseded session-records prompts reading-sets
+           generated-surface]}]
   (let [by-section (group-by :section roadmap-rows)
         section-line (fn [s] (let [rows (get by-section s)]
                                [s (str (count rows))
@@ -318,6 +398,26 @@ wrong (ADR-0139 D1-4). Compare the sets, not the cardinalities.")
          (md-table ["set" "paths" "actual" "budget" "baseline" "headroom"]
                    (for [[k {:keys [actual budget baseline paths]}] reading-sets]
                      [(str k) (count paths) actual budget baseline (- budget actual)]))
+         "\n\n## What this page reads\n\n"
+         "Every path below is read at render time, so a line added to any of them can "
+         "move a number above. Rendered from this renderer's own `inputs` definition, "
+         "which `collect` reads through -- one definition, so the list and the reads "
+         "cannot drift (ADR-0158, register row L3-3).\n\n"
+         (md-table ["input" "kind" "what it feeds"]
+                   (for [{:keys [path kind feeds]} (sort-by :path inputs)]
+                     [(str "`" path "`") (name kind) feeds]))
+         "\n\nAlso line-counted, once per reading-set membership above: "
+         (names-line (sort (distinct (mapcat (comp :paths val) reading-sets))))
+         "\n\n## Generated surface\n\n"
+         "The paths CI's own generated-doc freshness step diffs -- `make docsgen` writes "
+         "them and a stale one fails the build. **Never hand-edit anything here; edit the "
+         "source and regenerate.** Two entries are whole DIRECTORIES: `docs/use-cases/` is "
+         "generated end to end, while `demos/traces/` holds 14 derived captures beside 7 "
+         "hand-owned per-trace READMEs and 3 hand-authored `config*.edn` inputs, and is "
+         "gated whole either way.\n\n"
+         (md-table ["path" "tracked files"]
+                   (for [{:keys [path files]} generated-surface]
+                     [(str "`" path "`") (str files)]))
          "\n")))
 
 ;; ---- the two dated record indexes ----

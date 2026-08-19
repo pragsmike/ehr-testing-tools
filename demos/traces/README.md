@@ -18,6 +18,17 @@ captured trace, see the sibling
 rider, `notes/ADRs.md` ADR-0071, AR-VB2-R) — a scenario is a runnable
 `config.edn` + `README.md`, not a fixture.
 
+**These files are GENERATED.** Every `messages*.txt`, `ground-truth.edn`
+and captured `config.edn` under this tree is written by `bin/regen-traces`
+— run it via `make traces` (a `make docsgen` leaf, and its slowest at
+~84s). CI freshness-diffs `demos/traces/` whole, so a capture that drifts
+from the command its README teaches fails the build. Hand-edit none of
+them; change the command or the engine, then regenerate. The per-trace
+`README.md` files are the exception — those are hand-owned prose.
+
+This tree drifted twice for want of exactly that sentence at the artifact
+(ADR-0142, ADR-0149; ADR-0158, review-4 register row L3-11).
+
 ## Contents
 
 - [`boarding-transfer/`](boarding-transfer/) — the top-level README's own

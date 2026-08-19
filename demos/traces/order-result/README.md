@@ -1,5 +1,15 @@
 # Demo: order/result (ORM^O01 / ORU^R01), through the CLI post-Task-0
 
+> **Generated, byte-exact.** The captured artifacts in this directory --
+> ground-truth.edn, messages.txt -- are written by `bin/regen-traces`, run
+> via `make traces` (a `make docsgen` leaf). They are byte-for-byte
+> capture of the command below, not prose about it, so hand-editing one
+> makes it a fiction: change the command or the engine and regenerate.
+> CI freshness-diffs `demos/traces/` whole. This README itself is
+> hand-owned. (ADR-0158, review-4 register row L3-7.)
+> The `config*.edn` beside them is the opposite: a hand-authored INPUT
+> `bin/regen-traces` reads with `--config`, never writes.
+
 Re-run of the M3 order/result cycle, but THROUGH the CLI this time —
 the M4 Task 0 wiring fix's own proof: `:pathways` (an authored pathway
 containing an `:order` step) now reaches the engine from

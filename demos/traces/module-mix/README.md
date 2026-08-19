@@ -1,5 +1,15 @@
 # Demo: the full vendored GMF module set, weighted, with churn
 
+> **Generated, byte-exact.** The captured artifacts in this directory --
+> ground-truth.edn, messages.txt -- are written by `bin/regen-traces`, run
+> via `make traces` (a `make docsgen` leaf). They are byte-for-byte
+> capture of the command below, not prose about it, so hand-editing one
+> makes it a fiction: change the command or the engine and regenerate.
+> CI freshness-diffs `demos/traces/` whole. This README itself is
+> hand-owned. (ADR-0158, review-4 register row L3-7.)
+> The `config*.edn` beside them is the opposite: a hand-authored INPUT
+> `bin/regen-traces` reads with `--config`, never writes.
+
 M7's own module-curation session vendored a second real Synthea module
 (`appendicitis.json`, alongside the existing `sinusitis.json`) —
 `components/sim-trajectory/docs/gmf-interpreter.md`'s M7 section has the full survey. This demo

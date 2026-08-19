@@ -45,10 +45,10 @@ Oracle roots: `appendicitis`, `sore-throat`, `ear-infections`, `sinusitis`, `dea
 
 | fact | count |
 |---|---|
-| `*_test.clj` namespaces under any brick's own `test/` | 195 |
-| docs-tooling gate namespaces | 51 |
+| `*_test.clj` namespaces under any brick's own `test/` | 196 |
+| docs-tooling gate namespaces | 52 |
 
-Docs-tooling gates: `adr_index_test`, `audience_entry_path_test`, `citation_gate_test`, `cli_tombstone_test`, `demo_exerciser_fresh_test`, `docsgen_closure_test`, `docsgen_test`, `done_pointer_adr_test`, `event_log_doc_test`, `exercised_sources_coverage_test`, `exercised_sources_test`, `exit_truthfulness_test`, `front_door_fence_gate_test`, `hand_owned_asset_freshness_test`, `index_completeness_test`, `invocation_lint_test`, `io_vocabulary_lint_test`, `license_text_pointer_test`, `link_footnote_gate_test`, `lint_test`, `mermaid_render_test`, `notes_prompts_frozen_test`, `notice_verbatim_test`, `oracle_coverage_test`, `pipeline_test`, `post_push_verify_range_test`, `process_law_citation_test`, `project_classpath_test`, `prompt_record_pairing_test`, `provenance_leaf_law_test`, `quickstart_fresh_test`, `reading_set_budget_test`, `readme_presence_test`, `resource_nesting_test`, `roadmap_lint_test`, `root_alias_completeness_test`, `rulings_lint_test`, `sim_emit_hl7_dependency_test`, `sim_purity_lint_test`, `sim_theory_head_hop_test`, `skill_mirror_currency_test`, `stale_path_test`, `state_derived_test`, `state_residue_test`, `state_staleness_tripwire_test`, `strip_fresh_test`, `structure_currency_test`, `tag_law_test`, `test_source_live_path_lint_test`, `traces_fresh_test`, `usecases_test`
+Docs-tooling gates: `adr_index_test`, `artifact_provenance_test`, `audience_entry_path_test`, `citation_gate_test`, `cli_tombstone_test`, `demo_exerciser_fresh_test`, `docsgen_closure_test`, `docsgen_test`, `done_pointer_adr_test`, `event_log_doc_test`, `exercised_sources_coverage_test`, `exercised_sources_test`, `exit_truthfulness_test`, `front_door_fence_gate_test`, `hand_owned_asset_freshness_test`, `index_completeness_test`, `invocation_lint_test`, `io_vocabulary_lint_test`, `license_text_pointer_test`, `link_footnote_gate_test`, `lint_test`, `mermaid_render_test`, `notes_prompts_frozen_test`, `notice_verbatim_test`, `oracle_coverage_test`, `pipeline_test`, `post_push_verify_range_test`, `process_law_citation_test`, `project_classpath_test`, `prompt_record_pairing_test`, `provenance_leaf_law_test`, `quickstart_fresh_test`, `reading_set_budget_test`, `readme_presence_test`, `resource_nesting_test`, `roadmap_lint_test`, `root_alias_completeness_test`, `rulings_lint_test`, `sim_emit_hl7_dependency_test`, `sim_purity_lint_test`, `sim_theory_head_hop_test`, `skill_mirror_currency_test`, `stale_path_test`, `state_derived_test`, `state_residue_test`, `state_staleness_tripwire_test`, `strip_fresh_test`, `structure_currency_test`, `tag_law_test`, `test_source_live_path_lint_test`, `traces_fresh_test`, `usecases_test`
 
 ## Registers
 
@@ -76,8 +76,57 @@ Docs-tooling gates: `adr_index_test`, `audience_entry_path_test`, `citation_gate
 
 | set | paths | actual | budget | baseline | headroom |
 |---|---|---|---|---|---|
-| :corpus | 7 | 1828 | 2045 | 2045 | 217 |
+| :corpus | 7 | 1832 | 2045 | 2045 | 213 |
 | :docs | 5 | 735 | 785 | 785 | 50 |
 | :judge | 8 | 922 | 1000 | 1000 | 78 |
 | :onboarding | 10 | 1482 | 1530 | 1530 | 48 |
 | :sim | 6 | 1274 | 1405 | 1405 | 131 |
+
+## What this page reads
+
+Every path below is read at render time, so a line added to any of them can move a number above. Rendered from this renderer's own `inputs` definition, which `collect` reads through -- one definition, so the list and the reads cannot drift (ADR-0158, register row L3-3).
+
+| input | kind | what it feeds |
+|---|---|---|
+| `.agents/plans/roadmap.md` | file | roadmap rows, their sections and status tokens |
+| `.agents/prompts` | directory | the archived-prompt count and that directory's own INDEX.md |
+| `.agents/reading-sets-baseline.edn` | file | the ratchet baseline each budget is measured against |
+| `.agents/reading-sets.edn` | file | which paths each reading set holds, and its budget |
+| `.agents/rulings.md` | file | rulings rows, and which are superseded |
+| `.agents/session-records` | directory | the session-record count and that directory's own INDEX.md |
+| `bases` | directory | the base list, and (walked) the test-namespace count |
+| `components` | directory | the component list, and (walked) the test-namespace count |
+| `components/docs-tooling/test/ehrt/docs_tooling` | directory | the docs-tooling gate namespace list |
+| `components/oracle/src/ehrt/oracle/digest.clj` | file | the regression-oracle root names, parsed from its `roots` map |
+| `components/sim/resources/sim/modules` | directory | the vendored GMF module count |
+| `components/sim/resources/sim/modules/NOTICE` | file | the NOTICE provenance row count |
+| `notes/adr` | directory | the ADR file count |
+| `projects` | directory | the project list, and (walked) the test-namespace count |
+
+Also line-counted, once per reading-set membership above: `.agents/memory/README.md`, `.agents/plans/README.md`, `.agents/plans/roadmap.md`, `.agents/prompts/README.md`, `.agents/rulings.md`, `.agents/session-records/README.md`, `.agents/skills/README.md`, `.agents/skills/build-session/SKILL.md`, `.agents/state.md`, `AGENTS.md`, `components/corpus-io/src/ehrt/corpus_io/interface.clj`, `components/corpus/src/ehrt/corpus/interface.clj`, `components/docs-tooling/src/ehrt/docs_tooling/interface.clj`, `components/judge-fhir-official/src/ehrt/judge_fhir_official/interface.clj`, `components/judge-v2-hapi/src/ehrt/judge_v2_hapi/interface.clj`, `components/judge-v2-nist/src/ehrt/judge_v2_nist/interface.clj`, `components/judge/src/ehrt/judge/interface.clj`, `components/sim/src/ehrt/sim/interface.clj`, `docs/dev/README.md`, `docs/dev/architecture.md`, `docs/dev/components.md`, `docs/dev/engine-onboarding.md`, `docs/dev/notation.md`, `docs/dev/pipeline.md`, `docs/dev/simulator-architecture.md`, `docs/dev/source-sink-design.md`
+
+## Generated surface
+
+The paths CI's own generated-doc freshness step diffs -- `make docsgen` writes them and a stale one fails the build. **Never hand-edit anything here; edit the source and regenerate.** Two entries are whole DIRECTORIES: `docs/use-cases/` is generated end to end, while `demos/traces/` holds 14 derived captures beside 7 hand-owned per-trace READMEs and 3 hand-authored `config*.edn` inputs, and is gated whole either way.
+
+| path | tracked files |
+|---|---|
+| `docs/dev/pipeline.md` | 1 |
+| `docs/use-cases.md` | 1 |
+| `docs/use-cases/` | 22 |
+| `docs/operators.md` | 1 |
+| `docs/cli.md` | 1 |
+| `docs/formats.md` | 1 |
+| `components/sim-engine/resources/sim-engine/event-schema.edn` | 1 |
+| `components/sim-engine/resources/sim-engine/event-examples.edn` | 1 |
+| `components/sim/docs/sim-theory-equations.txt` | 1 |
+| `components/sim/docs/sim-theory-diagram.md` | 1 |
+| `components/sim/docs/sim-theory-diagram.mermaid` | 1 |
+| `components/palgebra/examples/ai-study-flow-v3.mermaid` | 1 |
+| `components/palgebra/examples/committee-flow.mermaid` | 1 |
+| `components/palgebra/examples/deliberated-choice-flow.mermaid` | 1 |
+| `notes/ADRs.md` | 1 |
+| `.agents/state-derived.md` | 1 |
+| `.agents/session-records/INDEX.md` | 1 |
+| `.agents/prompts/INDEX.md` | 1 |
+| `demos/traces/` | 24 |

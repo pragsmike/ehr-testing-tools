@@ -1,5 +1,13 @@
 # Demo: EmitState — one seed, two renderings, one truth
 
+> **Generated, byte-exact.** The captured artifacts in this directory --
+> fhir-bundle-patient1.json, ground-truth.edn, messages.txt -- are written by `bin/regen-traces`, run
+> via `make traces` (a `make docsgen` leaf). They are byte-for-byte
+> capture of the command below, not prose about it, so hand-editing one
+> makes it a fiction: change the command or the engine and regenerate.
+> CI freshness-diffs `demos/traces/` whole. This README itself is
+> hand-owned. (ADR-0158, review-4 register row L3-7.)
+
 Milestone M6's own demo pair: the SAME `--seed 42 --patients 3` run as
 [`../order-result/`](../order-result/) (identical `config.edn`, reused
 here — the ground truth these two demos share is byte-identical by

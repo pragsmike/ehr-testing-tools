@@ -85,11 +85,9 @@ a step are in `HISTORY.md` beside this file (split out by ADR-0145).
     push**, then fill in its stubs: it writes the session record, the prompt archive
     and both README index lines the two index gates check (R-A).
 14. **Cite a suite figure where it LIVES, never where it was compared.** An ADR
-    records its own BASELINE and reconciles against a predecessor's CLOSE, which
-    lives in that session's RECORD -- so "reconciling exactly against ADR-NNNN's
-    X/Y/Z" sends a cold reader to a document that does not carry X/Y/Z. Name the
-    ADR's own Verification section or the session record that holds the figure
-    (ADR-0158, review-4 D1-1; four consecutive ADRs got this wrong).
+    records its own BASELINE, so "reconciling exactly against ADR-NNNN's X/Y/Z"
+    sends a reader to a document that does not carry X/Y/Z -- the close figure is
+    in that session's RECORD. Name whichever one holds it (ADR-0158, D1-1).
 15. **Move this session's own closed rows to `Done` and re-measure every reading set
     at the close** (`rulings.md#R-register-hygiene-at-close`).
 16. **Over a reading-set budget, compact or STOP-AND-REPORT — never bump**

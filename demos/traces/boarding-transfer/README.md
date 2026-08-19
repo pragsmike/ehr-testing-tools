@@ -1,5 +1,13 @@
 # Demo: ED hallway boarding, then a bed-ready transfer (emergent, not scripted)
 
+> **Generated, byte-exact.** The captured artifacts in this directory --
+> ground-truth.edn, messages.txt -- are written by `bin/regen-traces`, run
+> via `make traces` (a `make docsgen` leaf). They are byte-for-byte
+> capture of the command below, not prose about it, so hand-editing one
+> makes it a fiction: change the command or the engine and regenerate.
+> CI freshness-diffs `demos/traces/` whole. This README itself is
+> hand-owned. (ADR-0158, review-4 register row L3-7.)
+
 The top-level README's own headline claim — boarding and bed-ready
 transfers *emerge* from census pressure against configured capacity,
 never scripted — captured as one real, reproducible trace. The
