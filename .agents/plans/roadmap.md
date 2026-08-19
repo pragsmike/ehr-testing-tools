@@ -87,6 +87,31 @@ rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
   same file's :39 gitleaks line, and `cli/core.clj:360` ("SETUP.md section 1's
   maintainer-tools row"). Found in passing by ADR-0157; errata, not behavior.
 
+- OPEN **[two-clocks-asset-field-audit]** PRIORITY 18 -- `docs/manual/assets/
+  two-clocks.svg`'s banner claims "exactly two timestamp-bearing fields this
+  workspace's emitter renders today are MSH-7 ... and EVN-2". ADR-0142 made that
+  FALSE: OBR-7 and OBX-14 now render on all three ORU shapes. The drawing itself
+  (one ADT^A01, two fields) is still right for ADT; the audit sentence is not.
+  Found by its own new tripwire, ADR-0158 (`hand-owned-assets.edn`, :verdict :stale).
+- OPEN **[reader-path-fence-battery]** PRIORITY 19 -- R4-Q4 (a) gated the front
+  door (README+SETUP) at zero bare fences and DEFERRED the rest of the reader
+  path to its own session: the manual's 21 and use-cases' 13, 34 fences measured
+  at ADR-0154. Priced real, not cheap: several manual fences need a primed
+  artifact cache, which is why D8-5 lapsed twice. Expect the front door's own
+  ratio -- some will be exercised, some will need declared exemptions. ADR-0158.
+- OPEN **[backtick-shorthand-and-denylist-widening]** PRIORITY 20 -- D1-9
+  (backticked-path shorthand) and D1-10 (denylist-family widening), ruled
+  fix-session candidates together as R-B2/R-B3 on 2026-08-15 (ADR-0137) and
+  carried with NO register home through one arc close and fourteen ADRs. This
+  row is the remedy `rulings.md#R-unregistered-request-gets-a-row` names:
+  visibility first, disposition later. Rowed by ADR-0158 (review-4 D7-3).
+- OPEN **[corpus-player-slices]** PRIORITY 21 -- the corpus-player slices
+  chartered by ADR-0014 (bed-board sink, `:mllp`, accumulator wiring) have never
+  had a row in any register. UNPRICED and unscheduled: they need their own author
+  ruling before a session takes them. Rowed rather than retired because
+  `R-unregistered-request-gets-a-row` puts visibility first, and a charter with
+  no row is exactly what that rule exists to catch. ADR-0158 (review-4 D7-5).
+
 ## Externals (author-only)
 - EXTERNAL **[ci-failure-email]** -- enable GitHub's workflow-failure
   notification email for this repository (one settings toggle); closes the

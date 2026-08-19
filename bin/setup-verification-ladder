@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+# Runs SETUP.md's own "Verification ladder" toolchain fence, verbatim,
+# under per-step exit-code assertions (ADR-0158, author ruling R4-Q4
+# (a), review-4 register row D8-2). Mirrors bin/quickstart-demo's and
+# bin/readme-what-you-get's own expect shape (ADR-0004, R23).
+#
+# WHY ONLY THE TOOLCHAIN HALF. SETUP.md section 3 teaches two fences.
+# This script exercises the first -- the three version probes a reader
+# runs BEFORE they have the repo -- because those are checks of the
+# machine and are true or false right now. The second fence clones this
+# repo from GitHub into a new directory, which a checker already
+# running inside a clone cannot perform as a check OF that clone; it is
+# a declared exemption (fence-exemptions.edn) whose post-clone half,
+# `clojure -M:poly version` / `clojure -M:poly check`, is what `make
+# test`'s own first line runs on every push.
+#
+# The block between the BEGIN/END markers is read by
+# `ehrt.docs-tooling.strip-fresh` via the exercised-sources register
+# (components/docs-tooling/resources/docs-tooling/exercised-sources.edn)
+# to prove this script and SETUP.md teach the identical commands in the
+# identical order. That row carries `:fence-index 1`: the ladder is
+# SETUP.md's SECOND ```sh fence, the first being the `sudo apt install`
+# block this script must not run.
+#
+# Integration-tier only (`make integration`), never per-push CI --
+# same as every other exerciser in this directory.
+set -uo pipefail
+
+repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)" || exit 2
+cd -- "$repo_root" || exit 2
+
+fail() {
+  echo "FAIL: $1" >&2
+  exit 1
+}
+
+# expect CODE CMD...  Asserts CMD's own exit code. Output is shown, not
+# captured: these three commands ARE their output, and a reader running
+# the ladder by hand is reading it. Never `tee`, which returns its OWN
+# exit status (ADR-0152).
+expect() {
+  local want="$1"; shift
+  "$@"
+  local got=$?
+  if [ "$got" -ne "$want" ]; then
+    fail "'$*' exited $got, expected $want"
+  fi
+}
+
+echo "== setup-verification-ladder: SETUP.md's toolchain ladder, verbatim, asserted =="
+
+# BEGIN verification-ladder commands (verbatim from SETUP.md's Verification ladder)
+expect 0 git --version
+expect 0 java -version
+expect 0 clojure --version
+# END verification-ladder commands
+
+# Tree-clean postcondition (ADR-0005): none of the above writes anything.
+dirty="$(git status --porcelain)"
+if [ -n "$dirty" ]; then
+  fail "tree not clean after a full run (ADR-0005 postcondition violated):
+$dirty"
+fi
+
+echo "== setup-verification-ladder: every taught command asserted, tree clean =="

@@ -68,22 +68,46 @@
        (map second)
        set))
 
+(defn- done-bullets-without-a-pointer
+  "Every Done bullet line that carries NEITHER an `ADR-NNNN` nor a bare
+  commit sha -- the two alternatives the row token's own
+  `CLOSED <date> <ADR-NNNN|sha>` grammar allows.
+
+  ADR-0158 replaced a proxy here. The non-vacuity check used to compare
+  the count of DISTINCT cited ADR numbers against the count of bullets,
+  tolerating a gap of two. That held only while no ADR had ever closed
+  more than one roadmap row: two bullets citing one ADR collapse to a
+  single distinct value, so the proxy went red on a legitimate close
+  (this session's own, closing #edit-root-worktree-residue and
+  #intake-staging-dir together) while a bullet that genuinely LOST its
+  pointer could hide behind any duplicate elsewhere. Counting bullets
+  that carry a pointer is both immune to the first and strictly
+  stronger against the second, which is what the assertion was for."
+  [content]
+  (->> (str/split-lines (done-section content))
+       (filter #(str/starts-with? % "- "))
+       (remove #(re-find #"(ADR-\d{4}|\b[0-9a-f]{7,40}\b)" %))
+       vec))
+
 (deftest the-done-pointer-scan-is-not-vacuous-test
   (testing "the gate below is worthless if the extraction returns nothing -- ADR-0144's own retokening
             (`- CLOSED DATE ADR-NNNN **[slug]**`) moved the ADR number off the end of the line, and the
             original `ADR-\\d{4}\\s*$` anchor silently extracted ZERO of 56 live pointers. Caught by
             checking rather than by the gate, which stayed green throughout; this assertion is what
             makes the next such reshape loud."
-    (let [cited (done-pointer-adr-numbers (slurp roadmap-path))
-          bullets (->> (str/split-lines (done-section (slurp roadmap-path)))
+    (let [roadmap (slurp roadmap-path)
+          bullets (->> (str/split-lines (done-section roadmap))
                        (filter #(str/starts-with? % "- "))
-                       count)]
+                       count)
+          pointerless (done-bullets-without-a-pointer roadmap)]
       (is (pos? bullets) "the live roadmap has a ## Done section with pointers in it")
-      (is (<= (- bullets 2) (count cited) bullets)
-          (str "extracted " (count cited) " ADR pointer(s) from " bullets
-               " Done bullet(s) -- the extraction has stopped matching the pointer shape. "
-               "(Up to two bullets may legitimately cite a sha instead of an ADR, the token's "
-               "own `<ADR-NNNN|sha>` alternative.)")))))
+      (is (seq (done-pointer-adr-numbers roadmap))
+          "the ADR extraction below matches nothing at all -- it has stopped reading the pointer shape")
+      (is (empty? pointerless)
+          (str (count pointerless) " of " bullets
+               " Done bullet(s) carry neither an ADR-NNNN nor a sha, so the extraction has "
+               "stopped matching the pointer shape on them:\n"
+               (str/join "\n" (map #(str "  " %) pointerless)))))))
 
 (deftest every-done-pointer-cites-an-adr-that-exists-in-the-index-test
   (testing "every Done one-liner in the live roadmap cites an ADR number the index actually lists"
@@ -128,3 +152,15 @@
         dangling (remove known cited)]
     (is (= ["ADR-9999"] dangling)
         "sanity: a Done pointer citing a number absent from the index must be reported, proving the over-budget-style failure branch actually fires")))
+
+(deftest a-pointerless-done-bullet-is-caught-test
+  (testing "mechanism sanity: the non-vacuity check's own failure branch fires, and two bullets sharing one ADR do NOT trip it"
+    (let [good (str "## Done (live)\n"
+                    "- CLOSED 2026-08-19 ADR-0158 **[one]** -- a\n"
+                    "- CLOSED 2026-08-19 ADR-0158 **[two]** -- b\n"
+                    "- CLOSED 2026-08-16 30cc335 **[sha-tokened]** -- c\n")
+          bad (str good "- CLOSED 2026-08-19 **[no-pointer-at-all]** -- d\n")]
+      (is (empty? (done-bullets-without-a-pointer good))
+          "two bullets closed by ONE ADR, plus a sha-tokened bullet, are all properly pointed")
+      (is (= 1 (count (done-bullets-without-a-pointer bad)))
+          "a bullet with no ADR and no sha is reported"))))

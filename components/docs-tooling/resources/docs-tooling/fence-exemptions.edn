@@ -26,4 +26,33 @@
 ;; commands somewhere they CAN be run. It is documentation, not a
 ;; substitute for the reason.
 
-[]
+[{:file "README.md"
+  :first-command "bin/ehrt corpus generate sim --seed 5 --patients 200 \\"
+  :reason
+  "Teaches a real-time viewing rate on purpose: `--board 60 --rate 60`
+   is 'an hour of hospital time per minute', which is what the section
+   is about. Run verbatim against a 200-patient, ten-year clinic-decade
+   corpus it is weeks of wallclock, so no checker can run it as taught
+   without changing the one flag the prose exists to show."
+  :covered-by "bin/demo-exerciser-clinic-decade"
+  :witness {:adr "ADR-0158" :date "2026-08-19"}}
+
+ {:file "SETUP.md"
+  :first-command "sudo apt update && sudo apt install -y openjdk-21-jdk git"
+  :reason
+  "Installs system packages as root and runs a downloaded installer
+   under sudo. Exercising it would mutate the machine running the
+   checker; on a machine that already satisfies it, the run proves
+   nothing about the instruction."
+  :witness {:adr "ADR-0158" :date "2026-08-19"}}
+
+ {:file "SETUP.md"
+  :first-command "git clone https://github.com/pragsmike/ehr-testing-tools.git"
+  :reason
+  "Clones this repo from GitHub into a new directory. A checker already
+   running inside a clone cannot perform a fresh clone as a check OF
+   that clone, and the network fetch is not a property of this tree. The
+   post-clone half of the ladder, `clojure -M:poly version` and `clojure
+   -M:poly check`, is what `make test`'s own first line runs every push."
+  :covered-by "Makefile target `test`"
+  :witness {:adr "ADR-0158" :date "2026-08-19"}}]

@@ -347,7 +347,7 @@ def main():
         print("  command / bare      : %d" % n_cmd_bare)
         print("  output              : %d" % n_out)
         print("  other               : %d" % n_other)
-        total = n_cmd_ex + n_cmd_bare + n_out + n_other
+        total = n_cmd_ex + n_cmd_exempt + n_cmd_bare + n_out + n_other
         print("  ---- sum            : %d  (%s)"
               % (total, "closed" if total == len(records) else "POPULATION NOT CLOSED"))
         print()

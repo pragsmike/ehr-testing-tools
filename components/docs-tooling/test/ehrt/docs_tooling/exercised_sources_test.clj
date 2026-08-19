@@ -35,8 +35,10 @@
 
 (deftest registry-loads-and-validates-test
   (let [rows (reg/load-registry)]
-    (is (= 15 (count rows))
-        "the registry's own row count, pinned: six of the fifteen arrived together in ADR-0149 and share one script")
+    (is (= 16 (count rows))
+        (str "the registry's own row count, pinned: six of the sixteen arrived together in "
+             "ADR-0149 and share one script; the sixteenth is SETUP.md's verification ladder "
+             "(ADR-0158, author ruling R4-Q4 (a) -- the front-door fence gate)"))
     (is (every? #(contains? #{:quickstart-fresh :demo-exerciser-fresh
                                :single-fence :paired}
                              (:extraction %))

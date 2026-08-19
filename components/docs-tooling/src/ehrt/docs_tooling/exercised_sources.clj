@@ -30,6 +30,14 @@
    [:marker-open [:string {:min 1}]]
    [:marker-close [:string {:min 1}]]
    [:fence-lang {:optional true} [:string {:min 1}]]
+   ;; :fence-index selects WHICH fence of :fence-lang a :single-fence row
+   ;; extracts, 0-based, defaulting to 0 -- the behaviour every row
+   ;; before ADR-0158 had and keeps. Added because SETUP.md's runnable
+   ;; verification ladder is its SECOND ```sh fence (the first installs
+   ;; system packages and is exempt, never exercised), and the honest way
+   ;; to reach it is to say so rather than to re-tag the fence's language
+   ;; until the first-match rule happens to land on it.
+   [:fence-index {:optional true} [:int {:min 0}]]
    [:section {:optional true} [:string {:min 1}]]
    [:env [:map-of :string :string]]
    [:witness [:map [:adr :string] [:date :string]]]])

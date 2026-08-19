@@ -28,7 +28,12 @@
 ;;                              verbatim (quickstart-fresh's own algorithm,
 ;;                              generalized to an arbitrary source/script pair
 ;;                              rather than reimplemented against quickstart-
-;;                              fresh's own private fns).
+;;                              fresh's own private fns). WHICH fence is the
+;;                              row's own 0-based :fence-index, default 0 --
+;;                              added ADR-0158 for SETUP.md, whose runnable
+;;                              ladder is its SECOND ```sh fence (the first
+;;                              installs system packages and is a declared
+;;                              exemption, fence-exemptions.edn).
 ;;   :paired                -- every ```<fence-lang> fence in :source that is
 ;;                              immediately followed (blank lines only, no
 ;;                              intervening prose) by a fence of a DIFFERENT
@@ -66,6 +71,17 @@
   :marker-close "# END quickstart commands"
   :env {}
   :witness {:adr "ADR-0004" :date "2026-07-26"}}
+
+ {:source "SETUP.md"
+  :script "bin/setup-verification-ladder"
+  :extraction :single-fence
+  :fence-lang "sh"
+  :fence-index 1
+  :section "Verification ladder"
+  :marker-open "# BEGIN verification-ladder commands (verbatim from SETUP.md's Verification ladder)"
+  :marker-close "# END verification-ladder commands"
+  :env {}
+  :witness {:adr "ADR-0158" :date "2026-08-19"}}
 
  {:source "demos/scenarios/ed-tuesday/README.md"
   :script "bin/demo-exerciser-ed-tuesday"

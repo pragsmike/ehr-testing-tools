@@ -74,13 +74,18 @@ use post-8 JVM APIs beyond what sim itself already required.
 
 ## 3. Verification ladder
 
-Run in order from a fresh clone:
+Run in order from a fresh clone. First, the toolchain you need before
+you have the repo at all:
 
 ```sh
 git --version
 java -version
 clojure --version
+```
 
+Then get the repo and check it answers:
+
+```sh
 git clone https://github.com/pragsmike/ehr-testing-tools.git
 cd ehr-testing-tools
 clojure -M:poly version   # expect: poly 0.3.32 (2025-12-29)

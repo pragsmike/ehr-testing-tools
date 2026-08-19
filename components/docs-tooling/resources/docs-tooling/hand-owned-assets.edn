@@ -30,9 +30,16 @@
 [{:asset "docs/manual/assets/gt-emitters.svg"
   :source "docs/dev/simulator-architecture.md"
   :trigger "regenerate by hand if simulator-architecture.md section 4's own equations change"
-  :reviewed-at "9f7697a8"
+  :reviewed-at "dc13a17e"
   :verdict :fresh
-  :witness {:adr "ADR-0120" :date "2026-08-12"}}
+  :note
+  "Reviewed 2026-08-19 (ADR-0158). simulator-architecture.md moved once
+   since this asset last did, at dc13a17 (ADR-0142): a 31-line addendum
+   APPENDED after line 390, wholly inside section 5. This asset's trigger
+   names section 4's equations, which the diff does not touch, and the
+   addendum says so itself -- 'The arrow itself is untouched: plan-latency,
+   emit-wire and transmit-seconds have the same signatures'. Not stale."
+  :witness {:adr "ADR-0158" :date "2026-08-19"}}
 
  {:asset "docs/manual/assets/inject-expect-loop.svg"
   :source "components/corpus/docs/pipeline.edn"
@@ -44,20 +51,42 @@
  {:asset "docs/manual/assets/straddle-timeline.svg"
   :source "demos/scenarios/ed-tuesday/README.md"
   :trigger "regenerate by hand if the cited section's own witnessed values change"
-  :reviewed-at "d1f8fa1f"
+  :reviewed-at "214b0ec9"
   :verdict :fresh
-  :witness {:adr "ADR-0121" :date "2026-08-12"}}
+  :note
+  "Reviewed 2026-08-19 (ADR-0158). The ed-tuesday README moved once since
+   this asset, at 214b0ec: the busy-tuesday -> clinic-decade scenario
+   rename. Every changed line in that diff mentions the rename, and the
+   Batched-delivery values this asset cites are byte-identical at HEAD
+   (:interval-ms 3600000, batch-000 :start-ms 1786406400000 / :end-ms
+   1786410000000). Not stale."
+  :witness {:adr "ADR-0158" :date "2026-08-19"}}
 
  {:asset "docs/manual/assets/two-clocks.svg"
   :source "docs/dev/simulator-architecture.md"
   :trigger "regenerate by hand if the cited section's own field audit changes"
-  :reviewed-at "9f7697a8"
-  :verdict :fresh
-  :witness {:adr "ADR-0121" :date "2026-08-12"}}
+  :reviewed-at "dc13a17e"
+  :verdict :stale
+  :stale-row "roadmap.md#two-clocks-asset-field-audit"
+  :note
+  "Reviewed 2026-08-19 (ADR-0158) and found STALE -- the one true hit of
+   this tripwire's five. The banner asserts 'exactly two timestamp-bearing
+   fields this workspace's emitter renders today are MSH-7 ... and EVN-2'.
+   ADR-0142 (dc13a17) made that false: OBR-7 and OBX-14 now render on all
+   three ORU shapes, and the addendum names this very field audit as what
+   dated it -- 'It no longer is, for results.' The DRAWING (one ADT^A01
+   carrying two fields) remains correct for ADT; the audit sentence around
+   it does not. Rowed, not silenced: see :stale-row."
+  :witness {:adr "ADR-0158" :date "2026-08-19"}}
 
  {:asset "docs/manual/assets/verdict-ranking.svg"
   :source "components/corpus/docs/palgebra-design.md"
   :trigger "regenerate by hand if the ranking or the reserved status of :indeterminate changes"
-  :reviewed-at "a4203fad"
+  :reviewed-at "2db2dee9"
   :verdict :fresh
-  :witness {:adr "ADR-0124" :date "2026-08-13"}}]
+  :note
+  "Reviewed 2026-08-19 (ADR-0158). palgebra-design.md moved once since this
+   asset, at 2db2dee: a single Companion link-path rewrite in the header
+   (a dead-link sweep). The verdict ranking and :indeterminate's reserved
+   status -- this asset's own trigger -- are untouched. Not stale."
+  :witness {:adr "ADR-0158" :date "2026-08-19"}}]

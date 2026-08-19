@@ -84,13 +84,19 @@ a step are in `HISTORY.md` beside this file (split out by ADR-0145).
 13. **Run `bin/close-scaffold <YYYY-MM-DD> <slug> <description>` before the final
     push**, then fill in its stubs: it writes the session record, the prompt archive
     and both README index lines the two index gates check (R-A).
-14. **Move this session's own closed rows to `Done` and re-measure every reading set
+14. **Cite a suite figure where it LIVES, never where it was compared.** An ADR
+    records its own BASELINE and reconciles against a predecessor's CLOSE, which
+    lives in that session's RECORD -- so "reconciling exactly against ADR-NNNN's
+    X/Y/Z" sends a cold reader to a document that does not carry X/Y/Z. Name the
+    ADR's own Verification section or the session record that holds the figure
+    (ADR-0158, review-4 D1-1; four consecutive ADRs got this wrong).
+15. **Move this session's own closed rows to `Done` and re-measure every reading set
     at the close** (`rulings.md#R-register-hygiene-at-close`).
-15. **Over a reading-set budget, compact or STOP-AND-REPORT — never bump**
+16. **Over a reading-set budget, compact or STOP-AND-REPORT — never bump**
     (`rulings.md#R-budget-stop`); the ratchet baseline makes the bump unavailable.
-16. **Push a red-first commit together with its green successor, never alone**
+17. **Push a red-first commit together with its green successor, never alone**
     (`rulings.md#R-red-pushed-with-green`), and disclose it when it happens.
-17. **Edit register files by anchored insertion or replacement, never by slicing
+18. **Edit register files by anchored insertion or replacement, never by slicing
     between two anchors** (`rulings.md#R-anchored-register-edits`).
 
 ## Verification
@@ -131,3 +137,4 @@ verified, ending in a session record and an archived prompt.
 - [ ] Any regression-oracle claim names `bin/regression-oracle`'s own output.
 - [ ] `bin/close-scaffold` ran before the final push and its stubs are filled in.
 - [ ] Closed rows moved to `Done`; all five reading sets re-measured and recorded.
+- [ ] Every suite figure cited to the document that CARRIES it.

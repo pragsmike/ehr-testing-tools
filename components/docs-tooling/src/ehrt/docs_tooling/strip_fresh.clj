@@ -30,7 +30,8 @@
   see `.agents/plans/roadmap.md`'s own Next-section rows for the
   sequenced follow-up.
 
-  - `:single-fence` -- the first fence of a given language in a doc,
+  - `:single-fence` -- one fence of a given language in a doc (the
+    first by default, or the row's own 0-based `:fence-index`),
     comment and blank lines stripped, everything else (including
     backslash-continuation lines) kept verbatim -- quickstart-fresh's
     own algorithm, generalized past its own hardcoded ```sh/README.md
@@ -139,12 +140,23 @@
             (recur more nil (conj gap-lines line) blocks)))))))
 
 (defn single-fence-command-lines
-  "The first ```<fence-lang> fence's own taught command lines, comment
-  and blank lines stripped, everything else kept verbatim -- nil if no
-  such fence exists in `path`."
-  [path fence-lang]
-  (when-let [block (first (filter #(= fence-lang (:lang %)) (fenced-blocks path)))]
-    (vec (remove comment-or-blank? (:lines block)))))
+  "The `fence-index`-th ```<fence-lang> fence's own taught command lines,
+  comment and blank lines stripped, everything else kept verbatim -- nil
+  if no such fence exists in `path`.
+
+  `fence-index` is 0-based and defaults to 0, which is every pre-ADR-0158
+  row's behaviour unchanged. It exists because a document may teach more
+  than one fence of the same language and want only one of them
+  exercised: SETUP.md's first ```sh fence installs system packages (a
+  declared exemption, `fence-exemptions.edn`) while its second is the
+  verification ladder this mechanism runs. Selecting by index says that
+  out loud; the alternative -- re-tagging one fence's language so the
+  first-match rule lands on it -- would hide the choice in the document."
+  ([path fence-lang] (single-fence-command-lines path fence-lang 0))
+  ([path fence-lang fence-index]
+   (when-let [block (nth (filterv #(= fence-lang (:lang %)) (fenced-blocks path))
+                         fence-index nil)]
+     (vec (remove comment-or-blank? (:lines block))))))
 
 (defn command-output-pairs
   "Every ```<fence-lang> fenced block in `path`, in document order, as
@@ -220,7 +232,7 @@
 
   A row whose source yields no taught commands at all is never reported
   fresh -- see `reject-vacuous` above (ADR-0148)."
-  [{:keys [source script extraction fence-lang marker-open marker-close]}]
+  [{:keys [source script extraction fence-lang fence-index marker-open marker-close]}]
   (merge
    {:source source :script script}
    (reject-vacuous
@@ -233,7 +245,7 @@
                          :marker-open marker-open :marker-close marker-close})
 
      :single-fence
-     (let [readme-lines (or (single-fence-command-lines source fence-lang) [])
+     (let [readme-lines (or (single-fence-command-lines source fence-lang (or fence-index 0)) [])
            script-lines (script-command-lines script marker-open marker-close)]
        (if (nil? script-lines)
          (absent-script-result readme-lines)
