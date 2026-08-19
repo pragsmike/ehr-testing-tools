@@ -13,6 +13,7 @@ rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
   not calendar (ruling Q3 "a.", 2026-08-15). Inherits review 3's twelve-row
   watch-list, D8-5's one surviving row among them (56 of 74 command fences have
   no exerciser -- ruled out of the fix session, handed on in ADR-0140).
+  ASSESSMENT LANDED 2026-08-18 (ADR-0154): register `.agents/plans/2026-08-18-repo-review-findings.md`, plan `.agents/plans/2026-08-18-repo-review-4-plan.md`; 72 rows, 10 rulings owed, 8 proposed fix sessions; row stays OPEN until they land.
 - OPEN **[careplan-guard-resolution]** PRIORITY 4 -- a closure's next
   prerequisite is CarePlan, "unowned by any wave until a future session extends
   Guard's own condition-resolution machinery" (ADR-0139 C-2). NOW ALSO OWNS
