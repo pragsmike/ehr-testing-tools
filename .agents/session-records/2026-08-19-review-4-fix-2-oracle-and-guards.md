@@ -110,8 +110,11 @@ emitter or digest-logic path moved. Predicted before running.
   belongs.
 - `poly check` OK. `gitleaks git --staged -v` clean before every commit;
   `git diff --cached --stat` read before every commit.
-- **CI:** run `<id>` at the pushed tip, conclusion `<conclusion>`.
-- `bin/post-push-verify 1e20c63 <tip>`: three checks recorded below.
+- **CI:** run `32271198594` at the pushed tip
+  `841fb75e4ba51ab4d5f2e2a1c09ac7e05ff4754e`, `status=completed
+  conclusion=success` (`gh run view 32271198594`), concluded while this
+  session was still open.
+- `bin/post-push-verify 1e20c63 841fb75`: three checks recorded below.
 - **Reading sets at close:** `:onboarding` 1426/1530, `:corpus`
   1815/2045, `:sim` 1261/1405, `:judge` 909/1000, `:docs` 722/785. All
   under; +8 in every set from `build-session/SKILL.md` (125 → 133),
@@ -170,9 +173,47 @@ composition; no local gate added for the three `.mermaid`;
 ## Post-push verification
 
 ```
-<bin/post-push-verify output>
+== bin/post-push-verify (main, range 1e20c63d..841fb75e) ==
+
+-- 1. Remote tip vs HEAD --
+OK: origin/main (841fb75e4ba51ab4d5f2e2a1c09ac7e05ff4754e) matches tip (841fb75e4ba51ab4d5f2e2a1c09ac7e05ff4754e)
+
+-- 2. Per-commit ASCII check, 1e20c63d..841fb75e --
+OK: every commit message in range is pure ASCII
+
+-- 3. CI run at tip (841fb75e4ba51ab4d5f2e2a1c09ac7e05ff4754e) --
+CI run for 841fb75e…: status=in_progress conclusion=<pending> https://github.com/pragsmike/ehr-testing-tools/actions/runs/32271198594
+DISCLOSED: reported once, not awaited to conclusion (AR-CI-4)
+
+== bin/post-push-verify complete ==
 ```
+
+Check 3 rendered `conclusion=<pending>` for a run that genuinely exists
+and is genuinely in progress — which is the shape this session's own
+fourth-shape fix leaves intact, and correctly so. The defect fixed today
+was the *empty-field* rendering of a run that does not exist yet; a real
+pending run still reports as pending. Awaited separately below, per
+`rulings.md#R-session-verifies-ci-via-gh`.
 
 ## Tag
 
-<tag disposition>
+**PAID IN SESSION.** `rulings.md#R-session-verifies-ci-via-gh`: the
+licence's CI condition is met by this session's own `gh run view` —
+run **32271198594** at `841fb75e4ba51ab4d5f2e2a1c09ac7e05ff4754e`
+concluded **`success`** while the session was open, so
+`rulings.md#R-tag-law` makes paying it ceremony rather than a
+judgement call (deferring a licensed tag is the deviation).
+
+`bin/tag-ceremony stable-20260819-review-4-fix-2-oracle-and-guards
+841fb75 <msg-file> --push`, peeled remote ref verified against
+`841fb75e4ba51ab4d5f2e2a1c09ac7e05ff4754e` exactly:
+
+```
+OK: created annotated tag 'stable-20260819-review-4-fix-2-oracle-and-guards' at 841fb75e4ba51ab4d5f2e2a1c09ac7e05ff4754e
+gitleaks: 1022 commits scanned, no leaks found
+poly check: OK
+To github.com:pragsmike/ehr-testing-tools.git
+ * [new tag]         stable-20260819-review-4-fix-2-oracle-and-guards -> stable-20260819-review-4-fix-2-oracle-and-guards
+OK: pushed refs/tags/stable-20260819-review-4-fix-2-oracle-and-guards
+OK: remote peeled ref for 'stable-20260819-review-4-fix-2-oracle-and-guards' is 841fb75e4ba51ab4d5f2e2a1c09ac7e05ff4754e, matches target exactly
+```
