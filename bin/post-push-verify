@@ -141,15 +141,29 @@ else
   # dropping an empty field (e.g. an in-progress run's empty
   # .conclusion) and misaligning every field after it -- the exact bug
   # bin/preflight's own smoke test caught first.
+  # stderr goes to its OWN file, never into `run_line` (ADR-0155,
+  # register L2-6). A `2>&1` here folded a broken gh's error text into
+  # the status FIELD -- "status=error: HTTP 401: Bad credentials
+  # conclusion=<pending>" -- which skims as "pending", i.e. as a run
+  # that exists and is still going. The exit stays 0 either way: check 3
+  # is advisory by AR-CI-4, and author ruling R4-Q3 (a) deliberately
+  # does NOT reopen that. Only the rendering changes.
+  gh_err="$(mktemp)"
   run_line="$(gh run list --branch "$branch" --json headSha,conclusion,status,url \
-    --jq "map(select(.headSha == \"$tip_sha\")) | .[0] | [.status, .conclusion, .url] | join(\"\")" 2>&1)"
-  if [ -z "$run_line" ] || [ "$run_line" = "null" ]; then
+    --jq "map(select(.headSha == \"$tip_sha\")) | .[0] | [.status, .conclusion, .url] | join(\"\")" 2>"$gh_err")"
+  gh_status=$?
+  if [ "$gh_status" -ne 0 ]; then
+    echo "UNKNOWN: CI status could not be determined -- 'gh run list' exited $gh_status:"
+    sed 's/^/  /' "$gh_err"
+    echo "DISCLOSED: check 3 is advisory (AR-CI-4) and this script's exit is unchanged; a query that FAILED reports UNKNOWN, never a status line."
+  elif [ -z "$run_line" ] || [ "$run_line" = "null" ]; then
     echo "DISCLOSED: no CI run found yet for $tip_sha (may not have been triggered/indexed yet)"
   else
     IFS=$'\x1f' read -r status conclusion url <<< "$run_line"
     echo "CI run for $tip_sha: status=$status conclusion=${conclusion:-<pending>} $url"
     echo "DISCLOSED: reported once, not awaited to conclusion (AR-CI-4)"
   fi
+  rm -f "$gh_err"
 fi
 
 echo

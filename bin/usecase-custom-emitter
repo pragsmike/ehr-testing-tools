@@ -32,9 +32,10 @@ STEP=0
 LOG_DIR="$(mktemp -d)"
 trap 'rm -rf "$LOG_DIR"' EXIT
 
-# expect CODE CMD...  Asserts CMD's exit status and tees its stdout to
-# this step's own log, so a named invariant below can be checked
-# against real output rather than re-derived.
+# expect CODE CMD...  Asserts CMD's exit status and CAPTURES its stdout
+# BY REDIRECT into this step's own log, so a named invariant below can be
+# checked against real output rather than re-derived --
+# never `tee`, which returns its OWN exit status (ADR-0152).
 expect() {
   local want="$1"; shift
   STEP=$((STEP + 1))
@@ -49,9 +50,9 @@ expect() {
 
 # expect_eval CODE SNIPPET  Like expect, but for a taught line that needs a
 # SHELL -- here, the redirect on the `sim run` line. eval runs SNIPPET in
-# this shell, and its stdout/stderr are tee'd to this step's own log the
-# same way expect's are, so the invariants below can index step logs
-# uniformly. This wrapper is what `ehrt.docs-tooling.strip-fresh` already
+# this shell, and its stdout/stderr are CAPTURED BY REDIRECT into this
+# step's own log the same way expect's are, so the invariants below can
+# index step logs uniformly (never `tee`, which returns its OWN exit status (ADR-0152)). This wrapper is what `ehrt.docs-tooling.strip-fresh` already
 # knows how to unwrap (`expect-eval-re`); the `expect 0 bash -c '...'`
 # spelling this script used until 2026-08-17 was NOT unwrappable, which is
 # why this row could never pass check-entry -- ADR-0146 finding U-15.

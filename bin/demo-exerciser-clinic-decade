@@ -44,8 +44,9 @@ trap 'rm -rf "$LOG_DIR"' EXIT
 
 # expect CODE CMD...  Same shape as bin/demo-exerciser-ed-tuesday's own
 # wrapper: runs CMD with its own argv (no shell reinterpretation),
-# asserts exit status CODE, tees stdout/stderr to this step's own log
-# file under LOG_DIR (echoed back live for a human running this script).
+# asserts exit status CODE, CAPTURES stdout/stderr BY REDIRECT into this
+# step's own log file under LOG_DIR and replays them with `cat` (so a
+# human running this script still sees them) -- never `tee`, which returns its OWN exit status (ADR-0152).
 expect() {
   local want="$1"; shift
   STEP=$((STEP + 1))

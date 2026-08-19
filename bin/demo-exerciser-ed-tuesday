@@ -36,7 +36,7 @@ fail() {
 # capture mechanism itself ever touching the taught command's own argv
 # (identity-check transparency: the wrapper functions below have the
 # exact same call shape bin/quickstart-demo's own expect/expect_eval
-# do; only their body changed, to also tee each call's own step number).
+# do; only their body changed, to also record each call's own step number).
 STEP=0
 LOG_DIR="$(mktemp -d)"
 trap 'rm -rf "$LOG_DIR"' EXIT
@@ -44,9 +44,10 @@ trap 'rm -rf "$LOG_DIR"' EXIT
 # expect CODE CMD...  Runs CMD with CMD's own argv (no shell
 # reinterpretation -- the same word-splitting and globbing a user
 # typing CMD directly at this call site would get), asserts its exit
-# status is exactly CODE, and tees stdout/stderr to this step's own log
-# file under LOG_DIR (echoed back live, so a human running this script
-# still sees normal output).
+# status is exactly CODE, and CAPTURES stdout/stderr BY REDIRECT into
+# this step's own log file under LOG_DIR, then replays them with `cat`
+# (so a human running this script still sees normal output) --
+# never `tee`, which returns its OWN exit status (ADR-0152).
 expect() {
   local want="$1"; shift
   STEP=$((STEP + 1))

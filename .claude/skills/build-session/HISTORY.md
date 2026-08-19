@@ -294,6 +294,18 @@ tail -40` reports the exit status of `tail`, which is 0 no matter what
 `cmd` did, so a red run reads as green; the same truncation drops the
 block/test counts a session reconciles against.
 
+**And a wrapper that captures `MAKE_EXIT` ENDS with `exit
+"$MAKE_EXIT"`** (ADR-0155, register L2-1). The paragraph above governs
+the GATE command, and review 3's H-2/H-3 watch item said to watch for a
+NEW way to mask an exit code rather than the old one. It fired:
+ADR-0152's mask was one layer out, in the wrapper's LAST command. The
+ANTI-PATTERN, shown so it can be recognised and never copied:
+`false > /dev/null 2>&1; MAKE_EXIT=$?; echo "MAKE_EXIT=$MAKE_EXIT" |
+tee /dev/null` prints `MAKE_EXIT=1` and exits 0. The law was obeyed and
+the exit was still masked. What the harness reports is the wrapper's
+last command, so the wrapper must END by exiting the status it
+captured.
+
 **Catching yourself writing a justification for skipping an
 instructed step is the stop signal itself: do the step, or
 STOP-AND-REPORT.** A drafted excuse is a fabrication near-miss and

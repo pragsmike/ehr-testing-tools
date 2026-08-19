@@ -47,6 +47,9 @@ a step are in `HISTORY.md` beside this file (split out by ADR-0145).
    be stated explicitly and binds this session only (ADR-0007 R-F).
 2. **Run `bin/preflight [--branch BRANCH]` before touching git**, and disclose every
    finding it prints — CI, edit-root, tree-clean, HEAD-vs-remote, tag state (ADR-0127).
+   Its OUTPUT is the artifact you disclose AND its exit code is load-bearing (ADR-0155,
+   R4-Q2 (c)): non-zero on any `FINDING:`/`FAIL:`/`UNKNOWN:`, where `UNKNOWN:` means a
+   check could not MEASURE — never that it passed.
 3. **Run all git from WSL, never native Windows.** `.githooks/pre-commit`/`pre-push`
    enforce it once `git config core.hooksPath .githooks` is set per clone.
 4. **Read `git diff --cached --stat` before every commit** and unstage anything
@@ -89,7 +92,10 @@ a step are in `HISTORY.md` beside this file (split out by ADR-0145).
   oracle and may not be reported as one (`rulings.md#R-oracle-script-contract`).
 - **Every gate run goes to a full log with its exit code captured explicitly** —
   `make test > <log> 2>&1; MAKE_EXIT=$?`. A pipe or `tail` returns its own status
-  and truncates the counts you reconcile against (review-3 D2-6). That full run,
+  and truncates the counts you reconcile against (review-3 D2-6). **A wrapper that
+  captures `MAKE_EXIT` ENDS with `exit "$MAKE_EXIT"`** — what the harness reports is
+  the wrapper's LAST command, not the gate's, so a wrapper finishing by echoing the
+  status exits 0 however the gate went (ADR-0152's own mask; ADR-0155). That full run,
   never `poly test brick:`/`project:`, is what precedes a push: tree-scanning
   gates live in bricks other than the one you changed (`rulings.md#R-full-suite-before-push`).
 - **Catching yourself drafting a justification for skipping an instructed step is

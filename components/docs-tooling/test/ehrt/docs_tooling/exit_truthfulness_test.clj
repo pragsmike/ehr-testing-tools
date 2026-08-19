@@ -133,20 +133,38 @@
        (filter #(.isFile ^java.io.File %))
        (filter #(str/ends-with? (.getName ^java.io.File %) ".md"))))
 
-(defn- fenced-blocks [text]
-  (map second (re-seq #"(?s)```[A-Za-z0-9]*\n(.*?)```" text)))
+(def ^:private anti-pattern-marker
+  "A skill may SHOW the masking shape in order to name it -- HISTORY.md's
+  own account of ADR-0152 quotes the exact wrapper that masked. That is
+  worth keeping, and it is still the shape a reader could copy, so the
+  exemption is DECLARED rather than inferred: the prose introducing such
+  a snippet carries this token, which makes every negative example in
+  the skill tree greppable. An undeclared occurrence stays red -- which
+  is what caught this very paragraph when it was first written."
+  "ANTI-PATTERN")
 
-(defn- inline-spans
-  "Backtick spans, taken after fenced blocks are removed so a fence's own
-  backticks cannot mis-pair. Spans may wrap across lines --
-  `build-session/HISTORY.md`'s own statement of this law does."
-  [text]
-  (let [without-fences (str/replace text #"(?s)```[A-Za-z0-9]*\n.*?```" "")]
-    (map second (re-seq #"(?s)`([^`]+)`" without-fences))))
+(def ^:private context-window
+  "How much preceding prose counts as the snippet's introduction."
+  240)
+
+(defn- spans-with-context
+  "Every taught snippet as {:snippet :context}, `context` being the prose
+  immediately before it. Uses an explicit matcher rather than `re-seq`
+  because the exemption above needs each match's POSITION, not just its
+  text."
+  [text pattern group]
+  (let [m (re-matcher pattern text)]
+    (loop [out []]
+      (if (.find m)
+        (recur (conj out {:snippet (.group m ^int group)
+                          :context (subs text (max 0 (- (.start m) context-window)) (.start m))}))
+        out))))
 
 (defn- taught-snippets [^java.io.File file]
-  (let [text (slurp file)]
-    (concat (fenced-blocks text) (inline-spans text))))
+  (let [text (slurp file)
+        without-fences (str/replace text #"(?s)```[A-Za-z0-9]*\n.*?```" "")]
+    (concat (spans-with-context text #"(?s)```[A-Za-z0-9]*\n(.*?)```" 1)
+            (spans-with-context without-fences #"(?s)`([^`]+)`" 1))))
 
 (defn- captured-vars
   "Variables the snippet assigns from `$?`."
@@ -175,9 +193,10 @@
 
 (defn- violations-in [^java.io.File file]
   (->> (taught-snippets file)
-       (filter renders-a-status?)
-       (remove propagates?)
-       (map (fn [s] {:file (.getPath file) :snippet (str/trim s)}))))
+       (remove #(str/includes? (:context %) anti-pattern-marker))
+       (filter #(renders-a-status? (:snippet %)))
+       (remove #(propagates? (:snippet %)))
+       (map (fn [s] {:file (.getPath file) :snippet (str/trim (:snippet s))}))))
 
 (deftest a-taught-shell-idiom-that-reports-a-status-must-exit-it-test
   (let [files (mapcat markdown-files skill-roots)

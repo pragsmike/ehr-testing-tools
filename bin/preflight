@@ -24,10 +24,33 @@
 #
 # Usage: bin/preflight [--branch BRANCH]
 #
-# Exit 0 always -- this is a report, not a gate; a finding here is
-# disclosed for the session to act on, never silently passed and never
-# blocking by itself (AR-CI-3's own "disclosed, never silently passed"
-# shape, extended to every check here, not CI alone).
+# THE EXIT CODE IS A CLAIM (ADR-0155, author ruling R4-Q2 (c); register
+# rows L2-3 and L2-4). This script exits NON-ZERO when any check prints a
+# FINDING:, a FAIL: or an UNKNOWN:, and 0 only when every check it ran
+# came back OK/DISCLOSED. It used to `exit 0` unconditionally, which made
+# it the ONE ceremony script in bin/ whose status said nothing while
+# every other one -- tag-ceremony, post-push-verify's checks 1-2,
+# verify-nist-lock, close-scaffold -- is fail-closed. An undeclared
+# always-zero exit invites a caller to trust $?.
+#
+# The OUTPUT is still the artifact a session discloses; the exit code is
+# now load-bearing AS WELL, not instead. A finding is reported in full
+# and never silently passed (AR-CI-3's own "disclosed, never silently
+# passed" shape, extended to every check here, not CI alone).
+#
+# UNKNOWN: is the third verdict, and the one this script lacked. A check
+# that could not MEASURE is not a check that passed. A failed `gh run
+# list` used to leave `runs_out` empty, which made the `-n` test false,
+# which left any_red/any_pending at 0, which reached the else and printed
+# "OK: last five runs all green (or none found)" -- a failed CI query
+# rendering as a green CI report, in the script whose whole job at Step 0
+# is to establish CI colour.
+#
+# SKIP: is deliberately NOT fail-closed, and is the one residue. `gh`
+# absent from PATH is a property of the machine rather than of CI, and
+# making it fatal would leave preflight permanently red on any checkout
+# without `gh` while telling the reader nothing it does not already know.
+# It prints no OK either, so it cannot be misread as green.
 set -uo pipefail
 
 repo_root="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)" || exit 2
@@ -59,11 +82,17 @@ done
 echo "== bin/preflight ($branch) =="
 echo
 
+# Set by any check that finds something, fails, or cannot measure. The
+# exit at the bottom of this file is its only consumer.
+findings=0
+
 # --- 1. Last five CI runs -----------------------------------------------
 echo "-- 1. Last five CI runs on $branch --"
 if ! command -v gh >/dev/null 2>&1; then
   echo "SKIP: gh not on PATH -- cannot check CI runs"
 else
+  # A query that could not answer reports UNKNOWN, never OK (ADR-0155).
+  ci_unknown=0
   # Fields joined with \x1f (unit separator), not @tsv/tab: bash `read`
   # treats tab as IFS-whitespace and silently COLLAPSES adjacent
   # delimiters, dropping empty fields (e.g. an in-progress run's empty
@@ -74,6 +103,7 @@ else
     echo "FAIL: gh run list failed:"
     echo "$runs_out"
     runs_out=""
+    ci_unknown=1
   }
   any_red=0
   any_pending=0
@@ -92,8 +122,12 @@ else
       echo "  $mark  $sha  $created  $title"
     done <<< "$runs_out"
   fi
-  if [ "$any_red" -eq 1 ]; then
+  if [ "$ci_unknown" -eq 1 ]; then
+    echo "UNKNOWN: CI status could not be determined -- the query above FAILED. This is NOT a green report: establish CI colour another way before relying on it."
+    findings=1
+  elif [ "$any_red" -eq 1 ]; then
     echo "FINDING: a red (completed, non-success) run appears among the last five -- report before proceeding, never silently pass"
+    findings=1
   elif [ "$any_pending" -eq 1 ]; then
     echo "DISCLOSED: a run among the last five is still in progress -- not awaited to conclusion (AR-CI-4), not counted as red"
   else
@@ -107,6 +141,7 @@ echo "-- 2. Edit-root confirmation --"
 case "$repo_root" in
   /mnt/*)
     echo "FAIL: repo root '$repo_root' is under /mnt/ -- a Windows-mounted checkout; the ext4 clone is the only clone of record (ADR-0047 AR-C-3). STOP-AND-REPORT: this is a NEW regression, not a known hazard."
+    findings=1
     ;;
   *)
     echo "OK: repo root '$repo_root' is not under /mnt/"
@@ -120,6 +155,7 @@ dirty="$(git status --porcelain=v1 --untracked-files=all)"
 if [ -n "$dirty" ]; then
   echo "FINDING: working tree is not clean (untracked files counted):"
   echo "$dirty" | sed 's/^/  /'
+  findings=1
 else
   echo "OK: working tree clean, including untracked files"
 fi
@@ -134,10 +170,13 @@ if git fetch origin "$branch" --quiet 2>/tmp/preflight-fetch-err.$$; then
     echo "OK: local HEAD ($local_head) matches origin/$branch"
   else
     echo "FINDING: local HEAD ($local_head) differs from origin/$branch ($remote_head)"
+    findings=1
   fi
 else
   echo "FAIL: git fetch origin $branch failed:"
   sed 's/^/  /' /tmp/preflight-fetch-err.$$
+  echo "UNKNOWN: HEAD-vs-remote could not be determined -- the fetch above FAILED, so this check did not measure."
+  findings=1
 fi
 rm -f /tmp/preflight-fetch-err.$$
 echo
@@ -147,6 +186,7 @@ echo "-- 5. Last stable-* tag / HEAD tagged? --"
 last_stable="$(git tag -l 'stable-*' --sort=-creatordate | head -1)"
 if [ -z "$last_stable" ]; then
   echo "FINDING: no stable-* tag found in this checkout"
+  findings=1
 else
   echo "Last stable-* tag: $last_stable ($(git rev-list -n1 "$last_stable"))"
 fi
@@ -158,5 +198,9 @@ else
 fi
 
 echo
-echo "== bin/preflight complete =="
+if [ "$findings" -ne 0 ]; then
+  echo "== bin/preflight complete: findings above, exit 1 =="
+  exit 1
+fi
+echo "== bin/preflight complete: no findings, exit 0 =="
 exit 0

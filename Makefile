@@ -84,11 +84,25 @@ pipeline:
 # adjacent) -- one equations file + mermaid diagram per named use
 # case. Output moved to docs/ (user path, ADR-0010); split into an
 # index plus per-case pages, migration item 14, 2026-08-02.
+# The `rm -rf` and the `|| exit 1` are BOTH deliberate (ADR-0155,
+# register L2-5), and they close different halves of the same hole.
+#
+# `|| exit 1`: a for-loop's exit status is its LAST iteration's, so a
+# converter that failed on an early file and succeeded on a later one
+# left this target green -- the only masking construct in this Makefile.
+# The backstop was incidental rather than designed: `write-use-cases!`
+# slurps the missing `.mermaid` and happens to throw.
+#
+# `rm -rf`: with a STALE `.mermaid` already in target/, the loop AND
+# `write-use-cases!` both exit 0 and the stale diagram is silently
+# reused. `mkdir -p` alone never cleaned. CI's fresh checkout hid this;
+# a local `make docsgen` is where it bites.
 use-cases:
+	@rm -rf target/use-cases
 	@mkdir -p target/use-cases docs/use-cases
 	clojure -X:dev ehrt.docs-tooling.usecases/write-case-equations! :use-cases-edn '"components/corpus/docs/use-cases.edn"' :out-dir '"target/use-cases"'
 	@for f in target/use-cases/*.txt; do \
-		python3 components/palgebra/tools/resource_equations_to_mermaid.py "$$f" -o "$${f%.txt}.mermaid"; \
+		python3 components/palgebra/tools/resource_equations_to_mermaid.py "$$f" -o "$${f%.txt}.mermaid" || exit 1; \
 	done
 	clojure -X:dev ehrt.docs-tooling.usecases/write-use-cases! :use-cases-edn '"components/corpus/docs/use-cases.edn"' :cases-dir '"target/use-cases"' :index-out '"docs/use-cases.md"' :pages-dir '"docs/use-cases"'
 	@echo "Regenerated docs/use-cases.md and docs/use-cases/*.md"

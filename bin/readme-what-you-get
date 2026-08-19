@@ -35,9 +35,10 @@ LOG_DIR="$(mktemp -d)"
 trap 'rm -rf "$LOG_DIR"' EXIT
 
 # expect CODE CMD...  Same shape as bin/demo-exerciser-ed-tuesday's own
-# wrapper: asserts CMD's own exit code, tees stdout/stderr to this
-# step's own log file (so the LAST command in a multi-command pair can
-# be diffed against that pair's own expected-output fence afterward).
+# wrapper: asserts CMD's own exit code, CAPTURES stdout/stderr BY
+# REDIRECT into this step's own log file (so the LAST command in a
+# multi-command pair can be diffed against that pair's own
+# expected-output fence afterward) -- never `tee`, which returns its OWN exit status (ADR-0152).
 expect() {
   local want="$1"; shift
   STEP=$((STEP + 1))

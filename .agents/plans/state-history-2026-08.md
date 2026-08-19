@@ -759,6 +759,23 @@ citations or an explicit `[unverified]` tag `[A, AR-B-5]`.
 
 ---
 
+## Retired from `.agents/state.md` — 2026-08-19, ADR-0155
+
+Moved verbatim under `state_residue_test`'s own instruction ("move
+history verbatim to `.agents/plans/state-history-2026-08.md`") when the
+MAKE_EXIT paragraph gained ADR-0155's wrapper clause and the file went 4
+lines over its 120-line cap. The cap holds; the anecdote is the history
+half, and this is where it lives:
+
+> It has paid off twice, most recently at this session's own Step 0,
+> where an aborted run reported `MAKE_EXIT=2` above what a `tail -40`
+> would have shown.
+
+(The session referred to is ADR-0138's. ADR-0155's own Step 0 makes it
+three: the `use-cases` prune's first draft and the `state.md` cap itself
+were both caught by a full run reporting `MAKE_EXIT=2` rather than a
+truncated green.)
+
 ## From `.agents/session-records/README.md` — the session-record index rows, with their hand annotations
 
 Verbatim at `0b15e87`, 153 lines.

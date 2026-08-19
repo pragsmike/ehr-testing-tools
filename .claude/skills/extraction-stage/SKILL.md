@@ -90,12 +90,16 @@ the three-stage `tools` split into `docs-tooling`/`corpus-io`/`corpus`
    the split adds or hardens an enforcement test, prove it fails before
    the fix and passes after (the `31675e6`/`1c3d77c` precedent) — never
    land a gate you haven't watched go red first.
-8. **Verify without a pipe.** `clojure -M:poly check` green before and
-   after; capture `clojure -M:poly test :all skip:integration`'s full
-   log and exit code directly (`> file 2>&1; echo EXITCODE:$?`) — a
-   piped command's exit status belongs to the pipe's last stage, not the
-   tool being tested, and has produced a false-positive "pass" before
-   (the sim-sibling errata session's own caught mistake).
+8. **Verify without a pipe, and exit the status you captured.** `clojure
+   -M:poly check` green before and after; capture `clojure -M:poly test
+   :all skip:integration`'s full log and exit code directly
+   (`> file 2>&1; EXITCODE=$?; ...; exit "$EXITCODE"`) — a piped
+   command's exit status belongs to the pipe's last stage, not the tool
+   being tested, and has produced a false-positive "pass" before (the
+   sim-sibling errata session's own caught mistake). The trailing `exit`
+   is not decoration and this step taught the idiom without it until
+   ADR-0155: a block that ends by ECHOING the status exits 0 whatever the
+   tool did, which is exactly how ADR-0152's masked run reported green.
 
 ## Output
 

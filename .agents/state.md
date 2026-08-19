@@ -100,9 +100,9 @@ is retired.
 **A gate run captures its exit code explicitly** — `make test > <log>
 2>&1; MAKE_EXIT=$?`, never through a pipe or `tail`, which return their
 own status and truncate the counts a session reconciles against
-(ADR-0138). It has paid off twice, most recently at this session's own
-Step 0, where an aborted run reported `MAKE_EXIT=2` above what a
-`tail -40` would have shown.
+(ADR-0138); **and a wrapper that captures `MAKE_EXIT` ENDS with `exit
+"$MAKE_EXIT"`** -- what the harness reports is the wrapper's LAST
+command, not the gate's (ADR-0152's own mask; ADR-0155).
 
 **The `stable-*` tag census is deliberately not recorded here.** A tag
 is pushed after the commit it points at, so any committed count is
