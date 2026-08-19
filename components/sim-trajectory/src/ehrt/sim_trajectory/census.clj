@@ -42,6 +42,9 @@
             [clojure.pprint :as pprint]
             [clojure.string :as str]
             [ehrt.kernel.interface :as result]
+            ;; the same interface under its io role (ADR-0157): `result`
+            ;; names the result vocabulary and reads wrong on mkdirs!.
+            [ehrt.kernel.interface :as kernel]
             [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim-trajectory.gmf :as gmf]
             [ehrt.sim-trajectory.gmf-interpreter :as interp])
@@ -524,7 +527,7 @@
        (let [payload (:payload result)
              pin7 (subs synthea-pin 0 7)
              out-file (io/file out-dir (artifact-filename (:census-date (:header payload)) pin7 label))]
-         (.mkdirs (io/file out-dir))
+         (kernel/mkdirs! (io/file out-dir))
          (spit out-file (with-out-str (pprint/pprint payload)))
          (println "wrote" (.getPath out-file))
          (println "summary:" (pr-str (:summary payload))))))))

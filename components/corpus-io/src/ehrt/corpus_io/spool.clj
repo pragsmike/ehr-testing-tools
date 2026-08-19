@@ -200,7 +200,7 @@
               decode-result
               (let [items (:payload decode-result)
                     item-files (map-indexed (fn [i item] {:idx i :bytes (item-bytes framing item)}) items)]
-                (.mkdirs (io/file out-dir))
+                (kernel/mkdirs! (io/file out-dir))
                 (doseq [{:keys [idx bytes]} item-files]
                   (with-open [out (io/output-stream (io/file out-dir (item-filename idx format)))]
                     (.write out ^bytes bytes)))

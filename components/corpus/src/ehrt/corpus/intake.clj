@@ -373,7 +373,7 @@
             notes (into (invalid-sidecar-notes files source-dir sidecar-fn)
                         (invalid-operation-manifest-sidecar-notes files source-dir op-sidecar-fn))
             out-dir (io/file out)]
-        (.mkdirs out-dir)
+        (kernel/mkdirs! out-dir)
         (let [catalog-file (io/file out-dir "catalog.edn")]
           (spit catalog-file (pr-str catalog))
           (let [record (cond-> {:origin source-label

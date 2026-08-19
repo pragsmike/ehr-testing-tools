@@ -135,10 +135,24 @@
                    (if-not (result/ok? rename-result)
                      rename-result
                      (result/ok {:path (.getAbsolutePath dest) :cached false})))
-                 (do (.delete tmp)
+                 ;; delete-quietly!, not delete! (ADR-0157, D4-1).
+                 ;; This arm's ANSWER is the hash mismatch, carrying
+                 ;; the expected and actual digests; a throw from the
+                 ;; cleanup would replace that diagnosis with a
+                 ;; filesystem complaint the caller cannot act on. A
+                 ;; failed cleanup is survivable here: tmp is named
+                 ;; <sha>.tmp-<nanos>, which cached-and-verified?
+                 ;; never matches, so it litters the cache rather
+                 ;; than poisoning it, and the docstring's "nothing
+                 ;; is left in the cache" holds for the cache ENTRY.
+                 (do (kernel-io/delete-quietly! tmp)
                      (result/rejected :hash-mismatch {:expected sha256 :actual actual}))))
              (catch Exception e
-               (.delete tmp)
+               ;; delete-quietly! for the same reason, one degree
+               ;; sharper: a throw from inside this catch would MASK
+               ;; e entirely, and e's message is the only account
+               ;; anyone gets of why the download failed.
+               (kernel-io/delete-quietly! tmp)
                (result/error :download-failed {:source source :message (.getMessage e)})))))))))
 
 (def artifact-remedy-hint
@@ -188,7 +202,7 @@
   subprocess. Returns result/ok {:dest dest-dir} or result/error
   :extract-failed (carrying artifact-remedy-hint) on a nonzero exit."
   [archive-path dest-dir]
-  (.mkdirs (io/file dest-dir))
+  (kernel-io/mkdirs! (io/file dest-dir))
   (let [pb (ProcessBuilder. (into-array String ["tar" "-xzf" archive-path "-C" dest-dir]))]
     (.redirectErrorStream pb true)
     (let [proc (.start pb)

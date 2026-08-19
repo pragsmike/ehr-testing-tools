@@ -296,7 +296,7 @@
         mermaid-by-id (into {} (map (fn [{:keys [id]}]
                                        [id (slurp (str cases-dir "/" (name id) ".mermaid"))]))
                              (:cases data))]
-    (.mkdirs (io/file pages-dir))
+    (kernel/mkdirs! (io/file pages-dir))
     (let [pages (cases->pages (:cases data) mermaid-by-id)]
       (doseq [{:keys [filename content]} pages]
         (spit (str pages-dir "/" filename) content))

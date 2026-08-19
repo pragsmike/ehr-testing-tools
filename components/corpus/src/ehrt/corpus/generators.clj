@@ -159,7 +159,7 @@
                   {:hint (str "sim's own run produced no messages -- :emit \"hl7\" "
                               "(this entry's own pinned default) is required to produce a v2 corpus")})
     (do
-      (.mkdirs (io/file out-dir))
+      (kernel/mkdirs! (io/file out-dir))
       (dorun (map-indexed (fn [i m] (spit (io/file out-dir (format "msg-%03d.hl7" i)) m)) messages))
       (spit (io/file out-dir "manifest.edn") (pr-str manifest))
       (when ground-truth

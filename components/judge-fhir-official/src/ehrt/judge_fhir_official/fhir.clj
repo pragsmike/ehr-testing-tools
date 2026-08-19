@@ -190,7 +190,7 @@
               ig-resolve
               (let [resolved-java-bin (:path (:payload java-bin-result))
                     out (io/file out-dir)
-                    _ (.mkdirs out)
+                    _ (kernel/mkdirs! out)
                     input-name (.getName (io/file input-path))
                     outcome-path (.getAbsolutePath (io/file out (str input-name ".outcome.json")))
                     stdout-path (.getAbsolutePath (io/file out (str input-name ".validator-stdout.log")))
@@ -249,7 +249,7 @@
               ig-resolve
               (let [resolved-java-bin (:path (:payload java-bin-result))
                     out (io/file out-dir)
-                    _ (.mkdirs out)
+                    _ (kernel/mkdirs! out)
                     batch-id (kernel/sha256-string (str/join "|" input-paths))
                     outcome-path (.getAbsolutePath (io/file out (str "batch-" batch-id ".outcome.json")))
                     stdout-path (.getAbsolutePath (io/file out (str "batch-" batch-id ".validator-stdout.log")))

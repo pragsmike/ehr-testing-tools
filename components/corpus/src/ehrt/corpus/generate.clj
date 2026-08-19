@@ -279,7 +279,7 @@
               (let [resolved-java-bin (:path (:payload java-bin-result))
                     jvm-artifact (:artifact (:payload java-bin-result))
                     out-dir-file (io/file out-dir)
-                    _ (.mkdirs out-dir-file)
+                    _ (kernel/mkdirs! out-dir-file)
                     stdout-path (.getAbsolutePath (io/file out-dir-file "synthea-stdout.log"))
                     stderr-path (.getAbsolutePath (io/file out-dir-file "synthea-stderr.log"))
                     all-jvm-args (vec (concat (locale-jvm-args locale) (timezone-jvm-args timezone) jvm-args))

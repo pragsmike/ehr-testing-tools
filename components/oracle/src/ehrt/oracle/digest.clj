@@ -116,6 +116,7 @@
   this note's own disambiguation."
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
+            [ehrt.kernel.interface :as kernel]
             [ehrt.sim-trajectory.interface :as sim-trajectory]
             [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim-engine.interface :as engine]
@@ -670,7 +671,7 @@
   the {:ground-truth :hl7} pair) -- bin/regression-oracle's own shell
   loop sha256sums each file itself; this process never hashes."
   [out-dir]
-  (.mkdirs (io/file out-dir))
+  (kernel/mkdirs! (io/file out-dir))
   (doseq [[root-name f] (sort-by key roots)]
     (println "running" root-name "...")
     (let [content (f)

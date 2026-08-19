@@ -28,6 +28,10 @@
             [ehrt.kernel.interface :as result]
             [ehrt.kernel.interface :as artifact]
             [ehrt.kernel.interface :as locator]
+            ;; kernel's io vocabulary under its own role name
+            ;; (ADR-0157, review-4 D4-1): result/artifact/locator
+            ;; all read wrong on mkdirs!.
+            [ehrt.kernel.interface :as kernel-io]
             [ehrt.cli.help :as help]
             [ehrt.corpus.interface :as generate]
             [ehrt.corpus.interface :as generators]
@@ -722,8 +726,8 @@
 
                   :else
                   (do
-                    (.mkdirs (io/file out-dir))
-                    (.mkdirs (io/file out-dir "lineage"))
+                    (kernel-io/mkdirs! (io/file out-dir))
+                    (kernel-io/mkdirs! (io/file out-dir "lineage"))
                     (loop [remaining files processed []]
                       (if (empty? remaining)
                         (let [items (mapv (fn [{:keys [file sha256 input-hash]}]
@@ -1027,7 +1031,7 @@
                       (if-not (result/ok? partition-result)
                         partition-result
                         (let [buckets (:buckets (:payload partition-result))]
-                          (.mkdirs (io/file resolved-out-dir))
+                          (kernel-io/mkdirs! (io/file resolved-out-dir))
                           (loop [remaining (map-indexed vector buckets) written []]
                             (if (empty? remaining)
                               (let [span (when (seq written)
