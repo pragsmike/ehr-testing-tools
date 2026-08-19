@@ -446,3 +446,281 @@
                        "-- hence `make docsgen` -- reports success while a conversion failed. Add "
                        "`|| exit 1` inside the loop.\nLoop text as committed:\n" loop-text))))
           (finally (delete-tree! root)))))))
+
+;; ---------------------------------------------------------------------
+;; (e) ADR-0157 -- environment residue at its root, and the ASCII
+;;     commit-message law gated BEFORE the commit exists
+;;
+;; Review 4's D3-1: the executable-bit class bit three times in one
+;; window (ADR-0147 S-7, ADR-0149's own CI red, ADR-0154's preflight
+;; disclosure) and was gated at the SYMPTOM every time --
+;; `executable_bits_test` reads the index precisely because
+;; `core.fileMode=false` makes the worktree bit lie. The cause is two
+;; lines of `/mnt/c`-era git config surviving in an ext4 clone's own
+;; `.git/config`, which no ADR had ever named and which no gate could
+;; see, because `.git/config` is not tracked. A tracked test cannot
+;; assert a property of an untracked file in someone else's clone; what
+;; it CAN do is assert that the script every session runs at Step 0
+;; reports the residue when it is there. That is what (i) below does.
+;;
+;; `roadmap.md#commit-msg-ascii-hook`: the ASCII commit-message law
+;; (AR-RL2-5) is gated by `bin/post-push-verify` check 2, which by its
+;; own name runs AFTER the push -- so for this one class the check
+;; reports a fault that `rulings.md#R-amend-unpushed-message-only` has
+;; already put out of reach. ADR-0156's second addendum is the live
+;; instance: commit `04b6f66`'s message carries a U+2026 where three
+;; ASCII dots belonged, found post-push and therefore unfixable in
+;; place. (ii) and (iii) gate the same law one step earlier, in the
+;; commit path, where refusing costs a re-write instead of a record.
+;;
+;; The scan itself is EXTRACTED, not copied: `bin/ascii-scan` is the one
+;; implementation and both callers invoke it, so the pre-commit twin and
+;; the post-push check cannot drift into disagreeing about what "ASCII"
+;; means. (iv) is the gate on that.
+;; ---------------------------------------------------------------------
+
+(def ^:private green-gh-stub
+  "A `gh run list` that answers with one completed, successful run, so
+  preflight's check 1 is a constant and every verdict below is
+  attributable to check 2."
+  "printf 'completed\\x1fsuccess\\x1fcafe1234\\x1f2026-01-01T00:00:00Z\\x1fa green run\\n'")
+
+(defn- environment-section
+  "Only the `-- 2. Edit-root confirmation --` section. Same scoping
+  discipline as `ci-section` above: checks 1 and 3-5 report on other
+  things, so pinning these assertions to section 2 is what keeps them
+  assertions about the residue checks."
+  [out]
+  (let [after (second (str/split out #"-- 2\. Edit-root confirmation[^\n]*\n" 2))]
+    (first (str/split (or after out) #"\n-- 3\." 2))))
+
+(defn- build-preflight-fixture!
+  "A clone in which preflight's checks 1, 3, 4 and 5 ALL pass: a bare
+  origin reached by path with `main` pushed, a clean tree, a `stable-*`
+  tag on HEAD, and the real `bin/preflight` copied in so its
+  `${BASH_SOURCE[0]}/..` root resolution lands inside the fixture. Only
+  check 2's verdict is left free to vary, which is what makes an EXIT
+  CODE measured here attributable to the environment residue and to
+  nothing else -- the ambient checkout could not support that claim,
+  which is why `preflight-exit-zero-is-still-reachable-test` above has
+  to fall back to `--help`."
+  [^java.io.File root]
+  (let [origin (io/file root "origin.git")
+        work (io/file root "work")]
+    (git! root "init" "--bare" "-q" "--initial-branch=main" (.getPath origin))
+    (git! root "init" "-q" "--initial-branch=main" (.getPath work))
+    (git! work "config" "user.email" "fixture@example.invalid")
+    (git! work "config" "user.name" "fixture")
+    (git! work "config" "commit.gpgsign" "false")
+    (git! work "remote" "add" "origin" (.getAbsolutePath origin))
+    (let [bin-dir (io/file work "bin")
+          dest (io/file bin-dir "preflight")]
+      (.mkdirs bin-dir)
+      (io/copy (io/file "bin/preflight") dest)
+      (.setExecutable dest true))
+    (spit (io/file work "f") "a\n")
+    (git! work "add" "-A")
+    (git! work "commit" "-q" "-m" "A plain ASCII fixture commit")
+    (git! work "push" "-q" "origin" "main")
+    (git! work "tag" "stable-fixture-0")
+    work))
+
+(defn- run-preflight-in [root config-pairs]
+  (let [work (build-preflight-fixture! root)]
+    (doseq [[k v] config-pairs]
+      (if (nil? v)
+        (shell/sh "git" "config" "--local" "--unset" k :dir (.getPath work))
+        (git! work "config" "--local" k v)))
+    (let [stub (stub-dir! root "gh" green-gh-stub)
+          {:keys [exit out err]} (with-path stub "bin/preflight" :dir (.getPath work))]
+      {:exit exit :out (str out err)})))
+
+;; ---- (i) the residue checks, beside the /mnt/* check ----
+
+(deftest preflight-flags-filemode-and-ignorecase-residue-test
+  (let [root (temp-dir "ehrt-preflight-residue")]
+    (try
+      (let [{:keys [exit out]} (run-preflight-in root {"core.fileMode" "false"
+                                                       "core.ignorecase" "true"})
+            section (environment-section out)]
+        (is (string? section)
+            (str "sanity: preflight must print its edit-root section. Output was:\n" out))
+        (is (str/includes? section "core.fileMode")
+            (str "preflight must check core.fileMode beside the /mnt/* check -- it is the SAME "
+                 "class of residue (D3-1), and the executable-bit class it causes was gated at "
+                 "the symptom three times without anyone reading the cause. Section 2 was:\n"
+                 section))
+        (is (str/includes? section "core.ignorecase")
+            (str "preflight must check core.ignorecase too -- no recorded hit yet, equally wrong "
+                 "on ext4, and it can mask a case-only rename. Section 2 was:\n" section))
+        (is (= 2 (count (re-seq #"FINDING:" section)))
+            (str "each residue setting is its own FINDING -- one line naming one setting, so the "
+                 "remedy printed beside it is the remedy for THAT setting. Section 2 was:\n"
+                 section))
+        (is (str/includes? section "git config --local core.fileMode true")
+            (str "the FINDING must print the one-line remedy, not merely name the defect. "
+                 "Section 2 was:\n" section))
+        (is (str/includes? section "git config --local --unset core.ignorecase")
+            (str "same for core.ignorecase. Section 2 was:\n" section))
+        (is (not (zero? exit))
+            (str "preflight must be fail-closed on residue it FOUND (ADR-0155, R4-Q2 c). Every "
+                 "other check that prints a FINDING exits non-zero. Exit was " exit
+                 ", output was:\n" out)))
+      (finally (delete-tree! root)))))
+
+(deftest preflight-reports-a-clean-environment-as-clean-test
+  ;; The control. Without it, a check that simply always printed FINDING
+  ;; would pass the test above -- and preflight is the script every
+  ;; session runs at Step 0, so a permanently-red check would be read as
+  ;; noise and then ignored, which is worse than no check.
+  (let [root (temp-dir "ehrt-preflight-clean")]
+    (try
+      (let [{:keys [exit out]} (run-preflight-in root {"core.fileMode" "true"
+                                                       "core.ignorecase" nil})
+            section (environment-section out)]
+        (is (not (str/includes? section "FINDING:"))
+            (str "a clone with core.fileMode=true and core.ignorecase unset -- what `git clone` "
+                 "itself produces on ext4 -- must report NO finding. Section 2 was:\n" section))
+        (is (str/includes? section "OK: core.fileMode")
+            (str "and must say so positively: the report is the artifact, not just the exit code. "
+                 "Section 2 was:\n" section))
+        (is (zero? exit)
+            (str "with checks 1 and 3-5 all satisfied by this fixture and no residue, preflight "
+                 "must exit 0 -- fail-closed must not have become fail-always. Exit was " exit
+                 ", output was:\n" out)))
+      (finally (delete-tree! root)))))
+
+;; ---- (ii) the commit-msg hook, invoked directly ----
+
+(def ^:private ellipsis
+  "U+2026, built from its code point rather than written literally, so
+  this test file stays pure ASCII and so the byte under test cannot be
+  altered by anyone's editor or by a re-encoding of this source file.
+  It is the exact character that produced ADR-0156's own violation."
+  (str (char 0x2026)))
+
+(defn- run-commit-msg-hook [message]
+  (let [root (temp-dir "ehrt-commit-msg")]
+    (try
+      (let [f (io/file root "COMMIT_EDITMSG")]
+        (spit f message)
+        (let [{:keys [exit out err]} (shell/sh ".githooks/commit-msg" (.getPath f))]
+          {:exit exit :out (str out err)}))
+      (finally (delete-tree! root)))))
+
+(deftest commit-msg-hook-refuses-a-non-ascii-message-test
+  (let [{:keys [exit out]}
+        (run-commit-msg-hook (str "docs: ADR-0156 addendum -- CI green at the tip\n"
+                                  "\n"
+                                  "841fb75" ellipsis " exactly\n"))]
+    (is (not (zero? exit))
+        (str "`.githooks/commit-msg` must REFUSE a message carrying a non-ASCII byte -- that is "
+             "the whole point of moving the check into the commit path. Exit was " exit
+             ", output was:\n" out))
+    (is (str/includes? out "3:")
+        (str "the refusal must name the offending LINE, so the author can find it without "
+             "re-reading the whole message. Output was:\n" out))
+    (is (re-find #"(?i)\be2 80 a6\b" out)
+        (str "and must name the BYTES -- `e2 80 a6` is a U+2026 that renders as three dots and "
+             "is invisible in a diff otherwise. That invisibility is exactly how ADR-0156's own "
+             "addendum commit acquired one. Output was:\n" out))))
+
+(deftest commit-msg-hook-passes-a-pure-ascii-message-test
+  (let [{:keys [exit out]}
+        (run-commit-msg-hook (str "docs: ADR-0157 -- review-4 fix 3/5\n"
+                                  "\n"
+                                  "841fb75 exactly, with three ASCII dots... and no ellipsis.\n"))]
+    (is (zero? exit)
+        (str "a pure-ASCII message must pass untouched. A hook that refuses good messages would "
+             "be routed around with --no-verify within a session, which is worse than no hook. "
+             "Exit was " exit ", output was:\n" out))))
+
+(deftest commit-msg-hook-fails-closed-when-it-cannot-scan-test
+  ;; ADR-0155's own law, applied to the hook: a check that could not
+  ;; MEASURE is not a check that passed. Without this the hook's failure
+  ;; mode on a missing scanner is a silent green commit.
+  (let [{:keys [exit out err]} (shell/sh ".githooks/commit-msg" "/nonexistent/COMMIT_EDITMSG")
+        text (str out err)]
+    (is (not (zero? exit))
+        (str "the hook must refuse the commit when it cannot read the message file at all, "
+             "rather than treating an unscannable message as a clean one. Exit was " exit
+             ", output was:\n" text))
+    (is (str/includes? text "refused")
+        (str "and must say the commit was refused, not merely emit a scanner error. Output "
+             "was:\n" text))))
+
+;; ---- (iii) installation: the hooksPath mechanism reaches commit-msg ----
+
+(deftest the-hookspath-mechanism-installs-the-commit-msg-hook-test
+  ;; Step 0(d): installation in this repo is `git config core.hooksPath
+  ;; .githooks` -- a per-clone opt-in pointing git at the TRACKED
+  ;; directory (AGENTS.md, and `ehrt doctor`'s own hooksPath check).
+  ;; Nothing anywhere enumerates the hooks by name, so a third file in
+  ;; `.githooks/` is installed by the same act that installed the first
+  ;; two -- and this test is what proves that claim rather than assuming
+  ;; it, by driving a real `git commit` through the real wiring.
+  ;;
+  ;; WSL_DISTRO_NAME is set for the fixture commit because `.githooks/
+  ;; pre-commit` runs FIRST and refuses non-WSL shells; CI's Ubuntu
+  ;; runners are not WSL, so without this the commit would be refused
+  ;; for the wrong reason and the positive case below would be vacuous.
+  ;; Satisfying pre-commit's own documented condition is the honest way
+  ;; to reach the hook under test.
+  (let [root (temp-dir "ehrt-hookspath")
+        hooks-dir (.getAbsolutePath (io/file ".githooks"))]
+    (try
+      (let [work (io/file root "work")
+            commit! (fn [msg]
+                      (let [f (io/file root "msg.txt")]
+                        (spit f msg)
+                        (let [{:keys [exit out err]}
+                              (shell/sh "env" "WSL_DISTRO_NAME=fixture"
+                                        "git" "commit" "-F" (.getPath f)
+                                        :dir (.getPath work))]
+                          {:exit exit :out (str out err)})))]
+        (git! root "init" "-q" "--initial-branch=main" (.getPath work))
+        (git! work "config" "user.email" "fixture@example.invalid")
+        (git! work "config" "user.name" "fixture")
+        (git! work "config" "commit.gpgsign" "false")
+        (git! work "config" "core.hooksPath" hooks-dir)
+        (spit (io/file work "f") "a\n")
+        (git! work "add" "f")
+        (let [{:keys [exit out]} (commit! (str "test: a sha abbreviated with an ellipsis 841fb75"
+                                               ellipsis "\n"))]
+          (is (not (zero? exit))
+              (str "a non-ASCII message must be refused THROUGH the real hooksPath wiring, not "
+                   "only when the hook is invoked by hand -- otherwise the hook exists and is "
+                   "never reached. Exit was " exit ", output was:\n" out))
+          (is (str/includes? out "non-ASCII")
+              (str "and the refusal a committer actually sees must say why. Output was:\n" out)))
+        (is (not (zero? (:exit (shell/sh "git" "rev-parse" "--verify" "HEAD"
+                                         :dir (.getPath work)))))
+            "the refused commit must not exist -- a hook that reports and commits anyway is worse than none")
+        (let [{:keys [exit out]} (commit! "test: a plain ASCII fixture message\n")]
+          (is (zero? exit)
+              (str "and an ASCII message must still commit through the same wiring. Exit was "
+                   exit ", output was:\n" out))))
+      (finally (delete-tree! root)))))
+
+;; ---- (iv) one scan, two callers ----
+
+(deftest the-ascii-byte-scan-lives-in-exactly-one-place-test
+  (let [scanner (slurp "bin/ascii-scan")
+        hook (slurp ".githooks/commit-msg")
+        ppv (slurp "bin/post-push-verify")
+        pattern "[^ -~]"]
+    (is (str/includes? scanner pattern)
+        "bin/ascii-scan is the one implementation and must hold the byte pattern itself")
+    (testing "both callers invoke it"
+      (is (str/includes? hook "bin/ascii-scan")
+          ".githooks/commit-msg must invoke bin/ascii-scan, not re-derive the scan")
+      (is (str/includes? ppv "bin/ascii-scan")
+          "bin/post-push-verify check 2 must invoke bin/ascii-scan, not re-derive the scan"))
+    (testing "and neither carries a second copy of it"
+      (is (not (str/includes? hook pattern))
+          (str "a copied pattern is a pattern that can drift: the pre-commit twin and the "
+               "post-push check would then disagree about what ASCII means, and only one of "
+               "them runs before the commit is unfixable."))
+      (is (not (str/includes? ppv pattern))
+          (str "same for post-push-verify -- including in its header prose, which is where a "
+               "reader looks to learn what check 2 does.")))))
