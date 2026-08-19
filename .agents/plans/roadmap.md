@@ -8,12 +8,12 @@ cited from elsewhere as `roadmap.md#<slug>` and never by line number; `## Next`
 rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
 
 ## Next (backlog, no session scheduled)
-- OPEN **[repo-review-4]** PRIORITY 2 -- chartered roughly 15 ADRs past ADR-0139
-  by ADR count, not calendar (ruling Q3 "a.", 2026-08-15). Inherits review 3's
-  twelve-row watch-list and D8-5's survivor (56 of 74 command fences have no
-  exerciser -- handed on in ADR-0140).
-  ASSESSMENT LANDED 2026-08-18 (ADR-0154): register `.agents/plans/2026-08-18-repo-review-findings.md`, plan `.agents/plans/2026-08-18-repo-review-4-plan.md`; 72 rows, 10 rulings owed, 8 fix sessions; author order G A E B C D F H, paired.
-  FIX 1/5 (G+A) LANDED 2026-08-19 (ADR-0155): 12 rows FIXED -- L3-1/L3-2/L3-4/L3-9/L3-10, L2-1..L2-6, L2-10; row stays OPEN until the remaining four land.
+- OPEN **[repo-review-4]** PRIORITY 2 -- chartered roughly 15 ADRs past ADR-0139 by
+  ADR count, not calendar (ruling Q3 "a.", 2026-08-15). Inherits review 3's twelve-row
+  watch-list and D8-5's survivor (56 of 74 command fences have no exerciser, ADR-0140).
+  ASSESSMENT 2026-08-18 (ADR-0154): register `.agents/plans/2026-08-18-repo-review-findings.md`, plan `.agents/plans/2026-08-18-repo-review-4-plan.md`; 72 rows, 10 rulings owed, 8 fix sessions; author order G A E B C D F H, paired.
+  FIX 1/5 (G+A) 2026-08-19 (ADR-0155), 12 rows: L3-1/L3-2/L3-4/L3-9/L3-10, L2-1..L2-6, L2-10.
+  FIX 2/5 (E+C) 2026-08-19 (ADR-0156), 11 rows: L1-1..L1-5, D2-1/D2-2/D2-4/D2-6, D3-2, D4-4; R4-Q1/Q6/Q7/Q8 ruled. OPEN until B, D and F+H land.
 - OPEN **[oracle-coverage-roots]** PRIORITY 3 -- R4-Q6 (ii) (b): add oracle roots
   reaching the capacity and order->result paths (a churn root, a pathway root), so the
   13-of-21 witnessed-kind set widens. PRICED, NOT TAKEN: each new root is a declared

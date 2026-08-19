@@ -33,6 +33,8 @@ Each carries a recommendation. None is acted on here.
 
 ### R4-Q1 — the `--amend` precedent (register D2-6)
 
+**RULED (a) and LANDED 2026-08-19, ADR-0156.**
+
 ADR-0153 disclosed one message-only `git commit --amend` of an unpushed
 commit. `.agents/rulings.md` has no row on `--amend`; `build-session`
 has no rule. The act was defensible and disclosed, and the next session
@@ -150,6 +152,9 @@ can exist. The mermaid block in `trajectory-computation.md` is fairly
 
 ### R4-Q6 — the oracle's coverage claim (register L1-1, L1-2, L1-4)
 
+**RULED and LANDED 2026-08-19, ADR-0156** — (i) (a), (ii) (a) with (b)
+rowed and priced as `roadmap.md#oracle-coverage-roots`, (iii) (c).
+
 Three questions, one subject. **This is the review's most consequential
 finding.**
 
@@ -210,6 +215,8 @@ the script.
 
 ### R4-Q7 — the local cold-clone probe, D3-1's third answer (register D3-2)
 
+**RULED (a) and LANDED 2026-08-19, ADR-0156.**
+
 Review 3's watch-list posed restore-or-retire. **The method was never
 lost:** `make ci-parity` (`Makefile:288-297`) does fresh clone + cold
 `EHR_TESTING_TOOLS_CACHE` + `poly check` + `poly test`, and has been in
@@ -226,6 +233,8 @@ the make graph the whole time. Two reviews recorded the probe as
 naming it in the rubric is what stops it going missing a third time.
 
 ### R4-Q8 — the rubric amendment (register D4-4)
+
+**RULED (a) and LANDED 2026-08-19, ADR-0156.**
 
 This review's own D4 probe returned a perfect green from a pathspec that
 matched **zero files**; a sanity check caught it. `R-empty-population-is-red`
@@ -367,6 +376,12 @@ edits are `bin/preflight` and its test.
 
 ### Session C — guard coverage (three laws, three gaps)
 
+**LANDED 2026-08-19, ADR-0156** (fix 2/5, paired with Session E). Rows
+closed: D2-1, D2-2, D2-4, and D2-6/D3-2/D4-4 with them, because R4-Q1/Q7/Q8
+resolved those three and their edits sit in the same two skill files.
+Segment 5 needed the Step 0 ruling this session asked for, and the
+re-derivation found a SECOND linkless segment the plan did not anticipate.
+
 **Rows:** D2-1, D2-2, D2-4.
 
 - **D2-1** — `R-audience-has-entry-path` has **no gate**. Add one:
@@ -408,6 +423,12 @@ by two, with the kernel namespace allowlisted as it already is for
 `.listFiles`. Red-first on one site.
 
 ### Session E — the oracle's coverage claim
+
+**LANDED 2026-08-19, ADR-0156** (fix 2/5, paired with Session C). Rows
+closed: L1-1, L1-2, L1-3, L1-4, L1-5. The gate's home moved: the oracle
+brick belongs to no testable project, so `components/oracle/test` would
+never have run — the per-push half is in `docs-tooling`, the fresh-digest
+half in the scheduled lane.
 
 **Rows:** L1-2, L1-3, L1-5, plus **R4-Q6(i)**'s addendum and
 **R4-Q6(iii)**'s soundness fix if ruled.
