@@ -286,3 +286,60 @@ review is chartered by the same cadence rule at roughly ADR-0169 — but
 **review 5's window should be measured from the last FIX session of
 this arc, not from ADR-0154**, since the arc this assessment opens has
 not run yet.
+
+### Addendum, 2026-08-18 — the close tag was paid in session, and the run's own artifact recorded
+
+The prompt's tag licence had two branches: pay in session if this
+session's tip run concludes `success` while the session is open, else
+leave it to the next Step 0, saying which. **The first branch was
+taken.**
+
+CI run **32208219862** at `0a07195` (this session's only commit)
+concluded **`success`** while the session was still open, read with
+`gh run view` per `rulings.md#R-session-verifies-ci-via-gh`. All four
+substantive steps green:
+
+    success  poly check
+    success  poly test :all skip:integration
+    success  verify-nist-lock (supply-chain integrity)
+    success  generated-doc freshness (regen + diff)
+
+The licence was therefore payable and was paid rather than deferred —
+deferring a licensed tag is itself the deviation (`rulings.md#R-tag-law`).
+
+`bin/tag-ceremony stable-20260818-repo-review-4 0a071959… --push`, its
+own output:
+
+    OK: created annotated tag 'stable-20260818-repo-review-4' at 0a071959…
+    OK: pushed refs/tags/stable-20260818-repo-review-4
+    OK: remote peeled ref for 'stable-20260818-repo-review-4' is 0a071959…, matches target exactly
+
+Annotated, pushed, and verified by the remote peeled ref, not by the
+local tag object alone.
+
+`bin/post-push-verify` over `4d6ff783..0a071959` reported all three
+checks green: remote tip matches HEAD, every commit message in the range
+is pure ASCII, and the CI run reported once (in progress at the time,
+disclosed there as not awaited, and awaited separately here).
+
+**The freshness step is worth one sentence of its own.** This session
+regenerated `notes/ADRs.md` and `.agents/state-derived.md` plus both
+record `INDEX.md` files, and the `generated-doc freshness (regen + diff)`
+step re-ran `make docsgen` on CI's own JVM and found no diff — so the
+regenerations this ADR's fence permits are confirmed byte-correct from a
+cold checkout, not merely locally.
+
+**The run's own oracle artifact, recorded here so it outlives the
+session's scratch directory.** The Step-0 pre-digest wrote 35 `.edn`
+files totalling **19,967,292 bytes**; the `sha256sum` manifest over them
+is 35 lines whose own sha256 is
+
+    036180dcc2833f324706937a3f51dfee1b786e63947b8a58738051acc70247c9
+
+It is not committed (the fence names the files this session may touch,
+and a 20 MB digest tree is not among them). Recorded as an identity so a
+future session re-running the same pre-digest at `4d6ff78` can check its
+manifest against this line rather than re-deriving the comparison from
+nothing — and so the register's "kept as this run's artifact" is a claim
+with a checkable referent rather than a pointer to a directory that no
+longer exists.
