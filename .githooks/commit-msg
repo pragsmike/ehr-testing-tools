@@ -1,0 +1,69 @@
+#!/bin/sh
+# Enforce: every commit message in this repo is pure ASCII -- refused
+# BEFORE the commit exists, not after it has been pushed.
+#
+# See notes/ADRs.md ADR-0157 and ADR-0156's second addendum for the
+# incident. In short: the ASCII law (AR-RL2-5, ADR-0092 H-6) was gated
+# only by `bin/post-push-verify` check 2, a POST-push check, so the one
+# violation it ever caught -- a U+2026 in commit 04b6f66's message,
+# written when a sha was abbreviated in prose -- was already beyond
+# `.agents/rulings.md#R-amend-unpushed-message-only`, which permits
+# `--amend` only on an unpushed commit. The fault was real, reported,
+# and unfixable in place. This hook is the same check one step earlier,
+# where refusing costs a re-write instead of a permanent record.
+#
+# The scan is NOT re-derived here: `bin/ascii-scan` is the one
+# implementation and post-push-verify check 2 invokes the same script,
+# so the pre-commit twin and the post-push check cannot drift into
+# disagreeing about what ASCII means.
+#
+# Same opt-in mechanism as pre-commit and pre-push: this only fires
+# once a clone has run `git config core.hooksPath .githooks` (see
+# AGENTS.md). Nothing enumerates the hooks by name, so pointing at the
+# tracked directory is what installs this one too.
+
+msg_file="${1:-}"
+if [ -z "$msg_file" ]; then
+  echo "ERROR: commit-msg hook called with no message file -- commit refused." >&2
+  exit 1
+fi
+
+hook_dir="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)" || {
+  echo "ERROR: could not resolve the hook directory from '$0' -- commit refused." >&2
+  exit 1
+}
+scanner="$hook_dir/../bin/ascii-scan"
+
+# Fail-closed on an unrunnable scanner (ADR-0155's own law, applied
+# here): a check that could not MEASURE is not a check that passed. The
+# alternative failure mode is a silent green commit, which is the exact
+# shape this whole arc keeps finding.
+if [ ! -x "$scanner" ]; then
+  echo "ERROR: $scanner is missing or not executable -- commit refused." >&2
+  echo "  The ASCII commit-message law cannot be checked, and an unmeasurable check" >&2
+  echo "  is not a passing one. Restore bin/ascii-scan, or in a genuine emergency:" >&2
+  echo "  git commit --no-verify" >&2
+  exit 1
+fi
+
+hits="$("$scanner" --bytes "$msg_file")"
+status=$?
+
+if [ "$status" -eq 0 ]; then
+  exit 0
+fi
+
+if [ "$status" -ne 1 ]; then
+  echo "ERROR: $scanner could not scan '$msg_file' (exit $status) -- commit refused." >&2
+  exit 1
+fi
+
+echo "ERROR: this commit message contains non-ASCII byte(s) -- commit refused." >&2
+printf '%s\n' "$hits" | sed 's/^/  /' >&2
+echo "  Commit messages in this repo are pure ASCII (AR-RL2-5, notes/ADRs.md ADR-0092 H-6)." >&2
+echo "  The usual cause is prose punctuation in a sha or a quotation: an ellipsis (e2 80 a6)" >&2
+echo "  for '...', an en/em dash (e2 80 93 / e2 80 94) for '--', or a curly quote." >&2
+echo "  Rewrite the line above in ASCII and commit again. In a genuine emergency:" >&2
+echo "  git commit --no-verify -- but bin/post-push-verify check 2 will still catch it," >&2
+echo "  and by then rulings.md#R-amend-unpushed-message-only puts it out of reach." >&2
+exit 1

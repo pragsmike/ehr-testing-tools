@@ -67,3 +67,6 @@
 (def list-files kernel-io/list-files)
 (def existing-dir-nonempty? kernel-io/existing-dir-nonempty?)
 (def rename! kernel-io/rename!)
+(def mkdirs! kernel-io/mkdirs!)
+(def delete! kernel-io/delete!)
+(def delete-quietly! kernel-io/delete-quietly!)

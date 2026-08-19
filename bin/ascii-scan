@@ -1,0 +1,113 @@
+#!/bin/sh
+# The repo's ONE non-ASCII byte scan (ADR-0157, closing
+# `roadmap.md#commit-msg-ascii-hook`).
+#
+# The ASCII commit-message law is AR-RL2-5 (`notes/ADRs.md` ADR-0092
+# H-6). It was gated in exactly one place -- `bin/post-push-verify`
+# check 2 -- which by its own name runs AFTER the push, so a violation
+# is reported at the one moment `rulings.md#R-amend-unpushed-message-
+# only` forbids fixing it. ADR-0156's second addendum is the live
+# instance: commit 04b6f66's message carries a U+2026 (e2 80 a6) where
+# three ASCII dots belonged, found post-push and therefore recorded
+# rather than repaired.
+#
+# ADR-0157 adds `.githooks/commit-msg`, which refuses the same byte
+# before the commit exists. Two gates on one law is two chances to
+# disagree about what the law says, so the scan itself lives HERE and
+# both callers invoke it. `exit_truthfulness_test`'s own
+# `the-ascii-byte-scan-lives-in-exactly-one-place-test` asserts that:
+# this file holds the pattern, both callers name this file, and neither
+# carries a second copy of the pattern -- including in prose.
+#
+# "ASCII" here means the printable range, space through tilde. A tab or
+# a control byte in a commit message is a finding too; that is the
+# population check 2 has always measured and this extraction changes
+# nothing about it.
+#
+# Usage: bin/ascii-scan [--bytes] [<file>]
+#
+#   <file>    Scan this file. With no file, scan stdin -- which is how
+#             post-push-verify feeds it a range of commit messages.
+#   --bytes   After each offending line, print the offending bytes in
+#             hex. A U+2026 renders as three dots and is invisible in a
+#             diff; naming `e2 80 a6` is what makes it findable. The
+#             commit-msg hook passes this, post-push-verify does not,
+#             so check 2's output is unchanged by the extraction.
+#
+# Exit 0: clean. Exit 1: at least one offending line, printed `grep -n`
+# style. Exit 2: could not scan (bad usage, unreadable file, grep
+# error) -- NEVER conflated with clean, because a check that could not
+# measure is not a check that passed (ADR-0155).
+set -u
+
+usage() {
+  cat <<'USAGE'
+Usage: bin/ascii-scan [--bytes] [<file>]
+
+Prints every line containing a byte outside printable ASCII (space
+through tilde), `grep -n` style. With --bytes, also prints each
+offending line's bad bytes in hex. Reads stdin when no file is given.
+
+Exit 0: clean. 1: offending line(s) found. 2: could not scan.
+USAGE
+}
+
+show_bytes=0
+file=""
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --help|-h) usage; exit 0 ;;
+    --bytes) show_bytes=1; shift ;;
+    --) shift ;;
+    -*) echo "FAIL: unknown argument '$1'" >&2; usage >&2; exit 2 ;;
+    *)
+      if [ -n "$file" ]; then
+        echo "FAIL: at most one file may be given (got '$file' and '$1')" >&2
+        exit 2
+      fi
+      file="$1"; shift ;;
+  esac
+done
+
+if [ -n "$file" ] && [ ! -r "$file" ]; then
+  echo "FAIL: cannot read '$file'" >&2
+  exit 2
+fi
+
+read_input() {
+  if [ -n "$file" ]; then
+    cat -- "$file"
+  else
+    cat
+  fi
+}
+
+# grep's own status is the measurement: 0 found, 1 clean, >1 broken.
+# Taken from the pipeline directly rather than from a captured string,
+# so a grep that FAILED can never render as a clean scan.
+hits="$(read_input | LC_ALL=C grep -n '[^ -~]')"
+status=$?
+
+if [ "$status" -gt 1 ]; then
+  echo "FAIL: the byte scan itself failed (grep exit $status) -- this is NOT a clean result" >&2
+  exit 2
+fi
+
+[ "$status" -eq 0 ] || exit 0
+
+if [ "$show_bytes" -eq 0 ]; then
+  printf '%s\n' "$hits"
+  exit 1
+fi
+
+printf '%s\n' "$hits" | while IFS= read -r hit; do
+  printf '%s\n' "$hit"
+  # `grep -n` prefixes `<line>:`; everything after the first colon is
+  # the line's own text. Deleting the printable range from it leaves
+  # exactly the bytes that made this line a hit.
+  bad="$(printf '%s' "${hit#*:}" | LC_ALL=C tr -d ' -~')"
+  printf '    non-ASCII byte(s) on this line: %s\n' \
+    "$(printf '%s' "$bad" | od -An -tx1 | tr -s ' \n' '  ' | sed 's/^ *//;s/ *$//')"
+done
+
+exit 1

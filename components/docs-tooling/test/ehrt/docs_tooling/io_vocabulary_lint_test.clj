@@ -12,6 +12,18 @@
   reintroducing the bare idiom fails here instead of waiting for
   another review to find it by hand.
 
+  WIDENED 2026-08-19 by ADR-0157, closing review-4 row D4-1. The lint
+  enforcing `R-io-result-or-loud` had a population NARROWER than the
+  rule it enforces: `.mkdirs` and `.delete` were not in the forbidden
+  set, and the tree held 13 `.mkdirs` sites discarding the boolean --
+  one inside `ehrt.kernel` itself -- plus 2 `.delete`. Both booleans are
+  ambiguous the same way (`false` means either 'already so' or
+  'refused'), which is exactly why every site discarded them.
+  `ehrt.kernel.io` now provides `mkdirs!`, `delete!` and the declared
+  cleanup exception `delete-quietly!`, and the two patterns are gated
+  here. This is the third instance in review 4 of a gate read as
+  covering a class wider than its own population.
+
   Allowlist is BY NAMESPACE (the `ns` form actually declared in the
   file, not its path -- a file move can't silently exempt itself):
   `ehrt.kernel.io` is the shared helper itself, whose whole job IS
@@ -35,8 +47,17 @@
   positive; only an actual call site is. \\blist\\b (not \\blistFiles\\b)
   distinguishes a bare `.list` call from `.listFiles` -- word-boundary
   regex won't match \\blist\\b inside \"listFiles\" since t->F has no
-  boundary."
-  [#"\(\.listFiles\b" #"\(\.list\b" #"\(\.renameTo\b"])
+  boundary.
+
+  `\\bdelete\\b` does not match inside `.deleteOnExit` for the same
+  reason `\\blist\\b` does not match inside `.listFiles`: e->O is not a
+  word boundary. `.mkdirs` and `.mkdir` are distinct patterns and only
+  `.mkdirs` is forbidden here -- ADR-0157's own census found zero
+  `.mkdir`, `.createNewFile` and `.setExecutable` call sites in
+  production `src`, and widening to patterns with no population would
+  be a gate written from imagination rather than from the tree."
+  [#"\(\.listFiles\b" #"\(\.list\b" #"\(\.renameTo\b"
+   #"\(\.mkdirs\b" #"\(\.delete\b"])
 
 (defn- clj-files [^java.io.File root]
   (->> (file-seq root)
@@ -59,14 +80,25 @@
 (defn- forbidden-hits [^String content]
   (filterv some? (map #(re-find % content) forbidden-patterns)))
 
-(deftest no-bare-listfiles-list-renameto-outside-the-kernel-io-allowlist-test
-  (doseq [path (scan-sources)]
-    (let [content (slurp path)
-          ns-name (file-namespace content)]
-      (when-not (contains? allowlisted-namespaces ns-name)
-        (is (empty? (forbidden-hits content))
-            (str path " (ns " ns-name ") calls .listFiles/.list/.renameTo directly -- "
-                 "route through ehrt.kernel.io instead (result or loud, ADR-0078, AR-RL-4)"))))))
+(deftest no-bare-guarded-io-call-outside-the-kernel-io-allowlist-test
+  (let [sources (scan-sources)]
+    ;; rulings.md#R-empty-population-is-red -- this gate is a `doseq`
+    ;; over a scan, so a scan that found nothing was a pass that proved
+    ;; nothing, silently, forever. Added by ADR-0157 with the widening:
+    ;; the rule already bound tests when this lint was written and this
+    ;; one did not carry it.
+    (is (pos? (count sources))
+        (str "sanity: the source scan must find production .clj files under components/*/src "
+             "and bases/*/src -- an empty population makes every assertion below vacuous "
+             "(rulings.md#R-empty-population-is-red)"))
+    (doseq [path sources]
+      (let [content (slurp path)
+            ns-name (file-namespace content)]
+        (when-not (contains? allowlisted-namespaces ns-name)
+          (is (empty? (forbidden-hits content))
+              (str path " (ns " ns-name ") calls .listFiles/.list/.renameTo/.mkdirs/.delete "
+                   "directly -- route through ehrt.kernel.io instead (result or loud, ADR-0078, "
+                   "AR-RL-4; .mkdirs/.delete added by ADR-0157, review-4 D4-1)")))))))
 
 (deftest forbidden-pattern-detection-is-actually-caught-test
   (is (re-find (nth forbidden-patterns 0) "(let [x (.listFiles f)] x)"))
@@ -75,7 +107,13 @@
       "a bare .list pattern must never false-positive on .listFiles")
   (is (re-find (nth forbidden-patterns 2) "(.renameTo tmp dest)"))
   (is (nil? (re-find (nth forbidden-patterns 0) "a nil `.listFiles` here silently"))
-      "a docstring/comment MENTIONING .listFiles is never a false positive -- no leading open-paren"))
+      "a docstring/comment MENTIONING .listFiles is never a false positive -- no leading open-paren")
+  (is (re-find (nth forbidden-patterns 3) "(.mkdirs (io/file out-dir))"))
+  (is (re-find (nth forbidden-patterns 4) "(.delete tmp)"))
+  (is (nil? (re-find (nth forbidden-patterns 4) "(.deleteOnExit f)"))
+      "a bare .delete pattern must never false-positive on .deleteOnExit")
+  (is (nil? (re-find (nth forbidden-patterns 3) "the helper is `.mkdirs` plus a check"))
+      "prose naming .mkdirs is never a false positive -- no leading open-paren"))
 
 (deftest allowlisted-namespaces-are-exactly-the-disclosed-two-test
   (is (= #{"ehrt.kernel.io" "ehrt.sim.run"} allowlisted-namespaces)))
