@@ -76,8 +76,8 @@ Docs-tooling gates: `adr_index_test`, `audience_entry_path_test`, `citation_gate
 
 | set | paths | actual | budget | baseline | headroom |
 |---|---|---|---|---|---|
-| :corpus | 7 | 1815 | 2045 | 2045 | 230 |
-| :docs | 5 | 722 | 785 | 785 | 63 |
-| :judge | 8 | 909 | 1000 | 1000 | 91 |
-| :onboarding | 10 | 1432 | 1530 | 1530 | 98 |
-| :sim | 6 | 1261 | 1405 | 1405 | 144 |
+| :corpus | 7 | 1821 | 2045 | 2045 | 224 |
+| :docs | 5 | 728 | 785 | 785 | 57 |
+| :judge | 8 | 915 | 1000 | 1000 | 85 |
+| :onboarding | 10 | 1438 | 1530 | 1530 | 92 |
+| :sim | 6 | 1267 | 1405 | 1405 | 138 |
