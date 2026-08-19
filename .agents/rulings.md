@@ -27,8 +27,8 @@ Appended by the session that takes the ruling, not held to arc close.
 - **R-ledger-counting-definition** -- every parity or deftest ledger states which counting
   definition it uses -- `deftest`-only, or `deftest` plus `defspec` -- ADR-0043
 - **R-oracle-script-contract** -- `bin/regression-oracle` resolves a classpath per worktree,
-  equivalence-checks digest sources first, and aborts on an undeclared digest-source diff --
-  ADR-0044
+  equivalence-checks the whole digest source minus its leading docstring, and aborts on an
+  undeclared diff; a `:require`/`:import` change IS one (widened ADR-0156) -- ADR-0044
 - **R-move-not-improve** -- a relocation moves equipment and exercises it; a fix found
   mid-move is a FINDING, recorded, never taken. Prose included -- ADR-0044
 - **R-deferred-rows-live** -- `## Deferred` rows are LIVE; one that closes moves with its
@@ -276,3 +276,5 @@ Appended by the session that takes the ruling, not held to arc close.
 - **R-stop-only-on-two-defensible-readings** -- STOP-AND-REPORT binds where two readings
   are both defensible; a mechanical conflict with one defensible reading is fix-forward
   with disclosure -- ADR-0146
+- **R-amend-unpushed-message-only** -- `git commit --amend` only on a commit not yet
+  pushed and only to change its message; a content change is a new commit -- ADR-0156

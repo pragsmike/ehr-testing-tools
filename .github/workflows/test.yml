@@ -101,6 +101,35 @@
 # is now MECHANICAL, not prose: `ehrt.docs-tooling.traces-fresh-test`
 # asserts that `docsgen` depends on `traces` and that this diff list
 # names demos/traces/. Every earlier widening here was hand-maintained.
+#
+# WHICH PATHS THIS STEP IS THE SOLE GATE FOR (2026-08-19, ADR-0156,
+# register row D2-4). Sixteen of the twenty paths below ALSO have a
+# local gate that fails in a normal `make test`: notes/ADRs.md
+# (`adr-index-test`), .agents/state-derived.md and both INDEX.md
+# (`state-derived-test`), event-schema.edn (`event-schema-test`),
+# demos/traces/ (`traces-fresh-test`), the sim-theory chain
+# (`sim-theory-head-hop-test`), and the docs/ pages
+# (`usecases-test`/`docsgen-test`/`cli-tombstone-test`/
+# `event-log-doc-test`). FOUR have NO local content gate and are stale-
+# detectable only here:
+#
+#   components/palgebra/examples/ai-study-flow-v3.mermaid
+#   components/palgebra/examples/committee-flow.mermaid
+#   components/palgebra/examples/deliberated-choice-flow.mermaid
+#   components/sim-engine/resources/sim-engine/event-examples.edn
+#
+# For those four, a green local `make test` says nothing about
+# freshness. The last one is the sharp case rather than an oversight-
+# shaped gap: its sibling event-schema.edn has a dedicated freshness
+# test whose docstring reads "the published EDN contract can never lag
+# the Clojure source", while zero test files mention event-examples at
+# all. `ehrt.docs-tooling.docsgen-closure-test` (ADR-0155) gates the
+# LIST -- that these paths are on it, and that every docsgen leaf's
+# declared output is covered -- which is a different property from
+# gating the CONTENT. Closing these four locally is cheap for the three
+# .mermaid (the converter is already exercised by `mermaid-render-test`)
+# and is deliberately not done here: D2-4's own disposition asked for
+# this paragraph, and widening a gate population is its own change.
 
 name: test
 

@@ -60,7 +60,16 @@ probe is "how do I know this is all of them?"
    author's machine; enumerate laws stated on multiple surfaces with
    no drift gate.
 3. **Environment independence.** Truth is fresh-clone truth. Probes:
-   the full suite from a genuinely fresh clone; `.gitattributes`
+   the full suite from a genuinely fresh clone — `make ci-parity` is the
+   STANDING probe and has been in the make graph the whole time (real
+   `git clone` into a scratch dir, `EHR_TESTING_TOOLS_CACHE` repointed
+   at an empty cache, then `poly check` + `poly test :all
+   skip:integration`). Reviews 2 and 3 both recorded this method as
+   "substituted by CI's cold runner" while the target sat one `grep`
+   away; naming it here is what stops that a third time (R4-Q7 (a),
+   ADR-0156). State its ONE limit rather than claiming a cold
+   environment: it does not repoint `HOME`, so `~/.m2` is still shared
+   — cold-cache parity, not a cold machine. Also: `.gitattributes`
    byte-determinism for every byte-precious tree; test helpers'
    tmpdir/parallelism/file-descriptor assumptions (ignored boolean
    returns on `.mkdirs`/`.delete` are findings); anything depending on
@@ -120,7 +129,12 @@ probe is "how do I know this is all of them?"
 3. **Probe battery.** Run the rubric top to bottom. Record each probe
    as: dimension, probe command or method, expected, observed,
    verdict. Negative results are recorded, not dropped — a clean probe
-   is evidence the next review inherits.
+   is evidence the next review inherits. **A probe reporting zero first
+   asserts its population is non-empty and records the size beside the
+   result** (R4-Q8 (a), ADR-0156): review 4's own D4 pass returned a
+   perfect green from a pathspec that matched zero files, in the
+   dimension whose subject is exactly that. This generalizes
+   `rulings.md#R-empty-population-is-red` from tests to audit probes.
 4. **The assessment register.** A dated artifact at
    `.agents/plans/<date>-repo-review-findings.md`, in the audit
    register format the alignment and UX arcs established: one row per

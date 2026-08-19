@@ -74,6 +74,20 @@ steps.
    already be there (`AUTHORS-GUIDE.md` §1, "Staging hygiene between
    checkpoints", R26e).
 
+### `--amend`, ruled 2026-08-19 (ADR-0156, author ruling R4-Q1 (a))
+
+Review 4's register row D2-6 asked whether any standing rule governed
+`git commit --amend`, and found none: no row in `.agents/rulings.md`, no
+line here. ADR-0153 had disclosed one message-only amend of an unpushed
+commit — defensible, and disclosed, which is the discipline working —
+but the next session had nothing to follow and would have re-reasoned it
+from scratch. Permitted narrowly rather than forbidden: it matches what
+actually happened, the range `bin/post-push-verify` walks is unaffected
+by a message-only amend of an unpushed commit, and the
+never-rewrite-pushed-history law stays intact where it matters.
+Forbidding it outright would cost a whole commit for a typo; leaving it
+unruled would guarantee the re-reasoning.
+
 ## Step 5 — secrets scan (moved verbatim from SKILL.md, 2026-08-17, ADR-0145)
 
 5. **Personal-info/secrets scan before each commit** — the same
@@ -181,6 +195,19 @@ steps.
     record the finding, and ask — don't silently adapt or guess
     (`docs/dev/way-of-working.md` §2; worked examples: the JDK/Temurin
     premise, the gitleaks-hook premise, both in that document).
+
+### Two laws that had no surface until 2026-08-19 (ADR-0156, register row D2-2)
+
+`R-session-verifies-ci-via-gh` and `R-stop-only-on-two-defensible-
+readings` bind every session and were cited in NO skill, no `bin`
+script, no CI file and no test — `grep -rl` over `.agents/skills
+.claude/skills bin .githooks .github` came back empty for both. The
+first is load-bearing for the tag licence: it is the rule that decides
+whether a close tag is payable in session, and it was applied correctly
+four times in review 4's own window — but by ADRs quoting it, not by any
+surface a session is routed through. They are cited in steps 11 and 12
+now, where each one applies, and
+`ehrt.docs-tooling.process-law-citation-test` holds the list.
 
 ## Step 13 — close-phase scaffold (moved verbatim from SKILL.md, 2026-08-17, ADR-0145)
 

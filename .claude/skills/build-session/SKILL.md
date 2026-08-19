@@ -53,7 +53,9 @@ a step are in `HISTORY.md` beside this file (split out by ADR-0145).
 3. **Run all git from WSL, never native Windows.** `.githooks/pre-commit`/`pre-push`
    enforce it once `git config core.hooksPath .githooks` is set per clone.
 4. **Read `git diff --cached --stat` before every commit** and unstage anything
-   outside the checkpoint in flight (`AUTHORS-GUIDE.md` §1, R26e).
+   outside the checkpoint in flight (`AUTHORS-GUIDE.md` §1, R26e). `git commit
+   --amend` only on a commit not yet pushed and only to change its message; a
+   content change is a new commit (`rulings.md#R-amend-unpushed-message-only`).
 5. **Scan for secrets at stage time**, not just at push: `gitleaks git --staged -v`.
 6. **Write each commit message to a file and `git commit -F <path>`** — never an
    inline heredoc through a shell wrapper, which has silently mangled messages.
@@ -67,12 +69,18 @@ a step are in `HISTORY.md` beside this file (split out by ADR-0145).
 10. **Run `bin/post-push-verify [<base-sha>] [<tip-sha>]` after every push** —
     remote tip, per-commit ASCII over the pushed range, CI run reported once (AR-RL2-5).
 11. **Take `stable-*` tags through `bin/tag-ceremony <tag> <sha> <msg-file>
-    [--push]`, under licence** (`rulings.md#R-tag-law`). Release `v*` tags,
+    [--push]`, under licence** (`rulings.md#R-tag-law`). A licence's CI condition is
+    met by THIS session's own `gh run view <id>` concluding success, id and
+    conclusion recorded — author relay sufficient, never required; pay the tag in
+    session if it concludes while you are still open
+    (`rulings.md#R-session-verifies-ci-via-gh`). Release `v*` tags,
     repo-level `gh` mutations, git surgery and placing external documents stay
     AUTHOR ACTION — hand them to the author whatever the ceremony mode.
 12. **Stop and report on a premise mismatch.** A checkpoint whose stated premise does
     not hold against the live tree is a finding, not something to adapt around
-    (`docs/dev/way-of-working.md` §2).
+    (`docs/dev/way-of-working.md` §2). STOP-AND-REPORT binds where two readings are
+    both defensible; a mechanical conflict with one defensible reading is fix-forward
+    WITH DISCLOSURE (`rulings.md#R-stop-only-on-two-defensible-readings`).
 13. **Run `bin/close-scaffold <YYYY-MM-DD> <slug> <description>` before the final
     push**, then fill in its stubs: it writes the session record, the prompt archive
     and both README index lines the two index gates check (R-A).

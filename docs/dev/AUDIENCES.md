@@ -29,10 +29,11 @@ content relocated rather than deleted; grown back to six 2026-08-17,
 register had never carried — segment 6, the emitter author):
 
 1. **Guide readers, arriving method-first.** They've read (or are
-   reading) the guide's account of corpus construction and conformance
-   gating and want to know which tool serves which chapter. They need
-   a map from method to capability, not a re-explanation of the
-   method.
+   reading) [the guide](https://github.com/pragsmike/ehr-testing-guide)'s
+   account of corpus construction and conformance gating and want to
+   know which tool serves which chapter. They need a map from method to
+   capability, not a re-explanation of the method --
+   [`docs/README.md`](../README.md) is where that map starts.
 2. **Practitioners, arriving task-first** — **domain experts** (EHR
    interface analysts, clinical informaticists) and other
    **informaticists** working task-first, comfortable with Python but
@@ -115,8 +116,11 @@ register had never carried — segment 6, the emitter author):
    shelling out to the CLI. Today's serving is source docstrings only —
    no public-vs-internal demarcation convention exists yet, and cljdoc
    generation rides on Clojars/Maven Central coordinates that don't
-   exist before that release (see "Go-public gate vs. first release"
-   below). This segment is mostly deferred by design, not neglect.
+   exist before that release (see
+   [Go-public gate vs. first release](#go-public-gate-vs-first-release)
+   below, which is this segment's entry path until there is a released
+   artifact to point at). This segment is mostly deferred by design, not
+   neglect.
 6. **The emitter author, arriving with a target format in hand.** They
    run a hospital-adjacent system with its own message format and want
    this workspace's simulated traffic in *that* format. Added

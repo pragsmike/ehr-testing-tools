@@ -360,6 +360,32 @@
                  exit)))
       (finally (delete-tree! root)))))
 
+(deftest post-push-verify-renders-a-not-yet-indexed-run-as-no-run-test
+  ;; ADR-0156, closing ADR-0155's own out-of-fence note. A FOURTH
+  ;; exit-rendering shape, distinct from the three L2-6 named: `gh`
+  ;; SUCCEEDS, but no run matches the tip yet, so jq's `.[0]` is null and
+  ;; `[null,null,null] | join("\x1f")` yields two bare separators rather
+  ;; than the empty string. Neither the `-z` guard nor the `"null"` guard
+  ;; caught it, and check 3 printed `status= conclusion=<pending>` with
+  ;; every field empty -- which reads as a run that exists and is still
+  ;; going, in the one line a session quotes to say CI was reached.
+  (let [root (temp-dir "ehrt-ppv-unindexed")]
+    (try
+      (let [{:keys [exit out]} (run-post-push-verify root "printf '\\x1f\\x1f'")]
+        (is (str/includes? out "-- 3. CI run at tip")
+            (str "sanity: checks 1 and 2 must have passed so check 3 is reached. Output was:\n"
+                 out))
+        (is (str/includes? out "no CI run found yet")
+            (str "a not-yet-indexed run must render as NO RUN, not as a pending one. Output "
+                 "was:\n" out))
+        (is (not (re-find #"status= " out))
+            (str "an empty status field must never be printed -- `status= conclusion=<pending>` "
+                 "is the shape this test exists to keep out. Output was:\n" out))
+        (is (zero? exit)
+            (str "check 3 stays advisory per AR-CI-4; only the rendering changes. Exit was "
+                 exit)))
+      (finally (delete-tree! root)))))
+
 (deftest post-push-verify-still-reports-a-successful-query-test
   (let [root (temp-dir "ehrt-ppv-ok")]
     (try
