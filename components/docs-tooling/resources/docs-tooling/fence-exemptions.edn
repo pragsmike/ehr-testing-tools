@@ -1,0 +1,29 @@
+;; Declared fence exemptions (ADR-0158, review-4 register row D8-2,
+;; author ruling R4-Q4 (a)).
+;;
+;; R4-Q4 (a) gates `bare-on-README+SETUP = 0`. Measuring the four fences
+;; that rule costs found that they are not four cheap ones: two teach
+;; commands that CANNOT be run by a checker without lying about what
+;; they do -- `sudo apt install` mutates the machine, and a fresh-clone
+;; `git clone` of this repo over the network is not a check of this
+;; tree. A third teaches a deliberately real-time viewing rate.
+;;
+;; The honest instrument is a third disposition. A command fence on the
+;; reader path is `exercised` (some bin/ script re-runs it verbatim,
+;; `exercised-sources.edn`), or `exempt` (a row HERE, with a reason a
+;; human wrote), or `bare` -- and bare is what the gate forbids. A new
+;; fence is bare by default, so the ratchet holds: nobody can add an
+;; unexercised front-door fence without either exercising it or writing
+;; down why it cannot be.
+;;
+;; Rows are anchored by (:file, :first-command) rather than by line
+;; number, so ordinary editing above a fence does not silently retarget
+;; an exemption. `ehrt.docs-tooling.front-door-fence-gate-test` asserts
+;; every row matches a live fence, so a row cannot outlive the fence it
+;; excuses.
+;;
+;; :covered-by is optional and names a script that exercises the same
+;; commands somewhere they CAN be run. It is documentation, not a
+;; substitute for the reason.
+
+[]

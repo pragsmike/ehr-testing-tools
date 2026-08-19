@@ -20,6 +20,7 @@
             [ehrt.sim-check.check :as check]
             [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim-engine.engine :as engine]
+            [ehrt.sim-engine.churn :as churn]
             [ehrt.sim-engine.order-profiles :as order-profiles]
             [ehrt.sim-trajectory.interface :as sim-trajectory]))
 
@@ -484,15 +485,123 @@
   (let [{:keys [ground-truth]} (engine/run {:seed 42 :patients 3})]
     (is (result/ok? (check/check-all ground-truth)))))
 
-(defspec every-m1-run-satisfies-the-invariant-catalog 150
+;; --- D6-1: the invariant catalog's own sample, widened ------------------
+;;
+;; ADR-0158, review-4 register row D6-1. The defspec below used to run
+;; 150 trials against a FIXED facility -- ED (0 beds / 15 surge) and
+;; Renal (1 bed / 0 surge) -- with no churn and no pathways. ADR-0153's
+;; real defect (`decide :discharge`'s bed-ready pull handing a boarder a
+;; vacated SURGE slot while rung 1 stood free) was STRUCTURALLY
+;; unreachable under that configuration at any trial count: the sample
+;; was in the wrong place, not merely too small.
+;;
+;; What the sample needs, measured against the pre-fix engine at
+;; `ceedcfd` (ADR-0158's own Verification section carries the runs):
+;;
+;;   1. a ward carrying BOTH a licensed bed and a surge slot -- Renal
+;;      below always does. This is the row's own remedy, and on its own
+;;      it is NOT ENOUGH: 400 trials with mixed wards and a hot churn
+;;      profile, but the DEFAULT pathway, found ZERO violations.
+;;   2. MORE THAN ONE HOME WARD -- necessary, and the ingredient D6-1's
+;;      remedy text does not name. The default pathway admits every
+;;      patient to Renal, so every boarder's home ward is the ward it
+;;      would be pulled back into. ADR-0153's route needs a bed to
+;;      vacate in a ward WITHOUT pulling anyone home to it, which a
+;;      single-home-ward population can never produce.
+;;   3. churn -- NOT necessary, but strongly amplifying: 0.5% of trials
+;;      violate without it (2 of 400) against 2.8% with it (11 of 400).
+;;      This defspec's own first historical failure carried no churn.
+;;
+;; TRIAL COUNT. 150 -- the count this defspec has always carried -- put
+;; the widened sample at 5 reds in 6 runs against the pre-fix engine.
+;; 300 puts it at 8 in 8, for 3.3s against 2.0s. In a session whose
+;; subject IS sampling adequacy, 1.3s is the wrong thing to save.
+;;
+;; Ward ids and names are fixed while capacities and weights vary:
+;; `sim-model/default-provider-templates` is ward-eligible for exactly
+;; :ed / :renal / :cardiology, so a generated ward id would sample a
+;; config error rather than a facility.
+
+(def ^:private mixed-ward-facility-gen
+  "A facility whose Renal ward always carries both bed classes, and
+  whose Cardiology surge may be zero so the degenerate single-class
+  shape the old fixed literal exercised stays in the sample."
+  (gen/let [renal-beds  (gen/choose 1 3)
+            renal-surge (gen/choose 1 2)
+            card-beds   (gen/choose 1 3)
+            card-surge  (gen/choose 0 2)
+            ed-surge    (gen/choose 2 7)]
+    {:id :t
+     :wards [{:id :ed :name "Emergency" :beds 0 :surge-slots ed-surge
+              :surge-format "%s-H%02d" :class :ed}
+             {:id :renal :name "Renal" :beds renal-beds :surge-slots renal-surge
+              :surge-format "%s-H%02d" :class :inpatient}
+             {:id :cardiology :name "Cardiology" :beds card-beds :surge-slots card-surge
+              :surge-format "%s-H%02d" :class :inpatient}]}))
+
+(defn- admit-dwell-discharge [ward]
+  {:name (str "admit-" ward)
+   :steps [{:type :admission :location ward :reason "catalog sample"}
+           {:type :delay :from 60 :to 240}
+           {:type :discharge}]})
+
+(def ^:private multi-home-pathways-gen
+  "A weighted pool over all three wards, so a run's patients do NOT all
+  share one home ward -- ingredient (3) above."
+  (gen/let [w-renal (gen/choose 1 3)
+            w-card  (gen/choose 1 3)
+            w-ed    (gen/choose 1 3)]
+    [{:pathway (admit-dwell-discharge "Renal") :weight w-renal}
+     {:pathway (admit-dwell-discharge "Cardiology") :weight w-card}
+     {:pathway (admit-dwell-discharge "Emergency") :weight w-ed}]))
+
+(def ^:private churn-on-a-fraction-gen
+  "Churn on roughly two trials in three -- the row asks for `some
+  fraction`, and the no-churn third keeps the churn-free configuration
+  the old defspec covered inside the same sample. The profile is the
+  repo's own sanctioned `churn/sample-profile`, not a hand-tuned one:
+  it raises the per-trial hit rate about six-fold rather than making
+  the defect reachable at all (measured, ADR-0158)."
+  (gen/frequency [[1 (gen/return nil)]
+                  [2 (gen/return churn/sample-profile)]]))
+
+(defspec every-m1-run-satisfies-the-invariant-catalog 300
   (prop/for-all [seed (gen/large-integer* {:min 0})
-                 patients (gen/choose 1 12)]
-    (let [facility {:id :t :wards [{:id :ed :name "ED" :beds 0 :surge-slots 15
-                                     :surge-format "%s-H%02d" :class :ed}
-                                    {:id :renal :name "Renal" :beds 1 :surge-slots 0
-                                     :surge-format "%s-H%02d" :class :inpatient}]}
-          {:keys [ground-truth]} (engine/run {:seed seed :patients patients :facility facility})]
-      (result/ok? (check/check-all ground-truth facility)))))
+                 patients (gen/choose 6 32)
+                 arrival-gap (gen/choose 5 45)
+                 facility mixed-ward-facility-gen
+                 pathways multi-home-pathways-gen
+                 churn-profile churn-on-a-fraction-gen]
+    (let [{:keys [ground-truth]} (engine/run (cond-> {:seed seed :patients patients
+                                                      :arrival-gap arrival-gap
+                                                      :facility facility
+                                                      :pathways pathways}
+                                               churn-profile (assoc :churn-profile churn-profile)))]
+      (and (seq ground-truth)
+           (result/ok? (check/check-all ground-truth facility))))))
+
+(deftest the-widened-catalog-sample-varies-what-it-claims-to-vary
+  (testing "mechanism sanity for the three generators above (ADR-0158, D6-1)"
+    ;; A defspec whose generators silently collapsed to one shape would
+    ;; still pass all 300 trials and vouch for nothing -- which is
+    ;; exactly what the FIXED facility this replaces did, at 150.
+    (let [facilities (gen/sample mixed-ward-facility-gen 200)
+          pathway-pools (gen/sample multi-home-pathways-gen 200)
+          churns (gen/sample churn-on-a-fraction-gen 200)]
+      (testing "every sampled facility carries a ward with BOTH bed classes"
+        (is (every? (fn [f] (some #(and (pos? (:beds %)) (pos? (:surge-slots %)))
+                                  (:wards f)))
+                    facilities)))
+      (testing "capacities actually vary across the sample"
+        (is (< 1 (count (distinct (map (fn [f] (mapv (juxt :beds :surge-slots) (:wards f)))
+                                       facilities))))))
+      (testing "every sampled pathway pool names more than one home ward"
+        (is (every? (fn [ps] (< 1 (count (distinct (map #(get-in % [:pathway :steps 0 :location])
+                                                        ps)))))
+                    pathway-pools)))
+      (testing "churn is on for some trials and off for others"
+        (is (some some? churns) "no trial carried a churn profile")
+        (is (some nil? churns) "no trial ran churn-free")))))
 
 ;; --- M4: Persona ------------------------------------------------------
 

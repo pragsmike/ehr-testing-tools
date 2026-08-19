@@ -22,13 +22,26 @@
 #   other   -- code / config / prose. Counted, never run: the population
 #              is closed, not filtered.
 #
-# Every `command` fence additionally gets `exercised` or `bare`. A fence
-# is `exercised` only if its own first command line is present inside the
-# marker block of the bin/ script that `exercised-sources.edn` pairs to
-# its source file -- per FENCE, not per file. A file can carry a registry
-# row and still hold bare fences the exerciser never extracts; that gap
-# is exactly what the battery is looking for, so it is measured here
-# rather than assumed away.
+# Every `command` fence additionally gets `exercised`, `exempt` or
+# `bare`. A fence is `exercised` only if its own first command line is
+# present inside the marker block of the bin/ script that
+# `exercised-sources.edn` pairs to its source file -- per FENCE, not per
+# file. A file can carry a registry row and still hold bare fences the
+# exerciser never extracts; that gap is exactly what the battery is
+# looking for, so it is measured here rather than assumed away.
+#
+# `exempt` is the third disposition, added by ADR-0158 (author ruling
+# R4-Q4 (a), register row D8-2). Gating bare-on-README+SETUP = 0 ran
+# into fences that CANNOT be exercised without lying about what they do:
+# `sudo apt install` mutates the machine, a fresh-clone `git clone` is
+# not a check of the tree it runs in, and README's own "See it run"
+# fence teaches a deliberately real-time viewing rate. Those are
+# declared, with a written reason, in
+# `components/docs-tooling/resources/docs-tooling/fence-exemptions.edn`
+# and counted separately -- never folded into `exercised`, which would
+# overstate what is actually re-run, and never left in `bare`, which
+# would make the gate un-passable and therefore ignored. A fence with no
+# row anywhere is still `bare`, so the ratchet is on the DEFAULT.
 #
 # Usage:
 #   bin/fence-census              # summary counts + TSV to stdout
@@ -228,6 +241,33 @@ def read_registry():
     return rows
 
 
+def read_exemptions():
+    """Parse fence-exemptions.edn: (:file, :first-command) -> reason.
+
+    Same hand-rolled shape as read_registry above, and for the same
+    reason: this script has no Clojure runtime. A row whose :reason is
+    empty is NOT loaded, so a reasonless exemption reads as absent here
+    and the fence it names stays `bare` -- the gate test asserts the
+    same thing from the other side.
+    """
+    p = os.path.join(REPO, "components/docs-tooling/resources/docs-tooling/fence-exemptions.edn")
+    if not os.path.isfile(p):
+        return {}
+    txt = open(p, encoding="utf-8").read()
+    txt = re.sub(r"^\s*;;.*$", "", txt, flags=re.M)
+    out = {}
+    for blob in re.findall(r"\{:file(.*?)(?=\n\s*\{:file|\]\s*$)", txt, re.S):
+        def grab(key):
+            m = re.search(r':%s\s+"((?:[^"\\]|\\.)*)"' % key, blob)
+            return m.group(1).replace('\\"', '"').replace("\\\\", "\\") if m else None
+        f = re.match(r'\s+"((?:[^"\\]|\\.)*)"', blob)
+        cmd = grab("first-command")
+        reason = grab("reason")
+        if f and cmd and reason and reason.strip():
+            out[(f.group(1), cmd)] = reason
+    return out
+
+
 def marker_block(row):
     """The literal command text an exerciser re-runs, between its markers."""
     if not row["script"]:
@@ -250,6 +290,7 @@ def main():
     summary_only = "--summary-only" in argv
 
     registry = read_registry()
+    exemptions = read_exemptions()
     blocks = {}
     for row in registry:
         blocks.setdefault(row["source"], []).append(marker_block(row))
@@ -278,7 +319,12 @@ def main():
             if klass == "command":
                 cl = first_command_line(f["body"]) or ""
                 covered = any(cl and cl in b for b in blocks.get(relpath, []))
-                reg = "exercised" if covered else "bare"
+                if covered:
+                    reg = "exercised"
+                elif (relpath, cl) in exemptions:
+                    reg = "exempt"
+                else:
+                    reg = "bare"
 
             records.append({
                 "file": f["file"], "line": f["line"], "lang": f["lang"] or "-",
@@ -287,6 +333,7 @@ def main():
             })
 
     n_cmd_ex = sum(1 for r in records if r["klass"] == "command" and r["reg"] == "exercised")
+    n_cmd_exempt = sum(1 for r in records if r["klass"] == "command" and r["reg"] == "exempt")
     n_cmd_bare = sum(1 for r in records if r["klass"] == "command" and r["reg"] == "bare")
     n_out = sum(1 for r in records if r["klass"] == "output")
     n_other = sum(1 for r in records if r["klass"] == "other")
@@ -296,6 +343,7 @@ def main():
         print("files in scope: %d" % len(in_scope_files()))
         print("fenced blocks total: %d" % len(records))
         print("  command / exercised : %d" % n_cmd_ex)
+        print("  command / exempt    : %d" % n_cmd_exempt)
         print("  command / bare      : %d" % n_cmd_bare)
         print("  output              : %d" % n_out)
         print("  other               : %d" % n_other)

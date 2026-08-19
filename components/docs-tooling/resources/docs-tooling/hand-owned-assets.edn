@@ -1,0 +1,63 @@
+;; Hand-owned derived assets and their staleness tripwire (ADR-0158,
+;; review-4 register row D5-2, author ruling R4-Q5 (b)).
+;;
+;; Five `docs/manual/assets/*.svg` each carry a banner naming a SPECIFIC
+;; live source and the trigger that invalidates the drawing. No generator
+;; exists for them, so they cannot join `docsgen`; what they can have is
+;; a tripwire. `ehrt.docs-tooling.hand-owned-asset-freshness-test` reads
+;; this file and asserts, per row, that the source's own last-change
+;; commit is still `:reviewed-at`.
+;;
+;; :reviewed-at is a WITNESS, not a timestamp: it records the source
+;; commit a human last looked at while holding the asset beside it. A
+;; whole-file tripwire is deliberately coarser than the banners' own
+;; section-level triggers, so it fires on edits that do not actually
+;; invalidate the drawing. That is not a defect to be tuned away -- it is
+;; why the disposition is a REVIEW. Clearing a red means opening the diff,
+;; deciding whether the cited trigger fired, and then either bumping
+;; :reviewed-at (with :note saying what moved and why it did not matter)
+;; or marking :verdict :stale.
+;;
+;; :verdict is :fresh or :stale. A :stale row is a rowed FINDING, never a
+;; silencer: it must name a live `roadmap.md` anchor in :stale-row, and
+;; the test asserts that anchor still exists. Deleting the roadmap row
+;; turns the suite red rather than quietly retiring the finding.
+;;
+;; Population is the TREE (`rulings.md#R-population-closure`): the test
+;; globs `docs/manual/assets/*.svg` and requires a row for each, so a
+;; sixth asset cannot ship un-tripwired.
+
+[{:asset "docs/manual/assets/gt-emitters.svg"
+  :source "docs/dev/simulator-architecture.md"
+  :trigger "regenerate by hand if simulator-architecture.md section 4's own equations change"
+  :reviewed-at "9f7697a8"
+  :verdict :fresh
+  :witness {:adr "ADR-0120" :date "2026-08-12"}}
+
+ {:asset "docs/manual/assets/inject-expect-loop.svg"
+  :source "components/corpus/docs/pipeline.edn"
+  :trigger "regenerate by hand if pipeline.edn's Mutate/Gate stages or the worked instance's own witnessed values change"
+  :reviewed-at "31675e6e"
+  :verdict :fresh
+  :witness {:adr "ADR-0124" :date "2026-08-13"}}
+
+ {:asset "docs/manual/assets/straddle-timeline.svg"
+  :source "demos/scenarios/ed-tuesday/README.md"
+  :trigger "regenerate by hand if the cited section's own witnessed values change"
+  :reviewed-at "d1f8fa1f"
+  :verdict :fresh
+  :witness {:adr "ADR-0121" :date "2026-08-12"}}
+
+ {:asset "docs/manual/assets/two-clocks.svg"
+  :source "docs/dev/simulator-architecture.md"
+  :trigger "regenerate by hand if the cited section's own field audit changes"
+  :reviewed-at "9f7697a8"
+  :verdict :fresh
+  :witness {:adr "ADR-0121" :date "2026-08-12"}}
+
+ {:asset "docs/manual/assets/verdict-ranking.svg"
+  :source "components/corpus/docs/palgebra-design.md"
+  :trigger "regenerate by hand if the ranking or the reserved status of :indeterminate changes"
+  :reviewed-at "a4203fad"
+  :verdict :fresh
+  :witness {:adr "ADR-0124" :date "2026-08-13"}}]
