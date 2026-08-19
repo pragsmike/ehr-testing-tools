@@ -53,12 +53,15 @@
             [clojure.test :refer [deftest is testing]]
             [ehrt.docs-tooling.demo-exerciser-fresh :as demo-fresh]
             [ehrt.docs-tooling.exercised-sources :as reg]
+            [ehrt.docs-tooling.make-graph :as mg]
             [ehrt.docs-tooling.strip-fresh :as sf]))
 
 (def ^:private traces-dir "demos/traces")
 (def ^:private script "bin/regen-traces")
-(def ^:private makefile "Makefile")
-(def ^:private workflow ".github/workflows/test.yml")
+;; `makefile` / `workflow` / the two parsers below moved to
+;; `ehrt.docs-tooling.make-graph` (ADR-0155): a third gate needed the same
+;; parsers, and three byte-identical private copies is where a duplicated
+;; parser starts to drift.
 
 (defn- trace-readmes
   "Every `demos/traces/<name>/README.md` the tree holds, as repo-relative
@@ -137,22 +140,13 @@
 
 ;; ---- (c) the make graph ----
 
-(defn- make-target-prerequisites
-  "The prerequisite list of `target` in `makefile-text`, as a vector of
-  words -- nil if the target has no rule. Reads the Makefile as text on
-  purpose: the claim is about what the committed build graph says, not
-  what a `make -np` on one machine resolves it to."
-  [makefile-text target]
-  (when-let [[_ prereqs] (re-find (re-pattern (str "(?m)^" target ":(.*)$")) makefile-text)]
-    (vec (remove str/blank? (str/split (str/trim prereqs) #"\s+")))))
-
 (deftest docsgen-depends-on-the-traces-target-test
-  (let [text (slurp makefile)]
-    (is (some #{"traces"} (make-target-prerequisites text "docsgen"))
+  (let [text (slurp mg/makefile)]
+    (is (some #{"traces"} (mg/target-prerequisites text "docsgen"))
         (str "`make docsgen` must depend on `traces`, or demos/traces is regenerated only by "
              "a target CI never runs. docsgen prerequisites today: "
-             (pr-str (make-target-prerequisites text "docsgen"))))
-    (is (some? (make-target-prerequisites text "traces"))
+             (pr-str (mg/target-prerequisites text "docsgen"))))
+    (is (some? (mg/target-prerequisites text "traces"))
         "a `traces:` rule must exist")
     ;; Booleans, not `str/includes?` on the Makefile itself: clojure.test
     ;; renders both arguments of a failing form, and the whole Makefile in
@@ -164,26 +158,8 @@
 
 ;; ---- (d) the CI diff list ----
 
-(defn- freshness-diff-paths
-  "The paths `.github/workflows/test.yml`'s generated-doc freshness step
-  hands `git diff --exit-code`, read out of the committed workflow: every
-  backslash-continued line after the command, to the first line that does
-  not continue."
-  [workflow-text]
-  (when-let [after (second (str/split workflow-text #"git diff --exit-code \\\R" 2))]
-    (loop [lines (str/split-lines after) out []]
-      (if-let [line (first lines)]
-        (let [trimmed (str/trim line)
-              continues? (str/ends-with? trimmed "\\")
-              path (str/replace trimmed #"\s*\\$" "")]
-          (if (str/blank? path)
-            out
-            (let [out (conj out path)]
-              (if continues? (recur (rest lines) out) out))))
-        out))))
-
 (deftest the-ci-freshness-step-diffs-the-traces-tree-test
-  (let [paths (freshness-diff-paths (slurp workflow))]
+  (let [paths (mg/freshness-diff-paths (slurp mg/workflow))]
     (is (pos? (count paths))
         "sanity: the freshness step must actually name paths -- if this returns none the extractor broke and the claim below is silently vacuous")
     (is (some #{"demos/traces/"} paths)

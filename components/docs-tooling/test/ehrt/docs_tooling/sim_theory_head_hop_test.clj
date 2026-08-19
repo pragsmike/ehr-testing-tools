@@ -60,14 +60,17 @@
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
+            [ehrt.docs-tooling.make-graph :as mg]
             [ehrt.docs-tooling.pipeline :as pipeline]
             [malli.core :as m]
             [malli.error :as me]))
 
 (def ^:private theory-edn "components/sim/docs/sim-theory.edn")
 (def ^:private equations-txt "components/sim/docs/sim-theory-equations.txt")
-(def ^:private makefile "Makefile")
-(def ^:private workflow ".github/workflows/test.yml")
+;; `makefile` / `workflow` / the three parsers that used to sit below
+;; moved to `ehrt.docs-tooling.make-graph` (ADR-0155): a third gate
+;; needed the same parsers, and three byte-identical private copies is
+;; where a duplicated parser starts to drift.
 
 ;; ---- (b) the .edn is schema-valid ----
 
@@ -133,26 +136,9 @@
 
 ;; ---- (c) the make graph ----
 
-(defn- make-target-prerequisites
-  "The prerequisite list of `target` in `makefile-text`, as a vector of
-  words -- nil if the target has no rule. Reads the Makefile as text on
-  purpose, the same reason ADR-0149's own copy does: the claim is about
-  what the committed build graph says, not what a `make -np` on one
-  machine resolves it to."
-  [makefile-text target]
-  (when-let [[_ prereqs] (re-find (re-pattern (str "(?m)^" target ":(.*)$")) makefile-text)]
-    (vec (remove str/blank? (str/split (str/trim prereqs) #"\s+")))))
-
-(defn- make-target-recipe
-  "The recipe lines of `target` -- every line after its rule line that
-  begins with a tab, to the first line that does not."
-  [makefile-text target]
-  (when-let [after (second (str/split makefile-text (re-pattern (str "(?m)^" target ":.*$")) 2))]
-    (vec (take-while #(str/starts-with? % "\t") (rest (str/split-lines after))))))
-
 (deftest the-sim-theory-target-writes-the-equations-file-first-test
-  (let [text (slurp makefile)
-        recipe (make-target-recipe text "sim-theory")
+  (let [text (slurp mg/makefile)
+        recipe (mg/target-recipe text "sim-theory")
         joined (str/join "\n" recipe)]
     (is (seq recipe) "a `sim-theory:` rule with a recipe must exist")
     (is (true? (str/includes? joined "write-sim-theory-equations-txt!"))
@@ -173,34 +159,16 @@
                translator ", converter " converter)))))
 
 (deftest docsgen-depends-on-the-sim-theory-target-test
-  (let [text (slurp makefile)]
-    (is (some #{"sim-theory"} (make-target-prerequisites text "docsgen"))
+  (let [text (slurp mg/makefile)]
+    (is (some #{"sim-theory"} (mg/target-prerequisites text "docsgen"))
         (str "`make docsgen` must depend on `sim-theory`, or the equations file is "
              "regenerated only by a target CI never runs. docsgen prerequisites today: "
-             (pr-str (make-target-prerequisites text "docsgen"))))))
+             (pr-str (mg/target-prerequisites text "docsgen"))))))
 
 ;; ---- (d) the CI diff list ----
 
-(defn- freshness-diff-paths
-  "The paths `.github/workflows/test.yml`'s generated-doc freshness step
-  hands `git diff --exit-code`, read out of the committed workflow: every
-  backslash-continued line after the command, to the first line that does
-  not continue. Same extractor as ADR-0149's own claim (d)."
-  [workflow-text]
-  (when-let [after (second (str/split workflow-text #"git diff --exit-code \\\R" 2))]
-    (loop [lines (str/split-lines after) out []]
-      (if-let [line (first lines)]
-        (let [trimmed (str/trim line)
-              continues? (str/ends-with? trimmed "\\")
-              path (str/replace trimmed #"\s*\\$" "")]
-          (if (str/blank? path)
-            out
-            (let [out (conj out path)]
-              (if continues? (recur (rest lines) out) out))))
-        out))))
-
 (deftest the-ci-freshness-step-diffs-the-equations-file-test
-  (let [paths (freshness-diff-paths (slurp workflow))]
+  (let [paths (mg/freshness-diff-paths (slurp mg/workflow))]
     (is (pos? (count paths))
         "sanity: the freshness step must actually name paths -- if this returns none the extractor broke and the claim below is silently vacuous")
     (is (some #{equations-txt} paths)
