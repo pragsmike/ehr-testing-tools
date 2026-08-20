@@ -385,3 +385,30 @@ list and disclosed above: `strip_fresh.clj` and `exercised_sources.clj`
 `done_pointer_adr_test.clj` (the corrected vacuity measure). No oracle
 root or digest change; no test deletions; every planted red withdrawn;
 historical-tree work in a scratch worktree, never on HEAD's branch.
+
+### Addendum, 2026-08-19 — CI green at the tip, close tag paid in session
+
+The close commit `6ed767c` was pushed, `bin/post-push-verify` reported
+its three checks (remote tip matches; `d02a085..6ed767c` pure ASCII; CI
+run `32317039121` reported once, not awaited, per AR-CI-4), and that run
+later concluded **success** while this session was still open.
+
+That satisfies `rulings.md#R-session-verifies-ci-via-gh`'s own condition
+— the executing session's `gh run view <id>` concluding success, id and
+conclusion recorded — so under `R-tag-law` the tag is **paid in session**
+rather than deferred to the next Step 0, deferral being the deviation:
+
+    bin/tag-ceremony stable-20260819-review-4-fix-4-sampling-and-provenance \
+      6ed767c <message-file> --push
+
+    OK: created annotated tag at 6ed767ccbcbfeecb10f502abc47283dfa4f35f5f
+    OK: pushed refs/tags/stable-20260819-review-4-fix-4-sampling-and-provenance
+    OK: remote peeled ref matches target exactly
+
+CI receipts for the whole session, all three pushes green: `3c4e346` run
+`32312928469`, `d02a085` run `32315304870`, `6ed767c` run
+`32317039121`.
+
+**No tag is owed at the next Step 0.** What IS owed is the review-4 arc
+close, as its own session: eight fix sessions have now landed
+(ADR-0155 through ADR-0158), and `roadmap.md#repo-review-4` says so.
