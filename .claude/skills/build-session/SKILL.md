@@ -88,8 +88,11 @@ a step are in `HISTORY.md` beside this file (split out by ADR-0145).
     records its own BASELINE, so "reconciling exactly against ADR-NNNN's X/Y/Z"
     sends a reader to a document that does not carry X/Y/Z -- the close figure is
     in that session's RECORD. Name whichever one holds it (ADR-0158, D1-1).
-15. **Move this session's own closed rows to `Done` and re-measure every reading set
-    at the close** (`rulings.md#R-register-hygiene-at-close`).
+15. **Move this session's own closed rows to `Done`, rotate `## Done` back to 30 LINES
+    or under -- oldest WHOLE rows verbatim into the month's
+    `.agents/plans/roadmap-done-<yyyy-mm>.md`, which is append-only -- and re-measure
+    every reading set at the close** (`rulings.md#R-register-hygiene-at-close`,
+    `rulings.md#R-done-attic-rotation`).
 16. **Over a reading-set budget, compact or STOP-AND-REPORT — never bump**
     (`rulings.md#R-budget-stop`); the ratchet baseline makes the bump unavailable.
 17. **Push a red-first commit together with its green successor, never alone**
@@ -134,5 +137,6 @@ verified, ending in a session record and an archived prompt.
       ending in peeled-ref verification; AUTHOR ACTION items were left to the author.
 - [ ] Any regression-oracle claim names `bin/regression-oracle`'s own output.
 - [ ] `bin/close-scaffold` ran before the final push and its stubs are filled in.
-- [ ] Closed rows moved to `Done`; all five reading sets re-measured and recorded.
+- [ ] Closed rows moved to `Done`, `## Done` rotated to 30 lines or under; all five
+      reading sets re-measured and recorded.
 - [ ] Every suite figure cited to the document that CARRIES it.

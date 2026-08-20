@@ -240,6 +240,27 @@ now, where each one applies, and
     heading for five days, and budgets were re-measured only when a
     gate went red.
 
+### Rotation joins the step, ruled 2026-08-20 (ADR-0161, review-3 finding C-3)
+
+Register hygiene moved rows INTO `## Done` and nothing ever moved them
+out. The rotation half was law from ADR-0055 (AR-AC-5) and was restated
+in the roadmap's own `## Done` header, but it named ARC BOUNDARIES as
+its unit -- and deciding where a dozen intervening arcs began and ended
+is judgement work no records-only close will take on. So no close took
+it. The section ran 2026-08-08 to 2026-08-20 without a single rotation:
+44 pointers at review 3's close, 66 at review 4's finding day, 71 at
+ADR-0160's, under a header still reading "current arc only". ADR-0144
+found the same backlog, retokened all of it and ADDED six missing
+pointers rather than rotating any, because a judgement call is not
+something a migration script can carry either.
+
+The author's 2026-08-20 ruling removes the judgement: the unit is
+**lines, capped at 30**, the trigger is **this session's own close**,
+and the selection is **oldest first, whole rows**. Nothing to decide,
+so nothing to defer. The unit is lines rather than rows because the
+reading-set budget counts lines, and `.agents/plans/roadmap.md` is a
+`:onboarding` path -- the section had grown to 134 of the set's 1,508.
+
 ## Step 15 — budget stop (moved verbatim from SKILL.md, 2026-08-17, ADR-0145)
 
 15. **Budget stop: exceed a reading-set budget and you compact or you
