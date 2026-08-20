@@ -464,6 +464,11 @@ R4-Q6(ii)(b) — adding roots — a visible, priced decision later.
 
 ### Session F — sampling adequacy, and the register rows owed
 
+**LANDED 2026-08-19, ADR-0158.** D6-1's widened defspec is red 8-of-8 on the
+pre-fix engine at `ceedcfd` and green 6-of-6 at HEAD; the row's own remedy was
+necessary but NOT sufficient -- multiple home wards is the ingredient it does not
+name. D7-3 and D1-1 landed as a roadmap row and a `build-session` rule.
+
 **Rows:** D6-1, D7-3, D1-1.
 Grouped because each is small and none shares a surface with the others.
 
@@ -526,6 +531,11 @@ four (plant an orphan page; add a fourth `.mermaid`; put
 gate there may subsume part of L3-10.
 
 ### Session H — every artifact points back at its inputs
+
+**LANDED 2026-08-19, ADR-0158.** All six rows. The converter's `%%` banner
+rides into all 28 artifacts (banner-only diffs, as Step 0's arrow-numbering
+verification predicted); `state-derived.md` emits its own input list and the
+generated surface AGENTS.md now points at. Budgets re-measured, none raised.
 
 **Rows:** L3-3, L3-5, L3-6, L3-7, L3-8, L3-11.
 **Why grouped:** one defect in six places — a generated artifact that

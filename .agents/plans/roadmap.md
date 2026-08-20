@@ -13,7 +13,7 @@ rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
   FIX 1/5 (G+A) 2026-08-19 (ADR-0155), 12 rows: L3-1/L3-2/L3-4/L3-9/L3-10, L2-1..L2-6, L2-10.
   FIX 2/5 (E+C) 2026-08-19 (ADR-0156), 11 rows: L1-1..L1-5, D2-1/D2-2/D2-4/D2-6, D3-2, D4-4; R4-Q1/Q6/Q7/Q8 ruled.
   FIX 3/5 (B+D) 2026-08-19 (ADR-0157), 2 rows + #commit-msg-ascii-hook: D4-1 fixed, D3-1 PARTLY -- its gate landed and proved its own "verified safe" false; see #edit-root-worktree-residue.
-  OPEN until F+H land.
+  FIX 4/4 (F+H) 2026-08-19 (ADR-0158), 13 rows: D6-1/D7-3/D1-1/D8-1/D8-2(part)/D5-2/D7-5, L3-3/L3-5/L3-6/L3-7/L3-8/L3-11; R4-Q4/Q5/Q9 ruled. Arc close owed.
 - OPEN **[oracle-coverage-roots]** PRIORITY 3 -- R4-Q6 (ii) (b): add oracle roots
   reaching the capacity and order->result paths (a churn root, a pathway root), so the
   13-of-21 witnessed-kind set widens. PRICED, NOT TAKEN: each new root is a declared
@@ -38,12 +38,6 @@ rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
   `t 78060` -- RENAL-04 freed by a bed-ready pull, a Renal boarder still in ED
   surge 420s later. Realism gap, not an invariant violation once ADR-0153
   landed. Class exposed by ADR-0153's diagnosis, rowed rather than fixed there.
-- OPEN **[edit-root-worktree-residue]** PRIORITY 7 -- AUTHOR ACTION. The edit root's
-  WORKTREE carries retired `/mnt/c`-era residue the index does not: **360** tracked
-  text files (`.md`, `.edn`, `LICENSE`, brick `deps.edn`) at mode 0755 against an
-  index of `100644`, hidden by `core.fileMode=false`, plus **3** files with CRLF
-  (`skills/shared-skill-layout/agents/openai.yaml` and its two mirrors). Remedy is
-  the config flip AND a `chmod -x` sweep, together. ADR-0157, register row D3-1.
 - OPEN **[manual-dimension-5]** PRIORITY 8 -- manual-review run 2 passed with
   warns, and dimension 5 (running-example continuity) stays WARN as the manual's
   one standing open row: `ed-tuesday` is HL7v2-only and structurally cannot
@@ -180,10 +174,6 @@ Rows here are LIVE, each owing a revisit trigger in its own token.
   **[backload-named-future]** -- pre-roll stays emit-nothing, reaffirmed: the
   backload need is a TOOLS-SIDE construction over sim output, fault-injection's
   own sibling, not a sim feature. ADR-0031 AR-3.
-- DEFERRED (trigger: none recorded -- ADR-0144 finding F-6)
-  **[intake-staging-dir]** -- P2-5 intake staging-dir behavior, deferred
-  2026-07-31 with neither a revisit trigger nor an ADR cite, against this
-  section's own contract that a Deferred row owes a trigger.
 - DEFERRED (trigger: a second consumer, or never) **[verdict-cache-placement]**
   -- verdict-cache placement revisit. ADR-0011.
 - DEFERRED (trigger: Wave E's own scheduling, with stroke as the risk-attribute
@@ -256,6 +246,18 @@ Rows here are LIVE, each owing a revisit trigger in its own token.
   one-module-per-patient assignment never produces. ADR-0037 AR-4.
 
 ## Done (current arc only; older arcs rotate to `.agents/plans/roadmap-done-2026-08.md`, ADR-0046/ADR-0055)
+- CLOSED 2026-08-19 ADR-0158 **[edit-root-worktree-residue]** -- PAID BY THE AUTHOR
+  2026-08-19 and VERIFIED by that session in the same edit root, not taken on
+  report: `core.fileMode` true, `core.ignorecase` unset, ~360 mode-only changes
+  restored via `git checkout -- .`. Re-derived there -- 0 tracked `100644` files
+  executable on disk, 0 CR bytes in the three named `openai.yaml` mirrors, tree
+  clean, `bin/preflight` exit 0 with both OK lines. ADR-0157 register row D3-1.
+- CLOSED 2026-08-19 ADR-0158 **[intake-staging-dir]** -- closed per R4-Q9's own
+  recommendation ("state a trigger ... or close it -- it has been deferred since
+  2026-07-31"), under the author's standing "Q1 accept all recommendations"
+  (2026-08-18). Deferred since 2026-07-31 with the ABSENCE of a trigger declared
+  in the row itself, so it could never fire. Re-open on the first real staging
+  need, with the trigger stated then. ADR-0144 finding F-6, review-4 D7-5.
 - CLOSED 2026-08-19 ADR-0157 **[commit-msg-ascii-hook]** -- `.githooks/commit-msg`
   refuses a non-ASCII commit message before the commit exists, installed by the
   same `core.hooksPath .githooks` that installs the other two. The scan is
