@@ -8,18 +8,18 @@ cited from elsewhere as `roadmap.md#<slug>` and never by line number; `## Next`
 rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
 
 ## Next (backlog, no session scheduled)
-- OPEN **[repo-review-4]** PRIORITY 2 -- chartered roughly 15 ADRs past ADR-0139 by ADR count, not calendar (ruling Q3 "a.", 2026-08-15); inherits review 3's twelve-row watch-list and D8-5's survivor (56 of 74 command fences unexercised, ADR-0140).
-  ASSESSMENT 2026-08-18 (ADR-0154): register `.agents/plans/2026-08-18-repo-review-findings.md`, plan `.agents/plans/2026-08-18-repo-review-4-plan.md`; 72 rows, 10 rulings owed, 8 fix sessions; author order G A E B C D F H, paired.
-  FIX 1/5 (G+A) 2026-08-19 (ADR-0155), 12 rows: L3-1/L3-2/L3-4/L3-9/L3-10, L2-1..L2-6, L2-10.
-  FIX 2/5 (E+C) 2026-08-19 (ADR-0156), 11 rows: L1-1..L1-5, D2-1/D2-2/D2-4/D2-6, D3-2, D4-4; R4-Q1/Q6/Q7/Q8 ruled.
-  FIX 3/5 (B+D) 2026-08-19 (ADR-0157), 2 rows + #commit-msg-ascii-hook: D4-1 fixed, D3-1 PARTLY -- its gate landed and proved its own "verified safe" false; see #edit-root-worktree-residue.
-  FIX 4/4 (F+H) 2026-08-19 (ADR-0158), 13 rows: D6-1/D7-3/D1-1/D8-1/D8-2(part)/D5-2/D7-5, L3-3/L3-5/L3-6/L3-7/L3-8/L3-11; R4-Q4/Q5/Q9 ruled. Arc close owed.
-- OPEN **[oracle-coverage-roots]** PRIORITY 3 -- R4-Q6 (ii) (b): add oracle roots
-  reaching the capacity and order->result paths (a churn root, a pathway root), so the
-  13-of-21 witnessed-kind set widens. PRICED, NOT TAKEN: each new root is a declared
-  oracle change AND a permanent per-session cost on every bracket (today's 35 cost 114s
-  a side, measured). ADR-0156's COVERAGE block is what makes the purchase visible -- the
-  vacuous set is named now, so widening it is a decision rather than a side effect.
+- OPEN **[repo-review-5]** PRIORITY 2 -- chartered roughly 15 ADRs past the
+  review-4 close by ADR count, not calendar (`rulings.md#R-review-cadence-in-adrs`,
+  measured from the prior CLOSE as ADR-0139 worked it): **approximately ADR-0174**.
+  Inherits a THIRTEEN-row watch-list carried in `notes/adr/0159-review-4-arc-close.md`,
+  not here: W-1 born-red gates, W-2 the `exempt` disposition's missing ratchet, W-3
+  row-id citations, W-4..W-13 including two register gates ADR-0159 found narrow.
+- OPEN **[register-gate-row-ownership]** PRIORITY 3 -- both register contracts gate
+  row SHAPE, not row OWNERSHIP, and both are green over a live defect. `roadmap.md`:
+  `c509e46` inserted the ADR-0152 row inside the ADR-0150 row, so five continuation
+  lines now sit under the wrong slug (ADR-0159 F-1). `rulings.md`:
+  `R-full-suite-before-push` gained its whole wrapper clause at ADR-0155 and names no
+  ADR for it, while the arc's other two widenings do (F-2). Found, rowed, not fixed.
 - OPEN **[careplan-guard-resolution]** PRIORITY 4 -- a closure's next
   prerequisite is CarePlan, "unowned by any wave until a future session extends
   Guard's own condition-resolution machinery" (ADR-0139 C-2). NOW ALSO OWNS
@@ -105,6 +105,12 @@ rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
   ruling before a session takes them. Rowed rather than retired because
   `R-unregistered-request-gets-a-row` puts visibility first, and a charter with
   no row is exactly what that rule exists to catch. ADR-0158 (review-4 D7-5).
+- OPEN **[oracle-coverage-roots]** PRIORITY 22 -- R4-Q6 (ii) (b): add oracle roots
+  reaching the capacity and order->result paths (a churn root, a pathway root), so the
+  13-of-21 witnessed-kind set widens. PRICED, NOT TAKEN: each new root is a declared
+  oracle change AND a permanent per-session cost on every bracket (today's 35 cost 114s
+  a side, measured); ADR-0156's COVERAGE block makes the purchase visible. Moved 3 -> 22
+  at the arc close, below live work: proposed 2026-08-19, author-seen. ADR-0159.
 
 ## Externals (author-only)
 - EXTERNAL **[ci-failure-email]** -- enable GitHub's workflow-failure
@@ -246,6 +252,12 @@ Rows here are LIVE, each owing a revisit trigger in its own token.
   one-module-per-patient assignment never produces. ADR-0037 AR-4.
 
 ## Done (current arc only; older arcs rotate to `.agents/plans/roadmap-done-2026-08.md`, ADR-0046/ADR-0055)
+- CLOSED 2026-08-20 ADR-0159 **[repo-review-4]** -- five ADRs (0154 assessment,
+  0155-0158 fixes paired G+A/E+C/B+D/F+H), **38 of 72 register rows moved** --
+  every one of the 27 fix-session candidates and all 10 R4-Q rulings, plus D8-1
+  carried; **34 residue** (24 close-as-fine confirmed, 9 intake, 1 superseded).
+  Ledger delta zero against every per-session tally. The close's own four findings
+  and review 5's watch-list are in ADR-0159; the register carries dated appends.
 - CLOSED 2026-08-19 ADR-0158 **[edit-root-worktree-residue]** -- PAID BY THE AUTHOR
   2026-08-19 and VERIFIED by that session in the same edit root, not taken on
   report: `core.fileMode` true, `core.ignorecase` unset, ~360 mode-only changes

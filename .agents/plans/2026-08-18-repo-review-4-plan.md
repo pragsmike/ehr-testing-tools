@@ -315,6 +315,21 @@ author's queue rules. Sessions G and H arrive from sub-agent line L-3
 and are the largest block, which is itself the finding: the
 generated-surface class had never been surveyed as a class.
 
+**ALL EIGHT LANDED, 2026-08-19**, paired under the author's "Q3 pair
+small ones" into four sessions in the ruled order **G A E B C D F H**:
+**ADR-0155** (G+A, 12 rows), **ADR-0156** (E+C, 11 rows), **ADR-0157**
+(B+D, 2 rows plus `roadmap.md#commit-msg-ascii-hook`), **ADR-0158**
+(F+H, 13 rows). **All 27 fix-session candidates and all 10 rulings
+moved**; two rows landed PARTLY with their remainders rowed (D3-1,
+D8-2). Arc closed 2026-08-20, `notes/adr/0159-review-4-arc-close.md`,
+which reconciles this count against the register row by row.
+
+**One claim in this document does not re-derive, and is left standing
+under `R-RP` rather than rewritten:** Session H's **Watch** line says
+`state-derived.md` is "counted by four reading sets". It is counted by
+**zero** -- only `AGENTS.md` and `build-session/SKILL.md` are in four or
+more sets, and they are what moved fix 4's budgets. ADR-0159 errata (2).
+
 ### Session A — harness truthfulness (the watch item that fired)
 
 **LANDED 2026-08-19, ADR-0155** (fix 1/5, paired with Session G), and it

@@ -3,7 +3,7 @@
 
 # Session records — index
 
-Generated index of [`.agents/session-records`](.) — 161 files. The convention, what a record contains, and where this sits relative to every other register are in [`README.md`](README.md); annotations that used to ride these rows are in [`../plans/state-history-2026-08.md`](../plans/state-history-2026-08.md), dated.
+Generated index of [`.agents/session-records`](.) — 162 files. The convention, what a record contains, and where this sits relative to every other register are in [`README.md`](README.md); annotations that used to ride these rows are in [`../plans/state-history-2026-08.md`](../plans/state-history-2026-08.md), dated.
 
   * 2026-07-28-discipline-parity.md
   * 2026-07-29-development-resumption.md
@@ -163,6 +163,7 @@ Generated index of [`.agents/session-records`](.) — 161 files. The convention,
   * 2026-08-18-review-4-fix-1-closure-and-harness.md
   * 2026-08-18-sim-theory-edn-hop.md
   * 2026-08-18-surge-policy-self-check-202.md
+  * 2026-08-19-repo-review-4-arc-close.md
   * 2026-08-19-review-4-fix-2-oracle-and-guards.md
   * 2026-08-19-review-4-fix-3-environment-and-result-or-loud.md
   * 2026-08-19-review-4-fix-4-sampling-and-provenance.md
