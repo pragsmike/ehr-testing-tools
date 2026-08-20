@@ -185,3 +185,21 @@ above. Zero `src`. Zero test deletions. No roadmap section touched beyond
 the retired OPEN row and the new CLOSED one. No row text edited during
 either rotation -- six read-backs prove it rather than assert it. The
 oracle was neither touched nor run; no oracle claim is made or owed.
+
+## Addendum -- CI and the tag
+
+`bin/post-push-verify 891e57e 171ccb67`: remote tip matches HEAD; every
+commit message in the range pure ASCII; CI run reported once, run
+**32424193086**, then watched to conclusion by this session --
+**`completed` / `success`** at `171ccb67`.
+
+Only the tip drew a run. The red commit `f834286` was pushed together
+with its green successor (`rulings.md#R-red-pushed-with-green`) and
+GitHub raised no run against it, so the next Step 0's five-run window is
+all green with no red-first artefact to explain away.
+
+Tag PAID IN SESSION under `rulings.md#R-session-verifies-ci-via-gh` --
+the run concluded success while this session was still open:
+`bin/tag-ceremony stable-20260820-attic-rotation-law 171ccb67 <msg>
+--push`, annotated, pushed, remote peeled ref verified to
+`171ccb67c4c998330500625949eaf22d0535db78`. No tag is owed forward.

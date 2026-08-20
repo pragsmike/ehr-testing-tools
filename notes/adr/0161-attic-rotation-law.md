@@ -353,3 +353,24 @@ the retired OPEN row and the new CLOSED one. **NO ROW TEXT WAS EDITED
 DURING ROTATION** — the three read-backs are the proof, not the claim.
 The oracle was neither touched nor run and no oracle claim is made or
 owed: this session changed docs and one test namespace.
+
+### Addendum, 2026-08-20 — CI green at the tip, close tag paid in session
+
+`gh run view 32424193086` at `171ccb67`: **status `completed`,
+conclusion `success`**, the run for `docs: ADR-0161 -- attic rotation
+law, close`. That is the tag licence's CI condition met by THIS
+session's own verification, id and conclusion recorded
+(`rulings.md#R-session-verifies-ci-via-gh`), so the close tag is paid
+here rather than deferred to a successor's Step 0.
+
+`bin/tag-ceremony stable-20260820-attic-rotation-law 171ccb67 <msg>
+--push`: annotated tag created, pushed, and the remote **peeled ref
+verified** to `171ccb67c4c998330500625949eaf22d0535db78` — matching the
+target exactly.
+
+`bin/post-push-verify 891e57e 171ccb67`, all three checks: remote tip
+matches HEAD; every commit message in the range pure ASCII; the CI run
+reported once. Only the tip commit drew a run — the red commit
+`f834286` was pushed with its green successor and GitHub raised no run
+against it, so `bin/preflight`'s five-run window at the next Step 0 is
+all green with no red-first artefact to explain away.
