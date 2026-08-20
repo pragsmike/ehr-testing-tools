@@ -89,12 +89,37 @@
                     (nth fields 8)))
                 roots)))
 
-(defn- committed [name]
-  (let [source (slurp digest-path)
-        i (str/index-of source (str "(def " name))
-        after (subs source i)
-        open (str/index-of after "#{")]
-    (edn/read-string (subs after open (inc (str/index-of after "}" open))))))
+(defn- committed
+  "The value of the top-level `(def <name> #{...})` in `digest.clj`, read
+  as EDN. Matches BOTH the bare and the `^:private` form.
+
+  WHY THE TWO FORMS. This file's first version searched only `\"(def \"`
+  plus the name, while `digest.clj` writes `(def ^:private
+  witnessed-event-kinds`, so `str/index-of` returned nil and `subs` threw
+  NPE before a single coverage assertion ran. The gate had therefore
+  never once been green: nightly `Integration` run 32344505291 is its
+  first execution and its standing red witness (ADR-0160, review-4 F-5).
+
+  CANONICAL TWIN: `ehrt.docs-tooling.oracle-coverage-test`'s own
+  `def-form`, which ADR-0156 had already refined to exactly this
+  two-prefix `some` and which this half did not inherit. The two copies
+  are not shared, because `projects/integration` deliberately does not
+  compose `docs-tooling` (its own `deps.edn` records that twice, AR-3),
+  and composing it to share seven lines would pull docs-tooling's whole
+  test tree into the nightly lane. `roadmap.md#oracle-coverage-extractor-dedup`
+  holds the dedup.
+
+  A miss returns nil rather than throwing, and every caller asserts on
+  what comes back: a gate that cannot find its subject has to read as a
+  failed claim, not as an uncaught NPE that looks like a broken test."
+  [name]
+  (let [source (slurp digest-path)]
+    (when-let [i (some #(str/index-of source %)
+                       [(str "(def " name) (str "(def ^:private " name)])]
+      (let [after (subs source i)
+            open (str/index-of after "#{")]
+        (when open
+          (edn/read-string (subs after open (inc (str/index-of after "}" open)))))))))
 
 (deftest a-fresh-digest-witnesses-exactly-the-committed-coverage-claim-test
   (let [out (io/file (System/getProperty "java.io.tmpdir")

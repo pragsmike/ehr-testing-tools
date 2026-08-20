@@ -55,7 +55,7 @@ Docs-tooling gates: `adr_index_test`, `artifact_provenance_test`, `audience_entr
 | register | count |
 |---|---|
 | ADR files (`notes/adr/NNNN-*.md`) | 157 |
-| roadmap rows (all sections) | 119 |
+| roadmap rows (all sections) | 120 |
 | rulings rows | 115 |
 | rulings rows superseded | 7 |
 | session records | 162 |
@@ -65,7 +65,7 @@ Docs-tooling gates: `adr_index_test`, `artifact_provenance_test`, `audience_entr
 
 | section | rows | tokens in use |
 |---|---|---|
-| Next | 21 | `OPEN` |
+| Next | 22 | `OPEN` |
 | Externals | 8 | `EXTERNAL` |
 | Deferred | 20 | `DEFERRED` |
 | Done | 70 | `CLOSED` |
@@ -79,7 +79,7 @@ Docs-tooling gates: `adr_index_test`, `artifact_provenance_test`, `audience_entr
 | :corpus | 7 | 1832 | 2045 | 2045 | 213 |
 | :docs | 5 | 735 | 785 | 785 | 50 |
 | :judge | 8 | 922 | 1000 | 1000 | 78 |
-| :onboarding | 10 | 1502 | 1530 | 1530 | 28 |
+| :onboarding | 10 | 1508 | 1530 | 1530 | 22 |
 | :sim | 6 | 1274 | 1405 | 1405 | 131 |
 
 ## What this page reads

@@ -44,6 +44,12 @@ rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
   `t 78060` -- RENAL-04 freed by a bed-ready pull, a Renal boarder still in ED
   surge 420s later. Realism gap, not an invariant violation once ADR-0153
   landed. Class exposed by ADR-0153's diagnosis, rowed rather than fixed there.
+- OPEN **[oracle-coverage-extractor-dedup]** PRIORITY 7 -- the two halves of the
+  oracle-coverage gate each carry their own copy of the `(def <name>` /
+  `(def ^:private <name>` extractor: `ehrt.docs-tooling.oracle-coverage-test`'s
+  `def-form` and `ehrt.integration.oracle-coverage-test`'s `committed`. Sharing
+  needs `projects/integration` to compose `docs-tooling`, which its deps.edn
+  refuses twice (AR-3) -- so the copies stand, cross-cited. ADR-0160.
 - OPEN **[manual-dimension-5]** PRIORITY 8 -- manual-review run 2 passed with
   warns, and dimension 5 (running-example continuity) stays WARN as the manual's
   one standing open row: `ed-tuesday` is HL7v2-only and structurally cannot
