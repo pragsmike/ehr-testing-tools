@@ -145,6 +145,16 @@ follow from it. `clojure -M:poly check` **OK**.
 `bin/post-push-verify` after each push: remote tip == local tip,
 per-commit ASCII over the range OK, CI run at the tip reported once.
 
+**Tag paid in session.** Push-lane CI at the close tip, run
+**32405698519** @ `d5edf8a`, concluded **success** while this session
+was still open, verified by its own `gh run view` -- which is
+`rulings.md#R-session-verifies-ci-via-gh`'s condition, so under
+`R-tag-law` the tag is paid now rather than deferred:
+`bin/tag-ceremony stable-20260820-oracle-coverage-integration-half
+d5edf8a ... --push`, remote peeled ref verified to match the target
+exactly. **No tag owed at the next Step 0.** CI receipts, both pushes
+green: `8c53475` run 32402730016, `d5edf8a` run 32405698519.
+
 ## Register hygiene at close
 
 `roadmap.md#oracle-coverage-gate-integration-half` -> **CLOSED

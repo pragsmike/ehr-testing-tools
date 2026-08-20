@@ -233,3 +233,32 @@ W-1 predicts (a gate whose lane runs on a slower clock than the sessions
 that land it). The general shape — a gate that lands green in `make
 test` and is not executed by any lane for hours or days — is untouched
 here and stays W-1's, for review 5.
+
+### Addendum, 2026-08-20 — CI green at the tip, close tag paid in session
+
+The close commit `d5edf8a` was pushed, `bin/post-push-verify` reported
+its three checks (remote tip matches; `8c53475..d5edf8a` pure ASCII; CI
+run `32405698519` reported once, not awaited, per AR-CI-4), and that run
+concluded **success** while this session was still open — verified by
+this session's own `gh run view 32405698519`.
+
+That satisfies `rulings.md#R-session-verifies-ci-via-gh`'s condition, so
+under `R-tag-law` the tag is **paid in session**, deferral being the
+deviation:
+
+    bin/tag-ceremony stable-20260820-oracle-coverage-integration-half \
+      d5edf8a10887654605f06447856f0ace588210bd <message-file> --push
+
+    OK: created annotated tag at d5edf8a10887654605f06447856f0ace588210bd
+    OK: pushed refs/tags/stable-20260820-oracle-coverage-integration-half
+    OK: remote peeled ref matches target exactly
+
+CI receipts for the whole session, both pushes green: `8c53475` run
+`32402730016`, `d5edf8a` run `32405698519`. Plus the deliverable itself,
+which is not a push-lane run at all: `Integration` run **32402746494**,
+workflow_dispatch @ `8c53475`, **success**.
+
+**No tag is owed at the next Step 0.** What the next Step 0 inherits is
+`roadmap.md#oracle-coverage-extractor-dedup` at PRIORITY 7 and, still
+open and unchanged by this session, review-4 watch row **W-1** — of
+which F-5 was one instance, not the class.
