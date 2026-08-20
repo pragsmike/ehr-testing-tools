@@ -2678,3 +2678,18 @@ Nothing is summarised here; each row is its own text, unedited.
   Residue re-rowed rather than dropped: S-1 as `#reason-nil-drop-owes-a-bump`,
   S-2 folded into `#careplan-guard-resolution`, S-5 as
   `#surge-policy-self-check-202`.
+
+## Done rotation -- the law's first ordinary application, 2026-08-20 (ADR-0161 close)
+
+One row, rotated by the very close that made the law. ADR-0161's own
+CLOSED row joined `## Done` at six lines, taking the section from 25 to
+31, so the close ceremony's new rotation step fired against the session
+that wrote it -- which is the correct behaviour and is recorded here
+cheerfully. Oldest survivor, moved verbatim, order preserved.
+
+- CLOSED 2026-08-19 ADR-0158 **[intake-staging-dir]** -- closed per R4-Q9's own
+  recommendation ("state a trigger ... or close it -- it has been deferred since
+  2026-07-31"), under the author's standing "Q1 accept all recommendations"
+  (2026-08-18). Deferred since 2026-07-31 with the ABSENCE of a trigger declared
+  in the row itself, so it could never fire. Re-open on the first real staging
+  need, with the trigger stated then. ADR-0144 finding F-6, review-4 D7-5.

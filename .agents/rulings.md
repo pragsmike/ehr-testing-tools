@@ -278,3 +278,6 @@ Appended by the session that takes the ruling, not held to arc close.
   with disclosure -- ADR-0146
 - **R-amend-unpushed-message-only** -- `git commit --amend` only on a commit not yet
   pushed and only to change its message; a content change is a new commit -- ADR-0156
+- **R-done-attic-rotation** -- `## Done` holds at most 30 LINES; a close that exceeds it
+  rotates oldest WHOLE rows verbatim into `.agents/plans/roadmap-done-<yyyy-mm>.md`,
+  which is append-only. Mechanical -- no arc boundaries to judge -- ADR-0161

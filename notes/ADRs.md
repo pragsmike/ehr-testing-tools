@@ -223,3 +223,4 @@ append-only, never-reassigned rule stands.
 - **ADR-0158** — review-4 fix 4/4: sampling adequacy, and every artifact points back at its inputs — [`0158-sampling-adequacy-and-artifact-provenance.md`](adr/0158-sampling-adequacy-and-artifact-provenance.md) — Accepted
 - **ADR-0159** — Repo-review 4 arc close: thirty-eight rows moved, every citation verified, and four things the audit found that the arc did not — [`0159-review-4-arc-close.md`](adr/0159-review-4-arc-close.md) — Accepted
 - **ADR-0160** — the oracle-coverage gate's integration half runs green for the first time — [`0160-oracle-coverage-integration-half.md`](adr/0160-oracle-coverage-integration-half.md) — Accepted
+- **ADR-0161** — the attic rotation law lands mechanical, and the 13-day backlog rotates — [`0161-attic-rotation-law.md`](adr/0161-attic-rotation-law.md) — Accepted

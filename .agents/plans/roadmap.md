@@ -26,12 +26,6 @@ rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
   census S-2 (folded 2026-08-18, ADR-0150): 7/7 `:care-plan-end` events resolve
   neither field because 4 of 12 vendored `CarePlanEnd` states cite by
   `referenced_by_attribute`, a shape the declared D2 scope never exercised.
-- OPEN **[attic-rotation-law]** PRIORITY 5 -- `## Done` holds the current arc
-  only by law, and its pointers have not rotated to the attic since the
-  conviction arc closed 2026-08-08; deciding a dozen intervening arcs'
-  boundaries is judgement work outside a records-only close. ADR-0144 retokened
-  those pointers and added six missing ones rather than rotating them, so the
-  backlog this row names is larger, not smaller. ADR-0139 finding C-3.
 - OPEN **[bed-ready-vacancy-cascade]** PRIORITY 6 -- a bed-ready transfer
   vacates its own ORIGIN bed and nothing looks for a boarder waiting on that
   ward: only `decide :discharge` runs the search. Witnessed at seed 202,
@@ -258,6 +252,12 @@ Rows here are LIVE, each owing a revisit trigger in its own token.
   one-module-per-patient assignment never produces. ADR-0037 AR-4.
 
 ## Done (at most 30 LINES; the close ceremony rotates oldest whole rows verbatim to `.agents/plans/roadmap-done-<yyyy-mm>.md`, ADR-0161)
+- CLOSED 2026-08-20 ADR-0161 **[attic-rotation-law]** -- the law is MECHANICAL by
+  author ruling: `## Done` holds at most 30 LINES, rotation is an act of the close
+  ceremony, oldest WHOLE rows verbatim to the month's attic, no arc boundaries to
+  judge. Gated by `ehrt.docs-tooling.attic-rotation-test` -- the cap, and no attic
+  file has ever deleted a line, over its whole history. Backlog rotated: 67 rows /
+  109 lines, 134 -> 25 lines; `:onboarding` 1,508 -> 1,400. ADR-0139 finding C-3.
 - CLOSED 2026-08-20 ADR-0160 **[oracle-coverage-gate-integration-half]** -- the
   extractor now matches `(def ^:private <name>` as well as `(def <name>`, the same
   two-prefix `some` ADR-0156 gave the docs-tooling half, and returns nil on a miss so
@@ -276,9 +276,3 @@ Rows here are LIVE, each owing a revisit trigger in its own token.
   restored via `git checkout -- .`. Re-derived there -- 0 tracked `100644` files
   executable on disk, 0 CR bytes in the three named `openai.yaml` mirrors, tree
   clean, `bin/preflight` exit 0 with both OK lines. ADR-0157 register row D3-1.
-- CLOSED 2026-08-19 ADR-0158 **[intake-staging-dir]** -- closed per R4-Q9's own
-  recommendation ("state a trigger ... or close it -- it has been deferred since
-  2026-07-31"), under the author's standing "Q1 accept all recommendations"
-  (2026-08-18). Deferred since 2026-07-31 with the ABSENCE of a trigger declared
-  in the row itself, so it could never fire. Re-open on the first real staging
-  need, with the trigger stated then. ADR-0144 finding F-6, review-4 D7-5.
