@@ -8,12 +8,6 @@ cited from elsewhere as `roadmap.md#<slug>` and never by line number; `## Next`
 rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
 
 ## Next (backlog, no session scheduled)
-- OPEN **[oracle-coverage-gate-integration-half]** PRIORITY 1 -- the fresh-digest
-  half of R4-Q6's coverage gate throws NPE before it asserts anything:
-  `oracle_coverage_test.clj:95` searches `"(def <name>"` while `digest.clj` writes
-  `(def ^:private <name>`, so `subs` gets nil. ADR-0156 refined that extractor in the
-  docs-tooling half (which handles both) and not in this one. It has never once run
-  green; nightly `Integration` 32344505291 is its first execution. ADR-0159 F-5.
 - OPEN **[repo-review-5]** PRIORITY 2 -- chartered roughly 15 ADRs past the
   review-4 close by ADR count, not calendar (`rulings.md#R-review-cadence-in-adrs`,
   measured from the prior CLOSE as ADR-0139 worked it): **approximately ADR-0174**.
@@ -264,6 +258,12 @@ Rows here are LIVE, each owing a revisit trigger in its own token.
   one-module-per-patient assignment never produces. ADR-0037 AR-4.
 
 ## Done (current arc only; older arcs rotate to `.agents/plans/roadmap-done-2026-08.md`, ADR-0046/ADR-0055)
+- CLOSED 2026-08-20 ADR-0160 **[oracle-coverage-gate-integration-half]** -- the
+  extractor now matches `(def ^:private <name>` as well as `(def <name>`, the same
+  two-prefix `some` ADR-0156 gave the docs-tooling half, and returns nil on a miss so
+  the gate fails as a claim rather than as an NPE. First green execution in the gate's
+  life: `Integration` run 32402746494 @ `8c53475`, `success`, 8 assertions where the
+  red witness 32344505291 reached 6 and errored on the first equality. ADR-0159 F-5.
 - CLOSED 2026-08-20 ADR-0159 **[repo-review-4]** -- five ADRs (0154 assessment,
   0155-0158 fixes paired G+A/E+C/B+D/F+H), **38 of 72 register rows moved** --
   every one of the 27 fix-session candidates and all 10 R4-Q rulings, plus D8-1
