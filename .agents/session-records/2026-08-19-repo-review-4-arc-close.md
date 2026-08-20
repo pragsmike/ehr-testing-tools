@@ -181,13 +181,16 @@ green, no baseline moved:
 | `:corpus` | 1832 | 1832 | 2045 | 213 |
 | `:docs` | 735 | 735 | 785 | 50 |
 | `:judge` | 922 | 922 | 1000 | 78 |
-| `:onboarding` | 1484 | **1496** | 1530 | **34** |
+| `:onboarding` | 1484 | **1502** | 1530 | **28** |
 | `:sim` | 1274 | 1274 | 1405 | 131 |
 
-`:onboarding` is the only mover: +12 from `roadmap.md`'s two new rows
+`:onboarding` is the only mover: **+18** from `roadmap.md`'s THREE new
+rows (`#repo-review-5`, `#register-gate-row-ownership`, and F-5's
+`#oracle-coverage-gate-integration-half`, added after the first push)
 and the closed row's move to `## Done`, offset by `state.md` holding at
-119. It is the tightest of the five for the second review running, which
-is why it is watch row W-13.
+119. **28 lines of headroom**, tightest of the five for the second review
+running, which is why it is watch row W-13 -- and W-13's bar of "under
+~30 lines" is already met at this close's own tip.
 
 **The oracle is untouched and UNRUN.** No `src`, no `test`, no
 resource, no digest source moved, so no root can have moved. Per
@@ -196,6 +199,37 @@ not asserted-identical**: this session makes no regression-oracle claim
 and none is owed. `R-red-pushed-with-green` is **n/a** -- docs-only, no
 red planted, no enforcement test added, so there is no red-first commit
 to pair.
+
+## A fifth finding, after the push: the nightly went red
+
+`bin/preflight` re-run after the addendum push **exited 1** on a real
+FINDING: `Integration` run **32344505291**, scheduled, at `e967fd7c`,
+**completed / failure** 2026-08-20T07:32:42Z -- before either of this
+session's commits, so not this session's doing.
+
+**F-5.** `projects/integration/test/ehrt/integration/oracle_coverage_test.clj:95`
+NPEs before asserting anything: it searches `"(def <name>"` while
+`digest.clj:617,626` writes `(def ^:private <name>`. Proven without
+running: `grep -c '(def witnessed-event-kinds'` = **0**,
+`grep -c '(def \^:private witnessed-event-kinds'` = **1**.
+
+ADR-0156 fixed this bug in the OTHER half of the same gate
+(`docs-tooling/.../oracle_coverage_test.clj:71-72` tries both forms) --
+its deviation 2 records the refinement -- and left the integration half
+broken. `make test`, `make ci-parity` and CI's `test` workflow all pass
+`skip:integration`, so four fix sessions and this close's three full
+suites were green over it. Last nightly before the arc: **32228155848 at
+`7d998f01`, success**. The file landed at `079fe80` and never changed.
+**Today's nightly is its first-ever run.**
+
+**Rowed, not fixed**, twice-fenced (no audit finding fixed here; the
+repair is in `test`): `roadmap.md#oracle-coverage-gate-integration-half`,
+**PRIORITY 1**. The session that takes it owes a `make integration` run,
+not a `make test` one.
+
+It also sharpens watch row **W-1**: a gate born in a tier its landing
+session never executed is worse than one born red, because there is no
+red to disposition. Recorded in ADR-0159's second addendum.
 
 ## Read-back against the prompt's fence
 
@@ -213,6 +247,12 @@ The prompt's four counts: **(a) misses 0**, **(b) partition
 24/8/1/1 = 34**, **(c) unrecorded errata 1 of the prompt's seven, plus
 3 this close found**, **(d) ledger delta 0**. **Close-suite delta:
 ZERO.**
+
+Findings opened by this close: **five** -- F-1 through F-4 above, plus
+**F-5** after the push. Fixed: **zero**. Rowed: **all five**, across
+`#register-gate-row-ownership` (F-1, F-2),
+`#oracle-coverage-gate-integration-half` (F-5), and the register's own
+close note plus the plan's dated erratum (F-3, F-4).
 
 ## Post-push verification
 

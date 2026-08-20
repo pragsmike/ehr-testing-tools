@@ -8,6 +8,12 @@ cited from elsewhere as `roadmap.md#<slug>` and never by line number; `## Next`
 rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
 
 ## Next (backlog, no session scheduled)
+- OPEN **[oracle-coverage-gate-integration-half]** PRIORITY 1 -- the fresh-digest
+  half of R4-Q6's coverage gate throws NPE before it asserts anything:
+  `oracle_coverage_test.clj:95` searches `"(def <name>"` while `digest.clj` writes
+  `(def ^:private <name>`, so `subs` gets nil. ADR-0156 refined that extractor in the
+  docs-tooling half (which handles both) and not in this one. It has never once run
+  green; nightly `Integration` 32344505291 is its first execution. ADR-0159 F-5.
 - OPEN **[repo-review-5]** PRIORITY 2 -- chartered roughly 15 ADRs past the
   review-4 close by ADR count, not calendar (`rulings.md#R-review-cadence-in-adrs`,
   measured from the prior CLOSE as ADR-0139 worked it): **approximately ADR-0174**.

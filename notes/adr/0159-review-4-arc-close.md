@@ -630,3 +630,77 @@ session did not need.
 **The review-4 arc is closed.** What is open next is
 `roadmap.md#repo-review-5` at approximately ADR-0174, and the thirteen
 watch rows above.
+
+### Second addendum, 2026-08-20 — the nightly caught what four green sessions could not
+
+`bin/preflight`, re-run after the addendum push, **exited 1 on a
+FINDING** and the finding is real: among the last five runs sits
+`Integration` **32344505291**, scheduled, at `e967fd7c` —
+**completed / failure**, 2026-08-20T07:32:42Z. It is not this session's
+doing (it predates both of this close's commits), and it is the sharpest
+instance of this arc's own thesis the arc produced.
+
+**This close therefore opened FIVE findings, not the four its body
+states.** The body is left as written — it was pushed at `0e72ed4` and
+`R-RP` governs its own text as much as anyone else's — and the count is
+corrected here, where the fifth was found.
+
+**F-5 — the fresh-digest half of R4-Q6's coverage gate has never once
+run green, and no session-side gate can see it.**
+
+    ERROR in (a-fresh-digest-witnesses-exactly-the-committed-coverage-claim-test)
+    java.lang.NullPointerException: Cannot invoke "java.lang.Character.charValue()"
+      because "x" is null
+      at clojure.core$subs ... ehrt.integration.oracle_coverage_test$committed
+      (oracle_coverage_test.clj:95)
+
+Diagnosed by reading, and provable without running anything:
+`projects/integration/test/ehrt/integration/oracle_coverage_test.clj:92-96`
+locates the committed claim with `(str/index-of source (str "(def " name))`.
+`components/oracle/src/ehrt/oracle/digest.clj:617,626` writes
+`(def ^:private witnessed-event-kinds` — `grep -c '(def witnessed-event-kinds'`
+is **0**, `grep -c '(def \^:private witnessed-event-kinds'` is **1** — so
+`index-of` returns nil and `subs` throws before a single assertion runs.
+The test therefore cannot pass, cannot fail, and cannot report the
+coverage drift it exists to catch.
+
+**ADR-0156 fixed this exact bug in the other half and not in this one.**
+Its own deviation 2 records *"two test extractors refined between red
+and green (`^:private` defs …)"*. The refinement is visible at
+`components/docs-tooling/test/ehrt/docs_tooling/oracle_coverage_test.clj:71-72`,
+which tries **both** `"(def <name>"` and `"(def ^:private <name>"` and
+returns nil safely. That is the per-push half. The 114-second
+fresh-digest half — the one ADR-0156's deviation 1 deliberately moved to
+`projects/integration` because a brick test there could never fail —
+kept the broken extractor.
+
+**Why four sessions and three full suites were green over it.**
+`make test` is `poly test :all skip:integration`, and so is `make
+ci-parity`, and so is CI's `test` workflow. The integration tier runs
+only from `make integration` (which needs a primed artifact cache) and
+from the `Integration` workflow's `cron: '0 7 * * *'`. The last nightly
+before the arc was **32228155848 at `7d998f01`, success** — ADR-0154's
+addendum, before any fix landed. `git log --diff-filter=A` puts the file
+at `079fe80`, ADR-0156's own red commit, unchanged since. **Today's
+nightly is its first-ever scheduled execution.**
+
+**Rowed, not fixed** — the fence forbids it twice over: no audit finding
+is fixed here, and the repair is in `test`, which this session may not
+touch. `roadmap.md#oracle-coverage-gate-integration-half`, **PRIORITY
+1**, above everything including review 5. The repair is one line, and
+the session that takes it owes a `make integration` run rather than a
+`make test` one, since `make test` structurally cannot witness it.
+
+**What it does to this close's own conclusions.** Nothing in the audit
+moves: the register's citation for L1-1/L1-2/L1-4 → ADR-0156 is still
+truthful about what that ADR claims, and the per-push half of the gate
+is live and working. What changes is the reading of watch row **W-1**,
+which asked whether any gate landed since ADR-0159 was born red without
+its red dispositioned. **The answer arrived before the row did**, from
+inside the arc being closed: a gate born in a tier its own session never
+executed is worse than one born red, because there is no red to
+disposition. W-1's probe should ask *which tier runs this gate, and did
+the landing session run that tier* — not merely *was it red*.
+
+And it is the population question one last time, asked of the arc's own
+instruments: **`make test` is not the tree.**
