@@ -594,3 +594,39 @@ this ADR for the rest. This is the rest, verbatim, at `e967fd7`:
       FIX 2/5 (E+C) 2026-08-19 (ADR-0156), 11 rows: L1-1..L1-5, D2-1/D2-2/D2-4/D2-6, D3-2, D4-4; R4-Q1/Q6/Q7/Q8 ruled.
       FIX 3/5 (B+D) 2026-08-19 (ADR-0157), 2 rows + #commit-msg-ascii-hook: D4-1 fixed, D3-1 PARTLY -- its gate landed and proved its own "verified safe" false; see #edit-root-worktree-residue.
       FIX 4/4 (F+H) 2026-08-19 (ADR-0158), 13 rows: D6-1/D7-3/D1-1/D8-1/D8-2(part)/D5-2/D7-5, L3-3/L3-5/L3-6/L3-7/L3-8/L3-11; R4-Q4/Q5/Q9 ruled. Arc close owed.
+
+### Addendum, 2026-08-20 — CI green at the tip, arc-close tag paid in session
+
+The close commit `0e72ed4` was pushed and `bin/post-push-verify` ran
+with all three checks green:
+
+- remote tip `0e72ed43c71750781b48b59e0363d607739e865b` matches HEAD;
+- every commit message in `e967fd7c..0e72ed43` pure ASCII — the check
+  that failed on this arc's own fix 2 and now runs `bin/ascii-scan`,
+  the same scanner `.githooks/commit-msg` refuses a commit with;
+- CI run `32347912626` reported once, not awaited, per AR-CI-4.
+
+That run later concluded **completed / success** at exactly
+`0e72ed43c71750781b48b59e0363d607739e865b`, verified by this session's
+own `gh run view` while it was still open. That satisfies
+`rulings.md#R-session-verifies-ci-via-gh` — the executing session's own
+`gh` output concluding success, id and conclusion recorded, author relay
+sufficient but never required — so under `R-tag-law` the licence's CI
+condition is met and the tag is **paid in session** rather than deferred
+to the next Step 0, deferral being the deviation:
+
+    bin/tag-ceremony stable-20260820-review-4-arc-close \
+      0e72ed43c71750781b48b59e0363d607739e865b <message-file> --push
+
+    OK: created annotated tag at 0e72ed43c71750781b48b59e0363d607739e865b
+    OK: pushed refs/tags/stable-20260820-review-4-arc-close
+    OK: remote peeled ref matches target exactly
+
+**No tag is owed at the next Step 0**, and no mechanical debt is carried
+— unlike ADR-0139, whose own close tag was created local-only and left
+unpushed for two sessions because the licence's CI half was a relay this
+session did not need.
+
+**The review-4 arc is closed.** What is open next is
+`roadmap.md#repo-review-5` at approximately ADR-0174, and the thirteen
+watch rows above.

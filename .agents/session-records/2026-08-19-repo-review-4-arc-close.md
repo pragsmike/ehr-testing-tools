@@ -216,18 +216,31 @@ ZERO.**
 
 ## Post-push verification
 
-`bin/post-push-verify` runs after the push; its three checks (remote tip
-match, per-commit ASCII over the pushed range, CI run reported once per
-AR-CI-4) are recorded in **ADR-0159's addendum**, together with the run
-id and conclusion, in the shape ADR-0155 through ADR-0158 each used.
+`bin/post-push-verify` after `0e72ed4`, exit 0, all three green:
+
+- remote tip `0e72ed43c71750781b48b59e0363d607739e865b` == HEAD
+- every commit message in `e967fd7c..0e72ed43` pure ASCII
+- CI run `32347912626` reported once, not awaited (AR-CI-4)
+
+That run later concluded **completed / success** at
+`0e72ed43c71750781b48b59e0363d607739e865b`, confirmed by this session's
+own `gh run view` while open.
 
 ## Tag
 
 **None owed at Step 0** (`bin/preflight` check 5, disclosed above). The
-arc-close tag is licensed by the prompt: **paid in session if this
-commit's own CI run concludes success while the session is open**
-(`rulings.md#R-session-verifies-ci-via-gh` -- the executing session's own
-`gh run view <id>` concluding success, id and conclusion recorded;
-author relay sufficient, never required), otherwise deferred to the next
-Step 0, deferral being the deviation. Which of the two happened is
-stated in ADR-0159's addendum, with the `bin/tag-ceremony` output.
+arc-close tag was licensed by the prompt, payable in session if the tip
+run concluded success while the session stayed open. **It did, and the
+tag is PAID** -- `rulings.md#R-session-verifies-ci-via-gh`'s condition
+met by this session's own `gh run view 32347912626` = completed/success:
+
+    bin/tag-ceremony stable-20260820-review-4-arc-close \
+      0e72ed43c71750781b48b59e0363d607739e865b <message-file> --push
+
+    OK: created annotated tag at 0e72ed43c71750781b48b59e0363d607739e865b
+    OK: pushed refs/tags/stable-20260820-review-4-arc-close
+    OK: remote peeled ref matches target exactly
+
+**No tag is owed at the next Step 0, and no mechanical debt is carried**
+-- unlike ADR-0139, whose own close tag went local-only and unpushed for
+two sessions. Recorded also in ADR-0159's addendum.
