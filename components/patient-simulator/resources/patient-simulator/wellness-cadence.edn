@@ -1,0 +1,39 @@
+;; Wellness-visit cadence table (GMF coverage Wave G, `notes/ADRs.md`
+;; ADR-0037 AR-1): transcribed VERBATIM from Synthea's own
+;; `EncounterModule.recommendedTimeBetweenWellnessVisits` at the pin
+;; `7e08387c68a7f0e21d13076609a159fd473fc902`
+;; (`src/main/java/org/mitre/synthea/modules/EncounterModule.java`,
+;; lines 176-201) -- the age-banded interval a patient's next wellness
+;; encounter is scheduled at. This is GENUINELY EXTRACTED upstream
+;; content (unlike this same directory's `vital-signs.edn`, hand-
+;; curated per its own NOTICE) -- see this directory's NOTICE for the
+;; verification method (a live WebFetch of the raw source at this pin,
+;; not a sibling Synthea checkout).
+;;
+;; EXCLUDES the same method's own chronic-medications annual cap (lines
+;; 209-211: "if (hasChronicMeds && interval > 1 year) { interval = 1
+;; year }") -- DEFERRED to the calibration register as a NAMED item
+;; ("wellness cadence chronic-meds cap"), ADR-0037 AR-1's own ruling.
+;; `active-chronic-medications` exists in this project's own persona/
+;; attribute model with no input cascade, so this is a register
+;; omission, not a missing input.
+;;
+;; Two-tier dispatch, matching the source's own `if (ageInYears <= 3)`
+;; branch (further split on MONTHS) vs every other branch (split on
+;; YEARS) -- `ehrt.patient-simulator.gmf-interpreter/wellness-cadence-band`
+;; walks each vector IN ORDER; the first row whose own `:max-age` the
+;; query age satisfies (or a trailing `nil` :max-age, the source's own
+;; final `else`) wins. `:max-age` is in the TIER's own native unit
+;; (months for the first vector, years for the second) -- never the
+;; row's own `:unit` (the SCHEDULED interval's unit, a separate axis).
+{:under-3-by-age-months
+ [{:max-age 1 :quantity 1 :unit "months"}    ; ageInMonths <= 1
+  {:max-age 5 :quantity 2 :unit "months"}    ; ageInMonths <= 5
+  {:max-age 17 :quantity 3 :unit "months"}   ; ageInMonths <= 17
+  {:max-age nil :quantity 6 :unit "months"}] ; else
+
+ :three-plus-by-age-years
+ [{:max-age 19 :quantity 1 :unit "years"}    ; ageInYears <= 19
+  {:max-age 39 :quantity 3 :unit "years"}    ; ageInYears <= 39
+  {:max-age 49 :quantity 2 :unit "years"}    ; ageInYears <= 49
+  {:max-age nil :quantity 1 :unit "years"}]} ; else

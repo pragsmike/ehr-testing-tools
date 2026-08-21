@@ -190,7 +190,7 @@
 (deftest violation-predicate-reproduces-the-2088763-incident-test
   (let [integration-bricks-before-fix
         #{"kernel" "judge" "judge-v2-hapi" "judge-fhir-official" "provenance"
-          "corpus" "corpus-io" "sim" "sim-engine" "sim-model" "sim-trajectory"
+          "corpus" "corpus-io" "sim" "sim-engine" "sim-model" "patient-simulator"
           "sim-emit-hl7" "sim-emit-fhir" "sim-check"}
         integration-bricks-after-fix
         (conj integration-bricks-before-fix "judge-v2-nist")]

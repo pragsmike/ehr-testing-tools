@@ -29,7 +29,7 @@
   the clinical family comes from one GMF fixture module that walks the
   whole state vocabulary in a single encounter."
   (:require [ehrt.sim-engine.engine :as engine]
-            [ehrt.sim-trajectory.interface :as sim-trajectory]
+            [ehrt.patient-simulator.interface :as patient-simulator]
             [clojure.pprint]))
 
 ;; --- fixtures -------------------------------------------------------------
@@ -56,7 +56,7 @@
   the census observed all seven `:care-plan-end` events with a nil
   `:care-plan-citation`, and this fixture is the control proving the
   mechanism itself works -- the nils came from vendored modules using
-  `referenced_by_attribute`, whose resolution `ehrt.sim-trajectory.gmf`
+  `referenced_by_attribute`, whose resolution `ehrt.patient-simulator.gmf`
   deliberately never declared for the CarePlan family (census S-2).
 
   THE LEAD-IN DELAY IS LOAD-BEARING, and was found by running rather
@@ -114,7 +114,7 @@
                ;; Newborns, so the walk's own clock starts near the run's
                ;; registration instant -- see the fixture's lead-in note.
                :persona-config {:age-min 0 :age-max 0}
-               :modules [(sim-trajectory/singleton-closure clinical-fixture-module)]
+               :modules [(patient-simulator/singleton-closure clinical-fixture-module)]
                :module-assignment [{:module-id "schema-fixture-mod" :weight 1}]
                :module-horizon-days 1200}))
 

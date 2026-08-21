@@ -24,7 +24,7 @@
   either lying in the second script's own marker comment or leaving its
   freshness check permanently red. ADR-0130 landed this widening but
   deferred its own motivating row (a clinic-decade exerciser) on a real,
-  unrelated defect its own live run found first (`ehrt.sim-trajectory.
+  unrelated defect its own live run found first (`ehrt.patient-simulator.
   gmf/slug` doesn't sanitize commas out of raw upstream state names,
   breaking `ehrt play`'s own EDN read-back for at least one module) --
   see `.agents/plans/roadmap.md`'s own Next-section rows for the

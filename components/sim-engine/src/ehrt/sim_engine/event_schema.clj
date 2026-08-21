@@ -164,7 +164,7 @@
   predate this run's own horizon window -- a medication still running,
   a condition still open -- carried as registration-time history
   rather than replayed as operational events
-  (`ehrt.sim-trajectory.compile-trajectory`'s own
+  (`ehrt.patient-simulator.compile-trajectory`'s own
   `pre-horizon-fact-types`). Each fact carries its OWN `:event` key,
   drawn from a DIFFERENT vocabulary than the log's, and four of its
   six values (`:medication-order`, `:medication-end`,
@@ -507,7 +507,7 @@
            ;; events with both nil -- but that was the vendored
            ;; modules, not the mechanism: those closures cite their
            ;; start by `referenced_by_attribute`, a resolution
-           ;; `ehrt.sim-trajectory.gmf` deliberately never declared for
+           ;; `ehrt.patient-simulator.gmf` deliberately never declared for
            ;; the CarePlan family. A `:careplan`-citing module resolves
            ;; both, which `event-schema-test`'s own fixture proves.
            ;; Census register row S-2.

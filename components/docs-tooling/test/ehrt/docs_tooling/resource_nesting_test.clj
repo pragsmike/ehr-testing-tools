@@ -4,7 +4,7 @@
   directory that exists must nest its files under exactly one top-level
   entry, a directory named after its own brick -- the convention six of
   the seven such directories already followed by construction
-  (`judge`, `kernel`, `provenance`, `sim-engine`, `sim-trajectory`,
+  (`judge`, `kernel`, `provenance`, `sim-engine`, `patient-simulator`,
   `sim`), with `sim-model` the sole, disclosed violator: its resources
   sat under `resources/sim/`, not `resources/sim-model/`, a tolerance
   ADR-0025 disclosed once at the S1 sim-split (`sim-model`'s own

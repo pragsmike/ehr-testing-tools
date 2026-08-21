@@ -8,7 +8,7 @@
   and-sampling namespaces with no cross-namespace dependency among
   themselves or on any other sim namespace -- this interface is the
   only path the residual sim component (and, from sim split S2 on,
-  sim-trajectory) may reach them through."
+  patient-simulator) may reach them through."
   (:require [ehrt.sim-model.config :as config]
             [ehrt.sim-model.facility :as facility]
             [ehrt.sim-model.pathway :as pathway]

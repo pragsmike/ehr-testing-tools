@@ -153,7 +153,7 @@
   split-plan.md`, R-5): `ehrt.sim.gmf` (also catches `ehrt.sim.gmf-
   interpreter` as a substring, intentionally) and `ehrt.sim.compile-
   trajectory` join the retired-namespace family above -- both moved to
-  `ehrt.sim-trajectory.*` this session, same denylist shape as
+  `ehrt.patient-simulator.*` this session, same denylist shape as
   `ehrt.tools.` (stage 3). Scoped the same as the family above (`docs/`
   plus `components/corpus/docs/use-cases.edn` only); `notes/sim/`'s own
   historical citations of the pre-split namespace stay out of this
@@ -215,7 +215,7 @@
   (`ehrt/sim/check`) joins too, same scope. This scan (`docs/**/*.md`
   plus `components/corpus/docs/use-cases.edn`) found no real
   violations -- `components/sim/docs/` (sim-theory.md, patient-state-
-  model.md) and `components/sim-trajectory/docs/gmf-interpreter.md` DO
+  model.md) and `components/patient-simulator/docs/gmf-interpreter.md` DO
   carry stale mentions, but that tree is component-owned, outside this
   test's scan scope (same as every other entry in this family); those
   were swept forward anyway, live, as part of this same session's own
@@ -353,9 +353,9 @@
   (is (= [:retired-ehrt-sim-gmf-namespace] (violations "see ehrt.sim.gmf/load-module")))
   (is (= [:retired-ehrt-sim-gmf-namespace] (violations "see ehrt.sim.gmf-interpreter/run-module")))
   (is (= [:retired-ehrt-sim-compile-trajectory-namespace] (violations "see ehrt.sim.compile-trajectory/compile-trajectory")))
-  (testing "the sim-trajectory citation form does not trip either retired-prefix pattern"
-    (is (empty? (violations "see ehrt.sim-trajectory.gmf/load-module")))
-    (is (empty? (violations "see ehrt.sim-trajectory.compile-trajectory/compile-trajectory"))))
+  (testing "the patient-simulator citation form does not trip either retired-prefix pattern"
+    (is (empty? (violations "see ehrt.patient-simulator.gmf/load-module")))
+    (is (empty? (violations "see ehrt.patient-simulator.compile-trajectory/compile-trajectory"))))
   (testing "the stage-3 citation form does not trip the retired-prefix pattern"
     (is (empty? (violations "see ehrt.corpus.manifest/ManifestV1_1"))))
   (is (= [:retired-positioning-filename] (violations "see docs/dev/positioning.md for the audience register")))

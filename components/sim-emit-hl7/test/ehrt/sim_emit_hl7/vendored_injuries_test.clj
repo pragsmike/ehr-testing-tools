@@ -16,8 +16,8 @@
   (:require [clojure.java.io :as io]
             [clojure.test :refer [deftest is testing]]
             [ehrt.kernel.interface :as result]
-            [ehrt.sim-trajectory.interface :as sim-trajectory]
-            [ehrt.sim-trajectory.gmf :as gmf]
+            [ehrt.patient-simulator.interface :as patient-simulator]
+            [ehrt.patient-simulator.gmf :as gmf]
             [ehrt.sim-engine.engine :as engine]
             [ehrt.sim-check.check :as check]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]))
@@ -27,7 +27,7 @@
 (defn- resolve-call-path
   "D3's own real caller shape -- a thin io/resource wrapper over the
   search path `sim/modules/<call-path>.json`, the same shape
-  `ehrt.sim-trajectory.vendored-injuries-test`'s own interpreter-layer
+  `ehrt.patient-simulator.vendored-injuries-test`'s own interpreter-layer
   test already establishes for this closure."
   [call-path]
   (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
@@ -75,7 +75,7 @@
 ;;
 ;; `:synthesized-encounter-ends` lives on `run-module`'s own return ctx
 ;; (ADR-0107), not on `compile-trajectory`'s -- interception happens at
-;; the `sim-trajectory/run-module` boundary itself (`engine.clj`'s own
+;; the `patient-simulator/run-module` boundary itself (`engine.clj`'s own
 ;; `:registered` decide method calls it directly, one walk per patient),
 ;; the same "intercept at the real call boundary" technique the
 ;; colorectal/veteran-prostate-cancer payoffs already established one
@@ -99,8 +99,8 @@
   (testing "seed 20260802: the auto-close fix's own counter, pinned --
             the arc's own closing witness at engine-round-trip scale"
     (let [total (atom 0)
-          real-run-module sim-trajectory/run-module]
-      (with-redefs [sim-trajectory/run-module
+          real-run-module patient-simulator/run-module]
+      (with-redefs [patient-simulator/run-module
                     (fn [module rng persona registration-t & more]
                       (let [ctx (apply real-run-module module rng persona registration-t more)]
                         (swap! total + (or (:synthesized-encounter-ends ctx) 0))

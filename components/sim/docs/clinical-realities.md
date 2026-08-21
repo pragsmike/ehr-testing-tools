@@ -209,7 +209,7 @@ naively assuming one encounter number per stay will misjoin or drop
 the second half either way it's modeled.
 
 **Our model.** Surfaced directly by a real vendored Synthea module,
-not invented: `appendicitis.json` (`components/sim-trajectory/docs/gmf-interpreter.md`'s M7
+not invented: `appendicitis.json` (`components/patient-simulator/docs/gmf-interpreter.md`'s M7
 survey) authors this exact pattern — an emergency `Encounter`
 immediately followed by its own `EncounterEnd`, then a new inpatient
 `Encounter` opens with zero elapsed time. This project's

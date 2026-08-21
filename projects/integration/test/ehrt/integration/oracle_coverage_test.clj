@@ -19,7 +19,7 @@
   HOW IT RUNS THE DIGEST. Through the same synthetic classpath
   `bin/regression-oracle`'s own `run_one` builds -- `clojure -Sdeps`
   with every `:local/root` pointed at this checkout, and the
-  `:oracle-run` alias for `sim-trajectory`'s test resources. The oracle
+  `:oracle-run` alias for `patient-simulator`'s test resources. The oracle
   brick belongs to no testable project (`poly info`: `---` under
   conformance / ehrt-cli / integration, `s--` under dev; poly's own help
   says brick tests run from every project EXCEPT development), so
@@ -43,7 +43,14 @@
 (defn- deps-string
   "`bin/regression-oracle`'s `run_one` deps block, with the worktree root
   replaced by this checkout. Kept in the same order and shape as the
-  script's own heredoc so a drift between them is visible on sight."
+  script's own heredoc so a drift between them is visible on sight.
+
+  Dated note (2026-08-21, ADR-0162): one shape divergence is now
+  deliberate. The script resolves the patient-simulation brick's
+  directory PER WORKTREE (`sim_brick_dir_for`), because a bracket whose
+  baseline predates the `sim-trajectory` -> `patient-simulator` rename
+  reads a different directory on each side. This half only ever runs
+  against THIS checkout, so it names the current directory outright."
   [root]
   (str "{\n"
        " :deps {org.clojure/clojure {:mvn/version \"1.12.5\"}\n"
@@ -52,9 +59,9 @@
        "        poly/sim {:local/root \"" root "/components/sim\"}\n"
        "        poly/sim-engine {:local/root \"" root "/components/sim-engine\"}\n"
        "        poly/sim-model {:local/root \"" root "/components/sim-model\"}\n"
-       "        poly/sim-trajectory {:local/root \"" root "/components/sim-trajectory\"}\n"
+       "        poly/patient-simulator {:local/root \"" root "/components/patient-simulator\"}\n"
        "        poly/sim-emit-hl7 {:local/root \"" root "/components/sim-emit-hl7\"}}\n"
-       " :aliases {:oracle-run {:extra-paths [\"" root "/components/sim-trajectory/test\"]}}}"))
+       " :aliases {:oracle-run {:extra-paths [\"" root "/components/patient-simulator/test\"]}}}"))
 
 (defn- run-digest!
   "One fresh 35-root digest into `out`. Returns the process result."

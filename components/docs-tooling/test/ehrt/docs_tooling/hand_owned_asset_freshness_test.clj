@@ -6,7 +6,7 @@
   them: `git grep -l 'manual/assets' -- components bases` returned
   nothing, none was on a freshness list, none had a make target. Five
   are `docs/manual/assets/*.svg`; the sixth, an embedded mermaid block
-  in `components/sim-trajectory/docs/trajectory-computation.md`, is
+  in `components/patient-simulator/docs/trajectory-computation.md`, is
   ruled deliberately hand-owned under R4-Q5 (d) and carries a dated
   line saying so instead of a row here.
 

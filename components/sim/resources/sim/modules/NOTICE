@@ -157,7 +157,7 @@ clearing that attribute, so every year after the first re-fires a
 `MedicationEnd` against the SAME already-ended original order, a real
 upstream module-authoring pattern this project's interpreter compiles
 faithfully into a real, repeated invariant violation. **`veteran_mdd.
-json`** BLOCKED: `run-module` throws `ehrt.sim-trajectory.gmf-
+json`** BLOCKED: `run-module` throws `ehrt.patient-simulator.gmf-
 interpreter: run-module exceeded max-steps -- likely a module
 authoring bug (a zero-time-advance transition cycle)` at
 `:therapy-delay`/`:end-therapy-visit`, reproduced at every horizon
@@ -307,7 +307,7 @@ cleanly (batch 2) -- but unlike `hypothyroidism`'s own call path,
 `colorectal_cancer.json`'s own call into `Anemia_Submodule` does NOT
 always land inside an open encounter, so `anemia_sub.json`'s own `End
 Any Active Encounter Just In Case` state (the SAME standing
-`ehrt.sim-trajectory.gmf-interpreter` gap `anemia___unknown_etiology.
+`ehrt.patient-simulator.gmf-interpreter` gap `anemia___unknown_etiology.
 json` already surfaced in batch 2 -- an upstream "close if open, else
 no-op" idiom compiling here as an UNCONDITIONAL `:encounter-end`)
 sometimes fires with no encounter open, producing a dangling
@@ -377,7 +377,7 @@ Race-gated branch this vendoring arc has landed (`White_Males`/
 {:race-weights [...]}` (no prior vendored root needed one, since no
 prior root ever read `:race`). With that fix in place, real content
 lands (the shared `anemia/anemia_sub.json` submodule fires for real),
-but a SEPARATE, genuine `ehrt.sim-trajectory.gmf-interpreter` gap
+but a SEPARATE, genuine `ehrt.patient-simulator.gmf-interpreter` gap
 surfaces: `anemia_sub.json`'s own `End Any Active Encounter Just In
 Case` state -- an upstream Synthea idiom meaning "close the encounter
 IF one is open, otherwise no-op" -- compiles here as an UNCONDITIONAL
@@ -431,7 +431,7 @@ four of which -- `medications/ear_infection_antibiotic.json`,
 pain_reliever.json`, `dme/wheelchair_end.json` -- are already vendored,
 byte-identical at this same pin, from the ear-infections and
 total-joint-replacement closures above) trips a REAL, standing
-`ehrt.sim-trajectory.gmf-interpreter` gap: `injuries/broken_jaw.json`'s
+`ehrt.patient-simulator.gmf-interpreter` gap: `injuries/broken_jaw.json`'s
 own `Check for Dental Visit`/`Wait for Dental Visit` pair sets
 `dental_referral` once (`Dental Referral`'s own `SetAttribute`) and
 never clears it anywhere in the file, so any walk that ever reaches that
@@ -454,7 +454,7 @@ nursing_facility.json`, `dme/wheelchair.json`) are NOT vendored -- no
 NOTICE row, no test, no oracle root. The four already-vendored SHARED
 submodules named above are untouched, unaffected, and stay exactly as
 they were. Revisit trigger: a future session willing to extend
-`ehrt.sim-trajectory.gmf-interpreter`'s own runaway-loop handling (e.g.
+`ehrt.patient-simulator.gmf-interpreter`'s own runaway-loop handling (e.g.
 detecting an attribute-gated self-transition pair that never clears its
 own gate) -- tracked as a roadmap Deferred row, `.agents/plans/
 roadmap.md`.
@@ -468,7 +468,7 @@ steps -- closing this leg completely (0 of 120 well-mixed-seed walks
 throw `run-submodule exceeded max-steps` post-fix, at this entry's own
 probe parameters). ADR-0106 (B2) then re-gated the closure fresh and
 found the max-steps fix's own real-content probe surfaced a SEPARATE,
-pre-existing `ehrt.sim-trajectory.gmf-interpreter` gap, unaffected by
+pre-existing `ehrt.patient-simulator.gmf-interpreter` gap, unaffected by
 the B1 fix: `injuries.json`'s own `Spinal_Injury` branch opens
 `ED_Visit_For_Spinal_Injury` (`Encounter`, emergency) and never closes
 it with an `EncounterEnd` before later opening `Spinal_Injury_
@@ -555,7 +555,7 @@ condition, outside `age-guard-jump-days`'s own v1 analytical-resolution
 shape). Landed this session (D3e/H4: `age-guard-jump-days` extended
 under a sound-jump-or-escalate rule). Full closure re-verification (by
 hash) and the compound-Guard design: `docs/gmf-interpreter.md` section
-14. Interpreter-layer proof only (`ehrt.sim-trajectory.vendored-tjr-
+14. Interpreter-layer proof only (`ehrt.patient-simulator.vendored-tjr-
 test`) -- the SAME standing, already-disclosed full-pipeline gap named
 in the UTI payoff paragraph above applies here too.
 
@@ -566,14 +566,14 @@ directory's SECOND closure (twelve files) and FIRST data-file members
 at Wave B (D6, `ear_infections.json`'s own NOTICE paragraph, above) for
 being dirty with `DiagnosticReport`/`MultiObservation` (both landed
 Wave D stage D1) and a genuinely new, sixth GMF transition kind,
-`lookup_table_transition` (landed this session, D3a/H2, `ehrt.sim-
-trajectory.gmf/load-closure`'s own data-file-member extension, R4).
+`lookup_table_transition` (landed this session, D3a/H2, `ehrt.patient-
+simulator.gmf/load-closure`'s own data-file-member extension, R4).
 Full closure re-survey, every mechanism this vendoring needed, and
 three additional D3f findings surfaced testing it against the real
 closure (a new encounter-class value, `complex_transition`'s own
 either/or, and a real upstream CSV byte-order-mark): `docs/gmf-
 interpreter.md` section 14. Interpreter-layer proof only
-(`ehrt.sim-trajectory.vendored-uti-test`) -- the full compile-
+(`ehrt.patient-simulator.vendored-uti-test`) -- the full compile-
 trajectory/engine/emit round trip is a standing, already-disclosed gap
 for EVERY closure-having module vendored to date (`ear_infections.json`
 included, confirmed by direct search: no such test exists for it
@@ -608,7 +608,7 @@ called submodules (`medications/ear_infection_antibiotic.json`,
 `medications/otc_pain_reliever.json`) are vendored alongside it, at
 the SAME pinned commit, under the SAME `medications/` search path Wave
 B's own loader closure resolution (D3,
-`ehrt.sim-trajectory.gmf/load-closure`) expects
+`ehrt.patient-simulator.gmf/load-closure`) expects
 (`sim/modules/<call-path>.json`). Step 1's own characterization found
 the closure clean of every Wave-D-scoped deferred type (the only
 state-type gap anywhere in the three files is `CallSubmodule` itself,

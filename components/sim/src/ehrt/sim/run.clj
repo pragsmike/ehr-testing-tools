@@ -32,7 +32,7 @@
             [ehrt.sim-engine.interface :as churn]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]
             [ehrt.sim-emit-fhir.interface :as emit-fhir]
-            [ehrt.sim-trajectory.interface :as sim-trajectory]
+            [ehrt.patient-simulator.interface :as patient-simulator]
             [ehrt.sim.manifest :as manifest]
             [ehrt.sim-model.interface :as sim-model]))
 
@@ -56,7 +56,7 @@
   function's own callers, but `run-command`'s own surface only ever
   resolves the real vendored directory); `ehrt.sim-engine.engine/run`'s OWN
   `:modules` key wants already-loaded, CLOSURE-shaped entries instead
-  (ADR-0033 AR-2 -- `sim-trajectory/load-closure`'s own `:ok` payload,
+  (ADR-0033 AR-2 -- `patient-simulator/load-closure`'s own `:ok` payload,
   `{:root :modules :tables}`, engine.clj does no file I/O of its own,
   the same layering `:facility`/`:providers` already follow). This is
   THIS namespace's own translation step, the same role
@@ -81,7 +81,7 @@
              res (io/resource (str "sim/modules/" module-name ".json"))]
          (if (nil? res)
            (result/error :module-not-found {:module module-name})
-           (let [loaded (sim-trajectory/load-closure module-name (slurp res) module-resolve-fn module-table-resolve-fn)]
+           (let [loaded (patient-simulator/load-closure module-name (slurp res) module-resolve-fn module-table-resolve-fn)]
              (if (result/ok? loaded)
                (let [closure (:payload loaded)
                      ia (get initial-attributes-by-name module-name)]
@@ -156,7 +156,7 @@
   default 1) certain to receive BOTH an encounter-opening pathway and a
   module. Guarded by each config's OWN schema validity
   (`sim-model/valid-pathways-config?`/`valid?`,
-  `sim-trajectory/valid-modules-config?`) so a structurally
+  `patient-simulator/valid-modules-config?`) so a structurally
   malformed config (this namespace's own plumbing-completeness test's
   sentinel opts) is silently skipped here -- never misdiagnosed as a
   conflict, never thrown on -- rather than validated twice; a
@@ -164,7 +164,7 @@
   for real (`engine/run`'s own `:pre` assertions), not this check."
   [{:keys [pathway pathways patients module-assignment]}]
   (when (and module-assignment
-             (sim-trajectory/valid-modules-config? module-assignment)
+             (patient-simulator/valid-modules-config? module-assignment)
              (or (nil? pathways) (sim-model/valid-pathways-config? pathways))
              (sim-model/valid? (or pathway sim-model/sample-admission-discharge)))
     (into []

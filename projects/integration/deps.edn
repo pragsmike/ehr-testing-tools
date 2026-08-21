@@ -69,9 +69,9 @@
         ;; split-plan.md): poly/sim's own src now requires
         ;; ehrt.sim-model.interface transitively.
         poly/sim-model {:local/root "../../components/sim-model"}
-        ;; poly/sim-trajectory (sim split S2): poly/sim's own src now
-        ;; requires ehrt.sim-trajectory.interface transitively.
-        poly/sim-trajectory {:local/root "../../components/sim-trajectory"}
+        ;; poly/patient-simulator (sim split S2): poly/sim's own src now
+        ;; requires ehrt.patient-simulator.interface transitively.
+        poly/patient-simulator {:local/root "../../components/patient-simulator"}
         ;; poly/sim-emit-hl7 (sim split S3 / Wave D stage D0): poly/sim's
         ;; own src now requires ehrt.sim-emit-hl7.interface transitively.
         poly/sim-emit-hl7 {:local/root "../../components/sim-emit-hl7"}

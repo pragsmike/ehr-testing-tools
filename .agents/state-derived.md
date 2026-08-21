@@ -27,7 +27,7 @@ wrong (ADR-0139 D1-4). Compare the sets, not the cardinalities.
 
 | kind | count | names |
 |---|---|---|
-| components | 18 | `corpus`, `corpus-io`, `docs-tooling`, `judge`, `judge-fhir-official`, `judge-v2-hapi`, `judge-v2-nist`, `kernel`, `oracle`, `palgebra`, `provenance`, `sim`, `sim-check`, `sim-emit-fhir`, `sim-emit-hl7`, `sim-engine`, `sim-model`, `sim-trajectory` |
+| components | 18 | `corpus`, `corpus-io`, `docs-tooling`, `judge`, `judge-fhir-official`, `judge-v2-hapi`, `judge-v2-nist`, `kernel`, `oracle`, `palgebra`, `patient-simulator`, `provenance`, `sim`, `sim-check`, `sim-emit-fhir`, `sim-emit-hl7`, `sim-engine`, `sim-model` |
 | bases | 1 | `cli` |
 | projects | 3 | `conformance`, `ehrt-cli`, `integration` |
 

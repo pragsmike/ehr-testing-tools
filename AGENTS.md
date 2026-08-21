@@ -142,7 +142,7 @@ schemas and sampling, extracted from `components/sim`, sim split S1,
 (the discrete-event simulation core plus its churn/order-profiles
 catalytics, extracted from `components/sim`, sim split B stage M2,
 2026-08-04, `.agents/plans/2026-08-04-sim-split-b-plan.md`,
-`notes/ADRs.md` ADR-0043); `components/sim-trajectory`
+`notes/ADRs.md` ADR-0043); `components/patient-simulator`
 (GMF module loading/interpretation and CompileTrajectory, extracted from
 `components/sim`, sim split S2, same plan); `components/sim-emit-hl7`
 (the HL7v2 emitter, the v2-replay wire-side accumulator, and site
@@ -282,17 +282,17 @@ library in its own right.
   `components/sim` also depends on `components/kernel` (ADR-0022) —
   kernel is not corpus-derived, so this is a new edge, not an
   exception. `components/sim` also depends on `components/sim-model`
-  and `components/sim-trajectory` (sim split S1/S2, `notes/ADRs.md`
+  and `components/patient-simulator` (sim split S1/S2, `notes/ADRs.md`
   ADR-0025), `components/sim-emit-hl7` (sim split S3, ADR-0029), and
   `components/sim-emit-fhir` (sim split B stage M3, ADR-0043) —
   `components/sim-model` must never depend on anything but
-  `components/kernel`; `components/sim-trajectory` must never depend on
+  `components/kernel`; `components/patient-simulator` must never depend on
   anything but `components/sim-model` and `components/kernel`;
   `components/sim-emit-hl7` must never depend on anything but
   `components/sim-model` (never on `components/sim` or
-  `components/sim-trajectory` themselves); `components/sim-emit-fhir`
+  `components/patient-simulator` themselves); `components/sim-emit-fhir`
   must never depend on anything but `components/sim-engine` (never on
-  `components/sim`, `components/sim-model`, or `components/sim-trajectory`
+  `components/sim`, `components/sim-model`, or `components/patient-simulator`
   themselves); `components/sim-check` (sim split B stage M4, ADR-0043)
   must never depend on anything but `components/sim-engine`,
   `components/sim-model`, and `components/kernel` (never on

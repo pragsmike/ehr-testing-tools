@@ -47,7 +47,7 @@
 (def message-patient-id corpus-io/message-patient-id)
 
 (defn event-timestamp-ms
-  "event (a compiled ground-truth event map -- ehrt.sim-trajectory.
+  "event (a compiled ground-truth event map -- ehrt.patient-simulator.
   compile-trajectory's own shape, ADR-0100) -> its own :t (seconds
   from the sim run's own epoch, sim/ADR-0011), scaled to ms -- or nil
   when :t is missing or not a number. The sim event-log adapter's own

@@ -6,7 +6,7 @@
   infections-test`/`vendored-uti-test`'s own CallSubmodule throw):
   TJR's own `Joint_Replacement_Guard` needs `joint_replacement` seeded
   via `run-module`'s own `initial-attributes` arity (D2; H7's own
-  rider; `ehrt.sim-trajectory.vendored-tjr-test`'s own docstring has
+  rider; `ehrt.patient-simulator.vendored-tjr-test`'s own docstring has
   the full delegated-content disclosure) or the walk blocks PERMANENTLY
   at age 0. This file's own previous version PINNED that silent-empty
   failure (`ehrt.sim-engine.engine`'s own `:registered` decide method called
@@ -17,12 +17,12 @@
   directly on the closure here, the same direct-API shape a run-time
   caller not going through `ehrt.sim.run` uses); AR-3 wires
   `:registered` to thread it through. The seed value below is the SAME
-  authored, provenance-cited value `ehrt.sim-trajectory.vendored-tjr-
+  authored, provenance-cited value `ehrt.patient-simulator.vendored-tjr-
   test` already supplies (D2 H7) -- reused, not re-derived."
   (:require [clojure.java.io :as io]
             [clojure.test :refer [deftest is testing]]
             [ehrt.kernel.interface :as result]
-            [ehrt.sim-trajectory.gmf :as gmf]
+            [ehrt.patient-simulator.gmf :as gmf]
             [ehrt.sim-engine.engine :as engine]
             [ehrt.sim-check.check :as check]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]))
@@ -38,7 +38,7 @@
 (def ^:private loaded-closure (gmf/load-closure "total-joint-replacement" tjr-json resolve-call-path))
 (def ^:private tjr-closure (:payload loaded-closure))
 
-;; D2 H7's own authored, provenance-cited seed (ehrt.sim-trajectory.
+;; D2 H7's own authored, provenance-cited seed (ehrt.patient-simulator.
 ;; vendored-tjr-test's own docstring has the full delegated-content
 ;; disclosure: `joint_replacement` is set, in real Synthea, by two
 ;; sibling root modules this project does not vendor) -- reused

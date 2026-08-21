@@ -12,7 +12,7 @@
 
   This module's own `Initial` state is the first Race-gated branch this
   vendoring arc has landed (ADR-0071's own finding) -- `:persona-config
-  {:race-weights [...]}` (the same shape `ehrt.sim-trajectory.census/
+  {:race-weights [...]}` (the same shape `ehrt.patient-simulator.census/
   default-persona-config` already uses) is required, or `sim-model/
   persona` never assocs `:race` and the closure's own `race-condition-
   holds?` throws `honest-absence`.
@@ -27,8 +27,8 @@
   (:require [clojure.java.io :as io]
             [clojure.test :refer [deftest is testing]]
             [ehrt.kernel.interface :as result]
-            [ehrt.sim-trajectory.gmf :as gmf]
-            [ehrt.sim-trajectory.interface :as sim-trajectory]
+            [ehrt.patient-simulator.gmf :as gmf]
+            [ehrt.patient-simulator.interface :as patient-simulator]
             [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim-engine.engine :as engine]
             [ehrt.sim-check.check :as check]
@@ -49,7 +49,7 @@
 
 ;; ADR-0071's own fix: no prior vendored root ever read `:race`, so no
 ;; prior root's own test needed this key -- the same shape
-;; `ehrt.sim-trajectory.census/default-persona-config` already uses.
+;; `ehrt.patient-simulator.census/default-persona-config` already uses.
 (def ^:private race-weighted-persona-config
   {:race-weights [{:race "White" :weight 1.0} {:race "Black" :weight 1.0}
                   {:race "Hispanic" :weight 1.0} {:race "Asian" :weight 1.0}
@@ -86,10 +86,10 @@
 ;; forever") -----------------------------------------------------------
 ;;
 ;; `engine/run` never surfaces `:suppressed-encounter-ends` (it lives on
-;; the walk-level ctx `ehrt.sim-trajectory.gmf-interpreter/run-module`
+;; the walk-level ctx `ehrt.patient-simulator.gmf-interpreter/run-module`
 ;; returns, one layer below the engine) -- so this counts it directly at
 ;; the interpreter layer, the same call shape
-;; `ehrt.sim-trajectory.census`'s own `walk-one` uses. 150 well-mixed
+;; `ehrt.patient-simulator.census`'s own `walk-one` uses. 150 well-mixed
 ;; seeds (the established mixer-RNG pattern, `mixed-seeds` below,
 ;; reused verbatim from `vendored_hypothyroidism_test.clj`'s own oracle
 ;; sibling) x both sexes = 300 walks per mixer seed, registered 25
@@ -104,10 +104,10 @@
 
 (defn- run-walk [seed sex reg-offset-years horizon-years]
   (let [p (assoc (sim-model/persona (Random. seed) race-weighted-persona-config) :sex sex)
-        reg-t (+ (sim-trajectory/dob-epoch-day p) (* 365 reg-offset-years))
+        reg-t (+ (patient-simulator/dob-epoch-day p) (* 365 reg-offset-years))
         end-t (+ reg-t (* 365 horizon-years))
         root (get (:modules anemia-closure) "anemia-unknown-etiology")]
-    (sim-trajectory/run-module root (Random. seed) p reg-t end-t (:modules anemia-closure) {} {})))
+    (patient-simulator/run-module root (Random. seed) p reg-t end-t (:modules anemia-closure) {} {})))
 
 (def ^:private pinned-suppressed-encounter-ends
   {20260802 33, 1 23, 42 20})

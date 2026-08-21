@@ -33,7 +33,7 @@
   never surfaced by `engine/run`), `:suppressed-straddle-spans` lives on
   `compile-trajectory`'s own return map -- reachable through the SAME
   `engine/run` population via `with-redefs` interception at the
-  `ehrt.sim-trajectory.interface/compile-trajectory` boundary (the exact
+  `ehrt.patient-simulator.interface/compile-trajectory` boundary (the exact
   technique the colorectal investigation itself used, ADR-0085 AR-CI-2)
   rather than a separately-constructed interpreter-layer walk sweep, so
   the counter is measured against the SAME real straddling patients the
@@ -43,8 +43,8 @@
   (:require [clojure.java.io :as io]
             [clojure.test :refer [deftest is testing]]
             [ehrt.kernel.interface :as result]
-            [ehrt.sim-trajectory.gmf :as gmf]
-            [ehrt.sim-trajectory.interface :as sim-trajectory]
+            [ehrt.patient-simulator.gmf :as gmf]
+            [ehrt.patient-simulator.interface :as patient-simulator]
             [ehrt.sim-engine.engine :as engine]
             [ehrt.sim-check.check :as check]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]))
@@ -116,8 +116,8 @@
   (doseq [[seed expected-total] pinned-suppressed-straddle-spans]
     (testing (str "seed " seed ": the straddle fix's own counter, pinned")
       (let [total (atom 0)
-            real-compile-trajectory sim-trajectory/compile-trajectory]
-        (with-redefs [sim-trajectory/compile-trajectory
+            real-compile-trajectory patient-simulator/compile-trajectory]
+        (with-redefs [patient-simulator/compile-trajectory
                       (fn [trajectory facility reg-t & more]
                         (let [compiled (apply real-compile-trajectory trajectory facility reg-t more)]
                           (swap! total + (or (:suppressed-straddle-spans compiled) 0))

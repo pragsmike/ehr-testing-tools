@@ -17,8 +17,8 @@
   promotion ADR's own J2-closure narrative). The one licensed
   improvement this move makes: every require below repoints from a
   foreign component's IMPLEMENTATION namespace to its INTERFACE --
-  `ehrt.sim-trajectory.gmf`/`gmf-interpreter` collapse into
-  `ehrt.sim-trajectory.interface` (gaining `dob-epoch-day`, the one var
+  `ehrt.patient-simulator.gmf`/`gmf-interpreter` collapse into
+  `ehrt.patient-simulator.interface` (gaining `dob-epoch-day`, the one var
   not already there, added by the same session, evidenced by this
   file's own call sites); `ehrt.sim-engine.engine` repoints to
   `ehrt.sim-engine.interface` (already exposing `run` under the same
@@ -117,7 +117,7 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [ehrt.kernel.interface :as kernel]
-            [ehrt.sim-trajectory.interface :as sim-trajectory]
+            [ehrt.patient-simulator.interface :as patient-simulator]
             [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim-engine.interface :as engine]
             [ehrt.sim-emit-hl7.interface :as emit-hl7])
@@ -137,7 +137,7 @@
 (defn- run-walk
   [module modules seed sex reg-offset-years horizon-years]
   (let [p (person seed sex)
-        reg-t (+ (sim-trajectory/dob-epoch-day p) (* 365 reg-offset-years))
+        reg-t (+ (patient-simulator/dob-epoch-day p) (* 365 reg-offset-years))
         end-t (+ reg-t (* 365 horizon-years))]
     (:trajectory (if modules
                    ;; the interface's own 8-arg arity, given the SAME
@@ -147,8 +147,8 @@
                    ;; shorthand; not a behavior change (this promotion
                    ;; session's own interface-repoint, disclosed in the
                    ;; namespace docstring above).
-                   (sim-trajectory/run-module module (Random. seed) p reg-t end-t modules {} {})
-                   (sim-trajectory/run-module module (Random. seed) p reg-t end-t)))))
+                   (patient-simulator/run-module module (Random. seed) p reg-t end-t modules {} {})
+                   (patient-simulator/run-module module (Random. seed) p reg-t end-t)))))
 
 (defn- interpreter-batch
   "100 well-mixed seeds x both sexes = 200 walks, concatenated into one
@@ -164,16 +164,16 @@
      (run-walk module modules seed sex reg-offset-years horizon-years))))
 
 (defn- appendicitis-batch []
-  (let [module (:payload (sim-trajectory/load-module "appendicitis" (slurp (io/resource "sim/modules/appendicitis.json"))))]
+  (let [module (:payload (patient-simulator/load-module "appendicitis" (slurp (io/resource "sim/modules/appendicitis.json"))))]
     (interpreter-batch module nil 20260727 70 80)))
 
 (defn- sore-throat-batch []
-  (let [module (:payload (sim-trajectory/load-module "sore-throat" (slurp (io/resource "sim/modules/sore_throat.json"))))]
+  (let [module (:payload (patient-simulator/load-module "sore-throat" (slurp (io/resource "sim/modules/sore_throat.json"))))]
     (interpreter-batch module nil 20260802 25 10)))
 
 (defn- ear-infections-batch []
   (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
-        loaded (sim-trajectory/load-closure "ear-infections" (slurp (io/resource "sim/modules/ear_infections.json")) resolve-call-path)
+        loaded (patient-simulator/load-closure "ear-infections" (slurp (io/resource "sim/modules/ear_infections.json")) resolve-call-path)
         modules (:modules (:payload loaded))
         root (get modules "ear-infections")]
     (interpreter-batch root modules 20260802 25 10)))
@@ -188,21 +188,21 @@
     {:ground-truth ground-truth :hl7 (vec messages)}))
 
 (defn- sinusitis-pair []
-  (let [module (:payload (sim-trajectory/load-module "sinusitis" (slurp (io/resource "sim/modules/sinusitis.json"))))]
+  (let [module (:payload (patient-simulator/load-module "sinusitis" (slurp (io/resource "sim/modules/sinusitis.json"))))]
     (engine-pair {:seed 1 :patients 30 :pathway {:name "module-only" :steps []}
-                  :modules [(sim-trajectory/singleton-closure module)] :module-assignment [{:module-id "sinusitis" :weight 1}]
+                  :modules [(patient-simulator/singleton-closure module)] :module-assignment [{:module-id "sinusitis" :weight 1}]
                   :module-horizon-days 3650})))
 
 (defn- death-fixture-pair []
-  (let [module (:payload (sim-trajectory/load-module "death-fixture" (slurp (io/resource "ehrt/sim/fixtures/death-fixture.json"))))]
+  (let [module (:payload (patient-simulator/load-module "death-fixture" (slurp (io/resource "ehrt/sim/fixtures/death-fixture.json"))))]
     (engine-pair {:seed 20260802 :patients 200 :pathway {:name "module-only" :steps []}
-                  :modules [(sim-trajectory/singleton-closure module)] :module-assignment [{:module-id "death-fixture" :weight 1}]
+                  :modules [(patient-simulator/singleton-closure module)] :module-assignment [{:module-id "death-fixture" :weight 1}]
                   :module-horizon-days 3650})))
 
 (defn- sepsis-pair []
-  (let [module (:payload (sim-trajectory/load-module "sepsis" (slurp (io/resource "sim/modules/sepsis.json"))))]
+  (let [module (:payload (patient-simulator/load-module "sepsis" (slurp (io/resource "sim/modules/sepsis.json"))))]
     (engine-pair {:seed 20260802 :patients 500 :pathway {:name "module-only" :steps []}
-                  :modules [(sim-trajectory/singleton-closure module)] :module-assignment [{:module-id "sepsis" :weight 1}]
+                  :modules [(patient-simulator/singleton-closure module)] :module-assignment [{:module-id "sepsis" :weight 1}]
                   :module-horizon-days 36500})))
 
 ;; --- ADR-0033 AR-4b: engine-layer digest pairs for the three closure
@@ -214,7 +214,7 @@
 
 (defn- ear-infections-engine-pair []
   (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
-        closure (:payload (sim-trajectory/load-closure "ear-infections" (slurp (io/resource "sim/modules/ear_infections.json")) resolve-call-path))]
+        closure (:payload (patient-simulator/load-closure "ear-infections" (slurp (io/resource "sim/modules/ear_infections.json")) resolve-call-path))]
     (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
                   :modules [closure] :module-assignment [{:module-id "ear-infections" :weight 1}]
                   :module-horizon-days 3650})))
@@ -222,7 +222,7 @@
 (defn- urinary-tract-infections-engine-pair []
   (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
         resolve-table-name (fn [table-name] (some-> (io/resource (str "sim/modules/lookup_tables/" table-name)) slurp))
-        closure (:payload (sim-trajectory/load-closure "urinary-tract-infections"
+        closure (:payload (patient-simulator/load-closure "urinary-tract-infections"
                                             (slurp (io/resource "sim/modules/urinary_tract_infections.json"))
                                             resolve-call-path resolve-table-name))]
     (engine-pair {:seed 777 :patients 300 :pathway {:name "module-only" :steps []}
@@ -231,10 +231,10 @@
 
 (defn- total-joint-replacement-engine-pair []
   (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
-        closure (:payload (sim-trajectory/load-closure "total-joint-replacement"
+        closure (:payload (patient-simulator/load-closure "total-joint-replacement"
                                             (slurp (io/resource "sim/modules/total_joint_replacement.json"))
                                             resolve-call-path))
-        ;; D2 H7's own authored, provenance-cited seed (ehrt.sim-trajectory.
+        ;; D2 H7's own authored, provenance-cited seed (ehrt.patient-simulator.
         ;; vendored-tjr-test's own docstring) -- reused verbatim, not
         ;; re-derived, the same value the sim-emit-hl7 round-trip test uses.
         seeded-closure (assoc closure :initial-attributes {:total-joint-replacement/joint-replacement "knee"})]
@@ -263,7 +263,7 @@
 (defn- urinary-tract-infections-history-engine-pair []
   (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
         resolve-table-name (fn [table-name] (some-> (io/resource (str "sim/modules/lookup_tables/" table-name)) slurp))
-        closure (:payload (sim-trajectory/load-closure "urinary-tract-infections"
+        closure (:payload (patient-simulator/load-closure "urinary-tract-infections"
                                             (slurp (io/resource "sim/modules/urinary_tract_infections.json"))
                                             resolve-call-path resolve-table-name))]
     (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
@@ -272,7 +272,7 @@
 
 (defn- ear-infections-history-engine-pair []
   (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
-        closure (:payload (sim-trajectory/load-closure "ear-infections" (slurp (io/resource "sim/modules/ear_infections.json")) resolve-call-path))]
+        closure (:payload (patient-simulator/load-closure "ear-infections" (slurp (io/resource "sim/modules/ear_infections.json")) resolve-call-path))]
     (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
                   :modules [closure] :module-assignment [{:module-id "ear-infections" :weight 1}]
                   :module-horizon-days 3650 :history true})))
@@ -299,7 +299,7 @@
 (defn- asthma-pair []
   (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
         resolve-table-name (fn [table-name] (some-> (io/resource (str "sim/modules/lookup_tables/" table-name)) slurp))
-        closure (:payload (sim-trajectory/load-closure "asthma"
+        closure (:payload (patient-simulator/load-closure "asthma"
                                             (slurp (io/resource "sim/modules/asthma.json"))
                                             resolve-call-path resolve-table-name))]
     (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
@@ -307,27 +307,27 @@
                   :module-horizon-days 36500})))
 
 (defn- bronchitis-pair []
-  (let [module (:payload (sim-trajectory/load-module "bronchitis" (slurp (io/resource "sim/modules/bronchitis.json"))))]
+  (let [module (:payload (patient-simulator/load-module "bronchitis" (slurp (io/resource "sim/modules/bronchitis.json"))))]
     (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
-                  :modules [(sim-trajectory/singleton-closure module)] :module-assignment [{:module-id "bronchitis" :weight 1}]
+                  :modules [(patient-simulator/singleton-closure module)] :module-assignment [{:module-id "bronchitis" :weight 1}]
                   :module-horizon-days 36500})))
 
 (defn- sleep-apnea-pair []
-  (let [module (:payload (sim-trajectory/load-module "sleep-apnea" (slurp (io/resource "sim/modules/sleep_apnea.json"))))]
+  (let [module (:payload (patient-simulator/load-module "sleep-apnea" (slurp (io/resource "sim/modules/sleep_apnea.json"))))]
     (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
-                  :modules [(sim-trajectory/singleton-closure module)] :module-assignment [{:module-id "sleep-apnea" :weight 1}]
+                  :modules [(patient-simulator/singleton-closure module)] :module-assignment [{:module-id "sleep-apnea" :weight 1}]
                   :module-horizon-days 36500})))
 
 (defn- fibromyalgia-pair []
-  (let [module (:payload (sim-trajectory/load-module "fibromyalgia" (slurp (io/resource "sim/modules/fibromyalgia.json"))))]
+  (let [module (:payload (patient-simulator/load-module "fibromyalgia" (slurp (io/resource "sim/modules/fibromyalgia.json"))))]
     (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
-                  :modules [(sim-trajectory/singleton-closure module)] :module-assignment [{:module-id "fibromyalgia" :weight 1}]
+                  :modules [(patient-simulator/singleton-closure module)] :module-assignment [{:module-id "fibromyalgia" :weight 1}]
                   :module-horizon-days 36500})))
 
 (defn- dementia-pair []
-  (let [module (:payload (sim-trajectory/load-module "dementia" (slurp (io/resource "sim/modules/dementia.json"))))]
+  (let [module (:payload (patient-simulator/load-module "dementia" (slurp (io/resource "sim/modules/dementia.json"))))]
     (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
-                  :modules [(sim-trajectory/singleton-closure module)] :module-assignment [{:module-id "dementia" :weight 1}]
+                  :modules [(patient-simulator/singleton-closure module)] :module-assignment [{:module-id "dementia" :weight 1}]
                   :module-horizon-days 36500})))
 
 ;; --- Vendoring batch 2 (2026-08-07, ADR-0071, AR-VB2-3): seven NEW
@@ -356,7 +356,7 @@
 
 (defn- hypothyroidism-pair []
   (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
-        closure (:payload (sim-trajectory/load-closure "hypothyroidism"
+        closure (:payload (patient-simulator/load-closure "hypothyroidism"
                                             (slurp (io/resource "sim/modules/hypothyroidism.json"))
                                             resolve-call-path))]
     (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
@@ -364,14 +364,14 @@
                   :module-horizon-days 36500})))
 
 (defn- rheumatoid-arthritis-pair []
-  (let [module (:payload (sim-trajectory/load-module "rheumatoid-arthritis" (slurp (io/resource "sim/modules/rheumatoid_arthritis.json"))))]
+  (let [module (:payload (patient-simulator/load-module "rheumatoid-arthritis" (slurp (io/resource "sim/modules/rheumatoid_arthritis.json"))))]
     (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
-                  :modules [(sim-trajectory/singleton-closure module)] :module-assignment [{:module-id "rheumatoid-arthritis" :weight 1}]
+                  :modules [(patient-simulator/singleton-closure module)] :module-assignment [{:module-id "rheumatoid-arthritis" :weight 1}]
                   :module-horizon-days 36500})))
 
 (defn- osteoarthritis-pair []
   (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
-        closure (:payload (sim-trajectory/load-closure "osteoarthritis"
+        closure (:payload (patient-simulator/load-closure "osteoarthritis"
                                             (slurp (io/resource "sim/modules/osteoarthritis.json"))
                                             resolve-call-path))]
     (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
@@ -379,20 +379,20 @@
                   :module-horizon-days 36500})))
 
 (defn- osteoporosis-pair []
-  (let [module (:payload (sim-trajectory/load-module "osteoporosis" (slurp (io/resource "sim/modules/osteoporosis.json"))))]
+  (let [module (:payload (patient-simulator/load-module "osteoporosis" (slurp (io/resource "sim/modules/osteoporosis.json"))))]
     (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
-                  :modules [(sim-trajectory/singleton-closure module)] :module-assignment [{:module-id "osteoporosis" :weight 1}]
+                  :modules [(patient-simulator/singleton-closure module)] :module-assignment [{:module-id "osteoporosis" :weight 1}]
                   :module-horizon-days 36500})))
 
 (defn- attention-deficit-disorder-pair []
-  (let [module (:payload (sim-trajectory/load-module "attention-deficit-disorder" (slurp (io/resource "sim/modules/attention_deficit_disorder.json"))))]
+  (let [module (:payload (patient-simulator/load-module "attention-deficit-disorder" (slurp (io/resource "sim/modules/attention_deficit_disorder.json"))))]
     (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
-                  :modules [(sim-trajectory/singleton-closure module)] :module-assignment [{:module-id "attention-deficit-disorder" :weight 1}]
+                  :modules [(patient-simulator/singleton-closure module)] :module-assignment [{:module-id "attention-deficit-disorder" :weight 1}]
                   :module-horizon-days 36500 :history true})))
 
 (defn- allergic-rhinitis-pair []
   (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
-        closure (:payload (sim-trajectory/load-closure "allergic-rhinitis"
+        closure (:payload (patient-simulator/load-closure "allergic-rhinitis"
                                             (slurp (io/resource "sim/modules/allergic_rhinitis.json"))
                                             resolve-call-path))]
     (engine-pair {:seed 20260802 :patients 3000 :pathway {:name "module-only" :steps []}
@@ -401,7 +401,7 @@
 
 (defn- dermatitis-pair []
   (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
-        closure (:payload (sim-trajectory/load-closure "dermatitis"
+        closure (:payload (patient-simulator/load-closure "dermatitis"
                                             (slurp (io/resource "sim/modules/dermatitis.json"))
                                             resolve-call-path))]
     (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
@@ -414,7 +414,7 @@
 
 (defn- metabolic-syndrome-care-pair []
   (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
-        closure (:payload (sim-trajectory/load-closure "metabolic-syndrome-care"
+        closure (:payload (patient-simulator/load-closure "metabolic-syndrome-care"
                                             (slurp (io/resource "sim/modules/metabolic_syndrome_care.json"))
                                             resolve-call-path))]
     (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
@@ -424,7 +424,7 @@
 (defn- vhd-pulmonic-pair []
   (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
         resolve-table-name (fn [table-name] (some-> (io/resource (str "sim/modules/lookup_tables/" table-name)) slurp))
-        closure (:payload (sim-trajectory/load-closure "vhd-pulmonic"
+        closure (:payload (patient-simulator/load-closure "vhd-pulmonic"
                                             (slurp (io/resource "sim/modules/vhd_pulmonic.json"))
                                             resolve-call-path resolve-table-name))]
     (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
@@ -434,7 +434,7 @@
 (defn- vhd-tricuspid-pair []
   (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
         resolve-table-name (fn [table-name] (some-> (io/resource (str "sim/modules/lookup_tables/" table-name)) slurp))
-        closure (:payload (sim-trajectory/load-closure "vhd-tricuspid"
+        closure (:payload (patient-simulator/load-closure "vhd-tricuspid"
                                             (slurp (io/resource "sim/modules/vhd_tricuspid.json"))
                                             resolve-call-path resolve-table-name))]
     (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
@@ -442,9 +442,9 @@
                   :module-horizon-days 36500})))
 
 (defn- med-rec-pair []
-  (let [module (:payload (sim-trajectory/load-module "med-rec" (slurp (io/resource "sim/modules/med_rec.json"))))]
+  (let [module (:payload (patient-simulator/load-module "med-rec" (slurp (io/resource "sim/modules/med_rec.json"))))]
     (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
-                  :modules [(sim-trajectory/singleton-closure module)] :module-assignment [{:module-id "med-rec" :weight 1}]
+                  :modules [(patient-simulator/singleton-closure module)] :module-assignment [{:module-id "med-rec" :weight 1}]
                   :module-horizon-days 36500})))
 
 ;; --- Fidelity payoff (2026-08-08, ADR-0083, AR-FP-1/2): the
@@ -454,12 +454,12 @@
 ;; in-session proof there found violations fully extinguished at this
 ;; SAME seed/population. `:persona-config` carries the race-weighting
 ;; ADR-0071's own finding first required (no other root here reads
-;; `:race`) -- the same shape `ehrt.sim-trajectory.census/default-
+;; `:race`) -- the same shape `ehrt.patient-simulator.census/default-
 ;; persona-config` and `vendored_anemia_test.clj` both already use.
 
 (defn- anemia-pair []
   (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
-        closure (:payload (sim-trajectory/load-closure "anemia-unknown-etiology"
+        closure (:payload (patient-simulator/load-closure "anemia-unknown-etiology"
                                             (slurp (io/resource "sim/modules/anemia___unknown_etiology.json"))
                                             resolve-call-path))]
     (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
@@ -480,7 +480,7 @@
 
 (defn- colorectal-pair []
   (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
-        closure (:payload (sim-trajectory/load-closure "colorectal-cancer"
+        closure (:payload (patient-simulator/load-closure "colorectal-cancer"
                                             (slurp (io/resource "sim/modules/colorectal_cancer.json"))
                                             resolve-call-path))]
     (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
@@ -503,29 +503,29 @@
 ;; no root for any of them here, by design, not omission.
 
 (defn- veteran-lung-cancer-pair []
-  (let [module (:payload (sim-trajectory/load-module "veteran-lung-cancer" (slurp (io/resource "sim/modules/veteran_lung_cancer.json"))))
-        seeded-closure (assoc (sim-trajectory/singleton-closure module) :initial-attributes {:veteran-lung-cancer/veteran true})]
+  (let [module (:payload (patient-simulator/load-module "veteran-lung-cancer" (slurp (io/resource "sim/modules/veteran_lung_cancer.json"))))
+        seeded-closure (assoc (patient-simulator/singleton-closure module) :initial-attributes {:veteran-lung-cancer/veteran true})]
     (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
                   :modules [seeded-closure] :module-assignment [{:module-id "veteran-lung-cancer" :weight 1}]
                   :module-horizon-days 36500})))
 
 (defn- veteran-prostate-cancer-pair []
-  (let [module (:payload (sim-trajectory/load-module "veteran-prostate-cancer" (slurp (io/resource "sim/modules/veteran_prostate_cancer.json"))))
-        seeded-closure (assoc (sim-trajectory/singleton-closure module) :initial-attributes {:veteran-prostate-cancer/veteran true})]
+  (let [module (:payload (patient-simulator/load-module "veteran-prostate-cancer" (slurp (io/resource "sim/modules/veteran_prostate_cancer.json"))))
+        seeded-closure (assoc (patient-simulator/singleton-closure module) :initial-attributes {:veteran-prostate-cancer/veteran true})]
     (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
                   :modules [seeded-closure] :module-assignment [{:module-id "veteran-prostate-cancer" :weight 1}]
                   :module-horizon-days 36500})))
 
 (defn- veteran-ptsd-pair []
-  (let [module (:payload (sim-trajectory/load-module "veteran-ptsd" (slurp (io/resource "sim/modules/veteran_ptsd.json"))))
-        seeded-closure (assoc (sim-trajectory/singleton-closure module) :initial-attributes {:veteran-ptsd/veteran true})]
+  (let [module (:payload (patient-simulator/load-module "veteran-ptsd" (slurp (io/resource "sim/modules/veteran_ptsd.json"))))
+        seeded-closure (assoc (patient-simulator/singleton-closure module) :initial-attributes {:veteran-ptsd/veteran true})]
     (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
                   :modules [seeded-closure] :module-assignment [{:module-id "veteran-ptsd" :weight 1}]
                   :module-horizon-days 36500})))
 
 (defn- veteran-self-harm-pair []
   (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
-        closure (:payload (sim-trajectory/load-closure "veteran-self-harm"
+        closure (:payload (patient-simulator/load-closure "veteran-self-harm"
                                             (slurp (io/resource "sim/modules/veteran_self_harm.json"))
                                             resolve-call-path))
         seeded-closure (assoc closure :initial-attributes {:veteran-self-harm/veteran true})]
@@ -534,8 +534,8 @@
                   :module-horizon-days 36500})))
 
 (defn- veteran-substance-abuse-treatment-pair []
-  (let [module (:payload (sim-trajectory/load-module "veteran-substance-abuse-treatment" (slurp (io/resource "sim/modules/veteran_substance_abuse_treatment.json"))))
-        seeded-closure (assoc (sim-trajectory/singleton-closure module) :initial-attributes {:veteran-substance-abuse-treatment/veteran true})]
+  (let [module (:payload (patient-simulator/load-module "veteran-substance-abuse-treatment" (slurp (io/resource "sim/modules/veteran_substance_abuse_treatment.json"))))
+        seeded-closure (assoc (patient-simulator/singleton-closure module) :initial-attributes {:veteran-substance-abuse-treatment/veteran true})]
     (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
                   :modules [seeded-closure] :module-assignment [{:module-id "veteran-substance-abuse-treatment" :weight 1}]
                   :module-horizon-days 36500})))
@@ -552,7 +552,7 @@
   max-steps budget on this closure's own loop, a 50-year one does not)."
   []
   (let [resolve-call-path (fn [call-path] (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))
-        closure (:payload (sim-trajectory/load-closure "injuries" (slurp (io/resource "sim/modules/injuries.json")) resolve-call-path))]
+        closure (:payload (patient-simulator/load-closure "injuries" (slurp (io/resource "sim/modules/injuries.json")) resolve-call-path))]
     (engine-pair {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
                   :modules [closure] :module-assignment [{:module-id "injuries" :weight 1}]
                   :module-horizon-days 18250})))

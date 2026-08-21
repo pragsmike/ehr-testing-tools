@@ -1656,7 +1656,7 @@
 (defn- event-line-sink
   "The compact event-line ticker for sim event-log input (ADR-0100):
   one line per event -- :t as a day+HH:MM:SS offset from the run's own
-  epoch, the event kind (:event -- ehrt.sim-trajectory.compile-
+  epoch, the event kind (:event -- ehrt.patient-simulator.compile-
   trajectory's own key, NOT :type), :location when present, :citation
   when present. Both --ticker full and --ticker line render this SAME
   line for event input: there is no wire-format \"full\" rendering for
@@ -1849,7 +1849,7 @@
   gate-command's own --baseline read already uses), then a shape check
   on the parsed value: a non-empty vector of maps, the first of which
   carries both :event and :t (the real ground-truth event shape,
-  ehrt.sim-trajectory.compile-trajectory -- NOT :type, a channel claim
+  ehrt.patient-simulator.compile-trajectory -- NOT :type, a channel claim
   this session's own live probe corrected, disclosed in ADR-0100).
   Anything else is :play-input-unsupported, the same category play's
   own message-input legs already use for an unsupported shape."

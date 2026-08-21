@@ -20,7 +20,7 @@
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [ehrt.sim-engine.engine :as engine]
-            [ehrt.sim-trajectory.interface :as sim-trajectory]
+            [ehrt.patient-simulator.interface :as patient-simulator]
             [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim-engine.order-profiles :as order-profiles]
             [ehrt.sim-check.check :as check]
@@ -779,7 +779,7 @@
           {:keys [ground-truth]} (engine/run {:seed seed :patients 3 :pathways [{:pathway pathway :weight 1}]})]
       (result/ok? (check/check-all ground-truth)))))
 
-;; --- M5b: :outpatient-visit / :outpatient-visit-end (components/sim-trajectory/docs/gmf-interpreter.md
+;; --- M5b: :outpatient-visit / :outpatient-visit-end (components/patient-simulator/docs/gmf-interpreter.md
 ;; section 4's sketch, items 5-7) -------------------------------------------
 
 (deftest outpatient-visit-admits-with-no-bed-no-ward-no-allocation-ladder
@@ -1149,11 +1149,11 @@
 ;; CompileTrajectory -> IR), composing with :pathways -----------------------
 
 (def ^:private clinic-module
-  (:payload (sim-trajectory/load-module "fixture-clinic"
+  (:payload (patient-simulator/load-module "fixture-clinic"
                             (slurp (io/resource "ehrt/sim/fixtures/fixture-clinic.json")))))
 
 (def ^:private sinusitis-module
-  (:payload (sim-trajectory/load-module "sinusitis" (slurp (io/resource "sim/modules/sinusitis.json")))))
+  (:payload (patient-simulator/load-module "sinusitis" (slurp (io/resource "sim/modules/sinusitis.json")))))
 
 (deftest config-keys-includes-the-module-wiring-keys
   (is (every? (set engine/config-keys) [:modules :module-assignment :module-horizon-days])))
@@ -1180,7 +1180,7 @@
             fixture regression, below, is that same guarantee). Uses the
             REAL vendored sinusitis.json, deliberately, not the hand-
             written fixture: sinusitis.json's own Potential_Onset loop
-            recurs across a patient's whole life (components/sim-trajectory/docs/gmf-interpreter.md),
+            recurs across a patient's whole life (components/patient-simulator/docs/gmf-interpreter.md),
             so it reliably produces horizon-phase content against THIS
             engine's own FIXED registration anchor (persona/reference-
             today-epoch-day) regardless of a patient's randomly sampled
@@ -1203,7 +1203,7 @@
                        ;; fresh :new patient) -- a real caller wanting
                        ;; module-only patients must do the same.
                        :pathway {:name "module-only" :steps []}
-                       :modules [(sim-trajectory/singleton-closure sinusitis-module)]
+                       :modules [(patient-simulator/singleton-closure sinusitis-module)]
                        :module-assignment [{:module-id "sinusitis" :weight 1}]
                        :module-horizon-days 3650})
           kinds (into #{} (map :event) ground-truth)
@@ -1226,7 +1226,7 @@
 ;; establishes.
 
 (def ^:private death-fixture-module
-  (:payload (sim-trajectory/load-module "death-fixture"
+  (:payload (patient-simulator/load-module "death-fixture"
                             (slurp (io/resource "ehrt/sim/fixtures/death-fixture.json")))))
 
 (deftest a-run-with-the-death-fixture-configured-lands-expired-status-for-real
@@ -1243,7 +1243,7 @@
     (let [{:keys [ground-truth] :as result}
           (engine/run {:seed 20260802 :patients 200
                        :pathway {:name "module-only" :steps []}
-                       :modules [(sim-trajectory/singleton-closure death-fixture-module)]
+                       :modules [(patient-simulator/singleton-closure death-fixture-module)]
                        :module-assignment [{:module-id "death-fixture" :weight 1}]
                        :module-horizon-days 3650})
           discharges (filter #(= :discharge (:event %)) ground-truth)
@@ -1265,7 +1265,7 @@
            (engine/run {:seed 42 :patients 5})))))
 
 (defspec mixed-authored-and-compiled-run-satisfies-the-full-invariant-catalog 150
-  (testing "components/sim-trajectory/docs/gmf-interpreter.md section 4's own central theory claim:
+  (testing "components/patient-simulator/docs/gmf-interpreter.md section 4's own central theory claim:
             authored pathways and compiled trajectories are BOTH just IR
             entering the union -- some patients on an explicit authored
             pathway, others on a compiled module, one run, one invariant
@@ -1287,7 +1287,7 @@
                                     {:patient-ordinal 1 :pathway pathway}
                                     {:patient-ordinal 2 :pathway empty-pathway}
                                     {:patient-ordinal 3 :pathway empty-pathway}]
-                         :modules [(sim-trajectory/singleton-closure clinic-module)]
+                         :modules [(patient-simulator/singleton-closure clinic-module)]
                          :module-assignment [{:patient-ordinal 2 :module-id "fixture-clinic"}
                                              {:patient-ordinal 3 :module-id "fixture-clinic"}]
                          :module-horizon-days 3650})]
@@ -1358,7 +1358,7 @@
           (engine/run {:seed seed :patients 3
                        :pathway {:name "module-only" :steps []}
                        :persona-config {:age-min 0 :age-max 0}
-                       :modules [(sim-trajectory/singleton-closure straddle-module)]
+                       :modules [(patient-simulator/singleton-closure straddle-module)]
                        :module-assignment [{:module-id "straddle-mod" :weight 1}]
                        :module-horizon-days 1000
                        :history true})

@@ -1,0 +1,93 @@
+{
+  "name": "Death Fixture",
+  "remarks": [
+    "Hand-authored GMF fixture for GMF coverage Wave C's own Death proof",
+    "(notes/ADRs.md ADR-0028, C6): this project's own authored data, not",
+    "derived from or copied out of any real Synthea module, so it carries",
+    "no NOTICE/provenance obligation the way a vendored module would.",
+    "Shaped after stroke.json's own real structure -- a monthly-tick",
+    "onset gate (Chance_of_Stroke's own literal shape), an emergency",
+    "encounter, a procedure, a probabilistic death branch reached from",
+    "INSIDE the still-open encounter -- but the onset gate's own weight",
+    "is a plain literal number, never an attribute-sourced distribution,",
+    "so this fixture proves Death's own terminal contract and compile-",
+    "trajectory/engine wiring without stroke.json's own stroke_risk gap",
+    "(components/patient-simulator/docs/gmf-interpreter.md section 10). The",
+    "monthly-tick loop is load-bearing, not decorative: ehrt.sim-engine.engine's",
+    "own :registered event anchors registration-t at a FIXED calendar",
+    "instant (persona/reference-today-epoch-day), not at DOB -- a single",
+    "near-birth event (this fixture's own first draft) is pre-horizon-",
+    "dropped for virtually every sampled age, the SAME known limitation",
+    "fixture-clinic.json's own episode already has (M5b Task 4's own",
+    "engine-test comment). A SURVIVED encounter loops back to",
+    "Chance_of_Encounter rather than reaching Terminal -- unlike real",
+    "stroke.json's own single-episode shape, this fixture's onset gate",
+    "must recur across a patient's WHOLE LIFE (sinusitis.json's own",
+    "Potential_Onset precedent, docs/gmf-interpreter.md section 8 item 5)",
+    "so it gets fresh, independent monthly chances WITHIN the post-",
+    "registration horizon window regardless of a patient's sampled age,",
+    "not just once, early in a life this project's own encounter-",
+    "horizon scope (sim/ADR-0007 point 3) never simulates operationally.",
+    "A real Death always short-circuits the walk regardless (C2's own",
+    "terminal contract) -- only the SURVIVED path loops.",
+    "Concept triplets are the same real, independently verified SNOMED",
+    "codes stroke.json itself uses (already characterized in this",
+    "project's own docs), not invented."
+  ],
+  "states": {
+    "Initial": {
+      "type": "Initial",
+      "direct_transition": "Chance_of_Encounter"
+    },
+
+    "Chance_of_Encounter": {
+      "type": "Delay",
+      "exact": {"quantity": 1, "unit": "months"},
+      "distributed_transition": [
+        {"transition": "Emergency_Encounter", "distribution": 0.02},
+        {"transition": "Chance_of_Encounter", "distribution": 0.98}
+      ]
+    },
+
+    "Emergency_Encounter": {
+      "type": "Encounter",
+      "encounter_class": "emergency",
+      "reason": "Fixture outcome",
+      "codes": [
+        {"system": "SNOMED-CT", "code": "50849002", "display": "Emergency room admission (procedure)"}
+      ],
+      "direct_transition": "Stabilization_Procedure"
+    },
+
+    "Stabilization_Procedure": {
+      "type": "Procedure",
+      "codes": [
+        {"system": "SNOMED-CT", "code": "433112001", "display": "Percutaneous mechanical thrombectomy of portal vein using fluoroscopic guidance with contrast (procedure)"}
+      ],
+      "duration": {"low": 30, "high": 30, "unit": "minutes"},
+      "distributed_transition": [
+        {"transition": "Die", "distribution": 0.3},
+        {"transition": "Recover", "distribution": 0.7}
+      ]
+    },
+
+    "Die": {
+      "type": "Death",
+      "range": {"low": 1, "high": 30, "unit": "days"},
+      "codes": [
+        {"system": "SNOMED-CT", "code": "230690007", "display": "Cerebrovascular accident (disorder)"}
+      ],
+      "direct_transition": "End_Encounter"
+    },
+
+    "Recover": {
+      "type": "Simple",
+      "direct_transition": "End_Encounter"
+    },
+
+    "End_Encounter": {
+      "type": "EncounterEnd",
+      "direct_transition": "Chance_of_Encounter"
+    }
+  }
+}

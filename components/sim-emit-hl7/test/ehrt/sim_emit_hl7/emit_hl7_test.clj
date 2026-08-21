@@ -341,7 +341,7 @@
 
 ;; --- M5b: :observation -> ORU^R01 (OBX only, no ORC/OBR -- unsolicited,
 ;; not order-linked); :procedure/:medication-order/:medication-end are
-;; truth-only, per the mapping table (components/sim-trajectory/docs/gmf-interpreter.md section 1) --
+;; truth-only, per the mapping table (components/patient-simulator/docs/gmf-interpreter.md section 1) --
 ;; no message-type-registry entry, DG1/billing rendering gated on
 ;; snomed-icd10-map, never built this milestone. ------------------------
 

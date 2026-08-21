@@ -3,7 +3,7 @@
   `notes/adr/0051-alignment-fixes-2.md`): AGENTS.md's own Constraints
   section states, in prose only until now, `components/sim-emit-hl7`
   must never depend on anything but `components/sim-model` (never on
-  `components/sim` or `components/sim-trajectory` themselves) --
+  `components/sim` or `components/patient-simulator` themselves) --
   enforced by `poly check`'s general brick-graph rules plus vigilance,
   never by a named test (S5's own finding: no `deftest` in this family
   checked it). This test promotes that prose constraint to a gate.
@@ -79,7 +79,7 @@
   (testing "sim-model and the component's own namespaces are allowed"
     (is (sim-emit-hl7-allowed-require? "ehrt.sim-model.interface"))
     (is (sim-emit-hl7-allowed-require? "ehrt.sim-emit-hl7.site-profile")))
-  (testing "sim itself, sim-trajectory, and any other domain namespace are disallowed"
+  (testing "sim itself, patient-simulator, and any other domain namespace are disallowed"
     (is (not (sim-emit-hl7-allowed-require? "ehrt.sim.interface")))
-    (is (not (sim-emit-hl7-allowed-require? "ehrt.sim-trajectory.interface")))
+    (is (not (sim-emit-hl7-allowed-require? "ehrt.patient-simulator.interface")))
     (is (not (sim-emit-hl7-allowed-require? "ehrt.corpus.interface")))))

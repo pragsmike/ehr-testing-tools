@@ -10,7 +10,7 @@
 
   2026-08-04 (sim split B, M4, `notes/ADRs.md` ADR-0043): the
   extraction this docstring disclosed is complete. Every concern that
-  can be named as its own domain -- sim-model, sim-trajectory,
+  can be named as its own domain -- sim-model, patient-simulator,
   sim-engine, sim-emit-hl7, sim-emit-fhir, sim-check, provenance -- now
   lives in its own component; residual `components/sim` is pure
   orchestration (`run`, `identifiers`, `version`, `manifest`) behind

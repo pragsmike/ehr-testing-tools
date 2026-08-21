@@ -82,6 +82,28 @@ oracle_wiring_for() {
   fi
 }
 
+# The patient-simulation brick's own DIRECTORY NAME, per side -- the same
+# per-worktree resolution shape `oracle_wiring_for` (above) already uses,
+# and here for the same reason: the two sides can carry two different
+# layouts. `components/sim-trajectory` was renamed
+# `components/patient-simulator` at ADR-0162 (2026-08-21), so any bracket
+# whose BASELINE predates that rename reads the old directory on one side
+# and the new one on the other. A single hard-coded literal here served
+# both sides only for as long as the name never moved; it does not survive
+# the rename it is being asked to bracket.
+#
+# RETIREMENT CONDITION: delete the `else` branch once no bracket this repo
+# runs still needs a pre-rename baseline -- the same condition, and the
+# same wording, `oracle_wiring_for` carries for its own fallback.
+sim_brick_dir_for() {
+  local wt="$1"
+  if [ -d "$wt/components/patient-simulator" ]; then
+    echo "patient-simulator"
+  else
+    echo "sim-trajectory"
+  fi
+}
+
 # The digest.clj blob path for `ref` at the REPO's own object store (no
 # worktree needed for this lookup) -- used only by the soundness check,
 # which compares source text, not runtime behavior.
@@ -150,6 +172,9 @@ run_one() {
   path="$(echo "$wiring" | sed -n 1p)"
   main_ns="$(echo "$wiring" | sed -n 2p)"
 
+  local sim_brick
+  sim_brick="$(sim_brick_dir_for "$wt")"
+
   local oracle_deps oracle_paths
   case "$path" in
     components/oracle/*)
@@ -171,9 +196,9 @@ run_one() {
         poly/sim {:local/root "$wt/components/sim"}
         poly/sim-engine {:local/root "$wt/components/sim-engine"}
         poly/sim-model {:local/root "$wt/components/sim-model"}
-        poly/sim-trajectory {:local/root "$wt/components/sim-trajectory"}
+        poly/$sim_brick {:local/root "$wt/components/$sim_brick"}
         poly/sim-emit-hl7 {:local/root "$wt/components/sim-emit-hl7"}}
- :aliases {:oracle-run {:extra-paths ["$wt/components/sim-trajectory/test"]}}}
+ :aliases {:oracle-run {:extra-paths ["$wt/components/$sim_brick/test"]}}}
 EOF
 )
   mkdir -p "$out"

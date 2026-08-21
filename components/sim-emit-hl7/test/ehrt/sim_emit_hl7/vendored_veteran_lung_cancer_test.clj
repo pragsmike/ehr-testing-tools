@@ -22,16 +22,16 @@
   (:require [clojure.java.io :as io]
             [clojure.test :refer [deftest is testing]]
             [ehrt.kernel.interface :as result]
-            [ehrt.sim-trajectory.interface :as sim-trajectory]
+            [ehrt.patient-simulator.interface :as patient-simulator]
             [ehrt.sim-engine.engine :as engine]
             [ehrt.sim-check.check :as check]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]))
 
 (def ^:private loaded-module
-  (sim-trajectory/load-module "veteran-lung-cancer" (slurp (io/resource "sim/modules/veteran_lung_cancer.json"))))
+  (patient-simulator/load-module "veteran-lung-cancer" (slurp (io/resource "sim/modules/veteran_lung_cancer.json"))))
 
 (def ^:private seeded-closure
-  (assoc (sim-trajectory/singleton-closure (:payload loaded-module))
+  (assoc (patient-simulator/singleton-closure (:payload loaded-module))
          :initial-attributes {:veteran-lung-cancer/veteran true}))
 
 ;; This family's own 2-seed baseline (AR-VB4-1): clean at both, no

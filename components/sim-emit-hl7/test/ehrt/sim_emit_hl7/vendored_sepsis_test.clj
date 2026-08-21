@@ -5,7 +5,7 @@
   ehrt.sim-engine.engine-test's own sinusitis-module/death-fixture tests
   already establish (docs/gmf-interpreter.md section 12) -- interpreter-
   layer coverage (load-clean, the diagnostic-report emission itself,
-  determinism) is ehrt.sim-trajectory.vendored-sepsis-test.
+  determinism) is ehrt.patient-simulator.vendored-sepsis-test.
 
   Population/horizon sizing, empirically measured this session (the
   same 'measure, don't guess' discipline the death-fixture test's own
@@ -23,7 +23,7 @@
   messages total)."
   (:require [clojure.test :refer [deftest is testing]]
             [ehrt.kernel.interface :as result]
-            [ehrt.sim-trajectory.gmf :as gmf]
+            [ehrt.patient-simulator.gmf :as gmf]
             [ehrt.sim-engine.engine :as engine]
             [ehrt.sim-check.check :as check]
             [ehrt.sim-emit-hl7.emit-hl7 :as emit-hl7]

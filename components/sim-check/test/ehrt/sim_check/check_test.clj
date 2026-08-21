@@ -22,7 +22,7 @@
             [ehrt.sim-engine.engine :as engine]
             [ehrt.sim-engine.churn :as churn]
             [ehrt.sim-engine.order-profiles :as order-profiles]
-            [ehrt.sim-trajectory.interface :as sim-trajectory]))
+            [ehrt.patient-simulator.interface :as patient-simulator]))
 
 (def test-facility
   {:id :t :wards [{:id :ed :name "ED" :beds 0 :surge-slots 4
@@ -256,7 +256,7 @@
   its episode falls close enough to the engine's fixed registration
   anchor for some seeds to straddle it (engine_test.clj docstring,
   ~line 1080)."
-  (:payload (sim-trajectory/load-module "fixture-clinic"
+  (:payload (patient-simulator/load-module "fixture-clinic"
                             (slurp (io/resource "ehrt/sim/fixtures/fixture-clinic.json")))))
 
 (deftest medication-end-references-existing-order-and-follows-it-in-time-holds-at-the-adr-0122-shrunk-seed
@@ -277,7 +277,7 @@
                                   {:patient-ordinal 1 :pathway pathway}
                                   {:patient-ordinal 2 :pathway empty-pathway}
                                   {:patient-ordinal 3 :pathway empty-pathway}]
-                       :modules [(sim-trajectory/singleton-closure fixture-clinic-module)]
+                       :modules [(patient-simulator/singleton-closure fixture-clinic-module)]
                        :module-assignment [{:patient-ordinal 2 :module-id "fixture-clinic"}
                                            {:patient-ordinal 3 :module-id "fixture-clinic"}]
                        :module-horizon-days 3650})]

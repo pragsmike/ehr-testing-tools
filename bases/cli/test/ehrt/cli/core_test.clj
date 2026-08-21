@@ -3309,7 +3309,7 @@
 
 ;; ---- sim event-log input adapter (ADR-0100): a single .edn file,
 ;; recognized by extension in play's own dispatch -- a vector of
-;; ground-truth event maps (ehrt.sim-trajectory.compile-trajectory's
+;; ground-truth event maps (ehrt.patient-simulator.compile-trajectory's
 ;; own shape: :event, :t in seconds from the run's own epoch,
 ;; optional :location/:citation), paced by :t via player/plan's own
 ;; injectable :timestamp-fn (player/event-timestamp-ms), rendered

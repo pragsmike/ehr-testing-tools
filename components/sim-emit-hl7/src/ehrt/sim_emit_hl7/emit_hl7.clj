@@ -66,14 +66,14 @@
    ;; carries a message for an attempt that never became a real action).
    :order-placed {:type "ORM" :trigger "O01"}
    :result-available {:type "ORU" :trigger "R01"}
-   ;; M5b (components/sim-trajectory/docs/gmf-interpreter.md section 4's sketch, item 5): the new
+   ;; M5b (components/patient-simulator/docs/gmf-interpreter.md section 4's sketch, item 5): the new
    ;; outpatient encounter class. :outpatient-visit-end has NO entry, by
    ;; design (item 7 -- the same sim/ADR-0012 :step-rejected precedent: many
    ;; real ambulatory feeds send a single A04 and no closing message for a
    ;; same-day visit; inventing a discharge-shaped message here would be
    ;; manufacturing wire traffic no real interface sends).
    :outpatient-visit {:type "ADT" :trigger "A04"}
-   ;; M5b (components/sim-trajectory/docs/gmf-interpreter.md section 1's table): :observation is an
+   ;; M5b (components/patient-simulator/docs/gmf-interpreter.md section 1's table): :observation is an
    ;; UNSOLICITED finding, not an order's result -- same ORU^R01 message
    ;; family as :result-available, rendered WITHOUT the ORC/OBR order
    ;; context that doesn't exist for it (a real, legal ORU shape).
@@ -740,11 +740,11 @@
       (obr-segment 1 concept clinical-ts)
       (concat obx-segments (z-segments-for site-profile personas ev))))))
 
-;; --- M5b: :observation -> ORU^R01, OBX only (components/sim-trajectory/docs/gmf-interpreter.md
+;; --- M5b: :observation -> ORU^R01, OBX only (components/patient-simulator/docs/gmf-interpreter.md
 ;; section 1's table) -------------------------------------------------------
 
 (defn- observation-obx-segment
-  "OBX-3 is the FIRST of :codes (components/sim-trajectory/docs/gmf-interpreter.md section 1: a GMF
+  "OBX-3 is the FIRST of :codes (components/patient-simulator/docs/gmf-interpreter.md section 1: a GMF
   Observation's own concept), OBX-5 the sampled :value when present
   (some Observation states carry no :range, hence no value -- an empty
   field, never a fabricated one), OBX-6 :unit. GMF coverage Wave D

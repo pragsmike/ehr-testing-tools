@@ -2,7 +2,7 @@
   "Engine closure-context session (2026-08-03, ADR-0033, J3 CLOSED): the
   full compile-trajectory/engine/emit round trip for `ear_infections.json`
   -- the standing gap every closure-having vendored root disclosed since
-  Wave B (`ehrt.sim-trajectory.vendored-ear-infections-test`'s own
+  Wave B (`ehrt.patient-simulator.vendored-ear-infections-test`'s own
   docstring, ADR-0029's D2/D3 dated notes), PINNED broken by
   `ehrt.sim-emit-hl7.vendored-ear-infections-test`'s own previous
   version (ADR-0030 J3: `ehrt.sim-engine.engine`'s own `:registered` decide
@@ -26,7 +26,7 @@
   which produced a given step. The NEW-timing claim itself (the
   wellness encounter fires strictly after the last medication ends, not
   at the same instant) is proven at the INTERPRETER layer instead
-  (`ehrt.sim-trajectory.vendored-ear-infections-test`'s own
+  (`ehrt.patient-simulator.vendored-ear-infections-test`'s own
   `next-wellness-encounter-now-resolves-at-a-real-cadence-tick-not-immediately`),
   per AR-4's own boundary ruling that semantic walk claims are an
   interpreter-layer concern, engine round-trips a narrower
@@ -34,7 +34,7 @@
   (:require [clojure.java.io :as io]
             [clojure.test :refer [deftest is testing]]
             [ehrt.kernel.interface :as result]
-            [ehrt.sim-trajectory.gmf :as gmf]
+            [ehrt.patient-simulator.gmf :as gmf]
             [ehrt.sim-engine.engine :as engine]
             [ehrt.sim-check.check :as check]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]))
@@ -44,7 +44,7 @@
 (defn- resolve-call-path
   "D3's own real caller shape -- a thin io/resource wrapper over the
   search path `sim/modules/<call-path>.json` -- the SAME shape
-  `ehrt.sim-trajectory.vendored-ear-infections-test`'s own interpreter-
+  `ehrt.patient-simulator.vendored-ear-infections-test`'s own interpreter-
   layer test already establishes for this closure."
   [call-path]
   (some-> (io/resource (str "sim/modules/" call-path ".json")) slurp))

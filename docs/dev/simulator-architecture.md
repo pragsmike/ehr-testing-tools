@@ -33,8 +33,8 @@ cites, never re-derives.
 
 Every fact asserted below about the current codebase was re-read from
 source while writing this record (2026-08-11): `components/sim-engine/
-src/ehrt/sim_engine/engine.clj`, `components/sim-trajectory/src/ehrt/
-sim_trajectory/{gmf,gmf_interpreter,compile_trajectory,census}.clj`,
+src/ehrt/sim_engine/engine.clj`, `components/patient-simulator/src/ehrt/
+patient_simulator/{gmf,gmf_interpreter,compile_trajectory,census}.clj`,
 `components/sim-emit-hl7/src/ehrt/sim_emit_hl7/{interface,v2_replay}.
 clj`, `components/sim-emit-fhir/{src,test}/ehrt/sim_emit_fhir/*`,
 `components/sim-check/src/ehrt/sim_check/check.clj`, `components/sim/
@@ -52,7 +52,7 @@ only what a reader orienting to the *architecture* needs first.
 | Brick | Job | Interface entry points |
 |---|---|---|
 | `sim-model` | Pure schemas and sampling: pathway IR, facility/ward allocation, `Persona`, provider config. No engine, no RNG threading of its own beyond what its sampling functions take as an argument. | `components/sim-model/src/ehrt/sim_model/interface.clj` |
-| `sim-trajectory` | GMF module loading and interpretation: `load-closure` resolves a module (plus its `CallSubmodule` targets and lookup tables) into a closure; `run-module` walks it, RNG-driven, into a `Trajectory`; `compile-trajectory` reshapes that trajectory into pathway IR the engine can execute. This is "the GMF walk." | `components/sim-trajectory/src/ehrt/sim_trajectory/interface.clj` (`load-closure` → `gmf.clj:1580`; `run-module` → `gmf_interpreter.clj:2161`, driving `walk-module` → `gmf_interpreter.clj:2061`; `compile-trajectory` → `compile_trajectory.clj:1`) |
+| `patient-simulator` | GMF module loading and interpretation: `load-closure` resolves a module (plus its `CallSubmodule` targets and lookup tables) into a closure; `run-module` walks it, RNG-driven, into a `Trajectory`; `compile-trajectory` reshapes that trajectory into pathway IR the engine can execute. This is "the GMF walk." | `components/patient-simulator/src/ehrt/patient_simulator/interface.clj` (`load-closure` → `gmf.clj:1580`; `run-module` → `gmf_interpreter.clj:2161`, driving `walk-module` → `gmf_interpreter.clj:2061`; `compile-trajectory` → `compile_trajectory.clj:1`) |
 | `sim-engine` | The discrete-event core: the `decide`/`evolve` multimethod pair (`sim/ADR-0008`), the `run` loop, `replay`, plus the churn and order-profiles catalytics. | `components/sim-engine/src/ehrt/sim_engine/interface.clj` (`run` → `engine.clj:1242`; `replay` → `engine.clj:1059`) |
 | `sim-emit-hl7` | Ground-truth log → HL7v2 ER7 messages (`emit`), plus the wire-side replay accumulator (`fold-message`, `v2_replay.clj`) a stranger's own paced stream can be folded through — the same accumulator the emitter-coherence property reasons about. | `components/sim-emit-hl7/src/ehrt/sim_emit_hl7/interface.clj` |
 | `sim-emit-fhir` | Folded state (never the log directly) → FHIR R4 Bundle (`bundle-run`, built on the pure `snapshot-at`/resource-builder functions). A rendering accent over state, sim-emit-hl7's sibling, not its dependent. | `components/sim-emit-fhir/src/ehrt/sim_emit_fhir/interface.clj` |
@@ -60,9 +60,9 @@ only what a reader orienting to the *architecture* needs first.
 | `sim` | Mount: orchestration only (`run.clj`'s `run-command`, `identifiers.clj`, `version.clj`, `manifest.clj`), a deliberately wide, frozen-shape façade (`ehrt.sim.interface`) re-exporting result envelopes (`ok`/`rejected`/`error`), commands (`run-command`, `check-all`, `identifiers-command`), and manifest/version identity. Every other sim concern lives one layer down, in its own brick. | `components/sim/src/ehrt/sim/interface.clj` |
 
 Dependency direction (`AGENTS.md` Constraints, enforced by `poly
-check`): `sim-model` depends on nothing but `kernel`; `sim-trajectory`
+check`): `sim-model` depends on nothing but `kernel`; `patient-simulator`
 depends on nothing but `sim-model` and `kernel`; `sim-emit-hl7` depends
-on nothing but `sim-model` (never `sim` or `sim-trajectory`);
+on nothing but `sim-model` (never `sim` or `patient-simulator`);
 `sim-emit-fhir` depends on nothing but `sim-engine`; `sim-check`
 depends on nothing but `sim-engine`, `sim-model`, and `kernel`; `sim`
 depends on all of them plus `provenance`, and never the reverse.
@@ -113,23 +113,23 @@ only ever re-derived by folding.
 
 **Zero atoms, refs, agents, or volatiles in the simulation path**,
 across all seven bricks' `src` — verified by grep against every `.clj`
-file under `components/{sim-model,sim-trajectory,sim-engine,
+file under `components/{sim-model,patient-simulator,sim-engine,
 sim-emit-hl7,sim-emit-fhir,sim-check,sim}/src` for `(atom `, `(ref `,
 `(agent `, and `volatile!`/`set-validator!` as call forms:
 
 ```
 $ grep -rn '(atom \|(ref \|(agent \|volatile!\|set-validator!' \
-    components/sim-model/src components/sim-trajectory/src \
+    components/sim-model/src components/patient-simulator/src \
     components/sim-engine/src components/sim-emit-hl7/src \
     components/sim-emit-fhir/src components/sim-check/src components/sim/src
-components/sim-trajectory/src/ehrt/sim_trajectory/census.clj:407:    fetched (atom {id root-json-text})
+components/patient-simulator/src/ehrt/patient_simulator/census.clj:407:    fetched (atom {id root-json-text})
 ```
 
 **Two named exceptions, both outside the decide/evolve/replay path
 itself:**
 
 1. **`census.clj`'s probe-fetch memoization atom** (`components/
-   sim-trajectory/src/ehrt/sim_trajectory/census.clj:407`, inside
+   patient-simulator/src/ehrt/patient_simulator/census.clj:407`, inside
    `walk-one`). `fetched` records every distinct module/table file a
    census walk actually reads, so a `:load-failed` row can report an
    honest `:closure-file-count` without re-fetching. This is a curation
@@ -183,7 +183,7 @@ replay  : GT → (State × State)*       check = replay ⨟ invariants
 board   = split ⨟ fold-message*
 ```
 
-Read left to right: `walk` (`sim-trajectory`'s `run-module`) takes the
+Read left to right: `walk` (`patient-simulator`'s `run-module`) takes the
 run's own RNG, a sampled `Persona`, and a loaded `Closure`, and
 produces a `Trajectory`. `engine` (`sim-engine`'s `run`) takes the RNG
 and a `Config` map and produces `GT`, the ground-truth log — internally,

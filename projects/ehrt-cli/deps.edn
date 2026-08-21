@@ -52,9 +52,9 @@
         ;; split-plan.md): sim's own src now requires
         ;; ehrt.sim-model.interface directly.
         poly/sim-model {:local/root "../../components/sim-model"}
-        ;; poly/sim-trajectory (sim split S2): sim's own src now requires
-        ;; ehrt.sim-trajectory.interface directly.
-        poly/sim-trajectory {:local/root "../../components/sim-trajectory"}
+        ;; poly/patient-simulator (sim split S2): sim's own src now requires
+        ;; ehrt.patient-simulator.interface directly.
+        poly/patient-simulator {:local/root "../../components/patient-simulator"}
         ;; poly/sim-emit-hl7 (sim split S3 / Wave D stage D0): sim's own
         ;; src now requires ehrt.sim-emit-hl7.interface directly.
         poly/sim-emit-hl7 {:local/root "../../components/sim-emit-hl7"}
@@ -96,7 +96,7 @@
                                      "../../components/sim/test"
                                      "../../components/sim-engine/test"
                                      "../../components/sim-model/test"
-                                     "../../components/sim-trajectory/test"
+                                     "../../components/patient-simulator/test"
                                      "../../components/sim-emit-hl7/test"
                                      "../../components/sim-emit-fhir/test"
                                      "../../components/sim-check/test"
@@ -118,7 +118,7 @@
                                   "-p" "../../components/sim/src"
                                   "-p" "../../components/sim-engine/src"
                                   "-p" "../../components/sim-model/src"
-                                  "-p" "../../components/sim-trajectory/src"
+                                  "-p" "../../components/patient-simulator/src"
                                   "-p" "../../components/sim-emit-hl7/src"
                                   "-p" "../../components/sim-emit-fhir/src"
                                   "-p" "../../components/sim-check/src"
@@ -136,7 +136,7 @@
                                   "-s" "../../components/sim/test"
                                   "-s" "../../components/sim-engine/test"
                                   "-s" "../../components/sim-model/test"
-                                  "-s" "../../components/sim-trajectory/test"
+                                  "-s" "../../components/patient-simulator/test"
                                   "-s" "../../components/sim-emit-hl7/test"
                                   "-s" "../../components/sim-emit-fhir/test"
                                   "-s" "../../components/sim-check/test"

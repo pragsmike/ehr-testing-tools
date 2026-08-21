@@ -17,7 +17,7 @@
 ;; pathway AND a module drawn for the same patient) that the static
 ;; incompatible-assignment check cannot see coming, since it only
 ;; reports CERTAIN conflicts. `ModuleAssignment`'s own pool member has
-;; no "no module" option (ehrt.sim-trajectory.gmf/ModuleAssignment), so
+;; no "no module" option (ehrt.patient-simulator.gmf/ModuleAssignment), so
 ;; a weighted module pool always resolves every uncovered ordinal to
 ;; SOME module -- there is no way to make it apply to only a minority of
 ;; patients. The sanctioned shape instead lists the module-tail ordinals

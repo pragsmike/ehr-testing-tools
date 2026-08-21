@@ -38,11 +38,11 @@
   [:map [:ward :string] [:bed :string]])
 
 (def Citation
-  "M5b (components/sim-trajectory/docs/gmf-interpreter.md section 6, obligation 3 -- provenance):
+  "M5b (components/patient-simulator/docs/gmf-interpreter.md section 6, obligation 3 -- provenance):
   the {:module :state} back-reference a CompileTrajectory-produced IR
   step carries, riding straight through from the trajectory event it
   realizes, which itself cites the module/state that produced IT
-  (components/sim-trajectory/docs/gmf-interpreter.md section 6, obligation 1) -- the glass-box
+  (components/patient-simulator/docs/gmf-interpreter.md section 6, obligation 1) -- the glass-box
   chain is three links long (module state -> trajectory event ->
   compiled IR step), and this is the third link. Present ONLY on a
   compiled step; a hand-authored step was never realized from any
@@ -52,11 +52,11 @@
 (def ConditionAnnotation
   "M5b: a ConditionOnset/ConditionEnd trajectory event compiles to an
   ANNOTATION on its enclosing Encounter-mapped step, never a standalone
-  IR step of its own (components/sim-trajectory/docs/gmf-interpreter.md section 1's own table --
+  IR step of its own (components/patient-simulator/docs/gmf-interpreter.md section 1's own table --
   this project's pathway IR has no diagnosis-list step yet). `:event` is
   which of the pair this is; `:references` mirrors the trajectory
   event's own (a ConditionEnd's back-reference to its ConditionOnset,
-  by trajectory index -- components/sim-trajectory/docs/gmf-interpreter.md section 1). `:codes` is
+  by trajectory index -- components/patient-simulator/docs/gmf-interpreter.md section 1). `:codes` is
   {:optional true}, not required: a ConditionEnd's own codes are
   resolved from its referenced onset when one exists, but a real
   vendored module can author that reference via `referenced_by_attribute`
@@ -182,7 +182,7 @@
    ;; avoids inventing an :order-ref authoring burden a hand-authored
    ;; :result step would need.
    [:order [:map [:type [:= :order]] [:profile :keyword]]]
-   ;; M5b: components/sim-trajectory/docs/gmf-interpreter.md section 4's outpatient sketch, items
+   ;; M5b: components/patient-simulator/docs/gmf-interpreter.md section 4's outpatient sketch, items
    ;; 5-7 -- NO :location field (unlike :admission/:transfer): an
    ;; outpatient encounter occupies no bed, so there is no ward for the
    ;; allocation ladder to consult and no ward name for an author to

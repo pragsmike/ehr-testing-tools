@@ -73,7 +73,7 @@ in the sense that nobody scripted what happens to them; the module's own
 state graph, walked under this run's seeded RNG, decides it. Both kinds
 of patient are real inputs to the same engine, resolved into the same
 kind of pathway data before the engine ever sees which one produced it
-— [`trajectory-computation.md`](../../components/sim-trajectory/docs/trajectory-computation.md)
+— [`trajectory-computation.md`](../../components/patient-simulator/docs/trajectory-computation.md)
 section 2 is the full account of how a module walk compiles down to the
 same intermediate representation a hand-authored pathway already is.
 `ed-tuesday`'s own README discloses something worth knowing before you
@@ -90,7 +90,7 @@ drives this shift's own visible traffic.
 Every patient this simulator produces traffic for passes through two
 state machines that must never be confused with each other — the
 classic error this domain invites, and the reason
-[`trajectory-computation.md`](../../components/sim-trajectory/docs/trajectory-computation.md)
+[`trajectory-computation.md`](../../components/patient-simulator/docs/trajectory-computation.md)
 exists as a document at all.
 
 The first is [**script space**](../glossary.md): whatever produced a patient's own

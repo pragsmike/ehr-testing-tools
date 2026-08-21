@@ -11,7 +11,7 @@
   too -- see NOTICE's own dated batch-4 entry).
 
   Old-census-verdict correction (AR-VB4-5): this module was
-  `:walk-failed` in the 2026-08-03 wave-f census (`ehrt.sim-trajectory.
+  `:walk-failed` in the 2026-08-03 wave-f census (`ehrt.patient-simulator.
   gmf-interpreter: run-module exceeded max-steps`, at `:alcoholism-
   post-treatment`/`:encounter-end`, on all three census seeds) but
   gates and walks CLEAN this session at three seeds, both seeded and
@@ -28,16 +28,16 @@
   (:require [clojure.java.io :as io]
             [clojure.test :refer [deftest is testing]]
             [ehrt.kernel.interface :as result]
-            [ehrt.sim-trajectory.interface :as sim-trajectory]
+            [ehrt.patient-simulator.interface :as patient-simulator]
             [ehrt.sim-engine.engine :as engine]
             [ehrt.sim-check.check :as check]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]))
 
 (def ^:private loaded-module
-  (sim-trajectory/load-module "veteran-substance-abuse-treatment" (slurp (io/resource "sim/modules/veteran_substance_abuse_treatment.json"))))
+  (patient-simulator/load-module "veteran-substance-abuse-treatment" (slurp (io/resource "sim/modules/veteran_substance_abuse_treatment.json"))))
 
 (def ^:private seeded-closure
-  (assoc (sim-trajectory/singleton-closure (:payload loaded-module))
+  (assoc (patient-simulator/singleton-closure (:payload loaded-module))
          :initial-attributes {:veteran-substance-abuse-treatment/veteran true}))
 
 (def ^:private gate-seeds [20260802 1 42])

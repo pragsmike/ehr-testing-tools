@@ -1,0 +1,2027 @@
+(ns ehrt.patient-simulator.gmf
+  "The GMF module loader (Milestone M5a Task 1, docs/gmf-interpreter.md
+  section 1). Parses a Synthea Generic Module Framework JSON module,
+  normalizes it to this project's own idiom (kebab-case keyword keys and
+  state-name references, code systems as :snomed/:loinc/:rxnorm/:icd10cm/
+  :cvx keywords per sim-model/Concept), and validates it
+  against the v1 subset docs/gmf-interpreter.md section 1 defines.
+
+  Load-time enforcement, result-not-throw (ehrt.kernel.result):
+  a module using a state type OUTSIDE v1's subset (Counter,
+  ImagingStudy -- section 1's own deferred-type table;
+  CallSubmodule/Device/DeviceEnd/Death all joined v1 across M5b and the
+  GMF coverage waves, MultiObservation/DiagnosticReport joined v1 at
+  GMF coverage Wave D stage D1, CarePlanStart/CarePlanEnd joined v1 at
+  GMF coverage Wave D stage D2, ADR-0029)
+  is REJECTED with
+  :unsupported-state-type, never silently skipped and never thrown -- this
+  is a stricter, mechanical gate than the informal 'read past what you
+  don't execute' survey-reading section 1 also describes (that describes
+  reading a module's states for SURVEY purposes, e.g. the design doc's own
+  candidate-module appendix; this loader is the boundary a module crosses
+  to actually be RUN, where `sim/ADR-0013` point 4's curation criterion applies
+  in full: any deferred-type use fails it, full stop). A module whose own
+  SetAttribute/Symptom writes a bare (non-namespaced) attribute name
+  colliding with an engine-reserved key (`:donor`, docs/patient-state-
+  model.md's post-mortem entry) is REJECTED with :attribute-collision
+  (section 5). Every attribute write compiles to a MODULE-NAMESPACED
+  keyword (section 5) -- `:fixture-clinic/onset-logged`, never a bare
+  `:onset-logged` -- so cross-module collisions are structurally
+  impossible, per that section's own argument; only a bare reserved-key
+  write is a real, checkable collision.
+
+  The loaded set is listable (`loaded-modules`) -- no hidden modules,
+  section 5's own corollary applied to module content specifically."
+  (:require [clojure.data.json :as json]
+            [clojure.string :as str]
+            [ehrt.kernel.interface :as result]
+            [ehrt.sim-model.interface :as sim-model]
+            [malli.core :as m])
+  (:import [java.time LocalDate]))
+
+;; Forward-declared: `resolve-name-ref` (ADR-0133) is defined alongside
+;; the rest of the exact-name resolution machinery, near `load-module`
+;; far below, but `normalize-condition`/`normalize-state` (just below)
+;; call it -- a plain forward declaration, not a namespace cycle.
+(declare resolve-name-ref find-unresolved-reference)
+
+;; --- Normalization: JSON's snake_case/CamelCase -> this project's kebab
+;; keyword idiom -----------------------------------------------------------
+
+(defn slug
+  "Any raw GMF name string (a JSON key, a state name, an attribute or
+  symptom name) -> this project's own lower-kebab form -- 'Check_Age_Guard'
+  and 'Nasal Congestion' both become the same shape ('check-age-guard',
+  'nasal-congestion'), so state-map keys, transition-target references,
+  and attribute names all compare and namespace uniformly. Public: also
+  reused by ehrt.patient-simulator.gmf-interpreter to turn a Guard/conditional's
+  raw :attribute name into the SAME module-namespaced key this loader's
+  own `declared-attributes` computes (one transform, one place).
+
+  FIXED (2026-08-14, ADR-0131, Q1(a)): this project constructs many
+  keywords from upstream free text via `slug`/`keyword`, later
+  `pr-str`d to disk (events.edn) or read back -- the informal law every
+  such keyword must satisfy is `(= k (edn/read-string (pr-str k)))`,
+  emit composed with read is identity. The prior fold set (`_`/
+  whitespace only) left every OTHER reader-significant character
+  untouched, breaking this law for any upstream name carrying one --
+  `uti/abx_tx.json`'s own \"Cipro 500, 5 day\" was the specimen ADR-0130
+  found live. The fold set now folds exactly the non-EDN-keyword-legal
+  characters (Q1(a): 'EDN legality defines the fold set; nothing
+  more'), empirically derived against `clojure.edn/read-string` itself
+  rather than hand-recalled from the reader grammar (notes/adr/
+  0131-*.md has the derivation): comma plus the reader's own
+  terminating-macro characters (`\" ( ) [ ] { } \\ ^ \\` ~ @ ;`), joining
+  the pre-existing `_`/whitespace fold (a house-style choice, not an
+  EDN-legality one -- underscore is itself a legal keyword character).
+  `?` `'` `&` `%` `#` `$` `=` `<` `>` `*` `+` `!` `.` `-` all round-trip
+  clean and are left untouched. Idempotent by construction: the output
+  alphabet excludes every folded character and never carries a
+  leading/trailing/doubled hyphen, so a second pass is always a no-op."
+  [s]
+  (-> s
+      str/lower-case
+      (str/replace #"[_\s,;\"@^`~()\[\]\\{}]+" "-")
+      (str/replace #"-{2,}" "-")
+      (str/replace #"^-+|-+$" "")))
+
+(defn- kebab-key
+  "clojure.data.json's :key-fn -- applied to EVERY JSON object key at
+  every depth, so 'direct_transition', 'condition_type', a state's own
+  name ('Check_Age_Guard'), and every other JSON key normalize uniformly
+  in one parse pass."
+  [s]
+  (keyword (slug s)))
+
+(def ^:private gmf-type->keyword
+  "v1's state-type subset (docs/gmf-interpreter.md section 1, `Symptom`
+  ratified into v1 alongside the rest -- see that document's own
+  closing ratification record). Any :type string NOT a key here is a
+  deferred type (section 1's own table) -- `unsupported-state-type`,
+  below, is exactly 'not a key in this map.'
+
+  M5b finding: `Device`/`DeviceEnd` join v1 here too, as consumed-
+  internally states structurally identical to `Simple` -- discovered
+  necessary when the ratified vendored module (sinusitis.json,
+  sim/ADR-0013/docs/gmf-interpreter.md's own recommendation) turned out to
+  use them for its Nebulizer content, confined to the module's rare
+  chronic-surgical tail exactly as that document's own survey predicted,
+  but the M5a loader's own all-or-nothing gate ('any deferred-type use
+  fails it, full stop') rejected the WHOLE module for two states with no
+  clinical content this project's accumulator or IR has a home for yet
+  (no equipment-tracking concept anywhere in docs/patient-state-model.md).
+  Consumed-internally is the correct, minimal treatment: no trajectory
+  event, no attribute write, ordinary transition resolution -- the same
+  'reachable by simply not compiling that one branch's terminal states'
+  disposition docs/gmf-interpreter.md's own appendix already named for
+  this exact gap, now actually built rather than merely anticipated."
+  {"Initial" :initial
+   "Terminal" :terminal
+   "Simple" :simple
+   "Delay" :delay
+   "Guard" :guard
+   "SetAttribute" :set-attribute
+   "Symptom" :symptom
+   "ConditionOnset" :condition-onset
+   "ConditionEnd" :condition-end
+   "Encounter" :encounter
+   "EncounterEnd" :encounter-end
+   "Procedure" :procedure
+   "Observation" :observation
+   "MedicationOrder" :medication-order
+   "MedicationEnd" :medication-end
+   "Device" :device
+   "DeviceEnd" :device-end
+   ;; GMF coverage Wave B (2026-08-02, ADR-0027, D3): CallSubmodule joins
+   ;; v1 as a LOADABLE state type -- the loader can now discover a
+   ;; module's own :submodule call-paths (`call-submodule-paths`,
+   ;; below), but the interpreter's own call/return mechanism (D1-D4)
+   ;; is a separate, later commit.
+   "CallSubmodule" :call-submodule
+   ;; GMF coverage Wave C (2026-08-02, ADR-0028, C1/C2): Death joins v1
+   ;; as a real, terminal trajectory-event-producing state -- unlike
+   ;; Device/DeviceEnd (consumed-internally, no home for the content),
+   ;; Death IS a real event the accumulator now has a home for
+   ;; (:expired, docs/patient-state-model.md). The interpreter's own
+   ;; handling (gmf-interpreter.clj) is the C1/C2 build; this loader
+   ;; only makes the state TYPE loadable and validates its own shape.
+   "Death" :death
+   ;; GMF coverage Wave D stage D1 (2026-08-02, ADR-0029 R2(a)): the
+   ;; observation family joins v1 -- both extend Synthea's own private
+   ;; ObservationGroup class (D1a-2, docs/gmf-interpreter.md section 11)
+   ;; and compile into ONE shared pathway-IR step (:diagnostic-report),
+   ;; but stay TWO distinct loadable state types here (this loader's own
+   ;; job is validating the module JSON as authored, not the later
+   ;; compile-time union).
+   "MultiObservation" :multi-observation
+   "DiagnosticReport" :diagnostic-report
+   ;; GMF coverage Wave D stage D2 (2026-08-02, ADR-0029 R2(b)): the
+   ;; CarePlan family joins v1 -- a paired span structurally identical
+   ;; to MedicationOrder/MedicationEnd (State.java's own
+   ;; CarePlanStart/CarePlanEnd classes, gmf-interpreter.md section 13).
+   "CarePlanStart" :care-plan-start
+   "CarePlanEnd" :care-plan-end
+   ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-1/AR-2/AR-3): Counter/
+   ;; ImagingStudy/SupplyList join v1 -- this document's own original
+   ;; Deferred table entries (section 1), now built.
+   "Counter" :counter
+   "ImagingStudy" :imaging-study
+   "SupplyList" :supply-list
+   ;; GMF coverage Wave VS (2026-08-04, ADR-0039 AR-1/AR-2): VitalSign --
+   ;; State.java's own VitalSign class (source-grounded) writes ctx's own
+   ;; new `:vital-signs` register (gmf-interpreter.clj's own `step`
+   ;; handling) rather than emitting a trajectory event of its own --
+   ;; the register is the home this project's own accumulator never had
+   ;; for a REAL vital-sign VALUE (as opposed to the pre-existing,
+   ;; independent-draw Observation reader, D1a-4).
+   "VitalSign" :vital-sign
+   ;; GMF coverage Wave I (2026-08-04, ADR-0040 AR-5): AllergyOnset --
+   ;; State.java's own AllergyOnset class (extends the SAME OnsetState
+   ;; ConditionOnset already extends, source-grounded). This project's
+   ;; own ConditionOnset never modeled OnsetState's own diagnose/target-
+   ;; encounter-deferral/assign-to-attribute machinery (an M5a
+   ;; simplification predating this wave: `step`'s own :condition-onset
+   ;; case emits unconditionally, ignoring :target-encounter) -- AllergyOnset
+   ;; follows the identical, ALREADY-established simplification
+   ;; (`allergies.json`'s own Allergy_Unspecified: :target-encounter/
+   ;; :assign-to-attribute both authored but never downstream-read on
+   ;; this closure's own mandatory path, confirmed by direct grep;
+   ;; :reactions is an empty list on that same state, and no closure
+   ;; member this session vendors ever reads a reaction severity back --
+   ;; installed ≠ used, grows-by-evidence).
+   "AllergyOnset" :allergy-onset
+   ;; GMF coverage Wave I (2026-08-04, ADR-0040 AR-5): Vaccine --
+   ;; State.java's own Vaccine class (source-grounded): an unconditional
+   ;; leaf write, simpler than ConditionOnset/AllergyOnset (no target-
+   ;; encounter/diagnose distinction at all upstream -- `process` always
+   ;; records the immunization). :series is upstream's own primitive
+   ;; `int` field (always some value, JSON-authored or Java's own
+   ;; zero-default); this loader leaves it optional and lets the
+   ;; interpreter supply the same zero-default `Counter`'s own :amount
+   ;; field already establishes for an absent primitive-int JSON field.
+   "Vaccine" :vaccine})
+
+(def ^:private code-system->keyword
+  "GMF's own code-system strings -> sim-model/Concept's
+  :system keyword vocabulary (architecture.md's Terminology decisions:
+  :snomed :loinc :rxnorm :icd10cm :cvx)."
+  {"SNOMED-CT" :snomed
+   "LOINC" :loinc
+   "RxNorm" :rxnorm
+   "ICD10-CM" :icd10cm
+   "CVX" :cvx})
+
+(def ^:private encounter-class->keyword
+  "GMF's own encounter-class strings (docs/gmf-interpreter.md section 4) --
+  kept as their own map (distinct from `slug`'s generic transform) since
+  these are a CLOSED v1 vocabulary, not free-form names.
+
+  GMF coverage Wave B (2026-08-02, ADR-0027): \"outpatient\" is a real,
+  distinct GMF encounter-class STRING (`ear_infections.json`'s own
+  primary encounter, Step 1's own characterization) this project's own
+  §4 table never separately named -- aliased onto the SAME `:ambulatory`
+  keyword `\"ambulatory\"` already maps to, not a new keyword of its
+  own: `ehrt.patient-simulator.compile-trajectory`'s own `encounter->step`
+  (confirmed by direct read) already treats `:wellness`/`:ambulatory`
+  identically (both compile to `:outpatient-visit`), so this is a
+  genuine same-concept vocabulary alias, not an invented mapping, and
+  needs no `compile-trajectory` change.
+
+  GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3f finding,
+  found vendoring uti/ambulatory_path.json's own Telephone_Encounter):
+  \"virtual\" is a real, distinct GMF encounter-class STRING -- a
+  genuinely NEW keyword, `:virtual`, NOT aliased onto `:ambulatory` at
+  THIS loader layer (unlike \"outpatient\"): a phone/remote encounter is
+  a different clinical modality from an in-person one, and this
+  session's own vendoring never exercises `compile-trajectory`'s
+  encounter mapping for this closure (the standing, disclosed
+  interpreter-layer-only fence, `ehrt.patient-simulator.vendored-uti-
+  test`'s own docstring) -- whether `:virtual` compiles the SAME way
+  `:ambulatory` does, or needs its own IR treatment, was left a
+  decision for whichever future session first exercises a closure
+  through the full compile-trajectory pipeline.
+
+  RESOLVED (2026-08-14, ADR-0133, restoration cascade): that future
+  session is this one -- `veteran_ptsd.json`'s own `Telehealth_Visit`
+  branch, previously orphaned by the state-name collision this ADR
+  fixes, is reachable for the first time and reaches `compile-
+  trajectory`'s own `encounter->step`/`encounter-end->step`, which had
+  no `:virtual` clause at either dispatch site (a clean
+  `IllegalArgumentException`, caught red-before-green, never a silent
+  wrong compile). Ruled: `:virtual` aliases to the SAME
+  `:outpatient-visit`/`:outpatient-visit-end` IR shape `:wellness`/
+  `:ambulatory` already compile to, at BOTH sites (Wave B's own
+  \"outpatient\" precedent, one layer down) -- the trajectory event
+  itself keeps `:encounter-class :virtual` (loader-layer distinctness,
+  right here, is untouched), so no modality information is lost; a
+  distinct compile-layer IR treatment remains available to any future
+  session with an actual consumer for that distinction. This loader's
+  own `:virtual` keyword is UNCHANGED by that resolution -- only
+  `compile-trajectory`'s own dispatch gained the two clauses.
+
+  GMF coverage Wave I (2026-08-04, ADR-0040 AR-1b, a dated addendum to
+  AR-1 -- the census's own found gap, not a NamedDistribution case):
+  `urgentcare`/`hospice`/`home`/`snf` are FOUR more real, distinct
+  HealthRecord.EncounterType values (source-confirmed, the pin's own
+  full ten-value enum) this table never carried -- `home_health_
+  treatment.json`'s own `urgentcare`/`home`, `hospice_treatment.json`/
+  `home_hospice_snf.json`'s own `hospice`, byte-confirmed against the
+  vendored JSON directly. Mechanically completed to the FULL remaining
+  enum (including `snf`, not yet exercised by any candidate closure this
+  session) rather than added one name at a time -- the same 'kill the
+  name-at-a-time unmasking pattern in one step' discipline AR-4's own
+  vocabulary completion already applies, extended here since the whole
+  enum is equally closed and equally cheap to read at once."
+  {"wellness" :wellness "ambulatory" :ambulatory "emergency" :emergency "inpatient" :inpatient
+   "outpatient" :ambulatory "virtual" :virtual
+   "urgentcare" :urgent-care "hospice" :hospice "home" :home "snf" :snf})
+
+(def ^:private condition-type->keyword
+  "v1's condition predicates (docs/gmf-interpreter.md section 2): age,
+  sex (Gender), attribute, PriorState -- plus, M5b, the log-query family
+  `Active Condition`/`Active Medication` join as the architecturally-
+  same-shape extension that document's own condition-vocabulary-gap
+  note already named as the natural next step ('the identical shape to
+  PriorState's own query, just keyed on a concept rather than a module
+  state name'), `And` as a recursive compound wrapper, and `Active
+  Allergy` as a documented, always-false simplification (this project's
+  Persona has no allergy concept to query yet -- see ehrt.patient-simulator.gmf-
+  interpreter/evaluate-condition's own docstring note). Discovered
+  load-bearing, not merely convenient: the ratified vendored module
+  (sinusitis.json) uses `And`/`Active Medication`/`Active Condition` on
+  `Wait_for_condition_to_resolve`, a state EVERY patient who ever reaches
+  the module's own Doctor_Visit encounter passes through -- not an
+  excludable tail the way Device/DeviceEnd is, so leaving this gap
+  unresolved would mean the vendored module throws for virtually every
+  patient who ever onsets, not merely fails to cover a rare branch."
+  {"Age" :age "Gender" :gender "Attribute" :attribute "PriorState" :prior-state
+   "Active Condition" :active-condition "Active Medication" :active-medication
+   "Active Allergy" :active-allergy "And" :and
+   ;; GMF coverage Wave A (2026-08-02, .agents/plans/2026-08-02-gmf-
+   ;; coverage-plan.md): :symptom is an emergent finding, not one of that
+   ;; session's own named candidates (At Least/Or/Date/Observation/Active
+   ;; Allergy) -- required for :at-least's only real vendored use
+   ;; (sore_throat.json's Determine_if_Bacterial); see
+   ;; ehrt.patient-simulator.gmf-interpreter/symptom-condition-holds?'s own
+   ;; docstring for the full account.
+   "Symptom" :symptom "Or" :or "At Least" :at-least "Date" :date "Observation" :observation
+   ;; GMF coverage Wave I2 (2026-08-04, ADR-0041 AR-2): Logic.java's own
+   ;; ActiveCarePlan class (ActiveLogic's own parent, source-grounded at
+   ;; the pin) -- the SAME log-query family :active-condition/:active-
+   ;; medication already establish, keyed on a careplan concept rather
+   ;; than a condition/medication one. Listed here EXPLICITLY per this
+   ;; map's own "grep-able vocabulary registry" discipline (Not/Race/
+   ;; Vital Sign's own precedent, below) -- the slug fallback would
+   ;; already produce the same keyword (`depression_screening.json`'s
+   ;; own census error, pre-this-session, confirmed it).
+   "Active CarePlan" :active-careplan
+   ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-4): `Not` (recursive
+   ;; negation), `Race`, and `Socioeconomic Status` -- Logic.java's own
+   ;; Race/SocioeconomicStatus classes (source-grounded), and the boolean
+   ;; wrapper `And`/`Or`/`At Least` already establish the recursive shape
+   ;; for. Listed here EXPLICITLY even though the slug fallback below
+   ;; would already produce the same keywords -- this map is this
+   ;; project's own grep-able vocabulary registry, not merely a
+   ;; convenience transform."
+   "Not" :not "Race" :race "Socioeconomic Status" :socioeconomic-status
+   ;; GMF coverage Wave VS (2026-08-04, ADR-0039 AR-1/AR-4): Logic.java's
+   ;; own VitalSign class -- reads ctx's own new :vital-signs register
+   ;; (gmf-interpreter.clj's own `vital-sign-condition-holds?`), falling
+   ;; back to the authored baseline table, else a walk error (ADR-0036
+   ;; AR-4's own honest-absence rule, extended here). Listed here
+   ;; EXPLICITLY per this map's own "grep-able vocabulary registry, not
+   ;; merely a convenience transform" discipline (Not/Race/Socioeconomic
+   ;; Status's own precedent, above) -- the slug fallback would already
+   ;; produce the same keyword.
+   "Vital Sign" :vital-sign})
+
+(defn- normalize-code
+  "GMF's own code triplet -> sim-model/Concept. M5b: :code
+  is coerced to a string regardless of its own JSON type -- the vendored
+  sinusitis.json carries at least one unquoted-JSON-number code value
+  (Prescribe_Alternative_Antibiotic's own RxNorm code), and
+  sim-model/Concept requires a string. This is a representation
+  normalization, the same kind `slug`/keywordizing already apply to
+  every other GMF field this loader touches -- the code's own digits
+  pass through unchanged (code passthrough law), only their Clojure
+  type does, never a translation or invention of the value itself."
+  [{:keys [system code display]}]
+  (cond-> {:system (get code-system->keyword system (keyword (slug system))) :code (str code)}
+    display (assoc :display display)))
+
+(defn- normalize-condition
+  "A leaf condition map ({:condition-type ...}) -> the same shape with
+  :condition-type keywordized to v1's vocabulary, :codes normalized
+  (Concept triplets, same as every other state's own :codes) for the
+  concept-keyed predicates (Active Condition/Active Medication/Active
+  Allergy), and :conditions recursively normalized for And's own nested
+  sub-conditions. Compound conditions OUTSIDE this vocabulary (`At
+  Least`, boolean `Or`) stay out of v1's scope (docs/gmf-interpreter.md
+  section 2's own gap note) -- passed through unrecognized rather than
+  validated here; the interpreter is where an actually-unsupported
+  condition type surfaces, at evaluation time, not at load time (section
+  1's own state-type gate is the load-time enforcement point; conditions
+  are a narrower, later concern this loader does not gate)."
+  [condition name->key]
+  (when condition
+    (let [condition-type (get condition-type->keyword (:condition-type condition)
+                               (keyword (slug (:condition-type condition))))]
+      (cond-> (assoc condition :condition-type condition-type)
+        (and (= :prior-state condition-type) (:name condition))
+        (update :name (fn [n] (resolve-name-ref name->key n)))
+
+        (:codes condition)
+        (update :codes #(mapv normalize-code %))
+
+        ;; GMF coverage Wave A (2026-08-02): :or/:at-least share :and's own
+        ;; recursive sub-condition shape -- without this, a nested
+        ;; sub-condition's own :condition-type stays an un-normalized raw
+        ;; string, and evaluate-condition's case dispatch (keywords only)
+        ;; would never match it.
+        (and (#{:and :or :at-least} condition-type) (:conditions condition))
+        (update :conditions #(mapv (fn [c] (normalize-condition c name->key)) %))
+
+        ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-4): `Not` wraps a
+        ;; SINGLE nested condition under :condition (singular -- Logic.
+        ;; java's own field name, source-grounded), never the plural
+        ;; :conditions vector And/Or/At-Least share -- a distinct
+        ;; recursive clause, the same reason those three already needed
+        ;; their own (without this, a nested Not condition's own
+        ;; :condition-type stays an un-normalized raw string).
+        (and (= :not condition-type) (:condition condition))
+        (update :condition #(normalize-condition % name->key))))))
+
+(defn- normalize-transition-entry
+  [{:keys [transition condition distributions] :as entry} name->key]
+  (cond-> entry
+    transition (assoc :transition (resolve-name-ref name->key transition))
+    condition (assoc :condition (normalize-condition condition name->key))
+    distributions (assoc :distributions (mapv #(update % :transition (fn [t] (resolve-name-ref name->key t))) distributions))))
+
+(defn- normalize-lookup-table-entry
+  "GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3a, H2):
+  :transition normalizes the SAME way every other transition-entry
+  target already does (`normalize-transition-entry`); :lookup-table-name
+  stays verbatim (a CSV filename, D3a's own citation)."
+  [{:keys [transition] :as entry} name->key]
+  (cond-> entry transition (assoc :transition (resolve-name-ref name->key transition))))
+
+(defn- normalize-transitions
+  [state name->key]
+  (cond-> state
+    (:direct-transition state) (update :direct-transition (fn [t] (resolve-name-ref name->key t)))
+    (:distributed-transition state) (update :distributed-transition #(mapv (fn [e] (normalize-transition-entry e name->key)) %))
+    (:conditional-transition state) (update :conditional-transition #(mapv (fn [e] (normalize-transition-entry e name->key)) %))
+    (:complex-transition state) (update :complex-transition #(mapv (fn [e] (normalize-transition-entry e name->key)) %))
+    ;; GMF coverage Wave B (2026-08-02, ADR-0027, D5): the fifth
+    ;; transition kind -- a fixed {:ambulatory :emergency :telemedicine}
+    ;; map, each value a raw target-state-name string (never a weight --
+    ;; real Synthea's own weights live entirely in an external resource
+    ;; this project has no analog for, docs/gmf-interpreter.md section
+    ;; 9's own D5 account) -- normalized the SAME way :direct-transition
+    ;; already is, one key at a time.
+    (:type-of-care-transition state)
+    (update :type-of-care-transition #(into {} (map (fn [[k t]] [k (resolve-name-ref name->key t)])) %))
+    ;; GMF coverage Wave D stage D3 (D3a, H2): the sixth kind.
+    (:lookup-table-transition state)
+    (update :lookup-table-transition #(mapv (fn [e] (normalize-lookup-table-entry e name->key)) %))))
+
+(defn- normalize-observation-child
+  "GMF coverage Wave D stage D1 (2026-08-02, ADR-0029): one embedded
+  MultiObservation/DiagnosticReport child -- :codes (same as every
+  other state's own) and :value-code (a single Concept, the same
+  normalize-code as :codes' own elements) normalized; :range/:vital-
+  sign carry no code system of their own, untouched. `:vital-sign`'s
+  raw value stays exactly as authored (this table's own lookup key,
+  see gmf-interpreter's own sample-observation-extra), never slugged."
+  [child]
+  (cond-> child
+    (:codes child) (update :codes #(mapv normalize-code %))
+    (:value-code child) (update :value-code normalize-code)))
+
+(defn- normalize-imaging-instance
+  "GMF coverage Wave F (2026-08-03, ADR-0036 AR-2): :sop-class is a
+  Concept triplet, the same normalize-code every other coded field
+  already gets; :title stays verbatim (a free-text label, not a code)."
+  [instance]
+  (cond-> instance
+    (:sop-class instance) (update :sop-class normalize-code)))
+
+(defn- normalize-imaging-series
+  "GMF coverage Wave F (2026-08-03, ADR-0036 AR-2): :body-site/:modality
+  are Concept triplets; :instances recurses one level, the same nested-
+  vector shape :observations already establishes for MultiObservation/
+  DiagnosticReport children."
+  [series]
+  (cond-> series
+    (:body-site series) (update :body-site normalize-code)
+    (:modality series) (update :modality normalize-code)
+    (:instances series) (update :instances #(mapv normalize-imaging-instance %))))
+
+;; --- GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3c finding 1):
+;; gmf_version 2's own uniform stochastic-timing encoding -- a
+;; top-level `distribution: {kind: EXACT|UNIFORM, parameters: {...}}`
+;; plus a sibling top-level `unit`, replacing Delay's own top-level
+;; range/exact keys, Procedure's own duration field, and Symptom's own
+;; top-level range/exact severity keys, one state at a time, author's
+;; choice (confirmed field-by-field against both v1 and v2 examples of
+;; the SAME state type, docs/gmf-interpreter.md section 14's own D3c
+;; finding 1). A loader normalization, not a new interpreter mechanism
+;; -- the same disposition Wave B's own encounter-class/wellness
+;; findings already established. ------------------------------------------
+
+(defn- gmf-v2-timing->v1
+  "UNIFORM -> the existing Range shape; EXACT -> the existing Exact
+  shape (`unit` absent for Symptom's own unitless severity)."
+  [{:keys [kind parameters]} unit]
+  (case kind
+    "UNIFORM" (cond-> {:low (:low parameters) :high (:high parameters)} unit (assoc :unit unit))
+    "EXACT" (cond-> {:quantity (:value parameters)} unit (assoc :unit unit))))
+
+(defn- apply-gmf-v2-timing
+  "Delay/Symptom: the translated shape writes to the SAME top-level
+  :range/:exact key `resolve-time-advance`/the :symptom interpreter
+  case already read (`:range` for UNIFORM, `:exact` for EXACT)."
+  [state]
+  (let [dist (:distribution state)
+        v1-shape (gmf-v2-timing->v1 dist (:unit state))
+        target-key (if (= "UNIFORM" (:kind dist)) :range :exact)]
+    (assoc (dissoc state :distribution :unit) target-key v1-shape)))
+
+(defn- apply-gmf-v2-procedure-duration
+  "Procedure's own :duration field is declared Range-only ({:low :high
+  :unit}) in this loader's own schema -- unlike Delay/Symptom, it has
+  no separate Exact form. An EXACT-kind v2 duration translates into a
+  DEGENERATE Range (:low = :high = the exact value) rather than
+  widening the schema -- numerically identical to a true exact
+  quantity, and consistent with the pre-existing v1 flat-:duration
+  encoding (`appendicitis.json`/`sepsis.json`).
+
+  FIXED (2026-08-03, notes/ADRs.md ADR-0032 AR-2): this loader's own
+  disclosed, unrelated `resolve-time-advance`/:duration gap (D3c finding
+  1's own dated note -- `:duration` was passed to `resolve-time-advance`
+  as a flat map, which destructures :range/:exact KEYS from it and found
+  neither, silently never advancing time for ANY Procedure, v1 or v2) is
+  now fixed at `emit-and-advance`'s own call site (gmf-interpreter.clj),
+  not here -- this translation's own flat-map output was already
+  correct, the bug was downstream of it."
+  [state]
+  (let [{:keys [kind parameters]} (:distribution state)
+        unit (:unit state)
+        shape (case kind
+                "UNIFORM" {:low (:low parameters) :high (:high parameters)}
+                "EXACT" {:low (:value parameters) :high (:value parameters)})]
+    (assoc (dissoc state :distribution :unit) :duration (cond-> shape unit (assoc :unit unit)))))
+
+;; --- ADR-0035 (Wave F0): GAUSSIAN/EXPONENTIAL/TRIANGULAR join the v2
+;; distribution vocabulary alongside UNIFORM/EXACT -- ported verbatim
+;; from Synthea's own Distribution.java (fetched-source pin
+;; 7e08387c68a7f0e21d13076609a159fd473fc902, ADR-0035 AR-1), across THREE
+;; contexts (Delay/Symptom timing, Procedure duration, SetAttribute
+;; value, ADR-0035 AR-2) rather than D3c's original two. UNIFORM/EXACT
+;; keep their existing v1-collapse (`gmf-v2-timing->v1`/`apply-gmf-v2-
+;; procedure-duration`, above) completely untouched (AR-5, "no churn")
+;; -- the three new kinds, and SetAttribute's own (all-five) distribution
+;; field, normalize instead into ONE self-contained shape,
+;; `SampledDistribution` (schema section, below): `{:kind :exact|
+;; :uniform|:gaussian|:exponential|:triangular :parameters {...kebab-
+;; keyed...} :round bool :unit {:optional}}` -- sampled at INTERPRETER
+;; time (`ehrt.patient-simulator.gmf-interpreter`'s own `sample-
+;; distribution`), never collapsed into Range/Exact (no such shape
+;; exists for a Gaussian/Exponential/Triangular draw). ---------------------
+
+(def ^:private v1-collapse-kinds
+  "UNIFORM/EXACT -- the two kinds `gmf-v2-timing->v1`/`apply-gmf-v2-
+  procedure-duration` already translate into the pre-existing Range/
+  Exact shapes (D3c finding 1, untouched by this ADR)."
+  #{"UNIFORM" "EXACT"})
+
+(def ^:private distribution-kind->keyword
+  "Every kind this loader recognizes at ALL (ADR-0035 AR-1's five-kind
+  closed vocabulary, Distribution.java's own `Kind` enum, source-
+  confirmed) -- a raw :kind string outside this map's own keys is what
+  `invalid-distribution-kind?` (below) catches and rejects cleanly
+  (AR-2), never a fall-through `case` throw."
+  {"EXACT" :exact "UNIFORM" :uniform "GAUSSIAN" :gaussian
+   "EXPONENTIAL" :exponential "TRIANGULAR" :triangular})
+
+(defn- normalize-distribution-parameters
+  "Distribution.java's own per-kind `parameters` map (AR-1's required-
+  parameters table, `validate()` source-confirmed) -- kebab-keyed onto
+  this project's own idiom (`standarddeviation`, `kebab-key`'s own
+  camelCase-blind transform of JSON's `standardDeviation`, renamed here
+  to the readable `:standard-deviation` this project's other kebab keys
+  already use). Optional keys (:min/:max on GAUSSIAN) are OMITTED, never
+  assoc'd as an explicit nil -- `load-module`'s own :remarks precedent:
+  'optional means the KEY may be absent, not that a present value may be
+  nil.' A required key genuinely absent from the raw JSON stays nil here
+  -- `SampledDistribution`'s own per-kind schema (below) is what turns
+  that into a real :schema-invalid rejection, the same disposition every
+  other structural gap in this loader already gets."
+  [kind-kw {:keys [value low high mean standarddeviation min max mode]}]
+  (case kind-kw
+    :exact {:value value}
+    :uniform {:low low :high high}
+    :gaussian (cond-> {:mean mean :standard-deviation standarddeviation}
+                (some? min) (assoc :min min)
+                (some? max) (assoc :max max))
+    :exponential {:mean mean}
+    :triangular {:min min :mode mode :max max}))
+
+(defn- normalize-distribution
+  "The raw v2 `:distribution` map (`:kind` a raw string, `:parameters` a
+  raw kebab-keyed-by-`kebab-key` map, `:round` a raw boolean or absent)
+  -> `SampledDistribution`'s own shape (below): :kind keywordized,
+  :parameters normalized (`normalize-distribution-parameters`), :round
+  ALWAYS a boolean (missing/nil coerced to `false`, never left absent --
+  the interpreter's own `sample-distribution` reads it unconditionally),
+  :unit folded in only when the caller supplies one (Delay/Procedure's
+  own top-level :unit field -- SetAttribute has none)."
+  [{:keys [kind round parameters]} & [unit]]
+  (let [kind-kw (get distribution-kind->keyword kind)]
+    (cond-> {:kind kind-kw
+             :parameters (normalize-distribution-parameters kind-kw parameters)
+             :round (boolean round)}
+      unit (assoc :unit unit))))
+
+(defn- state-distribution-kind
+  "The raw :kind string on `state`'s own top-level :distribution, or nil
+  when `state` carries no such field -- the one predicate both
+  `invalid-distribution-kind?` and `normalize-state`'s own dispatch
+  clauses below share."
+  [state]
+  (get-in state [:distribution :kind]))
+
+(def ^:private distribution-timing-state-types
+  "The state TYPES a top-level v2 :distribution can appear on as a TIMING
+  value, this session's own three timing contexts (ADR-0035 AR-2) --
+  SetAttribute is checked separately below (not a timing context: no
+  :unit folding, and it competes with :value/:value-code, guarded by
+  `set-attribute-value-conflict?`, not this set)."
+  #{:delay :symptom :procedure})
+
+(defn- invalid-distribution-kind?
+  "ADR-0035 AR-2: a state carrying a top-level :distribution whose own
+  :kind is OUTSIDE `distribution-kind->keyword`'s five-kind vocabulary
+  -- on any of this session's own four contexts (the three timing types
+  plus :set-attribute) -- is a clean, load-time REJECTION candidate
+  (`normalize-state`'s own early-return branch), never a `case` fall-
+  through throw the way `gmf-v2-timing->v1`/`apply-gmf-v2-procedure-
+  duration` used to (the census's own `gmf_version 2` loader-exception
+  finding, ADR-0034's execution note, this ADR's own Context). GMF
+  coverage Wave VS (2026-08-04, ADR-0039 AR-2): `:vital-sign` joins
+  `:set-attribute` here -- a VALUE distribution, the same five-kind gate,
+  not a sixth context of its own."
+  [state kw-type]
+  (when-let [kind (state-distribution-kind state)]
+    (and (or (distribution-timing-state-types kw-type) (#{:set-attribute :vital-sign} kw-type))
+         (nil? (get distribution-kind->keyword kind)))))
+
+(defn- vital-sign-expression?
+  "GMF coverage Wave VS (2026-08-04, ADR-0039 AR-2): a VitalSign state
+  carrying an `:expression` field (upstream's own CQL-evaluation branch,
+  `State.java`'s `VitalSign.process`, source-grounded at the pin) is a
+  clean, NAMED load-time REJECTION -- no candidate closure this wave
+  vendors ever authors one (all six real `VitalSign` states found use
+  `range`; confirmed by direct read, not merely anticipated), and this
+  project has no CQL expression evaluator to run one against (the same
+  'no home for this content' disposition Device/DeviceEnd's own
+  consumed-internally treatment predates, but a REJECTION rather than a
+  silent no-op here -- an authored expression is real intended clinical
+  content this loader would otherwise silently drop)."
+  [state kw-type]
+  (and (= :vital-sign kw-type) (contains? state :expression)))
+
+;; RETIRED (2026-08-04, ADR-0040 AR-2): `attribute-value-sources`/
+;; `set-attribute-value-conflict?` used to reject a SetAttribute state
+;; carrying :distribution ALONGSIDE :value/:value-code as a load-time
+;; conflict. Read against the pin (`State.java`'s own `SetAttribute.
+;; process`, source-grounded): upstream defines an explicit, ORDERED
+;; precedence chain over co-present sources -- expression > range >
+;; seriesData > distribution > valueCode > valueAttribute > literal
+;; value -- so co-presence is legal and ordered, never ambiguous.
+;; ADR-0035 AR-4's own reading ("upstream's own real precedent is 'a
+;; distribution present means sample it'") was correct as far as it
+;; went but stricter than the pin: real Synthea modules DO author a
+;; placeholder literal `value` alongside a real `distribution` (a
+;; legacy-compatibility default, `congestive_heart_failure.json`'s own
+;; `Inpatient LOS`: `\"value\": 0, \"distribution\": {EXPONENTIAL}`),
+;; and the chain -- not a conflict -- is what upstream actually does
+;; with it. Kept as history, not deleted outright, per this project's
+;; own fix-forward-with-disclosure discipline; `set-attribute-value`
+;; (gmf-interpreter.clj, below `step`'s own :set-attribute case) is the
+;; chain that replaces this rejection.
+
+(defn- set-attribute-unsupported-source?
+  "ADR-0040 AR-2: of upstream's own seven-source precedence chain, this
+  loader supports five (range/distribution/valueCode/valueAttribute/
+  literal value) -- `:expression` (a CQL evaluator this project doesn't
+  have, the SAME gap `vital-sign-expression?` already names) and
+  `:series-data` (a time-series value source no candidate closure this
+  session authors) are clean, NAMED load-time REJECTIONS instead, the
+  same disposition `vital-sign-expression?` already establishes for the
+  identical CQL gap on VitalSign."
+  [state kw-type]
+  (and (= :set-attribute kw-type)
+       (or (contains? state :expression) (contains? state :series-data))))
+
+(defn- apply-new-timing-distribution
+  "GAUSSIAN/EXPONENTIAL/TRIANGULAR on Delay/Symptom/Procedure (ADR-0035
+  AR-2/AR-5): normalized into `SampledDistribution`'s own shape, kept
+  as its own :distribution key (never collapsed into Range/Exact -- no
+  such shape exists for these three kinds) -- the state's own top-level
+  :unit (Delay/Procedure; Symptom carries none, its own severity is
+  unitless, `gmf-v2-timing->v1`'s own docstring precedent) folds INTO
+  the distribution map and is dissoc'd from the state, the same 'unit
+  travels with its own timing shape, never left as a stray top-level
+  field' discipline the v1-collapse path already establishes."
+  [state]
+  (assoc (dissoc state :unit) :distribution (normalize-distribution (:distribution state) (:unit state))))
+
+(defn- normalize-value-distribution
+  "SetAttribute's own :distribution (ADR-0035 AR-2/AR-4), and GMF
+  coverage Wave VS's VitalSign :distribution (ADR-0039 AR-2): normalized
+  the SAME way `apply-new-timing-distribution` normalizes Delay/Symptom/
+  Procedure's, minus :unit folding -- SetAttribute carries no :unit at
+  all (the 110+-instance catalog survey behind ADR-0035 confirmed none
+  exist), and VitalSign's own :unit is display-only metadata (upstream's
+  `LegacyStateWithUnitlessRV`, source-grounded), never a per-value
+  conversion factor the way Delay/Procedure's timing :unit is -- both
+  states keep :unit as a separate top-level schema field instead. All
+  FIVE distribution kinds pass through here for both state types (unlike
+  the timing contexts' own v1-collapse split) -- neither ever had a
+  pre-existing UNIFORM/EXACT translation to leave untouched."
+  [state]
+  (update state :distribution normalize-distribution))
+
+(defn- effective-state-type
+  "GMF coverage Wave G (2026-08-03, ADR-0037 AR-3): `kw-type` (the raw
+  `gmf-type->keyword` lookup) UNLESS `state` is the `wellness: true`,
+  no-`:encounter-class` Encounter idiom (Wave B's own M7 finding) -- in
+  which case the loaded STATE TYPE is `:wellness-wait`, not `:encounter`.
+  A distinct type, not a synthesized `:encounter-class`, because it is a
+  genuine BLOCK-then-attach cycle at the interpreter layer (`gmf-
+  interpreter.clj`'s own `wellness-wait-step`), not an ordinary
+  Encounter with a class value -- retiring Wave B's own create-now
+  substitution (`normalize-state`'s own dated retirement comment, where
+  this override is applied)."
+  [kw-type state]
+  (if (and (= :encounter kw-type) (:wellness state) (not (:encounter-class state)))
+    :wellness-wait
+    kw-type))
+
+(defn- normalize-state
+  [state name->key]
+  (let [raw-type (:type state)
+        kw-type (get gmf-type->keyword raw-type)]
+    (cond
+      (nil? kw-type)
+      {:unsupported-state-type {:raw-type raw-type}}
+
+      (invalid-distribution-kind? state kw-type)
+      {:invalid-distribution-kind {:kind (state-distribution-kind state)}}
+
+      (set-attribute-unsupported-source? state kw-type)
+      {:set-attribute-unsupported-source
+       {:source (cond (contains? state :expression) :expression (contains? state :series-data) :series-data)}}
+
+      (vital-sign-expression? state kw-type)
+      {:vital-sign-expression-unsupported {}}
+
+      :else
+      (-> state
+          ;; GMF coverage Wave B (2026-08-02, ADR-0027): a second GMF
+          ;; wellness-encounter encoding this loader didn't recognize
+          ;; (docs/gmf-interpreter.md section 8's own M7 finding,
+          ;; mTBI/atrial_fibrillation/osteoporosis/epilepsy/med_rec --
+          ;; confirmed MANDATORY-path on ear_infections.json too, Step
+          ;; 1's own characterization): `"wellness": true` with no
+          ;; `encounter_class` key at all. Originally normalized to
+          ;; `:encounter-class :wellness` on an ordinary `:encounter`
+          ;; state (a create-now substitution: this loader fired an
+          ;; IMMEDIATE :outpatient-visit where upstream's own
+          ;; `State.java` Encounter.process wellness branch, pin
+          ;; 7e08387c68a7f0e21d13076609a159fd473fc902, creates nothing
+          ;; and BLOCKS until the engine's hardcoded EncounterModule
+          ;; opens its own next separately-scheduled wellness encounter
+          ;; -- ADR-0031 AR-5(b)'s dated disclosure, live in the
+          ;; vendored ear_infections.json walk's own Next_Wellness_
+          ;; Encounter).
+          ;;
+          ;; RETIRED (2026-08-03, notes/ADRs.md ADR-0037 AR-3): the
+          ;; substitution above is GONE -- `effective-state-type`
+          ;; (below) now maps this same raw shape onto its own DISTINCT
+          ;; state type, `:wellness-wait` (schema section, above), which
+          ;; the interpreter's own `wellness-wait-step` genuinely waits
+          ;; on (`next-wellness-tick`, ADR-0037 AR-1/AR-2) rather than
+          ;; creating an encounter on the spot. Kept as history, not
+          ;; deleted outright, per this project's own fix-forward-with-
+          ;; disclosure discipline.
+          (assoc :type (effective-state-type kw-type state))
+          (cond-> (:codes state) (update :codes #(mapv normalize-code %))
+                  (:code state) (update :code normalize-code)
+                  (:allow state) (update :allow #(normalize-condition % name->key))
+                  (:encounter-class state) (update :encounter-class
+                                                    (fn [c] (get encounter-class->keyword c (keyword (slug c)))))
+                  (:condition-onset state) (update :condition-onset (fn [t] (resolve-name-ref name->key t)))
+                  (:medication-order state) (update :medication-order (fn [t] (resolve-name-ref name->key t)))
+                  (:device state) (update :device (fn [t] (resolve-name-ref name->key t)))
+                  (:target-encounter state) (update :target-encounter (fn [t] (resolve-name-ref name->key t)))
+                  ;; GMF coverage Wave D stage D2 (2026-08-02, ADR-0029):
+                  ;; :careplan (CarePlanEnd's own state-name reference to
+                  ;; the CarePlanStart it closes, State.java's own field
+                  ;; name verbatim) normalizes the SAME way :medication-
+                  ;; order/:device already do; :activities (CarePlanStart's
+                  ;; own Concept vector) the same way top-level :codes
+                  ;; already does, above.
+                  (:careplan state) (update :careplan (fn [t] (resolve-name-ref name->key t)))
+                  (:activities state) (update :activities #(mapv normalize-code %))
+                  ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-1): Counter's
+                  ;; own :action ("increment"/"decrement") normalizes to a
+                  ;; keyword the SAME way every other closed two-value GMF
+                  ;; vocabulary already does here (:encounter-class, above).
+                  (:action state) (update :action (fn [a] (keyword (slug a))))
+                  ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-2): ImagingStudy's
+                  ;; own :procedure-code (a single Concept) and :series (embedded,
+                  ;; recursively normalized). GMF coverage Wave I (2026-08-04,
+                  ;; ADR-0040 AR-5): kw-type-GATED -- Vaccine's own :series is a
+                  ;; genuinely DIFFERENT field sharing this same bare key name
+                  ;; (a plain int, State.java's own primitive `series` field),
+                  ;; found live (this session's own red test): the pre-existing
+                  ;; ungated `(:series state)` clause crashed trying to `mapv`
+                  ;; over Vaccine's int.
+                  (:procedure-code state) (update :procedure-code normalize-code)
+                  (and (:series state) (= :imaging-study kw-type)) (update :series #(mapv normalize-imaging-series %))
+                  ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-3): SupplyList's
+                  ;; own :supplies -- each component's :code normalized, :quantity
+                  ;; untouched (already a plain int).
+                  (:supplies state) (update :supplies #(mapv (fn [c] (update c :code normalize-code)) %))
+                  ;; GMF coverage Wave D stage D1 (2026-08-02, ADR-0029):
+                  ;; :value-code on a standalone :observation state
+                  ;; (Capillary_Refill's own top-level shape); :observations
+                  ;; on a :multi-observation/:diagnostic-report state (its
+                  ;; own embedded children, D1a-2).
+                  (:value-code state) (update :value-code normalize-code)
+                  (:observations state) (update :observations #(mapv normalize-observation-child %))
+                  ;; GMF coverage Wave D stage D3 (D3c finding 1): the
+                  ;; gmf_version 2 timing encoding -- dispatched on
+                  ;; kw-type, BEFORE normalize-transitions (a state's
+                  ;; own top-level :distribution, never the DIFFERENT,
+                  ;; nested :distribution H3 already handles inside
+                  ;; :distributed-transition's own entries). ADR-0035:
+                  ;; restricted to `v1-collapse-kinds` (UNIFORM/EXACT)
+                  ;; now that a THIRD sibling clause (below) exists for
+                  ;; the other three kinds -- by the time normalize-state
+                  ;; reaches this cond-> (past the invalid-distribution-
+                  ;; kind? early return, above), :kind is guaranteed one
+                  ;; of the five recognized strings, so "not a v1-collapse
+                  ;; kind" below correctly means "one of the three new
+                  ;; ones," never an unrecognized one.
+                  (and (map? (:distribution state)) (v1-collapse-kinds (:kind (:distribution state))) (#{:delay :symptom} kw-type))
+                  apply-gmf-v2-timing
+
+                  (and (map? (:distribution state)) (v1-collapse-kinds (:kind (:distribution state))) (= :procedure kw-type))
+                  apply-gmf-v2-procedure-duration
+
+                  ;; ADR-0035 AR-2/AR-5: GAUSSIAN/EXPONENTIAL/TRIANGULAR
+                  ;; on Delay/Symptom/Procedure -- kept as a normalized
+                  ;; :distribution map, never collapsed (no Range/Exact
+                  ;; equivalent exists for these three kinds).
+                  (and (map? (:distribution state)) (distribution-timing-state-types kw-type)
+                       (not (v1-collapse-kinds (:kind (:distribution state)))))
+                  apply-new-timing-distribution
+
+                  ;; ADR-0035 AR-2/AR-4: SetAttribute's own :distribution
+                  ;; -- all five kinds (ADR-0040 AR-2: no longer gated
+                  ;; against a co-present :value/:value-code -- the
+                  ;; interpreter's own precedence chain, not this
+                  ;; loader, is what now orders co-present sources).
+                  ;; GMF coverage Wave VS (2026-08-04, ADR-0039 AR-2):
+                  ;; VitalSign's own :distribution -- the SAME value-
+                  ;; distribution normalization, no :unit folding.
+                  (and (map? (:distribution state)) (#{:set-attribute :vital-sign} kw-type))
+                  normalize-value-distribution)
+          (normalize-transitions name->key)
+          (as-> built
+                (if-let [raw (find-unresolved-reference built)]
+                  {:unresolved-reference {:raw raw}}
+                  built))))))
+
+(defn- find-unresolved-reference
+  "A pure, generic walk over an already-normalized state's own value
+  tree, returning the first raw name string `resolve-name-ref` could
+  not resolve (embedded as a `::unresolved-name` sentinel map at its
+  own call site), or nil if none -- ADR-0133's own purity constraint
+  (docs/dev/simulator-architecture.md section 3 / ADR-0108, no third
+  mutable-state exception) means a miss can't be collected via a
+  side-effecting atom the way `check-state-name-collisions!`'s own
+  disclosure does; this walk finds it structurally instead, without
+  re-deriving which of the twelve name-valued field categories carried
+  it."
+  [v]
+  (cond
+    (and (map? v) (contains? v ::unresolved-name)) (::unresolved-name v)
+    (map? v) (some find-unresolved-reference (vals v))
+    (vector? v) (some find-unresolved-reference v)
+    :else nil))
+
+(defn- normalize-states
+  "Normalizes every state; short-circuits with the FIRST deferred-type
+  state found (deterministic, though not necessarily FILE order --
+  `states-by-key` is a plain map, keyed by `disambiguate-state-names`'
+  own resolved keyword, iterated in Clojure's own hash order, a
+  pre-existing property of this reduce unaffected by ADR-0133), since a
+  module using even one deferred type fails load, full stop (this
+  namespace's own docstring). ADR-0035: one more short-circuiting
+  category joins :unsupported-state-type here, the SAME 'first found,
+  deterministic order' discipline -- an unrecognized v2 distribution
+  :kind (:invalid-distribution-kind). ADR-0040 AR-2: a SetAttribute state
+  carrying :expression/:series-data (:set-attribute-unsupported-source)
+  joins the same discipline, replacing the RETIRED :value/:value-code
+  co-presence check (`set-attribute-value-conflict?`'s own dated
+  retirement note, above). ADR-0133: a name-valued reference this
+  state's own body carries that misses `name->key` (`resolve-name-ref`/
+  `find-unresolved-reference`, above -- a pure structural check, no
+  mutable state, docs/dev/simulator-architecture.md section 3) joins
+  the SAME short-circuit discipline as :unresolved-reference -- the one
+  new load-time rejection this session's own ruling sanctions."
+  [states-by-key name->key]
+  (reduce (fn [acc [state-name normalized-or-raw]]
+            (let [normalized (normalize-state normalized-or-raw name->key)]
+              (cond
+                (:unsupported-state-type normalized)
+                (reduced {:unsupported {:state state-name
+                                        :raw-type (:raw-type (:unsupported-state-type normalized))}})
+
+                (:invalid-distribution-kind normalized)
+                (reduced {:invalid-distribution {:state state-name
+                                                  :kind (:kind (:invalid-distribution-kind normalized))}})
+
+                (:set-attribute-unsupported-source normalized)
+                (reduced {:set-attribute-unsupported-source
+                          {:state state-name
+                           :source (:source (:set-attribute-unsupported-source normalized))}})
+
+                (:vital-sign-expression-unsupported normalized)
+                (reduced {:vital-sign-expression {:state state-name}})
+
+                (:unresolved-reference normalized)
+                (reduced {:unresolved-reference
+                          {:state state-name :raw (:raw (:unresolved-reference normalized))}})
+
+                :else
+                (update acc :states assoc state-name normalized))))
+          {:states {}}
+          states-by-key))
+
+;; --- Attributes registry (section 5) --------------------------------------
+
+(def engine-reserved-attribute-names
+  "The bare (non-namespaced) attribute names this project's OWN
+  engine-internal logic reserves -- currently just `donor`
+  (docs/patient-state-model.md's post-mortem entry). A module writing
+  one of these AS ITS OWN RAW (pre-namespace) attribute name is rejected
+  at load time (section 5)."
+  #{"donor"})
+
+(defn- raw-attribute-writes
+  "Every raw (pre-namespace) attribute name a module's own SetAttribute/
+  Symptom states write -- SetAttribute's :attribute field, Symptom's own
+  :symptom field (section 1: Symptom is structurally identical to
+  SetAttribute, a leaf write into a module-namespaced key holding the
+  sampled severity)."
+  [states]
+  (keep (fn [[_ state]]
+          (case (:type state)
+            :set-attribute (:attribute state)
+            :symptom (:symptom state)
+            ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-1): Counter is a
+            ;; third attribute-writing leaf, section 5's own collision check
+            ;; extended the same way Symptom already joined SetAttribute.
+            :counter (:attribute state)
+            nil))
+        states))
+
+(defn- reserved-attribute-collision
+  [states]
+  (first (filter engine-reserved-attribute-names (raw-attribute-writes states))))
+
+(defn declared-attributes
+  "Every namespaced attribute keyword `module`'s own SetAttribute/Symptom
+  states write (section 5) -- `grep`-able listability, the mechanism
+  `loaded-modules` exposes below."
+  [module]
+  (into #{}
+        (map (fn [raw] (keyword (:id module) (slug raw))))
+        (raw-attribute-writes (:states module))))
+
+;; --- Schema (v1 subset, post-normalization) -------------------------------
+
+(def ^:private Range [:map [:low number?] [:high number?] [:unit {:optional true} :string]])
+
+;; ADR-0040 AR-2: SetAttribute's own :range value source -- `State.java`'s
+;; own `Range<Double> range` field, source-grounded: :decimals (upstream's
+;; own `person.rand(low, high, decimals)`, rounding the ONE draw to that
+;; many decimal places, or unrounded when absent) is a real field :range
+;; carries here that the timing-context Range above never does (a day/
+;; week/month/year count has no fractional-rounding concept of its own).
+(def ^:private SetAttributeRange [:map [:low number?] [:high number?] [:decimals {:optional true} :int]])
+(def ^:private Exact [:map [:quantity number?] [:unit {:optional true} :string]])
+
+;; GMF coverage Wave D stage D1 (2026-08-02, ADR-0029 R2(a), D1a-2): a
+;; MultiObservation/DiagnosticReport state's own :observations array is
+;; a list of EMBEDDED, INLINE observation content -- confirmed directly
+;; against real sepsis.json JSON (Blood_Cultures/Record_Blood_Pressure):
+;; each entry carries :category/:unit/:codes and exactly one of
+;; :range/:value-code/:vital-sign, but NO :type and NO transitions of
+;; its own (unlike a standalone Observation state) -- children are
+;; never separately-cited states, only content the parent state carries.
+;; GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3d finding 2): a
+;; FOURTH value-sourcing mechanism, `:exact` -- a literal, SPECIFIED
+;; value (TJR's own `PROMIS29_Total_Assessment`, `functional_status_
+;; assessments.json`), the same shape Delay/Death's own `:exact` field
+;; already uses. Zero rng, mirroring `Delay`'s own `:exact` handling.
+(def ^:private ObservationChild
+  [:map
+   [:category {:optional true} :string]
+   [:unit {:optional true} :string]
+   [:codes [:vector sim-model/Concept]]
+   [:range {:optional true} Range]
+   [:exact {:optional true} Exact]
+   [:value-code {:optional true} sim-model/Concept]
+   [:vital-sign {:optional true} :string]])
+
+;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-2): ImagingStudy's own
+;; embedded Series/Instance content -- State.java's own `HealthRecord.
+;; ImagingStudy.Series`/`.Instance` classes, source-grounded and
+;; confirmed against real module JSON (`congestive_heart_failure.json`,
+;; `lung_cancer.json`). :title/:sop-class ride along, declared for
+;; validation only -- the interpreter's own `imaging-study-extra` never
+;; reads either (glass-box scope: procedure code, modality, drawn
+;; counts, AR-2's own ruling), the same "declared, dead past the
+;; loader" treatment several other v1 fields already establish.
+(def ^:private ImagingInstance
+  [:map [:title {:optional true} :string] [:sop-class {:optional true} sim-model/Concept]])
+
+(def ^:private ImagingSeries
+  [:map
+   [:body-site {:optional true} sim-model/Concept]
+   [:modality sim-model/Concept]
+   [:instances [:vector ImagingInstance]]
+   [:min-number-instances {:optional true} :int]
+   [:max-number-instances {:optional true} :int]])
+
+;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-3): SupplyList's own
+;; per-component shape -- State.java's own private `SupplyComponent`
+;; class (source-grounded, confirmed against `sleep_apnea.json`).
+(def ^:private SupplyComponent [:map [:code sim-model/Concept] [:quantity :int]])
+
+;; GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3b, H3): a
+;; distributed_transition entry's own :distribution may be a plain
+;; number (v1, unchanged) or a NamedDistribution map -- real Synthea's
+;; own attribute-sourced weight with a JSON-specified fallback
+;; (Transition.java's own `attribute`/`default` field names verbatim,
+;; D3b's own source citation -- stroke.json's own Chance_of_Stroke gate,
+;; ADR-0028, byte-confirmed against source here).
+(def ^:private Distribution [:or number? [:map [:attribute :string] [:default number?]]])
+
+(def ^:private TransitionFields
+  [[:direct-transition {:optional true} :keyword]
+   [:distributed-transition {:optional true}
+    [:vector [:map [:transition :keyword] [:distribution Distribution]]]]
+   [:conditional-transition {:optional true}
+    [:vector [:map [:transition {:optional true} :keyword] [:condition {:optional true} [:map-of :keyword :any]]]]]
+   ;; GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3f finding,
+   ;; found vendoring uti/ambulatory_path.json): a complex_transition
+   ;; entry is EITHER a direct :transition OR a weighted :distributions
+   ;; list, never both required -- confirmed against Transition.java's
+   ;; own ComplexTransitionOption/ComplexTransition.follow (`option.
+   ;; transition != null ? ... : option.distributions`), a real
+   ;; either/or this loader's schema previously required :distributions
+   ;; on every entry, unconditionally.
+   ;; GMF coverage Wave I (2026-08-04, ADR-0040 AR-1): a complex_transition
+   ;; entry's own nested :distributions may ALSO carry a NamedDistribution
+   ;; map, the SAME `Distribution` shape :distributed-transition's own
+   ;; top-level :distribution already accepts (D3b/H3) -- Transition.java's
+   ;; own ComplexTransitionOption shares ONE `List<NamedDistribution>
+   ;; distributions` field type with DistributedTransition, source-
+   ;; confirmed, so this was always the same field, never two. Real use:
+   ;; injuries.json's own Elderly_Incidence_Rates (byte-confirmed against
+   ;; source), the census's own found gap this session's AR-1 closes.
+   [:complex-transition {:optional true}
+    [:vector [:map [:condition {:optional true} [:map-of :keyword :any]]
+              [:transition {:optional true} :keyword]
+              [:distributions {:optional true} [:vector [:map [:transition :keyword] [:distribution Distribution]]]]]]]
+   ;; GMF coverage Wave B (D5): no weights of its own (see
+   ;; normalize-transitions' own comment) -- each of the three keys is
+   ;; optional (a module may omit :telemedicine on an older care-
+   ;; pathway authoring, real Synthea's own shape).
+   [:type-of-care-transition {:optional true}
+    [:map [:ambulatory {:optional true} :keyword]
+     [:emergency {:optional true} :keyword]
+     [:telemedicine {:optional true} :keyword]]]
+   ;; GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3a, H2): the
+   ;; sixth transition kind -- :lookup-table-name is a relative CSV
+   ;; filename verbatim (never slugged, the same "file reference, not a
+   ;; semantic identifier" disposition :submodule already established,
+   ;; D3), resolved as a closure DATA-FILE member (R4) by
+   ;; `load-closure`'s own `table-resolve-fn`.
+   [:lookup-table-transition {:optional true}
+    [:vector [:map [:transition :keyword] [:default-probability number?]
+              [:lookup-table-name :string]]]]])
+
+(defn- with-transitions [& kvs] (into [:map] (into (vec kvs) TransitionFields)))
+
+;; ADR-0035 (Wave F0) AR-1/AR-5: SampledDistribution -- the normalized
+;; shape `normalize-distribution` (above) produces for GAUSSIAN/
+;; EXPONENTIAL/TRIANGULAR on Delay/Symptom/Procedure, and for ALL FIVE
+;; kinds on SetAttribute. A `:multi` dispatch on :kind, the SAME pattern
+;; `GmfState` itself already uses one level up -- each branch declares
+;; ONLY its own kind's required parameters (AR-1's own table,
+;; Distribution.java's `validate()`, source-confirmed), so a distribution
+;; missing a required parameter fails as :schema-invalid, the same
+;; disposition every other structural gap in this loader already gets.
+(def ^:private ExactParams [:map [:value number?]])
+(def ^:private UniformParams [:map [:low number?] [:high number?]])
+(def ^:private GaussianParams
+  [:map [:mean number?] [:standard-deviation number?]
+   [:min {:optional true} number?] [:max {:optional true} number?]])
+(def ^:private ExponentialParams [:map [:mean number?]])
+(def ^:private TriangularParams [:map [:min number?] [:mode number?] [:max number?]])
+
+(defn- with-round-and-unit [& kvs] (into [:map] (into (vec kvs) [[:round :boolean] [:unit {:optional true} :string]])))
+
+(def ^:private SampledDistribution
+  [:multi {:dispatch :kind}
+   [:exact (with-round-and-unit [:kind [:= :exact]] [:parameters ExactParams])]
+   [:uniform (with-round-and-unit [:kind [:= :uniform]] [:parameters UniformParams])]
+   [:gaussian (with-round-and-unit [:kind [:= :gaussian]] [:parameters GaussianParams])]
+   [:exponential (with-round-and-unit [:kind [:= :exponential]] [:parameters ExponentialParams])]
+   [:triangular (with-round-and-unit [:kind [:= :triangular]] [:parameters TriangularParams])]])
+
+(def GmfState
+  [:multi {:dispatch :type}
+   [:initial (into [:map [:type [:= :initial]]] TransitionFields)]
+   [:terminal [:map [:type [:= :terminal]]]]
+   [:simple (into [:map [:type [:= :simple]]] TransitionFields)]
+   [:delay (with-transitions [:type [:= :delay]]
+             [:range {:optional true} Range] [:exact {:optional true} Exact]
+             [:distribution {:optional true} SampledDistribution])]
+   [:guard (with-transitions [:type [:= :guard]] [:allow [:map-of :keyword :any]])]
+   ;; GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3d finding 1):
+   ;; :value-code (TJR's own Pre_Procedure_Encounter_Reason/Home_Health_
+   ;; Reason_Knee/Hip states) -- a Concept, the same normalize-code as
+   ;; :observation's own :value-code already gets (the generic
+   ;; normalize-state clause already handles it, no new loader code).
+   [:set-attribute (with-transitions [:type [:= :set-attribute]] [:attribute :string] [:value {:optional true} :any]
+                     [:value-code {:optional true} sim-model/Concept]
+                     ;; ADR-0035 AR-2/AR-4: SetAttribute's own :distribution.
+                     ;; ADR-0040 AR-2: co-presence with :value/:value-code is
+                     ;; now LEGAL, ordered by the interpreter's own
+                     ;; precedence chain (the RETIRED load-time conflict
+                     ;; check's own dated note, above).
+                     [:distribution {:optional true} SampledDistribution]
+                     ;; ADR-0040 AR-2: :range (`person.rand(low, high,
+                     ;; decimals)` semantics, `set-attribute-unsupported-
+                     ;; source?`'s own docstring has the full seven-source
+                     ;; chain) and :value-attribute (a bare, later-slugged
+                     ;; attribute NAME string, resolved the SAME root-
+                     ;; namespaced way `:attribute`/`:symptom` reads
+                     ;; already are -- interpreter-time, not here).
+                     [:range {:optional true} SetAttributeRange]
+                     [:value-attribute {:optional true} :string])]
+   [:symptom (with-transitions [:type [:= :symptom]] [:symptom :string]
+               [:range {:optional true} Range] [:exact {:optional true} Exact]
+               [:distribution {:optional true} SampledDistribution])]
+   ;; GMF coverage Wave I2 (2026-08-04, ADR-0041 AR-1): :assign-to-
+   ;; attribute -- found LIVE, necessary (not merely convenient) to make
+   ;; Death's own :referenced-by-attribute cause form resolve to
+   ;; anything real: `congestive_heart_failure.json`'s own `CHF
+   ;; Condition Start` state authors it (`OnsetState`'s own real field,
+   ;; the SAME one `ConditionOnset`'s sibling `AllergyOnset` already
+   ;; declared-but-never-wired at ADR-0040 AR-5, and `MedicationOrder`
+   ;; already wires below) -- without this, the `chf` attribute Death's
+   ;; four states all reference would never be written by this
+   ;; interpreter, and the referenced-by-attribute form would always
+   ;; see an absent attribute. The SAME "declared at the loader,
+   ;; slug-normalized at INTERPRETER time" treatment :medication-order's
+   ;; own field already establishes.
+   [:condition-onset (with-transitions [:type [:= :condition-onset]] [:codes [:vector sim-model/Concept]]
+                        [:target-encounter {:optional true} :keyword]
+                        [:assign-to-attribute {:optional true} :string])]
+   [:condition-end (with-transitions [:type [:= :condition-end]] [:condition-onset {:optional true} :keyword])]
+   ;; GMF coverage Wave B (2026-08-02, ADR-0027): :codes is {:optional
+   ;; true} -- a real `"wellness": true`-idiom Encounter (above) can
+   ;; carry NO codes key at all (`ear_infections.json`'s own
+   ;; Next_Wellness_Encounter, Step 1's own characterization); the same
+   ;; "don't fabricate what was never actually said" disposition M5b's
+   ;; own finding 6 already established for ConditionAnnotation's own
+   ;; :codes field. Safe: `compile-trajectory`'s own encounter->step
+   ;; (confirmed by direct read) never reads :codes off an encounter
+   ;; event at all.
+   ;; GMF coverage Wave I (2026-08-04, ADR-0040 AR-1b): four more real
+   ;; EncounterType values join the enum (`encounter-class->keyword`'s
+   ;; own dated note, above, has the full source citation).
+   [:encounter (with-transitions [:type [:= :encounter]]
+                 [:encounter-class [:enum :wellness :ambulatory :emergency :inpatient :virtual
+                                     :urgent-care :hospice :home :snf]]
+                 [:codes {:optional true} [:vector sim-model/Concept]] [:reason {:optional true} :string])]
+   ;; GMF coverage Wave G (2026-08-03, ADR-0037 AR-3): a `wellness: true`
+   ;; Encounter with no `:encounter-class` loads as this DISTINCT state
+   ;; type, `:wellness-wait` -- not `:encounter` with a synthesized
+   ;; `:encounter-class :wellness` (Wave B's own create-now
+   ;; normalization, `normalize-state`'s own dated retirement comment,
+   ;; below). :codes stays optional for the same real-content reason the
+   ;; Wave B comment already gave (`ear_infections.json`'s own
+   ;; `Next_Wellness_Encounter` carries none); :reason is NOT
+   ;; validation-only dead weight here the way it is on every other
+   ;; Encounter-shaped state (gmf.clj's own D2 disclosure) -- the
+   ;; interpreter's own `wellness-wait-step` genuinely threads it into
+   ;; the emitted event.
+   [:wellness-wait (with-transitions [:type [:= :wellness-wait]]
+                     [:codes {:optional true} [:vector sim-model/Concept]]
+                     [:reason {:optional true} :string])]
+   [:encounter-end (into [:map [:type [:= :encounter-end]]] TransitionFields)]
+   [:procedure (with-transitions [:type [:= :procedure]] [:codes [:vector sim-model/Concept]]
+                 [:target-encounter {:optional true} :keyword] [:reason {:optional true} :string]
+                 [:duration {:optional true} Range]
+                 [:distribution {:optional true} SampledDistribution])]
+   ;; GMF coverage Wave D stage D1 (2026-08-02, ADR-0029, D1a-3/D1a-RULING
+   ;; Q2+Q3): :value-code (a coded/qualitative finding) and :vital-sign
+   ;; (a named-vital-sign lookup, the raw JSON string left UNTOUCHED --
+   ;; unlike :attribute/:symptom, this is a lookup key into this
+   ;; project's own curated reference table, patient-simulator/vital-
+   ;; signs.edn, never a module-authored identifier to slug/namespace)
+   ;; join :range as the three value-sourcing mechanisms this closure
+   ;; needs, side by side on the same state type (D1a-3's own finding:
+   ;; real Synthea authors mix idioms even within one module).
+   [:observation (with-transitions [:type [:= :observation]] [:codes [:vector sim-model/Concept]]
+                   [:category {:optional true} :string] [:unit {:optional true} :string]
+                   [:range {:optional true} Range]
+                   [:value-code {:optional true} sim-model/Concept]
+                   [:vital-sign {:optional true} :string])]
+   ;; GMF coverage Wave D stage D1 (2026-08-02, ADR-0029 R2(a), D1a-2):
+   ;; both extend Synthea's own private ObservationGroup class -- :codes
+   ;; optional (a MultiObservation/DiagnosticReport state with no
+   ;; report-level code is real, source-grounded, D1a-2), :category
+   ;; MultiObservation-only at the Java level but declared here on both
+   ;; for uniformity (harmless when absent, the same tolerant-map
+   ;; convention this schema already follows elsewhere) -- no
+   ;; :number-of-observations-equivalent field (D1a-2: DEAD JSON, the
+   ;; children vector's own count already is the count; the loaded
+   ;; module map still carries the raw key verbatim, unvalidated,
+   ;; harmless, same disposition :assign-to-attribute's own unused-field
+   ;; precedent already establishes).
+   [:multi-observation (with-transitions [:type [:= :multi-observation]]
+                          [:codes {:optional true} [:vector sim-model/Concept]]
+                          [:category {:optional true} :string]
+                          [:observations [:vector ObservationChild]])]
+   [:diagnostic-report (with-transitions [:type [:= :diagnostic-report]]
+                          [:codes {:optional true} [:vector sim-model/Concept]]
+                          [:observations [:vector ObservationChild]])]
+   ;; GMF coverage Wave B (2026-08-02, ADR-0027): :assign-to-attribute /
+   ;; :referenced-by-attribute -- an alternative to the fixed state-name
+   ;; citation (:medication-order below) for when the SAME MedicationEnd
+   ;; could be ending any one of several polymorphic orders (Step 1's
+   ;; own characterization, ear_infections.json's closure) -- the
+   ;; interpreter (ehrt.patient-simulator.gmf-interpreter, its own
+   ;; :medication-order/:medication-end step handling) resolves both,
+   ;; this loader only declares the fields (kebab-cased automatically by
+   ;; `kebab-key`, the raw string VALUE left untouched -- it names an
+   ;; attribute, slug-normalized at INTERPRETER time same as :attribute/
+   ;; :symptom already are, not at load time).
+   [:medication-order (with-transitions [:type [:= :medication-order]] [:codes [:vector sim-model/Concept]]
+                        [:reason {:optional true} :string] [:assign-to-attribute {:optional true} :string])]
+   [:medication-end (with-transitions [:type [:= :medication-end]] [:medication-order {:optional true} :keyword]
+                       [:referenced-by-attribute {:optional true} :string])]
+   ;; GMF coverage Wave D stage D2 (2026-08-02, ADR-0029 R2(b), G1): the
+   ;; SAME paired-span shape as :medication-order/:medication-end, one
+   ;; entry up -- grounded directly against Synthea's own State.java
+   ;; (CarePlanStart/CarePlanEnd classes, gmf-interpreter.md section
+   ;; 13). :reason declared here for VALIDATION only (a real GMF field,
+   ;; the vendored closure authors it) -- the SAME "declared at the
+   ;; loader, dead past this loader" treatment :medication-order's own
+   ;; :reason field already establishes (its real three-way attribute/
+   ;; PriorState/ConditionOnset resolution is not ported). :assign-to-
+   ;; attribute/:referenced-by-attribute (real fields on CarePlanStart/
+   ;; CarePlanEnd per source) stay UNDECLARED here -- the declared D2
+   ;; vendoring scope (total_joint_replacement.json) exercises neither,
+   ;; the same "declare only when a real closure needs it" discipline
+   ;; :medication-order's own :assign-to-attribute field followed at
+   ;; Wave B.
+   [:care-plan-start (with-transitions [:type [:= :care-plan-start]] [:codes [:vector sim-model/Concept]]
+                       [:activities {:optional true} [:vector sim-model/Concept]]
+                       [:reason {:optional true} :string])]
+   [:care-plan-end (with-transitions [:type [:= :care-plan-end]] [:careplan {:optional true} :keyword])]
+   ;; M5b: consumed-internally, like :simple -- see gmf-type->keyword's
+   ;; own docstring note. :code is singular (GMF's own Device shape, one
+   ;; equipment concept per state -- unlike :codes' plural elsewhere).
+   [:device (with-transitions [:type [:= :device]] [:code {:optional true} sim-model/Concept])]
+   [:device-end (with-transitions [:type [:= :device-end]] [:device {:optional true} :keyword])]
+   ;; GMF coverage Wave B (D3): :submodule is the raw call-path string
+   ;; verbatim from the module's own JSON (e.g. "medications/
+   ;; ear_infection_antibiotic") -- never kebab-slugged, since it is a
+   ;; relative FILE PATH (the search path this document's own D3
+   ;; establishes, `sim/modules/<call-path>.json`), not a semantic
+   ;; identifier this loader normalizes elsewhere.
+   [:call-submodule (with-transitions [:type [:= :call-submodule]] [:submodule :string])]
+   ;; GMF coverage Wave C (2026-08-02, ADR-0028, C1): three time forms
+   ;; (:range/:exact -- the SAME shapes :delay/:procedure duration
+   ;; already use -- or neither, meaning immediate). GMF coverage Wave
+   ;; I2 (2026-08-04, ADR-0041 AR-1): all THREE of State.java's own
+   ;; cause-of-death forms now resolve at the interpreter (`gmf-
+   ;; interpreter.clj`'s own `death-cause-codes`) -- :condition-onset/
+   ;; :referenced-by-attribute schema shape unchanged from Wave C
+   ;; (already declared here, an open map, no schema failure); only the
+   ;; interpreter-side UNBUILT throw is retired (`congestive_heart_
+   ;; failure.json`'s own four Death states all use
+   ;; :referenced-by-attribute, docs/gmf-interpreter.md section 10's own
+   ;; dated resolution note).
+   [:death (with-transitions [:type [:= :death]] [:codes {:optional true} [:vector sim-model/Concept]]
+             [:range {:optional true} Range] [:exact {:optional true} Exact]
+             [:condition-onset {:optional true} :keyword]
+             [:referenced-by-attribute {:optional true} :string])]
+   ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-1): Counter -- a third
+   ;; attribute-writing leaf state, structurally SetAttribute-shaped
+   ;; (State.java's own Counter class, source-grounded): :amount is
+   ;; optional -- absent OR authored as 0 both mean "default to 1, legacy
+   ;; compatibility" (the interpreter's own concern, `gmf-interpreter.clj`'s
+   ;; :counter case; this schema only validates the field's own TYPE, not
+   ;; its runtime default).
+   [:counter (with-transitions [:type [:= :counter]] [:attribute :string]
+               [:action [:enum :increment :decrement]] [:amount {:optional true} number?])]
+   ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-2): ImagingStudy --
+   ;; State.java's own ImagingStudy class (source-grounded, real modules
+   ;; confirmed against `congestive_heart_failure.json`/`lung_cancer.json`
+   ;; at the pin). :min-number-series/:max-number-series bound a single
+   ;; series-count draw over the WHOLE study (`gmf-interpreter.clj`'s own
+   ;; `imaging-study-extra`); each series' own :min-number-instances/
+   ;; :max-number-instances bound a separate, independent draw PER
+   ;; materialized series -- no vendored module this session exercises the
+   ;; study-level bounds (disclosed, ADR-0036's own execution note), only
+   ;; the per-series ones.
+   [:imaging-study
+    (with-transitions [:type [:= :imaging-study]]
+      [:procedure-code sim-model/Concept]
+      [:series [:vector ImagingSeries]]
+      [:min-number-series {:optional true} :int]
+      [:max-number-series {:optional true} :int])]
+   ;; GMF coverage Wave F (2026-08-03, ADR-0036 AR-3): SupplyList --
+   ;; State.java's own SupplyList class (source-grounded). Compiles to a
+   ;; log-only trajectory fact, never an IR step (`compile-trajectory`'s
+   ;; own explicit :supply-list clause, the ConditionEnd no-open-encounter
+   ;; precedent verbatim, ADR-0036's own AR-3).
+   [:supply-list (with-transitions [:type [:= :supply-list]] [:supplies [:vector SupplyComponent]])]
+   ;; GMF coverage Wave VS (2026-08-04, ADR-0039 AR-1/AR-2): VitalSign --
+   ;; `:vital-sign` is the raw vital-sign NAME string, left UNTOUCHED the
+   ;; SAME way Observation's own `:vital-sign` field already is (a lookup
+   ;; key into `patient-simulator/vital-signs.edn`, never a module-authored
+   ;; identifier to slug at load time). `:unit` stays a separate,
+   ;; display-only top-level field (`normalize-value-distribution`'s own
+   ;; docstring note) -- never folded into `:distribution`. `:exact`/
+   ;; :range/:distribution are all optional at the SCHEMA layer (the same
+   ;; latitude Delay/Symptom already have); the interpreter's own
+   ;; `step` throws when a real state carries none of the three (no
+   ;; vendored candidate this wave ever does). `:expression` is
+   ;; DELIBERATELY UNDECLARED -- `vital-sign-expression?` (above) rejects
+   ;; it at load time, before this schema is ever checked.
+   [:vital-sign (with-transitions [:type [:= :vital-sign]] [:vital-sign :string]
+                  [:unit {:optional true} :string]
+                  [:range {:optional true} Range] [:exact {:optional true} Exact]
+                  [:distribution {:optional true} SampledDistribution])]
+   ;; GMF coverage Wave I (2026-08-04, ADR-0040 AR-5): AllergyOnset --
+   ;; the SAME shape :condition-onset already declares (`gmf-type->
+   ;; keyword`'s own dated note has the full simplification rationale).
+   [:allergy-onset (with-transitions [:type [:= :allergy-onset]] [:codes [:vector sim-model/Concept]]
+                     [:target-encounter {:optional true} :keyword])]
+   ;; GMF coverage Wave I (2026-08-04, ADR-0040 AR-5): Vaccine -- :series
+   ;; is upstream's own primitive `int` field, optional here (the
+   ;; interpreter's own :vaccine case supplies the same zero-default a
+   ;; genuinely absent primitive int carries upstream).
+   [:vaccine (with-transitions [:type [:= :vaccine]] [:codes [:vector sim-model/Concept]]
+               [:series {:optional true} :int])]])
+
+(def GmfModule
+  [:map
+   [:id :string]
+   [:name :string]
+   [:remarks {:optional true} [:vector :string]]
+   [:states [:map-of :keyword GmfState]]])
+
+(defn valid-module? [module] (m/validate GmfModule module))
+(defn explain-module [module] (m/explain GmfModule module))
+
+;; --- Loading ---------------------------------------------------------------
+
+;; --- Exact-name state resolution (2026-08-14, ADR-0133, superseding
+;; ADR-0131 Q2(b)'s own WARN-mode guard) -----------------------------------
+;;
+;; `slug` is not injective by design (it is a many-to-one fold, the
+;; whole point of normalizing "Check_Age_Guard"/"Check Age Guard" onto
+;; one key) -- but `kebab-key`'s own `json/read-str :key-fn` application
+;; used to build the `:states` map's own KEYS directly from it, where a
+;; genuine collision between two DIFFERENT raw state names
+;; (`notes/adr/0131-*.md`'s own census: `sleep_apnea.json`'s "Home CPAP
+;; Unit"/"Home_CPAP_Unit", both folding to :home-cpap-unit) meant one
+;; silently overwrote the other before this namespace ever saw both.
+;; ADR-0133 (author ruling "b", loader-side exact-name resolution):
+;; state identity is no longer built through `slug` at all -- every
+;; raw state name gets its OWN key via `disambiguate-state-names`
+;; (below), and every name-VALUED reference (a transition target, a
+;; PriorState condition's own :name, a ConditionEnd/MedicationEnd/
+;; DeviceEnd/CarePlanEnd back-reference) resolves through that SAME
+;; table by exact raw string, never by re-folding. A reference absent
+;; from the table is a load REJECTION (`:unresolved-state-reference`),
+;; not a silent dangling keyword the old `(keyword (slug t))` could
+;; produce. The guard's own former WARN text is retired; a collision
+;; group is now disclosed (still to `*err*`, `disclose-state-name-
+;; collisions!`, below) as a resolution, not merely announced.
+
+(defn- skip-ws [^String text idx]
+  (loop [i idx]
+    (if (and (< i (count text)) (Character/isWhitespace (.charAt text i)))
+      (recur (inc i))
+      i)))
+
+(defn- skip-json-string
+  "`idx` points at a JSON string literal's own opening quote -- returns
+  the index just past its closing (unescaped) quote."
+  [^String text idx]
+  (loop [i (inc idx)]
+    (let [c (.charAt text i)]
+      (cond
+        (= c \\) (if (= (.charAt text (inc i)) \u)
+                   (recur (+ i 6))
+                   (recur (+ i 2)))
+        (= c \") (inc i)
+        :else (recur (inc i))))))
+
+(def ^:private json-scalar-delims
+  #{\, \} \] \space \newline \tab \return \formfeed \backspace})
+
+(defn- skip-json-value
+  "`idx` points at the start (post-whitespace) of a JSON value --
+  returns the index just past it, correctly depth-/string-aware for
+  nested objects and arrays (never confused by a `{`/`}`/`,` living
+  inside a quoted string)."
+  [^String text idx]
+  (let [idx (skip-ws text idx)
+        c (.charAt text idx)]
+    (cond
+      (= c \") (skip-json-string text idx)
+      (or (= c \{) (= c \[))
+      (let [close (if (= c \{) \} \])]
+        (loop [i (inc idx) depth 1]
+          (if (zero? depth)
+            i
+            (let [ch (.charAt text i)]
+              (cond
+                (= ch \") (recur (skip-json-string text i) depth)
+                (or (= ch \{) (= ch \[)) (recur (inc i) (inc depth))
+                (or (= ch \}) (= ch \])) (recur (inc i) (dec depth))
+                :else (recur (inc i) depth))))))
+      :else
+      (loop [i idx]
+        (if (or (>= i (count text)) (json-scalar-delims (.charAt text i)))
+          i
+          (recur (inc i)))))))
+
+(defn- read-json-key
+  "`idx` points at a JSON object key's own opening quote -- returns
+  `[key-string index-after-closing-quote]`. Reuses `json/read-str`
+  itself to unescape the delimited literal (correct `\\uXXXX`/surrogate
+  handling for free) rather than reimplementing JSON string escaping."
+  [^String text idx]
+  (let [end (skip-json-string text idx)]
+    [(json/read-str (subs text idx end)) end]))
+
+(defn- object-key-order
+  "`idx` points at a JSON object's own opening `{` -- returns that
+  object's own DIRECT child keys, in FILE order."
+  [^String text idx]
+  (loop [i (skip-ws text (inc idx)) acc []]
+    (let [i (skip-ws text i)]
+      (if (= (.charAt text i) \})
+        acc
+        (let [[k key-end] (read-json-key text i)
+              colon (skip-ws text key-end)
+              value-start (skip-ws text (inc colon))
+              value-end (skip-json-value text value-start)
+              after (skip-ws text value-end)]
+          (case (.charAt text after)
+            \, (recur (inc after) (conj acc k))
+            \} (conj acc k)))))))
+
+(defn- top-level-field-key-order
+  "`json-text` is a JSON object; `field-name` names one of its own
+  top-level keys whose value is itself an object. Returns that nested
+  object's own direct keys, in FILE order.
+
+  `clojure.data.json` 2.5.2's own `read-object` builds each parsed
+  object via `(transient {})`/`assoc!`/`persistent!` -- for any object
+  with MORE than 8 entries this upgrades from a `PersistentArrayMap`
+  (insertion-ordered) to a `PersistentHashMap` (hash-ordered, NOT file
+  order), confirmed empirically (`(keys (json/read-str \"{\\\"a\\\":1,...
+  ,\\\"j\\\":10}\"))` => a hash-shuffled order, not a..j) -- every one of
+  this project's own real modules has far more than 8 states, so the
+  OLD `raw-state-names` (`(-> json-text json/read-str (get \"states\")
+  keys)`) was NEVER giving file order for any real module (ADR-0133's
+  own found, load-bearing defect, latent until this session's own
+  'first occurrence in file order' disambiguation rule made it matter).
+  This scans `json-text` directly instead of trusting the parsed map's
+  own iteration order."
+  [^String json-text field-name]
+  (let [root (skip-ws json-text 0)]
+    (loop [i (skip-ws json-text (inc root))]
+      (let [i (skip-ws json-text i)
+            [k key-end] (read-json-key json-text i)
+            colon (skip-ws json-text key-end)
+            value-start (skip-ws json-text (inc colon))]
+        (if (= k field-name)
+          (object-key-order json-text value-start)
+          (let [after (skip-ws json-text (skip-json-value json-text value-start))]
+            (case (.charAt json-text after)
+              \, (recur (inc after)))))))))
+
+(defn- raw-state-names
+  "The ORIGINAL, pre-fold state-name strings from `json-text`'s own
+  top-level \"states\" object, in FILE order -- the input
+  `disambiguate-state-names` (below) resolves into this module's own
+  raw-name -> key table."
+  [json-text]
+  (top-level-field-key-order json-text "states"))
+
+(defn- disambiguate-state-names
+  "`raw-names-in-order` (file order) -> {raw-name -> key}, one entry
+  per raw name, ALL of them, colliding or not. Names sharing a `slug`
+  fold are grouped (`group-by` preserves each group's own relative
+  file order); the FIRST occurrence of a group keeps the bare slug
+  keyword, every subsequent occurrence gets a `--N` suffix (N = its
+  1-based rank within the group).
+
+  Capture-avoiding BY CONSTRUCTION, not by luck: `slug` collapses every
+  run of 2+ hyphens to one (`(str/replace #\"-{2,}\" \"-\")`, above) --
+  no string `slug` can EVER produce contains a doubled hyphen, so a
+  `--N`-suffixed key can never equal ANY raw name's own plain slug, for
+  any module, any content (proved as a generative property against
+  `gmf-test`'s own `raw-gmf-name-gen`, ADR-0133)."
+  [raw-names-in-order]
+  (let [groups (group-by slug raw-names-in-order)]
+    (into {}
+          (mapcat (fn [[base raws]]
+                    (map-indexed (fn [i raw]
+                                   [raw (keyword (if (zero? i) base (str base "--" (inc i))))])
+                                 raws)))
+          groups)))
+
+(defn- state-name-collision-groups
+  "Every group of 2+ raw state names (`raw-names-in-order`) that fold
+  to the SAME `slug` -- the disambiguation table's own input. A module
+  with no such group returns an empty seq."
+  [raw-names-in-order]
+  (->> raw-names-in-order
+       (group-by slug)
+       (filter (fn [[_ raws]] (> (count raws) 1)))))
+
+(defn- disclose-state-name-disambiguation!
+  "A disambiguation disclosure to `*err*`, naming the module `id`, the
+  folded key, every raw name that folds to it, and the DISTINCT keys
+  `name->key` resolved each one to (ADR-0133: both members load as
+  real states now, this is a resolution record, never a warn-and-drop)."
+  [id name->key folded raws]
+  (binding [*out* *err*]
+    (println (str "DISCLOSURE: module " id ": state names " (pr-str raws)
+                   " all fold to :" folded
+                   " -- resolved to distinct keys " (pr-str (mapv name->key raws))
+                   " by exact-name resolution (ADR-0133), no longer silently overwriting"))))
+
+(defn- disclose-state-name-collisions!
+  "Runs the disclosure over every collision group `raw-names-in-order`
+  produces -- never affects `load-module`'s own return value."
+  [id name->key raw-names-in-order]
+  (doseq [[folded raws] (state-name-collision-groups raw-names-in-order)]
+    (disclose-state-name-disambiguation! id name->key folded raws)))
+
+(defn- kebab-keys-deep
+  "Recursively kebab-keys every map key in an already-parsed (string-
+  keyed) JSON value -- the same transform `json/read-str :key-fn
+  kebab-key` applies during parsing, reapplied here to ONE state's own
+  body, parsed separately (string-keyed, unfolded) so that the top-
+  level `states` map's own keys resolve through `disambiguate-state-
+  names` instead of through `kebab-key`'s own fold."
+  [v]
+  (cond
+    (map? v) (into {} (map (fn [[k val]] [(kebab-key k) (kebab-keys-deep val)])) v)
+    (vector? v) (mapv kebab-keys-deep v)
+    :else v))
+
+;; NOTE: no mutable state here -- docs/dev/simulator-architecture.md
+;; section 3 / ADR-0108's own purity census allows exactly two named
+;; exceptions across the whole sim family (`ehrt.patient-simulator.census`/
+;; `ehrt.sim.version`), enforced by `ehrt.docs-tooling.sim-purity-lint-
+;; test`; this namespace is not one of them. A miss is threaded
+;; PURELY: `resolve-name-ref` embeds a small sentinel map in the
+;; normalized value tree in place of the unresolved keyword;
+;; `find-unresolved-reference` (below `normalize-state`) is a plain,
+;; generic walk over the ALREADY-built state that finds it, without
+;; re-deriving which of the twelve name-valued field categories
+;; carried it.
+
+(defn- resolve-name-ref
+  "Resolves a raw name-VALUED reference string `raw` (a transition
+  target, a PriorState condition's own :name, a ConditionEnd/
+  MedicationEnd/DeviceEnd/CarePlanEnd back-reference) through
+  `name->key` -- EXACT raw-string lookup (ADR-0133), never `slug`. A
+  miss returns a sentinel map (`::unresolved-name`) carrying `raw`,
+  never a silent dangling keyword the old `(keyword (slug t))` could
+  produce -- `find-unresolved-reference` is what turns this into a
+  real load rejection."
+  [name->key raw]
+  (get name->key raw {::unresolved-name raw}))
+
+(defn load-module
+  "Parses and validates `json-text` (a GMF module's raw JSON) as `id`
+  (never derived from a filename here -- the caller's own concern,
+  e.g. a directory loader stripping '.json'; keeping this function pure
+  over its two explicit arguments is what makes it directly testable
+  against inline JSON strings, as this namespace's own red tests do).
+
+  Returns a Result: :ok with the normalized module map ({:id :name
+  :remarks :states}); :rejected :unsupported-state-type (payload {:state
+  :raw-type}) for a module using a deferred GMF state type; :rejected
+  :unsupported-distribution-kind (payload {:state :kind}, ADR-0035 AR-2)
+  for a state whose top-level v2 :distribution names a :kind outside
+  the five Distribution.java defines -- a clean rejection where the
+  loader used to THROW (the census's own `gmf_version 2` loader-
+  exception finding, ADR-0034); :rejected :set-attribute-unsupported-source
+  (payload {:state :source}, ADR-0040 AR-2) for a SetAttribute state
+  carrying :expression or :series-data, two of upstream's own seven
+  value sources this loader has no evaluator/time-series mechanism for
+  (co-presence of the FIVE supported sources -- range/distribution/
+  value-code/value-attribute/literal value -- is legal, ordered by
+  `gmf-interpreter.clj`'s own precedence chain, never a load-time
+  rejection); :rejected :attribute-collision (payload {:attribute name})
+  for a module whose own SetAttribute/Symptom writes a bare
+  engine-reserved attribute name; :rejected :vital-sign-expression-unsupported
+  (payload {:state}, ADR-0039 AR-2) for a VitalSign state carrying a CQL
+  :expression, a real upstream branch this loader has no evaluator for;
+  :rejected :schema-invalid (payload {:explain ...}) for any other v1
+  structural mismatch; :rejected :unresolved-state-reference (payload
+  {:state :raw}, ADR-0133) for a name-valued reference (a transition
+  target, a PriorState condition's own :name, a ConditionEnd/
+  MedicationEnd/DeviceEnd/CarePlanEnd back-reference) whose own raw
+  string names no state this module actually declares -- the one new
+  strictness this session's own author ruling sanctions, replacing the
+  silent dangling keyword `(keyword (slug t))` used to produce.
+
+  State identity (2026-08-14, ADR-0133, superseding ADR-0131 Q2(b)'s
+  own WARN-mode guard): the top-level `states` map's own keys are built
+  from `disambiguate-state-names`, NOT from `kebab-key`'s own fold --
+  every raw state name gets its own key, colliding or not, and every
+  name-valued reference resolves through that SAME table by exact raw
+  string (`normalize-*`'s own `resolve-name-ref` call sites, above).
+  Side effect: discloses to *err* once per group of raw state names
+  that collide under `slug`, naming the keys each one resolved to
+  (`disclose-state-name-collisions!`, above) -- never affects this
+  function's own return value."
+  [id json-text]
+  (let [raw-names (raw-state-names json-text)
+        name->key (disambiguate-state-names raw-names)
+        _ (disclose-state-name-collisions! id name->key raw-names)
+        string-states (get (json/read-str json-text) "states")
+        raw (json/read-str json-text :key-fn kebab-key)
+        states-by-key (into {}
+                             (map (fn [[raw-name k]] [k (kebab-keys-deep (get string-states raw-name))]))
+                             name->key)
+        {:keys [states unsupported invalid-distribution set-attribute-unsupported-source vital-sign-expression
+                unresolved-reference]}
+        (normalize-states states-by-key name->key)]
+    (cond
+      unsupported
+      (result/rejected :unsupported-state-type unsupported)
+
+      invalid-distribution
+      (result/rejected :unsupported-distribution-kind invalid-distribution)
+
+      set-attribute-unsupported-source
+      (result/rejected :set-attribute-unsupported-source set-attribute-unsupported-source)
+
+      vital-sign-expression
+      (result/rejected :vital-sign-expression-unsupported vital-sign-expression)
+
+      unresolved-reference
+      (result/rejected :unresolved-state-reference unresolved-reference)
+
+      (reserved-attribute-collision states)
+      (result/rejected :attribute-collision {:attribute (reserved-attribute-collision states)})
+
+      :else
+      (let [module (cond-> {:id id :name (:name raw) :states states}
+                     ;; M5b: only assoc :remarks when the module actually
+                     ;; HAS one -- the vendored sinusitis.json carries no
+                     ;; top-level :remarks (only per-state ones, a separate,
+                     ;; already-supported field this loader never validates
+                     ;; the shape of), and an explicit nil under an
+                     ;; {:optional true} key still fails [:vector :string]
+                     ;; (optional means the KEY may be absent, not that a
+                     ;; present value may be nil) -- the fixture module
+                     ;; happened to always carry one, so M5a never
+                     ;; exercised this path.
+                     (:remarks raw) (assoc :remarks (:remarks raw)))]
+        (if (valid-module? module)
+          (result/ok module)
+          (result/rejected :schema-invalid {:explain (explain-module module)}))))))
+
+;; --- GMF coverage Wave B (2026-08-02, ADR-0027, D3): loader closure
+;; resolution -- CallSubmodule's own transitive closure, resolved and
+;; gated at load time, before any interpretation happens ------------------
+
+(defn- call-submodule-paths
+  "Every DISTINCT :submodule call-path `module`'s own CallSubmodule
+  states name -- the module's own direct out-edges in the closure's
+  call graph (D3)."
+  [module]
+  (into #{} (keep (fn [[_ state]] (when (= :call-submodule (:type state)) (:submodule state))))
+        (:states module)))
+
+(defn- resolve-closure
+  "DFS worklist over the call graph rooted at `module`'s own
+  CallSubmodule out-edges, extending `modules` (call-path -> loaded
+  module, seeded by the caller with whatever is already resolved) and
+  checking `stack` (the current DFS path's own call-paths) for a repeat
+  -- D3's own acyclicity check. A call-path already IN `modules` is
+  shared/deduped, not re-resolved -- the same caching-by-path behavior
+  Synthea's own `Module.getModuleByPath` establishes (confirmed by
+  direct read of `CallSubmodule.process()`, Wave B's own D5/D7
+  characterization step) -- a submodule called from two different
+  places in the closure loads exactly once. Returns a Result: :ok with
+  the fully-extended `modules` map, or the FIRST rejection encountered
+  (this function's own docstring on `load-closure`, below, names each
+  category)."
+  [resolve-fn stack modules module]
+  (reduce
+   (fn [result call-path]
+     (let [modules (:payload result)]
+       (cond
+         ;; `stack` (the DFS path CURRENTLY in progress) must be checked
+         ;; BEFORE `modules` (everything RESOLVED so far, root included
+         ;; from the very start) -- root is pre-seeded into `modules`
+         ;; before its own children ever resolve, so a cycle back to
+         ;; root would otherwise be masked as "already resolved, dedup"
+         ;; instead of caught as a cycle. A bug found live by this
+         ;; commit's own red test (`load-closure-rejects-a-cyclic-call-
+         ;; graph`), not merely anticipated.
+         (some #{call-path} stack)
+         (reduced (result/rejected :cyclic-closure {:cycle (conj (vec stack) call-path)}))
+
+         (contains? modules call-path) result
+
+         :else
+         (let [json-text (resolve-fn call-path)]
+           (if (nil? json-text)
+             (reduced (result/rejected :submodule-not-found {:call-path call-path}))
+             (let [loaded (load-module call-path json-text)]
+               (if-not (result/ok? loaded)
+                 (reduced (result/rejected :submodule-rejected {:call-path call-path :reason loaded}))
+                 (let [sub (resolve-closure resolve-fn (conj stack call-path)
+                                            (assoc modules call-path (:payload loaded))
+                                            (:payload loaded))]
+                   (if (result/ok? sub) sub (reduced sub))))))))))
+   (result/ok modules)
+   (call-submodule-paths module)))
+
+;; --- GMF coverage Wave D stage D3 (2026-08-02, ADR-0029 R4, D3a, H2):
+;; closure DATA-FILE members -- lookup-table CSVs, resolved and parsed
+;; alongside the module closure, not only JSON submodules -------------------
+
+;; GMF coverage Wave LC (2026-08-03, ADR-0038 AR-1): the H2 whitelist
+;; (`recognized-lookup-table-columns`, formerly just `#{"gender"}`) is
+;; RETIRED -- read directly against the pin
+;; (`7e08387c68a7f0e21d13076609a159fd473fc902`, `Transition.java`'s own
+;; `LookupTableTransition.loadLookupTable`/`follow`), upstream never
+;; validates attribute-column NAMES at all: `this.attributes` is every
+;; header column that ISN'T `age`/`time`/a declared transition-state
+;; name, full stop -- no closed vocabulary, no per-column allowlist.
+;; H2's own whitelist was this project's OWN invention, not a mirror of
+;; anything upstream does, and it was blocking real, ordinary attribute
+;; columns (`operative_status`, `cardiac_surgery`, `diabetic_retinopathy_
+;; stage`, the `vhd_*_risk` trio) that resolve exactly like any
+;; module-set SetAttribute value already does. Load-time rejection now
+;; covers only what upstream ALSO rejects at load: a malformed `age`/
+;; `time` range cell (`parse-age-range`/`parse-time-range`, below) --
+;; never an unrecognized column name.
+
+(defn- lookup-table-transition-names
+  "Every closure member's own :lookup-table-transition entries, gathered
+  into {table-name -> #{declared transition keyword}} -- the data-file
+  analogue of `call-submodule-paths` (D3a: which CSV a state names,
+  paired with the transition SET its own JSON entries declare, so a
+  table's own header can be split into attribute columns vs. weight
+  columns by NAME, not by position)."
+  [modules]
+  (reduce (fn [acc [_ module]]
+            (reduce (fn [acc [_ state]]
+                      (reduce (fn [acc {:keys [transition lookup-table-name]}]
+                                (update acc lookup-table-name (fnil conj #{}) transition))
+                              acc (:lookup-table-transition state)))
+                    acc (:states module)))
+          {} modules))
+
+(defn- parse-csv-line [line] (str/split line #","))
+
+;; GMF coverage Wave LC (2026-08-03, ADR-0038 AR-1(b)): `age`/`time` are
+;; upstream's own TWO specials (`LookupTableTransition.loadLookupTable`'s
+;; own `if (this.attributes.contains("age"))` / `contains("time")`
+;; branches) -- both removed from the row's own header BEFORE the
+;; remaining columns become `rowAttributes`, exactly mirrored below:
+;; `attr-cols` (every non-weight column) still carries `age`/`time` for
+;; `parse-lookup-table`'s own row loop to pull by key, but neither ever
+;; lands in a row's own `:attributes` map.
+
+(defn- parse-age-range
+  "`age`'s own malformed-format check, transcribed from
+  `loadLookupTable`'s own guard (`!value.contains(\"-\") || <either half
+  empty>`) PLUS the actual `Integer.parseInt` upstream performs after --
+  nil on either failure (the caller's own 'first bad value, reject'
+  scan, `parse-lookup-table` below), else `[low high]` (unchanged
+  shape, `age-years-at`'s own inclusive-both-ends containment check
+  applies exactly as it already did before this wave)."
+  [value]
+  (let [parts (str/split value #"-")]
+    (when (and (= 2 (count parts)) (every? #(re-matches #"\d+" %) parts))
+      (mapv #(Long/parseLong %) parts))))
+
+(def ^:private iso-date-range-pattern
+  "Utilities.parseDateRange's own ISO form, transcribed verbatim
+  (`^(\\d{4}-\\d{2}-\\d{2})-(\\d{4}-\\d{2}-\\d{2})$`) -- READ at the pin,
+  not assumed (AR-1(b)'s own named session-read)."
+  #"^(\d{4}-\d{2}-\d{2})-(\d{4}-\d{2}-\d{2})$")
+
+(defn- parse-time-range
+  "`time`'s own two accepted forms, transcribed from `Utilities.
+  parseDateRange` (Synthea source at the pin, AR-1(b)'s own named
+  session-read -- the design channel's own ruling flagged this as
+  UNVERIFIED and required a real read before transcribing it, done
+  here): an ISO date-date range (`iso-date-range-pattern`, above,
+  inclusive of the FULL calendar day at both ends -- upstream's own
+  low = start-of-day UTC millis, high = end-of-day-minus-1ms UTC
+  millis) or a raw epoch-millisecond range (`millis-millis`, split at
+  the FIRST hyphen only -- upstream's own `substring(0, indexOf(\"-\"))`
+  shape, deliberately NOT `str/split`, since the ISO form's own low/high
+  halves each contain internal hyphens the millis form's split must not
+  be confused by).
+
+  Converted to this project's own epoch-DAY unit (`ehrt.patient-simulator.
+  gmf-interpreter`'s virtual clock, `:t`) rather than kept as millis:
+  every real `time` column this session found (`covid19_prob.csv`,
+  `hiv_stage.csv`, `hiv_care.csv`, `hiv_diagnosis_early.csv`) already
+  encodes whole-UTC-day boundaries in millis form (confirmed by direct
+  read -- each low/high pair is exactly a start-of-day/end-of-day-minus-
+  1ms pair, the same shape the ISO form produces directly), so
+  `Math/floorDiv` by one day's millisecond count recovers the identical
+  `[low-day high-day]` pair either form denotes -- the SAME `[:low :high]`
+  inclusive-both-ends containment shape `:age-range` already carries,
+  reused unchanged by `lookup-table-row-matches?`
+  (`ehrt.patient-simulator.gmf-interpreter`) rather than inventing a
+  second range representation. nil on malformed input (missing hyphen,
+  an ISO-shaped string with an invalid calendar date, or a non-numeric
+  millis half) -- the caller's own 'first bad value, reject' scan."
+  [value]
+  (when (str/includes? value "-")
+    (if-let [[_ lo hi] (re-matches iso-date-range-pattern value)]
+      (try [(.toEpochDay (LocalDate/parse lo)) (.toEpochDay (LocalDate/parse hi))]
+           (catch Exception _ nil))
+      (let [idx (str/index-of value "-")]
+        (try
+          [(Math/floorDiv (Long/parseLong (subs value 0 idx)) 86400000)
+           (Math/floorDiv (Long/parseLong (subs value (inc idx))) 86400000)]
+          (catch NumberFormatException _ nil))))))
+
+(defn- parse-lookup-table
+  "Parses `csv-text` (a small, plain-comma, unquoted lookup table -- the
+  same shape both vendored UTI tables use, real Synthea's own
+  `SimpleCSV.parse`'s ordinary case; a small in-house splitter rather
+  than a new external dependency, D3a) into a vector of rows:
+  {:age-range [low high]|nil, :time-range [low-day high-day]|nil,
+  :attributes {column value}, :weights {transition-kw number}}.
+  `transition-keywords` (this table's own declared entry set,
+  `lookup-table-transition-names`, above) is what tells a header column
+  apart as a WEIGHT column (its slugged name is one of these keywords)
+  versus an ATTRIBUTE column -- never guessed from cell contents or
+  column position.
+
+  GMF coverage Wave LC (2026-08-03, ADR-0038 AR-1): every non-weight
+  column that ISN'T `age`/`time` is now an ATTRIBUTE column, generalized
+  (H2's own whitelist retired, above) -- the only load-time rejection
+  left is a STRUCTURALLY malformed `age`/`time` cell (`parse-age-range`/
+  `parse-time-range`, above both returning nil), the same class of gap
+  upstream ALSO rejects at load (`loadLookupTable`'s own
+  `RuntimeException`s), never an unrecognized column name.
+
+  GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3f finding,
+  found vendoring `uti_recurrence.csv`): a leading UTF-8 byte-order-mark
+  (U+FEFF, confirmed byte-for-byte in the upstream file itself, verbatim
+  -- `uti.csv` carries none) is stripped from `csv-text` before parsing
+  -- `slurp`'s own UTF-8 decoding does NOT auto-strip a BOM the way some
+  other language runtimes do, and Java's own `CSVReader`/`SimpleCSV`
+  utilities (confirmed by Synthea's own `Utilities.readResource`, D3a)
+  are exactly what a real Synthea run relies on to handle this
+  transparently. Stripping it here is a representation fix, the same
+  kind `slug`/`normalize-code`'s own type-coercion already establish --
+  never a change to any real cell value."
+  [csv-text transition-keywords]
+  (let [csv-text (cond-> csv-text (= 0xFEFF (int (first csv-text))) (subs 1))
+        lines (remove str/blank? (str/split-lines csv-text))
+        header (parse-csv-line (first lines))
+        weight-cols (filter #(contains? transition-keywords (keyword (slug %))) header)
+        attr-cols (remove (set weight-cols) header)
+        rows (mapv #(zipmap header (parse-csv-line %)) (rest lines))
+        age-values (keep #(get % "age") rows)
+        time-values (keep #(get % "time") rows)
+        bad-age (first (remove (comp some? parse-age-range) age-values))
+        bad-time (first (remove (comp some? parse-time-range) time-values))]
+    (cond
+      bad-age (result/rejected :malformed-lookup-table-range {:column "age" :value bad-age})
+      bad-time (result/rejected :malformed-lookup-table-range {:column "time" :value bad-time})
+      :else
+      (result/ok
+       (mapv (fn [row]
+               {:age-range (some-> (get row "age") parse-age-range)
+                :time-range (some-> (get row "time") parse-time-range)
+                :attributes (into {} (map (fn [c] [c (get row c)]))
+                                   (remove #(or (= % "age") (= % "time")) attr-cols))
+                :weights (into {} (map (fn [c] [(keyword (slug c)) (Double/parseDouble (get row c))])) weight-cols)})
+             rows)))))
+
+(defn- resolve-tables
+  "Resolves every distinct lookup-table name `table-name->transitions`
+  (`lookup-table-transition-names`) names, via `table-resolve-fn`
+  (caller-supplied, the SAME pure/testable discipline `resolve-fn`
+  already establishes for submodules) -- the all-or-nothing gate (D3)
+  extends to data-file members: an unresolvable name (:rejected
+  :lookup-table-not-found) or an unparseable table (`parse-lookup-
+  table`'s own rejection) rejects the WHOLE closure."
+  [table-resolve-fn modules table-name->transitions root-id]
+  (reduce
+   (fn [result [table-name transition-kws]]
+     (let [tables (:tables (:payload result))]
+       (if-let [csv-text (table-resolve-fn table-name)]
+         (let [parsed (parse-lookup-table csv-text transition-kws)]
+           (if (result/ok? parsed)
+             (result/ok {:root root-id :modules modules :tables (assoc tables table-name (:payload parsed))})
+             (reduced parsed)))
+         (reduced (result/rejected :lookup-table-not-found {:table-name table-name})))))
+   (result/ok {:root root-id :modules modules :tables {}})
+   table-name->transitions))
+
+(defn load-closure
+  "Resolves `root-id`'s own TRANSITIVE CallSubmodule closure (D3): loads
+  `root-json-text` as `root-id`, then recursively resolves every
+  :submodule call-path it (or any transitively-called submodule) names,
+  fetching each one's own JSON text via `(resolve-fn call-path)` --
+  caller-supplied so this stays pure/testable over inline JSON strings,
+  the same discipline `load-module` already establishes (no
+  clojure.java.io dependency here; a real caller's own resolve-fn is a
+  thin `io/resource` wrapper over the D3 search path,
+  `sim/modules/<call-path>.json`).
+
+  GMF coverage Wave D stage D3 (2026-08-02, ADR-0029 R4, D3a, H2): the
+  optional trailing `table-resolve-fn` argument (purely additive -- the
+  3-arity delegates to this one with a resolve-fn that always returns
+  nil, so a closure naming no lookup tables never invokes it) resolves
+  the closure's own DATA-FILE members the same way `resolve-fn` resolves
+  its JSON ones -- a real caller's own table-resolve-fn is a thin
+  `io/resource` wrapper over `sim/modules/lookup_tables/<table-name>`
+  (the table name already carries its own `.csv` extension, D3a).
+
+  Returns a Result: :ok with {:root root-id :modules {root-id -> ...,
+  call-path -> ...} :tables {table-name -> parsed-table}} -- every
+  call-path key is the submodule's own raw call-path string (also its
+  own :id, section 5's own attribute-namespacing scope for LOAD-time
+  declared-write collision checking -- distinct from D1's own RUNTIME
+  root-scoping, gmf-interpreter.md section 5's own dated note); `:tables`
+  is empty when the closure names none. The all-or-nothing gate (this
+  namespace's own docstring, ADR-0013 point 4) extends over the WHOLE
+  closure, JSON and data-file members alike: :unsupported-state-type /
+  :attribute-collision / :schema-invalid from ANY transitively-called
+  submodule rejects the WHOLE closure (:rejected :submodule-rejected,
+  payload {:call-path :reason}, `:reason` the submodule's own rejection
+  Result -- always names which call-path failed and why, never silently
+  which-one-of-many). :rejected :submodule-not-found (payload {:call-
+  path}) when `resolve-fn` returns nil for a named call-path. :rejected
+  :cyclic-closure (payload {:cycle [...]}) when the static call graph
+  contains a cycle -- an ESCALATION-worthy finding (D3), never silently
+  resolved by dropping an edge. :rejected :lookup-table-not-found
+  (payload {:table-name}) when `table-resolve-fn` returns nil for a
+  named table; :rejected :malformed-lookup-table-range (payload
+  {:column :value}) when a table's own `age`/`time` cell doesn't parse
+  (GMF coverage Wave LC, ADR-0038 AR-1 -- the ONLY load-time rejection
+  a lookup table's own header content can trigger now that H2's column
+  whitelist is retired, above)."
+  ([root-id root-json-text resolve-fn]
+   (load-closure root-id root-json-text resolve-fn (constantly nil)))
+  ([root-id root-json-text resolve-fn table-resolve-fn]
+   (let [root-loaded (load-module root-id root-json-text)]
+     (if-not (result/ok? root-loaded)
+       root-loaded
+       (let [root-module (:payload root-loaded)
+             closure (resolve-closure resolve-fn [root-id] {root-id root-module} root-module)]
+         (if-not (result/ok? closure)
+           closure
+           (let [modules (:payload closure)]
+             (resolve-tables table-resolve-fn modules (lookup-table-transition-names modules) root-id))))))))
+
+(defn singleton-closure
+  "Wraps an already-loaded, standalone `module` (no closure resolution
+  performed or needed) in `load-closure`'s own `:ok` payload shape --
+  `{:root (:id module) :modules {id module} :tables {}}` -- so an
+  engine-facing `:modules` entry is ALWAYS closure-shaped (ADR-0033
+  AR-2), whether or not the module actually calls a submodule. Plain
+  data, not a Result: there is nothing here that can fail (the module
+  is already loaded and validated)."
+  [module]
+  {:root (:id module) :modules {(:id module) module} :tables {}})
+
+;; --- M5b: per-patient module assignment -- SimHospital's own percentage_of_
+;; patients analogue, the SAME shape sim-model/PathwaysConfig
+;; already established for authored pathways (docs/gmf-interpreter.md's own
+;; Task 4: module assignment composes with :pathways, both just IR entering
+;; the union). ehrt.sim-engine.engine/assign-module is this schema's own
+;; resolver -- kept there, not here, mirroring assign-pathway's own placement
+;; (the resolver needs a seeded RNG; the schema doesn't) -------------------
+
+(def ModuleAssignment
+  [:or
+   [:map {:closed true} [:module-id :string] [:weight [:or :int :double]]]
+   [:map {:closed true} [:patient-ordinal :int] [:module-id :string]]])
+
+(def ModulesConfig
+  [:vector ModuleAssignment])
+
+(defn valid-modules-config? [config] (m/validate ModulesConfig config))
+(defn explain-modules-config [config] (m/explain ModulesConfig config))
+
+;; --- Registry (no hidden modules, section 5) -------------------------------
+
+(defn empty-registry [] {})
+
+(defn register
+  "Adds `module` (an already-loaded, :ok'd module map) to `registry` under
+  `id`. :rejected :module-id-collision when `id` is already registered --
+  the registry-level half of section 5's own collision language (the
+  other half, a bare reserved-attribute write, is caught by `load-module`
+  itself, per-module, above)."
+  [registry id module]
+  (if (contains? registry id)
+    (result/rejected :module-id-collision {:id id})
+    (result/ok (assoc registry id module))))
+
+(defn loaded-modules
+  "The full loaded set, listable -- no hidden modules (section 5's own
+  corollary): every registered module's id, name, state count, and
+  declared (namespaced) attribute set."
+  [registry]
+  (mapv (fn [[id module]]
+          {:id id :name (:name module) :state-count (count (:states module))
+           :attributes (declared-attributes module)})
+        registry))

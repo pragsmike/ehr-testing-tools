@@ -297,7 +297,7 @@ disease progression as JSON state machines — states (ConditionOnset,
 Encounter, Delay, Guard…) connected by probabilistic transitions, with
 clinical codes embedded inline. Sim ports a defined subset of its
 semantics. See
-[`gmf-interpreter.md`](../components/sim-trajectory/docs/gmf-interpreter.md).
+[`gmf-interpreter.md`](../components/patient-simulator/docs/gmf-interpreter.md).
 
 **Ground-truth log.** The simulator's primary output and single
 source of truth[^sim-adr-0002]: a time-ordered, immutable sequence of events
@@ -314,7 +314,7 @@ patient: the *history* phase fast-forwards from birth to run start
 (establishing conditions and attributes; facts marked `:pre-horizon`),
 and the *horizon* phase emits real trajectory events inside the
 simulated window. See
-[`gmf-interpreter.md`](../components/sim-trajectory/docs/gmf-interpreter.md).
+[`gmf-interpreter.md`](../components/patient-simulator/docs/gmf-interpreter.md).
 
 **HL7 (organization) / HL7v2.** Health Level Seven International, the
 standards body; and its version-2 messaging standard (1980s-vintage,
@@ -479,7 +479,7 @@ walking its own clinical logic — what a disease *should* do, never
 which bed or attending — while *truth space* is `decide`/`evolve`
 computing what a capacity-bounded hospital actually did. Nothing in
 script space can write truth. See
-[`trajectory-computation.md`](../components/sim-trajectory/docs/trajectory-computation.md).
+[`trajectory-computation.md`](../components/patient-simulator/docs/trajectory-computation.md).
 
 **Schema version.** `:event-schema-version`, recorded in every `sim
 run`'s own `manifest.edn`: which version of the **Event log** contract

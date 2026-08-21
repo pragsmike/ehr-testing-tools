@@ -2,7 +2,7 @@
   "The mutable-state census `docs/dev/simulator-architecture.md` section 3
   states is a checkable claim, not prose: zero `atom`/`ref`/`agent`/
   `volatile!`/`set-validator!` FORMS anywhere in the seven sim-family
-  bricks' own `src` (`sim-model`, `sim-trajectory`, `sim-engine`,
+  bricks' own `src` (`sim-model`, `patient-simulator`, `sim-engine`,
   `sim-emit-hl7`, `sim-emit-fhir`, `sim-check`, `sim`), with exactly two
   named, disclosed exceptions. A future session adding a third exception
   (or reintroducing a fourth mutable-state primitive anywhere else in
@@ -23,7 +23,7 @@
   exactly the two named in `docs/dev/simulator-architecture.md` section
   3, each with the SAME reason stated there:
 
-  - `ehrt.sim-trajectory.census` -- `walk-one`'s own `fetched` atom
+  - `ehrt.patient-simulator.census` -- `walk-one`'s own `fetched` atom
     (census.clj ~407), a census-run's own probe-fetch memoization
     bookkeeping (`ehrt sim census`), never read or written by
     `decide`/`evolve`/`run`/`replay`.
@@ -44,13 +44,13 @@
   enumerates, by directory name under `components/` -- the exact set
   `ehrt.docs-tooling.project-classpath-test`'s own sim-brick enumeration
   already uses."
-  ["sim-model" "sim-trajectory" "sim-engine" "sim-emit-hl7" "sim-emit-fhir" "sim-check" "sim"])
+  ["sim-model" "patient-simulator" "sim-engine" "sim-emit-hl7" "sim-emit-fhir" "sim-check" "sim"])
 
 (def ^:private allowlisted-namespaces
   "See this namespace's own docstring for the reason each is here --
   restated in `docs/dev/simulator-architecture.md` section 3, not
   re-derived independently by this file."
-  #{"ehrt.sim-trajectory.census" "ehrt.sim.version"})
+  #{"ehrt.patient-simulator.census" "ehrt.sim.version"})
 
 (def ^:private forbidden-call-heads
   "The five mutable-state-introducing primitives the architecture doc's
@@ -125,11 +125,11 @@
              (pr-str violators)))))
 
 (deftest allowlisted-namespaces-are-exactly-the-disclosed-two-test
-  (is (= #{"ehrt.sim-trajectory.census" "ehrt.sim.version"} allowlisted-namespaces)))
+  (is (= #{"ehrt.patient-simulator.census" "ehrt.sim.version"} allowlisted-namespaces)))
 
 (deftest the-two-allowlisted-files-are-actually-in-scan-scope-test
   (let [namespaces (into #{} (map (comp form-namespace read-all-forms)) (scan-sources))]
-    (is (contains? namespaces "ehrt.sim-trajectory.census"))
+    (is (contains? namespaces "ehrt.patient-simulator.census"))
     (is (contains? namespaces "ehrt.sim.version"))))
 
 (deftest forbidden-pattern-detection-is-actually-caught-test

@@ -26,7 +26,7 @@
             [ehrt.sim-engine.churn :as churn]
             [ehrt.sim-engine.engine :as engine]
             [ehrt.sim-emit-hl7.emit-hl7 :as emit-hl7]
-            [ehrt.sim-trajectory.interface :as sim-trajectory]
+            [ehrt.patient-simulator.interface :as patient-simulator]
             [ehrt.sim-emit-hl7.v2-replay :as v2-replay]))
 
 (def ref-date "2024-01-01")
@@ -263,8 +263,8 @@
     (let [{:keys [ground-truth facility providers]}
           (engine/run {:seed seed :patients 5
                        :pathway {:name "module-only" :steps []}
-                       :modules [(sim-trajectory/singleton-closure
-                                  (:payload (sim-trajectory/load-module
+                       :modules [(patient-simulator/singleton-closure
+                                  (:payload (patient-simulator/load-module
                                              "sinusitis" (slurp (io/resource "sim/modules/sinusitis.json")))))]
                        :module-assignment [{:module-id "sinusitis" :weight 1}]
                        :module-horizon-days 3650})

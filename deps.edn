@@ -33,13 +33,13 @@
                                ;; sim -- sim's own src now reaches these
                                ;; only through ehrt.sim-model.interface.
                                poly/sim-model {:local/root "components/sim-model"}
-                               ;; sim-trajectory (sim split S2, .agents/plans/
+                               ;; patient-simulator (sim split S2, .agents/plans/
                                ;; 2026-08-02-sim-split-plan.md): gmf/gmf-
                                ;; interpreter/compile-trajectory, extracted
                                ;; out of sim -- sim's own src now reaches
                                ;; these only through
-                               ;; ehrt.sim-trajectory.interface.
-                               poly/sim-trajectory {:local/root "components/sim-trajectory"}
+                               ;; ehrt.patient-simulator.interface.
+                               poly/patient-simulator {:local/root "components/patient-simulator"}
                                ;; sim-emit-hl7 (sim split S3 / Wave D stage
                                ;; D0, ADR-0029/ADR-0025): emit-hl7/v2-replay/
                                ;; site-profile, extracted out of sim -- sim's
@@ -120,7 +120,7 @@
                                ;; other brick.
                                poly/oracle   {:local/root "components/oracle"}}}
 
-            ;; `components/sim-trajectory/test`, below, also carries the
+            ;; `components/patient-simulator/test`, below, also carries the
             ;; census tool's own co-landing tests since the standing-
             ;; equipment promotion (2026-08-05, `notes/ADRs.md` promotion
             ;; ADR, AR-P-1) moved them in from `development/test` -- no
@@ -130,7 +130,7 @@
             :test {:extra-paths ["components/sim/test"
                                   "components/sim-engine/test"
                                   "components/sim-model/test"
-                                  "components/sim-trajectory/test"
+                                  "components/patient-simulator/test"
                                   "components/sim-emit-hl7/test"
                                   "components/sim-emit-fhir/test"
                                   "components/sim-check/test"
@@ -191,9 +191,9 @@
                                 ;; sim-model (sim split S1): sim's own src
                                 ;; requires ehrt.sim-model.interface.
                                 poly/sim-model {:local/root "components/sim-model"}
-                                ;; sim-trajectory (sim split S2): sim's own
-                                ;; src requires ehrt.sim-trajectory.interface.
-                                poly/sim-trajectory {:local/root "components/sim-trajectory"}
+                                ;; patient-simulator (sim split S2): sim's own
+                                ;; src requires ehrt.patient-simulator.interface.
+                                poly/patient-simulator {:local/root "components/patient-simulator"}
                                 ;; sim-emit-hl7 (sim split S3 / Wave D stage
                                 ;; D0): sim's own src requires
                                 ;; ehrt.sim-emit-hl7.interface.

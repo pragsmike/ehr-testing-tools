@@ -20,16 +20,16 @@
   (:require [clojure.java.io :as io]
             [clojure.test :refer [deftest is testing]]
             [ehrt.kernel.interface :as result]
-            [ehrt.sim-trajectory.interface :as sim-trajectory]
+            [ehrt.patient-simulator.interface :as patient-simulator]
             [ehrt.sim-engine.engine :as engine]
             [ehrt.sim-check.check :as check]
             [ehrt.sim-emit-hl7.interface :as emit-hl7]))
 
 (def ^:private loaded-module
-  (sim-trajectory/load-module "veteran-ptsd" (slurp (io/resource "sim/modules/veteran_ptsd.json"))))
+  (patient-simulator/load-module "veteran-ptsd" (slurp (io/resource "sim/modules/veteran_ptsd.json"))))
 
 (def ^:private seeded-closure
-  (assoc (sim-trajectory/singleton-closure (:payload loaded-module))
+  (assoc (patient-simulator/singleton-closure (:payload loaded-module))
          :initial-attributes {:veteran-ptsd/veteran true}))
 
 (def ^:private gate-seeds [20260802 1 42])
@@ -65,7 +65,7 @@
   predicted this root MOVES). Restoring the previously-orphaned branch
   also revealed two further, now-resolved gaps this same session fixed
   under explicit author license: a `max-steps` false-positive in the
-  therapy-visit recurring-care loop (`ehrt.sim-trajectory.gmf-
+  therapy-visit recurring-care loop (`ehrt.patient-simulator.gmf-
   interpreter/consume-step-budget`, reset-on-any-advance semantics) and
   an unhandled `:virtual` encounter class in `compile-trajectory`'s own
   `encounter->step`/`encounter-end->step`. Old values (vendoring batch
@@ -76,8 +76,8 @@
   (doseq [[seed expected-total] pinned-suppressed-straddle-spans]
     (testing (str "seed " seed ": the straddle fix's own counter, pinned")
       (let [total (atom 0)
-            real-compile-trajectory sim-trajectory/compile-trajectory]
-        (with-redefs [sim-trajectory/compile-trajectory
+            real-compile-trajectory patient-simulator/compile-trajectory]
+        (with-redefs [patient-simulator/compile-trajectory
                       (fn [trajectory facility reg-t & more]
                         (let [compiled (apply real-compile-trajectory trajectory facility reg-t more)]
                           (swap! total + (or (:suppressed-straddle-spans compiled) 0))
