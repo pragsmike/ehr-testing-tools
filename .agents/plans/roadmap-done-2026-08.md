@@ -2693,3 +2693,16 @@ cheerfully. Oldest survivor, moved verbatim, order preserved.
   (2026-08-18). Deferred since 2026-07-31 with the ABSENCE of a trigger declared
   in the row itself, so it could never fire. Re-open on the first real staging
   need, with the trigger stated then. ADR-0144 finding F-6, review-4 D7-5.
+
+## Rotated 2026-08-21 by the ADR-0162 close
+
+ADR-0162's own CLOSED row joined `## Done` at six lines, taking the
+section from 25 to 31. The cap fired; the oldest survivor moved verbatim,
+order preserved.
+
+- CLOSED 2026-08-19 ADR-0158 **[edit-root-worktree-residue]** -- PAID BY THE AUTHOR
+  2026-08-19 and VERIFIED by that session in the same edit root, not taken on
+  report: `core.fileMode` true, `core.ignorecase` unset, ~360 mode-only changes
+  restored via `git checkout -- .`. Re-derived there -- 0 tracked `100644` files
+  executable on disk, 0 CR bytes in the three named `openai.yaml` mirrors, tree
+  clean, `bin/preflight` exit 0 with both OK lines. ADR-0157 register row D3-1.

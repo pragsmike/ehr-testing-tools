@@ -258,6 +258,12 @@ Rows here are LIVE, each owing a revisit trigger in its own token.
   one-module-per-patient assignment never produces. ADR-0037 AR-4.
 
 ## Done (at most 30 LINES; the close ceremony rotates oldest whole rows verbatim to `.agents/plans/roadmap-done-<yyyy-mm>.md`, ADR-0161)
+- CLOSED 2026-08-21 ADR-0162 **[patient-simulator-charter]** -- `sim-trajectory`
+  renamed `patient-simulator` (42 brick files, 75 consumers, oracle 35/35 IDENTICAL,
+  zero suite delta) and given a front-door charter: the mission sentence plus 8
+  deliberate limitations, each cited and trigger-stated, drift-gated against the
+  three in-source markers. The instructed red witness FAILED to go red and exposed
+  a self-matching citation -- fixed, and it found a second weak anchor.
 - CLOSED 2026-08-20 ADR-0161 **[attic-rotation-law]** -- the law is MECHANICAL by
   author ruling: `## Done` holds at most 30 LINES, rotation is an act of the close
   ceremony, oldest WHOLE rows verbatim to the month's attic, no arc boundaries to
@@ -276,9 +282,3 @@ Rows here are LIVE, each owing a revisit trigger in its own token.
   carried; **34 residue** (24 close-as-fine confirmed, 9 intake, 1 superseded).
   Ledger delta zero against every per-session tally. The close's own four findings
   and review 5's watch-list are in ADR-0159; the register carries dated appends.
-- CLOSED 2026-08-19 ADR-0158 **[edit-root-worktree-residue]** -- PAID BY THE AUTHOR
-  2026-08-19 and VERIFIED by that session in the same edit root, not taken on
-  report: `core.fileMode` true, `core.ignorecase` unset, ~360 mode-only changes
-  restored via `git checkout -- .`. Re-derived there -- 0 tracked `100644` files
-  executable on disk, 0 CR bytes in the three named `openai.yaml` mirrors, tree
-  clean, `bin/preflight` exit 0 with both OK lines. ADR-0157 register row D3-1.
