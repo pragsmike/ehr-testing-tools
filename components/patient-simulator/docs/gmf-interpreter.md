@@ -1362,6 +1362,17 @@ condition-resolution machinery. Both rows' own `CarePlanStart`/
 CarePlan MECHANISM itself is real, built, and tested regardless (gmf-interpreter-findings.md §13),
 awaiting a clean closure to prove it against.
 
+> **Dated note (2026-08-21, ADR-0162): the standing request above --
+> "unowned until a future session extends Guard's own
+> condition-resolution machinery" -- is now a DECLARED LIMITATION, not
+> an open prerequisite.** Author ruling of 2026-08-20: apart from naming
+> the possibility, spend no effort on richer care-plan events. Its
+> authority is [`limitations.md`](limitations.md), the CarePlan
+> attribute row, which carries the two-part trigger that would end the
+> decline and the price of the fix.
+> `.agents/plans/roadmap.md#careplan-guard-resolution` points there too.
+> Nothing above is rewritten -- this is what the request became.
+
 **Dated note, GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, gmf-interpreter-findings.md §14
 has the full account): both `urinary_tract_infections.json` and
 `total_joint_replacement.json` are now VENDORED (`resources/modules/

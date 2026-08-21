@@ -1197,6 +1197,17 @@ independent of whether any real module exercises it yet — the SAME
 table_transition` rows already establish, not a partial or half-
 finished implementation.
 
+> **Dated note (2026-08-21, ADR-0162): the standing request above --
+> "unowned by any wave until a future session extends Guard's own
+> condition-resolution machinery" -- is now a DECLARED LIMITATION, not
+> an open prerequisite.** Author ruling of 2026-08-20: apart from naming
+> the possibility, spend no effort on richer care-plan events. Its
+> authority is [`limitations.md`](limitations.md), the CarePlan
+> attribute row, which carries the two-part trigger that would end the
+> decline and the price of the fix.
+> `.agents/plans/roadmap.md#careplan-guard-resolution` points there too.
+> Nothing above is rewritten -- this is what the request became.
+
 **`Active CarePlan` (condition type) — design-ruled, implementation-
 deferred per G2, unchanged by this stage.** Not built this session: no
 vendored module across Waves A–D exercises it (`total_joint_

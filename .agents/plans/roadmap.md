@@ -20,12 +20,6 @@ rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
   lines now sit under the wrong slug (ADR-0159 F-1). `rulings.md`:
   `R-full-suite-before-push` gained its whole wrapper clause at ADR-0155 and names no
   ADR for it, while the arc's other two widenings do (F-2). Found, rowed, not fixed.
-- OPEN **[careplan-guard-resolution]** PRIORITY 4 -- a closure's next
-  prerequisite is CarePlan, "unowned by any wave until a future session extends
-  Guard's own condition-resolution machinery" (ADR-0139 C-2). NOW ALSO OWNS
-  census S-2 (folded 2026-08-18, ADR-0150): 7/7 `:care-plan-end` events resolve
-  neither field because 4 of 12 vendored `CarePlanEnd` states cite by
-  `referenced_by_attribute`, a shape the declared D2 scope never exercised.
 - OPEN **[bed-ready-vacancy-cascade]** PRIORITY 6 -- a bed-ready transfer
   vacates its own ORIGIN bed and nothing looks for a boarder waiting on that
   ward: only `decide :discharge` runs the search. Witnessed at seed 202,
@@ -111,6 +105,18 @@ rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
   oracle change AND a permanent per-session cost on every bracket (today's 35 cost 114s
   a side, measured); ADR-0156's COVERAGE block makes the purchase visible. Moved 3 -> 22
   at the arc close, below live work: proposed 2026-08-19, author-seen. ADR-0159.
+- OPEN **[stale-path-retired-namespace-addendum]** PRIORITY 23 -- `ehrt.sim-trajectory.`
+  is retired (ADR-0162) and did NOT join `stale_path_test`'s retired-namespace
+  denylist, which every prior namespace retirement in that family joined in its own
+  commit (S2/S3/M2/M3/M4 addenda). No live surface carries the old form today; this
+  buys the gate that stops it coming BACK. Registered, not built: the fence of
+  ADR-0162 allowed no new gate, and a new gate owes its own red.
+- OPEN **[careplan-guard-resolution]** PRIORITY 24 -- a DECLARED LIMITATION since
+  2026-08-21 (ADR-0162), not a queued defect;
+  `components/patient-simulator/docs/limitations.md` is the authority and holds the
+  evidence. Fix owed when an emitter renders care-plan state: a FHIR CarePlan
+  resource, OR a render-time patient-context feature reachable by site-profile Z
+  bindings. Priced there too. ADR-0139 C-2's Guard half is absorbed.
 
 ## Externals (author-only)
 - EXTERNAL **[ci-failure-email]** -- enable GitHub's workflow-failure

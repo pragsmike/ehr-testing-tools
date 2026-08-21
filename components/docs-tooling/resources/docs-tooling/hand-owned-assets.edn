@@ -30,16 +30,25 @@
 [{:asset "docs/manual/assets/gt-emitters.svg"
   :source "docs/dev/simulator-architecture.md"
   :trigger "regenerate by hand if simulator-architecture.md section 4's own equations change"
-  :reviewed-at "dc13a17e"
+  :reviewed-at "c44d240d"
   :verdict :fresh
   :note
-  "Reviewed 2026-08-19 (ADR-0158). simulator-architecture.md moved once
-   since this asset last did, at dc13a17 (ADR-0142): a 31-line addendum
-   APPENDED after line 390, wholly inside section 5. This asset's trigger
-   names section 4's equations, which the diff does not touch, and the
-   addendum says so itself -- 'The arrow itself is untouched: plan-latency,
-   emit-wire and transmit-seconds have the same signatures'. Not stale."
-  :witness {:adr "ADR-0158" :date "2026-08-19"}}
+  "Reviewed 2026-08-21 (ADR-0162). simulator-architecture.md moved at
+   c44d240d, the sim-trajectory -> patient-simulator rename. Section 4's
+   own equation block is byte-identical across that diff -- `walk : RNG x
+   Persona x Closure -> Trajectory` and its four siblings are untouched.
+   The one section-4 line the diff does touch is the prose sentence
+   naming WHICH BRICK supplies `walk`, a name and not a signature. This
+   asset depicts only GT -> emitH/emitF -> ER7*/FHIR* and carries no
+   brick name at all in its own text (`GT`, `ground-truth log`, `ER7*`,
+   `HL7v2 messages`, `FHIR*`, `FHIR bundles`, `emitH`, `emitF` -- the
+   complete set, read out of the SVG). Not stale.
+
+   Prior review, 2026-08-19 (ADR-0158), kept: simulator-architecture.md
+   had moved once at dc13a17 (ADR-0142), a 31-line addendum APPENDED
+   after line 390, wholly inside section 5, which the trigger likewise
+   did not name."
+  :witness {:adr "ADR-0162" :date "2026-08-21"}}
 
  {:asset "docs/manual/assets/inject-expect-loop.svg"
   :source "components/corpus/docs/pipeline.edn"

@@ -1,10 +1,27 @@
 (ns ehrt.patient-simulator.interface
-  "patient-simulator split (sim split S2, .agents/plans/2026-08-02-sim-split-
-  plan.md, AR-6): re-exports exactly the vars real callers outside this
-  component use -- determined by grep against components/sim's own src
-  and test trees before the move (residual sim's `engine` and `run`,
-  confirmed the only two, matching the plan's own prediction), not by
-  interface-design judgment. `gmf` -> `gmf-interpreter` -> pathway IR via
+  "SCOPE (author ruling 2026-08-20, ADR-0162). Realistic EHR message
+  traffic is the priority; patient-lifetime simulation is relevant only
+  inasmuch as it contributes to realistic traffic. Traffic CONSUMES what
+  this component computes, as compiled pathway IR, and never the reverse
+  -- nothing downstream is required from here, and this component knows
+  nothing of the engine or the emitters. The gaps this component
+  declined ON PURPOSE, each with its citation and its trigger-if-any,
+  are tabled in `docs/limitations.md`; that table is gated
+  (`ehrt.docs-tooling.patient-simulator-charter-test`), so a new
+  deliberate limitation in this src that is not tabled there is red.
+
+  Extracted from `components/sim` at the sim split S2 as
+  `sim-trajectory` (.agents/plans/2026-08-02-sim-split-plan.md, AR-6),
+  and RENAMED to `patient-simulator` at ADR-0162, 2026-08-21: the
+  interior name is free to move because the public contract is the
+  ground-truth event feed and the CLI's own file-based operations, not
+  this namespace's spelling.
+
+  Re-exports exactly the vars real callers outside this component use --
+  determined by grep against components/sim's own src and test trees
+  before the move (residual sim's `engine` and `run`, confirmed the only
+  two, matching the plan's own prediction), not by interface-design
+  judgment. `gmf` -> `gmf-interpreter` -> pathway IR via
   `compile-trajectory`, depending on `sim-model` (pathway/facility) and
   `kernel` only -- never on `sim` itself."
   (:require [ehrt.patient-simulator.compile-trajectory :as compile-trajectory]

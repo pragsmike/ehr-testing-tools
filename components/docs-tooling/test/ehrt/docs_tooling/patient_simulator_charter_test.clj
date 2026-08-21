@@ -139,17 +139,47 @@
 
 ;; --- 2. every citation resolves -------------------------------------------
 
+(defn- occurrences [haystack needle]
+  (loop [from 0 n 0]
+    (if-let [i (str/index-of haystack needle from)]
+      (recur (inc i) (inc n))
+      n)))
+
 (deftest every-charter-citation-resolves-test
   (let [cits (citations (charter-text))]
     (testing "population is non-empty (R-empty-population-is-red)"
       (is (seq cits) "the charter table carries no `path` \"snippet\" citations at all"))
     (let [bad (for [{:keys [path snippet]} cits
                     :let [f (io/file path)]
-                    :when (or (not (.isFile f)) (not (str/includes? (slurp f) snippet)))]
+                    :when (or (not (.isFile f)) (zero? (occurrences (slurp f) snippet)))]
                 (str path " :: \"" snippet "\""
                      (if (.isFile f) " -- text not found in file" " -- file does not exist")))]
       (is (empty? bad)
           (str (count bad) " charter citation(s) do not resolve: " (vec bad))))))
+
+(deftest every-charter-citation-anchors-exactly-one-place-test
+  "A snippet that occurs TWICE in its file does not anchor anything, and
+  a generic one is worse than useless here: the drift lint below asks
+  whether a citation lands inside a marker's own comment block, so a
+  snippet that matches wherever it is pasted marks every new marker
+  'covered' the moment the new marker quotes it.
+
+  This is not hypothetical. ADR-0162's own red witness planted
+  `;; :some-invented-field is DELIBERATELY UNDECLARED here.` in
+  `gmf.clj` and the drift lint stayed GREEN, because the charter's
+  VitalSign citation was the bare string \"DELIBERATELY UNDECLARED\" and
+  the planted line contained it. The plant was supposed to prove the
+  lint worked; it proved the opposite, and this test is what the
+  proof-of-failure bought."
+  (let [bad (for [{:keys [path snippet]} (citations (charter-text))
+                  :let [f (io/file path)]
+                  :when (.isFile f)
+                  :let [n (occurrences (slurp f) snippet)]
+                  :when (> n 1)]
+              (str path " :: \"" snippet "\" -- occurs " n " times"))]
+    (is (empty? bad)
+        (str (count bad) " charter citation(s) are not unique in their own file"
+             " -- an anchor that matches twice anchors nothing: " (vec bad)))))
 
 ;; --- 3. the drift lint ----------------------------------------------------
 
@@ -179,8 +209,11 @@
       (testing "an in-source marker with no citation at all is caught"
         (is (= 1 (count (uncovered (.getPath src) "no citations here")))))
       (testing "a citation landing inside the marker's own comment block covers it"
+        ;; Deliberately cites a NEIGHBOURING line in the same block, not the
+        ;; marker line itself -- citing the marker text back at itself is the
+        ;; self-match this gate's own red witness caught.
         (is (empty? (uncovered (.getPath src)
-                               (str "| x | y | `" (.getPath f) "` \"DELIBERATELY UNDECLARED\" | none |")))))
+                               (str "| x | y | `" (.getPath f) "` \"a first comment line\" | none |")))))
       (testing "a citation into the RIGHT file but the WRONG block does not cover it"
         (is (= 1 (count (uncovered (.getPath src)
                                    (str "| x | y | `" (.getPath f) "` \"(def x 1)\" | none |"))))))
