@@ -240,14 +240,22 @@ ASCII clean, CI reported once (AR-CI-4).
 |---|---|---|
 | 32475479703 | `c44d240` (rename) | **failure** -- `hand-owned-asset-freshness-test`, diagnosed and fixed above |
 | 32477627622 | `b1c0965` (red + charter) | **success** |
-| see addendum | close commit | recorded at the addendum |
+| 32479503458 | `6ce2160` (close) | **success** |
 
 The c44d240 red is disclosed, not silently passed: it is a real red on a
 pushed commit, it was diagnosed within the session, and the fix rode the
 next push rather than being deferred.
 
-**Tag:** the prompt licenses a close tag paid in session if the tip run
-concludes success while the session is open, else handed to the next
-Step 0. The licence attaches to the CLOSE commit, since that is the tip
-this session leaves behind -- `b1c0965`'s green is not the licence's
-subject. Disposition recorded in the addendum below.
+**Tag: PAID IN SESSION.** The prompt licenses a close tag paid in
+session if the tip run concludes success while the session is open. Run
+32479503458 @ `6ce2160` concluded **success** while this session was
+still open, so the condition was met and deferring would have been the
+deviation (`rulings.md#R-session-verifies-ci-via-gh`, and AGENTS.md's
+tag law: deferring a licensed tag is now the deviation, not paying it).
+
+    $ bin/tag-ceremony stable-20260821-patient-simulator-charter \
+        6ce2160c5755b0e0ea65db2d60f747b99c01d511 <msg> --push
+    OK: created annotated tag 'stable-20260821-patient-simulator-charter' at 6ce2160c...
+    OK: pushed refs/tags/stable-20260821-patient-simulator-charter
+    OK: remote peeled ref for 'stable-20260821-patient-simulator-charter'
+        is 6ce2160c5755b0e0ea65db2d60f747b99c01d511, matches target exactly

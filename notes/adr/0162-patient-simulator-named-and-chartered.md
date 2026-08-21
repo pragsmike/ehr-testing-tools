@@ -299,3 +299,22 @@ care-plan fix finds it priced.
 What this deliberately did NOT do, per the author's ruling: no attribute
 port, no Guard work, no emitter change, no care-plan test, no
 event-schema change. The possibility is named; nothing was spent on it.
+
+### Addendum, 2026-08-21 -- CI green at the tip, close tag paid in session
+
+CI run **32479503458** @ `6ce2160` concluded **success**, verified by
+this session via `gh` (`rulings.md#R-session-verifies-ci-via-gh`). The
+prompt's licence condition was therefore met while the session was still
+open, so the tag was paid rather than deferred -- under AGENTS.md's tag
+law, deferring a licensed tag is the deviation, not paying it.
+
+`stable-20260821-patient-simulator-charter` created annotated at
+`6ce2160c5755b0e0ea65db2d60f747b99c01d511` through `bin/tag-ceremony
+--push`, remote peeled ref verified to match the target exactly.
+
+The full CI picture across this session, disclosed rather than
+summarised to its happy ending: 32475479703 @ `c44d240` **failure**
+(`hand-owned-asset-freshness-test`, diagnosed and fixed in session --
+see the CI section above for why a pre-commit run could not have caught
+it), 32477627622 @ `b1c0965` **success**, 32479503458 @ `6ce2160`
+**success**.
