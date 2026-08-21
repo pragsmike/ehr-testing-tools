@@ -31,9 +31,9 @@ blind spots.
 
 The skill determines where to write output using this precedence:
 
-1. **`--situation <path>`** ??" if the user provides this on invocation, use `<path>` as the situation directory directly.
+1. **`--situation <path>`** — if the user provides this on invocation, use `<path>` as the situation directory directly.
 2. **Config file** — read `situations_root` from `.agents/cyberneutics-config.yaml` (path relative to repo root). **2026-07-23 divergence from upstream cyberneutics**: this repo shares one `.agents/`-rooted config file across `scenarios`, `probe`, and `committee` rather than committee's own upstream `.agents/committee-config.yml` — same key (`situations_root`), same purpose, no reason for three skills to disagree on where it lives; see `AGENTS.md`. Then append `<topic-slug>/`.
-3. **Default** ??" use `~/situations/<topic-slug>/`.
+3. **Default** — use `~/situations/<topic-slug>/`.
 
 Once the situation directory is resolved:
 - Create the directory if it doesn't exist.
@@ -53,7 +53,7 @@ Once the situation directory is resolved:
 - Write deliberation output to `<situation-dir>/deliberations/`.
 - **Auto-detect scenarios**: If `<situation-dir>/scenarios/` exists and contains `02-scenarios.md`, automatically operate in scenario-aware mode (see below). The user can still provide an explicit `scenario_context:` to override this.
 
-**Rosters** (`roster.md`) are bundled with this skill ??" they are part of the methodology, not the situation output.
+**Rosters** (`roster.md`) are bundled with this skill — they are part of the methodology, not the situation output.
 
 ## When to use
 
@@ -84,11 +84,11 @@ When invoked, the skill:
 7. **Writes 02-deliberation.md** (full transcript) and **03-resolution.md** (decision, votes, summary).
 8. **Surfaces key insights** (optionally inline): assumptions, trade-offs, evidence requirements, decision space map, recommended next steps.
 
-The canonical output is the **deliberation record directory** (00??"04). The substance is not consensus??"it's a **map of the decision space** showing what's at stake, what's uncertain, and what different framings reveal or obscure.
+The canonical output is the **deliberation record directory** (00–04). The substance is not consensus—it's a **map of the decision space** showing what's at stake, what's uncertain, and what different framings reveal or obscure.
 
 ## Scenario-aware mode (deliberated choice)
 
-When the situation directory contains scenarios, or the user provides an explicit `scenario_context:`, the committee operates in **scenario-aware mode** ??" the convergent half of the fan??'funnel composition.
+When the situation directory contains scenarios, or the user provides an explicit `scenario_context:`, the committee operates in **scenario-aware mode** — the convergent half of the fan→funnel composition.
 
 **How to detect**: Either (a) the resolved `<situation-dir>/scenarios/` contains `02-scenarios.md` (auto-detected), or (b) the user includes `scenario_context: <path>` in their invocation, or (c) the user says "deliberate across the scenarios in [path]."
 
@@ -109,14 +109,14 @@ When the situation directory contains scenarios, or the user provides an explici
        key_assumption: "the distinguishing assumption"
    ```
 3. **Opening statements engage with scenarios**: Each character's opening must reference at least 2 scenarios from their propensity. Maya asks which scenario hides the worst political dynamics; Vic demands evidence for or against each scenario's assumptions; etc.
-4. **Debate ranges across futures**: The structured debate considers which futures to optimize for, which to survive, and which to dismiss ??" not just which perspective is right.
+4. **Debate ranges across futures**: The structured debate considers which futures to optimize for, which to survive, and which to dismiss — not just which perspective is right.
 5. **Resolution is scenario-aware**: The resolution distinguishes:
    - **Robust actions**: commitments that make sense across most scenarios
    - **Scenario-dependent actions**: contingent commitments with trigger conditions
    - **Monitoring plan**: early warning signs to watch (from the scenarios)
    - **Dismissed futures**: which scenarios the committee judged implausible, with justification
 
-**What stays the same**: Roster, deliberation requirements, intervention patterns, record directory structure, evaluation/remediation flow ??" all unchanged. Scenario-aware mode enriches the input; it does not change the committee's process.
+**What stays the same**: Roster, deliberation requirements, intervention patterns, record directory structure, evaluation/remediation flow — all unchanged. Scenario-aware mode enriches the input; it does not change the committee's process.
 
 **Backward compatibility**: If no `scenario_context` is provided, the committee operates exactly as before. The scenario-aware fields in the charter are optional.
 
@@ -178,14 +178,14 @@ Good: "Should we hire two junior engineers or one senior engineer by end of mont
 
 The skill should watch for and correct these failure modes during generation. When a failure mode is detected, apply the corresponding intervention internally before continuing:
 
-**Too polite** ??" Characters are deferential ("Maya raises good points, but..."), hedging, or converging to comfortable agreement. This is the most common failure mode.
+**Too polite** — Characters are deferential ("Maya raises good points, but..."), hedging, or converging to comfortable agreement. This is the most common failure mode.
 
 Intervention: Force each character to argue AGAINST the emerging consensus from their propensity. For each character in the roster, formulate a challenge based on their documented propensity and key question.
 
-**Evidence-free claims** ??" A character asserts something without support.
+**Evidence-free claims** — A character asserts something without support.
 
 Intervention: The evidence-focused character objects. The claiming character must either:
-- Provide specific evidence (patterns, data, instances ??" not speculation)
+- Provide specific evidence (patterns, data, instances — not speculation)
 - Specify what evidence would confirm or refute the claim
 - Withdraw or soften the claim to "hypothesis worth testing"
 
@@ -193,7 +193,7 @@ If the evidence-focused character is the one making an unsupported claim, anothe
 
 **Vague trade-offs**: Demand specific costs/benefits, not abstract "advantages"
 
-**Premature consensus**: If everyone agrees too easily, something is being swept under the rug??"dig harder
+**Premature consensus**: If everyone agrees too easily, something is being swept under the rug—dig harder
 
 **Circular debate**: If repeating arguments, summarize what's been established and identify what's still at stake
 
@@ -276,31 +276,31 @@ The committee skill can reference:
 
 ## Deliberation record directory (always)
 
-Every committee run writes a deliberation record to a dedicated directory. There is no single-file or inline-only mode??"the directory is the canonical output.
+Every committee run writes a deliberation record to a dedicated directory. There is no single-file or inline-only mode—the directory is the canonical output.
 
 **Location:** `<situation-dir>/deliberations/` (see **Situation resolution** above for how `<situation-dir>` is determined).
 
-**Topic-slug:** Derive from the topic: lowercase, replace spaces with `-`, remove or replace special characters. Examples: "Should we adopt microservices?" ??' `microservices-adoption`; "Is the author a crackpot?" ??' `is-author-crackpot`. The slug is used to name the situation directory when one isn't specified via `--situation`.
+**Topic-slug:** Derive from the topic: lowercase, replace spaces with `-`, remove or replace special characters. Examples: "Should we adopt microservices?" → `microservices-adoption`; "Is the author a crackpot?" → `is-author-crackpot`. The slug is used to name the situation directory when one isn't specified via `--situation`.
 
 **Phased file production:** Create the directory and write files in order.
 
 1. **Before deliberation** (from topic + any user context):
-   - **00-charter.md** ??" Markdown with YAML front matter. `charter:` with `goal`, `context` (2??"4 sentences), `success_criteria` (list), `exit_conditions` (list), `deliverable_format: "Resolution Artifact + Decision Space Map"`.
-   - **01-roster.md** ??" Copy the YAML front matter from `roster.md`. This records which roster was used for this deliberation.
-   - **01-convening.md** ??" Markdown: Date, Selection strategy (e.g. "Standard roster from roster.md"), Rationale (why this roster: diversity, tensions, coverage), Composition notes (key productive tensions and alliances from the roster's interaction dynamics), Outcome ("Committee convened. See 01-roster.md."). **Optional (evaluation feedback loop):** A short "Remediation parameters" section with **remediation_threshold** (default 13; pass if sum of five rubric scores ??? this) and **max_remediation_rounds** (default 2), if this deliberation should use non-default values.
+   - **00-charter.md** — Markdown with YAML front matter. `charter:` with `goal`, `context` (2–4 sentences), `success_criteria` (list), `exit_conditions` (list), `deliverable_format: "Resolution Artifact + Decision Space Map"`.
+   - **01-roster.md** — Copy the YAML front matter from `roster.md`. This records which roster was used for this deliberation.
+   - **01-convening.md** — Markdown: Date, Selection strategy (e.g. "Standard roster from roster.md"), Rationale (why this roster: diversity, tensions, coverage), Composition notes (key productive tensions and alliances from the roster's interaction dynamics), Outcome ("Committee convened. See 01-roster.md."). **Optional (evaluation feedback loop):** A short "Remediation parameters" section with **remediation_threshold** (default 13; pass if sum of five rubric scores ≥ this) and **max_remediation_rounds** (default 2), if this deliberation should use non-default values.
 
 2. **During/after deliberation:**
-   - **02-deliberation.md** ??" Full transcript in this structure:
+   - **02-deliberation.md** — Full transcript in this structure:
      - Header: "Phase 2: Deliberation" with topic and protocol (Robert's Rules).
-     - "Opening Statements" ??" one subsection per roster member, 2??"3 paragraphs each.
-     - "Initial Positions Summary" ??" table: Member | Stance | Confidence | Key Concern.
-     - "Key Tensions Identified" ??" numbered list.
-     - "Round 1", "Round 2", ??? ??" Chair + member exchanges; after each round, "Round N Analysis" (emerging consensus, new tension, status, next).
-     - "Final Consensus" ??" bullet list; status: DELIBERATION COMPLETE.
+     - "Opening Statements" — one subsection per roster member, 2–3 paragraphs each.
+     - "Initial Positions Summary" — table: Member | Stance | Confidence | Key Concern.
+     - "Key Tensions Identified" — numbered list.
+     - "Round 1", "Round 2", … — Chair + member exchanges; after each round, "Round N Analysis" (emerging consensus, new tension, status, next).
+     - "Final Consensus" — bullet list; status: DELIBERATION COMPLETE.
      - Then the standard output blocks: **KEY TENSIONS IDENTIFIED**, **ASSUMPTIONS SURFACED**, **EVIDENCE REQUIREMENTS**, **DECISION SPACE MAP**, **RECOMMENDED NEXT STEPS**, and if applicable **VERDICT** or **CONCLUSION**.
 
 3. **After synthesis:**
-   - **03-resolution.md** ??" Markdown with YAML front matter. From Final Consensus and DECISION SPACE MAP / VERDICT. Structure: `resolution:` with `date` (YYYY-MM-DD), `topic`, `outcome` (PASSED | DEFERRED | NO_CONSENSUS), `decision` (one line), `summary` (paragraph), optional `details`, optional `implementation_plan` (list of action/description), `votes` (one entry per roster member: YES | NO | ABSTAIN or conditional text), `signatures` (chair: "Committee (Cyberneutics)", ratified_by: "User").
+   - **03-resolution.md** — Markdown with YAML front matter. From Final Consensus and DECISION SPACE MAP / VERDICT. Structure: `resolution:` with `date` (YYYY-MM-DD), `topic`, `outcome` (PASSED | DEFERRED | NO_CONSENSUS), `decision` (one line), `summary` (paragraph), optional `details`, optional `implementation_plan` (list of action/description), `votes` (one entry per roster member: YES | NO | ABSTAIN or conditional text), `signatures` (chair: "Committee (Cyberneutics)", ratified_by: "User").
 
 After writing the record, you may summarize the decision space map (KEY TENSIONS, RECOMMENDED NEXT STEPS) inline for the user's convenience; the authoritative output remains the directory.
 
@@ -360,17 +360,17 @@ After running the committee, the user should be able to articulate:
 - What they're choosing to optimize for and what downside they're accepting
 - What early warning signs would indicate they chose wrong
 
-**The committee doesn't tell you what to do**??"it shows you what you're actually deciding.
+**The committee doesn't tell you what to do**—it shows you what you're actually deciding.
 
 ## Implementation notes
 
-**Character voice**: Maintain consistency with the voice notes in `roster.md`. Each character should sound like a competent professional operating from their propensity ??" never a caricature.
+**Character voice**: Maintain consistency with the voice notes in `roster.md`. Each character should sound like a competent professional operating from their propensity — never a caricature.
 
 **Debate dynamics**: Force genuine conflict
 - Characters should interrupt/challenge each other
-- "I see your point" ??' too polite, push harder
-- Evidence-free assertion ??' the evidence-focused character objects
-- Missing system dynamics ??' the systems-focused character points out
+- "I see your point" → too polite, push harder
+- Evidence-free assertion → the evidence-focused character objects
+- Missing system dynamics → the systems-focused character points out
 
 **Length calibration**:
 - Quick: ~500 words total (1 para per character)
@@ -384,7 +384,7 @@ After running the committee, the user should be able to articulate:
 - **Setup templates**: `references/committee-setup-template.md`
 - **Main technique doc**: `references/adversarial-committees.md`
 - **Robert's Rules protocol**: `references/roberts-rules-forcing-function.md`
-- **Deliberated choice workflow**: `references/deliberated-choice-workflow.md` ??" composing fan??'funnel
+- **Deliberated choice workflow**: `references/deliberated-choice-workflow.md` — composing fan→funnel
 - **Lesson extraction**: `references/lesson-extraction-template.md`
 
 ## Example invocation flow
@@ -417,10 +417,10 @@ Or I can proceed with general deliberation if you'd like to keep it abstract.
 
 ## Final notes
 
-- **This is not consensus generation**??"it's decision space exploration
-- **Characters are tools**, not realistic people??"use them instrumentally
+- **This is not consensus generation**—it's decision space exploration
+- **Characters are tools**, not realistic people—use them instrumentally
 - **Conflict is the feature**, not a bug
-- **The map is not the territory**??"deliberation informs but doesn't make the decision
+- **The map is not the territory**—deliberation informs but doesn't make the decision
 
 When the user finally decides, they do so with eyes open to trade-offs, not because the AI told them what to do, but because they understand what they're choosing and why.
 
