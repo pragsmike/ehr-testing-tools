@@ -191,3 +191,20 @@ fails the build, so the archive could not land alone.
 sit local at `main`, `de950fa..HEAD`. `bin/post-push-verify` is
 therefore not run and is not owed until the author pushes. No tag is
 licensed or paid.
+
+## Addendum -- the gate re-run after the close commit
+
+The Step 4 figures above are the run that gated `272fad8` and
+`009f384`. The close commit (`b37388e`) adds files that
+`ehrt.docs-tooling.prompt-record-pairing-test` and
+`ehrt.docs-tooling.index-completeness-test` both read, so `make test`
+was run again over the completed tree rather than assumed:
+
+    MAKE_EXIT=0
+    368 zero-failure blocks / 4,100 tests / 18,378 assertions
+    Execution time: 14 minutes 34 seconds
+
+Identical figures -- the close artifacts add no test, they satisfy
+gates that were already counted. Pairing, index-completeness and
+skill-mirror-currency each ran in both projects that carry them, all
+green. `main` is green at every commit this session made.
