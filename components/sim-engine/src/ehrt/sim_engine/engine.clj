@@ -845,9 +845,19 @@
   ;; ground-truth log.
   (let [{:keys [ground-truth patients]} world
         patient (get patients patient-id)
+        ;; ADR-0164: SAME PATIENT, too. A citation is `{:module :state}`
+        ;; -- a module coordinate, not a patient-qualified one -- so two
+        ;; patients walking the same module cite identically, and an
+        ;; unfiltered `last` over the whole log hands this end whichever
+        ;; patient's order came LAST. The participant predicate is the
+        ;; one `last-uncancelled-index` (above) already uses for exactly
+        ;; this reason, and the one check.clj's own medication-end
+        ;; invariant tests the resolved target against.
         order-event-id (when order-citation
                          (last (keep-indexed (fn [i ev] (when (and (= :medication-order (:event ev))
-                                                                   (= order-citation (:citation ev)))
+                                                                   (= order-citation (:citation ev))
+                                                                   (some #(= patient-id (:patient-id %))
+                                                                         (:participants ev)))
                                                           i))
                                              ground-truth)))]
     ;; M6 Task 1: `:order-citation` now rides the event itself, alongside
@@ -881,9 +891,13 @@
   ;; resolution :medication-end already models.
   (let [{:keys [ground-truth patients]} world
         patient (get patients patient-id)
+        ;; ADR-0164: SAME PATIENT, too -- the twin of the scan
+        ;; :medication-end already carries, for the identical reason.
         start-event-id (when care-plan-citation
                          (last (keep-indexed (fn [i ev] (when (and (= :care-plan-start (:event ev))
-                                                                   (= care-plan-citation (:citation ev)))
+                                                                   (= care-plan-citation (:citation ev))
+                                                                   (some #(= patient-id (:patient-id %))
+                                                                         (:participants ev)))
                                                           i))
                                              ground-truth)))]
     {:events [(merge {:event :care-plan-end :t t :active-mrn (:active-mrn patient)

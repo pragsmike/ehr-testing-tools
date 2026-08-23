@@ -226,3 +226,4 @@ append-only, never-reassigned rule stands.
 - **ADR-0161** — the attic rotation law lands mechanical, and the 13-day backlog rotates — [`0161-attic-rotation-law.md`](adr/0161-attic-rotation-law.md) — Accepted
 - **ADR-0162** — the patient simulator is named, and given a charter it can be held to — [`0162-patient-simulator-named-and-chartered.md`](adr/0162-patient-simulator-named-and-chartered.md) — Accepted
 - **ADR-0163** — an end-step whose referenced order never fired is dropped at compile time: "no orphaned reference" extended to "no reference ever existed" — [`0163-unpaired-end-step-drop.md`](adr/0163-unpaired-end-step-drop.md) — Accepted
+- **ADR-0164** — decide-time citation resolution becomes patient-scoped: a latent cross-patient `{:module :state}` collision, fixed on direct assertion and NOT on the seed-424242 reproduction — [`0164-patient-scoped-citation-resolution.md`](adr/0164-patient-scoped-citation-resolution.md) — Accepted

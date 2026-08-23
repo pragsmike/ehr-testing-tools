@@ -1145,6 +1145,74 @@
           world2 (fold-events world1 events)]
       (is (empty? (check/expired-patient-retains-location (:ground-truth world2)))))))
 
+
+;; --- ADR-0164: decide-time citation resolution is patient-scoped ----------
+;;
+;; A citation is `{:module :state}` -- a MODULE COORDINATE, not a
+;; patient-qualified one. Two patients walking the same module produce
+;; byte-identical citations, and both decide-time scans searched the
+;; WHOLE ground-truth log with `last`, so patient A's end could index
+;; patient B's opening whenever B's opening was more recent. Real
+;; collisions exist today: seed 424242 over demos/scenarios/clinic-
+;; decade carries 3 distinct :medication-order citations shared across
+;; 5, 3 and 9 patients respectively, plus one :care-plan-start citation
+;; shared across 10; seed 5 carries 4 and 1.
+;;
+;; LATENT, and deliberately proven that way. Zero cross-patient
+;; resolutions actually occurred in either run, and this is NOT the
+;; cause of the seed-424242 failure ADR-0163 fixed -- that event
+;; carried :order-citation nil, so `(when order-citation ...)` guarded
+;; the scan out before it ever ran. These two tests are the whole
+;; justification: a direct engine-level assertion, not a reproduction.
+;;
+;; R5: scripted world-of/admit/fold-events cannot produce :registered,
+;; so these assert the resolved index directly rather than running the
+;; invariant catalog -- the convention
+;; `expired-disposition-discharge-satisfies-its-own-new-invariant`
+;; above already establishes.
+
+(def ^:private shared-med-citation {:module "shared-mod" :state :the-med})
+(def ^:private shared-plan-citation {:module "shared-mod" :state :the-plan})
+
+(deftest medication-end-resolves-its-own-patients-order-not-a-later-peers
+  (testing "A orders, THEN B orders under the identical citation, THEN A
+            ends: A's :order-event-id must index A's own order. `last`
+            over an unfiltered log picks B's -- the later one -- and
+            silently attributes one patient's prescription to another"
+    (let [world0 (world-of {"A" (engine/initial-patient "A" "MRN000001")
+                            "B" (engine/initial-patient "B" "MRN000002")})
+          order-step {:type :medication-order
+                      :codes [{:system :rxnorm :code "308191" :display "Amoxicillin"}]
+                      :citation shared-med-citation}
+          world1 (fold-events world0 (:events (engine/decide (Random. 1) 0 world0 "A" order-step)))
+          world2 (fold-events world1 (:events (engine/decide (Random. 1) 10 world1 "B" order-step)))
+          {:keys [events]} (engine/decide (Random. 1) 20 world2 "A"
+                                          {:type :medication-end
+                                           :citation {:module "shared-mod" :state :end-med}
+                                           :order-citation shared-med-citation})
+          resolved (get (vec (:ground-truth world2)) (:order-event-id (first events)))]
+      (is (= :medication-order (:event resolved)))
+      (is (= "A" (:patient-id (first (:participants resolved))))
+          "resolved to the OTHER patient's order -- citations are not patient-qualified"))))
+
+(deftest care-plan-end-resolves-its-own-patients-start-not-a-later-peers
+  (testing "the twin scan, same shape"
+    (let [world0 (world-of {"A" (engine/initial-patient "A" "MRN000001")
+                            "B" (engine/initial-patient "B" "MRN000002")})
+          start-step {:type :care-plan-start
+                      :codes [{:system :snomed :code "736285004" :display "Care plan"}]
+                      :citation shared-plan-citation}
+          world1 (fold-events world0 (:events (engine/decide (Random. 1) 0 world0 "A" start-step)))
+          world2 (fold-events world1 (:events (engine/decide (Random. 1) 10 world1 "B" start-step)))
+          {:keys [events]} (engine/decide (Random. 1) 20 world2 "A"
+                                          {:type :care-plan-end
+                                           :citation {:module "shared-mod" :state :end-plan}
+                                           :care-plan-citation shared-plan-citation})
+          resolved (get (vec (:ground-truth world2)) (:start-event-id (first events)))]
+      (is (= :care-plan-start (:event resolved)))
+      (is (= "A" (:patient-id (first (:participants resolved))))
+          "resolved to the OTHER patient's care plan"))))
+
 ;; --- M5b Task 4: end-to-end module wiring (persona -> run-module ->
 ;; CompileTrajectory -> IR), composing with :pathways -----------------------
 
