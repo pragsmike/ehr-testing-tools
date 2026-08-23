@@ -192,6 +192,81 @@
         end-step (first (filter #(= :medication-end (:type %)) steps))]
     (is (= (:citation order-step) (:order-citation end-step)))))
 
+;; --- The never-existed-referent drop (2026-08-23, ADR-0163, R2(a)):
+;; AR-2's own "no orphaned reference to something dropped" principle,
+;; extended to "no reference ever existed". `history-phase?` (and
+;; `straddle-open?` on the legacy path) already cover an end whose
+;; antecedent WAS in the trajectory and was dropped from it; these
+;; cover the other half -- an end whose referent resolution yielded
+;; NOTHING, so `medication-end->step`/`care-plan-end->step`'s own
+;; `cond->` would compile a terminal step carrying no
+;; :order-citation/:care-plan-citation at all. Found live: seed 424242
+;; over demos/scenarios/clinic-decade, a UTI walk reaching `End UTI Tx`
+;; without ever entering `uti/abx_tx.json`, so its
+;; referenced_by_attribute "UTI_Tx" was never written and resolved to
+;; nil (ehrt.patient-simulator.gmf-interpreter's own documented
+;; nil-resolution departure from upstream's fail-loud) -- the compiled
+;; unpaired :medication-end decided to :order-event-id nil and tripped
+;; check.clj's own medication-end-references-existing-order-and-
+;; follows-it-in-time. -----------------------------------------------------
+
+(deftest medication-end-whose-referenced-order-never-fired-compiles-no-step
+  (testing "no antecedent in the trajectory AT ALL -- not dropped from it,
+            not promoted to a registration-time fact, never minted --
+            so there is nothing to cite and no paired :medication-order
+            step anywhere for the engine to resolve against: the end
+            compiles to NOTHING, the same 'real, worth keeping, not
+            worth inventing an attachment point for' shape this
+            namespace already gives a ConditionEnd with no open
+            encounter"
+    (let [trajectory [(ev :medication-end {:t 110 :state :end-rx :references nil})]
+          {:keys [steps registration-facts]} (ct/compile-trajectory trajectory facility 100)]
+      (is (empty? steps))
+      (is (empty? registration-facts)))))
+
+(deftest care-plan-end-whose-referenced-start-never-fired-compiles-no-step
+  (testing "the declared twin (ADR-0163 R3): :care-plan-end reaches nil
+            by a different route at the interpreter (index-of-citation
+            over a :care-plan-start state that never fired, rather than
+            a never-written referenced_by_attribute) but arrives at the
+            IDENTICAL compile-time shape -- referenced-event resolves
+            nothing, so the cond-> would compile a :care-plan-end step
+            with no :care-plan-citation"
+    (let [trajectory [(ev :care-plan-end {:t 110 :state :end-plan :references nil})]
+          {:keys [steps registration-facts]} (ct/compile-trajectory trajectory facility 100)]
+      (is (empty? steps))
+      (is (empty? registration-facts)))))
+
+(deftest never-existed-referent-drop-does-not-fire-on-the-designed-straddle
+  (testing "the guard: an order crossed during history phase is promoted
+            to a registration-time fact, and its end legitimately lands
+            in horizon (check.clj's own medication-end-references-
+            existing-order-and-follows-it-in-time carries this branch
+            explicitly). referenced-event resolves against the RAW
+            trajectory, which still carries that order, so the referent
+            is PRESENT and the end still compiles WITH its citation --
+            the drop must key on an absent referent, never on
+            pre-horizon straddling"
+    (let [med-codes [{:system :rxnorm :code "308191" :display "Amoxicillin"}]
+          trajectory [(ev :medication-order {:t 10 :pre-horizon true :state :rx :codes med-codes})
+                      (ev :medication-end {:t 110 :state :end-rx :references 0})]
+          {:keys [steps registration-facts]} (ct/compile-trajectory trajectory facility 100)
+          end-step (first (filter #(= :medication-end (:type %)) steps))]
+      (is (= [:medication-order] (mapv :event registration-facts)))
+      (is (some? end-step))
+      (is (= {:module "m" :state :rx} (:order-citation end-step))))))
+
+(deftest never-existed-referent-drop-does-not-fire-on-the-designed-care-plan-straddle
+  (testing "the same guard, on the declared twin"
+    (let [plan-codes [{:system :snomed :code "736285004" :display "Care plan"}]
+          trajectory [(ev :care-plan-start {:t 10 :pre-horizon true :state :plan :codes plan-codes})
+                      (ev :care-plan-end {:t 110 :state :end-plan :references 0})]
+          {:keys [steps registration-facts]} (ct/compile-trajectory trajectory facility 100)
+          end-step (first (filter #(= :care-plan-end (:type %)) steps))]
+      (is (= [:care-plan-start] (mapv :event registration-facts)))
+      (is (some? end-step))
+      (is (= {:module "m" :state :plan} (:care-plan-citation end-step))))))
+
 ;; --- Condition annotation (docs/gmf-interpreter.md section 1's own
 ;; "annotation on the enclosing Encounter-mapped step" ruling) --------------
 

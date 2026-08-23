@@ -54,7 +54,7 @@ Docs-tooling gates: `adr_index_test`, `artifact_provenance_test`, `attic_rotatio
 
 | register | count |
 |---|---|
-| ADR files (`notes/adr/NNNN-*.md`) | 160 |
+| ADR files (`notes/adr/NNNN-*.md`) | 161 |
 | roadmap rows (all sections) | 53 |
 | rulings rows | 116 |
 | rulings rows superseded | 7 |

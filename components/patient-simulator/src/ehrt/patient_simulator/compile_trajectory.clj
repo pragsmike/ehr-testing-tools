@@ -172,6 +172,31 @@
   map (every caller confirmed `:keys`-selective, AR-SF-7's own
   friction test).
 
+  The never-existed-referent drop (2026-08-23, ADR-0163, R2(a)): the
+  Step 3 finding above and `straddle-open?` both close the case where
+  an end's antecedent WAS minted and then dropped. The other half --
+  an end whose antecedent was NEVER MINTED AT ALL -- had no rule. A
+  `:medication-end`/`:care-plan-end` reaches it two ways: a
+  `referenced_by_attribute` naming an attribute this walk never wrote
+  (the interpreter resolves that to nil, a documented departure from
+  upstream's fail-loud RuntimeException, kept unchanged here), or an
+  `index-of-citation` over an opening state that never fired. Either
+  way `referenced-event` resolves NOTHING, and the end-step compile
+  functions' own `cond->` then emits a terminal step with no
+  `:order-citation`/`:care-plan-citation` -- an unpaired end, which
+  `ehrt.sim-engine.engine`'s own decide turns into `:order-event-id
+  nil`, tripping `check.clj`'s own `medication-end-references-existing-
+  order-and-follows-it-in-time`. Found live on seed 424242 over
+  demos/scenarios/clinic-decade (ADR-0163). Such an end now compiles to
+  NOTHING, extending the principle from 'no orphaned reference to
+  something dropped' to 'no reference ever existed'. The drop keys on
+  the ABSENT REFERENT alone, never on pre-horizon straddling -- the
+  designed straddle still resolves its order off the RAW trajectory, so
+  its end keeps compiling with its citation. `:condition-end` is
+  deliberately NOT in the set (ADR-0163's own R3 probe): it compiles to
+  an ANNOTATION, never a standalone IR step, and `annotate-condition`
+  already handles a nil referent without fabricating anything.
+
   The day -> minutes boundary (docs/patient-state-model.md's durations
   rule, extended): every trajectory event's own `:t` is an interpreter-
   internal EPOCH DAY (ehrt.patient-simulator.gmf-interpreter); pathway IR's own
@@ -508,6 +533,52 @@
                  (conj registration-facts {:event event-type :codes (:codes event)
                                            :citation (citation event) :references (:references event)})
                  last-t encounter-closed? straddle-open? suppressed-straddle-spans)
+
+          ;; The never-existed-referent drop (2026-08-23, ADR-0163,
+          ;; R2(a)): AR-2's own "no orphaned reference to something
+          ;; dropped" principle, extended one step further to "no
+          ;; reference ever existed." `history-phase?` (above, and
+          ;; `straddle-open?` on the legacy path) covers an end whose
+          ;; antecedent WAS in the trajectory and was dropped from it;
+          ;; this clause covers the other half -- an end whose referent
+          ;; resolution yielded NOTHING at the interpreter, so
+          ;; `referenced-event` has nothing to resolve and
+          ;; `medication-end->step`/`care-plan-end->step`'s own `cond->`
+          ;; would compile a terminal step carrying no
+          ;; `:order-citation`/`:care-plan-citation` at all. Two real
+          ;; routes reach it: a `referenced_by_attribute` naming an
+          ;; attribute the walk never wrote (`ehrt.patient-simulator.
+          ;; gmf-interpreter`'s own documented nil-resolution departure
+          ;; from upstream's fail-loud RuntimeException), and an
+          ;; `index-of-citation` over an opening state that never fired
+          ;; on this walk. Found live (ADR-0163): seed 424242 over
+          ;; demos/scenarios/clinic-decade, a UTI walk that reached `End
+          ;; UTI Tx` via telemed -> referral-to-ambulatory without ever
+          ;; entering `uti/abx_tx.json` -- the compiled unpaired
+          ;; `:medication-end` decided to `:order-event-id nil` and
+          ;; tripped `check.clj`'s own `medication-end-references-
+          ;; existing-order-and-follows-it-in-time`.
+          ;;
+          ;; Keyed on the ABSENT REFERENT, never on pre-horizon
+          ;; straddling: the DESIGNED straddle (an order crossed during
+          ;; history phase, promoted to a registration-time fact, its
+          ;; end landing in horizon -- the branch check.clj's own
+          ;; invariant docstring carries explicitly) resolves
+          ;; `referenced-event` against the RAW trajectory, which still
+          ;; carries that order, so its referent is PRESENT and its end
+          ;; still compiles with its citation intact. Placed AFTER the
+          ;; history/pre-horizon clauses above so a pre-horizon end
+          ;; keeps its existing registration-fact disposition unchanged.
+          ;;
+          ;; No counter of its own: every sibling drop this generalizes
+          ;; (`history-phase?`, the ConditionEnd no-attachment case,
+          ;; `:supply-list`) carries none either -- `:suppressed-
+          ;; straddle-spans` exists because a SPAN has no other trace,
+          ;; while the raw, uncompiled trajectory the caller still holds
+          ;; in full is this event's own glass-box record (AR-1).
+          (and (#{:medication-end :care-plan-end} event-type)
+               (nil? (referenced-event trajectory event)))
+          (recur more steps registration-facts last-t encounter-closed? straddle-open? suppressed-straddle-spans)
 
           (= :encounter event-type)
           (recur more (emit-with-delay steps last-t event (encounter->step facility event))

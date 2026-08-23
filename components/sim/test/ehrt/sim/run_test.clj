@@ -398,3 +398,62 @@
                               :config "demos/scenarios/ed-tuesday/config.edn"})]
       (is (result/ok? r) (str "violations: " (pr-str (:payload r))))
       (is (seq (:ground-truth (:payload r)))))))
+
+;; --- ADR-0163: the seed-424242 unpaired-end failure, at the run level -----
+
+(defn- unpaired-ends
+  "Every ground-truth terminal event whose own opening citation is
+  absent -- the compiled-unpaired-end shape ADR-0163 fixes one layer
+  up, read straight off a real log. `:medication-end` with no
+  `:order-citation` is what tripped
+  check.clj's own medication-end-references-existing-order-and-follows-
+  it-in-time; `:care-plan-end` with no `:care-plan-citation` is the
+  declared twin, which no invariant covers, so this gate is the only
+  thing that would catch its return."
+  [ground-truth]
+  (filterv (fn [{:keys [event order-citation care-plan-citation]}]
+             (or (and (= :medication-end event) (nil? order-citation))
+                 (and (= :care-plan-end event) (nil? care-plan-citation))))
+           ground-truth))
+
+(deftest clinic-decade-seed-424242-self-checks-clean
+  (testing "ADR-0163: the exact reproducing invocation --
+            `ehrt corpus generate sim --seed 424242 --patients 200
+            --reference-date 2026-08-04 --churn --config
+            demos/scenarios/clinic-decade/config.edn` -- exited :error
+            :self-check-failed on
+            :medication-end-references-existing-order-and-follows-it-in-
+            time for PID-000089-c02fd3a8 at t 5629740. That patient's
+            UTI walk reached `End UTI Tx` via telemed ->
+            referral-to-ambulatory without ever entering
+            `uti/abx_tx.json`, so its referenced_by_attribute `UTI_Tx`
+            was never written, resolved to nil, and
+            ehrt.patient-simulator.compile-trajectory compiled a
+            :medication-end step carrying no :order-citation at all.
+            Kept at the per-push tier alongside the seed-202 gate
+            above: ~13s in a warm JVM against a tracked demo config,
+            and the population-scale exercise is the point -- the unit
+            tests one layer up pin the drop rule on minimized
+            trajectories, while only a real 200-patient decade reaches
+            the walk that produced it."
+    (let [r (run/run-command {:seed 424242 :patients 200 :reference-date "2026-08-04" :churn true
+                              :config "demos/scenarios/clinic-decade/config.edn"})]
+      (is (result/ok? r) (str "violations: " (pr-str (:payload r))))
+      (is (empty? (unpaired-ends (:ground-truth (:payload r))))))))
+
+(deftest clinic-decade-seed-5-carries-no-unpaired-care-plan-end
+  (testing "ADR-0163's control, and the ONLY population-scale exercise of
+            the :care-plan-end half. This seed self-checked CLEAN both
+            before and after the fix -- no invariant covers
+            :care-plan-end -- while its log silently carried TWO
+            :care-plan-end events with :care-plan-citation nil
+            (PID-000045-03ebff87 at t 3636360, PID-000187-899c715a at t
+            27417360). Exit code alone could never have caught that, so
+            this gate asserts the shape directly. Both ends had a zero
+            preceding gap, hence no compiled :delay and no shared-RNG
+            draw removed, so the fix changes this log by exactly those
+            two events and nothing else (ADR-0163's own oracle sweep)."
+    (let [r (run/run-command {:seed 5 :patients 200 :reference-date "2026-08-04" :churn true
+                              :config "demos/scenarios/clinic-decade/config.edn"})]
+      (is (result/ok? r) (str "violations: " (pr-str (:payload r))))
+      (is (empty? (unpaired-ends (:ground-truth (:payload r))))))))

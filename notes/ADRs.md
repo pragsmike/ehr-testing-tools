@@ -225,3 +225,4 @@ append-only, never-reassigned rule stands.
 - **ADR-0160** — the oracle-coverage gate's integration half runs green for the first time — [`0160-oracle-coverage-integration-half.md`](adr/0160-oracle-coverage-integration-half.md) — Accepted
 - **ADR-0161** — the attic rotation law lands mechanical, and the 13-day backlog rotates — [`0161-attic-rotation-law.md`](adr/0161-attic-rotation-law.md) — Accepted
 - **ADR-0162** — the patient simulator is named, and given a charter it can be held to — [`0162-patient-simulator-named-and-chartered.md`](adr/0162-patient-simulator-named-and-chartered.md) — Accepted
+- **ADR-0163** — an end-step whose referenced order never fired is dropped at compile time: "no orphaned reference" extended to "no reference ever existed" — [`0163-unpaired-end-step-drop.md`](adr/0163-unpaired-end-step-drop.md) — Accepted
