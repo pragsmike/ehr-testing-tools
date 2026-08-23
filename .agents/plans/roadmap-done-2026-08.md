@@ -2706,3 +2706,9 @@ order preserved.
   restored via `git checkout -- .`. Re-derived there -- 0 tracked `100644` files
   executable on disk, 0 CR bytes in the three named `openai.yaml` mirrors, tree
   clean, `bin/preflight` exit 0 with both OK lines. ADR-0157 register row D3-1.
+- CLOSED 2026-08-20 ADR-0159 **[repo-review-4]** -- five ADRs (0154 assessment,
+  0155-0158 fixes paired G+A/E+C/B+D/F+H), **38 of 72 register rows moved** --
+  every one of the 27 fix-session candidates and all 10 R4-Q rulings, plus D8-1
+  carried; **34 residue** (24 close-as-fine confirmed, 9 intake, 1 superseded).
+  Ledger delta zero against every per-session tally. The close's own four findings
+  and review 5's watch-list are in ADR-0159; the register carries dated appends.

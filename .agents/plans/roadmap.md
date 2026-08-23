@@ -258,6 +258,12 @@ Rows here are LIVE, each owing a revisit trigger in its own token.
   one-module-per-patient assignment never produces. ADR-0037 AR-4.
 
 ## Done (at most 30 LINES; the close ceremony rotates oldest whole rows verbatim to `.agents/plans/roadmap-done-<yyyy-mm>.md`, ADR-0161)
+- CLOSED 2026-08-23 ADR-0163 **[unpaired-end-step-and-citation-scope]** -- two
+  commits, real defect first. A `referenced_by_attribute` naming a submodule the walk
+  never entered resolved to nil, compiling an unpaired `:medication-end` (seed 424242,
+  `PID-000089-c02fd3a8` @ `:t 5629740`); "no orphaned reference" now extends to "no
+  reference ever existed", `:care-plan-end` joining as R3's twin. ADR-0164 then scoped
+  both decide-time citation scans by patient, on direct assertion. Both sweeps clean.
 - CLOSED 2026-08-21 ADR-0162 **[patient-simulator-charter]** -- `sim-trajectory`
   renamed `patient-simulator` (42 brick files, 75 consumers, oracle 35/35 IDENTICAL,
   zero suite delta) and given a front-door charter: the mission sentence plus 8
@@ -276,9 +282,3 @@ Rows here are LIVE, each owing a revisit trigger in its own token.
   the gate fails as a claim rather than as an NPE. First green execution in the gate's
   life: `Integration` run 32402746494 @ `8c53475`, `success`, 8 assertions where the
   red witness 32344505291 reached 6 and errored on the first equality. ADR-0159 F-5.
-- CLOSED 2026-08-20 ADR-0159 **[repo-review-4]** -- five ADRs (0154 assessment,
-  0155-0158 fixes paired G+A/E+C/B+D/F+H), **38 of 72 register rows moved** --
-  every one of the 27 fix-session candidates and all 10 R4-Q rulings, plus D8-1
-  carried; **34 residue** (24 close-as-fine confirmed, 9 intake, 1 superseded).
-  Ledger delta zero against every per-session tally. The close's own four findings
-  and review 5's watch-list are in ADR-0159; the register carries dated appends.
