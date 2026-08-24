@@ -130,6 +130,31 @@ rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
   resource, OR a render-time patient-context feature reachable by site-profile Z
   bindings. Priced there too. ADR-0139 C-2's Guard half is absorbed.
 
+- OPEN **[stream-partition-design]** PRIORITY 26 -- traffic-scale arc 1, and the
+  Q3(b) CONVERSION: per-patient/per-person RNG streams plus the from==to
+  delay-draw skip go from named limitation (deferred, disposition (a)) to
+  CALLED FOR, the scale target having met the recorded trigger. Design ADR only,
+  no code: draw-site classification, newborn derivation, provenance stream-version
+  marker, migration test obligations. Plan: `2026-08-24-traffic-scale-program.md`.
+- OPEN **[person-simulator]** PRIORITY 27 -- traffic-scale arc 2. New component,
+  sibling charter discipline to `patient-simulator`: bespoke hazard-rate life-arc
+  processes (`rulings.md#R-mix-1`), households and pregnancy->delivery
+  (`R-mix-2`), identification flows (`R-mix-4`), producing the demographic-delta
+  stream the engine folds. Four open questions carried for its charter ADR.
+  Blocked on `roadmap.md#stream-partition-design`. ADR-0168 section 4.
+- OPEN **[engine-fold-extensions]** PRIORITY 28 -- traffic-scale arc 3. Demographic
+  timeline on patient state, scheduling state (`rulings.md#R-mix-5`), bed-status
+  cycle (`R-mix-6`), the new invariant families, and the decide-time whole-log
+  scan removals (order indexes in fold state) that 10^5 scale requires. A
+  generator change, so it lands inside the declared-reshuffle era and never before
+  arc 1. Plan: `2026-08-24-traffic-scale-program.md`.
+- OPEN **[emission-add-ons]** PRIORITY 29 -- traffic-scale arc 4
+  (`rulings.md#R-mix-7`): order/result status ladders, DFT P03 charges,
+  re-statement chatter under config ratios, fan-out/subscriber table; rides
+  `roadmap.md#corpus-player-slices`. Reshuffles NOTHING and needs no stream work,
+  so it is the one arc that may proceed independently once arc 3's skeleton
+  contract is stable. Gating policy at scale owes a ruling here.
+
 ## Externals (author-only)
 - EXTERNAL **[ci-failure-email]** -- enable GitHub's workflow-failure
   notification email for this repository (one settings toggle); closes the
@@ -293,9 +318,3 @@ Rows here are LIVE, each owing a revisit trigger in its own token.
   `PID-000089-c02fd3a8` @ `:t 5629740`); "no orphaned reference" now extends to "no
   reference ever existed", `:care-plan-end` joining as R3's twin. ADR-0164 then scoped
   both decide-time citation scans by patient, on direct assertion. Both sweeps clean.
-- CLOSED 2026-08-21 ADR-0162 **[patient-simulator-charter]** -- `sim-trajectory`
-  renamed `patient-simulator` (42 brick files, 75 consumers, oracle 35/35 IDENTICAL,
-  zero suite delta) and given a front-door charter: the mission sentence plus 8
-  deliberate limitations, each cited and trigger-stated, drift-gated against the
-  three in-source markers. The instructed red witness FAILED to go red and exposed
-  a self-matching citation -- fixed, and it found a second weak anchor.

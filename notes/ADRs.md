@@ -230,3 +230,4 @@ append-only, never-reassigned rule stands.
 - **ADR-0165** — the generator side gets a coverage meter, and its first execution finds that the arc's own fix removed the only exercise of both end types — [`0165-generator-side-event-type-coverage.md`](adr/0165-generator-side-event-type-coverage.md) — Accepted
 - **ADR-0166** — the `:care-plan-end` referential invariant: the silence ADR-0163 found by hand, closed — [`0166-care-plan-end-referential-invariant.md`](adr/0166-care-plan-end-referential-invariant.md) — Accepted
 - **ADR-0167** — the suite-time doubling is an orphaned `wslhost.exe`, and the machine is not the tree — [`0167-orphaned-wslhost-suite-slowdown.md`](adr/0167-orphaned-wslhost-suite-slowdown.md) — Accepted
+- **ADR-0168** — the traffic-scale program: event-mix doctrine, Q3(b) conversion, person-simulator intent — [`0168-traffic-scale-program.md`](adr/0168-traffic-scale-program.md) — Accepted

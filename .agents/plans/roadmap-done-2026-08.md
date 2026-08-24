@@ -2727,3 +2727,12 @@ order preserved.
   judge. Gated by `ehrt.docs-tooling.attic-rotation-test` -- the cap, and no attic
   file has ever deleted a line, over its whole history. Backlog rotated: 67 rows /
   109 lines, 134 -> 25 lines; `:onboarding` 1,508 -> 1,400. ADR-0139 finding C-3.
+
+## Rotated 2026-08-24 by the ADR-0168 landing
+
+- CLOSED 2026-08-21 ADR-0162 **[patient-simulator-charter]** -- `sim-trajectory`
+  renamed `patient-simulator` (42 brick files, 75 consumers, oracle 35/35 IDENTICAL,
+  zero suite delta) and given a front-door charter: the mission sentence plus 8
+  deliberate limitations, each cited and trigger-stated, drift-gated against the
+  three in-source markers. The instructed red witness FAILED to go red and exposed
+  a self-matching citation -- fixed, and it found a second weak anchor.

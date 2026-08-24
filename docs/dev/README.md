@@ -34,6 +34,10 @@ projects compose them, and where the theory docs live. Then:
 - [`source-sink-design.md`](source-sink-design.md) — the deeper design
   rationale for the intake/mutate/sink seam, cited throughout source as
   `Part I`–`Part IX`.
+- [`traffic-model.md`](traffic-model.md) — doctrine for what this
+  workspace generates as ground truth versus renders as derivable
+  restatement, family by family, as hospital traffic scales; the
+  classification principle and the R-mix rulings behind it.
 
 ## Component-adjacent docs
 

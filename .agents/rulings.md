@@ -281,3 +281,23 @@ Appended by the session that takes the ruling, not held to arc close.
 - **R-done-attic-rotation** -- `## Done` holds at most 30 LINES; a close that exceeds it
   rotates oldest WHOLE rows verbatim into `.agents/plans/roadmap-done-<yyyy-mm>.md`,
   which is append-only. Mechanical -- no arc boundaries to judge -- ADR-0161
+- **R-mix-1** -- life-arc dynamics (residence, employment, coverage, households,
+  mortality) are bespoke hazard-rate processes, never GMF modules -- ADR-0168
+- **R-mix-2** -- family/household structure is in scope for the person process,
+  pregnancy->delivery explicitly -- ADR-0168
+- **R-mix-3** -- geography stays small and file-drawn; the table grows modestly, and
+  a wholesale extraction is a separate ruling -- ADR-0168
+- **R-mix-4** -- unidentified/unresponsive ED arrivals and delayed-insurance flows are
+  in scope, both branches (fill-in-place and merge-with-existing-MRN) -- ADR-0168
+- **R-mix-5** -- scheduling is STATE: appointment new/reschedule/cancel/no-show are
+  skeleton events carrying invariants, not rendered chatter -- ADR-0168
+- **R-mix-6** -- bed-status is STATE: the vacated/dirty/cleaning/ready cycle is
+  world-level ground truth that assignment is gated on -- ADR-0168
+- **R-mix-7** -- chatter and fan-out are emission add-ons DOWNSTREAM of the fact
+  generators; mix ratios are emission config and reshuffle nothing -- ADR-0168
+- **R-skeleton-or-emission** -- every traffic family is classified by one test: if
+  downstream invariants or later messages' content must respect it, it is skeleton
+  (generated, judged); if it is derivable restatement, it is emission -- ADR-0168
+- **R-per-person-streams-before-generator-fixes** -- Q3(b) is CALLED FOR, not deferred:
+  per-patient/per-person RNG streams plus the from==to delay-draw skip precede the
+  traffic-scale generator arcs; a generator fix landing first owes an author ruling -- ADR-0168
