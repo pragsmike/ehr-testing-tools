@@ -251,6 +251,92 @@
                 :participants (subject "P1")}]]
       (is (seq (check/medication-end-references-existing-order-and-follows-it-in-time log))))))
 
+;; --- ADR-0166: the :care-plan-end referential invariant -- the mirror
+;; of the :medication-end pair above, on the twin span. Scripted logs,
+;; asserted DIRECTLY against the invariant function (R5's convention:
+;; these fixtures carry no :registered event except where the branch
+;; under test needs one, so the full check-all catalog is unavailable
+;; to them -- the same disposition every scripted case above already
+;; carries).
+
+(def ^:private a-care-plan-citation {:module "bronchitis" :state :nonsmoker-careplan})
+
+(deftest care-plan-end-references-existing-start-and-follows-it-in-time-detects-phantom-start
+  (testing "a :start-event-id pointing at an index the log does not have"
+    (let [log [{:event :care-plan-end :t 0 :start-event-id 99 :participants (subject "P1")}]]
+      (is (seq (check/care-plan-end-references-existing-start-and-follows-it-in-time log))))))
+
+(deftest care-plan-end-references-existing-start-and-follows-it-in-time-detects-a-nil-start
+  (testing "ADR-0163's own shape, at the checker: the unpaired end seed
+            5 carried silently -- no :start-event-id at all and no
+            pre-horizon fact to excuse it"
+    (let [log [{:event :care-plan-end :t 10 :start-event-id nil
+                :care-plan-citation a-care-plan-citation :participants (subject "P1")}]]
+      (is (seq (check/care-plan-end-references-existing-start-and-follows-it-in-time log))))))
+
+(deftest care-plan-end-references-existing-start-and-follows-it-in-time-detects-another-patients-start
+  (testing "ADR-0164's own hazard, at the checker: a well-formed index
+            naming a :care-plan-start that belongs to a DIFFERENT
+            patient -- byte-identical citations across two patients
+            walking the same module is ordinary, not contrived"
+    (let [log [{:event :care-plan-start :t 5 :codes [a-concept] :participants (subject "P2")}
+               {:event :care-plan-end :t 10 :start-event-id 0 :participants (subject "P1")}]]
+      (is (seq (check/care-plan-end-references-existing-start-and-follows-it-in-time log))))))
+
+(deftest care-plan-end-references-existing-start-and-follows-it-in-time-detects-a-start-that-follows-its-end
+  (let [log [{:event :care-plan-end :t 5 :start-event-id 1 :participants (subject "P1")}
+             {:event :care-plan-start :t 10 :codes [a-concept] :participants (subject "P1")}]]
+    (is (seq (check/care-plan-end-references-existing-start-and-follows-it-in-time log)))))
+
+(deftest care-plan-end-references-existing-start-and-follows-it-in-time-detects-a-target-of-the-wrong-kind
+  (testing "an index that resolves to a real event of some OTHER kind"
+    (let [log [{:event :medication-order :t 5 :codes [a-concept] :participants (subject "P1")}
+               {:event :care-plan-end :t 10 :start-event-id 0 :participants (subject "P1")}]]
+      (is (seq (check/care-plan-end-references-existing-start-and-follows-it-in-time log))))))
+
+(deftest care-plan-end-references-existing-start-and-follows-it-in-time-holds-for-legit-log
+  (let [log [{:event :care-plan-start :t 5 :codes [a-concept] :participants (subject "P1")}
+             {:event :care-plan-end :t 10 :start-event-id 0 :participants (subject "P1")}]]
+    (is (empty? (check/care-plan-end-references-existing-start-and-follows-it-in-time log)))))
+
+(deftest care-plan-end-references-existing-start-and-follows-it-in-time-allows-the-pre-horizon-straddle
+  (testing "the designed straddle: a care plan opened before this run's
+            own horizon is promoted to a :pre-horizon-facts entry on
+            :registered (`compile-trajectory`'s own
+            `pre-horizon-fact-types`, probed at ADR-0166 step 7), while
+            its end fires in horizon with no top-level :care-plan-start
+            to resolve :start-event-id against"
+    (let [log [{:event :registered :t 0 :participants (subject "P1")
+                :pre-horizon-facts [{:event :care-plan-start
+                                     :citation a-care-plan-citation}]}
+               {:event :care-plan-end :t 10 :start-event-id nil
+                :care-plan-citation a-care-plan-citation :participants (subject "P1")}]]
+      (is (empty? (check/care-plan-end-references-existing-start-and-follows-it-in-time log))))))
+
+(deftest care-plan-end-references-existing-start-and-follows-it-in-time-detects-a-phantom-start-even-with-unrelated-pre-horizon-facts
+  (testing "ADR-0123's own lesson, carried onto the twin: carrying
+            :pre-horizon-facts at all must not make the checker
+            permissive in general -- only a CITATION match satisfies
+            the widened branch"
+    (let [log [{:event :registered :t 0 :participants (subject "P1")
+                :pre-horizon-facts [{:event :care-plan-start
+                                     :citation {:module "bronchitis" :state :some-other-careplan}}]}
+               {:event :care-plan-end :t 10 :start-event-id nil
+                :care-plan-citation a-care-plan-citation :participants (subject "P1")}]]
+      (is (seq (check/care-plan-end-references-existing-start-and-follows-it-in-time log))))))
+
+(deftest care-plan-end-pre-horizon-escape-does-not-accept-a-medication-order-fact
+  (testing "the fact's own :event key is load-bearing -- a
+            :medication-order pre-horizon fact under the SAME citation
+            must not excuse an unpaired care-plan end (the nested-
+            :event hazard `event-schema/PreHorizonFact` names)"
+    (let [log [{:event :registered :t 0 :participants (subject "P1")
+                :pre-horizon-facts [{:event :medication-order
+                                     :citation a-care-plan-citation}]}
+               {:event :care-plan-end :t 10 :start-event-id nil
+                :care-plan-citation a-care-plan-citation :participants (subject "P1")}]]
+      (is (seq (check/care-plan-end-references-existing-start-and-follows-it-in-time log))))))
+
 (def ^:private fixture-clinic-module
   "The same hand-authored module engine-test's own defspec assigns --
   its episode falls close enough to the engine's fixed registration

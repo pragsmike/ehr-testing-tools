@@ -507,6 +507,71 @@
                          (> (:t target) (:t event))))]
       {:invariant :medication-end-references-existing-order-and-follows-it-in-time :patient-id patient-id :at (:t event)})))
 
+(defn- pre-horizon-care-plan-start-citations-by-patient
+  "patient-id -> the set of :citation values riding that patient's own
+  :registered event as a :care-plan-start entry in :pre-horizon-facts
+  -- the exact twin of `pre-horizon-medication-order-citations-by-
+  patient` above, and PROBED rather than inferred from that twin
+  (ADR-0166 step 7): `ehrt.patient-simulator.compile-trajectory`'s own
+  `pre-horizon-fact-types` carries `:care-plan-start`/`:care-plan-end`
+  in the SAME 'ongoing therapeutic content' class it carries
+  `:medication-order`/`:medication-end` in (ADR-0029 D2), the compile
+  loop promotes any of them to a registration fact through ONE shared
+  clause, and `ehrt.sim-engine.event-schema/PreHorizonFact` declares
+  all six in its own `:event` enum. A care plan opened years before
+  registration and still open is a registration-time fact; its end can
+  legitimately land in horizon phase with nothing in top-level
+  :care-plan-start to resolve :start-event-id against."
+  [ground-truth]
+  (into {}
+        (keep (fn [event]
+                (when (= :registered (:event event))
+                  (when-let [citations (seq (into #{}
+                                                   (comp (filter #(= :care-plan-start (:event %)))
+                                                         (map :citation))
+                                                   (:pre-horizon-facts event)))]
+                    [(:patient-id (first (:participants event))) (set citations)]))))
+        ground-truth))
+
+(defn care-plan-end-references-existing-start-and-follows-it-in-time
+  "Every :care-plan-end event's :start-event-id is a real
+  :care-plan-start event in this same log, for the SAME patient, at or
+  before the end's own :t -- OR, when no such ground-truth event
+  exists, the SAME patient's own :registered event carries a matching
+  :care-plan-start entry in its own :pre-horizon-facts (the designed
+  start/end straddle, trajectory-computation.md's 'History phase').
+  The mirror of `medication-end-references-existing-order-and-follows-
+  it-in-time` above, on the twin span the engine's own `decide
+  :care-plan-end` resolves the identical way.
+
+  ORIGIN (ADR-0163, ADR-0166): `:care-plan-end` was the ONE paired
+  terminal event type this catalog did not cover, and the silence was
+  load-bearing. Seed 5 over `demos/scenarios/clinic-decade` exited 0
+  while its log carried TWO :care-plan-end events with no citation at
+  all (`PID-000045-03ebff87` at t 3636360, `PID-000187-899c715a` at t
+  27417360) -- found by hand, by a session reading the log, because no
+  invariant was asking. `:medication-end`'s own twin defect, in the
+  same run family, exited 2. This invariant is why the next one would
+  not need finding by hand."
+  [ground-truth]
+  (let [indexed (vec ground-truth)
+        pre-horizon-citations (pre-horizon-care-plan-start-citations-by-patient ground-truth)]
+    (for [event ground-truth
+          :when (= :care-plan-end (:event event))
+          :let [target-idx (:start-event-id event)
+                target (get indexed target-idx)
+                patient-id (:patient-id (first (:participants event)))
+                pre-horizon-referent? (and (nil? target)
+                                            (contains? (get pre-horizon-citations patient-id)
+                                                       (:care-plan-citation event)))]
+          :when (and (not pre-horizon-referent?)
+                     (or (nil? target)
+                         (not= :care-plan-start (:event target))
+                         (not (some #(= patient-id (:patient-id %)) (:participants target)))
+                         (> (:t target) (:t event))))]
+      {:invariant :care-plan-end-references-existing-start-and-follows-it-in-time
+       :patient-id patient-id :at (:t event)})))
+
 ;; --- M4: Persona (docs/sim-theory.edn's :persona stage) -------------------
 
 (defn registered-is-every-patients-first-event
@@ -557,6 +622,11 @@
    #'outpatient-patients-occupy-no-bed
    #'clinical-content-only-when-admitted
    #'medication-end-references-existing-order-and-follows-it-in-time
+   ;; ADR-0166: the twin span. Added beside its mirror, not appended at
+   ;; the end, because a reader comparing the two should find them
+   ;; adjacent -- the reason the catalog is documented as being in
+   ;; reporting order.
+   #'care-plan-end-references-existing-start-and-follows-it-in-time
    #'expired-patient-retains-location])
 
 (def facility-catalog
