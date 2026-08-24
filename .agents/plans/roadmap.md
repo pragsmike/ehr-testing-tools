@@ -270,6 +270,12 @@ Rows here are LIVE, each owing a revisit trigger in its own token.
   one-module-per-patient assignment never produces. ADR-0037 AR-4.
 
 ## Done (at most 30 LINES; the close ceremony rotates oldest whole rows verbatim to `.agents/plans/roadmap-done-<yyyy-mm>.md`, ADR-0161)
+- CLOSED 2026-08-23 ADR-0165 **[generator-side-event-type-coverage]** -- two commits.
+  A per-push gate asserting the gated runs collectively produce every ground-truth
+  event type their modules can drive, counting only citation-bearing events; its
+  FIRST execution found the hole ADR-0163's own drop rule left -- neither
+  `:medication-end` nor `:care-plan-end` produced anywhere. ADR-0166 then closed the
+  `:care-plan-end` invariant gap seed 5 exposed. 11/11 covered, zero waivers.
 - CLOSED 2026-08-23 ADR-0163 **[unpaired-end-step-and-citation-scope]** -- two
   commits, real defect first. A `referenced_by_attribute` naming a submodule the walk
   never entered resolved to nil, compiling an unpaired `:medication-end` (seed 424242,
@@ -288,9 +294,3 @@ Rows here are LIVE, each owing a revisit trigger in its own token.
   judge. Gated by `ehrt.docs-tooling.attic-rotation-test` -- the cap, and no attic
   file has ever deleted a line, over its whole history. Backlog rotated: 67 rows /
   109 lines, 134 -> 25 lines; `:onboarding` 1,508 -> 1,400. ADR-0139 finding C-3.
-- CLOSED 2026-08-20 ADR-0160 **[oracle-coverage-gate-integration-half]** -- the
-  extractor now matches `(def ^:private <name>` as well as `(def <name>`, the same
-  two-prefix `some` ADR-0156 gave the docs-tooling half, and returns nil on a miss so
-  the gate fails as a claim rather than as an NPE. First green execution in the gate's
-  life: `Integration` run 32402746494 @ `8c53475`, `success`, 8 assertions where the
-  red witness 32344505291 reached 6 and errored on the first equality. ADR-0159 F-5.

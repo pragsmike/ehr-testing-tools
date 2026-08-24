@@ -2712,3 +2712,9 @@ order preserved.
   carried; **34 residue** (24 close-as-fine confirmed, 9 intake, 1 superseded).
   Ledger delta zero against every per-session tally. The close's own four findings
   and review 5's watch-list are in ADR-0159; the register carries dated appends.
+- CLOSED 2026-08-20 ADR-0160 **[oracle-coverage-gate-integration-half]** -- the
+  extractor now matches `(def ^:private <name>` as well as `(def <name>`, the same
+  two-prefix `some` ADR-0156 gave the docs-tooling half, and returns nil on a miss so
+  the gate fails as a claim rather than as an NPE. First green execution in the gate's
+  life: `Integration` run 32402746494 @ `8c53475`, `success`, 8 assertions where the
+  red witness 32344505291 reached 6 and errored on the first equality. ADR-0159 F-5.
