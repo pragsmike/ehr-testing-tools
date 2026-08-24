@@ -8,122 +8,128 @@ cited from elsewhere as `roadmap.md#<slug>` and never by line number; `## Next`
 rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
 
 ## Next (backlog, no session scheduled)
-- OPEN **[repo-review-5]** PRIORITY 2 -- chartered roughly 15 ADRs past the
+- OPEN **[suite-time-residual]** PRIORITY 2 -- `make test` on penny is 19m02s at
+  HEAD (runs 3/4 of ADR-0167, reproducible to 0.5%) against 14m22s on 2026-08-21:
+  a stable **1.32x** the orphaned-`wslhost` kill did NOT recover. Not JDK (17
+  measured slower), content (CI flat 525-555s), filesystem (ext4), Defender (not
+  running), `.wslconfig` (absent) or memory. penny is also 3.1x slower than a GH
+  runner on `vendored-veteran-ptsd-test` uncontended. ADR-0167 finding F5-3.
+- OPEN **[repo-review-5]** PRIORITY 3 -- chartered roughly 15 ADRs past the
   review-4 close by ADR count, not calendar (`rulings.md#R-review-cadence-in-adrs`,
   measured from the prior CLOSE as ADR-0139 worked it): **approximately ADR-0174**.
   Inherits a THIRTEEN-row watch-list carried in `notes/adr/0159-review-4-arc-close.md`,
   not here: W-1 born-red gates, W-2 the `exempt` disposition's missing ratchet, W-3
   row-id citations, W-4..W-13 including two register gates ADR-0159 found narrow.
-- OPEN **[register-gate-row-ownership]** PRIORITY 3 -- both register contracts gate
+- OPEN **[register-gate-row-ownership]** PRIORITY 4 -- both register contracts gate
   row SHAPE, not row OWNERSHIP, and both are green over a live defect. `roadmap.md`:
   `c509e46` inserted the ADR-0152 row inside the ADR-0150 row, so five continuation
   lines now sit under the wrong slug (ADR-0159 F-1). `rulings.md`:
   `R-full-suite-before-push` gained its whole wrapper clause at ADR-0155 and names no
   ADR for it, while the arc's other two widenings do (F-2). Found, rowed, not fixed.
-- OPEN **[ed-tuesday-module-tail-inert]** PRIORITY 4 -- `demos/scenarios/ed-tuesday`
+- OPEN **[ed-tuesday-module-tail-inert]** PRIORITY 5 -- `demos/scenarios/ed-tuesday`
   declares TEN emittable ground-truth event types through its four-module tail and
   produces ZERO of them: 407 events at seed 202, none carrying a `:citation`, all
   from the five hand-authored ED pathways. Its own config header discloses the
   low-incidence mechanism; ADR-0165's coverage gate is what measured the
   consequence. Green only because the gate asks for a union across corpora.
-- OPEN **[generator-coverage-depth]** PRIORITY 5 -- ADR-0165's gate asks whether a
+- OPEN **[generator-coverage-depth]** PRIORITY 6 -- ADR-0165's gate asks whether a
   type appears AT ALL. Three of its eleven -- `:admission`, `:discharge`,
   `:diagnostic-report` -- are covered by exactly ONE cited event in exactly ONE
   gated run (seed 5 over clinic-decade), so a single population reshuffle takes
   all three dark at once. The same one-root-deep fragility ADR-0156 named for the
   oracle's capacity witness, now measured on the generator side.
-- OPEN **[bed-ready-vacancy-cascade]** PRIORITY 6 -- a bed-ready transfer
+- OPEN **[bed-ready-vacancy-cascade]** PRIORITY 7 -- a bed-ready transfer
   vacates its own ORIGIN bed and nothing looks for a boarder waiting on that
   ward: only `decide :discharge` runs the search. Witnessed at seed 202,
   `t 78060` -- RENAL-04 freed by a bed-ready pull, a Renal boarder still in ED
   surge 420s later. Realism gap, not an invariant violation once ADR-0153
   landed. Class exposed by ADR-0153's diagnosis, rowed rather than fixed there.
-- OPEN **[oracle-coverage-extractor-dedup]** PRIORITY 7 -- the two halves of the
+- OPEN **[oracle-coverage-extractor-dedup]** PRIORITY 8 -- the two halves of the
   oracle-coverage gate each carry their own copy of the `(def <name>` /
   `(def ^:private <name>` extractor: `ehrt.docs-tooling.oracle-coverage-test`'s
   `def-form` and `ehrt.integration.oracle-coverage-test`'s `committed`. Sharing
   needs `projects/integration` to compose `docs-tooling`, which its deps.edn
   refuses twice (AR-3) -- so the copies stand, cross-cited. ADR-0160.
-- OPEN **[manual-dimension-5]** PRIORITY 8 -- manual-review run 2 passed with
+- OPEN **[manual-dimension-5]** PRIORITY 9 -- manual-review run 2 passed with
   warns, and dimension 5 (running-example continuity) stays WARN as the manual's
   one standing open row: `ed-tuesday` is HL7v2-only and structurally cannot
   supply Chapters 6-8 their FHIR mutation, FHIR-gate calibration, or
   foreign-corpus material. Disclosed, not silently substituted; not a defect
   under the dimension's own reading. ADR-0134.
-- OPEN **[audience-register-paring]** PRIORITY 9 -- `docs/dev/AUDIENCES.md`
+- OPEN **[audience-register-paring]** PRIORITY 10 -- `docs/dev/AUDIENCES.md`
   pares to five behavioral segments and its own "Seven segments" header is
   corrected in the same edit. Ruled 2026-08-12 (ADR-0113 R4, author "Q1 a");
   execution deferred to a later docs session, not chartered.
-- OPEN **[lookup-column-time-next]** PRIORITY 10 -- the lookup-column `time`
+- OPEN **[lookup-column-time-next]** PRIORITY 11 -- the lookup-column `time`
   gap in the schema-invalid family, ratified as real (2026-08-06) and still
   untouched; bulk vendoring batched by closure family follows once the catalog
   fully walks. Deliberately distinct from `roadmap.md#lookup-column-time-open`
   below, which the author ruled stays live regardless. ADR-0039, ADR-0066.
-- OPEN **[nightly-quickstart-workflow]** PRIORITY 11 -- `make quickstart` gains
+- OPEN **[nightly-quickstart-workflow]** PRIORITY 12 -- `make quickstart` gains
   a nightly integration workflow plus the single-sh-fence guard in README
   (`quickstart_fresh`'s own docstring corrected in the same change).
-- OPEN **[generator-source-split]** PRIORITY 12 -- the generator-source
+- OPEN **[generator-source-split]** PRIORITY 13 -- the generator-source
   three-concerns split, a named future. ADR-0017.
-- OPEN **[corpus-display-placement]** PRIORITY 13 -- `ehrt.corpus.display`'s
+- OPEN **[corpus-display-placement]** PRIORITY 14 -- `ehrt.corpus.display`'s
   placement is presentation-leaning, a named future. ADR-0018.
-- OPEN **[markdown-table-dedup]** PRIORITY 14 -- markdown-table helper dedup, a
+- OPEN **[markdown-table-dedup]** PRIORITY 15 -- markdown-table helper dedup, a
   named future. ADR-0018.
-- OPEN **[corpus-generate-engine]** PRIORITY 15 -- should `corpus generate` grow
+- OPEN **[corpus-generate-engine]** PRIORITY 16 -- should `corpus generate` grow
   an `--engine` flag now that the generator registry names more than one engine
   kind (`synthea`, `sim`)? Registered for visibility 2026-08-15, disposition
   deliberately not taken; it sits here rather than in Deferred because a
   Deferred row owes a revisit trigger and this one has none yet. Resolving it
   updates this row and OPEN-4 together. ADR-0136 finding D7-3(b).
-- OPEN **[strip-fresh-hand-case-retirement]** PRIORITY 16 -- the nine live
+- OPEN **[strip-fresh-hand-case-retirement]** PRIORITY 17 -- the nine live
   per-row `check-entry` cases in `strip_fresh_test.clj` had their `:ok?` half
   subsumed by `exercised_sources_coverage_test` (ADR-0148) and are kept, not
   deleted, this session. Their pinned `:readme-count`s are NOT subsumed and
   carry a real distinct signal, so the retirement is judgement about where the
   pins should live, not a deletion. Next docs-tooling test compaction.
-- OPEN **[setup-md-hook-citations]** PRIORITY 17 -- three live surfaces cite
+- OPEN **[setup-md-hook-citations]** PRIORITY 18 -- three live surfaces cite
   `SETUP.md` for hook and gitleaks instructions it does not contain: hooks are
   documented in `AGENTS.md` and `AUTHORS-GUIDE.md` SS1 only. `.githooks/pre-push:14`
   ("See SETUP.md for hook installation and gitleaks install instructions"), the
   same file's :39 gitleaks line, and `cli/core.clj:360` ("SETUP.md section 1's
   maintainer-tools row"). Found in passing by ADR-0157; errata, not behavior.
 
-- OPEN **[two-clocks-asset-field-audit]** PRIORITY 18 -- `docs/manual/assets/
+- OPEN **[two-clocks-asset-field-audit]** PRIORITY 19 -- `docs/manual/assets/
   two-clocks.svg`'s banner claims "exactly two timestamp-bearing fields this
   workspace's emitter renders today are MSH-7 ... and EVN-2". ADR-0142 made that
   FALSE: OBR-7 and OBX-14 now render on all three ORU shapes. The drawing itself
   (one ADT^A01, two fields) is still right for ADT; the audit sentence is not.
   Found by its own new tripwire, ADR-0158 (`hand-owned-assets.edn`, :verdict :stale).
-- OPEN **[reader-path-fence-battery]** PRIORITY 19 -- R4-Q4 (a) gated the front
+- OPEN **[reader-path-fence-battery]** PRIORITY 20 -- R4-Q4 (a) gated the front
   door (README+SETUP) at zero bare fences and DEFERRED the rest of the reader
   path to its own session: the manual's 21 and use-cases' 13, 34 fences measured
   at ADR-0154. Priced real, not cheap: several manual fences need a primed
   artifact cache, which is why D8-5 lapsed twice. Expect the front door's own
   ratio -- some will be exercised, some will need declared exemptions. ADR-0158.
-- OPEN **[backtick-shorthand-and-denylist-widening]** PRIORITY 20 -- D1-9
+- OPEN **[backtick-shorthand-and-denylist-widening]** PRIORITY 21 -- D1-9
   (backticked-path shorthand) and D1-10 (denylist-family widening), ruled
   fix-session candidates together as R-B2/R-B3 on 2026-08-15 (ADR-0137) and
   carried with NO register home through one arc close and fourteen ADRs. This
   row is the remedy `rulings.md#R-unregistered-request-gets-a-row` names:
   visibility first, disposition later. Rowed by ADR-0158 (review-4 D7-3).
-- OPEN **[corpus-player-slices]** PRIORITY 21 -- the corpus-player slices
+- OPEN **[corpus-player-slices]** PRIORITY 22 -- the corpus-player slices
   chartered by ADR-0014 (bed-board sink, `:mllp`, accumulator wiring) have never
   had a row in any register. UNPRICED and unscheduled: they need their own author
   ruling before a session takes them. Rowed rather than retired because
   `R-unregistered-request-gets-a-row` puts visibility first, and a charter with
   no row is exactly what that rule exists to catch. ADR-0158 (review-4 D7-5).
-- OPEN **[oracle-coverage-roots]** PRIORITY 22 -- R4-Q6 (ii) (b): add oracle roots
+- OPEN **[oracle-coverage-roots]** PRIORITY 23 -- R4-Q6 (ii) (b): add oracle roots
   reaching the capacity and order->result paths (a churn root, a pathway root), so the
   13-of-21 witnessed-kind set widens. PRICED, NOT TAKEN: each new root is a declared
   oracle change AND a permanent per-session cost on every bracket (today's 35 cost 114s
   a side, measured); ADR-0156's COVERAGE block makes the purchase visible. Moved 3 -> 22
   at the arc close, below live work: proposed 2026-08-19, author-seen. ADR-0159.
-- OPEN **[stale-path-retired-namespace-addendum]** PRIORITY 23 -- `ehrt.sim-trajectory.`
+- OPEN **[stale-path-retired-namespace-addendum]** PRIORITY 24 -- `ehrt.sim-trajectory.`
   is retired (ADR-0162) and did NOT join `stale_path_test`'s retired-namespace
   denylist, which every prior namespace retirement in that family joined in its own
   commit (S2/S3/M2/M3/M4 addenda). No live surface carries the old form today; this
   buys the gate that stops it coming BACK. Registered, not built: the fence of
   ADR-0162 allowed no new gate, and a new gate owes its own red.
-- OPEN **[careplan-guard-resolution]** PRIORITY 24 -- a DECLARED LIMITATION since
+- OPEN **[careplan-guard-resolution]** PRIORITY 25 -- a DECLARED LIMITATION since
   2026-08-21 (ADR-0162), not a queued defect;
   `components/patient-simulator/docs/limitations.md` is the authority and holds the
   evidence. Fix owed when an emitter renders care-plan state: a FHIR CarePlan
@@ -270,6 +276,12 @@ Rows here are LIVE, each owing a revisit trigger in its own token.
   one-module-per-patient assignment never produces. ADR-0037 AR-4.
 
 ## Done (at most 30 LINES; the close ceremony rotates oldest whole rows verbatim to `.agents/plans/roadmap-done-<yyyy-mm>.md`, ADR-0161)
+- CLOSED 2026-08-24 ADR-0167 **[suite-time-doubling-diagnosed]** -- diagnosis only,
+  no src/test/module change. An orphaned `wslhost.exe` (PID 116424, parent dead)
+  spinning SIX threads at 99% of a core each -- one hyperthread on every one of
+  penny's six physical cores, 68.7 CPU-hours accrued -- took half the machine.
+  CI flat (525-555s) exonerated content; the per-namespace profile was uniform
+  1.18-1.44x, not concentrated. Killed: 27m09s -> 19m02s, green, reproducible.
 - CLOSED 2026-08-23 ADR-0165 **[generator-side-event-type-coverage]** -- two commits.
   A per-push gate asserting the gated runs collectively produce every ground-truth
   event type their modules can drive, counting only citation-bearing events; its
@@ -288,9 +300,3 @@ Rows here are LIVE, each owing a revisit trigger in its own token.
   deliberate limitations, each cited and trigger-stated, drift-gated against the
   three in-source markers. The instructed red witness FAILED to go red and exposed
   a self-matching citation -- fixed, and it found a second weak anchor.
-- CLOSED 2026-08-20 ADR-0161 **[attic-rotation-law]** -- the law is MECHANICAL by
-  author ruling: `## Done` holds at most 30 LINES, rotation is an act of the close
-  ceremony, oldest WHOLE rows verbatim to the month's attic, no arc boundaries to
-  judge. Gated by `ehrt.docs-tooling.attic-rotation-test` -- the cap, and no attic
-  file has ever deleted a line, over its whole history. Backlog rotated: 67 rows /
-  109 lines, 134 -> 25 lines; `:onboarding` 1,508 -> 1,400. ADR-0139 finding C-3.

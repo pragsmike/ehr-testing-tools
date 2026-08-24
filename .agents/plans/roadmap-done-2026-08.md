@@ -2718,3 +2718,12 @@ order preserved.
   the gate fails as a claim rather than as an NPE. First green execution in the gate's
   life: `Integration` run 32402746494 @ `8c53475`, `success`, 8 assertions where the
   red witness 32344505291 reached 6 and errored on the first equality. ADR-0159 F-5.
+
+## Rotated 2026-08-24 by the ADR-0167 close
+
+- CLOSED 2026-08-20 ADR-0161 **[attic-rotation-law]** -- the law is MECHANICAL by
+  author ruling: `## Done` holds at most 30 LINES, rotation is an act of the close
+  ceremony, oldest WHOLE rows verbatim to the month's attic, no arc boundaries to
+  judge. Gated by `ehrt.docs-tooling.attic-rotation-test` -- the cap, and no attic
+  file has ever deleted a line, over its whole history. Backlog rotated: 67 rows /
+  109 lines, 134 -> 25 lines; `:onboarding` 1,508 -> 1,400. ADR-0139 finding C-3.
