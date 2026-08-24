@@ -25,6 +25,7 @@
   `compile-trajectory`, depending on `sim-model` (pathway/facility) and
   `kernel` only -- never on `sim` itself."
   (:require [ehrt.patient-simulator.compile-trajectory :as compile-trajectory]
+            [ehrt.patient-simulator.emittable-events :as emittable-events]
             [ehrt.patient-simulator.gmf :as gmf]
             [ehrt.patient-simulator.gmf-interpreter :as gmf-interpreter]))
 
@@ -74,3 +75,10 @@
   ;; own docstring for the gated new path this threads to.
   ([trajectory facility registration-t history?]
    (compile-trajectory/compile-trajectory trajectory facility registration-t history?)))
+
+;; ADR-0165: the generator-side coverage gate's own input -- which
+;; ground-truth event types a loaded closure can actually drive. Read
+;; by `ehrt.sim.run-test`'s coverage gate, which lives outside this
+;; component and therefore comes through here.
+(defn emittable-ground-truth-events [closures]
+  (emittable-events/emittable-ground-truth-events closures))

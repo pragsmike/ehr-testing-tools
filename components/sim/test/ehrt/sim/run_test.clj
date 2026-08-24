@@ -19,9 +19,11 @@
   ones already known to work, using the injectable `:engine-run-fn`
   seam (same -fn convention as `ehrt.sim-cli.core/dispatch-action`)
   so no real simulation ever has to run against sentinel data."
-  (:require [clojure.string :as str]
-            [clojure.test :refer [deftest is testing]]
+  (:require [clojure.edn :as edn]
+            [clojure.string :as str]
+            [clojure.test :refer [deftest is testing use-fixtures]]
             [ehrt.kernel.interface :as result]
+            [ehrt.patient-simulator.interface :as patient-simulator]
             [ehrt.sim-engine.engine :as engine]
             [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim.run :as run]))
@@ -381,6 +383,68 @@
     (is (= :config-not-found (:category r)))
     (is (= path (:path (:payload r))))))
 
+;; --- ADR-0165 P2: ONE shared corpus fixture for the population-scale
+;; gates. Each gated scenario run is generated ONCE per run of this
+;; namespace and read by every gate that needs it, so the coverage gate
+;; below can measure the SAME corpora the self-check gates judge
+;; without generating a second copy of any of them. The existing gates'
+;; assertions moved here verbatim -- only their `let` binding changed,
+;; from a `run-command` call to a `corpus` lookup.
+
+(def ^:private gated-runs
+  "The population-scale scenario runs this namespace gates. Adding a
+  run here adds it to the coverage gate's own population at the same
+  moment -- that coupling is the point: a gated run no coverage meter
+  reads is exactly the gap ADR-0163's defect fell through."
+  [{:id :seed-202-ed-tuesday
+    :opts {:seed 202 :patients 100 :churn true
+           :config "demos/scenarios/ed-tuesday/config.edn"}}
+   {:id :seed-424242-clinic-decade
+    :opts {:seed 424242 :patients 200 :reference-date "2026-08-04" :churn true
+           :config "demos/scenarios/clinic-decade/config.edn"}}
+   {:id :seed-5-clinic-decade
+    :opts {:seed 5 :patients 200 :reference-date "2026-08-04" :churn true
+           :config "demos/scenarios/clinic-decade/config.edn"}}
+   ;; ADR-0165 step 5, the coverage hunt's own result. The three
+   ;; scenario runs above produce NEITHER :medication-end NOR
+   ;; :care-plan-end -- ADR-0163's drop rule removed the only ones they
+   ;; had, which is precisely the hole this gate exists to see. 180
+   ;; clinic-decade variations found :medication-end easily and
+   ;; :care-plan-end never (bronchitis/asthma reach their CarePlanEnd
+   ;; only by the never-written-attribute route ADR-0163 now drops), so
+   ;; the covering run comes from a module those scenarios do not
+   ;; name. attention_deficit_disorder at seed 2 over TEN patients is
+   ;; the smallest run found producing both, PAIRED and self-check
+   ;; clean, in ~25ms: one patient whose ADHD care plan and Ritalin
+   ;; order both fall in history phase and whose ends both land in
+   ;; horizon -- the DESIGNED pre-horizon straddle, so this run also
+   ;; exercises both end-invariants' own pre-horizon escape branch at
+   ;; population scale rather than only in a scripted fixture.
+   {:id :adhd-seed-2
+    :opts {:seed 2 :patients 10 :reference-date "2026-08-04"
+           :module-horizon-days 3650
+           :pathway {:name "adhd-only" :steps []}
+           :modules ["attention_deficit_disorder"]
+           :module-assignment [{:module-id "attention_deficit_disorder" :weight 1}]}}])
+
+(def ^:private corpora
+  "run id -> that run's own `run-command` result, populated once by
+  `generate-corpora-once`."
+  (atom {}))
+
+(defn- generate-corpora-once [f]
+  (reset! corpora (into {} (map (juxt :id #(run/run-command (:opts %)))) gated-runs))
+  (f))
+
+(use-fixtures :once generate-corpora-once)
+
+(defn- corpus
+  "The `run-command` result for one gated run -- never a fresh run."
+  [id]
+  (or (get @corpora id)
+      (throw (ex-info "ehrt.sim.run-test: no corpus under this id -- the :once fixture did not populate it"
+                      {:id id :have (sort (keys @corpora))}))))
+
 ;; --- ADR-0153: the seed-202 self-check failure, at the run level ----------
 
 (deftest ed-tuesday-churn-seed-202-self-checks-clean
@@ -394,8 +458,7 @@
             free (ehrt.sim-engine.engine's own decide :discharge). Kept at
             the per-push tier, not integration: the whole run is ~1s in a
             warm JVM, and the demo config it reads is tracked content."
-    (let [r (run/run-command {:seed 202 :patients 100 :churn true
-                              :config "demos/scenarios/ed-tuesday/config.edn"})]
+    (let [r (corpus :seed-202-ed-tuesday)]
       (is (result/ok? r) (str "violations: " (pr-str (:payload r))))
       (is (seq (:ground-truth (:payload r)))))))
 
@@ -436,8 +499,7 @@
             tests one layer up pin the drop rule on minimized
             trajectories, while only a real 200-patient decade reaches
             the walk that produced it."
-    (let [r (run/run-command {:seed 424242 :patients 200 :reference-date "2026-08-04" :churn true
-                              :config "demos/scenarios/clinic-decade/config.edn"})]
+    (let [r (corpus :seed-424242-clinic-decade)]
       (is (result/ok? r) (str "violations: " (pr-str (:payload r))))
       (is (empty? (unpaired-ends (:ground-truth (:payload r))))))))
 
@@ -453,7 +515,79 @@
             preceding gap, hence no compiled :delay and no shared-RNG
             draw removed, so the fix changes this log by exactly those
             two events and nothing else (ADR-0163's own oracle sweep)."
-    (let [r (run/run-command {:seed 5 :patients 200 :reference-date "2026-08-04" :churn true
-                              :config "demos/scenarios/clinic-decade/config.edn"})]
+    (let [r (corpus :seed-5-clinic-decade)]
       (is (result/ok? r) (str "violations: " (pr-str (:payload r))))
       (is (empty? (unpaired-ends (:ground-truth (:payload r))))))))
+
+;; --- ADR-0165: the generator-side event-type coverage gate ---------------
+;; ADR-0160 gave the JUDGE side a coverage gate -- every oracle root is
+;; exercised. Nothing measured the GENERATOR side, and that is exactly
+;; how ADR-0163's defect stayed invisible: the invariant that caught it
+;; was correct all along, but the population the suite ran it over
+;; produced zero-to-one :medication-end events, so it had almost
+;; nothing to judge. This gate asserts the gated runs above
+;; COLLECTIVELY produce every ground-truth event type the modules those
+;; scenarios name can actually drive.
+
+(defn- run-module-names
+  "The module names a gated run walks: the ones its own opts name, or --
+  for a run driven by a tracked scenario file -- the ones that file
+  names. Read off the config rather than restated here, so a scenario
+  that gains a module gains that module's event types in this gate at
+  the same moment."
+  [{:keys [opts]}]
+  (or (:modules opts)
+      (:modules (edn/read-string (slurp (:config opts))))))
+
+(defn- emittable-events-for
+  "Every ground-truth event type a gated run's own modules can drive --
+  `patient-simulator/emittable-ground-truth-events` over the REAL
+  resolved closures, never a restatement of them."
+  [gated-run]
+  (let [resolved (run/resolve-modules (run-module-names gated-run) {})]
+    (when-not (result/ok? resolved)
+      (throw (ex-info "ehrt.sim.run-test: could not resolve a gated run's own modules"
+                      {:run (:id gated-run) :result resolved})))
+    (patient-simulator/emittable-ground-truth-events (:payload resolved))))
+
+(defn- generator-side-event-types
+  "The event types a corpus produced FROM COMPILED MODULE CONTENT: every
+  ground-truth event carrying a `:citation`.
+
+  The citation is the discriminator, and it is load-bearing rather than
+  convenient. `ehrt.sim-engine.engine`'s own `citation-fields` attaches
+  `:citation` only when the step the event came from carried one, and
+  only `ehrt.patient-simulator.compile-trajectory`'s own `->step`
+  functions ever set it -- never a hand-authored `:pathways` step,
+  never a churn-injected one. Without this filter, ed-tuesday's five
+  scripted ED pathways would satisfy :admission/:discharge coverage
+  that no vendored module ever produced, and the gate would be
+  measuring the scenario author instead of the generator."
+  [result]
+  (into #{} (comp (filter :citation) (map :event)) (:ground-truth (:payload result))))
+
+(def ^:private coverage-waivers
+  "event type -> the queue row that owns the hole (ADR-0165 P3(a)).
+  A waiver is DATA with a roadmap row behind it, never a silent
+  narrowing of the gate: the type stays declared emittable, and the
+  waiver states who owes the run that would cover it."
+  {})
+
+(deftest gated-runs-collectively-produce-every-emittable-event-type
+  (testing "ADR-0165: the generator-side coverage meter. Every
+            ground-truth event type the gated scenarios' own modules
+            can emit must be produced, from compiled module content, by
+            at least one gated corpus -- or carry an explicit waiver
+            row. A hole here means the suite is running its invariant
+            catalog over a population that never exercises that event
+            type, which is the shape of ADR-0163's own invisibility."
+    (let [emittable (into #{} (mapcat emittable-events-for) gated-runs)
+          produced (into #{} (mapcat #(generator-side-event-types (corpus (:id %)))) gated-runs)
+          missing (into (sorted-set) (remove (some-fn produced coverage-waivers)) emittable)]
+      (is (seq emittable) "the emittable set is empty -- the table walk or the closure resolution is broken")
+      (is (empty? missing)
+          (str "emittable by the gated scenarios' own modules but produced by NO gated corpus: "
+               (pr-str (vec missing))
+               " -- add a gated run that produces each, or waive it with a queue row "
+               "(ADR-0165 P3(a)). Produced: " (pr-str (vec (sort produced)))
+               "; emittable: " (pr-str (vec (sort emittable))))))))

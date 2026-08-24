@@ -20,6 +20,18 @@ rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
   lines now sit under the wrong slug (ADR-0159 F-1). `rulings.md`:
   `R-full-suite-before-push` gained its whole wrapper clause at ADR-0155 and names no
   ADR for it, while the arc's other two widenings do (F-2). Found, rowed, not fixed.
+- OPEN **[ed-tuesday-module-tail-inert]** PRIORITY 4 -- `demos/scenarios/ed-tuesday`
+  declares TEN emittable ground-truth event types through its four-module tail and
+  produces ZERO of them: 407 events at seed 202, none carrying a `:citation`, all
+  from the five hand-authored ED pathways. Its own config header discloses the
+  low-incidence mechanism; ADR-0165's coverage gate is what measured the
+  consequence. Green only because the gate asks for a union across corpora.
+- OPEN **[generator-coverage-depth]** PRIORITY 5 -- ADR-0165's gate asks whether a
+  type appears AT ALL. Three of its eleven -- `:admission`, `:discharge`,
+  `:diagnostic-report` -- are covered by exactly ONE cited event in exactly ONE
+  gated run (seed 5 over clinic-decade), so a single population reshuffle takes
+  all three dark at once. The same one-root-deep fragility ADR-0156 named for the
+  oracle's capacity witness, now measured on the generator side.
 - OPEN **[bed-ready-vacancy-cascade]** PRIORITY 6 -- a bed-ready transfer
   vacates its own ORIGIN bed and nothing looks for a boarder waiting on that
   ward: only `decide :discharge` runs the search. Witnessed at seed 202,
