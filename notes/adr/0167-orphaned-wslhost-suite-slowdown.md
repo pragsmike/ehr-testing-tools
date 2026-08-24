@@ -155,3 +155,39 @@ believed.
 - `reference_make_test_runtime` and any successor prompt quoting 28.5min are
   superseded by this ADR's table.
 - The residual gets a roadmap row rather than a story.
+
+### Amendment (2026-08-24, suite-time residual probe session — fix-forward, dated, not a revert)
+
+**The `~19m` consequence above is superseded within the day it was written.**
+penny was rebooted after this ADR landed, and one clean `make test` on a
+verified-quiet machine measures **13m59s** (`MAKE_EXIT=0`, 370 / 4,142 /
+18,450, reconciling exactly against this ADR's own close). The figure of
+record at HEAD is **~14m**, back inside the 14m03s–14m48s era and 23 seconds
+under 2026-08-21's own 14m22s.
+
+**The mechanism above is untouched.** The 1.42× the kill bought was a
+controlled before/after and stands; finding 3's residual is now attributed to
+the same *class* — host process-state contention — rather than to a distinct
+cause, and closes as `roadmap.md#suite-time-residual` without a second
+mechanism being posited. The reboot cleared whatever else was resident; what
+that was specifically is not knowable after the fact and is not claimed.
+
+**What this amendment does NOT retract.** Findings 1 (JDK dead twice over)
+and 2 (`vendored-veteran-ptsd-test` is not stalling) are unaffected. The
+eliminated list — JDK, content, filesystem, Defender, `.wslconfig`, memory —
+is unaffected. penny being ~3× a GitHub runner on the dominant namespace is
+*not* re-measured here and remains unexplained, but is no longer part of a
+suite-time regression: it is now just penny's speed.
+
+**The recurrable half, stated as a warning.** The probe session's own health
+record found a game (`Overwatch.exe`, 91 threads, 2.5 cores, host
+`LoadPercentage` 63–71% with WSL idle) running before the measurement, and
+waited for it to close rather than measuring through it. Host-side load on
+penny has at least two independent sources — an orphaned `wslhost` and
+ordinary foreground applications — and neither is visible from `uptime`,
+`/proc/stat`, or any Linux-side signal. **A tracked suite figure on penny is
+worth only its host-side health record**; the discriminator sequence for a
+future baseline drift is this ADR's own: check CI is flat, check the
+per-namespace profile is uniform, then sample the Windows side.
+
+See `.agents/session-records/2026-08-24-suite-time-residual-probe.md`.

@@ -8,12 +8,6 @@ cited from elsewhere as `roadmap.md#<slug>` and never by line number; `## Next`
 rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
 
 ## Next (backlog, no session scheduled)
-- OPEN **[suite-time-residual]** PRIORITY 2 -- `make test` on penny is 19m02s at
-  HEAD (runs 3/4 of ADR-0167, reproducible to 0.5%) against 14m22s on 2026-08-21:
-  a stable **1.32x** the orphaned-`wslhost` kill did NOT recover. Not JDK (17
-  measured slower), content (CI flat 525-555s), filesystem (ext4), Defender (not
-  running), `.wslconfig` (absent) or memory. penny is also 3.1x slower than a GH
-  runner on `vendored-veteran-ptsd-test` uncontended. ADR-0167 finding F5-3.
 - OPEN **[repo-review-5]** PRIORITY 3 -- chartered roughly 15 ADRs past the
   review-4 close by ADR count, not calendar (`rulings.md#R-review-cadence-in-adrs`,
   measured from the prior CLOSE as ADR-0139 worked it): **approximately ADR-0174**.
@@ -276,6 +270,11 @@ Rows here are LIVE, each owing a revisit trigger in its own token.
   one-module-per-patient assignment never produces. ADR-0037 AR-4.
 
 ## Done (at most 30 LINES; the close ceremony rotates oldest whole rows verbatim to `.agents/plans/roadmap-done-<yyyy-mm>.md`, ADR-0161)
+- CLOSED 2026-08-24 ADR-0167 **[suite-time-residual]** -- the 1.32x that survived the
+  orphan kill did NOT survive a REBOOT. One clean run on a verified-quiet penny:
+  **13m59s**, `MAKE_EXIT=0`, 370/4,142/18,450 reconciling exactly -- inside the
+  14m03s-14m48s era and 23s UNDER 2026-08-21's own 14m22s. Class: host process-state
+  contention, cured by reboot and recurrable; the health record is the re-probe.
 - CLOSED 2026-08-24 ADR-0167 **[suite-time-doubling-diagnosed]** -- diagnosis only,
   no src/test/module change. An orphaned `wslhost.exe` (PID 116424, parent dead)
   spinning SIX threads at 99% of a core each -- one hyperthread on every one of
