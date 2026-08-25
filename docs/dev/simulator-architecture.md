@@ -77,11 +77,12 @@ stated verbatim in `engine.clj`'s own ns docstring (its
 "Event-sourcing doctrine" paragraph, the primary citation — everything below restates that text, never
 supersedes it):
 
-- **`decide`** — `(rng, t, world, patient-id, step) -> {:events [...]
+- **`decide`** — `(streams, t, world, patient-id, step) -> {:events [...]
   :advance <seconds>}` (`engine.clj`'s `defmulti decide`, dispatching on
   `(:type step)`). Reads `world` — every patient's own state so far,
   plus static facility/provider config — read-only, and consumes the
-  run's single seeded RNG, to decide what happens. **Never returns a
+  run's seeded RNG *streams* (ADR-0171: a map by family, one per
+  patient plus two run-scoped), to decide what happens. **Never returns a
   new state.** This is where cross-patient coupling lives: a
   discharge's own `decide` call may emit a `:transfer` event for a
   *different*, boarding patient (`defmethod decide :discharge` and its
@@ -148,17 +149,37 @@ itself:**
 
 **The one deliberate impurity inside the simulation path itself is
 `java.util.Random`** (`engine.clj`'s own `ns` form: `(:import [java.util Random])`)
-— seeded once in `run` (`defn run`'s own `(Random. ^long seed)`),
-explicitly **threaded** as `decide`'s own first argument rather than
-held in any var or atom, with **fixed consumption per draw site**
-(`engine.clj`'s ns docstring, the Determinism doctrine paragraph: *"ALL
-randomness flows from the single `java.util.Random` seeded in `run`...
-Same config + seed => identical output, byte for byte"*). This is the
-RNG-path law (`.agents/rulings.md`, "Measurements sample the claimed
-population, standing," AR-RL2-2, `notes/ADRs.md` ADR-0092): a
+— every instance **derived in `run` from the one `:seed`**, explicitly
+**threaded** as `decide`'s own first argument rather than held in any
+var or atom, with **fixed consumption per draw site** (`engine.clj`'s
+ns docstring, the Determinism doctrine paragraph: *"ALL randomness
+flows from java.util.Randoms DERIVED IN `run` FROM THE ONE SEED... Same
+config + seed => identical output, byte for byte"*). This is the
+RNG-path law (`rulings.md#R-measure-claimed-population`, ADR-0093): a
 measurement or sweep claiming to characterize the simulator's own
 output must draw from this exact seeded, threaded path — never an
-independent synthetic RNG assumed equivalent to it. `assign-pathway`
+independent synthetic RNG assumed equivalent to it.
+
+**Until ADR-0171 (arc 1) that path was singular**, and this paragraph
+said so: one `Random`, seeded once in `run`, threaded everywhere.
+Consumption order was therefore *global event order*, so adding,
+removing or reordering one draw anywhere shifted every later draw for
+every later patient — which made each of arcs 2–4 (newborns mid-run,
+new `decide` draws, emission chatter) cost a corpus-wide reshuffle.
+`run` now derives **five streams by family** — `:patient` (keyed by
+arrival ordinal), `:person` (arc 2's, empty today), `:world`,
+`:facility`, `:emission` — as `(mix64 (mix64 seed family-tag) id-tag)`,
+keyed on a stable id rather than on construction order. A draw added to
+one patient's pathway now moves that patient.
+
+The RNG-path law itself is **unchanged**; the path simply became
+plural. What the partition deliberately does *not* abolish is the
+cross-patient coupling: the run-scoped families' draw counts are
+conditional on the population — `(seq eligible)`, `(seq
+home-licensed)` — so bed allocation, the bed-ready hand-off and the
+bed-swap/merge partner picks stay on `:world`, named and confined
+rather than local (ADR-0171 §2(a), and the author's LOCALITY ruling
+(a) that follows from it). `assign-pathway`
 and `assign-module` (`defn assign-pathway`, `defn assign-module`) are the load-bearing
 worked examples: each *always* consumes exactly one `.nextDouble`,
 whether or not the draw's own outcome is used, specifically so that

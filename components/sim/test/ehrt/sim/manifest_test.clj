@@ -25,7 +25,29 @@
                            :invocation {:verb "run" :opts {:seed 42}}})]
     (is (provenance/valid-v1-1? m)
         "sim's own build() output must conform to provenance's real
-         ManifestV1_1 -- no mirror in between")))
+         ManifestV1_1 -- no mirror in between")
+    ;; ADR-0171 ruling D1 (arc 1, the RNG stream partition). Asserted
+    ;; HERE rather than in a test of its own because the whole ruling is
+    ;; that the marker rides ManifestV1_1's OPENNESS: the interesting
+    ;; claim is not that the key exists but that adding it keeps the
+    ;; manifest schema-valid with no shared-schema change, and this is
+    ;; the test that already asserts schema validity.
+    ;;
+    ;; Version-independent, the same correction ADR-0151 applied to
+    ;; `manifest-carries-the-live-event-schema-version` below: the pin is
+    ;; the PROPERTY (a run stamps the scheme it was produced under), never
+    ;; the literal "1.0", which a later scheme change would otherwise
+    ;; teach a session to edit rather than think about.
+    (is (string? engine/stream-scheme))
+    (is (= engine/stream-scheme (:stream-scheme m))
+        "the stream-scheme marker must be TOP-LEVEL, a sibling of
+         :event-schema-version -- it describes the artifact, not the tool")
+    (is (nil? (:stream-scheme (:seeds m)))
+        "not inside :seeds: provenance/manifest.clj types that map
+         [:map-of :keyword :int], so a keyword-or-string value there
+         would not validate (ADR-0171 section 1f item 6)")
+    (is (every? int? (vals (:seeds m)))
+        "and :seeds stays int-valued, which is what forced D1 over D2")))
 
 ;; --- go-public Task 2: version single-sourced, manifest honest -----------
 

@@ -57,7 +57,7 @@ it can't yet be *vendored*.
 | `Initial` | v1, consumed internally | none — module entry point, no clinical or administrative fact |
 | `Terminal` | v1, consumed internally | none — ends this module's own walk for the patient; **not** `Death` (below) |
 | `Simple` | v1, consumed internally | none — pure branching/logic state (e.g. `sinusitis.json`'s `Penicillin_Allergy_Check`, `sore_throat.json`'s `Determine_if_Bacterial`); carries no clinical content of its own |
-| `Delay` | v1, consumed internally | none — advances simulated time only. Compiles to the same `:advance N` shape every other step type's `decide` already returns (`ehrt.sim-engine.engine`); the interpreter samples the delay's own authored range from the run's single RNG, same determinism law every other stochastic draw already follows |
+| `Delay` | v1, consumed internally | none — advances simulated time only. Compiles to the same `:advance N` shape every other step type's `decide` already returns (`ehrt.sim-engine.engine`); the interpreter samples the delay's own authored range from this patient's own `:patient`-family RNG stream (ADR-0171; the run's single RNG before that arc), same determinism law every other stochastic draw already follows |
 | `Guard` | v1, consumed internally | none — blocks until its condition holds, re-checked each time its module is next due; no clinical or administrative fact of its own |
 | `SetAttribute` | v1, consumed internally | none — writes into `:attributes` (§5, module-namespaced) |
 | `ConditionOnset` | v1, trajectory event | a clinical fact — code triplet carried verbatim (code-passthrough law). Compiles at `CompileTrajectory` to a diagnosis annotation on the enclosing (or most recently opened) `Encounter`-mapped IR step, **not** a standalone IR step type — this project's pathway IR has no diagnosis-list step today, and DG1/billing rendering is separately gated on `snomed-icd10-map` landing (`components/sim/docs/sim-theory.md`'s Catalytic resolution table, still target 1/not built) |
@@ -140,7 +140,8 @@ lack of a payer/insurance concept requires).
 
 - **`direct_transition`** — unconditional, one target state.
 - **`distributed_transition`** — a weighted distribution over target
-  states, sampled from the run's single seeded RNG (the same
+  states, sampled from this patient's own seeded RNG stream (ADR-0171's
+  `:patient` family; the run's single RNG before that arc) (the same
   determinism law every other weighted pick in this project already
   follows — `components/sim/docs/sim-theory.edn`'s global determinism law).
   **GMF coverage Wave D stage D3 (2026-08-02, ADR-0029, D3b, H3):** an
@@ -370,7 +371,9 @@ traceability, clinical-content-preserving compilation,
 `components/sim/docs/sim-theory.edn`'s `:trajectory`/`:compile` laws) actually govern
 day to day.
 
-**Determinism.** Both phases draw from the run's single seeded RNG, in
+**Determinism.** Both phases draw from this patient's own seeded RNG
+stream (ADR-0171's `:patient` family -- the whole GMF walk is one
+contiguous, per-patient draw burst), in
 a fixed order: for a given patient, persona sampling (13 draws, M4)
 happens first, then the history phase's own module-walk draws, then
 the horizon phase's own draws — the same per-patient, arrival-ordered

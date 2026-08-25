@@ -33,7 +33,21 @@
 (def ^:private dermatitis-closure (:payload loaded-closure))
 
 (def ^:private run-config
-  {:seed 20260802 :patients 300 :pathway {:name "module-only" :steps []}
+  ;; RE-SEEDED from 20260802 to 42 by ADR-0171's stream partition, with
+  ;; the measurement that justifies it. Unlike `veteran_self_harm`,
+  ;; dermatitis content is COMMON: swept under the LIVE engine at 300
+  ;; patients, nine of ten seeds tried (1, 2, 3, 5, 7, 11, 42, 71, 202)
+  ;; produce real `:outpatient-visit`/`:outpatient-visit-end` content
+  ;; and one to six HL7 messages -- and 20260802, this fixture's old
+  ;; seed, is now the single unlucky one, yielding
+  ;; `#{:registered :care-plan-end}` and zero messages.
+  ;;
+  ;; 42 is taken because it is the RICHEST of the nine: seven event
+  ;; kinds, including the `:medication-order`/`:medication-end` and
+  ;; `:care-plan-start`/`:care-plan-end` pairs, and six rendered
+  ;; messages -- so the Observation-submodule claim this test makes is
+  ;; exercised further than it was before, not merely restored.
+  {:seed 42 :patients 300 :pathway {:name "module-only" :steps []}
    :modules [dermatitis-closure] :module-assignment [{:module-id "dermatitis" :weight 1}]
    :module-horizon-days 36500})
 

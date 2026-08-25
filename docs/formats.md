@@ -431,7 +431,7 @@ A patient is admitted to a bed, allocated by the ward ladder.
 {:home-ward "ED",
  :participants [{:patient-id "PID-000000-055bdef6", :role :subject}],
  :active-mrn "MRN000001",
- :attending "5302676874",
+ :attending "3408513729",
  :warm-up false,
  :reason "Chest pain",
  :event :admission,
@@ -465,12 +465,12 @@ Two admitted patients exchange beds in one atomic event (HL7v2 A17).
   {:active-mrn "MRN000001",
    :from {:ward "Renal", :bed "RENAL-01", :placement :licensed},
    :to {:ward "Renal", :bed "RENAL-H01", :placement :surge},
-   :attending "0438290740"},
+   :attending "0096803644"},
   "PID-000001-4baa5dc0"
   {:active-mrn "MRN000002",
    :from {:ward "Renal", :bed "RENAL-H01", :placement :surge},
    :to {:ward "Renal", :bed "RENAL-01", :placement :licensed},
-   :attending "2058303365"}},
+   :attending "7038801222"}},
  :warm-up false}
 ```
 
@@ -521,7 +521,7 @@ A discharge is retracted and the patient reinstated (HL7v2 A13).
  :cancels-event-id 11,
  :participants [{:patient-id "PID-000000-e0bbdb7b", :role :subject}],
  :active-mrn "MRN000001",
- :attending "0438290740",
+ :attending "0096803644",
  :warm-up false,
  :event :cancel-discharge,
  :t 0,
@@ -577,7 +577,7 @@ A care plan closes, resolved to its start by CITATION rather than by log positio
 
 ```clojure
 {:event :care-plan-end,
- :t 3888000,
+ :t 13046400,
  :active-mrn "MRN000002",
  :start-event-id 7,
  :care-plan-citation {:module "schema-fixture-mod", :state :the-plan},
@@ -605,7 +605,7 @@ A care plan is opened, optionally listing its planned activities.
 
 ```clojure
 {:event :care-plan-start,
- :t 3024000,
+ :t 12182400,
  :active-mrn "MRN000002",
  :codes
  [{:system :snomed, :code "324911001", :display "Antibiotic therapy"}],
@@ -637,11 +637,11 @@ A panel of observations reported together as one document -- ONE event carrying 
 
 ```clojure
 {:event :diagnostic-report,
- :t 3024000,
+ :t 12182400,
  :active-mrn "MRN000002",
  :observations
  [{:codes [{:system :loinc, :code "6690-2", :display "Leukocytes"}],
-   :value 8.6,
+   :value 10.2,
    :unit "K/uL",
    :category "laboratory"}
   {:codes [{:system :snomed, :code "10828004", :display "Positive"}],
@@ -677,8 +677,8 @@ A patient leaves; an expired disposition marks a death, which vacates no bed.
 {:event :discharge,
  :t 0,
  :active-mrn "MRN000002",
- :location {:ward "ED", :bed "ED-H02", :placement :surge},
- :attending "5302676874",
+ :location {:ward "ED", :bed "ED-H03", :placement :surge},
+ :attending "3408513729",
  :participants [{:patient-id "PID-000001-14cf8bfe", :role :subject}],
  :warm-up false}
 ```
@@ -702,7 +702,7 @@ A medication course ends, resolved to its order by CITATION rather than by log p
 
 ```clojure
 {:event :medication-end,
- :t 3888000,
+ :t 13046400,
  :active-mrn "MRN000002",
  :order-event-id 6,
  :order-citation {:module "schema-fixture-mod", :state :the-med},
@@ -729,7 +729,7 @@ A medication is prescribed.
 
 ```clojure
 {:event :medication-order,
- :t 3024000,
+ :t 12182400,
  :active-mrn "MRN000002",
  :codes
  [{:system :rxnorm, :code "308182", :display "Amoxicillin 250 MG"}],
@@ -792,12 +792,12 @@ An unsolicited clinical finding, not tied to any order -- a single measured or c
 {:category "vital-signs",
  :unit "Cel",
  :participants [{:patient-id "PID-000001-01564f61", :role :subject}],
- :value 37.7,
+ :value 37.6,
  :active-mrn "MRN000002",
  :warm-up false,
  :citation {:module "schema-fixture-mod", :state :the-observation},
  :event :observation,
- :t 3024000,
+ :t 12182400,
  :codes [{:system :loinc, :code "8310-5", :display "Body temperature"}]}
 ```
 
@@ -822,7 +822,7 @@ A diagnostic order is placed against an order profile.
 ```clojure
 {:participants [{:patient-id "PID-000000-055bdef6", :role :subject}],
  :active-mrn "MRN000001",
- :attending "5302676874",
+ :attending "3408513729",
  :warm-up false,
  :event :order-placed,
  :concept
@@ -854,9 +854,9 @@ An ambulatory encounter opens; it occupies no bed (HL7v2 A04).
 
 ```clojure
 {:event :outpatient-visit,
- :t 3024000,
+ :t 12182400,
  :active-mrn "MRN000002",
- :attending "7447928418",
+ :attending "9294586943",
  :participants [{:patient-id "PID-000001-01564f61", :role :subject}],
  :citation {:module "schema-fixture-mod", :state :visit},
  :warm-up false}
@@ -880,9 +880,9 @@ An ambulatory encounter closes. Deliberately renders no HL7 message -- many real
 
 ```clojure
 {:event :outpatient-visit-end,
- :t 3888000,
+ :t 13046400,
  :active-mrn "MRN000002",
- :attending "7447928418",
+ :attending "9294586943",
  :participants [{:patient-id "PID-000001-01564f61", :role :subject}],
  :citation {:module "schema-fixture-mod", :state :visit-end},
  :warm-up false}
@@ -906,7 +906,7 @@ A procedure is performed, cited back to the module state that produced it.
 
 ```clojure
 {:event :procedure,
- :t 3024000,
+ :t 12182400,
  :active-mrn "MRN000002",
  :codes
  [{:system :snomed,
@@ -938,19 +938,18 @@ A patient enters the run: identity assigned, demographics sampled, any pre-horiz
  :t 0,
  :active-mrn "MRN000001",
  :persona
- {:name {:family "Garcia", :given "Noah"},
-  :sex :male,
-  :dob "2024-09-19",
+ {:name {:family "Hernandez", :given "Sophia"},
+  :sex :female,
+  :dob "2024-12-24",
   :age 0,
   :address
-  {:street "482 Ridgeway Ln",
-   :city "Springfield",
-   :state "IL",
-   :zip "62704"},
-  :phone "867-396-2000",
-  :ssn "900-09-7523",
-  :payer
-  {:id "commercial-ppo", :name "Commercial PPO", :type :commercial}},
+  {:street "35 Aspen Way",
+   :city "Albuquerque",
+   :state "NM",
+   :zip "87102"},
+  :phone "749-382-7301",
+  :ssn "900-97-1836",
+  :payer {:id "self-pay", :name "Self-Pay", :type :self-pay}},
  :participants [{:patient-id "PID-000000-3cb13d09", :role :subject}],
  :warm-up false}
 ```
@@ -978,7 +977,7 @@ An order's results come back, one entry per analyte, with abnormal flags already
 ```clojure
 {:participants [{:patient-id "PID-000000-055bdef6", :role :subject}],
  :active-mrn "MRN000001",
- :attending "5302676874",
+ :attending "3408513729",
  :warm-up false,
  :order-event-id 4,
  :event :result-available,
@@ -986,7 +985,7 @@ An order's results come back, one entry per analyte, with abnormal flags already
  {:system :loinc,
   :code "58410-2",
   :display "CBC panel - Blood by Automated count"},
- :t 4080,
+ :t 3960,
  :location {:ward "ED", :bed "ED-H01", :placement :surge},
  :profile :cbc,
  :results
@@ -995,23 +994,23 @@ An order's results come back, one entry per analyte, with abnormal flags already
     :code "6690-2",
     :display "Leukocytes [#/volume] in Blood by Automated count"},
    :unit "K/uL",
-   :value 18.0,
+   :value 2.0,
    :reference-range {:low 4.5, :high 11.0},
-   :abnormal-flag :high}
+   :abnormal-flag :low}
   {:concept
    {:system :loinc,
     :code "789-8",
     :display "Erythrocytes [#/volume] in Blood by Automated count"},
    :unit "M/uL",
-   :value 5.26,
+   :value 3.8,
    :reference-range {:low 4.2, :high 5.9},
-   :abnormal-flag :normal}
+   :abnormal-flag :low}
   {:concept
    {:system :loinc,
     :code "718-7",
     :display "Hemoglobin [Mass/volume] in Blood"},
    :unit "g/dL",
-   :value 14.1,
+   :value 16.4,
    :reference-range {:low 12.0, :high 17.5},
    :abnormal-flag :normal}
   {:concept
@@ -1020,7 +1019,7 @@ An order's results come back, one entry per analyte, with abnormal flags already
     :display
     "Hematocrit [Volume Fraction] of Blood by Automated count"},
    :unit "%",
-   :value 47.6,
+   :value 47.7,
    :reference-range {:low 36.0, :high 50.0},
    :abnormal-flag :normal}
   {:concept
@@ -1028,7 +1027,7 @@ An order's results come back, one entry per analyte, with abnormal flags already
     :code "777-3",
     :display "Platelets [#/volume] in Blood by Automated count"},
    :unit "K/uL",
-   :value 400.0,
+   :value 302.0,
    :reference-range {:low 150, :high 450},
    :abnormal-flag :normal}]}
 ```
@@ -1083,7 +1082,7 @@ An admitted patient moves to another bed, either by a pathway step or because a 
  :bed-ready false,
  :participants [{:patient-id "PID-000000-055bdef6", :role :subject}],
  :active-mrn "MRN000001",
- :attending "5302676874",
+ :attending "3408513729",
  :warm-up false,
  :event :transfer,
  :from {:ward "ED", :bed "ED-H01", :placement :surge},

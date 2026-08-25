@@ -1,38 +1,45 @@
 ;; Captured from ehrt.sim-engine.engine/run {:seed 42 :patients 5}
-;; POST-M4 (2026-07-26) -- see notes/sim/ADRs.md ADR-0009 (seed-stability
-;; policy) and .agents/plans/roadmap.md's M4 entry (Persona). This file
-;; previously pinned the POST-M2a baseline (identity/:participants,
-;; seconds clock). M4's regeneration (the SECOND deliberate
-;; regeneration this fixture has had, per sim/ADR-0009's own expectation
-;; that this happens again whenever a milestone's new step types add
-;; stochastic behavior existing pathways now exercise) folds in ONE
-;; change:
+;; POST-ADR-0171 (2026-08-25) -- see notes/sim/ADRs.md ADR-0009
+;; (seed-stability policy) and notes/adr/0171-arc-1-rng-stream-
+;; partition-design.md (arc 1, the RNG stream partition). This is the
+;; THIRD deliberate regeneration of this fixture, per sim/ADR-0009's own
+;; expectation that the same regeneration happens again at each future
+;; milestone. Its previous body pinned the POST-M4 baseline (Persona's
+;; :registered event); before that, the POST-M2a one (identity/
+;; :participants, seconds clock).
 ;;
-;; 1. Persona (docs/sim-theory.edn's :persona stage, landed for real):
-;;    EVERY patient's step queue is now prepended with an engine-
-;;    internal `:registered` event (never authorable IR, the same
-;;    treatment :result-followup already gets) carrying a freshly
-;;    sampled `:persona` (name/DOB/sex/address/phone/SSN-shaped
-;;    id/payer, ehrt.sim.persona/Persona) -- 13 new RNG draws
-;;    PER PATIENT, consumed before that patient's own :admission decide
-;;    call. This shifts the entire downstream RNG stream (bed choice,
-;;    attending sampling, delay durations) relative to the pre-M4
-;;    baseline, even though no clinical step type or pathway changed --
-;;    exactly the "generator's stochastic surface grew" case sim/ADR-0009
-;;    already names and accepts, not a bug. Compare: patient 5's bed
-;;    below is now RENAL-H02 where the pre-M4 baseline had RENAL-H01,
-;;    and every discharge timestamp shifted -- the RELATIVE admission
-;;    order and pathway shape are unchanged, only the specific draws.
+;; What moved this time, and why it is not a bug:
 ;;
-;; BEFORE (pre-M4, no :registered/:persona -- see git history for the
-;; full body): five :admission events (t 0/3480/4680/5580/8580) each
-;; followed eventually by a :discharge, ten events total.
-;; AFTER (post-M4): fifteen events -- a :registered immediately
-;; precedes each patient's own :admission, this file's body below.
+;; 1. THE STREAM PARTITION (ADR-0171, rulings A1/C1/E1/F1). Until this
+;;    arc the engine had exactly ONE java.util.Random and consumption
+;;    order was GLOBAL EVENT ORDER, so every draw site shared one
+;;    sequence. `run` now derives FIVE streams by family -- :patient
+;;    (keyed by arrival ordinal), :person, :world, :facility, :emission
+;;    -- as (mix64 (mix64 seed family-tag) id-tag). No draw was added or
+;;    removed by that change; every draw simply reads a different
+;;    position in a different sequence, which moves every sampled value
+;;    in this file (personas, bed choices, attendings, delay lengths)
+;;    while leaving the STRUCTURE -- five patients, a :registered then
+;;    an :admission then a :discharge each, fifteen events -- exactly
+;;    as it was.
+;;
+;; 2. THE from = to DELAY SKIP (ADR-0171 section 2(d)). `decide :delay`
+;;    used to call `rand-int-in` even when :from = :to, where the draw
+;;    is arithmetically dead ((.nextInt rng 1) is always 0). It is now
+;;    skipped. Draw-affecting, and landed in the SAME commit as the
+;;    partition on purpose (ruling F1): splitting them would have spent
+;;    a second corpus-wide reshuffle to buy nothing.
+;;
+;; This is exactly the "generator's stochastic surface changed once, for
+;; a documented reason" case sim/ADR-0009 decision 1 names and accepts.
+;; The corpora that moved with it are the four arc0_gated_*.edn under
+;; components/sim/test, the two conformance baselines, demos/traces'
+;; fourteen captures, event-examples.edn, and all 35 regression-oracle
+;; roots -- one reshuffle, all of it in one commit.
 ;;
 ;; Regenerate again -- deliberately, not casually -- the next time a
 ;; milestone's new step types or config surface add stochastic
 ;; behavior existing pathways now exercise (sim/ADR-0009's own expectation,
 ;; not a bug to chase). See
 ;; ehrt.sim-engine.engine_test/pinned-seed-survives-decide-evolve-refactor.
-{:ground-truth [{:event :registered, :t 0, :active-mrn "MRN000001", :persona {:name {:family "Gonzalez", :given "Lisa"}, :sex :female, :dob "1965-06-12", :age 59, :address {:street "271 Brookside Ave", :city "Milwaukee", :state "WI", :zip "53202"}, :phone "823-937-3975", :ssn "900-07-4424", :payer {:id "medicaid", :name "Medicaid", :type :medicaid}}, :participants [{:patient-id "PID-000000-918175ce", :role :subject}], :warm-up false} {:home-ward "Renal", :participants [{:patient-id "PID-000000-918175ce", :role :subject}], :active-mrn "MRN000001", :attending "0384055899", :warm-up false, :reason "Kidney problems", :event :admission, :t 0, :location {:ward "Renal", :bed "RENAL-02", :placement :licensed}, :forced false} {:event :registered, :t 3480, :active-mrn "MRN000002", :persona {:name {:family "Lopez", :given "James"}, :sex :male, :dob "1945-11-22", :age 79, :address {:street "48 Sycamore St", :city "Buffalo", :state "NY", :zip "14202"}, :phone "401-494-0794", :ssn "900-06-0257", :payer {:id "medicare-65", :name "Medicare", :type :medicare}}, :participants [{:patient-id "PID-000001-881e2907", :role :subject}], :warm-up false} {:home-ward "Renal", :participants [{:patient-id "PID-000001-881e2907", :role :subject}], :active-mrn "MRN000002", :attending "0384055899", :warm-up false, :reason "Kidney problems", :event :admission, :t 3480, :location {:ward "Renal", :bed "RENAL-03", :placement :licensed}, :forced false} {:event :registered, :t 4680, :active-mrn "MRN000003", :persona {:name {:family "Martinez", :given "Ashley"}, :sex :female, :dob "1991-03-01", :age 33, :address {:street "9 Willow Ct", :city "Richmond", :state "VA", :zip "23219"}, :phone "407-793-4109", :ssn "900-76-9258", :payer {:id "medicaid", :name "Medicaid", :type :medicaid}}, :participants [{:patient-id "PID-000002-8c2f7e6a", :role :subject}], :warm-up false} {:home-ward "Renal", :participants [{:patient-id "PID-000002-8c2f7e6a", :role :subject}], :active-mrn "MRN000003", :attending "0384055899", :warm-up false, :reason "Kidney problems", :event :admission, :t 4680, :location {:ward "Renal", :bed "RENAL-04", :placement :licensed}, :forced false} {:event :registered, :t 5580, :active-mrn "MRN000004", :persona {:name {:family "Smith", :given "Amanda"}, :sex :female, :dob "1986-01-09", :age 38, :address {:street "271 Brookside Ave", :city "Milwaukee", :state "WI", :zip "53202"}, :phone "511-509-3246", :ssn "900-23-6285", :payer {:id "commercial-ppo", :name "Commercial PPO", :type :commercial}}, :participants [{:patient-id "PID-000003-75598130", :role :subject}], :warm-up false} {:home-ward "Renal", :participants [{:patient-id "PID-000003-75598130", :role :subject}], :active-mrn "MRN000004", :attending "0384055899", :warm-up false, :reason "Kidney problems", :event :admission, :t 5580, :location {:ward "Renal", :bed "RENAL-01", :placement :licensed}, :forced false} {:event :registered, :t 8580, :active-mrn "MRN000005", :persona {:name {:family "Okafor", :given "Susan"}, :sex :female, :dob "1963-03-24", :age 61, :address {:street "204 Maple Ave", :city "Portland", :state "OR", :zip "97201"}, :phone "922-523-6433", :ssn "900-65-1877", :payer {:id "medicaid", :name "Medicaid", :type :medicaid}}, :participants [{:patient-id "PID-000004-2467dffa", :role :subject}], :warm-up false} {:home-ward "Renal", :participants [{:patient-id "PID-000004-2467dffa", :role :subject}], :active-mrn "MRN000005", :attending "3903633105", :warm-up false, :reason "Kidney problems", :event :admission, :t 8580, :location {:ward "Renal", :bed "RENAL-H02", :placement :surge}, :forced false} {:event :discharge, :t 8820, :active-mrn "MRN000001", :location {:ward "Renal", :bed "RENAL-02", :placement :licensed}, :attending "0384055899", :participants [{:patient-id "PID-000000-918175ce", :role :subject}], :warm-up false} {:event :discharge, :t 8940, :active-mrn "MRN000002", :location {:ward "Renal", :bed "RENAL-03", :placement :licensed}, :attending "0384055899", :participants [{:patient-id "PID-000001-881e2907", :role :subject}], :warm-up false} {:event :discharge, :t 14940, :active-mrn "MRN000004", :location {:ward "Renal", :bed "RENAL-01", :placement :licensed}, :attending "0384055899", :participants [{:patient-id "PID-000003-75598130", :role :subject}], :warm-up false} {:event :discharge, :t 15600, :active-mrn "MRN000003", :location {:ward "Renal", :bed "RENAL-04", :placement :licensed}, :attending "0384055899", :participants [{:patient-id "PID-000002-8c2f7e6a", :role :subject}], :warm-up false} {:event :discharge, :t 20760, :active-mrn "MRN000005", :location {:ward "Renal", :bed "RENAL-H02", :placement :surge}, :attending "3903633105", :participants [{:patient-id "PID-000004-2467dffa", :role :subject}], :warm-up false}]}
+{:ground-truth [{:event :registered, :t 0, :active-mrn "MRN000001", :persona {:name {:family "D'Angelo", :given "Joshua"}, :sex :male, :dob "1981-02-03", :age 43, :address {:street "78 Magnolia St", :city "Atlanta", :state "GA", :zip "30303"}, :phone "735-633-0549", :ssn "900-69-4969", :payer {:id "commercial-ppo", :name "Commercial PPO", :type :commercial}}, :participants [{:patient-id "PID-000000-918175ce", :role :subject}], :warm-up false} {:home-ward "Renal", :participants [{:patient-id "PID-000000-918175ce", :role :subject}], :active-mrn "MRN000001", :attending "4255631598", :warm-up false, :reason "Kidney problems", :event :admission, :t 0, :location {:ward "Renal", :bed "RENAL-04", :placement :licensed}, :forced false} {:event :registered, :t 1260, :active-mrn "MRN000002", :persona {:name {:family "Lee", :given "Jessica"}, :sex :female, :dob "1996-09-17", :age 28, :address {:street "204 Maple Ave", :city "Portland", :state "OR", :zip "97201"}, :phone "711-821-3708", :ssn "900-84-3515", :payer {:id "medicaid", :name "Medicaid", :type :medicaid}}, :participants [{:patient-id "PID-000001-881e2907", :role :subject}], :warm-up false} {:home-ward "Renal", :participants [{:patient-id "PID-000001-881e2907", :role :subject}], :active-mrn "MRN000002", :attending "4255631598", :warm-up false, :reason "Kidney problems", :event :admission, :t 1260, :location {:ward "Renal", :bed "RENAL-01", :placement :licensed}, :forced false} {:event :registered, :t 2760, :active-mrn "MRN000003", :persona {:name {:family "Wilson", :given "John"}, :sex :male, :dob "1966-04-19", :age 58, :address {:street "702 Crestwood Ave", :city "Tucson", :state "AZ", :zip "85701"}, :phone "821-573-4833", :ssn "900-87-3623", :payer {:id "commercial-ppo", :name "Commercial PPO", :type :commercial}}, :participants [{:patient-id "PID-000002-8c2f7e6a", :role :subject}], :warm-up false} {:home-ward "Renal", :participants [{:patient-id "PID-000002-8c2f7e6a", :role :subject}], :active-mrn "MRN000003", :attending "3980680383", :warm-up false, :reason "Kidney problems", :event :admission, :t 2760, :location {:ward "Renal", :bed "RENAL-03", :placement :licensed}, :forced false} {:event :registered, :t 5040, :active-mrn "MRN000004", :persona {:name {:family "O'Brien", :given "Liam"}, :sex :male, :dob "2018-08-07", :age 6, :address {:street "89 Riverside Dr", :city "Sacramento", :state "CA", :zip "95814"}, :phone "662-603-0148", :ssn "900-64-9257", :payer {:id "commercial-ppo", :name "Commercial PPO", :type :commercial}}, :participants [{:patient-id "PID-000003-75598130", :role :subject}], :warm-up false} {:home-ward "Renal", :participants [{:patient-id "PID-000003-75598130", :role :subject}], :active-mrn "MRN000004", :attending "4255631598", :warm-up false, :reason "Kidney problems", :event :admission, :t 5040, :location {:ward "Renal", :bed "RENAL-02", :placement :licensed}, :forced false} {:event :registered, :t 8040, :active-mrn "MRN000005", :persona {:name {:family "Wilson", :given "Linda"}, :sex :female, :dob "1942-03-21", :age 82, :address {:street "63 Pinehurst St", :city "Charlotte", :state "NC", :zip "28202"}, :phone "782-290-7929", :ssn "900-49-3979", :payer {:id "medicaid", :name "Medicaid", :type :medicaid}}, :participants [{:patient-id "PID-000004-2467dffa", :role :subject}], :warm-up false} {:home-ward "Renal", :participants [{:patient-id "PID-000004-2467dffa", :role :subject}], :active-mrn "MRN000005", :attending "4255631598", :warm-up false, :reason "Kidney problems", :event :admission, :t 8040, :location {:ward "Renal", :bed "RENAL-H01", :placement :surge}, :forced false} {:event :discharge, :t 8820, :active-mrn "MRN000001", :location {:ward "Renal", :bed "RENAL-04", :placement :licensed}, :attending "4255631598", :participants [{:patient-id "PID-000000-918175ce", :role :subject}], :warm-up false} {:event :discharge, :t 10800, :active-mrn "MRN000003", :location {:ward "Renal", :bed "RENAL-03", :placement :licensed}, :attending "3980680383", :participants [{:patient-id "PID-000002-8c2f7e6a", :role :subject}], :warm-up false} {:event :discharge, :t 10860, :active-mrn "MRN000002", :location {:ward "Renal", :bed "RENAL-01", :placement :licensed}, :attending "4255631598", :participants [{:patient-id "PID-000001-881e2907", :role :subject}], :warm-up false} {:event :discharge, :t 18000, :active-mrn "MRN000004", :location {:ward "Renal", :bed "RENAL-02", :placement :licensed}, :attending "4255631598", :participants [{:patient-id "PID-000003-75598130", :role :subject}], :warm-up false} {:event :discharge, :t 21360, :active-mrn "MRN000005", :location {:ward "Renal", :bed "RENAL-H01", :placement :surge}, :attending "4255631598", :participants [{:patient-id "PID-000004-2467dffa", :role :subject}], :warm-up false}]}

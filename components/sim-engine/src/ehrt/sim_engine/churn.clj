@@ -12,11 +12,31 @@
     are never removed, reordered, or altered. `strip` is the converse
     made executable: filtering every churn-insertable step type back
     out of a churned pathway recovers the original exactly.
-  - all stochastic choices draw from the run's single seeded RNG:
-    `inject` takes the run's own `java.util.Random` (the SAME instance
-    ehrt.sim-engine.engine/run already threads through decide, not a
-    derived or isolated stream) -- the same reasoning sim/ADR-0009 gives
-    for NPI generation, extended here.
+  - all stochastic choices draw from THIS PATIENT's own seeded stream:
+    `inject` takes the `:patient`-family `java.util.Random`
+    ehrt.sim-engine.engine/run derives for the patient whose pathway is
+    being churned (ADR-0171, arc 1). Churn's draw sites are PATIENT-
+    scoped by the census -- they read no other patient's state and land
+    on no other patient -- so injecting churn into patient N's pathway
+    reaches nobody else's draws.
+
+    This paragraph REPLACES, and does not merely soften, the one that
+    stood here until ADR-0171 -- `inject` takes the run's own
+    java.util.Random (the SAME instance ... not a derived or isolated
+    stream), the same reasoning sim/ADR-0009 gives for NPI generation.
+    That sentence was a disclosure of a CONSEQUENCE, written when the
+    only alternative on the table was sim/ADR-0009's rejected option
+    (b): a one-off isolated stream carved out for one site to preserve
+    one fixture's bytes. It was never an argument for sharing -- it was
+    an argument against AD-HOC carve-outs, and it does not reach a
+    principled, total partition keyed on stable ids. The guarantee
+    sim/ADR-0009 declined to buy (backward compatibility across a
+    consumption change) is still not being bought.
+
+    What the paragraph protected, and what survives untouched, is the
+    fixed-consumption law two paragraphs below: draw count regardless of
+    the profile's values or the pathway's applicability state, and with
+    it the `zero-profile-is-the-identity-transform` property.
 
   Applicability oracle: docs/patient-state-model.md's event-validity
   table is what decides whether a given churn step type is legal at a

@@ -68,8 +68,8 @@ shown one per line for readability; the real wire format uses `\r`):
 ```
 MSH|^~\&|EHR-TESTING-SIM|SIM|||20240101000000+0000||ADT^A01|MRN000001-A01-0|P|2.3
 EVN|A01|20240101000000+0000
-PID|1||MRN000001||Gonzalez^Barbara||19350221|F|||22 Chestnut Ct^^Providence^RI^02903||607-335-0157
-PV1|1|I|Renal^^RENAL-01^general-hospital||||0384055899^Chen^Amara
+PID|1||MRN000001||Garcia^Sandra||19520726|F|||914 Fairview Blvd^^Salt Lake City^UT^84101||349-906-1132
+PV1|1|I|Renal^^RENAL-04^general-hospital||||4255631598^Chen^Amara
 IN1|1||medicare-65|Medicare
 ```
 
@@ -81,24 +81,24 @@ The same patient's `Patient` and one `Observation` resource, from
   "resourceType": "Patient",
   "id": "PID-000000-918175ce",
   "identifier": [{"system": "urn:ehrt.sim:mrn", "value": "MRN000001"}],
-  "name": [{"family": "Gonzalez", "given": ["Barbara"]}],
+  "name": [{"family": "Garcia", "given": ["Sandra"]}],
   "gender": "female",
-  "birthDate": "1935-02-21",
-  "address": [{"line": ["22 Chestnut Ct"], "city": "Providence", "state": "RI", "postalCode": "02903"}],
-  "telecom": [{"system": "phone", "value": "607-335-0157"}]
+  "birthDate": "1952-07-26",
+  "address": [{"line": ["914 Fairview Blvd"], "city": "Salt Lake City", "state": "UT", "postalCode": "84101"}],
+  "telecom": [{"system": "phone", "value": "349-906-1132"}]
 }
 ```
 
 ```json
 {
   "resourceType": "Observation",
-  "id": "PID-000000-918175ce-obs-0",
+  "id": "PID-000000-918175ce-obs-2",
   "status": "final",
-  "code": {"coding": [{"system": "http://loinc.org", "code": "6690-2",
-                        "display": "Leukocytes [#/volume] in Blood by Automated count"}]},
-  "valueQuantity": {"value": 21.0, "unit": "K/uL"},
-  "referenceRange": [{"low": {"value": 4.5}, "high": {"value": 11.0}}],
-  "interpretation": [{"coding": [{"code": "H"}]}]
+  "code": {"coding": [{"system": "http://loinc.org", "code": "718-7",
+                        "display": "Hemoglobin [Mass/volume] in Blood"}]},
+  "valueQuantity": {"value": 8.2, "unit": "g/dL"},
+  "referenceRange": [{"low": {"value": 12.0}, "high": {"value": 17.5}}],
+  "interpretation": [{"coding": [{"code": "L"}]}]
 }
 ```
 
@@ -114,11 +114,11 @@ Resolving across both:
   checks exactly this correspondence.
 - **`Patient.identifier[0].value` ("MRN000001") is PID-3, verbatim** —
   the one identifier both formats actually put on the wire/document.
-- **The Observation's LOINC code (`6690-2`, Leukocytes) and abnormal
-  interpretation (`H`, high) are the SAME computed truth** rendered
-  twice: OBX-8 `H` in the ORU^R01 message (`messages.txt`, not shown
+- **The Observation's LOINC code (`718-7`, Hemoglobin) and abnormal
+  interpretation (`L`, low) are the SAME computed truth** rendered
+  twice: OBX-8 `L` in the ORU^R01 message (`messages.txt`, not shown
   above — see `../order-result/README.md`'s own excerpt for the full
-  ORU), and `interpretation[0].coding[0].code "H"` here — both derived
+  ORU), and `interpretation[0].coding[0].code "L"` here — both derived
   from the identical `ehrt.sim-engine.order-profiles/abnormal-flag`
   computation over the identical sampled value, never re-derived
   independently by either emitter.

@@ -22,8 +22,17 @@ relocates a boarder the moment a real bed frees.
 ## Command
 
 ```bash
-bin/ehrt sim run --seed 1 --patients 25 --arrival-gap 20 --emit hl7 --format er7
+bin/ehrt sim run --seed 1 --patients 25 --arrival-gap 22 --emit hl7 --format er7
 ```
+
+(`--arrival-gap` was **20** until ADR-0171's stream partition, which
+reshuffled every draw in this run and pushed it over the cliff: at gap
+20 the same seed now exits `:capacity-exhausted` on Renal, the fifth
+rung this ladder deliberately does not have. Widening the gap by two
+minutes is the smallest change that keeps the demo's own subject
+intact, and it holds the demo's own subject matter almost exactly
+level: 14 bed-ready transfers and 9 Emergency-surge boardings in 89
+events, against the pre-partition capture's 15 and 9 in 90.)
 
 (`--format er7`, go-public session Task 1, is what produced
 [`messages.txt`](messages.txt) directly — bare wire bytes, nothing
@@ -31,45 +40,46 @@ else.)
 
 ## What to look for
 
-- [`ground-truth.edn`](ground-truth.edn): patient `PID-000010-8a582fca`
-  (MRN000011) is admitted at `:t 5760` directly into an Emergency
-  surge slot (`{:ward "Emergency", :bed "ED-H04", :placement :surge}`)
-  — boarding from the very first event, home ward Renal. At `:t 11220`,
-  patient `PID-000008-ef953636` (MRN000009) discharges from
-  `RENAL-04` in the SAME tick that MRN000011's own `:transfer` event
-  fires, moving them from `ED-H04` into the just-freed `RENAL-04` —
+- [`ground-truth.edn`](ground-truth.edn): patient `PID-000011-2380309d`
+  (MRN000012) is admitted at `:t 6960` directly into an Emergency
+  surge slot (`{:ward "Emergency", :bed "ED-H06", :placement :surge}`)
+  — boarding from the very first event, home ward Renal. At `:t 11820`,
+  patient `PID-000002-1c9756ce` (MRN000003) discharges from
+  `RENAL-03` in the SAME tick that MRN000012's own `:transfer` event
+  fires, moving them from `ED-H06` into the just-freed `RENAL-03` —
   `:bed-ready true` on that transfer event names exactly this
-  causation. The same coupling repeats later in the log (`:t 19200`,
-  a different boarder reusing `ED-H04`), so this is not a one-off
-  artifact of this particular seed.
+  causation. The coupling is not a one-off artifact of this seed: the
+  log carries **fourteen** `:bed-ready true` transfers, the next one at
+  `:t 13980` (MRN000013, boarding in `ED-H03`, pulled into `RENAL-02`
+  by MRN000006's discharge).
 - [`messages.txt`](messages.txt): the three messages this produces,
-  found by grepping their own control ids (`MRN000011-A01`,
-  `MRN000009-A03`, `MRN000011-A02`) — see the excerpt below.
+  found by grepping their own control ids (`MRN000012-A01`,
+  `MRN000003-A03`, `MRN000012-A02`) — see the excerpt below.
 
 ## Excerpt: admission (boarding), the other patient's discharge, and the triggered transfer
 
 ```
-MSH|^~\&|EHR-TESTING-SIM|SIM|||20240101013600+0000||ADT^A01|MRN000011-A01-5760|P|2.3
-PID|1||MRN000011||Rodriguez^Michael||19740420|M|||605 Lakeview Way^^Minneapolis^MN^55401||220-451-5853
-PV1|1|I|Emergency^^ED-H04^general-hospital||||6962094986^Reyes^Priya
+MSH|^~\&|EHR-TESTING-SIM|SIM|||20240101015600+0000||ADT^A01|MRN000012-A01-6960|P|2.3
+PID|1||MRN000012||Davis^Mason||20140106|M|||312 Cedar Ln^^Nashville^TN^37203||618-233-1406
+PV1|1|I|Emergency^^ED-H06^general-hospital||||6283041245^Reyes^Priya
 
-MSH|^~\&|EHR-TESTING-SIM|SIM|||20240101030700+0000||ADT^A03|MRN000009-A03-11220|P|2.3
-PID|1||MRN000009||Kim^Joshua||19921021|M|||482 Ridgeway Ln^^Springfield^IL^62704||666-875-6750
-PV1|1|I|Renal^^RENAL-04^general-hospital||||6962094986^Reyes^Priya|||||||||||||||||||||||||||||01
+MSH|^~\&|EHR-TESTING-SIM|SIM|||20240101031700+0000||ADT^A03|MRN000003-A03-11820|P|2.3
+PID|1||MRN000003||Garcia^Michael||19731220|M|||312 Cedar Ln^^Nashville^TN^37203||340-265-9096
+PV1|1|I|Renal^^RENAL-03^general-hospital||||2403984257^Chen^Amara|||||||||||||||||||||||||||||01
 
-MSH|^~\&|EHR-TESTING-SIM|SIM|||20240101030700+0000||ADT^A02|MRN000011-A02-11220|P|2.3
-PID|1||MRN000011||Rodriguez^Michael||19740420|M|||605 Lakeview Way^^Minneapolis^MN^55401||220-451-5853
-PV1|1|I|Renal^^RENAL-04^general-hospital|||Emergency^^ED-H04^general-hospital|6962094986^Reyes^Priya
+MSH|^~\&|EHR-TESTING-SIM|SIM|||20240101031700+0000||ADT^A02|MRN000012-A02-11820|P|2.3
+PID|1||MRN000012||Davis^Mason||20140106|M|||312 Cedar Ln^^Nashville^TN^37203||618-233-1406
+PV1|1|I|Renal^^RENAL-03^general-hospital|||Emergency^^ED-H06^general-hospital|6283041245^Reyes^Priya
 ```
 
 (Segments are shown one per line here for readability; the real wire
 format in `messages.txt` uses `\r`, HL7v2's actual segment delimiter.)
 
-PV1-3 on the admission (`Emergency^^ED-H04^general-hospital`) is the
+PV1-3 on the admission (`Emergency^^ED-H06^general-hospital`) is the
 boarding placement itself — administratively assigned to Renal
 (`:home-ward "Renal"` in the ground truth) but physically in an ED
-surge slot. The transfer's PV1-3 (`Renal^^RENAL-04^general-hospital`)
-and PV1-6 (`Emergency^^ED-H04^general-hospital`, the prior location) —
+surge slot. The transfer's PV1-3 (`Renal^^RENAL-03^general-hospital`)
+and PV1-6 (`Emergency^^ED-H06^general-hospital`, the prior location) —
 firing at the exact same `:t` as the other patient's own discharge —
 are the wire-level trace of the causation `ground-truth.edn`'s
 `:bed-ready true` names directly.

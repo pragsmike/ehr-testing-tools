@@ -95,10 +95,10 @@ echo "== regen-traces: every demos/traces/*/README.md's own commands, verbatim, 
 
 # ---------------------------------------------------------------- boarding-transfer
 # BEGIN boarding-transfer commands (verbatim from demos/traces/boarding-transfer/README.md)
-expect 0 bin/ehrt sim run --seed 1 --patients 25 --arrival-gap 20 --emit hl7 --format er7
+expect 0 bin/ehrt sim run --seed 1 --patients 25 --arrival-gap 22 --emit hl7 --format er7
 # END boarding-transfer commands
 bt_er7=$STEP
-expect 0 bin/ehrt sim run --seed 1 --patients 25 --arrival-gap 20 --emit hl7   # APPARATUS (see header note 2)
+expect 0 bin/ehrt sim run --seed 1 --patients 25 --arrival-gap 22 --emit hl7   # APPARATUS (see header note 2)
 bt_env=$STEP
 copy_er7 "$bt_er7" demos/traces/boarding-transfer/messages.txt
 plan er7          "$bt_env" "$WORK/boarding-transfer.er7.check"

@@ -57,9 +57,9 @@ Default profile (`messages-default.txt`):
 ```
 MSH|^~\&|EHR-TESTING-SIM|SIM|||20240101000000+0000||ADT^A01|MRN000001-A01-0|P|2.3
 EVN|A01|20240101000000+0000
-PID|1||MRN000001||Miller^Sophia||20120103|F|||204 Maple Ave^^Portland^OR^97201||564-979-8065
-PV1|1|I|Renal^^RENAL-04^general-hospital||||3903633105^Reyes^Priya
-IN1|1||commercial-hmo|Commercial HMO
+PID|1||MRN000001||D'Angelo^Joshua||19810203|M|||78 Magnolia St^^Atlanta^GA^30303||735-633-0549
+PV1|1|I|Renal^^RENAL-02^general-hospital||||4255631598^Chen^Amara
+IN1|1||commercial-ppo|Commercial PPO
 ```
 
 St. Aldric's Memorial profile (`messages-aldric.txt`):
@@ -67,10 +67,10 @@ St. Aldric's Memorial profile (`messages-aldric.txt`):
 ```
 MSH|^~\&|ALDRIC-EHR|ALDRIC|DOWNSTREAM|DOWNSTREAM-FAC|20240101000000+0000||ADT^A01|MRN000001-A01-0|P|2.5.1
 EVN|A01|20240101000000+0000
-PID|1||MRN000001||Miller^Sophia||20120103|F|||204 Maple Ave^^Portland^OR^97201||564-979-8065
-PV1|1|IN^99ALDRIC|Renal^^RENAL-04^general-hospital||||3903633105^Reyes^Priya
-IN1|1||commercial-hmo|Commercial HMO
-ZPI|commercial-hmo|commercial|ALDRIC-PAYER-V1
+PID|1||MRN000001||D'Angelo^Joshua||19810203|M|||78 Magnolia St^^Atlanta^GA^30303||735-633-0549
+PV1|1|IN^99ALDRIC|Renal^^RENAL-02^general-hospital||||4255631598^Chen^Amara
+IN1|1||commercial-ppo|Commercial PPO
+ZPI|commercial-ppo|commercial|ALDRIC-PAYER-V1
 ```
 
 (Segments shown one per line for readability, trailing empty PV1 fields
@@ -86,7 +86,7 @@ rendered through St. Aldric's own code-table override
 (`ehrt.sim-emit-hl7.site-profile/code-for`). **ZPI** is new: a Z-segment
 this profile alone declares, bound to `[:persona :payer :id]` and
 `[:persona :payer :type]` (both resolve against the SAME `:registered`
-event's persona that produced the IN1 segment above — `commercial-hmo`
+event's persona that produced the IN1 segment above — `commercial-ppo`
 appears in both), plus a literal fallback field. Patient 1's own
 discharge (later in each `messages-*.txt`) shows the same pattern on
 **PV1-36** (discharge disposition): `01` (today's standard default)

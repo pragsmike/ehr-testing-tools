@@ -63,9 +63,31 @@
 ;; population the round trip above already exercises.
 
 (def ^:private pinned-suppressed-straddle-spans
-  {20260802 2, 1 0, 42 0})
+  "Seed -> the total this run suppresses. RE-PINNED by ADR-0171's stream
+  partition, which moved every one of these numbers.
+
+  It was `{20260802 2, 1 0, 42 0}`. Post-partition all three of those
+  seeds count ZERO, which would have left this gate pinning nothing but
+  absences -- an all-zero pin proves the counter is READ, never that it
+  can COUNT. Swept under the LIVE engine over fifteen seeds: 2, 4, 6 and
+  9 each suppress exactly one span, the other eleven suppress none, so
+  the phenomenon is real and rare rather than gone. 20260802 is replaced
+  by 2, the smallest non-zero seed; 1 and 42 stay as the zero controls
+  they already were.
+
+  `gate-seeds` above deliberately does NOT follow: 20260802 still
+  produces real clinical content and is still a good round-trip seed --
+  it is only as a straddle witness that it went inert."
+  {2 1, 1 0, 42 0})
 
 (deftest suppressed-straddle-spans-is-pinned-per-seed
+  (testing "the pin is not all zeros -- `R-witness-population-is-counted`
+            applied to a counter. A gate whose every pinned value is 0
+            proves the counter is read, never that it can count, and
+            ADR-0171's reshuffle put it one seed away from exactly that."
+    (is (pos? (reduce + (vals pinned-suppressed-straddle-spans)))
+        (str "every pinned straddle-span total is zero -- this gate has gone "
+             "vacuous: " (pr-str pinned-suppressed-straddle-spans))))
   (doseq [[seed expected-total] pinned-suppressed-straddle-spans]
     (testing (str "seed " seed ": the straddle fix's own counter, pinned")
       (let [total (atom 0)

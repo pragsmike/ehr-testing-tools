@@ -77,6 +77,20 @@
    ;; changes, and no non-sim corpus grows a key that means nothing to
    ;; it.
    :event-schema-version engine/event-schema-version
+   ;; ADR-0171 ruling D1 (arc 1, the RNG stream partition): which RNG
+   ;; stream scheme produced this corpus. Top-level, a string, and a
+   ;; sibling of :event-schema-version above for the identical reason --
+   ;; it describes the ARTIFACT, not the tool -- and additive at this
+   ;; seam because ManifestV1_1 is an open map, so no shared schema
+   ;; changes and no non-sim corpus grows a key that means nothing to it.
+   ;;
+   ;; It could NOT go inside :seeds: provenance/manifest.clj declares
+   ;; that map `[:map-of :keyword :int]`, int values only.
+   ;;
+   ;; A DISCRIMINATOR, not a warranty -- see engine/stream-scheme's own
+   ;; docstring, and sim/ADR-0009 decision 1 for the within-version seed
+   ;; stability policy this marker rides without changing.
+   :stream-scheme engine/stream-scheme
    :stage :simulated
    :generator {:name "ehrt.sim"
                :version (or version version/version)

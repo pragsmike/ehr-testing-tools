@@ -26,7 +26,8 @@ confusing them is the classic error this domain invites.
 
 **The GMF module machine** — when a patient is assigned a disease
 module — walks a MITRE-authored clinical script (`ConditionOnset`,
-`Delay`, `Encounter`, …) under the run's single seeded RNG
+`Delay`, `Encounter`, …) under this patient's own seeded RNG stream
+(ADR-0171's `:patient` family; the run's single RNG before that arc)
 (`ehrt.patient-simulator.gmf-interpreter`). This is **script-space**: it
 computes what a disease *should* do to a patient, in the abstract,
 the way a screenwriter's draft says a character enters a room — never

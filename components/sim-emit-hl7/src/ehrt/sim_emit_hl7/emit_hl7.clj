@@ -956,10 +956,12 @@
 (defn plan-latency
   "RNG x GT x LatencyProfile (ehrt.sim-model.config/LatencyProfile) ->
   offsets ({control-id -> offset-seconds}). Fixed RNG consumption (the
-  RNG-path law, .agents/rulings.md, AR-RL2-2's own underlying
-  discipline; `ehrt.sim-engine.engine/assign-pathway`'s own worked
-  example, engine.clj:1165-1183, is the precedent this function
-  follows): ALWAYS consumes exactly one `.nextDouble` per ground-truth
+  RNG-path law, `rulings.md#R-measure-claimed-population`'s own
+  underlying discipline; `ehrt.sim-engine.engine/assign-pathway`'s own
+  worked example -- cited BY NAME, never by line: that line moved twice
+  already, once under arc 0's refactor and once under ADR-0171's, which
+  is exactly the species ADR-0170 named -- is the precedent this
+  function follows): ALWAYS consumes exactly one `.nextDouble` per ground-truth
   event, in log order, regardless of whether that event's own :event
   type is covered by `latency-profile` -- draw-and-discard for an
   uncovered type, so adding one profile entry for event type X can

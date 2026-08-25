@@ -162,7 +162,7 @@
 
 (defn- admit
   [world t patient-id location]
-  (let [{:keys [events]} (engine/decide (Random. 1) t world patient-id
+  (let [{:keys [events]} (engine/decide (engine/one-stream (Random. 1)) t world patient-id
                                         {:type :admission :location location})]
     (fold-events world events)))
 
@@ -185,7 +185,7 @@
 (deftest cancel-admit-round-trips-as-a11
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
-        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1" {:type :cancel-admit})
+        {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1" {:type :cancel-admit})
         world2 (fold-events world1 events)
         messages (emit-hl7/emit (:ground-truth world2) ref-date utc-offset churn-facility churn-providers)
         a11 (last messages)
@@ -198,9 +198,9 @@
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
         pre-location (get-in world1 [:patients "P1" :location])
-        {t-events :events} (engine/decide (Random. 1) 10 world1 "P1" {:type :transfer :location "ED"})
+        {t-events :events} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1" {:type :transfer :location "ED"})
         world2 (fold-events world1 t-events)
-        {c-events :events} (engine/decide (Random. 1) 20 world2 "P1" {:type :cancel-transfer})
+        {c-events :events} (engine/decide (engine/one-stream (Random. 1)) 20 world2 "P1" {:type :cancel-transfer})
         world3 (fold-events world2 c-events)
         messages (emit-hl7/emit (:ground-truth world3) ref-date utc-offset churn-facility churn-providers)
         a12 (last messages)
@@ -214,9 +214,9 @@
 (deftest cancel-discharge-round-trips-as-a13
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
-        {d-events :events} (engine/decide (Random. 1) 10 world1 "P1" {:type :discharge})
+        {d-events :events} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1" {:type :discharge})
         world2 (fold-events world1 d-events)
-        {c-events :events} (engine/decide (Random. 1) 20 world2 "P1" {:type :cancel-discharge})
+        {c-events :events} (engine/decide (engine/one-stream (Random. 1)) 20 world2 "P1" {:type :cancel-discharge})
         world3 (fold-events world2 c-events)
         messages (emit-hl7/emit (:ground-truth world3) ref-date utc-offset churn-facility churn-providers)
         a13 (last messages)
@@ -227,7 +227,7 @@
 (deftest transfer-in-error-emits-two-messages-a02-then-a12-in-error
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
-        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1"
+        {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1"
                                         {:type :transfer-in-error :location "ED"})
         world2 (fold-events world1 events)
         messages (emit-hl7/emit (:ground-truth world2) ref-date utc-offset churn-facility churn-providers)]
@@ -239,7 +239,7 @@
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")
                           "P2" (engine/initial-patient "P2" "MRN000002")})
         world1 (-> world0 (admit 0 "P1" "Renal") (admit 5 "P2" "Renal"))
-        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1" {:type :bed-swap})
+        {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1" {:type :bed-swap})
         world2 (fold-events world1 events)
         messages (emit-hl7/emit (:ground-truth world2) ref-date utc-offset churn-facility churn-providers)
         a17 (last messages)
@@ -260,7 +260,7 @@
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")
                           "P2" (engine/initial-patient "P2" "MRN000002")})
         world1 (-> world0 (admit 0 "P1" "Renal") (admit 5 "P2" "Renal"))
-        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1" {:type :merge :with "P2"})
+        {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1" {:type :merge :with "P2"})
         world2 (fold-events world1 events)
         messages (emit-hl7/emit (:ground-truth world2) ref-date utc-offset churn-facility churn-providers)
         a40 (last messages)
@@ -275,7 +275,7 @@
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")
                           "P2" (engine/initial-patient "P2" "MRN000002")})
         world1 (-> world0 (admit 0 "P1" "Renal") (admit 5 "P2" "Renal"))
-        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1" {:type :bed-swap})
+        {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1" {:type :bed-swap})
         world2 (fold-events world1 events)]
     (is (= (emit-hl7/emit (:ground-truth world2) ref-date utc-offset churn-facility churn-providers)
            (emit-hl7/emit (:ground-truth world2) ref-date utc-offset churn-facility churn-providers)))))
@@ -292,7 +292,7 @@
     (let [world0 {:patients {"P1" (engine/initial-patient "P1" "MRN000001")}
                   :facility churn-facility :providers churn-providers :ground-truth []}
           world1 (admit world0 0 "P1" "Renal")
-          {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1" {:type :cancel-transfer})
+          {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1" {:type :cancel-transfer})
           rejected-event (first events)]
       (is (= :step-rejected (:event rejected-event)))
       (is (= [] (emit-hl7/event->messages ref-date utc-offset churn-facility churn-providers rejected-event))))))
@@ -643,7 +643,7 @@
     (let [world0 {:patients {"P1" (engine/initial-patient "P1" "MRN000001")}
                   :facility sim-model/default-facility :providers sim-model/default-provider-templates
                   :ground-truth []}
-          {:keys [events]} (engine/decide (Random. 1) 0 world0 "P1" {:type :admission :location "Renal"})
+          {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 0 world0 "P1" {:type :admission :location "Renal"})
           messages (emit-hl7/emit events ref-date utc-offset sim-model/default-facility sim-model/default-provider-templates)
           parsed (parser/parse (first messages))]
       (is (= "MRN000001" (message/get-field-first-value parsed "PID" 3)))
@@ -678,7 +678,7 @@
         registered-event {:event :registered :t 0 :active-mrn "MRN000001" :persona persona
                           :participants [{:patient-id "P1" :role :subject}]}
         world1 (update-in world0 [:patients "P1"] engine/evolve registered-event)
-        {:keys [events]} (engine/decide (Random. 1) 0 world1 "P1" {:type :admission :location "Renal"})
+        {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 0 world1 "P1" {:type :admission :location "Renal"})
         ground-truth (into [registered-event] events)
         messages (emit-hl7/emit ground-truth ref-date utc-offset sim-model/default-facility sim-model/default-provider-templates)
         parsed (parser/parse (first messages))

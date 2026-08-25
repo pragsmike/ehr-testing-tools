@@ -55,9 +55,9 @@ merely a description of it.
 
 ## What to look for
 
-- [`ground-truth.edn`](ground-truth.edn), line 10090: patient
-  `PID-000018-9c669ecd` (MRN000019) is admitted to the Emergency ward
-  (`ED-H02`, a surge slot) at `:t 241521900` — the `:citation
+- [`ground-truth.edn`](ground-truth.edn), line 9701: patient
+  `PID-000021-4740fba3` (MRN000022) is admitted to the Emergency ward
+  (`ED-H05`, a surge slot) at `:t 251210100` — the `:citation
   {:module "appendicitis", :state :appendicitis-encounter}` on the
   event itself is the glass-box trace back to the exact vendored
   module state that produced it. The admission's own `:conditions`
@@ -68,23 +68,26 @@ merely a description of it.
   for what SHOULD have been a transfer into the inpatient surgical
   encounter, and instead is where this patient's compiled trajectory
   stops (the truncation finding, above).
-- [`ground-truth.edn`](ground-truth.edn), line 10075: patient
-  `PID-000032-59d50d35` (MRN000033)'s `:outpatient-visit`/
+- [`ground-truth.edn`](ground-truth.edn), at `:t 5809740`: patient
+  `PID-000056-e2258744` (MRN000057)'s `:outpatient-visit`/
   `:outpatient-visit-end` pair citing `sinusitis`/`doctor-visit` and
-  `sinusitis`/`end-encounter` — one of 87 patients (of 100) whose own
+  `sinusitis`/`end-encounter` — one of 68 patients (of 100) whose own
   event stream carries at least one `sinusitis`-cited fact this run.
 - **Mix summary** (patients whose own event stream carries at least
   one fact citing each module — computed from the ground-truth log's
   own citations, since module ASSIGNMENT itself isn't separately
   stamped onto the `:registered` event; see the note below):
-  **87 patients manifest `sinusitis` content, 3 manifest `appendicitis`
-  content, 10 manifest neither** (of 100 registered). The 90/10 weight
+  **68 patients manifest `sinusitis` content, 1 manifests `appendicitis`
+  content, 31 manifest neither** (of 100 registered; re-counted from the
+  regenerated log after ADR-0171's stream partition reshuffled which
+  ordinal draws which module and which walk — it was 87/3/10 before).
+  The 90/10 weight
   (`config.edn`) is the ASSIGNMENT ratio; the manifested ratio is lower
   for `appendicitis` because — realistically — only a fraction of
   patients ever assigned the module actually onset appendicitis within
   their own lifetime and this run's horizon window (`appendicitis.json`'s
   own real lifetime incidence, ~7–8%, `components/patient-simulator/docs/gmf-interpreter.md`'s
-  appendix). The 10 "neither" patients are registrations too young, or
+  appendix). The 31 "neither" patients are registrations too young, or
   otherwise unlucky, for their assigned module to have produced a
   fact-bearing event yet within this run's own window — a real,
   honest artifact of how module content actually manifests, not a bug.
@@ -92,21 +95,21 @@ merely a description of it.
 ## Excerpt: a real vendored-module emergency admission, glass-box cited
 
 ```
-MSH|^~\&|EHR-TESTING-SIM|SIM|||20310827092500+0000||ADT^A01|MRN000019-A01-241521900|P|2.3
-EVN|A01|20310827092500+0000
-PID|1||MRN000019||Smith^Liam||20180826|M|||56 Harborview Rd^^Boston^MA^02108||542-226-9017
-PV1|1|I|Emergency^^ED-H02^general-hospital||||7619747083^Reyes^Priya|||||||||||||||||||||||||||||
+MSH|^~\&|EHR-TESTING-SIM|SIM|||20311217123500+0000||ADT^A01|MRN000022-A01-251210100|P|2.3
+EVN|A01|20311217123500+0000
+PID|1||MRN000022||Davis^Michael||20051216|M|||35 Aspen Way^^Albuquerque^NM^87102||967-291-8344
+PV1|1|I|Emergency^^ED-H05^general-hospital||||7919726852^Reyes^Priya|||||||||||||||||||||||||||||
 IN1|1||commercial-hmo|Commercial HMO
 
-MSH|^~\&|EHR-TESTING-SIM|SIM|||20310827092500+0000||ADT^A03|MRN000019-A03-241521900|P|2.3
-EVN|A03|20310827092500+0000
-PID|1||MRN000019||Smith^Liam||20180826|M|||56 Harborview Rd^^Boston^MA^02108||542-226-9017
-PV1|1|I|Emergency^^ED-H02^general-hospital||||7619747083^Reyes^Priya|||||||||||||||||||||||||||||01
+MSH|^~\&|EHR-TESTING-SIM|SIM|||20311217123500+0000||ADT^A03|MRN000022-A03-251210100|P|2.3
+EVN|A03|20311217123500+0000
+PID|1||MRN000022||Davis^Michael||20051216|M|||35 Aspen Way^^Albuquerque^NM^87102||967-291-8344
+PV1|1|I|Emergency^^ED-H05^general-hospital||||7919726852^Reyes^Priya|||||||||||||||||||||||||||||01
 ```
 
 (Segments are shown one per line here for readability; the real wire
 format in [`messages.txt`](messages.txt) uses `\r`, HL7v2's actual
-segment delimiter — found by grepping `MRN000019`.)
+segment delimiter — found by grepping `MRN000022`.)
 
 The A01 is the real emergency admission `appendicitis.json`'s own
 `Appendicitis_Encounter` state produced; the A03 immediately following

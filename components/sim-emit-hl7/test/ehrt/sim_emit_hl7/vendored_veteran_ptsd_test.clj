@@ -69,10 +69,28 @@
   interpreter/consume-step-budget`, reset-on-any-advance semantics) and
   an unhandled `:virtual` encounter class in `compile-trajectory`'s own
   `encounter->step`/`encounter-end->step`. Old values (vendoring batch
-  4, ADR-0090): {20260802 14, 1 6, 42 7}."
-  {20260802 0, 1 1, 42 0})
+  4, ADR-0090): {20260802 14, 1 6, 42 7}.
+
+  RE-PINNED AGAIN (2026-08-25, ADR-0171): the RNG stream partition moved
+  every walk, and seed 1 -- the only non-zero of the three -- went to 0,
+  which would have left this gate pinning three absences. An all-zero pin
+  proves the counter is READ, never that it can COUNT. Swept under the
+  LIVE engine over eight seeds: 3 and 4 each suppress one span, the other
+  six suppress none. Seed 3 replaces seed 1 as the non-zero witness; the
+  two zero controls stay. Previous values: {20260802 0, 1 1, 42 0}.
+
+  `gate-seeds` above deliberately does NOT follow -- seed 1 is still a
+  good round-trip seed, it is only as a straddle witness that it went
+  inert."
+  {20260802 0, 3 1, 42 0})
 
 (deftest suppressed-straddle-spans-is-pinned-per-seed
+  (testing "the pin is not all zeros -- `R-witness-population-is-counted`
+            applied to a counter, the same guard
+            `vendored_veteran_prostate_cancer_test` now carries."
+    (is (pos? (reduce + (vals pinned-suppressed-straddle-spans)))
+        (str "every pinned straddle-span total is zero -- this gate has gone "
+             "vacuous: " (pr-str pinned-suppressed-straddle-spans))))
   (doseq [[seed expected-total] pinned-suppressed-straddle-spans]
     (testing (str "seed " seed ": the straddle fix's own counter, pinned")
       (let [total (atom 0)

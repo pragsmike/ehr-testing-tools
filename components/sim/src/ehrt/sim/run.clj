@@ -419,7 +419,18 @@
                   (assoc :messages
                         (if latency
                           (emit-hl7/emit-wire ground-truth reference-date utc-offset facility providers site-profile
-                                              (emit-hl7/plan-latency (java.util.Random. seed) ground-truth latency))
+                                              ;; ADR-0171 ruling C1: the emission latency
+                          ;; stream is the :emission FAMILY, derived like
+                          ;; every other. It used to be `(java.util.Random.
+                          ;; seed)` -- the master seed VERBATIM, so this
+                          ;; stream replayed the engine's own first draws.
+                          ;; The correlation is invisible while emission is
+                          ;; one draw per event and the two streams are
+                          ;; consumed for unrelated purposes; arc 4 adds
+                          ;; chatter, fan-out and status ladders to this
+                          ;; side, and one `mix64` decorrelates them before
+                          ;; that lands.
+                          (emit-hl7/plan-latency (engine/stream seed :emission 0) ground-truth latency))
                           (emit-hl7/emit ground-truth reference-date utc-offset facility providers site-profile)))
                   (= "fhir" emit) (assoc :fhir-bundles
                                          (emit-fhir/bundle-run ground-truth reference-date utc-offset seed (or at :end)))))))))))))

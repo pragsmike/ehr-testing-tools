@@ -287,8 +287,13 @@ Laws that belong to the composite, not any one stage:
 
 **Determinism (the pipeline is a function).** The entire composite
 from `sim-config` (which contains the seed) to every output is a pure
-function: the single seeded RNG is the only entropy, consumed in an
-order fixed by the total event ordering. Per-stage determinism laws
+function: the seeded RNG is the only entropy, consumed in an
+order fixed by the total event ordering. Since ADR-0171 (arc 1) that
+entropy reaches the composite as FIVE derived streams rather than one
+shared instance -- `(mix64 (mix64 seed family-tag) id-tag)`, keyed by
+family and by a stable id -- so consumption order is fixed per stream
+rather than globally, and adding a draw to one patient's trajectory no
+longer moves any other patient's. Per-stage determinism laws
 are local obligations under this one global claim. Property-tested at
 the *now* boundary; the obligation extends to each stage as it flips
 to `:built`. Corollary worth naming: **sim needs no Normalize stage.**

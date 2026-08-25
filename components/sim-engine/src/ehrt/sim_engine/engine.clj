@@ -8,9 +8,10 @@
   RunNextEventIfDue).
 
   Event-sourcing doctrine (`sim/ADR-0008`): the ground-truth log is the only
-  primitive. `decide` (rng, t, world, patient-id, step) -> {:events
+  primitive. `decide` (streams, t, world, patient-id, step) -> {:events
   :advance} consults the current world (every patient's state so far,
-  plus facility/provider config -- read-only) and the run's single RNG
+  plus facility/provider config -- read-only) and the run's seeded RNG
+  streams (ADR-0171: one per patient, plus two run-scoped)
   to decide what happens, but never returns a new state -- this is
   where cross-patient coupling lives (a discharge's decide call may
   also emit a transfer event for a DIFFERENT patient, the bed-ready
@@ -45,8 +46,8 @@
   warm-up-seconds` as `:warm-up true`; the log stays complete (no
   trimming here -- `sim/ADR-0011` leaves trimming, if any, to Package).
 
-  Determinism doctrine: ALL randomness flows from the single
-  java.util.Random seeded in `run`. No other entropy source (wall
+  Determinism doctrine: ALL randomness flows from java.util.Randoms
+  DERIVED IN `run` FROM THE ONE SEED. No other entropy source (wall
   clock, hash ordering, nondeterministic seq realization) may
   influence output. Same config + seed => identical output, byte for
   byte once serialized -- WITHIN a version; see `sim/ADR-0009`
@@ -54,6 +55,25 @@
   draws (bed choice, attending sampling) triggered, and M2a's identity/
   time changes triggered again (documented once, per the M2a session
   plan, not per-commit).
+
+  Stream partition (ADR-0171, arc 1): the path is now PLURAL. Until
+  this arc there was exactly one Random and consumption order was
+  GLOBAL EVENT ORDER, so adding, removing or reordering a single draw
+  anywhere shifted every later draw for every later patient -- which is
+  what made arcs 2-4 (newborns mid-run, new decide draws, emission
+  chatter) each cost a corpus-wide reshuffle. `run` now derives five
+  streams by family (`stream-family-tag`), keyed on a stable id rather
+  than on construction order, and `decide` takes the stream MAP. A draw
+  added to one patient's pathway now moves that patient. The run-scoped
+  families (`:world`, `:facility`) are where cross-patient coupling
+  still lives -- named and confined, not abolished: their draw counts
+  are conditional on the population, so no per-patient stream can own
+  them (ADR-0171 section 2(a)).
+
+  The RNG-path law itself is unchanged: a measurement claiming to
+  characterize the simulator's output must still draw from the real
+  seeded, threaded path (`rulings.md#R-measure-claimed-population`).
+  That path simply became plural.
 
   Step vocabulary: v0's :admission/:delay/:discharge, plus Milestone
   M1's :transfer (docs/operational-models.md's allocation ladder).
@@ -222,9 +242,17 @@
   [^Random rng lo hi]
   (+ lo (.nextInt rng (inc (- hi lo)))))
 
-(defn- mix64
+(defn mix64
   "A fixed, fully-specified 64-bit mix of two longs (splitmix64-style
-  constants) -- deliberately NOT an RNG draw. See `patient-id-for`."
+  constants) -- deliberately NOT an RNG draw. See `patient-id-for`.
+
+  PUBLIC since ADR-0171 ruling A1 (\"reuse `engine.clj:225` `mix64` on
+  `(family-tag, id-tag)`, unchanged, promoted from private to the
+  sim-engine interface\"): the RNG stream partition derives every
+  stream's seed with this same function on the same shape of key, so
+  the partition adds no new numeric surface to specify or test. Its
+  body is untouched by that promotion -- the constants are the ones
+  `patient-id-for` has always used."
   ^long [^long a ^long b]
   (let [x (unchecked-add (unchecked-multiply a -7046029254386353131) b)
         x (unchecked-multiply (bit-xor x (unsigned-bit-shift-right x 30)) -4658895280553007687)
@@ -247,6 +275,123 @@
   [seed ordinal]
   (format "PID-%06d-%08x" ordinal (bit-and (mix64 seed ordinal) 0xffffffff)))
 
+(def stream-scheme
+  "The RNG stream partition's own version marker (ADR-0171 ruling D1),
+  stamped top-level into every sim manifest as `:stream-scheme`,
+  sibling of `:event-schema-version`.
+
+  It is a DISCRIMINATOR, not a warranty. sim/ADR-0009 decision 1 states
+  seed stability as a WITHIN-version guarantee and decision 2 names
+  `:generator {:version ...}` as the cross-version key; this marker adds
+  nothing to either. What it buys is legibility: two corpora with the
+  same seed, config and generator version cannot differ, while two with
+  the same seed and config and DIFFERENT stream schemes are expected to,
+  and the marker says so on the artifact's face instead of making a
+  reader resolve a generator version against a changelog.
+
+  \"1.0\" is the partition itself -- the first scheme there has ever been.
+  Everything generated before it carries no `:stream-scheme` key at all,
+  which is exactly how a pre-migration corpus is told apart from a
+  post-migration one."
+  "1.0")
+
+(def ^:private stream-family-tag
+  "Family -> its fixed tag long (ADR-0171 section 2(b)). A compile-time
+  constant table, deliberately NOT `(hash keyword)`: a hash this repo
+  does not own would put the derivation's stability in someone else's
+  hands, against `rulings.md#R-no-derivation-through-nondeterminism`'s
+  spirit and against `gmf.clj`'s own hash-order caution.
+
+  The five families are the census's five scopes (ADR-0171 section 1):
+
+  * `:patient`  -- this patient's own clinical trajectory. Keyed by
+                   arrival ordinal, the same key `patient-id-for` uses.
+  * `:person`   -- arc 2's demographic/life-arc layer. ZERO draw sites
+                   today; declared now so arc 2 adds rows rather than a
+                   family, and so `newborn-id-tag` below has a family to
+                   name.
+  * `:world`    -- arrivals, and every cross-patient decision: all four
+                   `allocate` calls, `bed-ready-location`, the bed-swap
+                   and merge partner picks. Run-scoped (id-tag 0), because
+                   their DRAW COUNTS are conditional on the population and
+                   no per-patient stream can own them without making one
+                   patient's consumption depend on another's state.
+  * `:facility` -- `materialize-providers`, `choose-attending`, and
+                   `:outpatient-visit`'s uniform provider pick: draws that
+                   read no patient state at all. Run-scoped, and distinct
+                   from `:world` (ruling E1) so adding a ward or a provider
+                   template does not shift arrival gaps or bed choices.
+  * `:emission` -- rendering-time latency planning (`ehrt.sim.run`), which
+                   never enters ground truth. Ruling C1: it used to be
+                   `(java.util.Random. seed)`, the master seed VERBATIM, so
+                   the latency stream replayed the engine's own first draws."
+  {:patient  1
+   :person   2
+   :world    3
+   :facility 4
+   :emission 5})
+
+(defn stream-seed
+  "The seed of one stream: `(mix64 (mix64 master family-tag) id-tag)`
+  (ADR-0171 section 2(b), ruling A1). `id-tag` is the patient's arrival
+  ordinal for `:patient`, and 0 for the run-scoped families.
+
+  Collisions are cosmetic at this project's scale and are not engineered
+  around: two patients sharing a stream seed share a draw sequence, which
+  is a DUPLICATE trajectory, not a corrupt one, and at 10^6 ids over a
+  64-bit mixed space the expected number of colliding pairs is ~2.7e-8.
+
+  Order-free by construction, which is the whole point: a stream is keyed
+  by a STABLE id, never by how many streams were built before it (the
+  reason ADR-0171 rejected `SplittableRandom`'s split order)."
+  ^long [^long master family ^long id-tag]
+  (let [tag (get stream-family-tag family)]
+    (when (nil? tag)
+      (throw (ex-info "unknown RNG stream family"
+                      {:family family :known (set (keys stream-family-tag))})))
+    (mix64 (mix64 master (long tag)) id-tag)))
+
+(defn stream
+  "A fresh `java.util.Random` for one stream -- `stream-seed`'s value,
+  handed to the one constructor the engine has ever used."
+  ;; Deliberately UNHINTED, unlike `stream-seed` above: primitive-long
+  ;; parameter hints compile callers to an IFn$LOLO call site, which a
+  ;; plain `with-redefs` replacement cannot satisfy -- and the locality
+  ;; test's whole mechanism is redefining this var. `run` calls it a
+  ;; handful of times per run (twice, plus once per patient), so there
+  ;; is no arithmetic here worth hinting.
+  [master family id-tag]
+  (Random. (stream-seed (long master) family (long id-tag))))
+
+(defn newborn-id-tag
+  "The `:person`-family id-tag for a newborn (ADR-0171 section 2(c),
+  ruling B1): a birth's stream is derived from the PARENT's stable id and
+  a birth ordinal, never from a global counter, so a birth occurring
+  anywhere in the run perturbs no other person's stream.
+
+  The ordinal is the PAIR `(parity-index, within-delivery-index)`, mixed
+  in that order, with `within-delivery-index` pinned at 0 for as long as
+  multiples are a named v1 limitation. Ruling B1 took the pair from the
+  start deliberately: admitting twins later would otherwise have to widen
+  a bare parity index, renumbering every existing singleton's stream and
+  costing a full newborn-stream reshuffle.
+
+  NO CALLER TODAY. Arc 2 owns the newborn path; this function exists now
+  so arc 2 inherits the key rather than choosing it, and its only gate is
+  `engine-test/the-stream-partition-derives-what-adr-0171-specifies`."
+  ^long [^long parent-id-tag ^long parity-index ^long within-delivery-index]
+  (mix64 (mix64 parent-id-tag parity-index) within-delivery-index))
+
+(defn one-stream
+  "Every family bound to ONE `Random` -- the degenerate stream map a
+  caller with no `run` behind it needs (a single `decide` call in a
+  test). Collapsing the families is EXACTLY the pre-partition behaviour,
+  so a lone `decide` call's draw order is unchanged by ADR-0171; what
+  moved is which stream `run` hands each family, and `run` builds that
+  map itself."
+  [^Random rng]
+  {:patient rng :person rng :world rng :facility rng :emission rng})
+
 (defn events-for-patient
   "Every event `patient-id` participates in, in log order -- the
   patient-phrased replacement for what a single :mrn-keyed lookup used
@@ -261,14 +406,22 @@
   "Decides what happens when patient `patient-id` is due to execute
   `step` at simulated time t (SECONDS from the run's epoch, sim/ADR-0011).
   Consults `world` ({:patients {patient-id -> patient-state} :facility
-  .. :providers ..} -- read-only) and the seeded RNG to make stochastic
+  .. :providers ..} -- read-only) and the seeded RNGs to make stochastic
   and cross-patient choices; returns {:events [<ground-truth
   event>...] :advance <seconds>}. NEVER returns or implies a new
   patient state -- state changes only by folding the returned events
-  through `evolve` (sim/ADR-0008). Pure given the RNG (the RNG is the only
-  stateful argument, and its consumption order is fixed by the
-  deterministic event ordering)."
-  (fn [_rng _t _world _patient-id step] (:type step)))
+  through `evolve` (sim/ADR-0008). Pure given the RNGs (they are the only
+  stateful arguments, and their consumption order is fixed by the
+  deterministic event ordering).
+
+  ADR-0171: the first argument is a STREAM MAP, not one `Random` --
+  `{:patient <this patient's stream> :world <the run's> :facility <the
+  run's>}` -- and each method draws from the family its census row
+  names (`stream-family-tag` above). `run` builds the real, partitioned
+  map; a caller with no run behind it wraps its own `Random` in
+  `one-stream`, which collapses the families back to the pre-partition
+  single stream."
+  (fn [_streams _t _world _patient-id step] (:type step)))
 
 (defn- exhausted-outcome
   "Task 0: result-not-throw for allocation-ladder exhaustion --
@@ -290,8 +443,8 @@
 ;; stage boundary; folding it into Execute's own step-queue mechanism
 ;; rather than a separate pipeline stage is this milestone's own documented
 ;; theory-flip note (docs/sim-theory.edn, docs/sim-theory.md) -- the
-;; stage's contract ("samples once, from the run's single seeded RNG, in
-;; fixed order") is satisfied by this event exactly, not merely gestured at.
+;; stage's contract ("samples once, from the run's seeded RNG, in
+;; fixed order" -- ADR-0171: from THIS patient's :patient-family stream) is satisfied by this event exactly, not merely gestured at.
 
 ;; M5b Task 4: persona -> run-module -> CompileTrajectory -> IR, the ACTUAL
 ;; RunModules/CompileTrajectory stage boundary, folded into THIS SAME
@@ -328,7 +481,7 @@
 ;; tables/seed for a root that actually has them.
 
 (defmethod decide :registered
-  [rng t world patient-id {:keys [closure]}]
+  [{rng :patient} t world patient-id {:keys [closure]}]
   ;; :active-mrn is REQUIRED here, not merely conventional: :registered
   ;; is now every patient's FIRST event, and `replay` (below) bootstraps
   ;; a never-yet-seen participant's initial state via `(initial-patient
@@ -397,14 +550,19 @@
   (into {} (filter val) (select-keys step [:reason])))
 
 (defmethod decide :admission
-  [rng t world patient-id {:keys [location force-placement] :as step}]
+  [{world-rng :world facility-rng :facility} t world patient-id
+   {:keys [location force-placement] :as step}]
+  ;; ADR-0171: the bed choice is WORLD (its candidate set is `free`
+  ;; against a board built from EVERY patient), the attending is
+  ;; FACILITY (ward-eligible providers, no patient state read) -- ruling
+  ;; E1's split is by what the draw READS, not by what it is named after.
   (let [{:keys [facility providers patients]} world
         board (sim-model/occupancy-board patients)
-        alloc (sim-model/allocate rng facility board location force-placement)]
+        alloc (sim-model/allocate world-rng facility board location force-placement)]
     (if (:exhausted alloc)
       (exhausted-outcome patient-id location facility board)
       (let [ward-id (:id (sim-model/ward-by-name facility (:home-ward alloc)))
-            attending (sim-model/choose-attending rng providers ward-id)
+            attending (sim-model/choose-attending facility-rng providers ward-id)
             active-mrn (get-in patients [patient-id :active-mrn])]
         {:events [(merge {:event :admission :t t :active-mrn active-mrn :attending attending
                           :participants [{:patient-id patient-id :role :subject}]}
@@ -412,20 +570,33 @@
          :advance 0}))))
 
 (defmethod decide :delay
-  [rng _t _world _patient-id {:keys [from to]}]
+  [{rng :patient} _t _world _patient-id {:keys [from to]}]
   ;; :from/:to are authored in MINUTES (pathway.clj IR, unchanged --
   ;; sim/ADR-0011 decision 1's authoring-ergonomics carve-out); the engine
   ;; converts to SECONDS here, the one place a minute-denominated draw
   ;; becomes a clock advance.
+  ;;
+  ;; ADR-0171 section 2(d): when :from = :to the draw is ARITHMETICALLY
+  ;; DEAD -- `rand-int-in` evaluates `(.nextInt rng 1)`, which is always
+  ;; 0 -- so it is skipped, and the step advances by the authored
+  ;; constant. Free in outcome, costly in stream position, hence
+  ;; draw-affecting, hence landed in the partition's own commit and
+  ;; never before or after it (one reshuffle, ruling F1).
+  ;;
+  ;; This does NOT breach the fixed-consumption law `assign-pathway` and
+  ;; `churn/roll-gap` state. That law exists so draw count never depends
+  ;; on DATA; :from = :to is not data but the authored SHAPE of a step,
+  ;; as visible as the step itself, and under a per-patient stream it
+  ;; cannot reach any other patient.
   {:events []
-   :advance (* 60 (rand-int-in rng from to))})
+   :advance (* 60 (if (= from to) from (rand-int-in rng from to)))})
 
 (defmethod decide :transfer
-  [rng t world patient-id {:keys [location force-placement]}]
+  [{world-rng :world} t world patient-id {:keys [location force-placement]}]
   (let [{:keys [facility patients]} world
         board (sim-model/occupancy-board patients)
         patient (get patients patient-id)
-        alloc (sim-model/allocate rng facility board location force-placement)]
+        alloc (sim-model/allocate world-rng facility board location force-placement)]
     (if (:exhausted alloc)
       (exhausted-outcome patient-id location facility board)
       {:events [(merge {:event :transfer :t t :active-mrn (:active-mrn patient) :from (:location patient)
@@ -470,18 +641,18 @@
   in `waiting-id`'s own home ward, so rung 1 or rung 2 always has at
   least that one candidate -- and since rung 1 is free by the branch
   we are in, the result is always a licensed bed in that same ward."
-  [rng world patient-id waiting-id vacated-location]
+  [world-rng world patient-id waiting-id vacated-location]
   (let [facility (:facility world)
         home-ward-name (get-in world [:patients waiting-id :home-ward])
         board (sim-model/occupancy-board (dissoc (:patients world) patient-id))
         home-ward (sim-model/ward-by-name facility home-ward-name)
         home-licensed-free? (boolean (seq (remove board (sim-model/licensed-bed-ids home-ward))))]
     (if (and (= :surge (:placement vacated-location)) home-licensed-free?)
-      (:location (sim-model/allocate rng facility board home-ward-name nil))
+      (:location (sim-model/allocate world-rng facility board home-ward-name nil))
       vacated-location)))
 
 (defmethod decide :discharge
-  [rng t world patient-id step]
+  [{world-rng :world} t world patient-id step]
   (let [patient (get-in world [:patients patient-id])
         ;; C3: an expired-disposition discharge vacates NO bed --
         ;; patient-state-model.md's own "clinically absorbing but
@@ -506,7 +677,7 @@
                           ffirst))]
     {:events (cond-> [discharge-event]
                waiting-id
-               (conj (let [location (bed-ready-location rng world patient-id waiting-id vacated-location)]
+               (conj (let [location (bed-ready-location world-rng world patient-id waiting-id vacated-location)]
                        {:event :transfer :t t
                         :active-mrn (:active-mrn (get-in world [:patients waiting-id]))
                         :from (:location (get-in world [:patients waiting-id]))
@@ -591,7 +762,7 @@
     {:events [event] :advance 0 :rejected (merge {:reason reason :patient-id patient-id} extra)}))
 
 (defmethod decide :cancel-admit
-  [_rng t world patient-id step]
+  [_streams t world patient-id step]
   (let [ground-truth (:ground-truth world)
         idx (last-uncancelled-index ground-truth patient-id :admission :cancel-admit)]
     (if (nil? idx)
@@ -603,11 +774,11 @@
          :advance 0}))))
 
 (defmethod decide :transfer-in-error
-  [rng t world patient-id {:keys [location force-placement]}]
+  [{world-rng :world} t world patient-id {:keys [location force-placement]}]
   (let [{:keys [facility patients ground-truth]} world
         board (sim-model/occupancy-board patients)
         patient (get patients patient-id)
-        alloc (sim-model/allocate rng facility board location force-placement)]
+        alloc (sim-model/allocate world-rng facility board location force-placement)]
     (if (:exhausted alloc)
       (exhausted-outcome patient-id location facility board)
       ;; Both events are decided ATOMICALLY, in the same decide call --
@@ -631,7 +802,7 @@
   (nth candidates (.nextInt rng (count candidates))))
 
 (defmethod decide :bed-swap
-  [rng t world patient-id {:keys [with] :as step}]
+  [{world-rng :world} t world patient-id {:keys [with] :as step}]
   (let [{:keys [patients]} world
         self (get patients patient-id)
         eligible (->> patients
@@ -640,7 +811,7 @@
                      (mapv first))
         peer-id (cond
                   with with
-                  (seq eligible) (uniform-choice rng eligible)
+                  (seq eligible) (uniform-choice world-rng eligible)
                   :else nil)
         peer (get patients peer-id)]
     (if (or (nil? peer-id) (nil? peer) (not= :admitted (:status peer)) (nil? (:location peer)))
@@ -655,7 +826,7 @@
        :advance 0})))
 
 (defmethod decide :merge
-  [rng t world patient-id {:keys [with] :as step}]
+  [{world-rng :world} t world patient-id {:keys [with] :as step}]
   (let [{:keys [patients ground-truth]} world
         survivor (get patients patient-id)
         ;; :new (never admitted -- no :admission event exists yet for
@@ -669,7 +840,7 @@
                      (mapv first))
         merged-id (cond
                     with with
-                    (seq eligible) (uniform-choice rng eligible)
+                    (seq eligible) (uniform-choice world-rng eligible)
                     :else nil)
         merged (get patients merged-id)
         already-merged? (some (fn [ev]
@@ -692,7 +863,7 @@
 ;; catalytic) ---------------------------------------------------------------
 
 (defmethod decide :order
-  [rng t world patient-id {:keys [profile]}]
+  [{rng :patient} t world patient-id {:keys [profile]}]
   (let [{:keys [patients ground-truth order-profiles]} world
         patient (get patients patient-id)
         prof (get order-profiles profile)
@@ -755,14 +926,14 @@
                          :steps [{:type :result-followup :result-event result-event}]}}))
 
 (defmethod decide :result-followup
-  [_rng _t _world _patient-id {:keys [result-event]}]
+  [_streams _t _world _patient-id {:keys [result-event]}]
   {:events [result-event] :advance 0})
 
 ;; --- M5b: :outpatient-visit / :outpatient-visit-end (components/patient-simulator/docs/gmf-interpreter.md
 ;; section 4's sketch, items 5-7) --------------------------------------------
 
 (defmethod decide :outpatient-visit
-  [rng t world patient-id step]
+  [{facility-rng :facility} t world patient-id step]
   ;; Item 5: NO sim-model/allocate call -- an outpatient encounter occupies
   ;; no bed, so there is no ladder to consult. Still gets an attending
   ;; (real ambulatory visits have a treating provider) -- chosen uniformly
@@ -771,7 +942,7 @@
   ;; bed-swap/merge's own peer selection already establishes.
   (let [{:keys [providers patients]} world
         patient (get patients patient-id)
-        attending (:id (uniform-choice rng providers))]
+        attending (:id (uniform-choice facility-rng providers))]
     {:events [(merge {:event :outpatient-visit :t t :active-mrn (:active-mrn patient)
                       :attending attending
                       :participants [{:patient-id patient-id :role :subject}]}
@@ -779,7 +950,7 @@
      :advance 0}))
 
 (defmethod decide :outpatient-visit-end
-  [_rng t world patient-id step]
+  [_streams t world patient-id step]
   (let [patient (get-in world [:patients patient-id])]
     {:events [(merge {:event :outpatient-visit-end :t t :active-mrn (:active-mrn patient)
                       :attending (:attending patient)
@@ -796,7 +967,7 @@
 ;; interpreter (M5a); CompileTrajectory/the engine only replay it.
 
 (defmethod decide :procedure
-  [_rng t world patient-id {:keys [codes] :as step}]
+  [_streams t world patient-id {:keys [codes] :as step}]
   (let [patient (get-in world [:patients patient-id])]
     {:events [(merge {:event :procedure :t t :active-mrn (:active-mrn patient) :codes codes
                       :participants [{:patient-id patient-id :role :subject}]}
@@ -821,7 +992,7 @@
     interpretation (assoc :interpretation interpretation)))
 
 (defmethod decide :observation
-  [_rng t world patient-id {:keys [codes] :as step}]
+  [_streams t world patient-id {:keys [codes] :as step}]
   (let [patient (get-in world [:patients patient-id])]
     {:events [(merge {:event :observation :t t :active-mrn (:active-mrn patient) :codes codes}
                      (observation-value-fields step)
@@ -836,7 +1007,7 @@
 ;; bundles children (never one event per child).
 
 (defmethod decide :diagnostic-report
-  [_rng t world patient-id {:keys [codes observations] :as step}]
+  [_streams t world patient-id {:keys [codes observations] :as step}]
   (let [patient (get-in world [:patients patient-id])]
     {:events [(merge {:event :diagnostic-report :t t :active-mrn (:active-mrn patient) :observations observations}
                      (when codes {:codes codes})
@@ -845,7 +1016,7 @@
      :advance 0}))
 
 (defmethod decide :medication-order
-  [_rng t world patient-id {:keys [codes] :as step}]
+  [_streams t world patient-id {:keys [codes] :as step}]
   (let [patient (get-in world [:patients patient-id])]
     {:events [(merge {:event :medication-order :t t :active-mrn (:active-mrn patient) :codes codes
                       :participants [{:patient-id patient-id :role :subject}]}
@@ -904,7 +1075,7 @@
                           ground-truth)))))
 
 (defmethod decide :medication-end
-  [_rng t world patient-id {:keys [order-citation] :as step}]
+  [_streams t world patient-id {:keys [order-citation] :as step}]
   ;; Resolved by CITATION match against ground-truth, never a pathway-
   ;; position index (pathway.clj's own :medication-end docstring) -- the
   ;; same glass-box, position-independent resolution ConditionEnd's own
@@ -938,7 +1109,7 @@
 ;; two defmethod-pairs up.
 
 (defmethod decide :care-plan-start
-  [_rng t world patient-id {:keys [codes activities] :as step}]
+  [_streams t world patient-id {:keys [codes activities] :as step}]
   (let [patient (get-in world [:patients patient-id])]
     {:events [(merge {:event :care-plan-start :t t :active-mrn (:active-mrn patient) :codes codes}
                      (when activities {:activities activities})
@@ -947,7 +1118,7 @@
      :advance 0}))
 
 (defmethod decide :care-plan-end
-  [_rng t world patient-id {:keys [care-plan-citation] :as step}]
+  [_streams t world patient-id {:keys [care-plan-citation] :as step}]
   ;; Resolved by CITATION match against ground-truth, never a pathway-
   ;; position index -- the same glass-box, position-independent
   ;; resolution :medication-end already models.
@@ -1293,7 +1464,7 @@
     (:before (nth (replay ground-truth) idx))))
 
 (defmethod decide :cancel-transfer
-  [_rng t world patient-id step]
+  [_streams t world patient-id step]
   (let [ground-truth (:ground-truth world)
         idx (last-uncancelled-index ground-truth patient-id :transfer :cancel-transfer)]
     (if (nil? idx)
@@ -1308,7 +1479,7 @@
            :advance 0})))))
 
 (defmethod decide :cancel-discharge
-  [_rng t world patient-id step]
+  [_streams t world patient-id step]
   (let [ground-truth (:ground-truth world)
         idx (last-uncancelled-index ground-truth patient-id :discharge :cancel-discharge)]
     (if (nil? idx)
@@ -1473,9 +1644,10 @@
     :churn-profile    ehrt.sim-engine.churn/ChurnProfile map (default nil
                        -- churn OFF). M2b: when present, InjectChurn runs
                        ONCE PER PATIENT (in arrival-ordinal order, a fixed
-                       point in the draw sequence) against THIS run's own
-                       `rng` -- not a derived/isolated stream, same
-                       reasoning sim/ADR-0009 gives for NPI generation --
+                       point in the draw sequence) against THIS PATIENT's
+                       own `:patient`-family stream (ADR-0171) -- churn's
+                       rows are PATIENT-scoped, so injecting churn into
+                       patient N's pathway reaches no other patient --
                        between building each patient's step queue and the
                        main loop. Absent entirely (not merely all-zero),
                        this stage never runs and consumes no RNG: the
@@ -1602,31 +1774,49 @@
     ;; (the engine-test flake investigation's own shrunk counterexample,
     ;; R8/R9), so this is a guard clause at entry, not a throw.
     (result/error :invalid-seed {:key :seed :value seed :expected "a non-negative integer"})
-    (let [rng (Random. ^long seed)
+    (let [;; ADR-0171: FIVE families, not one shared Random. Each stream
+        ;; is derived from the master seed and a stable id -- never from
+        ;; a counter, never from construction order -- so a draw added
+        ;; to one patient's pathway moves that patient and no one else.
+        ;; `stream-family-tag`'s own docstring carries which draw site
+        ;; belongs to which family; the two run-scoped families take
+        ;; id-tag 0.
+        world-rng (stream seed :world 0)
+        facility-rng (stream seed :facility 0)
+        ;; One stream per arrival ordinal, built up front. A patient's
+        ;; stream must PERSIST across their own decides (a `Random` is
+        ;; stateful, and a patient's draws are one continuing sequence),
+        ;; so these are constructed once here rather than per decide.
+        patient-rngs (mapv (fn [i] (stream seed :patient i)) (range patients))
         ;; Provider NPIs are generated from this run's seed (sim/ADR-0007),
         ;; drawn once up front -- before arrival staggering -- so
         ;; provider identity is as deterministic and as fixed-order as
-        ;; everything else this RNG produces.
-        materialized-providers (sim-model/materialize-providers rng providers)
+        ;; everything else this RNG produces. FACILITY (ADR-0171 ruling
+        ;; E1): it reads no patient state, so adding a provider template
+        ;; no longer shifts arrival gaps or bed choices.
+        materialized-providers (sim-model/materialize-providers facility-rng providers)
         ;; Stagger arrivals: :arrival-gap is authored in MINUTES (same
         ;; carve-out as :delay's IR, and for the same calibration
         ;; reason -- see `run`'s docstring); the engine converts to
-        ;; SECONDS here. Consume RNG in patient order (fixed).
+        ;; SECONDS here. Consume RNG in patient order (fixed). WORLD:
+        ;; who arrives when is a fact about the run, not about any one
+        ;; patient, and these draws happen before any decide, so their
+        ;; count and order are fixed by `:patients` alone.
         arrivals (vec (reductions + 0 (repeatedly (dec patients)
-                                                  #(* 60 (rand-int-in rng 0 arrival-gap)))))
+                                                  #(* 60 (rand-int-in world-rng 0 arrival-gap)))))
         mrn-for (fn [i] (format "MRN%06d" (inc i)))
         pid-for (fn [i] (patient-id-for seed i))
         ;; M3-adjacent: :pathways ABSENT entirely -- the pinned-fixture
         ;; path -- means every patient gets the same plain :pathway, no
         ;; assign-pathway call, no new draw (see `run`'s docstring).
         pathway-for (if pathways
-                      (fn [i] (assign-pathway rng pathways i))
+                      (fn [i] (assign-pathway (nth patient-rngs i) pathways i))
                       (fn [_i] pathway))
         ;; InjectChurn (M2b): ONLY when :churn-profile is actually
         ;; present does this stage run at all -- absent, `steps-for` is
         ;; a no-op and consumes no RNG (see the docstring's fixture note).
         steps-for (if churn-profile
-                    (fn [i] (:steps (churn/inject (pathway-for i) churn-profile rng)))
+                    (fn [i] (:steps (churn/inject (pathway-for i) churn-profile (nth patient-rngs i))))
                     (fn [i] (:steps (pathway-for i))))
         ;; M5b Task 4: module-assignment is resolved eagerly, the SAME
         ;; point :pathways' own assign-pathway draw already occupies (one
@@ -1642,7 +1832,7 @@
         ;; module's own :id).
         closures-by-root (into {} (map (fn [c] [(:root c) c])) modules)
         module-for (if module-assignment
-                     (fn [i] (get closures-by-root (assign-module rng module-assignment i)))
+                     (fn [i] (get closures-by-root (assign-module (nth patient-rngs i) module-assignment i)))
                      (fn [_i] nil))
         ;; M4: :registered is prepended to EVERY patient's step queue,
         ;; ahead of whatever InjectChurn produced -- engine-internal,
@@ -1698,6 +1888,13 @@
                     ;; `last-cited-index`.
                     :citation-index {}}
         mark-warmup (fn [ev] (assoc ev :warm-up (< (:t ev) warm-up-seconds)))
+        ;; ADR-0171: what `decide` receives. The two run-scoped families
+        ;; are fixed for the whole loop; `:patient` is swapped per queue
+        ;; entry below off this map, keyed by patient-id because that is
+        ;; what a queue entry carries (including the :order follow-ups
+        ;; scheduled mid-run).
+        base-streams {:world world-rng :facility facility-rng}
+        streams-by-pid (into {} (map-indexed (fn [i _] [(pid-for i) (nth patient-rngs i)])) arrivals)
         final-result (fn [ground-truth state-history extra]
                        (merge {:ground-truth (persistent! ground-truth)
                                :state-history state-history
@@ -1725,7 +1922,9 @@
             ;; no-events-after-merged-terminal, not just a check.clj
             ;; invariant asserted after the fact.
             (recur queue' seq-no world ground-truth state-history)
-            (let [{:keys [events advance exhausted schedule-followup prepend-steps]} (decide rng t world patient-id step)]
+            (let [{:keys [events advance exhausted schedule-followup prepend-steps]}
+                  (decide (assoc base-streams :patient (get streams-by-pid patient-id))
+                          t world patient-id step)]
               ;; A :rejected decide outcome (an illegal cancel/bed-swap/
               ;; merge -- Task 1's validity-table enforcement) is NOT a
               ;; run-halting condition, unlike :exhausted: it means THIS

@@ -45,21 +45,21 @@ passthrough (Milestone M4 Task 0).
 
 ```
 MSH|^~\&|EHR-TESTING-SIM|SIM|||20240101000000+0000||ORM^O01|MRN000001-O01-0|P|2.3
-PID|1||MRN000001||Gonzalez^Barbara||19350221|F|||22 Chestnut Ct^^Providence^RI^02903||607-335-0157
-PV1|1|I|Renal^^RENAL-01^general-hospital||||0384055899^Chen^Amara|||||||||||||||||||||||||||||
+PID|1||MRN000001||Garcia^Sandra||19520726|F|||914 Fairview Blvd^^Salt Lake City^UT^84101||349-906-1132
+PV1|1|I|Renal^^RENAL-04^general-hospital||||4255631598^Chen^Amara|||||||||||||||||||||||||||||
 ORC|NW|MRN000001-O01-0
 OBR|1|||58410-2^CBC panel - Blood by Automated count^LN
 
-MSH|^~\&|EHR-TESTING-SIM|SIM|||20240101012100+0000||ORU^R01|MRN000001-R01-4860|P|2.3
-PID|1||MRN000001||Gonzalez^Barbara||19350221|F|||22 Chestnut Ct^^Providence^RI^02903||607-335-0157
-PV1|1|I|Renal^^RENAL-01^general-hospital||||0384055899^Chen^Amara|||||||||||||||||||||||||||||
-ORC|NW|MRN000001-R01-4860
-OBR|1|||58410-2^CBC panel - Blood by Automated count^LN|||20240101012100+0000
-OBX|1|NM|6690-2^Leukocytes [#/volume] in Blood by Automated count^LN||21.0|K/uL|4.5-11.0|H||||||20240101012100+0000
-OBX|2|NM|789-8^Erythrocytes [#/volume] in Blood by Automated count^LN||4.7|M/uL|4.2-5.9|N||||||20240101012100+0000
-OBX|3|NM|718-7^Hemoglobin [Mass/volume] in Blood^LN||19.6|g/dL|12.0-17.5|H||||||20240101012100+0000
-OBX|4|NM|4544-3^Hematocrit [Volume Fraction] of Blood by Automated count^LN||41.2|%|36.0-50.0|N||||||20240101012100+0000
-OBX|5|NM|777-3^Platelets [#/volume] in Blood by Automated count^LN||280.0|K/uL|150-450|N||||||20240101012100+0000
+MSH|^~\&|EHR-TESTING-SIM|SIM|||20240101012500+0000||ORU^R01|MRN000001-R01-5100|P|2.3
+PID|1||MRN000001||Garcia^Sandra||19520726|F|||914 Fairview Blvd^^Salt Lake City^UT^84101||349-906-1132
+PV1|1|I|Renal^^RENAL-04^general-hospital||||4255631598^Chen^Amara|||||||||||||||||||||||||||||
+ORC|NW|MRN000001-R01-5100
+OBR|1|||58410-2^CBC panel - Blood by Automated count^LN|||20240101012500+0000
+OBX|1|NM|6690-2^Leukocytes [#/volume] in Blood by Automated count^LN||7.4|K/uL|4.5-11.0|N||||||20240101012500+0000
+OBX|2|NM|789-8^Erythrocytes [#/volume] in Blood by Automated count^LN||5.69|M/uL|4.2-5.9|N||||||20240101012500+0000
+OBX|3|NM|718-7^Hemoglobin [Mass/volume] in Blood^LN||8.2|g/dL|12.0-17.5|L||||||20240101012500+0000
+OBX|4|NM|4544-3^Hematocrit [Volume Fraction] of Blood by Automated count^LN||46.8|%|36.0-50.0|N||||||20240101012500+0000
+OBX|5|NM|777-3^Platelets [#/volume] in Blood by Automated count^LN||418.0|K/uL|150-450|N||||||20240101012500+0000
 ```
 
 (Segments are shown one per line here for readability; the real wire
@@ -67,13 +67,14 @@ format in `messages.txt` uses `\r`, HL7v2's actual segment delimiter.)
 PID is enriched with the same patient's Persona-sampled demographics as
 every other message type — order/result messages are not a special
 case (`ehrt.sim-emit-hl7.emit-hl7/pid-segment` applies uniformly). Note
-OBX-8 `H` (abnormal-high) on the leukocyte and hemoglobin results —
-computed truth from `ehrt.sim-engine.order-profiles/abnormal-flag`,
-never a re-derivation at emit time.
+OBX-8 `L` (abnormal-low) on the hemoglobin result, `N` on the other
+four — computed truth from
+`ehrt.sim-engine.order-profiles/abnormal-flag`, never a re-derivation
+at emit time.
 
 **Two clocks on the result, one on the order (ADR-0142, 2026-08-16).**
 The ORU carries `OBR-7` and, on every OBX, `OBX-14` —
-`20240101012100+0000`, the result event's own clinical instant. Here
+`20240101012500+0000`, the result event's own clinical instant. Here
 they equal `MSH-7` exactly, because this demo runs without `:latency`:
 one instant, three fields. Under a latency profile they diverge, and
 that divergence is the point — MSH-7 moves to when the message was

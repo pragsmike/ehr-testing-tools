@@ -109,10 +109,24 @@
   member, now loads both as real, distinct, correctly-routed states --
   a declared oracle-change consequence, not a regression (the fix's
   own Step 1 census predicted this root MOVES). Old values (ADR-0086):
-  {20260802 1, 1 0, 42 1}."
-  {20260802 2, 1 3, 42 3})
+  {20260802 1, 1 0, 42 1}.
+
+  RE-PINNED AGAIN (2026-08-25, ADR-0171): the RNG stream partition moved
+  every walk and every count with it -- {20260802 2, 1 3, 42 3} became
+  {20260802 0, 1 0, 42 2}, measured, not adjusted-until-green. Seed 42
+  keeps the gate honest: this is a re-pin of a counter that still COUNTS,
+  not a slide into an all-zero pin. The two zeros are recorded as
+  measured rather than dropped, so the next reshuffle's own delta is
+  readable against them."
+  {20260802 0, 1 0, 42 2})
 
 (deftest suppressed-straddle-spans-is-pinned-per-seed
+  (testing "the pin is not all zeros -- `R-witness-population-is-counted`
+            applied to a counter, the same guard the veteran-ptsd and
+            veteran-prostate-cancer straddle gates now carry."
+    (is (pos? (reduce + (vals pinned-suppressed-straddle-spans)))
+        (str "every pinned straddle-span total is zero -- this gate has gone "
+             "vacuous: " (pr-str pinned-suppressed-straddle-spans))))
   (doseq [[seed expected-total] pinned-suppressed-straddle-spans]
     (testing (str "seed " seed ": the straddle fix's own counter, pinned")
       (let [total (atom 0)

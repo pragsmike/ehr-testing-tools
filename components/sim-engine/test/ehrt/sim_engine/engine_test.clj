@@ -160,11 +160,11 @@
                   :facility crowded-facility
                   :providers test-providers}
           rng (Random. 1)
-          {a-events :events} (engine/decide rng 0 world0 "P1"
+          {a-events :events} (engine/decide (engine/one-stream rng) 0 world0 "P1"
                                              {:type :admission :location "Renal"})
           world1 (update-in world0 [:patients "P1"]
                              #(reduce engine/evolve % a-events))
-          {b-events :events} (engine/decide rng 10 world1 "P2"
+          {b-events :events} (engine/decide (engine/one-stream rng) 10 world1 "P2"
                                              {:type :admission :location "Renal"})
           world2 (update-in world1 [:patients "P2"]
                              #(reduce engine/evolve % b-events))
@@ -176,7 +176,7 @@
         (is (= "Renal" (:home-ward b-after-admission)))
         (is (= "ED" (get-in b-after-admission [:location :ward])))
         (is (= :surge (get-in b-after-admission [:location :placement]))))
-      (let [{discharge-events :events} (engine/decide rng 100 world2 "P1" {:type :discharge})]
+      (let [{discharge-events :events} (engine/decide (engine/one-stream rng) 100 world2 "P1" {:type :discharge})]
         (testing "A's discharge ALSO emits B's bed-ready transfer, same t"
           (is (= 2 (count discharge-events)))
           (is (= :discharge (:event (first discharge-events))))
@@ -249,7 +249,7 @@
   bed-ready test above folds by hand because it only ever moves one
   patient at a time."
   [world rng t patient-id step]
-  (let [{:keys [events]} (engine/decide rng t world patient-id step)]
+  (let [{:keys [events]} (engine/decide (engine/one-stream rng) t world patient-id step)]
     (reduce (fn [w ev]
               (reduce (fn [w' pid] (update-in w' [:patients pid] engine/evolve ev))
                       (update w :ground-truth (fnil conj []) ev)
@@ -349,7 +349,7 @@
   "Scripted-test helper: decides+folds an :admission for `patient-id`,
   returning the updated world."
   [world t patient-id location]
-  (let [{:keys [events]} (engine/decide (Random. 1) t world patient-id
+  (let [{:keys [events]} (engine/decide (engine/one-stream (Random. 1)) t world patient-id
                                         {:type :admission :location location})]
     (fold-events world events)))
 
@@ -358,7 +358,7 @@
 (deftest cancel-admit-reverts-patient-to-new
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
-        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1" {:type :cancel-admit})
+        {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1" {:type :cancel-admit})
         world2 (fold-events world1 events)]
     (testing "one event, referencing the admission it cancels by log position"
       (is (= 1 (count events)))
@@ -373,7 +373,7 @@
 
 (deftest cancel-admit-on-never-admitted-patient-is-a-structured-rejection-not-a-throw
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
-        outcome (engine/decide (Random. 1) 10 world0 "P1" {:type :cancel-admit})]
+        outcome (engine/decide (engine/one-stream (Random. 1)) 10 world0 "P1" {:type :cancel-admit})]
     (assert-step-rejected! outcome "P1" :illegal-cancel-admit)))
 
 ;; --- cancel-transfer -> A12: the shadow-field dissolution -----------------
@@ -387,12 +387,12 @@
     (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
           world1 (admit world0 0 "P1" "Renal")
           pre-transfer-location (get-in world1 [:patients "P1" :location])
-          {transfer-events :events} (engine/decide (Random. 1) 10 world1 "P1"
+          {transfer-events :events} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1"
                                                     {:type :transfer :location "ED"})
           world2 (fold-events world1 transfer-events)
           _ (is (not= pre-transfer-location (get-in world2 [:patients "P1" :location]))
                 "sanity: the transfer actually moved the patient")
-          {cancel-events :events} (engine/decide (Random. 1) 20 world2 "P1" {:type :cancel-transfer})
+          {cancel-events :events} (engine/decide (engine/one-stream (Random. 1)) 20 world2 "P1" {:type :cancel-transfer})
           world3 (fold-events world2 cancel-events)
           reinstated (get-in world3 [:patients "P1"])]
       (testing "one cancel-transfer event, referencing the transfer by log position"
@@ -411,7 +411,7 @@
 (deftest cancel-transfer-on-never-transferred-patient-is-rejected
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
-        outcome (engine/decide (Random. 1) 10 world1 "P1" {:type :cancel-transfer})]
+        outcome (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1" {:type :cancel-transfer})]
     (assert-step-rejected! outcome "P1" :illegal-cancel-transfer)))
 
 ;; --- cancel-discharge -> A13 -----------------------------------------------
@@ -420,9 +420,9 @@
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
         pre-discharge (get-in world1 [:patients "P1"])
-        {discharge-events :events} (engine/decide (Random. 1) 10 world1 "P1" {:type :discharge})
+        {discharge-events :events} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1" {:type :discharge})
         world2 (fold-events world1 discharge-events)
-        {cancel-events :events} (engine/decide (Random. 1) 20 world2 "P1" {:type :cancel-discharge})
+        {cancel-events :events} (engine/decide (engine/one-stream (Random. 1)) 20 world2 "P1" {:type :cancel-discharge})
         world3 (fold-events world2 cancel-events)
         reinstated (get-in world3 [:patients "P1"])]
     (is (= :discharged (:status (get-in world2 [:patients "P1"]))))
@@ -443,12 +443,12 @@
             single-subject-message; ground truth must actually agree)"
     (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
           world1 (admit world0 0 "P1" "Renal")
-          {d-events :events} (engine/decide (Random. 1) 10 world1 "P1" {:type :discharge})
+          {d-events :events} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1" {:type :discharge})
           world2 (fold-events world1 d-events)
-          {ca-events :events} (engine/decide (Random. 1) 20 world2 "P1" {:type :cancel-admit})
+          {ca-events :events} (engine/decide (engine/one-stream (Random. 1)) 20 world2 "P1" {:type :cancel-admit})
           world3 (fold-events world2 ca-events)
           _ (is (not (contains? (get-in world3 [:patients "P1"]) :class)) "sanity: cancel-admit stripped :class")
-          {cd-events :events} (engine/decide (Random. 1) 30 world3 "P1" {:type :cancel-discharge})
+          {cd-events :events} (engine/decide (engine/one-stream (Random. 1)) 30 world3 "P1" {:type :cancel-discharge})
           world4 (fold-events world3 cd-events)]
       (is (= :inpatient (:class (get-in world4 [:patients "P1"])))))))
 
@@ -456,17 +456,17 @@
   (testing "docs/patient-state-model.md's own illegal example"
     (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
           world1 (admit world0 0 "P1" "Renal")
-          outcome (engine/decide (Random. 1) 10 world1 "P1" {:type :cancel-discharge})]
+          outcome (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1" {:type :cancel-discharge})]
       (assert-step-rejected! outcome "P1" :illegal-cancel-discharge))))
 
 (deftest cancel-transfer-cannot-be-applied-twice-to-the-same-transfer
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
-        {t-events :events} (engine/decide (Random. 1) 10 world1 "P1" {:type :transfer :location "ED"})
+        {t-events :events} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1" {:type :transfer :location "ED"})
         world2 (fold-events world1 t-events)
-        {c1-events :events} (engine/decide (Random. 1) 20 world2 "P1" {:type :cancel-transfer})
+        {c1-events :events} (engine/decide (engine/one-stream (Random. 1)) 20 world2 "P1" {:type :cancel-transfer})
         world3 (fold-events world2 c1-events)
-        second-attempt (engine/decide (Random. 1) 30 world3 "P1" {:type :cancel-transfer})]
+        second-attempt (engine/decide (engine/one-stream (Random. 1)) 30 world3 "P1" {:type :cancel-transfer})]
     (assert-step-rejected! second-attempt "P1" :illegal-cancel-transfer)))
 
 ;; --- transfer-in-error -----------------------------------------------------
@@ -475,7 +475,7 @@
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
         pre (get-in world1 [:patients "P1"])
-        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1"
+        {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1"
                                         {:type :transfer-in-error :location "ED"})
         world2 (fold-events world1 events)
         after (get-in world2 [:patients "P1"])]
@@ -501,7 +501,7 @@
         p1-before (get-in world1 [:patients "P1"])
         p2-before (get-in world1 [:patients "P2"])
         _ (is (not= (:location p1-before) (:location p2-before)) "sanity: different beds")
-        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1" {:type :bed-swap})
+        {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1" {:type :bed-swap})
         world2 (fold-events world1 events)]
     (testing "one two-participant event, both roles :subject"
       (is (= 1 (count events)))
@@ -517,7 +517,7 @@
 (deftest bed-swap-with-no-eligible-peer-is-rejected
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
-        outcome (engine/decide (Random. 1) 10 world1 "P1" {:type :bed-swap})]
+        outcome (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1" {:type :bed-swap})]
     (assert-step-rejected! outcome "P1" :illegal-bed-swap)))
 
 ;; --- merge -> A40: the identity payoff --------------------------------------
@@ -526,7 +526,7 @@
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")
                           "P2" (engine/initial-patient "P2" "MRN000002")})
         world1 (-> world0 (admit 0 "P1" "Renal") (admit 5 "P2" "Renal"))
-        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1" {:type :merge :with "P2"})
+        {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1" {:type :merge :with "P2"})
         world2 (fold-events world1 events)
         survivor (get-in world2 [:patients "P1"])
         merged (get-in world2 [:patients "P2"])]
@@ -546,13 +546,13 @@
 (deftest merge-into-self-is-rejected
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
-        outcome (engine/decide (Random. 1) 10 world1 "P1" {:type :merge :with "P1"})]
+        outcome (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1" {:type :merge :with "P1"})]
     (assert-step-rejected! outcome "P1" :illegal-merge)))
 
 (deftest merge-referencing-unknown-patient-id-is-rejected
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
-        outcome (engine/decide (Random. 1) 10 world1 "P1" {:type :merge :with "GHOST"})]
+        outcome (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1" {:type :merge :with "GHOST"})]
     (assert-step-rejected! outcome "P1" :illegal-merge)
     (testing "the ghost id never enters :participants (participant-ids-exist-in-run stays sound)"
       (is (= "GHOST" (:with (:attempted-step (first (:events outcome)))))))))
@@ -562,9 +562,9 @@
                           "P2" (engine/initial-patient "P2" "MRN000002")
                           "P3" (engine/initial-patient "P3" "MRN000003")})
         world1 (-> world0 (admit 0 "P1" "Renal") (admit 5 "P2" "Renal") (admit 6 "P3" "ED"))
-        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1" {:type :merge :with "P2"})
+        {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1" {:type :merge :with "P2"})
         world2 (fold-events world1 events)
-        outcome (engine/decide (Random. 1) 20 world2 "P3" {:type :merge :with "P2"})]
+        outcome (engine/decide (engine/one-stream (Random. 1)) 20 world2 "P3" {:type :merge :with "P2"})]
     (assert-step-rejected! outcome "P3" :illegal-merge)))
 
 ;; --- M2b: InjectChurn wiring ------------------------------------------
@@ -724,7 +724,7 @@
 (deftest order-decide-emits-order-placed-and-schedules-a-followup
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
-        outcome (engine/decide (Random. 1) 10 world1 "P1" {:type :order :profile :cbc})]
+        outcome (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1" {:type :order :profile :cbc})]
     (testing "one event now: order-placed"
       (is (= 1 (count (:events outcome))))
       (let [ev (first (:events outcome))]
@@ -753,8 +753,8 @@
 (deftest order-decide-is-deterministic
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")]
-    (is (= (engine/decide (Random. 42) 10 world1 "P1" {:type :order :profile :cbc})
-           (engine/decide (Random. 42) 10 world1 "P1" {:type :order :profile :cbc})))))
+    (is (= (engine/decide (engine/one-stream (Random. 42)) 10 world1 "P1" {:type :order :profile :cbc})
+           (engine/decide (engine/one-stream (Random. 42)) 10 world1 "P1" {:type :order :profile :cbc})))))
 
 (deftest order-followup-produces-result-available-through-the-real-run-loop
   (testing "M3-adjacent pathway-assignment mechanism (Task 1) makes this
@@ -787,7 +787,7 @@
             :status :new -> :admitted, :class :outpatient, :location stays
             nil for the visit's duration"
     (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
-          {:keys [events]} (engine/decide (Random. 1) 0 world0 "P1"
+          {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 0 world0 "P1"
                                           {:type :outpatient-visit :reason "Sinus congestion"})
           world1 (fold-events world0 events)
           p (get-in world1 [:patients "P1"])]
@@ -801,9 +801,9 @@
 
 (deftest outpatient-visit-end-discharges-without-touching-location
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
-        {v1-events :events} (engine/decide (Random. 1) 0 world0 "P1" {:type :outpatient-visit})
+        {v1-events :events} (engine/decide (engine/one-stream (Random. 1)) 0 world0 "P1" {:type :outpatient-visit})
         world1 (fold-events world0 v1-events)
-        {end-events :events} (engine/decide (Random. 1) 30 world1 "P1" {:type :outpatient-visit-end})
+        {end-events :events} (engine/decide (engine/one-stream (Random. 1)) 30 world1 "P1" {:type :outpatient-visit-end})
         world2 (fold-events world1 end-events)
         p (get-in world2 [:patients "P1"])]
     (is (= 1 (count end-events)))
@@ -814,8 +814,8 @@
 
 (deftest outpatient-visit-decide-is-deterministic
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})]
-    (is (= (engine/decide (Random. 42) 0 world0 "P1" {:type :outpatient-visit})
-           (engine/decide (Random. 42) 0 world0 "P1" {:type :outpatient-visit})))))
+    (is (= (engine/decide (engine/one-stream (Random. 42)) 0 world0 "P1" {:type :outpatient-visit})
+           (engine/decide (engine/one-stream (Random. 42)) 0 world0 "P1" {:type :outpatient-visit})))))
 
 (deftest outpatient-visit-round-trips-through-the-real-run-loop-and-satisfies-the-catalog
   (let [pathway {:name "outpatient" :steps [{:type :outpatient-visit :reason "Sinus congestion"}
@@ -843,7 +843,7 @@
 (deftest admission-carries-a-compiled-citation-and-condition-annotations-into-ground-truth
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         conditions [{:event :condition-onset :codes [a-concept] :citation a-citation}]
-        {:keys [events]} (engine/decide (Random. 1) 0 world0 "P1"
+        {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 0 world0 "P1"
                                         {:type :admission :location "Renal"
                                          :citation a-citation :conditions conditions})]
     (is (= a-citation (:citation (first events))))
@@ -851,7 +851,7 @@
 
 (deftest admission-with-no-citation-carries-none-byte-identical-to-pre-m5b
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
-        {:keys [events]} (engine/decide (Random. 1) 0 world0 "P1" {:type :admission :location "Renal"})]
+        {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 0 world0 "P1" {:type :admission :location "Renal"})]
     (is (not (contains? (first events) :citation)))
     (is (not (contains? (first events) :conditions)))))
 
@@ -868,16 +868,16 @@
             two after them are hand-authored steps, and they are the
             control that keeps this a nil-DROP rather than a removal."
     (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
-          compiled-admission (:events (engine/decide (Random. 1) 0 world0 "P1"
+          compiled-admission (:events (engine/decide (engine/one-stream (Random. 1)) 0 world0 "P1"
                                                      {:type :admission :location "Renal"
                                                       :citation a-citation}))
-          compiled-visit (:events (engine/decide (Random. 1) 0 world0 "P1"
+          compiled-visit (:events (engine/decide (engine/one-stream (Random. 1)) 0 world0 "P1"
                                                  {:type :outpatient-visit
                                                   :citation a-citation}))
-          authored-admission (:events (engine/decide (Random. 1) 0 world0 "P1"
+          authored-admission (:events (engine/decide (engine/one-stream (Random. 1)) 0 world0 "P1"
                                                      {:type :admission :location "Renal"
                                                       :reason "Kidney problems"}))
-          authored-visit (:events (engine/decide (Random. 1) 0 world0 "P1"
+          authored-visit (:events (engine/decide (engine/one-stream (Random. 1)) 0 world0 "P1"
                                                  {:type :outpatient-visit
                                                   :reason "Sinus congestion"}))]
       (is (not (contains? (first compiled-admission) :reason))
@@ -892,7 +892,7 @@
 (deftest procedure-decide-emits-a-log-only-fact-with-codes-and-citation
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
-        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1"
+        {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1"
                                         {:type :procedure :codes [a-concept] :citation a-citation})]
     (is (= 1 (count events)))
     (is (= :procedure (:event (first events))))
@@ -903,7 +903,7 @@
 (deftest observation-decide-carries-value-and-unit-through
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
-        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1"
+        {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1"
                                         {:type :observation :codes [a-concept] :value 38.2 :unit "Cel"
                                          :citation a-citation})]
     (is (= :observation (:event (first events))))
@@ -917,7 +917,7 @@
 (deftest observation-decide-carries-value-code-and-category-through
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
-        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1"
+        {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1"
                                         {:type :observation :codes [a-concept] :value-code a-value-code
                                          :category "laboratory" :citation a-citation})]
     (is (= a-value-code (:value-code (first events))))
@@ -928,7 +928,7 @@
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
         observations [{:codes [a-concept] :value-code a-value-code :category "laboratory"}]
-        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1"
+        {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1"
                                         {:type :diagnostic-report :codes [a-concept] :observations observations
                                          :citation a-citation})]
     (is (= 1 (count events)))
@@ -940,17 +940,17 @@
 (deftest diagnostic-report-decide-with-no-report-level-codes-omits-the-key
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
-        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1"
+        {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1"
                                         {:type :diagnostic-report :observations [{:codes [a-concept]}]})]
     (is (not (contains? (first events) :codes)))))
 
 (deftest medication-order-then-end-references-the-order-by-citation-match
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
-        {order-events :events} (engine/decide (Random. 1) 10 world1 "P1"
+        {order-events :events} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1"
                                               {:type :medication-order :codes [a-concept] :citation a-citation})
         world2 (fold-events world1 order-events)
-        {end-events :events} (engine/decide (Random. 1) 20 world2 "P1"
+        {end-events :events} (engine/decide (engine/one-stream (Random. 1)) 20 world2 "P1"
                                             {:type :medication-end :order-citation a-citation})]
     (is (= :medication-order (:event (first order-events))))
     (is (= :medication-end (:event (first end-events))))
@@ -960,7 +960,7 @@
 (deftest medication-end-with-no-matching-order-has-a-nil-order-event-id
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
-        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1" {:type :medication-end :order-citation a-citation})]
+        {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1" {:type :medication-end :order-citation a-citation})]
     (is (nil? (:order-event-id (first events))))))
 
 (deftest procedure-observation-medication-round-trip-through-the-real-run-loop
@@ -986,7 +986,7 @@
 (deftest admission-folds-condition-annotations-into-patient-conditions
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         conditions [{:event :condition-onset :codes [a-concept] :citation a-citation}]
-        {:keys [events]} (engine/decide (Random. 1) 5 world0 "P1"
+        {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 5 world0 "P1"
                                         {:type :admission :location "Renal" :conditions conditions})
         world1 (fold-events world0 events)
         p (get-in world1 [:patients "P1"])]
@@ -1003,7 +1003,7 @@
         end-citation {:module "sinusitis" :state :resolved}
         conditions [{:event :condition-onset :codes [a-concept] :citation a-citation}
                     {:event :condition-end :codes [a-concept] :citation end-citation}]
-        {:keys [events]} (engine/decide (Random. 1) 5 world0 "P1"
+        {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 5 world0 "P1"
                                         {:type :admission :location "Renal" :conditions conditions})
         world1 (fold-events world0 events)
         [condition] (:conditions (get-in world1 [:patients "P1"]))]
@@ -1014,7 +1014,7 @@
 (deftest observation-decide-folds-into-patient-observations
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
-        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1"
+        {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1"
                                         {:type :observation :codes [a-concept] :value 38.2 :unit "Cel"})
         world2 (fold-events world1 events)]
     (is (= [{:codes [a-concept] :t 10 :value 38.2 :unit "Cel"}]
@@ -1028,7 +1028,7 @@
           observations [{:codes [a-concept] :value 92.0 :unit "mm[Hg]" :category "vital-signs"
                          :reference-range {:low 90 :high 120} :interpretation :normal}
                         {:codes [a-concept] :value-code a-value-code :category "laboratory"}]
-          {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1"
+          {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1"
                                           {:type :diagnostic-report :codes [a-concept] :observations observations})
           world2 (fold-events world1 events)
           folded (:observations (get-in world2 [:patients "P1"]))]
@@ -1043,7 +1043,7 @@
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
         {order-events :events schedule :schedule-followup}
-        (engine/decide (Random. 42) 10 world1 "P1" {:type :order :profile :cbc})
+        (engine/decide (engine/one-stream (Random. 42)) 10 world1 "P1" {:type :order :profile :cbc})
         result-event (:result-event (first (:steps schedule)))
         world2 (fold-events world1 (into order-events [result-event]))
         observations (:observations (get-in world2 [:patients "P1"]))]
@@ -1059,11 +1059,11 @@
 (deftest medication-order-then-end-folds-into-patient-medication-orders-and-closes-it
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
-        {order-events :events} (engine/decide (Random. 1) 10 world1 "P1"
+        {order-events :events} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1"
                                               {:type :medication-order :codes [a-concept] :citation a-citation})
         world2 (fold-events world1 order-events)
         opened (first (:medication-orders (get-in world2 [:patients "P1"])))
-        {end-events :events} (engine/decide (Random. 1) 20 world2 "P1"
+        {end-events :events} (engine/decide (engine/one-stream (Random. 1)) 20 world2 "P1"
                                             {:type :medication-end :order-citation a-citation})
         world3 (fold-events world2 end-events)
         closed (first (:medication-orders (get-in world3 [:patients "P1"])))]
@@ -1074,7 +1074,7 @@
 (deftest medication-end-with-no-matching-order-citation-leaves-medication-orders-untouched
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
-        {:keys [events]} (engine/decide (Random. 1) 10 world1 "P1" {:type :medication-end :order-citation a-citation})
+        {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 10 world1 "P1" {:type :medication-end :order-citation a-citation})
         world2 (fold-events world1 events)]
     (is (nil? (:medication-orders (get-in world2 [:patients "P1"]))))))
 
@@ -1082,11 +1082,11 @@
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")
                           "P2" (engine/initial-patient "P2" "MRN000002")})
         world1 (admit world0 0 "P1" "Renal")
-        {d-events :events} (engine/decide (Random. 1) 30 world1 "P1" {:type :discharge})
+        {d-events :events} (engine/decide (engine/one-stream (Random. 1)) 30 world1 "P1" {:type :discharge})
         world2 (fold-events world1 d-events)
-        {v-events :events} (engine/decide (Random. 1) 0 world0 "P2" {:type :outpatient-visit})
+        {v-events :events} (engine/decide (engine/one-stream (Random. 1)) 0 world0 "P2" {:type :outpatient-visit})
         world3 (fold-events world0 v-events)
-        {e-events :events} (engine/decide (Random. 1) 40 world3 "P2" {:type :outpatient-visit-end})
+        {e-events :events} (engine/decide (engine/one-stream (Random. 1)) 40 world3 "P2" {:type :outpatient-visit-end})
         world4 (fold-events world3 e-events)]
     (is (= 30 (:discharged-at (get-in world2 [:patients "P1"]))))
     (is (= 40 (:discharged-at (get-in world4 [:patients "P2"]))))))
@@ -1099,7 +1099,7 @@
   (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
         world1 (admit world0 0 "P1" "Renal")
         location-before (get-in world1 [:patients "P1" :location])
-        {:keys [events]} (engine/decide (Random. 1) 30 world1 "P1"
+        {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 30 world1 "P1"
                                         {:type :discharge :disposition :expired :codes death-codes})
         world2 (fold-events world1 events)
         after (get-in world2 [:patients "P1"])]
@@ -1120,12 +1120,12 @@
                   :facility crowded-facility
                   :providers test-providers}
           rng (Random. 1)
-          {a-events :events} (engine/decide rng 0 world0 "P1" {:type :admission :location "Renal"})
+          {a-events :events} (engine/decide (engine/one-stream rng) 0 world0 "P1" {:type :admission :location "Renal"})
           world1 (update-in world0 [:patients "P1"] #(reduce engine/evolve % a-events))
-          {b-events :events} (engine/decide rng 10 world1 "P2" {:type :admission :location "Renal"})
+          {b-events :events} (engine/decide (engine/one-stream rng) 10 world1 "P2" {:type :admission :location "Renal"})
           world2 (update-in world1 [:patients "P2"] #(reduce engine/evolve % b-events))]
       (is (boarding? (get-in world2 [:patients "P2"])) "P2 boards in ED surge, waiting for Renal")
-      (let [{:keys [events]} (engine/decide rng 100 world2 "P1"
+      (let [{:keys [events]} (engine/decide (engine/one-stream rng) 100 world2 "P1"
                                             {:type :discharge :disposition :expired :codes death-codes})]
         (is (= 1 (count events)))
         (is (not-any? #(= :transfer (:event %)) events))))))
@@ -1140,7 +1140,7 @@
             Step 3's own vendored-fixture test"
     (let [world0 (world-of {"P1" (engine/initial-patient "P1" "MRN000001")})
           world1 (admit world0 0 "P1" "Renal")
-          {:keys [events]} (engine/decide (Random. 1) 30 world1 "P1"
+          {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 30 world1 "P1"
                                           {:type :discharge :disposition :expired :codes death-codes})
           world2 (fold-events world1 events)]
       (is (empty? (check/expired-patient-retains-location (:ground-truth world2)))))))
@@ -1184,9 +1184,9 @@
           order-step {:type :medication-order
                       :codes [{:system :rxnorm :code "308191" :display "Amoxicillin"}]
                       :citation shared-med-citation}
-          world1 (fold-events world0 (:events (engine/decide (Random. 1) 0 world0 "A" order-step)))
-          world2 (fold-events world1 (:events (engine/decide (Random. 1) 10 world1 "B" order-step)))
-          {:keys [events]} (engine/decide (Random. 1) 20 world2 "A"
+          world1 (fold-events world0 (:events (engine/decide (engine/one-stream (Random. 1)) 0 world0 "A" order-step)))
+          world2 (fold-events world1 (:events (engine/decide (engine/one-stream (Random. 1)) 10 world1 "B" order-step)))
+          {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 20 world2 "A"
                                           {:type :medication-end
                                            :citation {:module "shared-mod" :state :end-med}
                                            :order-citation shared-med-citation})
@@ -1202,9 +1202,9 @@
           start-step {:type :care-plan-start
                       :codes [{:system :snomed :code "736285004" :display "Care plan"}]
                       :citation shared-plan-citation}
-          world1 (fold-events world0 (:events (engine/decide (Random. 1) 0 world0 "A" start-step)))
-          world2 (fold-events world1 (:events (engine/decide (Random. 1) 10 world1 "B" start-step)))
-          {:keys [events]} (engine/decide (Random. 1) 20 world2 "A"
+          world1 (fold-events world0 (:events (engine/decide (engine/one-stream (Random. 1)) 0 world0 "A" start-step)))
+          world2 (fold-events world1 (:events (engine/decide (engine/one-stream (Random. 1)) 10 world1 "B" start-step)))
+          {:keys [events]} (engine/decide (engine/one-stream (Random. 1)) 20 world2 "A"
                                           {:type :care-plan-end
                                            :citation {:module "shared-mod" :state :end-plan}
                                            :care-plan-citation shared-plan-citation})
@@ -1646,6 +1646,7 @@
                   "this patient opened a-citation only once -- the last/first
                    distinction is not under test")
               (is (= (last own-orders) (:order-event-id ev))))))))))
+
 ;; --- ADR-0171 (arc 1): the RNG stream partition ---------------------------
 ;;
 ;; Until this arc there was ONE java.util.Random and consumption order was
@@ -1795,6 +1796,35 @@
                 above is not passing over an inert perturbation"
         (is (contains? moved locality-perturbed-ordinal))))))
 
+(deftest mutating-one-patients-stream-seed-moves-only-that-patient
+  (testing "ADR-0171 section 3's LOCALITY test under its own name, and the
+            literal mechanism the ADR describes: ONE patient's :patient-
+            family stream seed perturbed, nothing else touched.
+
+            BORN GREEN, disclosed: the perturbation reaches through
+            `engine/stream`, which the partition itself introduces, so
+            there is no earlier tree on which this could have been red for
+            the reason ADR-0171 section 3 gives. Its red-before-green
+            sibling is `perturbing-one-patients-own-draws-moves-only-that-
+            patient` above, which perturbs the same one patient through a
+            config the pre-partition engine also accepts."
+    (let [cfg (locality-config [{:pathway locality-baseline-pathway :weight 1}])
+          baseline (engine/run cfg)
+          perturbed (with-redefs [engine/stream
+                                  (fn [master family id-tag]
+                                    (java.util.Random.
+                                     (cond-> (engine/stream-seed master family id-tag)
+                                       (and (= :patient family)
+                                            (= locality-perturbed-ordinal id-tag))
+                                       inc)))]
+                      (engine/run cfg))
+          runs {:baseline baseline :perturbed perturbed}
+          moved (locality-moved-ordinals runs patient-scoped)]
+      (is (= #{locality-perturbed-ordinal} moved)
+          (str "perturbing ONE :patient-family stream seed moved the "
+               "PATIENT-SCOPED fields of " (pr-str moved) " -- expected exactly #{"
+               locality-perturbed-ordinal "}")))))
+
 (deftest the-locality-test-asserts-how-many-patients-it-moved
   (testing "ADR-0171 section 3's WITNESS COUNTS obligation, which is
             `R-witness-population-is-counted` applied: assert the witness
@@ -1853,3 +1883,34 @@
                    "the ruling never excluded."))
           (is (every? (set run-scoped-event-fields) differing)))))))
 
+(deftest the-stream-partition-derives-what-adr-0171-specifies
+  (testing "ADR-0171 section 2(b) and rulings A1 / B1. `mix64` is the
+            derivation (A1), the newborn key is the mixed PAIR (B1), and
+            the family tags are a fixed table rather than anything derived
+            through a hash this repo does not own."
+    (testing "stream-seed is mix64 applied twice, exactly as specified"
+      (is (= (engine/mix64 (engine/mix64 99 3) 7)
+             (engine/stream-seed 99 :world 7)))
+      (is (= (engine/mix64 (engine/mix64 99 1) 7)
+             (engine/stream-seed 99 :patient 7))))
+    (testing "the five families are distinct at the same master and id-tag"
+      (let [seeds (mapv #(engine/stream-seed 12345 % 0)
+                        [:patient :person :world :facility :emission])]
+        (is (= 5 (count (set seeds))))))
+    (testing "distinct id-tags give distinct streams within a family"
+      (is (= 64 (count (set (map #(engine/stream-seed 7 :patient %) (range 64)))))))
+    (testing "an unknown family is a throw, never a silent zero tag"
+      (is (thrown? clojure.lang.ExceptionInfo (engine/stream-seed 1 :nonesuch 0))))
+    (testing "ruling B1: the newborn id-tag mixes the PAIR (parity-index,
+              within-delivery-index), so pinning within-delivery-index at 0
+              today does not have to be renumbered when multiples are
+              admitted -- the whole reason B1 was taken over B2"
+      (is (not= (engine/newborn-id-tag 42 0 0) (engine/newborn-id-tag 42 1 0)))
+      (is (not= (engine/newborn-id-tag 42 0 0) (engine/newborn-id-tag 42 0 1)))
+      (is (not= (engine/newborn-id-tag 42 0 0) (engine/newborn-id-tag 43 0 0)))
+      (is (= (engine/newborn-id-tag 42 3 0) (engine/newborn-id-tag 42 3 0))))
+    (testing "the scheme marker is a string, and `one-stream` collapses every
+              family back onto one Random -- the pre-partition behaviour a
+              lone decide call still has"
+      (is (string? engine/stream-scheme))
+      (is (= 1 (count (set (vals (engine/one-stream (Random. 1))))))))))

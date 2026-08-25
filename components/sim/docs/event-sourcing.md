@@ -37,7 +37,7 @@ make it concrete:
 - **`decide`/`evolve` is the split that makes the inversion mechanical
   rather than aspirational.** `decide (rng, t, world, patient, step) ->
   {:events :advance}` consults the current fold of all patient state
-  (read-only) and the run's single seeded RNG to decide what happens,
+  (read-only) and the run's seeded RNG streams (ADR-0171) to decide what happens,
   and returns facts — it never mutates anything and never returns a
   new state. `evolve (state, event) -> state'` is the *only* function
   that ever produces a new patient state, and it is pure, total, and
@@ -301,7 +301,7 @@ checklist against this project's own defenses.
 
 The structural defense behind the first four rows is already argued
 elsewhere in this document (`:patient-id`/`:mrns` generation, the
-seconds/UTC-offset time model, the single seeded RNG); the table exists
+seconds/UTC-offset time model, the seeded RNG streams of ADR-0171); the table exists
 to make the comparison to a documented real-world failure explicit
 rather than left merely asserted.
 

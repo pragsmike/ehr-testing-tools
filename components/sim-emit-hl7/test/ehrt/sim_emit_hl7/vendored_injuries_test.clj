@@ -92,8 +92,15 @@
   `Postoperative_Care`), previously silently dropping one member of
   each, now load all four as real, distinct, correctly-routed states
   -- a declared oracle-change consequence, not a regression (the
-  fix's own Step 1 census predicted this root MOVES). Old value: 4."
-  5)
+  fix's own Step 1 census predicted this root MOVES). Old value: 4.
+
+  RE-BASELINED AGAIN (2026-08-25, ADR-0171): the RNG stream partition
+  moved which walk each of the 300 patients takes, so the count moved
+  with them, 5 -> 3. Still comfortably POSITIVE, which is the property
+  ADR-0106's arithmetic predicts and the reason this pin exists -- a
+  drop to 0 would be the finding, and a drop to 3 is the same rare
+  phenomenon landing three times instead of five. Old value: 5."
+  3)
 
 (deftest synthesized-encounter-ends-is-pinned-at-population-scale
   (testing "seed 20260802: the auto-close fix's own counter, pinned --

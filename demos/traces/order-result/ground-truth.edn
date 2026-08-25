@@ -2,32 +2,32 @@
   :t 0,
   :active-mrn "MRN000001",
   :persona
-  {:name {:family "Gonzalez", :given "Barbara"},
+  {:name {:family "Garcia", :given "Sandra"},
    :sex :female,
-   :dob "1935-02-21",
-   :age 89,
+   :dob "1952-07-26",
+   :age 72,
    :address
-   {:street "22 Chestnut Ct",
-    :city "Providence",
-    :state "RI",
-    :zip "02903"},
-   :phone "607-335-0157",
-   :ssn "900-89-4064",
+   {:street "914 Fairview Blvd",
+    :city "Salt Lake City",
+    :state "UT",
+    :zip "84101"},
+   :phone "349-906-1132",
+   :ssn "900-22-0709",
    :payer {:id "medicare-65", :name "Medicare", :type :medicare}},
   :participants [{:patient-id "PID-000000-918175ce", :role :subject}],
   :warm-up false}
  {:home-ward "Renal",
   :participants [{:patient-id "PID-000000-918175ce", :role :subject}],
   :active-mrn "MRN000001",
-  :attending "0384055899",
+  :attending "4255631598",
   :warm-up false,
   :event :admission,
   :t 0,
-  :location {:ward "Renal", :bed "RENAL-01", :placement :licensed},
+  :location {:ward "Renal", :bed "RENAL-04", :placement :licensed},
   :forced false}
  {:participants [{:patient-id "PID-000000-918175ce", :role :subject}],
   :active-mrn "MRN000001",
-  :attending "0384055899",
+  :attending "4255631598",
   :warm-up false,
   :event :order-placed,
   :concept
@@ -35,27 +35,30 @@
    :code "58410-2",
    :display "CBC panel - Blood by Automated count"},
   :t 0,
-  :location {:ward "Renal", :bed "RENAL-01", :placement :licensed},
+  :location {:ward "Renal", :bed "RENAL-04", :placement :licensed},
   :profile :cbc}
  {:event :discharge,
   :t 0,
   :active-mrn "MRN000001",
-  :location {:ward "Renal", :bed "RENAL-01", :placement :licensed},
-  :attending "0384055899",
+  :location {:ward "Renal", :bed "RENAL-04", :placement :licensed},
+  :attending "4255631598",
   :participants [{:patient-id "PID-000000-918175ce", :role :subject}],
   :warm-up false}
  {:event :registered,
-  :t 3480,
+  :t 1260,
   :active-mrn "MRN000002",
   :persona
-  {:name {:family "Smith", :given "Olivia"},
+  {:name {:family "Williams", :given "Isabella"},
    :sex :female,
-   :dob "2021-10-17",
-   :age 3,
+   :dob "2015-08-20",
+   :age 9,
    :address
-   {:street "17 Elm Ct", :city "Columbus", :state "OH", :zip "43215"},
-   :phone "944-598-4479",
-   :ssn "900-46-3298",
+   {:street "78 Magnolia St",
+    :city "Atlanta",
+    :state "GA",
+    :zip "30303"},
+   :phone "708-511-5431",
+   :ssn "900-39-8302",
    :payer
    {:id "commercial-ppo", :name "Commercial PPO", :type :commercial}},
   :participants [{:patient-id "PID-000001-881e2907", :role :subject}],
@@ -63,135 +66,81 @@
  {:home-ward "Renal",
   :participants [{:patient-id "PID-000001-881e2907", :role :subject}],
   :active-mrn "MRN000002",
-  :attending "3903633105",
+  :attending "4255631598",
   :warm-up false,
   :event :admission,
-  :t 3480,
-  :location {:ward "Renal", :bed "RENAL-01", :placement :licensed},
+  :t 1260,
+  :location {:ward "Renal", :bed "RENAL-04", :placement :licensed},
   :forced false}
  {:participants [{:patient-id "PID-000001-881e2907", :role :subject}],
   :active-mrn "MRN000002",
-  :attending "3903633105",
+  :attending "4255631598",
   :warm-up false,
   :event :order-placed,
   :concept
   {:system :loinc,
    :code "58410-2",
    :display "CBC panel - Blood by Automated count"},
-  :t 3480,
-  :location {:ward "Renal", :bed "RENAL-01", :placement :licensed},
+  :t 1260,
+  :location {:ward "Renal", :bed "RENAL-04", :placement :licensed},
   :profile :cbc}
  {:event :discharge,
-  :t 3480,
+  :t 1260,
   :active-mrn "MRN000002",
-  :location {:ward "Renal", :bed "RENAL-01", :placement :licensed},
-  :attending "3903633105",
+  :location {:ward "Renal", :bed "RENAL-04", :placement :licensed},
+  :attending "4255631598",
   :participants [{:patient-id "PID-000001-881e2907", :role :subject}],
   :warm-up false}
  {:event :registered,
-  :t 4680,
+  :t 2760,
   :active-mrn "MRN000003",
   :persona
-  {:name {:family "Williams", :given "Dorothy"},
+  {:name {:family "Reyes", :given "Kimberly"},
    :sex :female,
-   :dob "1945-07-13",
-   :age 79,
+   :dob "1978-12-18",
+   :age 46,
    :address
-   {:street "9 Willow Ct",
-    :city "Richmond",
-    :state "VA",
-    :zip "23219"},
-   :phone "633-802-2352",
-   :ssn "900-99-1868",
-   :payer {:id "self-pay", :name "Self-Pay", :type :self-pay}},
+   {:street "1180 Sunset Blvd",
+    :city "Denver",
+    :state "CO",
+    :zip "80202"},
+   :phone "633-556-6936",
+   :ssn "900-06-0213",
+   :payer
+   {:id "commercial-hmo", :name "Commercial HMO", :type :commercial}},
   :participants [{:patient-id "PID-000002-8c2f7e6a", :role :subject}],
   :warm-up false}
  {:home-ward "Renal",
   :participants [{:patient-id "PID-000002-8c2f7e6a", :role :subject}],
   :active-mrn "MRN000003",
-  :attending "3903633105",
+  :attending "3980680383",
   :warm-up false,
   :event :admission,
-  :t 4680,
+  :t 2760,
   :location {:ward "Renal", :bed "RENAL-04", :placement :licensed},
   :forced false}
  {:participants [{:patient-id "PID-000002-8c2f7e6a", :role :subject}],
   :active-mrn "MRN000003",
-  :attending "3903633105",
+  :attending "3980680383",
   :warm-up false,
   :event :order-placed,
   :concept
   {:system :loinc,
    :code "58410-2",
    :display "CBC panel - Blood by Automated count"},
-  :t 4680,
+  :t 2760,
   :location {:ward "Renal", :bed "RENAL-04", :placement :licensed},
   :profile :cbc}
  {:event :discharge,
-  :t 4680,
+  :t 2760,
   :active-mrn "MRN000003",
   :location {:ward "Renal", :bed "RENAL-04", :placement :licensed},
-  :attending "3903633105",
+  :attending "3980680383",
   :participants [{:patient-id "PID-000002-8c2f7e6a", :role :subject}],
   :warm-up false}
- {:participants [{:patient-id "PID-000000-918175ce", :role :subject}],
-  :active-mrn "MRN000001",
-  :attending "0384055899",
-  :warm-up false,
-  :order-event-id 2,
-  :event :result-available,
-  :concept
-  {:system :loinc,
-   :code "58410-2",
-   :display "CBC panel - Blood by Automated count"},
-  :t 4860,
-  :location {:ward "Renal", :bed "RENAL-01", :placement :licensed},
-  :profile :cbc,
-  :results
-  [{:concept
-    {:system :loinc,
-     :code "6690-2",
-     :display "Leukocytes [#/volume] in Blood by Automated count"},
-    :unit "K/uL",
-    :value 21.0,
-    :reference-range {:low 4.5, :high 11.0},
-    :abnormal-flag :high}
-   {:concept
-    {:system :loinc,
-     :code "789-8",
-     :display "Erythrocytes [#/volume] in Blood by Automated count"},
-    :unit "M/uL",
-    :value 4.7,
-    :reference-range {:low 4.2, :high 5.9},
-    :abnormal-flag :normal}
-   {:concept
-    {:system :loinc,
-     :code "718-7",
-     :display "Hemoglobin [Mass/volume] in Blood"},
-    :unit "g/dL",
-    :value 19.6,
-    :reference-range {:low 12.0, :high 17.5},
-    :abnormal-flag :high}
-   {:concept
-    {:system :loinc,
-     :code "4544-3",
-     :display
-     "Hematocrit [Volume Fraction] of Blood by Automated count"},
-    :unit "%",
-    :value 41.2,
-    :reference-range {:low 36.0, :high 50.0},
-    :abnormal-flag :normal}
-   {:concept
-    {:system :loinc,
-     :code "777-3",
-     :display "Platelets [#/volume] in Blood by Automated count"},
-    :unit "K/uL",
-    :value 280.0,
-    :reference-range {:low 150, :high 450},
-    :abnormal-flag :normal}]}
  {:participants [{:patient-id "PID-000001-881e2907", :role :subject}],
   :active-mrn "MRN000002",
-  :attending "3903633105",
+  :attending "4255631598",
   :warm-up false,
   :order-event-id 6,
   :event :result-available,
@@ -199,62 +148,7 @@
   {:system :loinc,
    :code "58410-2",
    :display "CBC panel - Blood by Automated count"},
-  :t 7020,
-  :location {:ward "Renal", :bed "RENAL-01", :placement :licensed},
-  :profile :cbc,
-  :results
-  [{:concept
-    {:system :loinc,
-     :code "6690-2",
-     :display "Leukocytes [#/volume] in Blood by Automated count"},
-    :unit "K/uL",
-    :value 8.1,
-    :reference-range {:low 4.5, :high 11.0},
-    :abnormal-flag :normal}
-   {:concept
-    {:system :loinc,
-     :code "789-8",
-     :display "Erythrocytes [#/volume] in Blood by Automated count"},
-    :unit "M/uL",
-    :value 5.49,
-    :reference-range {:low 4.2, :high 5.9},
-    :abnormal-flag :normal}
-   {:concept
-    {:system :loinc,
-     :code "718-7",
-     :display "Hemoglobin [Mass/volume] in Blood"},
-    :unit "g/dL",
-    :value 12.4,
-    :reference-range {:low 12.0, :high 17.5},
-    :abnormal-flag :normal}
-   {:concept
-    {:system :loinc,
-     :code "4544-3",
-     :display
-     "Hematocrit [Volume Fraction] of Blood by Automated count"},
-    :unit "%",
-    :value 40.1,
-    :reference-range {:low 36.0, :high 50.0},
-    :abnormal-flag :normal}
-   {:concept
-    {:system :loinc,
-     :code "777-3",
-     :display "Platelets [#/volume] in Blood by Automated count"},
-    :unit "K/uL",
-    :value 226.0,
-    :reference-range {:low 150, :high 450},
-    :abnormal-flag :normal}]}
- {:participants [{:patient-id "PID-000002-8c2f7e6a", :role :subject}],
-  :active-mrn "MRN000003",
-  :attending "3903633105",
-  :warm-up false,
-  :order-event-id 10,
-  :event :result-available,
-  :concept
-  {:system :loinc,
-   :code "58410-2",
-   :display "CBC panel - Blood by Automated count"},
-  :t 9600,
+  :t 4560,
   :location {:ward "Renal", :bed "RENAL-04", :placement :licensed},
   :profile :cbc,
   :results
@@ -263,7 +157,7 @@
      :code "6690-2",
      :display "Leukocytes [#/volume] in Blood by Automated count"},
     :unit "K/uL",
-    :value 7.7,
+    :value 7.6,
     :reference-range {:low 4.5, :high 11.0},
     :abnormal-flag :normal}
    {:concept
@@ -271,7 +165,7 @@
      :code "789-8",
      :display "Erythrocytes [#/volume] in Blood by Automated count"},
     :unit "M/uL",
-    :value 4.26,
+    :value 4.59,
     :reference-range {:low 4.2, :high 5.9},
     :abnormal-flag :normal}
    {:concept
@@ -279,7 +173,117 @@
      :code "718-7",
      :display "Hemoglobin [Mass/volume] in Blood"},
     :unit "g/dL",
-    :value 15.6,
+    :value 11.1,
+    :reference-range {:low 12.0, :high 17.5},
+    :abnormal-flag :low}
+   {:concept
+    {:system :loinc,
+     :code "4544-3",
+     :display
+     "Hematocrit [Volume Fraction] of Blood by Automated count"},
+    :unit "%",
+    :value 44.0,
+    :reference-range {:low 36.0, :high 50.0},
+    :abnormal-flag :normal}
+   {:concept
+    {:system :loinc,
+     :code "777-3",
+     :display "Platelets [#/volume] in Blood by Automated count"},
+    :unit "K/uL",
+    :value 303.0,
+    :reference-range {:low 150, :high 450},
+    :abnormal-flag :normal}]}
+ {:participants [{:patient-id "PID-000000-918175ce", :role :subject}],
+  :active-mrn "MRN000001",
+  :attending "4255631598",
+  :warm-up false,
+  :order-event-id 2,
+  :event :result-available,
+  :concept
+  {:system :loinc,
+   :code "58410-2",
+   :display "CBC panel - Blood by Automated count"},
+  :t 5100,
+  :location {:ward "Renal", :bed "RENAL-04", :placement :licensed},
+  :profile :cbc,
+  :results
+  [{:concept
+    {:system :loinc,
+     :code "6690-2",
+     :display "Leukocytes [#/volume] in Blood by Automated count"},
+    :unit "K/uL",
+    :value 7.4,
+    :reference-range {:low 4.5, :high 11.0},
+    :abnormal-flag :normal}
+   {:concept
+    {:system :loinc,
+     :code "789-8",
+     :display "Erythrocytes [#/volume] in Blood by Automated count"},
+    :unit "M/uL",
+    :value 5.69,
+    :reference-range {:low 4.2, :high 5.9},
+    :abnormal-flag :normal}
+   {:concept
+    {:system :loinc,
+     :code "718-7",
+     :display "Hemoglobin [Mass/volume] in Blood"},
+    :unit "g/dL",
+    :value 8.2,
+    :reference-range {:low 12.0, :high 17.5},
+    :abnormal-flag :low}
+   {:concept
+    {:system :loinc,
+     :code "4544-3",
+     :display
+     "Hematocrit [Volume Fraction] of Blood by Automated count"},
+    :unit "%",
+    :value 46.8,
+    :reference-range {:low 36.0, :high 50.0},
+    :abnormal-flag :normal}
+   {:concept
+    {:system :loinc,
+     :code "777-3",
+     :display "Platelets [#/volume] in Blood by Automated count"},
+    :unit "K/uL",
+    :value 418.0,
+    :reference-range {:low 150, :high 450},
+    :abnormal-flag :normal}]}
+ {:participants [{:patient-id "PID-000002-8c2f7e6a", :role :subject}],
+  :active-mrn "MRN000003",
+  :attending "3980680383",
+  :warm-up false,
+  :order-event-id 10,
+  :event :result-available,
+  :concept
+  {:system :loinc,
+   :code "58410-2",
+   :display "CBC panel - Blood by Automated count"},
+  :t 8040,
+  :location {:ward "Renal", :bed "RENAL-04", :placement :licensed},
+  :profile :cbc,
+  :results
+  [{:concept
+    {:system :loinc,
+     :code "6690-2",
+     :display "Leukocytes [#/volume] in Blood by Automated count"},
+    :unit "K/uL",
+    :value 5.5,
+    :reference-range {:low 4.5, :high 11.0},
+    :abnormal-flag :normal}
+   {:concept
+    {:system :loinc,
+     :code "789-8",
+     :display "Erythrocytes [#/volume] in Blood by Automated count"},
+    :unit "M/uL",
+    :value 4.92,
+    :reference-range {:low 4.2, :high 5.9},
+    :abnormal-flag :normal}
+   {:concept
+    {:system :loinc,
+     :code "718-7",
+     :display "Hemoglobin [Mass/volume] in Blood"},
+    :unit "g/dL",
+    :value 15.8,
     :reference-range {:low 12.0, :high 17.5},
     :abnormal-flag :normal}
    {:concept
@@ -288,7 +292,7 @@
      :display
      "Hematocrit [Volume Fraction] of Blood by Automated count"},
     :unit "%",
-    :value 49.2,
+    :value 40.5,
     :reference-range {:low 36.0, :high 50.0},
     :abnormal-flag :normal}
    {:concept
@@ -296,6 +300,6 @@
      :code "777-3",
      :display "Platelets [#/volume] in Blood by Automated count"},
     :unit "K/uL",
-    :value 344.0,
+    :value 443.0,
     :reference-range {:low 150, :high 450},
     :abnormal-flag :normal}]}]

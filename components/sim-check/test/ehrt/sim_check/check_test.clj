@@ -995,19 +995,36 @@
             violation would leave the defspec green and vouching for
             nothing (the same defect `the-widened-catalog-sample-varies-
             what-it-claims-to-vary` guards for the catalog defspec)."
-    ;; seed 27 / 60 patients at these capacities: MEASURED 196 events,
+    ;; seed 18 / 60 patients at these capacities: MEASURED 195 events,
     ;; 3 merges, 6 cancels, 5 transfers, self-check clean, not exhausted.
     ;; Two merges is the floor for the interleaving check at the end;
     ;; `mixed-ward-facility-gen`'s own capacities exhaust the run at ~20
     ;; events with zero merges and zero cancels, which is why this
     ;; fixture does not reuse it.
+    ;;
+    ;; RE-DERIVED from seed 27 by ADR-0171's stream partition, and the
+    ;; re-derivation is the mechanism check doing its job on itself.
+    ;; Seed 27's log moved with everything else, and at HEAD it yields
+    ;; ONE merge and ONE distinct double-occupied bed -- so the
+    ;; interleaving assertion below (`(< 1 (count (distinct ...)))`)
+    ;; went red rather than the mutation quietly ceasing to induce
+    ;; anything, which is exactly the failure this deftest exists to
+    ;; make loud. Replacement found by sweeping seeds 0-119 under the
+    ;; LIVE engine for a run that is self-check clean, not exhausted,
+    ;; fires all six mutations, and carries more than one merge, more
+    ;; than one double-occupied bed and more than one zombie patient-id:
+    ;; 38 of 120 qualify. Seed 18 is taken because its shape is the
+    ;; closest match to the one seed 27 used to have -- 3 merges, 6
+    ;; cancels, 5 transfers, 195 events against the old 196 -- so the
+    ;; fixture's own documented character is preserved, not merely its
+    ;; assertions satisfied.
     (let [facility {:id :t :wards [{:id :renal :name "Renal" :beds 12 :surge-slots 4
                                     :surge-format "%s-H%02d" :class :inpatient}
                                    {:id :cardiology :name "Cardiology" :beds 12 :surge-slots 4
                                     :surge-format "%s-H%02d" :class :inpatient}
                                    {:id :ed :name "Emergency" :beds 8 :surge-slots 4
                                     :surge-format "%s-H%02d" :class :ed}]}
-          {:keys [ground-truth]} (engine/run {:seed 27 :patients 60
+          {:keys [ground-truth]} (engine/run {:seed 18 :patients 60
                                               :facility facility
                                               :churn-profile churn/sample-profile})
           mutated (mutate ground-truth 3 5 7)]

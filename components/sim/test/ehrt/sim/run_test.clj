@@ -415,15 +415,33 @@
    ;; :care-plan-end never (bronchitis/asthma reach their CarePlanEnd
    ;; only by the never-written-attribute route ADR-0163 now drops), so
    ;; the covering run comes from a module those scenarios do not
-   ;; name. attention_deficit_disorder at seed 2 over TEN patients is
-   ;; the smallest run found producing both, PAIRED and self-check
-   ;; clean, in ~25ms: one patient whose ADHD care plan and Ritalin
-   ;; order both fall in history phase and whose ends both land in
-   ;; horizon -- the DESIGNED pre-horizon straddle, so this run also
-   ;; exercises both end-invariants' own pre-horizon escape branch at
-   ;; population scale rather than only in a scripted fixture.
-   {:id :adhd-seed-2
-    :opts {:seed 2 :patients 10 :reference-date "2026-08-04"
+   ;; name. attention_deficit_disorder over TEN patients is the smallest
+   ;; run found producing both, PAIRED and self-check clean, in ~25ms:
+   ;; one patient whose ADHD care plan and Ritalin order both fall in
+   ;; history phase and whose ends both land in horizon -- the DESIGNED
+   ;; pre-horizon straddle, so this run also exercises both
+   ;; end-invariants' own pre-horizon escape branch at population scale
+   ;; rather than only in a scripted fixture.
+   ;;
+   ;; RE-POINTED from seed 2 to seed 130 by ADR-0171's migration, and the
+   ;; reason is a FINDING, not a convenience. The straddle is a
+   ;; knife-edge: at seed 2 exactly ONE of the ten patients had it, and
+   ;; the stream partition -- which reshuffles which patient walks what
+   ;; -- took it away. Post-partition, seed 2 produces ten :registered
+   ;; events and nothing else, so BOTH cited-end witnesses below would
+   ;; have gone vacuous at once. That is precisely the failure repo
+   ;; review 5 predicted for this run (`.agents/plans/2026-08-25-repo-
+   ;; review-findings.md`, L1-7: "a reshuffle in adhd-seed-2 takes both
+   ;; end types dark at once").
+   ;;
+   ;; The replacement was found ADR-0165's own way -- a seed sweep under
+   ;; the LIVE (post-partition) engine, filtering for runs with at least
+   ;; one CITED :medication-end and one CITED :care-plan-end. Seeds
+   ;; 0-399 at ten patients yield exactly four: 130, 158, 233, 331, each
+   ;; producing the identical 12-event, one-of-each shape seed 2 used to
+   ;; have. 130 is the smallest, and is taken for that reason alone.
+   {:id :adhd-seed-130
+    :opts {:seed 130 :patients 10 :reference-date "2026-08-04"
            :module-horizon-days 3650
            :pathway {:name "adhd-only" :steps []}
            :modules ["attention_deficit_disorder"]
@@ -475,7 +493,7 @@
   {:seed-202-ed-tuesday       "ehrt/sim/fixtures/arc0_gated_seed_202_ed_tuesday.edn"
    :seed-424242-clinic-decade "ehrt/sim/fixtures/arc0_gated_seed_424242_clinic_decade.edn"
    :seed-5-clinic-decade      "ehrt/sim/fixtures/arc0_gated_seed_5_clinic_decade.edn"
-   :adhd-seed-2               "ehrt/sim/fixtures/arc0_gated_adhd_seed_2.edn"})
+   :adhd-seed-130               "ehrt/sim/fixtures/arc0_gated_adhd_seed_130.edn"})
 
 (def ^:private arc0-pinned-digest
   "run id -> SHA-256 of that run's ground-truth AS THE SHIPPED WRITER
@@ -497,10 +515,10 @@
   `(= gt (edn/read-string (pr-str gt)))` AND `(= (pr-str gt) (pr-str
   (edn/read-string (pr-str gt))))` -- value AND bytes both survive, so
   the committed baseline is a faithful pin for BOTH gates below."
-  {:seed-202-ed-tuesday       "584a5f01004ee4228f6a352209798310dd6c2daadb5596ff7316c163ca6db9bd"
-   :seed-424242-clinic-decade "793910e0d2d57205093dd100cb27419299e6b8902c09a78613d6df3a3652bf24"
-   :seed-5-clinic-decade      "dd0beff7a02bf1e50f498c6f87ab1cc927bd7896786adaa75cbfd5209ccf80a5"
-   :adhd-seed-2               "34f5faf0283d71a79b0e7ded21f3e5cb4515ef844cebd42fd84347be3a6e0b40"})
+  {:seed-202-ed-tuesday       "469a26d7d19772b9d6a3fd84adf3e71f737d82dd2c47bfe7da47049d8f115623"
+   :seed-424242-clinic-decade "5386957e20c645e75ac07548c3069591c92fb43e5070586ee18609f6739966cd"
+   :seed-5-clinic-decade      "03201649595475f4040c780cc02cb8a2bbc0b2b7675d28ea2147f048607c01a3"
+   :adhd-seed-130             "e6f44fe8c52455416d8ed40b9bd6a4af5ec8af1c1d88ea228a90497246c0827d"})
 
 (defn- arc0-baseline
   "The committed baseline ground-truth vector for one gated run."
@@ -582,7 +600,12 @@
   {:seed-202-ed-tuesday       "584a5f01004ee4228f6a352209798310dd6c2daadb5596ff7316c163ca6db9bd"
    :seed-424242-clinic-decade "793910e0d2d57205093dd100cb27419299e6b8902c09a78613d6df3a3652bf24"
    :seed-5-clinic-decade      "dd0beff7a02bf1e50f498c6f87ab1cc927bd7896786adaa75cbfd5209ccf80a5"
-   :adhd-seed-2               "34f5faf0283d71a79b0e7ded21f3e5cb4515ef844cebd42fd84347be3a6e0b40"})
+   ;; Keyed by this gated SLOT's current id even though the digest was
+   ;; taken when the slot ran seed 2: it is the slot's pre-partition
+   ;; value, and the slot is what the test below looks it up by. The
+   ;; seed re-point, and why the partition forced it, are disclosed in
+   ;; `gated-runs` above.
+   :adhd-seed-130             "34f5faf0283d71a79b0e7ded21f3e5cb4515ef844cebd42fd84347be3a6e0b40"})
 
 (deftest gated-corpora-re-pin-exactly-once-under-the-new-scheme
   (testing "ADR-0171 section 3's DETERMINISM CONTINUITY obligation. The
@@ -645,7 +668,7 @@
   "run id -> the facility its corpus was generated under. A scenario
   config declares one only if it means to override the default:
   `demos/scenarios/ed-tuesday` does (its Emergency surge bump),
-  `demos/scenarios/clinic-decade` does not, and `adhd-seed-2` names no
+  `demos/scenarios/clinic-decade` does not, and `adhd-seed-130` names no
   config at all -- so `sim-model/default-facility` is the honest fallback
   for three of the four, not a guess. Measured, not assumed: passing nil
   instead lands `surge-only-when-earlier-rungs-exhausted` on a nil ward
@@ -654,7 +677,7 @@
   {:seed-202-ed-tuesday       "demos/scenarios/ed-tuesday/config.edn"
    :seed-424242-clinic-decade "demos/scenarios/clinic-decade/config.edn"
    :seed-5-clinic-decade      "demos/scenarios/clinic-decade/config.edn"
-   :adhd-seed-2               nil})
+   :adhd-seed-130               nil})
 
 (defn- arc0-facility-for [id]
   (or (when-let [path (get arc0-baseline-facility id)]
@@ -719,10 +742,12 @@
         (is (= [] (vec (cancel-reinstatement-mismatches (arc0-baseline id)))))))
     (testing "and the check is not vacuous -- FINDING, disclosed: only ONE of
               the four gated corpora carries reinstating cancels at all
-              (seed-202: 9 :cancel-transfer + 1 :cancel-discharge = TEN; the
-              two clinic-decade runs and adhd-seed-2 carry none, and
-              seed-202's own 2 :cancel-admit reinstate nothing). The
-              gated-corpus half of this gate therefore rests on ten events
+              (seed-202: 8 :cancel-transfer + 1 :cancel-discharge = NINE; the
+              two clinic-decade runs and adhd-seed-130 carry none, and
+              seed-202's own 1 :cancel-admit reinstates nothing). RE-COUNTED
+              under ADR-0171's stream partition, which moved this corpus: the
+              count was TEN (9 + 1) before, with 2 :cancel-admit. The
+              gated-corpus half of this gate therefore rests on nine events
               in one run;
               `cancel-reinstatement-survives-the-fold-carried-index` in
               engine-test is what carries it at population scale."
@@ -730,7 +755,7 @@
                                     [id (count (filter #(contains? reinstating-cancel-fields (:event %))
                                                        (arc0-baseline id)))]))
                           gated-runs)]
-        (is (= 10 (get counted :seed-202-ed-tuesday))
+        (is (= 9 (get counted :seed-202-ed-tuesday))
             (str "seed-202's reinstating-cancel count moved: " (pr-str counted)))
         (is (pos? (reduce + (vals counted)))
             (str "NO gated corpus carries a reinstating cancel -- this gate has "
@@ -784,7 +809,7 @@
         (is (= [] (vec (citation-index-mismatches (arc0-baseline id)))))))
     (testing "FINDING, disclosed: the gated corpora exercise only the NIL arm.
               Exactly two cited end events exist across all four corpora, both
-              in adhd-seed-2, and BOTH resolve to nil -- their opening
+              in adhd-seed-130, and BOTH resolve to nil -- their opening
               :medication-order and :care-plan-start fall in the history phase
               and never enter the log, which is the designed pre-horizon
               straddle ADR-0165 chose that run for. The two clinic-decade runs
@@ -797,8 +822,8 @@
                        :let [[ck _ rk] (get cited-end-resolution (:event ev))]
                        :when (and ck (get ev ck))]
                    [id (:event ev) (get ev rk)])]
-        (is (= [[:adhd-seed-2 :care-plan-end nil]
-                [:adhd-seed-2 :medication-end nil]]
+        (is (= [[:adhd-seed-130 :care-plan-end nil]
+                [:adhd-seed-130 :medication-end nil]]
                (vec ends))
             (str "the gated corpora's cited-end population moved -- re-read the "
                  "disclosure above before adjusting: " (pr-str (vec ends))))))))
@@ -856,14 +881,14 @@
   (filterv #(= kind (:event %)) ground-truth))
 
 (defn- cited-end-witness
-  "The counted witness both ADR-0163 gates rest on: `:adhd-seed-2`'s
+  "The counted witness both ADR-0163 gates rest on: `:adhd-seed-130`'s
   terminal events of `kind`, which carry their opening citation
   (ADR-0165 step 5 chose that run precisely because it produces both
   ends PAIRED, self-check clean, in ~25ms). Returned as a vector so a
   caller can pin its SIZE and then run `unpaired-ends` over it -- an
   emptiness claim made over a population known to be non-empty."
   [kind]
-  (end-events-of kind (:ground-truth (:payload (corpus :adhd-seed-2)))))
+  (end-events-of kind (:ground-truth (:payload (corpus :adhd-seed-130)))))
 
 (deftest clinic-decade-seed-424242-self-checks-clean
   (testing "ADR-0163: the exact reproducing invocation --
@@ -892,7 +917,7 @@
                 disclosed (repo review 5, L1-1): this corpus carries ZERO
                 :medication-end events of its own, because ADR-0163's drop
                 rule removed the only ones it had. The counted witness is
-                :adhd-seed-2's ONE cited :medication-end, pinned here, with
+                :adhd-seed-130's ONE cited :medication-end, pinned here, with
                 `unpaired-ends` run over it: the same assertion, over a
                 population that could have failed it."
         (let [own (end-events-of :medication-end (:ground-truth (:payload r)))
@@ -903,7 +928,7 @@
                    "disclosure and re-point the witness before adjusting: "
                    (pr-str (mapv :t own))))
           (is (= 1 (count witness))
-              (str "the counted witness population moved -- :adhd-seed-2 no "
+              (str "the counted witness population moved -- :adhd-seed-130 no "
                    "longer produces exactly one :medication-end, so this gate "
                    "is asserting emptiness over nothing: " (pr-str witness)))
           (is (every? :order-citation witness)
@@ -933,7 +958,7 @@
                 HISTORY. It describes what this seed's log carried BEFORE
                 ADR-0163; the fixed log carries ZERO :care-plan-end events,
                 so the shape assertion has had nothing to judge since the fix
-                landed. The counted witness is :adhd-seed-2's ONE cited
+                landed. The counted witness is :adhd-seed-130's ONE cited
                 :care-plan-end, pinned here, with `unpaired-ends` run over
                 it -- and it is the ONLY population-scale exercise of the
                 :care-plan-end half in the suite, which no invariant covers."
@@ -945,7 +970,7 @@
                    "disclosure and re-point the witness before adjusting: "
                    (pr-str (mapv :t own))))
           (is (= 1 (count witness))
-              (str "the counted witness population moved -- :adhd-seed-2 no "
+              (str "the counted witness population moved -- :adhd-seed-130 no "
                    "longer produces exactly one :care-plan-end, so this gate "
                    "is asserting emptiness over nothing: " (pr-str witness)))
           (is (every? :care-plan-citation witness)

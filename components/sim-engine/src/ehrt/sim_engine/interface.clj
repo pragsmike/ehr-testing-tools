@@ -76,3 +76,24 @@
 (def run-t-monotone? event-schema/run-t-monotone?)
 (def default-profiles order-profiles/default-profiles)
 (def abnormal-flag order-profiles/abnormal-flag)
+
+;; --- stream-partition surface (ADR-0171, arc 1) ---------------------------
+;;
+;; Ruling A1 promotes `mix64` from private to this seam, because the
+;; partition derives every stream seed with it and a consumer outside
+;; this component now needs the same derivation: `ehrt.sim.run` builds
+;; the EMISSION family's stream here rather than reusing the master seed
+;; verbatim (ruling C1), and `ehrt.sim.manifest` stamps the scheme marker
+;; (ruling D1).
+;;
+;; `newborn-id-tag` is exported with no caller today, deliberately: arc 2
+;; owns the newborn path, and ruling B1 fixed its key NOW so arc 2
+;; inherits the pair (parity-index, within-delivery-index) rather than
+;; choosing a bare parity index and owing a second reshuffle when
+;; multiples stop being a v1 limitation.
+
+(def mix64 engine/mix64)
+(def stream-scheme engine/stream-scheme)
+(def stream-seed engine/stream-seed)
+(def stream engine/stream)
+(def newborn-id-tag engine/newborn-id-tag)
