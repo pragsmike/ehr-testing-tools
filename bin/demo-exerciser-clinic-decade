@@ -85,32 +85,61 @@ echo "== demo-exerciser-clinic-decade: full run wallclock $((ended_s - started_s
 
 echo "== demo-exerciser-clinic-decade: checking named invariants (re-derived live from the README) =="
 
-# "every board snapshot reads `inpatients: 0`" -- the exact literal is
-# read from the README's own prose at runtime, never hand-copied here,
-# so a future re-witness of this figure (ADR-0103's own precedent,
-# which DID move this exact scenario's numbers once already) cannot
-# silently desync from this check. The claim sentence itself wraps
-# across a markdown line break in the README's own prose ("every
-# board" / "snapshot reads ..."), so the extraction regex tolerates
-# whitespace (including a newline) between words rather than requiring
-# them on one physical line. Step 2 is the --board play.
+# "41 of the 48 board snapshots read `inpatients: 0` ... the other 7
+# read `inpatients: 1`" -- both counts AND both literals are read from
+# the README's own prose at runtime, never hand-copied here, so a
+# future re-witness of these figures (ADR-0103 moved them once, and
+# ADR-0171's stream partition moved them again) cannot silently desync
+# from this check.
+#
+# WIDENED 2026-08-25 (ADR-0171). This used to extract ONE literal and
+# require every snapshot line to contain it -- a universal, which is
+# what the scenario supported until the reshuffle put exactly one
+# sepsis ED admission into the decade. A universal that has become a
+# 41/7 split cannot be rescued by re-pointing the literal: no single
+# string is in every line. So the claim's SHAPE changed with it, from
+# "every snapshot reads X" to "n snapshots read X and m read Y", and
+# the check now asserts both counts exactly and that they exhaust the
+# population. Weaker as a sentence, not as a gate: it pins two numbers
+# where it used to pin none.
+#
+# The claim sentences wrap across markdown line breaks in the README's
+# own prose, so both extraction regexes tolerate whitespace (including
+# a newline) between words rather than requiring one physical line.
+# Step 2 is the --board play.
 clojure -M:dev:test -e '
 (require (quote [clojure.string :as str]))
 (let [readme (slurp "demos/scenarios/clinic-decade/README.md")
-      claim-match (re-find #"every\s+board\s+snapshot\s+reads\s+`([^`]+)`" readme)]
-  (if-not claim-match
-    (do (println "FAIL: could not find the README'"'"'s own \"every board snapshot reads ...\" inline claim")
+      major (re-find #"\*\*(\d+)\s+of\s+the\s+(\d+)\s+board\s+snapshots\s+read\s+`([^`]+)`\*\*" readme)
+      minor (re-find #"\*\*the\s+other\s+(\d+)\s+read\s+`([^`]+)`\*\*" readme)]
+  (if-not (and major minor)
+    (do (println "FAIL: could not find the README'"'"'s own counted board-snapshot claims")
         (System/exit 1))
-    (let [claim (second claim-match)
+    (let [n-major (Long/parseLong (nth major 1))
+          n-total (Long/parseLong (nth major 2))
+          lit-major (nth major 3)
+          n-minor (Long/parseLong (nth minor 1))
+          lit-minor (nth minor 2)
           out-lines (str/split-lines (slurp (str (System/getenv "LOG_DIR") "/step-2.out")))
-          snapshot-lines (filter #(str/includes? % "inpatients:") out-lines)]
-      (if (and (seq snapshot-lines) (every? #(str/includes? % claim) snapshot-lines))
-        (do (println (str "OK: all " (count snapshot-lines) " board-snapshot lines contain the README'"'"'s own re-derived claim " (pr-str claim)))
+          snapshot-lines (filter #(str/includes? % "inpatients:") out-lines)
+          got-major (count (filter #(str/includes? % lit-major) snapshot-lines))
+          got-minor (count (filter #(str/includes? % lit-minor) snapshot-lines))]
+      (if (and (seq snapshot-lines)
+               (= n-total (count snapshot-lines))
+               (= n-major got-major)
+               (= n-minor got-minor)
+               (= n-total (+ n-major n-minor)))
+        (do (println (str "OK: " n-total " board-snapshot lines split " n-major "/" n-minor
+                          " across the README'"'"'s own re-derived claims "
+                          (pr-str lit-major) " / " (pr-str lit-minor)))
             (System/exit 0))
-        (do (println (str "FAIL: not every board-snapshot line contains " (pr-str claim) " -- the README'"'"'s own zero-inpatient claim does not hold on this run"))
+        (do (println (str "FAIL: the board-snapshot split does not match the README -- README says "
+                          n-major " of " n-total " read " (pr-str lit-major) " and " n-minor " read "
+                          (pr-str lit-minor) "; this run has " (count snapshot-lines) " snapshot lines, "
+                          got-major " and " got-minor))
             (doseq [l snapshot-lines] (println "  " l))
             (System/exit 1))))))
-' || fail "zero-inpatient invariant did not hold (see FAIL detail above)"
+' || fail "board-snapshot split invariant did not hold (see FAIL detail above)"
 
 # "The run's own closing summary: `{:unparseable-count 0, ...}`" -- the
 # whole map is read from the README's own prose at runtime (a Clojure
@@ -119,7 +148,7 @@ clojure -M:dev:test -e '
 # the real, freshly captured run's own final printed EDN envelope.
 # :wallclock-ms is excluded as genuinely run-volatile (disclosed,
 # per this session's own fence); every other key -- :emitted 68,
-# :snapshot-count 48, :skip-count 41, :unparseable-count 0, :rate,
+# :snapshot-count 48, :skip-count 44, :unparseable-count 0, :rate,
 # :idle-cap-ms, :stream-span-ms, :clamped-count, :unfolded-count,
 # :sink -- must match exactly, or this is a FINDING, not a silently
 # tolerated drift.
