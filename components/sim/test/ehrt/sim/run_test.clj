@@ -567,6 +567,59 @@
                    "order is part of \"byte-identical\" is an AUTHOR ruling, not this "
                    "session's: report the diff, do not re-pin.")))))))
 
+(def ^:private arc0-pre-partition-digest
+  "What each gated corpus digested to BEFORE ADR-0171's stream partition
+  -- ADR-0169's own pins, frozen here as the migration boundary and
+  never to be edited again.
+
+  `arc0-pinned-digest` above is the LIVE pin and moves when the corpus
+  legitimately moves. These four are historical: they are the values the
+  live pin held at HEAD 97f22fd, the last commit before the partition,
+  and they exist so `gated-corpora-re-pin-exactly-once-under-the-new-
+  scheme` can assert that the corpus moved OFF them -- which is how a
+  reader tells \"the migration landed\" from \"the migration is still
+  pending\" without resolving a git history."
+  {:seed-202-ed-tuesday       "584a5f01004ee4228f6a352209798310dd6c2daadb5596ff7316c163ca6db9bd"
+   :seed-424242-clinic-decade "793910e0d2d57205093dd100cb27419299e6b8902c09a78613d6df3a3652bf24"
+   :seed-5-clinic-decade      "dd0beff7a02bf1e50f498c6f87ab1cc927bd7896786adaa75cbfd5209ccf80a5"
+   :adhd-seed-2               "34f5faf0283d71a79b0e7ded21f3e5cb4515ef844cebd42fd84347be3a6e0b40"})
+
+(deftest gated-corpora-re-pin-exactly-once-under-the-new-scheme
+  (testing "ADR-0171 section 3's DETERMINISM CONTINUITY obligation. The
+            partition is draw-affecting BY DESIGN and the author's ruling
+            F1 bought exactly ONE reshuffle for it: the partition, the
+            from = to delay skip, every re-pin and the oracle re-baseline
+            land together, because splitting them spends a second.
+
+            `arc0-gated-corpora-are-byte-and-value-identical-to-the-
+            pinned-baseline` above still says a red is a STOP and never a
+            reason to re-pin. ADR-0171 being Accepted is the one licensed
+            exception, and this test is what makes the exception legible
+            after the fact: the four pre-partition digests are frozen
+            here, so the migration is visible on the test's own face and
+            a SECOND unlicensed reshuffle cannot hide behind the first.
+
+            The ADR-0169 F3 tripwire is untouched -- byte gate and value
+            gate disagreeing remains its own finding, in its own test."
+    (doseq [{:keys [id]} gated-runs]
+      (testing (str "gated run " id)
+        (let [pre  (get arc0-pre-partition-digest id)
+              live (get arc0-pinned-digest id)]
+          (is (some? pre) "no pre-partition digest recorded for this gated run")
+          (is (some? live) "no live pinned digest for this gated run")
+          (is (not= pre live)
+              (str "the PIN for " id " is still its pre-partition value (" pre
+                   "). Either the partition has not landed, or a re-pin was "
+                   "reverted -- ADR-0171 says all 35 oracle roots and all four "
+                   "gated corpora must move exactly once."))
+          (let [actual (result/sha256-string (pr-str (get-in (corpus id) [:payload :ground-truth])))]
+            (is (not= pre actual)
+                (str "the LIVE " id " corpus still digests to its pre-partition "
+                     "value -- the partition is not reaching this run."))
+            (is (= live actual)
+                (str "the live pin and the live corpus disagree for " id
+                     "; the byte gate above carries the diagnostic."))))))))
+
 (def ^:private arc0-invariant-catalog
   "The 29 invariant names `check-all` reports, in reporting order --
   pinned so the findings assertion below is a full-value `=` rather than

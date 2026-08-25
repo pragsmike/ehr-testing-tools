@@ -1646,3 +1646,210 @@
                   "this patient opened a-citation only once -- the last/first
                    distinction is not under test")
               (is (= (last own-orders) (:order-event-id ev))))))))))
+;; --- ADR-0171 (arc 1): the RNG stream partition ---------------------------
+;;
+;; Until this arc there was ONE java.util.Random and consumption order was
+;; global event order, so adding, removing or reordering a single draw
+;; anywhere shifted every later draw for every later patient. The partition
+;; derives five streams by family, keyed on a stable id. What that buys, and
+;; what it deliberately does NOT buy, is the subject of the three tests
+;; below.
+;;
+;; WHAT IT DOES NOT BUY, stated first because a test that overclaimed here
+;; would be false in the tree: the run-scoped families (:world, :facility)
+;; still couple patients to each other. Their draw COUNTS are conditional on
+;; the population -- `(seq eligible)`, `(seq home-licensed)` -- so no
+;; per-patient stream can own them without making one patient's consumption
+;; depend on another's state, which is the coupling sim/ADR-0009's rejected
+;; option (b) already refused. Perturbing patient K therefore moves K's own
+;; event TIMES, which re-interleaves the global queue, which moves where the
+;; world stream stands when somebody else's bed is chosen. The author's
+;; locality ruling (ADR-0171, 2026-08-25, "LOCALITY option (a)") is the
+;; weakened property that IS true: byte-identity over the PATIENT-SCOPED
+;; FIELDS of every other patient's events, with the run-scoped families'
+;; output fields excluded BY NAME.
+
+(def ^:private locality-seed 424242)
+(def ^:private locality-patients 8)
+
+(def ^:private locality-perturbed-ordinal
+  "Which arrival ordinal gets perturbed. 3 of 8 -- far enough in that
+  patients both before and after it are already mid-pathway, so a shared
+  stream would have moved patients on both sides."
+  3)
+
+(def ^:private locality-baseline-pathway
+  {:name "locality-baseline"
+   :steps [{:type :admission :location "Renal"}
+           {:type :delay :from 60 :to 240}
+           {:type :discharge}]})
+
+(def ^:private locality-perturbed-pathway
+  "A DIFFERENT pathway for one ordinal: more steps, wider ranges, and an
+  :order (which draws a turnaround plus two per analyte). Its draw count
+  and its event times both differ from the baseline's, which is what makes
+  the pre-partition failure total rather than marginal."
+  {:name "locality-perturbed"
+   :steps [{:type :admission :location "Renal"}
+           {:type :delay :from 30 :to 300}
+           {:type :order :profile :cbc}
+           {:type :delay :from 15 :to 90}
+           {:type :discharge}]})
+
+(defn- locality-config
+  "`crowded-facility` on purpose: one licensed Renal bed forces boarding,
+  so `bed-ready-location` (the sharpest locality hazard in the census --
+  patient A's discharge draws to place patient B) actually fires. On the
+  default facility it would not, and the exclusion the ruling licenses
+  would be vacuous."
+  [pathways]
+  {:seed locality-seed :patients locality-patients :arrival-gap 45
+   :facility crowded-facility :providers test-providers
+   :pathway locality-baseline-pathway :pathways pathways})
+
+(def ^:private locality-runs
+  "Baseline vs perturbed, computed once: three deftests below read them.
+
+  THE PERTURBATION, and the disclosure it owes. ADR-0171 section 3 names
+  this test `mutating-one-patients-stream-seed-moves-only-that-patient`
+  and asks for it RED before the partition, failing by moving everyone.
+  Both cannot hold at once: a stream SEED is derived from the master seed
+  and the arrival ordinal alone, so no config can perturb one patient's
+  seed, and the only way to reach it is `with-redefs` on `engine/stream`
+  -- a var that does not exist before the partition, so that test could
+  only ever have been red by failing to COMPILE, which is the one red
+  reason section 3 rules out.
+
+  What perturbs exactly one patient's own draws and does compile on both
+  sides is an explicit one-ordinal `:pathways` override. `assign-pathway`
+  consumes exactly one `.nextDouble` per patient whether the outcome is
+  the override or the weighted pick (its own fixed-consumption law), so
+  the override changes no other patient's draw COUNT -- it changes only
+  what patient K's own stream is spent on. That is the same shape of
+  change arcs 2-4 will make, which is what this gate exists to protect.
+
+  The seed-level version of the property is asserted too, by
+  `mutating-one-patients-stream-seed-moves-only-that-patient` below,
+  under ADR-0171's own name -- born green, because its mechanism IS the
+  partition."
+  (delay
+    {:baseline  (engine/run (locality-config [{:pathway locality-baseline-pathway :weight 1}]))
+     :perturbed (engine/run (locality-config [{:pathway locality-baseline-pathway :weight 1}
+                                              {:patient-ordinal locality-perturbed-ordinal
+                                               :pathway locality-perturbed-pathway}]))}))
+
+(def ^:private run-scoped-event-fields
+  "The event fields the RUN-scoped families write -- excluded by name from
+  the locality assertion, per the author's LOCALITY ruling (a).
+
+  `:location`, `:home-ward`, `:placement` and `:from` are what the WORLD
+  family's four cross-patient sites decide: `bed-ready-location`
+  (engine.clj:480 at ADR-0171's design HEAD c1b996e), `:transfer-in-
+  error`'s `allocate` (:610), the `:bed-swap` partner pick (:643) and the
+  `:merge` partner pick (:672) -- plus `:admission`/`:transfer`'s own
+  `allocate` calls, which write the same fields. `:attending` is the
+  FACILITY family's `choose-attending`, run-scoped for the same reason.
+
+  A test claiming TOTAL byte-identity would be false at engine.clj:480
+  and would be discovered false by the first churned seed. The exclusion
+  is not assumed to matter, either: `the-locality-test-asserts-how-many-
+  patients-it-moved` pins which of these fields actually differ, so an
+  exclusion that stopped carrying weight would show up as a red rather
+  than as silent slack."
+  [:location :home-ward :placement :from :attending])
+
+(defn- patient-scoped
+  [event]
+  (apply dissoc event run-scoped-event-fields))
+
+(defn- locality-moved-ordinals
+  "Which arrival ordinals' own event subsequences differ between the two
+  runs, under `project`. `engine/events-for-patient` is the subsequence;
+  patient-ids are identical across the two runs because both share a seed."
+  [runs project]
+  (into (sorted-set)
+        (for [i (range locality-patients)
+              :let [pid (engine/patient-id-for locality-seed i)
+                    of (fn [r] (mapv project (engine/events-for-patient (:ground-truth r) pid)))]
+              :when (not= (of (:baseline runs)) (of (:perturbed runs)))]
+          i)))
+
+(deftest perturbing-one-patients-own-draws-moves-only-that-patient
+  (testing "ADR-0171 section 3's LOCALITY obligation, under the author's
+            ruling (a). Spending ONE patient's stream differently moves
+            that patient and, in every PATIENT-SCOPED field, nobody else.
+            Before the partition this failed by moving everyone: one
+            shared stream made consumption order global event order."
+    (let [runs @locality-runs
+          moved (locality-moved-ordinals runs patient-scoped)]
+      (is (= #{locality-perturbed-ordinal} moved)
+          (str "the PATIENT-SCOPED locality property broke. Moved ordinals: "
+               (pr-str moved) " -- expected exactly the perturbed one ("
+               locality-perturbed-ordinal "). The pre-partition failure was "
+               "#{3 4 5} -- the perturbed ordinal AND every ordinal still "
+               "drawing after it, measured on HEAD 97f22fd: one shared RNG, "
+               "consumption order = global event order. A moved set MISSING "
+               "the perturbed ordinal means the perturbation stopped "
+               "perturbing -- re-read `locality-runs` before adjusting anything."))
+      (testing "and the perturbed patient really did move, so the property
+                above is not passing over an inert perturbation"
+        (is (contains? moved locality-perturbed-ordinal))))))
+
+(deftest the-locality-test-asserts-how-many-patients-it-moved
+  (testing "ADR-0171 section 3's WITNESS COUNTS obligation, which is
+            `R-witness-population-is-counted` applied: assert the witness
+            population's SIZE first, then the property over it, so the
+            locality gate above cannot pass by moving nothing.
+
+            The two counts are deliberately DIFFERENT, and the difference
+            is the ruling. Over PATIENT-SCOPED fields exactly one ordinal
+            moves. Over the WHOLE event -- run-scoped fields included --
+            more than one does, because the perturbed patient's event
+            times re-interleave the global queue and the world stream then
+            stands somewhere else when a peer's bed is chosen. Pinning
+            both is what keeps the exclusion honest: if the full-event
+            count ever collapsed to 1, the exclusion would have gone
+            vacuous and this gate would say so."
+    (let [runs @locality-runs
+          moved-scoped (locality-moved-ordinals runs patient-scoped)
+          moved-full (locality-moved-ordinals runs identity)]
+      (testing "the population is the one the config declares"
+        (is (= locality-patients
+               (count (set (map (comp :patient-id first :participants)
+                                (:ground-truth (:baseline runs)))))))
+        (is (pos? (count (filter :bed-ready (:ground-truth (:baseline runs)))))
+            "no bed-ready transfer fired, so engine.clj:480 -- the sharpest
+             cross-patient site, and the reason the exclusion exists -- is
+             not exercised and the exclusion is vacuous"))
+      (testing "PATIENT-SCOPED: exactly one moved, seven did not"
+        (is (= 1 (count moved-scoped)))
+        (is (pos? (count moved-scoped)))
+        (is (= (dec locality-patients) (- locality-patients (count moved-scoped)))))
+      (testing "WHOLE EVENT: the run-scoped coupling moves more than one,
+                pinned so a collapse to 1 is a red rather than silent slack"
+        (is (= 3 (count moved-full))
+            (str "the run-scoped blast radius moved off its pin: " (pr-str moved-full)
+                 ". Larger is not a defect -- it is the disclosed WORLD coupling. "
+                 "Exactly 1 WOULD be a finding: it would mean the exclusion in "
+                 "`run-scoped-event-fields` is no longer carrying anything."))
+        (is (pos? (count moved-full)))
+        (is (contains? moved-full locality-perturbed-ordinal)))
+      (testing "and the excluded fields are the ones actually differing --
+                the exclusion names what the tree does, not what it fears"
+        (let [differing (into (sorted-set)
+                              (for [i (range locality-patients)
+                                    :when (not= i locality-perturbed-ordinal)
+                                    :let [pid (engine/patient-id-for locality-seed i)
+                                          a (engine/events-for-patient (:ground-truth (:baseline runs)) pid)
+                                          b (engine/events-for-patient (:ground-truth (:perturbed runs)) pid)]
+                                    [x y] (map vector a b)
+                                    k (into #{} (concat (keys x) (keys y)))
+                                    :when (not= (get x k) (get y k))]
+                                k))]
+          (is (= #{:from :location} differing)
+              (str "the fields differing on OTHER patients moved: " (pr-str differing)
+                   ". Every one of them must appear in `run-scoped-event-fields` "
+                   "or the locality property above is being weakened by a field "
+                   "the ruling never excluded."))
+          (is (every? (set run-scoped-event-fields) differing)))))))
+
