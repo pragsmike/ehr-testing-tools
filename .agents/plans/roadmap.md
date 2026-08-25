@@ -20,12 +20,12 @@ rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
   events across all four resolve to nil -- so no gated corpus witnesses ADR-0164's
   resolution SUCCEEDING. Covered by co-landed defspecs, counts asserted so a drift
   to zero goes red; the gated population itself stays one run deep.
-- OPEN **[repo-review-5]** PRIORITY 3 -- chartered roughly 15 ADRs past the
-  review-4 close by ADR count, not calendar (`rulings.md#R-review-cadence-in-adrs`,
-  measured from the prior CLOSE as ADR-0139 worked it): **approximately ADR-0174**.
-  Inherits a THIRTEEN-row watch-list carried in `notes/adr/0159-review-4-arc-close.md`,
-  not here: W-1 born-red gates, W-2 the `exempt` disposition's missing ratchet, W-3
-  row-id citations, W-4..W-13 including two register gates ADR-0159 found narrow.
+- OPEN **[repo-review-5]** PRIORITY 3 -- ASSESSED at ADR-0170 (2026-08-25), four ADRs
+  EARLY by author override of `rulings.md#R-review-cadence-in-adrs`; the rule's own
+  arithmetic (~ADR-0174) stands and review 6 computes from THIS close. Register
+  `.agents/plans/2026-08-25-repo-review-findings.md` -- 88 rows, 1 green / 5 yellow /
+  2 red, D1 and D6 the reds. Plan `.agents/plans/2026-08-25-repo-review-5-plan.md` --
+  ten rulings lettered, six fix sessions. STAYS OPEN until the fixes are ruled.
 - OPEN **[register-gate-row-ownership]** PRIORITY 4 -- both register contracts gate
   row SHAPE, not row OWNERSHIP, and both are green over a live defect. `roadmap.md`:
   `c509e46` inserted the ADR-0152 row inside the ADR-0150 row, so five continuation

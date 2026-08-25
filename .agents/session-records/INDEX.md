@@ -3,7 +3,7 @@
 
 # Session records — index
 
-Generated index of [`.agents/session-records`](.) — 173 files. The convention, what a record contains, and where this sits relative to every other register are in [`README.md`](README.md); annotations that used to ride these rows are in [`../plans/state-history-2026-08.md`](../plans/state-history-2026-08.md), dated.
+Generated index of [`.agents/session-records`](.) — 174 files. The convention, what a record contains, and where this sits relative to every other register are in [`README.md`](README.md); annotations that used to ride these rows are in [`../plans/state-history-2026-08.md`](../plans/state-history-2026-08.md), dated.
 
   * 2026-07-28-discipline-parity.md
   * 2026-07-29-development-resumption.md
@@ -178,3 +178,4 @@ Generated index of [`.agents/session-records`](.) — 173 files. The convention,
   * 2026-08-24-throughput-spike.md
   * 2026-08-24-traffic-scale-program.md
   * 2026-08-25-arc-0-performance-under-equivalence.md
+  * 2026-08-25-repo-review-5.md
