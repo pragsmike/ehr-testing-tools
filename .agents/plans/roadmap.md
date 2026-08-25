@@ -323,8 +323,8 @@ Rows here are LIVE, each owing a revisit trigger in its own token.
   removed under EQUIVALENCE PROOF, not red-before-green: byte + value identity on
   four gated corpora, byte identity on the whole **104,851-event** corpus (same
   SHA-256 across two worktrees), oracle IDENTICAL and undeclared. 10^5 cell
-  **17.3 min -> 1.81 min (9.58x)**; check alone 711.1 s -> 7.26 s. Suite 14m35s,
-  MAKE_EXIT=0, 370/4,166/18,690. Residual sites rowed, not taken.
+  **17.3 min -> 1.81 min (9.58x)**; check alone 711.1 s -> 7.26 s. Suite run twice,
+  MAKE_EXIT=0 both, 14m35s / 14m17s, 370/4,166/18,690. Residual sites rowed.
 - CLOSED 2026-08-24 ADR-0167 **[suite-time-residual]** -- the 1.32x that survived the
   orphan kill did NOT survive a REBOOT. One clean run on a verified-quiet penny:
   **13m59s**, `MAKE_EXIT=0`, 370/4,142/18,450 reconciling exactly -- inside the

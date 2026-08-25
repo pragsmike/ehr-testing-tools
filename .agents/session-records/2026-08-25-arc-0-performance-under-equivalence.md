@@ -231,15 +231,25 @@ findings gates are what carry the claim.
 Host verified quiet first (Windows `LoadPercentage` **1 / 4 / 4**, no
 orphan `wslhost`), per `rulings.md#R-full-suite-before-push`.
 
-    MAKE_EXIT=0     WALL_SECONDS=875  =  14m35s
-    370 namespaces / 4,166 tests / 18,690 assertions, 0 failures, 0 errors
+Run TWICE, as the prompt's Step 0 anticipated: once over the code commits
+(steps 3-5) and once over the close commit, since a docs-only change can
+still break a docs-tooling gate.
+
+    run A (after steps 3-5)  MAKE_EXIT=0  WALL_SECONDS=875  =  14m35s
+    run B (after the close)  MAKE_EXIT=0  WALL_SECONDS=857  =  14m17s
+    both: 370 namespaces / 4,166 tests / 18,690 assertions, 0 failures, 0 errors
 
 | | namespaces | tests | assertions | wall |
 | --- | --- | --- | --- | --- |
 | ADR-0167 baseline (post-reboot, quiet) | 370 | 4,142 | 18,450 | **13m59s** |
-| this arc | 370 | **4,166** | **18,690** | **14m35s** |
+| this arc, run A | 370 | **4,166** | **18,690** | 14m35s |
+| this arc, run B | 370 | 4,166 | 18,690 | **14m17s** |
 
-**+24 tests, +240 assertions, +36s.** The delta is the equivalence gates'
+The two runs reconcile exactly on all three counts; the 18s spread between
+them is the ordinary run-to-run variance of this machine, and the honest
+comparison against the 13m59s baseline is the **14m26s mean**.
+
+**+24 tests, +240 assertions, +27s (mean).** The delta is the equivalence gates'
 own cost, not a regression: two new defspecs at 120 and 150 trials, the
 naive-vs-fast comparison running every invariant TWICE per trial, and four
 gated corpora now digested and value-compared as well as self-checked. The
