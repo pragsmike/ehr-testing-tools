@@ -30,10 +30,31 @@
 [{:asset "docs/manual/assets/gt-emitters.svg"
   :source "docs/dev/simulator-architecture.md"
   :trigger "regenerate by hand if simulator-architecture.md section 4's own equations change"
-  :reviewed-at "e189418c"
+  :reviewed-at "75cde83f"
   :verdict :fresh
   :note
-  "Reviewed 2026-08-25 (de-scaffold session, no ADR).
+  "Reviewed 2026-08-25 (arc 1b, ADR-0171's stream-partition migration).
+   simulator-architecture.md moved at 75cde83f, which re-stated the
+   RNG-path prose for the five-family stream partition. TWO hunks, and
+   both land OUTSIDE section 4: @@ -77,11 in section 2 (decide's own
+   signature line, (rng, ...) -> (streams, ...)) and @@ -148,17 in
+   section 3's mutable-state census (the 'one deliberate impurity'
+   paragraph, plus a new before/after paragraph and an RNG-path-law
+   citation fix). Section 4 begins at line 191 and is byte-identical
+   across the diff -- its EQUATION BLOCK (walk, engine, emitH/emitF,
+   replay, check), which is what this row's trigger names, is untouched.
+   This asset depicts only GT -> emitH/emitF -> ER7*/FHIR*, none of
+   which the partition changes: the same ground truth still reaches the
+   same two emitters. Not stale.
+
+   Bumped in the migration's OWN session rather than after CI, which is
+   the correction the previous review asked for: this tripwire reads
+   git log -1 on the source, so it cannot see an uncommitted edit and
+   the local make test stays green over a tree CI reddens one commit
+   later. Landing the bump as the migration's immediate successor, both
+   pushed together, is what keeps the pushed TIP green.
+
+   Prior review, 2026-08-25 (de-scaffold session, no ADR), kept.
    simulator-architecture.md moved at e189418c, which replaced thirteen
    stale `engine.clj:NNN` line citations with the `defn` names they name.
    Five hunks; exactly ONE lands inside section 4, at its `Two honest
