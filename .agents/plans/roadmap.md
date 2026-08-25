@@ -22,12 +22,15 @@ with them.
   folding every patient ever created, `decide :discharge`'s boarder `sort-by`, and
   `last-uncancelled-index` (cannot ride either arc-0 carrier without a second code
   path, ADR-0169 F-3). Site ranking within generate NOT re-profiled.
-- OPEN **[stream-partition-design]** PRIORITY 2 -- traffic-scale arc 1, the Q3(b)
-  CONVERSION. DESIGN LANDED, ADR-0171, AWAITING RULINGS A-F (mixing function;
-  newborn ordinal; whether emission joins; facility vs world; marker's manifest
-  home; migration in one session or two). What remains is the MIGRATION, which is
-  draw-affecting and carries the from==to delay skip in the same commit.
-  Plan: `2026-08-24-traffic-scale-program.md`.
+- OPEN **[post-partition-narrative-refresh]** PRIORITY 2 -- six hand-owned
+  narrative documents still quote pre-partition sim output, 43 tokens over 6
+  files: `demos/scenarios/ed-tuesday/README.md` (19),
+  `docs/manual/05-batch-delivery.md` (10), `docs/manual/01-what-this-is.md` (8),
+  `docs/manual/04-time-on-the-wire.md` (4), `docs/manual/00-front.md` (1),
+  `docs/use-cases/supply-batch-straddling-traffic.md` (1). Nothing gates them --
+  the ADR-0170 species. The trace READMEs beside `make traces` WERE re-derived;
+  these were left, deliberately, rather than re-narrating six documents at the
+  tail of the migration commit.
 - OPEN **[person-simulator]** PRIORITY 3 -- traffic-scale arc 2. New component,
   sibling charter discipline to `patient-simulator`: bespoke hazard-rate life-arc
   processes (`rulings.md#R-mix-1`), households and pregnancy->delivery
