@@ -54,12 +54,12 @@ Docs-tooling gates: `adr_index_test`, `artifact_provenance_test`, `audience_entr
 
 | register | count |
 |---|---|
-| ADR files (`notes/adr/NNNN-*.md`) | 168 |
+| ADR files (`notes/adr/NNNN-*.md`) | 169 |
 | roadmap rows (all sections) | 59 |
 | rulings rows | 113 |
 | rulings rows superseded | 6 |
-| session records | 175 |
-| archived prompts | 168 |
+| session records | 176 |
+| archived prompts | 169 |
 
 ### Roadmap rows by section
 
