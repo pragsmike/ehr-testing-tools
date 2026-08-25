@@ -114,3 +114,25 @@ no `docs/limitations.md`, no charter gate — every one of those is arc
 was added: `rulings.md` is FROZEN under the de-scaffold ruling, so
 section 4's eleven laws land as **gates** in arc 2b's own commit or not
 at all, the same disposition ADR-0171 took. No tag.
+
+## Close marker
+
+CI run **32893144168** @ `92e37c9` concluded **success**, verified by
+this session via `gh` (`rulings.md#R-session-verifies-ci-via-gh`, kept
+as the close marker after the de-scaffold ruling retired it as a tag
+condition). One commit, one push, no tag.
+
+`bin/preflight` before the commit: exit 1 on the tree-clean check
+alone, reporting this session's own six files. Every other check OK --
+last five CI runs green, edit root not under `/mnt/`, HEAD matching
+`origin/main` at `41081dd`. `bin/post-push-verify 41081dd 92e37c9`:
+remote tip matched, every message in range pure ASCII.
+
+The history-reading gates were run AFTER the commit, not before --
+ADR-0162's own ordering remedy, since `hand-owned-asset-freshness-test`
+reads `git log` and is blind by construction on an uncommitted tree.
+`hand-owned-asset-freshness`, `process-law-citation`,
+`front-door-fence-gate`, `lint`: **15 tests, 84 assertions, 0
+failures**. Nothing fired: this session changed no source any
+hand-owned asset cites.
+
