@@ -78,11 +78,17 @@
               :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
              {:event :admission :t 5 :home-ward "Renal" :participants (subject "P2")
               :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}]]
-    (is (seq (check/no-double-occupancy log)))))
+    (testing "ADR-0169's equivalence gate: the FULL finding map, not merely
+              non-emptiness -- \"identical findings\" is a claim about content
+              and order, so a discrimination test that only asserts `seq`
+              cannot witness it."
+      (is (= [{:invariant :no-double-occupancy :bed "RENAL-01" :at 5}]
+             (check/no-double-occupancy log))))))
 
 (deftest admitted-occupies-one-slot-detects-nil-location
   (let [log [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1") :location nil}]]
-    (is (seq (check/admitted-occupies-one-slot log)))))
+    (is (= [{:invariant :admitted-occupies-one-slot :patient-id "P1" :at 0}]
+           (check/admitted-occupies-one-slot log)))))
 
 (deftest occupancy-within-capacity-detects-overflow
   (let [ward {:id :renal :name "Renal" :beds 1 :surge-slots 0
@@ -94,7 +100,9 @@
               :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
              {:event :admission :t 5 :home-ward "Renal" :participants (subject "P2")
               :location {:ward "Renal" :bed "RENAL-99" :placement :licensed}}]]
-    (is (seq (check/occupancy-within-capacity log facility)))))
+    (is (= [{:invariant :occupancy-within-capacity :ward "Renal" :at 5
+             :occupied 2 :capacity 1}]
+           (check/occupancy-within-capacity log facility)))))
 
 (deftest surge-only-when-earlier-rungs-exhausted-detects-premature-surge
   (let [facility test-facility
@@ -386,7 +394,8 @@
     (let [log [{:event :outpatient-visit :t 0 :participants (subject "P1")}
                {:event :transfer :t 5 :home-ward "Renal" :participants (subject "P1")
                 :from nil :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}]]
-      (is (seq (check/outpatient-patients-occupy-no-bed log))))))
+      (is (= [{:invariant :outpatient-patients-occupy-no-bed :patient-id "P1" :at 5}]
+             (check/outpatient-patients-occupy-no-bed log))))))
 
 ;; --- sim/ADR-0011: the warm-up mark -------------------------------------------
 
@@ -415,21 +424,27 @@
               :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
              ;; :cancels-event-id 5 doesn't exist in this log at all.
              {:event :cancel-admit :t 10 :cancels-event-id 5 :participants (subject "P1")}]]
-    (is (seq (check/cancel-references-existing-uncancelled-event log)))))
+    (is (= [{:invariant :cancel-references-existing-uncancelled-event :patient-id "P1" :at 10}]
+           (check/cancel-references-existing-uncancelled-event log)))))
 
 (deftest cancel-references-existing-uncancelled-event-detects-wrong-type
   (let [log [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
               :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
              ;; cancel-DISCHARGE pointed at an :admission event -- type mismatch.
              {:event :cancel-discharge :t 10 :cancels-event-id 0 :participants (subject "P1")}]]
-    (is (seq (check/cancel-references-existing-uncancelled-event log)))))
+    (is (= [{:invariant :cancel-references-existing-uncancelled-event :patient-id "P1" :at 10}]
+           (check/cancel-references-existing-uncancelled-event log)))))
 
 (deftest cancel-references-existing-uncancelled-event-detects-double-cancel
   (let [log [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
               :location {:ward "Renal" :bed "RENAL-01" :placement :licensed}}
              {:event :cancel-admit :t 10 :cancels-event-id 0 :participants (subject "P1")}
              {:event :cancel-admit :t 20 :cancels-event-id 0 :participants (subject "P1")}]]
-    (is (seq (check/cancel-references-existing-uncancelled-event log)))))
+    (testing "the SECOND cancel is the offender, at t 20 -- the first is legal.
+              Pinning :at is what distinguishes 'found the double-cancel' from
+              'found something'."
+      (is (= [{:invariant :cancel-references-existing-uncancelled-event :patient-id "P1" :at 20}]
+             (check/cancel-references-existing-uncancelled-event log))))))
 
 (deftest cancel-references-existing-uncancelled-event-holds-for-legit-cancel
   (let [log [{:event :admission :t 0 :home-ward "Renal" :participants (subject "P1")
@@ -482,7 +497,8 @@
 (deftest no-events-after-merged-terminal-detects-a-zombie-event
   (let [log (conj legit-merge-log
                   {:event :discharge :t 20 :participants (subject "P2")})]
-    (is (seq (check/no-events-after-merged-terminal log)))))
+    (is (= [{:invariant :no-events-after-merged-terminal :patient-id "P2" :at 20}]
+           (check/no-events-after-merged-terminal log)))))
 
 ;; --- sim/ADR-0012: :step-rejected -------------------------------------------
 

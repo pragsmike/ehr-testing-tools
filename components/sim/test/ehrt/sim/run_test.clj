@@ -20,6 +20,7 @@
   seam (same -fn convention as `ehrt.sim-cli.core/dispatch-action`)
   so no real simulation ever has to run against sentinel data."
   (:require [clojure.edn :as edn]
+            [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.test :refer [deftest is testing use-fixtures]]
             [ehrt.kernel.interface :as result]
@@ -444,6 +445,126 @@
   (or (get @corpora id)
       (throw (ex-info "ehrt.sim.run-test: no corpus under this id -- the :once fixture did not populate it"
                       {:id id :have (sort (keys @corpora))}))))
+
+;; --- ADR-0169 (arc 0): THE EQUIVALENCE GATE ------------------------------
+;;
+;; The definition of "nothing moved", for a refactor that owes an
+;; equivalence proof rather than red-before-green. Born green on the
+;; UNREFACTORED tree, in its own commit, so the gate is witnessed passing
+;; before it has anything to catch -- ADR-0169's own operational clause.
+;;
+;; TWO gates over the SAME four corpora, deliberately, because they can
+;; disagree and the disagreement is itself the finding (ADR-0169 fence F3:
+;; a map re-keyed in a different order prints differently but is still
+;; `=`; whether key order is part of "byte-identical" is an author
+;; ruling, not a session's). A digest alone could not tell those apart,
+;; and a value comparison alone could not see them at all.
+
+(def ^:private arc0-baseline-resource
+  "run id -> its committed baseline corpus, a resource under this
+  component's own test path (the `pinned_seed_42_patients_5.edn` pattern
+  ehrt.sim-engine.engine-test/pinned-seed-survives-decide-evolve-refactor
+  already established, one scale up: four population-scale corpora
+  instead of one 5-patient run). ~812 KB committed in total, disclosed --
+  the same weight class as `demos/traces/module-mix/ground-truth.edn`
+  (318 KB) and the four synthea census EDNs (300-314 KB each) this repo
+  already tracks. The whole VALUE is committed, not merely its digest,
+  because the diagnostic this gate owes -- the FIRST DIFFERING EVENT
+  INDEX, never a bare 'digest mismatch' -- cannot be computed without it."
+  {:seed-202-ed-tuesday       "ehrt/sim/fixtures/arc0_gated_seed_202_ed_tuesday.edn"
+   :seed-424242-clinic-decade "ehrt/sim/fixtures/arc0_gated_seed_424242_clinic_decade.edn"
+   :seed-5-clinic-decade      "ehrt/sim/fixtures/arc0_gated_seed_5_clinic_decade.edn"
+   :adhd-seed-2               "ehrt/sim/fixtures/arc0_gated_adhd_seed_2.edn"})
+
+(def ^:private arc0-pinned-digest
+  "run id -> SHA-256 of that run's ground-truth AS THE SHIPPED WRITER
+  SERIALISES IT, taken on the unrefactored tree at ADR-0169's own
+  baseline commit.
+
+  `(pr-str ground-truth)` is not a serialisation this test invented: it
+  is verbatim what BOTH shipped writers emit, and the tree already turns
+  on their being the same bytes --
+  `ehrt.cli.core/sim-ground-truth-bare-text` (`ehrt sim run --format
+  ground-truth`) and `ehrt.corpus.generators/spool-sim-output!`
+  (`events.edn`) are each exactly `(pr-str ground-truth)`, which is what
+  makes `cat events.edn | ehrt sim check` a working pipe. Digesting what
+  the shipped writer writes, never a `pr-str` shape invented for a test,
+  is `bin/regression-oracle`'s own idiom (`rulings.md#R-oracle-script-contract`)
+  applied one layer in.
+
+  Round-trip verified when pinned: for all four corpora,
+  `(= gt (edn/read-string (pr-str gt)))` AND `(= (pr-str gt) (pr-str
+  (edn/read-string (pr-str gt))))` -- value AND bytes both survive, so
+  the committed baseline is a faithful pin for BOTH gates below."
+  {:seed-202-ed-tuesday       "584a5f01004ee4228f6a352209798310dd6c2daadb5596ff7316c163ca6db9bd"
+   :seed-424242-clinic-decade "793910e0d2d57205093dd100cb27419299e6b8902c09a78613d6df3a3652bf24"
+   :seed-5-clinic-decade      "dd0beff7a02bf1e50f498c6f87ab1cc927bd7896786adaa75cbfd5209ccf80a5"
+   :adhd-seed-2               "34f5faf0283d71a79b0e7ded21f3e5cb4515ef844cebd42fd84347be3a6e0b40"})
+
+(defn- arc0-baseline
+  "The committed baseline ground-truth vector for one gated run."
+  [id]
+  (edn/read-string (slurp (io/resource (get arc0-baseline-resource id)))))
+
+(defn- first-divergence
+  "Where `actual` first departs from `baseline`, as a human-readable
+  string naming the EVENT INDEX -- the diagnostic ADR-0169 requires in
+  place of a bare digest mismatch. nil when the two are equal.
+
+  Reports a length difference explicitly (a corpus that is a strict
+  prefix of the other reshuffled nothing but stopped early, a different
+  defect from one that diverged mid-log), and otherwise the first index
+  whose event differs, with both events."
+  [baseline actual]
+  (let [n (min (count baseline) (count actual))
+        idx (first (keep-indexed (fn [i b] (when (not= b (nth actual i)) i))
+                                 (take n baseline)))]
+    (cond
+      idx (str "first differing event index " idx " of " (count baseline)
+               "\n  baseline: " (pr-str (nth baseline idx))
+               "\n  actual:   " (pr-str (nth actual idx)))
+      (not= (count baseline) (count actual))
+      (str "no event differs in the common prefix, but LENGTHS differ: baseline "
+           (count baseline) " events, actual " (count actual)
+           " -- first extra event at index " n ": "
+           (pr-str (nth (if (> (count actual) n) actual baseline) n)))
+      :else nil)))
+
+(deftest arc0-gated-corpora-are-byte-and-value-identical-to-the-pinned-baseline
+  (testing "ADR-0169's equivalence gate: NOTHING in arc 0 may move a single
+            draw, event, or event ordering. A red here is a STOP, never a
+            reason to re-pin (fence F1)."
+    (doseq [{:keys [id]} gated-runs]
+      (testing (str "gated run " id)
+        (let [r (corpus id)
+              actual (get-in r [:payload :ground-truth])
+              baseline (arc0-baseline id)
+              actual-bytes (pr-str actual)
+              actual-digest (result/sha256-string actual-bytes)
+              pinned-digest (get arc0-pinned-digest id)
+              value-identical? (= baseline actual)]
+          (is (result/ok? r) (str "the gated run itself failed: " (pr-str (:payload r))))
+          (is (seq actual) "the gated run produced an empty ground-truth")
+          ;; Gate 1 -- byte identity, against the shipped writer's own bytes.
+          (is (= pinned-digest actual-digest)
+              (str "BYTE identity broke for " id ".\n"
+                   "  pinned sha256: " pinned-digest "\n"
+                   "  actual sha256: " actual-digest "\n  "
+                   (or (first-divergence baseline actual)
+                       "every event is `=` to its baseline -- see the F3 assertion below")))
+          ;; Gate 2 -- value identity, against the same committed baseline.
+          (is value-identical?
+              (str "VALUE identity broke for " id ".\n  "
+                   (first-divergence baseline actual)))
+          ;; Fence F3 -- the two gates disagreeing is its own finding.
+          (is (= value-identical? (= pinned-digest actual-digest))
+              (str "STOP-AND-REPORT (ADR-0169 fence F3): the byte gate and the value gate "
+                   "DISAGREE for " id ". value-identical? " value-identical?
+                   ", digest-identical? " (= pinned-digest actual-digest) ". Every event is "
+                   "`=` to its baseline but the shipped writer's bytes changed (or the "
+                   "converse) -- e.g. a map re-keyed in a different order. Whether key "
+                   "order is part of \"byte-identical\" is an AUTHOR ruling, not this "
+                   "session's: report the diff, do not re-pin.")))))))
 
 ;; --- ADR-0153: the seed-202 self-check failure, at the run level ----------
 
