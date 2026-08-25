@@ -19,22 +19,22 @@
 (def expected-counts
   "Pinned at arc 2b's green, 2026-08-25: 60 persons, 24 years, master
   seed 42, `:merge-fraction` 0.35."
-  {:coverage-change      186
+  {:coverage-change      147
    :delivery             26
-   :employment-change    174
+   :employment-change    135
    :household-form       38
    :household-join       52
    :household-leave      16
-   :identity-correction  40
+   :identity-correction  36
    :identity-resolution  5
    :identity-unavailable 5
    :occupational-injury  5
    :person-death         17
    :person-registered    26
    :pregnancy            26
-   :residence-move       168})
+   :residence-move       163})
 
-(def expected-total 784)
+(def expected-total 697)
 
 (deftest every-one-of-the-fourteen-kinds-has-a-counted-witness-test
   (let [actual (frequencies (map :event (fx/evs)))]

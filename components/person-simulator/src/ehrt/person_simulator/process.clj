@@ -48,6 +48,7 @@
   stream\"), confined to one household and keyed on a stable id."
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
+            [clojure.string :as str]
             [ehrt.person-simulator.clock :as clock]
             [ehrt.person-simulator.hazards :as hz]
             [ehrt.person-simulator.persona :as pp]
@@ -85,6 +86,30 @@
   (nth coll (min (dec (count coll)) (int (* u (count coll))))))
 
 (defn- adult? [age] (>= age 18))
+
+(defn- transposed-dob
+  "A date of birth with its MONTH and DAY swapped -- the day/month
+  transcription error a registrar makes on an international form, and
+  the one `:identity-correction` models when `:field` is `:dob`.
+
+  Only when the day is 12 or less, so the swap always yields a REAL
+  date: `sim-model/persona` samples months 1-12 and days 1-28 (its own
+  documented not-month-length-aware simplification), so swapping a
+  single-digit-month-range day gives a valid month and a valid day
+  both ways round. Otherwise the correction is suppressed. Digit
+  transposition was tried first and rejected: it turns 1985-04-27 into
+  1985-04-72, and putting an impossible date on the wire as ground
+  truth is the fabricated-by-omission class this project may not ship.
+
+  Derived, not drawn: the correction's own hazard variate already
+  decided that a correction happened, and a second variate to decide
+  what it corrected TO would be a draw whose count depends on whether
+  the hazard fired."
+  [dob]
+  (let [[y m d] (str/split dob #"-")]
+    (if (<= (parse-long d) 12)
+      (str y "-" d "-" m)
+      dob)))
 
 (defn- payer-pool
   "The payer pool a coverage change draws from at `age`.
@@ -254,20 +279,32 @@
               ;; 2. residence move -- suppressed for a non-head member, whose
               ;;    address follows the head's (ruling B1)
               move-t (at (:move v) move-rate)
+              new-address (select-keys (pp/weighted-pick places (:address v))
+                                       [:street :city :state :zip])
               [ords acc st]
-              (if (and (hz/fires? (:move v) move-rate) (not member-not-head?) (alive? move-t))
-                (let [addr (select-keys (pp/weighted-pick places (:address v))
-                                        [:street :city :state :zip])
-                      [ords acc] (emit [ords acc] :residence-move move-t
-                                       {:address addr :prior-address (:address st)})]
-                  [ords acc (assoc st :address addr)])
+              (if (and (hz/fires? (:move v) move-rate) (not member-not-head?) (alive? move-t)
+                       ;; AN EVENT THAT REPORTS NO CHANGE IS NOT AN EVENT. The
+                       ;; flat 24-row pool can hand back the row already lived
+                       ;; at (limitations row 7: no adjacency, no distance), and
+                       ;; a `:residence-move` whose `:address` equals its
+                       ;; `:prior-address` would render an A08 that changes no
+                       ;; PID-11 -- traffic with no message in it. The variates
+                       ;; are drawn either way, so consumption is untouched.
+                       (not= new-address (:address st)))
+                (let [[ords acc] (emit [ords acc] :residence-move move-t
+                                       {:address new-address :prior-address (:address st)})]
+                  [ords acc (assoc st :address new-address)])
                 [ords acc st])
 
               ;; 3. employment change, and the coverage change it causes
               emp-t (at (:employment v) emp-rate)
               new-status (pick employment-statuses (:status v))
               [ords acc st]
-              (if (and (hz/fires? (:employment v) emp-rate) (alive? emp-t))
+              ;; Same law as the move above: a change TO the status already
+              ;; held is not a change, and the coverage change it would cause
+              ;; is not a coverage change either.
+              (if (and (hz/fires? (:employment v) emp-rate) (alive? emp-t)
+                       (not= new-status (get-in st [:employment :status])))
                 (let [[ords acc] (emit [ords acc] :employment-change emp-t
                                        {:status new-status
                                         :occupation-class (pick occupation-classes (:occupation v))})
@@ -322,10 +359,12 @@
                                 (update :corrections (fnil inc 0)))])
                 [ords acc st])
               dob-t (at (:correction v) hz/identity-correction-rate)
+              corrected-dob (transposed-dob (:dob persona))
               [ords acc]
-              (if (and (hz/fires? (:correction v) hz/identity-correction-rate) (alive? dob-t))
+              (if (and (hz/fires? (:correction v) hz/identity-correction-rate) (alive? dob-t)
+                       (not= corrected-dob (:dob persona)))
                 (emit [ords acc] :identity-correction dob-t
-                      {:field :dob :value (:dob persona) :prior-value (:dob persona)})
+                      {:field :dob :value corrected-dob :prior-value (:dob persona)})
                 [ords acc])
 
               ;; 6. household: form, join or leave
