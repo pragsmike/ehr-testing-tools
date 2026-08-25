@@ -17,25 +17,24 @@
             [ehrt.person-simulator.fixture :as fx]))
 
 (def expected-counts
-  "PLACEHOLDER in this red commit -- the front door throws, so there is
-  no run to count. Pinned for real in the green successor, which is the
-  first run that can produce a number."
-  {:coverage-change      0
-   :delivery             0
-   :employment-change    0
-   :household-form       0
-   :household-join       0
-   :household-leave      0
-   :identity-correction  0
-   :identity-resolution  0
-   :identity-unavailable 0
-   :occupational-injury  0
-   :person-death         0
-   :person-registered    0
-   :pregnancy            0
-   :residence-move       0})
+  "Pinned at arc 2b's green, 2026-08-25: 60 persons, 24 years, master
+  seed 42, `:merge-fraction` 0.35."
+  {:coverage-change      186
+   :delivery             26
+   :employment-change    174
+   :household-form       47
+   :household-join       52
+   :household-leave      16
+   :identity-correction  40
+   :identity-resolution  5
+   :identity-unavailable 5
+   :occupational-injury  5
+   :person-death         17
+   :person-registered    26
+   :pregnancy            26
+   :residence-move       144})
 
-(def expected-total 0)
+(def expected-total 769)
 
 (deftest every-one-of-the-fourteen-kinds-has-a-counted-witness-test
   (let [actual (frequencies (map :event (fx/evs)))]

@@ -40,18 +40,15 @@
   draw sites in the engine, so a component drawing only from it cannot
   move a byte of any existing corpus, and `bin/regression-oracle`
   reporting IDENTICAL with no declaration is evidence rather than an
-  absence of red.
-
-  SKELETON (arc 2b step 1). No behaviour yet: every var below throws
-  `not-implemented`. Step 2's limitation tests are born RED against
-  exactly this, for exactly one reason, which is the only kind of red
-  worth capturing."
-  (:require [ehrt.person-simulator.not-implemented :as ni]
+  absence of red."
+  (:require [ehrt.person-simulator.persona :as persona]
             [ehrt.person-simulator.process :as process]))
 
 (defn persons
   "The run's person-event stream: a t-ascending vector of person
-  events, drawn entirely from the `:person` stream family."
+  events, drawn entirely from the `:person` stream family. See
+  `ehrt.person-simulator.process/persons` for the config keys and for
+  the eighteen-variate-per-person-year draw block."
   [config stream]
   (process/persons config stream))
 
@@ -59,9 +56,8 @@
   "The t0 Persona for one person. The 3-arity is ruling A1's newborn
   path: `birth-ctx` carries what the household determines, so a
   newborn's Persona is DERIVED rather than sampled -- four draws, not
-  thirteen."
-  ([person-id t0]
-   (ni/not-implemented `initial-persona {:person-id person-id :t0 t0}))
-  ([person-id t0 birth-ctx]
-   (ni/not-implemented `initial-persona
-                       {:person-id person-id :t0 t0 :birth-ctx birth-ctx})))
+  thirteen. See `ehrt.person-simulator.persona/initial-persona` for
+  what the `t0` context carries and why it is a context rather than a
+  bare instant."
+  ([person-id t0] (persona/initial-persona person-id t0))
+  ([person-id t0 birth-ctx] (persona/initial-persona person-id t0 birth-ctx)))

@@ -30,10 +30,18 @@
   (.toEpochDay (LocalDate/parse (:dob persona))))
 
 (defn age-at-year
-  "A person's age in whole years at year `y` of the walk. `:age` is the
-  Persona's own age at its t0, computed against
-  `sim-model/reference-birth-year`, so ageing is addition -- the
-  Persona's DOB is not re-read here, and no second anchor is
-  introduced."
-  ^long [persona ^long y]
-  (+ (long (:age persona)) y))
+  "A person's age in whole years at walk year `y`. `:age` is the
+  Persona's own age at `origin-year` -- year 0 for a person present at
+  t0, and the BIRTH year for a newborn, whose derived Persona carries
+  `:age` 0 as of the delivery. Ageing is then addition, and the
+  Persona's DOB is not re-read: no second calendar anchor is
+  introduced.
+
+  The origin is a parameter and not an assumption because assuming it
+  was zero is a bug this arc actually shipped and caught: a newborn
+  whose `:age` 0 was read at absolute year 12 came out twelve years
+  old the year after its birth, drew adult hazards, and joined
+  households as a minor -- which is precisely what limitations row 3's
+  gate went red on."
+  ^long [persona ^long origin-year ^long y]
+  (+ (long (:age persona)) (- y origin-year)))
