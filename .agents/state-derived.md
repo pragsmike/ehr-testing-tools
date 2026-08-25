@@ -76,11 +76,11 @@ Docs-tooling gates: `adr_index_test`, `artifact_provenance_test`, `audience_entr
 
 | set | paths | actual | budget | baseline | headroom |
 |---|---|---|---|---|---|
-| :corpus | 7 | 1856 | 2045 | 2045 | 189 |
-| :docs | 5 | 763 | 785 | 785 | 22 |
-| :judge | 8 | 946 | 1000 | 1000 | 54 |
-| :onboarding | 10 | 1345 | 1530 | 1530 | 185 |
-| :sim | 6 | 1298 | 1405 | 1405 | 107 |
+| :corpus | 7 | 1859 | 2045 | 2045 | 186 |
+| :docs | 5 | 766 | 785 | 785 | 19 |
+| :judge | 8 | 949 | 1000 | 1000 | 51 |
+| :onboarding | 10 | 1346 | 1530 | 1530 | 184 |
+| :sim | 6 | 1301 | 1405 | 1405 | 104 |
 
 ## What this page reads
 

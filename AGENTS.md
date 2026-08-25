@@ -261,10 +261,13 @@ library in its own right.
 - [`.agents/memory/`](.agents/memory/README.md) — durable design
   lineage too expensive to re-derive, not decision-of-record (that's
   an ADR) or one verifiable claim (that's `notes/facts-register.md`).
-- [`.agents/skills/`](.agents/skills/) — the sim/tools union (ADR-0005):
-  `handoff`, `string-diagram`, `committee`, `find-skills`, `probe`,
-  `repo-adaptation`, `review`, `scenarios`, `shared-skill-layout`,
-  `wsl-windows-git-hygiene`.
+- [`.agents/skills/`](.agents/skills/README.md) — the sim/tools union
+  (ADR-0005), thinned by the de-scaffold ruling of 2026-08-25 and its
+  `probe` successor. **The roster lives in that README, not here** —
+  this bullet used to enumerate ten skills and named seven that no
+  longer exist by the time `probe` was deleted, the same
+  hand-listing failure mode ADR-0158 caught in the generated-surface
+  bullet above.
 - `.agents/prompts/` — session prompts, archived by the session they
   drove, indexed (charter R-A). New home going forward;
   `notes/prompts/*.md` stays the historical archive for prompts

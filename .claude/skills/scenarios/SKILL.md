@@ -386,7 +386,6 @@ which one is materializing.
 |-------|-------------|
 | `/committee` | Downstream — scenario set feeds into committee deliberation (auto-detected when both target the same situation, or via explicit `scenario_context:`) |
 | `/review` | Does not apply directly to scenarios (review evaluates committee transcripts) |
-| `/probe` | Upstream — probe runs the composed scenarios→committee pipeline N times |
 | `/string-diagram` | The fan operation can be visualized as a one-to-many spider |
 
 ## Files reference

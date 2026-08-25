@@ -8,9 +8,6 @@ own `SKILL.md` for the full trigger conditions and workflow.
   checkpointed commit/push ceremony: WSL-only git, staging hygiene,
   commit-message-via-file, gitleaks, post-push verification, and the
   COMMIT/AUTHOR-ACTION model.
-- **[`probe/`](probe/SKILL.md)** — runs the fan→funnel pipeline N times
-  over one situation to map the decision landscape's stable vs.
-  variable structure.
 - **[`scenarios/`](scenarios/SKILL.md)** — divergent scenario generation
   (the fan operation) over a situation, using the bundled roster.
 - **[`session-prompt/`](session-prompt/SKILL.md)** — the design
@@ -22,13 +19,14 @@ own `SKILL.md` for the full trigger conditions and workflow.
   diagnoses/fixes Git worktree noise from mixed Windows/WSL checkouts
   (CRLF churn, stray editor artifacts).
 
-Six skills, and that is the whole list. Eleven others —
+Five skills, and that is the whole list. Twelve others —
 `capture-session`, `committee`, `errata-sweep`, `extraction-stage`,
-`find-skills`, `handoff`, `manual-review`, `repo-adaptation`,
+`find-skills`, `handoff`, `manual-review`, `probe`, `repo-adaptation`,
 `repo-review`, `review`, `shared-skill-layout` — were deleted by the
-de-scaffold ruling of 2026-08-25. They are recoverable from git
-history; nothing here maintains them. Adding a skill back is an author
-ruling, not a session's.
+de-scaffold ruling of 2026-08-25 and its 2026-08-25 "Delete probe"
+successor. They are recoverable from git history; nothing here
+maintains them. Adding a skill back is an author ruling, not a
+session's.
 
 ## The `.claude/skills/` mirror
 
