@@ -70,7 +70,7 @@ Nothing here is red-before-green: a pure refactor has no new behaviour to
 witness failing. Every gate below landed in its own commit, BORN GREEN on
 the unrefactored tree, and only then was the code it gates changed.
 
-### The corpus gates (commit 2, `41e5c1a`)
+### The corpus gates (commit 2, `a846577`)
 
 | gate | what it pins |
 | --- | --- |
@@ -432,10 +432,15 @@ arithmetically, not a fresh profile, and are labeled as such.
 | sha | what |
 | --- | --- |
 | `301425b` | ADR-0169; plan line 43 amended (original quoted, not rewritten); roadmap `[performance-arc-0]` PRIORITY 1 and `[engine-fold-extensions]` narrowed; `rulings.md#R-output-identical-exempt-from-reshuffle-era` |
-| `41e5c1a` | equivalence gates BORN GREEN: four corpora pinned by shipped-writer digest and value identity; six discrimination tests tightened to the full finding map |
+| `a846577` | equivalence gates BORN GREEN: four corpora pinned by shipped-writer digest and value identity; six discrimination tests tightened to the full finding map |
 | `40223bd` | family (i) -- six check-side invariants fold-carried |
 | `878b638` | family (ii) -- cancel decides read a fold-carried reinstate index |
 | `b9d5178` | family (iii) -- fold-carried citation indexes retire the ADR-0164 scans |
+| `4772e73` | this record, the prompt archive, the plan's post-arc-0 MEASURED row, roadmap close + two residual rows |
+| `ddcd12a` | the second full-suite run recorded |
+
+Seven commits, local only -- no push, no tag. The `d49f1c6..HEAD` range is
+what `bin/regression-oracle` was run over.
 
 ## Fences
 
@@ -469,4 +474,4 @@ asserted, 9.58x at the program's own 10^5 skeleton target. Arc 1
 from the reshuffle era precisely because it could not perturb it, and the
 byte-identical 10^5 corpus is the receipt.
 
-Local only -- five commits, no push, no tag.
+Local only -- seven commits, no push, no tag.
