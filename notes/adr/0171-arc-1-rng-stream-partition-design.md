@@ -1,8 +1,42 @@
 ## ADR-0171 — arc 1: the RNG stream partition, designed from the tree
 
-**Status:** Proposed (design session 2026-08-25, HEAD `c1b996e`; six
-rulings open as lettered options in section 4, each with a
-recommendation. No engine code lands with this ADR.)
+**Status:** Accepted (design session 2026-08-25, HEAD `c1b996e`, six
+rulings open; **ruled by the author 2026-08-25** -- every section-4
+recommendation taken, plus the locality ruling section 3 asked for
+without lettering. Executed by the arc-1b migration session, one
+commit group, one reshuffle.)
+
+**The author's rulings, quoted.** Seven, in the order they were given:
+
+1. **A1** -- *"reuse `engine.clj:225` `mix64` on `(family-tag, id-tag)`,
+   unchanged, promoted from private to the sim-engine interface."*
+2. **B1** -- *"mix the pair `(parity-index, within-delivery-index)` from
+   the start, with `within-delivery-index` pinned at 0 while multiples
+   are excluded."*
+3. **C1** -- *"emission joins as a fifth family, `:emission`, derived
+   like the rest."*
+4. **D1** -- *"a top-level `:stream-scheme` string, sibling of
+   `:event-schema-version`."*
+5. **E1** -- *"FACILITY, a run-scoped family distinct from WORLD."*
+6. **F1** -- *"one session. The partition, the `from` = `to` skip, all
+   fixture re-pins, the oracle re-baseline and the three docstring
+   corrections land together, because every one of them is
+   draw-affecting and splitting them spends a second reshuffle."*
+7. **LOCALITY option (a)** -- the weakened property section 2(a) says is
+   the only true one: the locality assertion runs over the
+   **PATIENT-scoped fields** of other patients' events, with the four
+   WORLD sites of section 1b excluded **by name** -- `:480`
+   (`bed-ready-location`), `:610` (`:transfer-in-error`'s `allocate`),
+   `:643` (`:bed-swap`'s partner pick) and `:672` (`:merge`'s partner
+   pick), cited at this ADR's own design HEAD `c1b996e`. A test claiming
+   total byte-identity would be false at `engine.clj:480`.
+
+The migration session's own findings against these rulings -- including
+where a section-3 test obligation could not be red for the reason
+section 3 gives -- are in
+`.agents/session-records/2026-08-25-arc-1b-stream-partition-migration.md`,
+not here: this ADR records the design and the rulings, not the
+execution.
 
 ### Context
 
