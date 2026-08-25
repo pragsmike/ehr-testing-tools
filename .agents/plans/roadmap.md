@@ -143,17 +143,29 @@ rows carry `PRIORITY n`, ascending, so `head` is what is next; six lines a row.
   stream the engine folds. Four open questions carried for its charter ADR.
   Blocked on `roadmap.md#stream-partition-design`. ADR-0168 section 4.
 - OPEN **[engine-fold-extensions]** PRIORITY 28 -- traffic-scale arc 3. Demographic
-  timeline on patient state, scheduling state (`rulings.md#R-mix-5`), bed-status
-  cycle (`R-mix-6`), the new invariant families, and the decide-time whole-log
-  scan removals (order indexes in fold state) that 10^5 scale requires. A
-  generator change, so it lands inside the declared-reshuffle era and never before
-  arc 1. Plan: `2026-08-24-traffic-scale-program.md`.
+  timeline, scheduling state (`rulings.md#R-mix-5`), bed-status cycle (`R-mix-6`),
+  new invariant families, plus the quadratic removals. SCOPE AMENDED 2026-08-24 by
+  the throughput spike: a SECOND quadratic on the CHECK side (six of 29 invariants
+  = 99.4% of check, 69% of total at 10^5) joins the decide-time scans, whose worst
+  site is `replay` inside the cancel decides, not ADR-0164's. Plan + record 08-24.
 - OPEN **[emission-add-ons]** PRIORITY 29 -- traffic-scale arc 4
   (`rulings.md#R-mix-7`): order/result status ladders, DFT P03 charges,
   re-statement chatter under config ratios, fan-out/subscriber table; rides
   `roadmap.md#corpus-player-slices`. Reshuffles NOTHING and needs no stream work,
   so it is the one arc that may proceed independently once arc 3's skeleton
   contract is stable. Gating policy at scale owes a ruling here.
+- OPEN **[vendored-module-emission-floor]** PRIORITY 30 -- censused 2026-08-24 by
+  the throughput spike: of 31 vendored modules at 20 patients / 3,650 days / seed 7,
+  **nineteen emit 1.00 events per patient -- the `:registered` event and no clinical
+  content at all**, and the best in the tree yields 3.4. Generalises the single-
+  scenario `roadmap.md#ed-tuesday-module-tail-inert` to the whole vendored set, and
+  bounds how much traffic realism modules can carry. Measured, not fixed.
+- OPEN **[no-eligible-provider-throws]** PRIORITY 31 -- a `:facility` naming a ward
+  no `:providers` entry covers reaches `sim-model/choose-attending` with an empty
+  eligible vector and dies on a bare `IllegalArgumentException: bound must be
+  positive` from `Random.nextInt`, three frames deep, naming neither ward nor
+  facility. Every sibling config error is a structured rejection before
+  `engine/run` (sim/ADR-0116's own shape). Found by the 08-24 spike, not patched.
 
 ## Externals (author-only)
 - EXTERNAL **[ci-failure-email]** -- enable GitHub's workflow-failure
