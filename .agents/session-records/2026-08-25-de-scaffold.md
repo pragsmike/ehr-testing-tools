@@ -204,4 +204,9 @@ wall **868 s (14m28s)**, poly `Execution time` **829 s (13m49s)**,
 **352 / 4,046 / 18,088** — identical counts to the first green run, as a
 data-only row bump should give. Host `LoadPercentage` 3% at start.
 
-Second CI conclusion recorded below.
+**CI run [32846769273](https://github.com/pragsmike/ehr-testing-tools/actions/runs/32846769273)
+on `6106b77` concluded SUCCESS** — `gh run view 32846769273`,
+`status=completed conclusion=success`. That is the close marker under
+the new rules: no tag was paid, and none is owed.
+
+**HEAD landed: `6106b77`**, two commits, `d6ad63a..6106b77`, both pushed.
