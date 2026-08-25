@@ -164,4 +164,44 @@ during it; only the second run is the pre-push gate.
 
 ## Landing
 
-Filled after push.
+`e189418` pushed to `origin/main` at `d6ad63a..e189418`.
+`bin/post-push-verify`: remote tip matches, per-commit ASCII clean over
+the range, CI run reported once.
+
+**CI run [32845069967](https://github.com/pragsmike/ehr-testing-tools/actions/runs/32845069967)
+concluded FAILURE**, one assertion, and it is worth more than a green
+would have been.
+
+`hand-owned-asset-freshness-test/no-cited-source-has-moved-since-its-asset-was-last-reviewed-test`:
+`docs/manual/assets/gt-emitters.svg` cites
+`docs/dev/simulator-architecture.md`, which step 6 edited; its
+`:reviewed-at` still named `c44d240d`. **The pre-push suite could not
+have caught it.** The tripwire's freshness question is
+`git log -1 -- <source>`, so before the commit exists it reads the OLD
+sha and agrees with `:reviewed-at`; the answer only changes once the
+edit is committed. Local `make test` was `MAKE_EXIT=0` over the exact
+tree that turned CI red one commit later.
+
+That is **register row L1-8 / D3-2 firing for real** — a freshness gate
+that reads history and never the working tree — inside the very session
+that deleted the sibling gate (`attic_rotation_test`) whose
+`git diff --numstat HEAD` working-tree step was the known remedy. Review
+5's Session D proposed generalising that step to exactly this gate. The
+session that deleted the exemplar hit the gap the same day.
+
+**Disposition**, taken the way the gate's own failure message
+instructs: the trigger did NOT fire. Five hunks touched the doc; exactly
+one lands inside section 4, at its `Two honest wrinkles` prose, and
+section 4's equation block — `walk`, `engine`, `emitH`/`emitF`,
+`replay`, `check` — is byte-identical across the diff, while the trigger
+names the equations. `:reviewed-at` bumped to `e189418c` with the review
+written into the row's own `:note`. No gate weakened, no trigger
+narrowed.
+
+**Second commit**, `hand-owned-assets.edn` plus this record. Full
+`make test` re-run over that tree before pushing it: `MAKE_EXIT=0`,
+wall **868 s (14m28s)**, poly `Execution time` **829 s (13m49s)**,
+**352 / 4,046 / 18,088** — identical counts to the first green run, as a
+data-only row bump should give. Host `LoadPercentage` 3% at start.
+
+Second CI conclusion recorded below.
