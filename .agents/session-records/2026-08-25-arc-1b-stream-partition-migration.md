@@ -192,12 +192,34 @@ baseline run).
 |---|---|
 | `clojure -M:poly check` | OK |
 | `make test` (unpiped, `MAKE_EXIT` captured) | **MAKE_EXIT=0**, 0 failures, 0 errors |
-| `make integration` (Makefile:52 — `make test` skips that tier) | see below |
+| `make integration` (Makefile:52 — `make test` skips that tier) | **MAKE_EXIT=0**, 0 `FAIL:` lines, tree clean |
 | `bin/regression-oracle` | DIFFERS, declared, 32/35 |
 
 Machine sampled at the moment of the run from the WINDOWS side (Linux
 idle lies about WSL2 contention): `\Processor(_Total)\% Processor Time`
-= 18.5% then 9.9%.
+= 18.5% then 9.9% at the first `make test`, 4.7% then 3.7% at the final
+green pair.
+
+**`make integration` cost four rounds, and every red it found was real.**
+It is the tier `make test` skips, and it caught three things nothing
+else could — register row W-1 (repo review 4) paying off exactly as
+written:
+
+1. `demo-exerciser-ed-tuesday` — `expected 34 ':verified true' entries,
+   got 32`. The exerciser asserts a narrative README's own witnessed
+   numbers; the reshuffle moved them. README re-derived (`3efe23f`).
+2. `demo-exerciser-clinic-decade` — `not every board-snapshot line
+   contains "inpatients: 0"`. The scenario gained one sepsis ED
+   admission across its decade. README AND the gate's own claim SHAPE
+   re-derived, universal → counted split (`9c4324d`).
+3. `usecase-custom-emitter` — the seed-42 jsonl fixture no longer
+   byte-matched. Same run `pinned_seed_42_patients_5.edn` pins; bed
+   choices and dwell times moved, record shape did not (`e319760`).
+
+Plus one self-inflicted round: the exercisers' own tree-clean
+postcondition (ADR-0005) fires on any uncommitted file, so a run
+started with the close-out still in the working tree fails on that
+rather than on anything it measured.
 
 **Suite reconciliation against `97f22fd`**, measured by running the same
 target in a worktree at that commit rather than estimated:
@@ -318,7 +340,12 @@ together under the partition.
 | `979ffe7` | RED — the locality, witness-count and continuity gates, all three failing on `97f22fd` for the reason ADR-0171 section 3 gives |
 | `75cde83` | the migration: partition, from = to skip, every re-pin, all four re-derivations, the docstring sweep |
 | `3efe23f` | ed-tuesday re-derived against its own post-partition run, plus the straddle-timeline redraw and `gt-emitters.svg`'s witness bump |
-| `HEAD` | close-out: this record, the archived prompt, the roadmap rows, `straddle-timeline.svg`'s witness bump, regenerated indexes |
+| `67b985e` | close-out: this record, the archived prompt, the roadmap rows, `straddle-timeline.svg`'s witness bump, regenerated indexes |
+| `1c160e4` | the two live surfaces citing the removed `roadmap.md#stream-partition-design` slug |
+| `9c4324d` | clinic-decade gains an inpatient, and its gate learns to count a split instead of asserting a universal |
+| `4f70ede` | `state-derived.md` regenerated after the roadmap and AGENTS.md edits |
+| `e319760` | the custom-emitter's seed-42 encounter fixture re-pinned |
+| `HEAD` | this record's own gate results, written after both tiers came back green |
 
 Pushed as one range; the red-first commit rides with its green
 successor (`rulings.md#R-red-pushed-with-green`). No tag paid.
