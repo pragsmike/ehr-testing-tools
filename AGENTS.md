@@ -160,7 +160,10 @@ catalytics, extracted from `components/sim`, sim split B stage M2,
 2026-08-04, `.agents/plans/2026-08-04-sim-split-b-plan.md`,
 `notes/ADRs.md` ADR-0043); `components/patient-simulator`
 (GMF module loading/interpretation and CompileTrajectory, extracted from
-`components/sim`, sim split S2, same plan); `components/sim-emit-hl7`
+`components/sim`, sim split S2, same plan); `components/person-simulator`
+(the demographic and identity life-arc layer -- bespoke hazard-rate
+processes producing the person-event stream the engine folds, traffic-
+scale arc 2b, `notes/ADRs.md` ADR-0172); `components/sim-emit-hl7`
 (the HL7v2 emitter, the v2-replay wire-side accumulator, and site
 profiles, extracted from `components/sim`, sim split S3 / GMF coverage
 Wave D stage D0, `notes/ADRs.md` ADR-0029); `components/sim-emit-fhir`
@@ -316,7 +319,12 @@ library in its own right.
   must never depend on anything but `components/sim-engine`,
   `components/sim-model`, and `components/kernel` (never on
   `components/sim`, either emitter, `components/corpus`, or
-  `components/provenance`).
+  `components/provenance`). `components/person-simulator`
+  (traffic-scale arc 2b, ADR-0172) must never depend on anything but
+  `components/sim-model` and `components/sim-engine`'s
+  stream-partition surface, and the edge runs ONE WAY: no
+  `components/sim-engine` namespace may require it, which its own
+  limitations row 10 gates.
 - **No PHI, no real-person data, ever** — including in test fixtures
   and docs.
 - **No CPT codes** (AMA-licensed). SNOMED CT, LOINC, RxNorm, ICD-10-CM,

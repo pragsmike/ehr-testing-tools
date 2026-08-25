@@ -18,7 +18,15 @@
                            ;; one dev REPL, oracle no exception), not a
                            ;; missed wiring. History: ADR-0050, register
                            ;; row A-1.
-                           :necessary ["oracle"]}
+                           ;; person-simulator, same class, for a
+                           ;; DIFFERENT and temporary reason (ADR-0172
+                           ;; ruling F1): arc 2b lands the component
+                           ;; ALONE and the engine does not call it, so
+                           ;; nothing in the workspace requires it and
+                           ;; nothing may until arc 3's fold. Strike
+                           ;; this entry the day that fold lands -- the
+                           ;; real :require edge replaces it.
+                           :necessary ["oracle" "person-simulator"]}
             ;; :necessary overrides warning 207 (poly's own brick-graph
             ;; reachability check). Full re-derivation narrative (five
             ;; dated events) relocated verbatim to ADR-0050 (alignment
@@ -28,6 +36,14 @@
             ;; current entry below is here.
             "ehrt-cli" {:alias "ehrt-cli"}
             "conformance" {:alias "conformance"
-                           :necessary ["docs-tooling" "judge-fhir-official" "judge-v2-nist"]}
+                           ;; person-simulator: composed here so its own
+                           ;; tests EXECUTE, not because anything in this
+                           ;; project requires it (ADR-0172 ruling F1 --
+                           ;; nothing may, until arc 3's fold). See
+                           ;; projects/conformance/deps.edn's own comment
+                           ;; for the probe that proved a dev-only brick's
+                           ;; tests never run.
+                           :necessary ["docs-tooling" "judge-fhir-official" "judge-v2-nist"
+                                       "person-simulator"]}
             "integration" {:alias "integration"
                            :necessary ["judge-fhir-official"]}}}
