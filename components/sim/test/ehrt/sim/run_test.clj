@@ -25,6 +25,7 @@
             [clojure.test :refer [deftest is testing use-fixtures]]
             [ehrt.kernel.interface :as result]
             [ehrt.patient-simulator.interface :as patient-simulator]
+            [ehrt.sim-check.interface :as check]
             [ehrt.sim-engine.engine :as engine]
             [ehrt.sim-model.interface :as sim-model]
             [ehrt.sim.run :as run]))
@@ -565,6 +566,64 @@
                    "converse) -- e.g. a map re-keyed in a different order. Whether key "
                    "order is part of \"byte-identical\" is an AUTHOR ruling, not this "
                    "session's: report the diff, do not re-pin.")))))))
+
+(def ^:private arc0-invariant-catalog
+  "The 29 invariant names `check-all` reports, in reporting order --
+  pinned so the findings assertion below is a full-value `=` rather than
+  a check of one key. Catalog drift is itself a change in what \"identical
+  findings\" means, so it belongs inside the gate, not outside it."
+  '[timestamps-monotone discharge-follows-admission every-event-has-participants
+    participant-ids-exist-in-run admission-only-when-new transfer-only-when-admitted
+    transfer-from-matches-state no-double-occupancy admitted-occupies-one-slot
+    cancel-references-existing-uncancelled-event bed-swap-both-admitted-before-swap
+    merge-survivor-absorbs-merged-mrns no-events-after-merged-terminal
+    step-rejected-reason-is-documented order-only-when-admitted
+    result-references-existing-order-and-follows-it-in-time
+    abnormal-flags-consistent-with-value-vs-range registered-is-every-patients-first-event
+    registered-persona-is-schema-valid outpatient-visit-only-when-new
+    outpatient-patients-occupy-no-bed clinical-content-only-when-admitted
+    medication-end-references-existing-order-and-follows-it-in-time
+    care-plan-end-references-existing-start-and-follows-it-in-time
+    expired-patient-retains-location occupancy-within-capacity
+    surge-only-when-earlier-rungs-exhausted warm-up-mark-matches-window
+    result-analytes-match-order-profile])
+
+(def ^:private arc0-baseline-facility
+  "run id -> the facility its corpus was generated under. A scenario
+  config declares one only if it means to override the default:
+  `demos/scenarios/ed-tuesday` does (its Emergency surge bump),
+  `demos/scenarios/clinic-decade` does not, and `adhd-seed-2` names no
+  config at all -- so `sim-model/default-facility` is the honest fallback
+  for three of the four, not a guess. Measured, not assumed: passing nil
+  instead lands `surge-only-when-earlier-rungs-exhausted` on a nil ward
+  and dies inside `sim-model/licensed-bed-ids` on the seed-5 corpus,
+  which is the only one carrying a surge placement."
+  {:seed-202-ed-tuesday       "demos/scenarios/ed-tuesday/config.edn"
+   :seed-424242-clinic-decade "demos/scenarios/clinic-decade/config.edn"
+   :seed-5-clinic-decade      "demos/scenarios/clinic-decade/config.edn"
+   :adhd-seed-2               nil})
+
+(defn- arc0-facility-for [id]
+  (or (when-let [path (get arc0-baseline-facility id)]
+        (:facility (edn/read-string (slurp path))))
+      sim-model/default-facility))
+
+(deftest arc0-check-all-findings-are-identical-on-every-gated-corpus
+  (testing "ADR-0169's SECOND equivalence claim: identical FINDINGS, asserted
+            by full-value `=` of `check-all`'s own result over each committed
+            baseline corpus. Run against the BASELINE rather than a fresh run
+            deliberately -- it isolates the check half, so a check-side
+            regression cannot hide behind a generate side that also moved."
+    (doseq [{:keys [id]} gated-runs]
+      (testing (str "gated corpus " id)
+        (let [baseline (arc0-baseline id)]
+          (is (= {:status :ok
+                  :payload {:invariants-checked arc0-invariant-catalog
+                            :events (count baseline)}}
+                 (check/check-all baseline (arc0-facility-for id) 0))
+              (str "check-all's findings over the pinned " id " corpus are no longer "
+                   "what they were at ADR-0169's baseline. A red here is a STOP: "
+                   "re-derive which invariant moved, do not re-pin.")))))))
 
 ;; --- ADR-0153: the seed-202 self-check failure, at the run level ----------
 

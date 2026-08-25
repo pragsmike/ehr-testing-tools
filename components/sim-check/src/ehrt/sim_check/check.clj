@@ -144,14 +144,135 @@
 
 ;; --- M1 facility invariants (docs/operational-models.md) ----------------
 
+;; --- ADR-0169 (arc 0): the occupancy family, fold-carried --------------
+;;
+;; The 2026-08-24 throughput spike measured the four invariants below at
+;; 92.1% of the whole check phase at 10^5 events, because each walked
+;; `(vals world-after)` -- the ENTIRE patient population -- once per
+;; event: O(N x P), and O(N x P x W) for `occupancy-within-capacity`,
+;; whose ward loop made it 54.9% of the phase on its own.
+;;
+;; The fix carries the answer instead of recomputing it. `engine/replay`
+;; already hands each record its own `world-before`/`world-after`, and
+;; the DELTA between them is exactly this event's participants and
+;; nobody else (`replay`'s own fold: `patients'` is `patients` with each
+;; participant `evolve`d). So a fold that updates a per-bed / per-ward /
+;; per-violator index from the participants alone is O(participants) per
+;; event where the walk was O(P) -- and every index below is
+;; SET-VALUED and updated by `disj` then `conj`, never by increment, so
+;; it is self-correcting: a patient's first appearance (whose
+;; `world-before` entry is a bare `initial-patient` with no `:location`)
+;; costs a `disj` against a key it was never in, which is a no-op, and
+;; no counter can drift negative.
+;;
+;; WHAT THE FOLD MAY EMIT, AND WHAT IT MAY NOT (ADR-0169's equivalence
+;; obligation). Three of the four findings below name a `:bed` or a
+;; `:patient-id` whose ORDER, in the original, came from the iteration
+;; order of a Clojure hash map -- `(frequencies beds)` for the first,
+;; `world-after` itself for the next two. A carried index with the same
+;; keys need not iterate them in the same order (an array-map holds
+;; insertion order below 8 entries; a hash-map does not hold it at all),
+;; and "identical findings" is a claim about ORDER as well as content.
+;; So those three use the carried index ONLY AS A GUARD -- "does this
+;; event violate at all?", a question whose answer is a boolean and has
+;; no order -- and, when it does, emit from the ORIGINAL EXPRESSION over
+;; `world-after`, verbatim. Order-identity is then a theorem rather than
+;; a hope, and the O(P) walk is paid only on events that actually
+;; violate. `occupancy-within-capacity` is the exception and emits
+;; straight from the index: its loop order comes from the `:wards`
+;; VECTOR, not from a map, and its whole payload (`:occupied`,
+;; `:capacity`) is scalar.
+;;
+;; Cost, honestly stated: on a CLEAN log -- every gated corpus, and the
+;; case the gates exist to keep fast -- the walk is never paid and these
+;; are O(N). On a log where some patient violates persistently, the
+;; guard fires on every subsequent event and the O(N x P) walk returns.
+;; That is a run that has already failed its self-check; the fast path
+;; is the passing path, deliberately.
+;;
+;; The six ORIGINAL bodies are retained verbatim in
+;; `ehrt.sim-check.check-test` as `naive-*` reference oracles, and
+;; `fast-invariants-equal-their-naive-reference-implementations`
+;; asserts `(= (naive-x log) (fast-x log))` over generated churn-bearing
+;; runs. A future change to any of the six must move BOTH; the defspec
+;; is what notices if it does not.
+
+(defn- participants-of
+  "The distinct patient-ids this event names -- the exact set of
+  patients whose state `replay` changed at this record, and therefore
+  the only entries any index below has to touch."
+  [event]
+  (distinct (map :patient-id (:participants event))))
+
+(defn- reindex-set
+  "`index` with `pid` removed from its `old-key` bucket and added to its
+  `new-key` bucket, buckets emptied to nothing rather than left as empty
+  sets. A nil key is not a bucket -- `keep`/`filter` in the original
+  bodies drop a nil bed and a nil ward alike, so nil is simply not
+  indexed."
+  [index old-key new-key pid]
+  (let [dropped (if (and (some? old-key) (not= old-key new-key))
+                  (let [remaining (disj (get index old-key) pid)]
+                    (if (seq remaining) (assoc index old-key remaining) (dissoc index old-key)))
+                  index)]
+    (if (some? new-key)
+      (update dropped new-key (fnil conj #{}) pid)
+      dropped)))
+
+(defn- reflag
+  "`flags` (a set of currently-offending patient-ids) with `pid` added
+  when `offending?` and removed otherwise -- idempotent, so a patient
+  seen for the first time needs no special case."
+  [flags pid offending?]
+  (if offending? (conj flags pid) (disj flags pid)))
+
+(defn- bed-of [patient] (get-in patient [:location :bed]))
+(defn- ward-of [patient] (get-in patient [:location :ward]))
+
+(defn- fold-records
+  "Folds `f` over `(engine/replay ground-truth)`, threading `state` and
+  concatenating whatever each step's `emit` produces, in record order.
+  `f` is (state record) -> [state' findings]."
+  [ground-truth init f]
+  (loop [records (engine/replay ground-truth) state init acc (transient [])]
+    (if (empty? records)
+      (persistent! acc)
+      (let [[state' findings] (f state (first records))]
+        (recur (rest records) state' (reduce conj! acc findings))))))
+
 (defn no-double-occupancy
   "No bed holds two patients at once, at any event boundary."
   [ground-truth]
-  (for [{:keys [event world-after]} (engine/replay ground-truth)
-        :let [beds (keep (comp :bed :location) (vals world-after))
-              dupes (->> beds frequencies (filter (comp #(> % 1) val)) (map key))]
-        bed dupes]
-    {:invariant :no-double-occupancy :bed bed :at (:t event)}))
+  (fold-records
+   ground-truth
+   {:by-bed {} :dupes #{}}
+   (fn [{:keys [by-bed dupes]} {:keys [event world-before world-after]}]
+     (let [[by-bed' dupes']
+           (reduce (fn [[idx dup] pid]
+                     (let [old-bed (bed-of (get world-before pid))
+                           new-bed (bed-of (get world-after pid))
+                           idx' (reindex-set idx old-bed new-bed pid)
+                           touched (remove nil? (distinct [old-bed new-bed]))]
+                       [idx' (reduce (fn [d b]
+                                       (if (> (count (get idx' b)) 1) (conj d b) (disj d b)))
+                                     dup touched)]))
+                   [by-bed dupes] (participants-of event))]
+       [{:by-bed by-bed' :dupes dupes'}
+        ;; Guard positive -> emit from the ORIGINAL expression, so the
+        ;; order `frequencies` produces is the order that ships.
+        (when (seq dupes')
+          (let [beds (keep (comp :bed :location) (vals world-after))
+                dupe-beds (->> beds frequencies (filter (comp #(> % 1) val)) (map key))]
+            (for [bed dupe-beds]
+              {:invariant :no-double-occupancy :bed bed :at (:t event)})))]))))
+
+
+(defn- one-slot-offender?
+  "The predicate `admitted-occupies-one-slot`'s own `:when` clause is,
+  lifted so the fold and the emission cannot drift apart."
+  [{:keys [status location class]}]
+  (and (= status :admitted) (not= class :outpatient)
+       (or (nil? location) (nil? (:bed location)))))
 
 (defn admitted-occupies-one-slot
   "An admitted patient (Admitted or Boarding) occupies exactly one
@@ -164,11 +285,17 @@
   fact's own converse: an outpatient patient's :location must ALWAYS be
   nil, never merely may be."
   [ground-truth]
-  (for [{:keys [event world-after]} (engine/replay ground-truth)
-        [patient-id {:keys [status location class]}] world-after
-        :when (and (= status :admitted) (not= class :outpatient)
-                   (or (nil? location) (nil? (:bed location))))]
-    {:invariant :admitted-occupies-one-slot :patient-id patient-id :at (:t event)}))
+  (fold-records
+   ground-truth
+   #{}
+   (fn [flags {:keys [event world-after]}]
+     (let [flags' (reduce (fn [fs pid] (reflag fs pid (one-slot-offender? (get world-after pid))))
+                          flags (participants-of event))]
+       [flags'
+        (when (seq flags')
+          (for [[patient-id patient] world-after
+                :when (one-slot-offender? patient)]
+            {:invariant :admitted-occupies-one-slot :patient-id patient-id :at (:t event)}))]))))
 
 ;; --- M5b: :outpatient-visit / :outpatient-visit-end (components/patient-simulator/docs/gmf-interpreter.md
 ;; section 4's sketch, item 8's own invariant list) --------------------------
@@ -182,6 +309,9 @@
         :when (and (= :outpatient-visit (:event event)) (not= :new (:status before)))]
     {:invariant :outpatient-visit-only-when-new :patient-id patient-id :at (:t event)}))
 
+(defn- outpatient-with-bed? [{:keys [class location]}]
+  (and (= class :outpatient) (some? location)))
+
 (defn outpatient-patients-occupy-no-bed
   "The structural half of item 6's conditional validity row: `:class
   :outpatient => :location nil`, for the visit's entire duration -- an
@@ -190,10 +320,17 @@
   already only folds patients with a `:bed` present, so this is checked
   here directly rather than assumed from that board's own omission)."
   [ground-truth]
-  (for [{:keys [event world-after]} (engine/replay ground-truth)
-        [patient-id {:keys [class location]}] world-after
-        :when (and (= class :outpatient) (some? location))]
-    {:invariant :outpatient-patients-occupy-no-bed :patient-id patient-id :at (:t event)}))
+  (fold-records
+   ground-truth
+   #{}
+   (fn [flags {:keys [event world-after]}]
+     (let [flags' (reduce (fn [fs pid] (reflag fs pid (outpatient-with-bed? (get world-after pid))))
+                          flags (participants-of event))]
+       [flags'
+        (when (seq flags')
+          (for [[patient-id patient] world-after
+                :when (outpatient-with-bed? patient)]
+            {:invariant :outpatient-patients-occupy-no-bed :patient-id patient-id :at (:t event)}))]))))
 
 ;; --- GMF coverage Wave C (2026-08-02, ADR-0028, C3): :expired --------------
 
@@ -214,15 +351,33 @@
 
 (defn occupancy-within-capacity
   "Occupancy never exceeds a ward's declared capacity (licensed +
-  surge slots)."
+  surge slots).
+
+  ADR-0169: the one member of the fold-carried family that emits
+  STRAIGHT from its index rather than falling back to a walk of
+  `world-after`. It may, because nothing about its output depends on map
+  iteration order -- the loop runs over the `:wards` VECTOR of the
+  facility config, in config order, and the only carried value in the
+  finding is `:occupied`, a count. The 54.9%-of-the-phase site becomes
+  O(W) per event instead of O(P x W)."
   [ground-truth facility-config]
-  (for [{:keys [event world-after]} (engine/replay ground-truth)
-        ward (:wards facility-config)
-        :let [cap (+ (:beds ward) (:surge-slots ward))
-              occ (count (filter #(= (:name ward) (get-in % [:location :ward])) (vals world-after)))]
-        :when (> occ cap)]
-    {:invariant :occupancy-within-capacity :ward (:name ward) :at (:t event)
-     :occupied occ :capacity cap}))
+  (fold-records
+   ground-truth
+   {}
+   (fn [by-ward {:keys [event world-before world-after]}]
+     (let [by-ward' (reduce (fn [idx pid]
+                              (reindex-set idx
+                                           (ward-of (get world-before pid))
+                                           (ward-of (get world-after pid))
+                                           pid))
+                            by-ward (participants-of event))]
+       [by-ward'
+        (for [ward (:wards facility-config)
+              :let [cap (+ (:beds ward) (:surge-slots ward))
+                    occ (count (get by-ward' (:name ward)))]
+              :when (> occ cap)]
+          {:invariant :occupancy-within-capacity :ward (:name ward) :at (:t event)
+           :occupied occ :capacity cap})]))))
 
 (defn- earlier-rungs-exhausted?
   "Whether the ladder's earlier rungs were legitimately exhausted at
@@ -272,23 +427,41 @@
   Structural -- checks any log directly, independent of whether decide
   itself already enforces this (docs/patient-state-model.md)."
   [ground-truth]
+  ;; ADR-0169: `cancelled-earlier?` used to re-walk the WHOLE log per
+  ;; cancel -- O(C x N), 4.9% of the check phase at 10^5 and quadratic
+  ;; in churn density. The question it asks ("did an EARLIER cancel of
+  ;; MY kind already name my target?") is answerable from a set carried
+  ;; forward by the same single ascending pass the outer `for` already
+  ;; makes, so it is. Everything else is verbatim; the emission order is
+  ;; the same ascending-index order, because it is the same one pass.
+  ;;
+  ;; The carried set is keyed by [event-type target-idx] over EVERY
+  ;; event, not only cancels: the original's inner predicate requires
+  ;; `(= (:event event) (:event ev2))`, and only a same-typed ev2 can
+  ;; match a cancel, so indexing the rest is inert -- and indexing it
+  ;; anyway is what makes the equivalence need no argument about which
+  ;; event types can carry a `:cancels-event-id`.
   (let [indexed (vec ground-truth)]
-    (for [[idx event] (map-indexed vector indexed)
-          :when (contains? cancel-target-type (:event event))
-          :let [target-idx (:cancels-event-id event)
-                target (get indexed target-idx)
-                expected-type (get cancel-target-type (:event event))
-                patient-id (:patient-id (first (:participants event)))
-                cancelled-earlier? (some (fn [[i2 ev2]]
-                                           (and (< i2 idx)
-                                                (= (:event event) (:event ev2))
-                                                (= target-idx (:cancels-event-id ev2))))
-                                         (map-indexed vector indexed))]
-          :when (or (nil? target)
-                    (not= expected-type (:event target))
-                    (not (some #(= patient-id (:patient-id %)) (:participants target)))
-                    cancelled-earlier?)]
-      {:invariant :cancel-references-existing-uncancelled-event :patient-id patient-id :at (:t event)})))
+    (loop [idx 0 seen #{} acc (transient [])]
+      (if (>= idx (count indexed))
+        (persistent! acc)
+        (let [event (nth indexed idx)
+              key [(:event event) (:cancels-event-id event)]
+              acc' (if (contains? cancel-target-type (:event event))
+                     (let [target-idx (:cancels-event-id event)
+                           target (get indexed target-idx)
+                           expected-type (get cancel-target-type (:event event))
+                           patient-id (:patient-id (first (:participants event)))
+                           cancelled-earlier? (contains? seen key)]
+                       (if (or (nil? target)
+                               (not= expected-type (:event target))
+                               (not (some #(= patient-id (:patient-id %)) (:participants target)))
+                               cancelled-earlier?)
+                         (conj! acc {:invariant :cancel-references-existing-uncancelled-event
+                                     :patient-id patient-id :at (:t event)})
+                         acc))
+                     acc)]
+          (recur (inc idx) (conj seen key) acc'))))))
 
 (defn bed-swap-both-admitted-before-swap
   "Both bed-swap participants were :admitted immediately beforehand
@@ -327,14 +500,45 @@
   later event in the log names it as a participant (docs/patient-
   state-model.md, sim/ADR-0010)."
   [ground-truth]
-  (let [indexed (vec ground-truth)]
-    (for [[merge-idx event] (map-indexed vector indexed)
-          :when (= :merge (:event event))
-          :let [merged-id (:patient-id (first (filter #(= :merged (:role %)) (:participants event))))]
-          [later-idx later-event] (map-indexed vector indexed)
-          :when (and (> later-idx merge-idx)
-                    (some #(= merged-id (:patient-id %)) (:participants later-event)))]
-      {:invariant :no-events-after-merged-terminal :patient-id merged-id :at (:t later-event)})))
+  ;; ADR-0169: the inner full-log loop per merge was O(M x N), 2.4% of
+  ;; the check phase at 10^5. Two ascending passes replace it -- first
+  ;; the merges and the ids they retire, then, for those ids ONLY, where
+  ;; in the log they appear -- and the emission then reads the answer off
+  ;; the second pass.
+  ;;
+  ;; The nesting ORDER is what has to survive, and does: the original is
+  ;; merge-major (outer `for` over merges, ascending) then log-order
+  ;; (inner `for` over later events, ascending), so the loop below stays
+  ;; merge-major and each occurrence vector is built in ascending index
+  ;; order by construction. A single forward pass would have emitted the
+  ;; same findings in EVENT-major order -- a different sequence whenever
+  ;; two merges both have violations, which is exactly the case the
+  ;; naive-reference defspec generates.
+  (let [indexed (vec ground-truth)
+        merges (into [] (comp (map-indexed vector)
+                              (filter (fn [[_ ev]] (= :merge (:event ev))))
+                              (map (fn [[i ev]]
+                                     [i (:patient-id (first (filter #(= :merged (:role %))
+                                                                    (:participants ev))))])))
+                     indexed)
+        merged-ids (into #{} (map second) merges)
+        occurrences (if (empty? merged-ids)
+                      {}
+                      ;; DISTINCT participant ids per event, deliberately:
+                      ;; the original's inner `for` tested each later event
+                      ;; ONCE with `some`, so an event naming the same
+                      ;; patient-id twice owes one finding, not two.
+                      (reduce-kv (fn [m i ev]
+                                   (reduce (fn [m2 pid]
+                                             (if (contains? merged-ids pid)
+                                               (update m2 pid (fnil conj []) [i (:t ev)])
+                                               m2))
+                                           m (distinct (map :patient-id (:participants ev)))))
+                                 {} indexed))]
+    (for [[merge-idx merged-id] merges
+          [later-idx later-t] (get occurrences merged-id)
+          :when (> later-idx merge-idx)]
+      {:invariant :no-events-after-merged-terminal :patient-id merged-id :at later-t})))
 
 ;; --- sim/ADR-0012: :step-rejected -- truth about the run, checked structurally
 ;; (never a message-bearing event -- no message-type-registry entry, by
